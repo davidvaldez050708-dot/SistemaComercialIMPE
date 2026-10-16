@@ -40,35 +40,28 @@ class TelefoniaAnalistaWebrtcService
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
     }
 
-    /**
-     * Incorporación compatible para tablas creadas antes de la mejora.
-     * Sólo se consulta al finalizar; un fallo del campo auxiliar NO debe
-     * impedir que la llamada quede registrada.
-     */
     private function asegurarDuracionObservada(): bool
     {
         try {
-            $check = $this->db->query(
+            $cols = $this->db->query(
                 "SHOW COLUMNS FROM telefonia_analista_webrtc_sesiones
-                   LIKE 'duracion_observada_segundos'"
+                  LIKE 'duracion_observada_segundos'"
             );
-            if ($check && $check->num_rows > 0) return true;
+            if ($cols && $cols->num_rows > 0) return true;
             $this->db->query(
                 "ALTER TABLE telefonia_analista_webrtc_sesiones
-                  ADD COLUMN duracion_observada_segundos INT UNSIGNED NULL
-                  AFTER fecha_fin"
+                  ADD COLUMN duracion_observada_segundos INT UNSIGNED NULL AFTER fecha_fin"
             );
             return true;
-        } catch (Throwable $e) {
-            // Otra solicitud pudo añadir el campo simultáneamente.
+        } catch (Throwable $error) {
             try {
-                $again = $this->db->query(
+                $cols = $this->db->query(
                     "SHOW COLUMNS FROM telefonia_analista_webrtc_sesiones
-                       LIKE 'duracion_observada_segundos'"
+                      LIKE 'duracion_observada_segundos'"
                 );
-                if ($again && $again->num_rows > 0) return true;
+                if ($cols && $cols->num_rows > 0) return true;
             } catch (Throwable $ignored) {}
-            error_log('[webrtc_duracion_observada] ' . $e->getMessage());
+            error_log('[telefonia_duracion_observada] ' . get_class($error));
             return false;
         }
     }
@@ -167,36 +160,6 @@ class TelefoniaAnalistaWebrtcService
         $stmt->execute();
         $stmt->close();
 
-        // Para WebRTC la conexión que observa el navegador puede empezar
-        // antes de que el servidor reciba 'answered' (red o SDK). Aceptar
-        // su duración sólo como medición OBSERVADA, nunca PBX oficial, y
-        // sólo si es compatible con el intervalo UTC de la sesión. Una
-        // actualización de 'ended' idempotente puede completar este dato.
-        if ($evento === 'ended') {
-            $observados = filter_var(
-                $datos['duracion_observada_segundos'] ?? null,
-                FILTER_VALIDATE_INT,
-                ['options'=>['min_range'=>1, 'max_range'=>7200]]
-            );
-            if ($observados !== false && $observados !== null &&
-                $this->asegurarDuracionObservada()) {
-                $up = $this->db->prepare(
-                    "UPDATE telefonia_analista_webrtc_sesiones
-                     SET duracion_observada_segundos =
-                       GREATEST(COALESCE(duracion_observada_segundos, 0), ?)
-                     WHERE usuario_id = ? AND session_id = ? AND extension = ?
-                       AND estado = 'ended' AND fecha_atendida IS NOT NULL
-                       AND fecha_fin IS NOT NULL
-                       AND ? <= GREATEST(1,
-                         TIMESTAMPDIFF(SECOND, fecha_inicio, fecha_fin) + 3)"
-                );
-                $up->bind_param('iissi', $observados, $usuarioId,
-                    $id, $extension, $observados);
-                $up->execute();
-                $up->close();
-            }
-        }
-
         // Un UPDATE que no encontró la sesión NO significa que se guardó.
         // Confirmar en BD, también para reintentos idempotentes.
         $check = $this->db->prepare(
@@ -221,6 +184,31 @@ class TelefoniaAnalistaWebrtcService
         };
         if (!$saved) {
             throw new RuntimeException('No se confirmó el guardado de la sesión WebRTC.');
+        }
+
+        // Sólo guardamos la duración como OBSERVACIÓN del navegador, no
+        // como duración firmada por Zadarma. Los segundos deben caber
+        // en el intervalo temporal entre el primer timbrado y el cierre.
+        if ($evento === 'ended') {
+            $secs = filter_var($datos['duracion_observada_segundos'] ?? null,
+                FILTER_VALIDATE_INT,
+                ['options'=>['min_range'=>1,'max_range'=>7200]]
+            );
+            if (is_int($secs) && $this->asegurarDuracionObservada()) {
+                $up = $this->db->prepare(
+                    "UPDATE telefonia_analista_webrtc_sesiones
+                     SET duracion_observada_segundos = GREATEST(
+                        COALESCE(duracion_observada_segundos,0), ?)
+                     WHERE usuario_id=? AND session_id=? AND extension=?
+                       AND estado='ended' AND fecha_atendida IS NOT NULL
+                       AND fecha_fin IS NOT NULL
+                       AND ? <= GREATEST(1,
+                            TIMESTAMPDIFF(SECOND, fecha_inicio, fecha_fin) + 3)"
+                );
+                $up->bind_param('iissi', $secs, $usuarioId, $id, $extension, $secs);
+                $up->execute();
+                $up->close();
+            }
         }
 
         // Registro automático: una llamada 100 -> 101 no debe quedar
@@ -285,11 +273,9 @@ class TelefoniaAnalistaWebrtcService
     {
         $inicio = strtotime((string)($row['fecha_atendida'] ?? ''));
         $fin = strtotime((string)($row['fecha_fin'] ?? ''));
-        $servidor = $inicio !== false && $fin !== false && $fin > $inicio
+        $tiempoServidor = $inicio !== false && $fin !== false && $fin > $inicio
             ? $fin - $inicio : 0;
-        // A diferencia de la duración PBX, esta cifra está identificada
-        // explícitamente como observación de navegador en el historial.
-        return max($servidor, (int)($row['duracion_observada_segundos'] ?? 0));
+        return max($tiempoServidor, (int)($row['duracion_observada_segundos'] ?? 0));
     }
 
     public function listar(int $usuarioId): array

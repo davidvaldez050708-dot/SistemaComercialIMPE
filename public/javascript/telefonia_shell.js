@@ -37,8 +37,6 @@
     const incomingCompactTimer = document.querySelector('[data-incoming-compact-timer]');
     const notice = document.querySelector('[data-incoming-notice]');
     const closeFinished = document.querySelector('[data-incoming-close-finished]');
-    const registerFinished = document.querySelector('[data-incoming-register-finished]');
-    const retrySdkSave = document.querySelector('[data-incoming-retry-save]');
     const transferToggle = document.querySelector('[data-shell-transfer-toggle]');
     const transferPane = document.querySelector('[data-shell-transfer-panel]');
     const captureToggle = document.querySelector('[data-shell-capture-toggle]');
@@ -66,12 +64,9 @@
         Math.random().toString(36).slice(2);
     const channel = typeof BroadcastChannel === 'function'
         ? new BroadcastChannel(channelName) : null;
+    const openedAt = Date.now();
     let hostFrame = null;
     let minimized = false;
-    // Permite al Analista inspeccionar el widget WebRTC cuando una
-    // llamada interna SIP no genera NOTIFY_INTERNAL en la centralita.
-    // No suplanta el estado PBX ni crea una llamada artificial.
-    let nativeAnalystOpen = false;
     let actionNotice = '';
     // El comando se ejecuta sin esperar la siguiente consulta PBX.
     // Nunca interpretar la invocación SDK como confirmación de conexión.
@@ -124,13 +119,13 @@
         clampIncoming();
     };
     let forceNativeControls = false;
+    let nativeTransferOpen = false;
     // Marcación iniciada desde el teclado: visualización inmediata mientras
     // el único host WebRTC confirma el estado real de la saliente.
     let outgoingAttempt = null;
     let pendingOutgoingHangup = null;
     let recentFinishedOutgoing = null;
-    // Resumen de entrantes de Recepción/Ventas: sólo una finalización real
-    // observada en esta pestaña, nunca un estado antiguo de localStorage.
+    // La llamada entrante finalizada sólo permanece en esta sesión.
     let recentFinishedIncoming = null;
     const isManualOutgoing = value =>
         ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(
@@ -245,6 +240,17 @@
     window.IMPE_TELEPHONY_SHELL = Object.freeze({
         userId: userId,
         ensureHost: ensureHost,
+        showProviderControls: function () {
+            // SOPORTE_RECEPTOR_TRANSFER_20261015
+            if (!hostFrame || !freshState(currentState) ||
+                !currentState.hostReady || !currentState.active) return false;
+            nativeTransferOpen = true;
+            forceNativeControls = true;
+            minimized = false;
+            sendPhoneCommand('SHOW_CONTROLS');
+            render();
+            return true;
+        },
         getActiveCall: function () {
             if (!freshState(currentState) || !currentState.active ||
                 currentState.phase !== 'in-progress') return null;
@@ -261,22 +267,6 @@
             sendPhoneCommand('TRANSFER', {transferToken: String(token)});
             return true;
         },
-        isPhoneReady: function () {
-            return Boolean(hostFrame && freshState(currentState) &&
-                currentState.hostReady === true);
-        },
-        showProviderControls: function () {
-            // La combinación PBX #ext# debe poder marcarse desde el widget
-            // oficial también en Recepción, Ventas y Cuenta Clave.
-            if (!hostFrame || !freshState(currentState) ||
-                !currentState.hostReady || !currentState.active) return false;
-            nativeAnalystOpen = true;
-            forceNativeControls = true;
-            minimized = false;
-            sendPhoneCommand('SHOW_CONTROLS');
-            render();
-            return true;
-        },
         openDialer: openDialer,
         isDialerManagingCall: function () {
             return Boolean(dialer?.isManagingCall());
@@ -286,7 +276,8 @@
 
     const freshState = function (value) {
         return value && Number(value.userId) === userId &&
-            Number(value.updatedAt) > 0 &&
+            Number(value.updatedAt) >= openedAt - 1000 &&
+            Number(value.updatedAt) <= Date.now() + 1000 &&
             Date.now() - Number(value.updatedAt) < 5500;
     };
 
@@ -297,46 +288,21 @@
         if (cfg.analystIncomingResults &&
             currentState?.active && currentState.direction === 'incoming' &&
             !value.active && value.direction === 'incoming' &&
-            value.phase === 'incoming-finished' &&
-            value.context?.type !== 'SDK_INCOMING') {
+            value.phase === 'incoming-finished') {
             const id = incomingCallId(value) || incomingCallId(currentState);
-            if (id && /^[a-zA-Z0-9_-]{3,100}$/.test(id) &&
-                (value.context?.type !== 'SDK_INCOMING' ||
-                    currentState.phase === 'in-progress')) {
-                analystPendingCall = {
-                    id, at: Date.now(),
-                    source: value.context?.type === 'SDK_INCOMING' ? 'SDK_WEBRTC' : 'PBX'
-                };
+            if (id && /^[a-zA-Z0-9_-]{3,100}$/.test(id)) {
+                analystPendingCall = {id, at: Date.now()};
                 try { sessionStorage.setItem(analystResultKey, JSON.stringify(analystPendingCall)); }
                 catch (_) { /* El historial del servidor es el respaldo. */ }
             }
         }
-        // Sólo ofrecer Registrar resultado de WebRTC cuando el servidor
-        // confirmó el FIN; la invocación al SDK no es prueba PBX.
-        if (cfg.analystIncomingResults &&
-            value.phase === 'incoming-finished' &&
-            value.context?.type === 'SDK_INCOMING' &&
-            value.journalStatus === 'saved' &&
-            value.status === 'completed' &&
-            currentState?.journalStatus !== 'saved') {
-            const id = incomingCallId(value);
-            if (/^sdk-[a-z0-9-]{12,94}$/.test(id)) {
-                analystPendingCall = {id, source:'SDK_WEBRTC', at:Date.now()};
-                try { sessionStorage.setItem(analystResultKey, JSON.stringify(analystPendingCall)); }
-                catch (_) {}
-            }
-        }
-        // La PBX confirma el final de una entrante: conservar el resumen
-        // de Recepción/Ventas hasta pulsar Cerrar, incluso si el host vuelve
-        // automáticamente a ready. No interferir con el registro del Analista.
-        if (!cfg.analystIncomingResults &&
-            currentState?.active && currentState.direction === 'incoming' &&
-            !value.active && value.direction === 'incoming' &&
-            value.phase === 'incoming-finished') {
+        // Resumen de Recepción sólo tras confirmar el fin desde PBX.
+        if (!cfg.analystIncomingResults && currentState?.active &&
+            currentState.direction === 'incoming' && !value.active &&
+            value.direction === 'incoming' && value.phase === 'incoming-finished') {
             recentFinishedIncoming = {state:value, id:incomingCallId(value)};
             incomingCompact = false;
         } else if (value.active) {
-            // Una nueva conversación nunca hereda el resumen anterior.
             recentFinishedIncoming = null;
         }
         // El resumen de Marketing sólo nace de una transición REAL de
@@ -446,10 +412,6 @@
     const render = function () {
         const state = freshState(currentState) ? currentState : null;
         const incoming = Boolean(state?.active && state.direction === 'incoming');
-        const finishedSdk = Boolean(cfg.analystIncomingResults &&
-            state?.direction === 'incoming' && !state.active &&
-            state.phase === 'incoming-finished' &&
-            state.context?.type === 'SDK_INCOMING');
         const outgoing = Boolean(state?.active && state.direction === 'outgoing');
         if (outgoingAttempt && Date.now() - outgoingAttempt.at > 20000 &&
             !outgoing) {
@@ -469,7 +431,7 @@
         const incomingFinishedPreview = !state?.active
             ? recentFinishedIncoming?.state || null : null;
         const shownCall = state?.active ? state :
-            (finishedSdk ? state : (incomingFinishedPreview || preview || finishedPreview));
+            (incomingFinishedPreview || preview || finishedPreview);
         const finishedIncoming = Boolean(incomingFinishedPreview);
         // Sólo llamadas manuales usan este resumen visual; Seguimiento
         // mantiene su propia pantalla para registrar el resultado.
@@ -478,19 +440,20 @@
             (manualOutgoing || preview || outgoingAttempt));
         const ongoing = Boolean(state?.active);
         if (analystResultNotice) {
-            analystResultNotice.hidden = !analystPendingCall || ongoing || finishedSdk;
+            // No convertir el aviso pendiente en una llamada "activa" al
+            // volver a abrir navegador; se conserva sólo como seguimiento.
+            analystResultNotice.hidden = !analystPendingCall || ongoing;
         }
         if (!ongoing) {
-            // No esconder el widget del Analista: las llamadas internas
-            // pueden timbrar sin eventos entrantes PBX.
-            if (!nativeAnalystOpen) forceNativeControls = false;
-            if (!nativeAnalystOpen) minimized = false;
+            nativeTransferOpen = false;
+            forceNativeControls = false;
+            minimized = false;
             pendingIncomingAction = null;
             actionNotice = '';
         }
         const ready = Boolean(state && state.hostReady &&
-            ['ready', 'prepared', 'incoming-ringing', 'in-progress',
-                'dialing', 'ringing', 'finished', 'incoming-finished'].includes(String(state.phase)));
+            ['ready','prepared','incoming-ringing','answering','in-progress',
+                'finishing','dialing','ringing','finished','incoming-finished'].includes(String(state.phase)));
         const failed = mountFailed || (state?.phase === 'error' ?
             (state.message || 'No fue posible conectar con Zadarma.') : '');
         const otherOwner = !owned && getLease() &&
@@ -514,26 +477,23 @@
         // Una sola tarjeta con el diseño del CRM. El widget se conserva
         // montado fuera de pantalla: audio/WebRTC no se desmontan.
         // El panel oficial nunca reemplaza el modal de llamadas entrantes.
-        const nativeVisible = Boolean(state?.hostReady) &&
-            forceNativeControls && !minimized &&
-            (
-                (cfg.analystIncomingResults && nativeAnalystOpen) ||
-                ongoing
-            );
+        const nativeVisible = (Boolean(state?.hostReady) && ongoing &&
+            state?.direction !== 'incoming' && forceNativeControls && !minimized)
+            || (Boolean(state?.hostReady) && ongoing && forceNativeControls &&
+                nativeTransferOpen && !minimized); // VISIBILIDAD_RECEPTOR_TRANSFER_20261015
         const pending = pendingFor(state);
         if (pendingOutgoingHangup &&
             Date.now() - pendingOutgoingHangup.at > 4500) {
             pendingOutgoingHangup = null;
         }
-        // Mantener el modal visible al colgar mientras llega la confirmación
-        // de PBX. El panel lateral sí desaparece inmediatamente.
-        const finishingIncoming = incoming && pending === 'hangup';
-        const customVisible = (incoming || finishedSdk || finishedIncoming || shownOutgoing) &&
-            !nativeVisible &&
-            !minimized && pending !== 'decline';
+        // No ocultar el modal al colgar una saliente: mostrar
+        // «Finalizando» hasta recibir el evento final del SDK/PBX.
+        const finishingIncoming = incoming &&
+            (pending === 'hangup' || state.phase === 'finishing');
+        const waitingAnswer = incoming && state.phase === 'answering';
+        const customVisible = (incoming || finishedIncoming || shownOutgoing) &&
+            !nativeVisible && !minimized && pending !== 'decline';
         call.classList.toggle('is-visible', nativeVisible);
-        call.classList.toggle('is-analyst-native',
-            Boolean(cfg.analystIncomingResults && nativeVisible));
         if (incomingPanel) {
             incomingPanel.hidden = !customVisible;
             incomingPanel.classList.toggle('is-compact', incomingCompact);
@@ -555,7 +515,7 @@
             captureToggle?.setAttribute('aria-expanded', 'false');
         }
         restore.hidden = !minimized || !(incoming || (ongoing && forceNativeControls));
-        if ((incoming || finishedSdk || finishedIncoming || shownOutgoing) && incomingPanel) {
+        if ((incoming || finishedIncoming || shownOutgoing) && incomingPanel) {
             const phoneState = shownCall;
             const ringing = incoming && state.phase === 'incoming-ringing';
             const finished = shownOutgoing && !phoneState.active &&
@@ -568,40 +528,34 @@
             // El botón se puede pulsar durante timbrado; el puente comprueba
             // el control del SDK al recibir el clic, sin estado infinito.
             incomingNumber.textContent = String(phoneState.destination || 'Número desconocido');
-            incomingTitle.textContent = (finishedSdk || finishedIncoming)
-                ? 'Llamada finalizada' : incoming
+            incomingTitle.textContent = finishedIncoming ? 'Llamada finalizada' : incoming
                 ? (finishingIncoming ? 'Finalizando llamada…' :
-                    (ringing ? 'Llamada entrante' : 'En conversación'))
+                    (waitingAnswer ? 'Conectando llamada…' :
+                    (ringing ? 'Llamada entrante' : 'En conversación')))
                 : (finished ? 'Llamada finalizada' :
                     (finishing ? 'Finalizando llamada…' :
                     (dialing ? 'Llamando…' : 'En conversación')));
-            incomingEyebrow.textContent = (finished || finishedSdk || finishedIncoming)
-                ? 'LLAMADA FINALIZADA' :
+            incomingEyebrow.textContent = (finished || finishedIncoming) ? 'LLAMADA FINALIZADA' :
                 (shownOutgoing ? 'LLAMADA SALIENTE' :
                 (ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO'));
-            incomingState.textContent = finishedSdk
-                ? (phoneState.journalStatus === 'error'
-                    ? 'Finalizada · no fue posible guardar en Llamadas recibidas'
-                    : phoneState.journalStatus === 'pending'
-                    ? 'Finalizada · guardando en Llamadas recibidas…'
-                    : phoneState.status === 'completed'
-                    ? 'Finalizada · registro WebRTC sin confirmación PBX'
-                    : 'Finalizada · llamada sin respuesta')
-                : finishedIncoming
+            incomingState.textContent = finishedIncoming
                 ? (phoneState.status === 'transferred'
                     ? 'Finalizada · transferencia confirmada por la centralita'
+                    : phoneState.status === 'ended-unconfirmed'
+                    ? 'Audio finalizado · esperando registro PBX'
                     : 'Finalizada · llamada concluida')
                 : shownOutgoing
                 ? (finished ? 'Finalizada · registrada en el historial telefónico'
                     : (finishing ? 'Finalizando la conversación…' :
                     (dialing ? 'Marcando desde la extensión ' + cfg.extension
                         : 'Conversación en curso')))
-                : (finishingIncoming ? 'Esperando confirmación de la centralita…' :
+                : (finishingIncoming ? 'Esperando cierre de Zadarma…' :
+                    (waitingAnswer ? 'Conectando audio WebRTC…' :
                     (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
-                    : 'Conversación en curso'));
+                    : 'Conversación en curso')));
             // El teclado desaparece; el panel empieza en cero.
-            if (preview || finished || finishedSdk || finishedIncoming) {
-                const duration = (finished || finishedSdk || finishedIncoming)
+            if (preview || finished || finishedIncoming) {
+                const duration = (finished || finishedIncoming)
                     ? formatDuration(phoneState.duration) : '00:00';
                 incomingTimer.textContent = duration;
                 incomingCompactTimer.textContent = duration;
@@ -614,23 +568,17 @@
             compactDecline.hidden = !ringing;
             compactAnswer.disabled = !ringing || Boolean(pending);
             compactDecline.disabled = !ringing || Boolean(pending);
-            muteButton.hidden = finished || finishedSdk || finishedIncoming ||
-                finishing || finishingIncoming || ringing ||
+            muteButton.hidden = finished || finishedIncoming || finishing ||
+                finishingIncoming || waitingAnswer || ringing ||
                 (shownOutgoing && dialing);
-            hangupButton.hidden = finished || finishedSdk || finishedIncoming ||
-                finishing || finishingIncoming || ringing;
-            compactMute.hidden = finished || finishedSdk || finishedIncoming ||
-                finishing || finishingIncoming || ringing ||
+            hangupButton.hidden = finished || finishedIncoming || finishing ||
+                finishingIncoming || waitingAnswer || ringing;
+            compactMute.hidden = finished || finishedIncoming || finishing ||
+                finishingIncoming || waitingAnswer || ringing ||
                 (shownOutgoing && dialing);
-            compactHangup.hidden = finished || finishedSdk || finishedIncoming ||
-                finishing || finishingIncoming || ringing;
-            if (closeFinished) closeFinished.hidden =
-                !(finished || finishedSdk || finishedIncoming);
-            if (registerFinished) registerFinished.hidden =
-                !finishedSdk || phoneState.status !== 'completed' ||
-                phoneState.journalStatus !== 'saved';
-            if (retrySdkSave) retrySdkSave.hidden =
-                !finishedSdk || phoneState.journalStatus !== 'error';
+            compactHangup.hidden = finished || finishedIncoming || finishing ||
+                finishingIncoming || waitingAnswer || ringing;
+            if (closeFinished) closeFinished.hidden = !(finished || finishedIncoming);
             hangupButton.disabled = Boolean(pending) || Boolean(preview);
             compactHangup.disabled = Boolean(pending) || Boolean(preview);
             // Mismo icono, texto y estado activo del modal de Seguimiento.
@@ -643,26 +591,19 @@
             compactMute.classList.toggle('is-active', Boolean(phoneState.muted));
             compactMute.title = muteLabel;
             compactMute.setAttribute('aria-label', muteLabel);
-            const sdkNotice = finishedSdk &&
-                phoneState.journalStatus === 'error'
-                ? 'No se guardó en Llamadas recibidas. Utiliza Reintentar registro.'
-                : '';
-            notice.hidden = !(actionNotice || sdkNotice) || incomingCompact;
-            notice.textContent = actionNotice || sdkNotice;
+            notice.hidden = !actionNotice || incomingCompact;
+            notice.textContent = actionNotice;
         }
-        callTitle.textContent = (finishedSdk || finishedIncoming) ? 'Llamada finalizada' :
+        callTitle.textContent = finishedIncoming ? 'Llamada finalizada' :
             incoming ? 'Llamada entrante' :
             ongoing ? 'Llamada en curso' : 'Teléfono institucional';
         callStatus.textContent = incoming ?
             'Desde ' + String(state.destination || 'Número desconocido') :
             'Extensión ' + cfg.extension;
         if (callHelp) {
-            callHelp.textContent = cfg.analystIncomingResults && nativeAnalystOpen
-                ? 'Controles de Zadarma · Extensión ' + cfg.extension +
-                    '. Si recibes una llamada interna, contéstala desde el widget inferior. Puedes ocultar este panel sin desconectar la recepción.'
-                : incoming
-                    ? 'Utiliza Contestar en el teléfono Zadarma. Si no aparece, la centralita detectó la llamada, pero WebRTC no confirma el timbrado.'
-                    : 'Teléfono de la extensión ' + cfg.extension + '.';
+            callHelp.textContent = incoming
+                ? 'Utiliza Contestar en el teléfono Zadarma. Si no aparece, la centralita detectó la llamada, pero WebRTC no confirma el timbrado.'
+                : 'Teléfono de la extensión ' + cfg.extension + '.';
         }
 
         // Sólo se hace visible la interfaz oficial si la llamada es entrante.
@@ -670,9 +611,6 @@
         if (hostFrame) {
             hostFrame.dataset.callDirection = incoming ? 'incoming' : 'outgoing';
         }
-        // El aviso de conexión y "Mostrar llamada" son ambos flotantes:
-        // nunca apilarlos uno encima del otro.
-        status.classList.toggle('is-raised', !restore.hidden);
     };
 
     window.addEventListener('message', function (event) {
@@ -693,7 +631,7 @@
             const saved = JSON.parse(localStorage.getItem(stateKey) || 'null');
             // El iframe WebRTC debe confirmar de nuevo cualquier llamada.
             // Una llamada activa o finalizada guardada NO es una llamada viva.
-            if (onBoot && (saved?.active || ['finished','incoming-finished'].includes(saved?.phase))) return;
+            if (onBoot && (saved?.active || saved?.phase === 'finished')) return;
             updateState(saved);
         } catch (e) { /* sin estado anterior */ }
     };
@@ -705,11 +643,7 @@
     });
 
     document.querySelector('[data-shell-minimize]')?.addEventListener('click', function () {
-        // Ocultar el widget no desconecta SIP ni finaliza la llamada.
-        nativeAnalystOpen = false;
-        forceNativeControls = false;
-        minimized = true;
-        render();
+        minimized = true; render();
     });
     document.querySelector('[data-incoming-minimize]')?.addEventListener('click',
         toggleIncomingCompact);
@@ -796,14 +730,7 @@
     muteButton?.addEventListener('click', toggleIncomingMute);
     compactMute?.addEventListener('click', toggleIncomingMute);
     closeFinished?.addEventListener('click', function () {
-        if (currentState?.phase === 'incoming-finished' &&
-            currentState.context?.type === 'SDK_INCOMING') {
-            sendPhoneCommand('CLEAR_FINISHED', {callToken:String(currentState.callToken || '')});
-            return;
-        }
         if (recentFinishedIncoming) {
-            // El estado real del teléfono lo limpia el host; Cerrar sólo
-            // descarta la vista local, sin tocar la sesión SIP activa.
             recentFinishedIncoming = null;
             render();
             return;
@@ -868,29 +795,13 @@
         try { sessionStorage.removeItem(analystResultKey); } catch (_) {}
         render();
     };
-    const goToIncomingResult = function (id, source) {
-        if (!cfg.incomingResultsUrl || !crm || !id) return;
-        const url = new URL(String(cfg.incomingResultsUrl), window.location.href);
-        if (url.origin !== window.location.origin) return;
-        url.searchParams.set(source === 'SDK_WEBRTC' ? 'sdk_session_id' : 'pbx_call_id', id);
-        crm.src = url.toString();
-        dismissAnalystResult();
-    };
-    retrySdkSave?.addEventListener('click', function () {
-        providerBridge()?.retryJournal?.();
-    });
-    registerFinished?.addEventListener('click', function () {
-        const state = currentState;
-        if (state?.phase !== 'incoming-finished' ||
-            state.context?.type !== 'SDK_INCOMING' ||
-            state.status !== 'completed' ||
-            state.journalStatus !== 'saved') return;
-        goToIncomingResult(String(state.callToken || ''), 'SDK_WEBRTC');
-        sendPhoneCommand('CLEAR_FINISHED', {callToken:String(state.callToken || '')});
-    });
     analystResultButton?.addEventListener('click', function () {
         if (!analystPendingCall || !cfg.incomingResultsUrl || !crm) return;
-        goToIncomingResult(analystPendingCall.id, analystPendingCall.source || 'PBX');
+        const url = new URL(String(cfg.incomingResultsUrl), window.location.href);
+        if (url.origin !== window.location.origin) return;
+        url.searchParams.set('pbx_call_id', analystPendingCall.id);
+        crm.src = url.toString();
+        dismissAnalystResult();
     });
     analystResultDismiss?.addEventListener('click', dismissAnalystResult);
 

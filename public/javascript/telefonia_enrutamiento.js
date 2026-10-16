@@ -95,23 +95,31 @@
         const message = String(value.message || '');
         if (!stillSame || !message ||
             Number(value.updatedAt || 0) < transferSubmittedAt) return;
-        // El host puede rechazar la autorización por falta del contexto
-        // institucional, antes de enviar DTMF: mostrar el motivo real.
-        if (message.startsWith('No fue posible conservar la institución confirmada.')) {
+        // Los rechazos de validacion se producen ANTES del DTMF y no
+        // incluyen necesariamente 'ext. 101'. Deben mostrarse al usuario.
+        const rechazoDeValidacion = [
+            'No fue posible confirmar la institución para transferir.',
+            'No fue posible conservar la institución.',
+            'No fue posible conservar la institución confirmada.',
+            'La autorización de transferencia caducó',
+            'La llamada cambió.',
+            'El destino ya no está autorizado.',
+            'No se autorizó la transferencia.',
+            'No se pudo solicitar la transferencia.',
+            'No existe una llamada activa autorizada para transferir.',
+            'Selecciona el destino autorizado desde Transferir.'
+        ].some(prefix => message.startsWith(prefix));
+        const correspondeExtension = message.includes('ext. ' + transferDestinationExtension);
+        if (rechazoDeValidacion ||
+            (correspondeExtension && message.startsWith('No se pudo enviar la transferencia'))) {
             setFeedback(message, true);
             transferRequestCallId = '';
             transferDestinationExtension = '';
             transferSubmittedAt = 0;
-            return;
-        }
-        if (!message.includes('ext. ' + transferDestinationExtension)) return;
-        if (message.startsWith('No se pudo enviar la transferencia')) {
-            setFeedback(message, true);
-            transferRequestCallId = '';
-            transferDestinationExtension = '';
-            transferSubmittedAt = 0;
-        } else if (message.startsWith('Tonos de transferencia directa') ||
-                   message.startsWith('Consulta enviada por WebRTC')) {
+        } else if (correspondeExtension &&
+                   (message.startsWith('Tonos de transferencia directa') ||
+                    message.startsWith('Consulta enviada por WebRTC'))) {
+            // Tonos enviados no equivale a transferencia PBX confirmada.
             setFeedback(message);
         }
     };
@@ -467,24 +475,6 @@
                 return;
             }
         }
-        // Se comparte la referencia de ESTA llamada únicamente cuando
-        // Recepción ha confirmado un expediente permitido al destinatario.
-        // Hostinger mantiene además los nombres referencia_llamada y
-        // numero_origen para la versión personalizada del controlador.
-        // La versión de GitHub recibe pbx_call_id; ambas son compatibles.
-        const seguimientoConfirmado = (
-            categoria === 'RECEPCION' &&
-            tipo?.value === 'INSTITUCION' &&
-            confirmedRecognition &&
-            confirmedRecord?.callId === identity &&
-            confirmedRecord?.usuarioId === Number(selected.usuario_id) &&
-            confirmedRecord?.estadoId === Number(selected.estado_id)
-        ) ? confirmedRecord.seguimientoId : 0;
-        const referenciaInstitucional = seguimientoConfirmado > 0 &&
-            active.direction === 'incoming' && /^in_[a-z0-9_-]{6,95}$/i.test(identity)
-                ? identity : '';
-        const numeroOrigen = referenciaInstitucional
-            ? String(active.phone || '').trim() : '';
         const buttons = panel.querySelectorAll('[data-routing-attended], [data-routing-direct]');
         transferBusy = true;
         buttons.forEach(btn => { btn.disabled = true; });
@@ -496,12 +486,15 @@
                 tipo:categoria === 'RECEPCION' ? tipo.value : '',
                 responsable_id:String(selected.usuario_id),
                 modo:mode,
-                // Nunca tomar una sugerencia automática como identidad:
-                // se transmite sólo la institución confirmada por Tania.
-                seguimiento_id:String(seguimientoConfirmado),
-                pbx_call_id:identity,
-                referencia_llamada:referenciaInstitucional,
-                numero_origen:numeroOrigen
+                seguimiento_id:String(
+                    categoria === 'RECEPCION' && tipo.value === 'INSTITUCION' &&
+                    confirmedRecognition && confirmedRecord?.callId === identity &&
+                    Number(confirmedRecord.usuarioId) === Number(selected.usuario_id) &&
+                    Number(confirmedRecord.estadoId) === Number(selected.estado_id)
+                        ? confirmedRecord.seguimientoId : 0
+                ),
+                numero_origen:String(active.phone || ''),
+                referencia_llamada:identity
             });
             const data = await fetch(cfg.routingAuthorizeUrl, {
                 method:'POST', credentials:'same-origin', cache:'no-store',

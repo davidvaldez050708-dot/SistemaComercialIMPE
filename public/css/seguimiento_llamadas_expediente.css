@@ -823,3 +823,36 @@
         height: 30px;
     }
 }
+
+/* Ambos reproductores muestran la dirección del desplegable según aria-expanded. */
+.linkage-call-history-card button.linkage-call-recording-toggle .linkage-call-recording-chevron {
+    display: inline-block; transition: transform 160ms ease;
+}
+.linkage-call-history-card button.linkage-call-recording-toggle[aria-expanded="true"] .linkage-call-recording-chevron {
+    transform: rotate(180deg);
+}
+
+/* Paginación del historial de llamadas del expediente */
+.linkage-call-pagination {
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:12px; padding:18px 0 2px;
+    border-top:1px solid #e2e8f0; margin-top:14px;
+}
+.linkage-call-pagination[hidden] { display:none !important; }
+.linkage-call-pagination-info { font-size:13px; color:#64748b; }
+.linkage-call-pagination-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.linkage-call-page-button {
+    background:#fff; border:1px solid #dbe3ef; color:#293e82;
+    border-radius:10px; padding:8px 11px; min-height:36px;
+    font-size:13px; font-weight:600; line-height:1.2; cursor:pointer;
+}
+.linkage-call-page-button:hover:not(:disabled):not(.is-active) {background:#f1f5fd; border-color:#9dafd5;}
+.linkage-call-page-button.is-active {background:#283b94; color:white; border-color:#283b94;}
+.linkage-call-page-button:disabled {opacity:.45; cursor:not-allowed;}
+.linkage-call-page-button:focus-visible {outline:2px solid #1e90b7; outline-offset:2px;}
+.linkage-call-page-dots {font-size:13px; color:#64748b; padding:0 3px;}
+@media(max-width:640px){
+ .linkage-call-pagination {justify-content:center;}
+ .linkage-call-pagination-info {width:100%;text-align:center;}
+ .linkage-call-pagination-actions {justify-content:center;}
+}

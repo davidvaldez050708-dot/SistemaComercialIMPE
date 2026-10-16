@@ -26,6 +26,9 @@
     // normales siguen siendo los del CSS original del teléfono.
     const finishedCss = root.document.createElement('style');
     finishedCss.textContent = [
+        // Evitar que el shell muestre otro Registrar resultado del SDK.
+        'body [data-analyst-call-result] {' +
+          'display:none!important;}',
         // El shell original hace que «Cerrar» ocupe toda una fila de
         // su grid. Cambiar SÓLO las acciones del estado final a flex
         // evita filas vacías y da a los dos botones idénticas dimensiones.
@@ -65,20 +68,12 @@
           '.persistent-phone-live i {background:#8492a8;box-shadow:none;}',
         '.impe-incoming-panel[data-analyst-webrtc-finished="1"] ' +
           '[data-incoming-notice] {line-height:1.5;font-weight:700;}',
-        // El analista registra desde el MISMO modal o recupera
-        // pendientes desde Llamadas recibidas. El aviso legado inferior
-        // no debe reaparecer al iniciar sesión ni por renders del shell.
-        // Esta hoja sólo se inyecta para el perfil de Analista habilitado.
-        'body [data-analyst-call-result] {',
-        '  display:none!important;',
-        '}',
-        '.impe-incoming-transfer-context {',
-        '  padding:12px 14px; border:1px solid #d9e4f6;',
-        '  border-radius:12px;background:#f3f6fd;margin:8px 0;',
-        '  font-size:13px;line-height:1.45;color:#30456c;',
-        '}',
-        '.impe-incoming-transfer-context strong {display:block;color:#20356b;font-size:14px;}',
-        '.impe-incoming-transfer-context small {display:block;color:#586b8e;margin-top:3px;}'
+        '.impe-incoming-transfer-context {padding:11px 13px;',
+        '  border:1px solid #d8e4f2;border-radius:11px;',
+        '  background:#f3f7fd;color:#334c72;font-size:12px;',
+        '  line-height:1.45;margin:8px 0;}',
+        '.impe-incoming-transfer-context strong {display:block;font-size:13px;}',
+        '.impe-incoming-transfer-context small {display:block;color:#5b6f91;}'
     ].join('\n');
     root.document.head.appendChild(finishedCss);
 
@@ -124,10 +119,10 @@
     const compactClock = el('[data-incoming-compact-timer]');
     const notice = el('[data-incoming-notice]');
     const compactActions = el('.persistent-phone-compact-actions');
-    const transferContext = root.document.createElement('div');
-    transferContext.className = 'impe-incoming-transfer-context';
-    transferContext.hidden = true;
-    number?.parentElement?.insertAdjacentElement?.('afterend',transferContext);
+    const contextCard = root.document.createElement('div');
+    contextCard.className = 'impe-incoming-transfer-context';
+    contextCard.hidden = true;
+    number?.parentElement?.insertAdjacentElement?.('afterend', contextCard);
     if (!closeBtn || !status || !title || !number || !clock || !notice) {
         root.console.warn('[Llamadas recibidas] Modal telefónico incompleto.');
         return;
@@ -152,62 +147,57 @@
     const validId = id => /^sdk-[a-z0-9-]{12,94}$/.test(String(id || ''));
 
     let active = null;
+    let pbxSession = null;
     let finished = null;
     let lastSignature = '';
     let chain = Promise.resolve();
-    const contextKey = id => 'impe:crm:transfer-context:' + userId + ':' + id;
-    const fetchReceptionContext = async (id, phone, attempt = 0) => {
-        if (!id || !phone || !root.fetch || active?.id !== id) return;
-        // Al empezar el timbrado el traspaso de Tania puede estar aún
-        // validándose. Un GET único llegaba demasiado pronto y dejaba el
-        // expediente ausente. Reintentar durante hasta 13 segundos, sólo
-        // mientras siga activa esta misma sesión SDK.
+    const contextStorageKey = id => 'impe:crm:transfer-context:' + userId + ':' + id;
+    // No consultar por una extensión (100/101) ni por caller ID aún vacío.
+    const usableCallerNumber = value => {
+        const digits = String(value || '').replace(/\D+/g, '');
+        return digits.length >= 10 && digits.length <= 15;
+    };
+    const contextStillLive = id => active?.id === id || pbxSession?.id === id;
+    const fetchContext = async (id, phone, attempt = 0) => {
+        if (!contextStillLive(id) || !usableCallerNumber(phone)) return;
         const retry = () => {
-            if (attempt < 16 && active?.id === id) {
-                root.setTimeout?.(() => {
-                    void fetchReceptionContext(id, phone, attempt + 1);
-                }, 800);
+            if (attempt < 17 && contextStillLive(id)) {
+                root.setTimeout?.(() => void fetchContext(id, phone, attempt + 1), 750);
             }
         };
         try {
-            const url = new URL('index.php?controller=telefonia&action=contextoTransferencia',
+            const uri = new URL('index.php?controller=telefonia&action=contextoTransferencia',
                 root.location.href);
-            url.searchParams.set('numero',phone);
-            const response = await root.fetch(url.toString(), {
-                credentials:'same-origin',cache:'no-store',
+            uri.searchParams.set('numero', phone);
+            const response = await root.fetch(uri.toString(), {
+                credentials:'same-origin', cache:'no-store',
                 headers:{Accept:'application/json'}
             });
             const data = await response.json();
-            if (active?.id !== id) return;
-            if (!response.ok || !data.ok || !data.contexto) {
-                retry();
-                return;
-            }
-            const found = data.contexto;
-            if (!Number.isInteger(Number(found.seguimiento_id)) ||
-                Number(found.seguimiento_id) <= 0) return;
-            transferContext.replaceChildren?.();
+            if (!contextStillLive(id)) return;
+            if (!response.ok || !data.ok || !data.contexto) {retry();return;}
+            const ctx = data.contexto;
+            if (!Number.isInteger(Number(ctx.seguimiento_id)) ||
+                Number(ctx.seguimiento_id) <= 0) return;
+            contextCard.replaceChildren?.();
             const heading = root.document.createElement('strong');
-            heading.textContent = String(found.institucion || '') + ' · ' +
-                String(found.estado || '');
-            const detail = root.document.createElement('small');
-            detail.textContent = 'Identificada por ' +
-                String(found.confirmado_por || 'Recepción') +
-                '. Confirma con la persona que llama.';
-            transferContext.appendChild(heading);
-            transferContext.appendChild(detail);
-            transferContext.hidden = false;
+            heading.textContent = String(ctx.institucion || '') + ' · ' +
+                String(ctx.estado || '');
+            const hint = root.document.createElement('small');
+            hint.textContent = 'Identificada por ' +
+                String(ctx.confirmado_por || 'Recepción') +
+                '. Confirma los datos con la persona que llama.';
+            contextCard.appendChild(heading);
+            contextCard.appendChild(hint);
+            contextCard.hidden = false;
             try {
-                root.sessionStorage?.setItem(contextKey(id),JSON.stringify({
-                    call_id:id,seguimiento_id:Number(found.seguimiento_id),
-                    institucion:String(found.institucion || ''),
-                    estado:String(found.estado || ''),saved_at:Date.now()
+                root.sessionStorage?.setItem(contextStorageKey(id), JSON.stringify({
+                    call_id:id, seguimiento_id:Number(ctx.seguimiento_id),
+                    institucion:String(ctx.institucion || ''),
+                    estado:String(ctx.estado || ''), saved_at:Date.now()
                 }));
             } catch (_) {}
-        } catch (_) {
-            // Un servicio de contexto no puede interrumpir el audio WebRTC.
-            retry();
-        }
+        } catch (_) { retry(); }
     };
     const postEvent = function (event, call) {
         const data = new URLSearchParams({
@@ -216,11 +206,8 @@
             evento: event,
             numero: String(call.number || ''),
             caller_name: String(call.name || ''),
-            // No se presenta como duración PBX certificada. El servidor
-            // sólo admitirá un valor compatible con sus marcas de tiempo.
             duracion_observada_segundos: event === 'ended'
-                ? String(Math.max(0, Math.floor(Number(call.duration || 0))))
-                : '0'
+                ? String(Math.max(0, Math.floor(Number(call.duration || 0)))) : '0'
         });
         chain = chain.catch(() => false).then(async () => {
             for (let n = 0; n < 2; n++) {
@@ -254,10 +241,7 @@
         return chain;
     };
     const draw = function () {
-        // El observador es dueño del registro de una entrante SDK. Mantener
-        // el CTA inferior del shell oculto durante timbrado/conversación,
-        // al terminar y mientras el formulario de resultado está abierto.
-        // No modificar el CTA legado de una llamada PBX no observada.
+        // El estado SDK tiene un solo modal; no borrar un pendiente PBX.
         root.document.body?.classList?.toggle(
             'impe-sdk-result-in-modal', Boolean(active || finished)
         );
@@ -352,16 +336,11 @@
             Number(lastState?.duration || 0),
             answeredAt ? Math.floor((Date.now() - answeredAt) / 1000) : 0
         );
-        // Conservar la duración vista en el teléfono únicamente para
-        // esta sesión. La bitácora del servidor sigue diferenciándola de
-        // un evento PBX firmado y puede reconciliarla con sus marcas UTC.
         if (confirmedLocally && observed > 0) {
             try {
                 root.sessionStorage?.setItem(
                     'impe:crm:call-summary:' + userId + ':' + call.id,
-                    JSON.stringify({
-                        call_id:call.id, duration:observed, saved_at:Date.now()
-                    })
+                    JSON.stringify({call_id:call.id, duration:observed, saved_at:Date.now()})
                 );
             } catch (_) {}
         }
@@ -379,29 +358,62 @@
         if (!state || Number(state.userId) !== userId ||
             !Number.isFinite(Number(state.updatedAt)) ||
             Date.now() - Number(state.updatedAt) > 6000) return;
+        // El traspaso institucional debe mostrarse incluso cuando
+        // NOTIFY_INTERNAL identifica primero la sesión del Analista.
+        const pbxIncoming = state.active && state.direction === 'incoming' &&
+            state.context?.type === 'INCOMING' &&
+            /^[A-Za-z0-9_-]{3,100}$/.test(String(state.pbxCallId || ''));
+        if (pbxIncoming) {
+            const id = String(state.pbxCallId);
+            const phone = String(state.destination || '')
+                .replace(/[^0-9+*#]/g,'').slice(0,40);
+            if (!pbxSession || pbxSession.id !== id) {
+                pbxSession = {id,number:''};
+                contextCard.hidden = true;
+                contextCard.replaceChildren?.();
+            }
+            if (usableCallerNumber(phone) && pbxSession.number !== phone) {
+                pbxSession.number = phone;
+                void fetchContext(id, phone);
+            }
+        } else if (!state.active) {
+            pbxSession = null;
+        }
         const incoming = state.direction === 'incoming' &&
             state.context?.type === 'SDK_INCOMING' &&
             validId(state.callToken);
         if (incoming && state.active) {
             const id = String(state.callToken);
+            const reportedNumber = String(state.destination || '')
+                .replace(/[^0-9+*#]/g, '').slice(0, 40);
             if (active && active.id !== id) end();
             if (!active) {
                 active = {
-                    id, number: String(state.destination || '').replace(/[^0-9+*#]/g, '').slice(0, 40),
+                    id, number: reportedNumber,
                     name: String(state.context?.callerName || '').slice(0, 100),
                     answeredAt: 0,
                     lastDuration: 0,
                     sawConversation: false
                 };
                 finished = null;
-                transferContext.hidden = true;
-                transferContext.replaceChildren?.();
-                void fetchReceptionContext(id, active.number);
+                contextCard.hidden = true;
+                contextCard.replaceChildren?.();
                 draw();
+                if (usableCallerNumber(active.number)) {
+                    void fetchContext(id, active.number);
+                }
                 if (compactActions) compactActions.hidden = false;
                 notice.hidden = true;
                 closeBtn.hidden = true;
                 void postEvent('ringing', active);
+            }
+            // El SDK puede publicar el número real después del timbrado.
+            // Actualizar únicamente la sesión que sigue activa.
+            if (active?.id === id &&
+                !usableCallerNumber(active.number) &&
+                usableCallerNumber(reportedNumber)) {
+                active.number = reportedNumber;
+                void fetchContext(id, active.number);
             }
             if (state.phase === 'in-progress' || state.status === 'in-progress') {
                 active.sawConversation = true;

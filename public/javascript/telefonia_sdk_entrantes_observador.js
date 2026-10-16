@@ -117,6 +117,7 @@
                 win.clearInterval(interval);
             },
             isRinging: function () { return ringing; },
+            isConnected: function () { return connectedReported && !idleReported; },
             markAnswerRequested: function () {
                 if (!seenIncoming) return false;
                 acceptanceRequestedUntil = Date.now() + 12000;

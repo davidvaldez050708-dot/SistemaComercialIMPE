@@ -9,6 +9,17 @@
 
     const fetchOriginal = window.fetch.bind(window);
     const interaccionesExactas = new Map();
+    // Protege el resultado ya confirmado de la misma llamada frente a clics
+    // repetidos. La protección no sustituye idempotencia de servidor.
+    const guardadosPorLlamada = new Map();
+    const tokenLlamadaFinalizada = function () {
+        const phone = window.IMPE_TELEPHONY_PERSISTENT;
+        const estado = phone && typeof phone.getState === 'function'
+            ? phone.getState() : null;
+        if (estado?.phase !== 'finished' || !estado.finalMetadata) return '';
+        return String(estado.callToken || estado.finalMetadata.call_token || '');
+    };
+
 
     const obtenerUrl = function (input) {
         if (typeof input === 'string') {
@@ -126,7 +137,8 @@
         if (contexto.tipo === 'informativa') {
             interaccionId = Number(datos.interaccion && datos.interaccion.id || 0);
         } else {
-            interaccionId = resolverIdTrabajo(datos, contexto);
+            // El servidor proporciona el ID confirmado; no deducirlo por fecha.
+            interaccionId = Number(datos.interaccion_id || 0);
         }
 
         if (interaccionId <= 0) {
@@ -147,6 +159,19 @@
     window.fetch = function (input, init) {
         const url = obtenerUrl(input);
         const contexto = contextoRegistro(url, init || {});
+        const token = contexto?.tipo === 'trabajo' ? tokenLlamadaFinalizada() : '';
+        const claveRegistro = token && contexto
+            ? contexto.seguimientoId + ':' + token : '';
+        if (claveRegistro && guardadosPorLlamada.has(claveRegistro)) {
+            // Reutiliza la confirmación del primer registro, sin repetir INSERT.
+            return guardadosPorLlamada.get(claveRegistro).then(function (data) {
+                return new Response(JSON.stringify(data), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            });
+        }
+
         const esVinculacion =
             esUrl(url, 'prueba_telefonia/api/vincular_interaccion_zadarma.php');
         const body = init && init.body instanceof FormData ? init.body : null;
@@ -164,7 +189,25 @@
             }
         }
 
-        return fetchOriginal(input, init).then(async function (response) {
+        const originalRequest = fetchOriginal(input, init);
+        if (claveRegistro) {
+            const confirmation = originalRequest.then(async function (response) {
+                const data = await response.clone().json();
+                if (!response.ok || data?.ok !== true || Number(data.interaccion_id || 0) <= 0) {
+                    throw new Error('El servidor no confirmó el identificador de la interacción.');
+                }
+                return data;
+            });
+            guardadosPorLlamada.set(claveRegistro, confirmation);
+            // No conservar un intento fallido, permite reintentar tras error.
+            confirmation.catch(function () {
+                if (guardadosPorLlamada.get(claveRegistro) === confirmation) {
+                    guardadosPorLlamada.delete(claveRegistro);
+                }
+            });
+        }
+
+        return originalRequest.then(async function (response) {
             if (contexto) {
                 try {
                     const datos = await response.clone().json();

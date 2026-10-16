@@ -1308,9 +1308,18 @@ class SeguimientoVinculacionModel
         return $stmt->execute();
     }
 
+    /** ID de la última interacción confirmada por esta instancia. */
+    private $ultimaInteraccionCreadaId = 0;
+
+    public function obtenerUltimaInteraccionCreadaId(): int
+    {
+        return (int)$this->ultimaInteraccionCreadaId;
+    }
+
     public function registrarInteraccionManual($seguimientoId, $usuarioId, $datos, $transaccionExterna = false)
     {
         $this->ultimoErrorInteraccion = '';
+        $this->ultimaInteraccionCreadaId = 0;
         $etapaPersistencia = 'guardar la interacción';
         $canal = (string)$datos['canal'];
         $resultado = $this->valorONulo($datos['resultado'] ?? '');
@@ -1489,6 +1498,7 @@ class SeguimientoVinculacionModel
             $stmtSeguimiento->execute();
 
             if (!$transaccionExterna) $this->connection->commit();
+            $this->ultimaInteraccionCreadaId = $interaccionCreadaId;
 
             return $transaccionExterna ? $interaccionCreadaId : true;
         } catch (Throwable $error) {

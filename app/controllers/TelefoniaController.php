@@ -489,31 +489,29 @@ class TelefoniaController
         }
     }
 
-    /**
-     * Sólo el destinatario con una extensión vigente puede consultar un
-     * traspaso de institución. No revela datos de otras carteras.
+    /** Datos identificados por Recepción. Autorización por rol, usuario y extensión.
+     * El contexto no certifica la identidad del llamante ni el evento PBX.
      */
     public function contextoTransferencia()
     {
         $this->validarUsuarioTelefoniaJson();
         if (!tienePermiso('telefonia.recibir')) {
-            $this->responderJson(['ok'=>false,'mensaje'=>'Sin acceso.'], 403);
+            $this->responderJson(['ok'=>false,'mensaje'=>'Sin acceso.'],403);
         }
         try {
             require_once __DIR__ . '/../services/TelefoniaTransferenciaContextoService.php';
             $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
             $asignacion = $this->service->resolverParaUsuario($usuarioId);
             if (!$asignacion || empty($asignacion['permite_entrantes'])) {
-                $this->responderJson(['ok'=>false,'mensaje'=>'Sin extensión receptora.'],403);
+                $this->responderJson(['ok'=>false,'mensaje'=>'Extensión no habilitada.'],403);
             }
-            $telefono = trim((string)($_GET['numero'] ?? ''));
+            $numero = trim((string)($_GET['numero'] ?? ''));
             $contexto = (new TelefoniaTransferenciaContextoService())
-                ->obtenerParaDestinatario($usuarioId,
-                    (string)$asignacion['extension'], $telefono);
+                ->obtenerParaDestinatario($usuarioId, (string)$asignacion['extension'], $numero);
             $this->responderJson(['ok'=>true,'contexto'=>$contexto]);
-        } catch (Throwable $error) {
-            error_log('[telefono_contexto_transferencia] ' . get_class($error));
-            // Los errores del contexto nunca interrumpen la llamada WebRTC.
+        } catch (Throwable $e) {
+            error_log('[telefonia_contexto_consulta] ' . get_class($e));
+            // El audio y los botones jamás dependen de metadatos opcionales.
             $this->responderJson(['ok'=>true,'contexto'=>null]);
         }
     }
@@ -556,7 +554,16 @@ class TelefoniaController
             $responsableId = (int)($_POST['responsable_id'] ?? 0);
             $modo = (string)($_POST['modo'] ?? 'CONSULTADA');
             $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
-            $pbxCallId = trim((string)($_POST['pbx_call_id'] ?? ''));
+            $numeroOrigen = trim((string)($_POST['numero_origen'] ?? ''));
+            $referencia = trim((string)($_POST['referencia_llamada'] ?? ''));
+            $pbxReferencia = trim((string)($_POST['pbx_call_id'] ?? ''));
+            // Acepta el alias histórico y el nuevo, pero nunca dos IDs
+            // contradictorios para una misma transferencia.
+            if ($referencia !== '' && $pbxReferencia !== '' &&
+                !hash_equals($referencia, $pbxReferencia)) {
+                throw new InvalidArgumentException('La referencia de la llamada no coincide.');
+            }
+            if ($referencia === '') $referencia = $pbxReferencia;
             if (!in_array($modo, ['DIRECTA','CONSULTADA'], true)) {
                 throw new InvalidArgumentException('Modo de transferencia no válido.');
             }
@@ -571,10 +578,9 @@ class TelefoniaController
                 'tipo'=>$tipo,
                 'responsable_id'=>$responsableId,
                 'modo'=>$modo,
-                // Se trata de una pista registrada por Tania; el servidor
-                // vuelve a verificar PBX y propiedad antes de compartirla.
-                'seguimiento_id'=>$seguimientoId,
-                'pbx_call_id'=>$pbxCallId,
+                'seguimiento_id'=>$tipo === 'INSTITUCION' ? $seguimientoId : 0,
+                'numero_origen'=>$numeroOrigen,
+                'referencia_llamada'=>$referencia,
                 'token_hash'=>hash('sha256', $token),
                 'expires'=>time()+20
             ];
@@ -630,23 +636,23 @@ class TelefoniaController
                         (string)($origen['extension'] ?? ''),
                         (int)$destino['usuario_id'], (string)$destino['extension'],
                         (int)$destino['estado_id'], (int)$data['seguimiento_id'],
-                        (string)($data['pbx_call_id'] ?? '')
+                        (string)($data['referencia_llamada'] ?? ''),
+                        (string)($data['numero_origen'] ?? '')
                     );
                     if (!$contextoGuardado) {
-                        error_log('[telefonia_contexto_transferencia] Identificación institucional no vinculada.');
-                        // Evitar transferir silenciosamente sin AFIPSA (o el
-                        // expediente que Recepción confirmó). La llamada
-                        // original sigue activa: NO se emite ningún DTMF.
+                        error_log('[telefonia_contexto_guardar] Contexto institucional no confirmado.');
+                        // No emitir orden DTMF cuando se perdería el expediente.
+                        // La llamada original sigue activa en Recepción.
                         $this->responderJson([
                             'ok'=>false,
-                            'mensaje'=>'No fue posible conservar la institución confirmada. No se transfirió la llamada; vuelve a intentarlo.'
+                            'mensaje'=>'No fue posible confirmar la institución para transferir. Verifica la llamada e inténtalo de nuevo.'
                         ], 409);
                     }
-                } catch (Throwable $error) {
-                    error_log('[telefonia_contexto_no_disponible] ' . get_class($error));
+                } catch (Throwable $e) {
+                    error_log('[telefonia_contexto_guardar] ' . get_class($e));
                     $this->responderJson([
                         'ok'=>false,
-                        'mensaje'=>'No fue posible conservar la institución confirmada. No se transfirió la llamada; vuelve a intentarlo.'
+                        'mensaje'=>'No fue posible conservar la institución. La llamada no se transfirió; inténtalo de nuevo.'
                     ], 409);
                 }
             }
