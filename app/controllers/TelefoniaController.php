@@ -633,13 +633,21 @@ class TelefoniaController
                         (string)($data['pbx_call_id'] ?? '')
                     );
                     if (!$contextoGuardado) {
-                        // No mostrar errores de metadatos al teléfono. Dejar
-                        // evidencia técnica sin revelar datos del expediente.
-                        error_log('[telefonia_contexto_transferencia] Validación de traspaso no confirmada.');
+                        error_log('[telefonia_contexto_transferencia] Identificación institucional no vinculada.');
+                        // Evitar transferir silenciosamente sin AFIPSA (o el
+                        // expediente que Recepción confirmó). La llamada
+                        // original sigue activa: NO se emite ningún DTMF.
+                        $this->responderJson([
+                            'ok'=>false,
+                            'mensaje'=>'No fue posible conservar la institución confirmada. No se transfirió la llamada; vuelve a intentarlo.'
+                        ], 409);
                     }
                 } catch (Throwable $error) {
-                    // La PBX puede transferir aunque fallen datos opcionales.
                     error_log('[telefonia_contexto_no_disponible] ' . get_class($error));
+                    $this->responderJson([
+                        'ok'=>false,
+                        'mensaje'=>'No fue posible conservar la institución confirmada. No se transfirió la llamada; vuelve a intentarlo.'
+                    ], 409);
                 }
             }
             $this->responderJson([

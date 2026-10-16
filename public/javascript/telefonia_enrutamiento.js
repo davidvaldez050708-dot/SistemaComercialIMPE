@@ -94,8 +94,17 @@
         }
         const message = String(value.message || '');
         if (!stillSame || !message ||
-            Number(value.updatedAt || 0) < transferSubmittedAt ||
-            !message.includes('ext. ' + transferDestinationExtension)) return;
+            Number(value.updatedAt || 0) < transferSubmittedAt) return;
+        // El host puede rechazar la autorización por falta del contexto
+        // institucional, antes de enviar DTMF: mostrar el motivo real.
+        if (message.startsWith('No fue posible conservar la institución confirmada.')) {
+            setFeedback(message, true);
+            transferRequestCallId = '';
+            transferDestinationExtension = '';
+            transferSubmittedAt = 0;
+            return;
+        }
+        if (!message.includes('ext. ' + transferDestinationExtension)) return;
         if (message.startsWith('No se pudo enviar la transferencia')) {
             setFeedback(message, true);
             transferRequestCallId = '';
