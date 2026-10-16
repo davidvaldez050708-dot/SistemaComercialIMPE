@@ -169,7 +169,6 @@ $esTerritorialFooter = in_array(
 );
 
 $jsDashboardFooter = [
-    'selectores_uniformes.js',
     'telefonia_segmentos_player.js',
     'seguimiento_historial_consulta.js',
     'cambiar_password.js',
@@ -177,6 +176,19 @@ $jsDashboardFooter = [
     'sidebar_scroll_state.js',
     'recordatorios.js'
 ];
+
+$esPerfilMarketingFooter =
+    strcasecmp(
+        trim((string)($_SESSION['rol'] ?? '')),
+        'Marketing'
+    ) === 0;
+
+if ($esPerfilMarketingFooter) {
+    array_unshift(
+        $jsDashboardFooter,
+        'selectores_uniformes.js'
+    );
+}
 
 if ($esSeguimientoEstadoFooter) {
     $jsDashboardFooter = array_merge(
