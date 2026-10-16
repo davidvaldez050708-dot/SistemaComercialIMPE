@@ -169,6 +169,7 @@ $esTerritorialFooter = in_array(
 );
 
 $jsDashboardFooter = [
+    'selectores_uniformes.js',
     'telefonia_segmentos_player.js',
     'seguimiento_historial_consulta.js',
     'cambiar_password.js',
