@@ -70,6 +70,68 @@ def aplicar_hunks(actual, original, nuevo):
     return resultado, "hunks compatibles"
 
 
+def aplicar_ajuste_selectivo(actual, relative):
+    """
+    Rescate seguro de dos personalizaciones conocidas. No ejecuta una
+    fusión textual aproximada ni elimina líneas existentes.
+    Ante marcadores ausentes, repetidos o previamente intervenidos, aborta.
+    """
+    if relative == "app/controllers/TelefoniaController.php":
+        start = actual.find("    public function validarOrdenTransferencia()")
+        end = actual.find("    public function guardarExtension()", start)
+        if start < 0 or end < start:
+            raise ValueError("No se reconoce la función autorizadora personalizada")
+        scope = actual[start:end]
+        guard = "                    if (!$contextoGuardado) {\n"
+        catch = "                } catch (Throwable $error) {\n"
+        required = (
+            "if (($data['tipo'] ?? '') === 'INSTITUCION'",
+            "$contextoGuardado = (new TelefoniaTransferenciaContextoService())->registrar(",
+            "private function responderJson(array $datos",
+        )
+        if (not all(item in actual for item in required)
+                or scope.count(guard) != 1
+                or scope.count(catch) != 1
+                or "No fue posible conservar la institución confirmada." in scope):
+            raise ValueError("Contexto personalizado no verificable; no se modifica")
+        fail = (
+            "                        error_log('[telefonia_contexto_transferencia] "
+            "Identificación institucional no vinculada.');\n"
+            "                        $this->responderJson([\n"
+            "                            'ok'=>false,\n"
+            "                            'mensaje'=>'No fue posible conservar la institución confirmada. "
+            "No se transfirió la llamada; vuelve a intentarlo.'\n"
+            "                        ], 409);\n"
+        )
+        # La respuesta JSON sale del proceso; el bloque de log existente
+        # permanece, sin riesgo de borrar otras personalizaciones.
+        scope = scope.replace(guard, guard + fail, 1)
+        scope = scope.replace(
+            catch,
+            catch +
+            "                    error_log('[telefonia_contexto_no_disponible] ' . "
+            "get_class($error));\n" +
+            "                    $this->responderJson([\n" +
+            "                        'ok'=>false,\n" +
+            "                        'mensaje'=>'No fue posible conservar la institución confirmada. "
+            "No se transfirió la llamada; vuelve a intentarlo.'\n" +
+            "                    ], 409);\n",
+            1,
+        )
+        return actual[:start] + scope + actual[end:], "ajuste selectivo verificado"
+
+    if relative == "public/javascript/telefonia_analista_historial_pasivo.js":
+        old = "if (attempt < 8 && active?.id === id)"
+        new = "if (attempt < 16 && active?.id === id)"
+        if (actual.count(old) != 1 or new in actual
+                or actual.count("const fetchReceptionContext = async") != 1
+                or actual.count("const retry = () => {") != 1):
+            raise ValueError("Reintento SDK personalizado no verificable; no se modifica")
+        return actual.replace(old, new, 1), "ajuste selectivo verificado"
+
+    raise ValueError("El archivo no admite un ajuste selectivo")
+
+
 def main():
     cli = argparse.ArgumentParser()
     cli.add_argument("--check", action="store_true")
@@ -109,7 +171,20 @@ def main():
             result, mode = aplicar_hunks(dest.read_text(encoding="utf-8"), base, target)
             outputs.append((relative, dest, result, mode))
         except (UnicodeDecodeError, ValueError) as err:
-            problems.append(relative + ": " + str(err))
+            if relative not in (
+                "app/controllers/TelefoniaController.php",
+                "public/javascript/telefonia_analista_historial_pasivo.js",
+            ):
+                problems.append(relative + ": " + str(err))
+                continue
+            try:
+                # Sólo rescatar cuando el diff con contexto amplio falló.
+                # Se sustituyen marcadores inconfundibles y no se fuerza nada.
+                actual = dest.read_text(encoding="utf-8")
+                result, mode = aplicar_ajuste_selectivo(actual, relative)
+                outputs.append((relative, dest, result, mode))
+            except (UnicodeDecodeError, ValueError) as rescue_error:
+                problems.append(relative + ": " + str(rescue_error))
     for relative, _, _, mode in outputs:
         print("COMPATIBLE:", relative, "(" + mode + ")")
     for error in problems:
