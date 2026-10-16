@@ -120,6 +120,39 @@
             );
         };
 
+        const reconstruirArchivosSeleccionados = function (archivosConservados) {
+            if (!archivos || typeof DataTransfer === 'undefined') {
+                return;
+            }
+
+            const transferencia = new DataTransfer();
+
+            archivosConservados.forEach(function (archivo) {
+                transferencia.items.add(archivo);
+            });
+
+            archivos.files = transferencia.files;
+        };
+
+        const eliminarArchivoNuevo = function (indice) {
+            const seleccionados = Array.from(archivos?.files || []);
+
+            if (
+                indice < 0 ||
+                indice >= seleccionados.length ||
+                !archivos
+            ) {
+                return;
+            }
+
+            const conservados = seleccionados.filter(function (_, posicion) {
+                return posicion !== indice;
+            });
+
+            reconstruirArchivosSeleccionados(conservados);
+            renderizarArchivos();
+        };
+
         const renderizarArchivos = function () {
             if (!listaArchivos || !archivos) {
                 return;
@@ -151,7 +184,7 @@
                 );
             });
 
-            const renderNuevo = seleccionados.map(function (archivo) {
+            const renderNuevo = seleccionados.map(function (archivo, indice) {
                 const mb = Number(archivo.size || 0) / (1024 * 1024);
                 const tamano = mb >= 1
                     ? mb.toFixed(1) + ' MB'
@@ -161,10 +194,18 @@
                     ) + ' KB';
 
                 return (
-                    '<span>' +
+                    '<span class="correo-marketing-file-chip">' +
                         '<i class="bi bi-paperclip"></i>' +
                         '<strong>' + escapar(archivo.name) + '</strong>' +
                         '<small>' + escapar(tamano) + '</small>' +
+                        '<button' +
+                            ' type="button"' +
+                            ' class="correo-marketing-file-remove"' +
+                            ' data-marketing-file-remove="' + indice + '"' +
+                            ' aria-label="Eliminar archivo ' +
+                                escapar(archivo.name) + '">' +
+                            '<i class="bi bi-x-lg"></i>' +
+                        '</button>' +
                     '</span>'
                 );
             });
@@ -172,6 +213,18 @@
             listaArchivos.innerHTML = renderExistente
                 .concat(renderNuevo)
                 .join('');
+
+            listaArchivos
+                .querySelectorAll('[data-marketing-file-remove]')
+                .forEach(function (boton) {
+                    boton.addEventListener('click', function () {
+                        const indice = Number(
+                            boton.getAttribute('data-marketing-file-remove')
+                        );
+
+                        eliminarArchivoNuevo(indice);
+                    });
+                });
         };
 
         const actualizarDestinatario = function () {
