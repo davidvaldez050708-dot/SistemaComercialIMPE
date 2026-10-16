@@ -146,8 +146,9 @@
                                             class="form-select system-form-control"
                                             id="mi_correo_proveedor"
                                             data-mail-account-provider>
-                                            <option value="GMAIL">Gmail</option>
-                                            <option value="MICROSOFT">Outlook / Microsoft 365</option>
+                                            <option value="GMAIL">Gmail / Google Workspace</option>
+                                            <option value="MICROSOFT">Microsoft 365 institucional</option>
+                                            <option value="OUTLOOK">Outlook / Hotmail personal</option>
                                             <option value="HOSTINGER">Hostinger</option>
                                             <option value="OTRO">Otro SMTP</option>
                                         </select>
