@@ -156,8 +156,16 @@
     let lastSignature = '';
     let chain = Promise.resolve();
     const contextKey = id => 'impe:crm:transfer-context:' + userId + ':' + id;
+    // El SDK puede publicar primero la sesión y entregar el Caller ID
+    // en una actualización posterior. Una extensión corta no es un número
+    // de origen válido para consultar el expediente.
+    const usableCallerNumber = value => {
+        const digits = String(value || '').replace(/\D+/g, '');
+        return digits.length >= 10 && digits.length <= 14;
+    };
     const fetchReceptionContext = async (id, phone, attempt = 0) => {
-        if (!id || !phone || !root.fetch || active?.id !== id) return;
+        if (!id || !usableCallerNumber(phone) || !root.fetch ||
+            active?.id !== id) return;
         // Al empezar el timbrado el traspaso de Tania puede estar aún
         // validándose. Un GET único llegaba demasiado pronto y dejaba el
         // expediente ausente. Reintentar durante hasta 13 segundos, sólo
@@ -384,10 +392,12 @@
             validId(state.callToken);
         if (incoming && state.active) {
             const id = String(state.callToken);
+            const reportedNumber = String(state.destination || '')
+                .replace(/[^0-9+*#]/g, '').slice(0, 40);
             if (active && active.id !== id) end();
             if (!active) {
                 active = {
-                    id, number: String(state.destination || '').replace(/[^0-9+*#]/g, '').slice(0, 40),
+                    id, number: reportedNumber,
                     name: String(state.context?.callerName || '').slice(0, 100),
                     answeredAt: 0,
                     lastDuration: 0,
@@ -396,12 +406,24 @@
                 finished = null;
                 transferContext.hidden = true;
                 transferContext.replaceChildren?.();
-                void fetchReceptionContext(id, active.number);
+                if (usableCallerNumber(active.number)) {
+                    void fetchReceptionContext(id, active.number);
+                }
                 draw();
                 if (compactActions) compactActions.hidden = false;
                 notice.hidden = true;
                 closeBtn.hidden = true;
                 void postEvent('ringing', active);
+            }
+            // Antes se consultaba el contexto únicamente al crear active.
+            // Si el primer estado traía número vacío/una extensión, nunca
+            // se reintentaba al recibir después el Caller ID real.
+            // Completarlo sólo para esta misma sesión; no mezclar llamadas.
+            if (active?.id === id &&
+                !usableCallerNumber(active.number) &&
+                usableCallerNumber(reportedNumber)) {
+                active.number = reportedNumber;
+                void fetchReceptionContext(id, active.number);
             }
             if (state.phase === 'in-progress' || state.status === 'in-progress') {
                 active.sawConversation = true;
