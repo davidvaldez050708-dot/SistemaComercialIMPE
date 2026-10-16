@@ -17,7 +17,7 @@ FILES = (
     "public/javascript/telefonia_enrutamiento.js",
     "public/javascript/telefonia_analista_historial_pasivo.js",
 )
-COMMIT = "ef351d72f8625a0eed745696a41538a134369b32"
+COMMIT = "9d477f4e25f606b8820e45014d4c98413d1f9da5"
 BASE = "c9c0fe46ebbe7dfdcce27dd7be6ad430c0741077"
 
 
