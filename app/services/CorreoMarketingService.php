@@ -635,6 +635,9 @@ class CorreoMarketingService
     {
         $usuarioId = (int)$usuarioId;
         $correoId = (int)($datos['correo_id'] ?? 0);
+        $remitenteSolicitado = strtolower(
+            trim((string)($datos['remitente'] ?? ''))
+        );
         $destinatario = strtolower(trim((string)($datos['destinatario'] ?? '')));
         $destinatarioNombre = trim((string)($datos['destinatario_nombre'] ?? ''));
         $asunto = trim((string)($datos['asunto'] ?? ''));
@@ -683,10 +686,16 @@ class CorreoMarketingService
             return $this->error('No fue posible identificar al remitente.', 404);
         }
 
-        $remitente = strtolower(trim((string)($usuario['correo'] ?? '')));
+        $remitenteUsuario = strtolower(
+            trim((string)($usuario['correo'] ?? ''))
+        );
+        $remitente = $remitenteSolicitado !== ''
+            ? $remitenteSolicitado
+            : $remitenteUsuario;
+
         if ($remitente === '' || !filter_var($remitente, FILTER_VALIDATE_EMAIL)) {
             return $this->error(
-                'Tu usuario no tiene un correo electrónico válido para realizar el envío.',
+                'Ingresa un correo de origen válido.',
                 422
             );
         }
@@ -748,6 +757,8 @@ class CorreoMarketingService
 
             $envio = $this->sender->enviar([
                 'usuario_id' => $usuarioId,
+                'perfil_marketing' => true,
+                'usar_remitente_exacto' => true,
                 'remitente' => $remitente,
                 'nombre_remitente' => trim(
                     (string)($usuario['nombre'] ?? '') . ' ' .
