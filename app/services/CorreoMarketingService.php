@@ -747,6 +747,7 @@ class CorreoMarketingService
             }
 
             $envio = $this->sender->enviar([
+                'usuario_id' => $usuarioId,
                 'remitente' => $remitente,
                 'nombre_remitente' => trim(
                     (string)($usuario['nombre'] ?? '') . ' ' .
