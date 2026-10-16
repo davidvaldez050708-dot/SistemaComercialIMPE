@@ -305,16 +305,11 @@ $texto = static fn($valor) => htmlspecialchars(
                 </div>
 
                 <div class="modal-body">
-                    <div
-                        class="correo-marketing-recipient-card mb-3"
-                        data-marketing-mail-sender-card
-                        data-mail-account-status-url="<?= BASE_URL ?>index.php?controller=correoMarketing&action=cuentaCorreoEstado">
-                        <span>DE · CUENTA DE ENVÍO</span>
-                        <strong data-marketing-mail-sender>
-                            Consultando cuenta conectada...
-                        </strong>
-                        <small class="d-block mt-1 text-muted" data-marketing-mail-sender-help>
-                            El correo se enviará realmente desde esta cuenta.
+                    <div class="correo-marketing-recipient-card mb-3">
+                        <span>DE · SISTEMA DE CORREO</span>
+                        <strong>Fundación Red Educativa México</strong>
+                        <small class="d-block mt-1 text-muted">
+                            El sistema gestiona automáticamente la cuenta de salida.
                         </small>
                     </div>
 
@@ -452,8 +447,7 @@ $texto = static fn($valor) => htmlspecialchars(
                         <i class="bi bi-info-circle"></i>
                         <span>
                             El campo <strong>Para</strong> es únicamente el destinatario.
-                            El mensaje saldrá desde la cuenta indicada en <strong>DE · CUENTA DE ENVÍO</strong>.
-                            Si no hay una cuenta conectada, configura una desde Mi perfil antes de enviar.
+                            El sistema administra automáticamente la cuenta de salida; el usuario no necesita configurar SMTP.
                         </span>
                     </div>
                 </div>
