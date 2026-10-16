@@ -18,7 +18,7 @@ FILES = (
     "public/javascript/telefonia_analista_historial_pasivo.js",
 )
 COMMIT = "ef351d72f8625a0eed745696a41538a134369b32"
-BASE = "5f1241f4ec840f55e255387ca87d2df41b02e033"
+BASE = "c9c0fe46ebbe7dfdcce27dd7be6ad430c0741077"
 
 
 def git(*args):
