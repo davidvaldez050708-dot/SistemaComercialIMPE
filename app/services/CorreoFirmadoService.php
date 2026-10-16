@@ -127,6 +127,7 @@ class CorreoFirmadoService
         }
 
         $envio = $this->sender->enviar([
+            'usuario_id' => $usuarioId,
             'remitente' => (string)($usuario['correo'] ?? ''),
             'nombre_remitente' => $this->nombreUsuario($usuario),
             'destinatario' => $destinatario,
@@ -266,6 +267,7 @@ class CorreoFirmadoService
         }
 
         $envio = $this->sender->enviar([
+            'usuario_id' => $usuarioId,
             'remitente' => (string)($usuario['correo'] ?? ''),
             'nombre_remitente' => $this->nombreUsuario($usuario),
             'destinatario' => $destinatario,
