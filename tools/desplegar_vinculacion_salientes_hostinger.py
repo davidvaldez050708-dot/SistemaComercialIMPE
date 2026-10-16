@@ -15,7 +15,7 @@ FILES = (
     "app/services/ZadarmaWebhookEventStoreService.php",
     "prueba_telefonia/api/vincular_interaccion_zadarma.php",
 )
-COMMIT = "5c2a08cead325ca0f1f7ab9f3600fac427cbc238"
+COMMIT = "2da2a9bdfbfa9f7f0eb447bfd7c710b035bf4b8d"
 BASE = "ade26e907947f26581033637a5cc8e245a80ec9c"
 
 
