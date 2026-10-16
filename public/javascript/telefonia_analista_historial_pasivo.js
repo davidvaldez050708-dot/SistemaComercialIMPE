@@ -157,6 +157,10 @@
     let lastSignature = '';
     let chain = Promise.resolve();
     const contextKey = id => 'impe:crm:transfer-context:' + userId + ':' + id;
+    const usableCallerNumber = value => {
+        const digits = String(value || '').replace(/\D+/g, '');
+        return digits.length >= 10 && digits.length <= 14;
+    };
     const contextStillLive = id =>
         active?.id === id || pbxSession?.id === id;
     const fetchReceptionContext = async (id, phone, attempt = 0) => {
