@@ -121,13 +121,42 @@ def aplicar_ajuste_selectivo(actual, relative):
         return actual[:start] + scope + actual[end:], "ajuste selectivo verificado"
 
     if relative == "public/javascript/telefonia_analista_historial_pasivo.js":
-        old = "if (attempt < 8 && active?.id === id)"
-        new = "if (attempt < 16 && active?.id === id)"
-        if (actual.count(old) != 1 or new in actual
-                or actual.count("const fetchReceptionContext = async") != 1
-                or actual.count("const retry = () => {") != 1):
-            raise ValueError("Reintento SDK personalizado no verificable; no se modifica")
-        return actual.replace(old, new, 1), "ajuste selectivo verificado"
+        # Dos variantes conocidas: la base GitHub y la implementación local
+        # de Hostinger. Conservamos la función, el formato y el intervalo
+        # de cada variante; solo ampliamos el horizonte de reintentos.
+        variants = (
+            (
+                "const fetchReceptionContext = async",
+                "if (attempt < 8 && active?.id === id)",
+                "if (attempt < 16 && active?.id === id)",
+                "void fetchReceptionContext(id, phone, attempt + 1)",
+                "}, 800);",
+            ),
+            (
+                "const fetchContext = async",
+                "if (attempt < 9 && active?.id === id)",
+                "if (attempt < 17 && active?.id === id)",
+                "void fetchContext(id, phone, attempt + 1)",
+                "750);",
+            ),
+        )
+        for function_name, old, new, call, interval in variants:
+            if (actual.count(function_name) != 1 or actual.count(old) != 1):
+                continue
+            start = actual.find(function_name)
+            end = actual.find("const postEvent = function", start)
+            if end <= start:
+                raise ValueError("Observador sin límites verificables; no se modifica")
+            scope = actual[start:end]
+            if (scope.count("const retry = () => {") != 1 or
+                    scope.count(old) != 1 or
+                    scope.count(call) != 1 or
+                    scope.count(interval) != 1 or
+                    "action=contextoTransferencia" not in scope or
+                    new in actual):
+                raise ValueError("Reintento SDK personalizado no verificable; no se modifica")
+            return actual[:start] + scope.replace(old, new, 1) + actual[end:], "ajuste selectivo verificado"
+        raise ValueError("Reintento SDK personalizado no verificable; no se modifica")
 
     raise ValueError("El archivo no admite un ajuste selectivo")
 
