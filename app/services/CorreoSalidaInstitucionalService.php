@@ -21,6 +21,7 @@ class CorreoSalidaInstitucionalService
     {
         $remitente = strtolower(trim((string)($datos['remitente'] ?? '')));
         $usuarioId = (int)($datos['usuario_id'] ?? 0);
+        $esEnvioSistema = !empty($datos['envio_sistema']);
 
         /*
          * Compatibilidad con módulos existentes: si el llamador todavía no
@@ -132,6 +133,19 @@ class CorreoSalidaInstitucionalService
                     500
                 );
             }
+        }
+
+        /*
+         * El transporte global (Hostinger / cuenta de servicio) queda reservado
+         * exclusivamente para procesos automáticos que lo indiquen de forma
+         * explícita. Los correos redactados por usuarios nunca dependerán de
+         * Hostinger.
+         */
+        if (!$esEnvioSistema) {
+            return $this->error(
+                'Conecta una cuenta de correo para enviar. Puedes usar Gmail, Microsoft 365, Outlook, Hostinger u otro servidor SMTP autorizado.',
+                422
+            );
         }
 
         $hostinger = $this->cargarHostinger();
