@@ -1103,3 +1103,40 @@
         max-width: none;
     }
 }
+
+
+/* Adjuntos removibles antes del envío */
+.correo-marketing-file-chip {
+    position: relative;
+    padding-right: 30px !important;
+}
+
+.correo-marketing-file-remove {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    margin-left: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #7a8798;
+    line-height: 1;
+    transition:
+        background-color .16s ease,
+        color .16s ease;
+}
+
+.correo-marketing-file-remove:hover,
+.correo-marketing-file-remove:focus {
+    outline: none;
+    background: #fff0ef;
+    color: #b42318;
+}
+
+.correo-marketing-file-remove i {
+    color: inherit !important;
+    font-size: 11px;
+}
