@@ -115,15 +115,64 @@ $texto = static fn($valor) => htmlspecialchars(
             </div>
 
             <div class="data-filter-field">
-                <label for="correo_marketing_tipo">Tipo</label>
-                <select
-                    class="form-select"
-                    id="correo_marketing_tipo"
-                    name="tipo">
-                    <option value="">Todos</option>
-                    <option value="convocatoria">Convocatorias</option>
-                    <option value="general">General</option>
-                </select>
+                <label for="correo_marketing_tipo_boton">Tipo</label>
+
+                <div
+                    class="correo-marketing-type-dropdown"
+                    data-correo-type-dropdown>
+
+                    <input
+                        type="hidden"
+                        id="correo_marketing_tipo"
+                        name="tipo"
+                        value=""
+                        data-correo-type-input>
+
+                    <button
+                        type="button"
+                        class="correo-marketing-type-trigger"
+                        id="correo_marketing_tipo_boton"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                        data-correo-type-trigger>
+                        <span data-correo-type-label>Todos</span>
+                        <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                    </button>
+
+                    <div
+                        class="correo-marketing-type-menu"
+                        role="listbox"
+                        aria-label="Seleccionar tipo de correo"
+                        data-correo-type-menu>
+
+                        <button
+                            type="button"
+                            class="correo-marketing-type-option is-selected"
+                            role="option"
+                            aria-selected="true"
+                            data-correo-type-value="">
+                            Todos
+                        </button>
+
+                        <button
+                            type="button"
+                            class="correo-marketing-type-option"
+                            role="option"
+                            aria-selected="false"
+                            data-correo-type-value="convocatoria">
+                            Convocatorias
+                        </button>
+
+                        <button
+                            type="button"
+                            class="correo-marketing-type-option"
+                            role="option"
+                            aria-selected="false"
+                            data-correo-type-value="general">
+                            General
+                        </button>
+                    </div>
+                </div>
             </div>
         </form>
     </section>
