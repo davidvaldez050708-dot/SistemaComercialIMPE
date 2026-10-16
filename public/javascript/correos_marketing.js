@@ -42,6 +42,18 @@
         );
         const filtroBuscar = document.getElementById('correo_marketing_buscar');
         const filtroTipo = document.getElementById('correo_marketing_tipo');
+        const filtroTipoDropdown = document.querySelector(
+            '[data-correo-type-dropdown]'
+        );
+        const filtroTipoTrigger = document.querySelector(
+            '[data-correo-type-trigger]'
+        );
+        const filtroTipoLabel = document.querySelector(
+            '[data-correo-type-label]'
+        );
+        const filtroTipoOpciones = Array.from(
+            document.querySelectorAll('[data-correo-type-value]')
+        );
         const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
         const modalDetalleElement =
             document.getElementById('modalCorreoMarketingDetalle');
@@ -378,6 +390,71 @@
             sessionStorage.setItem('correoMarketingTab', codigo);
             aplicarFiltros();
         };
+
+        const cerrarFiltroTipo = function () {
+            filtroTipoDropdown?.classList.remove('is-open');
+            filtroTipoTrigger?.setAttribute('aria-expanded', 'false');
+        };
+
+        filtroTipoTrigger?.addEventListener('click', function () {
+            const abrir =
+                !filtroTipoDropdown?.classList.contains('is-open');
+
+            if (abrir) {
+                filtroTipoDropdown?.classList.add('is-open');
+                filtroTipoTrigger.setAttribute('aria-expanded', 'true');
+            } else {
+                cerrarFiltroTipo();
+            }
+        });
+
+        filtroTipoOpciones.forEach(function (opcion) {
+            opcion.addEventListener('click', function () {
+                const valor = String(
+                    opcion.dataset.correoTypeValue || ''
+                );
+
+                if (filtroTipo) {
+                    filtroTipo.value = valor;
+                }
+
+                if (filtroTipoLabel) {
+                    filtroTipoLabel.textContent =
+                        opcion.textContent.trim();
+                }
+
+                filtroTipoOpciones.forEach(function (item) {
+                    const seleccionada = item === opcion;
+
+                    item.classList.toggle(
+                        'is-selected',
+                        seleccionada
+                    );
+                    item.setAttribute(
+                        'aria-selected',
+                        seleccionada ? 'true' : 'false'
+                    );
+                });
+
+                cerrarFiltroTipo();
+                aplicarFiltros();
+            });
+        });
+
+        document.addEventListener('click', function (event) {
+            if (
+                filtroTipoDropdown &&
+                !filtroTipoDropdown.contains(event.target)
+            ) {
+                cerrarFiltroTipo();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                cerrarFiltroTipo();
+            }
+        });
 
         tabsCorreo.forEach(function (tab) {
             tab.addEventListener('click', function () {
