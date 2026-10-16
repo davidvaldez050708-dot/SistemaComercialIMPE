@@ -160,6 +160,19 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
     ], 422);
 }
 
+// Antes de consultar estadísticas externas, aprovechar los eventos firmados
+// recibidos en el servidor. No resolver por hora si existen dos candidatas.
+if ($pbxCallId === '' && $destino !== '' && $desdeUnix > 0) {
+    try {
+        $pbxCallId = (string)(
+            (new ZadarmaWebhookEventStoreService())
+                ->buscarPbxSalienteUnico($extension, $destino, $desdeUnix) ?? ''
+        );
+    } catch (Throwable $errorLookup) {
+        error_log('[zadarma_vincular_eventos_unicos] ' . $errorLookup->getMessage());
+    }
+}
+
 $inicio = null;
 $respuesta = null;
 $fin = null;
