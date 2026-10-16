@@ -25,6 +25,8 @@ let attributeMutation = null;
 let cssNode = null;
 let shellContext = 0;
 let createdButtons = 0;
+let createdContext = 0;
+let consistencyInterval = null;
 
 const node = () => {
     const listeners = {};
@@ -108,6 +110,12 @@ const runtime={
         },
         createElement(tag) {
             if (tag==='style') return node();
+            // El contexto institucional se inserta dentro de la misma
+            // tarjeta; no se permite construir otra sección telefónica.
+            if (tag==='div') {
+                createdContext++;
+                return node();
+            }
             assert.equal(tag,'button','NO se puede crear otra tarjeta telefónica');
             createdButtons++;
             return node();
@@ -134,8 +142,9 @@ const runtime={
     },
     addEventListener(type,fn) {handlers[type]=fn;},
     setInterval(fn,ms) {
-        assert.equal(ms,500);
-        interval=fn;
+        if (ms===500) interval=fn;
+        else if (ms===600) consistencyInterval=fn;
+        else throw new Error('Intervalo telefónico inesperado '+ms);
     },
     localStorage: {
         getItem(k) {return store.get(k)||null;}
@@ -149,7 +158,9 @@ vm.runInNewContext(script, {window:runtime, URL, URLSearchParams}, {
     filename:'telefonia_analista_historial_pasivo.js'
 });
 assert.equal(createdButtons,2,'Agregar las acciones al modal existente');
+assert.equal(createdContext,1,'Insertar solo el contexto dentro de la tarjeta');
 assert.equal(typeof interval,'function');
+assert.equal(typeof consistencyInterval,'function');
 assert.equal(typeof attributeMutation,'function');
 assert.equal(cssNode.textContent.includes('data-incoming-close-finished'),true);
 assert.match(cssNode.textContent, /display:flex!important;flex-direction:row;/,
