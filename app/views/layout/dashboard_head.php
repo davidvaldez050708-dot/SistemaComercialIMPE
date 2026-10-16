@@ -33,6 +33,12 @@ $actionDashboard = strtolower(
     trim((string)($_GET['action'] ?? 'index'))
 );
 
+$esPerfilMarketingDashboard =
+    strcasecmp(
+        trim((string)($_SESSION['rol'] ?? '')),
+        'Marketing'
+    ) === 0;
+
 $esHomeDashboard = $controllerDashboard === 'home';
 $esSeguimientoEstado =
     $controllerDashboard === 'seguimientovinculacion' &&
@@ -96,6 +102,10 @@ $esRecepcionMarketingDashboard =
     $esHomeDashboard && marketingTieneRecepcionAsignada();
 
 $cssOpcionalDashboard = [];
+
+if ($esPerfilMarketingDashboard) {
+    $cssOpcionalDashboard[] = 'marketing_selectores_uniformes.css';
+}
 
 if ($esHomeDashboard) {
     $cssOpcionalDashboard = array_merge(
