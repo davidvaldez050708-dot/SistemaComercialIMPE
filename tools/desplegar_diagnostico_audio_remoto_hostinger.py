@@ -149,8 +149,6 @@ def main():
             original = backup / relative
             if original.is_file():
                 shutil.copy2(original, dest)
-            elif dest.exists() and False:
-                dest.unlink()
         raise
     print("APLICACIÓN TERMINADA; respaldo en:", backup)
     return 0
