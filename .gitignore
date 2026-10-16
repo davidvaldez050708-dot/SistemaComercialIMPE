@@ -4,7 +4,6 @@ config/database.local.php
 config/app.local.php
 config/api_keys.local.php
 config/mail_config.local.php
-config/mail_account.local.php
 config/hostinger_mail_config.php
 config/voip_config.php
 config/zadarma_config.php
