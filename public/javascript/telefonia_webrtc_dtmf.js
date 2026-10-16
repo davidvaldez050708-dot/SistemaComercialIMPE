@@ -91,11 +91,59 @@
                 return false;
             }
         }
+        // Diagnóstico de sólo lectura: no altera pistas, volumen, SDP ni SIP.
+        // Ejecutar durante una llamada desde la consola del host autenticado.
+        async function diagnoseAudio() {
+            const calls = [];
+            for (const pc of peers) {
+                if (!pc || pc.signalingState === 'closed') continue;
+                const inbound = [];
+                try {
+                    const reports = await pc.getStats();
+                    reports.forEach(function (stat) {
+                        if (stat.type === 'inbound-rtp' &&
+                            (stat.kind === 'audio' || stat.mediaType === 'audio')) {
+                            inbound.push({
+                                packetsReceived: Number(stat.packetsReceived || 0),
+                                bytesReceived: Number(stat.bytesReceived || 0),
+                                packetsLost: Number(stat.packetsLost || 0),
+                                totalAudioEnergy: stat.totalAudioEnergy ?? null,
+                                audioLevel: stat.audioLevel ?? null
+                            });
+                        }
+                    });
+                } catch (_) { /* disponibilidad del navegador */ }
+                calls.push({
+                    connectionState: pc.connectionState,
+                    iceConnectionState: pc.iceConnectionState,
+                    receivers: pc.getReceivers().filter(
+                        receiver => receiver.track?.kind === 'audio'
+                    ).map(receiver => ({
+                        state: receiver.track.readyState,
+                        muted: receiver.track.muted,
+                        enabled: receiver.track.enabled
+                    })),
+                    inbound
+                });
+            }
+            const elements = Array.from(view.document.querySelectorAll('audio,video'))
+                .map(element => ({
+                    tag: element.tagName.toLowerCase(),
+                    paused: element.paused,
+                    muted: element.muted,
+                    volume: element.volume,
+                    readyState: element.readyState,
+                    hasStream: Boolean(element.srcObject),
+                    sinkSelected: element.sinkId ? 'custom' : 'default'
+                }));
+            return {peers: calls, mediaElements: elements};
+        }
         return Object.freeze({
             install,
             send,
             error: () => lastError,
-            trackedCount: () => peers.size
+            trackedCount: () => peers.size,
+            diagnoseAudio
         });
     }
 
