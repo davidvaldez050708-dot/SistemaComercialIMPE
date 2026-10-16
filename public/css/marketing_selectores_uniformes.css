@@ -1,0 +1,189 @@
+/* Selectores uniformes exclusivos del perfil Marketing. */
+
+.uniform-select-native {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.uniform-select {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    z-index: 25;
+    font-family: 'Manrope', sans-serif;
+}
+
+.uniform-select.is-open {
+    z-index: 250;
+}
+
+.uniform-select-trigger {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--color-text-primary);
+    box-shadow: none;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+
+.uniform-select-trigger:hover,
+.uniform-select-trigger:focus-visible,
+.uniform-select.is-open .uniform-select-trigger {
+    border-color: #9fb2d3;
+    background: #ffffff;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(34, 58, 132, .07);
+}
+
+.uniform-select-trigger:disabled {
+    opacity: .62;
+    cursor: not-allowed;
+    background: #f6f8fb;
+}
+
+.uniform-select-trigger > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.uniform-select-trigger > i {
+    flex: 0 0 auto;
+    color: #26364f;
+    font-size: 11px;
+    transition: transform .18s ease;
+}
+
+.uniform-select.is-open .uniform-select-trigger > i {
+    transform: rotate(180deg);
+}
+
+.uniform-select-menu {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    display: none;
+    max-height: 260px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 5px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgba(20, 35, 70, .14);
+    z-index: 500;
+    overscroll-behavior: contain;
+}
+
+.uniform-select.is-open .uniform-select-menu {
+    display: block;
+}
+
+.uniform-select-option {
+    width: 100%;
+    min-height: 32px;
+    padding: 7px 10px;
+    display: flex;
+    align-items: center;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+}
+
+.uniform-select-option:hover,
+.uniform-select-option:focus-visible {
+    background: #f4f7fb;
+    outline: none;
+}
+
+.uniform-select-option.is-selected,
+.uniform-select-option.is-selected:hover,
+.uniform-select-option.is-selected:focus-visible {
+    background: #223A84 !important;
+    color: #ffffff !important;
+    font-weight: 700;
+}
+
+.uniform-select-option:disabled {
+    opacity: .48;
+    cursor: not-allowed;
+}
+
+.uniform-select-menu::-webkit-scrollbar {
+    width: 9px;
+}
+
+.uniform-select-menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.uniform-select-menu::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(72, 84, 105, .58);
+    background-clip: padding-box;
+}
+
+/* Mantener compactos también los desplegables personalizados de Marketing. */
+.convocatoria-filter-dropdown-trigger,
+.convocatoria-form-type-trigger,
+.crear-convocatoria-state-trigger,
+.correo-marketing-type-trigger {
+    min-height: 40px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+}
+
+.convocatoria-filter-dropdown-menu,
+.convocatoria-form-type-menu,
+.crear-convocatoria-state-menu,
+.correo-marketing-type-menu {
+    max-height: 260px !important;
+    padding: 5px !important;
+    border-radius: 10px !important;
+}
+
+.convocatoria-filter-dropdown-option,
+.convocatoria-form-type-option,
+.crear-convocatoria-state-option,
+.correo-marketing-type-option {
+    min-height: 32px !important;
+    padding: 7px 10px !important;
+    border-radius: 7px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+}
