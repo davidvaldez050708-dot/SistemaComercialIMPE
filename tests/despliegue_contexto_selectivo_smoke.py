@@ -46,4 +46,43 @@ for sample, kind in [
         raise AssertionError("El instalador aceptó un caso ambiguo o ya actualizado")
     except ValueError:
         pass
+# Variante observada en el servidor de Hostinger (sin descargar código
+# privado): fetchContext con nueve reintentos de 750 milisegundos.
+live_js = original_js.replace(
+    "fetchReceptionContext", "fetchContext"
+).replace(
+    "if (attempt < 8 && active?.id === id)",
+    "if (attempt < 9 && active?.id === id)"
+).replace(
+    "root.setTimeout?.(() => {\n                    void fetchContext(id, phone, attempt + 1);\n                }, 800);",
+    "root.setTimeout?.(() => void fetchContext(id, phone, attempt + 1), 750);"
+)
+assert "if (attempt < 9 && active?.id === id)" in live_js
+assert "root.setTimeout?.(() => void fetchContext(id, phone, attempt + 1), 750);" in live_js
+live_js = live_js.replace(
+    "const fetchContext = async",
+    "// Adaptación Hostinger: mantener intacta\n    const fetchContext = async",
+    1
+)
+patched_live, mode_live = deploy.aplicar_ajuste_selectivo(live_js, observer)
+assert mode_live == "ajuste selectivo verificado"
+assert "Adaptación Hostinger: mantener intacta" in patched_live
+assert "if (attempt < 17 && active?.id === id)" in patched_live
+assert "root.setTimeout?.(() => void fetchContext(id, phone, attempt + 1), 750);" in patched_live
+assert "if (attempt < 9 && active?.id === id)" not in patched_live
+for ambiguous in (
+    patched_live,
+    live_js.replace("if (attempt < 9 && active?.id === id)", ""),
+    live_js.replace(
+        "if (attempt < 9 && active?.id === id)",
+        "if (attempt < 9 && active?.id === id) /* repetido */\n"
+        "if (attempt < 9 && active?.id === id)"
+    ),
+):
+    try:
+        deploy.aplicar_ajuste_selectivo(ambiguous, observer)
+        raise AssertionError("Se aceptó un observador ambiguo o ya actualizado")
+    except ValueError:
+        pass
+
 print("Instalador selectivo: personalizaciones preservadas y conflictos bloqueados OK")
