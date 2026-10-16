@@ -13,7 +13,8 @@
         }
 
         let intentos = 0;
-        let inicializado = false;
+        let historialPorId = new Map();
+        let observer = null;
 
         const formatearTiempo = function (segundos) {
             const total = Math.max(0, Math.floor(Number(segundos) || 0));
@@ -298,30 +299,30 @@
             });
         };
 
-        const configurar = function () {
-            if (inicializado) {
-                return;
-            }
-
+        const prepararTarjetas = function () {
             const pane = document.querySelector('[data-expediente-pane="llamadas"]');
-            const tarjetas = pane
-                ? Array.from(pane.querySelectorAll('.linkage-call-history-card'))
-                : [];
+            if (!pane) return;
+            pane.querySelectorAll('.linkage-call-history-card[data-call-interaction-id]')
+                .forEach(function (tarjeta) {
+                    const id = Number(tarjeta.dataset.callInteractionId || 0);
+                    const llamada = historialPorId.get(id);
+                    if (id > 0 && llamada) convertirBoton(tarjeta, llamada);
+                });
+        };
 
-            if ((!pane || tarjetas.length === 0) && intentos < 60) {
-                intentos++;
-                window.setTimeout(configurar, 60);
-                return;
-            }
-
+        const configurar = function () {
+            const pane = document.querySelector('[data-expediente-pane="llamadas"]');
             if (!pane) {
+                if (intentos++ < 60) window.setTimeout(configurar, 100);
                 return;
             }
 
-            inicializado = true;
+            // La lista se reconstruye al llegar nuevos datos o grabaciones.
+            // Observar únicamente cambios estructurales; nunca asociar por índice.
+            observer = new MutationObserver(prepararTarjetas);
+            const lista = pane.querySelector('[data-call-history-list]') || pane;
+            observer.observe(lista, {childList: true, subtree: false});
 
-            // La pestaña Llamadas ya consulta estos datos. Reutilizar el
-            // resultado evita abrir otra conexión MySQL para los audios.
             const historial = window.IMPE_HISTORIAL_LLAMADAS_EXPEDIENTE;
             const solicitud = historial && historial.seguimientoId === seguimientoId
                 ? historial.promise
@@ -329,35 +330,37 @@
                     'prueba_telefonia/api/llamadas_seguimiento.php?seguimiento_id=' +
                         encodeURIComponent(seguimientoId),
                     {
-                        headers: { 'X-Requested-With': 'fetch' },
+                        headers: {'X-Requested-With': 'fetch'},
                         credentials: 'same-origin',
                         cache: 'no-store'
                     }
                 ).then(function (response) {
                     return response.json().then(function (data) {
-                        if (!response.ok || !data.ok) {
+                        if (!response.ok || !data.ok)
                             throw new Error(data.mensaje || 'No fue posible cargar las grabaciones.');
-                        }
                         return data;
                     });
                 });
-            solicitud
-                .then(function (data) {
-                    const llamadas = Array.isArray(data.llamadas) ? data.llamadas : [];
-                    const tarjetasActuales = Array.from(
-                        pane.querySelectorAll('.linkage-call-history-card')
-                    );
+            solicitud.then(function (data) {
+                historialPorId = new Map(
+                    (Array.isArray(data.llamadas) ? data.llamadas : [])
+                        .filter(llamada => Number(llamada.id) > 0)
+                        .map(llamada => [Number(llamada.id), llamada])
+                );
+                prepararTarjetas();
+            }).catch(function (error) {
+                console.warn('No fue posible preparar los reproductores de llamada.', error);
+            });
 
-                    tarjetasActuales.forEach(function (tarjeta, indice) {
-                        const llamada = llamadas[indice];
-                        if (llamada) {
-                            convertirBoton(tarjeta, llamada);
-                        }
-                    });
-                })
-                .catch(function (error) {
-                    console.warn('No fue posible preparar los reproductores de llamada.', error);
-                });
+            document.addEventListener('impe:expediente-llamadas-actualizadas', function (event) {
+                if (Number(event.detail?.seguimientoId || 0) !== seguimientoId) return;
+                historialPorId = new Map(
+                    (Array.isArray(event.detail?.llamadas) ? event.detail.llamadas : [])
+                        .filter(llamada => Number(llamada.id) > 0)
+                        .map(llamada => [Number(llamada.id), llamada])
+                );
+                prepararTarjetas();
+            });
         };
 
         configurar();
