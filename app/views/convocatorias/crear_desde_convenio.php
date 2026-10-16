@@ -203,7 +203,15 @@ $fecha = static function ($valor) {
                         'analista' => trim(
                             (string)($convenio['analista_nombre'] ?? '') . ' ' .
                             (string)($convenio['analista_apellidos'] ?? '')
-                        )
+                        ),
+                        'estado_atencion' =>
+                            (int)($convenio['tiene_convocatoria'] ?? 0) === 1
+                                ? 'con_convocatoria'
+                                : 'pendiente',
+                        'estado_atencion_etiqueta' =>
+                            (int)($convenio['tiene_convocatoria'] ?? 0) === 1
+                                ? 'Con convocatoria'
+                                : 'Pendiente'
                     ];
 
                     $busqueda = mb_strtolower(
@@ -226,6 +234,7 @@ $fecha = static function ($valor) {
                         class="crear-convocatoria-notification"
                         data-convenio-notification
                         data-convenio-state="<?= (int)$payload['estado_id'] ?>"
+                        data-convenio-attention="<?= $texto($payload['estado_atencion']) ?>"
                         data-convenio-search-text="<?= $texto($busqueda) ?>"
                         data-convenio='<?= $texto(json_encode(
                             $payload,
@@ -261,9 +270,16 @@ $fecha = static function ($valor) {
                         </span>
 
                         <span class="crear-convocatoria-notification-status">
+                            <span
+                                class="crear-convocatoria-attention-badge <?= $payload['estado_atencion'] === 'con_convocatoria' ? 'is-done' : 'is-pending' ?>"
+                                data-convenio-card-attention>
+                                <?= $texto($payload['estado_atencion_etiqueta']) ?>
+                            </span>
+
                             <span class="crear-convocatoria-state-badge">
                                 <?= $texto($payload['estado']) ?>
                             </span>
+
                             <i class="bi bi-chevron-right"></i>
                         </span>
                     </button>
@@ -300,6 +316,12 @@ $fecha = static function ($valor) {
                         data-convenio-modal-title>
                         Información del convenio
                     </h2>
+
+                    <span
+                        class="crear-convocatoria-modal-attention is-pending"
+                        data-convenio-modal-attention>
+                        Pendiente
+                    </span>
                 </div>
 
                 <button
