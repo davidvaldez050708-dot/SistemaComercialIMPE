@@ -9520,3 +9520,133 @@
     #educacion .data-education-gap-cards { grid-template-columns: minmax(0, 1fr); }
     #educacion .data-education-gap-heading { flex-wrap: wrap; }
 }
+
+
+/* Selector de rol personalizado · Administración de usuarios */
+.system-role-dropdown {
+    position: relative;
+}
+
+.system-role-native {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.system-role-trigger {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #fbfcfe;
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    transition:
+        border-color .18s ease,
+        box-shadow .18s ease,
+        background-color .18s ease;
+}
+
+.system-role-trigger:hover {
+    border-color: #cbd8ec;
+    background: #ffffff;
+}
+
+.system-role-trigger:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 .15rem rgba(23, 71, 140, .12);
+}
+
+.system-role-trigger:disabled {
+    cursor: not-allowed;
+    background: #f1f3f6;
+    color: var(--color-text-muted);
+    opacity: .8;
+}
+
+.system-role-trigger i {
+    flex: 0 0 auto;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    transition: transform .18s ease;
+}
+
+.system-role-dropdown.is-open .system-role-trigger i {
+    transform: rotate(180deg);
+}
+
+.system-role-menu {
+    position: absolute;
+    z-index: 1085;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 260px;
+    padding: 6px;
+    display: none;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgba(28, 46, 74, .14);
+}
+
+.system-role-dropdown.is-open .system-role-menu {
+    display: grid;
+    gap: 3px;
+}
+
+.system-role-option {
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 11px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+}
+
+.system-role-option:hover,
+.system-role-option:focus {
+    outline: none;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.system-role-option.is-selected {
+    background: var(--color-primary);
+    color: #ffffff;
+}
+
+.system-role-option.is-selected:hover,
+.system-role-option.is-selected:focus {
+    background: var(--color-primary);
+    color: #ffffff;
+}
+
+@media (max-width: 767.98px) {
+    .system-role-menu {
+        max-height: 220px;
+    }
+}
