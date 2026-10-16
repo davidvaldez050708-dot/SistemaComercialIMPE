@@ -667,27 +667,70 @@ $seleccionado = function ($actual, $valor) {
                             <label for="crear_rol" class="form-label login-label">
                                 Rol
                             </label>
-                            <select
-                                class="form-select system-form-control"
-                                id="crear_rol"
-                                name="rol_id"
-                                required>
-                                <option value="">Seleccionar rol</option>
 
-                                <?php foreach ($roles as $rol): ?>
+                            <div
+                                class="system-role-dropdown"
+                                data-system-role-dropdown>
+                                <select
+                                    class="form-select system-form-control system-role-native"
+                                    id="crear_rol"
+                                    name="rol_id"
+                                    data-system-role-select
+                                    required>
+                                    <option value="">Seleccionar rol</option>
 
-                                    <?php if ((int)$rol['estado'] !== 1) {
-                                        continue;
-                                    } ?>
+                                    <?php foreach ($roles as $rol): ?>
 
-                                    <option
-                                        value="<?= (int)$rol['id'] ?>"
-                                        <?= $seleccionado($datosCrear['rol_id'] ?? '', $rol['id']) ?>>
-                                        <?= htmlspecialchars($rol['nombre']) ?>
-                                    </option>
+                                        <?php if ((int)$rol['estado'] !== 1) {
+                                            continue;
+                                        } ?>
 
-                                <?php endforeach; ?>
-                            </select>
+                                        <option
+                                            value="<?= (int)$rol['id'] ?>"
+                                            <?= $seleccionado($datosCrear['rol_id'] ?? '', $rol['id']) ?>>
+                                            <?= htmlspecialchars($rol['nombre']) ?>
+                                        </option>
+
+                                    <?php endforeach; ?>
+                                </select>
+
+                                <button
+                                    type="button"
+                                    class="system-role-trigger"
+                                    data-system-role-trigger
+                                    aria-haspopup="listbox"
+                                    aria-expanded="false">
+                                    <span data-system-role-label>Seleccionar rol</span>
+                                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                                </button>
+
+                                <div
+                                    class="system-role-menu"
+                                    data-system-role-menu
+                                    role="listbox">
+                                    <button
+                                        type="button"
+                                        class="system-role-option"
+                                        data-system-role-option=""
+                                        role="option">
+                                        Seleccionar rol
+                                    </button>
+
+                                    <?php foreach ($roles as $rol): ?>
+                                        <?php if ((int)$rol['estado'] !== 1) {
+                                            continue;
+                                        } ?>
+
+                                        <button
+                                            type="button"
+                                            class="system-role-option"
+                                            data-system-role-option="<?= (int)$rol['id'] ?>"
+                                            role="option">
+                                            <?= htmlspecialchars($rol['nombre']) ?>
+                                        </button>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
                         </div>
 
                         <div>
@@ -936,24 +979,64 @@ $seleccionado = function ($actual, $valor) {
                             <label for="editar_rol" class="form-label login-label">
                                 Rol
                             </label>
-                            <select
-                                class="form-select system-form-control"
-                                id="editar_rol"
-                                name="rol_id"
-                                <?= $edicionCuentaActual ? 'disabled' : '' ?>
-                                required>
-                                <option value="">Seleccionar rol</option>
 
-                                <?php foreach ($roles as $rol): ?>
+                            <div
+                                class="system-role-dropdown"
+                                data-system-role-dropdown>
+                                <select
+                                    class="form-select system-form-control system-role-native"
+                                    id="editar_rol"
+                                    name="rol_id"
+                                    data-system-role-select
+                                    <?= $edicionCuentaActual ? 'disabled' : '' ?>
+                                    required>
+                                    <option value="">Seleccionar rol</option>
 
-                                    <option
-                                        value="<?= (int)$rol['id'] ?>"
-                                        <?= $seleccionado($datosEditar['rol_id'] ?? '', $rol['id']) ?>>
-                                        <?= htmlspecialchars($rol['nombre']) ?>
-                                    </option>
+                                    <?php foreach ($roles as $rol): ?>
 
-                                <?php endforeach; ?>
-                            </select>
+                                        <option
+                                            value="<?= (int)$rol['id'] ?>"
+                                            <?= $seleccionado($datosEditar['rol_id'] ?? '', $rol['id']) ?>>
+                                            <?= htmlspecialchars($rol['nombre']) ?>
+                                        </option>
+
+                                    <?php endforeach; ?>
+                                </select>
+
+                                <button
+                                    type="button"
+                                    class="system-role-trigger"
+                                    data-system-role-trigger
+                                    aria-haspopup="listbox"
+                                    aria-expanded="false"
+                                    <?= $edicionCuentaActual ? 'disabled' : '' ?>>
+                                    <span data-system-role-label>Seleccionar rol</span>
+                                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                                </button>
+
+                                <div
+                                    class="system-role-menu"
+                                    data-system-role-menu
+                                    role="listbox">
+                                    <button
+                                        type="button"
+                                        class="system-role-option"
+                                        data-system-role-option=""
+                                        role="option">
+                                        Seleccionar rol
+                                    </button>
+
+                                    <?php foreach ($roles as $rol): ?>
+                                        <button
+                                            type="button"
+                                            class="system-role-option"
+                                            data-system-role-option="<?= (int)$rol['id'] ?>"
+                                            role="option">
+                                            <?= htmlspecialchars($rol['nombre']) ?>
+                                        </button>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
                         </div>
 
                         <div>
@@ -1432,6 +1515,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 boton.getAttribute('data-usuario') || '';
             document.getElementById('editar_rol').value =
                 boton.getAttribute('data-rol-id') || '';
+
+            const dropdownRolEditar =
+                document.getElementById('editar_rol')
+                    ?.closest('[data-system-role-dropdown]');
+
+            if (dropdownRolEditar) {
+                const selectRolEditar =
+                    dropdownRolEditar.querySelector('[data-system-role-select]');
+                const triggerRolEditar =
+                    dropdownRolEditar.querySelector('[data-system-role-trigger]');
+                const labelRolEditar =
+                    dropdownRolEditar.querySelector('[data-system-role-label]');
+                const optionRolEditar =
+                    selectRolEditar?.options[selectRolEditar.selectedIndex];
+
+                if (labelRolEditar && optionRolEditar) {
+                    labelRolEditar.textContent =
+                        optionRolEditar.textContent.trim();
+                }
+
+                if (triggerRolEditar) {
+                    triggerRolEditar.disabled =
+                        selectRolEditar ? selectRolEditar.disabled : false;
+                }
+            }
             document.getElementById('editar_estado').value =
                 boton.getAttribute('data-estado') || '1';
             document.getElementById('editar_ultimo_acceso').textContent =
@@ -1455,6 +1563,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('editar_nota_cuenta_actual');
 
             rolSelect.disabled = esCuentaActual;
+
+            const triggerRolSelect =
+                rolSelect
+                    .closest('[data-system-role-dropdown]')
+                    ?.querySelector('[data-system-role-trigger]');
+
+            if (triggerRolSelect) {
+                triggerRolSelect.disabled = esCuentaActual;
+            }
+
             estadoSelect.disabled = esCuentaActual;
             rolOculto.disabled = !esCuentaActual;
             estadoOculto.disabled = !esCuentaActual;
@@ -1533,6 +1651,116 @@ document.addEventListener('DOMContentLoaded', function () {
     if (modalAbierto === 'editar' && modalEditar) {
         new bootstrap.Modal(modalEditar).show();
     }
+
+    const sincronizarDropdownRol = function (contenedor) {
+        const select = contenedor.querySelector('[data-system-role-select]');
+        const trigger = contenedor.querySelector('[data-system-role-trigger]');
+        const label = contenedor.querySelector('[data-system-role-label]');
+
+        if (!select || !trigger || !label) {
+            return;
+        }
+
+        const opcionSeleccionada =
+            select.options[select.selectedIndex] || select.options[0];
+
+        label.textContent = opcionSeleccionada
+            ? opcionSeleccionada.textContent.trim()
+            : 'Seleccionar rol';
+
+        trigger.disabled = select.disabled;
+
+        contenedor
+            .querySelectorAll('[data-system-role-option]')
+            .forEach(function (opcion) {
+                const activa =
+                    String(opcion.dataset.systemRoleOption || '') ===
+                    String(select.value || '');
+
+                opcion.classList.toggle('is-selected', activa);
+                opcion.setAttribute(
+                    'aria-selected',
+                    activa ? 'true' : 'false'
+                );
+            });
+    };
+
+    const cerrarDropdownsRol = function (excepto) {
+        document
+            .querySelectorAll('[data-system-role-dropdown].is-open')
+            .forEach(function (contenedor) {
+                if (contenedor === excepto) {
+                    return;
+                }
+
+                contenedor.classList.remove('is-open');
+
+                const trigger =
+                    contenedor.querySelector('[data-system-role-trigger]');
+
+                if (trigger) {
+                    trigger.setAttribute('aria-expanded', 'false');
+                }
+            });
+    };
+
+    document
+        .querySelectorAll('[data-system-role-dropdown]')
+        .forEach(function (contenedor) {
+            const select =
+                contenedor.querySelector('[data-system-role-select]');
+            const trigger =
+                contenedor.querySelector('[data-system-role-trigger]');
+            const opciones = Array.from(
+                contenedor.querySelectorAll('[data-system-role-option]')
+            );
+
+            if (!select || !trigger) {
+                return;
+            }
+
+            sincronizarDropdownRol(contenedor);
+
+            trigger.addEventListener('click', function () {
+                if (trigger.disabled || select.disabled) {
+                    return;
+                }
+
+                const abrir = !contenedor.classList.contains('is-open');
+
+                cerrarDropdownsRol(abrir ? contenedor : null);
+                contenedor.classList.toggle('is-open', abrir);
+                trigger.setAttribute(
+                    'aria-expanded',
+                    abrir ? 'true' : 'false'
+                );
+            });
+
+            opciones.forEach(function (opcion) {
+                opcion.addEventListener('click', function () {
+                    select.value =
+                        opcion.dataset.systemRoleOption || '';
+                    select.dispatchEvent(
+                        new Event('change', { bubbles: true })
+                    );
+
+                    sincronizarDropdownRol(contenedor);
+                    contenedor.classList.remove('is-open');
+                    trigger.setAttribute('aria-expanded', 'false');
+                    trigger.focus();
+                });
+            });
+
+            select.addEventListener('change', function () {
+                sincronizarDropdownRol(contenedor);
+            });
+        });
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('[data-system-role-dropdown]')) {
+            cerrarDropdownsRol(null);
+        }
+    });
 
     document.querySelectorAll('.system-toast').forEach(function (toast) {
         new bootstrap.Toast(toast).show();
