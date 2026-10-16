@@ -21,6 +21,20 @@ class CuentaCorreoUsuarioController
         ]);
     }
 
+    public function diagnostico()
+    {
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        if ($usuarioId <= 0) {
+            $this->responder(
+                ['ok' => false, 'mensaje' => 'La sesión no está activa.'],
+                401
+            );
+        }
+
+        $service = new CuentaCorreoUsuarioService();
+        $this->responder($service->diagnostico($usuarioId));
+    }
+
     public function guardar()
     {
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
