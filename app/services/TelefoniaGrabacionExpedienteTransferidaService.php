@@ -137,14 +137,14 @@ class TelefoniaGrabacionExpedienteTransferidaService
                 // Nunca utilizar la búsqueda alternativa para eludirlo.
                 if ($tieneTablaContextos) {
                     $ctx = $this->db->prepare(
-                    "SELECT destino_usuario_id, destino_extension, seguimiento_id
-                       FROM telefonia_transferencia_contextos
-                      WHERE pbx_call_id = ? LIMIT 2"
-                );
-                $ctx->bind_param('s', $pbx);
-                $ctx->execute();
-                $contextosPbx = $ctx->get_result()->fetch_all(MYSQLI_ASSOC);
-                $ctx->close();
+                        "SELECT destino_usuario_id, destino_extension, seguimiento_id
+                           FROM telefonia_transferencia_contextos
+                          WHERE pbx_call_id = ? LIMIT 2"
+                    );
+                    $ctx->bind_param('s', $pbx);
+                    $ctx->execute();
+                    $contextosPbx = $ctx->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $ctx->close();
                     if (count($contextosPbx) > 1) return null;
                 } else {
                     $contextosPbx = [];
