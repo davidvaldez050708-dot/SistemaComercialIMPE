@@ -25,7 +25,10 @@ class CrearConvocatoriaModel
             return [];
         }
 
-        if (!$this->asegurarEstructuraEstadoConvenio()) {
+        if (
+            !$this->asegurarEstructuraEstadoConvenio() ||
+            !$this->asegurarEstructuraAtencionConvenio()
+        ) {
             return [];
         }
 
@@ -56,20 +59,11 @@ class CrearConvocatoriaModel
                     usuarios.nombre AS analista_nombre,
                     usuarios.apellidos AS analista_apellidos,
                     CASE
-                        WHEN EXISTS (
-                            SELECT 1
-                            FROM marketing_convenio_convocatorias relacion
-                            WHERE relacion.seguimiento_id = seguimientos.id
-                            LIMIT 1
-                        )
+                        WHEN atencion.seguimiento_id IS NOT NULL
                         THEN 1
                         ELSE 0
                     END AS tiene_convocatoria,
-                    (
-                        SELECT MAX(relacion.created_at)
-                        FROM marketing_convenio_convocatorias relacion
-                        WHERE relacion.seguimiento_id = seguimientos.id
-                    ) AS convocatoria_creada_at
+                    atencion.atendido_at AS convocatoria_creada_at
                 FROM aliados_asignaciones aliado
                 INNER JOIN seguimientos_vinculacion seguimientos
                     ON seguimientos.id = aliado.seguimiento_id
@@ -81,6 +75,8 @@ class CrearConvocatoriaModel
                     ON post.seguimiento_id = seguimientos.id
                 LEFT JOIN usuarios
                     ON usuarios.id = seguimientos.analista_id
+                LEFT JOIN marketing_convenio_atencion atencion
+                    ON atencion.seguimiento_id = seguimientos.id
                 WHERE aliado.activo = 1
                   AND seguimientos.activo = 1
                 ORDER BY
@@ -156,6 +152,50 @@ class CrearConvocatoriaModel
         return $stmt->execute();
     }
 
+    public function marcarConvenioAtendido($seguimientoId, $usuarioId)
+    {
+        $seguimientoId = (int)$seguimientoId;
+        $usuarioId = (int)$usuarioId;
+
+        if (
+            $seguimientoId <= 0 ||
+            $usuarioId <= 0 ||
+            !$this->asegurarEstructuraAtencionConvenio()
+        ) {
+            return false;
+        }
+
+        $sql = "INSERT INTO marketing_convenio_atencion (
+                    seguimiento_id,
+                    atendido_por,
+                    atendido_at
+                ) VALUES (?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                    atendido_por = VALUES(atendido_por),
+                    atendido_at = COALESCE(
+                        marketing_convenio_atencion.atendido_at,
+                        VALUES(atendido_at)
+                    )";
+
+        $stmt = $this->connection->prepare($sql);
+
+        if (!$stmt) {
+            error_log(
+                'CrearConvocatoriaModel::marcarConvenioAtendido: ' .
+                $this->connection->error
+            );
+            return false;
+        }
+
+        $stmt->bind_param(
+            'ii',
+            $seguimientoId,
+            $usuarioId
+        );
+
+        return $stmt->execute();
+    }
+
     public function listarConveniosRecibidos()
     {
         return $this->listarConveniosAliados();
@@ -183,6 +223,29 @@ class CrearConvocatoriaModel
         }
 
         return $estados;
+    }
+
+    private function asegurarEstructuraAtencionConvenio()
+    {
+        $sql = "CREATE TABLE IF NOT EXISTS marketing_convenio_atencion (
+                    seguimiento_id INT NOT NULL,
+                    atendido_por INT NOT NULL,
+                    atendido_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (seguimiento_id),
+                    KEY idx_marketing_convenio_atendido_at (atendido_at)
+                ) ENGINE=InnoDB
+                  DEFAULT CHARSET=utf8mb4
+                  COLLATE=utf8mb4_general_ci";
+
+        if (!$this->connection->query($sql)) {
+            error_log(
+                'CrearConvocatoriaModel::asegurarEstructuraAtencionConvenio: ' .
+                $this->connection->error
+            );
+            return false;
+        }
+
+        return true;
     }
 
     private function asegurarEstructuraEstadoConvenio()
