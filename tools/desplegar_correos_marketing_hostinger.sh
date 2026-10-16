@@ -157,6 +157,7 @@ if grep -Fq "cuenta_correo_perfil.js" "$DST/app/views/layout/dashboard_footer.ph
 fi
 
 grep -Fq "data-marketing-mail-convocatoria" "$DST/app/views/correos/index.php"
+grep -Fq "data-marketing-mail-from" "$DST/app/views/correos/index.php"
 grep -Fq "ConvocatoriaModel" "$DST/app/controllers/CorreoMarketingController.php"
 grep -Fq "CONVOCATORIA" "$DST/app/services/CorreoMarketingService.php"
 grep -Fq "data-marketing-file-remove" "$DST/public/javascript/correos_marketing.js"
