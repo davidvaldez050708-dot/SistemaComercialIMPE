@@ -594,14 +594,20 @@
 
 /* Audio de una transferencia PBX verificada, sin afectar otros expedientes. */
 .linkage-call-history-card button.linkage-call-recording-toggle {
-    font: inherit;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 750;
+    line-height: 1.15;
+    min-height: 28px;
+    max-width: 100%;
+    white-space: nowrap;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 5px;
     border: 1px solid #bce6d9;
     border-radius: 999px;
-    padding: 6px 10px;
+    padding: 5px 9px;
     background: #eefaf6;
     color: #08715d;
 }
@@ -686,4 +692,44 @@
     .linkage-call-history-card .linkage-call-custom-player { gap: 5px; padding: 6px; }
     .linkage-call-history-card .linkage-call-player-button { min-width: 30px; min-height: 30px; }
     .linkage-call-history-card .linkage-call-player-play { flex-basis: 35px; height: 35px; }
+}
+
+/* Aislar la presentación PBX del expediente: no afecta las llamadas
+   salientes ni los reproductores originales de Seguimiento/Marketing. */
+.linkage-call-history-card .linkage-incoming-audio-panel {
+    margin-top: 8px;
+    padding: 7px 0 0;
+    border-top: 1px solid #e6eaf0;
+}
+.linkage-call-history-card .linkage-incoming-audio-panel > div:first-child {
+    max-width: min(730px, 100%);
+}
+.linkage-call-history-card .linkage-incoming-audio-panel .linkage-call-inline-player {
+    margin: 0 !important;
+    padding: 8px 0 5px;
+    border: 0;
+}
+.linkage-call-history-card .linkage-incoming-audio-panel .linkage-call-inline-player + .linkage-call-inline-player {
+    border-top: 1px solid #e8edf4;
+    padding-top: 11px;
+}
+.linkage-call-history-card .linkage-incoming-audio-panel .linkage-call-inline-player-heading {
+    margin-bottom: 5px;
+    font-size: 10px;
+}
+.linkage-call-history-card .linkage-incoming-audio-panel .linkage-call-custom-player {
+    max-width: min(730px, 100%);
+}
+.linkage-call-history-card button.linkage-call-recording-toggle .linkage-call-recording-chevron {
+    font-size: 9px;
+}
+.linkage-call-history-card button.linkage-call-recording-toggle:focus-visible {
+    outline: 2px solid #293d92;
+    outline-offset: 2px;
+}
+@media (max-width: 479.98px) {
+    .linkage-call-history-card button.linkage-call-recording-toggle {
+        white-space: normal;
+        text-align: center;
+    }
 }

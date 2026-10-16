@@ -1,0 +1,15 @@
+name: Estilos de grabación PBX en expediente
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'public/css/seguimiento_llamadas_expediente.css'
+      - 'tests/estilos_audio_expediente_20261015_smoke.py'
+      - '.github/workflows/estilos-audio-expediente.yml'
+jobs:
+  comprobar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Estilos aislados
+        run: python3 tests/estilos_audio_expediente_20261015_smoke.py
