@@ -349,6 +349,24 @@ try {
         ], 404);
     }
 
+    // Nunca reutilizar la misma llamada PBX en otra interacción.
+    $sqlPbxOcupada = "SELECT id FROM interacciones_vinculacion
+        WHERE proveedor_externo = 'ZADARMA'
+          AND id_externo = ?
+          AND id <> ?
+        LIMIT 1";
+    $stmtPbxOcupada = $connection->prepare($sqlPbxOcupada);
+    $stmtPbxOcupada->bind_param('si', $pbxCallId, $interaccionId);
+    $stmtPbxOcupada->execute();
+    $pbxOcupada = (bool)$stmtPbxOcupada->get_result()->fetch_assoc();
+    $stmtPbxOcupada->close();
+    if ($pbxOcupada) {
+        responderJson([
+            'ok' => false,
+            'mensaje' => 'Esta llamada ya está vinculada con otra interacción.'
+        ], 409);
+    }
+
     $idExternoActual = trim((string)($interaccion['id_externo'] ?? ''));
     $proveedorActual = strtoupper(trim((string)($interaccion['proveedor_externo'] ?? '')));
 
