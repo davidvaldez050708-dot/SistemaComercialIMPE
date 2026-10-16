@@ -173,7 +173,6 @@ $jsDashboardFooter = [
     'seguimiento_historial_consulta.js',
     'cambiar_password.js',
     'mi_perfil.js',
-    'cuenta_correo_perfil.js',
     'sidebar_scroll_state.js',
     'recordatorios.js'
 ];
