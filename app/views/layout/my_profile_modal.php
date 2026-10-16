@@ -10,10 +10,10 @@
     data-signature-status-url="<?= BASE_URL ?>index.php?controller=firmaCorreo&action=estado"
     data-signature-save-url="<?= BASE_URL ?>index.php?controller=firmaCorreo&action=guardar"
     data-signature-delete-url="<?= BASE_URL ?>index.php?controller=firmaCorreo&action=eliminar"
-    data-mail-account-status-url="<?= BASE_URL ?>index.php?controller=cuentaCorreoUsuario&action=estado"
-    data-mail-account-save-url="<?= BASE_URL ?>index.php?controller=cuentaCorreoUsuario&action=guardar"
-    data-mail-account-test-url="<?= BASE_URL ?>index.php?controller=cuentaCorreoUsuario&action=probar"
-    data-mail-account-delete-url="<?= BASE_URL ?>index.php?controller=cuentaCorreoUsuario&action=eliminar">
+    data-mail-account-status-url="<?= BASE_URL ?>index.php?controller=correoMarketing&action=cuentaCorreoEstado"
+    data-mail-account-save-url="<?= BASE_URL ?>index.php?controller=correoMarketing&action=cuentaCorreoGuardar"
+    data-mail-account-test-url="<?= BASE_URL ?>index.php?controller=correoMarketing&action=cuentaCorreoProbar"
+    data-mail-account-delete-url="<?= BASE_URL ?>index.php?controller=correoMarketing&action=cuentaCorreoEliminar">
     <div class="modal-dialog modal-dialog-centered system-form-dialog">
         <div class="modal-content system-form-modal">
             <div class="modal-header system-form-modal-header">
