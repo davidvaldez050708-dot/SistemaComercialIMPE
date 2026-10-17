@@ -151,6 +151,10 @@
     let finished = null;
     let lastSignature = '';
     let chain = Promise.resolve();
+    // La misma conversación puede pasar de sesión PBX a SDK (o al revés).
+    // No borrar la institución detectada ante esa transición de estado.
+    let visibleContextKey = '';
+    let contextRequestKey = '';
     const contextStorageKey = id => 'impe:crm:transfer-context:' + userId + ':' + id;
     // No consultar por una extensión (100/101) ni por caller ID aún vacío.
     const usableCallerNumber = value => {
@@ -179,7 +183,11 @@
             const ctx = data.contexto;
             if (!Number.isInteger(Number(ctx.seguimiento_id)) ||
                 Number(ctx.seguimiento_id) <= 0) return;
-            contextCard.replaceChildren?.();
+            const presentationKey = [String(ctx.seguimiento_id),
+                String(ctx.institucion || ''), String(ctx.estado || '')].join('|');
+            if (visibleContextKey !== presentationKey) {
+                contextCard.replaceChildren?.();
+            }
             const heading = root.document.createElement('strong');
             heading.textContent = String(ctx.institucion || '') + ' · ' +
                 String(ctx.estado || '');
@@ -187,8 +195,11 @@
             hint.textContent = 'Identificada por ' +
                 String(ctx.confirmado_por || 'Recepción') +
                 '. Confirma los datos con la persona que llama.';
-            contextCard.appendChild(heading);
-            contextCard.appendChild(hint);
+            if (visibleContextKey !== presentationKey) {
+                contextCard.appendChild(heading);
+                contextCard.appendChild(hint);
+                visibleContextKey = presentationKey;
+            }
             contextCard.hidden = false;
             try {
                 root.sessionStorage?.setItem(contextStorageKey(id), JSON.stringify({
@@ -369,8 +380,8 @@
                 .replace(/[^0-9+*#]/g,'').slice(0,40);
             if (!pbxSession || pbxSession.id !== id) {
                 pbxSession = {id,number:''};
-                contextCard.hidden = true;
-                contextCard.replaceChildren?.();
+                // Mantener el bloque detectado mientras PBX y SDK
+                // terminan de identificar esta misma conversación.
             }
             if (usableCallerNumber(phone) && pbxSession.number !== phone) {
                 pbxSession.number = phone;
@@ -396,8 +407,8 @@
                     sawConversation: false
                 };
                 finished = null;
-                contextCard.hidden = true;
-                contextCard.replaceChildren?.();
+                // El identificador del SDK puede aparecer después del PBX.
+                // No parpadear ocultando un contexto institucional válido.
                 draw();
                 if (usableCallerNumber(active.number)) {
                     void fetchContext(id, active.number);
