@@ -527,6 +527,23 @@
             !String(state.pbxCallId || '').trim());
     };
 
+    // Diagnóstico de solo lectura para pruebas de transferencias.
+    // No expone teléfono, PBX ID, tokens ni datos del expediente.
+    window.IMPE_TELEPHONY_DIAGNOSTIC = function () {
+        const sdk = analystSdkObserver?.diagnostic?.() || null;
+        return Object.freeze({
+            phase: String(state.phase || ''),
+            active: Boolean(state.active),
+            direction: String(state.direction || ''),
+            contextType: String(state.context?.type || ''),
+            sdkConnected: Boolean(state.context?.sdkConnected),
+            pbxAnswered: Boolean(state.context?.pbxAnswered),
+            hasPbxCallId: Boolean(String(state.pbxCallId || '')),
+            observerStarted: Boolean(analystSdkObserver),
+            observer: sdk
+        });
+    };
+
     const clearSdkOnlyIncoming = function () {
         if (!state.active || !isSdkOnlyIncoming()) return;
         answeredAtMs = 0;
