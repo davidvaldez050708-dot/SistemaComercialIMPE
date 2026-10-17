@@ -309,7 +309,9 @@ $duracionEntrante = static function ($segundos) {
                                     </button>
                                     <small class="linkage-incoming-sync-message" role="status" aria-live="polite"></small>
                                 </div>
-                            <?php elseif (!$esInterna && !$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
+                            <?php endif; ?>
+                            <?php // El reproductor y el registro son acciones independientes. ?>
+                            <?php if (!$esInterna && !$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
                                 <div class="linkage-incoming-card-actions">
                                     <button type="button" class="btn btn-system-save linkage-incoming-open"
                                         data-call-id="<?= $esc($idRegistroResultado) ?>"
