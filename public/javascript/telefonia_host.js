@@ -1128,6 +1128,22 @@
         incomingPollBusy = true;
 
         try {
+            // Rescate seguro de una señal onConnected perdida: sólo cuando el
+            // SDK ya observó audio local y el host sigue esperando respuesta.
+            // No inferir conversación a partir de segundos ni de un ringing PBX.
+            if (state.active && state.direction === 'incoming' &&
+                state.phase === 'answering' &&
+                analystSdkObserver?.isConnected?.()) {
+                answeredAtMs = Date.now();
+                publish({
+                    phase:'in-progress',status:'in-progress',
+                    answeredAtMs, duration:0, message:'',
+                    context:Object.assign({}, state.context, {
+                        sdkConnected:true,source:'SDK_WEBRTC',
+                        verified:Boolean(state.context?.pbxAnswered)
+                    })
+                });
+            }
             const call =
                 await fetchIncomingState();
 
