@@ -74,7 +74,8 @@ foreach ([
  'routing'=>[
   'requestAuthorizedTransfer(data.token)',
   'if (confirmDirect !== key)',
-  "sessionStorage.setItem(draftKeyFor(current.id)",
+  'drafts.save(Number(cfg.userId),ids,data',
+  'drafts?.localSave(Number(cfg.userId),draftRefs,values())',
   "item.estado_id",
   'Confirma primero el estado',
   "selected.usuario_id"

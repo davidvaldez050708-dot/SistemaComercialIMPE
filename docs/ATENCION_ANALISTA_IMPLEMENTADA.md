@@ -93,8 +93,15 @@ estáticas de entradas y de conciliación se actualizaron al comportamiento actu
 la cobertura nueva está en `tests/telefonia_atencion_db.php` y
 `tests/telefonia_atencion_browser.cjs` y en su flujo de GitHub Actions.
 
-Regresión adicional: aprobaron 17 pruebas existentes. La prueba antigua
+Regresión adicional: aprobaron 18 pruebas existentes. La prueba antigua
 `telefonia_analista_historial_pasivo_smoke.js` conserva un fallo previo: su
 simulador prohíbe un elemento `div` que el resumen de llamada ya crea en main.
 Los archivos de esa prueba y su implementación no cambian en esta entrega;
 el flujo transferido actual se valida con su prueba específica y el navegador.
+
+La validación nueva también aprobó en GitHub Actions, con MariaDB 10.11 y
+Chromium: https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/39008766116
+Quedan alertas de comprobaciones antiguas de UX, shell e instaladores históricos
+que dependen de textos o snapshots anteriores. No equivalen a una validación en
+verde de toda la batería del repositorio. La comprobación de transferencias se
+actualizó para exigir el guardado local y en servidor de esta entrega.
