@@ -528,8 +528,11 @@
     renderDecision();
     const focusId = String(page.dataset.autoCall || '').trim();
     if (focusId) {
+        // Tras una transferencia el enlace puede usar el ID WebRTC o PBX.
+        // Ambas referencias identifican la misma tarjeta consolidada.
         const found = Array.from(page.querySelectorAll('[data-call-id]'))
-            .find(el => el.dataset.callId === focusId);
+            .find(el => el.dataset.callId === focusId ||
+                el.dataset.pbxCallId === focusId);
         const retryKey = 'impe:incoming-focus-retry:' + focusId;
         if (found) {
             try { sessionStorage.removeItem(retryKey); } catch (_) {}
