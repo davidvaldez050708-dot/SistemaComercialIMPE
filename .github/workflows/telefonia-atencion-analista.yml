@@ -1,0 +1,51 @@
+name: Atención del analista - datos y modales
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', 'public/javascript/**', 'prueba_telefonia/api/**', 'tests/telefonia_atencion*', 'tests/fixtures/analista_atencion_vista.php', '.github/workflows/telefonia-atencion-analista.yml']
+  pull_request:
+    paths: ['app/**', 'public/javascript/**', 'prueba_telefonia/api/**', 'tests/telefonia_atencion*', 'tests/fixtures/analista_atencion_vista.php', '.github/workflows/telefonia-atencion-analista.yml']
+permissions:
+  contents: read
+jobs:
+  datos-y-formularios:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test-only-password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar navegador de pruebas
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.3
+          npx playwright install --with-deps chromium
+      - name: Reglas y persistencia con base aislada
+        env:
+          IMPE_TEST_MYSQL_PORT: '3306'
+          IMPE_TEST_MYSQL_PASSWORD: test-only-password
+        run: |
+          php -l prueba_telefonia/api/borrador_llamada.php
+          php -l prueba_telefonia/api/vincular_interaccion_zadarma.php
+          node --check public/javascript/telefonia_atencion.js
+          node --check public/javascript/seguimiento_llamada_zadarma.js
+          php tests/telefonia_atencion_db.php
+          php tests/conciliacion_entrantes_pbx_webrtc_smoke.php
+          php tests/telefonia_analista_entrantes_smoke.php
+          php tests/telefonia_resultado_analista_modal_smoke.php
+          node tests/telefonia_analista_resultado_transferido_smoke.js
+          node tests/telefonia_entrantes_bridge_smoke.js
+      - name: Modales, recuperación y guardado en navegador real
+        run: node tests/telefonia_atencion_browser.cjs

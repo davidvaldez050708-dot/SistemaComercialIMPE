@@ -10,7 +10,7 @@
     const modalEl = document.getElementById('modalLlamadaEntranteAnalista');
     if (!page || !form || !modalEl || !window.bootstrap) return;
 
-    const modal = new bootstrap.Modal(modalEl);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     const decision = form.querySelector('[data-incoming-decision]');
     const existing = form.querySelector('[data-incoming-existing]');
     const fresh = form.querySelector('[data-incoming-new]');
@@ -51,11 +51,30 @@
     let searchSequence = 0;
     let isSubmitting = false;
     let hasAnswer = true;
-
-    const showError = (message) => {
-        errorBox.textContent = String(message || 'No fue posible guardar la llamada.');
-        errorBox.classList.remove('d-none');
+    let modalCycle=0, formDirty=false, closingAfterSave=false, resultTrigger=null, draftTimer=null;
+    let callRefs=[];
+    const drafts=window.IMPE_CALL_DRAFTS;
+    const csrf=()=>form.querySelector('[name="csrf_token"]').value;
+    const draftStatus=form.querySelector('[data-incoming-draft-status]');
+    const referred=form.querySelector('[data-incoming-referred]');
+    const draftValues=()=>Object.fromEntries(Array.from(form.elements).filter(e=>e.name && !['csrf_token','pbx_call_id','sdk_session_id','sdk_reference','confirmacion_manual_sdk'].includes(e.name)).map(e=>[e.name,e.type==='checkbox'?(e.checked?'1':'0'):e.value]));
+    const writeDraft=async()=>{
+        if(!drafts||!callRefs.length||isSubmitting)return;
+        const cycle=modalCycle,values=draftValues(),ids=[...callRefs];
+        try {await drafts.save(userId,ids,values,csrf());if(cycle===modalCycle){draftStatus.hidden=false;draftStatus.textContent='Borrador guardado.';}}
+        catch(_){if(cycle===modalCycle){draftStatus.hidden=false;draftStatus.textContent='Borrador conservado en este navegador; pendiente de guardar en el servidor.';}}
     };
+    form.addEventListener('input',()=>{
+        formDirty=true;drafts?.localSave(userId,callRefs,draftValues());clearTimeout(draftTimer);draftTimer=setTimeout(writeDraft,700);
+    });
+    form.addEventListener('change',()=>{
+        formDirty=true;drafts?.localSave(userId,callRefs,draftValues());clearTimeout(draftTimer);draftTimer=setTimeout(writeDraft,700);
+    });
+    modalEl.addEventListener('hide.bs.modal',event=>{if(isSubmitting&&!closingAfterSave)event.preventDefault();else if(!closingAfterSave&&formDirty)void writeDraft();});
+    modalEl.addEventListener('hidden.bs.modal',()=>{++modalCycle;++searchSequence;clearTimeout(searchTimer);clearTimeout(draftTimer);closingAfterSave=false;resultTrigger?.isConnected&&resultTrigger.focus({preventScroll:true});});
+    modalEl.addEventListener('shown.bs.modal',()=>{modalEl.querySelector('.modal-body').scrollTop=0;decision.focus({preventScroll:true});});
+
+    const showError = message => window.IMPE_TELEPHONY_NOTIFY?.(String(message || 'No fue posible guardar la llamada.'),true);
     const clearError = () => {
         errorBox.textContent = '';
         errorBox.classList.add('d-none');
@@ -64,11 +83,16 @@
     const renderEvidence = () => {
         const enabled = decision.value !== 'sin_identificar';
         const result = String(resultInput.value || '');
-        const allowEvidence = !isSdkCall && enabled && [
-            'CONTACTO_CORRECTO', 'SOLICITO_INFORMACION',
+        const allowEvidence = enabled && [
+            'CONTACTO_CORRECTO', 'CONTACTO_REFERIDO', 'SOLICITO_INFORMACION',
             'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'
         ].includes(result);
         evidence.hidden = !allowEvidence;
+        referred.hidden=!enabled || result!=='CONTACTO_REFERIDO';
+        referred.querySelectorAll('input').forEach(el=>el.disabled=referred.hidden);
+        sdkConfirm.hidden=!isSdkCall || !allowEvidence;
+        sdkCheck.required=!sdkConfirm.hidden;
+        if(sdkConfirm.hidden)sdkCheck.checked=false;
         if (!allowEvidence) {
             evidence.querySelectorAll('input[type="checkbox"]')
                 .forEach(input => { input.checked = false; });
@@ -141,7 +165,8 @@
     });
 
     const openRegistration = button => {
-        if (!button) return;
+        if (!button || isSubmitting || modalEl.classList.contains('show')) return;
+        resultTrigger=button;const cycle=++modalCycle;formDirty=false;draftStatus.hidden=true;
         form.reset();
         clearError();
         resetConfirmed();
@@ -149,6 +174,9 @@
         isSdkCall = button.dataset.source === 'SDK_WEBRTC';
         form.querySelector('[data-incoming-pbx]').value = isSdkCall ? '' : id;
         form.querySelector('[data-incoming-sdk-id]').value = isSdkCall ? id : '';
+        const sdkAlias=String(button.dataset.sdkReference||'');
+        form.querySelector('[data-incoming-sdk-reference]').value=isSdkCall?'':sdkAlias;
+        callRefs=[...new Set([id,sdkAlias,button.dataset.pbxCallId].filter(Boolean))];
         sdkNotice.hidden = !isSdkCall;
         form.querySelector('[data-incoming-number]').textContent =
             String(button.dataset.phone || 'Número privado');
@@ -189,11 +217,12 @@
         // Si Recepción identificó el expediente, precargarlo por ID exacto
         // de esta sesión. El servidor volverá a validar la pertenencia al
         // Analista al guardar; nunca se asume que teléfono = identidad.
-        if (isSdkCall && id) {
+        if (id) {
             try {
-                const key = 'impe:crm:transfer-context:' + userId + ':' + id;
+                const contextId=sdkAlias||id;
+                const key = 'impe:crm:transfer-context:' + userId + ':' + contextId;
                 const context = JSON.parse(sessionStorage.getItem(key) || 'null');
-                if (context && context.call_id === id &&
+                if (context && context.call_id === contextId &&
                     Number(context.seguimiento_id) > 0 &&
                     Date.now() - Number(context.saved_at || 0) < 180000) {
                     decision.value = 'existente';
@@ -216,30 +245,25 @@
                 }
             } catch (_) {}
         }
-        // El borrador capturado DURANTE esta misma llamada desde el shell
-        // se importa únicamente por ID exacto y usuario actual. Nunca se
-        // asigna automáticamente al expediente de otra llamada.
-        try {
-            if (userId > 0 && id) {
-                const key = 'impe:crm:call-draft:' + userId + ':' + id;
-                const draft = JSON.parse(sessionStorage.getItem(key) || 'null');
-                if (draft && draft.call_id === id &&
-                    Date.now() - Number(draft.saved_at || 0) < 86400000) {
-                    const names = {
-                        nombre:'nombre_entidad',
-                        persona:'persona_atendio',
-                        telefono:'telefono_capturado',
-                        correo:'correo_capturado',
-                        notas:'observacion'
-                    };
-                    Object.entries(names).forEach(([from, to]) => {
-                        const input = form.elements.namedItem(to);
-                        if (input && !input.value) input.value =
-                            String(draft[from] || '');
-                    });
-                }
+        const restore=async()=>{
+            const values=await drafts?.read(userId,callRefs);
+            if(!values||cycle!==modalCycle||formDirty)return;
+            const names={nombre:'nombre_entidad',persona:'persona_atendio',telefono:'telefono_capturado',correo:'correo_capturado',notas:'observacion',contacto_nombre:'nuevo_contacto_nombre',contacto_cargo:'nuevo_contacto_cargo'};
+            for(const [key,value] of Object.entries(values)) {
+                const el=form.elements.namedItem(names[key]||key);
+                if(!el||['csrf_token','pbx_call_id','sdk_session_id','sdk_reference','confirmacion_manual_sdk'].includes(el.name))continue;
+                if(el.type==='checkbox')el.checked=value==='1';
+                else if(el.name==='seguimiento_id'&&value) {
+                    // Recuperar el ID elegido conserva el borrador; el servidor revalida su cartera.
+                    if(!Array.from(el.options).some(o=>o.value===value))el.add(new Option('Expediente seleccionado · #'+value,value));
+                    el.value=value;
+                } else el.value=String(value||'');
             }
-        } catch (_) { /* La ficha sigue siendo editable sin borrador. */ }
+            if(values.telefono && !form.elements.nuevo_telefono_contacto.value)form.elements.nuevo_telefono_contacto.value=values.telefono;
+            if(values.correo && !form.elements.nuevo_correo_contacto.value)form.elements.nuevo_correo_contacto.value=values.correo;
+            renderDecision();draftStatus.hidden=false;draftStatus.textContent='Borrador recuperado. Revisa los datos antes de guardar.';
+        };
+        void restore();
         modal.show();
     };
 
@@ -342,9 +366,22 @@
     };
 
     // Audio PBX confirmado de entrantes; no vincular por aproximación la sesión SDK.
+    page.addEventListener('click',async event=>{
+        const button=event.target.closest('[data-confirm-verification]');if(!button||button.disabled)return;
+        button.disabled=true;
+        try {
+            const body=new FormData();body.set('csrf_token',csrf());body.set('pbx_call_id',button.dataset.confirmVerification);
+            body.set('sdk_reference',button.dataset.sdkReference);body.set('confirmar_verificacion','1');
+            const res=await fetch(saveUrl,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json'},body});
+            const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.mensaje||'No se pudo confirmar la verificación.');
+            if(!data.resultado?.verificacion_confirmada)throw new Error('La verificación ya fue confirmada o todavía no tiene evidencia pendiente. Actualiza el historial.');
+            sessionStorage.setItem('impe:call-result-flash','Verificación confirmada. Se contabiliza como máximo una institución por día.');
+            window.location.reload();
+        }catch(error){showError(error.message);button.disabled=false;}
+    });
     page.addEventListener('click', async event => {
         const button = event.target.closest('[data-incoming-pbx-toggle]');
-        if (!button) return;
+        if (!button || !page.contains(button)) return;
         event.preventDefault();
         const panel = document.getElementById(button.getAttribute('aria-controls'));
         if (!panel) return;
@@ -469,7 +506,13 @@
         if (isSubmitting) return;
         clearError();
         if (!form.reportValidity()) return;
+        if(resultInput.value==='CONTACTO_REFERIDO' && !Array.from(referred.querySelectorAll('input')).some(e=>e.value.trim())) {showError('Captura algún dato de la persona o área referida.');return;}
+        clearTimeout(draftTimer);
+        const requestBody=new FormData(form);
+        const disabledState=Array.from(form.elements).map(e=>[e,e.disabled]);
         isSubmitting = true;
+        disabledState.forEach(([e])=>e.disabled=true);
+        modalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(e=>e.disabled=true);
         submit.disabled = true;
         const original = submit.innerHTML;
         submit.textContent = 'Guardando…';
@@ -477,51 +520,37 @@
             const res = await fetch(saveUrl, {
                 method: 'POST', credentials: 'same-origin',
                 headers: {'Accept': 'application/json', 'X-Requested-With': 'fetch'},
-                body: new FormData(form)
+                body: requestBody
             });
             const data = await res.json();
             if (!res.ok || !data.ok) {
                 throw new Error(data.mensaje || 'No fue posible registrar la llamada.');
             }
-            try {
-                const id = String(
-                    form.querySelector('[data-incoming-sdk-id]')?.value ||
-                    form.querySelector('[data-incoming-pbx]')?.value || '');
-                if (id && userId) {
-                    sessionStorage.removeItem(
-                        'impe:crm:call-draft:' + userId + ':' + id);
-                    sessionStorage.removeItem(
-                        'impe:crm:call-summary:' + userId + ':' + id);
-                    sessionStorage.removeItem(
-                        'impe:crm:transfer-context:' + userId + ':' + id);
-                }
-            } catch (_) {}
-            modal.hide();
-            // Unicamente después del OK de MySQL avisamos al shell que
-            // puede retirar la obligación visual de registrar resultado.
-            const confirmedId = String(
-                form.querySelector('[data-incoming-sdk-id]')?.value ||
-                form.querySelector('[data-incoming-pbx]')?.value || ''
-            );
-            if (confirmedId && window.parent !== window) {
-                window.parent.postMessage({
-                    type:'IMPE_ANALYST_RESULT_SAVED',
-                    callId:confirmedId
-                }, window.location.origin);
+            closingAfterSave=true;
+            ++modalCycle;
+            for(const id of callRefs) {
+                try {sessionStorage.removeItem('impe:crm:call-draft:'+userId+':'+id);}catch(_){}
+                if(window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_RESULT_SAVED',callId:id},window.location.origin);
             }
-            // Sólo el servidor decide a qué expediente pertenece.
-            // Para existente o nueva, abrirlo inmediatamente tras guardar.
-            const linked = Number(data.resultado?.seguimiento_id || 0);
-            const target = linked > 0
-                ? 'index.php?controller=seguimientoVinculacion&action=detalle&id=' + linked
-                : 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes';
-            window.location.assign(new URL(target, window.location.href).toString());
+            void drafts?.remove(userId,callRefs,requestBody.get('csrf_token')).catch(()=>{});
+            const result=data.resultado||{};
+            const message=result.verificacion_confirmada ? 'Atención guardada con verificación efectiva. Máximo una institución por día.' :
+                result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : 'Atención guardada.';
+            try {sessionStorage.setItem('impe:call-result-flash',message);}catch(_){}
+            const linked=Number(result.seguimiento_id||0);
+            const target=linked>0?'index.php?controller=seguimientoVinculacion&action=detalle&id='+linked:
+                'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes';
+            modalEl.addEventListener('hidden.bs.modal',()=>window.location.assign(new URL(target,window.location.href).toString()),{once:true});
+            modal.hide();
         } catch (error) {
             showError(error.message || 'No fue posible guardar. Intenta nuevamente.');
         } finally {
-            submit.disabled = false;
-            submit.innerHTML = original;
-            isSubmitting = false;
+            if (!closingAfterSave) {
+                submit.innerHTML = original;
+                isSubmitting = false;
+                disabledState.forEach(([e,disabled])=>e.disabled=disabled);
+                modalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(e=>e.disabled=false);
+            }
         }
     });
 
@@ -532,7 +561,7 @@
         // Ambas referencias identifican la misma tarjeta consolidada.
         const found = Array.from(page.querySelectorAll('[data-call-id]'))
             .find(el => el.dataset.callId === focusId ||
-                el.dataset.pbxCallId === focusId);
+                el.dataset.pbxCallId === focusId || el.dataset.sdkReference===focusId);
         const retryKey = 'impe:incoming-focus-retry:' + focusId;
         if (found) {
             try { sessionStorage.removeItem(retryKey); } catch (_) {}

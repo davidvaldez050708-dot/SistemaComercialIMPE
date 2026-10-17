@@ -458,9 +458,10 @@
                 const telefonoNuevo = String(campoTelefonoReferido?.value || '').trim();
                 const correoNuevo = String(campoCorreoReferido?.value || '').trim();
 
-                if (telefonoNuevo === '' && correoNuevo === '') {
+                if (telefonoNuevo === '' && correoNuevo === '' &&
+                    !String(campoNombreReferido?.value||'').trim() && !String(campoCargoReferido?.value||'').trim()) {
                     const mensaje =
-                        'Captura al menos el nuevo teléfono o correo proporcionado por la institución.';
+                        'Captura algún dato de la persona o área referida.';
                     mostrarToastLocal(mensaje, true);
                     marcarCampoInvalido(campoTelefonoReferido || campoCorreoReferido, mensaje);
                     return false;
@@ -487,7 +488,9 @@
                     resultado === 'CONTACTO_REFERIDO' &&
                     (
                         String(campoTelefonoReferido?.value || '').trim() !== '' ||
-                        String(campoCorreoReferido?.value || '').trim() !== ''
+                        String(campoCorreoReferido?.value || '').trim() !== '' ||
+                        String(campoNombreReferido?.value || '').trim() !== '' ||
+                        String(campoCargoReferido?.value || '').trim() !== ''
                     )
                 );
 

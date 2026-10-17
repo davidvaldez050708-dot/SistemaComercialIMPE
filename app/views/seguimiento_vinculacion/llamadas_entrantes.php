@@ -6,8 +6,6 @@ $llamadas = is_array($bandejaEntrantes['llamadas'] ?? null)
     ? $bandejaEntrantes['llamadas'] : [];
 $seleccionarId = trim((string)($_GET['sdk_session_id'] ?? ($_GET['pbx_call_id'] ?? '')));
 $estadosEntrantes = $estadosEntrantes ?? [];
-$seleccionarId = trim((string)($_GET['sdk_session_id'] ?? ($_GET['pbx_call_id'] ?? '')));
-$estadosEntrantes = $estadosEntrantes ?? [];
 
 // Paginación en el servidor: no renderizar 100+ tarjetas ni reproductores.
 // Mantener los contadores globales sobre el historial completo.
@@ -130,8 +128,9 @@ $duracionEntrante = static function ($segundos) {
                     $esInterna = ($llamada['tipo_llamada'] ?? '') === 'INTERNA';
                     $situacion = (string)($llamada['clasificacion'] ?? 'PENDIENTE');
                     $sdkIdConciliado = trim((string)($llamada['sdk_session_id'] ?? ''));
-                    $idRegistroResultado = $sdkIdConciliado !== '' ? $sdkIdConciliado : $pbxId;
-                    $fuenteRegistroResultado = $sdkIdConciliado !== '' ? 'SDK_WEBRTC' : ($esWebrtc ? 'SDK_WEBRTC' : 'PBX');
+                    $usarPbx=!$esWebrtc && !empty($llamada['pbx_conversacion_confirmada']);
+                    $idRegistroResultado = !$usarPbx && $sdkIdConciliado !== '' ? $sdkIdConciliado : $pbxId;
+                    $fuenteRegistroResultado = $usarPbx ? 'PBX' : (($sdkIdConciliado!=='' || $esWebrtc) ? 'SDK_WEBRTC' : 'PBX');
                     $pbx = (string)($llamada['estado_pbx'] ?? '');
                     $finalizada = in_array($pbx, ['ended', 'transferred'], true);
                     $vinculada = $situacion === 'VINCULADA';
@@ -229,6 +228,7 @@ $duracionEntrante = static function ($segundos) {
                                     <button type="button" class="linkage-incoming-open"
                                         data-call-id="<?= $esc($idRegistroResultado) ?>"
                                         data-pbx-call-id="<?= $esc($pbxId) ?>"
+                                        data-sdk-reference="<?= $esc($sdkIdConciliado) ?>"
                                         data-source="<?= $esc($fuenteRegistroResultado) ?>"
                                         data-phone="<?= $esc($llamada['numero'] ?? '') ?>"
                                         data-answer="<?= !empty($llamada['contestada']) ? '1' : '0' ?>"
@@ -237,6 +237,12 @@ $duracionEntrante = static function ($segundos) {
                                         <?= $sinIdentificar ? 'Vincular expediente' : 'Registrar resultado' ?>
                                     </button>
                                 </span>
+                            <?php endif; ?>
+                            <?php if ($vinculada && $usarPbx && !empty($llamada['verificacion_pendiente']) && $sdkIdConciliado!==''): ?>
+                                <button type="button" class="linkage-incoming-open"
+                                    data-confirm-verification="<?= $esc($pbxId) ?>" data-sdk-reference="<?= $esc($sdkIdConciliado) ?>">
+                                    <i class="bi bi-check2-circle" aria-hidden="true"></i> Confirmar verificación
+                                </button>
                             <?php endif; ?>
                                 </div>
                                 <div class="linkage-call-history-meta">
@@ -420,6 +426,8 @@ $duracionEntrante = static function ($segundos) {
                     <input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token'] ?? '') ?>">
                     <input type="hidden" name="pbx_call_id" data-incoming-pbx>
                     <input type="hidden" name="sdk_session_id" data-incoming-sdk-id>
+                    <input type="hidden" name="sdk_reference" data-incoming-sdk-reference>
+                    <p class="text-muted small" data-incoming-draft-status role="status" hidden></p>
                     <div class="linkage-incoming-summary">
                         <span><i class="bi bi-telephone-inbound" aria-hidden="true"></i> <strong data-incoming-number>—</strong></span>
                         <span><i class="bi bi-clock" aria-hidden="true"></i> <strong data-incoming-duration>00:00</strong></span>
@@ -429,7 +437,7 @@ $duracionEntrante = static function ($segundos) {
                     <div data-incoming-sdk-notice hidden></div>
                     <div class="mb-3">
                         <label class="form-label">¿A qué institución corresponde?</label>
-                        <select name="decision" class="form-select" data-incoming-decision required>
+                        <select data-native-select name="decision" class="form-select" data-incoming-decision required>
                             <option value="existente">Institución con seguimiento existente</option>
                             <option value="nueva">Institución nueva</option>
                             <option value="sin_identificar">No se pudo identificar</option>
@@ -452,7 +460,7 @@ $duracionEntrante = static function ($segundos) {
                             <label class="form-label" for="incomingLookup">Buscar expediente</label>
                             <input id="incomingLookup" class="form-control" type="search" data-incoming-lookup
                                 placeholder="Nombre de la institución o teléfono" autocomplete="off">
-                            <select class="form-select mt-2" name="seguimiento_id" data-incoming-followup>
+                            <select data-native-select class="form-select mt-2" name="seguimiento_id" data-incoming-followup>
                                 <option value="">Selecciona un expediente</option>
                             </select>
                         </div>
@@ -465,7 +473,7 @@ $duracionEntrante = static function ($segundos) {
                             </div>
                             <div class="col-12 col-md-5">
                                 <label class="form-label" for="incomingType">Tipo de entidad</label>
-                                <select id="incomingType" name="tipo_entidad" class="form-select">
+                                <select data-native-select id="incomingType" name="tipo_entidad" class="form-select">
                                     <option value="INSTITUCION">Institución</option>
                                     <option value="SECRETARIA">Secretaría</option>
                                     <option value="MUNICIPIO">Municipio</option>
@@ -488,7 +496,7 @@ $duracionEntrante = static function ($segundos) {
                             </div>
                             <div class="col-12">
                                 <label class="form-label" for="incomingState">Territorio asignado</label>
-                                <select id="incomingState" name="estado_id" class="form-select">
+                                <select data-native-select id="incomingState" name="estado_id" class="form-select">
                                     <option value="">Selecciona un estado</option>
                                     <?php foreach ($estadosEntrantes as $estado): ?>
                                         <option value="<?= (int)$estado['id'] ?>"><?= $esc($estado['nombre'] ?? '') ?></option>
@@ -502,9 +510,15 @@ $duracionEntrante = static function ($segundos) {
                         <div class="row g-3">
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="incomingResult">Resultado</label>
-                                <select id="incomingResult" class="form-select" name="resultado">
+                                <select data-native-select id="incomingResult" class="form-select" name="resultado">
                                     <option value="">Seleccionar resultado</option>
                                     <option value="CONTACTO_CORRECTO">Contacto correcto</option>
+                                    <option value="CONTACTO_REFERIDO">Me proporcionaron otro contacto</option>
+                                    <option value="BUZON_VOZ">Buzón de voz</option>
+                                    <option value="FUERA_SERVICIO">Fuera del área / fuera de servicio</option>
+                                    <option value="SIN_RESPUESTA">Sin respuesta</option>
+                                    <option value="OCUPADO">Ocupado</option>
+                                    <option value="NUMERO_INCORRECTO">Número incorrecto</option>
                                     <option value="SOLICITO_INFORMACION">Solicitó información</option>
                                     <option value="SOLICITO_LLAMAR_DESPUES">Solicitó volver a llamar</option>
                                     <option value="NO_INTERESADO">No interesado</option>
@@ -512,12 +526,12 @@ $duracionEntrante = static function ($segundos) {
                                 </select>
                             </div>
                             <div class="col-12 col-md-6">
-                                <label class="form-label" for="incomingPerson">Persona que llamó</label>
+                                <label class="form-label" for="incomingPerson">Persona que atendió</label>
                                 <input id="incomingPerson" name="persona_atendio" maxlength="140" class="form-control">
                             </div>
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="incomingNext">Próxima acción</label>
-                                <select id="incomingNext" name="proxima_accion" class="form-select">
+                                <select data-native-select id="incomingNext" name="proxima_accion" class="form-select">
                                     <option value="">Sin próxima acción</option>
                                     <option value="Volver a llamar">Volver a llamar</option>
                                     <option value="Enviar WhatsApp">Enviar WhatsApp</option>
@@ -531,6 +545,20 @@ $duracionEntrante = static function ($segundos) {
                             </div>
                         </div>
                     </div>
+                    <div class="linkage-call-verification-box mt-3" data-incoming-referred hidden>
+                        <strong>Contacto proporcionado por la institución</strong>
+                        <p class="text-muted small">Estos datos se incorporarán al expediente. La persona referida puede ser distinta de quien atendió.</p>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6"><label class="form-label" for="incomingReferredName">Nombre del contacto</label>
+                                <input id="incomingReferredName" name="nuevo_contacto_nombre" maxlength="140" class="form-control"></div>
+                            <div class="col-12 col-md-6"><label class="form-label" for="incomingReferredRole">Cargo o área</label>
+                                <input id="incomingReferredRole" name="nuevo_contacto_cargo" maxlength="150" class="form-control"></div>
+                            <div class="col-12 col-md-6"><label class="form-label" for="incomingReferredPhone">Teléfono proporcionado</label>
+                                <input id="incomingReferredPhone" name="nuevo_telefono_contacto" type="tel" maxlength="40" class="form-control"></div>
+                            <div class="col-12 col-md-6"><label class="form-label" for="incomingReferredEmail">Correo proporcionado</label>
+                                <input id="incomingReferredEmail" name="nuevo_correo_contacto" type="email" maxlength="160" class="form-control"></div>
+                        </div>
+                    </div>
                     <div class="mt-3" data-incoming-sdk-confirm hidden>
                         <label><input type="checkbox" name="confirmacion_manual_sdk" value="1">
                             Confirmo que atendí esta llamada y conversé con la persona indicada
@@ -538,7 +566,7 @@ $duracionEntrante = static function ($segundos) {
                     </div>
                     <div class="linkage-incoming-evidence mt-3" data-incoming-evidence hidden>
                         <strong>Datos verificados durante esta llamada</strong>
-                        <p>Solo se contabilizan cuando se registran evidencias y la centralita confirma que hubo conversación real.</p>
+                        <p>Confirma lo que verificaste. Cuenta como máximo una institución por día; si falta la confirmación de la llamada, queda pendiente de acreditar.</p>
                         <label><input type="checkbox" name="verificacion_telefono_confirmado" value="1">
                             Confirmé que el teléfono corresponde a la institución</label>
                         <label><input type="checkbox" name="verificacion_correo_confirmado" value="1">

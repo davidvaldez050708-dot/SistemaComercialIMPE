@@ -256,6 +256,7 @@
                 currentState.phase !== 'in-progress') return null;
             return {
                 id:incomingCallId(currentState),
+                aliases:[currentState.pbxCallId,currentState.callToken].filter(Boolean),
                 direction:String(currentState.direction || ''),
                 phone:String(currentState.destination || ''),
                 extension:String(cfg.extension || '')

@@ -10,6 +10,7 @@ $src = static function (string $ruta) use ($raiz): string {
     return $contenido;
 };
 $servicio = $src('app/services/TelefoniaEntrantesAnalistaService.php');
+$reglas = $src('app/services/VerificacionInstitucionalService.php');
 $modelo = $src('app/models/SeguimientoVinculacionModel.php');
 $controller = $src('app/controllers/SeguimientoVinculacionController.php');
 $shell = $src('app/views/telefonia/shell.php');
@@ -58,14 +59,14 @@ $checks = [
     'No registrar una verificación efectiva falsa' =>
         str_contains($servicio, "'datos_verificados' => 0") &&
         str_contains($servicio, 'empty($call[\'answer_at\'])') &&
-        str_contains($servicio, '$segundosConversacion <= 0') &&
-        str_contains($servicio, 'if ($evidencias && $personaAtendio === \'\')'),
+        str_contains($servicio, "\$personaAtendio==='' || \$segundosConversacion<=0"),
     'Verificaciones: evidencia técnica y de contacto' =>
-        str_contains($servicio, "verificacion_telefono_confirmado") &&
-        str_contains($servicio, "verificacion_correo_confirmado") &&
-        str_contains($servicio, "verificacion_contacto_confirmado") &&
-        str_contains($servicio, "[VERIFICACION_EFECTIVA]") &&
-        str_contains($servicio, "'datos_verificados' => " . '$evidencias ? 1'),
+        str_contains($reglas, 'verificacion_telefono_confirmado') &&
+        str_contains($reglas, 'verificacion_correo_confirmado') &&
+        str_contains($reglas, 'verificacion_contacto_confirmado') &&
+        str_contains($servicio, '[VERIFICACION_PENDIENTE_PBX]') &&
+        str_contains($servicio, 'pbx_conversacion_confirmada') &&
+        str_contains($servicio, "'preservar_estado'=>true"),
     'Descarte motivado sujeto a resultado de no interés' =>
         str_contains($servicio, "Para descartar indica No interesado") &&
         str_contains($servicio, "'descartar' => " . '$descartar ? 1 : 0') &&
@@ -87,12 +88,12 @@ $checks = [
     'WebRTC observado guardado separado y sujeto a confirmación humana' =>
         str_contains($servicio, 'TelefoniaAnalistaWebrtcService') &&
         str_contains($servicio, "confirmacion_manual_sdk") &&
-        str_contains($servicio, "Las llamadas WebRTC sin evento PBX no acreditan verificaciones efectivas.") &&
+        str_contains($servicio, "[VERIFICACION_PENDIENTE_PBX]") &&
         str_contains($vista, 'data-incoming-sdk-id') &&
         str_contains($vista, 'data-incoming-sdk-confirm') &&
-        str_contains($jsShell, 'finishedSdk'),
+        str_contains($jsShell, 'finishedIncoming'),
     'La recepción de Marketing continúa independiente' =>
-        str_contains($shell, "'autoReception' => " . '$marketingShell || $analistaEntrantesShell') &&
+        str_contains($shell, "'autoReception' => " . '$puedeRecibirShell') &&
         str_contains($shell, '$marketingShell'),
 ];
 foreach ($checks as $nombre => $ok) {

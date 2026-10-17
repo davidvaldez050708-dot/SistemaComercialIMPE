@@ -540,44 +540,44 @@
     // automáticamente un expediente por llenar esta ficha.
     const captureForm = $('[data-routing-capture-form]');
     const captureMsg = $('[data-routing-capture-message]');
-    const draftKeyFor = id => 'impe:crm:call-draft:'+Number(cfg.userId)+':'+id;
-    let draftCallId = '';
-    const updateDraftContext = () => {
-        const id = call()?.id || '';
-        if (id && id !== draftCallId && captureForm) {
-            draftCallId = id;
-            captureForm.reset();
-            try {
-                const saved = JSON.parse(sessionStorage.getItem(draftKeyFor(id)) || 'null');
-                if (saved && Date.now() - Number(saved.saved_at || 0) < 86400000) {
-                    ['nombre','persona','telefono','correo','notas'].forEach(name => {
-                        if (captureForm.elements.namedItem(name))
-                            captureForm.elements.namedItem(name).value =
-                                String(saved[name] || '');
-                    });
-                }
-            } catch (_) {}
-            if (captureMsg) captureMsg.textContent='';
+    const drafts=window.IMPE_CALL_DRAFTS;
+    let draftCallId='',draftRefs=[],draftDirty=false,draftCycle=0,draftTimer=null;
+    const values=()=>Object.fromEntries(['nombre','persona','telefono','correo','notas','contacto_nombre','contacto_cargo']
+        .map(name=>[name,String(captureForm.elements.namedItem(name)?.value||'').trim()]));
+    const save=async()=>{
+        if(!draftCallId||!drafts||!captureForm)return;
+        const cycle=draftCycle,ids=[...draftRefs],data=values();
+        if(captureMsg)captureMsg.textContent='Guardando borrador…';
+        try {
+            await drafts.save(Number(cfg.userId),ids,data,String(cfg.routingCsrf||''));
+            if(cycle===draftCycle&&captureMsg)captureMsg.textContent='Borrador guardado. Revisa el resultado al finalizar.';
+        } catch (_) {
+            if(cycle===draftCycle&&captureMsg)captureMsg.textContent='Conservado en este navegador. Pendiente de guardar en el servidor; vuelve a intentarlo.';
         }
     };
-    captureToggle?.addEventListener('click', updateDraftContext);
-    captureForm?.addEventListener('submit', event => {
-        event.preventDefault();
-        const current = call();
-        if (!current?.id) {
-            if (captureMsg) captureMsg.textContent='No hay llamada activa identificable.';
-            return;
+    const updateDraftContext=async()=>{
+        const current=call();if(!current?.id||!captureForm)return;
+        const ids=drafts?.refs([current.id,...(current.aliases||[])])||[current.id];
+        if(draftRefs.some(id=>ids.includes(id))){draftRefs=ids;draftCallId=current.id;return;}
+        const cycle=++draftCycle;clearTimeout(draftTimer);draftCallId=current.id;draftRefs=ids;draftDirty=false;captureForm.reset();
+        if(captureMsg)captureMsg.textContent='Recuperando borrador…';
+        const saved=await drafts?.read(Number(cfg.userId),ids);
+        if(cycle!==draftCycle||draftDirty)return;
+        if(saved)for(const [name,value] of Object.entries(saved)) {
+            const input=captureForm.elements.namedItem(name);if(input)input.value=String(value||'');
         }
-        const values = {saved_at:Date.now(), call_id:current.id};
-        ['nombre','persona','telefono','correo','notas'].forEach(name =>
-            values[name] = String(captureForm.elements.namedItem(name)?.value || '').trim());
-        try {
-            sessionStorage.setItem(draftKeyFor(current.id), JSON.stringify(values));
-            if (captureMsg) captureMsg.textContent =
-                'Borrador guardado para esta llamada. Confirma el resultado al finalizar.';
-        } catch (_) {
-            if (captureMsg) captureMsg.textContent =
-                'El navegador no pudo guardar el borrador.';
+        if(captureMsg)captureMsg.textContent=saved?'Borrador recuperado.':'';
+    };
+    captureToggle?.addEventListener('click',()=>void updateDraftContext());
+    captureForm?.addEventListener('input',()=>{
+        const current=call();
+        if(current && draftRefs.some(id=>[current.id,...(current.aliases||[])].includes(id))) {
+            draftRefs=drafts?.refs([current.id,...(current.aliases||[])])||draftRefs;
+            draftCallId=current.id;
         }
+        draftDirty=true;
+        drafts?.localSave(Number(cfg.userId),draftRefs,values());clearTimeout(draftTimer);draftTimer=setTimeout(save,700);
     });
+    captureForm?.addEventListener('submit',event=>{event.preventDefault();clearTimeout(draftTimer);void save();});
+    window.addEventListener('pagehide',()=>{if(draftDirty)void save();});
 })();

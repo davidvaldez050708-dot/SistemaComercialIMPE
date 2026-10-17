@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/VerificacionInstitucionalService.php';
+require_once __DIR__ . '/TelefoniaVerificacionEvidenciaService.php';
 
 class InteraccionRutaService
 {
@@ -68,8 +70,8 @@ class InteraccionRutaService
             return $this->error('Selecciona un resultado válido.', 422);
         }
 
-        $personaAtendio = trim((string)($datos['persona_atendio'] ?? ''));
-        $observacion = trim((string)($datos['observacion'] ?? ''));
+        $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($datos['persona_atendio'] ?? ''));
+        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion'] ?? ''));
         $origenLlamada = strtoupper(trim((string)($datos['origen_llamada'] ?? 'MANUAL')));
         if (!in_array($origenLlamada, ['ZADARMA', 'PRUEBA', 'MANUAL'], true)) {
             $origenLlamada = 'MANUAL';
@@ -77,8 +79,8 @@ class InteraccionRutaService
 
         $nuevoTelefonoContacto = trim((string)($datos['nuevo_telefono_contacto'] ?? ''));
         $nuevoCorreoContacto = trim((string)($datos['nuevo_correo_contacto'] ?? ''));
-        $nuevoContactoNombre = trim((string)($datos['nuevo_contacto_nombre'] ?? ''));
-        $nuevoContactoCargo = trim((string)($datos['nuevo_contacto_cargo'] ?? ''));
+        $nuevoContactoNombre = VerificacionInstitucionalService::limpiarObservacion((string)($datos['nuevo_contacto_nombre'] ?? ''));
+        $nuevoContactoCargo = VerificacionInstitucionalService::limpiarObservacion((string)($datos['nuevo_contacto_cargo'] ?? ''));
 
         if ($resultadoFormulario === 'CONTACTO_REFERIDO') {
             if ($canalFormulario !== 'LLAMADA') {
@@ -88,9 +90,9 @@ class InteraccionRutaService
                 );
             }
 
-            if ($nuevoTelefonoContacto === '' && $nuevoCorreoContacto === '') {
+            if ($nuevoTelefonoContacto === '' && $nuevoCorreoContacto === '' && $nuevoContactoNombre === '' && $nuevoContactoCargo === '') {
                 return $this->error(
-                    'Captura al menos el nuevo teléfono o correo proporcionado por la institución.',
+                    'Captura algún dato de la persona o área referida.',
                     422
                 );
             }
@@ -181,7 +183,12 @@ class InteraccionRutaService
             }
         }
 
-        $evidenciasVerificacion = array_values(array_unique($evidenciasVerificacion));
+        try {
+            if ($resultadoFormulario==='CONTACTO_REFERIDO') VerificacionInstitucionalService::referido($datos);
+            $detallesVerificacion=$canalFormulario==='LLAMADA' && $resultadoAdmiteVerificacion
+                ? VerificacionInstitucionalService::detalles($datos,$seguimiento) : [];
+        } catch (InvalidArgumentException|DomainException $e) {return $this->error($e->getMessage(),422);}
+        $evidenciasVerificacion=array_column($detallesVerificacion,'etiqueta');
         $esCandidataVerificacion =
             $canalFormulario === 'LLAMADA' &&
             $resultadoAdmiteVerificacion &&
@@ -246,6 +253,8 @@ class InteraccionRutaService
             $notas = 'Interacción informativa registrada durante la ruta de vinculación.';
         }
 
+        $evidenciaStore=new TelefoniaVerificacionEvidenciaService($this->connection);
+        if ($detallesVerificacion) $evidenciaStore->asegurarEstructura();
         $this->connection->begin_transaction();
         $etapaPersistencia = 'guardar la interacción';
 
@@ -271,8 +280,9 @@ class InteraccionRutaService
             $stmt->execute();
 
             $interaccionId = (int)$this->connection->insert_id;
+            $evidenciaStore->guardar($interaccionId,$usuarioId,$seguimientoId,$detallesVerificacion,$personaAtendio,false);
 
-            if ($nuevoTelefonoContacto !== '' || $nuevoCorreoContacto !== '') {
+            if ($nuevoTelefonoContacto !== '' || $nuevoCorreoContacto !== '' || $nuevoContactoNombre !== '' || $nuevoContactoCargo !== '') {
                 $etapaPersistencia = 'actualizar el contacto referido';
                 $telefonoDestinoContacto = $nuevoTelefonoContacto !== ''
                     ? $nuevoTelefonoContacto

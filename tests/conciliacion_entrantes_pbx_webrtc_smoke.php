@@ -23,15 +23,18 @@ $sdk = [
    'seguimiento_id'=>0,'interaccion_id'=>0]
 ];
 $result = TelefoniaEntrantesAnalistaService::conciliarHistorialPbxWebrtc($pbx,$sdk);
-if (count($result)!==2 || $result[0]['pbx_call_id']!=='in_first' ||
-    $result[1]['pbx_call_id']!=='in_second' ||
-    $result[0]['sesion_webrtc_correlacionada']!=='sdk-one' ||
-    !$result[1]['grabacion_pbx_reportada']) {
+$porId=array_column($result,null,'pbx_call_id');
+if (count($result)!==2 ||
+    $porId['in_first']['sesion_webrtc_correlacionada']!=='sdk-one' ||
+    $porId['in_second']['sesion_webrtc_correlacionada']!=='sdk-two' ||
+    !$porId['in_second']['grabacion_pbx_reportada']) {
     throw new RuntimeException('No se conciliaron las sesiones exactas sin perder audio PBX.');
 }
-$sdk[0]['clasificacion']='EXISTENTE';
+$sdk[0]['clasificacion']='VINCULADA';$sdk[0]['interaccion_id']=7;$sdk[0]['seguimiento_id']=3;
 $result=TelefoniaEntrantesAnalistaService::conciliarHistorialPbxWebrtc($pbx,[$sdk[0]]);
-if (count($result)!==3) throw new RuntimeException('Se ocultó una clasificación guardada.');
+$porId=array_column($result,null,'pbx_call_id');
+if (count($result)!==2 || $porId['in_first']['interaccion_id']!==7 || $porId['in_first']['clasificacion']!=='VINCULADA') throw new RuntimeException('Se perdió una clasificación guardada.');
+$sdk[0]['interaccion_id']=0;$sdk[0]['seguimiento_id']=0;
 $sdk[0]['clasificacion']='PENDIENTE';
 $ambiguous = $pbx;
 $ambiguous[]=$pbx[0];

@@ -759,6 +759,9 @@
                         formulario,
                         metadata
                     );
+                    document.dispatchEvent(new CustomEvent('impe:call-result-form-opened', {
+                        detail:{form:formulario,ids:[metadata.pbx_call_id,metadata.call_token,lastFinishedToken].filter(Boolean)}
+                    }));
                     formulario.classList
                         .remove('d-none');
                     formulario.scrollIntoView({
@@ -1007,6 +1010,9 @@
                     const form = offcanvas.querySelector('[data-work-interaction-form]');
                     const notice = form?.querySelector('[data-telephony-call-summary]');
                     if (notice) notice.remove();
+                    void window.IMPE_CALL_DRAFTS?.remove(usuarioId,
+                        [metadata.pbx_call_id,metadata.call_token,token].filter(Boolean),
+                        form?.querySelector('[name="csrf_token"]')?.value||'').catch(()=>{});
                     mostrarToast(
                         finalMessage,
                         false

@@ -73,7 +73,7 @@ class TelefoniaAnalistaWebrtcService
 
     private function extension(int $usuarioId): string
     {
-        $a = (new TelefoniaExtensionService())->resolverParaUsuario($usuarioId);
+        $a = (new TelefoniaExtensionService($this->db))->resolverParaUsuario($usuarioId);
         $extension = trim((string)($a['extension'] ?? ''));
         if (empty($a['permite_entrantes']) ||
             !preg_match('/^[0-9]{3,6}$/', $extension)) {

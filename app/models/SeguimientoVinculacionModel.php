@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../services/VerificacionInstitucionalService.php';
+require_once __DIR__ . '/../services/TelefoniaVerificacionEvidenciaService.php';
 
 class SeguimientoVinculacionModel
 {
@@ -1318,6 +1320,8 @@ class SeguimientoVinculacionModel
 
     public function registrarInteraccionManual($seguimientoId, $usuarioId, $datos, $transaccionExterna = false)
     {
+        $evidenciaStore=new TelefoniaVerificacionEvidenciaService($this->connection);
+        if (!$transaccionExterna && !empty($datos['verificacion_detalles'])) $evidenciaStore->asegurarEstructura();
         $this->ultimoErrorInteraccion = '';
         $this->ultimaInteraccionCreadaId = 0;
         $etapaPersistencia = 'guardar la interacción';
@@ -1349,9 +1353,8 @@ class SeguimientoVinculacionModel
          * avanzó a Datos verificados, ese recordatorio quedó atendido y no
          * debe seguir apareciendo como vencido.
          */
-        if ($estadoSeguimiento === 'DATOS_VERIFICADOS') {
-            $proximaAccionAt = null;
-        } elseif ($proximaAccionAt !== null) {
+        // Una verificación no completa ni cancela una devolución futura.
+        if ($proximaAccionAt !== null) {
             $fechaInteraccionTs = strtotime($fechaInicio);
             $proximaAccionTs = strtotime((string)$proximaAccionAt);
 
@@ -1367,6 +1370,22 @@ class SeguimientoVinculacionModel
         if (!$transaccionExterna) $this->connection->begin_transaction();
 
         try {
+            if (!empty($datos['preservar_estado'])) {
+                $actualStmt=$this->connection->prepare('SELECT estado_seguimiento, proxima_accion_at
+                    FROM seguimientos_vinculacion WHERE id=? AND analista_id=? AND activo=1 FOR UPDATE');
+                $actualStmt->bind_param('ii',$seguimientoId,$usuarioId);
+                $actualStmt->execute();
+                $actual=$actualStmt->get_result()->fetch_assoc();
+                $actualStmt->close();
+                if (!$actual || $actual['estado_seguimiento']==='DESCARTADO') {
+                    throw new DomainException('El expediente ya no está disponible para registrar la atención.');
+                }
+                $estadoSeguimiento=VerificacionInstitucionalService::estadoAtencion((string)$actual['estado_seguimiento'],$descartar);
+                if (!$descartar && $proximaAccionAt===null &&
+                    strtotime((string)($actual['proxima_accion_at'] ?? ''))>strtotime($fechaInicio)) {
+                    $proximaAccionAt=$actual['proxima_accion_at'];
+                }
+            }
             $etapaPersistencia = 'guardar la interacción';
             $sqlInteraccion = "INSERT INTO interacciones_vinculacion (
                     seguimiento_id,
@@ -1409,13 +1428,18 @@ class SeguimientoVinculacionModel
             );
             $stmtInteraccion->execute();
             $interaccionCreadaId = (int)$this->connection->insert_id;
+            if (!empty($datos['verificacion_detalles'])) {
+                $evidenciaStore->guardar($interaccionCreadaId,$usuarioId,$seguimientoId,$datos['verificacion_detalles'],
+                    (string)($datos['persona_informante'] ?? ''),false);
+            }
 
             $nuevoTelefonoContacto = trim((string)($datos['nuevo_telefono_contacto'] ?? ''));
             $nuevoCorreoContacto = trim((string)($datos['nuevo_correo_contacto'] ?? ''));
             $nuevoContactoNombre = trim((string)($datos['nuevo_contacto_nombre'] ?? ''));
             $nuevoContactoCargo = trim((string)($datos['nuevo_contacto_cargo'] ?? ''));
 
-            if ($nuevoTelefonoContacto !== '' || $nuevoCorreoContacto !== '') {
+            if ($nuevoTelefonoContacto !== '' || $nuevoCorreoContacto !== '' ||
+                $nuevoContactoNombre !== '' || $nuevoContactoCargo !== '') {
                 $etapaPersistencia = 'actualizar el contacto referido';
 
                 $sqlContactoActual = "SELECT

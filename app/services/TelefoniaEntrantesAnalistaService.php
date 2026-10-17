@@ -4,6 +4,8 @@ require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 require_once __DIR__ . '/TelefoniaAnalistaWebrtcService.php';
 require_once __DIR__ . '/TelefoniaInternaGrabacionService.php';
+require_once __DIR__ . '/VerificacionInstitucionalService.php';
+require_once __DIR__ . '/TelefoniaVerificacionEvidenciaService.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 
 /**
@@ -16,10 +18,10 @@ class TelefoniaEntrantesAnalistaService
     private $db;
     private $eventos;
 
-    public function __construct()
+    public function __construct(?mysqli $connection=null)
     {
-        $this->db = (new Database())->connect();
-        $this->eventos = new ZadarmaWebhookEventStoreService();
+        $this->db = $connection ?? (new Database())->connect();
+        $this->eventos = new ZadarmaWebhookEventStoreService($this->db);
         $this->asegurarEstructura();
     }
 
@@ -172,6 +174,7 @@ class TelefoniaEntrantesAnalistaService
                 'duracion' => self::segundosAtendidos($call),
                 'estado_pbx' => (string)($call['estado'] ?? 'ringing'),
                 'contestada' => !empty($call['answer_at']),
+                'pbx_conversacion_confirmada' => !empty($call['answer_at']) && self::segundosAtendidos($call)>0 && in_array($call['estado'] ?? '', ['ended','transferred'],true),
                 'clasificacion' => (string)($registro['estado'] ?? 'PENDIENTE'),
                 'seguimiento_id' => (int)($registro['seguimiento_id'] ?? 0),
                 'interaccion_id' => (int)($registro['interaccion_id'] ?? 0),
@@ -201,9 +204,17 @@ class TelefoniaEntrantesAnalistaService
                 isset($conAudio[(string)$filaSdk['pbx_call_id']]);
         }
         unset($filaSdk);
-        // Conciliar una observación WebRTC con su llamada PBX firmada SOLO
-        // cuando la correspondencia es única en ambas direcciones. Nunca
-        // se altera la base de datos ni se asigna audio por semejanza sola.
+        $llamadas=self::conciliarHistorialPbxWebrtc($llamadas,$sesiones);
+        $pendientes=(new TelefoniaVerificacionEvidenciaService($this->db))->pendientes($usuarioId);
+        foreach ($llamadas as &$fila) {
+            $fila['verificacion_pendiente']=in_array((int)($fila['interaccion_id'] ?? 0),$pendientes,true);
+        }
+        unset($fila);
+        return ['extension'=>$extension,'llamadas'=>array_slice($llamadas,0,100)];
+    }
+
+    public static function conciliarHistorialPbxWebrtc(array $llamadas,array $sesiones): array
+    {
         $normalizarNumero = static function ($valor): string {
             $digitos = preg_replace('/\D+/', '', (string)$valor) ?: '';
             return strlen($digitos) >= 10 ? substr($digitos, -10) : '';
@@ -230,14 +241,27 @@ class TelefoniaEntrantesAnalistaService
             }
         }
         $ocultarSdk = [];
+        $masCercano=static function(array $indices,int $instante,array $lista) use ($timestamp): ?int {
+            $mejor=null;$distancia=PHP_INT_MAX;$empate=false;
+            foreach ($indices as $indice) {
+                $d=abs($timestamp($lista[$indice]['fecha'] ?? '')-$instante);
+                if ($d<$distancia) {$mejor=$indice;$distancia=$d;$empate=false;}
+                elseif ($d===$distancia) {$empate=true;}
+            }
+            return $empate?null:$mejor;
+        };
         foreach ($candidatos as $si => $indicesPbx) {
-            if (count($indicesPbx) !== 1) continue;
-            $pi = $indicesPbx[0];
-            if (count($inversos[$pi] ?? []) !== 1) continue;
+            $pi=$masCercano($indicesPbx,$timestamp($sesiones[$si]['fecha'] ?? ''),$llamadas);
+            if ($pi===null || $masCercano($inversos[$pi] ?? [],$timestamp($llamadas[$pi]['fecha'] ?? ''),$sesiones)!==$si) continue;
             $sdk = $sesiones[$si];
             $pbx = &$llamadas[$pi];
+            // Dos atenciones ya vinculadas a expedientes distintos no se consolidan.
+            if (!empty($pbx['interaccion_id']) && !empty($sdk['interaccion_id']) &&
+                (int)$pbx['interaccion_id']!==(int)$sdk['interaccion_id']) {unset($pbx);continue;}
             // Conservar el ID WebRTC para el formulario sin cambiar el ID PBX del audio.
             $pbx['sdk_session_id'] = (string)($sdk['pbx_call_id'] ?? '');
+            $pbx['sesion_webrtc_correlacionada']=$pbx['sdk_session_id'];
+            $pbx['pbx_conversacion_confirmada']=$pbx['pbx_conversacion_confirmada'] ?? (!empty($pbx['contestada']) && (int)($pbx['duracion'] ?? 0)>0 && in_array($pbx['estado_pbx'] ?? '', ['ended','transferred'],true));
             // El registro SDK puede confirmar una conversación aun cuando
             // NOTIFY_ANSWER no haya llegado para la misma pierna PBX.
             // La tarjeta unificada debe permitir registrar ese resultado,
@@ -270,7 +294,7 @@ class TelefoniaEntrantesAnalistaService
         usort($llamadas, static function ($a, $b) {
             return strcmp((string)($b['fecha'] ?? ''), (string)($a['fecha'] ?? ''));
         });
-        return ['extension' => $extension, 'llamadas' => array_slice($llamadas, 0, 100)];
+        return $llamadas;
     }
 
     public function estados(int $usuarioId): array
@@ -321,9 +345,52 @@ class TelefoniaEntrantesAnalistaService
      */
     public function registrar(int $usuarioId, array $datos): array
     {
+        foreach ($datos as $valor) if (!is_scalar($valor) && $valor!==null) throw new InvalidArgumentException('Los datos de la atención no son válidos.');
         $idSdk = trim((string)($datos['sdk_session_id'] ?? ''));
         $sdk = $idSdk !== '';
         $id = $sdk ? $idSdk : trim((string)($datos['pbx_call_id'] ?? ''));
+        $aliasSdk=trim((string)($datos['sdk_reference'] ?? ''));
+        $vinculo=null;
+        if ($aliasSdk!=='' || $sdk) {
+            foreach ($this->listar($usuarioId)['llamadas'] as $candidata) {
+                if (($candidata['sdk_session_id'] ?? '')===($sdk?$id:$aliasSdk) &&
+                    ($sdk || $candidata['pbx_call_id']===$id)) { $vinculo=$candidata; break; }
+            }
+            if ($aliasSdk!=='' && !$vinculo) throw new DomainException('La referencia de esta llamada cambió. Actualiza el historial.');
+            if ($sdk && !empty($vinculo['pbx_conversacion_confirmada'])) {
+                $aliasSdk=$id;$id=(string)$vinculo['pbx_call_id'];$sdk=false;
+            }
+        }
+        if (!empty($datos['confirmar_verificacion'])) {
+            if ($sdk || !$vinculo || empty($vinculo['pbx_conversacion_confirmada']) ||
+                empty($vinculo['interaccion_id']) || $aliasSdk==='') {
+                throw new DomainException('Todavía no existe una conversación confirmada para esta atención.');
+            }
+            $call=$this->inicioVerificado($usuarioId,$id);
+            if (empty($call['answer_at']) || empty($call['end_at']) || self::segundosAtendidos($call)<=0) {
+                throw new DomainException('La centralita todavía no confirmó el fin de la conversación.');
+            }
+            $this->db->begin_transaction();
+            try {
+                $ok=(new TelefoniaVerificacionEvidenciaService($this->db))->confirmar(
+                    $usuarioId,(int)$vinculo['interaccion_id'],$aliasSdk,$id,$call);
+                if ($ok) {
+                    $seguimientoId=(int)$vinculo['seguimiento_id'];$interaccionId=(int)$vinculo['interaccion_id'];
+                    $ext=(string)$call['extension'];
+                    $q=$this->db->prepare("SELECT interaccion_id FROM telefonia_analista_entrantes WHERE usuario_id=? AND pbx_call_id=? FOR UPDATE");
+                    $q->bind_param('is',$usuarioId,$id);$q->execute();$prev=$q->get_result()->fetch_assoc();$q->close();
+                    if (!empty($prev['interaccion_id']) && (int)$prev['interaccion_id']!==$interaccionId) throw new DomainException('Esta llamada ya tiene otra atención registrada.');
+                    $q=$this->db->prepare("INSERT INTO telefonia_analista_entrantes
+                        (usuario_id,extension,pbx_call_id,estado,seguimiento_id,interaccion_id)
+                        VALUES (?,?,?,'VINCULADA',?,?) ON DUPLICATE KEY UPDATE estado='VINCULADA',
+                        seguimiento_id=VALUES(seguimiento_id),interaccion_id=VALUES(interaccion_id)");
+                    $q->bind_param('issii',$usuarioId,$ext,$id,$seguimientoId,$interaccionId);$q->execute();$q->close();
+                }
+                $this->db->commit();
+                return ['estado'=>'VINCULADA','seguimiento_id'=>(int)$vinculo['seguimiento_id'],
+                    'interaccion_id'=>(int)$vinculo['interaccion_id'],'verificacion_confirmada'=>$ok];
+            } catch (Throwable $e) {$this->db->rollback();throw $e;}
+        }
         $decision = strtolower(trim((string)($datos['decision'] ?? '')));
         if (!in_array($decision, ['existente', 'nueva', 'sin_identificar'], true)) {
             throw new InvalidArgumentException('Selecciona cómo clasificar la llamada.');
@@ -351,7 +418,8 @@ class TelefoniaEntrantesAnalistaService
             // Un evento del navegador NO demuestra recepción PBX ni datos
             // verificados: sólo admite asociación comercial confirmada
             // expresamente por el usuario después de conversar.
-            if ($decision !== 'sin_identificar' &&
+            if ($decision !== 'sin_identificar' && in_array((string)($datos['resultado'] ?? ''),
+                ['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'],true) &&
                 (int)($datos['confirmacion_manual_sdk'] ?? 0) !== 1) {
                 throw new DomainException('Confirma que hablaste realmente con la persona antes de vincular esta llamada WebRTC.');
             }
@@ -370,15 +438,24 @@ class TelefoniaEntrantesAnalistaService
         if (empty($call['answer_at']) && $decision !== 'sin_identificar') {
             throw new DomainException('La centralita no confirmó una conversación. Clasifica sin identificar o devuelve la llamada.');
         }
-        $observacion = trim((string)($datos['observacion'] ?? ''));
+        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion'] ?? ''));
         if (mb_strlen($observacion, 'UTF-8') > 1000) {
             throw new InvalidArgumentException('Las observaciones son demasiado extensas.');
         }
 
         $model = new SeguimientoVinculacionModel($this->db);
         $extension = (string)$call['extension'];
+        $evidenciaStore=new TelefoniaVerificacionEvidenciaService($this->db);
+        $evidenciaStore->asegurarEstructura();
         $this->db->begin_transaction();
         try {
+            if (!$sdk && $aliasSdk!=='') {
+                $lock=$this->db->prepare('SELECT clasificacion,seguimiento_id,interaccion_id FROM telefonia_analista_webrtc_sesiones WHERE usuario_id=? AND session_id=? FOR UPDATE');
+                $lock->bind_param('is',$usuarioId,$aliasSdk);$lock->execute();$prev=$lock->get_result()->fetch_assoc();$lock->close();
+                if (!$prev || !in_array($prev['clasificacion'],['PENDIENTE','SIN_IDENTIFICAR'],true)) {
+                    throw new DomainException('La atención ya fue registrada. Actualiza el historial.');
+                }
+            }
             if (!$sdk) {
                 $stmt = $this->db->prepare(
                     "INSERT IGNORE INTO telefonia_analista_entrantes
@@ -433,6 +510,9 @@ class TelefoniaEntrantesAnalistaService
             $resultadoFormulario = strtoupper(trim((string)($datos['resultado'] ?? '')));
             $mapa = [
                 'CONTACTO_CORRECTO' => 'CONTACTADO',
+                'CONTACTO_REFERIDO' => 'CONTACTADO',
+                'BUZON_VOZ'=>'BUZON_VOZ','FUERA_SERVICIO'=>'FUERA_SERVICIO',
+                'SIN_RESPUESTA'=>'SIN_RESPUESTA','OCUPADO'=>'OCUPADO','NUMERO_INCORRECTO'=>'NUMERO_INCORRECTO',
                 'SOLICITO_INFORMACION' => 'SOLICITO_INFORMACION',
                 'SOLICITO_LLAMAR_DESPUES' => 'SOLICITO_LLAMAR_DESPUES',
                 'NO_INTERESADO' => 'NO_INTERESADO',
@@ -441,7 +521,11 @@ class TelefoniaEntrantesAnalistaService
             if (!isset($mapa[$resultadoFormulario])) {
                 throw new InvalidArgumentException('Selecciona un resultado válido.');
             }
-            $personaAtendio = trim((string)($datos['persona_atendio'] ?? ''));
+            if ($decision==='nueva' && in_array($resultadoFormulario,
+                ['BUZON_VOZ','FUERA_SERVICIO','SIN_RESPUESTA','OCUPADO','NUMERO_INCORRECTO'],true)) {
+                throw new DomainException('Un intento sin contacto no puede crear una institución. Conserva la llamada sin identificar o selecciona un expediente existente conocido.');
+            }
+            $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($datos['persona_atendio'] ?? ''));
             if (mb_strlen($personaAtendio, 'UTF-8') > 140) {
                 throw new InvalidArgumentException('El nombre de contacto es demasiado largo.');
             }
@@ -466,7 +550,7 @@ class TelefoniaEntrantesAnalistaService
                 $seguimientoId = (int)($datos['seguimiento_id'] ?? 0);
                 $stmt = $this->db->prepare(
                     "SELECT id, telefono_fuente, telefono_verificado, correo_fuente,
-                            correo_verificado, contacto_nombre, datos_verificados, estado_seguimiento
+                            correo_verificado, contacto_nombre, contacto_cargo, datos_verificados, estado_seguimiento
                      FROM seguimientos_vinculacion
                      WHERE id = ? AND analista_id = ? AND activo = 1 FOR UPDATE"
                 );
@@ -558,43 +642,16 @@ class TelefoniaEntrantesAnalistaService
                 $fechaFin = date('Y-m-d H:i:s');
             }
             $segundosConversacion = self::segundosAtendidos($call);
-            $admiteVerificacion = in_array($resultadoFormulario, [
-                'CONTACTO_CORRECTO', 'SOLICITO_INFORMACION',
-                'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'
-            ], true);
-            $confirmaciones = [
-                'verificacion_telefono_confirmado' => 'Teléfono confirmado',
-                'verificacion_correo_confirmado' => 'Correo confirmado',
-                'verificacion_contacto_confirmado' => 'Contacto institucional confirmado'
-            ];
-            $evidencias = [];
-            foreach ($confirmaciones as $campo => $etiqueta) {
-                if ((int)($datos[$campo] ?? 0) !== 1) continue;
-                if ($sdk) {
-                    throw new DomainException('Las llamadas WebRTC sin evento PBX no acreditan verificaciones efectivas.');
-                }
-                if (!$admiteVerificacion || $segundosConversacion <= 0) {
-                    throw new DomainException('La verificación necesita una conversación confirmada y un resultado compatible.');
-                }
-                if ($campo === 'verificacion_telefono_confirmado' &&
-                    trim((string)($seguimiento['telefono_verificado'] ?: ($seguimiento['telefono_fuente'] ?? ''))) === '') {
-                    throw new DomainException('No hay teléfono registrado para verificar.');
-                }
-                if ($campo === 'verificacion_correo_confirmado' &&
-                    trim((string)($seguimiento['correo_verificado'] ?: ($seguimiento['correo_fuente'] ?? ''))) === '') {
-                    throw new DomainException('No hay correo registrado para verificar.');
-                }
-                if ($campo === 'verificacion_contacto_confirmado' &&
-                    trim((string)($seguimiento['contacto_nombre'] ?? '')) === '') {
-                    throw new DomainException('No hay contacto institucional registrado para verificar.');
-                }
-                $evidencias[] = $etiqueta;
-            }
-            if ($evidencias && $personaAtendio === '') {
-                throw new InvalidArgumentException('Indica con quién hablaste para registrar una verificación efectiva.');
+            $admiteVerificacion=in_array($resultadoFormulario,['CONTACTO_CORRECTO','CONTACTO_REFERIDO',
+                'SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'],true);
+            $referido=$resultadoFormulario==='CONTACTO_REFERIDO' ? VerificacionInstitucionalService::referido($datos) : [];
+            $detalles=$admiteVerificacion ? VerificacionInstitucionalService::detalles(array_merge($datos,$referido),$seguimiento) : [];
+            $evidencias=array_column($detalles,'etiqueta');
+            if ($evidencias && ($personaAtendio==='' || $segundosConversacion<=0)) {
+                throw new InvalidArgumentException('Indica con quién hablaste y confirma que hubo una conversación para verificar datos.');
             }
             $descartar = (int)($datos['descartar'] ?? 0) === 1;
-            $motivoDescarte = trim((string)($datos['motivo_descarte'] ?? ''));
+            $motivoDescarte = VerificacionInstitucionalService::limpiarObservacion((string)($datos['motivo_descarte'] ?? ''));
             if ($descartar && ($resultadoFormulario !== 'NO_INTERESADO' || $motivoDescarte === '' ||
                 mb_strlen($motivoDescarte, 'UTF-8') > 500)) {
                 throw new InvalidArgumentException('Para descartar indica No interesado y un motivo válido.');
@@ -603,7 +660,7 @@ class TelefoniaEntrantesAnalistaService
                 'Llamada entrante recibida en la extensión ' . $extension . '.',
                 $sdk ? '[WEBRTC OBSERVADO; SIN EVENTO PBX FIRMADO; RESULTADO DECLARADO POR ANALISTA]' : '',
                 $personaAtendio !== '' ? 'Persona atendida: ' . $personaAtendio : '',
-                $evidencias ? '[VERIFICACION_EFECTIVA]' : '',
+                $evidencias ? ($sdk ? '[VERIFICACION_PENDIENTE_PBX]' : '[VERIFICACION_EFECTIVA]') : '',
                 $evidencias ? 'Verificación obtenida: ' . implode(' · ', $evidencias) : '',
                 $resultadoFormulario === 'NO_INTERESADO' ? 'Resultado registrado: No interesado' : '',
                 $observacion,
@@ -619,7 +676,12 @@ class TelefoniaEntrantesAnalistaService
                     'telefono_destino' => (string)($call['caller_id'] ?? ''),
                     'correo_destino' => (string)($seguimiento['correo_verificado'] ?: ($seguimiento['correo_fuente'] ?? '')),
                     'proxima_accion_at' => $fechaProxima,
-                    'datos_verificados' => $evidencias ? 1 : (int)($seguimiento['datos_verificados'] ?? 0),
+                    'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0),
+                    'preservar_estado'=>true,
+                    'nuevo_telefono_contacto'=>$referido['nuevo_telefono_contacto'] ?? '',
+                    'nuevo_correo_contacto'=>$referido['nuevo_correo_contacto'] ?? '',
+                    'nuevo_contacto_nombre'=>$referido['nuevo_contacto_nombre'] ?? '',
+                    'nuevo_contacto_cargo'=>$referido['nuevo_contacto_cargo'] ?? '',
                     'descartar' => $descartar ? 1 : 0,
                     'motivo_descarte' => $descartar ? $motivoDescarte : '',
                     'proveedor_externo' => $sdk ? 'ZADARMA_WEBRTC' : 'ZADARMA',
@@ -632,6 +694,13 @@ class TelefoniaEntrantesAnalistaService
                 throw new RuntimeException('No se pudo guardar la interacción telefónica.');
             }
 
+            $evidenciaStore->guardar($interaccionId,$usuarioId,$seguimientoId,$detalles,$personaAtendio,
+                !$sdk,$sdk?'':$id,$sdk?$id:$aliasSdk);
+            if (!$sdk && $aliasSdk!=='') {
+                $sync=$this->db->prepare("UPDATE telefonia_analista_webrtc_sesiones SET clasificacion='VINCULADA',
+                    seguimiento_id=?,interaccion_id=? WHERE usuario_id=? AND session_id=?");
+                $sync->bind_param('iiis',$seguimientoId,$interaccionId,$usuarioId,$aliasSdk);$sync->execute();$sync->close();
+            }
             $estadoRegistro = 'VINCULADA';
             $registroId = (int)$registro['id'];
             $stmt = $this->db->prepare(
@@ -647,7 +716,9 @@ class TelefoniaEntrantesAnalistaService
             return [
                 'estado' => $estadoRegistro,
                 'seguimiento_id' => $seguimientoId,
-                'interaccion_id' => $interaccionId
+                'interaccion_id' => $interaccionId,
+                'verificacion_confirmada'=>!$sdk && !empty($evidencias),
+                'verificacion_pendiente'=>$sdk && !empty($evidencias)
             ];
         } catch (Throwable $e) {
             $this->db->rollback();

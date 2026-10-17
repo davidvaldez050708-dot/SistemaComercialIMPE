@@ -302,7 +302,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                 data-shell-capture-panel hidden>
                 <div class="impe-routing-heading">
                     <strong>Datos durante la llamada</strong>
-                    <span>Guarda un borrador. No crea expedientes hasta registrar el resultado.</span>
+                    <span>Captura durante la conversación. El borrador se guarda automáticamente; revisa el resultado al finalizar.</span>
                 </div>
                 <form data-routing-capture-form autocomplete="off">
                     <div class="impe-routing-field">
@@ -322,6 +322,12 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                     <div class="impe-routing-field">
                         <label for="impeCaptureEmail">Correo electrónico</label>
                         <input id="impeCaptureEmail" maxlength="160" name="correo" type="email">
+                    </div>
+                    <div class="impe-routing-two">
+                        <div class="impe-routing-field"><label for="impeCaptureContact">Contacto institucional o referido</label>
+                            <input id="impeCaptureContact" maxlength="140" name="contacto_nombre" type="text"></div>
+                        <div class="impe-routing-field"><label for="impeCaptureRole">Cargo o área</label>
+                            <input id="impeCaptureRole" maxlength="150" name="contacto_cargo" type="text"></div>
                     </div>
                     <div class="impe-routing-field">
                         <label for="impeCaptureNotes">Notas de atención</label>
@@ -423,6 +429,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     <script src="<?= BASE_URL ?>public/javascript/telefonia_analista_historial_pasivo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_analista_historial_pasivo.js') ?>"></script>
     <?php endif; ?>
     <?php if ($puedeTransferirShell || $puedeCapturarShell): ?>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_atencion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_atencion.js') ?>"></script>
     <style id="impeRoutingStyles">
     <?php
     $routingCss = ROOT_PATH . '/public/css/telefonia_enrutamiento.css';

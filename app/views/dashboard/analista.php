@@ -165,7 +165,7 @@ $metricasClave = [
 $baseMetrica = max(1, (int)($resumen['en_seguimiento'] ?? 0));
 
 $metricasMes = [
-    ['valor' => (int)($avanceMes['contactos_efectivos'] ?? 0), 'etiqueta' => 'Contactos efectivos'],
+    ['valor' => (int)($avanceMes['contactos_efectivos'] ?? 0), 'etiqueta' => 'Verificaciones efectivas'],
     ['valor' => (int)($avanceMes['datos_verificados'] ?? 0), 'etiqueta' => 'Datos verificados'],
     ['valor' => (int)($avanceMes['oficios_enviados'] ?? 0), 'etiqueta' => 'Oficios enviados'],
     ['valor' => (int)($avanceMes['reuniones_realizadas'] ?? 0), 'etiqueta' => 'Reuniones realizadas']

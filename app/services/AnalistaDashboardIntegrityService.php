@@ -66,10 +66,14 @@ class AnalistaDashboardIntegrityService
         }
 
         $sql = "SELECT COUNT(DISTINCT CASE
-                    WHEN interacciones.notas LIKE '%[SIN_CONTACTO_EFECTIVO]%' THEN NULL
-                    WHEN interacciones.resultado = 'CONTACTADO'
-                         OR interacciones.notas LIKE '%[CONTACTO_EFECTIVO]%'
-                    THEN interacciones.seguimiento_id
+                    WHEN interacciones.canal='LLAMADA_IP'
+                         AND interacciones.notas LIKE '%[VERIFICACION_EFECTIVA]%'
+                         AND TRIM(COALESCE(interacciones.proveedor_externo,'')) <> ''
+                         AND TRIM(COALESCE(interacciones.id_externo,'')) <> ''
+                         AND COALESCE(interacciones.duracion_segundos,0)>0
+                         AND interacciones.notas NOT LIKE '%[REGISTRO_LLAMADA_PRUEBA]%'
+                         AND INSTR(COALESCE(interacciones.notas,''),'[IMPORTACION_HISTORICA_')=0
+                    THEN CONCAT(interacciones.seguimiento_id,':',DATE(interacciones.fecha_inicio))
                     ELSE NULL
                 END) AS total
                 FROM interacciones_vinculacion interacciones

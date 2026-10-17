@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__,2).'/app/services/TelefoniaVerificacionEvidenciaService.php';
 session_start();
 
 require_once dirname(__DIR__, 2) . '/app/services/ZadarmaCallLookupService.php';
@@ -337,6 +338,7 @@ try {
         responderJson(['ok' => false, 'mensaje' => 'No tienes acceso a este seguimiento.'], 403);
     }
 
+    $connection->begin_transaction();
     $sqlInteraccion = "SELECT
             id,
             proveedor_externo,
@@ -347,7 +349,7 @@ try {
           AND seguimiento_id = ?
           AND usuario_id = ?
           AND canal = 'LLAMADA_IP'
-        LIMIT 1";
+        LIMIT 1 FOR UPDATE";
     $stmtInteraccion = $connection->prepare($sqlInteraccion);
     $stmtInteraccion->bind_param('iii', $interaccionId, $seguimientoId, $usuarioId);
     $stmtInteraccion->execute();
@@ -471,6 +473,8 @@ try {
         $usuarioId
     );
     $stmtActualizar->execute();
+    (new TelefoniaVerificacionEvidenciaService($connection))->confirmarSalida($usuarioId,$interaccionId,$pbxCallId,$huboRespuesta);
+    $connection->commit();
 
     $verificacionEfectiva =
         $huboRespuesta &&
@@ -523,6 +527,7 @@ try {
         )),
     ]);
 } catch (Throwable $e) {
+    if (isset($connection) && $connection instanceof mysqli) $connection->rollback();
     responderJson([
         'ok' => false,
         'mensaje' => 'No se pudo vincular la llamada con la interacción.',

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/VerificacionInstitucionalService.php';
 
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../models/DataTerritorialModel.php';
@@ -1134,17 +1135,17 @@ class SeguimientoVinculacionController
             ], 422);
         }
 
-        $personaAtendio = trim((string)($_POST['persona_atendio'] ?? ''));
+        $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['persona_atendio'] ?? ''));
         $proximaAccion = trim((string)($_POST['proxima_accion'] ?? ''));
-        $observacion = trim((string)($_POST['observacion'] ?? ''));
+        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
         $origenLlamada = strtoupper(trim((string)($_POST['origen_llamada'] ?? 'MANUAL')));
         if (!in_array($origenLlamada, ['ZADARMA', 'PRUEBA', 'MANUAL'], true)) {
             $origenLlamada = 'MANUAL';
         }
         $nuevoTelefonoContacto = trim((string)($_POST['nuevo_telefono_contacto'] ?? ''));
         $nuevoCorreoContacto = trim((string)($_POST['nuevo_correo_contacto'] ?? ''));
-        $nuevoContactoNombre = trim((string)($_POST['nuevo_contacto_nombre'] ?? ''));
-        $nuevoContactoCargo = trim((string)($_POST['nuevo_contacto_cargo'] ?? ''));
+        $nuevoContactoNombre = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['nuevo_contacto_nombre'] ?? ''));
+        $nuevoContactoCargo = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['nuevo_contacto_cargo'] ?? ''));
 
         if ($resultadoFormulario === 'CONTACTO_REFERIDO') {
             if ($canalFormulario !== 'LLAMADA') {
@@ -1154,10 +1155,10 @@ class SeguimientoVinculacionController
                 ], 422);
             }
 
-            if ($nuevoTelefonoContacto === '' && $nuevoCorreoContacto === '') {
+            if ($nuevoTelefonoContacto === '' && $nuevoCorreoContacto === '' && $nuevoContactoNombre === '' && $nuevoContactoCargo === '') {
                 $this->responderJson([
                     'ok' => false,
-                    'mensaje' => 'Captura al menos el nuevo teléfono o correo proporcionado por la institución.'
+                    'mensaje' => 'Captura algún dato de la persona o área referida.'
                 ], 422);
             }
 
@@ -1266,7 +1267,14 @@ class SeguimientoVinculacionController
             }
         }
 
-        $evidenciasVerificacion = array_values(array_unique($evidenciasVerificacion));
+        try {
+            if ($resultadoFormulario==='CONTACTO_REFERIDO') VerificacionInstitucionalService::referido($_POST);
+            $detallesVerificacion=$canalFormulario==='LLAMADA' && $resultadoAdmiteVerificacion
+                ? VerificacionInstitucionalService::detalles($_POST,$seguimiento) : [];
+        } catch (InvalidArgumentException|DomainException $e) {
+            $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422);
+        }
+        $evidenciasVerificacion=array_column($detallesVerificacion,'etiqueta');
         $esCandidataVerificacion =
             $canalFormulario === 'LLAMADA' &&
             $resultadoAdmiteVerificacion &&
@@ -1284,7 +1292,7 @@ class SeguimientoVinculacionController
 
         $descartar = $resultadoFormulario === 'NO_INTERESADO' &&
             (int)($_POST['descartar'] ?? 0) === 1;
-        $motivoDescarte = trim((string)($_POST['motivo_descarte'] ?? ''));
+        $motivoDescarte = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['motivo_descarte'] ?? ''));
 
         if ($descartar && $motivoDescarte === '') {
             $this->responderJson([
@@ -1338,7 +1346,10 @@ class SeguimientoVinculacionController
             'nuevo_telefono_contacto' => $nuevoTelefonoContacto,
             'nuevo_correo_contacto' => $nuevoCorreoContacto,
             'nuevo_contacto_nombre' => $nuevoContactoNombre,
-            'nuevo_contacto_cargo' => $nuevoContactoCargo
+            'nuevo_contacto_cargo' => $nuevoContactoCargo,
+            'preservar_estado'=>true,
+            'verificacion_detalles'=>$detallesVerificacion,
+            'persona_informante'=>$personaAtendio
         ];
 
         if (!$modelo->registrarInteraccionManual($seguimientoId, $usuarioId, $datosInteraccion)) {
@@ -1452,7 +1463,7 @@ class SeguimientoVinculacionController
             ], 422);
         }
 
-        $motivoDescarte = trim((string)($_POST['motivo_descarte'] ?? ''));
+        $motivoDescarte = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['motivo_descarte'] ?? ''));
 
         if ($motivoDescarte === '') {
             $this->responderJson([
@@ -1538,7 +1549,7 @@ class SeguimientoVinculacionController
         }
 
         $motivoReactivacion = trim((string)($_POST['motivo_reactivacion'] ?? ''));
-        $observacion = trim((string)($_POST['observacion'] ?? ''));
+        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
         $motivosValidos = [
             'La institución volvió a contactar',
             'Ahora muestra interés',
@@ -1888,7 +1899,7 @@ class SeguimientoVinculacionController
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
         $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
-        $observacion = trim((string)($_POST['observacion'] ?? ''));
+        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
         $seguimiento = $modelo->obtenerSeguimientoSupervisor(
             $usuarioId,
             $seguimientoId
