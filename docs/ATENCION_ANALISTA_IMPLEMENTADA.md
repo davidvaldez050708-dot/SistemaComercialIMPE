@@ -101,7 +101,8 @@ el flujo transferido actual se valida con su prueba específica y el navegador.
 
 La validación nueva también aprobó en GitHub Actions, con MariaDB 10.11 y
 Chromium: https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/39008766116
-Quedan alertas de comprobaciones antiguas de UX, shell e instaladores históricos
-que dependen de textos o snapshots anteriores. No equivalen a una validación en
-verde de toda la batería del repositorio. La comprobación de transferencias se
+Quedan fallos en comprobaciones preexistentes de UX, shell e instaladores
+históricos. Algunas dependen de textos o snapshots anteriores; el fallo runtime
+de cierre del shell se reprodujo también sobre el commit anterior a esta entrega.
+No se certifica como aprobada toda la batería del repositorio. La comprobación de transferencias se
 actualizó para exigir el guardado local y en servidor de esta entrega.
