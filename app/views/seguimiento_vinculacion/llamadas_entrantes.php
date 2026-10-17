@@ -68,6 +68,12 @@ $duracionEntrante = static function ($segundos) {
         max(0, (int)$segundos) % 60);
 };
 ?>
+<style>
+.linkage-incoming-page .linkage-call-result-group{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.linkage-incoming-page .linkage-incoming-register-inline{display:inline-flex}
+.linkage-incoming-page .linkage-incoming-register-compact{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:5px 11px;border:1px solid #ccd7ef;border-radius:999px;background:#f0f4fc;color:#253d91;font-size:.8125rem;font-weight:600;line-height:1.2;white-space:nowrap}
+.linkage-incoming-page .linkage-incoming-register-compact:hover,.linkage-incoming-page .linkage-incoming-register-compact:focus-visible{background:#e5edfc;border-color:#9db5e5;color:#173378}
+</style>
 <section class="dashboard-panel linkage-incoming-page"
     data-linkage-incoming
     data-current-user="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>"
@@ -451,7 +457,7 @@ $duracionEntrante = static function ($segundos) {
                             <div class="linkage-incoming-confirmed-copy">
                                 <span>Institución identificada por Recepción</span>
                                 <strong data-incoming-confirmed-name></strong>
-                                <small>Expediente asignado a tu cartera. Confirma la identidad durante la conversación.</small>
+                                <small>Expediente de tu cartera. Confirma los datos durante la conversación.</small>
                             </div>
                             <button type="button" class="btn linkage-incoming-change-record"
                                 data-incoming-change-expediente>Cambiar</button>
@@ -459,7 +465,7 @@ $duracionEntrante = static function ($segundos) {
                         <div data-incoming-existing-search>
                             <label class="form-label" for="incomingLookup">Buscar expediente</label>
                             <input id="incomingLookup" class="form-control" type="search" data-incoming-lookup
-                                placeholder="Nombre de la institución o teléfono" autocomplete="off">
+                                placeholder="Nombre o teléfono" autocomplete="off">
                             <select data-native-select class="form-select mt-2" name="seguimiento_id" data-incoming-followup>
                                 <option value="">Selecciona un expediente</option>
                             </select>

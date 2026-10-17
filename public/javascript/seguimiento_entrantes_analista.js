@@ -35,7 +35,6 @@
         'click', () => {
             resetConfirmed();
             lookup.focus();
-            lookup.select();
         }
     );
     const sdkConfirm = form.querySelector('[data-incoming-sdk-confirm]');
@@ -212,7 +211,7 @@
         }
         modalEl.querySelector('[data-incoming-modal-description]').textContent = hasAnswer
             ? 'Vincula la conversación a un expediente y registra su resultado.'
-            : 'Llamada sin respuesta: registra su clasificación en el historial.';
+            : 'Llamada sin respuesta: clasifícala sin crear un expediente.';
         renderDecision();
         // Si Recepción identificó el expediente, precargarlo por ID exacto
         // de esta sesión. El servidor volverá a validar la pertenencia al
@@ -224,7 +223,7 @@
                 const context = JSON.parse(sessionStorage.getItem(key) || 'null');
                 if (context && context.call_id === contextId &&
                     Number(context.seguimiento_id) > 0 &&
-                    Date.now() - Number(context.saved_at || 0) < 180000) {
+                    Date.now() - Number(context.saved_at || 0) < 900000) {
                     decision.value = 'existente';
                     lookup.value = String(context.institucion || '');
                     followup.replaceChildren(new Option(
@@ -241,7 +240,7 @@
                     }
                     if (manualInstitutionSearch) manualInstitutionSearch.hidden = true;
                     modalEl.querySelector('[data-incoming-modal-description]').textContent =
-                        'Expediente identificado por Recepción. Captura el resultado de la conversación.';
+                        'Expediente identificado por Recepción. Confirma los datos y registra el resultado.';
                 }
             } catch (_) {}
         }
@@ -529,7 +528,11 @@
             closingAfterSave=true;
             ++modalCycle;
             for(const id of callRefs) {
-                try {sessionStorage.removeItem('impe:crm:call-draft:'+userId+':'+id);}catch(_){}
+                try {
+                    for(const prefix of ['call-draft','call-summary','transfer-context']) {
+                        sessionStorage.removeItem('impe:crm:'+prefix+':'+userId+':'+id);
+                    }
+                }catch(_){}
                 if(window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_RESULT_SAVED',callId:id},window.location.origin);
             }
             void drafts?.remove(userId,callRefs,requestBody.get('csrf_token')).catch(()=>{});
@@ -562,22 +565,21 @@
         const found = Array.from(page.querySelectorAll('[data-call-id]'))
             .find(el => el.dataset.callId === focusId ||
                 el.dataset.pbxCallId === focusId || el.dataset.sdkReference===focusId);
-        const retryKey = 'impe:incoming-focus-retry:' + focusId;
         if (found) {
-            try { sessionStorage.removeItem(retryKey); } catch (_) {}
+            const address=new URL(window.location.href);
+            if(address.searchParams.get('impe_retry')==='1') {
+                address.searchParams.delete('impe_retry');
+                window.history.replaceState(null,'',address.toString());
+            }
             window.setTimeout(() => openRegistration(found), 100);
         } else {
             // Puede llegar el salto desde el teléfono antes de publicarse
             // el registro PBX/WebRTC. Reintentar una sola vez, sin crear nada.
-            let alreadyRetried = true;
-            try {
-                alreadyRetried = sessionStorage.getItem(retryKey) === '1';
-                if (!alreadyRetried) sessionStorage.setItem(retryKey, '1');
-            } catch (_) {}
-            if (!alreadyRetried) {
-                window.setTimeout(() => window.location.reload(), 1200);
+            const retry=new URL(window.location.href);
+            if (retry.searchParams.get('impe_retry')!=='1') {
+                retry.searchParams.set('impe_retry','1');
+                window.setTimeout(() => window.location.replace(retry.toString()), 1500);
             } else {
-                try { sessionStorage.removeItem(retryKey); } catch (_) {}
                 const aviso = document.createElement('p');
                 aviso.className = 'alert alert-warning mt-3';
                 aviso.setAttribute('role', 'status');

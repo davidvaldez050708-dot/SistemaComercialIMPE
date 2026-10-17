@@ -8,7 +8,7 @@ const css=['global.css','dashboard.css','marketing_selectores_uniformes.css','se
 const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'))}\n${css}</style></head><body><main class="admin-content">${view}</main><script>${fs.readFileSync(path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'))}</script><script>${read('public/javascript/selectores_uniformes.js')}</script><script>${read('public/javascript/telefonia_atencion.js')}</script><script>${read('public/javascript/seguimiento_entrantes_analista.js')}</script></body></html>`;
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});try{
  const page=await browser.newPage({viewport:{width:1366,height:900}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
- let mode='error',release=null,saves=0,draftPosts=0,lastBody='',slowDraft=null;
+ let mode='error',release=null,saves=0,draftPosts=0,lastBody='',slowDraft=null,missingRequests=0;
  await page.route('http://atencion.test/**',async route=>{
    const req=route.request(),u=new URL(req.url());
    if(u.pathname.endsWith('borrador_llamada.php')){
@@ -23,14 +23,24 @@ const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta nam
       if(mode==='success')return route.fulfill({json:{ok:true,resultado:{seguimiento_id:1,verificacion_confirmada:true}}});
       return route.fulfill({status:422,json:{ok:false,mensaje:'La llamada ya fue registrada. Actualiza el historial.'}});
    }
-   return route.fulfill({contentType:'text/html',body:html});
+   const focus=u.searchParams.get('autofocus');
+   if(focus==='missing')missingRequests++;
+   const focused=focus ? html.replace('data-auto-call=""','data-auto-call="'+(focus==='missing'?'sdk-missing-12345678':'sdk-confirmed-12345678')+'"') : html;
+   return route.fulfill({contentType:'text/html',body:focused});
  });
  await page.goto('http://atencion.test/');
  const modal=page.locator('#modalLlamadaEntranteAnalista'),form=modal.locator('form');
  const opened=()=>page.waitForFunction(()=>document.querySelector('#modalLlamadaEntranteAnalista.show')&&document.activeElement?.name==='decision');
  const closed=()=>page.waitForFunction(()=>!document.querySelector('.modal-backdrop'));
  const first=page.locator('[data-call-id="pbx-confirmed-001"]');
+ await page.evaluate(()=>{
+    sessionStorage.setItem('impe:crm:transfer-context:1:sdk-confirmed-12345678',JSON.stringify({call_id:'sdk-confirmed-12345678',seguimiento_id:1,institucion:'Institución Uno',estado:'Morelos',saved_at:Date.now()-600000}));
+    sessionStorage.setItem('impe:crm:call-summary:1:sdk-confirmed-12345678','resumen de esta llamada');
+    sessionStorage.setItem('impe:crm:call-summary:1:sdk-other-12345678','resumen de otra llamada');
+ });
  await first.click();await opened();
+ assert.equal(await form.locator('[data-incoming-confirmed]').isVisible(),true,'conserva contexto de Recepción de hace 10 minutos');
+ assert.equal(await form.locator('[name=seguimiento_id]').inputValue(),'1','contexto exacto por alias SDK de una tarjeta PBX');
  assert.equal(await form.locator('[name=pbx_call_id]').inputValue(),'pbx-confirmed-001');
  assert.equal(await form.locator('[name=sdk_reference]').inputValue(),'sdk-confirmed-12345678');
  assert.equal(await modal.locator('.uniform-select').count(),0,'listas de Seguimiento sin menú que desborde');
@@ -89,6 +99,17 @@ const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta nam
  assert.match(lastBody,/pbx-confirmed-001/,'envía fuente PBX confirmada');
  assert.match(lastBody,/sdk-confirmed-12345678/,'conserva alias WebRTC al guardar');
  assert.equal(await page.locator('.modal-backdrop').count(),0,'navega tras cerrar el modal');
+ assert.equal(await page.evaluate(()=>sessionStorage.getItem('impe:crm:transfer-context:1:sdk-confirmed-12345678')),null,'limpia el contexto guardado');
+ assert.equal(await page.evaluate(()=>sessionStorage.getItem('impe:crm:call-summary:1:sdk-confirmed-12345678')),null,'limpia el resumen de esta llamada');
+ assert.equal(await page.evaluate(()=>sessionStorage.getItem('impe:crm:call-summary:1:sdk-other-12345678')),'resumen de otra llamada','conserva los datos de otra llamada');
+ await page.goto('http://atencion.test/?autofocus=found&impe_retry=1');await opened();
+ assert.equal(new URL(page.url()).searchParams.has('impe_retry'),false,'limpia la marca de reintento al encontrar el alias SDK');
+ await modal.locator('.btn-close').click();await closed();
+ await page.goto('http://atencion.test/?autofocus=missing');
+ await page.waitForURL(/impe_retry=1/);
+ await page.getByText('La llamada se recibió, pero su registro aún no está disponible.',{exact:false}).waitFor();
+ await page.waitForTimeout(1700);
+ assert.equal(missingRequests,2,'un único reintento por URL, sin bucle de recargas');
  assert.deepEqual(errors,[],'sin errores de JavaScript');
  console.log('Atención analista/navegador: formularios, borradores, errores, doble envío, foco y scroll en 4 tamaños OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
