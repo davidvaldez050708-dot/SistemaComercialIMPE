@@ -39,12 +39,21 @@
         const detailPanel = root.querySelector('[data-marketing-reception-details]');
         const detailToggle = root.querySelector('[data-marketing-reception-details-toggle]');
         const detailLabel = root.querySelector('[data-marketing-reception-details-label]');
+        const resultDialog = root.querySelector('[data-marketing-result-dialog]');
+        const resultForm = root.querySelector('[data-marketing-result-form]');
+        const resultSelect = root.querySelector('[data-marketing-result-select]');
+        const resultNote = root.querySelector('[data-marketing-result-note]');
+        const resultError = root.querySelector('[data-marketing-result-error]');
+        const resultSave = root.querySelector('[data-marketing-result-save]');
+        let resultCallId = '';
+        let savingResult = false;
         const metrics = {
             total: root.querySelector('[data-marketing-reception-total]'),
             atendidas: root.querySelector('[data-marketing-reception-answered]'),
             perdidas: root.querySelector('[data-marketing-reception-missed]'),
             salientes: root.querySelector('[data-marketing-reception-outgoing]'),
-            transferidas: root.querySelector('[data-marketing-reception-transferred]')
+            transferidas: root.querySelector('[data-marketing-reception-transferred]'),
+            sinContacto: root.querySelector('[data-marketing-reception-no-contact]')
         };
         const telefono = window.IMPE_TELEPHONY_PERSISTENT || null;
         let puedeDevolver = false;
@@ -105,13 +114,14 @@
                     document.baseURI);
                 endpoint.searchParams.set('pbx_call_id', String(call.pbx_call_id || ''));
                 const button = node('button',
-                    'linkage-call-audio-state linkage-call-recording-toggle');
+                    'linkage-call-audio-state is-available linkage-call-recording-toggle');
                 button.type = 'button';
                 button.dataset.marketingPbxAudio = endpoint.toString();
                 button.setAttribute('aria-controls', audioId);
                 button.setAttribute('aria-expanded','false');
                 button.innerHTML = '<i class="bi bi-record-circle" aria-hidden="true"></i>' +
-                    '<span>Consultar grabación</span>';
+                    '<span>Consultar grabación</span>' +
+                    '<i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>';
                 td.appendChild(button);
                 const detail = node('tr','telephony-history-recording-row');
                 detail.id = audioId;
@@ -139,7 +149,7 @@
             button.setAttribute('aria-expanded', 'false');
             button.title = 'Zadarma reportó una grabación; comprobar disponibilidad.';
             button.innerHTML = '<i class="bi bi-record-circle" aria-hidden="true"></i>' +
-                '<span>Consultar audio</span>' +
+                '<span>Consultar grabación</span>' +
                 '<i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>';
             td.appendChild(button);
             const detail = node('tr', 'telephony-history-recording-row');
@@ -195,14 +205,36 @@
             }
             const statusCell = addCell(row, '');
             const status = String(call.estado || '');
-            const badge = node('span', 'marketing-reception-status', status);
+            const badge = node('span', 'marketing-reception-status',
+                status === 'Completada' ? 'Respondida' : status);
+            badge.title = status === 'Completada'
+                ? 'La centralita confirmó una respuesta; puede ser una persona, buzón o locución.'
+                : 'Estado confirmado por la centralita';
             if (status === 'Atendida') badge.classList.add('is-answered');
             if (status === 'Perdida') badge.classList.add('is-missed');
             if (status === 'Transferida') badge.classList.add('is-transferred');
             if (status === 'Completada') badge.classList.add('is-answered');
-            if (['Sin respuesta','Ocupada','Fallida','Cancelada'].includes(status))
+            if (['Sin respuesta','Ocupada','Fallida','Cancelada','Número inexistente',
+                'No disponible','Sin saldo','Límite excedido'].includes(status))
                 badge.classList.add('is-missed');
             statusCell.appendChild(badge);
+            if (status === 'Transferida' && call.estado_cierre &&
+                !['Completada','Atendida','En curso','Marcando','Sonando'].includes(call.estado_cierre)) {
+                statusCell.appendChild(node('span','marketing-reception-observed',call.estado_cierre));
+            }
+            if (call.resultado_etiqueta && call.resultado !== 'SIN_CLASIFICAR') {
+                const observed = node('span','marketing-reception-observed',call.resultado_etiqueta);
+                observed.title = 'Registrado por recepción' + (call.nota ? ': ' + call.nota : '');
+                statusCell.appendChild(observed);
+            }
+            if (call.finalizada && resultDialog && root.dataset.resultUrl) {
+                const edit = node('button','marketing-reception-result-edit',
+                    call.resultado ? 'Editar resultado' : 'Registrar resultado');
+                edit.type = 'button';
+                edit.dataset.marketingResult = String(call.pbx_call_id || '');
+                edit.setAttribute('aria-haspopup','dialog');
+                statusCell.appendChild(edit);
+            }
             addCell(row, formatDuration(call.segundos));
             addCell(row, call.destino_transferencia
                 ? 'Ext. ' + call.destino_transferencia : '—',
@@ -217,7 +249,9 @@
             const selectedType = typeFilter?.value || '';
             const filtered = calls.filter(function (call) {
                 if (selectedType && call.tipo !== selectedType) return false;
-                if (selected && call.estado !== selected) return false;
+                if (selected.startsWith('resultado:')) {
+                    if (call.resultado !== selected.slice(10)) return false;
+                } else if (selected && call.estado !== selected) return false;
                 if (!raw) return true;
                 const phone = String(call.numero || '');
                 const transfer = String(call.destino_transferencia || '');
@@ -225,6 +259,7 @@
                 return phone.toLocaleLowerCase('es-MX').includes(raw) ||
                     transfer.includes(raw) ||
                     direction.toLocaleLowerCase('es-MX').includes(raw) ||
+                    String(call.resultado_etiqueta || '').toLocaleLowerCase('es-MX').includes(raw) ||
                     (query !== '' &&
                         (normalizeNumber(phone).includes(query) ||
                             normalizeNumber(transfer).includes(query)));
@@ -296,6 +331,7 @@
 
         async function loadHistory(manual) {
             if (loading) return;
+            if (resultDialog?.open) return;
             // No interrumpir una reproducción abierta con el refresco periódico.
             if (!manual && Array.from(tableBody.querySelectorAll('audio'))
                 .some(function (audio) { return !audio.paused; })) return;
@@ -322,6 +358,7 @@
                 if (metrics.salientes) metrics.salientes.textContent =
                     String(data.salientes || 0);
                 metrics.transferidas.textContent = String(data.transferidas || 0);
+                if (metrics.sinContacto) metrics.sinContacto.textContent = String(data.sin_contacto || 0);
                 initialized = true;
                 renderList();
                 if (manual) {
@@ -426,7 +463,7 @@
                 button.dataset.recordingVerified = '1';
                 button.classList.add('is-available');
                 button.innerHTML = '<i class="bi bi-record-circle" aria-hidden="true"></i>' +
-                    '<span>Grabación</span>' +
+                    '<span>Consultar grabación</span>' +
                     '<i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>';
                 button.disabled = false;
                 // El reproductor compartido escucha el clic delegado y abre la fila.
@@ -438,6 +475,62 @@
                 button.disabled = false;
             }
         }, true);
+
+        tableBody.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-marketing-result]');
+            if (!button || !resultDialog || savingResult) return;
+            const call = calls.find(c => c.pbx_call_id === button.dataset.marketingResult);
+            if (!call?.finalizada) return;
+            resultCallId = call.pbx_call_id;
+            root.querySelector('[data-marketing-result-phone]').textContent =
+                (call.tipo || 'Llamada') + ' · ' + (call.numero || 'Número privado');
+            resultSelect.value = call.resultado || '';
+            resultNote.value = call.nota || '';
+            resultError.hidden = true;
+            resultDialog.showModal();
+            resultSelect.focus();
+        });
+        root.querySelector('[data-marketing-result-cancel]')?.addEventListener('click', function () {
+            if (!savingResult) resultDialog.close();
+        });
+        resultDialog?.addEventListener('cancel', function (event) {
+            if (savingResult) event.preventDefault();
+        });
+        resultForm?.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            if (savingResult || !resultCallId || !resultForm.reportValidity()) return;
+            savingResult = true;
+            resultSave.disabled = true;
+            resultSelect.disabled = true;
+            resultNote.disabled = true;
+            resultError.hidden = true;
+            try {
+                const body = new URLSearchParams({
+                    csrf_token:root.dataset.resultCsrf || '', pbx_call_id:resultCallId,
+                    resultado:resultSelect.value, nota:resultNote.value.trim()
+                });
+                const response = await fetch(root.dataset.resultUrl, {
+                    method:'POST', credentials:'same-origin', cache:'no-store', body,
+                    headers:{Accept:'application/json'}
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.ok) throw new Error(payload.mensaje || 'No se pudo guardar.');
+                const call = calls.find(c=>c.pbx_call_id===resultCallId);
+                if (call) Object.assign(call,payload.registro);
+                resultDialog.close();
+                renderList();
+                explicarDevolucion('Resultado guardado.',false);
+                void loadHistory(false);
+            } catch(error) {
+                resultError.textContent = error.message || 'No se pudo guardar. Inténtalo nuevamente.';
+                resultError.hidden = false;
+            } finally {
+                savingResult = false;
+                resultSave.disabled = false;
+                resultSelect.disabled = false;
+                resultNote.disabled = false;
+            }
+        });
 
         // Llamar desde cualquier estado precarga el número en el MISMO
         // teléfono flotante. El usuario confirma pulsando Llamar.

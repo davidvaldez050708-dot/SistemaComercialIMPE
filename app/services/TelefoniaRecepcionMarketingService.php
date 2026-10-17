@@ -83,6 +83,7 @@ class TelefoniaRecepcionMarketingService
             'salientes' => 0,
             'transferidas' => 0,
             'en_curso' => 0,
+            'sin_contacto' => 0,
             'llamadas' => []
         ];
 
@@ -135,9 +136,22 @@ class TelefoniaRecepcionMarketingService
         $stmt->close();
 
         $llamadas = self::agruparEventos($eventos, $ext, $permitirSalientes === 1);
+        $resultados = $this->obtenerResultados($usuarioId, $ext);
         foreach ($llamadas as $call) {
+            $observado = $resultados[$call['pbx_call_id']] ?? [];
+            $call['resultado'] = (string)($observado['resultado'] ?? '');
+            $call['resultado_etiqueta'] = self::resultadosPermitidos()[$call['resultado']] ?? '';
+            $call['nota'] = (string)($observado['nota'] ?? '');
+            if ($call['estado'] === 'Transferida') $data['transferidas']++;
             if ($call['tipo'] === 'Saliente') {
                 $data['salientes']++;
+                $sinContactoPbx = in_array($call['estado_cierre'],
+                    ['Sin respuesta','Ocupada','Cancelada','Fallida','Número inexistente',
+                     'No disponible','Sin saldo','Límite excedido'], true);
+                $sinContactoRegistrado = in_array($call['resultado'],
+                    ['BUZON','NO_DISPONIBLE','NUMERO_INCORRECTO'], true);
+                if ($call['finalizada'] && $call['resultado'] !== 'CONTACTO' &&
+                    ($sinContactoPbx || $sinContactoRegistrado)) $data['sin_contacto']++;
             } else {
                 // Los indicadores existentes conservan su significado:
                 // solamente cuentan llamadas de recepción.
@@ -147,7 +161,6 @@ class TelefoniaRecepcionMarketingService
                 }
                 if ($call['estado'] === 'Perdida') $data['perdidas']++;
                 if ($call['estado'] === 'Transferida') {
-                    $data['transferidas']++;
                     if (!empty($call['fue_contestada'])) $data['atendidas']++;
                 }
                 if ($call['estado'] === 'Sonando') $data['en_curso']++;
@@ -209,14 +222,21 @@ class TelefoniaRecepcionMarketingService
             $interno = trim((string)($row['internal'] ?? ''));
             $esSaliente = $call['tipo'] === 'Saliente';
 
-            if ($esSaliente) {
-                if ($tipo === 'NOTIFY_INTERNAL' && $interno !== $extension) {
-                    $transfer = json_decode((string)($row['payload_json'] ?? ''), true);
-                    if (is_array($transfer) &&
-                        trim((string)($transfer['transfer_from'] ?? '')) === $extension) {
-                        $call['saliente_transferida'] = true;
-                    }
+            // La centralita identifica el origen también en NOTIFY_ANSWER.
+            // Aplicar la misma evidencia a salientes y entrantes; nunca inferir
+            // transferencias por coincidencia de teléfono o por una orden UI.
+            if (in_array($tipo, ['NOTIFY_INTERNAL','NOTIFY_ANSWER'], true) &&
+                $interno !== $extension && preg_match('/^\d{3,6}$/D', $interno)) {
+                $payloadTransferencia = json_decode((string)($row['payload_json'] ?? ''), true);
+                if (is_array($payloadTransferencia) &&
+                    trim((string)($payloadTransferencia['transfer_from'] ?? '')) === $extension) {
+                    $call['transferida'] = true;
+                    $call['destino_transferencia'] = $interno;
+                    if ($esSaliente) $call['saliente_transferida'] = true;
                 }
+            }
+
+            if ($esSaliente) {
                 if ($tipo === 'NOTIFY_ANSWER' &&
                     ($interno === $extension || $interno === '')) {
                     $call['contestada'] = true;
@@ -227,6 +247,9 @@ class TelefoniaRecepcionMarketingService
                     $call['disposition'] = strtolower(trim(
                         (string)($row['disposition'] ?? '')
                     ));
+                    if (in_array($call['disposition'], ['answered','completed'], true)) {
+                        $call['contestada'] = true;
+                    }
                     $call['segundos'] = max(
                         $call['segundos'], (int)($row['duration'] ?? 0)
                     );
@@ -246,14 +269,6 @@ class TelefoniaRecepcionMarketingService
                         $call['segundos'], (int)($row['duration'] ?? 0)
                     );
                 }
-                if ($tipo === 'NOTIFY_INTERNAL' && $interno !== $extension) {
-                    $payload = json_decode((string)($row['payload_json'] ?? ''), true);
-                    if (is_array($payload) &&
-                        trim((string)($payload['transfer_from'] ?? '')) === $extension) {
-                        $call['transferida'] = true;
-                        $call['destino_transferencia'] = $interno;
-                    }
-                }
             }
             if ($tipo === 'NOTIFY_RECORD' ||
                 (int)($row['is_recorded'] ?? 0) === 1 ||
@@ -270,7 +285,7 @@ class TelefoniaRecepcionMarketingService
                 if (!$call['finalizada']) {
                     $call['estado'] = $call['contestada'] ? 'En curso' : 'Marcando';
                 } elseif (in_array($disposition, ['answered', 'completed'], true) ||
-                    $call['contestada']) {
+                    ($disposition === '' && $call['contestada'])) {
                     $call['estado'] = 'Completada';
                 } elseif ($disposition === 'busy') {
                     $call['estado'] = 'Ocupada';
@@ -278,11 +293,18 @@ class TelefoniaRecepcionMarketingService
                     $call['estado'] = 'Sin respuesta';
                 } elseif (in_array($disposition, ['canceled', 'cancelled', 'cancel'], true)) {
                     $call['estado'] = 'Cancelada';
+                } elseif ($disposition === 'unallocated number') {
+                    $call['estado'] = 'Número inexistente';
+                } elseif (in_array($disposition, ['unavailable','not available'], true)) {
+                    $call['estado'] = 'No disponible';
+                } elseif ($disposition === 'no money') {
+                    $call['estado'] = 'Sin saldo';
+                } elseif (in_array($disposition,
+                    ['no limit','no day limit','line limit','no money, no limit'], true)) {
+                    $call['estado'] = 'Límite excedido';
                 } else {
                     $call['estado'] = 'Fallida';
                 }
-            } elseif ($call['transferida']) {
-                $call['estado'] = 'Transferida';
             } elseif ($call['contestada']) {
                 $call['estado'] = $call['finalizada'] ? 'Atendida' : 'En curso';
             } elseif ($call['finalizada']) {
@@ -290,6 +312,8 @@ class TelefoniaRecepcionMarketingService
             } else {
                 $call['estado'] = 'Sonando';
             }
+            $call['estado_cierre'] = $call['estado'];
+            if ($call['transferida']) $call['estado'] = 'Transferida';
 
             // Una grabación saliente completada se ofrece para consulta
             // bajo demanda. El endpoint vuelve a comprobar la propiedad.
@@ -297,19 +321,100 @@ class TelefoniaRecepcionMarketingService
                 $call['finalizada'] && $call['estado'] === 'Completada' &&
                 !$call['saliente_transferida'] && $call['audio_reportado'];
             $call['tiene_grabacion'] = $salienteReproducible ||
+                ($call['transferida'] && $call['contestada'] &&
+                    $call['finalizada'] && $call['audio_reportado']) ||
                 ($call['tipo'] === 'Entrante' &&
                 $call['contestada'] &&
                 $call['finalizada'] && $call['audio_reportado']);
             $call['fue_contestada'] = $call['contestada'];
+            $call['grabacion_transferida'] = $call['transferida'];
             $call['grabacion_salida_pendiente'] =
                 $call['tipo'] === 'Saliente' && $call['audio_reportado'] &&
                 !$salienteReproducible;
             unset($call['audio_reportado'], $call['contestada'],
-                $call['finalizada'], $call['transferida'], $call['disposition'],
+                $call['transferida'], $call['disposition'],
                 $call['saliente_transferida']);
             $resultado[] = $call;
         }
         return $resultado;
+    }
+
+    public static function resultadosPermitidos(): array
+    {
+        return ['CONTACTO'=>'Persona atendió', 'BUZON'=>'Buzón de voz',
+            'NO_DISPONIBLE'=>'No disponible', 'NUMERO_INCORRECTO'=>'Número incorrecto',
+            'OTRO'=>'Otro resultado', 'SIN_CLASIFICAR'=>'Sin clasificar'];
+    }
+
+    public static function validarResultado(string $resultado, string $nota): void
+    {
+        if (!isset(self::resultadosPermitidos()[$resultado])) {
+            throw new InvalidArgumentException('Selecciona un resultado válido.');
+        }
+        if (!preg_match('//u', $nota) ||
+            (function_exists('mb_strlen') ? mb_strlen($nota, 'UTF-8') : strlen($nota)) > 500) {
+            throw new InvalidArgumentException('La nota admite hasta 500 caracteres.');
+        }
+    }
+
+    private function obtenerResultados(int $usuarioId, string $extension): array
+    {
+        try {
+            $stmt = $this->db->prepare('SELECT pbx_call_id, resultado, nota
+                FROM telefonia_recepcion_resultados WHERE usuario_id=? AND extension=?');
+            if (!$stmt) {
+                if ((int)$this->db->errno === 1146) return [];
+                throw new RuntimeException('No se pudieron consultar los resultados de recepción.');
+            }
+            $stmt->bind_param('is', $usuarioId, $extension);
+            $stmt->execute();
+            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            return array_column($rows, null, 'pbx_call_id');
+        } catch (mysqli_sql_exception $error) {
+            // Antes del primer registro, el historial funciona sin crear tablas.
+            if ($error->getCode() === 1146) return [];
+            throw $error;
+        }
+    }
+
+    public function guardarResultado(int $usuarioId, string $pbxCallId,
+        string $resultado, string $nota): array
+    {
+        self::validarResultado($resultado, $nota);
+        if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $pbxCallId)) {
+            throw new InvalidArgumentException('Identificador de llamada inválido.');
+        }
+        // Reutiliza la verificación de rol, asignación, antigüedad, extensión
+        // y permiso saliente. Conocer un ID no permite clasificar otra llamada.
+        $recepcion = $this->resumen($usuarioId);
+        $propia = null;
+        foreach ($recepcion['llamadas'] as $call) {
+            if ($call['pbx_call_id'] === $pbxCallId) { $propia = $call; break; }
+        }
+        if (!$propia || empty($propia['finalizada'])) {
+            throw new DomainException('Sólo puedes registrar llamadas finalizadas de tu extensión.');
+        }
+        if (!$this->db->query("CREATE TABLE IF NOT EXISTS telefonia_recepcion_resultados (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT NOT NULL, extension VARCHAR(12) NOT NULL,
+            pbx_call_id VARCHAR(100) NOT NULL, resultado VARCHAR(30) NOT NULL,
+            nota VARCHAR(500) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_recepcion_resultado (usuario_id,extension,pbx_call_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci")) {
+            throw new RuntimeException('No se pudo preparar el registro de resultados.');
+        }
+        $ext = $recepcion['extension'];
+        $stmt = $this->db->prepare('INSERT INTO telefonia_recepcion_resultados
+            (usuario_id,extension,pbx_call_id,resultado,nota) VALUES (?,?,?,?,?)
+            ON DUPLICATE KEY UPDATE resultado=VALUES(resultado),nota=VALUES(nota),updated_at=NOW()');
+        $stmt->bind_param('issss', $usuarioId, $ext, $pbxCallId, $resultado, $nota);
+        if (!$stmt->execute()) throw new RuntimeException('No se pudo guardar el resultado.');
+        $stmt->close();
+        return ['resultado'=>$resultado,'resultado_etiqueta'=>self::resultadosPermitidos()[$resultado],
+            'nota'=>$nota];
     }
 
 }

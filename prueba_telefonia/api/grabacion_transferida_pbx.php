@@ -55,8 +55,20 @@ try {
     $q->execute();
     $evidence = $q->get_result()->fetch_assoc();
     $q->close();
-    if (empty($evidence['participa']) || empty($evidence['atendio']) ||
-        empty($evidence['termino'])) { http_response_code(404); exit; }
+    $autorizada = !empty($evidence['participa']) && !empty($evidence['atendio']) &&
+        !empty($evidence['termino']);
+    if ($recepcion) {
+        // El historial verifica también las salientes propias, su permiso,
+        // asignación, fin y transferencia notificada antes de ofrecer segmentos.
+        $autorizada = false;
+        $historial = (new TelefoniaRecepcionMarketingService())->resumen($userId);
+        foreach ($historial['llamadas'] as $call) {
+            if ($call['pbx_call_id'] === $pbx && $call['estado'] === 'Transferida' &&
+                !empty($call['finalizada']) && !empty($call['tiene_grabacion']) &&
+                !empty($call['destino_transferencia'])) { $autorizada = true; break; }
+        }
+    }
+    if (!$autorizada) { http_response_code(404); exit; }
     $q = $db->prepare("SELECT call_id_with_rec FROM telefonia_zadarma_eventos
         WHERE pbx_call_id=? AND evento='NOTIFY_RECORD'
           AND TRIM(COALESCE(call_id_with_rec,'')) <> ''

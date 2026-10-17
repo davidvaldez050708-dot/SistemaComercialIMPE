@@ -28,9 +28,29 @@ on:
       - "tests/marketing_recepcion_historial_smoke.js"
       - "tests/marketing_historial_pbx_unificado_smoke.php"
       - "app/services/TelefoniaRecepcionMarketingService.php"
+      - "prueba_telefonia/api/resultado_recepcion_marketing.php"
+      - "prueba_telefonia/api/grabacion_transferida_pbx.php"
+      - "tests/marketing_recepcion_operativa_smoke.php"
       - ".github/workflows/marketing-recepcion.yml"
   pull_request:
 jobs:
+  validar-operacion-recepcion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Estados, transferencias y resultados de recepción
+        run: |
+          php -l prueba_telefonia/api/resultado_recepcion_marketing.php
+          php -l prueba_telefonia/api/grabacion_transferida_pbx.php
+          php -l app/views/telefonia/recepcion_marketing.php
+          node --check public/javascript/telefonia_recepcion_marketing.js
+          php tests/marketing_recepcion_operativa_smoke.php
+          php tests/marketing_historial_pbx_unificado_smoke.php
+          php tests/marketing_grabaciones_salientes_smoke.php
+          node tests/marketing_recepcion_historial_smoke.js
   validar-recepcion:
     runs-on: ubuntu-latest
     steps:

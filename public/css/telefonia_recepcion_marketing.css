@@ -548,3 +548,128 @@
 .marketing-reception-auto-preference[hidden] {
     display: none !important;
 }
+
+/* Recepción operativa: filtros en una fila propia, aislados del título. */
+.marketing-reception-panel .marketing-reception-history-head {
+    border-bottom: 0;
+    padding-bottom: 12px;
+}
+.marketing-reception-panel .marketing-reception-filters {
+    display: grid;
+    grid-template-columns: minmax(200px, 1.3fr) minmax(160px, 1fr) minmax(180px, 1fr) auto;
+    align-items: end;
+    gap: 12px;
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #e0e7f1;
+    border-radius: 12px;
+    background: #f8fafd;
+}
+.marketing-reception-panel .marketing-reception-filter-field,
+.marketing-reception-panel .marketing-reception-search {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    gap: 6px;
+    margin: 0;
+}
+.marketing-reception-panel .marketing-reception-filter-label {
+    font-size: 10.5px;
+    font-weight: 750;
+    color: #52647e;
+    line-height: 1.3;
+}
+.marketing-reception-panel .marketing-reception-filters :is(input.form-control, select.form-select),
+.marketing-reception-panel .marketing-reception-filters > .marketing-reception-refresh {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+    min-height: 38px;
+    margin: 0;
+    padding: 8px 12px;
+    border: 1px solid #d9e2ef;
+    border-radius: 9px;
+    background-color: #fff;
+    color: #304560;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
+    box-shadow: none;
+}
+.marketing-reception-panel .marketing-reception-filters select.form-select {
+    appearance: none;
+    padding-right: 32px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23526783' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 12px center;
+    background-size: 12px;
+    background-repeat: no-repeat;
+}
+.marketing-reception-panel .marketing-reception-filters .marketing-reception-search .form-control {padding-left: 34px;}
+.marketing-reception-panel .marketing-reception-search > i {left: 12px;bottom: 12px;}
+.marketing-reception-panel .marketing-reception-filters > .marketing-reception-refresh {
+    display: inline-flex;align-items: center;justify-content: center;gap: 7px;
+    color: #2d488d;font-weight: 750;
+}
+.marketing-reception-panel .marketing-reception-history-note {
+    margin: 10px 0 12px;font-size: 10.5px;line-height: 1.5;color: #718097;
+}
+.marketing-reception-panel .marketing-reception-metrics {grid-template-columns: repeat(6,minmax(0,1fr));}
+.marketing-reception-panel .marketing-reception-table-scroll {overflow-x: auto;}
+.marketing-reception-panel .marketing-reception-table {min-width: 1000px;}
+.marketing-reception-panel .marketing-reception-table th {padding-block: 12px;background: #f8fafd;}
+.marketing-reception-panel .marketing-reception-table td {padding-block: 13px;}
+.marketing-reception-panel .marketing-reception-table button.linkage-call-recording-toggle {
+    display: inline-flex;align-items: center;justify-content: center;gap: 5px;
+    min-height: 28px;padding: 5px 9px;border: 1px solid #bce6d9;border-radius: 999px;
+    background: #eefaf6;color: #08715d;font: inherit;font-size: 10px;font-weight: 750;line-height: 1.15;
+}
+.marketing-reception-panel .marketing-reception-table button.linkage-call-recording-toggle:hover {
+    background: #e8f7f2;border-color: #acd9cd;
+}
+.marketing-reception-panel .linkage-call-recording-chevron {font-size: 8px;transition: transform .16s ease;}
+.marketing-reception-panel [aria-expanded="true"] .linkage-call-recording-chevron {transform: rotate(180deg);}
+.marketing-reception-panel .marketing-reception-observed {
+    display: block;margin-top: 5px;color: #425b83;font-size: 10px;font-weight: 750;
+}
+.marketing-reception-panel .marketing-reception-result-edit {
+    display: block;margin-top: 6px;padding: 0;border: 0;background: none;
+    color: #2e4e98;font: inherit;font-size: 10px;font-weight: 700;text-decoration: underline;
+    text-underline-offset: 3px;cursor: pointer;
+}
+.marketing-reception-panel :is(button,input,select,textarea):focus-visible {
+    outline: 2px solid #5272b0;outline-offset: 2px;
+}
+.marketing-reception-panel .marketing-reception-result-dialog {
+    width: min(480px,calc(100% - 32px));max-height: calc(100dvh - 40px);padding: 0;
+    border: 1px solid #dce5f1;border-radius: 16px;color: #263b59;
+    box-shadow: 0 24px 70px rgba(27,42,76,.2);font-family: inherit;
+}
+.marketing-reception-panel .marketing-reception-result-dialog::backdrop {background: rgba(24,39,65,.4);}
+.marketing-reception-result-dialog header,
+.marketing-reception-result-dialog footer {padding: 18px 22px;}
+.marketing-reception-result-dialog header {border-bottom: 1px solid #e7edf5;}
+.marketing-reception-result-dialog h3 {margin: 0 0 5px;font-size: 17px;font-weight: 800;}
+.marketing-reception-result-dialog p {margin: 0;font-size: 12px;line-height: 1.5;color: #6c7d93;}
+.marketing-reception-result-body {padding: 18px 22px;display: grid;gap: 10px;}
+.marketing-reception-result-body label {font-size: 12px;font-weight: 750;margin-top: 5px;}
+.marketing-reception-result-body label span {font-weight: 500;color: #7c899b;}
+.marketing-reception-result-body :is(select,textarea) {
+    width: 100%;min-height: 42px;border: 1px solid #d7e1ee;border-radius: 9px;
+    padding: 10px 12px;background: #fbfcff;color: #293f60;font: inherit;font-size: 12px;
+}
+.marketing-reception-result-body textarea {resize: vertical;}
+.marketing-reception-result-dialog footer {
+    display: flex;justify-content: flex-end;gap: 9px;border-top: 1px solid #e7edf5;
+}
+.marketing-reception-result-dialog .marketing-reception-result-error {color: #a33c36;}
+.marketing-reception-result-dialog [hidden] {display: none !important;}
+@media (max-width: 1100px) {
+    .marketing-reception-panel .marketing-reception-metrics {grid-template-columns: repeat(3,minmax(0,1fr));}
+    .marketing-reception-panel .marketing-reception-filters {grid-template-columns: repeat(2,minmax(0,1fr));}
+}
+@media (max-width: 575px) {
+    .marketing-reception-panel .marketing-reception-metrics {grid-template-columns: repeat(2,minmax(0,1fr));}
+    .marketing-reception-panel .marketing-reception-filters {grid-template-columns: minmax(0,1fr);padding: 12px;}
+}

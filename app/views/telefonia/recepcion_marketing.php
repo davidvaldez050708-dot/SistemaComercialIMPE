@@ -6,6 +6,8 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
 <?php if ($recepcionMarketingPermitida): ?>
 <section class="dashboard-panel marketing-reception-panel"
     data-marketing-reception
+    data-result-url="<?= htmlspecialchars(BASE_URL . 'prueba_telefonia/api/resultado_recepcion_marketing.php', ENT_QUOTES, 'UTF-8') ?>"
+    data-result-csrf="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
     data-history-url="<?= htmlspecialchars(BASE_URL . 'prueba_telefonia/api/historial_recepcion_marketing.php', ENT_QUOTES, 'UTF-8') ?>"
     data-recording-url="<?= htmlspecialchars(BASE_URL . 'prueba_telefonia/api/grabacion_recepcion_marketing.php', ENT_QUOTES, 'UTF-8') ?>">
     <div class="marketing-reception-heading">
@@ -79,6 +81,10 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <span class="marketing-reception-metric-icon"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></span>
             <div><strong data-marketing-reception-transferred>0</strong><span>Transferidas</span></div>
         </article>
+        <article class="marketing-reception-metric">
+            <span class="marketing-reception-metric-icon is-alert"><i class="bi bi-person-dash" aria-hidden="true"></i></span>
+            <div><strong data-marketing-reception-no-contact>0</strong><span>Salientes sin contacto</span></div>
+        </article>
     </div>
 
     <div class="marketing-reception-history-head">
@@ -86,19 +92,26 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <h3>Historial de llamadas</h3>
             <p>Últimos 30 días, exclusivamente de tu extensión y desde su asignación.</p>
         </div>
-        <div class="marketing-reception-filters">
+    </div>
+        <div class="marketing-reception-filters" role="search" aria-label="Filtrar historial telefónico">
             <label class="marketing-reception-search">
+                <span class="marketing-reception-filter-label">Buscar llamada</span>
                 <i class="bi bi-search" aria-hidden="true"></i>
                 <input type="search" class="form-control" placeholder="Buscar número…"
                     aria-label="Buscar llamadas por número o extensión de transferencia"
                     data-marketing-reception-search autocomplete="off">
             </label>
+            <label class="marketing-reception-filter-field">
+            <span class="marketing-reception-filter-label">Tipo de llamada</span>
             <select class="form-select marketing-reception-status-filter"
                 data-marketing-reception-type aria-label="Filtrar por tipo de llamada">
                 <option value="">Entrantes y salientes</option>
                 <option value="Entrante">Entrantes</option>
                 <option value="Saliente">Salientes</option>
             </select>
+            </label>
+            <label class="marketing-reception-filter-field">
+            <span class="marketing-reception-filter-label">Estado o resultado</span>
             <select class="form-select marketing-reception-status-filter"
                 data-marketing-reception-filter aria-label="Filtrar llamadas por estado">
                 <option value="">Todos los estados</option>
@@ -107,13 +120,25 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                 <option value="Transferida">Transferidas</option>
                 <option value="En curso">En curso</option>
                 <option value="Sonando">Sonando</option>
-                <option value="Completada">Completadas</option>
+                <option value="Completada">Respondidas</option>
                 <option value="Sin respuesta">Sin respuesta</option>
                 <option value="Ocupada">Ocupadas</option>
                 <option value="Cancelada">Canceladas</option>
                 <option value="Fallida">Fallidas</option>
                 <option value="Marcando">Marcando</option>
+                <option value="Número inexistente">Número inexistente</option>
+                <option value="No disponible">No disponible</option>
+                <option value="Sin saldo">Sin saldo</option>
+                <option value="Límite excedido">Límite excedido</option>
+                <optgroup label="Resultado registrado por recepción">
+                    <option value="resultado:CONTACTO">Persona atendió</option>
+                    <option value="resultado:BUZON">Buzón de voz</option>
+                    <option value="resultado:NO_DISPONIBLE">No disponible · registrado</option>
+                    <option value="resultado:NUMERO_INCORRECTO">Número incorrecto</option>
+                    <option value="resultado:OTRO">Otro resultado</option>
+                </optgroup>
             </select>
+            </label>
             <button type="button" class="btn btn-system-light marketing-reception-refresh"
                 data-marketing-reception-refresh title="Actualizar historial"
                 aria-label="Actualizar historial de recepción">
@@ -121,7 +146,8 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                 Actualizar
             </button>
         </div>
-    </div>
+
+    <p class="marketing-reception-history-note">El estado lo confirma la centralita. Registra el resultado para distinguir una persona de un buzón o una locución.</p>
 
     <p class="marketing-reception-callback-status" data-marketing-reception-callback-status
         role="status" aria-live="polite" hidden></p>
@@ -151,6 +177,32 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
         <nav class="marketing-reception-pagination" data-marketing-reception-pages
             aria-label="Páginas del historial de recepción" hidden></nav>
     </div>
+    <dialog class="marketing-reception-result-dialog" data-marketing-result-dialog
+        aria-labelledby="marketingResultadoTitulo">
+        <form data-marketing-result-form>
+            <header><h3 id="marketingResultadoTitulo">Resultado de la llamada</h3>
+                <p data-marketing-result-phone></p></header>
+            <div class="marketing-reception-result-body">
+                <p>Registra lo que escuchaste. El estado confirmado por la centralita se conserva.</p>
+                <label for="marketingResultado">Resultado observado</label>
+                <select id="marketingResultado" name="resultado" required data-marketing-result-select>
+                    <option value="">Selecciona un resultado</option>
+                    <option value="CONTACTO">Persona atendió</option>
+                    <option value="BUZON">Buzón de voz</option>
+                    <option value="NO_DISPONIBLE">No disponible</option>
+                    <option value="NUMERO_INCORRECTO">Número incorrecto</option>
+                    <option value="OTRO">Otro resultado</option>
+                    <option value="SIN_CLASIFICAR">Sin clasificar</option>
+                </select>
+                <label for="marketingResultadoNota">Nota <span>(opcional)</span></label>
+                <textarea id="marketingResultadoNota" name="nota" rows="3" maxlength="500"
+                    placeholder="Ej. buzón de voz; volver a llamar por la tarde." data-marketing-result-note></textarea>
+                <p class="marketing-reception-result-error" data-marketing-result-error role="alert" hidden></p>
+            </div>
+            <footer><button type="button" class="btn btn-system-light" data-marketing-result-cancel>Cancelar</button>
+                <button type="submit" class="btn btn-system-primary" data-marketing-result-save>Guardar resultado</button></footer>
+        </form>
+    </dialog>
     </div>
 </section>
 <?php endif; ?>

@@ -34,7 +34,7 @@ $tests = [
         !str_contains($recordingService, "^out_[a-fA-F0-9]{32,64}$") &&
         str_contains($recordingApi, "'verificar'") &&
         str_contains($marketingJs, "url.searchParams.set('verificar', '1')") &&
-        str_contains($marketingJs, 'Consultar audio') &&
+        str_contains($marketingJs, 'Consultar grabación') &&
         str_contains($marketingJs, 'Aún no disponible') &&
         str_contains($marketingJs, "recordingVerified = '1'"),
     'Silenciar y temporizador comparten experiencia Seguimiento' =>
