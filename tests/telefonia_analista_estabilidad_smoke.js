@@ -24,4 +24,10 @@ assert.match(journal, /active && pbxIncoming/, 'La identidad PBX no finaliza la 
 assert.match(service, /\$pbx\['sdk_session_id'\]/, 'Conservar identificador SDK conciliado');
 assert.match(view, /data-pbx-call-id=/, 'Publicar referencia PBX para recuperar el formulario');
 assert.match(form, /el\.dataset\.pbxCallId === focusId/, 'Resolver formulario por ambos IDs');
-console.log('OK: 9 invariantes de telefonía del analista');
+assert.match(host, /\['incoming-ringing', 'answering'\]\.includes\(state\.phase\)\) return 0/,
+    'No arrancar el cronómetro mientras WebRTC sigue conectando');
+assert.match(host, /state\.phase === 'answering'\s*&&\s*analystSdkObserver\?\.isConnected\?\.\(\)/,
+    'Recuperar conexión confirmada localmente si no llegó callback');
+assert.match(host, /if \(samePbxCall && state\.phase === 'finishing'\) return/,
+    'Sondeo PBX no debe revivir audio ya finalizado');
+console.log('OK: invariantes estáticas de telefonía del analista');
