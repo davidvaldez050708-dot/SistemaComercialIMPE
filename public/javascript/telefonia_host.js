@@ -1034,7 +1034,12 @@
                  analystSdkObserver?.isConnected?.())))));
         const pbxAnswered = incomingStatus === 'answered' ||
             (samePbxCall && Boolean(state.context?.pbxAnswered));
-        const answered = pbxAnswered || sdkAnswered;
+        // Una vez confirmada la conversación para ESTE PBX call ID,
+        // los sondeos atrasados con estado "ringing" no pueden regresarla
+        // a "Conectando" ni reiniciar su cronómetro.
+        const previouslyConnected = samePbxCall && state.active &&
+            state.phase === 'in-progress';
+        const answered = pbxAnswered || sdkAnswered || previouslyConnected;
         const nuevaLlamadaEntrante = !samePbxCall;
         // La PBX puede tardar después de que el audio ya desapareció.
         if (samePbxCall && state.phase === 'finishing') return;
@@ -1091,7 +1096,8 @@
                 type:'INCOMING',
                 callerId:String(call.caller_id || ''),
                 calledDid:String(call.called_did || ''),
-                sdkConnected:sdkAnswered,
+                sdkConnected:sdkAnswered || (samePbxCall &&
+                    Boolean(state.context?.sdkConnected)),
                 pbxAnswered:pbxAnswered
             },
             finalMetadata: null,

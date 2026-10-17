@@ -1061,3 +1061,31 @@ a.btn.linkage-incoming-back {
     }
     #modalLlamadaEntranteAnalista .modal-header {padding: 16px;}
 }
+
+/* Acción Registrar resultado: igual de compacta que Consultar grabación.
+   Las dimensiones pertenecen al CSS del módulo, no a la vista PHP. */
+.linkage-incoming-page .linkage-call-result-group .linkage-incoming-open {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-sizing: border-box;
+    min-height: 32px;
+    padding: 5px 11px;
+    border: 1px solid #c8d5e9;
+    border-radius: 999px;
+    background: #f1f5fc;
+    color: #27438a;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.linkage-incoming-page .linkage-call-result-group .linkage-incoming-open:hover,
+.linkage-incoming-page .linkage-call-result-group .linkage-incoming-open:focus-visible {
+    border-color: #aabfe4;
+    background: #e9f0fb;
+    color: #203a79;
+}

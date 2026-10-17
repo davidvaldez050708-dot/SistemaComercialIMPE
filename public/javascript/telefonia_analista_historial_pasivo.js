@@ -151,6 +151,16 @@
     let finished = null;
     let lastSignature = '';
     let chain = Promise.resolve();
+    // La misma conversación puede pasar de sesión PBX a SDK (o al revés).
+    // No borrar la institución detectada ante esa transición de estado.
+    let visibleContextKey = '';
+    let visibleContextPhone = '';
+    const clearVisibleContext = () => {
+        visibleContextKey = '';
+        visibleContextPhone = '';
+        contextCard.hidden = true;
+        contextCard.replaceChildren?.();
+    };
     const contextStorageKey = id => 'impe:crm:transfer-context:' + userId + ':' + id;
     // No consultar por una extensión (100/101) ni por caller ID aún vacío.
     const usableCallerNumber = value => {
@@ -179,7 +189,13 @@
             const ctx = data.contexto;
             if (!Number.isInteger(Number(ctx.seguimiento_id)) ||
                 Number(ctx.seguimiento_id) <= 0) return;
-            contextCard.replaceChildren?.();
+            // No asociar a otra conversación una institución previa.
+            if (visibleContextPhone && visibleContextPhone !== phone) clearVisibleContext();
+            const presentationKey = [String(ctx.seguimiento_id),
+                String(ctx.institucion || ''), String(ctx.estado || '')].join('|');
+            if (visibleContextKey !== presentationKey) {
+                contextCard.replaceChildren?.();
+            }
             const heading = root.document.createElement('strong');
             heading.textContent = String(ctx.institucion || '') + ' · ' +
                 String(ctx.estado || '');
@@ -187,8 +203,12 @@
             hint.textContent = 'Identificada por ' +
                 String(ctx.confirmado_por || 'Recepción') +
                 '. Confirma los datos con la persona que llama.';
-            contextCard.appendChild(heading);
-            contextCard.appendChild(hint);
+            if (visibleContextKey !== presentationKey) {
+                contextCard.appendChild(heading);
+                contextCard.appendChild(hint);
+                visibleContextKey = presentationKey;
+                visibleContextPhone = phone;
+            }
             contextCard.hidden = false;
             try {
                 root.sessionStorage?.setItem(contextStorageKey(id), JSON.stringify({
@@ -369,10 +389,11 @@
                 .replace(/[^0-9+*#]/g,'').slice(0,40);
             if (!pbxSession || pbxSession.id !== id) {
                 pbxSession = {id,number:''};
-                contextCard.hidden = true;
-                contextCard.replaceChildren?.();
+                // Mantener el bloque detectado mientras PBX y SDK
+                // terminan de identificar esta misma conversación.
             }
             if (usableCallerNumber(phone) && pbxSession.number !== phone) {
+                if (visibleContextPhone && visibleContextPhone !== phone) clearVisibleContext();
                 pbxSession.number = phone;
                 void fetchContext(id, phone);
             }
@@ -396,8 +417,10 @@
                     sawConversation: false
                 };
                 finished = null;
-                contextCard.hidden = true;
-                contextCard.replaceChildren?.();
+                // El identificador del SDK puede aparecer después del PBX.
+                // Mantener sólo el contexto del mismo teléfono, si se conoce.
+                if (usableCallerNumber(reportedNumber) && visibleContextPhone &&
+                    visibleContextPhone !== reportedNumber) clearVisibleContext();
                 draw();
                 if (usableCallerNumber(active.number)) {
                     void fetchContext(id, active.number);
@@ -429,9 +452,26 @@
                     Math.floor((Date.now() - active.answeredAt) / 1000)
                 );
             }
+        } else if (active && pbxIncoming) {
+            // Una sesión SDK transferida puede adquirir su identificador PBX
+            // durante el timbrado o después de contestar. No finalizar aquí
+            // la sesión SDK: es la MISMA conversación, no una llamada nueva.
+            if (state.phase === 'in-progress' || state.status === 'in-progress') {
+                active.sawConversation = true;
+                const hostAt = Number(state.answeredAtMs || 0);
+                if (!active.answeredAt) {
+                    active.answeredAt = hostAt > 0 && hostAt <= Date.now() &&
+                        Date.now() - hostAt < 86400000 ? hostAt : Date.now();
+                    void postEvent('answered', active);
+                }
+                active.lastDuration = Math.max(
+                    active.lastDuration, Number(state.duration || 0),
+                    Math.floor((Date.now() - active.answeredAt) / 1000)
+                );
+            }
         } else if (active && (!state.active ||
             state.phase === 'ready' || state.phase === 'incoming-finished')) {
-            // El motor sí publicó un estado final; aprovechar su duración.
+            // Finalizar sólo al terminar realmente la conversación.
             end(state);
         }
     };

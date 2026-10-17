@@ -528,8 +528,33 @@
     renderDecision();
     const focusId = String(page.dataset.autoCall || '').trim();
     if (focusId) {
+        // Tras una transferencia el enlace puede usar el ID WebRTC o PBX.
+        // Ambas referencias identifican la misma tarjeta consolidada.
         const found = Array.from(page.querySelectorAll('[data-call-id]'))
-            .find(el => el.dataset.callId === focusId);
-        if (found) window.setTimeout(() => openRegistration(found), 100);
+            .find(el => el.dataset.callId === focusId ||
+                el.dataset.pbxCallId === focusId);
+        const retryKey = 'impe:incoming-focus-retry:' + focusId;
+        if (found) {
+            try { sessionStorage.removeItem(retryKey); } catch (_) {}
+            window.setTimeout(() => openRegistration(found), 100);
+        } else {
+            // Puede llegar el salto desde el teléfono antes de publicarse
+            // el registro PBX/WebRTC. Reintentar una sola vez, sin crear nada.
+            let alreadyRetried = true;
+            try {
+                alreadyRetried = sessionStorage.getItem(retryKey) === '1';
+                if (!alreadyRetried) sessionStorage.setItem(retryKey, '1');
+            } catch (_) {}
+            if (!alreadyRetried) {
+                window.setTimeout(() => window.location.reload(), 1200);
+            } else {
+                try { sessionStorage.removeItem(retryKey); } catch (_) {}
+                const aviso = document.createElement('p');
+                aviso.className = 'alert alert-warning mt-3';
+                aviso.setAttribute('role', 'status');
+                aviso.textContent = 'La llamada se recibió, pero su registro aún no está disponible. Actualiza Llamadas recibidas para intentar abrir el resultado. No repitas la llamada.';
+                page.appendChild(aviso);
+            }
+        }
     }
 })();

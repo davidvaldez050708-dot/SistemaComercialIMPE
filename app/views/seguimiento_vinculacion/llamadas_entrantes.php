@@ -26,7 +26,8 @@ $paginaEntrantes = $paginaEntrantes === false
 // encontrarla aunque no esté dentro de las primeras diez.
 if ($seleccionarId !== '') {
     foreach ($llamadas as $posicion => $llamadaCandidata) {
-        if ((string)($llamadaCandidata['pbx_call_id'] ?? '') === $seleccionarId) {
+        if ((string)($llamadaCandidata['pbx_call_id'] ?? '') === $seleccionarId ||
+            (string)($llamadaCandidata['sdk_session_id'] ?? '') === $seleccionarId) {
             $paginaEntrantes = intdiv((int)$posicion, $llamadasPorPagina) + 1;
             break;
         }
@@ -128,6 +129,9 @@ $duracionEntrante = static function ($segundos) {
                     $esWebrtc = ($llamada['fuente'] ?? '') === 'SDK_WEBRTC';
                     $esInterna = ($llamada['tipo_llamada'] ?? '') === 'INTERNA';
                     $situacion = (string)($llamada['clasificacion'] ?? 'PENDIENTE');
+                    $sdkIdConciliado = trim((string)($llamada['sdk_session_id'] ?? ''));
+                    $idRegistroResultado = $sdkIdConciliado !== '' ? $sdkIdConciliado : $pbxId;
+                    $fuenteRegistroResultado = $sdkIdConciliado !== '' ? 'SDK_WEBRTC' : ($esWebrtc ? 'SDK_WEBRTC' : 'PBX');
                     $pbx = (string)($llamada['estado_pbx'] ?? '');
                     $finalizada = in_array($pbx, ['ended', 'transferred'], true);
                     $vinculada = $situacion === 'VINCULADA';
@@ -219,6 +223,21 @@ $duracionEntrante = static function ($segundos) {
                                     <?php else: ?>
                                         <span class="linkage-call-result-badge is-no-contact">Pendiente de resultado</span>
                                     <?php endif; ?>
+                            <?php // El reproductor y el registro son acciones independientes. ?>
+                            <?php if (!$esInterna && !$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
+                                <span class="linkage-incoming-register-inline">
+                                    <button type="button" class="linkage-incoming-open"
+                                        data-call-id="<?= $esc($idRegistroResultado) ?>"
+                                        data-pbx-call-id="<?= $esc($pbxId) ?>"
+                                        data-source="<?= $esc($fuenteRegistroResultado) ?>"
+                                        data-phone="<?= $esc($llamada['numero'] ?? '') ?>"
+                                        data-answer="<?= !empty($llamada['contestada']) ? '1' : '0' ?>"
+                                        data-duration="<?= $esc($duracionEntrante($duracionSegundos)) ?>">
+                                        <i class="bi bi-journal-check" aria-hidden="true"></i>
+                                        <?= $sinIdentificar ? 'Vincular expediente' : 'Registrar resultado' ?>
+                                    </button>
+                                </span>
+                            <?php endif; ?>
                                 </div>
                                 <div class="linkage-call-history-meta">
                                     <span class="linkage-call-recording-duration">
@@ -305,19 +324,8 @@ $duracionEntrante = static function ($segundos) {
                                     </button>
                                     <small class="linkage-incoming-sync-message" role="status" aria-live="polite"></small>
                                 </div>
-                            <?php elseif (!$esInterna && !$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
-                                <div class="linkage-incoming-card-actions">
-                                    <button type="button" class="btn btn-system-save linkage-incoming-open"
-                                        data-call-id="<?= $esc($pbxId) ?>"
-                                        data-source="<?= $esWebrtc ? 'SDK_WEBRTC' : 'PBX' ?>"
-                                        data-phone="<?= $esc($llamada['numero'] ?? '') ?>"
-                                        data-answer="<?= !empty($llamada['contestada']) ? '1' : '0' ?>"
-                                        data-duration="<?= $esc($duracionEntrante($duracionSegundos)) ?>">
-                                        <i class="bi bi-journal-check" aria-hidden="true"></i>
-                                        <?= $sinIdentificar ? 'Vincular expediente' : 'Registrar resultado' ?>
-                                    </button>
-                                </div>
                             <?php endif; ?>
+
                         </div>
                     </article>
                 <?php endforeach; ?>

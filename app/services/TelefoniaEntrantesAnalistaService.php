@@ -236,6 +236,20 @@ class TelefoniaEntrantesAnalistaService
             if (count($inversos[$pi] ?? []) !== 1) continue;
             $sdk = $sesiones[$si];
             $pbx = &$llamadas[$pi];
+            // Conservar el ID WebRTC para el formulario sin cambiar el ID PBX del audio.
+            $pbx['sdk_session_id'] = (string)($sdk['pbx_call_id'] ?? '');
+            // El registro SDK puede confirmar una conversación aun cuando
+            // NOTIFY_ANSWER no haya llegado para la misma pierna PBX.
+            // La tarjeta unificada debe permitir registrar ese resultado,
+            // sin inventar una confirmación PBX ni cambiar su grabación.
+            if (!empty($sdk['contestada'])) {
+                $pbx['contestada'] = true;
+            }
+            if (($sdk['estado_pbx'] ?? '') === 'ended' &&
+                !in_array((string)($pbx['estado_pbx'] ?? ''),
+                    ['ended', 'transferred'], true)) {
+                $pbx['estado_pbx'] = 'ended';
+            }
             // El evento PBX conserva identidad, duración y acceso a grabación.
             // La clasificación del registro SDK se aprovecha si PBX sigue pendiente.
             if (($pbx['clasificacion'] ?? 'PENDIENTE') === 'PENDIENTE' &&
