@@ -22,6 +22,7 @@ LIVE="$(cd "$LIVE" && pwd -P)"
 SOURCE="$(realpath -m "$SOURCE")"
 BACKUPS="$(realpath -m "$BACKUPS")"
 for private in "$SOURCE" "$BACKUPS"; do
+    [[ "$private" != / ]] || fail 'La raíz del servidor no puede utilizarse para preparación o respaldos.'
     [[ "$private/" != "$LIVE/"* && "$LIVE/" != "$private/"* ]] ||
         fail 'La preparación y los respaldos deben estar fuera de la carpeta pública.'
 done
@@ -141,10 +142,10 @@ for file in "${FILES[@]}"; do
         echo "CONFLICTO: falta archivo existente: $file"; conflicts=$((conflicts+1)); continue
     elif ! cmp -s "$TMP/target" "$LIVE/$file"; then
         git -C "$SOURCE" diff --binary "$BASE" "$TARGET" -- "$file" > "$TMP/change.patch"
-        if (cd "$TMP/stage" && git apply --reverse --check "$TMP/change.patch" >/dev/null 2>&1); then
+        if (cd "$TMP/stage" && git -c core.autocrlf=false apply --reverse --check "$TMP/change.patch" >/dev/null 2>&1); then
             : # El parche ya está aplicado; conserva personalizaciones ajenas.
-        elif (cd "$TMP/stage" && git apply --check "$TMP/change.patch" >/dev/null 2>&1); then
-            (cd "$TMP/stage" && git apply "$TMP/change.patch")
+        elif (cd "$TMP/stage" && git -c core.autocrlf=false apply --check "$TMP/change.patch" >/dev/null 2>&1); then
+            (cd "$TMP/stage" && git -c core.autocrlf=false apply "$TMP/change.patch")
         else
             echo "CONFLICTO: revisión necesaria: $file"; conflicts=$((conflicts+1)); continue
         fi
