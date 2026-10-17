@@ -609,6 +609,8 @@
                     // El audio local terminó. Esperar cierre PBX, pero no
                     // mantener la pantalla/cronómetro en conversación falsa.
                     if (isSdkOnlyIncoming()) {
+                        // Sólo el SDK conoce esta sesión: al desaparecer el
+                        // audio, retirarla. No conservar reloj ni llamada activa.
                         clearSdkOnlyIncoming();
                         return;
                     }
@@ -624,10 +626,13 @@
                         message:'El audio terminó. Esperando cierre de Zadarma.'
                     });
                     window.setTimeout(function () {
-                        // Sin NOTIFY_END sólo mostramos cierre provisional.
-                        // No fabricar evento PBX ni grabación.
+                        // Si el SDK detecta otra vez audio, no finalizar una
+                        // conversación real. El cierre provisional se permite
+                        // sólo tras pérdida mantenida de los controles locales.
                         if (state.active && state.phase === 'finishing' &&
-                            String(state.pbxCallId) === token) {
+                            String(state.pbxCallId) === token &&
+                            !analystSdkObserver?.isConnected?.() &&
+                            !analystSdkObserver?.isRinging?.()) {
                             finalizarEntrante({
                                 pbx_call_id:token,duration,
                                 disposition:'ended-unconfirmed'
