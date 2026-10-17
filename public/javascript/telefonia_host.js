@@ -275,7 +275,7 @@
         // El timbrado no es conversación. Algunos eventos de la PBX
         // reutilizan el duration de la llamada previa durante el ring.
         if (state.direction === 'incoming' &&
-            state.phase === 'incoming-ringing') return 0;
+            ['incoming-ringing', 'answering'].includes(state.phase)) return 0;
         let duration = Math.max(0, Number(state.duration || 0));
 
         if (state.active && answeredAtMs > 0) {
