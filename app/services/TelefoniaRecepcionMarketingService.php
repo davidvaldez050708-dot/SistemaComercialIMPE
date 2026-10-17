@@ -395,6 +395,9 @@ class TelefoniaRecepcionMarketingService
         if (!$propia || empty($propia['finalizada'])) {
             throw new DomainException('Sólo puedes registrar llamadas finalizadas de tu extensión.');
         }
+        if (!empty($propia['resultado'])) {
+            throw new DomainException('El resultado ya fue registrado y no se puede modificar.',409);
+        }
         if (!$this->db->query("CREATE TABLE IF NOT EXISTS telefonia_recepcion_resultados (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
             usuario_id INT NOT NULL, extension VARCHAR(12) NOT NULL,
@@ -408,11 +411,24 @@ class TelefoniaRecepcionMarketingService
         }
         $ext = $recepcion['extension'];
         $stmt = $this->db->prepare('INSERT INTO telefonia_recepcion_resultados
-            (usuario_id,extension,pbx_call_id,resultado,nota) VALUES (?,?,?,?,?)
-            ON DUPLICATE KEY UPDATE resultado=VALUES(resultado),nota=VALUES(nota),updated_at=NOW()');
+            (usuario_id,extension,pbx_call_id,resultado,nota) VALUES (?,?,?,?,?)');
         $stmt->bind_param('issss', $usuarioId, $ext, $pbxCallId, $resultado, $nota);
-        if (!$stmt->execute()) throw new RuntimeException('No se pudo guardar el resultado.');
-        $stmt->close();
+        // La clave única protege también dos envíos simultáneos: nunca sobrescribir.
+        try {
+            if (!$stmt->execute()) {
+                if ((int)$stmt->errno === 1062) {
+                    throw new DomainException('El resultado ya fue registrado y no se puede modificar.',409);
+                }
+                throw new RuntimeException('No se pudo guardar el resultado.');
+            }
+        } catch (mysqli_sql_exception $error) {
+            if ($error->getCode() === 1062) {
+                throw new DomainException('El resultado ya fue registrado y no se puede modificar.',409);
+            }
+            throw $error;
+        } finally {
+            $stmt->close();
+        }
         return ['resultado'=>$resultado,'resultado_etiqueta'=>self::resultadosPermitidos()[$resultado],
             'nota'=>$nota];
     }

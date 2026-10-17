@@ -612,7 +612,7 @@
 }
 .marketing-reception-panel .marketing-reception-metrics {grid-template-columns: repeat(6,minmax(0,1fr));}
 .marketing-reception-panel .marketing-reception-table-scroll {overflow-x: auto;}
-.marketing-reception-panel .marketing-reception-table {min-width: 1000px;}
+.marketing-reception-panel .marketing-reception-table {min-width: 1140px;}
 .marketing-reception-panel .marketing-reception-table th {padding-block: 12px;background: #f8fafd;}
 .marketing-reception-panel .marketing-reception-table td {padding-block: 13px;}
 .marketing-reception-panel .marketing-reception-table button.linkage-call-recording-toggle {
@@ -625,13 +625,22 @@
 }
 .marketing-reception-panel .linkage-call-recording-chevron {font-size: 8px;transition: transform .16s ease;}
 .marketing-reception-panel [aria-expanded="true"] .linkage-call-recording-chevron {transform: rotate(180deg);}
-.marketing-reception-panel .marketing-reception-observed {
-    display: block;margin-top: 5px;color: #425b83;font-size: 10px;font-weight: 750;
+.marketing-reception-panel .marketing-reception-result-cell {
+    min-width: 145px;max-width: 220px;white-space: normal;
+}
+.marketing-reception-panel .marketing-reception-result-label {
+    display: block;color: var(--color-text-primary);font-size: 11px;font-weight: 700;
+}
+.marketing-reception-panel .marketing-reception-result-note {
+    display: block;margin-top: 4px;color: var(--color-text-secondary);
+    font-size: 10px;line-height: 1.4;overflow-wrap: anywhere;
+    display: -webkit-box;-webkit-box-orient: vertical;-webkit-line-clamp: 2;overflow: hidden;
 }
 .marketing-reception-panel .marketing-reception-result-edit {
-    display: block;margin-top: 6px;padding: 0;border: 0;background: none;
-    color: #2e4e98;font: inherit;font-size: 10px;font-weight: 700;text-decoration: underline;
-    text-underline-offset: 3px;cursor: pointer;
+    display: inline-flex;align-items: center;justify-content: center;margin: 0;
+    padding: 6px 9px;border: 1px solid var(--color-border);border-radius: var(--radius-sm);
+    background: #f8fafc;color: var(--color-primary);font: inherit;font-size: 10px;
+    font-weight: 700;line-height: 1.2;cursor: pointer;
 }
 .marketing-reception-panel .marketing-reception-filters :is(button,input,select):focus-visible,
 .marketing-reception-panel .marketing-reception-table button:focus-visible {

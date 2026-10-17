@@ -17,10 +17,24 @@
         return normalizarNumeroDevolucion(call?.numero || '') !== '';
     }
 
+    function coincideEstadoRecepcion(call, selected) {
+        if (!selected) return true;
+        if (selected === 'pendientes') return Boolean(call.finalizada) && !call.resultado;
+        const grupos = {
+            respondidas: ['Atendida','Completada'],
+            'sin-respuesta': ['Perdida','Sin respuesta'],
+            activas: ['En curso','Sonando','Marcando'],
+            'no-completadas': ['Ocupada','Cancelada','Fallida','Número inexistente',
+                'No disponible','Sin saldo','Límite excedido']
+        };
+        return grupos[selected] ? grupos[selected].includes(call.estado) : call.estado === selected;
+    }
+
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = {
             normalizarNumeroDevolucion: normalizarNumeroDevolucion,
-            puedeLlamarAlRegistro: puedeLlamarAlRegistro
+            puedeLlamarAlRegistro: puedeLlamarAlRegistro,
+            coincideEstadoRecepcion: coincideEstadoRecepcion
         };
     }
     if (typeof document === 'undefined') return;
@@ -43,7 +57,6 @@
         const resultForm = root.querySelector('[data-marketing-result-form]');
         const resultSelect = root.querySelector('[data-marketing-result-select]');
         const resultNote = root.querySelector('[data-marketing-result-note]');
-        const resultError = root.querySelector('[data-marketing-result-error]');
         const resultSave = root.querySelector('[data-marketing-result-save]');
         let resultCallId = '';
         let savingResult = false;
@@ -65,12 +78,30 @@
         const telefono = window.IMPE_TELEPHONY_PERSISTENT || null;
         let puedeDevolver = false;
         let marcacionEnCurso = false;
-        const avisoDevolucion = root.querySelector('[data-marketing-reception-callback-status]');
         const explicarDevolucion = function (mensaje, error) {
-            if (!avisoDevolucion) return;
-            avisoDevolucion.textContent = String(mensaje || '');
-            avisoDevolucion.classList.toggle('is-error', Boolean(error));
-            avisoDevolucion.hidden = !mensaje;
+            if (!mensaje || !window.bootstrap?.Toast) return;
+            let container = document.querySelector('.toast-container');
+            if (!container) {
+                container = node('div','toast-container position-fixed top-0 end-0 p-3');
+                document.body.appendChild(container);
+            }
+            // El contenedor es hermano del modal y permanece sobre su fondo.
+            container.style.zIndex = '1095';
+            const toast = node('div','toast system-toast' + (error ? ' system-toast-error' : ''));
+            toast.setAttribute('role',error ? 'alert' : 'status');
+            toast.setAttribute('aria-live',error ? 'assertive' : 'polite');
+            toast.setAttribute('aria-atomic','true');
+            const body = node('div','toast-body');
+            const icon = node('i','bi ' + (error ? 'bi-exclamation-circle' : 'bi-check2-circle'));
+            icon.setAttribute('aria-hidden','true');
+            body.append(icon,node('span','',mensaje));
+            toast.appendChild(body);
+            container.appendChild(toast);
+            const instance = window.bootstrap.Toast.getOrCreateInstance(toast,{
+                autohide:true, delay:error ? 4500 : 3200
+            });
+            toast.addEventListener('hidden.bs.toast',function () {instance.dispose();toast.remove();});
+            instance.show();
         };
         const pageSize = 8;
         let calls = [];
@@ -134,7 +165,7 @@
                 detail.id = audioId;
                 detail.hidden = true;
                 const content = node('td');
-                content.colSpan = 8;
+                content.colSpan = 9;
                 const slot = node('div','telephony-history-recording-slot');
                 slot.dataset.marketingPbxAudios = '';
                 content.appendChild(slot);
@@ -164,7 +195,7 @@
             detail.hidden = true;
             detail.setAttribute('data-sales-recording-row', '');
             const content = node('td');
-            content.colSpan = 8;
+            content.colSpan = 9;
             const slot = node('div', 'telephony-history-recording-slot');
             slot.setAttribute('data-sales-recording-slot', '');
             content.appendChild(slot);
@@ -227,20 +258,23 @@
             statusCell.appendChild(badge);
             if (status === 'Transferida' && call.estado_cierre &&
                 !['Completada','Atendida','En curso','Marcando','Sonando'].includes(call.estado_cierre)) {
-                statusCell.appendChild(node('span','marketing-reception-observed',call.estado_cierre));
+                badge.title += ' · Cierre: ' + call.estado_cierre;
             }
-            if (call.resultado_etiqueta && call.resultado !== 'SIN_CLASIFICAR') {
-                const observed = node('span','marketing-reception-observed',call.resultado_etiqueta);
+            const resultCell = addCell(row,'','marketing-reception-result-cell');
+            if (call.resultado) {
+                const observed = node('span','marketing-reception-result-label',call.resultado_etiqueta || 'Registrado');
                 observed.title = 'Registrado por recepción' + (call.nota ? ': ' + call.nota : '');
-                statusCell.appendChild(observed);
-            }
-            if (call.finalizada && resultDialog && root.dataset.resultUrl) {
+                resultCell.appendChild(observed);
+                if (call.nota) resultCell.appendChild(node('span','marketing-reception-result-note',call.nota));
+            } else if (call.finalizada && resultDialog && root.dataset.resultUrl) {
                 const edit = node('button','marketing-reception-result-edit',
-                    call.resultado ? 'Editar resultado' : 'Registrar resultado');
+                    'Registrar resultado');
                 edit.type = 'button';
                 edit.dataset.marketingResult = String(call.pbx_call_id || '');
                 edit.setAttribute('aria-haspopup','dialog');
-                statusCell.appendChild(edit);
+                resultCell.appendChild(edit);
+            } else {
+                resultCell.appendChild(node('span','marketing-reception-muted','—'));
             }
             addCell(row, formatDuration(call.segundos));
             addCell(row, call.destino_transferencia
@@ -256,9 +290,7 @@
             const selectedType = typeFilter?.value || '';
             const filtered = calls.filter(function (call) {
                 if (selectedType && call.tipo !== selectedType) return false;
-                if (selected.startsWith('resultado:')) {
-                    if (call.resultado !== selected.slice(10)) return false;
-                } else if (selected && call.estado !== selected) return false;
+                if (!coincideEstadoRecepcion(call, selected)) return false;
                 if (!raw) return true;
                 const phone = String(call.numero || '');
                 const transfer = String(call.destino_transferencia || '');
@@ -289,7 +321,7 @@
                         : calls.length === 0
                             ? 'Todavía no hay llamadas registradas en esta extensión.'
                             : 'No hay llamadas que coincidan con la búsqueda.'),
-                    'marketing-reception-placeholder').colSpan = 8;
+                    'marketing-reception-placeholder').colSpan = 9;
                 rows.push(empty);
             }
             tableBody.replaceChildren(...rows);
@@ -369,18 +401,18 @@
                 initialized = true;
                 renderList();
                 if (manual) {
-                    count.textContent += ' · actualizado';
+                    explicarDevolucion('Historial actualizado.',false);
                 }
             } catch (error) {
                 if (!initialized) {
                     tableBody.replaceChildren();
                     const row = node('tr');
                     addCell(row, error.message || 'No fue posible consultar las llamadas.',
-                        'marketing-reception-placeholder').colSpan = 8;
+                        'marketing-reception-placeholder').colSpan = 9;
                     tableBody.appendChild(row);
                     count.textContent = 'No se pudo actualizar el historial.';
                 } else if (manual) {
-                    count.textContent = error.message || 'No se pudo actualizar.';
+                    explicarDevolucion(error.message || 'No se pudo actualizar.',true);
                 }
             } finally {
                 loading = false;
@@ -487,7 +519,7 @@
             const button = event.target.closest('[data-marketing-result]');
             if (!button || !resultDialog || savingResult) return;
             const call = calls.find(c => c.pbx_call_id === button.dataset.marketingResult);
-            if (!call?.finalizada) return;
+            if (!call?.finalizada || call.resultado) return;
             const modal = resultModal();
             if (!modal) {
                 explicarDevolucion('No se pudo abrir el formulario. Actualiza la página.',true);
@@ -499,7 +531,6 @@
                 (call.tipo || 'Llamada') + ' · ' + (call.numero || 'Número privado');
             resultSelect.value = call.resultado || '';
             resultNote.value = call.nota || '';
-            resultError.hidden = true;
             modal.show(button);
         });
         resultDialog?.addEventListener('show.bs.modal', function () {
@@ -530,7 +561,6 @@
             resultSelect.disabled = true;
             resultNote.disabled = true;
             resultDialog.querySelectorAll('[data-bs-dismiss="modal"]').forEach(b=>b.disabled=true);
-            resultError.hidden = true;
             try {
                 const body = new URLSearchParams({
                     csrf_token:root.dataset.resultCsrf || '', pbx_call_id:resultCallId,
@@ -550,8 +580,7 @@
                 renderList();
                 explicarDevolucion('Resultado guardado.',false);
             } catch(error) {
-                resultError.textContent = error.message || 'No se pudo guardar. Inténtalo nuevamente.';
-                resultError.hidden = false;
+                explicarDevolucion(error.message || 'No se pudo guardar. Inténtalo nuevamente.',true);
             } finally {
                 savingResult = false;
                 resultSave.disabled = false;

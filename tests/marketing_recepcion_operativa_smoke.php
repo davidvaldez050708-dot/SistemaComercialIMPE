@@ -56,6 +56,11 @@ class OperacionStmt {
     public function execute() {
         if (str_starts_with($this->sql,'INSERT INTO')) {
             [$user,$ext,$id,$code,$note]=$this->params;
+            foreach ($this->db->saved as $existing) {
+                if ($existing['usuario_id']===$user && $existing['extension']===$ext && $existing['pbx_call_id']===$id) {
+                    throw new mysqli_sql_exception('duplicate key',1062);
+                }
+            }
             $this->db->saved[]=['usuario_id'=>$user,'extension'=>$ext,'pbx_call_id'=>$id,'resultado'=>$code,'nota'=>$note];
         }
         return true;
@@ -71,8 +76,13 @@ class OperacionDB {
     public array $saved=[];
     public int $creates=0;
     public bool $table=false;
+    public bool $race=false;
     public function __construct(public array $events) {}
     public function prepare($sql) {
+        if (str_starts_with($sql,'INSERT INTO') && $this->race) {
+            $this->saved[]=['usuario_id'=>7,'extension'=>'100','pbx_call_id'=>'transferred','resultado'=>'CONTACTO','nota'=>'Primer envío'];
+            $this->race=false;
+        }
         if (str_contains($sql,'SELECT pbx_call_id, resultado, nota') && !$this->table)
             throw new mysqli_sql_exception('table missing',1146);
         return new OperacionStmt($this,$sql);
@@ -100,10 +110,27 @@ $savedCalls=array_column($summary['llamadas'],null,'pbx_call_id');
 operarCheck($savedCalls['voicemail']['resultado']==='BUZON' && $savedCalls['voicemail']['estado']==='Completada',
     'resultado separado de evidencia PBX');
 operarCheck($summary['sin_contacto']===3,'sin contacto incluye buzón manual y fallos PBX');
+try {
+    $service->guardarResultado(7,'voicemail','CONTACTO','Intento de edición');
+    operarCheck(false,'resultado definitivo debe rechazar cambios');
+} catch (DomainException $error) {
+    operarCheck($error->getCode()===409,'resultado registrado responde conflicto');
+}
+operarCheck(count($db->saved)===1 && $db->saved[0]['resultado']==='BUZON' &&
+    $db->saved[0]['nota']==='Volver a llamar por la tarde','conservar resultado y nota originales');
 foreach ([[8,'voicemail','BUZON',''],[7,'foreign-call','BUZON',''],[7,'bad-extension','BUZON',''],
     [7,'voicemail','INVENTADO',''],[7,'voicemail','BUZON',str_repeat('x',501)]] as $args) {
     try {$service->guardarResultado(...$args);operarCheck(false,'rechazar resultado ajeno, activo o inválido');}
     catch (DomainException|InvalidArgumentException $error) {}
 }
 operarCheck(count($db->saved)===1,'intentos rechazados no escriben resultados');
+$db->race=true;
+try {
+    $service->guardarResultado(7,'transferred','BUZON','Segundo envío');
+    operarCheck(false,'rechazar doble envío concurrente');
+} catch (DomainException $error) {
+    operarCheck($error->getCode()===409,'la clave única evita sobrescrituras concurrentes');
+}
+operarCheck(count($db->saved)===2 && $db->saved[1]['resultado']==='CONTACTO' &&
+    $db->saved[1]['nota']==='Primer envío','el segundo envío no altera el primero');
 echo "Recepción operativa: OK (transferencias, estados, persistencia, permisos y límites).\n";

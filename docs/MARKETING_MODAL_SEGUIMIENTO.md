@@ -14,6 +14,16 @@ En ventanas pequeñas, el encabezado y el pie quedan accesibles mientras el
 cuerpo admite la rueda del ratón. Bootstrap gestiona el foco y el cierre.
 El guardado impide cerrar el formulario mientras la petición está pendiente;
 un error conserva los valores. Tras guardar se actualiza el historial.
+Las confirmaciones y errores usan `toast system-toast` en el contenedor
+superior derecho, con los iconos, tiempos y apariencia de los otros módulos.
+
+El filtro contiene siete opciones: Todos los estados, Respondidas, Sin
+respuesta, Transferidas, En curso, No completadas y Pendientes de resultado.
+Agrupa estados técnicos de la centralita sin alterar sus datos. El resultado
+registrado se busca por su texto en el buscador. Estado y Resultado tienen
+columnas independientes. El resultado y su nota quedan definitivos al
+guardar; el servidor rechaza tanto ediciones como envíos simultáneos que
+intentaran sustituir el primer registro, con HTTP 409.
 
 ## Publicación
 
@@ -22,6 +32,8 @@ Instalar juntos, conservando copia de los archivos actuales:
 - `app/views/telefonia/recepcion_marketing.php`
 - `public/css/telefonia_recepcion_marketing.css`
 - `public/javascript/telefonia_recepcion_marketing.js`
+- `app/services/TelefoniaRecepcionMarketingService.php`
+- `prueba_telefonia/api/resultado_recepcion_marketing.php`
 
 No requiere cambios de base de datos ni modificar los selectores globales de
 otros módulos. Si el CSS publicado incluye ajustes locales de presentación,
@@ -48,6 +60,8 @@ selección de la última opción por teclado, foco, cierre, desplazamiento con
 rueda, cuatro tamaños de ventana, guardado y errores. El workflow
 `marketing-recepcion.yml` instala las dependencias de prueba en un directorio
 temporal y ejecuta la prueba en Chromium. No añade dependencias al servidor.
+La prueba operativa PHP también verifica que se conserva el resultado y la
+nota originales frente a una segunda escritura o una inserción concurrente.
 
 Variables opcionales: `PLAYWRIGHT_MODULE_PATH`, `BOOTSTRAP_MODULE_PATH`,
 `PLAYWRIGHT_CHANNEL`, `MARKETING_BROWSER_OUTPUT` y `MARKETING_DEPLOY_CSS`.

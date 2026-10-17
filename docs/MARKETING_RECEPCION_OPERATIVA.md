@@ -32,8 +32,10 @@ abrirla; no se promete que esté disponible inmediatamente.
 
 Recepción puede registrar Persona atendió, Buzón de voz, No disponible, Número
 incorrecto u Otro resultado con una nota opcional de hasta 500 caracteres.
-«Sin clasificar» retira la clasificación visible. Los resultados se muestran
-separados del estado PBX y pueden filtrarse; nunca reescriben eventos firmados.
+«Sin clasificar» guarda ese resultado explícito. Los resultados y las notas se
+muestran en su columna, separados del estado PBX; se buscan por su etiqueta.
+El filtro agrupa los estados de llamada en siete opciones. Ningún resultado
+reescribe eventos firmados.
 
 `resultado_recepcion_marketing.php` sólo acepta POST con sesión, permisos y CSRF.
 El servicio vuelve a verificar propiedad, asignación, período y fin de la llamada
@@ -41,6 +43,9 @@ antes de escribir. No permite registrar llamadas ajenas ni aún activas. Los
 resultados quedan asociados a usuario, extensión e identificador PBX. Se crea
 `telefonia_recepcion_resultados` con `CREATE TABLE IF NOT EXISTS` en el primer
 guardado autorizado. Leer el historial funciona antes de que exista esa tabla.
+Una vez guardados, resultado y nota no se pueden editar. Se rechazan los
+intentos posteriores con HTTP 409. Una inserción simple y la clave única
+conservan el primer registro también frente a dos envíos simultáneos.
 
 Las grabaciones transferidas de Marketing utilizan el endpoint de segmentos
 existente, después de verificar origen propio, permiso, asignación, transferencia,

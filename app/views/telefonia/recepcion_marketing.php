@@ -97,8 +97,8 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <label class="marketing-reception-search">
                 <span class="marketing-reception-filter-label">Buscar llamada</span>
                 <i class="bi bi-search" aria-hidden="true"></i>
-                <input type="search" class="form-control" placeholder="Buscar número…"
-                    aria-label="Buscar llamadas por número o extensión de transferencia"
+                <input type="search" class="form-control" placeholder="Número, extensión o resultado…"
+                    aria-label="Buscar llamadas por número, extensión o resultado"
                     data-marketing-reception-search autocomplete="off">
             </label>
             <label class="marketing-reception-filter-field">
@@ -111,32 +111,16 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             </select>
             </label>
             <label class="marketing-reception-filter-field">
-            <span class="marketing-reception-filter-label">Estado o resultado</span>
+            <span class="marketing-reception-filter-label">Estado de llamada</span>
             <select class="form-select marketing-reception-status-filter"
                 data-native-select data-marketing-reception-filter aria-label="Filtrar llamadas por estado">
                 <option value="">Todos los estados</option>
-                <option value="Atendida">Atendidas</option>
-                <option value="Perdida">Perdidas</option>
+                <option value="respondidas">Respondidas</option>
+                <option value="sin-respuesta">Sin respuesta</option>
                 <option value="Transferida">Transferidas</option>
-                <option value="En curso">En curso</option>
-                <option value="Sonando">Sonando</option>
-                <option value="Completada">Respondidas</option>
-                <option value="Sin respuesta">Sin respuesta</option>
-                <option value="Ocupada">Ocupadas</option>
-                <option value="Cancelada">Canceladas</option>
-                <option value="Fallida">Fallidas</option>
-                <option value="Marcando">Marcando</option>
-                <option value="Número inexistente">Número inexistente</option>
-                <option value="No disponible">No disponible</option>
-                <option value="Sin saldo">Sin saldo</option>
-                <option value="Límite excedido">Límite excedido</option>
-                <optgroup label="Resultado registrado por recepción">
-                    <option value="resultado:CONTACTO">Persona atendió</option>
-                    <option value="resultado:BUZON">Buzón de voz</option>
-                    <option value="resultado:NO_DISPONIBLE">No disponible · registrado</option>
-                    <option value="resultado:NUMERO_INCORRECTO">Número incorrecto</option>
-                    <option value="resultado:OTRO">Otro resultado</option>
-                </optgroup>
+                <option value="activas">En curso</option>
+                <option value="no-completadas">No completadas</option>
+                <option value="pendientes">Pendientes de resultado</option>
             </select>
             </label>
             <button type="button" class="btn btn-system-light marketing-reception-refresh"
@@ -147,10 +131,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             </button>
         </div>
 
-    <p class="marketing-reception-history-note">El estado lo confirma la centralita. Registra el resultado para distinguir una persona de un buzón o una locución.</p>
-
-    <p class="marketing-reception-callback-status" data-marketing-reception-callback-status
-        role="status" aria-live="polite" hidden></p>
+    <p class="marketing-reception-history-note">El estado lo confirma la centralita. El resultado lo registra recepción y queda definitivo al guardarlo.</p>
     <div class="table-responsive marketing-reception-table-scroll">
         <table class="table align-middle marketing-reception-table telephony-history-table">
             <thead>
@@ -160,13 +141,14 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                     <th>Número</th>
                     <th>Llamar</th>
                     <th>Estado</th>
+                    <th>Resultado</th>
                     <th>Duración</th>
                     <th>Transferida a</th>
                     <th>Grabación</th>
                 </tr>
             </thead>
             <tbody data-marketing-reception-rows>
-                <tr><td colspan="8" class="marketing-reception-placeholder">
+                <tr><td colspan="9" class="marketing-reception-placeholder">
                     Consultando el historial de llamadas…
                 </td></tr>
             </tbody>
@@ -188,7 +170,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             </div>
         <form class="marketing-reception-result-form" data-marketing-result-form>
             <div class="modal-body system-form-modal-body">
-                <p class="marketing-reception-result-description">Selecciona el resultado observado y añade una nota si necesitas dar seguimiento.</p>
+                <p class="marketing-reception-result-description">Selecciona el resultado observado y añade una nota si necesitas dar seguimiento. Una vez guardado, no se podrá modificar.</p>
                 <div class="mb-3">
                 <label class="form-label" for="marketingResultado">Resultado observado</label>
                 <select class="form-select" id="marketingResultado" name="resultado" required
@@ -207,7 +189,6 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                 <textarea class="form-control" id="marketingResultadoNota" name="nota" rows="3" maxlength="500"
                     placeholder="Ej. buzón de voz; volver a llamar por la tarde." data-marketing-result-note></textarea>
                 </div>
-                <p class="alert alert-danger mt-3 mb-0" data-marketing-result-error role="alert" hidden></p>
             </div>
             <div class="modal-footer system-form-modal-footer">
                 <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal" data-marketing-result-cancel>

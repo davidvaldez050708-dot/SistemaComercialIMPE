@@ -20,8 +20,8 @@ const cssFiles = ['global.css','dashboard.css','marketing_selectores_uniformes.c
 const css = cssFiles.map(p => p === 'telefonia_recepcion_marketing.css' && process.env.MARKETING_DEPLOY_CSS
     ? fs.readFileSync(process.env.MARKETING_DEPLOY_CSS, 'utf8') : read('public/css/'+p)).join('\n');
 const calls = [
-    {pbx_call_id:'out_transfer',tipo:'Saliente',fecha:'2026-10-16 21:46:00',numero:'5551234567',estado:'Transferida',estado_cierre:'Completada',segundos:8,destino_transferencia:'101',tiene_grabacion:true,grabacion_transferida:true,finalizada:true},
-    {pbx_call_id:'out_voicemail',tipo:'Saliente',fecha:'2026-10-16 21:15:00',numero:'5557654321',estado:'Completada',segundos:6,destino_transferencia:'',tiene_grabacion:true,finalizada:true,resultado:'BUZON',resultado_etiqueta:'Buzón de voz',nota:'Volver a llamar por la tarde'}
+    {pbx_call_id:'out_transfer',tipo:'Saliente',fecha:'2026-10-16 21:46:00',numero:'5551234567',estado:'Transferida',estado_cierre:'Completada',segundos:8,destino_transferencia:'101',tiene_grabacion:true,grabacion_transferida:true,finalizada:true,resultado:'BUZON',resultado_etiqueta:'Buzón de voz',nota:'Se escuchó un buzón antes de transferir.'},
+    {pbx_call_id:'out_voicemail',tipo:'Saliente',fecha:'2026-10-16 21:15:00',numero:'5557654321',estado:'Completada',segundos:6,destino_transferencia:'',tiene_grabacion:true,finalizada:true}
 ];
 const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${process.env.MARKETING_PREVIEW_FONTS ? '<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">' : ''}
@@ -65,7 +65,14 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         await page.goto('http://recepcion.test/');
         await page.evaluate(()=>document.fonts.ready);
         await page.locator('[data-marketing-reception-details-toggle]').click();
-        await page.waitForFunction(()=>document.querySelectorAll('[data-marketing-result]').length===2);
+        await page.waitForFunction(()=>document.querySelectorAll('[data-marketing-result]').length===1);
+        assert.equal(await page.locator('thead th').count(),9);
+        const firstRow=page.locator('[data-marketing-reception-rows] > tr').first();
+        assert.equal(await firstRow.locator('td').nth(4).innerText(),'Transferida','un único estado en su columna');
+        assert.ok((await firstRow.locator('td').nth(5).innerText()).startsWith('Buzón de voz'),'resultado en columna independiente');
+        assert.equal(await firstRow.locator('[data-marketing-result]').count(),0,'resultado registrado sin edición');
+        assert.equal(await page.getByText('Editar resultado',{exact:true}).count(),0);
+        assert.equal(await page.locator('[data-marketing-reception-callback-status]').count(),0,'sin bloque azul de avisos');
         assert.equal(await page.locator('#global-select-control.uniform-select-native').count(),1,'el transformador global sí se ejecuta');
         assert.equal(await page.locator('.marketing-reception-panel select[data-native-select]').count(),3);
         assert.equal(await page.locator('.marketing-reception-panel .uniform-select').count(),0,'recepción usa los controles de Seguimiento');
@@ -74,15 +81,23 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         assert.equal(new Set(boxes.map(b=>b.y)).size,1,'filtros alineados');
         assert.ok(boxes.every(b=>b.h===42));
         const filter=page.locator('[data-marketing-reception-filter]');
-        await filter.selectOption('resultado:BUZON');
+        assert.equal(await filter.locator('option').count(),7,'filtro compacto de siete opciones');
+        await filter.selectOption('Transferida');
+        assert.equal(await page.locator('[data-marketing-result]').count(),0);
+        await filter.selectOption('respondidas');
+        assert.equal(await page.locator('[data-marketing-result]').count(),1);
+        await filter.selectOption('no-completadas');
+        assert.equal(await page.locator('[data-marketing-result]').count(),0);
+        await filter.selectOption('');
         if(out) await page.screenshot({path:path.join(out,'filtros-escritorio.png'),fullPage:true});
+        await filter.selectOption('pendientes');
         const modal=page.locator('[data-marketing-result-dialog]');
         const select=page.locator('[data-marketing-result-select]');
         const opened=()=>page.waitForFunction(()=>document.querySelector('[data-marketing-result-dialog]').classList.contains('show') && document.activeElement===document.querySelector('[data-marketing-result-select]'));
         const closed=()=>page.waitForFunction(()=>!document.querySelector('.modal-backdrop') && !document.body.classList.contains('modal-open'));
         await page.locator('[data-marketing-result]').click();
         await opened();
-        assert.equal(await select.inputValue(),'BUZON');
+        assert.equal(await select.inputValue(),'');
         await select.evaluate(e=>e.blur());
         const styles=await page.evaluate(()=>{
             const result=[];
@@ -130,6 +145,19 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         await page.locator('[data-marketing-result]').click();await opened();
         await select.selectOption('NO_DISPONIBLE');
         await page.locator('[data-marketing-result-note]').fill('Locución del operador; reintentar.');
+        failSave=true;
+        await page.locator('[data-marketing-result-save]').click();
+        const errorToast=page.locator('.system-toast-error');
+        await errorToast.waitFor({state:'visible'});
+        await page.waitForFunction(()=>document.querySelector('.system-toast-error.show:not(.showing)'));
+        assert.equal(await modal.evaluate(e=>e.classList.contains('show')),true,'error conserva formulario');
+        assert.equal(await page.locator('[data-marketing-result-note]').inputValue(),'Locución del operador; reintentar.');
+        assert.equal(await errorToast.getAttribute('role'),'alert');
+        assert.equal(await errorToast.evaluate(e=>getComputedStyle(e.closest('.toast-container')).position),'fixed');
+        if(out) await page.screenshot({path:path.join(out,'toast-error.png')});
+        await errorToast.evaluate(e=>window.bootstrap.Toast.getOrCreateInstance(e).hide());
+        await errorToast.waitFor({state:'detached'});
+        failSave=false;
         const beforeReads=historyReads;
         await page.locator('[data-marketing-result-save]').click();
         await page.waitForFunction(()=>document.querySelector('[data-marketing-result-save]').disabled);
@@ -141,15 +169,23 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         await page.waitForFunction(()=>document.querySelectorAll('[data-marketing-result]').length===0);
         assert.equal(saves,1);
         assert.ok(historyReads>beforeReads,'historial actualizado después de cerrar');
-        await filter.selectOption('resultado:NO_DISPONIBLE');
-        failSave=true;
-        await page.locator('[data-marketing-result]').click();await opened();
-        await page.locator('[data-marketing-result-save]').click();
-        await page.locator('[data-marketing-result-error]').waitFor({state:'visible'});
-        assert.equal(await modal.evaluate(e=>e.classList.contains('show')),true,'error conserva formulario');
-        assert.equal(await page.locator('[data-marketing-result-note]').inputValue(),'Locución del operador; reintentar.');
-        await page.locator('[data-marketing-result-cancel]').click();await closed();
+        await filter.selectOption('');
+        assert.equal(await page.locator('[data-marketing-result]').count(),0,'ningún resultado guardado se ofrece para editar');
+        const successToast=page.locator('.system-toast:not(.system-toast-error)');
+        await successToast.waitFor({state:'visible'});
+        await page.waitForFunction(()=>document.querySelector('.system-toast:not(.system-toast-error).show:not(.showing)'));
+        assert.equal(await successToast.innerText(),'Resultado guardado.');
+        const toastBounds=await successToast.boundingBox();
+        assert.ok(toastBounds.x>1000 && toastBounds.y<100,'toast en la esquina superior derecha');
+        if(out) await page.screenshot({path:path.join(out,'resultado-definitivo-toast.png'),fullPage:true});
+        await successToast.evaluate(e=>window.bootstrap.Toast.getOrCreateInstance(e).hide());
+        await successToast.waitFor({state:'detached'});
+        await page.evaluate(()=>{
+            const fake=document.createElement('button');fake.dataset.marketingResult='out_voicemail';
+            document.querySelector('[data-marketing-reception-rows] td').appendChild(fake);fake.click();fake.remove();
+        });
+        assert.equal(await modal.evaluate(e=>e.classList.contains('show')),false,'rechazar apertura de resultado guardado aunque se inyecte un botón');
         assert.deepEqual(errors,[],'sin errores JavaScript');
-        console.log('OK: estilos de Seguimiento, transformador global activo, 3 selectores estándar, teclado, rueda, 4 tamaños, foco, cierre, guardado y error.');
+        console.log('OK: Seguimiento, filtro compacto, columnas independientes, resultado definitivo, toast de éxito/error, 4 tamaños, rueda y teclado.');
     } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
