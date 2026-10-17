@@ -20,7 +20,7 @@ $events[]=eventoOperacion('answered-transfer','NOTIFY_OUT_END','100',['dispositi
 $events[]=eventoOperacion('busy','NOTIFY_ANSWER','100');
 $events[]=eventoOperacion('busy','NOTIFY_OUT_END','100',['disposition'=>'busy']);
 $events[]=eventoOperacion('unallocated','NOTIFY_OUT_END','100',['disposition'=>'unallocated number']);
-$events[]=eventoOperacion('voicemail','NOTIFY_OUT_END','100',['disposition'=>'answered','duration'=>20]);
+$events[]=eventoOperacion('voicemail','NOTIFY_OUT_END','100',['disposition'=>'answered','duration'=>20,'is_recorded'=>1]);
 $events[]=eventoOperacion('foreign-transfer','NOTIFY_INTERNAL','101',['payload_json'=>'{"transfer_from":"102"}']);
 $events[]=eventoOperacion('foreign-transfer','NOTIFY_OUT_END','100',['disposition'=>'answered']);
 $events[]=eventoOperacion('foreign-call','NOTIFY_OUT_START','102');
@@ -35,6 +35,42 @@ operarCheck($calls['answered-transfer']['destino_transferencia']==='101','transf
 operarCheck($calls['busy']['estado']==='Ocupada','el cierre PBX prevalece sobre una respuesta intermedia');
 operarCheck($calls['unallocated']['estado']==='Número inexistente','resultado explícito del proveedor');
 operarCheck($calls['voicemail']['estado']==='Completada','no inferir buzón ni contacto humano desde answered');
+operarCheck($calls['voicemail']['tiene_grabacion'],'respuesta sin clasificar conserva audio reportado');
+$falloTransferido=TelefoniaRecepcionMarketingService::agruparEventos([
+    eventoOperacion('failed_transfer','NOTIFY_OUT_START','100'),
+    eventoOperacion('failed_transfer','NOTIFY_ANSWER','100'),
+    eventoOperacion('failed_transfer','NOTIFY_INTERNAL','101',['payload_json'=>'{"transfer_from":"100"}']),
+    eventoOperacion('failed_transfer','NOTIFY_OUT_END','100',['disposition'=>'busy','is_recorded'=>1])
+],'100',true)[0];
+operarCheck($falloTransferido['estado']==='Transferida' && $falloTransferido['excluir_grabacion'] &&
+    !$falloTransferido['tiene_grabacion'],'agrupador excluye cierre fallido con grabación reportada y transferencia');
+foreach (['BUZON','NO_DISPONIBLE','NUMERO_INCORRECTO'] as $code) {
+    foreach (['Entrante','Saliente'] as $type) {
+        $excluded=TelefoniaRecepcionMarketingService::aplicarPoliticaGrabacion(
+            array_merge($calls['transferred'],['tipo'=>$type,'resultado'=>$code]));
+        operarCheck($excluded['excluir_grabacion'] && !$excluded['tiene_grabacion'] &&
+            !$excluded['grabacion_transferida'] && !$excluded['grabacion_salida_pendiente'],
+            'ocultar audio reportado de resultado negativo, también en transferencias');
+        operarCheck($excluded['estado']==='Transferida' && $excluded['destino_transferencia']==='101',
+            'conservar evidencia de transferencia');
+    }
+}
+foreach (['Perdida','Sin respuesta','Ocupada','Cancelada','Fallida','Número inexistente',
+    'No disponible','Sin saldo','Límite excedido'] as $state) {
+    $excluded=TelefoniaRecepcionMarketingService::aplicarPoliticaGrabacion(
+        array_merge($calls['transferred'],['estado_cierre'=>$state,'resultado'=>'CONTACTO']));
+    operarCheck($excluded['excluir_grabacion'] && !$excluded['tiene_grabacion'],
+        'cierre negativo prevalece incluso con estado Transferida o resultado contradictorio');
+}
+foreach (['CONTACTO','OTRO','SIN_CLASIFICAR',''] as $code) {
+    $allowed=TelefoniaRecepcionMarketingService::aplicarPoliticaGrabacion(
+        array_merge($calls['transferred'],['resultado'=>$code]));
+    operarCheck(!$allowed['excluir_grabacion'] && $allowed['tiene_grabacion'],
+        'conservar audio de conversación sin un resultado negativo conocido');
+}
+$sinAudio=TelefoniaRecepcionMarketingService::aplicarPoliticaGrabacion(
+    ['estado'=>'Atendida','estado_cierre'=>'Atendida','resultado'=>'CONTACTO','tiene_grabacion'=>false]);
+operarCheck(!$sinAudio['tiene_grabacion'],'un resultado positivo no inventa una grabación');
 operarCheck($calls['foreign-transfer']['estado']==='Completada' && $calls['foreign-transfer']['destino_transferencia']==='',
     'no adjudicar transferencia de otra extensión');
 operarCheck($calls['bad-extension']['destino_transferencia']==='','validar extensión transferida');
@@ -105,10 +141,14 @@ operarCheck($db->creates===0,'leer historial no crea tabla de resultados');
 operarCheck($summary['transferidas']===2,'contabilizar transferencias salientes');
 $saved=$service->guardarResultado(7,'voicemail','BUZON','Volver a llamar por la tarde');
 operarCheck($saved['resultado_etiqueta']==='Buzón de voz' && count($db->saved)===1,'persistir resultado observado');
+operarCheck($saved['excluir_grabacion'] && !$saved['tiene_grabacion'],
+    'respuesta de guardado oculta audio inmediatamente');
 $summary=$service->resumen(7);
 $savedCalls=array_column($summary['llamadas'],null,'pbx_call_id');
 operarCheck($savedCalls['voicemail']['resultado']==='BUZON' && $savedCalls['voicemail']['estado']==='Completada',
     'resultado separado de evidencia PBX');
+operarCheck($savedCalls['voicemail']['excluir_grabacion'] && !$savedCalls['voicemail']['tiene_grabacion'] &&
+    !$savedCalls['voicemail']['grabacion_salida_pendiente'],'buzón queda sólo como historial después de recargar');
 operarCheck($summary['sin_contacto']===3,'sin contacto incluye buzón manual y fallos PBX');
 try {
     $service->guardarResultado(7,'voicemail','CONTACTO','Intento de edición');

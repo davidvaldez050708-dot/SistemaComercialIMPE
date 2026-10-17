@@ -139,6 +139,12 @@
 
         function recordingRow(call, index, row) {
             const td = addCell(row, '');
+            if (call.excluir_grabacion) {
+                const historyOnly = node('span','marketing-reception-muted','Solo historial');
+                historyOnly.title = 'No se ofrece audio de llamadas sin contacto o registradas como buzón, no disponible o número incorrecto.';
+                td.appendChild(historyOnly);
+                return null;
+            }
             if (!call.tiene_grabacion) {
                 td.appendChild(node('span', 'marketing-reception-muted',
                     call.estado === 'Transferida' ? 'No disponible' :

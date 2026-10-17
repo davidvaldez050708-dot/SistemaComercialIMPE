@@ -142,6 +142,7 @@ class TelefoniaRecepcionMarketingService
             $call['resultado'] = (string)($observado['resultado'] ?? '');
             $call['resultado_etiqueta'] = self::resultadosPermitidos()[$call['resultado']] ?? '';
             $call['nota'] = (string)($observado['nota'] ?? '');
+            $call = self::aplicarPoliticaGrabacion($call);
             if ($call['estado'] === 'Transferida') $data['transferidas']++;
             if ($call['tipo'] === 'Saliente') {
                 $data['salientes']++;
@@ -334,9 +335,26 @@ class TelefoniaRecepcionMarketingService
             unset($call['audio_reportado'], $call['contestada'],
                 $call['transferida'], $call['disposition'],
                 $call['saliente_transferida']);
-            $resultado[] = $call;
+            $resultado[] = self::aplicarPoliticaGrabacion($call);
         }
         return $resultado;
+    }
+
+    /** Los intentos sin contacto se conservan sólo como historial. */
+    public static function aplicarPoliticaGrabacion(array $call): array
+    {
+        $sinContacto = ['Perdida','Sin respuesta','Ocupada','Cancelada','Fallida',
+            'Número inexistente','No disponible','Sin saldo','Límite excedido'];
+        $call['excluir_grabacion'] =
+            in_array((string)($call['resultado'] ?? ''), ['BUZON','NO_DISPONIBLE','NUMERO_INCORRECTO'], true) ||
+            in_array((string)($call['estado'] ?? ''), $sinContacto, true) ||
+            in_array((string)($call['estado_cierre'] ?? ''), $sinContacto, true);
+        if ($call['excluir_grabacion']) {
+            $call['tiene_grabacion'] = false;
+            $call['grabacion_transferida'] = false;
+            $call['grabacion_salida_pendiente'] = false;
+        }
+        return $call;
     }
 
     public static function resultadosPermitidos(): array
@@ -429,8 +447,12 @@ class TelefoniaRecepcionMarketingService
         } finally {
             $stmt->close();
         }
+        $guardada = self::aplicarPoliticaGrabacion(array_merge($propia,['resultado'=>$resultado]));
         return ['resultado'=>$resultado,'resultado_etiqueta'=>self::resultadosPermitidos()[$resultado],
-            'nota'=>$nota];
+            'nota'=>$nota, 'excluir_grabacion'=>$guardada['excluir_grabacion'],
+            'tiene_grabacion'=>$guardada['tiene_grabacion'],
+            'grabacion_transferida'=>$guardada['grabacion_transferida'],
+            'grabacion_salida_pendiente'=>$guardada['grabacion_salida_pendiente']];
     }
 
 }

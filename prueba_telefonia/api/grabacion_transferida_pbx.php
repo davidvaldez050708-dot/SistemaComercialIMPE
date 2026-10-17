@@ -65,6 +65,7 @@ try {
         foreach ($historial['llamadas'] as $call) {
             if ($call['pbx_call_id'] === $pbx && $call['estado'] === 'Transferida' &&
                 !empty($call['finalizada']) && !empty($call['tiene_grabacion']) &&
+                empty($call['excluir_grabacion']) &&
                 !empty($call['destino_transferencia'])) { $autorizada = true; break; }
         }
     }

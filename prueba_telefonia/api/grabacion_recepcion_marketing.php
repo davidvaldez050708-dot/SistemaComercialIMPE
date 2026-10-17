@@ -62,6 +62,22 @@ try {
         exit('No tienes una extensión de recepción activa.');
     }
     $extension = $asignacion['extension'];
+    // La misma política del historial se aplica también al enlace directo,
+    // tanto al verificar como al reproducir o descargar.
+    $permitidaPorHistorial = false;
+    foreach ($recepcion->resumen($usuarioId)['llamadas'] as $call) {
+        if ($call['pbx_call_id'] === $pbxCallId &&
+            $call['tipo'] === ($tipo === 'saliente' ? 'Saliente' : 'Entrante') &&
+            !empty($call['finalizada']) && !empty($call['tiene_grabacion']) &&
+            empty($call['excluir_grabacion'])) {
+            $permitidaPorHistorial = true;
+            break;
+        }
+    }
+    if (!$permitidaPorHistorial) {
+        http_response_code(404);
+        exit('Esta llamada no tiene una grabación disponible en recepción.');
+    }
     $db = (new Database())->connect();
 
     if ($tipo === 'entrante') {

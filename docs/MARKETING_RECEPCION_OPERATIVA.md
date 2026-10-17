@@ -51,6 +51,26 @@ Las grabaciones transferidas de Marketing utilizan el endpoint de segmentos
 existente, después de verificar origen propio, permiso, asignación, transferencia,
 fin y grabación reportada. El acceso de Analistas conserva su validación existente.
 
+## Llamadas sin contacto: sólo historial
+
+Recepción no ofrece grabación para resultados BUZON, NO_DISPONIBLE o
+NUMERO_INCORRECTO ni para estados Perdida, Sin respuesta, Ocupada, Cancelada,
+Fallida, Número inexistente, No disponible, Sin saldo o Límite excedido.
+También se comprueba el cierre de una transferencia, aunque su estado visible
+sea Transferida. Esas llamadas conservan número, estado, duración, destino,
+resultado y nota; la columna Grabación muestra «Solo historial».
+
+La regla se aplica al agrupar eventos, después de incorporar el resultado
+registrado y en la respuesta de guardado para ocultar el botón inmediatamente.
+El endpoint de recepción verifica el historial antes de consultar a Zadarma;
+el endpoint de transferencias aplica la misma exclusión en su rama Marketing.
+La verificación, reproducción, descarga y peticiones Range no eluden la regla.
+
+Una respuesta de red por sí sola no identifica un buzón. Mientras una llamada
+respondida no tenga un resultado negativo conocido, conserva la consulta de
+audio si hay evidencia de grabación. Este cambio regula el acceso en el CRM:
+no modifica la configuración de grabación de Zadarma ni borra sus archivos.
+
 ## Verificación
 
 ```sh

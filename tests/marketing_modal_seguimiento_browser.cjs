@@ -20,7 +20,7 @@ const cssFiles = ['global.css','dashboard.css','marketing_selectores_uniformes.c
 const css = cssFiles.map(p => p === 'telefonia_recepcion_marketing.css' && process.env.MARKETING_DEPLOY_CSS
     ? fs.readFileSync(process.env.MARKETING_DEPLOY_CSS, 'utf8') : read('public/css/'+p)).join('\n');
 const calls = [
-    {pbx_call_id:'out_transfer',tipo:'Saliente',fecha:'2026-10-16 21:46:00',numero:'5551234567',estado:'Transferida',estado_cierre:'Completada',segundos:8,destino_transferencia:'101',tiene_grabacion:true,grabacion_transferida:true,finalizada:true,resultado:'BUZON',resultado_etiqueta:'Buzón de voz',nota:'Se escuchó un buzón antes de transferir.'},
+    {pbx_call_id:'out_transfer',tipo:'Saliente',fecha:'2026-10-16 21:46:00',numero:'5551234567',estado:'Transferida',estado_cierre:'Completada',segundos:8,destino_transferencia:'101',tiene_grabacion:false,excluir_grabacion:true,grabacion_transferida:false,finalizada:true,resultado:'BUZON',resultado_etiqueta:'Buzón de voz',nota:'Se escuchó un buzón antes de transferir.'},
     {pbx_call_id:'out_voicemail',tipo:'Saliente',fecha:'2026-10-16 21:15:00',numero:'5557654321',estado:'Completada',segundos:6,destino_transferencia:'',tiene_grabacion:true,finalizada:true}
 ];
 const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -56,7 +56,8 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
                 assert.equal(data.get('pbx_call_id'),'out_voicemail');
                 await new Promise(resolve=>{releaseSave=resolve;});
                 saves++;
-                const registro={resultado:data.get('resultado'),resultado_etiqueta:'No disponible',nota:data.get('nota')};
+                const registro={resultado:data.get('resultado'),resultado_etiqueta:'No disponible',nota:data.get('nota'),
+                    excluir_grabacion:true,tiene_grabacion:false,grabacion_transferida:false,grabacion_salida_pendiente:false};
                 Object.assign(calls[1],registro);
                 return route.fulfill({json:{ok:true,registro}});
             }
@@ -71,6 +72,9 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         assert.equal(await firstRow.locator('td').nth(4).innerText(),'Transferida','un único estado en su columna');
         assert.ok((await firstRow.locator('td').nth(5).innerText()).startsWith('Buzón de voz'),'resultado en columna independiente');
         assert.equal(await firstRow.locator('[data-marketing-result]').count(),0,'resultado registrado sin edición');
+        assert.equal(await firstRow.locator('td').last().innerText(),'Solo historial','buzón sin audio de transferencia');
+        assert.equal(await firstRow.locator('td').last().locator('button').count(),0);
+        assert.equal(await page.getByText('Consultar grabación',{exact:true}).count(),1,'conservar audio de llamada respondida aún sin clasificar');
         assert.equal(await page.getByText('Editar resultado',{exact:true}).count(),0);
         assert.equal(await page.locator('[data-marketing-reception-callback-status]').count(),0,'sin bloque azul de avisos');
         assert.equal(await page.locator('#global-select-control.uniform-select-native').count(),1,'el transformador global sí se ejecuta');
@@ -179,6 +183,8 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         assert.ok(historyReads>beforeReads,'historial actualizado después de cerrar');
         await filter.selectOption('');
         assert.equal(await page.locator('[data-marketing-result]').count(),0,'ningún resultado guardado se ofrece para editar');
+        assert.equal(await page.getByText('Consultar grabación',{exact:true}).count(),0,'resultado negativo oculta grabación al guardar');
+        assert.equal(await page.getByText('Solo historial',{exact:true}).count(),2);
         const successToast=page.locator('.system-toast:not(.system-toast-error)');
         await successToast.waitFor({state:'visible'});
         await page.waitForFunction(()=>document.querySelector('.system-toast:not(.system-toast-error).show:not(.showing)'));
