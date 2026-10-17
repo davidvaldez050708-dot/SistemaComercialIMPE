@@ -226,7 +226,7 @@ $duracionEntrante = static function ($segundos) {
                             <?php // El reproductor y el registro son acciones independientes. ?>
                             <?php if (!$esInterna && !$vinculada && $finalizada && (!$sinIdentificar || !empty($llamada['contestada']))): ?>
                                 <span class="linkage-incoming-register-inline">
-                                    <button type="button" class="linkage-call-audio-state is-available linkage-incoming-open"
+                                    <button type="button" class="linkage-incoming-open"
                                         data-call-id="<?= $esc($idRegistroResultado) ?>"
                                         data-pbx-call-id="<?= $esc($pbxId) ?>"
                                         data-source="<?= $esc($fuenteRegistroResultado) ?>"
