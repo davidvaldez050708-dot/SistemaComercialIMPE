@@ -133,6 +133,18 @@
                 win.clearInterval(interval);
             },
             isRinging: function () { return ringing; },
+            diagnostic: function () {
+                // Solo indicadores booleanos; no exponer números ni identificadores.
+                return Object.freeze({
+                    ringing,
+                    seenIncoming,
+                    incomingDom: Boolean(doc.querySelector('#zdrm-webphone-phonenumber-input.incoming')),
+                    hangupDom: Boolean(doc.querySelector('.zdrm-webphone-call-btn-up')),
+                    connectedReported,
+                    idleReported,
+                    connecting: Date.now() < acceptanceRequestedUntil
+                });
+            },
             isConnected: function () { return connectedReported && !idleReported; },
             markAnswerRequested: function () {
                 if (!seenIncoming) return false;
