@@ -154,7 +154,13 @@
     // La misma conversación puede pasar de sesión PBX a SDK (o al revés).
     // No borrar la institución detectada ante esa transición de estado.
     let visibleContextKey = '';
-    let contextRequestKey = '';
+    let visibleContextPhone = '';
+    const clearVisibleContext = () => {
+        visibleContextKey = '';
+        visibleContextPhone = '';
+        contextCard.hidden = true;
+        contextCard.replaceChildren?.();
+    };
     const contextStorageKey = id => 'impe:crm:transfer-context:' + userId + ':' + id;
     // No consultar por una extensión (100/101) ni por caller ID aún vacío.
     const usableCallerNumber = value => {
@@ -183,6 +189,8 @@
             const ctx = data.contexto;
             if (!Number.isInteger(Number(ctx.seguimiento_id)) ||
                 Number(ctx.seguimiento_id) <= 0) return;
+            // No asociar a otra conversación una institución previa.
+            if (visibleContextPhone && visibleContextPhone !== phone) clearVisibleContext();
             const presentationKey = [String(ctx.seguimiento_id),
                 String(ctx.institucion || ''), String(ctx.estado || '')].join('|');
             if (visibleContextKey !== presentationKey) {
@@ -199,6 +207,7 @@
                 contextCard.appendChild(heading);
                 contextCard.appendChild(hint);
                 visibleContextKey = presentationKey;
+                visibleContextPhone = phone;
             }
             contextCard.hidden = false;
             try {
@@ -384,6 +393,7 @@
                 // terminan de identificar esta misma conversación.
             }
             if (usableCallerNumber(phone) && pbxSession.number !== phone) {
+                if (visibleContextPhone && visibleContextPhone !== phone) clearVisibleContext();
                 pbxSession.number = phone;
                 void fetchContext(id, phone);
             }
@@ -408,7 +418,9 @@
                 };
                 finished = null;
                 // El identificador del SDK puede aparecer después del PBX.
-                // No parpadear ocultando un contexto institucional válido.
+                // Mantener sólo el contexto del mismo teléfono, si se conoce.
+                if (usableCallerNumber(reportedNumber) && visibleContextPhone &&
+                    visibleContextPhone !== reportedNumber) clearVisibleContext();
                 draw();
                 if (usableCallerNumber(active.number)) {
                     void fetchContext(id, active.number);
