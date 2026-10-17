@@ -20,8 +20,8 @@
         let acceptanceRequestedUntil = 0;
         let connectedSamples = 0;
         let connectedReported = false;
-        let connectedSince = 0;
         let connectionCandidateAt = 0;
+        let noAudioCandidateSince = 0;
 
         const read = function () {
             const input = doc.querySelector(
@@ -51,8 +51,8 @@
                     ringing = true;
                     connectedSamples = 0;
                     connectedReported = false;
-                    connectedSince = 0;
                     connectionCandidateAt = 0;
+                    noAudioCandidateSince = 0;
                     acceptanceRequestedUntil = 0;
                     hooks.onRinging(call);
                 }
@@ -78,6 +78,7 @@
                 '.zdrm-webphone-call-btn-up'
             );
             if (!incomingInput && hangup) {
+                noAudioCandidateSince = 0;
                 // En algunas transferencias el control Colgar aparece
                 // brevemente DURANTE la limpieza al finalizar. Dos muestras
                 // de DOM no bastan para declarar una conexión retrospectiva.
@@ -89,7 +90,6 @@
                     !connectedReported &&
                     typeof hooks.onConnected === 'function') {
                     connectedReported = true;
-                    connectedSince = Date.now();
                     acceptanceRequestedUntil = 0;
                     hooks.onConnected();
                 }
@@ -98,15 +98,19 @@
                 connectionCandidateAt = 0;
             }
             if (!incomingInput && !hangup) {
+                if (!noAudioCandidateSince) noAudioCandidateSince = Date.now();
                 idleSamples += 1;
                 // El SDK puede ocultar ambos controles mientras negocia SIP.
                 if (Date.now() < acceptanceRequestedUntil) return;
-                if (idleSamples >= 8 && typeof hooks.onIdle === 'function') {
+                if (idleSamples >= 8 &&
+                    Date.now() - noAudioCandidateSince >= 1750 &&
+                    typeof hooks.onIdle === 'function') {
                     idleReported = true;
                     hooks.onIdle();
                 }
             } else {
                 idleSamples = 0;
+                noAudioCandidateSince = 0;
             }
         };
 
@@ -134,6 +138,7 @@
                 if (!seenIncoming) return false;
                 acceptanceRequestedUntil = Date.now() + 12000;
                 idleSamples = 0;
+                noAudioCandidateSince = 0;
                 return true;
             },
             isConnecting: function () {
