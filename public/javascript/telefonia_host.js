@@ -275,7 +275,7 @@
         // El timbrado no es conversación. Algunos eventos de la PBX
         // reutilizan el duration de la llamada previa durante el ring.
         if (state.direction === 'incoming' &&
-            state.phase === 'incoming-ringing') return 0;
+            ['incoming-ringing', 'answering'].includes(state.phase)) return 0;
         let duration = Math.max(0, Number(state.duration || 0));
 
         if (state.active && answeredAtMs > 0) {
@@ -527,6 +527,23 @@
             !String(state.pbxCallId || '').trim());
     };
 
+    // Diagnóstico de solo lectura para pruebas de transferencias.
+    // No expone teléfono, PBX ID, tokens ni datos del expediente.
+    window.IMPE_TELEPHONY_DIAGNOSTIC = function () {
+        const sdk = analystSdkObserver?.diagnostic?.() || null;
+        return Object.freeze({
+            phase: String(state.phase || ''),
+            active: Boolean(state.active),
+            direction: String(state.direction || ''),
+            contextType: String(state.context?.type || ''),
+            sdkConnected: Boolean(state.context?.sdkConnected),
+            pbxAnswered: Boolean(state.context?.pbxAnswered),
+            hasPbxCallId: Boolean(String(state.pbxCallId || '')),
+            observerStarted: Boolean(analystSdkObserver),
+            observer: sdk
+        });
+    };
+
     const clearSdkOnlyIncoming = function () {
         if (!state.active || !isSdkOnlyIncoming()) return;
         answeredAtMs = 0;
@@ -609,6 +626,8 @@
                     // El audio local terminó. Esperar cierre PBX, pero no
                     // mantener la pantalla/cronómetro en conversación falsa.
                     if (isSdkOnlyIncoming()) {
+                        // Sólo el SDK conoce esta sesión: al desaparecer el
+                        // audio, retirarla. No conservar reloj ni llamada activa.
                         clearSdkOnlyIncoming();
                         return;
                     }
@@ -624,10 +643,13 @@
                         message:'El audio terminó. Esperando cierre de Zadarma.'
                     });
                     window.setTimeout(function () {
-                        // Sin NOTIFY_END sólo mostramos cierre provisional.
-                        // No fabricar evento PBX ni grabación.
+                        // Si el SDK detecta otra vez audio, no finalizar una
+                        // conversación real. El cierre provisional se permite
+                        // sólo tras pérdida mantenida de los controles locales.
                         if (state.active && state.phase === 'finishing' &&
-                            String(state.pbxCallId) === token) {
+                            String(state.pbxCallId) === token &&
+                            !analystSdkObserver?.isConnected?.() &&
+                            !analystSdkObserver?.isRinging?.()) {
                             finalizarEntrante({
                                 pbx_call_id:token,duration,
                                 disposition:'ended-unconfirmed'
@@ -1128,6 +1150,22 @@
         incomingPollBusy = true;
 
         try {
+            // Rescate seguro de una señal onConnected perdida: sólo cuando el
+            // SDK ya observó audio local y el host sigue esperando respuesta.
+            // No inferir conversación a partir de segundos ni de un ringing PBX.
+            if (state.active && state.direction === 'incoming' &&
+                state.phase === 'answering' &&
+                analystSdkObserver?.isConnected?.()) {
+                answeredAtMs = Date.now();
+                publish({
+                    phase:'in-progress',status:'in-progress',
+                    answeredAtMs, duration:0, message:'',
+                    context:Object.assign({}, state.context, {
+                        sdkConnected:true,source:'SDK_WEBRTC',
+                        verified:Boolean(state.context?.pbxAnswered)
+                    })
+                });
+            }
             const call =
                 await fetchIncomingState();
 

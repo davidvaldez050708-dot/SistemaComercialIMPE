@@ -20,6 +20,8 @@
         let acceptanceRequestedUntil = 0;
         let connectedSamples = 0;
         let connectedReported = false;
+        let connectionCandidateAt = 0;
+        let noAudioCandidateSince = 0;
 
         const read = function () {
             const input = doc.querySelector(
@@ -49,6 +51,8 @@
                     ringing = true;
                     connectedSamples = 0;
                     connectedReported = false;
+                    connectionCandidateAt = 0;
+                    noAudioCandidateSince = 0;
                     acceptanceRequestedUntil = 0;
                     hooks.onRinging(call);
                 }
@@ -74,9 +78,16 @@
                 '.zdrm-webphone-call-btn-up'
             );
             if (!incomingInput && hangup) {
+                noAudioCandidateSince = 0;
+                // En algunas transferencias el control Colgar aparece
+                // brevemente DURANTE la limpieza al finalizar. Dos muestras
+                // de DOM no bastan para declarar una conexión retrospectiva.
+                if (!connectionCandidateAt) connectionCandidateAt = Date.now();
                 connectedSamples++;
                 idleSamples = 0;
-                if (connectedSamples >= 2 && !connectedReported &&
+                if (connectedSamples >= 5 &&
+                    Date.now() - connectionCandidateAt >= 1000 &&
+                    !connectedReported &&
                     typeof hooks.onConnected === 'function') {
                     connectedReported = true;
                     acceptanceRequestedUntil = 0;
@@ -84,17 +95,22 @@
                 }
             } else {
                 connectedSamples = 0;
+                connectionCandidateAt = 0;
             }
             if (!incomingInput && !hangup) {
+                if (!noAudioCandidateSince) noAudioCandidateSince = Date.now();
                 idleSamples += 1;
                 // El SDK puede ocultar ambos controles mientras negocia SIP.
                 if (Date.now() < acceptanceRequestedUntil) return;
-                if (idleSamples >= 8 && typeof hooks.onIdle === 'function') {
+                if (idleSamples >= 8 &&
+                    Date.now() - noAudioCandidateSince >= 1750 &&
+                    typeof hooks.onIdle === 'function') {
                     idleReported = true;
                     hooks.onIdle();
                 }
             } else {
                 idleSamples = 0;
+                noAudioCandidateSince = 0;
             }
         };
 
@@ -117,11 +133,24 @@
                 win.clearInterval(interval);
             },
             isRinging: function () { return ringing; },
+            diagnostic: function () {
+                // Solo indicadores booleanos; no exponer números ni identificadores.
+                return Object.freeze({
+                    ringing,
+                    seenIncoming,
+                    incomingDom: Boolean(doc.querySelector('#zdrm-webphone-phonenumber-input.incoming')),
+                    hangupDom: Boolean(doc.querySelector('.zdrm-webphone-call-btn-up')),
+                    connectedReported,
+                    idleReported,
+                    connecting: Date.now() < acceptanceRequestedUntil
+                });
+            },
             isConnected: function () { return connectedReported && !idleReported; },
             markAnswerRequested: function () {
                 if (!seenIncoming) return false;
                 acceptanceRequestedUntil = Date.now() + 12000;
                 idleSamples = 0;
+                noAudioCandidateSince = 0;
                 return true;
             },
             isConnecting: function () {
