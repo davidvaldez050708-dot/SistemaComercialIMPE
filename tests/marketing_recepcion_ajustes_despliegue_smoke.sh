@@ -39,7 +39,7 @@ grep -Fq 'AJUSTE-LOCAL-PRESERVAR' "$CSS"
 grep -Fq 'min-height: 31px;' "$CSS"
 [[ "$(grep -Fc 'Una acción general por registro, compacta y consistente' "$CSS")" -eq 1 ]]
 grep -Fq 'syncIncomingClock(value)' "$LIVE/public/javascript/telefonia_shell.js"
-grep -Fq 'Consultar audio' "$LIVE/public/javascript/telefonia_recepcion_marketing.js"
+grep -Fq 'Consultar grabación' "$LIVE/public/javascript/telefonia_recepcion_marketing.js"
 test "$(find "$TMP/backups" -type f | wc -l)" -eq 6
 run --apply
 [[ "$(grep -Fc 'Una acción general por registro, compacta y consistente' "$CSS")" -eq 1 ]]
