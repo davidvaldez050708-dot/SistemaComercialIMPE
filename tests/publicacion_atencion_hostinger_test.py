@@ -150,6 +150,27 @@ def locked(root):
     return 'segunda publicación bloqueada sin alterar la primera'
 
 
+def https_with_ssh_rewrite(root):
+    """Reproduce una cuenta que redirige HTTPS a SSH y clona GitHub de verdad."""
+    live = site(root)
+    original = snapshot(live)
+    config = root / 'gitconfig-ssh'
+    config.write_text('[url "git@github.com:"]\n\tinsteadOf = https://github.com/\n')
+    fake_ssh = root / 'rechazar-ssh.sh'
+    fake_ssh.write_text('#!/usr/bin/env bash\necho "SSH_NO_DEBE_UTILIZARSE" >&2\nexit 97\n', newline='\n')
+    fake_ssh.chmod(0o755)
+    result = run(root, live, '--check', {
+        'IMPE_ATENCION_SOURCE': shell_path(root / 'copia-https-nueva'),
+        'GIT_CONFIG_GLOBAL': shell_path(config),
+        'GIT_SSH_COMMAND': shell_path(fake_ssh),
+    })
+    assert result.returncode == 0 and 'SITIO INTACTO' in result.stdout, result.stdout + result.stderr
+    assert 'SSH_NO_DEBE_UTILIZARSE' not in result.stderr
+    assert config.read_text() == '[url "git@github.com:"]\n\tinsteadOf = https://github.com/\n'
+    assert snapshot(live) == original and not (root / 'backups').exists()
+    return 'GitHub por HTTPS con regla global SSH, sin llaves ni cambios en configuración o sitio'
+
+
 if __name__ == '__main__':
     subprocess.run([BASH, '-n', shell_path(SCRIPT)], check=True)
     # Cada escenario dispone de su propia carpeta, sitio y respaldos.
@@ -159,7 +180,10 @@ if __name__ == '__main__':
             root.mkdir()
             return test(root)
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-            futures = [pool.submit(execute, test) for test in [normal, customization, conflict, invalid_php, interrupted, locked]]
+            tests = [normal, customization, conflict, invalid_php, interrupted, locked]
+            if os.environ.get('IMPE_TEST_NETWORK') == '1':
+                tests.append(https_with_ssh_rewrite)
+            futures = [pool.submit(execute, test) for test in tests]
             for future in concurrent.futures.as_completed(futures):
                 print('OK:', future.result(), flush=True)
-    print('Publicador SSH: 6 escenarios de integración aprobados. Sin conexión al sitio real.')
+    print(f'Publicador SSH: {len(tests)} escenarios de integración aprobados. Sin conexión al sitio real.')

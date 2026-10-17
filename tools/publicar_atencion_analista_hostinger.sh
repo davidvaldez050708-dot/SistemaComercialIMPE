@@ -9,10 +9,15 @@ MODE="${1:---check}"
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 BASE='e954be1041c7ae744a51c5b4cf4e53148dd8c3e0'
 TARGET='322785588f703815de2e95ef65d453425590e20f'
-SOURCE="${IMPE_ATENCION_SOURCE:-$HOME/crm-preparacion}"
+SOURCE="${IMPE_ATENCION_SOURCE:-$HOME/crm-publicaciones/atencion-3227855}"
 LIVE="${IMPE_ATENCION_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_ATENCION_BACKUPS:-$HOME/respaldos-crm}"
 fail() { echo "ERROR: $*" >&2; exit 1; }
+# Sólo afecta este proceso. Una regla insteadOf de la cuenta no debe convertir
+# la descarga pública HTTPS en una conexión SSH que requiera llaves.
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0
+unset GIT_CONFIG GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT
+git_public() { command git -c remote.origin.url="$REPO" -c http.sslVerify=true "$@"; }
 for tool in git php sha256sum mktemp realpath cmp cp mv mkdir rm rmdir; do
     command -v "$tool" >/dev/null || fail "Falta $tool. No se modificó el sitio."
 done
@@ -53,22 +58,27 @@ FILES=(
     app/views/layout/dashboard_footer.php
     app/views/telefonia/shell.php
 )
-[[ ! -e "$SOURCE" || -d "$SOURCE/.git" ]] || fail 'crm-preparacion existe pero no es un repositorio Git.'
+[[ ! -e "$SOURCE" || -d "$SOURCE/.git" ]] || fail 'La carpeta de preparación existe pero no es un repositorio Git.'
 if [[ ! -e "$SOURCE" ]]; then
-    git clone --quiet --no-checkout --filter=blob:none "$REPO" "$SOURCE"
+    echo "Preparando copia independiente por HTTPS: $SOURCE"
+    mkdir -p "$(dirname "$SOURCE")"
+    git_public clone --quiet --no-checkout --filter=blob:none "$REPO" "$SOURCE"
+fi
+if git_public -C "$SOURCE" config --name-only --get-regexp '^url\..*\.insteadof$' >/dev/null; then
+    fail 'La preparación contiene reglas locales de URL. Utiliza una carpeta nueva fuera del sitio.'
 fi
 # No cambia la rama, el índice ni los archivos de la copia de preparación.
-if ! git -C "$SOURCE" cat-file -e "$TARGET^{commit}" 2>/dev/null ||
-   ! git -C "$SOURCE" cat-file -e "$BASE^{commit}" 2>/dev/null; then
+if ! git_public -C "$SOURCE" cat-file -e "$TARGET^{commit}" 2>/dev/null ||
+   ! git_public -C "$SOURCE" cat-file -e "$BASE^{commit}" 2>/dev/null; then
     echo 'Descargando la versión comprobada de GitHub…'
-    if [[ "$(git -C "$SOURCE" rev-parse --is-shallow-repository)" == true ]]; then
-        git -C "$SOURCE" fetch --quiet --unshallow "$REPO" main
+    if [[ "$(git_public -C "$SOURCE" rev-parse --is-shallow-repository)" == true ]]; then
+        git_public -C "$SOURCE" fetch --quiet --unshallow "$REPO" main
     else
-        git -C "$SOURCE" fetch --quiet "$REPO" main
+        git_public -C "$SOURCE" fetch --quiet "$REPO" main
     fi
 fi
-git -C "$SOURCE" cat-file -e "$TARGET^{commit}"
-git -C "$SOURCE" cat-file -e "$BASE^{commit}"
+git_public -C "$SOURCE" cat-file -e "$TARGET^{commit}"
+git_public -C "$SOURCE" cat-file -e "$BASE^{commit}"
 
 SCRATCH="$(cd "${TMPDIR:-/tmp}" && pwd -P)"
 TMP="$(mktemp -d "$SCRATCH/impe-atencion.XXXXXX")"
@@ -124,7 +134,7 @@ conflicts=0
 for file in "${FILES[@]}"; do
     guard_path "$file"
     mkdir -p "$TMP/stage/$(dirname "$file")"
-    git -C "$SOURCE" show "$TARGET:$file" > "$TMP/target"
+    git_public -C "$SOURCE" show "$TARGET:$file" > "$TMP/target"
     if [[ -e "$LIVE/$file" && ! -f "$LIVE/$file" ]]; then fail "No es archivo: $file"; fi
     if [[ -f "$LIVE/$file" ]]; then
         BEFORE["$file"]="$(digest "$LIVE/$file")"
@@ -132,7 +142,7 @@ for file in "${FILES[@]}"; do
     else
         BEFORE["$file"]=MISSING
     fi
-    if ! git -C "$SOURCE" cat-file -e "$BASE:$file" 2>/dev/null; then
+    if ! git_public -C "$SOURCE" cat-file -e "$BASE:$file" 2>/dev/null; then
         if [[ "${BEFORE[$file]}" == MISSING ]]; then
             cp "$TMP/target" "$TMP/stage/$file"
         elif ! cmp -s "$TMP/target" "$LIVE/$file"; then
@@ -141,7 +151,7 @@ for file in "${FILES[@]}"; do
     elif [[ "${BEFORE[$file]}" == MISSING ]]; then
         echo "CONFLICTO: falta archivo existente: $file"; conflicts=$((conflicts+1)); continue
     elif ! cmp -s "$TMP/target" "$LIVE/$file"; then
-        git -C "$SOURCE" diff --binary "$BASE" "$TARGET" -- "$file" > "$TMP/change.patch"
+        git_public -C "$SOURCE" diff --binary "$BASE" "$TARGET" -- "$file" > "$TMP/change.patch"
         if (cd "$TMP/stage" && git -c core.autocrlf=false apply --reverse --check "$TMP/change.patch" >/dev/null 2>&1); then
             : # El parche ya está aplicado; conserva personalizaciones ajenas.
         elif (cd "$TMP/stage" && git -c core.autocrlf=false apply --check "$TMP/change.patch" >/dev/null 2>&1); then

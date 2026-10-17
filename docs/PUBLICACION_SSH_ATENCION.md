@@ -7,12 +7,19 @@ ni cambia la rama o los archivos de trabajo de `crm-preparacion`.
 
 Rutas predeterminadas:
 
-- Copia Git: `$HOME/crm-preparacion`.
+- Copia Git independiente: `$HOME/crm-publicaciones/atencion-3227855`.
 - Sitio: `$HOME/domains/fundacionrededumex.org/public_html`.
 - Respaldos: `$HOME/respaldos-crm`.
 
 Descargar `tools/publicar_atencion_analista_hostinger.sh` desde una versión
 concreta y revisada de este repositorio a una ruta fuera de `public_html`.
+
+La descarga utiliza HTTPS sin cargar reglas globales o de sistema de Git. Estas
+variables sólo afectan al publicador; no se modifica la configuración de la
+cuenta. La copia independiente evita heredar un origen SSH o reglas locales de
+`crm-preparacion`. También fuerza HTTPS para obtener objetos de un clon parcial.
+No hace falta registrar una llave SSH en GitHub para este repositorio público.
+Una preparación con reglas locales `insteadOf` se rechaza antes de publicar.
 
 ## Revisión
 
@@ -70,4 +77,5 @@ de la versión anterior y comprueba revisión sin escrituras, publicación exact
 respaldo, conservación de privados, repetición, personalizaciones, conflictos,
 PHP inválido, bloqueo simultáneo y restauración tras un fallo inducido.
 El flujo `publicacion-atencion-ssh.yml` ejecuta estas pruebas sin acceso SSH a
-Hostinger y sin credenciales de producción.
+Hostinger y sin credenciales de producción. Además clona GitHub realmente por
+HTTPS mientras una configuración global de prueba intenta redirigirlo a SSH.

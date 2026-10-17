@@ -21,4 +21,6 @@ jobs:
         with:
           node-version: '22'
       - name: Verificar, publicar, preservar y restaurar sin acceso a producción
+        env:
+          IMPE_TEST_NETWORK: '1'
         run: python3 tests/publicacion_atencion_hostinger_test.py
