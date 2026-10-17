@@ -97,7 +97,7 @@ check app/services/TelefoniaRecepcionMarketingService.php 'inicial.received_at >
 check app/services/TelefoniaRecepcionMarketingService.php "'tiene_grabacion'"
 check public/javascript/telefonia_recepcion_marketing.js 'data-marketing-reception-type'
 check public/javascript/telefonia_recepcion_marketing.js "tipo === 'Saliente'"
-check public/javascript/telefonia_recepcion_marketing.js 'content.colSpan = 8'
+check public/javascript/telefonia_recepcion_marketing.js 'content.colSpan = 9'
 check app/views/telefonia/recepcion_marketing.php '<th>Tipo</th>'
 check app/views/telefonia/recepcion_marketing.php '<th>Número</th>'
 check app/views/telefonia/recepcion_marketing.php 'data-marketing-reception-outgoing'
