@@ -20,6 +20,8 @@
         let acceptanceRequestedUntil = 0;
         let connectedSamples = 0;
         let connectedReported = false;
+        let connectedSince = 0;
+        let connectionCandidateAt = 0;
 
         const read = function () {
             const input = doc.querySelector(
@@ -49,6 +51,8 @@
                     ringing = true;
                     connectedSamples = 0;
                     connectedReported = false;
+                    connectedSince = 0;
+                    connectionCandidateAt = 0;
                     acceptanceRequestedUntil = 0;
                     hooks.onRinging(call);
                 }
@@ -74,16 +78,24 @@
                 '.zdrm-webphone-call-btn-up'
             );
             if (!incomingInput && hangup) {
+                // En algunas transferencias el control Colgar aparece
+                // brevemente DURANTE la limpieza al finalizar. Dos muestras
+                // de DOM no bastan para declarar una conexión retrospectiva.
+                if (!connectionCandidateAt) connectionCandidateAt = Date.now();
                 connectedSamples++;
                 idleSamples = 0;
-                if (connectedSamples >= 2 && !connectedReported &&
+                if (connectedSamples >= 5 &&
+                    Date.now() - connectionCandidateAt >= 1000 &&
+                    !connectedReported &&
                     typeof hooks.onConnected === 'function') {
                     connectedReported = true;
+                    connectedSince = Date.now();
                     acceptanceRequestedUntil = 0;
                     hooks.onConnected();
                 }
             } else {
                 connectedSamples = 0;
+                connectionCandidateAt = 0;
             }
             if (!incomingInput && !hangup) {
                 idleSamples += 1;
