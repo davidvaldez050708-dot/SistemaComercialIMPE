@@ -10,6 +10,7 @@ date_default_timezone_set('America/Mexico_City');
 $port=(int)getenv('IMPE_TEST_MYSQL_PORT');
 if (!$port) throw new RuntimeException('Define IMPE_TEST_MYSQL_PORT para la instancia aislada.');
 $db=new mysqli('127.0.0.1',getenv('IMPE_TEST_MYSQL_USER')?:'root',getenv('IMPE_TEST_MYSQL_PASSWORD')?:'',null,$port);
+$timezone=date('P');$tzStmt=$db->prepare('SET time_zone=?');$tzStmt->bind_param('s',$timezone);$tzStmt->execute();$tzStmt->close();
 $name='impe_test_atencion_'.getmypid();
 $db->query("CREATE DATABASE `$name` CHARACTER SET utf8mb4");$db->select_db($name);$db->set_charset('utf8mb4');
 $checks=0;
@@ -63,7 +64,8 @@ try {
     $follow=one('SELECT * FROM seguimientos_vinculacion WHERE id=1');
     check($follow['contacto_nombre']==='Luis' && $follow['contacto_cargo']==='Compras' && $follow['telefono_verificado']==='5557654321','Actualiza persona referida distinta del informante');
     check(one("SELECT COUNT(*) AS n FROM interacciones_vinculacion WHERE notas LIKE '%[VERIFICACION_EFECTIVA]%'")['n']==2,'Dos conversaciones verificadas conservan historial');
-    check(one("SELECT COUNT(DISTINCT CONCAT(seguimiento_id,'|',DATE(fecha_inicio))) AS n FROM interacciones_vinculacion WHERE notas LIKE '%[VERIFICACION_EFECTIVA]%' AND usuario_id=1 AND duracion_segundos>0")['n']==1,'Meta: una institución al día');
+    $expectedDays=count(array_unique([date('Y-m-d',$base+3),date('Y-m-d',$base+123)]));
+    check(one("SELECT COUNT(DISTINCT CONCAT(seguimiento_id,'|',DATE(fecha_inicio))) AS n FROM interacciones_vinculacion WHERE notas LIKE '%[VERIFICACION_EFECTIVA]%' AND usuario_id=1 AND duracion_segundos>0")['n']==$expectedDays,'Meta: una institución al día, incluso si las pruebas cruzan medianoche');
     $pbx('pbx_wrong',240);$before=one('SELECT COUNT(*) AS n FROM interacciones_vinculacion')['n'];
     rejects(fn()=>$svc->registrar(1,['pbx_call_id'=>'pbx_wrong','seguimiento_id'=>'2']+$args),'Rechaza expediente ajeno');
     check(one('SELECT COUNT(*) AS n FROM interacciones_vinculacion')['n']==$before,'Error revierte interacción');
@@ -115,7 +117,11 @@ try {
     // Ejecutar la consulta real del tablero sin abrir la conexión configurada del CRM.
     $reflection=new ReflectionClass(AnalistaDashboardIntegrityService::class);$dashboard=$reflection->newInstanceWithoutConstructor();
     $reflection->getProperty('connection')->setValue($dashboard,$db);
-    check($reflection->getMethod('contarContactosEfectivosMes')->invoke($dashboard,1)===2,'Tablero cuenta instituciones por día como Desempeño');
+    $expectedMonth=[];
+    foreach ([[1,$base+3],[1,$base+123],[1,$base+603],[(int)$res['seguimiento_id'],$base+903]] as [$institution,$at]) {
+        if(date('Y-m',$at)===date('Y-m'))$expectedMonth[$institution.'|'.date('Y-m-d',$at)]=true;
+    }
+    check($reflection->getMethod('contarContactosEfectivosMes')->invoke($dashboard,1)===count($expectedMonth),'Tablero cuenta instituciones por día como Desempeño');
     $db->query('CREATE TABLE oficios_vinculacion (id INT PRIMARY KEY,seguimiento_id INT,fecha_envio DATETIME,estado_oficio VARCHAR(30))');
     $reflection=new ReflectionClass(InteraccionRutaService::class);$ruta=$reflection->newInstanceWithoutConstructor();$reflection->getProperty('connection')->setValue($ruta,$db);
     $before=one('SELECT estado_seguimiento,proxima_accion_at FROM seguimientos_vinculacion WHERE id=1');
