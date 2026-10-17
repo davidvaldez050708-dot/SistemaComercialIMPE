@@ -21,6 +21,8 @@ on:
       - "public/javascript/telefonia_sdk_entrantes_observador.js"
       - "tools/desplegar_timbrado_webRTC_analista_hostinger.sh"
       - "tests/telefonia_sdk_entrantes_observador_smoke.js"
+      - "tests/telefonia_transferida_estado_sip_smoke.js"
+      - "tests/telefonia_timbrado_antes_sip_smoke.js"
       - "tests/telefonia_sdk_entrantes_hostinger_smoke.sh"
       - "public/css/seguimiento_entrantes_analista.css"
       - "public/css/telefonia_shell.css"
@@ -91,6 +93,8 @@ on:
       - "tests/telefonia_analista_webRTC_controles_smoke.sh"
       - "tools/desplegar_timbrado_webRTC_analista_hostinger.sh"
       - "tests/telefonia_sdk_entrantes_observador_smoke.js"
+      - "tests/telefonia_transferida_estado_sip_smoke.js"
+      - "tests/telefonia_timbrado_antes_sip_smoke.js"
       - "tests/telefonia_sdk_entrantes_hostinger_smoke.sh"
       - "tools/desplegar_flujo_entrante_webRTC_analista_hostinger.sh"
       - "tests/telefonia_flujo_entrante_webRTC_analista_smoke.sh"
@@ -180,6 +184,8 @@ jobs:
           node --check public/javascript/telefonia_host.js
           node --check public/javascript/telefonia_sdk_entrantes_observador.js
           node tests/telefonia_sdk_entrantes_observador_smoke.js
+          node tests/telefonia_transferida_estado_sip_smoke.js
+          node tests/telefonia_timbrado_antes_sip_smoke.js
           bash -n tools/desplegar_timbrado_webRTC_analista_hostinger.sh
           bash -n tests/telefonia_sdk_entrantes_hostinger_smoke.sh
           bash tests/telefonia_sdk_entrantes_hostinger_smoke.sh

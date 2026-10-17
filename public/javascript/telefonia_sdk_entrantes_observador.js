@@ -1,5 +1,5 @@
-/* Observa únicamente el timbrado entrante VISTO en el SDK WebRTC.
- * No intercepta funciones privadas ni inventa NOTIFY_INTERNAL ni PBX call IDs.
+/* Observa el timbrado del widget y consulta la sesión SIP entrante existente.
+ * No modifica métodos del SDK ni inventa NOTIFY_INTERNAL ni PBX call IDs.
  * Habilitar exclusivamente en el host embebido del Analista.
  */
 (function (root) {
@@ -18,8 +18,29 @@
         let seenIncoming = false;
         let idleReported = false;
         let acceptanceRequestedUntil = 0;
-        let connectedSamples = 0;
         let connectedReported = false;
+        let observedSession = null;
+        let domRinging = false;
+
+        // El SDK actual expone una JsSIP.RTCSession. Consultar sus métodos
+        // públicos: las clases del botón y del input NO confirman respuesta.
+        const readSession = function () {
+            try {
+                const session = win.zdrmWebPhone?.webCallSession;
+                return session?.direction === 'incoming' &&
+                    typeof session.isEstablished === 'function' &&
+                    typeof session.isEnded === 'function' ? session : null;
+            } catch (_) { return null; }
+        };
+
+        const reportIdle = function () {
+            ringing = false;
+            acceptanceRequestedUntil = 0;
+            if (!idleReported) {
+                idleReported = true;
+                hooks.onIdle?.();
+            }
+        };
 
         const read = function () {
             const input = doc.querySelector(
@@ -31,6 +52,7 @@
             if (!input || !icon) return null;
             const value = String(input.value || '').trim();
             const digits = value.replace(/[^0-9+*#]/g, '').slice(0, 40);
+            if (!digits) return null;
             const name = String(
                 doc.querySelector('.zdrm-webphone-callername')?.textContent || ''
             ).replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, 100);
@@ -40,58 +62,77 @@
         const check = function () {
             if (stopped) return;
             const call = read();
-            if (call) {
+            const wasDomRinging = domRinging;
+            domRinging = Boolean(call);
+            const session = readSession();
+            // Zadarma recibe primero un PUSH: hace sonar y dibuja el widget.
+            // La nueva RTCSession puede no existir hasta pulsar Contestar.
+            // No dejar que una sesión anterior terminada bloquee ese timbrado.
+            const newSession = session && session !== observedSession &&
+                !session.isEnded();
+            if (call && (!seenIncoming ||
+                (idleReported && (!wasDomRinging || newSession)))) {
                 seenIncoming = true;
+                ringing = true;
                 missingSamples = 0;
                 idleSamples = 0;
                 idleReported = false;
-                if (!ringing) {
-                    ringing = true;
-                    connectedSamples = 0;
-                    connectedReported = false;
-                    acceptanceRequestedUntil = 0;
-                    hooks.onRinging(call);
+                connectedReported = false;
+                acceptanceRequestedUntil = 0;
+                observedSession = session && !session.isEnded() ? session : null;
+                hooks.onRinging(call);
+                return;
+            }
+            if (!seenIncoming || idleReported) return;
+            if (session && !session.isEnded() && !observedSession) {
+                observedSession = session;
+            }
+            // Evaluar el fin ANTES que la respuesta y antes del DOM: el SDK
+            // puede conservar incoming, ringing o el reloj después del cierre.
+            const tracked = observedSession;
+            if (tracked?.isEnded()) {
+                if (seenIncoming) reportIdle();
+                return;
+            }
+            if (seenIncoming && !idleReported && observedSession?.isEstablished()) {
+                ringing = false;
+                missingSamples = 0;
+                idleSamples = 0;
+                acceptanceRequestedUntil = 0;
+                if (!connectedReported) {
+                    connectedReported = true;
+                    hooks.onConnected?.();
                 }
                 return;
             }
+            if (call) {
+                missingSamples = 0;
+                idleSamples = 0;
+                return;
+            }
+            // Una sesión SIP todavía viva también protege la negociación
+            // aunque el widget retire sus clases de timbrado.
+            if (observedSession) return;
             if (ringing && ++missingSamples >= 2) {
                 ringing = false;
                 missingSamples = 0;
-                // Al pulsar Contestar, el SDK retira inmediatamente la
-                // clase .incoming: NO equivale a llamada perdida.
+                // La retirada de una clase de timbrado por sí sola no
+                // confirma que se haya perdido una llamada.
                 if (Date.now() >= acceptanceRequestedUntil &&
                     !connectedReported) hooks.onStopped();
             }
-            // La desaparición de «ringing» no significa fin de conversación:
-            // puede desaparecer justo al CONTESTAR. Esperar a que el widget
-            // abandone simultáneamente el campo entrante y el control Colgar.
-            // Un único cambio transitorio de clase no dispara cierre.
+            // Sin sesión legible sólo reconocer reposo sostenido. Nunca
+            // inventar una respuesta usando un icono o la ausencia de incoming.
             if (!seenIncoming || idleReported) return;
-            const incomingInput = doc.querySelector(
-                '#zdrm-webphone-phonenumber-input.incoming'
+            const idleButton = doc.querySelector(
+                '.zdrm-webphone-call-ico.zdrm-webphone-call-btn-up'
             );
-            const hangup = doc.querySelector(
-                '.zdrm-webphone-call-btn-up'
-            );
-            if (!incomingInput && hangup) {
-                connectedSamples++;
-                idleSamples = 0;
-                if (connectedSamples >= 2 && !connectedReported &&
-                    typeof hooks.onConnected === 'function') {
-                    connectedReported = true;
-                    acceptanceRequestedUntil = 0;
-                    hooks.onConnected();
-                }
-            } else {
-                connectedSamples = 0;
-            }
-            if (!incomingInput && !hangup) {
+            if (!call && idleButton) {
                 idleSamples += 1;
                 // El SDK puede ocultar ambos controles mientras negocia SIP.
                 if (Date.now() < acceptanceRequestedUntil) return;
                 if (idleSamples >= 8 && typeof hooks.onIdle === 'function') {
-                    idleReported = true;
-                    hooks.onIdle();
+                    reportIdle();
                 }
             } else {
                 idleSamples = 0;

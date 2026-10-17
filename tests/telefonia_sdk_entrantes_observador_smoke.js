@@ -23,8 +23,8 @@ const doc = {
             return value.inputIncoming ? {value:value.number} : null;
         if (selector === '.zdrm-webphone-call-ico.zdrm-ringing')
             return value.ringing ? {} : null;
-        if (selector === '.zdrm-webphone-call-btn-up')
-            return value.hangupActive ? {} : null;
+        if (selector === '.zdrm-webphone-call-ico.zdrm-webphone-call-btn-up')
+            return !value.hangupActive ? {} : null;
         if (selector === '.zdrm-webphone-callername')
             return {textContent:value.callerName};
         throw new Error('Selector no autorizado: ' + selector);
@@ -34,6 +34,7 @@ const events = [];
 const watch = factory.create(doc, {
     onRinging(x) { events.push(['ring',x]); },
     onStopped() { events.push(['stop']); },
+    onConnected() { events.push(['connected']); },
     onIdle() { events.push(['idle']); }
 });
 assert.equal(observer.attached,true);
@@ -79,12 +80,18 @@ assert.equal(events[3][1].caller,'101');
 watch.stop();
 assert.equal(observer.attached,false);
 assert.equal(interval,null);
-// Al recibir una transferencia, el primer clic Contestar retira 'incoming'
-// antes de que el SDK enseñe Colgar: jamás declarar no contestada.
+// Una transferencia no está confirmada por pulsar Contestar ni por CSS.
 value.ringing = false;
 value.inputIncoming = false;
 value.hangupActive = false;
 const transferred = [];
+let established = false;
+let ended = false;
+doc.defaultView.zdrmWebPhone = {webCallSession:{
+    direction:'incoming',
+    isEstablished:()=>established,
+    isEnded:()=>ended
+}};
 const second = factory.create(doc,{
     onRinging(){transferred.push('ring')},
     onStopped(){transferred.push('missed')},
@@ -102,10 +109,16 @@ value.hangupActive = false;
 for (let i=0;i<9;i++) interval();
 assert.deepEqual(transferred,['ring'],'negociación SIP no es llamada perdida');
 value.hangupActive = true;
+established = true;
 for (let i=0;i<4;i++) interval();
 assert.deepEqual(transferred,['ring','connected'],
-    'un solo evento de conversación observada tras aparecer Colgar');
+    'un solo evento de conversación al confirmarse SIP');
 for (let i=0;i<5;i++) interval();
 assert.equal(transferred.filter(v=>v==='connected').length,1);
+ended = true;
+established = false;
+for (let i=0;i<5;i++) interval();
+assert.equal(transferred.at(-1),'idle');
+assert.equal(second.isConnected(),false);
 second.stop();
 console.log('Observador SDK Analista: OK (timbrado, aceptación asíncrona, sin falso perdido)');
