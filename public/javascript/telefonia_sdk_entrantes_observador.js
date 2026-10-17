@@ -52,7 +52,6 @@
             if (!input || !icon) return null;
             const value = String(input.value || '').trim();
             const digits = value.replace(/[^0-9+*#]/g, '').slice(0, 40);
-            if (!digits) return null;
             const name = String(
                 doc.querySelector('.zdrm-webphone-callername')?.textContent || ''
             ).replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, 100);

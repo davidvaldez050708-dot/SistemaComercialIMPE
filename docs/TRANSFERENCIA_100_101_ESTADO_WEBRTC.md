@@ -6,7 +6,7 @@ el número entrante antes de que exista una nueva `webCallSession`. La sesión s
 crea al atender. Una referencia a una llamada anterior terminada no debe impedir
 que el CRM publique el nuevo timbrado y muestre el botón Contestar.
 
-El timbrado requiere las señales entrantes del widget y un número no vacío. La
+El timbrado requiere las señales entrantes del widget, incluso sin Caller ID. La
 conversación sólo se confirma consultando `isEstablished()` de la sesión JsSIP
 entrante observada. `isEnded()` finaliza esa sesión incluso si el SDK ha retirado
 su referencia global. Las clases de los iconos no confirman respuesta: en el
@@ -31,7 +31,8 @@ node tests/telefonia_analista_estabilidad_smoke.js
 Las pruebas cubren el push anterior a SIP, una referencia terminada, llamadas
 consecutivas del mismo número, negociación, respuesta, DOM atrasado, rechazo y
 cierre sin reactivación del cronómetro. El flujo de GitHub Actions de Entrantes
-Analistas incluye las dos nuevas pruebas.
+Analistas incluye las dos nuevas pruebas en un trabajo independiente, para que
+los fallos de las comprobaciones históricas no oculten su resultado.
 
 ## Hostinger
 

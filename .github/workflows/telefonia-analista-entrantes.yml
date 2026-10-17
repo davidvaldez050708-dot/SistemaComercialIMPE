@@ -138,6 +138,20 @@ on:
       - "tests/reparador_interna_bootstrap_hostinger_smoke.sh"
       - ".github/workflows/telefonia-analista-entrantes.yml"
 jobs:
+  validar-observador-transferencias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Timbrado push, sesión SIP y llamadas consecutivas
+        run: |
+          node --check public/javascript/telefonia_sdk_entrantes_observador.js
+          node tests/telefonia_sdk_entrantes_observador_smoke.js
+          node tests/telefonia_transferida_estado_sip_smoke.js
+          node tests/telefonia_timbrado_antes_sip_smoke.js
+          node tests/telefonia_analista_estabilidad_smoke.js
   validar:
     runs-on: ubuntu-latest
     steps:
