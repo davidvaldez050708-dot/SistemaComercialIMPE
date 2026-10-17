@@ -1,6 +1,6 @@
 # Publicar la atención del analista por SSH
 
-Este publicador instala la entrega de aplicación `322785588f703815de2e95ef65d453425590e20f`.
+Este publicador instala la revisión de aplicación fijada en su variable `TARGET`.
 Publica 22 archivos PHP y JavaScript. Las comprobaciones y los archivos de
 preparación se generan fuera del sitio. No hace `git pull` dentro de producción
 ni cambia la rama o los archivos de trabajo de `crm-preparacion`.
@@ -37,6 +37,15 @@ Una salida `CONFLICTO` requiere comparar ese archivo antes de publicar. El
 publicador no sustituye por fuerza una personalización incompatible. Las
 personalizaciones compatibles ajenas al parche se conservan. Si la copia Git es
 superficial y faltan revisiones, descarga el historial necesario.
+
+Se revisaron las diferencias reales de Hostinger del servicio de entrantes, su
+JavaScript y la vista. El publicador reconstruye esas variantes con el parche
+`tools/patches/atencion_hostinger_20261017.patch`, comprueba sus firmas SHA-256 y
+prepara parches desde ellas hacia la entrega nueva. Conserva la vigencia de
+15 minutos del expediente identificado, el reintento por URL, la limpieza de
+las referencias al guardar y los estilos de la vista. Se mantienen también las
+mejoras nuevas de borradores, verificación y guardado. Las diferencias adicionales
+compatibles se conservan; las incompatibles siguen deteniendo toda la operación.
 
 ## Publicación
 

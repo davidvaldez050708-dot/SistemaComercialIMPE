@@ -10,7 +10,7 @@ REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / 'tools/publicar_atencion_analista_hostinger.sh'
 BASH = os.environ.get('IMPE_TEST_BASH', 'bash')
 BASE = 'e954be1041c7ae744a51c5b4cf4e53148dd8c3e0'
-TARGET = '322785588f703815de2e95ef65d453425590e20f'
+TARGET = re.search(r"^TARGET='([a-f0-9]{40})'", SCRIPT.read_text(), re.M)[1]
 FILES = re.search(r'^FILES=\(\n(.*?)\n\)', SCRIPT.read_text(), re.M | re.S)[1].split()
 
 
@@ -30,7 +30,7 @@ assert len(FILES) == 22 and all(TARGET_FILES.values())
 
 
 def snapshot(root):
-    return {str(p.relative_to(root)): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+    return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob('*') if p.is_file()}
 
 
 def site(root):
@@ -150,6 +150,43 @@ def locked(root):
     return 'segunda publicación bloqueada sin alterar la primera'
 
 
+def reviewed_hostinger(root):
+    live = site(root)
+    patch = root / 'hostinger-reviewed.patch'
+    patch.write_bytes(blob(TARGET, 'tools/patches/atencion_hostinger_20261017.patch'))
+    subprocess.run(['git', '-c', 'core.autocrlf=false', '-C', str(live),
+                    'apply', '--whitespace=nowarn', str(patch)], check=True, capture_output=True)
+    # También conservar una personalización compatible ajena a las diferencias enviadas.
+    service = 'app/services/TelefoniaEntrantesAnalistaService.php'
+    extra = b'\n// COMENTARIO HOSTINGER ADICIONAL COMPATIBLE\n'
+    (live / service).write_bytes((live / service).read_bytes() + extra)
+    original = snapshot(live)
+    result = run(root, live, '--check')
+    assert result.returncode == 0 and result.stdout.count('COMPATIBLE: variante Hostinger revisada:') == 3, result.stdout + result.stderr
+    assert snapshot(live) == original and not (root / 'backups').exists()
+    # Un cambio adicional incompatible sigue bloqueando la publicación completa.
+    js = live / 'public/javascript/seguimiento_entrantes_analista.js'
+    js.write_bytes(js.read_bytes().replace(b'const confirmedBox =', b'const incompatibleConfirmedBox ='))
+    altered = snapshot(live)
+    result = run(root, live, '--apply')
+    assert result.returncode != 0 and 'CONFLICTO:' in result.stdout, result.stdout + result.stderr
+    assert snapshot(live) == altered and not (root / 'backups').exists()
+    js.write_bytes(original['public/javascript/seguimiento_entrantes_analista.js'])
+    result = run(root, live, '--apply')
+    assert result.returncode == 0, result.stdout + result.stderr
+    for name, expected in TARGET_FILES.items():
+        assert (live / name).read_bytes() == expected + (extra if name == service else b''), name
+    backups = list((root / 'backups').iterdir())
+    assert len(backups) == 1
+    for name in [service, 'public/javascript/seguimiento_entrantes_analista.js',
+                 'app/views/seguimiento_vinculacion/llamadas_entrantes.php']:
+        assert (backups[0] / name).read_bytes() == original[name]
+    result = run(root, live, '--apply')
+    assert result.returncode == 0 and 'ya está publicada' in result.stdout
+    assert list((root / 'backups').iterdir()) == backups
+    return 'tres variantes reales revisadas, personalización compatible, bloqueo de otro conflicto, respaldo e idempotencia'
+
+
 def https_with_ssh_rewrite(root):
     """Reproduce una cuenta que redirige HTTPS a SSH y clona GitHub de verdad."""
     live = site(root)
@@ -180,7 +217,7 @@ if __name__ == '__main__':
             root.mkdir()
             return test(root)
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-            tests = [normal, customization, conflict, invalid_php, interrupted, locked]
+            tests = [normal, customization, conflict, invalid_php, interrupted, locked, reviewed_hostinger]
             if os.environ.get('IMPE_TEST_NETWORK') == '1':
                 tests.append(https_with_ssh_rewrite)
             futures = [pool.submit(execute, test) for test in tests]

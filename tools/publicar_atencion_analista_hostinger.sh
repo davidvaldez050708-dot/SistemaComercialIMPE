@@ -8,7 +8,7 @@ MODE="${1:---check}"
 }
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 BASE='e954be1041c7ae744a51c5b4cf4e53148dd8c3e0'
-TARGET='322785588f703815de2e95ef65d453425590e20f'
+TARGET='4b6ebb75da3665e9d2a31edc69853760309196ab'
 SOURCE="${IMPE_ATENCION_SOURCE:-$HOME/crm-publicaciones/atencion-3227855}"
 LIVE="${IMPE_ATENCION_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_ATENCION_BACKUPS:-$HOME/respaldos-crm}"
@@ -18,7 +18,7 @@ fail() { echo "ERROR: $*" >&2; exit 1; }
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0
 unset GIT_CONFIG GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT
 git_public() { command git -c remote.origin.url="$REPO" -c http.sslVerify=true "$@"; }
-for tool in git php sha256sum mktemp realpath cmp cp mv mkdir rm rmdir; do
+for tool in git php sha256sum mktemp realpath cmp cp mv mkdir rm rmdir diff; do
     command -v "$tool" >/dev/null || fail "Falta $tool. No se modificó el sitio."
 done
 [[ -d "$LIVE" && ! -L "$LIVE" && -f "$LIVE/index.php" && ! -L "$LIVE/index.php" ]] ||
@@ -90,7 +90,36 @@ WRITING=0
 BACKUP=''
 declare -a CHANGED=()
 declare -A BEFORE=()
+declare -A REVIEWED=(
+    [app/services/TelefoniaEntrantesAnalistaService.php]=d9ec850e638dd88f736d747530a7d457caff01aa1c0225661d6ca2973cee1cf9
+    [public/javascript/seguimiento_entrantes_analista.js]=32035cb3b974aa814ca6163e5b1e6815be82af394d6ff7d4bd94af8ddf41e2ce
+    [app/views/seguimiento_vinculacion/llamadas_entrantes.php]=11ac7bc54820fa6c8382bd484075124bea4f94243cadc10dbb6a1866e1ffa486
+)
 digest() { sha256sum "$1" | cut -d' ' -f1; }
+reviewed_patch() {
+    local file="$1" status=0
+    [[ -n "${REVIEWED[$file]:-}" ]] || return 1
+    if [[ ! -f "$TMP/reviewed.patch" ]]; then
+        git_public -C "$SOURCE" show "$TARGET:tools/patches/atencion_hostinger_20261017.patch" > "$TMP/reviewed.patch" ||
+            fail 'No se pudo obtener la variante revisada de Hostinger.'
+    fi
+    mkdir -p "$TMP/reviewed/$(dirname "$file")" || fail 'No se pudo preparar la revisión.'
+    git_public -C "$SOURCE" show "$BASE:$file" > "$TMP/reviewed/$file" || fail "No se pudo obtener la base: $file"
+    (cd "$TMP/reviewed" && git -c core.autocrlf=false apply --whitespace=nowarn --include="$file" "$TMP/reviewed.patch") ||
+        fail "No se pudo reconstruir la variante revisada: $file"
+    [[ "$(digest "$TMP/reviewed/$file")" == "${REVIEWED[$file]}" ]] ||
+        fail "La variante revisada no coincide con su firma: $file"
+    diff -u --label "a/$file" --label "b/$file" "$TMP/reviewed/$file" "$TMP/target" > "$TMP/reviewed-change.patch" || status=$?
+    [[ "$status" == 1 ]] || fail "No se pudo preparar el parche revisado: $file"
+    if (cd "$TMP/stage" && git -c core.autocrlf=false apply --reverse --check "$TMP/reviewed-change.patch" >/dev/null 2>&1); then
+        :
+    elif (cd "$TMP/stage" && git -c core.autocrlf=false apply --check "$TMP/reviewed-change.patch" >/dev/null 2>&1); then
+        (cd "$TMP/stage" && git -c core.autocrlf=false apply "$TMP/reviewed-change.patch") || fail "No se pudo preparar: $file"
+    else
+        return 1
+    fi
+    echo "COMPATIBLE: variante Hostinger revisada: $file"
+}
 guard_path() {
     local part="$LIVE" item
     local -a components
@@ -156,6 +185,8 @@ for file in "${FILES[@]}"; do
             : # El parche ya está aplicado; conserva personalizaciones ajenas.
         elif (cd "$TMP/stage" && git -c core.autocrlf=false apply --check "$TMP/change.patch" >/dev/null 2>&1); then
             (cd "$TMP/stage" && git -c core.autocrlf=false apply "$TMP/change.patch")
+        elif reviewed_patch "$file"; then
+            : # Parche desde la variante concreta revisada, sin sobrescritura forzada.
         else
             echo "CONFLICTO: revisión necesaria: $file"; conflicts=$((conflicts+1)); continue
         fi
