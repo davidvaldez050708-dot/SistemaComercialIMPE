@@ -46,21 +46,20 @@ try {
   // Al contestar se retira la marca .incoming, pero aparece Colgar.
   ringing = false;
   hangup = true;
-  intervalFn();
-  intervalFn();
+  for (let i=0; i<6; i++) { clock+=250; intervalFn(); }
   assert.deepEqual(callbacks, ['ringing', 'connected']);
   assert.equal(session.isConnected(), true);
 
   // El fin real del audio retira Colgar; no antes.
   hangup = false;
-  for (let i=0; i<7; i++) intervalFn();
+  for (let i=0; i<7; i++) { clock+=250; intervalFn(); }
   assert.equal(callbacks.includes('idle'), false);
-  intervalFn();
+  clock+=250; intervalFn();
   assert.deepEqual(callbacks, ['ringing', 'connected', 'idle']);
   assert.equal(session.isConnected(), false);
 
   // No repetir cierre por sondeos adicionales.
-  for (let i=0; i<10; i++) intervalFn();
+  for (let i=0; i<10; i++) { clock+=250; intervalFn(); }
   assert.equal(callbacks.filter(x => x==='idle').length, 1);
   session.stop();
   console.log('OK: timbrado -> audio -> cierre WebRTC observado una vez');
