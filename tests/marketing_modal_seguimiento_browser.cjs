@@ -150,10 +150,18 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         const errorToast=page.locator('.system-toast-error');
         await errorToast.waitFor({state:'visible'});
         await page.waitForFunction(()=>document.querySelector('.system-toast-error.show:not(.showing)'));
+        await page.waitForFunction(()=>getComputedStyle(document.querySelector('.system-toast-error')).opacity==='1');
         assert.equal(await modal.evaluate(e=>e.classList.contains('show')),true,'error conserva formulario');
         assert.equal(await page.locator('[data-marketing-result-note]').inputValue(),'Locución del operador; reintentar.');
         assert.equal(await errorToast.getAttribute('role'),'alert');
         assert.equal(await errorToast.evaluate(e=>getComputedStyle(e.closest('.toast-container')).position),'fixed');
+        const errorLayer=await errorToast.evaluate(e=>{
+            const r=e.getBoundingClientRect();
+            return {opacity:getComputedStyle(e).opacity,container:getComputedStyle(e.parentElement).zIndex,
+                above:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.toast')===e};
+        });
+        assert.equal(errorLayer.opacity,'1');
+        assert.equal(errorLayer.above,true,'toast de error visible sobre el fondo del modal');
         if(out) await page.screenshot({path:path.join(out,'toast-error.png')});
         await errorToast.evaluate(e=>window.bootstrap.Toast.getOrCreateInstance(e).hide());
         await errorToast.waitFor({state:'detached'});
@@ -174,6 +182,7 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         const successToast=page.locator('.system-toast:not(.system-toast-error)');
         await successToast.waitFor({state:'visible'});
         await page.waitForFunction(()=>document.querySelector('.system-toast:not(.system-toast-error).show:not(.showing)'));
+        await page.waitForFunction(()=>getComputedStyle(document.querySelector('.system-toast:not(.system-toast-error)')).opacity==='1');
         assert.equal(await successToast.innerText(),'Resultado guardado.');
         const toastBounds=await successToast.boundingBox();
         assert.ok(toastBounds.x>1000 && toastBounds.y<100,'toast en la esquina superior derecha');
