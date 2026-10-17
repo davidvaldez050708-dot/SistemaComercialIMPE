@@ -47,6 +47,13 @@
         const resultSave = root.querySelector('[data-marketing-result-save]');
         let resultCallId = '';
         let savingResult = false;
+        let resultModalOpen = false;
+        let resultNeedsRefresh = false;
+        let closingAfterSave = false;
+        let resultTrigger = null;
+        const resultModal = function () {
+            return resultDialog && window.bootstrap?.Modal?.getOrCreateInstance(resultDialog);
+        };
         const metrics = {
             total: root.querySelector('[data-marketing-reception-total]'),
             atendidas: root.querySelector('[data-marketing-reception-answered]'),
@@ -331,7 +338,7 @@
 
         async function loadHistory(manual) {
             if (loading) return;
-            if (resultDialog?.open) return;
+            if (resultModalOpen) return;
             // No interrumpir una reproducción abierta con el refresco periódico.
             if (!manual && Array.from(tableBody.querySelectorAll('audio'))
                 .some(function (audio) { return !audio.paused; })) return;
@@ -481,20 +488,39 @@
             if (!button || !resultDialog || savingResult) return;
             const call = calls.find(c => c.pbx_call_id === button.dataset.marketingResult);
             if (!call?.finalizada) return;
+            const modal = resultModal();
+            if (!modal) {
+                explicarDevolucion('No se pudo abrir el formulario. Actualiza la página.',true);
+                return;
+            }
             resultCallId = call.pbx_call_id;
+            resultTrigger = button;
             root.querySelector('[data-marketing-result-phone]').textContent =
                 (call.tipo || 'Llamada') + ' · ' + (call.numero || 'Número privado');
             resultSelect.value = call.resultado || '';
             resultNote.value = call.nota || '';
             resultError.hidden = true;
-            resultDialog.showModal();
-            resultSelect.focus();
+            modal.show(button);
         });
-        root.querySelector('[data-marketing-result-cancel]')?.addEventListener('click', function () {
-            if (!savingResult) resultDialog.close();
+        resultDialog?.addEventListener('show.bs.modal', function () {
+            resultModalOpen = true;
         });
-        resultDialog?.addEventListener('cancel', function (event) {
-            if (savingResult) event.preventDefault();
+        resultDialog?.addEventListener('shown.bs.modal', function () {
+            resultSelect.focus({preventScroll:true});
+        });
+        resultDialog?.addEventListener('hide.bs.modal', function (event) {
+            if (savingResult && !closingAfterSave) event.preventDefault();
+        });
+        resultDialog?.addEventListener('hidden.bs.modal', function () {
+            resultModalOpen = false;
+            closingAfterSave = false;
+            resultCallId = '';
+            if (resultTrigger?.isConnected) resultTrigger.focus({preventScroll:true});
+            else filter?.focus({preventScroll:true});
+            if (resultNeedsRefresh) {
+                resultNeedsRefresh = false;
+                void loadHistory(false);
+            }
         });
         resultForm?.addEventListener('submit', async function (event) {
             event.preventDefault();
@@ -503,6 +529,7 @@
             resultSave.disabled = true;
             resultSelect.disabled = true;
             resultNote.disabled = true;
+            resultDialog.querySelectorAll('[data-bs-dismiss="modal"]').forEach(b=>b.disabled=true);
             resultError.hidden = true;
             try {
                 const body = new URLSearchParams({
@@ -517,10 +544,11 @@
                 if (!response.ok || !payload.ok) throw new Error(payload.mensaje || 'No se pudo guardar.');
                 const call = calls.find(c=>c.pbx_call_id===resultCallId);
                 if (call) Object.assign(call,payload.registro);
-                resultDialog.close();
+                resultNeedsRefresh = true;
+                closingAfterSave = true;
+                resultModal().hide();
                 renderList();
                 explicarDevolucion('Resultado guardado.',false);
-                void loadHistory(false);
             } catch(error) {
                 resultError.textContent = error.message || 'No se pudo guardar. Inténtalo nuevamente.';
                 resultError.hidden = false;
@@ -529,6 +557,7 @@
                 resultSave.disabled = false;
                 resultSelect.disabled = false;
                 resultNote.disabled = false;
+                resultDialog.querySelectorAll('[data-bs-dismiss="modal"]').forEach(b=>b.disabled=false);
             }
         });
 

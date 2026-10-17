@@ -31,9 +31,37 @@ on:
       - "prueba_telefonia/api/resultado_recepcion_marketing.php"
       - "prueba_telefonia/api/grabacion_transferida_pbx.php"
       - "tests/marketing_recepcion_operativa_smoke.php"
+      - "tests/marketing_modal_seguimiento_browser.cjs"
+      - "tests/fixtures/marketing_recepcion_vista.php"
       - ".github/workflows/marketing-recepcion.yml"
   pull_request:
 jobs:
+  validar-modal-seguimiento:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preparar navegador y Bootstrap de producción
+        run: |
+          npm install --prefix "$RUNNER_TEMP/marketing-browser" --no-audit --no-fund --ignore-scripts playwright@1.62.1 bootstrap@5.3.8
+          "$RUNNER_TEMP/marketing-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verificar modal con los estilos y selectores globales de Marketing
+        env:
+          PLAYWRIGHT_MODULE_PATH: ${{ runner.temp }}/marketing-browser/node_modules/playwright
+          BOOTSTRAP_MODULE_PATH: ${{ runner.temp }}/marketing-browser/node_modules/bootstrap
+          MARKETING_BROWSER_OUTPUT: ${{ runner.temp }}/marketing-modal-capturas
+        run: node tests/marketing_modal_seguimiento_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: marketing-modal-capturas
+          path: ${{ runner.temp }}/marketing-modal-capturas
+          if-no-files-found: ignore
   validar-operacion-recepcion:
     runs-on: ubuntu-latest
     steps:

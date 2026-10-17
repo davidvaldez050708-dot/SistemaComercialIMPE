@@ -584,30 +584,25 @@
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
-    height: 38px;
-    min-height: 38px;
+    height: 42px;
+    min-height: 42px;
     margin: 0;
     padding: 8px 12px;
-    border: 1px solid #d9e2ef;
-    border-radius: 9px;
-    background-color: #fff;
-    color: #304560;
+    border: 1px solid var(--color-border, #d9e2ef);
+    border-radius: var(--radius-sm, 7px);
+    background-color: #f8fafc;
+    color: var(--color-text-primary, #304560);
     font-family: inherit;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     line-height: 1.3;
     box-shadow: none;
 }
 .marketing-reception-panel .marketing-reception-filters select.form-select {
-    appearance: none;
-    padding-right: 32px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23526783' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
-    background-position: right 12px center;
-    background-size: 12px;
-    background-repeat: no-repeat;
+    padding-right: 34px;
 }
 .marketing-reception-panel .marketing-reception-filters .marketing-reception-search .form-control {padding-left: 34px;}
-.marketing-reception-panel .marketing-reception-search > i {left: 12px;bottom: 12px;}
+.marketing-reception-panel .marketing-reception-search > i {left: 12px;bottom: 14px;}
 .marketing-reception-panel .marketing-reception-filters > .marketing-reception-refresh {
     display: inline-flex;align-items: center;justify-content: center;gap: 7px;
     color: #2d488d;font-weight: 750;
@@ -638,33 +633,47 @@
     color: #2e4e98;font: inherit;font-size: 10px;font-weight: 700;text-decoration: underline;
     text-underline-offset: 3px;cursor: pointer;
 }
-.marketing-reception-panel :is(button,input,select,textarea):focus-visible {
+.marketing-reception-panel .marketing-reception-filters :is(button,input,select):focus-visible,
+.marketing-reception-panel .marketing-reception-table button:focus-visible {
     outline: 2px solid #5272b0;outline-offset: 2px;
 }
-.marketing-reception-panel .marketing-reception-result-dialog {
-    width: min(480px,calc(100% - 32px));max-height: calc(100dvh - 40px);padding: 0;
-    border: 1px solid #dce5f1;border-radius: 16px;color: #263b59;
-    box-shadow: 0 24px 70px rgba(27,42,76,.2);font-family: inherit;
+/* Mismo modal de formulario que Seguimiento; sólo se limita su región de scroll. */
+#modalResultadoRecepcionMarketing .modal-dialog {
+    width: calc(100% - 32px);
+    max-width: 500px;
+    height: calc(100dvh - 32px);
+    min-height: 0;
+    margin: 16px auto;
 }
-.marketing-reception-panel .marketing-reception-result-dialog::backdrop {background: rgba(24,39,65,.4);}
-.marketing-reception-result-dialog header,
-.marketing-reception-result-dialog footer {padding: 18px 22px;}
-.marketing-reception-result-dialog header {border-bottom: 1px solid #e7edf5;}
-.marketing-reception-result-dialog h3 {margin: 0 0 5px;font-size: 17px;font-weight: 800;}
-.marketing-reception-result-dialog p {margin: 0;font-size: 12px;line-height: 1.5;color: #6c7d93;}
-.marketing-reception-result-body {padding: 18px 22px;display: grid;gap: 10px;}
-.marketing-reception-result-body label {font-size: 12px;font-weight: 750;margin-top: 5px;}
-.marketing-reception-result-body label span {font-weight: 500;color: #7c899b;}
-.marketing-reception-result-body :is(select,textarea) {
-    width: 100%;min-height: 42px;border: 1px solid #d7e1ee;border-radius: 9px;
-    padding: 10px 12px;background: #fbfcff;color: #293f60;font: inherit;font-size: 12px;
+#modalResultadoRecepcionMarketing .modal-content {
+    max-height: min(640px, calc(100dvh - 32px));
+    min-height: 0;
+    overflow: hidden;
 }
-.marketing-reception-result-body textarea {resize: vertical;}
-.marketing-reception-result-dialog footer {
-    display: flex;justify-content: flex-end;gap: 9px;border-top: 1px solid #e7edf5;
+#modalResultadoRecepcionMarketing .modal-header,
+#modalResultadoRecepcionMarketing .modal-footer {flex: 0 0 auto;}
+#modalResultadoRecepcionMarketing .marketing-reception-result-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
 }
-.marketing-reception-result-dialog .marketing-reception-result-error {color: #a33c36;}
-.marketing-reception-result-dialog [hidden] {display: none !important;}
+#modalResultadoRecepcionMarketing .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+#modalResultadoRecepcionMarketing .marketing-reception-result-description {
+    margin: 0 0 16px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+}
+#modalResultadoRecepcionMarketing textarea.form-control {resize: vertical;max-height: 180px;}
+#modalResultadoRecepcionMarketing [hidden] {display: none !important;}
 @media (max-width: 1100px) {
     .marketing-reception-panel .marketing-reception-metrics {grid-template-columns: repeat(3,minmax(0,1fr));}
     .marketing-reception-panel .marketing-reception-filters {grid-template-columns: repeat(2,minmax(0,1fr));}

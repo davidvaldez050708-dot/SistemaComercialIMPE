@@ -104,7 +104,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <label class="marketing-reception-filter-field">
             <span class="marketing-reception-filter-label">Tipo de llamada</span>
             <select class="form-select marketing-reception-status-filter"
-                data-marketing-reception-type aria-label="Filtrar por tipo de llamada">
+                data-native-select data-marketing-reception-type aria-label="Filtrar por tipo de llamada">
                 <option value="">Entrantes y salientes</option>
                 <option value="Entrante">Entrantes</option>
                 <option value="Saliente">Salientes</option>
@@ -113,7 +113,7 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <label class="marketing-reception-filter-field">
             <span class="marketing-reception-filter-label">Estado o resultado</span>
             <select class="form-select marketing-reception-status-filter"
-                data-marketing-reception-filter aria-label="Filtrar llamadas por estado">
+                data-native-select data-marketing-reception-filter aria-label="Filtrar llamadas por estado">
                 <option value="">Todos los estados</option>
                 <option value="Atendida">Atendidas</option>
                 <option value="Perdida">Perdidas</option>
@@ -177,15 +177,22 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
         <nav class="marketing-reception-pagination" data-marketing-reception-pages
             aria-label="Páginas del historial de recepción" hidden></nav>
     </div>
-    <dialog class="marketing-reception-result-dialog" data-marketing-result-dialog
-        aria-labelledby="marketingResultadoTitulo">
-        <form data-marketing-result-form>
-            <header><h3 id="marketingResultadoTitulo">Resultado de la llamada</h3>
-                <p data-marketing-result-phone></p></header>
-            <div class="marketing-reception-result-body">
-                <p>Registra lo que escuchaste. El estado confirmado por la centralita se conserva.</p>
-                <label for="marketingResultado">Resultado observado</label>
-                <select id="marketingResultado" name="resultado" required data-marketing-result-select>
+    <div class="modal fade marketing-reception-result-modal" id="modalResultadoRecepcionMarketing"
+        data-marketing-result-dialog tabindex="-1" aria-labelledby="marketingResultadoTitulo" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable system-form-dialog">
+        <div class="modal-content system-form-modal">
+            <div class="modal-header system-form-modal-header">
+                <div><h5 class="system-form-modal-title" id="marketingResultadoTitulo">Registrar resultado de llamada</h5>
+                    <p class="system-form-modal-subtitle" data-marketing-result-phone></p></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+        <form class="marketing-reception-result-form" data-marketing-result-form>
+            <div class="modal-body system-form-modal-body">
+                <p class="marketing-reception-result-description">Selecciona el resultado observado y añade una nota si necesitas dar seguimiento.</p>
+                <div class="mb-3">
+                <label class="form-label" for="marketingResultado">Resultado observado</label>
+                <select class="form-select" id="marketingResultado" name="resultado" required
+                    data-native-select data-marketing-result-select>
                     <option value="">Selecciona un resultado</option>
                     <option value="CONTACTO">Persona atendió</option>
                     <option value="BUZON">Buzón de voz</option>
@@ -194,15 +201,24 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                     <option value="OTRO">Otro resultado</option>
                     <option value="SIN_CLASIFICAR">Sin clasificar</option>
                 </select>
-                <label for="marketingResultadoNota">Nota <span>(opcional)</span></label>
-                <textarea id="marketingResultadoNota" name="nota" rows="3" maxlength="500"
+                </div>
+                <div class="mb-0">
+                <label class="form-label" for="marketingResultadoNota">Nota <span class="text-muted">(opcional)</span></label>
+                <textarea class="form-control" id="marketingResultadoNota" name="nota" rows="3" maxlength="500"
                     placeholder="Ej. buzón de voz; volver a llamar por la tarde." data-marketing-result-note></textarea>
-                <p class="marketing-reception-result-error" data-marketing-result-error role="alert" hidden></p>
+                </div>
+                <p class="alert alert-danger mt-3 mb-0" data-marketing-result-error role="alert" hidden></p>
             </div>
-            <footer><button type="button" class="btn btn-system-light" data-marketing-result-cancel>Cancelar</button>
-                <button type="submit" class="btn btn-system-primary" data-marketing-result-save>Guardar resultado</button></footer>
+            <div class="modal-footer system-form-modal-footer">
+                <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal" data-marketing-result-cancel>
+                    <i class="bi bi-x-lg" aria-hidden="true"></i> Cancelar</button>
+                <button type="submit" class="btn btn-system-save" data-marketing-result-save>
+                    <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar resultado</button>
+            </div>
         </form>
-    </dialog>
+        </div>
+      </div>
+    </div>
     </div>
 </section>
 <?php endif; ?>
