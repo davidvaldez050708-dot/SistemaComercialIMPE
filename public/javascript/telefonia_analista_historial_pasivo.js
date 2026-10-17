@@ -452,9 +452,26 @@
                     Math.floor((Date.now() - active.answeredAt) / 1000)
                 );
             }
+        } else if (active && pbxIncoming) {
+            // Una sesión SDK transferida puede adquirir su identificador PBX
+            // durante el timbrado o después de contestar. No finalizar aquí
+            // la sesión SDK: es la MISMA conversación, no una llamada nueva.
+            if (state.phase === 'in-progress' || state.status === 'in-progress') {
+                active.sawConversation = true;
+                const hostAt = Number(state.answeredAtMs || 0);
+                if (!active.answeredAt) {
+                    active.answeredAt = hostAt > 0 && hostAt <= Date.now() &&
+                        Date.now() - hostAt < 86400000 ? hostAt : Date.now();
+                    void postEvent('answered', active);
+                }
+                active.lastDuration = Math.max(
+                    active.lastDuration, Number(state.duration || 0),
+                    Math.floor((Date.now() - active.answeredAt) / 1000)
+                );
+            }
         } else if (active && (!state.active ||
             state.phase === 'ready' || state.phase === 'incoming-finished')) {
-            // El motor sí publicó un estado final; aprovechar su duración.
+            // Finalizar sólo al terminar realmente la conversación.
             end(state);
         }
     };
