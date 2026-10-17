@@ -70,6 +70,38 @@ $duracionEntrante = static function ($segundos) {
         max(0, (int)$segundos) % 60);
 };
 ?>
+<style>
+/* Acciones de registro integradas al pie de la tarjeta, sin una fila extra. */
+.linkage-incoming-page .linkage-call-result-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.linkage-incoming-page .linkage-incoming-register-inline { display: inline-flex; }
+.linkage-incoming-page .linkage-incoming-register-compact {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 5px 11px;
+    border: 1px solid #ccd7ef;
+    border-radius: 999px;
+    background: #f0f4fc;
+    color: #253d91;
+    font-size: .8125rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.linkage-incoming-page .linkage-incoming-register-compact:hover,
+.linkage-incoming-page .linkage-incoming-register-compact:focus-visible {
+    background: #e5edfc;
+    border-color: #9db5e5;
+    color: #173378;
+}
+</style>
 <section class="dashboard-panel linkage-incoming-page"
     data-linkage-incoming
     data-current-user="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>"
