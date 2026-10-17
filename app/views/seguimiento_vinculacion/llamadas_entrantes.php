@@ -313,6 +313,7 @@ $duracionEntrante = static function ($segundos) {
                                 <div class="linkage-incoming-card-actions">
                                     <button type="button" class="btn btn-system-save linkage-incoming-open"
                                         data-call-id="<?= $esc($idRegistroResultado) ?>"
+                                        data-pbx-call-id="<?= $esc($pbxId) ?>"
                                         data-source="<?= $esc($fuenteRegistroResultado) ?>"
                                         data-phone="<?= $esc($llamada['numero'] ?? '') ?>"
                                         data-answer="<?= !empty($llamada['contestada']) ? '1' : '0' ?>"
