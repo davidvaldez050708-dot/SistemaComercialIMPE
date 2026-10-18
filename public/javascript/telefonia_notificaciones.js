@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded',()=>{
  const root=document.querySelector('[data-phone-notification-read]');if(!root)return;
  document.addEventListener('click',async event=>{
-  const item=event.target.closest('[data-telefonia-id]');if(!item)return;
+  const item=event.target.closest('[data-telefonia-id]');if(!item||event.target.closest('.convocatoria-activation-toast-close'))return;
   event.preventDefault();event.stopImmediatePropagation();
   const destination=new URL(item.getAttribute('href'),window.location.href);
   if(destination.origin!==window.location.origin)return;

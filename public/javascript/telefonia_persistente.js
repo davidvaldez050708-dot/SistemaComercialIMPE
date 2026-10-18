@@ -923,6 +923,8 @@
             );
         }
 
+        // La devolución pertenece al shell desde la preparación, antes del primer STATE del SDK.
+        if(data.context?.type==='DEVOLUCION')state=Object.assign({},state,{direction:'outgoing',destination,institution:String(data.institution||''),context:data.context});
         startingCall = true;
         renderPanel();
 
@@ -1988,16 +1990,17 @@
         // entregan su conversación al mismo modal del shell.
         // No crear un segundo panel encima. Seguimiento conserva su
         // tarjeta propia cuando necesita registrar el resultado.
+        const callbackInShell=embedded && String(state?.context?.type||'').toUpperCase()==='DEVOLUCION';
         const manualOutgoingInShell = embedded &&
             state?.direction === 'outgoing' &&
             ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(
                 String(state?.context?.type || '').toUpperCase()
             ) && (Boolean(state?.active) || state?.phase === 'finished');
         panel.hidden = !show || managedByShell ||
-            incomingInShell || manualOutgoingInShell;
+            incomingInShell || manualOutgoingInShell || callbackInShell;
 
         if (!show || managedByShell || incomingInShell ||
-            manualOutgoingInShell) {
+            manualOutgoingInShell || callbackInShell) {
             return;
         }
 
@@ -2467,6 +2470,10 @@
             }
         }
     );
+
+    window.addEventListener('impe:callback-result-open',()=>{
+        if(!state?.active && state?.context?.type==='DEVOLUCION'){setRegistrationOpenToken(finishedToken());renderPanel();}
+    });
 
     document.addEventListener(
         'impe:telephony-registration-unavailable',

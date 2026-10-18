@@ -49,3 +49,13 @@ SIN_CONFIRMAR genera avisos a ambos para coordinar y revisar el historial, sin c
 - Regresiones: atención original en cuatro tamaños, recibidas, salientes, transferencia directa rápida y consultada heredada, campanas, SDK y acceso a grabaciones.
 
 Los escenarios automatizados no sustituyen la comprobación final del audio y los webhooks reales en Hostinger.
+
+## Corrección del panel hijo y avisos
+
+El cliente real `telefonia_persistente.js` conservaba su propia tarjeta para el contexto DEVOLUCION, aunque el shell ya había ocultado la suya. La devolución se delega ahora al shell también desde el cliente hijo, desde la preparación hasta el fin. La prueba de integración ejecuta ambos scripts reales y simula únicamente el transporte al motor, no reemplaza la API del cliente persistente.
+
+Las acciones de devoluciones usan `btn btn-system-light`, el componente normal del CRM. Las ayudas usan `system-form-modal-subtitle` sobre un elemento small. No se agregan estilos de botones ni z-index específicos.
+
+El estado sin conversación confirmada no demuestra que la institución tenga expediente: era la causa del bloqueo del selector. En devoluciones el menú queda seleccionable y muestra la regla de alta. El servidor sigue rechazando crear un expediente desde un intento sin contacto confirmado; permite conservar la institución identificada sin crear expediente. Una conversación realmente confirmada mantiene el alta normal y el control de duplicados.
+
+La campana del analista muestra los avisos telefónicos con `mostrarToast` de Recordatorios, igual que Seguimiento. La de Marketing utiliza su toast de notificaciones existente. Mostrar y cerrar el toast no marcan leído ni retiran el pendiente de la campana. Se evita repetirlo al navegar o recargar en la misma sesión. Pulsarlo usa el endpoint de lectura propio con CSRF. Las pruebas comprueban aparición, autocierre, no repetición y conservación del pendiente en ambas campanas.

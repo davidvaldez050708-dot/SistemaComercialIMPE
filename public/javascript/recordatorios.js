@@ -221,6 +221,7 @@
                 '</div>';
 
             const url = urlRecordatorio(aviso);
+            if(Number(aviso.telefonia_id)>0){toast.dataset.telefoniaId=String(aviso.telefonia_id);toast.setAttribute('href',url);}
             if (url !== '') {
                 toast.classList.add('is-clickable');
                 toast.addEventListener('click', function () {
@@ -250,6 +251,17 @@
             temporizadorCierre = window.setTimeout(function () {
                 instanciaToast.hide();
             }, DURACION_TOAST);
+        };
+
+        const phoneToastsSeen=new Set();
+        const mostrarAvisosTelefonia=function(items){
+            let shown=0;
+            for(const item of items||[]){
+                const id=Number(item.telefonia_id);if(id<=0||Number(item.leida||0)!==0)continue;
+                const key='impe:phone-toast:'+Number(window.IMPE_CURRENT_USER_ID||0)+':'+id;
+                if(phoneToastsSeen.has(key)||leerSesion(key)==='1')continue;
+                mostrarToast(item);phoneToastsSeen.add(key);guardarSesion(key,'1');if(++shown===3)break;
+            }
         };
 
         const esRecordatorioVencidoRecurrente = function (recordatorio) {
@@ -440,6 +452,8 @@
                     datos.recordatorios || [],
                     datos.total || 0
                 );
+
+                mostrarAvisosTelefonia(datos.recordatorios||[]);
 
                 if (datos.requiere_migracion) {
                     if (!avisoMigracionMostrado) {

@@ -121,6 +121,8 @@
         sdkConfirm.hidden = !isSdkCall || value === 'sin_identificar';
         sdkCheck.required = !sdkConfirm.hidden;
         if (sdkConfirm.hidden) sdkCheck.checked = false;
+        const callbackAnswer=form.querySelector('[data-incoming-callback-answer]');
+        if(callbackAnswer){callbackAnswer.hidden=hasAnswer;callbackAnswer.textContent='La centralita registró esta devolución sin conversación confirmada. Puedes conservar la institución identificada; para crear el expediente desde una llamada se requiere una conversación confirmada.';}
         renderEvidence();
         clearError();
     };
@@ -210,11 +212,11 @@
         hasAnswer = button.dataset.answer === '1';
         decision.value = hasAnswer ? 'existente' : 'sin_identificar';
         for (const option of Array.from(decision.options)) {
-            if (option.value !== 'sin_identificar') option.disabled = !hasAnswer && (!callbackMode || option.value==='nueva');
+            if (option.value !== 'sin_identificar') option.disabled = !hasAnswer && !callbackMode;
         }
         modalEl.querySelector('[data-incoming-modal-description]').textContent = hasAnswer
             ? 'Vincula la conversación a un expediente y registra su resultado.'
-            : 'Llamada sin respuesta: clasifícala sin crear un expediente.';
+            : callbackMode?'Devolución sin conversación confirmada. Registra el resultado del intento.':'Llamada sin respuesta: clasifícala sin crear un expediente.';
         renderDecision();
         // Si Recepción identificó el expediente, precargarlo por ID exacto
         // de esta sesión. El servidor volverá a validar la pertenencia al

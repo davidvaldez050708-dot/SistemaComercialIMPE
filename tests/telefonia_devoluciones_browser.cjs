@@ -36,14 +36,17 @@ window.finishCallback=()=>{phoneState={...phoneState,active:false,phase:'finishe
   await page.goto('http://devoluciones.test/');
   const row=page.locator('[data-callback-id="7"]');await row.waitFor();assert.match(await row.textContent(),/Institución Uno/);
   assert.equal(await row.getByRole('button',{name:'Llamar',exact:true}).count(),1);assert.equal(await page.getByRole('button',{name:'Marcar atendida'}).count(),0);
+  assert.equal(await row.getByRole('button',{name:'Llamar',exact:true}).evaluate(e=>e.className),'btn btn-system-light');
   if(process.env.CALLBACK_SCREENSHOT)await page.screenshot({path:process.env.CALLBACK_SCREENSHOT+'-lista.png'});
   await row.getByRole('button',{name:'Llamar',exact:true}).click();await page.waitForFunction(()=>callPayloads.length===1);
   assert.equal(await page.evaluate(()=>callPayloads[0].context.type),'DEVOLUCION');assert.equal(await page.evaluate(()=>callPayloads[0].destination),'+525551112233');
   attempt={...attempt,puede_registrar:true,finalizada:true,contestada:true,duracion:12,estado_llamada:'Completada',pbx_call_id:'callback-test-001'};await page.evaluate(()=>finishCallback());
   const modal=page.locator('#modalLlamadaEntranteAnalista');await modal.waitFor({state:'visible'});const form=modal.locator('form');
+  assert.equal(await form.locator('[data-incoming-callback-answer]').isVisible(),false,'no informa sin respuesta en una conversación confirmada');
   assert.equal(await form.locator('[name=decision]').inputValue(),'existente');assert.equal(await form.locator('[name=seguimiento_id]').inputValue(),'1');
   await form.locator('[name=decision]').selectOption('identificada');await form.locator('[name=institucion_nombre]').fill('Institución identificada');
   assert.equal(await form.locator('[data-incoming-new]').isVisible(),false);
+  assert.ok(await form.locator('[data-incoming-identified] small').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))<=13,'ayuda con tipografía original compacta');
   await form.locator('[name=decision]').selectOption('nueva');assert.equal(await form.locator('[name=estado_id]').isVisible(),true);assert.equal(await form.locator('[name=nombre_entidad]').getAttribute('required'),'');
   await form.locator('[name=decision]').selectOption('existente');
   await form.locator('[name=resultado]').selectOption('BUZON_VOZ');await form.locator('[name=observacion]').fill('Dejó buzón; reintentar por la tarde.');

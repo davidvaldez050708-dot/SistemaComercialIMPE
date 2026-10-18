@@ -45,6 +45,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const getNotificationVisual = function (item) {
         const eventType = String(item && item.tipo_evento ? item.tipo_evento : '');
 
+        if(Number(item?.telefonia_id)>0)return {icon:item.icono||'bi-telephone-forward',tone:'warning',fallbackTitle:'Telefonía'};
+
         if (eventType === 'vencimiento_hoy') {
             return {
                 icon: 'bi-exclamation-octagon-fill',
@@ -112,6 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const toast = document.createElement('a');
         toast.className = 'convocatoria-activation-toast is-' + visual.tone;
         toast.href = String(item.url || '#');
+        if(Number(item.telefonia_id)>0)toast.dataset.telefoniaId=String(item.telefonia_id);
         toast.innerHTML =
             '<span class="convocatoria-activation-toast-icon"><i class="bi ' + visual.icon + '"></i></span>' +
             '<span class="convocatoria-activation-toast-copy">' +
@@ -148,32 +151,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 8000);
     };
 
-    const notifyUnseen = function (items) {
-        if (!Array.isArray(items)) {
-            return;
-        }
-
-        const unseen = items.filter(function (item) {
-            if (Number(item.leida || 0) !== 0 || Number(item.id || 0) <= 0) {
-                return false;
-            }
-
-            const key = 'impe_convocatoria_notificacion_' + Number(item.id);
-            try {
-                if (window.sessionStorage.getItem(key) === '1') {
-                    return false;
-                }
-                window.sessionStorage.setItem(key, '1');
-            } catch (error) {
-                // Si sessionStorage no está disponible, se muestra una sola alerta del lote.
-            }
-
-            return true;
+    const noticesSeen=new Set();let toastBusy=false,currentItems=[];
+    const notifyUnseen = function(items){
+        currentItems=Array.isArray(items)?items:[];if(toastBusy)return;
+        const item=currentItems.find(item=>{
+            if(Number(item.leida||0)!==0||(Number(item.id)<=0&&Number(item.telefonia_id)<=0))return false;
+            const key=Number(item.telefonia_id)>0?'impe:phone-toast:'+Number(window.IMPE_CURRENT_USER_ID||0)+':'+Number(item.telefonia_id):'impe_convocatoria_notificacion_'+Number(item.id);
+            if(noticesSeen.has(key))return false;
+            try{if(sessionStorage.getItem(key)==='1')return false;}catch(_){}return true;
         });
-
-        if (unseen.length > 0) {
-            showActivationToast(unseen[0]);
-        }
+        if(!item)return;
+        const key=Number(item.telefonia_id)>0?'impe:phone-toast:'+Number(window.IMPE_CURRENT_USER_ID||0)+':'+Number(item.telefonia_id):'impe_convocatoria_notificacion_'+Number(item.id);
+        noticesSeen.add(key);try{sessionStorage.setItem(key,'1');}catch(_){}
+        showActivationToast(item);toastBusy=true;
+        window.setTimeout(()=>{toastBusy=false;notifyUnseen(currentItems);},8300);
     };
 
     const render = function (items) {

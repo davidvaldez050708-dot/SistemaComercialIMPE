@@ -57,7 +57,8 @@
                             </select>
                         </div>
                     </div>
-                    <?php if (!empty($esDevolucion)): ?><div class="mb-3" data-incoming-identified hidden><label class="form-label" for="callbackIdentifiedName">Nombre de la institución</label><input id="callbackIdentifiedName" name="institucion_nombre" maxlength="150" class="form-control"><p class="text-muted small">Conserva la identificación en esta llamada sin crear un expediente.</p></div><?php endif; ?>
+                    <?php if (!empty($esDevolucion)): ?><div class="mb-3" data-incoming-identified hidden><label class="form-label" for="callbackIdentifiedName">Nombre de la institución</label><input id="callbackIdentifiedName" name="institucion_nombre" maxlength="150" class="form-control"><small class="system-form-modal-subtitle d-block mt-2">Conserva la identificación en esta llamada sin crear un expediente.</small></div><?php endif; ?>
+                    <?php if(!empty($esDevolucion)): ?><div class="system-form-modal-subtitle mb-3" data-incoming-callback-answer hidden></div><?php endif; ?>
                     <div data-incoming-new hidden>
                         <div class="row g-3">
                             <div class="col-12 col-md-7">
