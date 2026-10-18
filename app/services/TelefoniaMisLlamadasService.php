@@ -88,6 +88,7 @@ final class TelefoniaMisLlamadasService
             'desde' => (string)($filtros['desde'] ?? date('Y-m-d', strtotime('-29 days'))),
             'hasta' => (string)($filtros['hasta'] ?? date('Y-m-d')),
             'usuario_id' => $usuarioId,
+            'historial_personal_completo' => true,
             'direccion' => in_array(($filtros['direccion'] ?? ''), ['Entrante','Saliente'], true)
                 ? $filtros['direccion'] : ''
         ]);
@@ -100,14 +101,20 @@ final class TelefoniaMisLlamadasService
         // cada fila es un tramo atribuido, no una nueva llamada externa.
         $total = count($rows);
         $conectadas = count(array_filter($rows, static fn(array $r): bool => !empty($r['conectada'])));
+        $porPagina = 20;
+        $paginas = max(1, (int)ceil($total / $porPagina));
+        $pagina = min($paginas, max(1, (int)($filtros['pagina'] ?? 1)));
         return [
-            'filas' => $rows,
+            'filas' => array_slice($rows, ($pagina - 1) * $porPagina, $porPagina),
+            'pagina' => $pagina,
+            'paginas' => $paginas,
+            'por_pagina' => $porPagina,
             'total' => $total,
             'conectadas' => $conectadas,
             'entrantes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Entrante')),
             'salientes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Saliente')),
             'filtros' => $control['filtros'],
-            'limitacion' => 'Vista inicial de solo lectura: muestra hasta 500 tramos del intervalo consultado, con atribución verificada. No incluye automáticamente devoluciones sin PBX confirmado ni registros ambiguos. Las grabaciones se consultan en sus módulos de origen.'
+            'limitacion' => 'Vista inicial de solo lectura: muestra tramos del intervalo consultado, con atribución verificada y paginación de 20 registros. No incluye automáticamente devoluciones sin PBX confirmado ni registros ambiguos. Las grabaciones se consultan en sus módulos de origen.'
         ];
     }
 }
