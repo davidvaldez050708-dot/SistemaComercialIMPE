@@ -129,6 +129,8 @@ final class TelefoniaMisLlamadasService
         if ($usuarioId <= 0) {
             throw new DomainException('Inicia sesión para consultar tus llamadas.');
         }
+        // Fechas validadas por el servicio de Control; Marketing usa esta
+        // validación antes de leer la recepción (solo 30 días disponibles).
         $control = (new TelefoniaControlService())->consultar([
             'desde' => (string)($filtros['desde'] ?? date('Y-m-d', strtotime('-29 days'))),
             'hasta' => (string)($filtros['hasta'] ?? date('Y-m-d')),
