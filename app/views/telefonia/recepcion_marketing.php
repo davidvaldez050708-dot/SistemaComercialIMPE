@@ -42,16 +42,11 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
                 <i class="bi bi-headset" aria-hidden="true"></i>
                 Activar recepción
             </button>
-            <button type="button" class="btn btn-system-light marketing-reception-details-toggle"
-                data-marketing-reception-details-toggle aria-expanded="false"
-                aria-controls="marketingRecepcionHistorial">
-                <span data-marketing-reception-details-label>Ver historial</span>
-                <i class="bi bi-chevron-down" aria-hidden="true"></i>
-            </button>
+            
         </div>
     </div>
     <div class="marketing-reception-details" id="marketingRecepcionHistorial"
-        data-marketing-reception-details hidden>
+        data-marketing-reception-details>
     <p class="marketing-reception-browser-note" data-marketing-reception-browser-note hidden>
         <i class="bi bi-info-circle" aria-hidden="true"></i>
         <span>La conexión WebRTC permanece en una ventana pequeña. Puedes minimizarla,
