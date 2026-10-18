@@ -36,7 +36,7 @@ $check(str_contains($head, "'seguimiento_llamadas_player.css'")
 $check(str_contains($reception, "get('buscar')")
     && str_contains($reception, 'No disponible · Reintentar'),
     'Falta búsqueda desde historial o error de audio explícito');
-$check(str_contains($history, 'Ver detalles y grabación')
+$check(str_contains($history, 'Ver llamada')
     && str_contains($history, 'no todas las sesiones WebRTC'),
     'Historial sin detalles autorizados o sin alcance visible');
 $check(str_contains($css, '.marketing-reception-filters')
