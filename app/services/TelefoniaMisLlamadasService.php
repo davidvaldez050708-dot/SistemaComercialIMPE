@@ -38,13 +38,17 @@ final class TelefoniaMisLlamadasService
             $porPbx[$pbx] = [
                 'resultado_devolucion' => (string)$intento['resultado'],
                 'intento_devolucion' => (int)($intento['id'] ?? 0),
-                'seguimiento_id' => max(0, (int)($intento['seguimiento_id'] ?? 0))
+                'seguimiento_id' => max(0, (int)($intento['seguimiento_id'] ?? 0)),
+                'extension' => trim((string)($intento['extension'] ?? ''))
             ];
         }
         foreach ($filas as &$fila) {
             if (!is_array($fila) || (int)($fila['usuario_id'] ?? 0) !== $usuarioId) continue;
             $pbx = trim((string)($fila['pbx_call_id'] ?? ''));
-            if ($pbx !== '' && isset($porPbx[$pbx])) {
+            if ($pbx !== '' && isset($porPbx[$pbx])
+                && ($fila['direccion'] ?? '') === 'Saliente'
+                && $porPbx[$pbx]['extension'] !== ''
+                && $porPbx[$pbx]['extension'] === trim((string)($fila['extension'] ?? ''))) {
                 $fila = array_merge($fila, $porPbx[$pbx]);
             }
         }
@@ -59,7 +63,7 @@ final class TelefoniaMisLlamadasService
         $db = (new Database())->connect();
         $table = $db->query("SHOW TABLES LIKE 'telefonia_devolucion_intentos'");
         if (!$table || $table->num_rows === 0) return [];
-        $sql = "SELECT id, usuario_id, pbx_call_id, resultado, seguimiento_id
+        $sql = "SELECT id, usuario_id, extension, pbx_call_id, resultado, seguimiento_id
                 FROM telefonia_devolucion_intentos
                 WHERE usuario_id = ? AND created_at >= ? AND created_at < ?
                 AND pbx_call_id IS NOT NULL AND pbx_call_id <> ''
