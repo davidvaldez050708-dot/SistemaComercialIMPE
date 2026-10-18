@@ -193,7 +193,9 @@ try {
     require_once dirname(__DIR__).'/app/services/TelefoniaDisponibilidadService.php';
     $availability=new TelefoniaDisponibilidadService($db);
     $workflow('availability_call_001');
-    $route=['referencia_llamada'=>'availability_call_001','responsable_id'=>1,'extension'=>'101','estado_id'=>1,'tipo'=>'INSTITUCION','seguimiento_id'=>0,'nombre_destino'=>'Analista'];
+    $route=['referencia_llamada'=>'availability_call_001','responsable_id'=>1,'extension'=>'101','estado_id'=>1,'tipo'=>'INSTITUCION','seguimiento_id'=>0,'nombre_destino'=>'Analista','institucion_nombre'=>'Institución Uno'];
+    rejects(fn()=>$availability->solicitar(3,array_merge($route,['institucion_nombre'=>''])),'Número nuevo requiere nombre antes de solicitar disponibilidad');
+    rejects(fn()=>$availability->solicitar(3,array_merge($route,['seguimiento_id'=>2])),'Institución confirmada debe pertenecer al responsable');
     $beforeEvents=one('SELECT COUNT(*) n FROM telefonia_zadarma_eventos')['n'];
     $request=$availability->solicitar(3,$route);$aid=(int)$request['id'];$version=(int)$request['version'];
     check($request['estado']==='PENDIENTE' && $beforeEvents===one('SELECT COUNT(*) n FROM telefonia_zadarma_eventos')['n'],'Solicitar disponibilidad no crea una llamada ni una transferencia');
@@ -227,5 +229,46 @@ try {
     $db->query("UPDATE telefonia_disponibilidad SET expires_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 SECOND) WHERE id=$eid");
     check($availability->obtener(3,$eid)['estado']==='VENCIDA','Solicitud sin respuesta caduca sin transferir ni colgar');
     rejects(fn()=>$availability->accion(1,$eid,1,'ACEPTAR'),'No acepta solicitudes vencidas');
+    require_once dirname(__DIR__).'/app/services/TelefoniaDevolucionService.php';
+    $availability->accion(3,$eid,1,'DEVOLUCION',['contacto'=>'Beatriz','telefono'=>'+525551112233','nota'=>'Institución Uno: convenio']);
+    $callbacks=new TelefoniaDevolucionService($db);
+    rejects(fn()=>$callbacks->preparar(2,$eid),'No puede llamar una devolución ajena');
+    $attempt=$callbacks->preparar(1,$eid);$attemptId=(int)$attempt['id'];
+    check(!$attempt['puede_registrar'],'Preparar una devolución no inventa llamada ni resultado');
+    rejects(fn()=>$callbacks->preparar(1,$eid),'Impide dos intentos simultáneos sin resultado');
+    rejects(fn()=>$callbacks->registrar(1,$attemptId,['resultado'=>'CONTACTO']),'No registrar antes de confirmación de fin');
+    $outgoing=function($ref,$disposition,$duration)use($events){
+        foreach([['NOTIFY_OUT_START',-2],['NOTIFY_OUT_END',0]] as [$type,$offset])$events->registrar(['event'=>$type,'pbx_call_id'=>$ref,'internal'=>'101','destination'=>'+525551112233','disposition'=>$type==='NOTIFY_OUT_END'?$disposition:'','duration'=>$type==='NOTIFY_OUT_END'?$duration:0,'received_at'=>date('Y-m-d H:i:s',time()+$offset)]);
+    };
+    $outgoing('callback_out_001','answered',12);
+    $confirmed=$callbacks->estado(1,$attemptId);
+    check($confirmed['puede_registrar'] && $confirmed['contestada'] && $confirmed['pbx_call_id']==='callback_out_001','Vincula sólo la saliente propia al teléfono posterior a preparar');
+    $interactionsBefore=one('SELECT COUNT(*) n FROM interacciones_vinculacion')['n'];
+    $callbackFollowBefore=one('SELECT estado_seguimiento,datos_verificados,proxima_accion_at FROM seguimientos_vinculacion WHERE id=1');
+    $callbacks->registrar(1,$attemptId,['resultado'=>'BUZON','identificacion'=>'EXISTENTE','seguimiento_id'=>1,'observacion'=>'Dejar mensaje']);
+    check($availability->obtener(1,$eid)['devolucion']==='PENDIENTE','Buzón conserva devolución para reintentar');
+    rejects(fn()=>$callbacks->registrar(1,$attemptId,['resultado'=>'CONTACTO']),'Resultado de devolución definitivo');
+    $second=$callbacks->preparar(1,$eid);$secondId=(int)$second['id'];
+    check(!$second['pbx_call_id'],'Nuevo intento no reutiliza saliente anterior al mismo número');
+    $outgoing('callback_out_002','no answer',0);
+    rejects(fn()=>$callbacks->registrar(1,$secondId,['resultado'=>'CONTACTO']),'Sin respuesta no se registra como contacto atendido');
+    $callbacks->registrar(1,$secondId,['resultado'=>'SIN_RESPUESTA','identificacion'=>'SIN_IDENTIFICAR']);
+    check($availability->obtener(1,$eid)['devolucion']==='PENDIENTE','Sin respuesta conserva devolución pendiente');
+    // Un historial temporalmente averiado no oculta las devoluciones de la campana.
+    $db->query('ALTER TABLE telefonia_zadarma_eventos CHANGE COLUMN evento evento_test VARCHAR(32) NOT NULL');
+    $partial=$notifications->pendientes(1,false);
+    $db->query('ALTER TABLE telefonia_zadarma_eventos CHANGE COLUMN evento_test evento VARCHAR(32) NOT NULL');
+    check(count(array_filter($partial,fn($n)=>$n['titulo']==='Llamada por devolver'))===1,'Campana conserva devolución aunque falle el historial técnico');
+    $third=$callbacks->preparar(1,$eid);$thirdId=(int)$third['id'];$outgoing('callback_out_003','answered',20);
+    rejects(fn()=>$callbacks->registrar(1,$thirdId,['resultado'=>'CONTACTO','identificacion'=>'EXISTENTE','seguimiento_id'=>2]),'No vincular devolución a expediente ajeno');
+    $callbacks->registrar(1,$thirdId,['resultado'=>'CONTACTO','identificacion'=>'EXISTENTE','seguimiento_id'=>1,'observacion'=>'Atendió Beatriz [VERIFICACION_EFECTIVA]']);
+    check($availability->obtener(1,$eid)['devolucion']==='ATENDIDA','Contacto confirmado cierra pendiente y conserva resultado');
+    check((int)one('SELECT COUNT(*) n FROM interacciones_vinculacion')['n']===(int)$interactionsBefore+2,'Cada devolución con expediente guarda una interacción sin duplicar intentos');
+    check(one('SELECT estado_seguimiento,datos_verificados,proxima_accion_at FROM seguimientos_vinculacion WHERE id=1')===$callbackFollowBefore,'La devolución conserva etapa, datos y acción futura');
+    check((int)one("SELECT COUNT(*) n FROM interacciones_vinculacion WHERE id_externo IN ('callback_out_001','callback_out_003') AND notas LIKE '%[VERIFICACION_EFECTIVA]%'")['n']===0,'No acredita verificación ni acepta etiquetas introducidas en la nota');
+    $lastCallbackInteraction=one("SELECT resultado,duracion_segundos FROM interacciones_vinculacion WHERE id_externo='callback_out_003'");
+    check($lastCallbackInteraction['resultado']==='CONTACTADO' && (int)$lastCallbackInteraction['duracion_segundos']===20,'Expediente conserva resultado y duración confirmados del intento');
+    $rows=$callbacks->listar(1);$row=array_values(array_filter($rows,fn($r)=>(int)$r['id']===$eid))[0];
+    check($row['seguimiento_id']===1 && $row['intento']['resultado']==='CONTACTO','Historial de devolución conserva expediente y último resultado');
     echo "Atención analista/MySQL: $checks comprobaciones OK\n";
 } finally {$db->select_db('mysql');$db->query("DROP DATABASE `$name`");$db->close();}

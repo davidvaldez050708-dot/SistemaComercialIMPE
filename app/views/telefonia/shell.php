@@ -237,6 +237,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                 <button type="button" class="persistent-phone-action is-danger" data-incoming-hangup hidden>
                     <i class="bi bi-telephone-x" aria-hidden="true"></i>Colgar
                 </button>
+                <button type="button" class="persistent-phone-action is-primary" data-callback-register-finished hidden><i class="bi bi-journal-check"></i> Registrar resultado</button>
                 <?php if ($analistaEntrantesShell): ?>
                 <button type="button" class="persistent-phone-action"
                     data-incoming-retry-save hidden>
@@ -272,7 +273,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                         <option value="PROSPECTO">Prospecto · Ventas</option>
                     </select>
                 </div>
-                <div class="impe-routing-field" data-routing-state-wrap>
+                <div class="impe-routing-field" data-routing-state-wrap hidden>
                     <label for="impeRoutingState">Estado</label>
                     <select id="impeRoutingState" data-routing-state>
                         <option value="">Seleccionar estado para llamada nueva</option>
@@ -284,7 +285,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                     Buscar institución por nombre (opcional)
                 </button>
                 <div class="impe-routing-field" data-routing-search-wrap hidden>
-                    <label for="impeRoutingSearch">Nombre de la institución</label>
+                    <label for="impeRoutingSearch">Nombre de la institución o persona que llama</label>
                     <input type="search" id="impeRoutingSearch" data-routing-search
                         maxlength="80" autocomplete="off" placeholder="Escribe el nombre si el teléfono no coincide">
                 </div>
@@ -293,9 +294,9 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                     <div data-routing-matches-list></div>
                 </div>
                 <div class="impe-routing-field">
-                    <label for="impeRoutingDestination">Responsable de la atención</label>
+                    <label for="impeRoutingDestination">Estado · Responsable correspondiente</label>
                     <select id="impeRoutingDestination" data-routing-destination>
-                        <option value="">Seleccionar responsable</option>
+                        <option value="">Seleccionar estado y responsable</option>
                     </select>
                 </div>
                 <div class="impe-routing-actions">
@@ -440,6 +441,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'canCapture' => $puedeCapturarShell,
             'routingListUrl' => BASE_URL . 'index.php?controller=telefonia&action=destinosTransferencia',
             'routingAuthorizeUrl' => BASE_URL . 'index.php?controller=telefonia&action=autorizarTransferencia',
+            'callbackUrl' => BASE_URL . 'index.php?controller=telefonia&action=devoluciones',
             'availabilityUrl' => BASE_URL . 'index.php?controller=telefonia&action=disponibilidad',
             'routingCsrf' => (string)$_SESSION['csrf_token'],
             'homeUrl' => BASE_URL . 'index.php?controller=home&action=index'

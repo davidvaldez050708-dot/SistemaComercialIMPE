@@ -41,8 +41,8 @@ foreach ([
 ] as $marker) checkReception(strpos($service, $marker) !== false, "Búsqueda carece de $marker");
 checkReception(strpos($controller, 'identificarOrigen($usuarioId, $rol, $telefonoOrigen)') !== false,
     'La consulta por teléfono no llega al servidor.');
-checkReception(strpos($routing, "active.direction === 'incoming'") !== false,
-    'No se restringe a llamadas entrantes.');
+checkReception(strpos($routing, 'String(active.phone') !== false,
+    'Se utiliza el teléfono de la llamada actual.');
 checkReception(strpos($routing, 'telefono_origen:checkPhone ? phone') !== false,
     'No se utiliza el número recibido.');
 checkReception(strpos($routing, 'if (recognized.length && !confirmedRecognition)') !== false,

@@ -33,6 +33,7 @@ final class TelefoniaNotificacionService
         }
         $s=$this->db->prepare("UPDATE telefonia_notificaciones n JOIN telefonia_disponibilidad d ON n.llave=CONCAT('devolucion:',d.id,':',d.version) SET n.leida=1 WHERE n.usuario_id=? AND n.extension=? AND d.destino_usuario=n.usuario_id AND d.devolucion='ATENDIDA'");
         $s->bind_param('is',$user,$ext);$s->execute();$s->close();
+        try{
         $history=$recepcion?(new TelefoniaRecepcionMarketingService($this->db))->resumen($user):(new TelefoniaEntrantesAnalistaService($this->db))->listar($user);
         foreach($history['llamadas'] as $c){
             if(($c['fuente']??'')==='OPERACION')continue; // Tiene su aviso exacto por intento debajo.
@@ -42,11 +43,14 @@ final class TelefoniaNotificacionService
             $number=(string)($c['numero']??'Número privado');
             $this->agregar($user,$ext,'llamada:'.$c['pbx_call_id'],$number,(string)$c['fecha'],'Llamada perdida',$number.' · Revisa el historial y coordina su devolución.');
         }
+        }catch(Throwable $e){error_log('[campana_historial_llamadas] '.get_class($e));}
+        try{
         foreach((new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($user) as $op){
             if((int)$op['destino_usuario']!==$user||$op['estado']!=='DEVUELTA'||!empty($op['destino_atendida']))continue;
             $date=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
             $this->agregar($user,$ext,'consulta:'.$op['id'].':'.$op['intento'],$op['numero'],$date,'Transferencia sin respuesta','Recepción intentó comunicarte con '.$op['numero'].'. Coordina con la extensión '.$op['origen_extension'].' antes de devolver la llamada.');
         }
+        }catch(Throwable $e){error_log('[campana_transferencias] '.get_class($e));}
     }
     public function pendientes(int $user,bool $recepcion): array {
         $this->sincronizar($user,$recepcion);$ext=$this->extension($user);

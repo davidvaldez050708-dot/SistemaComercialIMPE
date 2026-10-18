@@ -53,7 +53,7 @@ function boot(opts = {}) {
         '[data-incoming-drag-handle]','[data-incoming-compact-timer]',
         '[data-shell-transfer-toggle]','[data-shell-transfer-panel]',
         '[data-shell-capture-toggle]','[data-shell-capture-panel]',
-        '[data-analyst-call-result]'
+        '[data-analyst-call-result]','[data-callback-register-finished]'
     ];
     selectors.forEach(x => elements[x] = element());
     elements['impeCrmFrame'] = element();
@@ -67,14 +67,16 @@ function boot(opts = {}) {
             loginUrl: 'https://crm.ejemplo.org/index.php?controller=login&action=mostrarLogin',
             autoReception: opts.auto !== false,
             analystIncomingResults: opts.analyst === true,
+            callbackUrl:'https://crm.ejemplo.org/index.php?controller=telefonia&action=devoluciones',
             canTransfer: opts.transfer === true
         },
         location: {origin:'https://crm.ejemplo.org', replace(url) {this.redirect = url;}},
-        addEventListener(k,fn) {windowEvents[k] = fn;},
+        addEventListener(k,fn) {const previous=windowEvents[k];windowEvents[k]=e=>{previous?.(e);fn(e);};},
         innerWidth:1280, innerHeight:780,
         setInterval(fn) {intervals.push(fn); return intervals.length;}
     };
     const doc = {
+        body:element(),
         addEventListener() {},
         querySelector(k) {return elements[k];},
         getElementById(k) {return elements[k];},
@@ -414,3 +416,17 @@ for(const [phase,active] of [['incoming-ringing',true],['incoming-finished',fals
 }
 assert.equal(missedAnalyst.elements['[data-analyst-call-result]'].hidden,true,'el tiempo de timbrado no habilita Registrar resultado en una perdida');
 console.log('Shell WebRTC: OK (paneles laterales inmediatos, finalización entrante, cierre manual, llamadas consecutivas, perdida sin resultado y lease)');
+
+storage.clear();
+const callback=boot({analyst:true});
+for(const [phase,active] of [['in-progress',true],['finished',false]])callback.channels[0].message({type:'STATE',state:{userId:8,updatedAt:Date.now(),hostReady:true,active,direction:'outgoing',phase,destination:'5551112233',callToken:'callback-41',duration:20,context:{type:'DEVOLUCION',callbackAttempt:41}}});
+assert.equal(callback.window.IMPE_TELEPHONY_SHELL.getPhoneStatus().pending,true,'devolución terminada exige resultado');
+assert.equal(callback.elements['[data-callback-register-finished]'].hidden,false);
+assert.equal(callback.elements['[data-incoming-close-finished]'].hidden,true);
+callback.elements['[data-callback-register-finished]'].events.click();
+assert.match(callback.elements.impeCrmFrame.src,/action=devoluciones&intento_id=41/);
+callback.windowEvents.message({origin:'https://crm.ejemplo.org',source:{},data:{type:'IMPE_CALLBACK_RESULT_SAVED',attemptId:41}});
+assert.equal(callback.window.IMPE_TELEPHONY_SHELL.getPhoneStatus().pending,true,'otro origen de mensaje no elimina el pendiente');
+callback.windowEvents.message({origin:'https://crm.ejemplo.org',source:callback.elements.impeCrmFrame.contentWindow,data:{type:'IMPE_CALLBACK_RESULT_SAVED',attemptId:41}});
+assert.equal(callback.window.IMPE_TELEPHONY_SHELL.getPhoneStatus().pending,false,'el guardado propio libera el teléfono');
+console.log('Shell/devolución: resultado obligatorio, recuperación y mensaje autenticado: OK');

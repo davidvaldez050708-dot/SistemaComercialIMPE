@@ -173,24 +173,21 @@
 
     const keyFor = item =>
         String(item.usuario_id)+':'+String(item.extension)+':'+String(item.estado_id);
-    const permitted = () => {
-        const id = categoria === 'RECEPCION' ? String(estado?.value || '') : '';
-        return targetEntries.filter(item => !id || String(item.estado_id) === id);
-    };
+    const permitted = () => targetEntries;
     const renderRecipients = (preferred = '') => {
         if (!destinos) return;
         const previous = preferred || destinos.value;
         const visible = permitted();
-        destinos.replaceChildren(option('', 'Seleccionar responsable'));
+        destinos.replaceChildren(option('', 'Seleccionar estado y responsable'));
         visible.forEach(item => {
-            const label = [item.nombre, 'Ext. '+item.extension,
-                item.estado_nombre, item.rol].filter(Boolean).join(' · ');
+            const label = [item.estado_nombre, item.nombre, 'Ext. '+item.extension].filter(Boolean).join(' · ');
             destinos.appendChild(option(keyFor(item), label));
         });
         const chosen = visible.find(item => keyFor(item) === previous) ||
             (visible.length === 1 ? visible[0] : null);
         destinos.value = chosen ? keyFor(chosen) : '';
         selected = chosen;
+        if(estado)estado.value=chosen?String(chosen.estado_id):'';
     };
     const chooseInstitution = record => {
         const dest = targetEntries.find(item =>
@@ -203,6 +200,7 @@
         }
         if (estado) estado.value = String(dest.estado_id);
         renderRecipients(keyFor(dest));
+        if(buscar){buscar.value=record.nombre;buscar.required=false;}if(lookupWrap)lookupWrap.hidden=true;
         confirmedRecognition = true;
         confirmedRecord = {callId: currentCallId, seguimientoId: Number(record.seguimiento_id || 0),
             usuarioId: Number(dest.usuario_id), estadoId: Number(dest.estado_id)};
@@ -244,6 +242,7 @@
             // Si es una llamada institucional nueva, mostrar el campo
             // directamente sin exigir que Tania abra otra sección.
             if (lookupWrap) lookupWrap.hidden = false;
+            if(buscar)buscar.required=true;
             if (lookupToggle) {
                 lookupToggle.hidden = true;
                 lookupToggle.setAttribute('aria-expanded', 'true');
@@ -274,8 +273,8 @@
         reject.addEventListener('click',()=>{
             rejectedRecognitionForCall=currentCallId;recognized=[];confirmedRecognition=false;confirmedRecord=null;
             identityBox.hidden=true;if(estado)estado.value='';renderRecipients();
-            if(lookupWrap)lookupWrap.hidden=false;
-            setFeedback('Origen sin expediente confirmado. Selecciona el estado y el responsable de esta atención.');
+            if(lookupWrap)lookupWrap.hidden=false;if(buscar){buscar.value='';buscar.required=true;}
+            setFeedback('Origen sin expediente confirmado. Selecciona el destino y escribe el nombre de quien llama.');
         });
         identityBox.appendChild(reject);
         // La confirmación ya realizada se conserva durante ESTA llamada
@@ -325,14 +324,14 @@
             phoneCheckedForCall = '';
             recognized = [];
             confirmedRecognition = false;
-            confirmedRecord = null;
+            confirmedRecord = null;if(buscar){buscar.value='';buscar.required=false;}
             if (identityBox) identityBox.hidden = true;
         }
         const type = categoria === 'RECEPCION' ? tipo.value : '';
         const stateId = categoria === 'RECEPCION' ? estado.value : '';
         const text = String(buscar?.value || '').trim();
         const phone = categoria === 'RECEPCION' &&
-            type === 'INSTITUCION' && active.direction === 'incoming'
+            type === 'INSTITUCION'
             ? String(active.phone || '') : '';
         const checkPhone = phone && phoneCheckedForCall !== currentCallId;
         setFeedback('Consultando responsables autorizados…');
@@ -340,7 +339,7 @@
             const directoryQuery = type === 'INSTITUCION' ? '' : text;
             const [directory, matches] = await Promise.all([
                 fetch(endpoint('routingListUrl', {
-                    tipo:type, estado_id:checkPhone ? '' : stateId,
+                    tipo:type, estado_id:'',
                     buscar:directoryQuery,
                     telefono_origen:checkPhone ? phone : ''
                 }), {credentials:'same-origin',cache:'no-store'}).then(readJson),
@@ -360,7 +359,7 @@
                 (directory.estados || []).forEach(item =>
                     estado.appendChild(option(item.id, item.nombre)));
             }
-            if (checkPhone) {
+            if (checkPhone || (categoria==='RECEPCION' && type==='INSTITUCION' && phoneCheckedForCall!==currentCallId)) {
                 phoneCheckedForCall = currentCallId;
                 renderIdentification(directory.identificacion || [], phone);
             }
@@ -450,6 +449,8 @@
     buscar?.addEventListener('input', reload);
     destinos?.addEventListener('change', () => {
         selected = targetEntries.find(item => keyFor(item) === destinos.value) || null;
+        if(estado)estado.value=selected?String(selected.estado_id):'';
+        if(tipo?.value==='INSTITUCION'){if(confirmedRecord&&buscar)buscar.value='';if(buscar)buscar.required=true;if(lookupWrap)lookupWrap.hidden=false;}
         // Una selección manual reemplaza la sugerencia sin identificar.
         recognized = [];
         confirmedRecognition = false;
@@ -476,6 +477,9 @@
             setFeedback('Confirma primero la institución que coincide con el número.', true);
             return;
         }
+        if(categoria==='RECEPCION' && tipo.value==='INSTITUCION' && !confirmedRecognition && String(buscar?.value||'').trim().length<2){
+            if(lookupWrap)lookupWrap.hidden=false;setFeedback('Escribe el nombre de la institución o persona que llama.',true);buscar?.focus();return;
+        }
         const identity = active.id;
         if (!identity) {
             setFeedback('Aún no se identifica la llamada activa. Espera unos segundos.', true);
@@ -499,6 +503,7 @@
                     Number(confirmedRecord.estadoId) === Number(selected.estado_id)
                         ? confirmedRecord.seguimientoId : 0
                 ),
+                institucion_nombre:String(buscar?.value||'').trim(),
                 numero_origen:String(active.phone || ''),
                 referencia_llamada:identity
             });

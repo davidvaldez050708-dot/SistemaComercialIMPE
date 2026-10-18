@@ -4,7 +4,7 @@ const repo=path.resolve(__dirname,'..'),fixture=path.join(__dirname,'fixtures/te
 const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.execFileSync('php',[fixture,'analista'],{encoding:'utf8'});
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
- try{for(const scenario of ['aceptar','rechazar','vencer']){
+ try{for(const scenario of ['aceptar','rechazar','vencer','pendiente']){
   let op=null,authorizations=0,saved=null;const errors=[],contexts=[];
   const pages=[];
   for(const actor of [7,8]){
@@ -40,17 +40,25 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
     window.commands=[];window.testChannel=new BroadcastChannel('impe-telephony-'+actor);window.testChannel.onmessage=e=>{if(e.data.action==='TRANSFER')window.commands.push(e.data);};
    },actor);
   }
-  const [s,d]=pages;await s.locator('[data-shell-transfer-toggle]').click();await s.locator('[data-routing-state]').selectOption('17');await s.locator('[data-routing-attended]').click();
+  const [s,d]=pages;await s.locator('[data-shell-transfer-toggle]').click();await s.locator('[data-routing-destination]').selectOption('8:101:17');await s.locator('[data-routing-search]').fill('Institución prueba');await s.locator('[data-routing-attended]').click();
   await s.locator('[data-availability-source]').waitFor({state:'visible'});assert.equal(authorizations,0);
   assert.equal(await s.locator('[data-availability-transfer]').isVisible(),false,'Transferir sólo se muestra después de aceptar');
   assert.equal(await s.locator('[data-availability-callback-open]').isVisible(),false,'Devolución sólo se ofrece al rechazar o vencer');
   assert.equal(await s.locator('[data-shell-transfer-toggle]').isDisabled(),true,'La solicitud pendiente bloquea otro envío aunque se cierre la ficha');
   assert.equal(await s.evaluate(()=>window.commands.length),0,'solicitar disponibilidad no envía transferencia');
+  if(scenario==='pendiente')await d.evaluate(()=>document.body.classList.add('impe-sdk-result-in-modal'));
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());await d.locator('[data-availability-incoming]').waitFor({state:'visible'});
   if(process.env.DISP_SCREENSHOT&&scenario==='aceptar'){await d.screenshot({path:process.env.DISP_SCREENSHOT+'-analista.png'});await s.screenshot({path:process.env.DISP_SCREENSHOT+'-recepcion.png'});}
   assert.equal(await d.locator('[data-incoming-panel]').isVisible(),false,'la confirmación no es una llamada ni un timbrado SIP');
   assert.ok(await d.locator('[data-availability-incoming] h2').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))<=20,'tipografía del modal uniforme');
-  if(scenario==='aceptar'){
+  if(scenario==='pendiente'){
+   assert.equal(await d.locator('[data-availability-accept]').isDisabled(),true,'Resultado pendiente impide aceptar, pero muestra solicitud');
+   assert.equal(await d.locator('[data-availability-pending]').isVisible(),true);
+   await d.locator('[data-availability-pending]').click();await d.locator('[data-availability-waiting]').waitFor({state:'visible'});
+   await d.evaluate(()=>document.body.classList.remove('impe-sdk-result-in-modal'));await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
+   await d.locator('[data-availability-incoming]').waitFor({state:'visible'});assert.equal(await d.locator('[data-availability-accept]').isDisabled(),false);
+   await d.locator('[data-availability-decline]').click();assert.equal(authorizations,0);
+  }else if(scenario==='aceptar'){
    await d.locator('[data-availability-accept]').click();await s.evaluate(()=>window.IMPE_AVAILABILITY.tick());
    await s.locator('[data-availability-transfer]').waitFor({state:'visible'});assert.equal(authorizations,0,'aceptar no entrega automáticamente');
    await s.locator('[data-availability-transfer]').click();await s.waitForFunction(()=>window.commands.length===1);assert.equal(authorizations,1);

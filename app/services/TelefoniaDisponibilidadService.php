@@ -63,6 +63,12 @@ final class TelefoniaDisponibilidadService
     public function solicitar(int $user,array $route): array {
         $call=$this->live($user,(string)$route['referencia_llamada']);$dest=$this->extension((int)$route['responsable_id']);
         if($dest['extension']!==$route['extension'] || (int)$route['responsable_id']===$user)throw new DomainException('El responsable ya no está disponible.');
+        if(($route['tipo']??'')==='INSTITUCION'){
+            if((int)($route['seguimiento_id']??0)>0){
+                $inst=$this->one("SELECT nombre_entidad FROM seguimientos_vinculacion WHERE id=? AND analista_id=? AND estado_id=? AND activo=1 AND estado_seguimiento<>'DESCARTADO'",[$route['seguimiento_id'],$route['responsable_id'],$route['estado_id']]);
+                if(!$inst)throw new DomainException('El expediente no corresponde al responsable seleccionado.');$route['institucion_nombre']=$inst['nombre_entidad'];
+            }elseif(mb_strlen(trim((string)($route['institucion_nombre']??'')))<2 || mb_strlen((string)$route['institucion_nombre'])>150)throw new DomainException('Escribe el nombre de la institución o persona que llama.');
+        }
         $this->expire();$this->db->begin_transaction();
         try{
             // Serializar también solicitudes simultáneas de la misma cuenta.
@@ -90,6 +96,7 @@ final class TelefoniaDisponibilidadService
         }
         $r['segundos']=max(0,strtotime($r['expires_at'].' UTC')-time());
         $route=json_decode($r['ruta_json'],true)?:[];$r['responsable']=(string)($route['nombre_destino']??'Responsable');
+        $r['institucion_nombre']=(string)($route['institucion_nombre']??'');$r['seguimiento_id']=(int)($route['seguimiento_id']??0);
         unset($r['ruta_json']);return $r;
     }
     public function entrante(int $user): ?array {
@@ -142,8 +149,9 @@ final class TelefoniaDisponibilidadService
             $this->change($id,['estado'=>'ENVIANDO']);$this->db->commit();
         }catch(Throwable $e){$this->db->rollback();throw $e;}
     }
-    public function devoluciones(int $user): array {
-        $ext=$this->extension($user);$s=$this->db->prepare("SELECT * FROM telefonia_disponibilidad WHERE destino_usuario=? AND destino_extension=? AND devolucion='PENDIENTE' ORDER BY id DESC LIMIT 100");
+    public function devoluciones(int $user,bool $historial=false): array {
+        $ext=$this->extension($user);$filter=$historial?"devolucion IN ('PENDIENTE','ATENDIDA')":"devolucion='PENDIENTE'";
+        $s=$this->db->prepare("SELECT * FROM telefonia_disponibilidad WHERE destino_usuario=? AND destino_extension=? AND $filter ORDER BY id DESC LIMIT 100");
         $s->bind_param('is',$user,$ext['extension']);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $rows;
     }
 }

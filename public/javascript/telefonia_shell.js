@@ -39,6 +39,7 @@
     const incomingCompactTimer = document.querySelector('[data-incoming-compact-timer]');
     const notice = document.querySelector('[data-incoming-notice]');
     const closeFinished = document.querySelector('[data-incoming-close-finished]');
+    const callbackSaved=new Set();
     const transferToggle = document.querySelector('[data-shell-transfer-toggle]');
     const transferPane = document.querySelector('[data-shell-transfer-panel]');
     const captureToggle = document.querySelector('[data-shell-capture-toggle]');
@@ -140,7 +141,7 @@
     // La llamada entrante finalizada sólo permanece en esta sesión.
     let recentFinishedIncoming = null;
     const isManualOutgoing = value =>
-        ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(
+        ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER','DEVOLUCION'].includes(
             String(value?.context?.type || '').toUpperCase()
         );
     let currentState = null;
@@ -270,7 +271,17 @@
         },
         getPhoneStatus: function () {
             return {active:Boolean(currentState?.active),ready:Boolean(freshState(currentState)&&currentState.hostReady),
-                pending:Boolean(window.IMPE_CALL_CLOSURE?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
+                pending:Boolean(window.IMPE_CALL_CLOSURE?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal')||(!currentState?.active&&['finished','incoming-finished'].includes(currentState?.phase)&&currentState?.context?.type==='DEVOLUCION'&&Number(currentState.context.callbackAttempt)>0&&!callbackSaved.has(Number(currentState.context.callbackAttempt))))};
+        },
+        openPendingResult: function () {
+            if(!currentState?.active && currentState?.context?.type==='DEVOLUCION' && Number(currentState.context.callbackAttempt)>0){
+                if(crm)crm.src=cfg.callbackUrl+'&intento_id='+Number(currentState.context.callbackAttempt);minimized=true;render();return;
+            }
+            const btn=document.querySelector('[data-incoming-register-finished]');
+            if(btn&&!btn.hidden)btn.click();else window.IMPE_CALL_CLOSURE?.showPending();
+        },
+        minimizeCallbackResult: function (id) {
+            if(!currentState?.active && Number(currentState?.context?.callbackAttempt)===id){minimized=true;render();}
         },
         getActiveCall: function () {
             if (!freshState(currentState) || !currentState.active ||
@@ -339,7 +350,7 @@
             currentState?.active && currentState.direction === 'outgoing' &&
             isManualOutgoing(value)) {
             recentFinishedOutgoing = {
-                state: value, until: Date.now() + 8000
+                state: value, until: value.context?.type==='DEVOLUCION'?Infinity:Date.now()+8000
             };
             incomingCompact = false;
         } else if (value.active || value.phase === 'ready' ||
@@ -479,7 +490,7 @@
         if (!ongoing) {
             nativeTransferOpen = false;
             forceNativeControls = false;
-            minimized = false;
+            if(state?.context?.type!=='DEVOLUCION')minimized = false;
             pendingIncomingAction = null;
             actionNotice = '';
         }
@@ -634,7 +645,9 @@
                 (shownOutgoing && dialing);
             compactHangup.hidden = finished || finishedIncoming || finishing ||
                 finishingIncoming || waitingAnswer || ringing;
-            if (closeFinished) closeFinished.hidden = !(finished || finishedIncoming);
+            const callbackPending=Boolean((finished||finishedIncoming)&&phoneState.context?.type==='DEVOLUCION'&&Number(phoneState.context.callbackAttempt)>0&&!callbackSaved.has(Number(phoneState.context.callbackAttempt)));
+            const callbackRegister=document.querySelector('[data-callback-register-finished]');if(callbackRegister)callbackRegister.hidden=!callbackPending;
+            if (closeFinished) closeFinished.hidden = !(finished || finishedIncoming)||callbackPending;
             hangupButton.disabled = Boolean(pending) || Boolean(preview);
             compactHangup.disabled = Boolean(pending) || Boolean(preview);
             // Mismo icono, texto y estado activo del modal de Seguimiento.
@@ -832,6 +845,12 @@
         render();
     };
     hangupButton?.addEventListener('click', hangupIncoming);
+    document.querySelector('[data-callback-register-finished]')?.addEventListener('click',()=>window.IMPE_TELEPHONY_SHELL.openPendingResult());
+    window.addEventListener('message',event=>{
+        if(event.origin!==window.location.origin||event.source!==crm?.contentWindow||event.data?.type!=='IMPE_CALLBACK_RESULT_SAVED')return;
+        const id=Number(event.data.attemptId);
+        if(id>0&&!currentState?.active&&Number(currentState?.context?.callbackAttempt)===id){callbackSaved.add(id);recentFinishedOutgoing=null;sendPhoneCommand('CLEAR_FINISHED',{callToken:currentState.callToken});render();}
+    });
     document.querySelector('[data-transfer-complete]')?.addEventListener('click',()=>sendPhoneCommand('COMPLETE_TRANSFER'));
     window.addEventListener('impe:availability-state',()=>render());
     compactHangup?.addEventListener('click', hangupIncoming);

@@ -2,9 +2,9 @@ name: Atención del analista - datos y modales
 on:
   push:
     branches: [main]
-    paths: ['app/**', 'public/javascript/**', 'prueba_telefonia/api/**', 'tests/telefonia_atencion*', 'tests/telefonia_disponibilidad*', 'tests/fixtures/telefonia_flujo_shell.php', 'public/css/telefonia_disponibilidad.css', 'tests/fixtures/analista_atencion_vista.php', '.github/workflows/telefonia-atencion-analista.yml']
+    paths: ['app/**', 'public/javascript/**', 'prueba_telefonia/api/**', 'tests/telefonia_atencion*', 'tests/telefonia_disponibilidad*', 'tests/telefonia_devoluciones*', 'tests/fixtures/telefonia_devoluciones_vista.php', 'public/css/telefonia_devoluciones.css', 'tests/fixtures/telefonia_flujo_shell.php', 'public/css/telefonia_disponibilidad.css', 'tests/fixtures/analista_atencion_vista.php', '.github/workflows/telefonia-atencion-analista.yml']
   pull_request:
-    paths: ['app/**', 'public/javascript/**', 'prueba_telefonia/api/**', 'tests/telefonia_atencion*', 'tests/telefonia_disponibilidad*', 'tests/fixtures/telefonia_flujo_shell.php', 'public/css/telefonia_disponibilidad.css', 'tests/fixtures/analista_atencion_vista.php', '.github/workflows/telefonia-atencion-analista.yml']
+    paths: ['app/**', 'public/javascript/**', 'prueba_telefonia/api/**', 'tests/telefonia_atencion*', 'tests/telefonia_disponibilidad*', 'tests/telefonia_devoluciones*', 'tests/fixtures/telefonia_devoluciones_vista.php', 'public/css/telefonia_devoluciones.css', 'tests/fixtures/telefonia_flujo_shell.php', 'public/css/telefonia_disponibilidad.css', 'tests/fixtures/analista_atencion_vista.php', '.github/workflows/telefonia-atencion-analista.yml']
 permissions:
   contents: read
 jobs:
@@ -57,3 +57,4 @@ jobs:
           node tests/telefonia_flujo_browser.cjs
           node tests/telefonia_campana_browser.cjs
           node tests/telefonia_disponibilidad_browser.cjs
+          node tests/telefonia_devoluciones_browser.cjs

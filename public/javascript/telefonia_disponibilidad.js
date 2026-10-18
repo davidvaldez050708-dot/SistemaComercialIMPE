@@ -5,7 +5,7 @@
  if(!cfg.availabilityUrl||!phone)return;
  const $=s=>document.querySelector(s),source=$('[data-availability-source]'),incoming=$('[data-availability-incoming]'),callback=$('[data-availability-callback]');
  const key='impe:availability:'+cfg.userId;
- let watched=null,received=null,polling=false,acting=false,transferring=false,callbacks=-1;
+ let watched=null,received=null,polling=false,acting=false,transferring=false,callbacks=-1,deferred='';
  try{watched=JSON.parse(sessionStorage.getItem(key)||'null');}catch(_){}
  const persist=()=>{try{if(watched)sessionStorage.setItem(key,JSON.stringify(watched));else sessionStorage.removeItem(key);}catch(_){}};
  const refreshBell=()=>document.getElementById('impeCrmFrame')?.contentWindow?.postMessage({type:'IMPE_PHONE_CALL_CHANGED'},location.origin);
@@ -50,12 +50,18 @@
     }
    }
    const op=data.entrante;
-   if(Number.isFinite(data.devoluciones)&&data.devoluciones!==callbacks){if(callbacks>=0)refreshBell();callbacks=data.devoluciones;}
-   if(!op||busy()){closeIncoming();return;}
+   if(Number.isFinite(data.devoluciones)&&data.devoluciones!==callbacks){if(callbacks>=0||data.devoluciones>0)refreshBell();callbacks=data.devoluciones;}
+   const status=phone.getPhoneStatus(),waiting=$('[data-availability-waiting]');
+   if(waiting)waiting.hidden=!op||!status.pending||deferred!==String(op.id)+':'+op.version;
+   if(!op||!status.ready||status.active){closeIncoming();return;}
    received=op;
-   $('[data-availability-caller]').textContent='Recepción · Ext. '+op.origen_extension+' · '+op.numero;
+   if(status.pending && deferred===String(op.id)+':'+op.version){if(incoming.open)incoming.close();return;}
+   $('[data-availability-accept]').disabled=Boolean(status.pending);
+   $('[data-availability-pending]').hidden=!status.pending;
+   $('[data-availability-feedback]').textContent=status.pending?'Tienes un resultado por registrar. Guárdalo antes de aceptar esta llamada.':'';
+   $('[data-availability-caller]').textContent='Recepción · Ext. '+op.origen_extension+' · '+op.numero+(op.institucion_nombre?' · '+op.institucion_nombre:'');
    $('[data-availability-countdown]').textContent='Responde en '+op.segundos+' s. Aceptar reserva tu disponibilidad durante 30 s.';
-   if(!incoming.open){$('[data-availability-feedback]').textContent='';incoming.showModal();$('[data-availability-accept]').focus();}
+   if(!incoming.open){incoming.showModal();$('[data-availability-accept]').focus();}
   }catch(e){if(watched){$('[data-availability-source-copy]').textContent=e.message;}if(incoming.open)$('[data-availability-feedback]').textContent=e.message;}
   finally{polling=false;}
  };
@@ -66,6 +72,11 @@
   catch(e){$('[data-availability-feedback]').textContent=e.message;}
   finally{acting=false;buttons.forEach(b=>b.disabled=false);}
  };
+ $('[data-availability-pending]')?.addEventListener('click',()=>{
+  if(!received)return;deferred=String(received.id)+':'+received.version;if(incoming.open)incoming.close();
+  phone.openPendingResult?.();
+  const waiting=$('[data-availability-waiting]');if(waiting)waiting.hidden=false;
+ });
  $('[data-availability-accept]')?.addEventListener('click',()=>void respond('ACEPTAR'));
  $('[data-availability-decline]')?.addEventListener('click',()=>void respond('RECHAZAR'));
  incoming?.addEventListener('cancel',e=>{e.preventDefault();void respond('RECHAZAR');});

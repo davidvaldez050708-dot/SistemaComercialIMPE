@@ -555,6 +555,7 @@ class TelefoniaController
                 'estado_id'=>(int)($_POST['estado_id']??0),'tipo'=>strtoupper(trim((string)($_POST['tipo']??''))),
                 'responsable_id'=>(int)($_POST['responsable_id']??0),
                 'seguimiento_id'=>(int)($_POST['seguimiento_id']??0),
+                'institucion_nombre'=>trim((string)($_POST['institucion_nombre']??'')),
                 'numero_origen'=>trim((string)($_POST['numero_origen']??'')),
                 'referencia_llamada'=>trim((string)($_POST['referencia_llamada']??'')),
                 'modo'=>'DIRECTA'
@@ -597,9 +598,34 @@ class TelefoniaController
                     'entrante'=>$svc->entrante($user),'devoluciones'=>count($svc->devoluciones($user))]);
                 $this->responderJson(['ok'=>true]);
             }
+            if(($_POST['accion']??'')==='ATENDIDA')$this->responderJson(['ok'=>false,'mensaje'=>'Registra el resultado desde Llamadas por devolver.'],409);
             $this->responderJson(['ok'=>true,'solicitud'=>$svc->accion($user,(int)($_POST['id']??0),(int)($_POST['version']??0),(string)($_POST['accion']??''),$_POST)]);
         }catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
         catch(Throwable $e){error_log('[telefonia_disponibilidad] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la solicitud. Intenta de nuevo.'],500);}
+    }
+
+    public function devolucion()
+    {
+        $this->validarUsuarioTelefoniaJson();if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);
+        require_once __DIR__.'/../services/TelefoniaDevolucionService.php';
+        try{
+            $svc=new TelefoniaDevolucionService();$user=(int)$_SESSION['usuario_id'];
+            if(($_SERVER['REQUEST_METHOD']??'')==='GET'){
+                $id=(int)($_GET['intento_id']??0);$this->responderJson($id?['ok'=>true,'intento'=>$svc->estado($user,$id)]:['ok'=>true,'devoluciones'=>$svc->listar($user)]);
+            }
+            if(($_SERVER['REQUEST_METHOD']??'')!=='POST')$this->responderJson(['ok'=>false],405);
+            $csrf=(string)($_SESSION['csrf_token']??'');if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);
+            $action=(string)($_POST['accion']??'');
+            if($action==='PREPARAR'){
+                if(!tienePermiso('telefonia.salientes'))$this->responderJson(['ok'=>false],403);
+                $this->responderJson(['ok'=>true,'intento'=>$svc->preparar($user,(int)($_POST['solicitud_id']??0))]);
+            }
+            $id=(int)($_POST['intento_id']??0);
+            if($action==='CANCELAR'){$svc->cancelar($user,$id);$this->responderJson(['ok'=>true]);}
+            if($action!=='RESULTADO')$this->responderJson(['ok'=>false],422);
+            $this->responderJson(['ok'=>true,'intento'=>$svc->registrar($user,$id,$_POST)]);
+        }catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[telefonia_devolucion] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la devolución. Intenta nuevamente.'],500);}
     }
 
     public function devoluciones()
@@ -611,11 +637,11 @@ class TelefoniaController
         if(($_SERVER['REQUEST_METHOD']??'')==='POST'){
             $csrf=(string)($_SESSION['csrf_token']??'');
             if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);
-            try{$svc->accion($usuario,(int)($_POST['id']??0),(int)($_POST['version']??0),'ATENDIDA');$_SESSION['telefonia_devolucion_aviso']=['mensaje'=>'Devolución atendida.','error'=>false];}
-            catch(DomainException $e){$_SESSION['telefonia_devolucion_aviso']=['mensaje'=>$e->getMessage(),'error'=>true];}
+            $_SESSION['telefonia_devolucion_aviso']=['mensaje'=>'Registra el resultado de la llamada para cerrar esta devolución.','error'=>true];
             header('Location: '.BASE_URL.'index.php?controller=telefonia&action=devoluciones');exit;
         }
-        $devoluciones=$svc->devoluciones($usuario);$tituloPagina='Llamadas por devolver';$opcionActiva='seguimiento_vinculacion';
+        require_once __DIR__.'/../services/TelefoniaDevolucionService.php';
+        $devoluciones=(new TelefoniaDevolucionService())->listar($usuario);$tituloPagina='Llamadas por devolver';$subtituloPagina='Seguimiento de contactos y resultados de devolución';$opcionActiva='seguimiento_vinculacion';
         require __DIR__.'/../views/layout/dashboard_head.php';require __DIR__.'/../views/layout/sidebar.php';
         require __DIR__.'/../views/layout/topbar.php';require __DIR__.'/../views/telefonia/devoluciones.php';
         require __DIR__.'/../views/layout/dashboard_footer.php';

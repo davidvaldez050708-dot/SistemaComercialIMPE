@@ -311,10 +311,11 @@ class ReminderController
                 (bool)($seguimientoAliados['ok'] ?? true);
         }
 
+        $telefoniaOk=false;
         if($puedeTelefonia){
             try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';
                 $phone=(new TelefoniaNotificacionService())->pendientes($usuarioId,false);
-                $recordatorios=array_merge($phone,$recordatorios);
+                $recordatorios=array_merge($phone,$recordatorios);$telefoniaOk=true;
             }catch(Throwable $e){error_log('[campana_telefonia] '.get_class($e));}
         }
         // La campana debe priorizar obligaciones vencidas y acciones que requieren
@@ -326,7 +327,8 @@ class ReminderController
         );
 
         echo json_encode([
-            'ok' => $ok,
+            'ok' => $ok||$telefoniaOk,
+            'parcial' => !$ok,
             'requiere_migracion' => $requiereMigracion,
             'avisos' => array_values($avisos),
             'recordatorios' => $recordatorios,

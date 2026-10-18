@@ -41,7 +41,7 @@ const html=cp.execFileSync('php',[path.join(__dirname,'fixtures/telefonia_flujo_
   await push('in-progress',true);
   await page.locator('[data-shell-transfer-toggle]').click();
   await page.getByRole('button',{name:'No corresponde a estas instituciones'}).click();
-  await page.locator('[data-routing-state]').selectOption('17');
+  await page.locator('[data-routing-destination]').selectOption('8:101:17');await page.locator('[data-routing-search]').fill('Otra institución');
   await page.locator('[data-routing-attended]').click();
   await page.waitForFunction(()=>document.querySelector('[data-availability-source-title]').textContent.includes('Esperando confirmación'));
   assert.match(transferBody,/seguimiento_id=0/,'el teléfono compartido no obliga a atribuir un expediente');

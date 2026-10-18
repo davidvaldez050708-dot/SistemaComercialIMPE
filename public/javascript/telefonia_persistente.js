@@ -881,6 +881,10 @@
     };
 
     const startCall = async function (payload) {
+        if(window.parent?.IMPE_TELEPHONY_SHELL?.getPhoneStatus?.().pending){
+            window.parent.IMPE_TELEPHONY_SHELL.openPendingResult?.();
+            throw new Error('Registra el resultado de la llamada anterior antes de marcar.');
+        }
         if (window.parent?.IMPE_CALL_CLOSURE?.hasPending?.()) {
             window.parent.IMPE_CALL_CLOSURE.showPending();
             throw new Error('Guarda el resultado de la llamada anterior antes de marcar.');

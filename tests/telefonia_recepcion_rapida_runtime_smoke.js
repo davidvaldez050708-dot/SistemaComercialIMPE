@@ -191,13 +191,10 @@ async function flush(){ await new Promise(resolve=>setImmediate(resolve)); }
     assert.equal(newInstitution.els['[data-routing-search-toggle]'].hidden,true);
     assert.equal(newInstitution.els['[data-routing-destination]'].value,'',
         'Sin estado aún no debe seleccionar responsable');
-    newInstitution.els['[data-routing-state]'].value='11';
-    newInstitution.els['[data-routing-state]'].dispatch('change');
-    const delayed=newInstitution.timers.pop();
-    delayed();
-    await flush();
-    assert.equal(newInstitution.els['[data-routing-destination]'].value,'7:101:11',
-        'Institución nueva: con el estado, seleccionar al único Analista');
+    newInstitution.els['[data-routing-destination]'].value='7:101:11';
+    newInstitution.els['[data-routing-destination]'].dispatch('change');
+    assert.equal(newInstitution.els['[data-routing-state]'].value,'11','El destino combinado aporta el estado al servidor');
+    newInstitution.els['[data-routing-search]'].value='Institución nueva';
     // Cambiar a ventas y regresar no debe borrar una coincidencia
     // ya detectada por caller ID, ni exigir buscarla por nombre de nuevo.
     const toggled=boot(original);
