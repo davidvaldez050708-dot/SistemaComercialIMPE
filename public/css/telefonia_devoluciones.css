@@ -36,3 +36,40 @@
  .impe-callbacks .impe-callback-filter-action{grid-column:auto}
  .impe-callbacks .impe-callback-filter-action button{width:100%}
 }
+
+/* Acciones del historial: misma escala compacta que Seguimiento.
+ * Encapsuladas para no alterar botones del resto del sistema. */
+.impe-callbacks .linkage-call-result-group{
+ display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+}
+.impe-callbacks .linkage-call-result-group .impe-callback-action,
+.impe-callbacks .linkage-call-result-group > a.btn{
+ display:inline-flex;align-items:center;justify-content:center;gap:6px;
+ width:auto;min-width:0;min-height:32px;padding:6px 12px;
+ border:1px solid #cbd7e9;border-radius:999px;
+ background:#f1f5fc;color:#29468b;
+ font-family:inherit;font-size:12px;font-weight:700;line-height:1.25;
+ text-decoration:none;white-space:nowrap;box-shadow:none;
+ transition:background-color .15s ease,border-color .15s ease,color .15s ease;
+}
+.impe-callbacks .linkage-call-result-group .impe-callback-action i,
+.impe-callbacks .linkage-call-result-group > a.btn i{
+ flex:none;margin:0;font-size:13px;line-height:1;color:inherit;
+}
+.impe-callbacks .linkage-call-result-group .impe-callback-action:hover,
+.impe-callbacks .linkage-call-result-group > a.btn:hover{
+ background:#e7effb;border-color:#a8bde1;color:#1f3979;
+}
+.impe-callbacks .linkage-call-result-group .impe-callback-action:focus-visible,
+.impe-callbacks .linkage-call-result-group > a.btn:focus-visible{
+ outline:2px solid #4569b6;outline-offset:2px;
+}
+.impe-callbacks .linkage-call-result-group .impe-callback-action:disabled{
+ opacity:.5;cursor:not-allowed;
+}
+@media(max-width:575.98px){
+ .impe-callbacks .linkage-call-result-group .impe-callback-action,
+ .impe-callbacks .linkage-call-result-group > a.btn{
+  min-height:36px;white-space:normal;text-align:center;
+ }
+}
