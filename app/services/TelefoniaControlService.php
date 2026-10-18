@@ -180,6 +180,14 @@ class TelefoniaControlService
                 $proceso = 'Recepción';
             }
 
+            // En la vista PERSONAL una interacción vinculada al PBX global
+            // no acredita que cada extensión de una transferencia sea del
+            // mismo usuario. Exigir además propiedad de la extensión del tramo.
+            if ($personalUid > 0 && $proceso === 'Vinculación'
+                && $idExtension !== $idVinculo) {
+                $usuarioId = 0;
+                $proceso = 'Sin atribución verificada';
+            }
             $segundos = max(0, (int)$row['segundos']);
             $conectada = (int)$row['conectada'] === 1;
             $resultado = $proceso === 'Ventas' ?
