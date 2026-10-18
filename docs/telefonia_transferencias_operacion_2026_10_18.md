@@ -1,5 +1,7 @@
 # Consulta y entrega de llamadas
 
+Esta revisión se conserva como antecedente. El recorrido vigente usa [confirmación de disponibilidad por CRM y transferencia directa](telefonia-disponibilidad-20261018.md).
+
 En **Consultar primero**, la persona espera mientras recepción habla con el analista. Contestar esa consulta todavía no entrega a la persona. Recepción debe pulsar **Completar transferencia** después de hablar con el analista. Se libera únicamente su sesión del teléfono; no se utiliza la API que cuelga la llamada externa completa.
 
 En **Transferir directamente**, recepción sale cuando la centralita confirma el envío al destino. No puede recuperar a voluntad una llamada ya entregada. El desvío por falta de respuesta de una transferencia directa depende de la configuración de la centralita; esta entrega no modifica esa configuración.

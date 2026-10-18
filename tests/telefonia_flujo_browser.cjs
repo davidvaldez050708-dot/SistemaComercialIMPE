@@ -8,12 +8,13 @@ const html=cp.execFileSync('php',[path.join(__dirname,'fixtures/telefonia_flujo_
  try{
   const page=await browser.newPage({viewport:{width:1366,height:900}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  let calls=[],saveFails=true,saveCount=0,lastBody=null,transferBody='';
+  let calls=[],saveFails=true,saveCount=0,lastBody=null,transferBody='',availability=null;
   await page.route('**/*',async route=>{
    const u=new URL(route.request().url());
    if(u.hostname!=='llamadas.test')return route.abort();
    if(u.searchParams.get('action')==='destinosTransferencia')return route.fulfill({json:{ok:true,estados:[{id:17,nombre:'Morelos'}],destinos:[{usuario_id:8,extension:'101',estado_id:17,estado_nombre:'Morelos',nombre:'Analista',rol:'Analista de Datos'}],identificacion:[{seguimiento_id:99,responsable_id:8,extension:'101',estado_id:17,estado_nombre:'Morelos',nombre:'Institución sugerida',responsable:'Analista'}]}});
-   if(u.searchParams.get('action')==='autorizarTransferencia'){transferBody=route.request().postData();return route.fulfill({json:{ok:true,token:'a'.repeat(48)}});}
+   if(u.searchParams.get('action')==='disponibilidad')return route.fulfill({json:{ok:true,solicitud:Number(new URLSearchParams(route.request().postData()||'').get('id'))>0?availability:null,entrante:null,devoluciones:0}});
+   if(u.searchParams.get('action')==='autorizarTransferencia'){transferBody=route.request().postData();availability={id:1,version:1,estado:'PENDIENTE',referencia:'pbx-real-001',destino_extension:'101',numero:'5551234567',segundos:45};return route.fulfill({json:{ok:true,solicitud:availability}});}
    if(u.pathname.endsWith('/avisos_llamadas.php'))return route.fulfill({json:{ok:true,extension:'100',llamadas:calls}});
    if(u.pathname.endsWith('/resultado_recepcion_marketing.php')){
     saveCount++;lastBody=route.request().postData();
@@ -42,13 +43,13 @@ const html=cp.execFileSync('php',[path.join(__dirname,'fixtures/telefonia_flujo_
   await page.getByRole('button',{name:'No corresponde a estas instituciones'}).click();
   await page.locator('[data-routing-state]').selectOption('17');
   await page.locator('[data-routing-attended]').click();
-  await page.waitForFunction(()=>document.querySelector('[data-routing-feedback]').textContent.includes('Consultando'));
+  await page.waitForFunction(()=>document.querySelector('[data-availability-source-title]').textContent.includes('Esperando confirmación'));
   assert.match(transferBody,/seguimiento_id=0/,'el teléfono compartido no obliga a atribuir un expediente');
   const help=await page.locator('.impe-routing-help').evaluate(e=>({font:parseFloat(getComputedStyle(e).fontSize),height:e.getBoundingClientRect().height}));
   assert.ok(help.font<=12 && help.height<80,'ayuda compacta');
   await push('in-progress',true,'pbx-real-001',{context:{transferRequest:{id:1,mode:'CONSULTADA',stage:'TIMBRANDO',extension:'101'}}});
   assert.equal(await page.locator('[data-shell-transfer-toggle]').isDisabled(),true,'una operación en curso bloquea nuevas transferencias');
-  await page.locator('[data-routing-close]').click();
+  assert.equal(await page.locator('[data-shell-transfer-panel]').isVisible(),false,'la ficha se cierra al enviar la solicitud');
   assert.equal(await page.locator('[data-shell-transfer-toggle]').isDisabled(),true,'cerrar la ficha no elimina el bloqueo');
   await push('in-progress',true,'pbx-real-001',{context:{transferRequest:{id:1,mode:'CONSULTADA',stage:'CONSULTANDO',extension:'101'}}});
   assert.equal(await page.locator('[data-transfer-complete]').isVisible(),true);

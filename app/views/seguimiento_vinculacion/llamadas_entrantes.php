@@ -96,6 +96,7 @@ $duracionEntrante = static function ($segundos) {
                 <i class="bi bi-headset" aria-hidden="true"></i>
                 Extensión <?= $esc($bandejaEntrantes['extension'] ?: 'Sin configurar') ?>
             </span>
+            <a class="btn btn-system-light linkage-incoming-back" href="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=devoluciones"><i class="bi bi-telephone-forward" aria-hidden="true"></i><span>Llamadas por devolver</span></a>
             <a class="btn btn-system-light linkage-incoming-back"
                 href="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=index') ?>">
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>

@@ -202,6 +202,10 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                 <span data-incoming-state>Llamada entrante</span>
                 <strong data-incoming-timer>00:00</strong>
             </div>
+            <div class="impe-availability-source" data-availability-source hidden role="status" aria-live="polite">
+                <strong data-availability-source-title></strong><p data-availability-source-copy></p>
+                <div><button type="button" class="persistent-phone-action is-primary" data-availability-transfer hidden>Transferir llamada</button><button type="button" class="persistent-phone-action" data-availability-cancel hidden>Cancelar solicitud</button><button type="button" class="persistent-phone-action" data-availability-callback-open hidden>Solicitar devolución</button></div>
+            </div>
             <div class="impe-transfer-stage" data-transfer-stage hidden role="status" aria-live="polite"></div>
             <div class="persistent-phone-actions impe-incoming-actions">
                 <?php if ($puedeTransferirShell): ?>
@@ -295,10 +299,10 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                     </select>
                 </div>
                 <div class="impe-routing-actions">
-                    <button type="button" data-routing-attended class="is-primary">Consultar primero (recomendado)</button>
-                    <button type="button" data-routing-direct>Transferir directamente</button>
+                    <button type="button" data-routing-attended class="is-primary">Solicitar disponibilidad</button>
+
                 </div>
-                <p class="impe-routing-help">Consulta: habla con el responsable y después pulsa <strong>Completar transferencia</strong>. Directa: entrega la llamada sin conversar antes.</p>
+                <p class="impe-routing-help">La persona sigue contigo. Solicita disponibilidad y transfiere cuando el responsable acepte en su CRM.</p>
                 <p data-routing-feedback role="status" aria-live="polite">
                     El destinatario debe tener una extensión activa. No se transfiere automáticamente.
                 </p>
@@ -415,6 +419,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
       </form>
     </dialog>
     <?php endif; ?>
+    <?php require ROOT_PATH.'/app/views/telefonia/disponibilidad.php'; ?>
     <script>
         window.IMPE_PHONE_SHELL_CONFIG = <?= json_encode([
             'userId' => $usuarioShell,
@@ -435,6 +440,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'canCapture' => $puedeCapturarShell,
             'routingListUrl' => BASE_URL . 'index.php?controller=telefonia&action=destinosTransferencia',
             'routingAuthorizeUrl' => BASE_URL . 'index.php?controller=telefonia&action=autorizarTransferencia',
+            'availabilityUrl' => BASE_URL . 'index.php?controller=telefonia&action=disponibilidad',
             'routingCsrf' => (string)$_SESSION['csrf_token'],
             'homeUrl' => BASE_URL . 'index.php?controller=home&action=index'
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -473,6 +479,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     </script>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_analista_historial_pasivo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_analista_historial_pasivo.js') ?>"></script>
     <?php endif; ?>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_disponibilidad.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_disponibilidad.js') ?>"></script>
     <?php if ($puedeTransferirShell || $puedeCapturarShell): ?>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_atencion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_atencion.js') ?>"></script>
     <style id="impeRoutingStyles">

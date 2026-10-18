@@ -460,6 +460,7 @@
     const submitTransfer = async mode => {
         const active = call();
         if (transferBusy) return;
+        if(window.IMPE_AVAILABILITY?.pending()){setFeedback('Ya hay una solicitud para esta llamada. Revisa el aviso del teléfono.',true);return;}
         if(active?.transferRequest && !['DEVUELTA','FALLIDA'].includes(active.transferRequest.stage)){
             setFeedback('Ya hay una transferencia en curso para esta llamada.',true);return;
         }
@@ -480,15 +481,6 @@
             setFeedback('Aún no se identifica la llamada activa. Espera unos segundos.', true);
             return;
         }
-        if (mode === 'DIRECTA') {
-            const key = identity+':'+selected.extension;
-            if (confirmDirect !== key) {
-                confirmDirect = key;
-                setFeedback('Transferencia directa: pulsa nuevamente para confirmar '+
-                    selected.nombre+' (ext. '+selected.extension+').');
-                return;
-            }
-        }
         const buttons = panel.querySelectorAll('[data-routing-attended], [data-routing-direct]');
         transferBusy = true;
         buttons.forEach(btn => { btn.disabled = true; });
@@ -499,7 +491,7 @@
                 estado_id:String(categoria === 'RECEPCION' ? selected.estado_id : 0),
                 tipo:categoria === 'RECEPCION' ? tipo.value : '',
                 responsable_id:String(selected.usuario_id),
-                modo:mode,
+                modo:'DIRECTA',intencion:'SOLICITAR',
                 seguimiento_id:String(
                     categoria === 'RECEPCION' && tipo.value === 'INSTITUCION' &&
                     confirmedRecognition && confirmedRecord?.callId === identity &&
@@ -517,19 +509,14 @@
                     'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'
                 },body:body.toString()
             }).then(readJson);
-            if (call()?.id !== identity ||
-                !api.requestAuthorizedTransfer(data.token)) {
-                throw new Error('La llamada cambió; no se solicitó ninguna transferencia.');
+            if(call()?.id!==identity){
+                if(data.solicitud)void window.IMPE_AVAILABILITY?.cancel(data.solicitud);
+                throw new Error('La llamada cambió. No se enviará ninguna transferencia.');
             }
-            transferRequestCallId = identity;
-            transferDestinationExtension = String(selected.extension);
-            transferSubmittedAt = Date.now();
-            setFeedback(mode === 'CONSULTADA'
-                ? 'Consultando a la extensión ' + selected.extension +
-                    '… Espera la respuesta de la centralita.'
-                : 'Solicitando transferencia directa a ext. ' + selected.extension +
-                    '… Espera la confirmación de la centralita.');
-            confirmDirect = '';
+            if(!data.solicitud||!window.IMPE_AVAILABILITY)throw new Error('No se pudo preparar la solicitud. Recarga el CRM.');
+            window.IMPE_AVAILABILITY.watch(data.solicitud);
+            closeSection(panel,toggle);
+            setFeedback('Solicitud enviada. La persona continúa hablando contigo.');
             positionSidecar(panel);
         } catch (err) {
             setFeedback(err?.message || 'No se pudo autorizar la transferencia.', true);
@@ -539,7 +526,7 @@
         }
     };
     $('[data-routing-attended]')?.addEventListener('click', () =>
-        void submitTransfer('CONSULTADA'));
+        void submitTransfer('DIRECTA'));
     $('[data-routing-direct]')?.addEventListener('click', () =>
         void submitTransfer('DIRECTA'));
 

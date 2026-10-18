@@ -544,61 +544,81 @@ class TelefoniaController
     {
         $this->validarTransferenciaPost();
         try {
-            require_once __DIR__ . '/../services/TelefoniaEnrutamientoService.php';
-            $servicio = new TelefoniaEnrutamientoService();
-            $usuarioId = (int)$_SESSION['usuario_id'];
-            $rol = (string)($_SESSION['rol'] ?? '');
-            $extension = trim((string)($_POST['extension'] ?? ''));
-            $estadoId = (int)($_POST['estado_id'] ?? 0);
-            $tipo = strtoupper(trim((string)($_POST['tipo'] ?? '')));
-            $responsableId = (int)($_POST['responsable_id'] ?? 0);
-            $modo = (string)($_POST['modo'] ?? 'CONSULTADA');
-            $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
-            $numeroOrigen = trim((string)($_POST['numero_origen'] ?? ''));
-            $referencia = trim((string)($_POST['referencia_llamada'] ?? ''));
-            $pbxReferencia = trim((string)($_POST['pbx_call_id'] ?? ''));
-            // Acepta el alias histórico y el nuevo, pero nunca dos IDs
-            // contradictorios para una misma transferencia.
-            if ($referencia !== '' && $pbxReferencia !== '' &&
-                !hash_equals($referencia, $pbxReferencia)) {
-                throw new InvalidArgumentException('La referencia de la llamada no coincide.');
+            require_once __DIR__.'/../services/TelefoniaEnrutamientoService.php';
+            require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
+            $usuarioId=(int)$_SESSION['usuario_id'];$rol=(string)($_SESSION['rol']??'');
+            $disponibilidad=new TelefoniaDisponibilidadService();
+            $solicitar=($_POST['intencion']??'')==='SOLICITAR';
+            $id=(int)($_POST['disponibilidad_id']??0);$version=(int)($_POST['version']??0);
+            $route=$solicitar?[
+                'extension'=>trim((string)($_POST['extension']??'')),
+                'estado_id'=>(int)($_POST['estado_id']??0),'tipo'=>strtoupper(trim((string)($_POST['tipo']??''))),
+                'responsable_id'=>(int)($_POST['responsable_id']??0),
+                'seguimiento_id'=>(int)($_POST['seguimiento_id']??0),
+                'numero_origen'=>trim((string)($_POST['numero_origen']??'')),
+                'referencia_llamada'=>trim((string)($_POST['referencia_llamada']??'')),
+                'modo'=>'DIRECTA'
+            ]:$disponibilidad->rutaAceptada($usuarioId,$id,$version);
+            $destino=(new TelefoniaEnrutamientoService())->validarDestino($usuarioId,$rol,
+                (string)$route['extension'],(int)$route['estado_id'],(string)$route['tipo'],(int)$route['responsable_id']);
+            if($solicitar){
+                $route['nombre_destino']=(string)$destino['nombre'];
+                $this->responderJson(['ok'=>true,'solicitud'=>$disponibilidad->solicitar($usuarioId,$route)]);
             }
-            if ($referencia === '') $referencia = $pbxReferencia;
-            if (!in_array($modo, ['DIRECTA','CONSULTADA'], true)) {
-                throw new InvalidArgumentException('Modo de transferencia no válido.');
-            }
-            $destino = $servicio->validarDestino(
-                $usuarioId, $rol, $extension, $estadoId, $tipo, $responsableId
-            );
-            $token = bin2hex(random_bytes(24));
-            $_SESSION['telefonia_transferencia_autorizada'] = [
-                'usuario_id'=>$usuarioId,
-                'extension'=>$extension,
-                'estado_id'=>$estadoId,
-                'tipo'=>$tipo,
-                'responsable_id'=>$responsableId,
-                'modo'=>$modo,
-                'seguimiento_id'=>$tipo === 'INSTITUCION' ? $seguimientoId : 0,
-                'numero_origen'=>$numeroOrigen,
-                'referencia_llamada'=>$referencia,
-                'token_hash'=>hash('sha256', $token),
-                'expires'=>time()+20
+            $token=bin2hex(random_bytes(24));
+            $_SESSION['telefonia_transferencia_autorizada']=$route+[
+                'usuario_id'=>$usuarioId,'disponibilidad_id'=>$id,'version'=>$version,
+                'token_hash'=>hash('sha256',$token),'expires'=>time()+20
             ];
-            $this->responderJson([
-                'ok'=>true, 'token'=>$token,
-                'destino'=>[
-                    'nombre'=>$destino['nombre'],
-                    'extension'=>$destino['extension'],
-                    'estado_nombre'=>$destino['estado_nombre']
-                ],
-                'mensaje'=>'Destino autorizado. Aún no se ha transferido la llamada.'
-            ]);
-        } catch (InvalidArgumentException | DomainException $e) {
-            $this->responderJson(['ok'=>false, 'mensaje'=>$e->getMessage()], 422);
-        } catch (Throwable $e) {
-            error_log('[telefonia_transferir_autorizar] '.$e->getMessage());
-            $this->responderJson(['ok'=>false,'mensaje'=>'No fue posible autorizar el destino.'], 500);
+            $this->responderJson(['ok'=>true,'token'=>$token,'destino'=>$destino,
+                'mensaje'=>'Responsable confirmado. La transferencia aún no se ha enviado.']);
+        }catch(InvalidArgumentException|DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[telefonia_disponibilidad_autorizar] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No fue posible solicitar la atención.'],500);}
+    }
+
+    public function disponibilidad()
+    {
+        $this->validarUsuarioTelefoniaJson();
+        if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);
+        require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
+        try{
+            $user=(int)$_SESSION['usuario_id'];$svc=new TelefoniaDisponibilidadService();
+            if(($_SERVER['REQUEST_METHOD']??'')==='GET'){
+                $id=(int)($_GET['id']??0);
+                $this->responderJson(['ok'=>true,'solicitud'=>$id?$svc->obtener($user,$id):$svc->entrante($user),'devoluciones'=>$id?null:count($svc->devoluciones($user))]);
+            }
+            if(($_SERVER['REQUEST_METHOD']??'')!=='POST')$this->responderJson(['ok'=>false],405);
+            $csrf=(string)($_SESSION['csrf_token']??'');
+            if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);
+            if(in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)){
+                $svc->presencia($user,($_POST['disponible']??'')==='1');
+                if(($_POST['accion']??'')==='POLL')$this->responderJson(['ok'=>true,
+                    'solicitud'=>(int)($_POST['id']??0)>0?$svc->obtener($user,(int)$_POST['id']):null,
+                    'entrante'=>$svc->entrante($user),'devoluciones'=>count($svc->devoluciones($user))]);
+                $this->responderJson(['ok'=>true]);
+            }
+            $this->responderJson(['ok'=>true,'solicitud'=>$svc->accion($user,(int)($_POST['id']??0),(int)($_POST['version']??0),(string)($_POST['accion']??''),$_POST)]);
+        }catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[telefonia_disponibilidad] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la solicitud. Intenta de nuevo.'],500);}
+    }
+
+    public function devoluciones()
+    {
+        $this->validarUsuarioTelefoniaJson();
+        if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);
+        require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
+        $svc=new TelefoniaDisponibilidadService();$usuario=(int)$_SESSION['usuario_id'];
+        if(($_SERVER['REQUEST_METHOD']??'')==='POST'){
+            $csrf=(string)($_SESSION['csrf_token']??'');
+            if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);
+            try{$svc->accion($usuario,(int)($_POST['id']??0),(int)($_POST['version']??0),'ATENDIDA');$_SESSION['telefonia_devolucion_aviso']=['mensaje'=>'Devolución atendida.','error'=>false];}
+            catch(DomainException $e){$_SESSION['telefonia_devolucion_aviso']=['mensaje'=>$e->getMessage(),'error'=>true];}
+            header('Location: '.BASE_URL.'index.php?controller=telefonia&action=devoluciones');exit;
         }
+        $devoluciones=$svc->devoluciones($usuario);$tituloPagina='Llamadas por devolver';$opcionActiva='seguimiento_vinculacion';
+        require __DIR__.'/../views/layout/dashboard_head.php';require __DIR__.'/../views/layout/sidebar.php';
+        require __DIR__.'/../views/layout/topbar.php';require __DIR__.'/../views/telefonia/devoluciones.php';
+        require __DIR__.'/../views/layout/dashboard_footer.php';
     }
 
     /**
@@ -656,6 +676,10 @@ class TelefoniaController
                     ], 409);
                 }
             }
+            require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
+            $disponibilidad=new TelefoniaDisponibilidadService();
+            $disponibilidad->rutaAceptada((int)$_SESSION['usuario_id'],(int)($data['disponibilidad_id']??0),(int)($data['version']??0));
+            $disponibilidad->consumir((int)$_SESSION['usuario_id'],(int)$data['disponibilidad_id'],(int)$data['version'],(string)$data['referencia_llamada']);
             require_once __DIR__.'/../services/TelefoniaTransferenciaOperacionService.php';
             $operacion=(new TelefoniaTransferenciaOperacionService())->iniciar(
                 (int)$_SESSION['usuario_id'],(string)$data['referencia_llamada'],
@@ -668,8 +692,10 @@ class TelefoniaController
                 'operacion'=>$operacion
             ]);
         } catch (DomainException $e) {
+            if(isset($disponibilidad))try{$disponibilidad->accion((int)$_SESSION['usuario_id'],(int)$data['disponibilidad_id'],(int)$data['version'],'FALLO');}catch(Throwable $ignored){}
             $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);
         } catch (Throwable $e) {
+            if(isset($disponibilidad))try{$disponibilidad->accion((int)$_SESSION['usuario_id'],(int)$data['disponibilidad_id'],(int)$data['version'],'FALLO');}catch(Throwable $ignored){}
             $this->responderJson(['ok'=>false,
                 'mensaje'=>'El destino ya no está autorizado.'], 403);
         }

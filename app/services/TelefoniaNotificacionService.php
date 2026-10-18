@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/TelefoniaTransferenciaOperacionService.php';
 require_once __DIR__.'/TelefoniaEntrantesAnalistaService.php';
 require_once __DIR__.'/TelefoniaRecepcionMarketingService.php';
+require_once __DIR__.'/TelefoniaDisponibilidadService.php';
 final class TelefoniaNotificacionService
 {
     private mysqli $db;
@@ -26,6 +27,12 @@ final class TelefoniaNotificacionService
     }
     public function sincronizar(int $user,bool $recepcion): void {
         $ext=$this->extension($user);if($ext==='')return;
+        foreach((new TelefoniaDisponibilidadService($this->db))->devoluciones($user) as $task){
+            $date=(new DateTimeImmutable($task['updated_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
+            $this->agregar($user,$ext,'devolucion:'.$task['id'].':'.$task['version'],$task['telefono'],$date,'Llamada por devolver',$task['contacto'].' · Recepción dejó sus datos y el motivo.');
+        }
+        $s=$this->db->prepare("UPDATE telefonia_notificaciones n JOIN telefonia_disponibilidad d ON n.llave=CONCAT('devolucion:',d.id,':',d.version) SET n.leida=1 WHERE n.usuario_id=? AND n.extension=? AND d.destino_usuario=n.usuario_id AND d.devolucion='ATENDIDA'");
+        $s->bind_param('is',$user,$ext);$s->execute();$s->close();
         $history=$recepcion?(new TelefoniaRecepcionMarketingService($this->db))->resumen($user):(new TelefoniaEntrantesAnalistaService($this->db))->listar($user);
         foreach($history['llamadas'] as $c){
             if(($c['fuente']??'')==='OPERACION')continue; // Tiene su aviso exacto por intento debajo.
@@ -47,9 +54,10 @@ final class TelefoniaNotificacionService
         $s->bind_param('is',$user,$ext);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
         return array_map(function($r)use($recepcion){
             $url=$recepcion?'index.php?controller=home&action=index#recepcion-telefonica':'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes';
+            $callback=str_starts_with($r['llave'],'devolucion:');if($callback)$url='index.php?controller=telefonia&action=devoluciones';
             return ['id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>'llamada_perdida','tipo'=>'TELEFONIA_PERDIDA','leida'=>0,
                 'titulo'=>$r['titulo'],'mensaje'=>$r['mensaje'],'created_at'=>$r['created_at'],'url'=>$url,
-                'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>'bi-telephone-x','etiqueta'=>'Sin respuesta','estado'=>'informativa','fecha'=>$r['created_at'],'prioridad'=>1];
+                'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>$callback?'bi-telephone-forward':'bi-telephone-x','etiqueta'=>$callback?'Por devolver':'Sin respuesta','estado'=>'informativa','fecha'=>$r['created_at'],'prioridad'=>1];
         },$rows);
     }
     public function leer(int $user,int $id): bool {

@@ -268,6 +268,10 @@
             render();
             return true;
         },
+        getPhoneStatus: function () {
+            return {active:Boolean(currentState?.active),ready:Boolean(freshState(currentState)&&currentState.hostReady),
+                pending:Boolean(window.IMPE_CALL_CLOSURE?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
+        },
         getActiveCall: function () {
             if (!freshState(currentState) || !currentState.active ||
                 currentState.phase !== 'in-progress') return null;
@@ -529,7 +533,7 @@
         const workingCall = Boolean(ongoing && state.phase === 'in-progress' &&
             !finishingIncoming && !pendingOutgoingHangup);
         const transferRequest=state?.context?.transferRequest;
-        const transferPending=Boolean(ongoing && transferRequest && !['DEVUELTA','FALLIDA','ENTREGADA'].includes(transferRequest.stage));
+        const transferPending=Boolean((ongoing && transferRequest && !['DEVUELTA','FALLIDA','ENTREGADA'].includes(transferRequest.stage))||window.IMPE_AVAILABILITY?.pending());
         const consultation=Boolean(state?.context?.consultation);
         const transferStage=document.querySelector('[data-transfer-stage]');
         const transferComplete=document.querySelector('[data-transfer-complete]');
@@ -829,6 +833,7 @@
     };
     hangupButton?.addEventListener('click', hangupIncoming);
     document.querySelector('[data-transfer-complete]')?.addEventListener('click',()=>sendPhoneCommand('COMPLETE_TRANSFER'));
+    window.addEventListener('impe:availability-state',()=>render());
     compactHangup?.addEventListener('click', hangupIncoming);
     restore?.addEventListener('click', function () {
         minimized = false; render();

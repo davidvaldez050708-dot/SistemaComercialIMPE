@@ -97,6 +97,7 @@ function boot(identified, byName = []) {
             routingAuthorizeUrl:'https://crm.example.org/index.php?controller=telefonia&action=autorizarTransferencia',
             routingCsrf:'csrf'
         },
+        IMPE_AVAILABILITY:{pending(){return false;},watch(){transfers.push('solicitud');}},
         IMPE_TELEPHONY_SHELL:{
             getActiveCall(){return active;},
             requestAuthorizedTransfer(token){transfers.push(token);return true;}
@@ -108,7 +109,7 @@ function boot(identified, byName = []) {
     async function fetch(url, opts) {
         requests.push({url:String(url), method:opts?.method || 'GET'});
         if (opts?.method === 'POST') return {ok:true, json:async () => ({
-            ok:true,token:'a'.repeat(48)})};
+            ok:true,solicitud:{id:1,version:1,estado:'PENDIENTE'}})};
         const q=new URL(String(url)).searchParams;
         const all = q.get('tipo') === 'PROSPECTO' ? [] : data.destinations;
         const people = q.get('estado_id')
@@ -164,7 +165,7 @@ async function flush(){ await new Promise(resolve=>setImmediate(resolve)); }
     confirm.dispatch('click');
     e['[data-routing-attended]'].dispatch('click');
     await flush();
-    assert.deepEqual(recognized.transfers,['a'.repeat(48)],
+    assert.deepEqual(recognized.transfers,['solicitud'],
         'Tras confirmar puede solicitar transferencia autorizada');
 
     const shared=boot([

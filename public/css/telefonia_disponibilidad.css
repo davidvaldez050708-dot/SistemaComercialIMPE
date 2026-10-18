@@ -1,0 +1,20 @@
+/* Escala compartida por recepción y destinatario; no depende del panel de rutas. */
+.impe-incoming-panel .impe-transfer-stage,.impe-incoming-panel .impe-availability-source{margin:10px 0 14px;padding:12px 14px;border:1px solid #dce5f2;border-radius:12px;background:#f7f9fd;color:#526580;font-size:12px;line-height:1.5;letter-spacing:0}
+.impe-availability-source>strong{display:block;color:#263b61;font-size:12px;font-weight:700;margin-bottom:3px}
+.impe-availability-source>p{font-size:12px;line-height:1.5;margin:0}
+.impe-availability-source>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.impe-availability-source .persistent-phone-action{padding:8px 12px;min-height:36px;font-size:12px}
+.impe-availability-dialog{border:1px solid #dae3f0;border-radius:18px;padding:0;width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 24px);margin:auto;background:#fff;color:#263b61;box-shadow:0 22px 65px #142a4a33;overflow:auto;font-family:inherit;font-size:13px}
+.impe-availability-dialog::backdrop{background:#182c4b66}
+.impe-availability-dialog .system-form-modal-header{padding:22px 24px 17px;border-bottom:1px solid #e3eaf4}
+.impe-availability-dialog h2{font-size:19px;font-weight:700;margin:0 0 5px}
+.impe-availability-dialog .system-form-modal-subtitle{font-size:12px;color:#7386a2;margin:0;line-height:1.5}
+.impe-availability-dialog .system-form-modal-body{padding:20px 24px;max-height:calc(100dvh - 220px);overflow-y:auto;overscroll-behavior:contain}
+.impe-availability-dialog p{font-size:13px;line-height:1.55;margin:0 0 12px}
+.impe-availability-dialog .system-form-modal-footer{display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid #e3eaf4;background:#fff}
+.impe-availability-dialog .persistent-phone-action{font-size:12px;min-height:40px;padding:10px 15px}
+.impe-availability-dialog label{display:block;font-size:12px;font-weight:600;margin:0 0 7px}
+.impe-availability-dialog input,.impe-availability-dialog textarea{box-sizing:border-box;width:100%;border:1px solid #d6e0ef;border-radius:10px;padding:10px 12px;font:inherit;background:#fbfcfe;color:#263b61;margin:0 0 14px}
+.impe-availability-summary{background:#f4f7fc;border:1px solid #e0e8f4;border-radius:10px;padding:12px 14px;color:#536a8c;font-size:12px}
+[data-availability-source][hidden]{display:none!important}
+.impe-availability-source [hidden],.impe-availability-dialog [hidden]{display:none!important}
