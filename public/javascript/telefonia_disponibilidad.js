@@ -22,7 +22,7 @@
  const render=()=>{
   if(!source)return;
   const same=phone.getActiveCall()?.id===watched?.referencia;
-  source.hidden=!watched||!same||['ENVIANDO','TRANSFERIDA'].includes(watched.estado);
+  source.hidden=!watched||!same||['ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR'].includes(watched.estado);
   if(!watched)return;
   const status=watched.estado,name=watched.responsable||'El responsable',seconds=Math.max(0,Number(watched.segundos)||0);
   const titles={PENDIENTE:'Esperando confirmación',ACEPTADA:'Responsable disponible',RECHAZADA:'No disponible',VENCIDA:'Sin confirmación a tiempo',CANCELADA:'Solicitud cancelada',FALLIDA:'No se envió la transferencia',DEVOLUCION:'Devolución registrada'};
@@ -104,7 +104,7 @@
   catch(error){$('[data-callback-feedback]').textContent=error.message;}
   finally{acting=false;form.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=false);}
  });
- window.IMPE_AVAILABILITY={watch:store,cancel,pending:()=>Boolean(watched&&phone.getActiveCall()?.id===watched.referencia&&['PENDIENTE','ACEPTADA','ENVIANDO','TRANSFERIDA','DEVOLUCION'].includes(watched.estado)),tick};
+ window.IMPE_AVAILABILITY={watch:store,cancel,pending:()=>Boolean(watched&&phone.getActiveCall()?.id===watched.referencia&&['PENDIENTE','ACEPTADA','ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR','DEVOLUCION'].includes(watched.estado)),tick};
  window.addEventListener('pagehide',()=>{navigator.sendBeacon?.(cfg.availabilityUrl,new URLSearchParams({accion:'PRESENCIA',disponible:'0',csrf_token:cfg.routingCsrf}));});
  window.setInterval(()=>void tick(),3000);window.setInterval(render,1000);void tick();
 })();

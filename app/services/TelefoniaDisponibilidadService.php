@@ -89,10 +89,17 @@ final class TelefoniaDisponibilidadService
         $this->expire();$ext=$this->extension($user);
         $r=$this->one('SELECT * FROM telefonia_disponibilidad WHERE id=? AND ((origen_usuario=? AND origen_extension=?) OR (destino_usuario=? AND destino_extension=?))',[$id,$user,$ext['extension'],$user,$ext['extension']]);
         if(!$r)return null;
-        if($r['estado']==='ENVIANDO'){
-            $op=$this->one('SELECT estado FROM telefonia_transferencia_operaciones WHERE origen_usuario=? AND referencia=?',[$r['origen_usuario'],$r['referencia']]);
-            $state=($op['estado']??'')==='ENTREGADA'?'TRANSFERIDA':(($op['estado']??'')==='FALLIDA'?'FALLIDA':'');
-            if($state){$this->change($id,['estado'=>$state]);$r['estado']=$state;}
+        if(in_array($r['estado'],['ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR'],true)){
+            $opRow=$this->one('SELECT id FROM telefonia_transferencia_operaciones WHERE origen_usuario=? AND referencia=?',[$r['origen_usuario'],$r['referencia']]);
+            $op=$opRow?(new TelefoniaTransferenciaOperacionService($this->db))->obtener($user,(int)$opRow['id']):null;
+            $state=['ENVIADA'=>'ENVIADA','ENTREGADA'=>'TRANSFERIDA','FALLIDA'=>'FALLIDA','SIN_RESPUESTA'=>'SIN_RESPUESTA','SIN_CONFIRMAR'=>'SIN_CONFIRMAR','DEVUELTA'=>'FALLIDA'][$op['estado']??'']??'';
+            $patch=[];if($state&&$state!==$r['estado'])$patch['estado']=$state;
+            if($state==='SIN_RESPUESTA'&&$r['devolucion']===''&&strlen(preg_replace('/\D/','',$r['numero']))>=7){
+                $route=json_decode($r['ruta_json'],true)?:[];
+                $patch+=['contacto'=>mb_substr(trim((string)($route['institucion_nombre']??''))?:'Contacto de la transferencia',0,100),'telefono'=>$r['numero'],
+                    'nota'=>'Transferencia no contestada. Coordina con recepción (Ext. '.$r['origen_extension'].') antes de devolver la llamada.','devolucion'=>'PENDIENTE'];
+            }
+            if($patch){$this->change($id,$patch);$r=array_merge($r,$patch);}
         }
         $r['segundos']=max(0,strtotime($r['expires_at'].' UTC')-time());
         $route=json_decode($r['ruta_json'],true)?:[];$r['responsable']=(string)($route['nombre_destino']??'Responsable');
@@ -150,7 +157,10 @@ final class TelefoniaDisponibilidadService
         }catch(Throwable $e){$this->db->rollback();throw $e;}
     }
     public function devoluciones(int $user,bool $historial=false): array {
-        $ext=$this->extension($user);$filter=$historial?"devolucion IN ('PENDIENTE','ATENDIDA')":"devolucion='PENDIENTE'";
+        $ext=$this->extension($user);
+        $sync=$this->db->prepare("SELECT id FROM telefonia_disponibilidad WHERE (destino_usuario=? OR origen_usuario=?) AND estado IN ('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR') ORDER BY id DESC LIMIT 100");
+        $sync->bind_param('ii',$user,$user);$sync->execute();$rows=$sync->get_result()->fetch_all(MYSQLI_ASSOC);$sync->close();foreach($rows as $row)$this->obtener($user,(int)$row['id']);
+        $filter=$historial?"devolucion IN ('PENDIENTE','ATENDIDA')":"devolucion='PENDIENTE'";
         $s=$this->db->prepare("SELECT * FROM telefonia_disponibilidad WHERE destino_usuario=? AND destino_extension=? AND $filter ORDER BY id DESC LIMIT 100");
         $s->bind_param('is',$user,$ext['extension']);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $rows;
     }

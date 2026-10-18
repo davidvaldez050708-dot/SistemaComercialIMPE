@@ -1891,13 +1891,13 @@
         release:op=>{
             stopPolling();answeredAtMs=0;
             retirePbxCall(op.referencia);
-            publish({active:false,phase:state.direction==='incoming'?'incoming-finished':'finished',status:op.estado==='ENTREGADA'?'transferred':'completed',context:{...state.context,transferRequest:{...state.context?.transferRequest,stage:op.estado}},message:op.estado==='ENTREGADA'?'Llamada entregada a extensión '+op.destino_extension+'.':'Llamada finalizada.'});
+            publish({active:false,phase:state.direction==='incoming'?'incoming-finished':'finished',status:['ENVIADA','ENTREGADA','SIN_RESPUESTA','SIN_CONFIRMAR'].includes(op.estado)?'transferred':'completed',context:{...state.context,transferRequest:{...state.context?.transferRequest,stage:op.estado}},message:op.estado==='ENTREGADA'?'El analista contestó la llamada.':op.estado==='ENVIADA'?'Transferencia enviada. La respuesta del analista se confirma por separado.':'Llamada finalizada.'});
         },
         external:(op,token,connected)=>{
             answeredAtMs=connected?Date.now():0;
             publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
         },
-        consultEnded:()=>{answeredAtMs=0;publish({active:false,phase:'incoming-finished',status:'consultation-ended',duration:0,message:'Consulta de transferencia finalizada.'});}
+        consultEnded:op=>{answeredAtMs=0;publish({active:false,phase:'incoming-finished',status:op.modo==='DIRECTA'?'ended-pending-confirmation':'consultation-ended',duration:0,message:op.modo==='DIRECTA'?'Llamada finalizada. Revisa su confirmación en el historial.':'Consulta de transferencia finalizada.'});}
     })||null;
     window.setInterval(()=>void transferFlow?.tick(),1000);
     captureMicrophone();

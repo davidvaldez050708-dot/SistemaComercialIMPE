@@ -5,7 +5,7 @@ declare(strict_types=1);
 // En el pasado, <form> interrumpía la cadena de scroll de Bootstrap
 // y ocultaba permanentemente "Guardar resultado" por debajo del viewport.
 $root = dirname(__DIR__);
-$view = file_get_contents($root . '/app/views/seguimiento_vinculacion/llamadas_entrantes.php');
+$view = file_get_contents($root . '/app/views/seguimiento_vinculacion/llamadas_entrantes.php').file_get_contents($root . '/app/views/telefonia/resultado_analista_form.php');
 $css = file_get_contents($root . '/public/css/seguimiento_entrantes_analista.css');
 $assert = static function (bool $ok, string $message): void {
     if (!$ok) {

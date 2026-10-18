@@ -10,6 +10,7 @@
     const modalEl = document.getElementById('modalLlamadaEntranteAnalista');
     if (!page || !form || !modalEl || !window.bootstrap) return;
 
+    const callbackMode=page.dataset.resultMode==='DEVOLUCION';
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     const decision = form.querySelector('[data-incoming-decision]');
     const existing = form.querySelector('[data-incoming-existing]');
@@ -50,7 +51,7 @@
     let searchSequence = 0;
     let isSubmitting = false;
     let hasAnswer = true;
-    let modalCycle=0, formDirty=false, closingAfterSave=false, resultTrigger=null, draftTimer=null;
+    let modalCycle=0, formDirty=false, closingAfterSave=false, resultTrigger=null, draftTimer=null, interrupted=false;
     let callRefs=[];
     const drafts=window.IMPE_CALL_DRAFTS;
     const csrf=()=>form.querySelector('[name="csrf_token"]').value;
@@ -69,9 +70,9 @@
     form.addEventListener('change',()=>{
         formDirty=true;drafts?.localSave(userId,callRefs,draftValues());clearTimeout(draftTimer);draftTimer=setTimeout(writeDraft,700);
     });
-    modalEl.addEventListener('hide.bs.modal',event=>{if(isSubmitting&&!closingAfterSave)event.preventDefault();else if(!closingAfterSave&&formDirty)void writeDraft();});
-    modalEl.addEventListener('hidden.bs.modal',()=>{++modalCycle;++searchSequence;clearTimeout(searchTimer);clearTimeout(draftTimer);closingAfterSave=false;resultTrigger?.isConnected&&resultTrigger.focus({preventScroll:true});});
-    modalEl.addEventListener('shown.bs.modal',()=>{modalEl.querySelector('.modal-body').scrollTop=0;decision.focus({preventScroll:true});});
+    modalEl.addEventListener('hide.bs.modal',event=>{if(isSubmitting&&!closingAfterSave&&!interrupted)event.preventDefault();else if(!closingAfterSave&&formDirty)void writeDraft();});
+    modalEl.addEventListener('hidden.bs.modal',()=>{++modalCycle;++searchSequence;clearTimeout(searchTimer);clearTimeout(draftTimer);if(callbackMode&&closingAfterSave)isSubmitting=false;closingAfterSave=false;interrupted=false;if(callbackMode&&!isSubmitting){form.querySelectorAll('input,select,textarea,button').forEach(e=>e.disabled=false);modalEl.querySelectorAll('[data-bs-dismiss]').forEach(e=>e.disabled=false);submit.innerHTML='<i class="bi bi-check2-circle"></i> Guardar resultado';}resultTrigger?.isConnected&&resultTrigger.focus({preventScroll:true});});
+    modalEl.addEventListener('shown.bs.modal',()=>{if(interrupted){modal.hide();return;}modalEl.querySelector('.modal-body').scrollTop=0;decision.focus({preventScroll:true});});
 
     const showError = message => window.IMPE_TELEPHONY_NOTIFY?.(String(message || 'No fue posible guardar la llamada.'),true);
     const clearError = () => {
@@ -80,7 +81,7 @@
     };
 
     const renderEvidence = () => {
-        const enabled = decision.value !== 'sin_identificar';
+        const enabled = ['existente','nueva'].includes(decision.value);
         const result = String(resultInput.value || '');
         const allowEvidence = enabled && [
             'CONTACTO_CORRECTO', 'CONTACTO_REFERIDO', 'SOLICITO_INFORMACION',
@@ -109,12 +110,14 @@
         const value = decision.value;
         existing.hidden = value !== 'existente';
         fresh.hidden = value !== 'nueva';
-        results.hidden = value === 'sin_identificar';
+        results.hidden = !callbackMode && value === 'sin_identificar';
+        const identified=form.querySelector('[data-incoming-identified]');
+        if(identified){identified.hidden=value!=='identificada';identified.querySelector('input').required=value==='identificada';}
         const followupRequired = value === 'existente';
         followup.required = followupRequired;
         form.querySelector('[name="nombre_entidad"]').required = value === 'nueva';
         form.querySelector('[name="estado_id"]').required = value === 'nueva';
-        form.querySelector('[name="resultado"]').required = value !== 'sin_identificar';
+        form.querySelector('[name="resultado"]').required = callbackMode || value !== 'sin_identificar';
         sdkConfirm.hidden = !isSdkCall || value === 'sin_identificar';
         sdkCheck.required = !sdkConfirm.hidden;
         if (sdkConfirm.hidden) sdkCheck.checked = false;
@@ -165,7 +168,7 @@
 
     const openRegistration = button => {
         if (!button || isSubmitting || modalEl.classList.contains('show')) return;
-        resultTrigger=button;const cycle=++modalCycle;formDirty=false;draftStatus.hidden=true;
+        interrupted=false;resultTrigger=button;const cycle=++modalCycle;formDirty=false;draftStatus.hidden=true;
         form.reset();
         clearError();
         resetConfirmed();
@@ -207,7 +210,7 @@
         hasAnswer = button.dataset.answer === '1';
         decision.value = hasAnswer ? 'existente' : 'sin_identificar';
         for (const option of Array.from(decision.options)) {
-            if (option.value !== 'sin_identificar') option.disabled = !hasAnswer;
+            if (option.value !== 'sin_identificar') option.disabled = !hasAnswer && (!callbackMode || option.value==='nueva');
         }
         modalEl.querySelector('[data-incoming-modal-description]').textContent = hasAnswer
             ? 'Vincula la conversación a un expediente y registra su resultado.'
@@ -243,6 +246,13 @@
                         'Expediente identificado por Recepción. Confirma los datos y registra el resultado.';
                 }
             } catch (_) {}
+        }
+        if(callbackMode){
+            form.elements.intento_id.value=button.dataset.attemptId;
+            if(button.dataset.followupId){decision.value='existente';followup.add(new Option(button.dataset.institution||'Expediente propio',button.dataset.followupId));followup.value=button.dataset.followupId;}
+            else if(button.dataset.institution){decision.value='identificada';form.elements.institucion_nombre.value=button.dataset.institution;}
+            if(button.dataset.suggestedResult)resultInput.value=button.dataset.suggestedResult;
+            form.elements.observacion.maxLength=500;renderDecision();
         }
         const restore=async()=>{
             const values=await drafts?.read(userId,callRefs);
@@ -508,6 +518,7 @@
         if(resultInput.value==='CONTACTO_REFERIDO' && !Array.from(referred.querySelectorAll('input')).some(e=>e.value.trim())) {showError('Captura algún dato de la persona o área referida.');return;}
         clearTimeout(draftTimer);
         const requestBody=new FormData(form);
+        if(callbackMode)requestBody.set('accion','RESULTADO');
         const disabledState=Array.from(form.elements).map(e=>[e,e.disabled]);
         isSubmitting = true;
         disabledState.forEach(([e])=>e.disabled=true);
@@ -533,9 +544,13 @@
                         sessionStorage.removeItem('impe:crm:'+prefix+':'+userId+':'+id);
                     }
                 }catch(_){}
-                if(window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_RESULT_SAVED',callId:id},window.location.origin);
+                if(!callbackMode&&window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_RESULT_SAVED',callId:id},window.location.origin);
             }
             void drafts?.remove(userId,callRefs,requestBody.get('csrf_token')).catch(()=>{});
+            if(callbackMode){
+                modalEl.dispatchEvent(new CustomEvent('impe:callback-result-saved',{detail:data.intento}));
+                modal.hide();return;
+            }
             const result=data.resultado||{};
             const message=result.verificacion_confirmada ? 'Atención guardada con verificación efectiva. Máximo una institución por día.' :
                 result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : 'Atención guardada.';
@@ -557,6 +572,7 @@
         }
     });
 
+    if(callbackMode){window.addEventListener('impe:callback-result-open',e=>openRegistration(e.detail));window.addEventListener('impe:callback-result-interrupt',()=>{interrupted=true;modal.hide();});}
     renderDecision();
     const focusId = String(page.dataset.autoCall || '').trim();
     if (focusId) {

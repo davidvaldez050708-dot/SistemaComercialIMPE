@@ -212,7 +212,7 @@ if ($esSeguimientoEstadoFooter) {
     );
 }
 
-if ($esSeguimientoEntrantesAnalistaFooter) {
+if ($esSeguimientoEntrantesAnalistaFooter || ($controllerDashboardFooter==='telefonia' && $actionDashboardFooter==='devoluciones')) {
     $jsDashboardFooter[] = 'seguimiento_entrantes_analista.js';
 }
 

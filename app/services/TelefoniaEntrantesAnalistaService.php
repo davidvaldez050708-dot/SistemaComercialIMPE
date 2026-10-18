@@ -225,8 +225,9 @@ class TelefoniaEntrantesAnalistaService
         // Un intento devuelto sin respuesta conserva una sola tarjeta útil,
         // sin presentarlo como conversación PBX ni habilitar registro o audio.
         foreach($operaciones as $op){
-            if((int)$op['destino_usuario']!==$usuarioId || $op['modo']!=='CONSULTADA' ||
-               $op['estado']!=='DEVUELTA' || !empty($op['destino_atendida']))continue;
+            if((int)$op['destino_usuario']!==$usuarioId || !empty($op['destino_atendida']) ||
+               !(($op['modo']==='CONSULTADA'&&$op['estado']==='DEVUELTA')||($op['modo']==='DIRECTA'&&$op['estado']==='SIN_RESPUESTA')))continue;
+            if(in_array($op['referencia'],array_column($llamadas,'pbx_call_id'),true))continue;
             $fecha=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
             $llamadas[]=['pbx_call_id'=>'transferencia-'.$op['id'].'-'.$op['intento'],
                 'numero'=>$op['numero'],'transferida_desde'=>$op['origen_extension'],'fuente'=>'OPERACION',
@@ -537,6 +538,46 @@ class TelefoniaEntrantesAnalistaService
                 return ['estado' => $estadoRegistro, 'seguimiento_id' => 0];
             }
 
+            $atencion=$this->registrarAtencionEnExpediente($usuarioId,$call,$datos,$sdk,$id,$aliasSdk);
+            $seguimientoId=$atencion['seguimiento_id'];$interaccionId=$atencion['interaccion_id'];
+            if (!$sdk && $aliasSdk!=='') {
+                $sync=$this->db->prepare("UPDATE telefonia_analista_webrtc_sesiones SET clasificacion='VINCULADA',
+                    seguimiento_id=?,interaccion_id=? WHERE usuario_id=? AND session_id=?");
+                $sync->bind_param('iiis',$seguimientoId,$interaccionId,$usuarioId,$aliasSdk);$sync->execute();$sync->close();
+            }
+            $estadoRegistro = 'VINCULADA';
+            $registroId = (int)$registro['id'];
+            $stmt = $this->db->prepare(
+                "UPDATE {$tabla}
+                 SET {$campoEstado} = ?, seguimiento_id = ?, interaccion_id = ?
+                 WHERE id = ?"
+            );
+            $stmt->bind_param('siii', $estadoRegistro, $seguimientoId, $interaccionId, $registroId);
+            $stmt->execute();
+            $stmt->close();
+            $this->db->commit();
+
+            return [
+                'estado' => $estadoRegistro,
+                'seguimiento_id' => $seguimientoId,
+                'interaccion_id' => $interaccionId,
+                'verificacion_confirmada'=>$atencion['verificacion_confirmada'],
+                'verificacion_pendiente'=>$atencion['verificacion_pendiente']
+            ];
+        } catch (Throwable $e) {
+            $this->db->rollback();
+            throw $e;
+        }
+    }
+    /** Uso interno: el llamador aporta la llamada comprobada por el servidor y mantiene la transacción. */
+    public function registrarAtencionEnExpediente(int $usuarioId,array $call,array $datos,bool $sdk=false,string $id='',string $aliasSdk=''): array
+    {
+        $decision=strtolower(trim((string)($datos['decision']??'')));
+        if(!in_array($decision,['existente','nueva'],true))throw new DomainException('Selecciona una institución con seguimiento o una institución nueva.');
+        $model=new SeguimientoVinculacionModel($this->db);$extension=(string)$call['extension'];
+        $evidenciaStore=new TelefoniaVerificacionEvidenciaService($this->db);
+        $observacion=VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion']??''));
+        if(mb_strlen($observacion)>1000)throw new DomainException('Las observaciones son demasiado extensas.');
             $resultadoFormulario = strtoupper(trim((string)($datos['resultado'] ?? '')));
             $mapa = [
                 'CONTACTO_CORRECTO' => 'CONTACTADO',
@@ -592,6 +633,8 @@ class TelefoniaEntrantesAnalistaService
                     throw new DomainException('El expediente no pertenece al Analista o no está activo.');
                 }
             } else {
+                // Serializa altas simultáneas desde llamadas recibidas y devoluciones.
+                $lock=$this->db->prepare('SELECT id FROM usuarios WHERE id=? FOR UPDATE');$lock->bind_param('i',$usuarioId);$lock->execute();$lock->close();
                 $estadoId = (int)($datos['estado_id'] ?? 0);
                 $nombre = trim((string)($datos['nombre_entidad'] ?? ''));
                 $tipo = strtoupper(trim((string)($datos['tipo_entidad'] ?? 'INSTITUCION')));
@@ -687,7 +730,7 @@ class TelefoniaEntrantesAnalistaService
                 throw new InvalidArgumentException('Para descartar indica No interesado y un motivo válido.');
             }
             $notas = trim(implode("\n", array_filter([
-                'Llamada entrante recibida en la extensión ' . $extension . '.',
+                ($call['origen_registro'] ?? 'Llamada entrante recibida en la extensión ' . $extension . '.'),
                 $sdk ? '[WEBRTC OBSERVADO; SIN EVENTO PBX FIRMADO; RESULTADO DECLARADO POR ANALISTA]' : '',
                 $personaAtendio !== '' ? 'Persona atendida: ' . $personaAtendio : '',
                 $evidencias ? ($sdk ? '[VERIFICACION_PENDIENTE_PBX]' : '[VERIFICACION_EFECTIVA]') : '',
@@ -726,33 +769,9 @@ class TelefoniaEntrantesAnalistaService
 
             $evidenciaStore->guardar($interaccionId,$usuarioId,$seguimientoId,$detalles,$personaAtendio,
                 !$sdk,$sdk?'':$id,$sdk?$id:$aliasSdk);
-            if (!$sdk && $aliasSdk!=='') {
-                $sync=$this->db->prepare("UPDATE telefonia_analista_webrtc_sesiones SET clasificacion='VINCULADA',
-                    seguimiento_id=?,interaccion_id=? WHERE usuario_id=? AND session_id=?");
-                $sync->bind_param('iiis',$seguimientoId,$interaccionId,$usuarioId,$aliasSdk);$sync->execute();$sync->close();
-            }
-            $estadoRegistro = 'VINCULADA';
-            $registroId = (int)$registro['id'];
-            $stmt = $this->db->prepare(
-                "UPDATE {$tabla}
-                 SET {$campoEstado} = ?, seguimiento_id = ?, interaccion_id = ?
-                 WHERE id = ?"
-            );
-            $stmt->bind_param('siii', $estadoRegistro, $seguimientoId, $interaccionId, $registroId);
-            $stmt->execute();
-            $stmt->close();
-            $this->db->commit();
 
-            return [
-                'estado' => $estadoRegistro,
-                'seguimiento_id' => $seguimientoId,
-                'interaccion_id' => $interaccionId,
-                'verificacion_confirmada'=>!$sdk && !empty($evidencias),
-                'verificacion_pendiente'=>$sdk && !empty($evidencias)
-            ];
-        } catch (Throwable $e) {
-            $this->db->rollback();
-            throw $e;
-        }
+        return ['seguimiento_id'=>$seguimientoId,'interaccion_id'=>$interaccionId,
+            'verificacion_confirmada'=>!$sdk && !empty($evidencias),'verificacion_pendiente'=>$sdk && !empty($evidencias)];
     }
+
 }

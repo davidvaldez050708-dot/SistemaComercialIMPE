@@ -68,7 +68,7 @@ final class TelefoniaTransferenciaOperacionService
     }
     public function paraDestino(int $user,string $caller,string $sdk): ?array {
         if(!preg_match('/^[0-9]{3,6}$/D',$caller)||!preg_match('/^sdk-[a-z0-9-]{12,94}$/D',$sdk))return null;
-        $s=$this->db->prepare("SELECT * FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND origen_extension=? AND estado IN ('SOLICITADA','TIMBRANDO','CONSULTANDO','ENTREGANDO','ENTREGADA','DEVUELTA') AND created_at>=? AND (sdk_consulta IS NULL OR sdk_consulta=?) ORDER BY id DESC LIMIT 2");
+        $s=$this->db->prepare("SELECT * FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND origen_extension=? AND estado IN ('SOLICITADA','TIMBRANDO','CONSULTANDO','ENTREGANDO','ENVIADA','ENTREGADA','DEVUELTA','SIN_RESPUESTA','SIN_CONFIRMAR') AND created_at>=? AND (sdk_consulta IS NULL OR sdk_consulta=?) ORDER BY id DESC LIMIT 2");
         $since=gmdate('Y-m-d H:i:s',time()-120);$s->bind_param('isss',$user,$caller,$since,$sdk);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
         if(count($rows)!==1)return null;
         $r=$rows[0];
@@ -84,7 +84,7 @@ final class TelefoniaTransferenciaOperacionService
         try{
         // Los sondeos no pueden sobrescribir una entrega confirmada en otra petición.
         $r=$this->fila('SELECT * FROM telefonia_transferencia_operaciones WHERE id=? FOR UPDATE',[$r['id']])??$r;
-        $s=$this->db->prepare('SELECT evento,internal,disposition,received_at,payload_json FROM telefonia_zadarma_eventos WHERE pbx_call_id=? AND id>? ORDER BY id');
+        $s=$this->db->prepare('SELECT evento,internal,disposition,duration,received_at,payload_json FROM telefonia_zadarma_eventos WHERE pbx_call_id=? AND id>? ORDER BY id');
         $s->bind_param('si',$r['referencia'],$r['evento_desde']);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
         $patch=[];$globalEnd=false;
         foreach($events as $e){
@@ -93,6 +93,27 @@ final class TelefoniaTransferenciaOperacionService
             if($e['evento']==='NOTIFY_INTERNAL' && $e['internal']===$r['origen_extension'] && ($p['transfer_from']??'')===$r['destino_extension'] && !in_array($r['estado'],['ENTREGADA','FALLIDA'],true))$patch['estado']='DEVUELTA';
             if($e['evento']==='NOTIFY_END' && $e['internal']===$r['destino_extension'] && in_array(strtolower($e['disposition']),['no answer','no-answer','cancel','busy'],true) && empty($r['entregada_at']) && empty($r['destino_atendida'])){$patch['estado']='DEVUELTA';$patch['destino_fin']=gmdate('Y-m-d H:i:s');}
             if(in_array($e['evento'],['NOTIFY_END','NOTIFY_OUT_END'],true) && ($e['internal']==='' || ($p['last_internal']??'')===$r['destino_extension']))$globalEnd=true;
+        }
+        if($r['modo']==='DIRECTA'){
+            $answered=null;$ended=null;$returned=false;$ringing=false;
+            foreach($events as $e){
+                $p=json_decode((string)$e['payload_json'],true)?:[];
+                if($e['evento']==='NOTIFY_INTERNAL'&&$e['internal']===$r['origen_extension']&&($p['transfer_from']??'')===$r['destino_extension'])$returned=true;
+                if($e['internal']!==$r['destino_extension'])continue;
+                if($e['evento']==='NOTIFY_INTERNAL'&&($p['transfer_from']??'')===$r['origen_extension'])$ringing=true;
+                if($e['evento']==='NOTIFY_ANSWER')$answered=$e['received_at'];
+                if($e['evento']==='NOTIFY_END'){
+                    $ended=$e['received_at'];
+                    if((int)$e['duration']>0&&strtolower($e['disposition'])==='answered')$answered=$answered?:date('Y-m-d H:i:s',strtotime($ended)-(int)$e['duration']);
+                }
+            }
+            // Disponibilidad y liberación de origen nunca acreditan respuesta del destino.
+            $patch=[];
+            if($answered){$patch=['estado'=>'ENTREGADA','destino_atendida'=>(new DateTimeImmutable($answered,new DateTimeZone('America/Mexico_City')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')];if($ended)$patch['destino_fin']=(new DateTimeImmutable($ended,new DateTimeZone('America/Mexico_City')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');}
+            elseif($returned)$patch=['estado'=>'DEVUELTA'];
+            elseif($ended)$patch=['estado'=>'SIN_RESPUESTA','destino_fin'=>(new DateTimeImmutable($ended,new DateTimeZone('America/Mexico_City')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')];
+            elseif(empty($r['destino_atendida']) && strtotime($r['created_at'].' UTC')<time()-120 && !in_array($r['estado'],['FALLIDA','DEVUELTA'],true))$patch=['estado'=>'SIN_CONFIRMAR'];
+            elseif($ringing&&$r['estado']==='SOLICITADA')$patch=['estado'=>'TIMBRANDO'];
         }
         if($patch){$this->guardar((int)$r['id'],$patch);$r=array_merge($r,$patch);}
         $r['llamada_finalizada']=$globalEnd;
@@ -105,7 +126,7 @@ final class TelefoniaTransferenciaOperacionService
             $r=$this->fila('SELECT * FROM telefonia_transferencia_operaciones WHERE id=? AND (origen_usuario=? OR destino_usuario=?) FOR UPDATE',[$id,$user,$user]);
             if(!$r)throw new DomainException('No tienes acceso a esta transferencia.');
             $source=(int)$r['origen_usuario']===$user;$now=gmdate('Y-m-d H:i:s');$patch=[];
-            if(($source&&$action==='LIBERADA'&&$r['estado']==='ENTREGADA') ||
+            if(($source&&$action==='LIBERADA'&&in_array($r['estado'],['ENVIADA','ENTREGADA','SIN_RESPUESTA','SIN_CONFIRMAR'],true)) ||
                ($source&&$action==='COMPLETAR'&&$r['estado']==='ENTREGANDO') ||
                (!$source&&$action==='ATENDIDA'&&$r['estado']==='CONSULTANDO') ||
                (!$source&&$action==='TERMINADA'&&$r['destino_fin'])){
@@ -113,13 +134,13 @@ final class TelefoniaTransferenciaOperacionService
             }
             if($source && $action==='COMPLETAR' && $r['modo']==='CONSULTADA' && $r['estado']==='CONSULTANDO' && $r['destino_atendida'])$patch=['estado'=>'ENTREGANDO'];
             elseif($source && $action==='LIBERADA' && in_array($r['estado'],['SOLICITADA','TIMBRANDO','ENTREGANDO','CONSULTANDO'],true)){
-                $patch=$r['modo']==='DIRECTA'||$r['destino_atendida']?['estado'=>'ENTREGADA','entregada_at'=>$now]:['estado'=>'FALLIDA'];
+                $patch=$r['modo']==='DIRECTA'?['estado'=>'ENVIADA','entregada_at'=>$now]:($r['destino_atendida']?['estado'=>'ENTREGADA','entregada_at'=>$now]:['estado'=>'FALLIDA']);
             }
             elseif($source && $action==='FALLO' && empty($r['entregada_at']))$patch=['estado'=>'FALLIDA'];
             elseif(!$source && $action==='ATENDIDA' && $r['modo']==='CONSULTADA' && in_array($r['estado'],['SOLICITADA','TIMBRANDO'],true))$patch=['estado'=>'CONSULTANDO','destino_atendida'=>$now];
-            elseif(!$source && $action==='TERMINADA')$patch=['destino_fin'=>$now]+(empty($r['entregada_at'])&&$r['estado']!=='ENTREGANDO'?['estado'=>'DEVUELTA']:[]);
+            elseif(!$source && $action==='TERMINADA')$patch=$r['modo']==='DIRECTA'?[]:['destino_fin'=>$now]+(empty($r['entregada_at'])&&$r['estado']!=='ENTREGANDO'?['estado'=>'DEVUELTA']:[]);
             else throw new DomainException('La transferencia cambió. Actualiza su estado antes de continuar.');
-            $this->guardar($id,$patch);$this->db->commit();return $this->obtener($user,$id);
+            if($patch)$this->guardar($id,$patch);$this->db->commit();return $this->obtener($user,$id);
         }catch(Throwable $e){$this->db->rollback();throw $e;}
     }
     public function delUsuario(int $user): array {

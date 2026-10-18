@@ -18,7 +18,7 @@
    tracked.op=op;
    const state=api.read(),source=tracked.source;
    if(source){
-    if(state.active && op.estado==='DEVUELTA')api.publish({message:'La consulta terminó. Retoma la conversación con la persona.',context:{...state.context,transferRequest:{...state.context?.transferRequest,id:op.id,stage:op.estado,mode:op.modo,extension:op.destino_extension}}});
+    if(state.active && op.estado==='DEVUELTA')api.publish({message:op.modo==='DIRECTA'?'La centralita confirmó el retorno de la llamada. Retoma la conversación.':'La consulta terminó. Retoma la conversación con la persona.',context:{...state.context,transferRequest:{...state.context?.transferRequest,id:op.id,stage:op.estado,mode:op.modo,extension:op.destino_extension}}});
     else if(state.active)api.publish({context:{...state.context,transferRequest:{...state.context?.transferRequest,id:op.id,stage:op.estado,mode:op.modo,extension:op.destino_extension}}});
    }else if(op.estado==='ENTREGADA' && !external && !tracked.session?.isEnded?.()){
     external=true;tracked.token=String(op.sdk_consulta)+'-external';
@@ -52,7 +52,7 @@
     const session=tracked.session || currentSession;
     if(session)tracked.session=session;
     if(tracked.source && session?.isEnded?.() && ['DEVUELTA','FALLIDA'].includes(tracked.op.estado)){reset();return;}
-    if(tracked.source && tracked.op.modo==='DIRECTA' && tracked.op.estado==='TIMBRANDO' && !directRelease && !session?.isEnded?.()){
+    if(tracked.source && tracked.op.modo==='DIRECTA' && ['TIMBRANDO','ENTREGADA'].includes(tracked.op.estado) && !directRelease && !session?.isEnded?.()){
         directRelease=true;api.finishSdk();
     }
     if(tracked.source && session?.isEnded?.() && !delivered){

@@ -40,6 +40,10 @@
     const notice = document.querySelector('[data-incoming-notice]');
     const closeFinished = document.querySelector('[data-incoming-close-finished]');
     const callbackSaved=new Set();
+    let callbackResultOwner=0,callbackPending=null;
+    const callbackPendingKey='impe:callback-pending:'+userId;
+    try{const saved=JSON.parse(sessionStorage.getItem(callbackPendingKey)||'null');if(Number(saved?.id)>0 && Date.now()-Number(saved.at)<86400000)callbackPending=saved;}catch(_){}
+    const rememberCallback=()=>{try{if(callbackPending)sessionStorage.setItem(callbackPendingKey,JSON.stringify(callbackPending));else sessionStorage.removeItem(callbackPendingKey);}catch(_){}};
     const transferToggle = document.querySelector('[data-shell-transfer-toggle]');
     const transferPane = document.querySelector('[data-shell-transfer-panel]');
     const captureToggle = document.querySelector('[data-shell-capture-toggle]');
@@ -271,18 +275,22 @@
         },
         getPhoneStatus: function () {
             return {active:Boolean(currentState?.active),ready:Boolean(freshState(currentState)&&currentState.hostReady),
-                pending:Boolean(window.IMPE_CALL_CLOSURE?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal')||(!currentState?.active&&['finished','incoming-finished'].includes(currentState?.phase)&&currentState?.context?.type==='DEVOLUCION'&&Number(currentState.context.callbackAttempt)>0&&!callbackSaved.has(Number(currentState.context.callbackAttempt))))};
+                pending:Boolean(callbackPending||window.IMPE_CALL_CLOSURE?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
         },
         openPendingResult: function () {
-            if(!currentState?.active && currentState?.context?.type==='DEVOLUCION' && Number(currentState.context.callbackAttempt)>0){
-                if(crm)crm.src=cfg.callbackUrl+'&intento_id='+Number(currentState.context.callbackAttempt);minimized=true;render();return;
+            if(callbackPending&&!currentState?.active){
+                if(crm)crm.src=cfg.callbackUrl+'&intento_id='+callbackPending.id;render();return;
             }
             const btn=document.querySelector('[data-incoming-register-finished]');
             if(btn&&!btn.hidden)btn.click();else window.IMPE_CALL_CLOSURE?.showPending();
         },
-        minimizeCallbackResult: function (id) {
-            if(!currentState?.active && Number(currentState?.context?.callbackAttempt)===id){minimized=true;render();}
+        beginCallbackResult: function (id) {
+            if(currentState?.active||!Number.isSafeInteger(id)||id<=0)return false;
+            callbackResultOwner=id;if(!callbackPending)callbackPending={id,at:Date.now()};rememberCallback();render();return true;
         },
+        endCallbackResult: function (id) {if(callbackResultOwner===id){callbackResultOwner=0;render();}},
+        minimizeCallbackResult: function (id) {return this.beginCallbackResult(id);},
+
         getActiveCall: function () {
             if (!freshState(currentState) || !currentState.active ||
                 currentState.phase !== 'in-progress') return null;
@@ -318,6 +326,10 @@
     const updateState = function (value) {
         if (!freshState(value)) return;
         const startsCall = value.active && !currentState?.active;
+        if(value.context?.type==='DEVOLUCION'&&!value.active&&['finished','incoming-finished'].includes(value.phase)&&Number(value.context.callbackAttempt)>0&&!callbackSaved.has(Number(value.context.callbackAttempt))){
+            callbackPending={id:Number(value.context.callbackAttempt),at:Date.now(),callToken:value.callToken};rememberCallback();
+        }
+        if(value.active)callbackResultOwner=0;
         if(currentState?.active&&!value.active)crm?.contentWindow?.postMessage({type:'IMPE_PHONE_CALL_CHANGED'},window.location.origin);
         if (startsCall) {incomingCompact=false;centerNextCall=true;}
         // Sólo el Analista genera un aviso al finalizar una entrante REAL.
@@ -534,8 +546,10 @@
         const finishingIncoming = incoming &&
             (pending === 'hangup' || state.phase === 'finishing');
         const waitingAnswer = incoming && state.phase === 'answering';
-        const customVisible = (incoming || finishedIncoming || shownOutgoing) &&
+        const callbackRegistration=Boolean(!ongoing && (callbackResultOwner||callbackPending));
+        const customVisible = !callbackRegistration && (incoming || finishedIncoming || shownOutgoing) &&
             !nativeVisible && !minimized && pending !== 'decline';
+        if(callbackRegistration)status.hidden=true;
         call.classList.toggle('is-visible', nativeVisible);
         if (incomingPanel) {
             incomingPanel.hidden = !customVisible;
@@ -551,7 +565,7 @@
         if(transferStage){
             transferStage.hidden=!ongoing||(!transferRequest&&!consultation);
             transferStage.textContent=consultation?'Consulta con recepción. La persona sigue en espera hasta que recepción complete la transferencia.':
-                transferRequest?.stage==='DEVUELTA'?'La consulta terminó. Retoma la conversación con la persona.':
+                transferRequest?.stage==='DEVUELTA'?(transferRequest.mode==='DIRECTA'?'La centralita confirmó el retorno de la llamada. Retoma la conversación.':'La consulta terminó. Retoma la conversación con la persona.'):
                 transferRequest?.stage==='CONSULTANDO'?'El responsable contestó. Habla con él y pulsa Completar transferencia para entregarle a la persona.':
                 transferRequest?.stage==='ENTREGANDO'?'Entregando la llamada al responsable…':
                 transferRequest?.mode==='CONSULTADA'?'Consultando a la extensión '+transferRequest.extension+'. La persona está en espera.':
@@ -849,7 +863,7 @@
     window.addEventListener('message',event=>{
         if(event.origin!==window.location.origin||event.source!==crm?.contentWindow||event.data?.type!=='IMPE_CALLBACK_RESULT_SAVED')return;
         const id=Number(event.data.attemptId);
-        if(id>0&&!currentState?.active&&Number(currentState?.context?.callbackAttempt)===id){callbackSaved.add(id);recentFinishedOutgoing=null;sendPhoneCommand('CLEAR_FINISHED',{callToken:currentState.callToken});render();}
+        if(id>0&&callbackPending?.id===id){const token=callbackPending.callToken;callbackSaved.add(id);callbackPending=null;callbackResultOwner=0;rememberCallback();recentFinishedOutgoing=null;if(!currentState?.active)sendPhoneCommand('CLEAR_FINISHED',{callToken:token});render();}
     });
     document.querySelector('[data-transfer-complete]')?.addEventListener('click',()=>sendPhoneCommand('COMPLETE_TRANSFER'));
     window.addEventListener('impe:availability-state',()=>render());

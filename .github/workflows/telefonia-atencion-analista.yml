@@ -58,3 +58,4 @@ jobs:
           node tests/telefonia_campana_browser.cjs
           node tests/telefonia_disponibilidad_browser.cjs
           node tests/telefonia_devoluciones_browser.cjs
+          node tests/telefonia_devoluciones_integracion_browser.cjs
