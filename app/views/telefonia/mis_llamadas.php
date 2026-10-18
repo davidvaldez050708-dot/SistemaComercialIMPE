@@ -38,13 +38,13 @@ $filtros = $misLlamadas['filtros'] ?? [];
         <button class="btn btn-system-light" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Filtrar</button>
     </form>
     <div class="linkage-call-section-heading"><div><strong>Historial de actividad</strong><p>Las transferencias pueden contener tramos de diferentes extensiones.</p></div><span class="linkage-call-recordings-count"><?= count($items) ?></span></div>
-    <div class="linkage-call-history-list linkage-incoming-history">
+    <div class="linkage-call-history-list linkage-incoming-history" role="list">
         <?php foreach ($items as $fila): ?>
-        <article class="linkage-call-history-card linkage-incoming-card">
+        <article class="linkage-call-history-card linkage-incoming-card" role="listitem">
             <div class="linkage-call-history-top">
                 <div class="linkage-call-history-identity">
                     <strong><i class="bi bi-<?= ($fila['direccion'] ?? '') === 'Saliente' ? 'telephone-outbound' : 'telephone-inbound' ?>" aria-hidden="true"></i> <?= $esc($fila['direccion'] ?? '') ?></strong>
-                    <span><?= $esc($fila['numero'] ?: 'Número no disponible') ?> · Ext. <?= $esc($fila['extension'] ?? '') ?></span>
+                    <span><?= $esc(($fila['numero'] ?? '') ?: 'Número no disponible') ?> · Ext. <?= $esc($fila['extension'] ?? '') ?></span>
                 </div>
                 <span class="linkage-call-history-date"><?= $esc($fila['fecha'] ?? '') ?></span>
             </div>
