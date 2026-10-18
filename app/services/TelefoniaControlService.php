@@ -83,7 +83,37 @@ class TelefoniaControlService
                 AND e.pbx_call_id <> ''
                 AND e.evento IN ('NOTIFY_INTERNAL', 'NOTIFY_ANSWER',
                     'NOTIFY_END', 'NOTIFY_OUT_START', 'NOTIFY_OUT_END')
+            /*MY_CALLS_CANDIDATE*/
             GROUP BY e.pbx_call_id, e.internal ORDER BY fecha DESC";
+        // En historial personal, reducir candidatos en SQL antes de agregar.
+        // Conservar todos los eventos de cada tramo candidato (incluidos finales)
+        // para no distorsionar la duración ni el estado.
+        $personalUid = !empty($filtros['historial_personal_completo'])
+            ? max(0, (int)($filtros['usuario_id'] ?? 0)) : 0;
+        if ($personalUid > 0) {
+            $sql = str_replace('/*MY_CALLS_CANDIDATE*/', "
+                AND (
+                    EXISTS (SELECT 1 FROM telefonia_ventas_marcaciones pvm
+                        WHERE pvm.pbx_call_id=e.pbx_call_id AND pvm.extension=e.internal
+                        AND pvm.usuario_id=$personalUid)
+                    OR EXISTS (SELECT 1 FROM interacciones_vinculacion piv
+                        WHERE piv.id_externo=e.pbx_call_id AND piv.proveedor_externo='ZADARMA'
+                        AND piv.canal='LLAMADA_IP' AND piv.usuario_id=$personalUid)
+                    OR EXISTS (SELECT 1 FROM telefonia_extensiones pte
+                        WHERE pte.extension=e.internal AND pte.proveedor='ZADARMA'
+                        AND pte.usuario_id=$personalUid AND pte.activo=1
+                        AND pte.permite_entrantes=1
+                        AND EXISTS (
+                            SELECT 1 FROM telefonia_zadarma_eventos pe
+                            WHERE pe.pbx_call_id=e.pbx_call_id AND pe.internal=e.internal
+                            AND pe.evento='NOTIFY_INTERNAL'
+                            AND pe.received_at >= GREATEST(pte.created_at, pte.updated_at)
+                        ))
+                )
+            ", $sql);
+        } else {
+            $sql = str_replace('/*MY_CALLS_CANDIDATE*/', '', $sql);
+        }
         $stmt = $this->db->prepare($sql);
         if (!$stmt) throw new RuntimeException('No se pudieron preparar las estadísticas de llamadas.');
         $desdeSql = $inicio . ' 00:00:00';
@@ -150,6 +180,14 @@ class TelefoniaControlService
                 $proceso = 'Recepción';
             }
 
+            // En la vista PERSONAL una interacción vinculada al PBX global
+            // no acredita que cada extensión de una transferencia sea del
+            // mismo usuario. Exigir además propiedad de la extensión del tramo.
+            if ($personalUid > 0 && $proceso === 'Vinculación'
+                && $idExtension !== $idVinculo) {
+                $usuarioId = 0;
+                $proceso = 'Sin atribución verificada';
+            }
             $segundos = max(0, (int)$row['segundos']);
             $conectada = (int)$row['conectada'] === 1;
             $resultado = $proceso === 'Ventas' ?
@@ -300,7 +338,8 @@ class TelefoniaControlService
                 ['fecha'=>$cursor,'atenciones'=>0,'efectivas'=>0];
         }
 
-        $stats['historial'] = array_slice($filtered, 0, 500);
+        $stats['historial'] = !empty($filtros['historial_personal_completo']) && $usuarioFiltro > 0
+            ? $filtered : array_slice($filtered, 0, 500);
         $stats['historial_total'] = count($filtered);
         return [
             'filtros' => [

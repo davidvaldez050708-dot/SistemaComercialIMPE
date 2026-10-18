@@ -1,0 +1,37 @@
+name: Validar Mis llamadas
+on:
+  push:
+    branches: [feat/mis-llamadas-base-20261018]
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaMisLlamadasService.php'
+      - 'app/services/TelefoniaControlService.php'
+      - 'app/controllers/TelefoniaController.php'
+      - 'app/views/telefonia/mis_llamadas.php'
+      - 'app/views/layout/sidebar.php'
+      - 'tests/telefonia_mis_llamadas_propiedad_smoke.php'
+      - 'tests/telefonia_mis_llamadas_vista_smoke.php'
+jobs:
+  php-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+          coverage: none
+      - name: Validar sintaxis
+        run: |
+          php -l app/services/TelefoniaControlService.php
+          php -l app/services/TelefoniaMisLlamadasService.php
+          php -l app/controllers/TelefoniaController.php
+          php -l app/views/telefonia/mis_llamadas.php
+          php -l app/views/layout/sidebar.php
+          php -l tests/telefonia_mis_llamadas_propiedad_smoke.php
+          php -l tests/telefonia_mis_llamadas_vista_smoke.php
+      - name: Verificar aislamiento y paginación
+        run: |
+          php tests/telefonia_mis_llamadas_propiedad_smoke.php
+          php tests/telefonia_mis_llamadas_vista_smoke.php
