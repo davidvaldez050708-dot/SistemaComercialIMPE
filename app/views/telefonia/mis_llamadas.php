@@ -41,7 +41,8 @@ $filtros = $misLlamadas['filtros'] ?? [];
     <div class="linkage-call-history-list linkage-incoming-history" role="list">
         <?php foreach ($items as $fila): ?>
         <article class="linkage-call-history-card linkage-incoming-card" role="listitem">
-            <div class="linkage-call-history-top">
+            <div class="linkage-call-recording-body">
+            <div class="linkage-call-recording-top">
                 <div class="linkage-call-history-identity">
                     <strong><i class="bi bi-<?= ($fila['direccion'] ?? '') === 'Saliente' ? 'telephone-outbound' : 'telephone-inbound' ?>" aria-hidden="true"></i> <?= $esc($fila['direccion'] ?? '') ?></strong>
                     <span><?= $esc(($fila['numero'] ?? '') ?: 'Número no disponible') ?> · Ext. <?= $esc($fila['extension'] ?? '') ?></span>
@@ -55,6 +56,7 @@ $filtros = $misLlamadas['filtros'] ?? [];
                     <?php if (!empty($fila['resultado_devolucion'])): ?><span class="linkage-call-result-badge is-contact">Devolución · <?= $esc(str_replace('_', ' ', $fila['resultado_devolucion'])) ?></span><?php endif; ?>
                     <span class="linkage-call-recording-duration"><?= sprintf('%02d:%02d', intdiv(max(0,(int)($fila['segundos'] ?? 0)),60), max(0,(int)($fila['segundos'] ?? 0))%60) ?></span>
                 </div>
+            </div>
             </div>
         </article>
         <?php endforeach; ?>
