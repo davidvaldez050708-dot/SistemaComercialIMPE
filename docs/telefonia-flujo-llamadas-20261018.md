@@ -37,6 +37,6 @@ Fuente: https://zadarma.com/es/support/instructions/pbx/
 
 Publicador: `tools/publicar_flujo_llamadas_hostinger.sh`.
 
-Primero ejecutar `--check`. Sólo después de una revisión compatible, ejecutar `--apply` con las extensiones sin llamadas activas. Publica 25 archivos con copia de seguridad, comprobación de sintaxis y restauración si falla la escritura. Rechaza diferencias incompatibles; no fuerza archivos personalizados. La revisión posterior incorpora dos tablas nuevas, preparadas por los servicios al utilizarse; no modifica registros anteriores de forma masiva. Es necesario cerrar sesión y volver a entrar para renovar el teléfono persistente.
+Primero ejecutar `--check`. Sólo después de una revisión compatible, ejecutar `--apply` con las extensiones sin llamadas activas. Publica 26 archivos con copia de seguridad, comprobación de sintaxis y restauración si falla la escritura. Rechaza diferencias incompatibles; no fuerza archivos personalizados. La revisión posterior incorpora dos tablas nuevas, preparadas por los servicios al utilizarse; no modifica registros anteriores de forma masiva. Es necesario cerrar sesión y volver a entrar para renovar el teléfono persistente.
 
 La aplicación se valida con base desechable y navegador real. La conexión de audio, la entrega de grabaciones y el retorno de una transferencia necesitan además las pruebas reales con Zadarma.

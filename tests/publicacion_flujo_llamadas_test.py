@@ -26,7 +26,7 @@ def blob(ref, name):
 
 BASE_FILES = {name: blob(BASE, name) for name in FILES}
 TARGET_FILES = {name: blob(TARGET, name) for name in FILES}
-assert len(FILES) == 25 and all(TARGET_FILES.values())
+assert len(FILES) == 26 and all(TARGET_FILES.values())
 
 
 def snapshot(root):
@@ -79,7 +79,7 @@ def normal(root):
     assert second.returncode == 0 and 'ya está publicada' in second.stdout
     assert list((root / 'backups').iterdir()) == backups
     assert not (live.parent / '.impe-atencion-deploy.lock').exists()
-    return 'revisión sin escrituras, publicación, 25 archivos exactos, respaldo, privados e idempotencia'
+    return 'revisión sin escrituras, publicación, 26 archivos exactos, respaldo, privados e idempotencia'
 
 
 def customization(root):

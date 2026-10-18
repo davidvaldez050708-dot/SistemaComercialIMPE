@@ -8,7 +8,7 @@ MODE="${1:---check}"
 }
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 BASE='c1afd6888e8dad1cae18aeb04147475ba56fb5a7'
-TARGET='d5fefa05ebfe233a7a90b9939c6a0a95bc77e462'
+TARGET='bb78c8f36ddf2adb5efeec51739f5575d524fe59'
 SOURCE="${IMPE_FLUJO_SOURCE:-$HOME/crm-publicaciones/flujo-llamadas-20261018}"
 LIVE="${IMPE_FLUJO_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_FLUJO_BACKUPS:-$HOME/respaldos-crm}"
@@ -58,6 +58,7 @@ FILES=(
     app/controllers/TelefoniaController.php
     app/views/layout/dashboard_footer.php
     app/views/layout/topbar.php
+    app/views/seguimiento_vinculacion/llamadas_entrantes.php
     app/views/telefonia/host.php
     app/views/telefonia/shell.php
 )
