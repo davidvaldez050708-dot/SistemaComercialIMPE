@@ -89,7 +89,7 @@ $tarjetasPorPaginaSeguimiento = 12;
 
 <?php if ($modoSeguimiento === 'analista' && tienePermiso('telefonia.recibir')): ?>
     <div class="d-flex justify-content-end mb-3">
-        <a class="btn btn-system-light linkage-incoming-entry" href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=llamadasEntrantes">
+        <a class="btn btn-system-light linkage-incoming-entry" href="<?= BASE_URL ?>index.php?controller=telefonia&action=misLlamadas&vista=recibidas">
             <i class="bi bi-telephone-inbound" aria-hidden="true"></i>
             <span>Llamadas recibidas</span>
         </a>
