@@ -35,6 +35,8 @@ final class TelefoniaMisLlamadasService
             if (!is_array($intento) || (int)($intento['usuario_id'] ?? 0) !== $usuarioId) continue;
             $pbx = trim((string)($intento['pbx_call_id'] ?? ''));
             if ($pbx === '' || (string)($intento['resultado'] ?? '') === '') continue;
+            // La consulta llega de más reciente a más antiguo; conservar el último resultado.
+            if (isset($porPbx[$pbx])) continue;
             $porPbx[$pbx] = [
                 'resultado_devolucion' => (string)$intento['resultado'],
                 'intento_devolucion' => (int)($intento['id'] ?? 0),
@@ -68,7 +70,7 @@ final class TelefoniaMisLlamadasService
                 WHERE usuario_id = ? AND created_at >= ? AND created_at < ?
                 AND pbx_call_id IS NOT NULL AND pbx_call_id <> ''
                 AND resultado <> ''
-                ORDER BY id DESC LIMIT 1000";
+                ORDER BY id DESC";
         $stmt = $db->prepare($sql);
         $inicio = $desde . ' 00:00:00';
         $fin = date('Y-m-d', strtotime($hasta . ' +1 day')) . ' 00:00:00';
@@ -127,7 +129,7 @@ final class TelefoniaMisLlamadasService
             'entrantes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Entrante')),
             'salientes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Saliente')),
             'filtros' => $control['filtros'],
-            'limitacion' => 'Vista inicial de solo lectura: muestra tramos del intervalo consultado, con atribución verificada y paginación de 20 registros. No incluye automáticamente devoluciones sin PBX confirmado ni registros ambiguos. Las grabaciones se consultan en sus módulos de origen.'
+            'limitacion' => 'Vista inicial de solo lectura: muestra tramos del intervalo consultado, con atribución verificada y paginación de 20 registros. No incluye devoluciones sin PBX confirmado ni registros ambiguos. Las grabaciones se consultan en sus módulos de origen.'
         ];
     }
 }
