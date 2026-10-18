@@ -309,7 +309,8 @@
             currentState?.active && currentState.direction === 'incoming' &&
             !value.active && value.direction === 'incoming' &&
             value.phase === 'incoming-finished' &&
-            (Number(value.duration)>0 || Number(currentState.answeredAtMs)>0 || currentState.phase==='in-progress')) {
+            (Number(currentState.answeredAtMs)>0 || currentState.phase==='in-progress' ||
+                currentState.context?.sdkConnected || currentState.context?.pbxAnswered)) {
             const id = incomingCallId(value) || incomingCallId(currentState);
             if (id && /^[a-zA-Z0-9_-]{3,100}$/.test(id)) {
                 analystPendingCall = {id, at: Date.now()};

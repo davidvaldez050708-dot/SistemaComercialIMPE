@@ -24,7 +24,9 @@ for (const [group,states] of Object.entries({
     }
 }
 assert.equal(coincideEstadoRecepcion({estado:'Transferida'},'respondidas'),false);
-assert.equal(coincideEstadoRecepcion({finalizada:true,resultado:''},'pendientes'),true);
+assert.equal(coincideEstadoRecepcion({finalizada:true,resultado:'',requiere_resultado:true},'pendientes'),true);
+assert.equal(coincideEstadoRecepcion({finalizada:true,estado:'Perdida',requiere_resultado:false},'pendientes'),false);
+assert.equal(coincideEstadoRecepcion({finalizada:true,estado:'Transferida',requiere_resultado:false},'pendientes'),false);
 assert.equal(coincideEstadoRecepcion({finalizada:false,resultado:''},'pendientes'),false);
 assert.equal(coincideEstadoRecepcion({finalizada:true,resultado:'BUZON'},'pendientes'),false);
 assert.equal(coincideEstadoRecepcion({finalizada:true,resultado:'SIN_CLASIFICAR'},'pendientes'),false);

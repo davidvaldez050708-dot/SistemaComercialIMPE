@@ -52,7 +52,8 @@ function boot(opts = {}) {
         '[data-incoming-mute-compact]','[data-incoming-hangup-compact]',
         '[data-incoming-drag-handle]','[data-incoming-compact-timer]',
         '[data-shell-transfer-toggle]','[data-shell-transfer-panel]',
-        '[data-shell-capture-toggle]','[data-shell-capture-panel]'
+        '[data-shell-capture-toggle]','[data-shell-capture-panel]',
+        '[data-analyst-call-result]'
     ];
     selectors.forEach(x => elements[x] = element());
     elements['impeCrmFrame'] = element();
@@ -405,4 +406,11 @@ noGhost.channels[0].message({type:'STATE',state:{
 assert.equal(noGhost.elements['[data-incoming-panel]'].hidden,true,
     'sin resumen entrante reabierto después de regresar al sistema');
 
-console.log('Shell WebRTC: OK (paneles laterales inmediatos, finalización entrante, cierre manual, llamadas consecutivas y lease)');
+storage.clear();
+const missedAnalyst=boot({analyst:true});
+for(const [phase,active] of [['incoming-ringing',true],['incoming-finished',false]]){
+    missedAnalyst.channels[0].message({type:'STATE',state:{userId:8,updatedAt:Date.now(),hostReady:true,active,
+        direction:'incoming',phase,pbxCallId:'missed-with-ring-duration',duration:30}});
+}
+assert.equal(missedAnalyst.elements['[data-analyst-call-result]'].hidden,true,'el tiempo de timbrado no habilita Registrar resultado en una perdida');
+console.log('Shell WebRTC: OK (paneles laterales inmediatos, finalización entrante, cierre manual, llamadas consecutivas, perdida sin resultado y lease)');

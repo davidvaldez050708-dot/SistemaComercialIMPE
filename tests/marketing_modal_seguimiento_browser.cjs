@@ -21,7 +21,7 @@ const css = cssFiles.map(p => p === 'telefonia_recepcion_marketing.css' && proce
     ? fs.readFileSync(process.env.MARKETING_DEPLOY_CSS, 'utf8') : read('public/css/'+p)).join('\n');
 const calls = [
     {pbx_call_id:'out_transfer',tipo:'Saliente',fecha:'2026-10-16 21:46:00',numero:'5551234567',estado:'Transferida',estado_cierre:'Completada',segundos:8,destino_transferencia:'101',tiene_grabacion:false,excluir_grabacion:true,grabacion_transferida:false,finalizada:true,resultado:'BUZON',resultado_etiqueta:'Buzón de voz',nota:'Se escuchó un buzón antes de transferir.'},
-    {pbx_call_id:'out_voicemail',tipo:'Saliente',fecha:'2026-10-16 21:15:00',numero:'5557654321',estado:'Completada',segundos:6,destino_transferencia:'',tiene_grabacion:true,finalizada:true}
+    {pbx_call_id:'out_voicemail',tipo:'Saliente',fecha:'2026-10-16 21:15:00',numero:'5557654321',estado:'Completada',segundos:6,destino_transferencia:'',tiene_grabacion:true,finalizada:true,requiere_resultado:true}
 ];
 const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${process.env.MARKETING_PREVIEW_FONTS ? '<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">' : ''}
@@ -58,7 +58,7 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
                 saves++;
                 const registro={resultado:data.get('resultado'),resultado_etiqueta:'No disponible',nota:data.get('nota'),
                     excluir_grabacion:true,tiene_grabacion:false,grabacion_transferida:false,grabacion_salida_pendiente:false};
-                Object.assign(calls[1],registro);
+                Object.assign(calls[1],registro,{requiere_resultado:false});
                 return route.fulfill({json:{ok:true,registro}});
             }
             return route.fulfill({contentType:'text/html',body:html});
