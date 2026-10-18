@@ -25,6 +25,11 @@ on:
       - 'app/views/telefonia/recepcion_marketing.php'
       - 'public/javascript/telefonia_recepcion_marketing.js'
       - 'tests/telefonia_marketing_recepcion_integrada_smoke.php'
+      - 'app/views/telefonia/shell.php'
+      - 'public/javascript/telefonia_shell.js'
+      - 'public/javascript/seguimiento_entrantes_analista.js'
+      - 'app/views/seguimiento_vinculacion/llamadas_entrantes.php'
+      - 'tests/telefonia_mis_llamadas_casos_concretos_smoke.php'
 jobs:
   php-smoke:
     runs-on: ubuntu-latest
@@ -56,13 +61,17 @@ jobs:
           php -l app/views/dashboard/marketing.php
           php -l app/views/telefonia/recepcion_marketing.php
           php -l tests/telefonia_marketing_recepcion_integrada_smoke.php
+          php -l app/views/telefonia/shell.php
+          php -l tests/telefonia_mis_llamadas_casos_concretos_smoke.php
       - name: Verificar aislamiento y paginación
         run: |
           php tests/telefonia_mis_llamadas_propiedad_smoke.php
           php tests/telefonia_mis_llamadas_vista_smoke.php
           php tests/telefonia_mis_llamadas_navegacion_smoke.php
           php tests/telefonia_marketing_recepcion_integrada_smoke.php
+          php tests/telefonia_mis_llamadas_casos_concretos_smoke.php
       - name: Verificar JS de resultados recibidos
         run: |
           node --check public/javascript/seguimiento_entrantes_analista.js
           node --check public/javascript/telefonia_recepcion_marketing.js
+          node --check public/javascript/telefonia_shell.js
