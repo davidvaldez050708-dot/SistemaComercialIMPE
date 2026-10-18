@@ -52,6 +52,7 @@ $filtros = $misLlamadas['filtros'] ?? [];
                 <div class="linkage-call-result-group">
                     <span class="linkage-call-result-badge <?= !empty($fila['conectada']) ? 'is-contact' : 'is-no-contact' ?>"><?= !empty($fila['conectada']) ? 'Conectada' : 'Sin confirmación de conexión' ?></span>
                     <?php if (!empty($fila['resultado'])): ?><span class="linkage-call-result-badge"><?= $esc($fila['resultado']) ?></span><?php endif; ?>
+                    <?php if (!empty($fila['resultado_devolucion'])): ?><span class="linkage-call-result-badge is-contact">Devolución · <?= $esc(str_replace('_', ' ', $fila['resultado_devolucion'])) ?></span><?php endif; ?>
                     <span class="linkage-call-recording-duration"><?= sprintf('%02d:%02d', intdiv(max(0,(int)($fila['segundos'] ?? 0)),60), max(0,(int)($fila['segundos'] ?? 0))%60) ?></span>
                 </div>
             </div>
