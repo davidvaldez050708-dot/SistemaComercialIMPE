@@ -79,6 +79,21 @@ final class TelefoniaMisLlamadasService
         return $rows;
     }
 
+    /** Paginar después del filtro de propiedad, nunca antes. */
+    public static function paginar(array $filas, int $pagina, int $porPagina = 20): array
+    {
+        $porPagina = min(100, max(1, $porPagina));
+        $total = count($filas);
+        $paginas = max(1, (int)ceil($total / $porPagina));
+        $pagina = min($paginas, max(1, $pagina));
+        return [
+            'filas' => array_slice($filas, ($pagina - 1) * $porPagina, $porPagina),
+            'pagina' => $pagina,
+            'paginas' => $paginas,
+            'por_pagina' => $porPagina
+        ];
+    }
+
     public function consultar(int $usuarioId, array $filtros = []): array
     {
         if ($usuarioId <= 0) {
@@ -101,14 +116,12 @@ final class TelefoniaMisLlamadasService
         // cada fila es un tramo atribuido, no una nueva llamada externa.
         $total = count($rows);
         $conectadas = count(array_filter($rows, static fn(array $r): bool => !empty($r['conectada'])));
-        $porPagina = 20;
-        $paginas = max(1, (int)ceil($total / $porPagina));
-        $pagina = min($paginas, max(1, (int)($filtros['pagina'] ?? 1)));
+        $paginado = self::paginar($rows, (int)($filtros['pagina'] ?? 1));
         return [
-            'filas' => array_slice($rows, ($pagina - 1) * $porPagina, $porPagina),
-            'pagina' => $pagina,
-            'paginas' => $paginas,
-            'por_pagina' => $porPagina,
+            'filas' => $paginado['filas'],
+            'pagina' => $paginado['pagina'],
+            'paginas' => $paginado['paginas'],
+            'por_pagina' => $paginado['por_pagina'],
             'total' => $total,
             'conectadas' => $conectadas,
             'entrantes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Entrante')),
