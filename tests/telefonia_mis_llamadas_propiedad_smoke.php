@@ -7,7 +7,7 @@ $ejemplos = [
     ['usuario_id'=>100, 'pbx_call_id'=>'llamada-b', 'extension'=>'100', 'direccion'=>'Saliente'],
     ['usuario_id'=>0, 'pbx_call_id'=>'sin-dueno', 'extension'=>'101'],
     ['usuario_id'=>101, 'pbx_call_id'=>'', 'extension'=>'101'],
-    ['usuario_id'=>101, 'pbx_call_id'=>'llamada-c', 'extension'=>'101'],
+    ['usuario_id'=>101, 'pbx_call_id'=>'llamada-c', 'extension'=>'101', 'direccion'=>'Saliente'],
 ];
 $propias = TelefoniaMisLlamadasService::filtrarPropias($ejemplos, 101);
 if (count($propias)!==2 ||
@@ -28,4 +28,13 @@ if (count($enriquecidas)!==2
     fwrite(STDERR,"FALLO: devolución ajena o duplicada en el historial.\n");
     exit(1);
 }
-echo "OK: aislamiento de historial por usuario y PBX verificado\n";
+$sinCoincidencia = TelefoniaMisLlamadasService::enriquecerDevoluciones([
+    ['usuario_id'=>101,'pbx_call_id'=>'llamada-a','extension'=>'101','direccion'=>'Entrante']
+],[
+    ['id'=>4,'usuario_id'=>101,'extension'=>'101','pbx_call_id'=>'llamada-a','resultado'=>'CONTACTO_CORRECTO']
+],101);
+if (isset($sinCoincidencia[0]['resultado_devolucion'])) {
+    fwrite(STDERR,"FALLO: se vinculó una devolución a un tramo entrante.\n");
+    exit(1);
+}
+echo "OK: aislamiento de historial, extensión y sentido de devolución\n";
