@@ -35,8 +35,11 @@ $indiceInicialEntrantes = ($paginaEntrantes - 1) * $llamadasPorPagina;
 $llamadasPaginaEntrantes = array_slice($llamadas, $indiceInicialEntrantes, $llamadasPorPagina);
 $primeraEntrante = $totalLlamadasEntrantes > 0 ? $indiceInicialEntrantes + 1 : 0;
 $ultimaEntrante = min($totalLlamadasEntrantes, $indiceInicialEntrantes + count($llamadasPaginaEntrantes));
-$urlPaginaEntrantes = static function (int $numero): string {
-    return BASE_URL . 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes'
+$desdeMisLlamadas = !empty($desdeMisLlamadas);
+$urlPaginaEntrantes = static function (int $numero) use ($desdeMisLlamadas): string {
+    return BASE_URL . ($desdeMisLlamadas
+        ? 'index.php?controller=telefonia&action=misLlamadas&vista=recibidas'
+        : 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes')
         . '&pagina=' . $numero . '#incomingHistoryTitle';
 };
 $paginasVisiblesEntrantes = [];
@@ -91,7 +94,9 @@ $duracionEntrante = static function ($segundos) {
                 <i class="bi bi-headset" aria-hidden="true"></i>
                 Extensión <?= $esc($bandejaEntrantes['extension'] ?: 'Sin configurar') ?>
             </span>
+            <?php if (!$desdeMisLlamadas): ?>
             <a class="btn btn-system-light linkage-incoming-back" href="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=devoluciones"><i class="bi bi-telephone-forward" aria-hidden="true"></i><span>Llamadas por devolver</span></a>
+            <?php endif; ?>
             <a class="btn btn-system-light linkage-incoming-back"
                 href="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=index') ?>">
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>

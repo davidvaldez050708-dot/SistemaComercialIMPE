@@ -81,7 +81,9 @@ class TelefoniaController
     }
 
     /**
-     * Historial personal de lectura; no permite consultar datos de otro usuario.
+     * Mis llamadas: punto de entrada personal a consulta, recepción,
+     * registro de entrantes y devoluciones. Conserva los servicios y
+     * formularios originales para no bifurcar la lógica de telefonía.
      */
     public function misLlamadas()
     {
@@ -90,32 +92,100 @@ class TelefoniaController
             http_response_code(403);
             exit('No tienes acceso al historial telefónico.');
         }
-        require_once __DIR__ . '/../services/TelefoniaMisLlamadasService.php';
-        $errorMisLlamadas = '';
-        try {
-            $misLlamadas = (new TelefoniaMisLlamadasService())->consultar($uid, [
-                'desde' => $_GET['desde'] ?? date('Y-m-d', strtotime('-29 days')),
-                'hasta' => $_GET['hasta'] ?? date('Y-m-d'),
-                'direccion' => $_GET['direccion'] ?? '',
-                'pagina' => $_GET['pagina'] ?? 1
-            ]);
-        } catch (Throwable $error) {
-            error_log('[telefonia_mis_llamadas] ' . get_class($error) . ': ' . $error->getMessage());
-            $errorMisLlamadas = 'No fue posible consultar tu historial. Prueba un intervalo de los últimos 90 días.';
-            $misLlamadas = ['filas'=>[], 'total'=>0, 'conectadas'=>0,
-                'entrantes'=>0, 'salientes'=>0,
-                'filtros'=>['desde'=>date('Y-m-d', strtotime('-29 days')),
-                    'hasta'=>date('Y-m-d'), 'direccion'=>''],
-                'limitacion'=>$errorMisLlamadas];
+
+        $rol = trim((string)($_SESSION['rol'] ?? ''));
+        $puedeGestionAnalista = strcasecmp($rol, 'Analista de Datos') === 0
+            && tienePermiso('seguimientos_vinculacion.operar_propios')
+            && tienePermiso('telefonia.recibir');
+        $puedeRecepcionMarketing = strcasecmp($rol, 'Marketing') === 0
+            && tienePermiso('telefonia.recibir');
+        $vistaActual = (string)($_GET['vista'] ?? 'historial');
+        $permitidas = ['historial'];
+        if ($puedeGestionAnalista) {
+            $permitidas[] = 'recibidas';
+            $permitidas[] = 'devoluciones';
         }
+        if ($puedeRecepcionMarketing) $permitidas[] = 'recepcion';
+        if (!in_array($vistaActual, $permitidas, true)) {
+            http_response_code(403);
+            exit('No tienes permiso para consultar esta sección.');
+        }
+
+        $errorMisLlamadas = '';
+        $desdeMisLlamadas = true;
+        if ($vistaActual === 'historial') {
+            require_once __DIR__ . '/../services/TelefoniaMisLlamadasService.php';
+            try {
+                $misLlamadas = (new TelefoniaMisLlamadasService())->consultar($uid, [
+                    'desde' => $_GET['desde'] ?? date('Y-m-d', strtotime('-29 days')),
+                    'hasta' => $_GET['hasta'] ?? date('Y-m-d'),
+                    'direccion' => $_GET['direccion'] ?? '',
+                    'pagina' => $_GET['pagina'] ?? 1
+                ]);
+            } catch (Throwable $error) {
+                error_log('[telefonia_mis_llamadas] '.get_class($error).': '.$error->getMessage());
+                $errorMisLlamadas = 'No fue posible consultar tus llamadas. Revisa el intervalo seleccionado.';
+                $misLlamadas = [
+                    'filas'=>[], 'total'=>0, 'conectadas'=>0, 'entrantes'=>0, 'salientes'=>0,
+                    'pagina'=>1, 'paginas'=>1, 'por_pagina'=>20,
+                    'filtros'=>['desde'=>date('Y-m-d', strtotime('-29 days')),
+                        'hasta'=>date('Y-m-d'), 'direccion'=>''],
+                    'limitacion'=>$errorMisLlamadas
+                ];
+            }
+        } elseif ($vistaActual === 'recibidas') {
+            require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+            $bandejaEntrantes = ['extension' => '', 'llamadas' => []];
+            $estadosEntrantes = [];
+            $errorEntrantes = '';
+            try {
+                $servicio = new TelefoniaEntrantesAnalistaService();
+                $bandejaEntrantes = $servicio->listar($uid);
+                $estadosEntrantes = $servicio->estados($uid);
+            } catch (Throwable $error) {
+                error_log('[mis_llamadas_recibidas] '.$error->getMessage());
+                $errorEntrantes = 'No fue posible consultar las llamadas recibidas. Comprueba tu extensión.';
+            }
+        } elseif ($vistaActual === 'devoluciones') {
+            require_once __DIR__ . '/../services/TelefoniaDevolucionService.php';
+            $devoluciones = [];
+            $estadosEntrantes = [];
+            try {
+                $devoluciones = (new TelefoniaDevolucionService())->listar($uid);
+                $estadosEntrantes = (new TelefoniaEntrantesAnalistaService())->estados($uid);
+            } catch (Throwable $error) {
+                error_log('[mis_llamadas_devoluciones] '.$error->getMessage());
+                $errorMisLlamadas = 'No se pudieron consultar las devoluciones. Inténtalo nuevamente.';
+            }
+        }
+
         $tituloPagina = 'Mis llamadas';
-        $subtituloPagina = 'Historial telefónico personal';
+        $subtituloPagina = 'Historial y gestiones telefónicas personales';
         $opcionActiva = 'mis_llamadas';
-        require_once __DIR__ . '/../views/layout/dashboard_head.php';
-        require_once __DIR__ . '/../views/layout/sidebar.php';
-        require_once __DIR__ . '/../views/layout/topbar.php';
-        require_once __DIR__ . '/../views/telefonia/mis_llamadas.php';
-        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+        require __DIR__ . '/../views/layout/dashboard_head.php';
+        require __DIR__ . '/../views/layout/sidebar.php';
+        require __DIR__ . '/../views/layout/topbar.php';
+        require __DIR__ . '/../views/telefonia/mis_llamadas_navegacion.php';
+        if ($errorMisLlamadas !== '') {
+            echo '<div class="linkage-incoming-feedback" role="alert">'
+                .htmlspecialchars($errorMisLlamadas, ENT_QUOTES, 'UTF-8').'</div>';
+        }
+        if ($vistaActual === 'recibidas') {
+            require __DIR__ . '/../views/seguimiento_vinculacion/llamadas_entrantes.php';
+        } elseif ($vistaActual === 'devoluciones') {
+            require __DIR__ . '/../views/telefonia/devoluciones.php';
+        } elseif ($vistaActual === 'recepcion') {
+            require __DIR__ . '/../views/telefonia/recepcion_marketing.php';
+            $scriptRecepcion = ROOT_PATH.'/public/javascript/telefonia_recepcion_marketing.js';
+            if (is_file($scriptRecepcion)) {
+                echo '<script src="'.htmlspecialchars(
+                    BASE_URL.'public/javascript/telefonia_recepcion_marketing.js?v='.filemtime($scriptRecepcion),
+                    ENT_QUOTES, 'UTF-8').'"></script>';
+            }
+        } else {
+            require __DIR__ . '/../views/telefonia/mis_llamadas.php';
+        }
+        require __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
     /**

@@ -165,6 +165,18 @@ if ($controllerDashboard === 'seguimientovinculacion' &&
     $cssOpcionalDashboard[] = 'seguimiento_entrantes_analista.css';
 }
 
+// La pestaña integrada debe cargar los mismos estilos que la bandeja original.
+if ($controllerDashboard === 'telefonia' && $actionDashboard === 'misllamadas') {
+    $vistaMisLlamadasHead = (string)($_GET['vista'] ?? 'historial');
+    if ($vistaMisLlamadasHead === 'recibidas') {
+        $cssOpcionalDashboard[] = 'seguimiento_llamadas_expediente.css';
+        $cssOpcionalDashboard[] = 'seguimiento_llamadas_player.css';
+        $cssOpcionalDashboard[] = 'seguimiento_entrantes_analista.css';
+    } elseif ($vistaMisLlamadasHead === 'recepcion') {
+        $cssOpcionalDashboard[] = 'telefonia_recepcion_marketing.css';
+    }
+}
+
 if ($esSeguimientoDetalle) {
     $cssOpcionalDashboard = array_merge(
         $cssOpcionalDashboard,
