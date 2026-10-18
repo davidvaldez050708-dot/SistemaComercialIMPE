@@ -3,8 +3,8 @@ $esc = static fn($v): string => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'
 $items = $misLlamadas['filas'] ?? [];
 $filtros = $misLlamadas['filtros'] ?? [];
 ?>
-<style><?php echo file_get_contents(ROOT_PATH . '/public/css/seguimiento_entrantes_analista.css'); ?></style>
-<section class="dashboard-panel linkage-incoming-page" data-my-calls>
+<style><?php echo file_get_contents(ROOT_PATH . '/public/css/seguimiento_entrantes_analista.css'); echo file_get_contents(ROOT_PATH . '/public/css/telefonia_mis_llamadas.css'); ?></style>
+<section class="dashboard-panel linkage-incoming-page impe-my-calls" data-my-calls>
     <header class="linkage-incoming-heading">
         <div class="linkage-incoming-heading-copy">
             <span class="linkage-incoming-eyebrow"><i class="bi bi-telephone-history" aria-hidden="true"></i> TELEFONÍA · HISTORIAL PERSONAL</span>
@@ -18,10 +18,10 @@ $filtros = $misLlamadas['filtros'] ?? [];
         <div><span>Entrantes</span><strong><?= (int)($misLlamadas['entrantes'] ?? 0) ?></strong></div>
         <div><span>Salientes</span><strong><?= (int)($misLlamadas['salientes'] ?? 0) ?></strong></div>
     </div>
-    <form method="get" action="<?= BASE_URL ?>index.php" class="linkage-incoming-heading" style="align-items:end;padding:14px;border:1px solid #dfe7f3;border-radius:12px;background:#f8fafd;margin-bottom:20px">
+    <form method="get" action="<?= BASE_URL ?>index.php" class="impe-my-calls-filters">
         <input type="hidden" name="controller" value="telefonia">
         <input type="hidden" name="action" value="misLlamadas">
-        <label class="form-label">Desde
+        <label >Desde
             <input class="form-control" type="date" name="desde" required value="<?= $esc($filtros['desde'] ?? '') ?>">
         </label>
         <label class="form-label">Hasta
@@ -79,5 +79,5 @@ $filtros = $misLlamadas['filtros'] ?? [];
         </div>
     </nav>
     <?php endif; ?>
-    <p class="text-muted" style="font-size:12px;margin-top:16px"><?= $esc($misLlamadas['limitacion'] ?? '') ?></p>
+    <p class="impe-my-calls-note"><?= $esc($misLlamadas['limitacion'] ?? '') ?></p>
 </section>
