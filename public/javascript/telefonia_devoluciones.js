@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(data){opts.method='POST';opts.body=new URLSearchParams({...data,csrf_token:root.dataset.csrf});}else if(id)url.searchParams.set('intento_id',id);
   const r=await fetch(url,opts),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo actualizar la devolución.');return j;};
  const taskFor=id=>tasks.find(t=>Number(t.id)===Number(id));
- const action=(text,icon,fn)=>{const b=node('button','btn btn-system-light impe-callback-action');b.type='button';const i=node('i','bi '+icon);i.setAttribute('aria-hidden','true');b.append(i,document.createTextNode(text));b.addEventListener('click',fn);return b;};
+ const action=(text,icon,fn)=>{const b=node('button','linkage-incoming-open');b.type='button';const i=node('i','bi '+icon);i.setAttribute('aria-hidden','true');b.append(i,document.createTextNode(text));b.addEventListener('click',fn);return b;};
  const render=()=>{
   const pending=tasks.filter(t=>t.devolucion==='PENDIENTE');
   for(const [key,value] of Object.entries({pending:pending.length,retry:pending.filter(t=>t.intento?.resultado).length,done:tasks.length-pending.length,total:tasks.length}))$('[data-callback-stat="'+key+'"]').textContent=value;
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded',()=>{
      if(!last.pbx_call_id){const discard=action('Revisar preparación','bi-arrow-clockwise',()=>void discardAttempt(last.id));discard.disabled=busy;actions.append(discard);}
     }else{const call=action('Llamar','bi-telephone-outbound',()=>void callTask(task));call.disabled=busy||!phone;actions.append(call);}
    }
-   if(Number(task.seguimiento_id)>0){const a=node('a','btn btn-system-light','Ver expediente');a.href='index.php?controller=seguimientoVinculacion&action=detalle&id='+Number(task.seguimiento_id);actions.append(a);}
+   if(Number(task.seguimiento_id)>0){const a=node('a','linkage-incoming-open','Ver expediente');a.href='index.php?controller=seguimientoVinculacion&action=detalle&id='+Number(task.seguimiento_id);actions.append(a);}
    if(last?.resultado){const detail=action('Consultar resultado','bi-journal-text',()=>notify(labels[last.resultado]+(last.observacion?' · '+last.observacion:'')));actions.append(detail);}
    body.append(footer);list.append(card);
   }
