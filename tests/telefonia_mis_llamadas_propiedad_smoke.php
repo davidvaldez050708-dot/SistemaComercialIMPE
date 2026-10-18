@@ -17,4 +17,15 @@ if (count($propias)!==2 ||
     fwrite(STDERR,"FALLO: se filtraron incorrectamente llamadas ajenas o ambiguas.\n");
     exit(1);
 }
+$enriquecidas = TelefoniaMisLlamadasService::enriquecerDevoluciones($propias, [
+    ['id'=>1,'usuario_id'=>101,'pbx_call_id'=>'llamada-a','resultado'=>'BUZON_VOZ','seguimiento_id'=>9],
+    ['id'=>2,'usuario_id'=>100,'pbx_call_id'=>'llamada-c','resultado'=>'CONTACTO_CORRECTO','seguimiento_id'=>8],
+    ['id'=>3,'usuario_id'=>101,'pbx_call_id'=>'llamada-x','resultado'=>'SIN_RESPUESTA','seguimiento_id'=>0],
+],101);
+if (count($enriquecidas)!==2
+    || ($enriquecidas[0]['resultado_devolucion']??'')!=='BUZON_VOZ'
+    || isset($enriquecidas[1]['resultado_devolucion'])) {
+    fwrite(STDERR,"FALLO: devolución ajena o duplicada en el historial.\n");
+    exit(1);
+}
 echo "OK: aislamiento de historial por usuario y PBX verificado\n";
