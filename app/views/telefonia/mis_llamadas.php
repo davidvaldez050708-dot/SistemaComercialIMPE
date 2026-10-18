@@ -28,7 +28,7 @@ ksort($paginasVisibles, SORT_NUMERIC);
         <div class="linkage-incoming-heading-copy">
             <span class="linkage-incoming-eyebrow"><i class="bi bi-telephone" aria-hidden="true"></i> TELEFONÍA · HISTORIAL PERSONAL</span>
             <h2>Mis llamadas</h2>
-            <p>Consulta tus llamadas con atribución verificada. Las acciones para registrar resultados y gestionar pendientes están en las pestañas de esta sección.</p>
+            <p>Consulta los tramos telefónicos atribuidos a tu usuario. Para grabaciones, transferencias y resultados, abre el detalle en su bandeja operativa.</p>
         </div>
     </header>
     <div class="linkage-call-summary linkage-incoming-stats" aria-label="Resumen de actividad telefónica">
@@ -79,6 +79,18 @@ ksort($paginasVisibles, SORT_NUMERIC);
             $fecha = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $fechaBruta);
             $fechaVisual = $fecha && $fecha->format('Y-m-d H:i:s') === $fechaBruta
                 ? $fecha->format('d/m/Y · H:i') : $fechaBruta;
+            $pbxId = trim((string)($fila['pbx_call_id'] ?? ''));
+            $detalleUrl = '';
+            $detalleTexto = '';
+            if (!empty($puedeGestionAnalista) && !$saliente && $pbxId !== '') {
+                $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
+                    . '&vista=recibidas&pbx_call_id=' . rawurlencode($pbxId);
+                $detalleTexto = 'Ver detalles y grabación';
+            } elseif (!empty($puedeRecepcionMarketing)) {
+                $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
+                    . '&vista=recepcion&buscar=' . rawurlencode((string)($fila['numero'] ?? ''));
+                $detalleTexto = 'Consultar en recepción';
+            }
         ?>
             <article class="linkage-call-history-card linkage-incoming-card" role="listitem">
                 <span class="linkage-call-recording-card-icon" aria-hidden="true">
@@ -101,6 +113,12 @@ ksort($paginasVisibles, SORT_NUMERIC);
                             <?php if (!empty($fila['resultado_devolucion'])): ?><span class="linkage-call-result-badge">Devolución · <?= $esc(str_replace('_',' ',$fila['resultado_devolucion'])) ?></span><?php endif; ?>
                         </div>
                         <div class="linkage-call-history-meta">
+                            <?php if ($detalleUrl !== ''): ?>
+                                <a class="impe-call-detail-link" href="<?= $esc($detalleUrl) ?>">
+                                    <i class="bi bi-journal-text" aria-hidden="true"></i>
+                                    <?= $esc($detalleTexto) ?>
+                                </a>
+                            <?php endif; ?>
                             <span class="linkage-call-recording-duration"><i class="bi bi-clock" aria-hidden="true"></i> <?= sprintf('%02d:%02d', intdiv($duracion,60), $duracion%60) ?></span>
                         </div>
                     </div>
@@ -134,5 +152,5 @@ ksort($paginasVisibles, SORT_NUMERIC);
         </div>
     </nav>
     <?php endif; ?>
-    <p class="impe-my-calls-note"><i class="bi bi-shield-check" aria-hidden="true"></i> Las grabaciones y operaciones de devolución se consultan mediante las pestañas autorizadas; no se genera una grabación nueva desde este historial.</p>
+    <p class="impe-my-calls-note"><i class="bi bi-shield-check" aria-hidden="true"></i> Este historial muestra tramos con identificador PBX y atribución verificable, no todas las sesiones WebRTC ni cada intento de transferencia. Consulta «Recibidas y resultados», «Por devolver» o «Recepción» para el historial operativo y sus grabaciones; pueden existir diferencias entre sus totales.</p>
 </section>
