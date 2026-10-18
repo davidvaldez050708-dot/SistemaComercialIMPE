@@ -11,6 +11,7 @@ $mostrarTelefoniaConfiguracion =
 // El teléfono comercial reside en Inicio de Ventas. Vinculación conserva
 // su propio teléfono y expedientes, sin marcador comercial duplicado.
 $mostrarMarcadorTelefonia = false;
+$mostrarMisLlamadas = tienePermiso('telefonia.usar') && (int)($_SESSION['usuario_id'] ?? 0) > 0;
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
 $mostrarAliados = tienePermiso('aliados.ver');
@@ -178,6 +179,16 @@ $claseFormularios =
                 <?php endif; ?>
             </div>
 
+        <?php endif; ?>
+
+        <?php if ($mostrarMisLlamadas): ?>
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">TELEFONÍA</p>
+                <a href="<?= BASE_URL ?>index.php?controller=telefonia&action=misLlamadas"
+                   class="sidebar-link <?= $opcionActiva === 'mis_llamadas' ? 'active' : '' ?>">
+                    <i class="bi bi-telephone-history"></i> Mis llamadas
+                </a>
+            </div>
         <?php endif; ?>
 
         <?php if ($mostrarMarcadorTelefonia): ?>
