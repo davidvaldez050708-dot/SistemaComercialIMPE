@@ -23,7 +23,7 @@ $check(!str_contains($home, "require __DIR__ . '/../telefonia/recepcion_marketin
 $check(!str_contains($view, 'data-marketing-reception-details-toggle')
     && !str_contains($view, 'data-marketing-reception-details hidden'),
     'La tabla sigue plegada u ofrece botón para ocultarla');
-$check(str_contains($controller, "($puedeRecepcionMarketing ? 'recepcion' : 'historial')"),
+$check(str_contains($controller, "\$puedeRecepcionMarketing ? 'recepcion' : 'historial'"),
     'Marketing no inicia en Recepción');
 $posRec = strpos($nav, "'vista'=>'recepcion'");
 $posHist = strpos($nav, "'vista'=>'historial'");
