@@ -60,5 +60,21 @@ $filtros = $misLlamadas['filtros'] ?? [];
         <?php endforeach; ?>
         <?php if (!$items): ?><div class="linkage-incoming-empty-panel">No hay tramos telefónicos verificables para el período seleccionado.</div><?php endif; ?>
     </div>
+    <?php if (($misLlamadas['paginas'] ?? 1) > 1): ?>
+    <nav class="linkage-incoming-pagination" aria-label="Páginas del historial personal">
+        <span class="linkage-incoming-pagination-range">Página <?= (int)$misLlamadas['pagina'] ?> de <?= (int)$misLlamadas['paginas'] ?> · <?= (int)$misLlamadas['total'] ?> tramos</span>
+        <div class="linkage-incoming-pagination-pages">
+            <?php foreach ([-1, 1] as $salto):
+                $destino = (int)$misLlamadas['pagina'] + $salto;
+                if ($destino < 1 || $destino > (int)$misLlamadas['paginas']) continue;
+                $query = http_build_query(['controller'=>'telefonia','action'=>'misLlamadas',
+                    'desde'=>$filtros['desde'] ?? '', 'hasta'=>$filtros['hasta'] ?? '',
+                    'direccion'=>$filtros['direccion'] ?? '', 'pagina'=>$destino]);
+            ?>
+            <a class="linkage-incoming-pagination-arrow" href="<?= BASE_URL ?>index.php?<?= $esc($query) ?>"><?= $salto < 0 ? 'Anterior' : 'Siguiente' ?></a>
+            <?php endforeach; ?>
+        </div>
+    </nav>
+    <?php endif; ?>
     <p class="text-muted" style="font-size:12px;margin-top:16px"><?= $esc($misLlamadas['limitacion'] ?? '') ?></p>
 </section>
