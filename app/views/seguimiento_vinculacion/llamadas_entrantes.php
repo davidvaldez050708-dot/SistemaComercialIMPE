@@ -5,6 +5,7 @@ $esc = static function ($v) {
 $llamadas = is_array($bandejaEntrantes['llamadas'] ?? null)
     ? $bandejaEntrantes['llamadas'] : [];
 $seleccionarId = trim((string)($_GET['sdk_session_id'] ?? ($_GET['pbx_call_id'] ?? '')));
+$abrirSoloDetalle = !empty($desdeMisLlamadas) && (string)($_GET['detalle'] ?? '') === '1';
 $estadosEntrantes = $estadosEntrantes ?? [];
 
 // Paginación en el servidor: no renderizar 100+ tarjetas ni reproductores.
@@ -76,7 +77,8 @@ $duracionEntrante = static function ($segundos) {
 <section class="dashboard-panel linkage-incoming-page"
     data-linkage-incoming
     data-current-user="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>"
-    data-auto-call="<?= $esc($seleccionarId) ?>"
+    data-auto-call="<?= $abrirSoloDetalle ? '' : $esc($seleccionarId) ?>"
+    data-focus-call="<?= $abrirSoloDetalle ? $esc($seleccionarId) : '' ?>"
     data-search-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=buscarEntrantesSeguimientos') ?>"
     data-save-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=registrarLlamadaEntrante') ?>"
     data-audio-sync-url="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=sincronizarGrabacionInterna') ?>">
@@ -97,11 +99,13 @@ $duracionEntrante = static function ($segundos) {
             <?php if (!$desdeMisLlamadas): ?>
             <a class="btn btn-system-light linkage-incoming-back" href="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=devoluciones"><i class="bi bi-telephone-forward" aria-hidden="true"></i><span>Llamadas por devolver</span></a>
             <?php endif; ?>
+            <?php if (!$desdeMisLlamadas): ?>
             <a class="btn btn-system-light linkage-incoming-back"
                 href="<?= $esc(BASE_URL . 'index.php?controller=seguimientoVinculacion&action=index') ?>">
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 <span>Volver a Seguimiento</span>
             </a>
+            <?php endif; ?>
         </div>
     </header>
     <?php if ($errorEntrantes !== ''): ?>

@@ -22,12 +22,6 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             </div>
         </div>
         <div class="marketing-reception-actions">
-            <label class="marketing-reception-auto-preference"
-                data-marketing-reception-auto-wrap
-                title="Conectar la extensión automáticamente al iniciar sesión">
-                <input type="checkbox" data-marketing-reception-auto checked>
-                <span>Conectar al iniciar sesión</span>
-            </label>
             <label class="marketing-reception-tab-preference"
                 title="La pestaña telefónica debe permanecer abierta para recibir llamadas">
                 <input type="checkbox" data-marketing-reception-tab-mode>

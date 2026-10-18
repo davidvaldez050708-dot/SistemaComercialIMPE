@@ -579,6 +579,36 @@
 
     if(callbackMode){window.addEventListener('impe:callback-result-open',e=>openRegistration(e.detail));window.addEventListener('impe:callback-result-interrupt',()=>{interrupted=true;modal.hide();});}
     renderDecision();
+    // Al consultar una fila desde Historial, enfocar su tarjeta en lugar de
+    // abrir el formulario de resultado. Un PBX puede no tener registro
+    // equivalente en esta bandeja: informarlo sin inventar grabaciones.
+    const detailId = String(page.dataset.focusCall || '').trim();
+    if (detailId) {
+        const row = Array.from(page.querySelectorAll('[data-incoming-row]'))
+            .find(el => el.dataset.incomingRow === detailId);
+        if (row) {
+            row.classList.add('impe-incoming-targeted');
+            row.setAttribute('tabindex', '-1');
+            window.setTimeout(() => {
+                row.scrollIntoView({behavior:'smooth',block:'center'});
+                row.focus({preventScroll:true});
+                // Sólo desplegar la grabación si el servidor publicó un
+                // botón disponible. La reproducción nunca arranca sola.
+                const audioToggle = row.querySelector(
+                    '[data-incoming-pbx-toggle], [data-incoming-audio-toggle]'
+                );
+                if (audioToggle && audioToggle.getAttribute('aria-expanded') !== 'true') {
+                    audioToggle.click();
+                }
+            }, 160);
+        } else {
+            const info = document.createElement('div');
+            info.className = 'linkage-incoming-feedback';
+            info.setAttribute('role','status');
+            info.textContent = 'Este tramo PBX está en tu historial, pero no se encontró su ficha individual en Recibidas. No se generó ninguna grabación adicional ni se modificó su resultado.';
+            page.querySelector('.linkage-incoming-heading')?.after(info);
+        }
+    }
     const focusId = String(page.dataset.autoCall || '').trim();
     if (focusId) {
         // Tras una transferencia el enlace puede usar el ID WebRTC o PBX.
