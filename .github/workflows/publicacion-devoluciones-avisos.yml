@@ -2,9 +2,9 @@ name: Publicador SSH de panel único y avisos de devoluciones
 on:
   push:
     branches: [main]
-    paths: ['tools/publicar_devoluciones_avisos_hostinger.sh', 'tests/publicacion_devoluciones_avisos_test.py', '.github/workflows/publicacion-devoluciones-avisos.yml']
+    paths: ['tools/publicar_devoluciones_avisos_hostinger.sh', 'tests/publicacion_devoluciones_avisos_test.py', 'tests/telefonia_devoluciones_integracion_browser.cjs', 'tests/fixtures/telefonia_persistente_hostinger*.patch', '.github/workflows/publicacion-devoluciones-avisos.yml']
   pull_request:
-    paths: ['tools/publicar_devoluciones_avisos_hostinger.sh', 'tests/publicacion_devoluciones_avisos_test.py', '.github/workflows/publicacion-devoluciones-avisos.yml']
+    paths: ['tools/publicar_devoluciones_avisos_hostinger.sh', 'tests/publicacion_devoluciones_avisos_test.py', 'tests/telefonia_devoluciones_integracion_browser.cjs', 'tests/fixtures/telefonia_persistente_hostinger*.patch', '.github/workflows/publicacion-devoluciones-avisos.yml']
 permissions:
   contents: read
 jobs:
@@ -24,3 +24,12 @@ jobs:
         env:
           IMPE_TEST_NETWORK: '1'
         run: python3 tests/publicacion_devoluciones_avisos_test.py
+      - name: Preparar navegador y variante revisada de Hostinger
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.3
+          npx playwright install --with-deps chromium
+          python3 tests/publicacion_devoluciones_avisos_test.py --client-fixture "$RUNNER_TEMP/telefonia-persistente-hostinger.js"
+      - name: Comprobar formulario y panel únicos con el cliente real de Hostinger
+        env:
+          IMPE_TEST_CLIENT_PATH: ${{ runner.temp }}/telefonia-persistente-hostinger.js
+        run: node tests/telefonia_devoluciones_integracion_browser.cjs

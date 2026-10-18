@@ -1,0 +1,185 @@
+--- a/public/javascript/telefonia_persistente.js
++++ b/public/javascript/telefonia_persistente.js
+@@ -641,23 +641,7 @@
+         return popup;
+     };
+ 
+-    const embeddedPhone = function () {
+-        try {
+-            const shell = window.parent !== window
+-                ? window.parent.IMPE_TELEPHONY_SHELL : null;
+-            return shell?.isEmbedded && Number(shell.userId) === userId
+-                ? shell : null;
+-        } catch (_) {
+-            return null;
+-        }
+-    };
+     const hostUsable = function () {
+-        // El marco principal conserva WebRTC entre vistas. Consultarlo
+-        // evita apagar falsamente el indicador al cambiar de módulo.
+-        const shell = embeddedPhone();
+-        if (shell && typeof shell.isPhoneReady === 'function') {
+-            return shell.isPhoneReady() === true;
+-        }
+         const recent =
+             state?.hostReady &&
+             Date.now() - hostSeenAt < 3500;
+@@ -928,10 +912,8 @@
+ 
+         try {
+             /*
+-             * En modo embebido existe UN SOLO SDK de Zadarma en el shell.
+-             * Abrir otra ventana aquí se apodera del registro SIP, desconecta
+-             * la recepción de Marketing y deja la llamada sin panel.
+-             * Conservar la ventana anterior únicamente para modo clásico.
++             * prepare() abre la ventana dentro del clic real del usuario.
++             * El primer botón del flujo solo prepara la tarjeta del CRM.
+              */
+             if (getHostMode() === 'embedded') {
+                 let shell = null;
+@@ -1679,9 +1661,8 @@
+             'click',
+             function () {
+                 if (
+-                    state?.phase === 'incoming-finished' ||
+-                    (state?.phase === 'finished' &&
+-                        String(state?.context?.type || '').toUpperCase() === 'DIALER')
++                    state?.phase === 'finished' &&
++                    String(state?.context?.type || '').toUpperCase() === 'DIALER'
+                 ) {
+                     clearFinished();
+                 } else {
+@@ -1981,23 +1962,20 @@
+         // con una acción de contestar inexistente en nuestro cliente PBX.
+         // Una llamada entrante, incluso finalizada, pertenece a una sola
+         // interfaz: el shell. No crear segundo panel ni resumen huérfano.
+-        const embedded = getHostMode() === 'embedded';
+-        const incomingInShell = embedded &&
+-            state?.direction === 'incoming';
+-        // El teclado institucional y las devoluciones de Marketing
+-        // entregan su conversación al mismo modal del shell.
+-        // No crear un segundo panel encima. Seguimiento conserva su
+-        // tarjeta propia cuando necesita registrar el resultado.
+-        const manualOutgoingInShell = embedded &&
++        const incomingInShell =
++            state?.direction === 'incoming' &&
++            getHostMode() === 'embedded';
++                // El marcador manual usa la misma tarjeta móvil del shell.
++        // Seguimiento conserva su propia tarjeta de resultados.
++        const manualOutgoingInShell =
++            getHostMode() === 'embedded' &&
+             state?.direction === 'outgoing' &&
+-            ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(
++            ['TELEPHONY_MANUAL', 'MARKETING_CALLBACK', 'DIALER'].includes(
+                 String(state?.context?.type || '').toUpperCase()
+             ) && (Boolean(state?.active) || state?.phase === 'finished');
+-        panel.hidden = !show || managedByShell ||
+-            incomingInShell || manualOutgoingInShell;
+-
+-        if (!show || managedByShell || incomingInShell ||
+-            manualOutgoingInShell) {
++        panel.hidden = !show || managedByShell || incomingInShell || manualOutgoingInShell;
++
++        if (!show || managedByShell || manualOutgoingInShell) {
+             return;
+         }
+ 
+@@ -2190,15 +2168,15 @@
+                 state.active ||
+                 (
+                     finished
+-                        ? !(isIndependentDialer || incoming)
++                        ? !isIndependentDialer
+                         : ![
+                             'preparing',
+                             'prepared',
+                             'error'
+                         ].includes(phase)
+                 );
+-            closeButton.title = finished
+-                ? 'Cerrar resumen de llamada finalizada'
++            closeButton.title = finished && isIndependentDialer
++                ? 'Cerrar llamada finalizada'
+                 : 'Cerrar teléfono';
+         }
+ 
+@@ -2625,9 +2603,7 @@
+                                 ? 'Extensión pendiente'
+                                 : 'Recepción no disponible';
+                 const title = active
+-                    ? (receptionButton?.dataset.telephonyAnalyst === '1'
+-                        ? 'Abrir controles de Zadarma · Extensión ' + extension
+-                        : 'Abrir teléfono institucional (recepción conectada)')
++                    ? 'Abrir teléfono institucional (recepción conectada)'
+                     : assigned
+                         ? 'Activar recepción telefónica'
+                         : missing
+@@ -2690,39 +2666,20 @@
+                 }
+             };
+ 
+-            const abrirControlesAnalista = function () {
+-                if (receptionButton?.dataset.telephonyAnalyst !== '1') return false;
+-                const shell = embeddedPhone();
+-                if (!shell?.showProviderControls) {
+-                    throw new Error('Abre el CRM con el teléfono integrado para ver los controles de Zadarma.');
+-                }
+-                if (!shell.showProviderControls()) {
+-                    throw new Error('WebRTC aún no tiene los controles preparados. Intenta nuevamente.');
+-                }
+-                receptionError = '';
+-                return true;
+-            };
+-
+-            const activarRecepcion = function (abrirAlConectar = false) {
++            const activarRecepcion = function () {
+                 if (!availability?.permite_entrantes || receptionBusy) return;
+                 receptionBusy = true;
+                 receptionError = '';
+                 renderReceptionState();
+ 
+-                // El motor SIP se abre dentro del clic original; al confirmar
+-                // conexión, ese MISMO clic también abre el visor del Analista.
+-                // Marketing conserva su flujo normal de activación.
++                // Mantener la apertura del host WebRTC dentro del clic real:
++                // la ventana no puede abrirse tras otra promesa de validación.
+                 void prepare({openHost: true}).then(function () {
+                     sendCommand('PING', {});
+-                    if (abrirAlConectar) abrirControlesAnalista();
+                     window.setTimeout(renderReceptionState, 300);
+                 }).catch(function (error) {
+                     console.warn(error);
+                     receptionError = String(error?.message || 'No fue posible activar recepción.');
+-                    if (receptionButton) {
+-                        receptionButton.title = receptionError;
+-                        receptionButton.setAttribute('aria-label', receptionError);
+-                    }
+                 }).finally(function () {
+                     receptionBusy = false;
+                     renderReceptionState();
+@@ -2731,24 +2688,13 @@
+ 
+             const abrirOActivar = function () {
+                 if (!availability?.permite_entrantes || receptionBusy) return;
+-                const esAnalista = receptionButton?.dataset.telephonyAnalyst === '1';
+                 if (hostUsable()) {
+-                    if (esAnalista) {
+-                        try {
+-                            abrirControlesAnalista();
+-                        } catch (error) {
+-                            receptionError = String(error?.message || 'No se pudo abrir Zadarma.');
+-                            console.warn('[Telefonía Analista]', error);
+-                        }
+-                        renderReceptionState();
+-                        return;
+-                    }
+                     if (!openDialer({})) {
+                         receptionError = 'No se pudo abrir el teléfono. Recarga la página.';
+                         renderReceptionState();
+                     }
+                 } else {
+-                    activarRecepcion(esAnalista);
++                    activarRecepcion();
+                 }
+             };
+             receptionButton?.addEventListener('click', abrirOActivar);

@@ -1,9 +1,11 @@
 """Publicación real sobre sitios temporales. No conecta a Hostinger ni ejecuta PHP del CRM."""
 import concurrent.futures
+import hashlib
 import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 
 REPO = Path(__file__).resolve().parents[1]
@@ -95,6 +97,98 @@ def customization(root):
     return 'personalización compatible conservada, también al revisar de nuevo'
 
 
+def reviewed_variant(root, crlf=False):
+    """Reproduce el archivo público observado, sin necesitar acceso a producción."""
+    name = 'public/javascript/telefonia_persistente.js'
+    live = site(root)
+    fixture = root / 'fixture'
+    p = fixture / name
+    p.parent.mkdir(parents=True)
+    p.write_bytes(BASE_FILES[name].replace(b'\r\n', b'\n'))
+    for patch, expected_hash in [
+        ('telefonia_persistente_hostinger_20261018.patch',
+         '7208acd1631aa4bcbe47cc8ca06de7a5cbb5441919fa1077034a7ca976a06661'),
+        ('telefonia_persistente_hostinger_devoluciones.patch',
+         'f5ccdbbc19a008840391f73ac674a7a3dddc267c9787112a21500a12efdec7a2'),
+    ]:
+        result = subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply',
+                                 str(REPO / 'tests/fixtures' / patch)],
+                                cwd=fixture, capture_output=True)
+        assert result.returncode == 0, result.stderr
+        content = p.read_bytes()
+        assert hashlib.sha256(content).hexdigest() == expected_hash
+        if '20261018' in patch:
+            observed = content
+        else:
+            expected = content
+    assert expected != TARGET_FILES[name].replace(b'\r\n', b'\n')
+    assert b'const embeddedPhone' not in expected  # No incorpora mejoras ajenas.
+    if crlf:
+        observed, expected = (b.replace(b'\n', b'\r\n') for b in (observed, expected))
+    (live / name).write_bytes(observed)
+    return live, name, observed, expected
+
+
+def hostinger_variant(root):
+    live, name, observed, expected = reviewed_variant(root)
+    original = snapshot(live)
+    checked = run(root, live, '--check')
+    assert checked.returncode == 0 and 'COMPATIBLE: variante Hostinger revisada' in checked.stdout, checked.stdout + checked.stderr
+    assert snapshot(live) == original and not (root / 'backups').exists()
+    applied = run(root, live, '--apply')
+    assert applied.returncode == 0, applied.stdout + applied.stderr
+    assert (live / name).read_bytes() == expected
+    for other in FILES:
+        if other != name:
+            assert (live / other).read_bytes() == TARGET_FILES[other], other
+    backup = next((root / 'backups').iterdir())
+    assert (backup / name).read_bytes() == observed
+    for mode in ['--check', '--apply']:
+        again = run(root, live, mode)
+        assert again.returncode == 0 and 'ya está publicada' in again.stdout, again.stdout + again.stderr
+        assert (live / name).read_bytes() == expected
+    assert len(list((root / 'backups').iterdir())) == 1
+    return 'variante real Hostinger: parche selectivo, respaldo exacto e idempotencia'
+
+
+def hostinger_crlf(root):
+    live, name, observed, expected = reviewed_variant(root, crlf=True)
+    applied = run(root, live, '--apply')
+    assert applied.returncode == 0, applied.stdout + applied.stderr
+    assert (live / name).read_bytes() == expected
+    again = run(root, live, '--apply')
+    assert again.returncode == 0 and 'ya está publicada' in again.stdout
+    return 'variante Hostinger conserva finales CRLF sin reemplazar por versión GitHub'
+
+
+def hostinger_unknown(root):
+    live, name, observed, expected = reviewed_variant(root)
+    for content in [observed + b'\n// OTRA VARIANTE NO REVISADA\n',
+                    expected + b'\n// CAMBIO POSTERIOR NO REVISADO\n',
+                    observed.replace(b'\n', b'\r\n', 1)]:
+        (live / name).write_bytes(content)
+        original = snapshot(live)
+        for mode in ['--check', '--apply']:
+            result = run(root, live, mode)
+            assert result.returncode != 0 and 'CONFLICTO:' in result.stdout, result.stdout + result.stderr
+            assert snapshot(live) == original and not (root / 'backups').exists()
+    return 'variante desconocida, cambio posterior y finales mezclados se rechazan sin escrituras'
+
+
+def hostinger_interrupted(root):
+    live, name, observed, expected = reviewed_variant(root)
+    original = snapshot(live)
+    wrapper = root / 'interrumpir.bash'
+    wrapper.write_text('mv() {\ncase "${@: -1}" in\n'
+                       '*/app/views/telefonia/resultado_analista_form.php) return 23;;\n'
+                       'esac\ncommand mv "$@"\n}\n', newline='\n')
+    result = run(root, live, '--apply', {'BASH_ENV': shell_path(wrapper)})
+    assert result.returncode != 0 and 'Archivos restaurados' in result.stderr, result.stdout + result.stderr
+    assert snapshot(live) == original
+    assert not (live.parent / '.impe-atencion-deploy.lock').exists()
+    return 'fallo posterior al parche restaura también la variante Hostinger original'
+
+
 def conflict(root):
     live = site(root)
     p = live / 'public/javascript/telefonia_persistente.js'
@@ -171,6 +265,13 @@ def https_with_ssh_rewrite(root):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) == 3 and sys.argv[1] == '--client-fixture':
+        with tempfile.TemporaryDirectory(prefix='impe-hostinger-fixture-') as work:
+            _, _, _, expected = reviewed_variant(Path(work))
+            Path(sys.argv[2]).write_bytes(expected)
+        print('Cliente Hostinger corregido reconstruido para prueba de interfaz.')
+        sys.exit(0)
+    assert len(sys.argv) == 1, 'Uso: python publicacion_devoluciones_avisos_test.py [--client-fixture archivo]'
     subprocess.run([BASH, '-n', shell_path(SCRIPT)], check=True)
     # Cada escenario dispone de su propia carpeta, sitio y respaldos.
     with tempfile.TemporaryDirectory(prefix='impe-deploy-tests-', dir=os.environ.get('IMPE_TEST_TMP')) as work:
@@ -179,7 +280,8 @@ if __name__ == '__main__':
             root.mkdir()
             return test(root)
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-            tests = [normal, customization, conflict, invalid_php, interrupted, locked]
+            tests = [normal, customization, conflict, invalid_php, interrupted, locked,
+                     hostinger_variant, hostinger_crlf, hostinger_unknown, hostinger_interrupted]
             if os.environ.get('IMPE_TEST_NETWORK') == '1':
                 tests.append(https_with_ssh_rewrite)
             futures = [pool.submit(execute, test) for test in tests]

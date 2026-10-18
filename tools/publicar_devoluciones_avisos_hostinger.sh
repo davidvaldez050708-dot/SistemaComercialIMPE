@@ -18,7 +18,7 @@ fail() { echo "ERROR: $*" >&2; exit 1; }
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0
 unset GIT_CONFIG GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT
 git_public() { command git -c remote.origin.url="$REPO" -c http.sslVerify=true "$@"; }
-for tool in git php sha256sum mktemp realpath cmp cp mv mkdir rm rmdir diff; do
+for tool in git php sha256sum mktemp realpath cmp cp mv mkdir rm rmdir diff cat; do
     command -v "$tool" >/dev/null || fail "Falta $tool. No se modificó el sitio."
 done
 [[ -d "$LIVE" && ! -L "$LIVE" && -f "$LIVE/index.php" && ! -L "$LIVE/index.php" ]] ||
@@ -76,6 +76,76 @@ BACKUP=''
 declare -a CHANGED=()
 declare -A BEFORE=()
 digest() { sha256sum "$1" | cut -d' ' -f1; }
+# Variante pública de Hostinger revisada el 18/10/2026. Sólo admite su huella
+# exacta (LF o CRLF uniformes), o la misma variante con esta corrección aplicada.
+# Los reemplazos ocurren exclusivamente sobre la copia privada de preparación.
+cat > "$TMP/compat-persistent.php" <<'PHP'
+<?php
+$path = $argv[1];
+$bytes = file_get_contents($path);
+if ($bytes === false) exit(2);
+$crlf = substr_count($bytes, "\r\n");
+if ($crlf && $crlf !== substr_count($bytes, "\n")) exit(10);
+$text = str_replace("\r\n", "\n", $bytes);
+$before = "7208acd1631aa4bcbe47cc8ca06de7a5cbb5441919fa1077034a7ca976a06661";
+$after = "f5ccdbbc19a008840391f73ac674a7a3dddc267c9787112a21500a12efdec7a2";
+$hash = hash("sha256", $text);
+if ($hash === $after) exit(0);
+if ($hash !== $before) exit(10);
+$old = <<<'OLD'
+        startingCall = true;
+        renderPanel();
+OLD;
+$new = <<<'NEW'
+        // La devolución pertenece al shell desde la preparación, antes del primer STATE del SDK.
+        if(data.context?.type==='DEVOLUCION')state=Object.assign({},state,{direction:'outgoing',destination,institution:String(data.institution||''),context:data.context});
+        startingCall = true;
+        renderPanel();
+NEW;
+if (substr_count($text, $old) !== 1) exit(2);
+$text = str_replace($old, $new, $text);
+$old = <<<'OLD'
+        const manualOutgoingInShell =
+            getHostMode() === 'embedded' &&
+OLD;
+$new = <<<'NEW'
+        const callbackInShell=getHostMode()==='embedded' && String(state?.context?.type||'').toUpperCase()==='DEVOLUCION';
+        const manualOutgoingInShell =
+            getHostMode() === 'embedded' &&
+NEW;
+if (substr_count($text, $old) !== 1) exit(2);
+$text = str_replace($old, $new, $text);
+$old = <<<'OLD'
+        panel.hidden = !show || managedByShell || incomingInShell || manualOutgoingInShell;
+
+        if (!show || managedByShell || manualOutgoingInShell) {
+OLD;
+$new = <<<'NEW'
+        panel.hidden = !show || managedByShell || incomingInShell || manualOutgoingInShell || callbackInShell;
+
+        if (!show || managedByShell || manualOutgoingInShell || callbackInShell) {
+NEW;
+if (substr_count($text, $old) !== 1) exit(2);
+$text = str_replace($old, $new, $text);
+$old = <<<'OLD'
+    document.addEventListener(
+        'impe:telephony-registration-unavailable',
+OLD;
+$new = <<<'NEW'
+    window.addEventListener('impe:callback-result-open',()=>{
+        if(!state?.active && state?.context?.type==='DEVOLUCION'){setRegistrationOpenToken(finishedToken());renderPanel();}
+    });
+
+    document.addEventListener(
+        'impe:telephony-registration-unavailable',
+NEW;
+if (substr_count($text, $old) !== 1) exit(2);
+$text = str_replace($old, $new, $text);
+if (hash("sha256", $text) !== $after) exit(2);
+if ($crlf) $text = str_replace("\n", "\r\n", $text);
+if (file_put_contents($path, $text) !== strlen($text)) exit(2);
+PHP
+prepare_reviewed_persistent() { php "$TMP/compat-persistent.php" "$1"; }
 guard_path() {
     local part="$LIVE" item
     local -a components
@@ -141,6 +211,9 @@ for file in "${FILES[@]}"; do
             : # El parche ya está aplicado; conserva personalizaciones ajenas.
         elif (cd "$TMP/stage" && git -c core.autocrlf=false apply --check "$TMP/change.patch" >/dev/null 2>&1); then
             (cd "$TMP/stage" && git -c core.autocrlf=false apply "$TMP/change.patch")
+        elif [[ "$file" == public/javascript/telefonia_persistente.js ]] &&
+             prepare_reviewed_persistent "$TMP/stage/$file"; then
+            echo "COMPATIBLE: variante Hostinger revisada; conserva sus otras diferencias: $file"
         else
             echo "CONFLICTO: revisión necesaria: $file"; conflicts=$((conflicts+1)); continue
         fi

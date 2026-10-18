@@ -1,0 +1,42 @@
+--- a/public/javascript/telefonia_persistente.js
++++ b/public/javascript/telefonia_persistente.js
+@@ -907,6 +907,8 @@
+             );
+         }
+ 
++        // La devolución pertenece al shell desde la preparación, antes del primer STATE del SDK.
++        if(data.context?.type==='DEVOLUCION')state=Object.assign({},state,{direction:'outgoing',destination,institution:String(data.institution||''),context:data.context});
+         startingCall = true;
+         renderPanel();
+ 
+@@ -1967,15 +1969,16 @@
+             getHostMode() === 'embedded';
+                 // El marcador manual usa la misma tarjeta móvil del shell.
+         // Seguimiento conserva su propia tarjeta de resultados.
++        const callbackInShell=getHostMode()==='embedded' && String(state?.context?.type||'').toUpperCase()==='DEVOLUCION';
+         const manualOutgoingInShell =
+             getHostMode() === 'embedded' &&
+             state?.direction === 'outgoing' &&
+             ['TELEPHONY_MANUAL', 'MARKETING_CALLBACK', 'DIALER'].includes(
+                 String(state?.context?.type || '').toUpperCase()
+             ) && (Boolean(state?.active) || state?.phase === 'finished');
+-        panel.hidden = !show || managedByShell || incomingInShell || manualOutgoingInShell;
+-
+-        if (!show || managedByShell || manualOutgoingInShell) {
++        panel.hidden = !show || managedByShell || incomingInShell || manualOutgoingInShell || callbackInShell;
++
++        if (!show || managedByShell || manualOutgoingInShell || callbackInShell) {
+             return;
+         }
+ 
+@@ -2445,6 +2448,10 @@
+             }
+         }
+     );
++
++    window.addEventListener('impe:callback-result-open',()=>{
++        if(!state?.active && state?.context?.type==='DEVOLUCION'){setRegistrationOpenToken(finishedToken());renderPanel();}
++    });
+ 
+     document.addEventListener(
+         'impe:telephony-registration-unavailable',
