@@ -1,0 +1,26 @@
+name: Publicador SSH de panel único y avisos de devoluciones
+on:
+  push:
+    branches: [main]
+    paths: ['tools/publicar_devoluciones_avisos_hostinger.sh', 'tests/publicacion_devoluciones_avisos_test.py', '.github/workflows/publicacion-devoluciones-avisos.yml']
+  pull_request:
+    paths: ['tools/publicar_devoluciones_avisos_hostinger.sh', 'tests/publicacion_devoluciones_avisos_test.py', '.github/workflows/publicacion-devoluciones-avisos.yml']
+permissions:
+  contents: read
+jobs:
+  sitios-temporales:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Revisar, publicar y restaurar sitios de prueba sin acceso a Hostinger
+        env:
+          IMPE_TEST_NETWORK: '1'
+        run: python3 tests/publicacion_devoluciones_avisos_test.py
