@@ -96,7 +96,8 @@ class TelefoniaController
             $misLlamadas = (new TelefoniaMisLlamadasService())->consultar($uid, [
                 'desde' => $_GET['desde'] ?? date('Y-m-d', strtotime('-29 days')),
                 'hasta' => $_GET['hasta'] ?? date('Y-m-d'),
-                'direccion' => $_GET['direccion'] ?? ''
+                'direccion' => $_GET['direccion'] ?? '',
+                'pagina' => $_GET['pagina'] ?? 1
             ]);
         } catch (Throwable $error) {
             error_log('[telefonia_mis_llamadas] ' . get_class($error) . ': ' . $error->getMessage());
