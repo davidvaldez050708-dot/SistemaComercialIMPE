@@ -21,7 +21,7 @@ function element() {
         appendChild(){}, listeners
     };
 }
-async function scenario(conversation) {
+async function scenario(conversation,pbxOnly=false) {
     let now=1000000, stored='', captures=[], dockDismissed=0;
     const sessionStore = new Map();
     const staleKey = 'impe:analyst-incoming-pending:8';
@@ -96,7 +96,7 @@ async function scenario(conversation) {
         'la sesión se inicia sin llamada SDK');
     const id='sdk-abcd1234-abcd5678';
     const base={userId:8,active:true,direction:'incoming',callToken:id,
-        destination:'+527771234567',context:{type:'SDK_INCOMING'},duration:0};
+        destination:'+527771234567',pbxCallId:pbxOnly?'pbx-transfer-00001':'',context:pbxOnly?{type:'INCOMING',sdkSessionId:id}:{type:'SDK_INCOMING'},duration:0};
     send({...base,phase:'incoming-ringing',status:'incoming-ringing',updatedAt:now});
     assert.equal(bodyClasses.has('impe-sdk-result-in-modal'),true,
         'al recibir SDK debe desactivarse el toast externo');
@@ -154,6 +154,6 @@ async function scenario(conversation) {
         assert.equal(register.hidden,true,'perdida sin expediente');
     }
 }
-(async()=>{await scenario(true);await scenario(false);
+(async()=>{await scenario(true);await scenario(false);await scenario(true,true);
     console.log('Analista: duración 46s, bloqueo de cierre, guardado y perdida 00:00 OK');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -25,11 +25,16 @@ class ConvocatoriaNotificacionController
 
             $usuarioId = (int)$_SESSION['usuario_id'];
             $modelo = new ConvocatoriaNotificacionModel();
+            $phone=[];
+            if(tienePermiso('telefonia.usar')&&tienePermiso('telefonia.recibir')){
+                try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';$phone=(new TelefoniaNotificacionService())->pendientes($usuarioId,true);}
+                catch(Throwable $e){error_log('[campana_marketing_telefonia] '.get_class($e));}
+            }
 
             echo json_encode([
                 'ok' => true,
-                'no_leidas' => $modelo->contarNoLeidas($usuarioId),
-                'notificaciones' => $modelo->obtenerPorUsuario($usuarioId, 20)
+                'no_leidas' => $modelo->contarNoLeidas($usuarioId)+count($phone),
+                'notificaciones' => array_merge($phone,$modelo->obtenerPorUsuario($usuarioId, 20))
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } catch (Throwable $error) {
             error_log($error->getMessage());
@@ -73,6 +78,10 @@ class ConvocatoriaNotificacionController
 
         $modelo = new ConvocatoriaNotificacionModel();
         $ok = $modelo->marcarTodasLeidas((int)$_SESSION['usuario_id']);
+        if(tienePermiso('telefonia.usar')&&tienePermiso('telefonia.recibir')){
+            try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';(new TelefoniaNotificacionService())->leerTodas((int)$_SESSION['usuario_id']);}
+            catch(Throwable $e){error_log('[telefono_notificaciones_leer] '.get_class($e));}
+        }
 
         echo json_encode(['ok' => (bool)$ok], JSON_UNESCAPED_UNICODE);
         exit;

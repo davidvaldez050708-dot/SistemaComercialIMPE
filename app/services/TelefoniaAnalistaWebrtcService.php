@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__.'/TelefoniaTransferenciaOperacionService.php';
 require_once __DIR__ . '/../helpers/TelefoniaFechaHoraHelper.php';
 require_once __DIR__ . '/TelefoniaExtensionService.php';
 
@@ -123,6 +124,7 @@ class TelefoniaAnalistaWebrtcService
                 $numero = '';
             }
             $nombre = mb_substr($nombre, 0, 100, 'UTF-8');
+            (new TelefoniaTransferenciaOperacionService($this->db))->paraDestino($usuarioId,$numero,$id);
             // Nunca modificar una sesión que ya existe (evita duplicados).
             $stmt = $this->db->prepare(
                 "INSERT IGNORE INTO telefonia_analista_webrtc_sesiones

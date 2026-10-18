@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return (
                     '<a class="topbar-reminder-item' + (unread ? ' is-unread' : '') + '"' +
                         ' href="' + escapeHtml(url) + '"' +
-                        ' data-convocatoria-notification-id="' + Number(item.id || 0) + '">' +
+                        (Number(item.telefonia_id)>0?' data-telefonia-id="'+Number(item.telefonia_id)+'"':' data-convocatoria-notification-id="' + Number(item.id || 0) + '"')+'>' +
                         '<span class="topbar-reminder-icon">' +
                             '<i class="bi ' + visual.icon + '"></i>' +
                         '</span>' +
@@ -286,6 +286,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    window.addEventListener('impe:phone-notices-refresh',()=>void load());
     load();
 
     window.setInterval(load, 60000);

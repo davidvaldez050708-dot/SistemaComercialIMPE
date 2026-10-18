@@ -393,7 +393,7 @@
                     const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
                     const estadoVisual = estadoVisibleRecordatorio(recordatorio);
                     return (
-                        '<a class="topbar-reminder-item" href="' + url + '">' +
+                        '<a class="topbar-reminder-item" '+(Number(recordatorio.telefonia_id)>0?'data-telefonia-id="'+Number(recordatorio.telefonia_id)+'" ':'')+'href="' + url + '">' +
                             '<span class="topbar-reminder-icon">' +
                                 '<i class="bi ' + escapar(recordatorio.icono || 'bi-bell') + '"></i>' +
                             '</span>' +
@@ -410,6 +410,7 @@
                 '</div>';
         };
 
+        window.addEventListener('impe:phone-notices-refresh',()=>void consultarRecordatorios());
         const consultarRecordatorios = async function () {
             if (consultaEnCurso || document.hidden) {
                 return;

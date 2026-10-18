@@ -49,13 +49,14 @@ class ReminderController
             ($esSupervisor || $esAnalista);
         $puedeSeguimientoAliados =
             tienePermiso('aliados.seguimiento_convocatorias');
+        $puedeTelefonia=tienePermiso('telefonia.usar')&&tienePermiso('telefonia.recibir');
 
         if (
             $usuarioId <= 0 ||
             (
                 !$esAdministrador &&
                 !$puedeCentroReuniones &&
-                !$puedeSeguimientoAliados
+                !$puedeSeguimientoAliados && !$puedeTelefonia
             )
         ) {
             http_response_code(403);
@@ -310,6 +311,12 @@ class ReminderController
                 (bool)($seguimientoAliados['ok'] ?? true);
         }
 
+        if($puedeTelefonia){
+            try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';
+                $phone=(new TelefoniaNotificacionService())->pendientes($usuarioId,false);
+                $recordatorios=array_merge($phone,$recordatorios);
+            }catch(Throwable $e){error_log('[campana_telefonia] '.get_class($e));}
+        }
         // La campana debe priorizar obligaciones vencidas y acciones que requieren
         // intervención, sin depender del orden en que cada servicio fue consultado.
         $recordatorios = array_slice(

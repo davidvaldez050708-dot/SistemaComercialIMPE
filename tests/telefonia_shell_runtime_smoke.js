@@ -57,7 +57,7 @@ function boot(opts = {}) {
     ];
     selectors.forEach(x => elements[x] = element());
     elements['impeCrmFrame'] = element();
-    elements['impeCrmFrame'].contentWindow = {location:{href:'https://crm.ejemplo.org/index.php?controller=home&action=index'}};
+    elements['impeCrmFrame'].contentWindow = {postMessage(){},location:{href:'https://crm.ejemplo.org/index.php?controller=home&action=index'}};
     const intervals = [];
     const windowEvents = {};
     const win = {

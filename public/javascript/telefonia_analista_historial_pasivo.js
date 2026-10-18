@@ -378,6 +378,11 @@
         if (!state || Number(state.userId) !== userId ||
             !Number.isFinite(Number(state.updatedAt)) ||
             Date.now() - Number(state.updatedAt) > 6000) return;
+        if(state.context?.consultation||state.context?.transferPendingReceiver){
+            active=null;finished=null;pbxSession=null;
+            resultBtn.hidden=true;retryBtn.hidden=true;
+            return;
+        }
         // El traspaso institucional debe mostrarse incluso cuando
         // NOTIFY_INTERNAL identifica primero la sesión del Analista.
         const pbxIncoming = state.active && state.direction === 'incoming' &&
@@ -399,6 +404,13 @@
             }
         } else if (!state.active) {
             pbxSession = null;
+        }
+        if(pbxIncoming && !active){
+            let hash=2166136261;
+            for(const character of String(state.pbxCallId))hash=Math.imul(hash^character.charCodeAt(0),16777619);
+            const id=validId(state.context?.sdkSessionId)?state.context.sdkSessionId:'sdk-pbx-'+(hash>>>0).toString(36).padStart(8,'0')+'-'+userId;
+            active={id,number:String(state.destination||''),name:'',answeredAt:0,lastDuration:0,sawConversation:false};
+            finished=null;draw();void postEvent('ringing',active);
         }
         const incoming = state.direction === 'incoming' &&
             state.context?.type === 'SDK_INCOMING' &&

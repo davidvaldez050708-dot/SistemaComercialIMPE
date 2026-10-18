@@ -63,14 +63,14 @@ final class TelefoniaTransferenciaContextoService
         // El webhook registra received_at en America/Mexico_City; NOW()
         // depende de la zona horaria de la sesion MySQL de Hostinger.
         // Comparar contra limites PHP en la MISMA zona del evento firmado.
-        // Mantener vigencia maxima de 5 minutos y evitar fechas futuras.
+        // Mantener vigencia maxima de 60 minutos y evitar fechas futuras.
         $ahoraMx = new DateTimeImmutable('now', new DateTimeZone('America/Mexico_City'));
-        $desdeMx = $ahoraMx->modify('-5 minutes')->format('Y-m-d H:i:s');
+        $desdeMx = $ahoraMx->modify('-60 minutes')->format('Y-m-d H:i:s');
         $hastaMx = $ahoraMx->modify('+30 seconds')->format('Y-m-d H:i:s');
         $stmt = $this->db->prepare(
-            "SELECT caller_id FROM telefonia_zadarma_eventos
+            "SELECT caller_id,destination,evento FROM telefonia_zadarma_eventos
              WHERE pbx_call_id = ? AND internal = ?
-               AND evento = 'NOTIFY_INTERNAL'
+               AND evento IN ('NOTIFY_INTERNAL','NOTIFY_OUT_START')
                AND received_at >= ? AND received_at <= ?
              ORDER BY id DESC LIMIT 1"
         );
@@ -78,7 +78,7 @@ final class TelefoniaTransferenciaContextoService
         $stmt->execute();
         $evento = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        if (!$evento || self::telefono10((string)($evento['caller_id'] ?? '')) !== $telefono) {
+        if (!$evento || self::telefono10((string)($evento['evento']==='NOTIFY_OUT_START'?$evento['destination']:$evento['caller_id'])) !== $telefono) {
             return false;
         }
 

@@ -656,11 +656,19 @@ class TelefoniaController
                     ], 409);
                 }
             }
+            require_once __DIR__.'/../services/TelefoniaTransferenciaOperacionService.php';
+            $operacion=(new TelefoniaTransferenciaOperacionService())->iniciar(
+                (int)$_SESSION['usuario_id'],(string)$data['referencia_llamada'],
+                (int)$destino['usuario_id'],(string)$destino['extension'],(string)$data['modo']
+            );
             $this->responderJson([
                 'ok'=>true,
                 'extension'=>(string)$data['extension'],
-                'modo'=>(string)$data['modo']
+                'modo'=>(string)$data['modo'],
+                'operacion'=>$operacion
             ]);
+        } catch (DomainException $e) {
+            $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);
         } catch (Throwable $e) {
             $this->responderJson(['ok'=>false,
                 'mensaje'=>'El destino ya no está autorizado.'], 403);

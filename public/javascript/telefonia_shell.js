@@ -277,6 +277,7 @@
                 direction:String(currentState.direction || ''),
                 phone:String(currentState.destination || ''),
                 extension:String(cfg.extension || '')
+                ,transferRequest:currentState.context?.transferRequest||null
             };
         },
         requestAuthorizedTransfer: function (token) {
@@ -302,6 +303,7 @@
     const updateState = function (value) {
         if (!freshState(value)) return;
         const startsCall = value.active && !currentState?.active;
+        if(currentState?.active&&!value.active)crm?.contentWindow?.postMessage({type:'IMPE_PHONE_CALL_CHANGED'},window.location.origin);
         if (startsCall) {incomingCompact=false;centerNextCall=true;}
         // Sólo el Analista genera un aviso al finalizar una entrante REAL.
         // La llamada permanece en el historial aun si oculta este aviso.
@@ -526,12 +528,30 @@
         }
         const workingCall = Boolean(ongoing && state.phase === 'in-progress' &&
             !finishingIncoming && !pendingOutgoingHangup);
+        const transferRequest=state?.context?.transferRequest;
+        const transferPending=Boolean(ongoing && transferRequest && !['DEVUELTA','FALLIDA','ENTREGADA'].includes(transferRequest.stage));
+        const consultation=Boolean(state?.context?.consultation);
+        const transferStage=document.querySelector('[data-transfer-stage]');
+        const transferComplete=document.querySelector('[data-transfer-complete]');
+        if(transferStage){
+            transferStage.hidden=!ongoing||(!transferRequest&&!consultation);
+            transferStage.textContent=consultation?'Consulta con recepción. La persona sigue en espera hasta que recepción complete la transferencia.':
+                transferRequest?.stage==='DEVUELTA'?'La consulta terminó. Retoma la conversación con la persona.':
+                transferRequest?.stage==='CONSULTANDO'?'El responsable contestó. Habla con él y pulsa Completar transferencia para entregarle a la persona.':
+                transferRequest?.stage==='ENTREGANDO'?'Entregando la llamada al responsable…':
+                transferRequest?.mode==='CONSULTADA'?'Consultando a la extensión '+transferRequest.extension+'. La persona está en espera.':
+                'Transfiriendo a la extensión '+(transferRequest?.extension||'')+'…';
+        }
+        if(transferComplete){
+            transferComplete.hidden=!ongoing||transferRequest?.mode!=='CONSULTADA'||!['CONSULTANDO','ENTREGANDO'].includes(transferRequest.stage);
+            transferComplete.disabled=transferRequest?.stage==='ENTREGANDO'&&!transferRequest.retryReady;
+        }
         if (transferToggle) {
-            transferToggle.hidden = !workingCall || !cfg.canTransfer;
-            transferToggle.disabled = !workingCall;
+            transferToggle.hidden = !workingCall || !cfg.canTransfer || consultation;
+            transferToggle.disabled = !workingCall || transferPending;
         }
         if (captureToggle) {
-            captureToggle.hidden = !workingCall || !cfg.canCapture;
+            captureToggle.hidden = !workingCall || !cfg.canCapture || consultation;
             captureToggle.disabled = !workingCall;
         }
         if (!workingCall) {
@@ -561,6 +581,7 @@
                 : (finished ? 'Llamada finalizada' :
                     (finishing ? 'Finalizando llamada…' :
                     (dialing ? (phoneState.phase==='ringing'?'Timbrando…':'Marcando…') : 'En conversación')));
+            if(consultation)incomingTitle.textContent=phoneState.active?'Consulta con recepción':'Consulta finalizada';
             incomingEyebrow.textContent = (finished || finishedIncoming) ? 'LLAMADA FINALIZADA' :
                 (shownOutgoing ? 'LLAMADA SALIENTE' :
                 (ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO'));
@@ -581,7 +602,7 @@
                     : 'Conversación en curso')));
             if(incomingOrigin && incomingOriginLabel) {
                 const from=String(phoneState.transferFrom||phoneState.context?.transferFrom||'');
-                incomingOriginLabel.textContent=shownOutgoing?'Desde:':from?'Transferida desde:':'Recibida en:';
+                incomingOriginLabel.textContent=consultation?'Consulta de:':shownOutgoing?'Desde:':from?'Transferida desde:':'Recibida en:';
                 incomingOrigin.textContent='Extensión '+(shownOutgoing?cfg.extension:from||cfg.extension);
             }
             // El teclado desaparece; el panel empieza en cero.
@@ -807,6 +828,7 @@
         render();
     };
     hangupButton?.addEventListener('click', hangupIncoming);
+    document.querySelector('[data-transfer-complete]')?.addEventListener('click',()=>sendPhoneCommand('COMPLETE_TRANSFER'));
     compactHangup?.addEventListener('click', hangupIncoming);
     restore?.addEventListener('click', function () {
         minimized = false; render();

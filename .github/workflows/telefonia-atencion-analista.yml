@@ -46,6 +46,7 @@ jobs:
           php tests/telefonia_analista_entrantes_smoke.php
           php tests/telefonia_recepcion_cierre.php
           node tests/telefonia_flujo_motor.cjs
+          node tests/telefonia_transferencia_operacion.cjs
           node tests/telefonia_shell_runtime_smoke.js
           php tests/telefonia_resultado_analista_modal_smoke.php
           node tests/telefonia_analista_resultado_transferido_smoke.js
@@ -54,3 +55,4 @@ jobs:
         run: |
           node tests/telefonia_atencion_browser.cjs
           node tests/telefonia_flujo_browser.cjs
+          node tests/telefonia_campana_browser.cjs

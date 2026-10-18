@@ -97,6 +97,7 @@ class TelefoniaEntrantesAnalistaService
         if (!$llamada) {
             throw new DomainException('No se encontró un evento entrante verificable.');
         }
+        $llamada=(new TelefoniaTransferenciaOperacionService($this->db))->tramoDestino($usuarioId,$pbxCallId,$llamada);
         $llamada['extension'] = $ext;
         $llamada['fecha_evento'] = (string)$inicio['received_at'];
         return $llamada;
@@ -158,10 +159,16 @@ class TelefoniaEntrantesAnalistaService
         $stmt->close();
 
         $llamadas = [];
+        $operaciones=(new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($usuarioId);
+        $consultas=[];
+        foreach($operaciones as $operacion)if((int)$operacion['destino_usuario']===$usuarioId && $operacion['modo']==='CONSULTADA')$consultas[$operacion['referencia']]=$operacion;
         $clasificadorInterno = new TelefoniaAnalistaWebrtcService($this->db);
         foreach ($ids as $id) {
             $call = $this->eventos->obtenerEstadoEntrantePorPbxCallId($extension, $id);
             if (!$call) continue;
+            $consulta=$consultas[$id]??null;
+            if($consulta && empty($consulta['entregada_at']))continue;
+            if($consulta)$call=(new TelefoniaTransferenciaOperacionService($this->db))->tramoDestino($usuarioId,$id,$call);
             $registro = $clasificaciones[$id] ?? null;
             $llamadas[] = [
                 'pbx_call_id' => $id,
@@ -187,6 +194,14 @@ class TelefoniaEntrantesAnalistaService
         // Dos fuentes distintas: PBX firmada y observación de WebRTC local.
         // La segunda siempre se identifica como NO verificada por PBX.
         $sesiones = $clasificadorInterno->listar($usuarioId);
+        foreach($operaciones as $operacion){
+            if((int)$operacion['destino_usuario']!==$usuarioId || empty($operacion['sdk_consulta']))continue;
+            $sesiones=array_values(array_filter($sesiones,fn($s)=>$s['pbx_call_id']!==$operacion['sdk_consulta']));
+            if(!empty($operacion['entregada_at']))foreach($sesiones as &$sdkFila){
+                if($sdkFila['pbx_call_id']===$operacion['sdk_consulta'].'-external')$sdkFila['pbx_reference']=$operacion['referencia'];
+            }
+            unset($sdkFila);
+        }
         // El audio se ofrece sólo desde el historial técnico de la extensión.
         // Una sesión interna aún asociada erróneamente a un expediente no
         // dispone del reproductor hasta completar su desvinculación segura.
@@ -237,7 +252,7 @@ class TelefoniaEntrantesAnalistaService
                 $numeroPbx = $normalizarNumero($pbx['numero'] ?? '');
                 $tiempoPbx = $timestamp($pbx['fecha'] ?? '');
                 if ($numeroPbx !== $numeroSdk || !$tiempoPbx ||
-                    abs($tiempoSdk - $tiempoPbx) > 60) continue;
+                    ((string)($sdk['pbx_reference']??'')!==(string)$pbx['pbx_call_id'] && abs($tiempoSdk - $tiempoPbx) > 60)) continue;
                 $candidatos[$si][] = $pi;
                 $inversos[$pi][] = $si;
             }

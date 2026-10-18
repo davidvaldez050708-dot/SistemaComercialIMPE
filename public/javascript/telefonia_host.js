@@ -228,6 +228,7 @@
     // La nueva conexión SIP debe publicar evidencia fresca del SDK/PBX.
     const previousState = readState();
     let state = emptyState();
+    let transferFlow=null;
     const retiredKey = 'impe:telephony:retired-call-ids:' + userId;
     const retiredIds = new Map();
     try {
@@ -599,6 +600,7 @@
                     });
                 },
                 onStopped: function () {
+                    if(transferFlow?.holdsIncoming()){void transferFlow.tick();return;}
                     if (!isSdkOnlyIncoming()) return;
                     // Al atender, el SDK deja de timbrar pero la conversación
                     // CONTINÚA. Sólo limpiar un timbrado que no se contestó.
@@ -607,6 +609,7 @@
                     }
                 },
                 onIdle: function () {
+                    if(transferFlow?.holdsIncoming()){void transferFlow.tick();return;}
                     // El audio local terminó. Esperar cierre PBX, pero no
                     // mantener la pantalla/cronómetro en conversación falsa.
                     if (isSdkOnlyIncoming()) {
@@ -844,12 +847,12 @@
         if (
             state.direction === 'incoming' &&
             state.active &&
-            state.context?.type !== 'SDK_INCOMING' &&
-            String(state.pbxCallId || '').trim() !== ''
+            (state.context?.type !== 'SDK_INCOMING' || state.context?.transferReference) &&
+            String(state.context?.transferReference || state.pbxCallId || '').trim() !== ''
         ) {
             params.set(
                 'pbx_call_id',
-                String(state.pbxCallId)
+                String(state.context?.transferReference || state.pbxCallId)
             );
         }
 
@@ -967,6 +970,9 @@
     };
 
     const applyIncomingState = function (call) {
+        if(transferFlow?.holdsIncoming())return;
+        if(state.active && state.context?.type==='SDK_INCOMING' && /^\d{3,6}$/.test(state.destination) &&
+            call?.transfer_from===state.destination && !state.context.operationChecked && config.operacionUrl)return;
         if (!call) {
             return;
         }
@@ -1043,6 +1049,8 @@
             (samePbxCall || (recentSdkAudio &&
                 (sameCaller || (String(state.destination || '').replace(/\D+/g,'').length < 10 &&
                  analystSdkObserver?.isConnected?.())))));
+        const sdkSessionId=state.context?.sdkSessionId||
+            (state.context?.type==='SDK_INCOMING' && (sameCaller||state.context.transferReference===pbxCallId||state.destination===call.caller_id)?state.callToken:'');
         const pbxAnswered = incomingStatus === 'answered' ||
             (samePbxCall && Boolean(state.context?.pbxAnswered));
         // Una vez confirmada la conversación para ESTE PBX call ID,
@@ -1111,6 +1119,7 @@
                 sdkConnected:sdkAnswered || (samePbxCall &&
                     Boolean(state.context?.sdkConnected)),
                 pbxAnswered:pbxAnswered,
+                sdkSessionId:sdkSessionId,
                 transferFrom:String(call.transfer_from || ''),
                 transferRequest:samePbxCall && !call.returned_from?state.context?.transferRequest:null
             },
@@ -1299,8 +1308,11 @@
     };
 
     const finishCall = function (call, fallbackStatus) {
+        if(transferFlow?.sourcePending() && window.zdrmWebPhone?.webCallSession?.isEnded?.()){
+            void transferFlow.tick();return;
+        }
         stopPolling();
-        endOutgoingWebrtc(false);
+        if(!window.zdrmWebPhone?.webCallSession?.isEnded?.())endOutgoingWebrtc(false);
         hangingUp = false;
 
         const finalCall = call || lastCall || {};
@@ -1597,6 +1609,12 @@
             if(state.active && state.callToken===token && state.phase==='dialing' && [180,183].includes(code))
                 publish({phase:'ringing',status:'ringing'});
         });
+        const ended=function(){
+            if(!state.active||state.direction!=='outgoing'||state.callToken!==token)return;
+            if(transferFlow?.sourcePending())void transferFlow.tick();
+            else finishCall(lastCall,state.phase==='in-progress'?'completed':'cancelled');
+        };
+        session.on('ended',ended);session.on('failed',ended);
     },100);
 
     const hangup = async function () {
@@ -1710,6 +1728,7 @@
     const ejecutarTransferenciaAutorizada = async function (payload) {
         if (!permiteTransferir || !state.active ||
             state.phase !== 'in-progress') return;
+        if(transferFlow?.sourcePending()){publish({message:'Ya hay una transferencia en curso para esta llamada.'});return;}
         const token = String(payload?.transferToken || '');
         if (!/^[a-f0-9]{48}$/.test(token) || !config.validarTransferenciaUrl) {
             publish({message:'Selecciona el destino autorizado desde Transferir.'});
@@ -1736,7 +1755,9 @@
             // No ejecutar un comando antiguo si mientras tanto terminó
             // la conversación y comenzó otra.
             if (!state.active || state.phase !== 'in-progress' ||
-                String(state.callToken || state.pbxCallId || '') !== originalCall) {
+                String(state.callToken || state.pbxCallId || '') !== originalCall ||
+                (data.operacion && data.operacion.referencia!==String(state.pbxCallId||state.callToken))) {
+                if(data.operacion)void transferFlow?.failed(data.operacion);
                 publish({message:'La llamada cambió. No se intentó transferir.'});
                 return;
             }
@@ -1746,10 +1767,12 @@
             // Una invocación DTMF nunca confirma que el destinatario
             // recibió ni respondió. Sólo los webhooks PBX pueden hacerlo.
             if (!submitted) {
+                if(data.operacion)void transferFlow?.failed(data.operacion);
                 // sendTransferDtmf ya publicó la causa real; no abrir el
                 // widget ni aparentar que la extensión destino está sonando.
                 return;
             }
+            if(data.operacion)transferFlow?.start(data.operacion);
         } catch (error) {
             publish({message:error?.message || 'No se pudo solicitar la transferencia.'});
         }
@@ -1806,6 +1829,8 @@
             void startCall(payload);
         } else if (action === 'HANGUP') {
             void hangup();
+        } else if (action === 'COMPLETE_TRANSFER') {
+            void transferFlow?.complete();
         } else if (action === 'MUTE' && state.active) {
             setMuted(Boolean(payload.muted));
         } else if (
@@ -1855,6 +1880,26 @@
         event.returnValue = '';
     });
 
+    transferFlow=window.IMPE_TRANSFER_FLOW?.create({
+        url:config.operacionUrl,csrf:config.transferenciaCsrf,read:()=>state,publish,
+        notice:message=>publish({message}),
+        finishSdk:()=>{
+            const sdk=window.zdrmWebPhone;
+            if(typeof sdk?.finishCall!=='function')throw Error('No se pudo entregar la llamada. Intenta nuevamente.');
+            sdk.finishCall();
+        },
+        release:op=>{
+            stopPolling();answeredAtMs=0;
+            retirePbxCall(op.referencia);
+            publish({active:false,phase:state.direction==='incoming'?'incoming-finished':'finished',status:op.estado==='ENTREGADA'?'transferred':'completed',context:{...state.context,transferRequest:{...state.context?.transferRequest,stage:op.estado}},message:op.estado==='ENTREGADA'?'Llamada entregada a extensión '+op.destino_extension+'.':'Llamada finalizada.'});
+        },
+        external:(op,token,connected)=>{
+            answeredAtMs=connected?Date.now():0;
+            publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
+        },
+        consultEnded:()=>{answeredAtMs=0;publish({active:false,phase:'incoming-finished',status:'consultation-ended',duration:0,message:'Consulta de transferencia finalizada.'});}
+    })||null;
+    window.setInterval(()=>void transferFlow?.tick(),1000);
     captureMicrophone();
 
     publish({

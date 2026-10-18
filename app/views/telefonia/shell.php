@@ -202,7 +202,13 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                 <span data-incoming-state>Llamada entrante</span>
                 <strong data-incoming-timer>00:00</strong>
             </div>
+            <div class="impe-transfer-stage" data-transfer-stage hidden role="status" aria-live="polite"></div>
             <div class="persistent-phone-actions impe-incoming-actions">
+                <?php if ($puedeTransferirShell): ?>
+                <button type="button" class="persistent-phone-action is-primary" data-transfer-complete hidden>
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i> Completar transferencia
+                </button>
+                <?php endif; ?>
                 <button type="button" class="persistent-phone-action is-primary" data-incoming-answer>
                     <i class="bi bi-telephone-inbound" aria-hidden="true"></i>Contestar
                 </button>
@@ -292,7 +298,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                     <button type="button" data-routing-attended class="is-primary">Consultar primero (recomendado)</button>
                     <button type="button" data-routing-direct>Transferir directamente</button>
                 </div>
-                <p class="impe-routing-help">Consulta primero para esperar la respuesta del analista. Si no contesta, la centralita puede devolver la llamada a recepción. Al transferir directamente, recepción deja de participar.</p>
+                <p class="impe-routing-help">Consulta: habla con el responsable y después pulsa <strong>Completar transferencia</strong>. Directa: entrega la llamada sin conversar antes.</p>
                 <p data-routing-feedback role="status" aria-live="polite">
                     El destinatario debe tener una extensión activa. No se transfiere automáticamente.
                 </p>
@@ -380,9 +386,6 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     <?php endif; ?>
     <?php if ($marketingShell || $analistaEntrantesShell): ?>
     <style><?php echo file_get_contents(ROOT_PATH . '/public/css/telefonia_cierre.css'); ?></style>
-    <button type="button" class="impe-call-notice" data-missed-calls hidden>
-        <i class="bi bi-telephone-x" aria-hidden="true"></i><span></span>
-    </button>
     <?php endif; ?>
     <?php if ($marketingShell): ?>
     <dialog class="impe-call-result-dialog system-form-modal" data-call-result-required aria-labelledby="requiredResultTitle">

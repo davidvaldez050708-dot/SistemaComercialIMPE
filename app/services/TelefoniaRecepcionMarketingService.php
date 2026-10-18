@@ -12,10 +12,10 @@ class TelefoniaRecepcionMarketingService
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?mysqli $connection=null)
     {
-        $this->db = (new Database())->connect();
-        (new ZadarmaWebhookEventStoreService())->asegurarEstructura();
+        $this->db = $connection??(new Database())->connect();
+        (new ZadarmaWebhookEventStoreService($this->db))->asegurarEstructura();
     }
 
     public static function esMarketing(): bool
@@ -35,7 +35,7 @@ class TelefoniaRecepcionMarketingService
         if ($usuarioId <= 0 || !self::tienePermisos()) {
             return null;
         }
-        $asignacion = (new TelefoniaExtensionService())->resolverParaUsuario($usuarioId);
+        $asignacion = (new TelefoniaExtensionService($this->db))->resolverParaUsuario($usuarioId);
         $extension = trim((string)($asignacion['extension'] ?? ''));
         if (
             !$asignacion || empty($asignacion['permite_entrantes']) ||
@@ -136,6 +136,19 @@ class TelefoniaRecepcionMarketingService
         $stmt->close();
 
         $llamadas = self::agruparEventos($eventos, $ext, $permitirSalientes === 1);
+        require_once __DIR__.'/TelefoniaTransferenciaOperacionService.php';
+        $operaciones=(new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($usuarioId);
+        foreach($operaciones as $op)foreach($llamadas as &$fila){
+            if((int)$op['origen_usuario']!==$usuarioId || $fila['pbx_call_id']!==$op['referencia'])continue;
+            if($op['estado']==='ENTREGADA'){
+                $fila['estado']='Transferida';$fila['destino_transferencia']=$op['destino_extension'];$fila['finalizada']=true;
+            }elseif($op['modo']==='CONSULTADA' && in_array($op['estado'],['SOLICITADA','TIMBRANDO','CONSULTANDO','ENTREGANDO'],true)){
+                $fila['estado']='Consultando';$fila['finalizada']=false;$fila['destino_transferencia']='';
+            }elseif($op['estado']==='DEVUELTA'){
+                $fila['estado']=$fila['finalizada']?'Atendida':'En curso';$fila['destino_transferencia']='';
+            }
+        }
+        unset($fila);
         $resultados = $this->obtenerResultados($usuarioId, $ext);
         foreach ($llamadas as $call) {
             $observado = $resultados[$call['pbx_call_id']] ?? [];

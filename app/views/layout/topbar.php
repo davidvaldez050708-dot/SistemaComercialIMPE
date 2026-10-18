@@ -27,6 +27,8 @@ $mostrarAgendaReuniones =
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 $puedeUsarTelefoniaTopbar = tienePermiso('telefonia.usar');
 $puedeRecibirTelefoniaTopbar = tienePermiso('telefonia.recibir');
+if($puedeUsarTelefoniaTopbar&&$puedeRecibirTelefoniaTopbar&&empty($_SESSION['csrf_token']))$_SESSION['csrf_token']=bin2hex(random_bytes(32));
+if($puedeUsarTelefoniaTopbar&&$puedeRecibirTelefoniaTopbar&&!$esMarketingTopbar)$mostrarCentroAvisos=true;
 // En Marketing, los permisos son del rol pero la recepción depende de la
 // extensión personal. No ofrecer audífonos inactivos a otras cuentas.
 if (strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0) {
@@ -71,7 +73,9 @@ $totalRecordatoriosSeguimiento = 0;
             </div>
         </div>
 
-        <div class="topbar-actions" role="group" aria-label="Accesos rápidos">
+        <div class="topbar-actions" role="group" aria-label="Accesos rápidos"
+             data-phone-notification-read="<?= BASE_URL ?>prueba_telefonia/api/leer_notificacion_llamada.php"
+             data-phone-notification-csrf="<?= htmlspecialchars((string)($_SESSION['csrf_token']??''),ENT_QUOTES,'UTF-8') ?>">
             <?php if ($puedeUsarTelefoniaTopbar && $puedeRecibirTelefoniaTopbar): ?>
                 <button
                     class="topbar-reminder-button telephony-reception-toggle"

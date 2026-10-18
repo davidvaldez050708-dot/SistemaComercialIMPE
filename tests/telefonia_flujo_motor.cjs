@@ -32,12 +32,13 @@ const read=p=>fs.readFileSync(require('node:path').join(__dirname,'../public/jav
  }
  const track={kind:'audio',readyState:'live'};
  const awin={AudioContext,setInterval(fn){audioTick=fn;return 1;},addEventListener(){},zdrmWebPhone:{webCallSession:{isEstablished:()=>connected,isEnded:()=>false,connection:{getReceivers:()=>[{track}]}}}};
- vm.runInNewContext(read('telefonia_audio.js'),{window:awin,Date,Uint8Array,MediaStream:class{constructor(tracks){this.tracks=tracks;}getAudioTracks(){return this.tracks;}}});
+ vm.runInNewContext(read('telefonia_audio.js'),{window:awin,document:{getElementById:()=>null},Date,Uint8Array,MediaStream:class{constructor(tracks){this.tracks=tracks;}getAudioTracks(){return this.tracks;}}});
  const audio=awin.IMPE_CALL_AUDIO;audio.unlock();
  audio.update({active:true,direction:'outgoing',phase:'dialing',callToken:'one'});assert.equal(started,0,'marcar no inventa un timbrado');
  audio.update({active:true,direction:'outgoing',phase:'ringing',callToken:'one'});assert.equal(started,2,'tono local cuando el destino está timbrando y no hay audio remoto');
  samplesLoud=true;audioTick();assert.equal(stopped,2,'el tono cede ante audio o locución de la operadora');
- samplesLoud=false;audio.update({active:true,direction:'outgoing',phase:'ringing',callToken:'two'});connected=true;audioTick();assert.equal(stopped,4,'al contestar se detiene sin esperar el siguiente sondeo');
+ samplesLoud=false;audio.update({active:true,direction:'outgoing',phase:'ringing',callToken:'two'});connected=true;audioTick();assert.equal(stopped,2,'el puente SIP establecido no interrumpe el tono mientras el destino sigue timbrando');
+ audio.update({active:true,direction:'outgoing',phase:'in-progress',callToken:'two'});assert.equal(stopped,4,'se detiene al confirmar la conversación');
  audio.update({active:false,phase:'finished',callToken:'two'});assert.equal(started,stopped,'sin tonos residuales tras colgar');
  console.log('Motor: identidad provisional/definitiva, consulta, devolución, entrega, timbrado y audio remoto: OK');
 })().catch(e=>{console.error(e);process.exitCode=1;});

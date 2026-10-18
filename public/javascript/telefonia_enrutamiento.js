@@ -69,6 +69,7 @@
     let confirmedRecognition = false;
     let confirmedRecord = null;
     let phoneCheckedForCall = '';
+    let rejectedRecognitionForCall='';
     let currentCallId = '';
     let transferRequestCallId = '';
     let transferDestinationExtension = '';
@@ -224,6 +225,7 @@
         identityBox.replaceChildren();
         identityBox.hidden = false;
         recognized = Array.isArray(records) ? records : [];
+        if(rejectedRecognitionForCall===currentCallId)recognized=[];
         confirmedRecognition = false;
         const heading = document.createElement('strong');
         if (recognized.length && categoria === 'RECEPCION') {
@@ -267,6 +269,15 @@
             action.addEventListener('click', () => chooseInstitution(record));
             identityBox.appendChild(action);
         }
+        const reject=document.createElement('button');reject.type='button';
+        reject.textContent='No corresponde a estas instituciones';
+        reject.addEventListener('click',()=>{
+            rejectedRecognitionForCall=currentCallId;recognized=[];confirmedRecognition=false;confirmedRecord=null;
+            identityBox.hidden=true;if(estado)estado.value='';renderRecipients();
+            if(lookupWrap)lookupWrap.hidden=false;
+            setFeedback('Origen sin expediente confirmado. Selecciona el estado y el responsable de esta atención.');
+        });
+        identityBox.appendChild(reject);
         // La confirmación ya realizada se conserva durante ESTA llamada
         // cuando Tania explora Prospecto y vuelve a Institución; únicamente
         // se recupera si el servidor sigue devolviendo ese mismo expediente
@@ -449,6 +460,9 @@
     const submitTransfer = async mode => {
         const active = call();
         if (transferBusy) return;
+        if(active?.transferRequest && !['DEVUELTA','FALLIDA'].includes(active.transferRequest.stage)){
+            setFeedback('Ya hay una transferencia en curso para esta llamada.',true);return;
+        }
         if (!active || !selected) {
             setFeedback('Selecciona un responsable con extensión autorizada.', true);
             return;

@@ -17,9 +17,12 @@
     };
     const sample=()=>{
         const session=window.zdrmWebPhone?.webCallSession;
-        const connected=session?.isEstablished?.();
+        const nativeIncoming=document.getElementById('zdrm-incomingRing');
+        if(nativeIncoming)nativeIncoming.volume=1;
+        const nativeOutgoing=document.getElementById('zdrm-outgoingRing');
+        const nativePlaying=nativeOutgoing && !nativeOutgoing.paused && !nativeOutgoing.ended && nativeOutgoing.volume>0 && !nativeOutgoing.muted;
         const eligible=state?.active && state.direction==='outgoing' &&
-            state.phase==='ringing' && !connected && !session?.isEnded?.();
+            state.phase==='ringing' && !nativePlaying && !session?.isEnded?.();
         if(!eligible || context?.state!=='running'){stop();return;}
         // Si la operadora ya envía voz, locución o timbrado, no taparlos
         // con el tono local. Sólo analizar; el SDK mantiene su propio audio.

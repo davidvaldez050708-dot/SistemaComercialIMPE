@@ -83,6 +83,7 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
             'transferenciaCsrf' => (string)$_SESSION['csrf_token'],
             'estadoUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_estado_llamada.php',
             'entradaUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_entrada_activa.php',
+            'operacionUrl' => BASE_URL . 'prueba_telefonia/api/transferencia_operacion.php',
             'permiteSalientes' => !empty($asignacionTelefonica['permite_salientes']),
             'permiteEntrantes' => !empty($asignacionTelefonica['permite_entrantes']),
             // Sólo para el Analista con sesión autorizada y motor embebido.
@@ -105,6 +106,7 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
         src="<?= BASE_URL ?>public/javascript/telefonia_webrtc_dtmf.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_webrtc_dtmf.js') ?>">
     </script>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_audio.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_audio.js') ?>"></script>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_transferencia_runtime.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_transferencia_runtime.js') ?>"></script>
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_host.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_host.js') ?>">
     </script>
