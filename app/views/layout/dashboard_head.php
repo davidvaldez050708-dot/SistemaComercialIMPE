@@ -164,7 +164,9 @@ if ($controllerDashboard === 'seguimientovinculacion' &&
 
 // La pestaña integrada debe cargar los mismos estilos que la bandeja original.
 if ($controllerDashboard === 'telefonia' && $actionDashboard === 'misllamadas') {
-    $vistaMisLlamadasHead = (string)($_GET['vista'] ?? 'historial');
+    // La vista efectiva la resuelve el controlador según el rol.
+    // Marketing abre Recepción incluso cuando la URL no incluye ?vista=.
+    $vistaMisLlamadasHead = (string)($vistaActual ?? ($_GET['vista'] ?? 'historial'));
     if ($vistaMisLlamadasHead === 'recibidas') {
         $cssOpcionalDashboard[] = 'seguimiento_llamadas_expediente.css';
         $cssOpcionalDashboard[] = 'seguimiento_llamadas_player.css';
@@ -357,7 +359,7 @@ if (
     $jsOpcionalHead[] = 'telefonia_grabaciones_ventas.js';
 }
 if ($controllerDashboard === 'telefonia' && $actionDashboard === 'misllamadas'
-    && (string)($_GET['vista'] ?? '') === 'recepcion'
+    && (string)($vistaActual ?? ($_GET['vista'] ?? '')) === 'recepcion'
     && $esPerfilMarketingDashboard) {
     // Los reproductores tienen listeners delegados sobre la tabla al cargar DOM.
     $jsOpcionalHead[] = 'telefonia_recepcion_marketing.js';
