@@ -97,9 +97,6 @@ $esTelefoniaDashboard =
     $controllerDashboard === 'telefonia';
 $usarTelefoniaPersistente =
     tienePermiso('telefonia.usar');
-require_once __DIR__ . '/../../helpers/TelefoniaMarketingAccessHelper.php';
-$esRecepcionMarketingDashboard =
-    $esHomeDashboard && marketingTieneRecepcionAsignada();
 
 $cssOpcionalDashboard = [];
 
@@ -272,11 +269,6 @@ if ($usarTelefoniaPersistente) {
     $cssOpcionalDashboard[] = 'telefonia_persistente.css';
     $cssOpcionalDashboard[] = 'telefonia_teclado.css';
 }
-if ($esRecepcionMarketingDashboard) {
-    $cssOpcionalDashboard[] = 'seguimiento_llamadas_expediente.css';
-    $cssOpcionalDashboard[] = 'seguimiento_llamadas_player.css';
-    $cssOpcionalDashboard[] = 'telefonia_recepcion_marketing.css';
-}
 
 if (
     $esConvocatoriaReportesDashboard ||
@@ -362,11 +354,6 @@ if (
     if ($esHomeDashboard) {
         $jsOpcionalHead[] = 'telefonia_marcador.js';
     }
-    $jsOpcionalHead[] = 'telefonia_grabaciones_ventas.js';
-}
-if ($esRecepcionMarketingDashboard) {
-    $jsOpcionalHead[] = 'telefonia_recepcion_marketing.js';
-    // Reutiliza exactamente el reproductor del expediente y de Ventas.
     $jsOpcionalHead[] = 'telefonia_grabaciones_ventas.js';
 }
 if ($controllerDashboard === 'telefonia' && $actionDashboard === 'misllamadas'
