@@ -1,27 +1,85 @@
-/* Vista personal de telefonía: estilos delimitados, mismo sistema visual de Seguimiento. */
+/* Mis llamadas: composición compatible con Seguimiento y Recepción.
+   Cada regla se limita a esta sección; los estilos compartidos del expediente
+   se cargan en la vista PHP para tarjetas, estadísticas y paginación. */
+.linkage-incoming-page.impe-my-calls .linkage-call-summary.linkage-incoming-stats{
+ grid-template-columns:repeat(4,minmax(0,1fr));margin:20px 0 22px;
+}
+.linkage-incoming-page.impe-my-calls .linkage-call-summary.linkage-incoming-stats > div{
+ min-width:0;min-height:69px;padding:12px 15px;gap:5px;
+}
+.linkage-incoming-page.impe-my-calls .linkage-call-summary.linkage-incoming-stats span{
+ display:block;margin:0;font-size:11px;line-height:1.4;
+}
+.linkage-incoming-page.impe-my-calls .linkage-call-summary.linkage-incoming-stats strong{
+ display:block;font-size:21px;line-height:1.2;font-weight:800;
+}
 .linkage-incoming-page.impe-my-calls .impe-my-calls-filters{
- display:grid;grid-template-columns:repeat(2,minmax(150px,1fr)) minmax(150px,1fr) auto;
- align-items:end;gap:12px;margin:18px 0 22px;padding:16px 18px;
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(160px,.9fr) auto;
+ align-items:end;gap:12px;margin:18px 0 22px;padding:17px 18px;
  border:1px solid #dfe7f3;border-radius:12px;background:#f8fafd;
 }
-.linkage-incoming-page.impe-my-calls .impe-my-calls-filters label{
- display:flex;flex-direction:column;gap:7px;min-width:0;margin:0;
- font-size:12px;font-weight:700;color:#4f6486;
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filter-field{
+ display:flex;flex-direction:column;gap:7px;min-width:0;
 }
-.linkage-incoming-page.impe-my-calls .impe-my-calls-filters :is(input,select){
- width:100%;min-height:41px;border:1px solid #cedbea;border-radius:9px;
- background-color:#fff;color:#243b5d;font-size:13px;
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filter-field label{
+ display:block;margin:0;color:#4f6486;font-size:12px;font-weight:700;line-height:1.3;
 }
-.linkage-incoming-page.impe-my-calls .impe-my-calls-filters button{
- display:inline-flex;justify-content:center;align-items:center;gap:7px;
- min-height:41px;white-space:nowrap;padding:8px 15px;border-radius:9px;
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filter-field :is(input,select){
+ display:block;width:100%;height:41px;min-width:0;padding:8px 12px;box-sizing:border-box;
+ border:1px solid #cedbea;border-radius:9px;background:#fff;color:#243b5d;
+ font-size:13px;line-height:1.35;appearance:auto;
+}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filter-field :is(input,select):focus-visible{
+ outline:2px solid #4568b2;outline-offset:1px;
+}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filter-action{
+ display:flex;align-items:stretch;
+}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filter-action .btn{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-height:41px;padding:8px 15px;white-space:nowrap;border-radius:9px;
  font-size:12px;font-weight:700;
 }
-.linkage-incoming-page.impe-my-calls .impe-my-calls-note{
- margin:16px 0 0;font-size:12px;line-height:1.6;color:#687991;
+.linkage-incoming-page.impe-my-calls .linkage-call-section-heading{margin-top:18px;}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-history{gap:9px;}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card{
+ display:flex;gap:12px;align-items:flex-start;padding:12px 14px;
 }
-@media(max-width:800px){
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card .linkage-call-recording-card-icon{
+ flex:none;
+}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card .linkage-call-recording-body{
+ flex:1;min-width:0;
+}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card .linkage-call-recording-top{
+ display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px 14px;
+}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card .linkage-call-history-identity{
+ display:flex;flex-direction:column;gap:4px;min-width:0;
+}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card .linkage-call-history-footer{margin-top:10px;}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-note{
+ margin:16px 0 0;font-size:11.5px;line-height:1.6;color:#687991;
+}
+.impe-calls-hub-navigation{
+ display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ width:min(100%,1180px);margin:0 auto 14px;
+}
+.impe-calls-hub-navigation a{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-height:37px;padding:8px 14px;border:1px solid #dbe4f1;border-radius:10px;
+ color:#3c547b;background:#fff;text-decoration:none;font-size:12px;font-weight:800;
+}
+.impe-calls-hub-navigation a:hover{color:#25427c;background:#f1f5fc;border-color:#b7c9e5;}
+.impe-calls-hub-navigation a.is-active{
+ color:#fff;background:#1f407f;border-color:#1f407f;
+}
+.impe-calls-hub-navigation a:focus-visible{outline:2px solid #5276c9;outline-offset:2px;}
+@media(max-width:850px){
  .linkage-incoming-page.impe-my-calls .impe-my-calls-filters{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ .linkage-incoming-page.impe-my-calls .linkage-call-summary.linkage-incoming-stats{
   grid-template-columns:repeat(2,minmax(0,1fr));
  }
 }
@@ -29,5 +87,9 @@
  .linkage-incoming-page.impe-my-calls .impe-my-calls-filters{
   grid-template-columns:minmax(0,1fr);padding:14px;
  }
- .linkage-incoming-page.impe-my-calls .impe-my-calls-filters button{width:100%;}
+ .linkage-incoming-page.impe-my-calls .impe-my-calls-filter-action .btn{width:100%;}
+ .linkage-incoming-page.impe-my-calls .linkage-call-summary.linkage-incoming-stats{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ .impe-calls-hub-navigation a{flex:1;min-width:max-content;padding:8px 10px;}
 }
