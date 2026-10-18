@@ -89,7 +89,7 @@ ksort($paginasVisibles, SORT_NUMERIC);
                         <div class="linkage-call-history-identity">
                             <strong>Llamada <?= $saliente ? 'saliente' : 'entrante' ?></strong>
                             <span><?= $saliente ? 'Destino' : 'Origen' ?>: <?= $esc(($fila['numero'] ?? '') ?: 'Número no disponible') ?></span>
-                            <span>Extensión <?= $esc($fila['extension'] ?? '') ?><?= !empty($fila['proceso']) ? ' · '.$esc($fila['proceso']) : '' ?></span>
+                            <span>Ext. <?= $esc($fila['extension'] ?? '') ?><?= !empty($fila['proceso']) ? ' · '.$esc($fila['proceso']) : '' ?></span>
                         </div>
                         <span class="linkage-call-history-date"><?= $esc($fechaVisual) ?></span>
                     </div>
