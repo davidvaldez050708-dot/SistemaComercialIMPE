@@ -300,7 +300,8 @@ class TelefoniaControlService
                 ['fecha'=>$cursor,'atenciones'=>0,'efectivas'=>0];
         }
 
-        $stats['historial'] = array_slice($filtered, 0, 500);
+        $stats['historial'] = !empty($filtros['historial_personal_completo']) && $usuarioFiltro > 0
+            ? $filtered : array_slice($filtered, 0, 500);
         $stats['historial_total'] = count($filtered);
         return [
             'filtros' => [
