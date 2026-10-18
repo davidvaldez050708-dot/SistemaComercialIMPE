@@ -151,11 +151,6 @@ $totalCoberturaPendienteMarketing = count($estadosSinConvocatoria);
     </article>
 </div>
 
-<?php
-// Si Marketing tiene una extensión de recepción propia y activa,
-// el estado telefónico debe verse antes de las actividades de convocatorias.
-require __DIR__ . '/../telefonia/recepcion_marketing.php';
-?>
 
 <section class="dashboard-panel marketing-expiring-panel">
     <div class="table-panel-header">
