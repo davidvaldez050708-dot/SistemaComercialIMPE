@@ -937,13 +937,17 @@
                 catch (error) { mountFailed = String(error?.message || error); }
             }
         }
-        if (autoEnabled && hostFrame &&
-            !freshState(currentState) && !mountFailed &&
-            Date.now() - hostStartedAt > 22000 &&
-            Date.now() - lastRecoveryAttempt > 30000 &&
-            autoRetries < 3) {
-            // El indicador apagado no debe quedar en un estado verde falso.
-            // Volver a montar sólo cuando la conexión NO tiene latidos.
+        const hostSinConexion = !freshState(currentState) ||
+            (currentState && !currentState.hostReady &&
+                String(currentState.phase || '') === 'error');
+        if (autoEnabled && hostFrame && hostSinConexion &&
+            !currentState?.active && !mountFailed &&
+            Date.now() - hostStartedAt > 25000 &&
+            Date.now() - lastRecoveryAttempt > 60000) {
+            // Reintentar cada minuto, incluso después de tres fallos antiguos.
+            // NUNCA reiniciar el SDK durante una llamada activa ni si otra
+            // pestaña conserva la extensión. La disponibilidad real depende
+            // del navegador, la red y el registro SIP de Zadarma.
             autoRetries += 1;
             lastRecoveryAttempt = Date.now();
             hostFrame.remove();
