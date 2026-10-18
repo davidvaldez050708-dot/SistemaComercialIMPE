@@ -3,8 +3,8 @@
 // No requiere base de datos; comprueba aislamiento y exclusión de PBX ambiguos.
 require_once __DIR__ . '/../app/services/TelefoniaMisLlamadasService.php';
 $ejemplos = [
-    ['usuario_id'=>101, 'pbx_call_id'=>'llamada-a', 'extension'=>'101'],
-    ['usuario_id'=>100, 'pbx_call_id'=>'llamada-b', 'extension'=>'100'],
+    ['usuario_id'=>101, 'pbx_call_id'=>'llamada-a', 'extension'=>'101', 'direccion'=>'Saliente'],
+    ['usuario_id'=>100, 'pbx_call_id'=>'llamada-b', 'extension'=>'100', 'direccion'=>'Saliente'],
     ['usuario_id'=>0, 'pbx_call_id'=>'sin-dueno', 'extension'=>'101'],
     ['usuario_id'=>101, 'pbx_call_id'=>'', 'extension'=>'101'],
     ['usuario_id'=>101, 'pbx_call_id'=>'llamada-c', 'extension'=>'101'],
@@ -18,9 +18,9 @@ if (count($propias)!==2 ||
     exit(1);
 }
 $enriquecidas = TelefoniaMisLlamadasService::enriquecerDevoluciones($propias, [
-    ['id'=>1,'usuario_id'=>101,'pbx_call_id'=>'llamada-a','resultado'=>'BUZON_VOZ','seguimiento_id'=>9],
-    ['id'=>2,'usuario_id'=>100,'pbx_call_id'=>'llamada-c','resultado'=>'CONTACTO_CORRECTO','seguimiento_id'=>8],
-    ['id'=>3,'usuario_id'=>101,'pbx_call_id'=>'llamada-x','resultado'=>'SIN_RESPUESTA','seguimiento_id'=>0],
+    ['id'=>1,'usuario_id'=>101,'extension'=>'101','pbx_call_id'=>'llamada-a','resultado'=>'BUZON_VOZ','seguimiento_id'=>9],
+    ['id'=>2,'usuario_id'=>100,'extension'=>'100','pbx_call_id'=>'llamada-c','resultado'=>'CONTACTO_CORRECTO','seguimiento_id'=>8],
+    ['id'=>3,'usuario_id'=>101,'extension'=>'101','pbx_call_id'=>'llamada-x','resultado'=>'SIN_RESPUESTA','seguimiento_id'=>0],
 ],101);
 if (count($enriquecidas)!==2
     || ($enriquecidas[0]['resultado_devolucion']??'')!=='BUZON_VOZ'
