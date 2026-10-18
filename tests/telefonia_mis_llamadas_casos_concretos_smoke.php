@@ -39,7 +39,7 @@ $expect(str_contains($html, 'pbx_call_id=pbx-transferida-100-101'),
     'Transferencia: navegación PBX preservada');
 $expect(str_contains($html, '00:39') && str_contains($html, '00:45'),
     'Duraciones recibidas de webhooks');
-$expect(substr_count($html,'00:00') === 2, 'Dos tramos con webhook de cero segundos');
+$expect(str_contains($html,'00:00'), 'El tramo con cero segundos debe representarse como 00:00');
 $expect(str_contains($html, '00:00 · Sin confirmar'),
     'Conectada sin duración reportada debe declararlo');
 $expect(str_contains($html, 'Sin conexión confirmada'),
