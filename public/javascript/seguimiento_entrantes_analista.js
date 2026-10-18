@@ -558,8 +558,11 @@
                 result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : 'Atención guardada.';
             try {sessionStorage.setItem('impe:call-result-flash',message);}catch(_){}
             const linked=Number(result.seguimiento_id||0);
+            const isUnifiedIncoming=new URLSearchParams(location.search).get('action')==='misLlamadas'
+                && new URLSearchParams(location.search).get('vista')==='recibidas';
             const target=linked>0?'index.php?controller=seguimientoVinculacion&action=detalle&id='+linked:
-                'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes';
+                (isUnifiedIncoming?'index.php?controller=telefonia&action=misLlamadas&vista=recibidas':
+                 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes');
             modalEl.addEventListener('hidden.bs.modal',()=>window.location.assign(new URL(target,window.location.href).toString()),{once:true});
             modal.hide();
         } catch (error) {
