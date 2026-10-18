@@ -71,6 +71,12 @@ class TelefoniaRecepcionMarketingService
         ];
     }
 
+    protected function operacionesDelUsuario(int $usuarioId): array
+    {
+        require_once __DIR__.'/TelefoniaTransferenciaOperacionService.php';
+        return (new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($usuarioId);
+    }
+
     public function resumen(int $usuarioId): array
     {
         $data = [
@@ -136,8 +142,7 @@ class TelefoniaRecepcionMarketingService
         $stmt->close();
 
         $llamadas = self::agruparEventos($eventos, $ext, $permitirSalientes === 1);
-        require_once __DIR__.'/TelefoniaTransferenciaOperacionService.php';
-        $operaciones=(new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($usuarioId);
+        $operaciones=$this->operacionesDelUsuario($usuarioId);
         foreach($operaciones as $op)foreach($llamadas as &$fila){
             if((int)$op['origen_usuario']!==$usuarioId || $fila['pbx_call_id']!==$op['referencia'])continue;
             if($op['estado']==='ENTREGADA'){

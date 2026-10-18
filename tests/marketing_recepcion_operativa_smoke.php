@@ -10,7 +10,7 @@ function eventoOperacion(string $id,string $event,string $ext,array $extra=[]): 
         'duration'=>0,'disposition'=>'','payload_json'=>'{}'],$extra);
 }
 $events=[];
-foreach (['transferred','answered-transfer','busy','unallocated','voicemail','foreign-transfer'] as $id) {
+foreach (['transferred','answered-transfer','busy','unallocated','voicemail','race-answered','foreign-transfer'] as $id) {
     $events[]=eventoOperacion($id,'NOTIFY_OUT_START','100');
 }
 $events[]=eventoOperacion('transferred','NOTIFY_INTERNAL','101',['payload_json'=>'{"transfer_from":"100"}']);
@@ -21,6 +21,7 @@ $events[]=eventoOperacion('busy','NOTIFY_ANSWER','100');
 $events[]=eventoOperacion('busy','NOTIFY_OUT_END','100',['disposition'=>'busy']);
 $events[]=eventoOperacion('unallocated','NOTIFY_OUT_END','100',['disposition'=>'unallocated number']);
 $events[]=eventoOperacion('voicemail','NOTIFY_OUT_END','100',['disposition'=>'answered','duration'=>20,'is_recorded'=>1]);
+$events[]=eventoOperacion('race-answered','NOTIFY_OUT_END','100',['disposition'=>'answered','duration'=>12]);
 $events[]=eventoOperacion('foreign-transfer','NOTIFY_INTERNAL','101',['payload_json'=>'{"transfer_from":"102"}']);
 $events[]=eventoOperacion('foreign-transfer','NOTIFY_OUT_END','100',['disposition'=>'answered']);
 $events[]=eventoOperacion('foreign-call','NOTIFY_OUT_START','102');
@@ -116,7 +117,7 @@ class OperacionDB {
     public function __construct(public array $events) {}
     public function prepare($sql) {
         if (str_starts_with($sql,'INSERT INTO') && $this->race) {
-            $this->saved[]=['usuario_id'=>7,'extension'=>'100','pbx_call_id'=>'transferred','resultado'=>'CONTACTO','nota'=>'Primer envío'];
+            $this->saved[]=['usuario_id'=>7,'extension'=>'100','pbx_call_id'=>'race-answered','resultado'=>'CONTACTO','nota'=>'Primer envío'];
             $this->race=false;
         }
         if (str_contains($sql,'SELECT pbx_call_id, resultado, nota') && !$this->table)
@@ -126,6 +127,8 @@ class OperacionDB {
     public function query($sql) {$this->creates++;$this->table=true;return true;}
 }
 class OperacionServicio extends TelefoniaRecepcionMarketingService {
+    // Esta prueba aísla agrupación/resultados. Las operaciones se prueban con MySQL real.
+    protected function operacionesDelUsuario(int $usuarioId): array {return [];}
     public function __construct($db) {
         $property=new ReflectionProperty(TelefoniaRecepcionMarketingService::class,'db');
         $property->setValue($this,$db);
@@ -166,7 +169,7 @@ foreach ([[8,'voicemail','BUZON',''],[7,'foreign-call','BUZON',''],[7,'bad-exten
 operarCheck(count($db->saved)===1,'intentos rechazados no escriben resultados');
 $db->race=true;
 try {
-    $service->guardarResultado(7,'transferred','BUZON','Segundo envío');
+    $service->guardarResultado(7,'race-answered','BUZON','Segundo envío');
     operarCheck(false,'rechazar doble envío concurrente');
 } catch (DomainException $error) {
     operarCheck($error->getCode()===409,'la clave única evita sobrescrituras concurrentes');

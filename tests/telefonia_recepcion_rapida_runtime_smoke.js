@@ -175,8 +175,9 @@ async function flush(){ await new Promise(resolve=>setImmediate(resolve)); }
     shared.els['[data-shell-transfer-toggle]'].dispatch('click');
     await flush();
     assert.equal(shared.els['[data-routing-identification]'].children
-        .filter(x=>x.tag==='button').length,2,
-        'Número compartido: pedir selección de institución');
+        .filter(x=>x.tag==='button' && x.attrs['aria-label']?.startsWith('Confirmar ')).length,2,
+        'Número compartido: pedir selección de institución sin contar la opción para descartarlas');
+    assert.ok(shared.els['[data-routing-identification]'].children.some(x=>x.textContent==='No corresponde a estas instituciones'));
     assert.equal(shared.els['[data-routing-state]'].value,'',
         'Número compartido: no predeterminar un territorio');
     assert.deepEqual(shared.transfers,[]);
