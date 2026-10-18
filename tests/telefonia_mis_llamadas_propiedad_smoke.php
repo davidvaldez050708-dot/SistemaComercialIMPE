@@ -48,4 +48,16 @@ if ($primera['paginas'] !== 53 || count($primera['filas']) !== 20
     fwrite(STDERR,"FALLO: paginación incompleta o fuera de rango.\n");
     exit(1);
 }
+$marketing = TelefoniaMisLlamadasService::normalizarMarketing([
+    ['pbx_call_id'=>'mk-1','tipo'=>'Entrante','numero'=>'5550123','fecha'=>'2026-10-18 10:00:00','estado'=>'Transferida','contestada'=>true,'segundos'=>39],
+    ['pbx_call_id'=>'mk-2','tipo'=>'Saliente','numero'=>'5550555','fecha'=>'2026-10-18 11:00:00','estado'=>'Completada','contestada'=>true,'segundos'=>19],
+    ['pbx_call_id'=>'','tipo'=>'Entrante'],
+],100,'100');
+if (count($marketing)!==2 || !$marketing[0]['transferida']
+    || $marketing[0]['direccion']!=='Entrante'
+    || $marketing[1]['direccion']!=='Saliente'
+    || $marketing[0]['usuario_id']!==100) {
+    fwrite(STDERR, "FALLO: normalización de recepción Marketing.\n");
+    exit(1);
+}
 echo "OK: aislamiento de historial, extensión y sentido de devolución\n";
