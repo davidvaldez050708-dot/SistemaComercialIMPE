@@ -940,8 +940,10 @@
         const hostSinConexion = !freshState(currentState) ||
             (currentState && !currentState.hostReady &&
                 String(currentState.phase || '') === 'error');
+        const montajeRecuperable = !mountFailed ||
+            mountFailed.startsWith('No se pudo cargar el motor telefónico');
         if (autoEnabled && hostFrame && hostSinConexion &&
-            !currentState?.active && !mountFailed &&
+            !currentState?.active && montajeRecuperable &&
             Date.now() - hostStartedAt > 25000 &&
             Date.now() - lastRecoveryAttempt > 60000) {
             // Reintentar cada minuto, incluso después de tres fallos antiguos.
