@@ -58,6 +58,34 @@ final class TelefoniaMisLlamadasService
         return $filas;
     }
 
+    /**
+     * Fuente propia de Marketing, basada en inicios PBX firmados de su extensión.
+     * La bandeja de recepción limita su historial a los últimos 30 días.
+     */
+    public static function normalizarMarketing(array $llamadas, int $uid, string $extension): array
+    {
+        if ($uid <= 0 || $extension === '') return [];
+        $filas = [];
+        foreach ($llamadas as $call) {
+            if (!is_array($call)) continue;
+            $id = trim((string)($call['pbx_call_id'] ?? ''));
+            $tipo = (string)($call['tipo'] ?? '');
+            if ($id === '' || !in_array($tipo, ['Entrante', 'Saliente'], true)) continue;
+            $filas[] = [
+                'pbx_call_id' => $id, 'usuario_id' => $uid, 'extension' => $extension,
+                'proceso' => 'Recepción', 'direccion' => $tipo,
+                'numero' => (string)($call['numero'] ?? ''),
+                'fecha' => (string)($call['fecha'] ?? ''),
+                'segundos' => max(0, (int)($call['segundos'] ?? 0)),
+                'conectada' => !empty($call['contestada']),
+                'resultado' => (string)($call['resultado_etiqueta'] ?? ''),
+                'estado_recepcion' => (string)($call['estado'] ?? ''),
+                'transferida' => (string)($call['estado'] ?? '') === 'Transferida'
+            ];
+        }
+        return $filas;
+    }
+
     private function consultarDevoluciones(int $usuarioId, string $desde, string $hasta): array
     {
         // No instanciar TelefoniaDevolucionService: su constructor prepara
@@ -110,10 +138,30 @@ final class TelefoniaMisLlamadasService
                 ? $filtros['direccion'] : ''
         ]);
 
-        $rows = self::filtrarPropias($control['stats']['historial'] ?? [], $usuarioId);
-        $rows = self::enriquecerDevoluciones($rows, $this->consultarDevoluciones(
-            $usuarioId, (string)$control['filtros']['desde'], (string)$control['filtros']['hasta']
-        ), $usuarioId);
+        $esMarketing = strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
+        if ($esMarketing) {
+            require_once __DIR__ . '/TelefoniaRecepcionMarketingService.php';
+            if (!TelefoniaRecepcionMarketingService::tienePermisos()) {
+                throw new DomainException('No tienes acceso a la recepción telefónica.');
+            }
+            $recepcion = (new TelefoniaRecepcionMarketingService())->resumen($usuarioId);
+            $rows = self::normalizarMarketing(
+                $recepcion['llamadas'] ?? [], $usuarioId, (string)($recepcion['extension'] ?? '')
+            );
+            $desde = (string)$control['filtros']['desde'];
+            $hasta = (string)$control['filtros']['hasta'];
+            $direccion = (string)($control['filtros']['direccion'] ?? '');
+            $rows = array_values(array_filter($rows, static function (array $r) use ($desde, $hasta, $direccion): bool {
+                $dia = substr((string)$r['fecha'], 0, 10);
+                return $dia >= $desde && $dia <= $hasta
+                    && ($direccion === '' || $direccion === $r['direccion']);
+            }));
+        } else {
+            $rows = self::filtrarPropias($control['stats']['historial'] ?? [], $usuarioId);
+            $rows = self::enriquecerDevoluciones($rows, $this->consultarDevoluciones(
+                $usuarioId, (string)$control['filtros']['desde'], (string)$control['filtros']['hasta']
+            ), $usuarioId);
+        }
         // Un identificador PBX puede tener varias extensiones: en esta vista,
         // cada fila es un tramo atribuido, no una nueva llamada externa.
         $total = count($rows);
@@ -129,7 +177,7 @@ final class TelefoniaMisLlamadasService
             'entrantes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Entrante')),
             'salientes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Saliente')),
             'filtros' => $control['filtros'],
-            'limitacion' => 'Vista inicial de solo lectura: muestra tramos del intervalo consultado, con atribución verificada y paginación de 20 registros. No incluye devoluciones sin PBX confirmado ni registros ambiguos. Las grabaciones se consultan en sus módulos de origen.'
+            'limitacion' => 'Vista inicial de solo lectura: muestra tramos del intervalo consultado, con atribución verificada y paginación de 20 registros. No incluye devoluciones sin PBX confirmado ni registros ambiguos. Marketing conserva una ventana de 30 días; las grabaciones se consultan en sus módulos de origen.'
         ];
     }
 }
