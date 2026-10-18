@@ -102,8 +102,13 @@ class TelefoniaControlService
                     OR EXISTS (SELECT 1 FROM telefonia_extensiones pte
                         WHERE pte.extension=e.internal AND pte.proveedor='ZADARMA'
                         AND pte.usuario_id=$personalUid AND pte.activo=1
-                        AND pte.permite_entrantes=1 AND e.evento='NOTIFY_INTERNAL'
-                        AND e.received_at >= GREATEST(pte.created_at, pte.updated_at))
+                        AND pte.permite_entrantes=1
+                        AND EXISTS (
+                            SELECT 1 FROM telefonia_zadarma_eventos pe
+                            WHERE pe.pbx_call_id=e.pbx_call_id AND pe.internal=e.internal
+                            AND pe.evento='NOTIFY_INTERNAL'
+                            AND pe.received_at >= GREATEST(pte.created_at, pte.updated_at)
+                        ))
                 )
             ", $sql);
         } else {
