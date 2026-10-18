@@ -186,7 +186,7 @@ $claseFormularios =
                 <p class="sidebar-section-title">TELEFONÍA</p>
                 <a href="<?= BASE_URL ?>index.php?controller=telefonia&action=misLlamadas"
                    class="sidebar-link <?= $opcionActiva === 'mis_llamadas' ? 'active' : '' ?>">
-                    <i class="bi bi-telephone-history"></i> Mis llamadas
+                    <i class="bi bi-telephone"></i> Mis llamadas
                 </a>
             </div>
         <?php endif; ?>
@@ -502,6 +502,17 @@ $claseFormularios =
 
             <?php endif; ?>
 
+
+            <?php if ($mostrarMisLlamadas): ?>
+                <div class="sidebar-section">
+                    <p class="sidebar-section-title">TELEFONÍA</p>
+                    <a href="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=misLlamadas"
+                       class="sidebar-link <?= $opcionActiva === 'mis_llamadas' ? 'active' : '' ?>">
+                        <i class="bi bi-telephone" aria-hidden="true"></i>
+                        Mis llamadas
+                    </a>
+                </div>
+            <?php endif; ?>
 
             <!-- MARKETING -->
             <?php if ($mostrarMarcadorTelefonia): ?>
