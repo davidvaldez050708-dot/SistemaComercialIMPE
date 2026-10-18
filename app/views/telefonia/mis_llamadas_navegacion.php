@@ -1,15 +1,14 @@
 <?php
 // Pestañas del historial personal: cada vista reusa la operación ya autorizada.
 // No son enlaces a páginas duplicadas ni cambian el propietario de una llamada.
-$tabsMisLlamadas = [
-    ['vista' => 'historial', 'titulo' => 'Historial', 'icono' => 'bi-clock-history']
-];
+$tabsMisLlamadas = [];
+if (!empty($puedeRecepcionMarketing)) {
+    $tabsMisLlamadas[] = ['vista'=>'recepcion', 'titulo'=>'Recepción y resultados', 'icono'=>'bi-headset'];
+}
+$tabsMisLlamadas[] = ['vista'=>'historial', 'titulo'=>'Historial', 'icono'=>'bi-clock-history'];
 if (!empty($puedeGestionAnalista)) {
     $tabsMisLlamadas[] = ['vista' => 'recibidas', 'titulo' => 'Recibidas y resultados', 'icono' => 'bi-telephone-inbound'];
     $tabsMisLlamadas[] = ['vista' => 'devoluciones', 'titulo' => 'Por devolver', 'icono' => 'bi-telephone-forward'];
-}
-if (!empty($puedeRecepcionMarketing)) {
-    $tabsMisLlamadas[] = ['vista' => 'recepcion', 'titulo' => 'Recepción y resultados', 'icono' => 'bi-headset'];
 }
 ?>
 <style><?= file_get_contents(ROOT_PATH.'/public/css/telefonia_mis_llamadas.css') ?></style>

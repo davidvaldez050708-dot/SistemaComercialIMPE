@@ -97,9 +97,6 @@ $esTelefoniaDashboard =
     $controllerDashboard === 'telefonia';
 $usarTelefoniaPersistente =
     tienePermiso('telefonia.usar');
-require_once __DIR__ . '/../../helpers/TelefoniaMarketingAccessHelper.php';
-$esRecepcionMarketingDashboard =
-    $esHomeDashboard && marketingTieneRecepcionAsignada();
 
 $cssOpcionalDashboard = [];
 
@@ -167,12 +164,17 @@ if ($controllerDashboard === 'seguimientovinculacion' &&
 
 // La pestaña integrada debe cargar los mismos estilos que la bandeja original.
 if ($controllerDashboard === 'telefonia' && $actionDashboard === 'misllamadas') {
-    $vistaMisLlamadasHead = (string)($_GET['vista'] ?? 'historial');
+    // La vista efectiva la resuelve el controlador según el rol.
+    // Marketing abre Recepción incluso cuando la URL no incluye ?vista=.
+    $vistaMisLlamadasHead = (string)($vistaActual ?? ($_GET['vista'] ?? 'historial'));
     if ($vistaMisLlamadasHead === 'recibidas') {
         $cssOpcionalDashboard[] = 'seguimiento_llamadas_expediente.css';
         $cssOpcionalDashboard[] = 'seguimiento_llamadas_player.css';
         $cssOpcionalDashboard[] = 'seguimiento_entrantes_analista.css';
     } elseif ($vistaMisLlamadasHead === 'recepcion') {
+        // Mismos componentes de audio que funcionaban en Inicio/Marketing.
+        $cssOpcionalDashboard[] = 'seguimiento_llamadas_expediente.css';
+        $cssOpcionalDashboard[] = 'seguimiento_llamadas_player.css';
         $cssOpcionalDashboard[] = 'telefonia_recepcion_marketing.css';
     }
 }
@@ -269,11 +271,6 @@ if ($usarTelefoniaPersistente) {
     $cssOpcionalDashboard[] = 'telefonia_persistente.css';
     $cssOpcionalDashboard[] = 'telefonia_teclado.css';
 }
-if ($esRecepcionMarketingDashboard) {
-    $cssOpcionalDashboard[] = 'seguimiento_llamadas_expediente.css';
-    $cssOpcionalDashboard[] = 'seguimiento_llamadas_player.css';
-    $cssOpcionalDashboard[] = 'telefonia_recepcion_marketing.css';
-}
 
 if (
     $esConvocatoriaReportesDashboard ||
@@ -361,9 +358,11 @@ if (
     }
     $jsOpcionalHead[] = 'telefonia_grabaciones_ventas.js';
 }
-if ($esRecepcionMarketingDashboard) {
+if ($controllerDashboard === 'telefonia' && $actionDashboard === 'misllamadas'
+    && (string)($vistaActual ?? ($_GET['vista'] ?? '')) === 'recepcion'
+    && $esPerfilMarketingDashboard) {
+    // Los reproductores tienen listeners delegados sobre la tabla al cargar DOM.
     $jsOpcionalHead[] = 'telefonia_recepcion_marketing.js';
-    // Reutiliza exactamente el reproductor del expediente y de Ventas.
     $jsOpcionalHead[] = 'telefonia_grabaciones_ventas.js';
 }
 
