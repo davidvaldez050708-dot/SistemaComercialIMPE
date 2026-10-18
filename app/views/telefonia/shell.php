@@ -196,7 +196,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             <div class="persistent-phone-number" data-incoming-number>—</div>
             <div class="persistent-phone-origin">
                 <i class="bi bi-headset" aria-hidden="true"></i>
-                Desde: <strong>Extensión <?= htmlspecialchars($extensionShell, ENT_QUOTES, 'UTF-8') ?> · Telefonía IP</strong>
+                <span data-incoming-origin-label>Recepción:</span> <strong data-incoming-origin>Extensión <?= htmlspecialchars($extensionShell, ENT_QUOTES, 'UTF-8') ?></strong>
             </div>
             <div class="persistent-phone-state" role="status" aria-live="polite">
                 <span data-incoming-state>Llamada entrante</span>
@@ -289,9 +289,10 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                     </select>
                 </div>
                 <div class="impe-routing-actions">
-                    <button type="button" data-routing-attended class="is-primary">Consultar primero</button>
+                    <button type="button" data-routing-attended class="is-primary">Consultar primero (recomendado)</button>
                     <button type="button" data-routing-direct>Transferir directamente</button>
                 </div>
+                <p class="impe-routing-help">Consulta primero para esperar la respuesta del analista. Si no contesta, la centralita puede devolver la llamada a recepción. Al transferir directamente, recepción deja de participar.</p>
                 <p data-routing-feedback role="status" aria-live="polite">
                     El destinatario debe tener una extensión activa. No se transfiere automáticamente.
                 </p>
@@ -377,6 +378,40 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
         </button>
     </aside>
     <?php endif; ?>
+    <?php if ($marketingShell || $analistaEntrantesShell): ?>
+    <style><?php echo file_get_contents(ROOT_PATH . '/public/css/telefonia_cierre.css'); ?></style>
+    <button type="button" class="impe-call-notice" data-missed-calls hidden>
+        <i class="bi bi-telephone-x" aria-hidden="true"></i><span></span>
+    </button>
+    <?php endif; ?>
+    <?php if ($marketingShell): ?>
+    <dialog class="impe-call-result-dialog system-form-modal" data-call-result-required aria-labelledby="requiredResultTitle">
+      <form>
+        <div class="system-form-modal-header">
+            <h2 id="requiredResultTitle">Registrar resultado de llamada</h2>
+            <div class="system-form-modal-subtitle" data-result-number></div>
+        </div>
+        <div class="system-form-modal-body">
+            <p>Completa el resultado antes de realizar otra llamada. Una vez guardado, queda definitivo.</p>
+            <label for="requiredResult">Resultado observado</label>
+            <select id="requiredResult" name="resultado" required>
+                <option value="">Selecciona un resultado</option>
+                <option value="CONTACTO">Persona atendió</option>
+                <option value="BUZON">Buzón de voz</option>
+                <option value="NO_DISPONIBLE">No disponible</option>
+                <option value="NUMERO_INCORRECTO">Número incorrecto</option>
+                <option value="OTRO">Otro resultado</option>
+            </select>
+            <label for="requiredResultNote">Nota (opcional)</label>
+            <textarea id="requiredResultNote" name="nota" rows="3" maxlength="500"></textarea>
+            <p data-result-feedback role="status" aria-live="polite"></p>
+        </div>
+        <div class="system-form-modal-footer">
+            <button type="submit" class="btn-system-save"><i class="bi bi-check-lg" aria-hidden="true"></i> Guardar resultado</button>
+        </div>
+      </form>
+    </dialog>
+    <?php endif; ?>
     <script>
         window.IMPE_PHONE_SHELL_CONFIG = <?= json_encode([
             'userId' => $usuarioShell,
@@ -384,6 +419,10 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'autoReception' => $puedeRecibirShell,
             'alwaysReceive' => $puedeRecibirShell && !$marketingShell,
             'analystIncomingResults' => $analistaEntrantesShell,
+            'receptionResults' => $marketingShell,
+            'callNoticesUrl' => ($marketingShell || $analistaEntrantesShell) ? BASE_URL . 'prueba_telefonia/api/avisos_llamadas.php' : '',
+            'receptionResultUrl' => BASE_URL . 'prueba_telefonia/api/resultado_recepcion_marketing.php',
+            'callHistoryUrl' => $marketingShell ? BASE_URL . 'index.php?controller=home&action=index#recepcion-telefonica' : BASE_URL . 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes',
             'incomingResultsUrl' => BASE_URL . 'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes',
             'canCallOut' => tienePermiso('telefonia.salientes') &&
                 !empty($asignacionTelefonica['permite_salientes']),
@@ -397,6 +436,9 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'homeUrl' => BASE_URL . 'index.php?controller=home&action=index'
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
+    <?php if ($marketingShell || $analistaEntrantesShell): ?>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_cierre.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_cierre.js') ?>"></script>
+    <?php endif; ?>
     <script id="impeDialerRuntime">
     <?php
     $dialerJsPath = ROOT_PATH . '/public/javascript/telefonia_teclado.js';

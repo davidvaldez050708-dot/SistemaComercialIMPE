@@ -342,6 +342,12 @@
         }
 
         renderPanel();
+        if (startedNewCall && panel && !panel.hidden) {
+            const rect=panel.getBoundingClientRect();
+            panel.style.left=Math.max(8,(window.innerWidth-rect.width)/2)+'px';
+            panel.style.top=Math.max(8,(window.innerHeight-rect.height)/2)+'px';
+            panel.style.right='auto';panel.style.bottom='auto';
+        }
         emit();
     };
 
@@ -875,6 +881,11 @@
     };
 
     const startCall = async function (payload) {
+        if (window.parent?.IMPE_CALL_CLOSURE?.hasPending?.()) {
+            window.parent.IMPE_CALL_CLOSURE.showPending();
+            throw new Error('Guarda el resultado de la llamada anterior antes de marcar.');
+        }
+        try {window.parent?.IMPE_TELEPHONY_SHELL?.unlockAudio?.();} catch (_) {}
         const info = await probe();
 
         if (!info?.permite_salientes) {
@@ -1569,7 +1580,7 @@
                 '<div class="persistent-phone-number" data-phone-number>—</div>' +
                 '<div class="persistent-phone-origin">' +
                     '<i class="bi bi-building-check" aria-hidden="true"></i>' +
-                    '<span>Desde: <strong data-phone-extension>Extensión —</strong> · Telefonía IP</span>' +
+                    '<span><span data-phone-origin-label>Desde:</span> <strong data-phone-extension>Extensión —</strong></span>' +
                 '</div>' +
                 '<div class="persistent-phone-state">' +
                     '<span data-phone-status>Preparando…</span>' +
@@ -2118,10 +2129,13 @@
         }
 
         if (extensionEl) {
+            const from=String(state.transferFrom||state.context?.transferFrom||'');
+            const label=panel.querySelector('[data-phone-origin-label]');
+            if(label)label.textContent=state.direction==='incoming'?(from?'Transferida desde:':'Recibida en:'):'Desde:';
             extensionEl.textContent =
-                state.extension
+                (state.direction==='incoming'?from||state.extension:state.extension)
                     ? 'Extensión ' +
-                        state.extension
+                        (state.direction==='incoming'?from||state.extension:state.extension)
                     : 'Extensión —';
         }
 

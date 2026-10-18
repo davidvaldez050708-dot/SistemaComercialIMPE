@@ -364,6 +364,7 @@
         }
 
         render();
+        window.IMPE_CALL_AUDIO?.update(state);
         return state;
     };
 
@@ -843,6 +844,7 @@
         if (
             state.direction === 'incoming' &&
             state.active &&
+            state.context?.type !== 'SDK_INCOMING' &&
             String(state.pbxCallId || '').trim() !== ''
         ) {
             params.set(
@@ -993,6 +995,15 @@
         }
 
         if (incomingStatus === 'transferred') {
+            // En consulta la recepción todavía conversa con el destinatario.
+            // NOTIFY_INTERNAL acredita el timbrado, no la entrega final.
+            const session = window.zdrmWebPhone?.webCallSession;
+            if (state.context?.transferRequest?.mode === 'CONSULTADA' &&
+                session && typeof session.isEnded === 'function' && !session.isEnded()) {
+                publish({message:'Consulta en curso con ext. ' + call.transfer_to +
+                    '. Espera su respuesta; si no contesta, vuelve a recepción.'});
+                return;
+            }
             if (
                 state.direction === 'incoming' &&
                 String(state.pbxCallId || '') ===
@@ -1077,6 +1088,7 @@
                 String(call.caller_id || ''),
             calledDid:
                 String(call.called_did || ''),
+            transferFrom:String(call.transfer_from || ''),
             institution: '',
             status: answered ? 'in-progress' :
                 (samePbxCall && state.phase === 'answering'
@@ -1098,10 +1110,14 @@
                 calledDid:String(call.called_did || ''),
                 sdkConnected:sdkAnswered || (samePbxCall &&
                     Boolean(state.context?.sdkConnected)),
-                pbxAnswered:pbxAnswered
+                pbxAnswered:pbxAnswered,
+                transferFrom:String(call.transfer_from || ''),
+                transferRequest:samePbxCall && !call.returned_from?state.context?.transferRequest:null
             },
             finalMetadata: null,
-            message: answered
+            message: call.returned_from
+                ? 'La llamada volvió a recepción desde la extensión '+call.returned_from+'.'
+                : answered
                 ? ''
                 : 'Llamada entrante a la extensión ' +
                     extension
@@ -1479,6 +1495,7 @@
     };
 
     const startCall = async function (payload) {
+        window.IMPE_CALL_AUDIO?.unlock();
         if (!permiteSalientes) {
             publish({
                 phase: 'error',
@@ -1565,6 +1582,22 @@
             });
         }
     };
+
+    // JsSIP confirma el progreso antes del siguiente sondeo de la centralita.
+    // Escuchar sin sustituir los manejadores del proveedor.
+    const observedOutgoingSessions = new WeakSet();
+    window.setInterval(function () {
+        if(!state.active || state.direction!=='outgoing')return;
+        const session=window.zdrmWebPhone?.webCallSession;
+        if(!session || session.direction!=='outgoing' || observedOutgoingSessions.has(session) || typeof session.on!=='function')return;
+        observedOutgoingSessions.add(session);
+        const token=state.callToken;
+        session.on('progress',function(event){
+            const code=Number(event?.response?.status_code||0);
+            if(state.active && state.callToken===token && state.phase==='dialing' && [180,183].includes(code))
+                publish({phase:'ringing',status:'ringing'});
+        });
+    },100);
 
     const hangup = async function () {
         if (!state.active || hangingUp) {
@@ -1659,10 +1692,13 @@
         // El navegador aceptó la cola de tonos, pero sólo un evento
         // NOTIFY_INTERNAL transfer_from confirma el traspaso real en PBX.
         publish({
+            context:Object.assign({},state.context,{transferRequest:{
+                mode:attended?'CONSULTADA':'DIRECTA',extension:ext,at:Date.now()
+            }}),
             message:attended
-                ? 'Consulta enviada por WebRTC a ext. ' + ext +
+                ? 'Consultando a la extensión · ext. ' + ext +
                     '. Espera la respuesta antes de colgar.'
-                : 'Tonos de transferencia directa enviados por WebRTC a ext. ' +
+                : 'Solicitando transferencia directa a ext. ' +
                     ext + '. Esperando confirmación de la centralita.'
         });
         return true;

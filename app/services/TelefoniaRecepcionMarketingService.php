@@ -142,6 +142,7 @@ class TelefoniaRecepcionMarketingService
             $call['resultado'] = (string)($observado['resultado'] ?? '');
             $call['resultado_etiqueta'] = self::resultadosPermitidos()[$call['resultado']] ?? '';
             $call['nota'] = (string)($observado['nota'] ?? '');
+            $call['requiere_resultado'] = self::requiereResultado($call);
             $call = self::aplicarPoliticaGrabacion($call);
             if ($call['estado'] === 'Transferida') $data['transferidas']++;
             if ($call['tipo'] === 'Saliente') {
@@ -206,6 +207,7 @@ class TelefoniaRecepcionMarketingService
                     ? ($row['caller_id'] ?? '') : ($row['destination'] ?? ''))),
                 'contestada' => false,
                 'finalizada' => false,
+                'fecha_fin' => '',
                 'transferida' => false,
                 'destino_transferencia' => '',
                 'disposition' => '',
@@ -222,6 +224,12 @@ class TelefoniaRecepcionMarketingService
             $tipo = strtoupper(trim((string)($row['evento'] ?? '')));
             $interno = trim((string)($row['internal'] ?? ''));
             $esSaliente = $call['tipo'] === 'Saliente';
+            $p=json_decode((string)($row['payload_json'] ?? ''),true) ?: [];
+            if ($tipo==='NOTIFY_INTERNAL' && $interno===$extension && $call['transferida'] &&
+                (string)($p['transfer_from'] ?? '')===$call['destino_transferencia']) {
+                $call['transferida']=false;$call['destino_transferencia']='';
+                $call['saliente_transferida']=false;$call['finalizada']=false;$call['fecha_fin']='';
+            }
 
             // La centralita identifica el origen también en NOTIFY_ANSWER.
             // Aplicar la misma evidencia a salientes y entrantes; nunca inferir
@@ -245,6 +253,7 @@ class TelefoniaRecepcionMarketingService
                 if ($tipo === 'NOTIFY_OUT_END' &&
                     ($interno === $extension || $interno === '')) {
                     $call['finalizada'] = true;
+                    $call['fecha_fin'] = (string)($row['received_at'] ?? '');
                     $call['disposition'] = strtolower(trim(
                         (string)($row['disposition'] ?? '')
                     ));
@@ -266,6 +275,7 @@ class TelefoniaRecepcionMarketingService
                 if ($tipo === 'NOTIFY_END' &&
                     ($interno === $extension || $interno === '')) {
                     $call['finalizada'] = true;
+                    $call['fecha_fin'] = (string)($row['received_at'] ?? '');
                     $call['segundos'] = max(
                         $call['segundos'], (int)($row['duration'] ?? 0)
                     );
@@ -332,6 +342,7 @@ class TelefoniaRecepcionMarketingService
             $call['grabacion_salida_pendiente'] =
                 $call['tipo'] === 'Saliente' && $call['audio_reportado'] &&
                 !$salienteReproducible;
+            $call['atendida'] = $call['contestada'];
             unset($call['audio_reportado'], $call['contestada'],
                 $call['transferida'], $call['disposition'],
                 $call['saliente_transferida']);
@@ -355,6 +366,13 @@ class TelefoniaRecepcionMarketingService
             $call['grabacion_salida_pendiente'] = false;
         }
         return $call;
+    }
+
+    public static function requiereResultado(array $call): bool
+    {
+        return !empty($call['finalizada']) && empty($call['resultado']) &&
+            ($call['estado'] ?? '') !== 'Transferida' &&
+            (!empty($call['atendida']) || in_array($call['estado_cierre'] ?? '', ['Atendida','Completada'], true));
     }
 
     public static function resultadosPermitidos(): array
@@ -415,6 +433,9 @@ class TelefoniaRecepcionMarketingService
         }
         if (!empty($propia['resultado'])) {
             throw new DomainException('El resultado ya fue registrado y no se puede modificar.',409);
+        }
+        if (!self::requiereResultado($propia)) {
+            throw new DomainException('Esta llamada ya tiene un cierre automático: transferida o sin respuesta.');
         }
         if (!$this->db->query("CREATE TABLE IF NOT EXISTS telefonia_recepcion_resultados (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,

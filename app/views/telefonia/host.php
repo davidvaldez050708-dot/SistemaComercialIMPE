@@ -104,6 +104,7 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_webrtc_dtmf.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_webrtc_dtmf.js') ?>">
     </script>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_audio.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_audio.js') ?>"></script>
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_host.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_host.js') ?>">
     </script>

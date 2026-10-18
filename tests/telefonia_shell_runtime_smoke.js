@@ -74,6 +74,7 @@ function boot(opts = {}) {
         setInterval(fn) {intervals.push(fn); return intervals.length;}
     };
     const doc = {
+        addEventListener() {},
         querySelector(k) {return elements[k];},
         getElementById(k) {return elements[k];},
         createElement() {return element();},

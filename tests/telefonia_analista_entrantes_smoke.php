@@ -30,7 +30,7 @@ $checks = [
         str_contains($controller, 'hash_equals($esperado, $recibido)') &&
         str_contains($vista, 'name="csrf_token"'),
     'Telefonía verificada mediante evento entrante firmado' =>
-        str_contains($servicio, "evento = 'NOTIFY_INTERNAL'") &&
+        str_contains($servicio, "evento IN ('NOTIFY_INTERNAL','NOTIFY_ANSWER')") &&
         str_contains($servicio, "obtenerEstadoEntrantePorPbxCallId") &&
         str_contains($servicio, "received_at >= ?"),
     'Respeta propiedad de extensión y vigencia de asignación' =>

@@ -19,7 +19,7 @@
 
     function coincideEstadoRecepcion(call, selected) {
         if (!selected) return true;
-        if (selected === 'pendientes') return Boolean(call.finalizada) && !call.resultado;
+        if (selected === 'pendientes') return Boolean(call.requiere_resultado);
         const grupos = {
             respondidas: ['Atendida','Completada'],
             'sin-respuesta': ['Perdida','Sin respuesta'],
@@ -272,7 +272,7 @@
                 observed.title = 'Registrado por recepción' + (call.nota ? ': ' + call.nota : '');
                 resultCell.appendChild(observed);
                 if (call.nota) resultCell.appendChild(node('span','marketing-reception-result-note',call.nota));
-            } else if (call.finalizada && resultDialog && root.dataset.resultUrl) {
+            } else if (call.requiere_resultado && resultDialog && root.dataset.resultUrl) {
                 const edit = node('button','marketing-reception-result-edit',
                     'Registrar resultado');
                 edit.type = 'button';
@@ -525,7 +525,7 @@
             const button = event.target.closest('[data-marketing-result]');
             if (!button || !resultDialog || savingResult) return;
             const call = calls.find(c => c.pbx_call_id === button.dataset.marketingResult);
-            if (!call?.finalizada || call.resultado) return;
+            if (!call?.requiere_resultado) return;
             const modal = resultModal();
             if (!modal) {
                 explicarDevolucion('No se pudo abrir el formulario. Actualiza la página.',true);
@@ -579,7 +579,8 @@
                 const payload = await response.json();
                 if (!response.ok || !payload.ok) throw new Error(payload.mensaje || 'No se pudo guardar.');
                 const call = calls.find(c=>c.pbx_call_id===resultCallId);
-                if (call) Object.assign(call,payload.registro);
+                if (call) Object.assign(call,payload.registro,{requiere_resultado:false});
+                if(window.parent!==window)window.parent.postMessage({type:'IMPE_RECEPTION_RESULT_SAVED',id:resultCallId},window.location.origin);
                 resultNeedsRefresh = true;
                 closingAfterSave = true;
                 resultModal().hide();
@@ -622,6 +623,9 @@
                 abierto ? '' : 'No se pudo abrir el marcador. Actualiza la página.',
                 !abierto
             );
+        });
+        window.addEventListener('message',function(event){
+            if(event.origin===window.location.origin && event.source===window.parent && event.data?.type==='IMPE_RECEPTION_RESULT_SAVED')void loadHistory(false);
         });
 
         search.addEventListener('input', function () {

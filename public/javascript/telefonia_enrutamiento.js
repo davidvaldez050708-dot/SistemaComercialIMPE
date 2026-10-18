@@ -117,8 +117,8 @@
             transferDestinationExtension = '';
             transferSubmittedAt = 0;
         } else if (correspondeExtension &&
-                   (message.startsWith('Tonos de transferencia directa') ||
-                    message.startsWith('Consulta enviada por WebRTC'))) {
+                   (message.startsWith('Solicitando transferencia directa') ||
+                    message.startsWith('Consultando a la extensión'))) {
             // Tonos enviados no equivale a transferencia PBX confirmada.
             setFeedback(message);
         }
@@ -511,7 +511,7 @@
             transferDestinationExtension = String(selected.extension);
             transferSubmittedAt = Date.now();
             setFeedback(mode === 'CONSULTADA'
-                ? 'Solicitando consulta WebRTC con ext. ' + selected.extension +
+                ? 'Consultando a la extensión ' + selected.extension +
                     '… Espera la respuesta de la centralita.'
                 : 'Solicitando transferencia directa a ext. ' + selected.extension +
                     '… Espera la confirmación de la centralita.');

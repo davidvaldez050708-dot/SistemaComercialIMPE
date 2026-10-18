@@ -44,8 +44,13 @@ jobs:
           php tests/telefonia_atencion_db.php
           php tests/conciliacion_entrantes_pbx_webrtc_smoke.php
           php tests/telefonia_analista_entrantes_smoke.php
+          php tests/telefonia_recepcion_cierre.php
+          node tests/telefonia_flujo_motor.cjs
+          node tests/telefonia_shell_runtime_smoke.js
           php tests/telefonia_resultado_analista_modal_smoke.php
           node tests/telefonia_analista_resultado_transferido_smoke.js
           node tests/telefonia_entrantes_bridge_smoke.js
       - name: Modales, recuperación y guardado en navegador real
-        run: node tests/telefonia_atencion_browser.cjs
+        run: |
+          node tests/telefonia_atencion_browser.cjs
+          node tests/telefonia_flujo_browser.cjs

@@ -55,8 +55,14 @@ try {
     $q->execute();
     $evidence = $q->get_result()->fetch_assoc();
     $q->close();
-    $autorizada = !empty($evidence['participa']) && !empty($evidence['atendio']) &&
-        !empty($evidence['termino']);
+    $estadoPropio = (new ZadarmaWebhookEventStoreService($db))->obtenerEstadoEntrantePorPbxCallId($ext, $pbx);
+    // Incluye la transferencia de una saliente: respuesta propia con
+    // iniciador confirmado y fin de esa misma llamada original.
+    $autorizada = $estadoPropio && !empty($estadoPropio['answer_at']) &&
+        in_array($estadoPropio['estado'], ['ended','transferred'], true) &&
+        !empty($estadoPropio['end_at']) &&
+        strcmp((string)$estadoPropio['answer_at'], $desde) >= 0 &&
+        strtotime((string)$estadoPropio['answer_at']) >= strtotime('-30 days');
     if ($recepcion) {
         // El historial verifica también las salientes propias, su permiso,
         // asignación, fin y transferencia notificada antes de ofrecer segmentos.

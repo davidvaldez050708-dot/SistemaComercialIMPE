@@ -22,6 +22,8 @@
     const incomingPanel = document.querySelector('[data-incoming-panel]');
     const incomingNumber = document.querySelector('[data-incoming-number]');
     const incomingState = document.querySelector('[data-incoming-state]');
+    const incomingOrigin = document.querySelector('[data-incoming-origin]');
+    const incomingOriginLabel = document.querySelector('[data-incoming-origin-label]');
     const incomingTitle = document.querySelector('[data-incoming-title]');
     const incomingEyebrow = document.querySelector('[data-incoming-eyebrow]');
     const incomingTimer = document.querySelector('[data-incoming-timer]');
@@ -86,6 +88,16 @@
     };
     let incomingCompact = false;
     let incomingDrag = null;
+    let centerNextCall = true;
+    const centerIncoming = function () {
+        if (!incomingPanel || incomingPanel.hidden || !centerNextCall) return;
+        const rect = incomingPanel.getBoundingClientRect();
+        incomingPanel.style.left = Math.max(8,(window.innerWidth-rect.width)/2) + 'px';
+        incomingPanel.style.top = Math.max(8,(window.innerHeight-rect.height)/2) + 'px';
+        incomingPanel.style.right = 'auto';
+        incomingPanel.style.bottom = 'auto';
+        centerNextCall = false;
+    };
     const incomingPositionKey = 'impe:telephony:incoming-position:' + userId;
     const incomingViewKey = 'impe:telephony:incoming-compact:' + userId;
     try { incomingCompact = localStorage.getItem(incomingViewKey) === '1'; }
@@ -214,6 +226,7 @@
         onCallRequested: function (call) {
             outgoingAttempt = {number:String(call?.number || ''),at:Date.now()};
             incomingCompact = false;
+            centerNextCall = true;
             render();
         },
         onCallFailed: function () {
@@ -240,6 +253,10 @@
     window.IMPE_TELEPHONY_SHELL = Object.freeze({
         userId: userId,
         ensureHost: ensureHost,
+        isPhoneReady: function () {return Boolean(freshState(currentState) && currentState.hostReady);},
+        unlockAudio: function () {
+            try {hostFrame?.contentWindow.IMPE_CALL_AUDIO?.unlock();}catch(_){}
+        },
         showProviderControls: function () {
             // SOPORTE_RECEPTOR_TRANSFER_20261015
             if (!hostFrame || !freshState(currentState) ||
@@ -284,12 +301,15 @@
 
     const updateState = function (value) {
         if (!freshState(value)) return;
+        const startsCall = value.active && !currentState?.active;
+        if (startsCall) {incomingCompact=false;centerNextCall=true;}
         // Sólo el Analista genera un aviso al finalizar una entrante REAL.
         // La llamada permanece en el historial aun si oculta este aviso.
         if (cfg.analystIncomingResults &&
             currentState?.active && currentState.direction === 'incoming' &&
             !value.active && value.direction === 'incoming' &&
-            value.phase === 'incoming-finished') {
+            value.phase === 'incoming-finished' &&
+            (Number(value.duration)>0 || Number(currentState.answeredAtMs)>0 || currentState.phase==='in-progress')) {
             const id = incomingCallId(value) || incomingCallId(currentState);
             if (id && /^[a-zA-Z0-9_-]{3,100}$/.test(id)) {
                 analystPendingCall = {id, at: Date.now()};
@@ -343,11 +363,15 @@
             actionNotice = '';
         }
         currentState = value;
+        window.IMPE_CALL_CLOSURE?.onState(value);
         syncIncomingClock(value);
         lastHeartbeat = Date.now();
         dialer?.sync(value);
         render();
     };
+    document.addEventListener('pointerdown',function(){
+        try {hostFrame?.contentWindow.IMPE_CALL_AUDIO?.unlock();}catch(_){}
+    },{passive:true});
 
     const providerBridge = function () {
         if (!hostFrame) return null;
@@ -471,7 +495,7 @@
         if (hostFrame && !ready && !failed &&
             Date.now() - hostStartedAt > 16000) {
             status.hidden = false;
-            statusText.textContent = 'WebRTC todavía no confirma que esté listo.';
+            statusText.textContent = 'El teléfono todavía se está conectando.';
             retry.hidden = false;
         }
 
@@ -535,7 +559,7 @@
                     (ringing ? 'Llamada entrante' : 'En conversación')))
                 : (finished ? 'Llamada finalizada' :
                     (finishing ? 'Finalizando llamada…' :
-                    (dialing ? 'Llamando…' : 'En conversación')));
+                    (dialing ? (phoneState.phase==='ringing'?'Timbrando…':'Marcando…') : 'En conversación')));
             incomingEyebrow.textContent = (finished || finishedIncoming) ? 'LLAMADA FINALIZADA' :
                 (shownOutgoing ? 'LLAMADA SALIENTE' :
                 (ringing ? 'RECEPCIÓN TELEFÓNICA' : 'LLAMADA EN CURSO'));
@@ -543,17 +567,22 @@
                 ? (phoneState.status === 'transferred'
                     ? 'Finalizada · transferencia confirmada por la centralita'
                     : phoneState.status === 'ended-unconfirmed'
-                    ? 'Audio finalizado · esperando registro PBX'
+                    ? 'Llamada finalizada · actualizando el historial'
                     : 'Finalizada · llamada concluida')
                 : shownOutgoing
                 ? (finished ? 'Finalizada · registrada en el historial telefónico'
                     : (finishing ? 'Finalizando la conversación…' :
-                    (dialing ? 'Marcando desde la extensión ' + cfg.extension
+                    (dialing ? (phoneState.phase==='ringing'?'Esperando que contesten':'Marcando desde la extensión ' + cfg.extension)
                         : 'Conversación en curso')))
                 : (finishingIncoming ? 'Esperando cierre de Zadarma…' :
-                    (waitingAnswer ? 'Conectando audio WebRTC…' :
+                    (waitingAnswer ? 'Conectando audio…' :
                     (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
                     : 'Conversación en curso')));
+            if(incomingOrigin && incomingOriginLabel) {
+                const from=String(phoneState.transferFrom||phoneState.context?.transferFrom||'');
+                incomingOriginLabel.textContent=shownOutgoing?'Desde:':from?'Transferida desde:':'Recibida en:';
+                incomingOrigin.textContent='Extensión '+(shownOutgoing?cfg.extension:from||cfg.extension);
+            }
             // El teclado desaparece; el panel empieza en cero.
             if (preview || finished || finishedIncoming) {
                 const duration = (finished || finishedIncoming)
@@ -594,6 +623,7 @@
             compactMute.setAttribute('aria-label', muteLabel);
             notice.hidden = !actionNotice || incomingCompact;
             notice.textContent = actionNotice;
+            centerIncoming();
         }
         callTitle.textContent = finishedIncoming ? 'Llamada finalizada' :
             incoming ? 'Llamada entrante' :
@@ -603,7 +633,7 @@
             'Extensión ' + cfg.extension;
         if (callHelp) {
             callHelp.textContent = incoming
-                ? 'Utiliza Contestar en el teléfono Zadarma. Si no aparece, la centralita detectó la llamada, pero WebRTC no confirma el timbrado.'
+                ? 'Utiliza Contestar en el teléfono. Si no aparece, espera a que termine de conectar.'
                 : 'Teléfono de la extensión ' + cfg.extension + '.';
         }
 
@@ -752,6 +782,8 @@
             } else {
                 phone.hangup();
                 actionNotice = '';
+                forceNativeControls = false;
+                nativeTransferOpen = false;
                 pendingOutgoingHangup = {at:Date.now()};
                 outgoingAttempt = null;
             }

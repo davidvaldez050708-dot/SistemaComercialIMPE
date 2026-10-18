@@ -130,5 +130,24 @@ try {
     check(one('SELECT estado_seguimiento,proxima_accion_at FROM seguimientos_vinculacion WHERE id=1')===$before,'Ruta avanzada conserva etapa y fecha');
     $out=(int)$res['interaccion']['id'];
     check(one("SELECT COUNT(*) AS n FROM telefonia_verificacion_evidencias WHERE interaccion_id=$out AND estado='PENDIENTE'")['n']==2,'Ruta avanzada conserva evidencia pendiente por campo');
+    // Transferencia saliente 100 -> 101 sin NOTIFY_INTERNAL del destinatario.
+    $t=time()-180;
+    foreach ([
+        ['event'=>'NOTIFY_OUT_START','internal'=>'100','destination'=>'5556667788','at'=>$t],
+        ['event'=>'NOTIFY_ANSWER','internal'=>'101','caller_id'=>'100','destination'=>'101','transfer_from'=>'100','at'=>$t+20],
+        ['event'=>'NOTIFY_OUT_END','internal'=>'100','destination'=>'5556667788','disposition'=>'answered','duration'=>80,'at'=>$t+80],
+        ['event'=>'NOTIFY_RECORD','call_id_with_rec'=>'1234567890.1234','at'=>$t+82]
+    ] as $e) {
+        $events->registrar($e+['pbx_call_id'=>'out_transfer_100_101','call_start'=>date('Y-m-d H:i:s',$t),'received_at'=>date('Y-m-d H:i:s',$e['at'])]);
+    }
+    $own=$events->obtenerEstadoEntrantePorPbxCallId('101','out_transfer_100_101');
+    check($own && $own['caller_id']==='5556667788' && $own['transfer_from']==='100','Identifica número externo y origen 100 desde una saliente transferida');
+    check($own['estado']==='ended' && $own['duration']===60,'Duración corresponde sólo al tramo atendido por el analista');
+    check($events->obtenerEstadoEntrantePorPbxCallId('102','out_transfer_100_101')===null,'Otra extensión no adquiere acceso a la transferencia');
+    $rows=array_column($svc->listar(1)['llamadas'],null,'pbx_call_id');
+    check(!empty($rows['out_transfer_100_101']['grabacion_pbx_reportada']),'Audio de una saliente transferida disponible en la bandeja propia');
+    check(!empty($rows['out_transfer_100_101']['contestada']),'Respuesta propia confirmada sin inventar un evento entrante');
+    $events->registrar(['event'=>'NOTIFY_ANSWER','pbx_call_id'=>'orphan_answer','internal'=>'101','transfer_from'=>'100','received_at'=>date('Y-m-d H:i:s')]);
+    check($events->obtenerEstadoEntrantePorPbxCallId('101','orphan_answer')===null,'Una respuesta sin saliente original no acredita transferencia');
     echo "Atención analista/MySQL: $checks comprobaciones OK\n";
 } finally {$db->select_db('mysql');$db->query("DROP DATABASE `$name`");$db->close();}

@@ -299,13 +299,13 @@
         clock.textContent = duration;
         if (compactClock) compactClock.textContent = duration;
         status.textContent = finished.answered
-            ? 'Llamada atendida · tiempo observado por WebRTC'
+            ? 'Llamada atendida'
             : 'Llamada sin respuesta';
         notice.hidden = false;
         notice.textContent = finished.isInternal
             ? 'Llamada interna guardada en historial · sin contacto institucional.'
             : finished.saved === true
-            ? 'Guardada en Llamadas recibidas · sin confirmación PBX.'
+            ? 'Guardada en Llamadas recibidas.'
             : finished.saved === false
             ? 'No se pudo guardar. Utiliza Reintentar registro.'
             : 'Guardando en Llamadas recibidas…';

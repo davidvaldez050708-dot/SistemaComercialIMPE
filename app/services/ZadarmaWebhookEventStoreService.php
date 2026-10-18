@@ -269,7 +269,7 @@ class ZadarmaWebhookEventStoreService
 
         $sql = "SELECT *
                 FROM telefonia_zadarma_eventos
-                WHERE evento = 'NOTIFY_INTERNAL'
+                WHERE evento IN ('NOTIFY_INTERNAL','NOTIFY_ANSWER')
                   AND internal = ?
                   AND received_at >= ?
                 ORDER BY id DESC
@@ -283,10 +283,7 @@ class ZadarmaWebhookEventStoreService
             return null;
         }
 
-        return $this->construirEstadoEntrante(
-            $extension,
-            $this->normalizarFila($inicio)
-        );
+        return $this->obtenerEstadoEntrantePorPbxCallId($extension, $inicio['pbx_call_id']);
     }
 
     public function obtenerEstadoEntrantePorPbxCallId(
@@ -313,6 +310,26 @@ class ZadarmaWebhookEventStoreService
             ) {
                 $inicio = $evento;
                 break;
+            }
+        }
+
+        // Algunas transferencias de una saliente notifican la respuesta del
+        // destinatario sin un NOTIFY_INTERNAL previo. Exigir el iniciador y
+        // la saliente original del MISMO grupo; nunca inferir por teléfono.
+        if (!$inicio) {
+            foreach ($eventos as $evento) {
+                if (($evento['event'] ?? '') !== 'NOTIFY_ANSWER' ||
+                    (string)($evento['internal'] ?? '') !== $extension) continue;
+                $origen = (string)($evento['transfer_from'] ?? '');
+                if (!preg_match('/^[0-9]{3,6}$/D', $origen) || $origen === $extension) continue;
+                foreach ($eventos as $saliente) {
+                    if (($saliente['event'] ?? '') === 'NOTIFY_OUT_START' &&
+                        (string)($saliente['internal'] ?? '') === $origen) {
+                        $inicio = $evento;
+                        $inicio['caller_id'] = (string)($saliente['destination'] ?? '');
+                        break 2;
+                    }
+                }
             }
         }
 
@@ -351,6 +368,17 @@ class ZadarmaWebhookEventStoreService
         $respuesta = null;
         $fin = null;
         $transferida = null;
+        $devueltaDesde = '';
+        $origenTransferencia = trim((string)($inicio['transfer_from'] ?? ''));
+        $salienteTransferida = false;
+        foreach ($eventos as $evento) {
+            if (($evento['event'] ?? '') === 'NOTIFY_OUT_START' &&
+                $origenTransferencia !== '' &&
+                (string)($evento['internal'] ?? '') === $origenTransferencia) {
+                $salienteTransferida = true;
+                $inicio['caller_id'] = (string)($evento['destination'] ?? $inicio['caller_id']);
+            }
+        }
 
         foreach ($eventos as $evento) {
             $tipo = strtoupper(
@@ -379,6 +407,13 @@ class ZadarmaWebhookEventStoreService
                     ) === $extension
                 );
 
+            if ($tipo === 'NOTIFY_INTERNAL' && $internal === $extension &&
+                $transferida && (string)($evento['transfer_from'] ?? '') === (string)($transferida['internal'] ?? '')) {
+                $devueltaDesde = (string)$transferida['internal'];
+                $transferida = null;
+                $fin = null;
+            }
+
             if (
                 $tipo === 'NOTIFY_ANSWER' &&
                 $respuestaPerteneceExtension
@@ -387,8 +422,9 @@ class ZadarmaWebhookEventStoreService
             }
 
             if (
-                $tipo === 'NOTIFY_END' &&
+                ($tipo === 'NOTIFY_END' || ($salienteTransferida && $tipo === 'NOTIFY_OUT_END')) &&
                 (
+                    ($salienteTransferida && $tipo === 'NOTIFY_OUT_END' && $internal === $origenTransferencia) ||
                     $internal === '' ||
                     $internal === $extension ||
                     $lastInternal === $extension
@@ -420,6 +456,15 @@ class ZadarmaWebhookEventStoreService
             $estado = 'answered';
         }
 
+        $duracion = max(0, (int)($fin['duration'] ?? 0));
+        if ($salienteTransferida) {
+            // La duración OUT_END incluye la conversación previa con
+            // recepción. El analista sólo recibe su propio tramo atendido.
+            $a = strtotime((string)($respuesta['received_at'] ?? ''));
+            $b = strtotime((string)($fin['received_at'] ?? ''));
+            $duracion = $a && $b ? max(0, $b - $a) : 0;
+        }
+
         return [
             'pbx_call_id' => $pbxCallId,
             'estado' => $estado,
@@ -428,6 +473,8 @@ class ZadarmaWebhookEventStoreService
             'called_did' =>
                 (string)($inicio['called_did'] ?? ''),
             'internal' => $extension,
+            'returned_from' => $devueltaDesde,
+            'transfer_from' => preg_match('/^[0-9]{3,6}$/D', $origenTransferencia) ? $origenTransferencia : '',
             'call_start' =>
                 (string)($inicio['call_start'] ?? ''),
             'answer_at' =>
@@ -435,7 +482,7 @@ class ZadarmaWebhookEventStoreService
             'end_at' =>
                 (string)($fin['received_at'] ?? ''),
             'duration' =>
-                max(0, (int)($fin['duration'] ?? 0)),
+                $duracion,
             'disposition' =>
                 (string)($fin['disposition'] ?? ''),
             'transfer_to' =>

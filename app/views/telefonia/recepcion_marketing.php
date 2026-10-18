@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../helpers/TelefoniaMarketingAccessHelper.php';
 $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
 ?>
 <?php if ($recepcionMarketingPermitida): ?>
-<section class="dashboard-panel marketing-reception-panel"
+<section class="dashboard-panel marketing-reception-panel" id="recepcion-telefonica"
     data-marketing-reception
     data-result-url="<?= htmlspecialchars(BASE_URL . 'prueba_telefonia/api/resultado_recepcion_marketing.php', ENT_QUOTES, 'UTF-8') ?>"
     data-result-csrf="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"

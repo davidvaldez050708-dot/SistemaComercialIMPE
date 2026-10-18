@@ -77,7 +77,7 @@ class TelefoniaEntrantesAnalistaService
         $stmt = $this->db->prepare(
             "SELECT received_at FROM telefonia_zadarma_eventos
              WHERE pbx_call_id = ? AND internal = ?
-               AND evento = 'NOTIFY_INTERNAL' AND received_at >= ?
+               AND evento IN ('NOTIFY_INTERNAL','NOTIFY_ANSWER') AND received_at >= ?
              ORDER BY id ASC LIMIT 1"
         );
         $desde = max(
@@ -124,7 +124,7 @@ class TelefoniaEntrantesAnalistaService
         $stmt = $this->db->prepare(
             "SELECT pbx_call_id, MIN(received_at) AS fecha
              FROM telefonia_zadarma_eventos
-             WHERE internal = ? AND evento = 'NOTIFY_INTERNAL'
+             WHERE internal = ? AND evento IN ('NOTIFY_INTERNAL','NOTIFY_ANSWER')
                AND received_at >= ?
              GROUP BY pbx_call_id
              ORDER BY fecha DESC LIMIT 75"
@@ -166,6 +166,7 @@ class TelefoniaEntrantesAnalistaService
             $llamadas[] = [
                 'pbx_call_id' => $id,
                 'numero' => (string)($call['caller_id'] ?? ''),
+                'transferida_desde' => (string)($call['transfer_from'] ?? ''),
                 'fuente' => 'PBX',
                 'tipo_llamada' => $clasificadorInterno->esNumeroInterno(
                     (string)($call['caller_id'] ?? ''), $extension
@@ -178,7 +179,8 @@ class TelefoniaEntrantesAnalistaService
                 'clasificacion' => (string)($registro['estado'] ?? 'PENDIENTE'),
                 'seguimiento_id' => (int)($registro['seguimiento_id'] ?? 0),
                 'interaccion_id' => (int)($registro['interaccion_id'] ?? 0),
-                'grabacion_pbx_reportada' => (string)($call['estado'] ?? '') === 'ended' &&
+                'grabacion_pbx_reportada' => !empty($call['answer_at']) &&
+                    in_array((string)($call['estado'] ?? ''), ['ended','transferred'], true) &&
                     $this->eventos->buscarCallIdGrabacion($id) !== '',
             ];
         }
