@@ -93,3 +93,105 @@
  }
  .impe-calls-hub-navigation a{flex:1;min-width:max-content;padding:8px 10px;}
 }
+
+
+/* La bitácora utiliza la misma densidad de las tarjetas de Recibidas,
+   sin alterar ninguna otra vista del CRM. */
+.linkage-incoming-page.impe-my-calls .linkage-incoming-stats{margin:12px 0 16px!important}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-stats > div{min-height:62px!important;padding:9px 12px!important}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-stats strong{font-size:17px!important}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filters{
+ gap:10px;margin:12px 0 16px;padding:12px 14px;
+ border-color:#dce5f2;border-radius:12px;background:#f7f9fd;box-shadow:none;
+}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filter-field{gap:5px}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filter-field :is(input,select){
+ height:38px;min-height:38px;font-size:12px;
+}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filter-action .btn{
+ min-height:38px;font-size:12px;
+}
+.linkage-incoming-page.impe-my-calls .linkage-call-section-heading{margin-top:12px}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-history{gap:7px}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card{
+ padding:9px 11px;gap:10px;align-items:flex-start;
+}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card .linkage-call-history-identity{gap:2px}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card .linkage-call-history-footer{
+ margin-top:7px;padding-top:7px;
+}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card .linkage-call-history-identity strong{font-size:12px}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card .linkage-call-history-identity span{
+ font-size:11px;line-height:1.4;
+}
+.linkage-incoming-page.impe-my-calls .linkage-incoming-card .linkage-call-history-date{font-size:10px}
+.linkage-incoming-page.impe-my-calls .impe-call-detail-link{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ border:1px solid #cbd9ec;border-radius:8px;background:#f3f7fd;
+ color:#274883;text-decoration:none;font-size:11px;font-weight:800;
+ min-height:30px;padding:5px 10px;
+}
+.linkage-incoming-page.impe-my-calls .impe-call-detail-link:hover{
+ background:#e9f1fc;border-color:#aec3e3;
+}
+.linkage-incoming-page.impe-my-calls .impe-call-detail-link:focus-visible{
+ outline:2px solid #4674c2;outline-offset:2px;
+}
+/* Tres filtros con exactamente el mismo ancho y altura en las vistas.
+   Recepción utiliza columnas adicionales, no otro tema visual. */
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-filters{
+ display:grid;grid-template-columns:minmax(0,1.5fr) repeat(2,minmax(0,1fr)) auto;
+ align-items:end;gap:10px;margin:12px 0 15px;padding:12px 14px;
+ border:1px solid #dce5f2;border-radius:12px;background:#f7f9fd;box-shadow:none;
+}
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-search,
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-filter-field{
+ display:flex;flex-direction:column;align-items:stretch;gap:5px;
+ width:auto;min-width:0;margin:0;
+}
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-filter-label{
+ font-size:12px;line-height:1.3;font-weight:700;color:#4f6486;
+}
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-search > i{
+ top:auto;bottom:12px;left:11px;
+}
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-filters :is(input,select){
+ display:block;width:100%;min-width:0;height:38px;min-height:38px;
+ box-sizing:border-box;margin:0;border:1px solid #cedbea;border-radius:9px;
+ background-color:#fff;color:#243b5d;font-size:12px;line-height:1.35;
+}
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-search input{
+ padding-left:32px;
+}
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-refresh{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-height:38px;padding:7px 13px;font-size:12px;white-space:nowrap;
+ border-radius:9px;
+}
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-history-head{
+ margin:8px 0 5px;
+}
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-metrics{
+ margin-bottom:12px;
+}
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-metric{
+ min-height:68px;padding:10px 12px;
+}
+.marketing-reception-panel[data-marketing-reception] .marketing-reception-metric strong{font-size:18px}
+.marketing-reception-panel[data-marketing-reception] .telephony-history-recording-row .telephony-history-recording-slot{
+ max-width:100%;min-width:0;
+}
+.marketing-reception-panel[data-marketing-reception] .telephony-history-recording-slot .linkage-call-custom-player{
+ max-width:720px;
+}
+@media(max-width:920px){
+ .marketing-reception-panel[data-marketing-reception] .marketing-reception-filters{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+}
+@media(max-width:580px){
+ .marketing-reception-panel[data-marketing-reception] .marketing-reception-filters{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .marketing-reception-panel[data-marketing-reception] .marketing-reception-refresh{width:100%}
+}
