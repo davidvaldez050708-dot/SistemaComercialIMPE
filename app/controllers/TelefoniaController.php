@@ -81,6 +81,43 @@ class TelefoniaController
     }
 
     /**
+     * Historial personal de lectura; no permite consultar datos de otro usuario.
+     */
+    public function misLlamadas()
+    {
+        $uid = (int)($_SESSION['usuario_id'] ?? 0);
+        if ($uid <= 0 || !tienePermiso('telefonia.usar')) {
+            http_response_code(403);
+            exit('No tienes acceso al historial telefónico.');
+        }
+        require_once __DIR__ . '/../services/TelefoniaMisLlamadasService.php';
+        $errorMisLlamadas = '';
+        try {
+            $misLlamadas = (new TelefoniaMisLlamadasService())->consultar($uid, [
+                'desde' => $_GET['desde'] ?? date('Y-m-d', strtotime('-29 days')),
+                'hasta' => $_GET['hasta'] ?? date('Y-m-d'),
+                'direccion' => $_GET['direccion'] ?? ''
+            ]);
+        } catch (Throwable $error) {
+            error_log('[telefonia_mis_llamadas] ' . get_class($error) . ': ' . $error->getMessage());
+            $errorMisLlamadas = 'No fue posible consultar tu historial. Prueba un intervalo de los últimos 90 días.';
+            $misLlamadas = ['filas'=>[], 'total'=>0, 'conectadas'=>0,
+                'entrantes'=>0, 'salientes'=>0,
+                'filtros'=>['desde'=>date('Y-m-d', strtotime('-29 days')),
+                    'hasta'=>date('Y-m-d'), 'direccion'=>''],
+                'limitacion'=>$errorMisLlamadas];
+        }
+        $tituloPagina = 'Mis llamadas';
+        $subtituloPagina = 'Historial telefónico personal';
+        $opcionActiva = 'mis_llamadas';
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/telefonia/mis_llamadas.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    /**
      * Configuración PBX separada del reporte administrativo.
      * Conserva los formularios y modales de asignación existentes.
      */
