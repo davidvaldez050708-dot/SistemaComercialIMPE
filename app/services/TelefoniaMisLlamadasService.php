@@ -9,6 +9,20 @@ require_once __DIR__ . '/TelefoniaControlService.php';
 
 final class TelefoniaMisLlamadasService
 {
+    /**
+     * Siempre filtrar en servidor, incluso si el servicio de control cambia
+     * el significado de su parámetro usuario_id.
+     */
+    public static function filtrarPropias(array $filas, int $usuarioId): array
+    {
+        if ($usuarioId <= 0) return [];
+        return array_values(array_filter($filas, static function ($item) use ($usuarioId): bool {
+            return is_array($item)
+                && (int)($item['usuario_id'] ?? 0) === $usuarioId
+                && trim((string)($item['pbx_call_id'] ?? '')) !== '';
+        }));
+    }
+
     public function consultar(int $usuarioId, array $filtros = []): array
     {
         if ($usuarioId <= 0) {
@@ -22,12 +36,7 @@ final class TelefoniaMisLlamadasService
                 ? $filtros['direccion'] : ''
         ]);
 
-        $rows = array_values(array_filter(
-            $control['stats']['historial'] ?? [],
-            static fn(array $item): bool =>
-                (int)($item['usuario_id'] ?? 0) === $usuarioId
-                && (string)($item['pbx_call_id'] ?? '') !== ''
-        ));
+        $rows = self::filtrarPropias($control['stats']['historial'] ?? [], $usuarioId);
         // Un identificador PBX puede tener varias extensiones: en esta vista,
         // cada fila es un tramo atribuido, no una nueva llamada externa.
         $total = count($rows);
@@ -39,7 +48,7 @@ final class TelefoniaMisLlamadasService
             'entrantes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Entrante')),
             'salientes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Saliente')),
             'filtros' => $control['filtros'],
-            'limitacion' => 'Esta vista inicial muestra hasta 500 tramos recientes con atribución verificada. Los eventos ambiguos y las grabaciones se consultan en sus módulos de origen.'
+            'limitacion' => 'Vista inicial de solo lectura: muestra hasta 500 tramos del intervalo consultado, con atribución verificada. No incluye automáticamente devoluciones sin PBX confirmado ni registros ambiguos. Las grabaciones se consultan en sus módulos de origen.'
         ];
     }
 }
