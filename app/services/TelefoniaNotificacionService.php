@@ -28,6 +28,7 @@ final class TelefoniaNotificacionService
         $ext=$this->extension($user);if($ext==='')return;
         $history=$recepcion?(new TelefoniaRecepcionMarketingService($this->db))->resumen($user):(new TelefoniaEntrantesAnalistaService($this->db))->listar($user);
         foreach($history['llamadas'] as $c){
+            if(($c['fuente']??'')==='OPERACION')continue; // Tiene su aviso exacto por intento debajo.
             $missed=$recepcion?($c['tipo']==='Entrante'&&$c['estado']==='Perdida'):
                 (($c['tipo_llamada']??'')!=='INTERNA' && empty($c['contestada']) && in_array($c['estado_pbx'],['ended'],true));
             if(!$missed)continue;

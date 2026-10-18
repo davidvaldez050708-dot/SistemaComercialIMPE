@@ -222,6 +222,19 @@ class TelefoniaEntrantesAnalistaService
         }
         unset($filaSdk);
         $llamadas=self::conciliarHistorialPbxWebrtc($llamadas,$sesiones);
+        // Un intento devuelto sin respuesta conserva una sola tarjeta útil,
+        // sin presentarlo como conversación PBX ni habilitar registro o audio.
+        foreach($operaciones as $op){
+            if((int)$op['destino_usuario']!==$usuarioId || $op['modo']!=='CONSULTADA' ||
+               $op['estado']!=='DEVUELTA' || !empty($op['destino_atendida']))continue;
+            $fecha=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
+            $llamadas[]=['pbx_call_id'=>'transferencia-'.$op['id'].'-'.$op['intento'],
+                'numero'=>$op['numero'],'transferida_desde'=>$op['origen_extension'],'fuente'=>'OPERACION',
+                'tipo_llamada'=>'ENTRANTE','fecha'=>$fecha,'duracion'=>0,'estado_pbx'=>'ended',
+                'contestada'=>false,'pbx_conversacion_confirmada'=>false,'clasificacion'=>'PENDIENTE',
+                'seguimiento_id'=>0,'interaccion_id'=>0,'grabacion_pbx_reportada'=>false];
+        }
+        usort($llamadas,static fn($a,$b)=>strcmp((string)$b['fecha'],(string)$a['fecha']));
         $pendientes=(new TelefoniaVerificacionEvidenciaService($this->db))->pendientes($usuarioId);
         foreach ($llamadas as &$fila) {
             $fila['verificacion_pendiente']=in_array((int)($fila['interaccion_id'] ?? 0),$pendientes,true);

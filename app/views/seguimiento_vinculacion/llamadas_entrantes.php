@@ -166,14 +166,14 @@ $duracionEntrante = static function ($segundos) {
                         <div class="linkage-call-recording-body">
                             <div class="linkage-call-recording-top">
                                 <div class="linkage-call-history-identity">
-                                    <strong><?= $esInterna ? 'Llamada interna' : 'Llamada entrante' ?></strong>
+                                    <strong><?= ($llamada['fuente']??'')==='OPERACION' ? 'Transferencia sin respuesta' : ($esInterna ? 'Llamada interna' : 'Llamada entrante') ?></strong>
                                     <span>
                                         <?= $esInterna
                                             ? 'Ext. ' . $esc($numero) . ' → ' . $esc($bandejaEntrantes['extension'] ?? '')
                                             : 'Origen: ' . $esc($numero) ?>
                                     </span>
                                     <?php if (!empty($llamada['transferida_desde'])): ?>
-                                        <span>Transferida desde extensión <?= $esc($llamada['transferida_desde']) ?></span>
+                                        <span><?= ($llamada['fuente']??'')==='OPERACION'?'Intento de transferencia desde extensión':'Transferida desde extensión' ?> <?= $esc($llamada['transferida_desde']) ?></span>
                                     <?php endif; ?>
                                 </div>
                                 <span class="linkage-call-history-date">

@@ -29,6 +29,10 @@ const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta nam
    return route.fulfill({contentType:'text/html',body:focused});
  });
  await page.goto('http://atencion.test/');
+ const missed=page.locator('[data-incoming-row="transferencia-1-1"]');
+ assert.match(await missed.textContent(),/Transferencia sin respuesta/);
+ assert.match(await missed.textContent(),/Sin respuesta/);
+ assert.equal(await missed.locator('button').count(),0,'sin respuesta no pide resultado ni ofrece audio');
  const modal=page.locator('#modalLlamadaEntranteAnalista'),form=modal.locator('form');
  const opened=()=>page.waitForFunction(()=>document.querySelector('#modalLlamadaEntranteAnalista.show')&&document.activeElement?.name==='decision');
  const closed=()=>page.waitForFunction(()=>!document.querySelector('.modal-backdrop'));

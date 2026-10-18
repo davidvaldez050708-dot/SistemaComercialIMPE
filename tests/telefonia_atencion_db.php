@@ -180,6 +180,8 @@ try {
     $sdk->registrarEvento(1,['evento'=>'ringing','session_id'=>'sdk-consulta-perdida-000002','numero'=>'100']);
     $ops->accion(1,$oid2,'TERMINADA');
     check($ops->obtener(3,$oid2)['estado']==='DEVUELTA','Consulta sin respuesta devuelve la atención a recepción');
+    $missedRows=array_values(array_filter($svc->listar(1)['llamadas'],fn($r)=>($r['fuente']??'')==='OPERACION'));
+    check(count($missedRows)===1 && !$missedRows[0]['contestada'] && !$missedRows[0]['grabacion_pbx_reportada'] && $missedRows[0]['estado_pbx']==='ended','Un intento sin respuesta termina en historial sin conversación ni audio');
     $notifications=new TelefoniaNotificacionService($db);$notices=$notifications->pendientes(1,false);
     $missed=array_values(array_filter($notices,fn($r)=>$r['titulo']==='Transferencia sin respuesta'));
     check(count($missed)===1,'Campana incluye un solo aviso persistente por intento perdido');

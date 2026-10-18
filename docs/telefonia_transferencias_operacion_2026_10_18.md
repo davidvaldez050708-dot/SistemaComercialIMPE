@@ -4,7 +4,7 @@ En **Consultar primero**, la persona espera mientras recepción habla con el ana
 
 En **Transferir directamente**, recepción sale cuando la centralita confirma el envío al destino. No puede recuperar a voluntad una llamada ya entregada. El desvío por falta de respuesta de una transferencia directa depende de la configuración de la centralita; esta entrega no modifica esa configuración.
 
-Si termina una consulta sin entrega, recepción conserva su llamada y ve el aviso para retomar la conversación. El analista recibe un aviso persistente en su campana si no contestó; puede abrir su historial para coordinar la devolución con recepción.
+Si termina una consulta sin entrega, recepción conserva su llamada y ve el aviso para retomar la conversación. El analista conserva una tarjeta «Transferencia sin respuesta», sin grabación ni registro de resultado, y recibe un aviso persistente en su campana si no contestó; puede abrir su historial para coordinar la devolución con recepción.
 
 ## Cambios
 
