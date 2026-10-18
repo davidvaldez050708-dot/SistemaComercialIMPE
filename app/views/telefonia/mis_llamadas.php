@@ -84,8 +84,8 @@ ksort($paginasVisibles, SORT_NUMERIC);
             $detalleTexto = '';
             if (!empty($puedeGestionAnalista) && !$saliente && $pbxId !== '') {
                 $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
-                    . '&vista=recibidas&pbx_call_id=' . rawurlencode($pbxId);
-                $detalleTexto = 'Ver detalles y grabación';
+                    . '&vista=recibidas&detalle=1&pbx_call_id=' . rawurlencode($pbxId);
+                $detalleTexto = 'Ver llamada';
             } elseif (!empty($puedeRecepcionMarketing)) {
                 $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
                     . '&vista=recepcion&buscar=' . rawurlencode((string)($fila['numero'] ?? ''));
@@ -114,12 +114,12 @@ ksort($paginasVisibles, SORT_NUMERIC);
                         </div>
                         <div class="linkage-call-history-meta">
                             <?php if ($detalleUrl !== ''): ?>
-                                <a class="impe-call-detail-link" href="<?= $esc($detalleUrl) ?>">
+                                <a class="linkage-incoming-open impe-call-detail-link" href="<?= $esc($detalleUrl) ?>">
                                     <i class="bi bi-journal-text" aria-hidden="true"></i>
                                     <?= $esc($detalleTexto) ?>
                                 </a>
                             <?php endif; ?>
-                            <span class="linkage-call-recording-duration"><i class="bi bi-clock" aria-hidden="true"></i> <?= sprintf('%02d:%02d', intdiv($duracion,60), $duracion%60) ?></span>
+                            <span class="linkage-call-recording-duration" title="<?= $duracion === 0 ? 'Zadarma no confirmó segundos de conversación en este tramo; 00:00 no demuestra una llamada de cero segundos.' : 'Duración del tramo informada por Zadarma' ?>"><i class="bi bi-clock" aria-hidden="true"></i> <?= sprintf('%02d:%02d', intdiv($duracion,60), $duracion%60) ?><?= $duracion === 0 && !empty($fila['conectada']) ? ' · Sin confirmar' : '' ?></span>
                         </div>
                     </div>
                 </div>
