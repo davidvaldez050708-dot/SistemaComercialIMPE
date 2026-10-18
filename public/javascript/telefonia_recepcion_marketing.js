@@ -45,6 +45,9 @@
 
         const tableBody = root.querySelector('[data-marketing-reception-rows]');
         const search = root.querySelector('[data-marketing-reception-search]');
+        // Al llegar desde Historial, el número queda visible en el filtro.
+        const buscarInicial = new URLSearchParams(window.location.search).get('buscar');
+        if (search && buscarInicial) search.value = buscarInicial.slice(0, 60);
         const filter = root.querySelector('[data-marketing-reception-filter]');
         const typeFilter = root.querySelector('[data-marketing-reception-type]');
         const count = root.querySelector('[data-marketing-reception-count]');
@@ -486,7 +489,6 @@
             event.stopPropagation();
             if (button.disabled) return;
             button.disabled = true;
-            const previous = button.innerHTML;
             button.innerHTML = '<i class="bi bi-hourglass-split" aria-hidden="true"></i>' +
                 '<span>Comprobando…</span>';
             try {
@@ -514,8 +516,9 @@
                 // El reproductor compartido escucha el clic delegado y abre la fila.
                 button.click();
             } catch (_) {
-                button.innerHTML = previous;
-                button.title = 'No se pudo comprobar el audio; vuelve a intentarlo.';
+                button.innerHTML = '<i class="bi bi-exclamation-circle" aria-hidden="true"></i>' +
+                    '<span>No disponible · Reintentar</span>';
+                button.title = 'No fue posible obtener la grabación. Puedes reintentar cuando Zadarma entregue el audio.';
             } finally {
                 button.disabled = false;
             }
