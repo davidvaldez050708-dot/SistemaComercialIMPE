@@ -1,5 +1,7 @@
 # Correcciones del flujo de llamadas del 18 de octubre de 2026
 
+Esta es la primera entrega del día. Para la revisión posterior de consultas, entrega explícita y campanas, consultar [Operación de transferencias](telefonia_transferencias_operacion_2026_10_18.md).
+
 La prueba real del usuario confirmó entrada, salida, transferencia de entrante, colgado, navegación entre módulos y llamadas consecutivas. Esta entrega atiende los problemas observados al transferir una saliente, registrar resultados y recibir llamadas perdidas.
 
 ## Cambios
@@ -35,6 +37,6 @@ Fuente: https://zadarma.com/es/support/instructions/pbx/
 
 Publicador: `tools/publicar_flujo_llamadas_hostinger.sh`.
 
-Primero ejecutar `--check`. Sólo después de una revisión compatible, ejecutar `--apply` con las extensiones sin llamadas activas. Publica 18 archivos con copia de seguridad, comprobación de sintaxis y restauración si falla la escritura. Rechaza diferencias incompatibles; no fuerza archivos personalizados. No necesita tablas nuevas ni ejecuta SQL. Es necesario cerrar sesión y volver a entrar para renovar el teléfono persistente.
+Primero ejecutar `--check`. Sólo después de una revisión compatible, ejecutar `--apply` con las extensiones sin llamadas activas. Publica 25 archivos con copia de seguridad, comprobación de sintaxis y restauración si falla la escritura. Rechaza diferencias incompatibles; no fuerza archivos personalizados. La revisión posterior incorpora dos tablas nuevas, preparadas por los servicios al utilizarse; no modifica registros anteriores de forma masiva. Es necesario cerrar sesión y volver a entrar para renovar el teléfono persistente.
 
 La aplicación se valida con base desechable y navegador real. La conexión de audio, la entrega de grabaciones y el retorno de una transferencia necesitan además las pruebas reales con Zadarma.

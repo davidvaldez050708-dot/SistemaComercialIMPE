@@ -9,7 +9,7 @@ import tempfile
 REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / 'tools/publicar_flujo_llamadas_hostinger.sh'
 BASH = os.environ.get('IMPE_TEST_BASH', 'bash')
-BASE = 'd6be4b74abdf1fc6f377b93111ea2f08a11ab633'
+BASE = re.search(r"^BASE='([a-f0-9]{40})'", SCRIPT.read_text(), re.M)[1]
 TARGET = re.search(r"^TARGET='([a-f0-9]{40})'", SCRIPT.read_text(), re.M)[1]
 FILES = re.search(r'^FILES=\(\n(.*?)\n\)', SCRIPT.read_text(), re.M | re.S)[1].split()
 
@@ -26,7 +26,7 @@ def blob(ref, name):
 
 BASE_FILES = {name: blob(BASE, name) for name in FILES}
 TARGET_FILES = {name: blob(TARGET, name) for name in FILES}
-assert len(FILES) == 18 and all(TARGET_FILES.values())
+assert len(FILES) == 25 and all(TARGET_FILES.values())
 
 
 def snapshot(root):
@@ -79,7 +79,7 @@ def normal(root):
     assert second.returncode == 0 and 'ya está publicada' in second.stdout
     assert list((root / 'backups').iterdir()) == backups
     assert not (live.parent / '.impe-atencion-deploy.lock').exists()
-    return 'revisión sin escrituras, publicación, 18 archivos exactos, respaldo, privados e idempotencia'
+    return 'revisión sin escrituras, publicación, 25 archivos exactos, respaldo, privados e idempotencia'
 
 
 def customization(root):

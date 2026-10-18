@@ -7,8 +7,8 @@ MODE="${1:---check}"
     echo 'Uso: bash publicar_flujo_llamadas_hostinger.sh --check|--apply' >&2; exit 2;
 }
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
-BASE='d6be4b74abdf1fc6f377b93111ea2f08a11ab633'
-TARGET='70028775799a712be81f8b8587b99d18f38f3b62'
+BASE='c1afd6888e8dad1cae18aeb04147475ba56fb5a7'
+TARGET='d5fefa05ebfe233a7a90b9939c6a0a95bc77e462'
 SOURCE="${IMPE_FLUJO_SOURCE:-$HOME/crm-publicaciones/flujo-llamadas-20261018}"
 LIVE="${IMPE_FLUJO_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_FLUJO_BACKUPS:-$HOME/respaldos-crm}"
@@ -35,22 +35,29 @@ done
 
 # Los archivos nuevos van primero, antes de los controladores que los requieren.
 FILES=(
-    public/javascript/telefonia_audio.js
-    public/javascript/telefonia_cierre.js
-    public/css/telefonia_cierre.css
-    app/services/ZadarmaWebhookEventStoreService.php
-    app/services/TelefoniaRecepcionMarketingService.php
+    app/services/TelefoniaTransferenciaOperacionService.php
+    app/services/TelefoniaNotificacionService.php
+    public/javascript/telefonia_transferencia_runtime.js
+    public/javascript/telefonia_notificaciones.js
+    prueba_telefonia/api/transferencia_operacion.php
+    prueba_telefonia/api/leer_notificacion_llamada.php
+    app/services/TelefoniaAnalistaWebrtcService.php
     app/services/TelefoniaEntrantesAnalistaService.php
-    prueba_telefonia/api/avisos_llamadas.php
-    prueba_telefonia/api/grabacion_transferida_pbx.php
-    public/javascript/telefonia_host.js
-    public/javascript/telefonia_persistente.js
+    app/services/TelefoniaRecepcionMarketingService.php
+    app/services/TelefoniaTransferenciaContextoService.php
+    public/css/telefonia_enrutamiento.css
+    public/javascript/convocatoria_notificaciones.js
+    public/javascript/recordatorios.js
     public/javascript/telefonia_analista_historial_pasivo.js
+    public/javascript/telefonia_audio.js
     public/javascript/telefonia_enrutamiento.js
-    public/javascript/telefonia_recepcion_marketing.js
+    public/javascript/telefonia_host.js
     public/javascript/telefonia_shell.js
-    app/views/seguimiento_vinculacion/llamadas_entrantes.php
-    app/views/telefonia/recepcion_marketing.php
+    app/controllers/ConvocatoriaNotificacionController.php
+    app/controllers/ReminderController.php
+    app/controllers/TelefoniaController.php
+    app/views/layout/dashboard_footer.php
+    app/views/layout/topbar.php
     app/views/telefonia/host.php
     app/views/telefonia/shell.php
 )
@@ -172,7 +179,7 @@ if [[ "${#CHANGED[@]}" == 0 ]]; then
 fi
 if [[ "$MODE" == --check ]]; then
     echo "OK: revisión compatible. ${#CHANGED[@]} archivo(s) preparados. SITIO INTACTO."
-    echo 'Se validó sintaxis PHP. Esta entrega no necesita tablas nuevas ni ejecuta SQL.'
+    echo 'Se validó sintaxis PHP. Los servicios preparan dos tablas nuevas al utilizarse; no se modifica el historial anterior.'
     echo 'Siguiente paso, con las extensiones sin llamada activa: ejecutar este mismo publicador con --apply.'
     exit 0
 fi
@@ -209,4 +216,4 @@ WRITING=0
 echo "OK: flujo de llamadas publicado. ${#CHANGED[@]} archivo(s)."
 echo "Respaldo: $BACKUP"
 echo 'Cierra sesión y vuelve a entrar en el CRM para recargar también el teléfono persistente.'
-echo 'Comprueba una saliente transferida 100 → 101, una transferencia con consulta sin respuesta y el resultado obligatorio de recepción. Este publicador no ejecuta llamadas ni modifica datos o configuración privada.'
+echo 'Comprueba Consultar primero → Completar transferencia, transferencia directa, devolución sin respuesta y avisos en ambas campanas. Este publicador no ejecuta llamadas ni modifica datos o configuración privada.'
