@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(data){opts.method='POST';opts.body=new URLSearchParams({...data,csrf_token:root.dataset.csrf});}else if(id)url.searchParams.set('intento_id',id);
   const r=await fetch(url,opts),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo actualizar la devolución.');return j;};
  const taskFor=id=>tasks.find(t=>Number(t.id)===Number(id));
- const action=(text,icon,fn)=>{const b=node('button','btn btn-system-light');b.type='button';b.innerHTML='<i class="bi '+icon+'" aria-hidden="true"></i>';b.append(document.createTextNode(text));b.addEventListener('click',fn);return b;};
+ const action=(text,icon,fn)=>{const b=node('button','btn btn-system-light impe-callback-action');b.type='button';const i=node('i','bi '+icon);i.setAttribute('aria-hidden','true');b.append(i,document.createTextNode(text));b.addEventListener('click',fn);return b;};
  const render=()=>{
   const pending=tasks.filter(t=>t.devolucion==='PENDIENTE');
   for(const [key,value] of Object.entries({pending:pending.length,retry:pending.filter(t=>t.intento?.resultado).length,done:tasks.length-pending.length,total:tasks.length}))$('[data-callback-stat="'+key+'"]').textContent=value;
