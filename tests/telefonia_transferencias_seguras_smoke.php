@@ -23,6 +23,7 @@ $files = [
  'shell' => file_get_contents(__DIR__.'/../app/views/telefonia/shell.php'),
  'phone' => file_get_contents(__DIR__.'/../public/javascript/telefonia_shell.js'),
  'routing' => file_get_contents(__DIR__.'/../public/javascript/telefonia_enrutamiento.js'),
+ 'availability' => file_get_contents(__DIR__.'/../public/javascript/telefonia_disponibilidad.js'),
  'sales' => file_get_contents(__DIR__.'/../public/javascript/telefonia_persistente.js'),
  'territory' => file_get_contents(__DIR__.'/../app/models/TerritorioModel.php'),
  'territoryController' => file_get_contents(__DIR__.'/../app/controllers/TerritorioController.php'),
@@ -45,6 +46,8 @@ foreach ([
  'controller'=>[
   'public function autorizarTransferencia()',
   'public function validarOrdenTransferencia()',
+  'rutaAceptada(',
+  'disponibilidad->consumir(',
   'hash_equals',
   'random_bytes(24)',
   'expires',
@@ -72,13 +75,19 @@ foreach ([
   'const workingCall = Boolean(ongoing'
  ],
  'routing'=>[
-  'requestAuthorizedTransfer(data.token)',
-  'if (confirmDirect !== key)',
+  'window.IMPE_AVAILABILITY.watch(data.solicitud)',
+  "intencion:'SOLICITAR'",
   'drafts.save(Number(cfg.userId),ids,data',
   'drafts?.localSave(Number(cfg.userId),draftRefs,values())',
   "item.estado_id",
   'Confirma primero el estado',
   "selected.usuario_id"
+ ],
+ 'availability'=>[
+  'requestAuthorizedTransfer(data.token)',
+  "watched.estado!=='ACEPTADA'",
+  'disponibilidad_id:op.id',
+  'csrf_token:cfg.routingCsrf'
  ],
  'sales'=>[
   'IMPE_TELEPHONY_TRANSFER_CSRF',
@@ -129,5 +138,7 @@ testAssert(!str_contains($validador, 'TelefoniaContactosService::validarToken'),
     'No se puede verificar transferencia con el token diferente de contactos.');
 testAssert(str_contains($files['shell'], "'routingCsrf' => (string)\$_SESSION['csrf_token']"),
     'El panel debe enviar el token de sesión compartido.');
+
+testAssert(!str_contains($files['availability'],'sendTransferDtmf'), 'La solicitud de disponibilidad no emite tonos.');
 
 echo "Transferencias: OK (roles, territorios, consentimiento, CSRF, token único, PBX y formulario).\n";
