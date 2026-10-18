@@ -1,0 +1,33 @@
+/* Vista personal de telefonía: estilos delimitados, mismo sistema visual de Seguimiento. */
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filters{
+ display:grid;grid-template-columns:repeat(2,minmax(150px,1fr)) minmax(150px,1fr) auto;
+ align-items:end;gap:12px;margin:18px 0 22px;padding:16px 18px;
+ border:1px solid #dfe7f3;border-radius:12px;background:#f8fafd;
+}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filters label{
+ display:flex;flex-direction:column;gap:7px;min-width:0;margin:0;
+ font-size:12px;font-weight:700;color:#4f6486;
+}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filters :is(input,select){
+ width:100%;min-height:41px;border:1px solid #cedbea;border-radius:9px;
+ background-color:#fff;color:#243b5d;font-size:13px;
+}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-filters button{
+ display:inline-flex;justify-content:center;align-items:center;gap:7px;
+ min-height:41px;white-space:nowrap;padding:8px 15px;border-radius:9px;
+ font-size:12px;font-weight:700;
+}
+.linkage-incoming-page.impe-my-calls .impe-my-calls-note{
+ margin:16px 0 0;font-size:12px;line-height:1.6;color:#687991;
+}
+@media(max-width:800px){
+ .linkage-incoming-page.impe-my-calls .impe-my-calls-filters{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+}
+@media(max-width:520px){
+ .linkage-incoming-page.impe-my-calls .impe-my-calls-filters{
+  grid-template-columns:minmax(0,1fr);padding:14px;
+ }
+ .linkage-incoming-page.impe-my-calls .impe-my-calls-filters button{width:100%;}
+}
