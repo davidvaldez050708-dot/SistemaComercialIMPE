@@ -99,7 +99,13 @@ class TelefoniaController
             && tienePermiso('telefonia.recibir');
         $puedeRecepcionMarketing = strcasecmp($rol, 'Marketing') === 0
             && tienePermiso('telefonia.recibir');
-        $vistaActual = (string)($_GET['vista'] ?? 'historial');
+        if ($puedeRecepcionMarketing) {
+            require_once __DIR__.'/../helpers/TelefoniaMarketingAccessHelper.php';
+            $puedeRecepcionMarketing = marketingTieneRecepcionAsignada();
+        }
+        // Recepción es la operación principal del perfil Marketing.
+        $vistaActual = (string)($_GET['vista']
+            ?? ($puedeRecepcionMarketing ? 'recepcion' : 'historial'));
         $permitidas = ['historial'];
         if ($puedeGestionAnalista) {
             $permitidas[] = 'recibidas';
@@ -176,12 +182,6 @@ class TelefoniaController
             require __DIR__ . '/../views/telefonia/devoluciones.php';
         } elseif ($vistaActual === 'recepcion') {
             require __DIR__ . '/../views/telefonia/recepcion_marketing.php';
-            $scriptRecepcion = ROOT_PATH.'/public/javascript/telefonia_recepcion_marketing.js';
-            if (is_file($scriptRecepcion)) {
-                echo '<script src="'.htmlspecialchars(
-                    BASE_URL.'public/javascript/telefonia_recepcion_marketing.js?v='.filemtime($scriptRecepcion),
-                    ENT_QUOTES, 'UTF-8').'"></script>';
-            }
         } else {
             require __DIR__ . '/../views/telefonia/mis_llamadas.php';
         }
