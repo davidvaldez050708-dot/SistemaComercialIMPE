@@ -37,4 +37,15 @@ if (isset($sinCoincidencia[0]['resultado_devolucion'])) {
     fwrite(STDERR,"FALLO: se vinculó una devolución a un tramo entrante.\n");
     exit(1);
 }
+$muestra = range(1, 1050);
+$primera = TelefoniaMisLlamadasService::paginar($muestra, 1);
+$ultima = TelefoniaMisLlamadasService::paginar($muestra, 999);
+$vacia = TelefoniaMisLlamadasService::paginar([], -3);
+if ($primera['paginas'] !== 53 || count($primera['filas']) !== 20
+    || $ultima['pagina'] !== 53 || $ultima['filas'][0] !== 1041
+    || count($ultima['filas']) !== 10 || $vacia['pagina'] !== 1
+    || $vacia['paginas'] !== 1) {
+    fwrite(STDERR,"FALLO: paginación incompleta o fuera de rango.\n");
+    exit(1);
+}
 echo "OK: aislamiento de historial, extensión y sentido de devolución\n";
