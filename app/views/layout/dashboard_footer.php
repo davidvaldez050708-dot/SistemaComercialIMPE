@@ -212,7 +212,11 @@ if ($esSeguimientoEstadoFooter) {
     );
 }
 
-if ($esSeguimientoEntrantesAnalistaFooter || ($controllerDashboardFooter==='telefonia' && $actionDashboardFooter==='devoluciones')) {
+if ($esSeguimientoEntrantesAnalistaFooter
+    || ($controllerDashboardFooter === 'telefonia'
+        && ($actionDashboardFooter === 'devoluciones'
+            || ($actionDashboardFooter === 'misllamadas'
+                && in_array((string)($_GET['vista'] ?? ''), ['recibidas', 'devoluciones'], true))))) {
     $jsDashboardFooter[] = 'seguimiento_entrantes_analista.js';
 }
 
