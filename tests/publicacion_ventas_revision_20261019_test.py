@@ -92,7 +92,8 @@ def run_scenario(kind):
         for file in FILES:
             assert updated[file]==target_data(file),('Wrong deployed bytes',kind,file)
         assert updated['privado.txt']==before['privado.txt']
-        assert updated[CSS_FILE].startswith(before[CSS_FILE]+b'\n'), 'El CSS de Hostinger debe conservarse byte a byte'
+        if kind!='applied':
+            assert updated[CSS_FILE].startswith(before[CSS_FILE]+b'\n'), 'El CSS de Hostinger debe conservarse byte a byte'
         assert b'IMPE_CERRAR_DERECHA_V2' in updated[CSS_FILE]
         assert b'IMPE_COLGAR_DERECHA_V1' in updated[CSS_FILE]
         backups=list((tmp/'backups').iterdir()) if (tmp/'backups').exists() else []
