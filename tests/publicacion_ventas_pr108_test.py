@@ -7,7 +7,6 @@ SCRIPT=REPO/'tools/publicar_ventas_pr108_hostinger.sh'
 TARGET='6035e328676d9c5a80a46d09cd3010910fbcdfd6'
 REVIEWED='485453b9f7948190e1bfb198e21a455dd088ad3a'
 FILES={
-    "app/views/telefonia/ventas_llamadas.php": "85dffacee855fb1550041cf823dfc9af6287a2f9e0ecbfcc2ea058c3b7096c9a",
     "app/views/telefonia/ventas_devoluciones.php": "a75f72e312b40b3046b6dbaf44f05362beadcc43d3ae2c03b825acd89f142244",
     "app/views/telefonia/ventas_programadas.php": "8e6b41b90d33cfc345b5f2e572d4771f17697ff75160a2c5b68b2fc376048173",
     "public/css/telefonia_ventas_ui.css": "43d34778afd47a5bb2c1e89759af1a577a9f086c1f78545faf24870c9db0dcf2",
