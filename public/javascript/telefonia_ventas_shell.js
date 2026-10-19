@@ -10,7 +10,7 @@
  const card=document.createElement('div');card.className='impe-availability-source';card.hidden=true;
  const name=document.createElement('strong'),hint=document.createElement('p');card.append(name,hint);
  panel.querySelector('.persistent-phone-origin').after(card);
- const button=document.createElement('button');button.type='button';button.className='persistent-phone-action is-primary';button.textContent='Registrar resultado comercial';button.hidden=true;
+ const button=document.createElement('button');button.type='button';button.className='persistent-phone-action is-primary';button.textContent='Registrar resultado comercial';button.dataset.salesOpen='1';button.hidden=true;
  panel.querySelector('.persistent-phone-actions').append(button);
  const notice=document.createElement('aside');notice.className='impe-analyst-call-result';notice.hidden=true;
  const noticeText=document.createElement('strong');noticeText.textContent='Tienes un resultado comercial pendiente.';
@@ -44,7 +44,7 @@
    if(needs&&!pending.some(p=>p.ref===ref)){
     pending.push({ref,extension:cfg.extension,at:Date.now(),callToken:state.callToken||previous.callToken});persist();
     crm?.contentWindow?.postMessage({type:'IMPE_PHONE_CALL_CHANGED'},location.origin);
-    setTimeout(open,100);
+    // El resultado se abre sólo cuando el usuario lo solicita; evita dos modales superpuestos.
    }
   }
   const currentRef=valid(ref)?ref:pending[0]?.ref;
