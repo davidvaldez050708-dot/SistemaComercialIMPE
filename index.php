@@ -575,6 +575,17 @@ switch ($controller) {
         break;
 
 
+    case 'prospecto':
+
+        require_once __DIR__ .
+            '/app/controllers/ProspectoController.php';
+
+        $controllerInstance =
+            new ProspectoController();
+
+        break;
+
+
     case 'formulario':
 
         require_once __DIR__ .
