@@ -60,6 +60,13 @@ final class TelefoniaDisponibilidadService
         $r=$this->one('SELECT * FROM telefonia_presencia WHERE usuario_id=? AND extension=? AND ocupado=0 AND updated_at>=? FOR UPDATE',[$user,$ext,gmdate('Y-m-d H:i:s',time()-15)]);
         return (bool)$r;
     }
+    public static function normalizarNombreProspecto(string $nombre): string {
+        $nombre=trim($nombre);
+        if(mb_strlen($nombre,'UTF-8')<2 || mb_strlen($nombre,'UTF-8')>150){
+            throw new DomainException('Registra el nombre del prospecto o de quien llama antes de solicitar disponibilidad.');
+        }
+        return $nombre;
+    }
     public function solicitar(int $user,array $route): array {
         $call=$this->live($user,(string)$route['referencia_llamada']);$dest=$this->extension((int)$route['responsable_id']);
         if($dest['extension']!==$route['extension'] || (int)$route['responsable_id']===$user)throw new DomainException('El responsable ya no está disponible.');
@@ -72,11 +79,7 @@ final class TelefoniaDisponibilidadService
         if(($route['tipo']??'')==='PROSPECTO'){
             // La identificación es un dato que proporcionó Recepción, no
             // acredita conversación ni crea prospectos o expedientes.
-            $nombre=trim((string)($route['institucion_nombre']??''));
-            if(mb_strlen($nombre,'UTF-8')<2 || mb_strlen($nombre,'UTF-8')>150){
-                throw new DomainException('Registra el nombre del prospecto o de quien llama antes de solicitar disponibilidad.');
-            }
-            $route['institucion_nombre']=$nombre;
+            $route['institucion_nombre']=self::normalizarNombreProspecto((string)($route['institucion_nombre']??''));
         }
         $this->expire();$this->db->begin_transaction();
         try{
