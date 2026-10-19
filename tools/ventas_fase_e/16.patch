@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/app/services/TelefoniaProgramacionVentasService.php
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,39 @@
 +<?php
 +declare(strict_types=1);
 +require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
@@ -11,9 +11,19 @@
 +    public function __construct(?mysqli $db=null){$this->db=$db??(new Database())->connect();}
 +    public function listar(int $uid): array {
 +        (new TelefoniaVentasLlamadasService($this->db))->autorizar($uid);
-+        $s=$this->db->prepare("SELECT 'agenda' origen,id,nombre,telefono,proxima_accion_at fecha,observacion detalle,'' pbx_call_id,'' extension
++        $s=$this->db->prepare("SELECT 'agenda' origen, a.id,
++                CONVERT(a.nombre USING utf8mb4) COLLATE utf8mb4_general_ci nombre,
++                CONVERT(a.telefono USING utf8mb4) COLLATE utf8mb4_general_ci telefono,
++                a.proxima_accion_at fecha,
++                CONVERT(a.observacion USING utf8mb4) COLLATE utf8mb4_general_ci detalle,
++                '' pbx_call_id, '' extension
 +            FROM telefonia_contactos_personales a WHERE a.usuario_id=? AND a.proxima_accion_at IS NOT NULL AND NOT EXISTS(SELECT 1 FROM telefonia_ventas_resultados r WHERE r.usuario_id=a.usuario_id AND r.contacto_id=a.id AND r.proxima_accion_at=a.proxima_accion_at AND r.recordatorio_atendido_at IS NULL)
-+            UNION ALL SELECT 'resultado',r.id,r.prospecto_nombre,c.numero,r.proxima_accion_at,r.observacion,r.pbx_call_id,r.extension
++            UNION ALL SELECT 'resultado', r.id,
++                CONVERT(r.prospecto_nombre USING utf8mb4) COLLATE utf8mb4_general_ci,
++                CONVERT(c.numero USING utf8mb4) COLLATE utf8mb4_general_ci,
++                r.proxima_accion_at,
++                CONVERT(r.observacion USING utf8mb4) COLLATE utf8mb4_general_ci,
++                r.pbx_call_id, r.extension
 +            FROM telefonia_ventas_resultados r JOIN telefonia_ventas_llamadas c ON c.usuario_id=r.usuario_id AND c.extension=BINARY r.extension AND c.pbx_call_id=BINARY r.pbx_call_id
 +            WHERE r.usuario_id=? AND r.proxima_accion_at IS NOT NULL AND r.recordatorio_atendido_at IS NULL ORDER BY fecha,id");
 +        $s->bind_param('ii',$uid,$uid);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $rows;
