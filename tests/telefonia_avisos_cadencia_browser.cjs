@@ -2,7 +2,7 @@
 // Ejecutar: node tests/telefonia_avisos_cadencia_browser.cjs
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const src=fs.readFileSync(__dirname+'/../public/javascript/recordatorios.js','utf8');
-let now=1_000_000, timed=[], toasts=[], callbacks={};
+let now=Date.parse('2026-10-18T23:00:00Z'), timed=[], toasts=[], callbacks={};
 const saved=new Map(), badge={textContent:'',classList:{add(){},remove(){}}};
 const contenido={setAttribute(){},set innerHTML(v){this.html=v}};
 const container={appendChild(n){toasts.push({at:now,node:n});}};
