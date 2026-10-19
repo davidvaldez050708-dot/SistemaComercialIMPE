@@ -55,6 +55,7 @@
              const abrirOActivar = function () {
 -                if (!availability?.permite_entrantes || receptionBusy) return;
 +                if (!receptionState().assigned || receptionBusy) return;
-                 if (hostUsable()) {
+-                if (hostUsable()) {
++                if (receptionState().ready) {
                      if (!openDialer({})) {
                          receptionError = 'No se pudo abrir el teléfono. Recarga la página.';
