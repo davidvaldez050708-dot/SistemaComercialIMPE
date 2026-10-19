@@ -121,6 +121,37 @@ try {
  vcheck((int)$db->query("SELECT COUNT(*) n FROM telefonia_ventas_marcaciones WHERE token='$ambigToken' AND pbx_call_id IS NULL")->fetch_assoc()['n']===1,'Dos eventos UTC→México siguen sin vincularse por ambigüedad');
  $db->query("SET time_zone='-06:00'");
 
+ // Caso reproducido en Hostinger: tres intentos del mismo número,
+ // dos inicios PBX: #1 y #3 a +2 segundos; #2 queda entre ambos
+ // con candidatos a -119 y +55 segundos y no debe asociarse.
+ $tokensTres=[str_repeat('1',32),str_repeat('2',32),str_repeat('3',32)];
+ $refUno='out_'.str_repeat('1',32);$refTres='out_'.str_repeat('3',32);
+ $baseUtc=time()-900;
+ $intentEpoch=[$baseUtc,$baseUtc+121,$baseUtc+174];
+ $mxZone=new DateTimeZone('America/Mexico_City');
+ $utcZone=new DateTimeZone('UTC');
+ $updateIntent=$db->prepare("UPDATE telefonia_ventas_marcaciones SET created_at=? WHERE token=?");
+ foreach($tokensTres as $index=>$tok){
+     $marker->iniciar(8,'5553334499',$tok);
+     $stored=(new DateTimeImmutable('@'.$intentEpoch[$index]))->setTimezone($utcZone)->format('Y-m-d H:i:s');
+     $updateIntent->bind_param('ss',$stored,$tok);$updateIntent->execute();
+ }
+ $updateIntent->close();
+ $e1=(new DateTimeImmutable('@'.($intentEpoch[0]+2)))->setTimezone($mxZone)->format('Y-m-d H:i:s');
+ $e3=(new DateTimeImmutable('@'.($intentEpoch[2]+2)))->setTimezone($mxZone)->format('Y-m-d H:i:s');
+ $event($refUno,'NOTIFY_OUT_START','150',0,['destination'=>'+525553334499','received_at'=>$e1,'call_start'=>$e1]);
+ $event($refTres,'NOTIFY_OUT_START','150',0,['destination'=>'+525553334499','received_at'=>$e3,'call_start'=>$e3]);
+ $svc->sincronizar(8);
+ vcheck($marker->pertenece(8,'150',$refUno),'Primer intento corresponde a evento PBX +2 segundos');
+ vcheck($marker->pertenece(8,'150',$refTres),'Tercer intento corresponde a evento PBX +2 segundos');
+ $middle=$db->query("SELECT pbx_call_id FROM telefonia_ventas_marcaciones WHERE token='".$tokensTres[1]."'")->fetch_assoc();
+ vcheck(($middle['pbx_call_id']??null)===null,'Segundo intento +55 segundos sigue sin referencia PBX');
+ vreject(fn()=>$marker->vincular(8,$tokensTres[1],$refTres),'No vincular manualmente referencia PBX a intento remoto +55 segundos');
+ $svc->sincronizar(8);
+ vcheck($marker->pertenece(8,'150',$refUno)&&$marker->pertenece(8,'150',$refTres)
+   &&(int)$db->query("SELECT COUNT(*) n FROM telefonia_ventas_marcaciones WHERE token='".$tokensTres[1]."' AND pbx_call_id IS NULL")->fetch_assoc()['n']===1,
+   'Idempotencia: dos llamadas reales y un intento no confirmado');
+
  $audio=TelefoniaVentasLlamadasService::hechos([
   ['evento'=>'NOTIFY_RECORD','internal'=>'100','call_id_with_rec'=>'record-shared-001'],
   ['evento'=>'NOTIFY_RECORD','internal'=>'150','call_id_with_rec'=>'record-shared-001'],
