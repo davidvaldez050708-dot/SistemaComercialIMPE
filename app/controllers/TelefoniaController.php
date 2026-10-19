@@ -614,8 +614,9 @@ class TelefoniaController
                 $this->responderJson(['ok'=>false,'mensaje'=>'Extensión no habilitada.'],403);
             }
             $numero = trim((string)($_GET['numero'] ?? ''));
+            $referencia = trim((string)($_GET['referencia_llamada'] ?? ''));
             $contexto = (new TelefoniaTransferenciaContextoService())
-                ->obtenerParaDestinatario($usuarioId, (string)$asignacion['extension'], $numero);
+                ->obtenerParaDestinatario($usuarioId, (string)$asignacion['extension'], $numero, $referencia);
             $this->responderJson(['ok'=>true,'contexto'=>$contexto]);
         } catch (Throwable $e) {
             error_log('[telefonia_contexto_consulta] ' . get_class($e));

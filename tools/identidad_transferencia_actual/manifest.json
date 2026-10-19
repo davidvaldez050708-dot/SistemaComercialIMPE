@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "base": "5182be9df3b59f68e0cbada16fd63df4603abe73",
+  "files": [
+    {
+      "path": "app/services/TelefoniaTransferenciaContextoService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "fa5219fc0ff4318bc6e115205667969b9036f3ff469442024023d27a5b58a0fd",
+      "variants": [
+        {
+          "label": "github-pr89",
+          "before": "0c30edf76fa404daefd33f1020fa3bb7149d79442ede253f9a7a3931bc728c52",
+          "after": "fa5219fc0ff4318bc6e115205667969b9036f3ff469442024023d27a5b58a0fd"
+        }
+      ],
+      "patch": "tools/identidad_transferencia_actual/01.patch",
+      "patch_sha256": "1e55be9c8e001fbec889526fc8b87d4a6fa99d8d419ad7d82841e9955ccac036"
+    },
+    {
+      "path": "app/controllers/TelefoniaController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "e23a574eaac2b533d7c8d3792b98f72be594d33b208f98174a457e0648e9c0fb",
+      "variants": [
+        {
+          "label": "github-pr89",
+          "before": "b621eb9fa4139578a7d0dac51fea0879b14f947a44124346b67b8f46157884aa",
+          "after": "e23a574eaac2b533d7c8d3792b98f72be594d33b208f98174a457e0648e9c0fb"
+        }
+      ],
+      "patch": "tools/identidad_transferencia_actual/02.patch",
+      "patch_sha256": "a1a5faad9041b06d76d5586c6ab9f0917b1bac4ec5b8ac1be77556abb5f0e1e4"
+    },
+    {
+      "path": "public/javascript/telefonia_analista_historial_pasivo.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "c55cedc0b6a8c48650a564dc25d5d5e4f5c0be2251b131ff7b7e608168acec24",
+      "variants": [
+        {
+          "label": "github-pr89",
+          "before": "3294684cfc22c96c33f1ddf7a73a1f9401a2f0ad4daf024c677718ed2af0b171",
+          "after": "c55cedc0b6a8c48650a564dc25d5d5e4f5c0be2251b131ff7b7e608168acec24"
+        },
+        {
+          "label": "hostinger-publico-20261018",
+          "before": "8fc73b822ed0b16cd0a86eae8de8da8574e5ca29d034cf0124ff9479f9354e67",
+          "after": "89e42d901f80ba6ba3146c6c403efcc16fbe1b14755726ef19783271ac98c3b5",
+          "patch": "tools/identidad_transferencia_actual/04.patch",
+          "patch_sha256": "3e6fc412c9b4e7e4c2e3c7277e37f6219d04374bf185dc3429c4d32e42894207"
+        }
+      ],
+      "patch": "tools/identidad_transferencia_actual/03.patch",
+      "patch_sha256": "1583d7c22cab78061c7d2f87effe2afda91de753264d7ae4d1ff1024984712cf",
+      "production_fixture": "tools/identidad_transferencia_actual/hostinger-observador.patch"
+    }
+  ]
+}

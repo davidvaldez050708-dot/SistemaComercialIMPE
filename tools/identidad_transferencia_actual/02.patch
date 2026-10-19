@@ -1,0 +1,9 @@
+--- a/app/controllers/TelefoniaController.php
++++ b/app/controllers/TelefoniaController.php
+@@ -616,4 +616,5 @@
+             $numero = trim((string)($_GET['numero'] ?? ''));
++            $referencia = trim((string)($_GET['referencia_llamada'] ?? ''));
+             $contexto = (new TelefoniaTransferenciaContextoService())
+-                ->obtenerParaDestinatario($usuarioId, (string)$asignacion['extension'], $numero);
++                ->obtenerParaDestinatario($usuarioId, (string)$asignacion['extension'], $numero, $referencia);
+             $this->responderJson(['ok'=>true,'contexto'=>$contexto]);

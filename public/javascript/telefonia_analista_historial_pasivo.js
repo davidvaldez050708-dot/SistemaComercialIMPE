@@ -155,6 +155,9 @@
     // No borrar la institución detectada ante esa transición de estado.
     let visibleContextKey = '';
     let visibleContextPhone = '';
+    let contextScope = '', contextReference = '', contextRevision = 0;
+    let contextAliases = [];
+    let contextNeedsLookup = false;
     const clearVisibleContext = () => {
         visibleContextKey = '';
         visibleContextPhone = '';
@@ -169,38 +172,51 @@
     };
     const contextStillLive = id => active?.id === id || pbxSession?.id === id;
     const fetchContext = async (id, phone, attempt = 0) => {
-        if (!contextStillLive(id) || !usableCallerNumber(phone)) return;
+        const reference = contextReference, revision = contextRevision;
+        const stillCurrent = () => contextRevision === revision &&
+            contextReference === reference && contextStillLive(id);
+        if (!reference || !stillCurrent() || !usableCallerNumber(phone)) return;
+        contextNeedsLookup = false;
         const retry = () => {
-            if (attempt < 17 && contextStillLive(id)) {
-                root.setTimeout?.(() => void fetchContext(id, phone, attempt + 1), 750);
+            if (attempt < 17 && stillCurrent()) {
+                root.setTimeout?.(() => {
+                    if (stillCurrent()) void fetchContext(id, phone, attempt + 1);
+                }, 750);
             }
         };
         try {
             const uri = new URL('index.php?controller=telefonia&action=contextoTransferencia',
                 root.location.href);
             uri.searchParams.set('numero', phone);
+            uri.searchParams.set('referencia_llamada', reference);
             const response = await root.fetch(uri.toString(), {
                 credentials:'same-origin', cache:'no-store',
                 headers:{Accept:'application/json'}
             });
             const data = await response.json();
-            if (!contextStillLive(id)) return;
-            if (!response.ok || !data.ok || !data.contexto) {retry();return;}
+            if (!stillCurrent()) return;
+            if (!response.ok || !data.ok || !data.contexto) {
+                clearVisibleContext();
+                for (const alias of contextAliases) {
+                    try { root.sessionStorage?.removeItem(contextStorageKey(alias)); } catch (_) {}
+                }
+                retry();return;
+            }
             const ctx = data.contexto;
-            if (!Number.isInteger(Number(ctx.seguimiento_id)) ||
-                Number(ctx.seguimiento_id) <= 0) return;
+            if (ctx.referencia_llamada !== reference ||
+                !Number.isInteger(Number(ctx.seguimiento_id)) ||
+                Number(ctx.seguimiento_id) < 0 || !String(ctx.institucion || '').trim()) return;
             // No asociar a otra conversación una institución previa.
             if (visibleContextPhone && visibleContextPhone !== phone) clearVisibleContext();
-            const presentationKey = [String(ctx.seguimiento_id),
+            const presentationKey = [reference, String(ctx.seguimiento_id),
                 String(ctx.institucion || ''), String(ctx.estado || '')].join('|');
             if (visibleContextKey !== presentationKey) {
                 contextCard.replaceChildren?.();
             }
             const heading = root.document.createElement('strong');
-            heading.textContent = String(ctx.institucion || '') + ' · ' +
-                String(ctx.estado || '');
+            heading.textContent = [ctx.institucion, ctx.estado].filter(Boolean).join(' · ');
             const hint = root.document.createElement('small');
-            hint.textContent = 'Identificada por ' +
+            hint.textContent = (Number(ctx.seguimiento_id) > 0 ? 'Identificada por ' : 'Nombre indicado por ') +
                 String(ctx.confirmado_por || 'Recepción') +
                 '. Confirma los datos con la persona que llama.';
             if (visibleContextKey !== presentationKey) {
@@ -211,11 +227,14 @@
             }
             contextCard.hidden = false;
             try {
-                root.sessionStorage?.setItem(contextStorageKey(id), JSON.stringify({
-                    call_id:id, seguimiento_id:Number(ctx.seguimiento_id),
-                    institucion:String(ctx.institucion || ''),
-                    estado:String(ctx.estado || ''), saved_at:Date.now()
-                }));
+                for (const alias of contextAliases) {
+                    root.sessionStorage?.setItem(contextStorageKey(alias), JSON.stringify({
+                        call_id:alias, referencia_llamada:reference,
+                        seguimiento_id:Number(ctx.seguimiento_id),
+                        institucion:String(ctx.institucion || ''),
+                        estado:String(ctx.estado || ''), saved_at:Date.now()
+                    }));
+                }
             } catch (_) {}
         } catch (_) { retry(); }
     };
@@ -378,6 +397,26 @@
         if (!state || Number(state.userId) !== userId ||
             !Number.isFinite(Number(state.updatedAt)) ||
             Date.now() - Number(state.updatedAt) > 6000) return;
+        // La referencia PBX/operación identifica la transferencia; el número
+        // sólo la corrobora. SDK y PBX pueden ser alias de esta misma llamada.
+        if (state.active && state.direction === 'incoming' &&
+            ['INCOMING','SDK_INCOMING'].includes(state.context?.type)) {
+            const raw = String(state.context?.transferReference || state.pbxCallId || '');
+            const reference = /^[A-Za-z0-9_-]{6,100}$/.test(raw) ? raw : '';
+            const sdk = validId(state.context?.sdkSessionId) ? state.context.sdkSessionId :
+                (validId(state.callToken) ? state.callToken : '');
+            const scope = reference ? 'pbx:' + reference : (sdk ? 'sdk:' + sdk : '');
+            if (scope !== contextScope) {
+                ++contextRevision;contextScope = scope;contextAliases = [];
+                contextNeedsLookup = Boolean(reference);
+                clearVisibleContext();
+            }
+            contextReference = reference;
+            contextAliases = [...new Set([...contextAliases, reference, sdk].filter(Boolean))];
+        } else if (contextScope) {
+            ++contextRevision;contextScope = '';contextReference = '';contextAliases = [];
+            if (state.active) clearVisibleContext();
+        }
         if(state.context?.consultation||state.context?.transferPendingReceiver){
             active=null;finished=null;pbxSession=null;
             resultBtn.hidden=true;retryBtn.hidden=true;
@@ -409,6 +448,7 @@
             let hash=2166136261;
             for(const character of String(state.pbxCallId))hash=Math.imul(hash^character.charCodeAt(0),16777619);
             const id=validId(state.context?.sdkSessionId)?state.context.sdkSessionId:'sdk-pbx-'+(hash>>>0).toString(36).padStart(8,'0')+'-'+userId;
+            contextAliases = [...new Set([...contextAliases, id])];
             active={id,number:String(state.destination||''),name:'',answeredAt:0,lastDuration:0,sawConversation:false};
             finished=null;draw();void postEvent('ringing',active);
         }
@@ -485,6 +525,9 @@
             state.phase === 'ready' || state.phase === 'incoming-finished')) {
             // Finalizar sólo al terminar realmente la conversación.
             end(state);
+        }
+        if (contextNeedsLookup && active && usableCallerNumber(active.number)) {
+            void fetchContext(active.id, active.number);
         }
     };
     const consume = function () {
