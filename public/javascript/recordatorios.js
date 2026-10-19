@@ -27,10 +27,12 @@
         const INTERVALO_TOAST_VENCIDO = 8 * 60 * 1000;
         const REINTENTO_TOAST_OCULTO = 60 * 1000;
         const DURACION_TOAST = 7000;
+        const CLAVE_USUARIO_AVISOS = ':usuario:' +
+            Number(window.IMPE_CURRENT_USER_ID || 0);
         const CLAVE_ULTIMO_TOAST_VENCIDO_AT =
-            'recordatorios:ultimo-toast-vencido-at';
+            'recordatorios:ultimo-toast-vencido-at' + CLAVE_USUARIO_AVISOS;
         const CLAVE_ULTIMO_TOAST_VENCIDO_ID =
-            'recordatorios:ultimo-toast-vencido-id';
+            'recordatorios:ultimo-toast-vencido-id' + CLAVE_USUARIO_AVISOS;
 
         if (endpoint === '') {
             return;
