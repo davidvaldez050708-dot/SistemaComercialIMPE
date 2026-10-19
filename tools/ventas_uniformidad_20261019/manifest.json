@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "base": "6eded94621a9a0b547628828cd70c6b3b3c0f715",
+  "files": [
+    {
+      "path": "app/services/TelefoniaVentasLlamadasService.php",
+      "kind": "php",
+      "new": false,
+      "optional_missing": false,
+      "target_sha256": "17c56717a300212245bd6a62dfc282f0b22cc8b983efa9b24b5aa8f080f56ada",
+      "variants": [
+        {
+          "label": "main-post-105",
+          "before": "9bf5fce5ec888aaff48b42bdd6219aaff1004744e3e68c0b344d7e62183df076",
+          "after": "17c56717a300212245bd6a62dfc282f0b22cc8b983efa9b24b5aa8f080f56ada"
+        }
+      ],
+      "patch": "tools/ventas_uniformidad_20261019/00.patch",
+      "patch_sha256": "125124beec0b99875bbe6c3508c22a8486175aa7bce3a2b8444f21f0c92c450a"
+    },
+    {
+      "path": "app/views/telefonia/ventas_llamadas.php",
+      "kind": "php",
+      "new": false,
+      "optional_missing": false,
+      "target_sha256": "85dffacee855fb1550041cf823dfc9af6287a2f9e0ecbfcc2ea058c3b7096c9a",
+      "variants": [
+        {
+          "label": "main-post-105",
+          "before": "cb9d1699b8ac10a8fce7b22c393b0943dd8c3c8640ca09e2f8448bff9fe4211a",
+          "after": "85dffacee855fb1550041cf823dfc9af6287a2f9e0ecbfcc2ea058c3b7096c9a"
+        }
+      ],
+      "patch": "tools/ventas_uniformidad_20261019/01.patch",
+      "patch_sha256": "f21987195bc8a283ad7ab4f30b1d52bd07d3b9bd585db195b14a77ef2f0dc78a"
+    },
+    {
+      "path": "public/css/telefonia_ventas_ui.css",
+      "kind": "css",
+      "new": false,
+      "optional_missing": true,
+      "target_sha256": "43d34778afd47a5bb2c1e89759af1a577a9f086c1f78545faf24870c9db0dcf2",
+      "variants": [
+        {
+          "label": "main-post-105",
+          "before": "209f29052b478430cf90909bf8aca17b8c4ee7e5d94640e4189dedec74dd1eec",
+          "after": "43d34778afd47a5bb2c1e89759af1a577a9f086c1f78545faf24870c9db0dcf2"
+        }
+      ],
+      "patch": "tools/ventas_uniformidad_20261019/02.patch",
+      "patch_sha256": "fe98f15da6c34163985c25460cce1a577040e429b5acd3893a7a762d662d4732"
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_shell.js",
+      "kind": "js",
+      "new": false,
+      "optional_missing": false,
+      "target_sha256": "3a856230e3260b8e0fd10573db16b5c016a9af29d5f62cd54218c753c0c182cd",
+      "variants": [
+        {
+          "label": "main-post-105",
+          "before": "d06bb070fd7fbf3ac02c3d1b610a170833e255054c15a339c3f4a30c6d3139ca",
+          "after": "3a856230e3260b8e0fd10573db16b5c016a9af29d5f62cd54218c753c0c182cd"
+        }
+      ],
+      "patch": "tools/ventas_uniformidad_20261019/03.patch",
+      "patch_sha256": "e071f5d9f27160d4d1b9e996ae4d76f7ae172bd133ae254653e62e3919000bdd"
+    },
+    {
+      "path": "tools/diagnosticar_audio_ventas.php",
+      "kind": "php",
+      "new": true,
+      "optional_missing": false,
+      "target_sha256": "fa0a56073c703cd3302dbcaf41dd08147dc858b4a77e693bded9ff795282d10d",
+      "variants": [
+        {
+          "label": "main-post-105",
+          "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "after": "fa0a56073c703cd3302dbcaf41dd08147dc858b4a77e693bded9ff795282d10d"
+        }
+      ],
+      "patch": "tools/ventas_uniformidad_20261019/04.patch",
+      "patch_sha256": "75cc1313f08e14f20783977d2fb0845dfa877ff84a8a214691a4eb0c709a4267"
+    }
+  ]
+}

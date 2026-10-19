@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --prefix /tmp/ventas-browser playwright bootstrap@5.3.8
+      - run: npm install --prefix /tmp/ventas-browser playwright bootstrap@5.3.8 @fontsource/manrope@5.2.8 bootstrap-icons@1.13.1
       - run: /tmp/ventas-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Sintaxis y regresiones compartidas
         run: |
@@ -28,6 +28,10 @@ jobs:
           node --check public/javascript/telefonia_ventas_resultados.js
           node --check public/javascript/telefonia_ventas_devoluciones.js
           php -l tools/migrar_telefonia_ventas.php
+          php -l app/services/TelefoniaVentasLlamadasService.php
+          php -l app/views/telefonia/ventas_llamadas.php
+          php -l tools/diagnosticar_audio_ventas.php
+          php tests/telefonia_ventas_audio_evidencia.php
           node tests/telefonia_shell_runtime_smoke.js
           node tests/telefonia_shell_navegacion_smoke.js
           node tests/telefonia_ventas_guard_http.cjs
@@ -40,12 +44,20 @@ jobs:
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/ventas-browser/node_modules/playwright
           BOOTSTRAP_MODULE_PATH: /tmp/ventas-browser/node_modules/bootstrap
+          IMPE_VENTAS_SCREENSHOTS: /tmp/ventas-capturas
         run: |
+          mkdir -p /tmp/ventas-capturas
           node tests/telefonia_ventas_operacion_browser.cjs
+          node tests/telefonia_ventas_historial_browser.cjs
           node tests/telefonia_ventas_gestion_browser.cjs
           node tests/telefonia_modal_entrante_integracion_browser.cjs
           node tests/telefonia_disponibilidad_browser.cjs
           node tests/recordatorios_toasts_browser.cjs
+      - name: Capturas de Mis llamadas y resultados
+        uses: actions/upload-artifact@v4
+        with:
+          name: ventas-mis-llamadas-responsive
+          path: /tmp/ventas-capturas
       - name: Publicador selectivo en replicas
         run: |
           python3 tests/publicacion_ventas_test.py a
@@ -53,6 +65,7 @@ jobs:
           python3 tests/publicacion_ventas_test.py d
           python3 tests/publicacion_ventas_test.py e
           python3 tests/publicacion_ventas_revision_20261019_test.py
+          python3 tests/publicacion_ventas_uniformidad_test.py
   datos-comerciales:
     runs-on: ubuntu-latest
     strategy:
@@ -81,6 +94,7 @@ jobs:
           IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
           php tests/telefonia_ventas_db.php
+          php tests/telefonia_ventas_audio_db.php
           php tests/telefonia_ventas_gestion_db.php
           php tests/telefonia_ventas_notificaciones_db.php
           php tests/telefonia_atencion_db.php
