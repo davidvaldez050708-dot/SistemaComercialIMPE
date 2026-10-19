@@ -29,3 +29,5 @@ jobs:
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/ventas-browser/node_modules/playwright
         run: node tests/telefonia_ventas_recepcion_browser.cjs
+      - name: Publicador selectivo en replicas
+        run: python3 tests/publicacion_ventas_test.py a
