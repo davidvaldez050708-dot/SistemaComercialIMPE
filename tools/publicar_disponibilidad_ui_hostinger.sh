@@ -20,7 +20,7 @@ if [ "$MODE" != --restore ]; then
   command -v curl >/dev/null || exit 2
   URL='https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE'
   BASE=dc27b76fcebcb35e36b50817a5b1b956bb502688
-  TARGET=0527511db74ec482651bb4a707d0edbb6a8dcdcf
+  TARGET=582f2b0e18fe8c7471babcd64a85ec2f066e3afd
   curl -fsSL --retry 2 "$URL/$BASE/public/javascript/telefonia_disponibilidad.js" -o "$TMP/base-js"
   curl -fsSL --retry 2 "$URL/$BASE/public/css/telefonia_disponibilidad.css" -o "$TMP/base-css"
   curl -fsSL --retry 2 "$URL/$TARGET/public/javascript/telefonia_disponibilidad.js" -o "$TMP/target-js"
@@ -37,7 +37,7 @@ live=Path(os.environ.get('IMPE_AVAILABILITY_LIVE') or Path.home()/'domains/funda
 backups=Path(os.environ.get('IMPE_AVAILABILITY_BACKUPS') or Path.home()/'respaldos-crm')
 files=[
  ('public/javascript/telefonia_disponibilidad.js','js','d9394c56a4c2aa1ea21d7398d6df25504f03b65c','0bcfa245a12c90131ba4c90329aa8492985c1e8a'),
- ('public/css/telefonia_disponibilidad.css','css','f502a6716c6bbaeabf000354609177669744c93d','4aeb66fe10e131a7267e5ca75bf2fab8f5bafceb')
+ ('public/css/telefonia_disponibilidad.css','css','f502a6716c6bbaeabf000354609177669744c93d','a2d6a5ab6691b5c08c9ede784a86622efc9d45d8')
 ]
 def fail(s): raise SystemExit('CONFLICTO: '+s+'. Producción intacta si se estaba comprobando.')
 def ensure_safe(p):
