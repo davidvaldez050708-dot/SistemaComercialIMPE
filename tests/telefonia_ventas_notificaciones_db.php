@@ -89,7 +89,7 @@ try {
  vcheck(count($late)===1&&$late[0]['titulo']==='Resultado pendiente','Respuesta tardía sustituye aviso automático por resultado pendiente');
  $results->guardar(8,'pbx-transfer-noanswer','INTERESADO');vcheck($notices->pendientes(8,false)===[],'Resultado de respuesta tardía cierra sólo devolución automática correspondiente');
  // Conciliación uno a uno: dos llamadas o dos intenciones no se eligen por orden.
- $marker=new TelefoniaMarcacionesVentasService($db,false);$token=str_repeat('a',32);$marker->iniciar(8,'5556667788',$token);
+ $marker=new TelefoniaMarcacionesVentasService($db,false);vreject(fn()=>$marker->iniciar(9,'5556667788',str_repeat('9',32)),'Sin extensión asignada no prepara llamadas salientes');$token=str_repeat('a',32);$marker->iniciar(8,'5556667788',$token);
  $out='out_'.str_repeat('c',32);$event($out,'NOTIFY_OUT_START','150',0,['destination'=>'+525556667788','received_at'=>date('Y-m-d H:i:s'),'call_start'=>date('Y-m-d H:i:s')]);$svc->sincronizar(8);
  vcheck($marker->pertenece(8,'150',$out),'Conciliación única restaura referencia exacta');
  $marker->iniciar(8,'5557778899',str_repeat('b',32));$marker->iniciar(8,'5557778899',str_repeat('d',32));

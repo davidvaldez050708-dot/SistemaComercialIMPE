@@ -35,6 +35,11 @@ $assert(str_contains($view, 'data-incoming-sdk-confirm') &&
 
 $rule = static function (string $selector) use ($css): string {
     $offset = strpos($css, $selector . ' {');
+    if ($offset === false) {
+        // El componente comparte exactamente las mismas reglas con el formulario comercial.
+        $shared=str_replace('#modalLlamadaEntranteAnalista',':is(#modalLlamadaEntranteAnalista,#modalResultadoVenta)',$selector);
+        $offset=strpos($css,$shared.' {');
+    }
     if ($offset === false) return '';
     $end = strpos($css, '}', $offset);
     return $end === false ? '' : substr($css, $offset, $end - $offset);

@@ -83,6 +83,7 @@ jobs:
           php tests/telefonia_ventas_gestion_db.php
           php tests/telefonia_ventas_notificaciones_db.php
           php tests/telefonia_atencion_db.php
+          php tests/telefonia_resultado_analista_modal_smoke.php
           php tests/telefonia_identidad_transferencia_db.php
           php tests/telefonia_ventas_prospecto_identificacion_smoke.php
           php tests/telefonia_mis_llamadas_propiedad_smoke.php
