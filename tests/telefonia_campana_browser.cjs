@@ -19,7 +19,11 @@ const read=p=>fs.readFileSync(path.join(__dirname,'../public/javascript/',p),'ut
   const item=page.locator('.topbar-reminder-item[data-telefonia-id="15"]');await item.waitFor();assert.match(await item.textContent(),/Transferencia sin respuesta/);
   const toast=page.locator(marketing?'.convocatoria-activation-toast[data-telefonia-id="15"]':'.reminder-toast[data-telefonia-id="15"]');
   assert.equal(await toast.count(),0,'los avisos telefónicos no deben salir inmediatamente al ingresar');
-  await page.clock.runFor(8*60*1000+200);
+  await page.clock.runFor(4*60*1000);
+  assert.equal(await toast.count(),0,'sin aviso antes de ocho minutos');
+  await page.reload();await item.waitFor();
+  assert.equal(await toast.count(),0,'el cambio de página no anticipa el aviso');
+  await page.clock.runFor(4*60*1000+200);
   await toast.waitFor({state:'visible'});
   assert.equal(await page.locator('.reminder-toast,.convocatoria-activation-toast').count(),1,'un solo aviso por turno');
   await page.evaluate(()=>window.dispatchEvent(new Event('impe:phone-notices-refresh')));
@@ -92,6 +96,6 @@ const read=p=>fs.readFileSync(path.join(__dirname,'../public/javascript/',p),'ut
  }
  console.log('Inicio analista: reintento automático de campana y actividad telefónica: OK');
 
- console.log('Campanas analista/marketing: ocho minutos, turno único, autocierre, campana persistente, recarga y lectura con CSRF: OK');
+ console.log('Campanas analista/marketing: ocho minutos acumulados entre páginas, turno único, autocierre, campana persistente y lectura con CSRF: OK');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
