@@ -7,7 +7,11 @@
   width: min(420px, calc(100vw - 16px));
   max-height: min(530px, calc(100dvh - 16px));
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  min-width: 0;
+  box-sizing: border-box;
   box-shadow: 0 16px 42px rgba(21, 39, 73, .20);
   background: #fff;
   color: #26354d;
@@ -198,7 +202,21 @@
 
 
 .impe-routing-panel .impe-routing-heading { position: relative; padding-right: 31px; }
-.impe-routing-panel.impe-routing-sidecar .impe-routing-heading{position:sticky;top:0;z-index:2;background:#fff;padding-bottom:8px}
+/* El encabezado y su X permanecen visibles mientras se desplazan los campos. */
+.impe-routing-panel.impe-routing-sidecar .impe-routing-heading {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  min-height: 42px;
+  padding-right: 48px;
+  padding-bottom: 8px;
+  background: #fff;
+}
+.impe-routing-panel.impe-routing-sidecar .impe-routing-heading strong,
+.impe-routing-panel.impe-routing-sidecar .impe-routing-heading span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .impe-routing-panel .impe-routing-close {
   position: absolute;
   right: 0;
@@ -209,6 +227,11 @@
   border: 1px solid #d6e0ed; border-radius: 8px;
   background: #fff; color: #354a68;
   cursor: pointer;
+}
+.impe-routing-panel.impe-routing-sidecar .impe-routing-close {
+  width: 40px;
+  height: 40px;
+  touch-action: manipulation;
 }
 .impe-routing-panel .impe-routing-identification {
   margin: 9px 0 11px; padding: 11px;

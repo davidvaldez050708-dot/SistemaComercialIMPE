@@ -28,35 +28,51 @@
         pane.classList.add('impe-routing-sidecar');
         document.body.appendChild(pane);
     });
+    // Ajustar la ficha al viewport VISIBLE: teclado móvil, zoom y rotación
+    // pueden reducir visualViewport sin modificar innerWidth/innerHeight.
+    // No mover ni redimensionar el teléfono/iframe de Zadarma.
     const positionSidecar = pane => {
         if (!pane || pane.hidden) return;
+        const visual = window.visualViewport;
+        const left = Math.max(0, Number(visual?.offsetLeft) || 0);
+        const top = Math.max(0, Number(visual?.offsetTop) || 0);
+        const visibleWidth = Math.max(0, Math.min(window.innerWidth, visual?.width || window.innerWidth));
+        const visibleHeight = Math.max(0, Math.min(window.innerHeight, visual?.height || window.innerHeight));
+        const padding = 8;
+        const width = Math.max(0, Math.min(420, visibleWidth - padding * 2));
+        const height = Math.max(0, Math.min(530, visibleHeight - padding * 2));
         const rect = phonePanel?.getBoundingClientRect();
-        const width = Math.min(420, window.innerWidth - 16);
         const margin = 10;
-        let x = Math.max(8, window.innerWidth - width - 8);
-        let y = 8;
-        if (rect) {
-            const rightSpace = window.innerWidth - rect.right;
-            const leftSpace = rect.left;
+        let x = left + visibleWidth - width - padding;
+        let y = top + padding;
+
+        // En escritorio mantener el panel al lado del teléfono. En pantallas
+        // estrechas, mostrarlo dentro del área visible, con scroll independiente.
+        if (rect && visibleWidth > 760) {
+            const rightSpace = left + visibleWidth - rect.right;
+            const leftSpace = rect.left - left;
             if (rightSpace >= width + margin) x = rect.right + margin;
             else if (leftSpace >= width + margin) x = rect.left - width - margin;
-            else x = Math.max(8, (window.innerWidth - width) / 2);
-            y = Math.min(Math.max(8, rect.top),
-                Math.max(8, window.innerHeight - Math.min(530, window.innerHeight - 16) - 8));
+            else x = left + (visibleWidth - width) / 2;
+            y = Math.max(top + padding, rect.top);
         }
+        x = Math.max(left + padding, Math.min(x, left + visibleWidth - width - padding));
+        y = Math.max(top + padding, Math.min(y, top + visibleHeight - height - padding));
+        pane.style.width = Math.round(width) + 'px';
+        pane.style.maxHeight = Math.round(height) + 'px';
         pane.style.left = Math.round(x) + 'px';
         pane.style.top = Math.round(y) + 'px';
         pane.style.right = 'auto';
         pane.style.bottom = 'auto';
     };
-    window.addEventListener('resize', () => {
+    const repositionSidecars = () => {
         positionSidecar(panel);
         positionSidecar(capturePanel);
-    });
-    window.addEventListener('pointerup', () => {
-        positionSidecar(panel);
-        positionSidecar(capturePanel);
-    });
+    };
+    window.addEventListener('resize', repositionSidecars);
+    window.addEventListener('pointerup', repositionSidecars);
+    window.visualViewport?.addEventListener('resize', repositionSidecars);
+    window.visualViewport?.addEventListener('scroll', repositionSidecars);
     const categoria = cfg.analystIncomingResults
         ? 'ANALISTA'
         : cfg.canCapture ? 'VENTAS' : 'RECEPCION';
