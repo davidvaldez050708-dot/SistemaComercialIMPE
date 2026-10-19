@@ -1,0 +1,26 @@
+name: Recepción y Vinculación - publicación selectiva
+on:
+  pull_request:
+    paths: ['tools/publicar_recepcion_vinculacion_hostinger.sh', 'tools/recepcion_vinculacion_20261018/**', 'tests/publicacion_recepcion_vinculacion_test.py', 'tests/fixtures/integral_hostinger*', '.github/workflows/recepcion-vinculacion-publicacion.yml']
+  push:
+    branches: [main]
+    paths: ['tools/publicar_recepcion_vinculacion_hostinger.sh', 'tools/recepcion_vinculacion_20261018/**', 'tests/publicacion_recepcion_vinculacion_test.py', '.github/workflows/recepcion-vinculacion-publicacion.yml']
+permissions:
+  contents: read
+jobs:
+  publicar-y-restaurar-replicas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Variantes revisadas, respaldo, fallos parciales y rollback
+        env:
+          IMPE_TEST_NETWORK: '1'
+        run: python3 tests/publicacion_recepcion_vinculacion_test.py

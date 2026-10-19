@@ -55,3 +55,16 @@ La entrega incluye `tools/publicar_recepcion_vinculacion_hostinger.sh`, fijado a
 Descargar el script desde el SHA de la entrega de publicación indicado en el PR; ejecutar primero `--check`. Revisar el listado y, en una ventana sin llamadas activas y sin formularios pendientes, ejecutar `--apply` de manera explícita. No requiere Node en Hostinger. No ejecuta SQL, migraciones ni llama al CRM durante la preparación/publicación. No modifica configuración, audios, logs ni archivos fuera de la lista.
 
 El comando de rollback se imprime con la ruta exacta del respaldo. `--restore RUTA_RESPALDO` comprueba huellas de respaldo y de instalación; se niega a sobrescribir ediciones posteriores. Restaurar código no revierte datos registrados por usuarios después de publicar. Las llamadas reales deben repetirse antes de dar esta versión por validada en producción.
+
+## Estado de pruebas heredadas
+
+En el primer commit del PR, las pruebas específicas de esta entrega y las de toasts aprobaron en GitHub Actions. La matriz general también ejecutó verificaciones históricas incompatibles con el código que ya existía en `main` (`939c39f8`). Se contrastaron en una copia independiente de esa base:
+
+| Workflow heredado | Evidencia anterior a esta entrega |
+| --- | --- |
+| Telefonía - Entrantes Analistas / Telefonia WebRTC persistente | `telefonia_shell_smoke.php` exige el antiguo checkbox `data-marketing-reception-auto` en una plantilla que ya no lo contiene. |
+| Telefonia - Marcador integrado / Telefonia - UX extensiones y recepcion | `telefonia_ux_admin_smoke.php` exige el antiguo bloque azul `data-marketing-reception-callback-status`, que ya fue retirado. |
+| Marketing - Recepción WebRTC y presentación | El test estático exige una inclusión antigua del dashboard y el navegador un botón `data-marketing-reception-details-toggle` ausente también en la base. Se reprodujeron ambos fallos sobre `939c39f8`, sin las correcciones de este PR. |
+| Seguimiento - Historial de llamadas | El test histórico de despliegue de fechas compara snapshots antiguos fijados por su instalador con los archivos actuales, en lugar de comparar con esos targets. El API de la base ya difiere del target histórico. |
+
+Otro job del workflow persistente exige `INTERVAL 5 MINUTE`; la base ya utiliza 90 segundos. Estas verificaciones no justifican reinstalar controles retirados ni cambiar los tiempos de transferencia aprobados. Se mantienen visibles como fallos previos; no se presenta la matriz completa como verde. El PR conserva las pruebas de comportamiento actuales y la publicación selectiva de esta entrega en workflows separados.
