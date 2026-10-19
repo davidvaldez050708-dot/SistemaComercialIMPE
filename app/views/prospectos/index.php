@@ -23,9 +23,9 @@ $paginasProspectos = (int)($listado['paginas'] ?? 1);
 .prospectos-page .prospectos-table-wrap table th,
 .prospectos-page .prospectos-table-wrap table td,
 .prospectos-page .prospectos-table-wrap table span,
-.prospectos-page .prospectos-table-wrap table a{font-family:'Manrope',sans-serif !important;font-size:14px !important;letter-spacing:-.01em !important;line-height:1.5 !important}
-.prospectos-page .prospectos-table-wrap table th{font-weight:700 !important}
-.prospectos-page .prospectos-table-wrap table td{font-weight:500 !important}
+.prospectos-page .prospectos-table-wrap table a{font-family:'Manrope',sans-serif !important;font-size:12px !important;letter-spacing:normal !important;line-height:1.5 !important}
+.prospectos-page .prospectos-table-wrap table th{font-weight:800 !important}
+.prospectos-page .prospectos-table-wrap table td{font-weight:600 !important}
 .prospectos-page .prospectos-table-wrap table td.prospectos-name{font-weight:700 !important}
 .prospectos-page th{background:#eef4fa;color:#173a65;font-weight:800;text-align:left;padding:12px 14px;border-bottom:1px solid #d9e4ef}
 .prospectos-page td{padding:12px 14px;border-bottom:1px solid #e9eef5;color:#42516a}
