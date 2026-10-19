@@ -175,6 +175,7 @@ $urlActualizarMarcador = BASE_URL . (
                 </button>
             </div>
         </div>
+        <details class="sales-contact-editor" data-sales-contact-editor><summary><i class="bi bi-person-plus" aria-hidden="true"></i> Agregar contacto / editar datos <i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
         <form class="telephony-contact-form" data-telephony-contact-form autocomplete="off">
             <input type="hidden" data-telephony-contact-id value="0">
             <div>
@@ -202,28 +203,33 @@ $urlActualizarMarcador = BASE_URL . (
                 </button>
             </div>
         </form>
+        </details>
         <p class="telephony-contacts-feedback" role="status" aria-live="polite"
             data-telephony-contact-status></p>
-        <div id="telefonia-lista-contactos" class="telephony-contacts-list"
-            data-telephony-contacts-list>
-            <?php foreach ($contactos as $contacto): ?>
-                <article class="telephony-contact-row" data-telephony-contact-row
-                    data-contact-id="<?= (int)$contacto['id'] ?>"
-                    data-contact-number="<?= $esc($contacto['telefono']) ?>" data-contact-email="<?= $esc($contacto['correo']??'') ?>" data-contact-note="<?= $esc($contacto['observacion']??'') ?>" data-contact-next="<?= $esc($contacto['proxima_accion_at']??'') ?>">
-                    <div class="telephony-contact-name">
-                        <strong data-contact-name><?= $esc($contacto['nombre']) ?></strong>
-                        <small data-contact-display-number><?= $esc($contacto['telefono']) ?></small><small data-contact-extra><?= $esc(implode(' · ',array_filter([$contacto['correo']??'', $contacto['proxima_accion_at']??'', $contacto['observacion']??'']))) ?></small>
-                    </div>
-                    <div class="telephony-contact-actions"><button type="button" class="btn btn-system-light" data-telephony-contact-edit aria-label="Editar contacto"><i class="bi bi-pencil"></i></button>
-                        <button type="button" class="btn btn-system-light"
-                            data-telephony-contact-use>Usar número</button>
-                        <button type="button" class="telephony-contact-remove"
-                            data-telephony-contact-remove aria-label="Eliminar teléfono guardado">
-                            <i class="bi bi-trash" aria-hidden="true"></i>
-                        </button>
-                    </div>
-                </article>
-            <?php endforeach; ?>
+        <div class="sales-contact-table-scroll" role="region" aria-label="Contactos de la agenda" tabindex="0">
+          <table class="telephony-contacts-table">
+            <thead><tr><th scope="col">Prospecto</th><th scope="col">Teléfono</th><th scope="col">Información y próxima acción</th><th scope="col">Acciones</th></tr></thead>
+            <tbody id="telefonia-lista-contactos" class="telephony-contacts-list" data-telephony-contacts-list>
+              <?php foreach ($contactos as $contacto): ?>
+              <tr class="telephony-contact-row" data-telephony-contact-row
+                  data-contact-id="<?= (int)$contacto['id'] ?>"
+                  data-contact-number="<?= $esc($contacto['telefono']) ?>" data-contact-email="<?= $esc($contacto['correo']??'') ?>" data-contact-note="<?= $esc($contacto['observacion']??'') ?>" data-contact-next="<?= $esc($contacto['proxima_accion_at']??'') ?>">
+                <td class="telephony-contact-name"><strong data-contact-name><?= $esc($contacto['nombre']) ?></strong></td>
+                <td class="sales-contact-phone" data-contact-display-number><?= $esc($contacto['telefono']) ?></td>
+                <td class="sales-contact-meta">
+                  <span><?= $esc($contacto['correo']??'') ?></span>
+                  <?php if(!empty($contacto['proxima_accion_at'])): ?><small>Próxima: <?= $esc($contacto['proxima_accion_at']) ?></small><?php endif; ?>
+                  <?php if(!empty($contacto['observacion'])): ?><small data-contact-extra><?= $esc($contacto['observacion']) ?></small><?php endif; ?>
+                </td>
+                <td><div class="telephony-contact-actions">
+                  <button type="button" class="btn btn-system-light" data-telephony-contact-edit aria-label="Editar contacto"><i class="bi bi-pencil"></i></button>
+                  <button type="button" class="btn btn-system-light" data-telephony-contact-use>Usar número</button>
+                  <button type="button" class="telephony-contact-remove" data-telephony-contact-remove aria-label="Eliminar teléfono guardado"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                </div></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
         </div>
         <p class="telephony-contacts-empty" data-telephony-contacts-empty
             <?= !empty($contactos) ? 'hidden' : '' ?>>
