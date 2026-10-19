@@ -1,0 +1,45 @@
+--- a/public/javascript/telefonia_atencion.js
++++ b/public/javascript/telefonia_atencion.js
+@@ -20,6 +20,23 @@
+     };
+     window.IMPE_CALL_DRAFTS={
+         refs,localSave,
++        resultValues(values={}) {
++            const out={...values};
++            const names={nombre:'nombre_entidad',persona:'persona_atendio',telefono:'telefono_capturado',
++                correo:'correo_capturado',notas:'observacion',contacto_nombre:'nuevo_contacto_nombre',contacto_cargo:'nuevo_contacto_cargo'};
++            for(const [alias,name] of Object.entries(names)){
++                if(!(name in out)&&alias in values)out[name]=values[alias];
++                delete out[alias];
++            }
++            return out;
++        },
++        captureValues(values={}) {
++            const out={...values};
++            const names={nombre_entidad:'nombre',persona_atendio:'persona',telefono_capturado:'telefono',
++                correo_capturado:'correo',observacion:'notas',nuevo_contacto_nombre:'contacto_nombre',nuevo_contacto_cargo:'contacto_cargo'};
++            for(const [name,alias] of Object.entries(names))if(name in values)out[alias]=values[name];
++            return out;
++        },
+         async read(user,ids) {
+             const found=refs(ids).map(id=>localRead(user,id)).filter(fresh);
+             for(const id of refs(ids)) {
+@@ -51,10 +68,14 @@
+         const values=await window.IMPE_CALL_DRAFTS.read(Number(window.IMPE_CURRENT_USER_ID||0),ids);
+         form.removeEventListener('input',dirty);
+         if(!values||changed||form.dataset.draftCycle!==String(cycle))return;
+-        const map={persona:'persona_atendio',notas:'observacion',telefono:'nuevo_telefono_contacto',
+-            correo:'nuevo_correo_contacto',contacto_nombre:'nuevo_contacto_nombre',contacto_cargo:'nuevo_contacto_cargo'};
+-        for(const [key,name] of Object.entries(map)) {
+-            const input=form.elements.namedItem(name);if(input&&!input.value&&values[key])input.value=String(values[key]);
++        const normalized=window.IMPE_CALL_DRAFTS.resultValues(values);
++          // El formulario original de salientes sólo dispone del contacto referido.
++          // Conserva su captura de teléfono/correo sin mezclar los nombres de personas.
++          for(const [source,target] of [['telefono_capturado','nuevo_telefono_contacto'],['correo_capturado','nuevo_correo_contacto']]){
++              if(!form.elements.namedItem(source)&&!normalized[target]&&normalized[source])normalized[target]=normalized[source];
++          }
++        for(const [name,value] of Object.entries(normalized)) {
++            const input=form.elements.namedItem(name);if(input&&!input.value&&value)input.value=String(value);
+         }
+         window.IMPE_TELEPHONY_NOTIFY?.('Datos de la llamada recuperados. Revisa el resultado y confirma los datos verificados.');
+     });

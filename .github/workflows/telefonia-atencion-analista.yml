@@ -21,6 +21,8 @@ jobs:
           --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -41,6 +43,10 @@ jobs:
           php -l prueba_telefonia/api/vincular_interaccion_zadarma.php
           node --check public/javascript/telefonia_atencion.js
           node --check public/javascript/seguimiento_llamada_zadarma.js
+          php -l prueba_telefonia/api/municipios_llamada.php
+          php tests/telefonia_notificaciones_orden.php
+          php tests/audio_expediente_transferencia_unica_smoke.php
+          php tests/audio_expediente_sin_contexto_smoke.php
           php tests/telefonia_atencion_db.php
           php tests/conciliacion_entrantes_pbx_webrtc_smoke.php
           php tests/telefonia_analista_entrantes_smoke.php
@@ -53,6 +59,9 @@ jobs:
           node tests/telefonia_entrantes_bridge_smoke.js
       - name: Modales, recuperación y guardado en navegador real
         run: |
+          node tests/telefonia_modal_entrante_integracion_browser.cjs
+          node tests/telefonia_audio_expediente_browser.cjs
+          node tests/recordatorios_toasts_browser.cjs
           node tests/telefonia_atencion_browser.cjs
           node tests/telefonia_flujo_browser.cjs
           node tests/telefonia_campana_browser.cjs

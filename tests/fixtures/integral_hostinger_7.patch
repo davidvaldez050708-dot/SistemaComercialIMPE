@@ -1,0 +1,168 @@
+--- a/public/css/seguimiento_entrantes_analista.css
++++ b/public/css/seguimiento_entrantes_analista.css
+@@ -942,124 +942,62 @@
+     }
+ }
+ 
+-/* Registro de llamadas transferidas: escala y campos del CRM.
+- * El teléfono/SIP y los modales de otros módulos no se modifican. */
+-#modalLlamadaEntranteAnalista .modal-content {
+-    border: 1px solid #dfe7f2;
+-    box-shadow: 0 22px 64px rgba(27, 42, 76, .17);
+-}
+-#modalLlamadaEntranteAnalista .modal-header {
+-    border-bottom: 1px solid #e9edf5;
+-    padding: 20px 24px 17px;
+-}
+-#modalLlamadaEntranteAnalista .system-form-modal-title {
+-    font-size: 18px;
+-    line-height: 1.35;
+-    color: #263654;
+-}
+-#modalLlamadaEntranteAnalista .system-form-modal-subtitle {
+-    color: #6c7b94;
+-    font-size: 12px;
+-    line-height: 1.5;
+-    margin: 4px 0 0;
+-}
++/* Resultado de entrantes: compacto y coherente con el resto del CRM. */
++#modalLlamadaEntranteAnalista .system-form-modal-subtitle {font-size:12px;color:#6b7890;}
+ #modalLlamadaEntranteAnalista .linkage-incoming-form .form-label {
+-    display: block;
+-    font-size: 12px;
+-    font-weight: 750;
+-    letter-spacing: 0;
+-    color: #40516e;
+-    margin: 0 0 7px;
+-}
+-#modalLlamadaEntranteAnalista .linkage-incoming-form :is(.form-select, .form-control) {
+-    font-size: 12.5px;
+-    line-height: 1.4;
+-    min-height: 43px;
+-    border: 1px solid #d6e1f0;
+-    border-radius: 10px;
+-    background-color: #fbfcff;
+-    color: #293e60;
+-    box-shadow: none;
+-}
+-#modalLlamadaEntranteAnalista .linkage-incoming-form :is(.form-select, .form-control):focus {
+-    border-color: #5e79b8;
+-    box-shadow: 0 0 0 3px rgba(60, 85, 155, .12);
+-    background: #fff;
+-}
+-#modalLlamadaEntranteAnalista .linkage-incoming-form textarea.form-control {
+-    min-height: 86px;
+-    resize: vertical;
+-}
+-#modalLlamadaEntranteAnalista .linkage-incoming-summary {
+-    margin: 0 0 16px;
+-    background: #f4f7fc;
++  display:block;font-size:12px;font-weight:750;color:#3c506e;margin-bottom:6px;
++}
++#modalLlamadaEntranteAnalista .linkage-incoming-form :is(.form-control,.form-select) {
++  min-height:43px;font-size:12.5px;border:1px solid #d7e1ee;
++  border-radius:10px;background-color:#fbfcff;box-shadow:none;
++}
++#modalLlamadaEntranteAnalista .linkage-incoming-form :is(.form-control,.form-select):focus {
++  border-color:#647fb9;box-shadow:0 0 0 3px rgba(57,86,165,.12);
+ }
+ #modalLlamadaEntranteAnalista [data-incoming-sdk-notice],
+ #modalLlamadaEntranteAnalista [data-incoming-existing-search][hidden],
+-#modalLlamadaEntranteAnalista [data-incoming-confirmed][hidden] {
+-    display: none !important;
+-}
++#modalLlamadaEntranteAnalista [data-incoming-confirmed][hidden] {display:none!important;}
+ #modalLlamadaEntranteAnalista .linkage-incoming-confirmed {
+-    display: flex;
+-    align-items: center;
+-    gap: 12px;
+-    padding: 13px 14px;
+-    border: 1px solid #d1e4db;
+-    background: #f3faf6;
+-    border-radius: 11px;
+-    margin-bottom: 15px;
++  display:flex;gap:12px;align-items:center;border:1px solid #d5e5dc;
++  border-radius:12px;background:#f3faf6;padding:12px 14px;margin-bottom:14px;
+ }
+ #modalLlamadaEntranteAnalista .linkage-incoming-confirmed-icon {
+-    display: inline-flex;
+-    flex: 0 0 34px;
+-    width: 34px;
+-    height: 34px;
+-    justify-content: center;
+-    align-items: center;
+-    border-radius: 10px;
+-    color: #277a61;
+-    background: #e3f3eb;
++  display:flex;width:34px;height:34px;align-items:center;justify-content:center;
++  border-radius:10px;color:#287b60;background:#e2f3ea;flex:0 0 34px;
+ }
+ #modalLlamadaEntranteAnalista .linkage-incoming-confirmed-copy {
+-    display: flex;
+-    flex: 1 1 auto;
+-    flex-direction: column;
+-    min-width: 0;
+-    gap: 2px;
+-}
+-#modalLlamadaEntranteAnalista .linkage-incoming-confirmed-copy > span {
+-    color: #456d60;
+-    font-size: 10.5px;
+-    font-weight: 750;
++  display:flex;flex-direction:column;gap:3px;flex:1 1 auto;min-width:0;
++}
++#modalLlamadaEntranteAnalista .linkage-incoming-confirmed-copy span {
++  font-size:11px;font-weight:700;color:#446d60;
+ }
+ #modalLlamadaEntranteAnalista .linkage-incoming-confirmed-copy strong {
+-    font-size: 13px;
+-    overflow-wrap: anywhere;
+-    color: #264b43;
++  font-size:13px;color:#264e3e;overflow-wrap:anywhere;
+ }
+ #modalLlamadaEntranteAnalista .linkage-incoming-confirmed-copy small {
+-    font-size: 10.5px;
+-    color: #607c72;
+-    line-height: 1.45;
++  font-size:11px;line-height:1.45;color:#647f73;
+ }
+ #modalLlamadaEntranteAnalista .linkage-incoming-change-record {
+-    flex: 0 0 auto;
+-    border: 1px solid #b6d8c8;
+-    color: #28694f;
+-    background: #fff;
+-    font-size: 11px;
+-    font-weight: 750;
+-    border-radius: 9px;
+-    min-height: 35px;
+-}
+-@media (max-width: 575.98px) {
+-    #modalLlamadaEntranteAnalista .linkage-incoming-confirmed {
+-        flex-wrap: wrap;
+-    }
+-    #modalLlamadaEntranteAnalista .linkage-incoming-change-record {
+-        margin-left: auto;
+-    }
+-    #modalLlamadaEntranteAnalista .modal-header {padding: 16px;}
++  border:1px solid #b7d9c7;background:#fff;color:#236f54;
++  border-radius:9px;font-size:11px;font-weight:700;min-height:35px;
++}
++@media (max-width:575.98px) {
++ #modalLlamadaEntranteAnalista .linkage-incoming-confirmed {flex-wrap:wrap;}
++ #modalLlamadaEntranteAnalista .linkage-incoming-change-record {margin-left:auto;}
++}
++
++/* CRM · registro de resultado compacto, hoja oficial del módulo */
++.linkage-incoming-page .linkage-call-result-group .linkage-incoming-open {
++ display:inline-flex;align-items:center;justify-content:center;gap:6px;
++ box-sizing:border-box;min-height:32px;padding:5px 11px;
++ border:1px solid #c8d5e9;border-radius:999px;
++ background:#f1f5fc;color:#27438a;
++ font-family:inherit;font-size:11px;font-weight:700;line-height:1.2;
++ white-space:nowrap;cursor:pointer;
++}
++.linkage-incoming-page .linkage-call-result-group .linkage-incoming-open:hover,
++.linkage-incoming-page .linkage-call-result-group .linkage-incoming-open:focus-visible {
++ border-color:#aabfe4;background:#e9f0fb;color:#203a79;
+ }
+ 
+ /* Acciones del historial: misma escala que Consultar grabación. */

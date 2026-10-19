@@ -1,0 +1,15 @@
+--- a/prueba_telefonia/api/grabacion_transferida_pbx.php
++++ b/prueba_telefonia/api/grabacion_transferida_pbx.php
+@@ -76,10 +76,10 @@
+         }
+     }
+     if (!$autorizada) { http_response_code(404); exit; }
+-    $q = $db->prepare("SELECT call_id_with_rec FROM telefonia_zadarma_eventos
++    $q = $db->prepare("SELECT call_id_with_rec,MIN(id) AS first_id FROM telefonia_zadarma_eventos
+         WHERE pbx_call_id=? AND evento='NOTIFY_RECORD'
+           AND TRIM(COALESCE(call_id_with_rec,'')) <> ''
+-        ORDER BY id ASC LIMIT 9");
++        GROUP BY call_id_with_rec ORDER BY first_id ASC LIMIT 9");
+     $q->bind_param('s', $pbx);
+     $q->execute();
+     $rows = $q->get_result()->fetch_all(MYSQLI_ASSOC);

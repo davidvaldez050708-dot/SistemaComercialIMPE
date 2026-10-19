@@ -1,0 +1,10 @@
+--- a/public/css/telefonia_enrutamiento.css
++++ b/public/css/telefonia_enrutamiento.css
+@@ -198,6 +198,7 @@
+ 
+ 
+ .impe-routing-panel .impe-routing-heading { position: relative; padding-right: 31px; }
++.impe-routing-panel.impe-routing-sidecar .impe-routing-heading{position:sticky;top:0;z-index:2;background:#fff;padding-bottom:8px}
+ .impe-routing-panel .impe-routing-close {
+   position: absolute;
+   right: 0;

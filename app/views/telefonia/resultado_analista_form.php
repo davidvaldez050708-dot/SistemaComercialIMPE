@@ -97,6 +97,14 @@
                                     <?php endforeach; ?>
                                 </select>
                             </div>
+                            <div class="col-12">
+                                <label class="form-label" for="incomingMunicipality">Municipio (opcional)</label>
+                                <select data-native-select id="incomingMunicipality" name="municipio_id" class="form-select"
+                                    data-incoming-municipality data-municipality-url="<?= BASE_URL ?>prueba_telefonia/api/municipios_llamada.php" disabled>
+                                    <option value="">Selecciona primero un estado</option>
+                                </select>
+                                <small class="system-form-modal-subtitle d-block mt-2" data-municipality-status role="status"></small>
+                            </div>
                         </div>
                     </div>
                     <div data-incoming-results>

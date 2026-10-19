@@ -354,6 +354,17 @@ class ReminderController
                 return $prioridadA <=> $prioridadB;
             }
 
+            $telefonoA=(int)($a['telefonia_id']??0)>0;
+            $telefonoB=(int)($b['telefonia_id']??0)>0;
+            // Orden total: a igual prioridad, conservar delante las acciones
+            // operativas; ordenar luego los avisos telefónicos por novedad.
+            if($telefonoA!==$telefonoB)return $telefonoA?1:-1;
+            if($telefonoA){
+                $fechaTelefonoA=strtotime((string)($a['created_at']??$a['fecha']??''))?:0;
+                $fechaTelefonoB=strtotime((string)($b['created_at']??$b['fecha']??''))?:0;
+                return ($fechaTelefonoB<=>$fechaTelefonoA)?:((int)$b['telefonia_id']<=>(int)$a['telefonia_id']);
+            }
+
             $fechaA = strtotime((string)($a['fecha'] ?? '')) ?: 0;
             $fechaB = strtotime((string)($b['fecha'] ?? '')) ?: 0;
 

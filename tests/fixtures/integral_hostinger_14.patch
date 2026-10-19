@@ -1,0 +1,75 @@
+--- a/public/javascript/telefonia_analista_historial_pasivo.js
++++ b/public/javascript/telefonia_analista_historial_pasivo.js
+@@ -151,8 +151,6 @@
+     let finished = null;
+     let lastSignature = '';
+     let chain = Promise.resolve();
+-    // La misma conversación puede pasar de sesión PBX a SDK (o al revés).
+-    // No borrar la institución detectada ante esa transición de estado.
+     let visibleContextKey = '';
+     let visibleContextPhone = '';
+     const clearVisibleContext = () => {
+@@ -189,13 +187,10 @@
+             const ctx = data.contexto;
+             if (!Number.isInteger(Number(ctx.seguimiento_id)) ||
+                 Number(ctx.seguimiento_id) <= 0) return;
+-            // No asociar a otra conversación una institución previa.
+             if (visibleContextPhone && visibleContextPhone !== phone) clearVisibleContext();
+             const presentationKey = [String(ctx.seguimiento_id),
+                 String(ctx.institucion || ''), String(ctx.estado || '')].join('|');
+-            if (visibleContextKey !== presentationKey) {
+-                contextCard.replaceChildren?.();
+-            }
++            if (visibleContextKey !== presentationKey) contextCard.replaceChildren?.();
+             const heading = root.document.createElement('strong');
+             heading.textContent = String(ctx.institucion || '') + ' · ' +
+                 String(ctx.estado || '');
+@@ -394,8 +389,7 @@
+                 .replace(/[^0-9+*#]/g,'').slice(0,40);
+             if (!pbxSession || pbxSession.id !== id) {
+                 pbxSession = {id,number:''};
+-                // Mantener el bloque detectado mientras PBX y SDK
+-                // terminan de identificar esta misma conversación.
++                // Una nueva identidad PBX no borra el contexto de la sesión viva.
+             }
+             if (usableCallerNumber(phone) && pbxSession.number !== phone) {
+                 if (visibleContextPhone && visibleContextPhone !== phone) clearVisibleContext();
+@@ -429,8 +423,6 @@
+                     sawConversation: false
+                 };
+                 finished = null;
+-                // El identificador del SDK puede aparecer después del PBX.
+-                // Mantener sólo el contexto del mismo teléfono, si se conoce.
+                 if (usableCallerNumber(reportedNumber) && visibleContextPhone &&
+                     visibleContextPhone !== reportedNumber) clearVisibleContext();
+                 draw();
+@@ -465,9 +457,7 @@
+                 );
+             }
+         } else if (active && pbxIncoming) {
+-            // Una sesión SDK transferida puede adquirir su identificador PBX
+-            // durante el timbrado o después de contestar. No finalizar aquí
+-            // la sesión SDK: es la MISMA conversación, no una llamada nueva.
++            // La identidad PBX no significa el final de la sesión SDK.
+             if (state.phase === 'in-progress' || state.status === 'in-progress') {
+                 active.sawConversation = true;
+                 const hostAt = Number(state.answeredAtMs || 0);
+@@ -476,14 +466,13 @@
+                         Date.now() - hostAt < 86400000 ? hostAt : Date.now();
+                     void postEvent('answered', active);
+                 }
+-                active.lastDuration = Math.max(
+-                    active.lastDuration, Number(state.duration || 0),
+-                    Math.floor((Date.now() - active.answeredAt) / 1000)
+-                );
++                active.lastDuration = Math.max(active.lastDuration,
++                    Number(state.duration || 0),
++                    Math.floor((Date.now() - active.answeredAt) / 1000));
+             }
+         } else if (active && (!state.active ||
+             state.phase === 'ready' || state.phase === 'incoming-finished')) {
+-            // Finalizar sólo al terminar realmente la conversación.
++            // El motor sí publicó un estado final; aprovechar su duración.
+             end(state);
+         }
+     };

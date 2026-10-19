@@ -10,7 +10,7 @@ final class TelefoniaBorradorService
             'contacto_nombre'=>140,'contacto_cargo'=>150,'nombre_entidad'=>180,'persona_atendio'=>140,
             'telefono_capturado'=>40,'correo_capturado'=>160,'observacion'=>1000,
             'nuevo_contacto_nombre'=>140,'nuevo_contacto_cargo'=>150,'nuevo_telefono_contacto'=>40,
-            'nuevo_correo_contacto'=>160,'decision'=>30,'seguimiento_id'=>12,'estado_id'=>12,
+            'nuevo_correo_contacto'=>160,'decision'=>30,'seguimiento_id'=>12,'estado_id'=>12,'municipio_id'=>12,
             'tipo_entidad'=>30,'resultado'=>40,'proxima_accion'=>40,'proxima_accion_at'=>30,
             'verificacion_telefono_confirmado'=>1,'verificacion_correo_confirmado'=>1,
             'verificacion_contacto_confirmado'=>1,'descartar'=>1,'motivo_descarte'=>500];

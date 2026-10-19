@@ -8,8 +8,8 @@ const source=process.env.IMPE_REMINDER_TEST_SOURCE?fs.readFileSync(process.env.I
 const css=fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'),'utf8')+'\n'+fs.readFileSync(path.join(repo,'public/css/recordatorios.css'),'utf8');
 const minute=60000, period=8*minute;
 const notices=[
- {id:-71,telefonia_id:71,leida:0,nombre_entidad:'Transferencia sin confirmación',titulo:'Transferencia sin confirmación',accion:'Revisa el historial',mensaje:'Revisa el historial',estado:'informativa',url:'/destino?aviso=71'},
- {id:-72,telefonia_id:72,leida:0,nombre_entidad:'Llamada por devolver',titulo:'Llamada por devolver',accion:'Recepción dejó datos',mensaje:'Recepción dejó datos',estado:'informativa',url:'/destino?aviso=72'}
+ {id:-71,telefonia_id:71,fecha:'2026-10-18 12:30:00',leida:0,nombre_entidad:'Transferencia sin confirmación',titulo:'Transferencia sin confirmación',accion:'Revisa el historial',mensaje:'Revisa el historial',estado:'informativa',url:'/destino?aviso=71'},
+ {id:-72,telefonia_id:72,fecha:'2026-10-18 12:31:00',leida:0,nombre_entidad:'Llamada por devolver',titulo:'Llamada por devolver',accion:'Recepción dejó datos',mensaje:'Recepción dejó datos',estado:'informativa',url:'/destino?aviso=72'}
 ];
 const following={id:9,seguimiento_id:9,nombre_entidad:'Institución Uno',accion:'Volver a llamar',fecha:'2026-01-01 08:00:00',estado:'vencida',url:'/seguimiento?id=9'};
 async function fixture(browser,options={}){
@@ -32,6 +32,7 @@ async function fixture(browser,options={}){
  });
  await page.goto('http://toasts.test/inicio');
  await page.locator('.topbar-reminder-item').first().waitFor();
+ if(items.some(n=>n.telefonia_id))assert.ok(await page.locator('.topbar-reminder-item time').count()>0,'phone notices include date and time');
  await page.exposeFunction('toastObserved',value=>shown.push(value));
  await page.evaluate(()=>new MutationObserver(ms=>{
   for(const m of ms)for(const n of m.addedNodes)if(n.nodeType===1&&n.matches('.reminder-toast'))window.toastObserved({at:Date.now(),id:n.dataset.telefoniaId||'',text:n.textContent});

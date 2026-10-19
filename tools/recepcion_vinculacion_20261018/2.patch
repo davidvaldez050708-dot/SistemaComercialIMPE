@@ -1,0 +1,26 @@
+--- a/app/services/TelefoniaEntrantesAnalistaService.php
++++ b/app/services/TelefoniaEntrantesAnalistaService.php
+@@ -659,6 +659,14 @@
+                 if ($duplicado) {
+                     throw new DomainException('Esta institución ya tiene expediente. Selecciona Seguimiento existente.');
+                 }
++                $municipioRaw=trim((string)($datos['municipio_id']??''));
++                if($municipioRaw!=='' && !preg_match('/^[0-9]{1,10}$/D',$municipioRaw)){
++                    throw new InvalidArgumentException('Selecciona un municipio válido.');
++                }
++                $municipioId=(int)$municipioRaw;
++                if($municipioId>0 && !$model->obtenerMunicipioActivoPorId($estadoId,$municipioId)){
++                    throw new DomainException('El municipio no está activo o no pertenece al estado seleccionado.');
++                }
+                 $telefonoCapturado = trim((string)($datos['telefono_capturado'] ?? ''));
+                 $correoCapturado = trim((string)($datos['correo_capturado'] ?? ''));
+                 if (mb_strlen($telefonoCapturado, 'UTF-8') > 40 ||
+@@ -675,7 +683,7 @@
+                     ? $telefonoCapturado : (string)($call['caller_id'] ?? '');
+                 $seguimientoId = $model->crearSeguimientoManual([
+                     'estado_id' => $estadoId,
+-                    'municipio_id' => 0,
++                    'municipio_id' => $municipioId,
+                     'analista_id' => $usuarioId,
+                     'clave_origen' => 'MANUAL:' . bin2hex(random_bytes(16)),
+                     'tipo_entidad' => $tipo,

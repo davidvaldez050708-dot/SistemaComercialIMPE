@@ -1,0 +1,97 @@
+--- a/public/javascript/telefonia_disponibilidad.js
++++ b/public/javascript/telefonia_disponibilidad.js
+@@ -6,6 +6,47 @@
+  const $=s=>document.querySelector(s),source=$('[data-availability-source]'),incoming=$('[data-availability-incoming]'),callback=$('[data-availability-callback]');
+  const key='impe:availability:'+cfg.userId;
+  let watched=null,received=null,polling=false,acting=false,transferring=false,callbacks=-1,deferred='';
++ // Aviso de disponibilidad independiente del timbre y del contexto de audio del SDK.
++ const soundKey='impe:availability-chimes:'+cfg.userId;
++ let audio=null,soundRequest=null,soundExpiry=0,soundNodes=[],heard=[];
++ try{const value=JSON.parse(sessionStorage.getItem(soundKey)||'[]');if(Array.isArray(value))heard=value.slice(-40);}catch(_){}
++ const stopSound=()=>{clearTimeout(soundExpiry);soundRequest=null;for(const node of soundNodes){try{node.stop();node.disconnect();}catch(_){}}soundNodes=[];};
++ const playSound=()=>{
++  if(!soundRequest||!audio||audio.state!=='running'||Date.now()>=soundRequest.until||heard.includes(soundRequest.key))return;
++  const identity=soundRequest.key;
++  try{
++   for(const [frequency,offset] of [[740,0],[990,.22]]){
++    const oscillator=audio.createOscillator(),gain=audio.createGain(),start=audio.currentTime+offset;
++    oscillator.type='sine';oscillator.frequency.value=frequency;
++    gain.gain.setValueAtTime(0,start);gain.gain.linearRampToValueAtTime(.13,start+.02);gain.gain.linearRampToValueAtTime(0,start+.17);
++    oscillator.connect(gain);gain.connect(audio.destination);oscillator.start(start);oscillator.stop(start+.18);soundNodes.push(oscillator);
++   }
++   heard=[...heard.filter(k=>k!==identity),identity].slice(-40);
++   try{sessionStorage.setItem(soundKey,JSON.stringify(heard));}catch(_){}
++  }catch(_){stopSound();}
++ };
++ const signalAvailability=op=>{
++  const identity=String(op.id)+':'+op.version;
++  if(soundRequest?.key!==identity){stopSound();soundRequest={key:identity,until:Date.now()+Math.max(0,Number(op.segundos)||0)*1000};soundExpiry=setTimeout(stopSound,Math.max(0,Number(op.segundos)||0)*1000);}
++  playSound();
++ };
++ const unlockAudio=event=>{
++  if(!event.isTrusted)return;
++  try{
++   const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;
++   if(!audio)audio=new Context();
++   if(audio.state==='suspended')void audio.resume().then(playSound).catch(()=>{});else playSound();
++  }catch(_){/* El aviso visual sigue disponible si el navegador restringe audio. */}
++ };
++ document.addEventListener('pointerdown',unlockAudio,{capture:true});
++ document.addEventListener('keydown',unlockAudio,{capture:true});
++ const audioDocuments=new WeakSet();
++ const bindCrmGesture=()=>{try{
++  const doc=document.getElementById('impeCrmFrame')?.contentDocument;
++  if(!doc||audioDocuments.has(doc))return;
++  audioDocuments.add(doc);doc.addEventListener('pointerdown',unlockAudio,{capture:true});doc.addEventListener('keydown',unlockAudio,{capture:true});
++ }catch(_){}};
++ document.getElementById('impeCrmFrame')?.addEventListener('load',bindCrmGesture);bindCrmGesture();
+  try{watched=JSON.parse(sessionStorage.getItem(key)||'null');}catch(_){}
+  const persist=()=>{try{if(watched)sessionStorage.setItem(key,JSON.stringify(watched));else sessionStorage.removeItem(key);}catch(_){}};
+  const refreshBell=()=>document.getElementById('impeCrmFrame')?.contentWindow?.postMessage({type:'IMPE_PHONE_CALL_CHANGED'},location.origin);
+@@ -34,7 +75,7 @@
+   $('[data-availability-callback-open]').hidden=!['RECHAZADA','VENCIDA','CANCELADA','FALLIDA'].includes(status);
+  };
+  const store=op=>{watched=op;persist();render();window.dispatchEvent(new Event('impe:availability-state'));};
+- const closeIncoming=()=>{if(incoming?.open)incoming.close();received=null;};
++ const closeIncoming=()=>{stopSound();if(incoming?.open)incoming.close();received=null;};
+  const tick=async()=>{
+   if(polling||!incoming)return;polling=true;
+   try{
+@@ -55,25 +96,26 @@
+    if(waiting)waiting.hidden=!op||!status.pending||deferred!==String(op.id)+':'+op.version;
+    if(!op||!status.ready||status.active){closeIncoming();return;}
+    received=op;
+-   if(status.pending && deferred===String(op.id)+':'+op.version){if(incoming.open)incoming.close();return;}
++   if(status.pending && deferred===String(op.id)+':'+op.version){stopSound();if(incoming.open)incoming.close();return;}
+    $('[data-availability-accept]').disabled=Boolean(status.pending);
+    $('[data-availability-pending]').hidden=!status.pending;
+    $('[data-availability-feedback]').textContent=status.pending?'Tienes un resultado por registrar. Guárdalo antes de aceptar esta llamada.':'';
+    $('[data-availability-caller]').textContent='Recepción · Ext. '+op.origen_extension+' · '+op.numero+(op.institucion_nombre?' · '+op.institucion_nombre:'');
+    $('[data-availability-countdown]').textContent='Responde en '+op.segundos+' s. Aceptar reserva tu disponibilidad durante 30 s.';
+    if(!incoming.open){incoming.showModal();$('[data-availability-accept]').focus();}
++   signalAvailability(op);
+   }catch(e){if(watched){$('[data-availability-source-copy]').textContent=e.message;}if(incoming.open)$('[data-availability-feedback]').textContent=e.message;}
+   finally{polling=false;}
+  };
+  const respond=async which=>{
+-  if(acting||!received)return;acting=true;
++  if(acting||!received)return;acting=true;stopSound();
+   const buttons=incoming.querySelectorAll('button');buttons.forEach(b=>b.disabled=true);
+   try{if(which==='ACEPTAR'&&busy())throw Error('Ya tienes una llamada o tu teléfono no está conectado.');await action(received,which);closeIncoming();}
+   catch(e){$('[data-availability-feedback]').textContent=e.message;}
+   finally{acting=false;buttons.forEach(b=>b.disabled=false);}
+  };
+  $('[data-availability-pending]')?.addEventListener('click',()=>{
+-  if(!received)return;deferred=String(received.id)+':'+received.version;if(incoming.open)incoming.close();
++  if(!received)return;stopSound();deferred=String(received.id)+':'+received.version;if(incoming.open)incoming.close();
+   phone.openPendingResult?.();
+   const waiting=$('[data-availability-waiting]');if(waiting)waiting.hidden=false;
+  });
+@@ -105,6 +147,6 @@
+   finally{acting=false;form.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=false);}
+  });
+  window.IMPE_AVAILABILITY={watch:store,cancel,pending:()=>Boolean(watched&&phone.getActiveCall()?.id===watched.referencia&&['PENDIENTE','ACEPTADA','ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR','DEVOLUCION'].includes(watched.estado)),tick};
+- window.addEventListener('pagehide',()=>{navigator.sendBeacon?.(cfg.availabilityUrl,new URLSearchParams({accion:'PRESENCIA',disponible:'0',csrf_token:cfg.routingCsrf}));});
++ window.addEventListener('pagehide',()=>{stopSound();navigator.sendBeacon?.(cfg.availabilityUrl,new URLSearchParams({accion:'PRESENCIA',disponible:'0',csrf_token:cfg.routingCsrf}));});
+  window.setInterval(()=>void tick(),3000);window.setInterval(render,1000);void tick();
+ })();

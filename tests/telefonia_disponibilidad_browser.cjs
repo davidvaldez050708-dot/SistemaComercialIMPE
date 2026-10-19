@@ -9,6 +9,10 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
   const pages=[];
   for(const actor of [7,8]){
    const context=await browser.newContext({viewport:{width:1366,height:900}});contexts.push(context);const page=await context.newPage();pages.push(page);page.on('pageerror',e=>errors.push(e.message));
+   await page.addInitScript(()=>{
+    window.audioProbe={created:0,started:0,stopped:0,frequencies:[]};
+    window.AudioContext=class{constructor(){audioProbe.created++;this.state='running';this.currentTime=0;this.destination={};}resume(){this.state='running';return Promise.resolve();}createOscillator(){return{frequency:{set value(v){audioProbe.frequencies.push(v);}},connect(){},disconnect(){},start(){audioProbe.started++;},stop(){audioProbe.stopped++;}};}createGain(){return{gain:{setValueAtTime(){},linearRampToValueAtTime(){}},connect(){}};}};
+   });
    await page.route('**/*',async route=>{
     const req=route.request(),u=new URL(req.url()),post=new URLSearchParams(req.postData()||''),action=u.searchParams.get('action');
     if(u.hostname!=='llamadas.test')return route.abort();
@@ -48,6 +52,12 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
   assert.equal(await s.evaluate(()=>window.commands.length),0,'solicitar disponibilidad no envía transferencia');
   if(scenario==='pendiente')await d.evaluate(()=>document.body.classList.add('impe-sdk-result-in-modal'));
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());await d.locator('[data-availability-incoming]').waitFor({state:'visible'});
+  assert.equal(await d.evaluate(()=>audioProbe.started),0,'sin gesto confiable no intenta sonido');
+  await d.locator('[data-availability-incoming] h2').click();
+  assert.equal(await d.evaluate(()=>audioProbe.started),2,'dos notas distintivas tras gesto confiable');
+  assert.deepEqual(await d.evaluate(()=>audioProbe.frequencies),[740,990]);
+  await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
+  assert.equal(await d.evaluate(()=>audioProbe.started),2,'poll repetido no repite sonido');
   if(process.env.DISP_SCREENSHOT&&scenario==='aceptar'){await d.screenshot({path:process.env.DISP_SCREENSHOT+'-analista.png'});await s.screenshot({path:process.env.DISP_SCREENSHOT+'-recepcion.png'});}
   assert.equal(await d.locator('[data-incoming-panel]').isVisible(),false,'la confirmación no es una llamada ni un timbrado SIP');
   assert.ok(await d.locator('[data-availability-incoming] h2').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))<=20,'tipografía del modal uniforme');

@@ -1,0 +1,107 @@
+--- a/public/javascript/telefonia_shell.js
++++ b/public/javascript/telefonia_shell.js
+@@ -41,6 +41,7 @@
+     const closeFinished = document.querySelector('[data-incoming-close-finished]');
+     const callbackSaved=new Set();
+     let callbackResultOwner=0,callbackPending=null;
++    let resultFormOwner = null;
+     const callbackPendingKey='impe:callback-pending:'+userId;
+     try{const saved=JSON.parse(sessionStorage.getItem(callbackPendingKey)||'null');if(Number(saved?.id)>0 && Date.now()-Number(saved.at)<86400000)callbackPending=saved;}catch(_){}
+     const rememberCallback=()=>{try{if(callbackPending)sessionStorage.setItem(callbackPendingKey,JSON.stringify(callbackPending));else sessionStorage.removeItem(callbackPendingKey);}catch(_){}};
+@@ -94,11 +95,16 @@
+     let incomingCompact = false;
+     let incomingDrag = null;
+     let centerNextCall = true;
++    const viewportSize=()=>{
++        const size={width:Math.min(window.innerWidth,window.visualViewport?.width||window.innerWidth),height:Math.min(window.innerHeight,window.visualViewport?.height||window.innerHeight)};
++        if(incomingPanel)incomingPanel.style.maxHeight=Math.max(100,size.height-16)+'px';
++        return size;
++    };
+     const centerIncoming = function () {
+         if (!incomingPanel || incomingPanel.hidden || !centerNextCall) return;
+-        const rect = incomingPanel.getBoundingClientRect();
+-        incomingPanel.style.left = Math.max(8,(window.innerWidth-rect.width)/2) + 'px';
+-        incomingPanel.style.top = Math.max(8,(window.innerHeight-rect.height)/2) + 'px';
++        const view=viewportSize(),rect = incomingPanel.getBoundingClientRect();
++        incomingPanel.style.left = Math.max(8,(view.width-rect.width)/2) + 'px';
++        incomingPanel.style.top = Math.max(8,(view.height-rect.height)/2) + 'px';
+         incomingPanel.style.right = 'auto';
+         incomingPanel.style.bottom = 'auto';
+         centerNextCall = false;
+@@ -120,9 +126,9 @@
+     } catch (_) {}
+     const clampIncoming = function () {
+         if (!incomingPanel || incomingPanel.hidden || !incomingPanel.style.left) return;
+-        const rect = incomingPanel.getBoundingClientRect();
+-        const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+-        const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
++        const view=viewportSize(),rect = incomingPanel.getBoundingClientRect();
++        const maxLeft = Math.max(8, view.width - rect.width - 8);
++        const maxTop = Math.max(8, view.height - rect.height - 8);
+         incomingPanel.style.left = Math.max(8,Math.min(maxLeft,
+             Number.parseFloat(incomingPanel.style.left) || 8)) + 'px';
+         incomingPanel.style.top = Math.max(8,Math.min(maxTop,
+@@ -290,6 +296,20 @@
+         },
+         endCallbackResult: function (id) {if(callbackResultOwner===id){callbackResultOwner=0;render();}},
+         minimizeCallbackResult: function (id) {return this.beginCallbackResult(id);},
++        beginCallResult: function (token, refs) {
++            if (currentState?.active || !/^[a-zA-Z0-9_-]{12,100}$/.test(String(token))) return false;
++            const valid = (Array.isArray(refs) ? refs : []).filter(ref => /^[a-zA-Z0-9_-]{3,100}$/.test(String(ref)));
++            if (!valid.length) return false;
++            resultFormOwner = {token, refs:valid};
++            render();
++            return true;
++        },
++        endCallResult: function (token) {
++            if (resultFormOwner?.token !== token) return;
++            resultFormOwner = null;
++            render();
++        },
++        isResultFormOpen: function () { return Boolean(resultFormOwner) && !currentState?.active; },
+ 
+         getActiveCall: function () {
+             if (!freshState(currentState) || !currentState.active ||
+@@ -329,7 +349,13 @@
+         if(value.context?.type==='DEVOLUCION'&&!value.active&&['finished','incoming-finished'].includes(value.phase)&&Number(value.context.callbackAttempt)>0&&!callbackSaved.has(Number(value.context.callbackAttempt))){
+             callbackPending={id:Number(value.context.callbackAttempt),at:Date.now(),callToken:value.callToken};rememberCallback();
+         }
+-        if(value.active)callbackResultOwner=0;
++        if(value.active){
++            callbackResultOwner=0;
++            if(resultFormOwner){
++                resultFormOwner=null;
++                crm?.contentWindow?.postMessage({type:'IMPE_CALL_RESULT_INTERRUPT'},window.location.origin);
++            }
++        }
+         if(currentState?.active&&!value.active)crm?.contentWindow?.postMessage({type:'IMPE_PHONE_CALL_CHANGED'},window.location.origin);
+         if (startsCall) {incomingCompact=false;centerNextCall=true;}
+         // Sólo el Analista genera un aviso al finalizar una entrante REAL.
+@@ -546,7 +572,7 @@
+         const finishingIncoming = incoming &&
+             (pending === 'hangup' || state.phase === 'finishing');
+         const waitingAnswer = incoming && state.phase === 'answering';
+-        const callbackRegistration=Boolean(!ongoing && (callbackResultOwner||callbackPending));
++        const callbackRegistration=Boolean(!ongoing && (callbackResultOwner||callbackPending||resultFormOwner));
+         const customVisible = !callbackRegistration && (incoming || finishedIncoming || shownOutgoing) &&
+             !nativeVisible && !minimized && pending !== 'decline';
+         if(callbackRegistration)status.hidden=true;
+@@ -771,6 +797,7 @@
+     incomingHeader?.addEventListener('pointerup', endIncomingDrag);
+     incomingHeader?.addEventListener('pointercancel', endIncomingDrag);
+     window.addEventListener('resize', clampIncoming);
++    window.visualViewport?.addEventListener('resize',clampIncoming);
+     const answerIncoming = function () {
+         if (!freshState(currentState) || !currentState.active ||
+             currentState.phase !== 'incoming-ringing' ||
+@@ -905,6 +932,10 @@
+     // iframe: salir del shell desmonta también el contexto WebRTC.
+     crm?.addEventListener('load', function () {
+         try {
++            if(resultFormOwner && !crm.contentDocument?.querySelector('#modalLlamadaEntranteAnalista.show')){
++                resultFormOwner=null;
++                render();
++            }
+             const location = crm.contentWindow.location;
+             const url = new URL(location.href);
+             if (url.origin !== window.location.origin) return;

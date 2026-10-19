@@ -321,5 +321,6 @@ try {
     check($ops->obtener(1,$uid)['estado']==='ENTREGADA' && $ops->obtener(1,$uid)['destino_atendida'],'Respuesta tardía firmada confirma atención real');
     $notifications->pendientes(3,true);$notifications->pendientes(1,false);
     check((int)one("SELECT COUNT(*) n FROM telefonia_notificaciones WHERE llave='transferencia:$uid:1:SIN_CONFIRMAR' AND leida=0")['n']===0,'Respuesta confirmada retira el aviso de incertidumbre');
+    require __DIR__.'/fixtures/telefonia_integral_assertions.php';
     echo "Atención analista/MySQL: $checks comprobaciones OK\n";
 } finally {$db->select_db('mysql');$db->query("DROP DATABASE `$name`");$db->close();}

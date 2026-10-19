@@ -1,0 +1,19 @@
+--- a/public/css/telefonia_shell.css
++++ b/public/css/telefonia_shell.css
+@@ -65,6 +65,16 @@
+ .impe-phone-call iframe { width: 100%; height: 100%; border: 0; display: block; }
+ /* Marketing utiliza el mismo componente visual que Seguimiento. */
+ .impe-incoming-panel { z-index: 1200; }
++.impe-incoming-panel:not(.is-compact) {
++  max-height:calc(100dvh - 16px);
++  overflow-y:auto;
++  overscroll-behavior:contain;
++  touch-action:pan-y;
++  scrollbar-width:thin;
++}
++.impe-incoming-panel .persistent-phone-header {
++  position:sticky;top:0;z-index:2;flex-shrink:0;touch-action:none;
++}
+ .impe-incoming-panel .persistent-phone-actions {
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+ }
