@@ -15,7 +15,8 @@ final class TelefoniaNotificacionVentasService
     public function pendientes(int $uid): array {
         $calls=(new TelefoniaVentasLlamadasService($this->db))->listar($uid);
         // Conciliar estados con el mecanismo existente; aceptar disponibilidad no acredita respuesta.
-        $active=$this->rows("SELECT extension FROM telefonia_extensiones WHERE usuario_id=? AND activo=1 AND proveedor='ZADARMA' AND permite_entrantes=1",[$uid]);
+        try{$active=$this->rows("SELECT extension FROM telefonia_extensiones WHERE usuario_id=? AND activo=1 AND proveedor='ZADARMA' AND permite_entrantes=1",[$uid]);}
+        catch(Throwable $e){error_log('[ventas_avisos_extension] '.get_class($e));$active=[];}
         // La sincronización de devoluciones es auxiliar: no debe dejar la
         // campana vacía si falla una operación pendiente de otra extensión.
         if(count($active)===1){
