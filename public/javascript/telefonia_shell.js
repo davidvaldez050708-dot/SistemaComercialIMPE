@@ -265,6 +265,11 @@
         userId: userId,
         ensureHost: ensureHost,
         isPhoneReady: function () {return Boolean(freshState(currentState) && currentState.hostReady);},
+        getReceptionStatus: function () {
+            const assigned = cfg.canReceive === true && /^[0-9]{3,6}$/.test(String(cfg.extension || ''));
+            return {assigned, extension:assigned ? String(cfg.extension) : '',
+                ready:assigned && Boolean(freshState(currentState) && currentState.hostReady)};
+        },
         unlockAudio: function () {
             try {hostFrame?.contentWindow.IMPE_CALL_AUDIO?.unlock();}catch(_){}
         },

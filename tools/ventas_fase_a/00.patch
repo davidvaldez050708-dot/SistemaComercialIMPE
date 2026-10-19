@@ -1,0 +1,10 @@
+--- a/app/views/telefonia/shell.php
++++ b/app/views/telefonia/shell.php
+@@ -426,6 +426,7 @@
+             'userId' => $usuarioShell,
+             'extension' => $extensionShell,
+             'autoReception' => $puedeRecibirShell,
++            'canReceive' => $puedeRecibirShell,
+             'alwaysReceive' => $puedeRecibirShell,
+             'analystIncomingResults' => $analistaEntrantesShell,
+             'receptionResults' => $marketingShell,

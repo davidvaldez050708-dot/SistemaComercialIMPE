@@ -1,0 +1,48 @@
+--- a/public/javascript/telefonia_persistente.js
++++ b/public/javascript/telefonia_persistente.js
+@@ -2611,16 +2611,24 @@
+             let receptionBusy = false;
+             let receptionError = '';
+ 
++            // El shell autenticado ya resolvió extensión y permisos. Su estado
++            // vigente evita depender de otro GET que puede fallar al navegar.
++            const receptionState = function () {
++                const embedded = embeddedPhone()?.getReceptionStatus?.();
++                return embedded || {assigned:Boolean(availability?.permite_entrantes),
++                    extension:String(availability?.extension || ''), ready:hostUsable()};
++            };
+             const renderReceptionState = function () {
+                 if (!receptionButton && !marketingReception) return;
+ 
+-                const assigned = Boolean(availability?.permite_entrantes);
+-                const active = assigned && hostUsable();
++                const reception = receptionState();
++                const assigned = reception.assigned === true;
++                const active = assigned && reception.ready === true;
+                 const awaiting = !assigned && receptionChecking;
+                 const missing = !assigned && !awaiting &&
+                     /extensi[oó]n|asignada/i.test(receptionError);
+                 const extension = assigned
+-                    ? String(availability.extension || '')
++                    ? String(reception.extension || '')
+                     : '';
+                 const label = active
+                     ? 'Recepción activa'
+@@ -2711,7 +2719,7 @@
+             };
+ 
+             const activarRecepcion = function (abrirAlConectar = false) {
+-                if (!availability?.permite_entrantes || receptionBusy) return;
++                if (!receptionState().assigned || receptionBusy) return;
+                 receptionBusy = true;
+                 receptionError = '';
+                 renderReceptionState();
+@@ -2737,7 +2745,7 @@
+             };
+ 
+             const abrirOActivar = function () {
+-                if (!availability?.permite_entrantes || receptionBusy) return;
++                if (!receptionState().assigned || receptionBusy) return;
+                 const esAnalista = receptionButton?.dataset.telephonyAnalyst === '1';
+                 if (hostUsable()) {
+                     if (esAnalista) {

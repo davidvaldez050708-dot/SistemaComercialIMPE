@@ -426,6 +426,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'userId' => $usuarioShell,
             'extension' => $extensionShell,
             'autoReception' => $puedeRecibirShell,
+            'canReceive' => $puedeRecibirShell,
             'alwaysReceive' => $puedeRecibirShell,
             'analystIncomingResults' => $analistaEntrantesShell,
             'receptionResults' => $marketingShell,
