@@ -142,6 +142,11 @@ try {
  $event($refUno,'NOTIFY_OUT_START','150',0,['destination'=>'+525553334499','received_at'=>$e1,'call_start'=>$e1]);
  $event($refTres,'NOTIFY_OUT_START','150',0,['destination'=>'+525553334499','received_at'=>$e3,'call_start'=>$e3]);
  $svc->sincronizar(8);
+ // Diagnóstico sólo de fixtures sintéticas para depurar la matriz horaria.
+ $rowsDebug=$db->query("SELECT token,created_at,pbx_call_id FROM telefonia_ventas_marcaciones WHERE destino='+525553334499' ORDER BY created_at")->fetch_all(MYSQLI_ASSOC);
+ $eventsDebug=$db->query("SELECT pbx_call_id,received_at,destination FROM telefonia_zadarma_eventos WHERE destination='+525553334499' AND evento='NOTIFY_OUT_START' ORDER BY received_at")->fetch_all(MYSQLI_ASSOC);
+ $tzDebug=$db->query("SELECT NOW() a,UTC_TIMESTAMP() b,TIMESTAMPDIFF(SECOND,UTC_TIMESTAMP(),NOW()) dif")->fetch_assoc();
+ echo "Fixture horas: ".json_encode([$tzDebug,$rowsDebug,$eventsDebug],JSON_UNESCAPED_SLASHES)."\n";
  vcheck($marker->pertenece(8,'150',$refUno),'Primer intento corresponde a evento PBX +2 segundos');
  vcheck($marker->pertenece(8,'150',$refTres),'Tercer intento corresponde a evento PBX +2 segundos');
  $middle=$db->query("SELECT pbx_call_id FROM telefonia_ventas_marcaciones WHERE token='".$tokensTres[1]."'")->fetch_assoc();
