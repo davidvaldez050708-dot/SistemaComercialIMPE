@@ -246,16 +246,16 @@
       "path": "app/services/TelefoniaProgramacionVentasService.php",
       "kind": "php",
       "new": true,
-      "target_sha256": "904b41dfe4555f940098cae7d29bec9d6bad9cd35f2ca9f978570ea8ac0b8a81",
+      "target_sha256": "fc0cf3fd77a6fff18898776eb5fb78adc7823b7fd40747fa5307935012004fb0",
       "variants": [
         {
           "label": "github-base",
           "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "after": "904b41dfe4555f940098cae7d29bec9d6bad9cd35f2ca9f978570ea8ac0b8a81"
+          "after": "fc0cf3fd77a6fff18898776eb5fb78adc7823b7fd40747fa5307935012004fb0"
         }
       ],
       "patch": "tools/ventas_fase_e/16.patch",
-      "patch_sha256": "58a797f5d193d6db5e5ee99f833084c9648a1afee54becfb025eaacb199beb9a"
+      "patch_sha256": "62a8b91bba75b5b5f6a11fa5ddf7f15d9b3452f42acf11820eb3a212142a4cbb"
     },
     {
       "path": "app/views/telefonia/ventas_programadas.php",
