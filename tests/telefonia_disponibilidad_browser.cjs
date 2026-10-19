@@ -62,6 +62,16 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());await d.locator('[data-availability-incoming]').waitFor({state:'visible'});
   assert.equal(await d.locator('[data-availability-incoming]').getAttribute('data-availability-blocked'),scenario==='pendiente'?'1':'0','bloqueo visual coincide con resultado pendiente');
   assert.ok(await d.locator('[data-availability-incoming] .system-form-modal-footer .persistent-phone-action').first().evaluate(el=>parseFloat(getComputedStyle(el).minHeight)>=40),'botones accesibles');
+  if(scenario==='aceptar'){
+   await d.setViewportSize({width:360,height:480});
+   const shape=await d.locator('[data-availability-incoming]').evaluate(el=>{
+    const dialog=el.getBoundingClientRect(),footer=el.querySelector('.system-form-modal-footer').getBoundingClientRect();
+    return {x:dialog.left,y:dialog.top,right:dialog.right,bottom:dialog.bottom,footer:footer.bottom,width:window.innerWidth,height:window.innerHeight};
+   });
+   assert.ok(shape.x>=-1&&shape.y>=-1&&shape.right<=shape.width+1&&shape.bottom<=shape.height+1,'modal completo dentro del viewport móvil');
+   assert.ok(shape.footer<=shape.height+1,'botones visibles sin salir de pantalla en móvil');
+   await d.setViewportSize({width:1366,height:900});
+  }
   if(scenario!=='iframe'){
    assert.equal(await d.evaluate(()=>audioProbe.started),0,'sin gesto confiable no intenta sonido');
    await d.locator('[data-availability-incoming] h2').click();
