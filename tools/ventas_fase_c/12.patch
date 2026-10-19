@@ -1,0 +1,15 @@
+--- a/public/javascript/telefonia_marcador.js
++++ b/public/javascript/telefonia_marcador.js
+@@ -530,7 +530,11 @@
+             }
+         }
+ 
+-        resultButton.addEventListener('click', function () {
++        root.querySelector('[data-sales-open-hub]')?.addEventListener('click',function(){
++            const state=api?.getState?.()||{},ref=state.finalMetadata?.pbx_call_id||state.pbxCallId||'';
++            const url=new URL('index.php?controller=telefonia&action=misLlamadas',location.href);if(ref)url.searchParams.set('pbx_call_id',ref);location.href=url.href;
++        });
++        resultButton?.addEventListener('click', function () {
+             const state = api?.getState?.() || {};
+             const pbxId = String(state.finalMetadata?.pbx_call_id || state.pbxCallId || '');
+             if (state.active || savingResult) return;

@@ -265,6 +265,7 @@
         userId: userId,
         ensureHost: ensureHost,
         isPhoneReady: function () {return Boolean(freshState(currentState) && currentState.hostReady);},
+        getCallState: function () {return freshState(currentState) ? JSON.parse(JSON.stringify(currentState)) : null;},
         getReceptionStatus: function () {
             const assigned = cfg.canReceive === true && /^[0-9]{3,6}$/.test(String(cfg.extension || ''));
             return {assigned, extension:assigned ? String(cfg.extension) : '',
@@ -286,9 +287,10 @@
         },
         getPhoneStatus: function () {
             return {active:Boolean(currentState?.active),ready:Boolean(freshState(currentState)&&currentState.hostReady),
-                pending:Boolean(callbackPending||window.IMPE_CALL_CLOSURE?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
+                pending:Boolean(callbackPending||window.IMPE_CALL_CLOSURE?.hasPending()||window.IMPE_SALES_ATTENTION?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
         },
         openPendingResult: function () {
+            if(window.IMPE_SALES_ATTENTION?.hasPending()){window.IMPE_SALES_ATTENTION.openPending();return;}
             if(callbackPending&&!currentState?.active){
                 if(crm)crm.src=cfg.callbackUrl+'&intento_id='+callbackPending.id;render();return;
             }
@@ -313,6 +315,14 @@
             if (resultFormOwner?.token !== token) return;
             resultFormOwner = null;
             render();
+        },
+        dismissFinishedCall: function (ref) {
+            if(currentState?.active)return false;
+            const matches=s=>[s?.pbxCallId,s?.callToken,s?.finalMetadata?.pbx_call_id,s?.context?.transferReference].includes(ref);
+            if(recentFinishedIncoming&&matches(recentFinishedIncoming.state))recentFinishedIncoming=null;
+            if(recentFinishedOutgoing&&matches(recentFinishedOutgoing.state))recentFinishedOutgoing=null;
+            if(resultFormOwner?.refs.includes(ref))resultFormOwner=null;
+            render();return true;
         },
         isResultFormOpen: function () { return Boolean(resultFormOwner) && !currentState?.active; },
 

@@ -23,7 +23,7 @@ $puedeRecibirShell = !empty($asignacionTelefonica['permite_entrantes']) &&
 $puedeTransferirShell = !empty($asignacionTelefonica['permite_transferir']) &&
     tienePermiso('telefonia.transferir') &&
     ($marketingShell || $analistaEntrantesShell || $esAsesorShell);
-$puedeCapturarShell = $analistaEntrantesShell || $esAsesorShell;
+$puedeCapturarShell = $analistaEntrantesShell;
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 ?>
 <!doctype html>
@@ -429,6 +429,9 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'canReceive' => $puedeRecibirShell,
             'alwaysReceive' => $puedeRecibirShell,
             'analystIncomingResults' => $analistaEntrantesShell,
+            'salesResults' => $esAsesorShell,
+            'salesDetailUrl' => BASE_URL . 'index.php?controller=telefonia&action=detalleVenta',
+            'salesHistoryUrl' => BASE_URL . 'index.php?controller=telefonia&action=misLlamadas',
             'receptionResults' => $marketingShell,
             'callNoticesUrl' => ($marketingShell || $analistaEntrantesShell) ? BASE_URL . 'prueba_telefonia/api/avisos_llamadas.php' : '',
             'receptionResultUrl' => BASE_URL . 'prueba_telefonia/api/resultado_recepcion_marketing.php',
@@ -470,6 +473,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     echo str_ireplace('</script', '<\\/script', (string)$shellJsContent);
     ?>
     </script>
+    <?php if ($esAsesorShell): ?><script src="<?= BASE_URL ?>public/javascript/telefonia_ventas_shell.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/telefonia_ventas_shell.js') ?>"></script><?php endif; ?>
     <!-- IMPE_ANALYST_WEBRTC_PASSIVE_JOURNAL -->
     <?php if ($analistaEntrantesShell): ?>
     <?php if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); } ?>

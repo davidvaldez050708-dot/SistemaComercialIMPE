@@ -1,0 +1,101 @@
+--- a/prueba_telefonia/api/grabacion_ventas.php
++++ b/prueba_telefonia/api/grabacion_ventas.php
+@@ -36,14 +36,14 @@
+ if (
+     (int)($_SESSION['rol_id'] ?? 0) !== 3 ||
+     !tienePermiso('telefonia.usar') ||
+-    !tienePermiso('telefonia.salientes')
++    (!tienePermiso('telefonia.salientes') && !tienePermiso('telefonia.recibir'))
+ ) {
+     http_response_code(403);
+     exit('No tienes permiso para escuchar grabaciones telefónicas.');
+ }
+ 
+ $pbxCallId = trim((string)($_GET['pbx_call_id'] ?? ''));
+-if (!preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxCallId)) {
++if (!preg_match('/^[A-Za-z0-9_-]{6,100}$/D', $pbxCallId)) {
+     http_response_code(422);
+     exit('Identificador de llamada no válido.');
+ }
+@@ -56,70 +56,18 @@
+ }
+ 
+ try {
+-    $asignacion = (new TelefoniaExtensionService())->resolverParaUsuario($usuarioId);
+-    $extension = trim((string)($asignacion['extension'] ?? ''));
+-    if (
+-        !$asignacion ||
+-        empty($asignacion['permite_salientes']) ||
+-        !preg_match('/^\d{3,6}$/', $extension)
+-    ) {
+-        http_response_code(403);
+-        exit('No tienes una extensión activa que permita consultar grabaciones.');
++    require_once $root.'/app/services/TelefoniaVentasLlamadasService.php';
++    $calls=new TelefoniaVentasLlamadasService();
++    try {$call=$calls->obtener($usuarioId,$pbxCallId,(string)($_GET['extension']??''));}
++    catch(DomainException $e){http_response_code(404);exit('No hay un tramo autorizado para esta llamada.');}
++    if(!$call['finalizada']||!$call['conectada']||!TelefoniaResultadoVentasService::esConversacion($call['registro']['resultado']??'')){
++        http_response_code(404);exit('Este intento no tiene reproducción de audio habilitada.');
+     }
+-
+-    // Verifica clasificación y estructura antes de consultar la grabación.
+-    // La existencia de audio en Zadarma no equivale a contacto humano.
+-    (new TelefoniaResultadoVentasService())->asegurarEstructura();
+-    $db = (new Database())->connect();
+-
+-    // Permiso por objeto: únicamente conversación humana confirmada de
+-    // la extensión propia y evento de audio firmado por Zadarma.
+-    $consulta = $db->prepare(
+-        "SELECT 1
+-         FROM telefonia_zadarma_eventos origen
+-         INNER JOIN telefonia_ventas_marcaciones ventas
+-           ON ventas.pbx_call_id = origen.pbx_call_id
+-          AND ventas.extension = origen.internal
+-          AND ventas.usuario_id = ?
+-         INNER JOIN telefonia_ventas_resultados resultado
+-           ON resultado.pbx_call_id = origen.pbx_call_id
+-          AND resultado.extension = origen.internal
+-          AND resultado.usuario_id = ?
+-          AND resultado.resultado = 'CONVERSACION_PERSONA'
+-         WHERE origen.pbx_call_id = ?
+-           AND origen.internal = ?
+-           AND origen.evento IN ('NOTIFY_OUT_START', 'NOTIFY_OUT_END')
+-           AND origen.received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+-           AND EXISTS (
+-               SELECT 1 FROM telefonia_zadarma_eventos grab
+-               WHERE grab.pbx_call_id = origen.pbx_call_id
+-                 AND (
+-                     grab.evento = 'NOTIFY_RECORD'
+-                     OR grab.is_recorded = 1
+-                     OR NULLIF(grab.call_id_with_rec, '') IS NOT NULL
+-                 )
+-           )
+-         LIMIT 1"
+-    );
+-    if (!$consulta) {
+-        throw new RuntimeException('No fue posible comprobar la propiedad de la grabación.');
+-    }
+-    $consulta->bind_param('iiss', $usuarioId, $usuarioId, $pbxCallId, $extension);
+-    $consulta->execute();
+-    $autorizada = (bool)$consulta->get_result()->fetch_assoc();
+-    $consulta->close();
+-
+-    if (!$autorizada) {
+-        http_response_code(404);
+-        exit('No hay una grabación disponible para esta llamada.');
+-    }
+-
+-    $service = new ZadarmaRecordingService();
+-    $recording = $service->obtenerGrabacionParaLlamada($pbxCallId);
+-    if (!$recording || empty($recording['link'])) {
+-        http_response_code(404);
+-        exit('La grabación todavía no está disponible en Zadarma.');
+-    }
++    $ids=$call['segmentos'];$segment=filter_var($_GET['segmento']??'0',FILTER_VALIDATE_INT);
++    if($segment===false||$segment<0||!isset($ids[$segment])){http_response_code(404);exit('No hay audio confirmado para tu extensión.');}
++    // Nunca pedir el PBX completo: podría contener el audio de Recepción.
++    $service=new ZadarmaRecordingService();$recording=$service->obtenerGrabacionPorCallId($ids[$segment]);
++    if(!$recording||empty($recording['link'])){http_response_code(404);exit('La grabación aún no está disponible en Zadarma.');}
+ 
+     $audio = $service->descargarGrabacion((string)$recording['link'], $rangeHeader);
+     $body = (string)($audio['body'] ?? '');

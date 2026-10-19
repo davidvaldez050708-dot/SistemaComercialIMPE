@@ -1,0 +1,246 @@
+{
+  "version": 1,
+  "base": "104cf87e1fb3e2cb43a292bc458b92ad6e060ba3",
+  "files": [
+    {
+      "path": "app/controllers/TelefoniaController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "ab0404fb58f6ccb5a2460b75cdb577c96b4ec408aab4fe47e557186215835814",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "2e66c4c2354a767f0e48210e7bd93d184482dc9f2fc01c6dbd34c2e1db24b9f6",
+          "after": "ab0404fb58f6ccb5a2460b75cdb577c96b4ec408aab4fe47e557186215835814"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/00.patch",
+      "patch_sha256": "f39e8e9cfee54b1e3229a1fe74f2a0d08b9263c08900c7aa833b1fe550c4b5cc"
+    },
+    {
+      "path": "app/services/TelefoniaMarcadorPanelService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "7c4323ef668ffd5d2e39058854163c3aa0333feaf60d353b31be2d642930bdc0",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "a4fd3a6eeb8da91c342f95f0521a5df8accbe3168a8d90dd24d192e636ded53a",
+          "after": "7c4323ef668ffd5d2e39058854163c3aa0333feaf60d353b31be2d642930bdc0"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/01.patch",
+      "patch_sha256": "ff078ab258c47b89db0db79b4cb11b9300088ddbd264e37358566dca113ff7d5"
+    },
+    {
+      "path": "app/services/TelefoniaResultadoVentasService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "37b0bcb694f549d199c1a95f4283db848dd3bdae25eedf2ee6fac6c06c28c746",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "c5dbbf13ef9f46b05033bd84c51b929121e553a78f8064b389bdb6057dfa826c",
+          "after": "37b0bcb694f549d199c1a95f4283db848dd3bdae25eedf2ee6fac6c06c28c746"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/02.patch",
+      "patch_sha256": "323fd2290a10de8be256bdecacce6cc387d92f3f87dd3bd5c79b97308ba6423b"
+    },
+    {
+      "path": "app/services/TelefoniaVentasLlamadasService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "262094068c4b44826f9ef5409b3ab6e66d75d197483024530c62d6d393e1c821",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "ecc80980a092015a1a5374c559b03bcbfba9402230ed48bfba571340a108b217",
+          "after": "262094068c4b44826f9ef5409b3ab6e66d75d197483024530c62d6d393e1c821"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/03.patch",
+      "patch_sha256": "b830d81d8883e744d2ba8df3041c1a11f0c125eb58edbd893a138a18565e2797"
+    },
+    {
+      "path": "app/services/ZadarmaWebhookEventStoreService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "ce7eed9b46c7dd9f5533706a28b1b14ee5d0c9a3974d4a23dd1d5257967cf4b4",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "6281b1df563ed450432e35c496e7c00fc3316df7f13764f40c41711686cefdcb",
+          "after": "ce7eed9b46c7dd9f5533706a28b1b14ee5d0c9a3974d4a23dd1d5257967cf4b4"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/04.patch",
+      "patch_sha256": "f8a5c83787ea97d44888dfe71e2b5c78f4b4d07055cfca7b4f8760b01d632d18"
+    },
+    {
+      "path": "app/views/layout/dashboard_footer.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "f701b1e7d61053cbfaa7c0713b11a331137faf1c7f35b1ac4970a13ab43d5777",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "0bf997d165a6b46ca9eca88180ab6d910897d69b1b7a773346dc212bf41c9a18",
+          "after": "f701b1e7d61053cbfaa7c0713b11a331137faf1c7f35b1ac4970a13ab43d5777"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/05.patch",
+      "patch_sha256": "24d4d7ab2b494bfb85fd920e444cbf640ec3ce9666e1b6c004dd0c6195dc20b0"
+    },
+    {
+      "path": "app/views/telefonia/marcador.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "e46484d199399dc7bcebd081ef3379272979ecc40338726bd15a1b99f4189eb4",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "925a7f9ae249e83abe48435903886133237f25830e2e4330ad445e82036803fa",
+          "after": "e46484d199399dc7bcebd081ef3379272979ecc40338726bd15a1b99f4189eb4"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/06.patch",
+      "patch_sha256": "68df9de9cba243a255d663f7f14a251e36da8c004b79b4336b030bae119f2876"
+    },
+    {
+      "path": "app/views/telefonia/resultado_ventas_form.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "d51845565f557ebc9e5678b62bb7ebcc5b51b24a8a6be8b3216204f947c5b674",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "after": "d51845565f557ebc9e5678b62bb7ebcc5b51b24a8a6be8b3216204f947c5b674"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/07.patch",
+      "patch_sha256": "dc451529c3b7ae564d4ea4d8cb2506bc6db3a415f1c90500b9a64f1b17aa0325"
+    },
+    {
+      "path": "app/views/telefonia/shell.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "275376c2437cc50e1796fccf676a7da130a9eb65f2a368e8a1b61a6f4a116a00",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "05e4f15c70c0bb4052420c466f0e30f8c88c86ce4d2c0b7bf4f90aa18b69c513",
+          "after": "275376c2437cc50e1796fccf676a7da130a9eb65f2a368e8a1b61a6f4a116a00"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/08.patch",
+      "patch_sha256": "290d37dceb13cce265e0667fcc26ad8b88635daaa988d4c0c8923a8da90fc196"
+    },
+    {
+      "path": "app/views/telefonia/ventas_llamadas.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "34b03ca7fa3b7d32c5705caf0eb1a9f0a65bb02959e8d1e2e1be596ac32269f0",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "after": "34b03ca7fa3b7d32c5705caf0eb1a9f0a65bb02959e8d1e2e1be596ac32269f0"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/09.patch",
+      "patch_sha256": "9358c6ade4421738ff6648e3046264eee05b510fe55504ca59ef36bcd783c66b"
+    },
+    {
+      "path": "prueba_telefonia/api/grabacion_ventas.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "a198f9736360951775f828761df286156efb7193e3159cf21f699c98cd8446a5",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "441ae7c9090f835032c1de009baced508d334e60d4dc14961b5d148727c3862b",
+          "after": "a198f9736360951775f828761df286156efb7193e3159cf21f699c98cd8446a5"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/10.patch",
+      "patch_sha256": "62f08f60c81566e48c06ee6e46d05e1a1a58ea2361089aa44e89291b1f57adda"
+    },
+    {
+      "path": "public/css/seguimiento_entrantes_analista.css",
+      "kind": "css",
+      "new": false,
+      "target_sha256": "8c1f804583ffcef77c052ce64d9a81e686d4cfa10727a19205c278b1d43589a0",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "3025d8269552e467c7e133023d8e5793269758f0077157b890f8ef4640b7d6bd",
+          "after": "8c1f804583ffcef77c052ce64d9a81e686d4cfa10727a19205c278b1d43589a0"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/11.patch",
+      "patch_sha256": "eab60f587d3d87775ec9668e5c8cef3716763d7658647645aaaa987daa8e2773"
+    },
+    {
+      "path": "public/javascript/telefonia_marcador.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "9bd3c26e9b73169e2d7a02e867f4478ce11a667a375f8eeeb4b3199e9a22ec6c",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "d8871e6526d26e2ec334d5796ae5b7865517c9258a5f57c0ba3a3fc58bc7e2b3",
+          "after": "9bd3c26e9b73169e2d7a02e867f4478ce11a667a375f8eeeb4b3199e9a22ec6c"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/12.patch",
+      "patch_sha256": "5baedaf383ede5b5311482ddb44814b72d0996240e96395712d1c34448338a8c"
+    },
+    {
+      "path": "public/javascript/telefonia_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "06a8e494c3fec65ef7c10284d34c70ef5d0e7eb8ab01e5caaffb7fa36d3d480a",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "5a6378c136b3fe3b63a2efe7adac5d85116195035eaae1e5e19d67621a71c9c5",
+          "after": "06a8e494c3fec65ef7c10284d34c70ef5d0e7eb8ab01e5caaffb7fa36d3d480a"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/13.patch",
+      "patch_sha256": "429b0d844377a98d5249e5b918d927f63238a590c1690ce22276d2164f86ee80"
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_resultados.js",
+      "kind": "js",
+      "new": true,
+      "target_sha256": "17acf57a537f9c2e248ddf4dc1a2db214c96de6a4e1b7550dbd442c38e40e37e",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "after": "17acf57a537f9c2e248ddf4dc1a2db214c96de6a4e1b7550dbd442c38e40e37e"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/14.patch",
+      "patch_sha256": "0ffb07bd748f53698e5ba69e2ce9dd2bf979c4259fe17601c028df7508cd2b48"
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_shell.js",
+      "kind": "js",
+      "new": true,
+      "target_sha256": "92d884534ab2c7b42f4ae9368289d7b7a010d3de29e34a59960caa5c52f96e1e",
+      "variants": [
+        {
+          "label": "github-base",
+          "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "after": "92d884534ab2c7b42f4ae9368289d7b7a010d3de29e34a59960caa5c52f96e1e"
+        }
+      ],
+      "patch": "tools/ventas_fase_c/15.patch",
+      "patch_sha256": "57e9ca5ee500bae80749192626038c2e88cc1f1715c836cb005d9f827e3dde63"
+    }
+  ]
+}
