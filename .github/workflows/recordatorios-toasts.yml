@@ -30,5 +30,6 @@ jobs:
           node tests/telefonia_avisos_cadencia_browser.cjs
           node tests/telefonia_campana_browser.cjs
       - name: Publicar y restaurar réplicas aisladas de Hostinger
-        if: ${{ hashFiles('tests/publicacion_toasts_test.py') != '' }}
+        env:
+          IMPE_TEST_NETWORK: '1'
         run: python3 tests/publicacion_toasts_test.py
