@@ -1,0 +1,19 @@
+name: Expediente - grabaciones PBX sin colision
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'public/javascript/seguimiento_llamadas_desplegable.js'
+      - 'tools/publicar_audio_pbx_exp_hostinger.sh'
+      - 'tests/audio_pbx_boton_intacto_deploy_smoke.py'
+      - '.github/workflows/audio-pbx-boton-intacto.yml'
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis y regresiones acotadas
+        run: |
+          node --check public/javascript/seguimiento_llamadas_desplegable.js
+          python3 tests/audio_pbx_boton_intacto_deploy_smoke.py
+          python3 tests/reproductores_salientes_por_interaccion_smoke.py
