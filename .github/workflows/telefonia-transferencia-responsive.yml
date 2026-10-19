@@ -1,0 +1,24 @@
+name: Transferencia - panel responsive movil
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'public/javascript/telefonia_enrutamiento.js'
+      - 'public/css/telefonia_enrutamiento.css'
+      - 'tools/publicar_transferencia_responsive_hostinger.sh'
+      - 'tests/telefonia_transferencia_sidecar_responsive_smoke.cjs'
+      - 'tests/telefonia_transferencia_responsive_deploy_smoke.py'
+      - '.github/workflows/telefonia-transferencia-responsive.yml'
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Geometria y sintaxis del panel
+        run: |
+          node --check public/javascript/telefonia_enrutamiento.js
+          node tests/telefonia_transferencia_sidecar_responsive_smoke.cjs
+      - name: Simulacion de publicacion y rollback en sitio aislado
+        run: python3 tests/telefonia_transferencia_responsive_deploy_smoke.py
