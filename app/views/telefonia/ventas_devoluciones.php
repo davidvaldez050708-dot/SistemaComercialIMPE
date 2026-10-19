@@ -33,3 +33,5 @@ $total=count($filtered);$pages=max(1,(int)ceil($total/20));$page=min($pages,max(
  <nav class="linkage-incoming-pagination" aria-label="Páginas de devoluciones"><span><?= $total ?> registros</span><div class="linkage-incoming-pagination-pages"><?php foreach(['Anterior'=>$page-1,'Siguiente'=>$page+1] as $label=>$n): ?><a class="linkage-incoming-pagination-arrow <?= ($n<1||$n>$pages)?'disabled':'' ?>" href="<?= $esc(($n<1||$n>$pages)?'#':BASE_URL.'index.php?'.http_build_query(array_merge($_GET,['controller'=>'telefonia','action'=>'misLlamadas','vista'=>'devoluciones','pagina'=>$n]))) ?>"><?= $label ?></a><?php endforeach; ?><span><?= $page ?> / <?= $pages ?></span></div></nav>
 </section>
 <?php require __DIR__.'/resultado_ventas_form.php'; ?>
+
+<script defer src="<?= BASE_URL ?>public/javascript/telefonia_ventas_auto_filtros.js?v=<?= rawurlencode((string)filemtime(ROOT_PATH.'/public/javascript/telefonia_ventas_auto_filtros.js')) ?>"></script>
