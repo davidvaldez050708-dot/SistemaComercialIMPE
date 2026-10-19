@@ -4,7 +4,7 @@ set -euo pipefail
 umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
-TARGET='4742583f79e788b7776dfcc208338f8487d84bd2'
+TARGET='e01b80cccf31ca11604585726fbf50115122b0d2'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/ventas_fase_c'
 SOURCE="${IMPE_VENTAS_C_SOURCE:-$HOME/crm-publicaciones/ventas-fase-c-actual}"
