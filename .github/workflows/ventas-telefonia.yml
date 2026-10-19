@@ -1,0 +1,33 @@
+name: Ventas - telefonía por etapas
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  recepcion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/ventas-browser playwright
+      - run: /tmp/ventas-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis y regresiones compartidas
+        run: |
+          php -l app/views/telefonia/shell.php
+          node --check public/javascript/telefonia_shell.js
+          node --check public/javascript/telefonia_persistente.js
+          node tests/telefonia_shell_runtime_smoke.js
+          node tests/telefonia_shell_navegacion_smoke.js
+      - name: Auricular con shell y navegador reales
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/ventas-browser/node_modules/playwright
+        run: node tests/telefonia_ventas_recepcion_browser.cjs
+      - name: Publicador selectivo en replicas
+        run: python3 tests/publicacion_ventas_test.py a
