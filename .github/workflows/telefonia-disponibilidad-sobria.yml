@@ -1,0 +1,31 @@
+name: Disponibilidad - reloj y tarjetas compactas
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'public/css/telefonia_disponibilidad.css'
+      - 'tests/telefonia_disponibilidad_sobria_browser.cjs'
+      - 'tools/publicar_disponibilidad_sobria_hostinger.sh'
+      - 'tests/telefonia_disponibilidad_sobria_deploy_smoke.py'
+      - '.github/workflows/telefonia-disponibilidad-sobria.yml'
+permissions:
+  contents: read
+jobs:
+  comprobar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Despliegue CSS seguro en sitio de prueba
+        run: |
+          bash -n tools/publicar_disponibilidad_sobria_hostinger.sh
+          python3 tests/telefonia_disponibilidad_sobria_deploy_smoke.py
+      - name: Reloj, estados y dimensiones en navegador real
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node tests/telefonia_disponibilidad_sobria_browser.cjs
