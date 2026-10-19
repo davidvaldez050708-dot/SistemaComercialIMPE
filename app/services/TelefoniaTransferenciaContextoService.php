@@ -117,37 +117,61 @@ final class TelefoniaTransferenciaContextoService
         return (bool)$ok;
     }
 
-    public function obtenerParaDestinatario(int $destinoId, string $extension, string $numero): ?array
+    public function obtenerParaDestinatario(int $destinoId, string $extension, string $numero, string $referencia = ''): ?array
     {
         $telefono = self::telefono10($numero);
         if ($destinoId <= 0 || $telefono === '' ||
-            !preg_match('/^[0-9]{3,6}$/D', $extension)) return null;
-        $this->tabla();
+            !preg_match('/^[0-9]{3,6}$/D', $extension) ||
+            !preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $referencia)) return null;
+        // La disponibilidad conserva también «No corresponde» y el nombre
+        // manual. Nunca buscar el último expediente del mismo teléfono.
+        $tabla = $this->db->query("SHOW TABLES LIKE 'telefonia_disponibilidad'");
+        if (!$tabla || $tabla->num_rows === 0) return null;
         $stmt = $this->db->prepare(
-            "SELECT s.id AS seguimiento_id, s.nombre_entidad AS institucion,
-                    e.nombre AS estado,
+            "SELECT d.referencia, d.numero, d.ruta_json,
                     TRIM(CONCAT(u.nombre, ' ', COALESCE(u.apellidos, ''))) AS confirmado_por
-             FROM telefonia_transferencia_contextos_v2 c
-             JOIN seguimientos_vinculacion s ON s.id = c.seguimiento_id
-              AND s.analista_id = c.destino_usuario_id AND s.activo = 1
-              AND s.estado_seguimiento <> 'DESCARTADO'
-             JOIN estados e ON e.id = s.estado_id
-             JOIN usuarios u ON u.id = c.origen_usuario_id
-             WHERE c.destino_usuario_id = ? AND c.destino_extension = ?
-              AND c.telefono10 = ? AND c.expires_at >= NOW()
-              AND c.created_at >= DATE_SUB(NOW(), INTERVAL 90 SECOND)
-             ORDER BY c.id DESC LIMIT 2"
+             FROM telefonia_disponibilidad d
+             JOIN usuarios u ON u.id = d.origen_usuario
+             WHERE d.destino_usuario = ? AND d.destino_extension = ?
+              AND d.referencia = ?
+              AND d.estado IN ('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR')
+             LIMIT 2"
         );
-        $stmt->bind_param('iss', $destinoId, $extension, $telefono);
+        $stmt->bind_param('iss', $destinoId, $extension, $referencia);
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
         if (count($rows) !== 1) return null;
+        $row = $rows[0];
+        $ruta = json_decode((string)$row['ruta_json'], true);
+        if (!is_array($ruta) || ($ruta['tipo'] ?? '') !== 'INSTITUCION' ||
+            (string)($ruta['referencia_llamada'] ?? '') !== $referencia ||
+            (int)($ruta['responsable_id'] ?? 0) !== $destinoId ||
+            (string)($ruta['extension'] ?? '') !== $extension ||
+            self::telefono10((string)$row['numero']) !== $telefono) return null;
+        $seguimientoId = (int)($ruta['seguimiento_id'] ?? 0);
+        $estadoId = (int)($ruta['estado_id'] ?? 0);
+        $institucion = trim((string)($ruta['institucion_nombre'] ?? ''));
+        if ($seguimientoId < 0 || $estadoId <= 0 || $institucion === '') return null;
+        if ($seguimientoId > 0) {
+            $stmt = $this->db->prepare("SELECT nombre_entidad FROM seguimientos_vinculacion
+                WHERE id = ? AND analista_id = ? AND estado_id = ? AND activo = 1
+                 AND estado_seguimiento <> 'DESCARTADO' LIMIT 1");
+            $stmt->bind_param('iii', $seguimientoId, $destinoId, $estadoId);
+            $stmt->execute();$expediente = $stmt->get_result()->fetch_assoc();$stmt->close();
+            if (!$expediente) return null;
+            $institucion = (string)$expediente['nombre_entidad'];
+        }
+        $stmt = $this->db->prepare('SELECT nombre FROM estados WHERE id = ? LIMIT 1');
+        $stmt->bind_param('i', $estadoId);$stmt->execute();
+        $estado = $stmt->get_result()->fetch_assoc();$stmt->close();
+        if (!$estado) return null;
         return [
-            'seguimiento_id' => (int)$rows[0]['seguimiento_id'],
-            'institucion' => (string)$rows[0]['institucion'],
-            'estado' => (string)$rows[0]['estado'],
-            'confirmado_por' => (string)$rows[0]['confirmado_por'],
+            'referencia_llamada' => $referencia,
+            'seguimiento_id' => $seguimientoId,
+            'institucion' => $institucion,
+            'estado' => (string)$estado['nombre'],
+            'confirmado_por' => (string)$row['confirmado_por'],
             'etiqueta' => 'Institución identificada por Recepción; confirma los datos durante la llamada.'
         ];
     }

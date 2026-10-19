@@ -1,0 +1,51 @@
+--- a/public/javascript/telefonia_analista_historial_pasivo.js
++++ b/public/javascript/telefonia_analista_historial_pasivo.js
+@@ -153,4 +153,2 @@
+     let chain = Promise.resolve();
+-    // La misma conversación puede pasar de sesión PBX a SDK (o al revés).
+-    // No borrar la institución detectada ante esa transición de estado.
+     let visibleContextKey = '';
+@@ -191,3 +189,2 @@
+                 Number(ctx.seguimiento_id) <= 0) return;
+-            // No asociar a otra conversación una institución previa.
+             if (visibleContextPhone && visibleContextPhone !== phone) clearVisibleContext();
+@@ -195,5 +192,3 @@
+                 String(ctx.institucion || ''), String(ctx.estado || '')].join('|');
+-            if (visibleContextKey !== presentationKey) {
+-                contextCard.replaceChildren?.();
+-            }
++            if (visibleContextKey !== presentationKey) contextCard.replaceChildren?.();
+             const heading = root.document.createElement('strong');
+@@ -396,4 +391,3 @@
+                 pbxSession = {id,number:''};
+-                // Mantener el bloque detectado mientras PBX y SDK
+-                // terminan de identificar esta misma conversación.
++                // Una nueva identidad PBX no borra el contexto de la sesión viva.
+             }
+@@ -431,4 +425,2 @@
+                 finished = null;
+-                // El identificador del SDK puede aparecer después del PBX.
+-                // Mantener sólo el contexto del mismo teléfono, si se conoce.
+                 if (usableCallerNumber(reportedNumber) && visibleContextPhone &&
+@@ -467,5 +459,3 @@
+         } else if (active && pbxIncoming) {
+-            // Una sesión SDK transferida puede adquirir su identificador PBX
+-            // durante el timbrado o después de contestar. No finalizar aquí
+-            // la sesión SDK: es la MISMA conversación, no una llamada nueva.
++            // La identidad PBX no significa el final de la sesión SDK.
+             if (state.phase === 'in-progress' || state.status === 'in-progress') {
+@@ -478,6 +468,5 @@
+                 }
+-                active.lastDuration = Math.max(
+-                    active.lastDuration, Number(state.duration || 0),
+-                    Math.floor((Date.now() - active.answeredAt) / 1000)
+-                );
++                active.lastDuration = Math.max(active.lastDuration,
++                    Number(state.duration || 0),
++                    Math.floor((Date.now() - active.answeredAt) / 1000));
+             }
+@@ -485,3 +474,3 @@
+             state.phase === 'ready' || state.phase === 'incoming-finished')) {
+-            // Finalizar sólo al terminar realmente la conversación.
++            // El motor sí publicó un estado final; aprovechar su duración.
+             end(state);
