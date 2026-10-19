@@ -80,6 +80,32 @@ class TelefoniaMarcacionesVentasService
             );
     }
 
+    /**
+     * Las marcaciones se guardan con CURRENT_TIMESTAMP de la sesión MySQL.
+     * Los webhooks Zadarma almacenan received_at en America/Mexico_City.
+     * Convertir explícitamente sin cambiar el huso de la conexión compartida.
+     * Se consulta el offset real: en Hostinger SYSTEM equivale a UTC, mientras
+     * las fixtures usan -06:00. No cambiar ni corregir marcas históricas.
+     */
+    private function horaEventoDesdeMarcacion(string $mysqlDate): DateTimeImmutable
+    {
+        $r=$this->db->query('SELECT TIMESTAMPDIFF(SECOND,UTC_TIMESTAMP(),NOW()) AS utc_offset')->fetch_assoc();
+        $seconds=(int)($r['utc_offset']??0);
+        if(abs($seconds)>14*3600)throw new DomainException('Zona horaria de la base de datos no válida.');
+        $sign=$seconds<0?'-':'+';
+        $abs=abs($seconds);
+        $source=new DateTimeZone(sprintf('%s%02d:%02d',$sign,intdiv($abs,3600),intdiv($abs%3600,60)));
+        $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$mysqlDate,$source);
+        if(!$date||$date->format('Y-m-d H:i:s')!==$mysqlDate)
+            throw new DomainException('Fecha de marcación no válida.');
+        return $date->setTimezone(new DateTimeZone('America/Mexico_City'));
+    }
+
+    public function fechaMarcacionLocal(string $mysqlDate): string
+    {
+        return $this->horaEventoDesdeMarcacion($mysqlDate)->format('Y-m-d H:i:s');
+    }
+
     public function vincular(int $usuarioId, string $token, string $pbxCallId): void
     {
         if (
@@ -124,7 +150,7 @@ class TelefoniaMarcacionesVentasService
              ORDER BY id ASC LIMIT 1"
         );
         if (!$stmt) throw new RuntimeException('No se pudo verificar el inicio en Zadarma.');
-        $createdAt = (string)$intent['created_at'];
+        $createdAt = $this->fechaMarcacionLocal((string)$intent['created_at']);
         $stmt->bind_param('ssss', $pbxCallId, $extension, $createdAt, $createdAt);
         $stmt->execute();
         $evento = $stmt->get_result()->fetch_assoc();
@@ -198,15 +224,18 @@ class TelefoniaMarcacionesVentasService
         $stmt->close();
 
         if(!$pendientes)return;
-        $dates=array_column($pendientes,'created_at');$from=date('Y-m-d H:i:s',strtotime(min($dates))-120);$until=date('Y-m-d H:i:s',strtotime(max($dates))+900);
+        // La ventana del webhook usa reloj de México; MySQL puede usar UTC.
+        $instantes=[];foreach($pendientes as $i)$instantes[]=$this->horaEventoDesdeMarcacion((string)$i['created_at'])->getTimestamp();
+        $from=(new DateTimeImmutable('@'.(min($instantes)-120)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
+        $until=(new DateTimeImmutable('@'.(max($instantes)+900)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
         $eventos=$this->db->prepare("SELECT pbx_call_id,destination,MIN(received_at) fecha FROM telefonia_zadarma_eventos WHERE internal=? AND evento='NOTIFY_OUT_START' AND received_at BETWEEN ? AND ? GROUP BY pbx_call_id,destination");
         $eventos->bind_param('sss',$extension,$from,$until);$eventos->execute();$rs=$eventos->get_result();$byNumber=[];
         while($ev=$rs->fetch_assoc()){try{$number=TelefoniaContactosService::normalizarTelefono((string)$ev['destination']);$byNumber[$number][]=$ev;}catch(InvalidArgumentException $ignored){}}
         $eventos->close();$forward=[];$reverse=[];
         foreach($pendientes as $intent){
             try{$number=TelefoniaContactosService::normalizarTelefono($intent['destino']);}catch(InvalidArgumentException $ignored){continue;}
-            $at=strtotime($intent['created_at']);
-            foreach($byNumber[$number]??[] as $ev){$when=strtotime($ev['fecha']);if($when<$at-120||$when>$at+900)continue;
+            $at=$this->horaEventoDesdeMarcacion((string)$intent['created_at'])->getTimestamp();
+            foreach($byNumber[$number]??[] as $ev){$when=(new DateTimeImmutable((string)$ev['fecha'],new DateTimeZone('America/Mexico_City')))->getTimestamp();if($when<$at-120||$when>$at+900)continue;
                 $ref=(string)$ev['pbx_call_id'];$forward[$intent['token']][$ref]=true;$reverse[$ref][$intent['token']]=true;
             }
         }
