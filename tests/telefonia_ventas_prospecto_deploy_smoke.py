@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
 """Ensayo de publicación selectiva con archivos personalizados de Hostinger."""
 from pathlib import Path
+import ast
 import os
 import subprocess
 import tempfile
 
 root=Path(__file__).resolve().parents[1]
 publisher=root/'tools/publicar_prospecto_ventas_hostinger.py'
+
+# El hosting ejecuta Python 3.6: un runner moderno puede ocultar
+# argumentos introducidos en Python 3.7 y regresiones de sintaxis.
+source=publisher.read_text(encoding='utf-8')
+tree=ast.parse(source, feature_version=(3, 6))
+for call in (node for node in ast.walk(tree) if isinstance(node, ast.Call)):
+ if isinstance(call.func,ast.Attribute) and call.func.attr=='run' and (
+  isinstance(call.func.value,ast.Name) and call.func.value.id=='subprocess'):
+  unsupported={keyword.arg for keyword in call.keywords} & {'capture_output','text'}
+  assert not unsupported,'subprocess.run requiere Python 3.7+: '+str(unsupported)
 files={
  'js':'public/javascript/telefonia_enrutamiento.js',
  'php':'app/services/TelefoniaDisponibilidadService.php',

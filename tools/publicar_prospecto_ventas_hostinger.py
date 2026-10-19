@@ -61,7 +61,7 @@ def download(ref, name, label, tmp):
     path = tmp / label
     result = subprocess.run(
         [curl, "-fsSL", "--retry", "2", REPO + ref + "/" + name, "-o", str(path)],
-        capture_output=True, text=True
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
     )
     if result.returncode:
         fail("No se descargó " + name)
@@ -159,7 +159,7 @@ def main():
                 source = tmp / ("check." + tag)
                 source.write_bytes(result)
                 args = [validator, "--check", str(source)] if tag == "js" else [validator, "-l", str(source)]
-                check = subprocess.run(args, capture_output=True, text=True)
+                check = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
                 if check.returncode:
                     fail("Sintaxis inválida de " + name)
             prepared[name] = (live, result)
