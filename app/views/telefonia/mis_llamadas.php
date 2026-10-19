@@ -86,6 +86,14 @@ ksort($paginasVisibles, SORT_NUMERIC);
                 $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
                     . '&vista=recibidas&detalle=1&pbx_call_id=' . rawurlencode($pbxId);
                 $detalleTexto = 'Ver llamada';
+            } elseif (!empty($puedeGestionAnalista) && $saliente
+                && (int)($fila['intento_devolucion'] ?? 0) > 0) {
+                // Una saliente de devolución no pertenece a Recibidas;
+                // mostrar la gestión exacta y su resultado en Por devolver.
+                $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
+                    . '&vista=devoluciones&ver_intento='
+                    . (int)$fila['intento_devolucion'];
+                $detalleTexto = 'Ver devolución';
             } elseif (!empty($puedeRecepcionMarketing)) {
                 $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
                     . '&vista=recepcion&buscar=' . rawurlencode((string)($fila['numero'] ?? ''));
