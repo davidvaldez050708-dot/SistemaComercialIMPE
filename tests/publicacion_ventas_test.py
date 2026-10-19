@@ -65,6 +65,7 @@ def scenario(kind):
             shell = (live/'public/javascript/telefonia_shell.js').read_text(encoding='utf8')
             assert "window.parent.IMPE_PHONE_SHELL_CONFIG?.salesResults === true" in persisted
             assert "const abrirControlesAnalista = function" not in persisted, 'Hostinger no restaurará los controles retirados'
+            assert "if (receptionState().ready)" in persisted
             assert "getReceptionStatus: function" in shell
         backup = list((root/'backups').iterdir()); assert len(backup) == 1
         code, output = run('--apply'); assert code == 0, output
