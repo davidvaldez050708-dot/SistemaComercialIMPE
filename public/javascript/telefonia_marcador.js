@@ -257,6 +257,7 @@
             }
             resetContact();contactName.value=String(state.institution||'').slice(0,90);
             contactNumber.value = String(state.destination || numberInput.value || '');
+            root.querySelector('[data-sales-contact-editor]').open = true;
             sayContact('Escribe el nombre del prospecto y pulsa Guardar número.');
             contactName.focus();
         });
