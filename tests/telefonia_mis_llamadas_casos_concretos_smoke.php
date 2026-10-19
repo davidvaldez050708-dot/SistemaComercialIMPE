@@ -21,7 +21,7 @@ $misLlamadas = [
     ['usuario_id'=>101,'pbx_call_id'=>'pbx-devolucion','direccion'=>'Saliente',
       'numero'=>'+527770000023','extension'=>'101','proceso'=>'Vinculación',
       'fecha'=>'2026-10-18 12:45:00','segundos'=>45,'conectada'=>true,
-      'resultado_devolucion'=>'CONTACTO_CORRECTO']
+      'intento_devolucion'=>431, 'resultado_devolucion'=>'CONTACTO_CORRECTO']
   ],
   'total'=>4,'conectadas'=>3,'entrantes'=>3,'salientes'=>1,
   'pagina'=>1,'paginas'=>1,'por_pagina'=>20,
@@ -48,6 +48,9 @@ $expect(str_contains($html,'impe-call-detail-link'),
     'Acceso de diseño compartido');
 $expect(substr_count($html, 'Ver llamada') === 3,
     'Solo las tres entrantes tienen acceso a Recibidas');
+$expect(str_contains($html,'vista=devoluciones&amp;ver_intento=431') &&
+    str_contains($html,'Ver devolución'),
+    'Una saliente de devolución lleva al intento registrado, no a Recibidas');
 $ingreso = file_get_contents(ROOT_PATH.'/app/views/seguimiento_vinculacion/llamadas_entrantes.php');
 $expect(str_contains($ingreso, 'data-focus-call=') &&
     str_contains($ingreso, 'data-auto-call=') &&
