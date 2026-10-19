@@ -16,11 +16,12 @@ $assert(str_contains($service,"&vista='")
     && !str_contains($service,"'index.php?controller=telefonia&action=devoluciones'"),
     'Campana usa Mis llamadas y PBX específico');
 $assert(str_contains($reminders,'CLAVE_ULTIMO_TOAST_COMPARTIDO_AT')
-    && str_contains($reminders,'CLAVE_ULTIMO_TOAST_TELEFONIA_ID')
     && str_contains($reminders,'INTERVALO_TOAST_VENCIDO -')
-    && str_contains($reminders,'Math.max(ultimoGlobal, ultimoTelefono)')
+    && str_contains($reminders,"return 'telefonia:' + telefonoId")
+    && str_contains($reminders,'Number(r.telefonia_id || 0) > 0')
+    && !str_contains($reminders,'mostrarAvisosTelefonia(')
     && !str_contains($reminders,'if(++shown===3)break'),
-    'Un solo aviso telefónico en cadencia de ocho minutos');
+    'Un aviso recurrente por turno de ocho minutos, sin ráfaga al entrar');
 $assert(str_contains($history, 'vista=devoluciones&detalle_intento=')
     && str_contains($history,'Ver devolución')
     && str_contains($history,'vista=recibidas&detalle=1'),
