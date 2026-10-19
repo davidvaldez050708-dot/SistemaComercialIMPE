@@ -366,6 +366,13 @@
                     return;
                 }
 
+                // El aviso telefónico pudo aparecer durante la espera: nunca
+                // mostrar simultáneamente dos avisos de fuentes diferentes.
+                const ultimoVisible = Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0;
+                if (Date.now() - ultimoVisible < INTERVALO_TOAST_VENCIDO) {
+                    programarSiguienteToastVencido();
+                    return;
+                }
                 const mostroVencido = mostrarSiguienteToastVencido();
 
                 if (!mostroVencido) {
