@@ -198,11 +198,12 @@ final class TelefoniaVentasLlamadasService
         require_once __DIR__.'/TelefoniaResultadoVentasService.php';
         [$from,$until]=self::intervalo($filters);
         $calls=$this->listar($uid,$filters);
+        $marcador=new TelefoniaMarcacionesVentasService($this->db,false);
         $unlinked=$this->rows("SELECT m.* FROM telefonia_ventas_marcaciones m WHERE m.usuario_id=? AND m.pbx_call_id IS NULL
             AND m.created_at BETWEEN ? AND ? ORDER BY m.created_at DESC",[$uid,$from.' 00:00:00',$until.' 23:59:59']);
         foreach($unlinked as $m)$calls[]=['id'=>'intento-'.$m['id'],'usuario_id'=>$uid,'extension'=>$m['extension'],
             'pbx_call_id'=>'','direccion'=>'Saliente','numero'=>$m['destino'],'nombre'=>'','origen_extension'=>'',
-            'fecha'=>$m['created_at'],'finalizada'=>false,'conectada'=>false,'segundos'=>null,'estado_pbx'=>'Sin conexión confirmada','segmentos'=>[],'registro'=>null];
+            'fecha'=>$marcador->fechaMarcacionLocal((string)$m['created_at']),'finalizada'=>false,'conectada'=>false,'segundos'=>null,'estado_pbx'=>'Sin conexión confirmada','segmentos'=>[],'registro'=>null];
         $operations=$this->rows("SELECT o.*,d.ruta_json FROM telefonia_transferencia_operaciones o
             JOIN telefonia_disponibilidad d ON d.origen_usuario=o.origen_usuario AND d.destino_usuario=o.destino_usuario
               AND d.referencia = BINARY o.referencia AND d.destino_extension = BINARY o.destino_extension
