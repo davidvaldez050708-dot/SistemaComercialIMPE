@@ -207,10 +207,18 @@
           "label": "github-base",
           "before": "5a6378c136b3fe3b63a2efe7adac5d85116195035eaae1e5e19d67621a71c9c5",
           "after": "06a8e494c3fec65ef7c10284d34c70ef5d0e7eb8ab01e5caaffb7fa36d3d480a"
+        },
+        {
+          "label": "hostinger-a-20261019-comentarios",
+          "before": "40fc15fc89c97774dedee01326a15db57ebb4131b01a7d678a2b4be171d97acd",
+          "after": "92c9265ababa37c8159c3f8028a515226e6b5d366a986ce3d1d5abd036cd589f",
+          "patch": "tools/ventas_fase_c/13.patch",
+          "patch_sha256": "429b0d844377a98d5249e5b918d927f63238a590c1690ce22276d2164f86ee80"
         }
       ],
       "patch": "tools/ventas_fase_c/13.patch",
-      "patch_sha256": "429b0d844377a98d5249e5b918d927f63238a590c1690ce22276d2164f86ee80"
+      "patch_sha256": "429b0d844377a98d5249e5b918d927f63238a590c1690ce22276d2164f86ee80",
+      "production_fixture": "tools/ventas_fase_c/hostinger_shell_after_a.patch"
     },
     {
       "path": "public/javascript/telefonia_ventas_resultados.js",

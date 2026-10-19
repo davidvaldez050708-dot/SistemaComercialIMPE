@@ -27,10 +27,18 @@
           "label": "github-base",
           "before": "8370735b3ec629d84316391aab7cb61d010eddc3dbefce141af376885d8002f7",
           "after": "a6ab1c32783f773d52c5866545aebca35b5da7c2f4642b84573dfb80e6773f2d"
+        },
+        {
+          "label": "hostinger-20261019-ventas-sin-alterar-otros-roles",
+          "before": "f5ccdbbc19a008840391f73ac674a7a3dddc267c9787112a21500a12efdec7a2",
+          "after": "b9649d1f21090da917eadc0f74b2933478e8ed5227aff09f58d9f6e413095ca1",
+          "patch": "tools/ventas_fase_a/03.patch",
+          "patch_sha256": "8555ddcba63defc6b74d563e2094897e8e0f731d1d23a6a0969e3ad2da26d5d6"
         }
       ],
       "patch": "tools/ventas_fase_a/01.patch",
-      "patch_sha256": "3bae92f946662d41cabea1524e27231b30abb37ca191d7d061886271d2883568"
+      "patch_sha256": "3bae92f946662d41cabea1524e27231b30abb37ca191d7d061886271d2883568",
+      "production_fixture": "tools/ventas_fase_a/hostinger_persistente_20261019.patch"
     },
     {
       "path": "public/javascript/telefonia_shell.js",
@@ -42,10 +50,18 @@
           "label": "github-base",
           "before": "3caf16d8bdb161fb10bd0b14966c54f2a8a53aaa5e1a8f0354b09dc07d150772",
           "after": "5a6378c136b3fe3b63a2efe7adac5d85116195035eaae1e5e19d67621a71c9c5"
+        },
+        {
+          "label": "hostinger-20261019-comentarios-conservados",
+          "before": "09fd543e1b60301a66ab790a06ace96dc3731ec12b42a3b5b0eb65f36e648013",
+          "after": "40fc15fc89c97774dedee01326a15db57ebb4131b01a7d678a2b4be171d97acd",
+          "patch": "tools/ventas_fase_a/04.patch",
+          "patch_sha256": "39b86c1c4c99fa1f6d9df378ee5d11694e924f579c93e06689c404b4d62cbb59"
         }
       ],
       "patch": "tools/ventas_fase_a/02.patch",
-      "patch_sha256": "39b86c1c4c99fa1f6d9df378ee5d11694e924f579c93e06689c404b4d62cbb59"
+      "patch_sha256": "39b86c1c4c99fa1f6d9df378ee5d11694e924f579c93e06689c404b4d62cbb59",
+      "production_fixture": "tools/ventas_fase_a/hostinger_shell_20261019.patch"
     }
   ]
 }

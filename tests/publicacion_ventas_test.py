@@ -60,6 +60,13 @@ def scenario(kind):
             expected = next((v['after'] for v in f['variants'] if v['label'].startswith('hostinger') and kind == 'hostinger'), f['target_sha256'])
             assert hashlib.sha256(data).hexdigest() == expected, f['path']
             if os.name != 'nt': assert (live/f['path']).stat().st_mode & 0o777 == 0o644
+        if kind == 'hostinger' and STAGE == 'a':
+            persisted = (live/'public/javascript/telefonia_persistente.js').read_text(encoding='utf8')
+            shell = (live/'public/javascript/telefonia_shell.js').read_text(encoding='utf8')
+            assert "window.parent.IMPE_PHONE_SHELL_CONFIG?.salesResults === true" in persisted
+            assert "const abrirControlesAnalista = function" not in persisted, 'Hostinger no restaurará los controles retirados'
+            assert "if (receptionState().ready)" in persisted
+            assert "getReceptionStatus: function" in shell
         backup = list((root/'backups').iterdir()); assert len(backup) == 1
         code, output = run('--apply'); assert code == 0, output
         assert len(list((root/'backups').iterdir())) == 1
@@ -70,6 +77,6 @@ def scenario(kind):
 if __name__ == '__main__':
     subprocess.run([BASH, '-n', sp(SCRIPT)], check=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        for result in pool.map(scenario, ['github', 'replica-base', 'personalizado', 'js-desconocido', 'php-conflicto']):
+        for result in pool.map(scenario, ['github', 'replica-base', 'hostinger', 'personalizado', 'js-desconocido', 'php-conflicto']):
             print('OK:', result, flush=True)
-    print('Publicación selectiva de Ventas: 5 escenarios aprobados en réplicas.')
+    print('Publicación selectiva de Ventas: 6 escenarios aprobados en réplicas.')

@@ -1,0 +1,61 @@
+--- a/public/javascript/telefonia_persistente.js
++++ b/public/javascript/telefonia_persistente.js
+@@ -2589,16 +2589,36 @@
+             let receptionBusy = false;
+             let receptionError = '';
+ 
++            // Hostinger: usar estado autenticado del shell solo en Ventas.
++            // Los otros roles conservan sus estados y controles actuales.
++            const receptionState = function () {
++                try {
++                    if (window.parent !== window &&
++                        window.parent.IMPE_PHONE_SHELL_CONFIG?.salesResults === true) {
++                        const shell = window.parent.IMPE_TELEPHONY_SHELL;
++                        if (shell?.isEmbedded && Number(shell.userId) === userId &&
++                            typeof shell.getReceptionStatus === 'function') {
++                            const info = shell.getReceptionStatus();
++                            if (info && typeof info.assigned === 'boolean' &&
++                                typeof info.ready === 'boolean') return info;
++                        }
++                    }
++                } catch (_) { /* El modo independiente mantiene el estado original. */ }
++                return {assigned: Boolean(availability?.permite_entrantes),
++                    extension: String(availability?.extension || ''), ready: hostUsable()};
++            };
++
+             const renderReceptionState = function () {
+                 if (!receptionButton && !marketingReception) return;
+ 
+-                const assigned = Boolean(availability?.permite_entrantes);
+-                const active = assigned && hostUsable();
++                const reception = receptionState();
++                const assigned = reception.assigned === true;
++                const active = assigned && reception.ready === true;
+                 const awaiting = !assigned && receptionChecking;
+                 const missing = !assigned && !awaiting &&
+                     /extensi[oó]n|asignada/i.test(receptionError);
+                 const extension = assigned
+-                    ? String(availability.extension || '')
++                    ? String(reception.extension || '')
+                     : '';
+                 const label = active
+                     ? 'Recepción activa'
+@@ -2674,7 +2694,7 @@
+             };
+ 
+             const activarRecepcion = function () {
+-                if (!availability?.permite_entrantes || receptionBusy) return;
++                if (!receptionState().assigned || receptionBusy) return;
+                 receptionBusy = true;
+                 receptionError = '';
+                 renderReceptionState();
+@@ -2694,7 +2714,7 @@
+             };
+ 
+             const abrirOActivar = function () {
+-                if (!availability?.permite_entrantes || receptionBusy) return;
++                if (!receptionState().assigned || receptionBusy) return;
+-                if (hostUsable()) {
++                if (receptionState().ready) {
+                     if (!openDialer({})) {
+                         receptionError = 'No se pudo abrir el teléfono. Recarga la página.';
