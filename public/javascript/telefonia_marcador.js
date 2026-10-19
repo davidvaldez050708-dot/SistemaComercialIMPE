@@ -399,44 +399,68 @@
         });
 
         function createContactRow(contact) {
-            const row = document.createElement('article');
+            const row = document.createElement('tr');
             row.className = 'telephony-contact-row';
             row.setAttribute('data-telephony-contact-row', '');
             row.dataset.contactId = String(contact.id);
             row.dataset.contactNumber = String(contact.telefono);
-            row.dataset.contactEmail=contact.correo||'';row.dataset.contactNote=contact.observacion||'';row.dataset.contactNext=contact.proxima_accion_at||'';
+            row.dataset.contactEmail=contact.correo||'';
+            row.dataset.contactNote=contact.observacion||'';
+            row.dataset.contactNext=contact.proxima_accion_at||'';
 
-            const details = document.createElement('div');
-            details.className = 'telephony-contact-name';
-            const name = document.createElement('strong');
-            name.setAttribute('data-contact-name', '');
-            name.textContent = String(contact.nombre);
-            const phone = document.createElement('small');
-            phone.setAttribute('data-contact-display-number', '');
-            phone.textContent = String(contact.telefono);
-            details.append(name, phone);
+            const details=document.createElement('td');
+            details.className='telephony-contact-name';
+            const name=document.createElement('strong');
+            name.setAttribute('data-contact-name','');
+            name.textContent=String(contact.nombre);
+            details.append(name);
 
-            const actions = document.createElement('div');
-            actions.className = 'telephony-contact-actions';
-            const use = document.createElement('button');
-            use.type = 'button';
-            use.className = 'btn btn-system-light';
-            use.setAttribute('data-telephony-contact-use', '');
-            use.textContent = 'Usar número';
+            const phone=document.createElement('td');
+            phone.className='sales-contact-phone';
+            phone.setAttribute('data-contact-display-number','');
+            phone.textContent=String(contact.telefono);
 
-            const remove = document.createElement('button');
-            remove.type = 'button';
-            remove.className = 'telephony-contact-remove';
-            remove.setAttribute('data-telephony-contact-remove', '');
-            remove.setAttribute('aria-label', 'Eliminar teléfono guardado');
-            const icon = document.createElement('i');
-            icon.className = 'bi bi-trash';
-            icon.setAttribute('aria-hidden', 'true');
-            remove.appendChild(icon);
-            const extra=document.createElement('small');extra.textContent=[contact.correo,contact.proxima_accion_at,contact.observacion].filter(Boolean).join(' · ');details.append(extra);
-            const edit=document.createElement('button');edit.type='button';edit.className='btn btn-system-light';edit.setAttribute('data-telephony-contact-edit','');edit.setAttribute('aria-label','Editar contacto');edit.innerHTML='<i class="bi bi-pencil" aria-hidden="true"></i>';
-            actions.append(use,edit,remove);
-            row.append(details, actions);
+            const info=document.createElement('td');
+            info.className='sales-contact-meta';
+            const email=document.createElement('span');
+            email.textContent=String(contact.correo||'');
+            info.append(email);
+            if(contact.proxima_accion_at){
+                const next=document.createElement('small');
+                next.textContent='Próxima: '+String(contact.proxima_accion_at);
+                info.append(next);
+            }
+            if(contact.observacion){
+                const note=document.createElement('small');
+                note.setAttribute('data-contact-extra','');
+                note.textContent=String(contact.observacion);
+                info.append(note);
+            }
+
+            const actionsCell=document.createElement('td');
+            const actions=document.createElement('div');
+            actions.className='telephony-contact-actions';
+            const edit=document.createElement('button');
+            edit.type='button';edit.className='btn btn-system-light';
+            edit.setAttribute('data-telephony-contact-edit','');
+            edit.setAttribute('aria-label','Editar contacto');
+            const editIcon=document.createElement('i');
+            editIcon.className='bi bi-pencil';editIcon.setAttribute('aria-hidden','true');
+            edit.append(editIcon);
+            const use=document.createElement('button');
+            use.type='button';use.className='btn btn-system-light';
+            use.setAttribute('data-telephony-contact-use','');
+            use.textContent='Usar número';
+            const remove=document.createElement('button');
+            remove.type='button';remove.className='telephony-contact-remove';
+            remove.setAttribute('data-telephony-contact-remove','');
+            remove.setAttribute('aria-label','Eliminar teléfono guardado');
+            const icon=document.createElement('i');
+            icon.className='bi bi-trash';icon.setAttribute('aria-hidden','true');
+            remove.append(icon);
+            actions.append(edit,use,remove);
+            actionsCell.append(actions);
+            row.append(details,phone,info,actionsCell);
             return row;
         }
 
@@ -604,6 +628,7 @@
         root.querySelector('[data-telephony-contact-from-dialer]')
             .addEventListener('click', function () {
                 contactNumber.value = numberInput.value;
+                root.querySelector('[data-sales-contact-editor]').open = true;
                 contactName.focus();
                 sayContact(
                     contactNumber.value
@@ -653,7 +678,8 @@
             if(button.hasAttribute('data-telephony-contact-edit')){
                 contactId.value=row.dataset.contactId;contactName.value=row.querySelector('[data-contact-name]').textContent;
                 contactNumber.value=row.dataset.contactNumber;contactEmail.value=row.dataset.contactEmail||'';contactNote.value=row.dataset.contactNote||'';
-                contactSchedule.value=(row.dataset.contactNext||'').replace(' ','T').slice(0,16);contactCancel.hidden=false;contactName.focus();return;
+                contactSchedule.value=(row.dataset.contactNext||'').replace(' ','T').slice(0,16);contactCancel.hidden=false;
+                root.querySelector('[data-sales-contact-editor]').open=true;contactName.focus();return;
             }
             if (button.hasAttribute('data-telephony-contact-use')) {
                 numberInput.value = row.dataset.contactNumber || '';
