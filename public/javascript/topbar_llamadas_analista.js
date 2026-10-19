@@ -17,6 +17,19 @@
         const progress = root.querySelector('[data-topbar-call-progress]');
         const status = root.querySelector('[data-topbar-call-status]');
         let loading = false;
+        let fallosIniciales = 0;
+        let temporizadorReintento = null;
+        let hayResumen = false;
+
+        const programarReintento = function () {
+            if (hayResumen || fallosIniciales >= 4 || temporizadorReintento !== null) return;
+            const espera = Math.min(15000, 2500 * fallosIniciales);
+            temporizadorReintento = window.setTimeout(function () {
+                temporizadorReintento = null;
+                void cargar();
+            }, espera);
+        };
+
 
         const render = function (resumen) {
             const meta = Math.max(1, Number(resumen?.meta || 25));
@@ -73,20 +86,40 @@
                 });
                 const data = await response.json();
 
-                if (response.ok && data?.ok && data?.resumen) {
-                    render(data.resumen);
+                if (!response.ok || !data?.ok || !data?.resumen) {
+                    throw new Error('Resumen no disponible');
+                }
+                render(data.resumen);
+                hayResumen = true;
+                fallosIniciales = 0;
+                if (temporizadorReintento !== null) {
+                    window.clearTimeout(temporizadorReintento);
+                    temporizadorReintento = null;
                 }
             } catch (error) {
                 if (status) {
-                    status.textContent = 'No fue posible actualizar el avance.';
+                    status.textContent = hayResumen
+                        ? 'No se pudo actualizar. Conservamos el último avance.'
+                        : 'No se pudo cargar. Reintentando automáticamente…';
+                }
+                if (!hayResumen) {
+                    fallosIniciales += 1;
                 }
                 console.debug('No fue posible actualizar la meta telefónica del analista.', error);
             } finally {
                 loading = false;
+                programarReintento();
             }
         };
 
         root.addEventListener('show.bs.dropdown', cargar);
+        // BFCache y regreso desde otra pestaña: si el arranque falló, no exigir un clic.
+        window.addEventListener('pageshow', function () {
+            if (!hayResumen) void cargar();
+        });
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && !hayResumen) void cargar();
+        });
 
         [
             'impe:telephony-call-linked',

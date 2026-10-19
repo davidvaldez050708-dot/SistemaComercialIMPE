@@ -22,6 +22,9 @@
         let consultaEnCurso = false;
         let avisoMigracionMostrado = false;
         let recordatoriosActuales = [];
+        let cargaInicialCompletada = false;
+        let fallosDeCarga = 0;
+        let temporizadorReintentoCarga = null;
         let temporizadorToastVencido = null;
 
         const INTERVALO_TOAST_VENCIDO = 8 * 60 * 1000;
@@ -34,6 +37,7 @@
             'recordatorios:ultimo-toast-vencido-id' + claveUsuario;
         // Un turno de ocho minutos por usuario, tanto para Seguimiento como para Telefonía.
         const CLAVE_ULTIMO_TOAST_COMPARTIDO_AT = 'recordatorios:ultimo-toast-global-at' + claveUsuario;
+        const CLAVE_INICIO_CADENCIA = 'recordatorios:inicio-toast-global-at' + claveUsuario;
 
         if (endpoint === '') {
             return;
@@ -75,6 +79,11 @@
             }
         };
 
+        // Mantener el inicio del primer turno durante toda la sesión, incluso al navegar.
+        if (!leerSesion(CLAVE_INICIO_CADENCIA)) {
+            guardarSesion(CLAVE_INICIO_CADENCIA, Date.now());
+        }
+
         const claveRecordatorio = function (recordatorio) {
             const telefonoId = Number(recordatorio.telefonia_id || 0);
             if (telefonoId > 0) return 'telefonia:' + telefonoId;
@@ -106,7 +115,6 @@
         const registrarToastVencido = function (recordatorio) {
             guardarSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT, Date.now());
             guardarSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT, Date.now());
-            guardarSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT, Date.now());
             guardarSesion(
                 CLAVE_ULTIMO_TOAST_VENCIDO_ID,
                 claveRecordatorio(recordatorio)
@@ -332,7 +340,8 @@
 
             const ultimoToast = Math.max(
                 Number(leerSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT)) || 0,
-                Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0
+                Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0,
+                Number(leerSesion(CLAVE_INICIO_CADENCIA)) || 0
             );
             const ahora = Date.now();
             const espera = Number.isFinite(ultimoToast) && ultimoToast > 0
@@ -439,6 +448,27 @@
                 '</div>';
         };
 
+        const programarReintentoCarga = function () {
+            if (temporizadorReintentoCarga !== null || fallosDeCarga > 4) return;
+            const espera = Math.min(15000, 2500 * Math.max(1, fallosDeCarga));
+            temporizadorReintentoCarga = window.setTimeout(function () {
+                temporizadorReintentoCarga = null;
+                void consultarRecordatorios();
+            }, espera);
+        };
+
+        const mostrarFalloCarga = function () {
+            // Mantener los avisos previamente cargados; no vaciar la campana.
+            if (cargaInicialCompletada || !contenido) return;
+            contenido.setAttribute('aria-busy', 'false');
+            contenido.innerHTML =
+                '<div class="topbar-reminder-empty">' +
+                    '<i class="bi bi-arrow-clockwise"></i>' +
+                    '<strong>No se pudieron cargar las notificaciones</strong>' +
+                    '<span>Reintentando automáticamente. También puedes recargar la página.</span>' +
+                '</div>';
+        };
+
         window.addEventListener('impe:phone-notices-refresh',()=>void consultarRecordatorios());
         const consultarRecordatorios = async function () {
             if (consultaEnCurso || document.hidden) {
@@ -456,19 +486,25 @@
                 });
 
                 if (!respuesta.ok) {
-                    return;
+                    throw new Error('Respuesta HTTP ' + respuesta.status);
                 }
 
                 const datos = await respuesta.json();
 
-                if (!datos || !datos.ok) {
-                    return;
+                if (!datos || (!datos.ok && !datos.parcial)) {
+                    throw new Error('Respuesta de recordatorios no disponible');
                 }
 
                 renderizarRecordatorios(
                     datos.recordatorios || [],
                     datos.total || 0
                 );
+                cargaInicialCompletada = true;
+                fallosDeCarga = 0;
+                if (temporizadorReintentoCarga !== null) {
+                    window.clearTimeout(temporizadorReintentoCarga);
+                    temporizadorReintentoCarga = null;
+                }
 
 
 
@@ -497,9 +533,12 @@
                     programarSiguienteToastVencido();
                 }
             } catch (error) {
+                fallosDeCarga += 1;
+                mostrarFalloCarga();
                 console.error('No fue posible actualizar las notificaciones.', error);
             } finally {
                 consultaEnCurso = false;
+                if (!cargaInicialCompletada) programarReintentoCarga();
             }
         };
 
@@ -507,6 +546,9 @@
         window.setInterval(consultarRecordatorios, 60000);
         programarSiguienteToastVencido();
 
+        window.addEventListener('pageshow', function () {
+            if (!cargaInicialCompletada) void consultarRecordatorios();
+        });
         document.addEventListener('visibilitychange', function () {
             if (!document.hidden) {
                 consultarRecordatorios();
