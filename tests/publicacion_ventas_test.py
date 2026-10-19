@@ -67,6 +67,12 @@ def scenario(kind):
             assert "const abrirControlesAnalista = function" not in persisted, 'Hostinger no restaurará los controles retirados'
             assert "if (receptionState().ready)" in persisted
             assert "getReceptionStatus: function" in shell
+        if kind == 'hostinger' and STAGE == 'c':
+            css = (live/'public/css/seguimiento_entrantes_analista.css').read_text(encoding='utf8')
+            assert "#modalLlamadaEntranteAnalista .system-form-modal-subtitle {font-size:12px;color:#6b7890;}" in css
+            assert "/* CRM · registro de resultado compacto, hoja oficial del módulo */" in css
+            assert "#modalResultadoVenta .linkage-incoming-confirmed" in css
+            assert "/* Ventas: formulario comercial sin modificar los estilos compactos del Analista. */" in css
         backup = list((root/'backups').iterdir()); assert len(backup) == 1
         code, output = run('--apply'); assert code == 0, output
         assert len(list((root/'backups').iterdir())) == 1

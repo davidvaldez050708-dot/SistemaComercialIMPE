@@ -177,10 +177,18 @@
           "label": "github-base",
           "before": "3025d8269552e467c7e133023d8e5793269758f0077157b890f8ef4640b7d6bd",
           "after": "8c1f804583ffcef77c052ce64d9a81e686d4cfa10727a19205c278b1d43589a0"
+        },
+        {
+          "label": "hostinger-20261019-css-compacto",
+          "before": "31af6d7d04a8c925efddf0a5737268b7c4081b3e1fac1837a98efc5ffc6a28d6",
+          "after": "c36d35353ee34557bf13df5884afbca271e73837be5aa474d7e492cfb0dea528",
+          "patch": "tools/ventas_fase_c/16.patch",
+          "patch_sha256": "8422b069d45e66a0046409d09e69585a7003399d6c927d1556021c25d9488808"
         }
       ],
       "patch": "tools/ventas_fase_c/11.patch",
-      "patch_sha256": "eab60f587d3d87775ec9668e5c8cef3716763d7658647645aaaa987daa8e2773"
+      "patch_sha256": "eab60f587d3d87775ec9668e5c8cef3716763d7658647645aaaa987daa8e2773",
+      "production_fixture": "tools/ventas_fase_c/hostinger_css_compacto_20261019.patch"
     },
     {
       "path": "public/javascript/telefonia_marcador.js",
