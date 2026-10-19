@@ -69,6 +69,15 @@ final class TelefoniaDisponibilidadService
                 if(!$inst)throw new DomainException('El expediente no corresponde al responsable seleccionado.');$route['institucion_nombre']=$inst['nombre_entidad'];
             }elseif(mb_strlen(trim((string)($route['institucion_nombre']??'')))<2 || mb_strlen((string)$route['institucion_nombre'])>150)throw new DomainException('Escribe el nombre de la institución o persona que llama.');
         }
+        if(($route['tipo']??'')==='PROSPECTO'){
+            // La identificación es un dato que proporcionó Recepción, no
+            // acredita conversación ni crea prospectos o expedientes.
+            $nombre=trim((string)($route['institucion_nombre']??''));
+            if(mb_strlen($nombre,'UTF-8')<2 || mb_strlen($nombre,'UTF-8')>150){
+                throw new DomainException('Registra el nombre del prospecto o de quien llama antes de solicitar disponibilidad.');
+            }
+            $route['institucion_nombre']=$nombre;
+        }
         $this->expire();$this->db->begin_transaction();
         try{
             // Serializar también solicitudes simultáneas de la misma cuenta.
