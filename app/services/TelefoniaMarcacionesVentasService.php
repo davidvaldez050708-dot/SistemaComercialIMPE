@@ -87,14 +87,19 @@ class TelefoniaMarcacionesVentasService
      * Se consulta el offset real: en Hostinger SYSTEM equivale a UTC, mientras
      * las fixtures usan -06:00. No cambiar ni corregir marcas históricas.
      */
-    private function horaEventoDesdeMarcacion(string $mysqlDate): DateTimeImmutable
+    private function zonaMySQL(): DateTimeZone
     {
         $r=$this->db->query('SELECT TIMESTAMPDIFF(SECOND,UTC_TIMESTAMP(),NOW()) AS utc_offset')->fetch_assoc();
         $seconds=(int)($r['utc_offset']??0);
         if(abs($seconds)>14*3600)throw new DomainException('Zona horaria de la base de datos no válida.');
         $sign=$seconds<0?'-':'+';
         $abs=abs($seconds);
-        $source=new DateTimeZone(sprintf('%s%02d:%02d',$sign,intdiv($abs,3600),intdiv($abs%3600,60)));
+        return new DateTimeZone(sprintf('%s%02d:%02d',$sign,intdiv($abs,3600),intdiv($abs%3600,60)));
+    }
+
+    private function horaEventoDesdeMarcacion(string $mysqlDate): DateTimeImmutable
+    {
+        $source=$this->zonaMySQL();
         $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$mysqlDate,$source);
         if(!$date||$date->format('Y-m-d H:i:s')!==$mysqlDate)
             throw new DomainException('Fecha de marcación no válida.');
@@ -104,6 +109,14 @@ class TelefoniaMarcacionesVentasService
     public function fechaMarcacionLocal(string $mysqlDate): string
     {
         return $this->horaEventoDesdeMarcacion($mysqlDate)->format('Y-m-d H:i:s');
+    }
+
+    public function fechaMarcacionMySQL(string $localDate): string
+    {
+        $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$localDate,new DateTimeZone('America/Mexico_City'));
+        if(!$date||$date->format('Y-m-d H:i:s')!==$localDate)
+            throw new DomainException('Fecha de consulta no válida.');
+        return $date->setTimezone($this->zonaMySQL())->format('Y-m-d H:i:s');
     }
 
     public function vincular(int $usuarioId, string $token, string $pbxCallId): void
