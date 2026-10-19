@@ -4,7 +4,8 @@ set -euo pipefail
 umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
-TARGET='cc02acf3972821c4fa2513ada2da40c5fa7cfd46'
+TARGET='2f0d7c3ca9a2c53678ea5028fc07571e361e50d4'
+REVIEWED='cc02acf3972821c4fa2513ada2da40c5fa7cfd46'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/ventas_fase_a'
 SOURCE="${IMPE_VENTAS_A_SOURCE:-$HOME/crm-publicaciones/ventas-fase-a-actual}"
@@ -32,6 +33,7 @@ git_public(){ command git -c remote.origin.url="$REPO" -c http.sslVerify=true "$
 if [[ ! -e "$SOURCE" ]]; then mkdir -p "$(dirname "$SOURCE")"; git_public clone --quiet --no-checkout --filter=blob:none "$REPO" "$SOURCE"; fi
 if git_public -C "$SOURCE" config --name-only --get-regexp '^url\..*\.insteadof$' >/dev/null; then fail 'La preparación tiene reglas locales de URL; usa otra carpeta privada.'; fi
 if ! git_public -C "$SOURCE" cat-file -e "$TARGET^{commit}" 2>/dev/null; then git_public -C "$SOURCE" fetch --quiet "$REPO" "$TARGET"; fi
+if ! git_public -C "$SOURCE" cat-file -e "$REVIEWED^{commit}" 2>/dev/null; then git_public -C "$SOURCE" fetch --quiet "$REPO" "$REVIEWED"; fi
 SCRATCH="$(cd "${TMPDIR:-/tmp}" && pwd -P)"; TMP="$(mktemp -d "$SCRATCH/impe-ventas-a.XXXXXX")"; touch "$TMP/.impe-owned"
 mkdir "$TMP/stage" "$TMP/original"
 LOCK="$(dirname "$LIVE")/.impe-atencion-deploy.lock"; LOCKED=0; WRITING=0; BACKUP=''
@@ -53,7 +55,7 @@ finish(){
  exit "$code"
 }
 trap finish EXIT; trap 'exit 130' INT; trap 'exit 143' TERM
-git_public -C "$SOURCE" show "$TARGET:$RESOURCE/manifest.json" > "$TMP/manifest.json"
+git_public -C "$SOURCE" show "$REVIEWED:$RESOURCE/manifest.json" > "$TMP/manifest.json"
 php -r '
  $m=json_decode(file_get_contents($argv[1]),true);if(($m["version"]??0)!==1)exit(1);$seen=[];
  foreach($m["files"]??[] as $f){$p=$f["path"]??"";
@@ -103,7 +105,7 @@ else
   ' "$TMP/manifest.json" "$file" "$TMP/stage/$file" "${BEFORE[$file]}" > "$TMP/variant" || fail "CONFLICTO: variante no revisada: $file. SITIO INTACTO."
   read -r variant patch patchHash expected eol < "$TMP/variant"
   if [[ "$variant" != APPLIED ]]; then
-   git_public -C "$SOURCE" show "$TARGET:$patch" > "$TMP/change.patch"
+   git_public -C "$SOURCE" show "$REVIEWED:$patch" > "$TMP/change.patch"
    [[ "$(digest "$TMP/change.patch")" == "$patchHash" ]] || fail 'Parche con huella incorrecta.'
    if [[ "$variant" == PHP-PERSONALIZADO ]] && (cd "$TMP/stage" && git -c core.autocrlf=false apply --reverse --check "$TMP/change.patch" >/dev/null 2>&1); then :
    else (cd "$TMP/stage" && git -c core.autocrlf=false apply --check "$TMP/change.patch" && git -c core.autocrlf=false apply "$TMP/change.patch") || fail "Parche incompatible: $file. SITIO INTACTO.";fi
