@@ -31,6 +31,11 @@
             'recordatorios:ultimo-toast-vencido-at';
         const CLAVE_ULTIMO_TOAST_VENCIDO_ID =
             'recordatorios:ultimo-toast-vencido-id';
+        // Una sola cadencia visual para Seguimiento y Telefonía: 8 minutos.
+        // Los avisos siguen visibles en la campana aunque el toast se cierre.
+        const CLAVE_ULTIMO_TOAST_COMPARTIDO_AT = 'recordatorios:ultimo-toast-global-at';
+        const CLAVE_ULTIMO_TOAST_TELEFONIA_AT = 'recordatorios:ultimo-toast-telefonia-at';
+        const CLAVE_ULTIMO_TOAST_TELEFONIA_ID = 'recordatorios:ultimo-toast-telefonia-id';
 
         if (endpoint === '') {
             return;
@@ -99,6 +104,7 @@
         };
 
         const registrarToastVencido = function (recordatorio) {
+            guardarSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT, Date.now());
             guardarSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT, Date.now());
             guardarSesion(
                 CLAVE_ULTIMO_TOAST_VENCIDO_ID,
@@ -253,15 +259,31 @@
             }, DURACION_TOAST);
         };
 
-        const phoneToastsSeen=new Set();
-        const mostrarAvisosTelefonia=function(items){
-            let shown=0;
-            for(const item of items||[]){
-                const id=Number(item.telefonia_id);if(id<=0||Number(item.leida||0)!==0)continue;
-                const key='impe:phone-toast:'+Number(window.IMPE_CURRENT_USER_ID||0)+':'+id;
-                if(phoneToastsSeen.has(key)||leerSesion(key)==='1')continue;
-                mostrarToast(item);phoneToastsSeen.add(key);guardarSesion(key,'1');if(++shown===3)break;
+        // Anteriormente se mostraban 2-3 llamadas juntas y luego nunca más.
+        // Ahora rotan de una en una cada ~8 minutos, igual que Seguimiento.
+        // La campana sigue siendo la fuente de verdad para los avisos no leídos.
+        const mostrarAvisosTelefonia = function (items) {
+            if (document.hidden) return false;
+            const pendientes = (items || []).filter(function (item) {
+                return Number(item.telefonia_id) > 0 && Number(item.leida || 0) === 0;
+            });
+            if (pendientes.length === 0) return false;
+            const ahora = Date.now();
+            const ultimoGlobal = Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0;
+            const ultimoTelefono = Number(leerSesion(CLAVE_ULTIMO_TOAST_TELEFONIA_AT)) || 0;
+            if (ahora - Math.max(ultimoGlobal, ultimoTelefono) < INTERVALO_TOAST_VENCIDO) {
+                return false;
             }
+            const ultimoId = Number(leerSesion(CLAVE_ULTIMO_TOAST_TELEFONIA_ID)) || 0;
+            const ultimoIndice = pendientes.findIndex(function (item) {
+                return Number(item.telefonia_id) === ultimoId;
+            });
+            const siguiente = pendientes[(ultimoIndice + 1) % pendientes.length];
+            mostrarToast(siguiente);
+            guardarSesion(CLAVE_ULTIMO_TOAST_TELEFONIA_ID, Number(siguiente.telefonia_id));
+            guardarSesion(CLAVE_ULTIMO_TOAST_TELEFONIA_AT, ahora);
+            guardarSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT, ahora);
+            return true;
         };
 
         const esRecordatorioVencidoRecurrente = function (recordatorio) {
@@ -321,8 +343,9 @@
                 temporizadorToastVencido = null;
             }
 
-            const ultimoToast = Number(
-                leerSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT)
+            const ultimoToast = Math.max(
+                Number(leerSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT)) || 0,
+                Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0
             );
             const ahora = Date.now();
             const espera = Number.isFinite(ultimoToast) && ultimoToast > 0
@@ -343,6 +366,13 @@
                     return;
                 }
 
+                // El aviso telefónico pudo aparecer durante la espera: nunca
+                // mostrar simultáneamente dos avisos de fuentes diferentes.
+                const ultimoVisible = Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0;
+                if (Date.now() - ultimoVisible < INTERVALO_TOAST_VENCIDO) {
+                    programarSiguienteToastVencido();
+                    return;
+                }
                 const mostroVencido = mostrarSiguienteToastVencido();
 
                 if (!mostroVencido) {

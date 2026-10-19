@@ -70,8 +70,20 @@ final class TelefoniaNotificacionService
         $s=$this->db->prepare('SELECT * FROM telefonia_notificaciones WHERE usuario_id=? AND extension=? AND leida=0 ORDER BY id DESC LIMIT 20');
         $s->bind_param('is',$user,$ext);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
         return array_map(function($r)use($recepcion){
-            $url=$recepcion?'index.php?controller=home&action=index#recepcion-telefonica':'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes';
-            $unconfirmed=str_ends_with($r['llave'],':SIN_CONFIRMAR');$callback=str_starts_with($r['llave'],'devolucion:');if($callback)$url='index.php?controller=telefonia&action=devoluciones';
+            $llave = (string)$r['llave'];
+            $callback = str_starts_with($llave, 'devolucion:');
+            $unconfirmed = str_ends_with($llave, ':SIN_CONFIRMAR');
+            // Mantener cada alerta en el módulo operativo correspondiente.
+            // Sólo las llamadas con un PBX concreto llevan al registro exacto;
+            // una operación de transferencia no garantiza ficha/gravación.
+            $url = 'index.php?controller=telefonia&action=misLlamadas&vista='
+                . ($callback ? 'devoluciones' : ($recepcion ? 'recepcion' : 'recibidas'));
+            if (!$recepcion && str_starts_with($llave, 'llamada:')) {
+                $pbx = substr($llave, strlen('llamada:'));
+                if ($pbx !== '') {
+                    $url .= '&detalle=1&pbx_call_id=' . rawurlencode($pbx);
+                }
+            }
             return ['id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>'llamada_perdida','tipo'=>'TELEFONIA_PERDIDA','leida'=>0,
                 'titulo'=>$r['titulo'],'mensaje'=>$r['mensaje'],'created_at'=>$r['created_at'],'url'=>$url,
                 'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>$callback?'bi-telephone-forward':'bi-telephone-x','etiqueta'=>$callback?'Por devolver':($unconfirmed?'Por confirmar':'Sin respuesta'),'estado'=>'informativa','fecha'=>$r['created_at'],'prioridad'=>1];
