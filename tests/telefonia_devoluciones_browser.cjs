@@ -36,7 +36,7 @@ window.finishCallback=()=>{phoneState={...phoneState,active:false,phase:'finishe
   await page.goto('http://devoluciones.test/');
   const row=page.locator('[data-callback-id="7"]');await row.waitFor();assert.match(await row.textContent(),/Institución Uno/);
   assert.equal(await row.getByRole('button',{name:'Llamar',exact:true}).count(),1);assert.equal(await page.getByRole('button',{name:'Marcar atendida'}).count(),0);
-  assert.equal(await row.getByRole('button',{name:'Llamar',exact:true}).evaluate(e=>e.className),'btn btn-system-light');
+  assert.equal(await row.getByRole('button',{name:'Llamar',exact:true}).evaluate(e=>e.className),'linkage-incoming-open','Llamar usa el botón compacto de Llamadas recibidas');
   if(process.env.CALLBACK_SCREENSHOT)await page.screenshot({path:process.env.CALLBACK_SCREENSHOT+'-lista.png'});
   await row.getByRole('button',{name:'Llamar',exact:true}).click();await page.waitForFunction(()=>callPayloads.length===1);
   assert.equal(await page.evaluate(()=>callPayloads[0].context.type),'DEVOLUCION');assert.equal(await page.evaluate(()=>callPayloads[0].destination),'+525551112233');
