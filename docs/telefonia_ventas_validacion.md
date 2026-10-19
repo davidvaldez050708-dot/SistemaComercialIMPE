@@ -16,7 +16,7 @@ Base: main `59d5eb6656a7a0a2b6b5ff16db9ff4c691c3bc34`. Las fases son dependiente
 |---|---|
 | `telefonia_ventas_db.php` | 31 comprobaciones: saliente/entrante, resultados, propietario, segmentos, paginación e historial tras reasignación |
 | `telefonia_ventas_gestion_db.php` | 28 comprobaciones: agenda, devolución, buzón, cierre, transacción y ambigüedad |
-| `telefonia_ventas_notificaciones_db.php` | 39 comprobaciones: avisos, respuestas tardías, agenda, conciliación y extensión sin asignar |
+| `telefonia_ventas_notificaciones_db.php` | 40 comprobaciones: avisos, respuestas tardías, agenda, conciliación y extensión sin asignar |
 | `telefonia_atencion_db.php` | 144 regresiones del Analista |
 | `telefonia_identidad_transferencia_db.php` | 12 regresiones de identidad institucional |
 | `telefonia_ventas_guard_http.cjs` | 11 casos HTTP del validador real: sesión, rol, permisos, método y CSRF. Sesiones de fixture; no acredita un login de producción |
@@ -50,6 +50,13 @@ Se compararon las mismas pruebas estáticas contra archivos de main y esta entre
 La ampliación del selector CSS compartido hizo que el contrato estático del modal de Analista no encontrara una regla que seguía activa. Se actualizó su búsqueda para reconocer `:is(...)`, conservando todas las comprobaciones de flex, scroll, altura y footer, y se comprobó además con navegador real. La corrección del contrato se llevó a las fases C y D.
 
 El check heredado de cadencia también reportó un timeout en Chromium del runner. Sus scripts y prueba no difieren de main; localmente pasan los 11 casos con Playwright 1.62.1/Bootstrap 5.3.8 y 1.56.1/5.3.3 sobre Edge. Esto no equivale a un check remoto aprobado. Revisar el estado actualizado de Actions antes de integrar; no anunciar la suite general como verde.
+
+## Corrección posterior a la entrega E
+
+- MySQL 8 detectó una incompatibilidad real de collations en el `UNION ALL` de `TelefoniaProgramacionVentasService::listar()`: la agenda podía estar en `utf8mb4_unicode_ci` o `utf8mb4_0900_ai_ci`, mientras que los resultados comerciales estaban en `utf8mb4_general_ci`. Las proyecciones de texto ahora se convierten a `utf8mb4` con collation explícita, sin modificar tablas, filtros de propiedad ni vínculos PBX.
+- La prueba aislada fuerza dos collations distintas incluso en MariaDB y comprueba la programación de agenda/resultados; los tres trabajos del workflow específico (MySQL 8, MariaDB 10.11 y navegador) aprobaron la primera ejecución tras el cambio de código.
+- El publicador E, su parche `16.patch` y las huellas SHA-256 del manifiesto se regeneraron y fijaron a un snapshot corregido. El instalador conserva `--check`, `--apply`, `--restore` y el rechazo de variantes no previstas. Validar la ejecución de CI correspondiente al último commit antes de integrar.
+- Aún no se han certificado llamadas ni grabaciones reales en Zadarma y no se ha publicado en Hostinger.
 
 ## Publicación
 
