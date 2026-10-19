@@ -84,5 +84,32 @@ document.addEventListener('DOMContentLoaded',()=>{
  window.addEventListener('pagehide',()=>window.parent?.IMPE_TELEPHONY_SHELL?.endCallbackResult?.(Number(opened?.id)));
  $('[data-callback-search]').addEventListener('input',()=>{page=1;render();});$('[data-callback-filter]').addEventListener('change',()=>{page=1;render();});$('[data-callback-prev]').addEventListener('click',()=>{page--;render();});$('[data-callback-next]').addEventListener('click',()=>{page++;render();});$('[data-callback-refresh]').addEventListener('click',()=>void refresh().catch(e=>notify(e.message,true)));
  window.setInterval(()=>void check(),2500);render();
+ // Enlace de Historial: el intento saliente ya registrado se consulta,
+ // nunca se reabre su formulario ni se prepara una nueva llamada.
+ const viewAttempt = Math.max(0,Number(root.dataset.viewAttempt)||0);
+ if(viewAttempt){
+  const related=tasks.find(t=>Number(t.intento?.id)===viewAttempt);
+  if(related){
+   $('[data-callback-search]').value='';
+   $('[data-callback-filter]').value=related.devolucion==='ATENDIDA'?'ATENDIDA':'PENDIENTE';
+   const visible=tasks.filter(t=>t.devolucion===$('[data-callback-filter]').value);
+   page=Math.floor(visible.findIndex(t=>Number(t.id)===Number(related.id))/10)+1;
+   page=Math.max(1,page);render();
+   const selected=Array.from(root.querySelectorAll('[data-callback-id]'))
+     .find(el=>Number(el.dataset.callbackId)===Number(related.id));
+   if(selected){
+    selected.classList.add('impe-incoming-targeted');
+    selected.setAttribute('tabindex','-1');
+    requestAnimationFrame(()=>{
+     selected.scrollIntoView({block:'center',behavior:'smooth'});
+     selected.focus({preventScroll:true});
+    });
+   }
+  }else{
+   const info=node('div','linkage-incoming-feedback',
+      'El intento solicitado no está disponible en tu historial de devoluciones. No se modificó ningún resultado.');
+   root.querySelector('.linkage-incoming-heading')?.after(info);
+  }
+ }
  const initial=Number(root.dataset.autoAttempt);if(initial){following=initial;void openResult(initial);}
 });
