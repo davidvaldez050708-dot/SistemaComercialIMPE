@@ -33,11 +33,14 @@ jobs:
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/ventas-browser/node_modules/playwright
           BOOTSTRAP_MODULE_PATH: /tmp/ventas-browser/node_modules/bootstrap
-        run: node tests/telefonia_ventas_operacion_browser.cjs
+        run: |
+          node tests/telefonia_ventas_operacion_browser.cjs
+          node tests/telefonia_ventas_gestion_browser.cjs
       - name: Publicador selectivo en replicas
         run: |
           python3 tests/publicacion_ventas_test.py a
           python3 tests/publicacion_ventas_test.py c
+          python3 tests/publicacion_ventas_test.py d
   datos-comerciales:
     runs-on: ubuntu-latest
     strategy:
@@ -66,6 +69,7 @@ jobs:
           IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
           php tests/telefonia_ventas_db.php
+          php tests/telefonia_ventas_gestion_db.php
           php tests/telefonia_atencion_db.php
           php tests/telefonia_identidad_transferencia_db.php
           php tests/telefonia_ventas_prospecto_identificacion_smoke.php

@@ -1,0 +1,38 @@
+--- a/app/views/telefonia/marcador.php
++++ b/app/views/telefonia/marcador.php
+@@ -176,6 +176,7 @@
+             </div>
+         </div>
+         <form class="telephony-contact-form" data-telephony-contact-form autocomplete="off">
++            <input type="hidden" data-telephony-contact-id value="0">
+             <div>
+                 <label for="telefono-contacto-nombre">Nombre del prospecto</label>
+                 <input id="telefono-contacto-nombre" type="text" class="form-control"
+@@ -188,7 +189,10 @@
+                     maxlength="22" class="form-control" placeholder="Ej. 477 123 4567"
+                     required data-telephony-contact-number>
+             </div>
+-            <div class="telephony-contact-form-actions">
++            <div><label for="agendaCorreo">Correo (opcional)</label><input class="form-control" type="email" id="agendaCorreo" maxlength="180" data-telephony-contact-email></div>
++            <div><label for="agendaProxima">Próximo contacto (opcional)</label><input class="form-control" type="datetime-local" id="agendaProxima" data-telephony-contact-next></div>
++            <div><label for="agendaNota">Observaciones</label><textarea class="form-control" id="agendaNota" rows="2" maxlength="500" data-telephony-contact-note></textarea></div>
++            <div class="telephony-contact-form-actions"><button type="button" class="btn btn-system-light" data-telephony-contact-cancel hidden>Cancelar edición</button>
+                 <button type="button" class="btn btn-system-light"
+                     data-telephony-contact-from-dialer>Tomar del marcador</button>
+                 <button type="submit" class="btn btn-system-save"
+@@ -205,12 +209,12 @@
+             <?php foreach ($contactos as $contacto): ?>
+                 <article class="telephony-contact-row" data-telephony-contact-row
+                     data-contact-id="<?= (int)$contacto['id'] ?>"
+-                    data-contact-number="<?= $esc($contacto['telefono']) ?>">
++                    data-contact-number="<?= $esc($contacto['telefono']) ?>" data-contact-email="<?= $esc($contacto['correo']??'') ?>" data-contact-note="<?= $esc($contacto['observacion']??'') ?>" data-contact-next="<?= $esc($contacto['proxima_accion_at']??'') ?>">
+                     <div class="telephony-contact-name">
+                         <strong data-contact-name><?= $esc($contacto['nombre']) ?></strong>
+-                        <small data-contact-display-number><?= $esc($contacto['telefono']) ?></small>
++                        <small data-contact-display-number><?= $esc($contacto['telefono']) ?></small><small data-contact-extra><?= $esc(implode(' · ',array_filter([$contacto['correo']??'', $contacto['proxima_accion_at']??'', $contacto['observacion']??'']))) ?></small>
+                     </div>
+-                    <div class="telephony-contact-actions">
++                    <div class="telephony-contact-actions"><button type="button" class="btn btn-system-light" data-telephony-contact-edit aria-label="Editar contacto"><i class="bi bi-pencil"></i></button>
+                         <button type="button" class="btn btn-system-light"
+                             data-telephony-contact-use>Usar número</button>
+                         <button type="button" class="telephony-contact-remove"

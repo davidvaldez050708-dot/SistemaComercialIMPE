@@ -1,0 +1,181 @@
+--- a/app/services/TelefoniaContactosService.php
++++ b/app/services/TelefoniaContactosService.php
+@@ -11,9 +11,9 @@
+ {
+     private $connection;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $db=null)
+     {
+-        $this->connection = (new Database())->connect();
++        $this->connection = $db ?? (new Database())->connect();
+         $this->asegurarEstructura();
+     }
+ 
+@@ -77,119 +77,54 @@
+         return '+' . $digitos;
+     }
+ 
+-    public function listar(int $usuarioId): array
+-    {
+-        if ($usuarioId <= 0) {
+-            return [];
++    private function rows(string $sql,array $args=[]): array {
++        $s=$this->connection->prepare($sql);if($args)$s->bind_param(str_repeat('s',count($args)),...$args);
++        $s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $rows;
++    }
++    public static function fechaFutura(string $value): ?string {
++        $value=str_replace('T',' ',trim($value));if($value==='')return null;
++        $format=strlen($value)===16?'Y-m-d H:i':'Y-m-d H:i:s';$date=DateTimeImmutable::createFromFormat('!'.$format,$value);
++        if(!$date||$date->format($format)!==$value||$date->getTimestamp()<=time())throw new InvalidArgumentException('Selecciona una fecha futura válida.');
++        return $date->format('Y-m-d H:i:s');
++    }
++    private function ampliada(): bool {
++        return $this->connection->query("SHOW COLUMNS FROM telefonia_contactos_personales LIKE 'correo'")->num_rows>0;
++    }
++    public function listar(int $usuarioId): array {
++        if($usuarioId<=0)return [];
++        $fields=$this->ampliada()?'correo,observacion,proxima_accion_at':"'' correo,'' observacion,NULL proxima_accion_at";
++        return $this->rows("SELECT id,nombre,telefono,$fields FROM telefonia_contactos_personales WHERE usuario_id=? ORDER BY nombre,id DESC LIMIT 150",[$usuarioId]);
++    }
++    public function guardar(int $usuarioId,string $nombre,string $telefono,array $datos=[]): array {
++        if($usuarioId<=0)throw new InvalidArgumentException('Sesión no válida.');
++        $nombre=trim(preg_replace('/\\s+/u',' ',$nombre)??$nombre);
++        if(mb_strlen($nombre)<2||mb_strlen($nombre)>90)throw new InvalidArgumentException('Escribe el nombre del prospecto (entre 2 y 90 caracteres).');
++        $telefono=self::normalizarTelefono($telefono);$id=(int)($datos['contacto_id']??0);
++        $correo=trim((string)($datos['correo']??''));$note=trim((string)($datos['observacion']??''));
++        if(mb_strlen($correo)>180||($correo!==''&&!filter_var($correo,FILTER_VALIDATE_EMAIL)))throw new InvalidArgumentException('Escribe un correo válido.');
++        if(mb_strlen($note)>500)throw new InvalidArgumentException('Limita las observaciones de agenda a 500 caracteres.');
++        $next=self::fechaFutura((string)($datos['proxima_accion_at']??''));
++        $expanded=$this->ampliada();
++        if(!$expanded&&($correo!==''||$note!==''||$next!==null))throw new DomainException('Falta aplicar la migración de agenda comercial.');
++        if($id>0&&!$this->rows('SELECT id FROM telefonia_contactos_personales WHERE usuario_id=? AND id=?',[$usuarioId,$id]))throw new DomainException('El contacto no pertenece a tu agenda.');
++        $same=$this->rows('SELECT * FROM telefonia_contactos_personales WHERE usuario_id=? AND telefono=?',[$usuarioId,$telefono]);
++        if($same&&(int)$same[0]['id']!==$id){
++            // Reintento idéntico es idempotente; nunca renombrar otro prospecto por coincidir el número.
++            if($id===0&&$same[0]['nombre']===$nombre&&(!$expanded||($same[0]['correo']===$correo&&$same[0]['observacion']===$note&&$same[0]['proxima_accion_at']===$next)))return $same[0];
++            throw new DomainException('Ese número ya está en tu agenda. Edita el contacto existente.');
+         }
+-
+-        $sql = "SELECT id, nombre, telefono
+-                FROM telefonia_contactos_personales
+-                WHERE usuario_id = ?
+-                ORDER BY nombre ASC, id DESC
+-                LIMIT 150";
+-        $stmt = $this->connection->prepare($sql);
+-        if (!$stmt) {
+-            throw new RuntimeException('No fue posible consultar los teléfonos guardados.');
+-        }
+-        $stmt->bind_param('i', $usuarioId);
+-        $stmt->execute();
+-        $result = $stmt->get_result();
+-        $contactos = [];
+-
+-        while ($fila = $result->fetch_assoc()) {
+-            $contactos[] = [
+-                'id' => (int)$fila['id'],
+-                'nombre' => (string)$fila['nombre'],
+-                'telefono' => (string)$fila['telefono']
+-            ];
+-        }
+-        $stmt->close();
+-
+-        return $contactos;
++        if($id===0&&(int)$this->rows('SELECT COUNT(*) n FROM telefonia_contactos_personales WHERE usuario_id=?',[$usuarioId])[0]['n']>=150)throw new DomainException('Llegaste al máximo de 150 contactos.');
++        $fields=$expanded?',correo=?,observacion=?,proxima_accion_at=?':'';
++        $args=[$nombre,$telefono];if($expanded)$args=array_merge($args,[$correo,$note,$next]);
++        if($id>0){$sql="UPDATE telefonia_contactos_personales SET nombre=?,telefono=?$fields WHERE usuario_id=? AND id=?";$args=array_merge($args,[$usuarioId,$id]);}
++        else{$sql="INSERT INTO telefonia_contactos_personales SET nombre=?,telefono=?$fields,usuario_id=?";$args[]=$usuarioId;}
++        $s=$this->connection->prepare($sql);$s->bind_param(str_repeat('s',count($args)),...$args);
++        try{$s->execute();if(!$id)$id=(int)$this->connection->insert_id;}
++        catch(mysqli_sql_exception $e){if($e->getCode()===1062)throw new DomainException('Ese teléfono ya pertenece a otro contacto de tu agenda.');throw $e;}finally{$s->close();}
++        return $this->rows('SELECT * FROM telefonia_contactos_personales WHERE usuario_id=? AND id=?',[$usuarioId,$id])[0];
+     }
+-
+-    public function guardar(int $usuarioId, string $nombre, string $telefono): array
+-    {
+-        if ($usuarioId <= 0) {
+-            throw new InvalidArgumentException('Sesión no válida.');
+-        }
+-
+-        $nombre = trim(preg_replace('/\\s+/u', ' ', $nombre) ?? $nombre);
+-        if (
+-            $nombre === '' ||
+-            mb_strlen($nombre, 'UTF-8') > 90 ||
+-            mb_strlen($nombre, 'UTF-8') < 2
+-        ) {
+-            throw new InvalidArgumentException('Escribe el nombre del prospecto (entre 2 y 90 caracteres).');
+-        }
+-
+-        $telefono = self::normalizarTelefono($telefono);
+-
+-        // Si ya existe, permite actualizar el nombre sin consumir otro cupo.
+-        $stmtExistente = $this->connection->prepare(
+-            'SELECT id FROM telefonia_contactos_personales WHERE usuario_id = ? AND telefono = ? LIMIT 1'
+-        );
+-        $stmtExistente->bind_param('is', $usuarioId, $telefono);
+-        $stmtExistente->execute();
+-        $existente = $stmtExistente->get_result()->fetch_assoc();
+-        $stmtExistente->close();
+-
+-        if (!$existente) {
+-            $stmtConteo = $this->connection->prepare(
+-                'SELECT COUNT(*) AS total FROM telefonia_contactos_personales WHERE usuario_id = ?'
+-            );
+-            $stmtConteo->bind_param('i', $usuarioId);
+-            $stmtConteo->execute();
+-            $conteo = $stmtConteo->get_result()->fetch_assoc();
+-            $stmtConteo->close();
+-
+-            if ((int)($conteo['total'] ?? 0) >= 150) {
+-                throw new InvalidArgumentException('Llegaste al máximo de 150 teléfonos personales.');
+-            }
+-        }
+-
+-        $stmt = $this->connection->prepare(
+-            "INSERT INTO telefonia_contactos_personales (usuario_id, nombre, telefono)
+-             VALUES (?, ?, ?)
+-             ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), updated_at = CURRENT_TIMESTAMP"
+-        );
+-        $stmt->bind_param('iss', $usuarioId, $nombre, $telefono);
+-        $stmt->execute();
+-        $stmt->close();
+-
+-        $consulta = $this->connection->prepare(
+-            'SELECT id, nombre, telefono FROM telefonia_contactos_personales WHERE usuario_id = ? AND telefono = ? LIMIT 1'
+-        );
+-        $consulta->bind_param('is', $usuarioId, $telefono);
+-        $consulta->execute();
+-        $contacto = $consulta->get_result()->fetch_assoc();
+-        $consulta->close();
+-
+-        if (!$contacto) {
+-            throw new RuntimeException('No fue posible recuperar el teléfono guardado.');
+-        }
+-
+-        return [
+-            'id' => (int)$contacto['id'],
+-            'nombre' => (string)$contacto['nombre'],
+-            'telefono' => (string)$contacto['telefono']
+-        ];
+-    }
+-
+-    public function eliminar(int $usuarioId, int $contactoId): bool
+-    {
+-        if ($usuarioId <= 0 || $contactoId <= 0) {
+-            throw new InvalidArgumentException('Teléfono no válido.');
+-        }
+-
+-        $stmt = $this->connection->prepare(
+-            'DELETE FROM telefonia_contactos_personales WHERE id = ? AND usuario_id = ? LIMIT 1'
+-        );
+-        $stmt->bind_param('ii', $contactoId, $usuarioId);
+-        $stmt->execute();
+-        $eliminado = $stmt->affected_rows > 0;
+-        $stmt->close();
+-        return $eliminado;
++    public function eliminar(int $usuarioId,int $contactoId): bool {
++        if($usuarioId<=0||$contactoId<=0)throw new InvalidArgumentException('Contacto no válido.');
++        $s=$this->connection->prepare('DELETE FROM telefonia_contactos_personales WHERE usuario_id=? AND id=?');$s->bind_param('ii',$usuarioId,$contactoId);$s->execute();$ok=$s->affected_rows>0;$s->close();return $ok;
+     }
+ }

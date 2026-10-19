@@ -23,6 +23,9 @@
         const contactForm = root.querySelector('[data-telephony-contact-form]');
         const contactName = root.querySelector('[data-telephony-contact-name]');
         const contactNumber = root.querySelector('[data-telephony-contact-number]');
+        const contactId=root.querySelector('[data-telephony-contact-id]'),contactEmail=root.querySelector('[data-telephony-contact-email]'),contactNote=root.querySelector('[data-telephony-contact-note]'),contactSchedule=root.querySelector('[data-telephony-contact-next]'),contactCancel=root.querySelector('[data-telephony-contact-cancel]');
+        const resetContact=()=>{contactForm.reset();if(contactId)contactId.value='0';if(contactCancel)contactCancel.hidden=true;};
+        contactCancel?.addEventListener('click',resetContact);
         const contactList = root.querySelector('[data-telephony-contacts-list]');
         const contactEmpty = root.querySelector('[data-telephony-contacts-empty]');
         const contactFeedback = root.querySelector('[data-telephony-contact-status]');
@@ -400,6 +403,7 @@
             row.setAttribute('data-telephony-contact-row', '');
             row.dataset.contactId = String(contact.id);
             row.dataset.contactNumber = String(contact.telefono);
+            row.dataset.contactEmail=contact.correo||'';row.dataset.contactNote=contact.observacion||'';row.dataset.contactNext=contact.proxima_accion_at||'';
 
             const details = document.createElement('div');
             details.className = 'telephony-contact-name';
@@ -428,7 +432,9 @@
             icon.className = 'bi bi-trash';
             icon.setAttribute('aria-hidden', 'true');
             remove.appendChild(icon);
-            actions.append(use, remove);
+            const extra=document.createElement('small');extra.textContent=[contact.correo,contact.proxima_accion_at,contact.observacion].filter(Boolean).join(' · ');details.append(extra);
+            const edit=document.createElement('button');edit.type='button';edit.className='btn btn-system-light';edit.setAttribute('data-telephony-contact-edit','');edit.setAttribute('aria-label','Editar contacto');edit.innerHTML='<i class="bi bi-pencil" aria-hidden="true"></i>';
+            actions.append(use,edit,remove);
             row.append(details, actions);
             return row;
         }
@@ -625,10 +631,10 @@
             sayContact('Guardando teléfono…');
             void postContact(root.dataset.contactAddUrl, {
                 nombre: contactName.value.trim(),
-                telefono: contactNumber.value.trim()
+                telefono: contactNumber.value.trim(), contacto_id:contactId?.value||'0',correo:contactEmail?.value||'',observacion:contactNote?.value||'',proxima_accion_at:contactSchedule?.value||''
             }).then(function (result) {
                 upsertContact(result.contacto);
-                contactForm.reset();
+                resetContact();
                 sayContact('Teléfono guardado. Puedes seleccionarlo para marcar.');
             }).catch(function (error) {
                 sayContact(error.message, true);
@@ -643,6 +649,11 @@
             const row = event.target.closest('[data-telephony-contact-row]');
             if (!button || !row) return;
 
+            if(button.hasAttribute('data-telephony-contact-edit')){
+                contactId.value=row.dataset.contactId;contactName.value=row.querySelector('[data-contact-name]').textContent;
+                contactNumber.value=row.dataset.contactNumber;contactEmail.value=row.dataset.contactEmail||'';contactNote.value=row.dataset.contactNote||'';
+                contactSchedule.value=(row.dataset.contactNext||'').replace(' ','T').slice(0,16);contactCancel.hidden=false;contactName.focus();return;
+            }
             if (button.hasAttribute('data-telephony-contact-use')) {
                 numberInput.value = row.dataset.contactNumber || '';
                 say('Número seleccionado. Pulsa Llamar para iniciar la llamada.');

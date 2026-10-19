@@ -122,6 +122,15 @@ class TelefoniaResultadoVentasService
         $cols=array_column($this->db->query('SHOW COLUMNS FROM telefonia_ventas_resultados')->fetch_all(MYSQLI_ASSOC),'Field');
         if(!in_array('observacion',$cols,true))throw new DomainException('Falta aplicar la migración comercial antes de guardar resultados.');
         $extension=$call['extension'];$pbxCallId=$call['pbx_call_id'];
+        require_once __DIR__.'/TelefoniaDevolucionVentasService.php';
+        $callbacks=null;
+        if($this->db->query("SHOW TABLES LIKE 'telefonia_ventas_devolucion_intentos'")->num_rows){$callbacks=new TelefoniaDevolucionVentasService($this->db);$callbacks->reconciliar($usuarioId);}
+        $saveContact=($datos['guardar_contacto']??'')==='1';
+        if($saveContact&&$contact!==null)throw new InvalidArgumentException('Selecciona un contacto existente o guarda uno nuevo.');
+        // Los constructores legacy que preparan tablas se ejecutan antes de la transacción.
+        $agenda=$saveContact?new TelefoniaContactosService($this->db):null;
+        $this->db->begin_transaction();
+        try {
         // Resultado definitivo: no cambiar propietario ni sobrescribir un registro previo.
         $s=$this->db->prepare('INSERT INTO telefonia_ventas_resultados
             (usuario_id,extension,pbx_call_id,resultado,observacion,prospecto_nombre,contacto_id,proxima_accion_at)
@@ -129,6 +138,13 @@ class TelefoniaResultadoVentasService
         try{$s->bind_param('isssssis',$usuarioId,$extension,$pbxCallId,$resultado,$note,$name,$contact,$next);$s->execute();}
         catch(mysqli_sql_exception $e){if($e->getCode()===1062)throw new DomainException('El resultado de esta llamada ya se guardó y es definitivo.');throw $e;}
         finally{$s->close();}
+        if($agenda){
+            $saved=$agenda->guardar($usuarioId,$name,$call['numero'],['correo'=>(string)($datos['correo']??''),'observacion'=>mb_substr($note,0,500),'proxima_accion_at'=>$next??'']);
+            $contact=(int)$saved['id'];$update=$this->db->prepare('UPDATE telefonia_ventas_resultados SET contacto_id=? WHERE usuario_id=? AND extension=? AND pbx_call_id=?');$update->bind_param('iiss',$contact,$usuarioId,$extension,$pbxCallId);$update->execute();$update->close();
+        }
+        if($callbacks)$callbacks->aplicarResultado($usuarioId,$call,$resultado);
+        $this->db->commit();
+        }catch(Throwable $e){$this->db->rollback();throw $e;}
         return ['pbx_call_id'=>$pbxCallId,'extension'=>$extension,'resultado'=>$resultado,
             'etiqueta'=>self::opciones()[$resultado],'contacto_real'=>self::esConversacion($resultado)];
     }
