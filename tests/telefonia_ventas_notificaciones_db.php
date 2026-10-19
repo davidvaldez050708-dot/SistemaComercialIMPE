@@ -29,6 +29,12 @@ try {
  $pending=TelefoniaVentasSchema::pendientes($db);vcheck(count($pending)>0&&!$svc->disponible(),'Check de migración es de lectura');
  foreach($pending as $sql)$db->query($sql);
  vcheck(TelefoniaVentasSchema::pendientes($db)===[],'Migración idempotente');
+ // Simula una agenda preexistente con colación distinta a las tablas nuevas de Ventas.
+ // El UNION de programación debe servir sin modificar tablas de producción.
+ $db->query('ALTER TABLE telefonia_contactos_personales CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+ $contactCollation=$db->query("SELECT COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='telefonia_contactos_personales' AND COLUMN_NAME='nombre'")->fetch_assoc()['COLLATION_NAME'];
+ $resultCollation=$db->query("SELECT COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='telefonia_ventas_resultados' AND COLUMN_NAME='prospecto_nombre'")->fetch_assoc()['COLLATION_NAME'];
+ vcheck($contactCollation==='utf8mb4_unicode_ci'&&$resultCollation==='utf8mb4_general_ci','Fixture con dos collations distintas para detectar UNION incompatible');
  $events=new ZadarmaWebhookEventStoreService($db);$results=new TelefoniaResultadoVentasService($db);$base=time()-300;
  $event=function(string $ref,string $type,string $ext='150',int $seconds=0,array $extra=[])use($events,$base){static $offset=0;$at=date('Y-m-d H:i:s',$base);$events->registrar($extra+['event'=>$type,'pbx_call_id'=>$ref,'internal'=>$ext,'caller_id'=>'+525551112233','destination'=>'+525551112233','received_at'=>$at,'call_start'=>$at,'duration'=>$seconds]);};
 
