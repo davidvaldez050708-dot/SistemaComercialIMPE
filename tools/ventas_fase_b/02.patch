@@ -1,0 +1,21 @@
+--- a/app/services/ZadarmaWebhookEventStoreService.php
++++ b/app/services/ZadarmaWebhookEventStoreService.php
+@@ -152,6 +152,18 @@
+             $eventHash
+         );
+         $stmt->execute();
++        $stmt->close();
++        // Captura opcional de propiedad comercial; nunca ejecuta migraciones
++        // ni impide almacenar el evento firmado si la fase B no está instalada.
++        if (in_array($evento, ['NOTIFY_INTERNAL','NOTIFY_OUT_START'], true)) {
++            try {
++                require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
++                (new TelefoniaVentasLlamadasService($this->connection))->capturarEvento([
++                    'event'=>$evento,'pbx_call_id'=>$pbxCallId,'internal'=>$internal,
++                    'destination'=>$destination,'caller_id'=>$callerId,
++                    'call_start'=>$callStart,'received_at'=>$receivedAt]);
++            } catch (Throwable $e) {error_log('[ventas_propiedad_pbx] '.get_class($e));}
++        }
+ 
+         return true;
+     }

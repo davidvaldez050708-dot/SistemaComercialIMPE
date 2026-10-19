@@ -24,17 +24,21 @@ def scenario(kind):
         (live / 'index.php').write_bytes(b'<?php // no ejecutar CRM')
         (live / 'privado.txt').write_bytes(b'PERSONALIZACION FUERA DEL PARCHE')
         for f in MANIFEST['files']:
+            if f['new']: continue
             p = live / f['path']; p.parent.mkdir(parents=True, exist_ok=True)
             p.write_bytes(blob(MANIFEST['base'], f['path']))
             if f.get('production_fixture') and kind == 'hostinger':
                 subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', str(REPO / f['production_fixture'])], cwd=live, check=True, capture_output=True)
-            if kind == 'personalizado' and f['kind'] == 'php':
+            if kind == 'personalizado' and f['kind'] == 'php' and not f['new']:
                 p.write_bytes(p.read_bytes() + b'\n// PERSONALIZACION A CONSERVAR\n')
             p.chmod(0o644)
         if kind == 'js-desconocido':
-            p = live / MANIFEST['files'][2]['path']; p.write_bytes(p.read_bytes() + b'\n// NO REVISADO\n')
+            candidate=next((f for f in MANIFEST['files'] if f['kind']=='js' and not f['new']),None)
+            if not candidate: return 'sin JS existente: caso no aplicable'
+            p = live / candidate['path']; p.write_bytes(p.read_bytes() + b'\n// NO REVISADO\n')
         if kind == 'php-conflicto':
-            (live / MANIFEST['files'][0]['path']).write_bytes(b'<?php // incompatible\n')
+            candidate=next(f for f in MANIFEST['files'] if f['kind']=='php' and not f['new'])
+            (live / candidate['path']).write_bytes(b'<?php // incompatible\n')
         env = dict(os.environ, TMPDIR=sp(root))
         env.update({'IMPE_VENTAS_'+STAGE.upper()+'_SOURCE':sp(REPO),'IMPE_VENTAS_'+STAGE.upper()+'_PUBLIC':sp(live),'IMPE_VENTAS_'+STAGE.upper()+'_BACKUPS':sp(root/'backups')})
         def run(mode, backup=None):
@@ -51,7 +55,7 @@ def scenario(kind):
         after = snap(live); assert after['privado.txt'] == before['privado.txt']
         for f in MANIFEST['files']:
             data = after[f['path']].replace(b'\r\n', b'\n')
-            if kind == 'personalizado' and f['kind'] == 'php':
+            if kind == 'personalizado' and f['kind'] == 'php' and not f['new']:
                 assert data.endswith(b'// PERSONALIZACION A CONSERVAR\n'); continue
             expected = next((v['after'] for v in f['variants'] if v['label'].startswith('hostinger') and kind == 'hostinger'), f['target_sha256'])
             assert hashlib.sha256(data).hexdigest() == expected, f['path']
@@ -66,6 +70,6 @@ def scenario(kind):
 if __name__ == '__main__':
     subprocess.run([BASH, '-n', sp(SCRIPT)], check=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        for result in pool.map(scenario, ['github', 'hostinger', 'personalizado', 'js-desconocido', 'php-conflicto']):
+        for result in pool.map(scenario, ['github', 'replica-base', 'personalizado', 'js-desconocido', 'php-conflicto']):
             print('OK:', result, flush=True)
-    print('Publicación de identidad: 5 escenarios aprobados en réplicas.')
+    print('Publicación selectiva de Ventas: 5 escenarios aprobados en réplicas.')
