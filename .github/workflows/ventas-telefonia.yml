@@ -44,13 +44,20 @@ jobs:
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/ventas-browser/node_modules/playwright
           BOOTSTRAP_MODULE_PATH: /tmp/ventas-browser/node_modules/bootstrap
+          IMPE_VENTAS_SCREENSHOTS: /tmp/ventas-capturas
         run: |
+          mkdir -p /tmp/ventas-capturas
           node tests/telefonia_ventas_operacion_browser.cjs
           node tests/telefonia_ventas_historial_browser.cjs
           node tests/telefonia_ventas_gestion_browser.cjs
           node tests/telefonia_modal_entrante_integracion_browser.cjs
           node tests/telefonia_disponibilidad_browser.cjs
           node tests/recordatorios_toasts_browser.cjs
+      - name: Capturas de Mis llamadas y resultados
+        uses: actions/upload-artifact@v4
+        with:
+          name: ventas-mis-llamadas-responsive
+          path: /tmp/ventas-capturas
       - name: Publicador selectivo en replicas
         run: |
           python3 tests/publicacion_ventas_test.py a
