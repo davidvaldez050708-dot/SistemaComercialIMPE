@@ -15,9 +15,17 @@ final class TelefoniaNotificacionVentasService
     public function pendientes(int $uid): array {
         $calls=(new TelefoniaVentasLlamadasService($this->db))->listar($uid);
         // Conciliar estados con el mecanismo existente; aceptar disponibilidad no acredita respuesta.
-        $active=$this->rows("SELECT extension FROM telefonia_extensiones WHERE usuario_id=? AND activo=1 AND proveedor='ZADARMA' AND permite_entrantes=1",[$uid]);
-        if(count($active)===1)(new TelefoniaDisponibilidadService($this->db))->devoluciones($uid);
-        $tasks=(new TelefoniaDevolucionVentasService($this->db))->tareas($uid);$wanted=[];$covered=[];$facts=[];
+        try{$active=$this->rows("SELECT extension FROM telefonia_extensiones WHERE usuario_id=? AND activo=1 AND proveedor='ZADARMA' AND permite_entrantes=1",[$uid]);}
+        catch(Throwable $e){error_log('[ventas_avisos_extension] '.get_class($e));$active=[];}
+        // La sincronización de devoluciones es auxiliar: no debe dejar la
+        // campana vacía si falla una operación pendiente de otra extensión.
+        if(count($active)===1){
+            try{(new TelefoniaDisponibilidadService($this->db))->devoluciones($uid);}
+            catch(Throwable $e){error_log('[ventas_avisos_disponibilidad] '.get_class($e));}
+        }
+        try{$tasks=(new TelefoniaDevolucionVentasService($this->db))->tareas($uid);}
+        catch(Throwable $e){error_log('[ventas_avisos_devolucion] '.get_class($e));$tasks=[];}
+        $wanted=[];$covered=[];$facts=[];
         $add=static function(string $key,string $ext,string $number,string $date,string $title,string $text,string $url,string $label)use(&$wanted):void {
             $wanted[$key]=['extension'=>$ext,'numero'=>$number,'created_at'=>$date,'titulo'=>$title,'mensaje'=>$text,'url'=>$url,'etiqueta'=>$label];
         };
@@ -35,14 +43,17 @@ final class TelefoniaNotificacionVentasService
                 ($c['nombre']?:$c['numero']).' · '.($missed?'No se confirmó una conversación. Revisa tu llamada.':'Registra lo que ocurrió en esta llamada.'),
                 $base.'&pbx_call_id='.rawurlencode($c['pbx_call_id']).'&extension='.rawurlencode($c['extension']),$missed?'Sin respuesta':'Por registrar');
         }
-        $operations=$this->rows("SELECT o.* FROM telefonia_transferencia_operaciones o WHERE destino_usuario=? AND EXISTS(SELECT 1 FROM telefonia_disponibilidad d WHERE d.destino_usuario=o.destino_usuario AND d.destino_extension=BINARY o.destino_extension AND d.referencia=BINARY o.referencia AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.tipo'))='PROSPECTO') AND estado IN ('SIN_RESPUESTA','SIN_CONFIRMAR') AND created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 DAY) ORDER BY created_at DESC",[$uid]);
+        try{$operations=$this->rows("SELECT o.* FROM telefonia_transferencia_operaciones o WHERE destino_usuario=? AND EXISTS(SELECT 1 FROM telefonia_disponibilidad d WHERE d.destino_usuario=o.destino_usuario AND d.destino_extension=BINARY o.destino_extension AND d.referencia=BINARY o.referencia AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.tipo'))='PROSPECTO') AND estado IN ('SIN_RESPUESTA','SIN_CONFIRMAR') AND created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 DAY) ORDER BY created_at DESC",[$uid]);}
+        catch(Throwable $e){error_log('[ventas_avisos_transferencias] '.get_class($e));$operations=[];}
         foreach($operations as $op){$scope=$op['referencia'].'|'.$op['destino_extension'];
             if(!empty($facts[$scope]['conectada'])||isset($covered[$scope])||!empty($facts[$scope]['finalizada']))continue;
             $confirmed=$op['estado']==='SIN_RESPUESTA';$date=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
             $add('ventas:transferencia:'.$op['id'].':'.$op['intento'].':'.$op['estado'],$op['destino_extension'],$op['numero'],$date,$confirmed?'Transferencia no contestada':'Transferencia sin confirmación',
                 $op['numero'].' · Coordina con Recepción ext. '.$op['origen_extension'].'. No se confirma retorno automático a Recepción.',$base.'&estado=transferidas',$confirmed?'Sin respuesta':'Por confirmar');
         }
-        foreach((new TelefoniaProgramacionVentasService($this->db))->listar($uid) as $reminder){if($reminder['fecha']>date('Y-m-d H:i:s'))continue;
+        try{$reminders=(new TelefoniaProgramacionVentasService($this->db))->listar($uid);}
+        catch(Throwable $e){error_log('[ventas_avisos_programadas] '.get_class($e));$reminders=[];}
+        foreach($reminders as $reminder){if($reminder['fecha']>date('Y-m-d H:i:s'))continue;
             $add('ventas:programada:'.$reminder['origen'].':'.$reminder['id'].':'.substr(sha1($reminder['fecha']),0,12),$reminder['extension'],$reminder['telefono'],$reminder['fecha'],'Contacto programado',
                 ($reminder['nombre']?:$reminder['telefono']).' · '.$reminder['detalle'],$base.'&vista=agenda','Programada');
         }
