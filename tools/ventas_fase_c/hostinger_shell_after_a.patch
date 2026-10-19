@@ -1,0 +1,13 @@
+--- a/public/javascript/telefonia_shell.js
++++ b/public/javascript/telefonia_shell.js
+@@ -931,9 +931,7 @@
+         const url = new URL(String(cfg.incomingResultsUrl), window.location.href);
+         if (url.origin !== window.location.origin) return;
+         url.searchParams.set('pbx_call_id', analystPendingCall.id);
+-        // Abrir el formulario NO significa que MySQL haya guardado el resultado.
+-        // Conservar el pendiente hasta la confirmación IMPE_ANALYST_RESULT_SAVED
+-        // emitida por el iframe después del guardado real.
++        // No descartar resultado antes de confirmación SQL.
+         crm.src = url.toString();
+     });
+     analystResultDismiss?.addEventListener('click', dismissAnalystResult);
