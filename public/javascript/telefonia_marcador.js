@@ -255,6 +255,7 @@
             if (state.active || String(state.context?.type || '').toUpperCase() !== 'DIALER') {
                 return;
             }
+            resetContact();contactName.value=String(state.institution||'').slice(0,90);
             contactNumber.value = String(state.destination || numberInput.value || '');
             sayContact('Escribe el nombre del prospecto y pulsa Guardar número.');
             contactName.focus();

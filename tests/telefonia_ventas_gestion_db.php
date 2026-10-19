@@ -24,7 +24,7 @@ try {
  new TelefoniaDisponibilidadService($db);
  $db->query('CREATE TABLE telefonia_contactos_personales(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,usuario_id INT,nombre VARCHAR(90),telefono VARCHAR(18),UNIQUE KEY own_phone(usuario_id,telefono))');
  $db->query("INSERT INTO telefonia_contactos_personales VALUES (1,8,'Ana','+525551110000'),(2,9,'Ajena','+525559998877')");
- $db->query('CREATE TABLE telefonia_ventas_marcaciones(id INT PRIMARY KEY,usuario_id INT,extension VARCHAR(12),destino VARCHAR(20),pbx_call_id VARCHAR(100),created_at DATETIME)');
+ require_once dirname(__DIR__).'/app/services/TelefoniaMarcacionesVentasService.php';new TelefoniaMarcacionesVentasService($db);
  $svc=new TelefoniaVentasLlamadasService($db);vcheck(!$svc->disponible(),'No crea tablas al consultar');
  $pending=TelefoniaVentasSchema::pendientes($db);vcheck(count($pending)>0&&!$svc->disponible(),'Check de migración es de lectura');
  foreach($pending as $sql)$db->query($sql);

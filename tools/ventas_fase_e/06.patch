@@ -1,0 +1,177 @@
+--- a/app/services/TelefoniaVentasLlamadasService.php
++++ b/app/services/TelefoniaVentasLlamadasService.php
+@@ -83,55 +83,79 @@
+     /** Recupera sólo atribución persistida o inicios posteriores a la asignación actual. */
+     public function sincronizar(int $uid): void {
+         $this->autorizar($uid);$this->requerir();
+-        $rows=$this->rows("SELECT e.* FROM telefonia_zadarma_eventos e
+-            JOIN telefonia_extensiones t ON t.extension = BINARY e.internal AND t.usuario_id=? AND t.activo=1 AND t.proveedor='ZADARMA'
+-            WHERE e.evento IN ('NOTIFY_INTERNAL','NOTIFY_OUT_START') AND e.received_at>=DATE_SUB(NOW(),INTERVAL 90 DAY)
+-              AND e.received_at>=GREATEST(t.created_at,t.updated_at)
+-              AND (e.call_start IS NULL OR e.call_start>=GREATEST(t.created_at,t.updated_at))
+-              AND NOT EXISTS (SELECT 1 FROM telefonia_ventas_llamadas c WHERE c.pbx_call_id = BINARY e.pbx_call_id AND c.extension = BINARY e.internal)
+-            ORDER BY e.id LIMIT 300",[$uid]);
+-        foreach($rows as $e)$this->capturarEvento($e);
+-        // Transferencias comerciales explícitas preservan el destinatario histórico,
+-        // incluso si la PBX sólo notificó la respuesta de su extensión.
+-        $transfers=$this->rows("SELECT o.referencia,o.destino_extension,o.numero,d.ruta_json,MIN(e.received_at) fecha
+-            FROM telefonia_transferencia_operaciones o JOIN telefonia_disponibilidad d
+-              ON d.origen_usuario=o.origen_usuario AND d.destino_usuario=o.destino_usuario
+-             AND d.destino_extension = BINARY o.destino_extension AND d.referencia = BINARY o.referencia
+-            JOIN telefonia_zadarma_eventos e ON e.pbx_call_id = BINARY o.referencia AND e.internal = BINARY o.destino_extension
+-             AND e.evento IN ('NOTIFY_INTERNAL','NOTIFY_ANSWER')
++        require_once __DIR__.'/TelefoniaMarcacionesVentasService.php';
++        $assigned=$this->rows("SELECT extension FROM telefonia_extensiones WHERE usuario_id=? AND activo=1 AND proveedor='ZADARMA' AND permite_salientes=1",[$uid]);
++        if(count($assigned)===1)(new TelefoniaMarcacionesVentasService($this->db,false))->reconciliarPendientes($uid,$assigned[0]['extension']);
++        // Backfill por conjuntos: no resolver propietario, permisos y metadata por cada evento.
++        $sql="INSERT IGNORE INTO telefonia_ventas_llamadas (usuario_id,extension,pbx_call_id,direccion,numero,fecha)
++            SELECT t.usuario_id,e.internal,e.pbx_call_id,IF(e.evento='NOTIFY_OUT_START','Saliente','Entrante'),
++              IF(e.evento='NOTIFY_OUT_START',e.destination,e.caller_id),MIN(e.received_at)
++            FROM telefonia_zadarma_eventos e JOIN telefonia_extensiones t ON t.extension=BINARY e.internal
++            WHERE t.usuario_id=? AND t.activo=1 AND t.proveedor='ZADARMA'
++              AND NOT EXISTS(SELECT 1 FROM telefonia_extensiones other WHERE other.extension=BINARY t.extension AND other.activo=1 AND other.usuario_id<>t.usuario_id)
++              AND ((e.evento='NOTIFY_OUT_START' AND t.permite_salientes=1 AND EXISTS(SELECT 1 FROM usuarios u JOIN rol_permisos rp ON rp.rol_id=u.rol_id JOIN permisos p ON p.id=rp.permiso_id WHERE u.id=t.usuario_id AND p.codigo='telefonia.salientes' AND p.estado=1))
++                OR(e.evento='NOTIFY_INTERNAL' AND t.permite_entrantes=1 AND EXISTS(SELECT 1 FROM usuarios u JOIN rol_permisos rp ON rp.rol_id=u.rol_id JOIN permisos p ON p.id=rp.permiso_id WHERE u.id=t.usuario_id AND p.codigo='telefonia.recibir' AND p.estado=1)))
++              AND e.received_at>=DATE_SUB(NOW(),INTERVAL 90 DAY) AND e.received_at>=GREATEST(t.created_at,t.updated_at)
++              AND(e.call_start IS NULL OR e.call_start>=GREATEST(t.created_at,t.updated_at))
++              AND NOT EXISTS(SELECT 1 FROM telefonia_ventas_llamadas old WHERE old.pbx_call_id=BINARY e.pbx_call_id AND old.extension=BINARY e.internal)
++              AND e.pbx_call_id REGEXP '^[A-Za-z0-9_-]{6,100}$' AND e.internal REGEXP '^[0-9]{3,6}$'
++            GROUP BY t.usuario_id,e.internal,e.pbx_call_id,e.evento,e.destination,e.caller_id";
++        $st=$this->db->prepare($sql);$st->bind_param('i',$uid);$st->execute();$st->close();
++        // Una operación consumida conserva el destinatario histórico incluso sin INTERNAL.
++        $sql="INSERT IGNORE INTO telefonia_ventas_llamadas(usuario_id,extension,pbx_call_id,direccion,numero,fecha)
++            SELECT o.destino_usuario,o.destino_extension,o.referencia,'Entrante',o.numero,MIN(e.received_at)
++            FROM telefonia_transferencia_operaciones o JOIN telefonia_disponibilidad d ON d.origen_usuario=o.origen_usuario AND d.destino_usuario=o.destino_usuario
++             AND d.destino_extension=BINARY o.destino_extension AND d.referencia=BINARY o.referencia
++            JOIN telefonia_zadarma_eventos e ON e.pbx_call_id=BINARY o.referencia AND e.internal=BINARY o.destino_extension AND e.evento IN('NOTIFY_INTERNAL','NOTIFY_ANSWER')
+             WHERE o.destino_usuario=? AND o.created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 90 DAY)
+-              AND NOT EXISTS(SELECT 1 FROM telefonia_ventas_llamadas c WHERE c.pbx_call_id = BINARY o.referencia AND c.extension = BINARY o.destino_extension)
+-            GROUP BY o.id,d.id ORDER BY o.id DESC LIMIT 100",[$uid]);
+-        foreach($transfers as $t){$route=json_decode($t['ruta_json'],true)?:[];
+-            if(($route['tipo']??'')==='PROSPECTO'&&(int)($route['responsable_id']??0)===$uid)
+-                $this->insertar($uid,$t['destino_extension'],$t['referencia'],'Entrante',$t['numero'],$t['fecha']);}
+-        // Las marcaciones previas conservan propietario aun si cambia la extensión.
+-        $rows=$this->rows("SELECT m.*,MIN(e.received_at) fecha FROM telefonia_ventas_marcaciones m
+-            JOIN telefonia_zadarma_eventos e ON e.pbx_call_id = BINARY m.pbx_call_id AND e.internal = BINARY m.extension AND e.evento='NOTIFY_OUT_START'
+-            WHERE m.usuario_id=? AND m.pbx_call_id IS NOT NULL AND m.created_at>=DATE_SUB(NOW(),INTERVAL 90 DAY)
+-            AND NOT EXISTS (SELECT 1 FROM telefonia_ventas_llamadas c WHERE c.pbx_call_id = BINARY m.pbx_call_id AND c.extension = BINARY m.extension)
+-            GROUP BY m.id ORDER BY m.id DESC LIMIT 300",[$uid]);
+-        foreach($rows as $r)$this->insertar($uid,$r['extension'],$r['pbx_call_id'],'Saliente',$r['destino'],$r['fecha']);
++              AND d.estado IN('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA')
++              AND NOT EXISTS(SELECT 1 FROM telefonia_ventas_llamadas old WHERE old.pbx_call_id=BINARY o.referencia AND old.extension=BINARY o.destino_extension)
++              AND JSON_VALID(d.ruta_json) AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.tipo'))='PROSPECTO'
++              AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.responsable_id'))=CAST(o.destino_usuario AS CHAR)
++              AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.extension'))=BINARY o.destino_extension
++              AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.referencia_llamada'))=BINARY o.referencia
++            GROUP BY o.destino_usuario,o.destino_extension,o.referencia,o.numero";
++        $st=$this->db->prepare($sql);$st->bind_param('i',$uid);$st->execute();$st->close();
++        $sql="INSERT IGNORE INTO telefonia_ventas_llamadas(usuario_id,extension,pbx_call_id,direccion,numero,fecha)
++            SELECT m.usuario_id,m.extension,m.pbx_call_id,'Saliente',m.destino,MIN(e.received_at)
++            FROM telefonia_ventas_marcaciones m JOIN telefonia_zadarma_eventos e ON e.pbx_call_id=BINARY m.pbx_call_id AND e.internal=BINARY m.extension AND e.evento='NOTIFY_OUT_START'
++            WHERE m.usuario_id=? AND m.created_at>=DATE_SUB(NOW(),INTERVAL 90 DAY)
++              AND NOT EXISTS(SELECT 1 FROM telefonia_ventas_llamadas old WHERE old.pbx_call_id=BINARY m.pbx_call_id AND old.extension=BINARY m.extension)
++            GROUP BY m.usuario_id,m.extension,m.pbx_call_id,m.destino";
++        $st=$this->db->prepare($sql);$st->bind_param('i',$uid);$st->execute();$st->close();
++        // Enriquecer sólo la referencia exacta, con una única solicitud consumida.
++        $metadata=$this->rows("SELECT c.id,MIN(d.id) solicitud_id FROM telefonia_ventas_llamadas c JOIN telefonia_disponibilidad d
++             ON d.destino_usuario=c.usuario_id AND d.destino_extension=BINARY c.extension AND d.referencia=BINARY c.pbx_call_id
++            WHERE c.usuario_id=? AND c.direccion='Entrante' AND c.solicitud_id IS NULL
++             AND d.estado IN('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA') GROUP BY c.id HAVING COUNT(*)=1",[$uid]);
++        foreach($metadata as $m){$d=$this->rows('SELECT * FROM telefonia_disponibilidad WHERE id=?',[$m['solicitud_id']])[0];$route=json_decode($d['ruta_json'],true)?:[];
++            if(($route['tipo']??'')!=='PROSPECTO'||(int)($route['responsable_id']??0)!==$uid||(string)($route['extension']??'')!==$d['destino_extension']||(string)($route['referencia_llamada']??'')!==$d['referencia'])continue;
++            $name=mb_substr(trim((string)($route['institucion_nombre']??'')),0,150);$state=(int)($route['estado_id']??0);
++            $st=$this->db->prepare('UPDATE telefonia_ventas_llamadas SET solicitud_id=?,nombre=?,origen_extension=?,estado_id=?,numero=? WHERE id=? AND usuario_id=? AND solicitud_id IS NULL');
++            $st->bind_param('issisii',$d['id'],$name,$d['origen_extension'],$state,$d['numero'],$m['id'],$uid);$st->execute();$st->close();
++        }
+     }
+     public static function hechos(array $events,string $ext): array {
+-        $answer=false;$end=false;$duration=null;$disposition='';$ids=[];
++        $answer=false;$end=false;$duration=null;$disposition='';$ids=[];$foreign=[];
+         foreach($events as $e) {
+             $p=json_decode((string)($e['payload_json']??''),true)?:[];
+             $own=trim((string)($e['internal']??''))===$ext;
+-            $explicitEnd=($e['internal']??'')===''&&($p['last_internal']??'')===$ext;
++            $explicitEnd=($e['internal']??'')===''&&(string)($e['last_internal']??$p['last_internal']??'')===$ext;
+             $type=$e['evento']??'';
+             if($own&&$type==='NOTIFY_ANSWER')$answer=true;
+             if(($own||$explicitEnd)&&in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)) {
+                 $end=true;$disposition=strtolower((string)($e['disposition']??''));
+-                if($own){$duration=max($duration??0,max(0,(int)($e['duration']??0)));
++                if($own){$known=array_key_exists('has_duration',$e)?(bool)$e['has_duration']:($p?array_key_exists('duration',$p):array_key_exists('duration',$e));if($known)$duration=max($duration??0,max(0,(int)($e['duration']??0)));
+                     if(in_array($disposition,['answered','completed'],true))$answer=true;}
+             }
+             // Una referencia global de audio no identifica el tramo comercial.
++            if(!$own&&trim((string)($e['internal']??''))!==''&&$type==='NOTIFY_RECORD')$foreign[(string)($e['call_id_with_rec']??'')]=true;
+             if($own&&$type==='NOTIFY_RECORD') {
+                 $id=(string)($e['call_id_with_rec']??'');
+                 if(ZadarmaPbxIdentifierHelper::callIdValido($id))$ids[$id]=true;
+             }
+         }
++        $ids=array_diff_key($ids,$foreign);
+         return ['finalizada'=>$end,'conectada'=>$answer,'segundos'=>$end?$duration:null,
+             'estado_pbx'=>!$end?($answer?'En conversación':'Sin cierre confirmado'):
+                 ($answer?'Conectada':(['busy'=>'Ocupada','no answer'=>'Sin respuesta','no_answer'=>'Sin respuesta','cancel'=>'Cancelada','failed'=>'Fallida'][$disposition]??'Sin respuesta')),
+@@ -149,13 +173,14 @@
+     }
+     public function listar(int $uid,array $filters=[]): array {
+         $this->sincronizar($uid);
++        [$from,$until]=self::intervalo($filters);$from.=' 00:00:00';$until.=' 23:59:59';
+         $rows=$this->rows("SELECT c.*,r.id registro_id,r.resultado,r.observacion,r.prospecto_nombre,r.contacto_id,r.proxima_accion_at
+             FROM telefonia_ventas_llamadas c LEFT JOIN telefonia_ventas_resultados r
+               ON r.usuario_id=c.usuario_id AND r.extension = BINARY c.extension AND r.pbx_call_id = BINARY c.pbx_call_id
+-            WHERE c.usuario_id=? AND c.fecha>=DATE_SUB(NOW(),INTERVAL 90 DAY) ORDER BY c.fecha DESC,c.id DESC",[$uid]);
+-        $events=$this->rows("SELECT e.* FROM telefonia_zadarma_eventos e JOIN telefonia_ventas_llamadas c
+-            ON c.pbx_call_id = BINARY e.pbx_call_id AND c.usuario_id=? AND c.fecha>=DATE_SUB(NOW(),INTERVAL 90 DAY)
+-            ORDER BY e.id",[$uid]);
++            WHERE c.usuario_id=? AND c.fecha BETWEEN ? AND ? ORDER BY c.fecha DESC,c.id DESC",[$uid,$from,$until]);
++        $events=$this->rows("SELECT e.pbx_call_id,e.evento,e.internal,e.disposition,e.duration,e.call_id_with_rec,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_CONTAINS_PATH(e.payload_json,'one','$.duration') ELSE 0 END has_duration,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal')) ELSE NULL END last_internal FROM telefonia_zadarma_eventos e JOIN telefonia_ventas_llamadas c
++            ON c.pbx_call_id = BINARY e.pbx_call_id AND c.usuario_id=? AND c.fecha BETWEEN ? AND ?
++            ORDER BY e.id",[$uid,$from,$until]);
+         $grouped=[];foreach($events as $event)$grouped[$event['pbx_call_id']][]=$event;
+         foreach($rows as &$row){
+             $row+=self::hechos($grouped[$row['pbx_call_id']]??[],$row['extension']);
+@@ -163,11 +188,18 @@
+             unset($row['registro_id'],$row['resultado'],$row['observacion'],$row['prospecto_nombre'],$row['contacto_id'],$row['proxima_accion_at']);
+         }unset($row);return $rows;
+     }
++    private static function intervalo(array $filters): array {
++        $from=(string)($filters['desde']??date('Y-m-d',strtotime('-29 days')));$until=(string)($filters['hasta']??date('Y-m-d'));
++        foreach([$from,$until] as $day){$parsed=DateTimeImmutable::createFromFormat('!Y-m-d',$day);if(!$parsed||$parsed->format('Y-m-d')!==$day)throw new InvalidArgumentException('Selecciona fechas válidas.');}
++        if($from>$until||$until>date('Y-m-d')||$from<date('Y-m-d',strtotime('-89 days')))throw new InvalidArgumentException('Consulta un intervalo de los últimos 90 días.');
++        return [$from,$until];
++    }
+     public function bandeja(int $uid,array $filters=[]): array {
+         require_once __DIR__.'/TelefoniaResultadoVentasService.php';
+-        $calls=$this->listar($uid);
++        [$from,$until]=self::intervalo($filters);
++        $calls=$this->listar($uid,$filters);
+         $unlinked=$this->rows("SELECT m.* FROM telefonia_ventas_marcaciones m WHERE m.usuario_id=? AND m.pbx_call_id IS NULL
+-            AND m.created_at>=DATE_SUB(NOW(),INTERVAL 90 DAY) ORDER BY m.created_at DESC LIMIT 100",[$uid]);
++            AND m.created_at BETWEEN ? AND ? ORDER BY m.created_at DESC",[$uid,$from.' 00:00:00',$until.' 23:59:59']);
+         foreach($unlinked as $m)$calls[]=['id'=>'intento-'.$m['id'],'usuario_id'=>$uid,'extension'=>$m['extension'],
+             'pbx_call_id'=>'','direccion'=>'Saliente','numero'=>$m['destino'],'nombre'=>'','origen_extension'=>'',
+             'fecha'=>$m['created_at'],'finalizada'=>false,'conectada'=>false,'segundos'=>null,'estado_pbx'=>'Sin conexión confirmada','segmentos'=>[],'registro'=>null];
+@@ -176,17 +208,17 @@
+               AND d.referencia = BINARY o.referencia AND d.destino_extension = BINARY o.destino_extension
+             WHERE o.destino_usuario=? AND o.created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 90 DAY)
+               AND NOT EXISTS(SELECT 1 FROM telefonia_ventas_llamadas c WHERE c.usuario_id=? AND c.pbx_call_id = BINARY o.referencia AND c.extension = BINARY o.destino_extension)
+-            ORDER BY o.id DESC LIMIT 100",[$uid,$uid]);
+-        foreach($operations as $op){$route=json_decode($op['ruta_json'],true)?:[];if(($route['tipo']??'')!=='PROSPECTO')continue;
++            ORDER BY o.id DESC",[$uid,$uid]);
++        $groupedOps=[];foreach($operations as $op){$route=json_decode($op['ruta_json'],true)?:[];if(($route['tipo']??'')!=='PROSPECTO'||(int)($route['responsable_id']??0)!==$uid||(string)($route['extension']??'')!==$op['destino_extension']||(string)($route['referencia_llamada']??'')!==$op['referencia'])continue;
++            $groupedOps[$op['id']][]=$op;
++        }
++        foreach($groupedOps as $group){$op=$group[0];$names=array_unique(array_map(static fn($x)=>(string)((json_decode($x['ruta_json'],true)?:[])['institucion_nombre']??''),$group));$name=count($names)===1?(string)reset($names):'';
+             $when=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
+             $calls[]=['id'=>'transferencia-'.$op['id'],'usuario_id'=>$uid,'extension'=>$op['destino_extension'],'pbx_call_id'=>'',
+-                'direccion'=>'Entrante','numero'=>$op['numero'],'nombre'=>(string)($route['institucion_nombre']??''),'origen_extension'=>$op['origen_extension'],
++                'direccion'=>'Entrante','numero'=>$op['numero'],'nombre'=>$name,'origen_extension'=>$op['origen_extension'],
+                 'fecha'=>$when,'finalizada'=>false,'conectada'=>false,'segundos'=>null,'registro'=>null,'segmentos'=>[],
+                 'estado_pbx'=>$op['estado']==='SIN_RESPUESTA'?'Transferencia no contestada':'Transferencia sin confirmación'];}
+         usort($calls,static fn($a,$b)=>strcmp($b['fecha'],$a['fecha']));
+-        $from=(string)($filters['desde']??date('Y-m-d',strtotime('-29 days')));$until=(string)($filters['hasta']??date('Y-m-d'));
+-        foreach([$from,$until] as $day){$parsed=DateTimeImmutable::createFromFormat('!Y-m-d',$day);if(!$parsed||$parsed->format('Y-m-d')!==$day)throw new InvalidArgumentException('Selecciona fechas válidas.');}
+-        if($from>$until||$until>date('Y-m-d')||$from<date('Y-m-d',strtotime('-89 days')))throw new InvalidArgumentException('Consulta un intervalo de los últimos 90 días.');
+         $search=trim((string)($filters['q']??''));if(mb_strlen($search)>100)throw new InvalidArgumentException('La búsqueda es demasiado larga.');
+         $calls=array_values(array_filter($calls,static fn($c)=>substr($c['fecha'],0,10)>=$from&&substr($c['fecha'],0,10)<=$until&&
+             ($search===''||mb_stripos($c['numero'].' '.$c['nombre'].' '.($c['registro']['prospecto_nombre']??''),$search)!==false)));

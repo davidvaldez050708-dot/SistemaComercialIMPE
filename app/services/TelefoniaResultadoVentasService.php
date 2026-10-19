@@ -139,7 +139,7 @@ class TelefoniaResultadoVentasService
         catch(mysqli_sql_exception $e){if($e->getCode()===1062)throw new DomainException('El resultado de esta llamada ya se guardó y es definitivo.');throw $e;}
         finally{$s->close();}
         if($agenda){
-            $saved=$agenda->guardar($usuarioId,$name,$call['numero'],['correo'=>(string)($datos['correo']??''),'observacion'=>mb_substr($note,0,500),'proxima_accion_at'=>$next??'']);
+            $saved=$agenda->guardar($usuarioId,$name,$call['numero'],['correo'=>(string)($datos['correo']??''),'observacion'=>mb_substr($note,0,500),'proxima_accion_at'=>'']);
             $contact=(int)$saved['id'];$update=$this->db->prepare('UPDATE telefonia_ventas_resultados SET contacto_id=? WHERE usuario_id=? AND extension=? AND pbx_call_id=?');$update->bind_param('iiss',$contact,$usuarioId,$extension,$pbxCallId);$update->execute();$update->close();
         }
         if($callbacks)$callbacks->aplicarResultado($usuarioId,$call,$resultado);

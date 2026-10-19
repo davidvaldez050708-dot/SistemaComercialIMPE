@@ -49,7 +49,7 @@ class ReminderController
             ($esSupervisor || $esAnalista);
         $puedeSeguimientoAliados =
             tienePermiso('aliados.seguimiento_convocatorias');
-        $puedeTelefonia=tienePermiso('telefonia.usar')&&tienePermiso('telefonia.recibir');
+        $puedeTelefonia=tienePermiso('telefonia.usar')&&(tienePermiso('telefonia.recibir')||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')));
 
         if (
             $usuarioId <= 0 ||

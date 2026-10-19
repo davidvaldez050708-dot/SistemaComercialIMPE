@@ -17,6 +17,9 @@ final class TelefoniaNotificacionService
             KEY idx_tel_aviso(usuario_id,extension,leida)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
+    private function esVentas(int $user): bool {
+        $s=$this->db->prepare('SELECT id FROM usuarios WHERE id=? AND rol_id=3 AND estado=1');$s->bind_param('i',$user);$s->execute();$yes=$s->get_result()->num_rows===1;$s->close();return $yes;
+    }
     private function extension(int $user): string {
         $s=$this->db->prepare("SELECT extension FROM telefonia_extensiones WHERE usuario_id=? AND activo=1 AND proveedor='ZADARMA' AND permite_entrantes=1 LIMIT 1");
         $s->bind_param('i',$user);$s->execute();$r=$s->get_result()->fetch_assoc();$s->close();return (string)($r['extension']??'');
@@ -26,6 +29,7 @@ final class TelefoniaNotificacionService
         $s->bind_param('issssss',$user,$ext,$key,$number,$title,$message,$date);$s->execute();$s->close();
     }
     public function sincronizar(int $user,bool $recepcion): void {
+        if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';(new TelefoniaNotificacionVentasService($this->db))->pendientes($user);return;}
         $ext=$this->extension($user);if($ext==='')return;
         foreach((new TelefoniaDisponibilidadService($this->db))->devoluciones($user) as $task){
             $date=(new DateTimeImmutable($task['updated_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
@@ -74,6 +78,7 @@ final class TelefoniaNotificacionService
         }catch(Throwable $e){error_log('[campana_transferencias] '.get_class($e));}
     }
     public function pendientes(int $user,bool $recepcion): array {
+        if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';return (new TelefoniaNotificacionVentasService($this->db))->pendientes($user);}
         $this->sincronizar($user,$recepcion);$ext=$this->extension($user);
         $s=$this->db->prepare('SELECT * FROM telefonia_notificaciones WHERE usuario_id=? AND extension=? AND leida=0 ORDER BY id DESC LIMIT 20');
         $s->bind_param('is',$user,$ext);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
@@ -98,10 +103,15 @@ final class TelefoniaNotificacionService
         },$rows);
     }
     public function leer(int $user,int $id): bool {
+        if($this->esVentas($user)){
+            $s=$this->db->prepare('UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND id=?');$s->bind_param('ii',$user,$id);$s->execute();$s->close();
+            $s=$this->db->prepare('SELECT id FROM telefonia_notificaciones WHERE usuario_id=? AND id=?');$s->bind_param('ii',$user,$id);$s->execute();$ok=$s->get_result()->num_rows===1;$s->close();return $ok;
+        }
         $ext=$this->extension($user);$s=$this->db->prepare('UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND extension=? AND id=?');
         $s->bind_param('isi',$user,$ext,$id);$ok=$s->execute();$s->close();return $ok;
     }
     public function leerTodas(int $user): void {
+        if($this->esVentas($user)){$s=$this->db->prepare('UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=?');$s->bind_param('i',$user);$s->execute();$s->close();return;}
         $ext=$this->extension($user);$s=$this->db->prepare('UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND extension=?');$s->bind_param('is',$user,$ext);$s->execute();$s->close();
     }
 }

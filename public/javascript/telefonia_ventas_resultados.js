@@ -20,7 +20,7 @@
    form.elements.pbx_call_id.value=ref;form.elements.extension.value=call.extension;
    const values=call.registro||{prospecto_nombre:call.nombre};
    for(const [key,value]of Object.entries(values)){const el=form.elements.namedItem(key);if(el&&value!==null)el.value=key==='proxima_accion_at'?String(value).replace(/(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}):\d{2}/,'$1T$2'):String(value);}
-   if(!call.registro){try{const d=JSON.parse(sessionStorage.getItem(draftKey(ref))||'null');if(d&&Date.now()-d.at<86400000)for(const [k,v]of Object.entries(d.values||{})){const el=form.elements.namedItem(k);if(el&&!['csrf_token','pbx_call_id','extension'].includes(k))el.value=v;}}catch(_){}}
+   if(!call.registro){try{const d=JSON.parse(sessionStorage.getItem(draftKey(ref))||'null');if(d&&Date.now()-d.at<86400000)for(const [k,v]of Object.entries(d.values||{})){const el=form.elements.namedItem(k);if(el&&!['csrf_token','pbx_call_id','extension'].includes(k)){if(el.type==='checkbox')el.checked=v==='1';else el.value=v;}}}catch(_){}}
    form.querySelector('[data-sales-form-number]').textContent=call.numero;
    form.querySelector('[data-sales-form-state]').textContent=call.estado_pbx+' · Ext. '+call.extension;
    submit.hidden=Boolean(call.registro);
@@ -31,6 +31,13 @@
    if(attempt<4&&root.dataset.autoCall===ref)setTimeout(()=>void open(ref,ext,attempt+1),1500);
   }finally{opening=false;}
  }
+ root.addEventListener('click',async e=>{
+  const button=e.target.closest('[data-sales-program-complete]');if(!button||button.disabled)return;
+  if(!window.confirm('¿Cerrar este recordatorio? No se registrará una llamada ni cambiará su resultado.'))return;
+  button.disabled=true;
+  try{const response=await fetch(root.dataset.programUrl,{method:'POST',credentials:'same-origin',body:new URLSearchParams({csrf_token:root.dataset.csrf,id:button.dataset.salesProgramComplete,origen:button.dataset.source,fecha:button.dataset.date})}),data=await response.json();if(!response.ok||!data.ok)throw Error(data.mensaje||'No se pudo cerrar el recordatorio.');notify('Recordatorio cerrado.');location.reload();}
+  catch(error){notify(error.message,true);button.disabled=false;}
+ });
  root.addEventListener('click',e=>{
   const detail=e.target.closest('[data-sales-detail]');if(detail){void open(detail.dataset.salesDetail,detail.dataset.extension);return;}
   const dial=e.target.closest('[data-sales-dial]');if(dial){window.IMPE_TELEPHONY_PERSISTENT?.openDialer({number:dial.dataset.salesDial});return;}

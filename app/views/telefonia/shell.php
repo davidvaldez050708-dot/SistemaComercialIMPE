@@ -73,7 +73,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     }
     ?>
     </style>
-    <?php if ($analistaEntrantesShell): ?>
+    <?php if ($analistaEntrantesShell || $esAsesorShell): ?>
     <style id="impeAnalystCallResultStyles">
 /* Visor de emergencia para timbrados SIP internos sin NOTIFY_INTERNAL.
    Sólo el Analista lo abre al pulsar el auricular; no altera Marketing. */

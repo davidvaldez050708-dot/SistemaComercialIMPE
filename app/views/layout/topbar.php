@@ -27,8 +27,8 @@ $mostrarAgendaReuniones =
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 $puedeUsarTelefoniaTopbar = tienePermiso('telefonia.usar');
 $puedeRecibirTelefoniaTopbar = tienePermiso('telefonia.recibir');
-if($puedeUsarTelefoniaTopbar&&$puedeRecibirTelefoniaTopbar&&empty($_SESSION['csrf_token']))$_SESSION['csrf_token']=bin2hex(random_bytes(32));
-if($puedeUsarTelefoniaTopbar&&$puedeRecibirTelefoniaTopbar&&!$esMarketingTopbar)$mostrarCentroAvisos=true;
+if($puedeUsarTelefoniaTopbar&&($puedeRecibirTelefoniaTopbar||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')))&&empty($_SESSION['csrf_token']))$_SESSION['csrf_token']=bin2hex(random_bytes(32));
+if($puedeUsarTelefoniaTopbar&&!$esMarketingTopbar&&($puedeRecibirTelefoniaTopbar||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes'))))$mostrarCentroAvisos=true;
 // En Marketing, los permisos son del rol pero la recepción depende de la
 // extensión personal. No ofrecer audífonos inactivos a otras cuentas.
 if (strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0) {

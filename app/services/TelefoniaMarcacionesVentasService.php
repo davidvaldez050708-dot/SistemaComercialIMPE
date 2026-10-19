@@ -10,10 +10,10 @@ class TelefoniaMarcacionesVentasService
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?mysqli $db=null,bool $preparar=true)
     {
-        $this->db = (new Database())->connect();
-        $this->asegurarEstructura();
+        $this->db = $db ?? (new Database())->connect();
+        if($preparar)$this->asegurarEstructura();
     }
 
     public function asegurarEstructura(): void
@@ -39,12 +39,18 @@ class TelefoniaMarcacionesVentasService
         }
     }
 
+    private function extension(int $uid): string {
+        require_once __DIR__.'/TelefoniaVentasLlamadasService.php';(new TelefoniaVentasLlamadasService($this->db))->autorizar($uid);
+        $s=$this->db->prepare("SELECT t.extension FROM telefonia_extensiones t JOIN usuarios u ON u.id=t.usuario_id WHERE t.usuario_id=? AND t.activo=1 AND t.proveedor='ZADARMA' AND t.permite_salientes=1 AND EXISTS(SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id WHERE rp.rol_id=u.rol_id AND p.codigo='telefonia.salientes' AND p.estado=1)");
+        $s->bind_param('i',$uid);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        if(count($rows)!==1)throw new DomainException('No tienes una extensión propia para realizar llamadas.');return $rows[0]['extension'];
+    }
     public function iniciar(int $usuarioId, string $telefono, string $token): string
     {
         if (!preg_match('/^[a-f0-9]{32}$/', $token)) {
             throw new InvalidArgumentException('Identificador comercial no válido.');
         }
-        $extension = TelefoniaResultadoVentasService::extensionPropia($usuarioId);
+        $extension = $this->extension($usuarioId);
         $destino = TelefoniaContactosService::normalizarTelefono($telefono);
         $stmt = $this->db->prepare(
             "INSERT INTO telefonia_ventas_marcaciones (usuario_id, extension, destino, token)
@@ -83,7 +89,7 @@ class TelefoniaMarcacionesVentasService
             throw new InvalidArgumentException('Identificador de marcación inválido.');
         }
 
-        $extension = TelefoniaResultadoVentasService::extensionPropia($usuarioId);
+        $extension = $this->extension($usuarioId);
         $stmt = $this->db->prepare(
             "SELECT destino, created_at, pbx_call_id
              FROM telefonia_ventas_marcaciones
@@ -131,6 +137,7 @@ class TelefoniaMarcacionesVentasService
         }
 
         // No atribuir una llamada de expediente institucional al asesor.
+        if($this->db->query("SHOW TABLES LIKE 'interacciones_vinculacion'")->num_rows){
         $stmt = $this->db->prepare(
             "SELECT 1 FROM interacciones_vinculacion
              WHERE proveedor_externo = 'ZADARMA'
@@ -145,6 +152,7 @@ class TelefoniaMarcacionesVentasService
         $stmt->close();
         if ($esInstitucional) {
             throw new DomainException('Esta llamada pertenece a un expediente de Vinculación.');
+        }
         }
 
         $stmt = $this->db->prepare(
@@ -170,7 +178,7 @@ class TelefoniaMarcacionesVentasService
      */
     public function reconciliarPendientes(int $usuarioId, string $extension): void
     {
-        if ($extension !== TelefoniaResultadoVentasService::extensionPropia($usuarioId)) {
+        if ($extension !== $this->extension($usuarioId)) {
             return;
         }
         $stmt = $this->db->prepare(
@@ -179,7 +187,7 @@ class TelefoniaMarcacionesVentasService
              WHERE usuario_id = ? AND extension = ?
                AND pbx_call_id IS NULL
                AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-             ORDER BY created_at DESC LIMIT 20"
+             ORDER BY created_at DESC"
         );
         if (!$stmt) throw new RuntimeException('No se pudieron verificar marcaciones recientes.');
         $stmt->bind_param('is', $usuarioId, $extension);
@@ -189,45 +197,22 @@ class TelefoniaMarcacionesVentasService
         while ($r = $rs->fetch_assoc()) $pendientes[] = $r;
         $stmt->close();
 
-        $eventos = $this->db->prepare(
-            "SELECT pbx_call_id, destination
-             FROM telefonia_zadarma_eventos
-             WHERE internal = ? AND evento = 'NOTIFY_OUT_START'
-               AND received_at BETWEEN
-                   DATE_SUB(?, INTERVAL 2 MINUTE) AND
-                   DATE_ADD(?, INTERVAL 15 MINUTE)
-             ORDER BY received_at ASC LIMIT 25"
-        );
-        if (!$eventos) throw new RuntimeException('No se pudo reconciliar el historial telefónico.');
-
-        foreach ($pendientes as $intent) {
-            $fecha = (string)$intent['created_at'];
-            $eventos->bind_param('sss', $extension, $fecha, $fecha);
-            $eventos->execute();
-            $rs = $eventos->get_result();
-            while ($ev = $rs->fetch_assoc()) {
-                if (
-                    !self::mismoDestino(
-                        (string)$intent['destino'],
-                        (string)($ev['destination'] ?? '')
-                    )
-                ) {
-                    continue;
-                }
-                try {
-                    $this->vincular(
-                        $usuarioId,
-                        (string)$intent['token'],
-                        (string)$ev['pbx_call_id']
-                    );
-                    break;
-                } catch (Throwable $e) {
-                    // No atribuir llamadas ambiguas o ya vinculadas.
-                    continue;
-                }
+        if(!$pendientes)return;
+        $dates=array_column($pendientes,'created_at');$from=date('Y-m-d H:i:s',strtotime(min($dates))-120);$until=date('Y-m-d H:i:s',strtotime(max($dates))+900);
+        $eventos=$this->db->prepare("SELECT pbx_call_id,destination,MIN(received_at) fecha FROM telefonia_zadarma_eventos WHERE internal=? AND evento='NOTIFY_OUT_START' AND received_at BETWEEN ? AND ? GROUP BY pbx_call_id,destination");
+        $eventos->bind_param('sss',$extension,$from,$until);$eventos->execute();$rs=$eventos->get_result();$byNumber=[];
+        while($ev=$rs->fetch_assoc()){try{$number=TelefoniaContactosService::normalizarTelefono((string)$ev['destination']);$byNumber[$number][]=$ev;}catch(InvalidArgumentException $ignored){}}
+        $eventos->close();$forward=[];$reverse=[];
+        foreach($pendientes as $intent){
+            try{$number=TelefoniaContactosService::normalizarTelefono($intent['destino']);}catch(InvalidArgumentException $ignored){continue;}
+            $at=strtotime($intent['created_at']);
+            foreach($byNumber[$number]??[] as $ev){$when=strtotime($ev['fecha']);if($when<$at-120||$when>$at+900)continue;
+                $ref=(string)$ev['pbx_call_id'];$forward[$intent['token']][$ref]=true;$reverse[$ref][$intent['token']]=true;
             }
         }
-        $eventos->close();
+        foreach($forward as $token=>$refs){if(count($refs)!==1)continue;$ref=(string)array_key_first($refs);if(count($reverse[$ref])!==1)continue;
+            try{$this->vincular($usuarioId,$token,$ref);}catch(DomainException|InvalidArgumentException $e){/* Evidencia insuficiente: conservar sin vincular. */}
+        }
     }
 
     public function pertenece(int $usuarioId, string $extension, string $pbxCallId): bool

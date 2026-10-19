@@ -6,6 +6,9 @@ $contactosVentas=[];
 if(($argv[1]??'')==='agenda'){
  $panelTelefono=['extension'=>'150','csrf'=>str_repeat('b',64),'contactos'=>[['id'=>1,'nombre'=>'María','telefono'=>'+525551112233','correo'=>'maria@example.test','observacion'=>'Contacto original','proxima_accion_at'=>null]]];
  require ROOT_PATH.'/app/views/telefonia/marcador.php';
+}elseif(($argv[1]??'')==='programadas'){
+ $programacionesVentas=[['id'=>3,'origen'=>'agenda','nombre'=>'Pedro','telefono'=>'+525551112233','fecha'=>'2026-10-19 10:00:00','detalle'=>'Solicitó información','pbx_call_id'=>'','extension'=>'']];
+ require ROOT_PATH.'/app/views/telefonia/ventas_programadas.php';
 }else{
  $devolucionesVentas=[['id'=>4,'version'=>1,'nombre'=>'Pedro','contacto'=>'Pedro','telefono'=>'+525551112233','nota'=>'Solicita informes','origen_extension'=>'100','updated_at'=>gmdate('Y-m-d H:i:s'),'devolucion'=>'PENDIENTE','intento'=>null]];
  require ROOT_PATH.'/app/views/telefonia/ventas_devoluciones.php';

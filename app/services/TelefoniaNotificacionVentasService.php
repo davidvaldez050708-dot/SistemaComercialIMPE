@@ -1,0 +1,61 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/TelefoniaDevolucionVentasService.php';
+require_once __DIR__.'/TelefoniaProgramacionVentasService.php';
+require_once __DIR__.'/TelefoniaDisponibilidadService.php';
+
+/** Usa la campana, lectura y cadencia compartidas. No incorpora otro polling de avisos. */
+final class TelefoniaNotificacionVentasService
+{
+    private mysqli $db;
+    public function __construct(mysqli $db){$this->db=$db;}
+    private function rows(string $sql,array $args=[]): array {
+        $s=$this->db->prepare($sql);if($args)$s->bind_param(str_repeat('s',count($args)),...$args);$s->execute();$r=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $r;
+    }
+    public function pendientes(int $uid): array {
+        $calls=(new TelefoniaVentasLlamadasService($this->db))->listar($uid);
+        // Conciliar estados con el mecanismo existente; aceptar disponibilidad no acredita respuesta.
+        $active=$this->rows("SELECT extension FROM telefonia_extensiones WHERE usuario_id=? AND activo=1 AND proveedor='ZADARMA' AND permite_entrantes=1",[$uid]);
+        if(count($active)===1)(new TelefoniaDisponibilidadService($this->db))->devoluciones($uid);
+        $tasks=(new TelefoniaDevolucionVentasService($this->db))->tareas($uid);$wanted=[];$covered=[];$facts=[];
+        $add=static function(string $key,string $ext,string $number,string $date,string $title,string $text,string $url,string $label)use(&$wanted):void {
+            $wanted[$key]=['extension'=>$ext,'numero'=>$number,'created_at'=>$date,'titulo'=>$title,'mensaje'=>$text,'url'=>$url,'etiqueta'=>$label];
+        };
+        $base='index.php?controller=telefonia&action=misLlamadas';
+        foreach($calls as $c)$facts[$c['pbx_call_id'].'|'.$c['extension']]=$c;
+        foreach($tasks as $t){$scope=$t['referencia'].'|'.$t['destino_extension'];$covered[$scope]=true;if($t['devolucion']!=='PENDIENTE')continue;
+            if(!empty($facts[$scope]['conectada'])&&empty($facts[$scope]['registro'])&&str_starts_with($t['nota'],'Transferencia no contestada.'))continue;
+            $date=(new DateTimeImmutable($t['updated_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
+            $add('ventas:devolucion:'.$t['id'].':'.$t['version'],$t['destino_extension'],$t['telefono'],$date,'Llamada por devolver',$t['nombre'].' · '.$t['nota'],$base.'&vista=devoluciones','Por devolver');
+        }
+        foreach($calls as $c){$scope=$c['pbx_call_id'].'|'.$c['extension'];$facts[$scope]=$c;
+            if(!$c['finalizada']||$c['registro'])continue;
+            $missed=$c['direccion']==='Entrante'&&!$c['conectada'];if($missed&&isset($covered[$scope]))continue;
+            $add('ventas:llamada:'.$c['id'].($missed?':perdida':':resultado'),$c['extension'],$c['numero'],$c['fecha'],$missed?'Llamada perdida':'Resultado pendiente',
+                ($c['nombre']?:$c['numero']).' · '.($missed?'No se confirmó una conversación. Revisa tu llamada.':'Registra lo que ocurrió en esta llamada.'),
+                $base.'&pbx_call_id='.rawurlencode($c['pbx_call_id']).'&extension='.rawurlencode($c['extension']),$missed?'Sin respuesta':'Por registrar');
+        }
+        $operations=$this->rows("SELECT o.* FROM telefonia_transferencia_operaciones o WHERE destino_usuario=? AND EXISTS(SELECT 1 FROM telefonia_disponibilidad d WHERE d.destino_usuario=o.destino_usuario AND d.destino_extension=BINARY o.destino_extension AND d.referencia=BINARY o.referencia AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.tipo'))='PROSPECTO') AND estado IN ('SIN_RESPUESTA','SIN_CONFIRMAR') AND created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 DAY) ORDER BY created_at DESC",[$uid]);
+        foreach($operations as $op){$scope=$op['referencia'].'|'.$op['destino_extension'];
+            if(!empty($facts[$scope]['conectada'])||isset($covered[$scope])||!empty($facts[$scope]['finalizada']))continue;
+            $confirmed=$op['estado']==='SIN_RESPUESTA';$date=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
+            $add('ventas:transferencia:'.$op['id'].':'.$op['intento'].':'.$op['estado'],$op['destino_extension'],$op['numero'],$date,$confirmed?'Transferencia no contestada':'Transferencia sin confirmación',
+                $op['numero'].' · Coordina con Recepción ext. '.$op['origen_extension'].'. No se confirma retorno automático a Recepción.',$base.'&estado=transferidas',$confirmed?'Sin respuesta':'Por confirmar');
+        }
+        foreach((new TelefoniaProgramacionVentasService($this->db))->listar($uid) as $reminder){if($reminder['fecha']>date('Y-m-d H:i:s'))continue;
+            $add('ventas:programada:'.$reminder['origen'].':'.$reminder['id'].':'.substr(sha1($reminder['fecha']),0,12),$reminder['extension'],$reminder['telefono'],$reminder['fecha'],'Contacto programado',
+                ($reminder['nombre']?:$reminder['telefono']).' · '.$reminder['detalle'],$base.'&vista=agenda','Programada');
+        }
+        // Las llaves son estables: leer un aviso no se revierte en el siguiente polling.
+        $s=$this->db->prepare('INSERT IGNORE INTO telefonia_notificaciones (usuario_id,extension,llave,numero,titulo,mensaje,created_at) VALUES (?,?,?,?,?,?,?)');
+        foreach($wanted as $key=>$r){$title=mb_substr($r['titulo'],0,160);$message=mb_substr($r['mensaje'],0,300);$s->bind_param('issssss',$uid,$r['extension'],$key,$r['numero'],$title,$message,$r['created_at']);$s->execute();}$s->close();
+        $existing=$this->rows("SELECT id,llave FROM telefonia_notificaciones WHERE usuario_id=? AND leida=0 AND llave LIKE 'ventas:%'",[$uid]);
+        $clear=$this->db->prepare('UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND id=?');
+        foreach($existing as $r)if(!isset($wanted[$r['llave']])){$clear->bind_param('ii',$uid,$r['id']);$clear->execute();}$clear->close();
+        $rows=$this->rows("SELECT * FROM telefonia_notificaciones WHERE usuario_id=? AND leida=0 AND llave LIKE 'ventas:%' ORDER BY created_at DESC,id DESC LIMIT 20",[$uid]);
+        return array_map(static function($r)use($wanted){$meta=$wanted[$r['llave']];return [
+            'id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>'llamada_perdida','tipo'=>'TELEFONIA_PERDIDA','leida'=>0,
+            'titulo'=>$r['titulo'],'mensaje'=>$r['mensaje'],'created_at'=>$r['created_at'],'fecha'=>$r['created_at'],'url'=>$meta['url'],
+            'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>'bi-telephone','etiqueta'=>$meta['etiqueta'],'estado'=>'informativa','prioridad'=>1];},$rows);
+    }
+}

@@ -33,3 +33,15 @@ Volver a ejecutar `--check` del migrador después de publicar D. Esta fase añad
 El resultado comercial continúa siendo la única clasificación del intento. El guardado del resultado, la vinculación opcional de un contacto y el cierre exacto de una devolución son una transacción. Buzón, sin respuesta, ocupado, comunicación interrumpida, otro resultado y seguimiento conservan la gestión pendiente. No hay cierre manual que invente una llamada. Si dos referencias son compatibles con un intento, se informa la ambigüedad y no se elige por teléfono.
 
 Los contactos se editan explícitamente por ID propio. Un número ya guardado no sobrescribe el nombre de otra persona; se pide editar el contacto existente. La programación de agenda no crea resultados ni conversaciones.
+
+## Fase E: avisos y conciliación
+
+La última versión del migrador también prepara la tabla legacy de intenciones `telefonia_ventas_marcaciones` si todavía no existe; no altera sus filas ni las atribuye por número solamente. La recuperación exige una relación única entre intención y evento real, en ambos sentidos. El historial se reconstruye por conjuntos y consulta los eventos mínimos dentro del intervalo seleccionado (30 días por defecto, hasta 90).
+
+Las notificaciones comerciales usan `telefonia_notificaciones`, su lectura existente y los toasts del CRM. Conservan los ocho minutos compartidos. Disponibilidad aceptada, transferencia enviada, respuesta de destino y resultado son estados distintos. Una respuesta PBX tardía retira el aviso falso de pérdida; una devolución automática sólo se cierra con el resultado correspondiente. Nunca se presume retorno automático de Zadarma.
+
+Los recordatorios de agenda/resultados se cierran por usuario y fecha esperada. Ese cierre no crea una llamada ni modifica el resultado definitivo. La agenda y el resultado de la misma persona, ID de contacto y fecha no generan dos recordatorios.
+
+El audio comercial se limita a segmentos NOTIFY_RECORD de su propia extensión y llamada. Si una referencia de audio también aparece atribuida a otra extensión, se conserva como ambigua y no se reproduce como audio propio. Una duración omitida por PBX queda sin confirmar. Se requiere comprobar estos eventos con llamadas reales antes de certificar grabaciones de producción.
+
+Las cinco fases deben revisarse e integrarse en orden, con Actions comprobado. Durante la publicación no debe haber llamadas activas; usar una ventana de mantenimiento para no abrir formularios nuevos antes de completar la migración explícita. El código, los publicadores y las pruebas no conectan ni modifican Zadarma por su cuenta.

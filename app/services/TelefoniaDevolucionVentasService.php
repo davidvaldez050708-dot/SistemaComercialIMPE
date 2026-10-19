@@ -24,7 +24,7 @@ final class TelefoniaDevolucionVentasService
         $rows=$this->rows("SELECT d.* FROM telefonia_disponibilidad d WHERE d.destino_usuario=? AND d.devolucion IN ('PENDIENTE','ATENDIDA') ORDER BY d.updated_at DESC,d.id DESC",[$uid]);
         $out=[];
         foreach($rows as $r){$route=json_decode($r['ruta_json'],true)?:[];
-            if(($route['tipo']??'')!=='PROSPECTO'||(int)($route['responsable_id']??0)!==$uid)continue;
+            if(($route['tipo']??'')!=='PROSPECTO'||(int)($route['responsable_id']??0)!==$uid||(string)($route['extension']??'')!==$r['destino_extension']||(string)($route['referencia_llamada']??'')!==$r['referencia'])continue;
             $r['nombre']=(string)($r['contacto']?:($route['institucion_nombre']??''));$r['estado_id']=(int)($route['estado_id']??0);
             unset($r['ruta_json']);$out[]=$r;
         }
@@ -90,8 +90,16 @@ final class TelefoniaDevolucionVentasService
     /** Se ejecuta dentro de la transacción que inserta el resultado comercial. */
     public function aplicarResultado(int $uid,array $call,string $code): void {
         $a=$this->rows("SELECT * FROM telefonia_ventas_devolucion_intentos WHERE usuario_id=? AND extension=? AND pbx_call_id=? AND estado<>'CANCELADO' FOR UPDATE",[$uid,$call['extension'],$call['pbx_call_id']]);
-        if(!$a)return;$a=$a[0];
         $close=in_array($code,['CONVERSACION_PERSONA','INTERESADO','SOLICITA_INFORMACION','NO_INTERESADO','NUMERO_INEXISTENTE'],true);
+        if(!$a){
+            // Una respuesta PBX tardía puede superar una devolución automática por falta de respuesta.
+            // No cerrar una devolución capturada manualmente ni una conversación sin resultado.
+            if($close&&$call['conectada']&&!empty($call['solicitud_id'])){
+                $s=$this->db->prepare("UPDATE telefonia_disponibilidad SET devolucion='ATENDIDA',updated_at=UTC_TIMESTAMP() WHERE id=? AND destino_usuario=? AND destino_extension=? AND referencia=? AND estado='TRANSFERIDA' AND devolucion='PENDIENTE' AND nota LIKE 'Transferencia no contestada.%'");
+                $s->bind_param('iiss',$call['solicitud_id'],$uid,$call['extension'],$call['pbx_call_id']);$s->execute();$s->close();
+            }
+            return;
+        }$a=$a[0];
         if($close){$s=$this->db->prepare("UPDATE telefonia_disponibilidad SET devolucion='ATENDIDA',updated_at=UTC_TIMESTAMP() WHERE id=? AND version=? AND destino_usuario=? AND devolucion='PENDIENTE'");$s->bind_param('iii',$a['solicitud_id'],$a['version'],$uid);$s->execute();$s->close();}
     }
 }
