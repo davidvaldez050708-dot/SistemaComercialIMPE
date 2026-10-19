@@ -4,7 +4,7 @@ const repo=path.resolve(__dirname,'..'),fixture=path.join(__dirname,'fixtures/te
 const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.execFileSync('php',[fixture,'analista'],{encoding:'utf8'});
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
- try{for(const scenario of ['aceptar','rechazar','vencer','pendiente']){
+ try{for(const scenario of ['aceptar','rechazar','vencer','pendiente','iframe']){
   let op=null,authorizations=0,saved=null;const errors=[],contexts=[];
   const pages=[];
   for(const actor of [7,8]){
@@ -35,7 +35,7 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
     }
     if(u.pathname.endsWith('/avisos_llamadas.php'))return route.fulfill({json:{ok:true,extension:actor===7?'100':'101',llamadas:[]}});
     if(u.pathname.startsWith('/public/javascript/'))return route.fulfill({contentType:'application/javascript',body:fs.readFileSync(path.join(repo,u.pathname),'utf8')});
-    return route.fulfill({contentType:'text/html',body:u.pathname==='/'?(actor===7?sourceHtml:destHtml):'<html></html>'});
+    return route.fulfill({contentType:'text/html',body:u.pathname==='/'?(actor===7?sourceHtml:destHtml):'<html><body><main class="admin-shell"></main></body></html>'});
    });
    await page.goto('http://llamadas.test/');await page.waitForFunction(()=>window.IMPE_AVAILABILITY);
    await page.evaluate(actor=>{
@@ -44,7 +44,13 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
     window.commands=[];window.testChannel=new BroadcastChannel('impe-telephony-'+actor);window.testChannel.onmessage=e=>{if(e.data.action==='TRANSFER')window.commands.push(e.data);};
    },actor);
   }
-  const [s,d]=pages;await s.locator('[data-shell-transfer-toggle]').click();await s.locator('[data-routing-destination]').selectOption('8:101:17');await s.locator('[data-routing-search]').fill('Institución prueba');await s.locator('[data-routing-attended]').click();
+  const [s,d]=pages;
+  if(scenario==='iframe'){
+   await d.frameLocator('#impeCrmFrame').locator('body').evaluate(e=>{const b=document.createElement('button');b.textContent='Trabajar en CRM';e.append(b);});
+   await d.frameLocator('#impeCrmFrame').getByRole('button',{name:'Trabajar en CRM'}).click();
+   assert.equal(await d.evaluate(()=>audioProbe.created),1,'el clic real del iframe habilita sólo el contexto de aviso');
+  }
+  await s.locator('[data-shell-transfer-toggle]').click();await s.locator('[data-routing-destination]').selectOption('8:101:17');await s.locator('[data-routing-search]').fill('Institución prueba');await s.locator('[data-routing-attended]').click();
   await s.locator('[data-availability-source]').waitFor({state:'visible'});assert.equal(authorizations,0);
   assert.equal(await s.locator('[data-availability-transfer]').isVisible(),false,'Transferir sólo se muestra después de aceptar');
   assert.equal(await s.locator('[data-availability-callback-open]').isVisible(),false,'Devolución sólo se ofrece al rechazar o vencer');
@@ -52,8 +58,10 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
   assert.equal(await s.evaluate(()=>window.commands.length),0,'solicitar disponibilidad no envía transferencia');
   if(scenario==='pendiente')await d.evaluate(()=>document.body.classList.add('impe-sdk-result-in-modal'));
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());await d.locator('[data-availability-incoming]').waitFor({state:'visible'});
-  assert.equal(await d.evaluate(()=>audioProbe.started),0,'sin gesto confiable no intenta sonido');
-  await d.locator('[data-availability-incoming] h2').click();
+  if(scenario!=='iframe'){
+   assert.equal(await d.evaluate(()=>audioProbe.started),0,'sin gesto confiable no intenta sonido');
+   await d.locator('[data-availability-incoming] h2').click();
+  }
   assert.equal(await d.evaluate(()=>audioProbe.started),2,'dos notas distintivas tras gesto confiable');
   assert.deepEqual(await d.evaluate(()=>audioProbe.frequencies),[740,990]);
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
@@ -68,7 +76,7 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await d.evaluate(()=>document.body.classList.remove('impe-sdk-result-in-modal'));await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
    await d.locator('[data-availability-incoming]').waitFor({state:'visible'});assert.equal(await d.locator('[data-availability-accept]').isDisabled(),false);
    await d.locator('[data-availability-decline]').click();assert.equal(authorizations,0);
-  }else if(scenario==='aceptar'){
+  }else if(scenario==='aceptar'||scenario==='iframe'){
    await d.locator('[data-availability-accept]').click();await s.evaluate(()=>window.IMPE_AVAILABILITY.tick());
    await s.locator('[data-availability-transfer]').waitFor({state:'visible'});assert.equal(authorizations,0,'aceptar no entrega automáticamente');
    await s.locator('[data-availability-transfer]').click();await s.waitForFunction(()=>window.commands.length===1);assert.equal(authorizations,1);
@@ -82,6 +90,8 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await s.setViewportSize({width:390,height:600});const box=await dialog.boundingBox();assert.ok(box.y>=0&&box.y+box.height<=601,'formulario accesible en móvil');
    await dialog.locator('button[type=submit]').click();await dialog.waitFor({state:'hidden'});assert.equal(saved.contacto,'Ana');assert.equal(saved.telefono,'5551234567');
   }
+  await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
+  assert.ok(await d.evaluate(()=>audioProbe.stopped)>=4,'responder o vencer detiene los nodos del aviso');
   assert.deepEqual(errors,[]);for(const c of contexts)await c.close();
  }
  console.log('Disponibilidad/navegador: confirmación sin llamada, aceptación explícita, transferencia única, rechazo, vencimiento y devolución móvil: OK');

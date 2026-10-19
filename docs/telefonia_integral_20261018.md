@@ -5,7 +5,7 @@
 | Incidencia | Causa y corrección |
 | --- | --- |
 | Teléfono finalizado sobre Registrar resultado | El formulario normal no tomaba posesión de la pantalla; el observador podía volver a mostrar el teléfono y no reconocía la nueva ruta del historial. El shell y el formulario ahora coordinan apertura/cierre con un token. Un latido no recupera el panel; una llamada nueva interrumpe el formulario guardando su borrador. No se desmonta el host WebRTC. |
-| Tarjeta cortada en móvil | Posición recordada sin límite de alto; se ajusta al viewport visual, con desplazamiento del contenido y cabecera accesible. |
+| Tarjeta cortada en móvil | Posición recordada sin límite de alto; se ajusta al viewport visual, con desplazamiento del contenido y cabecera accesible. Un observador de tamaño reajusta la tarjeta cuando reaparece tras girar la pantalla. |
 | Institución seleccionada irreversible | Se conservaba la confirmación sin acción para quitarla. Cambiar institución limpia responsable/estado/expediente y búsqueda pendientes; recupera sugerencias, búsqueda manual y No corresponde. |
 | Persona que atendió y contacto referido | Los formularios y la captura usaban nombres distintos para las mismas claves. Se normalizan por separado y se respetan los campos canónicos del último borrador. El informante nunca se infiere del nombre del referido. |
 | Municipio perdido | El alta desde llamada enviaba siempre cero al modelo. El formulario compartido carga el catálogo existente del estado asignado; el servidor rechaza municipios ajenos, inactivos o inválidos. Sólo afecta altas nuevas, incluidas devoluciones. Municipio sigue siendo opcional. |

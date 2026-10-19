@@ -294,21 +294,21 @@
       "path": "public/javascript/telefonia_shell.js",
       "kind": "js",
       "new": false,
-      "target_sha256": "f6a552f913932bc2ad1a6346d328c9397983e3c52ffd2bffe3fe96eacfe6e910",
+      "target_sha256": "3caf16d8bdb161fb10bd0b14966c54f2a8a53aaa5e1a8f0354b09dc07d150772",
       "variants": [
         {
           "label": "github",
           "before": "b11667258ee89d207070d526f186737166e8644076b25ec61f67ba9ae63b7b6c",
-          "after": "f6a552f913932bc2ad1a6346d328c9397983e3c52ffd2bffe3fe96eacfe6e910"
+          "after": "3caf16d8bdb161fb10bd0b14966c54f2a8a53aaa5e1a8f0354b09dc07d150772"
         },
         {
           "label": "hostinger-20261018",
           "before": "f74b176cb9ad1407649756d30b18c47cb4c692b4a7f861ca965882cdeac471ff",
-          "after": "5a087902496c707689be7ccc52abb4d44d03f14f985328705264dc6ba6967671"
+          "after": "09fd543e1b60301a66ab790a06ace96dc3731ec12b42a3b5b0eb65f36e648013"
         }
       ],
       "patch": "tools/recepcion_vinculacion_20261018/18.patch",
-      "patch_sha256": "10ae790f97200fd0816968133988110ad9ffb78c21ba022794378147bfd8b395",
+      "patch_sha256": "470f707e584ac502d0c00b536f4722c075d9f21a192a2345862ff3f359d39b63",
       "production_fixture": "tests/fixtures/integral_hostinger_18.patch"
     },
     {

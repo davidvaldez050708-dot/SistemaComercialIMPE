@@ -798,6 +798,11 @@
     incomingHeader?.addEventListener('pointercancel', endIncomingDrag);
     window.addEventListener('resize', clampIncoming);
     window.visualViewport?.addEventListener('resize',clampIncoming);
+    // El observador puede reabrir la tarjeta finalizada después del resize.
+    // Ajustar también al cambiar su contenido o recuperar la visibilidad.
+    if(typeof window.ResizeObserver==='function' && incomingPanel){
+        new window.ResizeObserver(()=>window.requestAnimationFrame(clampIncoming)).observe(incomingPanel);
+    }
     const answerIncoming = function () {
         if (!freshState(currentState) || !currentState.active ||
             currentState.phase !== 'incoming-ringing' ||

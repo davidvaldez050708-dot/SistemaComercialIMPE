@@ -86,15 +86,20 @@
          const customVisible = !callbackRegistration && (incoming || finishedIncoming || shownOutgoing) &&
              !nativeVisible && !minimized && pending !== 'decline';
          if(callbackRegistration)status.hidden=true;
-@@ -771,6 +797,7 @@
+@@ -771,6 +797,12 @@
      incomingHeader?.addEventListener('pointerup', endIncomingDrag);
      incomingHeader?.addEventListener('pointercancel', endIncomingDrag);
      window.addEventListener('resize', clampIncoming);
 +    window.visualViewport?.addEventListener('resize',clampIncoming);
++    // El observador puede reabrir la tarjeta finalizada después del resize.
++    // Ajustar también al cambiar su contenido o recuperar la visibilidad.
++    if(typeof window.ResizeObserver==='function' && incomingPanel){
++        new window.ResizeObserver(()=>window.requestAnimationFrame(clampIncoming)).observe(incomingPanel);
++    }
      const answerIncoming = function () {
          if (!freshState(currentState) || !currentState.active ||
              currentState.phase !== 'incoming-ringing' ||
-@@ -905,6 +932,10 @@
+@@ -905,6 +937,10 @@
      // iframe: salir del shell desmonta también el contexto WebRTC.
      crm?.addEventListener('load', function () {
          try {
