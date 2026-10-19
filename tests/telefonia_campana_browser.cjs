@@ -94,6 +94,48 @@ const read=p=>fs.readFileSync(path.join(__dirname,'../public/javascript/',p),'ut
   assert.deepEqual(errors,[]);
   await page.close();
  }
+
+ // Los avisos operativos NO dependen de que el CDN de Bootstrap JS cargue.
+ {
+  const page=await browser.newPage();await page.clock.install();
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const html=`<!doctype html><meta charset="utf-8">
+   <style>${fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'))}</style>
+   <script>window.IMPE_CURRENT_USER_ID=8;</script>
+   <div data-reminder-root data-reminder-endpoint="/list">
+    <span data-reminder-badge class="d-none">0</span><div data-reminder-content></div>
+   </div>
+   <script>${read('recordatorios.js')}</script>`;
+  await page.route('http://sin-bootstrap.test/**',async route=>{
+   const u=new URL(route.request().url());
+   if(u.pathname==='/list')return route.fulfill({json:{
+    ok:true,total:1,avisos:[],
+    recordatorios:[{id:-99,telefonia_id:99,leida:0,nombre_entidad:'Llamada por devolver',
+      titulo:'Llamada por devolver',mensaje:'Recepción dejó datos.',accion:'Revisar llamada',
+      estado:'informativa',url:'/historial'}]
+   }});
+   return route.fulfill({contentType:'text/html',body:html});
+  });
+  await page.goto('http://sin-bootstrap.test/');
+  assert.equal(await page.evaluate(()=>Boolean(window.bootstrap?.Toast)),false);
+  await page.locator('[data-reminder-badge]').waitFor({state:'visible'});
+  assert.equal(await page.locator('[data-reminder-badge]').textContent(),'1');
+  const inicio=await page.evaluate(()=>Number(
+   sessionStorage.getItem('recordatorios:inicio-toast-global-at:usuario:8')||0));
+  assert.ok(inicio>0,'el inicio de la cadencia debe registrarse aun sin Bootstrap');
+  await page.clock.runFor(8*60*1000+300);
+  const toast=page.locator('.reminder-toast[data-telefonia-id="99"]');
+  await toast.waitFor({state:'visible'});
+  assert.equal(await toast.evaluate(el=>getComputedStyle(el).display!=='none'),true);
+  assert.equal(await page.locator('[data-reminder-badge]').textContent(),'1');
+  await page.clock.runFor(7500);
+  await toast.waitFor({state:'detached'});
+  assert.equal(await page.locator('[data-reminder-badge]').textContent(),'1');
+  assert.deepEqual(errors,[]);
+  await page.close();
+ }
+ console.log('Analista sin Bootstrap JS: toast visible, cadencia registrada, autocierre y campana persistente: OK');
+
  console.log('Inicio analista: reintento automático de campana y actividad telefónica: OK');
 
  console.log('Campanas analista/marketing: ocho minutos acumulados entre páginas, turno único, autocierre, campana persistente y lectura con CSRF: OK');
