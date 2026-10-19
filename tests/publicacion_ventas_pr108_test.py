@@ -5,7 +5,7 @@ import os, subprocess, tempfile, hashlib
 REPO=Path(__file__).resolve().parents[1]
 SCRIPT=REPO/'tools/publicar_ventas_pr108_hostinger.sh'
 TARGET='6035e328676d9c5a80a46d09cd3010910fbcdfd6'
-BASE=TARGET+'^1'
+REVIEWED='485453b9f7948190e1bfb198e21a455dd088ad3a'
 FILES={
     "app/views/telefonia/ventas_llamadas.php": "85dffacee855fb1550041cf823dfc9af6287a2f9e0ecbfcc2ea058c3b7096c9a",
     "app/views/telefonia/ventas_devoluciones.php": "a75f72e312b40b3046b6dbaf44f05362beadcc43d3ae2c03b825acd89f142244",
@@ -16,6 +16,10 @@ FILES={
 }
 def gitblob(ref,file):return subprocess.check_output(['git','show',ref+':'+file],cwd=REPO)
 def sha(data):return hashlib.sha256(data).hexdigest()
+def hostinger_blob(file):return gitblob(REVIEWED,'tools/ventas_pr108_hostinger/before/'+file)
+def final_blob(file):
+    if file=='public/javascript/telefonia_ventas_auto_filtros.js':return gitblob(TARGET,file)
+    return gitblob(REVIEWED,'tools/ventas_pr108_hostinger/after/'+file)
 def snapshot(root):return {p.relative_to(root).as_posix():p.read_bytes() for p in root.rglob('*') if p.is_file() and not p.is_symlink()}
 def check_case(mode):
     with tempfile.TemporaryDirectory(prefix='impe-pr108-',dir=os.environ.get('IMPE_TEST_TMP')) as dn:
@@ -23,7 +27,7 @@ def check_case(mode):
         (live/'index.php').write_text('<?php');(live/'otro-modulo.txt').write_text('No tocar')
         for file,h in FILES.items():
             if h=='MISSING':continue
-            content=gitblob(BASE,file)
+            content=hostinger_blob(file)
             assert sha(content)==h,(file,'la huella del repositorio no coincide con Hostinger',sha(content),h)
             p=live/file;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(content)
         if mode=='unknown':
@@ -31,12 +35,12 @@ def check_case(mode):
         if mode=='unexpected-new':
             p=live/'public/javascript/telefonia_ventas_auto_filtros.js';p.parent.mkdir(parents=True,exist_ok=True);p.write_text('unreviewed')
         if mode=='missing':
-            (live/'app/views/telefonia/ventas_llamadas.php').unlink()
+            (live/'app/views/telefonia/ventas_devoluciones.php').unlink()
         if mode=='symlink':
             p=live/'public/css/telefonia_ventas_ui.css';p.unlink();p.symlink_to(tmp/'outside')
         if mode=='applied':
             for file in FILES:
-                p=live/file;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(gitblob(TARGET,file))
+                p=live/file;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(final_blob(file))
         env={**os.environ,'IMPE_VENTAS_PR108_SOURCE':str(REPO),'IMPE_VENTAS_PR108_PUBLIC':str(live),'IMPE_VENTAS_PR108_BACKUPS':str(tmp/'backup'),'TMPDIR':str(tmp)}
         def run(*args):
             p=subprocess.run(['bash',str(SCRIPT),*map(str,args)],cwd=REPO,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
@@ -55,7 +59,7 @@ def check_case(mode):
         rc,out=run('--apply')
         assert rc==0,(mode,out)
         after=snapshot(live)
-        for file in FILES:assert after[file]==gitblob(TARGET,file),(mode,file)
+        for file in FILES:assert after[file]==final_blob(file),(mode,file)
         assert after['otro-modulo.txt']==before['otro-modulo.txt']
         backups=list((tmp/'backup').iterdir()) if (tmp/'backup').exists() else []
         if mode=='applied':
@@ -72,4 +76,4 @@ if __name__=='__main__':
     subprocess.run(['bash','-n',str(SCRIPT)],check=True)
     for mode in ['normal','applied','unknown','unexpected-new','missing','symlink']:
         print('OK:',check_case(mode),flush=True)
-    print('PR108: 6 escenarios de despliegue y restauración seguros.')
+    print('PR108: 6 escenarios de despliegue y restauración; vista Historial intacta.')
