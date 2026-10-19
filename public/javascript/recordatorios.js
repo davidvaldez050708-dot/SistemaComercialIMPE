@@ -206,16 +206,18 @@
             contenedor = document.createElement('div');
             contenedor.className = 'toast-container position-fixed top-0 end-0 p-3 reminder-toast-container';
             contenedor.setAttribute('data-reminder-toast-container', '');
+            // Si el CDN de Bootstrap JS/CSS no carga, conservar posición y visibilidad.
+            contenedor.style.position = 'fixed';
+            contenedor.style.top = '0';
+            contenedor.style.right = '0';
+            contenedor.style.padding = '12px';
+            contenedor.style.zIndex = '1095';
             document.body.appendChild(contenedor);
 
             return contenedor;
         };
 
         const mostrarToast = function (aviso) {
-            if (!window.bootstrap) {
-                return;
-            }
-
             const contenedor = asegurarContenedorToasts();
             const toast = document.createElement('div');
             const vencida = String(aviso.tipo || '') === 'VENCIDA';
@@ -246,26 +248,38 @@
 
             contenedor.appendChild(toast);
 
-            // Desactivamos el autohide de Bootstrap porque éste pausa el contador
-            // cuando el usuario mantiene el cursor o el foco sobre el toast. El
-            // temporizador propio garantiza un cierre automático aunque haya hover o foco.
-            const instanciaToast = new bootstrap.Toast(toast, {
-                autohide: false
-            });
-            let temporizadorCierre = null;
-
-            toast.addEventListener('hidden.bs.toast', function () {
-                if (temporizadorCierre !== null) {
-                    window.clearTimeout(temporizadorCierre);
-                    temporizadorCierre = null;
+            // Bootstrap es opcional para mostrar los avisos: si falla su CDN,
+            // el cierre y la apariencia siguen funcionando sin librerías externas.
+            // Autohide siempre es propio para no detenerse con hover o foco.
+            let instanciaToast = null;
+            if (window.bootstrap && typeof window.bootstrap.Toast === 'function') {
+                try {
+                    instanciaToast = new window.bootstrap.Toast(toast, { autohide: false });
+                } catch (error) {
+                    console.warn('Toast de Bootstrap no disponible; usando aviso nativo.', error);
                 }
-                toast.remove();
-            });
+            }
 
-            instanciaToast.show();
-            temporizadorCierre = window.setTimeout(function () {
-                instanciaToast.hide();
+            if (instanciaToast) {
+                toast.addEventListener('hidden.bs.toast', function () {
+                    toast.remove();
+                }, { once: true });
+                instanciaToast.show();
+            } else {
+                toast.classList.add('show');
+                toast.style.display = 'block';
+            }
+
+            window.setTimeout(function () {
+                if (!toast.isConnected) return;
+                if (instanciaToast) {
+                    instanciaToast.hide();
+                } else {
+                    toast.classList.remove('show');
+                    toast.remove();
+                }
             }, DURACION_TOAST);
+            return true;
         };
 
         const esRecordatorioVencidoRecurrente = function (recordatorio) {
@@ -297,7 +311,7 @@
 
             const recordatorio = disponibles[indice];
             if (Number(recordatorio.telefonia_id || 0) > 0) {
-                mostrarToast({
+                const mostrado = mostrarToast({
                     telefonia_id: Number(recordatorio.telefonia_id),
                     url: urlRecordatorio(recordatorio),
                     icono: recordatorio.icono || 'bi-telephone-x',
@@ -305,6 +319,7 @@
                     titulo: recordatorio.titulo || recordatorio.nombre_entidad || 'Aviso telefónico',
                     mensaje: recordatorio.mensaje || recordatorio.accion || 'Revisa tu historial'
                 });
+                if (!mostrado) return false;
                 registrarToastVencido(recordatorio);
                 return true;
             }
@@ -316,7 +331,7 @@
             ).trim();
             const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
 
-            mostrarToast({
+            const mostrado = mostrarToast({
                 id: recordatorio.id,
                 seguimiento_id: recordatorio.seguimiento_id,
                 reunion_id: recordatorio.reunion_id,
@@ -328,6 +343,7 @@
                     (etiqueta ? ' · ' + etiqueta : '')
             });
 
+            if (!mostrado) return false;
             registrarToastVencido(recordatorio);
             return true;
         };
@@ -521,9 +537,9 @@
                 let huboAvisoVencido = false;
 
                 (datos.avisos || []).forEach(function (aviso) {
-                    mostrarToast(aviso);
+                    const mostrado = mostrarToast(aviso);
 
-                    if (String(aviso.tipo || '').toUpperCase() === 'VENCIDA') {
+                    if (mostrado && String(aviso.tipo || '').toUpperCase() === 'VENCIDA') {
                         registrarToastVencido(aviso);
                         huboAvisoVencido = true;
                     }
