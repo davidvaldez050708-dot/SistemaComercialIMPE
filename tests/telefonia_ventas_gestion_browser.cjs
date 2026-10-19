@@ -14,7 +14,11 @@ const view=mode=>`<!doctype html><meta charset="utf-8"><meta name="viewport" con
   if(action==='devolucionVenta'){preparations++;return route.fulfill({json:{ok:true,intento:{id:20,numero:'+525551112233',estado:'PREPARADO',pbx_call_id:null,llamada:null,created_at:new Date().toISOString().slice(0,19).replace('T',' ')}}});}
   return route.fulfill({contentType:'text/html',body:view(mode)});
  });
- await page.goto('http://ventas.test/');await page.locator('[data-telephony-contact-edit]').click();
+ await page.goto('http://ventas.test/');
+ assert.equal(await page.locator('.telephony-contacts-table').count(),1,'Agenda renderizada como tabla');
+ assert.equal(await page.locator('tbody[data-telephony-contacts-list] tr[data-telephony-contact-row]').count(),1,'Filas accesibles en agenda');
+ await page.locator('[data-telephony-contact-edit]').click();
+ assert.equal(await page.locator('[data-sales-contact-editor]').evaluate(el=>el.open),true,'Edición despliega formulario');
  assert.equal(await page.locator('[data-telephony-contact-email]').inputValue(),'maria@example.test');
  await page.locator('[data-telephony-contact-name]').fill('María Pérez');await page.locator('[data-telephony-contact-email]').fill('nuevo@example.test');await page.locator('[data-telephony-contact-note]').fill('Llamar mañana');
  await page.locator('[data-telephony-contact-save]').click();await page.waitForFunction(()=>document.querySelector('[data-contact-name]').textContent==='María Pérez');

@@ -198,11 +198,14 @@ final class TelefoniaVentasLlamadasService
         require_once __DIR__.'/TelefoniaResultadoVentasService.php';
         [$from,$until]=self::intervalo($filters);
         $calls=$this->listar($uid,$filters);
+        $marcador=new TelefoniaMarcacionesVentasService($this->db,false);
+        $sqlFrom=$marcador->fechaMarcacionMySQL($from.' 00:00:00');
+        $sqlUntil=$marcador->fechaMarcacionMySQL($until.' 23:59:59');
         $unlinked=$this->rows("SELECT m.* FROM telefonia_ventas_marcaciones m WHERE m.usuario_id=? AND m.pbx_call_id IS NULL
-            AND m.created_at BETWEEN ? AND ? ORDER BY m.created_at DESC",[$uid,$from.' 00:00:00',$until.' 23:59:59']);
+            AND m.created_at BETWEEN ? AND ? ORDER BY m.created_at DESC",[$uid,$sqlFrom,$sqlUntil]);
         foreach($unlinked as $m)$calls[]=['id'=>'intento-'.$m['id'],'usuario_id'=>$uid,'extension'=>$m['extension'],
             'pbx_call_id'=>'','direccion'=>'Saliente','numero'=>$m['destino'],'nombre'=>'','origen_extension'=>'',
-            'fecha'=>$m['created_at'],'finalizada'=>false,'conectada'=>false,'segundos'=>null,'estado_pbx'=>'Sin conexión confirmada','segmentos'=>[],'registro'=>null];
+            'fecha'=>$marcador->fechaMarcacionLocal((string)$m['created_at']),'finalizada'=>false,'conectada'=>false,'segundos'=>null,'estado_pbx'=>'Sin conexión confirmada','segmentos'=>[],'registro'=>null];
         $operations=$this->rows("SELECT o.*,d.ruta_json FROM telefonia_transferencia_operaciones o
             JOIN telefonia_disponibilidad d ON d.origen_usuario=o.origen_usuario AND d.destino_usuario=o.destino_usuario
               AND d.referencia = BINARY o.referencia AND d.destino_extension = BINARY o.destino_extension
@@ -222,8 +225,13 @@ final class TelefoniaVentasLlamadasService
         $search=trim((string)($filters['q']??''));if(mb_strlen($search)>100)throw new InvalidArgumentException('La búsqueda es demasiado larga.');
         $calls=array_values(array_filter($calls,static fn($c)=>substr($c['fecha'],0,10)>=$from&&substr($c['fecha'],0,10)<=$until&&
             ($search===''||mb_stripos($c['numero'].' '.$c['nombre'].' '.($c['registro']['prospecto_nombre']??''),$search)!==false)));
-        $summary=['total'=>count($calls),'pendientes'=>0,'perdidas'=>0,'conversaciones'=>0];
-        foreach($calls as $c){$summary['pendientes']+=(int)($c['finalizada']&&!$c['registro']);
+        $summary=['total'=>count($calls),'pbx'=>0,'intentos'=>0,'transferencias_sin_tramo'=>0,'pendientes'=>0,'perdidas'=>0,'conversaciones'=>0];
+        foreach($calls as $c){
+            $confirmedRef=trim((string)($c['pbx_call_id']??''))!=='';
+            $summary['pbx']+=(int)$confirmedRef;
+            $summary['intentos']+=(int)(!$confirmedRef&&str_starts_with((string)$c['id'],'intento-'));
+            $summary['transferencias_sin_tramo']+=(int)(!$confirmedRef&&str_starts_with((string)$c['id'],'transferencia-'));
+            $summary['pendientes']+=(int)($c['finalizada']&&!$c['registro']);
             $summary['perdidas']+=(int)($c['finalizada']&&!$c['conectada']&&$c['direccion']==='Entrante');
             $summary['conversaciones']+=(int)TelefoniaResultadoVentasService::esConversacion($c['registro']['resultado']??'');}
         $search=trim((string)($filters['q']??''));$state=(string)($filters['estado']??'');

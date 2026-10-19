@@ -818,3 +818,104 @@
         justify-content: flex-start;
     }
 }
+
+/* Agenda comercial: tabla responsive en lugar de tarjetas; sólo en el marcador de Ventas. */
+.telephony-contacts-card .sales-contact-editor {
+  margin:12px 0 15px;border:1px solid #d8e3f3;border-radius:11px;background:#f7f9fe;
+  overflow:hidden;
+}
+.telephony-contacts-card .sales-contact-editor>summary {
+  display:flex;align-items:center;gap:9px;min-height:44px;cursor:pointer;
+  padding:11px 14px;color:#263f82;font-size:12px;font-weight:800;
+  list-style:none;
+}
+.telephony-contacts-card .sales-contact-editor>summary::-webkit-details-marker {display:none;}
+.telephony-contacts-card .sales-contact-editor>summary .bi-chevron-down {
+  margin-left:auto;transition:transform .2s ease;
+}
+.telephony-contacts-card .sales-contact-editor[open]>summary .bi-chevron-down {transform:rotate(180deg);}
+.telephony-contacts-card .sales-contact-editor[open]>summary {
+  border-bottom:1px solid #dce5f2;
+}
+.telephony-contacts-card .sales-contact-editor .telephony-contact-form {
+  padding:14px;max-width:none;
+}
+.telephony-contacts-card .sales-contact-table-scroll {
+  max-width:100%;overflow-x:auto;border:1px solid #e0e7f1;
+  border-radius:12px;background:#fff;
+}
+.telephony-contacts-card .telephony-contacts-table {
+  width:100%;min-width:660px;table-layout:auto;
+  border-collapse:separate;border-spacing:0;
+  font-family:inherit;color:#293c5c;
+}
+.telephony-contacts-card .telephony-contacts-table thead {
+  background:#f2f6fc;
+}
+.telephony-contacts-card .telephony-contacts-table th {
+  padding:11px 13px;text-align:left;vertical-align:middle;
+  color:#617390;font-size:10px;font-weight:800;
+  letter-spacing:.04em;text-transform:uppercase;
+  border-bottom:1px solid #e0e7f1;white-space:nowrap;
+}
+.telephony-contacts-card .telephony-contacts-table th:last-child{text-align:right;}
+.telephony-contacts-card .telephony-contacts-list {
+  display:table-row-group!important;max-height:none!important;overflow:visible!important;
+}
+.telephony-contacts-card .telephony-contacts-list .telephony-contact-row {
+  display:table-row!important;background:#fff;border:0;border-radius:0;
+}
+.telephony-contacts-card .telephony-contacts-list .telephony-contact-row:nth-child(even) {
+  background:#f9fbfe;
+}
+.telephony-contacts-card .telephony-contacts-list .telephony-contact-row:hover {
+  background:#f0f5fc;
+}
+.telephony-contacts-card .telephony-contacts-table td {
+  vertical-align:middle;padding:11px 13px;border-bottom:1px solid #e9eef6;
+  font-size:12px;
+}
+.telephony-contacts-card .telephony-contact-name {
+  display:table-cell;min-width:140px;
+}
+.telephony-contacts-card .telephony-contact-name strong {
+  color:#263c65;font-size:12px;font-weight:800;
+}
+.telephony-contacts-card .sales-contact-phone {
+  color:#415777;font-size:12px;white-space:nowrap;
+}
+.telephony-contacts-card .sales-contact-meta {
+  min-width:170px;max-width:300px;overflow-wrap:anywhere;
+}
+.telephony-contacts-card .sales-contact-meta span,
+.telephony-contacts-card .sales-contact-meta small {
+  display:block;font-size:10.5px;line-height:1.55;
+  color:#647590;
+}
+.telephony-contacts-card .telephony-contact-actions {
+  justify-content:flex-end;white-space:nowrap;
+}
+.telephony-contacts-card .telephony-contact-actions .btn,
+.telephony-contacts-card .telephony-contact-actions .telephony-contact-remove {
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:32px;min-width:32px;padding:6px 10px;
+  border:1px solid #d7e1ef;border-radius:8px;
+  font-size:11px;font-weight:750;color:#39558a;background:#fff;
+}
+.telephony-contacts-card .telephony-contact-actions .btn:hover {
+  background:#eff4fc;border-color:#b9cbed;
+}
+.telephony-contacts-card .telephony-contact-actions .telephony-contact-remove {
+  color:#ae3846;border-color:#f1d5d9;background:#fff;
+}
+.telephony-contacts-card .telephony-contact-actions .telephony-contact-remove:hover {
+  background:#fff3f4;
+}
+@media(max-width:767px){
+ .telephony-contacts-card .sales-contact-editor .telephony-contact-form{padding:11px;}
+ .telephony-contacts-card .sales-contact-table-scroll{margin-right:0;}
+ .telephony-contacts-card .telephony-contacts-table{min-width:640px;}
+}
+
+/* La paginación debe prevalecer sobre display:table-row!important. */
+.telephony-contacts-card .telephony-contacts-list .telephony-contact-row[hidden] {display:none!important;}

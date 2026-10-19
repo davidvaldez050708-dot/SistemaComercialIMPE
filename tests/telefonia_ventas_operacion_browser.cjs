@@ -23,6 +23,10 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  await push('in-progress',true);await page.evaluate(()=>window.testHost=document.querySelector('[data-shell-engine]'));await page.waitForTimeout(850);
  await push('incoming-finished',false);
  const crm=page.frameLocator('#impeCrmFrame'),modal=crm.locator('#modalResultadoVenta'),phone=page.locator('[data-incoming-panel]');
+ await page.waitForFunction(()=>window.IMPE_SALES_ATTENTION.hasPending());
+ assert.equal(await modal.isVisible(),false,'No abrir resultado automáticamente encima del teléfono');
+ await phone.waitFor({state:'visible'});
+ await page.locator('[data-sales-open]').click();
  await modal.waitFor({state:'visible'});await phone.waitFor({state:'hidden'});
  assert.equal(await page.evaluate(()=>IMPE_TELEPHONY_SHELL.isResultFormOpen()),true);
  assert.equal(await crm.locator('.modal-backdrop').count(),1);
