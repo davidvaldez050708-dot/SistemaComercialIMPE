@@ -152,10 +152,20 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const noticesSeen=new Set();let toastBusy=false,currentItems=[];
+    // Las convocatorias conservan sus avisos; la telefonía usa un turno propio,
+    // compartido con los recordatorios de Seguimiento para evitar ráfagas.
+    const INTERVALO_AVISO_TELEFONICO=8*60*1000;
+    const CLAVE_USUARIO=':usuario:'+Number(window.IMPE_CURRENT_USER_ID||0);
+    const CLAVE_ULTIMO_AVISO='recordatorios:ultimo-toast-global-at'+CLAVE_USUARIO;
+    const CLAVE_ULTIMO_ID='recordatorios:ultimo-toast-vencido-id'+CLAVE_USUARIO;
+    const leerSesion=clave=>{try{return sessionStorage.getItem(clave)||'';}catch(_){return '';}};
+    const guardarSesion=(clave,valor)=>{try{sessionStorage.setItem(clave,String(valor));}catch(_){}};
+    let temporizadorTelefonia=null;
     const notifyUnseen = function(items){
         currentItems=Array.isArray(items)?items:[];if(toastBusy)return;
         const item=currentItems.find(item=>{
-            if(Number(item.leida||0)!==0||(Number(item.id)<=0&&Number(item.telefonia_id)<=0))return false;
+            if(Number(item.telefonia_id||0)>0)return false; // Nunca consumir la rotación telefónica al iniciar sesión.
+            if(Number(item.leida||0)!==0||Number(item.id)<=0)return false;
             const key=Number(item.telefonia_id)>0?'impe:phone-toast:'+Number(window.IMPE_CURRENT_USER_ID||0)+':'+Number(item.telefonia_id):'impe_convocatoria_notificacion_'+Number(item.id);
             if(noticesSeen.has(key))return false;
             try{if(sessionStorage.getItem(key)==='1')return false;}catch(_){}return true;
@@ -165,6 +175,46 @@ document.addEventListener('DOMContentLoaded', function () {
         noticesSeen.add(key);try{sessionStorage.setItem(key,'1');}catch(_){}
         showActivationToast(item);toastBusy=true;
         window.setTimeout(()=>{toastBusy=false;notifyUnseen(currentItems);},8300);
+    };
+
+    const mostrarSiguienteTelefono=function(){
+        if(toastBusy||document.hidden)return false;
+        const telefonicas=currentItems.filter(item=>
+            Number(item.telefonia_id||0)>0&&Number(item.leida||0)===0
+        );
+        if(!telefonicas.length)return false;
+        const anterior=leerSesion(CLAVE_ULTIMO_ID);
+        const indiceAnterior=telefonicas.findIndex(item=>
+            'telefonia:'+Number(item.telefonia_id)===anterior
+        );
+        const siguiente=telefonicas[(indiceAnterior+1)%telefonicas.length];
+        showActivationToast(siguiente);
+        guardarSesion(CLAVE_ULTIMO_AVISO,Date.now());
+        guardarSesion(CLAVE_ULTIMO_ID,'telefonia:'+Number(siguiente.telefonia_id));
+        toastBusy=true;
+        window.setTimeout(()=>{toastBusy=false;notifyUnseen(currentItems);},8300);
+        return true;
+    };
+
+    const programarSiguienteTelefono=function(){
+        if(temporizadorTelefonia!==null)window.clearTimeout(temporizadorTelefonia);
+        const ultima=Number(leerSesion(CLAVE_ULTIMO_AVISO))||0;
+        const espera=ultima>0
+            ? Math.max(1000,INTERVALO_AVISO_TELEFONICO-Math.max(0,Date.now()-ultima))
+            : INTERVALO_AVISO_TELEFONICO;
+        temporizadorTelefonia=window.setTimeout(()=>{
+            temporizadorTelefonia=null;
+            if(document.hidden){
+                temporizadorTelefonia=window.setTimeout(programarSiguienteTelefono,60000);
+                return;
+            }
+            if(mostrarSiguienteTelefono()){
+                programarSiguienteTelefono();
+            }else{
+                // Sin pendientes o mientras se muestra una convocatoria: no reintentar cada segundo.
+                temporizadorTelefonia=window.setTimeout(programarSiguienteTelefono,INTERVALO_AVISO_TELEFONICO);
+            }
+        },espera);
     };
 
     const render = function (items) {
@@ -278,6 +328,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     window.addEventListener('impe:phone-notices-refresh',()=>void load());
+    programarSiguienteTelefono();
     load();
 
     window.setInterval(load, 60000);

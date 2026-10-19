@@ -17,17 +17,32 @@ const read=p=>fs.readFileSync(path.join(__dirname,'../public/javascript/',p),'ut
   });
   await page.goto('http://campana.test/');
   const item=page.locator('.topbar-reminder-item[data-telefonia-id="15"]');await item.waitFor();assert.match(await item.textContent(),/Transferencia sin respuesta/);
-  const toast=page.locator(marketing?'.convocatoria-activation-toast[data-telefonia-id="15"]':'.reminder-toast[data-telefonia-id="15"]');await toast.waitFor({state:'visible'});
+  const toast=page.locator(marketing?'.convocatoria-activation-toast[data-telefonia-id="15"]':'.reminder-toast[data-telefonia-id="15"]');
+  assert.equal(await toast.count(),0,'los avisos telefónicos no deben salir inmediatamente al ingresar');
+  await page.clock.runFor(8*60*1000+200);
+  await toast.waitFor({state:'visible'});
+  assert.equal(await page.locator('.reminder-toast,.convocatoria-activation-toast').count(),1,'un solo aviso por turno');
   await page.evaluate(()=>window.dispatchEvent(new Event('impe:phone-notices-refresh')));
-  await page.clock.fastForward(10000);await toast.waitFor({state:'detached'});
+  await page.clock.runFor(10000);await toast.waitFor({state:'detached'});
   assert.equal(await item.count(),1,'cerrar el toast no elimina la campana');assert.equal(readBody,'','el cierre automático no marca leído');
-  await page.reload();await item.waitFor();assert.equal(await toast.count(),0,'no repite toast al cambiar de página o recargar');
+  await page.reload();await item.waitFor();assert.equal(await toast.count(),0,'no reaparece al cambiar de página o recargar');
   notice={...notice,id:-16,telefonia_id:16,titulo:'Llamada por devolver',etiqueta:'Por devolver'};
   await page.evaluate(()=>window.dispatchEvent(new Event('impe:phone-notices-refresh')));
-  const nextToast=page.locator(marketing?'.convocatoria-activation-toast[data-telefonia-id="16"]':'.reminder-toast[data-telefonia-id="16"]');await nextToast.waitFor({state:'visible'});
+  await page.locator('.topbar-reminder-item[data-telefonia-id="16"]').waitFor();
+  const nextToast=page.locator(marketing?'.convocatoria-activation-toast[data-telefonia-id="16"]':'.reminder-toast[data-telefonia-id="16"]');
+  assert.equal(await nextToast.count(),0,'el aviso nuevo respeta el turno pendiente');
+  // Después de recargar ya han transcurrido 10 s desde el aviso anterior.
+  // Avanzar ocho minutos completos sobrepasaría su ventana de visibilidad.
+  const restante=await page.evaluate(()=>{
+   const clave='recordatorios:ultimo-toast-global-at:usuario:'+Number(window.IMPE_CURRENT_USER_ID||0);
+   const ultimo=Number(sessionStorage.getItem(clave)||0);
+   return ultimo>0?Math.max(1000,8*60*1000-(Date.now()-ultimo))+300:8*60*1000+300;
+  });
+  await page.clock.runFor(restante);
+  await nextToast.waitFor({state:'visible'});
   await nextToast.click();await page.waitForURL('**/historial');
   assert.match(readBody,/id=16/);assert.match(readBody,/csrf_token=csrf-own/);assert.ok(listed>=1);assert.deepEqual(errors,[]);await page.close();
  }
- console.log('Campanas analista/marketing: toast original, autocierre, sin repetición, campana persistente, refresco y lectura con CSRF: OK');
+ console.log('Campanas analista/marketing: ocho minutos, turno único, autocierre, campana persistente, recarga y lectura con CSRF: OK');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
