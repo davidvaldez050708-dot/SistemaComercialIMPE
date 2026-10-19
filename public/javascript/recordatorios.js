@@ -27,15 +27,13 @@
         const INTERVALO_TOAST_VENCIDO = 8 * 60 * 1000;
         const REINTENTO_TOAST_OCULTO = 60 * 1000;
         const DURACION_TOAST = 7000;
+        const claveUsuario = ':usuario:' + Number(window.IMPE_CURRENT_USER_ID || 0);
         const CLAVE_ULTIMO_TOAST_VENCIDO_AT =
-            'recordatorios:ultimo-toast-vencido-at';
+            'recordatorios:ultimo-toast-vencido-at' + claveUsuario;
         const CLAVE_ULTIMO_TOAST_VENCIDO_ID =
-            'recordatorios:ultimo-toast-vencido-id';
-        // Una sola cadencia visual para Seguimiento y Telefonía: 8 minutos.
-        // Los avisos siguen visibles en la campana aunque el toast se cierre.
-        const CLAVE_ULTIMO_TOAST_COMPARTIDO_AT = 'recordatorios:ultimo-toast-global-at';
-        const CLAVE_ULTIMO_TOAST_TELEFONIA_AT = 'recordatorios:ultimo-toast-telefonia-at';
-        const CLAVE_ULTIMO_TOAST_TELEFONIA_ID = 'recordatorios:ultimo-toast-telefonia-id';
+            'recordatorios:ultimo-toast-vencido-id' + claveUsuario;
+        // Un turno de ocho minutos por usuario, tanto para Seguimiento como para Telefonía.
+        const CLAVE_ULTIMO_TOAST_COMPARTIDO_AT = 'recordatorios:ultimo-toast-global-at' + claveUsuario;
 
         if (endpoint === '') {
             return;
@@ -78,6 +76,8 @@
         };
 
         const claveRecordatorio = function (recordatorio) {
+            const telefonoId = Number(recordatorio.telefonia_id || 0);
+            if (telefonoId > 0) return 'telefonia:' + telefonoId;
             const reunionId = Number(recordatorio.reunion_id || 0);
             const seguimientoConvocatoriaId = Number(
                 recordatorio.seguimiento_convocatoria_id || 0
@@ -106,6 +106,7 @@
         const registrarToastVencido = function (recordatorio) {
             guardarSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT, Date.now());
             guardarSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT, Date.now());
+            guardarSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT, Date.now());
             guardarSesion(
                 CLAVE_ULTIMO_TOAST_VENCIDO_ID,
                 claveRecordatorio(recordatorio)
@@ -259,41 +260,15 @@
             }, DURACION_TOAST);
         };
 
-        // Anteriormente se mostraban 2-3 llamadas juntas y luego nunca más.
-        // Ahora rotan de una en una cada ~8 minutos, igual que Seguimiento.
-        // La campana sigue siendo la fuente de verdad para los avisos no leídos.
-        const mostrarAvisosTelefonia = function (items) {
-            if (document.hidden) return false;
-            const pendientes = (items || []).filter(function (item) {
-                return Number(item.telefonia_id) > 0 && Number(item.leida || 0) === 0;
-            });
-            if (pendientes.length === 0) return false;
-            const ahora = Date.now();
-            const ultimoGlobal = Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0;
-            const ultimoTelefono = Number(leerSesion(CLAVE_ULTIMO_TOAST_TELEFONIA_AT)) || 0;
-            if (ahora - Math.max(ultimoGlobal, ultimoTelefono) < INTERVALO_TOAST_VENCIDO) {
-                return false;
-            }
-            const ultimoId = Number(leerSesion(CLAVE_ULTIMO_TOAST_TELEFONIA_ID)) || 0;
-            const ultimoIndice = pendientes.findIndex(function (item) {
-                return Number(item.telefonia_id) === ultimoId;
-            });
-            const siguiente = pendientes[(ultimoIndice + 1) % pendientes.length];
-            mostrarToast(siguiente);
-            guardarSesion(CLAVE_ULTIMO_TOAST_TELEFONIA_ID, Number(siguiente.telefonia_id));
-            guardarSesion(CLAVE_ULTIMO_TOAST_TELEFONIA_AT, ahora);
-            guardarSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT, ahora);
-            return true;
-        };
-
         const esRecordatorioVencidoRecurrente = function (recordatorio) {
             return estadoVisibleRecordatorio(recordatorio) === 'vencida';
         };
 
         const mostrarSiguienteToastVencido = function () {
-            const disponibles = recordatoriosActuales.filter(
-                esRecordatorioVencidoRecurrente
-            );
+            const disponibles = recordatoriosActuales.filter(function (r) {
+                return esRecordatorioVencidoRecurrente(r) ||
+                    (Number(r.telefonia_id || 0) > 0 && Number(r.leida || 0) === 0);
+            });
 
             if (disponibles.length === 0) {
                 return false;
@@ -313,6 +288,18 @@
             }
 
             const recordatorio = disponibles[indice];
+            if (Number(recordatorio.telefonia_id || 0) > 0) {
+                mostrarToast({
+                    telefonia_id: Number(recordatorio.telefonia_id),
+                    url: urlRecordatorio(recordatorio),
+                    icono: recordatorio.icono || 'bi-telephone-x',
+                    tipo: 'TELEFONIA_PERDIDA',
+                    titulo: recordatorio.titulo || recordatorio.nombre_entidad || 'Aviso telefónico',
+                    mensaje: recordatorio.mensaje || recordatorio.accion || 'Revisa tu historial'
+                });
+                registrarToastVencido(recordatorio);
+                return true;
+            }
             const entidad = String(
                 recordatorio.nombre_entidad || 'Seguimiento'
             ).trim();
@@ -483,7 +470,7 @@
                     datos.total || 0
                 );
 
-                mostrarAvisosTelefonia(datos.recordatorios||[]);
+
 
                 if (datos.requiere_migracion) {
                     if (!avisoMigracionMostrado) {
