@@ -51,31 +51,31 @@
       "path": "app/services/TelefoniaVentasSchema.php",
       "kind": "php",
       "new": true,
-      "target_sha256": "5d7560be0cc1c99319ceaa4f8ca19df69224250e1302f2fd579447bd7b5b1e44",
+      "target_sha256": "5a7645622a079e21fe1208a8d8151853301a54579ab2e7e3729b5d066d2bca7b",
       "variants": [
         {
           "label": "github-base",
           "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "after": "5d7560be0cc1c99319ceaa4f8ca19df69224250e1302f2fd579447bd7b5b1e44"
+          "after": "5a7645622a079e21fe1208a8d8151853301a54579ab2e7e3729b5d066d2bca7b"
         }
       ],
       "patch": "tools/ventas_fase_b/03.patch",
-      "patch_sha256": "a0355713985cc036e91d04796c8249f84cb0962bcf614cfb43c623ffadba4201"
+      "patch_sha256": "2335b6c0c2a753f044e08489fdb5045af4a79fa56a7566964b37c296e7b8ef6c"
     },
     {
       "path": "app/services/TelefoniaVentasLlamadasService.php",
       "kind": "php",
       "new": true,
-      "target_sha256": "eedf0ee109f48fdcff4f6799aaf518846e2d67bf9d3e7f259df519a7d8451d15",
+      "target_sha256": "ecc80980a092015a1a5374c559b03bcbfba9402230ed48bfba571340a108b217",
       "variants": [
         {
           "label": "github-base",
           "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "after": "eedf0ee109f48fdcff4f6799aaf518846e2d67bf9d3e7f259df519a7d8451d15"
+          "after": "ecc80980a092015a1a5374c559b03bcbfba9402230ed48bfba571340a108b217"
         }
       ],
       "patch": "tools/ventas_fase_b/04.patch",
-      "patch_sha256": "24569bef75bed7e12070c7d1e99385407de8bec2c2f028c903c39a9c09ec103e"
+      "patch_sha256": "994cd1d7160735de7a31f26cdf38a1fce37276c010c3773d5c984b6908bdb910"
     },
     {
       "path": "tools/migrar_telefonia_ventas.php",

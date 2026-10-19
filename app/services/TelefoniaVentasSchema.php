@@ -42,7 +42,7 @@ final class TelefoniaVentasSchema
                 resultado VARCHAR(36) NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY uk_ventas_llamada_extension(pbx_call_id,extension),
-                KEY idx_ventas_usuario_fecha(usuario_id,updated_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+                KEY idx_ventas_usuario_fecha(usuario_id,updated_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
             foreach(self::columnasResultado() as $col=>$definition)
                 $todo[]="ALTER TABLE telefonia_ventas_resultados ADD COLUMN $col $definition";
         } else {

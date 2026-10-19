@@ -78,18 +78,18 @@ final class TelefoniaVentasLlamadasService
     public function sincronizar(int $uid): void {
         $this->autorizar($uid);$this->requerir();
         $rows=$this->rows("SELECT e.* FROM telefonia_zadarma_eventos e
-            JOIN telefonia_extensiones t ON t.extension=e.internal AND t.usuario_id=? AND t.activo=1 AND t.proveedor='ZADARMA'
+            JOIN telefonia_extensiones t ON t.extension = BINARY e.internal AND t.usuario_id=? AND t.activo=1 AND t.proveedor='ZADARMA'
             WHERE e.evento IN ('NOTIFY_INTERNAL','NOTIFY_OUT_START') AND e.received_at>=DATE_SUB(NOW(),INTERVAL 90 DAY)
               AND e.received_at>=GREATEST(t.created_at,t.updated_at)
               AND (e.call_start IS NULL OR e.call_start>=GREATEST(t.created_at,t.updated_at))
-              AND NOT EXISTS (SELECT 1 FROM telefonia_ventas_llamadas c WHERE c.pbx_call_id=e.pbx_call_id AND c.extension=e.internal)
+              AND NOT EXISTS (SELECT 1 FROM telefonia_ventas_llamadas c WHERE c.pbx_call_id = BINARY e.pbx_call_id AND c.extension = BINARY e.internal)
             ORDER BY e.id LIMIT 300",[$uid]);
         foreach($rows as $e)$this->capturarEvento($e);
         // Las marcaciones previas conservan propietario aun si cambia la extensión.
         $rows=$this->rows("SELECT m.*,MIN(e.received_at) fecha FROM telefonia_ventas_marcaciones m
-            JOIN telefonia_zadarma_eventos e ON e.pbx_call_id=m.pbx_call_id AND e.internal=m.extension AND e.evento='NOTIFY_OUT_START'
+            JOIN telefonia_zadarma_eventos e ON e.pbx_call_id = BINARY m.pbx_call_id AND e.internal = BINARY m.extension AND e.evento='NOTIFY_OUT_START'
             WHERE m.usuario_id=? AND m.pbx_call_id IS NOT NULL AND m.created_at>=DATE_SUB(NOW(),INTERVAL 90 DAY)
-            AND NOT EXISTS (SELECT 1 FROM telefonia_ventas_llamadas c WHERE c.pbx_call_id=m.pbx_call_id AND c.extension=m.extension)
+            AND NOT EXISTS (SELECT 1 FROM telefonia_ventas_llamadas c WHERE c.pbx_call_id = BINARY m.pbx_call_id AND c.extension = BINARY m.extension)
             GROUP BY m.id ORDER BY m.id DESC LIMIT 300",[$uid]);
         foreach($rows as $r)$this->insertar($uid,$r['extension'],$r['pbx_call_id'],'Saliente',$r['destino'],$r['fecha']);
     }
@@ -131,10 +131,10 @@ final class TelefoniaVentasLlamadasService
         $this->sincronizar($uid);
         $rows=$this->rows("SELECT c.*,r.id registro_id,r.resultado,r.observacion,r.prospecto_nombre,r.contacto_id,r.proxima_accion_at
             FROM telefonia_ventas_llamadas c LEFT JOIN telefonia_ventas_resultados r
-              ON r.usuario_id=c.usuario_id AND r.extension=c.extension AND r.pbx_call_id=c.pbx_call_id
+              ON r.usuario_id=c.usuario_id AND r.extension = BINARY c.extension AND r.pbx_call_id = BINARY c.pbx_call_id
             WHERE c.usuario_id=? AND c.fecha>=DATE_SUB(NOW(),INTERVAL 90 DAY) ORDER BY c.fecha DESC,c.id DESC",[$uid]);
         $events=$this->rows("SELECT e.* FROM telefonia_zadarma_eventos e JOIN telefonia_ventas_llamadas c
-            ON c.pbx_call_id=e.pbx_call_id AND c.usuario_id=? AND c.fecha>=DATE_SUB(NOW(),INTERVAL 90 DAY)
+            ON c.pbx_call_id = BINARY e.pbx_call_id AND c.usuario_id=? AND c.fecha>=DATE_SUB(NOW(),INTERVAL 90 DAY)
             ORDER BY e.id",[$uid]);
         $grouped=[];foreach($events as $event)$grouped[$event['pbx_call_id']][]=$event;
         foreach($rows as &$row){
