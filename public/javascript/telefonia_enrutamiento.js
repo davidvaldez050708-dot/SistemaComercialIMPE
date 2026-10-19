@@ -21,6 +21,7 @@
     const identityBox = $('[data-routing-identification]');
     const lookupToggle = $('[data-routing-search-toggle]');
     const lookupWrap = $('[data-routing-search-wrap]');
+    const lookupLabel = document.querySelector('label[for="impeRoutingSearch"]');
     const phonePanel = $('[data-incoming-panel]');
     // Sacar las fichas del panel telefónico para no modificar su tamaño,
     // posición guardada, arrastre ni los controles de colgar/silenciar.
@@ -389,7 +390,9 @@
         const checkPhone = phone && phoneCheckedForCall !== currentCallId;
         setFeedback('Consultando responsables autorizados…');
         try {
-            const directoryQuery = type === 'INSTITUCION' ? '' : text;
+            // El nombre del prospecto no es un filtro de responsables.
+            // Los asesores autorizados se seleccionan por territorio.
+            const directoryQuery = '';
             const [directory, matches] = await Promise.all([
                 fetch(endpoint('routingListUrl', {
                     tipo:type, estado_id:'',
@@ -479,11 +482,21 @@
     tipo?.addEventListener('change', () => {
         if (estado) estado.value='';
         if (buscar) buscar.value='';
-        if (lookupWrap) lookupWrap.hidden = true;
+        const esProspecto = categoria === 'RECEPCION' && tipo?.value === 'PROSPECTO';
+        if (lookupWrap) lookupWrap.hidden = !esProspecto;
         if (lookupToggle) {
-            lookupToggle.hidden = false;
-            lookupToggle.setAttribute('aria-expanded', 'false');
+            lookupToggle.hidden = esProspecto;
+            lookupToggle.setAttribute('aria-expanded', String(esProspecto));
         }
+        if (buscar) {
+            buscar.required = esProspecto;
+            buscar.placeholder = esProspecto
+                ? 'Nombre del prospecto o persona que llama'
+                : 'Escribe el nombre si el teléfono no coincide';
+        }
+        if (lookupLabel) lookupLabel.textContent = esProspecto
+            ? 'Nombre del prospecto o de quien llama'
+            : 'Nombre de la institución o persona que llama';
         recognized = [];
         confirmedRecognition = false;
         // Volver a Institución debe reidentificar el número de ESTA llamada,
@@ -533,6 +546,11 @@
         }
         if(categoria==='RECEPCION' && tipo.value==='INSTITUCION' && !confirmedRecognition && String(buscar?.value||'').trim().length<2){
             if(lookupWrap)lookupWrap.hidden=false;setFeedback('Escribe el nombre de la institución o persona que llama.',true);buscar?.focus();return;
+        }
+        if(categoria==='RECEPCION' && tipo.value==='PROSPECTO' && String(buscar?.value||'').trim().length<2){
+            if(lookupWrap)lookupWrap.hidden=false;
+            setFeedback('Registra el nombre del prospecto o de quien llama antes de consultar disponibilidad.',true);
+            buscar?.focus();return;
         }
         const identity = active.id;
         if (!identity) {
