@@ -52,6 +52,7 @@ jobs:
           python3 tests/publicacion_ventas_test.py c
           python3 tests/publicacion_ventas_test.py d
           python3 tests/publicacion_ventas_test.py e
+          python3 tests/publicacion_ventas_revision_20261019_test.py
   datos-comerciales:
     runs-on: ubuntu-latest
     strategy:
