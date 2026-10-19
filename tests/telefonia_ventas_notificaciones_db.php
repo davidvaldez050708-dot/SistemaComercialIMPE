@@ -104,6 +104,23 @@ try {
  $marker->iniciar(8,'5558889900',str_repeat('f',32));foreach(['1','2'] as $hex)$event('out_'.str_repeat($hex,32),'NOTIFY_OUT_START','150',0,['destination'=>'+525558889900','received_at'=>date('Y-m-d H:i:s'),'call_start'=>date('Y-m-d H:i:s')]);$svc->sincronizar(8);
  vcheck((int)$db->query("SELECT COUNT(*) n FROM telefonia_ventas_marcaciones WHERE destino='+525558889900' AND pbx_call_id IS NULL")->fetch_assoc()['n']===1,'Dos eventos compatibles no eligen el primero');
 
+ // Hostinger: la sesión MySQL usa UTC y el webhook transforma received_at a México.
+ // Debe conciliar sin restar horas a los registros ni aceptar parejas ambiguas.
+ $db->query("SET time_zone='+00:00'");
+ $tokenUtc=str_repeat('6',32);$refUtc='out_'.str_repeat('6',32);
+ $marker->iniciar(8,'5556669911',$tokenUtc);
+ $event($refUtc,'NOTIFY_OUT_START','150',0,['destination'=>'+525556669911','received_at'=>date('Y-m-d H:i:s'),'call_start'=>date('Y-m-d H:i:s')]);
+ $svc->sincronizar(8);
+ vcheck($marker->pertenece(8,'150',$refUtc),'MySQL UTC y webhook hora México: conciliación única válida');
+ $atUtc=$db->query("SELECT created_at FROM telefonia_ventas_marcaciones WHERE token='$tokenUtc'")->fetch_assoc()['created_at'];
+ vcheck($marker->fechaMarcacionLocal($atUtc)!==$atUtc,'Las marcaciones UTC se presentan a la hora local sin modificar la fila');
+ $ambigToken=str_repeat('7',32);
+ $marker->iniciar(8,'5556679912',$ambigToken);
+ foreach(['7','8'] as $hex)$event('out_'.str_repeat($hex,32),'NOTIFY_OUT_START','150',0,['destination'=>'+525556679912','received_at'=>date('Y-m-d H:i:s'),'call_start'=>date('Y-m-d H:i:s')]);
+ $svc->sincronizar(8);
+ vcheck((int)$db->query("SELECT COUNT(*) n FROM telefonia_ventas_marcaciones WHERE token='$ambigToken' AND pbx_call_id IS NULL")->fetch_assoc()['n']===1,'Dos eventos UTC→México siguen sin vincularse por ambigüedad');
+ $db->query("SET time_zone='-06:00'");
+
  $audio=TelefoniaVentasLlamadasService::hechos([
   ['evento'=>'NOTIFY_RECORD','internal'=>'100','call_id_with_rec'=>'record-shared-001'],
   ['evento'=>'NOTIFY_RECORD','internal'=>'150','call_id_with_rec'=>'record-shared-001'],
