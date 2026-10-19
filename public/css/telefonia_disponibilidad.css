@@ -79,7 +79,7 @@
   font: 800 24px/1 'Manrope', sans-serif;
 }
 .impe-availability-dialog[data-availability-incoming] .system-form-modal-header::before {
-  content: '✓';
+  content: '☎';
 }
 .impe-availability-dialog .system-form-modal-header h2 {
   margin: 0 0 5px;
