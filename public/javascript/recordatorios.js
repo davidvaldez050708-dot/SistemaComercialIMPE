@@ -73,6 +73,8 @@
         };
 
         const claveRecordatorio = function (recordatorio) {
+            const telefonoId = Number(recordatorio.telefonia_id || 0);
+            if (telefonoId > 0) return 'telefonia:' + telefonoId;
             const reunionId = Number(recordatorio.reunion_id || 0);
             const seguimientoConvocatoriaId = Number(
                 recordatorio.seguimiento_convocatoria_id || 0
@@ -253,25 +255,18 @@
             }, DURACION_TOAST);
         };
 
-        const phoneToastsSeen=new Set();
-        const mostrarAvisosTelefonia=function(items){
-            let shown=0;
-            for(const item of items||[]){
-                const id=Number(item.telefonia_id);if(id<=0||Number(item.leida||0)!==0)continue;
-                const key='impe:phone-toast:'+Number(window.IMPE_CURRENT_USER_ID||0)+':'+id;
-                if(phoneToastsSeen.has(key)||leerSesion(key)==='1')continue;
-                mostrarToast(item);phoneToastsSeen.add(key);guardarSesion(key,'1');if(++shown===3)break;
-            }
-        };
-
         const esRecordatorioVencidoRecurrente = function (recordatorio) {
             return estadoVisibleRecordatorio(recordatorio) === 'vencida';
         };
 
         const mostrarSiguienteToastVencido = function () {
-            const disponibles = recordatoriosActuales.filter(
-                esRecordatorioVencidoRecurrente
-            );
+            // Todos los avisos recurrentes (seguimiento + telefonía)
+            // comparten UN turno cada ocho minutos. Evita que las llamadas
+            // perdidas y transferidas disparen dos o tres toasts al iniciar.
+            const disponibles = recordatoriosActuales.filter(function (r) {
+                return esRecordatorioVencidoRecurrente(r) ||
+                    (Number(r.telefonia_id || 0) > 0 && Number(r.leida || 0) === 0);
+            });
 
             if (disponibles.length === 0) {
                 return false;
@@ -291,6 +286,18 @@
             }
 
             const recordatorio = disponibles[indice];
+            if (Number(recordatorio.telefonia_id || 0) > 0) {
+                mostrarToast({
+                    telefonia_id: Number(recordatorio.telefonia_id),
+                    url: urlRecordatorio(recordatorio),
+                    icono: recordatorio.icono || 'bi-telephone-x',
+                    tipo: 'TELEFONIA_PERDIDA',
+                    titulo: recordatorio.titulo || recordatorio.nombre_entidad || 'Aviso telefónico',
+                    mensaje: recordatorio.mensaje || recordatorio.accion || 'Revisa tu historial'
+                });
+                registrarToastVencido(recordatorio);
+                return true;
+            }
             const entidad = String(
                 recordatorio.nombre_entidad || 'Seguimiento'
             ).trim();
@@ -453,7 +460,7 @@
                     datos.total || 0
                 );
 
-                mostrarAvisosTelefonia(datos.recordatorios||[]);
+
 
                 if (datos.requiere_migracion) {
                     if (!avisoMigracionMostrado) {
