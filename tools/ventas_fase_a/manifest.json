@@ -31,9 +31,9 @@
         {
           "label": "hostinger-20261019-ventas-sin-alterar-otros-roles",
           "before": "f5ccdbbc19a008840391f73ac674a7a3dddc267c9787112a21500a12efdec7a2",
-          "after": "47bdd6ae6d322f1e05bd57eb4f6a23de1ba379c9399440a7ed31863666b32232",
+          "after": "b9649d1f21090da917eadc0f74b2933478e8ed5227aff09f58d9f6e413095ca1",
           "patch": "tools/ventas_fase_a/03.patch",
-          "patch_sha256": "4668ed306cce2cd99bd11314bcae04b566b2a523f33dec06abbe32bf1fd1b54a"
+          "patch_sha256": "8555ddcba63defc6b74d563e2094897e8e0f731d1d23a6a0969e3ad2da26d5d6"
         }
       ],
       "patch": "tools/ventas_fase_a/01.patch",
