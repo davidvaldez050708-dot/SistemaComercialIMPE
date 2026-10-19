@@ -37,6 +37,7 @@
             'recordatorios:ultimo-toast-vencido-id' + claveUsuario;
         // Un turno de ocho minutos por usuario, tanto para Seguimiento como para Telefonía.
         const CLAVE_ULTIMO_TOAST_COMPARTIDO_AT = 'recordatorios:ultimo-toast-global-at' + claveUsuario;
+        const CLAVE_INICIO_CADENCIA = 'recordatorios:inicio-toast-global-at' + claveUsuario;
 
         if (endpoint === '') {
             return;
@@ -77,6 +78,11 @@
                 // El recordatorio sigue funcionando aunque sessionStorage no esté disponible.
             }
         };
+
+        // Mantener el inicio del primer turno durante toda la sesión, incluso al navegar.
+        if (!leerSesion(CLAVE_INICIO_CADENCIA)) {
+            guardarSesion(CLAVE_INICIO_CADENCIA, Date.now());
+        }
 
         const claveRecordatorio = function (recordatorio) {
             const telefonoId = Number(recordatorio.telefonia_id || 0);
@@ -334,7 +340,8 @@
 
             const ultimoToast = Math.max(
                 Number(leerSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT)) || 0,
-                Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0
+                Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0,
+                Number(leerSesion(CLAVE_INICIO_CADENCIA)) || 0
             );
             const ahora = Date.now();
             const espera = Number.isFinite(ultimoToast) && ultimoToast > 0
