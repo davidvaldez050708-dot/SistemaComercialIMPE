@@ -222,8 +222,13 @@ final class TelefoniaVentasLlamadasService
         $search=trim((string)($filters['q']??''));if(mb_strlen($search)>100)throw new InvalidArgumentException('La búsqueda es demasiado larga.');
         $calls=array_values(array_filter($calls,static fn($c)=>substr($c['fecha'],0,10)>=$from&&substr($c['fecha'],0,10)<=$until&&
             ($search===''||mb_stripos($c['numero'].' '.$c['nombre'].' '.($c['registro']['prospecto_nombre']??''),$search)!==false)));
-        $summary=['total'=>count($calls),'pendientes'=>0,'perdidas'=>0,'conversaciones'=>0];
-        foreach($calls as $c){$summary['pendientes']+=(int)($c['finalizada']&&!$c['registro']);
+        $summary=['total'=>count($calls),'pbx'=>0,'intentos'=>0,'transferencias_sin_tramo'=>0,'pendientes'=>0,'perdidas'=>0,'conversaciones'=>0];
+        foreach($calls as $c){
+            $confirmedRef=trim((string)($c['pbx_call_id']??''))!=='';
+            $summary['pbx']+=(int)$confirmedRef;
+            $summary['intentos']+=(int)(!$confirmedRef&&str_starts_with((string)$c['id'],'intento-'));
+            $summary['transferencias_sin_tramo']+=(int)(!$confirmedRef&&str_starts_with((string)$c['id'],'transferencia-'));
+            $summary['pendientes']+=(int)($c['finalizada']&&!$c['registro']);
             $summary['perdidas']+=(int)($c['finalizada']&&!$c['conectada']&&$c['direccion']==='Entrante');
             $summary['conversaciones']+=(int)TelefoniaResultadoVentasService::esConversacion($c['registro']['resultado']??'');}
         $search=trim((string)($filters['q']??''));$state=(string)($filters['estado']??'');
