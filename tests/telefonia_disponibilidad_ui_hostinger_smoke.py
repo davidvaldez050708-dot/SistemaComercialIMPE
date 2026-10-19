@@ -8,7 +8,7 @@ import tempfile
 root=Path(__file__).resolve().parents[1]
 publisher=root/'tools/publicar_disponibilidad_ui_hostinger.sh'
 base='dc27b76fcebcb35e36b50817a5b1b956bb502688'
-target='0527511db74ec482651bb4a707d0edbb6a8dcdcf'
+target='582f2b0e18fe8c7471babcd64a85ec2f066e3afd'
 mapping={
  'js':'public/javascript/telefonia_disponibilidad.js',
  'css':'public/css/telefonia_disponibilidad.css'
