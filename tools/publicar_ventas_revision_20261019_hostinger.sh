@@ -5,6 +5,8 @@ umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
 TARGET='9692b73077bc093c3a0a07d3f1c920e63e9328df'
+REVIEWED='7a38d6c5219a992531da0ef2d424586cddec9d24'
+SHELL_CSS_APPROVED='3cb35716bb105ae4a98fd39216cc9f3e0ea41427866eb5f9a2ec3e0b8f86388e'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 SOURCE="${IMPE_VENTAS_REVISION_SOURCE:-$HOME/crm-publicaciones/ventas-revision-20261019-actual}"
 LIVE="${IMPE_VENTAS_REVISION_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
@@ -31,6 +33,7 @@ git_public(){ command git -c remote.origin.url="$REPO" -c http.sslVerify=true "$
 if [[ ! -e "$SOURCE" ]]; then mkdir -p "$(dirname "$SOURCE")"; git_public clone --quiet --no-checkout --filter=blob:none "$REPO" "$SOURCE"; fi
 if git_public -C "$SOURCE" config --name-only --get-regexp '^url\..*\.insteadof$' >/dev/null; then fail 'La preparación tiene reglas locales de URL; usa otra carpeta privada.'; fi
 if ! git_public -C "$SOURCE" cat-file -e "$TARGET^{commit}" 2>/dev/null; then git_public -C "$SOURCE" fetch --quiet "$REPO" "$TARGET"; fi
+if ! git_public -C "$SOURCE" cat-file -e "$REVIEWED^{commit}" 2>/dev/null; then git_public -C "$SOURCE" fetch --quiet "$REPO" "$REVIEWED"; fi
 SCRATCH="$(cd "${TMPDIR:-/tmp}" && pwd -P)"; TMP="$(mktemp -d "$SCRATCH/impe-ventas-revision.XXXXXX")"; touch "$TMP/.impe-owned"
 mkdir "$TMP/stage" "$TMP/original"
 LOCK="$(dirname "$LIVE")/.impe-atencion-deploy.lock"; LOCKED=0; WRITING=0; BACKUP=''
@@ -102,7 +105,14 @@ if [[ "$MODE" == --restore ]]; then
 else
  echo "Sitio: $LIVE; entrega: $TARGET"
  for file in "${FILES[@]}";do
-  git_public -C "$SOURCE" show "$TARGET:$file" > "$TMP/stage/$file" || fail "Fuente GitHub no disponible: $file"
+  if [[ "$file" == public/css/telefonia_shell.css ]]; then
+   # El CSS de producción conserva reglas IMPE_CERRAR_DERECHA_V2 y
+   # IMPE_COLGAR_DERECHA_V1: instalar sólo versión fusionada y revisada.
+   git_public -C "$SOURCE" show "$REVIEWED:tools/ventas_revision_20261019/telefonia_shell_hostinger.css" > "$TMP/stage/$file" || fail 'CSS fusionado no disponible.'
+   [[ "$(digest "$TMP/stage/$file")" == "$SHELL_CSS_APPROVED" ]] || fail 'CSS fusionado con huella incorrecta.'
+  else
+   git_public -C "$SOURCE" show "$TARGET:$file" > "$TMP/stage/$file" || fail "Fuente GitHub no disponible: $file"
+  fi
   target_hash="$(digest "$TMP/stage/$file")"
   # Aceptar únicamente la huella exacta de Hostinger o el nuevo archivo ya instalado.
   if [[ "${BEFORE[$file]}" != "${PINNED_BEFORE[$file]}" && "${BEFORE[$file]}" != "$target_hash" ]];then
