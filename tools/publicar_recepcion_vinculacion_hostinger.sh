@@ -114,6 +114,9 @@ else
   # No depender de Node en el alojamiento compartido.
   case "$file" in *.php) php -l "$TMP/stage/$file" >/dev/null;; esac
   if [[ "$eol" == CRLF ]];then php -r '$p=$argv[1];file_put_contents($p,str_replace("\n","\r\n",file_get_contents($p)));' "$TMP/stage/$file";fi
+  # git apply puede recrear el archivo bajo umask 077. Recuperar sus permisos
+  # originales antes de instalar, para conservar el acceso del servidor web.
+  if [[ "${BEFORE[$file]}" != MISSING ]];then chmod --reference="$TMP/original/$file" "$TMP/stage/$file";fi
   AFTER["$file"]="$(digest "$TMP/stage/$file")"
   if [[ "${BEFORE[$file]}" != "${AFTER[$file]}" ]];then CHANGED+=("$file");echo "PREPARADO: $file ($variant)";fi
  done
