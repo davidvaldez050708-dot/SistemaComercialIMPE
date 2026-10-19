@@ -119,6 +119,13 @@ class TelefoniaMarcacionesVentasService
         return $date->setTimezone($this->zonaMySQL())->format('Y-m-d H:i:s');
     }
 
+    /**
+     * Sólo 5 segundos antes y hasta 30 segundos después del intento.
+     * Una espera mayor no demuestra que el evento pertenezca a ese intento:
+     * en producción dos eventos estaban a +2 s, mientras el intento sin
+     * confirmación tenía un falso candidato a +55 s. Cualquier ambigüedad
+     * dentro de esta ventana queda sin asociación (forward/reverse).
+     */
     public function vincular(int $usuarioId, string $token, string $pbxCallId): void
     {
         if (
@@ -158,8 +165,8 @@ class TelefoniaMarcacionesVentasService
                AND internal = ?
                AND evento = 'NOTIFY_OUT_START'
                AND received_at BETWEEN
-                   DATE_SUB(?, INTERVAL 2 MINUTE) AND
-                   DATE_ADD(?, INTERVAL 15 MINUTE)
+                   DATE_SUB(?, INTERVAL 5 SECOND) AND
+                   DATE_ADD(?, INTERVAL 30 SECOND)
              ORDER BY id ASC LIMIT 1"
         );
         if (!$stmt) throw new RuntimeException('No se pudo verificar el inicio en Zadarma.');
@@ -239,8 +246,8 @@ class TelefoniaMarcacionesVentasService
         if(!$pendientes)return;
         // La ventana del webhook usa reloj de México; MySQL puede usar UTC.
         $instantes=[];foreach($pendientes as $i)$instantes[]=$this->horaEventoDesdeMarcacion((string)$i['created_at'])->getTimestamp();
-        $from=(new DateTimeImmutable('@'.(min($instantes)-120)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
-        $until=(new DateTimeImmutable('@'.(max($instantes)+900)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
+        $from=(new DateTimeImmutable('@'.(min($instantes)-5)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
+        $until=(new DateTimeImmutable('@'.(max($instantes)+30)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
         $eventos=$this->db->prepare("SELECT pbx_call_id,destination,MIN(received_at) fecha FROM telefonia_zadarma_eventos WHERE internal=? AND evento='NOTIFY_OUT_START' AND received_at BETWEEN ? AND ? GROUP BY pbx_call_id,destination");
         $eventos->bind_param('sss',$extension,$from,$until);$eventos->execute();$rs=$eventos->get_result();$byNumber=[];
         while($ev=$rs->fetch_assoc()){try{$number=TelefoniaContactosService::normalizarTelefono((string)$ev['destination']);$byNumber[$number][]=$ev;}catch(InvalidArgumentException $ignored){}}
@@ -248,7 +255,7 @@ class TelefoniaMarcacionesVentasService
         foreach($pendientes as $intent){
             try{$number=TelefoniaContactosService::normalizarTelefono($intent['destino']);}catch(InvalidArgumentException $ignored){continue;}
             $at=$this->horaEventoDesdeMarcacion((string)$intent['created_at'])->getTimestamp();
-            foreach($byNumber[$number]??[] as $ev){$when=(new DateTimeImmutable((string)$ev['fecha'],new DateTimeZone('America/Mexico_City')))->getTimestamp();if($when<$at-120||$when>$at+900)continue;
+            foreach($byNumber[$number]??[] as $ev){$when=(new DateTimeImmutable((string)$ev['fecha'],new DateTimeZone('America/Mexico_City')))->getTimestamp();if($when<$at-5||$when>$at+30)continue;
                 $ref=(string)$ev['pbx_call_id'];$forward[$intent['token']][$ref]=true;$reverse[$ref][$intent['token']]=true;
             }
         }
