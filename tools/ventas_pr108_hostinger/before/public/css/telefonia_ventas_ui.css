@@ -1,0 +1,56 @@
+/* Composición de Ventas sobre los componentes de Seguimiento y Expedientes.
+   Los formularios, botones, colores y tarjetas conservan sus reglas compartidas. */
+.sales-calls-page .sales-history-tabs {
+  display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;
+}
+.sales-calls-page .linkage-call-summary.sales-history-stats {
+  grid-template-columns:repeat(5,minmax(0,1fr));margin:0 0 16px;
+}
+.sales-calls-page .sales-history-filters {
+  grid-template-columns:minmax(200px,1.7fr) minmax(170px,1.3fr) repeat(2,minmax(135px,1fr)) auto;
+  margin-bottom:16px;
+}
+.sales-calls-page .sales-history-filters .form-control {min-width:0;min-height:42px;font-size:12px;}
+.sales-calls-page .sales-history-filters .module-search {width:100%;min-width:0;}
+.sales-calls-page .sales-history-filters .module-search input {min-width:0;width:100%;}
+.sales-calls-page .sales-history-filters .btn {min-height:42px;white-space:nowrap;}
+.sales-calls-page .linkage-call-recording-body {gap:6px;}
+.sales-calls-page .linkage-call-recording-top {gap:10px;}
+.sales-calls-page .linkage-call-history-identity {align-content:start;}
+.sales-calls-page .linkage-call-detail {padding:0;margin:0;}
+.sales-calls-page .linkage-call-history-footer {margin:0;padding-top:7px;}
+.sales-calls-page .linkage-call-audio-state:not(button) {font-family:inherit;}
+.sales-calls-page .linkage-call-history-date {font-variant-numeric:tabular-nums;}
+@media(max-width:1100px){
+ .sales-calls-page .sales-history-filters {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .sales-calls-page .sales-history-filters .linkage-tools-actions {grid-column:1/-1;}
+}
+@media(max-width:767px){
+ .sales-calls-page .linkage-call-summary.sales-history-stats {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .sales-calls-page .sales-history-tabs .btn {flex:1 1 auto;}
+ .sales-calls-page .linkage-call-recording-top {flex-wrap:wrap;}
+}
+@media(max-width:420px){
+ .sales-calls-page .sales-history-filters {grid-template-columns:minmax(0,1fr);}
+ .sales-calls-page .sales-history-filters .linkage-tools-actions .btn {width:100%;}
+}
+/* Una casilla explícita, proporcional y accesible, sin heredar estilos de Analista. */
+#modalResultadoVenta .form-check {
+  display:flex;align-items:center;gap:10px;margin:6px 0 2px;
+  padding:12px 14px;border:1px solid #dfe8f4;
+  border-radius:10px;background:#f8faff;
+}
+#modalResultadoVenta .form-check .form-check-input {
+  float:none;margin:0;flex:0 0 18px;width:18px;height:18px;
+  cursor:pointer;border:1px solid #aebbd4;
+}
+#modalResultadoVenta .form-check .form-check-label {
+  cursor:pointer;margin:0;font-size:12px;font-weight:750;
+  line-height:1.45;color:#385075;
+}
+#modalResultadoVenta .form-check:has(input:checked) {
+  background:#eef4ff;border-color:#b7c8ec;
+}
+#modalResultadoVenta .modal-footer .btn {
+  min-height:42px;font-size:12px;font-weight:750;
+}
