@@ -23,7 +23,7 @@ if [ "$MODE" != --restore ]; then
     curl -fsSL --retry 2 "$URL/8c73a0fc8800b138cde354e806611768332d36a0/public/css/telefonia_disponibilidad.css" -o "$TMP/target.css"
   fi
 fi
-python3 - "$MODE" "$TMP" "$2" <<'PY'
+python3 - "$MODE" "$TMP" "${2:-}" <<'PY'
 import hashlib,json,os,sys,tempfile,shutil
 from datetime import datetime
 from pathlib import Path
