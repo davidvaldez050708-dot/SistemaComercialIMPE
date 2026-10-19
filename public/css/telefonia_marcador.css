@@ -916,3 +916,6 @@
  .telephony-contacts-card .sales-contact-table-scroll{margin-right:0;}
  .telephony-contacts-card .telephony-contacts-table{min-width:640px;}
 }
+
+/* La paginación debe prevalecer sobre display:table-row!important. */
+.telephony-contacts-card .telephony-contacts-list .telephony-contact-row[hidden] {display:none!important;}
