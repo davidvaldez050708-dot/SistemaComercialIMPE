@@ -51,13 +51,17 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    assert.equal(await d.evaluate(()=>audioProbe.created),1,'el clic real del iframe habilita sólo el contexto de aviso');
   }
   await s.locator('[data-shell-transfer-toggle]').click();await s.locator('[data-routing-destination]').selectOption('8:101:17');await s.locator('[data-routing-search]').fill('Institución prueba');await s.locator('[data-routing-attended]').click();
-  await s.locator('[data-availability-source]').waitFor({state:'visible'});assert.equal(authorizations,0);
+  await s.locator('[data-availability-source]').waitFor({state:'visible'});
+  assert.equal(await s.locator('[data-availability-source]').getAttribute('data-availability-state'),'PENDIENTE','estado de espera visible');
+  assert.equal(authorizations,0);
   assert.equal(await s.locator('[data-availability-transfer]').isVisible(),false,'Transferir sólo se muestra después de aceptar');
   assert.equal(await s.locator('[data-availability-callback-open]').isVisible(),false,'Devolución sólo se ofrece al rechazar o vencer');
   assert.equal(await s.locator('[data-shell-transfer-toggle]').isDisabled(),true,'La solicitud pendiente bloquea otro envío aunque se cierre la ficha');
   assert.equal(await s.evaluate(()=>window.commands.length),0,'solicitar disponibilidad no envía transferencia');
   if(scenario==='pendiente')await d.evaluate(()=>document.body.classList.add('impe-sdk-result-in-modal'));
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());await d.locator('[data-availability-incoming]').waitFor({state:'visible'});
+  assert.equal(await d.locator('[data-availability-incoming]').getAttribute('data-availability-blocked'),scenario==='pendiente'?'1':'0','bloqueo visual coincide con resultado pendiente');
+  assert.ok(await d.locator('[data-availability-incoming] .system-form-modal-footer .persistent-phone-action').first().evaluate(el=>parseFloat(getComputedStyle(el).minHeight)>=40),'botones accesibles');
   if(scenario!=='iframe'){
    assert.equal(await d.evaluate(()=>audioProbe.started),0,'sin gesto confiable no intenta sonido');
    await d.locator('[data-availability-incoming] h2').click();
@@ -72,18 +76,21 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
   if(scenario==='pendiente'){
    assert.equal(await d.locator('[data-availability-accept]').isDisabled(),true,'Resultado pendiente impide aceptar, pero muestra solicitud');
    assert.equal(await d.locator('[data-availability-pending]').isVisible(),true);
+   assert.equal(await d.locator('[data-availability-incoming] [data-availability-feedback]').isVisible(),true,'aviso pendiente visible');
    await d.locator('[data-availability-pending]').click();await d.locator('[data-availability-waiting]').waitFor({state:'visible'});
    await d.evaluate(()=>document.body.classList.remove('impe-sdk-result-in-modal'));await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
    await d.locator('[data-availability-incoming]').waitFor({state:'visible'});assert.equal(await d.locator('[data-availability-accept]').isDisabled(),false);
    await d.locator('[data-availability-decline]').click();assert.equal(authorizations,0);
   }else if(scenario==='aceptar'||scenario==='iframe'){
    await d.locator('[data-availability-accept]').click();await s.evaluate(()=>window.IMPE_AVAILABILITY.tick());
+   assert.equal(await s.locator('[data-availability-source]').getAttribute('data-availability-state'),'ACEPTADA','estado de aceptación visible');
    await s.locator('[data-availability-transfer]').waitFor({state:'visible'});assert.equal(authorizations,0,'aceptar no entrega automáticamente');
    await s.locator('[data-availability-transfer]').click();await s.waitForFunction(()=>window.commands.length===1);assert.equal(authorizations,1);
    assert.equal(await s.locator('[data-availability-source]').isVisible(),false);
   }else{
    if(scenario==='rechazar')await d.locator('[data-availability-decline]').click();else op={...op,estado:'VENCIDA',segundos:0};
    await s.evaluate(()=>window.IMPE_AVAILABILITY.tick());await s.locator('[data-availability-callback-open]').waitFor({state:'visible'});
+   assert.equal(await s.locator('[data-availability-source]').getAttribute('data-availability-state'),scenario==='rechazar'?'RECHAZADA':'VENCIDA','estado de rechazo o vencimiento visible');
    assert.equal(await s.evaluate(()=>window.commands.length),0,'rechazo o vencimiento conserva la llamada sin DTMF');
    await s.locator('[data-availability-callback-open]').click();const dialog=s.locator('[data-availability-callback]');
    await dialog.locator('[name=contacto]').fill('Ana');await dialog.locator('[name=nota]').fill('Institución Uno: solicita información');
