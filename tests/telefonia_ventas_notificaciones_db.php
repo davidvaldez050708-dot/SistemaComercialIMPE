@@ -125,7 +125,7 @@ try {
  // dos inicios PBX: #1 y #3 a +2 segundos; #2 queda entre ambos
  // con candidatos a -119 y +55 segundos y no debe asociarse.
  $tokensTres=[str_repeat('1',32),str_repeat('2',32),str_repeat('3',32)];
- $refUno='out_'.str_repeat('1',32);$refTres='out_'.str_repeat('3',32);
+ $refUno='out_'.str_repeat('a',31).'1';$refTres='out_'.str_repeat('a',31).'3';
  $baseUtc=time()-900;
  $intentEpoch=[$baseUtc,$baseUtc+121,$baseUtc+174];
  $mxZone=new DateTimeZone('America/Mexico_City');
