@@ -4,7 +4,8 @@
  data-save-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=devolucion"
  data-endpoint="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=devolucion"
  data-search-url="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&amp;action=buscarEntrantesSeguimientos"
- data-csrf="<?= $esc($_SESSION['csrf_token']??'') ?>" data-auto-attempt="<?= (int)($_GET['intento_id']??0) ?>">
+ data-csrf="<?= $esc($_SESSION['csrf_token']??'') ?>" data-auto-attempt="<?= (int)($_GET['intento_id']??0) ?>"
+ data-focus-attempt="<?= (int)($_GET['detalle_intento']??0) ?>">
  <header class="linkage-incoming-heading"><div class="linkage-incoming-heading-copy"><span class="linkage-incoming-eyebrow"><i class="bi bi-telephone-forward"></i> SEGUIMIENTO · TELEFONÍA</span><h2>Llamadas por devolver</h2><p>Contacta a las personas que recepción dejó para ti y registra el resultado de cada intento.</p></div><div class="linkage-incoming-heading-actions"><?php if (empty($desdeMisLlamadas)): ?><a class="btn btn-system-light linkage-incoming-back" href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&amp;action=llamadasEntrantes"><i class="bi bi-arrow-left"></i> Llamadas recibidas</a><?php endif; ?></div></header>
  <div class="linkage-call-summary linkage-incoming-stats"><div><span>Por devolver</span><strong data-callback-stat="pending">0</strong></div><div><span>Para reintentar</span><strong data-callback-stat="retry">0</strong></div><div><span>Atendidas</span><strong data-callback-stat="done">0</strong></div><div><span>Total</span><strong data-callback-stat="total">0</strong></div></div>
  <div class="impe-callback-filter-panel">
