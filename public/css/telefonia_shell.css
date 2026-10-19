@@ -191,3 +191,35 @@ html, body {
     text-align: center;
   }
 }
+
+/* Ventas: el acceso al resultado finalizado comparte fila y altura con Cerrar.
+   Los controles de recepción/analista no tienen data-sales-open. */
+.impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) > [data-sales-open] {
+  grid-column: 1 / 2;
+  grid-row: 1;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  justify-self: stretch;
+  align-self: stretch;
+}
+.impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) > [data-incoming-close-finished]:not([hidden]) {
+  grid-column: 2 / 3;
+  grid-row: 1;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  justify-self: stretch;
+  align-self: stretch;
+}
+@media(max-width:420px){
+  .impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) {
+    grid-template-columns: minmax(0,1fr);
+  }
+  .impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) > [data-sales-open] {
+    grid-column: 1; grid-row: 2;
+  }
+  .impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) > [data-incoming-close-finished]:not([hidden]) {
+    grid-column: 1; grid-row: 1;
+  }
+}
