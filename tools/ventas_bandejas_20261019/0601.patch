@@ -1,0 +1,23 @@
+--- a/public/css/telefonia_ventas_ui.css
++++ b/public/css/telefonia_ventas_ui.css
+@@ -54,3 +54,20 @@
+ #modalResultadoVenta .modal-footer .btn {
+   min-height:42px;font-size:12px;font-weight:750;
+ }
++
++/* PR108 sobre la versión compacta y personalizada de Hostinger. */
++.sales-calls-page .sales-history-tabs{display:flex!important;gap:8px!important;align-items:stretch!important;flex-wrap:wrap!important;margin:14px 0 18px!important;padding:0 0 14px!important;min-height:55px!important;border-bottom:1px solid #e2e9f4;}
++.sales-calls-page .sales-history-tabs>.btn{box-sizing:border-box!important;position:static!important;transform:none!important;margin:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:106px!important;min-height:40px!important;height:40px!important;padding:8px 15px!important;border-radius:10px!important;line-height:1.25!important;vertical-align:middle!important;box-shadow:none!important;text-decoration:none!important;}
++.sales-calls-page .sales-history-tabs>.btn.btn-system-save{background:#293e91!important;border-color:#293e91!important;color:#fff!important;}
++.sales-calls-page .sales-history-tabs>.btn.btn-system-light{background:#fff!important;border-color:#dce5f1!important;color:#50617b!important;}
++.sales-calls-page .sales-auto-filter{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(190px,1fr);align-items:end;gap:12px;margin:0 0 18px;padding:14px;background:#f7f9fd;border:1px solid #dce6f4;border-radius:13px;}
++.sales-calls-page .sales-auto-filter .impe-callback-filter-field{min-width:0;}
++.sales-calls-page .sales-auto-filter :is(.form-control,.form-select){width:100%;min-height:42px;border:1px solid #ccdaeb;border-radius:9px;font-size:12.5px;}
++@media(max-width:620px){.sales-calls-page .sales-auto-filter{grid-template-columns:minmax(0,1fr);}.sales-calls-page .sales-history-tabs>.btn{flex:1 1 100px;min-width:0!important;padding:8px!important;}}
++
++/* Bandejas secundarias: composición sobre los mismos componentes del Historial. */
++.sales-calls-page .sales-management-filters{grid-template-columns:minmax(0,1.7fr) minmax(170px,1fr);margin-bottom:16px;}
++.sales-calls-page .sales-management-filters .module-search{width:100%;min-width:0;}
++.sales-calls-page .sales-management-filters .form-control{min-width:0;min-height:42px;font-size:12px;}
++.sales-calls-page .linkage-call-summary.sales-management-stats{grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 16px;}
++@media(max-width:620px){.sales-calls-page .sales-management-filters{grid-template-columns:minmax(0,1fr);}}

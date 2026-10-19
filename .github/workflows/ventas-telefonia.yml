@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --prefix /tmp/ventas-browser playwright bootstrap@5.3.8
+      - run: npm install --prefix /tmp/ventas-browser playwright bootstrap@5.3.8 @fontsource/manrope@5.2.8 bootstrap-icons@1.13.1
       - run: /tmp/ventas-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Sintaxis y regresiones compartidas
         run: |
@@ -28,6 +28,8 @@ jobs:
           node --check public/javascript/telefonia_ventas_resultados.js
           node --check public/javascript/telefonia_ventas_devoluciones.js
           php -l tools/migrar_telefonia_ventas.php
+          php -l app/views/telefonia/ventas_paginacion.php
+          php tests/telefonia_ventas_audio_evidencia.php
           node tests/telefonia_shell_runtime_smoke.js
           node tests/telefonia_shell_navegacion_smoke.js
           node tests/telefonia_ventas_guard_http.cjs
@@ -40,12 +42,19 @@ jobs:
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/ventas-browser/node_modules/playwright
           BOOTSTRAP_MODULE_PATH: /tmp/ventas-browser/node_modules/bootstrap
+          IMPE_VENTAS_SCREENSHOTS: /tmp/ventas-bandejas-capturas
         run: |
+          mkdir -p /tmp/ventas-bandejas-capturas
           node tests/telefonia_ventas_operacion_browser.cjs
+          node tests/ventas_bandejas_browser.cjs
           node tests/telefonia_ventas_gestion_browser.cjs
           node tests/telefonia_modal_entrante_integracion_browser.cjs
           node tests/telefonia_disponibilidad_browser.cjs
           node tests/recordatorios_toasts_browser.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ventas-bandejas-responsive
+          path: /tmp/ventas-bandejas-capturas
       - name: Publicador selectivo en replicas
         run: |
           python3 tests/publicacion_ventas_test.py a
@@ -53,6 +62,7 @@ jobs:
           python3 tests/publicacion_ventas_test.py d
           python3 tests/publicacion_ventas_test.py e
           python3 tests/publicacion_ventas_revision_20261019_test.py
+          python3 tests/publicacion_ventas_bandejas_test.py
           python3 tests/publicacion_ventas_pr108_test.py
   datos-comerciales:
     runs-on: ubuntu-latest
@@ -82,6 +92,7 @@ jobs:
           IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
           php tests/telefonia_ventas_db.php
+          php tests/telefonia_ventas_audio_db.php
           php tests/telefonia_ventas_gestion_db.php
           php tests/telefonia_ventas_notificaciones_db.php
           php tests/telefonia_atencion_db.php
@@ -92,6 +103,14 @@ jobs:
           php tests/telefonia_mis_llamadas_navegacion_smoke.php
           php tests/telefonia_mis_llamadas_casos_concretos_smoke.php
           php tests/telefonia_mis_llamadas_vista_smoke.php
+      - name: Avisos desde PBX y base aislada hasta la campana y el toast
+        env:
+          IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+          PLAYWRIGHT_MODULE_PATH: /tmp/ventas-e2e/node_modules/playwright
+        run: |
+          npm install --prefix /tmp/ventas-e2e playwright
+          /tmp/ventas-e2e/node_modules/.bin/playwright install --with-deps chromium
+          node tests/ventas_avisos_integracion_browser.cjs
       - name: Publicador de backend en replicas
         if: matrix.database == 'mysql:8.0'
         run: python3 tests/publicacion_ventas_test.py b

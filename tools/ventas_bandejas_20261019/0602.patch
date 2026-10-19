@@ -1,0 +1,13 @@
+--- a/public/css/telefonia_ventas_ui.css
++++ b/public/css/telefonia_ventas_ui.css
+@@ -64,3 +64,10 @@
+ .sales-calls-page .sales-auto-filter .impe-callback-filter-field{min-width:0;}
+ .sales-calls-page .sales-auto-filter :is(.form-control,.form-select){width:100%;min-height:42px;border:1px solid #ccdaeb;border-radius:9px;font-size:12.5px;}
+ @media(max-width:620px){.sales-calls-page .sales-auto-filter{grid-template-columns:minmax(0,1fr);}.sales-calls-page .sales-history-tabs>.btn{flex:1 1 100px;min-width:0!important;padding:8px!important;}}
++
++/* Bandejas secundarias: composición sobre los mismos componentes del Historial. */
++.sales-calls-page .sales-management-filters{grid-template-columns:minmax(0,1.7fr) minmax(170px,1fr);margin-bottom:16px;}
++.sales-calls-page .sales-management-filters .module-search{width:100%;min-width:0;}
++.sales-calls-page .sales-management-filters .form-control{min-width:0;min-height:42px;font-size:12px;}
++.sales-calls-page .linkage-call-summary.sales-management-stats{grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 16px;}
++@media(max-width:620px){.sales-calls-page .sales-management-filters{grid-template-columns:minmax(0,1fr);}}

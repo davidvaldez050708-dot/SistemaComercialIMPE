@@ -35,6 +35,6 @@ const html=`<!doctype html><meta charset="utf-8"><meta name="viewport" content="
   const box=await phone.boundingBox();assert.ok(box.y>=0&&box.y+box.height<=size.height+1,'teléfono dentro del viewport móvil');
  }
  await crm.locator('[data-call-id="pbx-confirmed-001"]').click();await modal.waitFor({state:'visible'});
- await push('incoming-ringing',true);await modal.waitFor({state:'hidden'});await phone.waitFor({state:'visible'});assert.equal(await crm.locator('.modal-backdrop').count(),0,'llamada nueva interrumpe limpiamente el formulario');
+ await push('incoming-ringing',true);await modal.waitFor({state:'hidden'});await phone.waitFor({state:'visible'});await crm.locator('.modal-backdrop').waitFor({state:'detached',timeout:2000});assert.equal(await crm.locator('.modal-backdrop').count(),0,'llamada nueva interrumpe limpiamente el formulario');
  assert.deepEqual(errors,[]);console.log('Entrante: shell + observador + formulario, heartbeat, interrupción y tres tamaños sin superposición: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -12,15 +12,15 @@
  panel.querySelector('.persistent-phone-origin').after(card);
  const button=document.createElement('button');button.type='button';button.className='persistent-phone-action is-primary';button.textContent='Registrar resultado comercial';button.dataset.salesOpen='1';button.hidden=true;
  panel.querySelector('.persistent-phone-actions').append(button);
- const notice=document.createElement('aside');notice.className='impe-analyst-call-result';notice.hidden=true;
- const noticeText=document.createElement('strong');noticeText.textContent='Tienes un resultado comercial pendiente.';
- const noticeButton=document.createElement('button');noticeButton.type='button';noticeButton.textContent='Registrar resultado';notice.append(noticeText,noticeButton);document.body.append(notice);
- const remove=ref=>{phone.dismissFinishedCall?.(ref);pending=pending.filter(p=>p.ref!==ref);persist();render();};
+ // Los pendientes se notifican desde la campana y los toasts compartidos del CRM.
+ const announced=new Set();
+ const refreshNotices=()=>{try{const win=crm?.contentWindow;win?.dispatchEvent(new win.Event('impe:phone-notices-refresh'));}catch(_){/* La consulta periódica sigue disponible tras navegar. */}};
+ const remove=ref=>{const existed=pending.some(p=>p.ref===ref);phone.dismissFinishedCall?.(ref);pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
  const open=()=>{const task=pending[0];if(!task||phone.getPhoneStatus().active||!crm)return;
   const url=new URL(cfg.salesHistoryUrl,location.href);url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);crm.src=url.href;
  };
- button.addEventListener('click',open);noticeButton.addEventListener('click',open);
- const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();button.hidden=!pending.length||active||form;notice.hidden=!pending.length||active||form;};
+ button.addEventListener('click',open);
+ const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();button.hidden=!pending.length||active||form;};
  window.IMPE_SALES_ATTENTION=Object.freeze({hasPending:()=>pending.length>0,openPending:open});
  async function lookup(ref,version){
   if(fetching||!valid(ref))return;fetching=true;
@@ -28,6 +28,7 @@
    const r=await fetch(url,{credentials:'same-origin',cache:'no-store'}),j=await r.json();
    if(version!==revision||!r.ok||!j.ok)return;metadata=j.llamada;
    if(metadata.registro)remove(ref);
+   else if(metadata.finalizada&&!phone.getPhoneStatus().active&&!announced.has(ref)){announced.add(ref);refreshNotices();}
    card.hidden=!metadata.nombre;name.textContent=metadata.nombre||'';
    hint.textContent=metadata.origen_extension?'Nombre informado por Recepción · Ext. '+metadata.origen_extension:'Atención comercial de tu extensión';
   }catch(_){/* El historial conserva el pendiente mientras llega evidencia PBX. */}finally{fetching=false;}

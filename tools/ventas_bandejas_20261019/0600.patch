@@ -1,0 +1,199 @@
+--- a/public/css/telefonia_ventas_ui.css
++++ b/public/css/telefonia_ventas_ui.css
+@@ -1,120 +1,38 @@
+-/* Ventas: solo la bandeja comercial y su formulario. Sin efectos sobre Analista/Marketing. */
+-.sales-calls-page {
+-  width:min(100%,1280px)!important;max-width:1280px!important;
+-  padding:24px!important;
+-  color:#263b5f;
++/* Composición de Ventas sobre los componentes de Seguimiento y Expedientes.
++   Los formularios, botones, colores y tarjetas conservan sus reglas compartidas. */
++.sales-calls-page .sales-history-tabs {
++  display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;
+ }
+-.sales-calls-page .sales-history-tabs {
+-  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+-  border-bottom:1px solid #e2e9f4;
+-  padding:0 0 14px;margin:14px 0 18px;
++.sales-calls-page .linkage-call-summary.sales-history-stats {
++  grid-template-columns:repeat(5,minmax(0,1fr));margin:0 0 16px;
+ }
+-.sales-calls-page .sales-history-tabs .btn {
+-  display:inline-flex;align-items:center;justify-content:center;
+-  min-height:39px;min-width:106px;padding:9px 15px;
+-  border:1px solid #dce5f1;border-radius:10px;
+-  background:#fff;color:#50617b;font:750 12px/1.35 'Manrope',sans-serif;
+-  text-decoration:none;box-shadow:none;white-space:nowrap;
++.sales-calls-page .sales-history-filters {
++  grid-template-columns:minmax(200px,1.7fr) minmax(170px,1.3fr) repeat(2,minmax(135px,1fr)) auto;
++  margin-bottom:16px;
+ }
+-.sales-calls-page .sales-history-tabs .btn:hover,
+-.sales-calls-page .sales-history-tabs .btn:focus-visible {
+-  border-color:#a8bce0;background:#f3f6fc;color:#29458f;
++.sales-calls-page .sales-history-filters .form-control {min-width:0;min-height:42px;font-size:12px;}
++.sales-calls-page .sales-history-filters .module-search {width:100%;min-width:0;}
++.sales-calls-page .sales-history-filters .module-search input {min-width:0;width:100%;}
++.sales-calls-page .sales-history-filters .btn {min-height:42px;white-space:nowrap;}
++.sales-calls-page .linkage-call-recording-body {gap:6px;}
++.sales-calls-page .linkage-call-recording-top {gap:10px;}
++.sales-calls-page .linkage-call-history-identity {align-content:start;}
++.sales-calls-page .linkage-call-detail {padding:0;margin:0;}
++.sales-calls-page .linkage-call-history-footer {margin:0;padding-top:7px;}
++.sales-calls-page .linkage-call-audio-state:not(button) {font-family:inherit;}
++.sales-calls-page .linkage-call-history-date {font-variant-numeric:tabular-nums;}
++@media(max-width:1100px){
++ .sales-calls-page .sales-history-filters {grid-template-columns:repeat(2,minmax(0,1fr));}
++ .sales-calls-page .sales-history-filters .linkage-tools-actions {grid-column:1/-1;}
+ }
+-.sales-calls-page .sales-history-tabs .btn.btn-system-save {
+-  border-color:#293e91;background:#293e91;color:#fff;
++@media(max-width:767px){
++ .sales-calls-page .linkage-call-summary.sales-history-stats {grid-template-columns:repeat(2,minmax(0,1fr));}
++ .sales-calls-page .sales-history-tabs .btn {flex:1 1 auto;}
++ .sales-calls-page .linkage-call-recording-top {flex-wrap:wrap;}
+ }
+-.sales-calls-page .sales-history-stats {
+-  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+-  gap:10px;margin:0 0 17px;
+-}
+-.sales-calls-page .sales-history-stats>div {
+-  min-width:0;padding:13px 14px;border:1px solid #e0e8f4;
+-  border-radius:12px;background:#f9fbff;
+-}
+-.sales-calls-page .sales-history-stats>div span {
+-  display:block;font-size:11px;line-height:1.4;color:#657792;font-weight:700;
+-}
+-.sales-calls-page .sales-history-stats>div strong {
+-  display:block;margin-top:6px;font-size:22px;font-weight:800;color:#243c7a;
+-}
+-.sales-calls-page .impe-callback-filter-panel {
+-  border:1px solid #dce6f4;background:#f7f9fd;
+-  border-radius:13px;padding:14px;margin:0 0 18px;
+-}
+-.sales-calls-page .impe-callback-filter-panel :is(.form-control,.form-select){
+-  border:1px solid #ccdaeb;border-radius:9px;min-height:42px;
+-  font-size:12.5px;box-shadow:none;
+-}
+-.sales-calls-page .impe-callback-filter-action .btn {
+-  min-height:42px;width:100%;border-radius:9px;
+-  font-size:12px;font-weight:750;
+-}
+-.sales-calls-page .linkage-call-history-list {
+-  display:grid;gap:10px;
+-}
+-.sales-calls-page .linkage-call-history-card {
+-  display:grid;grid-template-columns:40px minmax(0,1fr);
+-  align-items:start;gap:12px;margin:0;padding:15px 16px;
+-  border:1px solid #dfe7f2;border-radius:13px;
+-  background:#fff;box-shadow:0 3px 10px rgba(28,45,79,.025);
+-}
+-.sales-calls-page .linkage-call-history-card:hover {
+-  border-color:#c7d6e8;background:#fdfefe;
+-}
+-.sales-calls-page .linkage-call-history-card.is-unconfirmed {
+-  border-left:3px solid #e2ad58;background:#fffcf7;
+-}
+-.sales-calls-page .linkage-call-history-identity strong{
+-  font-size:13px;font-weight:800;color:#263a5e;
+-}
+-.sales-calls-page .linkage-call-recording-top {
+-  display:flex;justify-content:space-between;gap:12px;align-items:flex-start;
+-}
+-.sales-calls-page .linkage-call-recording-top time {
+-  flex:0 0 auto;font-size:11px;color:#728098;white-space:nowrap;
+-}
+-.sales-calls-page .linkage-call-detail {
+-  display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;
+-}
+-.sales-calls-page .sales-pbx-state {
+-  display:inline-flex;align-items:center;max-width:100%;
+-  border:1px solid #cfe0d9;border-radius:999px;
+-  padding:4px 10px;background:#f1f9f5;color:#2c725b;
+-  font-size:11px;font-weight:750;line-height:1.4;
+-}
+-.sales-calls-page .sales-pbx-state.is-pending {
+-  background:#fff6e8;color:#97621c;border-color:#f0d8ac;
+-  border-radius:8px;white-space:normal;
+-}
+-.sales-calls-page .sales-pbx-state.is-unanswered {
+-  background:#f5f7fb;color:#526580;border-color:#dce4ef;
+-}
+-.sales-calls-page .linkage-call-history-footer {
+-  display:flex;justify-content:space-between;gap:10px;
+-  align-items:center;border-top:1px solid #eef2f8;
+-  margin-top:11px;padding-top:11px;
+-}
+-.sales-calls-page .linkage-call-result-group {
+-  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+-}
+-.sales-calls-page .linkage-call-result-group :is(.linkage-incoming-open,.linkage-call-recording-toggle) {
+-  display:inline-flex;align-items:center;justify-content:center;
+-  gap:6px;min-height:32px;padding:7px 12px;
+-  border:1px solid #cbd9ed;border-radius:999px;
+-  background:#f3f6ff;color:#29468d;
+-  font-size:11px;font-weight:750;line-height:1.3;
+-  cursor:pointer;text-decoration:none;white-space:nowrap;
+-}
+-.sales-calls-page .linkage-call-result-group :is(.linkage-incoming-open,.linkage-call-recording-toggle):hover {
+-  background:#e9eefb;border-color:#adc3e9;color:#1f367a;
+-}
+-.sales-calls-page .linkage-call-result-group>small {
+-  color:#697b98;font-size:11px;
+-}
+-.sales-calls-page .linkage-call-recording-duration {
+-  flex:0 0 auto;padding:5px 10px;border:1px solid #dde6f3;
+-  border-radius:999px;background:#fff;font:650 10px 'Manrope',sans-serif;
+-  color:#596d89;white-space:nowrap;
++@media(max-width:420px){
++ .sales-calls-page .sales-history-filters {grid-template-columns:minmax(0,1fr);}
++ .sales-calls-page .sales-history-filters .linkage-tools-actions .btn {width:100%;}
+ }
+ /* Una casilla explícita, proporcional y accesible, sin heredar estilos de Analista. */
+ #modalResultadoVenta .form-check {
+@@ -136,29 +54,20 @@
+ #modalResultadoVenta .modal-footer .btn {
+   min-height:42px;font-size:12px;font-weight:750;
+ }
+-@media(max-width:1100px){
+-  .sales-calls-page .sales-history-stats {grid-template-columns:repeat(3,minmax(0,1fr));}
+-}
+-@media(max-width:767px){
+-  .sales-calls-page {padding:16px!important;}
+-  .sales-calls-page .sales-history-stats {grid-template-columns:repeat(2,minmax(0,1fr));}
+-  .sales-calls-page .linkage-call-history-footer{align-items:flex-start;flex-direction:column;}
+-  .sales-calls-page .linkage-call-recording-top{flex-direction:column;gap:5px;}
+-  .sales-calls-page .sales-history-tabs .btn{flex:1 1 auto;}
+-}
+-@media(max-width:420px){
+-  .sales-calls-page .linkage-call-history-card{grid-template-columns:30px minmax(0,1fr);gap:7px;padding:12px;}
+-  .sales-calls-page .sales-history-stats {gap:7px;}
+-  .sales-calls-page .sales-history-stats>div{padding:10px;}
+-  .sales-calls-page .linkage-call-result-group :is(.linkage-incoming-open,.linkage-call-recording-toggle){white-space:normal;}
+-}
+ 
+-/* Las tres vistas usan las mismas pestañas, sin desplazamiento del activo. */
+-.sales-calls-page .sales-history-tabs {display:flex!important;gap:8px!important;align-items:stretch!important;flex-wrap:wrap!important;margin:14px 0 18px!important;padding:0 0 14px!important;min-height:55px!important;}
+-.sales-calls-page .sales-history-tabs > .btn {box-sizing:border-box!important;position:static!important;transform:none!important;margin:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:106px!important;min-height:40px!important;height:40px!important;padding:8px 15px!important;border-radius:10px!important;line-height:1.25!important;vertical-align:middle!important;box-shadow:none!important;}
+-.sales-calls-page .sales-history-tabs > .btn.btn-system-save {background:#293e91!important;border-color:#293e91!important;color:#fff!important;}
+-.sales-calls-page .sales-history-tabs > .btn.btn-system-light {background:#fff!important;border-color:#dce5f1!important;color:#50617b!important;}
+-.sales-calls-page .sales-auto-filter {display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(190px,1fr);align-items:end;gap:12px;margin:0 0 18px;padding:14px;background:#f7f9fd;border:1px solid #dce6f4;border-radius:13px;}
+-.sales-calls-page .sales-auto-filter .impe-callback-filter-field {min-width:0;}
+-.sales-calls-page .sales-auto-filter :is(.form-control,.form-select) {width:100%;min-height:42px;border:1px solid #ccdaeb;border-radius:9px;font-size:12.5px;}
+-@media(max-width:620px){.sales-calls-page .sales-auto-filter{grid-template-columns:minmax(0,1fr);}.sales-calls-page .sales-history-tabs > .btn{flex:1 1 100px;min-width:0!important;padding:8px!important;}}
++/* PR108 sobre la versión compacta y personalizada de Hostinger. */
++.sales-calls-page .sales-history-tabs{display:flex!important;gap:8px!important;align-items:stretch!important;flex-wrap:wrap!important;margin:14px 0 18px!important;padding:0 0 14px!important;min-height:55px!important;border-bottom:1px solid #e2e9f4;}
++.sales-calls-page .sales-history-tabs>.btn{box-sizing:border-box!important;position:static!important;transform:none!important;margin:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:106px!important;min-height:40px!important;height:40px!important;padding:8px 15px!important;border-radius:10px!important;line-height:1.25!important;vertical-align:middle!important;box-shadow:none!important;text-decoration:none!important;}
++.sales-calls-page .sales-history-tabs>.btn.btn-system-save{background:#293e91!important;border-color:#293e91!important;color:#fff!important;}
++.sales-calls-page .sales-history-tabs>.btn.btn-system-light{background:#fff!important;border-color:#dce5f1!important;color:#50617b!important;}
++.sales-calls-page .sales-auto-filter{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(190px,1fr);align-items:end;gap:12px;margin:0 0 18px;padding:14px;background:#f7f9fd;border:1px solid #dce6f4;border-radius:13px;}
++.sales-calls-page .sales-auto-filter .impe-callback-filter-field{min-width:0;}
++.sales-calls-page .sales-auto-filter :is(.form-control,.form-select){width:100%;min-height:42px;border:1px solid #ccdaeb;border-radius:9px;font-size:12.5px;}
++@media(max-width:620px){.sales-calls-page .sales-auto-filter{grid-template-columns:minmax(0,1fr);}.sales-calls-page .sales-history-tabs>.btn{flex:1 1 100px;min-width:0!important;padding:8px!important;}}
++
++/* Bandejas secundarias: composición sobre los mismos componentes del Historial. */
++.sales-calls-page .sales-management-filters{grid-template-columns:minmax(0,1.7fr) minmax(170px,1fr);margin-bottom:16px;}
++.sales-calls-page .sales-management-filters .module-search{width:100%;min-width:0;}
++.sales-calls-page .sales-management-filters .form-control{min-width:0;min-height:42px;font-size:12px;}
++.sales-calls-page .linkage-call-summary.sales-management-stats{grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 16px;}
++@media(max-width:620px){.sales-calls-page .sales-management-filters{grid-template-columns:minmax(0,1fr);}}
