@@ -25,7 +25,7 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
      if(command==='DEVOLUCION'){saved=Object.fromEntries(post);op={...op,estado:'DEVOLUCION'};}
      return route.fulfill({json:{ok:true,solicitud:command==='POLL'?(Number(post.get('id'))>0?op:null):(command==='PRESENCIA'?null:(u.searchParams.has('id')||command?op:null)),entrante:actor===8&&op?.estado==='PENDIENTE'?op:null,devoluciones:actor===8&&saved?1:0}});
     }
-    if(action==='destinosTransferencia'){lookups.push(u.searchParams.get('buscar'));return route.fulfill({json:{ok:true,estados:[{id:17,nombre:'Morelos'}],destinos:[{usuario_id:8,extension:'101',estado_id:17,estado_nombre:'Morelos',nombre:'Asesor',rol:'Asesor de Ventas'}],identificacion:[]}});}
+    if(action==='destinosTransferencia'){lookups.push(u.searchParams.get('buscar'));return route.fulfill({json:{ok:true,estados:[{id:17,nombre:'Morelos'}],destinos:[{usuario_id:8,extension:'101',estado_id:17,estado_nombre:'Morelos',nombre:scenario==='prospecto'?'Asesor':'Analista',rol:scenario==='prospecto'?'Asesor de Ventas':'Analista de Datos'}],identificacion:[]}});}
     if(action==='autorizarTransferencia'){
      if(post.get('intencion')==='SOLICITAR'){
       op={id:1,version:1,estado:'PENDIENTE',referencia:'pbx-call-availability',origen_usuario:7,origen_extension:'100',destino_usuario:8,destino_extension:'101',numero:'5551234567',responsable:'Analista',institucion_nombre:post.get('institucion_nombre'),segundos:45};
