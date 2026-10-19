@@ -125,7 +125,6 @@ html, body {
 
 
 
-
 /* Navegación entre documentos PHP del iframe: ocultar exclusivamente el
    flash blanco del navegador mientras la ruta autenticada termina de cargar.
    Las capas de WebRTC/llamadas (z-index >= 900) quedan siempre por encima. */
