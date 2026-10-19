@@ -1,0 +1,37 @@
+name: Ventas - identificar prospecto antes de transferir
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/services/TelefoniaDisponibilidadService.php'
+      - 'public/javascript/telefonia_enrutamiento.js'
+      - 'tests/telefonia_disponibilidad_browser.cjs'
+      - 'tests/telefonia_ventas_prospecto_identificacion_smoke.php'
+      - 'tools/publicar_prospecto_ventas_hostinger.py'
+      - 'tests/telefonia_ventas_prospecto_deploy_smoke.py'
+      - '.github/workflows/telefonia-ventas-prospecto.yml'
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, mysqli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar campos comerciales y reglas de disponibilidad
+        run: |
+          php -l app/services/TelefoniaDisponibilidadService.php
+          node --check public/javascript/telefonia_enrutamiento.js
+          php tests/telefonia_ventas_prospecto_identificacion_smoke.php
+          python3 tests/telefonia_ventas_prospecto_deploy_smoke.py
+      - name: Recepción y transferencia en navegador simulado
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.3
+          npx playwright install --with-deps chromium
+          node tests/telefonia_disponibilidad_browser.cjs
