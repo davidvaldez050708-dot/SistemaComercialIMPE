@@ -1,6 +1,7 @@
 <?php
 putenv('IMPE_BASE_URL=http://ventas.test/');
 require_once dirname(__DIR__,2).'/app/services/TelefoniaResultadoVentasService.php';
+require_once dirname(__DIR__,2).'/app/services/TelefoniaVentasLlamadasService.php';
 $_SESSION=['usuario_id'=>8,'rol_id'=>3,'csrf_token'=>str_repeat('b',64),'telefonia_contactos_csrf'=>str_repeat('a',64)];
 $_GET=['controller'=>'telefonia','action'=>'misLlamadas','pbx_call_id'=>$argv[1]??'','extension'=>$argv[2]??''];
 $contactosVentas=[['id'=>1,'nombre'=>'María','telefono'=>'+525551112233']];

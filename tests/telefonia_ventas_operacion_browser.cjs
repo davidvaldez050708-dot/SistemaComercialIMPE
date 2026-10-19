@@ -43,7 +43,8 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  await modal.waitFor({state:'visible'});assert.equal(await modal.locator('[name=observacion]').inputValue(),'Borrador comercial conservado');assert.equal(await modal.locator('[name=guardar_contacto]').isChecked(),true);assert.equal(await phone.isVisible(),false);
  // Recarga con llamada finalizada: conserva el pendiente, sin necesitar otra llamada.
  await page.reload();await page.waitForFunction(()=>window.IMPE_SALES_ATTENTION?.hasPending());
- await page.locator('.impe-analyst-call-result button').click();await modal.waitFor({state:'visible'});assert.equal(await modal.locator('[name=observacion]').inputValue(),'Borrador comercial conservado');assert.equal(await modal.locator('[name=guardar_contacto]').isChecked(),true);assert.equal(await phone.isVisible(),false);
+ assert.equal(await page.locator('.impe-analyst-call-result').count(),0,'Sin aviso flotante duplicado');
+ await crm.locator('[data-sales-detail]').first().click();await modal.waitFor({state:'visible'});assert.equal(await modal.locator('[name=observacion]').inputValue(),'Borrador comercial conservado');assert.equal(await modal.locator('[name=guardar_contacto]').isChecked(),true);assert.equal(await phone.isVisible(),false);
  await modal.locator('[name=resultado]').selectOption('INTERESADO');await modal.locator('[name=observacion]').fill('Enviar información');
  await modal.locator('[data-sales-submit]').click();await modal.waitFor({state:'hidden'});
  assert.equal(payload.pbx_call_id,call.pbx_call_id);assert.equal(payload.extension,'150');assert.equal(payload.resultado,'INTERESADO');assert.equal(payload.prospecto_nombre,'María');
