@@ -19,7 +19,14 @@ $paginasProspectos = (int)($listado['paginas'] ?? 1);
 .prospectos-page .prospectos-total span{font-size:12px;color:#617189}
 .prospectos-page .prospectos-table-wrap{width:100%;overflow-x:auto}
 .prospectos-page table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
-.prospectos-page table,.prospectos-page table th,.prospectos-page table td{font-family:'Manrope',sans-serif !important;letter-spacing:normal}
+.prospectos-page .prospectos-table-wrap table,
+.prospectos-page .prospectos-table-wrap table th,
+.prospectos-page .prospectos-table-wrap table td,
+.prospectos-page .prospectos-table-wrap table span,
+.prospectos-page .prospectos-table-wrap table a{font-family:'Manrope',sans-serif !important;font-size:14px !important;letter-spacing:-.01em !important;line-height:1.5 !important}
+.prospectos-page .prospectos-table-wrap table th{font-weight:700 !important}
+.prospectos-page .prospectos-table-wrap table td{font-weight:500 !important}
+.prospectos-page .prospectos-table-wrap table td.prospectos-name{font-weight:700 !important}
 .prospectos-page th{background:#eef4fa;color:#173a65;font-weight:800;text-align:left;padding:12px 14px;border-bottom:1px solid #d9e4ef}
 .prospectos-page td{padding:12px 14px;border-bottom:1px solid #e9eef5;color:#42516a}
 .prospectos-page tbody tr:hover{background:#f7fafc}
