@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "file": "public/javascript/recordatorios.js",
+  "base": "a0e2607c1d553a322f33e2ce8af65e68e2591e8c",
+  "after": "4f05bdb57521329766d9aab60938d996b01ea07a29b8d96cdb970dcc0f3d87c5",
+  "variants": [
+    {
+      "label": "github-a0e2607",
+      "before": "200ccccfdd3c6853ea29443beb336bca8fad8b465a4687a9cead5cfc7208d5d6",
+      "patch": "tools/toasts_8m/github-a0e2607.patch",
+      "patch_sha256": "f3117b4d8e021f7500c2a0faf96143b63231aca9467d981c3a8b78e008b05baa"
+    },
+    {
+      "label": "hostinger-20261018",
+      "before": "38b3b2122f0db11f5edd4823d692c9398d4da6fc492f5270c6c41db3d993bb9e",
+      "patch": "tools/toasts_8m/hostinger-20261018.patch",
+      "patch_sha256": "45d584786b385c2faf5ff7b323348ce6d2292515956bb64d65010ed55d6b6b64"
+    }
+  ]
+}

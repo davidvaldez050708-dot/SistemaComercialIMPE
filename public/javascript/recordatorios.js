@@ -1,10 +1,10 @@
 (function () {
     'use strict';
 
-    document.addEventListener('DOMContentLoaded', function () {
+    const iniciar = function () {
         const root = document.querySelector('[data-reminder-root]');
 
-        if (!root) {
+        if (!root || root.dataset.reminderInitialized === '1') {
             return;
         }
 
@@ -23,9 +23,14 @@
         let avisoMigracionMostrado = false;
         let recordatoriosActuales = [];
         let cargaInicialCompletada = false;
+        let consultasCompletadas = 0;
         let fallosDeCarga = 0;
         let temporizadorReintentoCarga = null;
         let temporizadorToastVencido = null;
+        let proximoToastAt = 0;
+        let toastActivo = null;
+        const memoriaSesion = new Map();
+        let almacenamientoPersistente = true;
 
         const INTERVALO_TOAST_VENCIDO = 8 * 60 * 1000;
         const REINTENTO_TOAST_OCULTO = 60 * 1000;
@@ -42,6 +47,7 @@
         if (endpoint === '') {
             return;
         }
+        root.dataset.reminderInitialized = '1';
 
         const escapar = function (valor) {
             const div = document.createElement('div');
@@ -65,24 +71,42 @@
 
         const leerSesion = function (clave) {
             try {
-                return window.sessionStorage.getItem(clave) || '';
-            } catch (error) {
-                return '';
+                const valor = window.sessionStorage.getItem(clave);
+                if (valor !== null) return valor;
+            } catch (_) {
+                almacenamientoPersistente = false;
             }
+            return memoriaSesion.get(clave) || '';
         };
 
         const guardarSesion = function (clave, valor) {
+            memoriaSesion.set(clave, String(valor));
             try {
                 window.sessionStorage.setItem(clave, String(valor));
-            } catch (error) {
-                // El recordatorio sigue funcionando aunque sessionStorage no esté disponible.
+            } catch (_) {
+                almacenamientoPersistente = false;
             }
         };
 
-        // Mantener el inicio del primer turno durante toda la sesión, incluso al navegar.
-        if (!leerSesion(CLAVE_INICIO_CADENCIA)) {
+        const fechaSesion = function (clave) {
+            const valor = Number(leerSesion(clave));
+            // Una clave vieja, corrupta o del futuro no debe detener el reloj.
+            return Number.isFinite(valor) && valor > 0 && valor <= Date.now()
+                ? valor : 0;
+        };
+        if (!fechaSesion(CLAVE_INICIO_CADENCIA)) {
             guardarSesion(CLAVE_INICIO_CADENCIA, Date.now());
         }
+        const CLAVE_COLA_AVISOS = 'recordatorios:cola-toast-v1' + claveUsuario;
+        let colaAvisos = [];
+        try {
+            const guardados = JSON.parse(leerSesion(CLAVE_COLA_AVISOS) || '[]');
+            if (Array.isArray(guardados)) colaAvisos = guardados.filter(item =>
+                item && typeof item.clave === 'string' && item.aviso &&
+                Number(item.recibido) > Date.now() - 86400000 &&
+                Number(item.recibido) <= Date.now()
+            ).slice(0, 30);
+        } catch (_) { /* Una cola antigua inválida no impide cargar la campana. */ }
 
         const claveRecordatorio = function (recordatorio) {
             const telefonoId = Number(recordatorio.telefonia_id || 0);
@@ -218,19 +242,20 @@
         };
 
         const mostrarToast = function (aviso) {
+            if (document.hidden || toastActivo?.isConnected) return false;
+            // Marketing conserva su presentador. Evitar superponer un aviso suyo.
+            if (document.querySelector('.convocatoria-activation-toast.is-visible')) return false;
             const contenedor = asegurarContenedorToasts();
             const toast = document.createElement('div');
             const vencida = String(aviso.tipo || '') === 'VENCIDA';
-            toast.className = 'toast reminder-toast' + (vencida ? ' is-overdue' : '');
+            toast.className = 'toast reminder-toast show' + (vencida ? ' is-overdue' : '');
             toast.setAttribute('role', 'status');
             toast.setAttribute('aria-live', 'polite');
             toast.setAttribute('aria-atomic', 'true');
-
             toast.innerHTML =
                 '<div class="reminder-toast-body">' +
-                    '<span class="reminder-toast-icon">' +
-                        '<i class="bi ' + escapar(aviso.icono || 'bi-bell') + '"></i>' +
-                    '</span>' +
+                    '<span class="reminder-toast-icon"><i class="bi ' +
+                        escapar(aviso.icono || 'bi-bell') + '"></i></span>' +
                     '<span class="reminder-toast-copy">' +
                         '<strong>' + escapar(aviso.titulo || 'Notificación') + '</strong>' +
                         '<span>' + escapar(aviso.mensaje || '') + '</span>' +
@@ -238,46 +263,41 @@
                 '</div>';
 
             const url = urlRecordatorio(aviso);
-            if(Number(aviso.telefonia_id)>0){toast.dataset.telefoniaId=String(aviso.telefonia_id);toast.setAttribute('href',url);}
+            if (Number(aviso.telefonia_id) > 0) {
+                // El lector existente captura este atributo, registra lectura con CSRF
+                // y navega únicamente al terminar. El temporizador nunca llama al lector.
+                toast.dataset.telefoniaId = String(aviso.telefonia_id);
+                toast.setAttribute('href', url);
+            }
             if (url !== '') {
                 toast.classList.add('is-clickable');
-                toast.addEventListener('click', function () {
-                    window.location.href = url;
+                toast.setAttribute('tabindex', '0');
+                toast.addEventListener('click', function () { window.location.href = url; });
+                toast.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toast.click();
+                    }
                 });
             }
-
+            // La presentación usa las clases existentes del CRM. No depende del
+            // constructor, los eventos o el CDN de Bootstrap JS, aunque esté presente.
+            toast.style.display = 'block';
             contenedor.appendChild(toast);
-
-            // Bootstrap es opcional para mostrar los avisos: si falla su CDN,
-            // el cierre y la apariencia siguen funcionando sin librerías externas.
-            // Autohide siempre es propio para no detenerse con hover o foco.
-            let instanciaToast = null;
-            if (window.bootstrap && typeof window.bootstrap.Toast === 'function') {
-                try {
-                    instanciaToast = new window.bootstrap.Toast(toast, { autohide: false });
-                } catch (error) {
-                    console.warn('Toast de Bootstrap no disponible; usando aviso nativo.', error);
-                }
+            const estilo = window.getComputedStyle(toast);
+            const rect = toast.getBoundingClientRect();
+            const marco = window.frameElement;
+            const marcoVisible = !marco || marco.getBoundingClientRect().width > 0;
+            if (!toast.isConnected || rect.width <= 0 || rect.height <= 0 ||
+                estilo.display === 'none' || estilo.visibility === 'hidden' ||
+                Number(estilo.opacity) === 0 || !marcoVisible) {
+                toast.remove();
+                return false;
             }
-
-            if (instanciaToast) {
-                toast.addEventListener('hidden.bs.toast', function () {
-                    toast.remove();
-                }, { once: true });
-                instanciaToast.show();
-            } else {
-                toast.classList.add('show');
-                toast.style.display = 'block';
-            }
-
+            toastActivo = toast;
             window.setTimeout(function () {
-                if (!toast.isConnected) return;
-                if (instanciaToast) {
-                    instanciaToast.hide();
-                } else {
-                    toast.classList.remove('show');
-                    toast.remove();
-                }
+                toast.remove();
+                if (toastActivo === toast) toastActivo = null;
             }, DURACION_TOAST);
             return true;
         };
@@ -286,119 +306,96 @@
             return estadoVisibleRecordatorio(recordatorio) === 'vencida';
         };
 
+        const actualizarColaAvisos = function (avisos) {
+            const pendientes = new Set(recordatoriosActuales.map(claveRecordatorio));
+            colaAvisos = colaAvisos.filter(item => pendientes.has(item.clave));
+            for (const aviso of Array.isArray(avisos) ? avisos : []) {
+                const clave = claveRecordatorio(aviso);
+                // Un aviso sigue a su pendiente real; no revivir acciones resueltas.
+                if (!pendientes.has(clave)) continue;
+                const existente = colaAvisos.findIndex(item => item.clave === clave);
+                const item = { clave, aviso, recibido: Date.now() };
+                if (existente >= 0) colaAvisos[existente] = item;
+                else colaAvisos.push(item);
+            }
+            colaAvisos = colaAvisos.slice(0, 30);
+            guardarSesion(CLAVE_COLA_AVISOS, JSON.stringify(colaAvisos));
+        };
+
         const mostrarSiguienteToastVencido = function () {
+            const claves = new Set();
             const disponibles = recordatoriosActuales.filter(function (r) {
-                return esRecordatorioVencidoRecurrente(r) ||
-                    (Number(r.telefonia_id || 0) > 0 && Number(r.leida || 0) === 0);
+                const clave = claveRecordatorio(r);
+                if (claves.has(clave) || Number(r.leida || 0) !== 0) return false;
+                const disponible = esRecordatorioVencidoRecurrente(r) ||
+                    Number(r.telefonia_id || 0) > 0 ||
+                    colaAvisos.some(item => item.clave === clave);
+                if (disponible) claves.add(clave);
+                return disponible;
             });
-
-            if (disponibles.length === 0) {
-                return false;
-            }
-
+            if (!disponibles.length) return false;
             const ultimaClave = leerSesion(CLAVE_ULTIMO_TOAST_VENCIDO_ID);
-            let indice = 0;
-
-            if (ultimaClave !== '') {
-                const indiceAnterior = disponibles.findIndex(function (recordatorio) {
-                    return claveRecordatorio(recordatorio) === ultimaClave;
-                });
-
-                if (indiceAnterior >= 0) {
-                    indice = (indiceAnterior + 1) % disponibles.length;
-                }
-            }
-
-            const recordatorio = disponibles[indice];
-            if (Number(recordatorio.telefonia_id || 0) > 0) {
-                const mostrado = mostrarToast({
-                    telefonia_id: Number(recordatorio.telefonia_id),
-                    url: urlRecordatorio(recordatorio),
-                    icono: recordatorio.icono || 'bi-telephone-x',
-                    tipo: 'TELEFONIA_PERDIDA',
-                    titulo: recordatorio.titulo || recordatorio.nombre_entidad || 'Aviso telefónico',
-                    mensaje: recordatorio.mensaje || recordatorio.accion || 'Revisa tu historial'
-                });
-                if (!mostrado) return false;
-                registrarToastVencido(recordatorio);
-                return true;
-            }
-            const entidad = String(
-                recordatorio.nombre_entidad || 'Seguimiento'
-            ).trim();
-            const accion = String(
-                recordatorio.accion || 'Revisar pendiente'
-            ).trim();
-            const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
-
-            const mostrado = mostrarToast({
-                id: recordatorio.id,
-                seguimiento_id: recordatorio.seguimiento_id,
-                reunion_id: recordatorio.reunion_id,
-                url: recordatorio.url,
-                icono: recordatorio.icono,
-                tipo: 'VENCIDA',
-                titulo: 'Acción vencida',
-                mensaje: accion + ' · ' + entidad +
-                    (etiqueta ? ' · ' + etiqueta : '')
-            });
-
-            if (!mostrado) return false;
+            const anterior = disponibles.findIndex(r => claveRecordatorio(r) === ultimaClave);
+            const recordatorio = disponibles[(anterior + 1) % disponibles.length];
+            const clave = claveRecordatorio(recordatorio);
+            const enCola = colaAvisos.find(item => item.clave === clave);
+            const telefono = Number(recordatorio.telefonia_id || 0) > 0;
+            const aviso = enCola?.aviso || {
+                ...recordatorio,
+                tipo: telefono ? 'TELEFONIA_PERDIDA' : 'VENCIDA',
+                titulo: telefono ? (recordatorio.titulo || recordatorio.nombre_entidad || 'Aviso telefónico') : 'Acción vencida',
+                mensaje: telefono ? (recordatorio.mensaje || recordatorio.accion || 'Revisa tu historial') :
+                    String(recordatorio.accion || 'Revisar pendiente') + ' · ' +
+                    String(recordatorio.nombre_entidad || 'Seguimiento') +
+                    (etiquetaVisibleRecordatorio(recordatorio) ? ' · ' + etiquetaVisibleRecordatorio(recordatorio) : '')
+            };
+            if (!mostrarToast(aviso)) return false;
+            // Sólo un aviso realmente visible consume turno y posición de rotación.
             registrarToastVencido(recordatorio);
+            colaAvisos = colaAvisos.filter(item => item.clave !== clave);
+            guardarSesion(CLAVE_COLA_AVISOS, JSON.stringify(colaAvisos));
             return true;
         };
 
+        const ultimoTurno = function () {
+            return Math.max(fechaSesion(CLAVE_INICIO_CADENCIA),
+                fechaSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT),
+                fechaSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT));
+        };
         const programarSiguienteToastVencido = function () {
-            if (temporizadorToastVencido !== null) {
-                window.clearTimeout(temporizadorToastVencido);
-                temporizadorToastVencido = null;
-            }
-
-            const ultimoToast = Math.max(
-                Number(leerSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT)) || 0,
-                Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0,
-                Number(leerSesion(CLAVE_INICIO_CADENCIA)) || 0
-            );
-            const ahora = Date.now();
-            const espera = Number.isFinite(ultimoToast) && ultimoToast > 0
-                ? Math.max(
-                    1000,
-                    INTERVALO_TOAST_VENCIDO - Math.max(0, ahora - ultimoToast)
-                )
-                : INTERVALO_TOAST_VENCIDO;
-
+            if (temporizadorToastVencido !== null) window.clearTimeout(temporizadorToastVencido);
+            proximoToastAt = ultimoTurno() + INTERVALO_TOAST_VENCIDO;
             temporizadorToastVencido = window.setTimeout(function ejecutar() {
                 temporizadorToastVencido = null;
-
-                if (document.hidden) {
-                    temporizadorToastVencido = window.setTimeout(
-                        ejecutar,
-                        REINTENTO_TOAST_OCULTO
-                    );
-                    return;
-                }
-
-                // El aviso telefónico pudo aparecer durante la espera: nunca
-                // mostrar simultáneamente dos avisos de fuentes diferentes.
-                const ultimoVisible = Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0;
-                if (Date.now() - ultimoVisible < INTERVALO_TOAST_VENCIDO) {
+                // Otra página o fuente pudo usar el turno después de programarlo.
+                if (ultimoTurno() + INTERVALO_TOAST_VENCIDO > Date.now()) {
                     programarSiguienteToastVencido();
                     return;
                 }
-                const mostroVencido = mostrarSiguienteToastVencido();
-
-                if (!mostroVencido) {
-                    // Si ya no quedan vencidos, evitamos reintentos cada segundo
-                    // cuando el último toast registrado fue hace más de 8 minutos.
-                    temporizadorToastVencido = window.setTimeout(
-                        ejecutar,
-                        INTERVALO_TOAST_VENCIDO
-                    );
+                if (!document.hidden && cargaInicialCompletada && mostrarSiguienteToastVencido()) {
+                    programarSiguienteToastVencido();
                     return;
                 }
+                // Sin pendientes, sin visibilidad o con otro toast: conservar el
+                // turno vencido. Un fetch o visibilitychange vuelve a comprobarlo.
+                temporizadorToastVencido = window.setTimeout(ejecutar, REINTENTO_TOAST_OCULTO);
+            }, Math.max(0, proximoToastAt - Date.now()));
+        };
 
-                programarSiguienteToastVencido();
-            }, espera);
+        window.IMPE_REMINDER_STATUS = function () {
+            return Object.freeze({
+                version: 'toasts-8m-v1', initialized: true,
+                userId: Number(window.IMPE_CURRENT_USER_ID || 0),
+                bootstrapAvailable: typeof window.bootstrap?.Toast === 'function',
+                persistentStorage: almacenamientoPersistente,
+                startedAt: fechaSesion(CLAVE_INICIO_CADENCIA),
+                lastShownAt: fechaSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT),
+                nextToastAt: proximoToastAt,
+                timerActive: temporizadorToastVencido !== null,
+                pendingCount: recordatoriosActuales.length,
+                loadedCount: consultasCompletadas,
+                visibleToasts: toastActivo?.isConnected ? 1 : 0
+            });
         };
 
         const renderizarRecordatorios = function (
@@ -516,14 +513,14 @@
                     datos.total || 0
                 );
                 cargaInicialCompletada = true;
+                consultasCompletadas += 1;
                 fallosDeCarga = 0;
                 if (temporizadorReintentoCarga !== null) {
                     window.clearTimeout(temporizadorReintentoCarga);
                     temporizadorReintentoCarga = null;
                 }
-
-
-
+                actualizarColaAvisos(datos.avisos || []);
+                programarSiguienteToastVencido();
                 if (datos.requiere_migracion) {
                     if (!avisoMigracionMostrado) {
                         avisoMigracionMostrado = true;
@@ -534,20 +531,6 @@
                     return;
                 }
 
-                let huboAvisoVencido = false;
-
-                (datos.avisos || []).forEach(function (aviso) {
-                    const mostrado = mostrarToast(aviso);
-
-                    if (mostrado && String(aviso.tipo || '').toUpperCase() === 'VENCIDA') {
-                        registrarToastVencido(aviso);
-                        huboAvisoVencido = true;
-                    }
-                });
-
-                if (huboAvisoVencido) {
-                    programarSiguienteToastVencido();
-                }
             } catch (error) {
                 fallosDeCarga += 1;
                 mostrarFalloCarga();
@@ -563,7 +546,8 @@
         programarSiguienteToastVencido();
 
         window.addEventListener('pageshow', function () {
-            if (!cargaInicialCompletada) void consultarRecordatorios();
+            void consultarRecordatorios();
+            programarSiguienteToastVencido();
         });
         document.addEventListener('visibilitychange', function () {
             if (!document.hidden) {
@@ -571,5 +555,10 @@
                 programarSiguienteToastVencido();
             }
         });
-    });
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', iniciar, { once: true });
+    } else {
+        iniciar();
+    }
 })();

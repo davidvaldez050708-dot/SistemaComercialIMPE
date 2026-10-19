@@ -1,0 +1,34 @@
+name: Toasts CRM y publicación selectiva
+on:
+  push:
+    branches: [main]
+    paths: ['public/javascript/recordatorios.js', 'public/javascript/convocatoria_notificaciones.js', 'public/javascript/telefonia_notificaciones.js', 'tests/recordatorios_toasts*', 'tests/telefonia_avisos_cadencia_browser.cjs', 'tests/telefonia_campana_browser.cjs', 'tests/publicacion_toasts*', 'tests/fixtures/recordatorios_hostinger*', 'tools/toasts_8m/**', 'tools/publicar_toasts_hostinger.sh', '.github/workflows/recordatorios-toasts.yml']
+  pull_request:
+    paths: ['public/javascript/recordatorios.js', 'public/javascript/convocatoria_notificaciones.js', 'public/javascript/telefonia_notificaciones.js', 'tests/recordatorios_toasts*', 'tests/telefonia_avisos_cadencia_browser.cjs', 'tests/telefonia_campana_browser.cjs', 'tests/publicacion_toasts*', 'tests/fixtures/recordatorios_hostinger*', 'tools/toasts_8m/**', 'tools/publicar_toasts_hostinger.sh', '.github/workflows/recordatorios-toasts.yml']
+permissions:
+  contents: read
+jobs:
+  navegador-y-publicacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar navegador
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.3
+          npx playwright install --with-deps chromium
+      - name: Campana, reloj, navegación, lectura y presentador sin Bootstrap
+        run: |
+          node --check public/javascript/recordatorios.js
+          node tests/telefonia_avisos_cadencia_browser.cjs
+          node tests/telefonia_campana_browser.cjs
+      - name: Publicar y restaurar réplicas aisladas de Hostinger
+        if: ${{ hashFiles('tests/publicacion_toasts_test.py') != '' }}
+        run: python3 tests/publicacion_toasts_test.py

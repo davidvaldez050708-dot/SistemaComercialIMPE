@@ -1,0 +1,207 @@
+--- a/public/javascript/recordatorios.js
++++ b/public/javascript/recordatorios.js
+@@ -32,7 +32,7 @@
+         const DURACION_TOAST = 7000;
+         const claveUsuario = ':usuario:' + Number(window.IMPE_CURRENT_USER_ID || 0);
+         const CLAVE_ULTIMO_TOAST_VENCIDO_AT =
+-            'recordatorios:ultimo-toast-vencido-at' + claveUsuario;
++            'recordatorios:ultimo-toast-vencido-at';
+         const CLAVE_ULTIMO_TOAST_VENCIDO_ID =
+             'recordatorios:ultimo-toast-vencido-id' + claveUsuario;
+         // Un turno de ocho minutos por usuario, tanto para Seguimiento como para Telefonía.
+@@ -85,8 +85,6 @@
+         }
+ 
+         const claveRecordatorio = function (recordatorio) {
+-            const telefonoId = Number(recordatorio.telefonia_id || 0);
+-            if (telefonoId > 0) return 'telefonia:' + telefonoId;
+             const reunionId = Number(recordatorio.reunion_id || 0);
+             const seguimientoConvocatoriaId = Number(
+                 recordatorio.seguimiento_convocatoria_id || 0
+@@ -113,7 +111,6 @@
+         };
+ 
+         const registrarToastVencido = function (recordatorio) {
+-            guardarSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT, Date.now());
+             guardarSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT, Date.now());
+             guardarSesion(
+                 CLAVE_ULTIMO_TOAST_VENCIDO_ID,
+@@ -206,18 +203,16 @@
+             contenedor = document.createElement('div');
+             contenedor.className = 'toast-container position-fixed top-0 end-0 p-3 reminder-toast-container';
+             contenedor.setAttribute('data-reminder-toast-container', '');
+-            // Si el CDN de Bootstrap JS/CSS no carga, conservar posición y visibilidad.
+-            contenedor.style.position = 'fixed';
+-            contenedor.style.top = '0';
+-            contenedor.style.right = '0';
+-            contenedor.style.padding = '12px';
+-            contenedor.style.zIndex = '1095';
+             document.body.appendChild(contenedor);
+ 
+             return contenedor;
+         };
+ 
+         const mostrarToast = function (aviso) {
++            if (!window.bootstrap) {
++                return;
++            }
++
+             const contenedor = asegurarContenedorToasts();
+             const toast = document.createElement('div');
+             const vencida = String(aviso.tipo || '') === 'VENCIDA';
+@@ -248,38 +243,37 @@
+ 
+             contenedor.appendChild(toast);
+ 
+-            // Bootstrap es opcional para mostrar los avisos: si falla su CDN,
+-            // el cierre y la apariencia siguen funcionando sin librerías externas.
+-            // Autohide siempre es propio para no detenerse con hover o foco.
+-            let instanciaToast = null;
+-            if (window.bootstrap && typeof window.bootstrap.Toast === 'function') {
+-                try {
+-                    instanciaToast = new window.bootstrap.Toast(toast, { autohide: false });
+-                } catch (error) {
+-                    console.warn('Toast de Bootstrap no disponible; usando aviso nativo.', error);
+-                }
+-            }
+-
+-            if (instanciaToast) {
+-                toast.addEventListener('hidden.bs.toast', function () {
+-                    toast.remove();
+-                }, { once: true });
+-                instanciaToast.show();
+-            } else {
+-                toast.classList.add('show');
+-                toast.style.display = 'block';
+-            }
+-
+-            window.setTimeout(function () {
+-                if (!toast.isConnected) return;
+-                if (instanciaToast) {
+-                    instanciaToast.hide();
+-                } else {
+-                    toast.classList.remove('show');
+-                    toast.remove();
+-                }
++            // Desactivamos el autohide de Bootstrap porque éste pausa el contador
++            // cuando el usuario mantiene el cursor o el foco sobre el toast. El
++            // temporizador propio garantiza un cierre automático aunque haya hover o foco.
++            const instanciaToast = new bootstrap.Toast(toast, {
++                autohide: false
++            });
++            let temporizadorCierre = null;
++
++            toast.addEventListener('hidden.bs.toast', function () {
++                if (temporizadorCierre !== null) {
++                    window.clearTimeout(temporizadorCierre);
++                    temporizadorCierre = null;
++                }
++                toast.remove();
++            });
++
++            instanciaToast.show();
++            temporizadorCierre = window.setTimeout(function () {
++                instanciaToast.hide();
+             }, DURACION_TOAST);
+-            return true;
++        };
++
++        const phoneToastsSeen=new Set();
++        const mostrarAvisosTelefonia=function(items){
++            let shown=0;
++            for(const item of items||[]){
++                const id=Number(item.telefonia_id);if(id<=0||Number(item.leida||0)!==0)continue;
++                const key='impe:phone-toast:'+Number(window.IMPE_CURRENT_USER_ID||0)+':'+id;
++                if(phoneToastsSeen.has(key)||leerSesion(key)==='1')continue;
++                mostrarToast(item);phoneToastsSeen.add(key);guardarSesion(key,'1');if(++shown===3)break;
++            }
+         };
+ 
+         const esRecordatorioVencidoRecurrente = function (recordatorio) {
+@@ -287,10 +281,9 @@
+         };
+ 
+         const mostrarSiguienteToastVencido = function () {
+-            const disponibles = recordatoriosActuales.filter(function (r) {
+-                return esRecordatorioVencidoRecurrente(r) ||
+-                    (Number(r.telefonia_id || 0) > 0 && Number(r.leida || 0) === 0);
+-            });
++            const disponibles = recordatoriosActuales.filter(
++                esRecordatorioVencidoRecurrente
++            );
+ 
+             if (disponibles.length === 0) {
+                 return false;
+@@ -310,19 +303,6 @@
+             }
+ 
+             const recordatorio = disponibles[indice];
+-            if (Number(recordatorio.telefonia_id || 0) > 0) {
+-                const mostrado = mostrarToast({
+-                    telefonia_id: Number(recordatorio.telefonia_id),
+-                    url: urlRecordatorio(recordatorio),
+-                    icono: recordatorio.icono || 'bi-telephone-x',
+-                    tipo: 'TELEFONIA_PERDIDA',
+-                    titulo: recordatorio.titulo || recordatorio.nombre_entidad || 'Aviso telefónico',
+-                    mensaje: recordatorio.mensaje || recordatorio.accion || 'Revisa tu historial'
+-                });
+-                if (!mostrado) return false;
+-                registrarToastVencido(recordatorio);
+-                return true;
+-            }
+             const entidad = String(
+                 recordatorio.nombre_entidad || 'Seguimiento'
+             ).trim();
+@@ -331,7 +311,7 @@
+             ).trim();
+             const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
+ 
+-            const mostrado = mostrarToast({
++            mostrarToast({
+                 id: recordatorio.id,
+                 seguimiento_id: recordatorio.seguimiento_id,
+                 reunion_id: recordatorio.reunion_id,
+@@ -343,7 +323,6 @@
+                     (etiqueta ? ' · ' + etiqueta : '')
+             });
+ 
+-            if (!mostrado) return false;
+             registrarToastVencido(recordatorio);
+             return true;
+         };
+@@ -378,13 +357,6 @@
+                     return;
+                 }
+ 
+-                // El aviso telefónico pudo aparecer durante la espera: nunca
+-                // mostrar simultáneamente dos avisos de fuentes diferentes.
+-                const ultimoVisible = Number(leerSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT)) || 0;
+-                if (Date.now() - ultimoVisible < INTERVALO_TOAST_VENCIDO) {
+-                    programarSiguienteToastVencido();
+-                    return;
+-                }
+                 const mostroVencido = mostrarSiguienteToastVencido();
+ 
+                 if (!mostroVencido) {
+@@ -522,7 +494,7 @@
+                     temporizadorReintentoCarga = null;
+                 }
+ 
+-
++                mostrarAvisosTelefonia(datos.recordatorios||[]);
+ 
+                 if (datos.requiere_migracion) {
+                     if (!avisoMigracionMostrado) {
+@@ -537,9 +509,9 @@
+                 let huboAvisoVencido = false;
+ 
+                 (datos.avisos || []).forEach(function (aviso) {
+-                    const mostrado = mostrarToast(aviso);
+-
+-                    if (mostrado && String(aviso.tipo || '').toUpperCase() === 'VENCIDA') {
++                    mostrarToast(aviso);
++
++                    if (String(aviso.tipo || '').toUpperCase() === 'VENCIDA') {
+                         registrarToastVencido(aviso);
+                         huboAvisoVencido = true;
+                     }
