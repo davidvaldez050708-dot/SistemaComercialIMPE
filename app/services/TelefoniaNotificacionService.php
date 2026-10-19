@@ -40,7 +40,7 @@ final class TelefoniaNotificacionService
             $missed=$recepcion?($c['tipo']==='Entrante'&&$c['estado']==='Perdida'):
                 (($c['tipo_llamada']??'')!=='INTERNA' && empty($c['contestada']) && in_array($c['estado_pbx'],['ended'],true));
             if(!$missed)continue;
-            $q=$this->db->prepare("SELECT id FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND referencia=? AND modo='DIRECTA'");$ref=(string)$c['pbx_call_id'];$q->bind_param('is',$user,$ref);$q->execute();$tracked=$q->get_result()->fetch_assoc();$q->close();if($tracked)continue;
+            $q=$this->db->prepare("SELECT id FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND referencia=?");$ref=(string)$c['pbx_call_id'];$q->bind_param('is',$user,$ref);$q->execute();$tracked=$q->get_result()->fetch_assoc();$q->close();if($tracked)continue;
             $number=(string)($c['numero']??'Número privado');
             $this->agregar($user,$ext,'llamada:'.$c['pbx_call_id'],$number,(string)$c['fecha'],'Llamada perdida',$number.' · Revisa el historial y coordina su devolución.');
         }
@@ -70,8 +70,18 @@ final class TelefoniaNotificacionService
         $s=$this->db->prepare('SELECT * FROM telefonia_notificaciones WHERE usuario_id=? AND extension=? AND leida=0 ORDER BY id DESC LIMIT 20');
         $s->bind_param('is',$user,$ext);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
         return array_map(function($r)use($recepcion){
-            $url=$recepcion?'index.php?controller=home&action=index#recepcion-telefonica':'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes';
-            $unconfirmed=str_ends_with($r['llave'],':SIN_CONFIRMAR');$callback=str_starts_with($r['llave'],'devolucion:');if($callback)$url='index.php?controller=telefonia&action=devoluciones';
+            $url=$recepcion
+                ? 'index.php?controller=telefonia&action=misLlamadas&vista=recepcion'
+                : 'index.php?controller=telefonia&action=misLlamadas&vista=recibidas';
+            $unconfirmed=str_ends_with($r['llave'],':SIN_CONFIRMAR');
+            $callback=str_starts_with($r['llave'],'devolucion:');
+            if($callback) {
+                $url='index.php?controller=telefonia&action=misLlamadas&vista=devoluciones';
+            } elseif (!$recepcion && str_starts_with($r['llave'],'llamada:')) {
+                $pbx=substr($r['llave'],strlen('llamada:'));
+                if($pbx!==''&&strlen($pbx)<=100)
+                    $url.='&detalle=1&pbx_call_id='.rawurlencode($pbx);
+            }
             return ['id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>'llamada_perdida','tipo'=>'TELEFONIA_PERDIDA','leida'=>0,
                 'titulo'=>$r['titulo'],'mensaje'=>$r['mensaje'],'created_at'=>$r['created_at'],'url'=>$url,
                 'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>$callback?'bi-telephone-forward':'bi-telephone-x','etiqueta'=>$callback?'Por devolver':($unconfirmed?'Por confirmar':'Sin respuesta'),'estado'=>'informativa','fecha'=>$r['created_at'],'prioridad'=>1];
