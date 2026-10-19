@@ -8,6 +8,7 @@ const view=mode=>`<!doctype html><meta charset="utf-8"><meta name="viewport" con
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});try{
  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));let payload,preparations=0,mode='agenda';
  await page.route('http://ventas.test/**',async route=>{const u=new URL(route.request().url()),action=u.searchParams.get('action');
+  if(u.pathname.endsWith('/telefonia_ventas_auto_filtros.js'))return route.fulfill({contentType:'application/javascript',body:read('public/javascript/telefonia_ventas_auto_filtros.js')});
   if(action==='guardarContacto'){payload=Object.fromEntries(new URLSearchParams(route.request().postData()));return route.fulfill({json:{ok:true,contacto:{id:1,nombre:payload.nombre,telefono:'+525551112233',correo:payload.correo,observacion:payload.observacion,proxima_accion_at:payload.proxima_accion_at||null}}});}
   if(action==='completarProgramacionVenta'){payload=Object.fromEntries(new URLSearchParams(route.request().postData()));return route.fulfill({json:{ok:true}});}
   if(action==='eliminarContacto')return route.fulfill({json:{ok:true}});
