@@ -1,0 +1,36 @@
+name: Telefonia - aviso sonoro de disponibilidad
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'public/javascript/telefonia_disponibilidad.js'
+      - 'tests/telefonia_disponibilidad_browser.cjs'
+      - 'tests/telefonia_disponibilidad_sonido_smoke.cjs'
+      - 'tools/publicar_sonido_disponibilidad_hostinger.sh'
+      - 'tests/telefonia_sonido_disponibilidad_deploy_smoke.py'
+      - '.github/workflows/telefonia-disponibilidad-sonido.yml'
+permissions:
+  contents: read
+jobs:
+  sonido-y-publicacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis, recordatorio y publicacion reversible
+        run: |
+          node --check public/javascript/telefonia_disponibilidad.js
+          node tests/telefonia_disponibilidad_sonido_smoke.cjs
+          python3 tests/telefonia_sonido_disponibilidad_deploy_smoke.py
+      - name: Validar aceptacion, rechazo, vencimiento, pendientes y transferencia
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.3
+          npx playwright install --with-deps chromium
+          node tests/telefonia_disponibilidad_browser.cjs

@@ -76,10 +76,10 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    assert.equal(await d.evaluate(()=>audioProbe.started),0,'sin gesto confiable no intenta sonido');
    await d.locator('[data-availability-incoming] h2').click();
   }
-  assert.equal(await d.evaluate(()=>audioProbe.started),2,'dos notas distintivas tras gesto confiable');
-  assert.deepEqual(await d.evaluate(()=>audioProbe.frequencies),[740,990]);
+  assert.equal(await d.evaluate(()=>audioProbe.started),3,'tres notas distintivas tras gesto confiable');
+  assert.deepEqual(await d.evaluate(()=>audioProbe.frequencies),[740,880,988]);
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
-  assert.equal(await d.evaluate(()=>audioProbe.started),2,'poll repetido no repite sonido');
+  assert.equal(await d.evaluate(()=>audioProbe.started),3,'poll repetido no repite sonido');
   if(process.env.DISP_SCREENSHOT&&scenario==='aceptar'){await d.screenshot({path:process.env.DISP_SCREENSHOT+'-analista.png'});await s.screenshot({path:process.env.DISP_SCREENSHOT+'-recepcion.png'});}
   assert.equal(await d.locator('[data-incoming-panel]').isVisible(),false,'la confirmación no es una llamada ni un timbrado SIP');
   assert.ok(await d.locator('[data-availability-incoming] h2').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))<=20,'tipografía del modal uniforme');
@@ -108,7 +108,7 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await dialog.locator('button[type=submit]').click();await dialog.waitFor({state:'hidden'});assert.equal(saved.contacto,'Ana');assert.equal(saved.telefono,'5551234567');
   }
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
-  assert.ok(await d.evaluate(()=>audioProbe.stopped)>=4,'responder o vencer detiene los nodos del aviso');
+  assert.ok(await d.evaluate(()=>audioProbe.stopped)>=6,'responder o vencer detiene los nodos del aviso');
   assert.deepEqual(errors,[]);for(const c of contexts)await c.close();
  }
  console.log('Disponibilidad/navegador: confirmación sin llamada, aceptación explícita, transferencia única, rechazo, vencimiento y devolución móvil: OK');

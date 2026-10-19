@@ -8,26 +8,48 @@
  let watched=null,received=null,polling=false,acting=false,transferring=false,callbacks=-1,deferred='';
  // Aviso de disponibilidad independiente del timbre y del contexto de audio del SDK.
  const soundKey='impe:availability-chimes:'+cfg.userId;
+ const REMINDER_AFTER_MS=18000,REMINDER_MIN_REMAINING_MS=10000;
  let audio=null,soundRequest=null,soundExpiry=0,soundNodes=[],heard=[];
  try{const value=JSON.parse(sessionStorage.getItem(soundKey)||'[]');if(Array.isArray(value))heard=value.slice(-40);}catch(_){}
  const stopSound=()=>{clearTimeout(soundExpiry);soundRequest=null;for(const node of soundNodes){try{node.stop();node.disconnect();}catch(_){}}soundNodes=[];};
  const playSound=()=>{
-  if(!soundRequest||!audio||audio.state!=='running'||Date.now()>=soundRequest.until||heard.includes(soundRequest.key))return;
-  const identity=soundRequest.key;
+  // No mezclar avisos con conversación SIP, pestaña oculta ni audio bloqueado.
+  const status=phone.getPhoneStatus();
+  if(!soundRequest||!audio||audio.state!=='running'||document.hidden||
+     !status.ready||status.active||Date.now()>=soundRequest.until)return;
+  const request=soundRequest,identity=request.key,reminder=request.plays===1;
+  if(request.plays>=2||(request.plays===0&&heard.includes(identity)))return;
+  if(reminder&&(Date.now()<request.reminderAt||
+      request.until-Date.now()<=REMINDER_MIN_REMAINING_MS||status.pending))return;
+  // Tonos musicales breves, no timbre de llamada: un recordatorio como máximo.
+  const notes=reminder?[[740,0],[880,.30]]:[[740,0],[880,.29],[988,.58]];
+  const volume=reminder?.11:.17;
   try{
-   for(const [frequency,offset] of [[740,0],[990,.22]]){
+   for(const [frequency,offset] of notes){
     const oscillator=audio.createOscillator(),gain=audio.createGain(),start=audio.currentTime+offset;
     oscillator.type='sine';oscillator.frequency.value=frequency;
-    gain.gain.setValueAtTime(0,start);gain.gain.linearRampToValueAtTime(.13,start+.02);gain.gain.linearRampToValueAtTime(0,start+.17);
-    oscillator.connect(gain);gain.connect(audio.destination);oscillator.start(start);oscillator.stop(start+.18);soundNodes.push(oscillator);
+    gain.gain.setValueAtTime(0,start);
+    gain.gain.linearRampToValueAtTime(volume,start+.035);
+    gain.gain.linearRampToValueAtTime(0,start+.26);
+    oscillator.connect(gain);gain.connect(audio.destination);
+    oscillator.start(start);oscillator.stop(start+.27);soundNodes.push(oscillator);
    }
-   heard=[...heard.filter(k=>k!==identity),identity].slice(-40);
-   try{sessionStorage.setItem(soundKey,JSON.stringify(heard));}catch(_){}
+   request.plays++;
+   if(!reminder){
+    request.reminderAt=Date.now()+REMINDER_AFTER_MS;
+    heard=[...heard.filter(k=>k!==identity),identity].slice(-40);
+    try{sessionStorage.setItem(soundKey,JSON.stringify(heard));}catch(_){}
+   }
   }catch(_){stopSound();}
  };
  const signalAvailability=op=>{
   const identity=String(op.id)+':'+op.version;
-  if(soundRequest?.key!==identity){stopSound();soundRequest={key:identity,until:Date.now()+Math.max(0,Number(op.segundos)||0)*1000};soundExpiry=setTimeout(stopSound,Math.max(0,Number(op.segundos)||0)*1000);}
+  if(soundRequest?.key!==identity){
+   stopSound();
+   const duration=Math.max(0,Number(op.segundos)||0)*1000;
+   soundRequest={key:identity,until:Date.now()+duration,plays:0,reminderAt:0};
+   soundExpiry=setTimeout(stopSound,duration);
+  }
   playSound();
  };
  const unlockAudio=event=>{
