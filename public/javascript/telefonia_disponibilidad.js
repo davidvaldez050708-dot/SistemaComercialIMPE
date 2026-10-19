@@ -64,8 +64,10 @@
   if(!source)return;
   const same=phone.getActiveCall()?.id===watched?.referencia;
   source.hidden=!watched||!same||['ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR'].includes(watched.estado);
-  if(!watched)return;
+  if(!watched){source.removeAttribute('data-availability-state');return;}
   const status=watched.estado,name=watched.responsable||'El responsable',seconds=Math.max(0,Number(watched.segundos)||0);
+  // Estado visual únicamente: no altera la autorización ni la transferencia.
+  source.dataset.availabilityState=status;
   const titles={PENDIENTE:'Esperando confirmación',ACEPTADA:'Responsable disponible',RECHAZADA:'No disponible',VENCIDA:'Sin confirmación a tiempo',CANCELADA:'Solicitud cancelada',FALLIDA:'No se envió la transferencia',DEVOLUCION:'Devolución registrada'};
   const copies={PENDIENTE:name+' · Ext. '+watched.destino_extension+' · '+seconds+' s. La persona sigue hablando contigo.',ACEPTADA:name+' confirmó que puede atender. Transfiere en los próximos '+seconds+' s.',RECHAZADA:'Continúa atendiendo a la persona. Puedes elegir otro responsable o dejar una devolución.',VENCIDA:'La persona sigue contigo. Solicita de nuevo o registra sus datos para devolver la llamada.',CANCELADA:'Puedes seleccionar otro responsable o solicitar una devolución.',FALLIDA:'La persona sigue contigo. Revisa la llamada antes de volver a solicitar disponibilidad.',DEVOLUCION:'El responsable tiene el contacto y el motivo en sus llamadas por devolver.'};
   $('[data-availability-source-title]').textContent=titles[status]||'Transferencia en proceso';
@@ -96,6 +98,9 @@
    if(waiting)waiting.hidden=!op||!status.pending||deferred!==String(op.id)+':'+op.version;
    if(!op||!status.ready||status.active){closeIncoming();return;}
    received=op;
+   // Destacar bloqueo y cuenta regresiva sin modificar el estado real del teléfono.
+   incoming.dataset.availabilityBlocked=status.pending?'1':'0';
+   incoming.dataset.availabilityUrgent=Number(op.segundos)<=10?'1':'0';
    if(status.pending && deferred===String(op.id)+':'+op.version){stopSound();if(incoming.open)incoming.close();return;}
    $('[data-availability-accept]').disabled=Boolean(status.pending);
    $('[data-availability-pending]').hidden=!status.pending;

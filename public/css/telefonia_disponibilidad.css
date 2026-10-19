@@ -29,3 +29,302 @@
  .impe-availability-dialog .system-form-modal-footer{padding:14px 16px;gap:8px}
  .impe-availability-dialog .system-form-modal-footer button{flex:1 1 120px}
 }
+
+/* Ajustes visuales de disponibilidad · 2026-10-19. */
+/* Presentación unificada de disponibilidad: sólo interfaz; no controla SIP. */
+.impe-availability-dialog {
+  box-sizing: border-box;
+  width: min(498px, calc(100vw - 28px));
+  max-width: calc(100vw - 16px);
+  max-height: min(630px, calc(100dvh - 24px));
+  border: 1px solid #d7e1ee;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 72px rgba(20, 42, 74, .28);
+  color: #253955;
+  overflow: hidden;
+}
+.impe-availability-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.impe-availability-dialog > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+}
+.impe-availability-dialog::backdrop {
+  background: rgba(17, 32, 56, .50);
+}
+.impe-availability-dialog .system-form-modal-header {
+  flex: 0 0 auto;
+  position: relative;
+  padding: 20px 24px 19px 76px;
+  border-bottom: 1px solid #e5ebf4;
+  background: linear-gradient(115deg, #f1f5fd, #fbfcff 80%);
+}
+.impe-availability-dialog .system-form-modal-header::before {
+  content: '↗';
+  position: absolute;
+  top: 19px;
+  left: 23px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #e0e9fb;
+  color: #263b87;
+  font: 800 24px/1 'Manrope', sans-serif;
+}
+.impe-availability-dialog[data-availability-incoming] .system-form-modal-header::before {
+  content: '☎';
+}
+.impe-availability-dialog .system-form-modal-header h2 {
+  margin: 0 0 5px;
+  color: #21365d;
+  font: 800 18px/1.3 'Manrope', sans-serif;
+  letter-spacing: -.025em;
+}
+.impe-availability-dialog .system-form-modal-subtitle {
+  color: #526884;
+  font: 600 12px/1.5 'Manrope', sans-serif;
+  overflow-wrap: anywhere;
+}
+.impe-availability-dialog .system-form-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  padding: 19px 24px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.impe-availability-dialog .system-form-modal-body > p:first-child {
+  color: #526781;
+  font-size: 13px;
+  line-height: 1.65;
+  margin-bottom: 15px;
+}
+.impe-availability-dialog .impe-availability-summary {
+  position: relative;
+  margin: 0 0 12px;
+  padding: 14px 16px 14px 42px;
+  background: #f1f5fc;
+  border: 1px solid #dce6f4;
+  border-left: 3px solid #314d92;
+  border-radius: 10px;
+  color: #2d446a;
+  font: 750 12px/1.6 'Manrope', sans-serif;
+  overflow-wrap: anywhere;
+}
+.impe-availability-dialog .impe-availability-summary::before {
+  content: '◷';
+  position: absolute;
+  top: 12px;
+  left: 15px;
+  color: #36549d;
+  font-size: 21px;
+}
+.impe-availability-dialog[data-availability-urgent='1'] .impe-availability-summary {
+  background: #fff8ed;
+  border-color: #ead4b1;
+  border-left-color: #bd761a;
+  color: #754a1d;
+}
+.impe-availability-dialog [data-availability-feedback]:empty,
+.impe-availability-dialog [data-callback-feedback]:empty {
+  display: none;
+}
+.impe-availability-dialog [data-availability-feedback]:not(:empty),
+.impe-availability-dialog [data-callback-feedback]:not(:empty) {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #ecd8ae;
+  border-radius: 9px;
+  background: #fffaee;
+  color: #7e4f1e;
+  font: 700 12px/1.6 'Manrope', sans-serif;
+  overflow-wrap: anywhere;
+}
+.impe-availability-dialog[data-availability-blocked='1'] [data-availability-pending] {
+  order: -1;
+  flex: 1 1 100%;
+}
+.impe-availability-dialog .system-form-modal-footer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 9px;
+  margin: 0;
+  padding: 15px 24px;
+  border-top: 1px solid #e5ebf4;
+  background: #fff;
+}
+.impe-availability-dialog .system-form-modal-footer .persistent-phone-action {
+  flex: 1 1 138px;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 9px;
+  border: 1px solid #cfd9e8;
+  background: #fff;
+  color: #324a70;
+  font: 800 12px/1.4 'Manrope', sans-serif;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.impe-availability-dialog .system-form-modal-footer .persistent-phone-action.is-primary {
+  background: #273a8a;
+  border-color: #273a8a;
+  color: #fff;
+}
+.impe-availability-dialog .system-form-modal-footer .persistent-phone-action:disabled {
+  cursor: not-allowed;
+  opacity: .52;
+}
+.impe-availability-dialog .system-form-modal-footer .persistent-phone-action:focus-visible,
+.impe-availability-dialog :is(input,textarea):focus-visible {
+  outline: 3px solid rgba(56, 90, 160, .32);
+  outline-offset: 2px;
+}
+.impe-availability-dialog .system-form-modal-body label {
+  font: 750 12px/1.5 'Manrope', sans-serif;
+  color: #324967;
+}
+.impe-availability-dialog .system-form-modal-body :is(input, textarea) {
+  max-width: 100%;
+  background: #fff;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.impe-incoming-panel .impe-availability-source {
+  position: relative;
+  box-sizing: border-box;
+  margin: 11px 0 15px;
+  padding: 14px 15px;
+  border: 1px solid #cdddf2;
+  border-left: 4px solid #4967a2;
+  border-radius: 11px;
+  background: #f3f7fd;
+  color: #3f5777;
+  box-shadow: none;
+}
+.impe-incoming-panel .impe-availability-source[data-availability-state='ACEPTADA'] {
+  background: #effaf6;
+  border-color: #b9dfcf;
+  border-left-color: #258566;
+  color: #285a4b;
+}
+.impe-incoming-panel .impe-availability-source:is(
+ [data-availability-state='RECHAZADA'],
+ [data-availability-state='VENCIDA'],
+ [data-availability-state='FALLIDA']) {
+  background: #fff8ef;
+  border-color: #ecd9bb;
+  border-left-color: #ba7830;
+  color: #75512e;
+}
+.impe-incoming-panel .impe-availability-source[data-availability-state='CANCELADA'] {
+  border-left-color: #77849a;
+  background: #f5f7fa;
+}
+.impe-incoming-panel .impe-availability-source > strong {
+  font: 800 13px/1.4 'Manrope', sans-serif;
+  color: inherit;
+}
+.impe-incoming-panel .impe-availability-source > p {
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.impe-incoming-panel .impe-availability-source > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.impe-incoming-panel .impe-availability-source .persistent-phone-action {
+  flex: 1 1 140px;
+  width: auto;
+  min-width: 0;
+  min-height: 42px;
+  margin: 0;
+  padding: 10px 12px;
+  font: 800 11px/1.4 'Manrope', sans-serif;
+  white-space: normal;
+}
+.impe-availability-waiting {
+  box-sizing: border-box;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  border-left: 4px solid #b57c31;
+  background: #fffaf0;
+  color: #634924;
+  font: 700 12px/1.55 'Manrope', sans-serif;
+  overflow-wrap: anywhere;
+}
+.impe-availability-waiting > i {
+  flex: 0 0 auto;
+  color: #a16d24;
+  font-size: 18px;
+}
+@media (max-width: 575.98px) {
+  .impe-availability-dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 13px;
+  }
+  .impe-availability-dialog .system-form-modal-header {
+    padding: 16px 15px 15px 62px;
+  }
+  .impe-availability-dialog .system-form-modal-header::before {
+    top: 15px;
+    left: 14px;
+    width: 36px;
+    height: 36px;
+  }
+  .impe-availability-dialog .system-form-modal-header h2 {
+    font-size: 16px;
+  }
+  .impe-availability-dialog .system-form-modal-body {
+    padding: 16px;
+    max-height: none;
+  }
+  .impe-availability-dialog .system-form-modal-footer {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+  .impe-availability-dialog .system-form-modal-footer .persistent-phone-action {
+    min-height: 44px;
+    flex: 1 1 124px;
+  }
+  .impe-availability-waiting {
+    top: max(12px, env(safe-area-inset-top));
+    right: 8px;
+    width: calc(100vw - 16px);
+  }
+}
+@media (max-height: 440px) {
+  .impe-availability-dialog .system-form-modal-header {
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+  .impe-availability-dialog .system-form-modal-header::before {
+    top: 10px;
+  }
+  .impe-availability-dialog .system-form-modal-body {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .impe-availability-dialog .system-form-modal-footer {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
