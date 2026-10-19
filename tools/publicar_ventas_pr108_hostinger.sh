@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Revisión post fase E: 9 archivos, huellas de Hostinger exactas. Sin migración SQL.
+# PR108: 4 archivos Hostinger fusionados + nuevo JS. Sin SQL, conserva vista historial.
 set -euo pipefail
 umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
 TARGET='6035e328676d9c5a80a46d09cd3010910fbcdfd6'
+REVIEWED='485453b9f7948190e1bfb198e21a455dd088ad3a'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 SOURCE="${IMPE_VENTAS_PR108_SOURCE:-$HOME/crm-publicaciones/ventas-pr108-20261019-actual}"
 LIVE="${IMPE_VENTAS_PR108_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
@@ -31,6 +32,7 @@ git_public(){ command git -c remote.origin.url="$REPO" -c http.sslVerify=true "$
 if [[ ! -e "$SOURCE" ]]; then mkdir -p "$(dirname "$SOURCE")"; git_public clone --quiet --no-checkout --filter=blob:none "$REPO" "$SOURCE"; fi
 if git_public -C "$SOURCE" config --name-only --get-regexp '^url\..*\.insteadof$' >/dev/null; then fail 'La preparación tiene reglas locales de URL; usa otra carpeta privada.'; fi
 if ! git_public -C "$SOURCE" cat-file -e "$TARGET^{commit}" 2>/dev/null; then git_public -C "$SOURCE" fetch --quiet "$REPO" "$TARGET"; fi
+if ! git_public -C "$SOURCE" cat-file -e "$REVIEWED^{commit}" 2>/dev/null; then git_public -C "$SOURCE" fetch --quiet "$REPO" "$REVIEWED"; fi
 SCRATCH="$(cd "${TMPDIR:-/tmp}" && pwd -P)"; TMP="$(mktemp -d "$SCRATCH/impe-ventas-pr108.XXXXXX")"; touch "$TMP/.impe-owned"
 mkdir "$TMP/stage" "$TMP/original"
 LOCK="$(dirname "$LIVE")/.impe-atencion-deploy.lock"; LOCKED=0; WRITING=0; BACKUP=''
@@ -55,7 +57,6 @@ trap finish EXIT; trap 'exit 130' INT; trap 'exit 143' TERM
 # Sólo los archivos solicitados y cuyas huellas reales fueron cotejadas.
 # Se rechaza cualquier personalización posterior sin sobreescribirla.
 FILES=(
- 'app/views/telefonia/ventas_llamadas.php'
  'app/views/telefonia/ventas_devoluciones.php'
  'app/views/telefonia/ventas_programadas.php'
  'public/css/telefonia_ventas_ui.css'
@@ -63,7 +64,6 @@ FILES=(
  'public/javascript/telefonia_ventas_auto_filtros.js'
 )
 declare -A PINNED_BEFORE=(
- ['app/views/telefonia/ventas_llamadas.php']='85dffacee855fb1550041cf823dfc9af6287a2f9e0ecbfcc2ea058c3b7096c9a'
  ['app/views/telefonia/ventas_devoluciones.php']='a75f72e312b40b3046b6dbaf44f05362beadcc43d3ae2c03b825acd89f142244'
  ['app/views/telefonia/ventas_programadas.php']='8e6b41b90d33cfc345b5f2e572d4771f17697ff75160a2c5b68b2fc376048173'
  ['public/css/telefonia_ventas_ui.css']='43d34778afd47a5bb2c1e89759af1a577a9f086c1f78545faf24870c9db0dcf2'
@@ -96,7 +96,11 @@ if [[ "$MODE" == --restore ]]; then
 else
  echo "Sitio: $LIVE; entrega: $TARGET"
  for file in "${FILES[@]}";do
-  git_public -C "$SOURCE" show "$TARGET:$file" > "$TMP/stage/$file" || fail "Fuente GitHub no disponible: $file"
+  if [[ "$file" == public/javascript/telefonia_ventas_auto_filtros.js ]];then
+   git_public -C "$SOURCE" show "$TARGET:$file" > "$TMP/stage/$file" || fail "Fuente JavaScript no disponible: $file"
+  else
+   git_public -C "$SOURCE" show "$REVIEWED:tools/ventas_pr108_hostinger/after/$file" > "$TMP/stage/$file" || fail "Fusión personalizada no disponible: $file"
+  fi
   target_hash="$(digest "$TMP/stage/$file")"
   # Aceptar únicamente la huella exacta de Hostinger o el nuevo archivo ya instalado.
   if [[ "${BEFORE[$file]}" != "${PINNED_BEFORE[$file]}" && "${BEFORE[$file]}" != "$target_hash" ]];then
