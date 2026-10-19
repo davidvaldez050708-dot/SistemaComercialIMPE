@@ -6,6 +6,10 @@ REPO=Path(__file__).resolve().parents[1]
 SCRIPT=REPO/'tools/publicar_ventas_revision_20261019_hostinger.sh'
 TARGET='9692b73077bc093c3a0a07d3f1c920e63e9328df'
 BASE=TARGET+'^1'
+REVIEWED='7a38d6c5219a992531da0ef2d424586cddec9d24'
+CSS_FILE='public/css/telefonia_shell.css'
+REVIEWED_FILE='tools/ventas_revision_20261019/telefonia_shell_hostinger.css'
+APPROVED_SHA='3cb35716bb105ae4a98fd39216cc9f3e0ea41427866eb5f9a2ec3e0b8f86388e'
 FILES={
     'app/services/TelefoniaMarcacionesVentasService.php':'61bf714d243bd1742e8a2ea00b883e2b7c10c61da562622bfec63251f236bb2e',
     'app/services/TelefoniaVentasLlamadasService.php':'9e8295ad5340895f7acb3cdc8611ca28e040bb3c88ab2891f45039cd7bf0a161',
@@ -21,6 +25,22 @@ def git_blob(ref,file):
     return subprocess.check_output(['git','show',ref+':'+file],cwd=REPO)
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+def approved_css():
+    content=git_blob(REVIEWED,REVIEWED_FILE)
+    assert digest(content)==APPROVED_SHA
+    return content
+def hostinger_css():
+    content=approved_css()
+    original,separator,addition=content.partition(b'\n/* Ventas: el acceso al resultado finalizado')
+    assert separator and addition,('No está definido el bloque adicional de Ventas')
+    assert digest(original)==FILES[CSS_FILE],('El prefijo debe ser idéntico al CSS de Hostinger')
+    assert b'IMPE_CERRAR_DERECHA_V2' in original
+    assert b'IMPE_COLGAR_DERECHA_V1' in original
+    assert b':has(> [data-sales-open]:not([hidden]))' in content
+    assert b'grid-column: 2 / 3 !important;' in addition
+    return original
+def target_data(file):
+    return approved_css() if file==CSS_FILE else git_blob(TARGET,file)
 def snapshot(root):
     return {p.relative_to(root).as_posix():p.read_bytes() for p in root.rglob('*') if p.is_file() and not p.is_symlink()}
 def run_scenario(kind):
@@ -31,13 +51,13 @@ def run_scenario(kind):
         for file,sha in FILES.items():
             if sha=='MISSING':continue
             p=live/file;p.parent.mkdir(parents=True,exist_ok=True)
-            blob=git_blob(BASE,file)
+            blob=hostinger_css() if file==CSS_FILE else git_blob(BASE,file)
             assert digest(blob)==sha,('Huellas Hostinger no coinciden con versión esperada',file,digest(blob),sha)
             p.write_bytes(blob);p.chmod(0o644)
         if kind=='applied':
             for file in FILES:
                 p=live/file;p.parent.mkdir(parents=True,exist_ok=True)
-                p.write_bytes(git_blob(TARGET,file))
+                p.write_bytes(target_data(file))
         if kind=='unknown-js':
             p=live/'public/javascript/telefonia_marcador.js';p.write_bytes(p.read_bytes()+b'\\n// NUEVA PERSONALIZACION\\n')
         if kind=='unknown-css':
@@ -70,8 +90,11 @@ def run_scenario(kind):
         assert rc==0,(kind,out)
         updated=snapshot(live)
         for file in FILES:
-            assert updated[file]==git_blob(TARGET,file),('Wrong deployed bytes',kind,file)
+            assert updated[file]==target_data(file),('Wrong deployed bytes',kind,file)
         assert updated['privado.txt']==before['privado.txt']
+        assert updated[CSS_FILE].startswith(before[CSS_FILE]+b'\n'), 'El CSS de Hostinger debe conservarse byte a byte'
+        assert b'IMPE_CERRAR_DERECHA_V2' in updated[CSS_FILE]
+        assert b'IMPE_COLGAR_DERECHA_V1' in updated[CSS_FILE]
         backups=list((tmp/'backups').iterdir()) if (tmp/'backups').exists() else []
         if kind=='applied':
             assert backups==[],('Idempotent apply unexpectedly backed up',backups)
