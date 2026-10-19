@@ -142,6 +142,7 @@ def prepare(current, old, new, label):
     groups = list(blocks.get_grouped_opcodes(5))
     if not groups:
         fail('No hay cambios esperados en ' + label)
+    patches = []
     for group in groups:
         start = group[0][1]
         end = group[-1][2]
@@ -149,8 +150,16 @@ def prepare(current, old, new, label):
         end_new = group[-1][4]
         before = b''.join(original_lines[start:end])
         after = b''.join(target_lines[start_new:end_new])
-        if not before or output.count(before) != 1:
-            fail('Versión personalizada incompatible de ' + label)
+        if not before or not after:
+            fail('Bloque incompleto de ' + label)
+        patches.append((before, after))
+    # Si ya están presentes TODOS los bloques nuevos, no volver a parchear
+    # una variante con personalizaciones ajenas al cambio.
+    if all(current.count(after) == 1 for _, after in patches):
+        return current, 'YA ACTUALIZADO (PERSONALIZADO)'
+    if not all(current.count(before) == 1 for before, _ in patches):
+        fail('Versión personalizada incompatible de ' + label)
+    for before, after in patches:
         output = output.replace(before, after, 1)
     return output, 'PARCHE COMPATIBLE'
 
