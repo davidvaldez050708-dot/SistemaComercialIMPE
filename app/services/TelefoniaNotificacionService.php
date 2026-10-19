@@ -40,7 +40,7 @@ final class TelefoniaNotificacionService
             $missed=$recepcion?($c['tipo']==='Entrante'&&$c['estado']==='Perdida'):
                 (($c['tipo_llamada']??'')!=='INTERNA' && empty($c['contestada']) && in_array($c['estado_pbx'],['ended'],true));
             if(!$missed)continue;
-            $q=$this->db->prepare("SELECT id FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND referencia=? AND modo='DIRECTA'");$ref=(string)$c['pbx_call_id'];$q->bind_param('is',$user,$ref);$q->execute();$tracked=$q->get_result()->fetch_assoc();$q->close();if($tracked)continue;
+            $q=$this->db->prepare("SELECT id FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND referencia=? AND (modo='DIRECTA' OR (modo='CONSULTADA' AND estado='DEVUELTA'))");$ref=(string)$c['pbx_call_id'];$q->bind_param('is',$user,$ref);$q->execute();$tracked=$q->get_result()->fetch_assoc();$q->close();if($tracked)continue;
             $number=(string)($c['numero']??'Número privado');
             $this->agregar($user,$ext,'llamada:'.$c['pbx_call_id'],$number,(string)$c['fecha'],'Llamada perdida',$number.' · Revisa el historial y coordina su devolución.');
         }
@@ -54,6 +54,14 @@ final class TelefoniaNotificacionService
                 }
                 $date=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
                 $confirmed=$op['estado']==='SIN_RESPUESTA';
+                // Cuando la PBX confirmó que no contestaron, el aviso anterior
+                // de 'sin confirmar' para el mismo intento ya está superado.
+                if($confirmed){
+                    $obsolete='transferencia:'.$op['id'].':'.$op['intento'].':SIN_CONFIRMAR';
+                    $clear=$this->db->prepare('UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND extension=? AND llave=?');
+                    $clear->bind_param('iss',$user,$ext,$obsolete);
+                    $clear->execute();$clear->close();
+                }
                 // Una devolución asignada ya tiene su aviso propio con acceso a Llamar.
                 if(!$source&&$confirmed){$q=$this->db->prepare("SELECT id FROM telefonia_disponibilidad WHERE origen_usuario=? AND destino_usuario=? AND referencia=? AND devolucion IN ('PENDIENTE','ATENDIDA')");$q->bind_param('iis',$op['origen_usuario'],$user,$op['referencia']);$q->execute();$task=$q->get_result()->fetch_assoc();$q->close();if($task)continue;}
                 $message=$confirmed?($source?'La extensión '.$op['destino_extension'].' no contestó a '.$op['numero'].'. Coordina la devolución; no se confirma retorno a recepción.':'No contestaste la transferencia de '.$op['numero'].'. Coordina con recepción antes de llamar.'):'La respuesta de la extensión '.$op['destino_extension'].' aún no está confirmada. Coordina con recepción y revisa el historial antes de llamar.';

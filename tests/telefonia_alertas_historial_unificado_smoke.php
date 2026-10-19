@@ -31,4 +31,8 @@ $assert(str_contains($view,'data-focus-attempt')
     && str_contains($callbacks, "value='TODAS'")
     && str_contains($callbacks,'focusAttempt'),
     'Devolución completada se localiza sin abrir resultado');
+$assert(str_contains($service,"modo='CONSULTADA' AND estado='DEVUELTA'")
+    && str_contains($service,":SIN_CONFIRMAR';")
+    && str_contains($service,"SET leida=1 WHERE usuario_id=? AND extension=? AND llave=?"),
+    'Transferencia consultada sin respuesta no dispara dos avisos y el provisional se limpia');
 echo "OK: enlaces específicos y aviso telefónico rotatorio sin duplicaciones\n";
