@@ -157,9 +157,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const INTERVALO_AVISO_TELEFONICO=8*60*1000;
     const CLAVE_USUARIO=':usuario:'+Number(window.IMPE_CURRENT_USER_ID||0);
     const CLAVE_ULTIMO_AVISO='recordatorios:ultimo-toast-global-at'+CLAVE_USUARIO;
+    const CLAVE_INICIO_CADENCIA='recordatorios:inicio-toast-global-at'+CLAVE_USUARIO;
     const CLAVE_ULTIMO_ID='recordatorios:ultimo-toast-vencido-id'+CLAVE_USUARIO;
     const leerSesion=clave=>{try{return sessionStorage.getItem(clave)||'';}catch(_){return '';}};
     const guardarSesion=(clave,valor)=>{try{sessionStorage.setItem(clave,String(valor));}catch(_){}};
+    if(!leerSesion(CLAVE_INICIO_CADENCIA))guardarSesion(CLAVE_INICIO_CADENCIA,Date.now());
     let temporizadorTelefonia=null;
     const notifyUnseen = function(items){
         currentItems=Array.isArray(items)?items:[];if(toastBusy)return;
@@ -198,7 +200,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const programarSiguienteTelefono=function(){
         if(temporizadorTelefonia!==null)window.clearTimeout(temporizadorTelefonia);
-        const ultima=Number(leerSesion(CLAVE_ULTIMO_AVISO))||0;
+        const ultima=Math.max(
+            Number(leerSesion(CLAVE_ULTIMO_AVISO))||0,
+            Number(leerSesion(CLAVE_INICIO_CADENCIA))||0
+        );
         const espera=ultima>0
             ? Math.max(1000,INTERVALO_AVISO_TELEFONICO-Math.max(0,Date.now()-ultima))
             : INTERVALO_AVISO_TELEFONICO;
