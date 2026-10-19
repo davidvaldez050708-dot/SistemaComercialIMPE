@@ -81,6 +81,8 @@ $claseConvocatoriasReportes =
     $opcionActiva === 'convocatorias_reportes' ? 'active' : '';
 $claseCorreosMarketing =
     $opcionActiva === 'correos_marketing' ? 'active' : '';
+$claseProspectos =
+    $opcionActiva === 'prospectos' ? 'active' : '';
 $claseFormularios =
     $opcionActiva === 'formularios' ? 'active' : '';
 
@@ -230,6 +232,15 @@ $claseFormularios =
                         class="sidebar-link <?= $claseFormularios ?>">
                         <i class="bi bi-ui-checks-grid"></i>
                         Formularios
+                    </a>
+                <?php endif; ?>
+
+                <?php if ($esRolMarketingSidebar): ?>
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=prospecto&action=index"
+                        class="sidebar-link <?= $claseProspectos ?>">
+                        <i class="bi bi-people"></i>
+                        Prospectos
                     </a>
                 <?php endif; ?>
 
@@ -554,6 +565,15 @@ $claseFormularios =
                             class="sidebar-link <?= $claseFormularios ?>">
                             <i class="bi bi-ui-checks-grid"></i>
                             Formularios
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($esRolMarketingSidebar): ?>
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=prospecto&action=index"
+                            class="sidebar-link <?= $claseProspectos ?>">
+                            <i class="bi bi-people"></i>
+                            Prospectos
                         </a>
                     <?php endif; ?>
 
