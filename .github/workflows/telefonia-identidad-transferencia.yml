@@ -1,0 +1,52 @@
+name: Identidad de transferencia actual
+on:
+  pull_request:
+    paths:
+      - app/services/TelefoniaTransferenciaContextoService.php
+      - app/controllers/TelefoniaController.php
+      - public/javascript/telefonia_analista_historial_pasivo.js
+      - tests/telefonia_identidad_transferencia*
+      - tests/publicacion_identidad_transferencia_test.py
+      - tools/identidad_transferencia_actual/**
+      - tools/publicar_identidad_transferencia_hostinger.sh
+      - .github/workflows/telefonia-identidad-transferencia.yml
+permissions:
+  contents: read
+jobs:
+  identidad:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['3306/tcp']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Identidad por referencia y regresiones indispensables
+        env:
+          IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          php -l app/services/TelefoniaTransferenciaContextoService.php
+          php -l app/controllers/TelefoniaController.php
+          php tests/telefonia_identidad_transferencia_db.php
+          node --check public/javascript/telefonia_analista_historial_pasivo.js
+          node tests/telefonia_identidad_transferencia_actual.cjs
+          node tests/telefonia_analista_resultado_transferido_smoke.js
+          node tests/telefonia_entrantes_bridge_smoke.js
+      - name: Parche selectivo en réplicas
+        if: matrix.database == 'mysql:8.0'
+        run: python3 tests/publicacion_identidad_transferencia_test.py

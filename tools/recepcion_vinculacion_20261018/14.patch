@@ -1,0 +1,32 @@
+--- a/public/javascript/telefonia_analista_historial_pasivo.js
++++ b/public/javascript/telefonia_analista_historial_pasivo.js
+@@ -132,7 +132,7 @@
+     // llamada interna vuelve a marcar hidden=true. Únicamente en estado
+     // «finalizada» restauramos la visibilidad del MISMO modal.
+     const keepFinishedVisible = function () {
+-        if (!finished || finished.registrationOpen) return;
++        if (!finished || finished.registrationOpen || root.IMPE_TELEPHONY_SHELL?.isResultFormOpen?.()) return;
+         if (panel.hidden) panel.hidden = false;
+     };
+     if (typeof root.MutationObserver === 'function') {
+@@ -277,7 +277,7 @@
+         panel.classList.remove('is-compact');
+         // Registrar resultado usa el formulario existente en el CRM.
+         // Mientras esté abierto no duplicar un modal que lo tape.
+-        if (finished.registrationOpen) {
++        if (finished.registrationOpen || root.IMPE_TELEPHONY_SHELL?.isResultFormOpen?.()) {
+             panel.hidden = true;
+             return;
+         }
+@@ -564,7 +564,10 @@
+             const url = new URL(crm.contentWindow.location.href);
+             if (url.origin !== root.location.origin) return;
+             const selected = url.searchParams.get('sdk_session_id');
+-            if (url.searchParams.get('action') !== 'llamadasEntrantes' ||
++            const receivedPage = url.searchParams.get('action') === 'llamadasEntrantes' ||
++                (url.searchParams.get('controller') === 'telefonia' &&
++                 url.searchParams.get('action') === 'misLlamadas' && url.searchParams.get('vista') === 'recibidas');
++            if (!receivedPage ||
+                 selected !== finished.id) {
+                 // Se abandonó el formulario sin registrarlo: recuperar
+                 // el botón Registrar resultado y mantener el pendiente.

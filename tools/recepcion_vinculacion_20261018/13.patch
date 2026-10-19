@@ -1,0 +1,17 @@
+--- a/public/javascript/seguimiento_llamadas_expediente.js
++++ b/public/javascript/seguimiento_llamadas_expediente.js
+@@ -754,6 +754,14 @@
+                             estadoAudio.title = 'No se confirmó un archivo de audio asociado a esta llamada en la centralita.';
+                         }
+                         derecha.appendChild(estadoAudio);
++                        if(llamada.evidencia_grabacion_pendiente && !['NO_APLICA','REPORTADA','SOLO_HISTORIAL'].includes(String(llamada.estado_grabacion))){
++                            estadoAudio.textContent='Grabación pendiente de confirmar';
++                            estadoAudio.title=String(llamada.evidencia_grabacion_pendiente);
++                            const pending=document.createElement('p');
++                            pending.className='linkage-call-recording-notes';
++                            pending.textContent=String(llamada.evidencia_grabacion_pendiente);
++                            cuerpo.appendChild(pending);
++                        }
+                     }
+ 
+                     const usuario = String(llamada.usuario || '').trim();

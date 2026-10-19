@@ -451,6 +451,7 @@
                             '<span class="topbar-reminder-copy">' +
                                 '<strong>' + escapar(recordatorio.nombre_entidad || 'Seguimiento') + '</strong>' +
                                 '<span>' + escapar(recordatorio.accion || '') + '</span>' +
+                                (Number(recordatorio.telefonia_id)>0 ? fechaAvisoTelefonico(recordatorio) : '') +
                             '</span>' +
                             '<span class="topbar-reminder-time is-' + escapar(estadoVisual) + '">' +
                                 escapar(etiqueta) +
@@ -460,6 +461,14 @@
                 }).join('') +
                 '</div>';
         };
+
+        function fechaAvisoTelefonico(recordatorio) {
+            const raw=String(recordatorio.created_at||recordatorio.fecha||'').trim();
+            const fecha=new Date(raw.replace(' ','T'));
+            if(!raw||Number.isNaN(fecha.getTime()))return '<span>Fecha pendiente de confirmar</span>';
+            const texto=new Intl.DateTimeFormat('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(fecha);
+            return '<span><time datetime="'+escapar(raw.replace(' ','T'))+'">'+escapar(texto)+'</time></span>';
+        }
 
         const programarReintentoCarga = function () {
             if (temporizadorReintentoCarga !== null || fallosDeCarga > 4) return;

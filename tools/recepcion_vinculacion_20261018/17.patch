@@ -1,0 +1,100 @@
+--- a/public/javascript/telefonia_enrutamiento.js
++++ b/public/javascript/telefonia_enrutamiento.js
+@@ -66,6 +66,7 @@
+     let searchSequence = 0;
+     let confirmDirect = '';
+     let recognized = [];
++    let phoneSuggestions = [];
+     let confirmedRecognition = false;
+     let confirmedRecord = null;
+     let phoneCheckedForCall = '';
+@@ -214,9 +215,34 @@
+             detail.textContent = 'Institución confirmada · ' + dest.nombre +
+                 ' · Ext. ' + dest.extension;
+             identityBox.appendChild(detail);
++            const change = document.createElement('button');
++            change.type = 'button';
++            change.textContent = 'Cambiar institución';
++            change.addEventListener('click', () => {
++                clearInstitution();
++                rejectedRecognitionForCall='';
++                renderIdentification(phoneSuggestions, call()?.phone || '');
++                if (lookupWrap) lookupWrap.hidden = false;
++                if (lookupToggle) lookupToggle.setAttribute('aria-expanded', 'true');
++                buscar?.focus({preventScroll:true});
++                positionSidecar(panel);
++            });
++            identityBox.appendChild(change);
+             identityBox.hidden = false;
+         }
+         setFeedback('Responsable listo. Confirma verbalmente la transferencia.');
++    };
++    const clearInstitution = () => {
++        confirmedRecord = null;
++        confirmedRecognition = false;
++        confirmDirect = '';
++        searchSequence++;
++        window.clearTimeout(timer);
++        if (buscar) { buscar.value = ''; buscar.required = true; }
++        if (estado) estado.value = '';
++        if (destinos) destinos.value = '';
++        selected = null;
++        renderMatches([]);
+     };
+     const renderIdentification = (records, phone) => {
+         if (!identityBox) return;
+@@ -239,6 +265,16 @@
+             const hint = document.createElement('small');
+             hint.textContent = 'Institución no identificada por teléfono. Pregunta su nombre y estado.';
+             identityBox.appendChild(hint);
++            if (phoneSuggestions.length) {
++                const back = document.createElement('button');
++                back.type='button';back.textContent='Volver a las sugerencias';
++                back.addEventListener('click',()=>{
++                    clearInstitution();rejectedRecognitionForCall='';
++                    renderIdentification(phoneSuggestions,call()?.phone||'');
++                    positionSidecar(panel);
++                });
++                identityBox.appendChild(back);
++            }
+             // Si es una llamada institucional nueva, mostrar el campo
+             // directamente sin exigir que Tania abra otra sección.
+             if (lookupWrap) lookupWrap.hidden = false;
+@@ -271,8 +307,8 @@
+         const reject=document.createElement('button');reject.type='button';
+         reject.textContent='No corresponde a estas instituciones';
+         reject.addEventListener('click',()=>{
+-            rejectedRecognitionForCall=currentCallId;recognized=[];confirmedRecognition=false;confirmedRecord=null;
+-            identityBox.hidden=true;if(estado)estado.value='';renderRecipients();
++            clearInstitution();rejectedRecognitionForCall=currentCallId;recognized=[];
++            renderIdentification([],call()?.phone||'');
+             if(lookupWrap)lookupWrap.hidden=false;if(buscar){buscar.value='';buscar.required=true;}
+             setFeedback('Origen sin expediente confirmado. Selecciona el destino y escribe el nombre de quien llama.');
+         });
+@@ -323,6 +359,7 @@
+             currentCallId = String(active.id || '');
+             phoneCheckedForCall = '';
+             recognized = [];
++            phoneSuggestions = [];
+             confirmedRecognition = false;
+             confirmedRecord = null;if(buscar){buscar.value='';buscar.required=false;}
+             if (identityBox) identityBox.hidden = true;
+@@ -361,7 +398,8 @@
+             }
+             if (checkPhone || (categoria==='RECEPCION' && type==='INSTITUCION' && phoneCheckedForCall!==currentCallId)) {
+                 phoneCheckedForCall = currentCallId;
+-                renderIdentification(directory.identificacion || [], phone);
++                phoneSuggestions=directory.identificacion||[];
++                renderIdentification(phoneSuggestions, phone);
+             }
+             renderRecipients();
+             renderMatches(matches?.instituciones || []);
+@@ -569,7 +607,7 @@
+         if(captureMsg)captureMsg.textContent='Recuperando borrador…';
+         const saved=await drafts?.read(Number(cfg.userId),ids);
+         if(cycle!==draftCycle||draftDirty)return;
+-        if(saved)for(const [name,value] of Object.entries(saved)) {
++        if(saved)for(const [name,value] of Object.entries(drafts?.captureValues?.(saved)||saved)) {
+             const input=captureForm.elements.namedItem(name);if(input)input.value=String(value||'');
+         }
+         if(captureMsg)captureMsg.textContent=saved?'Borrador recuperado.':'';

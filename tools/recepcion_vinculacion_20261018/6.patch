@@ -1,0 +1,36 @@
+--- a/prueba_telefonia/api/llamadas_seguimiento.php
++++ b/prueba_telefonia/api/llamadas_seguimiento.php
+@@ -402,16 +402,22 @@
+     // firmada y la sesión WebRTC coinciden sin ambigüedad. No reescribir el
+     // proveedor ni el identificador original de la interacción.
+     $grabacionPbxId = null;
+-    if (!$excluirGrabacion && $webrtcSinPbx && $interaccionId > 0) {
++    $evidenciaAudio=['estado'=>'NO_APLICA','mensaje'=>''];
++    if (!$excluirGrabacion && in_array($proveedor,['ZADARMA','ZADARMA_WEBRTC'],true) && $interaccionId > 0) {
+         try {
+-            $grabacionPbxId = $asociadorTransferencia->buscar(
++            $evidenciaAudio = $asociadorTransferencia->inspeccionar(
+                 $usuarioId, $seguimientoId, $interaccionId
+             );
++            if(($evidenciaAudio['estado']??'')==='REPORTADA'){
++                $grabacionPbxId=$evidenciaAudio['pbx_call_id'];
++                $puedeTenerGrabacion=true;$grabacionProcesando=false;
++            }
+         } catch (Throwable $errorAsociacion) {
+             // Una tabla ausente o MySQL temporalmente limitado no debe hacer
+             // fallar el historial general ni exponer audio sin verificación.
+             error_log('[llamadas_seguimiento_asociacion_pbx] '
+                 . get_class($errorAsociacion));
++              if(!$zadarmaValida)$evidenciaAudio=['estado'=>'EVIDENCIA_PENDIENTE','mensaje'=>'No fue posible comprobar los eventos de esta llamada. Actualiza el historial para volver a verificar.'];
+         }
+     }
+     $grabacionSinVincular = !$excluirGrabacion && $webrtcSinPbx &&
+@@ -447,6 +453,8 @@
+         'grabacion_procesando' => (bool)$grabacionProcesando,
+         'grabacion_sin_vincular' => (bool)$grabacionSinVincular,
+         'grabacion_transferida_pbx' => $grabacionPbxId,
++        'estado_grabacion' => $evidenciaAudio['estado'],
++        'evidencia_grabacion_pendiente' => $evidenciaAudio['mensaje'],
+         'grabacion_url' => $puedeTenerGrabacion
+             ? 'prueba_telefonia/api/grabacion_interaccion.php?interaccion_id=' . $interaccionId
+             : null

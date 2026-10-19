@@ -40,6 +40,14 @@ const html=cp.execFileSync('php',[path.join(__dirname,'fixtures/telefonia_flujo_
   const box=await panel.boundingBox();assert.ok(Math.abs(box.x+box.width/2-683)<2 && Math.abs(box.y+box.height/2-450)<2,'modal centrado al recibir');
   await push('in-progress',true);
   await page.locator('[data-shell-transfer-toggle]').click();
+  await page.getByRole('button',{name:/Institución sugerida/}).click();
+  await page.getByRole('button',{name:'Cambiar institución',exact:true}).click();
+  assert.equal(await page.locator('[data-routing-search]').inputValue(),'','Cambiar limpia búsqueda anterior');
+  assert.equal(await page.getByRole('button',{name:/Institución sugerida/}).isVisible(),true,'recupera sugerencias originales');
+  await page.getByRole('button',{name:'No corresponde a estas instituciones'}).click();
+  await page.getByRole('button',{name:'Volver a las sugerencias'}).click();
+  await page.getByRole('button',{name:/Institución sugerida/}).click();
+  await page.getByRole('button',{name:'Cambiar institución',exact:true}).click();
   await page.getByRole('button',{name:'No corresponde a estas instituciones'}).click();
   await page.locator('[data-routing-destination]').selectOption('8:101:17');await page.locator('[data-routing-search]').fill('Otra institución');
   await page.locator('[data-routing-attended]').click();

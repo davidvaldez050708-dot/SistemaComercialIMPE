@@ -11,6 +11,7 @@ const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta nam
  let mode='error',release=null,saves=0,draftPosts=0,lastBody='',slowDraft=null,missingRequests=0;
  await page.route('http://atencion.test/**',async route=>{
    const req=route.request(),u=new URL(req.url());
+   if(u.pathname.endsWith('municipios_llamada.php'))return route.fulfill({json:{ok:true,municipios:u.searchParams.get('estado_id')==='1'?[{id:11,nombre:'Cuernavaca'}]:[]}});
    if(u.pathname.endsWith('borrador_llamada.php')){
       if(req.method()==='POST'){draftPosts++;return route.fulfill({json:{ok:true}});}
       if(slowDraft){await new Promise(r=>{slowDraft=r;});return route.fulfill({json:{ok:true,borrador:{saved_at:Date.now(),valores:{persona_atendio:'Respuesta vieja'}}}});}
@@ -51,6 +52,8 @@ const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta nam
  await form.locator('[name=decision]').selectOption('nueva');
  await form.locator('[name=nombre_entidad]').fill('Institución nueva');
  await form.locator('[name=estado_id]').selectOption('1');
+ await form.locator('[name=municipio_id] option[value="11"]').waitFor({state:'attached'});
+ await form.locator('[name=municipio_id]').selectOption('11');
  await form.locator('[name=resultado]').selectOption('CONTACTO_REFERIDO');
  await form.locator('[name=persona_atendio]').fill('Ana');
  await form.locator('[name=nuevo_contacto_nombre]').fill('Luis');
@@ -77,6 +80,8 @@ const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta nam
  await modal.locator('.btn-close').click();await closed();assert.equal(await first.evaluate(e=>document.activeElement===e),true,'devuelve foco');
  assert.ok(draftPosts>0,'autoguarda captura');
  await first.click();await opened();await page.waitForFunction(()=>document.querySelector('[name=nuevo_contacto_nombre]').value==='Luis');
+ await page.waitForFunction(()=>document.querySelector('[name=municipio_id]').value==='11');
+ assert.equal(await form.locator('[name=persona_atendio]').inputValue(),'Ana','informante y referido separados al recuperar');
  await modal.locator('.btn-close').click();await closed();
  // Una respuesta tardía al recuperar el borrador jamás pisa lo que ya escribió el analista.
  slowDraft=true;await page.locator('[data-call-id="sdk-pending-12345678"]').click();await opened();

@@ -1,0 +1,14 @@
+--- a/public/css/telefonia_disponibilidad.css
++++ b/public/css/telefonia_disponibilidad.css
+@@ -21,3 +21,11 @@
+ 
+ .impe-availability-waiting{position:fixed;right:18px;top:82px;z-index:1200;display:flex;gap:10px;align-items:flex-start;width:min(360px,calc(100vw - 36px));box-sizing:border-box;background:#fff;border:1px solid #d9e4f2;border-radius:12px;padding:12px 15px;color:#526580;font-size:12px;line-height:1.5;box-shadow:0 8px 24px #1932541a}
+ .impe-availability-waiting[hidden]{display:none!important}
++.impe-availability-dialog .system-form-modal-footer{flex-wrap:wrap}
++.impe-availability-dialog .system-form-modal-footer button{flex:0 1 auto;min-width:0;white-space:normal}
++@media(max-width:575.98px){
++ .impe-availability-dialog .system-form-modal-header{padding:18px 16px 14px}
++ .impe-availability-dialog .system-form-modal-body{padding:16px;max-height:max(100px,calc(100dvh - 250px))}
++ .impe-availability-dialog .system-form-modal-footer{padding:14px 16px;gap:8px}
++ .impe-availability-dialog .system-form-modal-footer button{flex:1 1 120px}
++}

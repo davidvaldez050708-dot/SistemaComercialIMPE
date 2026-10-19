@@ -1,0 +1,26 @@
+--- a/public/css/seguimiento_entrantes_analista.css
++++ b/public/css/seguimiento_entrantes_analista.css
+@@ -427,7 +427,8 @@
+ }
+ .linkage-incoming-summary i {margin-right:6px;}
+ #modalLlamadaEntranteAnalista .linkage-incoming-evidence,
+-#modalLlamadaEntranteAnalista .linkage-incoming-discard {
++#modalLlamadaEntranteAnalista .linkage-incoming-discard,
++#modalLlamadaEntranteAnalista [data-incoming-referred] {
+     padding:14px 16px;
+     border:1px solid #dde6f3;
+     border-radius:11px;
+@@ -441,6 +442,13 @@
+ #modalLlamadaEntranteAnalista .linkage-incoming-evidence > strong {
+     display:block;font-weight:800;color:#243557;margin-bottom:5px;
+ }
++#modalLlamadaEntranteAnalista [data-incoming-referred] > strong {
++    display:block;font-weight:800;font-size:12px;color:#243557;margin-bottom:5px;
++}
++#modalLlamadaEntranteAnalista [data-incoming-referred] > p {
++    margin:0 0 12px;font-size:11px;line-height:1.5;color:#64748b;
++}
++body.impe-call-result-form-open > .persistent-phone-panel {display:none!important;}
+ #modalLlamadaEntranteAnalista .linkage-incoming-evidence > p {
+     margin:0 0 10px;font-size:11px;line-height:1.5;color:#64748b;
+ }

@@ -1,0 +1,69 @@
+--- a/public/css/telefonia_shell.css
++++ b/public/css/telefonia_shell.css
+@@ -23,14 +23,12 @@
+   font: 600 12px/1.5 'Manrope', sans-serif;
+ }
+ .impe-phone-status[hidden], .impe-phone-restore[hidden] { display: none !important; }
+-.impe-phone-status.is-raised { bottom: 75px; }
+ .impe-phone-status button {
+   border: 0; border-radius: 7px; background: #273b88; color: #fff;
+   padding: 6px 9px; cursor: pointer; font: inherit;
+ }
+-/* WebRTC necesita un viewport real aun cuando está en segundo plano.
+-   Antes se inicializaba el SDK en un iframe 3x3 y sus controles entrantes
+-   podían quedar mal dimensionados o en blanco. No usar display:none. */
++/* No esconder con display:none el iframe: algunos motores WebRTC dejan de
++   procesar audio cuando se destruye/oculta completamente su contexto. */
+ .impe-phone-call {
+   position: fixed; width: min(420px, calc(100vw - 22px));
+   height: min(450px, calc(100dvh - 24px));
+@@ -68,20 +66,6 @@
+ .impe-incoming-panel .persistent-phone-actions {
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+ }
+-/* Colgar ocupa la columna derecha incluso al marcar,
+-   cuando Silenciar permanece oculto. En conversación conserva su posición. */
+-.impe-incoming-panel .persistent-phone-actions > [data-incoming-hangup]:not([hidden]) {
+-  grid-column: 2 / 3;
+-}
+-/* Al finalizar una llamada saliente sólo queda Cerrar:
+-   alinearlo a la derecha, sin alterar los otros controles. */
+-.impe-incoming-panel .persistent-phone-actions [data-incoming-close-finished]:not([hidden]) {
+-  grid-column: 1 / -1;
+-  justify-self: end;
+-  margin-left: auto;
+-  margin-right: 0;
+-  width: min(100%, 200px);
+-}
+ .impe-incoming-panel .persistent-phone-actions [hidden],
+ .impe-incoming-panel .persistent-phone-compact-actions [hidden],
+ .impe-incoming-panel .impe-incoming-notice[hidden] {display:none!important;}
+@@ -107,6 +91,28 @@
+   color: #52698c; font: 600 11px 'Manrope', sans-serif;
+   text-decoration: underline; white-space: nowrap;
+ }
++
++/* Centrar Cerrar al finalizar una llamada saliente. */
++.impe-incoming-panel .persistent-phone-actions [data-incoming-close-finished]:not([hidden]) {
++  grid-column: 1 / -1;
++  justify-self: end;
++  width: min(100%, 200px);
++}
++
++/* IMPE_CERRAR_DERECHA_V2 */
++.impe-incoming-panel .persistent-phone-actions > [data-incoming-close-finished]:not([hidden]) {
++  grid-column: 1 / -1 !important;
++  justify-self: end !important;
++  margin-left: auto !important;
++  margin-right: 0 !important;
++  width: min(100%, 200px) !important;
++}
++
++/* IMPE_COLGAR_DERECHA_V1 */
++.impe-incoming-panel .persistent-phone-actions > [data-incoming-hangup]:not([hidden]) {
++  grid-column: 2 / 3 !important;
++}
++
+ 
+ 
+ /* Navegación entre documentos PHP del iframe: ocultar exclusivamente el
