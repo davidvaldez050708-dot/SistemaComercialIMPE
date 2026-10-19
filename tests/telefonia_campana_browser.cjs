@@ -31,15 +31,14 @@ const read=p=>fs.readFileSync(path.join(__dirname,'../public/javascript/',p),'ut
   await page.locator('.topbar-reminder-item[data-telefonia-id="16"]').waitFor();
   const nextToast=page.locator(marketing?'.convocatoria-activation-toast[data-telefonia-id="16"]':'.reminder-toast[data-telefonia-id="16"]');
   assert.equal(await nextToast.count(),0,'el aviso nuevo respeta el turno pendiente');
-  await page.clock.runFor(8*60*1000+200);
-  if(await nextToast.count()===0){
-   console.error('Campana segundo turno:',marketing?'Marketing':'Analista',await page.evaluate(()=>({
-    ahora:Date.now(),ultimo:sessionStorage.getItem('recordatorios:ultimo-toast-global-at:usuario:8'),
-    id:sessionStorage.getItem('recordatorios:ultimo-toast-vencido-id:usuario:8'),
-    activos:[...document.querySelectorAll('[data-telefonia-id]')].map(e=>[e.tagName,e.dataset.telefoniaId]),
-    oculto:document.hidden
-   })));
-  }
+  // Después de recargar ya han transcurrido 10 s desde el aviso anterior.
+  // Avanzar ocho minutos completos sobrepasaría su ventana de visibilidad.
+  const restante=await page.evaluate(()=>{
+   const clave='recordatorios:ultimo-toast-global-at:usuario:'+Number(window.IMPE_CURRENT_USER_ID||0);
+   const ultimo=Number(sessionStorage.getItem(clave)||0);
+   return ultimo>0?Math.max(1000,8*60*1000-(Date.now()-ultimo))+300:8*60*1000+300;
+  });
+  await page.clock.runFor(restante);
   await nextToast.waitFor({state:'visible'});
   await nextToast.click();await page.waitForURL('**/historial');
   assert.match(readBody,/id=16/);assert.match(readBody,/csrf_token=csrf-own/);assert.ok(listed>=1);assert.deepEqual(errors,[]);await page.close();
