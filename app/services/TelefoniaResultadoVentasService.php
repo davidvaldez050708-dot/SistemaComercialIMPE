@@ -41,7 +41,7 @@ class TelefoniaResultadoVentasService
 
     public static function esConversacion(?string $resultado): bool
     {
-        return in_array($resultado, [self::CONVERSACION,'INTERESADO','SOLICITA_INFORMACION','REQUIERE_SEGUIMIENTO','NO_INTERESADO','COMUNICACION_INTERRUMPIDA'], true);
+        return in_array($resultado, [self::CONVERSACION,'INTERESADO','SOLICITA_INFORMACION','REQUIERE_SEGUIMIENTO','NO_INTERESADO'], true);
     }
 
     private $db;

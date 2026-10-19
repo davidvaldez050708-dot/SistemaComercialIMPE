@@ -155,7 +155,7 @@ class ZadarmaWebhookEventStoreService
         $stmt->close();
         // Captura opcional de propiedad comercial; nunca ejecuta migraciones
         // ni impide almacenar el evento firmado si la fase B no está instalada.
-        if (in_array($evento, ['NOTIFY_INTERNAL','NOTIFY_OUT_START'], true)) {
+        if (in_array($evento, ['NOTIFY_INTERNAL','NOTIFY_OUT_START','NOTIFY_ANSWER'], true)) {
             try {
                 require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
                 (new TelefoniaVentasLlamadasService($this->connection))->capturarEvento([

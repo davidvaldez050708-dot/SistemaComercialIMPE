@@ -93,6 +93,9 @@ class TelefoniaController
             exit('No tienes acceso al historial telefónico.');
         }
 
+        if ((int)($_SESSION['rol_id']??0)===3) {
+            $this->misLlamadasVentas($uid);return;
+        }
         $rol = trim((string)($_SESSION['rol'] ?? ''));
         $puedeGestionAnalista = strcasecmp($rol, 'Analista de Datos') === 0
             && tienePermiso('seguimientos_vinculacion.operar_propios')
@@ -186,6 +189,20 @@ class TelefoniaController
             require __DIR__ . '/../views/telefonia/mis_llamadas.php';
         }
         require __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    private function misLlamadasVentas(int $uid): void
+    {
+        require_once __DIR__.'/../services/TelefoniaVentasLlamadasService.php';
+        $ventasBandeja=[];$contactosVentas=[];$errorMisLlamadas='';
+        try{
+            $ventasBandeja=(new TelefoniaVentasLlamadasService())->bandeja($uid,$_GET);
+            $contactosVentas=(new TelefoniaContactosService())->listar($uid);
+        }catch(Throwable $e){error_log('[ventas_bandeja] '.get_class($e));$errorMisLlamadas=$e instanceof DomainException?$e->getMessage():'No se pudo consultar la bandeja comercial. Inténtalo nuevamente.';}
+        $tituloPagina='Mis llamadas';$subtituloPagina='Atención telefónica de prospectos';$opcionActiva='mis_llamadas';
+        require __DIR__.'/../views/layout/dashboard_head.php';require __DIR__.'/../views/layout/sidebar.php';
+        require __DIR__.'/../views/layout/topbar.php';require __DIR__.'/../views/telefonia/ventas_llamadas.php';
+        require __DIR__.'/../views/layout/dashboard_footer.php';
     }
 
     /**
@@ -405,7 +422,9 @@ class TelefoniaController
             !tienePermiso('telefonia.usar')||(!tienePermiso('telefonia.recibir')&&!tienePermiso('telefonia.salientes')))
             $this->responderJson(['ok'=>false,'mensaje'=>'No tienes acceso a la atención comercial.'],403);
         if(($_SERVER['REQUEST_METHOD']??'GET')!==($post?'POST':'GET'))$this->responderJson(['ok'=>false],405);
-        if($post&&!TelefoniaContactosService::validarToken((string)($_POST['csrf_token']??'')))
+        $sent=(string)($_POST['csrf_token']??'');$general=(string)($_SESSION['csrf_token']??'');
+        $valid=$general!==''&&$sent!==''&&hash_equals($general,$sent);
+        if($post&&!$valid&&!TelefoniaContactosService::validarToken($sent))
             $this->responderJson(['ok'=>false,'mensaje'=>'El formulario caducó. Recarga la página.'],403);
     }
 

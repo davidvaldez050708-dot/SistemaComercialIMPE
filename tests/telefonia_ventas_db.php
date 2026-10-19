@@ -61,6 +61,19 @@ try {
  $event('pbx-prospecto-001','NOTIFY_RECORD','150',0,['call_id_with_rec'=>'record-sales-150-b']);
  vcheck($svc->obtener(8,'pbx-prospecto-001')['segmentos']===['record-sales-150-a','record-sales-150-b'],'Segmentos propios, sin audio de recepción');
  $list=$svc->listar(8);vcheck(count($list)===6,'Los seis intentos comerciales producen seis tramos, sin duplicados');
+ vcheck($svc->bandeja(8,['estado'=>'pendientes'])['total']===0,'Sin cierre no se crea un resultado pendiente falso');
+ $event('pbx-pendiente-004','NOTIFY_END');
+ vcheck($svc->bandeja(8,['estado'=>'pendientes'])['total']===1,'Cierre PBX genera un resultado pendiente');
+ vcheck($svc->bandeja(8,['estado'=>'perdidas'])['total']===2,'Bandeja conserva las dos perdidas, registradas o pendientes');
+ vreject(fn()=>$svc->bandeja(8,['desde'=>'2026-02-30']),'Valida fecha imposible');
+ $decimal=TelefoniaVentasLlamadasService::hechos([['evento'=>'NOTIFY_RECORD','internal'=>'150','call_id_with_rec'=>'1439981389.2702773']], '150');
+ vcheck($decimal['segmentos']===['1439981389.2702773'],'ID decimal de audio conservado como texto');
+ $other=TelefoniaVentasLlamadasService::hechos([['evento'=>'NOTIFY_END','internal'=>'100','duration'=>999,'disposition'=>'answered']], '150');
+ vcheck(!$other['finalizada']&&!$other['conectada']&&$other['segundos']===null,'No usar cierre ni duración de recepción');
+ for($n=0;$n<21;$n++){$event('pbx-paginacion-'.str_pad((string)$n,3,'0',STR_PAD_LEFT),'NOTIFY_OUT_START');$event('pbx-paginacion-'.str_pad((string)$n,3,'0',STR_PAD_LEFT),'NOTIFY_OUT_END');}
+ $page1=$svc->bandeja(8);$page2=$svc->bandeja(8,['pagina'=>2]);
+ vcheck(count($page1['filas'])===20&&count($page2['filas'])===7&&$page2['total']===27,'Paginación sobre 27 llamadas sin truncar el historial');
+ vcheck(!array_intersect(array_column($page1['filas'],'id'),array_column($page2['filas'],'id')),'Las páginas no duplican tramos');
  // Reasignación: el tramo congelado conserva su propietario histórico.
  $db->query("UPDATE telefonia_extensiones SET usuario_id=9,created_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE),updated_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE extension='150'");
  vcheck($svc->obtener(8,'pbx-prospecto-001')['usuario_id']==8,'Mantiene atribución histórica');

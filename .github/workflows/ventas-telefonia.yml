@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --prefix /tmp/ventas-browser playwright
+      - run: npm install --prefix /tmp/ventas-browser playwright bootstrap@5.3.8
       - run: /tmp/ventas-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Sintaxis y regresiones compartidas
         run: |
@@ -29,8 +29,15 @@ jobs:
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/ventas-browser/node_modules/playwright
         run: node tests/telefonia_ventas_recepcion_browser.cjs
+      - name: Operación comercial y modales
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/ventas-browser/node_modules/playwright
+          BOOTSTRAP_MODULE_PATH: /tmp/ventas-browser/node_modules/bootstrap
+        run: node tests/telefonia_ventas_operacion_browser.cjs
       - name: Publicador selectivo en replicas
-        run: python3 tests/publicacion_ventas_test.py a
+        run: |
+          python3 tests/publicacion_ventas_test.py a
+          python3 tests/publicacion_ventas_test.py c
   datos-comerciales:
     runs-on: ubuntu-latest
     strategy:

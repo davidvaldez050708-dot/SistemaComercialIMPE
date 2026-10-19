@@ -243,12 +243,12 @@ a.btn.linkage-incoming-back {
  * Bootstrap únicamente limita .modal-content. Sin hacer flex el formulario,
  * su contenido empuja el pie fuera del viewport y oculta Guardar resultado.
  * Aislar los cambios al modal del Analista evita afectar otros formularios. */
-#modalLlamadaEntranteAnalista .linkage-incoming-modal-dialog {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-modal-dialog {
     max-height: calc(100dvh - 24px);
     margin-top: 12px;
     margin-bottom: 12px;
 }
-#modalLlamadaEntranteAnalista .modal-content {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-content {
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -256,11 +256,11 @@ a.btn.linkage-incoming-back {
     max-height: min(780px, calc(100dvh - 24px));
     overflow: hidden;
 }
-#modalLlamadaEntranteAnalista .modal-header {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-header {
     flex: 0 0 auto;
     gap: 14px;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-form {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
@@ -268,7 +268,7 @@ a.btn.linkage-incoming-back {
     max-height: 100%;
     overflow: hidden;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-form > .modal-body {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form > .modal-body {
     display: block;
     flex: 1 1 auto;
     min-height: 0;
@@ -279,7 +279,7 @@ a.btn.linkage-incoming-back {
     -webkit-overflow-scrolling: touch;
     scrollbar-gutter: stable;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-form-footer {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form-footer {
     display: flex;
     flex: 0 0 auto;
     align-items: center;
@@ -291,7 +291,7 @@ a.btn.linkage-incoming-back {
     background: #fff;
     box-shadow: 0 -6px 16px rgba(26, 44, 78, .025);
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-form-footer .btn {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form-footer .btn {
     min-height: 42px;
     margin: 0;
     padding: 9px 16px;
@@ -299,10 +299,10 @@ a.btn.linkage-incoming-back {
     font-size: 12px;
     font-weight: 800;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-form-footer [data-incoming-submit] {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form-footer [data-incoming-submit] {
     min-width: 165px;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-sdk-notice {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-sdk-notice {
     display: flex;
     align-items: flex-start;
     gap: 10px;
@@ -314,14 +314,14 @@ a.btn.linkage-incoming-back {
     color: #526581;
     line-height: 1.55;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-sdk-notice[hidden],
-#modalLlamadaEntranteAnalista [data-incoming-sdk-confirm][hidden],
-#modalLlamadaEntranteAnalista [data-incoming-existing][hidden],
-#modalLlamadaEntranteAnalista [data-incoming-new][hidden],
-#modalLlamadaEntranteAnalista [data-incoming-results][hidden] {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-sdk-notice[hidden],
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-sdk-confirm][hidden],
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-existing][hidden],
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-new][hidden],
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-results][hidden] {
     display: none !important;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-sdk-notice-icon {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-sdk-notice-icon {
     display: inline-flex;
     flex: 0 0 30px;
     align-items: center;
@@ -333,19 +333,19 @@ a.btn.linkage-incoming-back {
     color: #3d5792;
     font-size: 15px;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-sdk-notice strong {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-sdk-notice strong {
     display: block;
     margin-bottom: 3px;
     color: #283d63;
     font-size: 11.5px;
     font-weight: 800;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-sdk-notice p {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-sdk-notice p {
     margin: 0;
     font-size: 11px;
     font-weight: 500;
 }
-#modalLlamadaEntranteAnalista [data-incoming-sdk-confirm] {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-sdk-confirm] {
     margin: 16px 0 0;
     padding: 12px 14px;
     border: 1px solid #dce6f3;
@@ -355,63 +355,63 @@ a.btn.linkage-incoming-back {
     font-size: 11.5px;
     line-height: 1.55;
 }
-#modalLlamadaEntranteAnalista [data-incoming-sdk-confirm] label {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-sdk-confirm] label {
     display: flex;
     gap: 10px;
     align-items: flex-start;
     margin: 0;
     cursor: pointer;
 }
-#modalLlamadaEntranteAnalista [data-incoming-sdk-confirm] input {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-sdk-confirm] input {
     margin-top: 3px;
 }
 @media (max-width: 575.98px) {
-    #modalLlamadaEntranteAnalista .linkage-incoming-modal-dialog {
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-modal-dialog {
         width: calc(100% - 16px);
         max-height: calc(100dvh - 16px);
         margin: 8px auto;
     }
-    #modalLlamadaEntranteAnalista .modal-content {
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-content {
         max-height: calc(100dvh - 16px);
     }
-    #modalLlamadaEntranteAnalista .linkage-incoming-form > .modal-body {
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form > .modal-body {
         max-height: max(100px, calc(100dvh - 205px));
         scrollbar-gutter: auto;
     }
-    #modalLlamadaEntranteAnalista .linkage-incoming-form-footer {
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form-footer {
         padding: 12px 14px;
         flex-wrap: nowrap;
     }
-    #modalLlamadaEntranteAnalista .linkage-incoming-form-footer .btn {
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form-footer .btn {
         flex: 1 1 0;
         min-width: 0;
         padding: 9px;
     }
-    #modalLlamadaEntranteAnalista .linkage-incoming-form-footer [data-incoming-submit] {
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form-footer [data-incoming-submit] {
         min-width: 0;
     }
 }
 @media (max-height: 540px) {
-    #modalLlamadaEntranteAnalista .linkage-incoming-form > .modal-body {
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form > .modal-body {
         max-height: max(85px, calc(100dvh - 190px));
     }
-    #modalLlamadaEntranteAnalista .modal-header {
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-header {
         padding-top: 12px;
         padding-bottom: 12px;
     }
 }
 
 /* El modal sigue la misma escala de formularios del dashboard. */
-#modalLlamadaEntranteAnalista .linkage-incoming-modal-dialog {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-modal-dialog {
     width: calc(100% - 28px);
     max-width: 720px;
     margin-left: auto;
     margin-right: auto;
 }
-#modalLlamadaEntranteAnalista .modal-content {border-radius:15px;}
-#modalLlamadaEntranteAnalista .modal-body {padding:22px 24px;overflow-y:auto;}
-#modalLlamadaEntranteAnalista .modal-footer {padding:15px 24px;}
-#modalLlamadaEntranteAnalista .form-label {font-size:12px;font-weight:700;color:#344258;}
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-content {border-radius:15px;}
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-body {padding:22px 24px;overflow-y:auto;}
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-footer {padding:15px 24px;}
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .form-label {font-size:12px;font-weight:700;color:#344258;}
 .linkage-incoming-summary {
     display:flex;
     justify-content:space-between;
@@ -426,9 +426,9 @@ a.btn.linkage-incoming-back {
     font-size:12px;
 }
 .linkage-incoming-summary i {margin-right:6px;}
-#modalLlamadaEntranteAnalista .linkage-incoming-evidence,
-#modalLlamadaEntranteAnalista .linkage-incoming-discard,
-#modalLlamadaEntranteAnalista [data-incoming-referred] {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-evidence,
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-discard,
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-referred] {
     padding:14px 16px;
     border:1px solid #dde6f3;
     border-radius:11px;
@@ -436,27 +436,27 @@ a.btn.linkage-incoming-back {
     color:#435572;
     font-size:12px;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-evidence[hidden],
-#modalLlamadaEntranteAnalista .linkage-incoming-discard[hidden],
-#modalLlamadaEntranteAnalista [data-incoming-discard-reason][hidden] {display:none!important;}
-#modalLlamadaEntranteAnalista .linkage-incoming-evidence > strong {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-evidence[hidden],
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-discard[hidden],
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-discard-reason][hidden] {display:none!important;}
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-evidence > strong {
     display:block;font-weight:800;color:#243557;margin-bottom:5px;
 }
-#modalLlamadaEntranteAnalista [data-incoming-referred] > strong {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-referred] > strong {
     display:block;font-weight:800;font-size:12px;color:#243557;margin-bottom:5px;
 }
-#modalLlamadaEntranteAnalista [data-incoming-referred] > p {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-referred] > p {
     margin:0 0 12px;font-size:11px;line-height:1.5;color:#64748b;
 }
 body.impe-call-result-form-open > .persistent-phone-panel {display:none!important;}
-#modalLlamadaEntranteAnalista .linkage-incoming-evidence > p {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-evidence > p {
     margin:0 0 10px;font-size:11px;line-height:1.5;color:#64748b;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-evidence > label,
-#modalLlamadaEntranteAnalista .linkage-incoming-discard > label {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-evidence > label,
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-discard > label {
     display:flex;gap:9px;align-items:flex-start;cursor:pointer;line-height:1.55;margin:8px 0 0;
 }
-#modalLlamadaEntranteAnalista input[type="checkbox"] {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) input[type="checkbox"] {
     flex:none;margin-top:3px;accent-color:#293e90;
 }
 @media (max-width: 767.98px) {
@@ -465,8 +465,8 @@ body.impe-call-result-form-open > .persistent-phone-panel {display:none!importan
     .linkage-incoming-stats {grid-template-columns:repeat(2,minmax(0,1fr));}
     .linkage-incoming-stat:last-child {grid-column:auto;}
     .linkage-incoming-empty-panel {padding:34px 16px;}
-    #modalLlamadaEntranteAnalista .modal-body {padding:18px 16px;}
-    #modalLlamadaEntranteAnalista .modal-footer {padding:14px 16px;}
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-body {padding:18px 16px;}
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-footer {padding:14px 16px;}
 }
 @media (max-width: 470px) {
     .linkage-incoming-stats {grid-template-columns:1fr;}
@@ -952,26 +952,26 @@ body.impe-call-result-form-open > .persistent-phone-panel {display:none!importan
 
 /* Registro de llamadas transferidas: escala y campos del CRM.
  * El teléfono/SIP y los modales de otros módulos no se modifican. */
-#modalLlamadaEntranteAnalista .modal-content {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-content {
     border: 1px solid #dfe7f2;
     box-shadow: 0 22px 64px rgba(27, 42, 76, .17);
 }
-#modalLlamadaEntranteAnalista .modal-header {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-header {
     border-bottom: 1px solid #e9edf5;
     padding: 20px 24px 17px;
 }
-#modalLlamadaEntranteAnalista .system-form-modal-title {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .system-form-modal-title {
     font-size: 18px;
     line-height: 1.35;
     color: #263654;
 }
-#modalLlamadaEntranteAnalista .system-form-modal-subtitle {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .system-form-modal-subtitle {
     color: #6c7b94;
     font-size: 12px;
     line-height: 1.5;
     margin: 4px 0 0;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-form .form-label {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form .form-label {
     display: block;
     font-size: 12px;
     font-weight: 750;
@@ -979,7 +979,7 @@ body.impe-call-result-form-open > .persistent-phone-panel {display:none!importan
     color: #40516e;
     margin: 0 0 7px;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-form :is(.form-select, .form-control) {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form :is(.form-select, .form-control) {
     font-size: 12.5px;
     line-height: 1.4;
     min-height: 43px;
@@ -989,25 +989,25 @@ body.impe-call-result-form-open > .persistent-phone-panel {display:none!importan
     color: #293e60;
     box-shadow: none;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-form :is(.form-select, .form-control):focus {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form :is(.form-select, .form-control):focus {
     border-color: #5e79b8;
     box-shadow: 0 0 0 3px rgba(60, 85, 155, .12);
     background: #fff;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-form textarea.form-control {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-form textarea.form-control {
     min-height: 86px;
     resize: vertical;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-summary {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-summary {
     margin: 0 0 16px;
     background: #f4f7fc;
 }
-#modalLlamadaEntranteAnalista [data-incoming-sdk-notice],
-#modalLlamadaEntranteAnalista [data-incoming-existing-search][hidden],
-#modalLlamadaEntranteAnalista [data-incoming-confirmed][hidden] {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-sdk-notice],
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-existing-search][hidden],
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) [data-incoming-confirmed][hidden] {
     display: none !important;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-confirmed {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-confirmed {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1017,7 +1017,7 @@ body.impe-call-result-form-open > .persistent-phone-panel {display:none!importan
     border-radius: 11px;
     margin-bottom: 15px;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-confirmed-icon {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-confirmed-icon {
     display: inline-flex;
     flex: 0 0 34px;
     width: 34px;
@@ -1028,29 +1028,29 @@ body.impe-call-result-form-open > .persistent-phone-panel {display:none!importan
     color: #277a61;
     background: #e3f3eb;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-confirmed-copy {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-confirmed-copy {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
     min-width: 0;
     gap: 2px;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-confirmed-copy > span {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-confirmed-copy > span {
     color: #456d60;
     font-size: 10.5px;
     font-weight: 750;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-confirmed-copy strong {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-confirmed-copy strong {
     font-size: 13px;
     overflow-wrap: anywhere;
     color: #264b43;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-confirmed-copy small {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-confirmed-copy small {
     font-size: 10.5px;
     color: #607c72;
     line-height: 1.45;
 }
-#modalLlamadaEntranteAnalista .linkage-incoming-change-record {
+:is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-change-record {
     flex: 0 0 auto;
     border: 1px solid #b6d8c8;
     color: #28694f;
@@ -1061,13 +1061,13 @@ body.impe-call-result-form-open > .persistent-phone-panel {display:none!importan
     min-height: 35px;
 }
 @media (max-width: 575.98px) {
-    #modalLlamadaEntranteAnalista .linkage-incoming-confirmed {
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-confirmed {
         flex-wrap: wrap;
     }
-    #modalLlamadaEntranteAnalista .linkage-incoming-change-record {
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .linkage-incoming-change-record {
         margin-left: auto;
     }
-    #modalLlamadaEntranteAnalista .modal-header {padding: 16px;}
+    :is(#modalLlamadaEntranteAnalista,#modalResultadoVenta) .modal-header {padding: 16px;}
 }
 
 /* Acciones del historial: misma escala que Consultar grabación. */

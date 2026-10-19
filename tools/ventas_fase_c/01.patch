@@ -1,0 +1,25 @@
+--- a/app/services/TelefoniaMarcadorPanelService.php
++++ b/app/services/TelefoniaMarcadorPanelService.php
+@@ -33,12 +33,22 @@
+                 $panel['extension'] = (string)($asignacion['extension'] ?? '');
+                 $panel['caller_id'] = (string)($asignacion['caller_id'] ?? '');
+                 try {
++                    require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
++                    $commercial=new TelefoniaVentasLlamadasService();
++                    if($commercial->disponible()){
++                        $calls=$commercial->listar($usuarioId);$h=$panel['historial'];
++                        foreach($calls as $call){$h['atenciones']++;$h['contestadas']+=(int)$call['conectada'];
++                            $h[$call['direccion']==='Entrante'?'entrantes':'salientes']++;$h['segundos']+=(int)($call['segundos']??0);}
++                        $h['conversaciones_reales']=count(array_filter($calls,static fn($call)=>TelefoniaResultadoVentasService::esConversacion($call['registro']['resultado']??'')));
++                        $panel['historial']=$h;
++                    }else{
+                     // El historiador reconstruye la asociación cuando el
+                     // webhook llegó después de cerrar el marcador.
+                     (new TelefoniaMarcacionesVentasService())
+                         ->reconciliarPendientes($usuarioId, $panel['extension']);
+                     $panel['historial'] = (new TelefoniaActividadService())
+                         ->consultar($panel['extension'], $usuarioId);
++                    }
+                 } catch (Throwable $e) {
+                     error_log('Historial del marcador: ' . $e->getMessage());
+                     $panel['mensaje'] = 'La extensión está disponible, pero el historial no se pudo consultar.';
