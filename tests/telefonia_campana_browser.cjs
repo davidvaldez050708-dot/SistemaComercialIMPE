@@ -81,7 +81,7 @@ const read=p=>fs.readFileSync(path.join(__dirname,'../public/javascript/',p),'ut
    return route.fulfill({contentType:'text/html',body:html});
   });
   await page.goto('http://inicio-analista.test/');
-  await page.waitForFunction(()=>document.querySelector('[data-reminder-content]')?.textContent.includes('Reintentando automáticamente'));
+  await page.locator('[data-reminder-content]').getByText('No se pudieron cargar las notificaciones').waitFor();
   assert.equal(await page.locator('[data-topbar-call-effective]').textContent(),'—','no inventar cifras mientras falla la consulta');
   assert.equal(await page.locator('.reminder-toast').count(),0,'sin ráfaga al inicio');
   await page.clock.runFor(5300);
