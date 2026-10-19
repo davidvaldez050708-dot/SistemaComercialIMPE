@@ -8,7 +8,7 @@ const read=p=>fs.readFileSync(path.join(__dirname,'../public/javascript/',p),'ut
   const page=await browser.newPage();await page.clock.install();let readBody='',listed=0;const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const bell=marketing?'<div data-convocatoria-notification-root data-endpoint="/list"><span data-convocatoria-notification-badge></span><div data-convocatoria-notification-content></div></div>':'<div data-reminder-root data-reminder-endpoint="/list"><span data-reminder-badge></span><div data-reminder-content></div></div>';
   let notice={id:-15,telefonia_id:15,titulo:'Transferencia sin respuesta',nombre_entidad:'Transferencia sin respuesta',mensaje:'Recepción intentó comunicarte.',accion:'Recepción intentó comunicarte.',url:'/historial',fecha:'2026-10-18 10:17:00',created_at:'2026-10-18 10:17:00',estado:'informativa',etiqueta:'Sin respuesta',tipo:'TELEFONIA_PERDIDA'};
-  const html=`<!doctype html><style>${fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'))}</style><script>${fs.readFileSync(path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'))}</script><script>window.IMPE_CURRENT_USER_ID=8;</script><div data-phone-notification-read="/read" data-phone-notification-csrf="csrf-own">${bell}</div><script>${read(marketing?'convocatoria_notificaciones.js':'recordatorios.js')}</script><script>${read('telefonia_notificaciones.js')}</script>`;
+  const html=`<!doctype html><meta charset="utf-8"><style>${fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'))}</style><script>${fs.readFileSync(path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'))}</script><script>window.IMPE_CURRENT_USER_ID=8;</script><div data-phone-notification-read="/read" data-phone-notification-csrf="csrf-own">${bell}</div><script>${read(marketing?'convocatoria_notificaciones.js':'recordatorios.js')}</script><script>${read('telefonia_notificaciones.js')}</script>`;
   await page.route('http://campana.test/**',async route=>{
    const u=new URL(route.request().url());
    if(u.pathname==='/list'){listed++;return route.fulfill({json:{ok:true,total:1,no_leidas:1,notificaciones:[notice],recordatorios:[notice]}});}
@@ -52,7 +52,7 @@ const read=p=>fs.readFileSync(path.join(__dirname,'../public/javascript/',p),'ut
  {
   const page=await browser.newPage();await page.clock.install();
   let lecturas=0,resumenes=0;const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const html=`<!doctype html><style>${fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'))}</style>
+  const html=`<!doctype html><meta charset="utf-8"><style>${fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'))}</style>
    <script>${fs.readFileSync(path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'))}</script>
    <script>window.IMPE_CURRENT_USER_ID=8;</script>
    <div data-reminder-root data-reminder-endpoint="/list">
