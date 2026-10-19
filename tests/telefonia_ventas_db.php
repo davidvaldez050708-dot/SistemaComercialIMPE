@@ -1,0 +1,72 @@
+<?php
+declare(strict_types=1);
+// Base desechable explícita: nunca usar Database::connect() ni credenciales del CRM.
+require_once dirname(__DIR__).'/app/services/TelefoniaVentasSchema.php';
+require_once dirname(__DIR__).'/app/services/TelefoniaVentasLlamadasService.php';
+require_once dirname(__DIR__).'/app/services/TelefoniaResultadoVentasService.php';
+require_once dirname(__DIR__).'/app/services/TelefoniaDisponibilidadService.php';
+require_once dirname(__DIR__).'/app/services/ZadarmaWebhookEventStoreService.php';
+mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);date_default_timezone_set('America/Mexico_City');
+$port=(int)getenv('IMPE_TEST_MYSQL_PORT');if(!$port)throw new RuntimeException('Define IMPE_TEST_MYSQL_PORT para la instancia aislada.');
+$db=new mysqli('127.0.0.1',getenv('IMPE_TEST_MYSQL_USER')?:'root',getenv('IMPE_TEST_MYSQL_PASSWORD')?:'',null,$port);
+$name='impe_ventas_test_'.getmypid();$db->query("CREATE DATABASE `$name` CHARACTER SET utf8mb4");$db->select_db($name);$db->set_charset('utf8mb4');
+$db->query("SET time_zone='-06:00'");$checks=0;
+function vcheck($ok,string $why): void {global $checks;if(!$ok)throw new RuntimeException($why);++$checks;}
+function vreject(callable $fn,string $why): void {try{$fn();}catch(DomainException|InvalidArgumentException $e){vcheck(true,$why);return;}throw new RuntimeException($why);}
+try {
+ $db->query('CREATE TABLE usuarios(id INT PRIMARY KEY,estado INT,rol_id INT,nombre VARCHAR(90),apellidos VARCHAR(90))');
+ $db->query("INSERT INTO usuarios VALUES (7,1,7,'Tania',''),(8,1,3,'Asesor Uno',''),(9,1,3,'Asesor Dos',''),(10,1,4,'Analista','')");
+ $db->query('CREATE TABLE permisos(id INT PRIMARY KEY,codigo VARCHAR(60),estado INT)');
+ $db->query("INSERT INTO permisos VALUES (1,'telefonia.usar',1),(2,'telefonia.recibir',1),(3,'telefonia.salientes',1)");
+ $db->query('CREATE TABLE rol_permisos(rol_id INT,permiso_id INT)');$db->query('INSERT INTO rol_permisos VALUES (3,1),(3,2),(3,3)');
+ (new TelefoniaExtensionService($db))->asegurarEstructura();
+ $db->query("INSERT INTO telefonia_extensiones(usuario_id,extension,created_at,updated_at) VALUES (8,'150',DATE_SUB(NOW(),INTERVAL 20 DAY),DATE_SUB(NOW(),INTERVAL 20 DAY)),(7,'100',DATE_SUB(NOW(),INTERVAL 20 DAY),DATE_SUB(NOW(),INTERVAL 20 DAY))");
+ new TelefoniaDisponibilidadService($db);
+ $db->query('CREATE TABLE telefonia_contactos_personales(id INT PRIMARY KEY,usuario_id INT,nombre VARCHAR(90),telefono VARCHAR(18))');
+ $db->query("INSERT INTO telefonia_contactos_personales VALUES (1,8,'Ana','+525551112233'),(2,9,'Ajena','+525559998877')");
+ $db->query('CREATE TABLE telefonia_ventas_marcaciones(id INT PRIMARY KEY,usuario_id INT,extension VARCHAR(12),destino VARCHAR(20),pbx_call_id VARCHAR(100),created_at DATETIME)');
+ $svc=new TelefoniaVentasLlamadasService($db);vcheck(!$svc->disponible(),'No crea tablas al consultar');
+ $pending=TelefoniaVentasSchema::pendientes($db);vcheck(count($pending)>0&&!$svc->disponible(),'Check de migración es de lectura');
+ foreach($pending as $sql)$db->query($sql);
+ vcheck(TelefoniaVentasSchema::pendientes($db)===[],'Migración idempotente');
+ $events=new ZadarmaWebhookEventStoreService($db);$results=new TelefoniaResultadoVentasService($db);$base=time()-600;
+ $event=function(string $ref,string $type,string $ext='150',int $seconds=0,array $extra=[])use($events,$base){static $offset=0;$at=date('Y-m-d H:i:s',$base+(++$offset));$events->registrar($extra+['event'=>$type,'pbx_call_id'=>$ref,'internal'=>$ext,'caller_id'=>'+525551112233','destination'=>'+525551112233','received_at'=>$at,'call_start'=>$at,'duration'=>$seconds]);};
+ $ref='out_'.str_repeat('a',32);$event($ref,'NOTIFY_OUT_START');$event($ref,'NOTIFY_ANSWER');$event($ref,'NOTIFY_OUT_END','150',25,['disposition'=>'answered']);
+ $call=$svc->obtener(8,$ref);vcheck($call['finalizada']&&$call['conectada']&&$call['segundos']===25,'Saliente real de extensión 150');
+ $results->guardar(8,$ref,'INTERESADO',['observacion'=>'Desea información','contacto_id'=>1]);
+ vcheck($svc->obtener(8,$ref)['registro']['resultado']==='INTERESADO','Resultado comercial independiente');
+ vreject(fn()=>$results->guardar(8,$ref,'BUZON_VOZ'),'Resultado definitivo');
+ vreject(fn()=>$svc->obtener(9,$ref),'No leer llamada de otro asesor');
+ vreject(fn()=>$results->guardar(9,$ref,'INTERESADO'),'No clasificar llamada ajena');
+ $route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>8,'extension'=>'150','referencia_llamada'=>'pbx-prospecto-001','estado_id'=>17,'institucion_nombre'=>'María Prospecto','seguimiento_id'=>999]);
+ $q=$db->prepare("INSERT INTO telefonia_disponibilidad(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,ruta_json,estado,expires_at,created_at,updated_at) VALUES (7,'100',8,'150','pbx-prospecto-001','+525551112233',?,'ENVIADA',UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())");$q->bind_param('s',$route);$q->execute();$q->close();
+ $event('pbx-prospecto-001','NOTIFY_INTERNAL');$event('pbx-prospecto-001','NOTIFY_ANSWER');$event('pbx-prospecto-001','NOTIFY_END','150',18);
+ $incoming=$svc->obtener(8,'pbx-prospecto-001');vcheck($incoming['nombre']==='María Prospecto'&&$incoming['origen_extension']==='100','Contexto exacto de la transferencia');
+ vcheck(!array_key_exists('seguimiento_id',$incoming),'No transporta identidad institucional');
+ $results->guardar(8,'pbx-prospecto-001','SOLICITA_INFORMACION',['prospecto_nombre'=>'María']);
+ $event('pbx-prospecto-002','NOTIFY_INTERNAL');$event('pbx-prospecto-002','NOTIFY_END');
+ $second=$svc->obtener(8,'pbx-prospecto-002');vcheck($second['nombre']===''&&!$second['conectada'],'Mismo número no hereda prospecto ni conexión');
+ vreject(fn()=>$results->guardar(8,'pbx-prospecto-002','INTERESADO'),'Perdida no acredita conversación');
+ $results->guardar(8,'pbx-prospecto-002','SIN_RESPUESTA');
+ $event('pbx-buzon-003','NOTIFY_OUT_START');$event('pbx-buzon-003','NOTIFY_OUT_END','150',7,['disposition'=>'answered']);
+ vreject(fn()=>$results->guardar(8,'pbx-buzon-003','CONVERSACION_PERSONA',['contacto_id'=>2]),'No vincular contacto ajeno');
+ $results->guardar(8,'pbx-buzon-003','BUZON_VOZ');
+ vcheck(!TelefoniaResultadoVentasService::esConversacion('BUZON_VOZ'),'Buzón no es conversación humana');
+ $event('pbx-pendiente-004','NOTIFY_INTERNAL');vreject(fn()=>$results->guardar(8,'pbx-pendiente-004','SIN_RESPUESTA'),'Sin cierre PBX no permite resultado');
+ $event('pbx-interrumpida-005','NOTIFY_OUT_START');$event('pbx-interrumpida-005','NOTIFY_ANSWER');$event('pbx-interrumpida-005','NOTIFY_OUT_END','150',2);
+ vreject(fn()=>$results->guardar(8,'pbx-interrumpida-005','REQUIERE_SEGUIMIENTO'),'Seguimiento requiere fecha futura');
+ $results->guardar(8,'pbx-interrumpida-005','COMUNICACION_INTERRUMPIDA');
+ $event('pbx-prospecto-001','NOTIFY_RECORD','100',0,['call_id_with_rec'=>'record-source-100']);
+ $event('pbx-prospecto-001','NOTIFY_RECORD','150',0,['call_id_with_rec'=>'record-sales-150-a']);
+ $event('pbx-prospecto-001','NOTIFY_RECORD','150',0,['call_id_with_rec'=>'record-sales-150-b']);
+ vcheck($svc->obtener(8,'pbx-prospecto-001')['segmentos']===['record-sales-150-a','record-sales-150-b'],'Segmentos propios, sin audio de recepción');
+ $list=$svc->listar(8);vcheck(count($list)===6,'Los seis intentos comerciales producen seis tramos, sin duplicados');
+ // Reasignación: el tramo congelado conserva su propietario histórico.
+ $db->query("UPDATE telefonia_extensiones SET usuario_id=9,created_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE),updated_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE extension='150'");
+ vcheck($svc->obtener(8,'pbx-prospecto-001')['usuario_id']==8,'Mantiene atribución histórica');
+ vreject(fn()=>$svc->obtener(9,'pbx-prospecto-001'),'Nuevo titular no hereda llamadas antiguas');
+ $event('pbx-retardada-006','NOTIFY_INTERNAL');vreject(fn()=>$svc->obtener(9,'pbx-retardada-006'),'Evento antiguo no se atribuye a nuevo titular');
+ vreject(fn()=>$svc->autorizar(10),'Analista no entra a atención comercial');
+ vcheck($db->query("SHOW TABLES LIKE 'seguimientos_vinculacion'")->num_rows===0,'No crea expedientes ni requiere tablas de Vinculación');
+ echo "Ventas B: $checks comprobaciones DB aprobadas.\n";
+}finally{$db->select_db('mysql');$db->query("DROP DATABASE `$name`");$db->close();}

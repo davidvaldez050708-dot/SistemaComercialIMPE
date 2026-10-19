@@ -1,0 +1,51 @@
+--- a/app/controllers/TelefoniaController.php
++++ b/app/controllers/TelefoniaController.php
+@@ -353,7 +353,7 @@
+      */
+     public function guardarResultadoVenta()
+     {
+-        $this->validarMarcadorPersonalJson();
++        $this->validarAtencionVentaJson(true);
+         if ((int)($_SESSION['rol_id'] ?? 0) !== 3) {
+             $this->responderJson([
+                 'ok' => false,
+@@ -365,7 +365,8 @@
+             $resultado = (new TelefoniaResultadoVentasService())->guardar(
+                 (int)$_SESSION['usuario_id'],
+                 (string)($_POST['pbx_call_id'] ?? ''),
+-                (string)($_POST['resultado'] ?? '')
++                (string)($_POST['resultado'] ?? ''),
++                $_POST
+             );
+             $this->responderJson([
+                 'ok' => true,
+@@ -383,6 +384,29 @@
+                 'mensaje' => 'No fue posible registrar el resultado. Inténtalo nuevamente.'
+             ], 500);
+         }
++    }
++
++    public function detalleVenta()
++    {
++        $this->validarAtencionVentaJson(false);
++        require_once __DIR__.'/../services/TelefoniaVentasLlamadasService.php';
++        try {
++            $svc=new TelefoniaVentasLlamadasService();$uid=(int)$_SESSION['usuario_id'];
++            $svc->sincronizar($uid);
++            $this->responderJson(['ok'=>true,'llamada'=>$svc->obtener($uid,
++                (string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''))]);
++        }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
++        catch(Throwable $e){error_log('[detalle_venta] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo consultar tu llamada.'],500);}
++    }
++
++    private function validarAtencionVentaJson(bool $post): void
++    {
++        if((int)($_SESSION['usuario_id']??0)<=0||(int)($_SESSION['rol_id']??0)!==3||
++            !tienePermiso('telefonia.usar')||(!tienePermiso('telefonia.recibir')&&!tienePermiso('telefonia.salientes')))
++            $this->responderJson(['ok'=>false,'mensaje'=>'No tienes acceso a la atención comercial.'],403);
++        if(($_SERVER['REQUEST_METHOD']??'GET')!==($post?'POST':'GET'))$this->responderJson(['ok'=>false],405);
++        if($post&&!TelefoniaContactosService::validarToken((string)($_POST['csrf_token']??'')))
++            $this->responderJson(['ok'=>false,'mensaje'=>'El formulario caducó. Recarga la página.'],403);
+     }
+ 
+     private function validarMarcadorPersonalJson()

@@ -1,0 +1,149 @@
+--- /dev/null
++++ b/app/services/TelefoniaVentasLlamadasService.php
+@@ -0,0 +1,146 @@
++<?php
++declare(strict_types=1);
++require_once __DIR__.'/../../config/db_connection.php';
++
++/** Identidad histórica de tramos comerciales; sólo consume eventos PBX verificados. */
++final class TelefoniaVentasLlamadasService
++{
++    private mysqli $db;
++    public function __construct(?mysqli $db=null) {$this->db=$db??(new Database())->connect();}
++    private function rows(string $sql,array $args=[]): array {
++        $s=$this->db->prepare($sql);if($args)$s->bind_param(str_repeat('s',count($args)),...$args);
++        $s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $rows;
++    }
++    public function disponible(): bool {
++        return $this->db->query("SHOW TABLES LIKE 'telefonia_ventas_llamadas'")->num_rows>0;
++    }
++    public function requerir(): void {
++        if(!$this->disponible())throw new DomainException('Falta aplicar la migración de telefonía comercial. Solicita su publicación al administrador.');
++    }
++    public function autorizar(int $uid): void {
++        if(!$this->rows("SELECT u.id FROM usuarios u WHERE u.id=? AND u.estado=1 AND u.rol_id=3
++            AND EXISTS (SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
++                WHERE rp.rol_id=u.rol_id AND p.codigo='telefonia.usar' AND p.estado=1)",[$uid]))
++            throw new DomainException('No tienes acceso a la atención comercial.');
++    }
++    /** Llamado DESPUÉS de guardar el webhook; no crea otro evento ni toca SIP. */
++    public function capturarEvento(array $event): void {
++        if(!$this->disponible())return;
++        $type=$event['event']??$event['evento']??'';
++        if(!in_array($type,['NOTIFY_INTERNAL','NOTIFY_OUT_START'],true))return;
++        $ref=(string)($event['pbx_call_id']??'');$ext=(string)($event['internal']??'');
++        if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$ref)||!preg_match('/^[0-9]{3,6}$/D',$ext))return;
++        $incoming=$type==='NOTIFY_INTERNAL';$cap=$incoming?'permite_entrantes':'permite_salientes';
++        $permission=$incoming?'telefonia.recibir':'telefonia.salientes';
++        $owners=$this->rows("SELECT t.usuario_id,GREATEST(t.created_at,t.updated_at) desde
++            FROM telefonia_extensiones t JOIN usuarios u ON u.id=t.usuario_id
++            WHERE t.extension=? AND t.proveedor='ZADARMA' AND t.activo=1 AND t.$cap=1
++              AND u.rol_id=3 AND u.estado=1 AND EXISTS (
++                SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
++                WHERE rp.rol_id=u.rol_id AND p.estado=1 AND p.codigo=?)
++              AND EXISTS (SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
++                WHERE rp.rol_id=u.rol_id AND p.estado=1 AND p.codigo='telefonia.usar')",[$ext,$permission]);
++        if(count($owners)!==1)return;
++        $date=(string)($event['received_at']??date('Y-m-d H:i:s'));
++        $started=(string)($event['call_start']??$date);
++        if($date<$owners[0]['desde']||($started!==''&&$started<$owners[0]['desde']))return;
++        $this->insertar((int)$owners[0]['usuario_id'],$ext,$ref,$incoming?'Entrante':'Saliente',
++            (string)($incoming?($event['caller_id']??''):($event['destination']??'')),$date);
++    }
++    private function insertar(int $uid,string $ext,string $ref,string $direction,string $number,string $date): void {
++        $name='';$source='';$request=null;$state=null;
++        if($direction==='Entrante') {
++            $d=$this->rows("SELECT id,origen_extension,numero,ruta_json FROM telefonia_disponibilidad
++                WHERE destino_usuario=? AND destino_extension=? AND referencia=?
++                AND estado IN ('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA') LIMIT 2",[$uid,$ext,$ref]);
++            if(count($d)===1) {
++                $route=json_decode($d[0]['ruta_json'],true)?:[];
++                if(($route['tipo']??'')==='PROSPECTO'&&(int)($route['responsable_id']??0)===$uid&&
++                    (string)($route['extension']??'')===$ext&&(string)($route['referencia_llamada']??'')===$ref) {
++                    $name=mb_substr(trim((string)($route['institucion_nombre']??'')),0,150);
++                    $source=$d[0]['origen_extension'];$request=$d[0]['id'];$state=(int)($route['estado_id']??0);
++                    $number=$d[0]['numero'];
++                }
++            }
++        }
++        $s=$this->db->prepare('INSERT IGNORE INTO telefonia_ventas_llamadas
++            (usuario_id,extension,pbx_call_id,direccion,numero,nombre,origen_extension,solicitud_id,estado_id,fecha)
++            VALUES (?,?,?,?,?,?,?,?,?,?)');
++        $s->bind_param('issssssiis',$uid,$ext,$ref,$direction,$number,$name,$source,$request,$state,$date);$s->execute();$s->close();
++        // Permitir metadata tardía sólo sobre el MISMO tramo y propietario.
++        if($request!==null) {
++            $s=$this->db->prepare("UPDATE telefonia_ventas_llamadas SET nombre=?,origen_extension=?,solicitud_id=?,estado_id=?,numero=?
++                WHERE usuario_id=? AND extension=? AND pbx_call_id=? AND solicitud_id IS NULL");
++            $s->bind_param('ssiisiss',$name,$source,$request,$state,$number,$uid,$ext,$ref);$s->execute();$s->close();
++        }
++    }
++    /** Recupera sólo atribución persistida o inicios posteriores a la asignación actual. */
++    public function sincronizar(int $uid): void {
++        $this->autorizar($uid);$this->requerir();
++        $rows=$this->rows("SELECT e.* FROM telefonia_zadarma_eventos e
++            JOIN telefonia_extensiones t ON t.extension=e.internal AND t.usuario_id=? AND t.activo=1 AND t.proveedor='ZADARMA'
++            WHERE e.evento IN ('NOTIFY_INTERNAL','NOTIFY_OUT_START') AND e.received_at>=DATE_SUB(NOW(),INTERVAL 90 DAY)
++              AND e.received_at>=GREATEST(t.created_at,t.updated_at)
++              AND (e.call_start IS NULL OR e.call_start>=GREATEST(t.created_at,t.updated_at))
++              AND NOT EXISTS (SELECT 1 FROM telefonia_ventas_llamadas c WHERE c.pbx_call_id=e.pbx_call_id AND c.extension=e.internal)
++            ORDER BY e.id LIMIT 300",[$uid]);
++        foreach($rows as $e)$this->capturarEvento($e);
++        // Las marcaciones previas conservan propietario aun si cambia la extensión.
++        $rows=$this->rows("SELECT m.*,MIN(e.received_at) fecha FROM telefonia_ventas_marcaciones m
++            JOIN telefonia_zadarma_eventos e ON e.pbx_call_id=m.pbx_call_id AND e.internal=m.extension AND e.evento='NOTIFY_OUT_START'
++            WHERE m.usuario_id=? AND m.pbx_call_id IS NOT NULL AND m.created_at>=DATE_SUB(NOW(),INTERVAL 90 DAY)
++            AND NOT EXISTS (SELECT 1 FROM telefonia_ventas_llamadas c WHERE c.pbx_call_id=m.pbx_call_id AND c.extension=m.extension)
++            GROUP BY m.id ORDER BY m.id DESC LIMIT 300",[$uid]);
++        foreach($rows as $r)$this->insertar($uid,$r['extension'],$r['pbx_call_id'],'Saliente',$r['destino'],$r['fecha']);
++    }
++    public static function hechos(array $events,string $ext): array {
++        $answer=false;$end=false;$duration=null;$disposition='';$ids=[];
++        foreach($events as $e) {
++            $p=json_decode((string)($e['payload_json']??''),true)?:[];
++            $own=trim((string)($e['internal']??''))===$ext;
++            $explicitEnd=($e['internal']??'')===''&&($p['last_internal']??'')===$ext;
++            $type=$e['evento']??'';
++            if($own&&$type==='NOTIFY_ANSWER')$answer=true;
++            if(($own||$explicitEnd)&&in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)) {
++                $end=true;$disposition=strtolower((string)($e['disposition']??''));
++                if($own){$duration=max($duration??0,max(0,(int)($e['duration']??0)));
++                    if(in_array($disposition,['answered','completed'],true))$answer=true;}
++            }
++            // Una referencia global de audio no identifica el tramo comercial.
++            if($own&&$type==='NOTIFY_RECORD') {
++                $id=(string)($e['call_id_with_rec']??'');
++                if(preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$id))$ids[$id]=true;
++            }
++        }
++        return ['finalizada'=>$end,'conectada'=>$answer,'segundos'=>$end?$duration:null,
++            'estado_pbx'=>!$end?($answer?'En conversación':'Sin cierre confirmado'):
++                ($answer?'Conectada':(['busy'=>'Ocupada','no answer'=>'Sin respuesta','no_answer'=>'Sin respuesta','cancel'=>'Cancelada','failed'=>'Fallida'][$disposition]??'Sin respuesta')),
++            'segmentos'=>count($ids)<=8?array_keys($ids):[]];
++    }
++    public function obtener(int $uid,string $ref,string $ext=''): array {
++        $this->autorizar($uid);$this->requerir();
++        if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$ref))throw new DomainException('Referencia comercial inválida.');
++        $rows=$this->rows('SELECT * FROM telefonia_ventas_llamadas WHERE usuario_id=? AND pbx_call_id=?'.($ext!==''?' AND extension=?':'').' LIMIT 2',$ext!==''?[$uid,$ref,$ext]:[$uid,$ref]);
++        if(count($rows)!==1)throw new DomainException('La llamada no está confirmada a tu nombre o su tramo es ambiguo.');
++        $row=$rows[0];$events=$this->rows('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id',[$ref]);
++        $row+=self::hechos($events,$row['extension']);
++        $result=$this->rows('SELECT * FROM telefonia_ventas_resultados WHERE usuario_id=? AND extension=? AND pbx_call_id=?',[$uid,$row['extension'],$ref]);
++        $row['registro']=$result[0]??null;return $row;
++    }
++    public function listar(int $uid,array $filters=[]): array {
++        $this->sincronizar($uid);
++        $rows=$this->rows("SELECT c.*,r.id registro_id,r.resultado,r.observacion,r.prospecto_nombre,r.contacto_id,r.proxima_accion_at
++            FROM telefonia_ventas_llamadas c LEFT JOIN telefonia_ventas_resultados r
++              ON r.usuario_id=c.usuario_id AND r.extension=c.extension AND r.pbx_call_id=c.pbx_call_id
++            WHERE c.usuario_id=? AND c.fecha>=DATE_SUB(NOW(),INTERVAL 90 DAY) ORDER BY c.fecha DESC,c.id DESC",[$uid]);
++        $events=$this->rows("SELECT e.* FROM telefonia_zadarma_eventos e JOIN telefonia_ventas_llamadas c
++            ON c.pbx_call_id=e.pbx_call_id AND c.usuario_id=? AND c.fecha>=DATE_SUB(NOW(),INTERVAL 90 DAY)
++            ORDER BY e.id",[$uid]);
++        $grouped=[];foreach($events as $event)$grouped[$event['pbx_call_id']][]=$event;
++        foreach($rows as &$row){
++            $row+=self::hechos($grouped[$row['pbx_call_id']]??[],$row['extension']);
++            $row['registro']=$row['registro_id']===null?null:array_intersect_key($row,array_flip(['resultado','observacion','prospecto_nombre','contacto_id','proxima_accion_at']));
++            unset($row['registro_id'],$row['resultado'],$row['observacion'],$row['prospecto_nombre'],$row['contacto_id'],$row['proxima_accion_at']);
++        }unset($row);return $rows;
++    }
++}

@@ -1,0 +1,130 @@
+--- a/app/services/TelefoniaResultadoVentasService.php
++++ b/app/services/TelefoniaResultadoVentasService.php
+@@ -22,7 +22,13 @@
+     public static function opciones(): array
+     {
+         return [
+-            self::CONVERSACION => 'Hablé con una persona',
++            self::CONVERSACION => 'Conversación con el prospecto',
++            'INTERESADO' => 'Prospecto interesado',
++            'SOLICITA_INFORMACION' => 'Solicita información',
++            'REQUIERE_SEGUIMIENTO' => 'Requiere seguimiento',
++            'NO_INTERESADO' => 'No interesado',
++            'COMUNICACION_INTERRUMPIDA' => 'Comunicación interrumpida',
++            'OTRO' => 'Otro resultado con observaciones',
+             self::BUZON => 'Buzón de voz',
+             self::FUERA_HORARIO => 'Fuera de horario de servicio',
+             self::NUMERO_INEXISTENTE => 'Número inexistente o incorrecto',
+@@ -35,14 +41,14 @@
+ 
+     public static function esConversacion(?string $resultado): bool
+     {
+-        return $resultado === self::CONVERSACION;
++        return in_array($resultado, [self::CONVERSACION,'INTERESADO','SOLICITA_INFORMACION','REQUIERE_SEGUIMIENTO','NO_INTERESADO','COMUNICACION_INTERRUMPIDA'], true);
+     }
+ 
+     private $db;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $db=null)
+     {
+-        $this->db = (new Database())->connect();
++        $this->db = $db ?? (new Database())->connect();
+         $this->asegurarEstructura();
+     }
+ 
+@@ -90,61 +96,41 @@
+      * Rechaza IDs arbitrarios: solo llamadas salientes de la extensión propia,
+      * dentro del historial y cuyo fin confirmó el webhook.
+      */
+-    public function guardar(int $usuarioId, string $pbxCallId, string $resultado): array
++    public function guardar(int $usuarioId, string $pbxCallId, string $resultado, array $datos=[]): array
+     {
+-        $pbxCallId = trim($pbxCallId);
+-        if (!preg_match('/^out_[a-fA-F0-9]{32,64}$/', $pbxCallId)) {
+-            throw new InvalidArgumentException('Identificador de llamada inválido.');
++        require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
++        $svc=new TelefoniaVentasLlamadasService($this->db);$svc->sincronizar($usuarioId);
++        $call=$svc->obtener($usuarioId,trim($pbxCallId),trim((string)($datos['extension']??'')));
++        if(!array_key_exists($resultado,self::opciones()))throw new InvalidArgumentException('Selecciona un resultado comercial válido.');
++        if(!$call['finalizada'])throw new DomainException('La centralita aún no confirma el cierre de tu llamada.');
++        if(self::esConversacion($resultado)&&!$call['conectada'])throw new DomainException('Falta la confirmación PBX de conexión de tu extensión.');
++        $note=trim((string)($datos['observacion']??''));$name=trim((string)($datos['prospecto_nombre']??$call['nombre']));
++        if(mb_strlen($note)>1000||mb_strlen($name)>150)throw new InvalidArgumentException('Limita el nombre a 150 caracteres y las observaciones a 1000.');
++        if(in_array($resultado,['OTRO',self::OTRO_SIN_CONTACTO],true)&&mb_strlen($note)<3)throw new InvalidArgumentException('Describe lo que ocurrió en las observaciones.');
++        $contact=(int)($datos['contacto_id']??0);$contact=$contact>0?$contact:null;
++        if($contact!==null){
++            $s=$this->db->prepare('SELECT id FROM telefonia_contactos_personales WHERE id=? AND usuario_id=?');$s->bind_param('ii',$contact,$usuarioId);$s->execute();$own=$s->get_result()->fetch_assoc();$s->close();
++            if(!$own)throw new DomainException('El contacto no pertenece a tu agenda.');
+         }
+-        if (!array_key_exists($resultado, self::opciones())) {
+-            throw new InvalidArgumentException('Selecciona un resultado válido de la llamada.');
+-        }
+-        $extension = self::extensionPropia($usuarioId);
+-        require_once __DIR__ . '/TelefoniaMarcacionesVentasService.php';
+-        if (!(new TelefoniaMarcacionesVentasService())->pertenece(
+-            $usuarioId, $extension, $pbxCallId
+-        )) {
+-            throw new DomainException(
+-                'La llamada no fue iniciada desde Inicio de Ventas o aún no está vinculada.'
+-            );
+-        }
+-        $stmt = $this->db->prepare(
+-            "SELECT 1 FROM telefonia_zadarma_eventos
+-             WHERE pbx_call_id = ? AND internal = ?
+-               AND evento = 'NOTIFY_OUT_END'
+-               AND received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+-             LIMIT 1"
+-        );
+-        if (!$stmt) throw new RuntimeException('No se pudo verificar la llamada.');
+-        $stmt->bind_param('ss', $pbxCallId, $extension);
+-        $stmt->execute();
+-        $existe = (bool)$stmt->get_result()->fetch_assoc();
+-        $stmt->close();
+-        if (!$existe) {
+-            throw new DomainException(
+-                'La llamada aún no aparece como finalizada en Zadarma. Espera unos segundos y vuelve a intentar.'
+-            );
+-        }
+-
+-        $stmt = $this->db->prepare(
+-            "INSERT INTO telefonia_ventas_resultados
+-                 (usuario_id, extension, pbx_call_id, resultado)
+-             VALUES (?, ?, ?, ?)
+-             ON DUPLICATE KEY UPDATE
+-                 usuario_id = VALUES(usuario_id),
+-                 resultado = VALUES(resultado),
+-                 updated_at = CURRENT_TIMESTAMP"
+-        );
+-        if (!$stmt) throw new RuntimeException('No se pudo preparar el registro del resultado.');
+-        $stmt->bind_param('isss', $usuarioId, $extension, $pbxCallId, $resultado);
+-        $stmt->execute();
+-        $stmt->close();
+-        return [
+-            'pbx_call_id' => $pbxCallId,
+-            'resultado' => $resultado,
+-            'etiqueta' => self::opciones()[$resultado],
+-            'contacto_real' => self::esConversacion($resultado)
+-        ];
++        $next=trim((string)($datos['proxima_accion_at']??''));$next=str_replace('T',' ',$next);
++        if($next!==''){
++            $format=strlen($next)===16?'!Y-m-d H:i':'!Y-m-d H:i:s';$date=DateTimeImmutable::createFromFormat($format,$next);
++            if(!$date||$date->format(substr($format,1))!==$next||$date->getTimestamp()<=time())throw new InvalidArgumentException('Indica una próxima llamada con fecha futura válida.');
++            $next=$date->format('Y-m-d H:i:s');
++        }else $next=null;
++        if($resultado==='REQUIERE_SEGUIMIENTO'&&$next===null)throw new InvalidArgumentException('Programa la fecha del seguimiento telefónico.');
++        $cols=array_column($this->db->query('SHOW COLUMNS FROM telefonia_ventas_resultados')->fetch_all(MYSQLI_ASSOC),'Field');
++        if(!in_array('observacion',$cols,true))throw new DomainException('Falta aplicar la migración comercial antes de guardar resultados.');
++        $extension=$call['extension'];$pbxCallId=$call['pbx_call_id'];
++        // Resultado definitivo: no cambiar propietario ni sobrescribir un registro previo.
++        $s=$this->db->prepare('INSERT INTO telefonia_ventas_resultados
++            (usuario_id,extension,pbx_call_id,resultado,observacion,prospecto_nombre,contacto_id,proxima_accion_at)
++            VALUES (?,?,?,?,?,?,?,?)');
++        try{$s->bind_param('isssssis',$usuarioId,$extension,$pbxCallId,$resultado,$note,$name,$contact,$next);$s->execute();}
++        catch(mysqli_sql_exception $e){if($e->getCode()===1062)throw new DomainException('El resultado de esta llamada ya se guardó y es definitivo.');throw $e;}
++        finally{$s->close();}
++        return ['pbx_call_id'=>$pbxCallId,'extension'=>$extension,'resultado'=>$resultado,
++            'etiqueta'=>self::opciones()[$resultado],'contacto_real'=>self::esConversacion($resultado)];
+     }
+ 
+     /**
