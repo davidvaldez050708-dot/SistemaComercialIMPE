@@ -25,3 +25,11 @@ Las operaciones son aditivas e idempotentes. MySQL realiza commits implícitos d
 La consulta de audio sólo enumera referencias firmadas del tramo exacto de la extensión comercial. Un NOTIFY_RECORD global o perteneciente a 100 no acredita un segmento de 150. Buzón y conexión PBX no son conversación humana verificada. Los estados sin evidencia permanecen pendientes.
 
 Pruebas: base desechable, sintaxis y regresiones de identidad y atención institucional. Las llamadas reales 100 → 150 siguen pendientes de validación después de la instalación de las fases dependientes.
+
+## Fase D: agenda y devoluciones comerciales
+
+Volver a ejecutar `--check` del migrador después de publicar D. Esta fase añade `telefonia_ventas_devolucion_intentos` (solicitud/version y referencia propia por intento), y correo, observación y próxima acción a `telefonia_contactos_personales`. Agrega también `recordatorio_atendido_at` al resultado comercial para separar el cierre posterior de un aviso del resultado definitivo. No modifica expedientes ni contactos existentes.
+
+El resultado comercial continúa siendo la única clasificación del intento. El guardado del resultado, la vinculación opcional de un contacto y el cierre exacto de una devolución son una transacción. Buzón, sin respuesta, ocupado, comunicación interrumpida, otro resultado y seguimiento conservan la gestión pendiente. No hay cierre manual que invente una llamada. Si dos referencias son compatibles con un intento, se informa la ambigüedad y no se elige por teléfono.
+
+Los contactos se editan explícitamente por ID propio. Un número ya guardado no sobrescribe el nombre de otra persona; se pide editar el contacto existente. La programación de agenda no crea resultados ni conversaciones.

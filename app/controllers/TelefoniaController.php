@@ -194,14 +194,16 @@ class TelefoniaController
     private function misLlamadasVentas(int $uid): void
     {
         require_once __DIR__.'/../services/TelefoniaVentasLlamadasService.php';
-        $ventasBandeja=[];$contactosVentas=[];$errorMisLlamadas='';
+        $ventasBandeja=[];$contactosVentas=[];$devolucionesVentas=[];$errorMisLlamadas='';
+        $esDevolucionVenta=($_GET['vista']??'')==='devoluciones';
         try{
-            $ventasBandeja=(new TelefoniaVentasLlamadasService())->bandeja($uid,$_GET);
+            if($esDevolucionVenta){require_once __DIR__.'/../services/TelefoniaDevolucionVentasService.php';$cb=new TelefoniaDevolucionVentasService();$cb->reconciliar($uid);$devolucionesVentas=$cb->listar($uid);}
+            else $ventasBandeja=(new TelefoniaVentasLlamadasService())->bandeja($uid,$_GET);
             $contactosVentas=(new TelefoniaContactosService())->listar($uid);
         }catch(Throwable $e){error_log('[ventas_bandeja] '.get_class($e));$errorMisLlamadas=$e instanceof DomainException?$e->getMessage():'No se pudo consultar la bandeja comercial. Inténtalo nuevamente.';}
         $tituloPagina='Mis llamadas';$subtituloPagina='Atención telefónica de prospectos';$opcionActiva='mis_llamadas';
         require __DIR__.'/../views/layout/dashboard_head.php';require __DIR__.'/../views/layout/sidebar.php';
-        require __DIR__.'/../views/layout/topbar.php';require __DIR__.'/../views/telefonia/ventas_llamadas.php';
+        require __DIR__.'/../views/layout/topbar.php';require __DIR__.($esDevolucionVenta?'/../views/telefonia/ventas_devoluciones.php':'/../views/telefonia/ventas_llamadas.php');
         require __DIR__.'/../views/layout/dashboard_footer.php';
     }
 
@@ -308,20 +310,20 @@ class TelefoniaController
      */
     public function guardarContacto()
     {
-        $this->validarMarcadorPersonalJson();
+        $this->validarAtencionVentaJson(true);
 
         try {
             $contacto = (new TelefoniaContactosService())->guardar(
                 (int)$_SESSION['usuario_id'],
                 (string)($_POST['nombre'] ?? ''),
-                (string)($_POST['telefono'] ?? '')
+                (string)($_POST['telefono'] ?? ''), $_POST
             );
             $this->responderJson([
                 'ok' => true,
                 'mensaje' => 'Teléfono guardado en tu agenda.',
                 'contacto' => $contacto
             ]);
-        } catch (InvalidArgumentException $e) {
+        } catch (DomainException|InvalidArgumentException $e) {
             $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
         } catch (Throwable $e) {
             error_log('Guardar teléfono personal: ' . $e->getMessage());
@@ -334,7 +336,7 @@ class TelefoniaController
 
     public function eliminarContacto()
     {
-        $this->validarMarcadorPersonalJson();
+        $this->validarAtencionVentaJson(true);
 
         try {
             $eliminado = (new TelefoniaContactosService())->eliminar(
@@ -353,7 +355,7 @@ class TelefoniaController
                 'ok' => true,
                 'mensaje' => 'Teléfono eliminado de tu agenda.'
             ]);
-        } catch (InvalidArgumentException $e) {
+        } catch (DomainException|InvalidArgumentException $e) {
             $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
         } catch (Throwable $e) {
             error_log('Eliminar teléfono personal: ' . $e->getMessage());
@@ -756,8 +758,24 @@ class TelefoniaController
         catch(Throwable $e){error_log('[telefonia_disponibilidad] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la solicitud. Intenta de nuevo.'],500);}
     }
 
+    public function devolucionVenta(): void
+    {
+        $post=($_SERVER['REQUEST_METHOD']??'')==='POST';$this->validarAtencionVentaJson($post);
+        require_once __DIR__.'/../services/TelefoniaDevolucionVentasService.php';
+        try{
+            $svc=new TelefoniaDevolucionVentasService();$uid=(int)$_SESSION['usuario_id'];
+            if(!$post){$id=(int)($_GET['intento_id']??0);$this->responderJson($id?['ok'=>true,'intento'=>$svc->estado($uid,$id)]:['ok'=>true,'devoluciones'=>$svc->listar($uid)]);}
+            $action=(string)($_POST['accion']??'');
+            if($action==='PREPARAR'){$this->responderJson(['ok'=>true,'intento'=>$svc->preparar($uid,(int)($_POST['solicitud_id']??0))]);}
+            if($action==='CANCELAR'){$svc->cancelar($uid,(int)($_POST['intento_id']??0));$this->responderJson(['ok'=>true]);}
+            $this->responderJson(['ok'=>false,'mensaje'=>'Acción comercial no válida.'],422);
+        }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[ventas_devolucion] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la devolución.'],500);}
+    }
+
     public function devolucion()
     {
+        if((int)($_SESSION['rol_id']??0)===3){$this->devolucionVenta();return;}
         $this->validarUsuarioTelefoniaJson();if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);
         require_once __DIR__.'/../services/TelefoniaDevolucionService.php';
         try{
@@ -782,6 +800,7 @@ class TelefoniaController
 
     public function devoluciones()
     {
+        if((int)($_SESSION['rol_id']??0)===3){header('Location: '.BASE_URL.'index.php?controller=telefonia&action=misLlamadas&vista=devoluciones');exit;}
         $this->validarUsuarioTelefoniaJson();
         if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);
         require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';

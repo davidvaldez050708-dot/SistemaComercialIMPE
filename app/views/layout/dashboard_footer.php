@@ -244,7 +244,7 @@ if ($esTerritorialFooter) {
     );
 }
 
-if ((int)($_SESSION['rol_id']??0)===3) $jsDashboardFooter[]='telefonia_ventas_resultados.js';
+if ((int)($_SESSION['rol_id']??0)===3) {$jsDashboardFooter[]='telefonia_ventas_resultados.js';$jsDashboardFooter[]='telefonia_ventas_devoluciones.js';}
 
 $jsDashboardFooter = array_values(array_unique($jsDashboardFooter));
 ?>
