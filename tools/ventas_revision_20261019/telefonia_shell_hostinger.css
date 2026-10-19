@@ -1,0 +1,233 @@
+/* Host WebRTC persistente: las páginas PHP navegan dentro del marco
+   principal y el SDK permanece montado dentro del mismo documento padre. */
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+/* El shell es un documento independiente del dashboard; debe heredar
+   Manrope como el resto del CRM, en vez del serif predeterminado. */
+html, body {
+  height: 100%; min-width: 0; margin: 0; overflow: hidden;
+  font-family: 'Manrope', sans-serif;
+}
+/* Usar la misma tipografía del modal de Seguimiento también en controles
+   nativos (los button no heredan siempre la fuente del body). */
+.impe-incoming-panel, .impe-incoming-panel button {
+  font-family: 'Manrope', sans-serif;
+}
+.impe-phone-shell { position: fixed; inset: 0; background: #eef2f8; }
+#impeCrmFrame { display: block; width: 100%; height: 100%; border: 0; }
+.impe-phone-status {
+  position: fixed; bottom: 14px; right: 18px; z-index: 900;
+  display: flex; align-items: center; gap: 9px; max-width: min(390px, calc(100vw - 30px));
+  padding: 10px 12px; border: 1px solid #dce5f1; border-radius: 10px;
+  box-shadow: 0 5px 20px #0c224021; background: #fff; color: #344d71;
+  font: 600 12px/1.5 'Manrope', sans-serif;
+}
+.impe-phone-status[hidden], .impe-phone-restore[hidden] { display: none !important; }
+.impe-phone-status button {
+  border: 0; border-radius: 7px; background: #273b88; color: #fff;
+  padding: 6px 9px; cursor: pointer; font: inherit;
+}
+/* No esconder con display:none el iframe: algunos motores WebRTC dejan de
+   procesar audio cuando se destruye/oculta completamente su contexto. */
+.impe-phone-call {
+  position: fixed; width: min(420px, calc(100vw - 22px));
+  height: min(450px, calc(100dvh - 24px));
+  right: -10000px; bottom: 12px; z-index: 1100;
+  overflow: hidden; opacity: 0; pointer-events: none;
+  background: #fff; border: 0;
+}
+.impe-phone-call.is-visible {
+  width: min(420px, calc(100vw - 22px));
+  height: min(450px, calc(100dvh - 24px));
+  right: 12px; bottom: 12px; opacity: 1; pointer-events: auto;
+  border: 1px solid #d9e2ef; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 16px 48px #0a1b3755;
+}
+.impe-phone-call-header {
+  height: 59px; display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; background: #f8faff; border-bottom: 1px solid #dbe4f1;
+  padding: 9px 14px; font: 600 12px/1.4 'Manrope', sans-serif;
+}
+.impe-phone-call-header strong { display: block; color: #192c59; font-size: 13px; }
+.impe-phone-call-header small { display: block; margin-top: 3px; color: #64748b; }
+.impe-phone-call-header button {
+  flex: 0 0 30px; height: 30px; border-radius: 8px; border: 1px solid #d7e2f2;
+  background: #fff; color: #203568; cursor: pointer; font-size: 21px;
+}
+.impe-phone-call-help {
+  height: 78px; margin: 0; padding: 12px 15px;
+  background: #f7f9fd; color: #465b78; border-bottom: 1px solid #e1e8f4;
+  font: 600 12px/1.5 'Manrope', sans-serif;
+}
+.impe-phone-call-host { width: 100%; height: calc(100% - 137px); overflow: hidden; }
+.impe-phone-call iframe { width: 100%; height: 100%; border: 0; display: block; }
+/* Marketing utiliza el mismo componente visual que Seguimiento. */
+.impe-incoming-panel { z-index: 1200; }
+.impe-incoming-panel:not(.is-compact) {
+  max-height:calc(100dvh - 16px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  scrollbar-width:thin;
+}
+.impe-incoming-panel .persistent-phone-header {
+  position:sticky;top:0;z-index:2;flex-shrink:0;touch-action:none;
+}
+.impe-incoming-panel .persistent-phone-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.impe-incoming-panel .persistent-phone-actions [hidden],
+.impe-incoming-panel .persistent-phone-compact-actions [hidden],
+.impe-incoming-panel .impe-incoming-notice[hidden] {display:none!important;}
+.impe-incoming-panel .impe-incoming-notice {
+  margin: 12px 0 0; color: #b42318; font-size: 11px; font-weight: 700;
+}
+@media (max-width:575.98px) {
+  .impe-incoming-panel { max-width: calc(100vw - 20px); }
+}
+.impe-phone-restore {
+  position: fixed; bottom: 15px; right: 16px; z-index: 1101;
+  background: #233986; color: white; border: 0; border-radius: 99px;
+  padding: 12px 17px; cursor: pointer; font: 700 12px/1.3 'Manrope', sans-serif;
+  box-shadow: 0 5px 20px #0b214233;
+}
+@media(max-width: 550px) {
+ .impe-phone-call.is-visible { right: 6px; bottom: 6px;
+    width: calc(100vw - 12px); height: min(450px, calc(100dvh - 12px)); }
+ .impe-phone-status { right: 7px; bottom: 7px; }
+}
+
+.impe-phone-classic-link {
+  color: #52698c; font: 600 11px 'Manrope', sans-serif;
+  text-decoration: underline; white-space: nowrap;
+}
+
+/* Centrar Cerrar al finalizar una llamada saliente. */
+.impe-incoming-panel .persistent-phone-actions [data-incoming-close-finished]:not([hidden]) {
+  grid-column: 1 / -1;
+  justify-self: end;
+  width: min(100%, 200px);
+}
+
+/* IMPE_CERRAR_DERECHA_V2 */
+.impe-incoming-panel .persistent-phone-actions > [data-incoming-close-finished]:not([hidden]) {
+  grid-column: 1 / -1 !important;
+  justify-self: end !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  width: min(100%, 200px) !important;
+}
+
+/* IMPE_COLGAR_DERECHA_V1 */
+.impe-incoming-panel .persistent-phone-actions > [data-incoming-hangup]:not([hidden]) {
+  grid-column: 2 / 3 !important;
+}
+
+
+
+
+/* Navegación entre documentos PHP del iframe: ocultar exclusivamente el
+   flash blanco del navegador mientras la ruta autenticada termina de cargar.
+   Las capas de WebRTC/llamadas (z-index >= 900) quedan siempre por encima. */
+.impe-shell-navigation-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #f3f6fb;
+  color: #33466d;
+  font-family: 'Manrope', sans-serif;
+}
+.impe-shell-navigation-mask[hidden] { display: none !important; }
+.impe-shell-navigation-progress {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  justify-content: center;
+  max-width: min(95vw, 540px);
+  padding: 16px 18px;
+  border: 1px solid #dfe6f1;
+  border-radius: 12px;
+  box-shadow: 0 7px 25px rgb(24 39 75 / 5%);
+  background: #fff;
+  font: 700 12px/1.5 'Manrope', sans-serif;
+}
+.impe-shell-navigation-spinner {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border: 2px solid #d5deec;
+  border-top-color: #2e468b;
+  border-radius: 50%;
+  animation: impe-shell-navigation-spin .85s linear infinite;
+}
+.impe-shell-navigation-progress button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border: 1px solid #cdd8e8;
+  border-radius: 8px;
+  background: #f5f8fd;
+  color: #29447d;
+  font: 800 11px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.impe-shell-navigation-progress button[hidden] { display: none !important; }
+.impe-shell-navigation-mask.is-error .impe-shell-navigation-progress {
+  border-color: #eadbcd;
+}
+.impe-shell-navigation-mask.is-error .impe-shell-navigation-spinner {
+  animation: none;
+  border-color: #e9bdb0;
+  border-top-color: #b45c43;
+}
+@keyframes impe-shell-navigation-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .impe-shell-navigation-spinner { animation: none; }
+}
+@media (max-width: 620px) {
+  .impe-shell-navigation-progress {
+    width: 100%;
+    flex-wrap: wrap;
+    font-size: 11px;
+    text-align: center;
+  }
+}
+
+/* Ventas: el acceso al resultado finalizado comparte fila y altura con Cerrar.
+   Los controles de recepción/analista no tienen data-sales-open. */
+.impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) > [data-sales-open] {
+  grid-column: 1 / 2;
+  grid-row: 1;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  justify-self: stretch;
+  align-self: stretch;
+}
+.impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) > [data-incoming-close-finished]:not([hidden]) {
+  /* Regla más específica que IMPE_CERRAR_DERECHA_V2 de producción. */
+  grid-column: 2 / 3 !important;
+  grid-row: 1;
+  width: 100% !important;
+  min-height: 48px;
+  margin: 0 !important;
+  justify-self: stretch !important;
+  align-self: stretch;
+}
+@media(max-width:420px){
+  .impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) {
+    grid-template-columns: minmax(0,1fr);
+  }
+  .impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) > [data-sales-open] {
+    grid-column: 1; grid-row: 2;
+  }
+  .impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) > [data-incoming-close-finished]:not([hidden]) {
+    grid-column: 1 !important; grid-row: 1;
+  }
+}
