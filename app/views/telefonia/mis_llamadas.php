@@ -82,7 +82,12 @@ ksort($paginasVisibles, SORT_NUMERIC);
             $pbxId = trim((string)($fila['pbx_call_id'] ?? ''));
             $detalleUrl = '';
             $detalleTexto = '';
-            if (!empty($puedeGestionAnalista) && !$saliente && $pbxId !== '') {
+            if (!empty($puedeGestionAnalista) && $saliente
+                && (int)($fila['intento_devolucion'] ?? 0) > 0) {
+                $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
+                    . '&vista=devoluciones&detalle_intento=' . (int)$fila['intento_devolucion'];
+                $detalleTexto = 'Ver devolución';
+            } elseif (!empty($puedeGestionAnalista) && !$saliente && $pbxId !== '') {
                 $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
                     . '&vista=recibidas&detalle=1&pbx_call_id=' . rawurlencode($pbxId);
                 $detalleTexto = 'Ver llamada';
