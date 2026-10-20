@@ -30,7 +30,7 @@ directEnv.end({modo:'CONSULTADA'});assert.equal(direct.active,false,'El fin de c
 const incomingStart=source.indexOf('const applyIncomingState = function (call) {')+'const applyIncomingState = function (call) {'.length;
 const incomingEnd=source.indexOf('\n    };',incomingStart);assert(incomingEnd>incomingStart);
 const recovery={active:true,direction:'incoming',phase:'recovering',pbxCallId:'',context:{transferReference:'pbx-directa-001'}};let confirmedEnds=0;
-const incomingEnv={state:recovery,transferFlow:null,config:{},retiredIds:new Set(),publish:p=>Object.assign(recovery,p),finalizarEntrante:()=>{confirmedEnds++;recovery.active=false;}};
+const incomingEnv={state:recovery,transferFlow:null,config:{},retiredIds:new Set(),declinedInvitation:()=>false,publish:p=>Object.assign(recovery,p),finalizarEntrante:()=>{confirmedEnds++;recovery.active=false;}};
 vm.runInNewContext('this.apply=function(call){'+source.slice(incomingStart,incomingEnd)+'};',incomingEnv);
 incomingEnv.apply({pbx_call_id:'pbx-otra-llamada',estado:'ended'});assert.equal(confirmedEnds,0,'Otro cierre no termina la recuperación');
 incomingEnv.apply({pbx_call_id:'pbx-directa-001',estado:'ended'});assert.equal(confirmedEnds,1,'END de la referencia exacta termina la recuperación aunque el SDK aún no tuviera ID PBX');

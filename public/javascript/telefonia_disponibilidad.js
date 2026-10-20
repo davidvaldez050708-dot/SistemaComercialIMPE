@@ -9,18 +9,19 @@
  // Aviso de disponibilidad independiente del timbre y del contexto de audio del SDK.
  const soundKey='impe:availability-chimes:'+cfg.userId;
  const REMINDER_AFTER_MS=8000,REMINDER_MIN_REMAINING_MS=1000;
- let audio=null,soundRequest=null,soundExpiry=0,soundRepeat=0,soundNodes=[],heard=[];
+ let audio=null,soundPlayer=null,soundDestination=null,soundRequest=null,soundExpiry=0,soundRepeat=0,soundNodes=[],heard=[];
  try{const value=JSON.parse(sessionStorage.getItem(soundKey)||'[]');if(Array.isArray(value))heard=value.slice(-40);}catch(_){}
- const stopSound=()=>{clearTimeout(soundExpiry);clearInterval(soundRepeat);soundRepeat=0;soundRequest=null;for(const node of soundNodes){try{node.stop?.();node.disconnect?.();}catch(_){}}soundNodes=[];};
- const playSound=()=>{
+ const stopSound=()=>{clearTimeout(soundExpiry);clearInterval(soundRepeat);soundRepeat=0;soundRequest=null;soundPlayer?.pause();for(const node of soundNodes){try{node.stop?.();node.disconnect?.();}catch(_){}}soundNodes=[];};
+ const playSound=(force=false)=>{
   // No mezclar avisos con conversación SIP, pestaña oculta ni audio bloqueado.
   const status=phone.getPhoneStatus();
-  if(!soundRequest||!audio||audio.state!=='running'||document.hidden||
+  if(!soundRequest||!audio||audio.state!=='running'||(soundPlayer&&soundPlayer.paused)||document.hidden||
      !status.ready||status.active||Date.now()>=soundRequest.until)return;
   const request=soundRequest,identity=request.key,reminder=request.plays>0;
-  if(request.plays===0&&heard.includes(identity))return;
-  if(reminder&&(Date.now()<request.reminderAt||
+  if(!force&&request.plays===0&&heard.includes(identity))return;
+  if(!force&&reminder&&(Date.now()<request.reminderAt||
       request.until-Date.now()<=REMINDER_MIN_REMAINING_MS||status.pending))return;
+  if(force){for(const node of soundNodes){try{node.stop?.();node.disconnect?.();}catch(_){}}soundNodes=[];}
   // La misma melodía compartida, con pausas; sólo mientras siga pendiente.
   const notes=reminder?[[740,0],[880,.30]]:[[740,0],[880,.29],[988,.58]];
   const volume=reminder?.24:.32;
@@ -31,7 +32,7 @@
     gain.gain.setValueAtTime(0,start);
     gain.gain.linearRampToValueAtTime(volume,start+.035);
     gain.gain.linearRampToValueAtTime(0,start+.26);
-    oscillator.connect(gain);gain.connect(audio.destination);
+    oscillator.connect(gain);gain.connect(soundDestination||audio.destination);
     oscillator.start(start);oscillator.stop(start+.27);soundNodes.push(oscillator,gain);
    }
    request.plays++;
@@ -51,17 +52,32 @@
    soundExpiry=setTimeout(stopSound,duration);
    soundRepeat=setInterval(playSound,1000);
   }
-  playSound();
+  if(soundPlayer?.paused)void soundPlayer.play().then(()=>playSound()).catch(()=>{if(audioButton)audioButton.hidden=false;});
+  else playSound();
  };
  const unlockAudio=event=>{
   if(!event.isTrusted)return;
+  if(event.type!=='click'&&event.target?.closest?.('[data-availability-audio]'))return;
+  const explicit=event.currentTarget===audioButton;
   try{
    const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;
    if(!audio||audio.state==='closed')audio=new Context({latencyHint:'interactive'});
-   const started=()=>{playSound();const button=$('[data-availability-audio]');if(button)button.hidden=audio.state==='running';};
-   // Un contexto running no prueba que la salida elegida sea audible. Usar
-   // la salida del sistema, sin pedir dispositivos ni tocar el audio SIP.
-   const output=()=>typeof audio.setSinkId==='function'&&audio.sinkId!==undefined&&audio.sinkId!==''?audio.setSinkId(''):Promise.resolve();
+   if(typeof audio.createMediaStreamDestination==='function'&&typeof window.Audio==='function'&&soundDestination?.context!==audio){
+    soundPlayer?.pause();soundDestination=audio.createMediaStreamDestination();soundPlayer=new Audio();
+    soundPlayer.srcObject=soundDestination.stream;soundPlayer.volume=1;soundPlayer.muted=false;
+   }
+   const started=()=>{playSound(explicit);if(audioButton)audioButton.hidden=false;};
+   // Mismo generador para Analista/Ventas. La salida es un consumidor real
+   // de audio, con el dispositivo del timbre SDK si está disponible.
+   const output=async()=>{
+    if(soundPlayer){
+     let sink='';try{sink=$('[data-shell-engine]')?.contentDocument?.getElementById('zdrm-incomingRing')?.sinkId||'';}catch(_){}
+     if(typeof soundPlayer.setSinkId==='function'&&soundPlayer.sinkId!==sink){
+      try{await soundPlayer.setSinkId(sink);}catch(error){if(!sink)throw error;await soundPlayer.setSinkId('');}
+     }
+     await soundPlayer.play();
+    }else if(typeof audio.setSinkId==='function'&&audio.sinkId!==undefined&&audio.sinkId!=='')await audio.setSinkId('');
+   };
    const failed=()=>{const button=$('[data-availability-audio]');if(button)button.hidden=false;};
    const resumed=audio.state!=='running'?audio.resume():Promise.resolve();
    void resumed.then(output).then(started).catch(failed);
@@ -139,7 +155,7 @@
    $('[data-availability-caller]').textContent='Recepción · Ext. '+op.origen_extension+' · '+op.numero+(op.institucion_nombre?' · '+op.institucion_nombre:'');
    $('[data-availability-countdown]').textContent='Responde en '+op.segundos+' s. Aceptar reserva tu disponibilidad durante 30 s.';
    if(!incoming.open){incoming.showModal();$('[data-availability-accept]').focus();}
-   if(audioButton)audioButton.hidden=audio?.state==='running';
+   if(audioButton)audioButton.hidden=false; // running no demuestra salida audible.
    signalAvailability(op);
   }catch(e){if(watched){$('[data-availability-source-copy]').textContent=e.message;}if(incoming.open)$('[data-availability-feedback]').textContent=e.message;}
   finally{polling=false;}

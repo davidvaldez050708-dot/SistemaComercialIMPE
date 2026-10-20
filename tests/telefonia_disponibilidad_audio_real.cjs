@@ -16,7 +16,9 @@ const html='<dialog data-availability-incoming><h2>Disponibilidad</h2><p data-av
   await page.goto('http://disponibilidad.test/');
   await page.evaluate(sales=>{
    const Native=window.AudioContext;
-   window.probe={contexts:[],meters:[],tones:0,stops:0,max:0};
+   window.probe={contexts:[],players:[],meters:[],tones:0,stops:0,max:0};
+   const Player=window.Audio;let blocked=sales;
+   window.Audio=function(){const player=new Player(),play=player.play.bind(player);probe.players.push(player);player.play=()=>{if(blocked){blocked=false;return Promise.reject(new DOMException('autoplay','NotAllowedError'));}return play();};return player;};
    window.AudioContext=class extends Native{
     constructor(options){super(options);probe.contexts.push(this);}
     createOscillator(){const node=super.createOscillator(),start=node.start.bind(node),stop=node.stop.bind(node);node.start=(...args)=>{probe.tones++;return start(...args);};node.stop=(...args)=>{probe.stops++;return stop(...args);};return node;}
@@ -28,7 +30,10 @@ const html='<dialog data-availability-incoming><h2>Disponibilidad</h2><p data-av
   },sales);
   await page.addScriptTag({content:source});await page.locator('dialog').waitFor({state:'visible'});
   assert.equal(await page.evaluate(()=>probe.tones),0,'Sin gesto no se genera audio');
-  await page.locator('h2').click();await page.waitForFunction(()=>probe.max>.04);
+  await page.locator('h2').click();
+  if(sales){await page.waitForFunction(()=>probe.players.length===1);assert.equal(await page.evaluate(()=>probe.tones),0);assert(await page.locator('[data-availability-audio]').isVisible(),'Autoplay bloqueado ofrece acción visible');await page.locator('[data-availability-audio]').click();}
+  await page.waitForFunction(()=>probe.max>.04);
+  assert.equal(await page.evaluate(()=>probe.players.length),1);assert.equal(await page.evaluate(()=>probe.players[0].paused),false,'Consumidor multimedia reproduce la salida');
   assert.equal(await page.evaluate(()=>probe.tones),3,'Melodía compartida audible en el grafo real');
   await page.addScriptTag({content:source});await page.evaluate(()=>IMPE_AVAILABILITY.tick());
   assert.equal(await page.evaluate(()=>probe.contexts.length),1);assert.equal(await page.evaluate(()=>probe.tones),3,'Polling/listeners no duplican');

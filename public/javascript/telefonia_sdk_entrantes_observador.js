@@ -21,6 +21,7 @@
         let connectedReported = false;
         let observedSession = null;
         let domRinging = false;
+        let declined = false, declinedSession = null;
 
         // El SDK actual expone una JsSIP.RTCSession. Consultar sus métodos
         // públicos: las clases del botón y del input NO confirman respuesta.
@@ -64,6 +65,22 @@
             const wasDomRinging = domRinging;
             domRinging = Boolean(call);
             const session = readSession();
+            if (declined) {
+                if(!declinedSession&&session&&!session.isEnded()){
+                    // El primer INVITE tras un PUSH rechazado pertenece al
+                    // intento pendiente, no acredita otro timbrado.
+                    declinedSession=session;observedSession=session;
+                    hooks.onDeclinedSession?.();
+                    if(session.isEnded())reportIdle();
+                    return;
+                }
+                if (session && session !== declinedSession && !session.isEnded()) {
+                    declined=false;idleReported=true;
+                } else {
+                    if (session?.isEnded()) reportIdle();
+                    return; // DOM residual no acredita una nueva invitación.
+                }
+            }
             // Zadarma recibe primero un PUSH: hace sonar y dibuja el widget.
             // La nueva RTCSession puede no existir hasta pulsar Contestar.
             // No dejar que una sesión anterior terminada bloquee ese timbrado.
@@ -158,6 +175,8 @@
             },
             isRinging: function () { return ringing; },
             isConnected: function () { return connectedReported && !idleReported; },
+            markDeclined: function (session=readSession()) { declined=true;declinedSession=session;ringing=false;if(declinedSession?.isEnded())reportIdle(); },
+            allowNewInvitation: function () { declined=false;declinedSession=null;idleReported=true;observedSession=null; },
             markAnswerRequested: function () {
                 if (!seenIncoming) return false;
                 acceptanceRequestedUntil = Date.now() + 12000;

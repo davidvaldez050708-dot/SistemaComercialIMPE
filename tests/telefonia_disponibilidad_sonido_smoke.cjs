@@ -83,9 +83,9 @@ console.log('Aviso sonoro: consentimiento, ganancia, repetición única cada 8 s
 const unlockEnd=source.indexOf(" const audioButton=",stop);
 const button={hidden:true};let resumes=0,sinks=0;
 const interrupted={state:'interrupted',sinkId:{type:'none'},resume(){resumes++;this.state='running';return Promise.resolve();},setSinkId(id){assert.equal(id,'');sinks++;this.sinkId=id;return Promise.resolve();}};
-const unlockEnv={...env,$:()=>button,window:{AudioContext:class{}},Promise};
+const unlockEnv={...env,$:()=>button,audioButton:button,window:{AudioContext:class{}},Promise};
 vm.runInNewContext(source.slice(start,unlockEnd)+'\nthis.unlockTest={unlockAudio,setAudio(value){audio=value;}};',unlockEnv);
 unlockEnv.unlockTest.setAudio(interrupted);
 unlockEnv.unlockTest.unlockAudio({isTrusted:false});assert.equal(resumes,0,'No desbloquear por eventos sintéticos');
 unlockEnv.unlockTest.unlockAudio({isTrusted:true});
-setImmediate(()=>{assert.equal(resumes,1);assert.equal(sinks,1,'Recupera salida silenciosa usando la predeterminada');assert.equal(button.hidden,true);console.log('AudioContext interrumpido, gesto confiable y salida predeterminada: OK');});
+setImmediate(()=>{assert.equal(resumes,1);assert.equal(sinks,1,'Recupera salida silenciosa usando la predeterminada');assert.equal(button.hidden,false,'Habilitación visible incluso con contexto running');console.log('AudioContext interrumpido, gesto confiable y salida predeterminada: OK');});

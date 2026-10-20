@@ -235,6 +235,15 @@
     let transferFlow=null;
     const retiredKey = 'impe:telephony:retired-call-ids:' + userId;
     const retiredIds = new Map();
+    const declinedInvitations = new Map();
+    const declinedInvitation = id => {
+        if (!declinedInvitations.has(id)) return false;
+        const previous=declinedInvitations.get(id),session=window.zdrmWebPhone?.webCallSession;
+        if(session&&session!==previous&&session.direction==='incoming'&&!session.isEnded?.()){
+            declinedInvitations.delete(id);return false;
+        }
+        return true;
+    };
     try {
         const rows = JSON.parse(window.localStorage.getItem(retiredKey) || '[]');
         for (const row of Array.isArray(rows) ? rows : []) {
@@ -550,7 +559,7 @@
         analystSdkObserver = window.IMPE_ZADARMA_SDK_RING_OBSERVER?.create(
             document, {
                 onRinging: function (call) {
-                    if (!widgetReady || state.active) return;
+                    if (!widgetReady || (state.active&&!state.context?.declineRequested)) return;
                     const number = String(call?.caller || '').slice(0, 40);
                     const token = 'sdk-' + Date.now().toString(36) +
                         '-' + Math.random().toString(36).slice(2, 9);
@@ -576,6 +585,9 @@
                         finalMetadata: null,
                         message: 'Timbrado detectado en el teléfono WebRTC. Registro PBX pendiente.'
                     });
+                },
+                onDeclinedSession: function () {
+                    if(state.context?.declineRequested)incomingBridge?.decline(String(state.callToken||state.pbxCallId||''));
                 },
                 onConnected: function () {
                     // La llamada transferida puede recibir su PBX ID ANTES
@@ -610,6 +622,11 @@
                     }
                 },
                 onIdle: function () {
+                    if(state.context?.declineRequested){
+                        if(isSdkOnlyIncoming()&&window.zdrmWebPhone?.webCallSession?.isEnded?.())clearSdkOnlyIncoming();
+                        else void pollIncoming();
+                        return;
+                    }
                     if(transferFlow?.holdsIncoming()){void transferFlow.tick();return;}
                     // El audio local terminó. Esperar cierre PBX, pero no
                     // mantener la pantalla/cronómetro en conversación falsa.
@@ -789,12 +806,16 @@
             return true;
         },
         decline: function () {
-            const sdkOnly = isSdkOnlyIncoming() &&
-                state.phase === 'incoming-ringing';
-            const sent = Boolean(permiteEntrantes && incomingBridge?.decline());
+            if(state.context?.declineRequested)return true;
+            const token=String(state.callToken||''),ref=String(state.pbxCallId||state.context?.transferReference||'');
+            const session=window.zdrmWebPhone?.webCallSession;
+            const hadSession=Boolean(session&&!session.isEnded?.());
+            const sent = Boolean(permiteEntrantes && incomingBridge?.decline(token||ref));
             if (sent) {
-                if (sdkOnly) clearSdkOnlyIncoming();
-                else actualizarEstadoTrasAccion();
+                if(ref){declinedInvitations.set(ref,session);if(declinedInvitations.size>40)declinedInvitations.delete(declinedInvitations.keys().next().value);}
+                if(String(state.callToken||'')===token)publish({phase:'rejecting',status:'rejecting',context:{...state.context,declineRequested:true},message:'Rechazo enviado. Esperando confirmación de la centralita.'});
+                analystSdkObserver?.markDeclined?.(hadSession?session:null);
+                actualizarEstadoTrasAccion();
             }
             return sent;
         },
@@ -985,6 +1006,9 @@
             (!state.active && retiredIds.has(pbxCallId))) {
             return;
         }
+        if(incomingStatus!=='ended'&&declinedInvitation(pbxCallId))return;
+        const rejectedRef=String(state.pbxCallId||state.context?.transferReference||'');
+        if(state.context?.declineRequested&&rejectedRef&&pbxCallId!==rejectedRef&&incomingStatus==='ringing')analystSdkObserver?.allowNewInvitation?.();
 
         /*
          * Una llamada saliente activa nunca se sustituye por una entrada
@@ -1904,6 +1928,7 @@
             publish({active:false,phase:state.direction==='incoming'?'incoming-finished':'finished',status:['ENVIADA','ENTREGADA','SIN_RESPUESTA','SIN_CONFIRMAR'].includes(op.estado)?'transferred':'completed',context:{...state.context,transferRequest:{...state.context?.transferRequest,stage:op.estado}},message:op.estado==='ENTREGADA'?'El analista contestó la llamada.':op.estado==='ENVIADA'?'Transferencia enviada. La respuesta del analista se confirma por separado.':'Llamada finalizada.'});
         },
         external:(op,token,connected)=>{
+            if(declinedInvitation(String(op.referencia||'')))return;
             answeredAtMs=connected?Date.now():0;
             publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
         },

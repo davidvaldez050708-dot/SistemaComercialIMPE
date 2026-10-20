@@ -86,7 +86,7 @@
             state.direction !== 'incoming' ||
             pendingIncomingAction.callId !== incomingCallId(state)) return '';
         // Rehabilitar el modal cuando la PBX no confirmó el comando.
-        if (Date.now() - pendingIncomingAction.at > 4500) {
+        if (pendingIncomingAction.action !== 'decline' && Date.now() - pendingIncomingAction.at > 4500) {
             pendingIncomingAction = null;
             return '';
         }
@@ -548,7 +548,7 @@
             actionNotice = '';
         }
         const ready = Boolean(state && state.hostReady &&
-            ['ready','prepared','incoming-ringing','answering','in-progress',
+            ['ready','prepared','incoming-ringing','answering','rejecting','in-progress',
                 'finishing','recovering','dialing','ringing','finished','incoming-finished'].includes(String(state.phase)));
         const failed = mountFailed || (state?.phase === 'error' ?
             (state.message || 'No fue posible conectar con Zadarma.') : '');
