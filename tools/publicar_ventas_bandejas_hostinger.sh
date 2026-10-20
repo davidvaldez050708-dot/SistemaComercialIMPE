@@ -4,8 +4,8 @@ set -euo pipefail
 umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
-TARGET='65fc8bc6e1d40f21837c2b09b189c7e112ff4335'
-REVIEWED='65fc8bc6e1d40f21837c2b09b189c7e112ff4335'
+TARGET='0e5e0fe916e7a1fb0fb1e598ac3bfa096214fb55'
+REVIEWED='0e5e0fe916e7a1fb0fb1e598ac3bfa096214fb55'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/ventas_bandejas_20261019'
 SOURCE="${IMPE_VENTAS_BANDEJAS_SOURCE:-$HOME/crm-publicaciones/ventas-bandejas-actual}"

@@ -1,6 +1,6 @@
 # Ventas: tres bandejas y avisos de resultados
 
-Base de trabajo: main `d93de87d2887557a495584084b953c0717fc9b4a`. Aplicación final: `65fc8bc6e1d40f21837c2b09b189c7e112ff4335`.
+Base de trabajo: main `d93de87d2887557a495584084b953c0717fc9b4a`. Aplicación final: `0e5e0fe916e7a1fb0fb1e598ac3bfa096214fb55`.
 
 ## Diseño preservado
 
