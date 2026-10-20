@@ -74,6 +74,25 @@ try {
  $page1=$svc->bandeja(8);$page2=$svc->bandeja(8,['pagina'=>2]);
  vcheck(count($page1['filas'])===20&&count($page2['filas'])===7&&$page2['total']===27,'Paginación sobre 27 llamadas sin truncar el historial');
  vcheck(!array_intersect(array_column($page1['filas'],'id'),array_column($page2['filas'],'id')),'Las páginas no duplican tramos');
+ // Transferencia entrante: internal conserva Recepción, last_internal cierra Ventas.
+ $delayed='pbx-cierre-transferido';$event($delayed,'NOTIFY_INTERNAL');$event($delayed,'NOTIFY_ANSWER');
+ vreject(fn()=>$results->guardar(8,$delayed,'INTERESADO'),'WebRTC o respuesta PBX no sustituyen un cierre');
+ $event($delayed,'NOTIFY_END','100',180,['last_internal'=>'150','disposition'=>'answered']);
+ $closed=$svc->obtener(8,$delayed,'150');
+ vcheck($closed['finalizada']&&$closed['conectada'],'Reconoce el cierre firmado con último participante 150 aunque internal sea 100');
+ vcheck($closed['segundos']===null,'No atribuye al asesor los 180 segundos globales de Recepción');
+ $listed=array_values(array_filter($svc->listar(8),fn($c)=>$c['pbx_call_id']===$delayed))[0];
+ vcheck($listed['finalizada']===$closed['finalizada']&&$listed['segundos']===$closed['segundos'],'Historial y detalle concilian la misma evidencia');
+ $event($delayed,'NOTIFY_RECORD','100',0,['call_id_with_rec'=>'record-source-only']);
+ vcheck($svc->obtener(8,$delayed)['segmentos']===[],'El cierre no permite tomar audio ajeno');
+ $event($delayed,'NOTIFY_END','150',32,['disposition'=>'answered','is_recorded'=>1,'call_id_with_rec'=>'record-delayed-own']);
+ $closed=$svc->obtener(8,$delayed);
+ vcheck($closed['segundos']===32&&$closed['segmentos']===['record-delayed-own'],'El tramo propio tardío conserva duración y grabación verificables');
+ $results->guardar(8,$delayed,'INTERESADO');
+ vreject(fn()=>$results->guardar(8,$delayed,'INTERESADO'),'El reintento no duplica el resultado');
+ vreject(fn()=>$results->guardar(9,$delayed,'INTERESADO'),'Otro asesor no registra el resultado recuperado');
+ $foreign=TelefoniaVentasLlamadasService::hechos([['evento'=>'NOTIFY_ANSWER','internal'=>'150'],['evento'=>'NOTIFY_END','internal'=>'100','payload_json'=>'{"last_internal":"101"}','duration'=>999]],'150');
+ vcheck(!$foreign['finalizada']&&$foreign['segundos']===null,'Un último participante diferente no cierra la llamada del asesor');
  // Reasignación: el tramo congelado conserva su propietario histórico.
  $db->query("UPDATE telefonia_extensiones SET usuario_id=9,created_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE),updated_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE extension='150'");
  vcheck($svc->obtener(8,'pbx-prospecto-001')['usuario_id']==8,'Mantiene atribución histórica');

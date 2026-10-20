@@ -28,6 +28,7 @@ jobs:
           node --check public/javascript/telefonia_ventas_resultados.js
           node --check public/javascript/telefonia_ventas_devoluciones.js
           php -l tools/migrar_telefonia_ventas.php
+          php -l tools/diagnosticar_cierre_ventas.php
           php -l app/views/telefonia/ventas_paginacion.php
           php tests/telefonia_ventas_audio_evidencia.php
           node tests/telefonia_shell_runtime_smoke.js
@@ -63,6 +64,7 @@ jobs:
           python3 tests/publicacion_ventas_test.py e
           python3 tests/publicacion_ventas_revision_20261019_test.py
           python3 tests/publicacion_ventas_bandejas_test.py
+          python3 tests/publicacion_ventas_cierre_test.py
           python3 tests/publicacion_ventas_pr108_test.py
   datos-comerciales:
     runs-on: ubuntu-latest

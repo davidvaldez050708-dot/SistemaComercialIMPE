@@ -1,0 +1,30 @@
+--- a/public/javascript/telefonia_ventas_shell.js
++++ b/public/javascript/telefonia_ventas_shell.js
+@@ -1,7 +1,7 @@
+ /* Observador comercial de la capa compartida. No ejecuta SIP, DTMF ni transferencias. */
+ (()=>{'use strict';
+  const cfg=window.IMPE_PHONE_SHELL_CONFIG||{},phone=window.IMPE_TELEPHONY_SHELL;
+- if(!cfg.salesResults||!phone)return;
++ if(!cfg.salesResults||!phone||window.IMPE_SALES_ATTENTION)return;
+  const crm=document.getElementById('impeCrmFrame'),panel=document.querySelector('[data-incoming-panel]');
+  const key='impe:sales-pending:'+cfg.userId,valid=ref=>/^[A-Za-z0-9_-]{6,100}$/.test(String(ref||''));
+  let pending=[],previous=null,scope='',revision=0,fetching=false,metadata=null;
+@@ -17,7 +17,9 @@
+  const refreshNotices=()=>{try{const win=crm?.contentWindow;win?.dispatchEvent(new win.Event('impe:phone-notices-refresh'));}catch(_){/* La consulta periódica sigue disponible tras navegar. */}};
+  const remove=ref=>{const existed=pending.some(p=>p.ref===ref);phone.dismissFinishedCall?.(ref);pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
+  const open=()=>{const task=pending[0];if(!task||phone.getPhoneStatus().active||!crm)return;
+-  const url=new URL(cfg.salesHistoryUrl,location.href);url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);crm.src=url.href;
++  const url=new URL(cfg.salesHistoryUrl,location.href);url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);
++  if(crm.src===url.href){crm.contentWindow?.postMessage({type:'IMPE_SALES_RESULT_OPEN',ref:task.ref,extension:task.extension},location.origin);return;}
++  crm.src=url.href;
+  };
+  button.addEventListener('click',open);
+  const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();button.hidden=!pending.length||active||form;};
+@@ -25,6 +27,7 @@
+  async function lookup(ref,version){
+   if(fetching||!valid(ref))return;fetching=true;
+   try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pbx_call_id',ref);
++   if(cfg.extension)url.searchParams.set('extension',cfg.extension);
+    const r=await fetch(url,{credentials:'same-origin',cache:'no-store'}),j=await r.json();
+    if(version!==revision||!r.ok||!j.ok)return;metadata=j.llamada;
+    if(metadata.registro)remove(ref);
