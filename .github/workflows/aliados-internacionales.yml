@@ -6,7 +6,7 @@ on:
       - 'app/views/aliados/index.php'
       - 'app/views/aliados/internacionales.php'
       - 'app/models/AliadoInternacionalModel.php'
-      - 'tests/aliados_internacionales*.php'
+      - 'tests/aliados_internacionales*'
       - 'tools/aliados_internacionales/**'
       - 'tools/publicar_aliados_internacionales_hostinger.sh'
       - 'tests/publicacion_aliados_internacionales_test.py'
