@@ -1,0 +1,16 @@
+name: Convenios aliados externos
+on:
+  pull_request:
+    paths:
+      - 'app/controllers/CrearConvocatoriaController.php'
+      - 'app/views/convocatorias/crear_desde_convenio.php'
+      - '.github/workflows/convenios-aliados-externos.yml'
+jobs:
+  sintaxis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          php -l app/controllers/CrearConvocatoriaController.php
+          php -l app/views/convocatorias/crear_desde_convenio.php
+          php -r '$s=file_get_contents("app/controllers/CrearConvocatoriaController.php"); if(strpos($s,"a.seguimiento_id IS NULL")===false) exit(1);'
