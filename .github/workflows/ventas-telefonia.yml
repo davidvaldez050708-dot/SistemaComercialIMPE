@@ -39,6 +39,7 @@ jobs:
           node tests/telefonia_ventas_guard_http.cjs
           node tests/telefonia_disponibilidad_sonido_smoke.cjs
           node tests/telefonia_recuperacion_pbx_smoke.cjs
+          node tests/telefonia_host_hostinger_variante.cjs
       - name: Auricular con shell y navegador reales
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/ventas-browser/node_modules/playwright

@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('public/javascript/telefonia_host.js','utf8').replace(/\r\n/g,'\n');
+const source=fs.readFileSync(process.env.IMPE_TEST_TELEFONIA_HOST||'public/javascript/telefonia_host.js','utf8').replace(/\r\n/g,'\n');
 const start=source.indexOf('onIdle: function () {',source.indexOf('const startAnalystSdkObserver'))+'onIdle: function () {'.length;
 const end=source.indexOf('\n                }\n            }\n        ) || null;',start);
 assert(start>0&&end>start);const body=source.slice(start,end);

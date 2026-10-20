@@ -79,10 +79,18 @@
           "after": "6e2d075c07b7009b113ba3847bd686043b1722a528c3717db7ecb04d1afe2032",
           "patch": "tools/ventas_etapa2_b/0003.patch",
           "patch_sha256": "03b77cbc9d2858e529cf8d75bc7cc1b5fa4790896f1c16ea6d20632d0a706b1a"
+        },
+        {
+          "label": "hostinger-sdk-rescate-20261020",
+          "before": "f1a9ce36b693fdff2809ad31560e2d681671c77ab025ca7e9f216b9b161278a3",
+          "after": "56f6484c7ae5a9e9344aa78570fe4017f71b2a4afff83292fe10ba73bcc7dc45",
+          "patch": "tools/ventas_etapa2_b/0007.patch",
+          "patch_sha256": "c3e249f426194ac374f0c7722f642651e99557e400a7bb21714ce43621a4e63c"
         }
       ],
       "patch": "tools/ventas_etapa2_b/0003.patch",
-      "patch_sha256": "03b77cbc9d2858e529cf8d75bc7cc1b5fa4790896f1c16ea6d20632d0a706b1a"
+      "patch_sha256": "03b77cbc9d2858e529cf8d75bc7cc1b5fa4790896f1c16ea6d20632d0a706b1a",
+      "production_fixture": "tools/ventas_etapa2_b/hostinger-host-before.js"
     },
     {
       "path": "public/javascript/telefonia_shell.js",

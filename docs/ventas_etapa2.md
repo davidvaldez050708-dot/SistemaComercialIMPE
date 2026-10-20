@@ -8,6 +8,12 @@ Las personalizaciones de CSS conocidas no se reemplazan. La variante JS de shell
 
 ## A. Grabaciones y duración
 
+### Compatibilidad adicional Hostinger (20 de octubre)
+
+El diff facilitado por producción identifica una variante de `telefonia_host.js` con duración cero durante `answering`, rescate de `onConnected` mediante el observador SDK y guardias adicionales en el cierre provisional. Se reconstruyó desde PR115 y sólo se acepta su huella normalizada exacta `f1a9ce36b693fdff2809ad31560e2d681671c77ab025ca7e9f216b9b161278a3`. No se permite aplicar el parche a JavaScript arbitrario.
+
+El parche específico conserva el cálculo de duración y el rescate SDK; sustituye el cierre provisional por recuperación pendiente de END verificado. Se prueban ambas versiones del host, instalación/restauración exacta y CRLF. Cualquier diferencia adicional vuelve a detener el publicador. La aplicación del bloque A y su migración no cambian ni necesitan repetirse.
+
 El cierre global 100→150 corregido en PR115 acredita finalización mediante último participante; su duración global y el aviso RECORD sin extensión no identifican por sí solos un audio propio de 150. Por eso las tarjetas podían quedar conectadas y con resultado, pero sin duración propia ni referencia reproducible. No se atribuye esa causa a una grabación concreta de la captura sin sus eventos y estadísticas.
 
 Se reutilizan el cliente `ZadarmaRecordingService`, el decodificador de IDs decimales, el endpoint autenticado y el reproductor de segmentos existente. Se aplica el mismo patrón de consulta de estadísticas oficiales y verificación por call ID que usa la conciliación de grabaciones internas del Analista. No se modifica su asociación histórica ni las grabaciones individuales de Marketing.
