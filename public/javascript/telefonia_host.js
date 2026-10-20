@@ -181,6 +181,8 @@
     let lastCall = null;
     let lastCommandId = '';
     const microphoneTracks = new Set();
+    let microphoneSession = null;
+    let microphoneCallToken = '';
 
     const emptyState = function () {
         return {
@@ -352,6 +354,7 @@
             duration: currentDuration(),
             updatedAt: Date.now()
         });
+        syncMicrophone();
 
         try {
             localStorage.setItem(stateKey, JSON.stringify(state));
@@ -437,61 +440,57 @@
         });
     };
 
-    const captureMicrophone = function () {
-        const mediaDevices = navigator.mediaDevices;
-
-        if (
-            !mediaDevices ||
-            typeof mediaDevices.getUserMedia !== 'function' ||
-            mediaDevices.getUserMedia.__impePersistentWrapped
-        ) {
-            return;
+    // Sólo pistas enviadas por la sesión actual: nunca audio recibido ni
+    // capturas auxiliares del navegador. enabled=false transmite silencio.
+    const syncMicrophone = function () {
+        const candidate = window.zdrmWebPhone?.webCallSession;
+        const session = state.active && !candidate?.isEnded?.() ? candidate : null;
+        const token = String(state.callToken || '');
+        if (session !== microphoneSession || token !== microphoneCallToken || !state.active) {
+            microphoneTracks.forEach(track => {
+                if (track.readyState === 'live') track.enabled = true;
+            });
+            microphoneTracks.clear();
+            microphoneSession = session;
+            microphoneCallToken = token;
+            muted = false;
         }
-
+        let tracks = [];
         try {
-            const original = mediaDevices.getUserMedia.bind(mediaDevices);
-
-            const wrapped = function (constraints) {
-                return original(constraints).then(function (stream) {
-                    if (constraints && constraints.audio) {
-                        stream.getAudioTracks().forEach(function (track) {
-                            microphoneTracks.add(track);
-                            track.enabled = !muted;
-                            track.addEventListener('ended', function () {
-                                microphoneTracks.delete(track);
-                            }, { once: true });
-                        });
-                    }
-
-                    return stream;
-                });
-            };
-
-            wrapped.__impePersistentWrapped = true;
-            mediaDevices.getUserMedia = wrapped;
-        } catch (error) {
-            console.debug('No fue necesario envolver el micrófono.', error);
-        }
+            tracks = (session?.connection?.getSenders?.() || [])
+                .map(sender => sender.track)
+                .filter(track => track?.kind === 'audio' && track.readyState === 'live');
+            // Una renegociación puede sustituir la pista de la misma llamada.
+            if (muted) tracks.forEach(track => {
+                if (!microphoneTracks.has(track)) {
+                    track.enabled = false;
+                    microphoneTracks.add(track);
+                }
+            });
+        } catch (_) { tracks = []; }
+        state.muted = tracks.length > 0 && tracks.every(track => !track.enabled);
+        if (tracks.length) muted = state.muted;
+        return tracks;
     };
 
     const setMuted = function (value) {
         const nextMuted = Boolean(value);
-        if (state.direction === 'incoming') {
-            if (!state.active || state.phase !== 'in-progress' ||
-                !incomingBridge?.mute(nextMuted)) {
-                console.warn('No se pudo cambiar el micrófono de la llamada entrante.');
-                return;
-            }
+        const tracks = syncMicrophone();
+        if (!state.active || !tracks.length) {
+            publish({message:'No hay un micrófono de la llamada disponible para cambiar.'});
+            return;
         }
-        // Mantener el comportamiento existente de pistas para las salientes
-        // y garantizar el mismo estado visual tras actualizar el micrófono.
-        muted = nextMuted;
-        microphoneTracks.forEach(function (track) {
-            if (track && track.readyState === 'live') {
-                track.enabled = !muted;
-            }
-        });
-        publish({ muted: muted });
+        const previous = tracks.map(track => track.enabled);
+        try {
+            tracks.forEach(track => { track.enabled = !nextMuted; });
+            if (!tracks.every(track => track.enabled === !nextMuted)) throw new Error('mute');
+            tracks.forEach(track => microphoneTracks.add(track));
+            muted = nextMuted;
+            publish({message:''});
+        } catch (_) {
+            tracks.forEach((track, index) => { track.enabled = previous[index]; });
+            publish({message:'No se pudo cambiar el micrófono de la llamada.'});
+        }
     };
 
     const fetchWebRtcSession = async function () {
@@ -1917,7 +1916,6 @@
         }
     })||null;
     window.setInterval(()=>void transferFlow?.tick(),1000);
-    captureMicrophone();
 
     publish({
         phase: 'loading',
