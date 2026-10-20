@@ -16,11 +16,15 @@ def scenario(kind):
         subprocess.check_call(['git','clone','--quiet','--shared','--no-checkout',str(ROOT),str(source)])
         (live/'index.php').write_text('<?php // replica',encoding='utf8')
         (live/'personalizacion.txt').write_text('CONSERVAR',encoding='utf8')
+        personalized=set()
         for row in M['files']:
             if row['new']:continue
             data=(ROOT/row['production_fixture']).read_bytes() if kind=='hostinger' and row.get('production_fixture') else subprocess.check_output(['git','show',M['base']+':'+row['path']],cwd=ROOT)
             data=data.replace(b'\r\n',b'\n')
-            if row['kind']=='php':data+=b'\n// PERSONALIZACION HOSTINGER FUERA DEL PARCHE\n'
+            # La antigua envoltura de Ventas se sustituye por el componente
+            # compartido; una modificación de esa envoltura exige revisión.
+            if row['kind']=='php' and row['path']!='app/views/telefonia/prospecto_venta.php':
+                data+=b'\n// PERSONALIZACION HOSTINGER FUERA DEL PARCHE\n';personalized.add(row['path'])
             if kind=='hostinger':data=data.replace(b'\n',b'\r\n')
             file=live/row['path'];file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(data)
         env=dict(os.environ,TMPDIR=sp(private),IMPE_TELEFONIA_REGRESIONES_SOURCE=sp(source),IMPE_TELEFONIA_REGRESIONES_PUBLIC=sp(live),IMPE_TELEFONIA_REGRESIONES_BACKUPS=sp(private/'backups'))
@@ -36,7 +40,7 @@ def scenario(kind):
         code,out=run('--apply');assert code==0,out
         installed=snapshot(live)
         for row in M['files']:
-            if row['kind']=='php' and not row['new']:assert b'PERSONALIZACION HOSTINGER FUERA DEL PARCHE' in installed[row['path']]
+            if row['path'] in personalized:assert b'PERSONALIZACION HOSTINGER FUERA DEL PARCHE' in installed[row['path']]
         assert installed['personalizacion.txt']==before['personalizacion.txt']
         code,out=run('--apply');assert code==0 and snapshot(live)==installed,out
         backups=list((private/'backups').iterdir());assert len(backups)==1
