@@ -71,8 +71,23 @@ class FormularioRegistroModel
         return $stmt->get_result()->num_rows > 0;
     }
 
+    public function aliadoExclusivo($token)
+    {
+        require_once __DIR__ . '/../services/FormularioAliadoService.php';
+        return (new FormularioAliadoService($this->connection))->resolver($token);
+    }
+
     public function guardar($datos)
     {
+        if (array_key_exists('aliado_token', $datos)) {
+            require_once __DIR__ . '/../services/FormularioAliadoService.php';
+            $token = $datos['aliado_token'];
+            unset($datos['aliado_token']);
+            $tipo = ($datos['origen'] ?? '') === 'PUBLICO_INSCRIPCION' ? 'inscripcion' : 'registro';
+            return (new FormularioAliadoService($this->connection))->guardar(
+                $token, $datos, $tipo, function () use ($datos) { return $this->guardar($datos); }
+            );
+        }
         $origenSolicitado = strtoupper(
             trim((string)($datos['origen'] ?? 'MARKETING'))
         );
