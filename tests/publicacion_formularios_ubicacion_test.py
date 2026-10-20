@@ -27,7 +27,7 @@ def run(kind):
             if kind=='crlf': p.write_bytes(p.read_bytes().replace(b'\n',b'\r\n'))
         first=live/M['files'][0]['path']
         if kind=='vista-conflicto':
-            p=live/'app/views/formularios/publico_registro.php';p.write_text(p.read_text(encoding='utf8').replace('name="estado_id"','name="estado_personalizado"'),encoding='utf8')
+            p=live/'app/views/formularios/publico_registro.php';p.write_text(p.read_text(encoding='utf8').replace('formulario-publico-field formulario-publico-estado','campo-territorial-personalizado'),encoding='utf8')
         if kind=='marcadores':
             p=live/'app/controllers/FormularioPublicoController.php';p.write_bytes(p.read_bytes()+b'\n<<<<<<< HEAD\n')
         if kind=='conflicto': first.write_text('<?php // variante incompatible',encoding='utf8')
