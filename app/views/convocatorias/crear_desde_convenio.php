@@ -64,30 +64,6 @@ $fecha = static function ($valor) {
         </div>
     </section>
 
-    <?php if (!empty($aliadosExternos)): ?>
-    <section class="dashboard-panel mb-3" style="padding:22px">
-        <h3 class="panel-title mb-2"><i class="bi bi-globe-americas"></i> Aliados externos</h3>
-        <p class="text-muted">Aliados internacionales sin estado o municipio mexicano. Sus formularios ya están disponibles; la publicación de una convocatoria internacional necesita su propia cobertura para no atribuirla a un territorio nacional.</p>
-        <div class="row g-3">
-        <?php foreach ($aliadosExternos as $externo): ?>
-            <?php $baseExterno = BASE_URL . 'index.php?controller=formularioPublico&action='; ?>
-            <div class="col-12 col-lg-6"><div class="card border h-100"><div class="card-body p-3">
-                <strong><?= $texto($externo['nombre']) ?></strong>
-                <p class="text-muted mb-1"><?= $texto($externo['ubicacion']) ?></p>
-                <?php if ($externo['slug'] === 'handly-lenguaje-center'): ?>
-                <p class="mb-2"><strong>Contacto:</strong> Adalid Kuribeña · <strong>Teléfono:</strong> 7775635090</p>
-                <?php endif; ?>
-                <p class="mb-2"><strong>Programas:</strong> <?= $texto($externo['programas']) ?></p>
-                <div class="d-flex gap-2 flex-wrap">
-                    <a class="btn btn-system-save" target="_blank" rel="noopener noreferrer" href="<?= $texto($baseExterno.'registro&aliado='.rawurlencode($externo['token'])) ?>">Abrir Registro</a>
-                    <a class="btn btn-system-light" target="_blank" rel="noopener noreferrer" href="<?= $texto($baseExterno.'inscripcion&aliado='.rawurlencode($externo['token'])) ?>">Abrir Inscripción</a>
-                </div>
-            </div></div></div>
-        <?php endforeach; ?>
-        </div>
-    </section>
-    <?php endif; ?>
-
     <section class="dashboard-panel crear-convocatoria-toolbar-panel">
         <div class="crear-convocatoria-toolbar-heading">
             <div>
