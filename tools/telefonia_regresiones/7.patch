@@ -1,0 +1,9 @@
+--- a/public/css/telefonia_enrutamiento.css
++++ b/public/css/telefonia_enrutamiento.css
+@@ -269,6 +269,3 @@
+   }
+ }
+ 
+-/* Datos del prospecto: mismas dimensiones y campos que la captura del Analista. */
+-dialog.impe-prospect-dialog{width:min(420px,calc(100vw - 16px));max-height:min(530px,calc(100dvh - 16px));box-sizing:border-box;margin:auto;overflow:auto;overscroll-behavior:contain;font:inherit;background:#fff;color:#26354d}
+-dialog.impe-prospect-dialog::backdrop{background:rgba(17,32,56,.50)}

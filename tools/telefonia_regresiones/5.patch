@@ -1,0 +1,32 @@
+--- a/prueba_telefonia/api/grabacion_transferida_pbx.php
++++ b/prueba_telefonia/api/grabacion_transferida_pbx.php
+@@ -64,6 +64,7 @@
+         !empty($estadoPropio['end_at']) &&
+         strcmp((string)$estadoPropio['answer_at'], $desde) >= 0 &&
+         strtotime((string)$estadoPropio['answer_at']) >= strtotime('-30 days');
++    $autorizadas=[];
+     if ($recepcion) {
+         // El historial verifica también las salientes propias, su permiso,
+         // asignación, fin y transferencia notificada antes de ofrecer segmentos.
+@@ -73,13 +74,18 @@
+             if ($call['pbx_call_id'] === $pbx && $call['estado'] === 'Transferida' &&
+                 !empty($call['finalizada']) && !empty($call['tiene_grabacion']) &&
+                 empty($call['excluir_grabacion']) &&
+-                !empty($call['destino_transferencia'])) { $autorizada = true; break; }
++                !empty($call['destino_transferencia'])) {
++                    $autorizada = true;
++                    // Recepción ya podía consultar las partes de SU
++                    // transferencia. El destino procede del historial privado.
++                    $autorizadas[]=(string)$call['destino_transferencia'];break;
++                }
+         }
+     }
+     if (!$autorizada) { http_response_code(404); exit; }
+-    $q=$db->prepare('SELECT evento,internal,call_id_with_rec,is_recorded FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
++    $q=$db->prepare('SELECT evento,internal,call_id_with_rec,is_recorded,payload_json FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
+     $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
+-    $ids=TelefoniaPbxSegmentosService::deEventos($events,$ext)['segmentos'];
++    $ids=TelefoniaPbxSegmentosService::deEventos($events,$ext,$autorizadas)['segmentos'];
+     if (!$ids) { http_response_code(404); exit; }
+     $service = new ZadarmaRecordingService();
+     $records = [];
