@@ -1530,18 +1530,7 @@
      * Las extensiones y los números internacionales no cambian.
      */
     const normalizarDestinoWebrtc = function (valor) {
-        let destino = String(valor || '').trim()
-            .replace(/[^0-9+*#]/g, '');
-
-        if (/^\+?521\d{10}$/.test(destino)) {
-            destino = destino.replace(/^\+?521/, '');
-        } else if (/^\+?52\d{10}$/.test(destino)) {
-            destino = destino.replace(/^\+?52/, '');
-        } else {
-            destino = destino.replace(/^\+/, '');
-        }
-
-        return destino;
+        return window.IMPE_PHONE_NUMBERS.dial(valor);
     };
 
     const startCall = async function (payload) {

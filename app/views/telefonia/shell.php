@@ -427,6 +427,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
          autenticada, sin depender de otra petición HTTP para su carga. -->
     <script id="impeShellRuntime">
     <?php
+    echo file_get_contents(ROOT_PATH . '/public/javascript/telefonia_numeros.js');
     $shellJsPath = ROOT_PATH . '/public/javascript/telefonia_shell.js';
     $shellJsContent = is_readable($shellJsPath)
         ? file_get_contents($shellJsPath)

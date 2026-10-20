@@ -300,6 +300,9 @@ $jsOpcionalHead = [
     'firma_correo_perfil.js'
 ];
 
+if ($usarTelefoniaPersistente || $esTelefoniaDashboard || ($esHomeDashboard && (int)($_SESSION['rol_id'] ?? 0) === 3)) {
+    $jsOpcionalHead[] = 'telefonia_numeros.js';
+}
 if ($usarTelefoniaPersistente) {
     $jsOpcionalHead[] = 'telefonia_teclado.js';
     $jsOpcionalHead[] = 'telefonia_persistente.js';

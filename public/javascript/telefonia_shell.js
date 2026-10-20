@@ -643,7 +643,7 @@
                 !['in-progress','finished'].includes(phoneState.phase);
             // El botón se puede pulsar durante timbrado; el puente comprueba
             // el control del SDK al recibir el clic, sin estado infinito.
-            incomingNumber.textContent = String(phoneState.destination || 'Número desconocido');
+            incomingNumber.textContent = window.IMPE_PHONE_NUMBERS.display(phoneState.destination || 'Número desconocido');
             incomingTitle.textContent = finishedIncoming ? 'Llamada finalizada' : incoming
                 ? (finishingIncoming ? 'Finalizando llamada…' :
                     (waitingAnswer ? 'Conectando llamada…' :

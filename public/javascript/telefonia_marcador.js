@@ -77,8 +77,7 @@
                 throw new Error('Escribe un teléfono con dígitos y, si aplica, prefijo internacional.');
             }
 
-            let digits = raw.replace(/\D/g, '');
-            if (digits.length === 10) digits = '52' + digits;
+            let digits = window.IMPE_PHONE_NUMBERS.key(raw);
 
             if (!/^[1-9][0-9]{10,14}$/.test(digits)) {
                 throw new Error('Usa diez dígitos de México o un número internacional válido.');
@@ -286,7 +285,7 @@
             // Búsqueda y paginación se realizan localmente (máximo 150 registros).
             const all = Array.from(contactList.querySelectorAll('[data-telephony-contact-row]'));
             const query = normalizeContactSearch(contactSearch.value);
-            const digits = contactSearch.value.replace(/\D/g, '');
+            const digits = window.IMPE_PHONE_NUMBERS.key(contactSearch.value);
             const phoneQuery = digits !== '' && /^[+\d\s().-]+$/.test(contactSearch.value.trim());
             const matching = all.filter(function (row) {
                 if (!query) return true;
@@ -295,7 +294,7 @@
                 );
                 const phone = String(row.dataset.contactNumber || '');
                 return name.includes(query) || normalizeContactSearch(phone).includes(query) ||
-                    (phoneQuery && phone.replace(/\D/g, '').includes(digits));
+                    (phoneQuery && window.IMPE_PHONE_NUMBERS.key(phone).includes(digits));
             });
 
             matching.sort(function (a, b) {
