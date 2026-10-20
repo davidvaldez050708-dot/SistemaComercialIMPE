@@ -30,7 +30,7 @@ foreach(['registro','inscripcion'] as $tipo){
 
  checkAliado(count($config['programas'])===1&&$config['programas'][0]['codigo']==='bachillerato-general','liga restringe a la oferta persistida');
  try{(new FormularioAliadoService($db))->resolverConvocatoria($a['token'],$ref,$tipo==='registro'?'inscripcion':'registro');throw new RuntimeException('Aceptó formulario cambiado');}catch(DomainException $e){}
- $r=['nombre'=>'Ana','apellido'=>'Prueba','fecha_nacimiento'=>'1990-01-01','movil'=>'7771234567','correo'=>'campana@example.test','perfil_interes'=>'Bachillerato General','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>1,'municipio_id'=>1,'creado_por'=>null,'aliado_token'=>$a['token'],'convocatoria_ref'=>$ref,'origen'=>$tipo==='registro'?'PUBLICO':'PUBLICO_INSCRIPCION'];
+ $r=['nombre'=>'Ana','apellido'=>'Prueba','fecha_nacimiento'=>'1990-01-01','movil'=>'7771234567','correo'=>'campana@example.test','perfil_interes'=>'Bachillerato General','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>null,'municipio_id'=>null,'pais_nombre'=>'Estados Unidos','estado_provincia'=>'Texas','ciudad'=>'Houston','creado_por'=>null,'aliado_token'=>$a['token'],'convocatoria_ref'=>$ref,'origen'=>$tipo==='registro'?'PUBLICO':'PUBLICO_INSCRIPCION'];
  $m=new FormularioRegistroModel();checkAliado($m->guardar($r)===$m->guardar($r),'procedencia y reenvío de convocatoria idempotentes');
  $r['perfil_interes']='Titulación por experiencia laboral';try{$m->guardar($r);throw new RuntimeException('Aceptó otra oferta del mismo aliado');}catch(DomainException $e){}
 }

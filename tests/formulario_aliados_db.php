@@ -10,7 +10,7 @@ comprobar(array_column($a['programas'], 'nombre') === ['Bachillerato General','T
 foreach (['', 'no-valido', str_repeat('0',64), []] as $malo) {
     try { $s->resolver($malo); throw new RuntimeException('Aceptó enlace inválido'); } catch (DomainException $e) {}
 }
-$datos = ['nombre'=>'Ana','apellido'=>'Prueba','fecha_nacimiento'=>'1990-01-01','movil'=>'7771234567','correo'=>'ana@example.test','perfil_interes'=>'Bachillerato General','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>1,'municipio_id'=>1,'creado_por'=>null,'aliado_token'=>$token];
+$datos = ['nombre'=>'Ana','apellido'=>'Prueba','fecha_nacimiento'=>'1990-01-01','movil'=>'7771234567','correo'=>'ana@example.test','perfil_interes'=>'Bachillerato General','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>null,'municipio_id'=>null,'pais_nombre'=>'Estados Unidos','estado_provincia'=>'Texas','ciudad'=>'Houston','creado_por'=>null,'aliado_token'=>$token];
 foreach (['PUBLICO'=>'formulario_registros','PUBLICO_INSCRIPCION'=>'formulario_inscripciones'] as $origen=>$tabla) {
     $datos['origen']=$origen; $datos['perfil_interes']='Bachillerato General';
     $id = $modelo->guardar($datos); $repetido = $modelo->guardar($datos);
