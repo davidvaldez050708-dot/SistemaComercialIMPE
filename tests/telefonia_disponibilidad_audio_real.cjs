@@ -19,7 +19,9 @@ const html='<dialog data-availability-incoming><h2>Disponibilidad</h2><p data-av
    window.probe={contexts:[],players:[],meters:[],tones:0,stops:0,max:0};
    window.Audio=function(){throw Error('Availability must use the shared direct WebAudio output');};
    window.AudioContext=class extends Native{
-    constructor(options){super(options);probe.contexts.push(this);}
+    constructor(options){super(options);this.blocked=sales;this.unlocked=false;probe.contexts.push(this);}
+    get state(){return this.unlocked?super.state:'suspended';}
+    resume(){if(this.blocked){this.blocked=false;return Promise.reject(new DOMException('blocked','NotAllowedError'));}this.unlocked=true;return super.resume();}
     createOscillator(){const node=super.createOscillator(),start=node.start.bind(node),stop=node.stop.bind(node);node.start=(...args)=>{probe.tones++;return start(...args);};node.stop=(...args)=>{probe.stops++;return stop(...args);};return node;}
     createGain(){const node=super.createGain(),meter=super.createAnalyser(),sink=super.createGain();sink.gain.value=0;node.connect(meter);meter.connect(sink);sink.connect(this.destination);probe.meters.push(meter);return node;}
    };
@@ -30,7 +32,10 @@ const html='<dialog data-availability-incoming><h2>Disponibilidad</h2><p data-av
   await page.addScriptTag({content:source});await page.locator('dialog').waitFor({state:'visible'});
   assert.equal(await page.evaluate(()=>probe.tones),0,'Sin gesto no se genera audio');
   await page.locator('h2').click();
+  if(sales){await page.waitForFunction(()=>IMPE_AVAILABILITY.audioDiagnostic().error==='NotAllowedError');assert(await page.locator('[data-availability-audio]').isVisible());await page.locator('[data-availability-audio]').click();}
   await page.waitForFunction(()=>probe.max>.04);
+  await page.waitForFunction(()=>IMPE_AVAILABILITY.audioDiagnostic().peak>.02);
+  const diagnostic=await page.evaluate(()=>IMPE_AVAILABILITY.audioDiagnostic());assert.equal(diagnostic.context,'running');assert(diagnostic.clock>0);assert.equal(diagnostic.error,'');
   assert.equal(await page.evaluate(()=>probe.players.length),0,'No additional HTML media autoplay gate');
   assert.equal(await page.evaluate(()=>probe.tones),3,'Melodía compartida audible en el grafo real');
   await page.addScriptTag({content:source});await page.evaluate(()=>IMPE_AVAILABILITY.tick());
