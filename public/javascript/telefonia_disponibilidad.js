@@ -70,7 +70,7 @@
   try{
    const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;
    if(!audio||audio.state==='closed'){audio=new Context({latencyHint:'interactive'});audioMeter=audio.createAnalyser?.()||null;audioPeak=0;if(audioMeter){const silent=audio.createGain();silent.gain.value=0;audioMeter.connect(silent);silent.connect(audio.destination);}}
-   const started=()=>{if(audio.state!=='running')throw new DOMException('Autoplay requiere interacción','NotAllowedError');audioError='';playSound(explicit);if(audioButton)audioButton.hidden=true;};
+   const started=()=>{if(audio.state!=='running')throw new DOMException('Autoplay requiere interacción','NotAllowedError');audioError='';if(!phone.getPhoneStatus().pending){const feedback=$('[data-availability-feedback]');if(feedback)feedback.textContent='';}playSound(explicit);if(audioButton)audioButton.hidden=true;};
    // Utilizar la salida efectiva del timbre SDK, cuando la API lo permite;
    // en otros navegadores conservar la predeterminada y mostrar diagnóstico.
    const output=()=>{audioError='';}; // Salida predeterminada, como el mecanismo original; no heredar una salida SDK silenciosa.
@@ -150,7 +150,7 @@
    if(status.pending && deferred===String(op.id)+':'+op.version){stopSound();if(incoming.open)incoming.close();return;}
    $('[data-availability-accept]').disabled=Boolean(status.pending);
    $('[data-availability-pending]').hidden=!status.pending;
-   $('[data-availability-feedback]').textContent=status.pending?'Tienes un resultado por registrar. Guárdalo antes de aceptar esta llamada.':'';
+   $('[data-availability-feedback]').textContent=status.pending?'Tienes un resultado por registrar. Guárdalo antes de aceptar esta llamada.':audioError?'El navegador no permitió el aviso. Habilita los avisos sonoros con el botón disponible.':'';
    $('[data-availability-caller]').textContent='Recepción · Ext. '+op.origen_extension+' · '+op.numero+(op.institucion_nombre?' · '+op.institucion_nombre:'');
    $('[data-availability-countdown]').textContent='Responde en '+op.segundos+' s. Aceptar reserva tu disponibilidad durante 30 s.';
    if(!incoming.open){incoming.showModal();$('[data-availability-accept]').focus();}

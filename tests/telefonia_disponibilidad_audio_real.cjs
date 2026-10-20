@@ -31,7 +31,7 @@ const html='<dialog data-availability-incoming><h2>Disponibilidad</h2><p data-av
   },sales);
   if(!sales)await page.mouse.click(2,2); // Permiso previo: no requiere otro botón.
   await page.addScriptTag({content:source});await page.locator('dialog').waitFor({state:'visible'});
-  if(sales){assert.equal(await page.evaluate(()=>probe.tones),0,'Autoplay bloqueado no finge sonido');await page.waitForFunction(()=>IMPE_AVAILABILITY.audioDiagnostic().error==='NotAllowedError');assert(await page.locator('[data-availability-audio]').isVisible());await page.locator('[data-availability-audio]').click();}
+  if(sales){assert.equal(await page.evaluate(()=>probe.tones),0,'Autoplay bloqueado no finge sonido');await page.waitForFunction(()=>IMPE_AVAILABILITY.audioDiagnostic().error==='NotAllowedError');assert(await page.locator('[data-availability-audio]').isVisible());await page.evaluate(()=>IMPE_AVAILABILITY.tick());assert((await page.locator('[data-availability-feedback]').innerText()).includes('no permitió'));await page.locator('[data-availability-audio]').click();}
   await page.waitForFunction(()=>probe.max>.04);
   await page.waitForFunction(()=>IMPE_AVAILABILITY.audioDiagnostic().peak>.02);
   const diagnostic=await page.evaluate(()=>IMPE_AVAILABILITY.audioDiagnostic());assert.equal(diagnostic.context,'running');assert(diagnostic.clock>0);assert.equal(diagnostic.error,'');

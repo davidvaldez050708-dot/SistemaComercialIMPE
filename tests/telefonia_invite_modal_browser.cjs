@@ -20,6 +20,12 @@ const apiStart=host.indexOf('    window.IMPE_ZADARMA_INCOMING = Object.freeze({'
    ${host.slice(start,end)}
    ${host.slice(apiStart,apiEnd)}
    let session;window.invite=(id,caller='100')=>{session={id,direction:'incoming',remote_identity:{uri:{user:caller},display_name:'Recepción'},established:false,ended:false,isEstablished(){return this.established;},isEnded(){return this.ended;},terminate(){this.ended=true;}};zdrmWebPhone.webCallSession=session;};
+   window.pushInvite=()=>{
+    zdrmWebPhone.webCallSession=null;zdrmWebPhone.callState='incoming';
+    document.body.insertAdjacentHTML('beforeend','<input id="zdrm-webphone-phonenumber-input" class="incoming" value="7777885173"><i class="zdrm-webphone-call-ico zdrm-ringing"></i>');
+   };
+   zdrmWebPhone.cancel=()=>{zdrmWebPhone.callState='';document.querySelector('input')?.remove();document.querySelector('i')?.remove();};
+   const answerSip=zdrmWebPhone.answer;zdrmWebPhone.answer=()=>{if(!zdrmWebPhone.webCallSession){invite('sip-from-push','7777885173');zdrmWebPhone.cancel();}answerSip();};
    startAnalystSdkObserver();setInterval(()=>publish({}),500);
   </script>`;
   await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.pathname.startsWith('/public/javascript/'))return route.fulfill({contentType:'application/javascript',body:read(u.pathname.slice(1))});if(u.searchParams.get('action')==='host')return route.fulfill({contentType:'text/html',body:hostHtml});if(u.pathname==='/')return route.fulfill({contentType:'text/html',body:html});if(u.searchParams.has('action'))return route.fulfill({json:{ok:true,entrante:null,devoluciones:0}});return route.fulfill({contentType:'text/html',body:'<main>CRM</main>'});});
@@ -34,6 +40,15 @@ const apiStart=host.indexOf('    window.IMPE_ZADARMA_INCOMING = Object.freeze({'
   await page.locator('[data-incoming-answer]').waitFor({state:'visible'});
   await page.locator('[data-incoming-decline]').click();
   await page.locator('[data-incoming-answer]').waitFor({state:'hidden'});
+  if(origin==='Saliente'){
+   await frame.evaluate(()=>{session.ended=true;zdrmWebPhone.webCallSession=null;zdrmWebPhone.callState='';});
+   await page.waitForTimeout(300);
+   await frame.evaluate(()=>pushInvite());await page.locator('[data-incoming-answer]').waitFor({state:'visible'});
+   await page.locator('[data-incoming-decline]').click();await page.locator('[data-incoming-answer]').waitFor({state:'hidden'});
+   await page.waitForTimeout(500);assert(!(await page.locator('[data-incoming-answer]').isVisible()));
+   await frame.evaluate(()=>pushInvite());await page.locator('[data-incoming-answer]').waitFor({state:'visible'});
+   await page.locator('[data-incoming-answer]').click();await page.waitForFunction(()=>IMPE_TELEPHONY_SHELL.getCallState().phase==='in-progress');
+  }
   assert.deepEqual(errors,[]);await page.close();
  }console.log('INVITE → host/observador/bridge → modal real, rechazo y nueva llamada 100→101/150: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
