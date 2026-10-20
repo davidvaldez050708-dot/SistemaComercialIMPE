@@ -111,7 +111,7 @@ else
    else (cd "$TMP/stage" && git -c core.autocrlf=false apply --check "$TMP/change.patch" && git -c core.autocrlf=false apply "$TMP/change.patch") || fail "Parche incompatible: $file. SITIO INTACTO.";fi
    [[ "$expected" == - || "$(digest "$TMP/stage/$file")" == "$expected" ]] || fail "Salida distinta del archivo probado: $file"
   fi
-  if grep -nE '^(<<<<<<<|=======|>>>>>>>)' "$TMP/stage/$file"; then fail "Marcadores de conflicto: $file";fi
+  if grep -nE '^(<<<<<<<([[:space:]]|$)|=======$|>>>>>>>([[:space:]]|$)|[|]{7}([[:space:]]|$))' "$TMP/stage/$file"; then fail "Marcadores de conflicto: $file";fi
   # JS/CSS deben coincidir íntegramente con una huella probada en desarrollo/CI.
   # No depender de Node en el alojamiento compartido.
   case "$file" in *.php) php -l "$TMP/stage/$file" >/dev/null;; esac

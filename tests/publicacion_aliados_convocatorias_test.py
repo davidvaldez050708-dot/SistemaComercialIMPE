@@ -28,6 +28,8 @@ def run(kind):
         first=live/M['files'][0]['path']
         if kind=='vista-conflicto':
             p=live/'app/views/convocatorias/index.php';p.write_text(p.read_text(encoding='utf8').replace('Nueva convocatoria','Convocatoria personalizada'),encoding='utf8')
+        if kind=='marcadores':
+            p=live/'app/views/layout/sidebar.php';p.write_bytes(p.read_bytes()+b'\n<<<<<<< HEAD\n')
         if kind=='conflicto': first.write_text('<?php // variante incompatible',encoding='utf8')
         if kind=='nuevo-existente':
             f=next(f for f in M['files'] if f['new']);p=live/f['path'];p.parent.mkdir(parents=True,exist_ok=True);p.write_text('<?php // archivo ajeno',encoding='utf8')
@@ -37,7 +39,7 @@ def run(kind):
             return r.returncode,r.stdout
         before=snap(live);code,out=command('--check')
         assert snap(live)==before,out
-        if kind in ['conflicto','nuevo-existente','vista-conflicto']:
+        if kind in ['conflicto','nuevo-existente','vista-conflicto','marcadores']:
             assert code!=0,out
             code,out=command('--apply');assert code!=0 and snap(live)==before,out
             print('OK: '+kind+' bloqueado sin escrituras');return
@@ -50,4 +52,4 @@ def run(kind):
         code,out=command('--restore',backup[0]);assert code==0 and snap(live)==before,out
         print('OK: '+kind+' check/apply/idempotencia/restore exacto')
 if __name__=='__main__':
-    for kind in (sys.argv[1:] or ['base','pr114','personalizado','crlf','conflicto','nuevo-existente','vista-conflicto']):run(kind)
+    for kind in (sys.argv[1:] or ['base','pr114','personalizado','crlf','conflicto','nuevo-existente','vista-conflicto','marcadores']):run(kind)
