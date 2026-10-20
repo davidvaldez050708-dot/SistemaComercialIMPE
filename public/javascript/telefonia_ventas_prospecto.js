@@ -3,6 +3,7 @@
  const cfg=window.IMPE_PHONE_SHELL_CONFIG||{},phone=window.IMPE_TELEPHONY_SHELL,dialog=document.querySelector('[data-sales-prospect-dialog]');
  if(!cfg.salesResults||!phone||!dialog||dialog.dataset.initialized)return;dialog.dataset.initialized='1';
  const form=dialog.querySelector('form'),feedback=dialog.querySelector('[data-sales-prospect-feedback]');
+ const notify=(message,error=false)=>{try{const crm=document.getElementById('impeCrmFrame')?.contentWindow;if(typeof crm?.IMPE_TELEPHONY_NOTIFY==='function'){crm.IMPE_TELEPHONY_NOTIFY(message,error);return;}}catch(_){}window.IMPE_TELEPHONY_NOTIFY?.(message,error);};
  const button=document.createElement('button');button.type='button';button.className='persistent-phone-action';button.textContent='Datos del prospecto';button.dataset.salesProspect='1';button.hidden=true;
  document.querySelector('[data-incoming-panel] .persistent-phone-actions')?.append(button);
  let ref='',localId='',version=0,busy=false;const key=id=>'impe:sales-prospect:'+cfg.userId+':'+id;
@@ -19,15 +20,15 @@
    else feedback.textContent='Referencia de la llamada pendiente. Los datos se conservan como borrador en esta pestaña.';
   }catch(e){feedback.textContent=e.message;}
   try{const draft=JSON.parse(sessionStorage.getItem(key(localId))||'null');if(draft&&Date.now()-draft.at<86400000)for(const [k,v]of Object.entries(draft.values))if(form.elements[k])form.elements[k].value=v;}catch(_){}
-  dialog.showModal();busy=false;
+  dialog.hidden=false;form.elements.nombre.focus();busy=false;
  });
  form.addEventListener('input',()=>{try{sessionStorage.setItem(key(localId),JSON.stringify({at:Date.now(),values:Object.fromEntries(new FormData(form))}));}catch(_){}});
  form.addEventListener('submit',async e=>{e.preventDefault();if(busy)return;busy=true;const submit=form.querySelector('[type=submit]');submit.disabled=true;
   try{if(!valid(ref)){const s=phone.getCallState();if(s?.callToken===localId||s?.context?.sdkSessionId===localId)ref=String(s.context?.transferReference||s.pbxCallId||'');}
    if(!valid(ref))throw Error('La referencia de la llamada aún no está confirmada. El borrador se conserva; vuelve a guardar cuando esté disponible.');
-   const data=await request(true);version=data.version;try{sessionStorage.removeItem(key(localId));}catch(_){}feedback.textContent='Datos guardados. La conversación y su resultado permanecen separados.';
-  }catch(error){feedback.textContent=error.message;}finally{busy=false;submit.disabled=false;}
+   const data=await request(true);version=data.version;try{sessionStorage.removeItem(key(localId));}catch(_){}feedback.textContent='';notify('Datos guardados. La conversación y su resultado permanecen separados.');
+  }catch(error){feedback.textContent=error.message;notify(error.message,true);}finally{busy=false;submit.disabled=false;}
  });
- dialog.querySelector('[data-sales-prospect-close]').addEventListener('click',()=>dialog.close());
+ dialog.querySelector('[data-sales-prospect-close]').addEventListener('click',()=>{dialog.hidden=true;});
  const render=()=>{const s=phone.getCallState();button.hidden=!s||!['in-progress','finished','incoming-finished'].includes(s.phase);};setInterval(render,750);render();
 })();

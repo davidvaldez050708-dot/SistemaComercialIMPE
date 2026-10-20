@@ -309,47 +309,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                 </p>
             </div>
             <?php endif; ?>
-            <?php if ($puedeCapturarShell): ?>
-            <div class="impe-routing-panel impe-call-capture" id="impeCapturePanel"
-                data-shell-capture-panel hidden>
-                <div class="impe-routing-heading">
-                    <strong>Datos durante la llamada</strong>
-                    <span>Captura durante la conversación. El borrador se guarda automáticamente; revisa el resultado al finalizar.</span>
-                </div>
-                <form data-routing-capture-form autocomplete="off">
-                    <div class="impe-routing-field">
-                        <label for="impeCaptureName">Institución o prospecto</label>
-                        <input id="impeCaptureName" maxlength="180" name="nombre" type="text">
-                    </div>
-                    <div class="impe-routing-two">
-                        <div class="impe-routing-field">
-                            <label for="impeCapturePerson">Persona que atiende</label>
-                            <input id="impeCapturePerson" maxlength="140" name="persona" type="text">
-                        </div>
-                        <div class="impe-routing-field">
-                            <label for="impeCapturePhone">Teléfono</label>
-                            <input id="impeCapturePhone" maxlength="40" name="telefono" type="tel">
-                        </div>
-                    </div>
-                    <div class="impe-routing-field">
-                        <label for="impeCaptureEmail">Correo electrónico</label>
-                        <input id="impeCaptureEmail" maxlength="160" name="correo" type="email">
-                    </div>
-                    <div class="impe-routing-two">
-                        <div class="impe-routing-field"><label for="impeCaptureContact">Contacto institucional o referido</label>
-                            <input id="impeCaptureContact" maxlength="140" name="contacto_nombre" type="text"></div>
-                        <div class="impe-routing-field"><label for="impeCaptureRole">Cargo o área</label>
-                            <input id="impeCaptureRole" maxlength="150" name="contacto_cargo" type="text"></div>
-                    </div>
-                    <div class="impe-routing-field">
-                        <label for="impeCaptureNotes">Notas de atención</label>
-                        <textarea id="impeCaptureNotes" maxlength="1000" rows="2" name="notas"></textarea>
-                    </div>
-                    <button type="submit" class="impe-routing-save">Guardar borrador</button>
-                    <p data-routing-capture-message role="status" aria-live="polite"></p>
-                </form>
-            </div>
-            <?php endif; ?>
+            <?php if ($puedeCapturarShell || $esAsesorShell) require __DIR__.'/captura_panel.php'; ?>
             <p class="impe-incoming-notice" data-incoming-notice role="status" hidden></p>
         </div>
         <div class="persistent-phone-compact-actions">
@@ -421,7 +381,6 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     </dialog>
     <?php endif; ?>
     <?php require ROOT_PATH.'/app/views/telefonia/disponibilidad.php'; ?>
-    <?php if($esAsesorShell)require ROOT_PATH.'/app/views/telefonia/prospecto_venta.php'; ?>
     <script>
         window.IMPE_PHONE_SHELL_CONFIG = <?= json_encode([
             'userId' => $usuarioShell,
