@@ -586,9 +586,6 @@
                         message: 'Timbrado detectado en el teléfono WebRTC. Registro PBX pendiente.'
                     });
                 },
-                onDeclinedSession: function () {
-                    if(state.context?.declineRequested)incomingBridge?.decline(String(state.callToken||state.pbxCallId||''));
-                },
                 onConnected: function () {
                     // La llamada transferida puede recibir su PBX ID ANTES
                     // de que el SDK anuncie audio. La señal local sigue
@@ -601,7 +598,6 @@
                     if ((!sdkOnly && !pbxIncoming) || !state.active ||
                         !['incoming-ringing','answering'].includes(state.phase)) return;
                     answeredAtMs = Date.now();
-                    if (sdkOnly) reportSdkEvent('answered', state);
                     publish({
                         phase:'in-progress', status:'in-progress',
                         answeredAtMs:answeredAtMs, duration:0, message:'',

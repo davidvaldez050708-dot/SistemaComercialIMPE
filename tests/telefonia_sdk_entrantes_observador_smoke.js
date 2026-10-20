@@ -136,6 +136,16 @@ doc.defaultView.zdrmWebPhone.webCallSession=null;
 let lateInvites=0,newRings=0;
 const late=factory.create(doc,{onRinging:()=>newRings++,onStopped(){},onDeclinedSession:()=>lateInvites++});
 late.markDeclined();doc.defaultView.zdrmWebPhone.webCallSession={direction:'incoming',isEstablished:()=>false,isEnded:()=>false};
-interval();interval();assert.equal(lateInvites,1,'INVITE tardío se rechaza una sola vez tras PUSH');assert.equal(newRings,1);
-late.allowNewInvitation();interval();assert.equal(newRings,2,'PBX nuevo permite invitación legítima del mismo número');late.stop();
+interval();interval();assert.equal(lateInvites,0,'Sin identidad SIP previa no auto rechazar un INVITE nuevo');assert.equal(newRings,2);
+late.stop();
+for(const extension of ['101','150']){
+ value.inputIncoming=false;value.ringing=false;let rings=0;
+ const sip={id:'invite-'+extension,direction:'incoming',remote_identity:{uri:{user:'100'},display_name:'Recepción'},isEstablished:()=>false,isEnded:()=>false};
+ doc.defaultView.zdrmWebPhone.webCallSession=sip;
+ const noDom=factory.create(doc,{onRinging:call=>{rings++;assert.equal(call.caller,'100');},onStopped(){}});
+ assert.equal(rings,1,'INVITE válido sin clases nativas muestra llamada '+extension);
+ for(let i=0;i<10;i++)interval();assert.equal(rings,1);
+ noDom.markDeclined();doc.defaultView.zdrmWebPhone.webCallSession={...sip};interval();assert.equal(rings,1,'Mismo ID SIP no se reofrece por recrear el objeto');
+ doc.defaultView.zdrmWebPhone.webCallSession={...sip,id:sip.id+'-new'};interval();assert.equal(rings,2,'Nuevo INVITE del mismo número se admite');noDom.stop();
+}
 console.log('Observador SDK Analista: OK (timbrado, aceptación asíncrona, sin falso perdido)');
