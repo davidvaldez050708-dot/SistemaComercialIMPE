@@ -71,3 +71,41 @@
 .sales-calls-page .sales-management-filters .form-control{min-width:0;min-height:42px;font-size:12px;}
 .sales-calls-page .linkage-call-summary.sales-management-stats{grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 16px;}
 @media(max-width:620px){.sales-calls-page .sales-management-filters{grid-template-columns:minmax(0,1fr);}}
+
+/* Paginación compartida de Ventas: Historial, Por devolver y Programadas. */
+.sales-calls-page .linkage-incoming-pagination{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:12px;margin-top:18px;padding:14px 16px;
+  background:#f8faff;border:1px solid #dfe7f4;border-radius:12px;
+  color:#50617b;font-size:12px;font-weight:650;line-height:1.4;
+}
+.sales-calls-page .linkage-incoming-pagination-pages{
+  display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;
+}
+.sales-calls-page .linkage-incoming-pagination-arrow{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:36px;padding:8px 12px;border:1px solid #cfdbee;
+  border-radius:9px;background:#fff;color:#293e91;
+  font:inherit;font-weight:750;line-height:1.2;text-decoration:none;
+  transition:background-color .15s ease,border-color .15s ease;
+}
+.sales-calls-page .linkage-incoming-pagination-arrow:not(.disabled):hover{
+  background:#eef3ff;border-color:#a8bbe0;color:#203373;
+}
+.sales-calls-page .linkage-incoming-pagination-arrow:focus-visible{
+  outline:2px solid #293e91;outline-offset:2px;
+}
+.sales-calls-page .linkage-incoming-pagination-arrow.disabled,
+.sales-calls-page .linkage-incoming-pagination-arrow[aria-disabled="true"]{
+  color:#97a5ba;background:#f3f5fa;border-color:#e1e7f0;
+  cursor:not-allowed;pointer-events:none;
+}
+.sales-calls-page .linkage-incoming-pagination-pages>span{
+  min-width:50px;text-align:center;font-weight:750;
+  font-variant-numeric:tabular-nums;color:#385075;
+}
+@media(max-width:480px){
+  .sales-calls-page .linkage-incoming-pagination{justify-content:center;padding:12px;gap:10px;}
+  .sales-calls-page .linkage-incoming-pagination>span{width:100%;text-align:center;}
+  .sales-calls-page .linkage-incoming-pagination-pages{justify-content:center;width:100%;}
+}
