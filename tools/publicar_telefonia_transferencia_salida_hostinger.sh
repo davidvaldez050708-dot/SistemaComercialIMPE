@@ -5,7 +5,7 @@ umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
 TARGET='11a084b0f8278a8f3aab67a4f08854e3f1e1371e'
-REVIEWED='RESOURCES_COMMIT'
+REVIEWED='5698e0112f79eea76383a632b5bbaa291b016626'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/telefonia_transferencia_salida'
 SOURCE="${IMPE_TELEFONIA_TRANSFERENCIA_SALIDA_SOURCE:-$HOME/crm-publicaciones/telefonia-transferencia-salida-actual}"
