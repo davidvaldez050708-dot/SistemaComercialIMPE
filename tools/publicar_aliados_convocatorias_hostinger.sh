@@ -4,8 +4,8 @@ set -euo pipefail
 umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
-TARGET='747f83c4543b37a2ad51e3d476388f4828c18e4b'
-REVIEWED='747f83c4543b37a2ad51e3d476388f4828c18e4b'
+TARGET='5453b22d93cd107598e5bf25ff9656fe08f3a311'
+REVIEWED='5453b22d93cd107598e5bf25ff9656fe08f3a311'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/aliados_convocatorias'
 SOURCE="${IMPE_ALIADOS_CONVOCATORIAS_SOURCE:-$HOME/crm-publicaciones/aliados-convocatorias-actual}"
@@ -124,7 +124,7 @@ else
  done
 fi
 [[ "${#CHANGED[@]}" -gt 0 ]] || { echo 'OK: entrega ya aplicada o respaldo ya restaurado. Ningún archivo reemplazado.';exit 0; }
-if [[ "$MODE" == --check ]];then echo "OK: revisión compatible. ${#CHANGED[@]} archivo(s) preparados. SITIO INTACTO. Sin ejecutar SQL; 18 archivos selectivos PHP/JS. Node no requerido.";exit 0;fi
+if [[ "$MODE" == --check ]];then echo "OK: revisión compatible. ${#CHANGED[@]} archivo(s) preparados. SITIO INTACTO. Sin ejecutar SQL; archivos selectivos PHP/JS/CSS. Node no requerido.";exit 0;fi
 for file in "${FILES[@]}";do unchanged "$file";done
 if [[ "$MODE" == --apply ]];then
  mkdir -p "$BACKUPS";BACKUP="$BACKUPS/aliados-convocatorias-$(date +%Y%m%d-%H%M%S)-$$";mkdir -m 700 "$BACKUP"

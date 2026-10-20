@@ -1,6 +1,6 @@
 # Integración de Aliados internacionales, Convenios y Convocatorias
 
-Base: main `fd5fd282b3f6774d1bdc045295d655b72620ce17` (PR112 integrado). Aplicación y manifiesto: `747f83c4543b37a2ad51e3d476388f4828c18e4b`.
+Base: main `fd5fd282b3f6774d1bdc045295d655b72620ce17` (PR112 integrado). Aplicación y manifiesto: `5453b22d93cd107598e5bf25ff9656fe08f3a311`.
 
 ## Causas y correcciones
 
@@ -21,7 +21,7 @@ PR112 sólo consultaba configuraciones de formularios cuyo `seguimiento_id` era 
 
 Se respeta PermissionHelper y el bloqueo de operaciones del Administrador. La migración añade un permiso de configuración administrativa, `aliados.internacionales.configurar`, y lo asigna únicamente a Administración. No habilita Convenios o Marketing para ese rol. Tras migrar, cerrar sesión e iniciarla de nuevo para actualizar permisos.
 
-Marketing con `aliados.ver`, `convocatorias.ver` y `convocatorias.crear` puede crear convocatorias, como en su flujo nacional. Para registrar un convenio internacional, el operador necesita `aliados.ver`, `aliados.internacionales.configurar` y el permiso operativo existente `convenios.gestionar`. Asignar de forma explícita el permiso de configuración a la cuenta o rol autorizado usando la administración de permisos existente. No se cambian permisos masivamente ni usuarios en producción. Las respuestas personales de formularios continúan reservadas a Administración. POST de configuración, convenio y convocatoria llevan CSRF.
+Marketing con `convocatorias.ver` y `convocatorias.crear` puede consultar aliados internacionales y crear convocatorias, sin requerir `aliados.ver` ni territorios nacionales, como en su flujo nacional. Para registrar un convenio internacional, el operador necesita `aliados.ver`, `aliados.internacionales.configurar` y el permiso operativo existente `convenios.gestionar`. Asignar de forma explícita el permiso de configuración a la cuenta o rol autorizado usando la administración de permisos existente. No se cambian permisos masivamente ni usuarios en producción. Las respuestas personales de formularios continúan reservadas a Administración. POST de configuración, convenio y convocatoria llevan CSRF.
 
 ## Pruebas
 
@@ -36,7 +36,7 @@ Archivo CLI: `tools/migrar_aliados_convocatorias.php`, usando el SQL nuevo y las
 
 ## Hostinger: publicación manual
 
-No se ha ejecutado nada en producción. No usar git pull en public_html. El publicador instala 18 archivos PHP/JS revisados, con parches por contexto para PHP y huellas estrictas para JS. Conserva personalizaciones fuera de los bloques tocados. Si se personalizó el modal nacional dentro de un bloque que ahora se extrae, se detiene para revisar y trasladar esa variante al componente compartido; nunca forzar el reemplazo. SQL y preparadores permanecen fuera del sitio. No necesita Python en Hostinger.
+No se ha ejecutado nada en producción. No usar git pull en public_html. El publicador instala 22 archivos PHP/JS/CSS revisados, con parches por contexto para PHP y huellas estrictas para JS. Conserva personalizaciones fuera de los bloques tocados. Si se personalizó el modal nacional dentro de un bloque que ahora se extrae, se detiene para revisar y trasladar esa variante al componente compartido; nunca forzar el reemplazo. SQL y preparadores permanecen fuera del sitio. No necesita Python en Hostinger.
 
 1. Descargar `tools/publicar_aliados_convocatorias_hostinger.sh` fijado al commit de entrega de este PR y guardarlo como `$HOME/publicar-aliados-convocatorias.sh`. Revisar:
 
@@ -49,7 +49,7 @@ bash "$HOME/publicar-aliados-convocatorias.sh" --check
 3. Extraer dependencias del preparador en una carpeta privada NUEVA desde la copia HTTPS que dejó el publicador:
 
 ```bash
-VERSION=747f83c4543b37a2ad51e3d476388f4828c18e4b
+VERSION=5453b22d93cd107598e5bf25ff9656fe08f3a311
 PREPARACION="$HOME/aliados-convocatorias-$VERSION"
 mkdir -m 700 "$PREPARACION" &&
 git -C "$HOME/crm-publicaciones/aliados-convocatorias-actual" archive "$VERSION" \
@@ -83,3 +83,21 @@ bash "$HOME/publicar-aliados-convocatorias.sh" --restore "$HOME/respaldos-crm/al
 ```
 
 No borra migración, instituciones, convenios ni respuestas. Rechaza restaurar sobre archivos que se editaron después de instalar. Si se revierte todo el código nuevo, dejar de distribuir sus nuevas ligas hasta reinstalarlo: el código previo desconoce las referencias de convocatoria. No restaurar toda la BD para corregir un problema de presentación.
+
+
+## Corrección adicional de interfaz y acceso
+
+La revisión de aplicación `5453b22d93cd107598e5bf25ff9656fe08f3a311` incorpora el directorio compacto y la navegación internacional de Marketing/Cuenta Clave. Detalle, matriz de permisos y pruebas: [Diseño y acceso internacional](aliados_internacionales_diseno_acceso.md). No concede permisos ni territorios; editar/gestionar/crear conserva las comprobaciones de cada operación. Este rediseño no añade migraciones; si ya se aplicó la migración de PR114, no hay que repetirla para la interfaz.
+
+Publicador actualizado (descargar siempre una revisión fija y ejecutar primero `--check`):
+
+```bash
+curl -fsSL --retry 2 'https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/DELIVERY_SHA/tools/publicar_aliados_convocatorias_hostinger.sh' -o "$HOME/publicar-aliados-convocatorias.sh"
+bash "$HOME/publicar-aliados-convocatorias.sh" --check
+# Solo después de una revisión compatible y del respaldo de BD si falta la migración original:
+bash "$HOME/publicar-aliados-convocatorias.sh" --apply
+# Restaurar archivos con la ruta exacta que imprimió --apply:
+bash "$HOME/publicar-aliados-convocatorias.sh" --restore "$HOME/respaldos-crm/aliados-convocatorias-FECHA-PID"
+```
+
+Sustituye `DELIVERY_SHA` por el commit de entrega indicado en el PR, no por `main`. La entrega contiene variantes revisadas de main/PR112 y de PR114 anterior (`aa1f9faf`). Una personalización desconocida puede producir un conflicto: conservar el sitio y revisar el archivo, sin forzar el reemplazo. El respaldo se guarda fuera de `public_html`; la restauración rechaza archivos que hayan sido modificados después de instalar. El publicador no ejecuta SQL ni requiere Python o Node en Hostinger. La migración original, si sigue pendiente, es un paso manual separado y requiere respaldo de BD; `--restore` restaura archivos, no revierte DDL.
