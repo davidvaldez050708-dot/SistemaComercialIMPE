@@ -1,0 +1,11 @@
+--- a/app/controllers/TelefoniaController.php
++++ b/app/controllers/TelefoniaController.php
+@@ -777,7 +777,7 @@
+             if(in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)){
+                 $svc->presencia($user,($_POST['disponible']??'')==='1');
+                 if(($_POST['accion']??'')==='POLL')$this->responderJson(['ok'=>true,
+-                    'solicitud'=>(int)($_POST['id']??0)>0?$svc->obtener($user,(int)$_POST['id']):null,
++                    'solicitud'=>(int)($_POST['id']??0)>0?$svc->obtener($user,(int)$_POST['id']):$svc->delOrigen($user,(string)($_POST['referencia']??'')),
+                     'entrante'=>$svc->entrante($user),'devoluciones'=>count($svc->devoluciones($user))]);
+                 $this->responderJson(['ok'=>true]);
+             }
