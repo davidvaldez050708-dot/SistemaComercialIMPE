@@ -145,7 +145,16 @@ for(const extension of ['101','150']){
  const noDom=factory.create(doc,{onRinging:call=>{rings++;assert.equal(call.caller,'100');},onStopped(){}});
  assert.equal(rings,1,'INVITE válido sin clases nativas muestra llamada '+extension);
  for(let i=0;i<10;i++)interval();assert.equal(rings,1);
- noDom.markDeclined();doc.defaultView.zdrmWebPhone.webCallSession={...sip};interval();assert.equal(rings,1,'Mismo ID SIP no se reofrece por recrear el objeto');
- doc.defaultView.zdrmWebPhone.webCallSession={...sip,id:sip.id+'-new'};interval();assert.equal(rings,2,'Nuevo INVITE del mismo número se admite');noDom.stop();
+ doc.defaultView.zdrmWebPhone.webCallSession={...sip,id:sip.id+'-replacement'};
+ interval();assert.equal(rings,2,'INVITE nuevo se publica sin esperar idle/END anterior');
+ doc.defaultView.zdrmWebPhone.webCallSession=sip;
+ interval();assert.equal(rings,3);
+ noDom.markDeclined();doc.defaultView.zdrmWebPhone.webCallSession={...sip};interval();assert.equal(rings,3,'Mismo ID SIP no se reofrece por recrear el objeto');
+ doc.defaultView.zdrmWebPhone.webCallSession={...sip,id:sip.id+'-new'};interval();assert.equal(rings,4,'Nuevo INVITE del mismo número se admite');noDom.stop();
 }
 console.log('Observador SDK Analista: OK (timbrado, aceptación asíncrona, sin falso perdido)');
+
+value.inputIncoming=false;value.ringing=false;doc.defaultView.zdrmWebPhone.webCallSession=null;
+let attempts=0;const retry=factory.create(doc,{onRinging(){return ++attempts>1;},onStopped(){}});
+value.inputIncoming=true;value.ringing=true;interval();interval();interval();
+assert.equal(attempts,2,'Invitación no se consume si el host la rechaza provisionalmente');retry.stop();

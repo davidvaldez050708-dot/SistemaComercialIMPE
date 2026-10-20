@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(p,'utf8').replace(/\r\n/g,'\n'),host=read('public/
 const start=host.indexOf('    const startAnalystSdkObserver = function () {'),end=host.indexOf('\n    const ensureWidget',start);
 const apiStart=host.indexOf('    window.IMPE_ZADARMA_INCOMING = Object.freeze({'),apiEnd=host.indexOf('\n    const stopPolling',apiStart);
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});try{
- for(const sales of [false,true]){
+ for(const sales of [false,true]) for(const origin of ['Entrante','Saliente']){
   const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   const html=cp.execFileSync('php',[sales?'tests/fixtures/telefonia_ventas_shell.php':'tests/fixtures/telefonia_flujo_shell.php',...(sales?[]:['analista'])],{encoding:'utf8'});
   const hostHtml=`<!doctype html><body><script>${read('public/javascript/telefonia_sdk_entrantes_observador.js')}</script><script>${read('public/javascript/telefonia_entrantes_bridge.js')}</script><script>
@@ -19,7 +19,7 @@ const apiStart=host.indexOf('    window.IMPE_ZADARMA_INCOMING = Object.freeze({'
    zdrmWebPhone.answer=()=>{session.established=true;};
    ${host.slice(start,end)}
    ${host.slice(apiStart,apiEnd)}
-   let session;window.invite=id=>{session={id,direction:'incoming',remote_identity:{uri:{user:'100'},display_name:'Recepción'},established:false,ended:false,isEstablished(){return this.established;},isEnded(){return this.ended;},terminate(){this.ended=true;}};zdrmWebPhone.webCallSession=session;};
+   let session;window.invite=(id,caller='100')=>{session={id,direction:'incoming',remote_identity:{uri:{user:caller},display_name:'Recepción'},established:false,ended:false,isEstablished(){return this.established;},isEnded(){return this.ended;},terminate(){this.ended=true;}};zdrmWebPhone.webCallSession=session;};
    startAnalystSdkObserver();setInterval(()=>publish({}),500);
   </script>`;
   await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.pathname.startsWith('/public/javascript/'))return route.fulfill({contentType:'application/javascript',body:read(u.pathname.slice(1))});if(u.searchParams.get('action')==='host')return route.fulfill({contentType:'text/html',body:hostHtml});if(u.pathname==='/')return route.fulfill({contentType:'text/html',body:html});if(u.searchParams.has('action'))return route.fulfill({json:{ok:true,entrante:null,devoluciones:0}});return route.fulfill({contentType:'text/html',body:'<main>CRM</main>'});});
@@ -28,6 +28,12 @@ const apiStart=host.indexOf('    window.IMPE_ZADARMA_INCOMING = Object.freeze({'
   await frame.evaluate(()=>invite('sip-1'));await page.locator('[data-incoming-answer]').waitFor({state:'visible'});assert(await page.locator('[data-incoming-decline]').isVisible());
   await page.locator('[data-incoming-decline]').click();await page.locator('[data-incoming-answer]').waitFor({state:'hidden'});await page.waitForTimeout(500);assert(!(await page.locator('[data-incoming-answer]').isVisible()));
   await frame.evaluate(()=>invite('sip-2'));await page.locator('[data-incoming-answer]').waitFor({state:'visible'});await page.locator('[data-incoming-answer]').click();await page.waitForFunction(()=>IMPE_TELEPHONY_SHELL.getCallState().phase==='in-progress');
+  // Otro diálogo llega antes del END PBX del anterior; el origen saliente
+  // puede llegar por PUSH/SIP sin el NOTIFY_INTERNAL de la ruta entrante.
+  await frame.evaluate(origin=>{session.ended=true;publish({phase:'recovering'});invite('sip-3',origin==='Saliente'?'7777885173':'100');},origin);
+  await page.locator('[data-incoming-answer]').waitFor({state:'visible'});
+  await page.locator('[data-incoming-decline]').click();
+  await page.locator('[data-incoming-answer]').waitFor({state:'hidden'});
   assert.deepEqual(errors,[]);await page.close();
  }console.log('INVITE → host/observador/bridge → modal real, rechazo y nueva llamada 100→101/150: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

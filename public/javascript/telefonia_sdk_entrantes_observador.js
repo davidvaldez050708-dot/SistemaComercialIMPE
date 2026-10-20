@@ -85,7 +85,11 @@
             // No dejar que una sesión anterior terminada bloquee ese timbrado.
             const newSession = session && !sameSession(session,observedSession) &&
                 !session.isEnded();
-            if (call && (!seenIncoming ||
+            // Una sesión nueva no requiere haber observado el reposo entre llamadas.
+            // En PUSH el SDK puede retirar y restaurar ringing antes del END PBX.
+            const freshPush = domCall && !wasDomRinging &&
+                (!observedSession || observedSession.isEnded());
+            if (call && (!seenIncoming || (newSession && liveInvite) || freshPush ||
                 (idleReported && (!wasDomRinging || newSession)))) {
                 seenIncoming = true;
                 ringing = true;
@@ -95,7 +99,11 @@
                 connectedReported = false;
                 acceptanceRequestedUntil = 0;
                 observedSession = session && !session.isEnded() ? session : null;
-                hooks.onRinging(call);
+                if (session?.id && liveInvite) call.sipSessionId=String(session.id);
+                if (hooks.onRinging(call) === false) {
+                    // El host aún no puede publicarla: reintentar, no consumirla.
+                    seenIncoming=false;ringing=false;observedSession=null;
+                }
                 return;
             }
             if (!seenIncoming || idleReported) return;

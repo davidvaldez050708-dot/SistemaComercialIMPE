@@ -559,7 +559,14 @@
         analystSdkObserver = window.IMPE_ZADARMA_SDK_RING_OBSERVER?.create(
             document, {
                 onRinging: function (call) {
-                    if (!widgetReady || (state.active&&!state.context?.declineRequested)) return;
+                    if (!widgetReady) return false;
+                    const freshSip=Boolean(call?.sipSessionId &&
+                        call.sipSessionId!==state.context?.sdkInviteId);
+                    // Un INVITE nuevo acredita otro diálogo; un END PBX anterior
+                    // puede seguir pendiente. No reemplazar una saliente local.
+                    if(state.active&&!state.context?.declineRequested &&
+                        !(state.direction==='incoming' && freshSip &&
+                          ['incoming-ringing','finishing','recovering','rejecting'].includes(state.phase))) return false;
                     const number = String(call?.caller || '').slice(0, 40);
                     const token = 'sdk-' + Date.now().toString(36) +
                         '-' + Math.random().toString(36).slice(2, 9);
@@ -580,7 +587,8 @@
                         context: {
                             type: 'SDK_INCOMING',
                             verified: false,
-                            callerName: String(call?.callerName || '').slice(0, 100)
+                            callerName: String(call?.callerName || '').slice(0, 100),
+                            sdkInviteId:String(call?.sipSessionId||'')
                         },
                         finalMetadata: null,
                         message: 'Timbrado detectado en el teléfono WebRTC. Registro PBX pendiente.'
