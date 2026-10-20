@@ -6,16 +6,16 @@
       "path": "app/controllers/AliadoController.php",
       "kind": "php",
       "new": false,
-      "target_sha256": "38d551710dc7581d540369448418659880a9399888ac288c9102afd5a41aebb0",
+      "target_sha256": "5544b28e07fd7e6867097832a987ac283ebff89d297475159e7c31fbf4f1e7ba",
       "variants": [
         {
           "label": "main-con-PR111",
           "before": "176d3d6af31aa52ea952ca26873a57a86610855d96fa74b9fa4d89aa03595845",
-          "after": "38d551710dc7581d540369448418659880a9399888ac288c9102afd5a41aebb0"
+          "after": "5544b28e07fd7e6867097832a987ac283ebff89d297475159e7c31fbf4f1e7ba"
         }
       ],
       "patch": "tools/aliados_internacionales/0.patch",
-      "patch_sha256": "695c1c3fe61bf609f64fde51706cb612a5fa5129841f4b7442f4608200f30788"
+      "patch_sha256": "33ca3aa1112ecd151d1a70e6c5ddf266f8468b03890beb93417b48430221e4a8"
     },
     {
       "path": "app/views/aliados/index.php",
