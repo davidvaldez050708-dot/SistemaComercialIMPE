@@ -121,32 +121,32 @@
       "kind": "php",
       "new": false,
       "strict": false,
-      "target_sha256": "0ddb7ae5c40079185b07d5961713ee0ba5282acf9b448374bc133483b252a806",
+      "target_sha256": "d409b523b025a895eb9bfe0d5393ddf57fec5f416126b0517ef97a555df6ce1b",
       "variants": [
         {
           "label": "main",
           "before": "845c1d9997ac14d126d24ade419ea75bbe263d3e989880c4d7899e4a36210561",
-          "after": "0ddb7ae5c40079185b07d5961713ee0ba5282acf9b448374bc133483b252a806",
+          "after": "d409b523b025a895eb9bfe0d5393ddf57fec5f416126b0517ef97a555df6ce1b",
           "patch": "tools/ventas_bandejas_20261019/0400.patch",
-          "patch_sha256": "db997a097535b91cb57ad6922a4746d2db3f3561c871349484cf3f232b5e3c12"
+          "patch_sha256": "4ce9230f69b7c1fb8451e3e969b6f9cec83322be80d55c5e1d9653bb6a0131cb"
         },
         {
           "label": "hostinger-pr109-before",
           "before": "8e6b41b90d33cfc345b5f2e572d4771f17697ff75160a2c5b68b2fc376048173",
-          "after": "0ddb7ae5c40079185b07d5961713ee0ba5282acf9b448374bc133483b252a806",
+          "after": "d409b523b025a895eb9bfe0d5393ddf57fec5f416126b0517ef97a555df6ce1b",
           "patch": "tools/ventas_bandejas_20261019/0401.patch",
-          "patch_sha256": "e9db10ff101012d4e8204e9042feed87657938506f1896603aca095a6fbbf439"
+          "patch_sha256": "95591b25178732b6ab4974daa094cde70eba6987ad6ae76f7ba9d7de283cdfe9"
         },
         {
           "label": "hostinger-pr109-after",
           "before": "11c946d125ff2f305c36520339397e76ddd3b61028b5a9633e1c9dc4e6ed5788",
-          "after": "0ddb7ae5c40079185b07d5961713ee0ba5282acf9b448374bc133483b252a806",
+          "after": "d409b523b025a895eb9bfe0d5393ddf57fec5f416126b0517ef97a555df6ce1b",
           "patch": "tools/ventas_bandejas_20261019/0402.patch",
-          "patch_sha256": "6279b69a6721df257c69edbb966a22488b1e169a7659e9838eab4f20ba1e3c50"
+          "patch_sha256": "bfd68c6665c23399e0da5ae8dc0fc94b3bc13930ee3da2e3157e493a6baab63a"
         }
       ],
       "patch": "tools/ventas_bandejas_20261019/0400.patch",
-      "patch_sha256": "db997a097535b91cb57ad6922a4746d2db3f3561c871349484cf3f232b5e3c12"
+      "patch_sha256": "4ce9230f69b7c1fb8451e3e969b6f9cec83322be80d55c5e1d9653bb6a0131cb"
     },
     {
       "path": "app/views/telefonia/ventas_paginacion.php",
