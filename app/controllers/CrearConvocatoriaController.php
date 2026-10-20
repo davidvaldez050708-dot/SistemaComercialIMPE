@@ -15,26 +15,6 @@ class CrearConvocatoriaController
             ? $modelo->listarConveniosRecibidos()
             : [];
 
-        // Aliados externos: no son convenios mexicanos formalizados.
-        // Se ofrecen sus formularios autorizados sin inventar estado ni seguimiento.
-        $aliadosExternos = [];
-        try {
-            $db = (new Database())->connect();
-            $result = $db->query(
-                "SELECT a.id, a.nombre, a.ubicacion, a.slug, a.token,
-                        GROUP_CONCAT(p.nombre ORDER BY p.nombre SEPARATOR ' / ') AS programas
-                 FROM formulario_aliados a
-                 JOIN formulario_aliado_programas ap ON ap.aliado_id=a.id
-                 JOIN formulario_programas p ON p.codigo=ap.programa_codigo AND p.activo=1
-                 WHERE a.activo=1 AND a.seguimiento_id IS NULL
-                 GROUP BY a.id, a.nombre, a.ubicacion, a.slug, a.token
-                 ORDER BY a.nombre"
-            );
-            if ($result) { $aliadosExternos = $result->fetch_all(MYSQLI_ASSOC); }
-        } catch (Throwable $e) {
-            error_log('[crear_convocatoria_aliados_externos] ' . $e->getMessage());
-        }
-
         $estados = $modelo->listarEstados();
 
         $tituloPagina = 'Crear convocatoria';
