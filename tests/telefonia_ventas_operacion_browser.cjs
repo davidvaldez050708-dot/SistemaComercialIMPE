@@ -71,8 +71,8 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  await modal.locator('[data-sales-submit]').click();await modal.waitFor({state:'hidden'});
  assert.equal(payload.pbx_call_id,call.pbx_call_id);assert.equal(payload.extension,'150');assert.equal(payload.resultado,'INTERESADO');assert.equal(payload.prospecto_nombre,'María');
  await page.waitForFunction(()=>!IMPE_SALES_ATTENTION.hasPending());
- await crm.locator('[data-sales-evidence]').first().click();await crm.locator('[data-sales-audio]').waitFor();assert.equal(evidenceRequests,1,'La reconsulta de evidencia es POST con CSRF y tramo exacto');
- await crm.locator('[data-sales-audio]').waitFor();await crm.locator('[data-sales-audio]').click();assert.equal(await crm.locator('[data-sales-audio-slot] audio').count(),2,'reproductor compartido de múltiples segmentos');
+ await crm.locator('[data-sales-audio]').first().click();await crm.locator('[data-sales-audio-slot] audio').first().waitFor({state:'attached'});assert.equal(evidenceRequests,1,'Consulta unica con CSRF y tramo exacto');
+ assert.equal(await crm.locator('[data-sales-audio-slot] audio').count(),2,'Reproductor compartido de multiples segmentos');
  assert.match(await crm.locator('.linkage-call-inline-player-heading').first().textContent(),/Tramo 1.*0:08/);
  if(process.env.IMPE_VENTAS_SCREENSHOTS)for(const width of [1366,768,390]){await push('ready',false);await page.setViewportSize({width,height:850});await crm.locator('.linkage-call-history-card').first().screenshot({path:path.join(process.env.IMPE_VENTAS_SCREENSHOTS,'ventas_grabaciones_'+width+'.png')});}
  assert.deepEqual(errors,[]);console.log('Ventas C: fin → formulario sin superposición, responsive, resultado y dos segmentos propios: OK');

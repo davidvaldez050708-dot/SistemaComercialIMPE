@@ -490,7 +490,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     <?php endif; ?>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_disponibilidad.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_disponibilidad.js') ?>"></script>
     <?php if($esAsesorShell): ?><script src="<?= BASE_URL ?>public/javascript/telefonia_ventas_prospecto.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/telefonia_ventas_prospecto.js') ?>"></script><?php endif; ?>
-    <?php if ($puedeTransferirShell || $puedeCapturarShell): ?>
+    <?php if ($puedeTransferirShell || $puedeCapturarShell || $esAsesorShell): ?>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_atencion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_atencion.js') ?>"></script>
     <style id="impeRoutingStyles">
     <?php
@@ -498,6 +498,8 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     if (is_readable($routingCss)) echo (string)file_get_contents($routingCss);
     ?>
     </style>
+    <?php endif; ?>
+    <?php if ($puedeTransferirShell || $puedeCapturarShell): ?>
     <script id="impeRoutingRuntime">
     <?php
     $routingJs = ROOT_PATH . '/public/javascript/telefonia_enrutamiento.js';

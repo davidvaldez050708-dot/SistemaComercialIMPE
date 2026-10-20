@@ -60,17 +60,32 @@
   try{const response=await fetch(root.dataset.programUrl,{method:'POST',credentials:'same-origin',body:new URLSearchParams({csrf_token:root.dataset.csrf,id:button.dataset.salesProgramComplete,origen:button.dataset.source,fecha:button.dataset.date})}),data=await response.json();if(!response.ok||!data.ok)throw Error(data.mensaje||'No se pudo cerrar el recordatorio.');notify('Recordatorio cerrado.');location.reload();}
   catch(error){notify(error.message,true);button.disabled=false;}
  });
- root.addEventListener('click',e=>{
-  const evidence=e.target.closest('[data-sales-evidence]');if(evidence){
-   if(evidence.disabled)return;evidence.disabled=true;
-   void (async()=>{try{const r=await fetch(root.dataset.evidenceUrl,{method:'POST',credentials:'same-origin',body:new URLSearchParams({csrf_token:root.dataset.csrf,pbx_call_id:evidence.dataset.salesEvidence,extension:evidence.dataset.extension})}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo actualizar la evidencia.');notify(j.mensaje);location.reload();}catch(error){notify(error.message,true);}finally{evidence.disabled=false;}})();return;
-  }
+ root.addEventListener('click',async e=>{
   const detail=e.target.closest('[data-sales-detail]');if(detail){void open(detail.dataset.salesDetail,detail.dataset.extension);return;}
   const dial=e.target.closest('[data-sales-dial]');if(dial){window.IMPE_TELEPHONY_PERSISTENT?.openDialer({number:dial.dataset.salesDial});return;}
   const audio=e.target.closest('[data-sales-audio]');if(!audio)return;
   const slot=audio.closest('.linkage-call-recording-body').querySelector('[data-sales-audio-slot]');
   if(!slot.hidden){slot.querySelectorAll('audio').forEach(a=>a.pause());slot.hidden=true;audio.setAttribute('aria-expanded','false');return;}
-  if(!slot.dataset.loaded){const url=new URL('prueba_telefonia/api/grabacion_ventas.php',document.baseURI);url.searchParams.set('pbx_call_id',audio.dataset.salesAudio);url.searchParams.set('extension',audio.dataset.extension);let info=[];try{info=JSON.parse(audio.dataset.segmentInfo||'[]');}catch(_){}if(!window.IMPE_TELEPHONY_SEGMENTS?.create?.(slot,url.href,Number(audio.dataset.segments),info)){notify('No se cargó el reproductor.',true);return;}slot.dataset.loaded='1';}
+  if(!slot.dataset.loaded){
+   if(audio.disabled)return;audio.disabled=true;
+   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
+   try{
+    if(root.dataset.evidenceUrl){
+     const r=await fetch(root.dataset.evidenceUrl,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,body:new URLSearchParams({csrf_token:root.dataset.csrf,pbx_call_id:audio.dataset.salesAudio,extension:audio.dataset.extension})}),j=await r.json();
+     if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo verificar la grabacion.');
+     const parts=j.llamada?.segmentos;
+     if(!Array.isArray(parts)||parts.length<1){notify(j.mensaje||'Grabacion pendiente de confirmar.');return;}
+     audio.dataset.segments=String(parts.length);
+     if(j.llamada.segmentos_info)audio.dataset.segmentInfo=JSON.stringify(j.llamada.segmentos_info);
+     audio.parentElement.querySelector('[data-sales-audio-state]')?.remove();
+    }
+    const url=new URL('prueba_telefonia/api/grabacion_ventas.php',document.baseURI);url.searchParams.set('pbx_call_id',audio.dataset.salesAudio);url.searchParams.set('extension',audio.dataset.extension);
+    let info=[];try{info=JSON.parse(audio.dataset.segmentInfo||'[]');}catch(_){}
+    if(!window.IMPE_TELEPHONY_SEGMENTS?.create?.(slot,url.href,Number(audio.dataset.segments),info))throw Error('No se cargo el reproductor.');
+    slot.dataset.loaded='1';
+   }catch(error){notify(error.name==='AbortError'?'La consulta tardo demasiado. Vuelve a intentar.':error.message,true);return;}
+   finally{clearTimeout(timeout);audio.disabled=false;}
+  }
   slot.hidden=false;audio.setAttribute('aria-expanded','true');
  });
  form.addEventListener('input',()=>{if(!call||call.registro)return;try{sessionStorage.setItem(draftKey(call.pbx_call_id),JSON.stringify({at:Date.now(),values:Object.fromEntries(new FormData(form))}));}catch(_){}});
