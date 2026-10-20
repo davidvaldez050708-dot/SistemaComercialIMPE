@@ -200,7 +200,9 @@ try {
     $request=$availability->solicitar(3,$route);$aid=(int)$request['id'];$version=(int)$request['version'];
     check($request['estado']==='PENDIENTE' && $beforeEvents===one('SELECT COUNT(*) n FROM telefonia_zadarma_eventos')['n'],'Solicitar disponibilidad no crea una llamada ni una transferencia');
     rejects(fn()=>$availability->rutaAceptada(3,$aid,$version),'No autoriza transferencia sin aceptación');
-    rejects(fn()=>$availability->solicitar(3,$route),'No duplica solicitud al cerrar la ficha');
+    check((int)$availability->solicitar(3,$route)['id']===$aid,'Reenvio recupera la solicitud sin duplicarla');
+    check((int)$availability->delOrigen(3,$route['referencia_llamada'])['id']===$aid,'Recupera pendiente por referencia exacta');
+    check($availability->delOrigen(2,$route['referencia_llamada'])===null,'Otro origen no recupera solicitud ajena');
     check($availability->obtener(2,$aid)===null,'Disponibilidad sólo accesible por participantes y extensión');
     rejects(fn()=>$availability->accion(3,$aid,$version,'ACEPTAR'),'Recepción no puede aceptar en lugar del analista');
     $availability->presencia(1,false);

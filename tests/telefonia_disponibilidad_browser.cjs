@@ -4,7 +4,7 @@ const repo=path.resolve(__dirname,'..'),fixture=path.join(__dirname,'fixtures/te
 const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.execFileSync('php',[fixture,'analista'],{encoding:'utf8'});
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
- try{for(const scenario of ['aceptar','rechazar','vencer','pendiente','iframe','prospecto']){
+ try{for(const scenario of ['aceptar','rechazar','vencer','pendiente','iframe','prospecto','saliente-ventas','saliente-vinculacion']){
   let op=null,authorizations=0,saved=null;const errors=[],contexts=[];
   const lookups=[];
   const pages=[];
@@ -23,9 +23,9 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
      if(command==='RECHAZAR')op={...op,estado:'RECHAZADA'};
      if(command==='CANCELAR')op={...op,estado:'CANCELADA'};
      if(command==='DEVOLUCION'){saved=Object.fromEntries(post);op={...op,estado:'DEVOLUCION'};}
-     return route.fulfill({json:{ok:true,solicitud:command==='POLL'?(Number(post.get('id'))>0?op:null):(command==='PRESENCIA'?null:(u.searchParams.has('id')||command?op:null)),entrante:actor===8&&op?.estado==='PENDIENTE'?op:null,devoluciones:actor===8&&saved?1:0}});
+     return route.fulfill({json:{ok:true,solicitud:command==='POLL'?((Number(post.get('id'))>0||post.get('referencia')===op?.referencia)?op:null):(command==='PRESENCIA'?null:(u.searchParams.has('id')||command?op:null)),entrante:actor===8&&op?.estado==='PENDIENTE'?op:null,devoluciones:actor===8&&saved?1:0}});
     }
-    if(action==='destinosTransferencia'){lookups.push(u.searchParams.get('buscar'));return route.fulfill({json:{ok:true,estados:[{id:17,nombre:'Morelos'}],destinos:[{usuario_id:8,extension:'101',estado_id:17,estado_nombre:'Morelos',nombre:scenario==='prospecto'?'Asesor':'Analista',rol:scenario==='prospecto'?'Asesor de Ventas':'Analista de Datos'}],identificacion:[]}});}
+    if(action==='destinosTransferencia'){lookups.push(u.searchParams.get('buscar'));return route.fulfill({json:{ok:true,estados:[{id:17,nombre:'Morelos'}],destinos:[{usuario_id:8,extension:'101',estado_id:17,estado_nombre:'Morelos',nombre:(scenario==='prospecto'||scenario==='saliente-ventas')?'Asesor':'Analista',rol:(scenario==='prospecto'||scenario==='saliente-ventas')?'Asesor de Ventas':'Analista de Datos'}],identificacion:[]}});}
     if(action==='autorizarTransferencia'){
      if(post.get('intencion')==='SOLICITAR'){
       op={id:1,version:1,estado:'PENDIENTE',referencia:'pbx-call-availability',origen_usuario:7,origen_extension:'100',destino_usuario:8,destino_extension:'101',numero:'5551234567',responsable:'Analista',institucion_nombre:post.get('institucion_nombre'),segundos:45};
@@ -39,11 +39,11 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
     return route.fulfill({contentType:'text/html',body:u.pathname==='/'?(actor===7?sourceHtml:destHtml):'<html><body><main class="admin-shell"></main></body></html>'});
    });
    await page.goto('http://llamadas.test/');await page.waitForFunction(()=>window.IMPE_AVAILABILITY);
-   await page.evaluate(actor=>{
-    const state={userId:actor,updatedAt:Date.now(),hostReady:true,active:actor===7,phase:actor===7?'in-progress':'ready',direction:'incoming',destination:'5551234567',pbxCallId:actor===7?'pbx-call-availability':'',callToken:actor===7?'pbx-call-availability':'',duration:10};
+   await page.evaluate(({actor,scenario})=>{
+    const state={userId:actor,updatedAt:Date.now(),hostReady:true,active:actor===7,phase:actor===7?'in-progress':'ready',direction:actor===7&&scenario.startsWith('saliente')?'outgoing':'incoming',destination:'5551234567',pbxCallId:actor===7?'pbx-call-availability':'',callToken:actor===7?'pbx-call-availability':'',duration:10,context:{type:'TELEPHONY_MANUAL'}};
     localStorage.setItem('impe:telephony:state:'+actor,JSON.stringify(state));window.dispatchEvent(new StorageEvent('storage',{key:'impe:telephony:state:'+actor,newValue:JSON.stringify(state)}));
     window.commands=[];window.testChannel=new BroadcastChannel('impe-telephony-'+actor);window.testChannel.onmessage=e=>{if(e.data.action==='TRANSFER')window.commands.push(e.data);};
-   },actor);
+   },{actor,scenario});
   }
   const [s,d]=pages;
   if(scenario==='iframe'){
@@ -52,26 +52,29 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    assert.equal(await d.evaluate(()=>audioProbe.created),1,'el clic real del iframe habilita sólo el contexto de aviso');
   }
   await s.locator('[data-shell-transfer-toggle]').click();
-  if(scenario==='prospecto'){
+  if(scenario==='prospecto'||scenario==='saliente-ventas'){
    await s.locator('[data-routing-type]').selectOption('PROSPECTO');
    await s.locator('[data-routing-search-wrap]').waitFor({state:'visible'});
    assert.equal(await s.locator('[data-routing-search]').getAttribute('required'),'','Nombre requerido en la ficha del prospecto');
   }
   await s.locator('[data-routing-destination]').selectOption('8:101:17');
-  await s.locator('[data-routing-search]').fill(scenario==='prospecto'?'Mariana López':'Institución prueba');
-  if(scenario==='prospecto'){
+  await s.locator('[data-routing-search]').fill((scenario==='prospecto'||scenario==='saliente-ventas')?'Mariana López':'Institución prueba');
+  if(scenario==='prospecto'||scenario==='saliente-ventas'){
    await s.waitForTimeout(400);
    assert(!lookups.includes('Mariana López'),'El nombre del prospecto no debe filtrar asesores del directorio');
    await s.locator('[data-routing-destination]').selectOption('8:101:17');
   }
   await s.locator('[data-routing-attended]').click();
-  if(scenario==='prospecto')assert.equal(op?.institucion_nombre,'Mariana López','Recepción guarda el nombre antes de solicitar disponibilidad');
+  if(scenario==='prospecto'||scenario==='saliente-ventas')assert.equal(op?.institucion_nombre,'Mariana López','Recepción guarda el nombre antes de solicitar disponibilidad');
   await s.locator('[data-availability-source]').waitFor({state:'visible'});
   assert.equal(await s.locator('[data-availability-source]').getAttribute('data-availability-state'),'PENDIENTE','estado de espera visible');
+  await s.locator('[data-routing-close]').click();
+  await s.locator('[data-shell-transfer-toggle]').click();
+  await s.locator('[data-availability-source]').waitFor({state:'visible'});
   assert.equal(authorizations,0);
   assert.equal(await s.locator('[data-availability-transfer]').isVisible(),false,'Transferir sólo se muestra después de aceptar');
   assert.equal(await s.locator('[data-availability-callback-open]').isVisible(),false,'Devolución sólo se ofrece al rechazar o vencer');
-  assert.equal(await s.locator('[data-shell-transfer-toggle]').isDisabled(),true,'La solicitud pendiente bloquea otro envío aunque se cierre la ficha');
+  assert.equal(await s.locator('[data-shell-transfer-toggle]').isDisabled(),false,'La solicitud pendiente bloquea otro envío aunque se cierre la ficha');
   assert.equal(await s.evaluate(()=>window.commands.length),0,'solicitar disponibilidad no envía transferencia');
   if(scenario==='pendiente')await d.evaluate(()=>document.body.classList.add('impe-sdk-result-in-modal'));
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());await d.locator('[data-availability-incoming]').waitFor({state:'visible'});
@@ -106,7 +109,7 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await d.evaluate(()=>document.body.classList.remove('impe-sdk-result-in-modal'));await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
    await d.locator('[data-availability-incoming]').waitFor({state:'visible'});assert.equal(await d.locator('[data-availability-accept]').isDisabled(),false);
    await d.locator('[data-availability-decline]').click();assert.equal(authorizations,0);
-  }else if(scenario==='aceptar'||scenario==='iframe'||scenario==='prospecto'){
+  }else if(scenario==='aceptar'||scenario==='iframe'||scenario==='prospecto'||scenario.startsWith('saliente')){
    await d.locator('[data-availability-accept]').click();await s.evaluate(()=>window.IMPE_AVAILABILITY.tick());
    assert.equal(await s.locator('[data-availability-source]').getAttribute('data-availability-state'),'ACEPTADA','estado de aceptación visible');
    await s.locator('[data-availability-transfer]').waitFor({state:'visible'});assert.equal(authorizations,0,'aceptar no entrega automáticamente');

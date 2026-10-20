@@ -454,7 +454,12 @@
     };
     toggle?.addEventListener('click', () => {
         openSection(panel, toggle, capturePanel, captureToggle);
-        if (!panel.hidden) void load();
+        if (!panel.hidden) {
+            const source=document.querySelector('[data-availability-source]');
+            if(source)panel.appendChild(source);
+            void window.IMPE_AVAILABILITY?.tick();
+            void load();
+        }
     });
     $('[data-routing-close]')?.addEventListener('click', () =>
         closeSection(panel, toggle));
@@ -586,13 +591,14 @@
                     'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'
                 },body:body.toString()
             }).then(readJson);
-            if(call()?.id!==identity){
+            if(![call()?.id,...(call()?.aliases||[])].map(String).includes(String(identity))){
                 if(data.solicitud)void window.IMPE_AVAILABILITY?.cancel(data.solicitud);
                 throw new Error('La llamada cambió. No se enviará ninguna transferencia.');
             }
             if(!data.solicitud||!window.IMPE_AVAILABILITY)throw new Error('No se pudo preparar la solicitud. Recarga el CRM.');
             window.IMPE_AVAILABILITY.watch(data.solicitud);
-            closeSection(panel,toggle);
+            const source=document.querySelector('[data-availability-source]');
+            if(source)panel.appendChild(source);
             setFeedback('Solicitud enviada. La persona continúa hablando contigo.');
             positionSidecar(panel);
         } catch (err) {

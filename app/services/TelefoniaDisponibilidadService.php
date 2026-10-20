@@ -86,7 +86,9 @@ final class TelefoniaDisponibilidadService
             // Serializar también solicitudes simultáneas de la misma cuenta.
             $this->one('SELECT usuario_id FROM telefonia_extensiones WHERE usuario_id=? FOR UPDATE',[$user]);
             $r=$this->one('SELECT * FROM telefonia_disponibilidad WHERE origen_usuario=? AND referencia=? FOR UPDATE',[$user,$route['referencia_llamada']]);
-            if($r && (in_array($r['estado'],['PENDIENTE','ACEPTADA','ENVIANDO','TRANSFERIDA'],true)||$r['devolucion']==='PENDIENTE'))throw new DomainException('Esta llamada ya tiene una solicitud. Revisa su estado antes de enviar otra.');
+            if($r && (in_array($r['estado'],['PENDIENTE','ACEPTADA','ENVIANDO','TRANSFERIDA'],true)||$r['devolucion']==='PENDIENTE')){
+                $this->db->commit();return $this->obtener($user,(int)$r['id']);
+            }
             $now=gmdate('Y-m-d H:i:s');$until=gmdate('Y-m-d H:i:s',time()+45);$json=json_encode($route,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
             if($r){$id=(int)$r['id'];$this->change($id,['destino_usuario'=>$route['responsable_id'],'destino_extension'=>$route['extension'],'numero'=>$call['numero'],'ruta_json'=>$json,'estado'=>'PENDIENTE','version'=>(int)$r['version']+1,'expires_at'=>$until,'created_at'=>$now]);}
             else {
@@ -117,6 +119,12 @@ final class TelefoniaDisponibilidadService
         $route=json_decode($r['ruta_json'],true)?:[];$r['responsable']=(string)($route['nombre_destino']??'Responsable');
         $r['institucion_nombre']=(string)($route['institucion_nombre']??'');$r['seguimiento_id']=(int)($route['seguimiento_id']??0);
         unset($r['ruta_json']);return $r;
+    }
+    public function delOrigen(int $user,string $ref): ?array {
+        if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$ref))return null;
+        $ext=$this->extension($user);
+        $r=$this->one('SELECT id FROM telefonia_disponibilidad WHERE origen_usuario=? AND origen_extension=? AND referencia=?',[$user,$ext['extension'],$ref]);
+        return $r?$this->obtener($user,(int)$r['id']):null;
     }
     public function entrante(int $user): ?array {
         $this->expire();$ext=$this->extension($user);
