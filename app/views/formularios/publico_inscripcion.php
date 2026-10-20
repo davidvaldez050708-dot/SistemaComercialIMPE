@@ -48,6 +48,9 @@ $fechaMaximaNacimiento = date('Y-m-d');
                     Estás a un paso de completar tu inscripción.
                     Registra tus datos y continúa avanzando hacia tu siguiente logro educativo.
                 </p>
+                <?php if (!empty($aliadoFormulario)): ?>
+                    <p class="formulario-publico-hero-slogan"><?= $texto($aliadoFormulario['nombre']) ?> · <?= $texto($aliadoFormulario['ubicacion']) ?></p>
+                <?php endif; ?>
                 <p class="formulario-publico-hero-required">
                     Los campos marcados con <strong>*</strong> son obligatorios.
                 </p>

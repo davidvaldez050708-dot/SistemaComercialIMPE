@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "base": "d93de87d2887557a495584084b953c0717fc9b4a",
+  "files": [
+    {
+      "path": "app/controllers/FormularioPublicoController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "2fbcf45b84a5ab121719fc43dda48cc4adc60c99aeab8bafb7939ba9bf6280c6",
+      "variants": [
+        {
+          "label": "main-revisado",
+          "before": "758ecfe770f62ba9ff28b227a6eb07bb48d78e56c3d7df04c2637febda0bb227",
+          "after": "2fbcf45b84a5ab121719fc43dda48cc4adc60c99aeab8bafb7939ba9bf6280c6"
+        }
+      ],
+      "patch": "tools/handly_programas/0.patch",
+      "patch_sha256": "e2b1d3120e97df180144d0d3508100bd2093625a193cbe44ed31c85731eaa0e0"
+    },
+    {
+      "path": "app/models/FormularioRegistroModel.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "b6a8a1b830d45a3a7e7ab5d00f43da0260e872f88730fe6143db247ce0ea0a0f",
+      "variants": [
+        {
+          "label": "main-revisado",
+          "before": "26506b7d769e519ba63376fbc0b6c6f85d682d59c1c17ad7130e700165069e8f",
+          "after": "b6a8a1b830d45a3a7e7ab5d00f43da0260e872f88730fe6143db247ce0ea0a0f"
+        }
+      ],
+      "patch": "tools/handly_programas/1.patch",
+      "patch_sha256": "543d3362dfc80a2be3753c41f3fd07caddfb989e33af7f1fbdabb4de894ca8c0"
+    },
+    {
+      "path": "app/services/FormularioAliadoService.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "7c04156681737257e466780edbed66bdb4ac475a9c4b3ea1eb18ea7849c24271",
+      "variants": []
+    },
+    {
+      "path": "app/views/formularios/publico_inscripcion.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "f761115b7cc44d8d0155bb383219f8785f8cafaa6d0a80c511328073a0ae82ef",
+      "variants": [
+        {
+          "label": "main-revisado",
+          "before": "de00d227c2ed8dfa5661c4b9af361831732c90c133186c29bec471aa8ca99d05",
+          "after": "f761115b7cc44d8d0155bb383219f8785f8cafaa6d0a80c511328073a0ae82ef"
+        }
+      ],
+      "patch": "tools/handly_programas/3.patch",
+      "patch_sha256": "c81016c45dab5e674bd19cd36b3f9b933b78a33b308924323be662f9f18d364d"
+    },
+    {
+      "path": "app/views/formularios/publico_registro.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "a6762096fbcc21a790878f0945947cda8a90935184e33b18a833b4588bacaaf3",
+      "variants": [
+        {
+          "label": "main-revisado",
+          "before": "ae2d387411893b1d87e9accfaeef017d359046f714dc9a452f5c23f781941b36",
+          "after": "a6762096fbcc21a790878f0945947cda8a90935184e33b18a833b4588bacaaf3"
+        }
+      ],
+      "patch": "tools/handly_programas/4.patch",
+      "patch_sha256": "fd1d77d0654ecedc7cea89737df1424c181234e3e604b0add2b4d6ad7508cadd"
+    }
+  ]
+}

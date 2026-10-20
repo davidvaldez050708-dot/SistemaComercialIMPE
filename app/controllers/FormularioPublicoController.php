@@ -8,7 +8,8 @@ class FormularioPublicoController
     {
         $modelo = new FormularioRegistroModel();
         $estados = $modelo->obtenerEstadosActivos();
-        $perfilesInteres = $this->perfilesInteres();
+        $aliadoFormulario = $this->contextoAliado($modelo);
+        $perfilesInteres = $this->perfilesInteres($aliadoFormulario);
 
         /*
          * Vista pública: no requiere sesión y no muestra sidebar,
@@ -16,7 +17,8 @@ class FormularioPublicoController
          */
         $esFormularioPublico = true;
         $registroAction = BASE_URL .
-            'index.php?controller=formularioPublico&action=guardarRegistro';
+            'index.php?controller=formularioPublico&action=guardarRegistro' .
+            ($aliadoFormulario ? '&aliado=' . rawurlencode($_GET['aliado']) : '');
         $municipiosUrl = BASE_URL .
             'index.php?controller=formularioPublico&action=municipios';
 
@@ -34,10 +36,12 @@ class FormularioPublicoController
     {
         $modelo = new FormularioRegistroModel();
         $estados = $modelo->obtenerEstadosActivos();
-        $perfilesInteres = $this->perfilesInteres();
+        $aliadoFormulario = $this->contextoAliado($modelo);
+        $perfilesInteres = $this->perfilesInteres($aliadoFormulario);
 
         $inscripcionAction = BASE_URL .
-            'index.php?controller=formularioPublico&action=guardarInscripcion';
+            'index.php?controller=formularioPublico&action=guardarInscripcion' .
+            ($aliadoFormulario ? '&aliado=' . rawurlencode($_GET['aliado']) : '');
         $municipiosUrl = BASE_URL .
             'index.php?controller=formularioPublico&action=municipios';
 
@@ -109,8 +113,10 @@ class FormularioPublicoController
             ], 405);
         }
 
+        $aliadoFormulario = $this->contextoAliado();
         $datos = $this->normalizarRegistro($_POST);
-        $errores = $this->validarRegistro($datos);
+        if ($aliadoFormulario) { $datos['aliado_token'] = $_GET['aliado']; }
+        $errores = $this->validarRegistro($datos, $aliadoFormulario);
 
         if (!empty($errores)) {
             $this->responderJson([
@@ -148,6 +154,8 @@ class FormularioPublicoController
                 'redirect_url' => BASE_URL .
                     'index.php?controller=formularioPublico&action=gracias'
             ]);
+        } catch (DomainException $error) {
+            $this->responderJson(['ok' => false, 'mensaje' => $error->getMessage()], 422);
         } catch (Throwable $error) {
             $mensajeTecnico = (string)$error->getMessage();
 
@@ -182,8 +190,10 @@ class FormularioPublicoController
             ], 405);
         }
 
+        $aliadoFormulario = $this->contextoAliado();
         $datos = $this->normalizarRegistro($_POST);
-        $errores = $this->validarRegistro($datos);
+        if ($aliadoFormulario) { $datos['aliado_token'] = $_GET['aliado']; }
+        $errores = $this->validarRegistro($datos, $aliadoFormulario);
 
         if (!empty($errores)) {
             $this->responderJson([
@@ -220,6 +230,8 @@ class FormularioPublicoController
                 'redirect_url' => BASE_URL .
                     'index.php?controller=formularioPublico&action=graciasInscripcion'
             ]);
+        } catch (DomainException $error) {
+            $this->responderJson(['ok' => false, 'mensaje' => $error->getMessage()], 422);
         } catch (Throwable $error) {
             $mensajeTecnico = (string)$error->getMessage();
 
@@ -242,8 +254,29 @@ class FormularioPublicoController
         }
     }
 
-    private function perfilesInteres()
+    private function contextoAliado($modelo = null)
     {
+        if (!array_key_exists('aliado', $_GET)) { return null; }
+        try {
+            $modelo = $modelo ?? new FormularioRegistroModel();
+            $aliado = $modelo->aliadoExclusivo($_GET['aliado']);
+            if (!$aliado['programas']) { throw new DomainException('Sin programas autorizados.'); }
+            header('Cache-Control: no-store');
+            header('Referrer-Policy: same-origin');
+            return $aliado;
+        } catch (Throwable $error) {
+            if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+                $this->responderJson(['ok' => false, 'mensaje' => 'El enlace del aliado no está disponible.'], 422);
+            }
+            http_response_code(404);
+            require __DIR__ . '/../views/formularios/publico_no_disponible.php';
+            exit;
+        }
+    }
+
+    private function perfilesInteres($aliado = null)
+    {
+        if ($aliado !== null) { return array_column($aliado['programas'], 'nombre'); }
         return [
             'Bachillerato en 2 años',
             'Bachillerato 286',
@@ -313,7 +346,7 @@ class FormularioPublicoController
         ];
     }
 
-    private function validarRegistro(array $datos)
+    private function validarRegistro(array $datos, $aliado = null)
     {
         $errores = [];
 
@@ -418,7 +451,7 @@ class FormularioPublicoController
             $datos['perfil_interes'] === '' ||
             !in_array(
                 $datos['perfil_interes'],
-                $this->perfilesInteres(),
+                $this->perfilesInteres($aliado),
                 true
             )
         ) {

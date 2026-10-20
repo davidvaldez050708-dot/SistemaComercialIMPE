@@ -1,0 +1,61 @@
+name: Formularios exclusivos por aliado
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  formularios:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports:
+          - 33308:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33308
+      IMPE_DB_USER: root
+      IMPE_DB_PASSWORD: ''
+      IMPE_DB_NAME: impe_test_handly
+      IMPE_TEST_MYSQL_PORT: 33308
+      IMPE_BASE_URL: http://127.0.0.1:8097/
+      PLAYWRIGHT_MODULE_PATH: /tmp/handly-browser/node_modules/playwright
+      BOOTSTRAP_MODULE_PATH: /tmp/handly-browser/node_modules/bootstrap
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/handly-browser playwright bootstrap@5.3.8
+      - run: /tmp/handly-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis
+        run: |
+          php -l app/controllers/FormularioPublicoController.php
+          php -l app/models/FormularioRegistroModel.php
+          php -l app/services/FormularioAliadoService.php
+          php -l tools/preparar_handly_formularios.php
+          node --check public/javascript/formularios_registro_publico.js
+          node --check tests/formulario_aliados_browser.cjs
+      - name: Persistencia y autorización en BD real
+        run: |
+          php tests/formulario_aliados_fixture.php
+          php tools/preparar_handly_formularios.php --apply
+          php tools/preparar_handly_formularios.php --apply
+          php tools/preparar_handly_formularios.php --check
+          php tests/formulario_aliados_db.php
+      - name: Formularios, HTTP y responsive
+        run: node tests/formulario_aliados_browser.cjs
+      - name: Publicación selectiva en réplicas
+        run: python3 tests/publicacion_handly_test.py
