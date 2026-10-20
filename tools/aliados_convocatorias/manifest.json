@@ -263,18 +263,18 @@
           "before": "16eb1e551de410b069beb8448940dc7eb27015400f78847f7d8f7bc7954c132d",
           "after": "55a35aa9341a16875addb080ae4cfcb935c5642780d55717918bed388e057ef6",
           "patch": "tools/aliados_convocatorias/35.patch",
-          "patch_sha256": "52bdda23ba17d9eb0fd28b70fbc5fbf03dad5b9a7cecfb580cdeb4844862a543"
+          "patch_sha256": "5eb8de037dbfbaafd0b9c416e9574ae200621c430d3520736e1a16a7b48616ef"
         },
         {
           "label": "pr114-anterior",
           "before": "1a020d3ac511fadd2e8a5ac06f25436ddb8ebf669ca8b735a013e1cbb37b6441",
           "after": "55a35aa9341a16875addb080ae4cfcb935c5642780d55717918bed388e057ef6",
           "patch": "tools/aliados_convocatorias/36.patch",
-          "patch_sha256": "8b8763770059309dbeab4e3c4635fa2c26937897b4d98218c9f9a2b93aa5d58e"
+          "patch_sha256": "be42f1b70107c6c1fcfe03e410bbea216c16de9a0e745ca2882943e9924657db"
         }
       ],
       "patch": "tools/aliados_convocatorias/35.patch",
-      "patch_sha256": "52bdda23ba17d9eb0fd28b70fbc5fbf03dad5b9a7cecfb580cdeb4844862a543"
+      "patch_sha256": "5eb8de037dbfbaafd0b9c416e9574ae200621c430d3520736e1a16a7b48616ef"
     },
     {
       "path": "public/javascript/crear_convocatoria.js",

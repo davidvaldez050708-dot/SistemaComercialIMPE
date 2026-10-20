@@ -12,6 +12,9 @@ def snap(root):
 def run(kind):
     with tempfile.TemporaryDirectory(prefix='impe-handly-') as tmp:
         private=Path(tmp); live=private/'site'; live.mkdir()
+        # El publicador aísla la configuración Git; usar un clon propiedad del usuario de prueba.
+        prepared_source=private/'source'
+        subprocess.check_call(['git','clone','--quiet','--shared','--no-checkout',str(ROOT),str(prepared_source)],cwd=ROOT)
         (live/'index.php').write_text('<?php // fixture',encoding='utf8')
         (live/'personalizacion.txt').write_text('CONSERVAR',encoding='utf8')
         for f in M['files']:
@@ -28,7 +31,7 @@ def run(kind):
         if kind=='conflicto': first.write_text('<?php // variante incompatible',encoding='utf8')
         if kind=='nuevo-existente':
             f=next(f for f in M['files'] if f['new']);p=live/f['path'];p.parent.mkdir(parents=True,exist_ok=True);p.write_text('<?php // archivo ajeno',encoding='utf8')
-        env=dict(os.environ,TMPDIR=sp(private),IMPE_ALIADOS_CONVOCATORIAS_SOURCE=sp(ROOT),IMPE_ALIADOS_CONVOCATORIAS_PUBLIC=sp(live),IMPE_ALIADOS_CONVOCATORIAS_BACKUPS=sp(private/'backups'))
+        env=dict(os.environ,TMPDIR=sp(private),IMPE_ALIADOS_CONVOCATORIAS_SOURCE=sp(prepared_source),IMPE_ALIADOS_CONVOCATORIAS_PUBLIC=sp(live),IMPE_ALIADOS_CONVOCATORIAS_BACKUPS=sp(private/'backups'))
         def command(mode,backup=None):
             r=subprocess.run([BASH,sp(ROOT/'tools/publicar_aliados_convocatorias_hostinger.sh'),mode]+([sp(backup)] if backup else []),cwd=ROOT,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,universal_newlines=True)
             return r.returncode,r.stdout
