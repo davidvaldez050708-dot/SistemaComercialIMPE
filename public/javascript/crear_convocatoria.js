@@ -304,7 +304,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     params.set('seguimiento_id', String(seguimientoId));
                 }
 
-                createLink.href = baseUrl + '&' + params.toString();
+                createLink.href = Number(data.aliado_internacional_id || 0)>0
+                    ? baseUrl.replace('controller=convocatoria&action=index','controller=aliado&action=internacionales')+'&crear_convocatoria='+Number(data.aliado_internacional_id)
+                    : baseUrl + '&' + params.toString();
             }
 
             modal.show();

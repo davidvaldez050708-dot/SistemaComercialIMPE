@@ -188,6 +188,7 @@ $fecha = static function ($valor) {
                     <?php
                     $payload = [
                         'seguimiento_id' => (int)($convenio['seguimiento_id'] ?? 0),
+                        'aliado_internacional_id' => (int)($convenio['aliado_internacional_id'] ?? 0),
                         'estado_id' => (int)($convenio['estado_id'] ?? 0),
                         'estado' => (string)($convenio['estado_nombre'] ?? ''),
                         'municipio' => (string)($convenio['municipio_nombre'] ?? ''),

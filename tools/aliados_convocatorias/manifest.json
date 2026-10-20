@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "base": "fd5fd282b3f6774d1bdc045295d655b72620ce17",
+  "files": [
+    {
+      "path": "app/controllers/AliadoController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "f48b93ce8df7df940342a7485685b7764d8616e2b8dfd6a4cd2533d07e0b8f45",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "5544b28e07fd7e6867097832a987ac283ebff89d297475159e7c31fbf4f1e7ba",
+          "after": "f48b93ce8df7df940342a7485685b7764d8616e2b8dfd6a4cd2533d07e0b8f45"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/0.patch",
+      "patch_sha256": "a93e9db94bea56ca62ff7369c17a2da38cdb6c789667d794825defcd246fa2e1"
+    },
+    {
+      "path": "app/controllers/ConvocatoriaController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "ad98d97cc99707fcbcccabc4fb85ec32ffc95c2ca428a7b39edc4483b087fac2",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "f7e8774c8b9d97431264351028af099c9fd98d439ba0afed4c4daed3ec63dabf",
+          "after": "ad98d97cc99707fcbcccabc4fb85ec32ffc95c2ca428a7b39edc4483b087fac2"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/1.patch",
+      "patch_sha256": "d4d0427fe38d8c9c6db92fff508e467717975eb87e8446193cda4200bf7a5ad4"
+    },
+    {
+      "path": "app/controllers/CrearConvocatoriaController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "0d694e952a16d40a3852036e54f1fb8333faf690362c9edccd55cdce824d8521",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "932ca5c18a7c014b7ca8290147d0ba716b86fb315ab6f2c8c2d7fac1abb3f311",
+          "after": "0d694e952a16d40a3852036e54f1fb8333faf690362c9edccd55cdce824d8521"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/2.patch",
+      "patch_sha256": "ab9e1d6ad9480421e186b0ab79121428bfda8abd5b00619299a600e0a7acb2e0"
+    },
+    {
+      "path": "app/controllers/FormularioPublicoController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "c0094df8c57d00c4a3c901373ec077d8c2e33a5b86cb618912054d6815b2af3e",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "2fbcf45b84a5ab121719fc43dda48cc4adc60c99aeab8bafb7939ba9bf6280c6",
+          "after": "c0094df8c57d00c4a3c901373ec077d8c2e33a5b86cb618912054d6815b2af3e"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/3.patch",
+      "patch_sha256": "48c9e2f39421d9f85c6d2266f9a6641944e2e3e564f348b632dfad8009022fae"
+    },
+    {
+      "path": "app/models/AliadoInternacionalModel.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "fab4acceabacde0a57367e08566af42772f45e9a3f040057483bcb9349839d6f",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "e28f852f86118eeee31f9694bd98521b4a50deca53a916737787602fc94e4b8c",
+          "after": "fab4acceabacde0a57367e08566af42772f45e9a3f040057483bcb9349839d6f"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/4.patch",
+      "patch_sha256": "4788b4ba8f6ca07245289cbbb2c92c4751f0d511d48abcc6a89426f0e9ed504d"
+    },
+    {
+      "path": "app/models/ConvocatoriaModel.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "cc1ca7703c1fcc3fc0bf1a5e89d5488909f9b3f4e0f89b87292b282930524d53",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "73b5912b8a668b9057228e17008302c1dc0a9a6282c77f208c7a7b3545895188",
+          "after": "cc1ca7703c1fcc3fc0bf1a5e89d5488909f9b3f4e0f89b87292b282930524d53"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/5.patch",
+      "patch_sha256": "1ddc433f9a3a0b300a81702d399a37703d5f0de9d530665bf20ddb7e84a0b24a"
+    },
+    {
+      "path": "app/models/FormularioRegistroModel.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "97a3061a332993dcc3d77500a1d6a9e07b3d2edb455589333936eec89e9c7690",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "b6a8a1b830d45a3a7e7ab5d00f43da0260e872f88730fe6143db247ce0ea0a0f",
+          "after": "97a3061a332993dcc3d77500a1d6a9e07b3d2edb455589333936eec89e9c7690"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/6.patch",
+      "patch_sha256": "c58c6e1e94ae501c3f0513af2ff32e378edb35c80a4675bbd9462b4038aa1c19"
+    },
+    {
+      "path": "app/services/FormularioAliadoService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "72bc003d9ce98735e5fdc362a204dde159febb7bbb2b996fbe8bbbe685f54ca2",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "7c04156681737257e466780edbed66bdb4ac475a9c4b3ea1eb18ea7849c24271",
+          "after": "72bc003d9ce98735e5fdc362a204dde159febb7bbb2b996fbe8bbbe685f54ca2"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/7.patch",
+      "patch_sha256": "69e361b6dbbe4f749120f2bca8b5743f68dd2e9d3085da6fe56896756bbb41cf"
+    },
+    {
+      "path": "app/views/aliados/internacionales.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "aa85f1267f2887751d89f4d7125d58649a6e7337ee5a111a9d4ec4b0a0aa46a2",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "dafce95431eb13996bec5dbe0a0c8dff80215099c9861cb0b2f83ef3ae3c6db8",
+          "after": "aa85f1267f2887751d89f4d7125d58649a6e7337ee5a111a9d4ec4b0a0aa46a2"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/8.patch",
+      "patch_sha256": "1060700e0b67c819da33ca63ada00402db3fd8d5d434ab126bccd7e1fdb3764c"
+    },
+    {
+      "path": "app/views/convocatorias/crear_desde_convenio.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "819e98aed2ddceee364dcf0978653d4c0ce92e540ef4d686c66e31d3107a01cc",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "ed38b1c01e5df029a706b2cc0bf99d4fd13d1ee2c3171142ec3db5e02be54b28",
+          "after": "819e98aed2ddceee364dcf0978653d4c0ce92e540ef4d686c66e31d3107a01cc"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/9.patch",
+      "patch_sha256": "22679e6d59945141ddc147194f8a2a76ada9d20ccc0084dc9710d3958421e38c"
+    },
+    {
+      "path": "app/views/convocatorias/index.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "0d3b2e75427d5b0056f591ee9b14843bd4f7d64e4fd376903b4d182a78adfa45",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "a7cbd88498a5d69a1bf69c1d689522a6052e815a16ad6cd743c6bffc0c35a14f",
+          "after": "0d3b2e75427d5b0056f591ee9b14843bd4f7d64e4fd376903b4d182a78adfa45"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/10.patch",
+      "patch_sha256": "8b0edf1ba6f7558273b6f5be77d259dbb2389630fd9f31292d4e15aab19d21a3"
+    },
+    {
+      "path": "app/views/layout/dashboard_head.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "1a020d3ac511fadd2e8a5ac06f25436ddb8ebf669ca8b735a013e1cbb37b6441",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "16eb1e551de410b069beb8448940dc7eb27015400f78847f7d8f7bc7954c132d",
+          "after": "1a020d3ac511fadd2e8a5ac06f25436ddb8ebf669ca8b735a013e1cbb37b6441"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/11.patch",
+      "patch_sha256": "f59bc0346976f4822dc3d26ece4b00d3f1be34d980fb56fa346d4fd84e6a2edc"
+    },
+    {
+      "path": "public/javascript/crear_convocatoria.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "a8fa6f633a840685f3bd5c231cb7f807a850270021aeca3932763cbc7cc0c116",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "abbc68af00a04295c5ea04531b82b42092f66b5dc557e8e9eebd008b9dfa4f2e",
+          "after": "a8fa6f633a840685f3bd5c231cb7f807a850270021aeca3932763cbc7cc0c116"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/12.patch",
+      "patch_sha256": "1b77f8a9a168e2cc40559398515d7471c8c2d20e11357e2000fda1c49d0580e6"
+    },
+    {
+      "path": "app/services/AliadoInternacionalService.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "4eb88284575b5f87df4f17b85091fc2956234a5ec78745c098ee35a210e8b031",
+      "variants": []
+    },
+    {
+      "path": "app/views/aliados/partials/internacional_form.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "d8ea6eeb96b7369b33b7be24b35abff50f6d79fa1b8685e05e26814f8dbf2d3e",
+      "variants": []
+    },
+    {
+      "path": "app/views/convocatorias/partials/crear_modal.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "8ba37951f26d474bd1412aa930af44cb1e07e7700711778289c95afb29d542ae",
+      "variants": []
+    },
+    {
+      "path": "public/javascript/aliados_internacionales.js",
+      "kind": "js",
+      "new": true,
+      "target_sha256": "f946a1c4b6b2b350f711d0f3bfab8f9d68770861aab9ad2345091e88ae75393a",
+      "variants": []
+    },
+    {
+      "path": "public/javascript/convocatoria_crear_compartido.js",
+      "kind": "js",
+      "new": true,
+      "target_sha256": "68a387335921fe7c0d56d5abf0b5ad9a218ec9c7aa6a632b0a67fdde0dc37391",
+      "variants": []
+    }
+  ]
+}

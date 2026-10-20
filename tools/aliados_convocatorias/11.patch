@@ -1,0 +1,10 @@
+--- a/app/views/layout/dashboard_head.php
++++ b/app/views/layout/dashboard_head.php
+@@ -211,6 +211,7 @@
+ 
+ if (
+     $esConvocatoriaDashboard ||
++    ($esAliadosDashboard && $actionDashboard === 'internacionales') ||
+     $esConvocatoriaReportePreviewDashboard ||
+     $esHomeDashboard
+ ) {

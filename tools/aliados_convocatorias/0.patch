@@ -1,0 +1,126 @@
+--- a/app/controllers/AliadoController.php
++++ b/app/controllers/AliadoController.php
+@@ -5,6 +5,7 @@
+ require_once __DIR__ . '/../services/AliadoDifusionService.php';
+ require_once __DIR__ . '/../helpers/PermissionHelper.php';
+ require_once __DIR__ . '/../models/AliadoInternacionalModel.php';
++require_once __DIR__ . '/../services/AliadoInternacionalService.php';
+ 
+ class AliadoController
+ {
+@@ -68,7 +69,7 @@
+     {
+         $this->validarPermiso('aliados.ver');
+         // Sin asignación territorial internacional, solo Admin puede consultar los datos.
+-        if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
++        if (!AliadoInternacionalService::puedeConsultar()) {
+             http_response_code(403);
+             echo 'La consulta de aliados externos está reservada a Administración.';
+             return;
+@@ -78,15 +79,33 @@
+         $externos = [];
+         $respuestas = [];
+         $errorExternos = '';
++        $estructuraGestion = false; $convocatoriasExternas = []; $programasCatalogo = []; $aliadoConvocatoria = null; $aliadoEditar = null;
++        $_SESSION['csrf_aliados_internacionales'] = $_SESSION['csrf_aliados_internacionales'] ?? bin2hex(random_bytes(32));
+         try {
+             $modelo = new AliadoInternacionalModel((new Database())->connect());
+             $externos = $modelo->obtenerAliados();
+-            $respuestas = $modelo->obtenerRespuestas();
++            $respuestas = (int)($_SESSION['rol_id'] ?? 0) === 1 ? $modelo->obtenerRespuestas() : [];
++            $estructuraGestion = $modelo->estructuraGestion();
++            if ($estructuraGestion) {
++                $db=(new Database())->connect();$svc=new AliadoInternacionalService($db);
++                $convocatoriasExternas=$svc->convocatorias();
++                $programasCatalogo=$db->query('SELECT codigo,nombre FROM formulario_programas WHERE activo=1 ORDER BY nombre')->fetch_all(MYSQLI_ASSOC);
++                if (!empty($_GET['editar']) && tienePermiso('aliados.internacionales.configurar')) { $aliadoEditar=$svc->obtener((int)$_GET['editar']); }
++                if (!empty($_GET['crear_convocatoria']) && tienePermiso('convocatorias.crear')) {
++                    $aliadoConvocatoria=$svc->obtener((int)$_GET['crear_convocatoria']);
++                    if (!(int)$aliadoConvocatoria['activo']) { throw new DomainException('El aliado está inactivo.'); }
++                    $ofertasInternacionales=$svc->ofertas((int)$aliadoConvocatoria['id']);
++                    $referenciaInternacional=bin2hex(random_bytes(16));
++                    $_SESSION['convocatoria_refs']=array_slice($_SESSION['convocatoria_refs']??[], -20, null, true);
++                    $_SESSION['convocatoria_refs'][$referenciaInternacional]=(int)$aliadoConvocatoria['id'];
++                }
++            }
+         } catch (Throwable $e) {
+             error_log('[aliados_externos] ' . $e->getMessage());
+             $externos = [];
+             $respuestas = [];
+-            http_response_code(503);
++            $aliadoConvocatoria = null; $aliadoEditar = null; $estructuraGestion = false;
++            http_response_code($e instanceof DomainException ? 404 : 503);
+             $errorExternos = 'No fue posible cargar la información internacional. Verifica la configuración de formularios.';
+         }
+ 
+@@ -98,6 +117,70 @@
+         require_once __DIR__ . '/../views/layout/topbar.php';
+         require_once __DIR__ . '/../views/aliados/internacionales.php';
+         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
++    }
++
++    public function guardarInternacional()
++    {
++        $this->validarPermiso('aliados.ver');
++        $this->validarPermiso('aliados.internacionales.configurar');
++        $this->validarMetodoPost();
++        $this->validarCsrfInternacional();
++        try {
++            $id=(new AliadoInternacionalService((new Database())->connect()))->guardar($_POST,(int)$_SESSION['usuario_id']);
++            $_SESSION['mensaje_internacional']='Datos del aliado guardados correctamente.';
++        } catch (Throwable $e) {
++            error_log('[aliado_guardar] '.$e->getMessage());
++            $_SESSION['error_internacional']=$e instanceof DomainException?$e->getMessage():'No fue posible guardar el aliado.';
++        }
++        header('Location: '.BASE_URL.'index.php?controller=aliado&action=internacionales');exit;
++    }
++
++    public function convenioInternacional()
++    {
++        $this->validarPermiso('aliados.ver');
++        $this->validarPermiso('aliados.internacionales.configurar');
++        $this->validarPermiso('convenios.gestionar');
++        $this->validarMetodoPost();$this->validarCsrfInternacional();
++        try {
++            (new AliadoInternacionalService((new Database())->connect()))->convenio((int)($_POST['id']??0),$_POST,(int)$_SESSION['usuario_id']);
++            $_SESSION['mensaje_internacional']='Convenio relacionado con la institución original.';
++        } catch (Throwable $e) {
++            error_log('[aliado_convenio] '.$e->getMessage());
++            $_SESSION['error_internacional']=$e instanceof DomainException?$e->getMessage():'No fue posible guardar el convenio.';
++        }
++        header('Location: '.BASE_URL.'index.php?controller=aliado&action=internacionales');exit;
++    }
++
++    public function qrInternacional()
++    {
++        $this->validarPermiso('aliados.ver');$this->validarPermiso('convocatorias.ver');
++        if (!AliadoInternacionalService::puedeConsultar()) { http_response_code(403);exit; }
++        try {
++            $db=(new Database())->connect();$id=(int)($_GET['id']??0);
++            $s=$db->prepare('SELECT c.enlace_registro,x.referencia,x.formulario,a.token FROM formulario_aliado_convocatorias x INNER JOIN convocatorias c ON c.id=x.convocatoria_id INNER JOIN formulario_aliados a ON a.id=x.aliado_id WHERE c.id=?');
++            $s->bind_param('i',$id);$s->execute();$c=$s->get_result()->fetch_assoc();
++            if (!$c) { http_response_code(404);exit; }
++            $esperado=BASE_URL.'index.php?controller=formularioPublico&action='.$c['formulario'].'&aliado='.$c['token'].'&convocatoria_ref='.$c['referencia'];
++            if (!hash_equals($esperado,$c['enlace_registro'])) { throw new RuntimeException('Liga fuera del formulario institucional esperado.'); }
++            $url=$c['enlace_registro'];$params=[];parse_str((string)parse_url($url,PHP_URL_QUERY),$params);
++            if (($params['aliado']??'')!==$c['token'] || ($params['convocatoria_ref']??'')!==$c['referencia']) { throw new RuntimeException('Enlace de convocatoria inconsistente.'); }
++            // Mismo proveedor y parámetros del QR de Crear convocatoria, sin rutas temporales.
++            $qr='https://quickchart.io/qr?'.http_build_query(['text'=>$url,'size'=>512,'margin'=>2,'format'=>'png']);
++            $ch=curl_init($qr);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>15,CURLOPT_FOLLOWLOCATION=>false]);
++            $png=curl_exec($ch);$status=curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
++            if ($status!==200 || !is_string($png) || strlen($png)>2000000 || substr($png,0,8)!=="\x89PNG\r\n\x1a\n") { throw new RuntimeException('El proveedor QR no está disponible.'); }
++            header('Content-Type: image/png');header('Cache-Control: private, max-age=300');header('X-Content-Type-Options: nosniff');
++            header('Content-Disposition: '.(!empty($_GET['descargar'])?'attachment':'inline').'; filename="convocatoria-'.$id.'.png"');
++            echo $png;exit;
++        } catch (Throwable $e) { error_log('[qr_internacional] '.$e->getMessage());http_response_code(503);echo 'No se pudo generar el QR. Intenta nuevamente.';exit; }
++    }
++
++    private function validarCsrfInternacional()
++    {
++        $valor=$_POST['csrf_internacional']??null;
++        if (!is_string($valor)||empty($_SESSION['csrf_aliados_internacionales'])||!hash_equals($_SESSION['csrf_aliados_internacionales'],$valor)) {
++            http_response_code(403);echo 'Solicitud no válida.';exit;
++        }
+     }
+ 
+     public function estado()

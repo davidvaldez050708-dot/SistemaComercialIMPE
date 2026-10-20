@@ -71,6 +71,12 @@ class FormularioRegistroModel
         return $stmt->get_result()->num_rows > 0;
     }
 
+    public function convocatoriaExclusiva($token, $referencia, string $tipo)
+    {
+        require_once __DIR__ . '/../services/FormularioAliadoService.php';
+        return (new FormularioAliadoService($this->connection))->resolverConvocatoria($token,$referencia,$tipo);
+    }
+
     public function aliadoExclusivo($token)
     {
         require_once __DIR__ . '/../services/FormularioAliadoService.php';

@@ -211,6 +211,7 @@ if ($esSeguimientoEstado || $esSeguimientoDetalle || $esAgendaDashboard) {
 
 if (
     $esConvocatoriaDashboard ||
+    ($esAliadosDashboard && $actionDashboard === 'internacionales') ||
     $esConvocatoriaReportePreviewDashboard ||
     $esHomeDashboard
 ) {
