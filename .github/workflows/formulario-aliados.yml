@@ -14,16 +14,16 @@ jobs:
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
         ports:
-          - 3306/tcp
+          - 33308:3306
         options: >-
           --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
     env:
       APP_ENV: testing
-      IMPE_DB_HOST: 127.0.0.1:${{ job.services.mysql.ports[3306] }}
+      IMPE_DB_HOST: 127.0.0.1:33308
       IMPE_DB_USER: root
       IMPE_DB_PASSWORD: ''
       IMPE_DB_NAME: impe_test_handly
-      IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+      IMPE_TEST_MYSQL_PORT: 33308
       IMPE_BASE_URL: http://127.0.0.1:8097/
       PLAYWRIGHT_MODULE_PATH: /tmp/handly-browser/node_modules/playwright
       BOOTSTRAP_MODULE_PATH: /tmp/handly-browser/node_modules/bootstrap
