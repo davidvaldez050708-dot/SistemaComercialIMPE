@@ -26,7 +26,7 @@ No se accedió a eventos de producción ni se reprodujo una llamada real en Zada
 
 ## Publicación selectiva manual
 
-Aplicación fija: `APP_COMMIT`. Descargar el publicador desde el commit de entrega indicado en el PR, nunca desde una rama mutable:
+Aplicación fija: `21ec8d2b0460e76b873ac6d8641f8fa513d90662`. Descargar el publicador desde el commit de entrega indicado en el PR, nunca desde una rama mutable:
 
 ```bash
 curl -fsSL --retry 2 \
@@ -56,7 +56,7 @@ Rechaza sobrescribir archivos editados después de instalar. No hay migración n
 El diagnóstico es CLI y debe extraerse en carpeta privada nueva desde la copia HTTPS preparada, sin copiar credenciales:
 
 ```bash
-VERSION=APP_COMMIT
+VERSION=21ec8d2b0460e76b873ac6d8641f8fa513d90662
 DIAGNOSTICO="$HOME/diagnostico-ventas-$VERSION"
 mkdir -m 700 "$DIAGNOSTICO" &&
 git -C "$HOME/crm-publicaciones/ventas-cierre-etapa1-actual" archive "$VERSION" \

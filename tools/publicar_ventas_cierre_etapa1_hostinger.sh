@@ -4,8 +4,8 @@ set -euo pipefail
 umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
-TARGET='APP_COMMIT'
-REVIEWED='APP_COMMIT'
+TARGET='21ec8d2b0460e76b873ac6d8641f8fa513d90662'
+REVIEWED='21ec8d2b0460e76b873ac6d8641f8fa513d90662'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/ventas_cierre_etapa1'
 SOURCE="${IMPE_VENTAS_CIERRE_SOURCE:-$HOME/crm-publicaciones/ventas-cierre-etapa1-actual}"
