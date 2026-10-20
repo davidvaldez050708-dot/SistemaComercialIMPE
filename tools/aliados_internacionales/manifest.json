@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "base": "da6e9c6b1e6d91f1daf7095d6f5bc11c51aff632",
+  "files": [
+    {
+      "path": "app/controllers/AliadoController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "5544b28e07fd7e6867097832a987ac283ebff89d297475159e7c31fbf4f1e7ba",
+      "variants": [
+        {
+          "label": "main-con-PR111",
+          "before": "176d3d6af31aa52ea952ca26873a57a86610855d96fa74b9fa4d89aa03595845",
+          "after": "5544b28e07fd7e6867097832a987ac283ebff89d297475159e7c31fbf4f1e7ba"
+        }
+      ],
+      "patch": "tools/aliados_internacionales/0.patch",
+      "patch_sha256": "33ca3aa1112ecd151d1a70e6c5ddf266f8468b03890beb93417b48430221e4a8"
+    },
+    {
+      "path": "app/views/aliados/index.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "3d48a644680545e9fd6ede86253950833c43468c30505bbf7a76d0e09cd23db8",
+      "variants": [
+        {
+          "label": "main-con-PR111",
+          "before": "135dc782ae65827b8b6b5eef54edd1dbc6354667c8b2bdddca954e303cbe7f8d",
+          "after": "3d48a644680545e9fd6ede86253950833c43468c30505bbf7a76d0e09cd23db8"
+        }
+      ],
+      "patch": "tools/aliados_internacionales/1.patch",
+      "patch_sha256": "cc2778b93a6845ac83607fb3d2d9136ef48731c9b8dfe1005fdf1640fecfa655"
+    },
+    {
+      "path": "app/views/aliados/internacionales.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "dafce95431eb13996bec5dbe0a0c8dff80215099c9861cb0b2f83ef3ae3c6db8",
+      "variants": []
+    },
+    {
+      "path": "app/models/AliadoInternacionalModel.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "e28f852f86118eeee31f9694bd98521b4a50deca53a916737787602fc94e4b8c",
+      "variants": []
+    }
+  ]
+}

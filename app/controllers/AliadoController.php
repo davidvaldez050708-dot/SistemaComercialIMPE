@@ -4,6 +4,7 @@ require_once __DIR__ . '/../models/AliadoModel.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../services/AliadoDifusionService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../models/AliadoInternacionalModel.php';
 
 class AliadoController
 {
@@ -56,6 +57,46 @@ class AliadoController
         require_once __DIR__ . '/../views/layout/sidebar.php';
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/aliados/index.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    /**
+     * Consulta administrativa de aliados externos vinculados a formularios.
+     * No inventa un territorio mexicano ni una formalización institucional.
+     */
+    public function internacionales()
+    {
+        $this->validarPermiso('aliados.ver');
+        // Sin asignación territorial internacional, solo Admin puede consultar los datos.
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
+            http_response_code(403);
+            echo 'La consulta de aliados externos está reservada a Administración.';
+            return;
+        }
+
+        header('Cache-Control: no-store, private');
+        $externos = [];
+        $respuestas = [];
+        $errorExternos = '';
+        try {
+            $modelo = new AliadoInternacionalModel((new Database())->connect());
+            $externos = $modelo->obtenerAliados();
+            $respuestas = $modelo->obtenerRespuestas();
+        } catch (Throwable $e) {
+            error_log('[aliados_externos] ' . $e->getMessage());
+            $externos = [];
+            $respuestas = [];
+            http_response_code(503);
+            $errorExternos = 'No fue posible cargar la información internacional. Verifica la configuración de formularios.';
+        }
+
+        $tituloPagina = 'Aliados internacionales';
+        $subtituloPagina = 'Enlaces exclusivos y respuestas de instituciones externas';
+        $opcionActiva = 'aliados';
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/aliados/internacionales.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
