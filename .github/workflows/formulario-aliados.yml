@@ -55,6 +55,7 @@ jobs:
           php tools/preparar_handly_formularios.php --apply
           php tools/preparar_handly_formularios.php --check
           php tests/formulario_aliados_db.php
+          php tests/aliados_internacionales.php
       - name: Formularios, HTTP y responsive
         run: node tests/formulario_aliados_browser.cjs
       - name: Publicación selectiva en réplicas

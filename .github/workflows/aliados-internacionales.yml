@@ -5,6 +5,11 @@ on:
       - 'app/controllers/AliadoController.php'
       - 'app/views/aliados/index.php'
       - 'app/views/aliados/internacionales.php'
+      - 'app/models/AliadoInternacionalModel.php'
+      - 'tests/aliados_internacionales*.php'
+      - 'tools/aliados_internacionales/**'
+      - 'tools/publicar_aliados_internacionales_hostinger.sh'
+      - 'tests/publicacion_aliados_internacionales_test.py'
       - '.github/workflows/aliados-internacionales.yml'
   workflow_dispatch:
 jobs:
@@ -17,5 +22,6 @@ jobs:
           php -l app/controllers/AliadoController.php
           php -l app/views/aliados/index.php
           php -l app/views/aliados/internacionales.php
-          php -r '$c=file_get_contents("app/controllers/AliadoController.php"); if(strpos($c,"function internacionales()")===false || strpos($c,"aliados.ver")===false || strpos($c,"rol_id")===false) exit(1);'
-          php -r '$v=file_get_contents("app/views/aliados/internacionales.php"); if(strpos($v,"formularioPublico")===false || strpos($v,"data-copy-ally-url")===false) exit(1);'
+          php -l app/models/AliadoInternacionalModel.php
+          php -l tests/aliados_internacionales.php
+          php -l tests/aliados_internacionales_acceso.php

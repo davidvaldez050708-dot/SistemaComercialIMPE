@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/AliadoModel.php';
+require_once __DIR__ . '/../models/AliadoInternacionalModel.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../services/AliadoDifusionService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
@@ -73,52 +74,19 @@ class AliadoController
             return;
         }
 
+        header('Cache-Control: no-store, private');
         $externos = [];
         $respuestas = [];
         $errorExternos = '';
         try {
-            $db = (new Database())->connect();
-            $tablas = ['formulario_aliados', 'formulario_aliado_programas',
-                'formulario_programas', 'formulario_aliado_procedencias'];
-            foreach ($tablas as $tabla) {
-                $check = $db->query("SHOW TABLES LIKE '" . $db->real_escape_string($tabla) . "'");
-                if (!$check || !$check->num_rows) {
-                    throw new RuntimeException('La configuración internacional todavía no está instalada.');
-                }
-            }
-            $consulta = $db->query(
-                "SELECT a.id, a.nombre, a.ubicacion, a.slug, a.token, a.activo,
-                        GROUP_CONCAT(p.nombre ORDER BY p.nombre SEPARATOR ' / ') AS programas
-                 FROM formulario_aliados a
-                 LEFT JOIN formulario_aliado_programas ap ON ap.aliado_id = a.id
-                 LEFT JOIN formulario_programas p ON p.codigo = ap.programa_codigo
-                 WHERE a.seguimiento_id IS NULL
-                 GROUP BY a.id, a.nombre, a.ubicacion, a.slug, a.token, a.activo
-                 ORDER BY a.nombre"
-            );
-            if (!$consulta) { throw new RuntimeException('No fue posible consultar los aliados externos.'); }
-            $externos = $consulta->fetch_all(MYSQLI_ASSOC);
-
-            // No se muestran expedientes generales ni respuestas de otros orígenes.
-            $consulta = $db->query(
-                "SELECT a.nombre AS aliado, d.tipo, d.aliado_ubicacion,
-                        p.nombre AS programa, d.created_at, d.registro_id,
-                        COALESCE(r.nombre, i.nombre) AS nombre,
-                        COALESCE(r.apellido, i.apellido) AS apellido,
-                        COALESCE(r.correo, i.correo) AS correo,
-                        COALESCE(r.movil, i.movil) AS movil
-                 FROM formulario_aliado_procedencias d
-                 INNER JOIN formulario_aliados a ON a.id=d.aliado_id
-                 INNER JOIN formulario_programas p ON p.codigo=d.programa_codigo
-                 LEFT JOIN formulario_registros r ON d.tipo='registro' AND r.id=d.registro_id
-                 LEFT JOIN formulario_inscripciones i ON d.tipo='inscripcion' AND i.id=d.registro_id
-                 WHERE a.seguimiento_id IS NULL
-                 ORDER BY d.created_at DESC, d.id DESC LIMIT 150"
-            );
-            if (!$consulta) { throw new RuntimeException('No fue posible consultar respuestas de aliados externos.'); }
-            $respuestas = $consulta->fetch_all(MYSQLI_ASSOC);
+            $modelo = new AliadoInternacionalModel((new Database())->connect());
+            $externos = $modelo->obtenerAliados();
+            $respuestas = $modelo->obtenerRespuestas();
         } catch (Throwable $e) {
             error_log('[aliados_externos] ' . $e->getMessage());
+            $externos = [];
+            $respuestas = [];
+            http_response_code(503);
             $errorExternos = 'No fue posible cargar la información internacional. Verifica la configuración de formularios.';
         }
 
