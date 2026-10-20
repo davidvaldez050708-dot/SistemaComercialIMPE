@@ -158,3 +158,12 @@ value.inputIncoming=false;value.ringing=false;doc.defaultView.zdrmWebPhone.webCa
 let attempts=0;const retry=factory.create(doc,{onRinging(){return ++attempts>1;},onStopped(){}});
 value.inputIncoming=true;value.ringing=true;interval();interval();interval();
 assert.equal(attempts,2,'Invitación no se consume si el host la rechaza provisionalmente');retry.stop();
+
+// OUT_START transferido puede llegar por PUSH sin INTERNAL ni RTCSession hasta Contestar.
+value.inputIncoming=false;value.ringing=false;doc.defaultView.zdrmWebPhone={callState:'',webCallSession:null};
+let pushRings=0;const push=factory.create(doc,{onRinging(){pushRings++;},onStopped(){}});
+value.inputIncoming=true;value.ringing=true;doc.defaultView.zdrmWebPhone.callState='incoming';interval();assert.equal(pushRings,1);
+push.markDeclined(null);value.ringing=false;interval();value.ringing=true;interval();assert.equal(pushRings,1,'DOM residual no basta');
+value.inputIncoming=false;value.ringing=false;doc.defaultView.zdrmWebPhone.callState='';interval();
+value.inputIncoming=true;value.ringing=true;doc.defaultView.zdrmWebPhone.callState='incoming';interval();
+assert.equal(pushRings,2,'Nuevo PUSH tras cancelación SDK confirmada no queda bloqueado esperando INTERNAL');push.stop();

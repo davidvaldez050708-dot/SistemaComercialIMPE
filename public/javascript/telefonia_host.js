@@ -565,7 +565,7 @@
                     // Un INVITE nuevo acredita otro diálogo; un END PBX anterior
                     // puede seguir pendiente. No reemplazar una saliente local.
                     if(state.active&&!state.context?.declineRequested &&
-                        !(state.direction==='incoming' && freshSip &&
+                        !(state.direction==='incoming' && (freshSip||call?.pushInvitation) &&
                           ['incoming-ringing','finishing','recovering','rejecting'].includes(state.phase))) return false;
                     const number = String(call?.caller || '').slice(0, 40);
                     const token = 'sdk-' + Date.now().toString(36) +

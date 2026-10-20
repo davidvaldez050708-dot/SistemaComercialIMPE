@@ -21,7 +21,8 @@
         let connectedReported = false;
         let observedSession = null;
         let domRinging = false;
-        let declined = false, declinedSession = null;
+        let declined = false, declinedSession = null, declinedIdle=false;
+        let sdkState='';
         const sameSession=(a,b)=>Boolean(a&&b&&(a===b||(a.id&&b.id&&String(a.id)===String(b.id))));
 
         // El SDK actual expone una JsSIP.RTCSession. Consultar sus métodos
@@ -63,6 +64,9 @@
         const check = function () {
             if (stopped) return;
             const domCall = read();
+            const nativeState=String(win.zdrmWebPhone?.callState ?? '');
+            const pushInvite=Boolean(domCall && nativeState==='incoming' && sdkState!=='incoming');
+            sdkState=nativeState;
             const session = readSession();
             // INVITE real no depende de que Zadarma dibuje sus clases CSS.
             const liveInvite=session&&!session.isEnded()&&!session.isEstablished();
@@ -73,9 +77,11 @@
             const wasDomRinging = domRinging;
             domRinging = Boolean(domCall);
             if (declined) {
-                if (session && !sameSession(session,declinedSession) && !session.isEnded()) {
+                if ((session && !sameSession(session,declinedSession) && !session.isEnded()) ||
+                    (declinedIdle && pushInvite)) {
                     declined=false;idleReported=true;
                 } else {
+                    if(!domCall && win.zdrmWebPhone?.callState==='')declinedIdle=true;
                     if (session?.isEnded()) reportIdle();
                     return; // DOM residual no acredita una nueva invitación.
                 }
@@ -100,6 +106,7 @@
                 acceptanceRequestedUntil = 0;
                 observedSession = session && !session.isEnded() ? session : null;
                 if (session?.id && liveInvite) call.sipSessionId=String(session.id);
+                if(pushInvite)call.pushInvitation=true;
                 if (hooks.onRinging(call) === false) {
                     // El host aún no puede publicarla: reintentar, no consumirla.
                     seenIncoming=false;ringing=false;observedSession=null;
@@ -182,7 +189,7 @@
             },
             isRinging: function () { return ringing; },
             isConnected: function () { return connectedReported && !idleReported; },
-            markDeclined: function (session=readSession()) { declined=true;declinedSession=session;ringing=false;if(declinedSession?.isEnded())reportIdle(); },
+            markDeclined: function (session=readSession()) { declined=true;declinedIdle=false;declinedSession=session;ringing=false;if(declinedSession?.isEnded())reportIdle(); },
             allowNewInvitation: function () { declined=false;declinedSession=null;idleReported=true;observedSession=null; },
             markAnswerRequested: function () {
                 if (!seenIncoming) return false;
