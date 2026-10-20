@@ -7,6 +7,7 @@
     <div class="modal-body system-form-modal-body">
      <input type="hidden" name="csrf_token" value="<?= $escVenta($_SESSION['csrf_token']??TelefoniaContactosService::tokenFormulario()) ?>"><input type="hidden" name="pbx_call_id"><input type="hidden" name="extension">
      <div class="linkage-incoming-summary"><strong data-sales-form-number></strong><span data-sales-form-state></span></div>
+     <p class="system-form-modal-subtitle" data-sales-capture-summary hidden></p>
      <div class="row g-3" data-sales-fields>
       <div class="col-12"><label class="form-label" for="salesResult">Resultado</label><select data-native-select class="form-select" id="salesResult" name="resultado" required><option value="">Selecciona lo que ocurrió</option><?php foreach(TelefoniaResultadoVentasService::opciones() as $code=>$label): ?><option value="<?= $escVenta($code) ?>"><?= $escVenta($label) ?></option><?php endforeach; ?></select></div>
       <div class="col-12 col-md-6"><label class="form-label" for="salesProspect">Nombre del prospecto</label><input class="form-control" id="salesProspect" name="prospecto_nombre" maxlength="150"><small class="system-form-modal-subtitle d-block mt-2">Dato informado; no equivale a identidad verificada.</small></div>

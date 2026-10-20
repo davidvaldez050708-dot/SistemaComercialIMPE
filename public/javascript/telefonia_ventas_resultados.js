@@ -36,7 +36,9 @@
    recovered=recovered||waiting;waiting=false;fields.hidden=false;recheck.hidden=true;
    form.reset();for(const el of form.elements)el.disabled=false;feedback.textContent='';
    form.elements.pbx_call_id.value=ref;form.elements.extension.value=call.extension;
-   const values=call.registro||{prospecto_nombre:call.nombre};
+   const values=call.registro||{prospecto_nombre:call.captura_prospecto?.nombre||call.nombre,correo:call.captura_prospecto?.correo||''};
+   const captureSummary=form.querySelector('[data-sales-capture-summary]');
+   if(captureSummary){captureSummary.hidden=!call.captura_prospecto;captureSummary.textContent=call.captura_prospecto?['Datos informados durante la atención',call.captura_prospecto.programa,call.captura_prospecto.notas].filter(Boolean).join(' · '):'';}
    for(const [key,value]of Object.entries(values)){const el=form.elements.namedItem(key);if(el&&value!==null)el.value=key==='proxima_accion_at'?String(value).replace(/(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}):\d{2}/,'$1T$2'):String(value);}
    if(!call.registro){try{const d=JSON.parse(sessionStorage.getItem(draftKey(ref))||'null');if(d&&Date.now()-d.at<86400000)for(const [k,v]of Object.entries(d.values||{})){const el=form.elements.namedItem(k);if(el&&!['csrf_token','pbx_call_id','extension'].includes(k)){if(el.type==='checkbox')el.checked=v==='1';else el.value=v;}}}catch(_){}}
    form.querySelector('[data-sales-form-number]').textContent=call.numero;
@@ -59,12 +61,16 @@
   catch(error){notify(error.message,true);button.disabled=false;}
  });
  root.addEventListener('click',e=>{
+  const evidence=e.target.closest('[data-sales-evidence]');if(evidence){
+   if(evidence.disabled)return;evidence.disabled=true;
+   void (async()=>{try{const r=await fetch(root.dataset.evidenceUrl,{method:'POST',credentials:'same-origin',body:new URLSearchParams({csrf_token:root.dataset.csrf,pbx_call_id:evidence.dataset.salesEvidence,extension:evidence.dataset.extension})}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo actualizar la evidencia.');notify(j.mensaje);location.reload();}catch(error){notify(error.message,true);}finally{evidence.disabled=false;}})();return;
+  }
   const detail=e.target.closest('[data-sales-detail]');if(detail){void open(detail.dataset.salesDetail,detail.dataset.extension);return;}
   const dial=e.target.closest('[data-sales-dial]');if(dial){window.IMPE_TELEPHONY_PERSISTENT?.openDialer({number:dial.dataset.salesDial});return;}
   const audio=e.target.closest('[data-sales-audio]');if(!audio)return;
   const slot=audio.closest('.linkage-call-recording-body').querySelector('[data-sales-audio-slot]');
   if(!slot.hidden){slot.querySelectorAll('audio').forEach(a=>a.pause());slot.hidden=true;audio.setAttribute('aria-expanded','false');return;}
-  if(!slot.dataset.loaded){const url=new URL('prueba_telefonia/api/grabacion_ventas.php',document.baseURI);url.searchParams.set('pbx_call_id',audio.dataset.salesAudio);url.searchParams.set('extension',audio.dataset.extension);if(!window.IMPE_TELEPHONY_SEGMENTS?.create?.(slot,url.href,Number(audio.dataset.segments))){notify('No se cargó el reproductor.',true);return;}slot.dataset.loaded='1';}
+  if(!slot.dataset.loaded){const url=new URL('prueba_telefonia/api/grabacion_ventas.php',document.baseURI);url.searchParams.set('pbx_call_id',audio.dataset.salesAudio);url.searchParams.set('extension',audio.dataset.extension);let info=[];try{info=JSON.parse(audio.dataset.segmentInfo||'[]');}catch(_){}if(!window.IMPE_TELEPHONY_SEGMENTS?.create?.(slot,url.href,Number(audio.dataset.segments),info)){notify('No se cargó el reproductor.',true);return;}slot.dataset.loaded='1';}
   slot.hidden=false;audio.setAttribute('aria-expanded','true');
  });
  form.addEventListener('input',()=>{if(!call||call.registro)return;try{sessionStorage.setItem(draftKey(call.pbx_call_id),JSON.stringify({at:Date.now(),values:Object.fromEntries(new FormData(form))}));}catch(_){}});

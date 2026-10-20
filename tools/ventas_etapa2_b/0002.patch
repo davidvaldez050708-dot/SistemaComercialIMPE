@@ -1,0 +1,33 @@
+--- a/public/javascript/telefonia_disponibilidad.js
++++ b/public/javascript/telefonia_disponibilidad.js
+@@ -2,7 +2,7 @@
+ (()=>{
+  'use strict';
+  const cfg=window.IMPE_PHONE_SHELL_CONFIG||{},phone=window.IMPE_TELEPHONY_SHELL;
+- if(!cfg.availabilityUrl||!phone)return;
++ if(!cfg.availabilityUrl||!phone||window.IMPE_AVAILABILITY)return;
+  const $=s=>document.querySelector(s),source=$('[data-availability-source]'),incoming=$('[data-availability-incoming]'),callback=$('[data-availability-callback]');
+  const key='impe:availability:'+cfg.userId;
+  let watched=null,received=null,polling=false,acting=false,transferring=false,callbacks=-1,deferred='';
+@@ -57,9 +57,12 @@
+   try{
+    const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;
+    if(!audio)audio=new Context();
+-   if(audio.state==='suspended')void audio.resume().then(playSound).catch(()=>{});else playSound();
++   const started=()=>{playSound();const button=$('[data-availability-audio]');if(button)button.hidden=audio.state==='running';};
++   if(audio.state==='suspended')void audio.resume().then(started).catch(()=>{});else started();
+   }catch(_){/* El aviso visual sigue disponible si el navegador restringe audio. */}
+  };
++ const audioButton=$('[data-availability-audio]');
++ audioButton?.addEventListener('click',unlockAudio);
+  document.addEventListener('pointerdown',unlockAudio,{capture:true});
+  document.addEventListener('keydown',unlockAudio,{capture:true});
+  const audioDocuments=new WeakSet();
+@@ -130,6 +133,7 @@
+    $('[data-availability-caller]').textContent='Recepción · Ext. '+op.origen_extension+' · '+op.numero+(op.institucion_nombre?' · '+op.institucion_nombre:'');
+    $('[data-availability-countdown]').textContent='Responde en '+op.segundos+' s. Aceptar reserva tu disponibilidad durante 30 s.';
+    if(!incoming.open){incoming.showModal();$('[data-availability-accept]').focus();}
++   if(audioButton)audioButton.hidden=audio?.state==='running';
+    signalAvailability(op);
+   }catch(e){if(watched){$('[data-availability-source-copy]').textContent=e.message;}if(incoming.open)$('[data-availability-feedback]').textContent=e.message;}
+   finally{polling=false;}

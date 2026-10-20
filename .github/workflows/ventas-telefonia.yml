@@ -29,12 +29,16 @@ jobs:
           node --check public/javascript/telefonia_ventas_devoluciones.js
           php -l tools/migrar_telefonia_ventas.php
           php -l tools/diagnosticar_cierre_ventas.php
+          php -l tools/migrar_ventas_etapa2.php
+          php -l app/services/TelefoniaVentasEvidenciaService.php
+          php -l app/services/TelefoniaProspectoLlamadaService.php
           php -l app/views/telefonia/ventas_paginacion.php
           php tests/telefonia_ventas_audio_evidencia.php
           node tests/telefonia_shell_runtime_smoke.js
           node tests/telefonia_shell_navegacion_smoke.js
           node tests/telefonia_ventas_guard_http.cjs
           node tests/telefonia_disponibilidad_sonido_smoke.cjs
+          node tests/telefonia_recuperacion_pbx_smoke.cjs
       - name: Auricular con shell y navegador reales
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/ventas-browser/node_modules/playwright
@@ -47,6 +51,7 @@ jobs:
         run: |
           mkdir -p /tmp/ventas-bandejas-capturas
           node tests/telefonia_ventas_operacion_browser.cjs
+          node tests/telefonia_ventas_etapa2_browser.cjs
           node tests/ventas_bandejas_browser.cjs
           node tests/telefonia_ventas_gestion_browser.cjs
           node tests/telefonia_modal_entrante_integracion_browser.cjs
@@ -65,6 +70,7 @@ jobs:
           python3 tests/publicacion_ventas_revision_20261019_test.py
           python3 tests/publicacion_ventas_bandejas_test.py
           python3 tests/publicacion_ventas_cierre_test.py
+          python3 tests/publicacion_ventas_etapa2_test.py
           python3 tests/publicacion_ventas_pr108_test.py
   datos-comerciales:
     runs-on: ubuntu-latest

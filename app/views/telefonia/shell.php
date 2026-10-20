@@ -421,6 +421,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     </dialog>
     <?php endif; ?>
     <?php require ROOT_PATH.'/app/views/telefonia/disponibilidad.php'; ?>
+    <?php if($esAsesorShell)require ROOT_PATH.'/app/views/telefonia/prospecto_venta.php'; ?>
     <script>
         window.IMPE_PHONE_SHELL_CONFIG = <?= json_encode([
             'userId' => $usuarioShell,
@@ -432,6 +433,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'salesResults' => $esAsesorShell,
             'salesDetailUrl' => BASE_URL . 'index.php?controller=telefonia&action=detalleVenta',
             'salesHistoryUrl' => BASE_URL . 'index.php?controller=telefonia&action=misLlamadas',
+            'salesProspectUrl' => BASE_URL . 'index.php?controller=telefonia&action=datosProspectoVenta',
             'receptionResults' => $marketingShell,
             'callNoticesUrl' => ($marketingShell || $analistaEntrantesShell) ? BASE_URL . 'prueba_telefonia/api/avisos_llamadas.php' : '',
             'receptionResultUrl' => BASE_URL . 'prueba_telefonia/api/resultado_recepcion_marketing.php',
@@ -487,6 +489,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     <script src="<?= BASE_URL ?>public/javascript/telefonia_analista_historial_pasivo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_analista_historial_pasivo.js') ?>"></script>
     <?php endif; ?>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_disponibilidad.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_disponibilidad.js') ?>"></script>
+    <?php if($esAsesorShell): ?><script src="<?= BASE_URL ?>public/javascript/telefonia_ventas_prospecto.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/telefonia_ventas_prospecto.js') ?>"></script><?php endif; ?>
     <?php if ($puedeTransferirShell || $puedeCapturarShell): ?>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_atencion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_atencion.js') ?>"></script>
     <style id="impeRoutingStyles">

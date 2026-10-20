@@ -8,7 +8,7 @@
         const s = Math.floor(value);
         return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
     }
-    function create(host, endpoint, count) {
+    function create(host, endpoint, count, segments = []) {
         if (!host || !/^https?:\/\//.test(String(endpoint || '')) ||
             !Number.isInteger(count) || count < 1 || count > 8) return false;
         const list = [];
@@ -22,6 +22,9 @@
             const title = document.createElement('span');
             title.textContent = count === 1 ? 'Grabación de la llamada' :
                 'Grabación de la llamada · parte ' + (i + 1) + ' de ' + count;
+            const info=Array.isArray(segments)?segments[i]:null;
+            if(Number.isInteger(info?.tramo)&&info.tramo>0&&Number.isInteger(info?.segundos)&&info.segundos>=0)
+                title.textContent+=' · Tramo '+info.tramo+' · '+time(info.segundos);
             head.appendChild(title);
             const controls = document.createElement('div');
             controls.className = 'linkage-call-custom-player';

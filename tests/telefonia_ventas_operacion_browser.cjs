@@ -5,7 +5,7 @@ const bootstrap=process.env.BOOTSTRAP_MODULE_PATH||path.dirname(require.resolve(
 const read=p=>fs.readFileSync(path.join(repo,p),'utf8'),php=(f,...args)=>cp.execFileSync('php',[path.join(__dirname,'fixtures',f),...args],{encoding:'utf8'});
 const shell=php('telefonia_ventas_shell.php');
 const css=fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'),'utf8')+['global.css','dashboard.css','telefonia.css','telefonia_marcador.css','telefonia_persistente.css','telefonia_teclado.css','responsive_sistema.css'].map(f=>read('public/css/'+f)).join('\n');
-let saved=false,payload,closed=false,details=0,delayDetails=0;
+let saved=false,payload,closed=false,details=0,delayDetails=0,evidenceRequests=0;
 const call={id:1,pbx_call_id:'pbx-sales-call-001',usuario_id:8,extension:'150',direccion:'Entrante',numero:'+525551112233',nombre:'María',origen_extension:'100',fecha:'2026-10-19 10:00:00',finalizada:true,conectada:true,segundos:18,estado_pbx:'Conectada',segmentos:['record-sales-a','record-sales-b'],registro:null};
 const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style><script>window.IMPE_CURRENT_USER_ID=8;</script><body><main class="admin-shell">${php('telefonia_ventas_vista.php',u.searchParams.get('pbx_call_id')||'',u.searchParams.get('extension')||'',saved?'guardado':'')}</main><script>${fs.readFileSync(path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'),'utf8')}</script><script>${read('public/javascript/telefonia_atencion.js')}</script><script>${read('public/javascript/telefonia_segmentos_player.js')}</script><script>${read('public/javascript/telefonia_ventas_resultados.js')}</script></body>`;
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});try{
@@ -15,6 +15,7 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
   if(action==='disponibilidad')return route.fulfill({json:{ok:true,entrante:null,devoluciones:0}});
   if(action==='detalleVenta'){details++;return new Promise(resolve=>setTimeout(resolve,delayDetails)).then(()=>route.fulfill({json:{ok:true,llamada:{...call,finalizada:closed,registro:saved?{resultado:'INTERESADO',observacion:'Enviar información',prospecto_nombre:'María'}:null}}}));}
   if(action==='guardarResultadoVenta'){payload=Object.fromEntries(new URLSearchParams(route.request().postData()));saved=true;return route.fulfill({json:{ok:true,registro:{resultado:'INTERESADO'}}});}
+  if(action==='actualizarEvidenciaVenta'){const p=new URLSearchParams(route.request().postData());assert.equal(p.get('pbx_call_id'),call.pbx_call_id);assert.equal(p.get('extension'),'150');assert(p.get('csrf_token'));evidenceRequests++;return route.fulfill({json:{ok:true,llamada:call,mensaje:'Segmentos propios comprobados.'}});}
   if(action==='host')return route.fulfill({contentType:'text/html',body:'<html>Transporte PBX simulado</html>'});
   return route.fulfill({contentType:'text/html',body:u.pathname==='/'?shell:view(u)});
  });
@@ -70,6 +71,9 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  await modal.locator('[data-sales-submit]').click();await modal.waitFor({state:'hidden'});
  assert.equal(payload.pbx_call_id,call.pbx_call_id);assert.equal(payload.extension,'150');assert.equal(payload.resultado,'INTERESADO');assert.equal(payload.prospecto_nombre,'María');
  await page.waitForFunction(()=>!IMPE_SALES_ATTENTION.hasPending());
+ await crm.locator('[data-sales-evidence]').first().click();await crm.locator('[data-sales-audio]').waitFor();assert.equal(evidenceRequests,1,'La reconsulta de evidencia es POST con CSRF y tramo exacto');
  await crm.locator('[data-sales-audio]').waitFor();await crm.locator('[data-sales-audio]').click();assert.equal(await crm.locator('[data-sales-audio-slot] audio').count(),2,'reproductor compartido de múltiples segmentos');
+ assert.match(await crm.locator('.linkage-call-inline-player-heading').first().textContent(),/Tramo 1.*0:08/);
+ if(process.env.IMPE_VENTAS_SCREENSHOTS)for(const width of [1366,768,390]){await push('ready',false);await page.setViewportSize({width,height:850});await crm.locator('.linkage-call-history-card').first().screenshot({path:path.join(process.env.IMPE_VENTAS_SCREENSHOTS,'ventas_grabaciones_'+width+'.png')});}
  assert.deepEqual(errors,[]);console.log('Ventas C: fin → formulario sin superposición, responsive, resultado y dos segmentos propios: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -11,7 +11,8 @@
     const mask = document.querySelector('[data-shell-navigation-mask]');
     const message = mask?.querySelector('[data-shell-navigation-message]');
     const retry = mask?.querySelector('[data-shell-navigation-retry]');
-    if (!uid || !crm || !mask || !config.homeUrl) return;
+    if (!uid || !crm || !mask || !config.homeUrl || window.IMPE_SHELL_NAVIGATION_STARTED) return;
+    window.IMPE_SHELL_NAVIGATION_STARTED=true;
 
     const home = new URL(String(config.homeUrl), window.location.href);
     const key = 'impe:crm:shell:last-route:' + uid;
@@ -37,7 +38,9 @@
                 url.username || url.password) return null;
             const controller = (url.searchParams.get('controller') || '').toLowerCase();
             const action = (url.searchParams.get('action') || '').toLowerCase();
-            if (controller === 'login' || controller === 'telefonia' ||
+            const salesHistory=config.salesResults===true&&controller==='telefonia'&&action==='misllamadas'&&
+                ['', 'devoluciones','agenda'].includes(url.searchParams.get('vista')||'');
+            if (controller === 'login' || (controller === 'telefonia'&&!salesHistory) ||
                 action === 'logout' || action === 'cerrarsesion' ||
                 action === 'iniciarsesion' || action === 'cambiarpassword') return null;
             if (!/^https?:$/.test(url.protocol)) return null;
@@ -83,6 +86,10 @@
     const saveRoute = function (url) {
         const valid = safeUrl(url);
         if (!valid) return;
+        if(config.salesResults===true&&valid.searchParams.get('controller')==='telefonia'){
+            // F5 conserva bandeja y filtros, sin reabrir un formulario transitorio.
+            for(const key of ['pbx_call_id','extension','detalle','intento_id'])valid.searchParams.delete(key);
+        }
         currentUrl = valid.href;
         try { sessionStorage.setItem(key, valid.href); }
         catch (_) { /* permitido navegar sin almacenamiento */ }

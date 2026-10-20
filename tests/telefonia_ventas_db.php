@@ -100,5 +100,6 @@ try {
  $event('pbx-retardada-006','NOTIFY_INTERNAL');vreject(fn()=>$svc->obtener(9,'pbx-retardada-006'),'Evento antiguo no se atribuye a nuevo titular');
  vreject(fn()=>$svc->autorizar(10),'Analista no entra a atención comercial');
  vcheck($db->query("SHOW TABLES LIKE 'seguimientos_vinculacion'")->num_rows===0,'No crea expedientes ni requiere tablas de Vinculación');
+ require __DIR__.'/telefonia_ventas_etapa2_casos.php';
  echo "Ventas B: $checks comprobaciones DB aprobadas.\n";
 }finally{$db->select_db('mysql');$db->query("DROP DATABASE `$name`");$db->close();}

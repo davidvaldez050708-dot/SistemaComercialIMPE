@@ -1,0 +1,38 @@
+--- a/app/services/ZadarmaRecordingService.php
++++ b/app/services/ZadarmaRecordingService.php
+@@ -11,7 +11,7 @@
+     private \Zadarma_API\Api $api;
+     private ?ZadarmaWebhookEventStoreService $eventStore = null;
+ 
+-    public function __construct()
++    public function __construct(bool $cargarEventos=true)
+     {
+         $this->rootPath = dirname(__DIR__, 2);
+         require_once $this->rootPath . '/config/private_config.php';
+@@ -43,7 +43,7 @@
+ 
+         $this->api = new \Zadarma_API\Api($this->apiKey, $this->apiSecret, false);
+ 
+-        try {
++        if($cargarEventos)try {
+             $this->eventStore = new ZadarmaWebhookEventStoreService();
+         } catch (Throwable $errorStore) {
+             $this->eventStore = null;
+@@ -108,6 +108,17 @@
+             return null;
+         }
+         return ['call_id_with_rec' => $callId, 'link' => $link];
++    }
++
++    /** Mismo catálogo oficial que usa la conciliación de llamadas internas.
++     * Nunca consulta por número ni convierte IDs decimales en float. */
++    public function estadisticasPbx(string $desde,string $hasta): array
++    {
++        $data=ZadarmaPbxIdentifierHelper::decodificarEstadisticas((string)$this->api->call(
++            '/v1/statistics/pbx/',['start'=>$desde,'end'=>$hasta,'version'=>2,'limit'=>1000],'get'));
++        if(($data['status']??'')!=='success'||!is_array($data['stats']??null)||count($data['stats'])>=1000)
++            throw new RuntimeException('La estadística está incompleta o no está disponible. Vuelve a comprobarla más tarde.');
++        return $data['stats'];
+     }
+ 
+     public function descargarGrabacion(string $link, string $rangeHeader = ''): array

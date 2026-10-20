@@ -9,7 +9,7 @@ const home = base + '?controller=home&action=index';
 const seguimiento = base + '?controller=seguimientoVinculacion&action=estado';
 const expediente = base + '?controller=seguimientoVinculacion&action=detalle&id=14';
 const login = base + '?controller=login&action=mostrarLogin';
-function boot(type = 'navigate') {
+function boot(type = 'navigate', sales = false) {
     const listeners = {};
     const timeouts = new Map();
     const mask = {
@@ -49,7 +49,7 @@ function boot(type = 'navigate') {
     const win = {
         location:{href:base+'?controller=telefonia&action=shell',origin:'https://crm.example.test'},
         IMPE_PHONE_SHELL_CONFIG:{
-            userId:11,homeUrl:home,loginUrl:login
+            userId:11,homeUrl:home,loginUrl:login,salesResults:sales
         },
         performance:{getEntriesByType() {return [{type}];}},
         addEventListener(event,fn) {listeners[event]=fn;},
@@ -76,6 +76,16 @@ function boot(type = 'navigate') {
         message:() => mask.els['[data-shell-navigation-message]'].textContent
     };
 }
+
+for(const vista of ['', 'devoluciones','agenda']){
+ data.clear();const url=base+'?controller=telefonia&action=misLlamadas'+(vista?'&vista='+vista:'');
+ const sales=boot('navigate',true);sales.navigate(url);
+ assert.equal(boot('reload',true).crm.src,url,'F5 conserva la bandeja comercial '+vista);
+ sales.navigate(url+'&pbx_call_id=pbx-transitorio&extension=150');
+ assert.equal(boot('reload',true).crm.src,url,'F5 no reabre el resultado transitorio '+vista);
+}
+data.clear();data.set('impe:crm:shell:last-route:11',base+'?controller=telefonia&action=host');
+assert.equal(boot('reload',true).crm.src,home,'No restablece endpoints del motor como módulos');
 
 data.clear();
 const first = boot();
