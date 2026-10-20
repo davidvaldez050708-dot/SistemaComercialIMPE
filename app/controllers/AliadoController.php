@@ -59,6 +59,79 @@ class AliadoController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    /**
+     * Consulta administrativa de aliados externos vinculados a formularios.
+     * No inventa un territorio mexicano ni una formalización institucional.
+     */
+    public function internacionales()
+    {
+        $this->validarPermiso('aliados.ver');
+        // Sin asignación territorial internacional, solo Admin puede consultar los datos.
+        if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
+            http_response_code(403);
+            echo 'La consulta de aliados externos está reservada a Administración.';
+            return;
+        }
+
+        $externos = [];
+        $respuestas = [];
+        $errorExternos = '';
+        try {
+            $db = (new Database())->connect();
+            $tablas = ['formulario_aliados', 'formulario_aliado_programas',
+                'formulario_programas', 'formulario_aliado_procedencias'];
+            foreach ($tablas as $tabla) {
+                $check = $db->query("SHOW TABLES LIKE '" . $db->real_escape_string($tabla) . "'");
+                if (!$check || !$check->num_rows) {
+                    throw new RuntimeException('La configuración internacional todavía no está instalada.');
+                }
+            }
+            $consulta = $db->query(
+                "SELECT a.id, a.nombre, a.ubicacion, a.slug, a.token, a.activo,
+                        GROUP_CONCAT(p.nombre ORDER BY p.nombre SEPARATOR ' / ') AS programas
+                 FROM formulario_aliados a
+                 LEFT JOIN formulario_aliado_programas ap ON ap.aliado_id = a.id
+                 LEFT JOIN formulario_programas p ON p.codigo = ap.programa_codigo
+                 WHERE a.seguimiento_id IS NULL
+                 GROUP BY a.id, a.nombre, a.ubicacion, a.slug, a.token, a.activo
+                 ORDER BY a.nombre"
+            );
+            if (!$consulta) { throw new RuntimeException('No fue posible consultar los aliados externos.'); }
+            $externos = $consulta->fetch_all(MYSQLI_ASSOC);
+
+            // No se muestran expedientes generales ni respuestas de otros orígenes.
+            $consulta = $db->query(
+                "SELECT a.nombre AS aliado, d.tipo, d.aliado_ubicacion,
+                        p.nombre AS programa, d.created_at, d.registro_id,
+                        COALESCE(r.nombre, i.nombre) AS nombre,
+                        COALESCE(r.apellido, i.apellido) AS apellido,
+                        COALESCE(r.correo, i.correo) AS correo,
+                        COALESCE(r.movil, i.movil) AS movil
+                 FROM formulario_aliado_procedencias d
+                 INNER JOIN formulario_aliados a ON a.id=d.aliado_id
+                 INNER JOIN formulario_programas p ON p.codigo=d.programa_codigo
+                 LEFT JOIN formulario_registros r ON d.tipo='registro' AND r.id=d.registro_id
+                 LEFT JOIN formulario_inscripciones i ON d.tipo='inscripcion' AND i.id=d.registro_id
+                 WHERE a.seguimiento_id IS NULL
+                 ORDER BY d.created_at DESC, d.id DESC LIMIT 150"
+            );
+            if (!$consulta) { throw new RuntimeException('No fue posible consultar respuestas de aliados externos.'); }
+            $respuestas = $consulta->fetch_all(MYSQLI_ASSOC);
+        } catch (Throwable $e) {
+            error_log('[aliados_externos] ' . $e->getMessage());
+            $errorExternos = 'No fue posible cargar la información internacional. Verifica la configuración de formularios.';
+        }
+
+        $tituloPagina = 'Aliados internacionales';
+        $subtituloPagina = 'Enlaces exclusivos y respuestas de instituciones externas';
+        $opcionActiva = 'aliados';
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/aliados/internacionales.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
     public function estado()
     {
         $this->validarPermiso('aliados.ver');
