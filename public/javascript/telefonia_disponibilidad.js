@@ -28,18 +28,18 @@
       request.until-Date.now()<=REMINDER_MIN_REMAINING_MS||status.pending))return;
   if(force){for(const node of soundNodes){try{node.stop?.();node.disconnect?.();}catch(_){}}soundNodes=[];}
   // La misma melodía compartida, con pausas; sólo mientras siga pendiente.
-  const notes=reminder?[[740,0],[880,.30]]:[[740,0],[880,.29],[988,.58]];
-  const volume=reminder?.24:.32;
+  const notes=[[740,0],[990,.22]]; // Melodía original de 2c087d81.
+  const volume=.13;
   try{
    for(const [frequency,offset] of notes){
     const oscillator=audio.createOscillator(),gain=audio.createGain(),start=audio.currentTime+offset;
     oscillator.type='sine';oscillator.frequency.value=frequency;
     gain.gain.setValueAtTime(0,start);
-    gain.gain.linearRampToValueAtTime(volume,start+.035);
-    gain.gain.linearRampToValueAtTime(0,start+.26);
+    gain.gain.linearRampToValueAtTime(volume,start+.02);
+    gain.gain.linearRampToValueAtTime(0,start+.17);
     oscillator.connect(gain);gain.connect(audio.destination);
     if(audioMeter)gain.connect(audioMeter);
-    oscillator.start(start);oscillator.stop(start+.27);soundNodes.push(oscillator,gain);
+    oscillator.start(start);oscillator.stop(start+.18);soundNodes.push(oscillator,gain);
    }
    request.plays++;
    lastEmission=Date.now();
@@ -59,20 +59,21 @@
    soundRequest={key:identity,until:Date.now()+duration,plays:heard.includes(identity)?1:0,reminderAt:Date.now()+REMINDER_AFTER_MS};
    soundExpiry=setTimeout(stopSound,duration);
    soundRepeat=setInterval(playSound,1000);
+   unlockAudio(); // Intento automático; resume() sigue sujeto a autoplay.
   }
   playSound();
  };
  const unlockAudio=event=>{
-  if(!event.isTrusted)return;
-  if(event.type!=='click'&&event.target?.closest?.('[data-availability-audio]'))return;
-  const explicit=event.currentTarget===audioButton;
+  if(event&&!event.isTrusted)return;
+  if(event&&event.type!=='click'&&event.target?.closest?.('[data-availability-audio]'))return;
+  const explicit=event?.currentTarget===audioButton;
   try{
    const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;
    if(!audio||audio.state==='closed'){audio=new Context({latencyHint:'interactive'});audioMeter=audio.createAnalyser?.()||null;audioPeak=0;if(audioMeter){const silent=audio.createGain();silent.gain.value=0;audioMeter.connect(silent);silent.connect(audio.destination);}}
-   const started=()=>{playSound(explicit);if(audioButton)audioButton.hidden=false;};
+   const started=()=>{if(audio.state!=='running')throw new DOMException('Autoplay requiere interacción','NotAllowedError');audioError='';playSound(explicit);if(audioButton)audioButton.hidden=true;};
    // Utilizar la salida efectiva del timbre SDK, cuando la API lo permite;
    // en otros navegadores conservar la predeterminada y mostrar diagnóstico.
-   const output=async()=>{const sink=sdkRing()?.sinkId||'';if(typeof audio.setSinkId==='function'&&audio.sinkId!==sink){try{await audio.setSinkId(sink);}catch(error){if(!sink)throw error;await audio.setSinkId('');}}audioError='';};
+   const output=()=>{audioError='';}; // Salida predeterminada, como el mecanismo original; no heredar una salida SDK silenciosa.
    const failed=error=>{audioError=String(error?.name||error?.message||'Audio bloqueado');if(audioButton)audioButton.hidden=false;const feedback=$('[data-availability-feedback]');if(feedback)feedback.textContent='El navegador no permitió reproducir el aviso. Pulsa Activar avisos sonoros y revisa la salida de audio del navegador.';};
    const resumed=audio.state!=='running'?audio.resume():Promise.resolve();
    void resumed.then(output).then(started).catch(failed);
@@ -149,7 +150,7 @@
    $('[data-availability-caller]').textContent='Recepción · Ext. '+op.origen_extension+' · '+op.numero+(op.institucion_nombre?' · '+op.institucion_nombre:'');
    $('[data-availability-countdown]').textContent='Responde en '+op.segundos+' s. Aceptar reserva tu disponibilidad durante 30 s.';
    if(!incoming.open){incoming.showModal();$('[data-availability-accept]').focus();}
-   if(audioButton)audioButton.hidden=false; // running no demuestra salida audible.
+   if(audioButton)audioButton.hidden=!audioError;
    signalAvailability(op);
   }catch(e){if(watched){$('[data-availability-source-copy]').textContent=e.message;}if(incoming.open)$('[data-availability-feedback]').textContent=e.message;}
   finally{polling=false;}

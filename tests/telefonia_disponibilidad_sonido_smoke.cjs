@@ -30,7 +30,7 @@ const env={
   getItem:k=>storage.get(k)||null,
   setItem:(k,v)=>storage.set(k,v)
  },
- setTimeout:()=>1,clearTimeout:()=>{},setInterval:fn=>{intervals.set(++intervalId,fn);return intervalId;},clearInterval:id=>intervals.delete(id)
+ unlockAudio:()=>{}, setTimeout:()=>1,clearTimeout:()=>{},setInterval:fn=>{intervals.set(++intervalId,fn);return intervalId;},clearInterval:id=>intervals.delete(id)
 };
 vm.runInNewContext(script,env);
 const a=env.soundTest,call=(id=1,seconds=45)=>({id,version:1,segundos:seconds});
@@ -38,45 +38,45 @@ a.signalAvailability(call());
 assert.equal(starts.length,0,'No se reproduce antes de desbloquear WebAudio');
 a.setAudio(fakeAudio);
 a.playSound();
-assert.deepEqual(tones,[740,880,988],'Alerta distinguible de tres notas');
-assert.equal(starts.length,3);
+assert.deepEqual(tones,[740,990],'Alerta distinguible de dos notas originales');
+assert.equal(starts.length,2);
 assert(gains.every(v=>v<=0.32),'Ganancia acotada sin saturación');
 for(let i=0;i<7;i++)a.signalAvailability(call());
-assert.equal(starts.length,3,'Sin repeticiones por polling');
+assert.equal(starts.length,2,'Sin repeticiones por polling');
 time+=7000;a.signalAvailability(call());
-assert.equal(starts.length,3,'Sin recordatorio prematuro');
+assert.equal(starts.length,2,'Sin recordatorio prematuro');
 time+=1100;a.signalAvailability(call());
-assert.deepEqual(tones,[740,880,988,740,880],'Recordatorio más discreto');
-assert.equal(starts.length,5);
+assert.deepEqual(tones,[740,990,740,990],'Recordatorio más discreto');
+assert.equal(starts.length,4);
 assert(gains.at(-1)<=0.24,'Recordatorio más tenue');
 time+=1000;a.signalAvailability(call());
-assert.equal(starts.length,5,'Polling no duplica el recordatorio');
+assert.equal(starts.length,4,'Polling no duplica el recordatorio');
 time+=7100;for(const tick of intervals.values())tick();
-assert.equal(starts.length,7,'Continúa pendiente: el temporizador compartido repite sin polling');
+assert.equal(starts.length,6,'Continúa pendiente: el temporizador compartido repite sin polling');
 a.stopSound();
 assert.equal(intervals.size,0,'Responder elimina el temporizador de repetición');
 a.signalAvailability(call());
-assert.equal(starts.length,7,'La misma solicitud no repite audio inmediato tras recuperar la vista');
+assert.equal(starts.length,6,'La misma solicitud no repite audio inmediato tras recuperar la vista');
 active=true;a.signalAvailability(call(2));
 a.playSound();
-assert.equal(starts.length,7,'Una llamada activa silencia aviso');
+assert.equal(starts.length,6,'Una llamada activa silencia aviso');
 active=false;hidden=true;a.playSound();
-assert.equal(starts.length,7,'Pestaña oculta no emite audio');
+assert.equal(starts.length,6,'Pestaña oculta no emite audio');
 hidden=false;ready=false;a.playSound();
-assert.equal(starts.length,7,'Teléfono desconectado no emite audio');
+assert.equal(starts.length,6,'Teléfono desconectado no emite audio');
 ready=true;a.playSound();
-assert.equal(starts.length,10,'Al volver a estar listo conserva la solicitud');
+assert.equal(starts.length,8,'Al volver a estar listo conserva la solicitud');
 pending=true;time+=19000;a.playSound();
-assert.equal(starts.length,10,'No interrumpe el registro de un resultado previo');
+assert.equal(starts.length,8,'No interrumpe el registro de un resultado previo');
 pending=false;a.playSound();
-assert.equal(starts.length,12,'Recordatorio al quedar libre');
+assert.equal(starts.length,10,'Recordatorio al quedar libre');
 a.stopSound();
 a.signalAvailability(call(3,26));a.playSound();
-assert.equal(starts.length,15);
+assert.equal(starts.length,12);
 time+=25050; a.signalAvailability(call(3,1));
-assert.equal(starts.length,15,'No iniciar otra melodía en el último segundo');
+assert.equal(starts.length,12,'No iniciar otra melodía en el último segundo');
 time+=9000;a.signalAvailability(call(3,0));
-assert.equal(starts.length,15,'No reproducir tras vencimiento');
+assert.equal(starts.length,12,'No reproducir tras vencimiento');
 a.stopSound();
 assert(!a.getSoundRequest(),'Responder o vencer elimina aviso activo');
 console.log('Aviso sonoro: consentimiento, ganancia, repetición única cada 8 s, ocupado, pendiente, oculto y vencimiento OK');
@@ -88,4 +88,4 @@ vm.runInNewContext(source.slice(start,unlockEnd)+'\nthis.unlockTest={unlockAudio
 unlockEnv.unlockTest.setAudio(interrupted);
 unlockEnv.unlockTest.unlockAudio({isTrusted:false});assert.equal(resumes,0,'No desbloquear por eventos sintéticos');
 unlockEnv.unlockTest.unlockAudio({isTrusted:true});
-setImmediate(()=>{assert.equal(resumes,1);assert.equal(sinks,1,'Recupera salida silenciosa usando la predeterminada');assert.equal(button.hidden,false,'Habilitación visible incluso con contexto running');console.log('AudioContext interrumpido, gesto confiable y salida predeterminada: OK');});
+setImmediate(()=>{assert.equal(resumes,1);assert.equal(sinks,0,'Salida predeterminada original sin copiar dispositivos del SDK');assert.equal(button.hidden,true,'Acción adicional sólo si autoplay bloquea');console.log('AudioContext interrumpido, gesto confiable y salida predeterminada: OK');});

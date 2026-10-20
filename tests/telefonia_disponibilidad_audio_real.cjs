@@ -29,17 +29,16 @@ const html='<dialog data-availability-incoming><h2>Disponibilidad</h2><p data-av
    window.IMPE_TELEPHONY_SHELL={getPhoneStatus:()=>({ready:true,active:false,pending:false}),getActiveCall:()=>null};
    setInterval(()=>{for(const meter of probe.meters){const values=new Float32Array(meter.fftSize);meter.getFloatTimeDomainData(values);probe.max=Math.max(probe.max,Math.sqrt(values.reduce((sum,x)=>sum+x*x,0)/values.length));}},20);
   },sales);
+  if(!sales)await page.mouse.click(2,2); // Permiso previo: no requiere otro botón.
   await page.addScriptTag({content:source});await page.locator('dialog').waitFor({state:'visible'});
-  assert.equal(await page.evaluate(()=>probe.tones),0,'Sin gesto no se genera audio');
-  await page.locator('h2').click();
-  if(sales){await page.waitForFunction(()=>IMPE_AVAILABILITY.audioDiagnostic().error==='NotAllowedError');assert(await page.locator('[data-availability-audio]').isVisible());await page.locator('[data-availability-audio]').click();}
+  if(sales){assert.equal(await page.evaluate(()=>probe.tones),0,'Autoplay bloqueado no finge sonido');await page.waitForFunction(()=>IMPE_AVAILABILITY.audioDiagnostic().error==='NotAllowedError');assert(await page.locator('[data-availability-audio]').isVisible());await page.locator('[data-availability-audio]').click();}
   await page.waitForFunction(()=>probe.max>.04);
   await page.waitForFunction(()=>IMPE_AVAILABILITY.audioDiagnostic().peak>.02);
   const diagnostic=await page.evaluate(()=>IMPE_AVAILABILITY.audioDiagnostic());assert.equal(diagnostic.context,'running');assert(diagnostic.clock>0);assert.equal(diagnostic.error,'');
   assert.equal(await page.evaluate(()=>probe.players.length),0,'No additional HTML media autoplay gate');
-  assert.equal(await page.evaluate(()=>probe.tones),3,'Melodía compartida audible en el grafo real');
+  assert.equal(await page.evaluate(()=>probe.tones),2,'Melodía original en el grafo real (no acredita sonido físico)');
   await page.addScriptTag({content:source});await page.evaluate(()=>IMPE_AVAILABILITY.tick());
-  assert.equal(await page.evaluate(()=>probe.contexts.length),1);assert.equal(await page.evaluate(()=>probe.tones),3,'Polling/listeners no duplican');
+  assert.equal(await page.evaluate(()=>probe.contexts.length),1);assert.equal(await page.evaluate(()=>probe.tones),2,'Polling/listeners no duplican');
   for(const action of ['accept','decline','expire']){
    if(action!=='accept'){op={id:++nextId,version:1,estado:'PENDIENTE',segundos:45,origen_extension:'100',numero:'5551234567'};await page.evaluate(()=>IMPE_AVAILABILITY.tick());await page.locator('dialog').waitFor({state:'visible'});}
    const stops=await page.evaluate(()=>probe.stops);
