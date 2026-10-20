@@ -1,6 +1,6 @@
 <?php
 
-/** Consulta de solo lectura; el controlador exige sesión, permiso y Administración. */
+/** Consulta de solo lectura; el controlador exige sesión y autorización internacional. */
 class AliadoInternacionalModel
 {
     private mysqli $db;

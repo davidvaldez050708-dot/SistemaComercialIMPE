@@ -1,0 +1,74 @@
+--- a/public/javascript/aliados_internacionales.js
++++ b/public/javascript/aliados_internacionales.js
+@@ -1,12 +1,61 @@
+ document.addEventListener('DOMContentLoaded', function () {
+-    const pais=document.querySelector('#aliado_pais');
+-    const actualizar=function () {
+-        const otro=document.querySelector('[data-aliado-otro-pais]');
+-        otro?.classList.toggle('d-none',pais?.value!=='OTRO');
+-        if (otro?.querySelector('input')) otro.querySelector('input').required=pais?.value==='OTRO';
+-        document.querySelector('[data-aliado-mexico]')?.classList.toggle('d-none',pais?.value!=='MX');
+-    };
+-    pais?.addEventListener('change',actualizar);actualizar();
+-    const modal=document.querySelector('[data-aliado-edit-open]');
+-    if(modal&&window.bootstrap)bootstrap.Modal.getOrCreateInstance(modal).show();
++    const root = document.querySelector('[data-international-directory]');
++    if (!root) return;
++    // Bootstrap mantiene foco, backdrop y ciclo de vida; solo se carga el contenido autorizado.
++    document.querySelectorAll('.international-modal').forEach(modal => {
++        modal.addEventListener('show.bs.modal', event => {
++            const template = document.getElementById(event.relatedTarget?.dataset.internationalTemplate || '');
++            if (!(template instanceof HTMLTemplateElement)) { event.preventDefault(); return; }
++            modal.querySelector('[data-international-modal-body]').replaceChildren(template.content.cloneNode(true));
++        });
++        modal.addEventListener('hidden.bs.modal', () => modal.querySelector('[data-international-modal-body]').replaceChildren());
++    });
++    document.addEventListener('click', async event => {
++        const button = event.target.closest('[data-copy-ally-url]');
++        if (!button || button.disabled) return;
++        try {
++            await navigator.clipboard.writeText(button.dataset.copyAllyUrl);
++            const original = button.innerHTML;
++            button.textContent = 'Enlace copiado'; button.disabled = true;
++            setTimeout(() => { button.innerHTML = original; button.disabled = false; }, 1800);
++        } catch (_) { window.prompt('Copia el enlace:', button.dataset.copyAllyUrl); }
++    });
++    const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().trim();
++    const rows = [...root.querySelectorAll('[data-international-row]')];
++    const search = root.querySelector('#international-search');
++    const status = root.querySelector('#international-status');
++    const prev = root.querySelector('[data-international-prev]');
++    const next = root.querySelector('[data-international-next]');
++    let page = 1;
++    function render() {
++        const term = normalize(search.value);
++        const matching = rows.filter(row => normalize(row.dataset.search).includes(term) && (!status.value || row.dataset.activity === status.value));
++        const pages = Math.max(1, Math.ceil(matching.length / 8)); page = Math.min(page, pages);
++        const visible = new Set(matching.slice((page - 1) * 8, page * 8));
++        rows.forEach(row => { row.hidden = !visible.has(row); });
++        root.querySelector('[data-international-count]').textContent = `${matching.length} instituciones`;
++        root.querySelector('[data-international-empty]').hidden = matching.length !== 0;
++        root.querySelector('[data-international-page-label]').textContent = matching.length ? `${(page - 1) * 8 + 1}–${Math.min(page * 8, matching.length)} de ${matching.length} instituciones` : '0 instituciones';
++        root.querySelector('[data-international-page]').textContent = `${page} / ${pages}`;
++        prev.disabled = page === 1; next.disabled = page === pages;
++    }
++    root.querySelector('[data-international-filters]').addEventListener('submit', event => event.preventDefault());
++    search.addEventListener('input', () => { page = 1; render(); });
++    status.addEventListener('change', () => { page = 1; render(); });
++    prev.addEventListener('click', () => { page--; render(); });
++    next.addEventListener('click', () => { page++; render(); }); render();
++    const country = document.querySelector('#aliado_pais');
++    function updateCountry() {
++        const other = document.querySelector('[data-aliado-otro-pais]');
++        other?.classList.toggle('d-none', country?.value !== 'OTRO');
++        if (other?.querySelector('input')) { other.querySelector('input').required = country?.value === 'OTRO'; other.querySelector('input').disabled = country?.value !== 'OTRO'; }
++        document.querySelector('[data-aliado-mexico]')?.classList.toggle('d-none', country?.value !== 'MX');
++        const label = document.querySelector('label[for=aliado_region]');
++        if (label) label.textContent = country?.value === 'US' ? 'Estado' : (country?.value === 'CA' ? 'Provincia / territorio' : 'Estado, provincia o región');
++        const form = country?.form;
++        if (form) form.querySelector('[type=submit]').disabled = country.value === 'MX';
++    }
++    country?.addEventListener('change', updateCountry); updateCountry();
++    const editor = document.querySelector('[data-aliado-edit-open]');
++    if (editor && window.bootstrap) bootstrap.Modal.getOrCreateInstance(editor).show();
+ });

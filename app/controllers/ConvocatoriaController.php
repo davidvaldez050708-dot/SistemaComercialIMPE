@@ -471,7 +471,7 @@ class ConvocatoriaController
 
     private function guardarInternacional()
     {
-        $this->validarPermiso('aliados.ver');
+        if (!AliadoInternacionalService::puedeConsultar()) { http_response_code(403); exit; }
         $id=(int)($_POST['aliado_internacional_id']??0);
         $retorno=BASE_URL.'index.php?controller=aliado&action=internacionales&crear_convocatoria='.$id;
         $imagen=['nueva'=>false,'ruta'=>''];

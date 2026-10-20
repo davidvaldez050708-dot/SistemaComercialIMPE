@@ -15,9 +15,11 @@ def run(kind):
         (live/'index.php').write_text('<?php // fixture',encoding='utf8')
         (live/'personalizacion.txt').write_text('CONSERVAR',encoding='utf8')
         for f in M['files']:
-            if f['new']: continue
+            ref='aa1f9fafeeca8572e78098bef501bc81e0460c12' if kind=='pr114' else M['base']
+            source=subprocess.run(['git','show',ref+':'+f['path']],cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            if source.returncode: continue
             p=live/f['path'];p.parent.mkdir(parents=True,exist_ok=True)
-            p.write_bytes(subprocess.check_output(['git','show',M['base']+':'+f['path']],cwd=ROOT).replace(b'\r\n',b'\n'))
+            p.write_bytes(source.stdout.replace(b'\r\n',b'\n'))
             if kind=='personalizado' and f['path']==M['files'][0]['path']: p.write_bytes(b'<?php /* PERSONALIZACION HOSTINGER */ ?>\n'+p.read_bytes())
             if kind=='crlf': p.write_bytes(p.read_bytes().replace(b'\n',b'\r\n'))
         first=live/M['files'][0]['path']
@@ -45,4 +47,4 @@ def run(kind):
         code,out=command('--restore',backup[0]);assert code==0 and snap(live)==before,out
         print('OK: '+kind+' check/apply/idempotencia/restore exacto')
 if __name__=='__main__':
-    for kind in (sys.argv[1:] or ['base','personalizado','crlf','conflicto','nuevo-existente','vista-conflicto']):run(kind)
+    for kind in (sys.argv[1:] or ['base','pr114','personalizado','crlf','conflicto','nuevo-existente','vista-conflicto']):run(kind)

@@ -56,7 +56,7 @@ $tarjetasPorPagina = 12;
     </div>
 <?php endif; ?>
 
-<?php if ((int)($_SESSION['rol_id'] ?? 0) === 1): ?>
+<?php if (AliadoInternacionalService::puedeConsultar()): ?>
 <section class="dashboard-panel mb-3" style="padding:20px">
  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
   <div><span class="text-muted text-uppercase"><i class="bi bi-globe-americas"></i> Cobertura internacional</span>

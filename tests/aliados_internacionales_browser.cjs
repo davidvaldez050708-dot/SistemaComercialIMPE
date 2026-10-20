@@ -27,7 +27,7 @@ const server = spawn(process.env.PHP_BINARY || 'php', ['-S','127.0.0.1:8098','-t
   browser = await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL ? {channel:process.env.PLAYWRIGHT_CHANNEL} : {})});
   const page = await browser.newPage();
   const bootstrap = process.env.BOOTSTRAP_MODULE_PATH || path.join(root,'../browser-deps/node_modules/bootstrap');
-  await page.route('https://**/*', r => r.request().url().includes('bootstrap.min.css')
+  await page.route('https://**/*', r => r.request().url().includes('bootstrap.bundle.min.js') ? r.fulfill({path:path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'),contentType:'application/javascript'}) : r.request().url().includes('bootstrap.min.css')
    ? r.fulfill({path:path.join(bootstrap,'dist/css/bootstrap.min.css'),contentType:'text/css'}) : r.abort());
   for (const [caso,status] of [['anonimo',401],['sin-permiso',403],['otro-rol',403]]) {
    const response = await page.goto(base+'__aliados_test?caso='+caso);
@@ -44,10 +44,12 @@ const server = spawn(process.env.PHP_BINARY || 'php', ['-S','127.0.0.1:8098','-t
   assert.match(await card.textContent(),/7775635090/);
   assert.match(await card.textContent(),/Bachillerato General \/ Titulación por experiencia laboral/);
   assert.doesNotMatch(await card.textContent(),/Inglés/);
+  await card.getByRole('button',{name:'Ver detalles'}).click();
+  const details=page.locator('#modalDetalleInternacional');await details.waitFor({state:'visible'});
   for (const tipo of ['registro','inscripcion']) {
-   const href = await card.locator(`a[href*="action=${tipo}"]`).getAttribute('href');
+   const href = await details.locator(`a[href*="action=${tipo}"]`).getAttribute('href');
    assert.match(href,/aliado=[a-f0-9]{64}/);
-   assert.equal(await card.locator(`[data-copy-ally-url="${href}"]`).count(),1);
+   assert.equal(await details.locator(`[data-copy-ally-url="${href}"]`).count(),1);
   }
   for (const width of [1440,390]) {
    await page.setViewportSize({width,height:900});

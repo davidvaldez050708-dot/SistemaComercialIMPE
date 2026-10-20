@@ -228,6 +228,9 @@ if ($esTerritorialDashboard) {
 
 if ($esAliadosDashboard) {
     $cssOpcionalDashboard[] = 'aliados.css';
+    if ($actionDashboard === 'internacionales') {
+        $cssOpcionalDashboard[] = 'aliados_internacionales.css';
+    }
 }
 
 if ($esWhatsappDashboard) {

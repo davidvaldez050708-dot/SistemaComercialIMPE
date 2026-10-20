@@ -30,6 +30,7 @@ jobs:
       BOOTSTRAP_MODULE_PATH: /tmp/aliados-browser/node_modules/bootstrap
       IMPE_TEST_QR_MODULES: /tmp/aliados-browser/node_modules
       IMPE_TEST_QR_LIVE: '1'
+      IMPE_TEST_OUTPUT: /tmp/aliados-capturas
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,7 +42,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --prefix /tmp/aliados-browser playwright bootstrap@5.3.8 jsqr pngjs
+      - run: npm install --prefix /tmp/aliados-browser playwright bootstrap@5.3.8 jsqr pngjs @fontsource/manrope bootstrap-icons@1.13.1
       - run: /tmp/aliados-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Sintaxis de los archivos PHP y JavaScript modificados
         run: |
@@ -49,6 +50,7 @@ jobs:
           node --check public/javascript/convocatoria_crear_compartido.js
           node --check public/javascript/aliados_internacionales.js
           node --check public/javascript/crear_convocatoria.js
+      - run: php tests/aliados_internacionales_permisos.php
       - name: Esquema y migración incremental idempotente
         run: |
           php tests/aliados_convocatorias_fixture.php
@@ -62,5 +64,10 @@ jobs:
         run: php tests/aliados_convocatorias_db.php
       - name: Navegador y QR real decodificado
         run: node tests/aliados_convocatorias_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aliados-internacionales-${{ strategy.job-index }}
+          path: /tmp/aliados-capturas
       - name: Publicación selectiva y restauración
         run: python3 tests/publicacion_aliados_convocatorias_test.py

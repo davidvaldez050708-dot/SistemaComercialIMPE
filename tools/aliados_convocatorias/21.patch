@@ -1,0 +1,83 @@
+--- a/app/controllers/AliadoController.php
++++ b/app/controllers/AliadoController.php
+@@ -11,7 +11,7 @@
+ {
+     public function index()
+     {
+-        $this->validarPermiso('aliados.ver');
++        if (!AliadoInternacionalService::puedeConsultar()) { $this->validarPermiso('aliados.ver'); }
+ 
+         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+         $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+@@ -19,12 +19,12 @@
+         $modeloSeguimiento = new SeguimientoVinculacionModel();
+ 
+         $estructuraAliadosDisponible = $modeloAliado->estructuraDisponible();
+-        $territorios = $esAdministrador
++        $territorios = !tienePermiso('aliados.ver') ? [] : ($esAdministrador
+             ? $modeloSeguimiento->obtenerEstadosAdministrador()
+-            : $modeloSeguimiento->obtenerEstadosSupervisadosCuentaClave($usuarioId);
++            : $modeloSeguimiento->obtenerEstadosSupervisadosCuentaClave($usuarioId));
+ 
+         $resumenPorEstado = [];
+-        if ($estructuraAliadosDisponible) {
++        if ($estructuraAliadosDisponible && tienePermiso('aliados.ver')) {
+             foreach (
+                 $modeloAliado->obtenerResumenTerritorial(
+                     $usuarioId,
+@@ -67,14 +67,7 @@
+      */
+     public function internacionales()
+     {
+-        $this->validarPermiso('aliados.ver');
+-        // Sin asignación territorial internacional, solo Admin puede consultar los datos.
+-        if (!AliadoInternacionalService::puedeConsultar()) {
+-            http_response_code(403);
+-            echo 'La consulta de aliados externos está reservada a Administración.';
+-            return;
+-        }
+-
++        $this->validarAccesoInternacional();
+         header('Cache-Control: no-store, private');
+         $externos = [];
+         $respuestas = [];
+@@ -121,7 +114,7 @@
+ 
+     public function guardarInternacional()
+     {
+-        $this->validarPermiso('aliados.ver');
++        $this->validarAccesoInternacional();
+         $this->validarPermiso('aliados.internacionales.configurar');
+         $this->validarMetodoPost();
+         $this->validarCsrfInternacional();
+@@ -137,7 +130,7 @@
+ 
+     public function convenioInternacional()
+     {
+-        $this->validarPermiso('aliados.ver');
++        $this->validarAccesoInternacional();
+         $this->validarPermiso('aliados.internacionales.configurar');
+         $this->validarPermiso('convenios.gestionar');
+         $this->validarMetodoPost();$this->validarCsrfInternacional();
+@@ -153,7 +146,7 @@
+ 
+     public function qrInternacional()
+     {
+-        $this->validarPermiso('aliados.ver');$this->validarPermiso('convocatorias.ver');
++        $this->validarAccesoInternacional();$this->validarPermiso('convocatorias.ver');
+         if (!AliadoInternacionalService::puedeConsultar()) { http_response_code(403);exit; }
+         try {
+             $db=(new Database())->connect();$id=(int)($_GET['id']??0);
+@@ -173,6 +166,12 @@
+             header('Content-Disposition: '.(!empty($_GET['descargar'])?'attachment':'inline').'; filename="convocatoria-'.$id.'.png"');
+             echo $png;exit;
+         } catch (Throwable $e) { error_log('[qr_internacional] '.$e->getMessage());http_response_code(503);echo 'No se pudo generar el QR. Intenta nuevamente.';exit; }
++    }
++
++    private function validarAccesoInternacional(): void
++    {
++        if (!isset($_SESSION['usuario_id'])) { http_response_code(401); echo 'Sesión no válida.'; exit; }
++        if (!AliadoInternacionalService::puedeConsultar()) { http_response_code(403); echo 'No tienes autorización para consultar aliados internacionales.'; exit; }
+     }
+ 
+     private function validarCsrfInternacional()
