@@ -49,7 +49,7 @@ Capturas generadas en el artefacto `ventas-bandejas-responsive`: `ventas_grabaci
 
 ## Publicación manual por bloques
 
-Aplicación fija: `APP_COMMIT`. Los publicadores son Bash/PHP, sin dependencia de Python en Hostinger. No usar git pull en public_html. No ejecutar migraciones ni instalar con conflictos pendientes. Extraer siempre desde una revisión fija del PR.
+Aplicación fija: `b57965a84632cfae4f900844d9293914046d3d27`. Los publicadores son Bash/PHP, sin dependencia de Python en Hostinger. No usar git pull en public_html. No ejecutar migraciones ni instalar con conflictos pendientes. Extraer siempre desde una revisión fija del PR.
 
 ### 1. Revisar A sin instalar
 
@@ -67,7 +67,7 @@ Respaldar la BD con la herramienta institucional/hPanel y verificar la copia fue
 Extraer en carpeta privada NUEVA desde la copia HTTPS preparada por el check:
 
 ```bash
-VERSION=APP_COMMIT
+VERSION=b57965a84632cfae4f900844d9293914046d3d27
 PREPARACION="$HOME/ventas-etapa2-$VERSION"
 mkdir -m 700 "$PREPARACION" &&
 git -C "$HOME/crm-publicaciones/ventas-etapa2-a-actual" archive "$VERSION" \
