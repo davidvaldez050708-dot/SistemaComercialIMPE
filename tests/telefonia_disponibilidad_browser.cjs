@@ -73,6 +73,8 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
   await s.locator('[data-shell-transfer-toggle]').click();
   await s.locator('[data-availability-source]').waitFor({state:'visible'});
   assert.equal(authorizations,0);
+  assert.equal(await s.locator('.impe-routing-help').isVisible(),false,'Un solo mensaje de disponibilidad');
+  assert.equal(await s.locator('[data-routing-feedback]').isVisible(),false,'Sin confirmaci髇 textual duplicada');
   assert.equal(await s.locator('[data-availability-transfer]').isVisible(),false,'Transferir s贸lo se muestra despu茅s de aceptar');
   assert.equal(await s.locator('[data-availability-callback-open]').isVisible(),false,'Devoluci贸n s贸lo se ofrece al rechazar o vencer');
   assert.equal(await s.locator('[data-shell-transfer-toggle]').isDisabled(),false,'La solicitud pendiente bloquea otro env铆o aunque se cierre la ficha');
@@ -92,13 +94,13 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await d.setViewportSize({width:1366,height:900});
   }
   if(scenario!=='iframe'){
-   assert.equal(await d.evaluate(()=>audioProbe.started),0,'sin gesto confiable no intenta sonido');
+   assert.equal(await d.evaluate(()=>audioProbe.started),2,'intenta autom醫icamente cuando el contexto permite audio');
    await d.locator('[data-availability-incoming] h2').click();
   }
-  assert.equal(await d.evaluate(()=>audioProbe.started),3,'tres notas distintivas tras gesto confiable');
-  assert.deepEqual(await d.evaluate(()=>audioProbe.frequencies),[740,880,988]);
+  assert.equal(await d.evaluate(()=>audioProbe.started),2,'dos notas originales tras gesto confiable');
+  assert.deepEqual(await d.evaluate(()=>audioProbe.frequencies),[740,990]);
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
-  assert.equal(await d.evaluate(()=>audioProbe.started),3,'poll repetido no repite sonido');
+  assert.equal(await d.evaluate(()=>audioProbe.started),2,'poll repetido no repite sonido');
   if(process.env.DISP_SCREENSHOT&&scenario==='aceptar'){await d.screenshot({path:process.env.DISP_SCREENSHOT+'-analista.png'});await s.screenshot({path:process.env.DISP_SCREENSHOT+'-recepcion.png'});}
   assert.equal(await d.locator('[data-incoming-panel]').isVisible(),false,'la confirmaci贸n no es una llamada ni un timbrado SIP');
   assert.ok(await d.locator('[data-availability-incoming] h2').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))<=20,'tipograf铆a del modal uniforme');
@@ -127,7 +129,7 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await dialog.locator('button[type=submit]').click();await dialog.waitFor({state:'hidden'});assert.equal(saved.contacto,'Ana');assert.equal(saved.telefono,'5551234567');
   }
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
-  assert.ok(await d.evaluate(()=>audioProbe.stopped)>=6,'responder o vencer detiene los nodos del aviso');
+  assert.ok(await d.evaluate(()=>audioProbe.stopped)>=4,'responder o vencer detiene los nodos del aviso');
   assert.deepEqual(errors,[]);for(const c of contexts)await c.close();
  }
  console.log('Disponibilidad/navegador: confirmaci贸n sin llamada, aceptaci贸n expl铆cita, transferencia 煤nica, rechazo, vencimiento y devoluci贸n m贸vil: OK');

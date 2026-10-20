@@ -160,6 +160,7 @@
         if (!feedback) return;
         feedback.textContent = text;
         feedback.classList.toggle('is-error', Boolean(isError));
+        feedback.hidden=!isError && !document.querySelector('[data-availability-source]')?.hidden;
     };
     const call = () => api.getActiveCall?.() || null;
     const readJson = async response => {
@@ -599,7 +600,7 @@
             window.IMPE_AVAILABILITY.watch(data.solicitud);
             const source=document.querySelector('[data-availability-source]');
             if(source)panel.appendChild(source);
-            setFeedback('Solicitud enviada. La persona continúa hablando contigo.');
+            setFeedback('');
             positionSidecar(panel);
         } catch (err) {
             setFeedback(err?.message || 'No se pudo autorizar la transferencia.', true);

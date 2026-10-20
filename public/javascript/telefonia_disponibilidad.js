@@ -108,12 +108,16 @@
   if(!source)return;
   const same=matchesCall(watched);
   source.hidden=!watched||!same||['ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR'].includes(watched.estado);
+  const panel=source.closest('.impe-routing-panel'),show=!source.hidden;
+  const help=panel?.querySelector('.impe-routing-help'),feedback=panel?.querySelector('[data-routing-feedback]');
+  if(help)help.hidden=show;
+  if(feedback)feedback.hidden=show&&!feedback.classList.contains('is-error');
   if(!watched){source.removeAttribute('data-availability-state');return;}
   const status=watched.estado,name=watched.responsable||'El responsable',seconds=Math.max(0,Number(watched.segundos)||0);
   // Estado visual únicamente: no altera la autorización ni la transferencia.
   source.dataset.availabilityState=status;
   const titles={PENDIENTE:'Esperando confirmación',ACEPTADA:'Responsable disponible',RECHAZADA:'No disponible',VENCIDA:'Sin confirmación a tiempo',CANCELADA:'Solicitud cancelada',FALLIDA:'No se envió la transferencia',DEVOLUCION:'Devolución registrada'};
-  const copies={PENDIENTE:name+' · Ext. '+watched.destino_extension+' · '+seconds+' s. La persona sigue hablando contigo.',ACEPTADA:name+' confirmó que puede atender. Transfiere en los próximos '+seconds+' s.',RECHAZADA:'Continúa atendiendo a la persona. Puedes elegir otro responsable o dejar una devolución.',VENCIDA:'La persona sigue contigo. Solicita de nuevo o registra sus datos para devolver la llamada.',CANCELADA:'Puedes seleccionar otro responsable o solicitar una devolución.',FALLIDA:'La persona sigue contigo. Revisa la llamada antes de volver a solicitar disponibilidad.',DEVOLUCION:'El responsable tiene el contacto y el motivo en sus llamadas por devolver.'};
+  const copies={PENDIENTE:name+' · Ext. '+watched.destino_extension+' · '+seconds+' s.',ACEPTADA:name+' · Ext. '+watched.destino_extension+' · Transfiere en '+seconds+' s.',RECHAZADA:'Continúa atendiendo a la persona. Puedes elegir otro responsable o dejar una devolución.',VENCIDA:'La persona sigue contigo. Solicita de nuevo o registra sus datos para devolver la llamada.',CANCELADA:'Puedes seleccionar otro responsable o solicitar una devolución.',FALLIDA:'La persona sigue contigo. Revisa la llamada antes de volver a solicitar disponibilidad.',DEVOLUCION:'El responsable tiene el contacto y el motivo en sus llamadas por devolver.'};
   $('[data-availability-source-title]').textContent=titles[status]||'Transferencia en proceso';
   $('[data-availability-source-copy]').textContent=copies[status]||'Espera la confirmación del teléfono.';
   $('[data-availability-transfer]').hidden=status!=='ACEPTADA';$('[data-availability-transfer]').disabled=transferring;
