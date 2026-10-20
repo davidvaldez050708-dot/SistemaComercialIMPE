@@ -1,10 +1,10 @@
 <?php
 
 require_once __DIR__ . '/../models/AliadoModel.php';
-require_once __DIR__ . '/../models/AliadoInternacionalModel.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../services/AliadoDifusionService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../models/AliadoInternacionalModel.php';
 
 class AliadoController
 {
