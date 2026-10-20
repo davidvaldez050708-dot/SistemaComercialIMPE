@@ -108,3 +108,12 @@ correcto, conservación del folio, fidelidad de la plantilla seleccionada, fallo
 sin cambios de estado y continuidad de las acciones de oficios. La corrección
 ejecutable requerirá entonces un publicador selectivo `--check/--apply/--restore`
 y validación real en Hostinger, sin despliegue automático ni cambios en la BD.
+
+## Seguimiento: comprobar el cambio de hPanel mediante PHP web
+
+Tras comunicarse un cambio en `disableFunctions`, el resultado CLI anterior se
+conserva como evidencia histórica y no representa una medición web posterior.
+Se preparó un [diagnóstico web temporal y protegido](OFICIOS_DIAGNOSTICO_PHP_WEB.md)
+para comprobar funciones, motor y dependencias desde la sesión administrativa
+del CRM. Está deshabilitado por defecto y no convierte documentos. Su ejecución
+en Hostinger queda pendiente de los pasos manuales indicados en ese documento.
