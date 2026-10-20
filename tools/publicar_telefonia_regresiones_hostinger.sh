@@ -5,7 +5,7 @@ umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
 TARGET='65c86f98b5c79afc46d76a0028a8654c0302d785'
-REVIEWED='RESOURCES_COMMIT'
+REVIEWED='cf584c65a8afc80cd48637e2ed86b16e5e22ba25'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/telefonia_regresiones'
 SOURCE="${IMPE_TELEFONIA_REGRESIONES_SOURCE:-$HOME/crm-publicaciones/telefonia-regresiones-actual}"
