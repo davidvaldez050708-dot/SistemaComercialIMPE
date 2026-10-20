@@ -19,11 +19,15 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
   return route.fulfill({contentType:'text/html',body:u.pathname==='/'?shell:view(u)});
  });
  await page.goto('http://ventas.test/');await page.waitForFunction(()=>IMPE_SALES_ATTENTION&&document.querySelector('[data-shell-engine]'));
+ await page.frameLocator('#impeCrmFrame').locator('[data-sales-history]').waitFor();
+ await page.frameLocator('#impeCrmFrame').locator('[data-sales-history]').evaluate(root=>{const win=root.ownerDocument.defaultView;win.noticeRefreshes=0;win.addEventListener('impe:phone-notices-refresh',()=>win.noticeRefreshes++);});
  const push=(phase,active)=>page.evaluate(({phase,active})=>{const state={userId:8,hostReady:true,updatedAt:Date.now(),active,phase,direction:'incoming',destination:'+525551112233',duration:18,pbxCallId:'pbx-sales-call-001',callToken:'sdk-sales-1234567890',answeredAtMs:Date.now()-18000,context:{type:'INCOMING',sdkSessionId:'sdk-sales-1234567890'}};localStorage.setItem('impe:telephony:state:8',JSON.stringify(state));dispatchEvent(new StorageEvent('storage',{key:'impe:telephony:state:8',newValue:JSON.stringify(state)}));},{phase,active});
  await push('in-progress',true);await page.evaluate(()=>window.testHost=document.querySelector('[data-shell-engine]'));await page.waitForTimeout(850);
  await push('incoming-finished',false);
  const crm=page.frameLocator('#impeCrmFrame'),modal=crm.locator('#modalResultadoVenta'),phone=page.locator('[data-incoming-panel]');
  await page.waitForFunction(()=>window.IMPE_SALES_ATTENTION.hasPending());
+ await page.waitForFunction(()=>document.querySelector('#impeCrmFrame').contentWindow.noticeRefreshes===1);
+ await page.waitForTimeout(900);assert.equal(await page.evaluate(()=>document.querySelector('#impeCrmFrame').contentWindow.noticeRefreshes),1,'Una actualización de avisos por cierre confirmado, no por polling');
  assert.equal(await modal.isVisible(),false,'No abrir resultado automáticamente encima del teléfono');
  await phone.waitFor({state:'visible'});
  await page.locator('[data-sales-open]').click();
@@ -43,7 +47,8 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  await modal.waitFor({state:'visible'});assert.equal(await modal.locator('[name=observacion]').inputValue(),'Borrador comercial conservado');assert.equal(await modal.locator('[name=guardar_contacto]').isChecked(),true);assert.equal(await phone.isVisible(),false);
  // Recarga con llamada finalizada: conserva el pendiente, sin necesitar otra llamada.
  await page.reload();await page.waitForFunction(()=>window.IMPE_SALES_ATTENTION?.hasPending());
- await page.locator('.impe-analyst-call-result button').click();await modal.waitFor({state:'visible'});assert.equal(await modal.locator('[name=observacion]').inputValue(),'Borrador comercial conservado');assert.equal(await modal.locator('[name=guardar_contacto]').isChecked(),true);assert.equal(await phone.isVisible(),false);
+ assert.equal(await page.locator('.impe-analyst-call-result').count(),0,'Sin aviso flotante duplicado');
+ await crm.locator('[data-sales-detail]').first().click();await modal.waitFor({state:'visible'});assert.equal(await modal.locator('[name=observacion]').inputValue(),'Borrador comercial conservado');assert.equal(await modal.locator('[name=guardar_contacto]').isChecked(),true);assert.equal(await phone.isVisible(),false);
  await modal.locator('[name=resultado]').selectOption('INTERESADO');await modal.locator('[name=observacion]').fill('Enviar información');
  await modal.locator('[data-sales-submit]').click();await modal.waitFor({state:'hidden'});
  assert.equal(payload.pbx_call_id,call.pbx_call_id);assert.equal(payload.extension,'150');assert.equal(payload.resultado,'INTERESADO');assert.equal(payload.prospecto_nombre,'María');

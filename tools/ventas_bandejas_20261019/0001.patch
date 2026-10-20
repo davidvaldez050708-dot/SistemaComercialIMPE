@@ -1,0 +1,14 @@
+--- a/app/services/TelefoniaVentasLlamadasService.php
++++ b/app/services/TelefoniaVentasLlamadasService.php
+@@ -207,8 +207,9 @@
+         $result=$this->rows('SELECT * FROM telefonia_ventas_resultados WHERE usuario_id=? AND extension=? AND pbx_call_id=?',[$uid,$row['extension'],$ref]);
+         $row['registro']=$result[0]??null;return $row;
+     }
+-    public function listar(int $uid,array $filters=[]): array {
+-        $this->sincronizar($uid);
++    public function listar(int $uid,array $filters=[],bool $conciliar=true): array {
++        if($conciliar)$this->sincronizar($uid);
++        else{$this->autorizar($uid);$this->requerir();}
+         [$from,$until]=self::intervalo($filters);$from.=' 00:00:00';$until.=' 23:59:59';
+         $rows=$this->rows("SELECT c.*,r.id registro_id,r.resultado,r.observacion,r.prospecto_nombre,r.contacto_id,r.proxima_accion_at
+             FROM telefonia_ventas_llamadas c LEFT JOIN telefonia_ventas_resultados r

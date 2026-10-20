@@ -1,0 +1,245 @@
+{
+  "version": 1,
+  "base": "d93de87d2887557a495584084b953c0717fc9b4a",
+  "files": [
+    {
+      "path": "app/services/TelefoniaVentasLlamadasService.php",
+      "kind": "php",
+      "new": false,
+      "strict": false,
+      "target_sha256": "c3722da4d61f5578f695713142bc045b8d8304d18a750f09f81da265919613fd",
+      "variants": [
+        {
+          "label": "main",
+          "before": "9bf5fce5ec888aaff48b42bdd6219aaff1004744e3e68c0b344d7e62183df076",
+          "after": "c3722da4d61f5578f695713142bc045b8d8304d18a750f09f81da265919613fd",
+          "patch": "tools/ventas_bandejas_20261019/0000.patch",
+          "patch_sha256": "650821159c2f2e0f78a2b856ffe907e361084ca4668f49c2b153a986930992e2"
+        },
+        {
+          "label": "hostinger-pr107",
+          "before": "17c56717a300212245bd6a62dfc282f0b22cc8b983efa9b24b5aa8f080f56ada",
+          "after": "c3722da4d61f5578f695713142bc045b8d8304d18a750f09f81da265919613fd",
+          "patch": "tools/ventas_bandejas_20261019/0001.patch",
+          "patch_sha256": "7564023bb98e001159ebe8c6db2b9b25a030b3e18002001b60acab72ecadb2c2"
+        }
+      ],
+      "patch": "tools/ventas_bandejas_20261019/0000.patch",
+      "patch_sha256": "650821159c2f2e0f78a2b856ffe907e361084ca4668f49c2b153a986930992e2"
+    },
+    {
+      "path": "app/services/TelefoniaNotificacionVentasService.php",
+      "kind": "php",
+      "new": false,
+      "strict": false,
+      "target_sha256": "3a5e9b7861a180df68ce6ebdfdd71906e111146999ff391e86fa010ceab25bfa",
+      "variants": [
+        {
+          "label": "main",
+          "before": "7e3dfa794db2050331c24a1ec35a1003ae570cbd6b58fe5c88635df6378bffda",
+          "after": "3a5e9b7861a180df68ce6ebdfdd71906e111146999ff391e86fa010ceab25bfa",
+          "patch": "tools/ventas_bandejas_20261019/0100.patch",
+          "patch_sha256": "32dd8d897d3450e47b5e5b33c84926e47cd12d667bf31f93ac44920eb5f92eb9"
+        },
+        {
+          "label": "hostinger-pr109-before",
+          "before": "3b557e8894f94d8b46dec3a23428792f273f9199c76c689c447e937bd0dc4113",
+          "after": "3a5e9b7861a180df68ce6ebdfdd71906e111146999ff391e86fa010ceab25bfa",
+          "patch": "tools/ventas_bandejas_20261019/0101.patch",
+          "patch_sha256": "bf28ec40e7b695824073d33b90c84e2e6a074145d351aba3ab8825896609ba8e"
+        },
+        {
+          "label": "hostinger-pr109-after",
+          "before": "b106ef56a69c39157d0aca940d5e1adb1ef587e71da904b896e591590b453a1f",
+          "after": "3a5e9b7861a180df68ce6ebdfdd71906e111146999ff391e86fa010ceab25bfa",
+          "patch": "tools/ventas_bandejas_20261019/0102.patch",
+          "patch_sha256": "dff841e4f61f22a017f5f04dd6edd3267fa90e88c02d4edccedb604cfe33f892"
+        }
+      ],
+      "patch": "tools/ventas_bandejas_20261019/0100.patch",
+      "patch_sha256": "32dd8d897d3450e47b5e5b33c84926e47cd12d667bf31f93ac44920eb5f92eb9"
+    },
+    {
+      "path": "app/views/telefonia/ventas_llamadas.php",
+      "kind": "php",
+      "new": false,
+      "strict": true,
+      "target_sha256": "2bc837a9e4eb2a2648b00abb7e4425a30c5b81ac3fdf5af3d8348732ddbde084",
+      "variants": [
+        {
+          "label": "main",
+          "before": "cb9d1699b8ac10a8fce7b22c393b0943dd8c3c8640ca09e2f8448bff9fe4211a",
+          "after": "2bc837a9e4eb2a2648b00abb7e4425a30c5b81ac3fdf5af3d8348732ddbde084",
+          "patch": "tools/ventas_bandejas_20261019/0200.patch",
+          "patch_sha256": "f1c5510d727978b75549ebe0659810574a3cafa3079e6b3e25716598a73a1940"
+        },
+        {
+          "label": "hostinger-pr109-before",
+          "before": "85dffacee855fb1550041cf823dfc9af6287a2f9e0ecbfcc2ea058c3b7096c9a",
+          "after": "2bc837a9e4eb2a2648b00abb7e4425a30c5b81ac3fdf5af3d8348732ddbde084",
+          "patch": "tools/ventas_bandejas_20261019/0201.patch",
+          "patch_sha256": "1d7b49cab1e7bc44becc91490dc8f76930f4132ccbf06770a9bffddac73f1537"
+        }
+      ],
+      "patch": "tools/ventas_bandejas_20261019/0200.patch",
+      "patch_sha256": "f1c5510d727978b75549ebe0659810574a3cafa3079e6b3e25716598a73a1940"
+    },
+    {
+      "path": "app/views/telefonia/ventas_devoluciones.php",
+      "kind": "php",
+      "new": false,
+      "strict": false,
+      "target_sha256": "65f608efed8a2b069b9ce169e91af0edead41f0b86de3e5ed2116c68fb451ca1",
+      "variants": [
+        {
+          "label": "main",
+          "before": "5c3612c75e8ea46acee1b9285c6cc43eeac49de70bed7d5d0bed8933ae8e679a",
+          "after": "65f608efed8a2b069b9ce169e91af0edead41f0b86de3e5ed2116c68fb451ca1",
+          "patch": "tools/ventas_bandejas_20261019/0300.patch",
+          "patch_sha256": "8d6cdc9745e9e30139516ac1c20f8d190c12bc6d57ad3ad809c26bc72776f398"
+        },
+        {
+          "label": "hostinger-pr109-before",
+          "before": "a75f72e312b40b3046b6dbaf44f05362beadcc43d3ae2c03b825acd89f142244",
+          "after": "65f608efed8a2b069b9ce169e91af0edead41f0b86de3e5ed2116c68fb451ca1",
+          "patch": "tools/ventas_bandejas_20261019/0301.patch",
+          "patch_sha256": "38d57b40678a37503055afa0eef2d6f3687e05a23f09b8bddb45ae08d026849c"
+        },
+        {
+          "label": "hostinger-pr109-after",
+          "before": "bb3fe88532abf4da07ce1109d0eb48c560bf26cabb614a75a2cfc472b1f3aa62",
+          "after": "65f608efed8a2b069b9ce169e91af0edead41f0b86de3e5ed2116c68fb451ca1",
+          "patch": "tools/ventas_bandejas_20261019/0302.patch",
+          "patch_sha256": "dc5cb762b27911bf515f7d87b52d882eb192af204ad06db601763937cc91bde8"
+        }
+      ],
+      "patch": "tools/ventas_bandejas_20261019/0300.patch",
+      "patch_sha256": "8d6cdc9745e9e30139516ac1c20f8d190c12bc6d57ad3ad809c26bc72776f398"
+    },
+    {
+      "path": "app/views/telefonia/ventas_programadas.php",
+      "kind": "php",
+      "new": false,
+      "strict": false,
+      "target_sha256": "d409b523b025a895eb9bfe0d5393ddf57fec5f416126b0517ef97a555df6ce1b",
+      "variants": [
+        {
+          "label": "main",
+          "before": "845c1d9997ac14d126d24ade419ea75bbe263d3e989880c4d7899e4a36210561",
+          "after": "d409b523b025a895eb9bfe0d5393ddf57fec5f416126b0517ef97a555df6ce1b",
+          "patch": "tools/ventas_bandejas_20261019/0400.patch",
+          "patch_sha256": "4ce9230f69b7c1fb8451e3e969b6f9cec83322be80d55c5e1d9653bb6a0131cb"
+        },
+        {
+          "label": "hostinger-pr109-before",
+          "before": "8e6b41b90d33cfc345b5f2e572d4771f17697ff75160a2c5b68b2fc376048173",
+          "after": "d409b523b025a895eb9bfe0d5393ddf57fec5f416126b0517ef97a555df6ce1b",
+          "patch": "tools/ventas_bandejas_20261019/0401.patch",
+          "patch_sha256": "95591b25178732b6ab4974daa094cde70eba6987ad6ae76f7ba9d7de283cdfe9"
+        },
+        {
+          "label": "hostinger-pr109-after",
+          "before": "11c946d125ff2f305c36520339397e76ddd3b61028b5a9633e1c9dc4e6ed5788",
+          "after": "d409b523b025a895eb9bfe0d5393ddf57fec5f416126b0517ef97a555df6ce1b",
+          "patch": "tools/ventas_bandejas_20261019/0402.patch",
+          "patch_sha256": "bfd68c6665c23399e0da5ae8dc0fc94b3bc13930ee3da2e3157e493a6baab63a"
+        }
+      ],
+      "patch": "tools/ventas_bandejas_20261019/0400.patch",
+      "patch_sha256": "4ce9230f69b7c1fb8451e3e969b6f9cec83322be80d55c5e1d9653bb6a0131cb"
+    },
+    {
+      "path": "app/views/telefonia/ventas_paginacion.php",
+      "kind": "php",
+      "new": true,
+      "strict": false,
+      "target_sha256": "90554217f854b5c885b16bcb3699255274740604d99ec4b0edcd5ccfa53a6807",
+      "variants": [
+        {
+          "label": "main",
+          "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "after": "90554217f854b5c885b16bcb3699255274740604d99ec4b0edcd5ccfa53a6807",
+          "patch": "tools/ventas_bandejas_20261019/0500.patch",
+          "patch_sha256": "5145fe167942098f5643b8ad34f27b34775625051b9dbe24874bdbb285e6db6d"
+        }
+      ],
+      "patch": "tools/ventas_bandejas_20261019/0500.patch",
+      "patch_sha256": "5145fe167942098f5643b8ad34f27b34775625051b9dbe24874bdbb285e6db6d"
+    },
+    {
+      "path": "public/css/telefonia_ventas_ui.css",
+      "kind": "css",
+      "new": false,
+      "strict": false,
+      "target_sha256": "7172873f8f879c8c1d2d45a8158f757861fc7e47f457771477625ac0a2701eea",
+      "variants": [
+        {
+          "label": "main",
+          "before": "5c9d8070683322d09d120259f0148b792d84e657e5a4d271c681b3a1792ce19a",
+          "after": "7172873f8f879c8c1d2d45a8158f757861fc7e47f457771477625ac0a2701eea",
+          "patch": "tools/ventas_bandejas_20261019/0600.patch",
+          "patch_sha256": "7b638b3246a86c633e2d30a46c2155c4555a8bbc1810f32c8160e386b7455cee"
+        },
+        {
+          "label": "hostinger-pr109-before",
+          "before": "43d34778afd47a5bb2c1e89759af1a577a9f086c1f78545faf24870c9db0dcf2",
+          "after": "7172873f8f879c8c1d2d45a8158f757861fc7e47f457771477625ac0a2701eea",
+          "patch": "tools/ventas_bandejas_20261019/0601.patch",
+          "patch_sha256": "24fc4772acc18f6fc7076e43373bdc805605d452b34d9c39feeb51492e035060"
+        },
+        {
+          "label": "hostinger-pr109-after",
+          "before": "8c659583d6532087e2d3b2e322d230c0a6ac30cb0b305867b0d280b941123b18",
+          "after": "7172873f8f879c8c1d2d45a8158f757861fc7e47f457771477625ac0a2701eea",
+          "patch": "tools/ventas_bandejas_20261019/0602.patch",
+          "patch_sha256": "bf0b09aa44c84f68585942d22a8bf675d82a88979daef7688afc12d140667696"
+        }
+      ],
+      "patch": "tools/ventas_bandejas_20261019/0600.patch",
+      "patch_sha256": "7b638b3246a86c633e2d30a46c2155c4555a8bbc1810f32c8160e386b7455cee"
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_auto_filtros.js",
+      "kind": "js",
+      "new": false,
+      "strict": false,
+      "target_sha256": "46970a74b896265184ab7c8f504a8cf8e8760fc1f87171d183472c291b742459",
+      "variants": [
+        {
+          "label": "main",
+          "before": "44614b1082cda37ace187efbdf3776402740dfdee8b1ad22cd40e1b2c023817f",
+          "after": "46970a74b896265184ab7c8f504a8cf8e8760fc1f87171d183472c291b742459",
+          "patch": "tools/ventas_bandejas_20261019/0700.patch",
+          "patch_sha256": "d10c50a94134bdcb0bf8ec75c4da13bbc421357733aa888e2e129942c944fd12"
+        }
+      ],
+      "patch": "tools/ventas_bandejas_20261019/0700.patch",
+      "patch_sha256": "d10c50a94134bdcb0bf8ec75c4da13bbc421357733aa888e2e129942c944fd12"
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_shell.js",
+      "kind": "js",
+      "new": false,
+      "strict": false,
+      "target_sha256": "e7d8366e9c3afc3fdbfe73227a901d5e9f3c9f81c5ccee857b916238f5199588",
+      "variants": [
+        {
+          "label": "main",
+          "before": "d06bb070fd7fbf3ac02c3d1b610a170833e255054c15a339c3f4a30c6d3139ca",
+          "after": "e7d8366e9c3afc3fdbfe73227a901d5e9f3c9f81c5ccee857b916238f5199588",
+          "patch": "tools/ventas_bandejas_20261019/0800.patch",
+          "patch_sha256": "ecdc30ccabbfa498e3175bb1dd77e6caadc41178127db1d594a0c0292d7625b6"
+        },
+        {
+          "label": "hostinger-pr107",
+          "before": "3a856230e3260b8e0fd10573db16b5c016a9af29d5f62cd54218c753c0c182cd",
+          "after": "e7d8366e9c3afc3fdbfe73227a901d5e9f3c9f81c5ccee857b916238f5199588",
+          "patch": "tools/ventas_bandejas_20261019/0801.patch",
+          "patch_sha256": "406e42235fc8cffb992be97789ac1f559ad551987d7ecbccbbdea83145a83b32"
+        }
+      ],
+      "patch": "tools/ventas_bandejas_20261019/0800.patch",
+      "patch_sha256": "ecdc30ccabbfa498e3175bb1dd77e6caadc41178127db1d594a0c0292d7625b6"
+    }
+  ]
+}

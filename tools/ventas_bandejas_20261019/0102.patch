@@ -1,0 +1,36 @@
+--- a/app/services/TelefoniaNotificacionVentasService.php
++++ b/app/services/TelefoniaNotificacionVentasService.php
+@@ -13,10 +13,19 @@
+         $s=$this->db->prepare($sql);if($args)$s->bind_param(str_repeat('s',count($args)),...$args);$s->execute();$r=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $r;
+     }
+     public function pendientes(int $uid): array {
+-        $calls=(new TelefoniaVentasLlamadasService($this->db))->listar($uid);
++        $history=new TelefoniaVentasLlamadasService($this->db);
++        // Un fallo auxiliar no debe ocultar llamadas ya atribuidas y confirmadas.
++        // La lectura conserva propietario, permisos, cierre PBX y resultado.
++        try{$calls=$history->listar($uid);}
++        catch(Throwable $e){
++            error_log('[ventas_avisos_conciliacion] '.get_class($e));
++            $calls=$history->listar($uid,[],false);
++        }
+         // Conciliar estados con el mecanismo existente; aceptar disponibilidad no acredita respuesta.
+         try{$active=$this->rows("SELECT extension FROM telefonia_extensiones WHERE usuario_id=? AND activo=1 AND proveedor='ZADARMA' AND permite_entrantes=1",[$uid]);}
+         catch(Throwable $e){error_log('[ventas_avisos_extension] '.get_class($e));$active=[];}
++        // La sincronización de devoluciones es auxiliar: no debe dejar la
++        // campana vacía si falla una operación pendiente de otra extensión.
+         if(count($active)===1){
+             try{(new TelefoniaDisponibilidadService($this->db))->devoluciones($uid);}
+             catch(Throwable $e){error_log('[ventas_avisos_disponibilidad] '.get_class($e));}
+@@ -62,8 +71,10 @@
+         $clear=$this->db->prepare('UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND id=?');
+         foreach($existing as $r)if(!isset($wanted[$r['llave']])){$clear->bind_param('ii',$uid,$r['id']);$clear->execute();}$clear->close();
+         $rows=$this->rows("SELECT * FROM telefonia_notificaciones WHERE usuario_id=? AND leida=0 AND llave LIKE 'ventas:%' ORDER BY created_at DESC,id DESC LIMIT 20",[$uid]);
+-        return array_map(static function($r)use($wanted){$meta=$wanted[$r['llave']];return [
+-            'id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>'llamada_perdida','tipo'=>'TELEFONIA_PERDIDA','leida'=>0,
++        return array_map(static function($r)use($wanted){$meta=$wanted[$r['llave']];
++            $kind=str_starts_with($r['llave'],'ventas:devolucion:')?'devolucion':(str_starts_with($r['llave'],'ventas:programada:')?'programada':(str_ends_with($r['llave'],':resultado')?'resultado_pendiente':'llamada_perdida'));
++            return [
++            'id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>$kind,'tipo'=>$kind==='resultado_pendiente'?'TELEFONIA_RESULTADO':'TELEFONIA_PERDIDA','leida'=>0,
+             'titulo'=>$r['titulo'],'mensaje'=>$r['mensaje'],'created_at'=>$r['created_at'],'fecha'=>$r['created_at'],'url'=>$meta['url'],
+             'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>'bi-telephone','etiqueta'=>$meta['etiqueta'],'estado'=>'informativa','prioridad'=>1];},$rows);
+     }
