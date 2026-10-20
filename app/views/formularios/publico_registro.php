@@ -37,6 +37,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
     <link
         rel="stylesheet"
         href="<?= BASE_URL ?>public/css/formularios_publico.css?v=<?= filemtime(ROOT_PATH . '/public/css/formularios_publico.css') ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>public/css/formularios_hero_institucional.css?v=<?= filemtime(ROOT_PATH . '/public/css/formularios_hero_institucional.css') ?>">
 </head>
 
 <body class="formulario-publico-body">
@@ -63,10 +64,20 @@ $fechaMaximaNacimiento = date('Y-m-d');
                         alt="Fundación Red Educativa México y Universidad MPE"
                         loading="eager">
                 </div>
+                <span class="formulario-publico-hero-logo-separator" aria-hidden="true"></span>
                 <div class="formulario-publico-hero-logo-sep">
                     <img
                         src="<?= BASE_URL ?>public/img/brand/Logo-Sep-Blanco.png"
                         alt="Secretaría de Educación Pública"
+                        loading="eager">
+                </div>
+                <span class="formulario-publico-hero-logo-separator" aria-hidden="true"></span>
+                <div class="formulario-publico-hero-acuerdo">Acuerdo<br>286</div>
+                <span class="formulario-publico-hero-logo-separator" aria-hidden="true"></span>
+                <div class="formulario-publico-hero-logo formulario-publico-hero-logo-hlc">
+                    <img
+                        src="<?= BASE_URL ?>public/img/brand/logo-huston.png"
+                        alt="HLC Handy Language Center"
                         loading="eager">
                 </div>
             </div>

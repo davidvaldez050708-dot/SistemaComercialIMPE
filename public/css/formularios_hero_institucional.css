@@ -1,0 +1,120 @@
+/* Encabezado institucional de los formularios públicos: Registro e Inscripción. */
+.formulario-publico-body .formulario-publico-shell{
+    width:min(1920px,calc(100% - 6.2vw));
+    margin:clamp(26px,4.5vw,74px) auto 42px;
+}
+.formulario-publico-body .formulario-publico-hero,
+.formulario-publico-inscripcion .formulario-publico-hero{
+    min-height:clamp(260px,18vw,360px);
+    padding:clamp(26px,4.2vw,80px) clamp(28px,4.3vw,88px);
+    display:grid;
+    grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+    align-items:center;
+    gap:clamp(24px,2.5vw,52px);
+    border-radius:32px;
+    background:
+        linear-gradient(90deg,rgba(0,67,112,.84) 0%,rgba(0,67,112,.69) 49%,rgba(0,56,103,.84) 100%),
+        url('../img/brand/red-graduacion.jpeg') center 78% / cover no-repeat;
+}
+.formulario-publico-body .formulario-publico-hero::before,
+.formulario-publico-body .formulario-publico-hero::after{display:none!important}
+.formulario-publico-body .formulario-publico-hero-copy{
+    max-width:none;
+    min-width:0;
+}
+.formulario-publico-body .formulario-publico-hero h1{
+    white-space:normal;
+    font-size:clamp(28px,2.9vw,55px);
+    letter-spacing:-.035em;
+    line-height:1.13;
+    margin-bottom:16px;
+}
+.formulario-publico-body .formulario-publico-hero .formulario-publico-hero-slogan{
+    max-width:100%;
+    font-size:clamp(14px,1.24vw,23px);
+    line-height:1.48;
+    font-weight:750;
+    margin:0 0 14px;
+}
+.formulario-publico-body .formulario-publico-hero .formulario-publico-hero-required{
+    font-size:clamp(12px,1.05vw,20px);
+    line-height:1.4;
+    font-weight:500;
+}
+.formulario-publico-body .formulario-publico-hero-logos{
+    display:flex;
+    width:100%;
+    min-width:0;
+    justify-content:flex-end;
+    align-items:center;
+    gap:clamp(8px,1vw,20px);
+}
+.formulario-publico-body .formulario-publico-hero-logo,
+.formulario-publico-body .formulario-publico-hero-logo-sep{
+    width:auto;
+    min-width:0;
+    min-height:0;
+    padding:0;
+    border:0;
+    flex:1 1 0;
+}
+.formulario-publico-body .formulario-publico-hero-logo-principal{flex:1.6 1 0}
+.formulario-publico-body .formulario-publico-hero-logo-sep{flex:1.05 1 0}
+.formulario-publico-body .formulario-publico-hero-logo-hlc{flex:.95 1 0}
+.formulario-publico-body .formulario-publico-hero-logo img,
+.formulario-publico-body .formulario-publico-hero-logo-sep img{
+    width:100%;
+    max-width:100%;
+    max-height:105px;
+    object-fit:contain;
+}
+.formulario-publico-body .formulario-publico-hero-logo-hlc img{max-height:95px}
+.formulario-publico-body .formulario-publico-hero-logo-separator{
+    display:block;
+    align-self:stretch;
+    min-height:100px;
+    width:1px;
+    background:rgba(255,255,255,.58);
+    flex:0 0 1px;
+}
+.formulario-publico-body .formulario-publico-hero-acuerdo{
+    color:#fff;
+    font-size:clamp(12px,1.1vw,22px);
+    font-weight:700;
+    line-height:1.45;
+    white-space:nowrap;
+    text-align:center;
+}
+@media(max-width:1200px){
+    .formulario-publico-body .formulario-publico-hero,
+    .formulario-publico-inscripcion .formulario-publico-hero{
+        grid-template-columns:minmax(0,1fr);
+        gap:24px;
+    }
+    .formulario-publico-body .formulario-publico-hero-logos{
+        justify-content:center;
+        max-width:760px;
+        margin-inline:auto;
+    }
+    .formulario-publico-body .formulario-publico-hero-logo img,
+    .formulario-publico-body .formulario-publico-hero-logo-sep img{max-height:85px}
+}
+@media(max-width:600px){
+    .formulario-publico-body .formulario-publico-shell{width:calc(100% - 24px);margin:16px auto 32px}
+    .formulario-publico-body .formulario-publico-hero,
+    .formulario-publico-inscripcion .formulario-publico-hero{
+        padding:26px 20px;
+        min-height:0;
+        border-radius:20px;
+        gap:23px;
+    }
+    .formulario-publico-body .formulario-publico-hero h1{font-size:clamp(24px,6vw,36px)}
+    .formulario-publico-body .formulario-publico-hero .formulario-publico-hero-slogan{font-size:13px}
+    .formulario-publico-body .formulario-publico-hero .formulario-publico-hero-required{font-size:11px}
+    .formulario-publico-body .formulario-publico-hero-logos{gap:7px}
+    .formulario-publico-body .formulario-publico-hero-logo-separator{min-height:58px}
+    .formulario-publico-body .formulario-publico-hero-logo img,
+    .formulario-publico-body .formulario-publico-hero-logo-sep img{max-height:58px}
+    .formulario-publico-body .formulario-publico-hero-logo-hlc img{max-height:50px}
+    .formulario-publico-body .formulario-publico-hero-acuerdo{font-size:10px}
+}
