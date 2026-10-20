@@ -67,6 +67,7 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
   await s.locator('[data-routing-attended]').click();
   if(scenario==='prospecto'||scenario==='saliente-ventas')assert.equal(op?.institucion_nombre,'Mariana López','Recepción guarda el nombre antes de solicitar disponibilidad');
   await s.locator('[data-availability-source]').waitFor({state:'visible'});
+  const sourceStyle=await s.locator('[data-availability-source]').evaluate(el=>({border:getComputedStyle(el).borderTopStyle,font:parseFloat(getComputedStyle(el.querySelector('strong')).fontSize)}));assert.equal(sourceStyle.border,'solid','Componente institucional conserva borde dentro de Transferir');assert(sourceStyle.font<=13,'Estado con tipograf�a proporcionada');
   assert.equal(await s.locator('[data-availability-source]').getAttribute('data-availability-state'),'PENDIENTE','estado de espera visible');
   await s.locator('[data-routing-close]').click();
   await s.locator('[data-shell-transfer-toggle]').click();
