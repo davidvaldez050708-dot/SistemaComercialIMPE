@@ -1,0 +1,21 @@
+name: Aliados internacionales Handly
+on:
+  pull_request:
+    paths:
+      - 'app/controllers/AliadoController.php'
+      - 'app/views/aliados/index.php'
+      - 'app/views/aliados/internacionales.php'
+      - '.github/workflows/aliados-internacionales.yml'
+  workflow_dispatch:
+jobs:
+  sintaxis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validación de PHP y permisos de acceso
+        run: |
+          php -l app/controllers/AliadoController.php
+          php -l app/views/aliados/index.php
+          php -l app/views/aliados/internacionales.php
+          php -r '$c=file_get_contents("app/controllers/AliadoController.php"); if(strpos($c,"function internacionales()")===false || strpos($c,"aliados.ver")===false || strpos($c,"rol_id")===false) exit(1);'
+          php -r '$v=file_get_contents("app/views/aliados/internacionales.php"); if(strpos($v,"formularioPublico")===false || strpos($v,"data-copy-ally-url")===false) exit(1);'
