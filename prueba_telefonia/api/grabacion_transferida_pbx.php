@@ -12,6 +12,7 @@ require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/services/TelefoniaRecepcionMarketingService.php';
 require_once $root . '/app/services/ZadarmaRecordingService.php';
 require_once $root . '/app/helpers/ZadarmaPbxIdentifierHelper.php';
+require_once $root . '/app/services/TelefoniaPbxSegmentosService.php';
 header('Cache-Control: private, no-store');
 header('X-Content-Type-Options: nosniff');
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') { http_response_code(405); exit; }
@@ -76,23 +77,9 @@ try {
         }
     }
     if (!$autorizada) { http_response_code(404); exit; }
-    $q = $db->prepare("SELECT call_id_with_rec,MIN(id) AS first_id FROM telefonia_zadarma_eventos
-        WHERE pbx_call_id=? AND evento='NOTIFY_RECORD'
-          AND TRIM(COALESCE(call_id_with_rec,'')) <> ''
-        GROUP BY call_id_with_rec ORDER BY first_id ASC LIMIT 9");
-    $q->bind_param('s', $pbx);
-    $q->execute();
-    $rows = $q->get_result()->fetch_all(MYSQLI_ASSOC);
-    $q->close();
-    if (count($rows)>8) { http_response_code(404); exit; }
-    $ids = [];
-    foreach ($rows as $row) {
-        $id = trim((string)$row['call_id_with_rec']);
-        if (!ZadarmaPbxIdentifierHelper::callIdValido($id)) {
-            http_response_code(404); exit;
-        }
-        if (!in_array($id,$ids,true)) $ids[]=$id;
-    }
+    $q=$db->prepare('SELECT evento,internal,call_id_with_rec,is_recorded FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
+    $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
+    $ids=TelefoniaPbxSegmentosService::deEventos($events,$ext)['segmentos'];
     if (!$ids) { http_response_code(404); exit; }
     $service = new ZadarmaRecordingService();
     $records = [];
