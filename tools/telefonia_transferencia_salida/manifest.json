@@ -200,10 +200,18 @@
           "after": "0cfb68a45e4d19c3dad7b4680d9213d91c6d698a6d4b06636ee72becfccbb183",
           "patch": "tools/telefonia_transferencia_salida/11.patch",
           "patch_sha256": "53d2b768e6d6eb1163351e698531472a3ea880a63cad16b5cfc7b6eb9801dffc"
+        },
+        {
+          "label": "hostinger-comentario-sql-conservado",
+          "before": "d26e58130a2a968440e23573f411a1ba1cdeba2454e81b90b74fd8b2c6fd07d9",
+          "after": "b7f12192c598344112ce6f1444e5cad7b0825251b4d5461ec570a5207762fcf2",
+          "patch": "tools/telefonia_transferencia_salida/111.patch",
+          "patch_sha256": "53d2b768e6d6eb1163351e698531472a3ea880a63cad16b5cfc7b6eb9801dffc"
         }
       ],
       "patch": "tools/telefonia_transferencia_salida/11.patch",
-      "patch_sha256": "53d2b768e6d6eb1163351e698531472a3ea880a63cad16b5cfc7b6eb9801dffc"
+      "patch_sha256": "53d2b768e6d6eb1163351e698531472a3ea880a63cad16b5cfc7b6eb9801dffc",
+      "production_fixture": "tools/telefonia_transferencia_salida/hostinger-shell-before.js"
     }
   ]
 }

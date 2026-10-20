@@ -42,6 +42,7 @@ def scenario(kind):
         for row in M['files']:
             if row['path'] in personalized:assert b'PERSONALIZACION HOSTINGER FUERA DEL PARCHE' in installed[row['path']]
         assert installed['personalizacion.txt']==before['personalizacion.txt']
+        if kind=='hostinger':assert b'// No descartar resultado antes de confirmaci' in installed['public/javascript/telefonia_shell.js']
         code,out=run('--apply');assert code==0 and snapshot(live)==installed,out
         backups=list((private/'backups').iterdir());assert len(backups)==1
         file=live/M['files'][0]['path'];saved=file.read_bytes();file.write_bytes(saved+b'\n// EDICION POSTERIOR\n');edited=snapshot(live)
