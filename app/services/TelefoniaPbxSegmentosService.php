@@ -4,24 +4,31 @@ require_once __DIR__.'/../helpers/ZadarmaPbxIdentifierHelper.php';
 /** Evidencia por segmento de la estadística oficial. No depende de roles o números. */
 final class TelefoniaPbxSegmentosService
 {
-    public static function deEventos(array $events,string $ext): array {
-        $owned=[];$ready=[];$foreign=[];$reported=false;
+    public static function deEventos(array $events,string $ext,array $autorizadas=[]): array {
+        $owned=[];$ready=[];$reported=false;$owners=[];$levels=[];
+        $allowed=array_fill_keys(array_merge([$ext],$autorizadas),true);
         foreach($events as $e){
             $type=(string)($e['evento']??'');$internal=trim((string)($e['internal']??''));$id=trim((string)($e['call_id_with_rec']??''));
             $recorded=in_array(strtolower((string)($e['is_recorded']??'')),['1','true'],true);
             if($internal===$ext&&$recorded)$reported=true;
             if(!ZadarmaPbxIdentifierHelper::callIdValido($id))continue;
-            if(!in_array($type,['NOTIFY_RECORD','NOTIFY_END','NOTIFY_OUT_END'],true))continue;
-            if($internal!==''&&$internal!==$ext){$foreign[$id]=true;continue;}
             if($type==='NOTIFY_RECORD')$ready[$id]=true;
-            if($internal===$ext){
-                $owned[$id]=($owned[$id]??false)||$type==='NOTIFY_RECORD'||$recorded;
+            $payload=json_decode((string)($e['payload_json']??''),true)?:[];
+            $level=$type==='NOTIFY_RECORD'?3:(in_array($type,['NOTIFY_ANSWER','NOTIFY_INTERNAL'],true)?2:(in_array($type,['NOTIFY_END','NOTIFY_OUT_END','NOTIFY_OUT_START'],true)?1:0));
+            if(!$level)continue;
+            if(in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true))$internal=trim((string)($e['last_internal']??$payload['last_internal']??$internal));
+            if($internal!==''){
+                if($level>($levels[$id]??0)){$owners[$id]=[];$levels[$id]=$level;}
+                if($level===($levels[$id]??0))$owners[$id][$internal]=true;
             }
+            if($recorded)$ready[$id]=true;
         }
         $ids=[];$ambiguous=0;
-        foreach($owned as $id=>$confirmed){
-            if(isset($foreign[$id])){$ambiguous++;continue;}
-            if($confirmed||isset($ready[$id]))$ids[]=(string)$id;
+        foreach($owners as $id=>$participants){
+            if(!array_intersect_key($participants,$allowed))continue;
+            $owned[$id]=true;
+            if(array_diff_key($participants,$allowed)){$ambiguous++;continue;}
+            if(isset($ready[$id]))$ids[]=(string)$id;
         }
         $overflow=count($ids)>8;
         $reason=$overflow?'limite':($ids?'referencia_propia':($ambiguous?'compartida':($ready?'sin_tramo':($reported?'pendiente_referencia':'sin_referencia'))));
