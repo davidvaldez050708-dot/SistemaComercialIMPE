@@ -44,6 +44,9 @@ class OficioPreviewService
         );
 
         if (!$plantilla) {
+            if ((int)($seguimiento['plantilla_oficio_id'] ?? 0) > 0) {
+                return $this->error('La plantilla seleccionada para este oficio ya no está disponible. No se sustituirá por otro documento.', 422);
+            }
             $plantilla = $this->obtenerOCrearPlantillaProvisional();
         }
 
@@ -287,8 +290,7 @@ TEXTO;
 
         $sql = "SELECT id, nombre, asunto, contenido, archivo_docx
                 FROM plantillas_vinculacion
-                WHERE id = ? AND tipo = 'OFICIO' AND activo = 1
-                    AND archivo_docx IS NOT NULL AND archivo_docx <> '' LIMIT 1";
+                WHERE id = ? AND tipo = 'OFICIO' LIMIT 1";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('i', $plantillaId);
         $stmt->execute();

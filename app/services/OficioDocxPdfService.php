@@ -249,7 +249,7 @@ class OficioDocxPdfService
         return $reemplazos + $personalizados;
     }
 
-    public function generarDocx(array $vista)
+    public function generarDocx(array $vista, $prepararPlantilla = false)
     {
         $rutaPlantilla = $this->resolverRutaPlantilla($vista);
         if (!is_file($rutaPlantilla) || (!class_exists('ZipArchive') && !class_exists('PharData'))) {
@@ -269,7 +269,17 @@ class OficioDocxPdfService
                 return $this->error('No fue posible copiar la plantilla seleccionada.', 'copy() falló.');
             }
 
-            $rellenado = $this->rellenarConTemplateProcessor($rutaDocx, $vista);
+            // La copia generacion_* ya fue rellenada en Generar oficio. Descarga
+            // y PDF deben representar exactamente ese archivo, sin repetir reemplazos.
+            $procesada = !$prepararPlantilla && preg_match(
+                '~^storage/templates/oficios_personalizados/generacion_\d{8}_\d{6}_[a-f0-9]{12}\.docx$~D',
+                str_replace('\\', '/', (string)($vista['archivo_plantilla'] ?? ''))
+            ) === 1;
+            $rellenado = $procesada ? ['ok' => true] : (
+                trim((string)($vista['archivo_plantilla'] ?? '')) !== ''
+                    ? $this->rellenarConTemplateProcessor($rutaDocx, $vista)
+                    : $this->rellenarDocx($rutaDocx, $this->construirReemplazos($vista))
+            );
             if (!($rellenado['ok'] ?? false)) {
                 return $rellenado;
             }
@@ -387,9 +397,10 @@ class OficioDocxPdfService
         $relativa = str_replace('\\', '/', trim((string)($vista['archivo_plantilla'] ?? '')));
         $prefijo = 'storage/templates/oficios_personalizados/';
 
-        if ($relativa === '' || strpos($relativa, $prefijo) !== 0 || strpos($relativa, '..') !== false) {
+        if ($relativa === '') {
             return $this->templatePath;
         }
+        if (strpos($relativa, $prefijo) !== 0 || strpos($relativa, '..') !== false) { return ''; }
 
         $ruta = $this->rootPath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativa);
         $directorioPermitido = realpath($this->rootPath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, rtrim($prefijo, '/')));
@@ -947,6 +958,12 @@ class OficioDocxPdfService
 
     private function convertirAPdf($rutaDocx, $directorioSalida, $recuperarComentarios = false)
     {
+        // Exclusivo de generarPdf() de oficios. El conversor compartido de
+        // documentos conserva su comportamiento y no usa el perfil REDMEX.
+        if ($recuperarComentarios) {
+            require_once __DIR__ . '/OficioRedmexPdfRenderer.php';
+            return (new OficioRedmexPdfRenderer())->convertir($rutaDocx, $directorioSalida);
+        }
         $conversor = $recuperarComentarios && !function_exists('proc_open')
             ? ['ok' => $this->phpWordDompdfDisponible(), 'tipo' => 'phpword_dompdf']
             : $this->detectarConversor();

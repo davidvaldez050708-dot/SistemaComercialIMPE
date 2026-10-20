@@ -79,8 +79,12 @@ class OficioVinculacionController
             ], 422);
         }
 
-        $modelo = new OficioVinculacionModel();
         $tipoPlantilla = (string)($_POST['tipo_plantilla'] ?? 'predeterminada');
+        if (!in_array($tipoPlantilla, ['predeterminada','personalizada'], true)
+            || ((int)($_POST['plantilla_id'] ?? 0) > 0 && (int)($_FILES['archivo_plantilla']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE)) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>'Selecciona una sola plantilla o un archivo DOCX.'], 422);
+        }
+        $modelo = new OficioVinculacionModel();
         $plantillaId = 0;
         $plantillaCargada = null;
 
@@ -110,6 +114,7 @@ class OficioVinculacionController
             if ($plantillaCargada) {
                 $modelo->eliminarPlantillaOficioDocx($plantillaId);
                 @unlink((string)$plantillaCargada['ruta_absoluta']);
+                if (!empty($plantillaCargada['ruta_original'])) { @unlink($plantillaCargada['ruta_original']); }
             }
             $codigoHttp = (int)($resultado['codigo_http'] ?? 500);
             unset($resultado['codigo_http']);
@@ -127,7 +132,8 @@ class OficioVinculacionController
             }
 
             $documento = (new OficioDocxPdfService())->generarDocx(
-                (array)($vista['vista_previa'] ?? [])
+                (array)($vista['vista_previa'] ?? []),
+                true // Primera preparación de esta copia, no una descarga de un oficio preparado.
             );
             if (!($documento['ok'] ?? false)) {
                 $this->responderJson([
@@ -228,7 +234,16 @@ class OficioVinculacionController
 
         $nombreArchivo = ($nombreBiblioteca === null ? 'generacion_' : 'oficio_') . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.docx';
         $rutaFinal = $directorio . DIRECTORY_SEPARATOR . $nombreArchivo;
-        if (!($copiar ? copy($rutaTemporal, $rutaFinal) : move_uploaded_file($rutaTemporal, $rutaFinal))) {
+        $rutaOriginal = null;
+        if (!$copiar && $nombreBiblioteca === null) {
+            // Conservar el archivo subido. Sólo la copia generacion_* se rellena.
+            $rutaOriginal = $directorio . DIRECTORY_SEPARATOR . 'original_' . $nombreArchivo;
+            $recibido = move_uploaded_file($rutaTemporal, $rutaOriginal) && copy($rutaOriginal, $rutaFinal);
+        } else {
+            $recibido = $copiar ? copy($rutaTemporal, $rutaFinal) : move_uploaded_file($rutaTemporal, $rutaFinal);
+        }
+        if (!$recibido) {
+            if ($rutaOriginal) { @unlink($rutaOriginal); }
             return ['ok' => false, 'mensaje' => 'No fue posible recibir la plantilla seleccionada.', 'codigo_http' => 500];
         }
 
@@ -237,10 +252,11 @@ class OficioVinculacionController
         $id = $modelo->registrarPlantillaOficioDocx($nombreBiblioteca ?? ($nombreVisible ?: 'Plantilla personalizada'), $rutaRelativa, $usuarioId);
         if ($id <= 0) {
             @unlink($rutaFinal);
+            if ($rutaOriginal) { @unlink($rutaOriginal); }
             return ['ok' => false, 'mensaje' => 'No fue posible preparar la plantilla seleccionada.', 'codigo_http' => 500];
         }
 
-        return ['ok' => true, 'plantilla_id' => $id, 'ruta_absoluta' => $rutaFinal];
+        return ['ok' => true, 'plantilla_id' => $id, 'ruta_absoluta' => $rutaFinal, 'ruta_original' => $rutaOriginal];
     }
 
     public function plantillas()
