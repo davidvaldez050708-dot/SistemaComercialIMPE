@@ -1,6 +1,6 @@
 # Integración de Aliados internacionales, Convenios y Convocatorias
 
-Base: main `fd5fd282b3f6774d1bdc045295d655b72620ce17` (PR112 integrado). Aplicación y manifiesto: `bdab4900a1cafbd71b965da7eda256d8227acb42`.
+Base: main `fd5fd282b3f6774d1bdc045295d655b72620ce17` (PR112 integrado). Aplicación y manifiesto: `747f83c4543b37a2ad51e3d476388f4828c18e4b`.
 
 ## Causas y correcciones
 
@@ -11,6 +11,7 @@ PR112 sólo consultaba configuraciones de formularios cuyo `seguimiento_id` era 
 - Convenios utiliza `seguimientos_vinculacion_post_envio` y `marketing_convenio_convocatorias`, sin crear un segundo catálogo de convenios. Al registrar el primer convenio se vincula una única institución canónica mediante el `seguimiento_id` original; los siguientes guardados reutilizan ese ID. No se inventan datos verificados, reuniones, estados ni analistas. La clave `ALIADO_FORMULARIO:id` y el bloqueo de configuración evitan crear otro expediente al reenviar. No se generan ni envían documentos legales automáticamente ni se falsean etapas previas del expediente.
 - Se extraen el modal Crear convocatoria, su modal QR y su JS a componentes compartidos. Nacionales e internacionales incluyen esos mismos archivos. La mayor parte del diff de la vista nacional es traslado de código, no otra implementación del modal.
 - Se guarda cada relación en `formulario_aliado_convocatorias`, con oferta autorizada, formulario, referencia aleatoria y convenio original cuando existe. El enlace definitivo se guarda en `convocatorias.enlace_registro`; no se guarda otra copia en la nueva relación ni un archivo temporal de QR. La previsualización y la URL definitiva usan la misma referencia.
+- La vigencia internacional utiliza la fecha configurada del CRM en PHP, igual que el creador, aunque MySQL esté en otra zona horaria. Se prueba con offsets +12:00 y -12:00.
 - Las ligas públicas validan referencia, aliado, programa, formulario, estado y vigencia. Las respuestas conservan su convocatoria en `formulario_aliado_procedencias.convocatoria_id`. No se puede cambiar de programa por POST ni usar una liga de Registro como Inscripción. Los enlaces generales y los anteriores de aliado sin referencia siguen funcionando.
 - Se reutiliza QuickChart, el proveedor actual. Consultar/descargar genera PNG desde el enlace persistido validado; no se guarda un bitmap redundante. Las personalizaciones de QR del modal siguen siendo opciones de previsualización/descarga, como en el mecanismo nacional: no se añade almacenamiento nuevo de estilos de QR.
 - La depuración nacional omite convocatorias internacionales vinculadas. La edición nacional no permite sobrescribir sus relaciones ni sustituir sus ligas por URLs arbitrarias.
@@ -48,7 +49,7 @@ bash "$HOME/publicar-aliados-convocatorias.sh" --check
 3. Extraer dependencias del preparador en una carpeta privada NUEVA desde la copia HTTPS que dejó el publicador:
 
 ```bash
-VERSION=bdab4900a1cafbd71b965da7eda256d8227acb42
+VERSION=747f83c4543b37a2ad51e3d476388f4828c18e4b
 PREPARACION="$HOME/aliados-convocatorias-$VERSION"
 mkdir -m 700 "$PREPARACION" &&
 git -C "$HOME/crm-publicaciones/aliados-convocatorias-actual" archive "$VERSION" \

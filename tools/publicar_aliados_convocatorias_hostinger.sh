@@ -4,8 +4,8 @@ set -euo pipefail
 umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
-TARGET='bdab4900a1cafbd71b965da7eda256d8227acb42'
-REVIEWED='bdab4900a1cafbd71b965da7eda256d8227acb42'
+TARGET='747f83c4543b37a2ad51e3d476388f4828c18e4b'
+REVIEWED='747f83c4543b37a2ad51e3d476388f4828c18e4b'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/aliados_convocatorias'
 SOURCE="${IMPE_ALIADOS_CONVOCATORIAS_SOURCE:-$HOME/crm-publicaciones/aliados-convocatorias-actual}"
