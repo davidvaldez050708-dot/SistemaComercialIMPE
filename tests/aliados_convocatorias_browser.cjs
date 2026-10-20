@@ -17,7 +17,7 @@ $clases=['aliado'=>'AliadoController','convocatoria'=>'ConvocatoriaController','
 if(!$clase){http_response_code(404);exit;}require ${JSON.stringify(root.replaceAll('\\','/')+'/app/controllers/')}.$clase.'.php';$action=$_GET['action']??'internacionales';(new $clase())->$action();
 `);
 const env={...process.env,APP_ENV:'testing',IMPE_BASE_URL:base};const server=spawn(php,['-S',`127.0.0.1:${port}`,'-t',root,router],{cwd:root,env,stdio:['ignore','ignore',fs.openSync(path.join(temp,'php.log'),'w')]});
-const today=execFileSync(php,['-r',"require 'config/db_connection.php';echo (new Database())->connect(false)->query('SELECT CURDATE() d')->fetch_assoc()['d'];"],{cwd:root,env,encoding:'utf8'}).trim();
+const today=execFileSync(php,['-r',"require 'config/db_connection.php';echo date('Y-m-d');"],{cwd:root,env,encoding:'utf8'}).trim();
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
 (async()=>{let browser;try{
 for(let i=0;i<80;i++){try{await fetch(base+'__rol');break;}catch{await new Promise(r=>setTimeout(r,100));}}

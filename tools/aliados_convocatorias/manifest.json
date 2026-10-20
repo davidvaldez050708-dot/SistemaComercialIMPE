@@ -111,16 +111,16 @@
       "path": "app/services/FormularioAliadoService.php",
       "kind": "php",
       "new": false,
-      "target_sha256": "72bc003d9ce98735e5fdc362a204dde159febb7bbb2b996fbe8bbbe685f54ca2",
+      "target_sha256": "1b57d844905c20313cc80387d3698f178d5ce2d60adca8fc2721bd40e5683c66",
       "variants": [
         {
           "label": "main-pr112",
           "before": "7c04156681737257e466780edbed66bdb4ac475a9c4b3ea1eb18ea7849c24271",
-          "after": "72bc003d9ce98735e5fdc362a204dde159febb7bbb2b996fbe8bbbe685f54ca2"
+          "after": "1b57d844905c20313cc80387d3698f178d5ce2d60adca8fc2721bd40e5683c66"
         }
       ],
       "patch": "tools/aliados_convocatorias/7.patch",
-      "patch_sha256": "69e361b6dbbe4f749120f2bca8b5743f68dd2e9d3085da6fe56896756bbb41cf"
+      "patch_sha256": "6941ca05f961549b7870a42349be0acb8a38a15729bbfa633c9e3f7427d9a197"
     },
     {
       "path": "app/views/aliados/internacionales.php",

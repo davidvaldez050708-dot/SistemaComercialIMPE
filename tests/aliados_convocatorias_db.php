@@ -19,6 +19,15 @@ foreach(['registro','inscripcion'] as $tipo){
  $ref=bin2hex(random_bytes(16));$datos['enlace_registro']=BASE_URL.'index.php?controller=formularioPublico&action='.$tipo.'&aliado='.$a['token'].'&convocatoria_ref='.$ref;
  $cid=(new ConvocatoriaModel($db))->crear($datos,[],function($c,$cid)use($id,$tipo,$ref){(new AliadoInternacionalService($c))->relacionar($id,$cid,'bachillerato-general',$tipo,$ref,3);});checkAliado($cid>0,'creación '.$tipo.' con modelo compartido');$ids[]=$cid;
  $config=(new FormularioAliadoService($db))->resolverConvocatoria($a['token'],$ref,$tipo);
+ $zona=$db->query('SELECT @@session.time_zone z')->fetch_assoc()['z'];
+ $hoy=date('Y-m-d');$db->query("UPDATE convocatorias SET fecha_termino='$hoy' WHERE id=$cid");
+ foreach(['+12:00','-12:00'] as $offset){
+  $db->query("SET SESSION time_zone='$offset'");
+  checkAliado((new FormularioAliadoService($db))->resolverConvocatoria($a['token'],$ref,$tipo)['convocatoria_id']===$cid,'vigencia usa reloj del CRM, independientemente de MySQL '.$offset);
+ }
+ $db->query("SET SESSION time_zone='".$db->real_escape_string($zona)."'");
+ $fin=date('Y-m-d',strtotime('+30 days'));$db->query("UPDATE convocatorias SET fecha_termino='$fin' WHERE id=$cid");
+
  checkAliado(count($config['programas'])===1&&$config['programas'][0]['codigo']==='bachillerato-general','liga restringe a la oferta persistida');
  try{(new FormularioAliadoService($db))->resolverConvocatoria($a['token'],$ref,$tipo==='registro'?'inscripcion':'registro');throw new RuntimeException('Aceptó formulario cambiado');}catch(DomainException $e){}
  $r=['nombre'=>'Ana','apellido'=>'Prueba','fecha_nacimiento'=>'1990-01-01','movil'=>'7771234567','correo'=>'campana@example.test','perfil_interes'=>'Bachillerato General','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>1,'municipio_id'=>1,'creado_por'=>null,'aliado_token'=>$a['token'],'convocatoria_ref'=>$ref,'origen'=>$tipo==='registro'?'PUBLICO':'PUBLICO_INSCRIPCION'];

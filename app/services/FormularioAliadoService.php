@@ -26,8 +26,9 @@ class FormularioAliadoService
     {
         $aliado=$this->resolver($token,$bloquear);
         if (!is_string($referencia)||!preg_match('/^[a-f0-9]{32}$/D',$referencia)) { throw new DomainException('Convocatoria no disponible.'); }
-        $s=$this->db->prepare('SELECT x.convocatoria_id,x.programa_codigo FROM formulario_aliado_convocatorias x INNER JOIN convocatorias c ON c.id=x.convocatoria_id WHERE x.aliado_id=? AND x.referencia=? AND x.formulario=? AND c.estado=1 AND c.fecha_inicio<=CURDATE() AND c.fecha_termino>=CURDATE()' . ($bloquear?' FOR UPDATE':''));
-        $s->bind_param('iss',$aliado['id'],$referencia,$tipo);$s->execute();$fila=$s->get_result()->fetch_assoc();
+        $hoy=date('Y-m-d');
+        $s=$this->db->prepare('SELECT x.convocatoria_id,x.programa_codigo FROM formulario_aliado_convocatorias x INNER JOIN convocatorias c ON c.id=x.convocatoria_id WHERE x.aliado_id=? AND x.referencia=? AND x.formulario=? AND c.estado=1 AND c.fecha_inicio<=? AND c.fecha_termino>=?' . ($bloquear?' FOR UPDATE':''));
+        $s->bind_param('issss',$aliado['id'],$referencia,$tipo,$hoy,$hoy);$s->execute();$fila=$s->get_result()->fetch_assoc();
         if (!$fila) { throw new DomainException('Convocatoria no disponible.'); }
         $aliado['programas']=array_values(array_filter($aliado['programas'],static fn($p)=>$p['codigo']===$fila['programa_codigo']));
         if (!$aliado['programas']) { throw new DomainException('Programa de convocatoria no autorizado.'); }
