@@ -143,4 +143,4 @@ for file in "${CHANGED[@]}";do
 done
 WRITING=0
 echo "OK: $MODE terminado. ${#CHANGED[@]} archivo(s). Sin cambios de configuración ni base de datos."
-[[ "$MODE" != --apply ]] || { echo "Respaldo: $BACKUP";echo "Rollback: bash \"\$HOME/publicar-formularios-ubicacion-internacional.sh\" --restore \"$BACKUP\""; }
+[[ "$MODE" != --apply ]] || { echo "Respaldo: $BACKUP";printf 'Rollback: bash %q --restore %q\n' "$(realpath "$0")" "$BACKUP"; }
