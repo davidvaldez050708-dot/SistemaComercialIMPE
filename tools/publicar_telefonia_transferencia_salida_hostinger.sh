@@ -59,7 +59,7 @@ git_public -C "$SOURCE" show "$REVIEWED:$RESOURCE/manifest.json" > "$TMP/manifes
 php -r '
  $m=json_decode(file_get_contents($argv[1]),true);if(($m["version"]??0)!==1)exit(1);$seen=[];
  foreach($m["files"]??[] as $f){$p=$f["path"]??"";
- if(!preg_match("#^(app/(controllers|models|services|views/telefonia)/|public/(javascript|css)/|prueba_telefonia/api/|tools/)[a-zA-Z0-9_./-]+\\.(php|js|css)$#D",$p)||str_contains($p,"..")||isset($seen[$p]))exit(1);
+ if(($p!=="app/views/layout/dashboard_head.php"&&!preg_match("#^(app/(controllers|models|services|views/telefonia)/|public/(javascript|css)/|prueba_telefonia/api/|tools/)[a-zA-Z0-9_./-]+\\.(php|js|css)$#D",$p))||str_contains($p,"..")||isset($seen[$p]))exit(1);
  $seen[$p]=true;echo $p."\n";}if(count($seen)<1||count($seen)>40)exit(1);
 ' "$TMP/manifest.json" > "$TMP/files" || fail 'Manifiesto inválido.'
 mapfile -t FILES < "$TMP/files"

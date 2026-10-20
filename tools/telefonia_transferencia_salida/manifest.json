@@ -122,7 +122,7 @@
           "label": "hostinger-rescate-sdk-conservado",
           "before": "2b685b9da57c28e4b47d8b5c0458178119e4f815450a2942a1b9caca555277f3",
           "after": "cf2e16d8c5a7197837b5be1ed1f78ce2f17aef61055f7d5ba50a94437ffde640",
-          "patch": "tools/telefonia_transferencia_salida/hostinger.patch",
+          "patch": "tools/telefonia_transferencia_salida/61.patch",
           "patch_sha256": "e1aae4793fcec456736278e4084c429850ffa14d84faf6a32de702ffa097223b"
         }
       ],
