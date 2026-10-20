@@ -1,0 +1,15 @@
+--- a/app/models/AliadoInternacionalModel.php
++++ b/app/models/AliadoInternacionalModel.php
+@@ -35,8 +35,11 @@
+         // tipo + registro_id identifican la tabla de origen: los IDs pueden coincidir.
+         // No filtrar por activo: las respuestas históricas siguen siendo consultables.
+         $condicion=$this->estructuraGestion()?"(a.pais_codigo <> 'MX' OR (a.pais_codigo IS NULL AND a.seguimiento_id IS NULL))":"a.seguimiento_id IS NULL";
++        $ubicacion = $this->db->query("SHOW COLUMNS FROM formulario_registros LIKE 'estado_provincia'")->num_rows
++            ? 'COALESCE(r.pais_nombre,i.pais_nombre) AS pais_nombre, COALESCE(r.estado_provincia,i.estado_provincia) AS estado_provincia, COALESCE(r.ciudad,i.ciudad) AS ciudad,'
++            : 'NULL AS pais_nombre, NULL AS estado_provincia, NULL AS ciudad,';
+         return $this->consultar(
+-            "SELECT a.nombre AS aliado, d.tipo, d.aliado_ubicacion,
++            "SELECT {$ubicacion} a.nombre AS aliado, d.tipo, d.aliado_ubicacion,
+                     p.nombre AS programa, d.created_at, d.registro_id,
+                     COALESCE(r.nombre, i.nombre) AS nombre,
+                     COALESCE(r.apellido, i.apellido) AS apellido,

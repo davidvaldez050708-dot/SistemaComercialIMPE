@@ -1,0 +1,87 @@
+--- a/app/controllers/FormularioPublicoController.php
++++ b/app/controllers/FormularioPublicoController.php
+@@ -9,6 +9,8 @@
+         $modelo = new FormularioRegistroModel();
+         $estados = $modelo->obtenerEstadosActivos();
+         $aliadoFormulario = $this->contextoAliado($modelo);
++        header('Cache-Control: no-store, private');
++        $_SESSION['csrf_formulario_publico'] = $_SESSION['csrf_formulario_publico'] ?? bin2hex(random_bytes(32));
+         $perfilesInteres = $this->perfilesInteres($aliadoFormulario);
+ 
+         /*
+@@ -38,6 +40,8 @@
+         $modelo = new FormularioRegistroModel();
+         $estados = $modelo->obtenerEstadosActivos();
+         $aliadoFormulario = $this->contextoAliado($modelo, 'inscripcion');
++        header('Cache-Control: no-store, private');
++        $_SESSION['csrf_formulario_publico'] = $_SESSION['csrf_formulario_publico'] ?? bin2hex(random_bytes(32));
+         $perfilesInteres = $this->perfilesInteres($aliadoFormulario);
+ 
+         $inscripcionAction = BASE_URL .
+@@ -116,6 +120,10 @@
+         }
+ 
+         $aliadoFormulario = $this->contextoAliado();
++        $csrf = $_POST['csrf_formulario_publico'] ?? null;
++        if (!is_string($csrf) || empty($_SESSION['csrf_formulario_publico']) || !hash_equals($_SESSION['csrf_formulario_publico'], $csrf)) {
++            $this->responderJson(['ok'=>false, 'mensaje'=>'Recarga el formulario e intenta nuevamente.'], 403);
++        }
+         $datos = $this->normalizarRegistro($_POST);
+         if ($aliadoFormulario) { $datos['aliado_token'] = $_GET['aliado']; if (isset($_GET['convocatoria_ref'])) { $datos['convocatoria_ref']=$_GET['convocatoria_ref']; } }
+         $errores = $this->validarRegistro($datos, $aliadoFormulario);
+@@ -132,7 +140,7 @@
+             $modelo = new FormularioRegistroModel();
+ 
+             if (
+-                !$modelo->municipioPerteneceAEstado(
++                empty($aliadoFormulario['internacional']) && !$modelo->municipioPerteneceAEstado(
+                     (int)$datos['municipio_id'],
+                     (int)$datos['estado_id']
+                 )
+@@ -193,6 +201,10 @@
+         }
+ 
+         $aliadoFormulario = $this->contextoAliado(null, 'inscripcion');
++        $csrf = $_POST['csrf_formulario_publico'] ?? null;
++        if (!is_string($csrf) || empty($_SESSION['csrf_formulario_publico']) || !hash_equals($_SESSION['csrf_formulario_publico'], $csrf)) {
++            $this->responderJson(['ok'=>false, 'mensaje'=>'Recarga el formulario e intenta nuevamente.'], 403);
++        }
+         $datos = $this->normalizarRegistro($_POST);
+         if ($aliadoFormulario) { $datos['aliado_token'] = $_GET['aliado']; if (isset($_GET['convocatoria_ref'])) { $datos['convocatoria_ref']=$_GET['convocatoria_ref']; } }
+         $errores = $this->validarRegistro($datos, $aliadoFormulario);
+@@ -209,7 +221,7 @@
+             $modelo = new FormularioRegistroModel();
+ 
+             if (
+-                !$modelo->municipioPerteneceAEstado(
++                empty($aliadoFormulario['internacional']) && !$modelo->municipioPerteneceAEstado(
+                     (int)$datos['municipio_id'],
+                     (int)$datos['estado_id']
+                 )
+@@ -345,8 +357,11 @@
+                 $limpiar($entrada['lugar_laboras'] ?? ''),
+             'cargo_puesto' =>
+                 $limpiar($entrada['cargo_puesto'] ?? ''),
+-            'estado_id' => (int)($entrada['estado_id'] ?? 0),
+-            'municipio_id' => (int)($entrada['municipio_id'] ?? 0)
++            'pais_nombre' => $limpiar($entrada['pais_nombre'] ?? ''),
++            'estado_provincia' => $limpiar($entrada['estado_provincia'] ?? ''),
++            'ciudad' => $limpiar($entrada['ciudad'] ?? ''),
++            'estado_id' => $entrada['estado_id'] ?? null,
++            'municipio_id' => $entrada['municipio_id'] ?? null
+         ];
+     }
+ 
+@@ -472,6 +487,12 @@
+                 'El cargo o puesto no puede superar 160 caracteres.';
+         }
+ 
++        if (!empty($aliado['internacional'])) {
++            try { FormularioUbicacionService::validar($datos, true); }
++            catch (DomainException $e) { $errores[] = $e->getMessage(); }
++            return $errores;
++        }
++
+         if ((int)$datos['estado_id'] <= 0) {
+             $errores[] = 'Selecciona un estado.';
+         }

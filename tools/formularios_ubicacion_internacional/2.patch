@@ -1,0 +1,55 @@
+--- a/app/models/FormularioRegistroModel.php
++++ b/app/models/FormularioRegistroModel.php
+@@ -91,9 +91,16 @@
+             unset($datos['aliado_token']);
+             $tipo = ($datos['origen'] ?? '') === 'PUBLICO_INSCRIPCION' ? 'inscripcion' : 'registro';
+             return (new FormularioAliadoService($this->connection))->guardar(
+-                $token, $datos, $tipo, function () use ($datos) { return $this->guardar($datos); }
++                $token, $datos, $tipo, function ($validados) { return $this->insertar($validados); }
+             );
+         }
++        require_once __DIR__ . '/../services/FormularioUbicacionService.php';
++        $datos = FormularioUbicacionService::validar($datos, false, $this->connection);
++        return $this->insertar($datos);
++    }
++
++    private function insertar(array $datos)
++    {
+         $origenSolicitado = strtoupper(
+             trim((string)($datos['origen'] ?? 'MARKETING'))
+         );
+@@ -147,11 +154,14 @@
+                     cargo_puesto,
+                     estado_id,
+                     municipio_id,
++                    pais_nombre,
++                    estado_provincia,
++                    ciudad,
+                     creado_por,
+                     origen,
+                     created_at,
+                     updated_at
+-                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, NOW(), NOW())";
++                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+ 
+         $stmt = $this->connection->prepare($sql);
+ 
+@@ -164,7 +174,7 @@
+         }
+ 
+         $stmt->bind_param(
+-            'ssssssssssiiis',
++            'ssssssssssiisssis',
+             $datos['nombre'],
+             $datos['apellido'],
+             $datos['fecha_nacimiento'],
+@@ -177,6 +187,9 @@
+             $datos['cargo_puesto'],
+             $datos['estado_id'],
+             $datos['municipio_id'],
++            $datos['pais_nombre'],
++            $datos['estado_provincia'],
++            $datos['ciudad'],
+             $creadoPor,
+             $origen
+         );

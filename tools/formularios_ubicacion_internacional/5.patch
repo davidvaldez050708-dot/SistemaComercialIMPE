@@ -1,0 +1,11 @@
+--- a/app/views/aliados/internacionales.php
++++ b/app/views/aliados/internacionales.php
+@@ -71,7 +71,7 @@
+  <section class="dashboard-panel aliados-directory-panel">
+   <div class="aliados-directory-controls aliados-section-heading"><div><h3>Respuestas recibidas</h3><p>Últimas 150 respuestas de enlaces internacionales. Acceso administrativo.</p></div><span class="aliados-result-count"><?= count($respuestas) ?> respuestas</span></div>
+   <div class="table-responsive"><table class="table table-hover align-middle mb-0 international-responses"><caption class="visually-hidden">Respuestas recibidas por aliado y formulario</caption><thead><tr><th scope="col">Fecha</th><th scope="col">Aliado</th><th scope="col">Formulario</th><th scope="col">Interesado</th><th scope="col">Programa</th><th scope="col">Contacto</th></tr></thead><tbody>
+-  <?php foreach ($respuestas as $fila): ?><tr><td><?= $esc($fecha($fila['created_at'])) ?></td><td><?= $esc($fila['aliado']) ?></td><td><?= $esc(ucfirst($fila['tipo'])) ?></td><td><?= $esc(trim($fila['nombre'].' '.$fila['apellido'])) ?></td><td><?= $esc($fila['programa']) ?></td><td><?= $esc($fila['correo']) ?><br><?= $esc($fila['movil']) ?></td></tr><?php endforeach; ?>
++  <?php foreach ($respuestas as $fila): ?><tr><td><?= $esc($fecha($fila['created_at'])) ?></td><td><?= $esc($fila['aliado']) ?></td><td><?= $esc(ucfirst($fila['tipo'])) ?></td><td><?= $esc(trim($fila['nombre'].' '.$fila['apellido'])) ?></td><td><?= $esc($fila['programa']) ?></td><td><?= $esc($fila['correo']) ?><br><?= $esc($fila['movil']) ?><?php if (!empty($fila['estado_provincia'])): ?><br><span class="text-muted"><?= $esc(implode(', ', array_filter([$fila['ciudad'] ?? '', $fila['estado_provincia'], $fila['pais_nombre'] ?? '']))) ?></span><?php endif; ?></td></tr><?php endforeach; ?>
+   <?php if (!$respuestas): ?><tr><td colspan="6" class="text-muted text-center py-4">Todavía no hay respuestas recibidas.</td></tr><?php endif; ?></tbody></table></div>
+  </section><?php endif; ?>
+ </section>

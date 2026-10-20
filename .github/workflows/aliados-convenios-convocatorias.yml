@@ -58,6 +58,10 @@ jobs:
           php tools/migrar_aliados_convocatorias.php --apply
           php tools/migrar_aliados_convocatorias.php --apply
           php tools/migrar_aliados_convocatorias.php --check
+          php tools/migrar_formularios_ubicacion_internacional.php --apply
+          php tools/migrar_formularios_ubicacion_internacional.php --apply
+          php tools/migrar_formularios_ubicacion_internacional.php --check
+          php tests/formularios_ubicacion_internacional_db.php
       - name: Regresión de formularios y programas autorizados
         run: php tests/formulario_aliados_db.php
       - name: Institución, convenio y convocatorias en BD real
@@ -70,4 +74,6 @@ jobs:
           name: aliados-internacionales-${{ strategy.job-index }}
           path: /tmp/aliados-capturas
       - name: Publicación selectiva y restauración
-        run: python3 tests/publicacion_aliados_convocatorias_test.py
+        run: |
+          python3 tests/publicacion_aliados_convocatorias_test.py
+          python3 tests/publicacion_formularios_ubicacion_test.py

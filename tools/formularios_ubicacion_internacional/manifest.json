@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "base": "7527c901d5dd946863d1071752a4cf5f414d8e65",
+  "target": "6edae84c2beb518227a88f18373108afa2c77ec7",
+  "files": [
+    {
+      "path": "app/controllers/FormularioPublicoController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "04a91775eced94a30ed8470350bb3ec1fad515f1d80751ea8e3d9f954d7d96e7",
+      "variants": [
+        {
+          "label": "pr114-publicado",
+          "before": "c0094df8c57d00c4a3c901373ec077d8c2e33a5b86cb618912054d6815b2af3e",
+          "after": "04a91775eced94a30ed8470350bb3ec1fad515f1d80751ea8e3d9f954d7d96e7",
+          "patch": "tools/formularios_ubicacion_internacional/0.patch",
+          "patch_sha256": "1a7f484e3a037e7847ce6e60b5cde246ca464cd9c5867325f0a1fa45979d7f7c"
+        }
+      ],
+      "patch": "tools/formularios_ubicacion_internacional/0.patch",
+      "patch_sha256": "1a7f484e3a037e7847ce6e60b5cde246ca464cd9c5867325f0a1fa45979d7f7c"
+    },
+    {
+      "path": "app/models/AliadoInternacionalModel.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "f4e193c4b429cd21ad4d37b92db775bba2e86628371b920cfde8079fc6371328",
+      "variants": [
+        {
+          "label": "pr114-publicado",
+          "before": "355609ca97bcf263f6629f98a48dff49aad94ee706db1991070a5fb17d8e05c8",
+          "after": "f4e193c4b429cd21ad4d37b92db775bba2e86628371b920cfde8079fc6371328",
+          "patch": "tools/formularios_ubicacion_internacional/1.patch",
+          "patch_sha256": "947446c3a127b680b9e9bad3fc8f31a1f38f14b906d53770c8eaff0eebc5f778"
+        }
+      ],
+      "patch": "tools/formularios_ubicacion_internacional/1.patch",
+      "patch_sha256": "947446c3a127b680b9e9bad3fc8f31a1f38f14b906d53770c8eaff0eebc5f778"
+    },
+    {
+      "path": "app/models/FormularioRegistroModel.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "9e87c19d94c3677789d65cb0485cdf06d609032fdab3efa02f4a047d124b583d",
+      "variants": [
+        {
+          "label": "pr114-publicado",
+          "before": "97a3061a332993dcc3d77500a1d6a9e07b3d2edb455589333936eec89e9c7690",
+          "after": "9e87c19d94c3677789d65cb0485cdf06d609032fdab3efa02f4a047d124b583d",
+          "patch": "tools/formularios_ubicacion_internacional/2.patch",
+          "patch_sha256": "8b9843d377e68ebbfce4aaea0c3fbf471f161586eeaa3443d76326b4f33397b1"
+        }
+      ],
+      "patch": "tools/formularios_ubicacion_internacional/2.patch",
+      "patch_sha256": "8b9843d377e68ebbfce4aaea0c3fbf471f161586eeaa3443d76326b4f33397b1"
+    },
+    {
+      "path": "app/services/FormularioAliadoService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "e7c0a19e9b04e97940bd364ddd8e8087e5b2a4d4b29b66556e787aded3f6731e",
+      "variants": [
+        {
+          "label": "pr114-publicado",
+          "before": "1b57d844905c20313cc80387d3698f178d5ce2d60adca8fc2721bd40e5683c66",
+          "after": "e7c0a19e9b04e97940bd364ddd8e8087e5b2a4d4b29b66556e787aded3f6731e",
+          "patch": "tools/formularios_ubicacion_internacional/3.patch",
+          "patch_sha256": "4ce9ce2b49eb5f184c4e9304421ab565f43065fae481485bcf118ba8700d21ea"
+        }
+      ],
+      "patch": "tools/formularios_ubicacion_internacional/3.patch",
+      "patch_sha256": "4ce9ce2b49eb5f184c4e9304421ab565f43065fae481485bcf118ba8700d21ea"
+    },
+    {
+      "path": "app/services/FormularioUbicacionService.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "2506d5f332b5efecb73bd47f4225d1b9d2c60c79f53a71499a8b1fe6dbdc70d4",
+      "variants": []
+    },
+    {
+      "path": "app/views/aliados/internacionales.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "ab30be751dc80eab8138d63b68462ecd9c62a63cab8901fc4bf5de98c2be312c",
+      "variants": [
+        {
+          "label": "pr114-publicado",
+          "before": "d06a31842d0ee1398f0cf8af92fbf0273accbbf2b1ab8abd2f4fe193fbfc98d5",
+          "after": "ab30be751dc80eab8138d63b68462ecd9c62a63cab8901fc4bf5de98c2be312c",
+          "patch": "tools/formularios_ubicacion_internacional/5.patch",
+          "patch_sha256": "fbe340a38424234fd745a0d34a631f3f196068f4da99fd4de6e256e369dc1f41"
+        }
+      ],
+      "patch": "tools/formularios_ubicacion_internacional/5.patch",
+      "patch_sha256": "fbe340a38424234fd745a0d34a631f3f196068f4da99fd4de6e256e369dc1f41"
+    },
+    {
+      "path": "app/views/formularios/publico_inscripcion.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "4f7ed46d01b014ab35d0f6a842b9fa8a25fcf04130ad04c9198f5d2854230287",
+      "variants": [
+        {
+          "label": "pr114-publicado",
+          "before": "79ef5ac4bd78433472f28dc8c13a9de5f6ac915fb00386b762946a17cfaa5119",
+          "after": "4f7ed46d01b014ab35d0f6a842b9fa8a25fcf04130ad04c9198f5d2854230287",
+          "patch": "tools/formularios_ubicacion_internacional/6.patch",
+          "patch_sha256": "8566c8fe750a797d2eb33e365dd022d0ee7dba2ef07f83c12646086398a3fb20"
+        }
+      ],
+      "patch": "tools/formularios_ubicacion_internacional/6.patch",
+      "patch_sha256": "8566c8fe750a797d2eb33e365dd022d0ee7dba2ef07f83c12646086398a3fb20"
+    },
+    {
+      "path": "app/views/formularios/publico_registro.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "47bfb190a11749b0fbccf9760898072097c8ee98d12c7e7dc45736c84f3c7776",
+      "variants": [
+        {
+          "label": "pr114-publicado",
+          "before": "b8811c2b5987a2275827d5be86d4c51d0797a964ba0bfea9b9ede840d5e6eda1",
+          "after": "47bfb190a11749b0fbccf9760898072097c8ee98d12c7e7dc45736c84f3c7776",
+          "patch": "tools/formularios_ubicacion_internacional/7.patch",
+          "patch_sha256": "6fced303e504147ed6b7c5c0e29782b16e74b496e25fb88261e26f80fe892ef9"
+        }
+      ],
+      "patch": "tools/formularios_ubicacion_internacional/7.patch",
+      "patch_sha256": "6fced303e504147ed6b7c5c0e29782b16e74b496e25fb88261e26f80fe892ef9"
+    },
+    {
+      "path": "app/views/formularios/ubicacion_internacional.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "3cd00918b0f67d183842547fad290b6000655ccace3b52c1a817b591be2fbad2",
+      "variants": []
+    },
+    {
+      "path": "public/javascript/formularios_registro_publico.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "4d8271c2c7b4849596ac15e45a942aea74a7a366faeb017e6c946f57eb7f32b5",
+      "variants": [
+        {
+          "label": "pr114-publicado",
+          "before": "b51c88a843a5844b5ff9ebc84d719cd6d17171dc1a4f6a3be35c674c80905b0a",
+          "after": "4d8271c2c7b4849596ac15e45a942aea74a7a366faeb017e6c946f57eb7f32b5",
+          "patch": "tools/formularios_ubicacion_internacional/9.patch",
+          "patch_sha256": "77574a2a9318ee4d2d4ea7cd827ffef0e8f91a628f3af9d9e764e11143d5d880"
+        }
+      ],
+      "patch": "tools/formularios_ubicacion_internacional/9.patch",
+      "patch_sha256": "77574a2a9318ee4d2d4ea7cd827ffef0e8f91a628f3af9d9e764e11143d5d880"
+    }
+  ]
+}

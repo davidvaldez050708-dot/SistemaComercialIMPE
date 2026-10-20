@@ -54,6 +54,10 @@ jobs:
           php tools/preparar_handly_formularios.php --apply
           php tools/preparar_handly_formularios.php --apply
           php tools/preparar_handly_formularios.php --check
+          php tools/migrar_formularios_ubicacion_internacional.php --apply
+          php tools/migrar_formularios_ubicacion_internacional.php --apply
+          php tools/migrar_formularios_ubicacion_internacional.php --check
+          php tests/formularios_ubicacion_internacional_db.php
           php tests/formulario_aliados_db.php
           php tests/aliados_internacionales.php
       - name: Formularios, HTTP y responsive
