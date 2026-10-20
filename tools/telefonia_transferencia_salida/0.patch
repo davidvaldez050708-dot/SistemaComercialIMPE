@@ -1,0 +1,29 @@
+--- a/app/services/TelefoniaRecepcionMarketingService.php
++++ b/app/services/TelefoniaRecepcionMarketingService.php
+@@ -263,13 +263,25 @@
+                 }
+             }
+ 
++            // En salientes Zadarma puede confirmar el último tramo sólo en
++            // OUT_END: no necesariamente emite INTERNAL/transfer_from.
++            // El inicio propio y el mismo PBX ID ya se comprobaron arriba.
++            $ultimoInterno=trim((string)($p['last_internal'] ?? ''));
++            $salienteEntregada=$esSaliente && $tipo==='NOTIFY_OUT_END' &&
++                preg_match('/^\d{3,6}$/D',$ultimoInterno) && $ultimoInterno!==$extension &&
++                in_array(strtolower(trim((string)($row['disposition'] ?? ''))),['answered','completed'],true);
++            if($salienteEntregada){
++                $call['transferida']=true;$call['saliente_transferida']=true;
++                $call['destino_transferencia']=$ultimoInterno;
++            }
++
+             if ($esSaliente) {
+                 if ($tipo === 'NOTIFY_ANSWER' &&
+                     ($interno === $extension || $interno === '')) {
+                     $call['contestada'] = true;
+                 }
+                 if ($tipo === 'NOTIFY_OUT_END' &&
+-                    ($interno === $extension || $interno === '')) {
++                    ($interno === $extension || $interno === '' || $salienteEntregada)) {
+                     $call['finalizada'] = true;
+                     $call['fecha_fin'] = (string)($row['received_at'] ?? '');
+                     $call['disposition'] = strtolower(trim(

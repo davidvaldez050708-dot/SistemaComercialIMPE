@@ -1,0 +1,48 @@
+--- a/public/javascript/telefonia_host.js
++++ b/public/javascript/telefonia_host.js
+@@ -559,7 +559,14 @@
+         analystSdkObserver = window.IMPE_ZADARMA_SDK_RING_OBSERVER?.create(
+             document, {
+                 onRinging: function (call) {
+-                    if (!widgetReady || (state.active&&!state.context?.declineRequested)) return;
++                    if (!widgetReady) return false;
++                    const freshSip=Boolean(call?.sipSessionId &&
++                        call.sipSessionId!==state.context?.sdkInviteId);
++                    // Un INVITE nuevo acredita otro diálogo; un END PBX anterior
++                    // puede seguir pendiente. No reemplazar una saliente local.
++                    if(state.active&&!state.context?.declineRequested &&
++                        !(state.direction==='incoming' && (freshSip||call?.pushInvitation) &&
++                          ['incoming-ringing','finishing','recovering','rejecting'].includes(state.phase))) return false;
+                     const number = String(call?.caller || '').slice(0, 40);
+                     const token = 'sdk-' + Date.now().toString(36) +
+                         '-' + Math.random().toString(36).slice(2, 9);
+@@ -580,7 +587,8 @@
+                         context: {
+                             type: 'SDK_INCOMING',
+                             verified: false,
+-                            callerName: String(call?.callerName || '').slice(0, 100)
++                            callerName: String(call?.callerName || '').slice(0, 100),
++                            sdkInviteId:String(call?.sipSessionId||'')
+                         },
+                         finalMetadata: null,
+                         message: 'Timbrado detectado en el teléfono WebRTC. Registro PBX pendiente.'
+@@ -1522,18 +1530,7 @@
+      * Las extensiones y los números internacionales no cambian.
+      */
+     const normalizarDestinoWebrtc = function (valor) {
+-        let destino = String(valor || '').trim()
+-            .replace(/[^0-9+*#]/g, '');
+-
+-        if (/^\+?521\d{10}$/.test(destino)) {
+-            destino = destino.replace(/^\+?521/, '');
+-        } else if (/^\+?52\d{10}$/.test(destino)) {
+-            destino = destino.replace(/^\+?52/, '');
+-        } else {
+-            destino = destino.replace(/^\+/, '');
+-        }
+-
+-        return destino;
++        return window.IMPE_PHONE_NUMBERS.dial(valor);
+     };
+ 
+     const startCall = async function (payload) {

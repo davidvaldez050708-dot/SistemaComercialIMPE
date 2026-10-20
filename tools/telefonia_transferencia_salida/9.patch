@@ -1,0 +1,37 @@
+--- a/public/javascript/telefonia_recepcion_marketing.js
++++ b/public/javascript/telefonia_recepcion_marketing.js
+@@ -1,13 +1,14 @@
+ (function () {
+     'use strict';
++
++    const numeros=typeof module!=='undefined'&&module.exports?require('./telefonia_numeros.js'):window.IMPE_PHONE_NUMBERS;
+ 
+     // Reutiliza los mismos criterios de normalización del marcador,
+     // sin marcar extensiones internas ni números incompletos.
+     function normalizarNumeroDevolucion(valor) {
+         const original = String(valor || '').trim();
+         if (!/^\+?[\d\s().-]+$/.test(original)) return '';
+-        let digitos = original.replace(/\D/g, '');
+-        if (digitos.length === 10) digitos = '52' + digitos;
++        let digitos = numeros.key(original);
+         // Descartar números placeholder del historial, como 0000000000.
+         if (/^52([0-9])\1{9}$/.test(digitos)) return '';
+         return /^[1-9][0-9]{10,14}$/.test(digitos) ? digitos : '';
+@@ -124,7 +125,7 @@
+         }
+ 
+         function normalizeNumber(text) {
+-            return String(text || '').replace(/\D/g, '');
++            return numeros.key(text);
+         }
+ 
+         function node(tag, className, content) {
+@@ -229,7 +230,7 @@
+                 row, '', 'marketing-reception-number'
+             );
+             numeroCelda.appendChild(node('span', '',
+-                call.numero || 'Número no disponible'));
++                numeros.display(call.numero) || 'Número no disponible'));
+             const telefonoNormalizado = normalizarNumeroDevolucion(call.numero);
+             const accion = addCell(row, '', 'marketing-reception-action-cell');
+             if (puedeLlamarAlRegistro(call)) {

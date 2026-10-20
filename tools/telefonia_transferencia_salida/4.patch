@@ -1,0 +1,85 @@
+--- a/public/javascript/telefonia_disponibilidad.js
++++ b/public/javascript/telefonia_disponibilidad.js
+@@ -28,18 +28,18 @@
+       request.until-Date.now()<=REMINDER_MIN_REMAINING_MS||status.pending))return;
+   if(force){for(const node of soundNodes){try{node.stop?.();node.disconnect?.();}catch(_){}}soundNodes=[];}
+   // La misma melodía compartida, con pausas; sólo mientras siga pendiente.
+-  const notes=reminder?[[740,0],[880,.30]]:[[740,0],[880,.29],[988,.58]];
+-  const volume=reminder?.24:.32;
++  const notes=[[740,0],[990,.22]]; // Melodía original de 2c087d81.
++  const volume=.13;
+   try{
+    for(const [frequency,offset] of notes){
+     const oscillator=audio.createOscillator(),gain=audio.createGain(),start=audio.currentTime+offset;
+     oscillator.type='sine';oscillator.frequency.value=frequency;
+     gain.gain.setValueAtTime(0,start);
+-    gain.gain.linearRampToValueAtTime(volume,start+.035);
+-    gain.gain.linearRampToValueAtTime(0,start+.26);
++    gain.gain.linearRampToValueAtTime(volume,start+.02);
++    gain.gain.linearRampToValueAtTime(0,start+.17);
+     oscillator.connect(gain);gain.connect(audio.destination);
+     if(audioMeter)gain.connect(audioMeter);
+-    oscillator.start(start);oscillator.stop(start+.27);soundNodes.push(oscillator,gain);
++    oscillator.start(start);oscillator.stop(start+.18);soundNodes.push(oscillator,gain);
+    }
+    request.plays++;
+    lastEmission=Date.now();
+@@ -59,20 +59,21 @@
+    soundRequest={key:identity,until:Date.now()+duration,plays:heard.includes(identity)?1:0,reminderAt:Date.now()+REMINDER_AFTER_MS};
+    soundExpiry=setTimeout(stopSound,duration);
+    soundRepeat=setInterval(playSound,1000);
++   unlockAudio(); // Intento automático; resume() sigue sujeto a autoplay.
+   }
+   playSound();
+  };
+  const unlockAudio=event=>{
+-  if(!event.isTrusted)return;
+-  if(event.type!=='click'&&event.target?.closest?.('[data-availability-audio]'))return;
+-  const explicit=event.currentTarget===audioButton;
++  if(event&&!event.isTrusted)return;
++  if(event&&event.type!=='click'&&event.target?.closest?.('[data-availability-audio]'))return;
++  const explicit=event?.currentTarget===audioButton;
+   try{
+    const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;
+    if(!audio||audio.state==='closed'){audio=new Context({latencyHint:'interactive'});audioMeter=audio.createAnalyser?.()||null;audioPeak=0;if(audioMeter){const silent=audio.createGain();silent.gain.value=0;audioMeter.connect(silent);silent.connect(audio.destination);}}
+-   const started=()=>{playSound(explicit);if(audioButton)audioButton.hidden=false;};
++   const started=()=>{if(audio.state!=='running')throw new DOMException('Autoplay requiere interacción','NotAllowedError');audioError='';if(!phone.getPhoneStatus().pending){const feedback=$('[data-availability-feedback]');if(feedback)feedback.textContent='';}playSound(explicit);if(audioButton)audioButton.hidden=true;};
+    // Utilizar la salida efectiva del timbre SDK, cuando la API lo permite;
+    // en otros navegadores conservar la predeterminada y mostrar diagnóstico.
+-   const output=async()=>{const sink=sdkRing()?.sinkId||'';if(typeof audio.setSinkId==='function'&&audio.sinkId!==sink){try{await audio.setSinkId(sink);}catch(error){if(!sink)throw error;await audio.setSinkId('');}}audioError='';};
++   const output=()=>{audioError='';}; // Salida predeterminada, como el mecanismo original; no heredar una salida SDK silenciosa.
+    const failed=error=>{audioError=String(error?.name||error?.message||'Audio bloqueado');if(audioButton)audioButton.hidden=false;const feedback=$('[data-availability-feedback]');if(feedback)feedback.textContent='El navegador no permitió reproducir el aviso. Pulsa Activar avisos sonoros y revisa la salida de audio del navegador.';};
+    const resumed=audio.state!=='running'?audio.resume():Promise.resolve();
+    void resumed.then(output).then(started).catch(failed);
+@@ -107,12 +108,16 @@
+   if(!source)return;
+   const same=matchesCall(watched);
+   source.hidden=!watched||!same||['ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR'].includes(watched.estado);
++  const panel=source.closest('.impe-routing-panel'),show=!source.hidden;
++  const help=panel?.querySelector('.impe-routing-help'),feedback=panel?.querySelector('[data-routing-feedback]');
++  if(help)help.hidden=show;
++  if(feedback)feedback.hidden=show&&!feedback.classList.contains('is-error');
+   if(!watched){source.removeAttribute('data-availability-state');return;}
+   const status=watched.estado,name=watched.responsable||'El responsable',seconds=Math.max(0,Number(watched.segundos)||0);
+   // Estado visual únicamente: no altera la autorización ni la transferencia.
+   source.dataset.availabilityState=status;
+   const titles={PENDIENTE:'Esperando confirmación',ACEPTADA:'Responsable disponible',RECHAZADA:'No disponible',VENCIDA:'Sin confirmación a tiempo',CANCELADA:'Solicitud cancelada',FALLIDA:'No se envió la transferencia',DEVOLUCION:'Devolución registrada'};
+-  const copies={PENDIENTE:name+' · Ext. '+watched.destino_extension+' · '+seconds+' s. La persona sigue hablando contigo.',ACEPTADA:name+' confirmó que puede atender. Transfiere en los próximos '+seconds+' s.',RECHAZADA:'Continúa atendiendo a la persona. Puedes elegir otro responsable o dejar una devolución.',VENCIDA:'La persona sigue contigo. Solicita de nuevo o registra sus datos para devolver la llamada.',CANCELADA:'Puedes seleccionar otro responsable o solicitar una devolución.',FALLIDA:'La persona sigue contigo. Revisa la llamada antes de volver a solicitar disponibilidad.',DEVOLUCION:'El responsable tiene el contacto y el motivo en sus llamadas por devolver.'};
++  const copies={PENDIENTE:name+' · Ext. '+watched.destino_extension+' · '+seconds+' s.',ACEPTADA:name+' · Ext. '+watched.destino_extension+' · Transfiere en '+seconds+' s.',RECHAZADA:'Continúa atendiendo a la persona. Puedes elegir otro responsable o dejar una devolución.',VENCIDA:'La persona sigue contigo. Solicita de nuevo o registra sus datos para devolver la llamada.',CANCELADA:'Puedes seleccionar otro responsable o solicitar una devolución.',FALLIDA:'La persona sigue contigo. Revisa la llamada antes de volver a solicitar disponibilidad.',DEVOLUCION:'El responsable tiene el contacto y el motivo en sus llamadas por devolver.'};
+   $('[data-availability-source-title]').textContent=titles[status]||'Transferencia en proceso';
+   $('[data-availability-source-copy]').textContent=copies[status]||'Espera la confirmación del teléfono.';
+   $('[data-availability-transfer]').hidden=status!=='ACEPTADA';$('[data-availability-transfer]').disabled=transferring;
+@@ -145,11 +150,11 @@
+    if(status.pending && deferred===String(op.id)+':'+op.version){stopSound();if(incoming.open)incoming.close();return;}
+    $('[data-availability-accept]').disabled=Boolean(status.pending);
+    $('[data-availability-pending]').hidden=!status.pending;
+-   $('[data-availability-feedback]').textContent=status.pending?'Tienes un resultado por registrar. Guárdalo antes de aceptar esta llamada.':'';
++   $('[data-availability-feedback]').textContent=status.pending?'Tienes un resultado por registrar. Guárdalo antes de aceptar esta llamada.':audioError?'El navegador no permitió el aviso. Habilita los avisos sonoros con el botón disponible.':'';
+    $('[data-availability-caller]').textContent='Recepción · Ext. '+op.origen_extension+' · '+op.numero+(op.institucion_nombre?' · '+op.institucion_nombre:'');
+    $('[data-availability-countdown]').textContent='Responde en '+op.segundos+' s. Aceptar reserva tu disponibilidad durante 30 s.';
+    if(!incoming.open){incoming.showModal();$('[data-availability-accept]').focus();}
+-   if(audioButton)audioButton.hidden=false; // running no demuestra salida audible.
++   if(audioButton)audioButton.hidden=!audioError;
+    signalAvailability(op);
+   }catch(e){if(watched){$('[data-availability-source-copy]').textContent=e.message;}if(incoming.open)$('[data-availability-feedback]').textContent=e.message;}
+   finally{polling=false;}

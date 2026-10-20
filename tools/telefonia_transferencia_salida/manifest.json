@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "base": "65c86f98b5c79afc46d76a0028a8654c0302d785",
+  "target": "11a084b0f8278a8f3aab67a4f08854e3f1e1371e",
+  "files": [
+    {
+      "path": "app/services/TelefoniaRecepcionMarketingService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "50fa40043a555b7458f312439a74d95b5f1ac7a718c296e07433e17c35312f75",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "a7625ae341048e4fc491834b023731391a15b5d82bd69bc7358315481bdf444d",
+          "after": "50fa40043a555b7458f312439a74d95b5f1ac7a718c296e07433e17c35312f75",
+          "patch": "tools/telefonia_transferencia_salida/0.patch",
+          "patch_sha256": "bcfc55ea716245c5349838abb8a2b0e17fef57dea48c5087bc9cc4a85bf28233"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/0.patch",
+      "patch_sha256": "bcfc55ea716245c5349838abb8a2b0e17fef57dea48c5087bc9cc4a85bf28233"
+    },
+    {
+      "path": "app/views/layout/dashboard_head.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "9c675d1adccb7d049a81134c5d38f273719b3ea3b9d7c539f616529b87ca94b6",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "16eb1e551de410b069beb8448940dc7eb27015400f78847f7d8f7bc7954c132d",
+          "after": "9c675d1adccb7d049a81134c5d38f273719b3ea3b9d7c539f616529b87ca94b6",
+          "patch": "tools/telefonia_transferencia_salida/1.patch",
+          "patch_sha256": "6253b22382273acee34ef9cdbad83f2d33475f449c18db3d37d05887e92724bf"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/1.patch",
+      "patch_sha256": "6253b22382273acee34ef9cdbad83f2d33475f449c18db3d37d05887e92724bf"
+    },
+    {
+      "path": "app/views/telefonia/host.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "836ec9ea1335380e8cbe5203c8f07933e394183e436659f00993cfe4d89e4af3",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "df18006fee010d75e1b12eebaafbae4a2a8057a47048464e177159c489b92e93",
+          "after": "836ec9ea1335380e8cbe5203c8f07933e394183e436659f00993cfe4d89e4af3",
+          "patch": "tools/telefonia_transferencia_salida/2.patch",
+          "patch_sha256": "44972f0ad87e1ea1b82e1b8741f15b3bf3511c1c845b6db4b417d2e759425c46"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/2.patch",
+      "patch_sha256": "44972f0ad87e1ea1b82e1b8741f15b3bf3511c1c845b6db4b417d2e759425c46"
+    },
+    {
+      "path": "app/views/telefonia/shell.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "2196910e8271f4d0f01722bfbb2708a4717db25d364d496006556b4a34c33f68",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "bfc9326e40777e07b3b01204182fd98b4c6c41e203ee2646c5aef079f7a21891",
+          "after": "2196910e8271f4d0f01722bfbb2708a4717db25d364d496006556b4a34c33f68",
+          "patch": "tools/telefonia_transferencia_salida/3.patch",
+          "patch_sha256": "f6a8bc7a354f561dd1a4bbf23f2cb1541d3f547b0184cf593a8fff6ee5aaa7f4"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/3.patch",
+      "patch_sha256": "f6a8bc7a354f561dd1a4bbf23f2cb1541d3f547b0184cf593a8fff6ee5aaa7f4"
+    },
+    {
+      "path": "public/javascript/telefonia_disponibilidad.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "4c24638139e7e584481191ec2f25367abd1d39b923d8834ff85f00cc39e8f7a9",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "5eaaf216392180aba21beee04f3ea56efc58f74997bc6cdd252948dab3a4d648",
+          "after": "4c24638139e7e584481191ec2f25367abd1d39b923d8834ff85f00cc39e8f7a9",
+          "patch": "tools/telefonia_transferencia_salida/4.patch",
+          "patch_sha256": "9a758d17b7e2f519566ed3b37c7b2824bf44df95925df7484faf95163a162a5b"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/4.patch",
+      "patch_sha256": "9a758d17b7e2f519566ed3b37c7b2824bf44df95925df7484faf95163a162a5b"
+    },
+    {
+      "path": "public/javascript/telefonia_enrutamiento.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "d5a9b336208074eef98de0ae1d6962c649f38c788617088f4bbceca969749033",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "8272c3b90aee43d037546e468b6ba2f4c232412f5290e7df1b21f6505791059d",
+          "after": "d5a9b336208074eef98de0ae1d6962c649f38c788617088f4bbceca969749033",
+          "patch": "tools/telefonia_transferencia_salida/5.patch",
+          "patch_sha256": "43a0c394a46155a52be7f42a9eec2919837197ed4a40003b69871772015c9495"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/5.patch",
+      "patch_sha256": "43a0c394a46155a52be7f42a9eec2919837197ed4a40003b69871772015c9495"
+    },
+    {
+      "path": "public/javascript/telefonia_host.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "51c711f52b3e5c44ff59e7c43863a237146f514ec20ac8c8d88c7d09d06dcac0",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "bbe2d76eccb43562403f738f9134905e4a7b71da70d24dc5a45f94e9ea4dd762",
+          "after": "51c711f52b3e5c44ff59e7c43863a237146f514ec20ac8c8d88c7d09d06dcac0",
+          "patch": "tools/telefonia_transferencia_salida/6.patch",
+          "patch_sha256": "5143a8c2e125d4247d6db7f319a4ac602324a5be9007e8d554002028d8fa08db"
+        },
+        {
+          "label": "hostinger-rescate-sdk-conservado",
+          "before": "2b685b9da57c28e4b47d8b5c0458178119e4f815450a2942a1b9caca555277f3",
+          "after": "cf2e16d8c5a7197837b5be1ed1f78ce2f17aef61055f7d5ba50a94437ffde640",
+          "patch": "tools/telefonia_transferencia_salida/hostinger.patch",
+          "patch_sha256": "e1aae4793fcec456736278e4084c429850ffa14d84faf6a32de702ffa097223b"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/6.patch",
+      "patch_sha256": "5143a8c2e125d4247d6db7f319a4ac602324a5be9007e8d554002028d8fa08db",
+      "production_fixture": "tools/telefonia_transferencia_salida/hostinger-host-before.js"
+    },
+    {
+      "path": "public/javascript/telefonia_marcador.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "296d9772c98620f2227c9d36a3ae85bad7d5ad2ec2848700b058fc9d3e017641",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "b4da8e20859005b0f59d3f0a4886edd8d61ad389fbd11125281373e04a9a7e2e",
+          "after": "296d9772c98620f2227c9d36a3ae85bad7d5ad2ec2848700b058fc9d3e017641",
+          "patch": "tools/telefonia_transferencia_salida/7.patch",
+          "patch_sha256": "319db436c9de42e99fd43619b26702a66eae90e2d7f7e6b21d77bb94e1913ddc"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/7.patch",
+      "patch_sha256": "319db436c9de42e99fd43619b26702a66eae90e2d7f7e6b21d77bb94e1913ddc"
+    },
+    {
+      "path": "public/javascript/telefonia_numeros.js",
+      "kind": "js",
+      "new": true,
+      "target_sha256": "0a6777885ee77a84d44621f3a1b1e14f1fb33de05d186eb59c8ada7026fc46f3",
+      "variants": []
+    },
+    {
+      "path": "public/javascript/telefonia_recepcion_marketing.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "7a65b91f8a3aea1574fd3c24adf367f53c9c0106ed1ed7eaf151f05dec9aab52",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "c6ecd4064e1ffa643c4956937672b7b26830f36a9997265e7dd81f5ae8c79fa0",
+          "after": "7a65b91f8a3aea1574fd3c24adf367f53c9c0106ed1ed7eaf151f05dec9aab52",
+          "patch": "tools/telefonia_transferencia_salida/9.patch",
+          "patch_sha256": "ee76fd0258c987357329c4e411a1862a119945797c47190dd8751ae45567adb9"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/9.patch",
+      "patch_sha256": "ee76fd0258c987357329c4e411a1862a119945797c47190dd8751ae45567adb9"
+    },
+    {
+      "path": "public/javascript/telefonia_sdk_entrantes_observador.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "443eae178dd53897c117ccdfdacc7838187ca3bb6c3f9a26b6daead57c6e6eff",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "1c64a4d684c6726f91ae3cb4c189f25f8e647fb3504b63060f6970376e6dac4a",
+          "after": "443eae178dd53897c117ccdfdacc7838187ca3bb6c3f9a26b6daead57c6e6eff",
+          "patch": "tools/telefonia_transferencia_salida/10.patch",
+          "patch_sha256": "d939b04d527cf6f5e8ed460caa2f734661c9033404b97135a01079fa386ef8f6"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/10.patch",
+      "patch_sha256": "d939b04d527cf6f5e8ed460caa2f734661c9033404b97135a01079fa386ef8f6"
+    },
+    {
+      "path": "public/javascript/telefonia_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "0cfb68a45e4d19c3dad7b4680d9213d91c6d698a6d4b06636ee72becfccbb183",
+      "variants": [
+        {
+          "label": "regresiones-publicadas",
+          "before": "b6741613337ad52d5a0737fe85ee1ba0e687f61fd7412d940e7a2e0cf7b8824e",
+          "after": "0cfb68a45e4d19c3dad7b4680d9213d91c6d698a6d4b06636ee72becfccbb183",
+          "patch": "tools/telefonia_transferencia_salida/11.patch",
+          "patch_sha256": "53d2b768e6d6eb1163351e698531472a3ea880a63cad16b5cfc7b6eb9801dffc"
+        }
+      ],
+      "patch": "tools/telefonia_transferencia_salida/11.patch",
+      "patch_sha256": "53d2b768e6d6eb1163351e698531472a3ea880a63cad16b5cfc7b6eb9801dffc"
+    }
+  ]
+}
