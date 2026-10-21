@@ -6,6 +6,9 @@
  const $=s=>document.querySelector(s),source=$('[data-availability-source]'),incoming=$('[data-availability-incoming]'),callback=$('[data-availability-callback]');
  const key='impe:availability:'+cfg.userId;
  let watched=null,received=null,polling=false,acting=false,transferring=false,callbacks=-1,deferred='';
+ // Única aceptación vigente de este destinatario; nunca se usa el nombre
+ // histórico del teléfono para identificar la próxima invitación SIP.
+ let acceptedTransfer=null;
  // Aviso de disponibilidad independiente del timbre y del contexto de audio del SDK.
  const soundKey='impe:availability-chimes:'+cfg.userId;
  const REMINDER_AFTER_MS=8000,REMINDER_MIN_REMAINING_MS=1000;
@@ -164,7 +167,16 @@
  const respond=async which=>{
   if(acting||!received)return;acting=true;stopSound();
   const buttons=incoming.querySelectorAll('button');buttons.forEach(b=>b.disabled=true);
-  try{if(which==='ACEPTAR'&&busy())throw Error('Ya tienes una llamada o tu teléfono no está conectado.');await action(received,which);closeIncoming();}
+  try{
+   if(which==='ACEPTAR'&&busy())throw Error('Ya tienes una llamada o tu teléfono no está conectado.');
+   const op=received,confirmed=await action(op,which);
+   if(which==='ACEPTAR'&&confirmed?.estado==='ACEPTADA'){
+    acceptedTransfer={id:String(op.id),referencia:String(op.referencia||''),
+      numero:String(op.numero||''),nombre:String(op.institucion_nombre||'').slice(0,150),
+      origen_extension:String(op.origen_extension||''),at:Date.now()};
+   }
+   closeIncoming();
+  }
   catch(e){$('[data-availability-feedback]').textContent=e.message;}
   finally{acting=false;buttons.forEach(b=>b.disabled=false);}
  };
@@ -200,7 +212,9 @@
   catch(error){$('[data-callback-feedback]').textContent=error.message;}
   finally{acting=false;form.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=false);}
  });
- window.IMPE_AVAILABILITY={watch:store,cancel,audioDiagnostic,pending:()=>Boolean(watched&&matchesCall(watched)&&['PENDIENTE','ACEPTADA','ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR','DEVOLUCION'].includes(watched.estado)),tick};
+ window.IMPE_AVAILABILITY={watch:store,cancel,audioDiagnostic,
+  acceptedTransfer:()=>acceptedTransfer&&Date.now()-acceptedTransfer.at<90000?{...acceptedTransfer}:null,
+  pending:()=>Boolean(watched&&matchesCall(watched)&&['PENDIENTE','ACEPTADA','ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR','DEVOLUCION'].includes(watched.estado)),tick};
  window.addEventListener('pagehide',()=>{stopSound();navigator.sendBeacon?.(cfg.availabilityUrl,new URLSearchParams({accion:'PRESENCIA',disponible:'0',csrf_token:cfg.routingCsrf}));});
  window.setInterval(()=>void tick(),3000);window.setInterval(render,1000);void tick();
 })();
