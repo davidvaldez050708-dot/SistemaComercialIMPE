@@ -14,6 +14,6 @@ assert.equal(normalizarNumeroDevolucion('Número privado'), '');
 assert.equal(normalizarNumeroDevolucion('00 52 55 1234 5678'), '');
 assert.equal(normalizarNumeroDevolucion('1<script>'), '');
 assert.equal(normalizarNumeroDevolucion('0000000000'), '');
-assert.equal(normalizarNumeroDevolucion('5215512345678'), '5215512345678');
+assert.equal(normalizarNumeroDevolucion('5215512345678'), '525512345678'); // antiguo +52 1 móvil convertido al formato vigente
 
 console.log('Recepción Marketing: OK (normalización, bloqueo de internos y formato)');
