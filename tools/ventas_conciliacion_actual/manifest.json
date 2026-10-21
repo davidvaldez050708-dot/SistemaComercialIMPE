@@ -1,22 +1,22 @@
 {
   "version": 1,
   "base": "3ec18c9e300be9fcee080d845c1d915381b0b46b",
-  "target": "b41f18bc209e0e5a752a6bea4ea1db813eb266a9",
+  "target": "a77ea92d0990855988c50bdd5c4bec357303bb5d",
   "files": [
     {
       "path": "app/controllers/TelefoniaController.php",
       "kind": "php",
       "new": false,
-      "target_sha256": "1a85dfddef529a41b22e244c51e8e65c4409c8009a52da1578e4c9f163a2bce2",
+      "target_sha256": "9259964af4efc12d81806df1754d14436b1ab2a0a1dfbc3e39a09b2e5d9d1d4d",
       "patch": "tools/ventas_conciliacion_actual/0.patch",
-      "patch_sha256": "c9fe595e12036f702a648466e6643c36f341a7c2c071860f025b66102845f0bb",
+      "patch_sha256": "8be0375bd5cb89ab498312be934665ee0f53e18276735f3c49e61360ace95ef2",
       "variants": [
         {
           "label": "entrega-3ec18c9e",
           "before": "c8ad01bdc1e0538f1634b54acd956eccdf70b0237cb93baffa97a98cdb0d86eb",
-          "after": "1a85dfddef529a41b22e244c51e8e65c4409c8009a52da1578e4c9f163a2bce2",
+          "after": "9259964af4efc12d81806df1754d14436b1ab2a0a1dfbc3e39a09b2e5d9d1d4d",
           "patch": "tools/ventas_conciliacion_actual/0.patch",
-          "patch_sha256": "c9fe595e12036f702a648466e6643c36f341a7c2c071860f025b66102845f0bb"
+          "patch_sha256": "8be0375bd5cb89ab498312be934665ee0f53e18276735f3c49e61360ace95ef2"
         }
       ]
     },
