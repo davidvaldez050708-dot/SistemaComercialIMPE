@@ -661,6 +661,8 @@
                     ? 'Finalizada · transferencia confirmada por la centralita'
                     : phoneState.status === 'ended-unconfirmed'
                     ? 'Llamada finalizada · actualizando el historial'
+                    : phoneState.status === 'no-answer'
+                    ? 'No contestada · el timbrado finalizó'
                     : 'Finalizada · llamada concluida')
                 : shownOutgoing
                 ? (finished ? 'Finalizada · registrada en el historial telefónico'
