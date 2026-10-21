@@ -5,7 +5,8 @@
  const form=dialog.querySelector('form'),feedback=dialog.querySelector('[data-sales-prospect-feedback]');
  const notify=(message,error=false)=>{try{const crm=document.getElementById('impeCrmFrame')?.contentWindow;if(typeof crm?.IMPE_TELEPHONY_NOTIFY==='function'){crm.IMPE_TELEPHONY_NOTIFY(message,error);return;}}catch(_){}window.IMPE_TELEPHONY_NOTIFY?.(message,error);};
  const button=document.createElement('button');button.type='button';button.className='persistent-phone-action';button.textContent='Datos del prospecto';button.dataset.salesProspect='1';button.hidden=true;
- document.querySelector('[data-incoming-panel] .persistent-phone-actions')?.append(button);
+ const actions=document.querySelector('[data-incoming-panel] .persistent-phone-actions'),close=actions?.querySelector('[data-incoming-close-finished]');
+ if(close)actions.insertBefore(button,close);else actions?.append(button);
  let ref='',localId='',version=0,busy=false;const key=id=>'impe:sales-prospect:'+cfg.userId+':'+id;
  const valid=id=>/^[A-Za-z0-9_-]{6,100}$/.test(id||'');
  const request=async(post=false)=>{const url=new URL(cfg.salesProspectUrl,location.href);const values={pbx_call_id:ref,extension:cfg.extension};let options={credentials:'same-origin',cache:'no-store'};
