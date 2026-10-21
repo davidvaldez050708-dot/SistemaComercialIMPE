@@ -112,7 +112,8 @@ class CorreoSalidaInstitucionalService
             return CorreoEnvioControl::ejecutar($usuarioId . ':' . ($explicit ?: $fingerprint), $fingerprint, $send, $explicit !== '');
         } catch (Throwable $error) {
             error_log('MAIL_TRANSPORT ' . json_encode(['phase' => 'account_or_state', 'exception' => get_class($error)]));
-            return $this->error('No se pudo preparar un envío seguro. Revisa la configuración privada o si hay otro envío en curso.', 503);
+            return $this->error('No se pudo confirmar un envío seguro. Revisa el proveedor y el historial antes de repetirlo.', 503)
+                + ['estado_entrega' => 'DESCONOCIDO', 'entrega_confirmada' => false];
         }
     }
 

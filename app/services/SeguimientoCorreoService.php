@@ -189,7 +189,8 @@ class SeguimientoCorreoService
             $seguimiento,
             $asunto,
             $cuerpo,
-            $adjuntos
+            $adjuntos,
+            $usuarioId
         );
         if (!($resultadoEnvio['ok'] ?? false)) {
             $this->eliminarArchivos($archivosCreados);
@@ -1446,32 +1447,18 @@ class SeguimientoCorreoService
         }
     }
 
-    private function enviarCorreo($seguimiento, $asunto, $cuerpo, $adjuntos = [])
+    private function enviarCorreo($seguimiento, $asunto, $cuerpo, $adjuntos = [], $usuarioId = 0)
     {
-        require_once __DIR__ . '/HostingerMailApiService.php';
-
-        $hostinger = new HostingerMailApiService();
-
-        if ($hostinger->estaConfigurado()) {
-            $analistaCorreo = trim((string)($seguimiento['analista_correo'] ?? ''));
-            $analistaNombre = trim(
-                (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
-                (string)($seguimiento['analista_apellidos'] ?? '')
-            );
-            $destinatario = trim((string)($seguimiento['destinatario_correo'] ?? ''));
-
-            return $hostinger->enviarOficio([
-                'remitente' => $analistaCorreo,
-                'nombre_remitente' => $analistaNombre,
-                'destinatario' => $destinatario,
-                'asunto' => $asunto,
-                'cuerpo' => $cuerpo,
-                'adjuntos' => $adjuntos,
-                'permitir_sin_adjuntos' => true
-            ]);
-        }
-
-        return $this->enviarPorSmtp($seguimiento, $asunto, $cuerpo, $adjuntos);
+        require_once __DIR__ . '/CorreoSalidaInstitucionalService.php';
+        return (new CorreoSalidaInstitucionalService())->enviar([
+            'usuario_id' => (int)$usuarioId,
+            'remitente' => trim((string)($seguimiento['analista_correo'] ?? '')),
+            'nombre_remitente' => trim((string)($seguimiento['analista_nombre'] ?? '') . ' ' . (string)($seguimiento['analista_apellidos'] ?? '')),
+            'destinatario' => trim((string)($seguimiento['destinatario_correo'] ?? '')),
+            'asunto' => $asunto,
+            'cuerpo' => $cuerpo,
+            'adjuntos' => $adjuntos
+        ]);
     }
 
     private function enviarPorHostinger(

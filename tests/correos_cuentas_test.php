@@ -21,7 +21,7 @@ try {
     $resolver = new CorreoCuentaConectadaService(static function ($id) { return ['correo' => 'registrado@hostinger.test', 'estado' => 1]; });
     $mail = new CuentaMailFake(true);
     $apiCalls = [];
-    $apiStatus = 200;
+    $apiStatus = 204;
     $sender = new CorreoSalidaInstitucionalService(static function () use ($mail) { return $mail; }, $resolver,
         static function ($method, $url, $token, $payload) use (&$apiCalls, &$apiStatus) {
             $apiCalls[] = $method;
@@ -29,7 +29,7 @@ try {
                 ['address' => 'otro@hostinger.test', 'resource_id' => 'NO'], ['address' => 'prueba@hostinger.test', 'resource_id' => 'SI']]]]; }
             checkMail(str_ends_with($url, '/SI/send') && $token === 'TOKEN_QA', 'buzón exacto');
             checkMail(base64_decode($payload['attachments'][0]['content']) === file_get_contents(__FILE__), 'adjunto API completo');
-            return ['ok' => $apiStatus === 200, 'codigo_http' => $apiStatus];
+            return ['ok' => $apiStatus === 204, 'codigo_http' => $apiStatus];
         });
     $data = ['usuario_id' => 7, 'remitente' => 'prueba@gmail.com', 'destinatario' => 'externo@universidad.test',
         'asunto' => 'Prueba ficticia', 'cuerpo' => 'Contenido completo',
@@ -56,10 +56,13 @@ try {
     checkMail($sender->enviar($data)['estado_entrega'] === 'RECHAZADO', 'API rechazo explícito');
     $apiStatus = 503; $data['idempotency_key'] = 'prueba-0004';
     checkMail($sender->enviar($data)['estado_entrega'] === 'DESCONOCIDO', 'API incertidumbre');
-    $before = count($apiCalls); $apiStatus = 200;
+    $before = count($apiCalls); $apiStatus = 204;
     checkMail(!$sender->enviar($data)['ok'] && count($apiCalls) === $before && $mail->calls === 3, 'sin fallback ni reintento incierto');
     $_SESSION['usuario_id'] = 8;
     checkMail($sender->enviar($data)['codigo_http'] === 403, 'identidad de sesión'); unset($_SESSION['usuario_id']);
+    putenv('IMPE_MAIL_STATE_DIR=' . __FILE__);
+    $data['remitente'] = 'prueba@gmail.com'; $data['idempotency_key'] = 'estado-invalido-0001';
+    checkMail($sender->enviar($data)['estado_entrega'] === 'DESCONOCIDO' && $mail->calls === 3, 'fallo de estado no se presenta como rechazo seguro');
     echo "OK: cuentas autorizadas, Gmail/Microsoft/institucional SMTP simulado, Hostinger API simulada, adjuntos, identidad, rechazos e idempotencia. Sin envíos reales.\n";
 } finally {
     $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($work, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);

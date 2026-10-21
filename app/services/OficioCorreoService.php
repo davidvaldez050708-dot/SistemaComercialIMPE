@@ -220,7 +220,8 @@ class OficioCorreoService
             $seguimiento,
             $asunto,
             $cuerpo,
-            $rutaPdf
+            $rutaPdf,
+            $usuarioId
         );
 
         if (!($resultadoSmtp['ok'] ?? false)) {
@@ -316,40 +317,19 @@ class OficioCorreoService
         ];
     }
 
-    private function enviarCorreo($seguimiento, $asunto, $cuerpo, $rutaPdf)
+    private function enviarCorreo($seguimiento, $asunto, $cuerpo, $rutaPdf, $usuarioId = 0)
     {
-        require_once __DIR__ . '/HostingerMailApiService.php';
-
-        $hostinger = new HostingerMailApiService();
-
-        if ($hostinger->estaConfigurado()) {
-            $analistaCorreo = trim((string)($seguimiento['analista_correo'] ?? ''));
-            $analistaNombre = trim(
-                (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
-                (string)($seguimiento['analista_apellidos'] ?? '')
-            );
-            $destinatario = trim((string)($seguimiento['destinatario_correo'] ?? ''));
-            $nombreAdjunto = basename(
-                (string)($seguimiento['archivo_pdf'] ?? $rutaPdf)
-            );
-
-            return $hostinger->enviarOficio([
-                'remitente' => $analistaCorreo,
-                'nombre_remitente' => $analistaNombre,
-                'destinatario' => $destinatario,
-                'asunto' => $asunto,
-                'cuerpo' => $cuerpo,
-                'ruta_adjunto' => $rutaPdf,
-                'nombre_adjunto' => $nombreAdjunto
-            ]);
-        }
-
-        return $this->enviarPorSmtp(
-            $seguimiento,
-            $asunto,
-            $cuerpo,
-            $rutaPdf
-        );
+        require_once __DIR__ . '/CorreoSalidaInstitucionalService.php';
+        return (new CorreoSalidaInstitucionalService())->enviar([
+            'usuario_id' => (int)$usuarioId,
+            'remitente' => trim((string)($seguimiento['analista_correo'] ?? '')),
+            'nombre_remitente' => trim((string)($seguimiento['analista_nombre'] ?? '') . ' ' . (string)($seguimiento['analista_apellidos'] ?? '')),
+            'destinatario' => trim((string)($seguimiento['destinatario_correo'] ?? '')),
+            'asunto' => $asunto,
+            'cuerpo' => $cuerpo,
+            'adjuntos' => [['ruta' => $rutaPdf, 'nombre' => basename((string)($seguimiento['archivo_pdf'] ?? $rutaPdf)), 'mime' => 'application/pdf']],
+            'idempotency_key' => 'oficio-correo:' . (int)$seguimiento['oficio_id']
+        ]);
     }
 
     private function enviarPorSmtp($seguimiento, $asunto, $cuerpo, $rutaPdf)

@@ -373,9 +373,9 @@ $texto = static fn($valor) => htmlspecialchars(
                             required>
 
                         <div class="form-text">
-                            Escribe la cuenta de origen que utilizará Marketing.
-                            El sistema elegirá automáticamente Hostinger Mail API
-                            o la cuenta central configurada para ese correo.
+                            Escribe una cuenta conectada y autorizada para tu usuario.
+                            El sistema utilizará su API o SMTP autenticado; las cuentas
+                            nuevas requieren configuración del administrador.
                         </div>
                     </div>
 
