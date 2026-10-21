@@ -650,7 +650,10 @@
                     const sipAlive = sipSession?.direction === 'incoming' &&
                         !sipSession.isEnded?.();
                     const sdkOnlyMatches = sdkOnly &&
-                        (!observedId || !boundId || observedId === boundId);
+                        (!observedId || (boundId && observedId === boundId) ||
+                            (sipSession?.direction === 'incoming' &&
+                                String(sipSession.id || '') === observedId &&
+                                sipSession.isEnded?.()));
                     if ((evidence.sessionEnded || evidence.pushEnded) &&
                         state.active && state.direction === 'incoming' &&
                         !sipAlive && (sdkOnlyMatches || (attachedPbx && sameSip))) {
