@@ -1,0 +1,28 @@
+--- a/public/javascript/crear_convocatoria.js
++++ b/public/javascript/crear_convocatoria.js
+@@ -12,0 +13 @@
++    const originFilter = module.querySelector('[data-convenio-origin-filter]');
+@@ -42 +43 @@
+-            !(hasSearch || hasState)
++            !(hasSearch || hasState || originFilter?.value)
+@@ -56 +57,2 @@
+-                (state === '' || state === cardState);
++                (state === '' || state === cardState) &&
++                (!originFilter?.value || originFilter.value === card.dataset.convenioOrigin);
+@@ -79,0 +82 @@
++    originFilter?.addEventListener('change', applyFilters);
+@@ -81,0 +85 @@
++        if (originFilter) originFilter.value = '';
+@@ -310,2 +314,10 @@
+-            }
+-
++                createLink.hidden = data.origen_tipo === 'manual';
++                const help = modalElement.querySelector('.crear-convocatoria-modal-help span');
++                if (help) help.textContent = data.origen_tipo === 'manual'
++                    ? 'Crear convocatoria requiere un expediente de Vinculación. El enlace de Registro se gestiona de forma independiente.'
++                    : 'La convocatoria se abrirá en el estado correspondiente al aliado.';
++            }
++
++            setText('[data-convenio-fecha-label]', data.origen_tipo === 'manual' ? 'Fecha de relación' : 'Fecha del documento');
++            setText('[data-convenio-origin-label]', data.origen_tipo === 'manual' ? 'Relación manual · Sin formalización documental' : 'Vinculación');
++            document.dispatchEvent(new CustomEvent('impe:convenio-abierto', {detail:data}));

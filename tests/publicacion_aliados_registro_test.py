@@ -87,4 +87,50 @@ class PublicacionAliados(unittest.TestCase):
         for name in ['publicar_aliados_registro.py','preparar_entrega_aliados_registro.py']:
             ast.parse((ROOT/'tools'/name).read_text(encoding='utf-8'),feature_version=(3,6))
 
+    def install_pr114_fixture(self):
+        self.manifest=ROOT/'tools/aliados_registro_release.json'
+        data=json.loads(self.manifest.read_text(encoding='utf-8'))
+        before={}
+        for row in data['files']:
+            version=row.get('variants',[row])[0]
+            original=gzip.decompress(base64.b64decode(version['base'])) if version['base'] else None
+            before[row['path']]=original
+            if original is not None:
+                file=self.site/row['path'];file.parent.mkdir(parents=True,exist_ok=True)
+                file.write_bytes(original.replace(b'\r\n',b'\n').replace(b'\n',b'\r\n'))
+                before[row['path']]=file.read_bytes()
+        return data,before
+
+    def test_pr114_revisado_check_apply_repetido_restore_crlf(self):
+        data,before=self.install_pr114_fixture()
+        self.assertEqual(sum(bool(r.get('variants')) for r in data['files']),10)
+        self.run_tool('--check')
+        self.assertEqual((self.site/'app/controllers/FormularioPublicoController.php').read_bytes(),before['app/controllers/FormularioPublicoController.php'])
+        out=self.run_tool('--apply')
+        for row in data['files']:
+            expected=gzip.decompress(base64.b64decode(row.get('variants',[row])[0]['target']))
+            self.assertEqual((self.site/row['path']).read_bytes().replace(b'\r\n',b'\n'),expected.replace(b'\r\n',b'\n'))
+        self.assertIn('ya publicada',self.run_tool('--apply'))
+        self.run_tool('--restore',out.split('Respaldo: ')[1].splitlines()[0])
+        for name,original in before.items():
+            if original is None:self.assertFalse((self.site/name).exists())
+            else:self.assertEqual((self.site/name).read_bytes(),original)
+
+    def test_pr114_personalizacion_superpuesta_desconocida_bloquea_todo(self):
+        _,before=self.install_pr114_fixture()
+        path='app/controllers/FormularioPublicoController.php'
+        altered=before[path].replace(b'$this->contextoAliado($modelo);',b'$this->contextoAliadoPersonalizado($modelo);')
+        self.assertNotEqual(altered,before[path]);(self.site/path).write_bytes(altered)
+        self.assertIn('CONFLICTO',self.run_tool('--apply',ok=False))
+        self.assertEqual((self.site/path).read_bytes(),altered)
+        self.assertEqual((self.site/'app/controllers/AliadoController.php').read_bytes(),before['app/controllers/AliadoController.php'])
+        self.assertFalse((self.site/'app/controllers/AliadoRegistroActions.php').exists())
+
+    def test_pr114_variante_corrupta_bloquea(self):
+        data,before=self.install_pr114_fixture()
+        next(r for r in data['files'] if r.get('variants'))['variants'][0]['sha256']='0'*64
+        self.manifest=self.root/'variante-corrupta.json';self.manifest.write_text(json.dumps(data),encoding='utf-8')
+        self.assertIn('Variante corrupta',self.run_tool('--apply',ok=False))
+        self.assertEqual((self.site/'app/controllers/AliadoController.php').read_bytes(),before['app/controllers/AliadoController.php'])
+
 if __name__=='__main__':unittest.main()

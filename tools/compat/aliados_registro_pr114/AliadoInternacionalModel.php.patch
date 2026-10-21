@@ -1,0 +1,17 @@
+--- a/app/models/AliadoInternacionalModel.php
++++ b/app/models/AliadoInternacionalModel.php
+@@ -18 +18 @@
+-            return $this->consultar("SELECT a.*, post.convenio_fecha,post.convenio_referencia,post.convenio_notas, (SELECT GROUP_CONCAT(p.nombre ORDER BY p.nombre SEPARATOR ' / ') FROM formulario_aliado_programas ap INNER JOIN formulario_programas p ON p.codigo=ap.programa_codigo AND p.activo=1 WHERE ap.aliado_id=a.id) AS programas FROM formulario_aliados a LEFT JOIN seguimientos_vinculacion_post_envio post ON post.seguimiento_id=a.seguimiento_id WHERE a.pais_codigo <> 'MX' OR (a.pais_codigo IS NULL AND a.seguimiento_id IS NULL) ORDER BY a.nombre");
++            return $this->consultar("SELECT a.*, post.convenio_fecha,post.convenio_referencia,post.convenio_notas, (SELECT GROUP_CONCAT(p.nombre ORDER BY p.nombre SEPARATOR ' / ') FROM formulario_aliado_programas ap INNER JOIN formulario_programas p ON p.codigo=ap.programa_codigo AND p.activo=1 WHERE ap.aliado_id=a.id) AS programas FROM formulario_aliados a LEFT JOIN seguimientos_vinculacion_post_envio post ON post.seguimiento_id=a.seguimiento_id WHERE (a.pais_codigo <> 'MX' OR (a.pais_codigo IS NULL AND a.seguimiento_id IS NULL)) " . $this->excluirRegistro() . " ORDER BY a.nombre");
+@@ -29 +29 @@
+-             WHERE a.seguimiento_id IS NULL ORDER BY a.nombre"
++             WHERE a.seguimiento_id IS NULL " . $this->excluirRegistro() . " ORDER BY a.nombre"
+@@ -53 +53 @@
+-             WHERE {$condicion}
++             WHERE {$condicion} " . $this->excluirRegistro() . "
+@@ -57,0 +58,5 @@
++    private function excluirRegistro(): string
++    {
++        return $this->db->query("SHOW TABLES LIKE 'formulario_aliado_registro'")->num_rows
++            ? ' AND NOT EXISTS (SELECT 1 FROM formulario_aliado_registro exclusivo WHERE exclusivo.aliado_id=a.id) ' : '';
++    }

@@ -1,0 +1,39 @@
+--- a/app/services/FormularioAliadoService.php
++++ b/app/services/FormularioAliadoService.php
+@@ -9 +9 @@
+-    public function resolver($token, bool $bloquear = false): array
++    public function resolver($token, bool $bloquear = false, string $tipo = "inscripcion"): array
+@@ -14 +14,6 @@
+-        $stmt = $this->db->prepare('SELECT * FROM formulario_aliados WHERE token = ? AND activo = 1' . ($bloquear ? ' FOR UPDATE' : ''));
++        $registroDisponible = (bool)$this->db->query("SHOW TABLES LIKE 'formulario_aliado_registro'")->num_rows;
++        // Un perfil nuevo queda inactivo para los lectores antiguos/Inscripción.
++        // Sólo Registro puede resolverlo mediante su configuración explícita.
++        $condicion = ($tipo === 'registro' && $registroDisponible)
++            ? '(activo=1 OR EXISTS(SELECT 1 FROM formulario_aliado_registro perfil WHERE perfil.aliado_id=formulario_aliados.id))' : 'activo=1';
++        $stmt = $this->db->prepare('SELECT * FROM formulario_aliados WHERE token = ? AND ' . $condicion . ($bloquear ? ' FOR UPDATE' : ''));
+@@ -18,0 +24,8 @@
++        if ($registroDisponible) {
++            $q = $this->db->prepare('SELECT r.*,m.activo manual_activo,s.activo institucional_activo,EXISTS(SELECT 1 FROM aliados_asignaciones asignacion WHERE asignacion.seguimiento_id=r.seguimiento_id AND asignacion.activo=1) institucional_asignado FROM formulario_aliado_registro r LEFT JOIN aliados_manuales m ON m.id=r.manual_id LEFT JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id WHERE r.aliado_id=?');
++            $q->bind_param('i', $aliado['id']); $q->execute(); $perfil=$q->get_result()->fetch_assoc();
++            $aliado['registro_gestionado'] = (bool)$perfil;
++            if ($perfil && ($tipo !== 'registro' || !$perfil['publicado'] || !$perfil['habilitado'] || ($perfil['manual_id'] && !$perfil['manual_activo']) || ($perfil['seguimiento_id'] && (!$perfil['institucional_activo'] || !$perfil['institucional_asignado'])))) {
++                throw new DomainException('El enlace de Registro no está disponible.');
++            }
++        }
+@@ -22 +35 @@
+-        $aliado['internacional'] = isset($aliado['pais_codigo']) ? strtoupper($aliado['pais_codigo']) !== 'MX' : $aliado['seguimiento_id'] === null;
++        $aliado['internacional'] = empty($aliado['registro_gestionado']) && (isset($aliado['pais_codigo']) ? strtoupper($aliado['pais_codigo']) !== 'MX' : $aliado['seguimiento_id'] === null);
+@@ -29 +42 @@
+-        $aliado=$this->resolver($token,$bloquear);
++        $aliado=$this->resolver($token,$bloquear,$tipo);
+@@ -50,0 +64,4 @@
++        // Una subconsulta del resolver puede abrir un read-view antes de esperar
++        // el bloqueo del aliado. Registro debe leer la autorización ya confirmada
++        // al obtenerlo. SET TRANSACTION sólo afecta esta transacción, no la sesión.
++        if ($tipo === 'registro') { $this->db->query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED'); }
+@@ -54 +71 @@
+-            $aliado = isset($datos['convocatoria_ref']) ? $this->resolverConvocatoria($token,$datos['convocatoria_ref'],$tipo,true) : $this->resolver($token, true);
++            $aliado = isset($datos['convocatoria_ref']) ? $this->resolverConvocatoria($token,$datos['convocatoria_ref'],$tipo,true) : $this->resolver($token, true, $tipo);
+@@ -59 +76 @@
+-            $stmt = $this->db->prepare('SELECT registro_id FROM formulario_aliado_procedencias WHERE aliado_id = ? AND tipo = ? AND clave = ?');
++            $stmt = $this->db->prepare('SELECT registro_id FROM formulario_aliado_procedencias WHERE aliado_id = ? AND tipo = ? AND clave = ?' . ($tipo === 'registro' ? ' FOR UPDATE' : ''));

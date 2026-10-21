@@ -17,6 +17,7 @@ on:
       - 'public/css/crear_convocatoria.css'
       - 'database/migrations/2026_10_21_aliados_registro.sql'
       - 'tools/*aliados_registro*'
+      - 'tools/compat/aliados_registro_pr114/**'
       - 'tests/*aliados_registro*'
       - '.github/workflows/aliados-registro.yml'
   workflow_dispatch:
@@ -62,7 +63,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Dependencias completas en checkout ef�mero
+      - name: Dependencias completas en checkout efímero
         run: |
           mv vendor /tmp/aliados-vendor-versionado
           composer install --no-interaction --no-scripts --prefer-dist --no-progress
@@ -89,6 +90,25 @@ jobs:
           php tests/aliados_registro_snapshot.php
       - name: Publicador reversible
         run: python3 tests/publicacion_aliados_registro_test.py
+      - name: Compatibilidad con PR114 publicado (réplica aislada)
+        env:
+          IMPE_DB_NAME: impe_test_handly_aliados_pr114
+          IMPE_TEST_DB_NAME: impe_test_handly_aliados_pr114
+        run: |
+          git fetch origin 20ec4fb64f211b06cde114da76d6c84e65a96db5
+          python3 tests/aliados_registro_pr114_prepare.py --output "$RUNNER_TEMP/aliados-pr114"
+          cd "$RUNNER_TEMP/aliados-pr114"
+          php tests/aliados_registro_fixture.php
+          php tools/preparar_handly_formularios.php --apply >/tmp/handly-pr114.log
+          php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
+          php tools/migrar_formularios_ubicacion_internacional.php --apply
+          php tests/aliados_registro_pr114_db.php --prepare
+          php tests/formularios_ubicacion_internacional_db.php
+          php tests/aliados_registro_db.php
+          node tests/aliados_registro_browser.cjs
+          php tests/aliados_registro_snapshot.php
+          php tests/aliados_registro_pr114_db.php
+          node tests/aliados_registro_pr114_browser.cjs
       - name: Regresión Handly y formularios generales
         env:
           IMPE_DB_NAME: impe_test_handly_legacy

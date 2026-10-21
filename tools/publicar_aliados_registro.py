@@ -62,6 +62,24 @@ def merge(current, base, desired, stage):
     return result.replace(b'\n', b'\r\n') if b'\r\n' in current else result
 
 
+def prepare_candidate(row, current, stage):
+    desired, base = unpack(row['target']), unpack(row['base'])
+    if sha(desired) != row['sha256']:
+        raise RuntimeError('Entrega corrupta: ' + row['path'])
+    # Las conciliaciones semánticas se aceptan sólo para contenidos revisados.
+    # No tratar una personalización desconocida como si fuera PR114.
+    for variant in row.get('variants', []):
+        original, reviewed = unpack(variant['base']), unpack(variant['target'])
+        if sha(reviewed) != variant['sha256']:
+            raise RuntimeError('Variante corrupta: ' + row['path'])
+        if current is not None and lf(current) == lf(reviewed):
+            return current
+        if current is not None and lf(current) == lf(original):
+            print('VARIANTE REVISADA: ' + row['path'] + ' (' + variant['ref'] + ')')
+            return lf(reviewed).replace(b'\n', b'\r\n') if b'\r\n' in current else lf(reviewed)
+    return merge(current, base, desired, stage)
+
+
 def atomic(path, data, mode=0o644):
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix='.aliados-registro-', dir=str(path.parent))
@@ -131,19 +149,16 @@ def main():
             name = row['path']
             p = target(site, name)
             original = p.read_bytes() if p.is_file() else None
-            desired, base = unpack(row['target']), unpack(row['base'])
-            if sha(desired) != row['sha256']:
-                raise RuntimeError('Entrega corrupta: ' + name)
             try:
-                candidate = merge(original, base, desired, stage)
+                reviewed = prepare_candidate(row, original, stage)
             except RuntimeError as e:
                 raise RuntimeError(name + ': ' + str(e))
-            if candidate == original:
+            if reviewed == original:
                 print('SIN CAMBIOS: ' + name)
                 continue
             file = stage / 'candidatos' / name
             file.parent.mkdir(parents=True, exist_ok=True)
-            file.write_bytes(candidate)
+            file.write_bytes(reviewed)
             if name.endswith('.php'):
                 run = subprocess.run(['php', '-l', str(file)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if run.returncode:
@@ -152,10 +167,10 @@ def main():
                 run = subprocess.run(['node', '--check', str(file)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if run.returncode:
                     raise RuntimeError('Sintaxis JavaScript inválida: ' + name)
-            plan.append((name, p, original, candidate, p.stat().st_mode & 0o777 if p.exists() else 0o644))
+            plan.append((name, p, original, reviewed, p.stat().st_mode & 0o777 if p.exists() else 0o644))
             print('PREPARADO: ' + name)
             if args.check and original is not None:
-                lines = difflib.unified_diff(lf(original).decode('utf-8').splitlines(), lf(candidate).decode('utf-8').splitlines(), fromfile=name + ' Hostinger', tofile=name + ' candidato', lineterm='')
+                lines = difflib.unified_diff(lf(original).decode('utf-8').splitlines(), lf(reviewed).decode('utf-8').splitlines(), fromfile=name + ' Hostinger', tofile=name + ' candidato', lineterm='')
                 print('\n'.join(lines))
         print('REVISIÓN COMPATIBLE: {} archivos. No se ejecutó SQL.'.format(len(plan)))
         if args.check or not plan:

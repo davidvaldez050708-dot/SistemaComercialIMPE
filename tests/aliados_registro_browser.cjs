@@ -83,6 +83,7 @@ const fixture=(view,role='cc')=>base+'_fixture?view='+view+'&role='+role;
   await viewport('publico',null,external);
   const csrf=await external.locator('[name=registro_csrf]').inputValue();
   const data={nombre:'Persona',apellido:'Navegador',fecha_nacimiento:'1990-01-01',movil:'7773456789',movil_confirmacion:'7773456789',correo:'navegador@example.test',correo_confirmacion:'navegador@example.test',perfil_interes:'Bachillerato 286',estado_id:'1',municipio_id:'1',registro_csrf:csrf};
+  if(await external.locator('[name=csrf_formulario_publico]').count())data.csrf_formulario_publico=await external.locator('[name=csrf_formulario_publico]').inputValue();
   const save=publicUrl.replace('action=registro','action=guardarRegistro');
   check((await external.request.post(save,{form:{...data,perfil_interes:'Inglés'}})).status()===422,'programa adulterado rechazado HTTP');
   check((await external.request.post(save,{form:{...data,municipio_id:'2'}})).status()===422,'municipio adulterado rechazado HTTP');

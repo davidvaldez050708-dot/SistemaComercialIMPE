@@ -13,7 +13,7 @@ try {
     fclose($pipes[0]); $waiting=false;
     for($i=0;$i<100;$i++) {
         $result=$db->query('SHOW FULL PROCESSLIST');
-        while($p=$result->fetch_assoc()) if(strpos($p['Info']??'','SELECT id, nombre, ubicacion, seguimiento_id FROM formulario_aliados')===0) $waiting=true;
+        while($p=$result->fetch_assoc()) if(preg_match('/^SELECT (?:id, nombre, ubicacion, seguimiento_id|\*) FROM formulario_aliados WHERE token = /', $p['Info']??'') && strpos($p['Info'],'FOR UPDATE')!==false) $waiting=true;
         if($waiting) break; usleep(20000);
     }
     if(!$waiting) throw new RuntimeException('No se pudo forzar la espera del resolver.');
