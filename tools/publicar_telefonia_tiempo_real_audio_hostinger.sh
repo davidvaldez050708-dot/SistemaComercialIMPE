@@ -5,7 +5,7 @@ umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
 TARGET='01c39c9ef633291a168caa510f8b15ed748373c7'
-REVIEWED='PENDING'
+REVIEWED='7e850c77b675ceb068d7ec5b293536a7c53e5997'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/telefonia_tiempo_real_audio'
 SOURCE="${IMPE_TELEFONIA_TIEMPO_REAL_AUDIO_SOURCE:-$HOME/crm-publicaciones/telefonia-tiempo-real-audio-actual}"
