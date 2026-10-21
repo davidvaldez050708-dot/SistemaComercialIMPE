@@ -45,7 +45,7 @@ for(const answered of [false,true])for(const ended of [false,true]){
  let polls=0;const env={state,evidence:{sessionEnded:ended,sessionId:'sip-current'},transferFlow:null,isSdkOnlyIncoming:()=>true,retirePbxCall(){},answeredAtMs:answered?100:0,currentDuration:()=>answered?12:0,publish:p=>Object.assign(state,p),pollIncoming:()=>polls++,window:{setTimeout(){}},clearSdkOnlyIncoming(){},ocultarHostEntrante(){},marcarPestanaEntrante(){}};
  vm.runInNewContext('(function(){'+body+'})()',env);
  assert.equal(state.active,!ended);
- assert.equal(state.phase,ended?'incoming-finished':answered?'recovering':'finishing');
+ assert.equal(state.phase,ended?'incoming-finished':answered?'recovering':'finishing',`answered=${answered} ended=${ended} type=${state.context?.type} invite=${state.context?.sdkInviteId}`);
  if(ended&&!answered)assert.equal(state.status,'no-answer','END SIP de intento sin atender conserva No contestada');
  if(!ended)assert(polls>0);
 }
