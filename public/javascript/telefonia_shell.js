@@ -347,13 +347,34 @@
             if(match(currentState)){currentState=update(currentState);changed=true;}
             if(changed)render();return changed;
         },
-        dismissFinishedCall: function (ref) {
+        dismissFinishedCall: function (ref, token) {
             if(currentState?.active)return false;
-            const matches=s=>[s?.pbxCallId,s?.callToken,s?.finalMetadata?.pbx_call_id,s?.context?.transferReference].includes(ref);
-            if(recentFinishedIncoming&&matches(recentFinishedIncoming.state))recentFinishedIncoming=null;
-            if(recentFinishedOutgoing&&matches(recentFinishedOutgoing.state))recentFinishedOutgoing=null;
-            if(resultFormOwner?.refs.includes(ref))resultFormOwner=null;
-            render();return true;
+            // La transferencia saliente puede terminar con SDK ID en el
+            // resumen local aunque el resultado autorizado ya tenga PBX ID.
+            // Aceptar sólo la referencia exacta o el token SDK de ese
+            // resultado; el número telefónico no participa en la identidad.
+            const same=s=>Boolean(s&&(
+                [s.pbxCallId,s.finalMetadata?.pbx_call_id,s.context?.transferReference].includes(ref)||
+                (token&&s.callToken===token)
+            ));
+            let dismissed=false;
+            if(recentFinishedIncoming&&same(recentFinishedIncoming.state)){
+                recentFinishedIncoming=null;dismissed=true;
+            }
+            if(recentFinishedOutgoing&&same(recentFinishedOutgoing.state)){
+                recentFinishedOutgoing=null;dismissed=true;
+            }
+            if(resultFormOwner?.refs.includes(ref)){
+                resultFormOwner=null;dismissed=true;
+            }
+            // Limpiar también el resumen retenido por el host del MISMO
+            // diálogo; el host verifica el token y nunca cuelga el audio.
+            if(same(currentState)&&['incoming-finished','finished'].includes(currentState.phase)){
+                sendPhoneCommand('CLEAR_FINISHED',{callToken:currentState.callToken});
+                dismissed=true;
+            }
+            if(dismissed)render();
+            return dismissed;
         },
         isResultFormOpen: function () { return Boolean(resultFormOwner) && !currentState?.active; },
 
