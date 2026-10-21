@@ -18,9 +18,11 @@
  try{const value=JSON.parse(sessionStorage.getItem(soundKey)||'[]');if(Array.isArray(value))heard=value.slice(-40);}catch(_){}
  const stopSound=()=>{clearTimeout(soundExpiry);clearInterval(soundRepeat);soundRepeat=0;soundRequest=null;for(const node of soundNodes){try{node.stop?.();node.disconnect?.();}catch(_){}}soundNodes=[];};
  const playSound=(force=false)=>{
-  // No mezclar avisos con conversación SIP, pestaña oculta ni audio bloqueado.
+  // Las solicitudes también deben avisar cuando el CRM está en otra pestaña.
+  // El bloqueo de autoplay se respeta mediante audio.state; la visibilidad
+  // no es motivo para silenciar una solicitud todavía pendiente.
   const status=phone.getPhoneStatus();
-  if(!soundRequest||!audio||audio.state!=='running'||document.hidden||
+  if(!soundRequest||!audio||audio.state!=='running'||
      !status.ready||status.active||Date.now()>=soundRequest.until)return;
   const request=soundRequest,identity=request.key,reminder=!force&&request.plays>0;
   if(!force&&request.plays===0&&heard.includes(identity))return;
