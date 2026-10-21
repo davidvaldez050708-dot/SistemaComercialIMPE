@@ -90,10 +90,11 @@ def patch(raw, pairs, filename):
             # Rama que proviene de la implementación actual del PR, no de
             # un texto improvisado sobre la función privada de Hostinger.
             branch_begin = "            if(currentState?.active){"
-            branch_end = "            const update=s=>"
-            if new.count(branch_begin) != 1 or new.count(branch_end) != 1:
+            if new.count(branch_begin) != 1:
                 fail("CONFLICTO: falta rama PBX verificada del PR")
-            active_branch = new[new.index(branch_begin):new.index(branch_end)]
+            active_branch = new[new.index(branch_begin):]
+            if not active_branch.endswith("return true;\n            }\n"):
+                fail("CONFLICTO: rama PBX no está completa")
             if not all(t in active_branch for t in
                     ("ownRef!==ref","!match(currentState)","PBX_CONFIRMED_INCOMING_END","callToken:currentState.callToken")):
                 fail("CONFLICTO: rama PBX no cumple guardas de sesión")
