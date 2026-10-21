@@ -8,7 +8,7 @@ const host=fs.readFileSync('public/javascript/telefonia_host.js','utf8');
 function extract(start,end){
  const a=host.indexOf(start),b=host.indexOf(end,a+start.length);
  assert.ok(a>=0&&b>a,'Hook del host no encontrado: '+start);
- const snippet=host.slice(a,b)+(start.indexOf('onIdle:')>=0?'\n            }':'');
+ const snippet=host.slice(a,b);
  return snippet.replace(/^\s*on(?:Idle|SessionBound): function/,'function').replace(/,\s*$/,'');
 }
 const bindSrc=extract('                onSessionBound: function','                onConnected: function');
