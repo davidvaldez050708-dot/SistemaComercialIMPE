@@ -1,7 +1,7 @@
 <?php
 
-require_once ROOT_PATH . '/vendor/autoload.php';
-require_once ROOT_PATH . '/config/mail_config.php';
+require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
+require_once dirname(__DIR__, 2) . '/config/mail_config.php';
 require_once __DIR__ . '/CorreoSmtpTransport.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -10,20 +10,38 @@ use PHPMailer\PHPMailer\Exception;
 class MailService
 {
     private $mailerFactory;
+    private $resultado = [];
     public function __construct(?callable $mailerFactory = null) { $this->mailerFactory = $mailerFactory; }
+    public function ultimoResultado(): array { return $this->resultado; }
+
+    /** Misma cuenta para el envío web y la comprobación CLI; sin cuentas comerciales. */
+    public static function cuentaRecuperacion(): array
+    {
+        $ruta = impeRutaConfigPrivada('password_reset_mail.local.php');
+        if ($ruta !== null) {
+            $cuenta = impeLeerConfigPrivada('password_reset_mail.local.php');
+            if (!$cuenta) { throw new RuntimeException('MAIL_RESET_CONFIG'); }
+        } else {
+            $cuenta = ['smtp_host' => MAIL_HOST, 'smtp_port' => MAIL_PORT,
+                'smtp_username' => MAIL_USERNAME, 'smtp_password' => MAIL_PASSWORD,
+                'smtp_encryption' => MAIL_ENCRYPTION, 'correo' => MAIL_FROM_ADDRESS, 'nombre' => MAIL_FROM_NAME];
+        }
+        if (($cuenta['transport'] ?? 'smtp') !== 'smtp') { throw new RuntimeException('MAIL_RESET_TRANSPORT'); }
+        $cuenta['correo'] = trim((string)($cuenta['correo'] ?? $cuenta['smtp_username'] ?? ''));
+        if (!filter_var($cuenta['correo'], FILTER_VALIDATE_EMAIL)) { throw new RuntimeException('MAIL_RESET_IDENTITY'); }
+        return $cuenta;
+    }
     public function enviarPasswordTemporal(
         $correoDestino,
         $nombreDestino,
         $passwordTemporal
     ) {
+        $this->resultado = ['ok' => false, 'estado_entrega' => 'RECHAZADO'];
         $mail = $this->mailerFactory ? ($this->mailerFactory)() : new PHPMailer(true);
 
         try {
             // Configuración dedicada; nunca toma el campo De de los correos comerciales.
-            $dedicada = impeLeerConfigPrivada('password_reset_mail.local.php');
-            $cuenta = $dedicada ?: ['smtp_host' => MAIL_HOST, 'smtp_port' => MAIL_PORT,
-                'smtp_username' => MAIL_USERNAME, 'smtp_password' => MAIL_PASSWORD,
-                'smtp_encryption' => MAIL_ENCRYPTION, 'correo' => MAIL_FROM_ADDRESS, 'nombre' => MAIL_FROM_NAME];
+            $cuenta = self::cuentaRecuperacion();
             CorreoSmtpTransport::configurar($mail, $cuenta);
 
             $mail->setFrom(
@@ -98,9 +116,12 @@ class MailService
                 "Ingresar al sistema: {$urlLogin}\n\n" .
                 "Si no realizaste esta solicitud, comunícate con el administrador del sistema.";
 
-            return !empty(CorreoSmtpTransport::enviar($mail, 'password_reset')['ok']);
+            $this->resultado = CorreoSmtpTransport::enviar($mail, 'password_reset');
+            return !empty($this->resultado['ok']);
         } catch (Throwable $e) {
-            error_log('MAIL_TRANSPORT ' . json_encode(['purpose' => 'password_reset', 'phase' => 'configuration', 'exception' => get_class($e)]));
+            $allowed = ['MAIL_RESET_CONFIG', 'MAIL_RESET_TRANSPORT', 'MAIL_RESET_IDENTITY', 'MAIL_SMTP_CONFIG', 'MAIL_SMTP_CA'];
+            $reason = in_array($e->getMessage(), $allowed, true) ? $e->getMessage() : 'MAIL_RESET_PREPARATION';
+            error_log('MAIL_TRANSPORT ' . json_encode(['purpose' => 'password_reset', 'phase' => 'configuration', 'reason' => $reason, 'exception' => get_class($e)]));
             return false;
         }
     }
