@@ -651,7 +651,7 @@
                     const observedId = String(evidence.sessionId || '');
                     const boundId = String(state.context?.sdkInviteId || '');
                     const sdkOnly = isSdkOnlyIncoming();
-                    const attachedPbx = state.context?.type === 'INCOMING' &&
+                    const attachedPbx = ['INCOMING','SDK_INCOMING'].includes(state.context?.type) &&
                         Boolean(String(state.pbxCallId || ''));
                     const sameSip = Boolean(observedId && (
                         (boundId && observedId === boundId) ||
