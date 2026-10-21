@@ -65,6 +65,12 @@
             session.on('ended', ended);
             session.on('failed', ended);
         };
+        const announceSession = function (session) {
+            if (seenIncoming && session?.direction === 'incoming' &&
+                !session.isEnded?.() && String(session.id || '')) {
+                hooks.onSessionBound?.({sessionId:String(session.id)});
+            }
+        };
 
         const read = function () {
             const input = doc.querySelector(
@@ -132,6 +138,9 @@
                 if (hooks.onRinging(call) === false) {
                     // El host aún no puede publicarla: reintentar, no consumirla.
                     seenIncoming=false;ringing=false;observedSession=null;
+                } else {
+                    // PUSH puede existir antes de que Zadarma cree la RTCSession.
+                    announceSession(observedSession);
                 }
                 return;
             }
@@ -139,6 +148,7 @@
             if (session && !session.isEnded() && !observedSession) {
                 observedSession = session;
                 watchSession(observedSession);
+                announceSession(observedSession);
             }
             // Evaluar el fin ANTES que la respuesta y antes del DOM: el SDK
             // puede conservar incoming, ringing o el reloj después del cierre.
@@ -154,6 +164,9 @@
                 acceptanceRequestedUntil = 0;
                 if (!connectedReported) {
                     connectedReported = true;
+                    // Algunos flujos ya pasaron a in-progress por PBX antes
+                    // de que JsSIP anunciara la sesión establecida.
+                    announceSession(observedSession);
                     hooks.onConnected?.({sessionId:String(observedSession?.id||'')});
                 }
                 return;
