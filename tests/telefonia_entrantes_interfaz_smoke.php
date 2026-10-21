@@ -83,7 +83,8 @@ $checks = [
         !str_contains($shellJs, 'Contestando… espera la confirmación') &&
         str_contains($shellJs, 'const finishing = shownOutgoing') &&
         str_contains($shellJs, "pendingIncomingAction = {") &&
-        str_contains($shellJs, "const finishingIncoming = incoming && pending === 'hangup'") &&
+        str_contains($shellJs, "const finishingIncoming = incoming &&") &&
+        str_contains($shellJs, "pending === 'hangup' || state.phase === 'finishing'") &&
         str_contains($hostJs, 'actualizarEstadoTrasAccion'),
     'Salida y recepción comparten una sola instancia WebRTC' =>
         str_contains($phoneJs, "getHostMode() === 'embedded'") &&
