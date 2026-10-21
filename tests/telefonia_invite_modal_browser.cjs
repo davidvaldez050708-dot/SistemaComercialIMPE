@@ -21,7 +21,7 @@ const apiStart=host.indexOf('    window.IMPE_ZADARMA_INCOMING = Object.freeze({'
    const clearSdkOnlyIncoming=()=>publish({active:false,phase:'ready',context:{}}),pollIncoming=()=>{},currentDuration=()=>0,actualizarEstadoTrasAccion=()=>{};
    const declinedInvitations=new Map(),retiredIds=new Set(),extension=config.extension;
    const retirePbxCall=id=>retiredIds.add(id);
-   const declinedInvitation=()=>false,marcarPestanaEntrante=()=>{},mostrarHostEntrante=()=>{};
+   const declinedInvitation=()=>false,marcarPestanaEntrante=()=>{},mostrarHostEntrante=()=>{},ocultarHostEntrante=()=>{};
    const finalizarEntrante=()=>publish({active:false,phase:'incoming-finished'});
    ${host.slice(incomingStart,incomingEnd)}
    window.pbxRing=()=>applyIncomingState({pbx_call_id:'pbx-inbound-100',estado:'ringing',caller_id:'+527777885173',transfer_from:'100'});

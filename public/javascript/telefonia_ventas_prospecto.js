@@ -31,5 +31,5 @@
   }catch(error){feedback.textContent=error.message;notify(error.message,true);}finally{busy=false;submit.disabled=false;}
  });
  dialog.querySelector('[data-sales-prospect-close]').addEventListener('click',()=>{dialog.hidden=true;});
- const render=()=>{const s=phone.getCallState();button.hidden=!s||!['in-progress','finished','incoming-finished'].includes(s.phase);};setInterval(render,750);render();
+ const render=()=>{const s=phone.getCallState();button.hidden=!s||s.phase!=='in-progress';};setInterval(render,750);render();
 })();

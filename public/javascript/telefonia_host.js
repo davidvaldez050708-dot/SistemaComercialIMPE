@@ -1938,6 +1938,12 @@
             publish(state);
         } else if (action === 'START') {
             void startCall(payload);
+        } else if(action==='TRANSFER_CANDIDATE'){
+            if(state.active&&state.direction==='incoming'&&state.context?.type==='SDK_INCOMING'&&
+                payload.callToken===state.callToken&&Number.isInteger(payload.id)&&payload.id>0&&
+                (analystSdkObserver?.isRinging?.()||analystSdkObserver?.isConnected?.())){
+                publish({context:{...state.context,availabilityCandidate:payload.id}});void transferFlow?.tick();
+            }
         } else if (action === 'HANGUP') {
             void hangup();
         } else if (action === 'COMPLETE_TRANSFER') {
@@ -2006,8 +2012,8 @@
         },
         external:(op,token,connected)=>{
             if(declinedInvitation(String(op.referencia||'')))return;
-            answeredAtMs=connected?Date.now():0;
-            publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
+            answeredAtMs=connected?(state.answeredAtMs||Date.now()):0;
+            publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,sdkInviteId:state.context?.sdkInviteId,sdkSessionId:state.callToken,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
         },
         consultEnded:op=>{
             if(!state.active)return;

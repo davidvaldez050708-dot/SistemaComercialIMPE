@@ -316,6 +316,15 @@
             resultFormOwner = null;
             render();
         },
+        confirmFinishedCall: function (ref, facts) {
+            if(currentState?.active||!facts?.finalizada||String(facts.extension)!==String(cfg.extension))return false;
+            const match=s=>[s?.pbxCallId,s?.context?.transferReference,s?.finalMetadata?.pbx_call_id].includes(ref);
+            const update=s=>({...s,status:'completed',duration:Number.isInteger(facts.segundos)?facts.segundos:s.duration,
+                context:{...s.context,pbxEnded:true,pbxAnswered:Boolean(facts.conectada)},message:'Guardada en Mis llamadas.'});
+            if(recentFinishedIncoming&&match(recentFinishedIncoming.state))recentFinishedIncoming.state=update(recentFinishedIncoming.state);
+            if(recentFinishedOutgoing&&match(recentFinishedOutgoing.state))recentFinishedOutgoing.state=update(recentFinishedOutgoing.state);
+            render();return true;
+        },
         dismissFinishedCall: function (ref) {
             if(currentState?.active)return false;
             const matches=s=>[s?.pbxCallId,s?.callToken,s?.finalMetadata?.pbx_call_id,s?.context?.transferReference].includes(ref);
@@ -337,6 +346,10 @@
                 extension:String(cfg.extension || '')
                 ,transferRequest:currentState.context?.transferRequest||null
             };
+        },
+        bindTransferCandidate: function (id) {
+            if(!currentState?.active||currentState.direction!=='incoming'||!Number.isInteger(id)||id<=0)return false;
+            sendPhoneCommand('TRANSFER_CANDIDATE',{id,callToken:currentState.callToken});return true;
         },
         requestAuthorizedTransfer: function (token) {
             if (!cfg.canTransfer || !this.getActiveCall() ||
@@ -706,7 +719,7 @@
                 finishingIncoming || waitingAnswer || ringing;
             const callbackPending=Boolean((finished||finishedIncoming)&&phoneState.context?.type==='DEVOLUCION'&&Number(phoneState.context.callbackAttempt)>0&&!callbackSaved.has(Number(phoneState.context.callbackAttempt)));
             const callbackRegister=document.querySelector('[data-callback-register-finished]');if(callbackRegister)callbackRegister.hidden=!callbackPending;
-            if (closeFinished) closeFinished.hidden = !(finished || finishedIncoming)||callbackPending;
+            if (closeFinished) closeFinished.hidden = !(finished || finishedIncoming)||callbackPending||Boolean(cfg.salesResults&&(Number(phoneState.answeredAtMs)>0||phoneState.context?.sdkConnected||phoneState.context?.pbxAnswered));
             const uncertain=['recovering','finishing'].includes(phoneState.phase)&&phoneState.active;
             if(uncertain){hangupButton.hidden=false;compactHangup.hidden=false;}
             hangupButton.innerHTML='<i class="bi bi-telephone-x" aria-hidden="true"></i>'+ (uncertain?'Comprobar estado':'Colgar');
