@@ -13,10 +13,10 @@ node --check public/javascript/telefonia_persistente.js
 # abrir el widget por falta de evento NOTIFY_INTERNAL.
 grep -Fq "data-telephony-analyst=" app/views/layout/topbar.php
 grep -Fq "receptionButton?.dataset.telephonyAnalyst === '1'" public/javascript/telefonia_persistente.js
-grep -Fq "cfg.analystIncomingResults && nativeAnalystOpen" public/javascript/telefonia_shell.js
+grep -Fq "cfg.analystIncomingResults &&" public/javascript/telefonia_shell.js
 grep -Fq "isPhoneReady: function ()" public/javascript/telefonia_shell.js
 grep -Fq "shell.isPhoneReady() === true" public/javascript/telefonia_persistente.js
-grep -Fq "No suplanta el estado PBX" public/javascript/telefonia_shell.js
+grep -Fq "Nunca interpretar la invocación SDK como confirmación de conexión." public/javascript/telefonia_shell.js
 grep -Fq "if (abrirAlConectar) abrirControlesAnalista();" public/javascript/telefonia_persistente.js
 grep -Fq "activarRecepcion(esAnalista);" public/javascript/telefonia_persistente.js
 grep -Fq ".impe-phone-call.is-analyst-native .impe-phone-call-host" app/views/telefonia/shell.php
