@@ -449,6 +449,8 @@
         }
         const error = panel.querySelector('[data-incoming-pbx-error]');
         const host = panel.querySelector('[data-incoming-pbx-audios]');
+        const heading=panel.querySelector('.linkage-call-inline-player-heading span');
+        heading.textContent='Verificando grabación…';error.hidden=true;host.replaceChildren();panel.hidden=false;
         const pbx = button.dataset.pbxId || '';
         const url = new URL('prueba_telefonia/api/grabacion_transferida_pbx.php', document.baseURI);
         url.searchParams.set('pbx_call_id', pbx);
@@ -456,19 +458,22 @@
         button.disabled = true;
         try {
             const response = await fetch(url.toString(), {credentials:'same-origin', cache:'no-store'});
-            if (!response.ok) throw new Error('No se pudo verificar la llamada.');
-            const info = await response.json();
+            const info = await response.json().catch(()=>({}));
+            const message=window.IMPE_TELEPHONY_SEGMENTS.message(info,response.status);
+            if (!response.ok) throw new Error(message);
             if (!info.ok || !info.disponible || !(info.segmentos > 0)) {
-                throw new Error('Zadarma todavía no entrega todos los segmentos.');
+                throw new Error(message);
             }
             if (!window.IMPE_TELEPHONY_SEGMENTS?.create(
-                host, url.toString(), info.segmentos)) {
+                host, url.toString(), info.segmentos,info.segmentos_info||[])) {
                 throw new Error('No fue posible preparar el reproductor.');
             }
             error.hidden = true;
+            heading.textContent=message;
             panel.hidden = false;
             button.setAttribute('aria-expanded', 'true');
         } catch (e) {
+            heading.textContent='Consulta de grabación';
             error.textContent = e.message || 'Grabación no disponible.';
             error.hidden = false;
             panel.hidden = false;

@@ -16,6 +16,7 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
   if(action==='detalleVenta'){details++;return new Promise(resolve=>setTimeout(resolve,delayDetails)).then(()=>route.fulfill({json:{ok:true,llamada:{...call,finalizada:closed,registro:saved?{resultado:'INTERESADO',observacion:'Enviar información',prospecto_nombre:'María'}:null}}}));}
   if(action==='guardarResultadoVenta'){payload=Object.fromEntries(new URLSearchParams(route.request().postData()));saved=true;return route.fulfill({json:{ok:true,registro:{resultado:'INTERESADO'}}});}
   if(action==='actualizarEvidenciaVenta'){const p=new URLSearchParams(route.request().postData());assert.equal(p.get('pbx_call_id'),call.pbx_call_id);assert.equal(p.get('extension'),'150');assert(p.get('csrf_token'));evidenceRequests++;return route.fulfill({json:{ok:true,llamada:call,mensaje:'Segmentos propios comprobados.'}});}
+  if(u.pathname.endsWith('/grabacion_ventas.php')&&u.searchParams.has('verificar'))return route.fulfill({json:{ok:true,estado:'DISPONIBLE',disponible:true,segmentos:2,segmentos_info:[{indice:0,tramo:1,segundos:8},{indice:1,tramo:2,segundos:10}]}});
   if(action==='host')return route.fulfill({contentType:'text/html',body:'<html>Transporte PBX simulado</html>'});
   return route.fulfill({contentType:'text/html',body:u.pathname==='/'?shell:view(u)});
  });

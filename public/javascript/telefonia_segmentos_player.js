@@ -22,6 +22,7 @@
             title.textContent = count === 1 ? 'Grabación de la llamada' :
                 'Grabación de la llamada · parte ' + (i + 1) + ' de ' + count;
             const info=Array.isArray(segments)?segments[i]:null;
+            if(info?.etiqueta)title.textContent+=' · '+String(info.etiqueta);
             if(Number.isInteger(info?.tramo)&&info.tramo>0&&Number.isInteger(info?.segundos)&&info.segundos>=0)
                 title.textContent+=' · Tramo '+info.tramo+' · '+time(info.segundos);
             head.appendChild(title);
@@ -33,7 +34,7 @@
             const url = new URL(endpoint);
             if(url.origin!==location.origin)return false;
             url.searchParams.delete('verificar');
-            url.searchParams.set('segmento', String(i));
+            url.searchParams.set('segmento', String(Number.isInteger(info?.indice)?info.indice:i));
             audio.src = url.toString();
             const play = document.createElement('button');
             play.type = 'button';
@@ -135,5 +136,10 @@
         host.replaceChildren(fragment);
         return true;
     }
-    global.IMPE_TELEPHONY_SEGMENTS = Object.freeze({create});
+    const message=(info,status)=>status===401?'Sesión vencida. Vuelve a iniciar sesión.':status===403?'Acceso no autorizado.':({
+        DISPONIBLE:'Grabación disponible',DISPONIBLE_PARCIAL:'Grabación disponible · otro tramo aún en preparación',
+        GRABACION_EN_PREPARACION:'Grabación en preparación. Vuelve a intentarlo.',SIN_GRABACION_REPORTADA:'Sin grabación reportada.',
+        TRAMO_PENDIENTE_VINCULACION:'Tramo pendiente de vinculación.',ERROR_TEMPORAL:'Error temporal del servicio Zadarma. Vuelve a intentarlo.'
+    }[info?.estado]||'No se pudo verificar la grabación. Vuelve a intentarlo.');
+    global.IMPE_TELEPHONY_SEGMENTS = Object.freeze({create,message});
 })(window);

@@ -47,26 +47,13 @@ class TelefoniaGrabacionExpedienteTransferidaService
         if(!$assignment)return $reply('PARTICIPACION_PENDIENTE','Falta verificar la extensión que atendió esta llamada.');
         $q=$this->db->prepare('SELECT evento,internal,received_at,call_id_with_rec,payload_json,is_recorded FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
         $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
-        $extension=(string)$assignment['extension'];$answer='';$end=false;$arrival=false;$ids=[];$transferSource='';
-        foreach($events as $e){
-            $payload=json_decode((string)($e['payload_json']??''),true)?:[];
-            if($e['evento']==='NOTIFY_INTERNAL'&&$e['internal']===$extension)$arrival=true;
-            if($e['evento']==='NOTIFY_ANSWER'&&$e['internal']===$extension && strcmp((string)$e['received_at'],(string)$assignment['desde'])>=0){
-                if($answer==='')$answer=(string)$e['received_at'];
-                $transferSource=(string)($payload['transfer_from']??'');
-            }
-        }
-        if(!$arrival&&$transferSource!==''&&$transferSource!==$extension){
-            foreach($events as $e)if($e['evento']==='NOTIFY_OUT_START'&&$e['internal']===$transferSource)$arrival=true;
-        }
-        if(!$arrival||$answer==='')return $reply('RESPUESTA_PENDIENTE','Falta el evento de respuesta de tu extensión; todavía no se habilita el audio.');
-        foreach($events as $e){
-            $payload=json_decode((string)($e['payload_json']??''),true)?:[];
-            if(in_array($e['evento'],['NOTIFY_END','NOTIFY_OUT_END'],true)&&strcmp((string)$e['received_at'],$answer)>=0 &&
-                ($e['internal']===$extension||$e['internal']===''||($payload['last_internal']??'')===$extension))$end=true;
-
-        }
-        $ids=TelefoniaPbxSegmentosService::deEventos($events,$extension)['segmentos'];
+        $extension=(string)$assignment['extension'];
+        $proof=TelefoniaPbxSegmentosService::transferencia($events,$extension);
+        $arrival=(bool)array_filter($events,static fn($e)=>$e['evento']==='NOTIFY_INTERNAL'&&$e['internal']===$extension);
+        if((!$arrival&&$proof['origen']==='')||!$proof['atendida']||$proof['answer_at']<(string)$assignment['desde'])
+            return $reply('RESPUESTA_PENDIENTE','Falta el evento de respuesta de tu extensión; todavía no se habilita el audio.');
+        $end=$proof['finalizada'];
+        $ids=TelefoniaPbxSegmentosService::deEventos($events,$extension,$proof['origen']!==''?[$proof['origen']]:[])['segmentos'];
         if(!$end)return $reply('CIERRE_PENDIENTE','Falta confirmar el cierre de la llamada en tu extensión.');
         if(!$ids)return $reply('AUDIO_PENDIENTE','La centralita aún no ha confirmado el archivo de audio de esta llamada.');
         if(count($ids)>8)return $reply('AUDIO_PENDIENTE','La grabación requiere revisar sus segmentos antes de reproducirla.');

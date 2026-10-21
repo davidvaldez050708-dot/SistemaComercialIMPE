@@ -9,6 +9,21 @@
  const recheck=form.querySelector('[data-sales-recheck]'),fields=form.querySelector('[data-sales-fields]');
  let call=null,cycle=0,opening=false,timer=null,disposed=false,waiting=false,recovered=false,requestController=null;
  const cancelRetry=()=>{clearTimeout(timer);timer=null;};
+ let refreshing=false;
+ async function refreshHistory(){
+  if(disposed||refreshing||opening||document.hidden||modal.classList.contains('show')||root.querySelector('[data-sales-audio-slot]:not([hidden])'))return;
+  refreshing=true;
+  try{const r=await fetch(location.href,{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;
+   const doc=new DOMParser().parseFromString(await r.text(),'text/html'),fresh=doc.querySelector('[data-sales-history]');
+   if(!fresh||disposed||modal.classList.contains('show'))return;
+   for(const selector of ['.linkage-incoming-stats','.linkage-incoming-list-head','.linkage-incoming-history']){
+    const old=root.querySelector(selector),next=fresh.querySelector(selector);if(old&&next)old.replaceWith(next);
+   }
+  }catch(_){}finally{refreshing=false;}
+ }
+ const historyTimer=setInterval(()=>{
+  if(root.querySelector('[data-sales-audio-state]')||Array.from(root.querySelectorAll('.linkage-call-recording-duration')).some(el=>el.textContent.includes('Sin duración')))void refreshHistory();
+ },60000);
  const notify=(message,error=false)=>window.IMPE_TELEPHONY_NOTIFY?.(message,error);
  const request=async url=>{
   const controller=new AbortController();requestController=controller;const timeout=setTimeout(()=>controller.abort(),10000);
@@ -74,14 +89,18 @@
      const r=await fetch(root.dataset.evidenceUrl,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,body:new URLSearchParams({csrf_token:root.dataset.csrf,pbx_call_id:audio.dataset.salesAudio,extension:audio.dataset.extension})}),j=await r.json();
      if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo verificar la grabacion.');
      const parts=j.llamada?.segmentos;
+     const duration=audio.closest('.linkage-call-history-card')?.querySelector('.linkage-call-recording-duration');
+     if(duration&&Number.isInteger(j.llamada?.segundos))duration.textContent=String(Math.floor(j.llamada.segundos/60)).padStart(2,'0')+':'+String(j.llamada.segundos%60).padStart(2,'0');
      if(!Array.isArray(parts)||parts.length<1){notify(j.mensaje||'Grabacion pendiente de confirmar.');return;}
      audio.dataset.segments=String(parts.length);
      if(j.llamada.segmentos_info)audio.dataset.segmentInfo=JSON.stringify(j.llamada.segmentos_info);
      audio.parentElement.querySelector('[data-sales-audio-state]')?.remove();
     }
     const url=new URL('prueba_telefonia/api/grabacion_ventas.php',document.baseURI);url.searchParams.set('pbx_call_id',audio.dataset.salesAudio);url.searchParams.set('extension',audio.dataset.extension);
-    let info=[];try{info=JSON.parse(audio.dataset.segmentInfo||'[]');}catch(_){}
-    if(!window.IMPE_TELEPHONY_SEGMENTS?.create?.(slot,url.href,Number(audio.dataset.segments),info))throw Error('No se cargo el reproductor.');
+    url.searchParams.set('verificar','1');
+    const verified=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal}),data=await verified.json().catch(()=>({}));
+    if(!verified.ok||!data.ok||!data.disponible)throw Error(window.IMPE_TELEPHONY_SEGMENTS.message(data,verified.status));
+    if(!window.IMPE_TELEPHONY_SEGMENTS?.create?.(slot,url.href,Number(data.segmentos),data.segmentos_info||[]))throw Error('No se cargo el reproductor.');
     slot.dataset.loaded='1';
    }catch(error){notify(error.name==='AbortError'?'La consulta tardo demasiado. Vuelve a intentar.':error.message,true);return;}
    finally{clearTimeout(timeout);audio.disabled=false;}
@@ -99,10 +118,11 @@
   }catch(error){feedback.textContent=error.message;notify(error.message,true);}finally{submit.disabled=false;}
  });
  modal.addEventListener('hidden.bs.modal',()=>{++cycle;cancelRetry();requestController?.abort();waiting=false;shell()?.endCallResult(token);if(recovered){const url=new URL(location.href);for(const key of ['pbx_call_id','extension','detalle'])url.searchParams.delete(key);location.replace(url.href);}});
- window.addEventListener('pagehide',()=>{disposed=true;++cycle;cancelRetry();requestController?.abort();});
+ window.addEventListener('pagehide',()=>{disposed=true;++cycle;cancelRetry();clearInterval(historyTimer);requestController?.abort();});
  window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==window.parent)return;
   if(e.data?.type==='IMPE_CALL_RESULT_INTERRUPT'){++cycle;cancelRetry();requestController?.abort();recovered=false;bootstrap.Modal.getInstance(modal)?.hide();}
   if(e.data?.type==='IMPE_SALES_RESULT_OPEN')void open(e.data.ref,e.data.extension);
+  if(e.data?.type==='IMPE_PHONE_CALL_CHANGED')void refreshHistory();
  });
  if(root.dataset.autoCall)void open(root.dataset.autoCall,root.dataset.autoExtension);
 })();
