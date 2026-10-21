@@ -73,6 +73,7 @@
    void lookup(task.ref,revision);return;
   }
   url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);
+  if(sipFinished(state)&&(!metadata?.finalizada||metadata.pbx_call_id!==task.ref))url.searchParams.set('esperando_pbx','1');
   if(crm.src===url.href){crm.contentWindow?.postMessage({type:'IMPE_SALES_RESULT_OPEN',ref:task.ref,extension:task.extension},location.origin);return;}
   crm.src=url.href;
  };
