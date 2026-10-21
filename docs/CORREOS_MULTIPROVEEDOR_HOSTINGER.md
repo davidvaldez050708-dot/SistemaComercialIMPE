@@ -2,7 +2,30 @@
 
 Rama `codex/correo-institucional-automatico`, desde `origin/main` a90b6ade. Sin fusión ni despliegue automático.
 
-Los empleados registrados con Hostinger utilizan su propio buzón mediante la API compartida existente, sin conectar cuentas individualmente. Según la aclaración del usuario, un empleado registrado con Gmail puede enviar con su Gmail real, tras autorizarlo con Google. La recuperación utiliza una cuenta dedicada independiente; el modal público no demuestra envío.
+Los empleados registrados con Hostinger utilizan su propio buzón mediante la API compartida existente, sin conectar cuentas individualmente. Un empleado registrado con Gmail puede enviar con su Gmail real mediante SMTP y una clave de aplicación propia configurada privadamente, o mediante autorización Google. La recuperación utiliza una cuenta dedicada independiente; el modal público no demuestra envío.
+
+## Causa comprobada y activación privada en Hostinger
+
+El diagnóstico recibido de producción devuelve `MAIL_RESET_IDENTITY` y `MAIL_CENTRAL_CONFIG` antes de intentar SMTP/API. Por tanto, PHP y PHPMailer están disponibles, pero el proceso CLI no encuentra una identidad de recuperación ni una configuración comercial utilizables. No demuestra un bloqueo de red ni un rechazo del proveedor. El usuario conserva la clave de aplicación de recuperación y el token específico de Mail API; deben guardarse en la carpeta privada del servidor, no en Git.
+
+Tras publicar esta revisión, ejecutar en SSH (entrada oculta de claves; no pegarlas en el chat):
+
+```bash
+bash "$HOME/domains/fundacionrededumex.org/public_html/tools/configurar_correo_hostinger.sh" --recovery sistemaredimpe@gmail.com
+bash "$HOME/domains/fundacionrededumex.org/public_html/tools/configurar_correo_hostinger.sh" --hostinger
+```
+
+El primer comando verifica TLS/AUTH y crea `password_reset_mail.local.php`; el segundo comprueba GET /me con el token específico de Hostinger Email y crea `mail_central.local.php`. Si se rechaza la autenticación, no sustituye ninguna configuración existente. Guarda un respaldo privado exacto antes de reemplazar un archivo y muestra el comando para restaurarlo. Escritura atómica y permisos 0600 fuera de public_html, sin herramientas de ejecución PHP bloqueadas, sin envíos ni cambios de BD. El publicador de código no ejecuta esta configuración automáticamente.
+
+En el segundo comando se puede indicar el correo **registrado en el CRM** del usuario autorizado a elegir los buzones de ese token (por ejemplo, Marketing registrado con Gmail que utiliza De de Hostinger). Sólo se asocian los buzones comprobados en GET /me; no cambia el usuario, su rol ni sus permisos de módulos. Enter conserva el comportamiento de sólo el buzón propio. También puede darse ese correo como segundo argumento de `--hostinger`. No se permite a otros usuarios utilizar esa asociación.
+
+Para un empleado Gmail sin aplicación OAuth, usar la clave de aplicación de **ese Gmail**:
+
+```bash
+bash "$HOME/domains/fundacionrededumex.org/public_html/tools/configurar_correo_hostinger.sh" --account correo.del.empleado@gmail.com
+```
+
+La dirección de ese último ejemplo debe sustituirse por la registrada realmente. El configurador comprueba el usuario activo mediante lectura de BD, autentica SMTP y guarda la autorización en `mail_accounts.local.php`; no cambia su registro ni comparte la clave de recuperación. Conserva las demás cuentas y autorizaciones previas. También admite otros dominios con su SMTP autenticado. Nunca permite enviar desde una dirección sólo por escribirla. Si Google no permite claves de aplicación para esa cuenta, utilizar OAuth; [requisitos oficiales de Google](https://support.google.com/accounts/answer/185833?hl=es).
 
 ## Configuración privada única
 
@@ -17,7 +40,7 @@ Carpeta Hostinger: `$HOME/domains/fundacionrededumex.org/impe-private/`, fuera d
 
 ## Comportamiento conservado
 
-El formulario mantiene campos, estilos, borradores, convocatorias y adjuntos. Se elimina la leyenda solicitada y se muestra el remitente visible con la dirección real de respuestas. Se comprueban al abrir/editar y antes de enviar; una confirmación firmada de sesión impide cambios silenciosos de identidad. Si ésta cambia, se pide revisar y pulsar Enviar. Sólo el Gmail registrado sin autorización muestra «Autorizar mi Gmail», en otra pestaña para conservar la redacción; al volver se comprueba de nuevo. Hostinger no requiere esa pantalla. Los archivos privados anteriores no se borran.
+El formulario mantiene campos, estilos, borradores, convocatorias y adjuntos. Se elimina la leyenda solicitada y se muestra el remitente visible con la dirección real de respuestas. Se comprueban al abrir/editar y antes de enviar; una confirmación firmada de sesión impide cambios silenciosos de identidad. Si ésta cambia, se pide revisar y pulsar Enviar. Las cuentas SMTP previamente autorizadas en `mail_accounts.local.php` tienen precedencia; una entrada desactivada/ajena detiene el envío y nunca se elude con otro transporte. Sólo el Gmail registrado sin SMTP ni consentimiento muestra «Autorizar mi Gmail», en otra pestaña para conservar la redacción; al volver se comprueba de nuevo. Hostinger no requiere esa pantalla. Los archivos privados anteriores no se borran.
 
 From es el buzón autenticado correspondiente: Hostinger propio, Gmail autorizado o salida institucional configurada y visible. Un alias SMTP sólo se usa si está autorizado por administración y asociado al usuario. Reply-To sólo usa el correo registrado o contactos adicionales autorizados. Un contacto ajeno no permite suplantar identidad ni usar la firma de otra persona. El usuario real sigue registrado en usuario_id. No hay filtros por dominio del destinatario.
 
@@ -39,7 +62,7 @@ SMTP y MySQL no comparten transacción: si se acepta el mensaje pero falla/compi
 
 ## Comprobación en Hostinger pendiente
 
-No se dispone de acceso SSH autenticado, credenciales privadas ni destinatarios de prueba autorizados. **Cero envíos desde Hostinger y cero entregas reales confirmadas en este trabajo.** Falta comprobar el token API existente y el buzón de cada empleado, configuración dedicada de recuperación, TLS/conectividad y recepción con cabeceras SPF/DKIM/DMARC. Tampoco existe todavía una aplicación Google configurada: Gmail de empleados queda pendiente de esa configuración y su consentimiento real.
+El usuario dispone de ambas claves, pero no se han recibido ni guardado desde este equipo; no se dispone de acceso SSH autenticado. **Cero envíos desde Hostinger y cero entregas reales confirmadas por el agente.** Falta ingresar las claves privadamente con los comandos anteriores, comprobar autenticación y recepción real con cabeceras SPF/DKIM/DMARC. No existe una aplicación Google configurada: Gmail de empleados puede usar primero SMTP propio, o esperar la configuración OAuth y su consentimiento real.
 
 ```bash
 php "$HOME/domains/fundacionrededumex.org/public_html/tools/diagnosticar_correo_hostinger.php" --central --probe
@@ -54,7 +77,7 @@ Después de configurar y publicar con autorización: probar Marketing hacia cuen
 
 Pruebas locales/simuladas: selección del buzón propio Hostinger y transporte SMTP/API; autorización Google, PKCE/propiedad/replay/caducidad; Gmail HTTPS con MIME y adjuntos reales; identidad/Reply-To/alias y rechazo/incertidumbre/idempotencia; Marketing con BD en memoria; recuperación con hash/vigencia/límites/rechazo/BD/concurrencia; límites HTTP y vistas de login/recuperación intactas. SMTP real únicamente contra un servidor efímero local con TLS y certificado no confiable rechazado. No sustituyen las pruebas anteriores de producción. Sin CI global.
 
-Único publicador: tools/publicar_correos_multiproveedor_hostinger.sh, lista cerrada de 25 archivos de correo/recuperación. Admite versiones revisadas a90b6ade, 69d65f41, d5928cd0 e instalación anterior fd5fd282. Conserva CRLF y comentarios PHP compatibles mediante comprobación del código; versiones o personalizaciones de código desconocidas requieren revisión y dejan el sitio intacto. No sobrescribe credenciales ni BD. Instala la pantalla de autorización exclusivamente Gmail; no conecta cuentas ni envía mensajes al aplicar.
+Único publicador: tools/publicar_correos_multiproveedor_hostinger.sh, lista cerrada de 27 archivos de correo/recuperación. Admite la revisión ya instalada e16cff33 y las versiones revisadas a90b6ade, 69d65f41, d5928cd0 e instalación anterior fd5fd282. Conserva CRLF y comentarios PHP compatibles mediante comprobación del código; versiones o personalizaciones de código desconocidas requieren revisión y dejan el sitio intacto. No sobrescribe credenciales ni BD. Instala el configurador CLI privado y la pantalla OAuth Google opcional; no configura claves, conecta cuentas ni envía mensajes al aplicar. Los respaldos de configuración privada y de código son independientes: restore del publicador no elimina credenciales.
 
 ```bash
 export IMPE_CORREOS_PUBLIC="$HOME/domains/fundacionrededumex.org/public_html"
