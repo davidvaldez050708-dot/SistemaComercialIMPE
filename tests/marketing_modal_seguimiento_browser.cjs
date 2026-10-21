@@ -65,7 +65,10 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         });
         await page.goto('http://recepcion.test/');
         await page.evaluate(()=>document.fonts.ready);
-        await page.locator('[data-marketing-reception-details-toggle]').click();
+        // Recepción en Mis llamadas mantiene el historial visible por defecto.
+        // Los fixtures antiguos conservan el botón plegable.
+        const toggle=page.locator('[data-marketing-reception-details-toggle]');
+        if(await toggle.count())await toggle.click();
         await page.waitForFunction(()=>document.querySelectorAll('[data-marketing-result]').length===1);
         assert.equal(await page.locator('thead th').count(),9);
         const firstRow=page.locator('[data-marketing-reception-rows] > tr').first();
