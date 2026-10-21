@@ -251,6 +251,10 @@ html, body {
 }
 
 /* Cierre compartido: resultado de Analista y Ventas a ancho completo. */
+.impe-incoming-panel[data-phone-finished] .persistent-phone-live i {
+  background: #8492a8;
+  box-shadow: none;
+}
 .impe-incoming-panel .persistent-phone-actions > [data-incoming-register-finished]:not([hidden]) {
   grid-column: 1 / -1;
   width: 100%;

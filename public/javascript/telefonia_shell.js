@@ -608,6 +608,8 @@
         if (incomingPanel) {
             incomingPanel.hidden = !customVisible;
             incomingPanel.classList.toggle('is-compact', incomingCompact);
+            if(!ongoing&&(incomingFinishedPreview||finishedPreview))incomingPanel.setAttribute('data-phone-finished','');
+            else incomingPanel.removeAttribute('data-phone-finished');
         }
         const workingCall = Boolean(ongoing && state.phase === 'in-progress' &&
             !finishingIncoming && !pendingOutgoingHangup);
@@ -738,6 +740,7 @@
             const finalNotice=(finished||finishedIncoming)&&phoneState.context?.pbxEnded?phoneState.message:'';
             notice.hidden = !(actionNotice||finalNotice) || incomingCompact;
             notice.textContent = actionNotice||finalNotice||'';
+            if(cfg.salesResults)notice.style.color=finalNotice?'#16735a':'';
             centerIncoming();
         }
         callTitle.textContent = finishedIncoming ? 'Llamada finalizada' :

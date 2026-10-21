@@ -22,6 +22,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
  closed=true;await p.waitForFunction(()=>!document.querySelector('[data-incoming-register-finished]').disabled,{},{timeout:15000});
  const button=p.locator('[data-incoming-register-finished]');assert.equal(await button.innerText(),'Registrar resultado');
  assert.match(await p.locator('[data-incoming-panel]').textContent(),/Guardada en Mis llamadas/);
+ assert.equal(await p.locator('[data-incoming-notice]').evaluate(el=>getComputedStyle(el).color),'rgb(22, 115, 90)','Confirmación con el mismo color institucional de Analista');
  for(const width of [1366,390]){await p.setViewportSize({width,height:800});assert.equal(await p.locator('[data-incoming-panel] .persistent-phone-actions button:visible').count(),1);if(process.env.IMPE_PHONE_SHOTS)await p.locator('[data-incoming-panel]').screenshot({path:process.env.IMPE_PHONE_SHOTS+'/ventas-final-'+width+'.png'});}
  await button.click();await p.waitForFunction(()=>document.querySelector('#impeCrmFrame').src.includes('pbx_call_id=pbx-sales-late-001'));
  assert.deepEqual(errors,[]);console.log('Edge: SDK local → ANSWER/OUT_END tardíos → botón y componente compartido conciliados, referencia exacta sin F5: OK');
