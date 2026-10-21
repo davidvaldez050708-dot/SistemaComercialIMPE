@@ -1,0 +1,11 @@
+--- a/app/views/telefonia/shell.php
++++ b/app/views/telefonia/shell.php
+@@ -243,6 +243,8 @@
+                     data-incoming-retry-save hidden>
+                     <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Reintentar registro
+                 </button>
++                <?php endif; ?>
++                <?php if ($analistaEntrantesShell || $esAsesorShell): ?>
+                 <button type="button" class="persistent-phone-action is-primary"
+                     data-incoming-register-finished hidden>
+                     <i class="bi bi-journal-check" aria-hidden="true"></i> Registrar resultado

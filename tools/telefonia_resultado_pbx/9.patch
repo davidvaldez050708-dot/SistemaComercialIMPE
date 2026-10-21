@@ -1,0 +1,92 @@
+--- a/public/javascript/telefonia_ventas_shell.js
++++ b/public/javascript/telefonia_ventas_shell.js
+@@ -29,7 +29,7 @@
+  const card=document.createElement('div');card.className='impe-availability-source';card.hidden=true;
+  const name=document.createElement('strong'),hint=document.createElement('p');card.append(name,hint);
+  panel.querySelector('.persistent-phone-origin').after(card);
+- const button=document.createElement('button');button.type='button';button.className='persistent-phone-action is-primary';button.textContent='Registrar resultado comercial';button.dataset.salesOpen='1';button.hidden=true;
++ const button=panel.querySelector('[data-incoming-register-finished]')||document.createElement('button');button.type='button';button.className='persistent-phone-action is-primary';button.textContent='Registrar resultado';button.dataset.incomingRegisterFinished='';button.hidden=true;
+  const actions=panel.querySelector('.persistent-phone-actions'),close=actions?.querySelector('[data-incoming-close-finished]');
+  if(close)actions.insertBefore(button,close);else actions?.append(button);
+  // Los pendientes se notifican desde la campana y los toasts compartidos del CRM.
+@@ -37,20 +37,27 @@
+  const refreshNotices=()=>{try{const win=crm?.contentWindow;win?.dispatchEvent(new win.Event('impe:phone-notices-refresh'));}catch(_){/* La consulta periódica sigue disponible tras navegar. */}};
+  const remove=ref=>{const existed=pending.some(p=>p.ref===ref);phone.dismissFinishedCall?.(ref);pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
+  const open=()=>{if(phone.getPhoneStatus().active||!crm)return;
+-  const task=pending[pending.length-1];
++  const state=phone.getCallState(),ref=String(state?.context?.transferReference||state?.pbxCallId||'');
++  const task=state?.phase==='incoming-finished'||state?.phase==='finished'?pending.find(x=>x.ref===ref):pending[pending.length-1];
+   const url=new URL(cfg.salesHistoryUrl,location.href);
+   // Sin referencia PBX confirmada sólo puede consultarse el historial.
+-  if(!task){crm.src=url.href;return;}
++  if(!task)return;
++  if(!metadata?.finalizada||metadata.pbx_call_id!==task.ref){void lookup(task.ref,revision);return;}
+   url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);
+   if(crm.src===url.href){crm.contentWindow?.postMessage({type:'IMPE_SALES_RESULT_OPEN',ref:task.ref,extension:task.extension},location.origin);return;}
+   crm.src=url.href;
+  };
+  button.addEventListener('click',open);
+  const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();
+-  const unlinkedFinish=!active&&state?.direction==='incoming'&&state?.phase==='incoming-finished'&&!valid(String(state.context?.transferReference||state.pbxCallId||''));
+-  button.hidden=active||form||(!pending.length&&!unlinkedFinish);
+-  button.textContent=pending.length?'Registrar resultado comercial':'Revisar llamadas';
+-  button.dataset.salesPending=pending.length?'1':'0';
++  const ref=String(state?.context?.transferReference||state?.pbxCallId||'');
++  const finished=!active&&['finished','incoming-finished'].includes(state?.phase);
++  const task=finished?pending.find(x=>x.ref===ref):pending[pending.length-1];
++  const confirmed=Boolean(task&&metadata?.pbx_call_id===task.ref&&metadata.finalizada);
++  button.hidden=active||form||(!finished&&!pending.length);
++  button.disabled=!confirmed;
++  button.textContent=confirmed?'Registrar resultado':'Conciliando llamada';
++  const icon=document.createElement('i');icon.className='bi bi-journal-check';icon.setAttribute?.('aria-hidden','true');button.prepend?.(icon);
++  button.dataset.salesPending=task?'1':'0';
+  };
+  window.IMPE_SALES_ATTENTION=Object.freeze({hasPending:()=>pending.length>0,openPending:open});
+  async function lookup(ref,version){
+@@ -62,13 +69,25 @@
+    const currentRef=String(current?.context?.transferReference||current?.finalMetadata?.pbx_call_id||current?.pbxCallId||'');
+    if(version!==revision||!r.ok||!j.ok||(current?.active&&(currentRef!==ref||current.callToken!==requestToken)))return;
+    metadata=j.llamada;if(!metadata)return;
++   if(metadata.finalizada&&!current?.active)phone.confirmFinishedCall?.(ref,metadata);
+    if(metadata.registro)remove(ref);
+    else if(metadata.finalizada&&!phone.getPhoneStatus().active&&!announced.has(ref)){announced.add(ref);refreshNotices();}
+    card.hidden=!current?.active||!metadata.nombre;name.textContent=metadata.nombre||'';
+    hint.textContent=metadata.origen_extension?'Nombre informado por Recepción · Ext. '+metadata.origen_extension:'Atención comercial de tu extensión';
+   }catch(_){/* El historial conserva el pendiente mientras llega evidencia PBX. */}finally{fetching=false;}
+  }
+- let lastLookup=0,tries=0;
++ let lastLookup=0,tries=0,lastPending=0,pendingBusy=false;
++ async function recoverPending(){
++  if(pendingBusy||Date.now()-lastPending<10000)return;pendingBusy=true;lastPending=Date.now();
++  try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pendientes','1');
++   const response=await fetch(url,{credentials:'same-origin',cache:'no-store'}),data=await response.json();
++   if(response.ok&&data.ok&&Array.isArray(data.pendientes)){
++    for(const c of data.pendientes)if(valid(c.pbx_call_id)&&String(c.extension)===String(cfg.extension)&&!pending.some(p=>p.ref===c.pbx_call_id))pending.push({ref:c.pbx_call_id,extension:c.extension,at:Date.now()});
++    persist();
++   }
++  }catch(_){}finally{pendingBusy=false;}
++ }
++ void recoverPending();
+  function observe(){
+   const state=phone.getCallState();if(!state){if(pending[0]&&Date.now()-lastLookup>Math.min(60000,3000*2**tries)){lastLookup=Date.now();tries++;void lookup(pending[0].ref,revision);}render();return;}
+   const ref=String(state.context?.transferReference||state.finalMetadata?.pbx_call_id||state.pbxCallId||'');
+@@ -79,7 +98,7 @@
+    if(accepted){
+     name.textContent=accepted.nombre;
+     hint.textContent='Nombre informado en disponibilidad · Ext. '+accepted.origen_extension;
+-    card.hidden=false;
++    card.hidden=false;phone.bindTransferCandidate?.(Number(accepted.id));
+    }
+   }
+   if(previous?.active&&!state.active&&valid(ref)&&['finished','incoming-finished'].includes(state.phase)){
+@@ -94,8 +113,8 @@
+    }
+   }
+   const currentRef=valid(ref)?ref:state.active?null:pending[0]?.ref;
+-  if(!state.active)card.hidden=true;
+-  if(currentRef&&Date.now()-lastLookup>(metadata?60000:Math.min(60000,3000*2**tries))&&(!metadata||(!state.active&&pending.some(p=>p.ref===currentRef)))){
++  if(!state.active){card.hidden=true;void recoverPending();}
++  if(currentRef&&Date.now()-lastLookup>(metadata?.finalizada?60000:Math.min(10000,1500*2**tries))&&(!metadata||(!state.active&&pending.some(p=>p.ref===currentRef)))){
+    lastLookup=Date.now();tries++;void lookup(currentRef,revision);
+   }
+   previous=state;render();

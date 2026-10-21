@@ -1,0 +1,20 @@
+--- a/public/javascript/telefonia_transferencia_runtime.js
++++ b/public/javascript/telefonia_transferencia_runtime.js
+@@ -8,7 +8,7 @@
+    const url=new URL(api.url,root.location.href),options={credentials:'same-origin',cache:'no-store'};
+    if(action){options.method='POST';options.body=new URLSearchParams({id:String(id),accion:action,csrf_token:api.csrf});}
+    else if(id)url.searchParams.set('id',String(id));
+-   else {url.searchParams.set('origen',api.read().destination);url.searchParams.set('sdk',api.read().callToken);}
++   else {url.searchParams.set('origen',api.read().destination);url.searchParams.set('sdk',api.read().callToken);if(api.read().context?.availabilityCandidate)url.searchParams.set('solicitud_id',api.read().context.availabilityCandidate);}
+    const response=await fetch(url,options),data=await response.json();
+    if(!response.ok||!data.ok)throw Error(data.mensaje||'No se pudo actualizar la transferencia.');
+    return data.operacion;
+@@ -33,7 +33,7 @@
+    if(busy||!api.url)return;busy=true;
+    try{
+     let state=api.read();
+-    if(!tracked && state.active && state.direction==='incoming' && /^\d{3,6}$/.test(state.destination) && /^sdk-/.test(state.callToken||'')){
++    if(!tracked && state.active && state.direction==='incoming' && (/^\d{3,6}$/.test(state.destination)||state.context?.availabilityCandidate) && /^sdk-/.test(state.callToken||'')){
+      const op=await request(0);if(api.read().callToken!==state.callToken)return;if(op){reset();tracked={source:false,op,token:state.callToken,session:root.zdrmWebPhone?.webCallSession};apply(op);}
+      else api.publish({context:{...state.context,operationChecked:true}});
+     }
