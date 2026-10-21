@@ -70,7 +70,7 @@ $checks = [
     'Sin mensaje permanente ni enlace Zadarma' =>
         !str_contains($shellView, 'data-incoming-provider') &&
         !str_contains($shellJs, 'El teléfono está conectando sus controles') &&
-        str_contains($shellJs, "notice.hidden = !(actionNotice || sdkNotice)"),
+        str_contains($shellJs, "notice.hidden = !actionNotice || incomingCompact"),
     'Cada timbrado comienza en cero' =>
         str_contains($hostJs, "state.phase === 'incoming-ringing') return 0;") &&
         str_contains($hostJs, 'duration: answered') &&
