@@ -4,6 +4,8 @@ Rama de revisión: `codex/correos-autorizacion-cuentas`, basada en `origin/main`
 
 El rechazo original de Gmail ocurría antes de contactar con el proveedor: Marketing sólo seleccionaba su cuenta central o un buzón Hostinger. El historial muestra la retirada del SMTP por usuario (`c97c0970`, `afc1e988`) y la restricción del remitente (`ae918749`). Esa ruta ya se sustituyó por cuentas autorizadas; su presencia en GitHub no prueba que esté publicada en Hostinger. No hay evidencia aún de una restricción saliente del plan.
 
+La recuperación es prioritaria e independiente de Marketing/OAuth. Si faltaba `MAIL_HOST`, el valor predeterminado era Hostinger incluso con usuario Gmail; ahora se elige `smtp.gmail.com` para Gmail y se conserva cualquier host explícito. Web y diagnóstico leen la misma cuenta dedicada o los `MAIL_*` anteriores. Un archivo dedicado inválido detiene el envío; no toma credenciales comerciales ni otra cuenta. Se conserva el destinatario registrado, el contenido y los 30 minutos; LoginController sólo actualiza la contraseña después de aceptación SMTP. Esto corrige la selección de configuración, pero no sustituye una clave ausente o rechazada por Google ni acredita envío desde Hostinger.
+
 ## Configuración privada que falta proporcionar
 
 Ubicación Hostinger: `$HOME/domains/fundacionrededumex.org/impe-private/`, hermana de `public_html`. Directorio 0700 y PHP privados 0600, accesibles por el usuario del proceso PHP. No pegar contraseñas ni tokens en chats, comandos del historial o Git. Usar el editor privado del servidor. Los ejemplos contienen datos ficticios y no se publican como configuración activa.
@@ -20,7 +22,7 @@ Opcionales de instalación: `IMPE_PRIVATE_CONFIG_DIR` cambia la carpeta de confi
 
 ## Comportamiento y alcance
 
-Conectar cuenta se abre en una página separada, sin cambiar el HTML de los modales. El error de cuenta no conectada permite abrirla en otra pestaña sin perder cuerpo ni archivos seleccionados. Puede acceder Marketing o un usuario que ya tenga permisos operativos de correo; no se crean permisos ni se convierte al Administrador en operador. Cada autorización está ligada al usuario, proveedor, correo y sesión; state de un solo uso, PKCE S256, caducidad de diez minutos, CSRF en inicio/desconexión y máximo diez inicios por diez minutos. Los tokens sólo circulan entre servidor y proveedor, se renuevan en el servidor y no llegan a JavaScript. Desconectar limpia esa conexión y su caché local; el consentimiento externo también puede revocarse desde la cuenta del proveedor.
+Conectar cuenta se abre en una página separada. Del modal sólo se retiró la leyenda solicitada bajo De; sus campos y funcionamiento se conservan. Un aviso nuevo de Marketing sustituye al anterior para que los reintentos no acumulen notificaciones. El error de cuenta no conectada permite abrirla en otra pestaña sin perder cuerpo ni archivos seleccionados. Puede acceder Marketing o un usuario que ya tenga permisos operativos de correo; no se crean permisos ni se convierte al Administrador en operador. Cada autorización está ligada al usuario, proveedor, correo y sesión; state de un solo uso, PKCE S256, caducidad de diez minutos, CSRF en inicio/desconexión y máximo diez inicios por diez minutos. Los tokens sólo circulan entre servidor y proveedor, se renuevan en el servidor y no llegan a JavaScript. Desconectar limpia esa conexión y su caché local; el consentimiento externo también puede revocarse desde la cuenta del proveedor.
 
 Los transportes comparten la selección de identidad y los recursos MIME de PHPMailer: SMTP autenticado, Microsoft XOAUTH2, Gmail API y Hostinger API. La recuperación conserva su cuenta dedicada. No se cambian generación de oficios, PDF, Telefonía, reglas comerciales, usuarios ni tablas. El publicador incluye la integración de correo de Vinculación ya aprobada en main.
 
@@ -34,14 +36,14 @@ Archivos funcionales añadidos: `CorreoConexionController`, vista `correos/conex
 
 | Prueba dirigida | Evidencia disponible |
 |---|---|
-| Recuperación | Identidad dedicada, contenido/vigencia y SMTP local real con TLS |
+| Recuperación | Gmail con host implícito, precedencia de PHP privado/entorno/cuenta dedicada, host/SSL explícitos, ausencia de credenciales sin simular envío; contenido/destinatario/vigencia y SMTP local real con TLS |
 | Hostinger API | Buzón exacto, archivos, rechazo e incertidumbre simulados |
 | Gmail API | HTTP simulado; identidad verificada, MIME real, To/From, imagen CID y adjunto íntegros |
 | Google/Microsoft OAuth | Consentimiento/intercambio simulados: state, PKCE, sesión, dueño, caducidad, replay, cancelación y desconexión |
 | SMTP/XOAUTH2 | PHPMailer real contra servidor local efímero, certificado no confiable rechazado, AUTH LOGIN y XOAUTH2/MIME correctos |
 | Marketing | BD en memoria: borradores, propiedad, contenido, estados, aceptación e incertidumbre sin duplicados |
-| Acceso/interfaz | CSRF/rol/método/acciones internas rechazados; HTML de los modales idéntico a main |
-| Publicador | Sitios ficticios anteriores y main-v1: check sin escritura, respaldo/restore, idempotencia y preservación de archivos privados/CRLF/comentarios |
+| Acceso/interfaz | CSRF/rol/método/acciones internas rechazados; sólo retirada autorizada de la leyenda del modal |
+| Publicador | Sitios ficticios anteriores, main-v1 y cuentas-v2: check sin escritura, respaldo/restore, idempotencia y preservación de archivos privados/CRLF/comentarios |
 
 Pruebas en `tests/correos_*`: sólo dirigidas, sin CI global. No sustituyen MySQL, navegador autenticado y proveedores reales de producción. **No hay envíos desde Hostinger ni recepciones reales confirmados.** Faltan credenciales privadas, aplicaciones/consentimiento OAuth para quien elija esa ruta, acceso al servidor y destinatario de prueba autorizado.
 
@@ -55,11 +57,13 @@ php tools/diagnosticar_correo_hostinger.php --account='CUENTA_CONECTADA' --user=
 
 El diagnóstico sólo funciona por CLI. Probe consulta DNS/TLS/AUTH, identidad Google o autorización Hostinger sin enviar mensajes; OAuth puede renovar su estado privado. Si falla, comprobar CA/OpenSSL, puerto/HTTPS saliente, políticas del buzón y restricciones del plan con evidencia del servidor. No modificar `disable_functions`, instalar ejecutables ni desactivar TLS.
 
+Ejecutar siempre `php` antes de la ruta del diagnóstico; ejecutarla directamente produce un error de permisos que no diagnostica SMTP. Los códigos seguros `MAIL_RESET_IDENTITY`/`MAIL_SMTP_CONFIG` indican identidad o credenciales/configuración incompletas; `MAIL_RESET_CONFIG`, archivo dedicado inválido. Un código SMTP 535 requiere revisar la autenticación privada con el proveedor. No pegar claves en el chat. La cuenta Gmail de recuperación no necesita una aplicación OAuth de los empleados cuando usa su SMTP y clave de aplicación autorizada.
+
 Sólo con un destinatario autorizado, añadir `--send-test --to=DESTINO_AUTORIZADO` para un mensaje ficticio; no repetir si el resultado es incierto. El comando no modifica contraseñas ni crea historial comercial. Para pruebas completas: recuperación desde la aplicación con cuenta propia de prueba; Hostinger/Gmail/Microsoft/institucional desde cada perfil con permiso; convocatoria, borrador, asunto/cuerpo, firma, adjuntos descargables e historial MySQL; recepción inbox/spam y cabeceras SPF/DKIM/DMARC. La presencia de DNS por sí sola no demuestra entrega. Ningún correo a contactos comerciales sin autorización.
 
 ## Publicación manual selectiva
 
-Único publicador: `tools/publicar_correos_multiproveedor_hostinger.sh`, lista cerrada de 21 archivos. Admite la instalación anterior y la versión main-v1 de correos, sin sobrescribir personalizaciones incompatibles. El diagnóstico auxiliar se instala si falta; restore retira también su carpeta si fue creada y sigue vacía. Configuraciones privadas y BD quedan fuera de la publicación y el respaldo de código.
+Único publicador: `tools/publicar_correos_multiproveedor_hostinger.sh`, lista cerrada de 21 archivos. Admite la instalación anterior, main-v1 y cuentas-v2 (`69d65f41`), sin sobrescribir personalizaciones incompatibles. El diagnóstico auxiliar se instala si falta; restore retira también su carpeta si fue creada y sigue vacía. Configuraciones privadas y BD quedan fuera de la publicación y el respaldo de código.
 
 Descargarlo de la rama revisada fuera de public_html; cuando se apruebe la integración en main, puede descargarse de main. Usar la revisión/hash publicada junto al PR. No hacer git pull directamente en producción.
 

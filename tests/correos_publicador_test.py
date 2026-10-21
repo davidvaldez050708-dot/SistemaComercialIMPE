@@ -1,5 +1,5 @@
 """Ejercita el publicador únicamente en sitios ficticios temporales, nunca producción.
-Uso: python tests/correos_publicador_test.py RUTA_BASH DIRECTORIO_PHP [--sin-diagnostico] [--desde-main-v1]
+Uso: python tests/correos_publicador_test.py RUTA_BASH DIRECTORIO_PHP [--sin-diagnostico] [--desde-main-v1|--desde-cuentas-v2]
 """
 import hashlib
 import os
@@ -15,6 +15,8 @@ bash, phpdir = sys.argv[1:3]
 without_diagnostic = '--sin-diagnostico' in sys.argv[3:]
 diagnostic = 'tools/diagnosticar_correo_hostinger.php'
 baseline = 'a90b6aded4a7f606eccc7a27749658e3fed9b9ed' if '--desde-main-v1' in sys.argv[3:] else 'fd5fd282b3f6774d1bdc045295d655b72620ce17'
+if '--desde-cuentas-v2' in sys.argv[3:]:
+    baseline = '69d65f41c8970698efe337b90ab39a693351eb9d'
 text = script.read_text(encoding='utf-8')
 files = re.search(r'^FILES=\((.+)\)$', text, re.M).group(1)
 files = re.findall(r'"([^"]+)"', files)
@@ -40,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='impe-publish-mail-') as tmp:
         if f == 'app/services/MailService.php':
             b = b.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n') + b'\r\n// comentario local conservado\r\n'
         p.write_bytes(b)
-    if '--desde-main-v1' in sys.argv[3:]:
+    if '--desde-main-v1' in sys.argv[3:] or '--desde-cuentas-v2' in sys.argv[3:]:
         for f in files:
             if f in patches:
                 continue
