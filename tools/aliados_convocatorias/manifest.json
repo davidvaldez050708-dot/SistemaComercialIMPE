@@ -1,0 +1,435 @@
+{
+  "version": 1,
+  "base": "fd5fd282b3f6774d1bdc045295d655b72620ce17",
+  "files": [
+    {
+      "path": "app/controllers/AliadoController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "dfa6da8ce1e7c1f8b56063daa8eac136d449cfd1021d2f0439e70984074b4569",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "5544b28e07fd7e6867097832a987ac283ebff89d297475159e7c31fbf4f1e7ba",
+          "after": "dfa6da8ce1e7c1f8b56063daa8eac136d449cfd1021d2f0439e70984074b4569",
+          "patch": "tools/aliados_convocatorias/20.patch",
+          "patch_sha256": "4fca7bbd08c5c21db92c5fc366d324432b19e86ec3c3adfb6d8bc2a3a118cb9b"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "f48b93ce8df7df940342a7485685b7764d8616e2b8dfd6a4cd2533d07e0b8f45",
+          "after": "dfa6da8ce1e7c1f8b56063daa8eac136d449cfd1021d2f0439e70984074b4569",
+          "patch": "tools/aliados_convocatorias/21.patch",
+          "patch_sha256": "d5a86cd93147fe6e1937896bc9512bc71b13919af1aa7541abe53029c014eedd"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/20.patch",
+      "patch_sha256": "4fca7bbd08c5c21db92c5fc366d324432b19e86ec3c3adfb6d8bc2a3a118cb9b"
+    },
+    {
+      "path": "app/controllers/ConvocatoriaController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "8d0805afe9f00b967b9fa8b153453cd591f1450cf5f324f2573cde94b1361b53",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "f7e8774c8b9d97431264351028af099c9fd98d439ba0afed4c4daed3ec63dabf",
+          "after": "8d0805afe9f00b967b9fa8b153453cd591f1450cf5f324f2573cde94b1361b53",
+          "patch": "tools/aliados_convocatorias/22.patch",
+          "patch_sha256": "2a495ebd0d4abcb30625ca2abdb174198fe56bd710a2e55ccfbb5dd211dffc59"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "ad98d97cc99707fcbcccabc4fb85ec32ffc95c2ca428a7b39edc4483b087fac2",
+          "after": "8d0805afe9f00b967b9fa8b153453cd591f1450cf5f324f2573cde94b1361b53",
+          "patch": "tools/aliados_convocatorias/23.patch",
+          "patch_sha256": "4ce2fbc60543f76bfaaa6b08468e7cbb2bbfac6b73ef920ce071532c93db5523"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/22.patch",
+      "patch_sha256": "2a495ebd0d4abcb30625ca2abdb174198fe56bd710a2e55ccfbb5dd211dffc59"
+    },
+    {
+      "path": "app/controllers/CrearConvocatoriaController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "0d694e952a16d40a3852036e54f1fb8333faf690362c9edccd55cdce824d8521",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "932ca5c18a7c014b7ca8290147d0ba716b86fb315ab6f2c8c2d7fac1abb3f311",
+          "after": "0d694e952a16d40a3852036e54f1fb8333faf690362c9edccd55cdce824d8521",
+          "patch": "tools/aliados_convocatorias/24.patch",
+          "patch_sha256": "ab9e1d6ad9480421e186b0ab79121428bfda8abd5b00619299a600e0a7acb2e0"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "0d694e952a16d40a3852036e54f1fb8333faf690362c9edccd55cdce824d8521",
+          "after": "0d694e952a16d40a3852036e54f1fb8333faf690362c9edccd55cdce824d8521"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/24.patch",
+      "patch_sha256": "ab9e1d6ad9480421e186b0ab79121428bfda8abd5b00619299a600e0a7acb2e0"
+    },
+    {
+      "path": "app/controllers/FormularioPublicoController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "c0094df8c57d00c4a3c901373ec077d8c2e33a5b86cb618912054d6815b2af3e",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "2fbcf45b84a5ab121719fc43dda48cc4adc60c99aeab8bafb7939ba9bf6280c6",
+          "after": "c0094df8c57d00c4a3c901373ec077d8c2e33a5b86cb618912054d6815b2af3e",
+          "patch": "tools/aliados_convocatorias/25.patch",
+          "patch_sha256": "48c9e2f39421d9f85c6d2266f9a6641944e2e3e564f348b632dfad8009022fae"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "c0094df8c57d00c4a3c901373ec077d8c2e33a5b86cb618912054d6815b2af3e",
+          "after": "c0094df8c57d00c4a3c901373ec077d8c2e33a5b86cb618912054d6815b2af3e"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/25.patch",
+      "patch_sha256": "48c9e2f39421d9f85c6d2266f9a6641944e2e3e564f348b632dfad8009022fae"
+    },
+    {
+      "path": "app/models/AliadoInternacionalModel.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "355609ca97bcf263f6629f98a48dff49aad94ee706db1991070a5fb17d8e05c8",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "e28f852f86118eeee31f9694bd98521b4a50deca53a916737787602fc94e4b8c",
+          "after": "355609ca97bcf263f6629f98a48dff49aad94ee706db1991070a5fb17d8e05c8",
+          "patch": "tools/aliados_convocatorias/26.patch",
+          "patch_sha256": "6cd76861d2d03946fe497ea886ae282735c672599d66e2410ed353c1d860fa56"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "fab4acceabacde0a57367e08566af42772f45e9a3f040057483bcb9349839d6f",
+          "after": "355609ca97bcf263f6629f98a48dff49aad94ee706db1991070a5fb17d8e05c8",
+          "patch": "tools/aliados_convocatorias/27.patch",
+          "patch_sha256": "d22801bfe5e097ec2d82964d3a1d208735cc0ac9a9053e8691e7075f8f0aafbd"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/26.patch",
+      "patch_sha256": "6cd76861d2d03946fe497ea886ae282735c672599d66e2410ed353c1d860fa56"
+    },
+    {
+      "path": "app/models/ConvocatoriaModel.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "cc1ca7703c1fcc3fc0bf1a5e89d5488909f9b3f4e0f89b87292b282930524d53",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "73b5912b8a668b9057228e17008302c1dc0a9a6282c77f208c7a7b3545895188",
+          "after": "cc1ca7703c1fcc3fc0bf1a5e89d5488909f9b3f4e0f89b87292b282930524d53",
+          "patch": "tools/aliados_convocatorias/28.patch",
+          "patch_sha256": "1ddc433f9a3a0b300a81702d399a37703d5f0de9d530665bf20ddb7e84a0b24a"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "cc1ca7703c1fcc3fc0bf1a5e89d5488909f9b3f4e0f89b87292b282930524d53",
+          "after": "cc1ca7703c1fcc3fc0bf1a5e89d5488909f9b3f4e0f89b87292b282930524d53"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/28.patch",
+      "patch_sha256": "1ddc433f9a3a0b300a81702d399a37703d5f0de9d530665bf20ddb7e84a0b24a"
+    },
+    {
+      "path": "app/models/FormularioRegistroModel.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "97a3061a332993dcc3d77500a1d6a9e07b3d2edb455589333936eec89e9c7690",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "b6a8a1b830d45a3a7e7ab5d00f43da0260e872f88730fe6143db247ce0ea0a0f",
+          "after": "97a3061a332993dcc3d77500a1d6a9e07b3d2edb455589333936eec89e9c7690",
+          "patch": "tools/aliados_convocatorias/29.patch",
+          "patch_sha256": "c58c6e1e94ae501c3f0513af2ff32e378edb35c80a4675bbd9462b4038aa1c19"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "97a3061a332993dcc3d77500a1d6a9e07b3d2edb455589333936eec89e9c7690",
+          "after": "97a3061a332993dcc3d77500a1d6a9e07b3d2edb455589333936eec89e9c7690"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/29.patch",
+      "patch_sha256": "c58c6e1e94ae501c3f0513af2ff32e378edb35c80a4675bbd9462b4038aa1c19"
+    },
+    {
+      "path": "app/services/FormularioAliadoService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "1b57d844905c20313cc80387d3698f178d5ce2d60adca8fc2721bd40e5683c66",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "7c04156681737257e466780edbed66bdb4ac475a9c4b3ea1eb18ea7849c24271",
+          "after": "1b57d844905c20313cc80387d3698f178d5ce2d60adca8fc2721bd40e5683c66",
+          "patch": "tools/aliados_convocatorias/30.patch",
+          "patch_sha256": "6941ca05f961549b7870a42349be0acb8a38a15729bbfa633c9e3f7427d9a197"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "1b57d844905c20313cc80387d3698f178d5ce2d60adca8fc2721bd40e5683c66",
+          "after": "1b57d844905c20313cc80387d3698f178d5ce2d60adca8fc2721bd40e5683c66"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/30.patch",
+      "patch_sha256": "6941ca05f961549b7870a42349be0acb8a38a15729bbfa633c9e3f7427d9a197"
+    },
+    {
+      "path": "app/views/aliados/internacionales.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "d06a31842d0ee1398f0cf8af92fbf0273accbbf2b1ab8abd2f4fe193fbfc98d5",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "dafce95431eb13996bec5dbe0a0c8dff80215099c9861cb0b2f83ef3ae3c6db8",
+          "after": "d06a31842d0ee1398f0cf8af92fbf0273accbbf2b1ab8abd2f4fe193fbfc98d5",
+          "patch": "tools/aliados_convocatorias/31.patch",
+          "patch_sha256": "987d7b66df2aba64a6cfda1357a0fbbee302fbaa39d30a905940f6512674f03e"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "aa85f1267f2887751d89f4d7125d58649a6e7337ee5a111a9d4ec4b0a0aa46a2",
+          "after": "d06a31842d0ee1398f0cf8af92fbf0273accbbf2b1ab8abd2f4fe193fbfc98d5",
+          "patch": "tools/aliados_convocatorias/32.patch",
+          "patch_sha256": "0f22cc7462c2be2d7b25411403416150c7f7e0c3982b53caefe8715b0c1818a3"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/31.patch",
+      "patch_sha256": "987d7b66df2aba64a6cfda1357a0fbbee302fbaa39d30a905940f6512674f03e"
+    },
+    {
+      "path": "app/views/convocatorias/crear_desde_convenio.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "819e98aed2ddceee364dcf0978653d4c0ce92e540ef4d686c66e31d3107a01cc",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "ed38b1c01e5df029a706b2cc0bf99d4fd13d1ee2c3171142ec3db5e02be54b28",
+          "after": "819e98aed2ddceee364dcf0978653d4c0ce92e540ef4d686c66e31d3107a01cc",
+          "patch": "tools/aliados_convocatorias/33.patch",
+          "patch_sha256": "22679e6d59945141ddc147194f8a2a76ada9d20ccc0084dc9710d3958421e38c"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "819e98aed2ddceee364dcf0978653d4c0ce92e540ef4d686c66e31d3107a01cc",
+          "after": "819e98aed2ddceee364dcf0978653d4c0ce92e540ef4d686c66e31d3107a01cc"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/33.patch",
+      "patch_sha256": "22679e6d59945141ddc147194f8a2a76ada9d20ccc0084dc9710d3958421e38c"
+    },
+    {
+      "path": "app/views/convocatorias/index.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "0d3b2e75427d5b0056f591ee9b14843bd4f7d64e4fd376903b4d182a78adfa45",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "a7cbd88498a5d69a1bf69c1d689522a6052e815a16ad6cd743c6bffc0c35a14f",
+          "after": "0d3b2e75427d5b0056f591ee9b14843bd4f7d64e4fd376903b4d182a78adfa45",
+          "patch": "tools/aliados_convocatorias/34.patch",
+          "patch_sha256": "8b0edf1ba6f7558273b6f5be77d259dbb2389630fd9f31292d4e15aab19d21a3"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "0d3b2e75427d5b0056f591ee9b14843bd4f7d64e4fd376903b4d182a78adfa45",
+          "after": "0d3b2e75427d5b0056f591ee9b14843bd4f7d64e4fd376903b4d182a78adfa45"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/34.patch",
+      "patch_sha256": "8b0edf1ba6f7558273b6f5be77d259dbb2389630fd9f31292d4e15aab19d21a3"
+    },
+    {
+      "path": "app/views/layout/dashboard_head.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "55a35aa9341a16875addb080ae4cfcb935c5642780d55717918bed388e057ef6",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "16eb1e551de410b069beb8448940dc7eb27015400f78847f7d8f7bc7954c132d",
+          "after": "55a35aa9341a16875addb080ae4cfcb935c5642780d55717918bed388e057ef6",
+          "patch": "tools/aliados_convocatorias/35.patch",
+          "patch_sha256": "5eb8de037dbfbaafd0b9c416e9574ae200621c430d3520736e1a16a7b48616ef"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "1a020d3ac511fadd2e8a5ac06f25436ddb8ebf669ca8b735a013e1cbb37b6441",
+          "after": "55a35aa9341a16875addb080ae4cfcb935c5642780d55717918bed388e057ef6",
+          "patch": "tools/aliados_convocatorias/36.patch",
+          "patch_sha256": "be42f1b70107c6c1fcfe03e410bbea216c16de9a0e745ca2882943e9924657db"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/35.patch",
+      "patch_sha256": "5eb8de037dbfbaafd0b9c416e9574ae200621c430d3520736e1a16a7b48616ef"
+    },
+    {
+      "path": "public/javascript/crear_convocatoria.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "a8fa6f633a840685f3bd5c231cb7f807a850270021aeca3932763cbc7cc0c116",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "abbc68af00a04295c5ea04531b82b42092f66b5dc557e8e9eebd008b9dfa4f2e",
+          "after": "a8fa6f633a840685f3bd5c231cb7f807a850270021aeca3932763cbc7cc0c116",
+          "patch": "tools/aliados_convocatorias/37.patch",
+          "patch_sha256": "1b77f8a9a168e2cc40559398515d7471c8c2d20e11357e2000fda1c49d0580e6"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "a8fa6f633a840685f3bd5c231cb7f807a850270021aeca3932763cbc7cc0c116",
+          "after": "a8fa6f633a840685f3bd5c231cb7f807a850270021aeca3932763cbc7cc0c116"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/37.patch",
+      "patch_sha256": "1b77f8a9a168e2cc40559398515d7471c8c2d20e11357e2000fda1c49d0580e6"
+    },
+    {
+      "path": "app/services/AliadoInternacionalService.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "ec16080efbc58fc4deec6aee48531fa00feec608a4566ef2eba134e7f36a58a1",
+      "variants": [
+        {
+          "label": "pr114-anterior",
+          "before": "4eb88284575b5f87df4f17b85091fc2956234a5ec78745c098ee35a210e8b031",
+          "after": "ec16080efbc58fc4deec6aee48531fa00feec608a4566ef2eba134e7f36a58a1",
+          "patch": "tools/aliados_convocatorias/38.patch",
+          "patch_sha256": "ee232dc415702680a99029025a6f3bcfdfe179a4ccd0d4bc3955eb6c0ba17b59"
+        }
+      ]
+    },
+    {
+      "path": "app/views/aliados/partials/internacional_form.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "766b880bb62580faa0b041e4049dc6f9b25b3ad1b7d78a6eeb00342e2e36ce02",
+      "variants": [
+        {
+          "label": "pr114-anterior",
+          "before": "d8ea6eeb96b7369b33b7be24b35abff50f6d79fa1b8685e05e26814f8dbf2d3e",
+          "after": "766b880bb62580faa0b041e4049dc6f9b25b3ad1b7d78a6eeb00342e2e36ce02",
+          "patch": "tools/aliados_convocatorias/39.patch",
+          "patch_sha256": "c9d9403347dd5d69b971919df949fc6391feb86a62bb1bea9edc07446552f5a8"
+        }
+      ]
+    },
+    {
+      "path": "app/views/convocatorias/partials/crear_modal.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "8ba37951f26d474bd1412aa930af44cb1e07e7700711778289c95afb29d542ae",
+      "variants": [
+        {
+          "label": "pr114-anterior",
+          "before": "8ba37951f26d474bd1412aa930af44cb1e07e7700711778289c95afb29d542ae",
+          "after": "8ba37951f26d474bd1412aa930af44cb1e07e7700711778289c95afb29d542ae"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/aliados_internacionales.js",
+      "kind": "js",
+      "new": true,
+      "target_sha256": "4bb12728e485ea80f2ddf302ce37b3ffe01f06dfc69eb07625a984bc6b5633c0",
+      "variants": [
+        {
+          "label": "pr114-anterior",
+          "before": "f946a1c4b6b2b350f711d0f3bfab8f9d68770861aab9ad2345091e88ae75393a",
+          "after": "4bb12728e485ea80f2ddf302ce37b3ffe01f06dfc69eb07625a984bc6b5633c0",
+          "patch": "tools/aliados_convocatorias/40.patch",
+          "patch_sha256": "13d9acd23dcdb3353b30e23c4f3b7c4522485724b780c004dc684f3d1bc9d439"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/convocatoria_crear_compartido.js",
+      "kind": "js",
+      "new": true,
+      "target_sha256": "68a387335921fe7c0d56d5abf0b5ad9a218ec9c7aa6a632b0a67fdde0dc37391",
+      "variants": [
+        {
+          "label": "pr114-anterior",
+          "before": "68a387335921fe7c0d56d5abf0b5ad9a218ec9c7aa6a632b0a67fdde0dc37391",
+          "after": "68a387335921fe7c0d56d5abf0b5ad9a218ec9c7aa6a632b0a67fdde0dc37391"
+        }
+      ]
+    },
+    {
+      "path": "app/views/aliados/index.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "91bc78b719c795b3550ee41a783bb1ec3adb9749ae384cae664435d43bc6f550",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "3d48a644680545e9fd6ede86253950833c43468c30505bbf7a76d0e09cd23db8",
+          "after": "91bc78b719c795b3550ee41a783bb1ec3adb9749ae384cae664435d43bc6f550",
+          "patch": "tools/aliados_convocatorias/41.patch",
+          "patch_sha256": "ecf7fbed68579a9de7bc20a31fefe425c461a4e7ef359e00e510fa74e012b99b"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "3d48a644680545e9fd6ede86253950833c43468c30505bbf7a76d0e09cd23db8",
+          "after": "91bc78b719c795b3550ee41a783bb1ec3adb9749ae384cae664435d43bc6f550",
+          "patch": "tools/aliados_convocatorias/42.patch",
+          "patch_sha256": "ecf7fbed68579a9de7bc20a31fefe425c461a4e7ef359e00e510fa74e012b99b"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/41.patch",
+      "patch_sha256": "ecf7fbed68579a9de7bc20a31fefe425c461a4e7ef359e00e510fa74e012b99b"
+    },
+    {
+      "path": "app/views/layout/sidebar.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "e06b73d222097ea82722c27c5d289875652eca2371ba0fe7312d4587face6c35",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "9cc7c3a092e591b2b8bb80d79926e7847a7e217b3321688d7fab5a46377816c4",
+          "after": "e06b73d222097ea82722c27c5d289875652eca2371ba0fe7312d4587face6c35",
+          "patch": "tools/aliados_convocatorias/43.patch",
+          "patch_sha256": "6ae33af1d642af1a68351f3ead17076bfa72ff877d74800a459e09fdd39fcf1b"
+        },
+        {
+          "label": "pr114-anterior",
+          "before": "9cc7c3a092e591b2b8bb80d79926e7847a7e217b3321688d7fab5a46377816c4",
+          "after": "e06b73d222097ea82722c27c5d289875652eca2371ba0fe7312d4587face6c35",
+          "patch": "tools/aliados_convocatorias/44.patch",
+          "patch_sha256": "6ae33af1d642af1a68351f3ead17076bfa72ff877d74800a459e09fdd39fcf1b"
+        }
+      ],
+      "patch": "tools/aliados_convocatorias/43.patch",
+      "patch_sha256": "6ae33af1d642af1a68351f3ead17076bfa72ff877d74800a459e09fdd39fcf1b"
+    },
+    {
+      "path": "app/views/aliados/partials/internacional_detalles.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "59976d91b7a812be304a1ee7847db4474cc45f29d12e56b007024f1a9586df3b",
+      "variants": []
+    },
+    {
+      "path": "public/css/aliados_internacionales.css",
+      "kind": "css",
+      "new": true,
+      "target_sha256": "054f79de0c5f975c5c481aa325f8f22d52bf36cb0247316f815f5fd2084fe32a",
+      "variants": []
+    }
+  ]
+}

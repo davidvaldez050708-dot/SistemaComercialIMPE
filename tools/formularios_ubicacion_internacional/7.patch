@@ -1,0 +1,28 @@
+--- a/app/views/formularios/publico_registro.php
++++ b/app/views/formularios/publico_registro.php
+@@ -89,6 +89,7 @@
+                 method="post"
+                 novalidate
+                 data-formulario-registro-publico>
++                <input type="hidden" name="csrf_formulario_publico" value="<?= $texto($_SESSION['csrf_formulario_publico'] ?? '') ?>">
+ 
+                 <section class="formulario-publico-section">
+                     <div class="formulario-publico-section-heading">
+@@ -328,6 +329,9 @@
+                     </div>
+ 
+                     <div class="formulario-publico-grid">
++                        <?php if (!empty($aliadoFormulario['internacional'])): ?>
++                        <?php require __DIR__ . '/ubicacion_internacional.php'; ?>
++                        <?php else: ?>
+                         <div class="formulario-publico-field formulario-publico-estado">
+                             <label for="registro_publico_estado">
+                                 Estado <strong>*</strong>
+@@ -368,6 +372,7 @@
+                                 Selecciona un municipio.
+                             </div>
+                         </div>
++                        <?php endif; ?>
+                     </div>
+                 </section>
+ 

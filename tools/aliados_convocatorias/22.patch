@@ -1,0 +1,103 @@
+--- a/app/controllers/ConvocatoriaController.php
++++ b/app/controllers/ConvocatoriaController.php
+@@ -4,6 +4,8 @@
+ require_once __DIR__ . '/../models/CrearConvocatoriaModel.php';
+ require_once __DIR__ . '/../models/TerritorioModel.php';
+ require_once __DIR__ . '/../helpers/PermissionHelper.php';
++
++require_once __DIR__ . '/../services/AliadoInternacionalService.php';
+ 
+ class ConvocatoriaController
+ {
+@@ -372,6 +374,7 @@
+         $this->validarPermiso('convocatorias.crear');
+         $this->validarMetodoPost();
+ 
++        if (array_key_exists('aliado_internacional_id', $_POST)) { $this->guardarInternacional(); return; }
+         $modelo = new ConvocatoriaModel();
+         $territorioId = (int)($_POST['territorio_id'] ?? 0);
+         $seguimientoOrigenIdGuardar = (int)(
+@@ -466,11 +469,64 @@
+         $this->redirigir($territorioId, $tipoConvocatoria, $subtipoConvocatoria);
+     }
+ 
++    private function guardarInternacional()
++    {
++        if (!AliadoInternacionalService::puedeConsultar()) { http_response_code(403); exit; }
++        $id=(int)($_POST['aliado_internacional_id']??0);
++        $retorno=BASE_URL.'index.php?controller=aliado&action=internacionales&crear_convocatoria='.$id;
++        $imagen=['nueva'=>false,'ruta'=>''];
++        try {
++            if (!AliadoInternacionalService::puedeConsultar()) { throw new DomainException('No tienes acceso internacional.'); }
++            $csrf=$_POST['csrf_internacional']??null;$ref=$_POST['referencia_internacional']??null;
++            if (!is_string($csrf)||empty($_SESSION['csrf_aliados_internacionales'])||!hash_equals($_SESSION['csrf_aliados_internacionales'], $csrf)||!is_string($ref)||!preg_match('/^[a-f0-9]{32}$/D',$ref)||($_SESSION['convocatoria_refs'][$ref]??null)!==$id) {
++                http_response_code(403);echo 'Solicitud de convocatoria no válida.';return;
++            }
++            $db=(new Database())->connect();$svc=new AliadoInternacionalService($db);$aliado=$svc->obtener($id);
++            if (!(int)$aliado['activo']) { throw new DomainException('El aliado está inactivo.'); }
++            $oferta=null;
++            foreach ($svc->ofertas($id) as $o) { if ($o['valor']===($_POST['clasificacion']??'')) { $oferta=$o;break; } }
++            if (!$oferta) { throw new DomainException('La oferta seleccionada no está autorizada para este aliado.'); }
++            $formulario=$_POST['formulario_internacional']??'';
++            if (!in_array($formulario,['registro','inscripcion'],true)) { throw new DomainException('Selecciona Registro o Inscripción.'); }
++            $datos=$this->limpiarDatos($_POST);
++            // URL del servidor: nunca se persiste un enlace arbitrario recibido del cliente.
++            $datos['enlace_registro']=BASE_URL.'index.php?controller=formularioPublico&action='.$formulario.'&aliado='.$aliado['token'].'&convocatoria_ref='.$ref;
++            [$tipo,$subtipo]=explode('|',$oferta['valor']);
++            $errores=$this->validarDatos($datos,[],true,false,true);
++            $imagen=$this->procesarImagen('');if ($imagen['error']!=='') { $errores[]=$imagen['error']; }
++            if ($errores) { throw new DomainException(implode(' ',$errores)); }
++            $datos['imagen']=$imagen['ruta'];$datos['usuario_id']=(int)$_SESSION['usuario_id'];$datos['tipo_convocatoria']=$tipo;$datos['subtipo_convocatoria']=$subtipo;
++            $cid=(new ConvocatoriaModel($db))->crear($datos,[],function ($conexion,$cid) use ($id,$oferta,$formulario,$ref,$datos) {
++                $svc=new AliadoInternacionalService($conexion);
++                // La asociación vuelve a comprobar autorización antes de confirmar la transacción.
++                $actual=$svc->ofertas($id);
++                if (!in_array($oferta['codigo'],array_column($actual,'codigo'),true)) { throw new DomainException('Oferta revocada.'); }
++                $svc->relacionar($id,$cid,$oferta['codigo'],$formulario,$ref,$datos['usuario_id']);
++            });
++            if (!$cid) { throw new DomainException('No se pudo guardar la convocatoria. No se registró una relación parcial.'); }
++            unset($_SESSION['convocatoria_refs'][$ref]);
++            $_SESSION['mensaje_internacional']='Convocatoria registrada correctamente.';
++            $retorno=BASE_URL.'index.php?controller=aliado&action=internacionales';
++        } catch (Throwable $e) {
++            if (!empty($imagen['nueva'])) { $this->eliminarImagen($imagen['ruta']); }
++            error_log('[convocatoria_internacional] '.$e->getMessage());
++            $_SESSION['error_internacional']=$e instanceof DomainException?$e->getMessage():'No fue posible registrar la convocatoria.';
++        }
++        header('Location: '.$retorno);exit;
++    }
++
+     public function actualizar()
+     {
+         $this->validarPermiso('convocatorias.editar');
+         $this->validarMetodoPost();
+ 
++        $dbInternacional=(new Database())->connect();
++        if ($dbInternacional->query("SHOW TABLES LIKE 'formulario_aliado_convocatorias'")->num_rows) {
++            $identificador=(int)($_POST['id']??0);
++            $q=$dbInternacional->prepare('SELECT convocatoria_id FROM formulario_aliado_convocatorias WHERE convocatoria_id=?');
++            $q->bind_param('i',$identificador);$q->execute();
++            if ($q->get_result()->num_rows) { http_response_code(403);echo 'Esta convocatoria se gestiona desde Aliados internacionales.';return; }
++        }
+         $modelo = new ConvocatoriaModel();
+         $territorioId = (int)($_POST['territorio_id'] ?? 0);
+         $tipoConvocatoria = strtolower(trim((string)($_POST['tipo'] ?? '')));
+@@ -954,7 +1010,8 @@
+         $datos,
+         $estadosIds,
+         $requiereImagen,
+-        $fechasOpcionales = false
++        $fechasOpcionales = false,
++        $esInternacional = false
+     ) {
+         $errores = [];
+ 
+@@ -1016,7 +1073,7 @@
+             $errores[] = 'La fecha de término debe ser igual o posterior a la fecha de inicio.';
+         }
+ 
+-        if (empty($estadosIds)) {
++        if (!$esInternacional && empty($estadosIds)) {
+             $errores[] = 'Selecciona al menos un estado.';
+         }
+ 

@@ -1,0 +1,79 @@
+name: Aliados - convenios y convocatorias internacionales
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  integracion:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports:
+          - 33308:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33308
+      IMPE_DB_USER: root
+      IMPE_DB_PASSWORD: ''
+      IMPE_DB_NAME: impe_test_handly_convenios
+      IMPE_TEST_DB_NAME: impe_test_handly_convenios
+      IMPE_TEST_MYSQL_PORT: 33308
+      IMPE_BASE_URL: http://127.0.0.1:8101/
+      PLAYWRIGHT_MODULE_PATH: /tmp/aliados-browser/node_modules/playwright
+      BOOTSTRAP_MODULE_PATH: /tmp/aliados-browser/node_modules/bootstrap
+      IMPE_TEST_QR_MODULES: /tmp/aliados-browser/node_modules
+      IMPE_TEST_QR_LIVE: '1'
+      IMPE_TEST_OUTPUT: /tmp/aliados-capturas
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, curl, fileinfo
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/aliados-browser playwright bootstrap@5.3.8 jsqr pngjs @fontsource/manrope bootstrap-icons@1.13.1
+      - run: /tmp/aliados-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis de los archivos PHP y JavaScript modificados
+        run: |
+          git diff --name-only origin/main...HEAD -- '*.php' | while read file; do php -l "$file"; done
+          node --check public/javascript/convocatoria_crear_compartido.js
+          node --check public/javascript/aliados_internacionales.js
+          node --check public/javascript/crear_convocatoria.js
+      - run: php tests/aliados_internacionales_permisos.php
+      - name: Esquema y migración incremental idempotente
+        run: |
+          php tests/aliados_convocatorias_fixture.php
+          php tools/preparar_handly_formularios.php --apply
+          php tools/migrar_aliados_convocatorias.php --apply
+          php tools/migrar_aliados_convocatorias.php --apply
+          php tools/migrar_aliados_convocatorias.php --check
+          php tools/migrar_formularios_ubicacion_internacional.php --apply
+          php tools/migrar_formularios_ubicacion_internacional.php --apply
+          php tools/migrar_formularios_ubicacion_internacional.php --check
+          php tests/formularios_ubicacion_internacional_db.php
+      - name: Regresión de formularios y programas autorizados
+        run: php tests/formulario_aliados_db.php
+      - name: Institución, convenio y convocatorias en BD real
+        run: php tests/aliados_convocatorias_db.php
+      - name: Navegador y QR real decodificado
+        run: node tests/aliados_convocatorias_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aliados-internacionales-${{ strategy.job-index }}
+          path: /tmp/aliados-capturas
+      - name: Publicación selectiva y restauración
+        run: |
+          python3 tests/publicacion_aliados_convocatorias_test.py
+          python3 tests/publicacion_formularios_ubicacion_test.py

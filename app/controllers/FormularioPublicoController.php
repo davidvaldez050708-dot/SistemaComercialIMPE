@@ -9,6 +9,8 @@ class FormularioPublicoController
         $modelo = new FormularioRegistroModel();
         $estados = $modelo->obtenerEstadosActivos();
         $aliadoFormulario = $this->contextoAliado($modelo);
+        header('Cache-Control: no-store, private');
+        $_SESSION['csrf_formulario_publico'] = $_SESSION['csrf_formulario_publico'] ?? bin2hex(random_bytes(32));
         $perfilesInteres = $this->perfilesInteres($aliadoFormulario);
 
         /*
@@ -18,7 +20,8 @@ class FormularioPublicoController
         $esFormularioPublico = true;
         $registroAction = BASE_URL .
             'index.php?controller=formularioPublico&action=guardarRegistro' .
-            ($aliadoFormulario ? '&aliado=' . rawurlencode($_GET['aliado']) : '');
+            ($aliadoFormulario ? '&aliado=' . rawurlencode($_GET['aliado']) : '') .
+            ($aliadoFormulario && isset($_GET['convocatoria_ref']) ? '&convocatoria_ref=' . rawurlencode($_GET['convocatoria_ref']) : '');
         $municipiosUrl = BASE_URL .
             'index.php?controller=formularioPublico&action=municipios';
 
@@ -36,12 +39,15 @@ class FormularioPublicoController
     {
         $modelo = new FormularioRegistroModel();
         $estados = $modelo->obtenerEstadosActivos();
-        $aliadoFormulario = $this->contextoAliado($modelo);
+        $aliadoFormulario = $this->contextoAliado($modelo, 'inscripcion');
+        header('Cache-Control: no-store, private');
+        $_SESSION['csrf_formulario_publico'] = $_SESSION['csrf_formulario_publico'] ?? bin2hex(random_bytes(32));
         $perfilesInteres = $this->perfilesInteres($aliadoFormulario);
 
         $inscripcionAction = BASE_URL .
             'index.php?controller=formularioPublico&action=guardarInscripcion' .
-            ($aliadoFormulario ? '&aliado=' . rawurlencode($_GET['aliado']) : '');
+            ($aliadoFormulario ? '&aliado=' . rawurlencode($_GET['aliado']) : '') .
+            ($aliadoFormulario && isset($_GET['convocatoria_ref']) ? '&convocatoria_ref=' . rawurlencode($_GET['convocatoria_ref']) : '');
         $municipiosUrl = BASE_URL .
             'index.php?controller=formularioPublico&action=municipios';
 
@@ -114,8 +120,12 @@ class FormularioPublicoController
         }
 
         $aliadoFormulario = $this->contextoAliado();
+        $csrf = $_POST['csrf_formulario_publico'] ?? null;
+        if (!is_string($csrf) || empty($_SESSION['csrf_formulario_publico']) || !hash_equals($_SESSION['csrf_formulario_publico'], $csrf)) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>'Recarga el formulario e intenta nuevamente.'], 403);
+        }
         $datos = $this->normalizarRegistro($_POST);
-        if ($aliadoFormulario) { $datos['aliado_token'] = $_GET['aliado']; }
+        if ($aliadoFormulario) { $datos['aliado_token'] = $_GET['aliado']; if (isset($_GET['convocatoria_ref'])) { $datos['convocatoria_ref']=$_GET['convocatoria_ref']; } }
         $errores = $this->validarRegistro($datos, $aliadoFormulario);
 
         if (!empty($errores)) {
@@ -130,7 +140,7 @@ class FormularioPublicoController
             $modelo = new FormularioRegistroModel();
 
             if (
-                !$modelo->municipioPerteneceAEstado(
+                empty($aliadoFormulario['internacional']) && !$modelo->municipioPerteneceAEstado(
                     (int)$datos['municipio_id'],
                     (int)$datos['estado_id']
                 )
@@ -190,9 +200,13 @@ class FormularioPublicoController
             ], 405);
         }
 
-        $aliadoFormulario = $this->contextoAliado();
+        $aliadoFormulario = $this->contextoAliado(null, 'inscripcion');
+        $csrf = $_POST['csrf_formulario_publico'] ?? null;
+        if (!is_string($csrf) || empty($_SESSION['csrf_formulario_publico']) || !hash_equals($_SESSION['csrf_formulario_publico'], $csrf)) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>'Recarga el formulario e intenta nuevamente.'], 403);
+        }
         $datos = $this->normalizarRegistro($_POST);
-        if ($aliadoFormulario) { $datos['aliado_token'] = $_GET['aliado']; }
+        if ($aliadoFormulario) { $datos['aliado_token'] = $_GET['aliado']; if (isset($_GET['convocatoria_ref'])) { $datos['convocatoria_ref']=$_GET['convocatoria_ref']; } }
         $errores = $this->validarRegistro($datos, $aliadoFormulario);
 
         if (!empty($errores)) {
@@ -207,7 +221,7 @@ class FormularioPublicoController
             $modelo = new FormularioRegistroModel();
 
             if (
-                !$modelo->municipioPerteneceAEstado(
+                empty($aliadoFormulario['internacional']) && !$modelo->municipioPerteneceAEstado(
                     (int)$datos['municipio_id'],
                     (int)$datos['estado_id']
                 )
@@ -254,12 +268,14 @@ class FormularioPublicoController
         }
     }
 
-    private function contextoAliado($modelo = null)
+    private function contextoAliado($modelo = null, string $tipo = 'registro')
     {
         if (!array_key_exists('aliado', $_GET)) { return null; }
         try {
             $modelo = $modelo ?? new FormularioRegistroModel();
-            $aliado = $modelo->aliadoExclusivo($_GET['aliado']);
+            $aliado = array_key_exists('convocatoria_ref',$_GET)
+                ? $modelo->convocatoriaExclusiva($_GET['aliado'],$_GET['convocatoria_ref'],$tipo)
+                : $modelo->aliadoExclusivo($_GET['aliado']);
             if (!$aliado['programas']) { throw new DomainException('Sin programas autorizados.'); }
             header('Cache-Control: no-store');
             header('Referrer-Policy: same-origin');
@@ -341,8 +357,11 @@ class FormularioPublicoController
                 $limpiar($entrada['lugar_laboras'] ?? ''),
             'cargo_puesto' =>
                 $limpiar($entrada['cargo_puesto'] ?? ''),
-            'estado_id' => (int)($entrada['estado_id'] ?? 0),
-            'municipio_id' => (int)($entrada['municipio_id'] ?? 0)
+            'pais_nombre' => $limpiar($entrada['pais_nombre'] ?? ''),
+            'estado_provincia' => $limpiar($entrada['estado_provincia'] ?? ''),
+            'ciudad' => $limpiar($entrada['ciudad'] ?? ''),
+            'estado_id' => $entrada['estado_id'] ?? null,
+            'municipio_id' => $entrada['municipio_id'] ?? null
         ];
     }
 
@@ -466,6 +485,12 @@ class FormularioPublicoController
         if (mb_strlen($datos['cargo_puesto']) > 160) {
             $errores[] =
                 'El cargo o puesto no puede superar 160 caracteres.';
+        }
+
+        if (!empty($aliado['internacional'])) {
+            try { FormularioUbicacionService::validar($datos, true); }
+            catch (DomainException $e) { $errores[] = $e->getMessage(); }
+            return $errores;
         }
 
         if ((int)$datos['estado_id'] <= 0) {

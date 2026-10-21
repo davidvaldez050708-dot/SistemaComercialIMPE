@@ -1,0 +1,23 @@
+<?php $d=$aliadoEditar ?? []; ?>
+<div class="modal fade" id="modalAliadoInternacional" tabindex="-1" aria-labelledby="tituloAliadoInternacional" aria-hidden="true" <?= $aliadoEditar?'data-aliado-edit-open':'' ?>>
+ <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg system-form-dialog"><div class="modal-content system-form-modal">
+ <div class="modal-header system-form-modal-header"><div><h2 class="system-form-modal-title" id="tituloAliadoInternacional"><?= $aliadoEditar?'Editar institución':'Registrar institución' ?></h2><p class="system-form-modal-subtitle">Datos del aliado, su ubicación y sus programas autorizados.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+ <form method="post" action="<?= BASE_URL ?>index.php?controller=aliado&amp;action=guardarInternacional">
+ <input type="hidden" name="id" value="<?= (int)($d['id']??0) ?>"><input type="hidden" name="csrf_internacional" value="<?= $esc($_SESSION['csrf_aliados_internacionales']) ?>">
+ <div class="modal-body">
+ <fieldset class="international-form-section"><legend>Institución y ubicación</legend><div class="system-form-grid">
+ <div class="system-form-full"><label class="form-label" for="aliado_nombre">Nombre de la institución</label><input class="form-control system-form-control" id="aliado_nombre" name="nombre" value="<?= $esc($d['nombre']??'') ?>" minlength="2" maxlength="180" required autocomplete="organization"></div>
+ <div><label class="form-label" for="aliado_pais">País</label><select class="form-select system-form-control" name="pais_codigo" id="aliado_pais" required><option value="">Selecciona un país</option><?php foreach (AliadoInternacionalService::paises() as $codigo=>$nombre): ?><option value="<?= $codigo ?>" <?= ($d['pais_codigo']??'')===$codigo?'selected':'' ?>><?= $esc($nombre) ?></option><?php endforeach; ?></select></div>
+ <div data-aliado-otro-pais><label class="form-label" for="aliado_pais_nombre">Nombre del país</label><input class="form-control system-form-control" id="aliado_pais_nombre" name="pais_nombre" value="<?= $esc($d['pais_nombre']??'') ?>" minlength="2" maxlength="100"></div>
+ <p class="system-form-full form-text d-none" data-aliado-mexico>Para México utiliza el <a href="<?= BASE_URL ?>index.php?controller=aliado&amp;action=index">flujo territorial de Aliados nacionales</a>.</p>
+ <div><label class="form-label" for="aliado_region">Estado, provincia o región</label><input class="form-control system-form-control" id="aliado_region" name="region" value="<?= $esc($d['region']??'') ?>" minlength="2" maxlength="120" required autocomplete="address-level1"></div>
+ <div><label class="form-label" for="aliado_ciudad">Ciudad</label><input class="form-control system-form-control" id="aliado_ciudad" name="ciudad" value="<?= $esc($d['ciudad']??'') ?>" minlength="2" maxlength="120" required autocomplete="address-level2"></div>
+ </div></fieldset>
+ <fieldset class="international-form-section"><legend>Contacto institucional</legend><div class="system-form-grid">
+ <div><label class="form-label" for="aliado_contacto">Persona de contacto <span class="text-muted">(opcional)</span></label><input class="form-control system-form-control" id="aliado_contacto" name="contacto_nombre" value="<?= $esc($d['contacto_nombre']??'') ?>" maxlength="180" autocomplete="name"></div>
+ <div><label class="form-label" for="aliado_telefono">Teléfono <span class="text-muted">(opcional)</span></label><input type="tel" class="form-control system-form-control" id="aliado_telefono" name="contacto_telefono" value="<?= $esc($d['contacto_telefono']??'') ?>" maxlength="80" autocomplete="tel"></div>
+ </div></fieldset>
+ <?php if (!$aliadoEditar): ?><fieldset class="international-form-section"><legend>Programas autorizados</legend><p class="form-text">Selecciona al menos uno. Los formularios exclusivos solo admitirán estos programas.</p><div class="international-program-options"><?php foreach ($programasCatalogo as $p): ?><label class="form-check"><input class="form-check-input" type="checkbox" name="programas[]" value="<?= $esc($p['codigo']) ?>"><span class="form-check-label"><?= $esc($p['nombre']) ?></span></label><?php endforeach; ?></div></fieldset><?php else: ?><p class="form-text mt-3 mb-0">La edición conserva los programas autorizados, el convenio y los enlaces actuales.</p><?php endif; ?>
+ </div><div class="modal-footer"><button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-system-save"><i class="bi bi-check2" aria-hidden="true"></i> Guardar institución</button></div>
+ </form></div></div>
+</div>

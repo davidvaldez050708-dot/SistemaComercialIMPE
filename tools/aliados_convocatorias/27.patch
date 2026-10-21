@@ -1,0 +1,10 @@
+--- a/app/models/AliadoInternacionalModel.php
++++ b/app/models/AliadoInternacionalModel.php
+@@ -1,6 +1,6 @@
+ <?php
+ 
+-/** Consulta de solo lectura; el controlador exige sesión, permiso y Administración. */
++/** Consulta de solo lectura; el controlador exige sesión y autorización internacional. */
+ class AliadoInternacionalModel
+ {
+     private mysqli $db;

@@ -1,46 +1,88 @@
 <?php
-$esc = static fn($value) => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+$estructuraGestion = $estructuraGestion ?? false;
+$convocatoriasExternas = $convocatoriasExternas ?? [];
+$programasCatalogo = $programasCatalogo ?? [];
+$aliadoConvocatoria = $aliadoConvocatoria ?? null;
+$aliadoEditar = $aliadoEditar ?? null;
+$esc = static fn($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+$fecha = static fn($v) => $v ? date('d/m/Y', strtotime($v)) : 'Sin fecha';
+$puedeConfigurar = $estructuraGestion && tienePermiso('aliados.internacionales.configurar');
+$puedeConvenio = $puedeConfigurar && tienePermiso('convenios.gestionar');
+$puedeConvocatoria = $estructuraGestion && tienePermiso('convocatorias.crear');
+$puedeVerConvocatorias = $estructuraGestion && tienePermiso('convocatorias.ver');
+$porAliado = [];
+foreach ($convocatoriasExternas as $c) { $porAliado[(int)$c['aliado_id']][] = $c; }
+$activos = count(array_filter($externos, static fn($a) => (int)$a['activo'] === 1));
+$conConvenio = count(array_filter($externos, static fn($a) => !empty($a['convenio_referencia'])));
 ?>
-<section class="dashboard-panel" style="padding:22px">
- <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start mb-4">
-  <div><span class="text-muted text-uppercase">Aliados · Internacionales</span><h2 class="panel-title mt-2">Instituciones externas</h2><p class="text-muted mb-0">Configuraciones de formularios sin territorio mexicano asignado. Consulta disponible únicamente para Administración.</p></div>
-  <a class="btn btn-system-light" href="<?= BASE_URL ?>index.php?controller=aliado&amp;action=index"><i class="bi bi-arrow-left"></i> Volver a Aliados</a>
- </div>
+<section class="aliados-module aliados-international" data-international-directory>
+ <header class="dashboard-panel international-heading">
+  <div><span class="aliados-eyebrow"><i class="bi bi-globe-americas" aria-hidden="true"></i> ALIADOS · COBERTURA INTERNACIONAL</span><h2 class="panel-title">Aliados Internacionales</h2><p>Instituciones, convenios y convocatorias con enlaces exclusivos.</p></div>
+  <div class="aliados-actions"><a class="btn btn-system-light" href="<?= BASE_URL ?>index.php?controller=aliado&amp;action=index"><i class="bi bi-arrow-left" aria-hidden="true"></i> Aliados</a>
+  <?php if ($puedeConfigurar): ?><button type="button" class="btn btn-system-save" data-bs-toggle="modal" data-bs-target="#modalAliadoInternacional"><i class="bi bi-plus-lg" aria-hidden="true"></i> Registrar institución</button><?php endif; ?></div>
+ </header>
  <?php if ($errorExternos !== ''): ?><div class="alert alert-warning" role="alert"><?= $esc($errorExternos) ?></div><?php endif; ?>
- <div class="row g-3">
- <?php foreach ($externos as $aliado): ?>
- <?php $enlaceRegistro=BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.rawurlencode($aliado['token']);
-       $enlaceInscripcion=BASE_URL.'index.php?controller=formularioPublico&action=inscripcion&aliado='.rawurlencode($aliado['token']); ?>
-  <div class="col-12 col-xl-6"><article class="card h-100 border rounded-3"><div class="card-body p-4">
-   <div class="d-flex justify-content-between gap-2 flex-wrap"><h3 class="h5 mb-1"><?= $esc($aliado['nombre']) ?></h3><span class="badge text-bg-<?= (int)$aliado['activo']===1?'success':'secondary' ?>"><?= (int)$aliado['activo']===1?'Activo':'Inactivo' ?></span></div>
-   <p class="text-muted mb-2"><i class="bi bi-geo-alt"></i> <?= $esc($aliado['ubicacion']) ?></p>
-   <?php if ($aliado['slug'] === 'handly-lenguaje-center'): ?><p class="mb-2"><strong>Giro:</strong> Educativo · <strong>Contacto:</strong> Adalid Kuribeña · <strong>Teléfono:</strong> 7775635090</p><?php endif; ?>
-   <p class="mb-3"><strong>Programas autorizados:</strong> <?= $esc($aliado['programas'] ?: 'Sin programas') ?></p>
-   <div class="d-flex flex-wrap gap-2">
-   <?php if ((int)$aliado['activo'] === 1): ?>
-    <a class="btn btn-system-save" href="<?= $esc($enlaceRegistro) ?>" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> Formulario de registro</a>
-    <a class="btn btn-system-light" href="<?= $esc($enlaceInscripcion) ?>" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> Formulario de inscripción</a>
-    <button type="button" class="btn btn-system-light" data-copy-ally-url="<?= $esc($enlaceRegistro) ?>">Copiar registro</button>
-    <button type="button" class="btn btn-system-light" data-copy-ally-url="<?= $esc($enlaceInscripcion) ?>">Copiar inscripción</button>
-   <?php else: ?><span class="text-muted">Enlaces desactivados.</span><?php endif; ?>
-   </div>
-  </div></article></div>
- <?php endforeach; ?>
- <?php if (!$externos): ?><div class="col-12"><div class="alert alert-light border">Aún no hay aliados internacionales configurados.</div></div><?php endif; ?>
+ <?php foreach (['mensaje_internacional'=>'success','error_internacional'=>'danger'] as $clave=>$clase): if (!empty($_SESSION[$clave])): ?>
+ <div class="alert alert-<?= $clase ?>" role="alert"><?= $esc($_SESSION[$clave]) ?></div>
+ <?php unset($_SESSION[$clave]);endif;endforeach; ?>
+ <div class="aliados-summary-grid" aria-label="Resumen internacional">
+  <?php foreach ([['buildings',$activos,'Instituciones activas'],['file-earmark-check',$conConvenio,'Convenios registrados']] as [$icon,$total,$label]): ?>
+  <div class="aliados-summary-card"><span class="aliados-summary-icon"><i class="bi bi-<?= $icon ?>" aria-hidden="true"></i></span><div><strong><?= $total ?></strong><span><?= $label ?></span></div></div><?php endforeach; ?>
+  <?php if ($puedeVerConvocatorias): ?><div class="aliados-summary-card"><span class="aliados-summary-icon"><i class="bi bi-megaphone" aria-hidden="true"></i></span><div><strong><?= count($convocatoriasExternas) ?></strong><span>Convocatorias registradas</span></div></div><?php endif; ?>
  </div>
+ <section class="dashboard-panel aliados-directory-panel">
+  <div class="aliados-directory-controls">
+   <div class="aliados-section-heading"><div><h3>Directorio de instituciones</h3><p>Consulta la ubicación, el contacto y los programas autorizados.</p></div><span class="aliados-result-count" data-international-count aria-live="polite"><?= count($externos) ?> instituciones</span></div>
+   <form class="aliados-filter-grid international-filters" role="search" data-international-filters>
+    <div><label class="form-label" for="international-search">Institución o ubicación</label><div class="aliados-input-icon"><i class="bi bi-search" aria-hidden="true"></i><input id="international-search" class="form-control" type="search" placeholder="Nombre, país, estado o ciudad…" autocomplete="off"></div></div>
+    <div><label class="form-label" for="international-status">Actividad</label><select id="international-status" class="form-select"><option value="">Todas las instituciones</option><option value="1">Activas</option><option value="0">Inactivas</option></select></div>
+   </form>
+  </div>
+  <div class="aliados-directory-results international-list">
+  <?php foreach ($externos as $aliado):
+   $id=(int)$aliado['id'];$propias=$porAliado[$id]??[];
+   $enlaceRegistro=BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.rawurlencode($aliado['token']);
+   $enlaceInscripcion=BASE_URL.'index.php?controller=formularioPublico&action=inscripcion&aliado='.rawurlencode($aliado['token']);
+   $contacto=$aliado['contacto_nombre']??'';$telefono=$aliado['contacto_telefono']??'';
+   if (!$contacto && $aliado['slug']==='handly-lenguaje-center') { $contacto='Adalid Kuribeña';$telefono='7775635090'; }
+  ?>
+   <article class="international-row" data-international-row data-activity="<?= (int)$aliado['activo'] ?>" data-search="<?= $esc(implode(' ',[$aliado['nombre'],$aliado['ubicacion'],$aliado['pais_nombre']??'',$aliado['region']??'',$aliado['ciudad']??''])) ?>">
+    <div class="international-identity"><span class="aliados-summary-icon"><i class="bi bi-building" aria-hidden="true"></i></span><div><h3><?= $esc($aliado['nombre']) ?></h3><p><i class="bi bi-geo-alt" aria-hidden="true"></i> <?= $esc($aliado['ubicacion']) ?></p><span class="aliados-followup-pill <?= (int)$aliado['activo']?'text-success':'text-muted' ?>"><?= (int)$aliado['activo']?'Activa':'Inactiva' ?></span></div></div>
+    <div class="international-contact"><span class="international-label">Contacto</span><strong><?= $esc($contacto ?: 'Sin contacto registrado') ?></strong><span><?= $esc($telefono) ?></span></div>
+    <div class="international-programs"><span class="international-label">Programas autorizados</span><p><?= $esc($aliado['programas'] ?: 'Sin programas') ?></p><div class="international-meta"><span class="<?= !empty($aliado['convenio_referencia'])?'aliados-source-chip':'aliados-result-count' ?>"><i class="bi bi-file-earmark-check" aria-hidden="true"></i> <?= !empty($aliado['convenio_referencia'])?'Convenio registrado':'Sin convenio' ?></span><?php if ($puedeVerConvocatorias): ?><span class="aliados-result-count"><?= count($propias) ?> convocatorias</span><?php endif; ?></div></div>
+    <div class="international-row-actions">
+     <button type="button" class="btn btn-system-light" data-bs-toggle="modal" data-bs-target="#modalDetalleInternacional" data-international-template="detalle-<?= $id ?>"><i class="bi bi-eye" aria-hidden="true"></i> Ver detalles</button>
+     <div class="dropdown"><button type="button" class="btn btn-system-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acciones de <?= $esc($aliado['nombre']) ?>">Gestionar</button><ul class="dropdown-menu dropdown-menu-end">
+      <?php if ($puedeConfigurar): ?><li><a class="dropdown-item" href="<?= BASE_URL ?>index.php?controller=aliado&amp;action=internacionales&amp;editar=<?= $id ?>"><i class="bi bi-pencil" aria-hidden="true"></i> Editar institución</a></li><?php endif; ?>
+      <?php if ($puedeConvenio): ?><li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalConvenioInternacional" data-international-template="convenio-<?= $id ?>"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Gestionar convenio</button></li><?php endif; ?>
+      <?php if ($puedeConvocatoria && (int)$aliado['activo']): ?><li><a class="dropdown-item" href="<?= BASE_URL ?>index.php?controller=aliado&amp;action=internacionales&amp;crear_convocatoria=<?= $id ?>"><i class="bi bi-megaphone" aria-hidden="true"></i> Crear convocatoria</a></li><?php endif; ?>
+      <?php if ($puedeVerConvocatorias): ?><li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalConvocatoriasInternacional" data-international-template="convocatorias-<?= $id ?>"><i class="bi bi-qr-code" aria-hidden="true"></i> Consultar convocatorias y QR</button></li><?php endif; ?>
+      <?php if (!$puedeConfigurar && !$puedeConvenio && !$puedeConvocatoria && !$puedeVerConvocatorias): ?><li><span class="dropdown-item-text text-muted">Sin acciones adicionales</span></li><?php endif; ?>
+     </ul></div>
+    </div>
+   </article>
+   <?php require __DIR__.'/partials/internacional_detalles.php'; ?>
+  <?php endforeach; ?>
+  </div>
+  <div class="data-empty-state linkage-empty-state international-empty" data-international-empty <?= $externos?'hidden':'' ?>><i class="bi bi-globe-americas" aria-hidden="true"></i><strong><?= $externos?'No se encontraron instituciones.':'Aún no hay aliados internacionales.' ?></strong><p><?= $externos?'Prueba otro nombre o ubicación, o cambia el filtro de actividad.':'Las instituciones registradas aparecerán en este directorio.' ?></p></div>
+  <nav class="data-pagination linkage-pagination international-pagination" aria-label="Paginación de instituciones" data-international-pagination><span data-international-page-label></span><div class="aliados-actions"><button type="button" class="btn btn-system-light" data-international-prev>Anterior</button><span data-international-page aria-live="polite"></span><button type="button" class="btn btn-system-light" data-international-next>Siguiente</button></div></nav>
+ </section>
+ <?php if ((int)($_SESSION['rol_id']??0)===1): ?>
+ <section class="dashboard-panel aliados-directory-panel">
+  <div class="aliados-directory-controls aliados-section-heading"><div><h3>Respuestas recibidas</h3><p>Últimas 150 respuestas de enlaces internacionales. Acceso administrativo.</p></div><span class="aliados-result-count"><?= count($respuestas) ?> respuestas</span></div>
+  <div class="table-responsive"><table class="table table-hover align-middle mb-0 international-responses"><caption class="visually-hidden">Respuestas recibidas por aliado y formulario</caption><thead><tr><th scope="col">Fecha</th><th scope="col">Aliado</th><th scope="col">Formulario</th><th scope="col">Interesado</th><th scope="col">Programa</th><th scope="col">Contacto</th></tr></thead><tbody>
+  <?php foreach ($respuestas as $fila): ?><tr><td><?= $esc($fecha($fila['created_at'])) ?></td><td><?= $esc($fila['aliado']) ?></td><td><?= $esc(ucfirst($fila['tipo'])) ?></td><td><?= $esc(trim($fila['nombre'].' '.$fila['apellido'])) ?></td><td><?= $esc($fila['programa']) ?></td><td><?= $esc($fila['correo']) ?><br><?= $esc($fila['movil']) ?><?php if (!empty($fila['estado_provincia'])): ?><br><span class="text-muted"><?= $esc(implode(', ', array_filter([$fila['ciudad'] ?? '', $fila['estado_provincia'], $fila['pais_nombre'] ?? '']))) ?></span><?php endif; ?></td></tr><?php endforeach; ?>
+  <?php if (!$respuestas): ?><tr><td colspan="6" class="text-muted text-center py-4">Todavía no hay respuestas recibidas.</td></tr><?php endif; ?></tbody></table></div>
+ </section><?php endif; ?>
 </section>
-<section class="dashboard-panel mt-3" style="padding:22px">
- <h3 class="panel-title mb-2">Respuestas recibidas</h3><p class="text-muted">Últimas 150 respuestas de aliados externos. Registro e Inscripción se consultan sin mezclarse con los formularios generales.</p>
- <div class="table-responsive"><table class="table table-hover align-middle">
- <thead><tr><th>Fecha</th><th>Aliado</th><th>Tipo</th><th>Interesado</th><th>Programa</th><th>Correo</th><th>Teléfono</th></tr></thead>
- <tbody>
- <?php foreach($respuestas as $fila): ?><tr>
- <td><?= $esc($fila['created_at']) ?></td><td><?= $esc($fila['aliado']) ?></td>
- <td><?= $esc(ucfirst($fila['tipo'])) ?></td>
- <td><?= $esc(trim((string)$fila['nombre'].' '.(string)$fila['apellido'])) ?></td>
- <td><?= $esc($fila['programa']) ?></td><td><?= $esc($fila['correo']) ?></td><td><?= $esc($fila['movil']) ?></td>
- </tr><?php endforeach; ?>
- <?php if (!$respuestas): ?><tr><td colspan="7" class="text-muted text-center py-4">Todavía no hay respuestas recibidas por enlaces de aliados externos.</td></tr><?php endif; ?>
- </tbody></table></div>
-</section>
-<script>document.querySelectorAll('[data-copy-ally-url]').forEach(function(button){button.addEventListener('click',async function(){try{await navigator.clipboard.writeText(button.dataset.copyAllyUrl);const previous=button.textContent;button.textContent='¡Enlace copiado!';setTimeout(()=>button.textContent=previous,1800);}catch(e){window.prompt('Copia el enlace:',button.dataset.copyAllyUrl);}});});</script>
+<?php foreach (['Detalle'=>'Detalles de la institución','Convocatorias'=>'Convocatorias y códigos QR','Convenio'=>'Gestionar convenio'] as $tipo=>$titulo): if (($tipo==='Convocatorias'&&!$puedeVerConvocatorias)||($tipo==='Convenio'&&!$puedeConvenio)) continue; ?>
+<div class="modal fade international-modal" id="modal<?= $tipo ?>Internacional" tabindex="-1" aria-labelledby="titulo<?= $tipo ?>Internacional" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg system-form-dialog"><div class="modal-content system-form-modal"><div class="modal-header system-form-modal-header"><h2 class="system-form-modal-title" id="titulo<?= $tipo ?>Internacional"><?= $titulo ?></h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div><div class="modal-body" data-international-modal-body></div><div class="modal-footer"><button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cerrar</button></div></div></div></div>
+<?php endforeach; ?>
+<?php if ($puedeConfigurar) { require __DIR__.'/partials/internacional_form.php'; } ?>
+<?php if ($aliadoConvocatoria):
+ $texto=$esc;$territorioSeleccionado=['id'=>0,'nombre'=>''];$territorioActualId=0;$seguimientoOrigenId=(int)$aliadoConvocatoria['seguimiento_id'];$desdeConvenio=false;
+ $tipoConvocatoria='';$datosCrear=[];$vistaConvocatoriasInicial='activas';$fechasOpcionalesConvocatoria=false;$clasificacionesDisponibles=$ofertasInternacionales;
+ require dirname(__DIR__).'/convocatorias/partials/crear_modal.php'; ?>
+ <script src="<?= BASE_URL ?>public/javascript/convocatoria_crear_compartido.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/convocatoria_crear_compartido.js') ?>"></script>
+<?php endif; ?>
+<script src="<?= BASE_URL ?>public/javascript/aliados_internacionales.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/aliados_internacionales.js') ?>"></script>

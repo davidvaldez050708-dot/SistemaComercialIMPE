@@ -1,0 +1,15 @@
+--- a/public/javascript/formularios_registro_publico.js
++++ b/public/javascript/formularios_registro_publico.js
+@@ -221,8 +221,10 @@
+             validarTelRecomendado(),
+             validarCorreos(),
+             validarSelect(perfil),
+-            validarSelect(estado),
+-            validarSelect(municipio)
++            ...(estado ? [validarSelect(estado), validarSelect(municipio)] :
++                Array.from(form.querySelectorAll('[data-ubicacion-internacional]')).map(function (campo) {
++                    return marcar(campo, campo.value.trim().length >= 2 && campo.checkValidity());
++                }))
+         ].every(Boolean);
+     };
+ 

@@ -51,6 +51,8 @@ try {
     }
 } finally { $db->rollback(); }
 
+require_once __DIR__.'/../app/helpers/PermissionHelper.php';
+$_SESSION=['usuario_id'=>1,'rol_id'=>1,'permisos'=>['aliados.ver']];
 // Render real de la vista: datos escapados, enlaces originales, contacto y estado.
 $errorExternos = '';
 $externos = [$handly];

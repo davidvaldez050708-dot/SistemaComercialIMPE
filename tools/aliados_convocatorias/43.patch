@@ -1,0 +1,19 @@
+--- a/app/views/layout/sidebar.php
++++ b/app/views/layout/sidebar.php
+@@ -1,6 +1,7 @@
+ <?php
+ 
+ require_once __DIR__ . '/../../helpers/AvatarHelper.php';
++require_once __DIR__ . '/../../services/AliadoInternacionalService.php';
+ 
+ $opcionActiva = $opcionActiva ?? 'inicio';
+ $mostrarUsuarios = tienePermiso('usuarios.ver');
+@@ -14,7 +15,7 @@
+ $mostrarMisLlamadas = tienePermiso('telefonia.usar') && (int)($_SESSION['usuario_id'] ?? 0) > 0;
+ $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
+ $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
+-$mostrarAliados = tienePermiso('aliados.ver');
++$mostrarAliados = tienePermiso('aliados.ver') || AliadoInternacionalService::puedeConsultar();
+ $mostrarWhatsapp = tienePermiso('whatsapp.ver');
+ $mostrarConvocatorias = tienePermiso('convocatorias.ver');
+ $mostrarReporteTerritorial =

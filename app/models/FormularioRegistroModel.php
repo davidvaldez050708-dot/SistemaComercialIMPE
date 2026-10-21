@@ -71,6 +71,12 @@ class FormularioRegistroModel
         return $stmt->get_result()->num_rows > 0;
     }
 
+    public function convocatoriaExclusiva($token, $referencia, string $tipo)
+    {
+        require_once __DIR__ . '/../services/FormularioAliadoService.php';
+        return (new FormularioAliadoService($this->connection))->resolverConvocatoria($token,$referencia,$tipo);
+    }
+
     public function aliadoExclusivo($token)
     {
         require_once __DIR__ . '/../services/FormularioAliadoService.php';
@@ -85,9 +91,16 @@ class FormularioRegistroModel
             unset($datos['aliado_token']);
             $tipo = ($datos['origen'] ?? '') === 'PUBLICO_INSCRIPCION' ? 'inscripcion' : 'registro';
             return (new FormularioAliadoService($this->connection))->guardar(
-                $token, $datos, $tipo, function () use ($datos) { return $this->guardar($datos); }
+                $token, $datos, $tipo, function ($validados) { return $this->insertar($validados); }
             );
         }
+        require_once __DIR__ . '/../services/FormularioUbicacionService.php';
+        $datos = FormularioUbicacionService::validar($datos, false, $this->connection);
+        return $this->insertar($datos);
+    }
+
+    private function insertar(array $datos)
+    {
         $origenSolicitado = strtoupper(
             trim((string)($datos['origen'] ?? 'MARKETING'))
         );
@@ -141,11 +154,14 @@ class FormularioRegistroModel
                     cargo_puesto,
                     estado_id,
                     municipio_id,
+                    pais_nombre,
+                    estado_provincia,
+                    ciudad,
                     creado_por,
                     origen,
                     created_at,
                     updated_at
-                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, NOW(), NOW())";
+                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
 
         $stmt = $this->connection->prepare($sql);
 
@@ -158,7 +174,7 @@ class FormularioRegistroModel
         }
 
         $stmt->bind_param(
-            'ssssssssssiiis',
+            'ssssssssssiisssis',
             $datos['nombre'],
             $datos['apellido'],
             $datos['fecha_nacimiento'],
@@ -171,6 +187,9 @@ class FormularioRegistroModel
             $datos['cargo_puesto'],
             $datos['estado_id'],
             $datos['municipio_id'],
+            $datos['pais_nombre'],
+            $datos['estado_provincia'],
+            $datos['ciudad'],
             $creadoPor,
             $origen
         );

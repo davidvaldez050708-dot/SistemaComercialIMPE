@@ -1,0 +1,24 @@
+--- a/app/services/AliadoInternacionalService.php
++++ b/app/services/AliadoInternacionalService.php
+@@ -12,7 +12,12 @@
+     }
+     public static function puedeConsultar(): bool
+     {
+-        return tienePermiso('aliados.ver') && ((int)($_SESSION['rol_id'] ?? 0) === 1 || tienePermiso('aliados.internacionales.configurar') || (tienePermiso('convocatorias.ver') && tienePermiso('convocatorias.crear')));
++        // Consulta internacional sin exigir una asignación territorial mexicana.
++        // Configurar, formalizar y crear conservan sus permisos independientes.
++        return isset($_SESSION['usuario_id']) && (
++            (tienePermiso('aliados.ver') && ((int)($_SESSION['rol_id'] ?? 0) === 1 || tienePermiso('convocatorias.ver') || tienePermiso('aliados.internacionales.configurar'))) ||
++            (tienePermiso('convocatorias.ver') && tienePermiso('convocatorias.crear'))
++        );
+     }
+     public function obtener(int $id, bool $lock = false): array
+     {
+@@ -112,6 +117,6 @@
+     }
+     public function convocatorias(): array
+     {
+-        return $this->db->query('SELECT x.*,c.titulo,c.enlace_registro,c.estado,c.fecha_inicio,c.fecha_termino FROM formulario_aliado_convocatorias x INNER JOIN convocatorias c ON c.id=x.convocatoria_id ORDER BY c.created_at DESC,c.id DESC')->fetch_all(MYSQLI_ASSOC);
++        return $this->db->query('SELECT x.*,p.nombre AS programa_nombre,c.titulo,c.enlace_registro,c.estado,c.fecha_inicio,c.fecha_termino FROM formulario_aliado_convocatorias x INNER JOIN convocatorias c ON c.id=x.convocatoria_id INNER JOIN formulario_programas p ON p.codigo=x.programa_codigo ORDER BY c.created_at DESC,c.id DESC')->fetch_all(MYSQLI_ASSOC);
+     }
+ }

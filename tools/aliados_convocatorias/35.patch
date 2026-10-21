@@ -1,0 +1,27 @@
+--- a/app/views/layout/dashboard_head.php
++++ b/app/views/layout/dashboard_head.php
+@@ -211,6 +211,7 @@
+ 
+ if (
+     $esConvocatoriaDashboard ||
++    ($esAliadosDashboard && $actionDashboard === 'internacionales') ||
+     $esConvocatoriaReportePreviewDashboard ||
+     $esHomeDashboard
+ ) {
+@@ -227,6 +228,9 @@
+ 
+ if ($esAliadosDashboard) {
+     $cssOpcionalDashboard[] = 'aliados.css';
++    if ($actionDashboard === 'internacionales') {
++        $cssOpcionalDashboard[] = 'aliados_internacionales.css';
++    }
+ }
+ 
+ if ($esWhatsappDashboard) {
+@@ -659,4 +663,4 @@
+ 
+ <body>
+ 
+-<div class="admin-shell">
+\ No newline at end of file
++<div class="admin-shell">

@@ -9,10 +9,9 @@ class ConvocatoriaModel
     private $soportaNotificacionesConvocatorias = null;
     private $fechasOpcionalesConfiguradas = null;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection ?? (new Database())->connect();
     }
 
     public function desactivarConvocatoriasVencidas()
@@ -394,7 +393,7 @@ class ConvocatoriaModel
         return $convocatoria;
     }
 
-    public function crear($datos, $estadosIds)
+    public function crear($datos, $estadosIds, ?callable $relacionar = null)
     {
         $esInscripcionesAbiertas =
             (string)($datos['subtipo_convocatoria'] ?? '') === 'inscripciones-abiertas';
@@ -508,6 +507,7 @@ class ConvocatoriaModel
 
             $convocatoriaId = (int)$this->connection->insert_id;
             $this->guardarEstados($convocatoriaId, $estadosIds);
+            if ($relacionar) { $relacionar($this->connection, $convocatoriaId); }
 
             $this->connection->commit();
 
@@ -1272,9 +1272,12 @@ class ConvocatoriaModel
             ->modify('+' . $desplazamientoVentana . ' months')
             ->format('Y-m-d');
 
+        $tablaInternacional = $this->connection->query("SHOW TABLES LIKE 'formulario_aliado_convocatorias'");
+        $excluirInternacionales = $tablaInternacional && $tablaInternacional->num_rows
+            ? ' AND NOT EXISTS (SELECT 1 FROM formulario_aliado_convocatorias x WHERE x.convocatoria_id=convocatorias.id)' : '';
         $sql = "SELECT id, imagen
                 FROM convocatorias
-                WHERE COALESCE(fecha_inicio, DATE(created_at)) < ?
+                WHERE COALESCE(fecha_inicio, DATE(created_at)) < ? {$excluirInternacionales}
                 ORDER BY COALESCE(fecha_inicio, DATE(created_at)) ASC, id ASC";
 
         $transaccionIniciada = false;

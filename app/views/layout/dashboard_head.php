@@ -211,6 +211,7 @@ if ($esSeguimientoEstado || $esSeguimientoDetalle || $esAgendaDashboard) {
 
 if (
     $esConvocatoriaDashboard ||
+    ($esAliadosDashboard && $actionDashboard === 'internacionales') ||
     $esConvocatoriaReportePreviewDashboard ||
     $esHomeDashboard
 ) {
@@ -227,6 +228,9 @@ if ($esTerritorialDashboard) {
 
 if ($esAliadosDashboard) {
     $cssOpcionalDashboard[] = 'aliados.css';
+    if ($actionDashboard === 'internacionales') {
+        $cssOpcionalDashboard[] = 'aliados_internacionales.css';
+    }
 }
 
 if ($esWhatsappDashboard) {

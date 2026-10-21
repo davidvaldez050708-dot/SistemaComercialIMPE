@@ -1,0 +1,18 @@
+--- a/app/controllers/CrearConvocatoriaController.php
++++ b/app/controllers/CrearConvocatoriaController.php
+@@ -15,6 +15,15 @@
+             ? $modelo->listarConveniosRecibidos()
+             : [];
+ 
++        require_once __DIR__.'/../services/AliadoInternacionalService.php';
++        try {
++            $db=(new Database())->connect();
++            $tabla=$db->query("SHOW TABLES LIKE 'formulario_aliado_convocatorias'");
++            if ($tabla->num_rows && tienePermiso('aliados.ver')) {
++                $externos=$db->query("SELECT a.id AS aliado_internacional_id,a.seguimiento_id,0 AS estado_id,a.region AS estado_nombre,a.ciudad AS municipio_nombre,a.nombre AS nombre_entidad,a.contacto_nombre,post.convenio_fecha,post.convenio_referencia,post.convenio_notas,post.convenio_formalizado_at,(SELECT COUNT(*) FROM formulario_aliado_convocatorias x WHERE x.aliado_id=a.id)>0 AS tiene_convocatoria FROM formulario_aliados a INNER JOIN seguimientos_vinculacion_post_envio post ON post.seguimiento_id=a.seguimiento_id WHERE a.pais_codigo<>'MX' AND a.activo=1 AND post.convenio_formalizado_at IS NOT NULL")->fetch_all(MYSQLI_ASSOC);
++                $convenios=array_merge($convenios,$externos);
++            }
++        } catch (Throwable $e) { error_log('[convenios_externos] '.$e->getMessage()); }
+         $estados = $modelo->listarEstados();
+ 
+         $tituloPagina = 'Crear convocatoria';
