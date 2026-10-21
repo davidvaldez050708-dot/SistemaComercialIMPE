@@ -5,7 +5,7 @@ umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
 TARGET='b41f18bc209e0e5a752a6bea4ea1db813eb266a9'
-REVIEWED='PENDING'
+REVIEWED='2abc206bf9c999bdafcdccb1b0abdf978e3a39c0'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/ventas_conciliacion_actual'
 SOURCE="${IMPE_VENTAS_CONCILIACION_ACTUAL_SOURCE:-$HOME/crm-publicaciones/ventas-conciliacion-actual-actual}"
