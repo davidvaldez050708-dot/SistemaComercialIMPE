@@ -17,3 +17,7 @@ checkParts(TelefoniaPbxSegmentosService::deEventos($events,'150')['segmentos'],[
 foreach($events as &$event)if(($event['internal']??'')==='150')$event['internal']='101';unset($event);
 checkParts(TelefoniaPbxSegmentosService::deEventos($events,'101')['segmentos'],['ventas-audio-2'],'Misma autorización compartida para Analista');
 checkParts(TelefoniaPbxSegmentosService::deEventos($events,'999')['segmentos'],[],'Extensión ajena no obtiene partes');
+$out=[['evento'=>'NOTIFY_OUT_START','internal'=>'100'],['evento'=>'NOTIFY_ANSWER','internal'=>'101','payload_json'=>'{"transfer_from":"100"}'],['evento'=>'NOTIFY_OUT_END','internal'=>'100']];
+$proof=TelefoniaPbxSegmentosService::transferencia($out,'101');
+checkParts([$proof['origen'],$proof['atendida'],$proof['finalizada']],['100',true,true],'ANSWER firmado conserva origen aun sin INTERNAL ni last_internal');
+array_shift($out);checkParts(TelefoniaPbxSegmentosService::transferencia($out,'101')['origen'],'','Sin inicio PBX de origen no autoriza otro tramo');

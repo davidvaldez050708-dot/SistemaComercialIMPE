@@ -13,7 +13,7 @@ final class TelefoniaPbxSegmentosService
             $internal=(string)($e['internal']??'');$type=$e['evento']??'';
             if(in_array($type,['NOTIFY_INTERNAL','NOTIFY_OUT_START'],true))$starts[$internal]=$type;
             if($type==='NOTIFY_ANSWER'&&$internal===$ext)$answer=$e;
-            if($type==='NOTIFY_INTERNAL'&&$internal===$ext){$from=trim((string)($e['transfer_from']??''));if($from==='')$from=trim((string)($p['transfer_from']??''));if(preg_match('/^[0-9]{3,6}$/D',$from)&&$from!==$ext)$source=$from;}
+            if(in_array($type,['NOTIFY_INTERNAL','NOTIFY_ANSWER'],true)&&$internal===$ext){$from=trim((string)($e['transfer_from']??''));if($from==='')$from=trim((string)($p['transfer_from']??''));if(preg_match('/^[0-9]{3,6}$/D',$from)&&$from!==$ext)$source=$from;}
             $last=trim((string)($e['last_internal']??''));if($last==='')$last=trim((string)($p['last_internal']??''));
             if(in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)&&$last===$ext)$lastOwn=true;
         }
