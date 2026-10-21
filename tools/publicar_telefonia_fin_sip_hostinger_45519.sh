@@ -100,7 +100,7 @@ def patch(raw, pairs, filename):
                 fail("CONFLICTO: rama PBX no cumple guardas de sesión")
             method = method.replace(original_guard,new_guard,1)
             method = method.replace(original_match,new_match,1)
-            method = method.replace(original_update,active_branch+original_update,1)
+            method = method.replace("            "+original_update,active_branch+"            "+original_update,1)
             # La versión antigua decía éxito sin coincidencia; mantener
             # coincidencia exacta antes de actualizar/habilitar resultado.
             method = method.replace(original_incoming,
