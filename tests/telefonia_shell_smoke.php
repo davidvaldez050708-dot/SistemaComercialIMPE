@@ -78,8 +78,9 @@ $checks = [
         str_contains($client, 'return shell.ensureHost();'),
     'Transferencias existentes conservadas' =>
         str_contains($client, 'transferCall: transferCall'),
-    'Vista Marketing sigue priorizando recepción' =>
-        str_contains($view, "require __DIR__ . '/../telefonia/recepcion_marketing.php';")
+    'Marketing abre Recepción desde Mis llamadas y no duplica Inicio' =>
+        !str_contains($view, "require __DIR__ . '/../telefonia/recepcion_marketing.php';") &&
+        str_contains($controller, "\$puedeRecepcionMarketing ? 'recepcion' : 'historial'")
 ];
 foreach ($checks as $name => $ok) {
     if (!$ok) {
