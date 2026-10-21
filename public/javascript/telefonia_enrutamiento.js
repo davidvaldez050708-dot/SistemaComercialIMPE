@@ -458,7 +458,7 @@
         if (!panel.hidden) {
             const source=document.querySelector('[data-availability-source]');
             if(source)panel.appendChild(source);
-            void window.IMPE_AVAILABILITY?.tick();
+            void window.IMPE_AVAILABILITY?.tick?.();
             void load();
         }
     });
