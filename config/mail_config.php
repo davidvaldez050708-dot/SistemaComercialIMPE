@@ -8,13 +8,18 @@ if ($rutaLocal !== null) {
     require_once $rutaLocal;
 }
 
+// Si se conserva la cuenta Gmail del entorno local pero falta MAIL_HOST,
+// no autenticarla contra Hostinger. Un host explícito siempre tiene prioridad.
+$usuarioSmtp = trim((string)(defined('MAIL_USERNAME') ? MAIL_USERNAME : (getenv('MAIL_USERNAME') ?: '')));
+$hostPredeterminado = preg_match('/@(gmail|googlemail)\.com$/i', $usuarioSmtp)
+    ? 'smtp.gmail.com' : 'smtp.hostinger.com';
 $valores = [
-    'MAIL_HOST' => 'smtp.hostinger.com',
+    'MAIL_HOST' => $hostPredeterminado,
     'MAIL_PORT' => 587,
     'MAIL_USERNAME' => '',
     'MAIL_PASSWORD' => '',
     'MAIL_ENCRYPTION' => 'tls',
-    'MAIL_FROM_ADDRESS' => trim((string)(defined('MAIL_USERNAME') ? MAIL_USERNAME : (getenv('MAIL_USERNAME') ?: ''))),
+    'MAIL_FROM_ADDRESS' => $usuarioSmtp,
     'MAIL_FROM_NAME' => 'Fundación Red Educativa México',
 ];
 

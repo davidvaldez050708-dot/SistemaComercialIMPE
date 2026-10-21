@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/CorreoSalidaInstitucionalService.php';
+require_once __DIR__ . '/CorreoRegistroEstadoService.php';
 
 class CorreoMarketingService
 {
@@ -90,6 +91,7 @@ class CorreoMarketingService
             }
 
             $timestamp = $fecha !== '' ? strtotime($fecha) : false;
+            $transportState = CorreoRegistroEstadoService::consultar($usuarioId, (int)$fila['id'], (string)$fila['estado']);
 
             $salida[] = [
                 'id' => (int)($fila['id'] ?? 0),
@@ -101,7 +103,9 @@ class CorreoMarketingService
                 'tipo' => $this->etiquetaTipo($fila['tipo'] ?? ''),
                 'tipo_codigo' => strtolower((string)($fila['tipo'] ?? 'general')),
                 'fecha' => $timestamp !== false ? date('d/m/Y H:i', $timestamp) : '—',
-                'estado' => $this->etiquetaEstado($fila['estado'] ?? ''),
+                'estado' => $transportState['etiqueta_envio'] ?? $this->etiquetaEstado($fila['estado'] ?? ''),
+                'estado_envio' => $transportState['estado_envio'],
+                'entrega_confirmada' => false,
                 'estado_codigo' => strtolower((string)($fila['estado'] ?? 'pendiente')),
                 'adjuntos_count' => (int)($fila['adjuntos_count'] ?? 0)
             ];
@@ -212,6 +216,7 @@ class CorreoMarketingService
             ];
         }
 
+        $transportState = CorreoRegistroEstadoService::consultar($usuarioId, (int)$fila['id'], (string)$fila['estado']);
         return [
             'id' => (int)$fila['id'],
             'destinatario' => (string)($fila['destinatario'] ?? ''),
@@ -220,7 +225,10 @@ class CorreoMarketingService
             'asunto' => (string)($fila['asunto'] ?? ''),
             'cuerpo' => (string)($fila['cuerpo'] ?? ''),
             'tipo' => $this->etiquetaTipo($fila['tipo'] ?? ''),
-            'estado' => $this->etiquetaEstado($fila['estado'] ?? ''),
+            'estado' => $transportState['etiqueta_envio'] ?? $this->etiquetaEstado($fila['estado'] ?? ''),
+            'estado_envio' => $transportState['estado_envio'],
+            'entrega_confirmada' => false,
+            'registro_confirmado' => $transportState['registro_confirmado'],
             'estado_codigo' => strtolower(
                 trim((string)($fila['estado'] ?? 'pendiente'))
             ),
@@ -786,6 +794,9 @@ class CorreoMarketingService
                 }
             }
 
+            if ($registroId <= 0) { return $this->error('No se pudo registrar la solicitud en la bandeja. El correo no se ha enviado.', 503); }
+            CorreoRegistroEstadoService::guardar($usuarioId, $registroId, 'PENDIENTE');
+            CorreoRegistroEstadoService::guardar($usuarioId, $registroId, 'EN_PROCESO');
             $envio = $this->sender->enviar([
                 'usuario_id' => $usuarioId,
                 'perfil_marketing' => true,
@@ -802,6 +813,11 @@ class CorreoMarketingService
                 'cuerpo' => $cuerpo,
                 'adjuntos' => $adjuntosEnvio
             ]);
+
+            $transportStatus = !empty($envio['ok']) ? 'ACEPTADO' : (($envio['estado_entrega'] ?? '') === 'DESCONOCIDO' ? 'DESCONOCIDO' : 'FALLIDO');
+            // Un duplicado aceptado tiene ok=false: conservar esa evidencia y no tratarlo como rechazo.
+            if (($envio['estado_entrega'] ?? '') === 'ACEPTADO') { $transportStatus = 'ACEPTADO'; }
+            CorreoRegistroEstadoService::guardar($usuarioId, $registroId, $transportStatus, $envio);
 
             if (!($envio['ok'] ?? false)) {
                 if ($registroId > 0) {

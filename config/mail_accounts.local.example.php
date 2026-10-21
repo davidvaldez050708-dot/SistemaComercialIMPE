@@ -1,7 +1,7 @@
 <?php
 // Copiar como mail_accounts.local.php en impe-private. No publicar contraseñas/tokens.
 // Sustituir los usuarios ficticios por IDs reales autorizados del CRM.
-return ['accounts' => [
+return ['limits' => ['per_user_hour' => 60], 'accounts' => [
     'empleado@gmail.com' => ['activo' => true, 'usuarios' => [999999], 'transport' => 'smtp',
         'smtp_host' => 'smtp.gmail.com', 'smtp_port' => 587, 'smtp_encryption' => 'tls',
         'smtp_username' => 'empleado@gmail.com', 'auth_method' => 'password', 'smtp_password' => 'CLAVE_DE_APLICACION_PRIVADA'],

@@ -42,10 +42,12 @@ class MarketingStmt {
     public function get_result() { return new MarketingRows($this->rows); }
 }
 class MarketingSender extends CorreoSalidaInstitucionalService {
-    public $calls = 0, $reject = false, $last;
+    public $calls = 0, $reject = false, $unknown = false, $last, $observe;
     public function __construct() {}
     public function enviar($data) {
         $this->calls++; $this->last = $data;
+        if ($this->observe) { ($this->observe)($data); }
+        if ($this->unknown) { return ['ok' => false, 'estado_entrega' => 'DESCONOCIDO', 'mensaje' => 'Resultado de prueba sin confirmar']; }
         return $this->reject ? ['ok' => false, 'estado_entrega' => 'RECHAZADO', 'mensaje' => 'Rechazo de prueba']
             : ['ok' => true, 'estado_entrega' => 'ACEPTADO', 'proveedor' => 'SMTP', 'entrega_confirmada' => false];
     }
@@ -55,6 +57,9 @@ putenv('IMPE_MAIL_STATE_DIR=' . $dir);
 try {
     $db = new MarketingDb(); $sender = new MarketingSender();
     $service = new CorreoMarketingService($db, $sender, static function ($id) { return ['correo' => 'prueba@gmail.com', 'nombre' => 'Prueba']; });
+    $sender->observe = static function () use ($db) {
+        expectMarketing(CorreoRegistroEstadoService::consultar(7, $db->insert_id, $db->rows[$db->insert_id]['estado'])['estado_envio'] === 'EN_PROCESO', 'estado en proceso antes de contactar proveedor');
+    };
     $data = ['destinatario' => 'prueba@educacion.test', 'asunto' => 'Contenido ficticio', 'cuerpo' => "Texto íntegro\nSegunda línea", 'convocatoria_id' => 5];
     $saved = $service->guardarBorrador(7, $data);
     expectMarketing($saved['ok'] && $saved['correo_id'] === 1, 'guardar borrador');
@@ -64,14 +69,19 @@ try {
     $data['correo_id'] = 1;
     $sender->reject = true;
     expectMarketing(!$service->enviar(7, $data)['ok'] && $db->rows[1]['estado'] === 'BORRADOR' && $db->sentWrites === 0, 'rechazo conserva borrador');
+    expectMarketing($service->obtener(7, 1)['estado_envio'] === 'FALLIDO', 'rechazo diferenciado de pendiente');
     $sender->reject = false;
     $accepted = $service->enviar(7, $data);
     expectMarketing($accepted['ok'] && !$accepted['entrega_confirmada'] && $db->rows[1]['estado'] === 'ENVIADO', 'historial sólo tras aceptación');
+    expectMarketing($service->obtener(7, 1)['estado_envio'] === 'ACEPTADO' && !$service->obtener(7, 1)['entrega_confirmada'], 'no confundir aceptación con recepción');
     expectMarketing($sender->last['cuerpo'] === $data['cuerpo'] && $sender->last['usuario_id'] === 7, 'contenido e identidad');
     $repeat = $service->enviar(7, $data);
     expectMarketing($repeat === $accepted && $sender->calls === 2 && $db->sentWrites === 1 && count($db->rows) === 1, 'misma solicitud sin duplicar envío ni registro');
     $data['cuerpo'] = 'Texto cambiado';
     expectMarketing(!$service->enviar(7, $data)['ok'] && $sender->calls === 2, 'no reutilizar solicitud cambiada');
+    $data['correo_id'] = 0; $data['idempotency_key'] = 'desconocido-0001'; $sender->unknown = true;
+    expectMarketing(!$service->enviar(7, $data)['ok'] && $service->obtener(7, 2)['estado_envio'] === 'DESCONOCIDO', 'estado desconocido conservado');
+    expectMarketing(!$service->enviar(7, $data)['ok'] && $sender->calls === 3 && count($db->rows) === 2 && $db->sentWrites === 1, 'sin duplicar resultado desconocido');
     echo "OK: borrador e historial en memoria, propiedad, contenido, rechazo y reintento idempotente. Sin BD ni envíos reales.\n";
 } finally {
     foreach (glob($dir . '/*') as $p) { unlink($p); } rmdir($dir);

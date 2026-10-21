@@ -2,22 +2,24 @@
 // Sólo SSH/CLI. No muestra credenciales ni permite enviar desde una petición web.
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require dirname(__DIR__) . '/app/services/CorreoSalidaInstitucionalService.php';
-require dirname(__DIR__) . '/config/mail_config.php';
+require dirname(__DIR__) . '/app/services/MailService.php';
 $options = getopt('', ['recovery', 'account:', 'user:', 'probe', 'send-test', 'to:', 'domain:', 'dkim:']);
 function flagMail($label, $ok) { echo $label . ': ' . ($ok ? 'OK' : 'FALTA/REVISAR') . PHP_EOL; }
 try {
     echo 'PHP ' . PHP_VERSION . ' SAPI ' . PHP_SAPI . PHP_EOL;
     foreach (['openssl', 'curl', 'mbstring', 'mysqli'] as $ext) { flagMail('extension ' . $ext, extension_loaded($ext)); }
     flagMail('PHPMailer', class_exists('PHPMailer\\PHPMailer\\PHPMailer'));
+    foreach ((new CorreoConexionOAuthService())->disponibles() as $provider => $ready) {
+        echo 'OAuth ' . $provider . ' (opcional): ' . ($ready ? 'aplicación configurada' : 'desactivado; falta aplicación autorizada') . PHP_EOL;
+    }
     if (isset($options['account'])) {
         $from = strtolower(trim($options['account'])); $user = (int)($options['user'] ?? 0);
         $result = (new CorreoCuentaConectadaService())->resolver($from, $user, true);
         if (empty($result['ok'])) { echo 'Cuenta: ' . $result['mensaje'] . PHP_EOL; exit(2); }
         $a = $result['account'];
     } else {
-        $a = impeLeerConfigPrivada('password_reset_mail.local.php') ?: ['correo' => MAIL_FROM_ADDRESS,
-            'smtp_host' => MAIL_HOST, 'smtp_port' => MAIL_PORT, 'smtp_encryption' => MAIL_ENCRYPTION,
-            'smtp_username' => MAIL_USERNAME, 'smtp_password' => MAIL_PASSWORD];
+        echo 'Configuración de recuperación: ' . (impeRutaConfigPrivada('password_reset_mail.local.php') !== null ? 'archivo dedicado' : 'MAIL_* de archivo privado/entorno') . PHP_EOL;
+        $a = MailService::cuentaRecuperacion();
         $from = (string)($a['correo'] ?? $a['smtp_username'] ?? '');
         $user = 0;
         echo "Cuenta dedicada de recuperación (no modifica usuarios ni contraseñas).\n";
@@ -35,6 +37,14 @@ try {
             // EHLO/TLS/AUTH, sin MAIL/RCPT/DATA. OAuth puede renovar su token privado.
             $connected = $mail->smtpConnect(); flagMail('Conexión TLS y autenticación', $connected); $mail->smtpClose();
             if (!$connected) { exit(2); }
+        }
+    } elseif ($transport === 'gmail_api') {
+        flagMail('OAuth Gmail configurado', !empty($a['refresh_token']) && !empty($a['client_id']));
+        if (isset($options['probe'])) {
+            $token = (new CorreoOAuthTokenProvider($a))->obtenerAccessToken();
+            $allowed = CorreoGmailApiTransport::identidad($from, $token);
+            flagMail('Identidad Google verificada por HTTPS', $allowed);
+            if (!$allowed) { exit(2); }
         }
     } elseif ($transport === 'hostinger_api') {
         flagMail('Token API configurado', !empty($a['api_token']));
@@ -76,7 +86,11 @@ try {
         if (empty($r['ok'])) { exit(2); }
     } else { echo "Sin envío de mensajes. Usa --probe para comprobar TLS/autenticación desde SSH.\n"; }
 } catch (Throwable $e) {
-    error_log('MAIL_DIAGNOSTIC_FAILED exception=' . get_class($e));
+    $allowed = ['MAIL_RESET_CONFIG', 'MAIL_RESET_TRANSPORT', 'MAIL_RESET_IDENTITY', 'MAIL_SMTP_CONFIG', 'MAIL_SMTP_CA'];
+    $reason = in_array($e->getMessage(), $allowed, true) ? $e->getMessage() : 'MAIL_DIAGNOSTIC_FAILED';
+    $smtpCode = isset($mail) ? (int)($mail->getSMTPInstance()->getError()['smtp_code'] ?? 0) : 0;
+    error_log('MAIL_DIAGNOSTIC_FAILED reason=' . $reason . ' smtp_code=' . $smtpCode . ' exception=' . get_class($e));
+    echo 'Código seguro: ' . $reason . ($smtpCode ? '; SMTP ' . $smtpCode : '') . PHP_EOL;
     echo "Diagnóstico incompleto. Revisar configuración, permisos privados, certificados, autenticación o restricciones salientes. No se muestran secretos.\n";
     exit(2);
 }
