@@ -41,7 +41,7 @@
             acceptanceRequestedUntil = 0;
             if (!idleReported) {
                 idleReported = true;
-                hooks.onIdle?.();
+                hooks.onIdle?.({sessionEnded:Boolean(observedSession?.isEnded()),pushEnded:Boolean(!observedSession&&!connectedReported&&win.zdrmWebPhone?.callState===''&&!read()),sessionId:String(observedSession?.id||'')});
             }
         };
 
@@ -131,7 +131,7 @@
                 acceptanceRequestedUntil = 0;
                 if (!connectedReported) {
                     connectedReported = true;
-                    hooks.onConnected?.();
+                    hooks.onConnected?.({sessionId:String(observedSession?.id||'')});
                 }
                 return;
             }

@@ -1,12 +1,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(process.env.IMPE_TEST_TELEFONIA_HOST||'public/javascript/telefonia_host.js','utf8').replace(/\r\n/g,'\n');
-const start=source.indexOf('onIdle: function () {',source.indexOf('const startAnalystSdkObserver'))+'onIdle: function () {'.length;
+const start=source.indexOf('onIdle: function (evidence={}) {',source.indexOf('const startAnalystSdkObserver'))+'onIdle: function (evidence={}) {'.length;
 const end=source.indexOf('\n                }\n            }\n        ) || null;',start);
 assert(start>0&&end>start);const body=source.slice(start,end);
 for(const sdk of [true,false]){
  const timers=[];let polls=0,cleared=0,finals=0;
- const state={active:true,direction:'incoming',phase:'answering',pbxCallId:sdk?'':'pbx-recovery-001',context:sdk?{transferReference:'pbx-recovery-001'}:{pbxAnswered:true}};
- const context={state,transferFlow:null,isSdkOnlyIncoming:()=>sdk,clearSdkOnlyIncoming:()=>cleared++,currentDuration:()=>15,answeredAtMs:100,
+ const state={active:true,direction:'incoming',phase:'in-progress',pbxCallId:sdk?'':'pbx-recovery-001',context:sdk?{transferReference:'pbx-recovery-001'}:{pbxAnswered:true}};
+ const context={state,evidence:{},transferFlow:null,isSdkOnlyIncoming:()=>sdk,clearSdkOnlyIncoming:()=>cleared++,currentDuration:()=>15,answeredAtMs:100,
   publish:patch=>Object.assign(state,patch),pollIncoming:()=>polls++,finalizarEntrante:()=>finals++,window:{setTimeout:fn=>timers.push(fn)}};
  vm.runInNewContext('(function(){'+body+'})()',context);
  for(const timer of timers)timer();
@@ -25,7 +25,7 @@ const directEnd=source.indexOf('\n        }\n    })',directStart);assert(directE
 const direct={active:true,phase:'answering',context:{transferPendingReceiver:true}};let requests=0;
 const directEnv={state:direct,answeredAtMs:0,publish:p=>Object.assign(direct,p),pollIncoming:()=>requests++};
 vm.runInNewContext('this.end=function(op){'+source.slice(directStart,directEnd)+'};',directEnv);
-directEnv.end({modo:'DIRECTA',referencia:'pbx-directa-001'});assert.equal(direct.active,true);assert.equal(direct.phase,'recovering');assert.equal(requests,1);assert.equal(direct.context.transferReference,'pbx-directa-001');
+directEnv.end({modo:'DIRECTA',referencia:'pbx-directa-001'});assert.equal(direct.active,true);assert.equal(direct.phase,'finishing');assert.equal(requests,1);assert.equal(direct.context.transferReference,'pbx-directa-001');
 directEnv.end({modo:'CONSULTADA'});assert.equal(direct.active,false,'El fin de consulta interna conserva su comportamiento');
 const incomingStart=source.indexOf('const applyIncomingState = function (call) {')+'const applyIncomingState = function (call) {'.length;
 const incomingEnd=source.indexOf('\n    };',incomingStart);assert(incomingEnd>incomingStart);
@@ -34,3 +34,13 @@ const incomingEnv={state:recovery,transferFlow:null,config:{},retiredIds:new Set
 vm.runInNewContext('this.apply=function(call){'+source.slice(incomingStart,incomingEnd)+'};',incomingEnv);
 incomingEnv.apply({pbx_call_id:'pbx-otra-llamada',estado:'ended'});assert.equal(confirmedEnds,0,'Otro cierre no termina la recuperación');
 incomingEnv.apply({pbx_call_id:'pbx-directa-001',estado:'ended'});assert.equal(confirmedEnds,1,'END de la referencia exacta termina la recuperación aunque el SDK aún no tuviera ID PBX');
+
+for(const answered of [false,true])for(const ended of [false,true]){
+ const state={active:true,direction:'incoming',phase:answered?'in-progress':'incoming-ringing',pbxCallId:'',context:{type:'SDK_INCOMING',sdkInviteId:'sip-current',sdkConnected:answered}};
+ let polls=0;const env={state,evidence:{sessionEnded:ended,sessionId:'sip-current'},transferFlow:null,isSdkOnlyIncoming:()=>true,retirePbxCall(){},answeredAtMs:answered?100:0,currentDuration:()=>answered?12:0,publish:p=>Object.assign(state,p),pollIncoming:()=>polls++,window:{setTimeout(){}},clearSdkOnlyIncoming(){}};
+ vm.runInNewContext('(function(){'+body+'})()',env);
+ assert.equal(state.active,!ended);
+ assert.equal(state.phase,ended?'incoming-finished':answered?'recovering':'finishing');
+ if(!ended)assert(polls>0);
+}
+console.log('Ciclo: END SIP propio libera timbrado/conversación; sin respuesta nunca recupera conversación; transporte incierto no fabrica END: OK');

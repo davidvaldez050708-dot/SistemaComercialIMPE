@@ -16,7 +16,7 @@ const state={active:true,direction:'incoming',phase:'incoming-ringing',pbxCallId
 const env={state,window:{zdrmWebPhone:{webCallSession:session}},declinedInvitations:new Map(),permiteEntrantes:true,incomingBridge:{decline:()=>{sent++;return true;}},analystSdkObserver:{markDeclined(){}},actualizarEstadoTrasAccion(){},publish:p=>Object.assign(state,p)};
 vm.runInNewContext(source.slice(start,end)+';this.declined=declinedInvitation;',env);
 const ds=source.indexOf('        decline: function () {',source.indexOf('window.IMPE_ZADARMA_INCOMING'))+'        decline: function () {'.length;
-const de=source.indexOf('\n        },\n        canHangup:',ds);
+const de=source.indexOf('\n        },\n        recheck:',ds);
 vm.runInNewContext('this.reject=function(){'+source.slice(ds,de)+'};',env);
 env.reject();const once=sent;for(let i=0;i<10;i++)env.reject();assert.equal(sent,once);assert.equal(state.phase,'rejecting');assert(env.declined('pbx-1'));
 const applyStart=source.indexOf('const applyIncomingState = function (call) {')+'const applyIncomingState = function (call) {'.length;

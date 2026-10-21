@@ -20,12 +20,14 @@ const apiStart=host.indexOf('    window.IMPE_ZADARMA_INCOMING = Object.freeze({'
    window.zdrmWebPhone={};const isSdkOnlyIncoming=()=>state.context.type==='SDK_INCOMING'&&!state.pbxCallId;
    const clearSdkOnlyIncoming=()=>publish({active:false,phase:'ready',context:{}}),pollIncoming=()=>{},currentDuration=()=>0,actualizarEstadoTrasAccion=()=>{};
    const declinedInvitations=new Map(),retiredIds=new Set(),extension=config.extension;
+   const retirePbxCall=id=>retiredIds.add(id);
    const declinedInvitation=()=>false,marcarPestanaEntrante=()=>{},mostrarHostEntrante=()=>{};
    const finalizarEntrante=()=>publish({active:false,phase:'incoming-finished'});
    ${host.slice(incomingStart,incomingEnd)}
    window.pbxRing=()=>applyIncomingState({pbx_call_id:'pbx-inbound-100',estado:'ringing',caller_id:'+527777885173',transfer_from:'100'});
-   const incomingBridge=IMPE_ZADARMA_NATIVE_BRIDGE_FACTORY.create(document,()=>state.phase==='incoming-ringing',()=>state.phase==='in-progress');
+   const incomingBridge=IMPE_ZADARMA_NATIVE_BRIDGE_FACTORY.create(document,()=>state.phase==='incoming-ringing',()=>state.phase==='in-progress',()=>state.callToken);
    zdrmWebPhone.answer=()=>{session.established=true;};
+   zdrmWebPhone.finishCall=()=>{session.ended=true;zdrmWebPhone.webCallSession=null;};
    ${host.slice(start,end)}
    ${host.slice(apiStart,apiEnd)}
    let session;window.invite=(id,caller='100')=>{session={id,direction:'incoming',remote_identity:{uri:{user:caller},display_name:'Recepción'},established:false,ended:false,isEstablished(){return this.established;},isEnded(){return this.ended;},terminate(){this.ended=true;}};zdrmWebPhone.webCallSession=session;};
@@ -65,6 +67,17 @@ const apiStart=host.indexOf('    window.IMPE_ZADARMA_INCOMING = Object.freeze({'
    await frame.evaluate(()=>pushInvite());await page.locator('[data-incoming-answer]').waitFor({state:'visible'});
    await page.locator('[data-incoming-answer]').click();await page.waitForFunction(()=>IMPE_TELEPHONY_SHELL.getCallState().phase==='in-progress');
   }
+  // Cuelga el celular tras contestar: END de la sesión observada sin END PBX aún.
+  await frame.evaluate(()=>{if(session)session.ended=true;zdrmWebPhone.webCallSession=null;zdrmWebPhone.cancel();});
+  await page.waitForFunction(()=>!IMPE_TELEPHONY_SHELL.getCallState().active);
+  await frame.evaluate(()=>invite('sip-unanswered'));
+  await page.locator('[data-incoming-answer]').waitFor({state:'visible'});
+  await frame.evaluate(()=>{session.ended=true;zdrmWebPhone.webCallSession=null;});
+  await page.waitForFunction(()=>!IMPE_TELEPHONY_SHELL.getCallState().active);
+  assert.notEqual(await page.evaluate(()=>IMPE_TELEPHONY_SHELL.getCallState().phase),'recovering');
+  await frame.evaluate(()=>invite('sip-user-hangup'));
+  await page.locator('[data-incoming-answer]').click();await page.waitForFunction(()=>IMPE_TELEPHONY_SHELL.getCallState().phase==='in-progress');
+  await page.locator('[data-incoming-hangup]').click();await page.waitForFunction(()=>!IMPE_TELEPHONY_SHELL.getCallState().active);
   assert.deepEqual(errors,[]);await page.close();
  }console.log('INVITE → host/observador/bridge → modal real, rechazo y nueva llamada 100→101/150: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
