@@ -68,8 +68,13 @@
             for(const call of calls){
                 if(!call.finalizada){observed.add(call.id);continue;}
                 const isTransition=transition && (matches(call,transition.id) ||
-                    (call.fin_ts>=transition.at-3000 && String(call.numero).replace(/\D/g,'').slice(-10)===transition.number)) &&
-                    !(transition.transfer && Date.now()-transition.at<12000);
+                    (call.fin_ts>=transition.at-3000 && String(call.numero).replace(/\D/g,'').slice(-10)===transition.number));
+                // La llamada puede haberse observado viva antes del cierre:
+                // tampoco encolar por observed ni por !initial mientras
+                // la transferencia espera su confirmación PBX.
+                if(isTransition && transition.transfer && Date.now()-transition.at<12000){
+                    completed.add(call.id);continue;
+                }
                 // No forzar a clasificar todo el historial antiguo al instalar.
                 if(call.requiere_resultado && (isTransition||observed.has(call.id)||
                     (!initial && !completed.has(call.id) && call.fin_ts>=scanSince-3000)) && !saved.pending.includes(call.id))saved.pending.push(call.id);
