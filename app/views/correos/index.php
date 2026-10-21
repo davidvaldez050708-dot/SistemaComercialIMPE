@@ -372,11 +372,7 @@ $texto = static fn($valor) => htmlspecialchars(
                             data-marketing-mail-from
                             required>
 
-                        <div class="form-text">
-                            Escribe una cuenta conectada y autorizada para tu usuario.
-                            El sistema utilizará su API o SMTP autenticado; las cuentas
-                            nuevas requieren configuración del administrador.
-                        </div>
+                        <div class="form-text" data-marketing-mail-identity role="status" aria-live="polite"></div>
                     </div>
 
                     <div class="correo-marketing-recipient-card mb-3">

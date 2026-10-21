@@ -44,11 +44,16 @@ class MarketingStmt {
 class MarketingSender extends CorreoSalidaInstitucionalService {
     public $calls = 0, $reject = false, $last;
     public function __construct() {}
+    public function comprobarIdentidad(string $contacto, int $user, string $token): array { return ['ok'=>true]; }
     public function enviar($data) {
         $this->calls++; $this->last = $data;
         return $this->reject ? ['ok' => false, 'estado_entrega' => 'RECHAZADO', 'mensaje' => 'Rechazo de prueba']
             : ['ok' => true, 'estado_entrega' => 'ACEPTADO', 'proveedor' => 'SMTP', 'entrega_confirmada' => false];
     }
+}
+class MarketingCentralMailer extends \PHPMailer\PHPMailer\PHPMailer {
+    public $calls=0;
+    public function send() { $this->calls++; return $this->preSend(); }
 }
 $dir = sys_get_temp_dir() . '/impe-marketing-' . bin2hex(random_bytes(6)); mkdir($dir, 0700, true);
 putenv('IMPE_MAIL_STATE_DIR=' . $dir);
@@ -72,7 +77,23 @@ try {
     expectMarketing($repeat === $accepted && $sender->calls === 2 && $db->sentWrites === 1 && count($db->rows) === 1, 'misma solicitud sin duplicar envío ni registro');
     $data['cuerpo'] = 'Texto cambiado';
     expectMarketing(!$service->enviar(7, $data)['ok'] && $sender->calls === 2, 'no reutilizar solicitud cambiada');
-    echo "OK: borrador e historial en memoria, propiedad, contenido, rechazo y reintento idempotente. Sin BD ni envíos reales.\n";
+    // Integración Marketing -> servicio compartido -> MIME SMTP central, sin conexión personal.
+    putenv('IMPE_PRIVATE_CONFIG_DIR='.$dir);
+    $central=['correo'=>'central@institucion.test','transport'=>'smtp','smtp_host'=>'smtp.institucion.test','smtp_port'=>587,
+        'smtp_encryption'=>'tls','smtp_username'=>'central@institucion.test','smtp_password'=>'CLAVE_QA_FICTICIA'];
+    file_put_contents($dir.'/mail_central.local.php','<?php return '.var_export($central,true).';');
+    $identity=static function($id){return ['correo'=>'contacto77@gmail.com','estado'=>1,'nombre'=>'Persona QA'];};
+    $mailer=new MarketingCentralMailer(true);
+    $actualSender=new CorreoSalidaInstitucionalService(static function()use($mailer){return $mailer;},new CorreoCuentaConectadaService($identity));
+    $db2=new MarketingDb();$actualService=new CorreoMarketingService($db2,$actualSender,$identity);
+    $input=['remitente'=>'contacto77@gmail.com','destinatario'=>'destino@educacion.test','asunto'=>'QA central','cuerpo'=>'Mensaje completo','idempotency_key'=>'marketing-central-0001'];
+    $input['identidad_envio']=$actualSender->identidad($input['remitente'],77)['identidad_envio'];
+    $sent=$actualService->enviar(77,$input);
+    expectMarketing($sent['ok'] && $db2->sentWrites===1 && $mailer->From===$central['correo'] && $mailer->calls===1,'Marketing transmite por la cuenta central sin conexiones');
+    $detail=$actualService->obtener(77,$sent['correo_id']);
+    expectMarketing($detail['remitente_visible']===$central['correo'] && $detail['reply_to']===$input['remitente'],'historial con identidad real y referencia del usuario');
+    expectMarketing($actualService->enviar(77,$input)===$sent && $mailer->calls===1 && count($db2->rows)===1,'un solo envío central y registro');
+    echo "OK: borrador/historial en memoria, propietario, contenido, rechazo, idempotencia e integración Marketing/MIME SMTP central. Sin BD ni proveedores reales.\n";
 } finally {
     foreach (glob($dir . '/*') as $p) { unlink($p); } rmdir($dir);
 }

@@ -86,6 +86,9 @@
         };
 
         const mostrarToast = function (mensaje, esError) {
+            document.querySelectorAll('[data-marketing-mail-toast]').forEach(function (anterior) {
+                bootstrap.Toast.getInstance(anterior)?.dispose(); anterior.remove();
+            });
             let contenedor = document.querySelector('.toast-container');
 
             if (!contenedor) {
@@ -97,6 +100,7 @@
             }
 
             const toast = document.createElement('div');
+            toast.setAttribute('data-marketing-mail-toast', '');
             toast.className = 'toast system-toast' +
                 (esError ? ' system-toast-error' : '');
             toast.setAttribute('role', esError ? 'alert' : 'status');
@@ -127,6 +131,46 @@
                 delay: esError ? 4500 : 3000
             }).show();
         };
+
+        const identidadElemento = modalElement.querySelector('[data-marketing-mail-identity]');
+        let identidadActual = null;
+        let consultaIdentidad = 0;
+        let esperaIdentidad;
+        const comprobarRemitente = async function () {
+            const contacto = String(remitente?.value || '').trim().toLowerCase();
+            const secuencia = ++consultaIdentidad;
+            const datos = new FormData(); datos.set('remitente', contacto);
+            const response = await fetch('index.php?controller=correoMarketing&action=identidad', {
+                method: 'POST', body: datos, headers: {'X-Requested-With': 'fetch'}
+            });
+            const json = await response.json();
+            if (secuencia !== consultaIdentidad || contacto !== String(remitente?.value || '').trim().toLowerCase()) { return null; }
+            if (!response.ok || !json.ok) {
+                identidadActual = null;
+                if (identidadElemento) { identidadElemento.textContent = json.mensaje || 'No se pudo comprobar el remitente institucional.'; }
+                return null;
+            }
+            const identity = json.identidad;
+            identidadActual = {contacto: contacto, token: json.identidad_envio, firma: JSON.stringify(identity)};
+            if (identidadElemento) {
+                identidadElemento.textContent = 'Remitente visible: ' + identity.remitente_visible + '. Respuestas a: ' + identity.reply_to + '. ' + (identity.aviso || '');
+            }
+            return identidadActual;
+        };
+        const actualizarRemitente = function () {
+            identidadActual = null;
+            if (identidadElemento) { identidadElemento.textContent = 'Comprobando remitente institucional…'; }
+            comprobarRemitente().catch(function () {
+                identidadActual = null;
+                if (identidadElemento) { identidadElemento.textContent = 'No se pudo comprobar el remitente institucional. Vuelve a intentarlo.'; }
+            });
+        };
+        modalElement.addEventListener('shown.bs.modal', actualizarRemitente);
+        remitente?.addEventListener('input', function () {
+            identidadActual = null; ++consultaIdentidad; clearTimeout(esperaIdentidad);
+            if (identidadElemento) { identidadElemento.textContent = ''; }
+            esperaIdentidad = window.setTimeout(actualizarRemitente, 250);
+        });
 
         const mostrarError = function (mensaje) {
             mostrarToast(
@@ -1314,6 +1358,13 @@
             }
 
             try {
+                const anterior = identidadActual;
+                const actual = await comprobarRemitente();
+                if (!actual) { mostrarError('No se pudo comprobar el remitente institucional.'); return; }
+                if (!anterior || anterior.contacto !== actual.contacto || anterior.firma !== actual.firma) {
+                    mostrarError('Revisa el remitente visible y pulsa Enviar correo para confirmar.'); return;
+                }
+                datos.set('identidad_envio', actual.token);
                 const respuesta = await fetch(urlEnviar, {
                     method: 'POST',
                     body: datos,

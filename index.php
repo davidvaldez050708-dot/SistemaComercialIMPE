@@ -221,6 +221,7 @@ if (isset($_SESSION['usuario_id']) && empty($_SESSION['csrf_token'])) {
  * automáticamente desde dashboard_head.php.
  */
 $controladoresProtegidosCsrf = [
+    'correoMarketing',
     'seguimientoVinculacion',
     'seguimientoFlujo',
     'seguimientoInteraccion',
@@ -563,6 +564,12 @@ switch ($controller) {
 
         break;
 
+
+    // Compatibilidad con marcadores antiguos: ya no se conectan cuentas personales.
+    case 'correoConexion':
+        header('Location: ' . BASE_URL . (strcasecmp((string)($_SESSION['rol'] ?? ''), 'Marketing') === 0
+            ? 'index.php?controller=correoMarketing&action=index' : 'index.php?controller=home&action=index'));
+        exit;
 
     case 'correoMarketing':
 

@@ -10,7 +10,7 @@ $a = ['correo' => 'qa@example.test', 'activo' => true, 'usuarios' => [7], 'trans
     'smtp_host' => 'localhost', 'smtp_port' => $port, 'smtp_encryption' => 'tls',
     'smtp_username' => 'qa@example.test', 'smtp_password' => 'FICTICIO', 'smtp_ca_file' => $dir . '/cert.pem'];
 file_put_contents($dir . '/password_reset_mail.local.php', '<?php return ' . var_export($a, true) . ';');
-file_put_contents($dir . '/mail_accounts.local.php', '<?php return ' . var_export(['accounts' => ['qa@example.test' => $a]], true) . ';');
+file_put_contents($dir . '/mail_central.local.php', '<?php return ' . var_export($a, true) . ';');
 // Un certificado no confiable debe impedir AUTH y DATA.
 $bad = $a; unset($bad['smtp_ca_file']);
 $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
@@ -20,8 +20,8 @@ if (CorreoSmtpTransport::enviar($mail, 'tls_negative')['ok']) { throw new Runtim
 if (!(new MailService())->enviarPasswordTemporal('recuperacion@externo.test', 'Persona ficticia', 'QA_NO_VALIDA')) {
     throw new RuntimeException('SMTP recuperación local');
 }
-$sender = new CorreoSalidaInstitucionalService();
-$data = ['usuario_id' => 7, 'remitente' => $a['correo'], 'destinatario' => 'comercial@educacion.test',
+$sender = new CorreoSalidaInstitucionalService(null, new CorreoCuentaConectadaService(static function ($id) { return ['correo'=>'contacto@gmail.com','estado'=>1]; }));
+$data = ['usuario_id' => 7, 'remitente' => 'contacto@gmail.com', 'destinatario' => 'comercial@educacion.test',
     'asunto' => 'Prueba TLS con acentos', 'cuerpo' => "Contenido íntegro\nSegunda línea",
     'adjuntos' => [['ruta' => __FILE__, 'nombre' => 'muestra.txt', 'mime' => 'text/plain']],
     'idempotency_key' => 'tls-local-0001'];

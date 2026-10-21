@@ -58,8 +58,9 @@ with tempfile.TemporaryDirectory(prefix="impe-smtp-tls-") as tmp:
                             stream = conn.makefile("rb"); secure = True
                         elif command == b"AUTH":
                             assert secure, "AUTH sin TLS"
-                            conn.sendall(b"334 VXNlcm5hbWU6\r\n"); stream.readline()
-                            conn.sendall(b"334 UGFzc3dvcmQ6\r\n"); stream.readline()
+                            import base64
+                            conn.sendall(b"334 VXNlcm5hbWU6\r\n"); assert base64.b64decode(stream.readline()) == b"qa@example.test"
+                            conn.sendall(b"334 UGFzc3dvcmQ6\r\n"); assert base64.b64decode(stream.readline()) == b"FICTICIO"
                             auth = True; conn.sendall(b"235 Authenticated\r\n")
                         elif command in (b"MAIL", b"RCPT"):
                             assert auth, "sobre sin autenticación"
@@ -100,6 +101,8 @@ with tempfile.TemporaryDirectory(prefix="impe-smtp-tls-") as tmp:
     assert recovery["From"].addresses[0].addr_spec == "qa@example.test"
     assert "30 minutos" in recovery.get_body(preferencelist=("plain",)).get_content()
     assert commercial["To"].addresses[0].addr_spec == "comercial@educacion.test"
+    assert commercial["From"].addresses[0].addr_spec == "qa@example.test"
+    assert commercial["Reply-To"].addresses[0].addr_spec == "contacto@gmail.com"
     assert commercial["Subject"] == "Prueba TLS con acentos"
     assert "Contenido íntegro" in commercial.get_body(preferencelist=("plain",)).get_content()
     attachments = list(commercial.iter_attachments())
