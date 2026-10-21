@@ -249,3 +249,9 @@ html, body {
     grid-column: 1; grid-row: 3;
   }
 }
+
+/* Cierre compartido: resultado de Analista y Ventas a ancho completo. */
+.impe-incoming-panel .persistent-phone-actions > [data-incoming-register-finished]:not([hidden]) {
+  grid-column: 1 / -1;
+  width: 100%;
+}
