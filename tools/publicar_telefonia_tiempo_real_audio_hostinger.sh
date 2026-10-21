@@ -4,7 +4,7 @@ set -euo pipefail
 umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
-TARGET='fa0cac8c01c48aa4cd1a8c76ab4bb1479eb24812'
+TARGET='01c39c9ef633291a168caa510f8b15ed748373c7'
 REVIEWED='PENDING'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/telefonia_tiempo_real_audio'

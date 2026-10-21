@@ -1,7 +1,7 @@
 {
   "version": 1,
   "base": "d99ee46411cbb8e7dd0dfc45377569b5da9bd9d7",
-  "target": "fa0cac8c01c48aa4cd1a8c76ab4bb1479eb24812",
+  "target": "01c39c9ef633291a168caa510f8b15ed748373c7",
   "files": [
     {
       "path": "app/controllers/TelefoniaController.php",
@@ -58,16 +58,16 @@
       "path": "app/services/TelefoniaPbxSegmentosService.php",
       "kind": "php",
       "new": false,
-      "target_sha256": "c6e42ea1d6ced2507418ae318e7062a8ec9b151ea907a2a8b5e2693936602115",
+      "target_sha256": "eab5e92e9ed62cab0b75cf44f5a010d47d8446ff67d98f266da57d71fab24946",
       "patch": "tools/telefonia_tiempo_real_audio/3.patch",
-      "patch_sha256": "edd614925a9029cc778b26d56fda651eeef16fa5afc4e7c7897523cef79f40be",
+      "patch_sha256": "4bce60832280761b51efb6634f3364331db1f6c9ec68036364ef1b8111ed895a",
       "variants": [
         {
           "label": "resultado-pbx-d99ee464",
           "before": "6e7b12c8a84d0419b17565b57b82459247330488d38db326bc30e21ee4b0decc",
-          "after": "c6e42ea1d6ced2507418ae318e7062a8ec9b151ea907a2a8b5e2693936602115",
+          "after": "eab5e92e9ed62cab0b75cf44f5a010d47d8446ff67d98f266da57d71fab24946",
           "patch": "tools/telefonia_tiempo_real_audio/3.patch",
-          "patch_sha256": "edd614925a9029cc778b26d56fda651eeef16fa5afc4e7c7897523cef79f40be"
+          "patch_sha256": "4bce60832280761b51efb6634f3364331db1f6c9ec68036364ef1b8111ed895a"
         }
       ]
     },

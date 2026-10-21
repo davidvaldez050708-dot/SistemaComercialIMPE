@@ -1,19 +1,20 @@
 --- a/app/services/TelefoniaPbxSegmentosService.php
 +++ b/app/services/TelefoniaPbxSegmentosService.php
-@@ -4,6 +4,30 @@
+@@ -4,6 +4,32 @@
  /** Evidencia por segmento de la estadística oficial. No depende de roles o números. */
  final class TelefoniaPbxSegmentosService
  {
 +    /** Arista de transferencia del mismo grupo PBX, nunca teléfono/horario.
 +     * El origen persistido sólo complementa una respuesta propia y su inicio PBX. */
 +    public static function transferencia(array $events,string $ext,string $persistedSource=''): array {
-+        $source='';$starts=[];$answer=null;$end=false;$lastOwn=false;
++        $source='';$starts=[];$answer=null;$end=false;$lastOwn=false;$position=0;$answerPosition=0;
 +        foreach($events as $e){
++            ++$position;
 +            $p=json_decode((string)($e['payload_json']??''),true)?:[];
 +            $internal=(string)($e['internal']??'');$type=$e['evento']??'';
 +            if(in_array($type,['NOTIFY_INTERNAL','NOTIFY_OUT_START'],true))$starts[$internal]=$type;
-+            if($type==='NOTIFY_ANSWER'&&$internal===$ext)$answer=$e;
-+            if($type==='NOTIFY_INTERNAL'&&$internal===$ext){$from=trim((string)($e['transfer_from']??''));if($from==='')$from=trim((string)($p['transfer_from']??''));if(preg_match('/^[0-9]{3,6}$/D',$from)&&$from!==$ext)$source=$from;}
++            if($type==='NOTIFY_ANSWER'&&$internal===$ext){$answer=$e;$answerPosition=$position;}
++            if(in_array($type,['NOTIFY_INTERNAL','NOTIFY_ANSWER'],true)&&$internal===$ext){$from=trim((string)($e['transfer_from']??''));if($from==='')$from=trim((string)($p['transfer_from']??''));if(preg_match('/^[0-9]{3,6}$/D',$from)&&$from!==$ext)$source=$from;}
 +            $last=trim((string)($e['last_internal']??''));if($last==='')$last=trim((string)($p['last_internal']??''));
 +            if(in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)&&$last===$ext)$lastOwn=true;
 +        }
@@ -21,7 +22,8 @@
 +        if($source===''&&$answer&&$lastOwn&&count($out)===1&&(string)$out[0]!==$ext)$source=(string)$out[0];
 +        if($source===''&&$answer&&$persistedSource!==$ext&&($starts[$persistedSource]??'')==='NOTIFY_OUT_START')$source=$persistedSource;
 +        if(!isset($starts[$source])||!$answer)$source='';
-+        foreach($events as $e){
++        $position=0;foreach($events as $e){
++            if(++$position<=$answerPosition)continue;
 +            $p=json_decode((string)($e['payload_json']??''),true)?:[];$type=$e['evento']??'';
 +            $last=trim((string)($e['last_internal']??''));if($last==='')$last=trim((string)($p['last_internal']??''));
 +            if(in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)&&((string)($e['internal']??'')===$ext||$last===$ext||($last===''&&$source!==''&&$type==='NOTIFY_OUT_END'&&(string)($e['internal']??'')===$source)))$end=true;
@@ -31,7 +33,7 @@
      public static function deEventos(array $events,string $ext,array $autorizadas=[]): array {
          $owned=[];$ready=[];$reported=false;$owners=[];$levels=[];
          $allowed=array_fill_keys(array_merge([$ext],$autorizadas),true);
-@@ -16,42 +40,46 @@
+@@ -16,42 +42,46 @@
              $payload=json_decode((string)($e['payload_json']??''),true)?:[];
              $level=$type==='NOTIFY_RECORD'?3:(in_array($type,['NOTIFY_ANSWER','NOTIFY_INTERNAL'],true)?2:(in_array($type,['NOTIFY_END','NOTIFY_OUT_END','NOTIFY_OUT_START'],true)?1:0));
              if(!$level)continue;
