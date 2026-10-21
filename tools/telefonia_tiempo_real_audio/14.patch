@@ -1,0 +1,126 @@
+--- a/public/javascript/telefonia_ventas_shell.js
++++ b/public/javascript/telefonia_ventas_shell.js
+@@ -5,7 +5,9 @@
+  const crm=document.getElementById('impeCrmFrame'),panel=document.querySelector('[data-incoming-panel]');
+  const key='impe:sales-pending:'+cfg.userId,valid=ref=>/^[A-Za-z0-9_-]{6,100}$/.test(String(ref||''));
+  let pending=[],previous=null,scope='',revision=0,fetching=false,metadata=null;
+- let acceptedBound=null;
++ let acceptedBound=null,candidate=null,bound=null;
++ const pbx=ref=>valid(ref)&&!/^sdk-/i.test(ref);
++ const reference=state=>bound&&[bound.token,bound.token+'-external'].includes(String(state?.callToken))?bound.ref:String(state?.context?.transferReference||state?.finalMetadata?.pbx_call_id||state?.pbxCallId||'');
+  const digits10=value=>String(value||'').replace(/\D/g,'').slice(-10);
+  // El nombre aceptado pertenece a una solicitud única, no al último
+  // número marcado. Se ata una sola vez a la nueva invitación SDK o a su
+@@ -15,16 +17,16 @@
+   if(!op?.nombre||!valid(op.referencia)||!state?.active||state.direction!=='incoming')return null;
+   const token=String(state.callToken||''),started=Number(state.requestedAt||0)*1000;
+   if(!token||!started||started<op.at-20000||started>op.at+90000)return null;
+-  if(ref&&ref!==op.referencia)return null;
+-  if(!ref&&state.context?.type!=='SDK_INCOMING')return null;
++  if(pbx(ref)&&ref!==op.referencia)return null;
++  if(!pbx(ref)&&state.context?.type!=='SDK_INCOMING')return null;
+   const caller=digits10(state.destination),expected=digits10(op.numero);
+   if(caller.length===10&&expected.length===10&&caller!==expected)return null;
+   if(acceptedBound&&acceptedBound.id!==op.id)acceptedBound=null;
+-  if(acceptedBound&&!ref&&acceptedBound.token!==token)return null;
++  if(acceptedBound&&!pbx(ref)&&acceptedBound.token!==token)return null;
+   if(!acceptedBound)acceptedBound={id:op.id,token};
+   return op;
+  };
+- try{const data=JSON.parse(localStorage.getItem(key)||sessionStorage.getItem(key)||'[]');if(Array.isArray(data))pending=data.filter(x=>valid(x.ref)&&Date.now()-x.at<7*86400000).slice(-40);}catch(_){}
++ try{const data=JSON.parse(localStorage.getItem(key)||sessionStorage.getItem(key)||'[]');if(Array.isArray(data))pending=data.filter(x=>pbx(x.ref)&&Date.now()-x.at<7*86400000).slice(-40);}catch(_){}
+  const persist=()=>{try{localStorage.setItem(key,JSON.stringify(pending.slice(-40)));sessionStorage.removeItem(key);}catch(_){}};
+  const card=document.createElement('div');card.className='impe-availability-source';card.hidden=true;
+  const name=document.createElement('strong'),hint=document.createElement('p');card.append(name,hint);
+@@ -37,7 +39,7 @@
+  const refreshNotices=()=>{try{const win=crm?.contentWindow;win?.dispatchEvent(new win.Event('impe:phone-notices-refresh'));}catch(_){/* La consulta periódica sigue disponible tras navegar. */}};
+  const remove=ref=>{const existed=pending.some(p=>p.ref===ref);phone.dismissFinishedCall?.(ref);pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
+  const open=()=>{if(phone.getPhoneStatus().active||!crm)return;
+-  const state=phone.getCallState(),ref=String(state?.context?.transferReference||state?.pbxCallId||'');
++  const state=phone.getCallState(),ref=reference(state);
+   const task=state?.phase==='incoming-finished'||state?.phase==='finished'?pending.find(x=>x.ref===ref):pending[pending.length-1];
+   const url=new URL(cfg.salesHistoryUrl,location.href);
+   // Sin referencia PBX confirmada sólo puede consultarse el historial.
+@@ -49,7 +51,7 @@
+  };
+  button.addEventListener('click',open);
+  const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();
+-  const ref=String(state?.context?.transferReference||state?.pbxCallId||'');
++  const ref=reference(state);
+   const finished=!active&&['finished','incoming-finished'].includes(state?.phase);
+   const task=finished?pending.find(x=>x.ref===ref):pending[pending.length-1];
+   const confirmed=Boolean(task&&metadata?.pbx_call_id===task.ref&&metadata.finalizada);
+@@ -61,20 +63,30 @@
+  };
+  window.IMPE_SALES_ATTENTION=Object.freeze({hasPending:()=>pending.length>0,openPending:open});
+  async function lookup(ref,version){
+-  if(fetching||!valid(ref))return;fetching=true;const requestToken=phone.getCallState()?.callToken;
+-  try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pbx_call_id',ref);
++  if(fetching||(!pbx(ref)&&!candidate))return;fetching=true;const requestToken=phone.getCallState()?.callToken;
++  const controller=typeof AbortController==='function'?new AbortController():null;
++  const timeout=controller?setTimeout(()=>controller.abort(),10000):null;
++  try{const url=new URL(cfg.salesDetailUrl,location.href);
++   if(pbx(ref))url.searchParams.set('pbx_call_id',ref);
++   else {url.searchParams.set('solicitud_id',candidate.id);url.searchParams.set('sdk',candidate.token);}
+    if(cfg.extension)url.searchParams.set('extension',cfg.extension);
+-   const r=await fetch(url,{credentials:'same-origin',cache:'no-store'}),j=await r.json();
++   const r=await fetch(url,{credentials:'same-origin',cache:'no-store',...(controller?{signal:controller.signal}:{})}),j=await r.json();
+    const current=phone.getCallState();
+-   const currentRef=String(current?.context?.transferReference||current?.finalMetadata?.pbx_call_id||current?.pbxCallId||'');
+-   if(version!==revision||!r.ok||!j.ok||(current?.active&&(currentRef!==ref||current.callToken!==requestToken)))return;
++   const currentRef=reference(current);
++   if(version!==revision||!r.ok||!j.ok||current?.callToken!==requestToken||(pbx(ref)&&current?.active&&currentRef!==ref))return;
+    metadata=j.llamada;if(!metadata)return;
+-   if(metadata.finalizada&&!current?.active)phone.confirmFinishedCall?.(ref,metadata);
++   ref=metadata.pbx_call_id;
++   if(!pbx(ref)||String(metadata.extension)!==String(cfg.extension))return;
++   if(candidate&&candidate.token===requestToken)bound={token:requestToken,ref};
++   if(metadata.finalizada&&!current?.active){
++    if(!metadata.registro&&!pending.some(p=>p.ref===ref)){pending.push({ref,extension:cfg.extension,at:Date.now(),callToken:requestToken});persist();}
++    phone.confirmFinishedCall?.(ref,metadata,requestToken);
++   }
+    if(metadata.registro)remove(ref);
+-   else if(metadata.finalizada&&!phone.getPhoneStatus().active&&!announced.has(ref)){announced.add(ref);refreshNotices();}
++   else if(metadata.finalizada&&!phone.getPhoneStatus().active&&!announced.has(ref)){announced.add(ref);refreshNotices();crm?.contentWindow?.postMessage({type:'IMPE_PHONE_CALL_CHANGED'},location.origin);}
+    card.hidden=!current?.active||!metadata.nombre;name.textContent=metadata.nombre||'';
+    hint.textContent=metadata.origen_extension?'Nombre informado por Recepción · Ext. '+metadata.origen_extension:'Atención comercial de tu extensión';
+-  }catch(_){/* El historial conserva el pendiente mientras llega evidencia PBX. */}finally{fetching=false;}
++  }catch(_){/* El historial conserva el pendiente mientras llega evidencia PBX. */}finally{if(timeout!==null)clearTimeout(timeout);fetching=false;render();}
+  }
+  let lastLookup=0,tries=0,lastPending=0,pendingBusy=false;
+  async function recoverPending(){
+@@ -90,18 +102,19 @@
+  void recoverPending();
+  function observe(){
+   const state=phone.getCallState();if(!state){if(pending[0]&&Date.now()-lastLookup>Math.min(60000,3000*2**tries)){lastLookup=Date.now();tries++;void lookup(pending[0].ref,revision);}render();return;}
+-  const ref=String(state.context?.transferReference||state.finalMetadata?.pbx_call_id||state.pbxCallId||'');
++  const ref=reference(state);
+   const identity=String(state.callToken||'')+':'+ref;
+-  if(state.active&&identity!==scope){scope=identity;++revision;metadata=null;card.hidden=true;name.textContent='';hint.textContent='';lastLookup=0;tries=0;}
++  if(state.active&&identity!==scope){if(previous?.callToken!==state.callToken&&!String(state.callToken).endsWith('-external')){candidate=null;bound=null;}scope=identity;++revision;metadata=null;card.hidden=true;name.textContent='';hint.textContent='';lastLookup=0;tries=0;}
+   if(state.active&&!metadata){
+    const accepted=acceptedFor(state,ref);
+    if(accepted){
++    candidate={id:Number(accepted.id),token:state.callToken};
+     name.textContent=accepted.nombre;
+     hint.textContent='Nombre informado en disponibilidad · Ext. '+accepted.origen_extension;
+     card.hidden=false;phone.bindTransferCandidate?.(Number(accepted.id));
+    }
+   }
+-  if(previous?.active&&!state.active&&valid(ref)&&['finished','incoming-finished'].includes(state.phase)){
++  if(previous?.active&&!state.active&&pbx(ref)&&['finished','incoming-finished'].includes(state.phase)){
+    metadata=null;lastLookup=0;tries=0;
+    // También una llamada no contestada necesita poder consultar su resultado.
+    // La referencia PBX y la finalización se validan en el servidor.
+@@ -112,9 +125,9 @@
+     // El resultado se abre sólo cuando el usuario lo solicita; evita dos modales superpuestos.
+    }
+   }
+-  const currentRef=valid(ref)?ref:state.active?null:pending[0]?.ref;
++  const currentRef=pbx(ref)?ref:candidate?ref:state.active?null:pending[0]?.ref;
+   if(!state.active){card.hidden=true;void recoverPending();}
+-  if(currentRef&&Date.now()-lastLookup>(metadata?.finalizada?60000:Math.min(10000,1500*2**tries))&&(!metadata||(!state.active&&pending.some(p=>p.ref===currentRef)))){
++  if((currentRef||candidate)&&Date.now()-lastLookup>(metadata?.finalizada?60000:Math.min(10000,1500*2**Math.min(tries,3)))&&(!metadata||!state.active)){
+    lastLookup=Date.now();tries++;void lookup(currentRef,revision);
+   }
+   previous=state;render();

@@ -1,0 +1,122 @@
+--- a/prueba_telefonia/api/grabacion_transferida_pbx.php
++++ b/prueba_telefonia/api/grabacion_transferida_pbx.php
+@@ -12,7 +12,7 @@
+ require_once $root . '/app/services/TelefoniaRecepcionMarketingService.php';
+ require_once $root . '/app/services/ZadarmaRecordingService.php';
+ require_once $root . '/app/helpers/ZadarmaPbxIdentifierHelper.php';
+-require_once $root . '/app/services/TelefoniaPbxSegmentosService.php';
++require_once $root . '/app/services/TelefoniaAudioTransferidoService.php';
+ header('Cache-Control: private, no-store');
+ header('X-Content-Type-Options: nosniff');
+ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') { http_response_code(405); exit; }
+@@ -39,71 +39,38 @@
+     $q->close();
+     if (!$assignment) { http_response_code(404); exit; }
+     $ext = (string)$assignment['extension'];
+-    // Requiere evidencia de atención propia, fin PBX y una transferencia
+-    // realmente notificada; evita acceso por conocer identificadores.
+-    $q = $db->prepare("SELECT
+-        EXISTS(SELECT 1 FROM telefonia_zadarma_eventos e
+-           WHERE e.pbx_call_id=? AND e.internal=?
+-             AND e.evento='NOTIFY_INTERNAL' AND e.received_at>=?
+-             AND e.received_at>=DATE_SUB(NOW(),INTERVAL 30 DAY)) AS participa,
+-        EXISTS(SELECT 1 FROM telefonia_zadarma_eventos e
+-           WHERE e.pbx_call_id=? AND e.internal=?
+-             AND e.evento='NOTIFY_ANSWER') AS atendio,
+-        EXISTS(SELECT 1 FROM telefonia_zadarma_eventos e
+-           WHERE e.pbx_call_id=? AND e.evento='NOTIFY_END') AS termino");
+-    $desde = (string)$assignment['desde'];
+-    $q->bind_param('ssssss', $pbx, $ext, $desde, $pbx, $ext, $pbx);
+-    $q->execute();
+-    $evidence = $q->get_result()->fetch_assoc();
+-    $q->close();
+-    $estadoPropio = (new ZadarmaWebhookEventStoreService($db))->obtenerEstadoEntrantePorPbxCallId($ext, $pbx);
+-    // Incluye la transferencia de una saliente: respuesta propia con
+-    // iniciador confirmado y fin de esa misma llamada original.
+-    $autorizada = $estadoPropio && !empty($estadoPropio['answer_at']) &&
+-        in_array($estadoPropio['estado'], ['ended','transferred'], true) &&
+-        !empty($estadoPropio['end_at']) &&
+-        strcmp((string)$estadoPropio['answer_at'], $desde) >= 0 &&
+-        strtotime((string)$estadoPropio['answer_at']) >= strtotime('-30 days');
+-    $autorizadas=[];
++    $service = new ZadarmaRecordingService(false);
++    // Recepción conserva su autorización histórica. El destinatario sólo
++    // obtiene el origen y su tramo tras acreditar la transferencia exacta.
+     if ($recepcion) {
+-        // El historial verifica también las salientes propias, su permiso,
+-        // asignación, fin y transferencia notificada antes de ofrecer segmentos.
+-        $autorizada = false;
+-        $historial = (new TelefoniaRecepcionMarketingService())->resumen($userId);
+-        foreach ($historial['llamadas'] as $call) {
+-            if ($call['pbx_call_id'] === $pbx && $call['estado'] === 'Transferida' &&
+-                !empty($call['finalizada']) && !empty($call['tiene_grabacion']) &&
+-                empty($call['excluir_grabacion']) &&
+-                !empty($call['destino_transferencia'])) {
+-                    $autorizada = true;
+-                    // Recepción ya podía consultar las partes de SU
+-                    // transferencia. El destino procede del historial privado.
+-                    $autorizadas[]=(string)$call['destino_transferencia'];break;
+-                }
++        $allowed=false;
++        foreach ((new TelefoniaRecepcionMarketingService())->resumen($userId)['llamadas'] as $call) {
++            if ($call['pbx_call_id']===$pbx && $call['estado']==='Transferida' && !empty($call['finalizada']) && empty($call['excluir_grabacion'])) {$allowed=true;break;}
+         }
+-    }
+-    if (!$autorizada) { http_response_code(404); exit; }
+-    $q=$db->prepare('SELECT evento,internal,call_id_with_rec,is_recorded,payload_json FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
+-    $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
+-    $ids=TelefoniaPbxSegmentosService::deEventos($events,$ext,$autorizadas)['segmentos'];
+-    if (!$ids) { http_response_code(404); exit; }
+-    $service = new ZadarmaRecordingService();
+-    $records = [];
+-    foreach ($ids as $id) {
+-        $record = $service->obtenerGrabacionPorCallId($id);
+-        if (!$record || empty($record['link'])) {
+-            if (isset($_GET['verificar'])) {
+-                header('Content-Type: application/json; charset=utf-8');
+-                echo json_encode(['ok'=>true,'disponible'=>false,'segmentos'=>0]); exit;
+-            }
+-            http_response_code(404); exit;
++        if (!$allowed) throw new DomainException('ACCESO_NO_AUTORIZADO');
++        // El receptor de la transferencia se toma del historial privado.
++        $receiver=(string)($call['destino_transferencia']??'');
++        $q=$db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
++        $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
++        $parts=TelefoniaPbxSegmentosService::deEventos($events,$ext,[$receiver]);
++        $records=[];$info=[];
++        foreach($parts['segmentos'] as $i=>$id){$r=$service->obtenerGrabacionPorCallId($id);if(!empty($r['link'])){$records[$i]=$r;$info[]=($parts['segmentos_info'][$i]??[])+['indice'=>$i];}}
++        $result=['ok'=>true,'estado'=>$records?'DISPONIBLE':'GRABACION_EN_PREPARACION','disponible'=>(bool)$records,'segmentos'=>count($records),'segmentos_info'=>$info];
++    } else {
++        $cacheKey=$ext.'|'.$pbx;$cache=$_SESSION['impe_audio_transferido'][$cacheKey]??[];
++        $cached=time()-(int)($cache['at']??0)<3600?($cache['rows']??[]):[];
++        $stats=isset($_GET['verificar'])&&(!$cached||time()-(int)$cache['at']>=60)?[$service,'estadisticasPbx']:null;
++        $result=(new TelefoniaAudioTransferidoService($db))->resolver($pbx,$ext,(string)$assignment['desde'],[$service,'obtenerGrabacionPorCallId'],$stats,$cached);
++        if($result['cache_tramos']){
++            $_SESSION['impe_audio_transferido'][$cacheKey]=['at'=>$stats?time():(int)$cache['at'],'rows'=>$result['cache_tramos']];
++            $_SESSION['impe_audio_transferido']=array_slice($_SESSION['impe_audio_transferido'],-20,null,true);
+         }
+-        $records[]=$record;
++        $records=$result['records'];
+     }
+     if (isset($_GET['verificar'])) {
++        unset($result['ids'],$result['records'],$result['cache_tramos']);
+         header('Content-Type: application/json; charset=utf-8');
+-        echo json_encode(['ok'=>true,'disponible'=>true,'segmentos'=>count($records)]);
+-        exit;
++        echo json_encode($result);exit;
+     }
+     $index = filter_var($_GET['segmento'] ?? null,FILTER_VALIDATE_INT,
+         ['options'=>['min_range'=>0,'max_range'=>7]]);
+@@ -141,8 +108,11 @@
+     } else http_response_code(200);
+     header('Content-Length: '.strlen($body));
+     echo $body;
++} catch (DomainException $error) {
++    http_response_code(403);header('Content-Type: application/json; charset=utf-8');
++    echo json_encode(['ok'=>false,'estado'=>'ACCESO_NO_AUTORIZADO']);exit;
+ } catch (Throwable $error) {
+     error_log('[audio_transferido_pbx] '.get_class($error));
+     if (!headers_sent()) http_response_code(502);
+-    exit('Grabación temporalmente no disponible.');
++    header('Content-Type: application/json; charset=utf-8');echo json_encode(['ok'=>false,'estado'=>'ERROR_TEMPORAL']);exit;
+ }

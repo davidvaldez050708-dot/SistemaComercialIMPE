@@ -1,0 +1,21 @@
+--- a/prueba_telefonia/api/grabacion_ventas.php
++++ b/prueba_telefonia/api/grabacion_ventas.php
+@@ -63,9 +63,16 @@
+     if(!$call['finalizada']||!$call['conectada']||!TelefoniaResultadoVentasService::esConversacion($call['registro']['resultado']??'')){
+         http_response_code(404);exit('Este intento no tiene reproducción de audio habilitada.');
+     }
+-    $ids=$call['segmentos'];$segment=filter_var($_GET['segmento']??'0',FILTER_VALIDATE_INT);
++    $ids=$call['segmentos'];
++    if(isset($_GET['verificar'])){
++        $service=new ZadarmaRecordingService(false);$info=[];$temporary=false;
++        foreach($ids as $i=>$id){try{$r=$service->obtenerGrabacionPorCallId($id);if(!empty($r['link']))$info[]=($call['segmentos_info'][$i]??[])+['indice'=>$i];}catch(Throwable $e){$temporary=true;error_log('[ventas_audio] RECORD_TEMPORARY ref='.substr(hash('sha256',$pbxCallId),0,12));}}
++        header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');
++        echo json_encode(['ok'=>true,'disponible'=>(bool)$info,'segmentos'=>count($info),'segmentos_info'=>$info,'estado'=>$info?(count($info)<count($ids)?'DISPONIBLE_PARCIAL':'DISPONIBLE'):($temporary?'ERROR_TEMPORAL':($ids?'GRABACION_EN_PREPARACION':'TRAMO_PENDIENTE_VINCULACION'))]);exit;
++    }
++    $segment=filter_var($_GET['segmento']??'0',FILTER_VALIDATE_INT);
+     if($segment===false||$segment<0||!isset($ids[$segment])){http_response_code(404);exit('No hay audio confirmado para tu extensión.');}
+-    // Nunca pedir el PBX completo: podría contener el audio de Recepción.
++    // Resolver cada ID autorizado; nunca pedir audio global del PBX.
+     $service=new ZadarmaRecordingService();$recording=$service->obtenerGrabacionPorCallId($ids[$segment]);
+     if(!$recording||empty($recording['link'])){http_response_code(404);exit('La grabación aún no está disponible en Zadarma.');}
+ 

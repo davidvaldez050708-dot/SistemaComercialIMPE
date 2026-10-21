@@ -1,0 +1,27 @@
+--- a/app/services/TelefoniaVentasEvidenciaService.php
++++ b/app/services/TelefoniaVentasEvidenciaService.php
+@@ -17,12 +17,13 @@
+         foreach($calls as &$call){
+             if(empty($call['finalizada'])||empty($call['conectada']))continue;
+             $data=$cache[$call['extension'].'|'.$call['pbx_call_id']]??[];
++            $eventInfo=[];foreach($call['segmentos'] as $n=>$id)$eventInfo[$id]=$call['segmentos_info'][$n]??null;
+             $call['tramos_verificados']=$data['tramos']??[];
+             if($call['segundos']===null&&isset($data['segundos']))$call['segundos']=$data['segundos'];
+             $ids=array_column(array_filter($call['tramos_verificados'],static fn($r)=>!empty($r['audio_verificado'])),'id');
+-            $call['segmentos']=array_values(array_diff(array_unique(array_merge($call['segmentos'],$ids)),$data['rechazados']??[]));
++            $call['segmentos']=array_values(array_diff(array_unique(array_merge($call['segmentos'],$ids)),array_merge($data['rechazados']??[],$call['audio_bloqueadas']??[])));
+             $call['segmentos_info']=[];
+-            foreach($call['segmentos'] as $id){$info=null;foreach($call['tramos_verificados'] as $n=>$part)if($part['id']===$id)$info=['tramo'=>$n+1,'segundos'=>$part['segundos']];$call['segmentos_info'][]=$info;}
++            foreach($call['segmentos'] as $id){$info=$eventInfo[$id]??null;foreach($call['tramos_verificados'] as $n=>$part)if($part['id']===$id)$info=['tramo'=>$n+1,'segundos'=>$part['segundos'],'extension'=>$part['extension']??$call['extension'],'etiqueta'=>($part['extension']??$call['extension'])===$call['extension']?'Extensión '.$call['extension']:'Recepción · Ext. '.$part['extension']];$call['segmentos_info'][]=$info;}
+             $overflow=count($call['segmentos'])>8;
+             if($overflow){$call['segmentos']=[];$call['segmentos_info']=[];$call['audio_motivo']='limite';}
+             elseif($call['segmentos'])$call['audio_motivo']='referencia_propia';
+@@ -44,7 +45,7 @@
+         $date=new DateTimeImmutable($call['fecha'],new DateTimeZone('America/Mexico_City'));
+         $rows=$stats($date->modify('-1 day')->format('Y-m-d H:i:s'),$date->setTimezone(new DateTimeZone('UTC'))->modify('+1 day')->format('Y-m-d H:i:s'));
+         if(count($rows)>=1000)throw new DomainException('La consulta está incompleta. No se vinculó ningún audio.');
+-        $data=TelefoniaPbxSegmentosService::propios($rows,$ref,$ext);
++        $data=TelefoniaPbxSegmentosService::propios($rows,$ref,$ext,$call['audio_extensiones']??[]);
+         if(count($data['tramos'])>8)throw new DomainException('Hay demasiados segmentos para verificarlos de forma segura.');
+         foreach($data['tramos'] as &$part){$part['audio_verificado']=false;if($part['grabada']){
+             try{$audio=$record($part['id']);$part['audio_verificado']=!empty($audio['link'])&&filter_var($audio['link'],FILTER_VALIDATE_URL)&&str_starts_with(strtolower($audio['link']),'https://');}catch(Throwable $e){/* Audio aún en preparación: reintento posterior sin inventarlo. */}

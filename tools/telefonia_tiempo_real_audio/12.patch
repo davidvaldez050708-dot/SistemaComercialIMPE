@@ -1,0 +1,38 @@
+--- a/public/javascript/telefonia_shell.js
++++ b/public/javascript/telefonia_shell.js
+@@ -316,10 +316,10 @@
+             resultFormOwner = null;
+             render();
+         },
+-        confirmFinishedCall: function (ref, facts) {
++        confirmFinishedCall: function (ref, facts, token) {
+             if(currentState?.active||!facts?.finalizada||String(facts.extension)!==String(cfg.extension))return false;
+-            const match=s=>[s?.pbxCallId,s?.context?.transferReference,s?.finalMetadata?.pbx_call_id].includes(ref);
+-            const update=s=>({...s,status:'completed',duration:Number.isInteger(facts.segundos)?facts.segundos:s.duration,
++            const match=s=>[s?.pbxCallId,s?.context?.transferReference,s?.finalMetadata?.pbx_call_id].includes(ref)||(token&&s?.callToken===token&&currentState?.callToken===token);
++            const update=s=>({...s,pbxCallId:ref,status:'completed',duration:Number.isInteger(facts.segundos)?facts.segundos:s.duration,
+                 context:{...s.context,pbxEnded:true,pbxAnswered:Boolean(facts.conectada)},message:'Guardada en Mis llamadas.'});
+             if(recentFinishedIncoming&&match(recentFinishedIncoming.state))recentFinishedIncoming.state=update(recentFinishedIncoming.state);
+             if(recentFinishedOutgoing&&match(recentFinishedOutgoing.state))recentFinishedOutgoing.state=update(recentFinishedOutgoing.state);
+@@ -608,6 +608,8 @@
+         if (incomingPanel) {
+             incomingPanel.hidden = !customVisible;
+             incomingPanel.classList.toggle('is-compact', incomingCompact);
++            if(!ongoing&&(incomingFinishedPreview||finishedPreview))incomingPanel.setAttribute('data-phone-finished','');
++            else incomingPanel.removeAttribute('data-phone-finished');
+         }
+         const workingCall = Boolean(ongoing && state.phase === 'in-progress' &&
+             !finishingIncoming && !pendingOutgoingHangup);
+@@ -735,8 +737,10 @@
+             compactMute.classList.toggle('is-active', Boolean(phoneState.muted));
+             compactMute.title = muteLabel;
+             compactMute.setAttribute('aria-label', muteLabel);
+-            notice.hidden = !actionNotice || incomingCompact;
+-            notice.textContent = actionNotice;
++            const finalNotice=(finished||finishedIncoming)&&phoneState.context?.pbxEnded?phoneState.message:'';
++            notice.hidden = !(actionNotice||finalNotice) || incomingCompact;
++            notice.textContent = actionNotice||finalNotice||'';
++            if(cfg.salesResults)notice.style.color=finalNotice?'#16735a':'';
+             centerIncoming();
+         }
+         callTitle.textContent = finishedIncoming ? 'Llamada finalizada' :
