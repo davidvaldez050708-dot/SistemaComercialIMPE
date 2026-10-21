@@ -21,6 +21,7 @@ $files = [
  'controller' => file_get_contents(__DIR__.'/../app/controllers/TelefoniaController.php'),
  'host' => file_get_contents(__DIR__.'/../public/javascript/telefonia_host.js'),
  'shell' => file_get_contents(__DIR__.'/../app/views/telefonia/shell.php'),
+ 'capture' => file_get_contents(__DIR__.'/../app/views/telefonia/captura_panel.php'),
  'phone' => file_get_contents(__DIR__.'/../public/javascript/telefonia_shell.js'),
  'routing' => file_get_contents(__DIR__.'/../public/javascript/telefonia_enrutamiento.js'),
  'availability' => file_get_contents(__DIR__.'/../public/javascript/telefonia_disponibilidad.js'),
@@ -65,9 +66,12 @@ foreach ([
   'data-shell-transfer-toggle',
   'data-shell-transfer-panel',
   'data-routing-destination',
-  'data-shell-capture-panel',
-  'data-routing-capture-form',
+  'captura_panel.php',
   'telefonia_enrutamiento.js'
+ ],
+ 'capture'=>[
+  'data-shell-capture-panel',
+  'data-routing-capture-form'
  ],
  'phone'=>[
   'getActiveCall: function',
