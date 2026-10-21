@@ -36,7 +36,7 @@ with tempfile.TemporaryDirectory() as tmp:
         p.parent.mkdir(parents=True, exist_ok=True)
         newest = (ROOT / item["path"]).read_text(encoding="utf-8")
         previous = newest
-        for older, newer in item["pairs"]:
+        for older, newer in reversed(item["pairs"]):
             assert previous.count(newer) == 1, ("Falta versión destino", item["path"])
             previous = previous.replace(newer, older, 1)
         assert previous != newest
