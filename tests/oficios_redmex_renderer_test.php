@@ -18,16 +18,44 @@ function cleanRedmex($dir) {
     }
     rmdir($dir);
 }
-function firstParagraphRedmex($path) {
-    $zip=new ZipArchive(); expectRedmex($zip->open($path)===true,'open first paragraph');
+function institutionalContentRedmex($path) {
+    $zip=new ZipArchive(); expectRedmex($zip->open($path)===true,'open institutional content');
     try {
-        $doc=new DOMDocument(); expectRedmex($doc->loadXML($zip->getFromName('word/document.xml'),LIBXML_NONET),'first paragraph XML');
+        $doc=new DOMDocument(); expectRedmex($doc->loadXML($zip->getFromName('word/document.xml'),LIBXML_NONET),'institutional XML');
         $xp=new DOMXPath($doc); $xp->registerNamespace('w','http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $content=[]; $started=false;
         foreach ($xp->query('/w:document/w:body/w:p') as $paragraph) {
-            if (strpos($paragraph->textContent,'Por medio de la presente,')===0) { return $paragraph->C14N(true); }
+            if (strpos($paragraph->textContent,'Por medio de la presente,')===0) { $started=true; }
+            if ($started) { $content[]=$paragraph->C14N(true); }
+            if ($started && strpos($paragraph->textContent,'Sin otro particular,')===0) { return $content; }
         }
-        throw new RuntimeException('Institutional first paragraph missing');
+        throw new RuntimeException('Institutional content incomplete');
     } finally { $zip->close(); }
+}
+function verifyPreparedContentRedmex($path, $general, $source) {
+    expectRedmex(institutionalContentRedmex($path)===$general,'all institutional paragraphs and formatting unchanged: '.basename($path));
+    $zip=new ZipArchive(); $zip->open($path);
+    $original=new ZipArchive(); $original->open($source);
+    try {
+        $doc=new DOMDocument(); $doc->loadXML($zip->getFromName('word/document.xml'),LIBXML_NONET);
+        $xp=new DOMXPath($doc); $xp->registerNamespace('w','http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $text=''; foreach ($xp->query('//w:t') as $t) { $text.=$t->textContent; }
+        foreach (['CUERPO PERSONALIZADO:', 'Este texto procede del DOCX seleccionado', 'TABLA: Programa ficticio',
+            'MODALIDAD: Institucional', 'EDICIÓN MANUAL CONSERVADA:', 'NO DEBE'] as $bad) {
+            expectRedmex(strpos($text,$bad)===false,'no QA content in institutional sample');
+        }
+        expectRedmex(strpos($text,'Dichos programas cuentan con validez oficial')!==false,'official validity paragraph');
+        expectRedmex($xp->query('/w:document/w:body/w:p')->length===33 && $xp->query('//w:tbl')->length===0,'original structure without extra paragraphs or tables');
+        $ref=new DOMDocument(); $ref->loadXML($original->getFromName('word/document.xml'),LIBXML_NONET);
+        $rx=new DOMXPath($ref); $rx->registerNamespace('w','http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        expectRedmex($xp->query('//w:sectPr')->item(0)->C14N(true)===$rx->query('//w:sectPr')->item(0)->C14N(true),'page size and margins unchanged');
+        for ($i=0;$i<$original->numFiles;$i++) {
+            $part=$original->getNameIndex($i);
+            if (preg_match('~^word/(media/|fonts/|styles[^/]*\.xml$|fontTable\.xml$|header[^/]*\.xml$|footer[^/]*\.xml$|.*\.rels$)~',$part)) {
+                expectRedmex($zip->getFromName($part)===$original->getFromName($part),'original resource unchanged: '.$part);
+            }
+        }
+    } finally { $zip->close(); $original->close(); }
 }
 $root=dirname(__DIR__); $out=$root.'/output/pdf/oficios-redmex';
 if (!is_dir($out)) { mkdir($out,0775,true); }
@@ -43,6 +71,8 @@ $vista=['folio'=>'PRUEBA/0000/20-10/26','lugar_fecha'=>'Cuernavaca, Morelos, a 2
     'institucion'=>'INSTITUCIÓN FICTICIA DE PRUEBA','municipio'=>'Cuernavaca','estado'=>'MORELOS','ubicacion'=>'Cuernavaca / Morelos',
     'analista_nombre'=>'Analista de Prueba','analista_correo'=>'prueba@example.test','analista_telefono'=>'0000000000'];
 $service=new OficioDocxPdfService();
+$preparationOnly=in_array('--solo-preparacion',$argv,true);
+$samplesOnly=in_array('--solo-muestras',$argv,true);
 $temporaryBefore=glob($root.'/storage/tmp/oficios/*',GLOB_ONLYDIR) ?: [];
 try {
     $doc=$service->generarDocx($vista); expectRedmex($doc['ok'],'general docx');
@@ -63,35 +93,47 @@ try {
         $z->addFromString($part,$d->saveXML());
     }
     $z->close();
-    $firstParagraph=firstParagraphRedmex($out.'/general.docx');
-    $result=$service->generarPdf($vista); expectRedmex($result['ok'],'general pdf: '.($result['mensaje_tecnico']??''));
-    expectRedmex($result['conversor']==='REDMEX_DOMPDF','direct renderer'); file_put_contents($out.'/general.pdf',$result['contenido_pdf']);
+    $institutionalContent=institutionalContentRedmex($source);
+    verifyPreparedContentRedmex($out.'/general.docx',$institutionalContent,$source);
+    if (!$preparationOnly) {
+        $result=$service->generarPdf($vista); expectRedmex($result['ok'],'general pdf: '.($result['mensaje_tecnico']??''));
+        expectRedmex($result['conversor']==='REDMEX_DOMPDF','direct renderer'); file_put_contents($out.'/general.pdf',$result['contenido_pdf']);
+    }
 
     copy($out.'/general.docx',$catalog);
-    changeRedmex($catalog,static function($d,$xp,$zip) {
-        // Variar sólo el segundo párrafo: el primero conserva texto y formato del general.
-        $p=$xp->query('/w:document/w:body/w:p')->item(14);
-        while ($p->firstChild) { $p->removeChild($p->firstChild); }
-        $r=$d->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','w:r');
-        $t=$d->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','w:t');
-        $t->appendChild($d->createTextNode('CUERPO PERSONALIZADO: reunión para ${institucion}. Este texto procede del DOCX seleccionado.'));
-        $r->appendChild($t); $p->appendChild($r);
-        $table=$d->createDocumentFragment();
-        $table->appendXML('<w:tbl xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:tblPr><w:tblW w:w="10440" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="5220"/><w:gridCol w:w="5220"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="5220" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>TABLA: Programa ficticio</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="5220" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>MODALIDAD: Institucional</w:t></w:r></w:p></w:tc></w:tr></w:tbl>');
-        $p->parentNode->insertBefore($table,$p->nextSibling);
+    changeRedmex($catalog,static function($d,$xp,$zip) use ($vista) {
+        // Marcadores sólo en los campos existentes, nunca dentro del cuerpo oficial.
+        $fields=[7=>[$vista['folio']=>'${numero_oficio}'],9=>[$vista['fecha']=>'${fecha}'],
+            11=>[$vista['destinatario_nombre']=>'${destinatario}', $vista['destinatario_cargo']=>'${destinatario_cargo}',
+                $vista['institucion']=>'${institucion}', $vista['estado']=>'${estado}'],
+            29=>[$vista['analista_nombre']=>'${analista_nombre}'],31=>[$vista['analista_telefono']=>'${analista_telefono}']];
+        foreach ($fields as $index=>$replacements) {
+            $paragraph=$xp->query('/w:document/w:body/w:p')->item($index);
+            foreach ($xp->query('.//w:t',$paragraph) as $t) { $t->nodeValue=strtr($t->textContent,$replacements); }
+        }
     });
     $catalogHash=hash_file('sha256',$catalog);
-    $customVista=$vista+['archivo_plantilla'=>'storage/templates/oficios_personalizados/'.basename($catalog)];
-    $prepared=$service->generarDocx($customVista,true); expectRedmex($prepared['ok'],'prepare custom');
+    $customVista=array_merge($vista,['archivo_plantilla'=>'storage/templates/oficios_personalizados/'.basename($catalog),
+        'folio'=>'PRUEBA/0001/20-10/26','destinatario_nombre'=>'DESTINATARIO DE EJEMPLO',
+        'destinatario_cargo'=>'COORDINACIÓN ACADÉMICA','institucion'=>'INSTITUCIÓN EDUCATIVA DE PRUEBA',
+        'analista_nombre'=>'María Ejemplo','analista_telefono'=>'0000000001']);
+    $prepared=$service->generarDocx($customVista,true); expectRedmex($prepared['ok'],'prepare custom: '.($prepared['mensaje_tecnico']??''));
     file_put_contents($out.'/personalizado.docx',$prepared['contenido_docx']);
-    expectRedmex(firstParagraphRedmex($out.'/personalizado.docx')===$firstParagraph,'custom first paragraph and formatting unchanged');
-    $result=$service->generarPdf($customVista); expectRedmex($result['ok'],'custom pdf: '.($result['mensaje_tecnico']??''));
-    file_put_contents($out.'/personalizado.pdf',$result['contenido_pdf']);
+    verifyPreparedContentRedmex($out.'/personalizado.docx',$institutionalContent,$source);
+    $customZip=new ZipArchive(); $customZip->open($out.'/personalizado.docx'); $customXml=$customZip->getFromName('word/document.xml'); $customZip->close();
+    foreach (['PRUEBA/0001/20-10/26','DESTINATARIO DE EJEMPLO','COORDINACIÓN ACADÉMICA','INSTITUCIÓN EDUCATIVA DE PRUEBA','María Ejemplo','0000000001'] as $value) {
+        expectRedmex(strpos($customXml,$value)!==false,'authorized custom field preserved');
+    }
+    expectRedmex(strpos($customXml,'${')===false,'authorized variables completed');
+    if (!$preparationOnly) {
+        $result=$service->generarPdf($customVista); expectRedmex($result['ok'],'custom pdf: '.($result['mensaje_tecnico']??''));
+        file_put_contents($out.'/personalizado.pdf',$result['contenido_pdf']);
+    }
 
     file_put_contents($processed,$prepared['contenido_docx']);
     changeRedmex($processed,static function($d,$xp,$zip) {
         foreach ($xp->query('//w:t') as $t) {
-            $t->nodeValue=str_replace('CUERPO PERSONALIZADO:', 'EDICIÓN MANUAL CONSERVADA:', $t->textContent);
+            $t->nodeValue=str_replace(['María Ejemplo','0000000001'], ['Ana Ejemplo','0000000002'], $t->textContent);
         }
     });
     $processedHash=hash_file('sha256',$processed);
@@ -99,8 +141,34 @@ try {
         'analista_nombre'=>'NO DEBE REEMPLAZAR LA EDICIÓN','institucion'=>'NO DEBE SUSTITUIR EL CUERPO']);
     $doc=$service->generarDocx($processedVista); expectRedmex($doc['ok']&&hash('sha256',$doc['contenido_docx'])===$processedHash,'processed DOCX immutable');
     file_put_contents($out.'/preparado.docx',$doc['contenido_docx']);
-    expectRedmex(firstParagraphRedmex($out.'/preparado.docx')===$firstParagraph,'processed first paragraph and formatting unchanged');
+    verifyPreparedContentRedmex($out.'/preparado.docx',$institutionalContent,$source);
+    // Otra modalidad legítima mantiene su propia redacción, incluso estas palabras.
+    copy($source,$incompatible);
+    changeRedmex($incompatible,static function($d,$xp,$zip) {
+        $paragraph=$xp->query('/w:document/w:body/w:p')->item(14);
+        foreach ($xp->query('.//w:t',$paragraph) as $i=>$t) {
+            $t->nodeValue=$i===0 ? 'Modalidad: Formación continua. TABLA y MODALIDAD forman parte de esta redacción autorizada.' : '';
+        }
+    });
+    $otherContent=institutionalContentRedmex($incompatible); $otherHash=hash_file('sha256',$incompatible);
+    $other=$service->generarDocx(array_merge($vista,['archivo_plantilla'=>'storage/templates/oficios_personalizados/'.basename($incompatible)]),true);
+    expectRedmex($other['ok'],'prepare other modality'); file_put_contents($work.'/otra-modalidad.docx',$other['contenido_docx']);
+    expectRedmex(institutionalContentRedmex($work.'/otra-modalidad.docx')===$otherContent && hash_file('sha256',$incompatible)===$otherHash,'no global filtering or substitution of other modalities');
+    if ($preparationOnly) {
+        expectRedmex(hash_file('sha256',$source)===$hash && hash_file('sha256',$catalog)===$catalogHash
+            && hash_file('sha256',$processed)===$processedHash,'originals unchanged');
+        expectRedmex(!array_diff(glob($root.'/storage/tmp/oficios/*',GLOB_ONLYDIR) ?: [],$temporaryBefore),'preparation temporaries removed');
+        echo "OK: preparación general, personalizada y preparada; cuerpo institucional y recursos íntegros; campos autorizados e instantánea conservados. Sin conversión ni BD.\n";
+        return;
+    }
     $result=$service->generarPdf($processedVista); expectRedmex($result['ok'],'processed pdf'); file_put_contents($out.'/preparado.pdf',$result['contenido_pdf']);
+    if ($samplesOnly) {
+        expectRedmex(hash_file('sha256',$source)===$hash && hash_file('sha256',$catalog)===$catalogHash
+            && hash_file('sha256',$processed)===$processedHash,'originals unchanged');
+        expectRedmex(!array_diff(glob($root.'/storage/tmp/oficios/*',GLOB_ONLYDIR) ?: [],$temporaryBefore),'sample temporaries removed');
+        echo "OK: tres muestras institucionales completas, personalización autorizada y PDF local válido. Sin pruebas de otros módulos.\n";
+        return;
+    }
 
     $mutations=[
         'page'=>static function($d,$xp,$zip){ $xp->query('//w:pgSz')->item(0)->setAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','w:w','11906'); },
@@ -130,7 +198,7 @@ try {
         $p=$xp->query('/w:document/w:body/w:p')->item(14);
         for ($i=1;$i<=65;$i++) {
             $copy=$p->cloneNode(true);
-            foreach ($xp->query('.//w:t',$copy) as $text) { $text->nodeValue='PÁRRAFO EXTENSO '.$i.': contenido de prueba que debe conservarse completo en las páginas siguientes.'; }
+            foreach ($xp->query('.//w:t',$copy) as $j=>$text) { $text->nodeValue=$j===0 ? 'PÁRRAFO EXTENSO '.$i.': contenido de prueba que debe conservarse completo en las páginas siguientes.' : ''; }
             $p->parentNode->insertBefore($copy,$p);
         }
     });
@@ -139,7 +207,7 @@ try {
     expectRedmex(hash_file('sha256',$source)===$hash && hash_file('sha256',$catalog)===$catalogHash
         && hash_file('sha256',$processed)===$processedHash,'originals unchanged');
     expectRedmex(!array_diff(glob($root.'/storage/tmp/oficios/*',GLOB_ONLYDIR) ?: [],$temporaryBefore),'temporary directories removed on success and rejection');
-    echo "OK: general, personalizada con tabla, preparada, primer párrafo y formato iguales al general, incompatibles, paginación y originales intactos.\n";
+    echo "OK: general, personalizada, preparada, cuerpo institucional y formato íntegros, incompatibles, paginación y originales intactos.\n";
 } finally {
     foreach ([$catalog,$processed,$incompatible] as $file) { if (is_file($file)) { unlink($file); } }
     cleanRedmex($work);

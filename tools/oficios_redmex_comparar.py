@@ -18,7 +18,7 @@ def main():
     args = parser.parse_args()
     base = args.directorio.resolve()
     report = {'manual_review_required': True, 'samples': []}
-    first_paragraph = None
+    institutional_content = None
     for name in ['general', 'personalizado', 'preparado']:
         rendered = []
         for suffix in ['-word', '']:
@@ -36,15 +36,26 @@ def main():
         assert candidate['sizes'] == reference['sizes'] == [[612, 792]], name + ': not letter'
         assert re.sub(r'\s', '', reference['text']) == re.sub(r'\s', '', candidate['text']), name + ': missing or substituted text'
         assert candidate['fonts'] == reference['fonts'], name + ': font substitution'
-        paragraph = re.search(r'Por medio de la presente,.*?mediante un proceso académico\.',
-                              candidate['text'], re.DOTALL)
-        assert paragraph is not None, name + ': institutional first paragraph missing'
-        paragraph = re.sub(r'\s+', ' ', paragraph.group()).strip()
-        if first_paragraph is None:
-            first_paragraph = paragraph
-        assert paragraph == first_paragraph, name + ': institutional first paragraph changed'
+        body = re.search(r'Por medio de la presente,.*?Sin otro particular,.*?información adicional\.',
+                         candidate['text'], re.DOTALL)
+        assert body is not None, name + ': institutional content incomplete'
+        body = re.sub(r'\s+', ' ', body.group()).strip()
+        if institutional_content is None:
+            institutional_content = body
+        assert body == institutional_content, name + ': institutional content changed'
+        assert 'Dichos programas cuentan con validez oficial' in body, name + ': official validity paragraph missing'
+        for bad in ['CUERPO PERSONALIZADO:', 'Este texto procede del DOCX seleccionado', 'TABLA: Programa ficticio',
+                    'MODALIDAD: Institucional', 'EDICIÓN MANUAL CONSERVADA:', 'NO DEBE']:
+            assert bad not in candidate['text'], name + ': QA text in institutional sample'
+        if name in ['personalizado', 'preparado']:
+            for value in ['PRUEBA/0001/20-10/26', 'DESTINATARIO DE EJEMPLO',
+                          'COORDINACIÓN ACADÉMICA', 'INSTITUCIÓN EDUCATIVA DE PRUEBA']:
+                assert value in candidate['text'], name + ': authorized customization missing'
+        if name == 'personalizado':
+            assert 'María Ejemplo' in candidate['text'] and '0000000001' in candidate['text']
         if name == 'preparado':
-            assert 'EDICIÓN MANUAL CONSERVADA' in candidate['text'] and 'NO DEBE' not in candidate['text']
+            assert 'Ana Ejemplo' in candidate['text'] and '0000000002' in candidate['text']
+            assert 'María Ejemplo' not in candidate['text']
         a = Image.open(base / (name + '-word-1.png')).convert('RGB')
         b = Image.open(base / (name + '-1.png')).convert('RGB')
         assert a.size == b.size
@@ -61,6 +72,8 @@ def main():
         report['samples'].append({'name': name, 'reference': reference, 'candidate': candidate,
                                   'text_equal_ignoring_whitespace': True,
                                   'first_paragraph_matches_general': True,
+                                  'entire_institutional_body_matches_general': True,
+                                  'no_qa_text': True,
                                   'mean_absolute_pixel_error_0_255': round(float(error.mean()), 5),
                                   'pixels_difference_gt16_percent': round(float(np.any(error > 16, axis=2).mean()*100), 5)})
     with pdfplumber.open(base / 'paginacion.pdf') as document:

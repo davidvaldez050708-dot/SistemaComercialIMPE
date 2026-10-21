@@ -93,8 +93,8 @@ En `output/pdf/oficios-redmex/` se entregan:
 | Muestra ficticia | Resultado local y referencia Word |
 | --- | --- |
 | `general.pdf` | Una página carta, texto completo, membrete, sello y pie originales. |
-| `personalizado.pdf` | Primer párrafo idéntico al general, incluidas negritas; segundo párrafo de prueba personalizado y tabla de dos columnas conservados. |
-| `preparado.pdf` | Primer párrafo idéntico al general; conserva «EDICIÓN MANUAL CONSERVADA» en el segundo, sin reemplazarla con valores nuevos de la vista. |
+| `personalizado.pdf` | Cuerpo institucional completo e idéntico al general, incluido el párrafo de validez oficial. Cambian únicamente folio, destinatario, cargo, institución y datos del analista en sus campos existentes. |
+| `preparado.pdf` | Mismo cuerpo institucional; conserva la edición de nombre/teléfono del analista en la instantánea preparada, aunque la vista aporte otros valores. |
 | `paginacion.pdf` | 65 párrafos adicionales completos; tres páginas carta, recursos repetidos y cierre sin solapamientos. |
 
 Los tres `*-word.pdf` son exportaciones del mismo DOCX ficticio mediante Word local,
@@ -102,16 +102,33 @@ utilizado sólo como referencia de QA. El CRM en Hostinger no depende de esa com
 Los `*-comparacion.png` muestran Word a la izquierda y el PDF local a la derecha.
 `comparacion.json` registra hashes, tamaños, páginas, fuentes y métricas de diferencia.
 
-Las variaciones ficticias se limitan al segundo párrafo. Se comprueba que el XML completo
-del primer párrafo coincide con el general en ambas muestras y que su texto permanece
-idéntico en los tres PDF. La corrección afecta a las muestras de prueba; el conversor
-continúa respetando el contenido del DOCX seleccionado, sin sobrescribir documentos reales.
+La preparación de muestras anterior sustituía un párrafo institucional por texto técnico
+y añadía una tabla de prueba en `tests/oficios_redmex_renderer_test.php`. Tras la primera
+corrección, seguía sustituyendo el párrafo de validez oficial. Ésta era la fuente exacta
+del contenido incorrecto de las muestras entregadas; no lo insertaba el servicio del CRM.
+Se retiró esa composición y se personalizan únicamente campos dinámicos existentes.
+
+Se revisaron en modo lectura la plantilla general y los 22 DOCX de oficios personalizados
+disponibles localmente: ninguno contiene las frases técnicas señaladas en su XML principal.
+Hay documentos históricos de otras modalidades sin ese párrafo literal; no se modifican
+ni se presupone que deban convertirse al modelo general. No se consultó la BD ni Hostinger.
+
+La prueba compara el XML completo de todos los párrafos institucionales con el original,
+incluidos los formatos y el cierre; comprueba estilos, fuentes, imágenes, relaciones,
+tamaño, márgenes, 33 párrafos y ausencia de tablas añadidas. También valida sustituciones
+autorizadas, descarga inmutable de `generacion_*`, conservación de otra modalidad y
+ausencia de textos técnicos en las muestras. Estas comprobaciones son de QA, no filtros
+del CRM. El servicio sigue respetando el contenido de la plantilla seleccionada.
+
+La comparación de PDF exige que todo el cuerpo institucional coincida con el general,
+incluido el texto de validez oficial, y que las personalizaciones y la firma preparada
+correspondan a cada DOCX. No se aplica una sustitución global del cuerpo ni se oculta texto.
 
 La extracción de texto coincide ignorando espacios en las tres muestras y conserva las
 familias tipográficas. La revisión visual confirma los elementos institucionales y la
 distribución. **No son idénticos píxel a píxel**: existen pequeñas diferencias de posición,
 métrica tipográfica y rasterizado. En puntos de control (asunto, tabla, cuerpo y firma)
-se observaron diferencias verticales inferiores a 0.4 pt. Las métricas de píxel no se
+se observaron diferencias pequeñas de posición. Las métricas de píxel no se
 presentan como garantía automática de fidelidad; se revisaron las páginas renderizadas.
 
 Pruebas dirigidas, sin CI global:
@@ -122,6 +139,21 @@ python tests/oficios_carga_seleccion_test.py
 python tests/publicacion_oficios_redmex_test.py
 python tools/oficios_redmex_comparar.py --pdftoppm RUTA_PDFTOPPM
 ```
+
+Para esta corrección de contenido se ejecutan únicamente la preparación y las tres
+muestras, sin repetir la batería de conversión, carga HTTP ni publicación:
+
+```text
+php -d memory_limit=128M -d disable_functions=proc_open,exec,shell_exec,system,passthru,popen tests/oficios_redmex_renderer_test.php --solo-preparacion
+php -d memory_limit=128M -d disable_functions=proc_open,exec,shell_exec,system,passthru,popen tests/oficios_redmex_renderer_test.php --solo-muestras
+python tools/oficios_redmex_comparar.py --pdftoppm RUTA_PDFTOPPM
+```
+
+Las referencias Word de las muestras corregidas se exportan de nuevo desde los mismos
+DOCX ficticios. No cambian controlador, servicio de preparación del CRM, conversor,
+plantillas almacenadas ni archivos publicados por el script selectivo. Por tanto esta
+corrección de muestras no requiere un despliegue adicional; el publicador existente
+permanece intacto. Los PDF históricos tampoco se sobrescriben.
 
 El ensayo HTTP prueba subida multipart real, biblioteca, copia seleccionada, separación
 original/preparado, selección inexistente, rechazo de PHP/HTML/vacío/>20 MB y guardas de

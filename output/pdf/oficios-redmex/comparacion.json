@@ -41,6 +41,8 @@
       },
       "text_equal_ignoring_whitespace": true,
       "first_paragraph_matches_general": true,
+      "entire_institutional_body_matches_general": true,
+      "no_qa_text": true,
       "mean_absolute_pixel_error_0_255": 11.45453,
       "pixels_difference_gt16_percent": 8.75216
     },
@@ -62,7 +64,7 @@
           "Cambria-Bold",
           "TimesNewRomanPSMT"
         ],
-        "sha256": "ac1e71689039b4cb4c88e0f2d9bba7165e1904fc7036749af6760c6ade2c0a31"
+        "sha256": "d9a238a44cb0c0e1a8abd1a7013c89848640c7f780e0291c8e9201634b3f2550"
       },
       "candidate": {
         "pages": 1,
@@ -80,12 +82,14 @@
           "Cambria-Bold",
           "TimesNewRomanPSMT"
         ],
-        "sha256": "e9cd8f759b5feaa004b5b3f7b292791c46a6004b3e139de3594f3fe20bc86bdb"
+        "sha256": "5fbfd86a745978214c694a403b1f77ecb14b2667421623ee337204e29ef41f17"
       },
       "text_equal_ignoring_whitespace": true,
       "first_paragraph_matches_general": true,
-      "mean_absolute_pixel_error_0_255": 10.04141,
-      "pixels_difference_gt16_percent": 7.65932
+      "entire_institutional_body_matches_general": true,
+      "no_qa_text": true,
+      "mean_absolute_pixel_error_0_255": 11.45506,
+      "pixels_difference_gt16_percent": 8.75209
     },
     {
       "name": "preparado",
@@ -105,7 +109,7 @@
           "Cambria-Bold",
           "TimesNewRomanPSMT"
         ],
-        "sha256": "d13d0e33d73e94b3dfa7c104309fd890ac75f2d08e62032d96850b1413ca2ce4"
+        "sha256": "c9439555334ffe5388beb01831704680967d53c352f3836ed9c38dc2f7a1338a"
       },
       "candidate": {
         "pages": 1,
@@ -123,12 +127,14 @@
           "Cambria-Bold",
           "TimesNewRomanPSMT"
         ],
-        "sha256": "40c48f14ce969e34134a765b6b2f074b07dbddbf74795b1c6c0c604a9a6537f1"
+        "sha256": "bb786abb6a41fdfbb0d88428862e6c6a6c4217bc0f98af4c2242c4b6f990f988"
       },
       "text_equal_ignoring_whitespace": true,
       "first_paragraph_matches_general": true,
-      "mean_absolute_pixel_error_0_255": 10.08991,
-      "pixels_difference_gt16_percent": 7.69552
+      "entire_institutional_body_matches_general": true,
+      "no_qa_text": true,
+      "mean_absolute_pixel_error_0_255": 11.45039,
+      "pixels_difference_gt16_percent": 8.74665
     }
   ],
   "long_document": {
