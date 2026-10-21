@@ -894,7 +894,9 @@
         recheck: function () {
             if(!state.active)return false;
             if(state.direction==='incoming'){
-                if(incomingBridge?.canHangup())incomingBridge.hangup();
+                // Consultar no es volver a colgar: el usuario ya pidió
+                // finalizar y repetir finishCall puede cancelar otro diálogo.
+                analystSdkObserver?.checkNow?.();
                 void pollIncoming();
             }else void poll();
             publish({message:'Comprobando el estado real en la centralita; todavía no se confirma el cierre.'});
@@ -1943,6 +1945,28 @@
                 payload.callToken===state.callToken&&Number.isInteger(payload.id)&&payload.id>0&&
                 (analystSdkObserver?.isRinging?.()||analystSdkObserver?.isConnected?.())){
                 publish({context:{...state.context,availabilityCandidate:payload.id}});void transferFlow?.tick();
+            }
+        } else if (action === 'PBX_CONFIRMED_INCOMING_END') {
+            // La capa comercial consultó el detalle autorizado del PBX.
+            // No emitir END a Zadarma, ni asignarlo a una sesión nueva.
+            const ref=String(payload.ref||''),token=String(payload.callToken||'');
+            const ownRef=String(state.pbxCallId||state.context?.transferReference||'');
+            if(state.active&&state.direction==='incoming'&&
+                ['recovering','finishing'].includes(state.phase)&&
+                /^[A-Za-z0-9_-]{6,100}$/.test(ref)&&
+                token!==''&&token===state.callToken&&ownRef===ref){
+                const seconds=Number(payload.seconds);
+                const duration=Number.isInteger(seconds)&&seconds>=0
+                    ? seconds:currentDuration();
+                answeredAtMs=0;
+                retirePbxCall(ref);
+                publish({active:false,phase:'incoming-finished',
+                    pbxCallId:ref,status:'completed',duration,
+                    context:{...state.context,pbxEnded:true,
+                        pbxAnswered:Boolean(payload.connected)},
+                    message:'Cierre PBX confirmado para esta llamada.'});
+                ocultarHostEntrante();
+                marcarPestanaEntrante('');
             }
         } else if (action === 'HANGUP') {
             void hangup();
