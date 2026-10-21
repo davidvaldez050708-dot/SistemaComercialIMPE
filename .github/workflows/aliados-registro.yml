@@ -1,0 +1,102 @@
+name: Aliados y Registro exclusivo
+on:
+  pull_request:
+    paths:
+      - 'app/**/Aliado*'
+      - 'app/**/Formulario*'
+      - 'app/**/Prospecto*'
+      - 'app/**/CrearConvocatoria*'
+      - 'app/helpers/AdminRolePolicy.php'
+      - 'app/views/aliados/**'
+      - 'app/views/convocatorias/**'
+      - 'app/views/prospectos/**'
+      - 'app/views/formularios/publico_registro.php'
+      - 'public/javascript/aliados*'
+      - 'public/javascript/crear_convocatoria.js'
+      - 'public/css/aliados.css'
+      - 'public/css/crear_convocatoria.css'
+      - 'database/migrations/2026_10_21_aliados_registro.sql'
+      - 'tools/*aliados_registro*'
+      - 'tests/*aliados_registro*'
+      - '.github/workflows/aliados-registro.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  registro:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['33308:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33308
+      IMPE_DB_USER: root
+      IMPE_DB_NAME: impe_test_handly_aliados
+      IMPE_TEST_DB_NAME: impe_test_handly_aliados
+      IMPE_TEST_MYSQL_PORT: 33308
+      IMPE_BASE_URL: http://127.0.0.1:8097/
+      PLAYWRIGHT_MODULE_PATH: /tmp/aliados-browser/node_modules/playwright
+      BOOTSTRAP_MODULE_PATH: /tmp/aliados-browser/node_modules/bootstrap
+      JSQR_MODULE_PATH: /tmp/aliados-browser/node_modules/jsqr
+      IMPE_TEST_OUTPUT: /tmp/aliados-visual
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, zip, gd
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dependencias completas en checkout ef�mero
+        run: |
+          mv vendor /tmp/aliados-vendor-versionado
+          composer install --no-interaction --no-scripts --prefer-dist --no-progress
+      - run: npm install --prefix /tmp/aliados-browser playwright bootstrap@5.3.8 jsqr
+      - run: /tmp/aliados-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis y alcance
+        run: |
+          git diff --name-only a90b6aded4a7f606eccc7a27749658e3fed9b9ed HEAD -- '*.php' | xargs -r -n1 php -l
+          node --check public/javascript/aliados_registro.js
+          node --check public/javascript/aliados.js
+          node --check public/javascript/crear_convocatoria.js
+      - name: Migración e integración con base real aislada
+        run: |
+          mkdir -p /tmp/respaldo-aliados
+          php tests/aliados_registro_fixture.php
+          php tools/preparar_handly_formularios.php --apply >/tmp/handly-preparacion.log
+          php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
+          php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
+          php tools/migrar_aliados_registro.php --check
+          php tests/aliados_registro_db.php
+      - name: Navegador real, QR, HTTP, seguridad y concurrencia
+        run: node tests/aliados_registro_browser.cjs
+      - name: Publicador reversible
+        run: python3 tests/publicacion_aliados_registro_test.py
+      - name: Regresión Handly y formularios generales
+        env:
+          IMPE_DB_NAME: impe_test_handly_legacy
+          IMPE_TEST_DB_NAME: impe_test_handly_legacy
+        run: |
+          php tests/formulario_aliados_fixture.php
+          php tools/preparar_handly_formularios.php --apply >/tmp/handly-legacy.log
+          php tests/formulario_aliados_db.php
+          php tests/aliados_internacionales.php
+          node tests/formulario_aliados_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aliados-registro-${{ strategy.job-index }}
+          path: /tmp/aliados-visual
