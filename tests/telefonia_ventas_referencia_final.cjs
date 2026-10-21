@@ -29,5 +29,23 @@ const facts=(extra={})=>({pbx_call_id:ref,extension:'150',finalizada:true,conect
  const stale=await fixture();stale.setState(state(true,{pbxCallId:ref}));await stale.tick();stale.setState(state(false,{pbxCallId:ref}));stale.setDetail(facts({sdk_tokens:['sdk-previous-session-123456']}));await stale.tick();assert(stale.button.disabled,'Una PBX de la cuenta vinculada a otro SDK no corresponde a la llamada actual');
  // Una segunda llamada al mismo teléfono tiene una sesión distinta.
  f.setState(state(true,{callToken:'sdk-next-session-123456',context:{type:'SDK_INCOMING'},destination:'+525551112233'}));await f.tick();f.setState(state(false,{callToken:'sdk-next-session-123456',context:{},destination:'+525551112233'}));await f.tick();assert(f.button.disabled,'Mismo teléfono no hereda la confirmación anterior');
+ // El fin SIP verificado habilita Registrar resultado inmediatamente aunque
+ // el detalle PBX todavía no contenga finalizada=true. El formulario valida
+ // por servidor y no permite guardar antes del cierre acreditado.
+ const immediate=await fixture();
+ immediate.setState(state(true,{context:{type:'SDK_INCOMING',transferReference:ref,sdkConnected:true}}));
+ await immediate.tick();
+ immediate.setState(state(false,{context:{type:'SDK_INCOMING',transferReference:ref,sdkConnected:true,sdkEnded:true}}));
+ await immediate.tick();
+ assert.equal(immediate.button.hidden,false);
+ assert.equal(immediate.button.disabled,false,'FIN SIP permite abrir registro sin esperar OUT_END');
+ assert.equal(immediate.button.textContent,'Registrar resultado');
+ immediate.button.click();
+ assert.match(immediate.crm.src,/esperando_pbx=1/,'Formulario comunica que falta conciliación administrativa');
+ assert.match(immediate.crm.src,/pbx_call_id=pbx-current-transfer-001/);
+ const uncertain=await fixture();
+ uncertain.setState(state(false,{context:{type:'SDK_INCOMING',transferReference:ref,sdkConnected:true}}));
+ await uncertain.tick();
+ assert(uncertain.button.disabled||uncertain.button.hidden,'Sin END SIP no habilitar registro ficticio');
  console.log('OK: recuperación SDK exacta, PBX final prioritaria, referencias ajenas rechazadas y llamadas consecutivas aisladas');
 })().catch(e=>{console.error(e);process.exitCode=1;});
