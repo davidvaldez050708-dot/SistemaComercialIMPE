@@ -19,7 +19,7 @@
   if(!ref&&state.context?.type!=='SDK_INCOMING')return null;
   const caller=digits10(state.destination),expected=digits10(op.numero);
   if(caller.length===10&&expected.length===10&&caller!==expected)return null;
-  if(acceptedBound&&acceptedBound.id!==op.id)return null;
+  if(acceptedBound&&acceptedBound.id!==op.id)acceptedBound=null;
   if(acceptedBound&&!ref&&acceptedBound.token!==token)return null;
   if(!acceptedBound)acceptedBound={id:op.id,token};
   return op;
