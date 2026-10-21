@@ -19,10 +19,15 @@ class OficioDocxPdfService
 
     public function diagnosticar()
     {
-        $conversor = $this->detectarConversor();
+        $conversor = [
+            'ok' => $this->redmexDompdfDisponible(),
+            'tipo' => 'REDMEX_DOMPDF',
+            'ruta' => '',
+            'detalle' => 'Conversión REDMEX con Dompdf en PHP, sin procesos externos. La disponibilidad no sustituye una prueba web.'
+        ];
 
         return [
-            'ok' => is_file($this->templatePath) && (class_exists('ZipArchive') || class_exists('PharData')) && function_exists('proc_open') && ($conversor['ok'] ?? false),
+            'ok' => is_file($this->templatePath) && ($conversor['ok'] ?? false),
             'template' => $this->templatePath,
             'template_existe' => is_file($this->templatePath),
             'zip_disponible' => class_exists('ZipArchive') || class_exists('PharData'),
@@ -33,8 +38,20 @@ class OficioDocxPdfService
 
     public function generarPdf(array $vista)
     {
+        $requestId = bin2hex(random_bytes(8));
+        $fase = 'SOURCE';
+        $fallo = function ($mensaje, $codigo, $exception = null) use ($requestId, &$fase) {
+            $this->registrarDiagnosticoPdf($requestId, $fase, ['result' => 'error', 'reason' => $codigo, 'exception' => $exception]);
+            return $this->error($mensaje . ' Referencia: ' . $requestId . '.', $codigo . ' ref=' . $requestId);
+        };
         $rutaPlantilla = $this->resolverRutaPlantilla($vista);
         $personalizada = trim((string)($vista['archivo_plantilla'] ?? '')) !== '';
+        $this->registrarDiagnosticoPdf($requestId, 'START', [
+            'php' => PHP_VERSION, 'sapi' => PHP_SAPI,
+            'source' => $personalizada ? 'custom' : 'general',
+            'source_exists' => is_file($rutaPlantilla), 'source_readable' => is_readable($rutaPlantilla),
+            'dependencies' => $this->redmexDompdfDisponible()
+        ]);
         // Paso 5 guarda el resultado en esta misma ruta, asociada al oficio.
         // Las plantillas del catálogo (oficio_*) aún necesitan rellenarse.
         $procesada = $personalizada && preg_match(
@@ -50,23 +67,17 @@ class OficioDocxPdfService
         }
 
         if (!is_file($rutaPlantilla)) {
-            return $this->error(
+            return $fallo(
                 'No se encontró la plantilla DOCX institucional del oficio.',
-                'Falta storage/templates/oficio_general_redmex.docx.'
+                'OFICIO_PDF_SOURCE_MISSING'
             );
         }
 
-        if (!class_exists('ZipArchive') && !class_exists('PharData')) {
-            return $this->error(
-                'PHP necesita soporte para archivos ZIP para preparar el oficio.',
-                'No están disponibles ZipArchive ni PharData.'
-            );
-        }
-
-        if (!function_exists('proc_open')) {
-            return $this->error(
-                'PHP no puede ejecutar el conversor de documentos.',
-                'proc_open no está disponible.'
+        $fase = 'DEPENDENCIES';
+        if (!$this->redmexDompdfDisponible()) {
+            return $fallo(
+                'No están disponibles las dependencias PHP de conversión de oficios. Comunica la referencia al administrador.',
+                'OFICIO_PDF_DEPENDENCIES'
             );
         }
 
@@ -76,23 +87,25 @@ class OficioDocxPdfService
             DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . 'oficios' .
             DIRECTORY_SEPARATOR . $nombreBase . '_' . bin2hex(random_bytes(4));
 
-        if (!mkdir($directorioTemporal, 0775, true) && !is_dir($directorioTemporal)) {
-            return $this->error(
+        $fase = 'TEMPORARY';
+        if (!@mkdir($directorioTemporal, 0775, true) && !is_dir($directorioTemporal)) {
+            return $fallo(
                 'No fue posible preparar el archivo temporal del oficio.',
-                'No se pudo crear: ' . $directorioTemporal
+                'OFICIO_PDF_TEMP_CREATE'
             );
         }
 
         $rutaDocx = $directorioTemporal . DIRECTORY_SEPARATOR . $nombreBase . '.docx';
 
         try {
-            if (!copy($rutaPlantilla, $rutaDocx)) {
-                return $this->error(
+            if (!@copy($rutaPlantilla, $rutaDocx)) {
+                return $fallo(
                     'No fue posible copiar la plantilla institucional.',
-                    'copy() falló para: ' . $rutaDocx
+                    'OFICIO_PDF_TEMP_COPY'
                 );
             }
 
+            $fase = 'PREPARE';
             $rellenado = $procesada
                 ? ['ok' => true]
                 : ($personalizada
@@ -100,44 +113,75 @@ class OficioDocxPdfService
                     : $this->rellenarDocx($rutaDocx, $this->construirReemplazos($vista)));
 
             if (!($rellenado['ok'] ?? false)) {
-                return $rellenado;
+                return $fallo((string)($rellenado['mensaje'] ?? 'No fue posible preparar el oficio.'), 'OFICIO_PDF_PREPARE');
             }
 
             if ($personalizada) {
                 self::registrarTrazaTemporal('CUSTOM_PREVIEW_CONVERSION_START');
             }
-            $conversion = $this->convertirAPdf($rutaDocx, $directorioTemporal);
+            $fase = 'CONVERT';
+            $this->registrarDiagnosticoPdf($requestId, $fase, [
+                'temp_exists' => is_dir($directorioTemporal), 'temp_writable' => is_writable($directorioTemporal),
+                'docx_exists' => is_file($rutaDocx), 'docx_readable' => is_readable($rutaDocx)
+            ]);
+            require_once __DIR__ . '/OficioRedmexPdfRenderer.php';
+            $conversion = (new OficioRedmexPdfRenderer())->convertir($rutaDocx, $directorioTemporal, $requestId);
 
             if (!($conversion['ok'] ?? false)) {
-                return $conversion;
+                $codigo = (string)($conversion['mensaje_tecnico'] ?? '');
+                if (!preg_match('/^REDMEX_[A-Z_]+$/D', $codigo)) { $codigo = 'OFICIO_PDF_CONVERSION'; }
+                return $fallo((string)($conversion['mensaje'] ?? 'No fue posible convertir el oficio.'), $codigo);
             }
 
+            $fase = 'VALIDATE';
             $pdfTemporal = (string)$conversion['ruta_pdf'];
             $contenido = is_file($pdfTemporal) ? file_get_contents($pdfTemporal) : false;
 
-            if ($contenido === false || $contenido === '') {
-                return $this->error(
+            if ($contenido === false || !$this->contenidoPdfValido($contenido)) {
+                return $fallo(
                     'El conversor no generó un PDF válido.',
-                    'El PDF temporal no existe, está vacío o no se pudo leer.'
+                    'OFICIO_PDF_OUTPUT_INVALID'
                 );
             }
 
             if ($personalizada) {
                 self::registrarTrazaTemporal('CUSTOM_PREVIEW_CONVERSION_OK');
             }
+            $this->registrarDiagnosticoPdf($requestId, 'COMPLETE', ['result' => 'ok', 'pdf_bytes' => strlen($contenido)]);
             return [
                 'ok' => true,
                 'contenido_pdf' => $contenido,
                 'conversor' => (string)($conversion['conversor'] ?? '')
             ];
         } catch (Throwable $error) {
-            return $this->error(
+            return $fallo(
                 'No fue posible generar el oficio desde la plantilla institucional.',
-                $error->getMessage()
+                'OFICIO_PDF_EXCEPTION', get_class($error)
             );
         } finally {
             $this->eliminarDirectorio($directorioTemporal);
+            $this->registrarDiagnosticoPdf($requestId, 'CLEANUP', ['temp_removed' => !is_dir($directorioTemporal)]);
         }
+    }
+
+    private function redmexDompdfDisponible()
+    {
+        return class_exists('ZipArchive') && class_exists('DOMDocument') &&
+            extension_loaded('gd') && function_exists('mb_str_split') && function_exists('mb_ord') &&
+            class_exists('Dompdf\\Dompdf') && class_exists('FontLib\\Font');
+    }
+
+    private function contenidoPdfValido($contenido)
+    {
+        return strlen($contenido) > 1000 && str_starts_with($contenido, '%PDF-') &&
+            preg_match('~/Type\s*/Page\b~', $contenido) === 1 &&
+            preg_match('/startxref\s+[0-9]+\s+%%EOF\s*$/D', substr($contenido, -1024)) === 1;
+    }
+
+    private function registrarDiagnosticoPdf($requestId, $fase, array $datos)
+    {
+        error_log('OFICIO_PDF ' . json_encode(['request_id' => $requestId, 'engine' => 'REDMEX_DOMPDF', 'phase' => $fase] + $datos,
+            JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE));
     }
 
     /**
@@ -246,7 +290,7 @@ class OficioDocxPdfService
         return $reemplazos + $personalizados;
     }
 
-    public function generarDocx(array $vista)
+    public function generarDocx(array $vista, $prepararPlantilla = false)
     {
         $rutaPlantilla = $this->resolverRutaPlantilla($vista);
         if (!is_file($rutaPlantilla) || (!class_exists('ZipArchive') && !class_exists('PharData'))) {
@@ -266,7 +310,17 @@ class OficioDocxPdfService
                 return $this->error('No fue posible copiar la plantilla seleccionada.', 'copy() falló.');
             }
 
-            $rellenado = $this->rellenarConTemplateProcessor($rutaDocx, $vista);
+            // La copia generacion_* ya fue rellenada en Generar oficio. Descarga
+            // y PDF deben representar exactamente ese archivo, sin repetir reemplazos.
+            $procesada = !$prepararPlantilla && preg_match(
+                '~^storage/templates/oficios_personalizados/generacion_\d{8}_\d{6}_[a-f0-9]{12}\.docx$~D',
+                str_replace('\\', '/', (string)($vista['archivo_plantilla'] ?? ''))
+            ) === 1;
+            $rellenado = $procesada ? ['ok' => true] : (
+                trim((string)($vista['archivo_plantilla'] ?? '')) !== ''
+                    ? $this->rellenarConTemplateProcessor($rutaDocx, $vista)
+                    : $this->rellenarDocx($rutaDocx, $this->construirReemplazos($vista))
+            );
             if (!($rellenado['ok'] ?? false)) {
                 return $rellenado;
             }
@@ -372,10 +426,9 @@ class OficioDocxPdfService
     {
         error_log('[oficio_docx] ' . json_encode([
             'etapa' => $etapa,
-            'archivo' => basename((string)$rutaDocx),
             'tamano' => is_file($rutaDocx) ? filesize($rutaDocx) : 0,
-            'variables_encontradas' => array_values($variables),
-            'variables_reconocidas' => $reconocidas
+            'cantidad_variables' => count($variables),
+            'campos_oficiales' => array_values(array_unique(array_values($reconocidas)))
         ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
     }
 
@@ -384,9 +437,10 @@ class OficioDocxPdfService
         $relativa = str_replace('\\', '/', trim((string)($vista['archivo_plantilla'] ?? '')));
         $prefijo = 'storage/templates/oficios_personalizados/';
 
-        if ($relativa === '' || strpos($relativa, $prefijo) !== 0 || strpos($relativa, '..') !== false) {
+        if ($relativa === '') {
             return $this->templatePath;
         }
+        if (strpos($relativa, $prefijo) !== 0 || strpos($relativa, '..') !== false) { return ''; }
 
         $ruta = $this->rootPath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativa);
         $directorioPermitido = realpath($this->rootPath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, rtrim($prefijo, '/')));
@@ -717,10 +771,7 @@ class OficioDocxPdfService
         error_log('[oficio_docx] ' . json_encode([
             'etapa' => 'fallback_estructural_anclas',
             'parrafos' => count($parrafos),
-            'texto_extraido' => array_slice(array_values(array_filter(array_map(static function ($parrafo) {
-                $texto = preg_replace('/\s+/u', ' ', trim((string)$parrafo['texto']));
-                return function_exists('mb_substr') ? mb_substr($texto, 0, 180, 'UTF-8') : substr($texto, 0, 180);
-            }, $parrafos))), 0, 12),
+            'parrafos_con_texto' => count(array_filter($parrafos, static function ($parrafo) { return trim($parrafo['texto']) !== ''; })),
             'numero_oficio' => $indiceFolio !== null,
             'fecha' => $indiceFecha !== null,
             'presente' => $indicePresente !== null,
@@ -1292,10 +1343,9 @@ POWERSHELL;
         if (strpos($mensaje, 'No fue posible identificar los campos dinámicos de la plantilla') === 0) {
             $origen = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
             self::registrarTrazaTemporal('MARKER_ERROR_TRIGGERED', [
-                'archivo' => $origen[0]['file'] ?? __FILE__,
                 'linea' => $origen[0]['line'] ?? 0,
                 'metodo' => $origen[1]['function'] ?? '',
-                'condicion' => $detalle
+                'condicion' => preg_match('/^(DOCX_[0-9]{2})[: ]/', $detalle, $codigo) ? $codigo[1] : 'MARKER_ERROR'
             ]);
         }
         return [
