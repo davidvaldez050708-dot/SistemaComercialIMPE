@@ -107,7 +107,8 @@ const fixture=(view,role='cc')=>base+'_fixture?view='+view+'&role='+role;
   }
   check(Number(query("SELECT COUNT(*) n FROM formulario_registros WHERE correo='concurrente@example.test'")[0].n)===1,'una sola respuesta concurrente');
   check(errors.length===0,'sin errores JavaScript');
-  check(!/PHP (Warning|Fatal|Parse|Deprecated)/.test(logs),'sin errores PHP en vistas y endpoints');
+  const phpIssues=logs.split('\n').filter(line=>/PHP (Warning|Fatal|Parse|Deprecated)/.test(line));
+  check(phpIssues.length===0,'sin errores PHP en vistas y endpoints: '+phpIssues.join('\n'));
   console.log('PASS '+count+' comprobaciones navegador/HTTP/concurrencia');
  }finally{if(browser)await browser.close();server.kill();}
 })().catch(e=>{console.error(e);console.error(logs.slice(-5000));process.exitCode=1;});
