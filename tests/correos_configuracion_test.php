@@ -12,7 +12,10 @@ $work = sys_get_temp_dir() . '/impe-mail-setup-' . bin2hex(random_bytes(6)); mkd
 putenv('IMPE_PRIVATE_CONFIG_DIR=' . $work); putenv('IMPE_MAIL_STATE_DIR=' . $work . '/state');
 $accepted = true; $probes = [];
 $loadUser = static function($email) { return ['id'=>71,'correo'=>'empleado@gmail.com','estado'=>1,'rol_estado'=>1]; };
-$setup = new CorreoConfiguracionHostinger($work, static function($a) use (&$accepted,&$probes) { $probes[]=$a;return $accepted; }, $loadUser);
+$setup = new CorreoConfiguracionHostinger($work, static function($a) use (&$accepted,&$probes) {
+    $probes[]=$a;
+    return $accepted && $a['transport']==='hostinger_api' ? ['addresses'=>['asignado@hostinger.test','otro@hostinger.test']] : $accepted;
+}, $loadUser);
 class SetupSmtpQA extends \PHPMailer\PHPMailer\PHPMailer { public function send() { return $this->preSend(); } }
 $recovery = ['email'=>'qa.recuperacion@gmail.com','host'=>'smtp.gmail.com','port'=>587,'tls'=>'tls','secret'=>'ABCD EFGH IJKL MNOP'];
 try {
@@ -29,6 +32,12 @@ try {
     $api=$setup->configurar('--hostinger',['secret'=>'TOKEN_HOSTINGER_QA']);
     $central=(new CorreoCuentaConectadaService())->central();
     setupExpect($central['api_token']==='TOKEN_HOSTINGER_QA' && $central['correo']==='', 'Token API compartido utilizable, sin remitente arbitrario');
+    $setup->configurar('--hostinger',['secret'=>'TOKEN_HOSTINGER_QA','email'=>'empleado@gmail.com']);
+    $mappedResolver=new CorreoCuentaConectadaService(static function($id){return ['correo'=>'empleado@gmail.com','estado'=>1];});
+    $mappedResolver->configurarConsultaApi(static function(){return ['ok'=>true,'json'=>['data'=>['mailboxes'=>[
+        ['address'=>'asignado@hostinger.test','resourceId'=>'ACuno'],['address'=>'otro@hostinger.test','resourceId'=>'ACdos']]]]];});
+    setupExpect($mappedResolver->resolver('asignado@hostinger.test',71)['identidad']['remitente_visible']==='asignado@hostinger.test','Usuario registrado Gmail puede elegir el buzón Hostinger asociado explícitamente por administración');
+    setupError(static function()use($mappedResolver){$mappedResolver->resolver('asignado@hostinger.test',73);}, 'MAIL_CENTRAL_FROM');
     $account=$recovery;$account['email']='empleado@gmail.com';
     file_put_contents($work.'/mail_accounts.local.php',"<?php return ['limits'=>['per_user_hour'=>12],'accounts'=>[['correo'=>'empleado@gmail.com','usuarios'=>[72]],'otra@institucion.test'=>['activo'=>false]]];");
     $setup->configurar('--account',$account);

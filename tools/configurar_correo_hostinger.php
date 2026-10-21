@@ -34,15 +34,7 @@ final class CorreoConfiguracionHostinger
             CorreoSmtpTransport::configurar(new \PHPMailer\PHPMailer\PHPMailer(true), $a);
             $file = $mode === '--recovery' ? 'password_reset_mail.local.php' : 'mail_accounts.local.php';
             if ($mode === '--account') {
-                if ($this->userLoader) { $user = ($this->userLoader)($email); }
-                else {
-                    require_once dirname(__DIR__) . '/app/models/UsuarioModel.php';
-                    $user = (new UsuarioModel())->buscarPorUsuarioOCorreo($email);
-                }
-                if (!$user || (int)($user['id'] ?? 0) <= 0 || (int)($user['estado'] ?? 0) !== 1 ||
-                    (int)($user['rol_estado'] ?? 0) !== 1 || strcasecmp((string)($user['correo'] ?? ''), $email) !== 0) {
-                    throw new RuntimeException('MAIL_SETUP_USER');
-                }
+                $user = $this->usuarioActivo($email);
                 $a['activo'] = true; $a['usuarios'] = [(int)$user['id']];
             }
         }
@@ -50,6 +42,13 @@ final class CorreoConfiguracionHostinger
         if ($this->probe) { $ok = ($this->probe)($a); }
         else { $ok = $this->autenticar($a); }
         if (!$ok) { throw new RuntimeException('MAIL_SETUP_AUTH'); }
+        if ($mode === '--hostinger' && trim((string)($input['email'] ?? '')) !== '') {
+            $user = $this->usuarioActivo(strtolower(trim($input['email'])));
+            $addresses = is_array($ok) ? ($ok['addresses'] ?? []) : [];
+            $addresses = array_values(array_filter($addresses, static function ($email) { return filter_var($email, FILTER_VALIDATE_EMAIL) !== false; }));
+            if (!$addresses) { throw new RuntimeException('MAIL_SETUP_API_MAILBOXES'); }
+            $a['authorized_contacts'] = [(int)$user['id'] => $addresses];
+        }
         $lockPath = $directory . '/.correo-config.lock';
         if (is_link($lockPath)) { throw new RuntimeException('MAIL_SETUP_LINK'); }
         $lock = fopen($lockPath, 'c+b');
@@ -59,6 +58,11 @@ final class CorreoConfiguracionHostinger
             if (!flock($lock, LOCK_EX | LOCK_NB)) { throw new RuntimeException('MAIL_SETUP_BUSY'); }
             $path = $directory . '/' . $file;
             if (is_link($path) || (file_exists($path) && !is_file($path))) { throw new RuntimeException('MAIL_SETUP_LINK'); }
+            if ($mode === '--hostinger') {
+                $prior = is_file($path) ? require $path : impeLeerConfigPrivada($file);
+                if (!is_array($prior) || !is_array($prior['authorized_contacts'] ?? [])) { throw new RuntimeException('MAIL_SETUP_CONFIG'); }
+                $a['authorized_contacts'] = array_replace($prior['authorized_contacts'] ?? [], $a['authorized_contacts'] ?? []);
+            }
             if ($mode === '--account') {
                 $prior = impeLeerConfigPrivada($file);
                 if (is_file($path)) { $prior = require $path; }
@@ -118,7 +122,21 @@ final class CorreoConfiguracionHostinger
         return $real;
     }
 
-    private function autenticar(array $a): bool
+    private function usuarioActivo(string $email): array
+    {
+        if ($this->userLoader) { $user = ($this->userLoader)($email); }
+        else {
+            require_once dirname(__DIR__) . '/app/models/UsuarioModel.php';
+            $user = (new UsuarioModel())->buscarPorUsuarioOCorreo($email);
+        }
+        if (!$user || (int)($user['id'] ?? 0) <= 0 || (int)($user['estado'] ?? 0) !== 1 ||
+            (int)($user['rol_estado'] ?? 0) !== 1 || strcasecmp((string)($user['correo'] ?? ''), $email) !== 0) {
+            throw new RuntimeException('MAIL_SETUP_USER');
+        }
+        return $user;
+    }
+
+    private function autenticar(array $a): bool|array
     {
         if ($a['transport'] === 'smtp') {
             $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
@@ -138,9 +156,11 @@ final class CorreoConfiguracionHostinger
             $ok = curl_exec($c); $code = (int)curl_getinfo($c, CURLINFO_HTTP_CODE);
             if ($ok === false || $code !== 200) { throw new RuntimeException($code === 401 || $code === 403 ? 'MAIL_SETUP_API_AUTH' : 'MAIL_SETUP_API_CONNECTION'); }
             $json = json_decode($body, true);
+            $addresses = [];
             foreach (($json['data']['mailboxes'] ?? []) as $box) {
-                if (filter_var($box['address'] ?? '', FILTER_VALIDATE_EMAIL) && !empty($box['resourceId'])) { return true; }
+                if (filter_var($box['address'] ?? '', FILTER_VALIDATE_EMAIL) && !empty($box['resourceId'])) { $addresses[] = strtolower($box['address']); }
             }
+            if ($addresses) { return ['addresses' => array_values(array_unique($addresses))]; }
             throw new RuntimeException('MAIL_SETUP_API_MAILBOXES');
         } finally { curl_close($c); }
     }

@@ -15,6 +15,10 @@ trap 'unset SECRET IMPE_CORREO_SETUP_SECRET' EXIT
 if [[ "$MODE" != --hostinger && -z "$EMAIL" ]];then read -r -p 'Correo que se autenticará: ' EMAIL;fi
 if [[ "$MODE" == --hostinger ]];then
  echo 'Configura la API compartida. No utiliza Gmail de recuperación.'
+ if [[ -z "$EMAIL" ]];then
+  echo 'Opcional: autoriza a un usuario del CRM a elegir los buzones disponibles en este token.'
+  read -r -p 'Correo registrado de ese usuario (Enter: sólo buzón propio de cada empleado): ' EMAIL
+ fi
  read -r -s -p 'Token ESPECÍFICO de Hostinger Mail API: ' SECRET;printf '\n'
 else
  if [[ "$EMAIL" == *@gmail.com || "$EMAIL" == *@googlemail.com ]];then HOST='smtp.gmail.com';fi
