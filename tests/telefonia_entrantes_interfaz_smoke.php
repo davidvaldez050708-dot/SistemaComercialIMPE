@@ -32,7 +32,7 @@ $checks = [
         !str_contains($phoneJs, 'const incomingInShell = Boolean(state?.active)') &&
         str_contains($phoneJs, "getHostMode() === 'embedded'"),
     'Se muestra modal CRM, no panel blanco al entrar llamada' =>
-        str_contains($shellJs, 'const customVisible = (incoming || finishedSdk || finishedIncoming || shownOutgoing)') &&
+        str_contains($shellJs, 'const customVisible = !callbackRegistration && (incoming || finishedIncoming || shownOutgoing)') &&
         str_contains($shellJs, "incomingPanel.hidden = !customVisible") &&
         str_contains($shellView, 'data-incoming-answer') &&
         str_contains($shellView, 'data-incoming-hangup') &&
