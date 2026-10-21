@@ -97,7 +97,7 @@ try {
  // Saliente 100 → 150: sin usar número ni contador SIP como evidencia PBX.
  require_once dirname(__DIR__).'/app/services/TelefoniaTransferenciaOperacionService.php';
  $ops=new TelefoniaTransferenciaOperacionService($db);
- foreach(['150','','101'] as $last){
+ foreach(['150','','100','101'] as $last){
   $sdk='sdk-exact-current-123456-'.($last?:'global');
   $ref='pbx-out-transfer-'.($last?:'global');
   $route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>8,'extension'=>'150','referencia_llamada'=>$ref,'estado_id'=>17,'institucion_nombre'=>'Susan']);
@@ -124,6 +124,26 @@ try {
   vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-reuse-123456')===null,'Cierre no se reutiliza en nueva invitación');
   vcheck($ops->paraDestinoConfirmado(8,$rid,$sdk)!==null,'SDK reservado recupera la misma referencia después del cierre');
  }
+ // OUT_END del iniciador no debe acreditar un tramo receptor si llegó
+ // ANTES del ANSWER de la extensión; tampoco lo acredita un tercero.
+ $outOfOrder=TelefoniaVentasLlamadasService::hechos([
+  ['evento'=>'NOTIFY_OUT_START','internal'=>'100','payload_json'=>'{}'],
+  ['evento'=>'NOTIFY_OUT_END','internal'=>'100','last_internal'=>'100','payload_json'=>'{}'],
+  ['evento'=>'NOTIFY_ANSWER','internal'=>'150','payload_json'=>'{}']
+ ],'150','100');
+ vcheck(!$outOfOrder['finalizada'],'OUT_END previo a ANSWER no se atribuye a Ventas');
+ $noSource=TelefoniaVentasLlamadasService::hechos([
+  ['evento'=>'NOTIFY_ANSWER','internal'=>'150','payload_json'=>'{}'],
+  ['evento'=>'NOTIFY_OUT_END','internal'=>'100','last_internal'=>'100','payload_json'=>'{}']
+ ],'150','100');
+ vcheck(!$noSource['finalizada'],'No inventar cierre saliente sin OUT_START acreditado');
+ $foreignSource=TelefoniaVentasLlamadasService::hechos([
+  ['evento'=>'NOTIFY_OUT_START','internal'=>'100','payload_json'=>'{}'],
+  ['evento'=>'NOTIFY_ANSWER','internal'=>'150','payload_json'=>'{}'],
+  ['evento'=>'NOTIFY_OUT_END','internal'=>'100','last_internal'=>'101','payload_json'=>'{}']
+ ],'150','100');
+ vcheck(!$foreignSource['finalizada'],'Último participante ajeno no autoriza finalizar Ventas');
+
  // Reasignación: el tramo congelado conserva su propietario histórico.
  $db->query("UPDATE telefonia_extensiones SET usuario_id=9,created_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE),updated_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE extension='150'");
  vcheck($svc->obtener(8,'pbx-prospecto-001')['usuario_id']==8,'Mantiene atribución histórica');
