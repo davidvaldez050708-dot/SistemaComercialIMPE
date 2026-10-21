@@ -9,6 +9,7 @@ PATCH_SHA='467aba2f94e69ad8dc7a7901f4d680ee131384c722a27cff110838b51acf596e'
 LIVE="${IMPE_CORREOS_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_CORREOS_BACKUPS:-$HOME/respaldos-crm}"
 SERVICE='app/services/MailService.php'
+DIAGNOSTIC='tools/diagnosticar_correo_hostinger.php'
 FILES=("app/services/CorreoEstadoPrivado.php" "app/services/CorreoOAuthTokenProvider.php" "app/services/CorreoSmtpTransport.php" "app/services/CorreoCuentaConectadaService.php" "app/services/CorreoEnvioControl.php" "config/mail_config.php" "app/services/MailService.php" "app/services/CorreoSalidaInstitucionalService.php" "app/services/CorreoMarketingService.php" "app/services/SeguimientoCorreoService.php" "app/services/OficioCorreoService.php" "app/views/correos/index.php" "public/javascript/correos_marketing.js" "tools/diagnosticar_correo_hostinger.php")
 PATCH_FILES=("config/mail_config.php" "app/services/MailService.php" "app/services/CorreoSalidaInstitucionalService.php" "app/services/CorreoMarketingService.php" "app/services/SeguimientoCorreoService.php" "app/services/OficioCorreoService.php" "app/views/correos/index.php" "public/javascript/correos_marketing.js" "tools/diagnosticar_correo_hostinger.php")
 declare -A ALLOWED=()
@@ -31,7 +32,7 @@ TMP="$(mktemp -d "$SCRATCH/impe-correos.XXXXXX")";touch "$TMP/.owned"
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 export GIT_CEILING_DIRECTORIES="$TMP"
 for f in "${FILES[@]}";do mkdir -p "$TMP/stage/$(dirname "$f")" "$TMP/original/$(dirname "$f")";done
-LOCK="$(dirname "$LIVE")/.impe-correos-deploy.lock";LOCKED=0;WRITING=0
+LOCK="$(dirname "$LIVE")/.impe-correos-deploy.lock";LOCKED=0;WRITING=0;CREATED_TOOLS=0
 declare -A BEFORE=() AFTER=() SEEN=()
 declare -a CHANGED=() WRITTEN=()
 finish(){ local code=$? f i;trap - EXIT INT TERM
@@ -42,6 +43,7 @@ finish(){ local code=$? f i;trap - EXIT INT TERM
   echo 'Publicación interrumpida: se restauraron los archivos alcanzados.' >&2
  fi
  for f in "${FILES[@]}";do rm -f -- "$LIVE/$f.impe-new-$$";done
+ if [[ "$code" != 0 && "$CREATED_TOOLS" == 1 ]];then rmdir -- "$LIVE/tools" 2>/dev/null || :;fi
  [[ "$LOCKED" == 0 ]] || rmdir -- "$LOCK"
  if [[ "$TMP" == "$SCRATCH"/impe-correos.* && -f "$TMP/.owned" ]];then rm -rf -- "$TMP";fi
  exit "$code"
@@ -56,7 +58,8 @@ done
 if [[ "$MODE" == --restore ]];then
  no_links "$2";RESTORE="$(realpath -m "$2")"
  [[ "$RESTORE/" == "$BACKUPS/"* && "$RESTORE" != "$BACKUPS" ]] || fail 'Respaldo fuera de la carpeta prevista.'
- no_links "$RESTORE/version.txt";no_links "$RESTORE/archivos.tsv"
+ no_links "$RESTORE/version.txt";no_links "$RESTORE/archivos.tsv";no_links "$RESTORE/tools-directory-created"
+ [[ ! -e "$RESTORE/tools-directory-created" || ( -f "$RESTORE/tools-directory-created" && ! -s "$RESTORE/tools-directory-created" ) ]] || fail "Marca de directorio inválida."
  [[ -f "$RESTORE/version.txt" && "$(cat "$RESTORE/version.txt")" == "$VERSION" && -f "$RESTORE/archivos.tsv" ]] || fail 'Respaldo de otra entrega o incompleto.'
  while IFS=$'\t' read -r f old installed;do
   [[ ( -n "${ALLOWED[$f]:-}" ) && -z "${SEEN[$f]:-}" && "$installed" =~ ^[a-f0-9]{64}$ && ( "$old" == MISSING || "$old" =~ ^[a-f0-9]{64}$ ) ]] || fail 'Registro de respaldo inválido.'
@@ -1186,10 +1189,122 @@ CORREOS_HELPER_4
   [[ "$existing" == "$expected" ]] || fail "Dependencia personalizada: $helper. No se sobrescribe."
   cp -p -- "$LIVE/$helper" "$TMP/stage/$helper"
  else chmod 0644 "$TMP/stage/$helper";fi
+ # Herramienta CLI opcional en instalaciones anteriores; no es requisito del CRM.
+ base64 --decode > "$TMP/diagnostic.php" <<'CORREOS_DIAGNOSTIC'
+PD9waHAKLy8gU8OzbG8gU1NIL0NMSS4gTm8gbXVlc3RyYSBjcmVkZW5jaWFsZXMgbmkgcGVybWl0
+ZSBlbnZpYXIgZGVzZGUgdW5hIHBldGljacOzbiB3ZWIuCmlmIChQSFBfU0FQSSAhPT0gJ2NsaScp
+IHsgaHR0cF9yZXNwb25zZV9jb2RlKDQwNCk7IGV4aXQ7IH0KcmVxdWlyZSBkaXJuYW1lKF9fRElS
+X18pIC4gJy9hcHAvc2VydmljZXMvQ29ycmVvU2FsaWRhSW5zdGl0dWNpb25hbFNlcnZpY2UucGhw
+JzsKcmVxdWlyZSBkaXJuYW1lKF9fRElSX18pIC4gJy9jb25maWcvbWFpbF9jb25maWcucGhwJzsK
+JG9wdGlvbnMgPSBnZXRvcHQoJycsIFsncmVjb3ZlcnknLCAnYWNjb3VudDonLCAndXNlcjonLCAn
+cHJvYmUnLCAnc2VuZC10ZXN0JywgJ3RvOicsICdkb21haW46JywgJ2RraW06J10pOwpmdW5jdGlv
+biBmbGFnTWFpbCgkbGFiZWwsICRvaykgeyBlY2hvICRsYWJlbCAuICc6ICcgLiAoJG9rID8gJ09L
+JyA6ICdGQUxUQS9SRVZJU0FSJykgLiBQSFBfRU9MOyB9CnRyeSB7CiAgICBlY2hvICdQSFAgJyAu
+IFBIUF9WRVJTSU9OIC4gJyBTQVBJICcgLiBQSFBfU0FQSSAuIFBIUF9FT0w7CiAgICBmb3JlYWNo
+IChbJ29wZW5zc2wnLCAnY3VybCcsICdtYnN0cmluZycsICdteXNxbGknXSBhcyAkZXh0KSB7IGZs
+YWdNYWlsKCdleHRlbnNpb24gJyAuICRleHQsIGV4dGVuc2lvbl9sb2FkZWQoJGV4dCkpOyB9CiAg
+ICBmbGFnTWFpbCgnUEhQTWFpbGVyJywgY2xhc3NfZXhpc3RzKCdQSFBNYWlsZXJcXFBIUE1haWxl
+clxcUEhQTWFpbGVyJykpOwogICAgaWYgKGlzc2V0KCRvcHRpb25zWydhY2NvdW50J10pKSB7CiAg
+ICAgICAgJGZyb20gPSBzdHJ0b2xvd2VyKHRyaW0oJG9wdGlvbnNbJ2FjY291bnQnXSkpOyAkdXNl
+ciA9IChpbnQpKCRvcHRpb25zWyd1c2VyJ10gPz8gMCk7CiAgICAgICAgJHJlc3VsdCA9IChuZXcg
+Q29ycmVvQ3VlbnRhQ29uZWN0YWRhU2VydmljZSgpKS0+cmVzb2x2ZXIoJGZyb20sICR1c2VyLCB0
+cnVlKTsKICAgICAgICBpZiAoZW1wdHkoJHJlc3VsdFsnb2snXSkpIHsgZWNobyAnQ3VlbnRhOiAn
+IC4gJHJlc3VsdFsnbWVuc2FqZSddIC4gUEhQX0VPTDsgZXhpdCgyKTsgfQogICAgICAgICRhID0g
+JHJlc3VsdFsnYWNjb3VudCddOwogICAgfSBlbHNlIHsKICAgICAgICAkYSA9IGltcGVMZWVyQ29u
+ZmlnUHJpdmFkYSgncGFzc3dvcmRfcmVzZXRfbWFpbC5sb2NhbC5waHAnKSA/OiBbJ2NvcnJlbycg
+PT4gTUFJTF9GUk9NX0FERFJFU1MsCiAgICAgICAgICAgICdzbXRwX2hvc3QnID0+IE1BSUxfSE9T
+VCwgJ3NtdHBfcG9ydCcgPT4gTUFJTF9QT1JULCAnc210cF9lbmNyeXB0aW9uJyA9PiBNQUlMX0VO
+Q1JZUFRJT04sCiAgICAgICAgICAgICdzbXRwX3VzZXJuYW1lJyA9PiBNQUlMX1VTRVJOQU1FLCAn
+c210cF9wYXNzd29yZCcgPT4gTUFJTF9QQVNTV09SRF07CiAgICAgICAgJGZyb20gPSAoc3RyaW5n
+KSgkYVsnY29ycmVvJ10gPz8gJGFbJ3NtdHBfdXNlcm5hbWUnXSA/PyAnJyk7CiAgICAgICAgJHVz
+ZXIgPSAwOwogICAgICAgIGVjaG8gIkN1ZW50YSBkZWRpY2FkYSBkZSByZWN1cGVyYWNpw7NuIChu
+byBtb2RpZmljYSB1c3VhcmlvcyBuaSBjb250cmFzZcOxYXMpLlxuIjsKICAgIH0KICAgICR0cmFu
+c3BvcnQgPSAkYVsndHJhbnNwb3J0J10gPz8gJ3NtdHAnOwogICAgZWNobyAnVHJhbnNwb3J0ZTog
+JyAuICR0cmFuc3BvcnQgLiBQSFBfRU9MOwogICAgZmxhZ01haWwoJ0lkZW50aWRhZCBjb25maWd1
+cmFkYScsIGZpbHRlcl92YXIoJGZyb20sIEZJTFRFUl9WQUxJREFURV9FTUFJTCkgIT09IGZhbHNl
+KTsKICAgIGlmICgkdHJhbnNwb3J0ID09PSAnc210cCcpIHsKICAgICAgICAkbWFpbCA9IG5ldyBc
+UEhQTWFpbGVyXFBIUE1haWxlclxQSFBNYWlsZXIodHJ1ZSk7CiAgICAgICAgQ29ycmVvU210cFRy
+YW5zcG9ydDo6Y29uZmlndXJhcigkbWFpbCwgJGEpOwogICAgICAgIGVjaG8gJ1NNVFAgJyAuICRt
+YWlsLT5Ib3N0IC4gJzonIC4gJG1haWwtPlBvcnQgLiAnICcgLiAkbWFpbC0+U01UUFNlY3VyZSAu
+IFBIUF9FT0w7CiAgICAgICAgZmxhZ01haWwoJ1RMUyB5IGNlcnRpZmljYWRvcyB2ZXJpZmljYWRv
+cycsICRtYWlsLT5TTVRQT3B0aW9uc1snc3NsJ11bJ3ZlcmlmeV9wZWVyJ10gJiYgJG1haWwtPlNN
+VFBPcHRpb25zWydzc2wnXVsndmVyaWZ5X3BlZXJfbmFtZSddKTsKICAgICAgICBmbGFnTWFpbCgn
+RE5TIFNNVFAnLCBmaWx0ZXJfdmFyKCRtYWlsLT5Ib3N0LCBGSUxURVJfVkFMSURBVEVfSVApIHx8
+IGdldGhvc3RieW5hbWUoJG1haWwtPkhvc3QpICE9PSAkbWFpbC0+SG9zdCk7CiAgICAgICAgaWYg
+KGlzc2V0KCRvcHRpb25zWydwcm9iZSddKSkgewogICAgICAgICAgICAvLyBFSExPL1RMUy9BVVRI
+LCBzaW4gTUFJTC9SQ1BUL0RBVEEuIE9BdXRoIHB1ZWRlIHJlbm92YXIgc3UgdG9rZW4gcHJpdmFk
+by4KICAgICAgICAgICAgJGNvbm5lY3RlZCA9ICRtYWlsLT5zbXRwQ29ubmVjdCgpOyBmbGFnTWFp
+bCgnQ29uZXhpw7NuIFRMUyB5IGF1dGVudGljYWNpw7NuJywgJGNvbm5lY3RlZCk7ICRtYWlsLT5z
+bXRwQ2xvc2UoKTsKICAgICAgICAgICAgaWYgKCEkY29ubmVjdGVkKSB7IGV4aXQoMik7IH0KICAg
+ICAgICB9CiAgICB9IGVsc2VpZiAoJHRyYW5zcG9ydCA9PT0gJ2hvc3Rpbmdlcl9hcGknKSB7CiAg
+ICAgICAgZmxhZ01haWwoJ1Rva2VuIEFQSSBjb25maWd1cmFkbycsICFlbXB0eSgkYVsnYXBpX3Rv
+a2VuJ10pKTsKICAgICAgICBpZiAoaXNzZXQoJG9wdGlvbnNbJ3Byb2JlJ10pKSB7CiAgICAgICAg
+ICAgIGlmICgoJGFbJ2FwaV9iYXNlX3VybCddID8/ICcnKSAhPT0gJ2h0dHBzOi8vYXBpLm1haWwu
+aG9zdGluZ2VyLmNvbScpIHsgdGhyb3cgbmV3IFJ1bnRpbWVFeGNlcHRpb24oJ01BSUxfQVBJX0JB
+U0UnKTsgfQogICAgICAgICAgICAkYyA9IGN1cmxfaW5pdCgnaHR0cHM6Ly9hcGkubWFpbC5ob3N0
+aW5nZXIuY29tL2FwaS92MS9tZScpOwogICAgICAgICAgICBjdXJsX3NldG9wdF9hcnJheSgkYywg
+W0NVUkxPUFRfUkVUVVJOVFJBTlNGRVIgPT4gdHJ1ZSwgQ1VSTE9QVF9IVFRQSEVBREVSID0+IFsn
+QXV0aG9yaXphdGlvbjogQmVhcmVyICcgLiAkYVsnYXBpX3Rva2VuJ11dLAogICAgICAgICAgICAg
+ICAgQ1VSTE9QVF9TU0xfVkVSSUZZUEVFUiA9PiB0cnVlLCBDVVJMT1BUX1NTTF9WRVJJRllIT1NU
+ID0+IDIsIENVUkxPUFRfRk9MTE9XTE9DQVRJT04gPT4gZmFsc2UsIENVUkxPUFRfQ09OTkVDVFRJ
+TUVPVVQgPT4gMTAsIENVUkxPUFRfVElNRU9VVCA9PiAyNV0pOwogICAgICAgICAgICAkYm9keSA9
+IGN1cmxfZXhlYygkYyk7ICRjb2RlID0gKGludCljdXJsX2dldGluZm8oJGMsIENVUkxJTkZPX0hU
+VFBfQ09ERSk7IGN1cmxfY2xvc2UoJGMpOwogICAgICAgICAgICAkanNvbiA9IGpzb25fZGVjb2Rl
+KChzdHJpbmcpJGJvZHksIHRydWUpOyAkYWxsb3dlZCA9IGZhbHNlOwogICAgICAgICAgICBmb3Jl
+YWNoICgoJGpzb25bJ2RhdGEnXVsnbWFpbGJveGVzJ10gPz8gW10pIGFzICRib3gpIHsgaWYgKHN0
+cmNhc2VjbXAoKHN0cmluZykoJGJveFsnYWRkcmVzcyddID8/ICcnKSwgJGZyb20pID09PSAwKSB7
+ICRhbGxvd2VkID0gdHJ1ZTsgfSB9CiAgICAgICAgICAgIGVjaG8gJ0hUVFAgY29uc3VsdGEgQVBJ
+OiAnIC4gJGNvZGUgLiBQSFBfRU9MOyBmbGFnTWFpbCgnQnV6w7NuIGF1dG9yaXphZG8nLCAkY29k
+ZSA9PT0gMjAwICYmICRhbGxvd2VkKTsKICAgICAgICAgICAgaWYgKCRjb2RlICE9PSAyMDAgfHwg
+ISRhbGxvd2VkKSB7IGV4aXQoMik7IH0KICAgICAgICB9CiAgICB9CiAgICBpZiAoaXNzZXQoJG9w
+dGlvbnNbJ2RvbWFpbiddKSkgewogICAgICAgICRkb21haW4gPSAkb3B0aW9uc1snZG9tYWluJ107
+ICRzZWxlY3RvciA9ICRvcHRpb25zWydka2ltJ10gPz8gJyc7CiAgICAgICAgaWYgKCFwcmVnX21h
+dGNoKCcvXlthLXpBLVowLTkuLV0rJC9EJywgJGRvbWFpbiAuICRzZWxlY3RvcikpIHsgdGhyb3cg
+bmV3IFJ1bnRpbWVFeGNlcHRpb24oJ01BSUxfRE5TX0lOUFVUJyk7IH0KICAgICAgICAkc3BmID0g
+ZmFsc2U7CiAgICAgICAgZm9yZWFjaCAoZG5zX2dldF9yZWNvcmQoJGRvbWFpbiwgRE5TX1RYVCkg
+PzogW10gYXMgJHJlY29yZCkgeyBpZiAoc3RyX3N0YXJ0c193aXRoKCRyZWNvcmRbJ3R4dCddID8/
+ICcnLCAndj1zcGYxJykpIHsgJHNwZiA9IHRydWU7IH0gfQogICAgICAgIGZsYWdNYWlsKCdSZWdp
+c3RybyBTUEYgcHJlc2VudGUgKG5vIGNlcnRpZmljYSBhbGluZWFjacOzbiknLCAkc3BmKTsKICAg
+ICAgICBmbGFnTWFpbCgnUmVnaXN0cm8gRE1BUkMgcHJlc2VudGUnLCAoYm9vbClkbnNfZ2V0X3Jl
+Y29yZCgnX2RtYXJjLicgLiAkZG9tYWluLCBETlNfVFhUKSk7CiAgICAgICAgaWYgKCRzZWxlY3Rv
+ciAhPT0gJycpIHsgZmxhZ01haWwoJ1JlZ2lzdHJvIERLSU0gcHJlc2VudGUnLCAoYm9vbClkbnNf
+Z2V0X3JlY29yZCgkc2VsZWN0b3IgLiAnLl9kb21haW5rZXkuJyAuICRkb21haW4sIEROU19UWFQg
+fCBETlNfQ05BTUUpKTsgfQogICAgfQogICAgaWYgKGlzc2V0KCRvcHRpb25zWydzZW5kLXRlc3Qn
+XSkpIHsKICAgICAgICAkdG8gPSB0cmltKChzdHJpbmcpKCRvcHRpb25zWyd0byddID8/ICcnKSk7
+CiAgICAgICAgaWYgKCFmaWx0ZXJfdmFyKCR0bywgRklMVEVSX1ZBTElEQVRFX0VNQUlMKSkgeyB0
+aHJvdyBuZXcgUnVudGltZUV4Y2VwdGlvbignTUFJTF9URVNUX1JFQ0lQSUVOVCcpOyB9CiAgICAg
+ICAgJHN1YmplY3QgPSAnSU1QRSBwcnVlYmEgYXV0b3JpemFkYSAnIC4gZ21kYXRlKCdZLW0tZCBI
+Omk6cycpOwogICAgICAgICRib2R5ID0gJ01lbnNhamUgZmljdGljaW8gZGUgZGlhZ27Ds3N0aWNv
+LiBObyBjb250aWVuZSB1bmEgY29udHJhc2XDsWEgbmkgY2FtYmlhIG5pbmd1bmEgY3VlbnRhLiBD
+b25maXJtYXIgcmVjZXBjacOzbiBtYW51YWxtZW50ZS4nOwogICAgICAgIGlmICgkdXNlciA+IDAp
+IHsKICAgICAgICAgICAgJHIgPSAobmV3IENvcnJlb1NhbGlkYUluc3RpdHVjaW9uYWxTZXJ2aWNl
+KCkpLT5lbnZpYXIoWyd1c3VhcmlvX2lkJyA9PiAkdXNlciwgJ3BlcmZpbF9tYXJrZXRpbmcnID0+
+IHRydWUsCiAgICAgICAgICAgICAgICAncmVtaXRlbnRlJyA9PiAkZnJvbSwgJ2Rlc3RpbmF0YXJp
+bycgPT4gJHRvLCAnYXN1bnRvJyA9PiAkc3ViamVjdCwgJ2N1ZXJwbycgPT4gJGJvZHksCiAgICAg
+ICAgICAgICAgICAnaWRlbXBvdGVuY3lfa2V5JyA9PiAncWEtY2xpOicgLiBiaW4yaGV4KHJhbmRv
+bV9ieXRlcygxNikpXSk7CiAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgJG1haWwtPnNldEZy
+b20oJGZyb20pOyAkbWFpbC0+YWRkQWRkcmVzcygkdG8pOyAkbWFpbC0+U3ViamVjdCA9ICRzdWJq
+ZWN0OyAkbWFpbC0+Qm9keSA9ICRib2R5OwogICAgICAgICAgICAkciA9IENvcnJlb1NtdHBUcmFu
+c3BvcnQ6OmVudmlhcigkbWFpbCwgJ3JlY292ZXJ5X3Rlc3QnKTsKICAgICAgICB9CiAgICAgICAg
+ZWNobyAnUmVzdWx0YWRvOiAnIC4gKCRyWydlc3RhZG9fZW50cmVnYSddID8/ICdSRUNIQVpBRE8n
+KSAuICc7IGVudHJlZ2EgYWwgZGVzdGluYXRhcmlvIE5PIGNvbmZpcm1hZGEuJyAuIFBIUF9FT0w7
+CiAgICAgICAgaWYgKGVtcHR5KCRyWydvayddKSkgeyBleGl0KDIpOyB9CiAgICB9IGVsc2UgeyBl
+Y2hvICJTaW4gZW52w61vIGRlIG1lbnNhamVzLiBVc2EgLS1wcm9iZSBwYXJhIGNvbXByb2JhciBU
+TFMvYXV0ZW50aWNhY2nDs24gZGVzZGUgU1NILlxuIjsgfQp9IGNhdGNoIChUaHJvd2FibGUgJGUp
+IHsKICAgIGVycm9yX2xvZygnTUFJTF9ESUFHTk9TVElDX0ZBSUxFRCBleGNlcHRpb249JyAuIGdl
+dF9jbGFzcygkZSkpOwogICAgZWNobyAiRGlhZ27Ds3N0aWNvIGluY29tcGxldG8uIFJldmlzYXIg
+Y29uZmlndXJhY2nDs24sIHBlcm1pc29zIHByaXZhZG9zLCBjZXJ0aWZpY2Fkb3MsIGF1dGVudGlj
+YWNpw7NuIG8gcmVzdHJpY2Npb25lcyBzYWxpZW50ZXMuIE5vIHNlIG11ZXN0cmFuIHNlY3JldG9z
+LlxuIjsKICAgIGV4aXQoMik7Cn0K
+CORREOS_DIAGNOSTIC
+ [[ "$(digest "$TMP/diagnostic.php")" == "99318193f25ec57b825bb159be8a099dc9f100c495e0974193519d184a66d1b9" ]] || fail 'Diagnóstico de entrega alterado.'
+ [[ ! -e "$LIVE/tools" || -d "$LIVE/tools" ]] || fail 'tools existe pero no es un directorio.'
  declare -A EOLS=()
  for f in "${PATCH_FILES[@]}";do
-  [[ -f "$LIVE/$f" ]] || fail "Falta archivo requerido: $f"
-  cp -p -- "$LIVE/$f" "$TMP/stage/$f"
+  if [[ "${BEFORE[$f]}" == MISSING ]];then
+   [[ "$f" == "$DIAGNOSTIC" ]] || fail "Falta archivo requerido: $f"
+   cp -- "$TMP/diagnostic.php" "$TMP/stage/$f"
+  else cp -p -- "$LIVE/$f" "$TMP/stage/$f";fi
   EOLS["$f"]="$(php -r '$s=file_get_contents($argv[1]);$n=substr_count($s,"\n");$c=substr_count($s,"\r\n");if($c&&$c!==$n)exit(1);echo $c?"CRLF":"LF";file_put_contents($argv[1],str_replace("\r\n","\n",$s));' "$TMP/stage/$f")" || fail "Finales de línea mixtos: $f"
  done
  # Revisar cada fragmento conserva cambios locales fuera de las líneas de correo.
@@ -1201,7 +1316,7 @@ CORREOS_HELPER_4
  done
  for f in "${PATCH_FILES[@]}";do
   if [[ "${EOLS[$f]}" == CRLF ]];then php -r '$p=$argv[1];file_put_contents($p,str_replace("\n","\r\n",file_get_contents($p)));' "$TMP/stage/$f";fi
-  chmod --reference="$TMP/original/$f" "$TMP/stage/$f"
+  if [[ "${BEFORE[$f]}" == MISSING ]];then chmod 0644 "$TMP/stage/$f";else chmod --reference="$TMP/original/$f" "$TMP/stage/$f";fi
  done
  for f in "${FILES[@]}";do
   if [[ "$f" == *.php ]];then php -l "$TMP/stage/$f" >/dev/null || fail "Sintaxis PHP inválida: $f";fi
@@ -1215,12 +1330,14 @@ if [[ "$MODE" == --check ]];then echo "OK: revisión compatible. ${#CHANGED[@]} 
 if [[ "$MODE" == --apply ]];then
  mkdir -p "$BACKUPS";BACKUP="$BACKUPS/correos-multiproveedor-$(date +%Y%m%d-%H%M%S)-$$";mkdir -m 700 "$BACKUP"
  printf '%s\n' "$VERSION" > "$BACKUP/version.txt"
+ if [[ ! -d "$LIVE/tools" ]];then : > "$BACKUP/tools-directory-created";fi
  for f in "${CHANGED[@]}";do
   printf '%s\t%s\t%s\n' "$f" "${BEFORE[$f]}" "${AFTER[$f]}" >> "$BACKUP/archivos.tsv"
   if [[ "${BEFORE[$f]}" != MISSING ]];then mkdir -p "$BACKUP/$(dirname "$f")";cp -p -- "$TMP/original/$f" "$BACKUP/$f";[[ "$(digest "$BACKUP/$f")" == "${BEFORE[$f]}" ]] || fail 'Respaldo inconsistente.';fi
  done
 fi
 WRITING=1
+if [[ "$MODE" == --apply && ! -d "$LIVE/tools" ]];then no_links "$LIVE/tools";mkdir -- "$LIVE/tools";CREATED_TOOLS=1;fi
 for f in "${FILES[@]}";do
  [[ -n "${AFTER[$f]:-}" && "${BEFORE[$f]}" != "${AFTER[$f]}" ]] || continue
  unchanged "$f";[[ ! -e "$LIVE/$f.impe-new-$$" && ! -L "$LIVE/$f.impe-new-$$" ]] || fail 'Existe un temporal de instalación.'
@@ -1229,5 +1346,6 @@ for f in "${FILES[@]}";do
  else cp -p -- "$TMP/stage/$f" "$LIVE/$f.impe-new-$$";mv -f -- "$LIVE/$f.impe-new-$$" "$LIVE/$f";[[ "$(digest "$LIVE/$f")" == "${AFTER[$f]}" ]] || fail 'Archivo instalado distinto.';fi
 done
 WRITING=0
+if [[ "$MODE" == --restore && -f "$RESTORE/tools-directory-created" ]];then rmdir -- "$LIVE/tools" 2>/dev/null || :;fi
 echo "OK: $MODE terminado. ${#CHANGED[@]} archivo(s). Sin cambios de BD ni credenciales. Verificar envíos reales por separado."
 if [[ "$MODE" == --apply ]];then echo "Respaldo: $BACKUP";printf 'Rollback: bash %q --restore %q\n' "$(realpath "$0")" "$BACKUP";fi

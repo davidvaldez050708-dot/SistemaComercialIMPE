@@ -1,5 +1,5 @@
 """Ejercita el publicador únicamente en sitios ficticios temporales, nunca producción.
-Uso: python tests/correos_publicador_test.py RUTA_BASH DIRECTORIO_PHP
+Uso: python tests/correos_publicador_test.py RUTA_BASH DIRECTORIO_PHP [--sin-diagnostico]
 """
 import hashlib
 import os
@@ -12,6 +12,9 @@ import tempfile
 root = Path(__file__).resolve().parents[1]
 script = root / 'tools/publicar_correos_multiproveedor_hostinger.sh'
 bash, phpdir = sys.argv[1:3]
+without_diagnostic = '--sin-diagnostico' in sys.argv[3:]
+diagnostic = 'tools/diagnosticar_correo_hostinger.php'
+baseline = 'fd5fd282b3f6774d1bdc045295d655b72620ce17'
 text = script.read_text(encoding='utf-8')
 files = re.search(r'^FILES=\((.+)\)$', text, re.M).group(1)
 files = re.findall(r'"([^"]+)"', files)
@@ -28,8 +31,10 @@ with tempfile.TemporaryDirectory(prefix='impe-publish-mail-') as tmp:
     env['IMPE_CORREOS_BACKUPS'] = (base / 'backups').as_posix()
     env['IMPE_MAIL_STATE_DIR'] = (base / 'impe-private/mail-state').as_posix()
     for f in patches:
+        if without_diagnostic and f == diagnostic:
+            continue
         p = live / f; p.parent.mkdir(parents=True, exist_ok=True)
-        b = subprocess.check_output(['git', 'show', 'origin/main:' + f], cwd=root)
+        b = subprocess.check_output(['git', 'show', baseline + ':' + f], cwd=root)
         # Comprobar conservación de CRLF y personalizaciones ajenas al transporte.
         if f == 'app/services/MailService.php':
             b = b.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n') + b'\r\n// comentario local conservado\r\n'
@@ -69,10 +74,12 @@ with tempfile.TemporaryDirectory(prefix='impe-publish-mail-') as tmp:
     changed.write_bytes(prior)
     run('--restore', backup)
     assert {f: digest(live / f) for f in files} == original, 'restauración exacta'
+    if without_diagnostic:
+        assert not (live / 'tools').exists(), 'restaurar también el directorio creado'
     assert digest(private) == private_hash
     # Archivo incompatible: falla antes de tocar el sitio.
     p = live / 'app/services/MailService.php'; p.write_text('<?php // versión incompatible', encoding='utf-8')
     before = {f: digest(live / f) for f in files}
     run('--check', ok=False)
     assert {f: digest(live / f) for f in files} == before
-    print('OK: check sin escritura, apply/restore exactos, repetición idempotente, CRLF/comentarios/config privada conservados y rechazo de versiones incompatibles o ediciones posteriores. Sitio ficticio.')
+    print('OK: check sin escritura, apply/restore exactos, repetición idempotente, CRLF/comentarios/config privada conservados y rechazo de versiones incompatibles o ediciones posteriores. Diagnóstico inicialmente ' + ('ausente' if without_diagnostic else 'presente') + '. Sitio ficticio.')

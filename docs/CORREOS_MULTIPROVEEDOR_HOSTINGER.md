@@ -58,15 +58,15 @@ Sólo con un destinatario de prueba autorizado, añadir `--send-test --to=DESTIN
 
 ## Publicación manual y reversible
 
-Único publicador de esta entrega: `tools/publicar_correos_multiproveedor_hostinger.sh`, autocontenido, lista cerrada de 14 archivos. Obtenerlo de esta rama revisada fuera de `public_html`. No hacer `git pull` directamente sobre producción. Se conservan credenciales y configuraciones privadas; el parche de `config/mail_config.php` sólo corrige la precedencia de `MAIL_USERNAME`. Una versión incompatible se rechaza sin sobrescribirla.
+Único publicador de esta entrega: `tools/publicar_correos_multiproveedor_hostinger.sh`, autocontenido, lista cerrada de 14 archivos. Descargarlo fuera de `public_html` con los comandos siguientes. No hacer `git pull` directamente sobre producción. Se conservan credenciales y configuraciones privadas; el parche de `config/mail_config.php` sólo corrige la precedencia de `MAIL_USERNAME`. Una versión incompatible se rechaza sin sobrescribirla. Si no existe `tools/diagnosticar_correo_hostinger.php`, se prepara su instalación desde contenido verificado; el respaldo registra su ausencia y la restauración lo retira. Los archivos funcionales anteriores siguen siendo obligatorios.
 
 ```bash
 export IMPE_CORREOS_PUBLIC="$HOME/domains/fundacionrededumex.org/public_html"
-bash /RUTA_REVISADA/publicar_correos_multiproveedor_hostinger.sh --check
+mkdir -p "$HOME/impe-publicadores"
+curl -fL --retry 2 "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/main/tools/publicar_correos_multiproveedor_hostinger.sh" -o "$HOME/impe-publicadores/publicar_correos_multiproveedor_hostinger.sh" && bash "$HOME/impe-publicadores/publicar_correos_multiproveedor_hostinger.sh" --check
 # Sólo después de revisar OK y autorizar la publicación:
-bash /RUTA_REVISADA/publicar_correos_multiproveedor_hostinger.sh --apply
-# Restaurar con la ruta EXACTA de respaldo impresa por --apply:
-bash /RUTA_REVISADA/publicar_correos_multiproveedor_hostinger.sh --restore /RUTA_EXACTA_RESPALDO
+bash "$HOME/impe-publicadores/publicar_correos_multiproveedor_hostinger.sh" --apply
+# Para restaurar, copiar el comando exacto de la línea "Rollback:" que imprime --apply.
 ```
 
 No se ejecutó publicación ni fusión. `--restore` comprueba integridad y rechaza pisar ediciones posteriores. Las credenciales, el estado privado de correo y la BD quedan fuera del respaldo de código; restaurar código no deshace mensajes transmitidos. Tras publicar/restaurar, invalidar OPcache según la configuración de PHP web y recargar el navegador.
