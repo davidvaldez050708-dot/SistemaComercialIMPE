@@ -4,7 +4,7 @@ require_once dirname(__DIR__, 2) . '/config/private_config.php';
 require_once __DIR__ . '/CorreoSmtpTransport.php';
 require_once __DIR__ . '/CorreoConexionOAuthService.php';
 
-/** Transporte institucional administrado una vez; no consulta conexiones personales. */
+/** Hostinger compartido, SMTP autorizado y Gmail con consentimiento del propietario. */
 final class CorreoCuentaConectadaService
 {
     private $identityLoader;
@@ -54,6 +54,38 @@ final class CorreoCuentaConectadaService
         if (!$identity || (int)($identity['estado'] ?? 0) !== 1) { return $this->error('No fue posible identificar una cuenta activa para enviar.', 403); }
         $registered = strtolower(trim((string)($identity['correo'] ?? '')));
         $contact = strtolower(trim($contact));
+        $specificApi = null;
+        // Conservar las cuentas SMTP/API ya autorizadas por el administrador.
+        // Una entrada desactivada o ajena no debe eludirse usando otro transporte.
+        foreach ((impeLeerConfigPrivada('mail_accounts.local.php')['accounts'] ?? []) as $key => $configured) {
+            if (!is_array($configured)) { continue; }
+            $address = strtolower(trim((string)($configured['correo'] ?? (is_string($key) ? $key : ''))));
+            if ($address !== $contact) { continue; }
+            if (empty($configured['activo']) || !in_array($user, array_map('intval', (array)($configured['usuarios'] ?? [])), true)) {
+                return $this->error('Esta cuenta de envío no está autorizada para tu usuario.', 403);
+            }
+            $transport = $configured['transport'] ?? 'smtp';
+            if ($transport === 'smtp') {
+                if (($configured['auth_method'] ?? '') === 'oauth2' && empty($configured['refresh_token'])) {
+                    if ($contact === $registered && preg_match('/@(gmail|googlemail)\.com$/D', $registered)) { break; }
+                    throw new RuntimeException('MAIL_SMTP_CONFIG');
+                }
+                $aliases = array_map('strtolower', (array)($configured['authorized_from'] ?? []));
+                if (strcasecmp((string)($configured['smtp_username'] ?? ''), $address) !== 0 && !in_array($address, $aliases, true)) {
+                    throw new RuntimeException('MAIL_SMTP_IDENTITY');
+                }
+                CorreoSmtpTransport::configurar(new \PHPMailer\PHPMailer\PHPMailer(true), $configured);
+                return ['ok' => true, 'account' => $configured + ['transport' => 'smtp', 'correo' => $address], 'identidad' => [
+                    'remitente_visible' => $address, 'nombre_visible' => trim((string)($configured['nombre'] ?? $identity['nombre'] ?? '')) ?: $address,
+                    'reply_to' => $address, 'contacto' => $address, 'reply_to_aplicado' => true, 'contacto_firma' => $address,
+                    'usuario_id' => $user, 'transporte' => 'smtp', 'aviso' => ''
+                ]];
+            }
+            if ($transport !== 'hostinger_api') { throw new RuntimeException('MAIL_CENTRAL_CONFIG'); }
+            $specificApi = $configured + ['correo' => $address];
+            // La selección API sigue comprobándose contra GET /me, nunca sólo por dominio.
+            break;
+        }
         if ($contact === $registered && preg_match('/@(gmail|googlemail)\.com$/D', $registered)) {
             $account = (new CorreoConexionOAuthService(null, null, $this->identityLoader))->obtener($user, $registered);
             if (!$account) {
@@ -69,9 +101,18 @@ final class CorreoCuentaConectadaService
                 'usuario_id' => $user, 'transporte' => 'gmail_api', 'aviso' => ''
             ]];
         }
-        $a = $this->central();
+        if ($specificApi !== null && !empty($specificApi['api_token'])) {
+            $a = $specificApi + ['api_base_url' => 'https://api.mail.hostinger.com', 'nombre' => $identity['nombre'] ?? 'Fundación Red Educativa México'];
+        } else {
+            $a = $this->central();
+            if ($specificApi !== null) {
+                if ($a['transport'] !== 'hostinger_api') { throw new RuntimeException('MAIL_CENTRAL_CONFIG'); }
+                $a = array_replace($a, $specificApi);
+            }
+        }
+        if ($a['transport'] === 'hostinger_api' && ($a['api_base_url'] ?? '') !== 'https://api.mail.hostinger.com') { throw new RuntimeException('MAIL_CENTRAL_CONFIG'); }
         $extra = $a['authorized_contacts'][$user] ?? [];
-        $trusted = $contact === $registered || in_array($contact, array_map('strtolower', (array)$extra), true);
+        $trusted = $specificApi !== null || $contact === $registered || in_array($contact, array_map('strtolower', (array)$extra), true);
         $reply = $trusted ? $contact : $registered;
         if (!filter_var($reply, FILTER_VALIDATE_EMAIL)) { $reply = $a['correo']; }
         $aliases = array_map('strtolower', (array)($a['authorized_from'] ?? []));

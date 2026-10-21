@@ -90,6 +90,11 @@ try {
     $smtpCode = isset($mail) ? (int)($mail->getSMTPInstance()->getError()['smtp_code'] ?? 0) : 0;
     error_log('MAIL_DIAGNOSTIC_FAILED reason=' . $reason . ' smtp_code=' . $smtpCode . ' exception=' . get_class($e));
     echo 'Código seguro: ' . $reason . ($smtpCode ? '; SMTP ' . $smtpCode : '') . PHP_EOL;
+    if (in_array($reason, ['MAIL_RESET_CONFIG', 'MAIL_RESET_IDENTITY'], true)) {
+        echo "Falta una configuración de recuperación utilizable. Configurar en SSH: bash tools/configurar_correo_hostinger.sh --recovery\n";
+    } elseif ($reason === 'MAIL_CENTRAL_CONFIG') {
+        echo "Falta una cuenta comercial utilizable. Configurar la API en SSH: bash tools/configurar_correo_hostinger.sh --hostinger\n";
+    }
     echo "Diagnóstico incompleto. Revisar configuración, permisos privados, certificados, autenticación o restricciones salientes. No se muestran secretos.\n";
     exit(2);
 }

@@ -31,6 +31,7 @@
     <?php endif; ?>
     <p>La autorización se realiza en Google. No escribas contraseñas ni tokens en la redacción del correo.</p>
     <p>La nueva conexión Google solicita permiso para enviar y verificar la dirección de tu cuenta; no solicita lectura ni eliminación de mensajes.</p>
+    <p>También puedes utilizar tu Gmail mediante SMTP si el administrador configura una clave de aplicación de esa misma cuenta. En ese caso no hace falta crear una aplicación OAuth ni utilizar esta pantalla.</p>
     <p>Los empleados con correo Hostinger envían automáticamente mediante la API existente y no necesitan esta autorización. La recuperación de contraseñas usa su propia cuenta independiente.</p>
     <p>Autorizar la cuenta comprueba el acceso al buzón sin enviar mensajes. La recepción de correos y adjuntos se verifica después con un destinatario de prueba autorizado.</p>
 </section>

@@ -136,9 +136,17 @@ class CorreoSalidaInstitucionalService
             $token = $expires . '.' . hash_hmac('sha256', json_encode([$identity, $expires]), $_SESSION['mail_identity_key']);
             return ['ok' => true, 'identidad' => $identity, 'identidad_envio' => $token];
         } catch (Throwable $e) {
-            return $this->error($e->getMessage() === 'MAIL_CENTRAL_FROM'
-                ? 'Tu correo no corresponde a un buzón Hostinger autorizado. El administrador debe indicar la cuenta institucional de salida para estos contactos.'
-                : 'No se pudo comprobar el correo institucional del sistema. Solicita revisar su configuración privada y autorización.', 503);
+            $allowed = ['MAIL_CENTRAL_CONFIG','MAIL_CENTRAL_FROM','MAIL_CENTRAL_API','MAIL_SMTP_CONFIG','MAIL_SMTP_IDENTITY','MAIL_OAUTH_CONFIG','MAIL_STATE_DIRECTORY','MAIL_STATE_OPEN','MAIL_STATE_BUSY'];
+            $reason = in_array($e->getMessage(), $allowed, true) ? $e->getMessage() : 'MAIL_IDENTITY_FAILED';
+            error_log('MAIL_IDENTITY reason=' . $reason . ' exception=' . get_class($e));
+            $messages = [
+                'MAIL_CENTRAL_CONFIG' => 'El servidor no tiene configurada una cuenta de salida válida. El administrador debe cargar el token Hostinger o las credenciales SMTP en la configuración privada.',
+                'MAIL_CENTRAL_FROM' => 'Tu correo no corresponde a un buzón Hostinger autorizado. Revisa la autorización de esa cuenta con el administrador.',
+                'MAIL_CENTRAL_API' => 'Hostinger no permitió consultar los buzones. Revisa el token específico de Mail API y su autorización.',
+                'MAIL_OAUTH_CONFIG' => 'Falta configurar la aplicación Google para este Gmail. También puede utilizarse SMTP con una clave de aplicación configurada por el administrador.',
+                'MAIL_SMTP_CONFIG' => 'Las credenciales SMTP de esta cuenta están incompletas. El administrador debe revisar su configuración privada.'
+            ];
+            return $this->error($messages[$reason] ?? 'No se pudo comprobar la cuenta de envío. Solicita revisar el diagnóstico privado del servidor.', 503);
         }
     }
 
