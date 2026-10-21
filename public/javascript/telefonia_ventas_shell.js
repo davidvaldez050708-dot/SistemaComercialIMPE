@@ -76,7 +76,7 @@
   if(expectedRef?ref!==expectedRef:!overlaps(keys,Array.isArray(facts.sdk_tokens)?facts.sdk_tokens:[]))return false;
   if(metadata?.pbx_call_id===ref&&metadata.finalizada&&!facts.finalizada)return false;
   metadata=facts;bound={ref,tokens:keys};
-  if(facts.finalizada&&!state.active){
+  if(facts.finalizada){
    if(facts.registro){remove(ref);return true;}
    const task=pending.find(p=>p.ref===ref);
    if(task)task.callToken=state.callToken;
