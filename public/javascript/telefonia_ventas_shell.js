@@ -25,14 +25,17 @@
  const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();button.hidden=!pending.length||active||form;};
  window.IMPE_SALES_ATTENTION=Object.freeze({hasPending:()=>pending.length>0,openPending:open});
  async function lookup(ref,version){
-  if(fetching||!valid(ref))return;fetching=true;
+  if(fetching||!valid(ref))return;fetching=true;const requestToken=phone.getCallState()?.callToken;
   try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pbx_call_id',ref);
    if(cfg.extension)url.searchParams.set('extension',cfg.extension);
    const r=await fetch(url,{credentials:'same-origin',cache:'no-store'}),j=await r.json();
-   if(version!==revision||!r.ok||!j.ok)return;metadata=j.llamada;
+   const current=phone.getCallState();
+   const currentRef=String(current?.context?.transferReference||current?.finalMetadata?.pbx_call_id||current?.pbxCallId||'');
+   if(version!==revision||!r.ok||!j.ok||(current?.active&&(currentRef!==ref||current.callToken!==requestToken)))return;
+   metadata=j.llamada;if(!metadata)return;
    if(metadata.registro)remove(ref);
    else if(metadata.finalizada&&!phone.getPhoneStatus().active&&!announced.has(ref)){announced.add(ref);refreshNotices();}
-   card.hidden=!metadata.nombre;name.textContent=metadata.nombre||'';
+   card.hidden=!current?.active||!metadata.nombre;name.textContent=metadata.nombre||'';
    hint.textContent=metadata.origen_extension?'Nombre informado por Recepción · Ext. '+metadata.origen_extension:'Atención comercial de tu extensión';
   }catch(_){/* El historial conserva el pendiente mientras llega evidencia PBX. */}finally{fetching=false;}
  }
@@ -40,8 +43,8 @@
  function observe(){
   const state=phone.getCallState();if(!state){if(pending[0]&&Date.now()-lastLookup>Math.min(60000,3000*2**tries)){lastLookup=Date.now();tries++;void lookup(pending[0].ref,revision);}render();return;}
   const ref=String(state.context?.transferReference||state.finalMetadata?.pbx_call_id||state.pbxCallId||'');
-  const identity=valid(ref)?ref:String(state.callToken||'');
-  if(state.active&&identity!==scope){scope=identity;++revision;metadata=null;card.hidden=true;lastLookup=0;tries=0;}
+  const identity=String(state.callToken||'')+':'+ref;
+  if(state.active&&identity!==scope){scope=identity;++revision;metadata=null;card.hidden=true;name.textContent='';hint.textContent='';lastLookup=0;tries=0;}
   if(previous?.active&&!state.active&&valid(ref)&&['finished','incoming-finished'].includes(state.phase)){
    metadata=null;lastLookup=0;tries=0;
    const needs=previous.direction==='outgoing'||previous.phase==='in-progress'||previous.context?.sdkConnected||previous.context?.pbxAnswered;
@@ -51,7 +54,8 @@
     // El resultado se abre sólo cuando el usuario lo solicita; evita dos modales superpuestos.
    }
   }
-  const currentRef=valid(ref)?ref:pending[0]?.ref;
+  const currentRef=valid(ref)?ref:state.active?null:pending[0]?.ref;
+  if(!state.active)card.hidden=true;
   if(currentRef&&Date.now()-lastLookup>(metadata?60000:Math.min(60000,3000*2**tries))&&(!metadata||(!state.active&&pending.some(p=>p.ref===currentRef)))){
    lastLookup=Date.now();tries++;void lookup(currentRef,revision);
   }
