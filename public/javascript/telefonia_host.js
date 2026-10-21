@@ -629,15 +629,45 @@
                 onIdle: function (evidence={}) {
                     if(evidence.sessionId && state.context?.sdkInviteId &&
                         evidence.sessionId!==state.context.sdkInviteId)return;
-                    // END SIP del diálogo observado, no desaparición de CSS ni
-                    // pérdida de transporte. Liberar sólo la sesión local exacta.
-                    if((evidence.sessionEnded||evidence.pushEnded) && state.active && isSdkOnlyIncoming() &&
-                        (!evidence.sessionId || evidence.sessionId===state.context?.sdkInviteId)){
-                        const duration=currentDuration();answeredAtMs=0;
-                        retirePbxCall(String(state.pbxCallId||state.context?.transferReference||''));
-                        publish({active:false,phase:'incoming-finished',status:'sdk-ended',duration,
+                    // Cerrar la interfaz local con END SIP verificable, incluso
+                    // cuando ya se adoptó una referencia PBX. Antes, la rama
+                    // SDK_INCOMING se liberaba pero INCOMING quedaba varios
+                    // minutos en «Esperando cierre de Zadarma» sin sesión SIP.
+                    // Este cierre NO declara que Zadarma haya terminado la
+                    // conversación ni altera la conciliación/historial PBX.
+                    const sipSession = window.zdrmWebPhone?.webCallSession;
+                    const observedId = String(evidence.sessionId || '');
+                    const boundId = String(state.context?.sdkInviteId || '');
+                    const sdkOnly = isSdkOnlyIncoming();
+                    const attachedPbx = state.context?.type === 'INCOMING' &&
+                        Boolean(String(state.pbxCallId || ''));
+                    const sameSip = Boolean(observedId && (
+                        (boundId && observedId === boundId) ||
+                        (!boundId && sipSession?.direction === 'incoming' &&
+                            String(sipSession.id || '') === observedId &&
+                            sipSession.isEnded?.())
+                    ));
+                    const sipAlive = sipSession?.direction === 'incoming' &&
+                        !sipSession.isEnded?.();
+                    const sdkOnlyMatches = sdkOnly &&
+                        (!observedId || !boundId || observedId === boundId);
+                    if ((evidence.sessionEnded || evidence.pushEnded) &&
+                        state.active && state.direction === 'incoming' &&
+                        !sipAlive && (sdkOnlyMatches || (attachedPbx && sameSip))) {
+                        const ref = String(state.pbxCallId || state.context?.transferReference || '');
+                        const wasAnswered = Boolean(state.context?.sdkConnected ||
+                            state.context?.pbxAnswered || answeredAtMs > 0);
+                        const duration = wasAnswered ? currentDuration() : 0;
+                        answeredAtMs = 0;
+                        if (ref) retirePbxCall(ref);
+                        publish({active:false, phase:'incoming-finished',
+                            status:attachedPbx?'ended-unconfirmed':'sdk-ended', duration,
                             context:{...state.context,sdkEnded:true},
-                            message:'Sesión SIP finalizada. El historial PBX se actualiza por separado.'});
+                            message:attachedPbx
+                                ? 'La sesión SIP terminó. El cierre PBX sigue pendiente de confirmación.'
+                                : 'Sesión SIP finalizada. El historial PBX se actualiza por separado.'});
+                        ocultarHostEntrante();
+                        marcarPestanaEntrante('');
                         return;
                     }
                     const answered=Boolean(state.context?.sdkConnected||state.context?.pbxAnswered||answeredAtMs>0);
