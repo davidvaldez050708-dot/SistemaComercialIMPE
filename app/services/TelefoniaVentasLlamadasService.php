@@ -160,22 +160,27 @@ final class TelefoniaVentasLlamadasService
     }
     public static function hechos(array $events,string $ext,string $source=''): array {
         $answer=false;$end=false;$duration=null;$disposition='';
-        $outboundSource=false;
-        foreach($events as $e){
-            if(($e['evento']??'')==='NOTIFY_ANSWER'&&trim((string)($e['internal']??''))===$ext)$answer=true;
-            if($source!==''&&($e['evento']??'')==='NOTIFY_OUT_START'&&trim((string)($e['internal']??''))===$source)$outboundSource=true;
-        }
+        // La consulta se ordena por id ASC. Un cierre OUT_END del origen
+        // sólo puede cerrar al destinatario después de START de Recepción
+        // y ANSWER de Ventas del mismo PBX (con origen persistido).
+        $sourceStarted=false;$answeredAfterSource=false;
         foreach($events as $e) {
+            $type=(string)($e['evento']??'');
+            $internal=trim((string)($e['internal']??''));
+            if($source!==''&&$source!==$ext&&$type==='NOTIFY_OUT_START'&&$internal===$source)$sourceStarted=true;
+            if($type==='NOTIFY_ANSWER'&&$internal===$ext){
+                $answer=true;
+                if($sourceStarted)$answeredAfterSource=true;
+            }
             $p=json_decode((string)($e['payload_json']??''),true)?:[];
-            $own=trim((string)($e['internal']??''))===$ext;
-            // Zadarma conserva internal del iniciador y señala el destinatario
-            // final con last_internal. No exigir internal vacío para este caso.
+            $own=$internal===$ext;
+            // Zadarma conserva internal del iniciador; last_internal puede
+            // ser el destinatario 150, quedar vacío o mantener al origen 100.
+            // Nunca aceptar aquí last_internal de una tercera extensión.
             $last=trim((string)($e['last_internal']??''));if($last==='')$last=trim((string)($p['last_internal']??''));
             $explicitEnd=$last===$ext;
-            // OUT_END termina la llamada externa. Sólo extender su cierre a
-            // un destinatario persistido que realmente contestó este mismo PBX.
-            $sourceEnd=$last===''&&$outboundSource&&$answer&&$source!==$ext&&
-                ($e['evento']??'')==='NOTIFY_OUT_END'&&trim((string)($e['internal']??''))===$source;
+            $sourceEnd=$sourceStarted&&$answeredAfterSource&&($last===''||$last===$source)&&
+                $type==='NOTIFY_OUT_END'&&$internal===$source;
             $type=$e['evento']??'';
             if($own&&$type==='NOTIFY_ANSWER')$answer=true;
             if(($own||$explicitEnd||$sourceEnd)&&in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)) {
