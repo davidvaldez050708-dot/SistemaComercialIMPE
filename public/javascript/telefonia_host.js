@@ -594,6 +594,20 @@
                         message: 'Timbrado detectado en el teléfono WebRTC. Registro PBX pendiente.'
                     });
                 },
+                onSessionBound: function (evidence={}) {
+                    // Una transferencia saliente de Recepción se observa
+                    // primero como PUSH y puede recibir la RTCSession cuando
+                    // ya está "in-progress" por NOTIFY_ANSWER de PBX.
+                    // Guardar el ID de la sesión actual permite que su END
+                    // cierre el modal al instante; no atribuirlo a otro INVITE.
+                    const id=String(evidence.sessionId||'');
+                    if(!id||!state.active||state.direction!=='incoming'||
+                        !['SDK_INCOMING','INCOMING'].includes(state.context?.type)||
+                        !['incoming-ringing','answering','in-progress','finishing','recovering'].includes(state.phase))return;
+                    const prior=String(state.context?.sdkInviteId||'');
+                    if(prior&&prior!==id)return;
+                    if(!prior)publish({context:{...state.context,sdkInviteId:id}});
+                },
                 onConnected: function (evidence={}) {
                     // La llamada transferida puede recibir su PBX ID ANTES
                     // de que el SDK anuncie audio. La señal local sigue
