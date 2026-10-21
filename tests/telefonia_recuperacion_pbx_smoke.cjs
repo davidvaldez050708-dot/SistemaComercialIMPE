@@ -5,7 +5,7 @@ let body='';
 if(modernObserver){
 const start=source.indexOf('onIdle: function (evidence={}) {',source.indexOf('const startAnalystSdkObserver'))+'onIdle: function (evidence={}) {'.length;
 const end=source.indexOf('\n                }\n            }\n        ) || null;',start);
-assert(start>0&&end>start);const body=source.slice(start,end);
+assert(start>0&&end>start);body=source.slice(start,end);
 for(const sdk of [true,false]){
  const timers=[];let polls=0,cleared=0,finals=0;
  const state={active:true,direction:'incoming',phase:'in-progress',pbxCallId:sdk?'':'pbx-recovery-001',context:sdk?{transferReference:'pbx-recovery-001'}:{pbxAnswered:true}};
