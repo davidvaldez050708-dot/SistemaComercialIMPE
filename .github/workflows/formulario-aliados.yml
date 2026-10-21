@@ -34,7 +34,11 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mysqli, mbstring
+          extensions: mysqli, mbstring, zip, gd
+      - name: Completar dependencias de controladores en checkout efímero
+        run: |
+          mv vendor /tmp/formularios-vendor-versionado
+          composer install --no-interaction --no-scripts --prefer-dist --no-progress
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

@@ -35,6 +35,7 @@ La migración `2026_10_21_aliados_registro.sql` es aditiva e idempotente. Requie
 
 - `tests/aliados_registro_db.php`: 47 comprobaciones de gestión, territorio, programas, procedencia, históricos, bajas, permisos y aislamiento de Inscripción.
 - `tests/aliados_registro_browser.cjs`: 52 comprobaciones con navegador real, endpoints reales de sesión/CSRF, recorrido completo, QR decodificado, filtros y concurrencia de cuatro procesos independientes.
+- `tests/aliados_registro_snapshot.php`: dos conexiones reales fuerzan el snapshot anterior al bloqueo y recuperan una única procedencia. Registro utiliza READ COMMITTED sólo para su transacción y lectura actual de la clave idempotente; no altera la sesión ni Inscripción.
 - Escritorio 1366/1440, móvil 390 y horizontal 844×390: modales con footer accesible y sin desbordamiento horizontal de página. Revisión de capturas de los componentes nativos.
 - Regresiones existentes `formulario_aliados_db.php`, `aliados_internacionales.php` y `formulario_aliados_browser.cjs`: Handly, Registro/Inscripción generales, autorizaciones, duplicados y consulta internacional.
 - `tests/publicacion_aliados_registro_test.py`: revisión sin escritura al sitio, mezcla de personalizaciones, CRLF, conflictos, integridad, sintaxis, aplicación idempotente y restauración, incluido el manifiesto real.
@@ -46,7 +47,7 @@ El router de pruebas sólo funciona en localhost, con bandera explícita y esque
 
 La lista exacta de 30 archivos, sus versiones base, candidatos y SHA-256 están en `tools/aliados_registro_release.json`. Abarca los controladores/modelos/servicios anteriores, vistas de Aliados/Convenios/Registro/Prospectos, carga de assets, CSS/JS compartidos del módulo, biblioteca QR local, migración y preparador. No incluye pruebas, credenciales, configuración privada ni Telefonía/Inscripción.
 
-El manifiesto contiene los archivos del commit de aplicación `e26320d1bba0e118d6ce5b2cf5a99c2f33a72e24`. Se instala con el publicador y manifiesto del commit de entrega indicado en el PR.
+El manifiesto contiene los archivos del commit de aplicación `bc8e5c1611e7bff62fc91e12af7166e9dc36861d`. Se instala con el publicador y manifiesto del commit de entrega indicado en el PR.
 
 ## Comandos en Hostinger — ejecución manual
 
