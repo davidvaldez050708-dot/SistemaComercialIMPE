@@ -892,13 +892,19 @@
             return null;
         }
 
+        // Sin referencia PBX no buscar diez minutos de historia: el mismo
+        // número puede haber llamado o sido transferido varias veces. Sólo
+        // descubrir eventos recibidos alrededor del INVITE SIP actual.
+        // Con una referencia conocida la consulta sigue siendo exacta.
+        const unresolvedSip = state.active && state.direction === 'incoming' &&
+            state.context?.type === 'SDK_INCOMING' &&
+            !String(state.pbxCallId || state.context?.transferReference || '').trim();
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        const discoverySince = unresolvedSip
+            ? Math.max(0, Number(state.requestedAt || nowSeconds) - 12)
+            : (state.active ? nowSeconds - 600 : nowSeconds - 25);
         const params = new URLSearchParams({
-            since: String(
-                Math.floor(
-                    (Date.now() - 10 * 60 * 1000) /
-                    1000
-                )
-            )
+            since: String(discoverySince)
         });
 
         if (
