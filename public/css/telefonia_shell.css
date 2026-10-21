@@ -223,3 +223,29 @@ html, body {
     grid-column: 1; grid-row: 1;
   }
 }
+
+/* Ventas: al cerrar sin resultado (p. ej. no contestada), Datos del
+   prospecto y Cerrar conservan la misma fila, sin huecos verticales. */
+.impe-incoming-panel .persistent-phone-actions:has(> [data-sales-prospect]:not([hidden])):not(:has(> [data-sales-open]:not([hidden]))) > [data-sales-prospect] {
+  grid-column: 1 / 2; grid-row: 1; width: 100%; align-self: stretch;
+}
+.impe-incoming-panel .persistent-phone-actions:has(> [data-sales-prospect]:not([hidden])):not(:has(> [data-sales-open]:not([hidden]))) > [data-incoming-close-finished]:not([hidden]) {
+  grid-column: 2 / 3; grid-row: 1; width: 100%; margin: 0; justify-self: stretch;
+}
+.impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) > [data-sales-prospect]:not([hidden]) {
+  grid-column: 1 / -1; grid-row: 2; width: 100%; justify-self: stretch;
+}
+@media(max-width:420px) {
+  .impe-incoming-panel .persistent-phone-actions:has(> [data-sales-prospect]:not([hidden])):not(:has(> [data-sales-open]:not([hidden]))) {
+    grid-template-columns: minmax(0,1fr);
+  }
+  .impe-incoming-panel .persistent-phone-actions:has(> [data-sales-prospect]:not([hidden])):not(:has(> [data-sales-open]:not([hidden]))) > [data-incoming-close-finished]:not([hidden]) {
+    grid-column: 1; grid-row: 1;
+  }
+  .impe-incoming-panel .persistent-phone-actions:has(> [data-sales-prospect]:not([hidden])):not(:has(> [data-sales-open]:not([hidden]))) > [data-sales-prospect] {
+    grid-column: 1; grid-row: 2;
+  }
+  .impe-incoming-panel .persistent-phone-actions:has(> [data-sales-open]:not([hidden])) > [data-sales-prospect]:not([hidden]) {
+    grid-column: 1; grid-row: 3;
+  }
+}
