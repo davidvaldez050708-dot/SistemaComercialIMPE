@@ -619,12 +619,10 @@
                 },
                 onStopped: function () {
                     if(transferFlow?.holdsIncoming()){void transferFlow.tick();return;}
-                    if (!isSdkOnlyIncoming()) return;
-                    // Al atender, el SDK deja de timbrar pero la conversación
-                    // CONTINÚA. Sólo limpiar un timbrado que no se contestó.
-                    if (state.phase === 'incoming-ringing') {
-                        clearSdkOnlyIncoming();
-                    }
+                    // La desaparición de las clases CSS del timbre no
+                    // acredita END SIP ni fin de PUSH. Antes esto borraba
+                    // el modal de un intento legítimo sin dejar resultado.
+                    // onIdle procesa la terminación verificada por el SDK.
                 },
                 onIdle: function (evidence={}) {
                     if(evidence.sessionId && state.context?.sdkInviteId &&
@@ -666,7 +664,7 @@
                         answeredAtMs = 0;
                         if (ref) retirePbxCall(ref);
                         publish({active:false, phase:'incoming-finished',
-                            status:attachedPbx?'ended-unconfirmed':'sdk-ended', duration,
+                            status:attachedPbx?'ended-unconfirmed':(wasAnswered?'sdk-ended':'no-answer'), duration,
                             context:{...state.context,sdkEnded:true},
                             message:attachedPbx
                                 ? 'La sesión SIP terminó. El cierre PBX sigue pendiente de confirmación.'
