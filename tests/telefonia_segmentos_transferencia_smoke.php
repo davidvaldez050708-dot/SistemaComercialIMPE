@@ -21,3 +21,5 @@ $out=[['evento'=>'NOTIFY_OUT_START','internal'=>'100'],['evento'=>'NOTIFY_ANSWER
 $proof=TelefoniaPbxSegmentosService::transferencia($out,'101');
 checkParts([$proof['origen'],$proof['atendida'],$proof['finalizada']],['100',true,true],'ANSWER firmado conserva origen aun sin INTERNAL ni last_internal');
 array_shift($out);checkParts(TelefoniaPbxSegmentosService::transferencia($out,'101')['origen'],'','Sin inicio PBX de origen no autoriza otro tramo');
+$old=[['evento'=>'NOTIFY_INTERNAL','internal'=>'101'],['evento'=>'NOTIFY_END','internal'=>'101'],['evento'=>'NOTIFY_ANSWER','internal'=>'101']];
+checkParts(TelefoniaPbxSegmentosService::transferencia($old,'101')['finalizada'],false,'Cierre de un tramo anterior no finaliza una respuesta posterior');
