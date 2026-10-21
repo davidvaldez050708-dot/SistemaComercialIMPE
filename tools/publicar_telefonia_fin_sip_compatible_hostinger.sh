@@ -74,15 +74,15 @@ def patch(raw, pairs, filename):
                     return raw
                 fail("CONFLICTO: finalización PBX preexistente no comprobable")
             guard = re.compile(
-                r"if\\s*\\(\\s*currentState\\?\\.active\\s*\\|\\|\\s*!"
-                r"facts\\?\\.finalizada\\s*\\|\\|\\s*facts\\.pbx_call_id\\s*!==\\s*ref"
-                r"\\s*\\|\\|\\s*String\\(\\s*facts\\.extension\\s*\\)"
-                r"\\s*!==\\s*String\\(\\s*cfg\\.extension\\s*\\)"
-                r"\\s*\\)\\s*return\\s+false\\s*;"
+                r"if\s*\(\s*currentState\?\.active\s*\|\|\s*!"
+                r"facts\?\.finalizada\s*\|\|\s*facts\.pbx_call_id\s*!==\s*ref"
+                r"\s*\|\|\s*String\(\s*facts\.extension\s*\)"
+                r"\s*!==\s*String\(\s*cfg\.extension\s*\)"
+                r"\s*\)\s*return\s+false\s*;"
             )
             found = list(guard.finditer(method))
-            matched = list(re.finditer(r"const\\s+match\\s*=\\s*s\\s*=>", method))
-            updated = list(re.finditer(r"(?m)^[ \\t]*const\\s+update\\s*=\\s*s\\s*=>", method))
+            matched = list(re.finditer(r"const\s+match\s*=\s*s\s*=>", method))
+            updated = list(re.finditer(r"(?m)^[ \t]*const\s+update\s*=\s*s\s*=>", method))
             if len(found) != 1 or len(matched) != 1 or len(updated) != 1 or not (
                 found[0].end() < matched[0].start() < updated[0].start()
             ) or "sdk_tokens" not in method or "receipts" not in method:
@@ -99,7 +99,7 @@ def patch(raw, pairs, filename):
                 "String(facts.extension)!==String(cfg.extension))return false;"
             ) + method[found[0].end():]
             update_marker = list(re.finditer(
-                r"(?m)^[ \\t]*const\\s+update\\s*=\\s*s\\s*=>", new_method
+                r"(?m)^[ \t]*const\s+update\s*=\s*s\s*=>", new_method
             ))
             if len(update_marker) != 1:
                 fail("CONFLICTO: límite interno alterado")
@@ -108,7 +108,7 @@ def patch(raw, pairs, filename):
             content = content[:left] + new_method + content[right:]
             if content.count("PBX_CONFIRMED_INCOMING_END") != 1:
                 fail("CONFLICTO: rama PBX no insertada exactamente una vez")
-            return content.replace("\\n","\\r\\n").encode("utf-8") if crlf else content.encode("utf-8")
+            return content.replace("\n","\r\n").encode("utf-8") if crlf else content.encode("utf-8")
     for old,new in pairs:
         if content.count(new) == 1:
             continue
