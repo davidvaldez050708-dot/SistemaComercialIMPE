@@ -425,8 +425,8 @@ class TelefoniaController
                 $this->responderJson(['ok'=>true,'llamada'=>$op?$svc->conVinculosSdk($uid,[$svc->obtener($uid,$op['referencia'],$op['destino_extension'])])[0]:null]);
             }
             if(isset($_GET['sdk']))$this->responderJson(['ok'=>true,'llamada'=>$svc->obtenerPorSdk($uid,(string)$_GET['sdk'])]);
-            $this->responderJson(['ok'=>true,'llamada'=>$svc->obtener($uid,
-                (string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''))]);
+            $call=$svc->obtener($uid,(string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''));
+            $this->responderJson(['ok'=>true,'llamada'=>$svc->conVinculosSdk($uid,[$call])[0]]);
         }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
         catch(Throwable $e){error_log('[detalle_venta] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo consultar tu llamada.'],500);}
     }

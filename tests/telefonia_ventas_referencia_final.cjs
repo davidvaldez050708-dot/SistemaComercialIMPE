@@ -26,6 +26,7 @@ const facts=(extra={})=>({pbx_call_id:ref,extension:'150',finalizada:true,conect
   const h=await fixture();h.setState(state(true));await h.tick();h.setState(state(false));h.setRecords([bad]);h.setDetail(bad);await h.tick();await h.tick();assert(h.button.disabled,'No usar último pendiente, extensión ajena o cierre ausente');assert.equal(h.confirmed.length,0);
  }
  const wrong=await fixture();wrong.setState(state(true,{pbxCallId:ref}));await wrong.tick();wrong.setState(state(false,{pbxCallId:ref}));wrong.setDetail(facts({pbx_call_id:'pbx-other-call-001'}));await wrong.tick();assert(wrong.button.disabled);assert.equal(wrong.confirmed.length,0,'Detalle de otra referencia no debe confirmar la actual');
+ const stale=await fixture();stale.setState(state(true,{pbxCallId:ref}));await stale.tick();stale.setState(state(false,{pbxCallId:ref}));stale.setDetail(facts({sdk_tokens:['sdk-previous-session-123456']}));await stale.tick();assert(stale.button.disabled,'Una PBX de la cuenta vinculada a otro SDK no corresponde a la llamada actual');
  // Una segunda llamada al mismo teléfono tiene una sesión distinta.
  f.setState(state(true,{callToken:'sdk-next-session-123456',context:{type:'SDK_INCOMING'},destination:'+525551112233'}));await f.tick();f.setState(state(false,{callToken:'sdk-next-session-123456',context:{},destination:'+525551112233'}));await f.tick();assert(f.button.disabled,'Mismo teléfono no hereda la confirmación anterior');
  console.log('OK: recuperación SDK exacta, PBX final prioritaria, referencias ajenas rechazadas y llamadas consecutivas aisladas');
