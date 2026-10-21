@@ -18,6 +18,17 @@ function cleanRedmex($dir) {
     }
     rmdir($dir);
 }
+function firstParagraphRedmex($path) {
+    $zip=new ZipArchive(); expectRedmex($zip->open($path)===true,'open first paragraph');
+    try {
+        $doc=new DOMDocument(); expectRedmex($doc->loadXML($zip->getFromName('word/document.xml'),LIBXML_NONET),'first paragraph XML');
+        $xp=new DOMXPath($doc); $xp->registerNamespace('w','http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        foreach ($xp->query('/w:document/w:body/w:p') as $paragraph) {
+            if (strpos($paragraph->textContent,'Por medio de la presente,')===0) { return $paragraph->C14N(true); }
+        }
+        throw new RuntimeException('Institutional first paragraph missing');
+    } finally { $zip->close(); }
+}
 $root=dirname(__DIR__); $out=$root.'/output/pdf/oficios-redmex';
 if (!is_dir($out)) { mkdir($out,0775,true); }
 $source=$root.'/storage/templates/oficio_general_redmex.docx'; $hash=hash_file('sha256',$source);
@@ -52,12 +63,14 @@ try {
         $z->addFromString($part,$d->saveXML());
     }
     $z->close();
+    $firstParagraph=firstParagraphRedmex($out.'/general.docx');
     $result=$service->generarPdf($vista); expectRedmex($result['ok'],'general pdf: '.($result['mensaje_tecnico']??''));
     expectRedmex($result['conversor']==='REDMEX_DOMPDF','direct renderer'); file_put_contents($out.'/general.pdf',$result['contenido_pdf']);
 
     copy($out.'/general.docx',$catalog);
     changeRedmex($catalog,static function($d,$xp,$zip) {
-        $p=$xp->query('/w:document/w:body/w:p')->item(13);
+        // Variar sólo el segundo párrafo: el primero conserva texto y formato del general.
+        $p=$xp->query('/w:document/w:body/w:p')->item(14);
         while ($p->firstChild) { $p->removeChild($p->firstChild); }
         $r=$d->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','w:r');
         $t=$d->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','w:t');
@@ -71,6 +84,7 @@ try {
     $customVista=$vista+['archivo_plantilla'=>'storage/templates/oficios_personalizados/'.basename($catalog)];
     $prepared=$service->generarDocx($customVista,true); expectRedmex($prepared['ok'],'prepare custom');
     file_put_contents($out.'/personalizado.docx',$prepared['contenido_docx']);
+    expectRedmex(firstParagraphRedmex($out.'/personalizado.docx')===$firstParagraph,'custom first paragraph and formatting unchanged');
     $result=$service->generarPdf($customVista); expectRedmex($result['ok'],'custom pdf: '.($result['mensaje_tecnico']??''));
     file_put_contents($out.'/personalizado.pdf',$result['contenido_pdf']);
 
@@ -85,6 +99,7 @@ try {
         'analista_nombre'=>'NO DEBE REEMPLAZAR LA EDICIÓN','institucion'=>'NO DEBE SUSTITUIR EL CUERPO']);
     $doc=$service->generarDocx($processedVista); expectRedmex($doc['ok']&&hash('sha256',$doc['contenido_docx'])===$processedHash,'processed DOCX immutable');
     file_put_contents($out.'/preparado.docx',$doc['contenido_docx']);
+    expectRedmex(firstParagraphRedmex($out.'/preparado.docx')===$firstParagraph,'processed first paragraph and formatting unchanged');
     $result=$service->generarPdf($processedVista); expectRedmex($result['ok'],'processed pdf'); file_put_contents($out.'/preparado.pdf',$result['contenido_pdf']);
 
     $mutations=[
@@ -112,7 +127,7 @@ try {
     // Contenido extenso: debe paginar completo, con cabecera y pie en cada página.
     copy($processed,$incompatible);
     changeRedmex($incompatible,static function($d,$xp,$zip){
-        $p=$xp->query('/w:document/w:body/w:p')->item(13);
+        $p=$xp->query('/w:document/w:body/w:p')->item(14);
         for ($i=1;$i<=65;$i++) {
             $copy=$p->cloneNode(true);
             foreach ($xp->query('.//w:t',$copy) as $text) { $text->nodeValue='PÁRRAFO EXTENSO '.$i.': contenido de prueba que debe conservarse completo en las páginas siguientes.'; }
@@ -124,7 +139,7 @@ try {
     expectRedmex(hash_file('sha256',$source)===$hash && hash_file('sha256',$catalog)===$catalogHash
         && hash_file('sha256',$processed)===$processedHash,'originals unchanged');
     expectRedmex(!array_diff(glob($root.'/storage/tmp/oficios/*',GLOB_ONLYDIR) ?: [],$temporaryBefore),'temporary directories removed on success and rejection');
-    echo "OK: general, personalizada con tabla, preparada, incompatibles, paginación y originales intactos.\n";
+    echo "OK: general, personalizada con tabla, preparada, primer párrafo y formato iguales al general, incompatibles, paginación y originales intactos.\n";
 } finally {
     foreach ([$catalog,$processed,$incompatible] as $file) { if (is_file($file)) { unlink($file); } }
     cleanRedmex($work);

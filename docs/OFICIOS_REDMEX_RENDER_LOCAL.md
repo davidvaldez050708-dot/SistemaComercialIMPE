@@ -93,14 +93,19 @@ En `output/pdf/oficios-redmex/` se entregan:
 | Muestra ficticia | Resultado local y referencia Word |
 | --- | --- |
 | `general.pdf` | Una página carta, texto completo, membrete, sello y pie originales. |
-| `personalizado.pdf` | Cuerpo distinto leído del DOCX seleccionado y tabla de dos columnas conservada. |
-| `preparado.pdf` | Conserva «EDICIÓN MANUAL CONSERVADA», sin reemplazarla con valores nuevos de la vista. |
+| `personalizado.pdf` | Primer párrafo idéntico al general, incluidas negritas; segundo párrafo de prueba personalizado y tabla de dos columnas conservados. |
+| `preparado.pdf` | Primer párrafo idéntico al general; conserva «EDICIÓN MANUAL CONSERVADA» en el segundo, sin reemplazarla con valores nuevos de la vista. |
 | `paginacion.pdf` | 65 párrafos adicionales completos; tres páginas carta, recursos repetidos y cierre sin solapamientos. |
 
 Los tres `*-word.pdf` son exportaciones del mismo DOCX ficticio mediante Word local,
 utilizado sólo como referencia de QA. El CRM en Hostinger no depende de esa computadora.
 Los `*-comparacion.png` muestran Word a la izquierda y el PDF local a la derecha.
 `comparacion.json` registra hashes, tamaños, páginas, fuentes y métricas de diferencia.
+
+Las variaciones ficticias se limitan al segundo párrafo. Se comprueba que el XML completo
+del primer párrafo coincide con el general en ambas muestras y que su texto permanece
+idéntico en los tres PDF. La corrección afecta a las muestras de prueba; el conversor
+continúa respetando el contenido del DOCX seleccionado, sin sobrescribir documentos reales.
 
 La extracción de texto coincide ignorando espacios en las tres muestras y conserva las
 familias tipográficas. La revisión visual confirma los elementos institucionales y la

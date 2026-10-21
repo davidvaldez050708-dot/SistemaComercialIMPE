@@ -40,6 +40,7 @@
         "sha256": "7e32e05ab4e5e43a800206b55fee4bb8092b12221effa1af0943d026f2fdb62d"
       },
       "text_equal_ignoring_whitespace": true,
+      "first_paragraph_matches_general": true,
       "mean_absolute_pixel_error_0_255": 11.45453,
       "pixels_difference_gt16_percent": 8.75216
     },
@@ -61,7 +62,7 @@
           "Cambria-Bold",
           "TimesNewRomanPSMT"
         ],
-        "sha256": "8a0290309a7fad8d208fba8549e7efd4b2ece49422791b396cfa250bedc4407e"
+        "sha256": "ac1e71689039b4cb4c88e0f2d9bba7165e1904fc7036749af6760c6ade2c0a31"
       },
       "candidate": {
         "pages": 1,
@@ -79,11 +80,12 @@
           "Cambria-Bold",
           "TimesNewRomanPSMT"
         ],
-        "sha256": "4ce75477b5fb3311501afa51b2b3af45e2387b8cfca3ab1bd6242d5a6579375b"
+        "sha256": "e9cd8f759b5feaa004b5b3f7b292791c46a6004b3e139de3594f3fe20bc86bdb"
       },
       "text_equal_ignoring_whitespace": true,
-      "mean_absolute_pixel_error_0_255": 9.52917,
-      "pixels_difference_gt16_percent": 7.42128
+      "first_paragraph_matches_general": true,
+      "mean_absolute_pixel_error_0_255": 10.04141,
+      "pixels_difference_gt16_percent": 7.65932
     },
     {
       "name": "preparado",
@@ -103,7 +105,7 @@
           "Cambria-Bold",
           "TimesNewRomanPSMT"
         ],
-        "sha256": "72e47f3969819b10baf2dcdbff217dfd75b0278df02df0ef7702cf64b74b7ac7"
+        "sha256": "d13d0e33d73e94b3dfa7c104309fd890ac75f2d08e62032d96850b1413ca2ce4"
       },
       "candidate": {
         "pages": 1,
@@ -121,11 +123,12 @@
           "Cambria-Bold",
           "TimesNewRomanPSMT"
         ],
-        "sha256": "d4ec561574f18fcdd19c0e2f1561b82db3c4616902ab998db508afcfe2f9a592"
+        "sha256": "40c48f14ce969e34134a765b6b2f074b07dbddbf74795b1c6c0c604a9a6537f1"
       },
       "text_equal_ignoring_whitespace": true,
-      "mean_absolute_pixel_error_0_255": 9.57766,
-      "pixels_difference_gt16_percent": 7.45748
+      "first_paragraph_matches_general": true,
+      "mean_absolute_pixel_error_0_255": 10.08991,
+      "pixels_difference_gt16_percent": 7.69552
     }
   ],
   "long_document": {

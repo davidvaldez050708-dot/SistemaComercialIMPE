@@ -18,6 +18,7 @@ def main():
     args = parser.parse_args()
     base = args.directorio.resolve()
     report = {'manual_review_required': True, 'samples': []}
+    first_paragraph = None
     for name in ['general', 'personalizado', 'preparado']:
         rendered = []
         for suffix in ['-word', '']:
@@ -35,6 +36,13 @@ def main():
         assert candidate['sizes'] == reference['sizes'] == [[612, 792]], name + ': not letter'
         assert re.sub(r'\s', '', reference['text']) == re.sub(r'\s', '', candidate['text']), name + ': missing or substituted text'
         assert candidate['fonts'] == reference['fonts'], name + ': font substitution'
+        paragraph = re.search(r'Por medio de la presente,.*?mediante un proceso académico\.',
+                              candidate['text'], re.DOTALL)
+        assert paragraph is not None, name + ': institutional first paragraph missing'
+        paragraph = re.sub(r'\s+', ' ', paragraph.group()).strip()
+        if first_paragraph is None:
+            first_paragraph = paragraph
+        assert paragraph == first_paragraph, name + ': institutional first paragraph changed'
         if name == 'preparado':
             assert 'EDICIÓN MANUAL CONSERVADA' in candidate['text'] and 'NO DEBE' not in candidate['text']
         a = Image.open(base / (name + '-word-1.png')).convert('RGB')
@@ -52,6 +60,7 @@ def main():
             del item['text']
         report['samples'].append({'name': name, 'reference': reference, 'candidate': candidate,
                                   'text_equal_ignoring_whitespace': True,
+                                  'first_paragraph_matches_general': True,
                                   'mean_absolute_pixel_error_0_255': round(float(error.mean()), 5),
                                   'pixels_difference_gt16_percent': round(float(np.any(error > 16, axis=2).mean()*100), 5)})
     with pdfplumber.open(base / 'paginacion.pdf') as document:
