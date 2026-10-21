@@ -95,7 +95,7 @@
             // En PUSH el SDK puede retirar y restaurar ringing antes del END PBX.
             const freshPush = domCall && !wasDomRinging &&
                 (!observedSession || observedSession.isEnded());
-            if (call && (!seenIncoming || (newSession && liveInvite) || freshPush ||
+            if (call && (!seenIncoming || (newSession && liveInvite && observedSession) || freshPush ||
                 (idleReported && (!wasDomRinging || newSession)))) {
                 seenIncoming = true;
                 ringing = true;
