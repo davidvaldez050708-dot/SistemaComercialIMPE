@@ -48,7 +48,7 @@ $checks = [
     'Devolución usa WebRTC persistente y soporta transferencia' =>
         str_contains($jsRecepcion, 'telefono.openDialer?.({') &&
         str_contains($jsRecepcion, "'MARKETING_CALLBACK'") &&
-        str_contains($recepcion, 'data-marketing-reception-callback-status'),
+        str_contains($jsRecepcion, 'explicarDevolucion('),
     'Historial telefónico no se elimina' =>
         str_contains($recepcion, 'data-marketing-reception-rows') &&
         str_contains($recepcion, 'data-marketing-reception-filter') &&

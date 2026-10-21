@@ -19,6 +19,8 @@
     if (userId <= 0 || extension === '') {
         return;
     }
+    if(window.IMPE_TELEPHONY_HOST_RUNTIME_STARTED)return;
+    window.IMPE_TELEPHONY_HOST_RUNTIME_STARTED=true;
 
     const concealOwnWindow = function () {
         if (modoPestana || modoEmbebido || nativeUiVisible) {
@@ -179,6 +181,8 @@
     let lastCall = null;
     let lastCommandId = '';
     const microphoneTracks = new Set();
+    let microphoneSession = null;
+    let microphoneCallToken = '';
 
     const emptyState = function () {
         return {
@@ -231,6 +235,15 @@
     let transferFlow=null;
     const retiredKey = 'impe:telephony:retired-call-ids:' + userId;
     const retiredIds = new Map();
+    const declinedInvitations = new Map();
+    const declinedInvitation = id => {
+        if (!declinedInvitations.has(id)) return false;
+        const previous=declinedInvitations.get(id),session=window.zdrmWebPhone?.webCallSession;
+        if(session&&session!==previous&&session.direction==='incoming'&&!session.isEnded?.()){
+            declinedInvitations.delete(id);return false;
+        }
+        return true;
+    };
     try {
         const rows = JSON.parse(window.localStorage.getItem(retiredKey) || '[]');
         for (const row of Array.isArray(rows) ? rows : []) {
@@ -350,6 +363,7 @@
             duration: currentDuration(),
             updatedAt: Date.now()
         });
+        syncMicrophone();
 
         try {
             localStorage.setItem(stateKey, JSON.stringify(state));
@@ -435,61 +449,57 @@
         });
     };
 
-    const captureMicrophone = function () {
-        const mediaDevices = navigator.mediaDevices;
-
-        if (
-            !mediaDevices ||
-            typeof mediaDevices.getUserMedia !== 'function' ||
-            mediaDevices.getUserMedia.__impePersistentWrapped
-        ) {
-            return;
+    // Sólo pistas enviadas por la sesión actual: nunca audio recibido ni
+    // capturas auxiliares del navegador. enabled=false transmite silencio.
+    const syncMicrophone = function () {
+        const candidate = window.zdrmWebPhone?.webCallSession;
+        const session = state.active && !candidate?.isEnded?.() ? candidate : null;
+        const token = String(state.callToken || '');
+        if (session !== microphoneSession || token !== microphoneCallToken || !state.active) {
+            microphoneTracks.forEach(track => {
+                if (track.readyState === 'live') track.enabled = true;
+            });
+            microphoneTracks.clear();
+            microphoneSession = session;
+            microphoneCallToken = token;
+            muted = false;
         }
-
+        let tracks = [];
         try {
-            const original = mediaDevices.getUserMedia.bind(mediaDevices);
-
-            const wrapped = function (constraints) {
-                return original(constraints).then(function (stream) {
-                    if (constraints && constraints.audio) {
-                        stream.getAudioTracks().forEach(function (track) {
-                            microphoneTracks.add(track);
-                            track.enabled = !muted;
-                            track.addEventListener('ended', function () {
-                                microphoneTracks.delete(track);
-                            }, { once: true });
-                        });
-                    }
-
-                    return stream;
-                });
-            };
-
-            wrapped.__impePersistentWrapped = true;
-            mediaDevices.getUserMedia = wrapped;
-        } catch (error) {
-            console.debug('No fue necesario envolver el micrófono.', error);
-        }
+            tracks = (session?.connection?.getSenders?.() || [])
+                .map(sender => sender.track)
+                .filter(track => track?.kind === 'audio' && track.readyState === 'live');
+            // Una renegociación puede sustituir la pista de la misma llamada.
+            if (muted) tracks.forEach(track => {
+                if (!microphoneTracks.has(track)) {
+                    track.enabled = false;
+                    microphoneTracks.add(track);
+                }
+            });
+        } catch (_) { tracks = []; }
+        state.muted = tracks.length > 0 && tracks.every(track => !track.enabled);
+        if (tracks.length) muted = state.muted;
+        return tracks;
     };
 
     const setMuted = function (value) {
         const nextMuted = Boolean(value);
-        if (state.direction === 'incoming') {
-            if (!state.active || state.phase !== 'in-progress' ||
-                !incomingBridge?.mute(nextMuted)) {
-                console.warn('No se pudo cambiar el micrófono de la llamada entrante.');
-                return;
-            }
+        const tracks = syncMicrophone();
+        if (!state.active || !tracks.length) {
+            publish({message:'No hay un micrófono de la llamada disponible para cambiar.'});
+            return;
         }
-        // Mantener el comportamiento existente de pistas para las salientes
-        // y garantizar el mismo estado visual tras actualizar el micrófono.
-        muted = nextMuted;
-        microphoneTracks.forEach(function (track) {
-            if (track && track.readyState === 'live') {
-                track.enabled = !muted;
-            }
-        });
-        publish({ muted: muted });
+        const previous = tracks.map(track => track.enabled);
+        try {
+            tracks.forEach(track => { track.enabled = !nextMuted; });
+            if (!tracks.every(track => track.enabled === !nextMuted)) throw new Error('mute');
+            tracks.forEach(track => microphoneTracks.add(track));
+            muted = nextMuted;
+            publish({message:''});
+        } catch (_) {
+            tracks.forEach((track, index) => { track.enabled = previous[index]; });
+            publish({message:'No se pudo cambiar el micrófono de la llamada.'});
+        }
     };
 
     const fetchWebRtcSession = async function () {
@@ -549,7 +559,14 @@
         analystSdkObserver = window.IMPE_ZADARMA_SDK_RING_OBSERVER?.create(
             document, {
                 onRinging: function (call) {
-                    if (!widgetReady || state.active) return;
+                    if (!widgetReady) return false;
+                    const freshSip=Boolean(call?.sipSessionId &&
+                        call.sipSessionId!==state.context?.sdkInviteId);
+                    // Un INVITE nuevo acredita otro diálogo; un END PBX anterior
+                    // puede seguir pendiente. No reemplazar una saliente local.
+                    if(state.active&&!state.context?.declineRequested &&
+                        !(state.direction==='incoming' && (freshSip||call?.pushInvitation) &&
+                          ['incoming-ringing','finishing','recovering','rejecting'].includes(state.phase))) return false;
                     const number = String(call?.caller || '').slice(0, 40);
                     const token = 'sdk-' + Date.now().toString(36) +
                         '-' + Math.random().toString(36).slice(2, 9);
@@ -570,13 +587,28 @@
                         context: {
                             type: 'SDK_INCOMING',
                             verified: false,
-                            callerName: String(call?.callerName || '').slice(0, 100)
+                            callerName: String(call?.callerName || '').slice(0, 100),
+                            sdkInviteId:String(call?.sipSessionId||'')
                         },
                         finalMetadata: null,
                         message: 'Timbrado detectado en el teléfono WebRTC. Registro PBX pendiente.'
                     });
                 },
-                onConnected: function () {
+                onSessionBound: function (evidence={}) {
+                    // Una transferencia saliente de Recepción se observa
+                    // primero como PUSH y puede recibir la RTCSession cuando
+                    // ya está "in-progress" por NOTIFY_ANSWER de PBX.
+                    // Guardar el ID de la sesión actual permite que su END
+                    // cierre el modal al instante; no atribuirlo a otro INVITE.
+                    const id=String(evidence.sessionId||'');
+                    if(!id||!state.active||state.direction!=='incoming'||
+                        !['SDK_INCOMING','INCOMING'].includes(state.context?.type)||
+                        !['incoming-ringing','answering','in-progress','finishing','recovering'].includes(state.phase))return;
+                    const prior=String(state.context?.sdkInviteId||'');
+                    if(prior&&prior!==id)return;
+                    if(!prior)publish({context:{...state.context,sdkInviteId:id}});
+                },
+                onConnected: function (evidence={}) {
                     // La llamada transferida puede recibir su PBX ID ANTES
                     // de que el SDK anuncie audio. La señal local sigue
                     // siendo válida sin inventar un NOTIFY_ANSWER firmado.
@@ -588,12 +620,12 @@
                     if ((!sdkOnly && !pbxIncoming) || !state.active ||
                         !['incoming-ringing','answering'].includes(state.phase)) return;
                     answeredAtMs = Date.now();
-                    if (sdkOnly) reportSdkEvent('answered', state);
                     publish({
                         phase:'in-progress', status:'in-progress',
                         answeredAtMs:answeredAtMs, duration:0, message:'',
                         context:Object.assign({},state.context,{
                             sdkConnected:true,
+                            sdkInviteId:String(evidence.sessionId||state.context?.sdkInviteId||''),
                             verified:Boolean(state.context?.pbxAnswered),
                             source:'SDK_WEBRTC'
                         })
@@ -601,19 +633,89 @@
                 },
                 onStopped: function () {
                     if(transferFlow?.holdsIncoming()){void transferFlow.tick();return;}
-                    if (!isSdkOnlyIncoming()) return;
-                    // Al atender, el SDK deja de timbrar pero la conversación
-                    // CONTINÚA. Sólo limpiar un timbrado que no se contestó.
-                    if (state.phase === 'incoming-ringing') {
-                        clearSdkOnlyIncoming();
-                    }
+                    // La desaparición de las clases CSS del timbre no
+                    // acredita END SIP ni fin de PUSH. Antes esto borraba
+                    // el modal de un intento legítimo sin dejar resultado.
+                    // onIdle procesa la terminación verificada por el SDK.
                 },
-                onIdle: function () {
+                onIdle: function (evidence={}) {
+                    if(evidence.sessionId && state.context?.sdkInviteId &&
+                        evidence.sessionId!==state.context.sdkInviteId)return;
+                    // Cerrar la interfaz local con END SIP verificable, incluso
+                    // cuando ya se adoptó una referencia PBX. Antes, la rama
+                    // SDK_INCOMING se liberaba pero INCOMING quedaba varios
+                    // minutos en «Esperando cierre de Zadarma» sin sesión SIP.
+                    // Este cierre NO declara que Zadarma haya terminado la
+                    // conversación ni altera la conciliación/historial PBX.
+                    const sipSession = window.zdrmWebPhone?.webCallSession;
+                    const observedId = String(evidence.sessionId || '');
+                    const boundId = String(state.context?.sdkInviteId || '');
+                    const sdkOnly = isSdkOnlyIncoming();
+                    const attachedPbx = ['INCOMING','SDK_INCOMING'].includes(state.context?.type) &&
+                        Boolean(String(state.pbxCallId || ''));
+                    const sameSip = Boolean(observedId && (
+                        (boundId && observedId === boundId) ||
+                        (!boundId && sipSession?.direction === 'incoming' &&
+                            String(sipSession.id || '') === observedId &&
+                            sipSession.isEnded?.())
+                    ));
+                    const sipAlive = sipSession?.direction === 'incoming' &&
+                        !sipSession.isEnded?.();
+                    const sdkOnlyMatches = sdkOnly &&
+                        (!observedId || (boundId && observedId === boundId) ||
+                            (sipSession?.direction === 'incoming' &&
+                                String(sipSession.id || '') === observedId &&
+                                sipSession.isEnded?.()));
+                    if ((evidence.sessionEnded || evidence.pushEnded) &&
+                        state.active && state.direction === 'incoming' &&
+                        !sipAlive && (sdkOnlyMatches || (attachedPbx &&
+                            (sameSip || (evidence.pushEnded && !observedId &&
+                                ['incoming-ringing','answering','finishing','rejecting'].includes(state.phase)))))) {
+                        const ref = String(state.pbxCallId || state.context?.transferReference || '');
+                        const wasAnswered = Boolean(state.context?.sdkConnected ||
+                            state.context?.pbxAnswered || answeredAtMs > 0);
+                        const duration = wasAnswered ? currentDuration() : 0;
+                        answeredAtMs = 0;
+                        if (ref) retirePbxCall(ref);
+                        publish({active:false, phase:'incoming-finished',
+                            status:attachedPbx?'ended-unconfirmed':(wasAnswered?'sdk-ended':'no-answer'), duration,
+                            context:{...state.context,sdkEnded:true},
+                            message:attachedPbx
+                                ? 'La sesión SIP terminó. El cierre PBX sigue pendiente de confirmación.'
+                                : 'Sesión SIP finalizada. El historial PBX se actualiza por separado.'});
+                        ocultarHostEntrante();
+                        marcarPestanaEntrante('');
+                        return;
+                    }
+                    const answered=Boolean(state.context?.sdkConnected||state.context?.pbxAnswered||answeredAtMs>0);
+                    if(state.active && state.direction==='incoming' && !answered &&
+                        ['incoming-ringing','answering','rejecting'].includes(state.phase)){
+                        publish({phase:'finishing',status:'ending',duration:0,
+                            message:'El intento no tiene respuesta confirmada. Comprobando su cierre.'});
+                        void pollIncoming();return;
+                    }
+                    if(state.context?.declineRequested){
+                        if(isSdkOnlyIncoming()&&window.zdrmWebPhone?.webCallSession?.isEnded?.())clearSdkOnlyIncoming();
+                        else void pollIncoming();
+                        return;
+                    }
                     if(transferFlow?.holdsIncoming()){void transferFlow.tick();return;}
                     // El audio local terminó. Esperar cierre PBX, pero no
                     // mantener la pantalla/cronómetro en conversación falsa.
                     if (isSdkOnlyIncoming()) {
-                        clearSdkOnlyIncoming();
+                        if(state.phase==='incoming-ringing') {
+                            // Reposo observado sin prueba de cierre SIP/PUSH:
+                            // no descartar la llamada como si nunca existió.
+                            // El cierre real se procesa arriba con sessionEnded
+                            // o pushEnded, dejando constancia de no contestada.
+                            publish({phase:'finishing',status:'ending',duration:0,
+                                message:'El timbrado terminó. Comprobando el cierre de la llamada.'});
+                            void pollIncoming();
+                        } else {
+                            publish({phase:'recovering',status:'recovering',
+                                message:'Se interrumpió el audio del navegador. La centralita debe confirmar el estado.'});
+                            void pollIncoming();
+                        }
                         return;
                     }
                     if (!state.active || state.direction !== 'incoming' ||
@@ -623,19 +725,16 @@
                     const duration = currentDuration();
                     answeredAtMs = 0;
                     publish({
-                        phase:'finishing',status:'finishing',duration,
+                        phase:'recovering',status:'recovering',duration,
                         answeredAtMs:0,
-                        message:'El audio terminó. Esperando cierre de Zadarma.'
+                        message:'Se interrumpió el audio del navegador. Comprobando el estado de la llamada.'
                     });
                     window.setTimeout(function () {
-                        // Sin NOTIFY_END sólo mostramos cierre provisional.
-                        // No fabricar evento PBX ni grabación.
-                        if (state.active && state.phase === 'finishing' &&
+                        // La ausencia de audio no sustituye al cierre PBX.
+                        if (state.active && state.phase === 'recovering' &&
                             String(state.pbxCallId) === token) {
-                            finalizarEntrante({
-                                pbx_call_id:token,duration,
-                                disposition:'ended-unconfirmed'
-                            }, false);
+                            // Perder el transporte SIP no acredita un END en PBX.
+                            void pollIncoming();
                         }
                     },8000);
                 }
@@ -721,8 +820,11 @@
             },
             function () {
                 return state.active && state.direction === 'incoming' &&
-                    state.phase === 'in-progress' && widgetReady;
-            }
+                    ['in-progress','recovering','finishing'].includes(state.phase) && widgetReady &&
+                    window.zdrmWebPhone?.webCallSession?.isEstablished?.() &&
+                    !window.zdrmWebPhone.webCallSession.isEnded?.();
+            },
+            ()=>state.callToken
         ) || null;
         startIncomingPolling();
         startAnalystSdkObserver();
@@ -790,14 +892,29 @@
             return true;
         },
         decline: function () {
-            const sdkOnly = isSdkOnlyIncoming() &&
-                state.phase === 'incoming-ringing';
-            const sent = Boolean(permiteEntrantes && incomingBridge?.decline());
+            if(state.context?.declineRequested)return true;
+            const token=String(state.callToken||''),ref=String(state.pbxCallId||state.context?.transferReference||'');
+            const session=window.zdrmWebPhone?.webCallSession;
+            const hadSession=Boolean(session&&!session.isEnded?.());
+            const sent = Boolean(permiteEntrantes && incomingBridge?.decline(token||ref));
             if (sent) {
-                if (sdkOnly) clearSdkOnlyIncoming();
-                else actualizarEstadoTrasAccion();
+                if(ref){declinedInvitations.set(ref,session);if(declinedInvitations.size>40)declinedInvitations.delete(declinedInvitations.keys().next().value);}
+                if(String(state.callToken||'')===token)publish({phase:'rejecting',status:'rejecting',context:{...state.context,declineRequested:true},message:'Rechazo enviado. Esperando confirmación de la centralita.'});
+                analystSdkObserver?.markDeclined?.(hadSession?session:null);
+                actualizarEstadoTrasAccion();
             }
             return sent;
+        },
+        recheck: function () {
+            if(!state.active)return false;
+            if(state.direction==='incoming'){
+                // Consultar no es volver a colgar: el usuario ya pidió
+                // finalizar y repetir finishCall puede cancelar otro diálogo.
+                analystSdkObserver?.checkNow?.();
+                void pollIncoming();
+            }else void poll();
+            publish({message:'Comprobando el estado real en la centralita; todavía no se confirma el cierre.'});
+            return true;
         },
         canHangup: function () {
             return Boolean(permiteEntrantes && incomingBridge?.canHangup());
@@ -807,8 +924,8 @@
                 state.phase === 'in-progress';
             const sent = Boolean(permiteEntrantes && incomingBridge?.hangup());
             if (sent) {
-                if (sdkOnly) clearSdkOnlyIncoming();
-                else actualizarEstadoTrasAccion();
+                if(sdkOnly)publish({phase:'finishing',status:'ending',message:'Cierre solicitado. Esperando confirmación de la sesión SIP.'});
+                actualizarEstadoTrasAccion();
             }
             return sent;
         },
@@ -835,13 +952,19 @@
             return null;
         }
 
+        // Sin referencia PBX no buscar diez minutos de historia: el mismo
+        // número puede haber llamado o sido transferido varias veces. Sólo
+        // descubrir eventos recibidos alrededor del INVITE SIP actual.
+        // Con una referencia conocida la consulta sigue siendo exacta.
+        const unresolvedSip = state.active && state.direction === 'incoming' &&
+            state.context?.type === 'SDK_INCOMING' &&
+            !String(state.pbxCallId || state.context?.transferReference || '').trim();
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        const discoverySince = unresolvedSip
+            ? Math.max(0, Number(state.requestedAt || nowSeconds) - 12)
+            : (state.active ? nowSeconds - 600 : nowSeconds - 25);
         const params = new URLSearchParams({
-            since: String(
-                Math.floor(
-                    (Date.now() - 10 * 60 * 1000) /
-                    1000
-                )
-            )
+            since: String(discoverySince)
         });
 
         if (
@@ -970,7 +1093,7 @@
     };
 
     const applyIncomingState = function (call) {
-        if(transferFlow?.holdsIncoming())return;
+        if(transferFlow?.holdsIncoming()&&call?.estado!=='ended')return;
         if(state.active && state.context?.type==='SDK_INCOMING' && /^\d{3,6}$/.test(state.destination) &&
             call?.transfer_from===state.destination && !state.context.operationChecked && config.operacionUrl)return;
         if (!call) {
@@ -986,6 +1109,9 @@
             (!state.active && retiredIds.has(pbxCallId))) {
             return;
         }
+        if(incomingStatus!=='ended'&&declinedInvitation(pbxCallId))return;
+        const rejectedRef=String(state.pbxCallId||state.context?.transferReference||'');
+        if(state.context?.declineRequested&&rejectedRef&&pbxCallId!==rejectedRef&&incomingStatus==='ringing')analystSdkObserver?.allowNewInvitation?.();
 
         /*
          * Una llamada saliente activa nunca se sustituye por una entrada
@@ -999,6 +1125,12 @@
         ) {
             return;
         }
+
+        // Una operación autorizada puede entregar su referencia antes del
+        // NOTIFY_INTERNAL. Adoptarla sólo si la consulta PBX propia coincide
+        // exactamente; nunca por teléfono, hora o por terminar el SDK.
+        if(state.active&&state.direction==='incoming'&&!state.pbxCallId&&
+            state.context?.transferReference===pbxCallId)publish({pbxCallId});
 
         if (incomingStatus === 'transferred') {
             // En consulta la recepción todavía conversa con el destinatario.
@@ -1061,7 +1193,7 @@
         const answered = pbxAnswered || sdkAnswered || previouslyConnected;
         const nuevaLlamadaEntrante = !samePbxCall;
         // La PBX puede tardar después de que el audio ya desapareció.
-        if (samePbxCall && state.phase === 'finishing') return;
+        if (samePbxCall && ['finishing','recovering'].includes(state.phase)) return;
         if (nuevaLlamadaEntrante && !sdkAnswered) {
             answeredAtMs = 0;
         } else if (sdkAnswered && answeredAtMs <= 0) {
@@ -1120,6 +1252,7 @@
                     Boolean(state.context?.sdkConnected)),
                 pbxAnswered:pbxAnswered,
                 sdkSessionId:sdkSessionId,
+                sdkInviteId:(samePbxCall||sdkSessionId)?String(state.context?.sdkInviteId||''):'',
                 transferFrom:String(call.transfer_from || ''),
                 transferRequest:samePbxCall && !call.returned_from?state.context?.transferRequest:null
             },
@@ -1153,8 +1286,10 @@
         incomingPollBusy = true;
 
         try {
+            const requestToken=state.callToken;
             const call =
                 await fetchIncomingState();
+            if(state.callToken!==requestToken)return;
 
             if (call) {
                 applyIncomingState(call);
@@ -1410,6 +1545,11 @@
         const providerDuration =
             Math.max(0, Number(call.duration || 0));
 
+        if(state.phase==='recovering'&&!isFinal(status)){
+            publish({pbxCallId:String(call.pbx_call_id||state.pbxCallId||''),message:'La centralita mantiene la llamada. Esperando recuperar el audio del navegador.'});
+            return;
+        }
+
         if (status === 'in-progress' && answeredAtMs <= 0) {
             answeredAtMs =
                 Date.now() - (providerDuration * 1000);
@@ -1492,18 +1632,7 @@
      * Las extensiones y los números internacionales no cambian.
      */
     const normalizarDestinoWebrtc = function (valor) {
-        let destino = String(valor || '').trim()
-            .replace(/[^0-9+*#]/g, '');
-
-        if (/^\+?521\d{10}$/.test(destino)) {
-            destino = destino.replace(/^\+?521/, '');
-        } else if (/^\+?52\d{10}$/.test(destino)) {
-            destino = destino.replace(/^\+?52/, '');
-        } else {
-            destino = destino.replace(/^\+/, '');
-        }
-
-        return destino;
+        return window.IMPE_PHONE_NUMBERS.dial(valor);
     };
 
     const startCall = async function (payload) {
@@ -1662,10 +1791,9 @@
             }
         }
 
-        finishCall(
-            lastCall,
-            currentDuration() > 0 ? 'completed' : 'canceled'
-        );
+        // Agotar la espera no acredita un cierre PBX ni una conversación.
+        hangingUp=false;
+        publish({phase:'finishing',status:'ending',message:'Cierre sin confirmar. Puedes volver a comprobar el estado.'});
     };
 
     const clearFinished = function (callToken) {
@@ -1682,7 +1810,6 @@
 
         // Cerrar un resumen no debe reiniciar ni colgar la conexión SIP.
         window.clearTimeout(incomingFinishedTimer);
-        endOutgoingWebrtc(false);
         state = emptyState();
         state.hostReady = true;
         state.phase = widgetReady ? 'ready' : 'idle';
@@ -1827,6 +1954,34 @@
             publish(state);
         } else if (action === 'START') {
             void startCall(payload);
+        } else if(action==='TRANSFER_CANDIDATE'){
+            if(state.active&&state.direction==='incoming'&&state.context?.type==='SDK_INCOMING'&&
+                payload.callToken===state.callToken&&Number.isInteger(payload.id)&&payload.id>0&&
+                (analystSdkObserver?.isRinging?.()||analystSdkObserver?.isConnected?.())){
+                publish({context:{...state.context,availabilityCandidate:payload.id}});void transferFlow?.tick();
+            }
+        } else if (action === 'PBX_CONFIRMED_INCOMING_END') {
+            // La capa comercial consultó el detalle autorizado del PBX.
+            // No emitir END a Zadarma, ni asignarlo a una sesión nueva.
+            const ref=String(payload.ref||''),token=String(payload.callToken||'');
+            const ownRef=String(state.pbxCallId||state.context?.transferReference||'');
+            if(state.active&&state.direction==='incoming'&&
+                ['recovering','finishing'].includes(state.phase)&&
+                /^[A-Za-z0-9_-]{6,100}$/.test(ref)&&
+                token!==''&&token===state.callToken&&ownRef===ref){
+                const seconds=Number(payload.seconds);
+                const duration=Number.isInteger(seconds)&&seconds>=0
+                    ? seconds:currentDuration();
+                answeredAtMs=0;
+                retirePbxCall(ref);
+                publish({active:false,phase:'incoming-finished',
+                    pbxCallId:ref,status:'completed',duration,
+                    context:{...state.context,pbxEnded:true,
+                        pbxAnswered:Boolean(payload.connected)},
+                    message:'Cierre PBX confirmado para esta llamada.'});
+                ocultarHostEntrante();
+                marcarPestanaEntrante('');
+            }
         } else if (action === 'HANGUP') {
             void hangup();
         } else if (action === 'COMPLETE_TRANSFER') {
@@ -1894,13 +2049,21 @@
             publish({active:false,phase:state.direction==='incoming'?'incoming-finished':'finished',status:['ENVIADA','ENTREGADA','SIN_RESPUESTA','SIN_CONFIRMAR'].includes(op.estado)?'transferred':'completed',context:{...state.context,transferRequest:{...state.context?.transferRequest,stage:op.estado}},message:op.estado==='ENTREGADA'?'El analista contestó la llamada.':op.estado==='ENVIADA'?'Transferencia enviada. La respuesta del analista se confirma por separado.':'Llamada finalizada.'});
         },
         external:(op,token,connected)=>{
-            answeredAtMs=connected?Date.now():0;
-            publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
+            if(declinedInvitation(String(op.referencia||'')))return;
+            answeredAtMs=connected?(state.answeredAtMs||Date.now()):0;
+            publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,sdkInviteId:state.context?.sdkInviteId,sdkSessionId:state.callToken,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
         },
-        consultEnded:op=>{answeredAtMs=0;publish({active:false,phase:'incoming-finished',status:op.modo==='DIRECTA'?'ended-pending-confirmation':'consultation-ended',duration:0,message:op.modo==='DIRECTA'?'Llamada finalizada. Revisa su confirmación en el historial.':'Consulta de transferencia finalizada.'});}
+        consultEnded:op=>{
+            if(!state.active)return;
+            if(op.modo==='DIRECTA'){
+                const answered=Boolean(state.context?.sdkConnected||state.context?.pbxAnswered||answeredAtMs>0);
+                publish({active:true,phase:answered?'recovering':'finishing',status:answered?'recovering':'ending',context:{...state.context,transferPendingReceiver:false,transferReference:op.referencia},message:answered?'El audio del navegador se interrumpió. Comprobando si la llamada sigue activa en la centralita.':'Intento sin respuesta confirmada. Comprobando cierre en la centralita.'});
+                void pollIncoming();return;
+            }
+            answeredAtMs=0;publish({active:false,phase:'incoming-finished',status:'consultation-ended',duration:0,message:'Consulta de transferencia finalizada.'});
+        }
     })||null;
     window.setInterval(()=>void transferFlow?.tick(),1000);
-    captureMicrophone();
 
     publish({
         phase: 'loading',
@@ -1933,8 +2096,19 @@
     });
 
     setInterval(function () {
+        const session=window.zdrmWebPhone?.webCallSession;
+        // Sólo el transporte WebRTC real puede acreditar recuperación de audio.
+        if(state.active&&state.phase==='recovering'&&navigator.onLine!==false&&session?.isEstablished?.()&&
+            (session.connection?.connectionState==='connected'||['connected','completed'].includes(session.connection?.iceConnectionState))){
+            widgetReady=true;publish({phase:'in-progress',status:'in-progress',context:{...state.context,sdkConnected:true},message:'Audio del navegador recuperado.'});
+            return;
+        }
         publish({});
     }, 1500);
+
+    // La pérdida de red no equivale a un cierre PBX y nunca desmonta una llamada activa.
+    addEventListener('offline',()=>{widgetReady=false;publish({phase:state.active?'recovering':'error',status:'recovering',message:'Sin conexión de red. La llamada puede seguir activa en la centralita.'});});
+    addEventListener('online',()=>{if(state.active){void pollIncoming();return;}void ensureWidget().catch(error=>publish({phase:'error',message:error.message}));});
 
     setInterval(render, 500);
     render();

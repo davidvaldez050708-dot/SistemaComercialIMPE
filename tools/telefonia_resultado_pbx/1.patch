@@ -1,0 +1,30 @@
+--- a/app/services/TelefoniaTransferenciaOperacionService.php
++++ b/app/services/TelefoniaTransferenciaOperacionService.php
+@@ -78,6 +78,27 @@
+         }
+         $bound=$this->obtener($user,(int)$r['id']);
+         return ($bound['sdk_consulta']??null)===$sdk?$bound:null;
++    }
++    /** Vincular un INVITE al envío exacto sólo cuando la PBX acredita respuesta propia viva.
++     * No usa teléfono ni proximidad de fechas; una oferta aceptada sola no es evidencia. */
++    public function paraDestinoConfirmado(int $user,int $request,string $sdk): ?array {
++        if($request<=0||!preg_match('/^sdk-[a-z0-9-]{12,94}$/D',$sdk))return null;
++        $s=$this->db->prepare("SELECT o.*,d.ruta_json verified_route FROM telefonia_transferencia_operaciones o
++          JOIN telefonia_disponibilidad d ON d.id=? AND d.destino_usuario=o.destino_usuario
++           AND d.origen_usuario=o.origen_usuario AND d.origen_extension=BINARY o.origen_extension AND d.destino_extension=BINARY o.destino_extension AND d.referencia=BINARY o.referencia
++          WHERE o.destino_usuario=? AND d.estado IN ('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR')
++           AND (o.sdk_consulta IS NULL OR o.sdk_consulta=?)
++           AND EXISTS(SELECT 1 FROM telefonia_extensiones t WHERE t.usuario_id=o.destino_usuario AND t.extension=BINARY o.destino_extension AND t.activo=1 AND t.permite_entrantes=1 AND t.proveedor='ZADARMA')
++           AND EXISTS(SELECT 1 FROM telefonia_zadarma_eventos a WHERE a.pbx_call_id=BINARY o.referencia AND a.internal=BINARY o.destino_extension AND a.evento='NOTIFY_ANSWER' AND a.id>o.evento_desde)
++           AND NOT EXISTS(SELECT 1 FROM telefonia_zadarma_eventos e WHERE e.pbx_call_id=BINARY o.referencia AND e.id>o.evento_desde AND
++            ((e.evento='NOTIFY_END' AND (e.internal=BINARY o.destino_extension OR (JSON_VALID(e.payload_json) AND JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal'))=BINARY o.destino_extension))) OR e.evento='NOTIFY_OUT_END')) LIMIT 2");
++        $s->bind_param('iis',$request,$user,$sdk);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
++        if(count($rows)!==1)return null;$r=$rows[0];
++        $route=json_decode((string)$r['verified_route'],true)?:[];
++        if(($route['tipo']??'')!=='PROSPECTO'||(int)($route['responsable_id']??0)!==$user||(string)($route['extension']??'')!==$r['destino_extension']||(string)($route['referencia_llamada']??'')!==$r['referencia'])return null;
++        $s=$this->db->prepare('UPDATE telefonia_transferencia_operaciones SET sdk_consulta=? WHERE id=? AND sdk_consulta IS NULL');
++        $s->bind_param('si',$sdk,$r['id']);$s->execute();$s->close();
++        $bound=$this->obtener($user,(int)$r['id']);return ($bound['sdk_consulta']??null)===$sdk?$bound:null;
+     }
+     private function actualizar(array $r): array {
+         $this->db->begin_transaction();

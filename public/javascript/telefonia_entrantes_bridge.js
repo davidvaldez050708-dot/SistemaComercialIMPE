@@ -9,10 +9,11 @@
 (function (root) {
     'use strict';
 
-    function create(doc, isRinging, isTalking) {
+    function create(doc, isRinging, isTalking, invitationKey) {
         let lastError = '';
         let lastAction = '';
-        let lastActionAt = 0;
+        let lastActionAt = 0, lastActionIdentity;
+        const declinedSessions = new WeakSet(), declinedPushes = new Set();
         const engine = function () {
             try {return doc?.defaultView?.zdrmWebPhone || null;}
             catch (_) {return null;}
@@ -33,7 +34,8 @@
                 return false;
             }
             const now = Date.now();
-            if (lastAction === action && now - lastActionAt < 1200) {
+            const identity=sdk.webCallSession?.id||sdk.webCallSession||invitationKey?.();
+            if (lastAction === action && identity===lastActionIdentity && now - lastActionAt < 1200) {
                 lastError = 'La acción ya fue enviada. Espera la confirmación.';
                 return false;
             }
@@ -49,7 +51,7 @@
                     lastError = 'Zadarma rechazó la operación.';
                     return false;
                 }
-                lastAction = action;
+                lastAction = action;lastActionIdentity=identity;
                 lastActionAt = now;
                 // True significa "se invocó", NO "llamada atendida".
                 return true;
@@ -65,7 +67,34 @@
             available: () => ringing() && supported('answer'),
             canHangup: () => talking() && supported('finishCall'),
             answer: () => perform('contestar', 'answer', [], ringing),
-            decline: () => perform('rechazar', 'cancel', [], ringing),
+            decline: invitation => {
+                const session = engine()?.webCallSession;
+                if (session && declinedSessions.has(session) && (!session.isEnded?.() || declinedPushes.has(invitation))) return true;
+                if ((!session || session.isEnded?.()) && invitation && declinedPushes.has(invitation)) return true;
+                if (!ringing()) return false;
+                if(session&&!session.isEnded?.()&&session.direction!=='incoming'){
+                    lastError='La sesión activa no corresponde a una invitación entrante.';return false;
+                }
+                if (session?.direction === 'incoming' && !session.isEnded?.()) {
+                    if (session.isEstablished?.() || typeof session.terminate !== 'function') {
+                        lastError = 'La invitación SIP ya no admite rechazo.';return false;
+                    }
+                    try {
+                        declinedSessions.add(session);
+                        session.terminate({status_code:486,reason_phrase:'Busy Here'});
+                        if(invitation){declinedPushes.add(invitation);if(declinedPushes.size>40)declinedPushes.delete(declinedPushes.values().next().value);}
+                        lastError='';return true; // Enviado, no confirmación remota.
+                    } catch (_) {
+                        declinedSessions.delete(session);
+                        lastError='No se pudo enviar el rechazo SIP.';return false;
+                    }
+                }
+                // El PUSH puede preceder a RTCSession: conservar el control
+                // nativo, pero una sola invocación por invitación del host.
+                const sent=perform('rechazar','cancel',[],ringing);
+                if(sent&&invitation){declinedPushes.add(invitation);if(declinedPushes.size>40)declinedPushes.delete(declinedPushes.values().next().value);}
+                return sent;
+            },
             hangup: () => perform('colgar', 'finishCall', [], talking),
             mute: value => perform(
                 value ? 'silenciar' : 'activar micrófono',

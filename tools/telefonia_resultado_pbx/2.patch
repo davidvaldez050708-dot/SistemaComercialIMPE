@@ -1,0 +1,51 @@
+--- a/app/services/TelefoniaVentasLlamadasService.php
++++ b/app/services/TelefoniaVentasLlamadasService.php
+@@ -158,17 +158,27 @@
+             default=>$out
+         };
+     }
+-    public static function hechos(array $events,string $ext): array {
++    public static function hechos(array $events,string $ext,string $source=''): array {
+         $answer=false;$end=false;$duration=null;$disposition='';
++        $outboundSource=false;
++        foreach($events as $e){
++            if(($e['evento']??'')==='NOTIFY_ANSWER'&&trim((string)($e['internal']??''))===$ext)$answer=true;
++            if($source!==''&&($e['evento']??'')==='NOTIFY_OUT_START'&&trim((string)($e['internal']??''))===$source)$outboundSource=true;
++        }
+         foreach($events as $e) {
+             $p=json_decode((string)($e['payload_json']??''),true)?:[];
+             $own=trim((string)($e['internal']??''))===$ext;
+             // Zadarma conserva internal del iniciador y señala el destinatario
+             // final con last_internal. No exigir internal vacío para este caso.
+-            $explicitEnd=trim((string)($e['last_internal']??$p['last_internal']??''))===$ext;
++            $last=trim((string)($e['last_internal']??''));if($last==='')$last=trim((string)($p['last_internal']??''));
++            $explicitEnd=$last===$ext;
++            // OUT_END termina la llamada externa. Sólo extender su cierre a
++            // un destinatario persistido que realmente contestó este mismo PBX.
++            $sourceEnd=$last===''&&$outboundSource&&$answer&&$source!==$ext&&
++                ($e['evento']??'')==='NOTIFY_OUT_END'&&trim((string)($e['internal']??''))===$source;
+             $type=$e['evento']??'';
+             if($own&&$type==='NOTIFY_ANSWER')$answer=true;
+-            if(($own||$explicitEnd)&&in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)) {
++            if(($own||$explicitEnd||$sourceEnd)&&in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)) {
+                 $end=true;$disposition=strtolower((string)($e['disposition']??''));
+                 if($own){$known=array_key_exists('has_duration',$e)?(bool)$e['has_duration']:($p?array_key_exists('duration',$p):array_key_exists('duration',$e));if($known)$duration=max($duration??0,max(0,(int)($e['duration']??0)));
+                     if(in_array($disposition,['answered','completed'],true))$answer=true;}
+@@ -186,7 +196,7 @@
+         $rows=$this->rows('SELECT * FROM telefonia_ventas_llamadas WHERE usuario_id=? AND pbx_call_id=?'.($ext!==''?' AND extension=?':'').' LIMIT 2',$ext!==''?[$uid,$ref,$ext]:[$uid,$ref]);
+         if(count($rows)!==1)throw new DomainException('La llamada no está confirmada a tu nombre o su tramo es ambiguo.');
+         $row=$rows[0];$events=$this->rows('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id',[$ref]);
+-        $row+=self::hechos($events,$row['extension']);
++        $row+=self::hechos($events,$row['extension'],(string)($row['origen_extension']??''));
+         $result=$this->rows('SELECT * FROM telefonia_ventas_resultados WHERE usuario_id=? AND extension=? AND pbx_call_id=?',[$uid,$row['extension'],$ref]);
+         $row['registro']=$result[0]??null;
+         if($this->db->query("SHOW TABLES LIKE 'telefonia_ventas_prospecto_llamada'")->num_rows){
+@@ -209,7 +219,7 @@
+             ORDER BY e.id",[$uid,$from,$until]);
+         $grouped=[];foreach($events as $event)$grouped[$event['pbx_call_id']][]=$event;
+         foreach($rows as &$row){
+-            $row+=self::hechos($grouped[$row['pbx_call_id']]??[],$row['extension']);
++            $row+=self::hechos($grouped[$row['pbx_call_id']]??[],$row['extension'],(string)($row['origen_extension']??''));
+             $row['registro']=$row['registro_id']===null?null:array_intersect_key($row,array_flip(['resultado','observacion','prospecto_nombre','contacto_id','proxima_accion_at']));
+             unset($row['registro_id'],$row['resultado'],$row['observacion'],$row['prospecto_nombre'],$row['contacto_id'],$row['proxima_accion_at']);
+         }unset($row);

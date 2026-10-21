@@ -1,0 +1,36 @@
+--- a/public/javascript/telefonia_shell.js
++++ b/public/javascript/telefonia_shell.js
+@@ -7,7 +7,7 @@
+     'use strict';
+     const cfg = window.IMPE_PHONE_SHELL_CONFIG || {};
+     const userId = Number(cfg.userId || 0);
+-    if (!userId || !cfg.hostUrl) return;
++    if (!userId || !cfg.hostUrl || window.IMPE_TELEPHONY_SHELL) return;
+ 
+     const crm = document.getElementById('impeCrmFrame');
+     const call = document.querySelector('[data-shell-call]');
+@@ -549,7 +549,7 @@
+         }
+         const ready = Boolean(state && state.hostReady &&
+             ['ready','prepared','incoming-ringing','answering','in-progress',
+-                'finishing','dialing','ringing','finished','incoming-finished'].includes(String(state.phase)));
++                'finishing','recovering','dialing','ringing','finished','incoming-finished'].includes(String(state.phase)));
+         const failed = mountFailed || (state?.phase === 'error' ?
+             (state.message || 'No fue posible conectar con Zadarma.') : '');
+         const otherOwner = !owned && getLease() &&
+@@ -651,6 +651,7 @@
+                 : (finished ? 'Llamada finalizada' :
+                     (finishing ? 'Finalizando llamada…' :
+                     (dialing ? (phoneState.phase==='ringing'?'Timbrando…':'Marcando…') : 'En conversación')));
++            if(phoneState.active&&phoneState.phase==='recovering')incomingTitle.textContent='Recuperando conexión de audio…';
+             if(consultation)incomingTitle.textContent=phoneState.active?'Consulta con recepción':'Consulta finalizada';
+             incomingEyebrow.textContent = (finished || finishedIncoming) ? 'LLAMADA FINALIZADA' :
+                 (shownOutgoing ? 'LLAMADA SALIENTE' :
+@@ -670,6 +671,7 @@
+                     (waitingAnswer ? 'Conectando audio…' :
+                     (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
+                     : 'Conversación en curso')));
++            if(phoneState.active&&phoneState.phase==='recovering')incomingState.textContent='La llamada puede seguir activa en la centralita. Comprobando su estado.';
+             if(incomingOrigin && incomingOriginLabel) {
+                 const from=String(phoneState.transferFrom||phoneState.context?.transferFrom||'');
+                 incomingOriginLabel.textContent=consultation?'Consulta de:':shownOutgoing?'Desde:':from?'Transferida desde:':'Recibida en:';

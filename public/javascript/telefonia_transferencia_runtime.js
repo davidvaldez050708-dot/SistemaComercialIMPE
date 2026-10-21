@@ -8,7 +8,7 @@
    const url=new URL(api.url,root.location.href),options={credentials:'same-origin',cache:'no-store'};
    if(action){options.method='POST';options.body=new URLSearchParams({id:String(id),accion:action,csrf_token:api.csrf});}
    else if(id)url.searchParams.set('id',String(id));
-   else {url.searchParams.set('origen',api.read().destination);url.searchParams.set('sdk',api.read().callToken);}
+   else {url.searchParams.set('origen',api.read().destination);url.searchParams.set('sdk',api.read().callToken);if(api.read().context?.availabilityCandidate)url.searchParams.set('solicitud_id',api.read().context.availabilityCandidate);}
    const response=await fetch(url,options),data=await response.json();
    if(!response.ok||!data.ok)throw Error(data.mensaje||'No se pudo actualizar la transferencia.');
    return data.operacion;
@@ -17,6 +17,7 @@
    if(!op||!tracked)return;
    tracked.op=op;
    const state=api.read(),source=tracked.source;
+   if(!source&&!state.active)return;
    if(source){
     if(state.active && op.estado==='DEVUELTA')api.publish({message:op.modo==='DIRECTA'?'La centralita confirmó el retorno de la llamada. Retoma la conversación.':'La consulta terminó. Retoma la conversación con la persona.',context:{...state.context,transferRequest:{...state.context?.transferRequest,id:op.id,stage:op.estado,mode:op.modo,extension:op.destino_extension}}});
     else if(state.active)api.publish({context:{...state.context,transferRequest:{...state.context?.transferRequest,id:op.id,stage:op.estado,mode:op.modo,extension:op.destino_extension}}});
@@ -32,14 +33,16 @@
    if(busy||!api.url)return;busy=true;
    try{
     let state=api.read();
-    if(!tracked && state.active && state.direction==='incoming' && /^\d{3,6}$/.test(state.destination) && /^sdk-/.test(state.callToken||'')){
-     const op=await request(0);if(op){reset();tracked={source:false,op,token:state.callToken,session:root.zdrmWebPhone?.webCallSession};apply(op);}
+    if(!tracked && state.active && state.direction==='incoming' && (/^\d{3,6}$/.test(state.destination)||state.context?.availabilityCandidate) && /^sdk-/.test(state.callToken||'')){
+     const op=await request(0);if(api.read().callToken!==state.callToken)return;if(op){reset();tracked={source:false,op,token:state.callToken,session:root.zdrmWebPhone?.webCallSession};apply(op);}
      else api.publish({context:{...state.context,operationChecked:true}});
     }
     if(!tracked)return;
     state=api.read();
     if(state.active && state.callToken!==tracked.token){reset();return;}
-    apply(await request(tracked.op.id));
+    const operationToken=tracked.token,op=await request(tracked.op.id);
+    if(api.read().callToken!==operationToken){reset();return;}
+    apply(op);
     const currentSession=root.zdrmWebPhone?.webCallSession;
     // Algunos teléfonos reemplazan el diálogo SIP al entregar a la persona.
     // Sólo adoptar su sesión entrante si coincide con el origen de esta operación.

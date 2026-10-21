@@ -1,0 +1,40 @@
+--- a/public/javascript/telefonia_segmentos_player.js
++++ b/public/javascript/telefonia_segmentos_player.js
+@@ -16,7 +16,6 @@
+         for (let i = 0; i < count; i++) {
+             const frame = document.createElement('div');
+             frame.className = 'linkage-call-inline-player';
+-            frame.style.marginBottom = '10px';
+             const head = document.createElement('div');
+             head.className = 'linkage-call-inline-player-heading';
+             const title = document.createElement('span');
+@@ -32,6 +31,7 @@
+             audio.className = 'linkage-call-player-audio-source';
+             audio.preload = 'none';
+             const url = new URL(endpoint);
++            if(url.origin!==location.origin)return false;
+             url.searchParams.delete('verificar');
+             url.searchParams.set('segmento', String(i));
+             audio.src = url.toString();
+@@ -53,7 +53,8 @@
+             progress.setAttribute('aria-label', 'Posición del audio');
+             const duration = document.createElement('span');
+             duration.className = 'linkage-call-player-time';
+-            duration.textContent = '0:00';
++            const confirmedSeconds=Number.isInteger(info?.segundos)&&info.segundos>=0?info.segundos:null;
++            duration.textContent = confirmedSeconds===null?'—':time(confirmedSeconds);
+             const mute = document.createElement('button');
+             mute.type = 'button';
+             mute.className = 'linkage-call-player-button linkage-call-player-volume';
+@@ -84,9 +85,9 @@
+             error.hidden = true;
+             error.setAttribute('role', 'status');
+             const refresh = () => {
+-                const total = Number.isFinite(audio.duration) ? audio.duration : 0;
++                const total = Number.isFinite(audio.duration)&&audio.duration>0 ? audio.duration : confirmedSeconds;
+                 elapsed.textContent = time(audio.currentTime);
+-                duration.textContent = time(total);
++                duration.textContent = total===null?'—':time(total);
+                 const pct = total > 0 ? Math.max(0, Math.min(100, audio.currentTime / total * 100)) : 0;
+                 progress.value = String(pct);
+                 progress.style.setProperty('--player-progress', pct + '%');

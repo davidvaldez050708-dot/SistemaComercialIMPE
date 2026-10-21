@@ -1,0 +1,122 @@
+--- a/public/javascript/telefonia_host.js
++++ b/public/javascript/telefonia_host.js
+@@ -19,6 +19,8 @@
+     if (userId <= 0 || extension === '') {
+         return;
+     }
++    if(window.IMPE_TELEPHONY_HOST_RUNTIME_STARTED)return;
++    window.IMPE_TELEPHONY_HOST_RUNTIME_STARTED=true;
+ 
+     const concealOwnWindow = function () {
+         if (modoPestana || modoEmbebido || nativeUiVisible) {
+@@ -613,9 +615,8 @@
+                     // El audio local terminó. Esperar cierre PBX, pero no
+                     // mantener la pantalla/cronómetro en conversación falsa.
+                     if (isSdkOnlyIncoming()) {
+-                        // Sólo el SDK conoce esta sesión: al desaparecer el
+-                        // audio, retirarla. No conservar reloj ni llamada activa.
+-                        clearSdkOnlyIncoming();
++                        if(state.phase==='incoming-ringing')clearSdkOnlyIncoming();
++                        else{publish({phase:'recovering',status:'recovering',message:'Se interrumpió el audio del navegador. La centralita debe confirmar el estado.'});void pollIncoming();}
+                         return;
+                     }
+                     if (!state.active || state.direction !== 'incoming' ||
+@@ -625,22 +626,16 @@
+                     const duration = currentDuration();
+                     answeredAtMs = 0;
+                     publish({
+-                        phase:'finishing',status:'finishing',duration,
++                        phase:'recovering',status:'recovering',duration,
+                         answeredAtMs:0,
+-                        message:'El audio terminó. Esperando cierre de Zadarma.'
++                        message:'Se interrumpió el audio del navegador. Comprobando el estado de la llamada.'
+                     });
+                     window.setTimeout(function () {
+-                        // Si el SDK detecta otra vez audio, no finalizar una
+-                        // conversación real. El cierre provisional se permite
+-                        // sólo tras pérdida mantenida de los controles locales.
+-                        if (state.active && state.phase === 'finishing' &&
+-                            String(state.pbxCallId) === token &&
+-                            !analystSdkObserver?.isConnected?.() &&
+-                            !analystSdkObserver?.isRinging?.()) {
+-                            finalizarEntrante({
+-                                pbx_call_id:token,duration,
+-                                disposition:'ended-unconfirmed'
+-                            }, false);
++                        // La ausencia de audio no sustituye al cierre PBX.
++                        if (state.active && state.phase === 'recovering' &&
++                            String(state.pbxCallId) === token) {
++                            // Perder el transporte SIP no acredita un END en PBX.
++                            void pollIncoming();
+                         }
+                     },8000);
+                 }
+@@ -1005,6 +1000,12 @@
+             return;
+         }
+ 
++        // Una operación autorizada puede entregar su referencia antes del
++        // NOTIFY_INTERNAL. Adoptarla sólo si la consulta PBX propia coincide
++        // exactamente; nunca por teléfono, hora o por terminar el SDK.
++        if(state.active&&state.direction==='incoming'&&!state.pbxCallId&&
++            state.context?.transferReference===pbxCallId)publish({pbxCallId});
++
+         if (incomingStatus === 'transferred') {
+             // En consulta la recepción todavía conversa con el destinatario.
+             // NOTIFY_INTERNAL acredita el timbrado, no la entrega final.
+@@ -1066,7 +1067,7 @@
+         const answered = pbxAnswered || sdkAnswered || previouslyConnected;
+         const nuevaLlamadaEntrante = !samePbxCall;
+         // La PBX puede tardar después de que el audio ya desapareció.
+-        if (samePbxCall && state.phase === 'finishing') return;
++        if (samePbxCall && ['finishing','recovering'].includes(state.phase)) return;
+         if (nuevaLlamadaEntrante && !sdkAnswered) {
+             answeredAtMs = 0;
+         } else if (sdkAnswered && answeredAtMs <= 0) {
+@@ -1430,6 +1431,11 @@
+         const status = String(call.status || 'ringing');
+         const providerDuration =
+             Math.max(0, Number(call.duration || 0));
++
++        if(state.phase==='recovering'&&!isFinal(status)){
++            publish({pbxCallId:String(call.pbx_call_id||state.pbxCallId||''),message:'La centralita mantiene la llamada. Esperando recuperar el audio del navegador.'});
++            return;
++        }
+ 
+         if (status === 'in-progress' && answeredAtMs <= 0) {
+             answeredAtMs =
+@@ -1918,7 +1924,13 @@
+             answeredAtMs=connected?Date.now():0;
+             publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
+         },
+-        consultEnded:op=>{answeredAtMs=0;publish({active:false,phase:'incoming-finished',status:op.modo==='DIRECTA'?'ended-pending-confirmation':'consultation-ended',duration:0,message:op.modo==='DIRECTA'?'Llamada finalizada. Revisa su confirmación en el historial.':'Consulta de transferencia finalizada.'});}
++        consultEnded:op=>{
++            if(op.modo==='DIRECTA'){
++                publish({active:true,phase:'recovering',status:'recovering',context:{...state.context,transferPendingReceiver:false,transferReference:op.referencia},message:'El audio del navegador se interrumpió. Comprobando si la llamada sigue activa en la centralita.'});
++                void pollIncoming();return;
++            }
++            answeredAtMs=0;publish({active:false,phase:'incoming-finished',status:'consultation-ended',duration:0,message:'Consulta de transferencia finalizada.'});
++        }
+     })||null;
+     window.setInterval(()=>void transferFlow?.tick(),1000);
+     captureMicrophone();
+@@ -1954,8 +1966,19 @@
+     });
+ 
+     setInterval(function () {
++        const session=window.zdrmWebPhone?.webCallSession;
++        // Sólo el transporte WebRTC real puede acreditar recuperación de audio.
++        if(state.active&&state.phase==='recovering'&&navigator.onLine!==false&&session?.isEstablished?.()&&
++            (session.connection?.connectionState==='connected'||['connected','completed'].includes(session.connection?.iceConnectionState))){
++            widgetReady=true;publish({phase:'in-progress',status:'in-progress',context:{...state.context,sdkConnected:true},message:'Audio del navegador recuperado.'});
++            return;
++        }
+         publish({});
+     }, 1500);
++
++    // La pérdida de red no equivale a un cierre PBX y nunca desmonta una llamada activa.
++    addEventListener('offline',()=>{widgetReady=false;publish({phase:state.active?'recovering':'error',status:'recovering',message:'Sin conexión de red. La llamada puede seguir activa en la centralita.'});});
++    addEventListener('online',()=>{if(state.active){void pollIncoming();return;}void ensureWidget().catch(error=>publish({phase:'error',message:error.message}));});
+ 
+     setInterval(render, 500);
+     render();

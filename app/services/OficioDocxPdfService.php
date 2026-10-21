@@ -19,10 +19,13 @@ class OficioDocxPdfService
 
     public function diagnosticar()
     {
-        $conversor = $this->detectarConversor();
+        $conversor = !function_exists('proc_open') && $this->phpWordDompdfDisponible()
+            ? ['ok' => true, 'tipo' => 'phpword_dompdf', 'ruta' => '', 'detalle' => 'Renderer PHPWord + Dompdf disponible sin procesos externos.']
+            : $this->detectarConversor();
 
         return [
-            'ok' => is_file($this->templatePath) && (class_exists('ZipArchive') || class_exists('PharData')) && function_exists('proc_open') && ($conversor['ok'] ?? false),
+            'ok' => is_file($this->templatePath) && (class_exists('ZipArchive') || class_exists('PharData')) &&
+                ($conversor['ok'] ?? false) && (function_exists('proc_open') || $this->phpWordDompdfDisponible()),
             'template' => $this->templatePath,
             'template_existe' => is_file($this->templatePath),
             'zip_disponible' => class_exists('ZipArchive') || class_exists('PharData'),
@@ -63,10 +66,10 @@ class OficioDocxPdfService
             );
         }
 
-        if (!function_exists('proc_open')) {
+        if (!function_exists('proc_open') && !$this->phpWordDompdfDisponible()) {
             return $this->error(
-                'PHP no puede ejecutar el conversor de documentos.',
-                'proc_open no está disponible.'
+                'No está disponible un conversor de oficios compatible con PHP.',
+                'OFICIO_PHP_RENDERER_UNAVAILABLE'
             );
         }
 
@@ -106,7 +109,7 @@ class OficioDocxPdfService
             if ($personalizada) {
                 self::registrarTrazaTemporal('CUSTOM_PREVIEW_CONVERSION_START');
             }
-            $conversion = $this->convertirAPdf($rutaDocx, $directorioTemporal);
+            $conversion = $this->convertirAPdf($rutaDocx, $directorioTemporal, true);
 
             if (!($conversion['ok'] ?? false)) {
                 return $conversion;
@@ -115,7 +118,7 @@ class OficioDocxPdfService
             $pdfTemporal = (string)$conversion['ruta_pdf'];
             $contenido = is_file($pdfTemporal) ? file_get_contents($pdfTemporal) : false;
 
-            if ($contenido === false || $contenido === '') {
+            if ($contenido === false || !$this->contenidoPdfValido($contenido)) {
                 return $this->error(
                     'El conversor no generó un PDF válido.',
                     'El PDF temporal no existe, está vacío o no se pudo leer.'
@@ -942,9 +945,11 @@ class OficioDocxPdfService
         return $insertado;
     }
 
-    private function convertirAPdf($rutaDocx, $directorioSalida)
+    private function convertirAPdf($rutaDocx, $directorioSalida, $recuperarComentarios = false)
     {
-        $conversor = $this->detectarConversor();
+        $conversor = $recuperarComentarios && !function_exists('proc_open')
+            ? ['ok' => $this->phpWordDompdfDisponible(), 'tipo' => 'phpword_dompdf']
+            : $this->detectarConversor();
 
         if (!($conversor['ok'] ?? false)) {
             return $this->error(
@@ -963,7 +968,7 @@ class OficioDocxPdfService
         } elseif ($tipo === 'word') {
             $conversion = $this->convertirConWord($rutaDocx, $directorioSalida);
         } else {
-            $conversion = $this->convertirConPhpWordDompdf($rutaDocx, $directorioSalida);
+            $conversion = $this->convertirConPhpWordDompdf($rutaDocx, $directorioSalida, $recuperarComentarios);
         }
 
         if (($conversion['ok'] ?? false) || $tipo === 'phpword_dompdf') {
@@ -973,7 +978,7 @@ class OficioDocxPdfService
         // Word/LibreOffice pueden estar instalados pero no ser automatizables
         // desde Apache. En ese caso usamos el renderer PHP ya incluido en el proyecto.
         if ($this->phpWordDompdfDisponible()) {
-            $fallback = $this->convertirConPhpWordDompdf($rutaDocx, $directorioSalida);
+            $fallback = $this->convertirConPhpWordDompdf($rutaDocx, $directorioSalida, $recuperarComentarios);
             if ($fallback['ok'] ?? false) {
                 return $fallback;
             }
@@ -1113,11 +1118,13 @@ class OficioDocxPdfService
         ];
     }
 
-    private function convertirConPhpWordDompdf($rutaDocx, $directorioSalida)
+    private function convertirConPhpWordDompdf($rutaDocx, $directorioSalida, $recuperarComentarios = false)
     {
         $rutaPdf = $directorioSalida . DIRECTORY_SEPARATOR .
             pathinfo($rutaDocx, PATHINFO_FILENAME) . '.pdf';
 
+        $copiaRecuperada = null;
+        $etapa = 'LOAD';
         try {
             $rendererPath = $this->rootPath . DIRECTORY_SEPARATOR .
                 'vendor' . DIRECTORY_SEPARATOR . 'dompdf' . DIRECTORY_SEPARATOR . 'dompdf';
@@ -1134,11 +1141,28 @@ class OficioDocxPdfService
             );
             \PhpOffice\PhpWord\Settings::setPdfRendererPath($rendererPath);
 
-            $documento = \PhpOffice\PhpWord\IOFactory::load($rutaDocx, 'Word2007');
+            try {
+                $documento = \PhpOffice\PhpWord\IOFactory::load($rutaDocx, 'Word2007');
+            } catch (\InvalidArgumentException $error) {
+                if (!$recuperarComentarios || !preg_match("/^Comment with id ([0-9]+) isn't referenced in document$/D", $error->getMessage(), $match)) {
+                    throw $error;
+                }
+                $etapa = 'COMMENTS_RECOVERY';
+                require_once __DIR__ . '/OficioDocxComentarios.php';
+                $recuperada = OficioDocxComentarios::recuperar($rutaDocx, $directorioSalida, $match[1]);
+                $copiaRecuperada = $recuperada['ruta'];
+                error_log('OFICIO_PDF_PHP COMMENTS_RECOVERED count=' . (int)$recuperada['comentarios_omitidos'] . ' parts=' . (int)$recuperada['partes']);
+                $etapa = 'LOAD_RETRY';
+                // Un único reintento; la copia se mantiene hasta terminar de leer imágenes.
+                $documento = \PhpOffice\PhpWord\IOFactory::load($copiaRecuperada, 'Word2007');
+            }
+            $etapa = 'RENDER';
             $writer = \PhpOffice\PhpWord\IOFactory::createWriter($documento, 'PDF');
             $writer->save($rutaPdf);
 
-            if (!is_file($rutaPdf) || filesize($rutaPdf) === 0) {
+            if (!is_file($rutaPdf) || filesize($rutaPdf) === 0 ||
+                ($recuperarComentarios && !$this->contenidoPdfValido((string)file_get_contents($rutaPdf)))) {
+                if ($recuperarComentarios) { @unlink($rutaPdf); }
                 return $this->error(
                     'El conversor PHP no generó un PDF válido.',
                     'PHPWord + Dompdf terminó sin crear un archivo PDF utilizable.'
@@ -1151,11 +1175,31 @@ class OficioDocxPdfService
                 'conversor' => 'PHPWORD_DOMPDF'
             ];
         } catch (Throwable $error) {
+            if ($recuperarComentarios) {
+                @unlink($rutaPdf);
+                // No registrar contenido, nombres, rutas ni mensajes arbitrarios del DOCX.
+                $detalle = 'OFICIO_PDF_PHP ' . $etapa . ' ' . get_class($error);
+                if (preg_match('/^COMMENTS_[A-Z_]+$/D', $error->getMessage())) { $detalle .= ' ' . $error->getMessage(); }
+                error_log($detalle);
+                return $this->error('No fue posible convertir el oficio a PDF. Revisa la plantilla o comunica el error al administrador.', $detalle);
+            }
             return $this->error(
                 'PHPWord + Dompdf no pudo convertir el documento a PDF.',
                 $error->getMessage()
             );
+        } finally {
+            if ($copiaRecuperada !== null) {
+                @unlink($copiaRecuperada);
+            }
         }
+    }
+
+    private function contenidoPdfValido($contenido)
+    {
+        return str_starts_with($contenido, '%PDF-') &&
+            preg_match('/%%EOF\s*$/D', substr($contenido, -1024)) === 1 &&
+            preg_match('~/Type\s*/Page\b~', $contenido) === 1 &&
+            preg_match('/startxref\s+[0-9]+\s+%%EOF\s*$/D', substr($contenido, -1024)) === 1;
     }
 
     private function convertirConWord($rutaDocx, $directorioSalida)

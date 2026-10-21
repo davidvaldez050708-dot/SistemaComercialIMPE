@@ -8,7 +8,7 @@ $fechaVenta=static function(string $value): string {
 ?>
 <style><?php foreach(['seguimiento_llamadas_expediente.css','seguimiento_llamadas_player.css','seguimiento_entrantes_analista.css','telefonia_ventas_ui.css'] as $css)echo file_get_contents(ROOT_PATH.'/public/css/'.$css); ?></style>
 <section class="dashboard-panel linkage-incoming-page sales-calls-page" data-sales-history data-auto-call="<?= $esc($_GET['pbx_call_id']??'') ?>" data-auto-extension="<?= $esc($_GET['extension']??'') ?>"
- data-save-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=guardarResultadoVenta" data-detail-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=detalleVenta">
+ data-save-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=guardarResultadoVenta" data-evidence-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=actualizarEvidenciaVenta" data-csrf="<?= $esc($_SESSION['csrf_token']??'') ?>" data-detail-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=detalleVenta">
  <header class="linkage-incoming-heading">
   <div class="linkage-incoming-heading-copy"><span class="linkage-incoming-eyebrow"><i class="bi bi-headset" aria-hidden="true"></i> VENTAS · TELEFONÍA</span><h2>Mis llamadas</h2><p>Consulta tus llamadas, registra resultados y revisa las grabaciones disponibles.</p></div>
   <a class="btn btn-system-light linkage-incoming-back" href="<?= BASE_URL ?>index.php?controller=home&amp;action=index"><i class="bi bi-arrow-left" aria-hidden="true"></i> Mi teléfono y agenda</a>
@@ -47,12 +47,16 @@ $fechaVenta=static function(string $value): string {
       <?php if($ref!==''&&$call['finalizada']): ?><button type="button" class="linkage-incoming-open" data-sales-detail="<?= $esc($ref) ?>" data-extension="<?= $esc($call['extension']) ?>"><i class="bi bi-journal-check" aria-hidden="true"></i> <?= $result?'Consultar resultado':'Registrar resultado' ?></button><?php endif; ?>
       <button type="button" class="linkage-incoming-open" data-sales-dial="<?= $esc($call['numero']) ?>"><i class="bi bi-telephone-outbound" aria-hidden="true"></i> Llamar</button>
       <?php if($audio['disponible']): ?>
-       <button type="button" class="linkage-call-audio-state is-available linkage-call-recording-toggle" data-sales-audio="<?= $esc($ref) ?>" data-extension="<?= $esc($call['extension']) ?>" data-segments="<?= count($call['segmentos']) ?>" aria-expanded="false"><i class="bi bi-record-circle" aria-hidden="true"></i> Consultar grabación <i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i></button>
+       <button type="button" class="linkage-call-audio-state is-available linkage-call-recording-toggle" data-sales-audio="<?= $esc($ref) ?>" data-extension="<?= $esc($call['extension']) ?>" data-segments="<?= count($call['segmentos']) ?>" data-segment-info="<?= $esc(json_encode($call['segmentos_info']??[])) ?>" aria-expanded="false"><i class="bi bi-record-circle" aria-hidden="true"></i> Consultar grabación <i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i></button>
+      <?php elseif($ref!==''&&$call['finalizada']&&$call['conectada']&&TelefoniaResultadoVentasService::esConversacion($code)): ?>
+       <button type="button" class="linkage-call-audio-state linkage-call-recording-toggle" data-sales-audio="<?= $esc($ref) ?>" data-extension="<?= $esc($call['extension']) ?>" data-segments="0" aria-expanded="false">Consultar grabación</button>
+       <span class="linkage-call-audio-state" data-sales-audio-state="<?= $esc($audio['estado']) ?>"><?= $esc($audio['texto']) ?></span>
       <?php elseif($ref!==''): ?><span class="linkage-call-audio-state" title="<?= $esc($audio['detalle']) ?>" data-sales-audio-state="<?= $esc($audio['estado']) ?>"><i class="bi bi-info-circle" aria-hidden="true"></i> <?= $esc($audio['texto']) ?></span><?php endif; ?>
      </div>
      <span class="linkage-call-recording-duration"><i class="bi bi-clock" aria-hidden="true"></i> <?= $call['segundos']===null?'Sin duración confirmada':sprintf('%02d:%02d',intdiv($call['segundos'],60),$call['segundos']%60) ?></span>
     </div>
-    <div data-sales-audio-slot hidden></div>
+    <div class="linkage-incoming-audio-panel" data-sales-audio-slot hidden></div>
+    <?php if(!empty($call['tramos_verificados'])): ?><p class="system-form-modal-subtitle mt-2 mb-0"><?php foreach($call['tramos_verificados'] as $n=>$part): ?><?= $n?' · ':'' ?>Tramo <?= $n+1 ?>: <?= (int)$part['segundos'] ?> s<?php endforeach; ?><?= count($call['tramos_verificados'])>1?' · Duraciones por tramo; no se suman posibles solapamientos.':'' ?></p><?php endif; ?>
    </div>
   </article>
  <?php endforeach; ?>

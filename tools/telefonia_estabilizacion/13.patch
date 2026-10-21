@@ -1,0 +1,11 @@
+--- a/public/javascript/telefonia_shell.js
++++ b/public/javascript/telefonia_shell.js
+@@ -618,7 +618,7 @@
+         }
+         if (transferToggle) {
+             transferToggle.hidden = !workingCall || !cfg.canTransfer || consultation;
+-            transferToggle.disabled = !workingCall || transferPending;
++            transferToggle.disabled = !workingCall || Boolean(ongoing && transferRequest && !['DEVUELTA','FALLIDA','ENTREGADA'].includes(transferRequest.stage));
+         }
+         if (captureToggle) {
+             captureToggle.hidden = !workingCall || !cfg.canCapture || consultation;

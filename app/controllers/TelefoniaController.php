@@ -413,10 +413,50 @@ class TelefoniaController
         try {
             $svc=new TelefoniaVentasLlamadasService();$uid=(int)$_SESSION['usuario_id'];
             $svc->sincronizar($uid);
-            $this->responderJson(['ok'=>true,'llamada'=>$svc->obtener($uid,
-                (string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''))]);
+            if(($_GET['pendientes']??'')==='1'){
+                $calls=$svc->listar($uid,[],false);
+                $pending=array_values(array_filter($calls,static fn($c)=>$c['finalizada']&&!$c['registro']));
+                $pending=$svc->conVinculosSdk($uid,array_slice($pending,0,40));
+                $this->responderJson(['ok'=>true,'pendientes'=>array_map(static fn($c)=>array_intersect_key($c,array_flip(['pbx_call_id','extension','finalizada','conectada','sdk_tokens'])),$pending)]);
+            }
+            if(isset($_GET['solicitud_id'])){
+                require_once __DIR__.'/../services/TelefoniaTransferenciaOperacionService.php';
+                $op=(new TelefoniaTransferenciaOperacionService())->paraDestinoConfirmado($uid,(int)$_GET['solicitud_id'],(string)($_GET['sdk']??''));
+                $this->responderJson(['ok'=>true,'llamada'=>$op?$svc->conVinculosSdk($uid,[$svc->obtener($uid,$op['referencia'],$op['destino_extension'])])[0]:null]);
+            }
+            if(isset($_GET['sdk']))$this->responderJson(['ok'=>true,'llamada'=>$svc->obtenerPorSdk($uid,(string)$_GET['sdk'])]);
+            $call=$svc->obtener($uid,(string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''));
+            $this->responderJson(['ok'=>true,'llamada'=>$svc->conVinculosSdk($uid,[$call])[0]]);
         }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
         catch(Throwable $e){error_log('[detalle_venta] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo consultar tu llamada.'],500);}
+    }
+
+    public function actualizarEvidenciaVenta()
+    {
+        $this->validarAtencionVentaJson(true);
+        try{
+            require_once __DIR__.'/../services/TelefoniaVentasLlamadasService.php';
+            require_once __DIR__.'/../services/TelefoniaVentasEvidenciaService.php';
+            $db=(new Database())->connect(false);$uid=(int)$_SESSION['usuario_id'];
+            $call=(new TelefoniaVentasLlamadasService($db))->obtener($uid,(string)($_POST['pbx_call_id']??''),(string)($_POST['extension']??''));
+            $call=(new TelefoniaVentasEvidenciaService($db))->consultar($call);
+            $this->responderJson(['ok'=>true,'llamada'=>$call,'mensaje'=>$call['segmentos']?'Grabaciones verificadas.':'La evidencia aún no identifica audio propio. Puedes comprobarla de nuevo en un minuto.']);
+        }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[ventas_evidencia] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo comprobar la evidencia. Inténtalo en un minuto.'],502);}
+    }
+
+    public function datosProspectoVenta()
+    {
+        $post=($_SERVER['REQUEST_METHOD']??'GET')==='POST';$this->validarAtencionVentaJson($post);
+        try{
+            require_once __DIR__.'/../services/TelefoniaProspectoLlamadaService.php';
+            $input=$post?$_POST:$_GET;$uid=(int)$_SESSION['usuario_id'];$ref=(string)($input['pbx_call_id']??'');$ext=(string)($input['extension']??'');
+            if(!preg_match('/^[0-9]{3,6}$/D',$ext))throw new InvalidArgumentException('Extensión inválida.');
+            $svc=new TelefoniaProspectoLlamadaService((new Database())->connect(false));
+            $data=$post?$svc->guardar($uid,$ref,$ext,$input,(int)($input['version']??-1)):$svc->leer($uid,$ref,$ext);
+            $this->responderJson(['ok'=>true,'captura'=>$data]);
+        }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[ventas_prospecto] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudieron guardar o recuperar los datos. Conserva el borrador para reintentar.'],500);}
     }
 
     private function validarAtencionVentaJson(bool $post): void
@@ -749,7 +789,7 @@ class TelefoniaController
             if(in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)){
                 $svc->presencia($user,($_POST['disponible']??'')==='1');
                 if(($_POST['accion']??'')==='POLL')$this->responderJson(['ok'=>true,
-                    'solicitud'=>(int)($_POST['id']??0)>0?$svc->obtener($user,(int)$_POST['id']):null,
+                    'solicitud'=>(int)($_POST['id']??0)>0?$svc->obtener($user,(int)$_POST['id']):$svc->delOrigen($user,(string)($_POST['referencia']??'')),
                     'entrante'=>$svc->entrante($user),'devoluciones'=>count($svc->devoluciones($user))]);
                 $this->responderJson(['ok'=>true]);
             }

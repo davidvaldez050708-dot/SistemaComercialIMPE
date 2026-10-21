@@ -18,8 +18,10 @@ $hostJs = $read('public/javascript/telefonia_host.js');
 
 $include = "require __DIR__ . '/../telefonia/recepcion_marketing.php';";
 $grid = strpos($marketing, '<div class="metric-grid mb-4">');
-$block = strpos($marketing, $include);
-$convocations = strpos($marketing, '<section class="dashboard-panel marketing-expiring-panel">');
+$nav = $read('app/views/telefonia/mis_llamadas_navegacion.php');
+$controller = $read('app/controllers/TelefoniaController.php');
+$recTab = strpos($nav, "'vista'=>'recepcion'");
+$histTab = strpos($nav, "'vista'=>'historial'");
 
 $tests = [
     'Botón Llamar general con permisos y columna independiente' =>
@@ -43,10 +45,12 @@ $tests = [
         str_contains($shellJs, "}, 250);") &&
         str_contains($shellJs, "muteButton.classList.toggle('is-active'") &&
         str_contains($shellJs, "const muteIcon = phoneState.muted ? 'bi-mic' : 'bi-mic-mute'"),
-    'Only one reception include' => substr_count($marketing, $include) === 1,
-    'Reception follows metrics and precedes convocations' =>
-        $grid !== false && $block !== false && $convocations !== false &&
-        $grid < $block && $block < $convocations,
+    'Reception not duplicated in Marketing Inicio' =>
+        !str_contains($marketing, $include),
+    'Reception is Marketing first Mis llamadas tab' =>
+        $grid !== false && $recTab !== false && $histTab !== false &&
+        $recTab < $histTab &&
+        str_contains($controller, "\$puedeRecepcionMarketing ? 'recepcion' : 'historial'"),
     'View renders reception only for assigned users' =>
         str_contains($view, 'marketingTieneRecepcionAsignada()') &&
         str_contains($view, 'if ($recepcionMarketingPermitida)'),

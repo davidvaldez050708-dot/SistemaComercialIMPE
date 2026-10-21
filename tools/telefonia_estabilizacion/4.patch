@@ -1,0 +1,33 @@
+--- a/app/services/TelefoniaVentasLlamadasService.php
++++ b/app/services/TelefoniaVentasLlamadasService.php
+@@ -137,28 +137,8 @@
+     }
+     /** Referencias firmadas del mismo PBX. RECORD global confirma disponibilidad, no extensión. */
+     public static function evidenciaAudio(array $events,string $ext): array {
+-        $owned=[];$ready=[];$foreign=[];$reported=false;
+-        foreach($events as $e){
+-            $type=(string)($e['evento']??'');$internal=trim((string)($e['internal']??''));$id=trim((string)($e['call_id_with_rec']??''));
+-            $recorded=in_array(strtolower((string)($e['is_recorded']??'')),['1','true'],true);
+-            if($internal===$ext&&$recorded)$reported=true;
+-            if(!ZadarmaPbxIdentifierHelper::callIdValido($id))continue;
+-            if(!in_array($type,['NOTIFY_RECORD','NOTIFY_END','NOTIFY_OUT_END'],true))continue;
+-            if($internal!==''&&$internal!==$ext){$foreign[$id]=true;continue;}
+-            if($type==='NOTIFY_RECORD')$ready[$id]=true;
+-            if($internal===$ext){
+-                $owned[$id]=($owned[$id]??false)||$type==='NOTIFY_RECORD'||$recorded;
+-            }
+-        }
+-        $ids=[];$ambiguous=0;
+-        foreach($owned as $id=>$confirmed){
+-            if(isset($foreign[$id])){$ambiguous++;continue;}
+-            if($confirmed||isset($ready[$id]))$ids[]=(string)$id;
+-        }
+-        $overflow=count($ids)>8;
+-        $reason=$overflow?'limite':($ids?'referencia_propia':($ambiguous?'compartida':($ready?'sin_tramo':($reported?'pendiente_referencia':'sin_referencia'))));
+-        return ['segmentos'=>$overflow?[]:$ids,'audio_motivo'=>$reason,
+-            'audio_evidencia'=>['referencias_propias'=>count($owned),'avisos_disponibilidad'=>count($ready),'referencias_ambiguas'=>$ambiguous]];
++        require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
++        return TelefoniaPbxSegmentosService::deEventos($events,$ext);
+     }
+     /** La conexión y el resultado humano son hechos distintos; no inferir buzón por duración. */
+     public static function presentacionAudio(array $call): array {

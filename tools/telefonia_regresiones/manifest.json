@@ -1,0 +1,199 @@
+{
+  "version": 1,
+  "base": "02625c21a5e80b30ed5438cb7e877014c89aacc1",
+  "target": "65c86f98b5c79afc46d76a0028a8654c0302d785",
+  "files": [
+    {
+      "path": "app/services/TelefoniaPbxSegmentosService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "6e7b12c8a84d0419b17565b57b82459247330488d38db326bc30e21ee4b0decc",
+      "variants": [
+        {
+          "label": "estabilizacion-publicada",
+          "before": "a5ce26b11b05fcaec9caa651434c3bc22df7d0c2a814174a468e3068510fa489",
+          "after": "6e7b12c8a84d0419b17565b57b82459247330488d38db326bc30e21ee4b0decc",
+          "patch": "tools/telefonia_regresiones/0.patch",
+          "patch_sha256": "52e62c8e553d482879b877ede1f00e0eb239f7c79f6b3c2d1650f73454944591"
+        }
+      ],
+      "patch": "tools/telefonia_regresiones/0.patch",
+      "patch_sha256": "52e62c8e553d482879b877ede1f00e0eb239f7c79f6b3c2d1650f73454944591"
+    },
+    {
+      "path": "app/views/telefonia/captura_institucional_campos.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "60171bc435ff6a17de6ebab4b7b3442def5109d6fcac56665c033ecf190eade1",
+      "variants": []
+    },
+    {
+      "path": "app/views/telefonia/captura_panel.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "c8e9658dcf5cc585a5f5d7406d88aee1d4bbafeca45901037f108dc69393093f",
+      "variants": []
+    },
+    {
+      "path": "app/views/telefonia/prospecto_venta.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "5cc7f3ed52df37b612770cf540d4a82b8732939b95e4adfcf1f1efaa9c9bf3c7",
+      "variants": [
+        {
+          "label": "estabilizacion-publicada",
+          "before": "43feb738f2fb35da44671ab055f4a134ddc4999bb1b89810d7a89febdde20f96",
+          "after": "5cc7f3ed52df37b612770cf540d4a82b8732939b95e4adfcf1f1efaa9c9bf3c7",
+          "patch": "tools/telefonia_regresiones/3.patch",
+          "patch_sha256": "563bdf5e24373cbeb1175d19515b65df07bb251e97543c8088cc5633a79b19ed"
+        }
+      ],
+      "patch": "tools/telefonia_regresiones/3.patch",
+      "patch_sha256": "563bdf5e24373cbeb1175d19515b65df07bb251e97543c8088cc5633a79b19ed"
+    },
+    {
+      "path": "app/views/telefonia/shell.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "bfc9326e40777e07b3b01204182fd98b4c6c41e203ee2646c5aef079f7a21891",
+      "variants": [
+        {
+          "label": "estabilizacion-publicada",
+          "before": "9b200048df95bab87125a2dbc35e0239f85797c540a7422a57f718ec058684ad",
+          "after": "bfc9326e40777e07b3b01204182fd98b4c6c41e203ee2646c5aef079f7a21891",
+          "patch": "tools/telefonia_regresiones/4.patch",
+          "patch_sha256": "adf99fab04fd4ce365e56f93fb848e77aba553c59aca83178e8569a8db9d739d"
+        }
+      ],
+      "patch": "tools/telefonia_regresiones/4.patch",
+      "patch_sha256": "adf99fab04fd4ce365e56f93fb848e77aba553c59aca83178e8569a8db9d739d"
+    },
+    {
+      "path": "prueba_telefonia/api/grabacion_transferida_pbx.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "b2f6198a488587cea42ba458f9ef06291b25876c115282d529f519a354e5ea0a",
+      "variants": [
+        {
+          "label": "estabilizacion-publicada",
+          "before": "2a307e92b051250fb0c844fd2ce9c790706e47f23c5bacf8301a6ab4811d39a6",
+          "after": "b2f6198a488587cea42ba458f9ef06291b25876c115282d529f519a354e5ea0a",
+          "patch": "tools/telefonia_regresiones/5.patch",
+          "patch_sha256": "b99b80a8e87552cfb3ea5b334f1f874bb23d6edff00aef1ffdc5c5d23ce6c021"
+        }
+      ],
+      "patch": "tools/telefonia_regresiones/5.patch",
+      "patch_sha256": "b99b80a8e87552cfb3ea5b334f1f874bb23d6edff00aef1ffdc5c5d23ce6c021"
+    },
+    {
+      "path": "public/css/telefonia_disponibilidad.css",
+      "kind": "css",
+      "new": false,
+      "target_sha256": "48062575f181516f5698a62080b2e47f6370502de15cb6eebf12b5290743fa37",
+      "variants": [
+        {
+          "label": "estabilizacion-publicada",
+          "before": "55558bc4979faa821efb67edd28b15836944976cfd834f428f9374c1f0faf6f9",
+          "after": "48062575f181516f5698a62080b2e47f6370502de15cb6eebf12b5290743fa37",
+          "patch": "tools/telefonia_regresiones/6.patch",
+          "patch_sha256": "725061961156348eb003df4a18d693bd065f8bc8ccac653de0a58cb03d872f2d"
+        }
+      ],
+      "patch": "tools/telefonia_regresiones/6.patch",
+      "patch_sha256": "725061961156348eb003df4a18d693bd065f8bc8ccac653de0a58cb03d872f2d"
+    },
+    {
+      "path": "public/css/telefonia_enrutamiento.css",
+      "kind": "css",
+      "new": false,
+      "target_sha256": "0509d9e58569e842503ebd9fe8fd7206390fe524587a37384d624e7d27e41a34",
+      "variants": [
+        {
+          "label": "estabilizacion-publicada",
+          "before": "c6291acb8d2b4dc927f9f10d77ccbc06f1525870edb6769fee295d91a8d51e2e",
+          "after": "0509d9e58569e842503ebd9fe8fd7206390fe524587a37384d624e7d27e41a34",
+          "patch": "tools/telefonia_regresiones/7.patch",
+          "patch_sha256": "04cb81c3687d17c67c5e84ecd3f0854a6ecf3205a26d4aa312d21f88bbbe0741"
+        }
+      ],
+      "patch": "tools/telefonia_regresiones/7.patch",
+      "patch_sha256": "04cb81c3687d17c67c5e84ecd3f0854a6ecf3205a26d4aa312d21f88bbbe0741"
+    },
+    {
+      "path": "public/javascript/telefonia_disponibilidad.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "5eaaf216392180aba21beee04f3ea56efc58f74997bc6cdd252948dab3a4d648",
+      "variants": [
+        {
+          "label": "estabilizacion-publicada",
+          "before": "2cbb43f1ee4389fce850b5cab3ab3e5c4a6137af42fddd01ac02c3f3420d86b6",
+          "after": "5eaaf216392180aba21beee04f3ea56efc58f74997bc6cdd252948dab3a4d648",
+          "patch": "tools/telefonia_regresiones/8.patch",
+          "patch_sha256": "980de478c454566499ea9a69988c8c566776cce23be9e48c8ca13a2a0c299f1f"
+        }
+      ],
+      "patch": "tools/telefonia_regresiones/8.patch",
+      "patch_sha256": "980de478c454566499ea9a69988c8c566776cce23be9e48c8ca13a2a0c299f1f"
+    },
+    {
+      "path": "public/javascript/telefonia_host.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "bbe2d76eccb43562403f738f9134905e4a7b71da70d24dc5a45f94e9ea4dd762",
+      "variants": [
+        {
+          "label": "estabilizacion-publicada",
+          "before": "4b4ce17793ff0f460de3058cc9ae0c0f1bf37937e4be0488a21e97eb23267f9b",
+          "after": "bbe2d76eccb43562403f738f9134905e4a7b71da70d24dc5a45f94e9ea4dd762",
+          "patch": "tools/telefonia_regresiones/9.patch",
+          "patch_sha256": "601002d694ab2c031859e03c057c736a7e40fbea7942f94ecd00063f235b4333"
+        },
+        {
+          "label": "hostinger-rescate-sdk-conservado",
+          "before": "816b7cd96fcacb56cd47157b35fa8d9382f28da0193a1fd80ad41244e221658d",
+          "after": "2b685b9da57c28e4b47d8b5c0458178119e4f815450a2942a1b9caca555277f3",
+          "patch": "tools/telefonia_regresiones/91.patch",
+          "patch_sha256": "601002d694ab2c031859e03c057c736a7e40fbea7942f94ecd00063f235b4333"
+        }
+      ],
+      "patch": "tools/telefonia_regresiones/9.patch",
+      "patch_sha256": "601002d694ab2c031859e03c057c736a7e40fbea7942f94ecd00063f235b4333",
+      "production_fixture": "tools/telefonia_regresiones/hostinger-host-before.js"
+    },
+    {
+      "path": "public/javascript/telefonia_sdk_entrantes_observador.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "1c64a4d684c6726f91ae3cb4c189f25f8e647fb3504b63060f6970376e6dac4a",
+      "variants": [
+        {
+          "label": "estabilizacion-publicada",
+          "before": "d9f35edecc908750a77c10377f0d61bedc324d240b007ec3bae431d0fa9c3654",
+          "after": "1c64a4d684c6726f91ae3cb4c189f25f8e647fb3504b63060f6970376e6dac4a",
+          "patch": "tools/telefonia_regresiones/10.patch",
+          "patch_sha256": "d174a1faed22cdc9cacaad495f9a067b4f74b7694ea4758b7d2e9e219db800be"
+        }
+      ],
+      "patch": "tools/telefonia_regresiones/10.patch",
+      "patch_sha256": "d174a1faed22cdc9cacaad495f9a067b4f74b7694ea4758b7d2e9e219db800be"
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_prospecto.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "ba5254f3155c00f26b2523d00c14783a9a51a674cf270bf4a52630434964b478",
+      "variants": [
+        {
+          "label": "estabilizacion-publicada",
+          "before": "b002efcb0690db16a6f5ee264a3049a04ab1184f1ada0a0d16a5b658f76ca38f",
+          "after": "ba5254f3155c00f26b2523d00c14783a9a51a674cf270bf4a52630434964b478",
+          "patch": "tools/telefonia_regresiones/11.patch",
+          "patch_sha256": "bd5767e9e2eecc05573e1d8edcca03b568981636721d84bc9f8b65e3f5cfa53f"
+        }
+      ],
+      "patch": "tools/telefonia_regresiones/11.patch",
+      "patch_sha256": "bd5767e9e2eecc05573e1d8edcca03b568981636721d84bc9f8b65e3f5cfa53f"
+    }
+  ]
+}

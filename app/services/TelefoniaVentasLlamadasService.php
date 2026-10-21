@@ -137,28 +137,8 @@ final class TelefoniaVentasLlamadasService
     }
     /** Referencias firmadas del mismo PBX. RECORD global confirma disponibilidad, no extensión. */
     public static function evidenciaAudio(array $events,string $ext): array {
-        $owned=[];$ready=[];$foreign=[];$reported=false;
-        foreach($events as $e){
-            $type=(string)($e['evento']??'');$internal=trim((string)($e['internal']??''));$id=trim((string)($e['call_id_with_rec']??''));
-            $recorded=in_array(strtolower((string)($e['is_recorded']??'')),['1','true'],true);
-            if($internal===$ext&&$recorded)$reported=true;
-            if(!ZadarmaPbxIdentifierHelper::callIdValido($id))continue;
-            if(!in_array($type,['NOTIFY_RECORD','NOTIFY_END','NOTIFY_OUT_END'],true))continue;
-            if($internal!==''&&$internal!==$ext){$foreign[$id]=true;continue;}
-            if($type==='NOTIFY_RECORD')$ready[$id]=true;
-            if($internal===$ext){
-                $owned[$id]=($owned[$id]??false)||$type==='NOTIFY_RECORD'||$recorded;
-            }
-        }
-        $ids=[];$ambiguous=0;
-        foreach($owned as $id=>$confirmed){
-            if(isset($foreign[$id])){$ambiguous++;continue;}
-            if($confirmed||isset($ready[$id]))$ids[]=(string)$id;
-        }
-        $overflow=count($ids)>8;
-        $reason=$overflow?'limite':($ids?'referencia_propia':($ambiguous?'compartida':($ready?'sin_tramo':($reported?'pendiente_referencia':'sin_referencia'))));
-        return ['segmentos'=>$overflow?[]:$ids,'audio_motivo'=>$reason,
-            'audio_evidencia'=>['referencias_propias'=>count($owned),'avisos_disponibilidad'=>count($ready),'referencias_ambiguas'=>$ambiguous]];
+        require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
+        return TelefoniaPbxSegmentosService::deEventos($events,$ext);
     }
     /** La conexión y el resultado humano son hechos distintos; no inferir buzón por duración. */
     public static function presentacionAudio(array $call): array {
@@ -171,33 +151,75 @@ final class TelefoniaVentasLlamadasService
         if($code==='')return array_replace($out,['estado'=>'pendiente_resultado','texto'=>'Pendiente de resultado','detalle'=>'Registra lo ocurrido para distinguir una conversación de un buzón o una locución.']);
         if(!empty($call['segmentos']))return array_replace($out,['disponible'=>true,'estado'=>'referencia_propia','texto'=>'Consultar grabación','detalle'=>'Referencia confirmada del tramo de tu extensión. El proveedor verifica el archivo al reproducir.']);
         return match($call['audio_motivo']??'sin_referencia'){
+            'no_reportada'=>array_replace($out,['estado'=>'no_reportada','texto'=>'Sin grabación reportada','detalle'=>'La estadística del tramo propio no reporta una grabación. Puedes comprobarla de nuevo si el proveedor la prepara después.']),
             'pendiente_referencia'=>array_replace($out,['estado'=>'pendiente_referencia','texto'=>'Preparando grabación','detalle'=>'La centralita indicó grabación, pero falta su referencia de audio.']),
             'sin_tramo'=>array_replace($out,['estado'=>'sin_tramo','texto'=>'Pendiente de vinculación','detalle'=>'Hay un aviso de grabación de la llamada, pero no identifica un segmento propio de tu extensión.']),
             'compartida','limite'=>array_replace($out,['estado'=>'por_verificar','texto'=>'Audio por verificar','detalle'=>'Las referencias recibidas no permiten identificar de forma inequívoca los segmentos de tu extensión.']),
             default=>$out
         };
     }
-    public static function hechos(array $events,string $ext): array {
+    public static function hechos(array $events,string $ext,string $source=''): array {
         $answer=false;$end=false;$duration=null;$disposition='';
+        // La consulta se ordena por id ASC. Un cierre OUT_END del origen
+        // sólo puede cerrar al destinatario después de START de Recepción
+        // y ANSWER de Ventas del mismo PBX (con origen persistido).
+        $sourceStarted=false;$answeredAfterSource=false;
         foreach($events as $e) {
+            $type=(string)($e['evento']??'');
+            $internal=trim((string)($e['internal']??''));
+            if($source!==''&&$source!==$ext&&$type==='NOTIFY_OUT_START'&&$internal===$source)$sourceStarted=true;
+            if($type==='NOTIFY_ANSWER'&&$internal===$ext){
+                $answer=true;
+                if($sourceStarted)$answeredAfterSource=true;
+            }
             $p=json_decode((string)($e['payload_json']??''),true)?:[];
-            $own=trim((string)($e['internal']??''))===$ext;
-            // Zadarma conserva internal del iniciador y señala el destinatario
-            // final con last_internal. No exigir internal vacío para este caso.
-            $explicitEnd=trim((string)($e['last_internal']??$p['last_internal']??''))===$ext;
+            $own=$internal===$ext;
+            // Zadarma conserva internal del iniciador; last_internal puede
+            // ser el destinatario 150, quedar vacío o mantener al origen 100.
+            // Nunca aceptar aquí last_internal de una tercera extensión.
+            $last=trim((string)($e['last_internal']??''));if($last==='')$last=trim((string)($p['last_internal']??''));
+            $explicitEnd=$last===$ext;
+            $sourceEnd=$sourceStarted&&$answeredAfterSource&&($last===''||$last===$source)&&
+                $type==='NOTIFY_OUT_END'&&$internal===$source;
             $type=$e['evento']??'';
             if($own&&$type==='NOTIFY_ANSWER')$answer=true;
-            if(($own||$explicitEnd)&&in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)) {
+            if(($own||$explicitEnd||$sourceEnd)&&in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)) {
                 $end=true;$disposition=strtolower((string)($e['disposition']??''));
                 if($own){$known=array_key_exists('has_duration',$e)?(bool)$e['has_duration']:($p?array_key_exists('duration',$p):array_key_exists('duration',$e));if($known)$duration=max($duration??0,max(0,(int)($e['duration']??0)));
                     if(in_array($disposition,['answered','completed'],true))$answer=true;}
             }
         }
-        $audio=self::evidenciaAudio($events,$ext);
+        require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
+        $transfer=TelefoniaPbxSegmentosService::transferencia($events,$ext,$source);
+        $allowed=$transfer['atendida']&&$transfer['finalizada']&&$transfer['origen']!==''?[$transfer['origen']]:[];
+        $audio=TelefoniaPbxSegmentosService::deEventos($events,$ext,$allowed);
         return ['finalizada'=>$end,'conectada'=>$answer,'segundos'=>$end?$duration:null,
             'estado_pbx'=>!$end?($answer?'En conversación':'Sin cierre confirmado'):
                 ($answer?'Conectada':(['busy'=>'Ocupada','no answer'=>'Sin respuesta','no_answer'=>'Sin respuesta','cancel'=>'Cancelada','failed'=>'Fallida'][$disposition]??'Sin respuesta')),
-            ]+$audio;
+            'audio_extensiones'=>$allowed]+$audio;
+    }
+    /** Alias reservados en la operación exacta. No deduce identidad por teléfono/fecha. */
+    public function conVinculosSdk(int $uid,array $calls): array {
+        if(!$calls)return [];
+        $refs=array_values(array_unique(array_column($calls,'pbx_call_id')));
+        $links=$this->rows('SELECT o.referencia,o.destino_extension,o.sdk_consulta FROM telefonia_transferencia_operaciones o
+            JOIN telefonia_ventas_llamadas c ON c.usuario_id=o.destino_usuario AND c.extension=BINARY o.destino_extension AND c.pbx_call_id=BINARY o.referencia
+            WHERE c.usuario_id=? AND o.sdk_consulta IS NOT NULL AND o.referencia IN ('.implode(',',array_fill(0,count($refs),'?')).')',array_merge([$uid],$refs));
+        foreach($calls as &$call){
+            $matched=array_values(array_filter($links,static fn($o)=>$o['referencia']===$call['pbx_call_id']&&$o['destino_extension']===$call['extension']));
+            $sdk=count($matched)===1?(string)$matched[0]['sdk_consulta']:'';
+            $call['sdk_tokens']=preg_match('/^sdk-[a-z0-9-]{12,94}$/D',$sdk)?[$sdk,$sdk.'-external']:[];
+        }unset($call);
+        return $calls;
+    }
+    public function obtenerPorSdk(int $uid,string $sdk): ?array {
+        $this->autorizar($uid);$this->requerir();
+        if(!preg_match('/^sdk-[a-z0-9-]{12,110}$/D',$sdk))throw new InvalidArgumentException('Sesión telefónica inválida.');
+        $rows=$this->rows("SELECT c.pbx_call_id,c.extension FROM telefonia_transferencia_operaciones o
+            JOIN telefonia_ventas_llamadas c ON c.usuario_id=o.destino_usuario AND c.extension=BINARY o.destino_extension AND c.pbx_call_id=BINARY o.referencia
+            WHERE c.usuario_id=? AND (o.sdk_consulta=BINARY ? OR CONCAT(o.sdk_consulta,'-external')=BINARY ?) LIMIT 2",[$uid,$sdk,$sdk]);
+        if(count($rows)!==1)return null;
+        return $this->conVinculosSdk($uid,[$this->obtener($uid,$rows[0]['pbx_call_id'],$rows[0]['extension'])])[0];
     }
     public function obtener(int $uid,string $ref,string $ext=''): array {
         $this->autorizar($uid);$this->requerir();
@@ -205,9 +227,15 @@ final class TelefoniaVentasLlamadasService
         $rows=$this->rows('SELECT * FROM telefonia_ventas_llamadas WHERE usuario_id=? AND pbx_call_id=?'.($ext!==''?' AND extension=?':'').' LIMIT 2',$ext!==''?[$uid,$ref,$ext]:[$uid,$ref]);
         if(count($rows)!==1)throw new DomainException('La llamada no está confirmada a tu nombre o su tramo es ambiguo.');
         $row=$rows[0];$events=$this->rows('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id',[$ref]);
-        $row+=self::hechos($events,$row['extension']);
+        $row+=self::hechos($events,$row['extension'],(string)($row['origen_extension']??''));
         $result=$this->rows('SELECT * FROM telefonia_ventas_resultados WHERE usuario_id=? AND extension=? AND pbx_call_id=?',[$uid,$row['extension'],$ref]);
-        $row['registro']=$result[0]??null;return $row;
+        $row['registro']=$result[0]??null;
+        if($this->db->query("SHOW TABLES LIKE 'telefonia_ventas_prospecto_llamada'")->num_rows){
+            $capture=$this->rows('SELECT datos_json FROM telefonia_ventas_prospecto_llamada WHERE usuario_id=? AND extension=? AND pbx_call_id=?',[$uid,$row['extension'],$ref]);
+            $row['captura_prospecto']=isset($capture[0])?(json_decode($capture[0]['datos_json'],true)?:null):null;
+        }
+        require_once __DIR__.'/TelefoniaVentasEvidenciaService.php';
+        return (new TelefoniaVentasEvidenciaService($this->db))->enriquecer([$row],$uid)[0];
     }
     public function listar(int $uid,array $filters=[],bool $conciliar=true): array {
         if($conciliar)$this->sincronizar($uid);
@@ -217,15 +245,17 @@ final class TelefoniaVentasLlamadasService
             FROM telefonia_ventas_llamadas c LEFT JOIN telefonia_ventas_resultados r
               ON r.usuario_id=c.usuario_id AND r.extension = BINARY c.extension AND r.pbx_call_id = BINARY c.pbx_call_id
             WHERE c.usuario_id=? AND c.fecha BETWEEN ? AND ? ORDER BY c.fecha DESC,c.id DESC",[$uid,$from,$until]);
-        $events=$this->rows("SELECT e.pbx_call_id,e.evento,e.internal,e.disposition,e.duration,e.call_id_with_rec,e.is_recorded,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_CONTAINS_PATH(e.payload_json,'one','$.duration') ELSE 0 END has_duration,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal')) ELSE NULL END last_internal FROM telefonia_zadarma_eventos e JOIN telefonia_ventas_llamadas c
+        $events=$this->rows("SELECT e.pbx_call_id,e.evento,e.internal,e.disposition,e.duration,e.call_id_with_rec,e.is_recorded,e.received_at,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.transfer_from')) ELSE NULL END transfer_from,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_CONTAINS_PATH(e.payload_json,'one','$.duration') ELSE 0 END has_duration,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal')) ELSE NULL END last_internal FROM telefonia_zadarma_eventos e JOIN telefonia_ventas_llamadas c
             ON c.pbx_call_id = BINARY e.pbx_call_id AND c.usuario_id=? AND c.fecha BETWEEN ? AND ?
             ORDER BY e.id",[$uid,$from,$until]);
         $grouped=[];foreach($events as $event)$grouped[$event['pbx_call_id']][]=$event;
         foreach($rows as &$row){
-            $row+=self::hechos($grouped[$row['pbx_call_id']]??[],$row['extension']);
+            $row+=self::hechos($grouped[$row['pbx_call_id']]??[],$row['extension'],(string)($row['origen_extension']??''));
             $row['registro']=$row['registro_id']===null?null:array_intersect_key($row,array_flip(['resultado','observacion','prospecto_nombre','contacto_id','proxima_accion_at']));
             unset($row['registro_id'],$row['resultado'],$row['observacion'],$row['prospecto_nombre'],$row['contacto_id'],$row['proxima_accion_at']);
-        }unset($row);return $rows;
+        }unset($row);
+        require_once __DIR__.'/TelefoniaVentasEvidenciaService.php';
+        return (new TelefoniaVentasEvidenciaService($this->db))->enriquecer($rows,$uid);
     }
     private static function intervalo(array $filters): array {
         $from=(string)($filters['desde']??date('Y-m-d',strtotime('-29 days')));$until=(string)($filters['hasta']??date('Y-m-d'));

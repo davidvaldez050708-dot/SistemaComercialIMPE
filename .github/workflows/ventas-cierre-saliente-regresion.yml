@@ -1,0 +1,68 @@
+name: Ventas - cierre saliente y modal de resultado
+on:
+  push:
+    branches:
+      - fix/ventas-etapa2-audio-operacion
+    paths:
+      - 'app/services/TelefoniaVentasLlamadasService.php'
+      - 'public/javascript/telefonia_shell.js'
+      - 'public/javascript/telefonia_ventas_shell.js'
+      - 'public/javascript/telefonia_sdk_entrantes_observador.js'
+      - 'public/javascript/telefonia_host.js'
+      - 'tests/telefonia_ventas_fin_sip_push_tardio.cjs'
+      - 'tests/telefonia_ventas_referencia_final.cjs'
+      - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'tests/telefonia_ventas_descartar_modal_resultado.cjs'
+      - 'tests/publicacion_ventas_saliente_modal_test.py'
+      - 'tests/publicacion_ventas_fin_sip_registro_inmediato_test.py'
+      - 'tools/publicar_ventas_fin_sip_registro_inmediato_hostinger.sh'
+      - 'tools/publicar_ventas_fin_sip_conciliacion_resultado_hostinger.sh'
+      - 'tests/publicacion_ventas_fin_sip_conciliacion_resultado_test.py'
+      - 'tools/publicar_ventas_saliente_modal_resultado_hostinger.sh'
+      - '.github/workflows/ventas-cierre-saliente-regresion.yml'
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaVentasLlamadasService.php'
+      - 'public/javascript/telefonia_shell.js'
+      - 'public/javascript/telefonia_ventas_shell.js'
+      - 'public/javascript/telefonia_sdk_entrantes_observador.js'
+      - 'public/javascript/telefonia_host.js'
+      - 'tests/telefonia_ventas_fin_sip_push_tardio.cjs'
+      - 'tests/telefonia_ventas_referencia_final.cjs'
+      - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'tests/telefonia_ventas_descartar_modal_resultado.cjs'
+      - 'tests/publicacion_ventas_saliente_modal_test.py'
+      - 'tests/publicacion_ventas_fin_sip_registro_inmediato_test.py'
+      - 'tools/publicar_ventas_fin_sip_registro_inmediato_hostinger.sh'
+      - 'tools/publicar_ventas_fin_sip_conciliacion_resultado_hostinger.sh'
+      - 'tests/publicacion_ventas_fin_sip_conciliacion_resultado_test.py'
+      - 'tools/publicar_ventas_saliente_modal_resultado_hostinger.sh'
+      - '.github/workflows/ventas-cierre-saliente-regresion.yml'
+jobs:
+  dirigido:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Revisar sintaxis
+        run: |
+          php -l app/services/TelefoniaVentasLlamadasService.php
+          node --check public/javascript/telefonia_host.js
+          node --check public/javascript/telefonia_sdk_entrantes_observador.js
+          node --check public/javascript/telefonia_shell.js
+          node --check public/javascript/telefonia_ventas_shell.js
+          node --check public/javascript/telefonia_ventas_resultados.js
+          bash -n tools/publicar_ventas_saliente_modal_resultado_hostinger.sh
+          bash -n tools/publicar_ventas_fin_sip_registro_inmediato_hostinger.sh
+          bash -n tools/publicar_ventas_fin_sip_conciliacion_resultado_hostinger.sh
+      - name: Probar descarte de modal y sesiones distintas
+        run: node tests/telefonia_ventas_descartar_modal_resultado.cjs
+      - name: Probar desplegador reversible
+        run: python3 tests/publicacion_ventas_saliente_modal_test.py
+      - name: Probar fin de SIP con sesión PUSH tardía
+        run: node tests/telefonia_ventas_fin_sip_push_tardio.cjs
+      - name: Probar registro inmediato tras FIN SIP
+        run: node tests/telefonia_ventas_referencia_final.cjs
+      - name: Probar publicador de SIP y registro inmediato
+        run: python3 tests/publicacion_ventas_fin_sip_registro_inmediato_test.py
+      - name: Probar entrega integral SIP, cierre saliente y resultado
+        run: python3 tests/publicacion_ventas_fin_sip_conciliacion_resultado_test.py

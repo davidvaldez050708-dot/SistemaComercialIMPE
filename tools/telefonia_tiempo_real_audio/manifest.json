@@ -1,0 +1,277 @@
+{
+  "version": 1,
+  "base": "d99ee46411cbb8e7dd0dfc45377569b5da9bd9d7",
+  "target": "01c39c9ef633291a168caa510f8b15ed748373c7",
+  "files": [
+    {
+      "path": "app/controllers/TelefoniaController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "c8ad01bdc1e0538f1634b54acd956eccdf70b0237cb93baffa97a98cdb0d86eb",
+      "patch": "tools/telefonia_tiempo_real_audio/0.patch",
+      "patch_sha256": "a6a883c2e2e2ffe3da3100e8e60d5ee33cd5a6790545310286066b9f554457fc",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "f016768cd06f7d4bf17cbe282eef2e62600a3c3dd4aa106942525bf5d9b7ffd1",
+          "after": "c8ad01bdc1e0538f1634b54acd956eccdf70b0237cb93baffa97a98cdb0d86eb",
+          "patch": "tools/telefonia_tiempo_real_audio/0.patch",
+          "patch_sha256": "a6a883c2e2e2ffe3da3100e8e60d5ee33cd5a6790545310286066b9f554457fc"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaAudioTransferidoService.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "131308c3860c18803e0802d47e50fe4a7a79c43f09b827385e162d546925af4f",
+      "patch": "tools/telefonia_tiempo_real_audio/1.patch",
+      "patch_sha256": "8adf018e152712250d1fcdb52f776855a46b60f2c3d87c4d7226e1bbd7a8fded",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "after": "131308c3860c18803e0802d47e50fe4a7a79c43f09b827385e162d546925af4f",
+          "patch": "tools/telefonia_tiempo_real_audio/1.patch",
+          "patch_sha256": "8adf018e152712250d1fcdb52f776855a46b60f2c3d87c4d7226e1bbd7a8fded"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaGrabacionExpedienteTransferidaService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "5a50f811682758eb710f9b3b0ee84d93a0b40f621eb713727fa8b257f8f1f3c1",
+      "patch": "tools/telefonia_tiempo_real_audio/2.patch",
+      "patch_sha256": "5e9b0d22a39482a28006e93d3084e841a223b0112862c6c3a6083cc935d6e18f",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "f07d301ee0737e1cf9fe06855dc951cd8b16e3b934e092df0b3717be00a0cbbe",
+          "after": "5a50f811682758eb710f9b3b0ee84d93a0b40f621eb713727fa8b257f8f1f3c1",
+          "patch": "tools/telefonia_tiempo_real_audio/2.patch",
+          "patch_sha256": "5e9b0d22a39482a28006e93d3084e841a223b0112862c6c3a6083cc935d6e18f"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaPbxSegmentosService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "eab5e92e9ed62cab0b75cf44f5a010d47d8446ff67d98f266da57d71fab24946",
+      "patch": "tools/telefonia_tiempo_real_audio/3.patch",
+      "patch_sha256": "4bce60832280761b51efb6634f3364331db1f6c9ec68036364ef1b8111ed895a",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "6e7b12c8a84d0419b17565b57b82459247330488d38db326bc30e21ee4b0decc",
+          "after": "eab5e92e9ed62cab0b75cf44f5a010d47d8446ff67d98f266da57d71fab24946",
+          "patch": "tools/telefonia_tiempo_real_audio/3.patch",
+          "patch_sha256": "4bce60832280761b51efb6634f3364331db1f6c9ec68036364ef1b8111ed895a"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaTransferenciaOperacionService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "f621f7680532893dc9b7f17e3ad9e5479a236dd5377a980ce8abfd56271e9642",
+      "patch": "tools/telefonia_tiempo_real_audio/4.patch",
+      "patch_sha256": "b9d9baddb9262ea406ee3cdfb5b43b80016d394a8d587a57ff98f89abd8f79cb",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "752bc493508234199f5c5288c4f62c166ecd4a573ff32aba2f960dca083547c5",
+          "after": "f621f7680532893dc9b7f17e3ad9e5479a236dd5377a980ce8abfd56271e9642",
+          "patch": "tools/telefonia_tiempo_real_audio/4.patch",
+          "patch_sha256": "b9d9baddb9262ea406ee3cdfb5b43b80016d394a8d587a57ff98f89abd8f79cb"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaVentasEvidenciaService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "2c36e459150cf48587943530bf9dda8a02bf5a5128462700f48e59c518887ee7",
+      "patch": "tools/telefonia_tiempo_real_audio/5.patch",
+      "patch_sha256": "c31a67b39b023eeaf60515a613ccb723d4b16741ddccaed5159a7b595535b16e",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "f13a7e6b8c38b6d20ddf68e8ed145ca7d2524142e7e64abeb49878cf764e9cfd",
+          "after": "2c36e459150cf48587943530bf9dda8a02bf5a5128462700f48e59c518887ee7",
+          "patch": "tools/telefonia_tiempo_real_audio/5.patch",
+          "patch_sha256": "c31a67b39b023eeaf60515a613ccb723d4b16741ddccaed5159a7b595535b16e"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaVentasLlamadasService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "a6980e2a5f8a3b9607ea91d066ddc5bd981f847600a5ed508ca7a9e68730a77b",
+      "patch": "tools/telefonia_tiempo_real_audio/6.patch",
+      "patch_sha256": "5dc4a3ac25d8265d2d35e8b8452cabc667e130ddf0dc51e3cab83e46ed24d2dd",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "6a823db8e41e05783af0d2c040d821ff1c7d777715f9b6f4c8827002e95d75f5",
+          "after": "a6980e2a5f8a3b9607ea91d066ddc5bd981f847600a5ed508ca7a9e68730a77b",
+          "patch": "tools/telefonia_tiempo_real_audio/6.patch",
+          "patch_sha256": "5dc4a3ac25d8265d2d35e8b8452cabc667e130ddf0dc51e3cab83e46ed24d2dd"
+        }
+      ]
+    },
+    {
+      "path": "prueba_telefonia/api/grabacion_transferida_pbx.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "6d61fd2679e52254429197be0693bb3721ac17a3f9540f00783c955147637e2c",
+      "patch": "tools/telefonia_tiempo_real_audio/7.patch",
+      "patch_sha256": "224094540899c09dca48231c2d0f4f07ea57e243c42f1843ff29d0976ecb0b55",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "b2f6198a488587cea42ba458f9ef06291b25876c115282d529f519a354e5ea0a",
+          "after": "6d61fd2679e52254429197be0693bb3721ac17a3f9540f00783c955147637e2c",
+          "patch": "tools/telefonia_tiempo_real_audio/7.patch",
+          "patch_sha256": "224094540899c09dca48231c2d0f4f07ea57e243c42f1843ff29d0976ecb0b55"
+        }
+      ]
+    },
+    {
+      "path": "prueba_telefonia/api/grabacion_ventas.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "eeefbb0c528e236c85d6ca9c4ad3fc0b37a025a8fdbac19dc897b3ee25045dd9",
+      "patch": "tools/telefonia_tiempo_real_audio/8.patch",
+      "patch_sha256": "6607908ba52eba451a1ca07f0e154b6ab02dc47499b7781af5a0a4d600a1c747",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "a198f9736360951775f828761df286156efb7193e3159cf21f699c98cd8446a5",
+          "after": "eeefbb0c528e236c85d6ca9c4ad3fc0b37a025a8fdbac19dc897b3ee25045dd9",
+          "patch": "tools/telefonia_tiempo_real_audio/8.patch",
+          "patch_sha256": "6607908ba52eba451a1ca07f0e154b6ab02dc47499b7781af5a0a4d600a1c747"
+        }
+      ]
+    },
+    {
+      "path": "public/css/telefonia_shell.css",
+      "kind": "css_append",
+      "new": false,
+      "target_sha256": "d74827d2ca5c70a4b22a29bb11f3c4e452a8917136028e490708d580f2f14b5e",
+      "patch": "tools/telefonia_tiempo_real_audio/9.patch",
+      "patch_sha256": "f4e9444c13796f0c7dd7a030c18a651cb261db1b430a88767a9b5394d9d1fe8c",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "b42afa2d43c720efd39f412bc09a53a423ea54fcf756b82c790454a4be6acca2",
+          "after": "d74827d2ca5c70a4b22a29bb11f3c4e452a8917136028e490708d580f2f14b5e",
+          "patch": "tools/telefonia_tiempo_real_audio/9.patch",
+          "patch_sha256": "f4e9444c13796f0c7dd7a030c18a651cb261db1b430a88767a9b5394d9d1fe8c"
+        }
+      ],
+      "addon": "\n/* Cierre compartido: resultado de Analista y Ventas a ancho completo. */\n.impe-incoming-panel[data-phone-finished] .persistent-phone-live i {\n  background: #8492a8;\n  box-shadow: none;\n}\n.impe-incoming-panel .persistent-phone-actions > [data-incoming-register-finished]:not([hidden]) {\n  grid-column: 1 / -1;\n  width: 100%;\n}\n",
+      "marker": "/* Cierre compartido: resultado de Analista y Ventas a ancho completo. */"
+    },
+    {
+      "path": "public/javascript/seguimiento_entrantes_analista.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "04883abe51f36945ea7a628d51ccbad3e1e647251dbd14955e8b93b1be6af3d3",
+      "patch": "tools/telefonia_tiempo_real_audio/10.patch",
+      "patch_sha256": "4597a2c20b655ea7b1ff66f3d0efedefb71780d5ed41b39ce7f99dbd5ea9f165",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "fa3957737cb74dcb06e8859adacd14090c96a945ceee7c3912bd500517cecccd",
+          "after": "04883abe51f36945ea7a628d51ccbad3e1e647251dbd14955e8b93b1be6af3d3",
+          "patch": "tools/telefonia_tiempo_real_audio/10.patch",
+          "patch_sha256": "4597a2c20b655ea7b1ff66f3d0efedefb71780d5ed41b39ce7f99dbd5ea9f165"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_segmentos_player.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "a40692cf44eb412e388f00cc9b5636141b96868043548cee05124178d695ab5e",
+      "patch": "tools/telefonia_tiempo_real_audio/11.patch",
+      "patch_sha256": "3c90cc70a55395e13b08ae35ad6b904d54a464ef0e5e6444ce8328074e90b01a",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "914ad86d75e8d554e7844cd79062102f9ecc3d7c1687492cc0a8ac46aa305094",
+          "after": "a40692cf44eb412e388f00cc9b5636141b96868043548cee05124178d695ab5e",
+          "patch": "tools/telefonia_tiempo_real_audio/11.patch",
+          "patch_sha256": "3c90cc70a55395e13b08ae35ad6b904d54a464ef0e5e6444ce8328074e90b01a"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "8b124e83134a57ccf1bf005de8fd7a5ab137f6c28d299640aa6348b0dc04ff56",
+      "patch": "tools/telefonia_tiempo_real_audio/12.patch",
+      "patch_sha256": "3313805de6dc1ede4100770c7c3c04b3d9e9442911c0c2a6cbce9d4c1d3a8b93",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "d2d6fe9e9dbff29023f141a7acf363f967f395efc399324529259b904593b1ba",
+          "after": "8b124e83134a57ccf1bf005de8fd7a5ab137f6c28d299640aa6348b0dc04ff56",
+          "patch": "tools/telefonia_tiempo_real_audio/12.patch",
+          "patch_sha256": "3313805de6dc1ede4100770c7c3c04b3d9e9442911c0c2a6cbce9d4c1d3a8b93"
+        },
+        {
+          "label": "hostinger-comentario-revisado",
+          "before": "d58be1108b0aae7b93f43c8271cda8ec614d70db874b0a0d7e2b4f47c7724037",
+          "after": "45519cd6d21ea17071edf41f2343772ffb7e5e2a43c76bc3b5389e4aead1ec79",
+          "patch": "tools/telefonia_tiempo_real_audio/12.patch",
+          "patch_sha256": "3313805de6dc1ede4100770c7c3c04b3d9e9442911c0c2a6cbce9d4c1d3a8b93"
+        }
+      ],
+      "fixture_replacements": [
+        [
+          "        // Abrir el formulario NO significa que MySQL haya guardado el resultado.\n        // Conservar el pendiente hasta la confirmación IMPE_ANALYST_RESULT_SAVED\n        // emitida por el iframe después del guardado real.",
+          "        // No descartar resultado antes de confirmación SQL."
+        ]
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_resultados.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "c9af9989ae364978fb8f569dbf210aecc41e75c8389600a5a79ec05008c8b70f",
+      "patch": "tools/telefonia_tiempo_real_audio/13.patch",
+      "patch_sha256": "a74dc9afa0014a8440a1ee9c5264726e68cbf6d0f4a2799ca017bd9aa579e870",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "6f63c0e5fb1aba72b3a729eb656d4a006fe6c99da2e5209cb06bf830d404293f",
+          "after": "c9af9989ae364978fb8f569dbf210aecc41e75c8389600a5a79ec05008c8b70f",
+          "patch": "tools/telefonia_tiempo_real_audio/13.patch",
+          "patch_sha256": "a74dc9afa0014a8440a1ee9c5264726e68cbf6d0f4a2799ca017bd9aa579e870"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "5bc5db34d97f10c929b1fcf58060a2eebe130b8fac4e1c413949fdf0c0772bcb",
+      "patch": "tools/telefonia_tiempo_real_audio/14.patch",
+      "patch_sha256": "ec9fe0f5e645e8d1eb5cae9e0da0640c9575b0ffe50c21a6d8a22d9a56041dc1",
+      "variants": [
+        {
+          "label": "resultado-pbx-d99ee464",
+          "before": "aa8885733579ccb14971b7988432bc5c9ac922cfc1625ec7e460542deee505eb",
+          "after": "5bc5db34d97f10c929b1fcf58060a2eebe130b8fac4e1c413949fdf0c0772bcb",
+          "patch": "tools/telefonia_tiempo_real_audio/14.patch",
+          "patch_sha256": "ec9fe0f5e645e8d1eb5cae9e0da0640c9575b0ffe50c21a6d8a22d9a56041dc1"
+        }
+      ]
+    }
+  ]
+}

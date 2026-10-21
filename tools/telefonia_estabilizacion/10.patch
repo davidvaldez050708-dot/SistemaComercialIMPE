@@ -1,0 +1,122 @@
+--- a/public/javascript/telefonia_disponibilidad.js
++++ b/public/javascript/telefonia_disponibilidad.js
+@@ -9,13 +9,13 @@
+  // Aviso de disponibilidad independiente del timbre y del contexto de audio del SDK.
+  const soundKey='impe:availability-chimes:'+cfg.userId;
+  const REMINDER_AFTER_MS=8000,REMINDER_MIN_REMAINING_MS=1000;
+- let audio=null,soundPlayer=null,soundDestination=null,soundRequest=null,soundExpiry=0,soundRepeat=0,soundNodes=[],heard=[];
++ let audio=null,soundRequest=null,soundExpiry=0,soundRepeat=0,soundNodes=[],heard=[];
+  try{const value=JSON.parse(sessionStorage.getItem(soundKey)||'[]');if(Array.isArray(value))heard=value.slice(-40);}catch(_){}
+- const stopSound=()=>{clearTimeout(soundExpiry);clearInterval(soundRepeat);soundRepeat=0;soundRequest=null;soundPlayer?.pause();for(const node of soundNodes){try{node.stop?.();node.disconnect?.();}catch(_){}}soundNodes=[];};
++ const stopSound=()=>{clearTimeout(soundExpiry);clearInterval(soundRepeat);soundRepeat=0;soundRequest=null;for(const node of soundNodes){try{node.stop?.();node.disconnect?.();}catch(_){}}soundNodes=[];};
+  const playSound=(force=false)=>{
+   // No mezclar avisos con conversación SIP, pestaña oculta ni audio bloqueado.
+   const status=phone.getPhoneStatus();
+-  if(!soundRequest||!audio||audio.state!=='running'||(soundPlayer&&soundPlayer.paused)||document.hidden||
++  if(!soundRequest||!audio||audio.state!=='running'||document.hidden||
+      !status.ready||status.active||Date.now()>=soundRequest.until)return;
+   const request=soundRequest,identity=request.key,reminder=request.plays>0;
+   if(!force&&request.plays===0&&heard.includes(identity))return;
+@@ -32,7 +32,7 @@
+     gain.gain.setValueAtTime(0,start);
+     gain.gain.linearRampToValueAtTime(volume,start+.035);
+     gain.gain.linearRampToValueAtTime(0,start+.26);
+-    oscillator.connect(gain);gain.connect(soundDestination||audio.destination);
++    oscillator.connect(gain);gain.connect(audio.destination);
+     oscillator.start(start);oscillator.stop(start+.27);soundNodes.push(oscillator,gain);
+    }
+    request.plays++;
+@@ -52,8 +52,7 @@
+    soundExpiry=setTimeout(stopSound,duration);
+    soundRepeat=setInterval(playSound,1000);
+   }
+-  if(soundPlayer?.paused)void soundPlayer.play().then(()=>playSound()).catch(()=>{if(audioButton)audioButton.hidden=false;});
+-  else playSound();
++  playSound();
+  };
+  const unlockAudio=event=>{
+   if(!event.isTrusted)return;
+@@ -62,22 +61,10 @@
+   try{
+    const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;
+    if(!audio||audio.state==='closed')audio=new Context({latencyHint:'interactive'});
+-   if(typeof audio.createMediaStreamDestination==='function'&&typeof window.Audio==='function'&&soundDestination?.context!==audio){
+-    soundPlayer?.pause();soundDestination=audio.createMediaStreamDestination();soundPlayer=new Audio();
+-    soundPlayer.srcObject=soundDestination.stream;soundPlayer.volume=1;soundPlayer.muted=false;
+-   }
+    const started=()=>{playSound(explicit);if(audioButton)audioButton.hidden=false;};
+-   // Mismo generador para Analista/Ventas. La salida es un consumidor real
+-   // de audio, con el dispositivo del timbre SDK si está disponible.
+-   const output=async()=>{
+-    if(soundPlayer){
+-     let sink='';try{sink=$('[data-shell-engine]')?.contentDocument?.getElementById('zdrm-incomingRing')?.sinkId||'';}catch(_){}
+-     if(typeof soundPlayer.setSinkId==='function'&&soundPlayer.sinkId!==sink){
+-      try{await soundPlayer.setSinkId(sink);}catch(error){if(!sink)throw error;await soundPlayer.setSinkId('');}
+-     }
+-     await soundPlayer.play();
+-    }else if(typeof audio.setSinkId==='function'&&audio.sinkId!==undefined&&audio.sinkId!=='')await audio.setSinkId('');
+-   };
++   // Salida WebAudio directa compartida: evita una segunda barrera autoplay
++   // y un sink heredado del iframe SDK. No toca el audio de la llamada.
++   const output=()=>typeof audio.setSinkId==='function'&&audio.sinkId!==undefined&&audio.sinkId!==''?audio.setSinkId(''):Promise.resolve();
+    const failed=()=>{const button=$('[data-availability-audio]');if(button)button.hidden=false;};
+    const resumed=audio.state!=='running'?audio.resume():Promise.resolve();
+    void resumed.then(output).then(started).catch(failed);
+@@ -107,9 +94,10 @@
+  const action=async(op,accion,extra={})=>(await request({id:op.id,version:op.version,accion,...extra})).solicitud;
+  const busy=()=>{const s=phone.getPhoneStatus();return !s.ready||s.active||s.pending;};
+  const cancel=async op=>{try{return await action(op,'CANCELAR');}catch(_){return null;}};
++ const matchesCall=(op,active=phone.getActiveCall())=>Boolean(op&&active&&[active.id,...(active.aliases||[])].map(String).includes(String(op.referencia)));
+  const render=()=>{
+   if(!source)return;
+-  const same=phone.getActiveCall()?.id===watched?.referencia;
++  const same=matchesCall(watched);
+   source.hidden=!watched||!same||['ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR'].includes(watched.estado);
+   if(!watched){source.removeAttribute('data-availability-state');return;}
+   const status=watched.estado,name=watched.responsable||'El responsable',seconds=Math.max(0,Number(watched.segundos)||0);
+@@ -128,16 +116,14 @@
+  const tick=async()=>{
+   if(polling||!incoming)return;polling=true;
+   try{
+-   const data=await request({accion:'POLL',id:watched?.id||0,disponible:busy()?'0':'1'});
+-   if(watched){
++   const snapshot=watched,active=phone.getActiveCall();
++   const data=await request({accion:'POLL',id:snapshot?.id||0,referencia:active?.id||'',disponible:busy()?'0':'1'});
++   // No pisar una solicitud creada mientras el polling estaba en vuelo.
++   if(watched===snapshot){
+     const next=data.solicitud;
+-    if(!next||Number(next.version)!==Number(watched.version)){store(null);}
+-    else{
+-     store(next);
+-     if(phone.getActiveCall()?.id!==next.referencia && ['PENDIENTE','ACEPTADA'].includes(next.estado)){
+-      const ended=await cancel(next);if(ended)store(ended);
+-     }
+-    }
++    if(next||snapshot)store(next||null);
++    // Una instantanea ausente o caducada del shell no acredita cierre PBX.
++    // La solicitud conserva su referencia hasta la respuesta o vencimiento.
+    }
+    const op=data.entrante;
+    if(Number.isFinite(data.devoluciones)&&data.devoluciones!==callbacks){if(callbacks>=0||data.devoluciones>0)refreshBell();callbacks=data.devoluciones;}
+@@ -179,10 +165,10 @@
+  $('[data-availability-transfer]')?.addEventListener('click',async()=>{
+   if(transferring||!watched||watched.estado!=='ACEPTADA')return;transferring=true;render();const op={...watched};
+   try{
+-   if(phone.getActiveCall()?.id!==op.referencia)throw Error('La llamada ya cambió.');
++   if(!matchesCall(op))throw Error('La llamada ya cambió.');
+    const r=await fetch(cfg.routingAuthorizeUrl,{method:'POST',credentials:'same-origin',body:new URLSearchParams({disponibilidad_id:op.id,version:op.version,csrf_token:cfg.routingCsrf})});
+    const data=await r.json();if(!r.ok||!data.ok)throw Error(data.mensaje||'No se pudo preparar la transferencia.');
+-   if(phone.getActiveCall()?.id!==op.referencia||!phone.requestAuthorizedTransfer(data.token))throw Error('La llamada cambió; no se envió la transferencia.');
++   if(!matchesCall(op)||!phone.requestAuthorizedTransfer(data.token))throw Error('La llamada cambió; no se envió la transferencia.');
+    store({...watched,estado:'ENVIANDO'});
+   }catch(e){$('[data-availability-source-copy]').textContent=e.message;}
+   finally{transferring=false;$('[data-availability-transfer]').disabled=false;}
+@@ -199,7 +185,7 @@
+   catch(error){$('[data-callback-feedback]').textContent=error.message;}
+   finally{acting=false;form.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=false);}
+  });
+- window.IMPE_AVAILABILITY={watch:store,cancel,pending:()=>Boolean(watched&&phone.getActiveCall()?.id===watched.referencia&&['PENDIENTE','ACEPTADA','ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR','DEVOLUCION'].includes(watched.estado)),tick};
++ window.IMPE_AVAILABILITY={watch:store,cancel,pending:()=>Boolean(watched&&matchesCall(watched)&&['PENDIENTE','ACEPTADA','ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR','DEVOLUCION'].includes(watched.estado)),tick};
+  window.addEventListener('pagehide',()=>{stopSound();navigator.sendBeacon?.(cfg.availabilityUrl,new URLSearchParams({accion:'PRESENCIA',disponible:'0',csrf_token:cfg.routingCsrf}));});
+  window.setInterval(()=>void tick(),3000);window.setInterval(render,1000);void tick();
+ })();

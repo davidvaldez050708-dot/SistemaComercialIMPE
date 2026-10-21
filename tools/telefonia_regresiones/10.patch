@@ -1,0 +1,50 @@
+--- a/public/javascript/telefonia_sdk_entrantes_observador.js
++++ b/public/javascript/telefonia_sdk_entrantes_observador.js
+@@ -22,6 +22,7 @@
+         let observedSession = null;
+         let domRinging = false;
+         let declined = false, declinedSession = null;
++        const sameSession=(a,b)=>Boolean(a&&b&&(a===b||(a.id&&b.id&&String(a.id)===String(b.id))));
+ 
+         // El SDK actual expone una JsSIP.RTCSession. Consultar sus métodos
+         // públicos: las clases del botón y del input NO confirman respuesta.
+@@ -61,20 +62,18 @@
+ 
+         const check = function () {
+             if (stopped) return;
+-            const call = read();
++            const domCall = read();
++            const session = readSession();
++            // INVITE real no depende de que Zadarma dibuje sus clases CSS.
++            const liveInvite=session&&!session.isEnded()&&!session.isEstablished();
++            const call=domCall||(liveInvite?{
++                caller:String(session.remote_identity?.uri?.user||'').slice(0,40),
++                callerName:String(session.remote_identity?.display_name||'').slice(0,100)
++            }:null);
+             const wasDomRinging = domRinging;
+-            domRinging = Boolean(call);
+-            const session = readSession();
++            domRinging = Boolean(domCall);
+             if (declined) {
+-                if(!declinedSession&&session&&!session.isEnded()){
+-                    // El primer INVITE tras un PUSH rechazado pertenece al
+-                    // intento pendiente, no acredita otro timbrado.
+-                    declinedSession=session;observedSession=session;
+-                    hooks.onDeclinedSession?.();
+-                    if(session.isEnded())reportIdle();
+-                    return;
+-                }
+-                if (session && session !== declinedSession && !session.isEnded()) {
++                if (session && !sameSession(session,declinedSession) && !session.isEnded()) {
+                     declined=false;idleReported=true;
+                 } else {
+                     if (session?.isEnded()) reportIdle();
+@@ -84,7 +83,7 @@
+             // Zadarma recibe primero un PUSH: hace sonar y dibuja el widget.
+             // La nueva RTCSession puede no existir hasta pulsar Contestar.
+             // No dejar que una sesión anterior terminada bloquee ese timbrado.
+-            const newSession = session && session !== observedSession &&
++            const newSession = session && !sameSession(session,observedSession) &&
+                 !session.isEnded();
+             if (call && (!seenIncoming ||
+                 (idleReported && (!wasDomRinging || newSession)))) {

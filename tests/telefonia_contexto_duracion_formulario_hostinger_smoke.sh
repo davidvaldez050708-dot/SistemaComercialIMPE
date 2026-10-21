@@ -30,7 +30,7 @@ for f in app/services/TelefoniaAnalistaWebrtcService.php app/services/TelefoniaT
 node --check public/javascript/seguimiento_entrantes_analista.js
 node --check public/javascript/telefonia_analista_historial_pasivo.js
 grep -Fq 'TIMESTAMPDIFF(SECOND, fecha_inicio, fecha_fin) + 3' app/services/TelefoniaAnalistaWebrtcService.php
-grep -Fq 'INTERVAL 5 MINUTE' app/services/TelefoniaTransferenciaContextoService.php
+grep -Fq 'AND d.referencia = ?' app/services/TelefoniaTransferenciaContextoService.php
 grep -Fq 'data-incoming-confirmed' app/views/telefonia/resultado_analista_form.php
 bash -n tools/desplegar_contexto_duracion_formulario_hostinger.sh
 bash tools/desplegar_contexto_duracion_formulario_hostinger.sh --check | grep -Fq 'PRODUCCIÓN INTACTA'

@@ -18,7 +18,7 @@ $pbx('integral_existing_in',1100);$svc->registrar(1,['pbx_call_id'=>'integral_ex
 check(one('SELECT municipio_id FROM seguimientos_vinculacion WHERE id=1')===$oldMunicipality,'No modifica municipio de un expediente existente');
 
 $inspector=new TelefoniaGrabacionExpedienteTransferidaService($db);
-$record=function(string $pbxId,string $recordId)use($events){$events->registrar(['event'=>'NOTIFY_RECORD','pbx_call_id'=>$pbxId,'call_id_with_rec'=>$recordId,'received_at'=>date('Y-m-d H:i:s')]);};
+$record=function(string $pbxId,string $recordId)use($events){$events->registrar(['event'=>'NOTIFY_RECORD','pbx_call_id'=>$pbxId,'internal'=>'101','call_id_with_rec'=>$recordId,'received_at'=>date('Y-m-d H:i:s')]);};
 $inspect=function(string $pbxId,string $result='CONTACTADO',int $owner=1)use($db,$inspector){
     $q=$db->prepare("INSERT INTO interacciones_vinculacion (seguimiento_id,usuario_id,canal,resultado,proveedor_externo,id_externo,fecha_inicio) VALUES (1,?,'LLAMADA_IP',?,'ZADARMA',?,NOW())");
     $q->bind_param('iss',$owner,$result,$pbxId);$q->execute();$id=$db->insert_id;$q->close();

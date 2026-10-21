@@ -93,6 +93,57 @@ try {
  vreject(fn()=>$results->guardar(9,$delayed,'INTERESADO'),'Otro asesor no registra el resultado recuperado');
  $foreign=TelefoniaVentasLlamadasService::hechos([['evento'=>'NOTIFY_ANSWER','internal'=>'150'],['evento'=>'NOTIFY_END','internal'=>'100','payload_json'=>'{"last_internal":"101"}','duration'=>999]],'150');
  vcheck(!$foreign['finalizada']&&$foreign['segundos']===null,'Un último participante diferente no cierra la llamada del asesor');
+
+ // Saliente 100 → 150: sin usar número ni contador SIP como evidencia PBX.
+ require_once dirname(__DIR__).'/app/services/TelefoniaTransferenciaOperacionService.php';
+ $ops=new TelefoniaTransferenciaOperacionService($db);
+ foreach(['150','','100','101'] as $last){
+  $sdk='sdk-exact-current-123456-'.($last?:'global');
+  $ref='pbx-out-transfer-'.($last?:'global');
+  $route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>8,'extension'=>'150','referencia_llamada'=>$ref,'estado_id'=>17,'institucion_nombre'=>'Susan']);
+  $q=$db->prepare("INSERT INTO telefonia_disponibilidad(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,ruta_json,estado,expires_at,created_at,updated_at) VALUES (7,'100',8,'150',?,'+525551112233',?,'ENVIADA',UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())");$q->bind_param('ss',$ref,$route);$q->execute();$rid=$q->insert_id;$q->close();
+  $q=$db->prepare("INSERT INTO telefonia_transferencia_operaciones(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,modo,estado,evento_desde,created_at,updated_at) VALUES(7,'100',8,'150',?,'+525551112233','DIRECTA','SOLICITADA',0,UTC_TIMESTAMP(),UTC_TIMESTAMP())");$q->bind_param('s',$ref);$q->execute();$q->close();
+  vcheck($ops->paraDestinoConfirmado(8,$rid,$sdk)===null,'Disponibilidad por sí sola no vincula llamada');
+  $event($ref,'NOTIFY_OUT_START','100');$event($ref,'NOTIFY_ANSWER','150');
+  $op=$ops->paraDestinoConfirmado(8,$rid,$sdk);
+  vcheck($op&&$op['referencia']===$ref,'INVITE se vincula a solicitud exacta con respuesta propia viva');
+  vcheck($ops->paraDestinoConfirmado(9,$rid,'sdk-foreign-123456')===null,'Otro asesor no vincula la operación');
+  vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-another-123456')===null,'Otra sesión no reutiliza el vínculo');
+  $event($ref,'NOTIFY_OUT_END','100',180,['disposition'=>'answered']+($last!==''?['last_internal'=>$last]:[]));
+  $c=$svc->obtener(8,$ref,'150');
+  vcheck($c['finalizada']===($last!=='101'),'OUT_END explícito o global autorizado concilia; destino ajeno no');
+  vcheck($c['segundos']===null,'No copiar duración global del origen');
+  $listed=array_values(array_filter($svc->listar(8),fn($c)=>$c['pbx_call_id']===$ref))[0];
+  vcheck($listed['finalizada']===$c['finalizada'],'Historial y detalle coinciden tras cierre');
+  if($last!=='101'){$results->guardar(8,$ref,'SOLICITA_INFORMACION',['prospecto_nombre'=>'Susan']);vcheck($svc->obtener(8,$ref)['registro']['prospecto_nombre']==='Susan','Resultado exacto persiste tras nueva lectura');vreject(fn()=>$results->guardar(8,$ref,'SOLICITA_INFORMACION'),'Resultado no se duplica');}
+  $resolved=$svc->obtenerPorSdk(8,$sdk.'-external');
+  vcheck($resolved&&$resolved['pbx_call_id']===$ref&&in_array($sdk,$resolved['sdk_tokens'],true),'Alias externo resuelve únicamente su PBX y propietario persistidos');
+  vcheck($resolved['finalizada']===$c['finalizada'],'Resolver SDK no inventa el cierre');
+  vcheck($svc->obtenerPorSdk(9,$sdk)===null,'Otro asesor no recupera el SDK de la transferencia');
+  vcheck($svc->obtenerPorSdk(8,'sdk-unbound-current-123456')===null,'Un SDK no vinculado no elige el último pendiente');
+  vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-reuse-123456')===null,'Cierre no se reutiliza en nueva invitación');
+  vcheck($ops->paraDestinoConfirmado(8,$rid,$sdk)!==null,'SDK reservado recupera la misma referencia después del cierre');
+ }
+ // OUT_END del iniciador no debe acreditar un tramo receptor si llegó
+ // ANTES del ANSWER de la extensión; tampoco lo acredita un tercero.
+ $outOfOrder=TelefoniaVentasLlamadasService::hechos([
+  ['evento'=>'NOTIFY_OUT_START','internal'=>'100','payload_json'=>'{}'],
+  ['evento'=>'NOTIFY_OUT_END','internal'=>'100','last_internal'=>'100','payload_json'=>'{}'],
+  ['evento'=>'NOTIFY_ANSWER','internal'=>'150','payload_json'=>'{}']
+ ],'150','100');
+ vcheck(!$outOfOrder['finalizada'],'OUT_END previo a ANSWER no se atribuye a Ventas');
+ $noSource=TelefoniaVentasLlamadasService::hechos([
+  ['evento'=>'NOTIFY_ANSWER','internal'=>'150','payload_json'=>'{}'],
+  ['evento'=>'NOTIFY_OUT_END','internal'=>'100','last_internal'=>'100','payload_json'=>'{}']
+ ],'150','100');
+ vcheck(!$noSource['finalizada'],'No inventar cierre saliente sin OUT_START acreditado');
+ $foreignSource=TelefoniaVentasLlamadasService::hechos([
+  ['evento'=>'NOTIFY_OUT_START','internal'=>'100','payload_json'=>'{}'],
+  ['evento'=>'NOTIFY_ANSWER','internal'=>'150','payload_json'=>'{}'],
+  ['evento'=>'NOTIFY_OUT_END','internal'=>'100','last_internal'=>'101','payload_json'=>'{}']
+ ],'150','100');
+ vcheck(!$foreignSource['finalizada'],'Último participante ajeno no autoriza finalizar Ventas');
+
  // Reasignación: el tramo congelado conserva su propietario histórico.
  $db->query("UPDATE telefonia_extensiones SET usuario_id=9,created_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE),updated_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE extension='150'");
  vcheck($svc->obtener(8,'pbx-prospecto-001')['usuario_id']==8,'Mantiene atribución histórica');
@@ -100,5 +151,6 @@ try {
  $event('pbx-retardada-006','NOTIFY_INTERNAL');vreject(fn()=>$svc->obtener(9,'pbx-retardada-006'),'Evento antiguo no se atribuye a nuevo titular');
  vreject(fn()=>$svc->autorizar(10),'Analista no entra a atención comercial');
  vcheck($db->query("SHOW TABLES LIKE 'seguimientos_vinculacion'")->num_rows===0,'No crea expedientes ni requiere tablas de Vinculación');
+ require __DIR__.'/telefonia_ventas_etapa2_casos.php';
  echo "Ventas B: $checks comprobaciones DB aprobadas.\n";
 }finally{$db->select_db('mysql');$db->query("DROP DATABASE `$name`");$db->close();}

@@ -13,7 +13,8 @@ try{
     $svc=new TelefoniaTransferenciaOperacionService();
     if(($_SERVER['REQUEST_METHOD']??'')==='GET'){
         $id=(int)($_GET['id']??0);
-        $op=$id?$svc->obtener($user,$id):$svc->paraDestino($user,trim((string)($_GET['origen']??'')),trim((string)($_GET['sdk']??'')));
+        $request=(int)($_GET['solicitud_id']??0);
+        $op=$id?$svc->obtener($user,$id):($request?$svc->paraDestinoConfirmado($user,$request,trim((string)($_GET['sdk']??''))):$svc->paraDestino($user,trim((string)($_GET['origen']??'')),trim((string)($_GET['sdk']??''))));
         trResponder(['ok'=>true,'operacion'=>$op]);
     }
     if(($_SERVER['REQUEST_METHOD']??'')!=='POST')trResponder(['ok'=>false],405);

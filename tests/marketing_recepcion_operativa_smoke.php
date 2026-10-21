@@ -28,6 +28,19 @@ $events[]=eventoOperacion('foreign-call','NOTIFY_OUT_START','102');
 $events[]=eventoOperacion('bad-extension','NOTIFY_OUT_START','100');
 $events[]=eventoOperacion('bad-extension','NOTIFY_INTERNAL','<script>',['payload_json'=>'{"transfer_from":"100"}']);
 $calls=array_column(TelefoniaRecepcionMarketingService::agruparEventos($events,'100',true),null,'pbx_call_id');
+foreach (['101','150'] as $destino) {
+    $c=TelefoniaRecepcionMarketingService::agruparEventos([
+        eventoOperacion('out-last','NOTIFY_OUT_START','100'),
+        eventoOperacion('out-last','NOTIFY_OUT_END',$destino,['disposition'=>'answered','duration'=>40,'is_recorded'=>1,'payload_json'=>json_encode(['last_internal'=>$destino])])
+    ],'100',true)[0];
+    operarCheck($c['tipo']==='Saliente' && $c['estado']==='Transferida' && $c['destino_transferencia']===$destino,'OUT_END firmado conserva dirección y destino sin INTERNAL');
+    operarCheck($c['segundos']===40 && $c['tiene_grabacion'],'conservar duración y audio reportados');
+}
+$c=TelefoniaRecepcionMarketingService::agruparEventos([
+    eventoOperacion('last-unanswered','NOTIFY_OUT_START','100'),
+    eventoOperacion('last-unanswered','NOTIFY_OUT_END','100',['disposition'=>'no answer','payload_json'=>'{"last_internal":"150"}'])
+],'100',true)[0];
+operarCheck($c['estado']==='Sin respuesta','last_internal sin respuesta no acredita entrega');
 operarCheck($calls['transferred']['estado']==='Transferida' && $calls['transferred']['destino_transferencia']==='101',
     'saliente transferida muestra 101');
 operarCheck($calls['transferred']['tiene_grabacion'] && $calls['transferred']['grabacion_transferida'],

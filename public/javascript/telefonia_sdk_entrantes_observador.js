@@ -20,7 +20,11 @@
         let acceptanceRequestedUntil = 0;
         let connectedReported = false;
         let observedSession = null;
+        const listenedSessions = new WeakSet();
         let domRinging = false;
+        let declined = false, declinedSession = null, declinedIdle=false;
+        let sdkState='';
+        const sameSession=(a,b)=>Boolean(a&&b&&(a===b||(a.id&&b.id&&String(a.id)===String(b.id))));
 
         // El SDK actual expone una JsSIP.RTCSession. Consultar sus métodos
         // públicos: las clases del botón y del input NO confirman respuesta.
@@ -33,12 +37,38 @@
             } catch (_) { return null; }
         };
 
-        const reportIdle = function () {
+        const reportIdle = function (terminalEvidence = false, endedSession = null) {
             ringing = false;
             acceptanceRequestedUntil = 0;
             if (!idleReported) {
                 idleReported = true;
-                hooks.onIdle?.();
+                hooks.onIdle?.({
+                    sessionEnded: Boolean(terminalEvidence || observedSession?.isEnded()),
+                    pushEnded: Boolean(!observedSession && !connectedReported &&
+                        win.zdrmWebPhone?.callState === '' && !read()),
+                    sessionId: String(endedSession?.id || observedSession?.id || '')
+                });
+            }
+        };
+        // La instancia de Zadarma puede retirar webCallSession antes del
+        // siguiente muestreo (250 ms). Conservar el END real de la RTCSession
+        // mediante sus eventos públicos, sin alterar métodos del proveedor.
+        const watchSession = function (session) {
+            if (!session || listenedSessions.has(session) ||
+                typeof session.on !== 'function') return;
+            listenedSessions.add(session);
+            const ended = function () {
+                if (stopped || !seenIncoming ||
+                    !sameSession(session, observedSession)) return;
+                reportIdle(true, session);
+            };
+            session.on('ended', ended);
+            session.on('failed', ended);
+        };
+        const announceSession = function (session) {
+            if (seenIncoming && session?.direction === 'incoming' &&
+                !session.isEnded?.() && String(session.id || '')) {
+                hooks.onSessionBound?.({sessionId:String(session.id)});
             }
         };
 
@@ -60,16 +90,39 @@
 
         const check = function () {
             if (stopped) return;
-            const call = read();
-            const wasDomRinging = domRinging;
-            domRinging = Boolean(call);
+            const domCall = read();
+            const nativeState=String(win.zdrmWebPhone?.callState ?? '');
+            const pushInvite=Boolean(domCall && nativeState==='incoming' && sdkState!=='incoming');
+            sdkState=nativeState;
             const session = readSession();
+            // INVITE real no depende de que Zadarma dibuje sus clases CSS.
+            const liveInvite=session&&!session.isEnded()&&!session.isEstablished();
+            const call=domCall||(liveInvite?{
+                caller:String(session.remote_identity?.uri?.user||'').slice(0,40),
+                callerName:String(session.remote_identity?.display_name||'').slice(0,100)
+            }:null);
+            const wasDomRinging = domRinging;
+            domRinging = Boolean(domCall);
+            if (declined) {
+                if ((session && !sameSession(session,declinedSession) && !session.isEnded()) ||
+                    (declinedIdle && pushInvite)) {
+                    declined=false;idleReported=true;
+                } else {
+                    if(!domCall && win.zdrmWebPhone?.callState==='')declinedIdle=true;
+                    if (session?.isEnded()) reportIdle();
+                    return; // DOM residual no acredita una nueva invitación.
+                }
+            }
             // Zadarma recibe primero un PUSH: hace sonar y dibuja el widget.
             // La nueva RTCSession puede no existir hasta pulsar Contestar.
             // No dejar que una sesión anterior terminada bloquee ese timbrado.
-            const newSession = session && session !== observedSession &&
+            const newSession = session && !sameSession(session,observedSession) &&
                 !session.isEnded();
-            if (call && (!seenIncoming ||
+            // Una sesión nueva no requiere haber observado el reposo entre llamadas.
+            // En PUSH el SDK puede retirar y restaurar ringing antes del END PBX.
+            const freshPush = domCall && !wasDomRinging &&
+                (!observedSession || observedSession.isEnded());
+            if (call && (!seenIncoming || (newSession && liveInvite && observedSession) || freshPush ||
                 (idleReported && (!wasDomRinging || newSession)))) {
                 seenIncoming = true;
                 ringing = true;
@@ -79,12 +132,23 @@
                 connectedReported = false;
                 acceptanceRequestedUntil = 0;
                 observedSession = session && !session.isEnded() ? session : null;
-                hooks.onRinging(call);
+                watchSession(observedSession);
+                if (session?.id && liveInvite) call.sipSessionId=String(session.id);
+                if(pushInvite)call.pushInvitation=true;
+                if (hooks.onRinging(call) === false) {
+                    // El host aún no puede publicarla: reintentar, no consumirla.
+                    seenIncoming=false;ringing=false;observedSession=null;
+                } else {
+                    // PUSH puede existir antes de que Zadarma cree la RTCSession.
+                    announceSession(observedSession);
+                }
                 return;
             }
             if (!seenIncoming || idleReported) return;
             if (session && !session.isEnded() && !observedSession) {
                 observedSession = session;
+                watchSession(observedSession);
+                announceSession(observedSession);
             }
             // Evaluar el fin ANTES que la respuesta y antes del DOM: el SDK
             // puede conservar incoming, ringing o el reloj después del cierre.
@@ -100,7 +164,10 @@
                 acceptanceRequestedUntil = 0;
                 if (!connectedReported) {
                     connectedReported = true;
-                    hooks.onConnected?.();
+                    // Algunos flujos ya pasaron a in-progress por PBX antes
+                    // de que JsSIP anunciara la sesión establecida.
+                    announceSession(observedSession);
+                    hooks.onConnected?.({sessionId:String(observedSession?.id||'')});
                 }
                 return;
             }
@@ -158,6 +225,9 @@
             },
             isRinging: function () { return ringing; },
             isConnected: function () { return connectedReported && !idleReported; },
+            checkNow: check,
+            markDeclined: function (session=readSession()) { declined=true;declinedIdle=false;declinedSession=session;ringing=false;if(declinedSession?.isEnded())reportIdle(); },
+            allowNewInvitation: function () { declined=false;declinedSession=null;idleReported=true;observedSession=null; },
             markAnswerRequested: function () {
                 if (!seenIncoming) return false;
                 acceptanceRequestedUntil = Date.now() + 12000;

@@ -3,6 +3,14 @@
 # y ejecutando la misma publicación dos veces sin duplicación.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# El publicador histórico sólo corresponde a la época en que Recepción
+# vivía en Inicio. La pantalla actual está en Mis llamadas: verificar
+# esa migración real sin intentar aplicar fragmentos obsoletos.
+if ! grep -Fq "require __DIR__ . '/../telefonia/recepcion_marketing.php';" "$ROOT/app/views/dashboard/marketing.php"; then
+    php "$ROOT/tests/telefonia_marketing_recepcion_integrada_smoke.php"
+    echo 'Marketing recepción: ruta actual validada; publicador histórico no aplicable'
+    exit 0
+fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 SRC="$ROOT"

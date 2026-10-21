@@ -32,7 +32,7 @@ $checks = [
         !str_contains($phoneJs, 'const incomingInShell = Boolean(state?.active)') &&
         str_contains($phoneJs, "getHostMode() === 'embedded'"),
     'Se muestra modal CRM, no panel blanco al entrar llamada' =>
-        str_contains($shellJs, 'const customVisible = (incoming || finishedSdk || finishedIncoming || shownOutgoing)') &&
+        str_contains($shellJs, 'const customVisible = !callbackRegistration && (incoming || finishedIncoming || shownOutgoing)') &&
         str_contains($shellJs, "incomingPanel.hidden = !customVisible") &&
         str_contains($shellView, 'data-incoming-answer') &&
         str_contains($shellView, 'data-incoming-hangup') &&
@@ -45,7 +45,8 @@ $checks = [
         str_contains($hostView, 'telefonia_entrantes_bridge.js') &&
         str_contains($shellJs, 'providerBridge()?.answer()') &&
         str_contains($shellJs, 'providerBridge()?.hangup()') &&
-        str_contains($hostJs, 'incomingBridge?.mute(nextMuted)') &&
+        str_contains($hostJs, 'const setMuted = function (value)') &&
+        str_contains($hostJs, 'const tracks = syncMicrophone();') &&
         str_contains($hostJs, 'nuevaLlamadaEntrante ? false : Boolean(state.muted)'),
     'Sin reconocimiento visual por CSS o color de iconos' =>
         !str_contains($read('public/javascript/telefonia_entrantes_bridge.js'), 'querySelectorAll') &&
@@ -69,7 +70,7 @@ $checks = [
     'Sin mensaje permanente ni enlace Zadarma' =>
         !str_contains($shellView, 'data-incoming-provider') &&
         !str_contains($shellJs, 'El teléfono está conectando sus controles') &&
-        str_contains($shellJs, "notice.hidden = !(actionNotice || sdkNotice)"),
+        str_contains($shellJs, "notice.hidden = !actionNotice || incomingCompact"),
     'Cada timbrado comienza en cero' =>
         str_contains($hostJs, "state.phase === 'incoming-ringing') return 0;") &&
         str_contains($hostJs, 'duration: answered') &&
@@ -82,7 +83,8 @@ $checks = [
         !str_contains($shellJs, 'Contestando… espera la confirmación') &&
         str_contains($shellJs, 'const finishing = shownOutgoing') &&
         str_contains($shellJs, "pendingIncomingAction = {") &&
-        str_contains($shellJs, "const finishingIncoming = incoming && pending === 'hangup'") &&
+        str_contains($shellJs, "const finishingIncoming = incoming &&") &&
+        str_contains($shellJs, "pending === 'hangup' || state.phase === 'finishing'") &&
         str_contains($hostJs, 'actualizarEstadoTrasAccion'),
     'Salida y recepción comparten una sola instancia WebRTC' =>
         str_contains($phoneJs, "getHostMode() === 'embedded'") &&

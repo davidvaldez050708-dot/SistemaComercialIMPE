@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "base": "ec8564debc837005fa4ef6f1c4ecb0c419edf8ea",
+  "files": [
+    {
+      "path": "app/views/telefonia/shell.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "69450d0fd9a546b6a5553bf3da43eb8c64b0871bf9381d7f724ad6f08add47b8",
+      "variants": [
+        {
+          "label": "pr115-probado",
+          "before": "330188d4a8a9518898b068ca15ec017319717a418beeb7818c77e4efe56365ae",
+          "after": "69450d0fd9a546b6a5553bf3da43eb8c64b0871bf9381d7f724ad6f08add47b8",
+          "patch": "tools/ventas_etapa2_b/0000.patch",
+          "patch_sha256": "54d894335433c9d272ade89c5a15b9fa5c2f2e70b6a27d53a6271840b5d45e0d"
+        }
+      ],
+      "patch": "tools/ventas_etapa2_b/0000.patch",
+      "patch_sha256": "54d894335433c9d272ade89c5a15b9fa5c2f2e70b6a27d53a6271840b5d45e0d"
+    },
+    {
+      "path": "app/views/telefonia/disponibilidad.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "a7794d358344e760253ab11362e364ff0082a883856892ae89e70199a0f462d7",
+      "variants": [
+        {
+          "label": "pr115-probado",
+          "before": "79e6dcadae3e2dff7d19c125bcb06ee69c11bfbe5bb7f133c266b9d55680d837",
+          "after": "a7794d358344e760253ab11362e364ff0082a883856892ae89e70199a0f462d7",
+          "patch": "tools/ventas_etapa2_b/0001.patch",
+          "patch_sha256": "19f135d558daea3e4ad08a75388c16238d9eaf2e54a17fe5dd52ad44bc57d5d5"
+        }
+      ],
+      "patch": "tools/ventas_etapa2_b/0001.patch",
+      "patch_sha256": "19f135d558daea3e4ad08a75388c16238d9eaf2e54a17fe5dd52ad44bc57d5d5"
+    },
+    {
+      "path": "app/views/telefonia/prospecto_venta.php",
+      "kind": "php",
+      "new": true,
+      "target_sha256": "e17a2a440e8f7087081154228bf25c104a030c7d60755e0022a5122118ec90e4",
+      "variants": []
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_prospecto.js",
+      "kind": "js",
+      "new": true,
+      "target_sha256": "b002efcb0690db16a6f5ee264a3049a04ab1184f1ada0a0d16a5b658f76ca38f",
+      "variants": []
+    },
+    {
+      "path": "public/javascript/telefonia_disponibilidad.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "9e2b3569bae359ffcfdfdf3bf04d1d61ed7123335689a9c09bc4914a0d61709b",
+      "variants": [
+        {
+          "label": "pr115-probado",
+          "before": "a837b751650e3f999b3841f36049b31d34bae340c727f1ecd4d05208f582c9f5",
+          "after": "9e2b3569bae359ffcfdfdf3bf04d1d61ed7123335689a9c09bc4914a0d61709b",
+          "patch": "tools/ventas_etapa2_b/0002.patch",
+          "patch_sha256": "8c8619ca51e056cf694723344cbec1ce7651dde8a84568e4ce5f290ba8bc3b00"
+        }
+      ],
+      "patch": "tools/ventas_etapa2_b/0002.patch",
+      "patch_sha256": "8c8619ca51e056cf694723344cbec1ce7651dde8a84568e4ce5f290ba8bc3b00"
+    },
+    {
+      "path": "public/javascript/telefonia_host.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "6e2d075c07b7009b113ba3847bd686043b1722a528c3717db7ecb04d1afe2032",
+      "variants": [
+        {
+          "label": "pr115-probado",
+          "before": "a3ced2ba85ec095aa484de19ae0cf400f8d01013e90fdf9064c88c92aa77e98d",
+          "after": "6e2d075c07b7009b113ba3847bd686043b1722a528c3717db7ecb04d1afe2032",
+          "patch": "tools/ventas_etapa2_b/0003.patch",
+          "patch_sha256": "03b77cbc9d2858e529cf8d75bc7cc1b5fa4790896f1c16ea6d20632d0a706b1a"
+        },
+        {
+          "label": "hostinger-sdk-rescate-20261020",
+          "before": "f1a9ce36b693fdff2809ad31560e2d681671c77ab025ca7e9f216b9b161278a3",
+          "after": "56f6484c7ae5a9e9344aa78570fe4017f71b2a4afff83292fe10ba73bcc7dc45",
+          "patch": "tools/ventas_etapa2_b/0007.patch",
+          "patch_sha256": "c3e249f426194ac374f0c7722f642651e99557e400a7bb21714ce43621a4e63c"
+        }
+      ],
+      "patch": "tools/ventas_etapa2_b/0003.patch",
+      "patch_sha256": "03b77cbc9d2858e529cf8d75bc7cc1b5fa4790896f1c16ea6d20632d0a706b1a",
+      "production_fixture": "tools/ventas_etapa2_b/hostinger-host-before.js"
+    },
+    {
+      "path": "public/javascript/telefonia_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "07e6a1a4a848576d4173fadae65ef9dfc5712b149e84293d66567b5a3b410b7a",
+      "variants": [
+        {
+          "label": "pr115-probado",
+          "before": "06a8e494c3fec65ef7c10284d34c70ef5d0e7eb8ab01e5caaffb7fa36d3d480a",
+          "after": "07e6a1a4a848576d4173fadae65ef9dfc5712b149e84293d66567b5a3b410b7a",
+          "patch": "tools/ventas_etapa2_b/0004.patch",
+          "patch_sha256": "a41a84e027e5e86744ba753f35e747fe75138737fdf3b20e349486c96c41fe1e"
+        },
+        {
+          "label": "hostinger-c-comentarios-conservados",
+          "before": "92c9265ababa37c8159c3f8028a515226e6b5d366a986ce3d1d5abd036cd589f",
+          "after": "03bb3751280a2d1800caea95f4a18c4d8a4dc7f82944c4e13f73d1f6bfe276cd",
+          "patch": "tools/ventas_etapa2_b/0005.patch",
+          "patch_sha256": "a41a84e027e5e86744ba753f35e747fe75138737fdf3b20e349486c96c41fe1e"
+        }
+      ],
+      "patch": "tools/ventas_etapa2_b/0004.patch",
+      "patch_sha256": "a41a84e027e5e86744ba753f35e747fe75138737fdf3b20e349486c96c41fe1e",
+      "production_fixture": "tools/ventas_etapa2_b/hostinger-shell-before.js"
+    },
+    {
+      "path": "public/javascript/telefonia_shell_navegacion.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "b0c49938fe712402f7f2ea709ba64dbe192b33b661cdc31ffdbf72186a6255da",
+      "variants": [
+        {
+          "label": "pr115-probado",
+          "before": "ccc68a450e6852efdf830be66d64bf047ce4194a541eed118d26bf7b57c8503f",
+          "after": "b0c49938fe712402f7f2ea709ba64dbe192b33b661cdc31ffdbf72186a6255da",
+          "patch": "tools/ventas_etapa2_b/0006.patch",
+          "patch_sha256": "217ecffb80d47bcc7589a7d96855dc378d420ab5a5d82e0631bf31d2e2c3471f"
+        }
+      ],
+      "patch": "tools/ventas_etapa2_b/0006.patch",
+      "patch_sha256": "217ecffb80d47bcc7589a7d96855dc378d420ab5a5d82e0631bf31d2e2c3471f"
+    }
+  ]
+}

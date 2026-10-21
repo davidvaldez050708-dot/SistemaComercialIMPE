@@ -121,4 +121,49 @@ for (let i=0;i<5;i++) interval();
 assert.equal(transferred.at(-1),'idle');
 assert.equal(second.isConnected(),false);
 second.stop();
+// Rechazo: ni un DOM residual ni su parpadeo producen otra invitación.
+value.inputIncoming=true;value.ringing=true;ended=false;
+const rejectedEvents=[];
+const rejected=factory.create(doc,{onRinging:()=>rejectedEvents.push('ring'),onStopped(){},onIdle:()=>rejectedEvents.push('idle')});
+rejected.markDeclined();for(let i=0;i<20;i++)interval();
+value.ringing=false;interval();value.ringing=true;interval();
+assert.deepEqual(rejectedEvents,['ring']);
+ended=true;interval();assert.deepEqual(rejectedEvents,['ring','idle']);
+doc.defaultView.zdrmWebPhone.webCallSession={direction:'incoming',isEstablished:()=>false,isEnded:()=>false};
+interval();assert.deepEqual(rejectedEvents,['ring','idle','ring'],'Nueva RTCSession del mismo número sí se ofrece');
+rejected.stop();
+doc.defaultView.zdrmWebPhone.webCallSession=null;
+let lateInvites=0,newRings=0;
+const late=factory.create(doc,{onRinging:()=>newRings++,onStopped(){},onDeclinedSession:()=>lateInvites++});
+late.markDeclined();doc.defaultView.zdrmWebPhone.webCallSession={direction:'incoming',isEstablished:()=>false,isEnded:()=>false};
+interval();interval();assert.equal(lateInvites,0,'Sin identidad SIP previa no auto rechazar un INVITE nuevo');assert.equal(newRings,2);
+late.stop();
+for(const extension of ['101','150']){
+ value.inputIncoming=false;value.ringing=false;let rings=0;
+ const sip={id:'invite-'+extension,direction:'incoming',remote_identity:{uri:{user:'100'},display_name:'Recepción'},isEstablished:()=>false,isEnded:()=>false};
+ doc.defaultView.zdrmWebPhone.webCallSession=sip;
+ const noDom=factory.create(doc,{onRinging:call=>{rings++;assert.equal(call.caller,'100');},onStopped(){}});
+ assert.equal(rings,1,'INVITE válido sin clases nativas muestra llamada '+extension);
+ for(let i=0;i<10;i++)interval();assert.equal(rings,1);
+ doc.defaultView.zdrmWebPhone.webCallSession={...sip,id:sip.id+'-replacement'};
+ interval();assert.equal(rings,2,'INVITE nuevo se publica sin esperar idle/END anterior');
+ doc.defaultView.zdrmWebPhone.webCallSession=sip;
+ interval();assert.equal(rings,3);
+ noDom.markDeclined();doc.defaultView.zdrmWebPhone.webCallSession={...sip};interval();assert.equal(rings,3,'Mismo ID SIP no se reofrece por recrear el objeto');
+ doc.defaultView.zdrmWebPhone.webCallSession={...sip,id:sip.id+'-new'};interval();assert.equal(rings,4,'Nuevo INVITE del mismo número se admite');noDom.stop();
+}
 console.log('Observador SDK Analista: OK (timbrado, aceptación asíncrona, sin falso perdido)');
+
+value.inputIncoming=false;value.ringing=false;doc.defaultView.zdrmWebPhone.webCallSession=null;
+let attempts=0;const retry=factory.create(doc,{onRinging(){return ++attempts>1;},onStopped(){}});
+value.inputIncoming=true;value.ringing=true;interval();interval();interval();
+assert.equal(attempts,2,'Invitación no se consume si el host la rechaza provisionalmente');retry.stop();
+
+// OUT_START transferido puede llegar por PUSH sin INTERNAL ni RTCSession hasta Contestar.
+value.inputIncoming=false;value.ringing=false;doc.defaultView.zdrmWebPhone={callState:'',webCallSession:null};
+let pushRings=0;const push=factory.create(doc,{onRinging(){pushRings++;},onStopped(){}});
+value.inputIncoming=true;value.ringing=true;doc.defaultView.zdrmWebPhone.callState='incoming';interval();assert.equal(pushRings,1);
+push.markDeclined(null);value.ringing=false;interval();value.ringing=true;interval();assert.equal(pushRings,1,'DOM residual no basta');
+value.inputIncoming=false;value.ringing=false;doc.defaultView.zdrmWebPhone.callState='';interval();
+value.inputIncoming=true;value.ringing=true;doc.defaultView.zdrmWebPhone.callState='incoming';interval();
+assert.equal(pushRings,2,'Nuevo PUSH tras cancelación SDK confirmada no queda bloqueado esperando INTERNAL');push.stop();

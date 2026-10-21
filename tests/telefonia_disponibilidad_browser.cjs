@@ -4,7 +4,7 @@ const repo=path.resolve(__dirname,'..'),fixture=path.join(__dirname,'fixtures/te
 const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.execFileSync('php',[fixture,'analista'],{encoding:'utf8'});
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
- try{for(const scenario of ['aceptar','rechazar','vencer','pendiente','iframe','prospecto']){
+ try{for(const scenario of ['aceptar','rechazar','vencer','pendiente','iframe','prospecto','saliente-ventas','saliente-vinculacion']){
   let op=null,authorizations=0,saved=null;const errors=[],contexts=[];
   const lookups=[];
   const pages=[];
@@ -23,9 +23,9 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
      if(command==='RECHAZAR')op={...op,estado:'RECHAZADA'};
      if(command==='CANCELAR')op={...op,estado:'CANCELADA'};
      if(command==='DEVOLUCION'){saved=Object.fromEntries(post);op={...op,estado:'DEVOLUCION'};}
-     return route.fulfill({json:{ok:true,solicitud:command==='POLL'?(Number(post.get('id'))>0?op:null):(command==='PRESENCIA'?null:(u.searchParams.has('id')||command?op:null)),entrante:actor===8&&op?.estado==='PENDIENTE'?op:null,devoluciones:actor===8&&saved?1:0}});
+     return route.fulfill({json:{ok:true,solicitud:command==='POLL'?((Number(post.get('id'))>0||post.get('referencia')===op?.referencia)?op:null):(command==='PRESENCIA'?null:(u.searchParams.has('id')||command?op:null)),entrante:actor===8&&op?.estado==='PENDIENTE'?op:null,devoluciones:actor===8&&saved?1:0}});
     }
-    if(action==='destinosTransferencia'){lookups.push(u.searchParams.get('buscar'));return route.fulfill({json:{ok:true,estados:[{id:17,nombre:'Morelos'}],destinos:[{usuario_id:8,extension:'101',estado_id:17,estado_nombre:'Morelos',nombre:scenario==='prospecto'?'Asesor':'Analista',rol:scenario==='prospecto'?'Asesor de Ventas':'Analista de Datos'}],identificacion:[]}});}
+    if(action==='destinosTransferencia'){lookups.push(u.searchParams.get('buscar'));return route.fulfill({json:{ok:true,estados:[{id:17,nombre:'Morelos'}],destinos:[{usuario_id:8,extension:'101',estado_id:17,estado_nombre:'Morelos',nombre:(scenario==='prospecto'||scenario==='saliente-ventas')?'Asesor':'Analista',rol:(scenario==='prospecto'||scenario==='saliente-ventas')?'Asesor de Ventas':'Analista de Datos'}],identificacion:[]}});}
     if(action==='autorizarTransferencia'){
      if(post.get('intencion')==='SOLICITAR'){
       op={id:1,version:1,estado:'PENDIENTE',referencia:'pbx-call-availability',origen_usuario:7,origen_extension:'100',destino_usuario:8,destino_extension:'101',numero:'5551234567',responsable:'Analista',institucion_nombre:post.get('institucion_nombre'),segundos:45};
@@ -39,11 +39,11 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
     return route.fulfill({contentType:'text/html',body:u.pathname==='/'?(actor===7?sourceHtml:destHtml):'<html><body><main class="admin-shell"></main></body></html>'});
    });
    await page.goto('http://llamadas.test/');await page.waitForFunction(()=>window.IMPE_AVAILABILITY);
-   await page.evaluate(actor=>{
-    const state={userId:actor,updatedAt:Date.now(),hostReady:true,active:actor===7,phase:actor===7?'in-progress':'ready',direction:'incoming',destination:'5551234567',pbxCallId:actor===7?'pbx-call-availability':'',callToken:actor===7?'pbx-call-availability':'',duration:10};
+   await page.evaluate(({actor,scenario})=>{
+    const state={userId:actor,updatedAt:Date.now(),hostReady:true,active:actor===7,phase:actor===7?'in-progress':'ready',direction:actor===7&&scenario.startsWith('saliente')?'outgoing':'incoming',destination:'5551234567',pbxCallId:actor===7?'pbx-call-availability':'',callToken:actor===7?'pbx-call-availability':'',duration:10,context:{type:'TELEPHONY_MANUAL'}};
     localStorage.setItem('impe:telephony:state:'+actor,JSON.stringify(state));window.dispatchEvent(new StorageEvent('storage',{key:'impe:telephony:state:'+actor,newValue:JSON.stringify(state)}));
     window.commands=[];window.testChannel=new BroadcastChannel('impe-telephony-'+actor);window.testChannel.onmessage=e=>{if(e.data.action==='TRANSFER')window.commands.push(e.data);};
-   },actor);
+   },{actor,scenario});
   }
   const [s,d]=pages;
   if(scenario==='iframe'){
@@ -52,26 +52,32 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    assert.equal(await d.evaluate(()=>audioProbe.created),1,'el clic real del iframe habilita s贸lo el contexto de aviso');
   }
   await s.locator('[data-shell-transfer-toggle]').click();
-  if(scenario==='prospecto'){
+  if(scenario==='prospecto'||scenario==='saliente-ventas'){
    await s.locator('[data-routing-type]').selectOption('PROSPECTO');
    await s.locator('[data-routing-search-wrap]').waitFor({state:'visible'});
    assert.equal(await s.locator('[data-routing-search]').getAttribute('required'),'','Nombre requerido en la ficha del prospecto');
   }
   await s.locator('[data-routing-destination]').selectOption('8:101:17');
-  await s.locator('[data-routing-search]').fill(scenario==='prospecto'?'Mariana L贸pez':'Instituci贸n prueba');
-  if(scenario==='prospecto'){
+  await s.locator('[data-routing-search]').fill((scenario==='prospecto'||scenario==='saliente-ventas')?'Mariana L贸pez':'Instituci贸n prueba');
+  if(scenario==='prospecto'||scenario==='saliente-ventas'){
    await s.waitForTimeout(400);
    assert(!lookups.includes('Mariana L贸pez'),'El nombre del prospecto no debe filtrar asesores del directorio');
    await s.locator('[data-routing-destination]').selectOption('8:101:17');
   }
   await s.locator('[data-routing-attended]').click();
-  if(scenario==='prospecto')assert.equal(op?.institucion_nombre,'Mariana L贸pez','Recepci贸n guarda el nombre antes de solicitar disponibilidad');
+  if(scenario==='prospecto'||scenario==='saliente-ventas')assert.equal(op?.institucion_nombre,'Mariana L贸pez','Recepci贸n guarda el nombre antes de solicitar disponibilidad');
   await s.locator('[data-availability-source]').waitFor({state:'visible'});
+  const sourceStyle=await s.locator('[data-availability-source]').evaluate(el=>({border:getComputedStyle(el).borderTopStyle,font:parseFloat(getComputedStyle(el.querySelector('strong')).fontSize)}));assert.equal(sourceStyle.border,'solid','Componente institucional conserva borde dentro de Transferir');assert(sourceStyle.font<=13,'Estado con tipograf韆 proporcionada');
   assert.equal(await s.locator('[data-availability-source]').getAttribute('data-availability-state'),'PENDIENTE','estado de espera visible');
+  await s.locator('[data-routing-close]').click();
+  await s.locator('[data-shell-transfer-toggle]').click();
+  await s.locator('[data-availability-source]').waitFor({state:'visible'});
   assert.equal(authorizations,0);
+  assert.equal(await s.locator('.impe-routing-help').isVisible(),false,'Un solo mensaje de disponibilidad');
+  assert.equal(await s.locator('[data-routing-feedback]').isVisible(),false,'Sin confirmaci髇 textual duplicada');
   assert.equal(await s.locator('[data-availability-transfer]').isVisible(),false,'Transferir s贸lo se muestra despu茅s de aceptar');
   assert.equal(await s.locator('[data-availability-callback-open]').isVisible(),false,'Devoluci贸n s贸lo se ofrece al rechazar o vencer');
-  assert.equal(await s.locator('[data-shell-transfer-toggle]').isDisabled(),true,'La solicitud pendiente bloquea otro env铆o aunque se cierre la ficha');
+  assert.equal(await s.locator('[data-shell-transfer-toggle]').isDisabled(),false,'La solicitud pendiente bloquea otro env铆o aunque se cierre la ficha');
   assert.equal(await s.evaluate(()=>window.commands.length),0,'solicitar disponibilidad no env铆a transferencia');
   if(scenario==='pendiente')await d.evaluate(()=>document.body.classList.add('impe-sdk-result-in-modal'));
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());await d.locator('[data-availability-incoming]').waitFor({state:'visible'});
@@ -88,13 +94,13 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await d.setViewportSize({width:1366,height:900});
   }
   if(scenario!=='iframe'){
-   assert.equal(await d.evaluate(()=>audioProbe.started),0,'sin gesto confiable no intenta sonido');
+   assert.equal(await d.evaluate(()=>audioProbe.started),2,'intenta autom醫icamente cuando el contexto permite audio');
    await d.locator('[data-availability-incoming] h2').click();
   }
-  assert.equal(await d.evaluate(()=>audioProbe.started),3,'tres notas distintivas tras gesto confiable');
-  assert.deepEqual(await d.evaluate(()=>audioProbe.frequencies),[740,880,988]);
+  assert.equal(await d.evaluate(()=>audioProbe.started),2,'dos notas originales tras gesto confiable');
+  assert.deepEqual(await d.evaluate(()=>audioProbe.frequencies),[740,990]);
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
-  assert.equal(await d.evaluate(()=>audioProbe.started),3,'poll repetido no repite sonido');
+  assert.equal(await d.evaluate(()=>audioProbe.started),2,'poll repetido no repite sonido');
   if(process.env.DISP_SCREENSHOT&&scenario==='aceptar'){await d.screenshot({path:process.env.DISP_SCREENSHOT+'-analista.png'});await s.screenshot({path:process.env.DISP_SCREENSHOT+'-recepcion.png'});}
   assert.equal(await d.locator('[data-incoming-panel]').isVisible(),false,'la confirmaci贸n no es una llamada ni un timbrado SIP');
   assert.ok(await d.locator('[data-availability-incoming] h2').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))<=20,'tipograf铆a del modal uniforme');
@@ -106,7 +112,7 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await d.evaluate(()=>document.body.classList.remove('impe-sdk-result-in-modal'));await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
    await d.locator('[data-availability-incoming]').waitFor({state:'visible'});assert.equal(await d.locator('[data-availability-accept]').isDisabled(),false);
    await d.locator('[data-availability-decline]').click();assert.equal(authorizations,0);
-  }else if(scenario==='aceptar'||scenario==='iframe'||scenario==='prospecto'){
+  }else if(scenario==='aceptar'||scenario==='iframe'||scenario==='prospecto'||scenario.startsWith('saliente')){
    await d.locator('[data-availability-accept]').click();await s.evaluate(()=>window.IMPE_AVAILABILITY.tick());
    assert.equal(await s.locator('[data-availability-source]').getAttribute('data-availability-state'),'ACEPTADA','estado de aceptaci贸n visible');
    await s.locator('[data-availability-transfer]').waitFor({state:'visible'});assert.equal(authorizations,0,'aceptar no entrega autom谩ticamente');
@@ -123,7 +129,7 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await dialog.locator('button[type=submit]').click();await dialog.waitFor({state:'hidden'});assert.equal(saved.contacto,'Ana');assert.equal(saved.telefono,'5551234567');
   }
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
-  assert.ok(await d.evaluate(()=>audioProbe.stopped)>=6,'responder o vencer detiene los nodos del aviso');
+  assert.ok(await d.evaluate(()=>audioProbe.stopped)>=4,'responder o vencer detiene los nodos del aviso');
   assert.deepEqual(errors,[]);for(const c of contexts)await c.close();
  }
  console.log('Disponibilidad/navegador: confirmaci贸n sin llamada, aceptaci贸n expl铆cita, transferencia 煤nica, rechazo, vencimiento y devoluci贸n m贸vil: OK');

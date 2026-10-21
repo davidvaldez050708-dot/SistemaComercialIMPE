@@ -1,0 +1,193 @@
+{
+  "version": 1,
+  "base": "fcd23e19f78338df5c4740c2f1bc6497a8d74a3d",
+  "target": "dd6bbb16ea902c638a74d711096285afc4634db0",
+  "files": [
+    {
+      "path": "app/controllers/TelefoniaController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "f016768cd06f7d4bf17cbe282eef2e62600a3c3dd4aa106942525bf5d9b7ffd1",
+      "patch": "tools/telefonia_resultado_pbx/0.patch",
+      "patch_sha256": "aedd1417a76baed26ef1cce97f24ad483e445ca8a6e44ccee61c2ed76e6927ee",
+      "variants": [
+        {
+          "label": "telefonia-fcd23e19",
+          "before": "60adbf6c2ecd22d167975e94feb881ebf3ea3cdc63efa153155a4a614900f5b5",
+          "after": "f016768cd06f7d4bf17cbe282eef2e62600a3c3dd4aa106942525bf5d9b7ffd1",
+          "patch": "tools/telefonia_resultado_pbx/0.patch",
+          "patch_sha256": "aedd1417a76baed26ef1cce97f24ad483e445ca8a6e44ccee61c2ed76e6927ee"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaTransferenciaOperacionService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "752bc493508234199f5c5288c4f62c166ecd4a573ff32aba2f960dca083547c5",
+      "patch": "tools/telefonia_resultado_pbx/1.patch",
+      "patch_sha256": "ac267a75cc11ffe755a29a90bab5229975ba7afa408463f1516614c37d51b458",
+      "variants": [
+        {
+          "label": "telefonia-fcd23e19",
+          "before": "0deaa44354fbe6f76ae5fc71ae37182f3f8206075c5ea2dd0f4f1801c7cf4c6a",
+          "after": "752bc493508234199f5c5288c4f62c166ecd4a573ff32aba2f960dca083547c5",
+          "patch": "tools/telefonia_resultado_pbx/1.patch",
+          "patch_sha256": "ac267a75cc11ffe755a29a90bab5229975ba7afa408463f1516614c37d51b458"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaVentasLlamadasService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "6a823db8e41e05783af0d2c040d821ff1c7d777715f9b6f4c8827002e95d75f5",
+      "patch": "tools/telefonia_resultado_pbx/2.patch",
+      "patch_sha256": "38492b93873d54f2e5839eeb28b7d763d3321382b9bbdf6ab031780073c1cb7b",
+      "variants": [
+        {
+          "label": "telefonia-fcd23e19",
+          "before": "c080a1478148fc4e02144a6a97c6ad23d122056150a77f2838b8f40bbb3b3f36",
+          "after": "6a823db8e41e05783af0d2c040d821ff1c7d777715f9b6f4c8827002e95d75f5",
+          "patch": "tools/telefonia_resultado_pbx/2.patch",
+          "patch_sha256": "38492b93873d54f2e5839eeb28b7d763d3321382b9bbdf6ab031780073c1cb7b"
+        }
+      ]
+    },
+    {
+      "path": "app/views/telefonia/shell.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "f0571ad22a8218ce93c52af407c911e3f2ed8203f67decd28caf8d89260453ec",
+      "patch": "tools/telefonia_resultado_pbx/3.patch",
+      "patch_sha256": "35f9c2b1ea8ebe0269052d614827beff1bc5c9c8373b107d92792ac4c0849a6d",
+      "variants": [
+        {
+          "label": "telefonia-fcd23e19",
+          "before": "2196910e8271f4d0f01722bfbb2708a4717db25d364d496006556b4a34c33f68",
+          "after": "f0571ad22a8218ce93c52af407c911e3f2ed8203f67decd28caf8d89260453ec",
+          "patch": "tools/telefonia_resultado_pbx/3.patch",
+          "patch_sha256": "35f9c2b1ea8ebe0269052d614827beff1bc5c9c8373b107d92792ac4c0849a6d"
+        }
+      ]
+    },
+    {
+      "path": "prueba_telefonia/api/transferencia_operacion.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "5b271f1d4ae7930f3e4d64a2d5e0f8ac3a976d6f4f671fbaa2821645a9c7adf8",
+      "patch": "tools/telefonia_resultado_pbx/4.patch",
+      "patch_sha256": "122b639cc01d7a391d74d853177595661dd1bb596255446c2f2fd32722429fb7",
+      "variants": [
+        {
+          "label": "telefonia-fcd23e19",
+          "before": "22406b8d503a9d608418a5eed7ea394d4cbd51913c5f204cba8c037511b60ea9",
+          "after": "5b271f1d4ae7930f3e4d64a2d5e0f8ac3a976d6f4f671fbaa2821645a9c7adf8",
+          "patch": "tools/telefonia_resultado_pbx/4.patch",
+          "patch_sha256": "122b639cc01d7a391d74d853177595661dd1bb596255446c2f2fd32722429fb7"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_host.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "450daee26537b63dc3d9a5ba79cd724a0032807810761d74361996a755cd938e",
+      "patch": "tools/telefonia_resultado_pbx/5.patch",
+      "patch_sha256": "5464ffb03f7bb76acf3766378d09c132597f5116972177c6ae87229f233d5406",
+      "variants": [
+        {
+          "label": "telefonia-fcd23e19",
+          "before": "1aa6bb12e5e2b5f1329d07c8d34e6df18c0b8bcfbb926e384575e9febc7e146b",
+          "after": "450daee26537b63dc3d9a5ba79cd724a0032807810761d74361996a755cd938e",
+          "patch": "tools/telefonia_resultado_pbx/5.patch",
+          "patch_sha256": "5464ffb03f7bb76acf3766378d09c132597f5116972177c6ae87229f233d5406"
+        },
+        {
+          "label": "hostinger-revisado-conservado",
+          "before": "c90be008de6ad75fe83dc8ded71762011b2772b5b81025efe12216caf31d8415",
+          "after": "5689b0b6b8a3648c6c96d59138cb9aed53511a95f0569ca601d8b7087b4ce129",
+          "patch": "tools/telefonia_resultado_pbx/51.patch",
+          "patch_sha256": "db96b0bec1ba2de146770a57356e2ce615beb1c6d33de7ec06f8aa9e0e066e80"
+        }
+      ],
+      "production_fixture": "tools/telefonia_resultado_pbx/5-hostinger-before.js"
+    },
+    {
+      "path": "public/javascript/telefonia_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "d2d6fe9e9dbff29023f141a7acf363f967f395efc399324529259b904593b1ba",
+      "patch": "tools/telefonia_resultado_pbx/6.patch",
+      "patch_sha256": "c1d347416334fa553557043aeb53142e3c82209f119acc4da114d354660cad98",
+      "variants": [
+        {
+          "label": "telefonia-fcd23e19",
+          "before": "50ba6032de495a02802b30781732cb9629a217266222bccfa6abf61bc97efa0b",
+          "after": "d2d6fe9e9dbff29023f141a7acf363f967f395efc399324529259b904593b1ba",
+          "patch": "tools/telefonia_resultado_pbx/6.patch",
+          "patch_sha256": "c1d347416334fa553557043aeb53142e3c82209f119acc4da114d354660cad98"
+        },
+        {
+          "label": "hostinger-revisado-conservado",
+          "before": "fadbe6e732b81c6e2514b9f139ba757422f0d62385bac6e9763fa9b8783ac8e0",
+          "after": "d58be1108b0aae7b93f43c8271cda8ec614d70db874b0a0d7e2b4f47c7724037",
+          "patch": "tools/telefonia_resultado_pbx/61.patch",
+          "patch_sha256": "c1d347416334fa553557043aeb53142e3c82209f119acc4da114d354660cad98"
+        }
+      ],
+      "production_fixture": "tools/telefonia_resultado_pbx/6-hostinger-before.js"
+    },
+    {
+      "path": "public/javascript/telefonia_transferencia_runtime.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "4388b15d8c62d39e79953012a97b858aacd273cc7e8bbf14f056c0bae3970082",
+      "patch": "tools/telefonia_resultado_pbx/7.patch",
+      "patch_sha256": "dd5ba1fb9264c9a545a2a463492d8342dc3cc8368b32a82662e023e12059d75d",
+      "variants": [
+        {
+          "label": "telefonia-fcd23e19",
+          "before": "614c615bc094e110e3e6c2596e3af079e460ef73bf734639e9400e194250a3bb",
+          "after": "4388b15d8c62d39e79953012a97b858aacd273cc7e8bbf14f056c0bae3970082",
+          "patch": "tools/telefonia_resultado_pbx/7.patch",
+          "patch_sha256": "dd5ba1fb9264c9a545a2a463492d8342dc3cc8368b32a82662e023e12059d75d"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_prospecto.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "b64f756982658f08eb4a73a1d1f2a8054c2c0a403ebaff788bcd20bc7701b1b0",
+      "patch": "tools/telefonia_resultado_pbx/8.patch",
+      "patch_sha256": "08e9c4a27792c957dec55fe2c7bfda221ea1f28259dd972155aef96cde72dc7c",
+      "variants": [
+        {
+          "label": "telefonia-fcd23e19",
+          "before": "2ddb5f57ed91a436ec8c85730c73bbed96b30b77b7eee5f34cc46b80afceddc7",
+          "after": "b64f756982658f08eb4a73a1d1f2a8054c2c0a403ebaff788bcd20bc7701b1b0",
+          "patch": "tools/telefonia_resultado_pbx/8.patch",
+          "patch_sha256": "08e9c4a27792c957dec55fe2c7bfda221ea1f28259dd972155aef96cde72dc7c"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "aa8885733579ccb14971b7988432bc5c9ac922cfc1625ec7e460542deee505eb",
+      "patch": "tools/telefonia_resultado_pbx/9.patch",
+      "patch_sha256": "030bc7a67b9a0b1ecaa46c91b30fbc27b00a4bddef58054950ecb6f456013623",
+      "variants": [
+        {
+          "label": "telefonia-fcd23e19",
+          "before": "43a1d49c32487a63b8d1b86372ac3a4cd7456af37bd361a156d5b2795af97903",
+          "after": "aa8885733579ccb14971b7988432bc5c9ac922cfc1625ec7e460542deee505eb",
+          "patch": "tools/telefonia_resultado_pbx/9.patch",
+          "patch_sha256": "030bc7a67b9a0b1ecaa46c91b30fbc27b00a4bddef58054950ecb6f456013623"
+        }
+      ]
+    }
+  ]
+}

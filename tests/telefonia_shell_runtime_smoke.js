@@ -101,6 +101,7 @@ function boot(opts = {}) {
         Date:opts.dateClass || Date,Math,JSON,
         console
     });
+    vm.runInContext(fs.readFileSync('public/javascript/telefonia_numeros.js','utf8'),ctx);
     vm.runInContext(source,ctx);
     return {window:win,elements,classes,intervals,channels,windowEvents};
 }

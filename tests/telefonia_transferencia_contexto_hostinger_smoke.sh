@@ -26,7 +26,7 @@ node tests/telefonia_analista_resultado_transferido_smoke.js
 php -r '
 $s=file_get_contents("app/services/TelefoniaTransferenciaContextoService.php");
 foreach(["pbx_call_id = ? AND internal = ?","AND analista_id = ? AND estado_id = ?",
-  "c.destino_usuario_id = ? AND c.destino_extension = ?",
+  "d.destino_usuario = ? AND d.destino_extension = ?", "AND d.referencia = ?",
   "count(" . chr(36) . "rows) !== 1"] as $guard){
     if(strpos($s,$guard)===false)exit(1);
 }

@@ -33,6 +33,7 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
 <div hidden><select id="global-select-control"><option>Control del transformador global</option></select></div>
 <script>${fs.readFileSync(path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'),'utf8')}</script>
 <script>window.IMPE_CAN_CALL_OUT=true;window.IMPE_TELEPHONY_PERSISTENT={probe:async()=>({permite_salientes:true}),getState:()=>({active:false}),openDialer:()=>true};</script>
+<script>${read('public/javascript/telefonia_numeros.js')}</script>
 <script>${read('public/javascript/selectores_uniformes.js')}</script>
 <script>${read('public/javascript/telefonia_recepcion_marketing.js')}</script></body></html>`;
 
@@ -65,8 +66,20 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         });
         await page.goto('http://recepcion.test/');
         await page.evaluate(()=>document.fonts.ready);
-        await page.locator('[data-marketing-reception-details-toggle]').click();
-        await page.waitForFunction(()=>document.querySelectorAll('[data-marketing-result]').length===1);
+        // Recepción en Mis llamadas mantiene el historial visible por defecto.
+        // Los fixtures antiguos conservan el botón plegable.
+        const toggle=page.locator('[data-marketing-reception-details-toggle]');
+        if(await toggle.count())await toggle.click();
+        await page.waitForFunction(()=>document.querySelectorAll('[data-marketing-result]').length===1,
+            {timeout:10000}).catch(async error=>{
+            const info=await page.evaluate(()=>({
+                root:Boolean(document.querySelector('[data-marketing-reception]')),
+                rows:document.querySelector('[data-marketing-reception-rows]')?.innerText?.slice(0,800),
+                results:document.querySelectorAll('[data-marketing-result]').length,
+                dataUrl:document.querySelector('[data-marketing-reception]')?.getAttribute('data-history-url')
+            }));
+            throw new Error('Recepción no mostró resultado en simulación: '+JSON.stringify({info,errors})+' '+error.message);
+        });
         assert.equal(await page.locator('thead th').count(),9);
         const firstRow=page.locator('[data-marketing-reception-rows] > tr').first();
         assert.equal(await firstRow.locator('td').nth(4).innerText(),'Transferida','un único estado en su columna');

@@ -1,0 +1,36 @@
+--- a/app/services/TelefoniaVentasLlamadasService.php
++++ b/app/services/TelefoniaVentasLlamadasService.php
+@@ -171,6 +171,7 @@
+         if($code==='')return array_replace($out,['estado'=>'pendiente_resultado','texto'=>'Pendiente de resultado','detalle'=>'Registra lo ocurrido para distinguir una conversación de un buzón o una locución.']);
+         if(!empty($call['segmentos']))return array_replace($out,['disponible'=>true,'estado'=>'referencia_propia','texto'=>'Consultar grabación','detalle'=>'Referencia confirmada del tramo de tu extensión. El proveedor verifica el archivo al reproducir.']);
+         return match($call['audio_motivo']??'sin_referencia'){
++            'no_reportada'=>array_replace($out,['estado'=>'no_reportada','texto'=>'Sin grabación reportada','detalle'=>'La estadística del tramo propio no reporta una grabación. Puedes comprobarla de nuevo si el proveedor la prepara después.']),
+             'pendiente_referencia'=>array_replace($out,['estado'=>'pendiente_referencia','texto'=>'Preparando grabación','detalle'=>'La centralita indicó grabación, pero falta su referencia de audio.']),
+             'sin_tramo'=>array_replace($out,['estado'=>'sin_tramo','texto'=>'Pendiente de vinculación','detalle'=>'Hay un aviso de grabación de la llamada, pero no identifica un segmento propio de tu extensión.']),
+             'compartida','limite'=>array_replace($out,['estado'=>'por_verificar','texto'=>'Audio por verificar','detalle'=>'Las referencias recibidas no permiten identificar de forma inequívoca los segmentos de tu extensión.']),
+@@ -207,7 +208,13 @@
+         $row=$rows[0];$events=$this->rows('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id',[$ref]);
+         $row+=self::hechos($events,$row['extension']);
+         $result=$this->rows('SELECT * FROM telefonia_ventas_resultados WHERE usuario_id=? AND extension=? AND pbx_call_id=?',[$uid,$row['extension'],$ref]);
+-        $row['registro']=$result[0]??null;return $row;
++        $row['registro']=$result[0]??null;
++        if($this->db->query("SHOW TABLES LIKE 'telefonia_ventas_prospecto_llamada'")->num_rows){
++            $capture=$this->rows('SELECT datos_json FROM telefonia_ventas_prospecto_llamada WHERE usuario_id=? AND extension=? AND pbx_call_id=?',[$uid,$row['extension'],$ref]);
++            $row['captura_prospecto']=isset($capture[0])?(json_decode($capture[0]['datos_json'],true)?:null):null;
++        }
++        require_once __DIR__.'/TelefoniaVentasEvidenciaService.php';
++        return (new TelefoniaVentasEvidenciaService($this->db))->enriquecer([$row],$uid)[0];
+     }
+     public function listar(int $uid,array $filters=[],bool $conciliar=true): array {
+         if($conciliar)$this->sincronizar($uid);
+@@ -225,7 +232,9 @@
+             $row+=self::hechos($grouped[$row['pbx_call_id']]??[],$row['extension']);
+             $row['registro']=$row['registro_id']===null?null:array_intersect_key($row,array_flip(['resultado','observacion','prospecto_nombre','contacto_id','proxima_accion_at']));
+             unset($row['registro_id'],$row['resultado'],$row['observacion'],$row['prospecto_nombre'],$row['contacto_id'],$row['proxima_accion_at']);
+-        }unset($row);return $rows;
++        }unset($row);
++        require_once __DIR__.'/TelefoniaVentasEvidenciaService.php';
++        return (new TelefoniaVentasEvidenciaService($this->db))->enriquecer($rows,$uid);
+     }
+     private static function intervalo(array $filters): array {
+         $from=(string)($filters['desde']??date('Y-m-d',strtotime('-29 days')));$until=(string)($filters['hasta']??date('Y-m-d'));

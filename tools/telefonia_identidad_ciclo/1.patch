@@ -1,0 +1,22 @@
+--- a/public/javascript/telefonia_shell.js
++++ b/public/javascript/telefonia_shell.js
+@@ -705,6 +705,9 @@
+             const callbackPending=Boolean((finished||finishedIncoming)&&phoneState.context?.type==='DEVOLUCION'&&Number(phoneState.context.callbackAttempt)>0&&!callbackSaved.has(Number(phoneState.context.callbackAttempt)));
+             const callbackRegister=document.querySelector('[data-callback-register-finished]');if(callbackRegister)callbackRegister.hidden=!callbackPending;
+             if (closeFinished) closeFinished.hidden = !(finished || finishedIncoming)||callbackPending;
++            const uncertain=['recovering','finishing'].includes(phoneState.phase)&&phoneState.active;
++            if(uncertain){hangupButton.hidden=false;compactHangup.hidden=false;}
++            hangupButton.innerHTML='<i class="bi bi-telephone-x" aria-hidden="true"></i>'+ (uncertain?'Comprobar estado':'Colgar');
+             hangupButton.disabled = Boolean(pending) || Boolean(preview);
+             compactHangup.disabled = Boolean(pending) || Boolean(preview);
+             // Mismo icono, texto y estado activo del modal de Seguimiento.
+@@ -876,6 +879,9 @@
+     });
+     const hangupIncoming = function () {
+         if (!freshState(currentState) || !currentState.active) return;
++        if(['recovering','finishing'].includes(currentState.phase)){
++            providerBridge()?.recheck?.();actionNotice='Comprobando el estado; aún no se confirma el cierre.';render();return;
++        }
+         if (currentState.direction === 'outgoing') {
+             if (pendingOutgoingHangup) return;
+             const phone = crmPhone();

@@ -1,0 +1,67 @@
+--- a/public/javascript/telefonia_disponibilidad.js
++++ b/public/javascript/telefonia_disponibilidad.js
+@@ -10,6 +10,11 @@
+  const soundKey='impe:availability-chimes:'+cfg.userId;
+  const REMINDER_AFTER_MS=8000,REMINDER_MIN_REMAINING_MS=1000;
+  let audio=null,soundRequest=null,soundExpiry=0,soundRepeat=0,soundNodes=[],heard=[];
++ let audioMeter=null,audioError='',audioPeak=0,lastEmission=0;
++ const sdkRing=()=>{try{return $('[data-shell-engine]')?.contentDocument?.getElementById('zdrm-incomingRing')||null;}catch(_){return null;}};
++ const audioDiagnostic=()=>({context:audio?.state||'sin desbloquear',clock:audio?.currentTime||0,sink:audio?.sinkId??'predeterminado (API no disponible)',
++  output:audio?.getOutputTimestamp?.()||null,visible:!document.hidden,pending:Boolean(soundRequest),lastEmission,peak:audioPeak,error:audioError,
++  sdk:sdkRing()?{sink:sdkRing().sinkId||'',volume:sdkRing().volume,muted:sdkRing().muted}:null});
+  try{const value=JSON.parse(sessionStorage.getItem(soundKey)||'[]');if(Array.isArray(value))heard=value.slice(-40);}catch(_){}
+  const stopSound=()=>{clearTimeout(soundExpiry);clearInterval(soundRepeat);soundRepeat=0;soundRequest=null;for(const node of soundNodes){try{node.stop?.();node.disconnect?.();}catch(_){}}soundNodes=[];};
+  const playSound=(force=false)=>{
+@@ -17,7 +22,7 @@
+   const status=phone.getPhoneStatus();
+   if(!soundRequest||!audio||audio.state!=='running'||document.hidden||
+      !status.ready||status.active||Date.now()>=soundRequest.until)return;
+-  const request=soundRequest,identity=request.key,reminder=request.plays>0;
++  const request=soundRequest,identity=request.key,reminder=!force&&request.plays>0;
+   if(!force&&request.plays===0&&heard.includes(identity))return;
+   if(!force&&reminder&&(Date.now()<request.reminderAt||
+       request.until-Date.now()<=REMINDER_MIN_REMAINING_MS||status.pending))return;
+@@ -33,9 +38,12 @@
+     gain.gain.linearRampToValueAtTime(volume,start+.035);
+     gain.gain.linearRampToValueAtTime(0,start+.26);
+     oscillator.connect(gain);gain.connect(audio.destination);
++    if(audioMeter)gain.connect(audioMeter);
+     oscillator.start(start);oscillator.stop(start+.27);soundNodes.push(oscillator,gain);
+    }
+    request.plays++;
++   lastEmission=Date.now();
++   if(audioMeter)for(const delay of [120,420,700])setTimeout(()=>{try{const data=new Float32Array(audioMeter.fftSize);audioMeter.getFloatTimeDomainData(data);audioPeak=Math.max(audioPeak,Math.sqrt(data.reduce((sum,x)=>sum+x*x,0)/data.length));}catch(_){}},delay);
+    request.reminderAt=Date.now()+REMINDER_AFTER_MS;
+    if(!reminder){
+     heard=[...heard.filter(k=>k!==identity),identity].slice(-40);
+@@ -60,15 +68,15 @@
+   const explicit=event.currentTarget===audioButton;
+   try{
+    const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;
+-   if(!audio||audio.state==='closed')audio=new Context({latencyHint:'interactive'});
++   if(!audio||audio.state==='closed'){audio=new Context({latencyHint:'interactive'});audioMeter=audio.createAnalyser?.()||null;audioPeak=0;if(audioMeter){const silent=audio.createGain();silent.gain.value=0;audioMeter.connect(silent);silent.connect(audio.destination);}}
+    const started=()=>{playSound(explicit);if(audioButton)audioButton.hidden=false;};
+-   // Salida WebAudio directa compartida: evita una segunda barrera autoplay
+-   // y un sink heredado del iframe SDK. No toca el audio de la llamada.
+-   const output=()=>typeof audio.setSinkId==='function'&&audio.sinkId!==undefined&&audio.sinkId!==''?audio.setSinkId(''):Promise.resolve();
+-   const failed=()=>{const button=$('[data-availability-audio]');if(button)button.hidden=false;};
++   // Utilizar la salida efectiva del timbre SDK, cuando la API lo permite;
++   // en otros navegadores conservar la predeterminada y mostrar diagnóstico.
++   const output=async()=>{const sink=sdkRing()?.sinkId||'';if(typeof audio.setSinkId==='function'&&audio.sinkId!==sink){try{await audio.setSinkId(sink);}catch(error){if(!sink)throw error;await audio.setSinkId('');}}audioError='';};
++   const failed=error=>{audioError=String(error?.name||error?.message||'Audio bloqueado');if(audioButton)audioButton.hidden=false;const feedback=$('[data-availability-feedback]');if(feedback)feedback.textContent='El navegador no permitió reproducir el aviso. Pulsa Activar avisos sonoros y revisa la salida de audio del navegador.';};
+    const resumed=audio.state!=='running'?audio.resume():Promise.resolve();
+    void resumed.then(output).then(started).catch(failed);
+-  }catch(_){/* El aviso visual sigue disponible si el navegador restringe audio. */}
++  }catch(error){audioError=String(error?.name||'Audio no disponible');if(audioButton)audioButton.hidden=false;}
+  };
+  const audioButton=$('[data-availability-audio]');
+  audioButton?.addEventListener('click',unlockAudio);
+@@ -185,7 +193,7 @@
+   catch(error){$('[data-callback-feedback]').textContent=error.message;}
+   finally{acting=false;form.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=false);}
+  });
+- window.IMPE_AVAILABILITY={watch:store,cancel,pending:()=>Boolean(watched&&matchesCall(watched)&&['PENDIENTE','ACEPTADA','ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR','DEVOLUCION'].includes(watched.estado)),tick};
++ window.IMPE_AVAILABILITY={watch:store,cancel,audioDiagnostic,pending:()=>Boolean(watched&&matchesCall(watched)&&['PENDIENTE','ACEPTADA','ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR','DEVOLUCION'].includes(watched.estado)),tick};
+  window.addEventListener('pagehide',()=>{stopSound();navigator.sendBeacon?.(cfg.availabilityUrl,new URLSearchParams({accion:'PRESENCIA',disponible:'0',csrf_token:cfg.routingCsrf}));});
+  window.setInterval(()=>void tick(),3000);window.setInterval(render,1000);void tick();
+ })();

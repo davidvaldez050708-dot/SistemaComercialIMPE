@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "base": "9b80725d624ac561cfe468e71ab09212d431c8bd",
+  "target": "0dec983ae59942df197c845698bcb7b88f3e0838",
+  "files": [
+    {
+      "path": "public/javascript/telefonia_host.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "85e275795323a3cd94a74687f6c6d31f30f558ffcf37d8c5e4dbf5beeffb7c9c",
+      "patch": "tools/telefonia_identidad_ciclo/0.patch",
+      "patch_sha256": "0ba2fc171232eecbfadd5739bdccc90cdffa19ba8e4787cf5c4c1bacef494abb",
+      "variants": [
+        {
+          "label": "telefonia-9b80725d",
+          "before": "51c711f52b3e5c44ff59e7c43863a237146f514ec20ac8c8d88c7d09d06dcac0",
+          "after": "85e275795323a3cd94a74687f6c6d31f30f558ffcf37d8c5e4dbf5beeffb7c9c",
+          "patch": "tools/telefonia_identidad_ciclo/0.patch",
+          "patch_sha256": "0ba2fc171232eecbfadd5739bdccc90cdffa19ba8e4787cf5c4c1bacef494abb"
+        },
+        {
+          "label": "hostinger-revisado-conservado",
+          "before": "cf2e16d8c5a7197837b5be1ed1f78ce2f17aef61055f7d5ba50a94437ffde640",
+          "after": "0cec0df9bbafc286e569164d60eae83f185e28e6f9c1a5ef025eef1d86d676ed",
+          "patch": "tools/telefonia_identidad_ciclo/01.patch",
+          "patch_sha256": "7f8435d3a3ca46fa014c99f936eed995d67d32be0ee19a716972c531b5299745"
+        }
+      ],
+      "production_fixture": "tools/telefonia_identidad_ciclo/0-hostinger-before.js"
+    },
+    {
+      "path": "public/javascript/telefonia_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "6f37ce05dc76138a148263c8d6851c82bc90041b9dca8e14008eafea8ed77a08",
+      "patch": "tools/telefonia_identidad_ciclo/1.patch",
+      "patch_sha256": "80e4dd55361e56c50f31b4275cfa7a5a686466b9f87cae766822dd6d05ce34f4",
+      "variants": [
+        {
+          "label": "telefonia-9b80725d",
+          "before": "0cfb68a45e4d19c3dad7b4680d9213d91c6d698a6d4b06636ee72becfccbb183",
+          "after": "6f37ce05dc76138a148263c8d6851c82bc90041b9dca8e14008eafea8ed77a08",
+          "patch": "tools/telefonia_identidad_ciclo/1.patch",
+          "patch_sha256": "80e4dd55361e56c50f31b4275cfa7a5a686466b9f87cae766822dd6d05ce34f4"
+        },
+        {
+          "label": "hostinger-revisado-conservado",
+          "before": "b7f12192c598344112ce6f1444e5cad7b0825251b4d5461ec570a5207762fcf2",
+          "after": "7aaa36bb879c5f9ed79029d4ae58755a8c29c148450debb7f6f19d0e94f08913",
+          "patch": "tools/telefonia_identidad_ciclo/11.patch",
+          "patch_sha256": "80e4dd55361e56c50f31b4275cfa7a5a686466b9f87cae766822dd6d05ce34f4"
+        }
+      ],
+      "production_fixture": "tools/telefonia_identidad_ciclo/1-hostinger-before.js"
+    },
+    {
+      "path": "public/javascript/telefonia_sdk_entrantes_observador.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "d48e9accef856791ff78dd360976bc8328a9668907fa752fb62c3a9a456ca303",
+      "patch": "tools/telefonia_identidad_ciclo/2.patch",
+      "patch_sha256": "c8597d306dad6d0e249f439d7f9b14458541aaa16e2dfd71bcba229318de68dc",
+      "variants": [
+        {
+          "label": "telefonia-9b80725d",
+          "before": "443eae178dd53897c117ccdfdacc7838187ca3bb6c3f9a26b6daead57c6e6eff",
+          "after": "d48e9accef856791ff78dd360976bc8328a9668907fa752fb62c3a9a456ca303",
+          "patch": "tools/telefonia_identidad_ciclo/2.patch",
+          "patch_sha256": "c8597d306dad6d0e249f439d7f9b14458541aaa16e2dfd71bcba229318de68dc"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_transferencia_runtime.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "614c615bc094e110e3e6c2596e3af079e460ef73bf734639e9400e194250a3bb",
+      "patch": "tools/telefonia_identidad_ciclo/3.patch",
+      "patch_sha256": "1911bcb5dcc6249507bd62172af2d4ec3ecaaeb54351684144c5544795fd5ca8",
+      "variants": [
+        {
+          "label": "telefonia-9b80725d",
+          "before": "91ad4d71dfa1f3def4dbba6914d4860bc6b9a4b904a6c1d4e94f412c8e336442",
+          "after": "614c615bc094e110e3e6c2596e3af079e460ef73bf734639e9400e194250a3bb",
+          "patch": "tools/telefonia_identidad_ciclo/3.patch",
+          "patch_sha256": "1911bcb5dcc6249507bd62172af2d4ec3ecaaeb54351684144c5544795fd5ca8"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_entrantes_bridge.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "ecc63227f4cbe5dc4f76ed40fa8f890546cce63dfcebeaf1d9114e410acda6ad",
+      "patch": "tools/telefonia_identidad_ciclo/4.patch",
+      "patch_sha256": "9ace891cc1194c0751018fc686a646b7cdd3425e1e5f1119d251a5d5f63d1d0a",
+      "variants": [
+        {
+          "label": "telefonia-9b80725d",
+          "before": "c41f430a02de7a3ccb357db60fd59102f851a6a1064e05ef65a1b829fe2dfe8c",
+          "after": "ecc63227f4cbe5dc4f76ed40fa8f890546cce63dfcebeaf1d9114e410acda6ad",
+          "patch": "tools/telefonia_identidad_ciclo/4.patch",
+          "patch_sha256": "9ace891cc1194c0751018fc686a646b7cdd3425e1e5f1119d251a5d5f63d1d0a"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "22edf0433d4ace02847d3a3c2da18f5eff592dd2b248f44ed8c7ec30e974be39",
+      "patch": "tools/telefonia_identidad_ciclo/5.patch",
+      "patch_sha256": "0546b248d3ecfeeaeee05f09a5d647c8958709a0734a17d931ecdd27fcd3a82c",
+      "variants": [
+        {
+          "label": "telefonia-9b80725d",
+          "before": "1919757df9e77d98240da482585780f5e9040d652dda85128de1d2a72736478b",
+          "after": "22edf0433d4ace02847d3a3c2da18f5eff592dd2b248f44ed8c7ec30e974be39",
+          "patch": "tools/telefonia_identidad_ciclo/5.patch",
+          "patch_sha256": "0546b248d3ecfeeaeee05f09a5d647c8958709a0734a17d931ecdd27fcd3a82c"
+        }
+      ]
+    }
+  ]
+}

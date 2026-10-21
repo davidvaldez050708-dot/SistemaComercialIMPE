@@ -1,0 +1,28 @@
+--- a/app/services/TelefoniaVentasLlamadasService.php
++++ b/app/services/TelefoniaVentasLlamadasService.php
+@@ -184,11 +184,14 @@
+                     if(in_array($disposition,['answered','completed'],true))$answer=true;}
+             }
+         }
+-        $audio=self::evidenciaAudio($events,$ext);
++        require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
++        $transfer=TelefoniaPbxSegmentosService::transferencia($events,$ext,$source);
++        $allowed=$transfer['atendida']&&$transfer['finalizada']&&$transfer['origen']!==''?[$transfer['origen']]:[];
++        $audio=TelefoniaPbxSegmentosService::deEventos($events,$ext,$allowed);
+         return ['finalizada'=>$end,'conectada'=>$answer,'segundos'=>$end?$duration:null,
+             'estado_pbx'=>!$end?($answer?'En conversación':'Sin cierre confirmado'):
+                 ($answer?'Conectada':(['busy'=>'Ocupada','no answer'=>'Sin respuesta','no_answer'=>'Sin respuesta','cancel'=>'Cancelada','failed'=>'Fallida'][$disposition]??'Sin respuesta')),
+-            ]+$audio;
++            'audio_extensiones'=>$allowed]+$audio;
+     }
+     public function obtener(int $uid,string $ref,string $ext=''): array {
+         $this->autorizar($uid);$this->requerir();
+@@ -214,7 +217,7 @@
+             FROM telefonia_ventas_llamadas c LEFT JOIN telefonia_ventas_resultados r
+               ON r.usuario_id=c.usuario_id AND r.extension = BINARY c.extension AND r.pbx_call_id = BINARY c.pbx_call_id
+             WHERE c.usuario_id=? AND c.fecha BETWEEN ? AND ? ORDER BY c.fecha DESC,c.id DESC",[$uid,$from,$until]);
+-        $events=$this->rows("SELECT e.pbx_call_id,e.evento,e.internal,e.disposition,e.duration,e.call_id_with_rec,e.is_recorded,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_CONTAINS_PATH(e.payload_json,'one','$.duration') ELSE 0 END has_duration,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal')) ELSE NULL END last_internal FROM telefonia_zadarma_eventos e JOIN telefonia_ventas_llamadas c
++        $events=$this->rows("SELECT e.pbx_call_id,e.evento,e.internal,e.disposition,e.duration,e.call_id_with_rec,e.is_recorded,e.received_at,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.transfer_from')) ELSE NULL END transfer_from,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_CONTAINS_PATH(e.payload_json,'one','$.duration') ELSE 0 END has_duration,CASE WHEN JSON_VALID(e.payload_json) THEN JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal')) ELSE NULL END last_internal FROM telefonia_zadarma_eventos e JOIN telefonia_ventas_llamadas c
+             ON c.pbx_call_id = BINARY e.pbx_call_id AND c.usuario_id=? AND c.fecha BETWEEN ? AND ?
+             ORDER BY e.id",[$uid,$from,$until]);
+         $grouped=[];foreach($events as $event)$grouped[$event['pbx_call_id']][]=$event;
