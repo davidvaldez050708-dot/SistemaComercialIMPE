@@ -24,24 +24,34 @@
   if(!acceptedBound)acceptedBound={id:op.id,token};
   return op;
  };
- try{const data=JSON.parse(sessionStorage.getItem(key)||'[]');if(Array.isArray(data))pending=data.filter(x=>valid(x.ref)&&Date.now()-x.at<86400000).slice(-5);}catch(_){}
- const persist=()=>{try{sessionStorage.setItem(key,JSON.stringify(pending));}catch(_){}};
+ try{const data=JSON.parse(localStorage.getItem(key)||sessionStorage.getItem(key)||'[]');if(Array.isArray(data))pending=data.filter(x=>valid(x.ref)&&Date.now()-x.at<7*86400000).slice(-40);}catch(_){}
+ const persist=()=>{try{localStorage.setItem(key,JSON.stringify(pending.slice(-40)));sessionStorage.removeItem(key);}catch(_){}};
  const card=document.createElement('div');card.className='impe-availability-source';card.hidden=true;
  const name=document.createElement('strong'),hint=document.createElement('p');card.append(name,hint);
  panel.querySelector('.persistent-phone-origin').after(card);
  const button=document.createElement('button');button.type='button';button.className='persistent-phone-action is-primary';button.textContent='Registrar resultado comercial';button.dataset.salesOpen='1';button.hidden=true;
- panel.querySelector('.persistent-phone-actions').append(button);
+ const actions=panel.querySelector('.persistent-phone-actions'),close=actions?.querySelector('[data-incoming-close-finished]');
+ if(close)actions.insertBefore(button,close);else actions?.append(button);
  // Los pendientes se notifican desde la campana y los toasts compartidos del CRM.
  const announced=new Set();
  const refreshNotices=()=>{try{const win=crm?.contentWindow;win?.dispatchEvent(new win.Event('impe:phone-notices-refresh'));}catch(_){/* La consulta periódica sigue disponible tras navegar. */}};
  const remove=ref=>{const existed=pending.some(p=>p.ref===ref);phone.dismissFinishedCall?.(ref);pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
- const open=()=>{const task=pending[0];if(!task||phone.getPhoneStatus().active||!crm)return;
-  const url=new URL(cfg.salesHistoryUrl,location.href);url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);
+ const open=()=>{if(phone.getPhoneStatus().active||!crm)return;
+  const task=pending[pending.length-1];
+  const url=new URL(cfg.salesHistoryUrl,location.href);
+  // Sin referencia PBX confirmada sólo puede consultarse el historial.
+  if(!task){crm.src=url.href;return;}
+  url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);
   if(crm.src===url.href){crm.contentWindow?.postMessage({type:'IMPE_SALES_RESULT_OPEN',ref:task.ref,extension:task.extension},location.origin);return;}
   crm.src=url.href;
  };
  button.addEventListener('click',open);
- const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();button.hidden=!pending.length||active||form;};
+ const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();
+  const unlinkedFinish=!active&&state?.direction==='incoming'&&state?.phase==='incoming-finished'&&!valid(String(state.context?.transferReference||state.pbxCallId||''));
+  button.hidden=active||form||(!pending.length&&!unlinkedFinish);
+  button.textContent=pending.length?'Registrar resultado comercial':'Revisar llamadas';
+  button.dataset.salesPending=pending.length?'1':'0';
+ };
  window.IMPE_SALES_ATTENTION=Object.freeze({hasPending:()=>pending.length>0,openPending:open});
  async function lookup(ref,version){
   if(fetching||!valid(ref))return;fetching=true;const requestToken=phone.getCallState()?.callToken;
@@ -74,7 +84,9 @@
   }
   if(previous?.active&&!state.active&&valid(ref)&&['finished','incoming-finished'].includes(state.phase)){
    metadata=null;lastLookup=0;tries=0;
-   const needs=previous.direction==='outgoing'||previous.phase==='in-progress'||previous.context?.sdkConnected||previous.context?.pbxAnswered;
+   // También una llamada no contestada necesita poder consultar su resultado.
+   // La referencia PBX y la finalización se validan en el servidor.
+   const needs=previous.direction==='outgoing'||previous.direction==='incoming';
    if(needs&&!pending.some(p=>p.ref===ref)){
     pending.push({ref,extension:cfg.extension,at:Date.now(),callToken:state.callToken||previous.callToken});persist();
     crm?.contentWindow?.postMessage({type:'IMPE_PHONE_CALL_CHANGED'},location.origin);
