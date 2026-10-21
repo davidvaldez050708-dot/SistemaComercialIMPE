@@ -5,7 +5,7 @@ umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
 TARGET='dd6bbb16ea902c638a74d711096285afc4634db0'
-REVIEWED='RESOURCES_COMMIT'
+REVIEWED='8d3e520c34eeea969f8bc87bce341629f2ac6230'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/telefonia_resultado_pbx'
 SOURCE="${IMPE_TELEFONIA_RESULTADO_PBX_SOURCE:-$HOME/crm-publicaciones/telefonia-resultado-pbx-actual}"
