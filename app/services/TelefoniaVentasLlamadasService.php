@@ -193,6 +193,29 @@ final class TelefoniaVentasLlamadasService
                 ($answer?'Conectada':(['busy'=>'Ocupada','no answer'=>'Sin respuesta','no_answer'=>'Sin respuesta','cancel'=>'Cancelada','failed'=>'Fallida'][$disposition]??'Sin respuesta')),
             'audio_extensiones'=>$allowed]+$audio;
     }
+    /** Alias reservados en la operación exacta. No deduce identidad por teléfono/fecha. */
+    public function conVinculosSdk(int $uid,array $calls): array {
+        if(!$calls)return [];
+        $refs=array_values(array_unique(array_column($calls,'pbx_call_id')));
+        $links=$this->rows('SELECT o.referencia,o.destino_extension,o.sdk_consulta FROM telefonia_transferencia_operaciones o
+            JOIN telefonia_ventas_llamadas c ON c.usuario_id=o.destino_usuario AND c.extension=BINARY o.destino_extension AND c.pbx_call_id=BINARY o.referencia
+            WHERE c.usuario_id=? AND o.sdk_consulta IS NOT NULL AND o.referencia IN ('.implode(',',array_fill(0,count($refs),'?')).')',array_merge([$uid],$refs));
+        foreach($calls as &$call){
+            $matched=array_values(array_filter($links,static fn($o)=>$o['referencia']===$call['pbx_call_id']&&$o['destino_extension']===$call['extension']));
+            $sdk=count($matched)===1?(string)$matched[0]['sdk_consulta']:'';
+            $call['sdk_tokens']=preg_match('/^sdk-[a-z0-9-]{12,94}$/D',$sdk)?[$sdk,$sdk.'-external']:[];
+        }unset($call);
+        return $calls;
+    }
+    public function obtenerPorSdk(int $uid,string $sdk): ?array {
+        $this->autorizar($uid);$this->requerir();
+        if(!preg_match('/^sdk-[a-z0-9-]{12,110}$/D',$sdk))throw new InvalidArgumentException('Sesión telefónica inválida.');
+        $rows=$this->rows("SELECT c.pbx_call_id,c.extension FROM telefonia_transferencia_operaciones o
+            JOIN telefonia_ventas_llamadas c ON c.usuario_id=o.destino_usuario AND c.extension=BINARY o.destino_extension AND c.pbx_call_id=BINARY o.referencia
+            WHERE c.usuario_id=? AND (o.sdk_consulta=BINARY ? OR CONCAT(o.sdk_consulta,'-external')=BINARY ?) LIMIT 2",[$uid,$sdk,$sdk]);
+        if(count($rows)!==1)return null;
+        return $this->conVinculosSdk($uid,[$this->obtener($uid,$rows[0]['pbx_call_id'],$rows[0]['extension'])])[0];
+    }
     public function obtener(int $uid,string $ref,string $ext=''): array {
         $this->autorizar($uid);$this->requerir();
         if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$ref))throw new DomainException('Referencia comercial inválida.');

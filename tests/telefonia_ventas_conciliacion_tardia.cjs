@@ -13,7 +13,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
   u=new URL(u);if(u.searchParams.has('pendientes'))return {ok:true,json:async()=>({ok:true,pendientes:[]})};
   requests.push(u);const ref=u.searchParams.get('pbx_call_id')||'pbx-'+u.searchParams.get('solicitud_id');
   if(delay)await delay;
-  return {ok:true,json:async()=>({ok:true,llamada:confirmed?{pbx_call_id:ref,extension:'150',nombre:'actual',finalizada:true,conectada:true}:null})};
+  return {ok:true,json:async()=>({ok:true,llamada:confirmed?{pbx_call_id:ref,extension:'150',nombre:'actual',finalizada:true,conectada:true,sdk_tokens:[u.searchParams.get('sdk')].filter(Boolean)}:null})};
  }});
  const tick=async()=>{now+=11000;interval();await new Promise(r=>setImmediate(r));};
  const start=id=>{offer={id,nombre:'Persona '+id,referencia:'pbx-'+id,numero:'+525551112233',at:now,origen_extension:'100'};state={active:true,phase:'in-progress',direction:'incoming',destination:offer.numero,requestedAt:now/1000,callToken:'sdk-session-current-'+id,pbxCallId:'sdk-session-current-'+id,context:{type:'SDK_INCOMING'}};};

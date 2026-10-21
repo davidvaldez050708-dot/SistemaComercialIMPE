@@ -10,7 +10,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
    if(u.searchParams.has('pendientes'))return r.fulfill({json:{ok:true,pendientes:[]}});
    assert(!/^sdk-/.test(u.searchParams.get('pbx_call_id')||''));requests++;
    if(u.searchParams.has('solicitud_id')){assert.equal(u.searchParams.get('solicitud_id'),'91');assert.equal(u.searchParams.get('sdk'),'sdk-sales-late-1234567890');}
-   return r.fulfill({json:{ok:true,llamada:closed?{pbx_call_id:'pbx-sales-late-001',extension:'150',nombre:'Susan',finalizada:true,conectada:true,segundos:null}:null}});
+   return r.fulfill({json:{ok:true,llamada:closed?{pbx_call_id:'pbx-sales-late-001',extension:'150',nombre:'Susan',sdk_tokens:['sdk-sales-late-1234567890','sdk-sales-late-1234567890-external'],finalizada:true,conectada:true,segundos:null}:null}});
   }
   return r.fulfill({contentType:'text/html',body:u.pathname==='/'?html:'<html>Transporte y CRM simulados</html>'});
  });

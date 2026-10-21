@@ -416,13 +416,15 @@ class TelefoniaController
             if(($_GET['pendientes']??'')==='1'){
                 $calls=$svc->listar($uid,[],false);
                 $pending=array_values(array_filter($calls,static fn($c)=>$c['finalizada']&&!$c['registro']));
-                $this->responderJson(['ok'=>true,'pendientes'=>array_map(static fn($c)=>array_intersect_key($c,array_flip(['pbx_call_id','extension','finalizada','conectada'])),array_slice($pending,0,40))]);
+                $pending=$svc->conVinculosSdk($uid,array_slice($pending,0,40));
+                $this->responderJson(['ok'=>true,'pendientes'=>array_map(static fn($c)=>array_intersect_key($c,array_flip(['pbx_call_id','extension','finalizada','conectada','sdk_tokens'])),$pending)]);
             }
             if(isset($_GET['solicitud_id'])){
                 require_once __DIR__.'/../services/TelefoniaTransferenciaOperacionService.php';
                 $op=(new TelefoniaTransferenciaOperacionService())->paraDestinoConfirmado($uid,(int)$_GET['solicitud_id'],(string)($_GET['sdk']??''));
-                $this->responderJson(['ok'=>true,'llamada'=>$op?$svc->obtener($uid,$op['referencia'],$op['destino_extension']):null]);
+                $this->responderJson(['ok'=>true,'llamada'=>$op?$svc->conVinculosSdk($uid,[$svc->obtener($uid,$op['referencia'],$op['destino_extension'])])[0]:null]);
             }
+            if(isset($_GET['sdk']))$this->responderJson(['ok'=>true,'llamada'=>$svc->obtenerPorSdk($uid,(string)$_GET['sdk'])]);
             $this->responderJson(['ok'=>true,'llamada'=>$svc->obtener($uid,
                 (string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''))]);
         }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
