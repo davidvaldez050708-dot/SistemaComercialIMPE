@@ -44,3 +44,12 @@ for(const answered of [false,true])for(const ended of [false,true]){
  if(!ended)assert(polls>0);
 }
 console.log('Ciclo: END SIP propio libera timbrado/conversación; sin respuesta nunca recupera conversación; transporte incierto no fabrica END: OK');
+
+const hs=source.indexOf('    const hangup = async function () {'),he=source.indexOf('\n    const clearFinished',hs);
+(async()=>{for(const final of [false,true]){
+ const state={active:true,direction:'outgoing',phase:'in-progress',status:'in-progress',answeredAtMs:1};let closes=0;
+ const env={state,hangingUp:false,lastCall:null,publish:p=>Object.assign(state,p),endOutgoingWebrtc(){},sleep:async()=>{},fetchCallState:async()=>({status:final?'completed':'in-progress'}),isFinal:s=>s==='completed',finishCall(){closes++;state.active=false;},currentDuration:()=>12,console};
+ vm.runInNewContext(source.slice(hs,he)+';this.run=hangup;',env);await env.run();
+ assert.equal(closes,final?1:0);assert.equal(state.active,!final);
+ if(!final){assert.equal(state.phase,'finishing');assert.equal(env.hangingUp,false);}
+}console.log('Colgar saliente: espera agotada no fabrica éxito; sólo cierre PBX confirmado finaliza: OK');})().catch(e=>{console.error(e);process.exitCode=1;});
