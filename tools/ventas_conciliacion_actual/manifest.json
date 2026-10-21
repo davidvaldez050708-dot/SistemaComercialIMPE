@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "base": "3ec18c9e300be9fcee080d845c1d915381b0b46b",
+  "target": "b41f18bc209e0e5a752a6bea4ea1db813eb266a9",
+  "files": [
+    {
+      "path": "app/controllers/TelefoniaController.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "1a85dfddef529a41b22e244c51e8e65c4409c8009a52da1578e4c9f163a2bce2",
+      "patch": "tools/ventas_conciliacion_actual/0.patch",
+      "patch_sha256": "c9fe595e12036f702a648466e6643c36f341a7c2c071860f025b66102845f0bb",
+      "variants": [
+        {
+          "label": "entrega-3ec18c9e",
+          "before": "c8ad01bdc1e0538f1634b54acd956eccdf70b0237cb93baffa97a98cdb0d86eb",
+          "after": "1a85dfddef529a41b22e244c51e8e65c4409c8009a52da1578e4c9f163a2bce2",
+          "patch": "tools/ventas_conciliacion_actual/0.patch",
+          "patch_sha256": "c9fe595e12036f702a648466e6643c36f341a7c2c071860f025b66102845f0bb"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaVentasLlamadasService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "33690003822aa67446361bc554c3389eac4308a1aa72cffd739dd7e5608b6bc2",
+      "patch": "tools/ventas_conciliacion_actual/1.patch",
+      "patch_sha256": "1f93a0e2bcc33be863e917ca47b78bd783f97142c7e470e705e0992e54198649",
+      "variants": [
+        {
+          "label": "entrega-3ec18c9e",
+          "before": "a6980e2a5f8a3b9607ea91d066ddc5bd981f847600a5ed508ca7a9e68730a77b",
+          "after": "33690003822aa67446361bc554c3389eac4308a1aa72cffd739dd7e5608b6bc2",
+          "patch": "tools/ventas_conciliacion_actual/1.patch",
+          "patch_sha256": "1f93a0e2bcc33be863e917ca47b78bd783f97142c7e470e705e0992e54198649"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "b290c5f0acf8e53006c0797c22b451d8cdd5acb1e27dac79308c0592def2c45f",
+      "patch": "tools/ventas_conciliacion_actual/2.patch",
+      "patch_sha256": "cc0af69da9a4ef8c357021d66f61716f9202968010ad5caebd24ee8831996254",
+      "variants": [
+        {
+          "label": "entrega-3ec18c9e",
+          "before": "8b124e83134a57ccf1bf005de8fd7a5ab137f6c28d299640aa6348b0dc04ff56",
+          "after": "b290c5f0acf8e53006c0797c22b451d8cdd5acb1e27dac79308c0592def2c45f",
+          "patch": "tools/ventas_conciliacion_actual/2.patch",
+          "patch_sha256": "cc0af69da9a4ef8c357021d66f61716f9202968010ad5caebd24ee8831996254"
+        },
+        {
+          "label": "hostinger-comentario-revisado",
+          "before": "45519cd6d21ea17071edf41f2343772ffb7e5e2a43c76bc3b5389e4aead1ec79",
+          "after": "e29a865c093621a495f58aa30ccc17ecc9202b2d76c8e6fb42ebdd1b51098631",
+          "patch": "tools/ventas_conciliacion_actual/2.patch",
+          "patch_sha256": "cc0af69da9a4ef8c357021d66f61716f9202968010ad5caebd24ee8831996254"
+        }
+      ],
+      "fixture_replacements": [
+        [
+          "        // Abrir el formulario NO significa que MySQL haya guardado el resultado.\n        // Conservar el pendiente hasta la confirmación IMPE_ANALYST_RESULT_SAVED\n        // emitida por el iframe después del guardado real.",
+          "        // No descartar resultado antes de confirmación SQL."
+        ]
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "779d8a86494e97963778e907afab2cfe70a6ab8695e93f93992ca957187dc5e9",
+      "patch": "tools/ventas_conciliacion_actual/3.patch",
+      "patch_sha256": "56568a7022ed7e4e6f211764db1045b42cacd940c25ec7e9b6a00987493f2aae",
+      "variants": [
+        {
+          "label": "entrega-3ec18c9e",
+          "before": "5bc5db34d97f10c929b1fcf58060a2eebe130b8fac4e1c413949fdf0c0772bcb",
+          "after": "779d8a86494e97963778e907afab2cfe70a6ab8695e93f93992ca957187dc5e9",
+          "patch": "tools/ventas_conciliacion_actual/3.patch",
+          "patch_sha256": "56568a7022ed7e4e6f211764db1045b42cacd940c25ec7e9b6a00987493f2aae"
+        }
+      ]
+    }
+  ]
+}
