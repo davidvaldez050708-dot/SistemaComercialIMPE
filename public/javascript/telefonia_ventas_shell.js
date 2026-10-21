@@ -5,6 +5,25 @@
  const crm=document.getElementById('impeCrmFrame'),panel=document.querySelector('[data-incoming-panel]');
  const key='impe:sales-pending:'+cfg.userId,valid=ref=>/^[A-Za-z0-9_-]{6,100}$/.test(String(ref||''));
  let pending=[],previous=null,scope='',revision=0,fetching=false,metadata=null;
+ let acceptedBound=null;
+ const digits10=value=>String(value||'').replace(/\D/g,'').slice(-10);
+ // El nombre aceptado pertenece a una solicitud única, no al último
+ // número marcado. Se ata una sola vez a la nueva invitación SDK o a su
+ // referencia PBX exacta y no se hereda en llamadas consecutivas.
+ const acceptedFor= (state,ref)=>{
+  const op=window.IMPE_AVAILABILITY?.acceptedTransfer?.();
+  if(!op?.nombre||!valid(op.referencia)||!state?.active||state.direction!=='incoming')return null;
+  const token=String(state.callToken||''),started=Number(state.requestedAt||0)*1000;
+  if(!token||!started||started<op.at-20000||started>op.at+90000)return null;
+  if(ref&&ref!==op.referencia)return null;
+  if(!ref&&state.context?.type!=='SDK_INCOMING')return null;
+  const caller=digits10(state.destination),expected=digits10(op.numero);
+  if(caller.length===10&&expected.length===10&&caller!==expected)return null;
+  if(acceptedBound&&acceptedBound.id!==op.id)return null;
+  if(acceptedBound&&!ref&&acceptedBound.token!==token)return null;
+  if(!acceptedBound)acceptedBound={id:op.id,token};
+  return op;
+ };
  try{const data=JSON.parse(sessionStorage.getItem(key)||'[]');if(Array.isArray(data))pending=data.filter(x=>valid(x.ref)&&Date.now()-x.at<86400000).slice(-5);}catch(_){}
  const persist=()=>{try{sessionStorage.setItem(key,JSON.stringify(pending));}catch(_){}};
  const card=document.createElement('div');card.className='impe-availability-source';card.hidden=true;
@@ -45,6 +64,14 @@
   const ref=String(state.context?.transferReference||state.finalMetadata?.pbx_call_id||state.pbxCallId||'');
   const identity=String(state.callToken||'')+':'+ref;
   if(state.active&&identity!==scope){scope=identity;++revision;metadata=null;card.hidden=true;name.textContent='';hint.textContent='';lastLookup=0;tries=0;}
+  if(state.active&&!metadata){
+   const accepted=acceptedFor(state,ref);
+   if(accepted){
+    name.textContent=accepted.nombre;
+    hint.textContent='Nombre informado en disponibilidad · Ext. '+accepted.origen_extension;
+    card.hidden=false;
+   }
+  }
   if(previous?.active&&!state.active&&valid(ref)&&['finished','incoming-finished'].includes(state.phase)){
    metadata=null;lastLookup=0;tries=0;
    const needs=previous.direction==='outgoing'||previous.phase==='in-progress'||previous.context?.sdkConnected||previous.context?.pbxAnswered;
