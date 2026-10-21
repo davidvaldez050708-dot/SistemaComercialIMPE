@@ -1,6 +1,7 @@
 <?php
 
 require_once dirname(__DIR__, 2) . '/config/private_config.php';
+require_once __DIR__ . '/CorreoConexionOAuthService.php';
 
 final class CorreoCuentaConectadaService
 {
@@ -22,14 +23,20 @@ final class CorreoCuentaConectadaService
             }
             $account['correo'] = $address;
             $transport = $account['transport'] ?? 'smtp';
-            if (!in_array($transport, ['smtp', 'hostinger_api'], true)) { return $this->error('La cuenta tiene un transporte sin configurar.', 422); }
+            if (!in_array($transport, ['smtp', 'hostinger_api', 'gmail_api'], true)) { return $this->error('La cuenta tiene un transporte sin configurar.', 422); }
             if ($transport === 'smtp' && strcasecmp((string)($account['smtp_username'] ?? ''), $address) !== 0 &&
                 !in_array($address, array_map('strtolower', $account['authorized_from'] ?? []), true)) {
                 return $this->error('Falta la autorización de envío para el alias de esta cuenta.', 422);
             }
             if ($transport === 'hostinger_api') { $account = $this->hostinger($account); }
+            if ($transport === 'smtp' && ($account['auth_method'] ?? '') === 'oauth2' && empty($account['refresh_token'])) {
+                $connected = (new CorreoConexionOAuthService())->obtener($user, $from);
+                return $connected ? ['ok' => true, 'account' => $connected] : $this->requerida($from);
+            }
             return ['ok' => true, 'account' => $account + ['transport' => $transport]];
         }
+        $connected = (new CorreoConexionOAuthService())->obtener($user, $from);
+        if ($connected) { return ['ok' => true, 'account' => $connected]; }
         // Compatibilidad con la cuenta administrativa de Marketing, sin usar Gmail de recuperación.
         if ($marketing) {
             $legacy = impeLeerConfigPrivada('marketing_mail.local.php');
@@ -39,11 +46,12 @@ final class CorreoCuentaConectadaService
         }
         // La API existente sigue disponible para el buzón que pertenece al usuario real del CRM.
         $identity = $this->identityLoader ? ($this->identityLoader)($user) : $this->usuario($user);
-        if ($identity && (int)($identity['estado'] ?? 1) === 1 && strcasecmp((string)($identity['correo'] ?? ''), $from) === 0) {
+        $webmail = preg_match('/@(gmail|googlemail|outlook|hotmail|live|msn)\./i', $from);
+        if (!$webmail && $identity && (int)($identity['estado'] ?? 1) === 1 && strcasecmp((string)($identity['correo'] ?? ''), $from) === 0) {
             $legacy = $this->hostinger(['correo' => $from, 'transport' => 'hostinger_api'], $marketing);
             if (!empty($legacy['api_token'])) { return ['ok' => true, 'account' => $legacy]; }
         }
-        return $this->error('Esta cuenta no está conectada. Gmail necesita OAuth o una clave de aplicación autorizada; Microsoft necesita OAuth; Hostinger requiere su buzón autorizado por API. Solicita conectar esta dirección para tu usuario.', 422);
+        return $this->requerida($from);
     }
 
     private function usuario(int $id)
@@ -63,4 +71,10 @@ final class CorreoCuentaConectadaService
     }
 
     private function error(string $message, int $code): array { return ['ok' => false, 'mensaje' => $message, 'codigo_http' => $code]; }
+
+    private function requerida(string $from): array
+    {
+        return $this->error('Esta cuenta no está conectada. Autorízala con su proveedor o solicita configurar su API/SMTP al administrador.', 422)
+            + ['conexion_requerida' => true, 'conexion_url' => 'index.php?controller=correoConexion&action=index&correo=' . rawurlencode($from)];
+    }
 }

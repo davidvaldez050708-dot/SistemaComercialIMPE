@@ -27,4 +27,12 @@ $data = ['usuario_id' => 7, 'remitente' => $a['correo'], 'destinatario' => 'come
     'idempotency_key' => 'tls-local-0001'];
 $result = $sender->enviar($data);
 if (!$result['ok'] || $result['entrega_confirmada']) { throw new RuntimeException('SMTP comercial local'); }
+$oauth = $a + ['auth_method' => 'oauth2', 'oauth_provider' => 'google', 'client_id' => 'CLIENTE_LOCAL_QA', 'refresh_token' => 'REFRESH_LOCAL_QA'];
+CorreoEstadoPrivado::ejecutar('oauth', CorreoOAuthTokenProvider::claveCuenta($oauth), static function ($old, $save) {
+    $save(['access_token' => 'ACCESS_LOCAL_QA', 'refresh_token' => 'REFRESH_LOCAL_QA', 'expires_at' => time() + 3600]);
+});
+$mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+CorreoSmtpTransport::configurar($mail, $oauth); $mail->setFrom($a['correo']); $mail->addAddress('oauth@universidad.test');
+$mail->Subject = 'OAuth SMTP local'; $mail->Body = 'Prueba ficticia XOAUTH2';
+if (!CorreoSmtpTransport::enviar($mail, 'oauth_local')['ok']) { throw new RuntimeException('XOAUTH2 local'); }
 echo "OK: PHPMailer real, STARTTLS verificado, AUTH y DATA contra servidor local.\n";

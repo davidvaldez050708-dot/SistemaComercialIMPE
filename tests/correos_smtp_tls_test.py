@@ -3,6 +3,7 @@ Usa cryptography del runtime de pruebas, sin instalar dependencias del CRM.
 Uso: python tests/correos_smtp_tls_test.py RUTA_PHP
 """
 import datetime as dt
+import base64
 import email
 from email import policy
 import ipaddress
@@ -39,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix="impe-smtp-tls-") as tmp:
 
     def run_server():
         try:
-            for _ in range(3):
+            for _ in range(4):
                 conn, _ = server.accept(); conn.settimeout(15)
                 stream = conn.makefile("rb")
                 conn.sendall(b"220 localhost SMTP QA\r\n")
@@ -51,15 +52,19 @@ with tempfile.TemporaryDirectory(prefix="impe-smtp-tls-") as tmp:
                             break
                         command = line.split(b" ", 1)[0].strip().upper()
                         if command in (b"EHLO", b"HELO"):
-                            conn.sendall(b"250-localhost\r\n250-STARTTLS\r\n250 AUTH LOGIN\r\n")
+                            conn.sendall(b"250-localhost\r\n250-STARTTLS\r\n250 AUTH LOGIN XOAUTH2\r\n")
                         elif command == b"STARTTLS":
                             conn.sendall(b"220 Begin TLS\r\n"); stream.close()
                             conn = context.wrap_socket(conn, server_side=True)
                             stream = conn.makefile("rb"); secure = True
                         elif command == b"AUTH":
                             assert secure, "AUTH sin TLS"
-                            conn.sendall(b"334 VXNlcm5hbWU6\r\n"); stream.readline()
-                            conn.sendall(b"334 UGFzc3dvcmQ6\r\n"); stream.readline()
+                            if line.upper().startswith(b'AUTH XOAUTH2 '):
+                                payload = base64.b64decode(line.split()[2])
+                                assert payload == b'user=qa@example.test\x01auth=Bearer ACCESS_LOCAL_QA\x01\x01', 'Identidad y token XOAUTH2'
+                            else:
+                                conn.sendall(b"334 VXNlcm5hbWU6\r\n"); stream.readline()
+                                conn.sendall(b"334 UGFzc3dvcmQ6\r\n"); stream.readline()
                             auth = True; conn.sendall(b"235 Authenticated\r\n")
                         elif command in (b"MAIL", b"RCPT"):
                             assert auth, "sobre sin autenticación"
@@ -95,8 +100,9 @@ with tempfile.TemporaryDirectory(prefix="impe-smtp-tls-") as tmp:
     if result.returncode:
         raise RuntimeError(result.stdout + result.stderr)
     assert not failures, failures
-    assert len(messages) == 2, "Sólo recuperación y comercial, sin envío con TLS inválido"
-    recovery, commercial = messages
+    assert len(messages) == 3, "Recuperación, comercial y OAuth local; sin envío con TLS inválido"
+    recovery, commercial, oauth = messages
+    assert oauth['To'].addresses[0].addr_spec == 'oauth@universidad.test'
     assert recovery["From"].addresses[0].addr_spec == "qa@example.test"
     assert "30 minutos" in recovery.get_body(preferencelist=("plain",)).get_content()
     assert commercial["To"].addresses[0].addr_spec == "comercial@educacion.test"
@@ -106,4 +112,4 @@ with tempfile.TemporaryDirectory(prefix="impe-smtp-tls-") as tmp:
     assert len(attachments) == 1 and attachments[0].get_filename() == "muestra.txt"
     assert attachments[0].get_payload(decode=True) == (root / "tests/correos_smtp_tls_client.php").read_bytes()
     print(result.stdout.strip())
-    print("OK: certificado no confiable rechazado; MIME, destinatario externo, contenido y adjunto íntegros. Entrega real a proveedores pendiente.")
+    print("OK: certificado no confiable rechazado; XOAUTH2 real local, MIME, destinatario externo, contenido y adjunto íntegros. Entrega real a proveedores pendiente.")

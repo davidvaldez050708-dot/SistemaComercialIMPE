@@ -34,6 +34,7 @@ $texto = static fn($valor) => htmlspecialchars(
             </div>
 
             <div class="correo-marketing-selector-actions">
+                <a class="btn btn-system-light" href="index.php?controller=correoConexion&amp;action=index" target="_blank" rel="noopener noreferrer">Conectar cuenta de correo</a>
                 <button
                     type="button"
                     class="btn btn-system-save correo-marketing-compose-button"

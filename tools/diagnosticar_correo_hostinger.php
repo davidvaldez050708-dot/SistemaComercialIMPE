@@ -9,6 +9,9 @@ try {
     echo 'PHP ' . PHP_VERSION . ' SAPI ' . PHP_SAPI . PHP_EOL;
     foreach (['openssl', 'curl', 'mbstring', 'mysqli'] as $ext) { flagMail('extension ' . $ext, extension_loaded($ext)); }
     flagMail('PHPMailer', class_exists('PHPMailer\\PHPMailer\\PHPMailer'));
+    foreach ((new CorreoConexionOAuthService())->disponibles() as $provider => $ready) {
+        echo 'OAuth ' . $provider . ' (opcional): ' . ($ready ? 'aplicación configurada' : 'desactivado; falta aplicación autorizada') . PHP_EOL;
+    }
     if (isset($options['account'])) {
         $from = strtolower(trim($options['account'])); $user = (int)($options['user'] ?? 0);
         $result = (new CorreoCuentaConectadaService())->resolver($from, $user, true);
@@ -35,6 +38,14 @@ try {
             // EHLO/TLS/AUTH, sin MAIL/RCPT/DATA. OAuth puede renovar su token privado.
             $connected = $mail->smtpConnect(); flagMail('Conexión TLS y autenticación', $connected); $mail->smtpClose();
             if (!$connected) { exit(2); }
+        }
+    } elseif ($transport === 'gmail_api') {
+        flagMail('OAuth Gmail configurado', !empty($a['refresh_token']) && !empty($a['client_id']));
+        if (isset($options['probe'])) {
+            $token = (new CorreoOAuthTokenProvider($a))->obtenerAccessToken();
+            $allowed = CorreoGmailApiTransport::identidad($from, $token);
+            flagMail('Identidad Google verificada por HTTPS', $allowed);
+            if (!$allowed) { exit(2); }
         }
     } elseif ($transport === 'hostinger_api') {
         flagMail('Token API configurado', !empty($a['api_token']));

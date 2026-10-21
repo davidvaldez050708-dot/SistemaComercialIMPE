@@ -90,8 +90,14 @@ class CorreoSalidaInstitucionalService
         }
         if (empty($connection['ok'])) { return $connection; }
         $account = $connection['account'];
-        $send = function () use ($account, $remitente, $nombreRemitente, $destinatario, $nombreDestinatario,
+        $send = function () use ($usuarioId, $account, $remitente, $nombreRemitente, $destinatario, $nombreDestinatario,
             $asunto, $cuerpo, $rutaFirma, $imagenesEmbebidas, $adjuntos, $htmlAdicional) {
+            $limits = impeLeerConfigPrivada('mail_accounts.local.php')['limits'] ?? [];
+            $maximum = max(1, min(500, (int)($limits['per_user_hour'] ?? 60)));
+            if (!CorreoLimiteService::tomar('commercial-send', $usuarioId, $maximum, 3600)) {
+                return $this->error('Se alcanzó el límite de envíos de tu usuario. Espera antes de iniciar otro envío.', 429)
+                    + ['estado_entrega' => 'RECHAZADO', 'entrega_confirmada' => false];
+            }
             if ($account['transport'] === 'hostinger_api') {
                 $base = rtrim((string)($account['api_base_url'] ?? self::HOSTINGER_BASE_DEFAULT), '/');
                 if ($base !== self::HOSTINGER_BASE_DEFAULT || empty($account['api_token'])) {
@@ -217,6 +223,10 @@ class CorreoSalidaInstitucionalService
         if ($resourceId === '') {
             return [
                 'ok' => false,
+                'codigo_http' => 422,
+                'estado_entrega' => 'RECHAZADO',
+                'conexion_requerida' => true,
+                'conexion_url' => 'index.php?controller=correoConexion&action=index&correo=' . rawurlencode($remitente),
                 'mensaje' => $usarRemitenteExacto
                     ? 'El correo de origen no está autorizado como cuenta de salida. Usa una cuenta configurada en el sistema o un buzón autorizado de Hostinger.'
                     : 'No hay ningún buzón de salida autorizado disponible.'
@@ -355,7 +365,8 @@ class CorreoSalidaInstitucionalService
         try {
             $configUsuario = is_array($configUsuario) ? $configUsuario : [];
             $mail = $this->mailerFactory ? ($this->mailerFactory)() : new \PHPMailer\PHPMailer\PHPMailer(true);
-            CorreoSmtpTransport::configurar($mail, $configUsuario);
+            if (($configUsuario['transport'] ?? '') === 'gmail_api') { $mail->CharSet = 'UTF-8'; }
+            else { CorreoSmtpTransport::configurar($mail, $configUsuario); }
             $mail->setFrom($remitenteUsuario, $nombreRemitente !== '' ? $nombreRemitente : $remitenteUsuario);
             $mail->addAddress($destinatario, $nombreDestinatario);
             $firmaDisponible = $rutaFirma !== '' && is_file($rutaFirma);
@@ -396,7 +407,9 @@ class CorreoSalidaInstitucionalService
                 $htmlAdicional
             );
             $mail->AltBody = $cuerpo;
-            $outcome = CorreoSmtpTransport::enviar($mail, 'commercial');
+            $outcome = ($configUsuario['transport'] ?? '') === 'gmail_api'
+                ? CorreoGmailApiTransport::enviar($mail, $configUsuario, $this->apiRequest)
+                : CorreoSmtpTransport::enviar($mail, 'commercial');
             if (empty($outcome['ok'])) { return $outcome; }
             return $outcome + [
                 'firma_incluida' => $firmaDisponible,

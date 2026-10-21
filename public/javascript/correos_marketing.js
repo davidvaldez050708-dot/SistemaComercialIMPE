@@ -85,7 +85,7 @@
             // Los avisos del formulario se muestran mediante toast.
         };
 
-        const mostrarToast = function (mensaje, esError) {
+        const mostrarToast = function (mensaje, esError, conexionUrl) {
             let contenedor = document.querySelector('.toast-container');
 
             if (!contenedor) {
@@ -116,6 +116,15 @@
                     ? 'No fue posible enviar el correo.'
                     : 'Correo enviado correctamente.')
             );
+            if (conexionUrl) {
+                const url = new URL(conexionUrl, window.location.href);
+                if (url.origin === window.location.origin && url.searchParams.get('controller') === 'correoConexion' && url.searchParams.get('action') === 'index') {
+                    const link = document.createElement('a');
+                    link.href = url.href; link.target = '_blank'; link.rel = 'noopener noreferrer';
+                    link.textContent = ' Conectar cuenta de correo';
+                    toast.querySelector('span').appendChild(link);
+                }
+            }
 
             contenedor.appendChild(toast);
             toast.addEventListener('hidden.bs.toast', function () {
@@ -124,7 +133,7 @@
 
             bootstrap.Toast.getOrCreateInstance(toast, {
                 autohide: true,
-                delay: esError ? 4500 : 3000
+                delay: conexionUrl ? 30000 : (esError ? 4500 : 3000)
             }).show();
         };
 
@@ -1333,6 +1342,10 @@
                 }
 
                 if (!respuesta.ok || !json.ok) {
+                    if (json.conexion_requerida && json.conexion_url) {
+                        mostrarToast(json.mensaje, true, json.conexion_url);
+                        return;
+                    }
                     throw new Error(
                         json.mensaje ||
                         'No fue posible enviar el correo.'
