@@ -59,6 +59,21 @@ def patch(raw, pairs, filename):
         if content.count(new) == 1:
             return raw
         if content.count(old) != 1:
+            # Si esta misma entrega ya está instalada, --check debe
+            # ser idempotente sin reescribir una versión personalizada.
+            signature = "confirmFinishedCall: function (ref, facts, token) {"
+            finish = "dismissFinishedCall: function (ref) {"
+            if content.count(signature) == 1 and content.count(finish) == 1:
+                test_method = content[content.index(signature):content.index(finish,content.index(signature))]
+                expected = (
+                    "if(!facts?.finalizada||facts.pbx_call_id!==ref||String(facts.extension)!==String(cfg.extension))return false;",
+                    "const receipts=Array.isArray(facts.sdk_tokens)?facts.sdk_tokens:[];",
+                    "ownRef!==ref||!match(currentState)",
+                    "sendPhoneCommand('PBX_CONFIRMED_INCOMING_END'",
+                    "if(changed)render();return changed;"
+                )
+                if all(test_method.count(v) == 1 for v in expected):
+                    return raw
             # Se obtuvo SHA256 exacto del shell personalizado en Hostinger.
             # Nada de sustituir el JS completo o aflojar validaciones para
             # versiones que no sean esa misma. En tal caso abortar sin escritura.
