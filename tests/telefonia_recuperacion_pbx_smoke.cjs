@@ -29,7 +29,7 @@ const directEnd=source.indexOf('\n        }\n    })',directStart);assert(directE
 const direct={active:true,phase:'answering',context:{transferPendingReceiver:true}};let requests=0;
 const directEnv={state:direct,answeredAtMs:0,publish:p=>Object.assign(direct,p),pollIncoming:()=>requests++};
 vm.runInNewContext('this.end=function(op){'+source.slice(directStart,directEnd)+'};',directEnv);
-directEnv.end({modo:'DIRECTA',referencia:'pbx-directa-001'});assert.equal(direct.active,true);assert.equal(direct.phase,'finishing');assert.equal(requests,1);assert.equal(direct.context.transferReference,'pbx-directa-001');
+directEnv.end({modo:'DIRECTA',referencia:'pbx-directa-001'});assert.equal(direct.active,true);assert.equal(direct.phase,modernObserver?'finishing':'recovering','El renderer actual distingue intento sin contestar; snapshot histórico aún recupera audio');assert.equal(requests,1);assert.equal(direct.context.transferReference,'pbx-directa-001');
 directEnv.end({modo:'CONSULTADA'});assert.equal(direct.active,false,'El fin de consulta interna conserva su comportamiento');
 const incomingStart=source.indexOf('const applyIncomingState = function (call) {')+'const applyIncomingState = function (call) {'.length;
 const incomingEnd=source.indexOf('\n    };',incomingStart);assert(incomingEnd>incomingStart);
