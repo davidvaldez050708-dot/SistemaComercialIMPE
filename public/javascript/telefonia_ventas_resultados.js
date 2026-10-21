@@ -27,7 +27,7 @@
  const notify=(message,error=false)=>window.IMPE_TELEPHONY_NOTIFY?.(message,error);
  const request=async url=>{
   const controller=new AbortController();requestController=controller;const timeout=setTimeout(()=>controller.abort(),10000);
-  try{const r=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo consultar la llamada.');return j;}
+  try{const r=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok){const e=Error(j.mensaje||'No se pudo consultar la llamada.');e.status=r.status;throw e;}return j;}
   catch(error){if(error.name==='AbortError')throw Error('La consulta tardó demasiado. Vuelve a comprobar el cierre.');throw error;}
   finally{clearTimeout(timeout);if(requestController===controller)requestController=null;}
  };
@@ -36,7 +36,28 @@
   if(opening||disposed)return;cancelRetry();opening=true;recheck.disabled=true;const version=++cycle;
   try{
    const url=new URL(root.dataset.detailUrl,location.href);url.searchParams.set('pbx_call_id',ref);if(ext)url.searchParams.set('extension',ext);
-   const data=await request(url);if(version!==cycle)return;
+   let data;
+   try{data=await request(url);}
+   catch(error){
+    // La invitación SIP sí terminó, pero el tramo saliente 100→150
+    // puede aún no estar materializado en la tabla comercial. Sólo el
+    // caso explícito de apertura provisional y HTTP 409 espera al PBX.
+    const provisional=new URL(location.href).searchParams.get('esperando_pbx')==='1';
+    if(provisional&&error.status===409&&version===cycle){
+     if(shell()&&!shell().beginCallResult(token,[ref]))throw Error('Termina la llamada activa antes de registrar.');
+     waiting=true;fields.hidden=true;submit.hidden=true;
+     recheck.hidden=attempt<4;
+     form.querySelector('[data-sales-form-state]').textContent='Finalizada en el teléfono · conciliando PBX';
+     feedback.textContent=attempt<4?
+      'Puedes continuar con el registro en cuanto Zadarma confirme esta transferencia. El sistema lo comprobará automáticamente.':
+      'Zadarma aún no confirma el tramo. No se ha guardado ningún resultado.';
+     bootstrap.Modal.getOrCreateInstance(modal).show();
+     if(attempt<4)timer=setTimeout(()=>{if(version===cycle&&!disposed)void open(ref,ext,attempt+1);},1500*2**attempt);
+     return;
+    }
+    throw error;
+   }
+   if(version!==cycle)return;
    call=data.llamada;
    if(shell()&&!shell().beginCallResult(token,[ref]))throw Error('Termina la llamada activa antes de abrir este registro.');
    if(!call.finalizada){
@@ -67,7 +88,7 @@
    else{shell()?.endCallResult(token);notify(e.message,true);}
   }finally{opening=false;recheck.disabled=false;}
  }
- recheck.addEventListener('click',()=>{if(call)void open(call.pbx_call_id,call.extension);});
+ recheck.addEventListener('click',()=>{if(call)void open(call.pbx_call_id,call.extension);else{const u=new URL(location.href);if(u.searchParams.get('esperando_pbx')==='1'&&u.searchParams.get('pbx_call_id'))void open(u.searchParams.get('pbx_call_id'),u.searchParams.get('extension')||'');}});
  root.addEventListener('click',async e=>{
   const button=e.target.closest('[data-sales-program-complete]');if(!button||button.disabled)return;
   if(!window.confirm('¿Cerrar este recordatorio? No se registrará una llamada ni cambiará su resultado.'))return;
