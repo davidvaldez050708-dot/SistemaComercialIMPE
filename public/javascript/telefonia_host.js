@@ -689,8 +689,19 @@
                     // El audio local terminó. Esperar cierre PBX, pero no
                     // mantener la pantalla/cronómetro en conversación falsa.
                     if (isSdkOnlyIncoming()) {
-                        if(state.phase==='incoming-ringing')clearSdkOnlyIncoming();
-                        else{publish({phase:'recovering',status:'recovering',message:'Se interrumpió el audio del navegador. La centralita debe confirmar el estado.'});void pollIncoming();}
+                        if(state.phase==='incoming-ringing') {
+                            // Reposo observado sin prueba de cierre SIP/PUSH:
+                            // no descartar la llamada como si nunca existió.
+                            // El cierre real se procesa arriba con sessionEnded
+                            // o pushEnded, dejando constancia de no contestada.
+                            publish({phase:'finishing',status:'ending',duration:0,
+                                message:'El timbrado terminó. Comprobando el cierre de la llamada.'});
+                            void pollIncoming();
+                        } else {
+                            publish({phase:'recovering',status:'recovering',
+                                message:'Se interrumpió el audio del navegador. La centralita debe confirmar el estado.'});
+                            void pollIncoming();
+                        }
                         return;
                     }
                     if (!state.active || state.direction !== 'incoming' ||
