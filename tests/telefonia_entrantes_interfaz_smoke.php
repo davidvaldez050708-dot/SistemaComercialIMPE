@@ -45,7 +45,8 @@ $checks = [
         str_contains($hostView, 'telefonia_entrantes_bridge.js') &&
         str_contains($shellJs, 'providerBridge()?.answer()') &&
         str_contains($shellJs, 'providerBridge()?.hangup()') &&
-        str_contains($hostJs, 'incomingBridge?.mute(nextMuted)') &&
+        str_contains($hostJs, 'const setMuted = function (value)') &&
+        str_contains($hostJs, 'const tracks = syncMicrophone();') &&
         str_contains($hostJs, 'nuevaLlamadaEntrante ? false : Boolean(state.muted)'),
     'Sin reconocimiento visual por CSS o color de iconos' =>
         !str_contains($read('public/javascript/telefonia_entrantes_bridge.js'), 'querySelectorAll') &&
