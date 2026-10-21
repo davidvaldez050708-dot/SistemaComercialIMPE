@@ -656,7 +656,9 @@
                                 sipSession.isEnded?.()));
                     if ((evidence.sessionEnded || evidence.pushEnded) &&
                         state.active && state.direction === 'incoming' &&
-                        !sipAlive && (sdkOnlyMatches || (attachedPbx && sameSip))) {
+                        !sipAlive && (sdkOnlyMatches || (attachedPbx &&
+                            (sameSip || (evidence.pushEnded && !observedId &&
+                                ['incoming-ringing','answering','finishing','rejecting'].includes(state.phase)))))) {
                         const ref = String(state.pbxCallId || state.context?.transferReference || '');
                         const wasAnswered = Boolean(state.context?.sdkConnected ||
                             state.context?.pbxAnswered || answeredAtMs > 0);
