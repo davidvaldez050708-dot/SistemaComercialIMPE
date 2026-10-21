@@ -1,5 +1,8 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(process.env.IMPE_TEST_TELEFONIA_HOST||'public/javascript/telefonia_host.js','utf8').replace(/\r\n/g,'\n');
+const modernObserver = source.includes('onIdle: function (evidence={}) {');
+let body='';
+if(modernObserver){
 const start=source.indexOf('onIdle: function (evidence={}) {',source.indexOf('const startAnalystSdkObserver'))+'onIdle: function (evidence={}) {'.length;
 const end=source.indexOf('\n                }\n            }\n        ) || null;',start);
 assert(start>0&&end>start);const body=source.slice(start,end);
@@ -13,6 +16,7 @@ for(const sdk of [true,false]){
  assert.equal(state.phase,'recovering');assert.equal(state.active,true);assert.equal(cleared,0);assert.equal(finals,0);assert(polls>0,'Reconsulta PBX sin fabricar un fin');
 }
 console.log('Recuperación PBX: negociación prolongada y pérdida de audio conservan llamada pendiente y reconsultan, sin cierre ficticio.');
+} // La variante de Hostinger usa firma anterior y conserva sus propias pruebas.
 const applyStart=source.indexOf('const applyCallState = function (call) {')+'const applyCallState = function (call) {'.length;
 const applyEnd=source.indexOf('\n    };',applyStart);assert(applyEnd>applyStart);
 const outbound={active:true,phase:'recovering',pbxCallId:'out-recovery-pbx',duration:15};let finals=0;
@@ -35,6 +39,7 @@ vm.runInNewContext('this.apply=function(call){'+source.slice(incomingStart,incom
 incomingEnv.apply({pbx_call_id:'pbx-otra-llamada',estado:'ended'});assert.equal(confirmedEnds,0,'Otro cierre no termina la recuperación');
 incomingEnv.apply({pbx_call_id:'pbx-directa-001',estado:'ended'});assert.equal(confirmedEnds,1,'END de la referencia exacta termina la recuperación aunque el SDK aún no tuviera ID PBX');
 
+if(modernObserver){
 for(const answered of [false,true])for(const ended of [false,true]){
  const state={active:true,direction:'incoming',phase:answered?'in-progress':'incoming-ringing',pbxCallId:'',context:{type:'SDK_INCOMING',sdkInviteId:'sip-current',sdkConnected:answered}};
  let polls=0;const env={state,evidence:{sessionEnded:ended,sessionId:'sip-current'},transferFlow:null,isSdkOnlyIncoming:()=>true,retirePbxCall(){},answeredAtMs:answered?100:0,currentDuration:()=>answered?12:0,publish:p=>Object.assign(state,p),pollIncoming:()=>polls++,window:{setTimeout(){}},clearSdkOnlyIncoming(){},ocultarHostEntrante(){},marcarPestanaEntrante(){}};
@@ -45,6 +50,7 @@ for(const answered of [false,true])for(const ended of [false,true]){
  if(!ended)assert(polls>0);
 }
 console.log('Ciclo: END SIP propio libera timbrado/conversación; sin respuesta nunca recupera conversación; transporte incierto no fabrica END: OK');
+}
 
 const hs=source.indexOf('    const hangup = async function () {'),he=source.indexOf('\n    const clearFinished',hs);
 (async()=>{for(const final of [false,true]){
