@@ -212,7 +212,7 @@
   catch(error){$('[data-callback-feedback]').textContent=error.message;}
   finally{acting=false;form.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=false);}
  });
- window.IMPE_AVAILABILITY={watch:store,cancel,audioDiagnostic,
+ window.IMPE_AVAILABILITY={watch:store,cancel,audioDiagnostic,tick:()=>void tick(),
   acceptedTransfer:()=>acceptedTransfer&&Date.now()-acceptedTransfer.at<90000?{...acceptedTransfer}:null,
   pending:()=>Boolean(watched&&matchesCall(watched)&&['PENDIENTE','ACEPTADA','ENVIANDO','ENVIADA','TRANSFERIDA','SIN_RESPUESTA','SIN_CONFIRMAR','DEVOLUCION'].includes(watched.estado)),tick};
  window.addEventListener('pagehide',()=>{stopSound();navigator.sendBeacon?.(cfg.availabilityUrl,new URLSearchParams({accion:'PRESENCIA',disponible:'0',csrf_token:cfg.routingCsrf}));});
