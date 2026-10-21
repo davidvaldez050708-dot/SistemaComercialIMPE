@@ -110,7 +110,8 @@ final class CorreoConfiguracionHostinger
         $ancestor = $dir;
         while (!file_exists($ancestor) && dirname($ancestor) !== $ancestor) { $ancestor = dirname($ancestor); }
         $realAncestor = realpath($ancestor);
-        $roots = [realpath(dirname(__DIR__)), realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? ''))];
+        $documentRoot = trim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+        $roots = [realpath(dirname(__DIR__)), $documentRoot !== '' ? realpath($documentRoot) : false];
         foreach ($roots as $root) {
             if ($root && $realAncestor && str_starts_with(strtolower($realAncestor . DIRECTORY_SEPARATOR), strtolower($root . DIRECTORY_SEPARATOR))) {
                 throw new RuntimeException('MAIL_SETUP_NOT_PRIVATE');

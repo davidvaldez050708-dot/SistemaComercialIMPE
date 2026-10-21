@@ -9,6 +9,9 @@ function setupError(callable $f, string $code) {
     catch(RuntimeException $e) { setupExpect($e->getMessage() === $code, 'Código: ' . $e->getMessage()); }
 }
 $work = sys_get_temp_dir() . '/impe-mail-setup-' . bin2hex(random_bytes(6)); mkdir($work, 0700, true);
+$previousDirectory=getcwd();
+// SSH suele iniciarse en HOME, que también es antecesor de impe-private.
+chdir(dirname($work)); $_SERVER['DOCUMENT_ROOT']='';
 putenv('IMPE_PRIVATE_CONFIG_DIR=' . $work); putenv('IMPE_MAIL_STATE_DIR=' . $work . '/state');
 $accepted = true; $probes = [];
 $loadUser = static function($email) { return ['id'=>71,'correo'=>'empleado@gmail.com','estado'=>1,'rol_estado'=>1]; };
@@ -69,11 +72,17 @@ try {
     $inside=dirname(__DIR__).'/tmp/no-crear-configuracion-'.bin2hex(random_bytes(4));
     setupError(static function()use($inside){(new CorreoConfiguracionHostinger($inside,static function(){return true;}))->configurar('--hostinger',['secret'=>'QA']);}, 'MAIL_SETUP_NOT_PRIVATE');
     setupExpect(!file_exists($inside), 'Rechazo dentro del repositorio antes de crear carpetas');
+    $_SERVER['DOCUMENT_ROOT']=$work;
+    $publicChild=$work.'/no-crear-publico';
+    setupError(static function()use($publicChild){(new CorreoConfiguracionHostinger($publicChild,static function(){return true;}))->configurar('--hostinger',['secret'=>'QA']);}, 'MAIL_SETUP_NOT_PRIVATE');
+    setupExpect(!file_exists($publicChild),'Se mantiene la protección de una raíz web real');
+    $_SERVER['DOCUMENT_ROOT']='';
     $traversal=$work.'/nuevo/../escape';
     setupError(static function()use($traversal){(new CorreoConfiguracionHostinger($traversal,static function(){return true;}))->configurar('--hostinger',['secret'=>'QA']);}, 'MAIL_SETUP_NOT_PRIVATE');
     foreach(glob($work.'/*.tmp-*') as $f){throw new RuntimeException('Temporal restante');}
     echo "OK: configuración privada Gmail/Hostinger, autenticación previa, respaldo exacto, cuenta SMTP por usuario, precedencia, conservación de otras cuentas y rechazo sin sobrescritura. Sin red ni BD real.\n";
 } finally {
+    chdir($previousDirectory);
     $it=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($work,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);
     foreach($it as $p){$p->isDir()?rmdir($p->getPathname()):unlink($p->getPathname());}rmdir($work);
 }

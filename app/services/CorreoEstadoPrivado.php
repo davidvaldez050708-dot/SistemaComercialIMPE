@@ -10,7 +10,8 @@ final class CorreoEstadoPrivado
         if (!is_dir($dir) && !$crear) { return null; }
         if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) { throw new RuntimeException('MAIL_STATE_DIRECTORY'); }
         $real = realpath($dir);
-        $webRoot = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+        $documentRoot = trim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+        $webRoot = $documentRoot !== '' ? realpath($documentRoot) : false;
         if (!$real || is_link($dir) || str_starts_with(strtolower($real . DIRECTORY_SEPARATOR), strtolower($root . DIRECTORY_SEPARATOR)) ||
             ($webRoot && str_starts_with(strtolower($real . DIRECTORY_SEPARATOR), strtolower($webRoot . DIRECTORY_SEPARATOR)))) {
             throw new RuntimeException('MAIL_STATE_NOT_PRIVATE');
