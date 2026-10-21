@@ -16,6 +16,8 @@ on:
       - 'tests/publicacion_ventas_saliente_modal_test.py'
       - 'tests/publicacion_ventas_fin_sip_registro_inmediato_test.py'
       - 'tools/publicar_ventas_fin_sip_registro_inmediato_hostinger.sh'
+      - 'tools/publicar_ventas_fin_sip_conciliacion_resultado_hostinger.sh'
+      - 'tests/publicacion_ventas_fin_sip_conciliacion_resultado_test.py'
       - 'tools/publicar_ventas_saliente_modal_resultado_hostinger.sh'
       - '.github/workflows/ventas-cierre-saliente-regresion.yml'
   pull_request:
@@ -32,6 +34,8 @@ on:
       - 'tests/publicacion_ventas_saliente_modal_test.py'
       - 'tests/publicacion_ventas_fin_sip_registro_inmediato_test.py'
       - 'tools/publicar_ventas_fin_sip_registro_inmediato_hostinger.sh'
+      - 'tools/publicar_ventas_fin_sip_conciliacion_resultado_hostinger.sh'
+      - 'tests/publicacion_ventas_fin_sip_conciliacion_resultado_test.py'
       - 'tools/publicar_ventas_saliente_modal_resultado_hostinger.sh'
       - '.github/workflows/ventas-cierre-saliente-regresion.yml'
 jobs:
@@ -49,6 +53,7 @@ jobs:
           node --check public/javascript/telefonia_ventas_resultados.js
           bash -n tools/publicar_ventas_saliente_modal_resultado_hostinger.sh
           bash -n tools/publicar_ventas_fin_sip_registro_inmediato_hostinger.sh
+          bash -n tools/publicar_ventas_fin_sip_conciliacion_resultado_hostinger.sh
       - name: Probar descarte de modal y sesiones distintas
         run: node tests/telefonia_ventas_descartar_modal_resultado.cjs
       - name: Probar desplegador reversible
@@ -59,3 +64,5 @@ jobs:
         run: node tests/telefonia_ventas_referencia_final.cjs
       - name: Probar publicador de SIP y registro inmediato
         run: python3 tests/publicacion_ventas_fin_sip_registro_inmediato_test.py
+      - name: Probar entrega integral SIP, cierre saliente y resultado
+        run: python3 tests/publicacion_ventas_fin_sip_conciliacion_resultado_test.py
