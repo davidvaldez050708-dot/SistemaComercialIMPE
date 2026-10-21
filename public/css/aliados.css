@@ -2064,3 +2064,9 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
     color: #fff;
     box-shadow: 0 4px 10px rgba(39, 58, 138, .16);
 }
+
+#modalAliadoRegistro .modal-content{max-height:calc(100dvh - 2rem)}
+#modalAliadoRegistro fieldset legend{float:none;width:auto}
+#modalAliadoRegistro .modal-footer{flex-wrap:wrap}
+
+#modalAliadoRegistro [hidden]{display:none!important}

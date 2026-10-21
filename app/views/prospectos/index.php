@@ -52,12 +52,18 @@ $paginasProspectos = (int)($listado['paginas'] ?? 1);
             </div>
             <div class="prospectos-total"><strong><?= (int)($listado['total'] ?? 0) ?></strong><span>prospectos</span></div>
         </div>
+        <form method="get" class="row g-3 mb-3" data-prospectos-filtros>
+          <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index">
+          <div class="col-md-6"><label for="prospectoBuscar" class="form-label">Nombre o teléfono</label><input class="form-control" type="search" id="prospectoBuscar" name="buscar" maxlength="180" value="<?= $escaparProspecto($_GET['buscar']??'') ?>"></div>
+          <div class="col-md-6"><label for="prospectoAliado" class="form-label">Aliado de origen</label><select class="form-select" id="prospectoAliado" name="aliado_id"><option value="">Todos los orígenes</option><option value="general" <?= ($_GET['aliado_id']??'')==='general'?'selected':'' ?>>Registro general</option><?php foreach (($listado['aliados']??[]) as $origenProspecto): ?><option value="<?= (int)$origenProspecto['id'] ?>" <?= (string)($_GET['aliado_id']??'')===(string)$origenProspecto['id']?'selected':'' ?>><?= $escaparProspecto($origenProspecto['nombre']) ?></option><?php endforeach; ?></select></div>
+          <div class="col-12"><button class="btn btn-system-light" type="submit">Buscar</button></div>
+        </form>
         <div class="prospectos-table-wrap">
             <table>
                 <thead><tr>
                     <th>Fecha de registro</th><th>Nombre completo</th><th>Correo electrónico</th>
                     <th>Teléfono</th><th>Tel. secundario</th><th>Tel. recomendado</th>
-                    <th>Perfil de interés</th><th>Estado</th><th>Municipio</th>
+                    <th>Aliado de origen</th><th>Perfil de interés</th><th>Estado</th><th>Municipio</th>
                     <th>Lugar de trabajo</th><th>Cargo</th><th>Fecha de nacimiento</th><th>Origen</th>
                 </tr></thead>
                 <tbody>
@@ -69,6 +75,7 @@ $paginasProspectos = (int)($listado['paginas'] ?? 1);
                         <td><?= $escaparProspecto($prospecto['movil']) ?></td>
                         <td><?= $escaparProspecto($prospecto['movil_secundario'] ?: '—') ?></td>
                         <td><?= $escaparProspecto($prospecto['tel_recomendado'] ?: '—') ?></td>
+                        <td><?= $escaparProspecto($prospecto['aliado_nombre'] ?? 'Registro general') ?></td>
                         <td><?= $escaparProspecto($prospecto['perfil_interes']) ?></td>
                         <td><?= $escaparProspecto($prospecto['estado'] ?: '—') ?></td>
                         <td><?= $escaparProspecto($prospecto['municipio'] ?: '—') ?></td>
@@ -79,7 +86,7 @@ $paginasProspectos = (int)($listado['paginas'] ?? 1);
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$registrosProspectos): ?>
-                    <tr><td colspan="13" class="prospectos-empty">No hay registros disponibles.</td></tr>
+                    <tr><td colspan="14" class="prospectos-empty">No hay registros disponibles.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
@@ -87,11 +94,11 @@ $paginasProspectos = (int)($listado['paginas'] ?? 1);
         <?php if ($paginasProspectos > 1): ?>
         <nav class="prospectos-pagination" aria-label="Páginas de prospectos">
             <?php if ($paginaProspectos > 1): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=prospecto&amp;action=index&amp;pagina=<?= $paginaProspectos - 1 ?>">Anterior</a>
+                <a href="<?= BASE_URL ?>index.php?controller=prospecto&amp;action=index&amp;<?= $escaparProspecto(http_build_query(['pagina'=>$paginaProspectos-1,'buscar'=>$_GET['buscar']??'','aliado_id'=>$_GET['aliado_id']??''])) ?>">Anterior</a>
             <?php endif; ?>
             <span>Página <?= $paginaProspectos ?> de <?= $paginasProspectos ?></span>
             <?php if ($paginaProspectos < $paginasProspectos): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=prospecto&amp;action=index&amp;pagina=<?= $paginaProspectos + 1 ?>">Siguiente</a>
+                <a href="<?= BASE_URL ?>index.php?controller=prospecto&amp;action=index&amp;<?= $escaparProspecto(http_build_query(['pagina'=>$paginaProspectos+1,'buscar'=>$_GET['buscar']??'','aliado_id'=>$_GET['aliado_id']??''])) ?>">Siguiente</a>
             <?php endif; ?>
         </nav>
         <?php endif; ?>

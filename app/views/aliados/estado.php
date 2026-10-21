@@ -177,6 +177,7 @@ $seguimientoVista = static function ($estado) {
         <?php endif; ?>
     </section>
 
+    <p class="text-muted small"><?= (int)($resumenAliados['formalizados'] ?? 0) ?> con formalización documental · <?= count($aliados) - (int)($resumenAliados['formalizados'] ?? 0) ?> relaciones manuales</p>
     <section class="dashboard-panel aliados-directory-panel">
         <div class="aliados-directory-controls">
             <div class="aliados-section-heading">
@@ -195,6 +196,9 @@ $seguimientoVista = static function ($estado) {
                 </div>
 
                 <div class="aliados-directory-meta">
+                    <?php if (tienePermiso('aliados.crear_manual') && tienePermiso('aliados.gestionar_programas')): ?>
+                    <button type="button" class="btn btn-system-save" data-registro-abrir><i class="bi bi-plus-lg"></i> Agregar aliado</button>
+                    <?php endif; ?>
                     <?php if (
                         $puedeSeguimientoConvocatorias &&
                         (int)$resumenAliados['seguimientos_pendientes'] > 0
@@ -301,6 +305,7 @@ $seguimientoVista = static function ($estado) {
                     </select>
                 </div>
 
+                <div><label class="form-label" for="aliados_origen">Origen</label><select id="aliados_origen" class="form-select" data-aliados-origen><option value="">Todos</option><option value="manual">Manual</option><option value="institucional">Vinculación</option></select></div>
                 <div class="aliados-filter-actions">
                     <a
                         class="btn aliados-btn-secondary"
@@ -443,6 +448,7 @@ $seguimientoVista = static function ($estado) {
                                         ?>
                                         <tr
                                             data-aliado-row
+                                            data-origen="<?= $texto($aliado['origen_tipo'] ?? 'institucional') ?>"
                                             data-search="<?= $texto($textoBusquedaAliado) ?>"
                                             data-estado-id="<?= (int)($aliado['estado_id'] ?? 0) ?>"
                                             data-municipio-id="<?= (int)($aliado['municipio_id'] ?? 0) ?>"
@@ -455,6 +461,8 @@ $seguimientoVista = static function ($estado) {
                                             <td>
                                                 <div class="aliados-institution-cell">
                                                     <strong><?= $texto($aliado['nombre_entidad'] ?? 'Institución') ?></strong>
+                                                    <span class="aliados-no-send"><?= ($aliado['origen_tipo'] ?? '') === 'manual' ? 'Manual · ' . $texto($aliado['situacion']) : 'Vinculación · Formalizado' ?></span>
+                                                    <span class="aliados-no-send"><?= $texto($aliado['registro_programas'] ?? 'Sin programas asignados') ?></span>
                                                 </div>
                                             </td>
 
@@ -558,6 +566,14 @@ $seguimientoVista = static function ($estado) {
 
                                             <td class="text-end">
                                                 <div class="aliados-actions">
+                                                    <?php $esManualRegistro = ($aliado['origen_tipo'] ?? '') === 'manual'; ?>
+                                                    <?php if (tienePermiso('aliados.gestionar_programas')): ?>
+                                                    <button type="button" class="btn aliados-share-button" data-registro-abrir data-registro-origen="<?= $esManualRegistro ? 'manual' : 'institucional' ?>" data-registro-id="<?= (int)($esManualRegistro ? $aliado['id'] : $aliado['seguimiento_id']) ?>">Programas</button>
+                                                    <?php endif; ?>
+                                                    <?php if ($esManualRegistro && tienePermiso('aliados.editar_manual') && tienePermiso('aliados.gestionar_programas')): ?>
+                                                    <button type="button" class="btn aliados-share-button" data-registro-abrir data-registro-editar data-registro-id="<?= (int)$aliado['id'] ?>">Editar</button>
+                                                    <?php endif; ?>
+                                                    <?php if (!$esManualRegistro): ?>
                                                     <?php if ($puedeCompartirCorreo || $puedePrepararWhatsapp): ?>
                                                         <button
                                                             type="button"
@@ -652,6 +668,7 @@ $seguimientoVista = static function ($estado) {
                                                                 <?php endif; ?>
                                                             </ul>
                                                         </div>
+                                                    <?php endif; ?>
                                                     <?php endif; ?>
                                                 </div>
                                             </td>
@@ -1185,3 +1202,5 @@ $seguimientoVista = static function ($estado) {
         </div>
     </div>
 </div>
+
+<?php require __DIR__ . '/partials/registro_gestion.php'; ?>

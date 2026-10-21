@@ -157,6 +157,10 @@ document.addEventListener('DOMContentLoaded', function () {
     let contactsDirty = false;
     let currentContacts = new Map();
     let currentConvocatorias = new Map();
+    const originSelect = root.querySelector('[data-aliados-origen]');
+    const initialOrigin = new URL(window.location.href).searchParams.get('origen') || '';
+    if (originSelect && ['manual','institucional'].includes(initialOrigin)) originSelect.value = initialOrigin;
+    originSelect?.addEventListener('change', () => applyDirectoryFilters());
     let searchTimer = null;
     let currentFollowupFilter = '';
 
@@ -236,6 +240,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateFilterUrl = function () {
         const url = new URL(window.location.href);
         const values = {
+            origen: originSelect?.value || '',
             buscar: String(searchInput?.value || '').trim(),
             municipio_id: Number(municipalitySelect?.value || 0),
             analista_id: Number(analystSelect?.value || 0),
@@ -278,6 +283,7 @@ document.addEventListener('DOMContentLoaded', function () {
             Number(analystSelect?.value || 0) > 0 ||
             String(diffusionSelect?.value || 'todos') !== 'todos' ||
             String(formalizationSelect?.value || 'todas') !== 'todas' ||
+            Boolean(originSelect?.value) ||
             currentFollowupFilter !== '';
 
         clearFilters.classList.toggle('d-none', !active);
@@ -397,6 +403,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 (stateId === 0 || Number(row.dataset.estadoId || 0) === stateId) &&
                 (municipalityId === 0 || Number(row.dataset.municipioId || 0) === municipalityId) &&
                 (analystId === 0 || Number(row.dataset.analistaId || 0) === analystId) &&
+                (!originSelect?.value || row.dataset.origen === originSelect.value) &&
                 matchesDiffusion &&
                 matchesFormalization(row, formalization) &&
                 matchesFollowup;
@@ -1988,6 +1995,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (diffusionSelect) {
             diffusionSelect.value = 'todos';
         }
+        if (originSelect) originSelect.value = '';
         if (formalizationSelect) {
             formalizationSelect.value = 'todas';
         }

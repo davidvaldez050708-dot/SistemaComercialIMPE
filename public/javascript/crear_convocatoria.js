@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
         module.querySelectorAll('[data-convenio-notification]')
     );
     const search = module.querySelector('[data-convenio-search]');
+    const originFilter = module.querySelector('[data-convenio-origin-filter]');
     const stateFilter = module.querySelector('[data-convenio-state-filter]');
     const stateDropdown = module.querySelector('[data-state-dropdown]');
     const stateTrigger = module.querySelector('[data-state-trigger]');
@@ -39,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         clearFilters?.classList.toggle(
             'd-none',
-            !(hasSearch || hasState)
+            !(hasSearch || hasState || originFilter?.value)
         );
     };
 
@@ -53,7 +54,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const cardState = String(card.dataset.convenioState || '');
             const show =
                 (term === '' || text.includes(term)) &&
-                (state === '' || state === cardState);
+                (state === '' || state === cardState) &&
+                (!originFilter?.value || originFilter.value === card.dataset.convenioOrigin);
 
             card.classList.toggle('d-none', !show);
 
@@ -77,8 +79,10 @@ document.addEventListener('DOMContentLoaded', function () {
     updateClearFilters();
 
     search?.addEventListener('input', applyFilters);
+    originFilter?.addEventListener('change', applyFilters);
 
     clearFilters?.addEventListener('click', function () {
+        if (originFilter) originFilter.value = '';
         if (search) {
             search.value = '';
         }
@@ -305,8 +309,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 createLink.href = baseUrl + '&' + params.toString();
+                createLink.hidden = data.origen_tipo === 'manual';
+                const help = modalElement.querySelector('.crear-convocatoria-modal-help span');
+                if (help) help.textContent = data.origen_tipo === 'manual'
+                    ? 'Crear convocatoria requiere un expediente de Vinculación. El enlace de Registro se gestiona de forma independiente.'
+                    : 'La convocatoria se abrirá en el estado correspondiente al aliado.';
             }
 
+            setText('[data-convenio-fecha-label]', data.origen_tipo === 'manual' ? 'Fecha de relación' : 'Fecha del documento');
+            setText('[data-convenio-origin-label]', data.origen_tipo === 'manual' ? 'Relación manual · Sin formalización documental' : 'Vinculación');
+            document.dispatchEvent(new CustomEvent('impe:convenio-abierto', {detail:data}));
             modal.show();
         });
     });

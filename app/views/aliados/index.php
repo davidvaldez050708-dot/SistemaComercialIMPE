@@ -177,7 +177,7 @@ $tarjetasPorPagina = 12;
                         <dt>Aliados</dt>
                         <dd>
                             <?= $totalAliados ?>
-                            <?= $totalAliados === 1 ? 'formalizado' : 'formalizados' ?>
+                            aliados · <?= (int)($territorio['total_formalizados'] ?? $totalAliados) ?> formalizados
                         </dd>
                     </div>
                     <div>

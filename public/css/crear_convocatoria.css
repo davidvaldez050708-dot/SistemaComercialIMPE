@@ -622,3 +622,14 @@
     flex-wrap: wrap;
     justify-content: flex-end;
 }
+
+.aliado-registro-enlace{min-width:0;overflow-wrap:anywhere}
+.aliado-registro-enlace canvas{display:block;width:100%;max-width:260px;height:auto}
+#modalConvenioCrearConvocatoria .modal-dialog{max-height:calc(100dvh - 2rem)}
+#modalConvenioCrearConvocatoria .modal-content{max-height:calc(100dvh - 2rem)}
+#modalConvenioCrearConvocatoria .modal-body{overflow-y:auto;min-height:0}
+
+#modalConvenioCrearConvocatoria [hidden]{display:none!important}
+
+.aliado-registro-enlace .form-label{font-size:11px;font-weight:700}
+.aliado-registro-enlace .form-control,.aliado-registro-enlace .form-select{font-size:12px}

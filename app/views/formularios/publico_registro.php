@@ -90,6 +90,10 @@ $fechaMaximaNacimiento = date('Y-m-d');
                 novalidate
                 data-formulario-registro-publico>
 
+                <?php if (!empty($aliadoFormulario['registro_gestionado'])): ?>
+                    <input type="hidden" name="registro_csrf" value="<?= $texto($_SESSION['registro_publico_csrf'] ?? '') ?>">
+                    <div hidden aria-hidden="true"><label>Sitio web <input name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
+                <?php endif; ?>
                 <section class="formulario-publico-section">
                     <div class="formulario-publico-section-heading">
                         <span class="formulario-publico-section-icon">

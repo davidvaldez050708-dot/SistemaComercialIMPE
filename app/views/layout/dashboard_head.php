@@ -316,6 +316,7 @@ if (tienePermiso('seguimientos_vinculacion.operar_propios')) {
 if ($esAliadosDashboard) {
     $jsOpcionalHead[] = 'aliados.js';
     $jsOpcionalHead[] = 'aliados_seguimiento.js';
+    $jsOpcionalHead[] = 'aliados_registro.js';
 }
 
 if ($controllerDashboard === 'aliadoreporte') {
@@ -336,6 +337,7 @@ if ($esFormulariosDashboard) {
 
 if ($esCrearConvocatoriaDashboard) {
     $jsOpcionalHead[] = 'crear_convocatoria.js';
+    $jsOpcionalHead[] = 'aliados_registro.js';
 }
 
 if ($esDesempenoDashboard) {

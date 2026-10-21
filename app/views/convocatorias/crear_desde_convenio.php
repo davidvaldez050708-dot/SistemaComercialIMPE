@@ -141,6 +141,7 @@ $fecha = static function ($valor) {
                 </div>
             </div>
 
+            <div class="data-filter-field"><label for="convenioOrigen">Origen del aliado</label><select id="convenioOrigen" class="form-select" data-convenio-origin-filter><option value="">Todos</option><option value="manual">Manual</option><option value="institucional">Vinculación</option></select></div>
             <div class="crear-convocatoria-filter-actions">
                 <button
                     type="button"
@@ -187,6 +188,10 @@ $fecha = static function ($valor) {
                 <?php foreach ($convenios as $convenio): ?>
                     <?php
                     $payload = [
+                        'registro_programas' => $convenio['registro_programas'] ?? '',
+                        'registro_estado' => $convenio['registro_estado'] ?? 'Sin enlace',
+                        'origen_tipo' => $convenio['origen_tipo'] ?? 'institucional',
+                        'origen_id' => (int)($convenio['origen_id'] ?? $convenio['seguimiento_id']),
                         'seguimiento_id' => (int)($convenio['seguimiento_id'] ?? 0),
                         'estado_id' => (int)($convenio['estado_id'] ?? 0),
                         'estado' => (string)($convenio['estado_nombre'] ?? ''),
@@ -234,6 +239,7 @@ $fecha = static function ($valor) {
                         class="crear-convocatoria-notification"
                         data-convenio-notification
                         data-convenio-state="<?= (int)$payload['estado_id'] ?>"
+                        data-convenio-origin="<?= $texto($payload['origen_tipo']) ?>"
                         data-convenio-attention="<?= $texto($payload['estado_atencion']) ?>"
                         data-convenio-search-text="<?= $texto($busqueda) ?>"
                         data-convenio='<?= $texto(json_encode(
@@ -259,17 +265,19 @@ $fecha = static function ($valor) {
 
                                 <span>
                                     <i class="bi bi-check2-circle"></i>
-                                    Formalizado <?= $texto($payload['fecha_recibido']) ?>
+                                    <?= $payload['origen_tipo'] === 'manual' ? 'Relación manual · Sin formalización documental' : 'Formalizado ' . $texto($payload['fecha_recibido']) ?>
                                 </span>
                             </span>
 
                             <span class="crear-convocatoria-notification-file">
                                 <i class="bi bi-person-badge"></i>
-                                Analista: <?= $texto($payload['analista'] !== '' ? $payload['analista'] : 'Sin asignar') ?>
+                                <?= $payload['origen_tipo'] === 'manual' ? 'Contacto:' : 'Analista:' ?> <?= $texto($payload['origen_tipo'] === 'manual' ? $payload['contacto'] : ($payload['analista'] !== '' ? $payload['analista'] : 'Sin asignar')) ?>
                             </span>
+                            <span class="crear-convocatoria-notification-file"><?= $texto($payload['registro_programas'] ?: 'Sin programas de Registro') ?></span>
                         </span>
 
                         <span class="crear-convocatoria-notification-status">
+                            <span class="crear-convocatoria-state-badge"><?= $texto($payload['registro_estado']) ?></span>
                             <span
                                 class="crear-convocatoria-attention-badge <?= $payload['estado_atencion'] === 'con_convocatoria' ? 'is-done' : 'is-pending' ?>"
                                 data-convenio-card-attention>
@@ -360,7 +368,7 @@ $fecha = static function ($valor) {
                     </div>
 
                     <div>
-                        <span>Fecha del documento</span>
+                        <span data-convenio-fecha-label>Fecha del documento</span>
                         <strong data-convenio-modal-document-date>—</strong>
                     </div>
 
@@ -375,11 +383,13 @@ $fecha = static function ($valor) {
                     </div>
                 </div>
 
+                <div class="crear-convocatoria-modal-notes"><span>Origen</span><p data-convenio-origin-label></p></div>
                 <div class="crear-convocatoria-modal-notes">
                     <span>Notas del convenio / formalización</span>
                     <p data-convenio-modal-notes>Sin notas registradas.</p>
                 </div>
 
+                <?php require __DIR__ . '/partials/registro_aliado.php'; ?>
                 <div class="crear-convocatoria-modal-help">
                     <i class="bi bi-info-circle"></i>
                     <span>
@@ -408,3 +418,5 @@ $fecha = static function ($valor) {
         </div>
     </div>
 </div>
+
+<script src="<?= BASE_URL ?>public/vendor/qrcode-generator/qrcode.js" defer></script>
