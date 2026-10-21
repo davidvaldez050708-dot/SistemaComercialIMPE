@@ -3,7 +3,7 @@
 # No modifica SQL, PHP, credenciales ni archivos ajenos.
 set -euo pipefail
 umask 077
-python3 - "$@" <<'PY'
+IMPE_PUBLISHER_PATH="$(realpath "$0")" python3 - "$@" <<'PY'
 import hashlib, json, os, sys, shutil, tempfile, datetime
 from pathlib import Path
 
@@ -126,7 +126,7 @@ try:
                     atomic(files[rel],after,mode);written.append(rel)
                 print("OK: aplicado",len(staged),"archivos. Sin SQL.")
                 print("RESPALDO:",backup)
-                print("ROLLBACK: bash tools/publicar_telefonia_sip_segundoplano_hostinger.sh --restore",backup)
+                print("ROLLBACK: bash",os.environ["IMPE_PUBLISHER_PATH"],"--restore",backup)
             except Exception:
                 for rel in written:
                     before,after,mode=staged[rel]
