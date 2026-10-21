@@ -4,6 +4,7 @@ require_once __DIR__ . '/FirmaCorreoService.php';
 require_once __DIR__ . '/CorreoCuentaConectadaService.php';
 require_once __DIR__ . '/CorreoSmtpTransport.php';
 require_once __DIR__ . '/CorreoEnvioControl.php';
+require_once __DIR__ . '/CorreoLimiteService.php';
 
 class CorreoSalidaInstitucionalService
 {
@@ -23,6 +24,7 @@ class CorreoSalidaInstitucionalService
         $this->mailerFactory = $mailerFactory;
         $this->cuentas = $cuentas ?? new CorreoCuentaConectadaService();
         $this->apiRequest = $apiRequest;
+        $this->cuentas->configurarConsultaApi(function ($method,$url,$token,$payload) { return $this->solicitarHostinger($method,$url,$token,$payload); });
         $this->firmaService = new FirmaCorreoService();
     }
 
@@ -35,7 +37,7 @@ class CorreoSalidaInstitucionalService
         /*
          * Compatibilidad con módulos existentes: si el llamador todavía no
          * manda usuario_id, reutilizamos el usuario autenticado de la sesión.
-         * Así todos los envíos interactivos usan la cuenta SMTP personal.
+         * Todos los envíos interactivos conservan la referencia de su usuario.
          */
         if ($usuarioId <= 0 && isset($_SESSION['usuario_id'])) {
             $usuarioId = (int)$_SESSION['usuario_id'];
@@ -80,8 +82,6 @@ class CorreoSalidaInstitucionalService
             return $this->error('El asunto o el mensaje supera el tamaño permitido.', 422);
         }
 
-        $rutaFirma = $this->firmaService->obtenerRuta($remitente);
-
         try {
             $connection = $this->cuentas->resolver($remitente, $usuarioId, $perfilMarketing);
         } catch (Throwable $error) {
@@ -90,21 +90,29 @@ class CorreoSalidaInstitucionalService
         }
         if (empty($connection['ok'])) { return $connection; }
         $account = $connection['account'];
-        $send = function () use ($account, $remitente, $nombreRemitente, $destinatario, $nombreDestinatario,
+        $identidad = $connection['identidad'];
+        $rutaFirma = $this->firmaService->obtenerRuta($identidad['contacto_firma']);
+        if (!empty($datos['confirmar_identidad']) && !$this->confirmacionValida($identidad, (string)($datos['identidad_envio'] ?? ''))) {
+            return $this->error('El remitente institucional cambió o venció su comprobación. Revisa el remitente visible y vuelve a enviar.', 422);
+        }
+        $send = function () use ($usuarioId, $identidad, $account, $remitente, $nombreRemitente, $destinatario, $nombreDestinatario,
             $asunto, $cuerpo, $rutaFirma, $imagenesEmbebidas, $adjuntos, $htmlAdicional) {
+            if (!CorreoLimiteService::tomar('commercial-send', $usuarioId, 60, 3600)) { return $this->error('Se alcanzó el límite de envíos. Espera antes de volver a enviar.', 429); }
             if ($account['transport'] === 'hostinger_api') {
                 $base = rtrim((string)($account['api_base_url'] ?? self::HOSTINGER_BASE_DEFAULT), '/');
                 if ($base !== self::HOSTINGER_BASE_DEFAULT || empty($account['api_token'])) {
                     return $this->error('Falta la configuración privada de la API Hostinger para esta cuenta.', 422);
                 }
-                return $this->enviarHostinger($remitente, $nombreRemitente, $destinatario, $asunto, $cuerpo, $rutaFirma,
-                    ['token' => $account['api_token'], 'base_url' => $base], $imagenesEmbebidas, $adjuntos, $htmlAdicional, true, $remitente);
+                $result = $this->enviarHostinger($identidad['remitente_visible'], $identidad['nombre_visible'], $destinatario, $asunto, $cuerpo, $rutaFirma,
+                    ['token' => $account['api_token'], 'base_url' => $base], $imagenesEmbebidas, $adjuntos, $htmlAdicional, true, $identidad['remitente_visible']);
+            } else {
+                $result = $this->enviarSmtp($identidad['remitente_visible'], $identidad['nombre_visible'], $destinatario, $nombreDestinatario, $asunto, $cuerpo,
+                    $rutaFirma, $imagenesEmbebidas, $adjuntos, $htmlAdicional, array_replace($account, ['reply_to' => $identidad['reply_to']]));
             }
-            return $this->enviarSmtp($remitente, $nombreRemitente, $destinatario, $nombreDestinatario, $asunto, $cuerpo,
-                $rutaFirma, $imagenesEmbebidas, $adjuntos, $htmlAdicional, $account);
+            return $result + $identidad;
         };
         $attachments = array_map(static function ($a) { return [$a['nombre'], hash_file('sha256', $a['ruta'])]; }, array_merge($adjuntos, $imagenesEmbebidas));
-        $fingerprint = hash('sha256', json_encode([$usuarioId, $remitente, $destinatario, $asunto, $cuerpo, $htmlAdicional, $attachments,
+        $fingerprint = hash('sha256', json_encode([$usuarioId, $identidad, $destinatario, $asunto, $cuerpo, $htmlAdicional, $attachments,
             is_file($rutaFirma) ? hash_file('sha256', $rutaFirma) : '']));
         $explicit = trim((string)($datos['idempotency_key'] ?? ''));
         if ($explicit !== '' && !preg_match('/^[a-zA-Z0-9:_.-]{8,180}$/D', $explicit)) { return $this->error('La solicitud de envío no es válida.', 422); }
@@ -115,6 +123,45 @@ class CorreoSalidaInstitucionalService
             return $this->error('No se pudo confirmar un envío seguro. Revisa el proveedor y el historial antes de repetirlo.', 503)
                 + ['estado_entrega' => 'DESCONOCIDO', 'entrega_confirmada' => false];
         }
+    }
+
+    public function identidad(string $contacto, int $user): array
+    {
+        try {
+            if (!filter_var($contacto, FILTER_VALIDATE_EMAIL)) { return $this->error('Ingresa un correo de contacto válido.', 422); }
+            $r = $this->cuentas->resolver(strtolower(trim($contacto)), $user);
+            if (empty($r['ok'])) { return $r; }
+            $identity = $r['identidad']; $expires = time() + 600;
+            $_SESSION['mail_identity_key'] = $_SESSION['mail_identity_key'] ?? bin2hex(random_bytes(32));
+            $token = $expires . '.' . hash_hmac('sha256', json_encode([$identity, $expires]), $_SESSION['mail_identity_key']);
+            return ['ok' => true, 'identidad' => $identity, 'identidad_envio' => $token];
+        } catch (Throwable $e) {
+            $allowed = ['MAIL_CENTRAL_CONFIG','MAIL_CENTRAL_FROM','MAIL_CENTRAL_API','MAIL_SMTP_CONFIG','MAIL_SMTP_IDENTITY','MAIL_OAUTH_CONFIG','MAIL_STATE_DIRECTORY','MAIL_STATE_OPEN','MAIL_STATE_BUSY'];
+            $reason = in_array($e->getMessage(), $allowed, true) ? $e->getMessage() : 'MAIL_IDENTITY_FAILED';
+            error_log('MAIL_IDENTITY reason=' . $reason . ' exception=' . get_class($e));
+            $messages = [
+                'MAIL_CENTRAL_CONFIG' => 'El servidor no tiene configurada una cuenta de salida válida. El administrador debe cargar el token Hostinger o las credenciales SMTP en la configuración privada.',
+                'MAIL_CENTRAL_FROM' => 'Tu correo no corresponde a un buzón Hostinger autorizado. Revisa la autorización de esa cuenta con el administrador.',
+                'MAIL_CENTRAL_API' => 'Hostinger no permitió consultar los buzones. Revisa el token específico de Mail API y su autorización.',
+                'MAIL_OAUTH_CONFIG' => 'Falta configurar la aplicación Google para este Gmail. También puede utilizarse SMTP con una clave de aplicación configurada por el administrador.',
+                'MAIL_SMTP_CONFIG' => 'Las credenciales SMTP de esta cuenta están incompletas. El administrador debe revisar su configuración privada.'
+            ];
+            return $this->error($messages[$reason] ?? 'No se pudo comprobar la cuenta de envío. Solicita revisar el diagnóstico privado del servidor.', 503);
+        }
+    }
+
+    private function confirmacionValida(array $identity, string $token): bool
+    {
+        if (!preg_match('/^([0-9]{10})\.([a-f0-9]{64})$/D', $token, $m) || (int)$m[1] < time() || (int)$m[1] > time() + 600 || empty($_SESSION['mail_identity_key'])) { return false; }
+        return hash_equals(hash_hmac('sha256', json_encode([$identity, (int)$m[1]]), $_SESSION['mail_identity_key']), $m[2]);
+    }
+
+    public function comprobarIdentidad(string $contacto, int $user, string $token): array
+    {
+        $r = $this->identidad($contacto, $user);
+        if (empty($r['ok'])) { return $r; }
+        return $this->confirmacionValida($r['identidad'], $token) ? ['ok' => true, 'identidad' => $r['identidad']]
+            : $this->error('Revisa el remitente institucional visible antes de enviar.', 422);
     }
 
     private function enviarHostinger(
@@ -355,8 +402,10 @@ class CorreoSalidaInstitucionalService
         try {
             $configUsuario = is_array($configUsuario) ? $configUsuario : [];
             $mail = $this->mailerFactory ? ($this->mailerFactory)() : new \PHPMailer\PHPMailer\PHPMailer(true);
-            CorreoSmtpTransport::configurar($mail, $configUsuario);
+            if (($configUsuario['transport'] ?? '') === 'gmail_api') { $mail->CharSet = 'UTF-8'; }
+            else { CorreoSmtpTransport::configurar($mail, $configUsuario); }
             $mail->setFrom($remitenteUsuario, $nombreRemitente !== '' ? $nombreRemitente : $remitenteUsuario);
+            if (!empty($configUsuario['reply_to'])) { $mail->addReplyTo($configUsuario['reply_to']); }
             $mail->addAddress($destinatario, $nombreDestinatario);
             $firmaDisponible = $rutaFirma !== '' && is_file($rutaFirma);
             if ($firmaDisponible) {
@@ -396,7 +445,9 @@ class CorreoSalidaInstitucionalService
                 $htmlAdicional
             );
             $mail->AltBody = $cuerpo;
-            $outcome = CorreoSmtpTransport::enviar($mail, 'commercial');
+            $outcome = ($configUsuario['transport'] ?? '') === 'gmail_api'
+                ? CorreoGmailApiTransport::enviar($mail, $configUsuario, $this->apiRequest)
+                : CorreoSmtpTransport::enviar($mail, 'commercial');
             if (empty($outcome['ok'])) { return $outcome; }
             return $outcome + [
                 'firma_incluida' => $firmaDisponible,

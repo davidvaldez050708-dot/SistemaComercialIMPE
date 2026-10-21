@@ -23,7 +23,7 @@ final class CorreoSmtpTransport
         $mail->isSMTP(); $mail->Host = $host; $mail->Port = $port; $mail->SMTPAuth = true;
         $mail->Username = (string)$a['smtp_username']; $mail->CharSet = 'UTF-8';
         $mail->SMTPSecure = $tls === 'ssl' ? 'ssl' : 'tls'; $mail->SMTPAutoTLS = true;
-        $mail->Timeout = 15; $mail->Timelimit = 30; $mail->SMTPDebug = 0;
+        $mail->Timeout = 15; $mail->SMTPDebug = 0;
         $ssl = ['verify_peer' => true, 'verify_peer_name' => true, 'allow_self_signed' => false];
         if (!empty($a['smtp_ca_file'])) {
             if (!is_file($a['smtp_ca_file'])) { throw new RuntimeException('MAIL_SMTP_CA'); }
@@ -31,6 +31,7 @@ final class CorreoSmtpTransport
         }
         $mail->SMTPOptions = ['ssl' => $ssl];
         if (!($mail->getSMTPInstance() instanceof CorreoSmtpSession)) { $mail->setSMTPInstance(new CorreoSmtpSession()); }
+        $mail->getSMTPInstance()->Timelimit = 30;
         if ($auth === 'oauth2') {
             $mail->AuthType = 'XOAUTH2'; $mail->setOAuth(new CorreoOAuthTokenProvider($a));
         } else { $mail->Password = (string)$a['smtp_password']; }

@@ -10,7 +10,19 @@ final class CorreoOAuthTokenProvider implements \PHPMailer\PHPMailer\OAuthTokenP
     private $request;
     public function __construct(array $account, ?callable $request = null) { $this->account = $account; $this->request = $request; }
 
+    public static function claveCuenta(array $a): string
+    {
+        $parts = [$a['oauth_provider'], (string)($a['tenant'] ?? 'common'), trim((string)$a['smtp_username']), $a['client_id'], $a['refresh_token']];
+        if (!empty($a['oauth_scope'])) { $parts[] = $a['oauth_scope']; }
+        return hash('sha256', json_encode($parts));
+    }
+
     public function getOauth64()
+    {
+        return base64_encode('user=' . trim((string)($this->account['smtp_username'] ?? '')) . "\001auth=Bearer " . $this->obtenerAccessToken() . "\001\001");
+    }
+
+    public function obtenerAccessToken(): string
     {
         $a = $this->account;
         $provider = $a['oauth_provider'] ?? '';
@@ -22,7 +34,7 @@ final class CorreoOAuthTokenProvider implements \PHPMailer\PHPMailer\OAuthTokenP
         if (!preg_match('/^[a-zA-Z0-9.-]{1,253}$/D', $tenant)) { throw new RuntimeException('MAIL_OAUTH_TENANT'); }
         $url = $provider === 'google' ? 'https://oauth2.googleapis.com/token'
             : 'https://login.microsoftonline.com/' . $tenant . '/oauth2/v2.0/token';
-        $key = hash('sha256', json_encode([$provider, $tenant, $user, $a['client_id'], $a['refresh_token']]));
+        $key = self::claveCuenta($a);
         $token = CorreoEstadoPrivado::ejecutar('oauth', $key, function ($state, $save) use ($a, $provider, $url) {
             if (!empty($state['access_token']) && ($state['expires_at'] ?? 0) > time() + 60) { return $state['access_token']; }
             $fields = ['grant_type' => 'refresh_token', 'client_id' => $a['client_id'],
@@ -39,7 +51,7 @@ final class CorreoOAuthTokenProvider implements \PHPMailer\PHPMailer\OAuthTokenP
                 'refresh_token' => $response['refresh_token'] ?? $fields['refresh_token']]);
             return $token;
         });
-        return base64_encode('user=' . $user . "\001auth=Bearer " . $token . "\001\001");
+        return $token;
     }
 
     private function solicitar(string $url, array $fields): array

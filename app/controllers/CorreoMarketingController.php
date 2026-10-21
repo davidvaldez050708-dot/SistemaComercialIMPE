@@ -6,6 +6,13 @@ require_once __DIR__ . '/../models/ConvocatoriaModel.php';
 
 class CorreoMarketingController
 {
+    public function identidad()
+    {
+        $this->validarAccesoMarketing();
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') { $this->responder(['ok' => false, 'mensaje' => 'Método no permitido.'], 405); }
+        $r = (new CorreoSalidaInstitucionalService())->identidad(strtolower(trim((string)($_POST['remitente'] ?? ''))), (int)$_SESSION['usuario_id']);
+        $code = (int)($r['codigo_http'] ?? 200); unset($r['codigo_http']); $this->responder($r, $code);
+    }
     public function index()
     {
         $this->validarAccesoMarketing();

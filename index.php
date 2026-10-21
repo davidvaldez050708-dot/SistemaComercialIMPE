@@ -221,6 +221,7 @@ if (isset($_SESSION['usuario_id']) && empty($_SESSION['csrf_token'])) {
  * automáticamente desde dashboard_head.php.
  */
 $controladoresProtegidosCsrf = [
+    'correoMarketing',
     'seguimientoVinculacion',
     'seguimientoFlujo',
     'seguimientoInteraccion',
@@ -563,6 +564,11 @@ switch ($controller) {
 
         break;
 
+
+    case 'correoConexion':
+        require_once __DIR__ . '/app/controllers/CorreoConexionController.php';
+        $controllerInstance = new CorreoConexionController();
+        break;
 
     case 'correoMarketing':
 

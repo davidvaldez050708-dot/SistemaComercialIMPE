@@ -3,17 +3,32 @@
 /** Estado técnico privado para OAuth y exclusión de envíos duplicados. Sin BD. */
 final class CorreoEstadoPrivado
 {
-    public static function ejecutar(string $grupo, string $clave, callable $operacion)
+    private static function directorio(bool $crear): ?string
     {
         $root = realpath(dirname(__DIR__, 2));
         $dir = rtrim((string)(getenv('IMPE_MAIL_STATE_DIR') ?: dirname($root) . '/impe-private/mail-state'), '/\\');
+        if (!is_dir($dir) && !$crear) { return null; }
         if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) { throw new RuntimeException('MAIL_STATE_DIRECTORY'); }
         $real = realpath($dir);
-        $webRoot = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+        $documentRoot = trim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+        $webRoot = $documentRoot !== '' ? realpath($documentRoot) : false;
         if (!$real || is_link($dir) || str_starts_with(strtolower($real . DIRECTORY_SEPARATOR), strtolower($root . DIRECTORY_SEPARATOR)) ||
             ($webRoot && str_starts_with(strtolower($real . DIRECTORY_SEPARATOR), strtolower($webRoot . DIRECTORY_SEPARATOR)))) {
             throw new RuntimeException('MAIL_STATE_NOT_PRIVATE');
         }
+        return $real;
+    }
+
+    public static function leer(string $grupo, string $clave): array
+    {
+        $dir = self::directorio(false);
+        if ($dir === null || !is_file($dir . DIRECTORY_SEPARATOR . hash('sha256', $grupo . "\0" . $clave) . '.json')) { return []; }
+        return self::ejecutar($grupo, $clave, static function ($state) { return $state; });
+    }
+
+    public static function ejecutar(string $grupo, string $clave, callable $operacion)
+    {
+        $real = self::directorio(true);
         $name = hash('sha256', $grupo . "\0" . $clave);
         $path = $real . DIRECTORY_SEPARATOR . $name . '.json';
         $lockPath = $real . DIRECTORY_SEPARATOR . $name . '.lock';
