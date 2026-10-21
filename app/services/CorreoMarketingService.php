@@ -9,12 +9,13 @@ class CorreoMarketingService
     private $connection;
     private $sender;
     private $rootPath;
+    private $usuarioLoader;
 
-    public function __construct()
+    public function __construct($connection = null, ?CorreoSalidaInstitucionalService $sender = null, ?callable $usuarioLoader = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
-        $this->sender = new CorreoSalidaInstitucionalService();
+        $this->connection = $connection ?? (new Database())->connect();
+        $this->sender = $sender ?? new CorreoSalidaInstitucionalService();
+        $this->usuarioLoader = $usuarioLoader;
         $this->rootPath = dirname(__DIR__, 2);
     }
 
@@ -633,6 +634,37 @@ class CorreoMarketingService
 
     public function enviar($usuarioId, $datos, $archivos = null)
     {
+        if ((int)$usuarioId <= 0 || (isset($_SESSION['usuario_id']) && (int)$_SESSION['usuario_id'] !== (int)$usuarioId)) {
+            return $this->error('La sesión no está activa.', 401);
+        }
+        $key = trim((string)($datos['idempotency_key'] ?? ''));
+        $draft = (int)($datos['correo_id'] ?? 0);
+        $hashes = [];
+        foreach (($archivos['tmp_name'] ?? []) as $path) {
+            $hashes[] = is_uploaded_file($path) ? hash_file('sha256', $path) : '';
+        }
+        $fields = [];
+        foreach (['remitente', 'destinatario', 'destinatario_nombre', 'asunto', 'cuerpo', 'convocatoria_id', 'correo_id'] as $field) {
+            $fields[$field] = (string)($datos[$field] ?? '');
+        }
+        $fingerprint = hash('sha256', json_encode([$fields, $hashes]));
+        if ($key !== '' && !preg_match('/^[a-zA-Z0-9:_.-]{8,180}$/D', $key)) {
+            return $this->error('La solicitud de envío no es válida.', 422);
+        }
+        $key = $draft > 0 ? 'draft:' . $draft : ($key ?: 'legacy:' . intdiv(time(), 60) . ':' . $fingerprint);
+        $datos['idempotency_key'] = 'marketing:' . hash('sha256', $key);
+        try {
+            return CorreoEnvioControl::registrar((int)$usuarioId . ':' . $key, $fingerprint,
+                function () use ($usuarioId, $datos, $archivos) { return $this->enviarUnaVez($usuarioId, $datos, $archivos); });
+        } catch (Throwable $error) {
+            error_log('MAIL_MARKETING state_or_history_failed exception=' . get_class($error));
+            return $this->error('No fue posible confirmar el envío y su registro. Revisa el proveedor y el historial antes de repetirlo.', 503)
+                + ['estado_entrega' => 'DESCONOCIDO', 'entrega_confirmada' => false];
+        }
+    }
+
+    private function enviarUnaVez($usuarioId, $datos, $archivos)
+    {
         $usuarioId = (int)$usuarioId;
         $correoId = (int)($datos['correo_id'] ?? 0);
         $remitenteSolicitado = strtolower(
@@ -679,8 +711,7 @@ class CorreoMarketingService
             }
         }
 
-        $modeloUsuario = new UsuarioModel();
-        $usuario = $modeloUsuario->buscarPorId($usuarioId);
+        $usuario = $this->usuarioLoader ? ($this->usuarioLoader)($usuarioId) : (new UsuarioModel())->buscarPorId($usuarioId);
 
         if (!$usuario) {
             return $this->error('No fue posible identificar al remitente.', 404);
@@ -758,6 +789,7 @@ class CorreoMarketingService
             $envio = $this->sender->enviar([
                 'usuario_id' => $usuarioId,
                 'perfil_marketing' => true,
+                'idempotency_key' => $datos['idempotency_key'],
                 'usar_remitente_exacto' => true,
                 'remitente' => $remitente,
                 'nombre_remitente' => trim(
@@ -777,6 +809,11 @@ class CorreoMarketingService
                         $registroId,
                         (string)($envio['mensaje'] ?? 'No fue posible realizar el envío.')
                     );
+                    if ($correoId > 0 && ($envio['estado_entrega'] ?? 'RECHAZADO') === 'RECHAZADO') {
+                        $stmt = $this->connection->prepare("UPDATE correos_marketing SET estado = 'BORRADOR' WHERE id = ? AND usuario_id = ? AND estado = 'PENDIENTE'");
+                        $stmt->bind_param('ii', $correoId, $usuarioId);
+                        $stmt->execute();
+                    }
                 }
 
                 return $envio;
@@ -800,7 +837,9 @@ class CorreoMarketingService
 
             return [
                 'ok' => true,
-                'mensaje' => 'Correo enviado correctamente.',
+                'mensaje' => 'El proveedor aceptó el correo. La entrega al destinatario aún no está confirmada.',
+                'estado_entrega' => 'ACEPTADO',
+                'entrega_confirmada' => false,
                 'correo_id' => $registroId,
                 'proveedor' => (string)($envio['proveedor'] ?? ''),
                 'firma_incluida' => (bool)($envio['firma_incluida'] ?? false),

@@ -14,7 +14,7 @@ $valores = [
     'MAIL_USERNAME' => '',
     'MAIL_PASSWORD' => '',
     'MAIL_ENCRYPTION' => 'tls',
-    'MAIL_FROM_ADDRESS' => trim((string)(getenv('MAIL_USERNAME') ?: '')),
+    'MAIL_FROM_ADDRESS' => trim((string)(defined('MAIL_USERNAME') ? MAIL_USERNAME : (getenv('MAIL_USERNAME') ?: ''))),
     'MAIL_FROM_NAME' => 'Fundación Red Educativa México',
 ];
 

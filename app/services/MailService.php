@@ -2,38 +2,33 @@
 
 require_once ROOT_PATH . '/vendor/autoload.php';
 require_once ROOT_PATH . '/config/mail_config.php';
+require_once __DIR__ . '/CorreoSmtpTransport.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 class MailService
 {
+    private $mailerFactory;
+    public function __construct(?callable $mailerFactory = null) { $this->mailerFactory = $mailerFactory; }
     public function enviarPasswordTemporal(
         $correoDestino,
         $nombreDestino,
         $passwordTemporal
     ) {
-        $mail = new PHPMailer(true);
+        $mail = $this->mailerFactory ? ($this->mailerFactory)() : new PHPMailer(true);
 
         try {
-            $mail->isSMTP();
-            $mail->Host = MAIL_HOST;
-            $mail->SMTPAuth = true;
-            $mail->Username = MAIL_USERNAME;
-            $mail->Password = MAIL_PASSWORD;
-
-            if (MAIL_ENCRYPTION === 'ssl') {
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            } else {
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            }
-
-            $mail->Port = MAIL_PORT;
-            $mail->CharSet = 'UTF-8';
+            // Configuración dedicada; nunca toma el campo De de los correos comerciales.
+            $dedicada = impeLeerConfigPrivada('password_reset_mail.local.php');
+            $cuenta = $dedicada ?: ['smtp_host' => MAIL_HOST, 'smtp_port' => MAIL_PORT,
+                'smtp_username' => MAIL_USERNAME, 'smtp_password' => MAIL_PASSWORD,
+                'smtp_encryption' => MAIL_ENCRYPTION, 'correo' => MAIL_FROM_ADDRESS, 'nombre' => MAIL_FROM_NAME];
+            CorreoSmtpTransport::configurar($mail, $cuenta);
 
             $mail->setFrom(
-                MAIL_FROM_ADDRESS,
-                MAIL_FROM_NAME
+                (string)($cuenta['correo'] ?? $cuenta['smtp_username']),
+                (string)($cuenta['nombre'] ?? MAIL_FROM_NAME)
             );
             $mail->addAddress(
                 $correoDestino,
@@ -81,7 +76,7 @@ class MailService
                 } catch (Throwable $logoError) {
                     error_log(
                         'No fue posible incrustar el logo en el correo de recuperación: ' .
-                        $logoError->getMessage()
+                        get_class($logoError)
                     );
                 }
             }
@@ -103,15 +98,9 @@ class MailService
                 "Ingresar al sistema: {$urlLogin}\n\n" .
                 "Si no realizaste esta solicitud, comunícate con el administrador del sistema.";
 
-            $mail->send();
-
-            return true;
-        } catch (Exception $e) {
-            error_log(
-                'Error al enviar correo de recuperación: ' .
-                $mail->ErrorInfo
-            );
-
+            return !empty(CorreoSmtpTransport::enviar($mail, 'password_reset')['ok']);
+        } catch (Throwable $e) {
+            error_log('MAIL_TRANSPORT ' . json_encode(['purpose' => 'password_reset', 'phase' => 'configuration', 'exception' => get_class($e)]));
             return false;
         }
     }

@@ -252,7 +252,14 @@
                 valor || 'Escribe un correo electrónico';
         };
 
+        let claveEnvio = '';
+        const nuevaClaveEnvio = function () {
+            const bytes = new Uint8Array(16);
+            window.crypto.getRandomValues(bytes);
+            return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+        };
         const limpiarFormulario = function () {
+            claveEnvio = nuevaClaveEnvio();
             form?.reset();
             adjuntosBorradorActual = [];
 
@@ -1295,6 +1302,7 @@
 
             const datos = new FormData(form);
             const htmlOriginal = botonEnviar?.innerHTML || '';
+            datos.set('idempotency_key', claveEnvio || (claveEnvio = nuevaClaveEnvio()));
 
             enviando = true;
 

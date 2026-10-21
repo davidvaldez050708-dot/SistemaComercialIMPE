@@ -1,6 +1,9 @@
 <?php
 
 require_once __DIR__ . '/FirmaCorreoService.php';
+require_once __DIR__ . '/CorreoCuentaConectadaService.php';
+require_once __DIR__ . '/CorreoSmtpTransport.php';
+require_once __DIR__ . '/CorreoEnvioControl.php';
 
 class CorreoSalidaInstitucionalService
 {
@@ -10,9 +13,16 @@ class CorreoSalidaInstitucionalService
     private $rootPath;
     private $firmaService;
 
-    public function __construct()
+    private $mailerFactory;
+    private $cuentas;
+    private $apiRequest;
+
+    public function __construct(?callable $mailerFactory = null, ?CorreoCuentaConectadaService $cuentas = null, ?callable $apiRequest = null)
     {
         $this->rootPath = dirname(__DIR__, 2);
+        $this->mailerFactory = $mailerFactory;
+        $this->cuentas = $cuentas ?? new CorreoCuentaConectadaService();
+        $this->apiRequest = $apiRequest;
         $this->firmaService = new FirmaCorreoService();
     }
 
@@ -20,9 +30,7 @@ class CorreoSalidaInstitucionalService
     {
         $remitente = strtolower(trim((string)($datos['remitente'] ?? '')));
         $usuarioId = (int)($datos['usuario_id'] ?? 0);
-        $esEnvioSistema = !empty($datos['envio_sistema']);
         $perfilMarketing = !empty($datos['perfil_marketing']);
-        $usarRemitenteExacto = !empty($datos['usar_remitente_exacto']);
 
         /*
          * Compatibilidad con módulos existentes: si el llamador todavía no
@@ -74,160 +82,39 @@ class CorreoSalidaInstitucionalService
 
         $rutaFirma = $this->firmaService->obtenerRuta($remitente);
 
-        /*
-         * Marketing puede solicitar un remitente concreto, pero las
-         * credenciales siguen siendo administradas por el sistema.
-         * Si ese remitente coincide con la cuenta SMTP central, usamos SMTP.
-         * Si corresponde a un buzón autorizado por Hostinger Mail API,
-         * usamos ese buzón. Nunca suplantamos direcciones no autorizadas.
-         */
-        $configMarketing = $perfilMarketing
-            ? $this->cargarConfigMarketing()
-            : [];
-
-        if ($perfilMarketing) {
-            $smtpFromConfigurado = strtolower(trim((string)(
-                $configMarketing['smtp_from_address'] ?? ''
-            )));
-            $smtpUsuarioConfigurado = trim((string)(
-                $configMarketing['smtp_username'] ?? ''
-            ));
-            $smtpPasswordConfigurado = (string)(
-                $configMarketing['smtp_password'] ?? ''
-            );
-
-            $smtpMarketing = [
-                'smtp_host' => trim((string)(
-                    $configMarketing['smtp_host'] ?? ''
-                )),
-                'smtp_port' => (int)(
-                    $configMarketing['smtp_port'] ?? 587
-                ),
-                'smtp_encryption' => strtolower(trim((string)(
-                    $configMarketing['smtp_encryption'] ?? 'tls'
-                ))),
-                'smtp_username' => $smtpUsuarioConfigurado,
-                'smtp_password' => $smtpPasswordConfigurado,
-                'correo' => $smtpFromConfigurado
-            ];
-        } else {
-            $archivoConfigSmtp = $this->rootPath .
-                DIRECTORY_SEPARATOR . 'config' .
-                DIRECTORY_SEPARATOR . 'mail_config.php';
-
-            if (is_file($archivoConfigSmtp)) {
-                require_once $archivoConfigSmtp;
+        try {
+            $connection = $this->cuentas->resolver($remitente, $usuarioId, $perfilMarketing);
+        } catch (Throwable $error) {
+            error_log('MAIL_TRANSPORT account_configuration_failed exception=' . get_class($error));
+            return $this->error('No fue posible consultar las cuentas autorizadas. Solicita revisar la configuración privada.', 503);
+        }
+        if (empty($connection['ok'])) { return $connection; }
+        $account = $connection['account'];
+        $send = function () use ($account, $remitente, $nombreRemitente, $destinatario, $nombreDestinatario,
+            $asunto, $cuerpo, $rutaFirma, $imagenesEmbebidas, $adjuntos, $htmlAdicional) {
+            if ($account['transport'] === 'hostinger_api') {
+                $base = rtrim((string)($account['api_base_url'] ?? self::HOSTINGER_BASE_DEFAULT), '/');
+                if ($base !== self::HOSTINGER_BASE_DEFAULT || empty($account['api_token'])) {
+                    return $this->error('Falta la configuración privada de la API Hostinger para esta cuenta.', 422);
+                }
+                return $this->enviarHostinger($remitente, $nombreRemitente, $destinatario, $asunto, $cuerpo, $rutaFirma,
+                    ['token' => $account['api_token'], 'base_url' => $base], $imagenesEmbebidas, $adjuntos, $htmlAdicional, true, $remitente);
             }
-
-            $smtpFromConfigurado = strtolower(
-                trim((string)$this->config('MAIL_FROM_ADDRESS'))
-            );
-            $smtpUsuarioConfigurado = trim(
-                (string)$this->config('MAIL_USERNAME')
-            );
-            $smtpPasswordConfigurado = (string)$this->config('MAIL_PASSWORD');
-            $smtpMarketing = null;
+            return $this->enviarSmtp($remitente, $nombreRemitente, $destinatario, $nombreDestinatario, $asunto, $cuerpo,
+                $rutaFirma, $imagenesEmbebidas, $adjuntos, $htmlAdicional, $account);
+        };
+        $attachments = array_map(static function ($a) { return [$a['nombre'], hash_file('sha256', $a['ruta'])]; }, array_merge($adjuntos, $imagenesEmbebidas));
+        $fingerprint = hash('sha256', json_encode([$usuarioId, $remitente, $destinatario, $asunto, $cuerpo, $htmlAdicional, $attachments,
+            is_file($rutaFirma) ? hash_file('sha256', $rutaFirma) : '']));
+        $explicit = trim((string)($datos['idempotency_key'] ?? ''));
+        if ($explicit !== '' && !preg_match('/^[a-zA-Z0-9:_.-]{8,180}$/D', $explicit)) { return $this->error('La solicitud de envío no es válida.', 422); }
+        try {
+            return CorreoEnvioControl::ejecutar($usuarioId . ':' . ($explicit ?: $fingerprint), $fingerprint, $send, $explicit !== '');
+        } catch (Throwable $error) {
+            error_log('MAIL_TRANSPORT ' . json_encode(['phase' => 'account_or_state', 'exception' => get_class($error)]));
+            return $this->error('No se pudo confirmar un envío seguro. Revisa el proveedor y el historial antes de repetirlo.', 503)
+                + ['estado_entrega' => 'DESCONOCIDO', 'entrega_confirmada' => false];
         }
-
-        if (
-            $usarRemitenteExacto &&
-            $smtpFromConfigurado !== '' &&
-            strcasecmp($remitente, $smtpFromConfigurado) === 0 &&
-            $smtpUsuarioConfigurado !== '' &&
-            $smtpPasswordConfigurado !== ''
-        ) {
-            return $this->enviarSmtp(
-                $remitente,
-                $nombreRemitente,
-                $destinatario,
-                $nombreDestinatario,
-                $asunto,
-                $cuerpo,
-                $rutaFirma,
-                $imagenesEmbebidas,
-                $adjuntos,
-                $htmlAdicional,
-                $smtpMarketing
-            );
-        }
-
-        $hostinger = $perfilMarketing
-            ? [
-                'token' => trim((string)(
-                    $configMarketing['hostinger_mail_api_token'] ?? ''
-                )),
-                'base_url' => rtrim(
-                    trim((string)(
-                        $configMarketing['hostinger_mail_api_base_url'] ??
-                        self::HOSTINGER_BASE_DEFAULT
-                    )),
-                    '/'
-                ),
-                'from_address' => strtolower(trim((string)(
-                    $configMarketing['hostinger_from_address'] ?? ''
-                )))
-            ]
-            : array_merge(
-                $this->cargarHostinger(),
-                [
-                    'from_address' => strtolower(trim((string)
-                        $this->config('HOSTINGER_MAIL_FROM_ADDRESS')
-                    ))
-                ]
-            );
-
-
-        if ($hostinger['token'] !== '') {
-            $envioHostinger = $this->enviarHostinger(
-                $remitente,
-                $nombreRemitente,
-                $destinatario,
-                $asunto,
-                $cuerpo,
-                $rutaFirma,
-                $hostinger,
-                $imagenesEmbebidas,
-                $adjuntos,
-                $htmlAdicional,
-                $usarRemitenteExacto,
-                (string)($hostinger['from_address'] ?? '')
-            );
-
-            if (!empty($envioHostinger['ok'])) {
-                return $envioHostinger;
-            }
-
-            if (empty($envioHostinger['fallback_smtp'])) {
-                return $envioHostinger;
-            }
-        }
-
-        if (
-            $usarRemitenteExacto &&
-            (
-                $smtpFromConfigurado === '' ||
-                strcasecmp($remitente, $smtpFromConfigurado) !== 0
-            )
-        ) {
-            return $this->error(
-                'No es posible enviar mostrando ese correo como origen porque no está autorizado en Hostinger ni coincide con la cuenta central configurada.',
-                422
-            );
-        }
-
-        return $this->enviarSmtp(
-            $remitente,
-            $nombreRemitente,
-            $destinatario,
-            $nombreDestinatario,
-            $asunto,
-            $cuerpo,
-            $rutaFirma,
-            $imagenesEmbebidas,
-            $adjuntos,
-            $htmlAdicional,
-            $smtpMarketing
-        );
     }
 
     private function enviarHostinger(
@@ -330,7 +217,6 @@ class CorreoSalidaInstitucionalService
         if ($resourceId === '') {
             return [
                 'ok' => false,
-                'fallback_smtp' => true,
                 'mensaje' => $usarRemitenteExacto
                     ? 'El correo de origen no está autorizado como cuenta de salida. Usa una cuenta configurada en el sistema o un buzón autorizado de Hostinger.'
                     : 'No hay ningún buzón de salida autorizado disponible.'
@@ -421,15 +307,20 @@ class CorreoSalidaInstitucionalService
         );
 
         if (!($respuesta['ok'] ?? false)) {
-            return $this->error(
-                'No fue posible enviar el correo institucional.',
-                (int)($respuesta['codigo_http'] ?? 502)
-            );
+            $code = (int)($respuesta['codigo_http'] ?? 502);
+            $unknown = !empty($respuesta['incierto']) || $code >= 500 || $code < 400 || $code === 408;
+            return ['ok' => false, 'codigo_http' => 502, 'proveedor' => 'HOSTINGER_MAIL_API',
+                'estado_entrega' => $unknown ? 'DESCONOCIDO' : 'RECHAZADO', 'entrega_confirmada' => false,
+                'mensaje' => $unknown
+                    ? 'La API no confirmó el resultado. Comprueba el buzón y el historial antes de repetir el envío.'
+                    : 'Hostinger rechazó el envío. Revisa la autorización del buzón y la configuración de la API.'];
         }
 
         return [
             'ok' => true,
             'proveedor' => 'HOSTINGER_MAIL_API',
+            'estado_entrega' => 'ACEPTADO',
+            'entrega_confirmada' => false,
             'cuenta_salida' => $direccionSalida,
             'correo_usuario' => $remitente,
             'firma_incluida' => $firmaDisponible,
@@ -461,83 +352,12 @@ class CorreoSalidaInstitucionalService
         }
         require_once $autoload;
 
-        $archivoConfig = $this->rootPath . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'mail_config.php';
-        if (is_file($archivoConfig)) {
-            require_once $archivoConfig;
-        }
-
-        if (is_array($configUsuario)) {
-            $host = trim((string)($configUsuario['smtp_host'] ?? ''));
-            $puerto = (int)($configUsuario['smtp_port'] ?? 587);
-            $usuario = trim((string)($configUsuario['smtp_username'] ?? ''));
-            $password = (string)($configUsuario['smtp_password'] ?? '');
-            $encriptacion = strtolower(
-                trim((string)($configUsuario['smtp_encryption'] ?? 'tls'))
-            );
-            $from = strtolower(
-                trim((string)($configUsuario['correo'] ?? $usuario))
-            );
-            $fromName = $nombreRemitente !== ''
-                ? $nombreRemitente
-                : $from;
-        } else {
-            $host = $this->config('MAIL_HOST');
-            $puerto = (int)$this->config('MAIL_PORT', '587');
-            $usuario = $this->config('MAIL_USERNAME');
-            $password = $this->config('MAIL_PASSWORD');
-            $encriptacion = strtolower(
-                $this->config('MAIL_ENCRYPTION', 'tls')
-            );
-            $from = $this->config('MAIL_FROM_ADDRESS', $usuario);
-            $fromName = $this->config(
-                'MAIL_FROM_NAME',
-                $nombreRemitente !== ''
-                    ? $nombreRemitente
-                    : 'Fundación Red Educativa México'
-            );
-        }
-
-        if ($host === '' || $puerto <= 0 || $from === '' || !filter_var($from, FILTER_VALIDATE_EMAIL)) {
-            return $this->error(
-                'La cuenta de salida del sistema no está disponible. Contacta al administrador para revisar la configuración del servicio de correo.',
-                500
-            );
-        }
-
         try {
-            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-            $mail->CharSet = 'UTF-8';
-            $mail->isSMTP();
-            $mail->Host = $host;
-            $mail->Port = $puerto;
-            $mail->SMTPAuth = $usuario !== '';
-            if ($usuario !== '') {
-                $mail->Username = $usuario;
-                $mail->Password = $password;
-            }
-            if ($encriptacion === 'ssl') {
-                $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
-            } elseif ($encriptacion === 'tls') {
-                $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-            } else {
-                $mail->SMTPAutoTLS = false;
-                $mail->SMTPSecure = false;
-            }
-
-            $mail->setFrom($from, $fromName);
+            $configUsuario = is_array($configUsuario) ? $configUsuario : [];
+            $mail = $this->mailerFactory ? ($this->mailerFactory)() : new \PHPMailer\PHPMailer\PHPMailer(true);
+            CorreoSmtpTransport::configurar($mail, $configUsuario);
+            $mail->setFrom($remitenteUsuario, $nombreRemitente !== '' ? $nombreRemitente : $remitenteUsuario);
             $mail->addAddress($destinatario, $nombreDestinatario);
-            if (
-                $remitenteUsuario !== '' &&
-                strcasecmp($remitenteUsuario, $from) !== 0
-            ) {
-                $mail->addReplyTo(
-                    $remitenteUsuario,
-                    $nombreRemitente !== ''
-                        ? $nombreRemitente
-                        : $remitenteUsuario
-                );
-            }
-
             $firmaDisponible = $rutaFirma !== '' && is_file($rutaFirma);
             if ($firmaDisponible) {
                 $mail->addEmbeddedImage(
@@ -576,17 +396,15 @@ class CorreoSalidaInstitucionalService
                 $htmlAdicional
             );
             $mail->AltBody = $cuerpo;
-            $mail->send();
-
-            return [
-                'ok' => true,
-                'proveedor' => 'SMTP',
+            $outcome = CorreoSmtpTransport::enviar($mail, 'commercial');
+            if (empty($outcome['ok'])) { return $outcome; }
+            return $outcome + [
                 'firma_incluida' => $firmaDisponible,
                 'imagenes_embebidas' => count($imagenesEmbebidas),
                 'adjuntos' => count($adjuntos)
             ];
         } catch (Throwable $error) {
-            error_log('Correo institucional SMTP: ' . $error->getMessage());
+            error_log('MAIL_TRANSPORT ' . json_encode(['phase' => 'smtp_configuration', 'exception' => get_class($error)]));
             return $this->error('No fue posible enviar el correo institucional.', 502);
         }
     }
@@ -778,6 +596,7 @@ class CorreoSalidaInstitucionalService
 
     private function solicitarHostinger($metodo, $url, $token, $payload)
     {
+        if ($this->apiRequest) { return ($this->apiRequest)($metodo, $url, $token, $payload); }
         $curl = curl_init($url);
         $headers = [
             'Accept: application/json',
@@ -788,6 +607,9 @@ class CorreoSalidaInstitucionalService
         curl_setopt($curl, CURLOPT_CUSTOMREQUEST, strtoupper((string)$metodo));
         curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($curl, CURLOPT_TIMEOUT, 30);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 2);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
 
         if (is_array($payload)) {
             $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -809,15 +631,15 @@ class CorreoSalidaInstitucionalService
         curl_close($curl);
 
         if ($respuesta === false || $error !== '') {
-            error_log('Hostinger Mail API: ' . $error);
-            return ['ok' => false, 'codigo_http' => 502];
+            error_log('MAIL_TRANSPORT hostinger_connection_failed');
+            return ['ok' => false, 'codigo_http' => 502, 'incierto' => strtoupper($metodo) === 'POST'];
         }
 
         $jsonRespuesta = json_decode((string)$respuesta, true);
         $ok = $codigo >= 200 && $codigo < 300;
 
         if (!$ok) {
-            error_log('Hostinger Mail API HTTP ' . $codigo . ': ' . (string)$respuesta);
+            error_log('MAIL_TRANSPORT hostinger_http=' . $codigo);
         }
 
         return [
