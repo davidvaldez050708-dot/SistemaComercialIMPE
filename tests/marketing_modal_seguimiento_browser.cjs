@@ -33,6 +33,7 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
 <div hidden><select id="global-select-control"><option>Control del transformador global</option></select></div>
 <script>${fs.readFileSync(path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'),'utf8')}</script>
 <script>window.IMPE_CAN_CALL_OUT=true;window.IMPE_TELEPHONY_PERSISTENT={probe:async()=>({permite_salientes:true}),getState:()=>({active:false}),openDialer:()=>true};</script>
+<script>${read('public/javascript/telefonia_numeros.js')}</script>
 <script>${read('public/javascript/selectores_uniformes.js')}</script>
 <script>${read('public/javascript/telefonia_recepcion_marketing.js')}</script></body></html>`;
 
