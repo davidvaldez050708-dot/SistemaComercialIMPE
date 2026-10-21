@@ -32,6 +32,7 @@ $vista=['folio'=>'PRUEBA/0000/20-10/26','lugar_fecha'=>'Cuernavaca, Morelos, a 2
     'institucion'=>'INSTITUCIÓN FICTICIA DE PRUEBA','municipio'=>'Cuernavaca','estado'=>'MORELOS','ubicacion'=>'Cuernavaca / Morelos',
     'analista_nombre'=>'Analista de Prueba','analista_correo'=>'prueba@example.test','analista_telefono'=>'0000000000'];
 $service=new OficioDocxPdfService();
+$temporaryBefore=glob($root.'/storage/tmp/oficios/*',GLOB_ONLYDIR) ?: [];
 try {
     $doc=$service->generarDocx($vista); expectRedmex($doc['ok'],'general docx');
     // Las muestras públicas no incluyen metadatos ni comentarios de personas reales.
@@ -122,6 +123,7 @@ try {
     $result=$service->generarPdf($long); expectRedmex($result['ok'],'long pagination: '.($result['mensaje_tecnico']??'')); file_put_contents($out.'/paginacion.pdf',$result['contenido_pdf']);
     expectRedmex(hash_file('sha256',$source)===$hash && hash_file('sha256',$catalog)===$catalogHash
         && hash_file('sha256',$processed)===$processedHash,'originals unchanged');
+    expectRedmex(!array_diff(glob($root.'/storage/tmp/oficios/*',GLOB_ONLYDIR) ?: [],$temporaryBefore),'temporary directories removed on success and rejection');
     echo "OK: general, personalizada con tabla, preparada, incompatibles, paginación y originales intactos.\n";
 } finally {
     foreach ([$catalog,$processed,$incompatible] as $file) { if (is_file($file)) { unlink($file); } }

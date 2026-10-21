@@ -20,6 +20,7 @@ final class OficioRedmexPdfRenderer
         'r' => 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
     ];
     private $zip;
+    private $zipOpened = false;
     private $xp;
     private $rels;
     private $styles = [];
@@ -127,7 +128,18 @@ final class OficioRedmexPdfRenderer
             $code = preg_match('/^REDMEX_[A-Z_]+$/D', $error->getMessage()) ? $error->getMessage() : 'REDMEX_RENDER';
             error_log('OFICIO_PDF ' . $code . ' ' . get_class($error));
             return ['ok' => false, 'mensaje' => 'Este DOCX no puede convertirse conservando el formato REDMEX local. Conserva el DOCX y solicita la revisión de su diseño. No se ha generado el PDF.', 'mensaje_tecnico' => $code];
-        } finally { restore_error_handler(); }
+        } finally {
+            // open() también puede rechazar el perfil después de abrir el ZIP.
+            // Cerrar antes de que el servicio elimine su copia temporal, incluso
+            // en Windows, donde un descriptor abierto impide retirar la carpeta.
+            if (isset($profile)) { $profile->close(); }
+            $this->close();
+            // Font-lib conserva ciclos con sus métricas. Liberarlos antes del
+            // borrado permite retirar fuentes temporales también en Windows.
+            unset($pdf, $font);
+            gc_collect_cycles();
+            restore_error_handler();
+        }
     }
 
     private function ensure($condition, string $code): void
@@ -156,7 +168,8 @@ final class OficioRedmexPdfRenderer
     private function open(string $path): void
     {
         $this->zip = new ZipArchive();
-        $this->ensure($this->zip->open($path, ZipArchive::RDONLY) === true, 'ZIP_OPEN');
+        $this->zipOpened = $this->zip->open($path, ZipArchive::RDONLY) === true;
+        $this->ensure($this->zipOpened, 'ZIP_OPEN');
         $total = 0;
         $this->ensure($this->zip->numFiles <= 1000, 'ZIP_LIMIT');
         $names = [];
@@ -201,7 +214,9 @@ final class OficioRedmexPdfRenderer
 
     private function close(): void
     {
-        if ($this->zip instanceof ZipArchive) { $this->zip->close(); $this->zip = null; }
+        if ($this->zipOpened) { $this->zip->close(); }
+        $this->zipOpened=false;
+        $this->zip=null;
     }
 
     private function read(string $part): string
