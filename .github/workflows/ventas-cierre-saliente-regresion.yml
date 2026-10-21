@@ -10,6 +10,8 @@ on:
       - 'public/javascript/telefonia_sdk_entrantes_observador.js'
       - 'public/javascript/telefonia_host.js'
       - 'tests/telefonia_ventas_fin_sip_push_tardio.cjs'
+      - 'tests/telefonia_ventas_referencia_final.cjs'
+      - 'public/javascript/telefonia_ventas_resultados.js'
       - 'tests/telefonia_ventas_descartar_modal_resultado.cjs'
       - 'tests/publicacion_ventas_saliente_modal_test.py'
       - 'tools/publicar_ventas_saliente_modal_resultado_hostinger.sh'
@@ -22,6 +24,8 @@ on:
       - 'public/javascript/telefonia_sdk_entrantes_observador.js'
       - 'public/javascript/telefonia_host.js'
       - 'tests/telefonia_ventas_fin_sip_push_tardio.cjs'
+      - 'tests/telefonia_ventas_referencia_final.cjs'
+      - 'public/javascript/telefonia_ventas_resultados.js'
       - 'tests/telefonia_ventas_descartar_modal_resultado.cjs'
       - 'tests/publicacion_ventas_saliente_modal_test.py'
       - 'tools/publicar_ventas_saliente_modal_resultado_hostinger.sh'
@@ -45,3 +49,5 @@ jobs:
         run: python3 tests/publicacion_ventas_saliente_modal_test.py
       - name: Probar fin de SIP con sesión PUSH tardía
         run: node tests/telefonia_ventas_fin_sip_push_tardio.cjs
+      - name: Probar registro inmediato tras FIN SIP
+        run: node tests/telefonia_ventas_referencia_final.cjs
