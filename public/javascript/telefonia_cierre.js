@@ -54,7 +54,11 @@
                 const exact=calls.filter(c=>matches(c,transition.id));
                 const candidates=exact.length?exact:calls.filter(c=>c.fin_ts>=transition.at-3000 &&
                     transition.number.length===10 && String(c.numero).replace(/\D/g,'').slice(-10)===transition.number);
-                if(candidates.length===1 && (candidates[0].finalizada||candidates[0].transferida)) {
+                // Una transferencia puede aparecer inicialmente como saliente atendida:
+                // esperar la conciliación PBX antes de abrir resultado obligatorio.
+                const transferGrace=transition.transfer && Date.now()-transition.at<12000;
+                if(candidates.length===1 && (candidates[0].finalizada||candidates[0].transferida) &&
+                    (!transferGrace || candidates[0].transferida)) {
                     const call=candidates[0];
                     if(call.requiere_resultado&&!saved.pending.includes(call.id))saved.pending.push(call.id);
                     if(call.transferida)notify('Llamada transferida'+(call.destino?' a extensión '+call.destino:'')+'.');
@@ -64,7 +68,8 @@
             for(const call of calls){
                 if(!call.finalizada){observed.add(call.id);continue;}
                 const isTransition=transition && (matches(call,transition.id) ||
-                    (call.fin_ts>=transition.at-3000 && String(call.numero).replace(/\D/g,'').slice(-10)===transition.number));
+                    (call.fin_ts>=transition.at-3000 && String(call.numero).replace(/\D/g,'').slice(-10)===transition.number)) &&
+                    !(transition.transfer && Date.now()-transition.at<12000);
                 // No forzar a clasificar todo el historial antiguo al instalar.
                 if(call.requiere_resultado && (isTransition||observed.has(call.id)||
                     (!initial && !completed.has(call.id) && call.fin_ts>=scanSince-3000)) && !saved.pending.includes(call.id))saved.pending.push(call.id);
@@ -124,7 +129,10 @@
         onState(value){
             statusBefore=current;current=value;
             if(cfg.receptionResults && statusBefore?.active && !value.active && ['finished','incoming-finished'].includes(value.phase)){
-                transition={id:String(value.pbxCallId||statusBefore.pbxCallId||value.callToken||''),at:Date.now(),number:String(value.destination||statusBefore.destination||'').replace(/\D/g,'').slice(-10)};
+                const transferStage=String(value.context?.transferRequest?.stage||statusBefore.context?.transferRequest?.stage||'');
+                const transfer=Boolean(value.status==='transferred'||
+                    ['ENVIADA','ENTREGADA','ENTREGANDO','SIN_CONFIRMAR','SIN_RESPUESTA'].includes(transferStage));
+                transition={id:String(value.pbxCallId||statusBefore.pbxCallId||value.callToken||''),at:Date.now(),number:String(value.destination||statusBefore.destination||'').replace(/\D/g,'').slice(-10),transfer};
                 saved.waiting=transition;
                 persist();void load();
             }
