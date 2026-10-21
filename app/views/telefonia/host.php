@@ -18,6 +18,13 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
     !empty($asignacionTelefonica['permite_entrantes']) &&
     tienePermiso('telefonia.recibir') &&
     tienePermiso('seguimientos_vinculacion.operar_propios');
+// Ventas también recibe transferencias salientes por PUSH/SIP sin INTERNAL.
+// Reutilizar el observador del Analista, con la asignación y permisos propios.
+$asesorHostSdk = $motorTelefonicoEmbebido && $extensionHost !== '' &&
+    in_array(strtoupper(trim((string)($_SESSION['rol'] ?? ''))), ['ASESOR','ASESOR DE VENTAS'], true) &&
+    !empty($asignacionTelefonica['permite_entrantes']) &&
+    tienePermiso('telefonia.usar') && tienePermiso('telefonia.recibir');
+$receptorHostSdk = $analistaHostSdk || $asesorHostSdk;
 
 ?>
 <!DOCTYPE html>
@@ -86,9 +93,9 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
             'operacionUrl' => BASE_URL . 'prueba_telefonia/api/transferencia_operacion.php',
             'permiteSalientes' => !empty($asignacionTelefonica['permite_salientes']),
             'permiteEntrantes' => !empty($asignacionTelefonica['permite_entrantes']),
-            // Sólo para el Analista con sesión autorizada y motor embebido.
+            // Analista y Ventas autorizados comparten el observador embebido.
             // Marketing continúa usando exclusivamente eventos PBX.
-            'analystSdkIncoming' => $analistaHostSdk,
+            'analystSdkIncoming' => $receptorHostSdk,
             'permiteTransferir' =>
                 !empty($asignacionTelefonica['permite_transferir']) &&
                 tienePermiso('telefonia.transferir')
@@ -97,7 +104,7 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_entrantes_bridge.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_entrantes_bridge.js') ?>">
     </script>
-    <?php if ($analistaHostSdk): ?>
+    <?php if ($receptorHostSdk): ?>
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_sdk_entrantes_observador.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_sdk_entrantes_observador.js') ?>">
     </script>
