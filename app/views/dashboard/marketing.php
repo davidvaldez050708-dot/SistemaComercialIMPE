@@ -152,6 +152,8 @@ $totalCoberturaPendienteMarketing = count($estadosSinConvocatoria);
 </div>
 
 
+<?php require __DIR__ . '/../telefonia/recepcion_marketing.php'; ?>
+
 <section class="dashboard-panel marketing-expiring-panel">
     <div class="table-panel-header">
         <div>
