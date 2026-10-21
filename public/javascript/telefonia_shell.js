@@ -322,9 +322,23 @@
             render();
         },
         confirmFinishedCall: function (ref, facts, token) {
-            if(currentState?.active||!facts?.finalizada||facts.pbx_call_id!==ref||String(facts.extension)!==String(cfg.extension))return false;
+            if(!facts?.finalizada||facts.pbx_call_id!==ref||String(facts.extension)!==String(cfg.extension))return false;
             const receipts=Array.isArray(facts.sdk_tokens)?facts.sdk_tokens:[];
             const match=s=>Boolean(s&&([s.pbxCallId,s.context?.transferReference,s.finalMetadata?.pbx_call_id].includes(ref)||(token&&s.callToken===token&&[s.callToken,s.context?.sdkSessionId].some(x=>receipts.includes(x)))));
+            if(currentState?.active){
+                // La evidencia PBX propia puede llegar mientras el host sigue
+                // en recuperación SIP. Cerrar únicamente el mismo token y
+                // referencia; nunca una conversación más reciente.
+                const ownRef=String(currentState.pbxCallId||currentState.context?.transferReference||'');
+                if(currentState.direction!=='incoming'||
+                    !['recovering','finishing'].includes(currentState.phase)||
+                    ownRef!==ref||!match(currentState))return false;
+                sendPhoneCommand('PBX_CONFIRMED_INCOMING_END',{
+                    callToken:currentState.callToken,ref,
+                    connected:Boolean(facts.conectada),seconds:facts.segundos
+                });
+                return true;
+            }
             const update=s=>({...s,pbxCallId:ref,status:'completed',duration:Number.isInteger(facts.segundos)?facts.segundos:s.duration,
                 context:{...s.context,pbxEnded:true,pbxAnswered:Boolean(facts.conectada)},message:'Guardada en Mis llamadas.'});
             let changed=false;
