@@ -69,7 +69,16 @@ body{background:#f4f7fb}.preview-title{font-size:12px;color:#718097;margin-botto
         // Los fixtures antiguos conservan el botón plegable.
         const toggle=page.locator('[data-marketing-reception-details-toggle]');
         if(await toggle.count())await toggle.click();
-        await page.waitForFunction(()=>document.querySelectorAll('[data-marketing-result]').length===1);
+        await page.waitForFunction(()=>document.querySelectorAll('[data-marketing-result]').length===1,
+            {timeout:10000}).catch(async error=>{
+            const info=await page.evaluate(()=>({
+                root:Boolean(document.querySelector('[data-marketing-reception]')),
+                rows:document.querySelector('[data-marketing-reception-rows]')?.innerText?.slice(0,800),
+                results:document.querySelectorAll('[data-marketing-result]').length,
+                dataUrl:document.querySelector('[data-marketing-reception]')?.getAttribute('data-history-url')
+            }));
+            throw new Error('Recepción no mostró resultado en simulación: '+JSON.stringify({info,errors})+' '+error.message);
+        });
         assert.equal(await page.locator('thead th').count(),9);
         const firstRow=page.locator('[data-marketing-reception-rows] > tr').first();
         assert.equal(await firstRow.locator('td').nth(4).innerText(),'Transferida','un único estado en su columna');
