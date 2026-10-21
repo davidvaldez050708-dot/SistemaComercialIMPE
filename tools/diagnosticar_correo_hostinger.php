@@ -2,7 +2,7 @@
 // Sólo SSH/CLI. No muestra credenciales ni permite enviar desde una petición web.
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require dirname(__DIR__) . '/app/services/CorreoSalidaInstitucionalService.php';
-require dirname(__DIR__) . '/config/mail_config.php';
+require dirname(__DIR__) . '/app/services/MailService.php';
 $options = getopt('', ['recovery', 'account:', 'user:', 'probe', 'send-test', 'to:', 'domain:', 'dkim:']);
 function flagMail($label, $ok) { echo $label . ': ' . ($ok ? 'OK' : 'FALTA/REVISAR') . PHP_EOL; }
 try {
@@ -18,9 +18,8 @@ try {
         if (empty($result['ok'])) { echo 'Cuenta: ' . $result['mensaje'] . PHP_EOL; exit(2); }
         $a = $result['account'];
     } else {
-        $a = impeLeerConfigPrivada('password_reset_mail.local.php') ?: ['correo' => MAIL_FROM_ADDRESS,
-            'smtp_host' => MAIL_HOST, 'smtp_port' => MAIL_PORT, 'smtp_encryption' => MAIL_ENCRYPTION,
-            'smtp_username' => MAIL_USERNAME, 'smtp_password' => MAIL_PASSWORD];
+        echo 'Configuración de recuperación: ' . (impeRutaConfigPrivada('password_reset_mail.local.php') !== null ? 'archivo dedicado' : 'MAIL_* de archivo privado/entorno') . PHP_EOL;
+        $a = MailService::cuentaRecuperacion();
         $from = (string)($a['correo'] ?? $a['smtp_username'] ?? '');
         $user = 0;
         echo "Cuenta dedicada de recuperación (no modifica usuarios ni contraseñas).\n";
@@ -87,7 +86,11 @@ try {
         if (empty($r['ok'])) { exit(2); }
     } else { echo "Sin envío de mensajes. Usa --probe para comprobar TLS/autenticación desde SSH.\n"; }
 } catch (Throwable $e) {
-    error_log('MAIL_DIAGNOSTIC_FAILED exception=' . get_class($e));
+    $allowed = ['MAIL_RESET_CONFIG', 'MAIL_RESET_TRANSPORT', 'MAIL_RESET_IDENTITY', 'MAIL_SMTP_CONFIG', 'MAIL_SMTP_CA'];
+    $reason = in_array($e->getMessage(), $allowed, true) ? $e->getMessage() : 'MAIL_DIAGNOSTIC_FAILED';
+    $smtpCode = isset($mail) ? (int)($mail->getSMTPInstance()->getError()['smtp_code'] ?? 0) : 0;
+    error_log('MAIL_DIAGNOSTIC_FAILED reason=' . $reason . ' smtp_code=' . $smtpCode . ' exception=' . get_class($e));
+    echo 'Código seguro: ' . $reason . ($smtpCode ? '; SMTP ' . $smtpCode : '') . PHP_EOL;
     echo "Diagnóstico incompleto. Revisar configuración, permisos privados, certificados, autenticación o restricciones salientes. No se muestran secretos.\n";
     exit(2);
 }

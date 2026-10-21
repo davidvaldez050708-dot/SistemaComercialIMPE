@@ -27,9 +27,17 @@ with tempfile.TemporaryDirectory(prefix='impe-mail-http-') as tmp:
         r = subprocess.run([php, str(path), str(root), case], capture_output=True, text=True, timeout=10)
         assert r.returncode == 0 and f'HTTP_STATUS={expected}' in r.stdout, (case, r.stdout, r.stderr)
 
-# Contrato de diseño: ningún cambio en el HTML de los modales de correos.
+# Único cambio de diseño autorizado: retirar la leyenda bajo De.
 before = subprocess.check_output(['git', 'show', 'a90b6aded4a7f606eccc7a27749658e3fed9b9ed:app/views/correos/index.php'], cwd=root).decode('utf-8').replace('\r\n', '\n')
 after = (root / 'app/views/correos/index.php').read_text(encoding='utf-8').replace('\r\n', '\n')
 marker = 'id="modalCorreoMarketing"'
+notice = '''                        <div class="form-text">
+                            Escribe una cuenta conectada y autorizada para tu usuario.
+                            El sistema utilizará su API o SMTP autenticado; las cuentas
+                            nuevas requieren configuración del administrador.
+                        </div>
+'''
+assert notice in before and notice not in after
+before = before.replace(notice, '')
 assert before[before.index(marker):] == after[after.index(marker):], 'Los modales existentes deben conservarse'
-print('OK: CSRF, rol, método, callback y acciones no expuestas rechazados; HTML de los modales sin cambios. Sin envíos ni proveedores reales.')
+print('OK: CSRF, rol, método, callback y acciones no expuestas rechazados; sólo la leyenda solicitada retirada del modal. Sin envíos ni proveedores reales.')

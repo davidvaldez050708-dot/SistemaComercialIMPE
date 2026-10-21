@@ -86,6 +86,11 @@
         };
 
         const mostrarToast = function (mensaje, esError, conexionUrl) {
+            // Sustituir el aviso anterior de este módulo en los reintentos.
+            document.querySelectorAll('[data-marketing-mail-toast]').forEach(function (anterior) {
+                bootstrap.Toast.getInstance(anterior)?.dispose();
+                anterior.remove();
+            });
             let contenedor = document.querySelector('.toast-container');
 
             if (!contenedor) {
@@ -97,6 +102,7 @@
             }
 
             const toast = document.createElement('div');
+            toast.setAttribute('data-marketing-mail-toast', '');
             toast.className = 'toast system-toast' +
                 (esError ? ' system-toast-error' : '');
             toast.setAttribute('role', esError ? 'alert' : 'status');
