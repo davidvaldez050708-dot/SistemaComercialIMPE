@@ -20,6 +20,7 @@
         let acceptanceRequestedUntil = 0;
         let connectedReported = false;
         let observedSession = null;
+        const listenedSessions = new WeakSet();
         let domRinging = false;
         let declined = false, declinedSession = null, declinedIdle=false;
         let sdkState='';
@@ -36,13 +37,33 @@
             } catch (_) { return null; }
         };
 
-        const reportIdle = function () {
+        const reportIdle = function (terminalEvidence = false, endedSession = null) {
             ringing = false;
             acceptanceRequestedUntil = 0;
             if (!idleReported) {
                 idleReported = true;
-                hooks.onIdle?.({sessionEnded:Boolean(observedSession?.isEnded()),pushEnded:Boolean(!observedSession&&!connectedReported&&win.zdrmWebPhone?.callState===''&&!read()),sessionId:String(observedSession?.id||'')});
+                hooks.onIdle?.({
+                    sessionEnded: Boolean(terminalEvidence || observedSession?.isEnded()),
+                    pushEnded: Boolean(!observedSession && !connectedReported &&
+                        win.zdrmWebPhone?.callState === '' && !read()),
+                    sessionId: String(endedSession?.id || observedSession?.id || '')
+                });
             }
+        };
+        // La instancia de Zadarma puede retirar webCallSession antes del
+        // siguiente muestreo (250 ms). Conservar el END real de la RTCSession
+        // mediante sus eventos públicos, sin alterar métodos del proveedor.
+        const watchSession = function (session) {
+            if (!session || listenedSessions.has(session) ||
+                typeof session.on !== 'function') return;
+            listenedSessions.add(session);
+            const ended = function () {
+                if (stopped || !seenIncoming ||
+                    !sameSession(session, observedSession)) return;
+                reportIdle(true, session);
+            };
+            session.on('ended', ended);
+            session.on('failed', ended);
         };
 
         const read = function () {
@@ -105,6 +126,7 @@
                 connectedReported = false;
                 acceptanceRequestedUntil = 0;
                 observedSession = session && !session.isEnded() ? session : null;
+                watchSession(observedSession);
                 if (session?.id && liveInvite) call.sipSessionId=String(session.id);
                 if(pushInvite)call.pushInvitation=true;
                 if (hooks.onRinging(call) === false) {
@@ -116,6 +138,7 @@
             if (!seenIncoming || idleReported) return;
             if (session && !session.isEnded() && !observedSession) {
                 observedSession = session;
+                watchSession(observedSession);
             }
             // Evaluar el fin ANTES que la respuesta y antes del DOM: el SDK
             // puede conservar incoming, ringing o el reloj después del cierre.
@@ -189,6 +212,7 @@
             },
             isRinging: function () { return ringing; },
             isConnected: function () { return connectedReported && !idleReported; },
+            checkNow: check,
             markDeclined: function (session=readSession()) { declined=true;declinedIdle=false;declinedSession=session;ringing=false;if(declinedSession?.isEnded())reportIdle(); },
             allowNewInvitation: function () { declined=false;declinedSession=null;idleReported=true;observedSession=null; },
             markAnswerRequested: function () {
