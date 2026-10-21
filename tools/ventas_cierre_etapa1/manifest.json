@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "base": "fd5fd282b3f6774d1bdc045295d655b72620ce17",
+  "files": [
+    {
+      "path": "app/services/TelefoniaVentasLlamadasService.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "5be1ffd619fd424a862753790d927a1f4879b9f473f6ca619eb511e136dd67f1",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "9bf5fce5ec888aaff48b42bdd6219aaff1004744e3e68c0b344d7e62183df076",
+          "after": "5be1ffd619fd424a862753790d927a1f4879b9f473f6ca619eb511e136dd67f1",
+          "patch": "tools/ventas_cierre_etapa1/0000.patch",
+          "patch_sha256": "9023d5365f9cd67b319558574711c49fc5bc1121384afb5b42dfcbffc81dfea0"
+        },
+        {
+          "label": "pr110-actual",
+          "before": "c3722da4d61f5578f695713142bc045b8d8304d18a750f09f81da265919613fd",
+          "after": "5be1ffd619fd424a862753790d927a1f4879b9f473f6ca619eb511e136dd67f1",
+          "patch": "tools/ventas_cierre_etapa1/0001.patch",
+          "patch_sha256": "578be07b8ad51173e1d5c9a94a654d2a3f3bfe7bfb8bf839875f39b9bb640a3f"
+        },
+        {
+          "label": "pr107",
+          "before": "17c56717a300212245bd6a62dfc282f0b22cc8b983efa9b24b5aa8f080f56ada",
+          "after": "5be1ffd619fd424a862753790d927a1f4879b9f473f6ca619eb511e136dd67f1",
+          "patch": "tools/ventas_cierre_etapa1/0002.patch",
+          "patch_sha256": "28f8322899887416af718a9b783b7dc4ccc0e1e6ed190830f62d3a6493956233"
+        }
+      ],
+      "patch": "tools/ventas_cierre_etapa1/0000.patch",
+      "patch_sha256": "9023d5365f9cd67b319558574711c49fc5bc1121384afb5b42dfcbffc81dfea0"
+    },
+    {
+      "path": "app/views/telefonia/resultado_ventas_form.php",
+      "kind": "php",
+      "new": false,
+      "target_sha256": "7974ed6e21b079231df2837bd1e7e600b3eb0ada9ba3779b568406a1379e5c03",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "c59db14b6019d20021e12b1b3230735bb0f8cba9e1053cc8758a4aa056a9ca1d",
+          "after": "7974ed6e21b079231df2837bd1e7e600b3eb0ada9ba3779b568406a1379e5c03",
+          "patch": "tools/ventas_cierre_etapa1/0003.patch",
+          "patch_sha256": "b19760bf9e481e98acf01c934f79b7c3a3a27c43a797e20c13d62edae1f38925"
+        }
+      ],
+      "patch": "tools/ventas_cierre_etapa1/0003.patch",
+      "patch_sha256": "b19760bf9e481e98acf01c934f79b7c3a3a27c43a797e20c13d62edae1f38925"
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_resultados.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "49b5f8170bd5f30a392a74c8697e03b263ef01e4db1c33e5b458950a9a86b08a",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "f8d2ad6d8d48e32efe8c31e4183dec3ebaae35926ddc0b4778d550a6801488b0",
+          "after": "49b5f8170bd5f30a392a74c8697e03b263ef01e4db1c33e5b458950a9a86b08a",
+          "patch": "tools/ventas_cierre_etapa1/0004.patch",
+          "patch_sha256": "9a52fa623c5430134e617698f178f67543741c9e250d147c08c4fb894c462326"
+        }
+      ],
+      "patch": "tools/ventas_cierre_etapa1/0004.patch",
+      "patch_sha256": "9a52fa623c5430134e617698f178f67543741c9e250d147c08c4fb894c462326"
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_shell.js",
+      "kind": "js",
+      "new": false,
+      "target_sha256": "1919757df9e77d98240da482585780f5e9040d652dda85128de1d2a72736478b",
+      "variants": [
+        {
+          "label": "main-pr112",
+          "before": "d06bb070fd7fbf3ac02c3d1b610a170833e255054c15a339c3f4a30c6d3139ca",
+          "after": "1919757df9e77d98240da482585780f5e9040d652dda85128de1d2a72736478b",
+          "patch": "tools/ventas_cierre_etapa1/0005.patch",
+          "patch_sha256": "443f3ad4464ed46cbf62827e56425ed0cea86b220ce58e7d9371ec8e1199f173"
+        },
+        {
+          "label": "pr110-actual",
+          "before": "e7d8366e9c3afc3fdbfe73227a901d5e9f3c9f81c5ccee857b916238f5199588",
+          "after": "1919757df9e77d98240da482585780f5e9040d652dda85128de1d2a72736478b",
+          "patch": "tools/ventas_cierre_etapa1/0006.patch",
+          "patch_sha256": "07f73fa458113dd06f03e18528ef3a98c1c19867011e8d8914aafe1ae9654ca1"
+        },
+        {
+          "label": "pr107",
+          "before": "3a856230e3260b8e0fd10573db16b5c016a9af29d5f62cd54218c753c0c182cd",
+          "after": "1919757df9e77d98240da482585780f5e9040d652dda85128de1d2a72736478b",
+          "patch": "tools/ventas_cierre_etapa1/0007.patch",
+          "patch_sha256": "820827f724ee99b7cfc26516b275829b4945ede940fb7268ba9ce40d7a35b23a"
+        }
+      ],
+      "patch": "tools/ventas_cierre_etapa1/0005.patch",
+      "patch_sha256": "443f3ad4464ed46cbf62827e56425ed0cea86b220ce58e7d9371ec8e1199f173"
+    }
+  ]
+}

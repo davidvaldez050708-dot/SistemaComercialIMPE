@@ -1,0 +1,21 @@
+--- a/public/javascript/telefonia_ventas_shell.js
++++ b/public/javascript/telefonia_ventas_shell.js
+@@ -13,7 +13,9 @@
+  const button=document.createElement('button');button.type='button';button.className='persistent-phone-action is-primary';button.textContent='Registrar resultado comercial';button.dataset.salesOpen='1';button.hidden=true;
+  panel.querySelector('.persistent-phone-actions').append(button);
+  // Los pendientes se notifican desde la campana y los toasts compartidos del CRM.
+- const remove=ref=>{phone.dismissFinishedCall?.(ref);pending=pending.filter(p=>p.ref!==ref);persist();render();};
++ const announced=new Set();
++ const refreshNotices=()=>{try{const win=crm?.contentWindow;win?.dispatchEvent(new win.Event('impe:phone-notices-refresh'));}catch(_){/* La consulta periódica sigue disponible tras navegar. */}};
++ const remove=ref=>{const existed=pending.some(p=>p.ref===ref);phone.dismissFinishedCall?.(ref);pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
+  const open=()=>{const task=pending[0];if(!task||phone.getPhoneStatus().active||!crm)return;
+   const url=new URL(cfg.salesHistoryUrl,location.href);url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);crm.src=url.href;
+  };
+@@ -26,6 +28,7 @@
+    const r=await fetch(url,{credentials:'same-origin',cache:'no-store'}),j=await r.json();
+    if(version!==revision||!r.ok||!j.ok)return;metadata=j.llamada;
+    if(metadata.registro)remove(ref);
++   else if(metadata.finalizada&&!phone.getPhoneStatus().active&&!announced.has(ref)){announced.add(ref);refreshNotices();}
+    card.hidden=!metadata.nombre;name.textContent=metadata.nombre||'';
+    hint.textContent=metadata.origen_extension?'Nombre informado por Recepción · Ext. '+metadata.origen_extension:'Atención comercial de tu extensión';
+   }catch(_){/* El historial conserva el pendiente mientras llega evidencia PBX. */}finally{fetching=false;}

@@ -1,21 +1,39 @@
 /* Operación comercial sobre el teléfono persistente; no instancia otro SDK. */
 (()=>{'use strict';
  const root=document.querySelector('[data-sales-history]'),modal=document.getElementById('modalResultadoVenta');
- if(!root||!modal)return;
+ if(!root||!modal||root.dataset.salesResultsInitialized)return;
+ root.dataset.salesResultsInitialized='1';
  const form=modal.querySelector('form'),feedback=form.querySelector('[data-sales-feedback]'),submit=form.querySelector('[data-sales-submit]');
  const token='sales-result-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
  const shell=()=>{try{return window.parent!==window?window.parent.IMPE_TELEPHONY_SHELL:null;}catch(_){return null;}};
- let call=null,cycle=0,opening=false;
+ const recheck=form.querySelector('[data-sales-recheck]'),fields=form.querySelector('[data-sales-fields]');
+ let call=null,cycle=0,opening=false,timer=null,disposed=false,waiting=false,recovered=false,requestController=null;
+ const cancelRetry=()=>{clearTimeout(timer);timer=null;};
  const notify=(message,error=false)=>window.IMPE_TELEPHONY_NOTIFY?.(message,error);
- const request=async url=>{const r=await fetch(url,{credentials:'same-origin',cache:'no-store'}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo consultar la llamada.');return j;};
+ const request=async url=>{
+  const controller=new AbortController();requestController=controller;const timeout=setTimeout(()=>controller.abort(),10000);
+  try{const r=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo consultar la llamada.');return j;}
+  catch(error){if(error.name==='AbortError')throw Error('La consulta tardó demasiado. Vuelve a comprobar el cierre.');throw error;}
+  finally{clearTimeout(timeout);if(requestController===controller)requestController=null;}
+ };
  const draftKey=ref=>'impe:sales-result-draft:'+Number(window.IMPE_CURRENT_USER_ID)+':'+ref;
  async function open(ref,ext,attempt=0){
-  if(opening)return;opening=true;const version=++cycle;
+  if(opening||disposed)return;cancelRetry();opening=true;recheck.disabled=true;const version=++cycle;
   try{
    const url=new URL(root.dataset.detailUrl,location.href);url.searchParams.set('pbx_call_id',ref);if(ext)url.searchParams.set('extension',ext);
    const data=await request(url);if(version!==cycle)return;
-   call=data.llamada;if(!call.finalizada)throw Error('La centralita aún no confirma el cierre de tu llamada.');
+   call=data.llamada;
    if(shell()&&!shell().beginCallResult(token,[ref]))throw Error('Termina la llamada activa antes de abrir este registro.');
+   if(!call.finalizada){
+    waiting=true;fields.hidden=true;submit.hidden=true;recheck.hidden=false;
+    form.querySelector('[data-sales-form-number]').textContent=call.numero;
+    form.querySelector('[data-sales-form-state]').textContent='Cierre pendiente de confirmación · Ext. '+call.extension;
+    feedback.textContent=attempt<4?'Esperando la confirmación del cierre. Se comprobará de nuevo automáticamente.':'Todavía no llega la confirmación del cierre. Puedes volver a comprobarla; no se ha guardado ningún resultado.';
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+    if(attempt<4)timer=setTimeout(()=>{if(version===cycle&&!disposed)void open(ref,ext,attempt+1);},1500*2**attempt);
+    return;
+   }
+   recovered=recovered||waiting;waiting=false;fields.hidden=false;recheck.hidden=true;
    form.reset();for(const el of form.elements)el.disabled=false;feedback.textContent='';
    form.elements.pbx_call_id.value=ref;form.elements.extension.value=call.extension;
    const values=call.registro||{prospecto_nombre:call.nombre};
@@ -27,10 +45,12 @@
    if(call.registro)for(const el of form.querySelectorAll('input,select,textarea'))el.disabled=true;
    if(!window.bootstrap?.Modal)throw Error('No se cargó el formulario. Recarga la página.');
    bootstrap.Modal.getOrCreateInstance(modal).show();
-  }catch(e){shell()?.endCallResult(token);notify(e.message,true);
-   if(attempt<4&&root.dataset.autoCall===ref)setTimeout(()=>void open(ref,ext,attempt+1),1500);
-  }finally{opening=false;}
+  }catch(e){if(version!==cycle||disposed)return;
+   if(waiting){feedback.textContent=e.message+' Usa «Comprobar cierre» para reintentar.';}
+   else{shell()?.endCallResult(token);notify(e.message,true);}
+  }finally{opening=false;recheck.disabled=false;}
  }
+ recheck.addEventListener('click',()=>{if(call)void open(call.pbx_call_id,call.extension);});
  root.addEventListener('click',async e=>{
   const button=e.target.closest('[data-sales-program-complete]');if(!button||button.disabled)return;
   if(!window.confirm('¿Cerrar este recordatorio? No se registrará una llamada ni cambiará su resultado.'))return;
@@ -49,7 +69,7 @@
  });
  form.addEventListener('input',()=>{if(!call||call.registro)return;try{sessionStorage.setItem(draftKey(call.pbx_call_id),JSON.stringify({at:Date.now(),values:Object.fromEntries(new FormData(form))}));}catch(_){}});
  form.addEventListener('submit',async e=>{
-  e.preventDefault();if(!call||call.registro||submit.disabled)return;submit.disabled=true;feedback.textContent='Guardando resultado…';
+  e.preventDefault();if(!call||!call.finalizada||call.registro||submit.disabled)return;submit.disabled=true;feedback.textContent='Guardando resultado…';
   try{const r=await fetch(root.dataset.saveUrl,{method:'POST',credentials:'same-origin',body:new URLSearchParams(new FormData(form))}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo guardar el resultado.');
    try{sessionStorage.removeItem(draftKey(call.pbx_call_id));}catch(_){}
    window.parent?.postMessage({type:'IMPE_SALES_RESULT_SAVED',ref:call.pbx_call_id,extension:call.extension},location.origin);
@@ -57,7 +77,11 @@
    const url=new URL(location.href);for(const key of ['pbx_call_id','extension','detalle'])url.searchParams.delete(key);location.replace(url.href);
   }catch(error){feedback.textContent=error.message;notify(error.message,true);}finally{submit.disabled=false;}
  });
- modal.addEventListener('hidden.bs.modal',()=>{shell()?.endCallResult(token);});
- window.addEventListener('message',e=>{if(e.origin===location.origin&&e.source===window.parent&&e.data?.type==='IMPE_CALL_RESULT_INTERRUPT'){++cycle;bootstrap.Modal.getInstance(modal)?.hide();}});
+ modal.addEventListener('hidden.bs.modal',()=>{++cycle;cancelRetry();requestController?.abort();waiting=false;shell()?.endCallResult(token);if(recovered){const url=new URL(location.href);for(const key of ['pbx_call_id','extension','detalle'])url.searchParams.delete(key);location.replace(url.href);}});
+ window.addEventListener('pagehide',()=>{disposed=true;++cycle;cancelRetry();requestController?.abort();});
+ window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==window.parent)return;
+  if(e.data?.type==='IMPE_CALL_RESULT_INTERRUPT'){++cycle;cancelRetry();requestController?.abort();recovered=false;bootstrap.Modal.getInstance(modal)?.hide();}
+  if(e.data?.type==='IMPE_SALES_RESULT_OPEN')void open(e.data.ref,e.data.extension);
+ });
  if(root.dataset.autoCall)void open(root.dataset.autoCall,root.dataset.autoExtension);
 })();

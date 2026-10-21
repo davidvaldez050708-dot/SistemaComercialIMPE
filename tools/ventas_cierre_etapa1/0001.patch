@@ -1,0 +1,13 @@
+--- a/app/services/TelefoniaVentasLlamadasService.php
++++ b/app/services/TelefoniaVentasLlamadasService.php
+@@ -182,7 +182,9 @@
+         foreach($events as $e) {
+             $p=json_decode((string)($e['payload_json']??''),true)?:[];
+             $own=trim((string)($e['internal']??''))===$ext;
+-            $explicitEnd=($e['internal']??'')===''&&(string)($e['last_internal']??$p['last_internal']??'')===$ext;
++            // Zadarma conserva internal del iniciador y señala el destinatario
++            // final con last_internal. No exigir internal vacío para este caso.
++            $explicitEnd=trim((string)($e['last_internal']??$p['last_internal']??''))===$ext;
+             $type=$e['evento']??'';
+             if($own&&$type==='NOTIFY_ANSWER')$answer=true;
+             if(($own||$explicitEnd)&&in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)) {
