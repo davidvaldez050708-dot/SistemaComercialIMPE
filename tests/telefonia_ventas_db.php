@@ -116,6 +116,7 @@ try {
   vcheck($listed['finalizada']===$c['finalizada'],'Historial y detalle coinciden tras cierre');
   if($last!=='101'){$results->guardar(8,$ref,'SOLICITA_INFORMACION',['prospecto_nombre'=>'Susan']);vcheck($svc->obtener(8,$ref)['registro']['prospecto_nombre']==='Susan','Resultado exacto persiste tras nueva lectura');vreject(fn()=>$results->guardar(8,$ref,'SOLICITA_INFORMACION'),'Resultado no se duplica');}
   vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-reuse-123456')===null,'Cierre no se reutiliza en nueva invitación');
+  vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-exact-current-123456')!==null,'SDK reservado recupera la misma referencia después del cierre');
  }
  // Reasignación: el tramo congelado conserva su propietario histórico.
  $db->query("UPDATE telefonia_extensiones SET usuario_id=9,created_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE),updated_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE extension='150'");
