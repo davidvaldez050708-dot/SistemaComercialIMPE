@@ -103,7 +103,9 @@ class CrearConvocatoriaModel
             $convenios[] = $fila;
         }
 
-        return $convenios;
+        require_once __DIR__ . '/../services/AliadoRegistroService.php';
+        $registro = new AliadoRegistroService($this->connection);
+        return $registro->decorar(array_merge($convenios, $registro->manuales()));
     }
 
     public function registrarConvocatoriaCreadaDesdeConvenio(

@@ -71,10 +71,10 @@ class FormularioRegistroModel
         return $stmt->get_result()->num_rows > 0;
     }
 
-    public function aliadoExclusivo($token)
+    public function aliadoExclusivo($token, string $tipo = "inscripcion")
     {
         require_once __DIR__ . '/../services/FormularioAliadoService.php';
-        return (new FormularioAliadoService($this->connection))->resolver($token);
+        return (new FormularioAliadoService($this->connection))->resolver($token, false, $tipo);
     }
 
     public function guardar($datos)

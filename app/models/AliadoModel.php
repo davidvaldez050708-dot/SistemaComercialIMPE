@@ -142,7 +142,19 @@ class AliadoModel
         $this->vincularParametros($stmt, $tipos, $parametros);
         $stmt->execute();
 
-        return $this->convertirResultadoEnArreglo($stmt->get_result());
+        $filas = $this->convertirResultadoEnArreglo($stmt->get_result());
+        require_once __DIR__ . '/../services/AliadoRegistroService.php';
+        $registro = new AliadoRegistroService($this->connection);
+        if ($estadoId > 0 && $registro->disponible()) {
+            if (!$esAdministrador) { $registro->territorio($estadoId); }
+            foreach ($registro->manuales($estadoId) as $manual) {
+                if ($municipioId && (int)$manual['municipio_id'] !== $municipioId) continue;
+                if ($analistaId) continue;
+                if ($buscar !== '' && mb_stripos(implode(' ', $manual), $buscar) === false) continue;
+                $filas[] = $manual;
+            }
+        }
+        return $registro->decorar($filas);
     }
 
     public function obtenerAliado($seguimientoId, $usuarioId, $esAdministrador = false)

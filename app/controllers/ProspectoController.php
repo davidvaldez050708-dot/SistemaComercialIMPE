@@ -18,7 +18,7 @@ class ProspectoController
 
         try {
             $modelo = new ProspectoModel();
-            $listado = $modelo->listar((int)($_GET['pagina'] ?? 1));
+            $listado = $modelo->listar((int)($_GET['pagina'] ?? 1),25,['buscar'=>substr((string)($_GET['buscar']??''),0,180),'aliado_id'=>(string)($_GET['aliado_id']??'')]);
         } catch (Throwable $error) {
             error_log('[prospectos_listado] ' . $error->getMessage());
             $mensajeError = 'No fue posible consultar los registros. Verifica que la tabla formulario_registros esté disponible.';

@@ -6,8 +6,10 @@ require_once __DIR__ . '/../services/AliadoDifusionService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../models/AliadoInternacionalModel.php';
 
+require_once __DIR__ . '/AliadoRegistroActions.php';
 class AliadoController
 {
+    use AliadoRegistroActions;
     public function index()
     {
         $this->validarPermiso('aliados.ver');
@@ -44,6 +46,17 @@ class AliadoController
                 (int)($resumen['total_municipios_aliados'] ?? 0);
         }
 
+        $registroAliados = new AliadoRegistroService((new Database())->connect());
+        if ($registroAliados->disponible()) {
+            $manualesResumen = array_column($registroAliados->resumenManuales(array_column($territorios, 'id')), 'total', 'estado_id');
+            $municipiosResumen = array_column($registroAliados->municipiosTerritoriales($usuarioId, $esAdministrador, array_column($territorios, 'id')), 'total', 'estado_id');
+            foreach ($territorios as &$territorioResumen) {
+                $territorioResumen['total_formalizados'] = $territorioResumen['total_aliados'];
+                $territorioResumen['total_aliados'] += (int)($manualesResumen[$territorioResumen['id']] ?? 0);
+                $territorioResumen['total_municipios_aliados'] = (int)($municipiosResumen[$territorioResumen['id']] ?? 0);
+            }
+            unset($territorioResumen);
+        }
         $mensajeError = $_SESSION['error_aliados'] ?? '';
         unset($_SESSION['error_aliados']);
 
@@ -195,6 +208,7 @@ class AliadoController
 
         $resumenAliados = [
             'total' => count($aliados),
+            'formalizados' => count(array_filter($aliados, fn($a) => !empty($a['convenio_formalizado_at']))),
             'municipios' => count($municipiosAliados),
             'con_correo' => 0,
             'con_whatsapp' => 0,
