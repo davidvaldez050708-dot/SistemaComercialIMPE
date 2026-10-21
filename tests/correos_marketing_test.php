@@ -82,11 +82,11 @@ try {
     $central=['correo'=>'central@institucion.test','transport'=>'smtp','smtp_host'=>'smtp.institucion.test','smtp_port'=>587,
         'smtp_encryption'=>'tls','smtp_username'=>'central@institucion.test','smtp_password'=>'CLAVE_QA_FICTICIA'];
     file_put_contents($dir.'/mail_central.local.php','<?php return '.var_export($central,true).';');
-    $identity=static function($id){return ['correo'=>'contacto77@gmail.com','estado'=>1,'nombre'=>'Persona QA'];};
+    $identity=static function($id){return ['correo'=>'contacto77@empleado.test','estado'=>1,'nombre'=>'Persona QA'];};
     $mailer=new MarketingCentralMailer(true);
     $actualSender=new CorreoSalidaInstitucionalService(static function()use($mailer){return $mailer;},new CorreoCuentaConectadaService($identity));
     $db2=new MarketingDb();$actualService=new CorreoMarketingService($db2,$actualSender,$identity);
-    $input=['remitente'=>'contacto77@gmail.com','destinatario'=>'destino@educacion.test','asunto'=>'QA central','cuerpo'=>'Mensaje completo','idempotency_key'=>'marketing-central-0001'];
+    $input=['remitente'=>'contacto77@empleado.test','destinatario'=>'destino@educacion.test','asunto'=>'QA central','cuerpo'=>'Mensaje completo','idempotency_key'=>'marketing-central-0001'];
     $input['identidad_envio']=$actualSender->identidad($input['remitente'],77)['identidad_envio'];
     $sent=$actualService->enviar(77,$input);
     expectMarketing($sent['ok'] && $db2->sentWrites===1 && $mailer->From===$central['correo'] && $mailer->calls===1,'Marketing transmite por la cuenta central sin conexiones');

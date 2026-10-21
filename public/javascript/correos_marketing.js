@@ -147,7 +147,14 @@
             if (secuencia !== consultaIdentidad || contacto !== String(remitente?.value || '').trim().toLowerCase()) { return null; }
             if (!response.ok || !json.ok) {
                 identidadActual = null;
-                if (identidadElemento) { identidadElemento.textContent = json.mensaje || 'No se pudo comprobar el remitente institucional.'; }
+                if (identidadElemento) {
+                    identidadElemento.textContent = json.mensaje || 'No se pudo comprobar el remitente.';
+                    if (json.conexion_requerida && typeof json.conexion_url === 'string' && json.conexion_url.startsWith('index.php?controller=correoConexion&action=index&correo=')) {
+                        const enlace = document.createElement('a'); enlace.href = json.conexion_url;
+                        enlace.target = '_blank'; enlace.rel = 'noopener'; enlace.textContent = ' Autorizar mi Gmail';
+                        identidadElemento.appendChild(enlace);
+                    }
+                }
                 return null;
             }
             const identity = json.identidad;
@@ -166,6 +173,7 @@
             });
         };
         modalElement.addEventListener('shown.bs.modal', actualizarRemitente);
+        window.addEventListener('focus', function () { if (modalElement.classList.contains('show')) { actualizarRemitente(); } });
         remitente?.addEventListener('input', function () {
             identidadActual = null; ++consultaIdentidad; clearTimeout(esperaIdentidad);
             if (identidadElemento) { identidadElemento.textContent = ''; }

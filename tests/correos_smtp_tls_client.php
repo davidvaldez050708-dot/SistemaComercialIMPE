@@ -20,8 +20,8 @@ if (CorreoSmtpTransport::enviar($mail, 'tls_negative')['ok']) { throw new Runtim
 if (!(new MailService())->enviarPasswordTemporal('recuperacion@externo.test', 'Persona ficticia', 'QA_NO_VALIDA')) {
     throw new RuntimeException('SMTP recuperación local');
 }
-$sender = new CorreoSalidaInstitucionalService(null, new CorreoCuentaConectadaService(static function ($id) { return ['correo'=>'contacto@gmail.com','estado'=>1]; }));
-$data = ['usuario_id' => 7, 'remitente' => 'contacto@gmail.com', 'destinatario' => 'comercial@educacion.test',
+$sender = new CorreoSalidaInstitucionalService(null, new CorreoCuentaConectadaService(static function ($id) { return ['correo'=>'contacto@empleado.test','estado'=>1]; }));
+$data = ['usuario_id' => 7, 'remitente' => 'contacto@empleado.test', 'destinatario' => 'comercial@educacion.test',
     'asunto' => 'Prueba TLS con acentos', 'cuerpo' => "Contenido íntegro\nSegunda línea",
     'adjuntos' => [['ruta' => __FILE__, 'nombre' => 'muestra.txt', 'mime' => 'text/plain']],
     'idempotency_key' => 'tls-local-0001'];

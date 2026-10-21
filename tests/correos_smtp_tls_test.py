@@ -102,7 +102,7 @@ with tempfile.TemporaryDirectory(prefix="impe-smtp-tls-") as tmp:
     assert "30 minutos" in recovery.get_body(preferencelist=("plain",)).get_content()
     assert commercial["To"].addresses[0].addr_spec == "comercial@educacion.test"
     assert commercial["From"].addresses[0].addr_spec == "qa@example.test"
-    assert commercial["Reply-To"].addresses[0].addr_spec == "contacto@gmail.com"
+    assert commercial["Reply-To"].addresses[0].addr_spec == "contacto@empleado.test"
     assert commercial["Subject"] == "Prueba TLS con acentos"
     assert "Contenido íntegro" in commercial.get_body(preferencelist=("plain",)).get_content()
     attachments = list(commercial.iter_attachments())

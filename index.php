@@ -565,11 +565,10 @@ switch ($controller) {
         break;
 
 
-    // Compatibilidad con marcadores antiguos: ya no se conectan cuentas personales.
     case 'correoConexion':
-        header('Location: ' . BASE_URL . (strcasecmp((string)($_SESSION['rol'] ?? ''), 'Marketing') === 0
-            ? 'index.php?controller=correoMarketing&action=index' : 'index.php?controller=home&action=index'));
-        exit;
+        require_once __DIR__ . '/app/controllers/CorreoConexionController.php';
+        $controllerInstance = new CorreoConexionController();
+        break;
 
     case 'correoMarketing':
 

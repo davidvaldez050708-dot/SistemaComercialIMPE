@@ -49,3 +49,5 @@ prueba_correo.php
 prueba_bd.php
 generar_password.php
 prueba_denue.php
+
+/config/mail_oauth.local.php

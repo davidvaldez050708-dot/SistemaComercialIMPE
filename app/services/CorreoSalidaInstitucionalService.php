@@ -24,6 +24,7 @@ class CorreoSalidaInstitucionalService
         $this->mailerFactory = $mailerFactory;
         $this->cuentas = $cuentas ?? new CorreoCuentaConectadaService();
         $this->apiRequest = $apiRequest;
+        $this->cuentas->configurarConsultaApi(function ($method,$url,$token,$payload) { return $this->solicitarHostinger($method,$url,$token,$payload); });
         $this->firmaService = new FirmaCorreoService();
     }
 
@@ -134,7 +135,11 @@ class CorreoSalidaInstitucionalService
             $_SESSION['mail_identity_key'] = $_SESSION['mail_identity_key'] ?? bin2hex(random_bytes(32));
             $token = $expires . '.' . hash_hmac('sha256', json_encode([$identity, $expires]), $_SESSION['mail_identity_key']);
             return ['ok' => true, 'identidad' => $identity, 'identidad_envio' => $token];
-        } catch (Throwable $e) { return $this->error('Falta configurar el correo institucional del sistema. Solicita revisar su configuración privada.', 503); }
+        } catch (Throwable $e) {
+            return $this->error($e->getMessage() === 'MAIL_CENTRAL_FROM'
+                ? 'Tu correo no corresponde a un buzón Hostinger autorizado. El administrador debe indicar la cuenta institucional de salida para estos contactos.'
+                : 'No se pudo comprobar el correo institucional del sistema. Solicita revisar su configuración privada y autorización.', 503);
+        }
     }
 
     private function confirmacionValida(array $identity, string $token): bool
@@ -389,7 +394,8 @@ class CorreoSalidaInstitucionalService
         try {
             $configUsuario = is_array($configUsuario) ? $configUsuario : [];
             $mail = $this->mailerFactory ? ($this->mailerFactory)() : new \PHPMailer\PHPMailer\PHPMailer(true);
-            CorreoSmtpTransport::configurar($mail, $configUsuario);
+            if (($configUsuario['transport'] ?? '') === 'gmail_api') { $mail->CharSet = 'UTF-8'; }
+            else { CorreoSmtpTransport::configurar($mail, $configUsuario); }
             $mail->setFrom($remitenteUsuario, $nombreRemitente !== '' ? $nombreRemitente : $remitenteUsuario);
             if (!empty($configUsuario['reply_to'])) { $mail->addReplyTo($configUsuario['reply_to']); }
             $mail->addAddress($destinatario, $nombreDestinatario);
@@ -431,7 +437,9 @@ class CorreoSalidaInstitucionalService
                 $htmlAdicional
             );
             $mail->AltBody = $cuerpo;
-            $outcome = CorreoSmtpTransport::enviar($mail, 'commercial');
+            $outcome = ($configUsuario['transport'] ?? '') === 'gmail_api'
+                ? CorreoGmailApiTransport::enviar($mail, $configUsuario, $this->apiRequest)
+                : CorreoSmtpTransport::enviar($mail, 'commercial');
             if (empty($outcome['ok'])) { return $outcome; }
             return $outcome + [
                 'firma_incluida' => $firmaDisponible,
