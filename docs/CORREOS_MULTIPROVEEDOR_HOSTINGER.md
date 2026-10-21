@@ -1,74 +1,76 @@
-# Correos en Hostinger: configuración y verificación pendiente
+# Correos en Hostinger: implementación y configuración pendiente
 
-Rama: `codex/correos-multiproveedor-hostinger`, basada en `origin/main` (`fd5fd282`). Sin despliegue ni migraciones.
+Rama de revisión: `codex/correos-autorizacion-cuentas`, basada en `origin/main` (`a90b6ade`). Incluye la corrección del publicador del PR #121. Sin fusión automática, despliegue, migraciones ni servicios contratados.
 
-El bloqueo mostrado ocurría antes de contactar al proveedor: Marketing sólo aceptaba su cuenta central o buzones Hostinger. El historial Git muestra que se retiró la selección SMTP por usuario (`c97c0970`, `afc1e988`) y después se exigió coincidencia del remitente (`ae918749`). El envío local no demuestra que direcciones arbitrarias estuvieran autenticadas. No hay evidencia todavía de un bloqueo saliente de Hostinger.
+El rechazo original de Gmail ocurría antes de contactar con el proveedor: Marketing sólo seleccionaba su cuenta central o un buzón Hostinger. El historial muestra la retirada del SMTP por usuario (`c97c0970`, `afc1e988`) y la restricción del remitente (`ae918749`). Esa ruta ya se sustituyó por cuentas autorizadas; su presencia en GitHub no prueba que esté publicada en Hostinger. No hay evidencia aún de una restricción saliente del plan.
 
-## Configuración privada necesaria
+## Configuración privada que falta proporcionar
 
-Usar la carpeta hermana de `public_html`, `impe-private/`, o `IMPE_PRIVATE_CONFIG_DIR`. Propietario: usuario PHP/SSH correspondiente; directorio 0700 y archivos 0600. No pegar claves en chats, comandos del historial ni Git. Editar los archivos privadamente. No copiar ejemplos sin sustituir sus valores ficticios.
+Ubicación Hostinger: `$HOME/domains/fundacionrededumex.org/impe-private/`, hermana de `public_html`. Directorio 0700 y PHP privados 0600, accesibles por el usuario del proceso PHP. No pegar contraseñas ni tokens en chats, comandos del historial o Git. Usar el editor privado del servidor. Los ejemplos contienen datos ficticios y no se publican como configuración activa.
 
-* **Recuperación Gmail:** conservar `MAIL_*` existentes si ya son válidos. Opcionalmente crear `password_reset_mail.local.php` siguiendo `config/password_reset_mail.local.example.php`; tiene prioridad sólo para recuperación. Gmail: `smtp.gmail.com`, 587/TLS, dirección completa y clave de aplicación habilitada mediante verificación en dos pasos, u OAuth autorizado. No usar la contraseña normal. Se conserva la contraseña temporal y vigencia de 30 minutos del flujo actual; no se rediseñó LoginController.
-* **Hostinger de empleados:** conservar `hostinger_mail_config.php`/`HOSTINGER_MAIL_API_TOKEN`. El buzón debe figurar en `GET /api/v1/me` y coincidir con el correo del usuario activo del CRM. No se elige otro buzón como sustituto. El token privado de Marketing sigue limitado a su perfil. También se puede autorizar explícitamente una cuenta mediante el registro siguiente.
-* **Gmail comercial y otras cuentas:** crear `mail_accounts.local.php` siguiendo `config/mail_accounts.local.example.php`. Cada dirección tiene transporte, credenciales propias, `activo` e IDs de usuarios autorizados. No hereda credenciales de recuperación. El administrador realiza esta conexión; no se añadió una pantalla ni una tabla de cuentas.
-* **Microsoft:** OAuth delegado, `client_id`, secreto cuando la app lo requiera y `refresh_token` ya consentido. Scope `https://outlook.office.com/SMTP.Send` y `offline_access`; SMTP AUTH permitido para el buzón. Microsoft 365: `smtp.office365.com:587/TLS`; Outlook/Hotmail: `smtp-mail.outlook.com:587/TLS`. No se registraron apps ni se obtuvo consentimiento por el usuario.
-* **Gmail OAuth:** `oauth_provider=google`, scope `https://mail.google.com/` y autorización previa con refresh token. Renovación HTTPS y XOAUTH2 sin dependencias nuevas.
-* **Institucional:** host/puerto/TLS y credenciales propios que indique su administrador. Los alias requieren autorización privada explícita y aceptación del proveedor. No se restringe el dominio del destinatario.
+* **Recuperación Gmail:** conservar los `MAIL_*` existentes si son válidos, u opcionalmente crear `password_reset_mail.local.php` a partir del ejemplo homónimo de `config/`. Esta cuenta es independiente del campo De y de las cuentas comerciales. SMTP `smtp.gmail.com:587`, TLS y contraseña de aplicación cuando la cuenta la permita; no la contraseña normal. Se conserva contraseña temporal, vigencia de 30 minutos y flujo de LoginController.
+* **Hostinger:** conservar `hostinger_mail_config.php`/`HOSTINGER_MAIL_API_TOKEN`; el buzón debe aparecer en `GET /api/v1/me` y pertenecer al usuario del CRM o tener autorización explícita en el registro privado. El token de Marketing permanece limitado a su perfil. No se sustituye el buzón por otro.
+* **Gmail SMTP e institucionales:** `mail_accounts.local.php`, ejemplo `config/mail_accounts.local.example.php`. Cada dirección tiene transporte, credenciales propias, `activo` e IDs reales de usuarios autorizados. Gmail puede usar contraseña de aplicación si sus políticas lo permiten. Institucional: host/puerto/TLS del proveedor. No se heredan credenciales de recuperación. Los alias requieren autorización administrativa explícita y aceptación del proveedor. `limits.per_user_hour` configura entre 1 y 500 intentos por usuario/hora; por defecto 60.
+* **OAuth, actualmente sin aplicaciones configuradas:** crear privadamente `mail_oauth.local.php` siguiendo `config/mail_oauth.local.example.php`: `providers.google`/`providers.microsoft`, `enabled`, `client_id`, `client_secret`, `redirect_uri` y, para Microsoft, `tenant`. Mantener `enabled=false` hasta tener una aplicación Web registrada y consentida. No se registraron aplicaciones ni se autorizaron cuentas por el usuario.
+* **Retorno OAuth exacto:** `https://fundacionrededumex.org/index.php?controller=correoConexion&action=callback`. Registrar esa URL HTTPS en el proveedor. No usar la URL de vista previa ni una redirección suministrada por el navegador.
+* **Google OAuth nuevo:** habilitar Gmail API y consentir `openid email https://www.googleapis.com/auth/gmail.send`. El envío usa HTTPS y MIME real; se comprueba que Google confirme la dirección como verificada y que coincida con De. No solicita lectura/eliminación de correo. Google puede requerir verificación de la aplicación antes del uso público. Las cuentas SMTP/OAuth ya administradas conservan su configuración; no se convierten automáticamente a API.
+* **Microsoft OAuth:** permiso delegado `https://outlook.office.com/SMTP.Send` y `offline_access`, aplicación compatible con el tipo de cuenta y SMTP AUTH permitido para el buzón. Microsoft 365 usa `smtp.office365.com:587/TLS`; Outlook/Hotmail, `smtp-mail.outlook.com:587/TLS`. No deshabilitar políticas de seguridad globales para habilitarlo.
 
-El estado OAuth y los controles de reenvío se guardan fuera del sitio, por defecto en `impe-private/mail-state/`, con archivos 0600 y exclusión mediante `flock`. Se admite `IMPE_MAIL_STATE_DIR` fuera de todos los directorios públicos. Esta carpeta contiene tokens: no publicarla, borrarla para reintentar ni compartirla. Un clúster requeriría almacenamiento y bloqueo compartidos; esta implementación corresponde al servidor único actual.
+Opcionales de instalación: `IMPE_PRIVATE_CONFIG_DIR` cambia la carpeta de configuración; `IMPE_MAIL_STATE_DIR` cambia el estado técnico privado. Debe quedar fuera de todos los directorios públicos. Por defecto: `impe-private/mail-state/`. Contiene tokens, límites y evidencia técnica con archivos 0600 y bloqueo `flock`; no publicarlo ni borrarlo para forzar reintentos. Un clúster requeriría bloqueo/almacenamiento compartido; esta implementación corresponde al servidor único actual.
 
-## Cambios y significado de los resultados
+## Comportamiento y alcance
 
-`MailService` usa la cuenta dedicada y el transporte SMTP compartido. `CorreoSalidaInstitucionalService` selecciona cuentas autorizadas y usa SMTP/OAuth o Hostinger API. Marketing y los dos despachadores de correo de Vinculación usan ese transporte. Los demás consumidores existentes ya pasaban por él. No se modifican generación de oficios, Telefonía, permisos, tablas ni estilos del modal; sólo su indicación sobre la cuenta conectada.
+Conectar cuenta se abre en una página separada, sin cambiar el HTML de los modales. El error de cuenta no conectada permite abrirla en otra pestaña sin perder cuerpo ni archivos seleccionados. Puede acceder Marketing o un usuario que ya tenga permisos operativos de correo; no se crean permisos ni se convierte al Administrador en operador. Cada autorización está ligada al usuario, proveedor, correo y sesión; state de un solo uso, PKCE S256, caducidad de diez minutos, CSRF en inicio/desconexión y máximo diez inicios por diez minutos. Los tokens sólo circulan entre servidor y proveedor, se renuevan en el servidor y no llegan a JavaScript. Desconectar limpia esa conexión y su caché local; el consentimiento externo también puede revocarse desde la cuenta del proveedor.
 
-Se conservan cuerpo, adjuntos e historial existentes. `ACEPTADO` significa aceptación SMTP/API; **no confirma recepción**. `RECHAZADO` permite corregir la cuenta; `DESCONOCIDO` bloquea el reenvío automático. No hay cambio de proveedor después de un POST incierto. Marketing conserva un borrador rechazado y devuelve el mismo registro ante solicitudes repetidas. Si el proveedor acepta pero falla la escritura de historial/adjuntos, hay que conciliar manualmente antes de reenviar. No existe una transacción atómica entre correo y MySQL.
+Los transportes comparten la selección de identidad y los recursos MIME de PHPMailer: SMTP autenticado, Microsoft XOAUTH2, Gmail API y Hostinger API. La recuperación conserva su cuenta dedicada. No se cambian generación de oficios, PDF, Telefonía, reglas comerciales, usuarios ni tablas. El publicador incluye la integración de correo de Vinculación ya aprobada en main.
 
-El formulario actualizado identifica cada redacción. Clientes anteriores y otros consumidores sin clave explícita tienen una protección de 60 segundos contra repeticiones idénticas; un resultado desconocido permanece bloqueado. Un nuevo envío intencional o una nueva redacción no acredita que el anterior haya fallado. Los estados técnicos no incluyen el cuerpo del correo. Los logs nuevos sólo contienen etapa, clase, estado y códigos sanitizados.
+Marketing conserva las tablas y el historial. La evidencia nueva se guarda fuera de la BD, por usuario y registro: `PENDIENTE`, `EN_PROCESO`, `ACEPTADO`, `FALLIDO` o `DESCONOCIDO`. La bandeja/detalle muestran esos estados cuando existen; los históricos no se reescriben. Si el estado auxiliar no se puede leer, el historial continúa disponible y muestra incertidumbre. `ENVIADO` sigue siendo el estado de compatibilidad de la tabla, sólo tras aceptación y persistencia de los adjuntos. No se genera evidencia de entrega confirmada: SMTP/API no acreditan por sí mismos recepción en el buzón final.
 
-## Pruebas ejecutadas, sin correo a Internet
+Las solicitudes repetidas de Marketing devuelven el mismo registro. Un rechazo explícito conserva el borrador; una operación incierta no se reenvía ni cambia de proveedor. Los clientes antiguos y otros consumidores sin clave explícita tienen una protección de 60 segundos contra repeticiones idénticas; la incertidumbre no expira automáticamente. Correo y MySQL no comparten transacción: si se acepta el mensaje pero falla su registro, la bandeja indica registro incompleto y se requiere conciliación manual. No borrar estados privados para reenviar.
 
-| Prueba dirigida | Evidencia local |
+Archivos funcionales añadidos: `CorreoConexionController`, vista `correos/conexion.php`, servicios `CorreoConexionOAuthService`, `CorreoGmailApiTransport`, `CorreoLimiteService` y `CorreoRegistroEstadoService`. Cambios limitados al resolver/transporte/estado de correo, Marketing, su JavaScript, enlace fuera del modal y rutas/CSRF de correo en `index.php`. Las configuraciones privadas están ignoradas por Git; los ejemplos contienen valores ficticios. No se instala ni modifica vendor.
+
+## Evidencia disponible y pruebas pendientes
+
+| Prueba dirigida | Evidencia disponible |
 |---|---|
-| Recuperación | Cuenta independiente, plantilla/vigencia y TLS; envío a SMTP local efímero |
-| Gmail/institucional | Selección SMTP y remitente exacto simulados |
-| Microsoft/Google OAuth | Endpoints, scopes, renovación/caché y XOAUTH2 simulados |
-| Hostinger API | Buzón exacto, contenido/adjuntos, aceptación y rechazo/incertidumbre simulados |
-| Destinatarios y adjuntos | SMTP local recibe MIME con dominio externo, acentos, texto y archivo íntegro |
-| Seguridad TLS | Certificado no confiable rechazado antes de AUTH/DATA |
-| Historial/borradores | Servicio con BD en memoria: guardar/recuperar, propiedad, rechazo y registro único |
-| Publicador | Sitio ficticio: check sin escritura, respaldo/restore, CRLF, configuración y cambios locales conservados |
+| Recuperación | Identidad dedicada, contenido/vigencia y SMTP local real con TLS |
+| Hostinger API | Buzón exacto, archivos, rechazo e incertidumbre simulados |
+| Gmail API | HTTP simulado; identidad verificada, MIME real, To/From, imagen CID y adjunto íntegros |
+| Google/Microsoft OAuth | Consentimiento/intercambio simulados: state, PKCE, sesión, dueño, caducidad, replay, cancelación y desconexión |
+| SMTP/XOAUTH2 | PHPMailer real contra servidor local efímero, certificado no confiable rechazado, AUTH LOGIN y XOAUTH2/MIME correctos |
+| Marketing | BD en memoria: borradores, propiedad, contenido, estados, aceptación e incertidumbre sin duplicados |
+| Acceso/interfaz | CSRF/rol/método/acciones internas rechazados; HTML de los modales idéntico a main |
+| Publicador | Sitios ficticios anteriores y main-v1: check sin escritura, respaldo/restore, idempotencia y preservación de archivos privados/CRLF/comentarios |
 
-Archivos de prueba: `tests/correos_smtp_test.php`, `correos_cuentas_test.php`, `correos_marketing_test.php`, `correos_smtp_tls_test.py` y `correos_publicador_test.py`. No se ejecutó CI global. Las pruebas con BD en memoria no sustituyen una comprobación del historial/descargas contra MySQL real.
+Pruebas en `tests/correos_*`: sólo dirigidas, sin CI global. No sustituyen MySQL, navegador autenticado y proveedores reales de producción. **No hay envíos desde Hostinger ni recepciones reales confirmados.** Faltan credenciales privadas, aplicaciones/consentimiento OAuth para quien elija esa ruta, acceso al servidor y destinatario de prueba autorizado.
 
-## Hostinger: comprobaciones manuales pendientes
-
-Después de revisar código y configurar privadamente las cuentas, desde la carpeta del CRM:
+Después de publicar y configurar privadamente, desde la carpeta del CRM:
 
 ```bash
 php tools/diagnosticar_correo_hostinger.php --recovery --probe
 php tools/diagnosticar_correo_hostinger.php --account='CUENTA_CONECTADA' --user=ID_AUTORIZADO --probe
-# Para DNS, añadir --domain=DOMINIO --dkim=SELECTOR_REAL
+# Para DNS institucional, añadir --domain=DOMINIO --dkim=SELECTOR_REAL
 ```
 
-El diagnóstico sólo funciona por CLI. `--probe` comprueba DNS, TLS/AUTH SMTP o autorización API; no envía mensajes. OAuth puede renovar su estado privado. Si falla, comprobar CA/OpenSSL, DNS, puerto saliente, política del buzón y restricciones del plan con Hostinger. No desactivar TLS ni habilitar funciones de ejecución de procesos.
+El diagnóstico sólo funciona por CLI. Probe consulta DNS/TLS/AUTH, identidad Google o autorización Hostinger sin enviar mensajes; OAuth puede renovar su estado privado. Si falla, comprobar CA/OpenSSL, puerto/HTTPS saliente, políticas del buzón y restricciones del plan con evidencia del servidor. No modificar `disable_functions`, instalar ejecutables ni desactivar TLS.
 
-Sólo con un destinatario de prueba autorizado, añadir `--send-test --to=DESTINO_AUTORIZADO` para transmitir un mensaje ficticio. No ejecutarlo dos veces si el resultado es desconocido. Este comando no crea historial comercial ni cambia contraseñas. Probar también la recuperación desde la aplicación con una cuenta de prueba propia y verificar login/vigencia. En Marketing y cada perfil autorizado: comprobar borrador, convocatoria, recepción en inbox/spam, asunto/cuerpo, firma, adjuntos descargables e historial. Repetir con Gmail, Hostinger, Microsoft e institucionales únicamente cuando sus cuentas estén conectadas. Revisar cabeceras del mensaje recibido para SPF/DKIM/DMARC y alineación; presencia DNS por sí sola no acredita entrega.
+Sólo con un destinatario autorizado, añadir `--send-test --to=DESTINO_AUTORIZADO` para un mensaje ficticio; no repetir si el resultado es incierto. El comando no modifica contraseñas ni crea historial comercial. Para pruebas completas: recuperación desde la aplicación con cuenta propia de prueba; Hostinger/Gmail/Microsoft/institucional desde cada perfil con permiso; convocatoria, borrador, asunto/cuerpo, firma, adjuntos descargables e historial MySQL; recepción inbox/spam y cabeceras SPF/DKIM/DMARC. La presencia de DNS por sí sola no demuestra entrega. Ningún correo a contactos comerciales sin autorización.
 
-**Todos los envíos y recepciones reales desde Hostinger están pendientes.** No se dispone de sesión SSH, credenciales privadas ni destinatario autorizado. No se afirma que producción esté reparada ni que los archivos hayan llegado a destinatarios reales.
+## Publicación manual selectiva
 
-## Publicación manual y reversible
+Único publicador: `tools/publicar_correos_multiproveedor_hostinger.sh`, lista cerrada de 21 archivos. Admite la instalación anterior y la versión main-v1 de correos, sin sobrescribir personalizaciones incompatibles. El diagnóstico auxiliar se instala si falta; restore retira también su carpeta si fue creada y sigue vacía. Configuraciones privadas y BD quedan fuera de la publicación y el respaldo de código.
 
-Único publicador de esta entrega: `tools/publicar_correos_multiproveedor_hostinger.sh`, autocontenido, lista cerrada de 14 archivos. Descargarlo fuera de `public_html` con los comandos siguientes. No hacer `git pull` directamente sobre producción. Se conservan credenciales y configuraciones privadas; el parche de `config/mail_config.php` sólo corrige la precedencia de `MAIL_USERNAME`. Una versión incompatible se rechaza sin sobrescribirla. Si no existe `tools/diagnosticar_correo_hostinger.php`, se prepara su instalación desde contenido verificado; el respaldo registra su ausencia y la restauración lo retira. Los archivos funcionales anteriores siguen siendo obligatorios.
+Descargarlo de la rama revisada fuera de public_html; cuando se apruebe la integración en main, puede descargarse de main. Usar la revisión/hash publicada junto al PR. No hacer git pull directamente en producción.
 
 ```bash
 export IMPE_CORREOS_PUBLIC="$HOME/domains/fundacionrededumex.org/public_html"
-mkdir -p "$HOME/impe-publicadores"
-curl -fL --retry 2 "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/main/tools/publicar_correos_multiproveedor_hostinger.sh" -o "$HOME/impe-publicadores/publicar_correos_multiproveedor_hostinger.sh" && bash "$HOME/impe-publicadores/publicar_correos_multiproveedor_hostinger.sh" --check
-# Sólo después de revisar OK y autorizar la publicación:
+bash "$HOME/impe-publicadores/publicar_correos_multiproveedor_hostinger.sh" --check
+# Sólo después de revisar OK y autorizar publicación:
 bash "$HOME/impe-publicadores/publicar_correos_multiproveedor_hostinger.sh" --apply
-# Para restaurar, copiar el comando exacto de la línea "Rollback:" que imprime --apply.
+# Restaurar con el comando exacto de la línea Rollback que imprime --apply.
 ```
 
-No se ejecutó publicación ni fusión. `--restore` comprueba integridad y rechaza pisar ediciones posteriores. Las credenciales, el estado privado de correo y la BD quedan fuera del respaldo de código; restaurar código no deshace mensajes transmitidos. Tras publicar/restaurar, invalidar OPcache según la configuración de PHP web y recargar el navegador.
+No se ejecutó publicación ni fusión. Restore verifica integridad y rechaza pisar ediciones posteriores. Restaurar código no deshace correos ni cambia credenciales/tokens/BD. Publicar en un momento sin envíos activos, invalidar OPcache según el PHP web y recargar el navegador. Revisar que monitorización/logs de acceso no archiven parámetros del retorno OAuth; los logs del CRM no incluyen tokens ni respuestas privadas del proveedor.
 
-Fuentes oficiales: [Gmail y claves de aplicación](https://support.google.com/accounts/answer/185833), [XOAUTH2 Gmail](https://developers.google.com/workspace/gmail/imap/xoauth2-protocol), [OAuth SMTP Microsoft](https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth/), [SMTP AUTH Microsoft 365](https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission), [Hostinger Mail API](https://api.mail.hostinger.com/).
+Fuentes oficiales: [contraseñas de aplicación Gmail](https://support.google.com/accounts/answer/185833), [OAuth Web Google](https://developers.google.com/identity/protocols/oauth2/web-server), [Gmail messages.send](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/send), [OAuth SMTP Microsoft](https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth/), [Hostinger Mail API](https://api.mail.hostinger.com/).
