@@ -5,7 +5,7 @@ umask 077
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$#" == 2 && "$MODE" == --restore ) ]] || { echo 'Uso: --check|--apply|--restore RUTA_RESPALDO' >&2; exit 2; }
 TARGET='0dec983ae59942df197c845698bcb7b88f3e0838'
-REVIEWED='RESOURCES_COMMIT'
+REVIEWED='11977898e9adf78d5688d12c0da32af50ebe6d53'
 REPO='https://github.com/davidvaldez050708-dot/SistemaComercialIMPE.git'
 RESOURCE='tools/telefonia_identidad_ciclo'
 SOURCE="${IMPE_TELEFONIA_IDENTIDAD_CICLO_SOURCE:-$HOME/crm-publicaciones/telefonia-identidad-ciclo-actual}"
