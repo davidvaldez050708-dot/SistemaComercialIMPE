@@ -16,6 +16,22 @@
   return refs.length===1?refs[0]:'';
  };
  const digits10=value=>String(value||'').replace(/\D/g,'').slice(-10);
+ // El SDK cerró esta conversación, pero los eventos PBX pueden llegar más
+ // tarde. Permitir abrir YA el formulario de esa transferencia concreta;
+ // el backend sigue siendo quien autoriza el guardado definitivo.
+ const sipFinished=state=>Boolean(state&&!state.active&&
+  ['incoming-finished','finished'].includes(state.phase)&&
+  state.context?.sdkEnded===true&&
+  (state.context?.sdkConnected||state.context?.pbxAnswered||Number(state.answeredAtMs)>0));
+ const provisional=state=>{
+  if(!sipFinished(state))return null;
+  const ref=reference(state);
+  if(pbx(ref))return {ref,extension:cfg.extension,callToken:state.callToken};
+  const sameCandidate=Boolean(candidate&&candidate.ref&&pbx(candidate.ref)&&
+   [state.callToken,state.context?.sdkSessionId,
+    String(state.callToken||'').replace(/-external$/,'')].includes(candidate.token));
+  return sameCandidate?{ref:candidate.ref,extension:cfg.extension,callToken:state.callToken}:null;
+ };
  // El nombre aceptado pertenece a una solicitud única, no al último
  // número marcado. Se ata una sola vez a la nueva invitación SDK o a su
  // referencia PBX exacta y no se hereda en llamadas consecutivas.
@@ -47,11 +63,15 @@
  const remove=(ref,token='')=>{retired.add(ref);const existed=pending.some(p=>p.ref===ref);const own=pending.find(p=>p.ref===ref);phone.dismissFinishedCall?.(ref,token||own?.callToken||'');pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
  const open=()=>{if(phone.getPhoneStatus().active||!crm)return;
   const state=phone.getCallState(),ref=reference(state);
-  const task=state?.phase==='incoming-finished'||state?.phase==='finished'?pending.find(x=>x.ref===ref):pending[0];
+  const task=(state?.phase==='incoming-finished'||state?.phase==='finished')?
+   (pending.find(x=>x.ref===ref)||provisional(state)):pending[0];
   const url=new URL(cfg.salesHistoryUrl,location.href);
   // Sin referencia PBX confirmada sólo puede consultarse el historial.
   if(!task)return;
-  if(!metadata?.finalizada||metadata.pbx_call_id!==task.ref){void lookup(task.ref,revision);return;}
+  if((!metadata?.finalizada||metadata.pbx_call_id!==task.ref)&&
+   !(sipFinished(state)&&provisional(state)?.ref===task.ref)){
+   void lookup(task.ref,revision);return;
+  }
   url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);
   if(crm.src===url.href){crm.contentWindow?.postMessage({type:'IMPE_SALES_RESULT_OPEN',ref:task.ref,extension:task.extension},location.origin);return;}
   crm.src=url.href;
@@ -60,11 +80,13 @@
  const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();
   const ref=reference(state);
   const finished=!active&&['finished','incoming-finished'].includes(state?.phase);
-  const task=finished?pending.find(x=>x.ref===ref):pending[0];
+  const instant=provisional(state);
+  const task=finished?(pending.find(x=>x.ref===ref)||instant):pending[0];
   const confirmed=Boolean(task&&metadata?.pbx_call_id===task.ref&&metadata.finalizada);
-  button.hidden=active||form||(!finished&&!pending.length);
-  button.disabled=!confirmed;
-  button.textContent=confirmed?'Registrar resultado':'Conciliando llamada';
+  const canOpen=confirmed||Boolean(instant&&task?.ref===instant.ref);
+  button.hidden=active||form||(!finished&&!pending.length&&!instant);
+  button.disabled=!canOpen;
+  button.textContent=canOpen?'Registrar resultado':'Conciliando llamada';
   const icon=document.createElement('i');icon.className='bi bi-journal-check';icon.setAttribute?.('aria-hidden','true');button.prepend?.(icon);
   button.dataset.salesPending=task?'1':'0';
  };
@@ -146,7 +168,7 @@
   if(state.active&&!metadata){
    const accepted=acceptedFor(state,ref);
    if(accepted){
-    candidate={id:Number(accepted.id),token:state.callToken};
+    candidate={id:Number(accepted.id),token:state.callToken,ref:accepted.referencia};
     name.textContent=accepted.nombre;
     hint.textContent='Nombre informado en disponibilidad · Ext. '+accepted.origen_extension;
     card.hidden=false;phone.bindTransferCandidate?.(Number(accepted.id));
