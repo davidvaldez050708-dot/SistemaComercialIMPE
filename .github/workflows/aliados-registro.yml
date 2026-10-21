@@ -82,7 +82,9 @@ jobs:
           php tools/migrar_aliados_registro.php --check
           php tests/aliados_registro_db.php
       - name: Navegador real, QR, HTTP, seguridad y concurrencia
-        run: node tests/aliados_registro_browser.cjs
+        run: |
+          node tests/aliados_registro_browser.cjs
+          php tests/aliados_registro_snapshot.php
       - name: Publicador reversible
         run: python3 tests/publicacion_aliados_registro_test.py
       - name: Regresión Handly y formularios generales

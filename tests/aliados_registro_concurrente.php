@@ -15,6 +15,6 @@ if($action==='manual') {
         $_SESSION=['usuario_id'=>4,'rol_id'=>5,'rol'=>'Marketing','permisos'=>['formularios_aliados.gestionar_enlaces']];
         echo hash('sha256',$s->enlace('manual',(int)$row['manual_id'],'generar')['url']);
     } else {
-        echo (new FormularioRegistroModel())->guardar(['nombre'=>'Concurrencia','apellido'=>'Sintética','fecha_nacimiento'=>'1990-01-01','movil'=>'7779876543','correo'=>'concurrente@example.test','perfil_interes'=>'Inglés','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>1,'municipio_id'=>1,'creado_por'=>null,'origen'=>'PUBLICO','aliado_token'=>$row['token']]);
+        echo (new FormularioRegistroModel())->guardar(['nombre'=>'Concurrencia','apellido'=>'Sintética','fecha_nacimiento'=>'1990-01-01','movil'=>'7779876543','correo'=>$action==='snapshot'?'snapshot@example.test':'concurrente@example.test','perfil_interes'=>'Inglés','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>1,'municipio_id'=>1,'creado_por'=>null,'origen'=>'PUBLICO','aliado_token'=>$row['token']]);
     }
 }

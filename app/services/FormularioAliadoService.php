@@ -46,6 +46,10 @@ class FormularioAliadoService
     public function guardar(string $token, array $datos, string $tipo, callable $insertar): int
     {
         if (!in_array($tipo, ['registro', 'inscripcion'], true)) { throw new InvalidArgumentException('Formulario inválido.'); }
+        // Una subconsulta del resolver puede abrir un read-view antes de esperar
+        // el bloqueo del aliado. Registro debe leer la autorización ya confirmada
+        // al obtenerlo. SET TRANSACTION sólo afecta esta transacción, no la sesión.
+        if ($tipo === 'registro') { $this->db->query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED'); }
         $this->db->begin_transaction();
         try {
             // Serializa reenvíos por aliado; revalida la autorización antes de insertar.
@@ -57,7 +61,7 @@ class FormularioAliadoService
             }
             $codigo = $this->autorizar($aliado, $datos['perfil_interes']);
             $clave = hash('sha256', json_encode([$datos['correo'], $datos['movil'], $datos['fecha_nacimiento'], $codigo], JSON_UNESCAPED_UNICODE));
-            $stmt = $this->db->prepare('SELECT registro_id FROM formulario_aliado_procedencias WHERE aliado_id = ? AND tipo = ? AND clave = ?');
+            $stmt = $this->db->prepare('SELECT registro_id FROM formulario_aliado_procedencias WHERE aliado_id = ? AND tipo = ? AND clave = ?' . ($tipo === 'registro' ? ' FOR UPDATE' : ''));
             $stmt->bind_param('iss', $aliado['id'], $tipo, $clave);
             $stmt->execute();
             $existente = $stmt->get_result()->fetch_assoc();
