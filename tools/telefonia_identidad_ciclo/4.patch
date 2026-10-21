@@ -1,0 +1,34 @@
+--- a/public/javascript/telefonia_entrantes_bridge.js
++++ b/public/javascript/telefonia_entrantes_bridge.js
+@@ -9,10 +9,10 @@
+ (function (root) {
+     'use strict';
+ 
+-    function create(doc, isRinging, isTalking) {
++    function create(doc, isRinging, isTalking, invitationKey) {
+         let lastError = '';
+         let lastAction = '';
+-        let lastActionAt = 0;
++        let lastActionAt = 0, lastActionIdentity;
+         const declinedSessions = new WeakSet(), declinedPushes = new Set();
+         const engine = function () {
+             try {return doc?.defaultView?.zdrmWebPhone || null;}
+@@ -34,7 +34,8 @@
+                 return false;
+             }
+             const now = Date.now();
+-            if (lastAction === action && now - lastActionAt < 1200) {
++            const identity=sdk.webCallSession?.id||sdk.webCallSession||invitationKey?.();
++            if (lastAction === action && identity===lastActionIdentity && now - lastActionAt < 1200) {
+                 lastError = 'La acción ya fue enviada. Espera la confirmación.';
+                 return false;
+             }
+@@ -50,7 +51,7 @@
+                     lastError = 'Zadarma rechazó la operación.';
+                     return false;
+                 }
+-                lastAction = action;
++                lastAction = action;lastActionIdentity=identity;
+                 lastActionAt = now;
+                 // True significa "se invocó", NO "llamada atendida".
+                 return true;
