@@ -44,7 +44,7 @@
  // Los pendientes se notifican desde la campana y los toasts compartidos del CRM.
  const announced=new Set(),retired=new Set();
  const refreshNotices=()=>{try{const win=crm?.contentWindow;win?.dispatchEvent(new win.Event('impe:phone-notices-refresh'));}catch(_){/* La consulta periódica sigue disponible tras navegar. */}};
- const remove=ref=>{retired.add(ref);const existed=pending.some(p=>p.ref===ref);phone.dismissFinishedCall?.(ref);pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
+ const remove=(ref,token='')=>{retired.add(ref);const existed=pending.some(p=>p.ref===ref);const own=pending.find(p=>p.ref===ref);phone.dismissFinishedCall?.(ref,token||own?.callToken||'');pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
  const open=()=>{if(phone.getPhoneStatus().active||!crm)return;
   const state=phone.getCallState(),ref=reference(state);
   const task=state?.phase==='incoming-finished'||state?.phase==='finished'?pending.find(x=>x.ref===ref):pending[0];
@@ -175,8 +175,12 @@
  window.addEventListener('message',e=>{
   if(e.origin!==location.origin||e.source!==crm?.contentWindow||e.data?.type!=='IMPE_SALES_RESULT_SAVED'||!valid(e.data.ref))return;
   // El mensaje sólo actualiza UX; toda consulta/guardado se autoriza en servidor.
-  const task=pending.find(p=>p.ref===e.data.ref&&p.extension===e.data.extension);remove(e.data.ref);
-  if(task&&!phone.getPhoneStatus().active){try{localStorage.setItem('impe:telephony:command:'+cfg.userId,JSON.stringify({type:'COMMAND',action:'CLEAR_FINISHED',payload:{callToken:task.callToken},id:'sales-clear-'+Date.now()}));}catch(_){}}
+  const task=pending.find(p=>p.ref===e.data.ref&&p.extension===e.data.extension);
+  // El mensaje del iframe es sólo UX. Sin pendiente del propietario exacto,
+  // no borrar un resumen que pueda pertenecer a otra llamada.
+  if(!task)return;
+  remove(e.data.ref,task.callToken||'');
+  if(task.callToken&&!phone.getPhoneStatus().active){try{localStorage.setItem('impe:telephony:command:'+cfg.userId,JSON.stringify({type:'COMMAND',action:'CLEAR_FINISHED',payload:{callToken:task.callToken},id:'sales-clear-'+Date.now()}));}catch(_){}}
  });
  setInterval(observe,750);observe();
 })();
