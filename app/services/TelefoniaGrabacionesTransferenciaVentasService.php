@@ -11,6 +11,34 @@ final class TelefoniaGrabacionesTransferenciaVentasService
 {
     public function __construct(private mysqli $db) {}
 
+    /** Prueba pura de propiedad del grupo: eventos PBX firmados y respuesta 150.
+     * No se usa teléfono, fecha ni una referencia de audio enviada por frontend. */
+    public static function referenciasVerificadas(array $events,string $source,string $dest): array
+    {
+        if($source===$dest||!preg_match('/^[0-9]{3,6}$/D',$source)||
+            !preg_match('/^[0-9]{3,6}$/D',$dest))
+            throw new DomainException('ACCESO_NO_AUTORIZADO');
+        $sourceStarted=false;$destAnswered=false;$otherParticipant=false;$refs=[];
+        foreach($events as $event){
+            $kind=(string)($event['evento']??'');
+            $internal=trim((string)($event['internal']??''));
+            if(in_array($kind,['NOTIFY_INTERNAL','NOTIFY_ANSWER','NOTIFY_OUT_START','NOTIFY_END','NOTIFY_OUT_END'],true) &&
+                preg_match('/^[0-9]{3,6}$/D',$internal) && $internal!==$source && $internal!==$dest)
+                $otherParticipant=true;
+            if($kind==='NOTIFY_OUT_START'&&$internal===$source)$sourceStarted=true;
+            if($sourceStarted&&$kind==='NOTIFY_ANSWER'&&$internal===$dest)$destAnswered=true;
+            if($kind!=='NOTIFY_RECORD')continue;
+            $id=trim((string)($event['call_id_with_rec']??''));
+            if(!ZadarmaPbxIdentifierHelper::callIdValido($id))continue;
+            if(!isset($refs[$id]))$refs[$id]=['id'=>$id,'inicio'=>'','segundos'=>null,
+                'extension'=>'','etiqueta'=>'Tramo PBX · participante por verificar'];
+        }
+        if(!$sourceStarted||!$destAnswered||$otherParticipant)
+            throw new DomainException('ACCESO_NO_AUTORIZADO');
+        if(count($refs)>8)throw new DomainException('TRAMO_PENDIENTE_VINCULACION');
+        return $refs;
+    }
+
     /** También permite conservar el servicio histórico del Analista. */
     public function operacionComercial(string $pbx,int $user,string $rol): bool
     {
@@ -67,25 +95,7 @@ final class TelefoniaGrabacionesTransferenciaVentasService
         $q->bind_param('s',$pbx);$q->execute();
         $events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
         $source=(string)$op['origen_extension'];$dest=(string)$op['destino_extension'];
-        $sourceStarted=false;$destAnswered=false;$otherParticipant=false;$refs=[];
-        foreach($events as $event){
-            $kind=(string)$event['evento'];$internal=trim((string)$event['internal']);
-            if(in_array($kind,['NOTIFY_INTERNAL','NOTIFY_ANSWER','NOTIFY_OUT_START','NOTIFY_END','NOTIFY_OUT_END'],true) &&
-                preg_match('/^[0-9]{3,6}$/D',$internal) && $internal!==$source && $internal!==$dest)
-                $otherParticipant=true;
-            if($kind==='NOTIFY_OUT_START'&&$internal===$source)$sourceStarted=true;
-            if($sourceStarted&&$kind==='NOTIFY_ANSWER'&&$internal===$dest)$destAnswered=true;
-            // NOTIFY_RECORD no incluye extensión: solo identidad de grabación
-            // y PBX. Es incorrecto adjudicarlo automáticamente a la 150.
-            if($kind!=='NOTIFY_RECORD')continue;
-            $id=trim((string)($event['call_id_with_rec']??''));
-            if(!ZadarmaPbxIdentifierHelper::callIdValido($id))continue;
-            if(!isset($refs[$id]))$refs[$id]=['id'=>$id,'inicio'=>'','segundos'=>null,
-                'extension'=>'','etiqueta'=>'Tramo PBX · participante por verificar'];
-        }
-        if(!$sourceStarted||!$destAnswered||$otherParticipant)
-            throw new DomainException('ACCESO_NO_AUTORIZADO');
-        if(count($refs)>8)throw new DomainException('TRAMO_PENDIENTE_VINCULACION');
+        $refs=self::referenciasVerificadas($events,$source,$dest);
         // Estadísticas oficiales: corroboran metadatos para un call_id ya
         // verificado, sin incorporar por proximidad otros audios ni alterar el
         // índice de reproducción estable durante el GET posterior.
