@@ -46,7 +46,7 @@ const fixture=(view,role='cc')=>base+'_fixture?view='+view+'&role='+role;
   await viewport('manual',modal);await page.setViewportSize({width:1366,height:900});
   const programas=page.locator(modal+' .aliados-programa-opcion');
   check(await programas.count()>=2,'programas en tarjetas individuales accesibles');
-  const cols=()=>page.locator(modal+' .aliados-programas-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.trim().split(/\\s+/).length);
+  const cols=()=>page.locator(modal+' .aliados-programas-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.trim().split(' ').filter(Boolean).length);
   check(await cols()===2,'tarjetas de programas en dos columnas escritorio');
   await page.setViewportSize({width:390,height:844});
   check(await cols()===1,'tarjetas de programas en una columna movil');
