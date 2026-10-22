@@ -15,6 +15,7 @@ with tempfile.TemporaryDirectory(prefix='impe-convocatoria-v4-') as tmp:
     for f in ['app/services/CorreoConvocatoriaComposicion.php','app/models/CorreoConvocatoriaConsultaModel.php']:
         target=stage/f;target.parent.mkdir(parents=True,exist_ok=True)
         target.write_bytes(subprocess.check_output(['git','show','57b8e062:'+f],cwd=root) if legacy else (root/f).read_bytes())
+    (stage/'app/services/CorreoConvocatoriaEnlace.php').write_bytes((root/'app/services/CorreoConvocatoriaEnlace.php').read_bytes())
     (stage/'tools').mkdir()
     (stage/'tools/diagnosticar_envio_convocatoria.php').write_bytes((root/'tools/diagnosticar_envio_convocatoria.php').read_bytes())
     (stage/'config/db_connection.php').write_text('<?php class Database { public function connect(){throw new LogicException("BD real prohibida");}}',encoding='utf-8')

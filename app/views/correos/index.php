@@ -480,6 +480,13 @@ $texto = static fn($valor) => htmlspecialchars(
                         <figcaption class="form-text" data-convocatoria-caption></figcaption>
                     </figure>
 
+                    <div class="mb-3 d-none" data-convocatoria-enlace>
+                        <p class="mb-1 fw-semibold" data-convocatoria-enlace-titulo></p>
+                        <p class="form-text mb-1" data-convocatoria-enlace-texto></p>
+                        <a target="_blank" rel="noopener noreferrer" data-convocatoria-enlace-url></a>
+                    </div>
+                    <p class="form-text d-none" role="status" data-convocatoria-enlace-aviso></p>
+
                     <div class="mb-0">
                         <label
                             class="form-label"
@@ -638,6 +645,12 @@ $texto = static fn($valor) => htmlspecialchars(
                             <img class="img-fluid" alt="Imagen de la convocatoria del correo" data-convocatoria-detalle-imagen>
                             <figcaption class="form-text" data-convocatoria-detalle-caption></figcaption>
                         </figure>
+                        <div class="mt-3 d-none" data-convocatoria-enlace>
+                            <p class="mb-1 fw-semibold" data-convocatoria-enlace-titulo></p>
+                            <p class="form-text mb-1" data-convocatoria-enlace-texto></p>
+                            <a target="_blank" rel="noopener noreferrer" data-convocatoria-enlace-url></a>
+                        </div>
+                        <p class="form-text d-none" role="status" data-convocatoria-enlace-aviso></p>
                     </div>
 
                     <div

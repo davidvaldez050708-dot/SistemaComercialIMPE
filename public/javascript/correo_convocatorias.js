@@ -32,6 +32,22 @@
         const preview = q('[data-convocatoria-preview]');
         const image = q('[data-convocatoria-imagen]');
         const caption = q('[data-convocatoria-caption]');
+        const showLink = (container, row) => {
+            const block = container.querySelector('[data-convocatoria-enlace]');
+            const title = container.querySelector('[data-convocatoria-enlace-titulo]');
+            const text = container.querySelector('[data-convocatoria-enlace-texto]');
+            const anchor = container.querySelector('[data-convocatoria-enlace-url]');
+            const notice = container.querySelector('[data-convocatoria-enlace-aviso]');
+            if (!block || !title || !text || !anchor || !notice) { return; }
+            const link = row?.enlace_publico;
+            const valid = link && ['registro', 'inscripcion'].includes(link.tipo) && typeof link.url === 'string' && /^https?:\/\//i.test(link.url);
+            block.classList.toggle('d-none', !valid);
+            notice.classList.toggle('d-none', !row || Boolean(valid));
+            notice.textContent = row && !valid ? 'Esta convocatoria no tiene un enlace público disponible.' : '';
+            title.textContent = valid ? link.titulo : ''; text.textContent = valid ? link.texto : '';
+            anchor.textContent = valid ? link.etiqueta : '';
+            if (valid) { anchor.href = link.url; } else { anchor.removeAttribute('href'); }
+        };
         const endpoint = 'index.php?controller=correoMarketing&action=convocatorias';
         let rows = [], agreements = null, catalog = null, sequence = 0, abort = null, loading = false, ready = false;
         const option = (value, label) => {
@@ -76,6 +92,7 @@
         const clearImage = () => {
             sequence++; abort?.abort(); loading = false; ready = false; sha.value = '';
             preview.classList.add('d-none'); image.removeAttribute('src'); caption.textContent = '';
+            showLink(modal, null);
         };
         const showImage = row => {
             sha.value = row?.imagen_sha || '';
@@ -86,6 +103,7 @@
             else { image.removeAttribute('src'); }
             caption.textContent = row ? etiqueta(row) : '';
             status.textContent = row?.imagen_mensaje || '';
+            showLink(modal, row);
         };
         const list = () => {
             options(agreement, convenios(rows, state.value, agreements), 'Todos los convenios', c => c.nombre + (c.referencia ? ' · ' + c.referencia : '') + ' · #' + (c.origen_id || c.id) + (c.origen === 'manual' ? ' (manual)' : ''));
@@ -180,6 +198,7 @@
             img.classList.toggle('d-none', !valid);
             if (valid) { img.src = url; img.alt = row.titulo; } else { img.removeAttribute('src'); }
             label.textContent = row ? etiqueta(row) + (valid ? '' : ' · Imagen no disponible') : '';
+            showLink(detail, row);
         });
         return { load, choose, reset };
     }

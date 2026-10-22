@@ -12,19 +12,21 @@ protected=['app/services/CorreoSalidaInstitucionalService.php','app/services/Cor
 for f in protected:
     before=subprocess.check_output(['git','show','origin/main:'+f],cwd=root).replace(b'\r\n',b'\n')
     assert (root/f).read_bytes().replace(b'\r\n',b'\n')==before,'Archivo protegido modificado: '+f
-for f in ['app/controllers/CorreoMarketingController.php','app/views/correos/index.php','public/javascript/correos_marketing.js']:
-    before=subprocess.check_output(['git','show','2ba65dc4:'+f],cwd=root).replace(b'\r\n',b'\n')
-    assert (root/f).read_bytes().replace(b'\r\n',b'\n')==before,'La reparación altera composición, envío, borradores o diseño: '+f
-f='app/services/CorreoConvocatoriaComposicion.php'
-before=subprocess.check_output(['git','show','57b8e062:'+f],cwd=root).replace(b'\r\n',b'\n')
-current=(root/f).read_bytes().replace(b'\r\n',b'\n')
-start=current.index(b'    // Marketing v4 autoriza antes de enviar.')
-end=current.index(b'    public function enviar($data)',start)
-scoped=current[:start]+current[end:]
-start=scoped.index(b'        try { $result=$this->delegate->enviar($data); }')
-end=scoped.index(b'        return $result;',start)+len(b'        return $result;')
-scoped=scoped[:start]+b'        return $this->delegate->enviar($data);'+scoped[end:]
-assert scoped==before,'Sólo delegación de autorización y trazas seguras; filtros/imagen/persistencia deben permanecer idénticos'
+for f in ['app/controllers/CorreoMarketingController.php','public/javascript/correos_marketing.js']:
+    before=subprocess.check_output(['git','show','16518156:'+f],cwd=root).replace(b'\r\n',b'\n')
+    assert (root/f).read_bytes().replace(b'\r\n',b'\n')==before,'Endpoint/envío/borradores modificado: '+f
+old=lambda f:subprocess.check_output(['git','show','16518156:'+f],cwd=root).decode().replace('\r\n','\n')
+now=lambda f:(root/f).read_text(encoding='utf-8')
+f='app/services/CorreoConvocatoriaComposicion.php';a=old(f);b=now(f)
+for begin,end in [('    public function imagen(', '    public function publico('),('    public function envio(', '    public function enviar($data)'),('        try { $result=$this->delegate->enviar($data); }','        return $result;')]:
+    assert a[a.index(begin):a.index(end)]==b[b.index(begin):b.index(end)],'Imagen, persistencia, autorización o transporte alterados'
+begin='    public function enviar($data)';end='        $link=CorreoConvocatoriaEnlace::obtener($this->selection);'
+assert a[a.index(begin):a.index('        try { $result=',a.index(begin))]==b[b.index(begin):b.index(end)],'Preparación de imagen alterada'
+f='public/javascript/correo_convocatorias.js';a=old(f);b=now(f)
+for begin,end in [('    const coincide','    function iniciar('),('        const uniform =','        const clearImage ='),('        const list =','        const detail =')]:
+    assert a[a.index(begin):a.index(end)]==b[b.index(begin):b.index(end)],'Filtros/selección/limpieza/borradores alterados'
+f='app/models/CorreoConvocatoriaConsultaModel.php';a=old(f);b=now(f)
+assert a[a.index('        // IDs proceden'):a.index('    public function buscar')]==b[b.index('        // IDs proceden'):b.index('    public function buscar')],'Consulta/relaciones de filtros alteradas'
 with tempfile.TemporaryDirectory(prefix='impe-cv-acceso-') as tmp:
     p=Path(tmp)/'test.php'
     p.write_text('''<?php

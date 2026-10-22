@@ -19,6 +19,8 @@ const image=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 const agreements=[{id:9,nombre:'Convenio QA',referencia:'QA-9',estado_id:11},{id:10,nombre:'Sin convocatoria',referencia:'QA-10',estado_id:11},
  {id:'manual:9',origen:'manual',origen_id:9,nombre:'Convenio QA',referencia:'M-9',estado_id:11},
  {id:'manual:10',origen:'manual',origen_id:10,nombre:'Manual Sinaloa',estado_id:25}];
+const originalLink=id=>({url:'https://impe-cv.test/index.php?controller=formularioPublico&action='+(id===2?'inscripcion':'registro')+'&aliado='+String(id).repeat(64),
+ tipo:id===2?'inscripcion':'registro',titulo:id===2?'Formulario de Inscripción':'Formulario de Registro',texto:'Completa el formulario en este enlace:',etiqueta:'Acceder al formulario'});
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.IMPE_CHROME_PATH});
  try {
@@ -32,7 +34,7 @@ const agreements=[{id:9,nombre:'Convenio QA',referencia:'QA-9',estado_id:11},{id
     if(action==='convocatorias') {
      const id=Number(url.searchParams.get('id'));
      if(!id){catalogs++;return route.fulfill({json:{ok:true,estados:states,convocatorias:rows,convenios:agreements}});}
-     const row=rows.find(x=>x.id===id);return route.fulfill({json:{ok:true,convocatoria:{...row,imagen_sha:id===3?'':'a'.repeat(64),
+     const row=rows.find(x=>x.id===id);return route.fulfill({json:{ok:true,convocatoria:{...row,enlace_publico:id===3?null:originalLink(id),imagen_sha:id===3?'':'a'.repeat(64),
       imagen_url:id===3?'':'index.php?controller=correoMarketing&action=imagenConvocatoria&id='+id+'&v='+'a'.repeat(64),imagen_mensaje:id===3?'Sin imagen disponible':'La imagen se incluirá dentro del correo.'}}});
     }
     if(action==='imagenConvocatoria')return route.fulfill({contentType:'image/png',body:image});
@@ -69,7 +71,10 @@ const agreements=[{id:9,nombre:'Convenio QA',referencia:'QA-9',estado_id:11},{id
   assert.deepEqual(await page.locator('[data-marketing-mail-convocatoria] option').evaluateAll(os=>os.map(o=>o.value)),['','4'],'Manual con mismo ID/nombre sólo trae su publicación');
   await choose(callMenu,'4');
   await page.waitForFunction(()=>document.querySelector('[data-convocatoria-imagen]').src.includes('id=4&') && document.querySelector('[data-convocatoria-imagen]').naturalWidth>0);
+  assert.equal(await page.locator('#modalCorreoMarketing [data-convocatoria-enlace-url]').getAttribute('href'),originalLink(4).url);
+  assert.equal(await page.locator('#modalCorreoMarketing [data-convocatoria-enlace-url]').count(),1);
   await page.locator('[data-convocatoria-limpiar]').click();await choose(stateMenu,'11');
+  assert.equal(await page.locator('#modalCorreoMarketing [data-convocatoria-enlace]').isVisible(),false);
   await choose(agreementMenu,'10');
   assert.equal(await callMenu.locator('[data-uniform-select-value]').count(),1,'Convenio sin relaciones no inventa convocatorias');
   assert.equal(await page.locator('[data-convocatoria-convenio]').inputValue(),'10','Selección de convenio independiente permanece');
@@ -85,6 +90,13 @@ const agreements=[{id:9,nombre:'Convenio QA',referencia:'QA-9',estado_id:11},{id
   assert.equal(await page.locator('[data-marketing-mail-to]').inputValue(),'destino@example.test');
   assert.equal(await page.locator('[data-marketing-mail-subject]').inputValue(),'Prueba QA');
   assert.equal(await page.locator('[data-marketing-mail-files]').evaluate(e=>e.files.length),1);
+  await choose(stateMenu,'25');await choose(callMenu,'2');
+  await page.locator('#modalCorreoMarketing [data-convocatoria-enlace-titulo]').filter({hasText:'Formulario de Inscripción'}).waitFor();
+  assert.equal(await page.locator('#modalCorreoMarketing [data-convocatoria-enlace-url]').getAttribute('href'),originalLink(2).url);
+  await page.locator('[data-convocatoria-limpiar]').click();await choose(stateMenu,'11');await choose(callMenu,'3');
+  await page.locator('#modalCorreoMarketing [data-convocatoria-enlace-aviso]').waitFor();
+  assert.equal(await page.locator('#modalCorreoMarketing [data-convocatoria-enlace-url]').getAttribute('href'),null);
+  await page.locator('[data-convocatoria-limpiar]').click();
   assert.equal(await page.locator('#selector_ajeno + .uniform-select [data-uniform-select-value]').count(),1,'Selector ajeno intacto');
   await choose(stateMenu,'11');await choose(agreementMenu,'9');await choose(callMenu,'1');
   await page.waitForFunction(()=>document.querySelector('[data-convocatoria-imagen-sha]').value.length===64);

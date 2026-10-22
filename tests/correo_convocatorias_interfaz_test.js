@@ -47,7 +47,7 @@ assert.equal(api.convenios(manualRows,25,[...agreements,manual]).some(c=>c.id===
 assert.notEqual(api.etiqueta(rows[0]), api.etiqueta(rows[1]));
 assert.match(api.etiqueta(rows[0]), /#1/);
 const fields = {};
-for (const name of ['estado', 'convenio', 'status', 'imagen-sha', 'preview', 'imagen', 'caption', 'limpiar']) {
+for (const name of ['estado', 'convenio', 'status', 'imagen-sha', 'preview', 'imagen', 'caption', 'limpiar', 'enlace', 'enlace-titulo', 'enlace-texto', 'enlace-url', 'enlace-aviso']) {
     fields['[data-convocatoria-' + name + ']'] = new Field(['estado', 'convenio'].includes(name));
 }
 for (const name of ['convocatoria', 'form', 'draft', 'body', 'files']) {
@@ -57,6 +57,7 @@ const modal = new Field(), detail = new Field();
 modal.querySelector = key => fields[key];
 const detailFields = {};
 for (const name of ['detalle', 'detalle-imagen', 'detalle-caption']) { detailFields['[data-convocatoria-' + name + ']'] = new Field(); }
+for (const name of ['enlace', 'enlace-titulo', 'enlace-texto', 'enlace-url', 'enlace-aviso']) { detailFields['[data-convocatoria-' + name + ']'] = new Field(); }
 detail.querySelector = key => detailFields[key];
 const doc = { getElementById: id => id === 'modalCorreoMarketing' ? modal : detail, createElement: () => new Field() };
 const get = name => fields['[data-convocatoria-' + name + ']'];
@@ -65,7 +66,10 @@ fields['[data-marketing-mail-body]'].value = 'Texto del usuario sin cambios';
 fields['[data-marketing-mail-files]'].files = ['manual.pdf'];
 let calls = 0, delayed = null, delayNext = false;
 const response = data => ({ ok: true, json: async () => data });
+const link = id => id === 3 ? null : { url:'https://fundacionrededumex.org/index.php?controller=formularioPublico&action=' + (id === 2 ? 'inscripcion' : 'registro') + '&aliado=' + String(id).repeat(64),
+    tipo:id === 2 ? 'inscripcion' : 'registro',titulo:id === 2 ? 'Formulario de Inscripción' : 'Formulario de Registro',texto:'Texto del enlace',etiqueta:'Acceder al formulario' };
 const full = id => ({ ...rows.find(x => x.id === id), imagen_sha: id === 3 ? '' : 'a'.repeat(64),
+    enlace_publico:link(id),
     imagen_url: id === 3 ? '' : 'index.php?controller=correoMarketing&action=imagenConvocatoria&id=' + id + '&v=' + 'a'.repeat(64),
     imagen_mensaje: id === 3 ? 'Sin imagen; puedes enviar.' : 'Imagen embebida' });
 const ui = api.iniciar(doc, async url => {
@@ -83,6 +87,10 @@ const ui = api.iniciar(doc, async url => {
     get('convenio').value = '90'; await get('convenio').emit('change');
     assert.deepEqual(select.options.map(o => o.value), ['', '1']); assert.equal(calls, 1, 'Filtros sin consultas duplicadas');
     await get('limpiar').emit('click'); select.value = '1'; await select.emit('change');
+    assert.equal(get('enlace-url').href,link(1).url);assert.equal(get('enlace-titulo').textContent,'Formulario de Registro');
+    select.value = '2';await select.emit('change');
+    assert.equal(get('enlace-url').href,link(2).url);assert.equal(get('enlace-titulo').textContent,'Formulario de Inscripción');
+    select.value = '1';await select.emit('change');
     assert.match(get('imagen').src, /id=1&/); assert.equal(get('imagen-sha').value, 'a'.repeat(64));
     const sameSrc = get('imagen').src; await select.emit('change'); assert.equal(get('imagen').src, sameSrc, 'Sin duplicar nodos/imágenes');
     select.value = '2'; delayNext = true; const old = ui.choose();
@@ -90,17 +98,23 @@ const ui = api.iniciar(doc, async url => {
     select.value = '1'; await ui.choose(); delayed(); await old;
     assert.match(get('imagen').src, /id=1&/, 'Respuesta atrasada no sustituye la selección actual');
     select.value = '3'; await select.emit('change');
+    assert.equal(get('enlace-url').href,undefined);assert.equal(get('enlace-aviso').classes.has('d-none'),false,'Sin enlace informa sin bloquear');
     assert.ok(get('preview').classes.has('d-none')); assert.match(get('status').textContent, /Sin imagen/);
     assert.equal((await fields['[data-marketing-mail-form]'].emit('submit')).prevented, false, 'Sin imagen no bloquea envío');
     await modal.emit('correo:convocatoria-limpiar');
     await modal.emit('correo:convocatoria-borrador', { ...full(1), filtro_estado: 11, filtro_convenio: 90 });
     assert.equal(get('estado').value, '11'); assert.equal(get('convenio').value, '90'); assert.equal(select.value, '1');
     assert.match(get('imagen').src, /id=1&/);
+    assert.equal(get('enlace-url').href,link(1).url,'Borrador recupera el enlace sin duplicar ni tocar texto');
+    await modal.emit('correo:convocatoria-borrador', { ...full(1), filtro_estado: 11, filtro_convenio: 90 });
+    assert.equal(get('enlace-url').href,link(1).url);
     get('estado').value = '25'; await get('estado').emit('change'); assert.equal(select.value, '1', 'Convocatoria con cobertura en ambos estados permanece seleccionada');
     get('convenio').value = '91'; await get('convenio').emit('change'); assert.equal(select.value, ''); assert.ok(get('preview').classes.has('d-none'));
     await detail.emit('correo:convocatoria-detalle', full(1)); assert.match(detailFields['[data-convocatoria-detalle-imagen]'].src, /id=1&/);
+    assert.equal(detailFields['[data-convocatoria-enlace-url]'].href,link(1).url);
     await detail.emit('correo:convocatoria-detalle', null); assert.equal(detailFields['[data-convocatoria-detalle-imagen]'].src, undefined);
     await get('limpiar').emit('click'); assert.equal(select.value, ''); assert.equal(get('imagen-sha').value, '');
+    assert.equal(get('enlace-url').href,undefined);assert.ok(get('enlace-aviso').classes.has('d-none'));
     assert.equal(fields['[data-marketing-mail-body]'].value, 'Texto del usuario sin cambios');
     assert.deepEqual(fields['[data-marketing-mail-files]'].files, ['manual.pdf']);
     console.log('OK: estado, convenio, combinación, cobertura múltiple, duplicados por ID, catálogo único, CID preview, sin duplicados, respuestas atrasadas, sin imagen, borrador, historial y texto/adjuntos conservados. DOM/API simulados.');

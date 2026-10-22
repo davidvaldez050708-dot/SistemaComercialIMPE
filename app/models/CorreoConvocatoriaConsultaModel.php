@@ -45,6 +45,7 @@ class CorreoConvocatoriaConsultaModel
         foreach($rows as $r) {
             $id=(int)$r['id'];$items[$id]=['id'=>$id,'titulo'=>(string)$r['titulo'],'activa'=>(int)$r['estado']===1,
                 'imagen_ref'=>(string)($r['imagen']??''),'estados'=>[],'convenios'=>[]];
+            if(array_key_exists('enlace_registro',$r)) { $items[$id]['enlace_ref']=(string)($r['enlace_registro']??''); }
         }
         // IDs proceden exclusivamente del resultado SQL; no se interpola entrada del usuario.
         $ids=implode(',',array_keys($items));
@@ -128,7 +129,7 @@ class CorreoConvocatoriaConsultaModel
     public function buscar(int $id): ?array
     {
         if($id<=0) { return null; }
-        $rows=$this->completar($this->filas('SELECT id, titulo, imagen, estado FROM convocatorias WHERE id = ? LIMIT 1',[$id]));
+        $rows=$this->completar($this->filas('SELECT id, titulo, imagen, estado, enlace_registro FROM convocatorias WHERE id = ? LIMIT 1',[$id]));
         return $rows[0]??null;
     }
 }

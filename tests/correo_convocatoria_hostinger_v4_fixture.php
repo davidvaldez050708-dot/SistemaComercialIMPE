@@ -1,6 +1,7 @@
 <?php
 // Sólo lo ejecuta el arnés Python contra una instalación temporal, nunca contra el CRM real.
 $_SERVER['DOCUMENT_ROOT']=$argv[1];
+define('BASE_URL','https://fundacionrededumex.org/');
 require $argv[1].'/tests/correos_marketing_test.php';
 require $argv[1].'/app/services/CorreoConvocatoriaComposicion.php';
 function v4check($ok,$message) { if(!$ok) { throw new RuntimeException($message); } }
@@ -10,6 +11,7 @@ $imageDir=$stage.'/public/uploads/convocatorias';mkdir($imageDir,0700,true);
 $png=base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR1sAAAAASUVORK5CYII=');
 file_put_contents($imageDir.'/original.png',$png);
 $selection=['id'=>11,'titulo'=>'Convocatoria QA','imagen_ref'=>'public/uploads/convocatorias/original.png','imagen_sha'=>hash('sha256',$png)];
+$selection['enlace_ref']=BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.str_repeat('a',64);
 $composition=new CorreoConvocatoriaComposicion(null,$stage);
 $payloads=[];$status=204;
 $loader=static fn($id)=>['correo'=>'qa@rededucativamexico.org','estado'=>1,'rol_estado'=>1,'rol'=>'Marketing','nombre'=>'QA'];
@@ -36,6 +38,7 @@ v4check($sent['ok'] && count($payloads)===2 && $db->sentWrites===1 && $db->rows[
 $p=$payloads[1];$inline=array_values(array_filter($p['attachments'],static fn($a)=>isset($a['cid'])));
 v4check(count($inline)===1 && base64_decode($inline[0]['content'])===$png && str_contains($p['html'],'cid:'.$inline[0]['cid']),'Imagen original una vez en HTML/CID/base64');
 v4check($p['text']===$data['cuerpo'] && $p['to']===['destino@example.test'] && $p['subject']===$data['asunto'],'Contenido e identidad conservados');
+v4check(substr_count($p['html'],'Acceder al formulario de registro')===1 && str_contains($p['html'],htmlspecialchars($selection['enlace_ref'],ENT_QUOTES,'UTF-8')),'Enlace original clicable una vez, conserva parámetros sin tocar texto ni imagen');
 v4check($service->enviar(7,$data)===$sent && count($payloads)===2 && $db->sentWrites===1,'Repetir petición no duplica POST ni historial');
 v4check($decorator->validarRemitente($data['remitente'],7)['ok'],'Validación se delega al transporte instalado');
 // Borrador y metadatos por el contrato original.

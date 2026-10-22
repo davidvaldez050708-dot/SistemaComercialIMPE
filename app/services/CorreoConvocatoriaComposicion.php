@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/CorreoSalidaInstitucionalService.php';
 require_once __DIR__.'/CorreoEstadoPrivado.php';
+require_once __DIR__.'/CorreoConvocatoriaEnlace.php';
 require_once dirname(__DIR__).'/models/CorreoConvocatoriaConsultaModel.php';
 
 /** Selección e imagen del mensaje. El transporte y la persistencia comercial se delegan intactos. */
@@ -76,7 +77,8 @@ class CorreoConvocatoriaComposicion
     {
         if(!$row) { return null; }
         $image=$this->imagen($row);
-        $out=$row;unset($out['imagen_ref'],$out['_envio_aceptado']);
+        $out=$row;unset($out['imagen_ref'],$out['_envio_aceptado'],$out['enlace_ref']);
+        $out['enlace_publico']=CorreoConvocatoriaEnlace::obtener($row);
         $out['imagen_sha']=$image['sha']??'';
         $out['imagen_url']=$image?'index.php?controller=correoMarketing&action=imagenConvocatoria&id='.(int)$row['id'].'&v='.$image['sha'].($mail?'&correo_id='.$mail:''):'';
         $out['imagen_mensaje']=$image?'Imagen que se incluirá dentro del correo.':'Esta convocatoria no tiene una imagen disponible. Puedes enviar el correo sin imagen.';
@@ -131,6 +133,8 @@ class CorreoConvocatoriaMensaje extends CorreoSalidaInstitucionalService
             $title=htmlspecialchars($this->selection['titulo'],ENT_QUOTES,'UTF-8');
             $data['html_adicional']=($data['html_adicional']??'').'<div style="margin-top:18px"><img src="cid:'.$i['cid'].'" alt="'.$title.'" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0"></div>';
         }
+        $link=CorreoConvocatoriaEnlace::obtener($this->selection);
+        if($link) { $data['html_adicional']=($data['html_adicional']??'').CorreoConvocatoriaEnlace::html($link); }
         try { $result=$this->delegate->enviar($data); }
         catch(Throwable $error) {
             error_log('MAIL_CONVOCATORIA phase=transporte exception='.get_class($error).' code='.(int)$error->getCode());
