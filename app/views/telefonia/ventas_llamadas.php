@@ -39,12 +39,12 @@ $fechaVenta=static function(string $value): string {
      <time class="linkage-call-history-date" datetime="<?= $esc(str_replace(' ','T',$call['fecha'])) ?>"><i class="bi bi-calendar3" aria-hidden="true"></i> <?= $esc($fechaVenta($call['fecha'])) ?></time>
     </div>
     <div class="linkage-call-result-group" aria-label="Estado y resultado">
-     <span class="linkage-call-result-badge <?= $ref!==''&&$call['conectada']?'is-contact':'' ?>"><?= $esc($ref===''?'Sin llamada confirmada':$call['direccion'].' · '.$call['estado_pbx']) ?></span>
+     <span class="linkage-call-result-badge <?= $ref!==''&&$call['conectada']?'is-contact':'' ?>"><?= $esc($ref===''?'Sin llamada confirmada':($result&&!$call['finalizada']?'Resultado registrado · Evidencia PBX pendiente':$call['direccion'].' · '.$call['estado_pbx'])) ?></span>
      <?php if($result): ?><span class="linkage-call-result-badge is-result"><?= $esc(TelefoniaResultadoVentasService::opciones()[$code]??$code) ?></span><?php endif; ?>
     </div>
     <div class="linkage-call-history-footer">
      <div class="linkage-call-result-group">
-      <?php if($ref!==''&&$call['finalizada']): ?><button type="button" class="linkage-incoming-open" data-sales-detail="<?= $esc($ref) ?>" data-extension="<?= $esc($call['extension']) ?>"><i class="bi bi-journal-check" aria-hidden="true"></i> <?= $result?'Consultar resultado':'Registrar resultado' ?></button><?php endif; ?>
+      <?php if($ref!==''&&($call['finalizada']||$result)): ?><button type="button" class="linkage-incoming-open" data-sales-detail="<?= $esc($ref) ?>" data-extension="<?= $esc($call['extension']) ?>"><i class="bi bi-journal-check" aria-hidden="true"></i> <?= $result?'Consultar resultado':'Registrar resultado' ?></button><?php endif; ?>
       <button type="button" class="linkage-incoming-open" data-sales-dial="<?= $esc($call['numero']) ?>"><i class="bi bi-telephone-outbound" aria-hidden="true"></i> Llamar</button>
       <?php if($audio['disponible']): ?>
        <button type="button" class="linkage-call-audio-state is-available linkage-call-recording-toggle" data-sales-audio="<?= $esc($ref) ?>" data-extension="<?= $esc($call['extension']) ?>" data-segments="<?= count($call['segmentos']) ?>" data-segment-info="<?= $esc(json_encode($call['segmentos_info']??[])) ?>" aria-expanded="false"><i class="bi bi-record-circle" aria-hidden="true"></i> Consultar grabación <i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i></button>
