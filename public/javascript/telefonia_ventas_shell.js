@@ -147,9 +147,12 @@
    hint.textContent=metadata.origen_extension?'Nombre informado por Recepción · Ext. '+metadata.origen_extension:'Atención comercial de tu extensión';
   }catch(_){/* El historial conserva el pendiente mientras llega evidencia PBX. */}finally{if(timeout!==null)clearTimeout(timeout);fetching=false;render();}
  }
- let lastLookup=0,tries=0,lastPending=0,pendingBusy=false;
+ let lastLookup=0,tries=0,lastPending=0,pendingBusy=false,pendingRequest=null;
  async function recoverPending(force=false){
-  if(pendingBusy||(!force&&Date.now()-lastPending<10000))return;pendingBusy=true;lastPending=Date.now();
+  if(pendingBusy)return pendingRequest;
+  if(!force&&Date.now()-lastPending<10000)return;
+  pendingBusy=true;lastPending=Date.now();
+  const run=async()=>{
   const version=revision,requestKeys=identities(phone.getCallState());
   try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pendientes','1');
    const response=await fetch(url,{credentials:'same-origin',cache:'no-store'}),data=await response.json();
@@ -164,6 +167,9 @@
     }
    }
   }catch(_){}finally{pendingBusy=false;render();}
+  };
+  pendingRequest=run();
+  try{return await pendingRequest;}finally{pendingRequest=null;}
  }
  void recoverPending();
  function observe(){
