@@ -16,9 +16,15 @@ for f in ['app/controllers/CorreoMarketingController.php','app/views/correos/ind
     before=subprocess.check_output(['git','show','2ba65dc4:'+f],cwd=root).replace(b'\r\n',b'\n')
     assert (root/f).read_bytes().replace(b'\r\n',b'\n')==before,'La reparación altera composición, envío, borradores o diseño: '+f
 f='app/services/CorreoConvocatoriaComposicion.php'
-before=subprocess.check_output(['git','show','4c8ff42c:'+f],cwd=root).replace(b'\r\n',b'\n')
-expected=before.replace(b"$agreement=self::id($input['convocatoria_convenio_id']??'');",b"$agreement=CorreoConvocatoriaConsultaModel::convenioId($input['convocatoria_convenio_id']??'');")
-assert (root/f).read_bytes().replace(b'\r\n',b'\n')==expected,'Sólo se autoriza validar la clave de origen en el filtro; imagen/persistencia/transporte deben permanecer idénticos'
+before=subprocess.check_output(['git','show','57b8e062:'+f],cwd=root).replace(b'\r\n',b'\n')
+current=(root/f).read_bytes().replace(b'\r\n',b'\n')
+start=current.index(b'    // Marketing v4 autoriza antes de enviar.')
+end=current.index(b'    public function enviar($data)',start)
+scoped=current[:start]+current[end:]
+start=scoped.index(b'        try { $result=$this->delegate->enviar($data); }')
+end=scoped.index(b'        return $result;',start)+len(b'        return $result;')
+scoped=scoped[:start]+b'        return $this->delegate->enviar($data);'+scoped[end:]
+assert scoped==before,'Sólo delegación de autorización y trazas seguras; filtros/imagen/persistencia deben permanecer idénticos'
 with tempfile.TemporaryDirectory(prefix='impe-cv-acceso-') as tmp:
     p=Path(tmp)/'test.php'
     p.write_text('''<?php

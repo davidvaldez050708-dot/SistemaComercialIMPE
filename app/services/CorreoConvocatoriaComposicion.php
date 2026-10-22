@@ -99,6 +99,24 @@ class CorreoConvocatoriaMensaje extends CorreoSalidaInstitucionalService
     {
         $this->selection=$selection;$this->image=$image;$this->delegate=$delegate??new CorreoSalidaInstitucionalService();
     }
+    // Marketing v4 autoriza antes de enviar. Usar la misma instancia configurada,
+    // nunca los métodos heredados que dependen de propiedades privadas del padre.
+    public function prepararSalida(string $from,int $user): array
+    {
+        try { return $this->delegate->prepararSalida($from,$user); }
+        catch(Throwable $error) {
+            error_log('MAIL_CONVOCATORIA phase=preparar_salida exception='.get_class($error).' code='.(int)$error->getCode());
+            throw $error;
+        }
+    }
+    public function validarRemitente(string $from,int $user): array
+    {
+        try { return $this->delegate->validarRemitente($from,$user); }
+        catch(Throwable $error) {
+            error_log('MAIL_CONVOCATORIA phase=validar_remitente exception='.get_class($error).' code='.(int)$error->getCode());
+            throw $error;
+        }
+    }
     public function enviar($data)
     {
         if(!empty($this->selection['imagen_sha']) && !$this->image) { return ['ok'=>false,'codigo_http'=>422,'estado_entrega'=>'RECHAZADO','mensaje'=>'La imagen de la convocatoria cambió. Vuelve a seleccionarla antes de enviar.']; }
@@ -113,6 +131,14 @@ class CorreoConvocatoriaMensaje extends CorreoSalidaInstitucionalService
             $title=htmlspecialchars($this->selection['titulo'],ENT_QUOTES,'UTF-8');
             $data['html_adicional']=($data['html_adicional']??'').'<div style="margin-top:18px"><img src="cid:'.$i['cid'].'" alt="'.$title.'" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0"></div>';
         }
-        return $this->delegate->enviar($data);
+        try { $result=$this->delegate->enviar($data); }
+        catch(Throwable $error) {
+            error_log('MAIL_CONVOCATORIA phase=transporte exception='.get_class($error).' code='.(int)$error->getCode());
+            throw $error;
+        }
+        $state=$result['estado_entrega']??(!empty($result['ok'])?'ACEPTADO':'RECHAZADO');
+        if(!in_array($state,['ACEPTADO','RECHAZADO','DESCONOCIDO'],true)) { $state='DESCONOCIDO'; }
+        error_log('MAIL_CONVOCATORIA phase=resultado_transporte estado='.$state.' solicitud='.substr(hash('sha256',(string)($data['idempotency_key']??'')),0,12));
+        return $result;
     }
 }
