@@ -15,7 +15,7 @@ function rejects(callable $fn,$msg) { try {$fn();} catch(DomainException $e) {ch
 function cc() { $_SESSION=['usuario_id'=>2,'rol_id'=>4,'rol'=>'Cuenta Clave','permisos'=>['aliados.crear_manual','aliados.editar_manual','aliados.gestionar_programas']]; }
 function marketing() { $_SESSION=['usuario_id'=>4,'rol_id'=>5,'rol'=>'Marketing','permisos'=>['formularios_aliados.gestionar_enlaces']]; }
 cc();
-$datos=['nombre_entidad'=>'Aliado Regional','tipo_entidad'=>'INSTITUCION','estado_id'=>1,'municipio_id'=>1,'contacto_nombre'=>'Persona de prueba','correo_contacto'=>'contacto@example.test','programas'=>['bachillerato-286','ingles']];
+$datos=['nombre_entidad'=>'Aliado Regional','tipo_entidad'=>'INSTITUCION','estado_id'=>1,'municipio_id'=>1,'contacto_nombre'=>'Persona de prueba','correo_contacto'=>'contacto@example.test','telefono_fuente'=>'7773456789','programas'=>['bachillerato-286','ingles']];
 rejects(fn()=>$s->guardarManual(array_replace($datos,['estado_id'=>2,'municipio_id'=>2])),'fuera de territorio');
 rejects(fn()=>$s->guardarManual(array_replace($datos,['estado_id'=>99])),'estado inexistente');
 rejects(fn()=>$s->guardarManual(array_replace($datos,['municipio_id'=>2])),'municipio de otro estado');
@@ -84,6 +84,7 @@ cc();
 $s->guardarContactoManual(['id'=>$id,'nombre'=>'Contacto Adicional','correo'=>'adicional@example.test','telefono'=>'7771234567','whatsapp_autorizado'=>1]);
 $gestion=$s->consultarGestionManual($id);
 check(count($gestion['contactos'])===1,'contacto de aliado manual registrado');
+check(($gestion['origen']['telefono_fuente']??'')==='7773456789','teléfono original del aliado manual disponible sin modificaciones');
 $contacto=(int)$gestion['contactos'][0]['id'];
 check((int)$gestion['contactos'][0]['whatsapp_autorizado']===1,'consentimiento WhatsApp guardado');
 $s->guardarContactoManual(['id'=>$id,'contacto_id'=>$contacto,'nombre'=>'Contacto Adicional','correo'=>'adicional@example.test','telefono'=>'7771234567','whatsapp_autorizado'=>1]);
