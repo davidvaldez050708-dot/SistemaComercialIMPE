@@ -6,7 +6,7 @@
  const form=modal.querySelector('form'),feedback=form.querySelector('[data-sales-feedback]'),submit=form.querySelector('[data-sales-submit]');
  const token='sales-result-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
  const shell=()=>{try{return window.parent!==window?window.parent.IMPE_TELEPHONY_SHELL:null;}catch(_){return null;}};
- const recheck=form.querySelector('[data-sales-recheck]'),fields=form.querySelector('[data-sales-fields]');
+ const fields=form.querySelector('[data-sales-fields]');
  let call=null,callRef='',callExt='',queued=false,cycle=0,opening=false,timer=null,disposed=false,waiting=false,recovered=false,requestController=null;
  const saveLabel=submit.innerHTML;
  const cancelRetry=()=>{clearTimeout(timer);timer=null;};
@@ -54,7 +54,7 @@
     }
    }
   }
-  cancelRetry();opening=true;recheck.hidden=true;const version=++cycle;
+  cancelRetry();opening=true;const version=++cycle;
   try{
    const url=new URL(root.dataset.detailUrl,location.href);url.searchParams.set('pbx_call_id',ref);if(ext)url.searchParams.set('extension',ext);
    let data;
@@ -84,7 +84,7 @@
    }
    // El Analista permite capturar al finalizar SIP; Ventas hace lo mismo.
    // La verificación de la centralita sólo condiciona la persistencia definitiva.
-   fields.hidden=false;submit.hidden=Boolean(call?.registro);recheck.hidden=true;
+   fields.hidden=false;submit.hidden=Boolean(call?.registro);
    if(!call?.finalizada){
     recovered=recovered||waiting;waiting=true;
     form.querySelector('[data-sales-form-state]').textContent='Llamada finalizada · Confirmación PBX pendiente · Ext. '+ownExt;
@@ -113,9 +113,8 @@
    if(version!==cycle||disposed)return;
    if(waiting){feedback.textContent=e.message+' Tu captura permanece como borrador. No se ha guardado ningún resultado.';show();schedule(ref,ext,Math.max(attempt,3),version);}
    else{shell()?.endCallResult(token);notify(e.message,true);}
-  }finally{opening=false;recheck.disabled=false;}
+  }finally{opening=false;}
  }
- recheck.addEventListener('click',()=>{if(call)void open(call.pbx_call_id,call.extension);else{const u=new URL(location.href);if(u.searchParams.get('esperando_pbx')==='1'&&u.searchParams.get('pbx_call_id'))void open(u.searchParams.get('pbx_call_id'),u.searchParams.get('extension')||'');}});
  root.addEventListener('click',async e=>{
   const button=e.target.closest('[data-sales-program-complete]');if(!button||button.disabled)return;
   if(!window.confirm('¿Cerrar este recordatorio? No se registrará una llamada ni cambiará su resultado.'))return;
@@ -173,7 +172,7 @@
    if(!r.ok||!j.ok){
     // Otro resultado o un error de validación nunca debe reintentarse solo.
     if(r.status===409&&/centralita.*cierre/i.test(j.mensaje||'')){
-     waiting=true;queued=true;storeDraft();submit.innerHTML='Esperando confirmación…';
+     waiting=true;queued=true;call.finalizada=false;storeDraft();submit.innerHTML='Esperando confirmación…';
      feedback.textContent='El cierre PBX aún está pendiente. Tu resultado sigue preparado; no se ha guardado.';
      schedule(callRef,callExt||call.extension,3,cycle);return;
     }
