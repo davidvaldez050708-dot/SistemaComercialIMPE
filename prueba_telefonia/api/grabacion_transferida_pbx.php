@@ -48,7 +48,8 @@ try {
         foreach ((new TelefoniaRecepcionMarketingService())->resumen($userId)['llamadas'] as $call) {
             if ($call['pbx_call_id']===$pbx && $call['estado']==='Transferida' && !empty($call['finalizada']) && empty($call['excluir_grabacion'])) {$allowed=true;break;}
         }
-        if (!$allowed) throw new DomainException('ACCESO_NO_AUTORIZADO');
+        if (!$allowed || (($call['tipo']??'')==='Saliente'&&!tienePermiso('telefonia.salientes')))
+            throw new DomainException('ACCESO_NO_AUTORIZADO');
         $comercial=new TelefoniaGrabacionesTransferenciaVentasService($db);
         if($comercial->operacionComercial($pbx,$userId,'origen')){
             // Recepción también consulta ambos tramos de sus transferencias
