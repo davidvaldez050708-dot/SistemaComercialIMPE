@@ -27,6 +27,12 @@ trait AliadoRegistroActions
             return $s->detalle((string)($_GET['origen']??''),(int)($_GET['id']??0),$marketing);
         });
     }
+    public function registroManualDatos(): void
+    {
+        $this->responderRegistro(function ($servicio) {
+            return $servicio->consultarGestionManual((int)($_GET['id'] ?? 0));
+        });
+    }
     public function registroGestion(): void
     {
         $this->responderRegistro(function ($s) {
@@ -37,6 +43,9 @@ trait AliadoRegistroActions
             if ($accion==='guardar_manual') { return ['id'=>$s->guardarManual($_POST)]; }
             if ($accion==='programas') { $s->configurar($tipo,$id,(array)($_POST['programas']??[])); return []; }
             if ($accion==='desactivar_manual') { $s->desactivar($id); return []; }
+            if ($accion==='contacto_guardar') { $s->guardarContactoManual($_POST); return []; }
+            if ($accion==='contacto_desactivar') { $s->desactivarContactoManual($id,(int)($_POST['contacto_id']??0)); return []; }
+            if ($accion==='difusion_manual') { $s->registrarDifusionManual($_POST); return []; }
             return $s->enlace($tipo,$id,$accion);
         });
     }
