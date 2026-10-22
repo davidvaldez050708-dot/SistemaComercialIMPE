@@ -8,6 +8,12 @@ on:
       - '.github/workflows/ventas-paridad-resultado-pbx.yml'
       - 'tools/publicar_ventas_paridad_resultado_hostinger.sh'
       - 'tests/publicacion_ventas_paridad_test.py'
+      - 'public/javascript/telefonia_ventas_shell.js'
+      - 'tests/telefonia_ventas_referencia_final.cjs'
+      - 'tests/telefonia_ventas_conciliacion_tardia.cjs'
+      - 'tests/telefonia_ventas_operacion_browser.cjs'
+      - 'tools/publicar_ventas_fin_analista_hostinger.sh'
+      - 'tests/publicacion_ventas_fin_analista_test.py'
 jobs:
   formulario:
     runs-on: ubuntu-latest
@@ -21,11 +27,21 @@ jobs:
       - name: Sintaxis
         run: |
           node --check public/javascript/telefonia_ventas_resultados.js
+          node --check public/javascript/telefonia_ventas_shell.js
+          node --check tests/telefonia_ventas_referencia_final.cjs
+          node --check tests/telefonia_ventas_conciliacion_tardia.cjs
+          node --check tests/telefonia_ventas_operacion_browser.cjs
           node --check tests/telefonia_ventas_resultado_pendiente_browser.cjs
       - name: Publicador reversible en replica aislada
-        run: python3 tests/publicacion_ventas_paridad_test.py
+        run: |
+          python3 tests/publicacion_ventas_paridad_test.py
+          python3 tests/publicacion_ventas_fin_analista_test.py
+          node tests/telefonia_ventas_referencia_final.cjs
+          node tests/telefonia_ventas_conciliacion_tardia.cjs
       - name: Pruebas de navegador con PBX tardia
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/impe-paridad/node_modules/playwright
           BOOTSTRAP_MODULE_PATH: /tmp/impe-paridad/node_modules/bootstrap
-        run: node tests/telefonia_ventas_resultado_pendiente_browser.cjs
+        run: |
+          node tests/telefonia_ventas_resultado_pendiente_browser.cjs
+          node tests/telefonia_ventas_operacion_browser.cjs
