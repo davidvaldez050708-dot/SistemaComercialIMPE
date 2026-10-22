@@ -272,7 +272,10 @@ def overlay_convocatoria_model_pr114(local, new_preamble, new_method, next_metho
     link_block=new_method[link_start:manual_start].replace(b"\n",newline)
     manual_block=new_method[manual_start:manual_end].replace(b"\n",newline)
     original_manual=manual_block.strip()
-    preamble=new_preamble.replace(b"\n",newline)
+    source_sig=b"    public function crear($datos, $estadosIds, $transaccionExterna = false)\n"
+    if not new_preamble.endswith(source_sig):
+        raise RuntimeError(name+": cabecera SOURCE V3 inesperada; sitio intacto")
+    preamble=new_preamble[:-len(source_sig)].replace(b"\n",newline)
     begin=b"        $this->connection->begin_transaction();\n".replace(b"\n",newline)
     begin_new=b"        if (!$transaccionExterna) $this->connection->begin_transaction();\n".replace(b"\n",newline)
     commit=b"            $this->connection->commit();\n".replace(b"\n",newline)
