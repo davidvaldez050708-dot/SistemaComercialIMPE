@@ -114,7 +114,7 @@ jobs:
           php tools/migrar_formularios_ubicacion_internacional.php --apply
           php tests/aliados_registro_pr114_db.php --prepare
           php tests/formularios_ubicacion_internacional_db.php
-          php tests/aliados_registro_db.php
+          php tests/aliados_registro_db_legacy.php
           node tests/aliados_registro_browser_legacy.cjs
           php tests/aliados_registro_snapshot.php
           php tests/aliados_registro_pr114_db.php
