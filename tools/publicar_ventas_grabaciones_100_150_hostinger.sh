@@ -106,7 +106,7 @@ if p.exists():
     status='actualizado'
 else:
     actual=None;status='pendiente';syntax(row['path'],target)
-plan.append(dict(path=row['path'],file=p,old=actual,new=target,permissions=0o644,created=True,state=status))
+plan.append(dict(path=row['path'],file=p,old=actual,new=target,permissions=stat.S_IMODE(p.stat().st_mode) if p.exists() else 0o644,created=not p.exists(),state=status))
 for x in plan:print(x['path']+': '+x['state'])
 count=sum(x['state']=='pendiente' for x in plan)
 print('Archivos a modificar:',count)
