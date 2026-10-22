@@ -32,7 +32,13 @@ class TelefoniaGrabacionExpedienteTransferidaService
         if(in_array(strtoupper((string)$row['resultado']),['NO_CONTESTO','SIN_RESPUESTA','OCUPADO','BUZON_VOZ','FUERA_SERVICIO','NUMERO_INCORRECTO'],true)||
             preg_match('/\[(BUZON_VOZ|FUERA_SERVICIO)\]/',(string)$row['notas']))return $reply('SOLO_HISTORIAL','Este intento se conserva sin reproducción de audio.');
         $proveedor=strtoupper((string)$row['proveedor_externo']);$pbx=null;
-        if($proveedor==='ZADARMA_WEBRTC')$pbx=$this->buscar($usuarioId,$seguimientoId,$interaccionId);
+        if($proveedor==='ZADARMA_WEBRTC'){
+            // La interacción conserva WEBRTC-{session_id}. Preferir el vínculo
+            // exacto con la transferencia PBX confirmada, igual que Recibidas.
+            $pbx=$this->buscarTransferenciaExacta(
+                $usuarioId,$seguimientoId,$interaccionId,(string)$row['id_externo']);
+            if(!$pbx)$pbx=$this->buscar($usuarioId,$seguimientoId,$interaccionId);
+        }
         elseif($proveedor==='ZADARMA'){
             $pbx=(string)$row['id_externo'];
             // Una saliente ordinaria conserva su reproductor y autorización actuales.
@@ -81,6 +87,56 @@ class TelefoniaGrabacionExpedienteTransferidaService
         if(!$ids)return $reply('AUDIO_PENDIENTE','La centralita aún no ha confirmado el archivo de audio de esta llamada.');
         if(count($ids)>8)return $reply('AUDIO_PENDIENTE','La grabación requiere revisar sus segmentos antes de reproducirla.');
         return $reply('REPORTADA','Audio reportado por la centralita; su disponibilidad se comprueba al abrirlo.',$pbx,$ids);
+    }
+
+    /**
+     * Une la interacción existente con la misma sesión RTCSession utilizada
+     * durante la entrega, y de allí a la referencia de transferencia PBX.
+     * No utiliza teléfono, fechas, ni un PBX proporcionado por el navegador.
+     */
+    public function buscarTransferenciaExacta(int $usuarioId,int $seguimientoId,
+                                               int $interaccionId,string $externo): ?string
+    {
+        $session=self::sessionIdExterno($externo);
+        if($session===null)return null;
+        $stmt=$this->db->prepare("SELECT session_id,extension
+            FROM telefonia_analista_webrtc_sesiones
+            WHERE usuario_id=? AND seguimiento_id=? AND interaccion_id=?
+              AND session_id=BINARY ? AND clasificacion='VINCULADA'
+              AND fecha_atendida IS NOT NULL
+            LIMIT 2");
+        $stmt->bind_param('iiis',$usuarioId,$seguimientoId,$interaccionId,$session);
+        $stmt->execute();$sesiones=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
+        if(count($sesiones)!==1)return null;
+        $extension=(string)$sesiones[0]['extension'];
+        if(!preg_match('/^[0-9]{3,6}$/D',$extension))return null;
+        $stmt=$this->db->prepare("SELECT referencia
+            FROM telefonia_transferencia_operaciones
+            WHERE destino_usuario=? AND destino_extension=BINARY ?
+              AND sdk_consulta IS NOT NULL
+              AND (sdk_consulta=BINARY ? OR CONCAT(sdk_consulta,'-external')=BINARY ?)
+            LIMIT 3");
+        $stmt->bind_param('isss',$usuarioId,$extension,$session,$session);
+        $stmt->execute();$rows=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
+        if(count($rows)!==1)return null;
+        $pbx=(string)$rows[0]['referencia'];
+        if(!preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$pbx))return null;
+        $audios=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
+        try {
+            $verified=$audios->verificar($pbx,$usuarioId,$extension,$seguimientoId);
+            return $verified['ids']?$pbx:null;
+        } catch (DomainException $ignored) {
+            return null;
+        }
+    }
+
+    /** El prefijo de interacción WebRTC no debe confundirse con el PBX. */
+    public static function sessionIdExterno(string $externo): ?string
+    {
+        if(!str_starts_with($externo,'WEBRTC-'))return null;
+        $id=substr($externo,7);
+        return strlen($id)>=6 && strlen($id)<=100 &&
+            preg_match('/^[A-Za-z0-9_.:-]+$/D',$id) ? $id : null;
     }
 
     public static function numero10(string $numero): string
