@@ -341,6 +341,10 @@ if ($esCrearConvocatoriaDashboard) {
     $jsOpcionalHead[] = 'crear_convocatoria.js';
     $jsOpcionalHead[] = 'aliados_registro.js';
 }
+if ($esConvocatoriaDashboard && $actionDashboard === 'index' &&
+    !empty($_GET['aliado_tipo']) && !empty($_GET['aliado_id'])) {
+    $jsOpcionalHead[] = 'convocatorias_aliado_programas.js';
+}
 
 if ($esDesempenoDashboard) {
     $jsOpcionalHead[] = 'desempeno.js';
