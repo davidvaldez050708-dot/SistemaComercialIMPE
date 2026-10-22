@@ -80,12 +80,15 @@ def overlay_crear_convocatoria_controller(current, base, desired):
     # Verify GitHub BASE->TARGET modifies only exactly these validated fragments.
     if base_lf.count(old_require) != 1 or base_lf.count(old_call) != 1 or base_lf.count(old_states) != 1:
         raise RuntimeError(name + ': BASE incompatible con revisión puntual')
+    # Contract is an exact BASE -> SOURCE reconstruction, not a fuzzy merge.
+    old_gap = b'\n\n' + old_states + b'\n\n'
+    if base_lf.count(old_gap) != 1:
+        raise RuntimeError(name + ': ubicación del listado original no reconocida')
     reconstructed = base_lf.replace(old_require, old_require + b'\n' + new_require, 1)
-    reconstructed = reconstructed.replace(old_states, b'', 1)
+    reconstructed = reconstructed.replace(old_gap, b'\n' + footer + b'\n\n', 1)
     reconstructed = reconstructed.replace(old_call, new_call, 1)
     reconstructed = reconstructed.replace(b'        $convenios = $estructuraDisponible', expected + b'        $convenios = $estructuraDisponible', 1)
-    reconstructed = reconstructed.replace(stop, footer + b'\n\n' + stop, 1)
-    if reconstructed.replace(b'\n\n\n', b'\n\n') != desired_lf.replace(b'\n\n\n', b'\n\n'):
+    if reconstructed != desired_lf:
         raise RuntimeError(name + ': SOURCE cambia otros fragmentos; conservar sitio intacto')
 
     # Already installed? Report unchanged only if every structural marker exists.
