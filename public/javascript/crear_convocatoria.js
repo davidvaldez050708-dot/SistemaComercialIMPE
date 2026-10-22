@@ -310,6 +310,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 contacto,
                 'No especificado'
             );
+            setText('[data-convenio-modal-programas]', data.registro_programas, 'Sin programas de Registro');
             setText(
                 '[data-convenio-modal-notes]',
                 data.notas,
