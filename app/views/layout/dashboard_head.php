@@ -227,6 +227,7 @@ if ($esTerritorialDashboard) {
 
 if ($esAliadosDashboard) {
     $cssOpcionalDashboard[] = 'aliados.css';
+    $cssOpcionalDashboard[] = 'aliados_v2_extension.css';
 }
 
 if ($esWhatsappDashboard) {
@@ -244,6 +245,7 @@ if ($esFormulariosDashboard) {
 if ($esCrearConvocatoriaDashboard) {
     // La navegación y las tablas de Convenios reutilizan las piezas visuales de Aliados.
     $cssOpcionalDashboard[] = 'aliados.css';
+    $cssOpcionalDashboard[] = 'aliados_v2_extension.css';
     $cssOpcionalDashboard[] = 'crear_convocatoria.css';
 }
 
