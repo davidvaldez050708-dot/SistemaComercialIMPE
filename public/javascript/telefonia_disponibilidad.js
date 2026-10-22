@@ -180,10 +180,25 @@
   catch(e){$('[data-availability-feedback]').textContent=e.message;}
   finally{acting=false;buttons.forEach(b=>b.disabled=false);}
  };
- $('[data-availability-pending]')?.addEventListener('click',()=>{
-  if(!received)return;stopSound();deferred=String(received.id)+':'+received.version;if(incoming.open)incoming.close();
-  phone.openPendingResult?.();
-  const waiting=$('[data-availability-waiting]');if(waiting)waiting.hidden=false;
+ $('[data-availability-pending]')?.addEventListener('click',async()=>{
+  if(!received)return;
+  const op=received,btn=$('[data-availability-pending]');
+  if(btn)btn.disabled=true;
+  try{
+   // Ventas abre su resultado exacto; el Analista mantiene su método.
+   const sales=window.IMPE_SALES_ATTENTION;
+   const opened=await (sales?.hasPending()?sales.openPending():phone.openPendingResult?.());
+   if(opened===false){
+    $('[data-availability-feedback]').textContent='No se pudo identificar el resultado anterior. Abre Mis llamadas y pulsa Registrar resultado. La solicitud sigue disponible.';
+    return;
+   }
+   if(!received||String(received.id)!==String(op.id)||received.version!==op.version)return;
+   stopSound();deferred=String(op.id)+':'+op.version;
+   if(incoming.open)incoming.close();
+   const waiting=$('[data-availability-waiting]');if(waiting)waiting.hidden=false;
+  }catch(error){
+   $('[data-availability-feedback]').textContent=error.message||'No se pudo abrir el resultado anterior.';
+  }finally{if(btn)btn.disabled=false;}
  });
  $('[data-availability-accept]')?.addEventListener('click',()=>void respond('ACEPTAR'));
  $('[data-availability-decline]')?.addEventListener('click',()=>void respond('RECHAZAR'));
