@@ -2,6 +2,31 @@
 $convenios = is_array($convenios ?? null) ? $convenios : [];
 $estados = is_array($estados ?? null) ? $estados : [];
 $estructuraDisponible = (bool)($estructuraDisponible ?? false);
+$conteosEstado = [];
+foreach ($convenios as $convenioConteo) {
+    $idConteo = (int)($convenioConteo['estado_id'] ?? 0);
+    if ($idConteo > 0) { $conteosEstado[$idConteo] = ($conteosEstado[$idConteo] ?? 0) + 1; }
+}
+$estadoSeleccionadoId = (int)($_GET['estado_id'] ?? 0);
+$estadoSeleccionado = null;
+foreach ($estados as $estadoDisponible) {
+    if ((int)$estadoDisponible['id'] === $estadoSeleccionadoId) {
+        $estadoSeleccionado = $estadoDisponible;
+        break;
+    }
+}
+$conveniosVisibles = $estadoSeleccionado
+    ? array_values(array_filter($convenios, static fn($c) => (int)($c['estado_id'] ?? 0) === $estadoSeleccionadoId))
+    : [];
+usort($conveniosVisibles, static function ($a, $b) {
+    return strnatcasecmp((string)($a['municipio_nombre'] ?? ''), (string)($b['municipio_nombre'] ?? ''))
+        ?: strnatcasecmp((string)($a['nombre_entidad'] ?? ''), (string)($b['nombre_entidad'] ?? ''));
+});
+$nombreMunicipioAnterior = null;
+$mapaConvenios = static function ($nombreEstado) {
+    require_once __DIR__ . '/../../helpers/MapaEstadoHelper.php';
+    return impeRutaMapaEstado((string)$nombreEstado);
+};
 
 $texto = static fn($valor) => htmlspecialchars(
     (string)$valor,
@@ -43,34 +68,73 @@ $fecha = static function ($valor) {
     data-crear-convocatoria-module
     data-convocatoria-base-url="<?= $texto(BASE_URL . 'index.php?controller=convocatoria&action=index') ?>">
 
-    <section class="dashboard-panel crear-convocatoria-heading">
-        <div class="crear-convocatoria-heading-copy">
-            <span class="crear-convocatoria-heading-icon" aria-hidden="true">
-                <i class="bi bi-megaphone-fill"></i>
-            </span>
-
-            <div>
-                <h2 class="panel-title">Crear convocatoria</h2>
-                <p>
-                    Revisa los convenios aliados y genera una convocatoria
-                    para el territorio correspondiente.
-                </p>
+    <?php if (!$estadoSeleccionado): ?>
+        <section class="dashboard-panel data-territorial-selector aliados-territory-selector">
+            <div class="data-selector-heading"><div class="data-territorial-selector-copy">
+                <h2 class="panel-title mb-1">Seleccionar territorio</h2>
+                <p>Elige un estado para consultar sus convenios y crear publicaciones por programa.</p>
+            </div></div>
+            <div class="data-territorial-toolbar aliados-territory-toolbar">
+                <div class="data-filter-field aliados-territory-search-field">
+                    <label for="buscarTerritorioConvenio">Buscar territorio</label>
+                    <div class="module-search"><i class="bi bi-search" aria-hidden="true"></i>
+                        <input type="search" class="form-control" id="buscarTerritorioConvenio" placeholder="Buscar territorio..." autocomplete="off" data-convenios-territorio-buscar>
+                    </div>
+                </div>
+                <div class="data-filter-field">
+                    <label for="conveniosEstadoActividad">Estado de convenios</label>
+                    <select class="form-select" id="conveniosEstadoActividad" data-convenios-territorio-tipo>
+                        <option value="">Todos</option><option value="con">Con convenios</option><option value="sin">Sin convenios</option>
+                    </select>
+                </div>
+                <div class="data-filter-field">
+                    <label for="conveniosTerritorioSelect">Territorio</label>
+                    <select class="form-select" id="conveniosTerritorioSelect" data-convenios-territorio-seleccionar>
+                        <option value="">Seleccionar Estado</option>
+                        <?php foreach ($estados as $estadoOpcion): ?>
+                            <option value="<?= (int)$estadoOpcion['id'] ?>"><?= $texto($estadoOpcion['nombre'] ?? '') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
+        </section>
+        <div class="crear-convocatoria-results" aria-live="polite"><span data-convenios-territorio-contador><?= count($estados) ?> territorios</span></div>
+        <section class="data-territorial-cards linkage-territory-grid aliados-territory-grid" data-convenios-territorios aria-label="Estados con convenios">
+            <?php foreach ($estados as $estadoTarjeta): ?>
+                <?php
+                $idTarjeta = (int)$estadoTarjeta['id'];
+                $cantidadEstado = (int)($conteosEstado[$idTarjeta] ?? 0);
+                $imagenLocal = $mapaConvenios($estadoTarjeta['nombre'] ?? '');
+                $enlaceEstado = BASE_URL . 'index.php?controller=crearConvocatoria&action=index&estado_id=' . $idTarjeta;
+                ?>
+                <article class="dashboard-panel data-territorial-card linkage-territory-card aliados-territory-card convenio-territorio-card"
+                    data-convenio-territorio-card data-nombre="<?= $texto($estadoTarjeta['nombre'] ?? '') ?>"
+                    data-tiene="<?= $cantidadEstado ? '1' : '0' ?>">
+                    <div class="data-card-header">
+                        <div class="data-state-image">
+                            <?php if ($imagenLocal !== ''): ?><img src="<?= $texto(BASE_URL . $imagenLocal) ?>" alt="Mapa de <?= $texto($estadoTarjeta['nombre'] ?? '') ?>" loading="lazy"><?php else: ?><i class="bi bi-geo-alt" aria-hidden="true"></i><?php endif; ?>
+                        </div>
+                        <div class="data-card-title"><h3><?= $texto($estadoTarjeta['nombre'] ?? '') ?></h3>
+                            <span class="data-info-badge <?= $cantidadEstado ? 'data-info-badge-complete' : 'data-info-badge-empty' ?>"><?= $cantidadEstado ? 'Con convenios' : 'Sin convenios' ?></span>
+                        </div>
+                    </div>
+                    <dl class="data-card-meta"><div><dt>Aliados</dt><dd><?= $cantidadEstado ?> <?= $cantidadEstado === 1 ? 'convenio' : 'convenios' ?></dd></div></dl>
+                    <a class="btn btn-system-light" href="<?= $texto($enlaceEstado) ?>">Ver convenios <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                </article>
+            <?php endforeach; ?>
+        </section>
+        <div class="aliados-empty-state d-none" data-convenios-territorio-vacio><strong>No se encontraron territorios</strong><p>Prueba con otro estado o criterio.</p></div>
+    <?php else: ?>
+        <div class="linkage-state-nav aliados-state-nav">
+            <a class="linkage-back-link" href="<?= $texto(BASE_URL) ?>index.php?controller=crearConvocatoria&action=index"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a territorios</a>
+            <div class="linkage-state-identity"><strong><?= $texto($estadoSeleccionado['nombre'] ?? '') ?></strong><span>Convenios de aliados</span></div>
         </div>
-
-        <div class="crear-convocatoria-summary">
-            <strong><?= count($convenios) ?></strong>
-            <span><?= count($convenios) === 1 ? 'convenio aliado' : 'convenios aliados' ?></span>
-        </div>
-    </section>
-
     <section class="dashboard-panel crear-convocatoria-toolbar-panel">
         <div class="crear-convocatoria-toolbar-heading">
             <div>
                 <h2 class="panel-title">Convenios de aliados</h2>
                 <p>
-                    Selecciona una notificación para consultar los datos del aliado
-                    antes de crear la convocatoria.
+                    Consulta las instituciones de este territorio y crea una convocatoria por programa.
                 </p>
             </div>
         </div>
@@ -164,28 +228,27 @@ $fecha = static function ($valor) {
                 </p>
             </div>
         </section>
-    <?php elseif (empty($convenios)): ?>
+    <?php elseif (empty($conveniosVisibles)): ?>
         <section class="dashboard-panel crear-convocatoria-empty">
             <span><i class="bi bi-inbox"></i></span>
             <div>
                 <h3>Aún no hay convenios aliados</h3>
                 <p>
-                    Cuando Vinculación registre un convenio aliado,
-                    aparecerá automáticamente en esta bandeja.
+                    Cuando exista un aliado de este estado, aparecerá en este directorio.
                 </p>
             </div>
         </section>
     <?php else: ?>
         <div class="crear-convocatoria-results">
             <span data-convenio-results>
-                <?= count($convenios) ?>
-                <?= count($convenios) === 1 ? 'notificación' : 'notificaciones' ?>
+                <?= count($conveniosVisibles) ?>
+                <?= count($conveniosVisibles) === 1 ? 'convenio' : 'convenios' ?>
             </span>
         </div>
 
         <section class="dashboard-panel crear-convocatoria-list-panel">
             <div class="crear-convocatoria-list" data-convenio-list>
-                <?php foreach ($convenios as $convenio): ?>
+                <?php foreach ($conveniosVisibles as $convenio): ?>
                     <?php
                     $payload = [
                         'registro_programas' => $convenio['registro_programas'] ?? '',
@@ -248,10 +311,6 @@ $fecha = static function ($valor) {
                             JSON_UNESCAPED_SLASHES |
                             JSON_INVALID_UTF8_SUBSTITUTE
                         )) ?>'>
-                        <span class="crear-convocatoria-notification-icon">
-                            <i class="bi bi-building-check"></i>
-                        </span>
-
                         <span class="crear-convocatoria-notification-content">
                             <span class="crear-convocatoria-notification-title">
                                 <?= $texto($payload['institucion'] !== '' ? $payload['institucion'] : 'Convenio recibido') ?>
@@ -303,6 +362,7 @@ $fecha = static function ($valor) {
             </div>
         </section>
     <?php endif; ?>
+    <?php endif; // Estado seleccionado ?>
 </section>
 
 <div
