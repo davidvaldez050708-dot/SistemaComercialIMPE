@@ -8,7 +8,7 @@ require_once __DIR__ . '/../config/db_connection.php';
 try {
     $db = (new Database())->connect(false);
     $meta = $db->query("SELECT COLUMN_TYPE, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='convocatorias' AND COLUMN_NAME='id'")->fetch_assoc();
-    if (!$meta || strtolower($meta['COLUMN_TYPE'])!=='int') {
+    if (!$meta || strtolower($meta['DATA_TYPE'])!=='int' || stripos($meta['COLUMN_TYPE'],'unsigned')!==false) {
         throw new RuntimeException('La clave convocatorias.id no es INT firmado; requiere conciliación sin ALTER.');
     }
     $name='marketing_aliado_convocatorias_origen';
