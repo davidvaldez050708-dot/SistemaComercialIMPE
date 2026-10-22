@@ -66,7 +66,11 @@ rejects(fn()=>$form->guardar(array_replace($submission,['perfil_interes'=>'InglÃ
 $db->query("UPDATE formulario_programas SET activo=1 WHERE codigo='ingles'");
 foreach(['','no-valido',str_repeat('0',64)] as $bad) rejects(fn()=>$form->aliadoExclusivo($bad,'registro'),'token invÃ¡lido');
 $general=$submission; unset($general['aliado_token']); $general['correo']='general@example.test'; $generalId=$form->guardar($general);
-$inscripcion=$submission; $inscripcion['aliado_token']=$legacy; $inscripcion['perfil_interes']='Bachillerato General'; $inscripcion['origen']='PUBLICO_INSCRIPCION'; $form->guardar($inscripcion);
+$inscripcion=$submission; $inscripcion['aliado_token']=$legacy; $inscripcion['perfil_interes']='Bachillerato General'; $inscripcion['origen']='PUBLICO_INSCRIPCION';
+// Handly es internacional: no reutilizar IDs de estados/municipios mexicanos.
+$inscripcion['estado_id']=null; $inscripcion['municipio_id']=null;
+$inscripcion['pais_nombre']='Estados Unidos'; $inscripcion['estado_provincia']='Texas'; $inscripcion['ciudad']='Houston';
+$form->guardar($inscripcion);
 $prospectos=new ProspectoModel(); $all=$prospectos->listar(1,25); check($all['total']===2,'Prospectos sin Inscripciones');
 $origin=(int)$db->query('SELECT aliado_id FROM formulario_aliado_registro WHERE manual_id='.$id)->fetch_assoc()['aliado_id'];
 check($prospectos->listar(1,25,['aliado_id'=>(string)$origin])['total']===1,'filtro origen');
