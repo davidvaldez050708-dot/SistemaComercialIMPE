@@ -626,11 +626,13 @@ class ConvocatoriaController
             if ($enlace === '' || !filter_var($enlace, FILTER_VALIDATE_URL)) {
                 throw new DomainException('Genera primero el enlace estable de Registro del aliado.',422);
             }
-            if ($origenTipo === 'manual') {
-                $conexion = (new Database())->connect();
-                if (!$conexion->query("SHOW TABLES LIKE 'marketing_aliado_manual_convocatorias'")->num_rows) {
-                    throw new DomainException('Falta la estructura de publicaciones del aliado manual.',503);
-                }
+            $conexion = (new Database())->connect();
+            if (!$conexion->query("SHOW TABLES LIKE 'marketing_aliado_convocatorias_origen'")->num_rows) {
+                throw new DomainException('Falta instalar el vínculo de convocatorias por programa y aliado.',503);
+            }
+            if ($origenTipo === 'manual' &&
+                !$conexion->query("SHOW TABLES LIKE 'marketing_aliado_manual_convocatorias'")->num_rows) {
+                throw new DomainException('Falta la estructura de publicaciones del aliado manual.',503);
             }
             $procesadas = [];
             foreach ($entradas as $codigo => $entrada) {
@@ -647,8 +649,9 @@ class ConvocatoriaController
                     throw new DomainException('Clasificación incompatible con el territorio.',422);
                 }
                 $datos = $this->limpiarDatos($entrada);
-                $errores = $this->validarDatos($datos,[$territorioId],false,
-                    $subtipo === 'inscripciones-abiertas');
+                // La publicación multiprograma siempre solicita dos fechas.
+                // Así no se introducen ALTER TABLE implícitos durante el lote.
+                $errores = $this->validarDatos($datos,[$territorioId],false,false);
                 $archivo = [
                     'name'=>$_FILES['imagenes']['name'][$codigo] ?? '',
                     'type'=>$_FILES['imagenes']['type'][$codigo] ?? '',
@@ -682,6 +685,9 @@ class ConvocatoriaController
                 $datos['tipo_convocatoria'] = $item['tipo'];
                 $datos['subtipo_convocatoria'] = $item['subtipo'];
                 $datos['usuario_id'] = (int)$_SESSION['usuario_id'];
+                $datos['aliado_tipo'] = $origenTipo;
+                $datos['aliado_id'] = $origenId;
+                $datos['programa_codigo'] = $item['codigo'];
                 if ($origenTipo === 'manual') {
                     $datos['manual_id'] = $origenId;
                     $datos['programa_codigo'] = $item['codigo'];
