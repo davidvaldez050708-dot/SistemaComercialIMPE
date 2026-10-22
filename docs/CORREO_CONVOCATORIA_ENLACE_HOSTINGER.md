@@ -20,7 +20,11 @@ Pasaron las pruebas dirigidas PHP de URL exacta, Registro/Inscripción, URLs inv
 
 Se consultó el detalle real de la convocatoria 11 y se abrió su enlace original: muestra el formulario de Registro del convenio PRUEBA en León, Guanajuato. No se envió el formulario. Inscripción se comprobó con datos ficticios.
 
-**Pendiente en producción:** aplicar el publicador, revisar el diagnóstico y la interfaz y, con autorización específica, comprobar una recepción real con imagen y enlace clicable. Las pruebas con dobles no acreditan esa recepción.
+**Comprobación real en Hostinger (22/10/2026):** la interfaz mostró la mejora aplicada. Con autorización específica se pulsó Enviar una sola vez desde el CRM para la convocatoria 11, asunto `Prueba enlace convocatoria IMPE 11`. Se confirmó un registro Enviado mediante HOSTINGER_MAIL_API y un mensaje recibido en INBOX a las 21:42 UTC, desde el buzón institucional autorizado hacia la cuenta de prueba de la usuaria. No se usaron contactos comerciales.
+
+El MIME recibido conserva el texto autorizado, una imagen CID y un único enlace automático de Registro idéntico al almacenado. El PNG recibido tiene 788316 bytes y SHA256 `1b326f526856cd4fa307d4a2285d2295024cd80b5b9c1be6daf4f4613175cca0`, igual al original. Se abrió exactamente la URL del correo recibido y mostró Registro / PRUEBA / León / Guanajuato; no se envió el formulario. SPF, DKIM y DMARC aparecen como pass en los encabezados recibidos.
+
+La prueba real acredita este caso de Registro. Inscripción, cambio/limpieza, falta de enlace y borradores se verificaron con pruebas dirigidas y datos ficticios; no se enviaron correos reales adicionales ni se modificaron contraseñas.
 
 ## Publicación selectiva
 
