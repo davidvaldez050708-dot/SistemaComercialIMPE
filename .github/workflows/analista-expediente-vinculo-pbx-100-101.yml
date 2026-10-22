@@ -5,6 +5,8 @@ on:
       - 'app/services/TelefoniaGrabacionExpedienteTransferidaService.php'
       - 'tests/telefonia_analista_expediente_vinculo_exacto_smoke.php'
       - 'tests/telefonia_analista_expediente_collations_db.php'
+      - 'tools/publicar_analista_expediente_union_1271_hostinger.sh'
+      - 'tests/publicacion_analista_expediente_union_1271_test.py'
       - 'tools/publicar_analista_expediente_vinculo_pbx_100_101_hostinger.sh'
       - 'tests/publicacion_analista_expediente_vinculo_pbx_test.py'
       - '.github/workflows/analista-expediente-vinculo-pbx-100-101.yml'
@@ -19,5 +21,8 @@ jobs:
           php -l tests/telefonia_analista_expediente_vinculo_exacto_smoke.php
           php tests/telefonia_analista_expediente_vinculo_exacto_smoke.php
           php tests/telefonia_analista_audio_saliente_100_101_smoke.php
+          php tests/telefonia_analista_expediente_collations_db.php
       - name: Publicador sobre réplicas de Hostinger
-        run: python3 tests/publicacion_analista_expediente_vinculo_pbx_test.py
+        run: |
+          python3 tests/publicacion_analista_expediente_vinculo_pbx_test.py
+          python3 tests/publicacion_analista_expediente_union_1271_test.py
