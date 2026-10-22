@@ -19,7 +19,7 @@ class CrearConvocatoriaModel
      * Esto permite incluir aliados creados por formalización y también
      * registros históricos/migrados que ya forman parte del módulo Aliados.
      */
-    public function listarConveniosAliados()
+    public function listarConveniosAliados(?array $estadoIds = null)
     {
         if (!$this->estructuraDisponible()) {
             return [];
@@ -30,6 +30,13 @@ class CrearConvocatoriaModel
             !$this->asegurarEstructuraAtencionConvenio()
         ) {
             return [];
+        }
+
+        if ($estadoIds !== null) {
+            $estadoIds = array_values(array_unique(array_filter(array_map('intval', $estadoIds), static function ($id) {
+                return $id > 0;
+            })));
+            if (!$estadoIds) { return []; }
         }
 
         $sql = "SELECT
@@ -78,8 +85,14 @@ class CrearConvocatoriaModel
                 LEFT JOIN marketing_convenio_atencion atencion
                     ON atencion.seguimiento_id = seguimientos.id
                 WHERE aliado.activo = 1
-                  AND seguimientos.activo = 1
-                ORDER BY
+                  AND seguimientos.activo = 1";
+
+        // Acotar ANTES de LIMIT 500: filtrar sólo en PHP perdería convenios
+        // asignados y expondría datos de otros territorios al servidor.
+        if ($estadoIds !== null) {
+            $sql .= ' AND seguimientos.estado_id IN (' . implode(',', $estadoIds) . ')';
+        }
+        $sql .= " ORDER BY
                     COALESCE(
                         post.convenio_formalizado_at,
                         aliado.asignado_at
@@ -105,7 +118,15 @@ class CrearConvocatoriaModel
 
         require_once __DIR__ . '/../services/AliadoRegistroService.php';
         $registro = new AliadoRegistroService($this->connection);
-        return $registro->decorar(array_merge($convenios, $registro->manuales()));
+        $manuales = [];
+        if ($estadoIds === null) {
+            $manuales = $registro->manuales();
+        } else {
+            foreach ($estadoIds as $estadoId) {
+                $manuales = array_merge($manuales, $registro->manuales($estadoId));
+            }
+        }
+        return $registro->decorar(array_merge($convenios, $manuales));
     }
 
     public function registrarConvocatoriaCreadaDesdeConvenio(
@@ -198,9 +219,9 @@ class CrearConvocatoriaModel
         return $stmt->execute();
     }
 
-    public function listarConveniosRecibidos()
+    public function listarConveniosRecibidos(?array $estadoIds = null)
     {
-        return $this->listarConveniosAliados();
+        return $this->listarConveniosAliados($estadoIds);
     }
 
     public function listarEstados()
