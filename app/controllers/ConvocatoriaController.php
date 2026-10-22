@@ -96,14 +96,7 @@ class ConvocatoriaController
 
     public function index()
     {
-        $desdeConvenioSolicitado = (int)($_GET['desde_convenio'] ?? 0) === 1;
-        $creacionDesdeConvenio = $desdeConvenioSolicitado &&
-            puedeCrearConvocatoriaDesdeConvenio() &&
-            in_array((string)($_GET['aliado_tipo'] ?? ''), ['manual','institucional'], true) &&
-            (int)($_GET['aliado_id'] ?? 0) > 0;
-        if (!tienePermiso('convocatorias.ver') && !$creacionDesdeConvenio) {
-            $this->validarPermiso('convocatorias.ver');
-        }
+        $this->validarPermiso('convocatorias.ver');
 
         $modelo = new ConvocatoriaModel();
         $modelo->desactivarConvocatoriasVencidas();
