@@ -4,7 +4,7 @@ import json,os,pathlib,re,subprocess,tempfile
 root=pathlib.Path(__file__).resolve().parents[1]
 publisher=root/'tools/publicar_ventas_fin_sip_transferido_100_150_hostinger.sh'
 manifest=json.loads(re.search(r"SPECS=json.loads\(r'''(.*?)'''\)",publisher.read_text(),re.S).group(1))
-assert [s['path'] for s in manifest]==['app/views/telefonia/host.php','public/javascript/telefonia_host.js']
+assert [s['path'] for s in manifest]==['app/views/telefonia/host.php','public/javascript/telefonia_host.js','public/javascript/telefonia_transferencia_runtime.js']
 with tempfile.TemporaryDirectory() as td:
     base=pathlib.Path(td);site=base/'public_html';site.mkdir();backup=base/'private'
     (site/'index.php').write_text('<?php',encoding='utf-8')
@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory() as td:
         file=site/path;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(earlier)
         originals[path]=earlier;expected[path]=target
     check=run('--check')
-    assert check.returncode==0 and 'Archivos a modificar: 2' in check.stdout,(check.stdout,check.stderr)
+    assert check.returncode==0 and 'Archivos a modificar: 3' in check.stdout,(check.stdout,check.stderr)
     assert not backup.exists()
     apply=run('--apply')
     assert apply.returncode==0,(apply.stdout,apply.stderr)
@@ -52,4 +52,4 @@ with tempfile.TemporaryDirectory() as td:
     rejected=run('--check')
     assert rejected.returncode!=0 and 'CONFLICTO' in rejected.stderr
     assert (site/manifest[0]['path']).read_bytes()==originals[manifest[0]['path']]
-print('OK: fin SIP propio 100 a 150 publicador check/apply/restore, CRLF, variantes, rollback y backup')
+print('OK: fin SIP propio 100 a 150 publicador de 3 archivos, check/apply/restore, CRLF, variantes, rollback y backup')
