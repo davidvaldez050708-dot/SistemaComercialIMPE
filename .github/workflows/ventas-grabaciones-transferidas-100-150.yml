@@ -1,0 +1,34 @@
+name: Ventas - grabaciones de dos tramos 100 a 150
+on:
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaGrabacionesTransferenciaVentasService.php'
+      - 'app/views/telefonia/ventas_llamadas.php'
+      - 'prueba_telefonia/api/grabacion_ventas.php'
+      - 'prueba_telefonia/api/grabacion_transferida_pbx.php'
+      - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'public/javascript/telefonia_recepcion_marketing.js'
+      - 'tests/telefonia_ventas_grabaciones_transferidas_smoke.php'
+      - 'tools/publicar_ventas_grabaciones_100_150_hostinger.sh'
+      - 'tests/publicacion_ventas_grabaciones_100_150_test.py'
+      - '.github/workflows/ventas-grabaciones-transferidas-100-150.yml'
+jobs:
+  grabaciones:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis PHP y JS
+        run: |
+          php -l app/services/TelefoniaGrabacionesTransferenciaVentasService.php
+          php -l prueba_telefonia/api/grabacion_ventas.php
+          php -l prueba_telefonia/api/grabacion_transferida_pbx.php
+          php -l app/views/telefonia/ventas_llamadas.php
+          node --check public/javascript/telefonia_ventas_resultados.js
+          node --check public/javascript/telefonia_recepcion_marketing.js
+      - name: Dos tramos, identidad y datos adversos
+        run: php tests/telefonia_ventas_grabaciones_transferidas_smoke.php
+      - name: Publicador Hostinger reversible
+        run: python3 tests/publicacion_ventas_grabaciones_100_150_test.py
