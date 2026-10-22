@@ -20,6 +20,8 @@ on:
       - 'public/javascript/convocatorias_aliado_programas.js'
       - 'public/css/convocatorias.css'
       - 'tools/migrar_extensiones_aliados_20261022.php'
+      - 'tools/publicar_aliados_convenios_v2.py'
+      - 'tests/publicacion_aliados_convenios_v2_test.py'
       - 'tools/*aliados_registro*'
       - 'tools/compat/aliados_registro_pr114/**'
       - 'tests/*aliados_registro*'
@@ -81,6 +83,7 @@ jobs:
           node --check public/javascript/crear_convocatoria.js
           node --check public/javascript/convocatorias_aliado_programas.js
           python3 -m py_compile tools/publicar_diseno_programas_aliados.py
+          python3 -m py_compile tools/publicar_aliados_convenios_v2.py
       - name: Migración e integración con base real aislada
         run: |
           mkdir -p /tmp/respaldo-aliados
@@ -100,6 +103,7 @@ jobs:
         run: |
           python3 tests/publicacion_aliados_registro_test.py
           python3 tests/publicacion_diseno_programas_aliados_test.py
+          python3 tests/publicacion_aliados_convenios_v2_test.py
       - name: Compatibilidad con PR114 publicado (réplica aislada)
         env:
           IMPE_DB_NAME: impe_test_handly_aliados_pr114
