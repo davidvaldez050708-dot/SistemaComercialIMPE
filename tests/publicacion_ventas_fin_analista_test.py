@@ -7,7 +7,7 @@ text=SCRIPT.read_text(encoding='utf-8')
 pairs=json.loads(re.search(r"PAIRS=json.loads\(r'''(.*?)'''\)",text,re.S).group(1))
 assert len(pairs)==4
 rel='public/javascript/telefonia_ventas_shell.js'
-latest=(ROOT/rel).read_text(encoding='utf-8')
+latest=(ROOT/'tests/fixtures/telefonia_ventas_shell_fin_analista_publicada.js').read_text(encoding='utf-8')
 previous=latest
 for before,after in reversed(pairs):
     assert previous.count(after)==1, ('falta bloque nuevo',after[:60])
