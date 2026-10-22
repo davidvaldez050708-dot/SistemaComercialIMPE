@@ -22,6 +22,9 @@ on:
       - 'public/javascript/convocatorias_aliado_programas.js'
       - 'public/css/convocatorias.css'
       - 'tools/migrar_extensiones_aliados_20261022.php'
+      - 'tools/migrar_canales_manuales_20261022.php'
+      - 'public/javascript/convocatorias_aliado_multiprograma_v3.js'
+      - 'public/css/convocatorias_aliado_multiprograma_v3.css'
       - 'tools/publicar_aliados_convenios_v2.py'
       - 'tests/publicacion_aliados_convenios_v2_test.py'
       - 'tools/*aliados_registro*'
@@ -85,6 +88,7 @@ jobs:
           node --check public/javascript/crear_convocatoria.js
           node --check public/javascript/crear_convocatoria_v2_extension.js
           node --check public/javascript/convocatorias_aliado_programas.js
+          node --check public/javascript/convocatorias_aliado_multiprograma_v3.js
           python3 -m py_compile tools/publicar_diseno_programas_aliados.py
           python3 -m py_compile tools/publicar_aliados_convenios_v2.py
       - name: Migración e integración con base real aislada
@@ -97,6 +101,8 @@ jobs:
           php tools/migrar_aliados_registro.php --check
           php tools/migrar_extensiones_aliados_20261022.php --apply --backup-dir=/tmp/respaldo-aliados
           php tools/migrar_extensiones_aliados_20261022.php --check
+          php tools/migrar_canales_manuales_20261022.php --apply --respaldo-confirmado
+          php tools/migrar_canales_manuales_20261022.php --check
           php tests/aliados_registro_db.php
       - name: Publicadores reversibles
         run: |
