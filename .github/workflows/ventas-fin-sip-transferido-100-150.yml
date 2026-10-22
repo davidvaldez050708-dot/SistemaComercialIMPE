@@ -1,0 +1,28 @@
+name: Ventas - fin SIP transferido 100 a 150
+on:
+  pull_request:
+    paths:
+      - 'app/views/telefonia/host.php'
+      - 'public/javascript/telefonia_host.js'
+      - 'tests/telefonia_ventas_fin_transferencia_inmediato.cjs'
+      - '.github/workflows/ventas-fin-sip-transferido-100-150.yml'
+      - 'tools/publicar_ventas_fin_sip_transferido_100_150_hostinger.sh'
+      - 'tests/publicacion_ventas_fin_sip_transferido_test.py'
+jobs:
+  fin-propio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis y fin transferido
+        run: |
+          php -l app/views/telefonia/host.php
+          node --check public/javascript/telefonia_host.js
+          node --check tests/telefonia_ventas_fin_transferencia_inmediato.cjs
+          node tests/telefonia_ventas_fin_transferencia_inmediato.cjs
+          node tests/telefonia_ventas_fin_sip_push_tardio.cjs
+          node tests/telefonia_sdk_ended_directo_smoke.cjs
+      - name: Publicación reversible
+        run: python3 tests/publicacion_ventas_fin_sip_transferido_test.py
