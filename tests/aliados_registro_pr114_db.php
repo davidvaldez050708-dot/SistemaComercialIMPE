@@ -8,7 +8,7 @@ $db=(new Database())->connect(false);
 if (($argv[1] ?? '') === '--prepare') {
 $db->query("ALTER TABLE formulario_aliados ADD pais_codigo VARCHAR(2) NULL");
 $db->query("UPDATE formulario_aliados SET pais_codigo='US' WHERE slug='handly-lenguaje-center'");
-$db->query("CREATE TABLE convocatorias (id INT PRIMARY KEY, estado INT, fecha_inicio DATE, fecha_termino DATE)");
+$db->query("CREATE TABLE IF NOT EXISTS convocatorias (id INT UNSIGNED PRIMARY KEY, estado INT, fecha_inicio DATE, fecha_termino DATE)");
 $db->query("INSERT INTO convocatorias VALUES (91,1,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 1 DAY))");
 $db->query("CREATE TABLE formulario_aliado_convocatorias (convocatoria_id INT, aliado_id BIGINT UNSIGNED, referencia VARCHAR(32), formulario VARCHAR(20), programa_codigo VARCHAR(80))");
 $db->query("ALTER TABLE formulario_aliado_procedencias ADD convocatoria_id INT NULL");
