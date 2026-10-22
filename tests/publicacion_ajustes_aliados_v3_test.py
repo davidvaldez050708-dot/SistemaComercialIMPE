@@ -103,6 +103,35 @@ class PublicadorAjustesV3Test(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,"inserción pura"):
             module.overlay_convocatoria_controller(old,old,modified)
 
+    def test_modelo_convocatoria_personalizado_preserva_otros_metodos(self):
+        file="app/models/ConvocatoriaModel.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        desired=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        original=b"    public function buscarPorId($id)"
+        self.assertEqual(old.count(original),1)
+        changed=old.replace(original,
+            b"    // Personalizado en Hostinger: no editar\\n"+original,1)
+        patched=module.overlay_convocatoria_model(changed,old,desired)
+        self.assertIn(b"Personalizado en Hostinger",patched)
+        self.assertIn(b"public function iniciarLote()",patched)
+        self.assertIn(b"public function crear($datos, $estadosIds, $transaccionExterna = false)",patched)
+        self.assertEqual(module.overlay_convocatoria_model(patched,old,desired),patched)
+        with tempfile.TemporaryDirectory() as folder:
+            file_path=Path(folder)/"modelo.php"
+            file_path.write_bytes(patched)
+            result=subprocess.run(["php","-l",str(file_path)],
+                stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            self.assertEqual(result.returncode,0,result.stderr.decode("utf-8","replace"))
+
+    def test_modelo_crear_personalizado_nunca_se_sobrescribe(self):
+        file="app/models/ConvocatoriaModel.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        desired=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        local=old.replace(b"public function crear($datos, $estadosIds)",
+            b"public function crear($datos, $estadosIds) // personalizado",1)
+        with self.assertRaisesRegex(RuntimeError,"fue personalizado"):
+            module.overlay_convocatoria_model(local,old,desired)
+
     def test_documentos_fuera_sitio_no_se_reescriben(self):
         with tempfile.TemporaryDirectory() as folder:
             site=Path(folder)/'site'
