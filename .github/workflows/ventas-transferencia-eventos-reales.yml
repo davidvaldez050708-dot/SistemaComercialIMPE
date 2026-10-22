@@ -1,0 +1,23 @@
+name: Ventas - secuencia real PBX 100 a 150
+on:
+  pull_request:
+    paths:
+      - 'app/services/ZadarmaWebhookEventStoreService.php'
+      - 'tests/telefonia_transferencia_out_end_previo_smoke.php'
+      - 'tools/diagnosticar_fuentes_cierre_ventas.php'
+      - '.github/workflows/ventas-transferencia-eventos-reales.yml'
+jobs:
+  evento:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Sintaxis PHP y diagnóstico de solo lectura
+        run: |
+          php -l app/services/ZadarmaWebhookEventStoreService.php
+          php -l tools/diagnosticar_fuentes_cierre_ventas.php
+          php -l tests/telefonia_transferencia_out_end_previo_smoke.php
+      - name: Reproducir secuencia real OUT_END anterior a ANSWER
+        run: php tests/telefonia_transferencia_out_end_previo_smoke.php
