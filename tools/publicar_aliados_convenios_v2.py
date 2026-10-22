@@ -120,6 +120,22 @@ def overlay_convocatorias(local,base,desired):
                 positions=[i for i in range(len(work)+1)
                            if work[max(0,i-len(before)):i]==before
                            and work[i:i+len(after)]==after]
+            if old_part and len(positions)>1:
+                # Las líneas como value="" se repiten en otros formularios:
+                # desempatar sólo por contexto exacto cercano, nunca por orden.
+                def score(at):
+                    score_before=0
+                    for step in range(1,6):
+                        if i1-step < 0 or at-step < 0 or old_lines[i1-step]!=work[at-step]:break
+                        score_before+=1
+                    score_after=0
+                    for step in range(5):
+                        if i2+step>=len(old_lines) or at+len(old_part)+step>=len(work) or old_lines[i2+step]!=work[at+len(old_part)+step]:break
+                        score_after+=1
+                    return score_before+score_after
+                ranked=sorted([(score(at),at) for at in positions],reverse=True)
+                if ranked[0][0]>=2 and (len(ranked)==1 or ranked[0][0]>ranked[1][0]):
+                    positions=[ranked[0][1]]
             if len(positions)!=1:
                 raise RuntimeError("CONFLICTO: Convocatorias sección V2 #%d (%s), %d coincidencias; no se modificó el sitio" %
                                    (len(mutations)-mutations.index((tag,i1,i2,j1,j2)),tag,len(positions)))
