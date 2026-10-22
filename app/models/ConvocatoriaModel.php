@@ -394,7 +394,12 @@ class ConvocatoriaModel
         return $convocatoria;
     }
 
-    public function crear($datos, $estadosIds)
+    /** Transacción común: evita lotes de convocatorias parcialmente guardados. */
+    public function iniciarLote(): void { $this->connection->begin_transaction(); }
+    public function confirmarLote(): void { $this->connection->commit(); }
+    public function cancelarLote(): void { $this->connection->rollback(); }
+
+    public function crear($datos, $estadosIds, $transaccionExterna = false)
     {
         $esInscripcionesAbiertas =
             (string)($datos['subtipo_convocatoria'] ?? '') === 'inscripciones-abiertas';
@@ -414,7 +419,7 @@ class ConvocatoriaModel
             return false;
         }
 
-        $this->connection->begin_transaction();
+        if (!$transaccionExterna) $this->connection->begin_transaction();
 
         try {
             $categoria = strcasecmp(trim((string)$datos['titulo']), 'IMJUVE') === 0
@@ -524,13 +529,13 @@ class ConvocatoriaModel
                 if (!$stmtManual->execute()) throw new RuntimeException('No se pudo asociar la publicación al aliado manual.');
             }
 
-            $this->connection->commit();
+            if (!$transaccionExterna) $this->connection->commit();
 
             return $convocatoriaId;
         } catch (Throwable $error) {
-            $this->connection->rollback();
+            if (!$transaccionExterna) $this->connection->rollback();
             error_log($error->getMessage());
-
+            if ($transaccionExterna) throw $error;
             return false;
         }
     }
