@@ -46,7 +46,7 @@
    call=null;callRef=ref;callExt=ext||'';waiting=false;queued=false;
    form.reset();for(const el of form.elements)el.disabled=false;
    const draft=readDraft(ref);
-   if(draft){queued=draft.queued===true;
+   if(draft){queued=false; // Borradores anteriores ya no esperan un END PBX inexistente.
     for(const [key,value] of Object.entries(draft.values||{})){
      if(['csrf_token','pbx_call_id','extension'].includes(key))continue;
      const el=form.elements.namedItem(key);if(!el)continue;
@@ -82,20 +82,25 @@
     if(nombre&&!nombre.value)nombre.value=call.registro?.prospecto_nombre||call.captura_prospecto?.nombre||call.nombre||'';
     if(correo&&!correo.value)correo.value=call.registro?.correo||call.captura_prospecto?.correo||'';
    }
-   // El Analista permite capturar al finalizar SIP; Ventas hace lo mismo.
-   // La verificación de la centralita sólo condiciona la persistencia definitiva.
+   // La captura y el guardado humano no deben depender de que Zadarma
+   // entregue un END tardío. El servidor comprueba la transferencia propia
+   // respondida; conserva PBX/audio como datos independientes pendientes.
    fields.hidden=false;submit.hidden=Boolean(call?.registro);
-   if(!call?.finalizada){
+   if(!call&&!new URL(location.href).searchParams.has('esperando_pbx')){
+    throw Error('Todavía no se encontró una llamada propia acreditada.');
+   }
+   if(!call){
     recovered=recovered||waiting;waiting=true;
-    form.querySelector('[data-sales-form-state]').textContent='Llamada finalizada · Confirmación PBX pendiente · Ext. '+ownExt;
-    feedback.textContent=queued
-      ?'Resultado listo para guardar. Se enviará automáticamente cuando Zadarma confirme el cierre de esta llamada; todavía no está guardado.'
-      :'Puedes completar el resultado ahora. Si pulsas Guardar, se enviará cuando Zadarma confirme el cierre de esta llamada.';
-    submit.disabled=queued;submit.innerHTML=queued?'Esperando confirmación…':saveLabel;
+    form.querySelector('[data-sales-form-state]').textContent='Identificando el tramo de tu extensión · Ext. '+ownExt;
+    feedback.textContent='Estamos identificando tu transferencia. No se ha guardado un resultado todavía.';
+    submit.disabled=true;submit.innerHTML='Identificando llamada…';
     show();schedule(ref,ownExt,attempt,version);return;
    }
    recovered=recovered||waiting;waiting=false;
-   form.querySelector('[data-sales-form-state]').textContent=call.estado_pbx+' · Ext. '+ownExt;
+   form.querySelector('[data-sales-form-state]').textContent=call.registro&&!call.finalizada
+     ?'Resultado registrado · Evidencia PBX pendiente · Ext. '+ownExt
+     :call.finalizada?call.estado_pbx+' · Ext. '+ownExt
+     :'Atención terminada · Evidencia PBX pendiente · Ext. '+ownExt;
    if(call.registro){
     queued=false;
     try{sessionStorage.removeItem(draftKey(ref));}catch(_){}
@@ -105,10 +110,11 @@
     feedback.textContent='Resultado guardado anteriormente.';
    }else{
     submit.disabled=false;submit.innerHTML=saveLabel;
-    feedback.textContent=queued?'Cierre confirmado. Guardando el resultado solicitado…':'';
+    feedback.textContent=call.finalizada?'':'Puedes guardar tu resultado. La grabación y el cierre de Zadarma seguirán en verificación.';
    }
    show();
-   if(queued&&!call.registro)setTimeout(()=>{if(version===cycle&&!disposed&&modal.classList.contains('show'))form.requestSubmit();},0);
+
+   // Nunca ejecutar un guardado futuro oculto: sólo lo solicita el asesor.
   }catch(e){
    if(version!==cycle||disposed)return;
    if(waiting){feedback.textContent=e.message+' Tu captura permanece como borrador. No se ha guardado ningún resultado.';show();schedule(ref,ext,Math.max(attempt,3),version);}
@@ -158,32 +164,22 @@
  form.addEventListener('change',storeDraft);
  form.addEventListener('submit',async e=>{
   e.preventDefault();
-  if(!callRef||call?.registro||submit.disabled||!form.reportValidity())return;
-  if(!call?.finalizada){
-   // Una única pulsación conserva el resultado humano sin inventar un END PBX.
-   queued=true;storeDraft();submit.disabled=true;submit.innerHTML='Esperando confirmación…';
-   feedback.textContent='Resultado listo para guardar. Se enviará automáticamente cuando Zadarma confirme el cierre de esta llamada; todavía no está guardado.';
-   return;
-  }
+  if(!callRef||!call||call?.registro||submit.disabled||!form.reportValidity())return;
   if(call.pbx_call_id!==callRef||String(call.extension)!==String(form.elements.extension.value))return;
   submit.disabled=true;submit.innerHTML='Guardando…';feedback.textContent='Guardando resultado…';
   try{
    const r=await fetch(root.dataset.saveUrl,{method:'POST',credentials:'same-origin',body:new URLSearchParams(new FormData(form))}),j=await r.json();
    if(!r.ok||!j.ok){
-    // Otro resultado o un error de validación nunca debe reintentarse solo.
-    if(r.status===409&&/centralita.*cierre/i.test(j.mensaje||'')){
-     waiting=true;queued=true;call.finalizada=false;storeDraft();submit.innerHTML='Esperando confirmación…';
-     feedback.textContent='El cierre PBX aún está pendiente. Tu resultado sigue preparado; no se ha guardado.';
-     schedule(callRef,callExt||call.extension,3,cycle);return;
-    }
+    // Una negativa de autorización se muestra inmediatamente; nunca
+    // prometer un guardado automático condicionado a un evento ausente.
     throw Error(j.mensaje||'No se pudo guardar el resultado.');
    }
    queued=false;try{sessionStorage.removeItem(draftKey(callRef));}catch(_){}
    window.parent?.postMessage({type:'IMPE_SALES_RESULT_SAVED',ref:callRef,extension:call.extension},location.origin);
-   bootstrap.Modal.getInstance(modal)?.hide();notify('Resultado comercial guardado.');
+   bootstrap.Modal.getInstance(modal)?.hide();notify(j.registro?.pbx_pendiente?'Resultado guardado. La evidencia PBX y la grabación continúan pendientes.':'Resultado comercial guardado.');
    const url=new URL(location.href);for(const key of ['pbx_call_id','extension','detalle','esperando_pbx'])url.searchParams.delete(key);location.replace(url.href);
   }catch(error){queued=false;storeDraft();feedback.textContent=error.message;notify(error.message,true);}
-  finally{submit.disabled=queued;submit.innerHTML=queued?'Esperando confirmación…':saveLabel;}
+  finally{submit.disabled=false;submit.innerHTML=saveLabel;}
  });
  modal.addEventListener('hidden.bs.modal',()=>{++cycle;cancelRetry();requestController?.abort();waiting=false;shell()?.endCallResult(token);if(recovered){const url=new URL(location.href);for(const key of ['pbx_call_id','extension','detalle','esperando_pbx'])url.searchParams.delete(key);location.replace(url.href);}});
  window.addEventListener('pagehide',()=>{disposed=true;++cycle;cancelRetry();clearInterval(historyTimer);requestController?.abort();});
