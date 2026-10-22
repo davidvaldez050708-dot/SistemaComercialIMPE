@@ -23,6 +23,13 @@ with tempfile.TemporaryDirectory() as tmp:
             assert older.count(new)==1,(name,'destino ambiguo')
             older=older.replace(new,old,1)
         assert older!=latest
+        if name=='app/controllers/TelefoniaController.php':
+            # Variante válida: Hostinger agregó líneas dentro del método y
+            # espacios propios. La transformación debe ser semántica.
+            marker="            if(($_GET['pendientes']??'')==='1'){"
+            assert marker in older and marker in latest
+            older=older.replace(marker,"            /* PERSONALIZACION CONTROLLER HOSTINGER */\n"+marker,1)
+            latest=latest.replace(marker,"            /* PERSONALIZACION CONTROLLER HOSTINGER */\n"+marker,1)
         suffix='\n/* HOSTINGER PERSONALIZACION AJENA */\n'
         eol='\r\n' if i%2 else '\n'
         initial=(older+suffix).replace('\n',eol).encode('utf8')
