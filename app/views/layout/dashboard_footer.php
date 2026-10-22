@@ -221,6 +221,9 @@ if ($esSeguimientoEntrantesAnalistaFooter
 }
 
 if ($esSeguimientoDetalleFooter) {
+    // Estos scripts ya contemplan detalle, pero sólo se cargaban en la bandeja.
+    $jsDashboardFooter[] = 'oficios_vinculacion.js';
+    $jsDashboardFooter[] = 'oficios_vista_previa.js';
     /*
      * La estructura de pestañas debe existir antes de que Actividad aplique
      * su presentación y paginación. Cargarlos juntos aquí evita la carrera

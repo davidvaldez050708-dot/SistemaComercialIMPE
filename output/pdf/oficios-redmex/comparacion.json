@@ -1,0 +1,145 @@
+{
+  "manual_review_required": true,
+  "samples": [
+    {
+      "name": "general",
+      "reference": {
+        "pages": 1,
+        "sizes": [
+          [
+            612,
+            792
+          ]
+        ],
+        "fonts": [
+          "Arial-BoldMT",
+          "Arial-ItalicMT",
+          "ArialMT",
+          "Cambria",
+          "Cambria-Bold",
+          "TimesNewRomanPSMT"
+        ],
+        "sha256": "90609c6de1aa5cfd45691a180caa2681049ad23d02dc9413720c6d6d39776528"
+      },
+      "candidate": {
+        "pages": 1,
+        "sizes": [
+          [
+            612.0,
+            792.0
+          ]
+        ],
+        "fonts": [
+          "Arial-BoldMT",
+          "Arial-ItalicMT",
+          "ArialMT",
+          "Cambria",
+          "Cambria-Bold",
+          "TimesNewRomanPSMT"
+        ],
+        "sha256": "7e32e05ab4e5e43a800206b55fee4bb8092b12221effa1af0943d026f2fdb62d"
+      },
+      "text_equal_ignoring_whitespace": true,
+      "first_paragraph_matches_general": true,
+      "entire_institutional_body_matches_general": true,
+      "no_qa_text": true,
+      "mean_absolute_pixel_error_0_255": 11.45453,
+      "pixels_difference_gt16_percent": 8.75216
+    },
+    {
+      "name": "personalizado",
+      "reference": {
+        "pages": 1,
+        "sizes": [
+          [
+            612,
+            792
+          ]
+        ],
+        "fonts": [
+          "Arial-BoldMT",
+          "Arial-ItalicMT",
+          "ArialMT",
+          "Cambria",
+          "Cambria-Bold",
+          "TimesNewRomanPSMT"
+        ],
+        "sha256": "d9a238a44cb0c0e1a8abd1a7013c89848640c7f780e0291c8e9201634b3f2550"
+      },
+      "candidate": {
+        "pages": 1,
+        "sizes": [
+          [
+            612.0,
+            792.0
+          ]
+        ],
+        "fonts": [
+          "Arial-BoldMT",
+          "Arial-ItalicMT",
+          "ArialMT",
+          "Cambria",
+          "Cambria-Bold",
+          "TimesNewRomanPSMT"
+        ],
+        "sha256": "5fbfd86a745978214c694a403b1f77ecb14b2667421623ee337204e29ef41f17"
+      },
+      "text_equal_ignoring_whitespace": true,
+      "first_paragraph_matches_general": true,
+      "entire_institutional_body_matches_general": true,
+      "no_qa_text": true,
+      "mean_absolute_pixel_error_0_255": 11.45506,
+      "pixels_difference_gt16_percent": 8.75209
+    },
+    {
+      "name": "preparado",
+      "reference": {
+        "pages": 1,
+        "sizes": [
+          [
+            612,
+            792
+          ]
+        ],
+        "fonts": [
+          "Arial-BoldMT",
+          "Arial-ItalicMT",
+          "ArialMT",
+          "Cambria",
+          "Cambria-Bold",
+          "TimesNewRomanPSMT"
+        ],
+        "sha256": "c9439555334ffe5388beb01831704680967d53c352f3836ed9c38dc2f7a1338a"
+      },
+      "candidate": {
+        "pages": 1,
+        "sizes": [
+          [
+            612.0,
+            792.0
+          ]
+        ],
+        "fonts": [
+          "Arial-BoldMT",
+          "Arial-ItalicMT",
+          "ArialMT",
+          "Cambria",
+          "Cambria-Bold",
+          "TimesNewRomanPSMT"
+        ],
+        "sha256": "bb786abb6a41fdfbb0d88428862e6c6a6c4217bc0f98af4c2242c4b6f990f988"
+      },
+      "text_equal_ignoring_whitespace": true,
+      "first_paragraph_matches_general": true,
+      "entire_institutional_body_matches_general": true,
+      "no_qa_text": true,
+      "mean_absolute_pixel_error_0_255": 11.45039,
+      "pixels_difference_gt16_percent": 8.74665
+    }
+  ],
+  "long_document": {
+    "pages": 3,
+    "paragraphs_preserved": 65,
+    "header_footer_each_page": true
+  }
+}
