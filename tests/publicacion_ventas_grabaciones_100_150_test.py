@@ -13,6 +13,9 @@ with tempfile.TemporaryDirectory() as td:
     base=pathlib.Path(td)
     site=base/'public_html';site.mkdir()
     (site/'index.php').write_text('<?php',encoding='utf8')
+    helper=site/'app/helpers/ZadarmaPbxIdentifierHelper.php'
+    helper.parent.mkdir(parents=True,exist_ok=True)
+    helper.write_bytes((root/'app/helpers/ZadarmaPbxIdentifierHelper.php').read_bytes())
     private=base/'private'
     originals={};targets={}
     def run(*args):
