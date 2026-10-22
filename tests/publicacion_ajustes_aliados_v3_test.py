@@ -1,18 +1,124 @@
 #!/usr/bin/env python3
 import hashlib
+import ast
+import contextlib
+import io
 import importlib.util
 import json
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location("publicador_v3",ROOT/"tools/publicar_ajustes_aliados_v3.py")
 module=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
+PR114='20ec4fb64f211b06cde114da76d6c84e65a96db5'
+
+def historical(ref,path):
+    return subprocess.check_output(['git','show',ref+':'+path],cwd=str(ROOT))
 
 class PublicadorAjustesV3Test(unittest.TestCase):
+    def test_pr114_real_llave_dispatch_idempotencia_sintaxis_y_personalizaciones(self):
+        name='app/models/ConvocatoriaModel.php'
+        old,desired,real=[historical(r,name) for r in (module.BASE,module.SOURCE,PR114)]
+        for crlf in (False,True):
+            with self.subTest(crlf=crlf),tempfile.TemporaryDirectory() as folder:
+                live=module.lf(real).replace(b'    public function buscarPorId(',b'    // HOSTINGER: metodo propio conservado\n    public function buscarPorId(',1)
+                live=live.replace(b'            $convocatoriaId = (int)',b'            // HOSTINGER: validacion adicional conservada\n            $convocatoriaId = (int)',1)
+                if crlf:live=live.replace(b'\n',b'\r\n')
+                result=module.overlay_convocatoria_model(live,old,desired)
+                normal=module.lf(result)
+                self.assertIn(b'public function crear($datos, $estadosIds, $relacionar = null)\n    {\n        // Compatibilidad:',normal)
+                for symbol in (b'public function crear(',b'public function iniciarLote(',b'public function confirmarLote(',b'public function cancelarLote(',b'if ($relacionar) { $relacionar($this->connection, $convocatoriaId); }'):
+                    self.assertEqual(normal.count(symbol),1,symbol)
+                self.assertEqual(result.count(b'HOSTINGER:'),2)
+                module.validate(name,result,Path(folder),desired)
+                self.assertEqual(module.overlay_convocatoria_model(result,old,desired),result)
+                # La forma que producía el publicador anterior reproduce el Parse error.
+                malformed=normal.replace(b'$relacionar = null)\n    {\n        // Compatibilidad:',b'$relacionar = null)\n        // Compatibilidad:',1)
+                with self.assertRaisesRegex(RuntimeError,'ERROR de sintaxis'):
+                    module.validate(name,malformed,Path(folder),desired)
+                with self.assertRaises(RuntimeError):module.overlay_convocatoria_model(malformed,old,desired)
+
+    def test_pr114_real_con_vinculo_manual_v2_no_duplica_asociaciones(self):
+        name='app/models/ConvocatoriaModel.php'
+        old,desired,real=[module.lf(historical(r,name)) for r in (module.BASE,module.SOURCE,PR114)]
+        start=old.index('            // En la misma transacción:'.encode('utf-8'))
+        end=old.index(b'            $this->connection->commit();',start)
+        anchor=b'            if ($relacionar) { $relacionar($this->connection, $convocatoriaId); }\n'
+        live=real.replace(anchor,old[start:end]+anchor,1)
+        with tempfile.TemporaryDirectory() as folder:
+            result=module.overlay_convocatoria_model(live,old,desired)
+            self.assertEqual(result.count(b'marketing_aliado_manual_convocatorias'),1)
+            self.assertEqual(result.count(b'marketing_aliado_convocatorias_origen'),1)
+            module.validate(name,result,Path(folder),desired)
+            self.assertEqual(module.overlay_convocatoria_model(result,old,desired),result)
+
+    def test_diagnostico_sintaxis_conserva_ambas_salidas_codigo_y_linea(self):
+        with tempfile.TemporaryDirectory() as folder:
+            response=subprocess.CompletedProcess([],255,b'Errors parsing validar.php\n',b'PHP Parse error: unexpected variable on line 403\n')
+            with mock.patch.object(module.subprocess,'run',return_value=response):
+                with self.assertRaises(RuntimeError) as captured:
+                    module.validate('app/models/ConvocatoriaModel.php',b'<?php invalid',Path(folder),None)
+            for part in ('código de salida: 255','stdout:','Errors parsing','stderr:','line 403','app/models/ConvocatoriaModel.php'):
+                self.assertIn(part,str(captured.exception))
+
+    def test_python36(self):
+        ast.parse((ROOT/'tools/publicar_ajustes_aliados_v3.py').read_text(encoding='utf-8'),feature_version=(3,6))
+
+    def test_check_apply_restore_representativo_pr114_y_bloqueo_total(self):
+        blobs={}
+        def fetch(ref,name):
+            key=(ref,name)
+            if key not in blobs:blobs[key]=historical(ref,name)
+            return blobs[key]
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);site=root/'public_html';site.mkdir();private=root/'respaldos'
+            (site/'index.php').write_bytes(b'<?php // fixture aislada\n')
+            for name in module.SHA:
+                if name in module.NEW:continue
+                file=site/name;file.parent.mkdir(parents=True,exist_ok=True)
+                ref=PR114 if name in ('app/models/ConvocatoriaModel.php','app/controllers/ConvocatoriaController.php') else module.BASE
+                file.write_bytes(fetch(ref,name))
+            partial=site/module.MODULE;partial.parent.mkdir(parents=True,exist_ok=True)
+            partial.write_bytes(b'<script src="convocatorias_aliado_modular.js?v=1"></script>\n')
+            protected=['app/views/convocatorias/crear_modal.php','public/javascript/convocatoria_crear_compartido.js']
+            for name in protected:
+                file=site/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(b'PERSONALIZADO: CONSERVAR\n')
+            snapshot=lambda:{p.relative_to(site).as_posix():p.read_bytes() for p in site.rglob('*') if p.is_file()}
+            before=snapshot()
+            def run(mode,*extra):
+                argv=['publicador','--site',str(site),'--backup-root',str(private),mode]+list(extra)
+                with mock.patch.object(module,'fetch',side_effect=fetch),mock.patch.object(module,'MODULE_OLD',module.digest(before[module.MODULE])),mock.patch.object(module.sys,'argv',argv),contextlib.redirect_stdout(io.StringIO()) as output:
+                    module.main()
+                return output.getvalue()
+            output=run('--check');self.assertEqual(before,snapshot());self.assertIn('CONCILIACIÓN VALIDADA: app/models/ConvocatoriaModel.php',output)
+            run('--apply');installed=snapshot();run('--apply');self.assertEqual(installed,snapshot())
+            self.assertEqual(len(list(private.glob('aliados-v3-*/respaldo.json'))),1)
+            for name in protected:self.assertEqual(installed[name],before[name])
+            backup=next(private.glob('aliados-v3-*/respaldo.json')).parent
+            saved=backup/'originales/app/controllers/ConvocatoriaController.php'
+            saved_bytes=saved.read_bytes();saved.write_bytes(b'RESPALDO ALTERADO')
+            with self.assertRaisesRegex(RuntimeError,'Respaldo alterado'):run('--restore',str(backup))
+            self.assertEqual(installed,snapshot())
+            saved.write_bytes(saved_bytes)
+            run('--restore',str(backup));self.assertEqual(before,snapshot())
+            atomic=module.atomic;writes=[]
+            def fail_second(path,data,mode):
+                writes.append(path)
+                if len(writes)==2:raise OSError('fallo simulado de escritura')
+                return atomic(path,data,mode)
+            with mock.patch.object(module,'atomic',side_effect=fail_second):
+                with self.assertRaisesRegex(OSError,'fallo simulado'):run('--apply')
+            self.assertEqual(before,snapshot())
+            path=site/'app/models/ConvocatoriaModel.php'
+            path.write_bytes(path.read_bytes().replace(b'?callable $relacionar',b'array $relacionar',1))
+            altered=snapshot()
+            with self.assertRaisesRegex(RuntimeError,'SITIO INTACTO'):run('--apply')
+            self.assertEqual(altered,snapshot())
     def test_manifest_inmutable_reproduce_git(self):
         for path,expected in module.SHA.items():
             content=subprocess.check_output(["git","show",module.SOURCE+":"+path],cwd=str(ROOT))
@@ -167,7 +273,8 @@ class PublicadorAjustesV3Test(unittest.TestCase):
         file="app/models/ConvocatoriaModel.php"
         old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
         desired=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
-        broken=old.replace(
+        at=old.index(b'    public function crear(')
+        broken=old[:at]+old[at:].replace(
             b"        $this->connection->begin_transaction();",
             b"        if (!$transaccionExterna) $this->connection->begin_transaction();",1)
         with self.assertRaisesRegex(RuntimeError,"cambio crítico V3"):
@@ -222,8 +329,9 @@ class PublicadorAjustesV3Test(unittest.TestCase):
     def test_modelo_internacional_pr114_y_v2_manual_se_conservan(self):
         old,desired,live=self.modelo_callback_pr114(con_vinculo_manual=True,crlf=True)
         marker=b"            $convocatoriaId = (int)"
-        self.assertEqual(live.count(marker),1)
-        live=live.replace(marker,b"            // PERSONALIZACION HOSTINGER\r\n"+marker,1)
+        at=live.index(b'    public function crear(')
+        self.assertEqual(live[at:live.index(b'    public function actualizar(',at)].count(marker),1)
+        live=live[:at]+live[at:].replace(marker,b"            // PERSONALIZACION HOSTINGER\r\n"+marker,1)
         result=module.overlay_convocatoria_model(live,old,desired)
         self.assertEqual(result.count(b"PERSONALIZACION HOSTINGER"),1)
         self.assertEqual(result.count(b"marketing_aliado_manual_convocatorias"),1)

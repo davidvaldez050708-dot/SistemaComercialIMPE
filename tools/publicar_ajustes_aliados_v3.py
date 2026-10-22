@@ -130,7 +130,7 @@ def overlay_convocatoria_controller(local, old, desired):
     result=local[:before]+method+local[before:]
     if result.replace(method,b"",1)!=local:
         raise RuntimeError(name+": no se conservó el controlador original")
-    print("CONCILIACIÓN PUNTUAL: "+name+" (solo guardarProgramasAliado; personalizaciones intactas)")
+    print("CONCILIACIÓN PREPARADA: "+name+" (solo guardarProgramasAliado; pendiente de sintaxis)")
     return result
 
 def overlay_convocatoria_model(local, old, desired):
@@ -216,7 +216,8 @@ def overlay_convocatoria_model(local, old, desired):
 
     if local.count(raw_old_header)!=1 or local.count(after)!=1:
         pr114_signature=b"    public function crear($datos, $estadosIds, ?callable $relacionar = null)\n".replace(b"\n",newline)
-        if local.count(pr114_signature)==1 and local.count(after)==1:
+        compatible_signature=b"    public function crear($datos, $estadosIds, $relacionar = null)\n".replace(b"\n",newline)
+        if local.count(pr114_signature)+local.count(compatible_signature)==1 and local.count(after)==1:
             return overlay_convocatoria_model_pr114(local, new_preamble, new_method, after, newline)
         # Proporcionar diagnostico de solo lectura: solo la firma declarada, sin datos privados.
         import re
@@ -250,7 +251,7 @@ def overlay_convocatoria_model(local, old, desired):
         reverse=reverse.replace(output,source,1)
     if reverse!=original_section:
         raise RuntimeError(name+": personalizaciones alteradas; sitio intacto")
-    print("CONCILIACIÓN PUNTUAL: "+name+" (seis cambios V3; personalizaciones de crear() intactas)")
+    print("CONCILIACIÓN PREPARADA: "+name+" (seis cambios V3; pendiente de sintaxis)")
     return candidate
 
 def overlay_convocatoria_model_pr114(local, new_preamble, new_method, next_method, newline):
@@ -289,7 +290,10 @@ def overlay_convocatoria_model_pr114(local, new_preamble, new_method, next_metho
         b"        $transaccionExterna = is_bool($relacionar) ? $relacionar : false;\n"
         b"        if (is_bool($relacionar)) $relacionar = null;\n\n"
     ).replace(b"\n",newline)
-    upgraded_head=preamble+new_sig+dispatch
+    # Consumir también la llave original: el dispatch debe quedar DENTRO de crear().
+    opening=b"    {\n".replace(b"\n",newline)
+    original_head=old_sig+opening
+    upgraded_head=preamble+new_sig+opening+dispatch
     if local.count(new_sig):
         if local.count(new_sig)!=1 or local.count(upgraded_head)!=1:
             raise RuntimeError(name+": PR114/V3 parcialmente instalado; sitio intacto")
@@ -322,7 +326,7 @@ def overlay_convocatoria_model_pr114(local, new_preamble, new_method, next_metho
     else:
         insert=link_block+manual_block
     changes=(
-        (old_sig,upgraded_head),
+        (original_head,upgraded_head),
         (begin,begin_new),
         (anchor,insert+anchor),
         (commit,commit_new),
@@ -342,7 +346,7 @@ def overlay_convocatoria_model_pr114(local, new_preamble, new_method, next_metho
         reverse=reverse.replace(new,old,1)
     if reverse!=section:
         raise RuntimeError(name+": personalizaciones PR114 alteradas; sitio intacto")
-    print("CONCILIACIÓN PUNTUAL: "+name+" (callback PR114 + lote V3; cambios existentes intactos)")
+    print("CONCILIACIÓN PREPARADA: "+name+" (callback PR114 + lote V3; pendiente de sintaxis)")
     return local[:start]+patched+local[end:]
 
 
@@ -379,8 +383,18 @@ def validate(name,data,stage,new):
         cmd=[node,"--check",str(file)]
     result=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     if result.returncode:
-        raise RuntimeError("ERROR de sintaxis "+name+": "+
-                           (result.stderr or result.stdout).decode("utf-8","replace")[-700:])
+        import re
+        def diagnostic(raw):
+            text=raw.decode("utf-8","replace").replace(str(file),name)
+            # Node puede imprimir la línea de código: conservar el diagnóstico,
+            # no su contenido ni posibles literales privados.
+            source_lines=set(line.strip() for line in data.decode("utf-8","replace").splitlines())
+            text="\n".join(line for line in text.splitlines() if line.strip() not in source_lines)
+            text=re.sub(r'(unexpected (?:string|constant)[^"\n]*")[^"\n]+"',r'\1[redactado]"',text)
+            return text[:4000] or '(vacío)'
+        raise RuntimeError("ERROR de sintaxis "+name+"; código de salida: "+str(result.returncode)+
+                           "\nstdout:\n"+diagnostic(result.stdout)+
+                           "\nstderr:\n"+diagnostic(result.stderr))
 def atomic(path,data,mode):
     path.parent.mkdir(parents=True,exist_ok=True)
     temp=path.with_name(path.name+".aliados-v3-tmp")
@@ -405,8 +419,11 @@ def prepare(site,stage):
                 candidate=overlay_convocatoria_model(live,old,desired)
             else:
                 candidate=combine(live,old,desired,stage,name)
+            # Validar también una instalación reconocida/idempotente.
+            validate(name,candidate,stage,desired)
+            if name in ("app/controllers/ConvocatoriaController.php","app/models/ConvocatoriaModel.php"):
+                print("CONCILIACIÓN VALIDADA: "+name+" (php -l aprobado)")
             if candidate!=live:
-                validate(name,candidate,stage,desired)
                 plan.append((name,path,live,candidate,stat.S_IMODE(path.stat().st_mode) if live is not None else 0o644))
                 print("PREPARADO: "+name)
             else:
@@ -418,8 +435,8 @@ def prepare(site,stage):
         path=located(site,MODULE)
         live=path.read_bytes() if path.is_file() else None
         candidate=module_patch(live)
+        validate(MODULE,candidate,stage,None)
         if candidate!=live:
-            validate(MODULE,candidate,stage,None)
             plan.append((MODULE,path,live,candidate,stat.S_IMODE(path.stat().st_mode)))
             print("INTEGRACIÓN MODULAR: scripts V3 en parcial (sin tocar crear_modal.php)")
         else:
@@ -440,13 +457,15 @@ def restore(site,backup):
         path=located(site,item["nombre"])
         if not path.is_file() or digest(path.read_bytes())!=item["instalado"]:
             raise RuntimeError("No restaurar: archivo modificado tras publicar "+item["nombre"])
+        if item["original"] is not None:
+            original=backup/"originales"/item["nombre"]
+            if not original.is_file() or digest(original.read_bytes())!=item["original"]:
+                raise RuntimeError("Respaldo alterado: "+item["nombre"])
     for item in reversed(info["archivos"]):
         path=located(site,item["nombre"])
         if item["original"] is None:path.unlink()
         else:
             file=backup/"originales"/item["nombre"]
-            if digest(file.read_bytes())!=item["original"]:
-                raise RuntimeError("Respaldo alterado: "+item["nombre"])
             atomic(path,file.read_bytes(),item["modo"])
     print("RESTAURADO: sólo archivos V3; base de datos intacta")
 def main():

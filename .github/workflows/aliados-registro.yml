@@ -34,6 +34,8 @@ on:
       - 'tools/*aliados_registro*'
       - 'tools/compat/aliados_registro_pr114/**'
       - 'tests/*aliados_registro*'
+      - 'tests/convocatorias_pr114_lote_db.php'
+      - 'tests/preparar_modelo_convocatoria_pr114.py'
       - '.github/workflows/aliados-registro.yml'
   workflow_dispatch:
 permissions:
@@ -112,6 +114,9 @@ jobs:
           php tools/migrar_convocatorias_multiprograma_20261022.php --check
           php tests/aliados_registro_db.php
           php tests/convocatorias_multiprograma_db.php
+          git fetch origin 20ec4fb64f211b06cde114da76d6c84e65a96db5
+          python3 tests/preparar_modelo_convocatoria_pr114.py --output "$RUNNER_TEMP/modelo-convocatoria-pr114"
+          IMPE_PR114_MODEL="$RUNNER_TEMP/modelo-convocatoria-pr114/app/models/ConvocatoriaModel.php" php tests/convocatorias_pr114_lote_db.php
       - name: Publicadores reversibles
         run: |
           python3 tests/publicacion_aliados_registro_test.py
