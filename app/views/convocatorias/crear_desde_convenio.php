@@ -290,7 +290,7 @@ $fecha = static function ($valor) {
                             JSON_UNESCAPED_UNICODE |
                             JSON_UNESCAPED_SLASHES |
                             JSON_INVALID_UTF8_SUBSTITUTE
-                        )) ?>'>>
+                        )) ?>'>
                         <td><strong class="convenios-nombre"><?= $texto($payload['institucion']) ?></strong>
                             <small><?= $texto($payload['municipio']) ?></small></td>
                         <td><strong><?= $texto($payload['contacto'] ?: 'Sin contacto') ?></strong>
