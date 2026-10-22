@@ -6,6 +6,11 @@ on:
       - 'app/**/Formulario*'
       - 'app/**/Prospecto*'
       - 'app/**/CrearConvocatoria*'
+      - 'app/models/RolModel.php'
+      - 'tests/prospectos_acceso_permisos.php'
+      - 'tests/prospectos_permisos_db.php'
+      - 'tests/publicacion_prospectos_acceso_test.py'
+      - 'tools/prospectos_acceso_release.json'
       - 'app/helpers/AdminRolePolicy.php'
       - 'app/helpers/PermissionHelper.php'
       - 'app/controllers/CrearConvocatoriaController.php'
@@ -104,6 +109,7 @@ jobs:
       - name: Sintaxis y alcance
         run: |
           php tests/convenios_acceso_permisos.php
+          php tests/prospectos_acceso_permisos.php
           git diff --name-only a90b6aded4a7f606eccc7a27749658e3fed9b9ed HEAD -- '*.php' | xargs -r -n1 php -l
           node --check public/javascript/aliados_registro.js
           node --check public/javascript/aliados.js
@@ -129,6 +135,7 @@ jobs:
           php tools/migrar_convocatorias_multiprograma_20261022.php --apply --respaldo-confirmado
           php tools/migrar_convocatorias_multiprograma_20261022.php --check
           php tests/aliados_registro_db.php
+          php tests/prospectos_permisos_db.php
           php tests/convocatorias_multiprograma_db.php
           git fetch origin 20ec4fb64f211b06cde114da76d6c84e65a96db5
           python3 tests/preparar_modelo_convocatoria_pr114.py --output "$RUNNER_TEMP/modelo-convocatoria-pr114"
@@ -143,6 +150,7 @@ jobs:
           python3 tests/publicacion_compartir_aliado_etapa2_test.py
           python3 tests/publicacion_convenios_detalle_etapa3_test.py
           python3 tests/publicacion_convenios_acceso_test.py
+          python3 tests/publicacion_prospectos_acceso_test.py
       - name: Navegador real, QR, HTTP, seguridad y concurrencia
         run: |
           node tests/aliados_registro_browser.cjs
