@@ -44,9 +44,29 @@ const fixture=(view,role='cc')=>base+'_fixture?view='+view+'&role='+role;
   await page.getByRole('button',{name:'Agregar aliado',exact:true}).click();
   const modal='#modalAliadoRegistro';await page.locator(modal+' [name=municipio_id] option[value="1"]').waitFor({state:'attached'});
   await viewport('manual',modal);await page.setViewportSize({width:1366,height:900});
+  const programas=page.locator(modal+' .aliados-programa-opcion');
+  check(await programas.count()>=2,'programas en tarjetas individuales accesibles');
+  const cols=()=>page.locator(modal+' .aliados-programas-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.trim().split(/\\s+/).length);
+  check(await cols()===2,'tarjetas de programas en dos columnas escritorio');
+  await page.setViewportSize({width:390,height:844});
+  check(await cols()===1,'tarjetas de programas en una columna movil');
+  await page.setViewportSize({width:1366,height:900});
   await page.locator(modal+' [name=nombre_entidad]').fill('Aliado navegador');
   await page.locator(modal+' [name=municipio_id]').selectOption('1');
   await page.locator(modal+' [value="bachillerato-286"]').check();await page.locator(modal+' [value="ingles"]').check();
+  const estilosProgramas=await page.locator(modal+' .aliados-programa-opcion').evaluateAll(labels=>labels.slice(0,2).map(label=>({
+   borde:getComputedStyle(label).borderColor,
+   fondo:getComputedStyle(label).backgroundColor,
+   seleccionado:label.querySelector('input').checked
+  })));
+  const estilosSeleccionados=await page.locator(modal+' .aliados-programa-opcion').evaluateAll(labels=>{
+   const selected=labels.find(label=>label.querySelector('input').checked);
+   const empty=labels.find(label=>!label.querySelector('input').checked);
+   return selected&&empty&&
+    getComputedStyle(selected).borderColor!==getComputedStyle(empty).borderColor &&
+    getComputedStyle(selected).backgroundColor!==getComputedStyle(empty).backgroundColor;
+  });
+  check(estilosSeleccionados,'seleccion de programas con borde y fondo distintos');
   await Promise.all([page.waitForNavigation(),page.locator('[data-registro-guardar]').click()]);
   check(await page.locator('[data-aliado-row]').count()===3,'alta por interfaz y recarga directorio');
   const row=page.locator('[data-aliado-row]').filter({hasText:'Aliado navegador'});await row.getByRole('button',{name:'Programas',exact:true}).click();
