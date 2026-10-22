@@ -9,7 +9,9 @@ if (($argv[1] ?? '') === '--prepare') {
 $db->query("ALTER TABLE formulario_aliados ADD pais_codigo VARCHAR(2) NULL");
 $db->query("UPDATE formulario_aliados SET pais_codigo='US' WHERE slug='handly-lenguaje-center'");
 $db->query("CREATE TABLE IF NOT EXISTS convocatorias (id INT UNSIGNED PRIMARY KEY, estado INT, fecha_inicio DATE, fecha_termino DATE)");
-$db->query("INSERT INTO convocatorias (id,estado,fecha_inicio,fecha_termino) VALUES (91,1,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 1 DAY))");
+// PR114 evalúa la fecha en PHP (zona México), mientras SQL puede estar en UTC.
+// La ventana del fixture cubre ambos días sin alterar lógica productiva.
+$db->query("INSERT INTO convocatorias (id,estado,fecha_inicio,fecha_termino) VALUES (91,1,DATE_SUB(CURDATE(),INTERVAL 3 DAY),DATE_ADD(CURDATE(),INTERVAL 3 DAY))");
 $db->query("CREATE TABLE formulario_aliado_convocatorias (convocatoria_id INT, aliado_id BIGINT UNSIGNED, referencia VARCHAR(32), formulario VARCHAR(20), programa_codigo VARCHAR(80))");
 $db->query("ALTER TABLE formulario_aliado_procedencias ADD convocatoria_id INT NULL");
 echo "OK: esquema sintético internacional preparado\n";
