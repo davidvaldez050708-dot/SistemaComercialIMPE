@@ -85,8 +85,20 @@ final class TelefoniaTransferenciaOperacionService
         if($request<=0||!preg_match('/^sdk-[a-z0-9-]{12,94}$/D',$sdk))return null;
         $s=$this->db->prepare("SELECT o.*,d.ruta_json verified_route,
            EXISTS(SELECT 1 FROM telefonia_zadarma_eventos a WHERE a.pbx_call_id=BINARY o.referencia AND a.internal=BINARY o.destino_extension AND a.evento='NOTIFY_ANSWER' AND a.id>o.evento_desde) AS answered,
-           EXISTS(SELECT 1 FROM telefonia_zadarma_eventos e WHERE e.pbx_call_id=BINARY o.referencia AND e.id>o.evento_desde AND
-            ((e.evento='NOTIFY_END' AND (e.internal=BINARY o.destino_extension OR (JSON_VALID(e.payload_json) AND JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal'))=BINARY o.destino_extension))) OR e.evento='NOTIFY_OUT_END')) AS ended
+           EXISTS(SELECT 1 FROM telefonia_zadarma_eventos e
+            JOIN telefonia_zadarma_eventos a ON a.pbx_call_id=BINARY o.referencia
+                AND a.evento='NOTIFY_ANSWER' AND a.internal=BINARY o.destino_extension
+                AND a.id>o.evento_desde AND e.id>a.id
+            WHERE e.pbx_call_id=BINARY o.referencia
+              AND ((e.evento='NOTIFY_END' AND
+                  (e.internal=BINARY o.destino_extension OR
+                   (JSON_VALID(e.payload_json) AND JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal'))=BINARY o.destino_extension)))
+                OR (e.evento='NOTIFY_OUT_END' AND
+                  (e.internal=BINARY o.destino_extension OR
+                   (JSON_VALID(e.payload_json) AND JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal'))=BINARY o.destino_extension) OR
+                   (e.internal=BINARY o.origen_extension AND
+                    (NOT JSON_VALID(e.payload_json) OR
+                     COALESCE(JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal')),'') IN ('',o.origen_extension))))))) AS ended
           FROM telefonia_transferencia_operaciones o
           JOIN telefonia_disponibilidad d ON d.id=? AND d.destino_usuario=o.destino_usuario
            AND d.origen_usuario=o.origen_usuario AND d.origen_extension=BINARY o.origen_extension AND d.destino_extension=BINARY o.destino_extension AND d.referencia=BINARY o.referencia
