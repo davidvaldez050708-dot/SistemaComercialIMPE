@@ -17,7 +17,7 @@ import sys
 import tempfile
 from urllib.request import Request, urlopen
 
-SOURCE = "9aee329fd67c106104fd78f598f1ac39de0c1f45"
+SOURCE = "7f3548dd8600a83b329c4c68139b0e396d3aea3e"
 BASE = "a2d22524249570e90a32d196058d9cc50527c21e"
 ROOT = "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/"
 MODULE = "app/views/convocatorias/partials/aliado_programas_modular.php"
@@ -28,7 +28,7 @@ SHA = {
  "app/services/AliadoRegistroService.php":"bdfebaa79a05ae39392181a2b53f96753d7627b2",
  "app/views/aliados/estado.php":"a758c384d4dfd22c20913e94628a7c14b7ff8b50",
  "app/views/aliados/partials/registro_gestion.php":"a15e9dc961f66451db094c30c67b9098ae9e8696",
- "app/views/convocatorias/crear_desde_convenio.php":"a5a5ebfd7b9ec69c1851574a5d7f5db522305c2d",
+ "app/views/convocatorias/crear_desde_convenio.php":"1eaa8705eb2ed5aa8275b0cb5018e3c131e4d16b",
  "public/javascript/aliados_registro.js":"325a1b8f1a8a315b3b493f3cda31c652f83414c4",
  "public/css/aliados_v2_extension.css":"4ab5a6106cd54f7d3e51b06500b90f81e866f44c",
  "public/javascript/convocatorias_aliado_multiprograma_v3.js":"9c93fa26c67965c95721df6511e165120f5d4c89",
