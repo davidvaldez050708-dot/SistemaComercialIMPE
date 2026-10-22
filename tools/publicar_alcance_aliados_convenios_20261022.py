@@ -60,7 +60,7 @@ def overlay_crear_convocatoria_controller(current, base, desired):
     old_states = b'        $estados = $modelo->listarEstados();'
     start = b'        $modelo = new CrearConvocatoriaModel();'
     stop = b"        $tituloPagina = 'Crear convocatoria';"
-    expected = b'''        // Marketing/Admin: cobertura nacional; Cuenta Clave: sólo asignaciones
+    expected = '''        // Marketing/Admin: cobertura nacional; Cuenta Clave: sólo asignaciones
         // vigentes. Un permiso de lectura no amplía el alcance territorial.
         $esMarketing = strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
         $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
@@ -75,17 +75,17 @@ def overlay_crear_convocatoria_controller(current, base, desired):
             );
             $estadoIds = array_map('intval', array_column($estados, 'id'));
         }
-'''
+'''.encode('utf-8')
     footer = b'        $puedeCrearDesdeConvenio = puedeCrearConvocatoriaDesdeConvenio();'
     # Verify GitHub BASE->TARGET modifies only exactly these validated fragments.
     if base_lf.count(old_require) != 1 or base_lf.count(old_call) != 1 or base_lf.count(old_states) != 1:
         raise RuntimeError(name + ': BASE incompatible con revisión puntual')
-    reconstructed = base_lf.replace(old_require, old_require + b'\\n' + new_require, 1)
+    reconstructed = base_lf.replace(old_require, old_require + b'\n' + new_require, 1)
     reconstructed = reconstructed.replace(old_states, b'', 1)
     reconstructed = reconstructed.replace(old_call, new_call, 1)
     reconstructed = reconstructed.replace(b'        $convenios = $estructuraDisponible', expected + b'        $convenios = $estructuraDisponible', 1)
-    reconstructed = reconstructed.replace(stop, footer + b'\\n\\n' + stop, 1)
-    if reconstructed.replace(b'\\n\\n\\n', b'\\n\\n') != desired_lf.replace(b'\\n\\n\\n', b'\\n\\n'):
+    reconstructed = reconstructed.replace(stop, footer + b'\n\n' + stop, 1)
+    if reconstructed.replace(b'\n\n\n', b'\n\n') != desired_lf.replace(b'\n\n\n', b'\n\n'):
         raise RuntimeError(name + ': SOURCE cambia otros fragmentos; conservar sitio intacto')
 
     # Already installed? Report unchanged only if every structural marker exists.
@@ -110,7 +110,7 @@ def overlay_crear_convocatoria_controller(current, base, desired):
         raise RuntimeError(name + ': personalización de carga de convenios no reconocida; sitio intacto')
     if current_lf.count(old_require) != 1 or new_require in current_lf:
         raise RuntimeError(name + ': include de TerritorioModel personalizado; sitio intacto')
-    if b'\\r' in current_lf:
+    if b'\r' in current_lf:
         raise RuntimeError(name + ': saltos de línea no reconocidos; sitio intacto')
     call_at = section.index(old_call)
     states_at = section.index(old_states)
@@ -123,22 +123,22 @@ def overlay_crear_convocatoria_controller(current, base, desired):
     begin = section.index(b'        $convenios = $estructuraDisponible')
     if not begin < call_at < states_at:
         raise RuntimeError(name + ': secuencia de datos de convenios desconocida; sitio intacto')
-    revised = current_lf.replace(old_require, old_require + b'\\n' + new_require, 1)
+    revised = current_lf.replace(old_require, old_require + b'\n' + new_require, 1)
     # Insert BEFORE data loading; remove ONLY previous unfiltered states load.
     section_new = section.replace(old_states, b'', 1)
     section_new = section_new.replace(old_call, new_call, 1)
     section_new = section_new.replace(b'        $convenios = $estructuraDisponible',
                                       expected + b'        $convenios = $estructuraDisponible', 1)
     revised = revised.replace(section, section_new, 1)
-    revised = revised.replace(stop, footer + b'\\n\\n' + stop, 1)
+    revised = revised.replace(stop, footer + b'\n\n' + stop, 1)
     # Exact reversibility guarantees every unrelated production byte is kept.
-    backward = revised.replace(footer + b'\\n\\n' + stop, stop, 1)
+    backward = revised.replace(footer + b'\n\n' + stop, stop, 1)
     backward = backward.replace(section_new, section, 1)
-    backward = backward.replace(old_require + b'\\n' + new_require, old_require, 1)
+    backward = backward.replace(old_require + b'\n' + new_require, old_require, 1)
     if backward != current_lf:
         raise RuntimeError(name + ': reversibilidad no demostrada; sitio intacto')
     print('CONCILIACIÓN PREPARADA: ' + name + ' (únicamente alcance territorial de index(); personalizaciones conservadas)')
-    return revised.replace(b'\\n', b'\\r\\n') if b'\\r\\n' in current else revised
+    return revised.replace(b'\n', b'\r\n') if b'\r\n' in current else revised
 
 
 def candidate(current, base, target, stage, name):
