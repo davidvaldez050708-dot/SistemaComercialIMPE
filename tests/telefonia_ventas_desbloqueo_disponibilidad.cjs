@@ -51,7 +51,7 @@ const finished={active:false,phase:'incoming-finished',direction:'incoming',pbxC
   'El resultado viejo no se adjudica a otra llamada');
  const recovered=fixture({state:{...finished,pbxCallId:''},
   records:[{pbx_call_id:ref,extension:'150',finalizada:false,conectada:true,
-   solicitud_id:5,origen_extension:'100'}]});
+   solicitud_id:5,origen_extension:'100',sdk_tokens:['sdk-ventas-150']}]});
  assert.equal(await recovered.window.IMPE_SALES_ATTENTION.openPending(),true,
   'Si la consulta PBX está en vuelo, el botón espera el resultado exacto sin quedarse inerte');
  assert.match(recovered.frame.src,/pbx_call_id=out_104f/);
