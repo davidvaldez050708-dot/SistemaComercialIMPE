@@ -18,7 +18,7 @@ try {
     // Previene aplicar la primera DDL si una FK de la segunda será incompatible.
     $columnas = [
         'aliados_manuales.id'=>'bigint unsigned',
-        'convocatorias.id'=>'int unsigned',
+        'convocatorias.id'=>'int',
         'formulario_programas.codigo'=>'varchar(64)',
         'usuarios.id'=>'int'
     ];
