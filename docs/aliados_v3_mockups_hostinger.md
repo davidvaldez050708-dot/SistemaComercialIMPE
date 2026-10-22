@@ -14,21 +14,27 @@
 
 ## Comprobación de compatibilidad en Hostinger
 
-Revisión inmutable del publicador: `fac69ab2eb292e9abbd2f92be6294cc9878839e2` (corrección Python 3.6 y conciliación puntual de ConvocatoriaController.php, ConvocatoriaModel.php y callback internacional PR114).
+Revisión inmutable del publicador corregido: `228a9daa26e3322d9cae7260b87267a328e43e4b`. SHA-256 del archivo descargado: `96aee60798b6fd0747c8ba6ccdec972b4ba66e87cf11e1555523cd17d77ef391`; blob Git: `20fee42f70225b5db0e1e33baa64fbe59082f2c6`. Corrige la posición del dispatch dentro de `crear()`, reconoce su instalación completa al repetir y conserva el callback internacional PR114. La revisión anterior generaba instrucciones antes de la llave `{`; el defecto se reprodujo sobre el modelo real `20ec4fb64f211b06cde114da76d6c84e65a96db5` y produjo un Parse error en la línea 403.
 El publicador trae 13 archivos desde el commit `7f3548dd8600a83b329c4c68139b0e396d3aea3e` y verifica cada blob SHA. Conserva todos los archivos originales en respaldo privado y ejecuta `php -l`; usa `node --check` cuando Node está disponible. Si encuentra modificaciones personalizadas incompatibles, aborta.
 
 ```bash
 SITIO="$HOME/domains/fundacionrededumex.org/public_html"
 mkdir -p "$HOME/entregas-impe/aliados-v3"
 curl -fLsS --proto '=https' --tlsv1.2 \
-  "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/fac69ab2eb292e9abbd2f92be6294cc9878839e2/tools/publicar_ajustes_aliados_v3.py" \
+  "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/228a9daa26e3322d9cae7260b87267a328e43e4b/tools/publicar_ajustes_aliados_v3.py" \
   -o "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py"
-test "$(git hash-object "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py")" = "80b8a6bf2187bdae79d7d528801ef75eac2283ee" &&
+test "$(git hash-object "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py")" = "20fee42f70225b5db0e1e33baa64fbe59082f2c6" &&
 python3 -m py_compile "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py" &&
 python3 "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py" --check --site "$SITIO"
 ```
 
 El ajuste del modelo exige seis sustituciones exactas y reversibles dentro de `crear()`. La variante revisada de PR114 con `?callable $relacionar = null` se concilia sin eliminar la función de asociación internacional; un tercer argumento booleano se reserva para el lote V3. Si Hostinger tiene personalizaciones en cualquiera de esos seis fragmentos, se detiene y no toca el sitio; las demás personalizaciones se conservan byte por byte. Nunca cambiar manualmente ese método para forzar la instalación. Si la declaración de `crear()` difiere de las firmas reconocidas, `--check` muestra solo su firma, sin copiar lógica de producción.
+
+La firma y la llave original se reemplazan juntas: la inicialización queda después de `{`, mientras `iniciarLote()`, `confirmarLote()` y `cancelarLote()` quedan como métodos de clase independientes. Se distingue `CONCILIACIÓN PREPARADA` de `CONCILIACIÓN VALIDADA`; esta última sólo se imprime después de `php -l`. También se validan instalaciones ya reconocidas. Los errores conservan archivo lógico, código de salida, stdout y stderr separados y la línea comunicada por PHP, sin imprimir líneas fuente privadas. La restauración comprueba todos los originales antes de iniciar la primera escritura.
+
+Validación local de esta corrección: 24 pruebas Python del publicador (V2, PR114 histórico real, variante con vínculo V2, personalizaciones, LF/CRLF, repetición, sintaxis, check sin escrituras, rechazo de versiones desconocidas, fallo de escritura, rollback y restauración íntegra); compatibilidad sintáctica Python 3.6 comprobada con AST. MariaDB 10.4/PHP 8.2: 16 comprobaciones del callback y lote conciliados, 65 del módulo, prueba multiprograma y snapshot concurrente. Edge: 60 comprobaciones de navegador/HTTP, más regresiones de Registro/Inscripción y Handly. Las migraciones y publicaciones usadas por las pruebas se ejecutaron sólo en réplicas y bases sintéticas. La suite V2 local presenta limitaciones de Windows (`os.fchmod` y CRLF); su resultado Linux debe revisarse en GitHub Actions. No se ejecutó Python 3.6 real localmente ni se accedió a producción.
+
+**La compatibilidad definitiva con el código actual de Hostinger sigue pendiente del nuevo `--check` allí.** No habilitar `--apply` si hay conflictos, sintaxis inválida, migraciones no revisadas o validaciones fallidas.
 
 **Antes de `--apply`**: CI de PR #124 completamente verde; respaldo reciente completo de MySQL fuera de `public_html`, además del respaldo de archivos de la versión anterior.
 
