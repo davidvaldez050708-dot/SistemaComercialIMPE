@@ -150,6 +150,35 @@ try {
  vcheck(!$humanCall['finalizada']&&$humanCall['registro']['resultado']==='INTERESADO',
      'El registro persiste sin inventar cierre, duración ni audio');
  vcheck($humanCall['segundos']===null,'No se inventa duración del asesor');
+ // El mismo PBX 100->150 conserva dos referencias de grabación aun sin
+ // NOTIFY_END del asesor. Recepción y Ventas deben ver exactamente el mismo
+ // conjunto, con permiso por operación y RESULTADO humano.
+ $event($ref,'NOTIFY_RECORD','',0,['call_id_with_rec'=>'second-advisor-candidate']);
+ require_once dirname(__DIR__).'/app/services/TelefoniaGrabacionesTransferenciaVentasService.php';
+ $transferAudio=new TelefoniaGrabacionesTransferenciaVentasService($db);
+ $audios=static fn(string $id):array=>['link'=>'https://provider.test/'.$id];
+ $statsAudio=static fn()=>[
+   ['pbx_call_id'=>$ref,'call_id'=>'early-out-end-record','sip'=>'100','callstart'=>'2026-10-21 20:10:21','seconds'=>19],
+   ['pbx_call_id'=>$ref,'call_id'=>'second-advisor-candidate','sip'=>'7777885173','callstart'=>'2026-10-21 20:10:56','seconds'=>14],
+   ['pbx_call_id'=>'pbx-ajeno','call_id'=>'ajeno','sip'=>'150','seconds'=>240]
+ ];
+ $salesAudio=$transferAudio->resolver($ref,8,'destino','150',$audios,$statsAudio);
+ $sourceAudio=$transferAudio->resolver($ref,7,'origen','100',$audios,$statsAudio);
+ vcheck($salesAudio['segmentos']===2&&$sourceAudio['segmentos']===2,'Dos grabaciones con PBX común en Ventas y Recepción');
+ vcheck($salesAudio['segmentos_info']===$sourceAudio['segmentos_info'],'Ambos reproductores comparten segmentos y orden');
+ vcheck($salesAudio['segmentos_info'][0]['extension']==='100','Origen 100 corroborado por estadística');
+ vcheck($salesAudio['segmentos_info'][1]['extension']===''&&
+     str_contains($salesAudio['segmentos_info'][1]['etiqueta'],'verificar'),
+     'Estadística con SIP externo no autoriza declarar que el audio es del 150');
+ $direct=$transferAudio->resolver($ref,8,'destino','150',$audios);
+ vcheck(array_column($direct['segmentos_info'],'indice')===[0,1],'Reproducción usa índices estables sin estadísticas');
+ $partial=$transferAudio->resolver($ref,8,'destino','150',
+    static fn($id)=>$id==='early-out-end-record'?['link'=>'https://provider.test/'.$id]:null);
+ vcheck($partial['segmentos']===1&&$partial['estado']==='DISPONIBLE_PARCIAL',
+     'Un tramo listo se ofrece aunque el segundo siga en preparación');
+ vreject(fn()=>$transferAudio->resolver($ref,9,'destino','150',$audios),'Otro asesor no accede a los audios de la transferencia');
+ vreject(fn()=>$transferAudio->resolver($ref,7,'origen','150',$audios),'Recepción no usurpa extensión de Ventas');
+
  vreject(fn()=>$results->guardar(8,$ref,'INTERESADO'),'Resultado único, no reemplazar notas');
  vreject(fn()=>$results->guardar(9,$ref,'INTERESADO'),'Otro usuario no puede clasificar esa transferencia');
  vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-different-session-123456')===null,'Otra sesión no hereda transferencia vinculada');
