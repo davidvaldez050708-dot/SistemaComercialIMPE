@@ -1,0 +1,27 @@
+name: Ventas - paridad de resultado SIP y PBX
+on:
+  pull_request:
+    paths:
+      - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'app/views/telefonia/resultado_ventas_form.php'
+      - 'tests/telefonia_ventas_resultado_pendiente_browser.cjs'
+      - '.github/workflows/ventas-paridad-resultado-pbx.yml'
+jobs:
+  formulario:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/impe-paridad playwright bootstrap@5.3.8
+      - run: /tmp/impe-paridad/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis
+        run: |
+          node --check public/javascript/telefonia_ventas_resultados.js
+          node --check tests/telefonia_ventas_resultado_pendiente_browser.cjs
+      - name: Pruebas de navegador con PBX tardia
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/impe-paridad/node_modules/playwright
+          BOOTSTRAP_MODULE_PATH: /tmp/impe-paridad/node_modules/bootstrap
+        run: node tests/telefonia_ventas_resultado_pendiente_browser.cjs
