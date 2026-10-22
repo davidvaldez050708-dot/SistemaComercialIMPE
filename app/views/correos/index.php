@@ -386,6 +386,20 @@ $texto = static fn($valor) => htmlspecialchars(
                         </strong>
                     </div>
 
+                    <div class="row g-3 mb-3" data-convocatoria-filtros>
+                        <div class="col-12 col-sm-6">
+                            <label class="form-label" for="correo_convocatoria_estado">Estado</label>
+                            <select class="form-select system-form-control" id="correo_convocatoria_estado" name="convocatoria_estado_id" data-convocatoria-estado>
+                                <option value="">Todos los estados</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <label class="form-label" for="correo_convocatoria_convenio">Convenio</label>
+                            <select class="form-select system-form-control" id="correo_convocatoria_convenio" name="convocatoria_convenio_id" data-convocatoria-convenio>
+                                <option value="">Todos los convenios</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label
                             class="form-label"
@@ -400,30 +414,10 @@ $texto = static fn($valor) => htmlspecialchars(
                             name="convocatoria_id"
                             data-marketing-mail-convocatoria>
                             <option value="">Selecciona una convocatoria</option>
-                            <?php foreach ($convocatoriasMarketing as $convocatoriaMarketing): ?>
-                                <?php
-                                $convocatoriaId = (int)($convocatoriaMarketing['id'] ?? 0);
-                                $convocatoriaTitulo = trim(
-                                    (string)($convocatoriaMarketing['titulo'] ?? '')
-                                );
-                                $convocatoriaEstados = trim(
-                                    (string)($convocatoriaMarketing['estados'] ?? '')
-                                );
-                                ?>
-                                <?php if ($convocatoriaId > 0 && $convocatoriaTitulo !== ''): ?>
-                                    <option
-                                        value="<?= $convocatoriaId ?>"
-                                        data-convocatoria-titulo="<?= $texto($convocatoriaTitulo) ?>">
-                                        <?= $texto(
-                                            $convocatoriaTitulo .
-                                            ($convocatoriaEstados !== ''
-                                                ? ' · ' . $convocatoriaEstados
-                                                : '')
-                                        ) ?>
-                                    </option>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
                         </select>
+                        <button type="button" class="btn btn-link btn-sm px-0" data-convocatoria-limpiar>Limpiar filtros y selección</button>
+                        <div class="form-text" role="status" aria-live="polite" data-convocatoria-status></div>
+                        <input type="hidden" name="convocatoria_imagen_sha" data-convocatoria-imagen-sha>
                     </div>
 
                     <div class="mb-3">
@@ -480,6 +474,11 @@ $texto = static fn($valor) => htmlspecialchars(
                             data-marketing-mail-body
                             required></textarea>
                     </div>
+
+                    <figure class="mb-3 d-none" data-convocatoria-preview>
+                        <img class="img-fluid" style="display:block;max-width:100%;height:auto" alt="Imagen de la convocatoria seleccionada" data-convocatoria-imagen>
+                        <figcaption class="form-text" data-convocatoria-caption></figcaption>
+                    </figure>
 
                     <div class="mb-0">
                         <label
@@ -635,6 +634,10 @@ $texto = static fn($valor) => htmlspecialchars(
                             data-marketing-mail-detail-body>
                             —
                         </div>
+                        <figure class="mt-3 d-none" data-convocatoria-detalle>
+                            <img class="img-fluid" alt="Imagen de la convocatoria del correo" data-convocatoria-detalle-imagen>
+                            <figcaption class="form-text" data-convocatoria-detalle-caption></figcaption>
+                        </figure>
                     </div>
 
                     <div
@@ -692,3 +695,4 @@ $texto = static fn($valor) => htmlspecialchars(
         </div>
     </div>
 </div>
+<script src="<?= BASE_URL ?>public/javascript/correo_convocatorias.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/correo_convocatorias.js') ?>"></script>

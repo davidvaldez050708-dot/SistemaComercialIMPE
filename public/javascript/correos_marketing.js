@@ -262,6 +262,7 @@
             claveEnvio = nuevaClaveEnvio();
             form?.reset();
             adjuntosBorradorActual = [];
+            modalElement.dispatchEvent(new CustomEvent('correo:convocatoria-limpiar'));
 
             if (correoIdInput) {
                 correoIdInput.value = '';
@@ -524,6 +525,7 @@
             }
 
             correoDetalleActual = correo;
+            modalDetalleElement.dispatchEvent(new CustomEvent('correo:convocatoria-detalle', { detail: correo.convocatoria_seleccion || null }));
 
             const estadoCodigo = String(
                 correo.estado_codigo || ''
@@ -1099,6 +1101,8 @@
             if (cuerpo) {
                 cuerpo.value = String(correo.cuerpo || '');
             }
+
+            modalElement.dispatchEvent(new CustomEvent('correo:convocatoria-borrador', { detail: correo.convocatoria_seleccion || null }));
 
             adjuntosBorradorActual = Array.isArray(correo.adjuntos)
                 ? correo.adjuntos.slice()
