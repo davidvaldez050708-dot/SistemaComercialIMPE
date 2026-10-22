@@ -42,23 +42,34 @@ $catalogoRegistro = $registroServicio->catalogo();
 </div>
 
 <div class="modal fade" id="modalManualContactos" tabindex="-1" aria-labelledby="tituloManualContactos" aria-hidden="true">
- <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
-  <div class="modal-content aliados-modal">
-   <div class="modal-header"><div><h2 class="modal-title" id="tituloManualContactos">Gestionar contactos</h2><p>Directorio de contactos del aliado manual.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+ <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl aliados-share-dialog">
+  <div class="modal-content aliados-modal aliados-canales-manuales">
+   <div class="modal-header"><div><span class="aliados-modal-kicker">CONTACTOS DE DIFUSIÓN</span><h2 class="modal-title" id="tituloManualContactos">Canales del aliado</h2><p data-manual-contactos-context>Consulta y prepara los números autorizados del aliado.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
    <div class="modal-body">
     <div class="alert alert-danger d-none" data-manual-contactos-error role="alert"></div>
-    <div class="aliados-manual-contact-list" data-manual-contactos-list aria-live="polite"></div>
-    <form data-manual-contactos-form class="row g-3 mt-2">
+    <div class="aliados-manual-channel-tip"><i class="bi bi-shield-check" aria-hidden="true"></i><span>El teléfono de registro se presenta como referencia. Utilizarlo para difusión no modifica el dato original. La confirmación de WhatsApp no equivale a consentimiento.</span></div>
+    <section class="aliados-manual-reference-card" data-manual-source-card hidden>
+     <span class="aliados-manual-source-icon"><i class="bi bi-telephone" aria-hidden="true"></i></span>
+     <div class="aliados-manual-source-info"><strong data-manual-source-phone>—</strong><small>Teléfono de registro · Aliado manual</small><span class="aliados-manual-status-chip" data-manual-source-whatsapp>WhatsApp no confirmado</span></div>
+     <button type="button" class="btn btn-system-light" data-manual-use-source><i class="bi bi-plus-circle" aria-hidden="true"></i> Usar para difusión</button>
+    </section>
+    <div class="aliados-manual-channel-existing" data-manual-contactos-list aria-live="polite"></div>
+    <form data-manual-contactos-form class="aliados-manual-channel-form">
      <input type="hidden" name="id"><input type="hidden" name="origen" value="manual"><input type="hidden" name="contacto_id">
-     <div class="col-md-6"><label class="form-label" for="manualContactoNombre">Nombre *</label><input class="form-control" id="manualContactoNombre" name="nombre" maxlength="120" required></div>
-     <div class="col-md-6"><label class="form-label" for="manualContactoCargo">Cargo</label><input class="form-control" id="manualContactoCargo" name="cargo" maxlength="120"></div>
-     <div class="col-md-6"><label class="form-label" for="manualContactoCorreo">Correo</label><input class="form-control" type="email" id="manualContactoCorreo" name="correo" maxlength="180"></div>
-     <div class="col-md-6"><label class="form-label" for="manualContactoTelefono">Teléfono</label><input class="form-control" id="manualContactoTelefono" name="telefono" maxlength="30"></div>
-     <div class="col-12"><label class="form-check-label"><input class="form-check-input me-2" name="whatsapp_autorizado" type="checkbox" value="1">WhatsApp autorizado explícitamente por el contacto</label></div>
-     <div class="col-12 d-flex justify-content-end gap-2"><button type="button" class="btn btn-system-light" data-manual-contacto-limpiar>Nuevo contacto</button><button type="submit" class="btn btn-system-save">Guardar contacto</button></div>
+     <input type="hidden" name="nombre" value="Difusión"><input type="hidden" name="cargo" value=""><input type="hidden" name="correo" value="">
+     <div class="aliados-manual-channel-section"><strong>Agregar número de difusión</strong><p>Utilízalo cuando la institución comparta un número específico para convocatorias.</p></div>
+     <div class="row g-3">
+      <div class="col-md-6"><label class="form-label" for="manualContactoTelefono">Número *</label><input class="form-control" id="manualContactoTelefono" name="telefono" maxlength="30" type="tel" autocomplete="tel" placeholder="Ej. 477 123 4567" required></div>
+      <div class="col-md-6"><label class="form-label" for="manualContactoEtiqueta">Etiqueta *</label><input class="form-control" id="manualContactoEtiqueta" name="etiqueta" maxlength="80" value="Difusión" placeholder="Difusión" required></div>
+      <div class="col-12 aliados-manual-checkbox-grid">
+       <label class="aliados-manual-choice"><input type="checkbox" name="whatsapp_confirmado" value="1"><span><strong>Confirmado para WhatsApp</strong><small>La institución confirmó que este número usa WhatsApp.</small></span></label>
+       <label class="aliados-manual-choice"><input type="checkbox" name="whatsapp_autorizado" value="1"><span><strong>Autorizó comunicaciones por WhatsApp</strong><small>Marcar únicamente con autorización expresa del contacto.</small></span></label>
+       <label class="aliados-manual-choice"><input type="checkbox" name="preferido_difusion" value="1"><span><strong>Preferido para difusión</strong><small>Primera opción sugerida para contactar a la institución.</small></span></label>
+      </div>
+      <div class="col-12 d-flex flex-wrap justify-content-end gap-2"><button type="button" class="btn btn-system-light" data-manual-contacto-limpiar>Nuevo número</button><button type="submit" class="btn btn-system-save"><i class="bi bi-check2-circle" aria-hidden="true"></i> Guardar contacto</button></div>
+     </div>
     </form>
    </div>
-   <div class="modal-footer"><button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cerrar</button></div>
   </div>
  </div>
 </div>
