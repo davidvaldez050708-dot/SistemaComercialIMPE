@@ -2308,3 +2308,31 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
 @media (max-width: 575.98px) {
     .aliados-manual-contact-row { flex-direction: column; align-items: stretch; }
 }
+
+/* Reserva espacio real para las acciones, sin invadir la celda de seguimiento. */
+.aliados-state-module .aliados-table {
+    min-width: 1030px;
+    table-layout: fixed;
+}
+.aliados-state-module .aliados-table th:nth-child(1),
+.aliados-state-module .aliados-table td:nth-child(1) { width: 16%; }
+.aliados-state-module .aliados-table th:nth-child(2),
+.aliados-state-module .aliados-table td:nth-child(2) { width: 19%; }
+.aliados-state-module .aliados-table th:nth-child(3),
+.aliados-state-module .aliados-table td:nth-child(3) { width: 10%; }
+.aliados-state-module .aliados-table th:nth-child(4),
+.aliados-state-module .aliados-table td:nth-child(4) { width: 9%; }
+.aliados-state-module .aliados-table th:nth-child(5),
+.aliados-state-module .aliados-table td:nth-child(5) { width: 14%; }
+.aliados-state-module .aliados-table th:nth-child(6),
+.aliados-state-module .aliados-table td:nth-child(6) { width: 14%; }
+.aliados-state-module .aliados-table th:nth-child(7),
+.aliados-state-module .aliados-table td:nth-child(7) { width: 18%; }
+.aliados-state-module .aliados-table .aliados-actions {
+    display: flex;
+    gap: 6px;
+}
+.aliados-state-module .aliados-table td:nth-child(6) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
