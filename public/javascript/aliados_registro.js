@@ -126,45 +126,97 @@ document.addEventListener('DOMContentLoaded', () => {
         const errorContactos = modalContactosEl.querySelector('[data-manual-contactos-error]');
         const errorHistorial = modalHistorialEl.querySelector('[data-manual-historial-error]');
         let manualId = 0, contactosActuales = [];
+        const sourceCard = modalContactosEl.querySelector('[data-manual-source-card]');
+        const sourcePhone = modalContactosEl.querySelector('[data-manual-source-phone]');
+        const contextLabel = modalContactosEl.querySelector('[data-manual-contactos-context]');
+        let sourceNumber = '';
         const limpiarContacto = () => {
-            formContacto.reset(); formContacto.elements.id.value = String(manualId);
+            formContacto.reset();
+            formContacto.elements.id.value = String(manualId);
             formContacto.elements.contacto_id.value = '';
+            formContacto.elements.nombre.value = 'Difusión';
+            formContacto.elements.etiqueta.value = 'Difusión';
         };
-        const mostrarContactos = (datos) => {
-            contactosActuales = datos.contactos || [];
+        const mostrarContactos = datos => {
+            contactosActuales = Array.isArray(datos.contactos) ? datos.contactos : [];
+            const origen = datos.origen || {};
+            sourceNumber = String(origen.telefono_fuente || '').trim();
+            const ubicacion = [origen.municipio_nombre, origen.estado_nombre].filter(Boolean).join(', ');
+            contextLabel.textContent = [origen.nombre_entidad, ubicacion].filter(Boolean).join(' · ');
+            sourceCard.hidden = !sourceNumber;
+            sourcePhone.textContent = sourceNumber || '—';
             listaContactos.replaceChildren();
-            if (!contactosActuales.length) {
-                const p = document.createElement('p'); p.className = 'aliados-manual-empty';
-                p.textContent = 'Todavía no hay contactos adicionales registrados.';
-                listaContactos.appendChild(p);
-                return;
-            }
+            if (!contactosActuales.length) return;
+            const heading = document.createElement('div');
+            heading.className = 'aliados-manual-channel-section';
+            const title = document.createElement('strong');
+            title.textContent = 'Números de difusión registrados';
+            heading.appendChild(title);
+            listaContactos.appendChild(heading);
             contactosActuales.forEach(c => {
-                const row = document.createElement('div'); row.className = 'aliados-manual-contact-row';
-                const txt = document.createElement('div');
-                const nombre = document.createElement('strong'); nombre.textContent = c.nombre;
+                const row = document.createElement('div');
+                row.className = 'aliados-manual-contact-row aliados-manual-channel-row';
+                const text = document.createElement('div');
+                const nombre = document.createElement('strong');
+                nombre.textContent = c.telefono || 'Sin teléfono';
                 const info = document.createElement('small');
-                info.textContent = [c.cargo,c.correo,c.telefono].filter(Boolean).join(' · ') + (Number(c.whatsapp_autorizado) ? ' · WhatsApp autorizado' : '');
-                txt.append(nombre,info);
-                const actions = document.createElement('div'); actions.className = 'd-flex gap-1';
-                const edit = document.createElement('button'); edit.type = 'button'; edit.className='btn btn-system-light';
-                edit.textContent = 'Editar'; edit.addEventListener('click',() => {
-                    for(const name of ['nombre','cargo','correo','telefono']) formContacto.elements[name].value = c[name] || '';
-                    formContacto.elements.contacto_id.value = c.id;
-                    formContacto.elements.whatsapp_autorizado.checked = Number(c.whatsapp_autorizado) === 1;
-                    formContacto.elements.nombre.focus();
+                info.textContent = c.etiqueta || c.nombre || 'Difusión';
+                text.append(nombre, info);
+                const flags = document.createElement('div');
+                flags.className = 'aliados-manual-channel-flags';
+                [
+                    [c.whatsapp_confirmado, 'WhatsApp confirmado'],
+                    [c.whatsapp_autorizado, 'Comunicación autorizada'],
+                    [c.preferido_difusion, 'Preferido']
+                ].forEach(([active,label]) => {
+                    if (Number(active) !== 1) return;
+                    const tag = document.createElement('span');
+                    tag.className = 'aliados-manual-status-chip is-ready';
+                    tag.textContent = label;
+                    flags.appendChild(tag);
                 });
-                const remove = document.createElement('button'); remove.type = 'button'; remove.className='btn btn-system-light';
+                text.appendChild(flags);
+                const actions = document.createElement('div');
+                actions.className = 'd-flex gap-1 flex-wrap';
+                const edit = document.createElement('button');
+                edit.type = 'button'; edit.className = 'btn btn-system-light';
+                edit.textContent = 'Editar';
+                edit.addEventListener('click', () => {
+                    limpiarContacto();
+                    formContacto.elements.nombre.value = c.nombre || 'Difusión';
+                    formContacto.elements.cargo.value = c.cargo || '';
+                    formContacto.elements.correo.value = c.correo || '';
+                    formContacto.elements.telefono.value = c.telefono || '';
+                    formContacto.elements.etiqueta.value = c.etiqueta || c.nombre || 'Difusión';
+                    formContacto.elements.contacto_id.value = c.id;
+                    ['whatsapp_autorizado','whatsapp_confirmado','preferido_difusion'].forEach(key => {
+                        formContacto.elements[key].checked = Number(c[key]) === 1;
+                    });
+                    formContacto.elements.telefono.focus();
+                });
+                const remove = document.createElement('button');
+                remove.type = 'button'; remove.className = 'btn btn-system-light';
                 remove.textContent = 'Desactivar';
                 remove.addEventListener('click', async () => {
-                    if (!confirm('¿Desactivar este contacto sin borrar su historial?')) return;
-                    const data = new FormData(); data.set('id',manualId); data.set('operacion','contacto_desactivar'); data.set('contacto_id',c.id);
-                    try { await request('registroGestion',data,true); aviso('Contacto desactivado.'); await recargarManual(); }
+                    if (!confirm('¿Desactivar este canal sin borrar su historial?')) return;
+                    const data = new FormData();
+                    data.set('id',manualId); data.set('operacion','contacto_desactivar');
+                    data.set('contacto_id',c.id);
+                    try { await request('registroGestion',data,true); aviso('Canal desactivado.'); await recargarManual(); }
                     catch(e) { errorIn(errorContactos,e.message); aviso(e.message,'error'); }
                 });
-                actions.append(edit,remove); row.append(txt,actions); listaContactos.appendChild(row);
+                actions.append(edit,remove);
+                row.append(text,actions);
+                listaContactos.appendChild(row);
             });
         };
+        modalContactosEl.querySelector('[data-manual-use-source]').addEventListener('click', () => {
+            if (!sourceNumber) return;
+            limpiarContacto();
+            formContacto.elements.telefono.value = sourceNumber;
+            formContacto.elements.etiqueta.value = 'Difusión';
+            formContacto.elements.telefono.focus();
+        });
         const mostrarHistorial = (datos) => {
             listaHistorial.replaceChildren();
             if (!datos.historial?.length) {
