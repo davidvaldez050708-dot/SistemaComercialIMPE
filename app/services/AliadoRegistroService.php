@@ -31,9 +31,13 @@ class AliadoRegistroService
     }
     public function opcionesConvocatoria(string $tipo,int $id): array
     {
-        $this->autorizar('formularios_aliados.gestionar_enlaces');
-        if (strcasecmp((string)($_SESSION['rol']??''),'Marketing')!==0) throw new DomainException('Acceso exclusivo de Marketing.',403);
-        $detalle=$this->detalle($tipo,$id,true);
+        // Marketing administra el enlace; Cuenta Clave sólo puede preparar
+        // convocatorias si recibió permisos explícitos y tiene el territorio.
+        $marketing = strcasecmp(trim((string)($_SESSION['rol']??'')), 'Marketing') === 0;
+        if (!puedeCrearConvocatoriaDesdeConvenio()) {
+            throw new DomainException('No tienes permiso para crear convocatorias desde Convenios.',403);
+        }
+        $detalle=$this->detalle($tipo,$id,$marketing,true);
         $nombres=[];
         foreach ($detalle['catalogo'] as $programa) $nombres[$programa['codigo']]=$programa['nombre'];
         $mapa=self::clasificacionesPorPrograma();
@@ -169,12 +173,12 @@ class AliadoRegistroService
             $this->db->commit();
         } catch (Throwable $e) { $this->db->rollback(); throw $e; }
     }
-    public function detalle(string $tipo,int $id,bool $marketing=false): array
+    public function detalle(string $tipo,int $id,bool $marketing=false,bool $mostrarEnlace=false): array
     {
         $origen=$this->origen($tipo,$id,$marketing); $col=$tipo==='manual'?'manual_id':'seguimiento_id';
         $perfil=$this->query("SELECT r.*,a.token FROM formulario_aliado_registro r JOIN formulario_aliados a ON a.id=r.aliado_id WHERE r.$col=?",[$id])->get_result()->fetch_assoc();
         $codigos=$perfil?$this->query('SELECT programa_codigo FROM formulario_aliado_programas WHERE aliado_id=?',[(int)$perfil['aliado_id']])->get_result()->fetch_all(MYSQLI_ASSOC):[];
-        return ['origen'=>$origen,'programas'=>array_column($codigos,'programa_codigo'),'catalogo'=>$this->catalogo(),'publicado'=>(bool)($perfil['publicado']??false),'habilitado'=>(bool)($perfil['habilitado']??false),'url'=>($marketing && !empty($perfil['publicado']))?BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.$perfil['token']:''];
+        return ['origen'=>$origen,'programas'=>array_column($codigos,'programa_codigo'),'catalogo'=>$this->catalogo(),'publicado'=>(bool)($perfil['publicado']??false),'habilitado'=>(bool)($perfil['habilitado']??false),'url'=>(($marketing || $mostrarEnlace) && !empty($perfil['publicado']))?BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.$perfil['token']:''];
     }
     public function enlace(string $tipo,int $id,string $accion): array
     {
