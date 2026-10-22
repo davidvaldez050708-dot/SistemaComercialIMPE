@@ -6,6 +6,7 @@ on:
       - 'public/javascript/telefonia_host.js'
       - 'public/javascript/telefonia_transferencia_runtime.js'
       - 'tests/telefonia_ventas_fin_transferencia_inmediato.cjs'
+      - 'tests/telefonia_transferencia_receptor_terminado.cjs'
       - '.github/workflows/ventas-fin-sip-transferido-100-150.yml'
       - 'tools/publicar_ventas_fin_sip_transferido_100_150_hostinger.sh'
       - 'tests/publicacion_ventas_fin_sip_transferido_test.py'
@@ -24,6 +25,7 @@ jobs:
           node --check public/javascript/telefonia_transferencia_runtime.js
           node --check tests/telefonia_ventas_fin_transferencia_inmediato.cjs
           node tests/telefonia_ventas_fin_transferencia_inmediato.cjs
+          node tests/telefonia_transferencia_receptor_terminado.cjs
           node tests/telefonia_ventas_fin_sip_push_tardio.cjs
           node tests/telefonia_sdk_ended_directo_smoke.cjs
       - name: Publicación reversible
