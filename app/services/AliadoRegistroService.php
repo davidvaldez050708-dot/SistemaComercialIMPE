@@ -205,11 +205,25 @@ class AliadoRegistroService
     public function consultarGestionManual(int $id): array
     {
         $this->autorizar('aliados.gestionar_programas');
-        $this->origen('manual',$id);
+        $origen = $this->origen('manual',$id);
         $this->verificarManualModulos();
-        $contactos=$this->query('SELECT id,nombre,cargo,correo,telefono,whatsapp_autorizado FROM aliados_manuales_contactos WHERE aliado_id=? AND activo=1 ORDER BY id',[$id])->get_result()->fetch_all(MYSQLI_ASSOC);
-        $historial=$this->query('SELECT d.id,d.canal,d.nota,d.realizado_at,CONCAT_WS(" ",u.nombre,u.apellidos) responsable FROM aliados_manuales_difusiones d LEFT JOIN usuarios u ON u.id=d.registrado_por WHERE d.aliado_id=? ORDER BY d.realizado_at DESC,d.id DESC LIMIT 100',[$id])->get_result()->fetch_all(MYSQLI_ASSOC);
-        return ['contactos'=>$contactos,'historial'=>$historial];
+        $columnas = array_column($this->db->query("SHOW COLUMNS FROM aliados_manuales_contactos")->fetch_all(MYSQLI_ASSOC), 'Field');
+        $extras = [];
+        foreach (['etiqueta','whatsapp_confirmado','preferido_difusion','es_canal_difusion'] as $nombre) {
+            $extras[] = in_array($nombre,$columnas,true) ? $nombre : ("0 AS ".$nombre);
+        }
+        $contactos = $this->query('SELECT id,nombre,cargo,correo,telefono,whatsapp_autorizado,'.implode(',',$extras).' FROM aliados_manuales_contactos WHERE aliado_id=? AND activo=1 ORDER BY id',[$id])->get_result()->fetch_all(MYSQLI_ASSOC);
+        $historial = $this->query('SELECT d.id,d.canal,d.nota,d.realizado_at,CONCAT_WS(" ",u.nombre,u.apellidos) responsable FROM aliados_manuales_difusiones d LEFT JOIN usuarios u ON u.id=d.registrado_por WHERE d.aliado_id=? ORDER BY d.realizado_at DESC,d.id DESC LIMIT 100',[$id])->get_result()->fetch_all(MYSQLI_ASSOC);
+        return [
+            'contactos'=>$contactos, 'historial'=>$historial,
+            'origen'=>[
+                'nombre_entidad'=>$origen['nombre_entidad'],
+                'telefono_fuente'=>$origen['telefono_fuente'] ?? '',
+                'contacto_nombre'=>$origen['contacto_nombre'] ?? '',
+                'estado_nombre'=>$origen['estado_nombre'] ?? '',
+                'municipio_nombre'=>$origen['municipio_nombre'] ?? ''
+            ]
+        ];
     }
     public function guardarContactoManual(array $datos): void
     {
@@ -217,23 +231,56 @@ class AliadoRegistroService
         $aliado=(int)($datos['id']??0);
         $this->origen('manual',$aliado);
         $this->verificarManualModulos();
+        $columnas=array_column($this->db->query("SHOW COLUMNS FROM aliados_manuales_contactos")->fetch_all(MYSQLI_ASSOC),'Field');
+        foreach(['etiqueta','whatsapp_confirmado','preferido_difusion','es_canal_difusion'] as $columna) {
+            if (!in_array($columna,$columnas,true)) {
+                throw new DomainException('Falta instalar la ampliación de Canales del aliado manual.',503);
+            }
+        }
         $contactoId=(int)($datos['contacto_id']??0);
-        $nombre=trim((string)($datos['nombre']??''));
+        $etiqueta=trim((string)($datos['etiqueta']??$datos['nombre']??'Difusión'));
+        $nombre=trim((string)($datos['nombre']??$etiqueta));
         $cargo=trim((string)($datos['cargo']??''));
         $correo=trim((string)($datos['correo']??''));
         $telefono=trim((string)($datos['telefono']??''));
-        $whatsapp=(int)(!empty($datos['whatsapp_autorizado']));
-        if (mb_strlen($nombre)<2||mb_strlen($nombre)>120||mb_strlen($cargo)>120||mb_strlen($correo)>180||mb_strlen($telefono)>30)
-            throw new DomainException('Revisa los datos del contacto.');
-        if ($correo!==''&&!filter_var($correo,FILTER_VALIDATE_EMAIL)) throw new DomainException('Correo del contacto inválido.');
-        if ($telefono!==''&&!preg_match('/^[+0-9 ()-]{7,30}$/D',$telefono)) throw new DomainException('Teléfono del contacto inválido.');
-        if ($whatsapp&&!$telefono) throw new DomainException('Se requiere teléfono para autorizar WhatsApp.');
-        if ($contactoId) {
-            $existe = $this->query('SELECT id FROM aliados_manuales_contactos WHERE id=? AND aliado_id=? AND activo=1',[$contactoId,$aliado])->get_result()->num_rows;
-            if (!$existe) throw new DomainException('Contacto no disponible.',404);
-            $this->query('UPDATE aliados_manuales_contactos SET nombre=?,cargo=?,correo=?,telefono=?,whatsapp_autorizado=? WHERE id=? AND aliado_id=? AND activo=1',[$nombre,$cargo,$correo,$telefono,$whatsapp,$contactoId,$aliado]);
-        } else {
-            $this->query('INSERT INTO aliados_manuales_contactos (aliado_id,nombre,cargo,correo,telefono,whatsapp_autorizado,creado_por) VALUES (?,?,?,?,?,?,?)',[$aliado,$nombre,$cargo,$correo,$telefono,$whatsapp,(int)$_SESSION['usuario_id']]);
+        $confirmado=(int)!empty($datos['whatsapp_confirmado']);
+        $autorizado=(int)!empty($datos['whatsapp_autorizado']);
+        $preferido=(int)!empty($datos['preferido_difusion']);
+        if (mb_strlen($etiqueta)<2 || mb_strlen($etiqueta)>80 ||
+            mb_strlen($nombre)<2 || mb_strlen($nombre)>120 ||
+            mb_strlen($cargo)>120 || mb_strlen($correo)>180 ||
+            mb_strlen($telefono)>30) {
+            throw new DomainException('Revisa la etiqueta y los datos del canal.');
+        }
+        if ($correo!==''&&!filter_var($correo,FILTER_VALIDATE_EMAIL)) {
+            throw new DomainException('Correo del contacto inválido.');
+        }
+        if ($telefono==='' || !preg_match('/^[+0-9 ()-]{7,30}$/D',$telefono)) {
+            throw new DomainException('Ingresa un número telefónico válido.');
+        }
+        // Confirmación técnica y consentimiento son conceptos independientes:
+        // nunca se marca autorización de forma implícita.
+        $this->db->begin_transaction();
+        try {
+            $this->query('SELECT id FROM aliados_manuales WHERE id=? AND activo=1 FOR UPDATE',[$aliado]);
+            if ($contactoId) {
+                $existe=$this->query('SELECT id FROM aliados_manuales_contactos WHERE id=? AND aliado_id=? AND activo=1',[$contactoId,$aliado])->get_result()->num_rows;
+                if (!$existe) throw new DomainException('Canal no disponible.',404);
+            }
+            if ($preferido) {
+                $this->query('UPDATE aliados_manuales_contactos SET preferido_difusion=0 WHERE aliado_id=? AND activo=1',[$aliado]);
+            }
+            if ($contactoId) {
+                $this->query('UPDATE aliados_manuales_contactos SET nombre=?,cargo=?,correo=?,telefono=?,whatsapp_autorizado=?,etiqueta=?,whatsapp_confirmado=?,preferido_difusion=?,es_canal_difusion=1 WHERE id=? AND aliado_id=? AND activo=1',
+                    [$nombre,$cargo,$correo,$telefono,$autorizado,$etiqueta,$confirmado,$preferido,$contactoId,$aliado]);
+            } else {
+                $this->query('INSERT INTO aliados_manuales_contactos (aliado_id,nombre,cargo,correo,telefono,whatsapp_autorizado,creado_por,etiqueta,whatsapp_confirmado,preferido_difusion,es_canal_difusion) VALUES (?,?,?,?,?,?,?,?,?,?,1)',
+                    [$aliado,$nombre,$cargo,$correo,$telefono,$autorizado,(int)$_SESSION['usuario_id'],$etiqueta,$confirmado,$preferido]);
+            }
+            $this->db->commit();
+        } catch (Throwable $error) {
+            $this->db->rollback();
+            throw $error;
         }
     }
     public function desactivarContactoManual(int $aliado,int $contacto): void
