@@ -1,0 +1,40 @@
+// Ejecuta el fragmento real de descubrimiento con DOM/fetch simulados; no hace solicitudes.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync('public/javascript/correos_marketing.js', 'utf8');
+const start = source.indexOf('        const estadoRemitente =');
+const end = source.indexOf('        const mostrarError =', start);
+assert.ok(start >= 0 && end > start);
+const status = {textContent:''};
+const options = {items:[],replaceChildren(){this.items=[];},appendChild(option){this.items.push(option.value);}};
+const inputHandlers = {};
+const from = {value:'qa.nuevo@rededucativamexico.org',addEventListener(name,fn){inputHandlers[name]=fn;}};
+const handlers = {};
+const central = {remitente_real:'qa.uno@rededucativamexico.org',modo:'central',aviso:'Se usará el buzón central qa.uno@rededucativamexico.org. Las respuestas se recibirán en ese buzón.'};
+let response = {ok:true,remitentes:['qa.uno@rededucativamexico.org'],salida:central};
+let fetchImpl = async () => ({ok:true,json:async()=>response});
+const context = {remitente:from,modalElement:{querySelector(selector){return selector==='[data-hostinger-sender-status]'?status:options;},addEventListener(name,fn){handlers[name]=fn;}},
+ document:{createElement(){return {value:''};}},fetch:(...args)=>fetchImpl(...args), Date,Set,Array,Error,encodeURIComponent,setTimeout,clearTimeout};
+vm.createContext(context);
+vm.runInContext(source.slice(start,end)+'\nthis.check=validarRemitenteVisible;this.load=cargarRemitentes;',context);
+(async()=>{
+    await context.load();assert.equal(context.check(),true,'No exige que la dirección escrita figure en la lista');assert.match(status.textContent,/buzón central/);
+    response={ok:true,remitentes:['qa.uno@rededucativamexico.org',from.value,from.value],salida:{remitente_real:from.value,modo:'directo',aviso:'Se enviará desde '+from.value}};
+    await handlers['shown.bs.modal']();assert.equal(context.check(),true);assert.equal(options.items.length,2);
+    assert.equal(from.value,'qa.nuevo@rededucativamexico.org','La selección no se sustituye');
+    response={ok:false,mensaje:'Falta el token central de Hostinger Mail API.'};await context.load();
+    assert.equal(options.items.length,0,'No quedan opciones autorizadas de una consulta anterior');
+    assert.equal(context.check(),false);assert.match(status.textContent,/Falta el token/,'La validación no oculta el error de configuración');
+    response={ok:false,mensaje:'No tienes un buzón de salida permitido por la configuración comercial.'};await context.load();
+    assert.match(status.textContent,/No tienes un buzón/);
+    const deferred=[];fetchImpl=()=>new Promise(resolve=>deferred.push(resolve));
+    const old=context.load(), fresh=context.load();
+    deferred[1]({ok:true,json:async()=>({ok:true,remitentes:[from.value],salida:central})});
+    await fresh;
+    deferred[0]({ok:false,json:async()=>({ok:false,mensaje:'Error antiguo'})});await old;
+    assert.equal(context.check(),true,'Una respuesta atrasada no reemplaza los buzones actuales');
+    assert.deepEqual(options.items,[from.value]);
+    from.value='ajena@gmail.com';inputHandlers.input();assert.equal(context.check(),false);assert.match(status.textContent,/@rededucativamexico/);
+    console.log('OK: salida central sin pertenencia a lista, identidad visible, selección conservada, token ausente, restricciones y respuestas atrasadas. Sin red ni cambios de diseño.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

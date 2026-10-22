@@ -644,7 +644,7 @@ class CorreoMarketingService
             $hashes[] = is_uploaded_file($path) ? hash_file('sha256', $path) : '';
         }
         $fields = [];
-        foreach (['remitente', 'destinatario', 'destinatario_nombre', 'asunto', 'cuerpo', 'convocatoria_id', 'correo_id'] as $field) {
+        foreach (['remitente', 'remitente_real_confirmado', 'destinatario', 'destinatario_nombre', 'asunto', 'cuerpo', 'convocatoria_id', 'correo_id'] as $field) {
             $fields[$field] = (string)($datos[$field] ?? '');
         }
         $fingerprint = hash('sha256', json_encode([$fields, $hashes]));
@@ -731,6 +731,9 @@ class CorreoMarketingService
             );
         }
 
+        $autorizacion = $this->sender->prepararSalida($remitente, $usuarioId);
+        if (empty($autorizacion['ok'])) { return $autorizacion; }
+
         $preparacion = $this->prepararAdjuntos($archivos);
         if (!($preparacion['ok'] ?? false)) {
             return $preparacion;
@@ -792,6 +795,7 @@ class CorreoMarketingService
                 'idempotency_key' => $datos['idempotency_key'],
                 'usar_remitente_exacto' => true,
                 'remitente' => $remitente,
+                'remitente_real_confirmado' => (string)($datos['remitente_real_confirmado']??''),
                 'nombre_remitente' => trim(
                     (string)($usuario['nombre'] ?? '') . ' ' .
                     (string)($usuario['apellidos'] ?? '')
@@ -831,7 +835,8 @@ class CorreoMarketingService
                 $this->marcarEnviado(
                     $registroId,
                     (string)($envio['proveedor'] ?? ''),
-                    !empty($envio['firma_incluida'])
+                    !empty($envio['firma_incluida']),
+                    (string)($envio['nota_identidad']??'')
                 );
             }
 
@@ -843,7 +848,8 @@ class CorreoMarketingService
                 'correo_id' => $registroId,
                 'proveedor' => (string)($envio['proveedor'] ?? ''),
                 'firma_incluida' => (bool)($envio['firma_incluida'] ?? false),
-                'adjuntos' => count($adjuntosEnvio)
+                'adjuntos' => count($adjuntosEnvio),
+                'identidad_envio' => $envio['identidad_envio']??null
             ];
         } finally {
             $this->limpiarTemporales($rutasTemporales);
@@ -1432,7 +1438,7 @@ class CorreoMarketingService
         return (int)$this->connection->insert_id;
     }
 
-    private function marcarEnviado($registroId, $proveedor, $firmaIncluida)
+    private function marcarEnviado($registroId, $proveedor, $firmaIncluida, $notaIdentidad='')
     {
         $estado = 'ENVIADO';
         $firma = $firmaIncluida ? 1 : 0;
@@ -1444,8 +1450,10 @@ class CorreoMarketingService
                     error_envio = NULL,
                     fecha_envio = NOW()
                 WHERE id = ?";
+        if($notaIdentidad!=='') { $sql=str_replace('fecha_envio = NOW()','cuerpo = CONCAT(cuerpo, ?), fecha_envio = NOW()',$sql); }
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ssii', $estado, $proveedor, $firma, $registroId);
+        if($notaIdentidad!=='') { $stmt->bind_param('ssisi', $estado, $proveedor, $firma, $notaIdentidad, $registroId); }
+        else { $stmt->bind_param('ssii', $estado, $proveedor, $firma, $registroId); }
         $stmt->execute();
     }
 

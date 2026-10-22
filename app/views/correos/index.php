@@ -364,6 +364,7 @@ $texto = static fn($valor) => htmlspecialchars(
                         <input
                             class="form-control system-form-control"
                             id="correo_marketing_de"
+                            list="correo_hostinger_remitentes"
                             type="email"
                             name="remitente"
                             maxlength="255"
@@ -372,11 +373,8 @@ $texto = static fn($valor) => htmlspecialchars(
                             data-marketing-mail-from
                             required>
 
-                        <div class="form-text">
-                            Escribe una cuenta conectada y autorizada para tu usuario.
-                            El sistema utilizará su API o SMTP autenticado; las cuentas
-                            nuevas requieren configuración del administrador.
-                        </div>
+                        <datalist id="correo_hostinger_remitentes"></datalist>
+                        <div class="form-text" data-hostinger-sender-status aria-live="polite"></div>
                     </div>
 
                     <div class="correo-marketing-recipient-card mb-3">
