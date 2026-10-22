@@ -113,6 +113,113 @@ document.addEventListener('DOMContentLoaded', () => {
             catch (e) { errorIn(error,e.message); aviso(e.message,'error'); loading=false; }
         });
     }
+    // Gestión independiente de contactos e historial para aliados manuales.
+    const modalContactosEl = document.getElementById('modalManualContactos');
+    const modalHistorialEl = document.getElementById('modalManualHistorial');
+    if (modalContactosEl && modalHistorialEl && window.bootstrap) {
+        const contactosModal = bootstrap.Modal.getOrCreateInstance(modalContactosEl);
+        const historialModal = bootstrap.Modal.getOrCreateInstance(modalHistorialEl);
+        const listaContactos = modalContactosEl.querySelector('[data-manual-contactos-list]');
+        const listaHistorial = modalHistorialEl.querySelector('[data-manual-historial-list]');
+        const formContacto = modalContactosEl.querySelector('[data-manual-contactos-form]');
+        const formHistorial = modalHistorialEl.querySelector('[data-manual-difusion-form]');
+        const errorContactos = modalContactosEl.querySelector('[data-manual-contactos-error]');
+        const errorHistorial = modalHistorialEl.querySelector('[data-manual-historial-error]');
+        let manualId = 0, contactosActuales = [];
+        const limpiarContacto = () => {
+            formContacto.reset(); formContacto.elements.id.value = String(manualId);
+            formContacto.elements.contacto_id.value = '';
+        };
+        const mostrarContactos = (datos) => {
+            contactosActuales = datos.contactos || [];
+            listaContactos.replaceChildren();
+            if (!contactosActuales.length) {
+                const p = document.createElement('p'); p.className = 'aliados-manual-empty';
+                p.textContent = 'Todavía no hay contactos adicionales registrados.';
+                listaContactos.appendChild(p);
+                return;
+            }
+            contactosActuales.forEach(c => {
+                const row = document.createElement('div'); row.className = 'aliados-manual-contact-row';
+                const txt = document.createElement('div');
+                const nombre = document.createElement('strong'); nombre.textContent = c.nombre;
+                const info = document.createElement('small');
+                info.textContent = [c.cargo,c.correo,c.telefono].filter(Boolean).join(' · ') + (Number(c.whatsapp_autorizado) ? ' · WhatsApp autorizado' : '');
+                txt.append(nombre,info);
+                const actions = document.createElement('div'); actions.className = 'd-flex gap-1';
+                const edit = document.createElement('button'); edit.type = 'button'; edit.className='btn btn-system-light';
+                edit.textContent = 'Editar'; edit.addEventListener('click',() => {
+                    for(const name of ['nombre','cargo','correo','telefono']) formContacto.elements[name].value = c[name] || '';
+                    formContacto.elements.contacto_id.value = c.id;
+                    formContacto.elements.whatsapp_autorizado.checked = Number(c.whatsapp_autorizado) === 1;
+                    formContacto.elements.nombre.focus();
+                });
+                const remove = document.createElement('button'); remove.type = 'button'; remove.className='btn btn-system-light';
+                remove.textContent = 'Desactivar';
+                remove.addEventListener('click', async () => {
+                    if (!confirm('¿Desactivar este contacto sin borrar su historial?')) return;
+                    const data = new FormData(); data.set('id',manualId); data.set('operacion','contacto_desactivar'); data.set('contacto_id',c.id);
+                    try { await request('registroGestion',data,true); aviso('Contacto desactivado.'); await recargarManual(); }
+                    catch(e) { errorIn(errorContactos,e.message); aviso(e.message,'error'); }
+                });
+                actions.append(edit,remove); row.append(txt,actions); listaContactos.appendChild(row);
+            });
+        };
+        const mostrarHistorial = (datos) => {
+            listaHistorial.replaceChildren();
+            if (!datos.historial?.length) {
+                const p=document.createElement('p');p.className='aliados-manual-empty';
+                p.textContent='Sin difusiones registradas. Registra aquí únicamente acciones que realmente se hayan realizado.';
+                listaHistorial.appendChild(p);
+                return;
+            }
+            datos.historial.forEach(h => {
+                const row=document.createElement('div');row.className='aliados-manual-contact-row';
+                const copy=document.createElement('div'),t=document.createElement('strong'),v=document.createElement('small');
+                t.textContent=h.canal+' · '+h.realizado_at;
+                v.textContent=[h.nota,h.responsable].filter(Boolean).join(' · ');
+                copy.append(t,v);row.appendChild(copy);listaHistorial.appendChild(row);
+            });
+        };
+        const recargarManual = async () => {
+            const d=await request('registroManualDatos',{id:manualId});
+            mostrarContactos(d);mostrarHistorial(d);
+        };
+        document.addEventListener('click',async event => {
+            const bContacto = event.target.closest('[data-registro-manual-contactos]');
+            const bHistorial = event.target.closest('[data-registro-manual-historial]');
+            const button = bContacto || bHistorial;
+            if (!button) return;
+            manualId=Number(button.dataset.registroManualContactos || button.dataset.registroManualHistorial || 0);
+            errorIn(errorContactos);errorIn(errorHistorial);limpiarContacto();
+            formHistorial.reset();formHistorial.elements.id.value=String(manualId);
+            (bContacto?contactosModal:historialModal).show();
+            try { await recargarManual(); }
+            catch(e) {errorIn(bContacto?errorContactos:errorHistorial,e.message);aviso(e.message,'error');}
+        });
+        modalContactosEl.querySelector('[data-manual-contacto-limpiar]').addEventListener('click', limpiarContacto);
+        formContacto.addEventListener('submit',async event => {
+            event.preventDefault();errorIn(errorContactos);
+            const button=formContacto.querySelector('[type=submit]');button.disabled=true;
+            try {
+                const data=new FormData(formContacto);data.set('operacion','contacto_guardar');
+                await request('registroGestion',data,true);
+                aviso('Contacto guardado correctamente.');limpiarContacto();await recargarManual();
+            } catch(e){errorIn(errorContactos,e.message);aviso(e.message,'error');}
+            finally{button.disabled=false;}
+        });
+        formHistorial.addEventListener('submit',async event => {
+            event.preventDefault();errorIn(errorHistorial);
+            const button=formHistorial.querySelector('[type=submit]');button.disabled=true;
+            try {
+                const data=new FormData(formHistorial);data.set('operacion','difusion_manual');
+                await request('registroGestion',data,true);
+                aviso('Difusión realizada registrada en el historial.');
+                formHistorial.elements.nota.value='';await recargarManual();
+            } catch(e){errorIn(errorHistorial,e.message);aviso(e.message,'error');}
+            finally{button.disabled=false;}
+        });
+    }
     if (enlace) {
         let origin, id, version = 0, busy = false, current;
         const error = enlace.querySelector('[data-enlace-error]'), url = enlace.querySelector('[data-enlace-url]');
