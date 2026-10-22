@@ -211,31 +211,48 @@ def atomic(path,data,mode):
     os.replace(str(temp),str(path))
 def prepare(site,stage):
     plan=[]
+    incompatibles=[]
     for name,sha in SHA.items():
         desired=fetch(SOURCE,name)
-        if blob(desired)!=sha:raise RuntimeError("SHA origen inesperado: "+name)
+        if blob(desired)!=sha:
+            raise RuntimeError("SHA origen inesperado: "+name)
         old=None if name in NEW else fetch(BASE,name)
-        path=located(site,name)
+        try:
+            path=located(site,name)
+            live=path.read_bytes() if path.is_file() else None
+            if name=="app/controllers/ConvocatoriaController.php":
+                candidate=overlay_convocatoria_controller(live,old,desired)
+            elif name=="app/models/ConvocatoriaModel.php":
+                candidate=overlay_convocatoria_model(live,old,desired)
+            else:
+                candidate=combine(live,old,desired,stage,name)
+            if candidate!=live:
+                validate(name,candidate,stage,desired)
+                plan.append((name,path,live,candidate,stat.S_IMODE(path.stat().st_mode) if live is not None else 0o644))
+                print("PREPARADO: "+name)
+            else:
+                print("SIN CAMBIOS: "+name)
+        except RuntimeError as error:
+            incompatibles.append(name+": "+str(error))
+            print("CONFLICTO DETECTADO: "+name+"; se conserva sin cambios")
+    try:
+        path=located(site,MODULE)
         live=path.read_bytes() if path.is_file() else None
-        if name=="app/controllers/ConvocatoriaController.php":
-            candidate=overlay_convocatoria_controller(live,old,desired)
-        elif name=="app/models/ConvocatoriaModel.php":
-            candidate=overlay_convocatoria_model(live,old,desired)
-        else:
-            candidate=combine(live,old,desired,stage,name)
+        candidate=module_patch(live)
         if candidate!=live:
-            validate(name,candidate,stage,desired)
-            plan.append((name,path,live,candidate,stat.S_IMODE(path.stat().st_mode) if live is not None else 0o644))
-            print("PREPARADO: "+name)
-        else:print("SIN CAMBIOS: "+name)
-    path=located(site,MODULE)
-    live=path.read_bytes() if path.is_file() else None
-    candidate=module_patch(live)
-    if candidate!=live:
-        validate(MODULE,candidate,stage,None)
-        plan.append((MODULE,path,live,candidate,stat.S_IMODE(path.stat().st_mode)))
-        print("INTEGRACIÓN MODULAR: scripts V3 en parcial (sin tocar crear_modal.php)")
-    else:print("SIN CAMBIOS: "+MODULE)
+            validate(MODULE,candidate,stage,None)
+            plan.append((MODULE,path,live,candidate,stat.S_IMODE(path.stat().st_mode)))
+            print("INTEGRACIÓN MODULAR: scripts V3 en parcial (sin tocar crear_modal.php)")
+        else:
+            print("SIN CAMBIOS: "+MODULE)
+    except RuntimeError as error:
+        incompatibles.append(MODULE+": "+str(error))
+        print("CONFLICTO DETECTADO: "+MODULE+"; se conserva sin cambios")
+    if incompatibles:
+        raise RuntimeError(
+            str(len(incompatibles))+" conflicto(s). SQL NO ejecutado; SITIO INTACTO.\\n - "+
+            "\\n - ".join(incompatibles)
+        )
     return plan
 def restore(site,backup):
     info=json.loads((backup/"respaldo.json").read_text(encoding="utf-8"))
