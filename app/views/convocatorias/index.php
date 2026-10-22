@@ -1322,9 +1322,16 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                             </div>
 
                             <?php if ($aliadoContextoConvocatoria): ?>
+                                <div class="convocatoria-aliado-enlace-estado">
+                                    <span data-aliado-habilitacion-estado></span>
+                                    <button type="button" class="btn btn-system-light" data-aliado-habilitar-registro hidden>Habilitar Registro</button>
+                                </div>
                                 <div class="convocatoria-aliado-qr-panel d-none" data-aliado-qr-panel>
                                     <canvas data-aliado-qr-canvas role="img" aria-label="Código QR del formulario de Registro del aliado"></canvas>
-                                    <button type="button" class="btn btn-system-light" data-aliado-qr-download><i class="bi bi-download"></i> Descargar QR del aliado</button>
+                                    <div class="d-flex flex-wrap gap-2 justify-content-center mt-2">
+                                        <button type="button" class="btn btn-system-light" data-aliado-qr-copy><i class="bi bi-copy"></i> Copiar QR</button>
+                                        <button type="button" class="btn btn-system-light" data-aliado-qr-download><i class="bi bi-download"></i> Descargar QR</button>
+                                    </div>
                                 </div>
                             <?php endif; ?>
                             <div
