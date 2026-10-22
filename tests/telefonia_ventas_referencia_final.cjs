@@ -43,9 +43,21 @@ const facts=(extra={})=>({pbx_call_id:ref,extension:'150',finalizada:true,conect
  immediate.button.click();
  assert.match(immediate.crm.src,/esperando_pbx=1/,'Formulario comunica que falta conciliación administrativa');
  assert.match(immediate.crm.src,/pbx_call_id=pbx-current-transfer-001/);
+ // Caso real: el cierre lo publicó finalizarEntrante() desde PBX; sdkEnded no existe.
+ const pbxFinish=await fixture();
+ pbxFinish.setState(state(true,{pbxCallId:ref,context:{type:'INCOMING',sdkConnected:true}}));
+ await pbxFinish.tick();
+ pbxFinish.setState(state(false,{pbxCallId:ref,status:'completed',context:{type:'INCOMING',sdkConnected:true}}));
+ await pbxFinish.tick();
+ assert.equal(pbxFinish.button.hidden,false);
+ assert.equal(pbxFinish.button.disabled,false,'Fin PBX compartido habilita registro sin sdkEnded');
+ assert.equal(pbxFinish.button.textContent,'Registrar resultado');
+ pbxFinish.button.click();
+ assert.match(pbxFinish.crm.src,/esperando_pbx=1/,'Backend sigue revalidando cierre');
+ // Durante una llamada viva, no permitir abrir el resultado.
  const uncertain=await fixture();
- uncertain.setState(state(false,{context:{type:'SDK_INCOMING',transferReference:ref,sdkConnected:true}}));
+ uncertain.setState(state(true,{pbxCallId:ref,context:{type:'INCOMING',sdkConnected:true}}));
  await uncertain.tick();
- assert(uncertain.button.disabled||uncertain.button.hidden,'Sin END SIP no habilitar registro ficticio');
+ assert(uncertain.button.disabled||uncertain.button.hidden,'Llamada viva no habilita resultado');
  console.log('OK: recuperación SDK exacta, PBX final prioritaria, referencias ajenas rechazadas y llamadas consecutivas aisladas');
 })().catch(e=>{console.error(e);process.exitCode=1;});
