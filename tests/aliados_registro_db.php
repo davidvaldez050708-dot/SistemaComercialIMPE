@@ -99,6 +99,17 @@ marketing();
 $opciones=$s->opcionesConvocatoria('manual',$id);
 check(count($opciones['opciones_convocatoria'])===2,'programas de aliado mapean a clasificaciones individuales');
 check(in_array('bachillerato|bachillerato-286',array_column($opciones['opciones_convocatoria'],'clasificacion'),true),'clasificación Bachillerato 286 correcta');
+$db->query("INSERT INTO convocatorias (titulo) VALUES ('Bachillerato 286 - Prueba')");
+$convocatoriaManual = (int)$db->insert_id;
+$publicacion = $db->prepare("INSERT INTO marketing_aliado_manual_convocatorias (manual_id,convocatoria_id,programa_codigo,creado_por) VALUES (?,?,'bachillerato-286',4)");
+$publicacion->bind_param('ii',$id,$convocatoriaManual);
+check($publicacion->execute(),'convocatoria por programa enlazada al aliado manual');
+$consultaManual = $s->manuales(1);
+check(count($consultaManual)===1 && (int)$consultaManual[0]['tiene_convocatoria']===1,'publicación manual reflejada en directorio');
+$institucionales = (new CrearConvocatoriaModel())->listarConveniosAliados();
+$registrosManuales = array_values(array_filter($institucionales,static fn($fila)=>(string)($fila['origen_tipo']??'')==='manual'));
+check(count($registrosManuales)===1 && (int)$registrosManuales[0]['tiene_convocatoria']===1,'estado Con convocatoria para Marketing sin seguimiento ficticio');
+
 check((int)$db->query('SELECT COUNT(*) n FROM seguimientos_vinculacion')->fetch_assoc()['n']===1,'sin expedientes ficticios en extensiones');
 cc();
 rejects(fn()=>$s->opcionesConvocatoria('manual',$id),'solo Marketing prepara convocatoria por programa');
