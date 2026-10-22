@@ -14,15 +14,16 @@
 
 ## Comprobación de compatibilidad en Hostinger
 
-Revisión inmutable del publicador: `273e1a8742e093c5ef2ebe228e51bc33c8f30667`.
+Revisión inmutable del publicador: `600e59adffd0c2bc6a29b5d061df5f576585e325` (corrección Python 3.6 y conciliación puntual de ConvocatoriaController.php).
 El publicador trae 13 archivos desde el commit `7f3548dd8600a83b329c4c68139b0e396d3aea3e` y verifica cada blob SHA. Conserva todos los archivos originales en respaldo privado y ejecuta `php -l`; usa `node --check` cuando Node está disponible. Si encuentra modificaciones personalizadas incompatibles, aborta.
 
 ```bash
 SITIO="$HOME/domains/fundacionrededumex.org/public_html"
 mkdir -p "$HOME/entregas-impe/aliados-v3"
 curl -fLsS --proto '=https' --tlsv1.2 \
-  "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/273e1a8742e093c5ef2ebe228e51bc33c8f30667/tools/publicar_ajustes_aliados_v3.py" \
+  "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/600e59adffd0c2bc6a29b5d061df5f576585e325/tools/publicar_ajustes_aliados_v3.py" \
   -o "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py"
+python3 -m py_compile "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py" &&
 python3 "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py" --check --site "$SITIO"
 ```
 
