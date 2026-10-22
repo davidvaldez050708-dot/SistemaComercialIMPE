@@ -134,38 +134,117 @@ def overlay_convocatoria_controller(local, old, desired):
     return result
 
 def overlay_convocatoria_model(local, old, desired):
-    """Reemplazar exclusivamente crear() si Hostinger no lo personalizó."""
+    """Conciliar solo seis cambios V3 dentro de crear(), sin sustituir otros ajustes.
+
+    Se exige que BASE -> SOURCE sea exactamente la transformacion revisada.
+    Un hunk personalizado, marcador duplicado o instalacion parcial bloquea todo.
+    """
     name="app/models/ConvocatoriaModel.php"
     if local is None or old is None:
         raise RuntimeError(name+": no existe base o modelo de producción")
     previous=lf(old)
     expected=lf(desired)
-    live=lf(local)
-    old_header=b"    public function crear($datos, $estadosIds)"
-    new_header="    /** Transacción común:".encode("utf-8")
+    old_header=b"    public function crear($datos, $estadosIds)\n"
+    new_signature=b"    public function crear($datos, $estadosIds, $transaccionExterna = false)\n"
+    new_header=b"    /** Transacci"
     after=b"    public function actualizar("
     old_start=previous.find(old_header)
     new_start=expected.find(new_header)
-    if min(old_start,new_start)<0:
-        raise RuntimeError(name+": faltan puntos de integración de crear()")
     old_end=previous.find(after,old_start)
     new_end=expected.find(after,new_start)
-    if min(old_end,new_end)<0 or previous[:old_start]!=expected[:new_start] or previous[old_end:]!=expected[new_end:]:
+    if min(old_start,new_start,old_end,new_end)<0 or (
+        previous[:old_start]!=expected[:new_start] or previous[old_end:]!=expected[new_end:]
+    ):
         raise RuntimeError(name+": revisión V3 modifica otras funciones; no fusionar")
     old_method=previous[old_start:old_end]
     new_method=expected[new_start:new_end]
-    if live.count(new_method)==1:
+    if lf(local).count(new_method)==1:
         print("CONSERVADO: "+name+" (transacción y vínculo V3 ya instalados)")
         return local
-    if live.count(old_method)!=1:
-        raise RuntimeError(name+": crear() fue personalizado; no cambiarlo sin revisar diferencias")
-    # Nada fuera de crear() puede ser alterado por esta conciliación.
-    local_method=old_method.replace(b"\n",b"\r\n") if b"\r\n" in local else old_method
-    patched_method=new_method.replace(b"\n",b"\r\n") if b"\r\n" in local else new_method
-    if local.count(local_method)!=1:
-        raise RuntimeError(name+": definición crear() no coincide exactamente con la base")
-    print("CONCILIACIÓN PUNTUAL: "+name+" (solo crear(); otras personalizaciones intactas)")
-    return local.replace(local_method,patched_method,1)
+
+    original_comment=(
+        "            // En la misma transacción: imagen/clasificación y origen manual indivisibles.\n"
+    ).encode("utf-8")
+    link_start=new_method.find(b"            // Se guarda el origen para TODO aliado")
+    link_end=new_method.find(original_comment,link_start)
+    sig_index=new_method.find(new_signature)
+    if min(link_start,link_end,sig_index)<0:
+        raise RuntimeError(name+": fragmentos V3 no reconocidos; detener")
+    new_preamble=new_method[:sig_index]+new_signature
+    link_block=new_method[link_start:link_end]
+    changes=(
+        (old_header,new_preamble),
+        (b"        $this->connection->begin_transaction();\n",
+         b"        if (!$transaccionExterna) $this->connection->begin_transaction();\n"),
+        (original_comment,link_block+original_comment),
+        (b"            $this->connection->commit();\n",
+         b"            if (!$transaccionExterna) $this->connection->commit();\n"),
+        (b"            $this->connection->rollback();\n",
+         b"            if (!$transaccionExterna) $this->connection->rollback();\n"),
+        (b"            error_log($error->getMessage());\n\n            return false;\n",
+         b"            error_log($error->getMessage());\n            if ($transaccionExterna) throw $error;\n            return false;\n")
+    )
+    # Probar que estos seis cambios reconstruyen EXACTAMENTE el SOURCE fijado.
+    reconstructed=old_method
+    for before,after_text in changes:
+        if reconstructed.count(before)!=1:
+            raise RuntimeError(name+": parche V3 fuera del contrato BASE")
+        reconstructed=reconstructed.replace(before,after_text,1)
+    if reconstructed!=new_method:
+        raise RuntimeError(name+": el parche no reproduce SOURCE; detener")
+
+    if b"\r\n" in local and b"\n" in local.replace(b"\r\n",b""):
+        raise RuntimeError(name+": saltos de línea mixtos no revisados; no modificar")
+    newline=b"\r\n" if b"\r\n" in local else b"\n"
+    raw_old_header=old_header.replace(b"\n",newline)
+    raw_new_sig=new_signature.replace(b"\n",newline)
+    if local.count(raw_new_sig):
+        # Reconocer instalacion completa aunque tenga personalizaciones adicionales.
+        if local.count(raw_new_sig)!=1:
+            raise RuntimeError(name+": firma de crear() duplicada")
+        at=local.find(raw_new_sig)
+        end=local.find(after,at)
+        section=local[at:end] if end>at else b""
+        prefix=new_preamble.replace(b"\n",newline)
+        start=local.find(prefix)
+        if start<0 or start>at or local.count(prefix)!=1:
+            raise RuntimeError(name+": métodos de lote incompletos; sitio intacto")
+        if all(section.count(new.replace(b"\n",newline))==1 for _,new in changes[1:]):
+            print("CONSERVADO: "+name+" (V3 ya instalada; métodos propios intactos)")
+            return local
+        raise RuntimeError(name+": método crear() parcialmente modificado; sitio intacto")
+
+    if local.count(raw_old_header)!=1 or local.count(after)!=1:
+        raise RuntimeError(name+": firma de crear() ausente o duplicada; sitio intacto")
+    at=local.find(raw_old_header)
+    end=local.find(after,at)
+    if end<0:
+        raise RuntimeError(name+": fin del método crear() no reconocido")
+    original_section=local[at:end]
+    if b"public function iniciarLote(" in local or b"marketing_aliado_convocatorias_origen" in original_section:
+        raise RuntimeError(name+": cambios V3 parciales o superpuestos; sitio intacto")
+    patched=original_section
+    for number,(before,new) in enumerate(changes,1):
+        source=before.replace(b"\n",newline)
+        output=new.replace(b"\n",newline)
+        if patched.count(source)!=1:
+            raise RuntimeError(name+": crear() personalizado sobre cambio crítico V3 "+str(number)+"; sitio intacto")
+        if patched.count(output):
+            raise RuntimeError(name+": V3 parcialmente instalada en cambio "+str(number))
+        patched=patched.replace(source,output,1)
+    candidate=local[:at]+patched+local[end:]
+    # Certificar que se conservan TODOS los bytes ajenos a los seis cambios.
+    reverse=patched
+    for before,new in reversed(changes):
+        source=before.replace(b"\n",newline)
+        output=new.replace(b"\n",newline)
+        if reverse.count(output)!=1:
+            raise RuntimeError(name+": reversibilidad no demostrada")
+        reverse=reverse.replace(output,source,1)
+    if reverse!=original_section:
+        raise RuntimeError(name+": personalizaciones alteradas; sitio intacto")
+    print("CONCILIACIÓN PUNTUAL: "+name+" (seis cambios V3; personalizaciones de crear() intactas)")
+    return candidate
 
 def combine(local,old,new,stage,name):
     if local is None:
