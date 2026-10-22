@@ -129,7 +129,7 @@ class TelefoniaGrabacionExpedienteTransferidaService
         if(count($sesiones)!==1)return null;
         $extension=(string)$sesiones[0]['extension'];
         if(!preg_match('/^[0-9]{3,6}$/D',$extension))return null;
-        $stmt=$this->db->prepare("SELECT referencia
+        $stmt=$this->db->prepare("SELECT referencia,sdk_consulta
             FROM telefonia_transferencia_operaciones
             WHERE destino_usuario=? AND destino_extension=BINARY ?
               AND sdk_consulta IS NOT NULL
@@ -137,7 +137,8 @@ class TelefoniaGrabacionExpedienteTransferidaService
             LIMIT 3");
         $stmt->bind_param('isss',$usuarioId,$extension,$session,$session);
         $stmt->execute();$rows=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
-        if(count($rows)!==1)return null;
+        if(count($rows)!==1||
+            !self::sdkDeTransferenciaCoincide((string)$rows[0]['sdk_consulta'],$session))return null;
         $pbx=(string)$rows[0]['referencia'];
         if(!preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$pbx))return null;
         try {
@@ -148,13 +149,20 @@ class TelefoniaGrabacionExpedienteTransferidaService
         }
     }
 
+    /** Nunca aceptar coincidencia por prefijo ni por proximidad temporal. */
+    public static function sdkDeTransferenciaCoincide(string $sdkConsulta,string $sesion): bool
+    {
+        return $sdkConsulta!=='' &&
+            ($sdkConsulta===$sesion || $sdkConsulta.'-external'===$sesion);
+    }
+
     /** El prefijo de interacción WebRTC no debe confundirse con el PBX. */
     public static function sessionIdExterno(string $externo): ?string
     {
         if(!str_starts_with($externo,'WEBRTC-'))return null;
         $id=substr($externo,7);
-        return strlen($id)>=6 && strlen($id)<=100 &&
-            preg_match('/^[A-Za-z0-9_.:-]+$/D',$id) ? $id : null;
+        // Misma convención usada al registrar la sesión telefónica.
+        return preg_match('/^sdk-[a-z0-9-]{12,94}$/D',$id) ? $id : null;
     }
 
     public static function numero10(string $numero): string
