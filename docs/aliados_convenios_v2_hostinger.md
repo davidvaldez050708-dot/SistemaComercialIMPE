@@ -27,7 +27,7 @@ PAQUETE="$HOME/entregas-impe/aliados-convenios-v2"
 mkdir -p "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 chmod 700 "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 curl -fL --proto '=https' --tlsv1.2 \
-"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/4408fceee10eb66d2cf87de21facf62cc845ccc1/tools/publicar_aliados_convenios_v2.py" \
+"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/a9db3cdf09cb239225e3a1b9cca056350b2dcf5e/tools/publicar_aliados_convenios_v2.py" \
 -o "$PAQUETE/publicar_aliados_convenios_v2.py"
 python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --check --site "$SITIO"
 ```
