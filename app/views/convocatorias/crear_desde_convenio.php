@@ -423,6 +423,7 @@ $fecha = static function ($valor) {
                     Cerrar
                 </button>
 
+                <?php if (!empty($puedeCrearDesdeConvenio)): ?>
                 <a
                     href="#"
                     class="btn btn-system-save crear-convocatoria-modal-create"
@@ -430,6 +431,7 @@ $fecha = static function ($valor) {
                     <i class="bi bi-megaphone"></i>
                     Crear convocatoria
                 </a>
+                <?php endif; ?>
             </div>
         </div>
     </div>
