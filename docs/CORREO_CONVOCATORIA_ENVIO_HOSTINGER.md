@@ -41,4 +41,16 @@ php "$IMPE_CORREOS_PUBLIC/tools/diagnosticar_envio_convocatoria.php" --check --c
 
 Guardar el comando `--restore` y respaldo exactos impresos por apply. El diagnóstico no hace consultas API ni envíos: verifica la delegación con un doble local y, si se indica convocatoria, hace SELECT y valida el archivo original. Esperar `autorizacion_delegada: true`, convocatoria 11 activa e `imagen_valida: true`. No muestra nombres de contactos, rutas ni credenciales.
 
-Pendiente de aceptación en Hostinger: aplicar, revisar diagnóstico, entrar al CRM, Ctrl+F5 y comprobar historial/proveedor de la solicitud anterior antes de crear una redacción nueva. Realizar **una sola prueba**, con autorización expresa y destinatario propio, verificar recepción, imagen visible y un único registro en historial. Una respuesta incierta no autoriza repetir. La autorización de esa prueba está registrada en la conversación; aún no acredita envío ni recepción. El navegador accesible inicialmente sólo mostraba login. No declarar terminado en producción únicamente por estas pruebas simuladas.
+Para comprobaciones posteriores: revisar diagnóstico, entrar al CRM, Ctrl+F5 y comprobar historial/proveedor de cualquier solicitud anterior antes de crear una redacción nueva. Una respuesta incierta no autoriza repetir un envío.
+
+## Resultado real en Hostinger — 22/10/2026
+
+El usuario ejecutó check compatible y apply de **dos archivos**, con respaldo reversible. El diagnóstico productivo confirmó delegación correcta, convocatoria 11 activa y PNG válido de **788 316 bytes**, SHA256 `1b326f526856cd4fa307d4a2285d2295024cd80b5b9c1be6daf4f4613175cca0`. No se cambiaron BD ni credenciales.
+
+Con autorización expresa de la conversación y sesión del usuario se creó una redacción nueva desde el CRM, asunto **Prueba convocatoria IMPE 11**, remitente institucional autorizado y destinatario de prueba propio. Guanajuato mostró #155 y manual #1 PRUEBA; al seleccionar el manual aparecieron únicamente las convocatorias 8, 9, 10 y 11. Se eligió la 11 con su imagen original.
+
+El primer intento fue rechazado por validación previa de Hostinger API, sin crear registro ni alcanzar el envío al buzón. Una consulta GET posterior devolvió los 50 buzones y el remitente autorizado. Tras comprobar el rechazo previo y ausencia de registro se volvió a presentar la solicitud: se completó **un solo correo**, sin repetir resultados inciertos. No se modificó el transporte para eludir ese rechazo.
+
+Prueba confirmada desde Gmail mediante el conector de la cuenta receptora: **un mensaje en INBOX**, asunto y texto exactos, From institucional esperado, MIME `multipart/related` con **una imagen PNG inline**, CID `convocatoria-11-1b326f526856cd4fa307` coincidente con el HTML y tamaño 788 316 bytes. Se descargó únicamente esa parte MIME para verificar SHA256: coincide por completo con el original de Hostinger. La recepción está confirmada, no sólo la aceptación de la API.
+
+El CRM devolvió **un resultado** al buscar el asunto; detalle con estado **Enviado**, proveedor **HOSTINGER_MAIL_API**, texto intacto e imagen/selección de convocatoria 11 conservadas. Capturas locales de historial e imagen guardadas en `tmp/`, sin versionar correos ni datos personales del destinatario. Envío/recepción registrados por Gmail a las 20:59:04 UTC. No se enviaron más mensajes ni se probaron contraseñas reales. Adjuntos manuales y límites de tamaño se verificaron con dobles, sin envíos adicionales.
