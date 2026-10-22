@@ -428,3 +428,71 @@
 @media (max-width: 767.98px) {
     .crear-convocatoria-module .convenios-tabla { min-width: 850px; }
 }
+
+/* Ajustes de producción V3 — aplicar únicamente en Aliados y Convenios. */
+.crear-convocatoria-module [data-convenios-territorios] { margin-top: 12px !important; }
+.crear-convocatoria-module [data-convenios-territorios] .data-territorial-card { min-height: 0; }
+.crear-convocatoria-module .convenio-territorio-card > a.btn::after { content: none !important; }
+.crear-convocatoria-module .convenio-territorio-card > a.btn {
+    align-self: stretch; width: 100%; margin-top: auto; font-weight: 700;
+}
+.crear-convocatoria-module .crear-convocatoria-toolbar-panel {
+    min-height: 0 !important; height: auto !important; padding: 20px 24px !important;
+}
+.crear-convocatoria-module .crear-convocatoria-toolbar {
+    align-items: end; min-height: 0 !important; margin-bottom: 0 !important;
+    grid-template-columns: minmax(230px,1.7fr) minmax(170px,.85fr) minmax(165px,.8fr) !important;
+    gap: 14px !important;
+}
+.crear-convocatoria-module .crear-convocatoria-filter-actions {
+    grid-column: 1 / -1; min-height: 0 !important; padding: 0 !important;
+}
+.crear-convocatoria-module .crear-convocatoria-filter-actions:has(.d-none) { display: none !important; }
+.crear-convocatoria-module .crear-convocatoria-toolbar-heading { margin-bottom: 14px !important; }
+.crear-convocatoria-module .convenios-tabla { min-width: 1010px; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(1) { width: 19%; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(2) { width: 19%; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(3) { width: 21%; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(4) { width: 17%; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(5) { width: 11%; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(6) { width: 13%; }
+.crear-convocatoria-module .convenios-tabla .convenios-cell-actions { white-space: normal; }
+.crear-convocatoria-module .convenios-cell-actions .crear-convocatoria-attention-badge {
+    display: inline-flex; vertical-align: middle; margin-bottom: 8px; padding: 5px 8px;
+}
+.crear-convocatoria-module .convenios-action-button {
+    display: inline-flex; width: auto; min-width: 105px; align-items: center; justify-content: center;
+    white-space: nowrap; font-size: 11px; padding: 9px 12px;
+}
+.crear-convocatoria-module .convenios-directorio-panel { border: 1px solid #dfe5ef; border-radius: 16px; }
+.convenios-detail-dialog { max-width: 850px; }
+.convenios-detail-modal .modal-header { padding: 22px 28px 16px; }
+.convenios-detail-modal .modal-body { padding: 20px 28px; }
+.convenios-detail-modal .crear-convocatoria-modal-grid {
+    gap: 12px; margin-bottom: 14px;
+}
+.convenios-detail-modal .crear-convocatoria-modal-grid > div {
+    box-shadow: none; background: #fff; border: 1px solid #e0e7f0;
+}
+.convenios-detail-meta, .convenios-detail-section {
+    padding: 14px 16px; margin: 12px 0; border: 1px solid #e0e7f0;
+    border-radius: 12px; background: #fff; color: #263650;
+}
+.convenios-detail-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; }
+.convenios-detail-meta > span, .convenios-detail-section > span {
+    display: block; color: #64748b; font-size: 11px; font-weight: 700; margin-bottom: 4px;
+}
+.convenios-detail-section > p { margin: 4px 0 0; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+.convenios-detail-programs p { color: #304a83; font-weight: 650; }
+@media(max-width:850px) {
+    .crear-convocatoria-module .crear-convocatoria-toolbar {
+        grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
+    }
+    .crear-convocatoria-module .crear-convocatoria-search { grid-column: 1 / -1; }
+}
+@media(max-width:575.98px) {
+    .crear-convocatoria-module .crear-convocatoria-toolbar { grid-template-columns: 1fr !important; }
+    .crear-convocatoria-module .crear-convocatoria-search { grid-column: auto; }
+    .convenios-detail-modal .modal-header, .convenios-detail-modal .modal-body { padding: 16px; }
+    .convenios-detail-meta { display: block; }
+}
