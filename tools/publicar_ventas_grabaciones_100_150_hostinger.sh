@@ -92,8 +92,11 @@ for row in SPECS['mods']:
         # El repositorio conserva marketing con CRLF; Hostinger puede usar
         # CRLF o LF. Normalizar ambos lados antes de comparar sin tocar
         # personalizaciones o tolerar código distinto.
-        before=before.replace('\r\n','\n')
-        after=after.replace('\r\n','\n')
+        # Algunos bloques de GitHub terminan justo en el CR de CRLF.
+        # Completar SOLO ese salto al normalizar evita un falso conflicto
+        # y conserva el limite del fragmento para comparar con exactitud.
+        before=(before+'\n' if before.endswith('\r') else before).replace('\r\n','\n')
+        after=(after+'\n' if after.endswith('\r') else after).replace('\r\n','\n')
         a=source.count(before);b=source.count(after)
         if a==1 and b==0:
             new=new.replace(before,after,1);oldhits+=1
