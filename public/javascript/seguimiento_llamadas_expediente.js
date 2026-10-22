@@ -704,10 +704,14 @@
                             button.disabled = true;
                             errorBox.hidden = true;
                             try {
+                                const institucionSaliente=llamada.grabacion_transferida_institucion===true;
                                 const url = new URL(
-                                    'prueba_telefonia/api/grabacion_transferida_pbx.php',
+                                    institucionSaliente
+                                        ? 'prueba_telefonia/api/grabacion_transferida_institucion.php'
+                                        : 'prueba_telefonia/api/grabacion_transferida_pbx.php',
                                     document.baseURI
                                 );
+                                if(institucionSaliente)url.searchParams.set('seguimiento_id',String(llamada.seguimiento_id||0));
                                 url.searchParams.set('pbx_call_id', pbxVerificado);
                                 url.searchParams.set('verificar', '1');
                                 const response = await fetch(url.toString(), {
@@ -720,7 +724,7 @@
                                 if (!info.ok || !info.disponible ||
                                     !Number.isInteger(info.segmentos) || info.segmentos < 1 ||
                                     !window.IMPE_TELEPHONY_SEGMENTS?.create(
-                                        host, url.toString(), info.segmentos
+                                        host, url.toString(), info.segmentos, info.segmentos_info||[]
                                     )) {
                                     throw new Error('La grabación todavía no está disponible en Zadarma.');
                                 }
