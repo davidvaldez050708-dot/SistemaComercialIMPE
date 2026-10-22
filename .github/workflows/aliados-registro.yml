@@ -75,6 +75,7 @@ jobs:
           node --check public/javascript/aliados_registro.js
           node --check public/javascript/aliados.js
           node --check public/javascript/crear_convocatoria.js
+          python3 -m py_compile tools/publicar_diseno_programas_aliados.py
       - name: Migración e integración con base real aislada
         run: |
           mkdir -p /tmp/respaldo-aliados
@@ -88,8 +89,10 @@ jobs:
         run: |
           node tests/aliados_registro_browser.cjs
           php tests/aliados_registro_snapshot.php
-      - name: Publicador reversible
-        run: python3 tests/publicacion_aliados_registro_test.py
+      - name: Publicadores reversibles
+        run: |
+          python3 tests/publicacion_aliados_registro_test.py
+          python3 tests/publicacion_diseno_programas_aliados_test.py
       - name: Compatibilidad con PR114 publicado (réplica aislada)
         env:
           IMPE_DB_NAME: impe_test_handly_aliados_pr114
