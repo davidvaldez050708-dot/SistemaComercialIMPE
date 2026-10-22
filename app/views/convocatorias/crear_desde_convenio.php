@@ -215,12 +215,7 @@ $fecha = static function ($valor) {
         </div>
 
         <section class="dashboard-panel crear-convocatoria-list-panel convenios-directorio-panel">
-            <div class="table-responsive convenios-tabla-wrap" data-convenio-list>
-                <table class="table aliados-table convenios-tabla align-middle mb-0">
-                    <thead><tr>
-                        <th>Aliado</th><th>Contacto</th><th>Programas ofertados</th><th>Origen</th><th>Registro</th><th class="text-end">Acciones</th>
-                    </tr></thead>
-                    <tbody>
+            <div class="convenios-group-list" data-convenio-list>
                 <?php foreach ($conveniosVisibles as $convenio): ?>
                     <?php
                     $payload = [
@@ -273,11 +268,11 @@ $fecha = static function ($valor) {
                     ?>
                     <?php if ($nombreMunicipioAnterior !== $payload['municipio']): ?>
                         <?php $nombreMunicipioAnterior = $payload['municipio']; ?>
-                        <tr class="convenios-municipio-header" data-convenio-municipio-header>
-                            <th colspan="6"><i class="bi bi-geo-alt" aria-hidden="true"></i> <?= $texto($payload['municipio'] ?: 'Sin municipio') ?></th>
-                        </tr>
+                        <div class="convenios-municipio-header" data-convenio-municipio-header>
+                            <strong><i class="bi bi-geo-alt" aria-hidden="true"></i> <?= $texto($payload['municipio'] ?: 'Sin municipio') ?></strong>
+                        </div>
                     <?php endif; ?>
-                    <tr class="convenios-fila" tabindex="0" role="button"
+                    <article class="convenios-fila convenios-list-row" tabindex="0" role="group"
                         aria-label="Ver convenio de <?= $texto($payload['institucion']) ?>"
                         data-convenio-notification
                         data-convenio-state="<?= (int)$payload['estado_id'] ?>"
@@ -291,20 +286,18 @@ $fecha = static function ($valor) {
                             JSON_UNESCAPED_SLASHES |
                             JSON_INVALID_UTF8_SUBSTITUTE
                         )) ?>'>
-                        <td><strong class="convenios-nombre"><?= $texto($payload['institucion']) ?></strong>
-                            <small><?= $texto($payload['municipio']) ?></small></td>
-                        <td><strong><?= $texto($payload['contacto'] ?: 'Sin contacto') ?></strong>
-                            <small><?= $texto($payload['correo_contacto'] ?: 'Sin correo') ?></small></td>
-                        <td><span class="convenios-programas"><?= $texto($payload['registro_programas'] ?: 'Sin programas de Registro') ?></span></td>
-                        <td><span class="convenios-etiqueta"><?= $payload['origen_tipo'] === 'manual' ? 'Relación manual' : 'Vinculación' ?></span>
-                            <small><?= $payload['origen_tipo'] === 'manual' ? 'Sin formalización documental' : 'Formalizado ' . $texto($payload['fecha_recibido']) ?></small></td>
-                        <td><span class="crear-convocatoria-state-badge"><?= $texto($payload['registro_estado']) ?></span></td>
-                        <td class="text-end convenios-cell-actions"><span class="crear-convocatoria-attention-badge <?= $payload['estado_atencion'] === 'con_convocatoria' ? 'is-done' : 'is-pending' ?>" data-convenio-card-attention><?= $texto($payload['estado_atencion_etiqueta']) ?></span>
-                            <button type="button" class="btn btn-system-save convenios-action-button" data-convenio-open><?= $payload['estado_atencion'] === 'con_convocatoria' ? 'Ver detalle' : 'Crear convocatoria' ?></button></td>
-                    </tr>
+                        <div class="convenios-list-cell convenios-cell-ally"><span class="convenios-cell-label">Aliado</span><strong class="convenios-nombre"><?= $texto($payload['institucion']) ?></strong>
+                            <small><?= $texto($payload['municipio']) ?></small></div>
+                        <div class="convenios-list-cell"><span class="convenios-cell-label">Contacto</span><strong><?= $texto($payload['contacto'] ?: 'Sin contacto') ?></strong>
+                            <small><?= $texto($payload['correo_contacto'] ?: 'Sin correo') ?></small></div>
+                        <div class="convenios-list-cell"><span class="convenios-cell-label">Programas ofrecidos</span><span class="convenios-programas"><?= $texto($payload['registro_programas'] ?: 'Sin programas de Registro') ?></span></div>
+                        <div class="convenios-list-cell"><span class="convenios-cell-label">Origen</span><span class="convenios-etiqueta"><?= $payload['origen_tipo'] === 'manual' ? 'Relación manual' : 'Vinculación' ?></span>
+                            <small><?= $payload['origen_tipo'] === 'manual' ? 'Sin formalización documental' : 'Formalizado ' . $texto($payload['fecha_recibido']) ?></small></div>
+                        <div class="convenios-list-cell convenios-cell-status"><span class="convenios-cell-label">Registro</span><span class="crear-convocatoria-state-badge"><?= $texto($payload['registro_estado']) ?></span></div>
+                        <div class="convenios-list-cell convenios-cell-actions"><span class="convenios-cell-label">Convocatoria</span><span class="crear-convocatoria-attention-badge <?= $payload['estado_atencion'] === 'con_convocatoria' ? 'is-done' : 'is-pending' ?>" data-convenio-card-attention><?= $texto($payload['estado_atencion_etiqueta']) ?></span>
+                            <button type="button" class="btn btn-system-save convenios-action-button" data-convenio-open><?= $payload['estado_atencion'] === 'con_convocatoria' ? 'Ver detalle' : 'Crear convocatoria' ?></button></div>
+                    </article>
                 <?php endforeach; ?>
-                    </tbody>
-                </table>
             </div>
 
             <div
