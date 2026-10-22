@@ -14,6 +14,11 @@ on:
       - 'tests/telefonia_ventas_operacion_browser.cjs'
       - 'tools/publicar_ventas_fin_analista_hostinger.sh'
       - 'tests/publicacion_ventas_fin_analista_test.py'
+      - 'app/services/TelefoniaResultadoVentasService.php'
+      - 'app/services/TelefoniaVentasLlamadasService.php'
+      - 'app/views/telefonia/ventas_llamadas.php'
+      - 'tools/publicar_ventas_resultado_sin_end_hostinger.sh'
+      - 'tests/publicacion_ventas_sin_end_test.py'
       - 'tools/diagnosticar_transferencia_ventas.php'
 jobs:
   formulario:
@@ -34,10 +39,14 @@ jobs:
           node --check tests/telefonia_ventas_conciliacion_tardia.cjs
           node --check tests/telefonia_ventas_operacion_browser.cjs
           node --check tests/telefonia_ventas_resultado_pendiente_browser.cjs
+          php -l app/services/TelefoniaResultadoVentasService.php
+          php -l app/services/TelefoniaVentasLlamadasService.php
+          php -l app/views/telefonia/ventas_llamadas.php
       - name: Publicador reversible en replica aislada
         run: |
           python3 tests/publicacion_ventas_paridad_test.py
           python3 tests/publicacion_ventas_fin_analista_test.py
+          python3 tests/publicacion_ventas_sin_end_test.py
           node tests/telefonia_ventas_referencia_final.cjs
           node tests/telefonia_ventas_conciliacion_tardia.cjs
       - name: Pruebas de navegador con PBX tardia
