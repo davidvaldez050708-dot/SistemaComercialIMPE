@@ -29,7 +29,7 @@ class PublicacionV2(unittest.TestCase):
         self.old=b".t { color: blue; }\n"+(b"/* bloque conservado */\n"*12)+b"/* descripcion original */\n"
         self.new=self.old.replace(b"color: blue",b"color: navy")
         self.name="public/css/aliados-prueba.css"
-        self.file=self.site/self.name;self.file.parent.mkdir(parents=True)
+        self.file=self.site/self.name;self.file.parent.mkdir(parents=True,exist_ok=True)
         self.file.write_bytes(self.old)
         pack=lambda t:base64.b64encode(gzip.compress(t)).decode("ascii")
         self.release=json.dumps({"source":mod.OLD,"files":[{"path":self.name,"target":pack(self.old)}]}).encode("utf-8")
