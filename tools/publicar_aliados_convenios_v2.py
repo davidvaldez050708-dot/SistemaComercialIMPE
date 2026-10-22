@@ -22,7 +22,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 # Commit inmutable revisado ANTES de este publicador. Nunca usar HEAD/main flotante.
-SOURCE = "1dc2cc3a33ebcf5e5aa09b7ec2361788a14e1f16"
+SOURCE = "01655dc1072adf287df995b5a95d24fa7a098c14"
 OLD = "bc8e5c1611e7bff62fc91e12af7166e9dc36861d"
 ROOT_URL = "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/"
 SHAS = {
@@ -34,12 +34,10 @@ SHAS = {
     "app/views/aliados/partials/registro_gestion.php": "51a775839ceda6b5fda0edc654cc272bc5c6e946",
     "app/views/convocatorias/crear_desde_convenio.php": "3c81e8e8b5bac9949fb8129700909066aba08046",
     "app/views/convocatorias/index.php": "a99399d125b11e4b74bc46baa5e725a4691dda6e",
-    "app/views/layout/dashboard_head.php": "a0d2267eff273354f7b6d6e3c4c96e5033210e4f",
+    "app/views/layout/dashboard_head.php": "c0def1d5a5963ed90373ab77d671432e8f4375cf",
     "database/migrations/2026_10_22_aliados_manuales_contactos_difusion.sql": "bcaeffa1f60a88582eba17e16929c3020d47ad9f",
     "database/migrations/2026_10_22_marketing_convocatorias_aliados_manuales.sql": "393d5555bb9045e3d861ced699214f899467416d",
-    "public/css/aliados_v2_extension.css": "e3247877d578fb9224befcb3fad0c6b664452198",
-    "public/css/convocatorias.css": "524544a8cfc3d885ea54652fb0c31e90285da159",
-    "public/css/crear_convocatoria.css": "81b17891c723ad17baf9c6948092cbc9ba3b83fc",
+    "public/css/aliados_v2_extension.css": "11b7f0e40b98e70747006e9ff7ee40dec9944371",
     "public/javascript/aliados_registro.js": "eafbb8ebfe992fb4d4a7302690b891a331c1b5b8",
     "public/javascript/convocatorias_aliado_programas.js": "2991e0b05ca50f1abea0c33bed8e1773d2b034f3",
     "public/javascript/crear_convocatoria.js": "8f813ba726349f046156e920f4cff7f37b6289ea",
@@ -204,7 +202,7 @@ def prepare(site,stage,verbose=False,require_validated=True):
     original_css=sitepath(site,"public/css/aliados.css")
     if not original_css.is_file():
         raise RuntimeError("Falta hoja base de Aliados; no se instala la extensión visual V2")
-    print("CONSERVADO: public/css/aliados.css (personalizaciones intactas; se instalará hoja complementaria)")
+    print("CONSERVADO: 3 CSS base personalizados (aliados.css, convocatorias.css, crear_convocatoria.css)")
     for name,expected in SHAS.items():
         if name=="app/views/convocatorias/index.php":
             # Hostinger ya utiliza crear_modal.php y JS compartido separados.
