@@ -55,7 +55,7 @@ class PublicadorAjustesV3Test(unittest.TestCase):
         file="app/controllers/ConvocatoriaController.php"
         old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
         target=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
-        addition=b"    // IMPE_HOSTINGER_PRUEBA_PRESERVAR: teléfono y convocatorias existentes\\n"
+        addition=("    // IMPE_HOSTINGER_PRUEBA_PRESERVAR: teléfono y convocatorias existentes\n").encode("utf-8")
         anchor=b"    public function listadoFiltrado()"
         self.assertEqual(old.count(anchor),1)
         live=old.replace(anchor,addition+anchor)
@@ -63,7 +63,7 @@ class PublicadorAjustesV3Test(unittest.TestCase):
         self.assertIn(addition,merged)
         self.assertEqual(merged.count(b"public function guardarProgramasAliado("),1)
         self.assertEqual(module.overlay_convocatoria_controller(merged,old,target),merged)
-        first=merged.index(b"    /**\\n     * Crea una publicación real por programa autorizado")
+        first=merged.index(("    /**\n     * Crea una publicación real por programa autorizado").encode("utf-8"))
         last=merged.index(b"    public function actualizar()",first)
         self.assertEqual(merged[:first]+merged[last:],live)
         with tempfile.TemporaryDirectory() as dirname:
@@ -77,18 +77,18 @@ class PublicadorAjustesV3Test(unittest.TestCase):
         file="app/controllers/ConvocatoriaController.php"
         old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
         target=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
-        live=old.replace(b"\\n",b"\\r\\n")
+        live=old.replace(b"\n",b"\r\n")
         merged=module.overlay_convocatoria_controller(live,old,target)
         self.assertEqual(module.overlay_convocatoria_controller(merged,old,target),merged)
         self.assertIn(b"public function guardarProgramasAliado(",merged)
-        self.assertNotIn(b"\\n",merged.replace(b"\\r\\n",b""))
+        self.assertNotIn(b"\n",merged.replace(b"\r\n",b""))
 
     def test_convocatoria_controller_metodo_preexistente_diferente_se_rechaza(self):
         file="app/controllers/ConvocatoriaController.php"
         old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
         target=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
         custom=old.replace(b"    public function actualizar()",
-            b"    public function guardarProgramasAliado() { return false; }\\n"+
+            b"    public function guardarProgramasAliado() { return false; }\n"+
             b"    public function actualizar()",1)
         with self.assertRaisesRegex(RuntimeError,"ya existe guardarProgramasAliado"):
             module.overlay_convocatoria_controller(custom,old,target)
@@ -110,7 +110,7 @@ class PublicadorAjustesV3Test(unittest.TestCase):
         original=b"    public function buscarPorId($id)"
         self.assertEqual(old.count(original),1)
         changed=old.replace(original,
-            b"    // Personalizado en Hostinger: no editar\\n"+original,1)
+            b"    // Personalizado en Hostinger: no editar\n"+original,1)
         patched=module.overlay_convocatoria_model(changed,old,desired)
         self.assertIn(b"Personalizado en Hostinger",patched)
         self.assertIn(b"public function iniciarLote()",patched)
