@@ -96,7 +96,14 @@ class ConvocatoriaController
 
     public function index()
     {
-        $this->validarPermiso('convocatorias.ver');
+        $desdeConvenioSolicitado = (int)($_GET['desde_convenio'] ?? 0) === 1;
+        $creacionDesdeConvenio = $desdeConvenioSolicitado &&
+            puedeCrearConvocatoriaDesdeConvenio() &&
+            in_array((string)($_GET['aliado_tipo'] ?? ''), ['manual','institucional'], true) &&
+            (int)($_GET['aliado_id'] ?? 0) > 0;
+        if (!tienePermiso('convocatorias.ver') && !$creacionDesdeConvenio) {
+            $this->validarPermiso('convocatorias.ver');
+        }
 
         $modelo = new ConvocatoriaModel();
         $modelo->desactivarConvocatoriasVencidas();
@@ -108,7 +115,9 @@ class ConvocatoriaController
         $seguimientoOrigenId = (int)($_GET['seguimiento_id'] ?? 0);
         $convenioNombreOrigen = trim((string)($_GET['convenio_nombre'] ?? ''));
 
-        if ($estadoNombreSolicitado !== '') {
+        // El nombre en la URL es decorativo; desde Convenios prevalece el ID
+        // y se confronta con el estado real del aliado en la base de datos.
+        if (!$desdeConvenio && $estadoNombreSolicitado !== '') {
             foreach ($estados as $estadoDisponible) {
                 if (
                     strcasecmp(
@@ -134,8 +143,7 @@ class ConvocatoriaController
                 !in_array($aliadoOrigenTipo, ['manual','institucional'], true) ||
                 $aliadoOrigenId <= 0 ||
                 !$territorioSeleccionado ||
-                strcasecmp((string)($_SESSION['rol'] ?? ''), 'Marketing') !== 0 ||
-                !tienePermiso('formularios_aliados.gestionar_enlaces')
+                !puedeCrearConvocatoriaDesdeConvenio()
             ) {
                 http_response_code(403);
                 exit('No tienes acceso a este aliado.');
@@ -586,8 +594,7 @@ class ConvocatoriaController
         }
         $origenTipo = (string)($_POST['aliado_tipo'] ?? '');
         $origenId = (int)($_POST['aliado_id'] ?? 0);
-        if (strcasecmp((string)($_SESSION['rol'] ?? ''),'Marketing')!==0 ||
-            !tienePermiso('formularios_aliados.gestionar_enlaces') ||
+        if (!puedeCrearConvocatoriaDesdeConvenio() ||
             !in_array($origenTipo, ['manual','institucional'], true) || $origenId <= 0) {
             $respuesta(403, ['ok'=>false,'mensaje'=>'No tienes permiso para publicar convocatorias de este aliado.']);
         }
@@ -620,6 +627,9 @@ class ConvocatoriaController
             }
             $enlace = (string)($contexto['url'] ?? '');
             if ($enlace === '') {
+                if (strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') !== 0) {
+                    throw new DomainException('Solicita a Marketing generar y habilitar el enlace de Registro antes de publicar.',422);
+                }
                 $detalle = $servicio->enlace($origenTipo,$origenId,'generar');
                 $enlace = (string)($detalle['url'] ?? '');
             }
@@ -1035,16 +1045,16 @@ class ConvocatoriaController
             'Marketing'
         ) === 0;
 
+        // Cuenta Clave nunca obtiene cobertura global por tener 'gestionar'.
+        if ($rolId === 6) {
+            return 'CUENTA_CLAVE';
+        }
         if (
             $rolId === 1 ||
             $esMarketingSistema ||
             tienePermiso('convocatorias.gestionar')
         ) {
             return null;
-        }
-
-        if ($rolId === 6) {
-            return 'CUENTA_CLAVE';
         }
 
         if ($rolId === 4) {
