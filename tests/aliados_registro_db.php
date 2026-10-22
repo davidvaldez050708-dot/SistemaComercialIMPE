@@ -105,6 +105,16 @@ $convocatoriaManual = (int)$db->insert_id;
 $publicacion = $db->prepare("INSERT INTO marketing_aliado_manual_convocatorias (manual_id,convocatoria_id,programa_codigo,creado_por) VALUES (?,?,'bachillerato-286',4)");
 $publicacion->bind_param('ii',$id,$convocatoriaManual);
 check($publicacion->execute(),'convocatoria por programa enlazada al aliado manual');
+$origenManual = $db->prepare("INSERT INTO marketing_aliado_convocatorias_origen (convocatoria_id,origen_tipo,origen_id,programa_codigo,creado_por) VALUES (?,'manual',?,'bachillerato-286',4)");
+$origenManual->bind_param('ii',$convocatoriaManual,$id);
+check($origenManual->execute(),'vínculo de publicación manual y programa persistido');
+$db->query("INSERT INTO convocatorias (titulo) VALUES ('Inglés - Prueba')");
+$convocatoriaInstitucional = (int)$db->insert_id;
+$origenInstitucional = $db->prepare("INSERT INTO marketing_aliado_convocatorias_origen (convocatoria_id,origen_tipo,origen_id,programa_codigo,creado_por) VALUES (?,'institucional',10,'ingles',4)");
+$origenInstitucional->bind_param('i',$convocatoriaInstitucional);
+check($origenInstitucional->execute(),'vínculo institucional por programa sin expediente ficticio');
+check((int)$db->query("SELECT COUNT(*) n FROM marketing_aliado_convocatorias_origen")->fetch_assoc()['n']===2,'convocatorias independientes con origen por programa');
+
 $consultaManual = $s->manuales(1);
 check(count($consultaManual)===1 && (int)$consultaManual[0]['tiene_convocatoria']===1,'publicación manual reflejada en directorio');
 $institucionales = (new CrearConvocatoriaModel())->listarConveniosAliados();
