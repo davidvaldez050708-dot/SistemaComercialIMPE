@@ -145,6 +145,13 @@ document.addEventListener('DOMContentLoaded', () => {
             contextLabel.textContent = [origen.nombre_entidad, ubicacion].filter(Boolean).join(' · ');
             sourceCard.hidden = !sourceNumber;
             sourcePhone.textContent = sourceNumber || '—';
+            const sourceStatus = modalContactosEl.querySelector('[data-manual-source-whatsapp]');
+            const cleanNumber = value => String(value || '').replace(/\\D/g, '');
+            const confirmed = sourceNumber && contactosActuales.some(c =>
+                cleanNumber(c.telefono) === cleanNumber(sourceNumber) &&
+                Number(c.whatsapp_confirmado) === 1);
+            sourceStatus.textContent = confirmed ? 'WhatsApp confirmado' : 'WhatsApp no confirmado';
+            sourceStatus.classList.toggle('is-ready',Boolean(confirmed));
             listaContactos.replaceChildren();
             if (!contactosActuales.length) return;
             const heading = document.createElement('div');
