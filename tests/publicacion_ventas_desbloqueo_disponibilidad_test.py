@@ -30,6 +30,15 @@ with tempfile.TemporaryDirectory() as tmp:
             assert marker in older and marker in latest
             older=older.replace(marker,"            /* PERSONALIZACION CONTROLLER HOSTINGER */\n"+marker,1)
             latest=latest.replace(marker,"            /* PERSONALIZACION CONTROLLER HOSTINGER */\n"+marker,1)
+            # Un PHP personalizado puede usar comillas dobles para las
+            # claves de array_flip, manteniendo intactos los mismos campos.
+            previous_keys="'pbx_call_id','extension','finalizada','conectada','sdk_tokens'"
+            current_keys=previous_keys+",'solicitud_id','origen_extension'"
+            previous_double='"pbx_call_id","extension","finalizada","conectada","sdk_tokens"'
+            assert older.count(previous_keys)==1
+            assert latest.count(current_keys)==1
+            older=older.replace(previous_keys,previous_double,1)
+            latest=latest.replace(current_keys,previous_double+",'solicitud_id','origen_extension'",1)
         suffix='\n/* HOSTINGER PERSONALIZACION AJENA */\n'
         eol='\r\n' if i%2 else '\n'
         initial=(older+suffix).replace('\n',eol).encode('utf8')
