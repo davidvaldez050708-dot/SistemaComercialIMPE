@@ -18,6 +18,6 @@ $db->query("CREATE TABLE seguimientos_vinculacion_post_envio (seguimiento_id INT
 $db->query("INSERT INTO seguimientos_vinculacion_post_envio VALUES (10,CURDATE(),'Convenio real','DOC-1',NOW(),3)");
 $db->query("CREATE TABLE aliados_asignaciones (id INT PRIMARY KEY,seguimiento_id INT,cuenta_clave_usuario_id INT,origen_asignacion VARCHAR(30),asignado_at DATETIME,activo INT) ENGINE=InnoDB");
 $db->query("INSERT INTO aliados_asignaciones VALUES (1,10,2,'FORMALIZACION',NOW(),1)");
-$db->query("CREATE TABLE convocatorias (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, titulo VARCHAR(180) DEFAULT '') ENGINE=InnoDB");
+$db->query("CREATE TABLE convocatorias (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, titulo VARCHAR(180) DEFAULT '') ENGINE=InnoDB");
 $db->query("CREATE TABLE aliados_convocatorias_envios (id INT PRIMARY KEY,seguimiento_id INT,convocatoria_titulo VARCHAR(180),canal VARCHAR(20),enviado_at DATETIME,estado_envio VARCHAR(30)) ENGINE=InnoDB");
 echo "OK: fixture territorial e institucional\n";
