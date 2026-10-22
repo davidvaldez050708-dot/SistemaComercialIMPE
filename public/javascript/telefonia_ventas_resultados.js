@@ -138,7 +138,7 @@
    if(audio.disabled)return;audio.disabled=true;
    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
    try{
-    const transferred=Boolean(audio.closest('.linkage-call-history-card')?.querySelector('.linkage-call-history-identity span:nth-child(3)')) || false;
+    const transferred=audio.dataset.salesTransferida==='1';
     // El aviso de grabación no depende de un END PBX que no llegó. Para
     // transferencias el endpoint valida la operación y enumera NOTIFY_RECORD.
     if(root.dataset.evidenceUrl&&!transferred){
