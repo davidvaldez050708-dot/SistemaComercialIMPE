@@ -158,6 +158,13 @@
     if(!verified.ok||!data.ok||!data.disponible)throw Error(window.IMPE_TELEPHONY_SEGMENTS.message(data,verified.status));
     if(!window.IMPE_TELEPHONY_SEGMENTS?.create?.(slot,url.href,Number(data.segmentos),data.segmentos_info||[]))throw Error('No se cargo el reproductor.');
     slot.dataset.loaded='1';
+    if(transferred){
+     const count=Number(data.segmentos)||0;
+     audio.dataset.segments=String(count);
+     // Una porción en preparación nunca oculta el audio ya verificado.
+     audio.childNodes.forEach(node=>{if(node.nodeType===3)node.textContent=' '+(count===1?'Consultar grabación':'Consultar '+count+' grabaciones')+' ';});
+     audio.parentElement.querySelector('[data-sales-audio-state]')?.remove();
+    }
    }catch(error){notify(error.name==='AbortError'?'La consulta tardo demasiado. Vuelve a intentar.':error.message,true);return;}
    finally{clearTimeout(timeout);audio.disabled=false;}
   }
