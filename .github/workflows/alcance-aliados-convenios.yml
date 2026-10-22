@@ -1,0 +1,45 @@
+name: Aliados y Convenios - permisos territoriales
+
+on:
+  pull_request:
+    paths:
+      - 'app/controllers/AliadoController.php'
+      - 'app/controllers/CrearConvocatoriaController.php'
+      - 'app/controllers/ConvocatoriaController.php'
+      - 'app/helpers/PermissionHelper.php'
+      - 'app/models/CrearConvocatoriaModel.php'
+      - 'app/services/AliadoRegistroService.php'
+      - 'app/views/aliados/index.php'
+      - 'app/views/convocatorias/crear_desde_convenio.php'
+      - 'tests/convenios_alcance_roles_test.php'
+      - 'tools/publicar_alcance_aliados_convenios_20261022.py'
+  workflow_dispatch:
+
+jobs:
+  validar-permisos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis PHP de los ocho archivos
+        run: |
+          for archivo in \
+            app/helpers/PermissionHelper.php \
+            app/controllers/AliadoController.php \
+            app/views/aliados/index.php \
+            app/controllers/CrearConvocatoriaController.php \
+            app/models/CrearConvocatoriaModel.php \
+            app/views/convocatorias/crear_desde_convenio.php \
+            app/services/AliadoRegistroService.php \
+            app/controllers/ConvocatoriaController.php; do php -l "$archivo" || exit 1; done
+      - name: Matriz de permisos sin SQL
+        run: php tests/convenios_alcance_roles_test.php
+      - name: Sintaxis Python 3 y revisión estática del publicador
+        run: |
+          python3 -m py_compile tools/publicar_alcance_aliados_convenios_20261022.py
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          path = Path('tools/publicar_alcance_aliados_convenios_20261022.py')
+          ast.parse(path.read_text(encoding='utf8'), feature_version=(3, 6))
+          print('OK: sintaxis Python 3.6 compatible')
+          PY
