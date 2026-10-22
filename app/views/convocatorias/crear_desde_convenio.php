@@ -98,7 +98,7 @@ $fecha = static function ($valor) {
                 </div>
             </div>
         </section>
-        <div class="crear-convocatoria-results" aria-live="polite"><span data-convenios-territorio-contador><?= count($estados) ?> territorios</span></div>
+        <span class="visually-hidden" aria-live="polite" data-convenios-territorio-contador><?= count($estados) ?> territorios disponibles</span>
         <section class="data-territorial-cards linkage-territory-grid aliados-territory-grid" data-convenios-territorios aria-label="Estados con convenios">
             <?php foreach ($estados as $estadoTarjeta): ?>
                 <?php
@@ -119,7 +119,7 @@ $fecha = static function ($valor) {
                         </div>
                     </div>
                     <dl class="data-card-meta"><div><dt>Aliados</dt><dd><?= $cantidadEstado ?> <?= $cantidadEstado === 1 ? 'convenio' : 'convenios' ?></dd></div></dl>
-                    <a class="btn btn-system-light" href="<?= $texto($enlaceEstado) ?>">Ver convenios <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                    <a class="btn btn-system-light" href="<?= $texto($enlaceEstado) ?>">Ver convenios</a>
                 </article>
             <?php endforeach; ?>
         </section>
@@ -299,8 +299,8 @@ $fecha = static function ($valor) {
                         <td><span class="convenios-etiqueta"><?= $payload['origen_tipo'] === 'manual' ? 'Relación manual' : 'Vinculación' ?></span>
                             <small><?= $payload['origen_tipo'] === 'manual' ? 'Sin formalización documental' : 'Formalizado ' . $texto($payload['fecha_recibido']) ?></small></td>
                         <td><span class="crear-convocatoria-state-badge"><?= $texto($payload['registro_estado']) ?></span></td>
-                        <td class="text-end"><span class="crear-convocatoria-attention-badge <?= $payload['estado_atencion'] === 'con_convocatoria' ? 'is-done' : 'is-pending' ?>" data-convenio-card-attention><?= $texto($payload['estado_atencion_etiqueta']) ?></span>
-                            <i class="bi bi-chevron-right convenios-fila-flecha" aria-hidden="true"></i></td>
+                        <td class="text-end convenios-cell-actions"><span class="crear-convocatoria-attention-badge <?= $payload['estado_atencion'] === 'con_convocatoria' ? 'is-done' : 'is-pending' ?>" data-convenio-card-attention><?= $texto($payload['estado_atencion_etiqueta']) ?></span>
+                            <button type="button" class="btn btn-system-save convenios-action-button" data-convenio-open><?= $payload['estado_atencion'] === 'con_convocatoria' ? 'Ver detalle' : 'Crear convocatoria' ?></button></td>
                     </tr>
                 <?php endforeach; ?>
                     </tbody>
@@ -325,8 +325,8 @@ $fecha = static function ($valor) {
     tabindex="-1"
     aria-labelledby="modalConvenioCrearConvocatoriaTitulo"
     aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content crear-convocatoria-modal">
+    <div class="modal-dialog modal-dialog-centered modal-lg convenios-detail-dialog">
+        <div class="modal-content crear-convocatoria-modal convenios-detail-modal">
             <div class="modal-header">
                 <div>
                     <span class="crear-convocatoria-modal-kicker">
@@ -397,13 +397,13 @@ $fecha = static function ($valor) {
                     </div>
                 </div>
 
-                <div class="crear-convocatoria-modal-notes"><span>Origen</span><p data-convenio-origin-label></p></div>
-                <div class="crear-convocatoria-modal-notes">
+                <div class="convenios-detail-meta"><span>Origen del aliado</span><strong data-convenio-origin-label>—</strong></div>
+                <div class="convenios-detail-section">
                     <span>Notas del convenio / formalización</span>
                     <p data-convenio-modal-notes>Sin notas registradas.</p>
                 </div>
 
-                <div class="crear-convocatoria-modal-notes">
+                <div class="convenios-detail-section convenios-detail-programs">
                     <span>Programas autorizados</span>
                     <p data-convenio-modal-programas>Los programas se seleccionan al crear la convocatoria.</p>
                 </div>
