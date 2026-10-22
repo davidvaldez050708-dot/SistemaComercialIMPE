@@ -1,5 +1,7 @@
 # Reparación de carga y menús de filtros de Correos (v2)
 
+Para incluir aliados de origen manual sobre esta versión, usar la [corrección selectiva de convenios manuales](CORREOS_CONVENIOS_MANUALES_HOSTINGER.md). El publicador v2 de esta página queda congelado y no incluye ese origen.
+
 [PR #127](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/pull/127), rama `codex/correos-filtros-convocatorias`. Corrección/publicador: **4927401116d04f907ce5a1f4b4e29d107bce26d5**. Publicador `filtros-correo-v2-eb35c0459e99d9d5`.
 
 ## Causa comprobada
