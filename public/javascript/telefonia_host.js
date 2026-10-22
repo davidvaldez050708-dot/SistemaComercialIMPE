@@ -2062,6 +2062,25 @@
             answeredAtMs=connected?(state.answeredAtMs||Date.now()):0;
             publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,sdkInviteId:state.context?.sdkInviteId,sdkSessionId:state.callToken,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
         },
+        receiverEnded:(op,token,endedSession)=>{
+            // ENTREGADA sólo la acredita la PBX para la extensión propia.
+            // No procesar eventos de la sesión antigua o de otra llamada.
+            if(!config.salesSdkIncoming||!state.active||state.direction!=='incoming'||
+                !endedSession?.isEnded?.()||
+                op.estado!=='ENTREGADA'||!state.context?.sdkConnected||
+                String(token||'')!==String(state.callToken||'')||
+                String(state.context?.transferReference||'')!==String(op.referencia||'')||
+                String(state.context?.transferOperation||'')!==String(op.id||''))return;
+            const live=window.zdrmWebPhone?.webCallSession;
+            if(live&&live!==endedSession&&!live.isEnded?.())return;
+            const ref=String(op.referencia||''),duration=currentDuration();
+            answeredAtMs=0;retirePbxCall(ref);
+            publish({active:false,phase:'incoming-finished',status:'ended-unconfirmed',
+                pbxCallId:ref,duration,
+                context:{...state.context,sdkEnded:true,transferPendingReceiver:false},
+                message:'La sesión SIP terminó. Evidencia PBX pendiente.'});
+            ocultarHostEntrante();marcarPestanaEntrante('');
+        },
         consultEnded:op=>{
             if(!state.active)return;
             if(op.modo==='DIRECTA'){
