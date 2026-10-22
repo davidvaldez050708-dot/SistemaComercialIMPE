@@ -128,6 +128,39 @@
             }).show();
         };
 
+        const estadoRemitente = modalElement.querySelector('[data-hostinger-sender-status]');
+        const opcionesRemitente = modalElement.querySelector('#correo_hostinger_remitentes');
+        let remitentesPermitidos = null;
+        let consultaRemitentes = 0;
+        const validarRemitenteVisible = function () {
+            const correo = String(remitente?.value || '').trim().toLowerCase();
+            const permitido = Array.isArray(remitentesPermitidos) && remitentesPermitidos.includes(correo);
+            if (estadoRemitente && Array.isArray(remitentesPermitidos)) {
+                estadoRemitente.textContent = permitido ? 'Remitente Hostinger autorizado: ' + correo
+                    : 'Selecciona una dirección Hostinger autorizada de la lista. No se sustituirá el remitente.';
+            }
+            return permitido;
+        };
+        const cargarRemitentes = async function () {
+            const consulta = ++consultaRemitentes;
+            remitentesPermitidos = null;
+            if (estadoRemitente) { estadoRemitente.textContent = 'Consultando remitentes Hostinger…'; }
+            try {
+                const response = await fetch('index.php?controller=correoMarketing&action=remitentes', {headers:{'X-Requested-With':'fetch'},cache:'no-store'});
+                const json = await response.json();
+                if (consulta !== consultaRemitentes) { return; }
+                if (!response.ok || !json.ok) { throw new Error(json.mensaje || 'No se pudieron consultar los remitentes Hostinger.'); }
+                remitentesPermitidos = json.remitentes;
+                opcionesRemitente?.replaceChildren();
+                remitentesPermitidos.forEach(function (correo) {
+                    const option = document.createElement('option'); option.value = correo; opcionesRemitente?.appendChild(option);
+                });
+                validarRemitenteVisible();
+            } catch (error) { if (consulta === consultaRemitentes && estadoRemitente) { estadoRemitente.textContent = error.message; } }
+        };
+        modalElement.addEventListener('shown.bs.modal', cargarRemitentes);
+        remitente?.addEventListener('input', validarRemitenteVisible);
+
         const mostrarError = function (mensaje) {
             mostrarToast(
                 mensaje || 'No fue posible enviar el correo.',
@@ -1292,6 +1325,10 @@
                 mostrarError('Escribe el mensaje antes de enviarlo.');
                 cuerpo?.focus();
                 return;
+            }
+
+            if (!validarRemitenteVisible()) {
+                mostrarError(estadoRemitente?.textContent || 'Selecciona un remitente Hostinger autorizado.'); remitente?.focus(); return;
             }
 
             const errorArchivos = validarArchivos();

@@ -44,6 +44,7 @@ class MarketingStmt {
 class MarketingSender extends CorreoSalidaInstitucionalService {
     public $calls = 0, $reject = false, $last;
     public function __construct() {}
+    public function validarRemitente(string $from, int $user): array { return ['ok'=>true]; }
     public function enviar($data) {
         $this->calls++; $this->last = $data;
         return $this->reject ? ['ok' => false, 'estado_entrega' => 'RECHAZADO', 'mensaje' => 'Rechazo de prueba']

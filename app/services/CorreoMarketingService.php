@@ -731,6 +731,9 @@ class CorreoMarketingService
             );
         }
 
+        $autorizacion = $this->sender->validarRemitente($remitente, $usuarioId);
+        if (empty($autorizacion['ok'])) { return $autorizacion; }
+
         $preparacion = $this->prepararAdjuntos($archivos);
         if (!($preparacion['ok'] ?? false)) {
             return $preparacion;

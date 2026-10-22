@@ -2,7 +2,6 @@
 
 require_once __DIR__ . '/FirmaCorreoService.php';
 require_once __DIR__ . '/CorreoCuentaConectadaService.php';
-require_once __DIR__ . '/CorreoSmtpTransport.php';
 require_once __DIR__ . '/CorreoEnvioControl.php';
 
 class CorreoSalidaInstitucionalService
@@ -16,6 +15,7 @@ class CorreoSalidaInstitucionalService
     private $mailerFactory;
     private $cuentas;
     private $apiRequest;
+    private $hostinger;
 
     public function __construct(?callable $mailerFactory = null, ?CorreoCuentaConectadaService $cuentas = null, ?callable $apiRequest = null)
     {
@@ -23,7 +23,17 @@ class CorreoSalidaInstitucionalService
         $this->mailerFactory = $mailerFactory;
         $this->cuentas = $cuentas ?? new CorreoCuentaConectadaService();
         $this->apiRequest = $apiRequest;
+        $this->hostinger = new CorreoHostingerApiService($apiRequest);
+        $this->cuentas->configurarConsultaApi([$this->hostinger, 'solicitar']);
         $this->firmaService = new FirmaCorreoService();
+    }
+
+    public function remitentes(int $user): array { return $this->cuentas->remitentes($user); }
+
+    public function validarRemitente(string $from, int $user): array
+    {
+        $r=$this->cuentas->resolver($from,$user);
+        return empty($r['ok']) ? $r : ['ok'=>true,'remitente'=>$from];
     }
 
     public function enviar($datos)
@@ -35,7 +45,7 @@ class CorreoSalidaInstitucionalService
         /*
          * Compatibilidad con módulos existentes: si el llamador todavía no
          * manda usuario_id, reutilizamos el usuario autenticado de la sesión.
-         * Así todos los envíos interactivos usan la cuenta SMTP personal.
+         * Todos los envíos comerciales validan el remitente con la API central.
          */
         if ($usuarioId <= 0 && isset($_SESSION['usuario_id'])) {
             $usuarioId = (int)$_SESSION['usuario_id'];
@@ -80,8 +90,6 @@ class CorreoSalidaInstitucionalService
             return $this->error('El asunto o el mensaje supera el tamaño permitido.', 422);
         }
 
-        $rutaFirma = $this->firmaService->obtenerRuta($remitente);
-
         try {
             $connection = $this->cuentas->resolver($remitente, $usuarioId, $perfilMarketing);
         } catch (Throwable $error) {
@@ -90,6 +98,7 @@ class CorreoSalidaInstitucionalService
         }
         if (empty($connection['ok'])) { return $connection; }
         $account = $connection['account'];
+        $rutaFirma = $this->firmaService->obtenerRuta($remitente);
         $send = function () use ($account, $remitente, $nombreRemitente, $destinatario, $nombreDestinatario,
             $asunto, $cuerpo, $rutaFirma, $imagenesEmbebidas, $adjuntos, $htmlAdicional) {
             if ($account['transport'] === 'hostinger_api') {
@@ -100,8 +109,7 @@ class CorreoSalidaInstitucionalService
                 return $this->enviarHostinger($remitente, $nombreRemitente, $destinatario, $asunto, $cuerpo, $rutaFirma,
                     ['token' => $account['api_token'], 'base_url' => $base], $imagenesEmbebidas, $adjuntos, $htmlAdicional, true, $remitente);
             }
-            return $this->enviarSmtp($remitente, $nombreRemitente, $destinatario, $nombreDestinatario, $asunto, $cuerpo,
-                $rutaFirma, $imagenesEmbebidas, $adjuntos, $htmlAdicional, $account);
+            return $this->error('El envío comercial sólo admite Hostinger Mail API.', 422);
         };
         $attachments = array_map(static function ($a) { return [$a['nombre'], hash_file('sha256', $a['ruta'])]; }, array_merge($adjuntos, $imagenesEmbebidas));
         $fingerprint = hash('sha256', json_encode([$usuarioId, $remitente, $destinatario, $asunto, $cuerpo, $htmlAdicional, $attachments,
@@ -306,7 +314,7 @@ class CorreoSalidaInstitucionalService
             $payload
         );
 
-        if (!($respuesta['ok'] ?? false)) {
+        if (!($respuesta['ok'] ?? false) || (int)($respuesta['codigo_http'] ?? 0) !== 204) {
             $code = (int)($respuesta['codigo_http'] ?? 502);
             $unknown = !empty($respuesta['incierto']) || $code >= 500 || $code < 400 || $code === 408;
             return ['ok' => false, 'codigo_http' => 502, 'proveedor' => 'HOSTINGER_MAIL_API',
@@ -596,57 +604,7 @@ class CorreoSalidaInstitucionalService
 
     private function solicitarHostinger($metodo, $url, $token, $payload)
     {
-        if ($this->apiRequest) { return ($this->apiRequest)($metodo, $url, $token, $payload); }
-        $curl = curl_init($url);
-        $headers = [
-            'Accept: application/json',
-            'Authorization: Bearer ' . $token
-        ];
-
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_CUSTOMREQUEST, strtoupper((string)$metodo));
-        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($curl, CURLOPT_TIMEOUT, 30);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 2);
-        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
-
-        if (is_array($payload)) {
-            $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            if ($json === false) {
-                curl_close($curl);
-                return [
-                    'ok' => false,
-                    'codigo_http' => 500
-                ];
-            }
-            $headers[] = 'Content-Type: application/json';
-            curl_setopt($curl, CURLOPT_POSTFIELDS, $json);
-        }
-
-        curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
-        $respuesta = curl_exec($curl);
-        $codigo = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        $error = curl_error($curl);
-        curl_close($curl);
-
-        if ($respuesta === false || $error !== '') {
-            error_log('MAIL_TRANSPORT hostinger_connection_failed');
-            return ['ok' => false, 'codigo_http' => 502, 'incierto' => strtoupper($metodo) === 'POST'];
-        }
-
-        $jsonRespuesta = json_decode((string)$respuesta, true);
-        $ok = $codigo >= 200 && $codigo < 300;
-
-        if (!$ok) {
-            error_log('MAIL_TRANSPORT hostinger_http=' . $codigo);
-        }
-
-        return [
-            'ok' => $ok,
-            'codigo_http' => $codigo > 0 ? $codigo : 502,
-            'json' => is_array($jsonRespuesta) ? $jsonRespuesta : []
-        ];
+        return $this->hostinger->solicitar($metodo, $url, $token, $payload);
     }
 
     private function cargarHostinger()
