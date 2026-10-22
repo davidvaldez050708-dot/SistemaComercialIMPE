@@ -242,6 +242,8 @@ if ($esFormulariosDashboard) {
 }
 
 if ($esCrearConvocatoriaDashboard) {
+    // La navegación y las tablas de Convenios reutilizan las piezas visuales de Aliados.
+    $cssOpcionalDashboard[] = 'aliados.css';
     $cssOpcionalDashboard[] = 'crear_convocatoria.css';
 }
 
