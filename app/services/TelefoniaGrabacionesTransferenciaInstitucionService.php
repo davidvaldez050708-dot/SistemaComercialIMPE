@@ -29,7 +29,8 @@ final class TelefoniaGrabacionesTransferenciaInstitucionService
              AND d.destino_extension=BINARY o.destino_extension
             WHERE o.referencia=BINARY ? AND o.destino_usuario=?
               AND o.destino_extension=BINARY ? AND o.modo IN ('DIRECTA','CONSULTADA')
-              AND o.entregada_at IS NOT NULL
+              AND (o.entregada_at IS NOT NULL OR
+                   (o.estado='ENTREGADA' AND o.destino_atendida IS NOT NULL))
             LIMIT 2");
         $q->bind_param('sis',$pbx,$usuario,$extension);
         $q->execute();$rows=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
