@@ -54,11 +54,6 @@ const fixture=(view,role='cc')=>base+'_fixture?view='+view+'&role='+role;
   await page.locator(modal+' [name=nombre_entidad]').fill('Aliado navegador');
   await page.locator(modal+' [name=municipio_id]').selectOption('1');
   await page.locator(modal+' [value="bachillerato-286"]').check();await page.locator(modal+' [value="ingles"]').check();
-  const estilosProgramas=await page.locator(modal+' .aliados-programa-opcion').evaluateAll(labels=>labels.slice(0,2).map(label=>({
-   borde:getComputedStyle(label).borderColor,
-   fondo:getComputedStyle(label).backgroundColor,
-   seleccionado:label.querySelector('input').checked
-  })));
   const estilosSeleccionados=await page.locator(modal+' .aliados-programa-opcion').evaluateAll(labels=>{
    const selected=labels.find(label=>label.querySelector('input').checked);
    const empty=labels.find(label=>!label.querySelector('input').checked);
