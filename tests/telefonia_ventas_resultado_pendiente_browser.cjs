@@ -20,7 +20,7 @@ const html=ref=>'<html><head><meta charset="utf-8"></head><body>'
  +'<script>'+bs+'</script><script>'+js+'</script></body></html>';
 async function scenario(browser,provisional){
  const page=await browser.newPage(),errors=[],ref=provisional?'pbx-provisional-150':'pbx-transferido-150';
- let closed=false,materialized=!provisional,saves=0,requests=0,posted=null;
+ let closed=false,materialized=!provisional,saves=0,requests=0,posted=null,saved=false;
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('http://ventas.test/**',route=>{
   const url=new URL(route.request().url()),action=url.searchParams.get('action');
@@ -29,12 +29,13 @@ async function scenario(browser,provisional){
    if(!materialized)return route.fulfill({status:409,json:{ok:false,mensaje:'Tramo pendiente'}});
    return route.fulfill({json:{ok:true,llamada:{pbx_call_id:ref,extension:'150',numero:'5550001234',
     nombre:'Persona transferida',origen_extension:'100',finalizada:closed,conectada:true,
-    estado_pbx:closed?'Conectada':'En conversación',registro:null}}});
+    estado_pbx:closed?'Conectada':'En conversación',registro:saved?{resultado:'INTERESADO'}:null}}});
   }
   if(action==='guardarResultadoVenta'){
    saves++;posted=Object.fromEntries(new URLSearchParams(route.request().postData()));
-   assert(closed,'No enviar resultado sin cierre PBX');assert(materialized,'No inventar registro comercial');
-   return route.fulfill({json:{ok:true,registro:{resultado:posted.resultado}}});
+   assert.equal(closed,false,'Guardado humano debe preceder el cierre de Zadarma');
+   assert(materialized,'No inventar registro comercial');saved=true;
+   return route.fulfill({json:{ok:true,registro:{resultado:posted.resultado,pbx_pendiente:true}}});
   }
   return route.fulfill({contentType:'text/html',body:html(url.searchParams.get('pbx_call_id')||'')});
  });
@@ -46,6 +47,11 @@ async function scenario(browser,provisional){
  assert(await modal.locator('[data-sales-fields]').isVisible(),'Campos visibles al terminar SIP sin END PBX');
  assert.equal(await modal.locator('[data-sales-recheck]').count(),0,'No existe Comprobar cierre');
  assert(await modal.locator('[data-sales-submit]').isVisible(),'Guardar permanece visible');
+ if(provisional){
+  assert.equal(await modal.locator('[data-sales-submit]').isDisabled(),true,'Sin tramo propio no hay POST');
+  materialized=true;
+  await page.waitForFunction(()=>!document.querySelector('[data-sales-submit]').disabled,{timeout:10000});
+ }
  await modal.locator('[name=resultado]').selectOption('INTERESADO');
  await modal.locator('[name=observacion]').fill('Enviar informacion; registro exacto 150');
  await modal.locator('[name=guardar_contacto]').check();
@@ -54,17 +60,17 @@ async function scenario(browser,provisional){
  assert.equal(await modal.locator('[name=observacion]').inputValue(),'Enviar informacion; registro exacto 150');
  assert.equal(await modal.locator('[name=guardar_contacto]').isChecked(),true);
  await modal.locator('[data-sales-submit]').click();
- await page.waitForFunction(()=>document.querySelector('[data-sales-submit]').disabled);
- assert.equal(saves,0,'No guardar como confirmado sin PBX');
- assert.match(await feedback.textContent(),/todavía no está guardado/i);
- materialized=true;closed=true;
- for(let i=0;i<90&&saves!==1;i++)await new Promise(r=>setTimeout(r,100));
- assert.equal(saves,1,'Solo una accion registra una vez tras cierre');
+ await modal.waitFor({state:'hidden',timeout:10000});
+ assert.equal(saves,1,'Guardar debe persistir inmediatamente sin esperar evento END');
+ assert.equal(closed,false,'El guardado NO inventa un cierre PBX');
+ closed=true;
+ await new Promise(r=>setTimeout(r,750));
+ assert.equal(saves,1,'Sin envíos duplicados después de confirmar PBX');
  assert.equal(posted.pbx_call_id,ref);assert.equal(posted.extension,'150');
  assert.equal(posted.resultado,'INTERESADO');
  assert.equal(posted.observacion,'Enviar informacion; registro exacto 150');
  assert.equal(posted.guardar_contacto,'1');
- assert(requests>=2,'El servidor se reconsulto automaticamente');
+ assert(requests>=1,'El formulario verifico referencia y extension en backend');
  assert.deepEqual(errors,[]);
  await page.close();
 }
@@ -88,5 +94,5 @@ async function rejectForeignReference(browser){
 }
 (async()=>{const browser=await chromium.launch({headless:true});try{
  await scenario(browser,false);await scenario(browser,true);await rejectForeignReference(browser);
- console.log('OK: Ventas captura SIP, cierre PBX tardio/409, guardado unico sin segundo modal.');
+ console.log('OK: Ventas guarda resultado humano sin END PBX, HTTP 409 provisional, sin duplicados ni segunda ventana.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
