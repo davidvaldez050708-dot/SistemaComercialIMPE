@@ -1,5 +1,7 @@
 # Correos: filtros de convocatorias e imagen embebida
 
+**Reparación posterior de menús/carga:** para filtros ya instalados, consultar [la guía v2](CORREOS_FILTROS_REPARACION_HOSTINGER.md). Este documento conserva el instalador v1 original; no usarlo para reparar los desplegables vacíos.
+
 Rama `codex/correos-filtros-convocatorias`, basada en `origin/main` (`a90b6ade`). Código/publicador: **2ba65dc4a4ab95445c2c97c1f1c0afbac4bcabad**. Publicador `correo-convocatorias-v1-e61738d49768ea8e`.
 
 ## Alcance
