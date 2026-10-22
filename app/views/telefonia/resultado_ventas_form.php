@@ -18,7 +18,7 @@
      </div>
      <p class="system-form-modal-subtitle mt-3" data-sales-feedback role="status" aria-live="polite"></p>
     </div>
-    <div class="modal-footer system-form-modal-footer linkage-incoming-form-footer"><button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cerrar</button><button type="button" class="btn btn-system-light" data-sales-recheck hidden><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Comprobar cierre</button><button class="btn btn-system-save" type="submit" data-sales-submit><i class="bi bi-check-circle"></i> Guardar resultado</button></div>
+    <div class="modal-footer system-form-modal-footer linkage-incoming-form-footer"><button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cerrar</button><button class="btn btn-system-save" type="submit" data-sales-submit><i class="bi bi-check-circle"></i> Guardar resultado</button></div>
    </form>
   </div>
  </div>

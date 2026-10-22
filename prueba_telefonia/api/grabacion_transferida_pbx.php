@@ -13,6 +13,7 @@ require_once $root . '/app/services/TelefoniaRecepcionMarketingService.php';
 require_once $root . '/app/services/ZadarmaRecordingService.php';
 require_once $root . '/app/helpers/ZadarmaPbxIdentifierHelper.php';
 require_once $root . '/app/services/TelefoniaAudioTransferidoService.php';
+require_once $root . '/app/services/TelefoniaGrabacionesTransferenciaVentasService.php';
 header('Cache-Control: private, no-store');
 header('X-Content-Type-Options: nosniff');
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') { http_response_code(405); exit; }
@@ -47,15 +48,27 @@ try {
         foreach ((new TelefoniaRecepcionMarketingService())->resumen($userId)['llamadas'] as $call) {
             if ($call['pbx_call_id']===$pbx && $call['estado']==='Transferida' && !empty($call['finalizada']) && empty($call['excluir_grabacion'])) {$allowed=true;break;}
         }
-        if (!$allowed) throw new DomainException('ACCESO_NO_AUTORIZADO');
-        // El receptor de la transferencia se toma del historial privado.
-        $receiver=(string)($call['destino_transferencia']??'');
-        $q=$db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
-        $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
-        $parts=TelefoniaPbxSegmentosService::deEventos($events,$ext,[$receiver]);
-        $records=[];$info=[];
-        foreach($parts['segmentos'] as $i=>$id){$r=$service->obtenerGrabacionPorCallId($id);if(!empty($r['link'])){$records[$i]=$r;$info[]=($parts['segmentos_info'][$i]??[])+['indice'=>$i];}}
-        $result=['ok'=>true,'estado'=>$records?'DISPONIBLE':'GRABACION_EN_PREPARACION','disponible'=>(bool)$records,'segmentos'=>count($records),'segmentos_info'=>$info];
+        if (!$allowed || (($call['tipo']??'')==='Saliente'&&!tienePermiso('telefonia.salientes')))
+            throw new DomainException('ACCESO_NO_AUTORIZADO');
+        $comercial=new TelefoniaGrabacionesTransferenciaVentasService($db);
+        if($comercial->operacionComercial($pbx,$userId,'origen')){
+            // Recepción también consulta ambos tramos de sus transferencias
+            // a Ventas. Nada se infiere por teléfono, fecha o fila saliente.
+            $result=$comercial->resolver($pbx,$userId,'origen',$ext,
+                [$service,'obtenerGrabacionPorCallId'],
+                isset($_GET['verificar'])?[$service,'estadisticasPbx']:null);
+            $records=$result['records'];
+        }else{
+            // Conservar íntegra la política anterior para transferencias al
+            // Analista y demás destinos no comerciales.
+            $receiver=(string)($call['destino_transferencia']??'');
+            $q=$db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
+            $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
+            $parts=TelefoniaPbxSegmentosService::deEventos($events,$ext,[$receiver]);
+            $records=[];$info=[];
+            foreach($parts['segmentos'] as $i=>$id){$r=$service->obtenerGrabacionPorCallId($id);if(!empty($r['link'])){$records[$i]=$r;$info[]=($parts['segmentos_info'][$i]??[])+['indice'=>$i];}}
+            $result=['ok'=>true,'estado'=>$records?'DISPONIBLE':'GRABACION_EN_PREPARACION','disponible'=>(bool)$records,'segmentos'=>count($records),'segmentos_info'=>$info];
+        }
     } else {
         $cacheKey=$ext.'|'.$pbx;$cache=$_SESSION['impe_audio_transferido'][$cacheKey]??[];
         $cached=time()-(int)($cache['at']??0)<3600?($cache['rows']??[]):[];

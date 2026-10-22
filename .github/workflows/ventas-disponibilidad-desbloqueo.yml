@@ -1,0 +1,33 @@
+name: Ventas - desbloqueo de disponibilidad
+on:
+  pull_request:
+    paths:
+      - 'public/javascript/telefonia_ventas_shell.js'
+      - 'public/javascript/telefonia_disponibilidad.js'
+      - 'app/controllers/TelefoniaController.php'
+      - 'app/services/TelefoniaVentasLlamadasService.php'
+      - 'app/views/telefonia/ventas_llamadas.php'
+      - 'tests/telefonia_ventas_desbloqueo_disponibilidad.cjs'
+      - 'tests/publicacion_ventas_desbloqueo_disponibilidad_test.py'
+      - 'tools/publicar_ventas_disponibilidad_resultado_hostinger.sh'
+      - '.github/workflows/ventas-disponibilidad-desbloqueo.yml'
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar sintaxis PHP y JavaScript
+        run: |
+          php -l app/controllers/TelefoniaController.php
+          php -l app/services/TelefoniaVentasLlamadasService.php
+          php -l app/views/telefonia/ventas_llamadas.php
+          node --check public/javascript/telefonia_ventas_shell.js
+          node --check public/javascript/telefonia_disponibilidad.js
+          node --check tests/telefonia_ventas_desbloqueo_disponibilidad.cjs
+      - name: Regresion de bloqueo anterior y guardado
+        run: node tests/telefonia_ventas_desbloqueo_disponibilidad.cjs
+      - name: Publicador y restauracion simulados
+        run: python3 tests/publicacion_ventas_desbloqueo_disponibilidad_test.py

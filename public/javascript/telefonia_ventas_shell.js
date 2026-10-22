@@ -16,15 +16,15 @@
   return refs.length===1?refs[0]:'';
  };
  const digits10=value=>String(value||'').replace(/\D/g,'').slice(-10);
- // El SDK cerró esta conversación, pero los eventos PBX pueden llegar más
- // tarde. Permitir abrir YA el formulario de esa transferencia concreta;
- // el backend sigue siendo quien autoriza el guardado definitivo.
- const sipFinished=state=>Boolean(state&&!state.active&&
-  ['incoming-finished','finished'].includes(state.phase)&&
-  state.context?.sdkEnded===true&&
-  (state.context?.sdkConnected||state.context?.pbxAnswered||Number(state.answeredAtMs)>0));
+ // El teléfono compartido (Analista/Ventas) sólo publica una fase final
+ // tras END SIP verificado o cierre propio de PBX. No exigir sdkEnded cuando
+ // finalizarEntrante() ya publicó incoming-finished desde Zadarma.
+ // Esto habilita la captura humana, NO acredita el cierre en BD.
+ const phoneFinished=state=>Boolean(state&&!state.active&&
+  ['incoming','outgoing'].includes(state.direction)&&
+  ['incoming-finished','finished'].includes(state.phase));
  const provisional=state=>{
-  if(!sipFinished(state))return null;
+  if(!phoneFinished(state))return null;
   const ref=reference(state);
   if(pbx(ref))return {ref,extension:cfg.extension,callToken:state.callToken};
   const sameCandidate=Boolean(candidate&&candidate.ref&&pbx(candidate.ref)&&
@@ -61,37 +61,58 @@
  const announced=new Set(),retired=new Set();
  const refreshNotices=()=>{try{const win=crm?.contentWindow;win?.dispatchEvent(new win.Event('impe:phone-notices-refresh'));}catch(_){/* La consulta periódica sigue disponible tras navegar. */}};
  const remove=(ref,token='')=>{retired.add(ref);const existed=pending.some(p=>p.ref===ref);const own=pending.find(p=>p.ref===ref);phone.dismissFinishedCall?.(ref,token||own?.callToken||'');pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
- const open=()=>{if(phone.getPhoneStatus().active||!crm)return;
-  const state=phone.getCallState(),ref=reference(state);
-  const task=(state?.phase==='incoming-finished'||state?.phase==='finished')?
-   (pending.find(x=>x.ref===ref)||provisional(state)):pending[0];
-  const url=new URL(cfg.salesHistoryUrl,location.href);
-  // Sin referencia PBX confirmada sólo puede consultarse el historial.
-  if(!task)return;
-  if((!metadata?.finalizada||metadata.pbx_call_id!==task.ref)&&
-   !(sipFinished(state)&&provisional(state)?.ref===task.ref)){
-   void lookup(task.ref,revision);return;
+ // Una solicitud nueva de Recepción no puede sustituir el PBX de la llamada anterior.
+ const choosePending=state=>{
+  const ref=reference(state);
+  if(phoneFinished(state)){
+   if(pbx(ref))return retired.has(ref)?null:(pending.find(p=>p.ref===ref)||provisional(state));
+   // Una sesión SDK sin PBX propia no hereda el primer resultado histórico.
+   const tokens=identities(state);
+   const matches=pending.filter(p=>!retired.has(p.ref)&&pbx(p.ref)&&
+    String(p.extension)===String(cfg.extension)&&(
+     (p.callToken&&tokens.includes(p.callToken))||
+     (metadata?.pbx_call_id===p.ref&&overlaps(tokens,metadata.sdk_tokens||[]))));
+   return matches.length===1?matches[0]:null;
   }
-  url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);
-  if(sipFinished(state)&&(!metadata?.finalizada||metadata.pbx_call_id!==task.ref))url.searchParams.set('esperando_pbx','1');
-  if(crm.src===url.href){crm.contentWindow?.postMessage({type:'IMPE_SALES_RESULT_OPEN',ref:task.ref,extension:task.extension},location.origin);return;}
-  crm.src=url.href;
+  // En reposo, Disponibilidad puede abrir una atención anterior sin cerrar;
+  // jamás la confunde con una nueva sesión activa.
+  return pending.filter(p=>!retired.has(p.ref)&&pbx(p.ref)&&String(p.extension)===String(cfg.extension))
+   .sort((a,b)=>Number(b.at||0)-Number(a.at||0))[0]||null;
+ };
+ const open=async()=>{
+  if(phone.getPhoneStatus().active||!crm)return false;
+  let state=phone.getCallState(),task=choosePending(state);
+  if(!task){await recoverPending(true);state=phone.getCallState();task=choosePending(state);}
+  if(!task||!pbx(task.ref)||String(task.extension)!==String(cfg.extension))return false;
+  const url=new URL(cfg.salesHistoryUrl,location.href);
+  url.searchParams.set('pbx_call_id',task.ref);
+  url.searchParams.set('extension',task.extension);
+  if(!metadata?.finalizada||metadata.pbx_call_id!==task.ref)url.searchParams.set('esperando_pbx','1');
+  // Guardado comercial independiente del END, validado en backend.
+  if(crm.src===url.href)crm.contentWindow?.postMessage({type:'IMPE_SALES_RESULT_OPEN',ref:task.ref,extension:task.extension},location.origin);
+  else crm.src=url.href;
+  return true;
  };
  button.addEventListener('click',open);
  const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();
   const ref=reference(state);
   const finished=!active&&['finished','incoming-finished'].includes(state?.phase);
   const instant=provisional(state);
-  const task=finished?(pending.find(x=>x.ref===ref)||instant):pending[0];
-  const confirmed=Boolean(task&&metadata?.pbx_call_id===task.ref&&metadata.finalizada);
-  const canOpen=confirmed||Boolean(instant&&task?.ref===instant.ref);
-  button.hidden=active||form||(!finished&&!pending.length&&!instant);
+  const task=choosePending(state);
+  const canOpen=Boolean(task&&pbx(task.ref)&&String(task.extension)===String(cfg.extension));
+  button.hidden=active||form||!canOpen;
   button.disabled=!canOpen;
-  button.textContent=canOpen?'Registrar resultado':'Conciliando llamada';
+  button.textContent='Registrar resultado';
   const icon=document.createElement('i');icon.className='bi bi-journal-check';icon.setAttribute?.('aria-hidden','true');button.prepend?.(icon);
-  button.dataset.salesPending=task?'1':'0';
+  button.dataset.salesPending=canOpen?'1':'0';
  };
- window.IMPE_SALES_ATTENTION=Object.freeze({hasPending:()=>pending.length>0,openPending:open});
+ window.IMPE_SALES_ATTENTION=Object.freeze({
+  // Sólo la atención que el teléfono acaba de finalizar bloquea la siguiente.
+  // Las antiguas permanecen en el historial sin impedir atender nuevas llamadas.
+  hasPending:()=>{const state=phone.getCallState(),ref=reference(state);
+   return phoneFinished(state)&&pbx(ref)&&!retired.has(ref)&&pending.some(p=>p.ref===ref&&String(p.extension)===String(cfg.extension));},
+  openPending:open
+ });
  function adopt(facts,state,expectedRef=''){
   if(!facts||!state||!pbx(facts.pbx_call_id)||String(facts.extension)!==String(cfg.extension)||retired.has(facts.pbx_call_id))return false;
   const ref=facts.pbx_call_id,keys=identities(state);
@@ -137,15 +158,18 @@
    hint.textContent=metadata.origen_extension?'Nombre informado por Recepción · Ext. '+metadata.origen_extension:'Atención comercial de tu extensión';
   }catch(_){/* El historial conserva el pendiente mientras llega evidencia PBX. */}finally{if(timeout!==null)clearTimeout(timeout);fetching=false;render();}
  }
- let lastLookup=0,tries=0,lastPending=0,pendingBusy=false;
- async function recoverPending(){
-  if(pendingBusy||Date.now()-lastPending<10000)return;pendingBusy=true;lastPending=Date.now();
+ let lastLookup=0,tries=0,lastPending=0,pendingBusy=false,pendingRequest=null;
+ async function recoverPending(force=false){
+  if(pendingBusy)return pendingRequest;
+  if(!force&&Date.now()-lastPending<10000)return;
+  pendingBusy=true;lastPending=Date.now();
+  const run=async()=>{
   const version=revision,requestKeys=identities(phone.getCallState());
   try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pendientes','1');
    const response=await fetch(url,{credentials:'same-origin',cache:'no-store'}),data=await response.json();
    if(response.ok&&data.ok&&Array.isArray(data.pendientes)){
-    const rows=data.pendientes.filter(c=>pbx(c.pbx_call_id)&&c.finalizada===true&&String(c.extension)===String(cfg.extension)&&!retired.has(c.pbx_call_id));
-    for(const c of rows)if(!pending.some(p=>p.ref===c.pbx_call_id))pending.push({ref:c.pbx_call_id,extension:c.extension,at:Date.now()});
+    const rows=data.pendientes.filter(c=>pbx(c.pbx_call_id)&&String(c.extension)===String(cfg.extension)&&!retired.has(c.pbx_call_id));
+    for(const c of rows)if(!pending.some(p=>p.ref===c.pbx_call_id))pending.push({ref:c.pbx_call_id,extension:c.extension,at:Date.now()-rows.indexOf(c)});
     persist();
     const current=phone.getCallState(),ref=reference(current);
     if(version===revision&&current&&!current.active&&overlaps(identities(current),requestKeys)){
@@ -154,6 +178,9 @@
     }
    }
   }catch(_){}finally{pendingBusy=false;render();}
+  };
+  pendingRequest=run();
+  try{return await pendingRequest;}finally{pendingRequest=null;}
  }
  void recoverPending();
  function observe(){

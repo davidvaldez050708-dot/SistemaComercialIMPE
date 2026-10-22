@@ -453,6 +453,8 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         'grabacion_procesando' => (bool)$grabacionProcesando,
         'grabacion_sin_vincular' => (bool)$grabacionSinVincular,
         'grabacion_transferida_pbx' => $grabacionPbxId,
+        'grabacion_transferida_institucion' => ($evidenciaAudio['tipo_audio']??'')==='INSTITUCION_SALIENTE',
+        'seguimiento_id' => $seguimientoId,
         'estado_grabacion' => $evidenciaAudio['estado'],
         'evidencia_grabacion_pendiente' => $evidenciaAudio['mensaje'],
         'grabacion_url' => $puedeTenerGrabacion

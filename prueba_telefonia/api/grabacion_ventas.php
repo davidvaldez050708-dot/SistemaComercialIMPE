@@ -60,9 +60,41 @@ try {
     $calls=new TelefoniaVentasLlamadasService();
     try {$call=$calls->obtener($usuarioId,$pbxCallId,(string)($_GET['extension']??''));}
     catch(DomainException $e){http_response_code(404);exit('No hay un tramo autorizado para esta llamada.');}
-    if(!$call['finalizada']||!$call['conectada']||!TelefoniaResultadoVentasService::esConversacion($call['registro']['resultado']??'')){
+    $transferida=($call['direccion']??'')==='Entrante' &&
+        (string)($call['origen_extension']??'')!=='' && !empty($call['solicitud_id']);
+    if((!$transferida&&!$call['finalizada'])||!$call['conectada']||
+        !TelefoniaResultadoVentasService::esConversacion($call['registro']['resultado']??'')){
         http_response_code(404);exit('Este intento no tiene reproducción de audio habilitada.');
     }
+    if($transferida){
+        // El resultado humano puede guardarse sin END de Zadarma. Verificar
+        // identidad y ruta comercial en la operación PBX exacta; devolver
+        // tantos segmentos NOTIFY_RECORD como hayan sido corroborados.
+        require_once $root.'/app/services/TelefoniaGrabacionesTransferenciaVentasService.php';
+        $db=(new Database())->connect(false);
+        $svc=new TelefoniaGrabacionesTransferenciaVentasService($db);
+        $provider=new ZadarmaRecordingService(false);
+        $service=$provider; // La descarga Range final reutiliza el mismo proveedor.
+        try{
+            $response=$svc->resolver($pbxCallId,$usuarioId,'destino',(string)$call['extension'],
+                [$provider,'obtenerGrabacionPorCallId'],
+                isset($_GET['verificar'])?[$provider,'estadisticasPbx']:null);
+        }catch(DomainException $e){
+            http_response_code(404);exit('No hay tramos transferidos autorizados.');
+        }
+        if(isset($_GET['verificar'])){
+            unset($response['records']);
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: private, no-store');
+            echo json_encode($response,JSON_UNESCAPED_UNICODE);exit;
+        }
+        $index=filter_var($_GET['segmento']??null,FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>0,'max_range'=>7]]);
+        if($index===false||$index===null||!isset($response['records'][$index])){
+            http_response_code(404);exit('El tramo solicitado no está disponible.');
+        }
+        $recording=$response['records'][$index];
+    }else{
     $ids=$call['segmentos'];
     if(isset($_GET['verificar'])){
         $service=new ZadarmaRecordingService(false);$info=[];$temporary=false;
@@ -75,6 +107,7 @@ try {
     // Resolver cada ID autorizado; nunca pedir audio global del PBX.
     $service=new ZadarmaRecordingService();$recording=$service->obtenerGrabacionPorCallId($ids[$segment]);
     if(!$recording||empty($recording['link'])){http_response_code(404);exit('La grabación aún no está disponible en Zadarma.');}
+    } // Fin del reproductor original de llamada individual.
 
     $audio = $service->descargarGrabacion((string)$recording['link'], $rangeHeader);
     $body = (string)($audio['body'] ?? '');

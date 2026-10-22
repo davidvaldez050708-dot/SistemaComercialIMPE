@@ -145,7 +145,9 @@ final class TelefoniaVentasLlamadasService
         require_once __DIR__.'/TelefoniaResultadoVentasService.php';
         $out=['disponible'=>false,'estado'=>'sin_referencia','texto'=>'Grabación sin confirmar','detalle'=>'La centralita todavía no ha enviado una referencia de grabación para este tramo.'];
         if(empty($call['pbx_call_id']))return array_replace($out,['estado'=>'sin_llamada','texto'=>'Sin llamada confirmada','detalle'=>'Es un intento sin referencia confirmada de la centralita; no hay audio verificable.']);
-        if(empty($call['finalizada']))return array_replace($out,['estado'=>'en_curso','texto'=>'Grabación al finalizar','detalle'=>'Espera a que la centralita confirme el cierre de la llamada.']);
+        if(empty($call['finalizada']))return array_replace($out,!empty($call['registro'])
+            ?['estado'=>'por_conciliar','texto'=>'Grabación por verificar','detalle'=>'El resultado humano ya está guardado. Falta evidencia del cierre y de los segmentos de Zadarma.']
+            :['estado'=>'en_curso','texto'=>'Grabación al finalizar','detalle'=>'Espera a que la centralita confirme el cierre de la llamada.']);
         $code=(string)($call['registro']['resultado']??'');
         if(empty($call['conectada'])||($code!==''&&!TelefoniaResultadoVentasService::esConversacion($code)))return array_replace($out,['estado'=>'no_aplica','texto'=>'Sin grabación de conversación','detalle'=>'Las llamadas sin conversación, buzones y locuciones no habilitan reproducción.']);
         if($code==='')return array_replace($out,['estado'=>'pendiente_resultado','texto'=>'Pendiente de resultado','detalle'=>'Registra lo ocurrido para distinguir una conversación de un buzón o una locución.']);
@@ -158,6 +160,18 @@ final class TelefoniaVentasLlamadasService
             default=>$out
         };
     }
+    /** La captura humana se habilita antes del cierre PBX en transferencias propias atendidas;
+     * la validación estricta de ruta, titular y ANSWER sigue en el servicio de guardado. */
+    public static function resultadoCapturable(array $call): bool {
+        return !empty($call['pbx_call_id']) && (
+            !empty($call['finalizada']) ||
+            (!empty($call['conectada']) && !empty($call['solicitud_id'])
+                && ($call['direccion']??'')==='Entrante'
+                && trim((string)($call['origen_extension']??''))!==''
+                && (string)$call['origen_extension']!==(string)($call['extension']??''))
+        );
+    }
+
     public static function hechos(array $events,string $ext,string $source=''): array {
         $answer=false;$end=false;$duration=null;$disposition='';
         // La consulta se ordena por id ASC. Un cierre OUT_END del origen
@@ -300,14 +314,14 @@ final class TelefoniaVentasLlamadasService
             $summary['pbx']+=(int)$confirmedRef;
             $summary['intentos']+=(int)(!$confirmedRef&&str_starts_with((string)$c['id'],'intento-'));
             $summary['transferencias_sin_tramo']+=(int)(!$confirmedRef&&str_starts_with((string)$c['id'],'transferencia-'));
-            $summary['pendientes']+=(int)($c['finalizada']&&!$c['registro']);
+            $summary['pendientes']+=(int)(self::resultadoCapturable($c)&&!$c['registro']);
             $summary['perdidas']+=(int)($c['finalizada']&&!$c['conectada']&&$c['direccion']==='Entrante');
             $summary['conversaciones']+=(int)TelefoniaResultadoVentasService::esConversacion($c['registro']['resultado']??'');}
         $search=trim((string)($filters['q']??''));$state=(string)($filters['estado']??'');
         if(mb_strlen($search)>100)throw new InvalidArgumentException('La búsqueda es demasiado larga.');
         $calls=array_values(array_filter($calls,static function($c)use($search,$state){
             if($search!==''&&mb_stripos($c['numero'].' '.$c['nombre'].' '.($c['registro']['prospecto_nombre']??''),$search)===false)return false;
-            return match($state){'pendientes'=>$c['finalizada']&&!$c['registro'],'perdidas'=>$c['finalizada']&&!$c['conectada']&&$c['direccion']==='Entrante',
+            return match($state){'pendientes'=>self::resultadoCapturable($c)&&!$c['registro'],'perdidas'=>$c['finalizada']&&!$c['conectada']&&$c['direccion']==='Entrante',
                 'sin_conexion'=>!$c['conectada'],'transferidas'=>$c['origen_extension']!=='','Entrante','Saliente'=>$c['direccion']===$state,default=>true};
         }));
         $total=count($calls);$pages=max(1,(int)ceil($total/20));$page=min($pages,max(1,(int)($filters['pagina']??1)));

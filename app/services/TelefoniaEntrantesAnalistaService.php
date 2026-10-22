@@ -160,6 +160,23 @@ class TelefoniaEntrantesAnalistaService
 
         $llamadas = [];
         $operaciones=(new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($usuarioId);
+        // Sólo SALIENTES de Recepción transferidas a esta extensión para
+        // instituciones acreditadas: no depender del END del Analista.
+        require_once __DIR__.'/TelefoniaGrabacionesTransferenciaInstitucionService.php';
+        $grabacionesInstitucion=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
+        $audiosSalidaRecepcion=[];
+        foreach($operaciones as $op){
+            $ref=(string)($op['referencia']??'');
+            if((int)($op['destino_usuario']??0)!==$usuarioId ||
+               (string)($op['destino_extension']??'')!==$extension ||
+               (empty($op['entregada_at']) &&
+                !(($op['estado']??'')==='ENTREGADA'&&!empty($op['destino_atendida']))) ||
+               !preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$ref))continue;
+            try{
+                $v=$grabacionesInstitucion->verificar($ref,$usuarioId,$extension);
+                if($v['ids'])$audiosSalidaRecepcion[$ref]=true;
+            }catch(DomainException $ignored){ /* sin transferencia propia acreditada */ }
+        }
         $consultas=[];
         foreach($operaciones as $operacion)if((int)$operacion['destino_usuario']===$usuarioId && $operacion['modo']==='CONSULTADA')$consultas[$operacion['referencia']]=$operacion;
         $clasificadorInterno = new TelefoniaAnalistaWebrtcService($this->db);
@@ -186,9 +203,11 @@ class TelefoniaEntrantesAnalistaService
                 'clasificacion' => (string)($registro['estado'] ?? 'PENDIENTE'),
                 'seguimiento_id' => (int)($registro['seguimiento_id'] ?? 0),
                 'interaccion_id' => (int)($registro['interaccion_id'] ?? 0),
-                'grabacion_pbx_reportada' => !empty($call['answer_at']) &&
-                    in_array((string)($call['estado'] ?? ''), ['ended','transferred'], true) &&
-                    $this->eventos->buscarCallIdGrabacion($id) !== '',
+                'grabacion_institucion_transferida' => !empty($audiosSalidaRecepcion[$id]),
+                'grabacion_pbx_reportada' => !empty($audiosSalidaRecepcion[$id]) ||
+                    (!empty($call['answer_at']) &&
+                     in_array((string)($call['estado'] ?? ''), ['ended','transferred'], true) &&
+                     $this->eventos->buscarCallIdGrabacion($id) !== ''),
             ];
         }
         // Dos fuentes distintas: PBX firmada y observación de WebRTC local.

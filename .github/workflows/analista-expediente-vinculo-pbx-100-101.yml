@@ -1,0 +1,28 @@
+name: Analista - expediente PBX transferido vinculo exacto
+on:
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaGrabacionExpedienteTransferidaService.php'
+      - 'tests/telefonia_analista_expediente_vinculo_exacto_smoke.php'
+      - 'tests/telefonia_analista_expediente_collations_db.php'
+      - 'tools/publicar_analista_expediente_union_1271_hostinger.sh'
+      - 'tests/publicacion_analista_expediente_union_1271_test.py'
+      - 'tools/publicar_analista_expediente_vinculo_pbx_100_101_hostinger.sh'
+      - 'tests/publicacion_analista_expediente_vinculo_pbx_test.py'
+      - '.github/workflows/analista-expediente-vinculo-pbx-100-101.yml'
+jobs:
+  vinculo-exacto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis y prueba de identidad exacta
+        run: |
+          php -l app/services/TelefoniaGrabacionExpedienteTransferidaService.php
+          php -l tests/telefonia_analista_expediente_vinculo_exacto_smoke.php
+          php tests/telefonia_analista_expediente_vinculo_exacto_smoke.php
+          php tests/telefonia_analista_audio_saliente_100_101_smoke.php
+          php tests/telefonia_analista_expediente_collations_db.php
+      - name: Publicador sobre réplicas de Hostinger
+        run: |
+          python3 tests/publicacion_analista_expediente_vinculo_pbx_test.py
+          python3 tests/publicacion_analista_expediente_union_1271_test.py

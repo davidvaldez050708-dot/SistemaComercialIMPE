@@ -22,11 +22,18 @@ const facts=(extra={})=>({pbx_call_id:ref,extension:'150',finalizada:true,conect
  assert.equal(f.confirmed.at(-1)[0],ref);f.button.click();assert.match(f.crm.src,/pbx_call_id=pbx-current-transfer-001/);
  const g=await fixture();g.setDetail(facts());g.setState(state(true,{context:{type:'SDK_INCOMING',sdkSessionId:sdk,transferReference:sdk},finalMetadata:{pbx_call_id:ref}}));await g.tick();g.setState(state(false,{context:{sdkSessionId:sdk,transferReference:sdk},finalMetadata:{pbx_call_id:ref}}));await g.tick();assert.equal(g.button.disabled,false,'Una referencia SDK no debe ocultar la PBX final verificada');
  const early=await fixture();early.setDetail(facts());early.setState(state(true));await early.tick();await early.tick();early.setDetail(null);early.setState(state(false));await early.tick();assert(!early.button.disabled,'La confirmación previa al fin SIP no se descarta ni exige otro fetch');
- for(const bad of [facts({sdk_tokens:['sdk-older-session-123456']}),facts({finalizada:false}),facts({extension:'151'}),facts({sdk_tokens:[]})]){
-  const h=await fixture();h.setState(state(true));await h.tick();h.setState(state(false));h.setRecords([bad]);h.setDetail(bad);await h.tick();await h.tick();assert(h.button.disabled,'No usar último pendiente, extensión ajena o cierre ausente');assert.equal(h.confirmed.length,0);
+ // Datos ajenos nunca confirman ni habilitan borradores sin referencia propia.
+ for(const bad of [facts({sdk_tokens:['sdk-older-session-123456']}),facts({extension:'151'}),facts({sdk_tokens:[]})]){
+  const h=await fixture();h.setState(state(true));await h.tick();h.setState(state(false));h.setRecords([bad]);h.setDetail(bad);await h.tick();await h.tick();assert(h.button.disabled,'No utilizar SDK o propietario ajenos cuando no hay PBX propia');assert.equal(h.confirmed.length,0);
  }
- const wrong=await fixture();wrong.setState(state(true,{pbxCallId:ref}));await wrong.tick();wrong.setState(state(false,{pbxCallId:ref}));wrong.setDetail(facts({pbx_call_id:'pbx-other-call-001'}));await wrong.tick();assert(wrong.button.disabled);assert.equal(wrong.confirmed.length,0,'Detalle de otra referencia no debe confirmar la actual');
- const stale=await fixture();stale.setState(state(true,{pbxCallId:ref}));await stale.tick();stale.setState(state(false,{pbxCallId:ref}));stale.setDetail(facts({sdk_tokens:['sdk-previous-session-123456']}));await stale.tick();assert(stale.button.disabled,'Una PBX de la cuenta vinculada a otro SDK no corresponde a la llamada actual');
+ const pending=await fixture();pending.setState(state(true));await pending.tick();
+ pending.setState(state(false));pending.setDetail(facts({finalizada:false}));await pending.tick();await pending.tick();
+ assert.equal(pending.button.disabled,false,'SDK propio permite capturar borrador al terminar teléfono');
+ assert.equal(pending.confirmed.length,0,'Borrador sin cierre PBX no confirma registro');
+ const wrong=await fixture();wrong.setState(state(true,{pbxCallId:ref}));await wrong.tick();wrong.setState(state(false,{pbxCallId:ref}));wrong.setDetail(facts({pbx_call_id:'pbx-other-call-001'}));await wrong.tick();
+ assert.equal(wrong.confirmed.length,0,'Detalle de otra PBX no confirma la actual');
+ const stale=await fixture();stale.setState(state(true,{pbxCallId:ref}));await stale.tick();stale.setState(state(false,{pbxCallId:ref}));stale.setDetail(facts({sdk_tokens:['sdk-previous-session-123456']}));await stale.tick();
+ assert.equal(stale.confirmed.length,0,'SDK de conversación anterior no acredita cierre propio');
  // Una segunda llamada al mismo teléfono tiene una sesión distinta.
  f.setState(state(true,{callToken:'sdk-next-session-123456',context:{type:'SDK_INCOMING'},destination:'+525551112233'}));await f.tick();f.setState(state(false,{callToken:'sdk-next-session-123456',context:{},destination:'+525551112233'}));await f.tick();assert(f.button.disabled,'Mismo teléfono no hereda la confirmación anterior');
  // El fin SIP verificado habilita Registrar resultado inmediatamente aunque
@@ -43,9 +50,21 @@ const facts=(extra={})=>({pbx_call_id:ref,extension:'150',finalizada:true,conect
  immediate.button.click();
  assert.match(immediate.crm.src,/esperando_pbx=1/,'Formulario comunica que falta conciliación administrativa');
  assert.match(immediate.crm.src,/pbx_call_id=pbx-current-transfer-001/);
+ // Caso real: el cierre lo publicó finalizarEntrante() desde PBX; sdkEnded no existe.
+ const pbxFinish=await fixture();
+ pbxFinish.setState(state(true,{pbxCallId:ref,context:{type:'INCOMING',sdkConnected:true}}));
+ await pbxFinish.tick();
+ pbxFinish.setState(state(false,{pbxCallId:ref,status:'completed',context:{type:'INCOMING',sdkConnected:true}}));
+ await pbxFinish.tick();
+ assert.equal(pbxFinish.button.hidden,false);
+ assert.equal(pbxFinish.button.disabled,false,'Fin PBX compartido habilita registro sin sdkEnded');
+ assert.equal(pbxFinish.button.textContent,'Registrar resultado');
+ pbxFinish.button.click();
+ assert.match(pbxFinish.crm.src,/esperando_pbx=1/,'Backend sigue revalidando cierre');
+ // Durante una llamada viva, no permitir abrir el resultado.
  const uncertain=await fixture();
- uncertain.setState(state(false,{context:{type:'SDK_INCOMING',transferReference:ref,sdkConnected:true}}));
+ uncertain.setState(state(true,{pbxCallId:ref,context:{type:'INCOMING',sdkConnected:true}}));
  await uncertain.tick();
- assert(uncertain.button.disabled||uncertain.button.hidden,'Sin END SIP no habilitar registro ficticio');
+ assert(uncertain.button.disabled||uncertain.button.hidden,'Llamada viva no habilita resultado');
  console.log('OK: recuperación SDK exacta, PBX final prioritaria, referencias ajenas rechazadas y llamadas consecutivas aisladas');
 })().catch(e=>{console.error(e);process.exitCode=1;});

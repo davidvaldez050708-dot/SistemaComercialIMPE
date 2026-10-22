@@ -33,8 +33,8 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  await page.waitForTimeout(900);assert.equal(await page.evaluate(()=>document.querySelector('#impeCrmFrame').contentWindow.noticeRefreshes),0,'WebRTC finalizado no acredita cierre PBX ni genera aviso confirmado');
  assert.equal(await modal.isVisible(),false,'No abrir resultado automáticamente encima del teléfono');
  await phone.waitFor({state:'visible'});
- assert.equal(await page.locator('[data-incoming-register-finished]').isDisabled(),true,'Fin SIP espera conciliación PBX');
- assert.equal(await page.locator('[data-incoming-register-finished]').innerText(),'Conciliando llamada');
+ assert.equal(await page.locator('[data-incoming-register-finished]').isDisabled(),false,'Fin de teléfono compartido habilita Registrar resultado antes de confirmación PBX');
+ assert.equal(await page.locator('[data-incoming-register-finished]').innerText(),'Registrar resultado');
  assert.equal(await page.locator('[data-incoming-close-finished]').isVisible(),false,'Un solo flujo principal en llamada atendida');
  assert.equal(await page.locator('[data-sales-prospect]').isVisible(),false,'Sin captura adicional al terminar');
  closed=true;

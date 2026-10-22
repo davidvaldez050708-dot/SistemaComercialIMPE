@@ -661,6 +661,15 @@
                     ));
                     const sipAlive = sipSession?.direction === 'incoming' &&
                         !sipSession.isEnded?.();
+                    // JsSIP puede emitir ended/failed antes de que isEnded()
+                    // cambie o antes de soltar webCallSession. Para Ventas,
+                    // el evento terminal de la sesión SIP EXACTA prevalece
+                    // sobre ese puntero transitoriamente activo.
+                    // Si el teléfono ya tiene OTRO diálogo vivo, no cerrarlo.
+                    const ownSalesTerminal = Boolean(config.salesSdkIncoming &&
+                        evidence.sessionEnded && observedId && boundId === observedId &&
+                        state.context?.transferReference &&
+                        (!sipAlive || String(sipSession?.id || '') === observedId));
                     const sdkOnlyMatches = sdkOnly &&
                         (!observedId || (boundId && observedId === boundId) ||
                             (sipSession?.direction === 'incoming' &&
@@ -668,7 +677,7 @@
                                 sipSession.isEnded?.()));
                     if ((evidence.sessionEnded || evidence.pushEnded) &&
                         state.active && state.direction === 'incoming' &&
-                        !sipAlive && (sdkOnlyMatches || (attachedPbx &&
+                        (!sipAlive || ownSalesTerminal) && (sdkOnlyMatches || (attachedPbx &&
                             (sameSip || (evidence.pushEnded && !observedId &&
                                 ['incoming-ringing','answering','finishing','rejecting'].includes(state.phase)))))) {
                         const ref = String(state.pbxCallId || state.context?.transferReference || '');
@@ -2053,10 +2062,52 @@
             answeredAtMs=connected?(state.answeredAtMs||Date.now()):0;
             publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,sdkInviteId:state.context?.sdkInviteId,sdkSessionId:state.callToken,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
         },
+        receiverEnded:(op,token,endedSession)=>{
+            // ENTREGADA sólo la acredita la PBX para la extensión propia.
+            // No procesar eventos de la sesión antigua o de otra llamada.
+            if(!config.salesSdkIncoming||!state.active||state.direction!=='incoming'||
+                !endedSession?.isEnded?.()||
+                op.estado!=='ENTREGADA'||!state.context?.sdkConnected||
+                String(token||'')!==String(state.callToken||'')||
+                String(state.context?.transferReference||'')!==String(op.referencia||'')||
+                String(state.context?.transferOperation||'')!==String(op.id||''))return;
+            const live=window.zdrmWebPhone?.webCallSession;
+            if(live&&live!==endedSession&&!live.isEnded?.())return;
+            const ref=String(op.referencia||''),duration=currentDuration();
+            answeredAtMs=0;retirePbxCall(ref);
+            publish({active:false,phase:'incoming-finished',status:'ended-unconfirmed',
+                pbxCallId:ref,duration,
+                context:{...state.context,sdkEnded:true,transferPendingReceiver:false},
+                message:'La sesión SIP terminó. Evidencia PBX pendiente.'});
+            ocultarHostEntrante();marcarPestanaEntrante('');
+        },
         consultEnded:op=>{
             if(!state.active)return;
             if(op.modo==='DIRECTA'){
                 const answered=Boolean(state.context?.sdkConnected||state.context?.pbxAnswered||answeredAtMs>0);
+                const session=window.zdrmWebPhone?.webCallSession;
+                // El END de la consulta DIRECTA se comprobó en transferFlow
+                // contra la RTCSession del receptor. Si Zadarma ya acreditó
+                // ENTREGADA y no existe otro diálogo SIP vivo, finalizar
+                // inmediatamente el teléfono local. El END PBX y las
+                // grabaciones continúan conciliándose por separado.
+                const ownDelivered=Boolean(config.salesSdkIncoming &&
+                    op.estado==='ENTREGADA' && answered &&
+                    state.direction==='incoming' &&
+                    String(state.context?.transferOperation||'')===String(op.id||'') &&
+                    String(state.context?.transferReference||'')===String(op.referencia||'') &&
+                    (!session || session.isEnded?.()));
+                if(ownDelivered){
+                    const ref=String(op.referencia||''),duration=currentDuration();
+                    answeredAtMs=0;
+                    retirePbxCall(ref);
+                    publish({active:false,phase:'incoming-finished',status:'ended-unconfirmed',
+                        pbxCallId:ref,duration,
+                        context:{...state.context,sdkEnded:true,transferPendingReceiver:false},
+                        message:'La sesión SIP terminó. La evidencia PBX se conciliará por separado.'});
+                    ocultarHostEntrante();marcarPestanaEntrante('');
+                    return;
+                }
                 publish({active:true,phase:answered?'recovering':'finishing',status:answered?'recovering':'ending',context:{...state.context,transferPendingReceiver:false,transferReference:op.referencia},message:answered?'El audio del navegador se interrumpió. Comprobando si la llamada sigue activa en la centralita.':'Intento sin respuesta confirmada. Comprobando cierre en la centralita.'});
                 void pollIncoming();return;
             }

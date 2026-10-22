@@ -124,6 +124,64 @@ try {
   vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-reuse-123456')===null,'Cierre no se reutiliza en nueva invitación');
   vcheck($ops->paraDestinoConfirmado(8,$rid,$sdk)!==null,'SDK reservado recupera la misma referencia después del cierre');
  }
+ // Secuencia real de Zadarma: OUT_END de Recepción ANTES de ANSWER del asesor.
+ // Antes se marcaba ended=true y se bloqueaba reservar la identidad SDK del 150.
+ $ref='pbx-early-out-end-before-answer-150';$sdk='sdk-early-out-end-current-123456';
+ $route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>8,'extension'=>'150','referencia_llamada'=>$ref]);
+ $q=$db->prepare("INSERT INTO telefonia_disponibilidad(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,ruta_json,estado,expires_at,created_at,updated_at) VALUES (7,'100',8,'150',?,'+525551112233',?,'ENVIADA',UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())");$q->bind_param('ss',$ref,$route);$q->execute();$rid=$q->insert_id;$q->close();
+ $q=$db->prepare("INSERT INTO telefonia_transferencia_operaciones(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,modo,estado,evento_desde,created_at,updated_at) VALUES(7,'100',8,'150',?,'+525551112233','DIRECTA','SOLICITADA',0,UTC_TIMESTAMP(),UTC_TIMESTAMP())");$q->bind_param('s',$ref);$q->execute();$q->close();
+ $event($ref,'NOTIFY_OUT_START','100');$event($ref,'NOTIFY_ANSWER','100');
+ $event($ref,'NOTIFY_OUT_END','100',19,['disposition'=>'answered']);
+ $event($ref,'NOTIFY_RECORD','',0,['is_recorded'=>1,'call_id_with_rec'=>'early-out-end-record']);
+ $event($ref,'NOTIFY_ANSWER','150');
+ $op=$ops->paraDestinoConfirmado(8,$rid,$sdk);
+ vcheck($op&&$op['referencia']===$ref,'OUT_END temprano de 100 no bloquea la identidad SDK 150');
+ vcheck($svc->obtener(8,$ref,'150')['finalizada']===false,'El asesor sigue pendiente de cierre PBX propio');
+ $pendingCall=$svc->obtener(8,$ref,'150');
+ vcheck(TelefoniaVentasLlamadasService::resultadoCapturable($pendingCall),
+     'Transferencia comercial atendida figura como resultado registrable sin END');
+ $pendingList=$svc->bandeja(8,['estado'=>'pendientes']);
+ vcheck(count(array_filter($pendingList['filas'],static fn($x)=>($x['pbx_call_id']??'')===$ref))===1,
+     'Mis llamadas ofrece Registrar resultado y cuenta pendiente en el mismo PBX');
+
+ $human=$results->guardar(8,$ref,'INTERESADO',['observacion'=>'Resultado propio sin webhook END','prospecto_nombre'=>'Diana']);
+ vcheck($human['pbx_pendiente']===true,'Guarda de inmediato sólo el resultado humano, con PBX pendiente');
+ $humanCall=$svc->obtener(8,$ref,'150');
+ vcheck(!$humanCall['finalizada']&&$humanCall['registro']['resultado']==='INTERESADO',
+     'El registro persiste sin inventar cierre, duración ni audio');
+ vcheck($humanCall['segundos']===null,'No se inventa duración del asesor');
+ // El mismo PBX 100->150 conserva dos referencias de grabación aun sin
+ // NOTIFY_END del asesor. Recepción y Ventas deben ver exactamente el mismo
+ // conjunto, con permiso por operación y RESULTADO humano.
+ $event($ref,'NOTIFY_RECORD','',0,['call_id_with_rec'=>'second-advisor-candidate']);
+ require_once dirname(__DIR__).'/app/services/TelefoniaGrabacionesTransferenciaVentasService.php';
+ $transferAudio=new TelefoniaGrabacionesTransferenciaVentasService($db);
+ $audios=static fn(string $id):array=>['link'=>'https://provider.test/'.$id];
+ $statsAudio=static fn()=>[
+   ['pbx_call_id'=>$ref,'call_id'=>'early-out-end-record','sip'=>'100','callstart'=>'2026-10-21 20:10:21','seconds'=>19],
+   ['pbx_call_id'=>$ref,'call_id'=>'second-advisor-candidate','sip'=>'7777885173','callstart'=>'2026-10-21 20:10:56','seconds'=>14],
+   ['pbx_call_id'=>'pbx-ajeno','call_id'=>'ajeno','sip'=>'150','seconds'=>240]
+ ];
+ $salesAudio=$transferAudio->resolver($ref,8,'destino','150',$audios,$statsAudio);
+ $sourceAudio=$transferAudio->resolver($ref,7,'origen','100',$audios,$statsAudio);
+ vcheck($salesAudio['segmentos']===2&&$sourceAudio['segmentos']===2,'Dos grabaciones con PBX común en Ventas y Recepción');
+ vcheck($salesAudio['segmentos_info']===$sourceAudio['segmentos_info'],'Ambos reproductores comparten segmentos y orden');
+ vcheck($salesAudio['segmentos_info'][0]['extension']==='100','Origen 100 corroborado por estadística');
+ vcheck($salesAudio['segmentos_info'][1]['extension']===''&&
+     str_contains($salesAudio['segmentos_info'][1]['etiqueta'],'verificar'),
+     'Estadística con SIP externo no autoriza declarar que el audio es del 150');
+ $direct=$transferAudio->resolver($ref,8,'destino','150',$audios);
+ vcheck(array_column($direct['segmentos_info'],'indice')===[0,1],'Reproducción usa índices estables sin estadísticas');
+ $partial=$transferAudio->resolver($ref,8,'destino','150',
+    static fn($id)=>$id==='early-out-end-record'?['link'=>'https://provider.test/'.$id]:null);
+ vcheck($partial['segmentos']===1&&$partial['estado']==='DISPONIBLE_PARCIAL',
+     'Un tramo listo se ofrece aunque el segundo siga en preparación');
+ vreject(fn()=>$transferAudio->resolver($ref,9,'destino','150',$audios),'Otro asesor no accede a los audios de la transferencia');
+ vreject(fn()=>$transferAudio->resolver($ref,7,'origen','150',$audios),'Recepción no usurpa extensión de Ventas');
+
+ vreject(fn()=>$results->guardar(8,$ref,'INTERESADO'),'Resultado único, no reemplazar notas');
+ vreject(fn()=>$results->guardar(9,$ref,'INTERESADO'),'Otro usuario no puede clasificar esa transferencia');
+ vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-different-session-123456')===null,'Otra sesión no hereda transferencia vinculada');
  // OUT_END del iniciador no debe acreditar un tramo receptor si llegó
  // ANTES del ANSWER de la extensión; tampoco lo acredita un tercero.
  $outOfOrder=TelefoniaVentasLlamadasService::hechos([
@@ -144,6 +202,12 @@ try {
  ],'150','100');
  vcheck(!$foreignSource['finalizada'],'Último participante ajeno no autoriza finalizar Ventas');
 
+ // Una llamada con ANSWER de Ventas pero sin operación exacta jamás puede
+ // usar la excepción de guardado sin END; tampoco basta una referencia manual.
+ $orphan='pbx-unlinked-own-answer-150';
+ $event($orphan,'NOTIFY_INTERNAL','150');$event($orphan,'NOTIFY_ANSWER','150');
+ vreject(fn()=>$results->guardar(8,$orphan,'INTERESADO'),
+     'Una respuesta 150 sin ruta ni transferencia acreditada no autoriza resultado prematuro');
  // Reasignación: el tramo congelado conserva su propietario histórico.
  $db->query("UPDATE telefonia_extensiones SET usuario_id=9,created_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE),updated_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE extension='150'");
  vcheck($svc->obtener(8,'pbx-prospecto-001')['usuario_id']==8,'Mantiene atribución histórica');

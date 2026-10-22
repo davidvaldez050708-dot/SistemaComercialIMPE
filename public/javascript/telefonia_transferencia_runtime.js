@@ -65,7 +65,9 @@
     }
     if(!tracked.source && session?.isEnded?.() && !endedReported){
      endedReported=true;try{apply(await request(tracked.op.id,'TERMINADA'));}catch(e){endedReported=false;throw e;}
-     if(!external)api.consultEnded(tracked.op);reset();return;
+     if(!external)api.consultEnded(tracked.op);
+     else api.receiverEnded?.(tracked.op,tracked.token,session);
+     reset();return;
     }
     if(!tracked.source && tracked.op.modo==='CONSULTADA' && !external && session?.isEstablished?.() && !atendida){
      apply(await request(tracked.op.id,'ATENDIDA'));atendida=true;

@@ -452,8 +452,12 @@
         const heading=panel.querySelector('.linkage-call-inline-player-heading span');
         heading.textContent='Verificando grabación…';error.hidden=true;host.replaceChildren();panel.hidden=false;
         const pbx = button.dataset.pbxId || '';
-        const url = new URL('prueba_telefonia/api/grabacion_transferida_pbx.php', document.baseURI);
+        const salidaInstitucion=button.dataset.pbxSalidaInstitucion==='1';
+        const url = new URL(salidaInstitucion
+            ? 'prueba_telefonia/api/grabacion_transferida_institucion.php'
+            : 'prueba_telefonia/api/grabacion_transferida_pbx.php', document.baseURI);
         url.searchParams.set('pbx_call_id', pbx);
+        if(salidaInstitucion)url.searchParams.set('seguimiento_id',button.dataset.seguimientoId||'0');
         url.searchParams.set('verificar', '1');
         button.disabled = true;
         try {

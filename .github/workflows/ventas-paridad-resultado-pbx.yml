@@ -1,0 +1,68 @@
+name: Ventas - paridad de resultado SIP y PBX
+on:
+  pull_request:
+    paths:
+      - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'app/views/telefonia/resultado_ventas_form.php'
+      - 'tests/telefonia_ventas_resultado_pendiente_browser.cjs'
+      - '.github/workflows/ventas-paridad-resultado-pbx.yml'
+      - 'tools/publicar_ventas_paridad_resultado_hostinger.sh'
+      - 'tests/publicacion_ventas_paridad_test.py'
+      - 'public/javascript/telefonia_ventas_shell.js'
+      - 'tests/telefonia_ventas_referencia_final.cjs'
+      - 'tests/telefonia_ventas_conciliacion_tardia.cjs'
+      - 'tests/telefonia_ventas_operacion_browser.cjs'
+      - 'tools/publicar_ventas_fin_analista_hostinger.sh'
+      - 'tests/publicacion_ventas_fin_analista_test.py'
+      - 'app/services/TelefoniaResultadoVentasService.php'
+      - 'app/services/TelefoniaVentasLlamadasService.php'
+      - 'app/views/telefonia/ventas_llamadas.php'
+      - 'tools/publicar_ventas_resultado_sin_end_hostinger.sh'
+      - 'tests/publicacion_ventas_sin_end_test.py'
+      - 'public/javascript/telefonia_disponibilidad.js'
+      - 'app/controllers/TelefoniaController.php'
+      - 'tests/telefonia_ventas_desbloqueo_disponibilidad.cjs'
+      - 'tools/publicar_ventas_disponibilidad_resultado_hostinger.sh'
+      - 'tests/publicacion_ventas_desbloqueo_disponibilidad_test.py'
+      - 'tools/diagnosticar_transferencia_ventas.php'
+jobs:
+  formulario:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/impe-paridad playwright bootstrap@5.3.8
+      - run: /tmp/impe-paridad/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis
+        run: |
+          node --check public/javascript/telefonia_ventas_resultados.js
+          node --check public/javascript/telefonia_ventas_shell.js
+          node --check public/javascript/telefonia_disponibilidad.js
+          node --check tests/telefonia_ventas_desbloqueo_disponibilidad.cjs
+          php -l app/controllers/TelefoniaController.php
+          php -l tools/diagnosticar_transferencia_ventas.php
+          node --check tests/telefonia_ventas_referencia_final.cjs
+          node --check tests/telefonia_ventas_conciliacion_tardia.cjs
+          node --check tests/telefonia_ventas_operacion_browser.cjs
+          node --check tests/telefonia_ventas_resultado_pendiente_browser.cjs
+          php -l app/services/TelefoniaResultadoVentasService.php
+          php -l app/services/TelefoniaVentasLlamadasService.php
+          php -l app/views/telefonia/ventas_llamadas.php
+      - name: Publicador reversible en replica aislada
+        run: |
+          python3 tests/publicacion_ventas_paridad_test.py
+          python3 tests/publicacion_ventas_fin_analista_test.py
+          python3 tests/publicacion_ventas_sin_end_test.py
+          python3 tests/publicacion_ventas_desbloqueo_disponibilidad_test.py
+          node tests/telefonia_ventas_desbloqueo_disponibilidad.cjs
+          node tests/telefonia_ventas_referencia_final.cjs
+          node tests/telefonia_ventas_conciliacion_tardia.cjs
+      - name: Pruebas de navegador con PBX tardia
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/impe-paridad/node_modules/playwright
+          BOOTSTRAP_MODULE_PATH: /tmp/impe-paridad/node_modules/bootstrap
+        run: |
+          node tests/telefonia_ventas_resultado_pendiente_browser.cjs
+          node tests/telefonia_ventas_operacion_browser.cjs

@@ -20,6 +20,7 @@ function hostFixture(){
   sdkConnected:true,sdkInviteId:''},duration:9},retired:[],closed:0};
  const wrapper=`
  let state=rt.state,answeredAtMs=500;
+ const config={salesSdkIncoming:true};
  const window={zdrmWebPhone:{webCallSession:null},setTimeout(){}};
  const isSdkOnlyIncoming=()=>state.context?.type==='SDK_INCOMING'&&!state.pbxCallId;
  const currentDuration=()=>state.duration;

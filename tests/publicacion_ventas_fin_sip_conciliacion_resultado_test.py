@@ -34,7 +34,12 @@ with tempfile.TemporaryDirectory() as tmp:
     for item in patches:
         p = site / item["path"]
         p.parent.mkdir(parents=True, exist_ok=True)
-        newest = (ROOT / item["path"]).read_text(encoding="utf-8")
+        # Probar el publicador antiguo contra su destino versionado, no contra
+        # el nuevo formulario comercial. No relajar ni saltar protecciones.
+        fixtures = {"public/javascript/telefonia_ventas_shell.js": "telefonia_ventas_shell_sip_publicada.js",
+                    "public/javascript/telefonia_ventas_resultados.js": "telefonia_ventas_resultados_sip_publicada.js"}
+        ref = ROOT / "tests/fixtures" / fixtures[item["path"]] if item["path"] in fixtures else ROOT / item["path"]
+        newest = ref.read_text(encoding="utf-8")
         previous = newest
         for older, newer in reversed(item["pairs"]):
             assert previous.count(newer) == 1, ("Falta versión destino", item["path"])

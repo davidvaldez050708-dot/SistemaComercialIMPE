@@ -468,7 +468,7 @@
                 if (!info.ok || !info.disponible || !(info.segmentos > 0))
                     throw new Error('Zadarma todavía no tiene todos los segmentos.');
                 if (!window.IMPE_TELEPHONY_SEGMENTS?.create(
-                    slot, endpoint.toString(), info.segmentos)) {
+                    slot, endpoint.toString(), info.segmentos, info.segmentos_info||[])) {
                     throw new Error('No fue posible preparar el reproductor.');
                 }
             } catch (error) {
