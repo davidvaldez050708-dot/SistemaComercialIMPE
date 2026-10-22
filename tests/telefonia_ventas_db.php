@@ -137,6 +137,14 @@ try {
  $op=$ops->paraDestinoConfirmado(8,$rid,$sdk);
  vcheck($op&&$op['referencia']===$ref,'OUT_END temprano de 100 no bloquea la identidad SDK 150');
  vcheck($svc->obtener(8,$ref,'150')['finalizada']===false,'El asesor sigue pendiente de cierre PBX propio');
+ $human=$results->guardar(8,$ref,'INTERESADO',['observacion'=>'Resultado propio sin webhook END','prospecto_nombre'=>'Diana']);
+ vcheck($human['pbx_pendiente']===true,'Guarda de inmediato sólo el resultado humano, con PBX pendiente');
+ $humanCall=$svc->obtener(8,$ref,'150');
+ vcheck(!$humanCall['finalizada']&&$humanCall['registro']['resultado']==='INTERESADO',
+     'El registro persiste sin inventar cierre, duración ni audio');
+ vcheck($humanCall['segundos']===null,'No se inventa duración del asesor');
+ vreject(fn()=>$results->guardar(8,$ref,'INTERESADO'),'Resultado único, no reemplazar notas');
+ vreject(fn()=>$results->guardar(9,$ref,'INTERESADO'),'Otro usuario no puede clasificar esa transferencia');
  vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-different-session-123456')===null,'Otra sesión no hereda transferencia vinculada');
  // OUT_END del iniciador no debe acreditar un tramo receptor si llegó
  // ANTES del ANSWER de la extensión; tampoco lo acredita un tercero.
