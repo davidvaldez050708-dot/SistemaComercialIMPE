@@ -40,4 +40,44 @@ $catalogoRegistro = $registroServicio->catalogo();
   </form>
  </div>
 </div>
+
+<div class="modal fade" id="modalManualContactos" tabindex="-1" aria-labelledby="tituloManualContactos" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+  <div class="modal-content aliados-modal">
+   <div class="modal-header"><div><h2 class="modal-title" id="tituloManualContactos">Gestionar contactos</h2><p>Directorio de contactos del aliado manual.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+   <div class="modal-body">
+    <div class="alert alert-danger d-none" data-manual-contactos-error role="alert"></div>
+    <div class="aliados-manual-contact-list" data-manual-contactos-list aria-live="polite"></div>
+    <form data-manual-contactos-form class="row g-3 mt-2">
+     <input type="hidden" name="id"><input type="hidden" name="origen" value="manual"><input type="hidden" name="contacto_id">
+     <div class="col-md-6"><label class="form-label" for="manualContactoNombre">Nombre *</label><input class="form-control" id="manualContactoNombre" name="nombre" maxlength="120" required></div>
+     <div class="col-md-6"><label class="form-label" for="manualContactoCargo">Cargo</label><input class="form-control" id="manualContactoCargo" name="cargo" maxlength="120"></div>
+     <div class="col-md-6"><label class="form-label" for="manualContactoCorreo">Correo</label><input class="form-control" type="email" id="manualContactoCorreo" name="correo" maxlength="180"></div>
+     <div class="col-md-6"><label class="form-label" for="manualContactoTelefono">Teléfono</label><input class="form-control" id="manualContactoTelefono" name="telefono" maxlength="30"></div>
+     <div class="col-12"><label class="form-check-label"><input class="form-check-input me-2" name="whatsapp_autorizado" type="checkbox" value="1">WhatsApp autorizado explícitamente por el contacto</label></div>
+     <div class="col-12 d-flex justify-content-end gap-2"><button type="button" class="btn btn-system-light" data-manual-contacto-limpiar>Nuevo contacto</button><button type="submit" class="btn btn-system-save">Guardar contacto</button></div>
+    </form>
+   </div>
+   <div class="modal-footer"><button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cerrar</button></div>
+  </div>
+ </div>
+</div>
+<div class="modal fade" id="modalManualHistorial" tabindex="-1" aria-labelledby="tituloManualHistorial" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+  <div class="modal-content aliados-modal">
+   <div class="modal-header"><div><h2 class="modal-title" id="tituloManualHistorial">Historial de difusión</h2><p>Actuaciones registradas por Cuenta Clave; no implica envío automático del CRM.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+   <div class="modal-body">
+    <div class="alert alert-danger d-none" data-manual-historial-error role="alert"></div>
+    <div data-manual-historial-list aria-live="polite"></div>
+    <form data-manual-difusion-form class="row g-3 mt-3">
+     <input type="hidden" name="id"><input type="hidden" name="origen" value="manual">
+     <div class="col-md-4"><label for="manualDifusionCanal" class="form-label">Canal utilizado *</label><select class="form-select" name="canal" id="manualDifusionCanal" required><option value="CORREO">Correo</option><option value="WHATSAPP">WhatsApp</option><option value="OTRO">Otro</option></select></div>
+     <div class="col-md-8"><label for="manualDifusionNota" class="form-label">Nota de difusión</label><input class="form-control" id="manualDifusionNota" name="nota" maxlength="500" placeholder="Ej. Convocatoria compartida con la institución"></div>
+     <div class="col-12 d-flex justify-content-end"><button class="btn btn-system-save" type="submit">Registrar difusión realizada</button></div>
+    </form>
+   </div>
+   <div class="modal-footer"><button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cerrar</button></div>
+  </div>
+ </div>
+</div>
 <?php endif; ?>
