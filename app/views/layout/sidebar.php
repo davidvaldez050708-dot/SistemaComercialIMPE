@@ -19,6 +19,7 @@ $mostrarAliados = tienePermiso('aliados.ver');
 $mostrarWhatsapp = tienePermiso('whatsapp.ver');
 $mostrarConvocatorias = tienePermiso('convocatorias.ver');
 $mostrarConvenios = puedeConsultarDirectorioConvenios();
+$mostrarProspectos = tienePermiso('prospectos.ver_todos');
 $mostrarReporteTerritorial =
     tienePermiso('reportes.territorial') &&
     $mostrarDataTerritorial;
@@ -205,7 +206,7 @@ $claseFormularios =
             </div>
         <?php endif; ?>
 
-        <?php if ($mostrarConvocatorias || $mostrarConvenios): ?>
+        <?php if ($mostrarConvocatorias || $mostrarConvenios || $mostrarProspectos): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
@@ -239,7 +240,7 @@ $claseFormularios =
                     </a>
                 <?php endif; ?>
 
-                <?php if ($esRolMarketingSidebar && $mostrarConvocatorias): ?>
+                <?php if ($mostrarProspectos): ?>
                     <a
                         href="<?= BASE_URL ?>index.php?controller=prospecto&action=index"
                         class="sidebar-link <?= $claseProspectos ?>">
@@ -540,7 +541,7 @@ $claseFormularios =
             </div>
         <?php endif; ?>
 
-        <?php if ($mostrarConvocatorias || $mostrarConvenios): ?>
+        <?php if ($mostrarConvocatorias || $mostrarConvenios || $mostrarProspectos): ?>
 
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">
@@ -574,7 +575,7 @@ $claseFormularios =
                         </a>
                     <?php endif; ?>
 
-                    <?php if ($esRolMarketingSidebar && $mostrarConvocatorias): ?>
+                    <?php if ($mostrarProspectos): ?>
                         <a
                             href="<?= BASE_URL ?>index.php?controller=prospecto&action=index"
                             class="sidebar-link <?= $claseProspectos ?>">

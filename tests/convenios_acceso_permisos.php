@@ -52,9 +52,10 @@ foreach ($casos as $nombre=>[$sesion,$permitido]) {
     }
     verificar($xpath->query('//a[contains(@href,"controller=convocatoria&action=index")]')->length===(tienePermiso('convocatorias.ver')?2:0),'Convocatorias conserva permiso propio: '.$nombre);
     $otrosMarketing=tienePermiso('convocatorias.ver') && strcasecmp($sesion['rol']??'','Marketing')===0;
-    foreach (['formulario','prospecto','correoMarketing'] as $controller) {
+    foreach (['formulario','correoMarketing'] as $controller) {
         verificar($xpath->query('//a[contains(@href,"controller='.$controller.'&action=index")]')->length===($otrosMarketing?2:0),'Sin conceder otro módulo: '.$nombre.'/'.$controller);
     }
+    verificar($xpath->query('//a[contains(@href,"controller=prospecto&action=index")]')->length===(tienePermiso('prospectos.ver_todos')?2:0),'Prospectos mantiene permiso propio: '.$nombre);
     verificar($_SESSION===$sesion,'No modifica permisos ni sesión: '.$nombre);
     // La falta de sesión se verifica por política y ausencia de enlace; el guard redirige al login.
     $process=proc_open([PHP_BINARY,__FILE__,'--gate',$nombre],[1=>['pipe','w'],2=>['pipe','w']],$pipes);
