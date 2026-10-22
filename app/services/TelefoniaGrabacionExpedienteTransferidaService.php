@@ -212,9 +212,19 @@ class TelefoniaGrabacionExpedienteTransferidaService
             $e = $stmt->get_result()->fetch_assoc() ?: [];
             $stmt->close();
             if (empty($e['llegada']) || (int)($e['respondida'] ?? 0) < 1 ||
-                (int)($e['finalizada'] ?? 0) < 1 ||
                 (int)($e['con_audio'] ?? 0) < 1) {
                 continue;
+            }
+            // El OUT_END de Recepción puede ser el único END o incluso
+            // faltar. Sólo en SALIENTE institucional verificada se permite
+            // buscar asociación sin END, jamás por proximidad a otro PBX.
+            if ((int)($e['finalizada'] ?? 0) < 1) {
+                if(!preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$pbx))continue;
+                $svc=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
+                if(!$svc->identidad($pbx,$usuarioId,$extension,$seguimientoId))continue;
+                try{
+                    if(!$svc->verificar($pbx,$usuarioId,$extension,$seguimientoId)['ids'])continue;
+                }catch(DomainException $ignored){continue;}
             }
             // La llegada PBX de esta extensión coincide con el inicio
             // observado por el navegador con un margen máximo de 90 segundos.
