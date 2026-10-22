@@ -19,7 +19,7 @@ No usar `git pull`, no ejecutar SQL, no sustituir carpetas completas ni sobrescr
 set -e
 SITIO="$HOME/domains/fundacionrededumex.org/public_html"
 ENTREGA="$HOME/entregas-impe/correccion-acceso-20261022"
-REV="4be08498124998d4a2247147fd255cf31cefa210"
+REV="6e8913441b3a1082473db298c377056dd62ff3fb"
 mkdir -p "$ENTREGA"
 curl -fLsS "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/$REV/tools/publicar_alcance_aliados_convenios_20261022.py" -o "$ENTREGA/publicar.py"
 curl -fLsS "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/$REV/tools/alcance_aliados_convenios_20261022_release.json" -o "$ENTREGA/entrega.json"
@@ -27,7 +27,9 @@ python3 -m py_compile "$ENTREGA/publicar.py"
 python3 "$ENTREGA/publicar.py" --site "$SITIO" --manifest "$ENTREGA/entrega.json" --check
 ```
 
-Revisar diff, que diga `REVISIÓN COMPATIBLE` y no reporte `CONFLICTO`; ninguna acción SQL. Si el sitio tiene personalizaciones superpuestas, pedir la conciliación puntual sin forzar el archivo de GitHub.
+La variante de Hostinger en `CrearConvocatoriaController.php` provocó `CONFLICTO: personalización no conciliada`. Este publicador incluye ahora una conciliación puntual del método `index()`, con comprobación exacta BASE→SOURCE, preservación reversible de personalizaciones y validación `php -l`. Si el controlador de producción tiene una secuencia distinta, vuelve a detenerse; no sustituirlo a mano.
+
+Revisar diff, que diga `REVISIÓN COMPATIBLE` y no reporte `CONFLICTO`; ninguna acción SQL. La salida esperada del controlador es `CONCILIACIÓN PREPARADA ... (únicamente alcance territorial de index(); personalizaciones conservadas)` seguida de `PREPARADO`. Si no, compartir sólo el mensaje técnico del conflicto y diagnosticar la variante exacta sin mostrar credenciales ni datos de usuarios. Si el sitio tiene personalizaciones superpuestas, pedir la conciliación puntual sin forzar el archivo de GitHub.
 
 Publicar **sólo** si los ocho archivos son compatibles y aprobaron verificaciones:
 
