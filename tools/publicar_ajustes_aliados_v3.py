@@ -17,7 +17,7 @@ import sys
 import tempfile
 from urllib.request import Request, urlopen
 
-SOURCE = "74983f823fb9baccd3639364bc328bf3655330e6"
+SOURCE = "de03f8aafde3809801288d40a13129fe95738cd1"
 BASE = "a2d22524249570e90a32d196058d9cc50527c21e"
 ROOT = "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/"
 MODULE = "app/views/convocatorias/partials/aliado_programas_modular.php"
@@ -28,9 +28,9 @@ SHA = {
  "app/services/AliadoRegistroService.php":"bdfebaa79a05ae39392181a2b53f96753d7627b2",
  "app/views/aliados/estado.php":"a758c384d4dfd22c20913e94628a7c14b7ff8b50",
  "app/views/aliados/partials/registro_gestion.php":"a15e9dc961f66451db094c30c67b9098ae9e8696",
- "app/views/convocatorias/crear_desde_convenio.php":"661d8ed46778eba3a48e0eb23d1f7baeb036c0a8",
+ "app/views/convocatorias/crear_desde_convenio.php":"a5a5ebfd7b9ec69c1851574a5d7f5db522305c2d",
  "public/javascript/aliados_registro.js":"2ee1f1610b25021cdfb03bc2bc3aeb83f8ce0d25",
- "public/css/aliados_v2_extension.css":"d9363367fc133e4604ea7b674c2e0915c4e0ce8d",
+ "public/css/aliados_v2_extension.css":"4ab5a6106cd54f7d3e51b06500b90f81e866f44c",
  "public/javascript/convocatorias_aliado_multiprograma_v3.js":"9c93fa26c67965c95721df6511e165120f5d4c89",
  "public/css/convocatorias_aliado_multiprograma_v3.css":"eea8966576c62bfe4c88bd551b01067f6bdcbd22",
  "tools/migrar_canales_manuales_20261022.php":"3d025804f6c5513614d28eff74be9f4566531a69"
