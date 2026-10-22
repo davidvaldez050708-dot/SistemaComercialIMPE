@@ -10,6 +10,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/../helpers/ZadarmaPbxIdentifierHelper.php';
 require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
+require_once __DIR__.'/TelefoniaGrabacionesTransferenciaInstitucionService.php';
 
 class TelefoniaGrabacionExpedienteTransferidaService
 {
@@ -48,6 +49,28 @@ class TelefoniaGrabacionExpedienteTransferidaService
         $q=$this->db->prepare('SELECT evento,internal,received_at,call_id_with_rec,payload_json,is_recorded FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
         $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
         $extension=(string)$assignment['extension'];
+        // Excepción EXCLUSIVA: salida 100 -> Analista 101 acreditada y
+        // vinculada al mismo expediente. El END del 100 no acredita el fin
+        // del 101, pero tampoco debe ocultar los dos NOTIFY_RECORD firmados.
+        if(str_starts_with($pbx,'out_')){
+            $institucion=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
+            if($institucion->identidad($pbx,$usuarioId,$extension,$seguimientoId)){
+                try {
+                    $verified=$institucion->verificar($pbx,$usuarioId,$extension,$seguimientoId);
+                    if($verified['ids']){
+                        $r=$reply('REPORTADA',
+                            'Grabaciones reportadas para la transferencia institucional; disponibilidad al abrir.',
+                            $pbx,$verified['ids']);
+                        $r['tipo_audio']='INSTITUCION_SALIENTE';
+                        return $r;
+                    }
+                    return $reply('AUDIO_PENDIENTE','Aún no hay grabaciones reportadas para esta transferencia.');
+                }catch(DomainException $ignored){
+                    return $reply('PARTICIPACION_PENDIENTE',
+                        'Falta acreditar la respuesta de tu extensión en la transferencia.');
+                }
+            }
+        }
         $proof=TelefoniaPbxSegmentosService::transferencia($events,$extension);
         $arrival=(bool)array_filter($events,static fn($e)=>$e['evento']==='NOTIFY_INTERNAL'&&$e['internal']===$extension);
         if((!$arrival&&$proof['origen']==='')||!$proof['atendida']||$proof['answer_at']<(string)$assignment['desde'])
