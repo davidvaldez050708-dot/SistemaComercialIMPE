@@ -77,6 +77,8 @@ const fixture=(view,role='cc')=>base+'_fixture?view='+view+'&role='+role;
   check(await page.locator('[data-convenio-notification]:visible').count()===1,'Marketing filtra Vinculación');
   await page.locator('[data-convenio-origin-filter]').selectOption('');
   const card=page.locator('[data-convenio-notification]').filter({hasText:'Aliado navegador'});await card.click();
+  // El modal Bootstrap se muestra después de animar el backdrop.
+  await page.locator('[data-convenio-create-link]').waitFor({state:'visible',timeout:7000});
   check(await page.locator('[data-convenio-create-link]').isVisible(),'aliado manual permite crear convocatoria sin expediente');
   const createHref=await page.locator('[data-convenio-create-link]').getAttribute('href');
   check(createHref.includes('aliado_tipo=manual') && createHref.includes('aliado_id='),'contexto manual y territorio en ruta de convocatoria');
