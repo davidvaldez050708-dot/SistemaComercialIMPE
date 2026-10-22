@@ -69,6 +69,18 @@ class PublicacionV2(unittest.TestCase):
         self.file.write_bytes(self.new)
         mod.restore(self.site,backup,self.root/"stamp.json")
         self.assertEqual(self.file.read_bytes(),self.old)
+    def test_check_sin_node_acepta_fuente_exacta_y_avisa_fusion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            stage=Path(tmp)
+            with patch.object(mod.shutil,"which",side_effect=lambda name: None if name in ("node","nodejs") else "/usr/bin/"+name):
+                # Los JS idénticos a la revisión SHA inmóvil no requieren Node en Hostinger.
+                mod.validate_php_js("public/javascript/test.js",b"const a = 1;",stage,b"const a = 1;",True)
+                # --check permite revisar el diff del JS fusionado, sin instalar.
+                mod.validate_php_js("public/javascript/test.js",b"const a = 2;",stage,b"const a = 1;",False)
+                # --apply se bloquea si la fusión JS no fue validada externamente.
+                with self.assertRaisesRegex(RuntimeError,"VALIDACION JS PENDIENTE"):
+                    mod.validate_php_js("public/javascript/test.js",b"const a = 2;",stage,b"const a = 1;",True)
+
     def test_fuente_fijada_reproduce_shas_git(self):
         actual=mod.SHAS
         for path,expected in actual.items():
