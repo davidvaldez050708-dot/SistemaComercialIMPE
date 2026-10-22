@@ -27,6 +27,10 @@ function guardarTokenHostingerComercial(string $token,?callable $probe=null): ar
         if(!flock($lock,LOCK_EX|LOCK_NB)) { throw new RuntimeException('HOSTINGER_CONFIG_OCUPADA'); }
         $data=is_file($path)?require $path:impeLeerConfigPrivada('mail_central.local.php');
         if(!is_array($data)) { throw new RuntimeException('HOSTINGER_CONFIG_INVALIDA'); }
+        if(is_file($path) && ($data['transport']??'')==='hostinger_api' && ($data['activo']??true)===true
+            && hash_equals((string)($data['api_token']??''),$token)) {
+            return ['ruta'=>$path,'respaldo'=>null,'buzones'=>count($boxes),'sin_cambios'=>true];
+        }
         $backup=null;
         if(is_file($path)) {
             $backup=$path.'.respaldo-'.gmdate('Ymd-His').'-'.bin2hex(random_bytes(4));
@@ -45,6 +49,28 @@ function guardarTokenHostingerComercial(string $token,?callable $probe=null): ar
     } finally { flock($lock,LOCK_UN);fclose($lock); }
 }
 
+function diagnosticarHostingerComercial(CorreoHostingerApiService $api, string $remitente=''): array
+{
+    $config=$api->configuracion();$boxes=$api->buzones($config['token']);$d=$api->descubrimiento();
+    $lines=['Fuente efectiva del token: '.$config['source'],
+        'API autorizados: '.$d['total_api'].'; institucionales @'.CorreoHostingerApiService::DOMINIO.': '.$d['total_institucional'],
+        'Consulta completa de GET /api/v1/me; sin caché local ni paginación en este endpoint.'];
+    foreach(['allowed_senders','user_senders','role_senders'] as $field) {
+        $lines[]='Restricción '.$field.': '.(array_key_exists($field,$config['policy'])?'configurada; revisar intersección con el usuario/rol':'ausente');
+    }
+    $accounts=impeLeerConfigPrivada('mail_accounts.local.php')['accounts']??[];
+    if(!is_array($accounts)) { throw new RuntimeException('HOSTINGER_CONFIG_INVALIDA'); }
+    $lines[]='Restricciones previas en mail_accounts.local.php: '.count($accounts).' entradas (no se crean cuentas nuevas).';
+    foreach(array_keys($boxes) as $email) { $lines[]='Buzón API: '.$email; }
+    $lines[]='Si falta un buzón: autorizarlo en el token Mail API de la misma orden de Hostinger; compartir dominio no lo autoriza.';
+    if($remitente!=='') {
+        $remitente=strtolower(trim($remitente));
+        if(!$api->institucional($remitente)) { $lines[]='Remitente solicitado: dominio/formato no institucional; rechazado.'; }
+        else { $lines[]='Remitente solicitado: '.(isset($boxes[$remitente])?'devuelto por Hostinger; se aplican además restricciones del usuario/rol.':'NO devuelto por Hostinger; no se permite enviar.'); }
+    }
+    return $lines;
+}
+
 if(realpath((string)($_SERVER['SCRIPT_FILENAME']??''))===__FILE__) {
     ini_set('display_errors','0');$api=new CorreoHostingerApiService();
     try {
@@ -54,12 +80,20 @@ if(realpath((string)($_SERVER['SCRIPT_FILENAME']??''))===__FILE__) {
             echo 'OK: token validado y guardado fuera del sitio público; buzones='.$r['buzones'].PHP_EOL;
             if($r['respaldo']) { echo 'Restaurar configuración comercial: cp -p -- '.escapeshellarg($r['respaldo']).' '.escapeshellarg($r['ruta']).PHP_EOL; }
         } elseif($mode==='--check') {
+            echo 'Versión comercial: '.CorreoHostingerApiService::VERSION.'; PHP '.PHP_VERSION.' SAPI '.PHP_SAPI.PHP_EOL;
             foreach(['hostinger_mail_config.php','mail_central.local.php','marketing_mail.local.php'] as $file) {
-                echo $file.': '.(impeRutaConfigPrivada($file)!==null?'legible':'no encontrado').PHP_EOL;
+                $path=impeRutaConfigPrivada($file);
+                echo $file.': '.($path!==null?'legible ('.(realpath(dirname($path))===realpath(dirname(__DIR__).'/config')?'config de compatibilidad':'directorio privado').')':'no encontrado').PHP_EOL;
             }
-            $config=$api->configuracion();$boxes=$api->buzones($config['token']);
-            echo 'OK: token Mail API válido; buzones consultados:'.PHP_EOL;
-            foreach(array_keys($boxes) as $email) { echo ' - '.$email.PHP_EOL; }
+            foreach(['app/services/CorreoHostingerApiService.php','app/services/CorreoCuentaConectadaService.php','public/javascript/correos_marketing.js'] as $codeFile) {
+                echo 'Código SHA256 '.$codeFile.': '.hash_file('sha256',dirname(__DIR__).'/'.$codeFile).PHP_EOL;
+            }
+            $sender='';
+            if(isset($argv[2])) {
+                if(!str_starts_with($argv[2],'--remitente=') || count($argv)>3) { throw new RuntimeException('HOSTINGER_MODO_INVALIDO'); }
+                $sender=substr($argv[2],12);
+            }
+            foreach(diagnosticarHostingerComercial($api,$sender) as $line) { echo $line.PHP_EOL; }
         } else { throw new RuntimeException('HOSTINGER_MODO_INVALIDO'); }
         echo "Sin envío de mensajes ni cambios en recuperación, SMTP o base de datos.\n";
     } catch(Throwable $e) {

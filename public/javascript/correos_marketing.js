@@ -132,34 +132,55 @@
         const opcionesRemitente = modalElement.querySelector('#correo_hostinger_remitentes');
         let remitentesPermitidos = null;
         let consultaRemitentes = 0;
+        let ultimoRefrescoRemitentes = 0;
+        let diagnosticoRemitentes = null;
         const validarRemitenteVisible = function () {
             const correo = String(remitente?.value || '').trim().toLowerCase();
             const permitido = Array.isArray(remitentesPermitidos) && remitentesPermitidos.includes(correo);
             if (estadoRemitente && Array.isArray(remitentesPermitidos)) {
+                const total = remitentesPermitidos.length;
                 estadoRemitente.textContent = permitido ? 'Remitente Hostinger autorizado: ' + correo
-                    : 'Selecciona una dirección Hostinger autorizada de la lista. No se sustituirá el remitente.';
+                    : total === 0 ? 'Las restricciones del CRM no permiten utilizar los buzones devueltos por Hostinger. Solicita revisar la configuración comercial.'
+                    : correo === '' ? 'Selecciona uno de los ' + total + ' buzones institucionales autorizados.'
+                    : 'Esta dirección no está entre los ' + total + ' buzones permitidos. Hostinger devolvió ' +
+                        (diagnosticoRemitentes?.total_institucional ?? total) + ' buzones institucionales' +
+                        (diagnosticoRemitentes?.restricciones_locales ? ' y existen restricciones locales del CRM.' : '. Revisa el alcance del token si falta un buzón.');
             }
             return permitido;
         };
         const cargarRemitentes = async function () {
             const consulta = ++consultaRemitentes;
+            ultimoRefrescoRemitentes = Date.now();
             remitentesPermitidos = null;
+            diagnosticoRemitentes = null;
+            opcionesRemitente?.replaceChildren();
             if (estadoRemitente) { estadoRemitente.textContent = 'Consultando remitentes Hostinger…'; }
             try {
                 const response = await fetch('index.php?controller=correoMarketing&action=remitentes', {headers:{'X-Requested-With':'fetch'},cache:'no-store'});
                 const json = await response.json();
-                if (consulta !== consultaRemitentes) { return; }
+                if (consulta !== consultaRemitentes) { return false; }
                 if (!response.ok || !json.ok) { throw new Error(json.mensaje || 'No se pudieron consultar los remitentes Hostinger.'); }
-                remitentesPermitidos = json.remitentes;
-                opcionesRemitente?.replaceChildren();
+                if (!Array.isArray(json.remitentes) || json.remitentes.some(function (correo) { return typeof correo !== 'string'; })) {
+                    throw new Error('La lista de buzones recibida no es válida. Vuelve a abrir el formulario.');
+                }
+                remitentesPermitidos = Array.from(new Set(json.remitentes));
+                diagnosticoRemitentes = json.diagnostico || null;
+                ultimoRefrescoRemitentes = Date.now();
                 remitentesPermitidos.forEach(function (correo) {
                     const option = document.createElement('option'); option.value = correo; opcionesRemitente?.appendChild(option);
                 });
                 validarRemitenteVisible();
-            } catch (error) { if (consulta === consultaRemitentes && estadoRemitente) { estadoRemitente.textContent = error.message; } }
+                return true;
+            } catch (error) {
+                if (consulta === consultaRemitentes && estadoRemitente) { estadoRemitente.textContent = error.message; }
+                return false;
+            }
         };
         modalElement.addEventListener('shown.bs.modal', cargarRemitentes);
         remitente?.addEventListener('input', validarRemitenteVisible);
+        remitente?.addEventListener('focus', function () {
+            if (Date.now() - ultimoRefrescoRemitentes > 30000) { cargarRemitentes(); }
+        });
 
         const mostrarError = function (mensaje) {
             mostrarToast(
@@ -1327,9 +1348,14 @@
                 return;
             }
 
-            if (!validarRemitenteVisible()) {
-                mostrarError(estadoRemitente?.textContent || 'Selecciona un remitente Hostinger autorizado.'); remitente?.focus(); return;
-            }
+            // Actualizar antes de validar evita bloquear buzones recién autorizados por una lista vieja.
+            enviando = true;
+            try {
+                if (!(await cargarRemitentes()) || !validarRemitenteVisible()) {
+                    mostrarError(estadoRemitente?.textContent || 'No fue posible comprobar los buzones Hostinger.');
+                    remitente?.focus(); return;
+                }
+            } finally { enviando = false; }
 
             const errorArchivos = validarArchivos();
             if (errorArchivos !== '') {
