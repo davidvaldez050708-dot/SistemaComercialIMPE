@@ -19,7 +19,9 @@ for nombre, hashes in publicador.ARCHIVOS.items():
     original = subprocess.check_output(
         ["git", "show", FUENTE + ":" + nombre], cwd=str(ROOT)
     )
-    actualizado = (ROOT / nombre).read_bytes()
+    actualizado = subprocess.check_output(
+        ["git", "show", publicador.REVISION + ":" + nombre], cwd=str(ROOT)
+    )
     assert publicador.git_blob(original) == hashes["antes"], nombre + " fuente"
     assert publicador.git_blob(actualizado) == hashes["despues"], nombre + " destino"
     originales[nombre] = original
