@@ -74,11 +74,11 @@ const fixture=(view,role='cc')=>base+'_fixture?view='+view+'&role='+role;
   await page.goto(fixture('convenios','marketing')+'&estado_id=1');
   check(await page.locator('.convenios-group-list .convenios-list-row[data-convenio-notification]').count()>=2,'Convenios presenta directorio de filas agrupadas por municipio');
    check(await page.locator('.convenios-group-list [data-convenio-municipio-header]').count()>=1,'Agrupación por municipio conservada');
-   check(await page.locator('.convenios-list-row [data-convenio-open]').count()>=2,'Acciones Crear convocatoria y Ver detalle legibles');
+   check(await page.locator('.convenios-list-row [data-convenio-open]').count()>=2,'Acciones Ver detalle legibles');
   await page.locator('[data-convenio-origin-filter]').selectOption('institucional');
   check(await page.locator('[data-convenio-notification]:visible').count()===1,'Marketing filtra Vinculación');
   await page.locator('[data-convenio-origin-filter]').selectOption('');
-  const card=page.locator('[data-convenio-notification]').filter({hasText:'Aliado navegador'});await card.click();
+  const card=page.locator('[data-convenio-notification]').filter({hasText:'Aliado navegador'});await card.locator('[data-convenio-open]').click();
   // El modal Bootstrap se muestra después de animar el backdrop.
   await page.locator('[data-convenio-create-link]').waitFor({state:'visible',timeout:7000});
   check(await page.locator('[data-convenio-create-link]').isVisible(),'aliado manual permite crear convocatoria sin expediente');

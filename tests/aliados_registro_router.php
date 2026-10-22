@@ -14,8 +14,9 @@ if ($role==='guest') { $_SESSION=[]; echo 'Sin sesión de prueba'; return true; 
 if ($role==='contacts') { $_SESSION['permisos'][]='aliados.gestionar_contactos'; $puedeGestionarContactos=true; $estructuraContactosDisponible=true; }
 if ($role==='share') { $_SESSION['permisos']=array_merge($_SESSION['permisos'],['aliados.compartir_correo','aliados.preparar_whatsapp','aliados.ver_historial','convocatorias.ver']); $puedeCompartirCorreo=true; $puedePrepararWhatsapp=true; $puedeConsultarConvocatorias=true; $puedeVerHistorial=true; }
 $view=$_GET['view']??'aliados';
+$baseline=$view==='convenios'&&($_GET['baseline']??'')==='convenios'&&getenv('IMPE_CONVENIOS_BASELINE_DIR');
 ?><!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aliados prueba aislada</title>
-<link rel="stylesheet" href="/fixture-bootstrap.css"><?php foreach(['global','dashboard','aliados','aliados_v2_extension','crear_convocatoria','responsive_sistema'] as $css): ?><link rel="stylesheet" href="/public/css/<?= $css ?>.css"><?php endforeach; ?>
+<link rel="stylesheet" href="/fixture-bootstrap.css"><?php foreach(['global','dashboard','aliados','aliados_v2_extension','crear_convocatoria','responsive_sistema'] as $css): ?><link rel="stylesheet" href="/public/css/<?= $css ?>.css<?= $baseline&&$css==='aliados_v2_extension'?'?convenios_baseline=1':'' ?>"><?php endforeach; ?>
 <script src="/fixture-bootstrap.js"></script><script>window.IMPE_CSRF_TOKEN=<?= json_encode($_SESSION['csrf_token']??'') ?>;</script>
 <?php if (in_array($role,['contacts','share'],true)) {
     // Ejecutar la protección CSRF real del layout, sin copiarla ni omitirla.
@@ -23,13 +24,13 @@ $view=$_GET['view']??'aliados';
     preg_match('/(\(function \(\) \{\s*\x27use strict\x27;\s*const token = String\(window\.IMPE_CSRF_TOKEN[\s\S]+?\}\)\(\);)/',$layout,$csrfScript);
     echo '<script>'.($csrfScript[1]??'').'</script>';
 } ?>
-<script src="/public/javascript/aliados_registro.js"></script><script src="/public/javascript/crear_convocatoria.js"></script><script src="/public/javascript/crear_convocatoria_v2_extension.js"></script><script src="/public/javascript/aliados.js"></script>
+<script src="/public/javascript/aliados_registro.js"></script><script src="/public/javascript/crear_convocatoria.js<?= $baseline?'?convenios_baseline=1':'' ?>"></script><script src="/public/javascript/crear_convocatoria_v2_extension.js<?= $baseline?'?convenios_baseline=1':'' ?>"></script><script src="/public/javascript/aliados.js"></script>
 </head><body><main class="p-3">
 <?php
 if ($view==='convenios') {
     require_once __DIR__.'/../app/models/CrearConvocatoriaModel.php';
     $m=new CrearConvocatoriaModel(); $convenios=$m->listarConveniosAliados(); $estados=$m->listarEstados(); $estructuraDisponible=true;
-    require __DIR__.'/../app/views/convocatorias/crear_desde_convenio.php';
+    require $baseline?getenv('IMPE_CONVENIOS_BASELINE_DIR').'/app/views/convocatorias/crear_desde_convenio.php':__DIR__.'/../app/views/convocatorias/crear_desde_convenio.php';
 } elseif ($view==='prospectos') {
     require_once __DIR__.'/../app/models/ProspectoModel.php';
     $listado=(new ProspectoModel())->listar((int)($_GET['pagina']??1),25,$_GET); $mensajeError='';

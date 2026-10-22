@@ -321,13 +321,18 @@ class AliadoRegistroService
     public function decorar(array $filas): array
     {
         if (!$this->disponible()) { return $filas; }
-        $perfiles=$this->db->query("SELECT r.manual_id,r.seguimiento_id,r.publicado,r.habilitado,GROUP_CONCAT(p.nombre ORDER BY p.nombre SEPARATOR ' · ') programas FROM formulario_aliado_registro r LEFT JOIN formulario_aliado_programas ap ON ap.aliado_id=r.aliado_id LEFT JOIN formulario_programas p ON p.codigo=ap.programa_codigo AND p.activo=1 GROUP BY r.aliado_id,r.manual_id,r.seguimiento_id,r.publicado,r.habilitado")->fetch_all(MYSQLI_ASSOC);
+        $perfiles=$this->db->query("SELECT r.manual_id,r.seguimiento_id,r.publicado,r.habilitado,p.codigo,p.nombre FROM formulario_aliado_registro r LEFT JOIN formulario_aliado_programas ap ON ap.aliado_id=r.aliado_id LEFT JOIN formulario_programas p ON p.codigo=ap.programa_codigo AND p.activo=1 ORDER BY p.nombre")->fetch_all(MYSQLI_ASSOC);
         $map=[];
-        foreach ($perfiles as $p) $map[($p['manual_id']?'manual:'.$p['manual_id']:'institucional:'.$p['seguimiento_id'])]=$p;
+        foreach ($perfiles as $p) {
+            $key=$p['manual_id']?'manual:'.$p['manual_id']:'institucional:'.$p['seguimiento_id'];
+            if (!isset($map[$key])) $map[$key]=$p+['programas_items'=>[]];
+            if ($p['codigo']!==null) $map[$key]['programas_items'][]=['codigo'=>$p['codigo'],'nombre'=>$p['nombre']];
+        }
         foreach ($filas as &$fila) {
             $tipo=$fila['origen_tipo']??'institucional'; $id=$fila['origen_id']??$fila['seguimiento_id'];
             $p=$map[$tipo.':'.$id]??[];
-            $fila['registro_programas']=$p['programas']??'';
+            $fila['registro_programas_items']=$p['programas_items']??[];
+            $fila['registro_programas']=implode(' · ',array_column($fila['registro_programas_items'],'nombre'));
             $fila['registro_estado']=empty($p['publicado'])?'Sin enlace':(empty($p['habilitado'])?'Registro deshabilitado':'Registro habilitado');
         }
         return $filas;

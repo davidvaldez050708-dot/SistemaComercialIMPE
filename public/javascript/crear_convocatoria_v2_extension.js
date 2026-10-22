@@ -110,7 +110,28 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!modal || !data || typeof data !== 'object') return;
         const link = modal.querySelector('[data-convenio-create-link]');
         const alias = modal.querySelector('[data-convenio-modal-programas]');
-        if (alias) alias.textContent = String(data.registro_programas || 'Sin programas de Registro');
+        if (alias) {
+            alias.replaceChildren();
+            const programas=Array.isArray(data.registro_programas_items)?data.registro_programas_items:[];
+            for (const programa of programas) {
+                if (!programa || typeof programa.nombre!=='string') continue;
+                const chip=document.createElement('span');
+                chip.className='aliados-source-chip';
+                chip.textContent=programa.nombre;
+                alias.appendChild(chip);
+            }
+            if (!alias.childElementCount) {
+                const vacio=document.createElement('small');vacio.className='text-muted';
+                vacio.textContent='Sin programas de Registro';alias.appendChild(vacio);
+            }
+        }
+        const origen=modal.querySelector('[data-convenio-origin-label]');
+        const descripcion=modal.querySelector('[data-convenio-origin-description]');
+        const manual=data.origen_tipo==='manual';
+        if(origen)origen.textContent=manual?'Relación manual':'Vinculación';
+        if(descripcion)descripcion.textContent=manual?'Sin formalización documental':(data.fecha_recibido && data.fecha_recibido!=='—'?'Formalizado '+data.fecha_recibido:'Fecha de formalización no registrada');
+        const notas=modal.querySelector('[data-convenio-modal-notes]');
+        if(notas)notas.classList.toggle('text-muted',!String(data.notas || '').trim());
         if (!link) return;
         const kind = data.origen_tipo === 'manual' ? 'manual' : 'institucional';
         const id = Number(data.origen_id || data.seguimiento_id || 0);
@@ -149,21 +170,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // el evento legado. El evento en la fila ya fue procesado al llegar aquí.
     root.addEventListener('click', event => {
         const row = event.target.closest('[data-convenio-notification]');
-        if (!row || !root.contains(row)) return;
+        if (!row || !root.contains(row) || !event.target.closest('[data-convenio-open]')) return;
         let data;
         try { data = JSON.parse(row.dataset.convenio || '{}'); }
         catch (_) { return; }
         refreshModal(data);
     });
 
-    rows.forEach(row => {
-        row.addEventListener('keydown', event => {
-            if ((event.key === 'Enter' || event.key === ' ') &&
-                event.target === row) {
-                event.preventDefault();
-                row.click();
-            }
-        });
-    });
     if (rows.length) applyRowFilters();
 });

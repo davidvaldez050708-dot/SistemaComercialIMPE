@@ -474,16 +474,20 @@
 .convenios-detail-modal .crear-convocatoria-modal-grid > div {
     box-shadow: none; background: #fff; border: 1px solid #e0e7f0;
 }
-.convenios-detail-meta, .convenios-detail-section {
-    padding: 14px 16px; margin: 12px 0; border: 1px solid #e0e7f0;
+.convenios-detail-modal .convenios-detail-section {
+    padding: 12px 13px; margin: 0; border: 1px solid #e0e7f0;
     border-radius: 12px; background: #fff; color: #263650;
 }
-.convenios-detail-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; }
-.convenios-detail-meta > span, .convenios-detail-section > span {
-    display: block; color: #64748b; font-size: 11px; font-weight: 700; margin-bottom: 4px;
+.convenios-detail-modal .convenios-detail-section > span {
+    display: block; color: var(--color-text-secondary, #64748b); font-size: 9px; font-weight: 700;
 }
-.convenios-detail-section > p { margin: 4px 0 0; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
-.convenios-detail-programs p { color: #304a83; font-weight: 650; }
+.convenios-detail-modal .convenios-detail-section > p {
+    margin: 5px 0 0; font-size: 11px; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere;
+}
+.convenios-detail-modal .crear-convocatoria-modal-grid small { display: block; margin-top: 3px; font-size: 9px; }
+.convenios-detail-modal .convenios-detail-programs .aliados-source-chip {
+    display: inline-flex; max-width: 100%; white-space: normal; overflow-wrap: anywhere; color: #087e69;
+}
 @media(max-width:850px) {
     .crear-convocatoria-module .crear-convocatoria-toolbar {
         grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
@@ -494,7 +498,6 @@
     .crear-convocatoria-module .crear-convocatoria-toolbar { grid-template-columns: 1fr !important; }
     .crear-convocatoria-module .crear-convocatoria-search { grid-column: auto; }
     .convenios-detail-modal .modal-header, .convenios-detail-modal .modal-body { padding: 16px; }
-    .convenios-detail-meta { display: block; }
 }
 
 /* Canales manuales reutilizan íntegramente aliados-contact-* del modal institucional. */
@@ -506,43 +509,44 @@
     display: flex; flex-direction: column; width: 100%; overflow: hidden;
 }
 .crear-convocatoria-module .convenios-group-list .convenios-municipio-header {
-    padding: 12px 18px; background: #f3f6fa;
+    padding: 9px 14px; background: #f3f6fa;
     color: #243c64; border-top: 1px solid #e0e7f0; border-bottom: 1px solid #e0e7f0;
-    font-size: 12px;
+    font-size: 11px;
 }
 .crear-convocatoria-module .convenios-group-list .convenios-municipio-header:first-child { border-top: 0; }
 .crear-convocatoria-module .convenios-group-list .convenios-municipio-header i { margin-right: 8px; color: #2b438d; }
 .crear-convocatoria-module .convenios-list-row {
     display: grid; grid-template-columns: minmax(155px,1.4fr) minmax(140px,1.25fr)
         minmax(145px,1.35fr) minmax(125px,1fr) minmax(120px,.9fr) minmax(130px,.9fr);
-    align-items: center; gap: 13px; padding: 16px 18px;
+    align-items: center; gap: 10px; padding: 10px 14px;
     background: #fff; border-bottom: 1px solid #e8edf4;
-    cursor: pointer; min-width: 0;
+    min-width: 0;
 }
 .crear-convocatoria-module .convenios-list-row:last-child { border-bottom: 0; }
-.crear-convocatoria-module .convenios-list-row:hover,
-.crear-convocatoria-module .convenios-list-row:focus-visible {
-    background: #f7faff; outline: 2px solid transparent; box-shadow: inset 3px 0 0 #2c4394;
-}
 .crear-convocatoria-module .convenios-list-row.d-none,
 .crear-convocatoria-module .convenios-municipio-header.d-none { display: none !important; }
 .crear-convocatoria-module .convenios-list-cell { min-width: 0; overflow-wrap: anywhere; }
 .crear-convocatoria-module .convenios-list-cell strong {
-    display: block; font-size: 12px; font-weight: 750; color: #172844;
+    display: block; font-size: 11px; font-weight: 800; color: #172844;
 }
 .crear-convocatoria-module .convenios-list-cell small {
-    display: block; font-size: 10px; color: #718198; margin-top: 5px;
+    display: block; font-size: 9.5px; color: #718198; margin-top: 3px;
 }
 .crear-convocatoria-module .convenios-cell-label {
-    display: block; font-size: 10px; font-weight: 700; color: #65768f; margin-bottom: 6px;
+    display: block; font-size: 9px; font-weight: 700; color: #65768f; margin-bottom: 3px;
 }
-.crear-convocatoria-module .convenios-list-cell .convenios-programas { font-size: 11px; }
+.crear-convocatoria-module .convenios-list-cell .convenios-programas { font-size: 10px; line-height: 1.45; }
+.crear-convocatoria-module .convenios-list-cell .convenios-etiqueta { font-size: 10px; line-height: 1.45; }
 .crear-convocatoria-module .convenios-list-row .convenios-cell-actions {
-    display: flex; flex-direction: column; align-items: flex-start; gap: 7px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
 }
 .crear-convocatoria-module .convenios-list-row .convenios-cell-actions .crear-convocatoria-attention-badge { margin: 0; }
 .crear-convocatoria-module .convenios-list-row .convenios-action-button {
+    min-width: 94px; min-height: 32px; padding: 6px 9px; font-size: 10px;
     max-width: 100%; white-space: normal; text-align: center;
+}
+.crear-convocatoria-module .convenios-action-button:focus-visible {
+    outline: 2px solid var(--color-primary, #273a8a); outline-offset: 2px;
 }
 @media(max-width:1150px) {
     .crear-convocatoria-module .convenios-list-row {
@@ -551,7 +555,7 @@
 }
 @media(max-width:650px) {
     .crear-convocatoria-module .convenios-list-row {
-        grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; padding: 14px;
+        grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; padding: 10px 12px;
     }
     .crear-convocatoria-module .convenios-cell-ally,
     .crear-convocatoria-module .convenios-cell-actions { grid-column: 1 / -1; }

@@ -268,11 +268,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     cards.forEach(function (card) {
-        // Cada fila conserva accesibilidad con teclado, igual que las tarjetas enlazadas.
-        card.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
-        });
-        card.addEventListener('click', function () {
+        // La interacción pertenece al botón nativo, también para Enter y Espacio.
+        card.addEventListener('click', function (event) {
+            if (!event.target.closest('[data-convenio-open]')) return;
             let data = {};
 
             try {
@@ -316,7 +314,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 contacto,
                 'No especificado'
             );
-            setText('[data-convenio-modal-programas]', data.registro_programas, 'Sin programas de Registro');
             setText(
                 '[data-convenio-modal-notes]',
                 data.notas,

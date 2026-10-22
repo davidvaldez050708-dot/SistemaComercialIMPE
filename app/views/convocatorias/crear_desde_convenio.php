@@ -42,7 +42,8 @@ $fechaHora = static function ($fecha) {
     }
 
     try {
-        return (new DateTime($fecha))->format('d/m/Y H:i');
+        $valor=new DateTime($fecha);
+        return $valor->format($valor->format('H:i:s')==='00:00:00'?'d/m/Y':'d/m/Y H:i');
     } catch (Exception $error) {
         return $fecha;
     }
@@ -219,6 +220,7 @@ $fecha = static function ($valor) {
                 <?php foreach ($conveniosVisibles as $convenio): ?>
                     <?php
                     $payload = [
+                        'registro_programas_items' => $convenio['registro_programas_items'] ?? [],
                         'registro_programas' => $convenio['registro_programas'] ?? '',
                         'registro_estado' => $convenio['registro_estado'] ?? 'Sin enlace',
                         'origen_tipo' => $convenio['origen_tipo'] ?? 'institucional',
@@ -272,8 +274,8 @@ $fecha = static function ($valor) {
                             <strong><i class="bi bi-geo-alt" aria-hidden="true"></i> <?= $texto($payload['municipio'] ?: 'Sin municipio') ?></strong>
                         </div>
                     <?php endif; ?>
-                    <article class="convenios-fila convenios-list-row" tabindex="0" role="group"
-                        aria-label="Ver convenio de <?= $texto($payload['institucion']) ?>"
+                    <article class="convenios-fila convenios-list-row"
+                        aria-label="Convenio de <?= $texto($payload['institucion']) ?>"
                         data-convenio-notification
                         data-convenio-state="<?= (int)$payload['estado_id'] ?>"
                         data-convenio-municipio="<?= (int)$payload['municipio_id'] ?>"
@@ -296,7 +298,7 @@ $fecha = static function ($valor) {
                             <small><?= $payload['origen_tipo'] === 'manual' ? 'Sin formalización documental' : 'Formalizado ' . $texto($payload['fecha_recibido']) ?></small></div>
                         <div class="convenios-list-cell convenios-cell-status"><span class="convenios-cell-label">Registro</span><span class="crear-convocatoria-state-badge"><?= $texto($payload['registro_estado']) ?></span></div>
                         <div class="convenios-list-cell convenios-cell-actions"><span class="convenios-cell-label">Acciones</span>
-                            <button type="button" class="btn btn-system-save convenios-action-button" data-convenio-open><?= $payload['estado_atencion'] === 'con_convocatoria' ? 'Ver detalle' : 'Crear convocatoria' ?></button></div>
+                            <button type="button" class="btn btn-system-save convenios-action-button" data-convenio-open aria-label="Ver detalle de <?= $texto($payload['institucion']) ?>">Ver detalle</button></div>
                     </article>
                 <?php endforeach; ?>
             </div>
@@ -319,7 +321,7 @@ $fecha = static function ($valor) {
     tabindex="-1"
     aria-labelledby="modalConvenioCrearConvocatoriaTitulo"
     aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg convenios-detail-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg convenios-detail-dialog">
         <div class="modal-content crear-convocatoria-modal convenios-detail-modal">
             <div class="modal-header">
                 <div>
@@ -389,17 +391,20 @@ $fecha = static function ($valor) {
                         <span>Contacto del aliado</span>
                         <strong data-convenio-modal-contact>—</strong>
                     </div>
+                    <div>
+                        <span>Origen del aliado</span>
+                        <strong data-convenio-origin-label>—</strong>
+                        <small class="text-muted" data-convenio-origin-description></small>
+                    </div>
+                    <div class="convenios-detail-programs">
+                        <span>Programas autorizados</span>
+                        <div class="d-flex flex-wrap gap-1 mt-1" data-convenio-modal-programas></div>
+                    </div>
                 </div>
 
-                <div class="convenios-detail-meta"><span>Origen del aliado</span><strong data-convenio-origin-label>—</strong></div>
                 <div class="convenios-detail-section">
-                    <span>Notas del convenio / formalización</span>
-                    <p data-convenio-modal-notes>Sin notas registradas.</p>
-                </div>
-
-                <div class="convenios-detail-section convenios-detail-programs">
-                    <span>Programas autorizados</span>
-                    <p data-convenio-modal-programas>Los programas se seleccionan al crear la convocatoria.</p>
+                    <span>Notas del convenio</span>
+                    <p class="text-muted" data-convenio-modal-notes>Sin notas registradas.</p>
                 </div>
                 <div class="crear-convocatoria-modal-help">
                     <i class="bi bi-info-circle"></i>
