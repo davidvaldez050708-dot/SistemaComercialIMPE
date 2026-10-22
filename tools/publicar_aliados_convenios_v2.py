@@ -139,6 +139,7 @@ if ($controllerDashboard === 'aliado') {
 }
 if ($controllerDashboard === 'crearconvocatoria') {
     $jsOpcionalHead[] = 'crear_convocatoria.js';
+    $jsOpcionalHead[] = 'crear_convocatoria_v2_extension.js';
     $jsOpcionalHead[] = 'aliados_registro.js';
 }
 // Con modal modular de Hostinger, el propio parcial carga su JS especifico.
@@ -279,6 +280,13 @@ def prepare(site,stage,verbose=False,require_validated=True):
         if not original_css.is_file():
             raise RuntimeError("Falta hoja base "+css_name+"; no se instala la extensión V2")
     print("CONSERVADO: 3 CSS base personalizados (aliados.css, convocatorias.css, crear_convocatoria.css)")
+    legacy_js=sitepath(site,"public/javascript/crear_convocatoria.js")
+    if not legacy_js.is_file():
+        raise RuntimeError("Falta JS personalizado de Convenios: crear_convocatoria.js")
+    prior=legacy_js.read_bytes()
+    if b"data-convenio-notification" not in prior or b"data-convenio-create-link" not in prior:
+        raise RuntimeError("JS personalizado de Convenios incompatible con la extensión: revisar antes de instalar.")
+    print("CONSERVADO: public/javascript/crear_convocatoria.js (lógica personalizada intacta)")
     for name,expected in SHAS.items():
         if name=="app/views/convocatorias/index.php":
             # Hostinger ya utiliza crear_modal.php y JS compartido separados.
