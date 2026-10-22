@@ -27,12 +27,12 @@ with tempfile.TemporaryDirectory() as td:
         latest=(root/entry['path']).read_text(encoding='utf8')
         original=latest
         for old,new in reversed(entry['pairs']):
-            old,new=old.replace('\r\n','\n'),new.replace('\r\n','\n')
+            old,new=((old+'\n') if old.endswith('\r') else old).replace('\r\n','\n'),((new+'\n') if new.endswith('\r') else new).replace('\r\n','\n')
             assert original.count(new)==1,(entry['path'],'ambiguous target')
             original=original.replace(new,old,1)
         check=original
         for old,new in entry['pairs']:
-            old,new=old.replace('\r\n','\n'),new.replace('\r\n','\n')
+            old,new=((old+'\n') if old.endswith('\r') else old).replace('\r\n','\n'),((new+'\n') if new.endswith('\r') else new).replace('\r\n','\n')
             assert check.count(old)==1,(entry['path'],'ambiguous source')
             check=check.replace(old,new,1)
         assert check==latest,entry['path']
