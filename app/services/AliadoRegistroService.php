@@ -164,6 +164,68 @@ class AliadoRegistroService
             $this->db->commit(); return $this->detalle($tipo,$id,true);
         } catch (Throwable $e) { $this->db->rollback(); throw $e; }
     }
+    private function verificarManualModulos(): void
+    {
+        foreach (['aliados_manuales_contactos','aliados_manuales_difusiones'] as $tabla) {
+            if (!$this->db->query("SHOW TABLES LIKE '$tabla'")->num_rows) {
+                throw new DomainException('Falta actualizar la estructura de contactos de aliados manuales.',503);
+            }
+        }
+    }
+    public function consultarGestionManual(int $id): array
+    {
+        $this->autorizar('aliados.gestionar_programas');
+        $this->origen('manual',$id);
+        $this->verificarManualModulos();
+        $contactos=$this->query('SELECT id,nombre,cargo,correo,telefono,whatsapp_autorizado FROM aliados_manuales_contactos WHERE aliado_id=? AND activo=1 ORDER BY id',[$id])->get_result()->fetch_all(MYSQLI_ASSOC);
+        $historial=$this->query('SELECT d.id,d.canal,d.nota,d.realizado_at,CONCAT_WS(" ",u.nombre,u.apellidos) responsable FROM aliados_manuales_difusiones d LEFT JOIN usuarios u ON u.id=d.registrado_por WHERE d.aliado_id=? ORDER BY d.realizado_at DESC,d.id DESC LIMIT 100',[$id])->get_result()->fetch_all(MYSQLI_ASSOC);
+        return ['contactos'=>$contactos,'historial'=>$historial];
+    }
+    public function guardarContactoManual(array $datos): void
+    {
+        $this->autorizar('aliados.editar_manual');
+        $aliado=(int)($datos['id']??0);
+        $this->origen('manual',$aliado);
+        $this->verificarManualModulos();
+        $contactoId=(int)($datos['contacto_id']??0);
+        $nombre=trim((string)($datos['nombre']??''));
+        $cargo=trim((string)($datos['cargo']??''));
+        $correo=trim((string)($datos['correo']??''));
+        $telefono=trim((string)($datos['telefono']??''));
+        $whatsapp=(int)(!empty($datos['whatsapp_autorizado']));
+        if (mb_strlen($nombre)<2||mb_strlen($nombre)>120||mb_strlen($cargo)>120||mb_strlen($correo)>180||mb_strlen($telefono)>30)
+            throw new DomainException('Revisa los datos del contacto.');
+        if ($correo!==''&&!filter_var($correo,FILTER_VALIDATE_EMAIL)) throw new DomainException('Correo del contacto inválido.');
+        if ($telefono!==''&&!preg_match('/^[+0-9 ()-]{7,30}$/D',$telefono)) throw new DomainException('Teléfono del contacto inválido.');
+        if ($whatsapp&&!$telefono) throw new DomainException('Se requiere teléfono para autorizar WhatsApp.');
+        if ($contactoId) {
+            $stmt=$this->query('UPDATE aliados_manuales_contactos SET nombre=?,cargo=?,correo=?,telefono=?,whatsapp_autorizado=? WHERE id=? AND aliado_id=? AND activo=1',[$nombre,$cargo,$correo,$telefono,$whatsapp,$contactoId,$aliado]);
+            if (!$stmt->affected_rows) throw new DomainException('Contacto no disponible.');
+        } else {
+            $this->query('INSERT INTO aliados_manuales_contactos (aliado_id,nombre,cargo,correo,telefono,whatsapp_autorizado,creado_por) VALUES (?,?,?,?,?,?,?)',[$aliado,$nombre,$cargo,$correo,$telefono,$whatsapp,(int)$_SESSION['usuario_id']]);
+        }
+    }
+    public function desactivarContactoManual(int $aliado,int $contacto): void
+    {
+        $this->autorizar('aliados.editar_manual');
+        $this->origen('manual',$aliado);
+        $this->verificarManualModulos();
+        $stmt=$this->query('UPDATE aliados_manuales_contactos SET activo=0 WHERE aliado_id=? AND id=? AND activo=1',[$aliado,$contacto]);
+        if (!$stmt->affected_rows) throw new DomainException('Contacto no disponible.');
+    }
+    public function registrarDifusionManual(array $datos): void
+    {
+        $this->autorizar('aliados.editar_manual');
+        $aliado=(int)($datos['id']??0);
+        $this->origen('manual',$aliado);
+        $this->verificarManualModulos();
+        $canal=strtoupper(trim((string)($datos['canal']??'')));
+        $nota=trim((string)($datos['nota']??''));
+        if (!in_array($canal,['CORREO','WHATSAPP','OTRO'],true)||mb_strlen($nota)>500)
+            throw new DomainException('Selecciona canal y una nota válida.');
+        $this->query('INSERT INTO aliados_manuales_difusiones (aliado_id,canal,nota,registrado_por) VALUES (?,?,?,?)',[$aliado,$canal,$nota,(int)$_SESSION['usuario_id']]);
+    }
+
     public function manuales(?int $estado=null): array
     {
         if (!$this->disponible()) { return []; }
