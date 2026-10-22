@@ -509,6 +509,21 @@ class ConvocatoriaModel
             $convocatoriaId = (int)$this->connection->insert_id;
             $this->guardarEstados($convocatoriaId, $estadosIds);
 
+            // En la misma transacción: imagen/clasificación y origen manual indivisibles.
+            if (!empty($datos['manual_id'])) {
+                $manualId = (int)$datos['manual_id'];
+                $codigo = (string)($datos['programa_codigo'] ?? '');
+                if ($manualId <= 0 || $codigo === '') {
+                    throw new RuntimeException('No se puede asociar una convocatoria sin aliado y programa válidos.');
+                }
+                $stmtManual = $this->connection->prepare(
+                    'INSERT INTO marketing_aliado_manual_convocatorias (manual_id, convocatoria_id, programa_codigo, creado_por) VALUES (?, ?, ?, ?)'
+                );
+                if (!$stmtManual) throw new RuntimeException('No se pudo asociar el origen manual.');
+                $stmtManual->bind_param('iisi', $manualId, $convocatoriaId, $codigo, $datos['usuario_id']);
+                if (!$stmtManual->execute()) throw new RuntimeException('No se pudo asociar la publicación al aliado manual.');
+            }
+
             $this->connection->commit();
 
             return $convocatoriaId;
