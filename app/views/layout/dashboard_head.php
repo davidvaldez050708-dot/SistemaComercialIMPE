@@ -344,6 +344,7 @@ if ($esFormulariosDashboard) {
 
 if ($esCrearConvocatoriaDashboard) {
     $jsOpcionalHead[] = 'crear_convocatoria.js';
+    $jsOpcionalHead[] = 'crear_convocatoria_v2_extension.js';
     $jsOpcionalHead[] = 'aliados_registro.js';
 }
 if ($esConvocatoriaDashboard && $actionDashboard === 'index' &&
