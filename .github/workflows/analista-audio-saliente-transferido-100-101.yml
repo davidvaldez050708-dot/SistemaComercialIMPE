@@ -1,0 +1,41 @@
+name: Analista - dos grabaciones en saliente transferida 100 a 101
+on:
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaGrabacionExpedienteTransferidaService.php'
+      - 'app/services/TelefoniaEntrantesAnalistaService.php'
+      - 'app/services/TelefoniaGrabacionesTransferenciaInstitucionService.php'
+      - 'app/views/seguimiento_vinculacion/llamadas_entrantes.php'
+      - 'prueba_telefonia/api/grabacion_transferida_institucion.php'
+      - 'prueba_telefonia/api/llamadas_seguimiento.php'
+      - 'public/javascript/seguimiento_llamadas_expediente.js'
+      - 'public/javascript/seguimiento_entrantes_analista.js'
+      - 'tools/publicar_analista_grabaciones_salientes_100_101_hostinger.sh'
+      - 'tests/publicacion_analista_grabaciones_100_101_test.py'
+      - 'tests/telefonia_analista_audio_saliente_100_101_smoke.php'
+      - 'tests/telefonia_analista_audio_saliente_ui.cjs'
+      - '.github/workflows/analista-audio-saliente-transferido-100-101.yml'
+jobs:
+  regresion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Analizar PHP y JS
+        run: |
+          php -l app/services/TelefoniaGrabacionesTransferenciaInstitucionService.php
+          php -l app/services/TelefoniaGrabacionExpedienteTransferidaService.php
+          php -l app/services/TelefoniaEntrantesAnalistaService.php
+          php -l prueba_telefonia/api/llamadas_seguimiento.php
+          php -l prueba_telefonia/api/grabacion_transferida_institucion.php
+          php -l app/views/seguimiento_vinculacion/llamadas_entrantes.php
+          node --check public/javascript/seguimiento_llamadas_expediente.js
+          node --check public/javascript/seguimiento_entrantes_analista.js
+      - name: Dos tramos y separación de casos
+        run: |
+          php tests/telefonia_analista_audio_saliente_100_101_smoke.php
+          node tests/telefonia_analista_audio_saliente_ui.cjs
+      - name: Publisher reversible con personalizaciones y respaldo
+        run: python3 tests/publicacion_analista_grabaciones_100_101_test.py
