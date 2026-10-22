@@ -26,6 +26,7 @@ on:
       - 'tools/migrar_convocatorias_multiprograma_20261022.php'
       - 'tools/publicar_ajustes_aliados_v3.py'
       - 'tests/publicacion_ajustes_aliados_v3_test.py'
+      - 'tests/convocatorias_multiprograma_db.php'
       - 'public/javascript/convocatorias_aliado_multiprograma_v3.js'
       - 'public/css/convocatorias_aliado_multiprograma_v3.css'
       - 'tools/publicar_aliados_convenios_v2.py'
@@ -110,6 +111,7 @@ jobs:
           php tools/migrar_convocatorias_multiprograma_20261022.php --apply --respaldo-confirmado
           php tools/migrar_convocatorias_multiprograma_20261022.php --check
           php tests/aliados_registro_db.php
+          php tests/convocatorias_multiprograma_db.php
       - name: Publicadores reversibles
         run: |
           python3 tests/publicacion_aliados_registro_test.py
