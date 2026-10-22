@@ -74,6 +74,7 @@ try {
         $db=(new Database())->connect(false);
         $svc=new TelefoniaGrabacionesTransferenciaVentasService($db);
         $provider=new ZadarmaRecordingService(false);
+        $service=$provider; // La descarga Range final reutiliza el mismo proveedor.
         try{
             $response=$svc->resolver($pbxCallId,$usuarioId,'destino',(string)$call['extension'],
                 [$provider,'obtenerGrabacionPorCallId'],
