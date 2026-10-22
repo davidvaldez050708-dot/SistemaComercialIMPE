@@ -34,6 +34,9 @@ on:
       - 'tools/*aliados_registro*'
       - 'tools/compat/aliados_registro_pr114/**'
       - 'tests/*aliados_registro*'
+      - 'tests/aliados_canales*'
+      - 'tests/publicacion_canales_aliado_etapa1_test.py'
+      - 'tools/canales_aliado_etapa1_release.json'
       - 'tests/convocatorias_pr114_lote_db.php'
       - 'tests/preparar_modelo_convocatoria_pr114.py'
       - '.github/workflows/aliados-registro.yml'
@@ -84,7 +87,7 @@ jobs:
         run: |
           mv vendor /tmp/aliados-vendor-versionado
           composer install --no-interaction --no-scripts --prefer-dist --no-progress
-      - run: npm install --prefix /tmp/aliados-browser playwright bootstrap@5.3.8 jsqr
+      - run: npm install --prefix /tmp/aliados-browser playwright bootstrap@5.3.8 jsqr bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0
       - run: /tmp/aliados-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Sintaxis y alcance
         run: |
@@ -123,10 +126,17 @@ jobs:
           python3 tests/publicacion_diseno_programas_aliados_test.py
           python3 tests/publicacion_aliados_convenios_v2_test.py
           python3 tests/publicacion_ajustes_aliados_v3_test.py
+          python3 tests/publicacion_canales_aliado_etapa1_test.py
       - name: Navegador real, QR, HTTP, seguridad y concurrencia
         run: |
           node tests/aliados_registro_browser.cjs
           php tests/aliados_registro_snapshot.php
+      - name: Canales manuales e institucionales, diseño y operaciones reales
+        env:
+          IMPE_CANALES_OUTPUT: /tmp/aliados-visual/canales
+        run: |
+          php tests/aliados_canales_fixture.php
+          node tests/aliados_canales_browser.cjs
       - name: Compatibilidad con PR114 publicado (réplica aislada)
         env:
           IMPE_DB_NAME: impe_test_handly_aliados_pr114
