@@ -85,6 +85,58 @@ def merge(local,base,new,stage):
             raise RuntimeError("CONFLICTO en cambios personalizados; el sitio permanece intacto")
         merged=result.stdout
     return merged.replace(b"\n",b"\r\n") if b"\r\n" in local else merged
+def overlay_convocatorias(local,base,desired):
+    """Integra sólo los cambios V2 exactos del modal de convocatorias.
+
+    Usa como única especificación V1/V2 dos versiones fijadas por SHA; nunca
+    elimina secciones desconocidas de producción ni acepta coincidencias ambiguas.
+    Ante un cambio de la misma región, falla cerrado y conserva el archivo.
+    """
+    if local is None or base is None:
+        raise RuntimeError("CONFLICTO: falta la versión previa de convocatorias")
+    old_lines=lf(base).splitlines(keepends=True)
+    new_lines=lf(desired).splitlines(keepends=True)
+    current=lf(local).splitlines(keepends=True)
+    if b"data-aliado-registro-contexto=" in lf(local):
+        raise RuntimeError("CONFLICTO: ya existen cambios del módulo en el archivo personalizado; revisar manualmente")
+    opcodes=difflib.SequenceMatcher(None,old_lines,new_lines,autojunk=False).get_opcodes()
+    mutations=[(tag,i1,i2,j1,j2) for tag,i1,i2,j1,j2 in opcodes if tag!="equal"]
+    if not 8<=len(mutations)<=35:
+        raise RuntimeError("CONFLICTO: el parche de Convocatorias tiene un número inesperado de secciones")
+    # El parche tiene que reconstruir exactamente el objetivo desde su V1 conocida.
+    def operate(work,strict):
+        for tag,i1,i2,j1,j2 in reversed(mutations):
+            old_part=old_lines[i1:i2]
+            replacement=new_lines[j1:j2]
+            if old_part:
+                positions=[i for i in range(len(work)-len(old_part)+1)
+                           if work[i:i+len(old_part)]==old_part]
+            else:
+                # Inserción: los dos renglones inmediatamente anteriores y
+                # posteriores tienen que seguir contiguos, para no elegir
+                # posiciones similares en formularios distintos.
+                before=old_lines[max(0,i1-2):i1]
+                after=old_lines[i1:i1+2]
+                positions=[i for i in range(len(work)+1)
+                           if work[max(0,i-len(before)):i]==before
+                           and work[i:i+len(after)]==after]
+            if len(positions)!=1:
+                raise RuntimeError("CONFLICTO: Convocatorias sección V2 #%d (%s), %d coincidencias; no se modificó el sitio" %
+                                   (len(mutations)-mutations.index((tag,i1,i2,j1,j2)),tag,len(positions)))
+            at=positions[0]
+            if not strict or not old_part:
+                work[at:at+len(old_part)]=replacement
+                continue
+            # Al sustituir, se exige que la sección previa esté literalmente
+            # intacta. La sustitución jamás pisa un bloque personalizado.
+            work[at:at+len(old_part)]=replacement
+        return work
+    if b"".join(operate(list(old_lines),False))!=lf(desired):
+        raise RuntimeError("CONFLICTO: parche V2 no reproduce exactamente su fuente")
+    updated=b"".join(operate(current,True))
+    print("CONCILIACIÓN ESPECÍFICA: app/views/convocatorias/index.php (regiones V2 exactas)")
+    return updated.replace(b"\n",b"\r\n") if b"\r\n" in local else updated
+
 def atomic(path,data,mode=0o644):
     path.parent.mkdir(parents=True,exist_ok=True)
     fd,tmp=tempfile.mkstemp(prefix=".aliados-v2-",dir=str(path.parent))
@@ -135,8 +187,15 @@ def prepare(site,stage,verbose=False,require_validated=True):
         base=load_base(name,old)
         path=sitepath(site,name)
         current=path.read_bytes() if path.is_file() else None
-        try:result=merge(current,base,new,stage)
-        except RuntimeError as e:raise RuntimeError(name+": "+str(e))
+        try:
+            result=merge(current,base,new,stage)
+        except RuntimeError as e:
+            if name != "app/views/convocatorias/index.php":
+                raise RuntimeError(name+": "+str(e))
+            try:
+                result=overlay_convocatorias(current,base,new)
+            except RuntimeError as patch_error:
+                raise RuntimeError(name+": "+str(patch_error)) from e
         if result==current:
             print("SIN CAMBIOS: "+name)
             continue
