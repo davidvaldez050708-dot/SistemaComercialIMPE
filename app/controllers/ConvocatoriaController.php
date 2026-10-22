@@ -565,6 +565,171 @@ class ConvocatoriaController
         $this->redirigir($territorioId, $tipoConvocatoria, $subtipoConvocatoria);
     }
 
+    /**
+     * Crea una publicación real por programa autorizado, conservando un único
+     * enlace de Registro para el aliado. Reutiliza validaciones y subida de
+     * imágenes del módulo estándar; rollback completo ante cualquier error.
+     */
+    public function guardarProgramasAliado()
+    {
+        $this->validarPermiso('convocatorias.crear');
+        $this->validarMetodoPost();
+        header('Content-Type: application/json; charset=utf-8');
+        $respuesta = static function (int $status, array $body): void {
+            http_response_code($status);
+            echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        };
+        $tokenSesion = (string)($_SESSION['csrf_token'] ?? '');
+        if ($tokenSesion === '' || !hash_equals($tokenSesion, (string)($_POST['csrf_token'] ?? ''))) {
+            $respuesta(419, ['ok'=>false,'mensaje'=>'Sesión caducada. Recarga el CRM y vuelve a intentarlo.']);
+        }
+        $origenTipo = (string)($_POST['aliado_tipo'] ?? '');
+        $origenId = (int)($_POST['aliado_id'] ?? 0);
+        if (strcasecmp((string)($_SESSION['rol'] ?? ''),'Marketing')!==0 ||
+            !tienePermiso('formularios_aliados.gestionar_enlaces') ||
+            !in_array($origenTipo, ['manual','institucional'], true) || $origenId <= 0) {
+            $respuesta(403, ['ok'=>false,'mensaje'=>'No tienes permiso para publicar convocatorias de este aliado.']);
+        }
+        $entradas = $_POST['programas'] ?? null;
+        if (!is_array($entradas) || count($entradas) < 1 || count($entradas) > 30) {
+            $respuesta(422, ['ok'=>false,'mensaje'=>'No se recibieron los programas de la convocatoria.']);
+        }
+        $modelo = null;
+        $loteIniciado = false;
+        $imagenesNuevas = [];
+        $imagenOriginal = $_FILES['imagen'] ?? null;
+        try {
+            $servicio = new AliadoRegistroService((new Database())->connect());
+            $contexto = $servicio->opcionesConvocatoria($origenTipo,$origenId);
+            if (empty($contexto['habilitado'])) {
+                throw new DomainException('Habilita primero el enlace compartido de Registro del aliado.',422);
+            }
+            $autorizados = [];
+            foreach ($contexto['opciones_convocatoria'] as $opcion) {
+                $autorizados[$opcion['codigo']][$opcion['clasificacion']] = true;
+            }
+            if (!$autorizados || count($autorizados) !== count($entradas) ||
+                array_diff(array_keys($autorizados),array_keys($entradas)) ||
+                array_diff(array_keys($entradas),array_keys($autorizados))) {
+                throw new DomainException('Los programas enviados no corresponden a los autorizados para el aliado.',422);
+            }
+            $territorioId = (int)($contexto['origen']['estado_id'] ?? 0);
+            if ($territorioId <= 0) {
+                throw new DomainException('El aliado no tiene un territorio válido.',422);
+            }
+            $enlace = (string)($contexto['url'] ?? '');
+            if ($enlace === '') {
+                $detalle = $servicio->enlace($origenTipo,$origenId,'generar');
+                $enlace = (string)($detalle['url'] ?? '');
+            }
+            if ($enlace === '' || !filter_var($enlace, FILTER_VALIDATE_URL)) {
+                throw new DomainException('Genera primero el enlace estable de Registro del aliado.',422);
+            }
+            if ($origenTipo === 'manual') {
+                $conexion = (new Database())->connect();
+                if (!$conexion->query("SHOW TABLES LIKE 'marketing_aliado_manual_convocatorias'")->num_rows) {
+                    throw new DomainException('Falta la estructura de publicaciones del aliado manual.',503);
+                }
+            }
+            $procesadas = [];
+            foreach ($entradas as $codigo => $entrada) {
+                if (!is_string($codigo) || !is_array($entrada)) {
+                    throw new DomainException('Datos de programa incorrectos.',422);
+                }
+                $clasificacion = trim((string)($entrada['clasificacion'] ?? ''));
+                if (!isset($autorizados[$codigo][$clasificacion]) || strpos($clasificacion,'|')===false) {
+                    throw new DomainException('Clasificación de programa no autorizada.',422);
+                }
+                [$tipo,$subtipo] = explode('|',$clasificacion,2);
+                if (!$this->esClasificacionValida($tipo,$subtipo,
+                    $this->esTerritorioChihuahua(new ConvocatoriaModel(),$territorioId))) {
+                    throw new DomainException('Clasificación incompatible con el territorio.',422);
+                }
+                $datos = $this->limpiarDatos($entrada);
+                $errores = $this->validarDatos($datos,[$territorioId],false,
+                    $subtipo === 'inscripciones-abiertas');
+                $archivo = [
+                    'name'=>$_FILES['imagenes']['name'][$codigo] ?? '',
+                    'type'=>$_FILES['imagenes']['type'][$codigo] ?? '',
+                    'tmp_name'=>$_FILES['imagenes']['tmp_name'][$codigo] ?? '',
+                    'error'=>$_FILES['imagenes']['error'][$codigo] ?? UPLOAD_ERR_NO_FILE,
+                    'size'=>$_FILES['imagenes']['size'][$codigo] ?? 0
+                ];
+                if ((int)$archivo['error'] === UPLOAD_ERR_NO_FILE) {
+                    $errores[] = 'La imagen es obligatoria para ' . $codigo . '.';
+                }
+                if ($errores) {
+                    throw new DomainException(implode(' ', $errores),422);
+                }
+                $procesadas[]=['codigo'=>$codigo,'tipo'=>$tipo,'subtipo'=>$subtipo,
+                    'datos'=>$datos,'archivo'=>$archivo];
+            }
+            $modelo = new ConvocatoriaModel();
+            $modelo->iniciarLote();
+            $loteIniciado = true;
+            $ids = [];
+            foreach ($procesadas as $item) {
+                $_FILES['imagen'] = $item['archivo'];
+                $imagen = $this->procesarImagen('');
+                if ($imagen['error'] !== '' || empty($imagen['nueva'])) {
+                    throw new DomainException($imagen['error'] ?: 'Falta la imagen del programa.',422);
+                }
+                $imagenesNuevas[] = $imagen['ruta'];
+                $datos = $item['datos'];
+                $datos['imagen'] = $imagen['ruta'];
+                $datos['enlace_registro'] = $enlace;
+                $datos['tipo_convocatoria'] = $item['tipo'];
+                $datos['subtipo_convocatoria'] = $item['subtipo'];
+                $datos['usuario_id'] = (int)$_SESSION['usuario_id'];
+                if ($origenTipo === 'manual') {
+                    $datos['manual_id'] = $origenId;
+                    $datos['programa_codigo'] = $item['codigo'];
+                }
+                $id = $modelo->crear($datos,[$territorioId],true);
+                if (!$id) {
+                    throw new RuntimeException('No fue posible guardar todos los programas.');
+                }
+                $ids[] = (int)$id;
+            }
+            $modelo->confirmarLote();
+            $loteIniciado = false;
+            if ($origenTipo === 'institucional') {
+                try {
+                    (new CrearConvocatoriaModel())->marcarConvenioAtendido(
+                        $origenId,(int)$_SESSION['usuario_id']);
+                } catch (Throwable $error) {
+                    error_log('[convocatoria_multiprograma_seguimiento] '.$error->getMessage());
+                }
+            }
+            if ($imagenOriginal === null) unset($_FILES['imagen']);
+            else $_FILES['imagen'] = $imagenOriginal;
+            $respuesta(200,[
+                'ok'=>true,'cantidad'=>count($ids),'ids'=>$ids,
+                'mensaje'=>count($ids).' convocatorias registradas correctamente.',
+                'url'=>BASE_URL.'index.php?controller=convocatoria&action=index&territorio_id='.$territorioId
+            ]);
+        } catch (Throwable $error) {
+            if ($loteIniciado && $modelo !== null) {
+                try { $modelo->cancelarLote(); }
+                catch (Throwable $rollback) { error_log('[convocatoria_lote_rollback] '.$rollback->getMessage()); }
+            }
+            foreach ($imagenesNuevas as $ruta) $this->eliminarImagen($ruta);
+            if ($imagenOriginal === null) unset($_FILES['imagen']);
+            else $_FILES['imagen'] = $imagenOriginal;
+            error_log('[convocatoria_multiprograma] '.$error->getMessage());
+            $status = $error instanceof DomainException &&
+                in_array((int)$error->getCode(),[403,419,422,503],true)
+                ? (int)$error->getCode() : 500;
+            $respuesta($status,[
+                'ok'=>false,
+                'mensaje'=>$error instanceof DomainException
+                    ? $error->getMessage()
+                    : 'No fue posible guardar las convocatorias; no se creó el lote.'
+            ]);
+        }
+    }
+
     public function actualizar()
     {
         $this->validarPermiso('convocatorias.editar');
