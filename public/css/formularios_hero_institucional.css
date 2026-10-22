@@ -14,7 +14,8 @@
     border-radius:32px;
     background:
         linear-gradient(90deg,rgba(0,67,112,.84) 0%,rgba(0,67,112,.69) 49%,rgba(0,56,103,.84) 100%),
-        url('../img/brand/red-graduacion.jpeg') center 78% / cover no-repeat;
+        url('../img/brand/formulario-graduacion-20261022.webp') center 93% / cover no-repeat,
+        url('../img/brand/red-graduacion.jpeg') center 93% / cover no-repeat;
 }
 .formulario-publico-body .formulario-publico-hero::before,
 .formulario-publico-body .formulario-publico-hero::after{display:none!important}
