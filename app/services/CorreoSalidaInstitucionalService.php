@@ -28,7 +28,22 @@ class CorreoSalidaInstitucionalService
         $this->firmaService = new FirmaCorreoService();
     }
 
-    public function remitentes(int $user): array { return $this->cuentas->remitentes($user); }
+    public function remitentes(int $user,string $from=''): array { return $this->cuentas->remitentes($user,$from); }
+
+    public function prepararSalida(string $from,int $user): array
+    {
+        $r=$this->cuentas->resolverSalida($from,$user);
+        return empty($r['ok'])?$r:['ok'=>true,'salida'=>$r['salida']];
+    }
+
+    private function notaIdentidad(array $salida): string
+    {
+        if($salida['modo']!=='central') { return ''; }
+        $note="\n\n— Envío institucional —\nRemitente real: ".$salida['remitente_real']."\nLas respuestas a este mensaje se reciben en: ".$salida['respuestas_a'];
+        if($salida['redactor_nombre']!=='') { $note.="\nRedactado por: ".$salida['redactor_nombre']; }
+        if($salida['contacto_autorizado']!=='') { $note.="\nContacto institucional autorizado: ".$salida['contacto_autorizado']."\nPara contactar directamente a esa persona, escribe a su dirección institucional."; }
+        return $note;
+    }
 
     public function validarRemitente(string $from, int $user): array
     {
@@ -91,28 +106,36 @@ class CorreoSalidaInstitucionalService
         }
 
         try {
-            $connection = $this->cuentas->resolver($remitente, $usuarioId, $perfilMarketing);
+            $connection = $this->cuentas->resolverSalida($remitente, $usuarioId);
         } catch (Throwable $error) {
             error_log('MAIL_TRANSPORT account_configuration_failed exception=' . get_class($error));
             return $this->error('No fue posible consultar las cuentas autorizadas. Solicita revisar la configuración privada.', 503);
         }
         if (empty($connection['ok'])) { return $connection; }
         $account = $connection['account'];
-        $rutaFirma = $this->firmaService->obtenerRuta($remitente);
+        $salida=$connection['salida'];$real=$salida['remitente_real'];
+        $confirmed=trim((string)($datos['remitente_real_confirmado']??''));
+        if($perfilMarketing && $salida['modo']==='central' && $confirmed==='') { return $this->error('Revisa y confirma en el formulario el buzón central que utilizará este correo.',409); }
+        if($confirmed!=='' && !hash_equals($real,strtolower($confirmed))) { return $this->error('El buzón de salida cambió. Revisa el remitente real antes de volver a enviar.',409); }
+        $nota=$this->notaIdentidad($salida);
+        $cuerpo.=$nota;
+        if($salida['modo']==='central') { $nombreRemitente=$salida['redactor_nombre']!==''?$salida['redactor_nombre']:'Fundación Red Educativa México'; }
+        $rutaFirma = $this->firmaService->obtenerRuta($salida['contacto_autorizado']?:$real);
         $send = function () use ($account, $remitente, $nombreRemitente, $destinatario, $nombreDestinatario,
-            $asunto, $cuerpo, $rutaFirma, $imagenesEmbebidas, $adjuntos, $htmlAdicional) {
+            $asunto, $cuerpo, $rutaFirma, $imagenesEmbebidas, $adjuntos, $htmlAdicional, $real, $salida, $nota) {
             if ($account['transport'] === 'hostinger_api') {
                 $base = rtrim((string)($account['api_base_url'] ?? self::HOSTINGER_BASE_DEFAULT), '/');
                 if ($base !== self::HOSTINGER_BASE_DEFAULT || empty($account['api_token'])) {
                     return $this->error('Falta la configuración privada de la API Hostinger para esta cuenta.', 422);
                 }
-                return $this->enviarHostinger($remitente, $nombreRemitente, $destinatario, $asunto, $cuerpo, $rutaFirma,
-                    ['token' => $account['api_token'], 'base_url' => $base], $imagenesEmbebidas, $adjuntos, $htmlAdicional, true, $remitente);
+                return $this->enviarHostinger($real, $nombreRemitente, $destinatario, $asunto, $cuerpo, $rutaFirma,
+                    ['token' => $account['api_token'], 'base_url' => $base], $imagenesEmbebidas, $adjuntos, $htmlAdicional, true, $real)
+                    + ['identidad_envio'=>$salida,'nota_identidad'=>$nota];
             }
             return $this->error('El envío comercial sólo admite Hostinger Mail API.', 422);
         };
         $attachments = array_map(static function ($a) { return [$a['nombre'], hash_file('sha256', $a['ruta'])]; }, array_merge($adjuntos, $imagenesEmbebidas));
-        $fingerprint = hash('sha256', json_encode([$usuarioId, $remitente, $destinatario, $asunto, $cuerpo, $htmlAdicional, $attachments,
+        $fingerprint = hash('sha256', json_encode([$usuarioId, $remitente, $real, $destinatario, $asunto, $cuerpo, $htmlAdicional, $attachments,
             is_file($rutaFirma) ? hash_file('sha256', $rutaFirma) : '']));
         $explicit = trim((string)($datos['idempotency_key'] ?? ''));
         if ($explicit !== '' && !preg_match('/^[a-zA-Z0-9:_.-]{8,180}$/D', $explicit)) { return $this->error('La solicitud de envío no es válida.', 422); }

@@ -133,38 +133,46 @@
         let remitentesPermitidos = null;
         let consultaRemitentes = 0;
         let ultimoRefrescoRemitentes = 0;
-        let diagnosticoRemitentes = null;
+        let salidaPreparada = null;
+        let direccionResuelta = '';
+        let temporizadorRemitente = null;
+        const esDireccionInstitucional = function (correo) { return /^[^\s<>@]+@rededucativamexico\.org$/i.test(correo); };
         const validarRemitenteVisible = function () {
             const correo = String(remitente?.value || '').trim().toLowerCase();
-            const permitido = Array.isArray(remitentesPermitidos) && remitentesPermitidos.includes(correo);
+            const permitido = Boolean(esDireccionInstitucional(correo) && salidaPreparada?.remitente_real && direccionResuelta === correo);
             if (estadoRemitente && Array.isArray(remitentesPermitidos)) {
-                const total = remitentesPermitidos.length;
-                estadoRemitente.textContent = permitido ? 'Remitente Hostinger autorizado: ' + correo
-                    : total === 0 ? 'Las restricciones del CRM no permiten utilizar los buzones devueltos por Hostinger. Solicita revisar la configuración comercial.'
-                    : correo === '' ? 'Selecciona uno de los ' + total + ' buzones institucionales autorizados.'
-                    : 'Esta dirección no está entre los ' + total + ' buzones permitidos. Hostinger devolvió ' +
-                        (diagnosticoRemitentes?.total_institucional ?? total) + ' buzones institucionales' +
-                        (diagnosticoRemitentes?.restricciones_locales ? ' y existen restricciones locales del CRM.' : '. Revisa el alcance del token si falta un buzón.');
+                estadoRemitente.textContent = permitido ? salidaPreparada.aviso
+                    : correo === '' ? 'Escribe tu dirección institucional. El sistema resolverá el buzón de salida autorizado.'
+                    : !esDireccionInstitucional(correo) ? 'Utiliza una dirección válida de @rededucativamexico.org.'
+                    : 'Comprobando la identidad de salida institucional…';
             }
             return permitido;
         };
         const cargarRemitentes = async function () {
             const consulta = ++consultaRemitentes;
+            const direccion = String(remitente?.value || '').trim().toLowerCase();
             ultimoRefrescoRemitentes = Date.now();
             remitentesPermitidos = null;
-            diagnosticoRemitentes = null;
+            salidaPreparada = null;
+            direccionResuelta = '';
             opcionesRemitente?.replaceChildren();
             if (estadoRemitente) { estadoRemitente.textContent = 'Consultando remitentes Hostinger…'; }
             try {
-                const response = await fetch('index.php?controller=correoMarketing&action=remitentes', {headers:{'X-Requested-With':'fetch'},cache:'no-store'});
+                const url = 'index.php?controller=correoMarketing&action=remitentes' +
+                    (esDireccionInstitucional(direccion) ? '&remitente=' + encodeURIComponent(direccion) : '');
+                const response = await fetch(url, {headers:{'X-Requested-With':'fetch'},cache:'no-store'});
                 const json = await response.json();
-                if (consulta !== consultaRemitentes) { return false; }
+                if (consulta !== consultaRemitentes || direccion !== String(remitente?.value || '').trim().toLowerCase()) { return false; }
                 if (!response.ok || !json.ok) { throw new Error(json.mensaje || 'No se pudieron consultar los remitentes Hostinger.'); }
                 if (!Array.isArray(json.remitentes) || json.remitentes.some(function (correo) { return typeof correo !== 'string'; })) {
                     throw new Error('La lista de buzones recibida no es válida. Vuelve a abrir el formulario.');
                 }
                 remitentesPermitidos = Array.from(new Set(json.remitentes));
-                diagnosticoRemitentes = json.diagnostico || null;
+                if (esDireccionInstitucional(direccion) && (!json.salida || typeof json.salida.remitente_real !== 'string' || typeof json.salida.aviso !== 'string')) {
+                    throw new Error('El servidor no confirmó la identidad real de salida. Revisa que esté publicada la versión actual.');
+                }
+                salidaPreparada = json.salida || null;
+                direccionResuelta = direccion;
                 ultimoRefrescoRemitentes = Date.now();
                 remitentesPermitidos.forEach(function (correo) {
                     const option = document.createElement('option'); option.value = correo; opcionesRemitente?.appendChild(option);
@@ -177,7 +185,14 @@
             }
         };
         modalElement.addEventListener('shown.bs.modal', cargarRemitentes);
-        remitente?.addEventListener('input', validarRemitenteVisible);
+        remitente?.addEventListener('input', function () {
+            clearTimeout(temporizadorRemitente);
+            ++consultaRemitentes;salidaPreparada = null;direccionResuelta = '';
+            validarRemitenteVisible();
+            if(esDireccionInstitucional(String(remitente.value || '').trim())) {
+                temporizadorRemitente = setTimeout(cargarRemitentes, 450);
+            }
+        });
         remitente?.addEventListener('focus', function () {
             if (Date.now() - ultimoRefrescoRemitentes > 30000) { cargarRemitentes(); }
         });
@@ -1348,7 +1363,8 @@
                 return;
             }
 
-            // Actualizar antes de validar evita bloquear buzones recién autorizados por una lista vieja.
+            // Resolver centralmente la salida; pertenecer a la lista no es requisito de redacción.
+            clearTimeout(temporizadorRemitente);
             enviando = true;
             try {
                 if (!(await cargarRemitentes()) || !validarRemitenteVisible()) {
@@ -1364,6 +1380,7 @@
             }
 
             const datos = new FormData(form);
+            datos.set('remitente_real_confirmado', salidaPreparada.remitente_real);
             const htmlOriginal = botonEnviar?.innerHTML || '';
             datos.set('idempotency_key', claveEnvio || (claveEnvio = nuevaClaveEnvio()));
 
@@ -1404,7 +1421,8 @@
 
                 modal.hide();
                 mostrarToast(
-                    json.mensaje || 'Correo enviado correctamente.',
+                    (json.mensaje || 'Correo aceptado por el proveedor.') +
+                        (json.identidad_envio?.aviso ? ' ' + json.identidad_envio.aviso : ''),
                     false
                 );
                 sessionStorage.setItem(

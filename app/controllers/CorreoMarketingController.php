@@ -11,7 +11,9 @@ class CorreoMarketingController
         $this->validarAccesoMarketing();
         header('Cache-Control: no-store');
         if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') { $this->responder(['ok'=>false,'mensaje'=>'Método no permitido.'],405); }
-        $r=(new CorreoSalidaInstitucionalService())->remitentes((int)$_SESSION['usuario_id']);
+        $from=$_GET['remitente']??'';
+        if(!is_string($from) || strlen($from)>255) { $this->responder(['ok'=>false,'mensaje'=>'Dirección de contacto inválida.'],422); }
+        $r=(new CorreoSalidaInstitucionalService())->remitentes((int)$_SESSION['usuario_id'],trim($from));
         $code=(int)($r['codigo_http']??200);unset($r['codigo_http']);$this->responder($r,$code);
     }
 

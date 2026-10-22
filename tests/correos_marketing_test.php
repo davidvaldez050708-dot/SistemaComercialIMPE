@@ -30,7 +30,8 @@ class MarketingStmt {
             expectMarketing($row['usuario_id'] === $a[9] && $row['estado'] === 'BORRADOR', 'edición sólo borrador propio');
             foreach (['destinatario','destinatario_nombre','asunto','cuerpo','tipo','estado','adjuntos_count','adjuntos_nombres'] as $i => $field) { $row[$field] = $a[$i]; }
         } elseif (str_contains($s, 'fecha_envio = NOW()')) {
-            $id = $a[3]; $this->db->rows[$id]['estado'] = $a[0]; $this->db->rows[$id]['proveedor'] = $a[1]; $this->db->sentWrites++;
+            $id = $a[count($a)-1]; $this->db->rows[$id]['estado'] = $a[0]; $this->db->rows[$id]['proveedor'] = $a[1]; $this->db->sentWrites++;
+            if(str_contains($s,'cuerpo = CONCAT(cuerpo, ?)')) { $this->db->rows[$id]['cuerpo'].=$a[3]; }
         } elseif (str_contains($s, "SET estado = 'BORRADOR'")) {
             expectMarketing($this->db->rows[$a[0]]['usuario_id'] === $a[1], 'restauración borrador propio');
             $this->db->rows[$a[0]]['estado'] = 'BORRADOR';
@@ -45,6 +46,7 @@ class MarketingSender extends CorreoSalidaInstitucionalService {
     public $calls = 0, $reject = false, $last;
     public function __construct() {}
     public function validarRemitente(string $from, int $user): array { return ['ok'=>true]; }
+    public function prepararSalida(string $from, int $user): array { return ['ok'=>true]; }
     public function enviar($data) {
         $this->calls++; $this->last = $data;
         return $this->reject ? ['ok' => false, 'estado_entrega' => 'RECHAZADO', 'mensaje' => 'Rechazo de prueba']

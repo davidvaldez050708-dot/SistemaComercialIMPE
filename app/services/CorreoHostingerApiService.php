@@ -5,7 +5,7 @@ require_once dirname(__DIR__, 2) . '/config/private_config.php';
 final class CorreoHostingerApiService
 {
     public const BASE = 'https://api.mail.hostinger.com';
-    public const VERSION = 'hostinger-comercial-buzones-v2';
+    public const VERSION = 'hostinger-comercial-central-v3';
     public const DOMINIO = 'rededucativamexico.org';
     private $request;
     private $descubrimiento = [];
@@ -90,6 +90,7 @@ final class CorreoHostingerApiService
             if(empty($entry['activo']) || !in_array($user,array_map('intval',(array)($entry['usuarios']??[])),true)) { unset($boxes[$email]); }
         }
         return ['account'=>['transport'=>'hostinger_api','api_token'=>$a['token'],'api_base_url'=>self::BASE],'boxes'=>$boxes,
+            'central_preferido'=>strtolower(trim((string)($policy['from_address']??(defined('HOSTINGER_MAIL_FROM_ADDRESS')?HOSTINGER_MAIL_FROM_ADDRESS:(getenv('HOSTINGER_MAIL_FROM_ADDRESS')?:''))))),
             'diagnostico'=>$this->descubrimiento+['total_permitidos'=>count($boxes),'restricciones_locales'=>count($lists)>0 || count($accounts)>0]];
     }
 

@@ -66,7 +66,7 @@ function diagnosticarHostingerComercial(CorreoHostingerApiService $api, string $
     if($remitente!=='') {
         $remitente=strtolower(trim($remitente));
         if(!$api->institucional($remitente)) { $lines[]='Remitente solicitado: dominio/formato no institucional; rechazado.'; }
-        else { $lines[]='Remitente solicitado: '.(isset($boxes[$remitente])?'devuelto por Hostinger; se aplican además restricciones del usuario/rol.':'NO devuelto por Hostinger; no se permite enviar.'); }
+        else { $lines[]='Remitente solicitado: '.(isset($boxes[$remitente])?'devuelto por Hostinger; se aplican además restricciones del usuario/rol.':'NO devuelto por Hostinger como From real; el CRM puede resolver salida central y comprobar el contacto del usuario.'); }
     }
     return $lines;
 }
