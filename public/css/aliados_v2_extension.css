@@ -496,3 +496,52 @@
     .convenios-detail-modal .modal-header, .convenios-detail-modal .modal-body { padding: 16px; }
     .convenios-detail-meta { display: block; }
 }
+
+/* Canales manuales: mismo lenguaje de los contactos de Vinculación. */
+.aliados-canales-manuales .modal-header { padding: 22px 28px; }
+.aliados-canales-manuales .modal-body { padding: 22px 28px 25px; }
+.aliados-canales-manuales .aliados-modal-kicker {
+    display:block; color:#284285; font-size:11px; font-weight:800; letter-spacing:.055em;
+    margin-bottom:6px;
+}
+.aliados-canales-manuales .modal-header p { margin: 5px 0 0; color:#718098; }
+.aliados-manual-channel-tip {
+    display:flex; gap:10px; align-items:flex-start; padding:13px 15px;
+    border:1px solid #d7e2f2; border-radius:12px; background:#f5f8fc;
+    color:#64748b; font-size:12px; line-height:1.5; margin-bottom:16px;
+}
+.aliados-manual-channel-tip i { color:#304ba1; flex:none; }
+.aliados-manual-reference-card {
+    display:flex; gap:14px; align-items:center; flex-wrap:wrap;
+    padding:14px; border:1px solid #dfe6f0; border-radius:13px; margin-bottom:15px;
+}
+.aliados-manual-reference-card[hidden] { display:none !important; }
+.aliados-manual-source-icon {
+    display:grid; place-items:center; flex:none; width:44px;height:44px;
+    color:#2845a6; background:#f0f4fb; border-radius:12px; font-size:19px;
+}
+.aliados-manual-source-info { display:flex; flex:1; flex-direction:column; gap:3px;min-width:150px; }
+.aliados-manual-source-info strong {font-size:15px;color:#17223b;}
+.aliados-manual-source-info small {color:#78859c;font-size:11px;}
+.aliados-manual-status-chip {align-self:flex-start;display:inline-flex;align-items:center;
+    font-size:10px;font-weight:650;color:#64748b;background:#f2f5f9;border-radius:100px;padding:4px 8px;}
+.aliados-manual-status-chip.is-ready {color:#00876c;background:#e5f7f1;}
+.aliados-manual-channel-existing {margin-bottom:15px;}
+.aliados-manual-channel-row {display:flex;align-items:center;justify-content:space-between;gap:14px;}
+.aliados-manual-channel-row > div:first-child {display:flex;flex-direction:column;gap:3px;}
+.aliados-manual-channel-flags {display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;}
+.aliados-manual-channel-form {border-top:1px solid #e0e6ef;padding-top:18px;}
+.aliados-manual-channel-section {margin:0 0 14px;}
+.aliados-manual-channel-section strong {font-size:14px;color:#18253a;}
+.aliados-manual-channel-section p {font-size:11px;color:#718098;margin:5px 0 0;}
+.aliados-manual-checkbox-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+.aliados-manual-choice {
+    display:flex;gap:10px;align-items:flex-start;padding:12px;
+    border:1px solid #dfe6f0;border-radius:11px;background:#f9fbfe;cursor:pointer;
+}
+.aliados-manual-choice input {flex:none;margin-top:3px;accent-color:#293e90;}
+.aliados-manual-choice span {display:flex;flex-direction:column;gap:4px;min-width:0;}
+.aliados-manual-choice strong {font-size:11px;font-weight:700;color:#26354d;}
+.aliados-manual-choice small {font-size:10px;color:#77839a;line-height:1.35;}
+@media(max-width:767px){.aliados-manual-checkbox-grid{grid-template-columns:1fr}
+.aliados-canales-manuales .modal-header,.aliados-canales-manuales .modal-body{padding:15px;}}
