@@ -123,6 +123,61 @@ class PublicadorAjustesV3Test(unittest.TestCase):
                 stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             self.assertEqual(result.returncode,0,result.stderr.decode("utf-8","replace"))
 
+    def test_modelo_v3_reproduce_source_exactamente(self):
+        file="app/models/ConvocatoriaModel.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        desired=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        self.assertEqual(module.overlay_convocatoria_model(old,old,desired),desired)
+        self.assertEqual(module.overlay_convocatoria_model(desired,old,desired),desired)
+
+    def test_modelo_crear_personalizado_fuera_de_seis_cambios_se_conserva(self):
+        file="app/models/ConvocatoriaModel.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        desired=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        anchor=b"            $convocatoriaId = (int)$this->connection->insert_id;"
+        self.assertEqual(old.count(anchor),1)
+        custom=b"            // Integracion Hostinger personal: preservar este punto\n"
+        live=old.replace(anchor,custom+anchor,1)
+        patched=module.overlay_convocatoria_model(live,old,desired)
+        self.assertIn(custom,patched)
+        self.assertEqual(module.overlay_convocatoria_model(patched,old,desired),patched)
+        self.assertIn(b"if (!$transaccionExterna) $this->connection->commit();",patched)
+        self.assertEqual(patched.count(b"marketing_aliado_convocatorias_origen"),1)
+        self.assertEqual(patched.count(b"public function iniciarLote()"),1)
+        with tempfile.TemporaryDirectory() as folder:
+            dest=Path(folder)/"convocatoria.php"
+            dest.write_bytes(patched)
+            result=subprocess.run(["php","-l",str(dest)],
+                stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            self.assertEqual(result.returncode,0,result.stderr.decode("utf-8","replace"))
+
+    def test_modelo_crear_personalizado_crlf_reversible(self):
+        file="app/models/ConvocatoriaModel.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        desired=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        live=old.replace(b"\n",b"\r\n")
+        customized=live.replace(b"            $convocatoriaId = (int)",
+            b"            // NOTA PRODUCTIVA\r\n            $convocatoriaId = (int)",1)
+        upgraded=module.overlay_convocatoria_model(customized,old,desired)
+        self.assertIn(b"// NOTA PRODUCTIVA\r\n",upgraded)
+        self.assertNotIn(b"\n",upgraded.replace(b"\r\n",b""))
+        self.assertEqual(module.overlay_convocatoria_model(upgraded,old,desired),upgraded)
+
+    def test_modelo_crear_v3_parcial_nunca_reparar_ciegamente(self):
+        file="app/models/ConvocatoriaModel.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        desired=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        broken=old.replace(
+            b"        $this->connection->begin_transaction();",
+            b"        if (!$transaccionExterna) $this->connection->begin_transaction();",1)
+        with self.assertRaisesRegex(RuntimeError,"cambio crítico V3"):
+            module.overlay_convocatoria_model(broken,old,desired)
+        broken2=old.replace(
+            b"            // En la misma transacci",
+            b"            // PERSONALIZADO \n            // En la misma transacci",1)
+        upgraded=module.overlay_convocatoria_model(broken2,old,desired)
+        self.assertIn(b"// PERSONALIZADO \n",upgraded)
+
     def test_modelo_crear_personalizado_nunca_se_sobrescribe(self):
         file="app/models/ConvocatoriaModel.php"
         old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
