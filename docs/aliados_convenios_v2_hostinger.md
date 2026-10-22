@@ -13,7 +13,7 @@ Se agregan de forma explícita las migraciones:
 La relación a convocatorias usa el tipo de llave `INT UNSIGNED`. No reinstalar la migración de 2026-10-21. Conservar los respaldos de primera entrega.
 
 ## Publicador selectivo
-El publicador verifica SHA de **18 archivos** fijados al commit `2f57c1c29e1a838941530ba5ef6fde9d1b3af033`, reconcilia con el código de la primera entrega y las personalizaciones de Hostinger, valida PHP/JS, genera respaldo privado y permite restauración. Nunca ejecuta SQL.
+El publicador verifica SHA de **18 archivos** fijados al commit `1d9c1b9961403a7c21bac1b1270dd61ad5fb3506`, reconcilia con el código de la primera entrega y las personalizaciones de Hostinger, valida PHP/JS, genera respaldo privado y permite restauración. Nunca ejecuta SQL.
 
 **Ejecutar --check primero; no aplicar con conflictos.**
 
@@ -23,7 +23,7 @@ PAQUETE="$HOME/entregas-impe/aliados-convenios-v2"
 mkdir -p "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 chmod 700 "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 curl -fL --proto '=https' --tlsv1.2 \
-"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/ee7b2e7c1e22cacdeff2c272fd74a29de68af126/tools/publicar_aliados_convenios_v2.py" \
+"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/738442494a3bec01a1de03b9ea9187db604c69a0/tools/publicar_aliados_convenios_v2.py" \
 -o "$PAQUETE/publicar_aliados_convenios_v2.py"
 python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --check --site "$SITIO"
 ```
