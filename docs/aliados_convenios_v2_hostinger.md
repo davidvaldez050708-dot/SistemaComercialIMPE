@@ -27,7 +27,7 @@ PAQUETE="$HOME/entregas-impe/aliados-convenios-v2"
 mkdir -p "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 chmod 700 "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 curl -fL --proto '=https' --tlsv1.2 \
-"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/86b6d15f20243d2c49ea48206ac500d93df9de46/tools/publicar_aliados_convenios_v2.py" \
+"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/0194bc9eb4127ba7a02df17b81ea44d7cc900170/tools/publicar_aliados_convenios_v2.py" \
 -o "$PAQUETE/publicar_aliados_convenios_v2.py"
 python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --check --site "$SITIO"
 ```
@@ -54,3 +54,8 @@ La restauración de código no revierte SQL ni debe eliminar nuevas respuestas. 
 3. Crear convocatoria para Bachillerato 286, subir imagen y guardar; repetir para Titulación por experiencia laboral con otra imagen. Verificar separación de categorías.
 4. Abrir ambas convocatorias y verificar un **mismo enlace/QR**; al registrarse desde ese enlace poder elegir ambos programas.
 5. Comprobar Prospectos con aliado de origen, evitar duplicados; regresión de Inscripción, Handly y aliados formales.
+
+
+## Hostinger con formulario modular posterior al PR
+
+El archivo real de producción (SHA git `b90bb84bed47a0da0045a53acb19d94e534967cb`) carga `app/views/convocatorias/partials/crear_modal.php` y `public/javascript/convocatoria_crear_compartido.js`. **No se debe reemplazar ese `index.php` modular por el anterior de 3,950 líneas**. La integración del selector de programas y QR debe instalarse por separado, mediante el módulo `aliado_programas_modular.php` junto con sus CSS/JS, con un instalador que verifique el archivo real y permita restauración. El publicador global V2 ahora **bloquea** el despliegue cuando identifica un `index.php` modular que aún no tiene instalado el componente. Una vez instalado, conserva el index sin modificarlo; las demás acciones siguen sujetas a `--check`, pruebas y respaldo completo. El paquete local probado no se publica automáticamente en Hostinger ni forma parte del manifest antiguo de 18 archivos.
