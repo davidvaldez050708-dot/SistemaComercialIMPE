@@ -7,7 +7,7 @@ class CrearConvocatoriaController
 {
     public function index()
     {
-        $this->validarAccesoMarketing();
+        $this->validarAccesoConvenios();
 
         $modelo = new CrearConvocatoriaModel();
         $estructuraDisponible = $modelo->estructuraDisponible();
@@ -29,7 +29,7 @@ class CrearConvocatoriaController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
-    private function validarAccesoMarketing()
+    private function validarAccesoConvenios()
     {
         if (!isset($_SESSION['usuario_id'])) {
             header(
@@ -40,14 +40,9 @@ class CrearConvocatoriaController
             exit;
         }
 
-        $rol = trim((string)($_SESSION['rol'] ?? ''));
-
-        if (
-            strcasecmp($rol, 'Marketing') !== 0 ||
-            !tienePermiso('convocatorias.ver')
-        ) {
+        if (!puedeConsultarDirectorioConvenios()) {
             http_response_code(403);
-            die('No tienes permiso para acceder a Crear convocatoria.');
+            die('No tienes permiso para acceder a Convenios.');
         }
     }
 }

@@ -7,6 +7,9 @@ on:
       - 'app/**/Prospecto*'
       - 'app/**/CrearConvocatoria*'
       - 'app/helpers/AdminRolePolicy.php'
+      - 'app/helpers/PermissionHelper.php'
+      - 'app/controllers/CrearConvocatoriaController.php'
+      - 'app/views/layout/sidebar.php'
       - 'app/views/aliados/**'
       - 'app/views/convocatorias/**'
       - 'app/views/prospectos/**'
@@ -37,6 +40,7 @@ on:
       - 'tests/aliados_canales*'
       - 'tests/aliados_compartir*'
       - 'tests/convenios_detalle_etapa3*'
+      - 'tests/convenios_acceso_permisos.php'
       - 'tests/publicacion_convenios_detalle_etapa3_test.py'
       - 'tools/convenios_detalle_etapa3_release.json'
       - 'tests/publicacion_compartir_aliado_etapa2_test.py'
@@ -97,6 +101,7 @@ jobs:
       - run: /tmp/aliados-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Sintaxis y alcance
         run: |
+          php tests/convenios_acceso_permisos.php
           git diff --name-only a90b6aded4a7f606eccc7a27749658e3fed9b9ed HEAD -- '*.php' | xargs -r -n1 php -l
           node --check public/javascript/aliados_registro.js
           node --check public/javascript/aliados.js

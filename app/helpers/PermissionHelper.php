@@ -50,3 +50,14 @@ if (!function_exists('tieneAlgunPermiso')) {
         return false;
     }
 }
+
+if (!function_exists('puedeConsultarDirectorioConvenios')) {
+    function puedeConsultarDirectorioConvenios()
+    {
+        return tieneAlgunPermiso(['convenios.ver', 'convenios.gestionar']) ||
+            (
+                strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0 &&
+                tienePermiso('convocatorias.ver')
+            );
+    }
+}
