@@ -64,7 +64,7 @@
  // Una solicitud nueva de Recepción no puede sustituir el PBX de la llamada anterior.
  const choosePending=state=>{
   const ref=reference(state);
-  if(phoneFinished(state)&&pbx(ref))return pending.find(p=>p.ref===ref)||provisional(state);
+  if(phoneFinished(state)&&pbx(ref))return retired.has(ref)?null:(pending.find(p=>p.ref===ref)||provisional(state));
   return pending.filter(p=>pbx(p.ref)&&String(p.extension)===String(cfg.extension))
    .sort((a,b)=>Number(b.at||0)-Number(a.at||0))[0]||null;
  };
@@ -98,7 +98,8 @@
  window.IMPE_SALES_ATTENTION=Object.freeze({
   // Sólo la atención que el teléfono acaba de finalizar bloquea la siguiente.
   // Las antiguas permanecen en el historial sin impedir atender nuevas llamadas.
-  hasPending:()=>{const state=phone.getCallState();return phoneFinished(state)&&Boolean(choosePending(state));},
+  hasPending:()=>{const state=phone.getCallState(),ref=reference(state);
+   return phoneFinished(state)&&pbx(ref)&&!retired.has(ref)&&pending.some(p=>p.ref===ref&&String(p.extension)===String(cfg.extension));},
   openPending:open
  });
  function adopt(facts,state,expectedRef=''){
