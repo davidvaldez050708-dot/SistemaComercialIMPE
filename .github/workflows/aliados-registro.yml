@@ -41,6 +41,8 @@ on:
       - 'tests/aliados_compartir*'
       - 'tests/convenios_detalle_etapa3*'
       - 'tests/convenios_acceso_permisos.php'
+      - 'tests/publicacion_convenios_acceso_test.py'
+      - 'tools/convenios_acceso_release.json'
       - 'tests/publicacion_convenios_detalle_etapa3_test.py'
       - 'tools/convenios_detalle_etapa3_release.json'
       - 'tests/publicacion_compartir_aliado_etapa2_test.py'
@@ -140,6 +142,7 @@ jobs:
           python3 tests/publicacion_canales_aliado_etapa1_test.py
           python3 tests/publicacion_compartir_aliado_etapa2_test.py
           python3 tests/publicacion_convenios_detalle_etapa3_test.py
+          python3 tests/publicacion_convenios_acceso_test.py
       - name: Navegador real, QR, HTTP, seguridad y concurrencia
         run: |
           node tests/aliados_registro_browser.cjs
