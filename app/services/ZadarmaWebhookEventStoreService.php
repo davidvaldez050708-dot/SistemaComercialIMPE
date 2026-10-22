@@ -436,7 +436,10 @@ class ZadarmaWebhookEventStoreService
             if (
                 ($tipo === 'NOTIFY_END' || ($salienteTransferida && $tipo === 'NOTIFY_OUT_END')) &&
                 (
-                    ($salienteTransferida && $tipo === 'NOTIFY_OUT_END' && $internal === $origenTransferencia) ||
+                    // OUT_END del origen que llegó antes de ANSWER del receptor
+                    // cierra el tramo 100, NO una conversación futura del 150.
+                    ($salienteTransferida && $tipo === 'NOTIFY_OUT_END' &&
+                        $internal === $origenTransferencia && $respuesta !== null) ||
                     $internal === '' ||
                     $internal === $extension ||
                     $lastInternal === $extension
