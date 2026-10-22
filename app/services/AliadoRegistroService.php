@@ -229,8 +229,9 @@ class AliadoRegistroService
         if ($telefono!==''&&!preg_match('/^[+0-9 ()-]{7,30}$/D',$telefono)) throw new DomainException('Teléfono del contacto inválido.');
         if ($whatsapp&&!$telefono) throw new DomainException('Se requiere teléfono para autorizar WhatsApp.');
         if ($contactoId) {
-            $stmt=$this->query('UPDATE aliados_manuales_contactos SET nombre=?,cargo=?,correo=?,telefono=?,whatsapp_autorizado=? WHERE id=? AND aliado_id=? AND activo=1',[$nombre,$cargo,$correo,$telefono,$whatsapp,$contactoId,$aliado]);
-            if (!$stmt->affected_rows) throw new DomainException('Contacto no disponible.');
+            $existe = $this->query('SELECT id FROM aliados_manuales_contactos WHERE id=? AND aliado_id=? AND activo=1',[$contactoId,$aliado])->get_result()->num_rows;
+            if (!$existe) throw new DomainException('Contacto no disponible.',404);
+            $this->query('UPDATE aliados_manuales_contactos SET nombre=?,cargo=?,correo=?,telefono=?,whatsapp_autorizado=? WHERE id=? AND aliado_id=? AND activo=1',[$nombre,$cargo,$correo,$telefono,$whatsapp,$contactoId,$aliado]);
         } else {
             $this->query('INSERT INTO aliados_manuales_contactos (aliado_id,nombre,cargo,correo,telefono,whatsapp_autorizado,creado_por) VALUES (?,?,?,?,?,?,?)',[$aliado,$nombre,$cargo,$correo,$telefono,$whatsapp,(int)$_SESSION['usuario_id']]);
         }
