@@ -96,6 +96,8 @@ $receptorHostSdk = $analistaHostSdk || $asesorHostSdk;
             // Analista y Ventas autorizados comparten el observador embebido.
             // Marketing continúa usando exclusivamente eventos PBX.
             'analystSdkIncoming' => $receptorHostSdk,
+            // Identificar únicamente el flujo de Ventas, sin cambiar Analista.
+            'salesSdkIncoming' => $asesorHostSdk,
             'permiteTransferir' =>
                 !empty($asignacionTelefonica['permite_transferir']) &&
                 tienePermiso('telefonia.transferir')
