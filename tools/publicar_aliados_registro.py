@@ -209,7 +209,7 @@ def main():
                     atomic(p, original, mode)
             raise
         print('PUBLICADO. Respaldo: ' + str(backup))
-        print('Pendiente: migración explícita y comprobación funcional. No se modificó la BD.')
+        print('Base de datos sin cambios. Consulta los pasos pendientes de esta entrega y comprueba su funcionamiento.')
 
 
 if __name__ == '__main__':
