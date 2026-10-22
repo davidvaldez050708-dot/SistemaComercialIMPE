@@ -4,6 +4,7 @@ on:
     paths:
       - 'app/services/TelefoniaGrabacionExpedienteTransferidaService.php'
       - 'tests/telefonia_analista_expediente_vinculo_exacto_smoke.php'
+      - 'tests/telefonia_analista_expediente_collations_db.php'
       - 'tools/publicar_analista_expediente_vinculo_pbx_100_101_hostinger.sh'
       - 'tests/publicacion_analista_expediente_vinculo_pbx_test.py'
       - '.github/workflows/analista-expediente-vinculo-pbx-100-101.yml'
