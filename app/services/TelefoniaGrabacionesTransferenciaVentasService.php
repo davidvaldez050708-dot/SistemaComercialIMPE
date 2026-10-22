@@ -22,9 +22,15 @@ final class TelefoniaGrabacionesTransferenciaVentasService
         foreach($events as $event){
             $kind=(string)($event['evento']??'');
             $internal=trim((string)($event['internal']??''));
-            if(in_array($kind,['NOTIFY_INTERNAL','NOTIFY_ANSWER','NOTIFY_OUT_START','NOTIFY_END','NOTIFY_OUT_END'],true) &&
-                preg_match('/^[0-9]{3,6}$/D',$internal) && $internal!==$source && $internal!==$dest)
-                $otherParticipant=true;
+            // NOTIFY_RECORD normalmente carece de internal. Si el
+            // proveedor lo incluyó, una tercera extensión es igualmente
+            // evidencia contradictoria. last_internal también se verifica.
+            $payload=json_decode((string)($event['payload_json']??''),true)?:[];
+            $last=trim((string)($event['last_internal']??$payload['last_internal']??''));
+            foreach([$internal,$last] as $member)
+                if(preg_match('/^[0-9]{3,6}$/D',$member) &&
+                    $member!==$source && $member!==$dest)
+                    $otherParticipant=true;
             if($kind==='NOTIFY_OUT_START'&&$internal===$source)$sourceStarted=true;
             if($sourceStarted&&$kind==='NOTIFY_ANSWER'&&$internal===$dest)$destAnswered=true;
             if($kind!=='NOTIFY_RECORD')continue;
