@@ -27,14 +27,17 @@ with tempfile.TemporaryDirectory() as td:
         latest=(root/entry['path']).read_text(encoding='utf8')
         original=latest
         for old,new in reversed(entry['pairs']):
+            old,new=old.replace('\r\n','\n'),new.replace('\r\n','\n')
             assert original.count(new)==1,(entry['path'],'ambiguous target')
             original=original.replace(new,old,1)
         check=original
         for old,new in entry['pairs']:
+            old,new=old.replace('\r\n','\n'),new.replace('\r\n','\n')
             assert check.count(old)==1,(entry['path'],'ambiguous source')
             check=check.replace(old,new,1)
         assert check==latest,entry['path']
-        eol='\r\n' if i%2 else '\n'
+        # Reproducir específicamente CRLF del archivo real de Recepción.
+        eol='\r\n' if i==2 or i%2 else '\n'
         suffix='\n/* HOSTINGER: PERSONALIZACION NO REEMPLAZAR */\n'
         original=(original+suffix).replace('\n',eol).encode('utf8')
         expected=(latest+suffix).replace('\n',eol).encode('utf8')
