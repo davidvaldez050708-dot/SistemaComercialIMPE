@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     const search = module.querySelector('[data-convenio-search]');
     const originFilter = module.querySelector('[data-convenio-origin-filter]');
+    const municipalityFilter = module.querySelector('[data-convenio-municipio-filter]');
     const stateFilter = module.querySelector('[data-convenio-state-filter]');
     const stateDropdown = module.querySelector('[data-state-dropdown]');
     const stateTrigger = module.querySelector('[data-state-trigger]');
@@ -66,10 +67,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateClearFilters = function () {
         const hasSearch = String(search?.value || '').trim() !== '';
         const hasState = String(stateFilter?.value || '') !== '';
+        const hasMunicipio = String(municipalityFilter?.value || '') !== '';
 
         clearFilters?.classList.toggle(
             'd-none',
-            !(hasSearch || hasState || originFilter?.value)
+            !(hasSearch || hasState || hasMunicipio || originFilter?.value)
         );
     };
 
@@ -81,10 +83,12 @@ document.addEventListener('DOMContentLoaded', function () {
         cards.forEach(function (card) {
             const text = normalize(card.dataset.convenioSearchText || '');
             const cardState = String(card.dataset.convenioState || '');
+            const cardMunicipio = String(card.dataset.convenioMunicipio || '');
             const show =
                 (term === '' || text.includes(term)) &&
                 (state === '' || state === cardState) &&
-                (!originFilter?.value || originFilter.value === card.dataset.convenioOrigin);
+                (!originFilter?.value || originFilter.value === card.dataset.convenioOrigin) &&
+                (!municipalityFilter?.value || municipalityFilter.value === cardMunicipio);
 
             card.classList.toggle('d-none', !show);
 
@@ -95,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (results) {
             results.textContent =
-                visible + (visible === 1 ? ' notificación' : ' notificaciones');
+                visible + (visible === 1 ? ' convenio' : ' convenios');
         }
 
         if (emptyFilter) {
@@ -119,9 +123,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     search?.addEventListener('input', applyFilters);
     originFilter?.addEventListener('change', applyFilters);
+    municipalityFilter?.addEventListener('change', applyFilters);
 
     clearFilters?.addEventListener('click', function () {
         if (originFilter) originFilter.value = '';
+        if (municipalityFilter) municipalityFilter.value = '';
         if (search) {
             search.value = '';
         }
