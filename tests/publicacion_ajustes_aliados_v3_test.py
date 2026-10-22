@@ -184,7 +184,7 @@ class PublicadorAjustesV3Test(unittest.TestCase):
         desired=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
         local=old.replace(b"public function crear($datos, $estadosIds)",
             b"public function crear($datos, $estadosIds) // personalizado",1)
-        with self.assertRaisesRegex(RuntimeError,"fue personalizado"):
+        with self.assertRaisesRegex(RuntimeError,"firma de crear\\(\\) ausente o duplicada"):
             module.overlay_convocatoria_model(local,old,desired)
 
     def test_documentos_fuera_sitio_no_se_reescriben(self):
