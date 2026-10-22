@@ -227,15 +227,27 @@ class TelefoniaGrabacionExpedienteTransferidaService
         // Vincular únicamente transferencias asociadas por Recepción al MISMO
         // expediente y a la MISMA extensión del analista, nunca estadísticas
         // buscadas por un teléfono aislado.
+        // Producción mezcla collations de las tablas históricas de contextos
+        // y disponibilidad (MySQL 1271 al construir UNION ALL).
+        // Normalizar SOLO las columnas textuales de las proyecciones,
+        // nunca las tablas ni su contenido; mismo tipo/collation en cada rama.
+        $utf8=static fn(string $field):string=>
+            "CONVERT($field USING utf8mb4) COLLATE utf8mb4_general_ci";
         $fuentes=[];
         foreach(['telefonia_transferencia_contextos_v2'=>'referencia_llamada','telefonia_transferencia_contextos'=>'pbx_call_id'] as $nombre=>$campo){
             $existe=$this->db->query("SHOW TABLES LIKE '$nombre'");
-            if($existe&&$existe->num_rows>0)$fuentes[]="SELECT $campo AS pbx_call_id,destino_usuario_id,destino_extension,seguimiento_id,telefono10,created_at FROM $nombre";
+            if($existe&&$existe->num_rows>0){
+                $fuentes[]="SELECT ".$utf8($campo)." AS pbx_call_id,
+                    destino_usuario_id,".$utf8('destino_extension')." AS destino_extension,
+                    seguimiento_id,".$utf8('telefono10')." AS telefono10,created_at FROM $nombre";
+            }
         }
         if($this->db->query("SHOW TABLES LIKE 'telefonia_disponibilidad'")->num_rows){
-            $fuentes[]="SELECT d.referencia AS pbx_call_id,d.destino_usuario AS destino_usuario_id,d.destino_extension,
+            $fuentes[]="SELECT ".$utf8('d.referencia')." AS pbx_call_id,
+                d.destino_usuario AS destino_usuario_id,
+                ".$utf8('d.destino_extension')." AS destino_extension,
                 CAST(JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.seguimiento_id')) AS UNSIGNED) AS seguimiento_id,
-                RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(d.numero,'+',''),' ',''),'-',''),'(',''),')',''),10) AS telefono10,d.created_at
+                ".$utf8("RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(d.numero,'+',''),' ',''),'-',''),'(',''),')',''),10)")." AS telefono10,d.created_at
                 FROM telefonia_disponibilidad d
                 WHERE JSON_VALID(d.ruta_json) AND d.estado IN('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA')
                   AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.tipo'))='INSTITUCION'
