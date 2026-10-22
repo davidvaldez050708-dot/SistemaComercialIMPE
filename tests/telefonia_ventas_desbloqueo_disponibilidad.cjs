@@ -49,7 +49,13 @@ const finished={active:false,phase:'incoming-finished',direction:'incoming',pbxC
   pending:[pending]});
  assert.equal(newCall.window.IMPE_SALES_ATTENTION.hasPending(),false,
   'El resultado viejo no se adjudica a otra llamada');
- const wrong=fixture({state:finished,records:[{pbx_call_id:ref,extension:'151',finalizada:false,
+ const recovered=fixture({state:{...finished,pbxCallId:''},
+  records:[{pbx_call_id:ref,extension:'150',finalizada:false,conectada:true,
+   solicitud_id:5,origen_extension:'100'}]});
+ assert.equal(await recovered.window.IMPE_SALES_ATTENTION.openPending(),true,
+  'Si la consulta PBX está en vuelo, el botón espera el resultado exacto sin quedarse inerte');
+ assert.match(recovered.frame.src,/pbx_call_id=out_104f/);
+ const wrong=fixture({state:{active:false,phase:'ready'},records:[{pbx_call_id:ref,extension:'151',finalizada:false,
   conectada:true,solicitud_id:5,origen_extension:'100'}]});
  const opened=await wrong.window.IMPE_SALES_ATTENTION.openPending();
  assert.equal(opened,false,'Nunca abrir el resultado de una extensión diferente');
