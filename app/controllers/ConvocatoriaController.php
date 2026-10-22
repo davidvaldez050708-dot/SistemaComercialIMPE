@@ -436,6 +436,52 @@ class ConvocatoriaController
             $errores[] = 'La opción de convocatoria seleccionada no es válida.';
         }
 
+        // Para publicaciones nacidas de Convenios, validar origen/programa del servidor,
+        // no los valores enviados desde campos HTML ni un enlace arbitrario del POST.
+        $tipoAliado = trim((string)($_POST['aliado_tipo'] ?? ''));
+        $idAliado = (int)($_POST['aliado_id'] ?? 0);
+        $programaAliado = trim((string)($_POST['programa_codigo'] ?? ''));
+        $contextoAliadoGuardar = null;
+        $servicioRegistroAliado = null;
+        if ($tipoAliado !== '' || $idAliado > 0) {
+            if (!in_array($tipoAliado,['manual','institucional'],true) || $idAliado <= 0 ||
+                strcasecmp((string)($_SESSION['rol']??''),'Marketing') !== 0 ||
+                !tienePermiso('formularios_aliados.gestionar_enlaces')) {
+                $errores[] = 'No tienes permiso para crear publicaciones de este aliado.';
+            } else {
+                try {
+                    $servicioRegistroAliado = new AliadoRegistroService((new Database())->connect());
+                    $contextoAliadoGuardar = $servicioRegistroAliado->opcionesConvocatoria($tipoAliado,$idAliado);
+                    if ((int)($contextoAliadoGuardar['origen']['estado_id']??0) !== $territorioId) {
+                        throw new DomainException('La convocatoria debe pertenecer al estado del aliado.');
+                    }
+                    $coincide = false;
+                    foreach ($contextoAliadoGuardar['opciones_convocatoria'] as $opcion) {
+                        if ($opcion['codigo'] === $programaAliado &&
+                            $opcion['clasificacion'] === ($tipoConvocatoria.'|'.$subtipoConvocatoria)) {
+                            $coincide = true;
+                            break;
+                        }
+                    }
+                    if (!$coincide) throw new DomainException('Selecciona uno de los programas autorizados del aliado.');
+                    if (empty($contextoAliadoGuardar['habilitado'])) {
+                        throw new DomainException('El enlace del aliado está deshabilitado. Habilítalo antes de publicar.');
+                    }
+                    if ($tipoAliado === 'manual') {
+                        $conexionVerificacion = (new Database())->connect();
+                        if (!$conexionVerificacion->query("SHOW TABLES LIKE 'marketing_aliado_manual_convocatorias'")->num_rows) {
+                            throw new DomainException('Falta instalar la migración para convocatorias de aliados manuales.');
+                        }
+                    }
+                    // Para un aliado la convocatoria pertenece únicamente a su estado.
+                    $estadosIds = [$territorioId];
+                } catch (Throwable $e) {
+                    $errores[] = $e instanceof DomainException ? $e->getMessage() : 'No fue posible verificar los programas del aliado.';
+                    error_log('[convocatoria_aliado_guardar] '.$e->getMessage());
+                }
+            }
+        }
+
         $imagen = $this->procesarImagen('');
 
         if ($imagen['error'] !== '') {
@@ -454,6 +500,27 @@ class ConvocatoriaController
             $this->volverConErrores('crear', $errores, $datos);
         }
 
+        if ($contextoAliadoGuardar !== null && $servicioRegistroAliado !== null) {
+            try {
+                $contextoAliadoGuardar = $servicioRegistroAliado->enlace($tipoAliado,$idAliado,'generar');
+                $datos['enlace_registro'] = (string)($contextoAliadoGuardar['url']??'');
+                if ($datos['enlace_registro'] === '') {
+                    throw new DomainException('No fue posible obtener el enlace estable del aliado.');
+                }
+                if ($tipoAliado === 'manual') {
+                    $datos['manual_id'] = $idAliado;
+                    $datos['programa_codigo'] = $programaAliado;
+                }
+            } catch (Throwable $e) {
+                if (!empty($imagen['nueva'])) $this->eliminarImagen($imagen['ruta']);
+                $errores[] = 'No se pudo preparar el Registro del aliado: '.$e->getMessage();
+                $datos['estados_ids'] = $estadosIds;
+                $datos['territorio_id'] = $territorioId;
+                $datos['tipo'] = $tipoConvocatoria;
+                $datos['subtipo'] = $subtipoConvocatoria;
+                $this->volverConErrores('crear',$errores,$datos);
+            }
+        }
         $datos['imagen'] = $imagen['ruta'];
         $datos['usuario_id'] = (int)$_SESSION['usuario_id'];
         $datos['tipo_convocatoria'] = $tipoConvocatoria;
@@ -467,7 +534,11 @@ class ConvocatoriaController
              * que la convocatoria se guardó correctamente. Abrir o cancelar
              * el modal no modifica su estado.
              */
-            if ($seguimientoOrigenIdGuardar > 0) {
+            if (
+                $seguimientoOrigenIdGuardar > 0 &&
+                $tipoAliado === 'institucional' &&
+                $seguimientoOrigenIdGuardar === $idAliado
+            ) {
                 $modeloConvenio = new CrearConvocatoriaModel();
 
                 if (
