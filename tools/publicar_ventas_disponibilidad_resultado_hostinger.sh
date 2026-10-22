@@ -103,13 +103,19 @@ for item in SPEC:
         tokens=[re.fullmatch(r"""\s*(['"])([A-Za-z_][A-Za-z0-9_]*)\1\s*""",x)
                 for x in pieces]
         names=[m.group(2) for m in tokens if m is not None]
-        base=['pbx_call_id','extension','finalizada','conectada','sdk_tokens']
+        # Version Hostinger comprobada: las cuatro claves base son
+        # pbx_call_id/extension/finalizada/conectada. En versiones nuevas
+        # pueden existir sdk_tokens, solicitud_id y origen_extension.
+        # Añadir sólo los campos ausentes y nunca tocar claves desconocidas.
+        base=['pbx_call_id','extension','finalizada','conectada']
+        supported=base+['sdk_tokens','solicitud_id','origen_extension']
         if (not pieces or any(t is None for t in tokens) or
-            len(names)!=len(set(names)) or any(key not in names for key in base)):
+            len(names)!=len(set(names)) or any(key not in names for key in base)
+            or any(key not in supported for key in names)):
             die('Lista de campos de pendientes no reconocida. Claves estaticas: '+
                 ','.join(names)+'; segmentos='+str(len(pieces))+
-                '; si hay expresiones o campos dinamicos, requiere revision manual.')
-        extra=[key for key in ('solicitud_id','origen_extension') if key not in names]
+                '; se admiten las cuatro bases y los tres campos de transferencia; lo demás requiere revisión.')
+        extra=[key for key in ('sdk_tokens','solicitud_id','origen_extension') if key not in names]
         if extra:
             prefix=fields.rstrip()
             separator='' if prefix.endswith(',') else ','
