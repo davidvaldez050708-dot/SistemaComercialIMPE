@@ -138,7 +138,10 @@
    if(audio.disabled)return;audio.disabled=true;
    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
    try{
-    if(root.dataset.evidenceUrl){
+    const transferred=Boolean(audio.closest('.linkage-call-history-card')?.querySelector('.linkage-call-history-identity span:nth-child(3)')) || false;
+    // El aviso de grabación no depende de un END PBX que no llegó. Para
+    // transferencias el endpoint valida la operación y enumera NOTIFY_RECORD.
+    if(root.dataset.evidenceUrl&&!transferred){
      const r=await fetch(root.dataset.evidenceUrl,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,body:new URLSearchParams({csrf_token:root.dataset.csrf,pbx_call_id:audio.dataset.salesAudio,extension:audio.dataset.extension})}),j=await r.json();
      if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo verificar la grabacion.');
      const parts=j.llamada?.segmentos;
