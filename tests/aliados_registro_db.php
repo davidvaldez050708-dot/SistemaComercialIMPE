@@ -79,4 +79,27 @@ cc(); $s->desactivar($id); rejects(fn()=>$form->aliadoExclusivo($token,'registro
 check((int)$db->query('SELECT COUNT(*) n FROM formulario_registros')->fetch_assoc()['n']===2,'baja conserva historia');
 // Fixture final para navegador: aliado vigente con dos programas, sin alterar tokens.
 $db->query('UPDATE aliados_manuales SET activo=1 WHERE id='.$id); $s->configurar('manual',$id,['bachillerato-286','ingles']);
+// Cobertura de las nuevas herramientas del menú de relaciones manuales.
+cc();
+$s->guardarContactoManual(['id'=>$id,'nombre'=>'Contacto Adicional','correo'=>'adicional@example.test','telefono'=>'7771234567','whatsapp_autorizado'=>1]);
+$gestion=$s->consultarGestionManual($id);
+check(count($gestion['contactos'])===1,'contacto de aliado manual registrado');
+$contacto=(int)$gestion['contactos'][0]['id'];
+check((int)$gestion['contactos'][0]['whatsapp_autorizado']===1,'consentimiento WhatsApp guardado');
+$s->guardarContactoManual(['id'=>$id,'contacto_id'=>$contacto,'nombre'=>'Contacto Adicional','correo'=>'adicional@example.test','telefono'=>'7771234567','whatsapp_autorizado'=>1]);
+check(count($s->consultarGestionManual($id)['contactos'])===1,'contacto idempotente sin duplicar');
+rejects(fn()=>$s->guardarContactoManual(['id'=>$id,'nombre'=>'X','correo'=>'incorrecto']),'contacto inválido rechazado');
+$s->registrarDifusionManual(['id'=>$id,'canal'=>'CORREO','nota'=>'Prueba registrada de difusión']);
+$gestion=$s->consultarGestionManual($id);
+check(count($gestion['historial'])===1 && $gestion['historial'][0]['canal']==='CORREO','historial manual persistente');
+rejects(fn()=>$s->registrarDifusionManual(['id'=>$id,'canal'=>'INVENTADO','nota'=>'Prueba']),'canal de difusión inválido');
+$s->desactivarContactoManual($id,$contacto);
+check(!$s->consultarGestionManual($id)['contactos'],'baja lógica de contacto preserva historial');
+marketing();
+$opciones=$s->opcionesConvocatoria('manual',$id);
+check(count($opciones['opciones_convocatoria'])===2,'programas de aliado mapean a clasificaciones individuales');
+check(in_array('bachillerato|bachillerato-286',array_column($opciones['opciones_convocatoria'],'clasificacion'),true),'clasificación Bachillerato 286 correcta');
+check((int)$db->query('SELECT COUNT(*) n FROM seguimientos_vinculacion')->fetch_assoc()['n']===1,'sin expedientes ficticios en extensiones');
+cc();
+rejects(fn()=>$s->opcionesConvocatoria('manual',$id),'solo Marketing prepara convocatoria por programa');
 echo "PASS $checks comprobaciones DB\n";
