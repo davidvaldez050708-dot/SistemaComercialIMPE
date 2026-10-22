@@ -34,11 +34,12 @@ with tempfile.TemporaryDirectory() as tmp:
             # claves de array_flip, manteniendo intactos los mismos campos.
             previous_keys="'pbx_call_id','extension','finalizada','conectada','sdk_tokens'"
             current_keys=previous_keys+",'solicitud_id','origen_extension'"
-            previous_double='"pbx_call_id","extension","finalizada","conectada","sdk_tokens"'
+            # La variante identificada en producción sólo devuelve cuatro campos.
+            previous_double='"pbx_call_id","extension","finalizada","conectada"'
             assert older.count(previous_keys)==1
             assert latest.count(current_keys)==1
             older=older.replace(previous_keys,previous_double,1)
-            latest=latest.replace(current_keys,previous_double+",'solicitud_id','origen_extension'",1)
+            latest=latest.replace(current_keys,previous_double+",'sdk_tokens','solicitud_id','origen_extension'",1)
         suffix='\n/* HOSTINGER PERSONALIZACION AJENA */\n'
         eol='\r\n' if i%2 else '\n'
         initial=(older+suffix).replace('\n',eol).encode('utf8')
@@ -62,8 +63,17 @@ with tempfile.TemporaryDirectory() as tmp:
     restore=call('--restore',str(folder))
     assert restore.returncode==0,(restore.stdout,restore.stderr)
     assert all((site/n).read_bytes()==v for n,v in previous.items())
+    # No se puede aceptar contenido PHP dinámico o lista de campos arbitraria.
+    controller=site/'app/controllers/TelefoniaController.php'
+    baseline=controller.read_bytes()
+    assert b'"pbx_call_id","extension","finalizada","conectada"' in baseline
+    controller.write_bytes(baseline.replace(b'"pbx_call_id","extension","finalizada","conectada"',
+                                            b'"pbx_call_id","extension","finalizada","conectada", customFunction()'))
+    refused=call('--check')
+    assert refused.returncode!=0 and 'CONFLICTO' in refused.stderr
+    controller.write_bytes(baseline)
     unknown=site/spec[3]['path'];unknown.write_bytes(b'// variante desconocida')
     rejected=call('--apply')
     assert rejected.returncode!=0 and 'CONFLICTO' in rejected.stderr
     assert all((site/n).read_bytes()==v for n,v in previous.items() if n!=spec[3]['path'])
-print('OK: disponibilidad/resultado check, apply, restore, CRLF, version ajena y respaldo seguro')
+print('OK: disponibilidad/resultado 4 campos -> 7, doble comilla, check/apply/restore, CRLF y conflicto')
