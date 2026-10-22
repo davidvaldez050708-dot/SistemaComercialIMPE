@@ -130,6 +130,7 @@ class PublicacionV2(unittest.TestCase):
         self.assertIn(inserted,merged)
         self.assertIn(b"aliados_v2_extension.css",merged)
         self.assertIn(b"convocatorias_aliado_programas.js",merged)
+        self.assertIn(b"crear_convocatoria_v2_extension.js",merged)
         self.assertIn(b"aliado_programas_modular.php",merged)
         self.assertEqual(mod.overlay_dashboard_head(merged,old,new),merged)
         # Reconstruir exactamente la personalización anterior al eliminar
@@ -149,6 +150,15 @@ class PublicacionV2(unittest.TestCase):
                            b"$jsOpcionalHead = custom_helper($jsOpcionalHead);")
         with self.assertRaisesRegex(RuntimeError,"punto de inserción único"):
             mod.overlay_dashboard_head(broken,old,new)
+
+    def test_js_convenios_personalizado_se_preserva(self):
+        self.assertNotIn("public/javascript/crear_convocatoria.js",mod.SHAS)
+        self.assertIn("public/javascript/crear_convocatoria_v2_extension.js",mod.SHAS)
+        extension=(ROOT/"public/javascript/crear_convocatoria_v2_extension.js").read_text(encoding="utf-8")
+        for required in ("impe:convenio-abierto", "data-convenio-municipio-header",
+                         "data-convenio-territorio-card", "aliado_tipo",
+                         "aliado_id", "data-convenio-notification"):
+            self.assertIn(required,extension)
 
     def test_fuente_fijada_reproduce_shas_git(self):
         actual=mod.SHAS
