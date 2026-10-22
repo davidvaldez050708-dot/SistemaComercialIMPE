@@ -177,7 +177,10 @@ $seguimientoVista = static function ($estado) {
         <?php endif; ?>
     </section>
 
-    <p class="text-muted small"><?= (int)($resumenAliados['formalizados'] ?? 0) ?> con formalización documental · <?= count($aliados) - (int)($resumenAliados['formalizados'] ?? 0) ?> relaciones manuales</p>
+    <div class="aliados-origen-resumen" aria-label="Desglose de aliados por procedencia">
+        <span class="aliados-origen-indicador"><i class="bi bi-patch-check" aria-hidden="true"></i><strong><?= (int)($resumenAliados['formalizados'] ?? 0) ?></strong> con formalización documental</span>
+        <span class="aliados-origen-indicador is-manual"><i class="bi bi-pencil-square" aria-hidden="true"></i><strong><?= max(0, count($aliados) - (int)($resumenAliados['formalizados'] ?? 0)) ?></strong> <?= count($aliados) - (int)($resumenAliados['formalizados'] ?? 0) === 1 ? 'relación manual' : 'relaciones manuales' ?></span>
+    </div>
     <section class="dashboard-panel aliados-directory-panel">
         <div class="aliados-directory-controls">
             <div class="aliados-section-heading">
@@ -570,8 +573,19 @@ $seguimientoVista = static function ($estado) {
                                                     <?php if (tienePermiso('aliados.gestionar_programas')): ?>
                                                     <button type="button" class="btn aliados-share-button" data-registro-abrir data-registro-origen="<?= $esManualRegistro ? 'manual' : 'institucional' ?>" data-registro-id="<?= (int)($esManualRegistro ? $aliado['id'] : $aliado['seguimiento_id']) ?>">Programas</button>
                                                     <?php endif; ?>
-                                                    <?php if ($esManualRegistro && tienePermiso('aliados.editar_manual') && tienePermiso('aliados.gestionar_programas')): ?>
-                                                    <button type="button" class="btn aliados-share-button" data-registro-abrir data-registro-editar data-registro-id="<?= (int)$aliado['id'] ?>">Editar</button>
+                                                    <?php if ($esManualRegistro): ?>
+                                                        <div class="dropdown dropstart aliados-actions-menu">
+                                                            <button type="button" class="aliados-more-button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false" aria-label="Más acciones de <?= $texto($aliado['nombre_entidad'] ?? 'aliado') ?>" title="Más acciones">
+                                                                <i class="bi bi-three-dots" aria-hidden="true"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu aliados-actions-dropdown">
+                                                                <?php if (tienePermiso('aliados.editar_manual') && tienePermiso('aliados.gestionar_programas')): ?>
+                                                                <li><button type="button" class="dropdown-item" data-registro-abrir data-registro-editar data-registro-id="<?= (int)$aliado['id'] ?>"><i class="bi bi-pencil-square"></i><span>Editar aliado</span></button></li>
+                                                                <?php endif; ?>
+                                                                <li><button type="button" class="dropdown-item" data-registro-manual-contactos="<?= (int)$aliado['id'] ?>"><i class="bi bi-person-lines-fill"></i><span>Gestionar contactos</span></button></li>
+                                                                <li><button type="button" class="dropdown-item" data-registro-manual-historial="<?= (int)$aliado['id'] ?>"><i class="bi bi-clock-history"></i><span>Historial de difusión</span></button></li>
+                                                            </ul>
+                                                        </div>
                                                     <?php endif; ?>
                                                     <?php if (!$esManualRegistro): ?>
                                                     <?php if ($puedeCompartirCorreo || $puedePrepararWhatsapp): ?>
