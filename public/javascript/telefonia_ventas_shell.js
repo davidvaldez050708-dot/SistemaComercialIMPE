@@ -64,8 +64,19 @@
  // Una solicitud nueva de Recepción no puede sustituir el PBX de la llamada anterior.
  const choosePending=state=>{
   const ref=reference(state);
-  if(phoneFinished(state)&&pbx(ref))return retired.has(ref)?null:(pending.find(p=>p.ref===ref)||provisional(state));
-  return pending.filter(p=>pbx(p.ref)&&String(p.extension)===String(cfg.extension))
+  if(phoneFinished(state)){
+   if(pbx(ref))return retired.has(ref)?null:(pending.find(p=>p.ref===ref)||provisional(state));
+   // Una sesión SDK sin PBX propia no hereda el primer resultado histórico.
+   const tokens=identities(state);
+   const matches=pending.filter(p=>!retired.has(p.ref)&&pbx(p.ref)&&
+    String(p.extension)===String(cfg.extension)&&(
+     (p.callToken&&tokens.includes(p.callToken))||
+     (metadata?.pbx_call_id===p.ref&&overlaps(tokens,metadata.sdk_tokens||[]))));
+   return matches.length===1?matches[0]:null;
+  }
+  // En reposo, Disponibilidad puede abrir una atención anterior sin cerrar;
+  // jamás la confunde con una nueva sesión activa.
+  return pending.filter(p=>!retired.has(p.ref)&&pbx(p.ref)&&String(p.extension)===String(cfg.extension))
    .sort((a,b)=>Number(b.at||0)-Number(a.at||0))[0]||null;
  };
  const open=async()=>{
