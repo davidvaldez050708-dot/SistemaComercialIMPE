@@ -22,8 +22,18 @@ $catalogoRegistro = $registroServicio->catalogo();
      <?php endforeach; ?>
      <div class="col-12"><label class="form-label" for="aliadoManualNotas">Notas</label><textarea class="form-control" id="aliadoManualNotas" name="notas" maxlength="1500" rows="3"></textarea></div>
     </div>
-    <fieldset class="mt-3"><legend class="form-label">Programas autorizados para Registro *</legend><p class="text-muted small">El enlace mostrará la selección vigente. Los registros anteriores conservan su programa.</p>
-     <?php foreach ($catalogoRegistro as $programa): ?><div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="programas[]" id="programa_<?= $texto($programa['codigo']) ?>" value="<?= $texto($programa['codigo']) ?>"><label class="form-check-label" for="programa_<?= $texto($programa['codigo']) ?>"><?= $texto($programa['nombre']) ?></label></div><?php endforeach; ?>
+    <fieldset class="aliados-programas-fieldset mt-3">
+     <legend class="aliados-programas-legend">Programas autorizados para Registro <span aria-hidden="true">*</span></legend>
+     <p class="aliados-programas-ayuda">Selecciona los programas que ofertará este aliado. El enlace mostrará la selección vigente y los registros anteriores conservarán su programa.</p>
+     <div class="aliados-programas-grid">
+      <?php foreach ($catalogoRegistro as $programa): ?>
+       <label class="aliados-programa-opcion" for="programa_<?= $texto($programa['codigo']) ?>">
+        <input class="form-check-input aliados-programa-checkbox" type="checkbox" name="programas[]" id="programa_<?= $texto($programa['codigo']) ?>" value="<?= $texto($programa['codigo']) ?>">
+        <span class="aliados-programa-nombre"><?= $texto($programa['nombre']) ?></span>
+        <i class="bi bi-mortarboard aliados-programa-icono" aria-hidden="true"></i>
+       </label>
+      <?php endforeach; ?>
+     </div>
     </fieldset>
    </div>
    <div class="modal-footer"><button type="button" class="btn btn-system-light d-none me-auto" data-registro-desactivar>Desactivar aliado</button><button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-system-save" type="submit" data-registro-guardar>Guardar</button></div>
