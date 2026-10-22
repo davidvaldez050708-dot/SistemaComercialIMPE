@@ -133,6 +133,40 @@ def overlay_convocatoria_controller(local, old, desired):
     print("CONCILIACIÓN PUNTUAL: "+name+" (solo guardarProgramasAliado; personalizaciones intactas)")
     return result
 
+def overlay_convocatoria_model(local, old, desired):
+    """Reemplazar exclusivamente crear() si Hostinger no lo personalizó."""
+    name="app/models/ConvocatoriaModel.php"
+    if local is None or old is None:
+        raise RuntimeError(name+": no existe base o modelo de producción")
+    previous=lf(old)
+    expected=lf(desired)
+    live=lf(local)
+    old_header=b"    public function crear($datos, $estadosIds)"
+    new_header=b"    /** Transacción común:"
+    after=b"    public function actualizar("
+    old_start=previous.find(old_header)
+    new_start=expected.find(new_header)
+    if min(old_start,new_start)<0:
+        raise RuntimeError(name+": faltan puntos de integración de crear()")
+    old_end=previous.find(after,old_start)
+    new_end=expected.find(after,new_start)
+    if min(old_end,new_end)<0 or previous[:old_start]!=expected[:new_start] or previous[old_end:]!=expected[new_end:]:
+        raise RuntimeError(name+": revisión V3 modifica otras funciones; no fusionar")
+    old_method=previous[old_start:old_end]
+    new_method=expected[new_start:new_end]
+    if live.count(new_method)==1:
+        print("CONSERVADO: "+name+" (transacción y vínculo V3 ya instalados)")
+        return local
+    if live.count(old_method)!=1:
+        raise RuntimeError(name+": crear() fue personalizado; no cambiarlo sin revisar diferencias")
+    # Nada fuera de crear() puede ser alterado por esta conciliación.
+    local_method=old_method.replace(b"\\n",b"\\r\\n") if b"\\r\\n" in local else old_method
+    patched_method=new_method.replace(b"\\n",b"\\r\\n") if b"\\r\\n" in local else new_method
+    if local.count(local_method)!=1:
+        raise RuntimeError(name+": definición crear() no coincide exactamente con la base")
+    print("CONCILIACIÓN PUNTUAL: "+name+" (solo crear(); otras personalizaciones intactas)")
+    return local.replace(local_method,patched_method,1)
+
 def combine(local,old,new,stage,name):
     if local is None:
         if old is not None:raise RuntimeError("Archivo existente ausente: "+name)
@@ -185,6 +219,8 @@ def prepare(site,stage):
         live=path.read_bytes() if path.is_file() else None
         if name=="app/controllers/ConvocatoriaController.php":
             candidate=overlay_convocatoria_controller(live,old,desired)
+        elif name=="app/models/ConvocatoriaModel.php":
+            candidate=overlay_convocatoria_model(live,old,desired)
         else:
             candidate=combine(live,old,desired,stage,name)
         if candidate!=live:
