@@ -2197,3 +2197,69 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
         transition: none;
     }
 }
+
+/* Resumen de procedencia y acciones compactas · misma familia visual de Aliados */
+.aliados-state-module .aliados-origen-resumen {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: -2px 0 2px;
+}
+.aliados-state-module .aliados-origen-indicador {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 31px;
+    padding: 6px 12px;
+    border: 1px solid #d7e3f2;
+    border-radius: 10px;
+    background: #fff;
+    color: #51627c;
+    font-size: 10.5px;
+    font-weight: 700;
+}
+.aliados-state-module .aliados-origen-indicador strong {
+    color: var(--color-primary, #273a8a);
+    font-size: 13px;
+    font-weight: 800;
+}
+.aliados-state-module .aliados-origen-indicador i {
+    color: #078b73;
+    font-size: 13px;
+}
+.aliados-state-module .aliados-origen-indicador.is-manual {
+    background: #f4f7fc;
+}
+.aliados-state-module .aliados-origen-indicador.is-manual i {
+    color: var(--color-primary, #273a8a);
+}
+.aliados-state-module .aliados-table td:last-child {
+    padding-left: 17px;
+    padding-right: 15px;
+}
+.aliados-state-module .aliados-actions {
+    gap: 5px;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+.aliados-state-module .aliados-actions .aliados-share-button {
+    min-height: 33px;
+    padding: 7px 9px;
+    border-radius: 9px;
+    font-size: 10px;
+    line-height: 1.2;
+}
+.aliados-state-module .aliados-actions .aliados-more-button {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+}
+.aliados-state-module .aliados-actions .dropdown-menu {
+    white-space: normal;
+}
+@media (max-width: 575.98px) {
+    .aliados-state-module .aliados-origen-resumen { gap: 6px; }
+    .aliados-state-module .aliados-origen-indicador { font-size: 10px; }
+}
