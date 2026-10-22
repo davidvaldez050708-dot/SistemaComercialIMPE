@@ -259,7 +259,10 @@ class AliadoRegistroService
     public function manuales(?int $estado=null): array
     {
         if (!$this->disponible()) { return []; }
-        $sql="SELECT a.*,0 seguimiento_id,'manual' origen_tipo,a.id origen_id,e.nombre estado_nombre,COALESCE(m.nombre,'') municipio_nombre,NULL convenio_formalizado_at,a.relacion_fecha convenio_fecha,a.notas convenio_notas,0 tiene_convocatoria,'' analista_nombre,'' analista_apellidos FROM aliados_manuales a JOIN estados e ON e.id=a.estado_id LEFT JOIN municipios m ON m.id=a.municipio_id WHERE a.activo=1";
+        $tiene = $this->db->query("SHOW TABLES LIKE 'marketing_aliado_manual_convocatorias'")->num_rows
+            ? '(SELECT CASE WHEN EXISTS (SELECT 1 FROM marketing_aliado_manual_convocatorias mc WHERE mc.manual_id=a.id) THEN 1 ELSE 0 END)'
+            : '0';
+        $sql="SELECT a.*,0 seguimiento_id,'manual' origen_tipo,a.id origen_id,e.nombre estado_nombre,COALESCE(m.nombre,'') municipio_nombre,NULL convenio_formalizado_at,a.relacion_fecha convenio_fecha,a.notas convenio_notas,$tiene tiene_convocatoria,'' analista_nombre,'' analista_apellidos FROM aliados_manuales a JOIN estados e ON e.id=a.estado_id LEFT JOIN municipios m ON m.id=a.municipio_id WHERE a.activo=1";
         return $this->query($sql.($estado!==null?' AND a.estado_id=?':'').' ORDER BY a.nombre_entidad',$estado!==null?[$estado]:[])->get_result()->fetch_all(MYSQLI_ASSOC);
     }
     public function decorar(array $filas): array
