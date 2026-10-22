@@ -23,6 +23,8 @@ on:
       - 'public/css/convocatorias.css'
       - 'tools/migrar_extensiones_aliados_20261022.php'
       - 'tools/migrar_canales_manuales_20261022.php'
+      - 'tools/publicar_ajustes_aliados_v3.py'
+      - 'tests/publicacion_ajustes_aliados_v3_test.py'
       - 'public/javascript/convocatorias_aliado_multiprograma_v3.js'
       - 'public/css/convocatorias_aliado_multiprograma_v3.css'
       - 'tools/publicar_aliados_convenios_v2.py'
@@ -91,6 +93,7 @@ jobs:
           node --check public/javascript/convocatorias_aliado_multiprograma_v3.js
           python3 -m py_compile tools/publicar_diseno_programas_aliados.py
           python3 -m py_compile tools/publicar_aliados_convenios_v2.py
+          python3 -m py_compile tools/publicar_ajustes_aliados_v3.py
       - name: Migración e integración con base real aislada
         run: |
           mkdir -p /tmp/respaldo-aliados
@@ -109,6 +112,7 @@ jobs:
           python3 tests/publicacion_aliados_registro_test.py
           python3 tests/publicacion_diseno_programas_aliados_test.py
           python3 tests/publicacion_aliados_convenios_v2_test.py
+          python3 tests/publicacion_ajustes_aliados_v3_test.py
       - name: Navegador real, QR, HTTP, seguridad y concurrencia
         run: |
           node tests/aliados_registro_browser.cjs
