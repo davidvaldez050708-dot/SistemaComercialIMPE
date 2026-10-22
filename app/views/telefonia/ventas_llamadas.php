@@ -48,7 +48,8 @@ $fechaVenta=static function(string $value): string {
       <button type="button" class="linkage-incoming-open" data-sales-dial="<?= $esc($call['numero']) ?>"><i class="bi bi-telephone-outbound" aria-hidden="true"></i> Llamar</button>
       <?php if($audio['disponible']): ?>
        <button type="button" class="linkage-call-audio-state is-available linkage-call-recording-toggle" data-sales-audio="<?= $esc($ref) ?>" data-extension="<?= $esc($call['extension']) ?>" data-segments="<?= count($call['segmentos']) ?>" data-segment-info="<?= $esc(json_encode($call['segmentos_info']??[])) ?>" aria-expanded="false"><i class="bi bi-record-circle" aria-hidden="true"></i> Consultar grabación <i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i></button>
-      <?php elseif($ref!==''&&$call['finalizada']&&$call['conectada']&&TelefoniaResultadoVentasService::esConversacion($code)): ?>
+      <?php elseif($ref!==''&&$call['conectada']&&TelefoniaResultadoVentasService::esConversacion($code)&&
+           ($call['finalizada']||($call['direccion']==='Entrante'&&!empty($call['solicitud_id'])&&$call['origen_extension']!==''))): ?>
        <button type="button" class="linkage-call-audio-state linkage-call-recording-toggle" data-sales-audio="<?= $esc($ref) ?>" data-extension="<?= $esc($call['extension']) ?>" data-segments="0" aria-expanded="false">Consultar grabación</button>
        <span class="linkage-call-audio-state" data-sales-audio-state="<?= $esc($audio['estado']) ?>"><?= $esc($audio['texto']) ?></span>
       <?php elseif($ref!==''): ?><span class="linkage-call-audio-state" title="<?= $esc($audio['detalle']) ?>" data-sales-audio-state="<?= $esc($audio['estado']) ?>"><i class="bi bi-info-circle" aria-hidden="true"></i> <?= $esc($audio['texto']) ?></span><?php endif; ?>
