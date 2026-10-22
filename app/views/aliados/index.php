@@ -210,7 +210,9 @@ $tarjetasPorPagina = 12;
     <section class="dashboard-panel data-empty-state linkage-empty-state">
         <span><i class="bi bi-map"></i></span>
         <strong>No tienes territorios disponibles para Aliados.</strong>
-        <p>Los Estados aparecerán cuando exista una asignación territorial vigente para tu Cuenta Clave.</p>
+        <p><?= puedeConsultarAliadosNacional()
+            ? 'No hay estados activos disponibles para consultar.'
+            : 'Los estados aparecerán cuando exista una asignación territorial vigente y tengas acceso a Aliados.' ?></p>
     </section>
 <?php endif; ?>
 
