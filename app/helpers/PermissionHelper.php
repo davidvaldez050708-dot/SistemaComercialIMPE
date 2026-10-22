@@ -61,3 +61,30 @@ if (!function_exists('puedeConsultarDirectorioConvenios')) {
             );
     }
 }
+
+/**
+ * Convenios sólo habilita la consulta. La publicación requiere también
+ * convocatorias.crear; Cuenta Clave queda limitada por su asignación vigente.
+ */
+if (!function_exists('puedeCrearConvocatoriaDesdeConvenio')) {
+    function puedeCrearConvocatoriaDesdeConvenio()
+    {
+        if (!puedeConsultarDirectorioConvenios() || !tienePermiso('convocatorias.crear')) {
+            return false;
+        }
+        $esMarketing = strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
+        if ($esMarketing) {
+            return tienePermiso('formularios_aliados.gestionar_enlaces');
+        }
+        return (int)($_SESSION['rol_id'] ?? 0) === 6;
+    }
+}
+
+/** Marketing consulta Aliados nacionalmente; no hereda asignaciones de Cuenta Clave. */
+if (!function_exists('puedeConsultarAliadosNacional')) {
+    function puedeConsultarAliadosNacional()
+    {
+        return (int)($_SESSION['rol_id'] ?? 0) === 1 ||
+            strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
+    }
+}
