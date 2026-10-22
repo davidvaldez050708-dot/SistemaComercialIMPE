@@ -19,6 +19,11 @@ on:
       - 'app/views/telefonia/ventas_llamadas.php'
       - 'tools/publicar_ventas_resultado_sin_end_hostinger.sh'
       - 'tests/publicacion_ventas_sin_end_test.py'
+      - 'public/javascript/telefonia_disponibilidad.js'
+      - 'app/controllers/TelefoniaController.php'
+      - 'tests/telefonia_ventas_desbloqueo_disponibilidad.cjs'
+      - 'tools/publicar_ventas_disponibilidad_resultado_hostinger.sh'
+      - 'tests/publicacion_ventas_desbloqueo_disponibilidad_test.py'
       - 'tools/diagnosticar_transferencia_ventas.php'
 jobs:
   formulario:
@@ -34,6 +39,9 @@ jobs:
         run: |
           node --check public/javascript/telefonia_ventas_resultados.js
           node --check public/javascript/telefonia_ventas_shell.js
+          node --check public/javascript/telefonia_disponibilidad.js
+          node --check tests/telefonia_ventas_desbloqueo_disponibilidad.cjs
+          php -l app/controllers/TelefoniaController.php
           php -l tools/diagnosticar_transferencia_ventas.php
           node --check tests/telefonia_ventas_referencia_final.cjs
           node --check tests/telefonia_ventas_conciliacion_tardia.cjs
@@ -47,6 +55,8 @@ jobs:
           python3 tests/publicacion_ventas_paridad_test.py
           python3 tests/publicacion_ventas_fin_analista_test.py
           python3 tests/publicacion_ventas_sin_end_test.py
+          python3 tests/publicacion_ventas_desbloqueo_disponibilidad_test.py
+          node tests/telefonia_ventas_desbloqueo_disponibilidad.cjs
           node tests/telefonia_ventas_referencia_final.cjs
           node tests/telefonia_ventas_conciliacion_tardia.cjs
       - name: Pruebas de navegador con PBX tardia
