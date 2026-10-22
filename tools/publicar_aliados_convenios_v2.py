@@ -22,7 +22,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 # Commit inmutable revisado ANTES de este publicador. Nunca usar HEAD/main flotante.
-SOURCE = "2f57c1c29e1a838941530ba5ef6fde9d1b3af033"
+SOURCE = "1d9c1b9961403a7c21bac1b1270dd61ad5fb3506"
 OLD = "bc8e5c1611e7bff62fc91e12af7166e9dc36861d"
 ROOT_URL = "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/"
 SHAS = {
@@ -43,7 +43,7 @@ SHAS = {
     "public/javascript/aliados_registro.js": "eafbb8ebfe992fb4d4a7302690b891a331c1b5b8",
     "public/javascript/convocatorias_aliado_programas.js": "2991e0b05ca50f1abea0c33bed8e1773d2b034f3",
     "public/javascript/crear_convocatoria.js": "8f813ba726349f046156e920f4cff7f37b6289ea",
-    "tools/migrar_extensiones_aliados_20261022.php": "996363da0611098cb4ec67e6055ad45d5bac5f66"
+    "tools/migrar_extensiones_aliados_20261022.php": "129bdfc9b80740a2a4dcb6e753d8d0071820952c"
 }
 def blob(data):
     return hashlib.sha1(("blob %d\0" % len(data)).encode("ascii") + data).hexdigest()
