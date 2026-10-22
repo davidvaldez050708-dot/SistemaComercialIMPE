@@ -582,7 +582,7 @@ $seguimientoVista = static function ($estado) {
                                                                 <?php if (tienePermiso('aliados.editar_manual') && tienePermiso('aliados.gestionar_programas')): ?>
                                                                 <li><button type="button" class="dropdown-item" data-registro-abrir data-registro-editar data-registro-id="<?= (int)$aliado['id'] ?>"><i class="bi bi-pencil-square"></i><span>Editar aliado</span></button></li>
                                                                 <?php endif; ?>
-                                                                <li><button type="button" class="dropdown-item" data-registro-manual-contactos="<?= (int)$aliado['id'] ?>"><i class="bi bi-person-lines-fill"></i><span>Gestionar contactos</span></button></li>
+                                                                <li><button type="button" class="dropdown-item" data-registro-manual-contactos="<?= (int)$aliado['id'] ?>"><i class="bi bi-person-lines-fill"></i><span>Canales del aliado</span></button></li>
                                                                 <li><button type="button" class="dropdown-item" data-registro-manual-historial="<?= (int)$aliado['id'] ?>"><i class="bi bi-clock-history"></i><span>Historial de difusión</span></button></li>
                                                             </ul>
                                                         </div>
