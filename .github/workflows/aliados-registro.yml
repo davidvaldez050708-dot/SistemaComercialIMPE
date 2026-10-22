@@ -16,6 +16,10 @@ on:
       - 'public/css/aliados.css'
       - 'public/css/crear_convocatoria.css'
       - 'database/migrations/2026_10_21_aliados_registro.sql'
+      - 'database/migrations/2026_10_22_*.sql'
+      - 'public/javascript/convocatorias_aliado_programas.js'
+      - 'public/css/convocatorias.css'
+      - 'tools/migrar_extensiones_aliados_20261022.php'
       - 'tools/*aliados_registro*'
       - 'tools/compat/aliados_registro_pr114/**'
       - 'tests/*aliados_registro*'
@@ -75,6 +79,7 @@ jobs:
           node --check public/javascript/aliados_registro.js
           node --check public/javascript/aliados.js
           node --check public/javascript/crear_convocatoria.js
+          node --check public/javascript/convocatorias_aliado_programas.js
           python3 -m py_compile tools/publicar_diseno_programas_aliados.py
       - name: Migración e integración con base real aislada
         run: |
@@ -84,6 +89,8 @@ jobs:
           php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
           php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
           php tools/migrar_aliados_registro.php --check
+          php tools/migrar_extensiones_aliados_20261022.php --apply --backup-dir=/tmp/respaldo-aliados
+          php tools/migrar_extensiones_aliados_20261022.php --check
           php tests/aliados_registro_db.php
       - name: Navegador real, QR, HTTP, seguridad y concurrencia
         run: |
@@ -108,7 +115,7 @@ jobs:
           php tests/aliados_registro_pr114_db.php --prepare
           php tests/formularios_ubicacion_internacional_db.php
           php tests/aliados_registro_db.php
-          node tests/aliados_registro_browser.cjs
+          node tests/aliados_registro_browser_legacy.cjs
           php tests/aliados_registro_snapshot.php
           php tests/aliados_registro_pr114_db.php
           node tests/aliados_registro_pr114_browser.cjs
