@@ -155,56 +155,24 @@ $fecha = static function ($valor) {
             </div>
 
             <div class="data-filter-field">
-                <label for="crear_convocatoria_estado_boton">Estado</label>
-
-                <div
-                    class="crear-convocatoria-state-dropdown"
-                    data-state-dropdown>
-                    <input
-                        type="hidden"
-                        id="crear_convocatoria_estado"
-                        value=""
-                        data-convenio-state-filter>
-
-                    <button
-                        type="button"
-                        class="crear-convocatoria-state-trigger"
-                        id="crear_convocatoria_estado_boton"
-                        aria-haspopup="listbox"
-                        aria-expanded="false"
-                        data-state-trigger>
-                        <span data-state-label>Todos los estados</span>
-                        <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                    </button>
-
-                    <div
-                        class="crear-convocatoria-state-menu"
-                        role="listbox"
-                        aria-label="Seleccionar estado"
-                        data-state-menu>
-                        <button
-                            type="button"
-                            class="crear-convocatoria-state-option is-selected"
-                            role="option"
-                            aria-selected="true"
-                            data-state-value="">
-                            Todos los estados
-                        </button>
-
-                        <?php foreach ($estados as $estado): ?>
-                            <button
-                                type="button"
-                                class="crear-convocatoria-state-option"
-                                role="option"
-                                aria-selected="false"
-                                data-state-value="<?= (int)($estado['id'] ?? 0) ?>">
-                                <?= $texto($estado['nombre'] ?? '') ?>
-                            </button>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
+                <label for="convenioMunicipio">Municipio</label>
+                <select class="form-select" id="convenioMunicipio" data-convenio-municipio-filter>
+                    <option value="">Todos</option>
+                    <?php
+                    $municipiosFiltro = [];
+                    foreach ($conveniosVisibles as $convenioMunicipio) {
+                        $idMunicipio = (int)($convenioMunicipio['municipio_id'] ?? 0);
+                        $nombreMunicipio = (string)($convenioMunicipio['municipio_nombre'] ?? '');
+                        if ($idMunicipio > 0 && $nombreMunicipio !== '') $municipiosFiltro[$idMunicipio] = $nombreMunicipio;
+                    }
+                    asort($municipiosFiltro, SORT_NATURAL | SORT_FLAG_CASE);
+                    ?>
+                    <?php foreach ($municipiosFiltro as $idMunicipio => $nombreMunicipio): ?>
+                        <option value="<?= (int)$idMunicipio ?>"><?= $texto($nombreMunicipio) ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
-
+            
             <div class="data-filter-field"><label for="convenioOrigen">Origen del aliado</label><select id="convenioOrigen" class="form-select" data-convenio-origin-filter><option value="">Todos</option><option value="manual">Manual</option><option value="institucional">Vinculación</option></select></div>
             <div class="crear-convocatoria-filter-actions">
                 <button
@@ -262,6 +230,7 @@ $fecha = static function ($valor) {
                         'origen_id' => (int)($convenio['origen_id'] ?? $convenio['seguimiento_id']),
                         'seguimiento_id' => (int)($convenio['seguimiento_id'] ?? 0),
                         'estado_id' => (int)($convenio['estado_id'] ?? 0),
+                        'municipio_id' => (int)($convenio['municipio_id'] ?? 0),
                         'estado' => (string)($convenio['estado_nombre'] ?? ''),
                         'municipio' => (string)($convenio['municipio_nombre'] ?? ''),
                         'institucion' => (string)($convenio['nombre_entidad'] ?? ''),
@@ -312,6 +281,7 @@ $fecha = static function ($valor) {
                         aria-label="Ver convenio de <?= $texto($payload['institucion']) ?>"
                         data-convenio-notification
                         data-convenio-state="<?= (int)$payload['estado_id'] ?>"
+                        data-convenio-municipio="<?= (int)$payload['municipio_id'] ?>"
                         data-convenio-origin="<?= $texto($payload['origen_tipo']) ?>"
                         data-convenio-attention="<?= $texto($payload['estado_atencion']) ?>"
                         data-convenio-search-text="<?= $texto($busqueda) ?>"
