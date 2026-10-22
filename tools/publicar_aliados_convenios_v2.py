@@ -22,7 +22,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 # Commit inmutable revisado ANTES de este publicador. Nunca usar HEAD/main flotante.
-SOURCE = "01655dc1072adf287df995b5a95d24fa7a098c14"
+SOURCE = "a2d22524249570e90a32d196058d9cc50527c21e"
 OLD = "bc8e5c1611e7bff62fc91e12af7166e9dc36861d"
 ROOT_URL = "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/"
 SHAS = {
@@ -34,13 +34,13 @@ SHAS = {
     "app/views/aliados/partials/registro_gestion.php": "51a775839ceda6b5fda0edc654cc272bc5c6e946",
     "app/views/convocatorias/crear_desde_convenio.php": "3c81e8e8b5bac9949fb8129700909066aba08046",
     "app/views/convocatorias/index.php": "a99399d125b11e4b74bc46baa5e725a4691dda6e",
-    "app/views/layout/dashboard_head.php": "c0def1d5a5963ed90373ab77d671432e8f4375cf",
+    "app/views/layout/dashboard_head.php": "b957633095aa83fecca5b10ab0e2d4c30870a542",
     "database/migrations/2026_10_22_aliados_manuales_contactos_difusion.sql": "bcaeffa1f60a88582eba17e16929c3020d47ad9f",
     "database/migrations/2026_10_22_marketing_convocatorias_aliados_manuales.sql": "393d5555bb9045e3d861ced699214f899467416d",
     "public/css/aliados_v2_extension.css": "11b7f0e40b98e70747006e9ff7ee40dec9944371",
     "public/javascript/aliados_registro.js": "eafbb8ebfe992fb4d4a7302690b891a331c1b5b8",
     "public/javascript/convocatorias_aliado_programas.js": "2991e0b05ca50f1abea0c33bed8e1773d2b034f3",
-    "public/javascript/crear_convocatoria.js": "8f813ba726349f046156e920f4cff7f37b6289ea",
+    "public/javascript/crear_convocatoria_v2_extension.js": "602528aca449ef11f375739cc552cdc45f9e1a47",
     "tools/migrar_extensiones_aliados_20261022.php": "129bdfc9b80740a2a4dcb6e753d8d0071820952c"
 }
 def blob(data):
