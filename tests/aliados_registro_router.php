@@ -13,9 +13,9 @@ if ($role==='admin') $_SESSION=array_replace($_SESSION,['usuario_id'=>1,'rol_id'
 if ($role==='guest') { $_SESSION=[]; echo 'Sin sesión de prueba'; return true; }
 $view=$_GET['view']??'aliados';
 ?><!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aliados prueba aislada</title>
-<link rel="stylesheet" href="/fixture-bootstrap.css"><?php foreach(['global','dashboard','aliados','crear_convocatoria','responsive_sistema'] as $css): ?><link rel="stylesheet" href="/public/css/<?= $css ?>.css"><?php endforeach; ?>
+<link rel="stylesheet" href="/fixture-bootstrap.css"><?php foreach(['global','dashboard','aliados','aliados_v2_extension','crear_convocatoria','responsive_sistema'] as $css): ?><link rel="stylesheet" href="/public/css/<?= $css ?>.css"><?php endforeach; ?>
 <script src="/fixture-bootstrap.js"></script><script>window.IMPE_CSRF_TOKEN=<?= json_encode($_SESSION['csrf_token']??'') ?>;</script>
-<script src="/public/javascript/aliados_registro.js"></script><script src="/public/javascript/crear_convocatoria.js"></script><script src="/public/javascript/aliados.js"></script>
+<script src="/public/javascript/aliados_registro.js"></script><script src="/public/javascript/crear_convocatoria.js"></script><script src="/public/javascript/crear_convocatoria_v2_extension.js"></script><script src="/public/javascript/aliados.js"></script>
 </head><body><main class="p-3">
 <?php
 if ($view==='convenios') {
