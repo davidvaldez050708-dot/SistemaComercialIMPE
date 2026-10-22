@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory() as tmp:
         return subprocess.run(['bash',str(script)]+list(args),env=env,
             stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
     for i,entry in enumerate(parts):
-        name=entry['path'];latest=(root/name).read_text(encoding='utf8')
+        name=entry['path'];latest=(root/'tests/fixtures'/('sin_end_'+name.replace('/','__'))).read_text(encoding='utf8')
         previous=latest
         for piece in reversed(entry['patches']):
             assert previous.count(piece['to'])==1
