@@ -99,6 +99,25 @@ class TelefoniaGrabacionExpedienteTransferidaService
     {
         $session=self::sessionIdExterno($externo);
         if($session===null)return null;
+        $audios=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
+        // Si el registro PBX ya conservó la interacción exacta, no exigir
+        // también una sesión WebRTC "ended" para habilitar sus dos tramos.
+        $q=$this->db->prepare("SELECT pbx_call_id,extension
+            FROM telefonia_analista_entrantes
+            WHERE usuario_id=? AND seguimiento_id=? AND interaccion_id=?
+              AND pbx_call_id LIKE 'out_%'
+            LIMIT 2");
+        $q->bind_param('iii',$usuarioId,$seguimientoId,$interaccionId);
+        $q->execute();$directas=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
+        if(count($directas)>1)return null;
+        if(count($directas)===1){
+            $pbxDirecto=(string)$directas[0]['pbx_call_id'];
+            try{
+                $ok=$audios->verificar($pbxDirecto,$usuarioId,
+                    (string)$directas[0]['extension'],$seguimientoId);
+                if($ok['ids'])return $pbxDirecto;
+            }catch(DomainException $ignored){ /* sin privilegio PBX */ }
+        }
         $stmt=$this->db->prepare("SELECT session_id,extension
             FROM telefonia_analista_webrtc_sesiones
             WHERE usuario_id=? AND seguimiento_id=? AND interaccion_id=?
@@ -121,7 +140,6 @@ class TelefoniaGrabacionExpedienteTransferidaService
         if(count($rows)!==1)return null;
         $pbx=(string)$rows[0]['referencia'];
         if(!preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$pbx))return null;
-        $audios=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
         try {
             $verified=$audios->verificar($pbx,$usuarioId,$extension,$seguimientoId);
             return $verified['ids']?$pbx:null;
