@@ -215,7 +215,14 @@ def overlay_convocatoria_model(local, old, desired):
         raise RuntimeError(name+": método crear() parcialmente modificado; sitio intacto")
 
     if local.count(raw_old_header)!=1 or local.count(after)!=1:
-        raise RuntimeError(name+": firma de crear() ausente o duplicada; sitio intacto")
+        pr114_signature=b"    public function crear($datos, $estadosIds, ?callable $relacionar = null)\n".replace(b"\n",newline)
+        if local.count(pr114_signature)==1 and local.count(after)==1:
+            return overlay_convocatoria_model_pr114(local, new_preamble, new_method, after, newline)
+        # Proporcionar diagnostico de solo lectura: solo la firma declarada, sin datos privados.
+        import re
+        signatures=re.findall(rb"(?m)^\s*public\s+function\s+crear\s*\([^\r\n]*\)",local)
+        firmas=[line.decode("utf-8","replace").strip()[:160] for line in signatures[:3]]
+        raise RuntimeError(name+": firma de crear() no reconocida: "+repr(firmas)+"; sitio intacto")
     at=local.find(raw_old_header)
     end=local.find(after,at)
     if end<0:
@@ -245,6 +252,96 @@ def overlay_convocatoria_model(local, old, desired):
         raise RuntimeError(name+": personalizaciones alteradas; sitio intacto")
     print("CONCILIACIÓN PUNTUAL: "+name+" (seis cambios V3; personalizaciones de crear() intactas)")
     return candidate
+
+def overlay_convocatoria_model_pr114(local, new_preamble, new_method, next_method, newline):
+    """Conciliacion limitada del callback PR114 con el lote V3.
+
+    Tercer argumento callable historico o bool para el lote nuevo: no se
+    pierde el callback internacional. Las transformaciones son reversibles.
+    """
+    name="app/models/ConvocatoriaModel.php"
+    old_sig=b"    public function crear($datos, $estadosIds, ?callable $relacionar = null)\n".replace(b"\n",newline)
+    new_sig=b"    public function crear($datos, $estadosIds, $relacionar = null)\n".replace(b"\n",newline)
+    anchor=b"            if ($relacionar) { $relacionar($this->connection, $convocatoriaId); }\n".replace(b"\n",newline)
+    manual_comment="            // En la misma transacción: imagen/clasificación y origen manual indivisibles.\n".encode("utf-8")
+    manual_start=new_method.find(manual_comment)
+    manual_end=new_method.find(b"            if (!$transaccionExterna) $this->connection->commit();",manual_start)
+    link_start=new_method.find(b"            // Se guarda el origen para TODO aliado")
+    if min(manual_start,manual_end,link_start)<0 or link_start>=manual_start:
+        raise RuntimeError(name+": SOURCE V3 desconocido; sitio intacto")
+    link_block=new_method[link_start:manual_start].replace(b"\n",newline)
+    manual_block=new_method[manual_start:manual_end].replace(b"\n",newline)
+    original_manual=manual_block.strip()
+    preamble=new_preamble.replace(b"\n",newline)
+    begin=b"        $this->connection->begin_transaction();\n".replace(b"\n",newline)
+    begin_new=b"        if (!$transaccionExterna) $this->connection->begin_transaction();\n".replace(b"\n",newline)
+    commit=b"            $this->connection->commit();\n".replace(b"\n",newline)
+    commit_new=b"            if (!$transaccionExterna) $this->connection->commit();\n".replace(b"\n",newline)
+    rollback=b"            $this->connection->rollback();\n".replace(b"\n",newline)
+    rollback_new=b"            if (!$transaccionExterna) $this->connection->rollback();\n".replace(b"\n",newline)
+    catch=b"            error_log($error->getMessage());\n\n            return false;\n".replace(b"\n",newline)
+    catch_new=b"            error_log($error->getMessage());\n            if ($transaccionExterna) throw $error;\n            return false;\n".replace(b"\n",newline)
+    dispatch=(
+        b"        // Compatibilidad: PR114 entrega un callable; V3 entrega true para un lote.\n"
+        b"        $transaccionExterna = is_bool($relacionar) ? $relacionar : false;\n"
+        b"        if (is_bool($relacionar)) $relacionar = null;\n\n"
+    ).replace(b"\n",newline)
+    upgraded_head=preamble+new_sig+dispatch
+    if local.count(new_sig):
+        if local.count(new_sig)!=1 or local.count(upgraded_head)!=1:
+            raise RuntimeError(name+": PR114/V3 parcialmente instalado; sitio intacto")
+        start=local.index(new_sig)
+        end=local.find(next_method,start)
+        section=local[start:end] if end>start else b""
+        markers=(dispatch,link_block,manual_block,begin_new,commit_new,rollback_new,catch_new,anchor)
+        if all(section.count(item)==1 for item in markers):
+            print("CONSERVADO: "+name+" (compatibilidad internacional/V3 instalada)")
+            return local
+        raise RuntimeError(name+": PR114/V3 parcialmente instalado; sitio intacto")
+    if local.count(old_sig)!=1 or local.count(next_method)!=1:
+        raise RuntimeError(name+": firma PR114 no unica; sitio intacto")
+    start=local.index(old_sig)
+    end=local.find(next_method,start)
+    if end<0 or end<=start:
+        raise RuntimeError(name+": fin de crear() PR114 no identificado; sitio intacto")
+    section=local[start:end]
+    if section.count(anchor)!=1:
+        raise RuntimeError(name+": callback internacional distinto de PR114; sitio intacto")
+    if b"public function iniciarLote(" in local or link_block in section:
+        raise RuntimeError(name+": mezcla PR114/V3 parcialmente instalada; sitio intacto")
+    # Version PR114 original no tiene bloque manual; una fusion V2 puede incluirlo.
+    if manual_comment.replace(b"\n",newline) in section:
+        if section.count(manual_block)!=1:
+            raise RuntimeError(name+": vinculo manual personalizado; sitio intacto")
+        insert=link_block
+    elif b"marketing_aliado_manual_convocatorias" in section:
+        raise RuntimeError(name+": vinculo manual desconocido; sitio intacto")
+    else:
+        insert=link_block+manual_block
+    changes=(
+        (old_sig,upgraded_head),
+        (begin,begin_new),
+        (anchor,insert+anchor),
+        (commit,commit_new),
+        (rollback,rollback_new),
+        (catch,catch_new),
+    )
+    patched=section
+    for index,(old,new) in enumerate(changes,1):
+        if patched.count(old)!=1 or (new in patched):
+            raise RuntimeError(name+": cambio critico PR114/V3 "+str(index)+" incompatible; sitio intacto")
+        patched=patched.replace(old,new,1)
+    # Revertir solo lo agregado, asegurando conservacion byte a byte.
+    reverse=patched
+    for old,new in reversed(changes):
+        if reverse.count(new)!=1:
+            raise RuntimeError(name+": reversibilidad PR114 no demostrada; sitio intacto")
+        reverse=reverse.replace(new,old,1)
+    if reverse!=section:
+        raise RuntimeError(name+": personalizaciones PR114 alteradas; sitio intacto")
+    print("CONCILIACIÓN PUNTUAL: "+name+" (callback PR114 + lote V3; cambios existentes intactos)")
+    return local[:start]+patched+local[end:]
+
 
 def combine(local,old,new,stage,name):
     if local is None:
