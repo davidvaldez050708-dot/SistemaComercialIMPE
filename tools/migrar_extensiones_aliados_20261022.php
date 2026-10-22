@@ -15,6 +15,30 @@ try {
         if (!$db->query("SHOW TABLES LIKE '$tabla'")->num_rows)
             throw new RuntimeException('Falta dependencia: '.$tabla);
     }
+    // Previene aplicar la primera DDL si una FK de la segunda será incompatible.
+    $columnas = [
+        'aliados_manuales.id'=>'bigint unsigned',
+        'convocatorias.id'=>'int unsigned',
+        'formulario_programas.codigo'=>'varchar(64)',
+        'usuarios.id'=>'int'
+    ];
+    $meta = $db->query("SELECT TABLE_NAME,COLUMN_NAME,COLUMN_TYPE
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=DATABASE()
+          AND ((TABLE_NAME='aliados_manuales' AND COLUMN_NAME='id')
+            OR (TABLE_NAME='convocatorias' AND COLUMN_NAME='id')
+            OR (TABLE_NAME='formulario_programas' AND COLUMN_NAME='codigo')
+            OR (TABLE_NAME='usuarios' AND COLUMN_NAME='id'))");
+    $tipos = [];
+    while ($fila = $meta->fetch_assoc()) {
+        $tipos[$fila['TABLE_NAME'].'.'.$fila['COLUMN_NAME']] =
+            strtolower(preg_replace('/\\s*\\(\\d+\\)/', '', $fila['COLUMN_TYPE']));
+    }
+    foreach ($columnas as $columna=>$esperado) {
+        if (($tipos[$columna]??'') !== $esperado) {
+            throw new RuntimeException('Clave foránea incompatible: '.$columna.' (esperado '.$esperado.', actual '.($tipos[$columna]??'ausente').'). No se aplicó SQL.');
+        }
+    }
     $faltan=[];
     foreach($tablas as $tabla) if(!$db->query("SHOW TABLES LIKE '$tabla'")->num_rows) $faltan[]=$tabla;
     if ($apply) {
