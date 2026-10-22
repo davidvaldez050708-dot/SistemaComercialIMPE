@@ -95,15 +95,15 @@ jobs:
           php tools/migrar_extensiones_aliados_20261022.php --apply --backup-dir=/tmp/respaldo-aliados
           php tools/migrar_extensiones_aliados_20261022.php --check
           php tests/aliados_registro_db.php
-      - name: Navegador real, QR, HTTP, seguridad y concurrencia
-        run: |
-          node tests/aliados_registro_browser.cjs
-          php tests/aliados_registro_snapshot.php
       - name: Publicadores reversibles
         run: |
           python3 tests/publicacion_aliados_registro_test.py
           python3 tests/publicacion_diseno_programas_aliados_test.py
           python3 tests/publicacion_aliados_convenios_v2_test.py
+      - name: Navegador real, QR, HTTP, seguridad y concurrencia
+        run: |
+          node tests/aliados_registro_browser.cjs
+          php tests/aliados_registro_snapshot.php
       - name: Compatibilidad con PR114 publicado (réplica aislada)
         env:
           IMPE_DB_NAME: impe_test_handly_aliados_pr114
