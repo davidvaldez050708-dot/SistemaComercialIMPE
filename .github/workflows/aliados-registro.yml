@@ -14,6 +14,7 @@ on:
       - 'public/javascript/aliados*'
       - 'public/javascript/crear_convocatoria.js'
       - 'public/css/aliados.css'
+      - 'public/css/aliados_v2_extension.css'
       - 'public/css/crear_convocatoria.css'
       - 'database/migrations/2026_10_21_aliados_registro.sql'
       - 'database/migrations/2026_10_22_*.sql'
