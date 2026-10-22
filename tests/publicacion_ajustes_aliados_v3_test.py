@@ -51,6 +51,58 @@ class PublicadorAjustesV3Test(unittest.TestCase):
             self.assertIn(b'header local',result)
             self.assertIn(b'seccion final v3',result)
 
+    def test_convocatoria_controller_personalizado_añade_solo_metodo_v3(self):
+        file="app/controllers/ConvocatoriaController.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        target=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        addition=b"    // IMPE_HOSTINGER_PRUEBA_PRESERVAR: teléfono y convocatorias existentes\\n"
+        anchor=b"    public function listadoFiltrado()"
+        self.assertEqual(old.count(anchor),1)
+        live=old.replace(anchor,addition+anchor)
+        merged=module.overlay_convocatoria_controller(live,old,target)
+        self.assertIn(addition,merged)
+        self.assertEqual(merged.count(b"public function guardarProgramasAliado("),1)
+        self.assertEqual(module.overlay_convocatoria_controller(merged,old,target),merged)
+        first=merged.index(b"    /**\\n     * Crea una publicación real por programa autorizado")
+        last=merged.index(b"    public function actualizar()",first)
+        self.assertEqual(merged[:first]+merged[last:],live)
+        with tempfile.TemporaryDirectory() as dirname:
+            merged_file=Path(dirname)/"controller.php"
+            merged_file.write_bytes(merged)
+            check=subprocess.run(["php","-l",str(merged_file)],
+                stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            self.assertEqual(check.returncode,0,check.stderr.decode("utf-8","replace"))
+
+    def test_convocatoria_controller_crlf_personalizado_sin_perder_bytes(self):
+        file="app/controllers/ConvocatoriaController.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        target=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        live=old.replace(b"\\n",b"\\r\\n")
+        merged=module.overlay_convocatoria_controller(live,old,target)
+        self.assertEqual(module.overlay_convocatoria_controller(merged,old,target),merged)
+        self.assertIn(b"public function guardarProgramasAliado(",merged)
+        self.assertNotIn(b"\\n",merged.replace(b"\\r\\n",b""))
+
+    def test_convocatoria_controller_metodo_preexistente_diferente_se_rechaza(self):
+        file="app/controllers/ConvocatoriaController.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        target=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        custom=old.replace(b"    public function actualizar()",
+            b"    public function guardarProgramasAliado() { return false; }\\n"+
+            b"    public function actualizar()",1)
+        with self.assertRaisesRegex(RuntimeError,"ya existe guardarProgramasAliado"):
+            module.overlay_convocatoria_controller(custom,old,target)
+
+    def test_convocatoria_controller_revisión_origen_no_es_inserción_rechazada(self):
+        file="app/controllers/ConvocatoriaController.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        target=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        modified=target.replace(b"convocatorias.crear",b"convocatorias.ver",1)
+        # Cambiar código preexistente además de añadir el método invalida el contrato.
+        modified=modified.replace(b"require_once __DIR__",b"require_once __DIRX__",1)
+        with self.assertRaisesRegex(RuntimeError,"inserción pura"):
+            module.overlay_convocatoria_controller(old,old,modified)
+
     def test_documentos_fuera_sitio_no_se_reescriben(self):
         with tempfile.TemporaryDirectory() as folder:
             site=Path(folder)/'site'
