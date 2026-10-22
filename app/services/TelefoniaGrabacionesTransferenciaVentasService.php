@@ -117,7 +117,13 @@ final class TelefoniaGrabacionesTransferenciaVentasService
                         $id=ZadarmaPbxIdentifierHelper::callIdDeFila($entry);
                         if(!isset($refs[$id]))continue;
                         $sip=(string)($entry['sip']??'');
-                        if(isset($seen[$id])){$refs[$id]['etiqueta']='Tramo PBX · identidad por verificar';continue;}
+                        if(isset($seen[$id])){
+                            // Filas estadísticas contradictorias desautorizan
+                            // la atribución de extensión, no el RECORD firmado.
+                            $refs[$id]['etiqueta']='Tramo PBX · identidad por verificar';
+                            $refs[$id]['extension']='';$refs[$id]['segundos']=null;
+                            continue;
+                        }
                         $seen[$id]=true;
                         $refs[$id]['inicio']=(string)($entry['callstart']??'');
                         $seconds=filter_var($entry['seconds']??null,FILTER_VALIDATE_INT,
