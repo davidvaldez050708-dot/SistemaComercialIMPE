@@ -14,18 +14,21 @@
 
 ## Comprobación de compatibilidad en Hostinger
 
-Revisión inmutable del publicador: `600e59adffd0c2bc6a29b5d061df5f576585e325` (corrección Python 3.6 y conciliación puntual de ConvocatoriaController.php).
+Revisión inmutable del publicador: `b0fe4764f045955eac0de65ada9814dcd428c3d2` (corrección Python 3.6 y conciliación puntual de ConvocatoriaController.php y ConvocatoriaModel.php).
 El publicador trae 13 archivos desde el commit `7f3548dd8600a83b329c4c68139b0e396d3aea3e` y verifica cada blob SHA. Conserva todos los archivos originales en respaldo privado y ejecuta `php -l`; usa `node --check` cuando Node está disponible. Si encuentra modificaciones personalizadas incompatibles, aborta.
 
 ```bash
 SITIO="$HOME/domains/fundacionrededumex.org/public_html"
 mkdir -p "$HOME/entregas-impe/aliados-v3"
 curl -fLsS --proto '=https' --tlsv1.2 \
-  "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/600e59adffd0c2bc6a29b5d061df5f576585e325/tools/publicar_ajustes_aliados_v3.py" \
+  "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/b0fe4764f045955eac0de65ada9814dcd428c3d2/tools/publicar_ajustes_aliados_v3.py" \
   -o "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py"
+test "$(git hash-object "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py")" = "1a5dab6e66a73e3344e5f4a4959364d951df070a" &&
 python3 -m py_compile "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py" &&
 python3 "$HOME/entregas-impe/aliados-v3/publicar_ajustes_aliados_v3.py" --check --site "$SITIO"
 ```
+
+El ajuste del modelo exige seis sustituciones exactas y reversibles dentro de `crear()`. Si Hostinger tiene personalizaciones en cualquiera de esos seis fragmentos, se detiene y no toca el sitio; las demás personalizaciones se conservan byte por byte. Nunca cambiar manualmente ese método para forzar la instalación.
 
 **Antes de `--apply`**: CI de PR #124 completamente verde; respaldo reciente completo de MySQL fuera de `public_html`, además del respaldo de archivos de la versión anterior.
 
