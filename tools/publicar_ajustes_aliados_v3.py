@@ -77,6 +77,62 @@ def module_patch(data):
     if end<0:raise RuntimeError("No se encontró el cierre del script modular")
     end+=len(b"</script>")
     return data[:end]+SNIPPET+data[end:]
+def overlay_convocatoria_controller(local, old, desired):
+    """Inserta sólo un método en el controlador personalizado de Hostinger.
+
+    La revisión fijada en SOURCE debe agregar exactamente ese método al BASE.
+    No hace 3-way merge ni reemplaza helpers, rutas o comportamiento anterior.
+    """
+    name="app/controllers/ConvocatoriaController.php"
+    if local is None or old is None:
+        raise RuntimeError(name+": controlador de producción o versión base ausente")
+    old_norm=lf(old)
+    desired_norm=lf(desired)
+    local_norm=lf(local)
+    block_start=b"    /**\\n     * Crea una publicación real por programa autorizado"
+    anchor=b"    public function actualizar()\\n    {"
+    if desired_norm.count(block_start)!=1 or old_norm.count(block_start)!=0:
+        raise RuntimeError(name+": marcador de método nuevo ambiguo")
+    start=desired_norm.index(block_start)
+    end=desired_norm.find(anchor,start)
+    if end<0 or desired_norm[:start]+desired_norm[end:]!=old_norm:
+        raise RuntimeError(name+": fuente no es una inserción pura sobre BASE; requiere revisión")
+    method=desired_norm[start:end]
+    signature=b"public function guardarProgramasAliado("
+    if method.count(signature)!=1 or b"guardarProgramasAliado" in old_norm:
+        raise RuntimeError(name+": método nuevo no identificable")
+    # No sobreescribir una versión distinta ya instalada.
+    if signature in local_norm:
+        if local_norm.count(signature)==1 and local_norm.count(method)==1:
+            print("CONSERVADO: "+name+" (método multiprograma ya instalado)")
+            return local
+        raise RuntimeError(name+": ya existe guardarProgramasAliado personalizado; no se sobrescribe")
+    required=(b"class ConvocatoriaController",
+              b"public function guardar(", b"public function actualizar(",
+              b"function validarPermiso(", b"function validarMetodoPost(",
+              b"function esClasificacionValida(", b"function esTerritorioChihuahua(",
+              b"function limpiarDatos(", b"function validarDatos(",
+              b"function procesarImagen(", b"function eliminarImagen(")
+    for symbol in required:
+        if local_norm.count(symbol)!=1:
+            raise RuntimeError(name+": dependencia ausente o duplicada: "+
+                               symbol.decode("ascii","replace"))
+    if local_norm.count(anchor)!=1:
+        raise RuntimeError(name+": punto de inserción actualizar() no es único")
+    at=local_norm.index(anchor)
+    # Guardar original byte por byte, incluyendo saltos CRLF y métodos propios.
+    local_anchor=b"    public function actualizar()"
+    if b"\\r\\n" in local:
+        method=method.replace(b"\\n",b"\\r\\n")
+    before=local.find(local_anchor)
+    if before<0 or local.count(local_anchor)!=1:
+        raise RuntimeError(name+": cabecera del método actualizar inesperada")
+    result=local[:before]+method+local[before:]
+    if result.replace(method,b"",1)!=local:
+        raise RuntimeError(name+": no se conservó el controlador original")
+    print("CONCILIACIÓN PUNTUAL: "+name+" (solo guardarProgramasAliado; personalizaciones intactas)")
+    return result
+
 def combine(local,old,new,stage,name):
     if local is None:
         if old is not None:raise RuntimeError("Archivo existente ausente: "+name)
@@ -127,7 +183,10 @@ def prepare(site,stage):
         old=None if name in NEW else fetch(BASE,name)
         path=located(site,name)
         live=path.read_bytes() if path.is_file() else None
-        candidate=combine(live,old,desired,stage,name)
+        if name=="app/controllers/ConvocatoriaController.php":
+            candidate=overlay_convocatoria_controller(live,old,desired)
+        else:
+            candidate=combine(live,old,desired,stage,name)
         if candidate!=live:
             validate(name,candidate,stage,desired)
             plan.append((name,path,live,candidate,stat.S_IMODE(path.stat().st_mode) if live is not None else 0o644))
