@@ -26,6 +26,7 @@ jobs:
           node --check public/javascript/telefonia_marcador.js
           node --check public/javascript/telefonia_ventas_shell.js
           node --check public/javascript/telefonia_ventas_resultados.js
+          node --check tests/telefonia_ventas_resultado_pendiente_browser.cjs
           node --check public/javascript/telefonia_ventas_devoluciones.js
           php -l tools/migrar_telefonia_ventas.php
           php -l tools/diagnosticar_cierre_ventas.php
@@ -52,6 +53,7 @@ jobs:
         run: |
           mkdir -p /tmp/ventas-bandejas-capturas
           node tests/telefonia_ventas_operacion_browser.cjs
+          node tests/telefonia_ventas_resultado_pendiente_browser.cjs
           node tests/telefonia_ventas_etapa2_browser.cjs
           node tests/ventas_bandejas_browser.cjs
           node tests/telefonia_ventas_gestion_browser.cjs
