@@ -178,6 +178,67 @@ class PublicadorAjustesV3Test(unittest.TestCase):
         upgraded=module.overlay_convocatoria_model(broken2,old,desired)
         self.assertIn(b"// PERSONALIZADO \n",upgraded)
 
+    @staticmethod
+    def modelo_callback_pr114(con_vinculo_manual=False, crlf=False):
+        file="app/models/ConvocatoriaModel.php"
+        old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
+        desired=subprocess.check_output(["git","show",module.SOURCE+":"+file],cwd=str(ROOT))
+        header=b"    public function crear($datos, $estadosIds)\n"
+        signature=b"    public function crear($datos, $estadosIds, ?callable $relacionar = null)\n"
+        callback=b"            if ($relacionar) { $relacionar($this->connection, $convocatoriaId); }\n\n"
+        comment="            // En la misma transacción: imagen/clasificación y origen manual indivisibles.\n".encode("utf-8")
+        start=old.index(header)
+        end=old.index(b"    public function actualizar(",start)
+        section=old[start:end]
+        section=section.replace(header,signature,1)
+        if con_vinculo_manual:
+            section=section.replace(comment,callback+comment,1)
+        else:
+            from_pos=section.index(comment)
+            to_pos=section.index(b"            $this->connection->commit();",from_pos)
+            section=section[:from_pos]+callback+section[to_pos:]
+        live=old[:start]+section+old[end:]
+        if crlf:
+            live=live.replace(b"\n",b"\r\n")
+        return old,desired,live
+
+    def test_modelo_internacional_pr114_preserva_callback_y_lote(self):
+        old,desired,live=self.modelo_callback_pr114()
+        result=module.overlay_convocatoria_model(live,old,desired)
+        self.assertIn(b"if (is_bool($relacionar)) $relacionar = null;",result)
+        self.assertEqual(result.count(b"public function crear("),1)
+        self.assertEqual(result.count(b"public function iniciarLote("),1)
+        self.assertEqual(result.count(b"marketing_aliado_convocatorias_origen"),1)
+        self.assertEqual(result.count(b"marketing_aliado_manual_convocatorias"),1)
+        self.assertEqual(result.count(b"if ($relacionar) { $relacionar($this->connection, $convocatoriaId); }"),1)
+        self.assertEqual(module.overlay_convocatoria_model(result,old,desired),result)
+        with tempfile.TemporaryDirectory() as dirname:
+            file_path=Path(dirname)/"modelo.php"
+            file_path.write_bytes(result)
+            sintaxis=subprocess.run(["php","-l",str(file_path)],
+                stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            self.assertEqual(sintaxis.returncode,0,sintaxis.stderr.decode("utf-8","replace"))
+
+    def test_modelo_internacional_pr114_y_v2_manual_se_conservan(self):
+        old,desired,live=self.modelo_callback_pr114(con_vinculo_manual=True,crlf=True)
+        marker=b"            $convocatoriaId = (int)"
+        self.assertEqual(live.count(marker),1)
+        live=live.replace(marker,b"            // PERSONALIZACION HOSTINGER\r\n"+marker,1)
+        result=module.overlay_convocatoria_model(live,old,desired)
+        self.assertEqual(result.count(b"PERSONALIZACION HOSTINGER"),1)
+        self.assertEqual(result.count(b"marketing_aliado_manual_convocatorias"),1)
+        self.assertEqual(result.count(b"marketing_aliado_convocatorias_origen"),1)
+        self.assertEqual(result.count(b"public function crear("),1)
+        self.assertNotIn(b"\n",result.replace(b"\r\n",b""))
+        self.assertEqual(module.overlay_convocatoria_model(result,old,desired),result)
+
+    def test_modelo_internacional_pr114_sin_callback_bloquea(self):
+        old,desired,live=self.modelo_callback_pr114()
+        marker=b"            if ($relacionar) { $relacionar($this->connection, $convocatoriaId); }\n"
+        broken=live.replace(marker,b"            // CALLBACK ALTERADO\n",1)
+        with self.assertRaisesRegex(RuntimeError,"callback internacional distinto"):
+            module.overlay_convocatoria_model(broken,old,desired)
+
     def test_modelo_crear_personalizado_nunca_se_sobrescribe(self):
         file="app/models/ConvocatoriaModel.php"
         old=subprocess.check_output(["git","show",module.BASE+":"+file],cwd=str(ROOT))
