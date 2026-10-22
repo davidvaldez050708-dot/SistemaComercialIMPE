@@ -6,6 +6,8 @@ on:
       - 'app/views/telefonia/resultado_ventas_form.php'
       - 'tests/telefonia_ventas_resultado_pendiente_browser.cjs'
       - '.github/workflows/ventas-paridad-resultado-pbx.yml'
+      - 'tools/publicar_ventas_paridad_resultado_hostinger.sh'
+      - 'tests/publicacion_ventas_paridad_test.py'
 jobs:
   formulario:
     runs-on: ubuntu-latest
@@ -20,6 +22,8 @@ jobs:
         run: |
           node --check public/javascript/telefonia_ventas_resultados.js
           node --check tests/telefonia_ventas_resultado_pendiente_browser.cjs
+      - name: Publicador reversible en replica aislada
+        run: python3 tests/publicacion_ventas_paridad_test.py
       - name: Pruebas de navegador con PBX tardia
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/impe-paridad/node_modules/playwright
