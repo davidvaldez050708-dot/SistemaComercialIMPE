@@ -43,6 +43,104 @@ def fetch(ref, name, wanted):
         raise RuntimeError('Hash de GitHub no coincide: ' + name)
     return data
 
+def overlay_crear_convocatoria_controller(current, base, desired):
+    """Apply only the reviewed territorial change inside index(), preserving custom code.
+
+    Requires recognizable existing anchors. Unknown or partial modifications fail
+    closed rather than replacing the production controller.
+    """
+    name = 'app/controllers/CrearConvocatoriaController.php'
+    current_lf = normalized(current)
+    base_lf = normalized(base)
+    desired_lf = normalized(desired)
+    old_require = b"require_once __DIR__ . '/../models/CrearConvocatoriaModel.php';"
+    new_require = b"require_once __DIR__ . '/../models/TerritorioModel.php';"
+    old_call = b'$modelo->listarConveniosRecibidos()'
+    new_call = b'$modelo->listarConveniosRecibidos($estadoIds)'
+    old_states = b'        $estados = $modelo->listarEstados();'
+    start = b'        $modelo = new CrearConvocatoriaModel();'
+    stop = b"        $tituloPagina = 'Crear convocatoria';"
+    expected = b'''        // Marketing/Admin: cobertura nacional; Cuenta Clave: sólo asignaciones
+        // vigentes. Un permiso de lectura no amplía el alcance territorial.
+        $esMarketing = strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $estados = $modelo->listarEstados();
+        $estadoIds = null;
+        if (!$esMarketing && !$esAdministrador) {
+            $tipo = (int)($_SESSION['rol_id'] ?? 0) === 6 ? 'CUENTA_CLAVE'
+                : ((int)($_SESSION['rol_id'] ?? 0) === 4 ? 'ANALISTA_DATOS'
+                : ((int)($_SESSION['rol_id'] ?? 0) === 3 ? 'ASESOR' : null));
+            $estados = $tipo === null ? [] : (new TerritorioModel())->obtenerEstadosAsignadosUsuario(
+                (int)($_SESSION['usuario_id'] ?? 0), $tipo
+            );
+            $estadoIds = array_map('intval', array_column($estados, 'id'));
+        }
+'''
+    footer = b'        $puedeCrearDesdeConvenio = puedeCrearConvocatoriaDesdeConvenio();'
+    # Verify GitHub BASE->TARGET modifies only exactly these validated fragments.
+    if base_lf.count(old_require) != 1 or base_lf.count(old_call) != 1 or base_lf.count(old_states) != 1:
+        raise RuntimeError(name + ': BASE incompatible con revisión puntual')
+    reconstructed = base_lf.replace(old_require, old_require + b'\\n' + new_require, 1)
+    reconstructed = reconstructed.replace(old_states, b'', 1)
+    reconstructed = reconstructed.replace(old_call, new_call, 1)
+    reconstructed = reconstructed.replace(b'        $convenios = $estructuraDisponible', expected + b'        $convenios = $estructuraDisponible', 1)
+    reconstructed = reconstructed.replace(stop, footer + b'\\n\\n' + stop, 1)
+    if reconstructed.replace(b'\\n\\n\\n', b'\\n\\n') != desired_lf.replace(b'\\n\\n\\n', b'\\n\\n'):
+        raise RuntimeError(name + ': SOURCE cambia otros fragmentos; conservar sitio intacto')
+
+    # Already installed? Report unchanged only if every structural marker exists.
+    if new_call in current_lf or b'$estadoIds = null;' in current_lf:
+        markers = (new_require, new_call, expected, footer)
+        if all(current_lf.count(marker) == 1 for marker in markers):
+            print('CONSERVADO: ' + name + ' (alcance territorial ya instalado)')
+            return current
+        raise RuntimeError(name + ': integración parcial o personalizada; sitio intacto')
+
+    # Operate only inside index() and strictly before its title; never alter
+    # any user-defined helper, view, or access-validation code.
+    index_marker = b'    public function index()'
+    if current_lf.count(index_marker) != 1 or current_lf.count(stop) != 1:
+        raise RuntimeError(name + ': index() o título no únicos; sitio intacto')
+    i = current_lf.index(index_marker)
+    z = current_lf.index(stop, i)
+    if z <= i:
+        raise RuntimeError(name + ': estructura de index() no reconocida')
+    section = current_lf[i:z]
+    if section.count(start) != 1 or section.count(old_call) != 1 or section.count(old_states) != 1:
+        raise RuntimeError(name + ': personalización de carga de convenios no reconocida; sitio intacto')
+    if current_lf.count(old_require) != 1 or new_require in current_lf:
+        raise RuntimeError(name + ': include de TerritorioModel personalizado; sitio intacto')
+    if b'\\r' in current_lf:
+        raise RuntimeError(name + ': saltos de línea no reconocidos; sitio intacto')
+    call_at = section.index(old_call)
+    states_at = section.index(old_states)
+    if states_at <= call_at:
+        raise RuntimeError(name + ': orden diferente de carga de estados; sitio intacto')
+    # The documented controller loads $convenios conditionally. Do not replace
+    # other calls in a customized class, or skip a custom data enrichment.
+    if section.count(b'        $convenios = $estructuraDisponible') != 1:
+        raise RuntimeError(name + ': asignación de convenios distinta; sitio intacto')
+    begin = section.index(b'        $convenios = $estructuraDisponible')
+    if not begin < call_at < states_at:
+        raise RuntimeError(name + ': secuencia de datos de convenios desconocida; sitio intacto')
+    revised = current_lf.replace(old_require, old_require + b'\\n' + new_require, 1)
+    # Insert BEFORE data loading; remove ONLY previous unfiltered states load.
+    section_new = section.replace(old_states, b'', 1)
+    section_new = section_new.replace(old_call, new_call, 1)
+    section_new = section_new.replace(b'        $convenios = $estructuraDisponible',
+                                      expected + b'        $convenios = $estructuraDisponible', 1)
+    revised = revised.replace(section, section_new, 1)
+    revised = revised.replace(stop, footer + b'\\n\\n' + stop, 1)
+    # Exact reversibility guarantees every unrelated production byte is kept.
+    backward = revised.replace(footer + b'\\n\\n' + stop, stop, 1)
+    backward = backward.replace(section_new, section, 1)
+    backward = backward.replace(old_require + b'\\n' + new_require, old_require, 1)
+    if backward != current_lf:
+        raise RuntimeError(name + ': reversibilidad no demostrada; sitio intacto')
+    print('CONCILIACIÓN PREPARADA: ' + name + ' (únicamente alcance territorial de index(); personalizaciones conservadas)')
+    return revised.replace(b'\\n', b'\\r\\n') if b'\\r\\n' in current else revised
+
+
 def candidate(current, base, target, stage, name):
     if normalized(current) == normalized(target):
         return current
@@ -55,6 +153,8 @@ def candidate(current, base, target, stage, name):
             ['git', 'merge-file', '-p', str(stage / 'local'), str(stage / 'base'), str(stage / 'destino')],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if run.returncode != 0:
+            if name == 'app/controllers/CrearConvocatoriaController.php':
+                return overlay_crear_convocatoria_controller(current, base, target)
             raise RuntimeError('CONFLICTO en ' + name + ': personalización no conciliada; sitio intacto')
         result = run.stdout
     return result.replace(b'\n', b'\r\n') if b'\r\n' in current else result
