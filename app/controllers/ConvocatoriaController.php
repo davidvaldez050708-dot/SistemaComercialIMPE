@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/ConvocatoriaModel.php';
 require_once __DIR__ . '/../models/CrearConvocatoriaModel.php';
+require_once __DIR__ . '/../services/AliadoRegistroService.php';
 require_once __DIR__ . '/../models/TerritorioModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
@@ -125,6 +126,33 @@ class ConvocatoriaController
             $estados,
             $territorioId
         );
+        $aliadoContextoConvocatoria = null;
+        $aliadoOrigenTipo = trim((string)($_GET['aliado_tipo'] ?? ''));
+        $aliadoOrigenId = (int)($_GET['aliado_id'] ?? 0);
+        if ($desdeConvenio && $aliadoOrigenTipo !== '') {
+            if (
+                !in_array($aliadoOrigenTipo, ['manual','institucional'], true) ||
+                $aliadoOrigenId <= 0 ||
+                !$territorioSeleccionado ||
+                strcasecmp((string)($_SESSION['rol'] ?? ''), 'Marketing') !== 0 ||
+                !tienePermiso('formularios_aliados.gestionar_enlaces')
+            ) {
+                http_response_code(403);
+                exit('No tienes acceso a este aliado.');
+            }
+            try {
+                $servicioAliado = new AliadoRegistroService((new Database())->connect());
+                $aliadoContextoConvocatoria = $servicioAliado->opcionesConvocatoria($aliadoOrigenTipo,$aliadoOrigenId);
+                if ((int)($aliadoContextoConvocatoria['origen']['estado_id'] ?? 0) !== (int)$territorioSeleccionado['id']) {
+                    throw new DomainException('El aliado no pertenece al territorio seleccionado.',403);
+                }
+            } catch (Throwable $e) {
+                error_log('[convocatoria_aliado_contexto] '.$e->getMessage());
+                http_response_code(403);
+                exit('No se pudo verificar el aliado y sus programas.');
+            }
+        }
+
         $esChihuahua = $territorioSeleccionado &&
             strcasecmp(trim((string)($territorioSeleccionado['nombre'] ?? '')), 'Chihuahua') === 0;
 
