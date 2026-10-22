@@ -59,7 +59,7 @@ class ConveniosOverlayTest(unittest.TestCase):
     def test_crlf_customizations_and_idempotency(self):
         local = self.base.replace(
             b"        $tituloPagina = 'Crear convocatoria';",
-            b"        // HOSTINGER: opción personalizada\n"
+            "        // HOSTINGER: opción personalizada\n".encode("utf-8")
             b"        $personalizacionVista = true;\n"
             b"        $tituloPagina = 'Crear convocatoria';", 1).replace(b"\n", b"\r\n")
         result = module.overlay_crear_convocatoria_controller(local, self.base, self.desired)
