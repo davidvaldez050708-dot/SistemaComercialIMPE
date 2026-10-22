@@ -8,9 +8,13 @@ class CvDb
     public $relation=true;
     public $agreementFailure=false;
     public $rows=[];
+    public static function linkedRows($sql,$rows) {
+        preg_match('/ IN \(([0-9,]+)\)/',$sql,$m);
+        return new MarketingRows(array_values(array_filter($rows,static fn($r)=>in_array((string)$r['convocatoria_id'],explode(',',$m[1]),true))));
+    }
     public function query($sql) {
         cvCheck(str_starts_with($sql,'SELECT'),'Modelo exclusivamente de lectura');
-        if(str_contains($sql,'information_schema')) { return new MarketingRows([['total'=>$this->relation?1:0]]); }
+        if(str_contains($sql,'information_schema')) { return new MarketingRows([['total'=>str_contains($sql,"table_name = 'marketing_convenio_convocatorias'") && $this->relation?1:0]]); }
         if(str_contains($sql,'FROM estados')) { return new MarketingRows([['id'=>11,'nombre'=>'Guanajuato'],['id'=>25,'nombre'=>'Sinaloa']]); }
         if(str_contains($sql,'FROM aliados_asignaciones')) {
             if($this->agreementFailure) { throw new RuntimeException('No registrar este contenido ficticio'); }
@@ -18,10 +22,10 @@ class CvDb
             ['id'=>90,'nombre'=>'Convenio Alfa','estado_id'=>11,'referencia'=>'F-90'],
             ['id'=>91,'nombre'=>'Convenio Beta','estado_id'=>25,'referencia'=>'F-91'],
             ['id'=>92,'nombre'=>'Sin convocatoria','estado_id'=>11,'referencia'=>'F-92']]); }
-        if(str_contains($sql,'FROM convocatoria_estados')) { return new MarketingRows([
+        if(str_contains($sql,'FROM convocatoria_estados')) { return self::linkedRows($sql,[
             ['convocatoria_id'=>1,'id'=>11,'nombre'=>'Guanajuato'],['convocatoria_id'=>1,'id'=>25,'nombre'=>'Sinaloa'],
             ['convocatoria_id'=>2,'id'=>25,'nombre'=>'Sinaloa'],['convocatoria_id'=>3,'id'=>11,'nombre'=>'Guanajuato']]); }
-        if(str_contains($sql,'FROM marketing_convenio_convocatorias')) { return new MarketingRows([
+        if(str_contains($sql,'FROM marketing_convenio_convocatorias')) { return self::linkedRows($sql,[
             ['convocatoria_id'=>1,'id'=>90,'nombre'=>'Convenio Alfa','referencia'=>'F-90'],
             ['convocatoria_id'=>2,'id'=>91,'nombre'=>'Convenio Beta','referencia'=>'F-91']]); }
         return new MarketingRows($this->rows);

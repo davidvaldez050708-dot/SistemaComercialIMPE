@@ -56,7 +56,7 @@ class CorreoConvocatoriaComposicion
         if(!$id) { return []; }
         $row=$this->model->buscar($id);
         if(!$row || (!$row['activa'] && (int)($previous['id']??0)!==$id)) { throw new RuntimeException('CONVOCATORIA_NO_DISPONIBLE'); }
-        $state=self::id($input['convocatoria_estado_id']??'');$agreement=self::id($input['convocatoria_convenio_id']??'');
+        $state=self::id($input['convocatoria_estado_id']??'');$agreement=CorreoConvocatoriaConsultaModel::convenioId($input['convocatoria_convenio_id']??'');
         if(($state && !in_array($state,array_column($row['estados'],'id'),true)) || ($agreement && !in_array($agreement,array_column($row['convenios'],'id'),true))) { throw new RuntimeException('CONVOCATORIA_FILTROS'); }
         $image=$this->imagen($row);$expected=$input['convocatoria_imagen_sha']??'';
         if(!is_string($expected) || ($expected!=='' && !preg_match('/^[a-f0-9]{64}$/D',$expected))) { throw new RuntimeException('CONVOCATORIA_IMAGEN_VERSION'); }

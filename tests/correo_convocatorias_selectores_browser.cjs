@@ -13,9 +13,12 @@ const html='<!doctype html><html lang="es"><head><meta charset="utf-8"><meta nam
  '<select id="selector_ajeno"><option>Original</option></select><script src="/public/javascript/selectores_uniformes.js"></script></body></html>';
 const states=[{id:11,nombre:'Guanajuato'},{id:25,nombre:'Sinaloa'}];
 const rows=[{id:1,titulo:'Handly',estados:[states[0]],convenios:[{id:9,nombre:'Convenio QA',referencia:'QA-9'}]},
- {id:2,titulo:'Handly',estados:[states[1]],convenios:[]},{id:3,titulo:'Sin imagen',estados:[states[0]],convenios:[]}];
+ {id:2,titulo:'Handly',estados:[states[1]],convenios:[]},{id:3,titulo:'Sin imagen',estados:[states[0]],convenios:[]},
+ {id:4,titulo:'Manual QA',estados:[states[0]],convenios:[{id:'manual:9',nombre:'Convenio QA',referencia:'M-9'}]}];
 const image=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR1sAAAAASUVORK5CYII=','base64');
-const agreements=[{id:9,nombre:'Convenio QA',referencia:'QA-9',estado_id:11},{id:10,nombre:'Sin convocatoria',referencia:'QA-10',estado_id:11}];
+const agreements=[{id:9,nombre:'Convenio QA',referencia:'QA-9',estado_id:11},{id:10,nombre:'Sin convocatoria',referencia:'QA-10',estado_id:11},
+ {id:'manual:9',origen:'manual',origen_id:9,nombre:'Convenio QA',referencia:'M-9',estado_id:11},
+ {id:'manual:10',origen:'manual',origen_id:10,nombre:'Manual Sinaloa',estado_id:25}];
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.IMPE_CHROME_PATH});
  try {
@@ -59,7 +62,14 @@ const agreements=[{id:9,nombre:'Convenio QA',referencia:'QA-9',estado_id:11},{id
   await page.locator('[data-marketing-mail-files]').setInputFiles({name:'manual.txt',mimeType:'text/plain',buffer:Buffer.from('Adjunto QA')});
   await choose(stateMenu,'11');
   assert.match(await stateMenu.locator('[data-uniform-select-label]').innerText(),/Guanajuato/);
-  assert.deepEqual(await page.locator('[data-marketing-mail-convocatoria] option').evaluateAll(os=>os.map(o=>o.value)),['','1','3']);
+  assert.deepEqual(await page.locator('[data-marketing-mail-convocatoria] option').evaluateAll(os=>os.map(o=>o.value)),['','1','3','4']);
+  assert.equal(await agreementMenu.locator('[data-uniform-select-value="manual:10"]').count(),0,'No mostrar manual de otro estado');
+  await choose(agreementMenu,'manual:9');
+  assert.match(await agreementMenu.locator('[data-uniform-select-label]').innerText(),/#9 \(manual\)/);
+  assert.deepEqual(await page.locator('[data-marketing-mail-convocatoria] option').evaluateAll(os=>os.map(o=>o.value)),['','4'],'Manual con mismo ID/nombre sólo trae su publicación');
+  await choose(callMenu,'4');
+  await page.waitForFunction(()=>document.querySelector('[data-convocatoria-imagen]').src.includes('id=4&') && document.querySelector('[data-convocatoria-imagen]').naturalWidth>0);
+  await page.locator('[data-convocatoria-limpiar]').click();await choose(stateMenu,'11');
   await choose(agreementMenu,'10');
   assert.equal(await callMenu.locator('[data-uniform-select-value]').count(),1,'Convenio sin relaciones no inventa convocatorias');
   assert.equal(await page.locator('[data-convocatoria-convenio]').inputValue(),'10','Selección de convenio independiente permanece');

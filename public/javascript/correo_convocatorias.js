@@ -14,9 +14,9 @@
         const relacionados = new Set(filtrar(rows, estado, '').flatMap(row => row.convenios.map(c => String(c.id))));
         const disponibles = Array.isArray(catalogo) ? catalogo : rows.flatMap(row => row.convenios);
         disponibles.forEach(c => {
-            if (!estado || String(c.estado_id) === String(estado) || relacionados.has(String(c.id))) { unique.set(String(c.id), c); }
+            if (!estado || (c.estado_id ? String(c.estado_id) === String(estado) : relacionados.has(String(c.id)))) { unique.set(String(c.id), c); }
         });
-        return Array.from(unique.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es') || a.id - b.id);
+        return Array.from(unique.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es') || String(a.id).localeCompare(String(b.id), 'es', { numeric: true }));
     };
     const etiqueta = row => [row.titulo, row.convenios.map(c => c.nombre).join(', '), row.estados.map(e => e.nombre).join(', '), '#' + row.id].filter(Boolean).join(' · ');
 
@@ -88,7 +88,7 @@
             status.textContent = row?.imagen_mensaje || '';
         };
         const list = () => {
-            options(agreement, convenios(rows, state.value, agreements), 'Todos los convenios', c => c.nombre + (c.referencia ? ' · ' + c.referencia : '') + ' · #' + c.id);
+            options(agreement, convenios(rows, state.value, agreements), 'Todos los convenios', c => c.nombre + (c.referencia ? ' · ' + c.referencia : '') + ' · #' + (c.origen_id || c.id) + (c.origen === 'manual' ? ' (manual)' : ''));
             const prior = select.value;
             const filtered = filtrar(rows, state.value, agreement.value);
             options(select, filtered, 'Selecciona una convocatoria', etiqueta);

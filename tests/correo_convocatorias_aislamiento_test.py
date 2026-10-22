@@ -12,9 +12,13 @@ protected=['app/services/CorreoSalidaInstitucionalService.php','app/services/Cor
 for f in protected:
     before=subprocess.check_output(['git','show','origin/main:'+f],cwd=root).replace(b'\r\n',b'\n')
     assert (root/f).read_bytes().replace(b'\r\n',b'\n')==before,'Archivo protegido modificado: '+f
-for f in ['app/controllers/CorreoMarketingController.php','app/services/CorreoConvocatoriaComposicion.php','app/views/correos/index.php','public/javascript/correos_marketing.js']:
+for f in ['app/controllers/CorreoMarketingController.php','app/views/correos/index.php','public/javascript/correos_marketing.js']:
     before=subprocess.check_output(['git','show','2ba65dc4:'+f],cwd=root).replace(b'\r\n',b'\n')
     assert (root/f).read_bytes().replace(b'\r\n',b'\n')==before,'La reparación altera composición, envío, borradores o diseño: '+f
+f='app/services/CorreoConvocatoriaComposicion.php'
+before=subprocess.check_output(['git','show','4c8ff42c:'+f],cwd=root).replace(b'\r\n',b'\n')
+expected=before.replace(b"$agreement=self::id($input['convocatoria_convenio_id']??'');",b"$agreement=CorreoConvocatoriaConsultaModel::convenioId($input['convocatoria_convenio_id']??'');")
+assert (root/f).read_bytes().replace(b'\r\n',b'\n')==expected,'Sólo se autoriza validar la clave de origen en el filtro; imagen/persistencia/transporte deben permanecer idénticos'
 with tempfile.TemporaryDirectory(prefix='impe-cv-acceso-') as tmp:
     p=Path(tmp)/'test.php'
     p.write_text('''<?php

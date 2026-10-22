@@ -6,6 +6,7 @@ class CorreoConvocatoriaConsultaModel
 {
     private $db;
     private $relacionesDisponibles;
+    private $tablas=[];
     public function __construct($db=null) { $this->db=$db; }
     private function filas(string $sql,array $params=[]): array
     {
@@ -24,6 +25,18 @@ class CorreoConvocatoriaConsultaModel
             $this->relacionesDisponibles=(int)($rows[0]['total']??0)>0;
         }
         return $this->relacionesDisponibles;
+    }
+    private function tabla(string $nombre): bool
+    {
+        // Nombres internos constantes, nunca procedentes de la petición.
+        return $this->tablas[$nombre]??= (int)($this->filas("SELECT COUNT(*) AS total FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '$nombre'")[0]['total']??0)>0;
+    }
+    public static function convenioId($value)
+    {
+        if(is_string($value) && preg_match('/^manual:([1-9][0-9]{0,9})$/D',$value,$m) && (float)$m[1]<=2147483647) { return $value; }
+        if($value===null || $value==='' || $value===0 || $value==='0') { return 0; }
+        if((!is_string($value) && !is_int($value)) || !preg_match('/^[1-9][0-9]{0,9}$/D',(string)$value) || (float)$value>2147483647) { throw new RuntimeException('CONVOCATORIA_ID'); }
+        return (int)$value;
     }
     private function completar(array $rows): array
     {
@@ -46,6 +59,33 @@ class CorreoConvocatoriaConsultaModel
                 $items[(int)$r['convocatoria_id']]['convenios'][]=['id'=>(int)$r['id'],'nombre'=>(string)$r['nombre'],'referencia'=>(string)$r['referencia']];
             }
         }
+        // Relaciones del módulo Convenios: ID real + origen; jamás por nombre.
+        $sources=[];
+        if($this->tabla('marketing_aliado_convocatorias_origen')) {
+            $sources[]="SELECT DISTINCT mc.convocatoria_id, s.id, s.nombre_entidad AS nombre, COALESCE(p.convenio_referencia, '') AS referencia
+                FROM marketing_aliado_convocatorias_origen mc INNER JOIN seguimientos_vinculacion s ON s.id=mc.origen_id AND mc.origen_tipo='institucional'
+                INNER JOIN aliados_asignaciones a ON a.seguimiento_id=s.id AND a.activo=1
+                LEFT JOIN seguimientos_vinculacion_post_envio p ON p.seguimiento_id=s.id
+                WHERE s.activo=1 AND mc.convocatoria_id IN ($ids)";
+        }
+        if($this->tabla('aliados_manuales')) {
+            foreach(['marketing_aliado_manual_convocatorias'=>'mc.manual_id','marketing_aliado_convocatorias_origen'=>'mc.origen_id'] as $table=>$key) {
+                if(!$this->tabla($table)) { continue; }
+                $type=$table==='marketing_aliado_convocatorias_origen'?" AND mc.origen_tipo='manual'":'';
+                $sources[]="SELECT DISTINCT mc.convocatoria_id, CONCAT('manual:', a.id) AS id, a.nombre_entidad AS nombre, COALESCE(a.referencia, '') AS referencia
+                    FROM $table mc INNER JOIN aliados_manuales a ON a.id=$key
+                    WHERE a.activo=1$type AND mc.convocatoria_id IN ($ids)";
+            }
+        }
+        foreach($sources as $sql) {
+            foreach($this->filas($sql) as $r) {
+                $items[(int)$r['convocatoria_id']]['convenios'][]=['id'=>self::convenioId($r['id']),'nombre'=>(string)$r['nombre'],'referencia'=>(string)$r['referencia']];
+            }
+        }
+        foreach($items as &$item) {
+            $unique=[];foreach($item['convenios'] as $c) { $unique[(string)$c['id']]=$c; }
+            $item['convenios']=array_values($unique);
+        }unset($item);
         return array_values($items);
     }
     public function catalogo(): array
@@ -60,7 +100,7 @@ class CorreoConvocatoriaConsultaModel
             $warnings[]='CONVENIOS_CONSULTA_NO_DISPONIBLE';
         }
         return ['estados'=>array_map(static fn($r)=>['id'=>(int)$r['id'],'nombre'=>(string)$r['nombre']],$states),'convocatorias'=>$rows,'convenios'=>$agreements,'avisos'=>$warnings,
-            'convenios_disponibles'=>$this->tieneRelaciones()];
+            'convenios_disponibles'=>$this->tieneRelaciones() || $this->tabla('marketing_aliado_manual_convocatorias') || $this->tabla('marketing_aliado_convocatorias_origen')];
     }
     public function listarConvenios(): array
     {
@@ -73,6 +113,16 @@ class CorreoConvocatoriaConsultaModel
             WHERE a.activo = 1 AND s.activo = 1 ORDER BY s.nombre_entidad, s.id");
         $unique=[];
         foreach($rows as $r) { $id=(int)$r['id'];$unique[$id]=['id'=>$id,'nombre'=>(string)$r['nombre'],'estado_id'=>(int)$r['estado_id'],'referencia'=>(string)$r['referencia']]; }
+        // Mismas reglas SELECT de AliadoRegistroService::manuales/origen,
+        // sin importar sus operaciones de escritura ni depender de perfiles de formulario.
+        if($this->tabla('aliados_manuales')) {
+            foreach($this->filas("SELECT a.id, a.nombre_entidad AS nombre, a.estado_id, COALESCE(a.referencia, '') AS referencia
+                FROM aliados_manuales a INNER JOIN estados e ON e.id=a.estado_id
+                WHERE a.activo=1 ORDER BY a.nombre_entidad, a.id") as $r) {
+                $id='manual:'.(int)$r['id'];
+                $unique[$id]=['id'=>$id,'origen'=>'manual','origen_id'=>(int)$r['id'],'nombre'=>(string)$r['nombre'],'estado_id'=>(int)$r['estado_id'],'referencia'=>(string)$r['referencia']];
+            }
+        }
         return array_values($unique);
     }
     public function buscar(int $id): ?array
