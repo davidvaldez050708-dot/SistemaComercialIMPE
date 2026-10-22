@@ -119,6 +119,37 @@ class PublicacionV2(unittest.TestCase):
             self.assertNotIn(path,mod.SHAS,"No sobrescribir CSS existente")
         self.assertIn("public/css/aliados_v2_extension.css",mod.SHAS)
 
+    def test_cabecera_personalizada_se_conserva_y_carga_css_js(self):
+        path="app/views/layout/dashboard_head.php"
+        old=subprocess.check_output(["git","show",mod.OLD+":"+path],cwd=str(ROOT))
+        new=subprocess.check_output(["git","show",mod.SOURCE+":"+path],cwd=str(ROOT))
+        # Simular personalización existente de otros módulos del CRM.
+        inserted=b"// Personalizacion de Telefonia que se debe conservar\n"
+        customized=old.replace(b"$cssOpcionalDashboard = array_values",inserted+b"$cssOpcionalDashboard = array_values",1)
+        merged=mod.overlay_dashboard_head(customized,old,new)
+        self.assertIn(inserted,merged)
+        self.assertIn(b"aliados_v2_extension.css",merged)
+        self.assertIn(b"convocatorias_aliado_programas.js",merged)
+        self.assertIn(b"aliado_programas_modular.php",merged)
+        self.assertEqual(mod.overlay_dashboard_head(merged,old,new),merged)
+        # Reconstruir exactamente la personalización anterior al eliminar
+        # únicamente los dos bloques marcados V2, sin afectar otros módulos.
+        import re
+        for part in (b"CSS",b"JS"):
+            merged=re.sub(
+                b"// IMPE_ALIADOS_V2_"+part+b"_INICIO\\n.*?// IMPE_ALIADOS_V2_"+part+b"_FIN\\n\\n",
+                b"",merged,flags=re.DOTALL)
+        self.assertEqual(merged,customized)
+
+    def test_cabecera_sin_anclas_unicas_se_rechaza(self):
+        path="app/views/layout/dashboard_head.php"
+        old=subprocess.check_output(["git","show",mod.OLD+":"+path],cwd=str(ROOT))
+        new=subprocess.check_output(["git","show",mod.SOURCE+":"+path],cwd=str(ROOT))
+        broken=old.replace(b"$jsOpcionalHead = array_values(array_unique($jsOpcionalHead));",
+                           b"$jsOpcionalHead = custom_helper($jsOpcionalHead);")
+        with self.assertRaisesRegex(RuntimeError,"punto de inserción único"):
+            mod.overlay_dashboard_head(broken,old,new)
+
     def test_fuente_fijada_reproduce_shas_git(self):
         actual=mod.SHAS
         for path,expected in actual.items():
