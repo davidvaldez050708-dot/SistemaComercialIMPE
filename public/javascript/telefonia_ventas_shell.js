@@ -61,38 +61,46 @@
  const announced=new Set(),retired=new Set();
  const refreshNotices=()=>{try{const win=crm?.contentWindow;win?.dispatchEvent(new win.Event('impe:phone-notices-refresh'));}catch(_){/* La consulta periódica sigue disponible tras navegar. */}};
  const remove=(ref,token='')=>{retired.add(ref);const existed=pending.some(p=>p.ref===ref);const own=pending.find(p=>p.ref===ref);phone.dismissFinishedCall?.(ref,token||own?.callToken||'');pending=pending.filter(p=>p.ref!==ref);persist();render();if(existed)refreshNotices();};
- const open=()=>{if(phone.getPhoneStatus().active||!crm)return;
-  const state=phone.getCallState(),ref=reference(state);
-  const task=(state?.phase==='incoming-finished'||state?.phase==='finished')?
-   (pending.find(x=>x.ref===ref)||provisional(state)):pending[0];
+ // Una solicitud nueva de Recepción no puede sustituir el PBX de la llamada anterior.
+ const choosePending=state=>{
+  const ref=reference(state);
+  if(phoneFinished(state)&&pbx(ref))return pending.find(p=>p.ref===ref)||provisional(state);
+  return pending.filter(p=>pbx(p.ref)&&String(p.extension)===String(cfg.extension))
+   .sort((a,b)=>Number(b.at||0)-Number(a.at||0))[0]||null;
+ };
+ const open=async()=>{
+  if(phone.getPhoneStatus().active||!crm)return false;
+  let state=phone.getCallState(),task=choosePending(state);
+  if(!task){await recoverPending(true);state=phone.getCallState();task=choosePending(state);}
+  if(!task||!pbx(task.ref)||String(task.extension)!==String(cfg.extension))return false;
   const url=new URL(cfg.salesHistoryUrl,location.href);
-  // Sin referencia PBX confirmada sólo puede consultarse el historial.
-  if(!task)return;
-  if((!metadata?.finalizada||metadata.pbx_call_id!==task.ref)&&
-   !(phoneFinished(state)&&provisional(state)?.ref===task.ref)){
-   void lookup(task.ref,revision);return;
-  }
-  url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);
-  if(phoneFinished(state)&&(!metadata?.finalizada||metadata.pbx_call_id!==task.ref))url.searchParams.set('esperando_pbx','1');
-  if(crm.src===url.href){crm.contentWindow?.postMessage({type:'IMPE_SALES_RESULT_OPEN',ref:task.ref,extension:task.extension},location.origin);return;}
-  crm.src=url.href;
+  url.searchParams.set('pbx_call_id',task.ref);
+  url.searchParams.set('extension',task.extension);
+  if(!metadata?.finalizada||metadata.pbx_call_id!==task.ref)url.searchParams.set('esperando_pbx','1');
+  // Guardado comercial independiente del END, validado en backend.
+  if(crm.src===url.href)crm.contentWindow?.postMessage({type:'IMPE_SALES_RESULT_OPEN',ref:task.ref,extension:task.extension},location.origin);
+  else crm.src=url.href;
+  return true;
  };
  button.addEventListener('click',open);
  const render=()=>{const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();
   const ref=reference(state);
   const finished=!active&&['finished','incoming-finished'].includes(state?.phase);
   const instant=provisional(state);
-  const task=finished?(pending.find(x=>x.ref===ref)||instant):pending[0];
-  const confirmed=Boolean(task&&metadata?.pbx_call_id===task.ref&&metadata.finalizada);
-  const canOpen=confirmed||Boolean(instant&&task?.ref===instant.ref);
-  // Sin referencia de esta sesión, no usar el primer pendiente histórico.
-  button.hidden=active||form||(!finished&&!pending.length&&!instant)||(finished&&!task);
+  const task=choosePending(state);
+  const canOpen=Boolean(task&&pbx(task.ref)&&String(task.extension)===String(cfg.extension));
+  button.hidden=active||form||!canOpen;
   button.disabled=!canOpen;
   button.textContent='Registrar resultado';
   const icon=document.createElement('i');icon.className='bi bi-journal-check';icon.setAttribute?.('aria-hidden','true');button.prepend?.(icon);
-  button.dataset.salesPending=task?'1':'0';
+  button.dataset.salesPending=canOpen?'1':'0';
  };
- window.IMPE_SALES_ATTENTION=Object.freeze({hasPending:()=>pending.length>0,openPending:open});
+ window.IMPE_SALES_ATTENTION=Object.freeze({
+  // Sólo la atención que el teléfono acaba de finalizar bloquea la siguiente.
+  // Las antiguas permanecen en el historial sin impedir atender nuevas llamadas.
+  hasPending:()=>{const state=phone.getCallState();return phoneFinished(state)&&Boolean(choosePending(state));},
+  openPending:open
+ });
  function adopt(facts,state,expectedRef=''){
   if(!facts||!state||!pbx(facts.pbx_call_id)||String(facts.extension)!==String(cfg.extension)||retired.has(facts.pbx_call_id))return false;
   const ref=facts.pbx_call_id,keys=identities(state);
@@ -139,14 +147,14 @@
   }catch(_){/* El historial conserva el pendiente mientras llega evidencia PBX. */}finally{if(timeout!==null)clearTimeout(timeout);fetching=false;render();}
  }
  let lastLookup=0,tries=0,lastPending=0,pendingBusy=false;
- async function recoverPending(){
-  if(pendingBusy||Date.now()-lastPending<10000)return;pendingBusy=true;lastPending=Date.now();
+ async function recoverPending(force=false){
+  if(pendingBusy||(!force&&Date.now()-lastPending<10000))return;pendingBusy=true;lastPending=Date.now();
   const version=revision,requestKeys=identities(phone.getCallState());
   try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pendientes','1');
    const response=await fetch(url,{credentials:'same-origin',cache:'no-store'}),data=await response.json();
    if(response.ok&&data.ok&&Array.isArray(data.pendientes)){
-    const rows=data.pendientes.filter(c=>pbx(c.pbx_call_id)&&c.finalizada===true&&String(c.extension)===String(cfg.extension)&&!retired.has(c.pbx_call_id));
-    for(const c of rows)if(!pending.some(p=>p.ref===c.pbx_call_id))pending.push({ref:c.pbx_call_id,extension:c.extension,at:Date.now()});
+    const rows=data.pendientes.filter(c=>pbx(c.pbx_call_id)&&String(c.extension)===String(cfg.extension)&&!retired.has(c.pbx_call_id));
+    for(const c of rows)if(!pending.some(p=>p.ref===c.pbx_call_id))pending.push({ref:c.pbx_call_id,extension:c.extension,at:Date.now()-rows.indexOf(c)});
     persist();
     const current=phone.getCallState(),ref=reference(current);
     if(version===revision&&current&&!current.active&&overlaps(identities(current),requestKeys)){
