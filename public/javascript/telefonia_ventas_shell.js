@@ -16,15 +16,15 @@
   return refs.length===1?refs[0]:'';
  };
  const digits10=value=>String(value||'').replace(/\D/g,'').slice(-10);
- // El SDK cerró esta conversación, pero los eventos PBX pueden llegar más
- // tarde. Permitir abrir YA el formulario de esa transferencia concreta;
- // el backend sigue siendo quien autoriza el guardado definitivo.
- const sipFinished=state=>Boolean(state&&!state.active&&
-  ['incoming-finished','finished'].includes(state.phase)&&
-  state.context?.sdkEnded===true&&
-  (state.context?.sdkConnected||state.context?.pbxAnswered||Number(state.answeredAtMs)>0));
+ // El teléfono compartido (Analista/Ventas) sólo publica una fase final
+ // tras END SIP verificado o cierre propio de PBX. No exigir sdkEnded cuando
+ // finalizarEntrante() ya publicó incoming-finished desde Zadarma.
+ // Esto habilita la captura humana, NO acredita el cierre en BD.
+ const phoneFinished=state=>Boolean(state&&!state.active&&
+  ['incoming','outgoing'].includes(state.direction)&&
+  ['incoming-finished','finished'].includes(state.phase));
  const provisional=state=>{
-  if(!sipFinished(state))return null;
+  if(!phoneFinished(state))return null;
   const ref=reference(state);
   if(pbx(ref))return {ref,extension:cfg.extension,callToken:state.callToken};
   const sameCandidate=Boolean(candidate&&candidate.ref&&pbx(candidate.ref)&&
@@ -69,11 +69,11 @@
   // Sin referencia PBX confirmada sólo puede consultarse el historial.
   if(!task)return;
   if((!metadata?.finalizada||metadata.pbx_call_id!==task.ref)&&
-   !(sipFinished(state)&&provisional(state)?.ref===task.ref)){
+   !(phoneFinished(state)&&provisional(state)?.ref===task.ref)){
    void lookup(task.ref,revision);return;
   }
   url.searchParams.set('pbx_call_id',task.ref);if(task.extension)url.searchParams.set('extension',task.extension);
-  if(sipFinished(state)&&(!metadata?.finalizada||metadata.pbx_call_id!==task.ref))url.searchParams.set('esperando_pbx','1');
+  if(phoneFinished(state)&&(!metadata?.finalizada||metadata.pbx_call_id!==task.ref))url.searchParams.set('esperando_pbx','1');
   if(crm.src===url.href){crm.contentWindow?.postMessage({type:'IMPE_SALES_RESULT_OPEN',ref:task.ref,extension:task.extension},location.origin);return;}
   crm.src=url.href;
  };
@@ -85,9 +85,10 @@
   const task=finished?(pending.find(x=>x.ref===ref)||instant):pending[0];
   const confirmed=Boolean(task&&metadata?.pbx_call_id===task.ref&&metadata.finalizada);
   const canOpen=confirmed||Boolean(instant&&task?.ref===instant.ref);
-  button.hidden=active||form||(!finished&&!pending.length&&!instant);
+  // Sin referencia de esta sesión, no usar el primer pendiente histórico.
+  button.hidden=active||form||(!finished&&!pending.length&&!instant)||(finished&&!task);
   button.disabled=!canOpen;
-  button.textContent=canOpen?'Registrar resultado':'Conciliando llamada';
+  button.textContent='Registrar resultado';
   const icon=document.createElement('i');icon.className='bi bi-journal-check';icon.setAttribute?.('aria-hidden','true');button.prepend?.(icon);
   button.dataset.salesPending=task?'1':'0';
  };
