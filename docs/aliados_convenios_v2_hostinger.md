@@ -17,6 +17,8 @@ El publicador verifica SHA de **18 archivos** fijados al commit `1d9c1b9961403a7
 
 **Ejecutar --check primero; no aplicar con conflictos.**
 
+Si la instalación original de `app/views/convocatorias/index.php` contiene funciones nuevas, el `git merge-file` puede detectar solapamientos por contexto. El publicador V2 intenta entonces una conciliación **estrictamente limitada** a las inserciones/cambios revisados del modal, buscando anclas únicas. No reemplaza todo el archivo ni elimina funciones desconocidas; si se personalizó el mismo fragmento, da `CONFLICTO` antes de modificar el sitio. Verificar el resultado de `--check` y la sintaxis real antes de `--apply`.
+
 En Hostinger compartido, `node` puede no estar disponible en `PATH`. Esta versión permite `--check` sin Node y confirma los SHA de los scripts exactos. Un script JavaScript conciliado con personalizaciones ajenas bloquea `--apply` mientras no sea validado con Node.js fuera de Hostinger; no forzar su instalación ni suprimir el control.
 
 ```bash
@@ -25,7 +27,7 @@ PAQUETE="$HOME/entregas-impe/aliados-convenios-v2"
 mkdir -p "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 chmod 700 "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 curl -fL --proto '=https' --tlsv1.2 \
-"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/f924b25bf8b2b1a3d33d715bb370ccaa8e58ba9b/tools/publicar_aliados_convenios_v2.py" \
+"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/4408fceee10eb66d2cf87de21facf62cc845ccc1/tools/publicar_aliados_convenios_v2.py" \
 -o "$PAQUETE/publicar_aliados_convenios_v2.py"
 python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --check --site "$SITIO"
 ```
