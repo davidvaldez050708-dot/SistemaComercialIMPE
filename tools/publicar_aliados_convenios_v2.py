@@ -141,7 +141,7 @@ if ($controllerDashboard === 'crearconvocatoria') {
     $jsOpcionalHead[] = 'crear_convocatoria.js';
     $jsOpcionalHead[] = 'aliados_registro.js';
 }
-// Con modal modular de Hostinger, el propio parcial carga su JS específico.
+// Con modal modular de Hostinger, el propio parcial carga su JS especifico.
 if ($controllerDashboard === 'convocatoria' && $actionDashboard === 'index'
     && !empty($_GET['aliado_tipo']) && !empty($_GET['aliado_id'])
     && !is_file(__DIR__ . '/../convocatorias/partials/aliado_programas_modular.php')) {
