@@ -202,6 +202,22 @@ def prepare(site,stage,verbose=False,require_validated=True):
     old=read_old()
     plan=[]
     for name,expected in SHAS.items():
+        if name=="app/views/convocatorias/index.php":
+            # Hostinger ya utiliza crear_modal.php y JS compartido separados.
+            # Jamás sobrescribir esa arquitectura con el index.php monolítico
+            # del PR antiguo. La integración modular tiene publicador propio.
+            modular=sitepath(site,name)
+            if modular.is_file() and b"partials/crear_modal.php" in modular.read_bytes():
+                loaded=modular.read_bytes()
+                if loaded.count(b"partials/aliado_programas_modular.php") != 1:
+                    raise RuntimeError("ARQUITECTURA MODULAR: instalar y verificar primero el paquete aliado_programas_modular; NO aplicar la vista monolítica.")
+                for companion in ("app/views/convocatorias/partials/aliado_programas_modular.php",
+                                  "public/javascript/convocatorias_aliado_modular.js",
+                                  "public/css/convocatorias_aliado_modular.css"):
+                    if not sitepath(site,companion).is_file():
+                        raise RuntimeError("Falta módulo complementario: "+companion)
+                print("CONSERVADO: "+name+" (arquitectura modular de Hostinger)")
+                continue
         new=get(SOURCE,name)
         if blob(new)!=expected:raise RuntimeError("SHA inesperado en "+name)
         base=load_base(name,old)
