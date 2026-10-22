@@ -83,6 +83,80 @@ def merge(local,base,new,stage):
             raise RuntimeError("CONFLICTO en cambios personalizados; el sitio permanece intacto")
         merged=result.stdout
     return merged.replace(b"\n",b"\r\n") if b"\r\n" in local else merged
+def overlay_dashboard_head(local,base,desired):
+    """Conservar la cabecera real de Hostinger: insertar sólo dos bloques.
+
+    Los puntos de extensión deben ser únicos y anteriores a la deduplicación
+    de CSS/JS. No reconstruye ni reemplaza un dashboard_head.php personalizado.
+    """
+    if local is None or base is None:
+        raise RuntimeError("CONFLICTO: falta encabezado o su referencia original")
+    # Verificar que la fuente aprobada incluya las dependencias de estos bloques.
+    for text_expected in (b"aliados_v2_extension.css", b"convocatorias_aliado_programas.js",
+                          b"aliados_registro.js", b"crear_convocatoria.js"):
+        if text_expected not in lf(desired):
+            raise RuntimeError("CONFLICTO: revisión de cabecera sin dependencia V2 prevista")
+    current=lf(local)
+    start_css=b"// IMPE_ALIADOS_V2_CSS_INICIO"
+    end_css=b"// IMPE_ALIADOS_V2_CSS_FIN"
+    start_js=b"// IMPE_ALIADOS_V2_JS_INICIO"
+    end_js=b"// IMPE_ALIADOS_V2_JS_FIN"
+    anchor_css=b"$cssOpcionalDashboard = array_values(array_unique($cssOpcionalDashboard));"
+    anchor_js=b"$jsOpcionalHead = array_values(array_unique($jsOpcionalHead));"
+    # No adivinar el punto de inserción: si una cabecera refactorizada no
+    # conserva las dos listas estándar, solicitar su revisión específica.
+    for label,anchor in (("CSS",anchor_css),("JS",anchor_js)):
+        if current.count(anchor)!=1:
+            raise RuntimeError("CONFLICTO: cabecera "+label+" sin punto de inserción único; sitio intacto")
+    marks=(start_css,end_css,start_js,end_js)
+    if any(current.count(m)!=0 for m in marks):
+        if all(current.count(m)==1 for m in marks) and (
+            current.index(start_css)<current.index(end_css)<current.index(anchor_css)
+            and current.index(start_js)<current.index(end_js)<current.index(anchor_js)
+            and current.count(b"aliados_v2_extension.css")>=1
+            and current.count(b"convocatorias_aliado_programas.js")>=1
+        ):
+            print("CONSERVADO: app/views/layout/dashboard_head.php (bloques V2 ya instalados)")
+            return local
+        raise RuntimeError("CONFLICTO: integración V2 parcial o duplicada en cabecera; sitio intacto")
+    if current.count(b"aliados_v2_extension.css")>0 or current.count(b"convocatorias_aliado_programas.js")>0:
+        raise RuntimeError("CONFLICTO: cabecera ya tiene integración V2 externa; requiere revisión sin duplicar")
+    if current.count(b"$cssOpcionalDashboard")<2 or current.count(b"$jsOpcionalHead")<2:
+        raise RuntimeError("CONFLICTO: cabecera no define listas CSS/JS como se esperaba")
+    css_block=b"""// IMPE_ALIADOS_V2_CSS_INICIO
+if (in_array($controllerDashboard, array('aliado', 'convocatoria', 'crearconvocatoria'), true)) {
+    if ($controllerDashboard === 'crearconvocatoria') {
+        $cssOpcionalDashboard[] = 'aliados.css';
+    }
+    $cssOpcionalDashboard[] = 'aliados_v2_extension.css';
+}
+// IMPE_ALIADOS_V2_CSS_FIN
+
+"""
+    js_block=b"""// IMPE_ALIADOS_V2_JS_INICIO
+if ($controllerDashboard === 'aliado') {
+    $jsOpcionalHead[] = 'aliados_registro.js';
+}
+if ($controllerDashboard === 'crearconvocatoria') {
+    $jsOpcionalHead[] = 'crear_convocatoria.js';
+    $jsOpcionalHead[] = 'aliados_registro.js';
+}
+// Con modal modular de Hostinger, el propio parcial carga su JS específico.
+if ($controllerDashboard === 'convocatoria' && $actionDashboard === 'index'
+    && !empty($_GET['aliado_tipo']) && !empty($_GET['aliado_id'])
+    && !is_file(__DIR__ . '/../convocatorias/partials/aliado_programas_modular.php')) {
+    $jsOpcionalHead[] = 'convocatorias_aliado_programas.js';
+}
+// IMPE_ALIADOS_V2_JS_FIN
+
+"""
+    updated=current.replace(anchor_css,css_block+anchor_css,1)
+    updated=updated.replace(anchor_js,js_block+anchor_js,1)
+    if updated.count(start_css)!=1 or updated.count(start_js)!=1:
+        raise RuntimeError("CONFLICTO: no se insertó correctamente la integración V2")
+    print("CONCILIACIÓN PUNTUAL: app/views/layout/dashboard_head.php (CSS/JS sin reemplazar cabecera)")
+    return updated.replace(b"\n",b"\r\n") if b"\r\n" in local else updated
+
 def overlay_convocatorias(local,base,desired):
     """Integra sólo los cambios V2 exactos del modal de convocatorias.
 
@@ -228,7 +302,12 @@ def prepare(site,stage,verbose=False,require_validated=True):
         path=sitepath(site,name)
         current=path.read_bytes() if path.is_file() else None
         try:
-            result=merge(current,base,new,stage)
+            if name=="app/views/layout/dashboard_head.php":
+                # Hay personalizaciones posteriores en Hostinger. El encabezado
+                # se preserva íntegro salvo dos inserciones verificables.
+                result=overlay_dashboard_head(current,base,new)
+            else:
+                result=merge(current,base,new,stage)
         except RuntimeError as e:
             if name != "app/views/convocatorias/index.php":
                 raise RuntimeError(name+": "+str(e))
