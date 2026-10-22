@@ -39,7 +39,7 @@ try{
                    WHERE t.usuario_id=i.usuario_id AND t.extension=BINARY ?
                      AND t.proveedor='ZADARMA')
         AND UPPER(COALESCE(i.proveedor_externo,'')) IN ('ZADARMA','ZADARMA_WEBRTC')
-      ORDER BY i.id DESC LIMIT 35");
+      ORDER BY i.id DESC LIMIT 12");
     $stmt->bind_param('sss',$day,$day,$ext);$stmt->execute();
     $rows=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
     $svc=new TelefoniaGrabacionExpedienteTransferidaService($db);
@@ -99,7 +99,7 @@ try{
                 WHERE o.destino_usuario=? AND o.destino_extension=BINARY ?
                   AND o.created_at >= DATE_SUB(?,INTERVAL 2 DAY)
                   AND o.created_at < DATE_ADD(?,INTERVAL 3 DAY)
-                ORDER BY o.id DESC LIMIT 60");
+                ORDER BY o.id DESC LIMIT 18");
             $s->bind_param('isss',$i['usuario_id'],$ext,$day,$day);$s->execute();
             $candidate=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
             $matched=0;$followupMatched=0;$sdkMatched=0;$withRecords=0;$routeUnassigned=0;
@@ -112,11 +112,19 @@ try{
                 if((int)($route['seguimiento_id']??0)===0)++$routeUnassigned;
                 if($sid!==null&&TelefoniaGrabacionExpedienteTransferidaService::sdkDeTransferenciaCoincide(
                     (string)($op['sdk_consulta']??''),$sid))++$sdkMatched;
-                try{
-                    $proof=$verified->verificar((string)$op['referencia'],
-                        (int)$i['usuario_id'],$ext,0);
-                    if(count($proof['ids'])>=2)++$withRecords;
-                }catch(Throwable $ignore){}
+                // Limitar las consultas del diagnóstico: sólo verificar
+                // operaciones con el seguimiento correcto o ruta sin
+                // seguimiento, o con SDK vinculado inequívocamente.
+                if((int)($route['seguimiento_id']??0)===(int)$i['seguimiento_id'] ||
+                   (int)($route['seguimiento_id']??0)===0 ||
+                   ($sid!==null&&TelefoniaGrabacionExpedienteTransferidaService::sdkDeTransferenciaCoincide(
+                       (string)($op['sdk_consulta']??''),$sid))){
+                    try{
+                        $proof=$verified->verificar((string)$op['referencia'],
+                            (int)$i['usuario_id'],$ext,0);
+                        if(count($proof['ids'])>=2)++$withRecords;
+                    }catch(Throwable $ignore){}
+                }
             }
             $item['operaciones_institucionales_cercanas']=$matched;
             $item['operaciones_mismo_seguimiento']=$followupMatched;
