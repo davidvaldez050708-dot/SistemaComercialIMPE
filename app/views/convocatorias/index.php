@@ -2220,6 +2220,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const getSelectedUrl = function () {
+            if (share.dataset.aliadoRegistroContexto === '1') return String(share.dataset.aliadoRegistroUrl || '');
             const type = String(select?.value || '');
             let baseUrl = '';
 
@@ -2411,6 +2412,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         contextFields.forEach(function (field) {
             const invalidateGeneratedLink = function () {
+                if (share.dataset.aliadoRegistroContexto === '1') return;
                 if (!result?.classList.contains('d-none')) {
                     resetShare();
                 }
@@ -2423,6 +2425,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         buttonLink?.addEventListener('click', function () {
+            if (share.dataset.aliadoRegistroContexto === '1') return;
             if (!canGeneratePublicLink()) {
                 showQrToast(
                     'Selecciona el formulario y el tipo de convocatoria antes de generar el enlace.',
@@ -2710,6 +2713,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         buttonQr?.addEventListener('click', function () {
+            if (share.dataset.aliadoRegistroContexto === '1') return;
             const url = String(inputUrl?.value || getSelectedUrl()).trim();
 
             if (url === '' || !qrModalElement) {
