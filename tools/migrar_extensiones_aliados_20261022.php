@@ -31,8 +31,13 @@ try {
             OR (TABLE_NAME='usuarios' AND COLUMN_NAME='id'))");
     $tipos = [];
     while ($fila = $meta->fetch_assoc()) {
-        $tipos[$fila['TABLE_NAME'].'.'.$fila['COLUMN_NAME']] =
-            strtolower(preg_replace('/\\s*\\(\\d+\\)/', '', $fila['COLUMN_TYPE']));
+        $tipo = strtolower((string)$fila['COLUMN_TYPE']);
+        // MySQL 8 y MariaDB pueden expresar INT(11): normalizar sólo IDs,
+        // nunca quitar el (64) de VARCHAR, necesario para validar la FK.
+        if ($fila['COLUMN_NAME']==='id') {
+            $tipo = preg_replace('/\\(\\d+\\)/','',$tipo);
+        }
+        $tipos[$fila['TABLE_NAME'].'.'.$fila['COLUMN_NAME']] = $tipo;
     }
     foreach ($columnas as $columna=>$esperado) {
         if (($tipos[$columna]??'') !== $esperado) {
