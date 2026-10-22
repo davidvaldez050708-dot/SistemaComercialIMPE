@@ -169,7 +169,8 @@ class TelefoniaEntrantesAnalistaService
             $ref=(string)($op['referencia']??'');
             if((int)($op['destino_usuario']??0)!==$usuarioId ||
                (string)($op['destino_extension']??'')!==$extension ||
-               empty($op['entregada_at']) ||
+               (empty($op['entregada_at']) &&
+                !(($op['estado']??'')==='ENTREGADA'&&!empty($op['destino_atendida']))) ||
                !preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$ref))continue;
             try{
                 $v=$grabacionesInstitucion->verificar($ref,$usuarioId,$extension);
