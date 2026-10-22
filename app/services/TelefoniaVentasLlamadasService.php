@@ -160,6 +160,18 @@ final class TelefoniaVentasLlamadasService
             default=>$out
         };
     }
+    /** La captura humana se habilita antes del cierre PBX en transferencias propias atendidas;
+     * la validación estricta de ruta, titular y ANSWER sigue en el servicio de guardado. */
+    public static function resultadoCapturable(array $call): bool {
+        return !empty($call['pbx_call_id']) && (
+            !empty($call['finalizada']) ||
+            (!empty($call['conectada']) && !empty($call['solicitud_id'])
+                && ($call['direccion']??'')==='Entrante'
+                && trim((string)($call['origen_extension']??''))!==''
+                && (string)$call['origen_extension']!==(string)($call['extension']??''))
+        );
+    }
+
     public static function hechos(array $events,string $ext,string $source=''): array {
         $answer=false;$end=false;$duration=null;$disposition='';
         // La consulta se ordena por id ASC. Un cierre OUT_END del origen
@@ -302,14 +314,14 @@ final class TelefoniaVentasLlamadasService
             $summary['pbx']+=(int)$confirmedRef;
             $summary['intentos']+=(int)(!$confirmedRef&&str_starts_with((string)$c['id'],'intento-'));
             $summary['transferencias_sin_tramo']+=(int)(!$confirmedRef&&str_starts_with((string)$c['id'],'transferencia-'));
-            $summary['pendientes']+=(int)($c['finalizada']&&!$c['registro']);
+            $summary['pendientes']+=(int)(self::resultadoCapturable($c)&&!$c['registro']);
             $summary['perdidas']+=(int)($c['finalizada']&&!$c['conectada']&&$c['direccion']==='Entrante');
             $summary['conversaciones']+=(int)TelefoniaResultadoVentasService::esConversacion($c['registro']['resultado']??'');}
         $search=trim((string)($filters['q']??''));$state=(string)($filters['estado']??'');
         if(mb_strlen($search)>100)throw new InvalidArgumentException('La búsqueda es demasiado larga.');
         $calls=array_values(array_filter($calls,static function($c)use($search,$state){
             if($search!==''&&mb_stripos($c['numero'].' '.$c['nombre'].' '.($c['registro']['prospecto_nombre']??''),$search)===false)return false;
-            return match($state){'pendientes'=>$c['finalizada']&&!$c['registro'],'perdidas'=>$c['finalizada']&&!$c['conectada']&&$c['direccion']==='Entrante',
+            return match($state){'pendientes'=>self::resultadoCapturable($c)&&!$c['registro'],'perdidas'=>$c['finalizada']&&!$c['conectada']&&$c['direccion']==='Entrante',
                 'sin_conexion'=>!$c['conectada'],'transferidas'=>$c['origen_extension']!=='','Entrante','Saliente'=>$c['direccion']===$state,default=>true};
         }));
         $total=count($calls);$pages=max(1,(int)ceil($total/20));$page=min($pages,max(1,(int)($filters['pagina']??1)));
