@@ -1,12 +1,12 @@
 {
   "title": "Aliados/Convenios permisos territoriales 20261022",
   "base": "beb99ed3e9b40f1758d1493b27a8cdf40fdbd820",
-  "source": "78c3ac958ff30ce7ca5037c75d6dcea44f12d915",
+  "source": "a5da21270d57d737f2debed9074a906d3123ead5",
   "files": [
     {
       "path": "app/helpers/PermissionHelper.php",
       "base_sha": "49b1f1c78efbb42d79d6dc8aa9d7eaa473bd59b4",
-      "target_sha": "4e4d10c0af0633801fd028241375e2ff70d7c644"
+      "target_sha": "1b5b1d0a1d832fd75f56010ceb7e230b27e329ea"
     },
     {
       "path": "app/controllers/AliadoController.php",
@@ -41,7 +41,7 @@
     {
       "path": "app/controllers/ConvocatoriaController.php",
       "base_sha": "0e892d7ea2793271a0aa21c281ea6dbc2b2dd2a6",
-      "target_sha": "af9d0efde344529fe38ae9db9df68c57e60ab270"
+      "target_sha": "eafb5244b14ca55e38e863b798aad1dc42bb8123"
     }
   ]
 }
