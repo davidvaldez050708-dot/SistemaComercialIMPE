@@ -13,7 +13,7 @@ Se agregan de forma explícita las migraciones:
 La relación a convocatorias usa el tipo de llave `INT UNSIGNED`. No reinstalar la migración de 2026-10-21. Conservar los respaldos de primera entrega.
 
 ## Publicador selectivo
-El publicador verifica SHA de **16 archivos** fijados al commit `1d9c1b9961403a7c21bac1b1270dd61ad5fb3506`, reconcilia con el código de la primera entrega y las personalizaciones de Hostinger, valida PHP/JS, genera respaldo privado y permite restauración. Nunca ejecuta SQL.
+El publicador verifica SHA de **16 archivos** fijados al commit `a2d22524249570e90a32d196058d9cc50527c21e`, reconcilia con el código de la primera entrega y las personalizaciones de Hostinger, valida PHP/JS, genera respaldo privado y permite restauración. Nunca ejecuta SQL.
 
 **Ejecutar --check primero; no aplicar con conflictos.**
 
@@ -27,7 +27,7 @@ PAQUETE="$HOME/entregas-impe/aliados-convenios-v2"
 mkdir -p "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 chmod 700 "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 curl -fL --proto '=https' --tlsv1.2 \
-"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/29da69a4c83f5cf49252acf25e33d7f5c4913fa3/tools/publicar_aliados_convenios_v2.py" \
+"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/238aa1217ff5514cd3fd1e00c52898abf8398c91/tools/publicar_aliados_convenios_v2.py" \
 -o "$PAQUETE/publicar_aliados_convenios_v2.py"
 python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --check --site "$SITIO"
 ```
@@ -66,3 +66,10 @@ El archivo real de producción (SHA git `b90bb84bed47a0da0045a53acb19d94e534967c
 La conciliación de `public/css/aliados.css` presentó un conflicto real después de revisar los archivos PHP. **Nunca reemplazar CSS personalizado ni forzar el merge.** La actualización revisada separó las reglas nuevas al 100% de los originales de `aliados.css`, `convocatorias.css` y `crear_convocatoria.css`; son adiciones al final (266, 86 y 76 líneas). El nuevo archivo `public/css/aliados_v2_extension.css` las contiene y `dashboard_head.php` lo carga después de las hojas originales para Aliados, Convenios y Gestión de Convocatorias.
 
 El publicador V2 de revisión fija `01655dc1072adf287df995b5a95d24fa7a098c14` **conserva** los tres CSS existentes e instala su hoja complementaria. `--check` debe imprimir `CONSERVADO: 3 CSS base personalizados` y, si es la primera instalación, `PREPARADO: public/css/aliados_v2_extension.css`. Conserva igualmente la vista modular de Convocatorias previamente instalada en Hostinger. Ninguno de esos cambios aplica SQL automáticamente. Si se detecta conflicto en otros archivos, no aplicar.
+
+
+## Convenios con JavaScript personalizado de Hostinger
+
+En la revisión real, `public/javascript/crear_convocatoria.js` produce conflicto; contiene modificaciones productivas adicionales. **No se sobrescribe ni se fusiona**: el publicador V2 conserva este JavaScript y agrega `public/javascript/crear_convocatoria_v2_extension.js` como hoja de comportamiento adicional. Los eventos `impe:convenio-abierto` y las filas `data-convenio-notification` se aprovechan para mostrar programas y construir enlaces con `aliado_tipo` y `aliado_id`, sin cambiar la telefonía ni los manejadores anteriores. El encabezado personalizado carga primero el script de producción y después la extensión; el directorio de estados y filtro de municipio se resuelven desde la extensión. Si falta la estructura esperada, el publicador aborta antes de instalar.
+
+El comando de revisión debe mostrar `CONSERVADO: public/javascript/crear_convocatoria.js` y `PREPARADO: public/javascript/crear_convocatoria_v2_extension.js`; nunca `PREPARADO: public/javascript/crear_convocatoria.js`. Esta adaptación no modifica SQL por sí misma.
