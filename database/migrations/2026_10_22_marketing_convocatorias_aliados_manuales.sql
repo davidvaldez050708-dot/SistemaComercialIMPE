@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS marketing_aliado_manual_convocatorias (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   manual_id BIGINT UNSIGNED NOT NULL,
-  convocatoria_id INT UNSIGNED NOT NULL,
+  convocatoria_id INT NOT NULL,
   programa_codigo VARCHAR(64) NOT NULL,
   creado_por INT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
