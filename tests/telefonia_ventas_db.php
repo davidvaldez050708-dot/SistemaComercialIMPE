@@ -137,6 +137,13 @@ try {
  $op=$ops->paraDestinoConfirmado(8,$rid,$sdk);
  vcheck($op&&$op['referencia']===$ref,'OUT_END temprano de 100 no bloquea la identidad SDK 150');
  vcheck($svc->obtener(8,$ref,'150')['finalizada']===false,'El asesor sigue pendiente de cierre PBX propio');
+ $pendingCall=$svc->obtener(8,$ref,'150');
+ vcheck(TelefoniaVentasLlamadasService::resultadoCapturable($pendingCall),
+     'Transferencia comercial atendida figura como resultado registrable sin END');
+ $pendingList=$svc->bandeja(8,['estado'=>'pendientes']);
+ vcheck(count(array_filter($pendingList['filas'],static fn($x)=>($x['pbx_call_id']??'')===$ref))===1,
+     'Mis llamadas ofrece Registrar resultado y cuenta pendiente en el mismo PBX');
+
  $human=$results->guardar(8,$ref,'INTERESADO',['observacion'=>'Resultado propio sin webhook END','prospecto_nombre'=>'Diana']);
  vcheck($human['pbx_pendiente']===true,'Guarda de inmediato sólo el resultado humano, con PBX pendiente');
  $humanCall=$svc->obtener(8,$ref,'150');
