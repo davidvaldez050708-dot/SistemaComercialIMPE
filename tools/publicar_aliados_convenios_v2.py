@@ -95,14 +95,27 @@ def atomic(path,data,mode=0o644):
         os.replace(tmp,str(path))
     finally:
         if os.path.exists(tmp):os.unlink(tmp)
-def validate_php_js(path,data,stage):
+def validate_php_js(path,data,stage,verified_source=None,require_validated=True):
     suffix=Path(path).suffix
     if suffix not in (".php",".js"):return
     temp=stage/("validar"+suffix)
     temp.write_bytes(data)
-    command=["php","-l",str(temp)] if suffix==".php" else ["node","--check",str(temp)]
-    if suffix==".js" and not shutil.which("node"):
-        raise RuntimeError("Se requiere Node.js para validar los JS de esta entrega")
+    if suffix==".php":
+        command=["php","-l",str(temp)]
+    else:
+        node=shutil.which("node") or shutil.which("nodejs")
+        if not node:
+            # --check puede inspeccionar un sitio Hostinger sin runtime Node.
+            # Una entrega con JS modificado por merge NO se aplica a ciegas.
+            if verified_source is not None and lf(data)==lf(verified_source):
+                print("JS SHA VERIFICADO (sin Node local): "+path)
+                return
+            if require_validated:
+                raise RuntimeError("VALIDACION JS PENDIENTE: "+path+
+                    " es una variante fusionada y no hay node/nodejs; NO APLICAR sin comprobarla externamente.")
+            print("AVISO: JS FUSIONADO SIN VALIDAR, no ejecutar --apply: "+path)
+            return
+        command=[node,"--check",str(temp)]
     result=subprocess.run(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     if result.returncode:
         raise RuntimeError("Sintaxis inválida en "+path+": "+result.stderr.decode("utf-8","replace")[:500])
@@ -113,7 +126,7 @@ def read_old():
 def load_base(name,old):
     row=old.get(name)
     return unpack(row["target"]) if row else get(OLD,name,missing=True)
-def prepare(site,stage,verbose=False):
+def prepare(site,stage,verbose=False,require_validated=True):
     old=read_old()
     plan=[]
     for name,expected in SHAS.items():
@@ -127,7 +140,7 @@ def prepare(site,stage,verbose=False):
         if result==current:
             print("SIN CAMBIOS: "+name)
             continue
-        validate_php_js(name,result,stage)
+        validate_php_js(name,result,stage,new,require_validated)
         plan.append((name,path,current,result,stat.S_IMODE(path.stat().st_mode) if current is not None else 0o644))
         print("PREPARADO: "+name)
         if verbose and current is not None and name.endswith((".php",".js",".css",".sql")):
@@ -174,8 +187,12 @@ def main():
         backup=Path(args.restore).resolve()
         if site==backup or site in backup.parents:raise RuntimeError("Respaldo dentro del sitio")
         restore(site,backup,stamp);return
-    if not shutil.which("git") or not shutil.which("php") or not shutil.which("node"):
-        raise RuntimeError("Se requieren git, PHP y Node.js para publicar")
+    faltantes=[name for name in ("git","php") if not shutil.which(name)]
+    if faltantes:
+        raise RuntimeError("Faltan ejecutables necesarios: "+", ".join(faltantes))
+    if not (shutil.which("node") or shutil.which("nodejs")):
+        print("AVISO: Node.js no está en PATH. --check revisará archivos;"+
+              " --apply bloqueará fusiones JS sin validación sintáctica.")
     if stamp.is_file():
         recorded=json.loads(stamp.read_text(encoding="utf-8"))
         if recorded.get("site")==str(site) and recorded.get("source")==SOURCE:
@@ -188,7 +205,7 @@ def main():
     os.chmod(str(private),0o700)
     with tempfile.TemporaryDirectory(prefix="aliados-v2-revision-",dir=str(private)) as temp:
         stage=Path(temp)
-        plan=prepare(site,stage,args.diff)
+        plan=prepare(site,stage,args.diff,require_validated=not args.check)
         print("REVISIÓN COMPATIBLE: %d cambios. No se ejecutó SQL." % len(plan))
         if args.check or not plan:
             print("SITIO INTACTO" if args.check else "SIN CAMBIOS");return
