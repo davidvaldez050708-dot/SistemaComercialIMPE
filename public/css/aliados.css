@@ -2070,3 +2070,130 @@ button.aliados-followup-summary:hover .aliados-followup-pill {
 #modalAliadoRegistro .modal-footer{flex-wrap:wrap}
 
 #modalAliadoRegistro [hidden]{display:none!important}
+
+/* Aliados · selector de programas de Registro. Tarjetas consistentes con el CRM. */
+#modalAliadoRegistro .aliados-programas-fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 16px;
+    border: 1px solid var(--color-border, #dfe5ef);
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+#modalAliadoRegistro .aliados-programas-legend {
+    float: none;
+    width: 100%;
+    margin: 0 0 5px;
+    padding: 0;
+    color: var(--color-text, #172642);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.45;
+}
+
+#modalAliadoRegistro .aliados-programas-legend span {
+    color: #c43d47;
+}
+
+#modalAliadoRegistro .aliados-programas-ayuda {
+    margin: 0 0 14px;
+    color: var(--color-text-soft, #6b7280);
+    font-size: 10.5px;
+    line-height: 1.55;
+}
+
+#modalAliadoRegistro .aliados-programas-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    min-width: 0;
+}
+
+#modalAliadoRegistro .aliados-programa-opcion {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 56px;
+    margin: 0;
+    padding: 11px 12px;
+    border: 1px solid var(--color-border, #dfe5ef);
+    border-radius: 11px;
+    background: #fff;
+    color: var(--color-text, #172642);
+    cursor: pointer;
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+#modalAliadoRegistro .aliados-programa-opcion:hover {
+    border-color: #b7c6e1;
+    background: #f7f9ff;
+}
+
+#modalAliadoRegistro .aliados-programa-opcion:focus-within {
+    outline: 2px solid var(--color-primary, #273a8a);
+    outline-offset: 2px;
+}
+
+#modalAliadoRegistro .aliados-programa-opcion:has(> .aliados-programa-checkbox:checked) {
+    border-color: var(--color-primary, #273a8a);
+    background: var(--color-primary-soft, #f1f4ff);
+    box-shadow: 0 0 0 1px rgba(39, 58, 138, .06);
+}
+
+#modalAliadoRegistro .aliados-programa-checkbox {
+    position: static;
+    flex: 0 0 17px;
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    border-color: #b6c4d9;
+    cursor: pointer;
+}
+
+#modalAliadoRegistro .aliados-programa-checkbox:checked {
+    border-color: var(--color-primary, #273a8a);
+    background-color: var(--color-primary, #273a8a);
+}
+
+#modalAliadoRegistro .aliados-programa-nombre {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+#modalAliadoRegistro .aliados-programa-icono {
+    flex: 0 0 auto;
+    color: #8493ac;
+    font-size: 16px;
+    transition: color .16s ease;
+}
+
+#modalAliadoRegistro .aliados-programa-opcion:has(> .aliados-programa-checkbox:checked) .aliados-programa-icono {
+    color: var(--color-primary, #273a8a);
+}
+
+@media (max-width: 575.98px) {
+    #modalAliadoRegistro .aliados-programas-fieldset {
+        padding: 12px;
+    }
+
+    #modalAliadoRegistro .aliados-programas-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #modalAliadoRegistro .aliados-programa-opcion {
+        min-height: 50px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #modalAliadoRegistro .aliados-programa-opcion,
+    #modalAliadoRegistro .aliados-programa-icono {
+        transition: none;
+    }
+}
