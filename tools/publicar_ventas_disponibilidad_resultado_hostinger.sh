@@ -96,11 +96,19 @@ for item in SPEC:
         candidates=list(evidence.finditer(method))
         if len(candidates)!=1:die('Campos de pendientes ambiguos; revisión necesaria.')
         m=candidates[0];fields=m.group(1)
-        names=re.findall(r"'([^']+)'",fields)
+        # Sólo listas estáticas de strings PHP. Se admiten comillas simples
+        # y dobles, espacios y coma final; expresiones se rechazan.
+        pieces=fields.split(',')
+        if pieces and not pieces[-1].strip():pieces.pop()
+        tokens=[re.fullmatch(r"""\s*(['"])([A-Za-z_][A-Za-z0-9_]*)\1\s*""",x)
+                for x in pieces]
+        names=[m.group(2) for m in tokens if m is not None]
         base=['pbx_call_id','extension','finalizada','conectada','sdk_tokens']
-        if (len(names)!=len(set(names)) or any(key not in names for key in base) or
-            re.sub(r"'[^']*'|[\s,]",'',fields)):
-            die('Lista de campos de pendientes no reconocida.')
+        if (not pieces or any(t is None for t in tokens) or
+            len(names)!=len(set(names)) or any(key not in names for key in base)):
+            die('Lista de campos de pendientes no reconocida. Claves estaticas: '+
+                ','.join(names)+'; segmentos='+str(len(pieces))+
+                '; si hay expresiones o campos dinamicos, requiere revision manual.')
         extra=[key for key in ('solicitud_id','origen_extension') if key not in names]
         if extra:
             prefix=fields.rstrip()
