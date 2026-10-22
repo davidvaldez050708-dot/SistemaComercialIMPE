@@ -9,6 +9,7 @@ on:
       - 'public/javascript/telefonia_ventas_resultados.js'
       - 'public/javascript/telefonia_recepcion_marketing.js'
       - 'tests/telefonia_ventas_grabaciones_transferidas_smoke.php'
+      - 'tests/telefonia_ventas_grabaciones_ui_regresion.cjs'
       - 'tools/publicar_ventas_grabaciones_100_150_hostinger.sh'
       - 'tests/publicacion_ventas_grabaciones_100_150_test.py'
       - '.github/workflows/ventas-grabaciones-transferidas-100-150.yml'
@@ -28,6 +29,8 @@ jobs:
           php -l app/views/telefonia/ventas_llamadas.php
           node --check public/javascript/telefonia_ventas_resultados.js
           node --check public/javascript/telefonia_recepcion_marketing.js
+          node --check tests/telefonia_ventas_grabaciones_ui_regresion.cjs
+          node tests/telefonia_ventas_grabaciones_ui_regresion.cjs
       - name: Dos tramos, identidad y datos adversos
         run: php tests/telefonia_ventas_grabaciones_transferidas_smoke.php
       - name: Publicador Hostinger reversible
