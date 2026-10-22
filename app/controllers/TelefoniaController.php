@@ -415,9 +415,9 @@ class TelefoniaController
             $svc->sincronizar($uid);
             if(($_GET['pendientes']??'')==='1'){
                 $calls=$svc->listar($uid,[],false);
-                $pending=array_values(array_filter($calls,static fn($c)=>$c['finalizada']&&!$c['registro']));
+                $pending=array_values(array_filter($calls,static fn($c)=>TelefoniaVentasLlamadasService::resultadoCapturable($c)&&!$c['registro']));
                 $pending=$svc->conVinculosSdk($uid,array_slice($pending,0,40));
-                $this->responderJson(['ok'=>true,'pendientes'=>array_map(static fn($c)=>array_intersect_key($c,array_flip(['pbx_call_id','extension','finalizada','conectada','sdk_tokens'])),$pending)]);
+                $this->responderJson(['ok'=>true,'pendientes'=>array_map(static fn($c)=>array_intersect_key($c,array_flip(['pbx_call_id','extension','finalizada','conectada','sdk_tokens','solicitud_id','origen_extension'])),$pending)]);
             }
             if(isset($_GET['solicitud_id'])){
                 require_once __DIR__.'/../services/TelefoniaTransferenciaOperacionService.php';
