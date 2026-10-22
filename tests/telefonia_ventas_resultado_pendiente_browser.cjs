@@ -60,7 +60,7 @@ async function scenario(browser,provisional){
  assert.equal(await modal.locator('[name=observacion]').inputValue(),'Enviar informacion; registro exacto 150');
  assert.equal(await modal.locator('[name=guardar_contacto]').isChecked(),true);
  await modal.locator('[data-sales-submit]').click();
- await modal.waitFor({state:'hidden',timeout:10000});
+ await page.waitForFunction(() => !document.querySelector('#modalResultadoVenta')?.classList.contains('show'));
  assert.equal(saves,1,'Guardar debe persistir inmediatamente sin esperar evento END');
  assert.equal(closed,false,'El guardado NO inventa un cierre PBX');
  closed=true;
