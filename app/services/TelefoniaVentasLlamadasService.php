@@ -145,7 +145,9 @@ final class TelefoniaVentasLlamadasService
         require_once __DIR__.'/TelefoniaResultadoVentasService.php';
         $out=['disponible'=>false,'estado'=>'sin_referencia','texto'=>'Grabación sin confirmar','detalle'=>'La centralita todavía no ha enviado una referencia de grabación para este tramo.'];
         if(empty($call['pbx_call_id']))return array_replace($out,['estado'=>'sin_llamada','texto'=>'Sin llamada confirmada','detalle'=>'Es un intento sin referencia confirmada de la centralita; no hay audio verificable.']);
-        if(empty($call['finalizada']))return array_replace($out,['estado'=>'en_curso','texto'=>'Grabación al finalizar','detalle'=>'Espera a que la centralita confirme el cierre de la llamada.']);
+        if(empty($call['finalizada']))return array_replace($out,!empty($call['registro'])
+            ?['estado'=>'por_conciliar','texto'=>'Grabación por verificar','detalle'=>'El resultado humano ya está guardado. Falta evidencia del cierre y de los segmentos de Zadarma.']
+            :['estado'=>'en_curso','texto'=>'Grabación al finalizar','detalle'=>'Espera a que la centralita confirme el cierre de la llamada.']);
         $code=(string)($call['registro']['resultado']??'');
         if(empty($call['conectada'])||($code!==''&&!TelefoniaResultadoVentasService::esConversacion($code)))return array_replace($out,['estado'=>'no_aplica','texto'=>'Sin grabación de conversación','detalle'=>'Las llamadas sin conversación, buzones y locuciones no habilitan reproducción.']);
         if($code==='')return array_replace($out,['estado'=>'pendiente_resultado','texto'=>'Pendiente de resultado','detalle'=>'Registra lo ocurrido para distinguir una conversación de un buzón o una locución.']);
