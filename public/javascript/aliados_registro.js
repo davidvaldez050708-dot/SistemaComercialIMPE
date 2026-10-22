@@ -17,6 +17,45 @@ document.addEventListener('DOMContentLoaded', () => {
         return result.datos;
     };
     const errorIn = (node, message = '') => { node.textContent = message; node.classList.toggle('d-none', !message); };
+    // El CRM utiliza system-toast (dashboard.css). No sustituir por alerts genéricos.
+    const TOAST_KEY = 'impe_aliados_registro_aviso';
+    const aviso = (message, type = 'success') => {
+        if (!window.bootstrap?.Toast) return;
+        let tray = document.getElementById('impe-aliados-toast-tray');
+        if (!tray) {
+            tray = document.createElement('div');
+            tray.id = 'impe-aliados-toast-tray';
+            tray.className = 'toast-container position-fixed top-0 end-0 p-3';
+            tray.style.zIndex = '2000';
+            document.body.appendChild(tray);
+        }
+        const node = document.createElement('div');
+        node.className = 'toast system-toast border-0 ' + (type === 'error' ? 'system-toast-error' : '');
+        node.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        node.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+        const body = document.createElement('div');
+        body.className = 'toast-body';
+        const icon = document.createElement('i');
+        icon.className = 'bi ' + (type === 'error' ? 'bi-exclamation-circle' : 'bi-check-circle-fill');
+        const label = document.createElement('span');
+        label.textContent = message;
+        body.append(icon, label);
+        node.appendChild(body);
+        tray.appendChild(node);
+        node.addEventListener('hidden.bs.toast', () => node.remove(), {once:true});
+        bootstrap.Toast.getOrCreateInstance(node, {delay:4600}).show();
+    };
+    try {
+        const previo = sessionStorage.getItem(TOAST_KEY);
+        if (previo) {
+            sessionStorage.removeItem(TOAST_KEY);
+            aviso(previo);
+        }
+    } catch (_) { /* storage no disponible: el formulario continúa funcionando */ }
+    const completar = (mensaje) => {
+        try { sessionStorage.setItem(TOAST_KEY, mensaje); } catch (_) { /* sin persistencia visual */ }
+        location.reload();
+    };
     if (admin && window.bootstrap) {
         const modal = bootstrap.Modal.getOrCreateInstance(admin), form = admin.querySelector('form');
         const manual = admin.querySelector('[data-registro-manual]'), error = admin.querySelector('[data-registro-error]');
@@ -64,14 +103,14 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault(); if (loading || save.disabled) return;
             if (!form.querySelector('[name="programas[]"]:checked')) { errorIn(error,'Selecciona al menos un programa.'); return; }
             loading = true; save.disabled = true; errorIn(error);
-            try { const data = new FormData(form); data.set('operacion',operation); await request('registroGestion',data,true); location.reload(); }
-            catch (e) { errorIn(error,e.message); loading=false; save.disabled=false; }
+            try { const data = new FormData(form); data.set('operacion',operation); await request('registroGestion',data,true); completar(operation === 'programas' ? 'Programas actualizados correctamente.' : (form.elements.id.value ? 'Aliado actualizado correctamente.' : 'Aliado agregado correctamente.')); }
+            catch (e) { errorIn(error,e.message); aviso(e.message,'error'); loading=false; save.disabled=false; }
         });
         deactivate.addEventListener('click',async () => {
             if (loading || !window.confirm('¿Desactivar este aliado y su acceso de Registro? Se conservará el historial.')) return;
             loading=true;
-            try { const data=new FormData(form); data.set('operacion','desactivar_manual'); await request('registroGestion',data,true); location.reload(); }
-            catch (e) { errorIn(error,e.message); loading=false; }
+            try { const data=new FormData(form); data.set('operacion','desactivar_manual'); await request('registroGestion',data,true); completar('Aliado desactivado. El historial se conserva.'); }
+            catch (e) { errorIn(error,e.message); aviso(e.message,'error'); loading=false; }
         });
     }
     if (enlace) {
