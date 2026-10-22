@@ -18,7 +18,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
  const tick=async()=>{now+=11000;interval();await new Promise(r=>setImmediate(r));};
  const start=id=>{offer={id,nombre:'Persona '+id,referencia:'pbx-'+id,numero:'+525551112233',at:now,origen_extension:'100'};state={active:true,phase:'in-progress',direction:'incoming',destination:offer.numero,requestedAt:now/1000,callToken:'sdk-session-current-'+id,pbxCallId:'sdk-session-current-'+id,context:{type:'SDK_INCOMING'}};};
  start(91);await tick();assert(requests.some(u=>u.searchParams.get('solicitud_id')==='91'),'SDK local se consulta por solicitud exacta, nunca como PBX');
- state={...state,active:false,phase:'incoming-finished'};await tick();assert(button.disabled);assert.equal(finish.length,0);
+ state={...state,active:false,phase:'incoming-finished'};await tick();assert.equal(button.disabled,false,'PBX tardía no impide abrir captura tras cierre del teléfono');assert.equal(button.textContent,'Registrar resultado');assert.equal(finish.length,0,'Fin local no inventa confirmación PBX');
  confirmed=true;await tick();assert(!button.disabled,'PBX tardía habilita resultado sin F5');assert.equal(finish.at(-1).ref,'pbx-91');
  button.click?.();button.click?.(); // La acción real se comprueba en Edge.
  start(92);confirmed=false;let release;delay=new Promise(r=>release=r);await tick();
