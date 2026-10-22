@@ -81,6 +81,28 @@ class PublicacionV2(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError,"VALIDACION JS PENDIENTE"):
                     mod.validate_php_js("public/javascript/test.js",b"const a = 2;",stage,b"const a = 1;",True)
 
+    def test_parche_quirurgico_convocatorias_preserva_personalizaciones(self):
+        path="app/views/convocatorias/index.php"
+        old=subprocess.check_output(["git","show",mod.OLD+":"+path],cwd=str(ROOT))
+        new=subprocess.check_output(["git","show",mod.SOURCE+":"+path],cwd=str(ROOT))
+        self.assertEqual(mod.overlay_convocatorias(old,old,new),new)
+        # Personalización fuera del modal, preservada sin reescribir el archivo.
+        local=old.replace(b"<?php\n",b"<?php\n/* Marca personalizada de produccion */\n",1)
+        merged=mod.overlay_convocatorias(local,old,new)
+        self.assertIn(b"Marca personalizada de produccion",merged)
+        self.assertIn(b"data-aliado-registro-contexto",merged)
+        self.assertEqual(merged.replace(b"/* Marca personalizada de produccion */\n",b""),new)
+
+    def test_parche_quirurgico_rechaza_region_modificada(self):
+        path="app/views/convocatorias/index.php"
+        old=subprocess.check_output(["git","show",mod.OLD+":"+path],cwd=str(ROOT))
+        new=subprocess.check_output(["git","show",mod.SOURCE+":"+path],cwd=str(ROOT))
+        esperado=b"                                Tipo de convocatoria\n"
+        self.assertIn(esperado,old)
+        local=old.replace(esperado,b"                                Categoria personalizada\n",1)
+        with self.assertRaisesRegex(RuntimeError,"CONFLICTO"):
+            mod.overlay_convocatorias(local,old,new)
+
     def test_fuente_fijada_reproduce_shas_git(self):
         actual=mod.SHAS
         for path,expected in actual.items():
