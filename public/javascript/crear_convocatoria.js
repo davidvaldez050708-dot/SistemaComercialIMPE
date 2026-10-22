@@ -342,6 +342,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 params.set('desde_convenio', '1');
                 params.set('abrir_nueva_convocatoria', '1');
+                params.set('aliado_tipo', String(data.origen_tipo || 'institucional'));
+                params.set('aliado_id', String(data.origen_id || data.seguimiento_id || 0));
 
                 if (convenioNombre !== '') {
                     params.set('convenio_nombre', convenioNombre);
@@ -352,11 +354,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 createLink.href = baseUrl + '&' + params.toString();
-                createLink.hidden = data.origen_tipo === 'manual';
+                createLink.hidden = !Number(data.origen_id || data.seguimiento_id);
                 const help = modalElement.querySelector('.crear-convocatoria-modal-help span');
-                if (help) help.textContent = data.origen_tipo === 'manual'
-                    ? 'Crear convocatoria requiere un expediente de Vinculación. El enlace de Registro se gestiona de forma independiente.'
-                    : 'La convocatoria se abrirá en el estado correspondiente al aliado.';
+                if (help) help.textContent = 'Cada programa del aliado tendrá su propia imagen y convocatoria. El enlace y QR de Registro serán los mismos para todas sus publicaciones.';
             }
 
             setText('[data-convenio-fecha-label]', data.origen_tipo === 'manual' ? 'Fecha de relación' : 'Fecha del documento');
