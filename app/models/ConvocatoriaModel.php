@@ -514,6 +514,23 @@ class ConvocatoriaModel
             $convocatoriaId = (int)$this->connection->insert_id;
             $this->guardarEstados($convocatoriaId, $estadosIds);
 
+            // Se guarda el origen para TODO aliado, incluso el que viene de Vinculación.
+            if (!empty($datos['aliado_tipo']) && !empty($datos['aliado_id'])) {
+                $origenTipo = (string)$datos['aliado_tipo'];
+                $origenId = (int)$datos['aliado_id'];
+                $programa = (string)($datos['programa_codigo'] ?? '');
+                if (!in_array($origenTipo,['manual','institucional'],true) ||
+                    $origenId <= 0 || $programa === '') {
+                    throw new RuntimeException('Origen o programa de convocatoria no válido.');
+                }
+                $vinculo = $this->connection->prepare(
+                    'INSERT INTO marketing_aliado_convocatorias_origen (convocatoria_id,origen_tipo,origen_id,programa_codigo,creado_por) VALUES (?,?,?,?,?)'
+                );
+                if (!$vinculo) throw new RuntimeException('Falta instalar el vínculo de convocatorias por programa.');
+                $vinculo->bind_param('isisi',$convocatoriaId,$origenTipo,$origenId,$programa,$datos['usuario_id']);
+                if (!$vinculo->execute()) throw new RuntimeException('No se vinculó la convocatoria al aliado.');
+            }
+
             // En la misma transacción: imagen/clasificación y origen manual indivisibles.
             if (!empty($datos['manual_id'])) {
                 $manualId = (int)$datos['manual_id'];
