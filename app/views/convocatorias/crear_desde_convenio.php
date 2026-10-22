@@ -433,7 +433,10 @@ $fecha = static function ($valor) {
                     <p data-convenio-modal-notes>Sin notas registradas.</p>
                 </div>
 
-                <?php require __DIR__ . '/partials/registro_aliado.php'; ?>
+                <div class="crear-convocatoria-modal-notes">
+                    <span>Programas autorizados</span>
+                    <p data-convenio-modal-programas>Los programas se seleccionan al crear la convocatoria.</p>
+                </div>
                 <div class="crear-convocatoria-modal-help">
                     <i class="bi bi-info-circle"></i>
                     <span>
@@ -463,4 +466,4 @@ $fecha = static function ($valor) {
     </div>
 </div>
 
-<script src="<?= BASE_URL ?>public/vendor/qrcode-generator/qrcode.js" defer></script>
+
