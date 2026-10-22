@@ -23,6 +23,7 @@ on:
       - 'public/css/convocatorias.css'
       - 'tools/migrar_extensiones_aliados_20261022.php'
       - 'tools/migrar_canales_manuales_20261022.php'
+      - 'tools/migrar_convocatorias_multiprograma_20261022.php'
       - 'tools/publicar_ajustes_aliados_v3.py'
       - 'tests/publicacion_ajustes_aliados_v3_test.py'
       - 'public/javascript/convocatorias_aliado_multiprograma_v3.js'
@@ -106,6 +107,8 @@ jobs:
           php tools/migrar_extensiones_aliados_20261022.php --check
           php tools/migrar_canales_manuales_20261022.php --apply --respaldo-confirmado
           php tools/migrar_canales_manuales_20261022.php --check
+          php tools/migrar_convocatorias_multiprograma_20261022.php --apply --respaldo-confirmado
+          php tools/migrar_convocatorias_multiprograma_20261022.php --check
           php tests/aliados_registro_db.php
       - name: Publicadores reversibles
         run: |
