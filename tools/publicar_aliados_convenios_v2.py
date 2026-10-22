@@ -199,9 +199,11 @@ def load_base(name,old):
 def prepare(site,stage,verbose=False,require_validated=True):
     old=read_old()
     plan=[]
-    original_css=sitepath(site,"public/css/aliados.css")
-    if not original_css.is_file():
-        raise RuntimeError("Falta hoja base de Aliados; no se instala la extensión visual V2")
+    for css_name in ("public/css/aliados.css", "public/css/convocatorias.css",
+                     "public/css/crear_convocatoria.css"):
+        original_css=sitepath(site,css_name)
+        if not original_css.is_file():
+            raise RuntimeError("Falta hoja base "+css_name+"; no se instala la extensión V2")
     print("CONSERVADO: 3 CSS base personalizados (aliados.css, convocatorias.css, crear_convocatoria.css)")
     for name,expected in SHAS.items():
         if name=="app/views/convocatorias/index.php":
