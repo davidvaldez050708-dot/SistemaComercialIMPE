@@ -71,4 +71,38 @@ assert.equal(consult({sdkEnded:false}).state.phase,'recovering','No cerrar sesi�
 assert.equal(consult({stage:'TIMBRANDO'}).state.phase,'recovering','No cerrar consulta no entregada');
 assert.equal(consult({contextValid:false}).state.active,true,'No cerrar una operaci처n distinta');
 assert.equal(consult({sales:false}).state.active,true,'Analista conserva su flujo');
+// Caso real con operaci처n ENTREGADA y RTCSession distinta al primer PUSH:
+// la transferencia externa registra su propio END, aunque onIdle no se dispare.
+const receiver=code.match(/        receiverEnded:\(op,token,endedSession\)=>\{([\s\S]*?)\n        \},\n        consultEnded/);
+assert(receiver,'Callback receptor directo');
+function receiverCase({sales=true,stage='ENTREGADA',currentDifferent=false,ended=true,operation=77}={}){
+ const ref='pbx-exact-transfer-150';
+ const rt={state:{active:true,direction:'incoming',phase:'recovering',
+  callToken:'sdk-current-external',duration:9,
+  context:{type:'SDK_INCOMING',sdkConnected:true,transferReference:ref,transferOperation:77}},
+  retired:[],hidden:0};
+ const own={id:'rtc-current-external',isEnded:()=>ended};
+ const next={id:'rtc-next-call',isEnded:()=>false};
+ const fn=new Function('rt','own','live','sales','body',`
+ let state=rt.state,answeredAtMs=1234;
+ const config={salesSdkIncoming:sales};
+ const window={zdrmWebPhone:{webCallSession:live}};
+ const currentDuration=()=>9;
+ const publish=p=>{state={...state,...p};rt.state=state};
+ const retirePbxCall=x=>rt.retired.push(x);
+ const ocultarHostEntrante=()=>{rt.hidden++};
+ const marcarPestanaEntrante=()=>{};
+ return eval('(function(op,token,endedSession){'+body+'})');
+ `)(rt,own,currentDifferent?next:own,sales,receiver[1]);
+ fn({id:operation,referencia:ref,estado:stage,modo:'DIRECTA'},'sdk-current-external',own);
+ return rt;
+}
+assert.equal(receiverCase().state.active,false,'END del tramo ENTREGADA cierra incluso sin onIdle');
+assert.equal(receiverCase().state.context.pbxEnded,undefined,'No inventa END PBX');
+assert.equal(receiverCase({currentDifferent:true}).state.active,true,'Nueva sesi처n viva no se cierra');
+assert.equal(receiverCase({ended:false}).state.active,true,'Una sesi처n SIP viva no se declara terminada');
+assert.equal(receiverCase({sales:false}).state.active,true,'Analista se mantiene intacto');
+assert.equal(receiverCase({operation:99}).state.active,true,'Operaci처n diferente no reutiliza cierre');
+assert.equal(receiverCase({stage:'TIMBRANDO'}).state.active,true,'Una transferencia no entregada no se cierra como conversaci처n');
+
 console.log('OK: fin SIP exacto 100->150 inmediato; sin cierre PBX falso; no afectar Analista ni SIP diferente');
