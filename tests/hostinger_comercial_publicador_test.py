@@ -54,7 +54,7 @@ with tempfile.TemporaryDirectory(prefix='impe-publish-mail-') as tmp:
     private = live / 'config/mail_config.local.php'; private.parent.mkdir(parents=True,exist_ok=True)
     private.write_text('<?php // CONFIGURACION_PRIVADA_FICTICIA', encoding='utf-8')
     preserved = {}
-    for extra in ['config/mail_accounts.local.php', 'config/mail_oauth.local.php']:
+    for extra in ['config/mail_accounts.local.php', 'config/mail_oauth.local.php', 'config/hostinger_admin.local.php', 'config/hostinger_mail_pending.local.php']:
         p = live / extra; p.write_text('<?php // CONFIGURACION_ANTERIOR_FICTICIA', encoding='utf-8'); preserved[extra] = digest(p)
     # Preservar EXACTAMENTE la recuperación que tenga cada instalación (main o posterior).
     for f in ['app/controllers/LoginController.php','app/models/UsuarioModel.php','app/services/MailService.php',

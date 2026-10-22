@@ -5,10 +5,11 @@ require_once dirname(__DIR__, 2) . '/config/private_config.php';
 final class CorreoHostingerApiService
 {
     public const BASE = 'https://api.mail.hostinger.com';
-    public const VERSION = 'hostinger-comercial-central-v3';
+    public const VERSION = 'hostinger-comercial-orden-v4';
     public const DOMINIO = 'rededucativamexico.org';
     private $request;
     private $descubrimiento = [];
+    private $orden = null;
     public function __construct(?callable $request=null) { $this->request=$request; }
 
     public function configuracion(): array
@@ -39,11 +40,14 @@ final class CorreoHostingerApiService
     public function buzones(string $token): array
     {
         $this->descubrimiento=[];
+        $this->orden=null;
         // /me devuelve la colección completa: el contrato oficial no admite paginación aquí.
         $r=$this->solicitar('GET',self::BASE.'/api/v1/me',$token,null);
         if(empty($r['ok']) || (int)($r['codigo_http']??0)!==200) { throw new RuntimeException('HOSTINGER_CONSULTA_'.(int)($r['codigo_http']??0)); }
         $boxes=$r['json']['data']['mailboxes']??null;
         if(!is_array($boxes)) { throw new RuntimeException('HOSTINGER_RESPUESTA_INVALIDA'); }
+        $order=$r['json']['data']['orderResourceId']??null;
+        if(is_string($order) && preg_match('/^[a-zA-Z0-9_-]{1,128}$/D',$order)) { $this->orden=$order; }
         $out=[];$valid=[];$ids=[];
         foreach($boxes as $box) {
             if(!is_array($box)) { throw new RuntimeException('HOSTINGER_RESPUESTA_INVALIDA'); }
@@ -61,6 +65,7 @@ final class CorreoHostingerApiService
     }
 
     public function descubrimiento(): array { return $this->descubrimiento; }
+    public function orden(): ?string { return $this->orden; }
     public function institucional(string $email): bool
     {
         return filter_var($email,FILTER_VALIDATE_EMAIL)!==false && strtolower(substr(strrchr($email,'@'),1))===self::DOMINIO;
