@@ -20,7 +20,7 @@ class PublicacionV2(unittest.TestCase):
         self.root=Path(self.tmp.name);self.site=self.root/"public_html";self.site.mkdir()
         (self.site/"index.php").write_text("<?php echo 1;")
         self.old=b".t { color: blue; }\n"+(b"/* bloque conservado */\n"*12)+b"/* descripcion original */\n"
-        self.new=b".t { color: navy; }\n/* descripcion original */\n"
+        self.new=self.old.replace(b"color: blue",b"color: navy")
         self.name="public/css/aliados-prueba.css"
         self.file=self.site/self.name;self.file.parent.mkdir(parents=True)
         self.file.write_bytes(self.old)
