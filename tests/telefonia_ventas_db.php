@@ -166,6 +166,12 @@ try {
  ],'150','100');
  vcheck(!$foreignSource['finalizada'],'Último participante ajeno no autoriza finalizar Ventas');
 
+ // Una llamada con ANSWER de Ventas pero sin operación exacta jamás puede
+ // usar la excepción de guardado sin END; tampoco basta una referencia manual.
+ $orphan='pbx-unlinked-own-answer-150';
+ $event($orphan,'NOTIFY_INTERNAL','150');$event($orphan,'NOTIFY_ANSWER','150');
+ vreject(fn()=>$results->guardar(8,$orphan,'INTERESADO'),
+     'Una respuesta 150 sin ruta ni transferencia acreditada no autoriza resultado prematuro');
  // Reasignación: el tramo congelado conserva su propietario histórico.
  $db->query("UPDATE telefonia_extensiones SET usuario_id=9,created_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE),updated_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE extension='150'");
  vcheck($svc->obtener(8,'pbx-prospecto-001')['usuario_id']==8,'Mantiene atribución histórica');
