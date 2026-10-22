@@ -49,6 +49,10 @@ async function scenario(browser,provisional){
  await modal.locator('[name=resultado]').selectOption('INTERESADO');
  await modal.locator('[name=observacion]').fill('Enviar informacion; registro exacto 150');
  await modal.locator('[name=guardar_contacto]').check();
+ // Un polling mientras se escribe no debe limpiar los valores ni reiniciar la UI.
+ await new Promise(r=>setTimeout(r,1850));
+ assert.equal(await modal.locator('[name=observacion]').inputValue(),'Enviar informacion; registro exacto 150');
+ assert.equal(await modal.locator('[name=guardar_contacto]').isChecked(),true);
  await modal.locator('[data-sales-submit]').click();
  await page.waitForFunction(()=>document.querySelector('[data-sales-submit]').disabled);
  assert.equal(saves,0,'No guardar como confirmado sin PBX');
@@ -64,7 +68,25 @@ async function scenario(browser,provisional){
  assert.deepEqual(errors,[]);
  await page.close();
 }
+async function rejectForeignReference(browser){
+ const page=await browser.newPage();
+ const foreign='pbx-another-operation-001',expected='pbx-own-operation-001';
+ let saves=0;
+ await page.route('http://ventas.test/**',route=>{
+  const u=new URL(route.request().url());
+  if(u.searchParams.get('action')==='detalleVenta')return route.fulfill({json:{ok:true,llamada:{
+   pbx_call_id:foreign,extension:'150',numero:'5550001234',finalizada:true,estado_pbx:'Conectada',registro:null}}});
+  if(u.searchParams.get('action')==='guardarResultadoVenta'){saves++;return route.fulfill({json:{ok:true}});}
+  return route.fulfill({contentType:'text/html',body:html(u.searchParams.get('pbx_call_id')||'')});
+ });
+ await page.goto('http://ventas.test/index.php?pbx_call_id='+expected+'&extension=150');
+ await page.waitForFunction(()=>Array.isArray(window.salesNotices)&&window.salesNotices.length>0);
+ assert.match((await page.evaluate(()=>window.salesNotices[0][0])),/no pertenece a esta llamada/i);
+ assert.equal(saves,0,'Un tramo ajeno nunca abre ni guarda esta referencia');
+ assert.equal(await page.locator('#modalResultadoVenta').getAttribute('class'),'modal fade');
+ await page.close();
+}
 (async()=>{const browser=await chromium.launch({headless:true});try{
- await scenario(browser,false);await scenario(browser,true);
+ await scenario(browser,false);await scenario(browser,true);await rejectForeignReference(browser);
  console.log('OK: Ventas captura SIP, cierre PBX tardio/409, guardado unico sin segundo modal.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
