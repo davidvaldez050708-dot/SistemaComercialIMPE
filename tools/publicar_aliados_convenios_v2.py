@@ -103,53 +103,57 @@ def overlay_convocatorias(local,base,desired):
     mutations=[(tag,i1,i2,j1,j2) for tag,i1,i2,j1,j2 in opcodes if tag!="equal"]
     if not 8<=len(mutations)<=35:
         raise RuntimeError("CONFLICTO: el parche de Convocatorias tiene un número inesperado de secciones")
-    # El parche tiene que reconstruir exactamente el objetivo desde su V1 conocida.
-    def operate(work,strict):
-        for tag,i1,i2,j1,j2 in reversed(mutations):
-            old_part=old_lines[i1:i2]
-            replacement=new_lines[j1:j2]
-            if old_part:
-                positions=[i for i in range(len(work)-len(old_part)+1)
-                           if work[i:i+len(old_part)]==old_part]
-            else:
-                # Inserción: los dos renglones inmediatamente anteriores y
-                # posteriores tienen que seguir contiguos, para no elegir
-                # posiciones similares en formularios distintos.
-                before=old_lines[max(0,i1-2):i1]
-                after=old_lines[i1:i1+2]
-                positions=[i for i in range(len(work)+1)
-                           if work[max(0,i-len(before)):i]==before
-                           and work[i:i+len(after)]==after]
-            if old_part and len(positions)>1:
-                # Las líneas como value="" se repiten en otros formularios:
-                # desempatar sólo por contexto exacto cercano, nunca por orden.
-                def score(at):
-                    score_before=0
-                    for step in range(1,6):
-                        if i1-step < 0 or at-step < 0 or old_lines[i1-step]!=work[at-step]:break
-                        score_before+=1
-                    score_after=0
-                    for step in range(5):
-                        if i2+step>=len(old_lines) or at+len(old_part)+step>=len(work) or old_lines[i2+step]!=work[at+len(old_part)+step]:break
-                        score_after+=1
-                    return score_before+score_after
-                ranked=sorted([(score(at),at) for at in positions],reverse=True)
-                if ranked[0][0]>=2 and (len(ranked)==1 or ranked[0][0]>ranked[1][0]):
-                    positions=[ranked[0][1]]
-            if len(positions)!=1:
-                raise RuntimeError("CONFLICTO: Convocatorias sección V2 #%d (%s), %d coincidencias; no se modificó el sitio" %
-                                   (len(mutations)-mutations.index((tag,i1,i2,j1,j2)),tag,len(positions)))
-            at=positions[0]
-            if not strict or not old_part:
-                work[at:at+len(old_part)]=replacement
-                continue
-            # Al sustituir, se exige que la sección previa esté literalmente
-            # intacta. La sustitución jamás pisa un bloque personalizado.
-            work[at:at+len(old_part)]=replacement
+    # Resolver TODAS las posiciones sobre el archivo original, sin aplicar
+    # cambios intermedios. Así el contexto todavía coincide con la base:
+    # aplicar un parche posterior no puede invalidar el ancla del anterior.
+    def locate(work,tag,i1,i2,j1,j2,order):
+        old_part=old_lines[i1:i2]
+        # Aumentar contexto simétrico, sin adivinar por proximidad o por
+        # número de línea. Los bloques duplicados sólo se admiten si existe
+        # una coincidencia única y literal con el contenido anterior revisado.
+        candidates=[]
+        for radius in (1,2,3,5,8,13,21,34,55,89,144):
+            before=old_lines[max(0,i1-radius):i1]
+            after=old_lines[i2:min(len(old_lines),i2+radius)]
+            found=[]
+            for at in range(len(work)-len(old_part)+1):
+                if old_part and work[at:at+len(old_part)]!=old_part:
+                    continue
+                if len(before)>at or work[at-len(before):at]!=before:
+                    continue
+                pos_after=at+len(old_part)
+                if work[pos_after:pos_after+len(after)]!=after:
+                    continue
+                found.append(at)
+                if len(found)>1:
+                    break
+            if len(found)==1:
+                return (found[0],len(old_part),new_lines[j1:j2])
+            if len(found)==0:
+                # Incluso la región inmediata cambió: no se puede garantizar
+                # una integración sin pisar personalizaciones.
+                raise RuntimeError("CONFLICTO: Convocatorias sección V2 #%d (%s), ancla modificada; sitio intacto" % (order,tag))
+            candidates=found
+        raise RuntimeError("CONFLICTO: Convocatorias sección V2 #%d (%s), %d coincidencias ambiguas; sitio intacto" %
+                           (order,tag,len(candidates)))
+    def operate(work):
+        found=[]
+        for order,(tag,i1,i2,j1,j2) in enumerate(mutations,1):
+            at,old_count,added=locate(work,tag,i1,i2,j1,j2,order)
+            found.append((at,at+old_count,added,order))
+        # El orden relativo tiene que respetar la versión base, y los cambios
+        # no deben superponerse. De lo contrario, abortar sin tocar el sitio.
+        for i in range(1,len(found)):
+            prior=found[i-1]
+            curr=found[i]
+            if curr[0] < prior[1] or curr[0] <= prior[0]:
+                raise RuntimeError("CONFLICTO: cambios V2 cruzados o superpuestos; sitio intacto")
+        for at,stop,added,_ in reversed(found):
+            work[at:stop]=added
         return work
-    if b"".join(operate(list(old_lines),False))!=lf(desired):
+    if b"".join(operate(list(old_lines)))!=lf(desired):
         raise RuntimeError("CONFLICTO: parche V2 no reproduce exactamente su fuente")
-    updated=b"".join(operate(current,True))
+    updated=b"".join(operate(current))
     print("CONCILIACIÓN ESPECÍFICA: app/views/convocatorias/index.php (regiones V2 exactas)")
     return updated.replace(b"\n",b"\r\n") if b"\r\n" in local else updated
 
