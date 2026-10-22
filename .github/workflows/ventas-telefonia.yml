@@ -102,6 +102,7 @@ jobs:
         env:
           IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
+          php tests/telefonia_analista_expediente_collations_db.php
           php tests/telefonia_ventas_db.php
           php tests/telefonia_ventas_audio_db.php
           php tests/telefonia_ventas_gestion_db.php
