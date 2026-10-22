@@ -573,7 +573,7 @@ $seguimientoVista = static function ($estado) {
                                                     <?php if (tienePermiso('aliados.gestionar_programas')): ?>
                                                     <button type="button" class="btn aliados-share-button" data-registro-abrir data-registro-origen="<?= $esManualRegistro ? 'manual' : 'institucional' ?>" data-registro-id="<?= (int)($esManualRegistro ? $aliado['id'] : $aliado['seguimiento_id']) ?>">Programas</button>
                                                     <?php endif; ?>
-                                                    <?php if ($esManualRegistro): ?>
+                                                    <?php if ($esManualRegistro && tienePermiso('aliados.gestionar_programas')): ?>
                                                         <div class="dropdown dropstart aliados-actions-menu">
                                                             <button type="button" class="aliados-more-button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false" aria-label="Más acciones de <?= $texto($aliado['nombre_entidad'] ?? 'aliado') ?>" title="Más acciones">
                                                                 <i class="bi bi-three-dots" aria-hidden="true"></i>
