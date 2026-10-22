@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sourceCard.hidden = !sourceNumber;
             sourcePhone.textContent = sourceNumber || '—';
             const sourceStatus = modalContactosEl.querySelector('[data-manual-source-whatsapp]');
-            const cleanNumber = value => String(value || '').replace(/\\D/g, '');
+            const cleanNumber = value => String(value || '').replace(/\D/g, '');
             const confirmed = sourceNumber && contactosActuales.some(c =>
                 cleanNumber(c.telefono) === cleanNumber(sourceNumber) &&
                 Number(c.whatsapp_confirmado) === 1);
