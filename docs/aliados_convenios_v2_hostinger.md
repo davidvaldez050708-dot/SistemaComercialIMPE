@@ -13,7 +13,7 @@ Se agregan de forma explícita las migraciones:
 La relación a convocatorias usa el tipo de llave `INT UNSIGNED`. No reinstalar la migración de 2026-10-21. Conservar los respaldos de primera entrega.
 
 ## Publicador selectivo
-El publicador verifica SHA de **18 archivos** fijados al commit `1d9c1b9961403a7c21bac1b1270dd61ad5fb3506`, reconcilia con el código de la primera entrega y las personalizaciones de Hostinger, valida PHP/JS, genera respaldo privado y permite restauración. Nunca ejecuta SQL.
+El publicador verifica SHA de **16 archivos** fijados al commit `1d9c1b9961403a7c21bac1b1270dd61ad5fb3506`, reconcilia con el código de la primera entrega y las personalizaciones de Hostinger, valida PHP/JS, genera respaldo privado y permite restauración. Nunca ejecuta SQL.
 
 **Ejecutar --check primero; no aplicar con conflictos.**
 
@@ -27,7 +27,7 @@ PAQUETE="$HOME/entregas-impe/aliados-convenios-v2"
 mkdir -p "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 chmod 700 "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 curl -fL --proto '=https' --tlsv1.2 \
-"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/0194bc9eb4127ba7a02df17b81ea44d7cc900170/tools/publicar_aliados_convenios_v2.py" \
+"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/29da69a4c83f5cf49252acf25e33d7f5c4913fa3/tools/publicar_aliados_convenios_v2.py" \
 -o "$PAQUETE/publicar_aliados_convenios_v2.py"
 python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --check --site "$SITIO"
 ```
@@ -58,4 +58,11 @@ La restauración de código no revierte SQL ni debe eliminar nuevas respuestas. 
 
 ## Hostinger con formulario modular posterior al PR
 
-El archivo real de producción (SHA git `b90bb84bed47a0da0045a53acb19d94e534967cb`) carga `app/views/convocatorias/partials/crear_modal.php` y `public/javascript/convocatoria_crear_compartido.js`. **No se debe reemplazar ese `index.php` modular por el anterior de 3,950 líneas**. La integración del selector de programas y QR debe instalarse por separado, mediante el módulo `aliado_programas_modular.php` junto con sus CSS/JS, con un instalador que verifique el archivo real y permita restauración. El publicador global V2 ahora **bloquea** el despliegue cuando identifica un `index.php` modular que aún no tiene instalado el componente. Una vez instalado, conserva el index sin modificarlo; las demás acciones siguen sujetas a `--check`, pruebas y respaldo completo. El paquete local probado no se publica automáticamente en Hostinger ni forma parte del manifest antiguo de 18 archivos.
+El archivo real de producción (SHA git `b90bb84bed47a0da0045a53acb19d94e534967cb`) carga `app/views/convocatorias/partials/crear_modal.php` y `public/javascript/convocatoria_crear_compartido.js`. **No se debe reemplazar ese `index.php` modular por el anterior de 3,950 líneas**. La integración del selector de programas y QR debe instalarse por separado, mediante el módulo `aliado_programas_modular.php` junto con sus CSS/JS, con un instalador que verifique el archivo real y permita restauración. El publicador global V2 ahora **bloquea** el despliegue cuando identifica un `index.php` modular que aún no tiene instalado el componente. Una vez instalado, conserva el index sin modificarlo; las demás acciones siguen sujetas a `--check`, pruebas y respaldo completo. El paquete local probado no se publica automáticamente en Hostinger ni forma parte del manifest antiguo de 16 archivos.
+
+
+## CSS personalizado de Hostinger — extensión V2 (22 de octubre)
+
+La conciliación de `public/css/aliados.css` presentó un conflicto real después de revisar los archivos PHP. **Nunca reemplazar CSS personalizado ni forzar el merge.** La actualización revisada separó las reglas nuevas al 100% de los originales de `aliados.css`, `convocatorias.css` y `crear_convocatoria.css`; son adiciones al final (266, 86 y 76 líneas). El nuevo archivo `public/css/aliados_v2_extension.css` las contiene y `dashboard_head.php` lo carga después de las hojas originales para Aliados, Convenios y Gestión de Convocatorias.
+
+El publicador V2 de revisión fija `01655dc1072adf287df995b5a95d24fa7a098c14` **conserva** los tres CSS existentes e instala su hoja complementaria. `--check` debe imprimir `CONSERVADO: 3 CSS base personalizados` y, si es la primera instalación, `PREPARADO: public/css/aliados_v2_extension.css`. Conserva igualmente la vista modular de Convocatorias previamente instalada en Hostinger. Ninguno de esos cambios aplica SQL automáticamente. Si se detecta conflicto en otros archivos, no aplicar.
