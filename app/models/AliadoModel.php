@@ -209,7 +209,7 @@ class AliadoModel
                 WHERE ce.estado_id = ?
                   AND c.estado = 1
                   AND c.fecha_inicio <= CURDATE()
-                  AND c.fecha_termino >= CURDATE()
+                  AND c.fecha_termino >= CURDATE()" . $this->excluirPublicacionesExclusivas() . "
                 ORDER BY
                     c.fecha_termino ASC,
                     c.fecha_inicio DESC,
@@ -220,6 +220,64 @@ class AliadoModel
         $stmt->execute();
 
         return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+
+    /** El endpoint territorial antiguo tampoco debe eludir la pertenencia exclusiva. */
+    private function excluirPublicacionesExclusivas(): string
+    {
+        $sql='';
+        foreach(['marketing_aliado_convocatorias_origen','marketing_aliado_manual_convocatorias','formulario_aliado_convocatorias'] as $tabla){
+            if($this->tablaExiste($tabla))$sql.=" AND NOT EXISTS (SELECT 1 FROM $tabla exclusiva WHERE exclusiva.convocatoria_id=c.id)";
+        }
+        return $sql;
+    }
+
+    /** Publicaciones propias: nunca inferir pertenencia por territorio. */
+    public function obtenerConvocatoriasAsociadas(string $tipo,int $id): array
+    {
+        require_once __DIR__.'/../services/AliadoRegistroService.php';
+        if(!in_array($tipo,['manual','institucional'],true)||$id<=0)return [];
+        if(!$this->tablaExiste('formulario_aliado_registro'))return [];
+        $col=$tipo==='manual'?'manual_id':'seguimiento_id';
+        $s=$this->connection->prepare("SELECT a.id,a.token,r.publicado,r.habilitado FROM formulario_aliado_registro r JOIN formulario_aliados a ON a.id=r.aliado_id WHERE r.$col=? LIMIT 1");
+        $s->bind_param('i',$id);$s->execute();$perfil=$s->get_result()->fetch_assoc();
+        if($perfil&&(empty($perfil['publicado'])||empty($perfil['habilitado'])))return [];
+        if(!$perfil&&$tipo==='institucional'){
+            // Formularios históricos/internacionales ligados realmente al expediente.
+            $s=$this->connection->prepare('SELECT id,token FROM formulario_aliados WHERE seguimiento_id=? AND activo=1 LIMIT 1');
+            $s->bind_param('i',$id);$s->execute();$perfil=$s->get_result()->fetch_assoc();
+        }
+        if(!$perfil)return [];
+        $relaciones=[];$params=[];
+        $moderno=$this->tablaExiste('marketing_aliado_convocatorias_origen');
+        if($moderno){
+            $relaciones[]='SELECT convocatoria_id,programa_codigo FROM marketing_aliado_convocatorias_origen WHERE origen_tipo=? AND origen_id=?';
+            array_push($params,$tipo,$id);
+        }
+        $excluir=$moderno?' AND NOT EXISTS(SELECT 1 FROM marketing_aliado_convocatorias_origen propietario WHERE propietario.convocatoria_id=legado.convocatoria_id)':'';
+        if($tipo==='manual'&&$this->tablaExiste('marketing_aliado_manual_convocatorias')){
+            $relaciones[]='SELECT convocatoria_id,programa_codigo FROM marketing_aliado_manual_convocatorias legado WHERE manual_id=?'.$excluir;$params[]=$id;
+        }
+        if($tipo==='institucional'&&$this->tablaExiste('marketing_convenio_convocatorias')){
+            $casos=[];
+            foreach(AliadoRegistroService::clasificacionesPorPrograma() as $codigo=>$clases)foreach($clases as $clase)$casos[]="WHEN '".$this->connection->real_escape_string($clase)."' THEN '".$this->connection->real_escape_string($codigo)."'";
+            $relaciones[]="SELECT legado.convocatoria_id,CASE CONCAT(c.tipo_convocatoria,'|',c.subtipo_convocatoria) ".implode(' ',$casos)." END programa_codigo FROM marketing_convenio_convocatorias legado JOIN convocatorias c ON c.id=legado.convocatoria_id WHERE legado.seguimiento_id=?".$excluir;$params[]=$id;
+        }
+        if($this->tablaExiste('formulario_aliado_convocatorias')){
+            $relaciones[]='SELECT convocatoria_id,programa_codigo FROM formulario_aliado_convocatorias legado WHERE aliado_id=? AND formulario=\'registro\''.$excluir;$params[]=$perfil['id'];
+        }
+        if(!$relaciones)return [];
+        // Las migraciones históricas usan general_ci y unicode_ci: normalizar sólo la consulta.
+        $relaciones=array_map(static fn($sql)=>"SELECT convocatoria_id,CONVERT(programa_codigo USING utf8mb4) COLLATE utf8mb4_unicode_ci programa_codigo FROM ($sql) publicacion",$relaciones);
+        $sql="SELECT DISTINCT c.id,c.titulo,c.imagen,c.fecha_inicio,c.fecha_termino,c.estado,r.programa_codigo,p.nombre programa_nombre
+              FROM convocatorias c JOIN (".implode(' UNION ',$relaciones).") r ON r.convocatoria_id=c.id
+              JOIN formulario_aliado_programas ap ON ap.aliado_id=? AND ap.programa_codigo=r.programa_codigo
+              JOIN formulario_programas p ON p.codigo=ap.programa_codigo AND p.activo=1
+              WHERE c.estado=1 AND c.fecha_inicio<=CURDATE() AND c.fecha_termino>=CURDATE()
+              ORDER BY c.fecha_termino,c.id";
+        $params[]=$perfil['id'];$s=$this->connection->prepare($sql);$s->bind_param(str_repeat('s',count($params)),...$params);$s->execute();$filas=$s->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach($filas as &$fila){$fila['enlace_registro']=BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.rawurlencode($perfil['token']);$fila['estado_texto']='Publicada · Vigente';}
+        return $filas;
     }
 
     public function obtenerConvocatoriaAplicable($convocatoriaId, $estadoId)
@@ -241,7 +299,7 @@ class AliadoModel
                   AND ce.estado_id = ?
                   AND c.estado = 1
                   AND c.fecha_inicio <= CURDATE()
-                  AND c.fecha_termino >= CURDATE()
+                  AND c.fecha_termino >= CURDATE()" . $this->excluirPublicacionesExclusivas() . "
                 LIMIT 1";
 
         $stmt = $this->connection->prepare($sql);

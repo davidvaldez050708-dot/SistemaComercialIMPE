@@ -144,6 +144,21 @@ document.addEventListener('DOMContentLoaded', function () {
         : null;
 
     let currentAllyId = 0;
+    let currentOrigin = 'institucional';
+    let shareRevision = 0;
+    let draftRevision = 0;
+    let currentDraftReady = false;
+    const scopeSelect = document.getElementById('aliado_ambito');
+    const emailSelect = document.getElementById('aliado_destinatario');
+    const phoneSelect = document.getElementById('aliado_contacto_difusion');
+    const editableLink = document.getElementById('aliado_enlace_material');
+    const shareParams = () => ({origen_tipo:currentOrigin,origen_id:currentAllyId,ambito:scopeSelect?.value || 'asociadas'});
+    const requestShare = async (url,options={}) => {
+        const headers=new Headers(options.headers || {});
+        headers.set('Accept','application/json');headers.set('X-Requested-With','fetch');
+        try { return await requestJson(url,{...options,headers}); }
+        catch { return {ok:false,mensaje:'No se pudo conectar. Revisa tu conexión y vuelve a abrir Compartir.'}; }
+    };
     let currentChannel = '';
     let currentChannels = {
         correo: { disponible: false },
@@ -432,6 +447,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const resetSendState = function () {
+        currentDraftReady = false;
         currentConvocatorias = new Map();
         currentChannel = '';
         currentChannels = {
@@ -485,8 +501,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const resendInput = shareForm.querySelector('[name="confirmar_reenvio"]');
 
             if (allyInput) {
-                allyInput.value = currentAllyId > 0 ? String(currentAllyId) : '';
+                allyInput.value = currentOrigin === 'institucional' && currentAllyId > 0 ? String(currentAllyId) : '';
             }
+            shareForm.elements.origen_tipo.value = currentOrigin;
+            shareForm.elements.origen_id.value = currentAllyId > 0 ? String(currentAllyId) : '';
+            shareForm.elements.operacion_id.value = '';
+            [emailSelect,phoneSelect].forEach(select => { if(select){select.replaceChildren();select.disabled=true;} });
             if (resendInput) {
                 resendInput.value = '0';
             }
@@ -608,7 +628,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const enlace = String(item.enlace_registro || '').trim();
+        const enlace = String(editableLink?.value || item.enlace_registro || '').trim();
         const imagen = String(item.imagen || '').replace(/^\/+/, '');
         const telefono = String(data.telefono_whatsapp || '').trim();
         const mensaje = String(mensajeInput?.value || '').trim();
@@ -662,6 +682,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const isManual = channel === 'WHATSAPP_MANUAL';
+        if(currentChannel && currentChannel!==channel){
+            if(shareForm)shareForm.elements.confirmar_reenvio.value='0';
+            resendAlert?.classList.add('d-none');
+        }
+        shareModalElement?.querySelector('[data-aliado-whatsapp-destination]')?.classList.toggle('d-none',!isManual);
+        if(phoneSelect)phoneSelect.required=isManual;
+        if(emailSelect)emailSelect.required=!isManual;
+        if(editableLink)editableLink.closest('[data-aliado-editable-link]').classList.toggle('d-none',!isManual);
         const data = isManual
             ? currentChannels.whatsapp_manual
             : currentChannels.correo;
@@ -719,7 +747,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const hasDraft =
-            Number(convocatoriaSelect?.value || 0) > 0 &&
+            currentDraftReady && Number(convocatoriaSelect?.value || 0) > 0 &&
             String(mensajeInput?.value || '').trim() !== '';
 
         if (sendButton) {
@@ -768,7 +796,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const option = document.createElement('option');
             option.value = String(id);
             option.textContent =
-                String(item.titulo || 'Convocatoria') +
+                (item.programa_nombre ? String(item.programa_nombre) + ' · ' : '') + String(item.titulo || 'Convocatoria') + ' · #' + id +
                 ' · hasta ' +
                 formatDate(item.fecha_termino);
             convocatoriaSelect.appendChild(option);
@@ -788,6 +816,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         preview.classList.remove('d-none');
+        shareModalElement.querySelector('[data-aliado-convocatoria-programa]').textContent = item.programa_nombre || 'DIFUSIÓN TERRITORIAL';
+        shareModalElement.querySelector('[data-aliado-convocatoria-estado]').textContent = item.estado_texto || 'Publicada · Vigente';
+        if(editableLink)editableLink.value=String(item.enlace_registro || '');
 
         if (previewTitle) {
             previewTitle.textContent = String(item.titulo || 'Convocatoria');
@@ -825,9 +856,14 @@ document.addEventListener('DOMContentLoaded', function () {
         updateManualTools();
     };
 
-    const loadShare = async function (allyId) {
+    const loadShare = async function (allyId, origin = currentOrigin, scope = 'asociadas') {
+        const revision = ++shareRevision;
+        ++draftRevision;
+        currentOrigin = origin;
         currentAllyId = Number(allyId || 0);
         resetSendState();
+        if(scopeSelect)scopeSelect.value=scope;
+        shareModalElement.querySelector('[data-aliado-share-scope]')?.classList.toggle('d-none',currentOrigin === 'manual');
 
         if (currentAllyId <= 0) {
             return;
@@ -839,9 +875,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         shareModal?.show();
 
-        const data = await requestJson(
-            endpoint('prepararEnvio', { id: currentAllyId })
-        );
+        const data = await requestShare(endpoint('prepararEnvio', shareParams()));
+        if(revision!==shareRevision)return;
 
         if (!data.ok) {
             if (shareContext) {
@@ -881,6 +916,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
         }
 
+        shareForm.elements.operacion_id.value = String(data.operacion_id || '');
+        const fillOptions=(select,items,value,label)=>{
+            if(!select)return;select.replaceChildren();
+            items.forEach(item=>{const option=document.createElement('option');option.value=value(item);option.textContent=label(item);select.appendChild(option);});
+            select.disabled=items.length===0;
+        };
+        fillOptions(emailSelect,currentChannels.correo.destinatarios || [],item=>item,item=>item);
+        fillOptions(phoneSelect,currentChannels.whatsapp_manual.contactos || [],item=>String(item.id),item=>item.telefono+' · '+item.etiqueta);
         populateConvocatorias(data.convocatorias || []);
 
         const preferred = currentChannels.correo.disponible
@@ -895,7 +938,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (currentConvocatorias.size === 0) {
             setStatus(
-                'No hay convocatorias activas y vigentes para el territorio de este aliado.',
+                scope === 'territorial' ? 'No hay convocatorias territoriales vigentes.' : 'No hay convocatorias publicadas, vigentes y con Registro habilitado asociadas a este aliado.',
                 'error'
             );
         } else if (!preferred) {
@@ -907,6 +950,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const loadDraft = async function () {
+        const revision = ++draftRevision;
+        const allyRevision = shareRevision;
+        currentDraftReady = false;
         if (!convocatoriaSelect || currentAllyId <= 0) {
             return;
         }
@@ -951,15 +997,14 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        renderPreview(currentConvocatorias.get(convocatoriaId));
-
-        const data = await requestJson(
+        const data = await requestShare(
             endpoint('borradorEnvio', {
-                id: currentAllyId,
+                ...shareParams(),
                 convocatoria_id: convocatoriaId
             })
         );
 
+        if(revision!==draftRevision || allyRevision!==shareRevision)return;
         if (!data.ok) {
             setStatus(
                 data.mensaje || 'No fue posible preparar el mensaje.',
@@ -968,6 +1013,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        if(revision!==draftRevision || allyRevision!==shareRevision)return;
+        currentDraftReady = true;
+        renderPreview(data.convocatoria);
         const draft = data.borrador || {};
         currentDrafts.correo = String(draft.cuerpo || '');
         currentDrafts.whatsapp = String(data.borrador_whatsapp || '');
@@ -994,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const sendConvocatoria = async function () {
-        if (!shareForm || !sendButton || !currentChannel) {
+        if (!shareForm || !sendButton || !currentChannel || !currentDraftReady) {
             return;
         }
 
@@ -1017,7 +1065,8 @@ document.addEventListener('DOMContentLoaded', function () {
             ? 'registrarConvocatoriaWhatsappManual'
             : 'enviarConvocatoria';
 
-        const data = await requestJson(
+        const revision=shareRevision;
+        const data = await requestShare(
             endpoint(action),
             {
                 method: 'POST',
@@ -1025,6 +1074,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         );
 
+        if(revision!==shareRevision)return;
         if (data.ok) {
             setStatus(
                 data.mensaje ||
@@ -1848,7 +1898,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('click', function (event) {
         const shareButton = event.target.closest('[data-aliado-share]');
         if (shareButton) {
-            loadShare(shareButton.dataset.aliadoShare);
+            loadShare(shareButton.dataset.aliadoShare,shareButton.dataset.aliadoShareOrigen || 'institucional');
             return;
         }
 
@@ -2058,8 +2108,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    scopeSelect?.addEventListener('change',()=>loadShare(currentAllyId,currentOrigin,scopeSelect.value));
+    phoneSelect?.addEventListener('change',()=>{
+        const selected=(currentChannels.whatsapp_manual.contactos || []).find(item=>String(item.id)===phoneSelect.value);
+        if(selected){Object.assign(currentChannels.whatsapp_manual,selected);updateChannelButton('WHATSAPP_MANUAL',currentChannels.whatsapp_manual);if(whatsappTitle)whatsappTitle.textContent=selected.telefono;updateManualTools();}
+    });
+    editableLink?.addEventListener('input',()=>{
+        const item=getSelectedConvocatoria();
+        if(item && mensajeInput){mensajeInput.value=mensajeInput.value.replace(item.enlace_registro,editableLink.value);item.enlace_registro=editableLink.value;}
+        updateManualTools();
+    });
     if (shareModalElement) {
         shareModalElement.addEventListener('hidden.bs.modal', function () {
+            ++shareRevision; ++draftRevision;
             currentAllyId = 0;
             resetSendState();
         });

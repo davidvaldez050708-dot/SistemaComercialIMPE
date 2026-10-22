@@ -12,11 +12,12 @@ if ($role==='marketing') $_SESSION=array_replace($_SESSION,['usuario_id'=>4,'rol
 if ($role==='admin') $_SESSION=array_replace($_SESSION,['usuario_id'=>1,'rol_id'=>1,'rol'=>'Administrador']);
 if ($role==='guest') { $_SESSION=[]; echo 'Sin sesión de prueba'; return true; }
 if ($role==='contacts') { $_SESSION['permisos'][]='aliados.gestionar_contactos'; $puedeGestionarContactos=true; $estructuraContactosDisponible=true; }
+if ($role==='share') { $_SESSION['permisos']=array_merge($_SESSION['permisos'],['aliados.compartir_correo','aliados.preparar_whatsapp','aliados.ver_historial','convocatorias.ver']); $puedeCompartirCorreo=true; $puedePrepararWhatsapp=true; $puedeConsultarConvocatorias=true; $puedeVerHistorial=true; }
 $view=$_GET['view']??'aliados';
 ?><!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aliados prueba aislada</title>
 <link rel="stylesheet" href="/fixture-bootstrap.css"><?php foreach(['global','dashboard','aliados','aliados_v2_extension','crear_convocatoria','responsive_sistema'] as $css): ?><link rel="stylesheet" href="/public/css/<?= $css ?>.css"><?php endforeach; ?>
 <script src="/fixture-bootstrap.js"></script><script>window.IMPE_CSRF_TOKEN=<?= json_encode($_SESSION['csrf_token']??'') ?>;</script>
-<?php if ($role==='contacts') {
+<?php if (in_array($role,['contacts','share'],true)) {
     // Ejecutar la protección CSRF real del layout, sin copiarla ni omitirla.
     $layout=file_get_contents(__DIR__.'/../app/views/layout/dashboard_head.php');
     preg_match('/(\(function \(\) \{\s*\x27use strict\x27;\s*const token = String\(window\.IMPE_CSRF_TOKEN[\s\S]+?\}\)\(\);)/',$layout,$csrfScript);

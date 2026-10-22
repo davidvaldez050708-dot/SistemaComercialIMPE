@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../models/AliadoModel.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../services/AliadoDifusionService.php';
+require_once __DIR__ . '/../services/AliadoCompartirService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../models/AliadoInternacionalModel.php';
 
@@ -319,6 +320,10 @@ class AliadoController
 
     public function prepararEnvio()
     {
+        if (array_key_exists('origen_tipo', $_GET)) {
+            $this->compartirPorOrigen('preparar', $_GET);
+            return;
+        }
         $this->validarPermiso('aliados.ver');
         $this->validarPermiso('convocatorias.ver');
         $this->validarAccesoCompartirConvocatoria();
@@ -383,6 +388,10 @@ class AliadoController
 
     public function borradorEnvio()
     {
+        if (array_key_exists('origen_tipo', $_GET)) {
+            $this->compartirPorOrigen('borrador', $_GET);
+            return;
+        }
         $this->validarPermiso('aliados.ver');
         $this->validarPermiso('convocatorias.ver');
         $this->validarAccesoCompartirConvocatoria();
@@ -898,6 +907,10 @@ class AliadoController
 
     public function registrarConvocatoriaWhatsappManual()
     {
+        if (array_key_exists('origen_tipo', $_POST)) {
+            $this->compartirPorOrigen('WHATSAPP_MANUAL', $_POST);
+            return;
+        }
         $this->validarPermiso('aliados.ver');
         $this->validarPermiso('convocatorias.ver');
         $this->validarPermiso('aliados.preparar_whatsapp');
@@ -944,6 +957,10 @@ class AliadoController
 
     public function enviarConvocatoria()
     {
+        if (array_key_exists('origen_tipo', $_POST)) {
+            $this->compartirPorOrigen('CORREO', $_POST);
+            return;
+        }
         $this->validarPermiso('aliados.compartir_correo');
         $this->validarPermiso('convocatorias.ver');
         $this->validarMetodoPost();
@@ -963,6 +980,29 @@ class AliadoController
         unset($resultado['codigo_http']);
 
         $this->responder($resultado, $codigoHttp);
+    }
+
+    private function compartirPorOrigen(string $operacion,array $datos): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, private');
+        try {
+            if(in_array($operacion,['CORREO','WHATSAPP_MANUAL'],true)) {
+                if(($_SERVER['REQUEST_METHOD']??'')!=='POST')throw new DomainException('Método inválido.',405);
+                $token=(string)($_SERVER['HTTP_X_CSRF_TOKEN']??$_POST['csrf_token']??'');
+                if(empty($_SESSION['csrf_token'])||!hash_equals($_SESSION['csrf_token'],$token))throw new DomainException('La sesión venció. Recarga antes de continuar.',419);
+            }
+            $servicio=new AliadoCompartirService();
+            $resultado=$operacion==='preparar'?$servicio->preparar($datos):($operacion==='borrador'?$servicio->borrador($datos):$servicio->ejecutar($datos,$operacion));
+            $code=(int)($resultado['codigo_http']??200);unset($resultado['codigo_http']);
+            $this->responder($resultado,$code);
+        } catch(DomainException $e) {
+            $code=in_array($e->getCode(),[401,403,404,405,409,419,422,503],true)?$e->getCode():422;
+            $this->responder(['ok'=>false,'mensaje'=>$e->getMessage()],$code);
+        } catch(Throwable $e) {
+            error_log('[aliado_compartir] '.$e->getMessage());
+            $this->responder(['ok'=>false,'mensaje'=>'No fue posible completar Compartir. Intenta nuevamente o revisa la sesión.'],500);
+        }
     }
 
     private function validarAccesoCompartirConvocatoria()
