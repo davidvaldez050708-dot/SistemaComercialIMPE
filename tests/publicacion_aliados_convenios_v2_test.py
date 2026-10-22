@@ -63,7 +63,7 @@ class PublicacionV2(unittest.TestCase):
             "files":[{"path":self.name,"old":mod.sha(self.old),"installed":mod.sha(self.new),"mode":0o644}]}
         (backup/"respaldo.json").write_text(json.dumps(manifest))
         self.file.write_bytes(self.new)
-        self.file.write_bytes(self.new+b"\nEdición posterior")
+        self.file.write_bytes(self.new+b"\nEdicion posterior")
         with self.assertRaisesRegex(RuntimeError,"modificado"):
             mod.restore(self.site,backup,self.root/"stamp.json")
         self.file.write_bytes(self.new)
