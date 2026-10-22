@@ -10,7 +10,7 @@ Se agregan de forma explícita las migraciones:
 - database/migrations/2026_10_22_aliados_manuales_contactos_difusion.sql
 - database/migrations/2026_10_22_marketing_convocatorias_aliados_manuales.sql
 
-La relación a convocatorias usa el tipo de llave `INT UNSIGNED`. No reinstalar la migración de 2026-10-21. Conservar los respaldos de primera entrega.
+En Hostinger `convocatorias.id` es `INT` firmado. La FK `marketing_aliado_manual_convocatorias.convocatoria_id` utiliza exactamente `INT` firmado para evitar incompatibilidad; jamás modificar el tipo del ID productivo. No reinstalar la migración de 2026-10-21. Conservar los respaldos de primera entrega.
 
 ## Publicador selectivo
 El publicador verifica SHA de **16 archivos** fijados al commit `a2d22524249570e90a32d196058d9cc50527c21e`, reconcilia con el código de la primera entrega y las personalizaciones de Hostinger, valida PHP/JS, genera respaldo privado y permite restauración. Nunca ejecuta SQL.
@@ -73,3 +73,8 @@ El publicador V2 de revisión fija `01655dc1072adf287df995b5a95d24fa7a098c14` **
 En la revisión real, `public/javascript/crear_convocatoria.js` produce conflicto; contiene modificaciones productivas adicionales. **No se sobrescribe ni se fusiona**: el publicador V2 conserva este JavaScript y agrega `public/javascript/crear_convocatoria_v2_extension.js` como hoja de comportamiento adicional. Los eventos `impe:convenio-abierto` y las filas `data-convenio-notification` se aprovechan para mostrar programas y construir enlaces con `aliado_tipo` y `aliado_id`, sin cambiar la telefonía ni los manejadores anteriores. El encabezado personalizado carga primero el script de producción y después la extensión; el directorio de estados y filtro de municipio se resuelven desde la extensión. Si falta la estructura esperada, el publicador aborta antes de instalar.
 
 El comando de revisión debe mostrar `CONSERVADO: public/javascript/crear_convocatoria.js` y `PREPARADO: public/javascript/crear_convocatoria_v2_extension.js`; nunca `PREPARADO: public/javascript/crear_convocatoria.js`. Esta adaptación no modifica SQL por sí misma.
+
+
+## Corrección de tipo FK detectada en Hostinger
+
+El primer `--check` de 2026-10-22 identificó `convocatorias.id (esperado int unsigned, actual int)`. La verificación no ejecutó SQL. Se corrigieron únicamente la migración `2026_10_22_marketing_convocatorias_aliados_manuales.sql` y el validador `tools/migrar_extensiones_aliados_20261022.php` para trabajar con el tipo productivo firmado. Tras publicar V2, actualizar sólo esos dos archivos desde un commit GitHub inmutable y validar sus SHA. No volver a ejecutar el publicador global sobre una instalación marcada como completa. Después, correr `php tools/migrar_extensiones_aliados_20261022.php --check`, que devolverá `PENDIENTE` hasta crear las tablas. Nunca ejecutar `ALTER TABLE convocatorias MODIFY id ...`.
