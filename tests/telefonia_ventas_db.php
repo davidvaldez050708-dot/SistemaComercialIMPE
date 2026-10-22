@@ -124,6 +124,20 @@ try {
   vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-reuse-123456')===null,'Cierre no se reutiliza en nueva invitación');
   vcheck($ops->paraDestinoConfirmado(8,$rid,$sdk)!==null,'SDK reservado recupera la misma referencia después del cierre');
  }
+ // Secuencia real de Zadarma: OUT_END de Recepción ANTES de ANSWER del asesor.
+ // Antes se marcaba ended=true y se bloqueaba reservar la identidad SDK del 150.
+ $ref='pbx-early-out-end-before-answer-150';$sdk='sdk-early-out-end-current-123456';
+ $route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>8,'extension'=>'150','referencia_llamada'=>$ref]);
+ $q=$db->prepare("INSERT INTO telefonia_disponibilidad(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,ruta_json,estado,expires_at,created_at,updated_at) VALUES (7,'100',8,'150',?,'+525551112233',?,'ENVIADA',UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())");$q->bind_param('ss',$ref,$route);$q->execute();$rid=$q->insert_id;$q->close();
+ $q=$db->prepare("INSERT INTO telefonia_transferencia_operaciones(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,modo,estado,evento_desde,created_at,updated_at) VALUES(7,'100',8,'150',?,'+525551112233','DIRECTA','SOLICITADA',0,UTC_TIMESTAMP(),UTC_TIMESTAMP())");$q->bind_param('s',$ref);$q->execute();$q->close();
+ $event($ref,'NOTIFY_OUT_START','100');$event($ref,'NOTIFY_ANSWER','100');
+ $event($ref,'NOTIFY_OUT_END','100',19,['disposition'=>'answered']);
+ $event($ref,'NOTIFY_RECORD','',0,['is_recorded'=>1,'call_id_with_rec'=>'early-out-end-record']);
+ $event($ref,'NOTIFY_ANSWER','150');
+ $op=$ops->paraDestinoConfirmado(8,$rid,$sdk);
+ vcheck($op&&$op['referencia']===$ref,'OUT_END temprano de 100 no bloquea la identidad SDK 150');
+ vcheck($svc->obtener(8,$ref,'150')['finalizada']===false,'El asesor sigue pendiente de cierre PBX propio');
+ vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-different-session-123456')===null,'Otra sesión no hereda transferencia vinculada');
  // OUT_END del iniciador no debe acreditar un tramo receptor si llegó
  // ANTES del ANSWER de la extensión; tampoco lo acredita un tercero.
  $outOfOrder=TelefoniaVentasLlamadasService::hechos([
