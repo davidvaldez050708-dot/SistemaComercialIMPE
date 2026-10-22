@@ -69,7 +69,9 @@ if (!function_exists('puedeConsultarDirectorioConvenios')) {
 if (!function_exists('puedeCrearConvocatoriaDesdeConvenio')) {
     function puedeCrearConvocatoriaDesdeConvenio()
     {
-        if (!puedeConsultarDirectorioConvenios() || !tienePermiso('convocatorias.crear')) {
+        if (!puedeConsultarDirectorioConvenios() ||
+            !tienePermiso('convocatorias.ver') ||
+            !tienePermiso('convocatorias.crear')) {
             return false;
         }
         $esMarketing = strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
