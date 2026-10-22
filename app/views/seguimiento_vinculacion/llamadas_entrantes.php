@@ -149,7 +149,9 @@ $duracionEntrante = static function ($segundos) {
                     $sinIdentificar = $situacion === 'SIN_IDENTIFICAR';
                     $seguimientoId = (int)($llamada['seguimiento_id'] ?? 0);
                     $grabacionInterna = $esInterna && $esWebrtc && !empty($llamada['grabacion_disponible']);
-                    $audioPbx = !$esWebrtc && !$esInterna && !empty($llamada['contestada']) && !empty($llamada['grabacion_pbx_reportada']);
+                    $audioInstitucionSaliente = !$esWebrtc && !$esInterna && !empty($llamada['grabacion_institucion_transferida']);
+                    $audioPbx = !$esWebrtc && !$esInterna && !empty($llamada['contestada']) &&
+                        (!empty($llamada['grabacion_pbx_reportada'])||$audioInstitucionSaliente);
                     $audioInternoUrl = $grabacionInterna
                         ? BASE_URL . 'prueba_telefonia/api/grabacion_interna_analista.php?session_id=' . rawurlencode($pbxId)
                         : '';
@@ -219,9 +221,11 @@ $duracionEntrante = static function ($segundos) {
                                         <button type="button" class="linkage-call-audio-state is-available linkage-call-recording-toggle"
                                             data-incoming-pbx-toggle
                                             data-pbx-id="<?= $esc($pbxId) ?>"
+                                            data-pbx-salida-institucion="<?= $audioInstitucionSaliente?'1':'0' ?>"
+                                            data-seguimiento-id="<?= $seguimientoId ?>"
                                             aria-controls="<?= $esc($controlAudioId) ?>" aria-expanded="false">
                                             <i class="bi bi-record-circle" aria-hidden="true"></i>
-                                            <span>Consultar grabación</span>
+                                            <span><?= $audioInstitucionSaliente?'Consultar grabaciones':'Consultar grabación' ?></span>
                                             <i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>
                                         </button>
                                     <?php elseif ($esInterna): ?>
