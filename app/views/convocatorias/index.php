@@ -1155,7 +1155,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                             ?>
 
                             <label class="form-label login-label" for="crear_convocatoria_clasificacion_boton">
-                                Tipo de convocatoria
+                                <?= $aliadoContextoConvocatoria ? 'Programa de esta convocatoria' : 'Tipo de convocatoria' ?>
                             </label>
 
                             <div
@@ -1176,6 +1176,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                     id="crear_convocatoria_clasificacion_boton"
                                     aria-haspopup="listbox"
                                     aria-expanded="false"
+                                    <?= $aliadoContextoConvocatoria ? 'disabled title="El programa se selecciona en las tarjetas superiores"' : '' ?>
                                     data-convocatoria-classification-trigger>
                                     <span data-convocatoria-classification-label>
                                         <?= $texto($clasificacionCrearLabel) ?>
@@ -1235,7 +1236,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                     <span class="convocatoria-public-form-kicker">FORMULARIO PÚBLICO</span>
                                     <strong><?= $aliadoContextoConvocatoria ? 'Enlace y QR compartidos del aliado' : 'Enlace y código QR' ?></strong>
                                     <small>
-                                        Selecciona el formulario que se utilizará para esta convocatoria.
+                                        <?= $aliadoContextoConvocatoria ? 'Todos los programas de este aliado comparten la misma URL y QR de Registro.' : 'Selecciona el formulario que se utilizará para esta convocatoria.' ?>
                                     </small>
                                 </div>
                             </div>
