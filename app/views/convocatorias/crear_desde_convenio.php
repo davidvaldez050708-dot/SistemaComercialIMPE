@@ -246,8 +246,13 @@ $fecha = static function ($valor) {
             </span>
         </div>
 
-        <section class="dashboard-panel crear-convocatoria-list-panel">
-            <div class="crear-convocatoria-list" data-convenio-list>
+        <section class="dashboard-panel crear-convocatoria-list-panel convenios-directorio-panel">
+            <div class="table-responsive convenios-tabla-wrap" data-convenio-list>
+                <table class="table aliados-table convenios-tabla align-middle mb-0">
+                    <thead><tr>
+                        <th>Aliado</th><th>Contacto</th><th>Programas ofertados</th><th>Origen</th><th>Registro</th><th class="text-end">Acciones</th>
+                    </tr></thead>
+                    <tbody>
                 <?php foreach ($conveniosVisibles as $convenio): ?>
                     <?php
                     $payload = [
@@ -297,9 +302,14 @@ $fecha = static function ($valor) {
                         'UTF-8'
                     );
                     ?>
-                    <button
-                        type="button"
-                        class="crear-convocatoria-notification"
+                    <?php if ($nombreMunicipioAnterior !== $payload['municipio']): ?>
+                        <?php $nombreMunicipioAnterior = $payload['municipio']; ?>
+                        <tr class="convenios-municipio-header" data-convenio-municipio-header>
+                            <th colspan="6"><i class="bi bi-geo-alt" aria-hidden="true"></i> <?= $texto($payload['municipio'] ?: 'Sin municipio') ?></th>
+                        </tr>
+                    <?php endif; ?>
+                    <tr class="convenios-fila" tabindex="0" role="button"
+                        aria-label="Ver convenio de <?= $texto($payload['institucion']) ?>"
                         data-convenio-notification
                         data-convenio-state="<?= (int)$payload['estado_id'] ?>"
                         data-convenio-origin="<?= $texto($payload['origen_tipo']) ?>"
@@ -310,47 +320,21 @@ $fecha = static function ($valor) {
                             JSON_UNESCAPED_UNICODE |
                             JSON_UNESCAPED_SLASHES |
                             JSON_INVALID_UTF8_SUBSTITUTE
-                        )) ?>'>
-                        <span class="crear-convocatoria-notification-content">
-                            <span class="crear-convocatoria-notification-title">
-                                <?= $texto($payload['institucion'] !== '' ? $payload['institucion'] : 'Convenio recibido') ?>
-                            </span>
-
-                            <span class="crear-convocatoria-notification-meta">
-                                <span>
-                                    <i class="bi bi-geo-alt"></i>
-                                    <?= $texto($payload['estado']) ?>
-                                </span>
-
-                                <span>
-                                    <i class="bi bi-check2-circle"></i>
-                                    <?= $payload['origen_tipo'] === 'manual' ? 'Relación manual · Sin formalización documental' : 'Formalizado ' . $texto($payload['fecha_recibido']) ?>
-                                </span>
-                            </span>
-
-                            <span class="crear-convocatoria-notification-file">
-                                <i class="bi bi-person-badge"></i>
-                                <?= $payload['origen_tipo'] === 'manual' ? 'Contacto:' : 'Analista:' ?> <?= $texto($payload['origen_tipo'] === 'manual' ? $payload['contacto'] : ($payload['analista'] !== '' ? $payload['analista'] : 'Sin asignar')) ?>
-                            </span>
-                            <span class="crear-convocatoria-notification-file"><?= $texto($payload['registro_programas'] ?: 'Sin programas de Registro') ?></span>
-                        </span>
-
-                        <span class="crear-convocatoria-notification-status">
-                            <span class="crear-convocatoria-state-badge"><?= $texto($payload['registro_estado']) ?></span>
-                            <span
-                                class="crear-convocatoria-attention-badge <?= $payload['estado_atencion'] === 'con_convocatoria' ? 'is-done' : 'is-pending' ?>"
-                                data-convenio-card-attention>
-                                <?= $texto($payload['estado_atencion_etiqueta']) ?>
-                            </span>
-
-                            <span class="crear-convocatoria-state-badge">
-                                <?= $texto($payload['estado']) ?>
-                            </span>
-
-                            <i class="bi bi-chevron-right"></i>
-                        </span>
-                    </button>
+                        )) ?>'>>
+                        <td><strong class="convenios-nombre"><?= $texto($payload['institucion']) ?></strong>
+                            <small><?= $texto($payload['municipio']) ?></small></td>
+                        <td><strong><?= $texto($payload['contacto'] ?: 'Sin contacto') ?></strong>
+                            <small><?= $texto($payload['correo_contacto'] ?: 'Sin correo') ?></small></td>
+                        <td><span class="convenios-programas"><?= $texto($payload['registro_programas'] ?: 'Sin programas de Registro') ?></span></td>
+                        <td><span class="convenios-etiqueta"><?= $payload['origen_tipo'] === 'manual' ? 'Relación manual' : 'Vinculación' ?></span>
+                            <small><?= $payload['origen_tipo'] === 'manual' ? 'Sin formalización documental' : 'Formalizado ' . $texto($payload['fecha_recibido']) ?></small></td>
+                        <td><span class="crear-convocatoria-state-badge"><?= $texto($payload['registro_estado']) ?></span></td>
+                        <td class="text-end"><span class="crear-convocatoria-attention-badge <?= $payload['estado_atencion'] === 'con_convocatoria' ? 'is-done' : 'is-pending' ?>" data-convenio-card-attention><?= $texto($payload['estado_atencion_etiqueta']) ?></span>
+                            <i class="bi bi-chevron-right convenios-fila-flecha" aria-hidden="true"></i></td>
+                    </tr>
                 <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
 
             <div
