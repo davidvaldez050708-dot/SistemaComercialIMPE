@@ -19,6 +19,10 @@ class PublicacionV2(unittest.TestCase):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.root=Path(self.tmp.name);self.site=self.root/"public_html";self.site.mkdir()
         (self.site/"index.php").write_text("<?php echo 1;")
+        for nombre_css in ("aliados.css", "convocatorias.css", "crear_convocatoria.css"):
+            css=self.site/"public"/"css"/nombre_css
+            css.parent.mkdir(parents=True,exist_ok=True)
+            css.write_text("/* Estilos personalizados de Hostinger, conservar */\n")
         self.old=b".t { color: blue; }\n"+(b"/* bloque conservado */\n"*12)+b"/* descripcion original */\n"
         self.new=self.old.replace(b"color: blue",b"color: navy")
         self.name="public/css/aliados-prueba.css"
@@ -102,6 +106,18 @@ class PublicacionV2(unittest.TestCase):
         local=old.replace(esperado,b"                                Categoria personalizada\n",1)
         with self.assertRaisesRegex(RuntimeError,"CONFLICTO"):
             mod.overlay_convocatorias(local,old,new)
+
+    def test_css_v2_extiende_sin_sobrescribir_tres_bases(self):
+        css_extra=(ROOT/"public/css/aliados_v2_extension.css").read_bytes()
+        self.assertIn(b"Complemento visual Aliados V2",css_extra)
+        for name in ("aliados.css","convocatorias.css","crear_convocatoria.css"):
+            path="public/css/"+name
+            base=subprocess.check_output(["git","show",mod.OLD+":"+path],cwd=str(ROOT))
+            desired=subprocess.check_output(["git","show",mod.SOURCE+":"+path],cwd=str(ROOT))
+            self.assertTrue(desired.startswith(base),path)
+            self.assertIn(desired[len(base):].strip(),css_extra,path)
+            self.assertNotIn(path,mod.SHAS,"No sobrescribir CSS existente")
+        self.assertIn("public/css/aliados_v2_extension.css",mod.SHAS)
 
     def test_fuente_fijada_reproduce_shas_git(self):
         actual=mod.SHAS
