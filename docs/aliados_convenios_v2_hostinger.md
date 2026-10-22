@@ -17,13 +17,15 @@ El publicador verifica SHA de **18 archivos** fijados al commit `1d9c1b9961403a7
 
 **Ejecutar --check primero; no aplicar con conflictos.**
 
+En Hostinger compartido, `node` puede no estar disponible en `PATH`. Esta versión permite `--check` sin Node y confirma los SHA de los scripts exactos. Un script JavaScript conciliado con personalizaciones ajenas bloquea `--apply` mientras no sea validado con Node.js fuera de Hostinger; no forzar su instalación ni suprimir el control.
+
 ```bash
 SITIO="$HOME/domains/fundacionrededumex.org/public_html"
 PAQUETE="$HOME/entregas-impe/aliados-convenios-v2"
 mkdir -p "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 chmod 700 "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
 curl -fL --proto '=https' --tlsv1.2 \
-"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/738442494a3bec01a1de03b9ea9187db604c69a0/tools/publicar_aliados_convenios_v2.py" \
+"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/f924b25bf8b2b1a3d33d715bb370ccaa8e58ba9b/tools/publicar_aliados_convenios_v2.py" \
 -o "$PAQUETE/publicar_aliados_convenios_v2.py"
 python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --check --site "$SITIO"
 ```
