@@ -34,6 +34,10 @@ assert.deepEqual(ids(api.filtrar(rows, '', 90)), [1]);
 assert.deepEqual(ids(api.filtrar(rows, 11, 91)), [4]);
 assert.deepEqual(ids(api.filtrar(rows, 25, 90)), [1]);
 assert.deepEqual(ids(api.filtrar(rows, 25, 999)), []);
+const agreements = [ {...c(90),estado_id:11}, {...c(91),estado_id:25}, {id:92,nombre:'Sin convocatoria',estado_id:11} ];
+assert.deepEqual(ids(api.convenios(rows, '', agreements)), [90,91,92]);
+assert.deepEqual(ids(api.convenios(rows, 11, agreements)), [90,91,92]);
+assert.deepEqual(api.filtrar(rows,11,92),[],'Un convenio sin convocatoria no pierde su identidad ni inventa asociaciones');
 assert.notEqual(api.etiqueta(rows[0]), api.etiqueta(rows[1]));
 assert.match(api.etiqueta(rows[0]), /#1/);
 const fields = {};
@@ -61,7 +65,7 @@ const full = id => ({ ...rows.find(x => x.id === id), imagen_sha: id === 3 ? '' 
 const ui = api.iniciar(doc, async url => {
     calls++;
     const match = url.match(/&id=(\d+)/);
-    if (!match) { return response({ ok: true, estados: [s(11), s(25)], convocatorias: rows }); }
+    if (!match) { return response({ ok: true, estados: [s(11), s(25)], convocatorias: rows, convenios: agreements }); }
     const id = Number(match[1]);
     if (delayNext) { delayNext = false; return new Promise(resolve => { delayed = () => resolve(response({ ok: true, convocatoria: full(id) })); }); }
     return response({ ok: true, convocatoria: full(id) });

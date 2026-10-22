@@ -55,7 +55,8 @@ with tempfile.TemporaryDirectory(prefix='impe-convocatorias-publish-') as tmp:
     run('--check');assert {f:digest(live/f) for f in files}==initial
     out=run('--apply');backup=re.search(r'^Respaldo: (.+)$',out,re.M)[1]
     for f in files:
-        assert norm((live/f).read_bytes())==(expected[f] if f in expected else norm((root/f).read_bytes())),f
+        # Instalador v1 congelado: su payload corresponde a esa entrega, no al reparador v2.
+        assert norm((live/f).read_bytes())==(expected[f] if f in expected else norm(old('2ba65dc4',f))),f
     assert all(digest(live/f)==h for f,h in preserved.items())
     assert digest(private/'mail_central.local.php')==private_before
     assert not (live/'tools').exists(),'No crea directorios de herramientas ajenos al payload'

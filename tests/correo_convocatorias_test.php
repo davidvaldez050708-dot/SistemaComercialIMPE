@@ -6,11 +6,18 @@ function cvCheck($ok,$message) { if(!$ok) { throw new RuntimeException($message)
 class CvDb
 {
     public $relation=true;
+    public $agreementFailure=false;
     public $rows=[];
     public function query($sql) {
         cvCheck(str_starts_with($sql,'SELECT'),'Modelo exclusivamente de lectura');
         if(str_contains($sql,'information_schema')) { return new MarketingRows([['total'=>$this->relation?1:0]]); }
         if(str_contains($sql,'FROM estados')) { return new MarketingRows([['id'=>11,'nombre'=>'Guanajuato'],['id'=>25,'nombre'=>'Sinaloa']]); }
+        if(str_contains($sql,'FROM aliados_asignaciones')) {
+            if($this->agreementFailure) { throw new RuntimeException('No registrar este contenido ficticio'); }
+            return new MarketingRows([
+            ['id'=>90,'nombre'=>'Convenio Alfa','estado_id'=>11,'referencia'=>'F-90'],
+            ['id'=>91,'nombre'=>'Convenio Beta','estado_id'=>25,'referencia'=>'F-91'],
+            ['id'=>92,'nombre'=>'Sin convocatoria','estado_id'=>11,'referencia'=>'F-92']]); }
         if(str_contains($sql,'FROM convocatoria_estados')) { return new MarketingRows([
             ['convocatoria_id'=>1,'id'=>11,'nombre'=>'Guanajuato'],['convocatoria_id'=>1,'id'=>25,'nombre'=>'Sinaloa'],
             ['convocatoria_id'=>2,'id'=>25,'nombre'=>'Sinaloa'],['convocatoria_id'=>3,'id'=>11,'nombre'=>'Guanajuato']]); }
@@ -44,6 +51,7 @@ try {
     $catalog=$composition->catalogo();
     cvCheck(count($catalog['convocatorias'])===3 && count($catalog['convocatorias'][0]['estados'])===2,'Cobertura múltiple y nombres repetidos conservados');
     cvCheck($catalog['convocatorias'][0]['convenios'][0]['id']===90 && !isset($catalog['convocatorias'][0]['imagen_ref']),'Relación real de convenio sin exponer rutas');
+    cvCheck(count($catalog['convenios'])===3 && $catalog['convenios'][2]['id']===92,'Convenios independientes de las relaciones con convocatorias');
     $selection=$composition->seleccionar(['convocatoria_id'=>1,'convocatoria_estado_id'=>11,'convocatoria_convenio_id'=>90]);
     $public=$composition->publico($selection);
     cvCheck($public['imagen_url']!=='' && !str_contains(json_encode($public),$fixture),'Vista previa autenticada por ID y versión');
@@ -91,6 +99,9 @@ try {
     cvCheck(!$composition->envio($selection,$transport)->enviar($input)['ok'] && $posts===3,'Imagen alterada no llega al transporte');
     $db->relation=false;$noRelations=(new CorreoConvocatoriaConsultaModel($db))->catalogo();
     cvCheck(!$noRelations['convenios_disponibles'] && $noRelations['convocatorias'][0]['convenios']===[],'Ausencia de tabla de relaciones no crea estructura ni inventa convenios');
+    cvCheck(count($noRelations['convenios'])===3,'Los convenios existentes no requieren relaciones de convocatoria');
+    $db->agreementFailure=true;$partial=(new CorreoConvocatoriaConsultaModel($db))->catalogo();
+    cvCheck(count($partial['estados'])===2 && count($partial['convocatorias'])===3 && $partial['avisos']===['CONVENIOS_CONSULTA_NO_DISPONIBLE'],'Un fallo de convenios no borra los otros catálogos y avisa sin datos internos');
     echo "OK: consultas de lectura, relaciones reales, cobertura múltiple, filtros manipulados, nombres repetidos, rutas/MIME, CID/bytes originales, adjunto manual, texto completo, sin imagen, cambio de imagen, borrador/propietario/historial y referencia inmutable. API/SQL simulados; sin recepción real.\n";
 } finally {
     foreach([$private,$fixture] as $dir) {

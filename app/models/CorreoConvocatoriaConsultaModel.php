@@ -53,8 +53,27 @@ class CorreoConvocatoriaConsultaModel
         $states=$this->filas('SELECT id, nombre FROM estados WHERE estado = 1 ORDER BY nombre, id');
         $rows=$this->completar($this->filas('SELECT id, titulo, imagen, estado FROM convocatorias WHERE estado = 1 ORDER BY titulo, id'));
         foreach($rows as &$row) { unset($row['imagen_ref']); }unset($row);
-        return ['estados'=>array_map(static fn($r)=>['id'=>(int)$r['id'],'nombre'=>(string)$r['nombre']],$states),'convocatorias'=>$rows,
+        $agreements=[];$warnings=[];
+        try { $agreements=$this->listarConvenios(); }
+        catch(Throwable $error) {
+            error_log('MAIL_CONVOCATORIAS_CONVENIOS exception='.get_class($error).' code='.(int)$error->getCode());
+            $warnings[]='CONVENIOS_CONSULTA_NO_DISPONIBLE';
+        }
+        return ['estados'=>array_map(static fn($r)=>['id'=>(int)$r['id'],'nombre'=>(string)$r['nombre']],$states),'convocatorias'=>$rows,'convenios'=>$agreements,'avisos'=>$warnings,
             'convenios_disponibles'=>$this->tieneRelaciones()];
+    }
+    public function listarConvenios(): array
+    {
+        // Misma fuente y reglas de CrearConvocatoriaModel::listarConveniosAliados,
+        // sin invocar sus métodos de CREATE TABLE ni exigir una convocatoria relacionada.
+        $rows=$this->filas("SELECT DISTINCT s.id, s.nombre_entidad AS nombre, s.estado_id, COALESCE(p.convenio_referencia, '') AS referencia
+            FROM aliados_asignaciones a INNER JOIN seguimientos_vinculacion s ON s.id = a.seguimiento_id
+            INNER JOIN estados e ON e.id = s.estado_id
+            LEFT JOIN seguimientos_vinculacion_post_envio p ON p.seguimiento_id = s.id
+            WHERE a.activo = 1 AND s.activo = 1 ORDER BY s.nombre_entidad, s.id");
+        $unique=[];
+        foreach($rows as $r) { $id=(int)$r['id'];$unique[$id]=['id'=>$id,'nombre'=>(string)$r['nombre'],'estado_id'=>(int)$r['estado_id'],'referencia'=>(string)$r['referencia']]; }
+        return array_values($unique);
     }
     public function buscar(int $id): ?array
     {

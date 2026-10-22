@@ -8,10 +8,13 @@ protected=['app/services/CorreoSalidaInstitucionalService.php','app/services/Cor
  'app/controllers/LoginController.php','app/models/UsuarioModel.php','app/views/auth/login.php','app/views/auth/recuperar_password.php',
  'config/mail_config.php','config/private_config.php','app/models/ConvocatoriaModel.php','app/models/CrearConvocatoriaModel.php',
  'app/controllers/ConvocatoriaController.php','app/controllers/CrearConvocatoriaController.php','index.php',
- 'public/css/global.css','public/css/correos_marketing.css']
+ 'public/css/global.css','public/css/correos_marketing.css','public/javascript/selectores_uniformes.js','public/css/marketing_selectores_uniformes.css']
 for f in protected:
     before=subprocess.check_output(['git','show','origin/main:'+f],cwd=root).replace(b'\r\n',b'\n')
     assert (root/f).read_bytes().replace(b'\r\n',b'\n')==before,'Archivo protegido modificado: '+f
+for f in ['app/controllers/CorreoMarketingController.php','app/services/CorreoConvocatoriaComposicion.php','app/views/correos/index.php','public/javascript/correos_marketing.js']:
+    before=subprocess.check_output(['git','show','2ba65dc4:'+f],cwd=root).replace(b'\r\n',b'\n')
+    assert (root/f).read_bytes().replace(b'\r\n',b'\n')==before,'La reparación altera composición, envío, borradores o diseño: '+f
 with tempfile.TemporaryDirectory(prefix='impe-cv-acceso-') as tmp:
     p=Path(tmp)/'test.php'
     p.write_text('''<?php

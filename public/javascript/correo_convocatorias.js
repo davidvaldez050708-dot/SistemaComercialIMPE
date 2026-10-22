@@ -9,9 +9,13 @@
         (!estado || row.estados.some(e => String(e.id) === String(estado))) &&
         (!convenio || row.convenios.some(c => String(c.id) === String(convenio)));
     const filtrar = (rows, estado, convenio) => rows.filter(row => coincide(row, estado, convenio));
-    const convenios = (rows, estado) => {
+    const convenios = (rows, estado, catalogo) => {
         const unique = new Map();
-        filtrar(rows, estado, '').forEach(row => row.convenios.forEach(c => unique.set(String(c.id), c)));
+        const relacionados = new Set(filtrar(rows, estado, '').flatMap(row => row.convenios.map(c => String(c.id))));
+        const disponibles = Array.isArray(catalogo) ? catalogo : rows.flatMap(row => row.convenios);
+        disponibles.forEach(c => {
+            if (!estado || String(c.estado_id) === String(estado) || relacionados.has(String(c.id))) { unique.set(String(c.id), c); }
+        });
         return Array.from(unique.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es') || a.id - b.id);
     };
     const etiqueta = row => [row.titulo, row.convenios.map(c => c.nombre).join(', '), row.estados.map(e => e.nombre).join(', '), '#' + row.id].filter(Boolean).join(' · ');
@@ -29,14 +33,45 @@
         const image = q('[data-convocatoria-imagen]');
         const caption = q('[data-convocatoria-caption]');
         const endpoint = 'index.php?controller=correoMarketing&action=convocatorias';
-        let rows = [], catalog = null, sequence = 0, abort = null, loading = false, ready = false;
+        let rows = [], agreements = null, catalog = null, sequence = 0, abort = null, loading = false, ready = false;
         const option = (value, label) => {
             const o = doc.createElement('option'); o.value = String(value); o.textContent = label; return o;
+        };
+        // El acabado global clona las opciones una sola vez. Actualizar únicamente
+        // los tres menús de convocatorias, conservando sus clases y el select original.
+        const uniform = field => {
+            const wrapper = field.nextElementSibling;
+            if (!wrapper?.matches?.('.uniform-select')) { return; }
+            const menu = wrapper.querySelector('.uniform-select-menu');
+            const trigger = wrapper.querySelector('[data-uniform-select-trigger]');
+            const label = wrapper.querySelector('[data-uniform-select-label]');
+            if (!menu || !trigger || !label) { return; }
+            const buttons = Array.from(field.options, (o, index) => {
+                const button = doc.createElement('button');
+                button.type = 'button'; button.className = 'uniform-select-option';
+                button.setAttribute('role', 'option'); button.setAttribute('data-uniform-select-value', o.value);
+                button.dataset.uniformSelectIndex = String(index); button.textContent = o.textContent;
+                button.disabled = Boolean(o.disabled); button.hidden = Boolean(o.hidden);
+                button.classList.toggle('is-selected', index === field.selectedIndex);
+                button.setAttribute('aria-selected', index === field.selectedIndex ? 'true' : 'false');
+                button.addEventListener('click', () => {
+                    if (field.disabled || button.disabled) { return; }
+                    const changed = field.selectedIndex !== index; field.selectedIndex = index;
+                    uniform(field);
+                    if (changed) { field.dispatchEvent(new Event('change', { bubbles: true })); }
+                });
+                return button;
+            });
+            menu.replaceChildren(...buttons);
+            label.textContent = field.options[field.selectedIndex]?.textContent || '';
+            trigger.disabled = Boolean(field.disabled); trigger.classList.toggle('is-placeholder', !field.value);
+            wrapper.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false');
         };
         const options = (field, values, placeholder, label) => {
             const prior = field.value;
             field.replaceChildren(option('', placeholder), ...values.map(r => option(r.id, label(r))));
             field.value = values.some(r => String(r.id) === prior) ? prior : '';
+            uniform(field);
         };
         const clearImage = () => {
             sequence++; abort?.abort(); loading = false; ready = false; sha.value = '';
@@ -53,7 +88,7 @@
             status.textContent = row?.imagen_mensaje || '';
         };
         const list = () => {
-            options(agreement, convenios(rows, state.value), 'Todos los convenios', c => c.nombre + (c.referencia ? ' · ' + c.referencia : '') + ' · #' + c.id);
+            options(agreement, convenios(rows, state.value, agreements), 'Todos los convenios', c => c.nombre + (c.referencia ? ' · ' + c.referencia : '') + ' · #' + c.id);
             const prior = select.value;
             const filtered = filtrar(rows, state.value, agreement.value);
             options(select, filtered, 'Selecciona una convocatoria', etiqueta);
@@ -63,18 +98,21 @@
         const load = () => {
             if (!catalog) {
                 state.disabled = agreement.disabled = select.disabled = true;
+                [state, agreement, select].forEach(uniform);
                 catalog = request(endpoint, { headers: { 'X-Requested-With': 'fetch' } }).then(async r => {
                     const data = await r.json();
                     if (!r.ok || !data.ok || !Array.isArray(data.convocatorias) || !Array.isArray(data.estados)) { throw new Error('Catálogo no disponible'); }
                     rows = data.convocatorias;
+                    agreements = Array.isArray(data.convenios) ? data.convenios : null;
                     options(state, data.estados, 'Todos los estados', e => e.nombre);
                     list();
+                    if (data.avisos?.includes('CONVENIOS_CONSULTA_NO_DISPONIBLE')) { status.textContent = 'Los estados y las convocatorias están disponibles; falta revisar la consulta de convenios.'; }
                     return data;
                 }).catch(() => {
                     catalog = null;
                     status.textContent = 'No fue posible cargar las convocatorias. Puedes redactar sin seleccionar una.';
                     return null;
-                }).finally(() => { state.disabled = agreement.disabled = select.disabled = false; });
+                }).finally(() => { state.disabled = agreement.disabled = select.disabled = false; [state, agreement, select].forEach(uniform); });
             }
             return catalog;
         };
@@ -94,7 +132,7 @@
             } finally { if (version === sequence) { loading = false; } }
         };
         const reset = () => {
-            clearImage(); state.value = ''; agreement.value = ''; select.value = ''; list(); status.textContent = '';
+            clearImage(); state.value = ''; uniform(state); agreement.value = ''; select.value = ''; list(); status.textContent = '';
         };
         modal.addEventListener('shown.bs.modal', load);
         modal.addEventListener('correo:convocatoria-limpiar', reset);
@@ -124,8 +162,9 @@
                 const oldState = row.estados.find(e => String(e.id) === stateId);
                 if (oldState) { state.appendChild(option(oldState.id, oldState.nombre)); }
             }
-            state.value = stateId; agreement.value = ''; list();
+            state.value = stateId; uniform(state); agreement.value = ''; list();
             agreement.value = String(row.filtro_convenio || ''); list(); select.value = String(row.id);
+            uniform(select);
             showImage(row); ready = true;
         });
         const detail = doc.getElementById('modalCorreoMarketingDetalle');
