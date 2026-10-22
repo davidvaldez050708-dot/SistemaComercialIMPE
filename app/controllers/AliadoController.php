@@ -16,7 +16,7 @@ class AliadoController
         $this->validarPermiso('aliados.ver');
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $esAdministrador = puedeConsultarAliadosNacional();
         $modeloAliado = new AliadoModel();
         $modeloSeguimiento = new SeguimientoVinculacionModel();
 
@@ -119,7 +119,7 @@ class AliadoController
         $this->validarPermiso('aliados.ver');
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $esAdministrador = puedeConsultarAliadosNacional();
         $estadoId = (int)($_GET['estado_id'] ?? 0);
         $modeloAliado = new AliadoModel();
         $modeloSeguimiento = new SeguimientoVinculacionModel();
