@@ -17,6 +17,36 @@ class AliadoRegistroService
     {
         return (bool)$this->db->query("SHOW TABLES LIKE 'formulario_aliado_registro'")->num_rows;
     }
+    /** Mapeo explícito: jamás equiparar Bachillerato General con Bachillerato 286. */
+    public static function clasificacionesPorPrograma(): array
+    {
+        return [
+            'bachillerato-286'=>['bachillerato|bachillerato-286'],
+            'bachillerato-2-anos'=>['bachillerato|bachillerato-2-anos'],
+            'ingles'=>['bachillerato|ingles'],
+            'ejecutivas'=>['titulacion|ejecutivas'],
+            'titulacion-experiencia-laboral'=>['titulacion|experiencia-laboral'],
+            'inscripciones-abiertas'=>['bachillerato|inscripciones-abiertas','titulacion|inscripciones-abiertas']
+        ];
+    }
+    public function opcionesConvocatoria(string $tipo,int $id): array
+    {
+        $this->autorizar('formularios_aliados.gestionar_enlaces');
+        if (strcasecmp((string)($_SESSION['rol']??''),'Marketing')!==0) throw new DomainException('Acceso exclusivo de Marketing.',403);
+        $detalle=$this->detalle($tipo,$id,true);
+        $nombres=[];
+        foreach ($detalle['catalogo'] as $programa) $nombres[$programa['codigo']]=$programa['nombre'];
+        $mapa=self::clasificacionesPorPrograma();
+        $opciones=[];
+        foreach ($detalle['programas'] as $codigo) {
+            if (!isset($nombres[$codigo])) continue;
+            foreach ($mapa[$codigo]??[] as $clase) {
+                $opciones[]=['codigo'=>$codigo,'nombre'=>$nombres[$codigo],'clasificacion'=>$clase];
+            }
+        }
+        $detalle['opciones_convocatoria']=$opciones;
+        return $detalle;
+    }
     public function catalogo(): array
     {
         return $this->db->query('SELECT codigo,nombre FROM formulario_programas WHERE activo=1 ORDER BY nombre')->fetch_all(MYSQLI_ASSOC);
