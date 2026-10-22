@@ -136,6 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
             formContacto.elements.contacto_id.value = '';
             formContacto.elements.nombre.value = 'Difusión';
             formContacto.elements.etiqueta.value = 'Difusión';
+            modalContactosEl.querySelector('[data-manual-editor-title]').textContent = 'Agregar número de difusión';
+            modalContactosEl.querySelector('[data-manual-contacto-limpiar]').classList.add('d-none');
         };
         const mostrarContactos = datos => {
             contactosActuales = Array.isArray(datos.contactos) ? datos.contactos : [];
@@ -151,26 +153,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 cleanNumber(c.telefono) === cleanNumber(sourceNumber) &&
                 Number(c.whatsapp_confirmado) === 1);
             sourceStatus.textContent = confirmed ? 'WhatsApp confirmado' : 'WhatsApp no confirmado';
-            sourceStatus.classList.toggle('is-ready',Boolean(confirmed));
+            sourceStatus.classList.toggle('is-confirmed',Boolean(confirmed));
+            sourceStatus.classList.toggle('is-unconfirmed',!confirmed);
             listaContactos.replaceChildren();
             if (!contactosActuales.length) return;
-            const heading = document.createElement('div');
-            heading.className = 'aliados-manual-channel-section';
-            const title = document.createElement('strong');
-            title.textContent = 'Números de difusión registrados';
-            heading.appendChild(title);
-            listaContactos.appendChild(heading);
             contactosActuales.forEach(c => {
                 const row = document.createElement('div');
-                row.className = 'aliados-manual-contact-row aliados-manual-channel-row';
+                row.className = 'aliados-contact-item';
+                const icon = document.createElement('span');
+                icon.className = 'aliados-contact-item-icon' + (Number(c.whatsapp_confirmado) === 1 ? ' is-whatsapp' : '');
+                const glyph = document.createElement('i');
+                glyph.className = Number(c.whatsapp_confirmado) === 1 ? 'bi bi-whatsapp' : 'bi bi-telephone';
+                glyph.setAttribute('aria-hidden','true');
+                icon.appendChild(glyph);
                 const text = document.createElement('div');
+                text.className = 'aliados-contact-item-copy';
                 const nombre = document.createElement('strong');
                 nombre.textContent = c.telefono || 'Sin teléfono';
-                const info = document.createElement('small');
+                const info = document.createElement('span');
                 info.textContent = c.etiqueta || c.nombre || 'Difusión';
                 text.append(nombre, info);
                 const flags = document.createElement('div');
-                flags.className = 'aliados-manual-channel-flags';
+                flags.className = 'aliados-contact-badges';
                 [
                     [c.whatsapp_confirmado, 'WhatsApp confirmado'],
                     [c.whatsapp_autorizado, 'Comunicación autorizada'],
@@ -178,16 +182,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 ].forEach(([active,label]) => {
                     if (Number(active) !== 1) return;
                     const tag = document.createElement('span');
-                    tag.className = 'aliados-manual-status-chip is-ready';
+                    tag.className = label === 'Preferido' ? 'is-preferred' : 'is-confirmed';
                     tag.textContent = label;
                     flags.appendChild(tag);
                 });
                 text.appendChild(flags);
                 const actions = document.createElement('div');
-                actions.className = 'd-flex gap-1 flex-wrap';
+                actions.className = 'aliados-contact-item-actions';
                 const edit = document.createElement('button');
-                edit.type = 'button'; edit.className = 'btn btn-system-light';
-                edit.textContent = 'Editar';
+                edit.type = 'button'; edit.className = 'btn aliados-btn-secondary';
+                edit.innerHTML = '<i class="bi bi-pencil" aria-hidden="true"></i> Editar';
                 edit.addEventListener('click', () => {
                     limpiarContacto();
                     formContacto.elements.nombre.value = c.nombre || 'Difusión';
@@ -196,14 +200,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     formContacto.elements.telefono.value = c.telefono || '';
                     formContacto.elements.etiqueta.value = c.etiqueta || c.nombre || 'Difusión';
                     formContacto.elements.contacto_id.value = c.id;
+                    modalContactosEl.querySelector('[data-manual-editor-title]').textContent = 'Editar contacto de difusión';
+                    modalContactosEl.querySelector('[data-manual-contacto-limpiar]').classList.remove('d-none');
                     ['whatsapp_autorizado','whatsapp_confirmado','preferido_difusion'].forEach(key => {
                         formContacto.elements[key].checked = Number(c[key]) === 1;
                     });
                     formContacto.elements.telefono.focus();
                 });
                 const remove = document.createElement('button');
-                remove.type = 'button'; remove.className = 'btn btn-system-light';
-                remove.textContent = 'Desactivar';
+                remove.type = 'button'; remove.className = 'aliados-contact-remove';
+                remove.title = 'Desactivar contacto de difusión';
+                remove.setAttribute('aria-label','Desactivar contacto de difusión');
+                remove.innerHTML = '<i class="bi bi-trash3" aria-hidden="true"></i>';
                 remove.addEventListener('click', async () => {
                     if (!confirm('¿Desactivar este canal sin borrar su historial?')) return;
                     const data = new FormData();
@@ -213,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     catch(e) { errorIn(errorContactos,e.message); aviso(e.message,'error'); }
                 });
                 actions.append(edit,remove);
-                row.append(text,actions);
+                row.append(icon,text,actions);
                 listaContactos.appendChild(row);
             });
         };
@@ -222,6 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
             limpiarContacto();
             formContacto.elements.telefono.value = sourceNumber;
             formContacto.elements.etiqueta.value = 'Difusión';
+            modalContactosEl.querySelector('[data-manual-editor-title]').textContent = 'Configurar número para difusión';
+            modalContactosEl.querySelector('[data-manual-contacto-limpiar]').classList.remove('d-none');
             formContacto.elements.telefono.focus();
         });
         const mostrarHistorial = (datos) => {
