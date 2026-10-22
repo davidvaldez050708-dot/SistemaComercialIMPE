@@ -4,6 +4,7 @@ on:
     paths:
       - 'app/views/telefonia/host.php'
       - 'public/javascript/telefonia_host.js'
+      - 'public/javascript/telefonia_transferencia_runtime.js'
       - 'tests/telefonia_ventas_fin_transferencia_inmediato.cjs'
       - '.github/workflows/ventas-fin-sip-transferido-100-150.yml'
       - 'tools/publicar_ventas_fin_sip_transferido_100_150_hostinger.sh'
@@ -20,6 +21,7 @@ jobs:
         run: |
           php -l app/views/telefonia/host.php
           node --check public/javascript/telefonia_host.js
+          node --check public/javascript/telefonia_transferencia_runtime.js
           node --check tests/telefonia_ventas_fin_transferencia_inmediato.cjs
           node tests/telefonia_ventas_fin_transferencia_inmediato.cjs
           node tests/telefonia_ventas_fin_sip_push_tardio.cjs
