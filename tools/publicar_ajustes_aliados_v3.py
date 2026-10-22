@@ -89,8 +89,8 @@ def overlay_convocatoria_controller(local, old, desired):
     old_norm=lf(old)
     desired_norm=lf(desired)
     local_norm=lf(local)
-    block_start=b"    /**\\n     * Crea una publicación real por programa autorizado"
-    anchor=b"    public function actualizar()\\n    {"
+    block_start=("    /**\n     * Crea una publicación real por programa autorizado").encode("utf-8")
+    anchor=b"    public function actualizar()\n    {"
     if desired_norm.count(block_start)!=1 or old_norm.count(block_start)!=0:
         raise RuntimeError(name+": marcador de método nuevo ambiguo")
     start=desired_norm.index(block_start)
@@ -122,8 +122,8 @@ def overlay_convocatoria_controller(local, old, desired):
     at=local_norm.index(anchor)
     # Guardar original byte por byte, incluyendo saltos CRLF y métodos propios.
     local_anchor=b"    public function actualizar()"
-    if b"\\r\\n" in local:
-        method=method.replace(b"\\n",b"\\r\\n")
+    if b"\r\n" in local:
+        method=method.replace(b"\n",b"\r\n")
     before=local.find(local_anchor)
     if before<0 or local.count(local_anchor)!=1:
         raise RuntimeError(name+": cabecera del método actualizar inesperada")
@@ -142,7 +142,7 @@ def overlay_convocatoria_model(local, old, desired):
     expected=lf(desired)
     live=lf(local)
     old_header=b"    public function crear($datos, $estadosIds)"
-    new_header=b"    /** Transacción común:"
+    new_header="    /** Transacción común:".encode("utf-8")
     after=b"    public function actualizar("
     old_start=previous.find(old_header)
     new_start=expected.find(new_header)
@@ -160,8 +160,8 @@ def overlay_convocatoria_model(local, old, desired):
     if live.count(old_method)!=1:
         raise RuntimeError(name+": crear() fue personalizado; no cambiarlo sin revisar diferencias")
     # Nada fuera de crear() puede ser alterado por esta conciliación.
-    local_method=old_method.replace(b"\\n",b"\\r\\n") if b"\\r\\n" in local else old_method
-    patched_method=new_method.replace(b"\\n",b"\\r\\n") if b"\\r\\n" in local else new_method
+    local_method=old_method.replace(b"\n",b"\r\n") if b"\r\n" in local else old_method
+    patched_method=new_method.replace(b"\n",b"\r\n") if b"\r\n" in local else new_method
     if local.count(local_method)!=1:
         raise RuntimeError(name+": definición crear() no coincide exactamente con la base")
     print("CONCILIACIÓN PUNTUAL: "+name+" (solo crear(); otras personalizaciones intactas)")
@@ -250,8 +250,8 @@ def prepare(site,stage):
         print("CONFLICTO DETECTADO: "+MODULE+"; se conserva sin cambios")
     if incompatibles:
         raise RuntimeError(
-            str(len(incompatibles))+" conflicto(s). SQL NO ejecutado; SITIO INTACTO.\\n - "+
-            "\\n - ".join(incompatibles)
+            str(len(incompatibles))+" conflicto(s). SQL NO ejecutado; SITIO INTACTO.\n - "+
+            "\n - ".join(incompatibles)
         )
     return plan
 def restore(site,backup):
