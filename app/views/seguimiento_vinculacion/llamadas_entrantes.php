@@ -150,8 +150,9 @@ $duracionEntrante = static function ($segundos) {
                     $seguimientoId = (int)($llamada['seguimiento_id'] ?? 0);
                     $grabacionInterna = $esInterna && $esWebrtc && !empty($llamada['grabacion_disponible']);
                     $audioInstitucionSaliente = !$esWebrtc && !$esInterna && !empty($llamada['grabacion_institucion_transferida']);
-                    $audioPbx = !$esWebrtc && !$esInterna && !empty($llamada['contestada']) &&
-                        (!empty($llamada['grabacion_pbx_reportada'])||$audioInstitucionSaliente);
+                    $audioPbx = !$esWebrtc && !$esInterna &&
+                        ($audioInstitucionSaliente ||
+                         (!empty($llamada['contestada']) && !empty($llamada['grabacion_pbx_reportada'])));
                     $audioInternoUrl = $grabacionInterna
                         ? BASE_URL . 'prueba_telefonia/api/grabacion_interna_analista.php?session_id=' . rawurlencode($pbxId)
                         : '';
