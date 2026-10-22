@@ -23,6 +23,9 @@ class PublicacionV2(unittest.TestCase):
             css=self.site/"public"/"css"/nombre_css
             css.parent.mkdir(parents=True,exist_ok=True)
             css.write_text("/* Estilos personalizados de Hostinger, conservar */\n")
+        original_js=self.site/"public/javascript/crear_convocatoria.js"
+        original_js.parent.mkdir(parents=True,exist_ok=True)
+        original_js.write_text("/* Modulo legado */ const a='data-convenio-notification'; const b='data-convenio-create-link';\n")
         self.old=b".t { color: blue; }\n"+(b"/* bloque conservado */\n"*12)+b"/* descripcion original */\n"
         self.new=self.old.replace(b"color: blue",b"color: navy")
         self.name="public/css/aliados-prueba.css"
