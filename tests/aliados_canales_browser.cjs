@@ -15,7 +15,7 @@ const output=env.IMPE_CANALES_OUTPUT,bootstrap=env.BOOTSTRAP_MODULE_PATH||path.j
 (async()=>{
  let browser,checks=0;const check=(value,label)=>{assert.ok(value,label);checks++;console.log('OK '+label);};
  try{
-  for(let i=0;i<70;i++){try{await fetch(base+'_fixture?role=contacts');break;}catch{await new Promise(r=>setTimeout(r,100));}}
+  for(let i=0;i<70;i++){try{const ready=await fetch(base+'_fixture?role=contacts');await ready.arrayBuffer();if(!ready.ok)throw new Error('Fixture no disponible');break;}catch{await new Promise(r=>setTimeout(r,100));}}
   browser=await chromium.launch({headless:true,...(env.PLAYWRIGHT_CHANNEL?{channel:env.PLAYWRIGHT_CHANNEL}:{})});
   const context=await browser.newContext(),page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
