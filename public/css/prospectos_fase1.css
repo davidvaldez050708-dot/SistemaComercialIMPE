@@ -1,0 +1,53 @@
+.prospectos-fase1{display:grid;gap:18px;min-width:0;max-width:100%}
+.prospectos-fase1.prospectos-access{max-width:620px;margin:10vh auto;padding:20px}
+.prospectos-fase1 [hidden]{display:none!important}
+.prospectos-fase1>*,.prospectos-fase1 .prospectos-panel{min-width:0;max-width:100%}
+.prospectos-fase1 .prospectos-message,.prospectos-fase1 .prospectos-loading{display:flex;align-items:center;gap:10px;margin:0;padding:13px 16px;border:1px solid #efcdca;border-radius:12px;background:#fff5f4;color:#913b35;font-size:12px;font-weight:600;line-height:1.5}
+.prospectos-fase1 .prospectos-loading{border-color:var(--color-border,#dfe5ef);background:#f3f7fd;color:var(--color-primary,#273a8a)}
+.prospectos-fase1 .prospectos-summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.prospectos-fase1 .aliados-summary-card{min-height:84px;padding:16px}
+.prospectos-fase1 .aliados-summary-card strong{font-size:24px}
+.prospectos-fase1 .aliados-summary-card span:not(.aliados-summary-icon){font-size:11px;line-height:1.4}
+.prospectos-fase1 .aliados-summary-card small{margin-top:3px;color:#913b35;font-size:10px}
+.prospectos-fase1 .prospectos-views{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:hidden;border:1px solid var(--color-border,#dfe5ef);border-radius:10px;background:#f3f6fa}
+.prospectos-fase1 .prospectos-view{display:flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:10px 14px;color:#718099;font-size:12px;font-weight:800;line-height:1.4;text-align:center;border:1px solid transparent;border-radius:9px}
+.prospectos-fase1 .prospectos-view+.prospectos-view{border-left-color:#e2e7ef}
+.prospectos-fase1 .prospectos-view.is-active{border-color:#5ec9aa;background:#f3fcf9;color:#07866f;box-shadow:inset 0 0 0 1px #07866f0a}
+.prospectos-fase1 .prospectos-view i{font-size:16px}
+.prospectos-fase1 .prospectos-state-toolbar{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px 24px}
+.prospectos-fase1 .prospectos-state-toolbar p{margin:5px 0 0}
+.prospectos-fase1 .prospectos-state-toolbar form{width:min(100%,400px)}
+.prospectos-fase1 label{display:block;margin-bottom:7px;color:var(--color-text-secondary,#617189);font-size:12px;font-weight:700}
+.prospectos-fase1 .prospectos-search-controls{display:flex;gap:10px;align-items:center}
+.prospectos-fase1 .module-search{flex:1;min-width:0}
+.prospectos-fase1 .module-search .form-control{min-width:0;width:100%;font-size:12px}
+.prospectos-fase1 .form-select{min-height:44px;font-size:12px;border:1px solid var(--color-border,#dfe5ef);border-radius:10px;color:var(--color-text-primary,#172642);background-color:#fff;max-width:100%}
+.prospectos-fase1 .btn-system-light{min-height:42px;font-size:12px;font-weight:700;white-space:nowrap}
+.prospectos-fase1 .prospectos-state-counter{margin:0;text-align:right;font-size:12px}
+.prospectos-fase1 .prospectos-state-card{display:flex;gap:18px;min-height:240px;text-decoration:none;color:inherit}
+.prospectos-fase1 .prospectos-state-card .data-card-heading{padding-right:118px}
+.prospectos-fase1 .prospectos-state-card .data-card-heading h3{font-size:16px;line-height:1.4;overflow-wrap:anywhere}
+.prospectos-fase1 .prospectos-state-card .data-state-image{width:100px;height:110px;right:20px;top:36px}
+.prospectos-fase1 .prospectos-state-card .data-state-image i{font-size:40px;color:var(--color-primary,#273a8a)}
+.prospectos-fase1 .prospectos-state-card .data-card-meta{margin:0 0 4px;padding-right:108px;gap:4px}
+.prospectos-fase1 .prospectos-state-card .data-card-meta dt{font-size:11px}
+.prospectos-fase1 .prospectos-state-card .data-card-meta dd{font-size:25px;font-weight:800;color:var(--color-primary,#273a8a)}
+.prospectos-fase1 .prospectos-state-card>.btn{margin-top:auto}
+.prospectos-fase1 .prospectos-empty-state{display:grid;justify-items:center;gap:10px;padding:28px 18px;text-align:center;white-space:normal}
+.prospectos-fase1 .prospectos-empty-state>i{font-size:28px;color:var(--color-primary,#273a8a)}
+.prospectos-fase1 .prospectos-empty-state h3{font-size:15px;font-weight:800;margin:0}
+.prospectos-fase1 .prospectos-empty-state p{margin:0}
+.prospectos-fase1 .prospectos-heading{margin-bottom:20px}
+.prospectos-fase1 .prospectos-state-navigation{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+.prospectos-fase1 .prospectos-state-navigation form{display:flex;align-items:center;gap:10px;flex:0 1 580px;min-width:0}
+.prospectos-fase1 .prospectos-state-navigation label{margin:0}
+.prospectos-fase1 .prospectos-state-navigation select{width:auto;min-width:180px;flex:1}
+.prospectos-fase1 .prospectos-state-navigation .uniform-select{width:auto;min-width:180px;max-width:340px;flex:1}
+.prospectos-fase1 .prospectos-list-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:16px;align-items:end;margin-bottom:20px}
+.prospectos-fase1 .prospectos-table-wrap{min-width:0;max-width:100%;overscroll-behavior-x:contain;border:1px solid var(--color-border,#dfe5ef);border-radius:12px}
+.prospectos-fase1 .prospectos-pagination{flex-wrap:wrap;justify-content:flex-end;gap:10px;line-height:1.5}
+.prospectos-fase1 a:focus-visible,.prospectos-fase1 button:focus-visible,.prospectos-fase1 input:focus-visible,.prospectos-fase1 select:focus-visible,.prospectos-fase1 .prospectos-table-wrap:focus-visible{outline:2px solid var(--color-primary,#273a8a);outline-offset:3px}
+@media(min-width:768px) and (max-width:1199.98px){.prospectos-fase1 .prospectos-state-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:991.98px){.prospectos-fase1 .prospectos-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.prospectos-fase1 .prospectos-state-toolbar{align-items:stretch;flex-direction:column;gap:16px}.prospectos-fase1 .prospectos-state-toolbar form{width:100%}}
+@media(max-width:767.98px){.prospectos-fase1{gap:14px}.prospectos-fase1 .prospectos-state-grid{grid-template-columns:minmax(0,1fr)}.prospectos-fase1 .prospectos-list-filters{grid-template-columns:minmax(0,1fr)}.prospectos-fase1 .prospectos-list-filters>button{justify-self:start}.prospectos-fase1 .prospectos-state-toolbar{padding:18px}.prospectos-fase1 .prospectos-state-navigation{gap:10px;flex-wrap:nowrap}.prospectos-fase1 .prospectos-state-navigation form{flex:1}.prospectos-fase1 .prospectos-state-navigation label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.prospectos-fase1 .prospectos-state-navigation select,.prospectos-fase1 .prospectos-state-navigation .uniform-select{min-width:0;max-width:none;flex:1}.prospectos-fase1 .aliados-summary-card{padding:12px;gap:8px}.prospectos-fase1 .aliados-summary-card strong{font-size:22px}.prospectos-fase1 .aliados-summary-icon{width:30px;height:30px;font-size:14px}.prospectos-fase1 .prospectos-total{display:flex;align-items:center;gap:8px;padding:6px 10px;min-width:0}.prospectos-fase1 .prospectos-total strong{font-size:20px}.prospectos-fase1 .prospectos-heading-main{gap:10px}.prospectos-fase1 .prospectos-icon{width:40px;height:40px;font-size:20px}.prospectos-fase1 .prospectos-heading h2{font-size:16px}}
+@media(prefers-reduced-motion:reduce){.prospectos-fase1 .data-territorial-card{transition:none;transform:none}}
