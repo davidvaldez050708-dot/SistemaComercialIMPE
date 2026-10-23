@@ -50,7 +50,10 @@ else
  php -r '
  $s=file_get_contents($argv[1]);
  $b=base64_decode("PD9waHAgaWYgKChpbnQpKCRfU0VTU0lPTlsncm9sX2lkJ10gPz8gMCkgPT09IDEpOiA/Pgo8c2VjdGlvbiBjbGFzcz0iZGFzaGJvYXJkLXBhbmVsIG1iLTMiIHN0eWxlPSJwYWRkaW5nOjIwcHgiPgogPGRpdiBjbGFzcz0iZC1mbGV4IGFsaWduLWl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNvbnRlbnQtYmV0d2VlbiBmbGV4LXdyYXAgZ2FwLTMiPgogIDxkaXY+PHNwYW4gY2xhc3M9InRleHQtbXV0ZWQgdGV4dC11cHBlcmNhc2UiPjxpIGNsYXNzPSJiaSBiaS1nbG9iZS1hbWVyaWNhcyI+PC9pPiBDb2JlcnR1cmEgaW50ZXJuYWNpb25hbDwvc3Bhbj4KICA8aDIgY2xhc3M9InBhbmVsLXRpdGxlIG10LTIgbWItMSI+QWxpYWRvcyBleHRlcm5vczwvaDI+CiAgPHAgY2xhc3M9InRleHQtbXV0ZWQgbWItMCI+Q29uc3VsdGEgSGFuZGx5IExlbmd1YWplIENlbnRlciB5IG90cm9zIGFsaWFkb3Mgc2luIGFzaWduYWNpw7NuIHRlcnJpdG9yaWFsIG1leGljYW5hLCBzdXMgZW5sYWNlcyBleGNsdXNpdm9zIHkgbGFzIHJlc3B1ZXN0YXMgcmVjaWJpZGFzLjwvcD48L2Rpdj4KICA8YSBjbGFzcz0iYnRuIGJ0bi1zeXN0ZW0tc2F2ZSIgaHJlZj0iPD89IEJBU0VfVVJMID8+aW5kZXgucGhwP2NvbnRyb2xsZXI9YWxpYWRvJmFtcDthY3Rpb249aW50ZXJuYWNpb25hbGVzIj48aSBjbGFzcz0iYmkgYmktYXJyb3ctdXAtcmlnaHQtY2lyY2xlIj48L2k+IFZlciBhbGlhZG9zIGludGVybmFjaW9uYWxlczwvYT4KIDwvZGl2Pgo8L3NlY3Rpb24+Cjw/cGhwIGVuZGlmOyA/Pg==",true);
- $count=substr_count($s,$b);
+ // Admitir sólo las dos condiciones de presentación observadas.
+ $variants=[$b,"<?php if (AliadoInternacionalService::puedeConsultar()): ?>".substr($b,strpos($b,"\n"))];
+ $count=0;
+ foreach($variants as $variant){$hits=substr_count($s,$variant);if($hits)$b=$variant;$count+=$hits;}
  $markers=["Cobertura internacional","Aliados externos","Ver aliados internacionales"];
  if($count===0){
    foreach($markers as $marker){if(stripos($s,$marker)!==false){fwrite(STDERR,"Tarjeta con estructura distinta: requiere revisión del bloque.\n");exit(2);}}

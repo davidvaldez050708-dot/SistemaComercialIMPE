@@ -15,58 +15,67 @@ assert changed==[file],changed
 a=old.index(b"<?php if ((int)($_SESSION['rol_id'] ?? 0) === 1): ?>");b=old.index(b'<?php endif; ?>',a)+len(b'<?php endif; ?>')
 assert new==old[:a]+old[b:]
 block=old[a:b]
-for eol in [b'\n',b'\r\n']:
- with tempfile.TemporaryDirectory(prefix='impe-aliados-cobertura-test-') as td:
-  base=Path(td);live=base/'public_html';live.mkdir();target=live/file;target.parent.mkdir(parents=True)
-  original=old.replace(b'\n',eol);expected=new.replace(b'\n',eol);target.write_bytes(original)
-  (live/'index.php').write_text('<?php // sitio ficticio',encoding='utf-8')
-  secrets={}
-  for name in ['config/mail_central.local.php','config/password_reset_mail.local.php','app/services/CorreoHostingerApiService.php','public/javascript/correos_marketing.js','public/css/convocatorias.css','app/views/layout/sidebar.php','app/views/dashboard/marketing_indicadores.php','app/views/dashboard/analista.php','app/controllers/AliadoController.php','app/models/AliadoModel.php','app/views/aliados/estado.php','app/views/aliados/internacionales.php']:
-   p=live/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('SECRETO FICTICIO INTACTO',encoding='utf-8');secrets[p]=digest(p)
-  env=os.environ.copy();env['PATH']=phpdir+os.pathsep+env['PATH'];env['IMPE_CORREOS_PUBLIC']=live.as_posix();env['IMPE_CORREOS_BACKUPS']=(base/'backups').as_posix()
-  def run(*args,ok=True):
-   r=subprocess.run([bash,script.as_posix(),*args],cwd=root,env=env,capture_output=True,text=True,timeout=30)
-   assert (r.returncode==0)==ok,r.stdout+r.stderr
-   return r.stdout
-  run('--check');assert target.read_bytes()==original;assert not (base/'backups').exists()
-  result=run('--apply');backup=re.search(r'^Respaldo: (.+)$',result,re.M)[1]
-  assert target.read_bytes()==expected
-  assert 'ya aplicado' in run('--apply');assert len(list((base/'backups').iterdir()))==1
-  target.write_bytes(expected+b'/* personalizacion posterior */');run('--restore',backup,ok=False)
-  assert target.read_bytes().endswith(b'/* personalizacion posterior */');target.write_bytes(expected)
-  run('--restore',backup);assert target.read_bytes()==original;assert 'ya restaurado' in run('--restore',backup)
-  # Respaldos fuera de la carpeta prevista no se aplican.
-  run('--restore',str(base),ok=False)
-  # Personalizaciones fuera del bloque: conservar cada byte, incluso sin salto final.
-  custom_prefix=b'<!-- Vista personalizada de Hostinger -->'+eol
-  custom_suffix=eol+b'<aside>Contenido local que se conserva</aside>'
-  customized=custom_prefix+original.rstrip(b'\r\n')+custom_suffix
-  expected_custom=custom_prefix+expected.rstrip(b'\r\n')+custom_suffix
-  target.write_bytes(customized)
-  run('--check');assert target.read_bytes()==customized
-  result=run('--apply');custom_backup=re.search(r'^Respaldo: (.+)$',result,re.M)[1]
-  assert target.read_bytes()==expected_custom
-  assert 'tarjeta ausente' in run('--apply');assert target.read_bytes()==expected_custom
-  run('--restore',custom_backup);assert target.read_bytes()==customized
-  # Ningún bloque ambiguo, modificado, inerte o con PHP inválido se publica.
-  invalid=[
-   old+block,
-   old.replace(b'Aliados externos',b'Aliados externos personalizados'),
-   new+b'<!-- Cobertura internacional -->',
-   b'<?php /*\n'+block+b'\n*/ ?>\n'+new,
-   b"<?php $text = <<<'CARD'\n"+block+b'\nCARD; ?>\n'+new,
-   old+b'<?php if (',
-   b'<?php echo "Otra vista"; ?>',
-  ]
-  for candidate in invalid:
-   candidate=candidate.replace(b'\n',eol);target.write_bytes(candidate)
-   backups_before=list((base/'backups').iterdir())
-   run('--check',ok=False);run('--apply',ok=False)
-   assert target.read_bytes()==candidate
-   assert list((base/'backups').iterdir())==backups_before
-  # Mezclar CRLF y LF no convierte silenciosamente la vista.
-  mixed=old.replace(b'\n',b'\r\n',1);target.write_bytes(mixed)
-  run('--apply',ok=False);assert target.read_bytes()==mixed
-  assert all(digest(p)==h for p,h in secrets.items())
-  assert sorted(p.relative_to(live).as_posix() for p in live.rglob('*') if p.is_file())==sorted([file,'index.php']+[p.relative_to(live).as_posix() for p in secrets])
-print('OK: check sin escritura, apply sólo bloque exacto, personalizaciones conservadas byte a byte, restore exacto, LF/CRLF, idempotencia y rechazo de bloques ambiguos/inertes/modificados; secretos y servicios ficticios intactos.')
+condition=block.split(b'\n',1)[0]
+service_condition=b'<?php if (AliadoInternacionalService::puedeConsultar()): ?>'
+service_block=service_condition+block[len(condition):]
+service_source=old.replace(block,service_block)
+for source in [old,service_source]:
+ fixture_block=block if source==old else service_block
+ for eol in [b'\n',b'\r\n']:
+  with tempfile.TemporaryDirectory(prefix='impe-aliados-cobertura-test-') as td:
+   base=Path(td);live=base/'public_html';live.mkdir();target=live/file;target.parent.mkdir(parents=True)
+   original=source.replace(b'\n',eol);expected=new.replace(b'\n',eol);target.write_bytes(original)
+   (live/'index.php').write_text('<?php // sitio ficticio',encoding='utf-8')
+   secrets={}
+   for name in ['config/mail_central.local.php','config/password_reset_mail.local.php','app/services/CorreoHostingerApiService.php','app/services/AliadoInternacionalService.php','public/javascript/correos_marketing.js','public/css/convocatorias.css','app/views/layout/sidebar.php','app/views/dashboard/marketing_indicadores.php','app/views/dashboard/analista.php','app/controllers/AliadoController.php','app/models/AliadoModel.php','app/views/aliados/estado.php','app/views/aliados/internacionales.php']:
+    p=live/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('SECRETO FICTICIO INTACTO',encoding='utf-8');secrets[p]=digest(p)
+   env=os.environ.copy();env['PATH']=phpdir+os.pathsep+env['PATH'];env['IMPE_CORREOS_PUBLIC']=live.as_posix();env['IMPE_CORREOS_BACKUPS']=(base/'backups').as_posix()
+   def run(*args,ok=True):
+    r=subprocess.run([bash,script.as_posix(),*args],cwd=root,env=env,capture_output=True,text=True,timeout=30)
+    assert (r.returncode==0)==ok,r.stdout+r.stderr
+    return r.stdout
+   run('--check');assert target.read_bytes()==original;assert not (base/'backups').exists()
+   result=run('--apply');backup=re.search(r'^Respaldo: (.+)$',result,re.M)[1]
+   assert target.read_bytes()==expected
+   assert 'ya aplicado' in run('--apply');assert len(list((base/'backups').iterdir()))==1
+   target.write_bytes(expected+b'/* personalizacion posterior */');run('--restore',backup,ok=False)
+   assert target.read_bytes().endswith(b'/* personalizacion posterior */');target.write_bytes(expected)
+   run('--restore',backup);assert target.read_bytes()==original;assert 'ya restaurado' in run('--restore',backup)
+   # Respaldos fuera de la carpeta prevista no se aplican.
+   run('--restore',str(base),ok=False)
+   # Personalizaciones fuera del bloque: conservar cada byte, incluso sin salto final.
+   custom_prefix=b'<!-- Vista personalizada de Hostinger -->'+eol
+   custom_suffix=eol+b'<aside>Contenido local que se conserva</aside>'
+   customized=custom_prefix+original.rstrip(b'\r\n')+custom_suffix
+   expected_custom=custom_prefix+expected.rstrip(b'\r\n')+custom_suffix
+   target.write_bytes(customized)
+   run('--check');assert target.read_bytes()==customized
+   result=run('--apply');custom_backup=re.search(r'^Respaldo: (.+)$',result,re.M)[1]
+   assert target.read_bytes()==expected_custom
+   assert 'tarjeta ausente' in run('--apply');assert target.read_bytes()==expected_custom
+   run('--restore',custom_backup);assert target.read_bytes()==customized
+   # Ningún bloque ambiguo, modificado, inerte o con PHP inválido se publica.
+   invalid=[
+    source+block,
+    source+service_block,
+    source.replace(condition,service_condition+b" ") if source==old else source.replace(service_condition,service_condition+b" "),
+    source.replace(condition,b'<?php if (AliadoInternacionalService::otroMetodo()): ?>') if source==old else source.replace(service_condition,b'<?php if (AliadoInternacionalService::otroMetodo()): ?>'),
+    source.replace(b'Aliados externos',b'Aliados externos personalizados'),
+    new+b'<!-- Cobertura internacional -->',
+    b'<?php /*\n'+fixture_block+b'\n*/ ?>\n'+new,
+    b"<?php $text = <<<'CARD'\n"+fixture_block+b'\nCARD; ?>\n'+new,
+    source+b'<?php if (',
+    b'<?php echo "Otra vista"; ?>',
+   ]
+   for candidate in invalid:
+    candidate=candidate.replace(b'\n',eol);target.write_bytes(candidate)
+    backups_before=list((base/'backups').iterdir())
+    run('--check',ok=False);run('--apply',ok=False)
+    assert target.read_bytes()==candidate
+    assert list((base/'backups').iterdir())==backups_before
+   # Mezclar CRLF y LF no convierte silenciosamente la vista.
+   mixed=source.replace(b'\n',b'\r\n',1);target.write_bytes(mixed)
+   run('--apply',ok=False);assert target.read_bytes()==mixed
+   assert all(digest(p)==h for p,h in secrets.items())
+   assert sorted(p.relative_to(live).as_posix() for p in live.rglob('*') if p.is_file())==sorted([file,'index.php']+[p.relative_to(live).as_posix() for p in secrets])
+print('OK: check sin escritura, apply sólo bloque exacto (rol y servicio Hostinger), personalizaciones conservadas byte a byte, restore exacto, LF/CRLF, idempotencia y rechazo de bloques ambiguos/inertes/modificados; secretos y servicios ficticios intactos.')
