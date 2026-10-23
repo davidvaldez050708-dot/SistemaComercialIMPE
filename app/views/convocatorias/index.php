@@ -780,6 +780,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/convocatorias_aliado_multiprograma_v3.css?v=<?= substr(hash_file('sha256', __DIR__.'/../../../public/css/convocatorias_aliado_multiprograma_v3.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/convocatorias_gestion_v5.css?v=<?= substr(hash_file('sha256', __DIR__.'/../../../public/css/convocatorias_gestion_v5.css'),0,16) ?>">
 <script src="<?= BASE_URL ?>public/javascript/convocatorias_gestion_v5.js?v=<?= substr(hash_file('sha256', __DIR__.'/../../../public/javascript/convocatorias_gestion_v5.js'),0,16) ?>"></script>
 <div class="convocatoria-territory-context">
@@ -1009,10 +1010,10 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         </div>
     </form>
 
-    <nav class="convocatoria-modalities" aria-label="Modalidades educativas">
-        <button type="button" class="convocatoria-modality" data-v5-modalidad="" aria-pressed="<?= $clasificacionFiltroActual === '' ? 'true' : 'false' ?>">Todas las modalidades <strong data-v5-count=""></strong></button>
+    <nav class="convocatoria-status-tabs convocatoria-modalities" aria-label="Modalidades educativas">
+        <button type="button" class="convocatoria-status-tab convocatoria-modality" data-v5-modalidad="" aria-pressed="<?= $clasificacionFiltroActual === '' ? 'true' : 'false' ?>">Todas las modalidades <strong data-v5-count=""></strong></button>
         <?php foreach ($clasificacionesDisponibles as $modalidad): ?>
-        <button type="button" class="convocatoria-modality" data-v5-modalidad="<?= $texto($modalidad['valor']) ?>" aria-pressed="<?= $clasificacionFiltroActual === $modalidad['valor'] ? 'true' : 'false' ?>"><?= $texto($modalidad['etiqueta'] === 'Ejecutivas' ? 'Titulación ejecutiva' : $modalidad['etiqueta']) ?> <strong data-v5-count="<?= $texto($modalidad['valor']) ?>"></strong></button>
+        <button type="button" class="convocatoria-status-tab convocatoria-modality" data-v5-modalidad="<?= $texto($modalidad['valor']) ?>" aria-pressed="<?= $clasificacionFiltroActual === $modalidad['valor'] ? 'true' : 'false' ?>"><?= $texto($modalidad['etiqueta'] === 'Ejecutivas' ? 'Titulación ejecutiva' : $modalidad['etiqueta']) ?> <strong data-v5-count="<?= $texto($modalidad['valor']) ?>"></strong></button>
         <?php endforeach; ?>
     </nav>
     <div
@@ -3200,7 +3201,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ((Number(convocatoria.estado) === 1) ? 'Activa' : 'Inactiva') +
                     '</div></div></div>';
 
-                detalleContenido.insertAdjacentHTML('beforeend', window.IMPEConvocatoriasV5.detail(convocatoria));
+                detalleContenido.querySelector('.user-detail-tab-content').insertAdjacentHTML('beforeend', window.IMPEConvocatoriasV5.detail(convocatoria));
                 detalleOffcanvas.show();
             } catch (error) {
                 detalleContenido.innerHTML = '<div class="alert alert-danger">' + escapeHtml(error.message) + '</div>';
@@ -3253,6 +3254,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.alert(error.message);
             }
     };
+
+    document.addEventListener('impe:editar-convocatoria',event=>{const id=Number(event.detail?.id);if(Number.isSafeInteger(id)&&id>0)manejarEditarConvocatoria.call({dataset:{id:String(id)}});});
 
     vincularAccionesConvocatorias();
 
@@ -3363,7 +3366,7 @@ document.addEventListener('DOMContentLoaded', function () {
     ) ?>;
     let modalidadesActuales = <?= json_encode($resumenModalidades ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const actualizarModalidades = () => {
-        document.querySelectorAll('[data-v5-modalidad]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.v5Modalidad === String(filtroClasificacion?.value || ''))));
+        document.querySelectorAll('[data-v5-modalidad]').forEach(button => {const selected=button.dataset.v5Modalidad === String(filtroClasificacion?.value || '');button.setAttribute('aria-pressed',String(selected));button.classList.toggle('is-active',selected);});
         document.querySelectorAll('[data-v5-count]').forEach(count => {
             const code = count.dataset.v5Count;
             count.textContent = String(code ? (modalidadesActuales[code]?.[vistaConvocatorias] || 0) : Object.values(modalidadesActuales).reduce((sum,c)=>sum + (c[vistaConvocatorias] || 0),0));
