@@ -418,6 +418,10 @@ $texto = static fn($valor) => htmlspecialchars(
                         <button type="button" class="btn btn-link btn-sm px-0" data-convocatoria-limpiar>Limpiar filtros y selección</button>
                         <div class="form-text" role="status" aria-live="polite" data-convocatoria-status></div>
                         <input type="hidden" name="convocatoria_imagen_sha" data-convocatoria-imagen-sha>
+                        <figure class="correo-marketing-convocatoria-preview d-none" data-convocatoria-preview>
+                            <img class="img-fluid" alt="Imagen de la convocatoria seleccionada" data-convocatoria-imagen>
+                            <figcaption class="form-text" data-convocatoria-caption></figcaption>
+                        </figure>
                     </div>
 
                     <div class="mb-3">
@@ -474,11 +478,6 @@ $texto = static fn($valor) => htmlspecialchars(
                             data-marketing-mail-body
                             required></textarea>
                     </div>
-
-                    <figure class="mb-3 d-none" data-convocatoria-preview>
-                        <img class="img-fluid" style="display:block;max-width:100%;height:auto" alt="Imagen de la convocatoria seleccionada" data-convocatoria-imagen>
-                        <figcaption class="form-text" data-convocatoria-caption></figcaption>
-                    </figure>
 
                     <div class="mb-3 d-none" data-convocatoria-enlace>
                         <p class="mb-1 fw-semibold" data-convocatoria-enlace-titulo></p>

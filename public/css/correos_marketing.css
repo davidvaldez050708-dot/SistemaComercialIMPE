@@ -1229,6 +1229,19 @@
     font-weight: 700;
 }
 
+/* Vista previa de convocatoria: sólo presentación dentro de Redactar correo. */
+#modalCorreoMarketing .correo-marketing-convocatoria-preview {
+    margin: 10px 0 0;
+}
+
+#modalCorreoMarketing .correo-marketing-convocatoria-preview img {
+    display: block;
+    width: 300px;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
 /* Redactar correo: escala de los formularios institucionales (dashboard.css).
    Manrope se hereda de global.css; sólo tipografía, sin cambiar contenedores. */
 #modalCorreoMarketing {
