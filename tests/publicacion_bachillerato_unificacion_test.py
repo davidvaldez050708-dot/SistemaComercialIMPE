@@ -46,6 +46,48 @@ class PublicacionUnificacion(base.ConveniosDetalleSelectivo):
         self.assertNotEqual(changed,originals[name]);(self.site/name).write_bytes(changed);originals[name]=changed
         self.assertIn('CONFLICTO',self.run_tool('--apply',ok=False));self.verify_originals(originals)
 
+    def test_modelo_solo_tres_lineas_con_codigo_hostinger(self):
+        spec=importlib.util.spec_from_file_location('union_overlay',str(ROOT/'tools/publicar_bachillerato_unificado.py'))
+        union=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(union)
+        core=union.load_core()
+        row=next(r for r in self.manifest['files'] if r['path']=='app/models/ConvocatoriaModel.php')
+        for source in (unpack(row['base']),unpack(row['variants'][0]['base'])):
+            # Simulates real customization near BOTH injection points.
+            self.assertEqual(source.count(b'        $esInscripcionesAbiertas ='),2)
+            current=source.replace(
+                b'        $esInscripcionesAbiertas =',
+                b'        // Personalizacion productiva: conservar callback y lote.\n        $esInscripcionesAbiertas =')
+            for crlf in (False,True):
+                with self.subTest(source=len(source),crlf=crlf):
+                    original=current.replace(b'\n',b'\r\n') if crlf else current
+                    candidate=union.overlay_modelo_con_verificacion(row,original,core)
+                    expected=union.overlay_modelo_convocatoria(original)
+                    self.assertEqual(candidate,expected)
+                    self.assertEqual(candidate.count(b'ProgramaEducativo::entrada($datos)'),2)
+                    self.assertIn(b'Personalizacion productiva',candidate)
+                    self.assertEqual(union.overlay_modelo_convocatoria(candidate),candidate)
+                    # Removing the 3 exact hooks must recover the original bytes.
+                    reduced=candidate.replace(
+                        b"require_once __DIR__ . '/../helpers/ProgramaEducativo.php';"+(b'\r\n' if crlf else b'\n'),b'')
+                    reduced=re.sub(br'(?m)^[ \t]*\$datos = ProgramaEducativo::entrada\(\$datos\);[ \t]*\r?\n',b'',reduced)
+                    self.assertEqual(reduced,original)
+
+    def test_modelo_overlay_rechaza_estructura_incierta(self):
+        spec=importlib.util.spec_from_file_location('union_overlay',str(ROOT/'tools/publicar_bachillerato_unificado.py'))
+        union=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(union)
+        row=next(r for r in self.manifest['files'] if r['path']=='app/models/ConvocatoriaModel.php')
+        original=unpack(row['base'])
+        for changed in (
+            original.replace(b'public function actualizar(',b'public function editarNoRevisado(',1),
+            original.replace(b'public function crear(',b'public function crear('+
+                             b'$datos, $estadosIds) {}\n    public function crear(',1),
+            original.replace(b"require_once __DIR__ . '/../../config/db_connection.php';",b'/* conexion personalizada no revisada */',1),
+        ):
+            with self.assertRaises(RuntimeError):
+                union.overlay_modelo_convocatoria(changed)
+
     def test_dependencia_primero(self):
         self.assertEqual(self.manifest['files'][0]['path'],'app/helpers/ProgramaEducativo.php')
 
