@@ -379,6 +379,8 @@
     function markDirty() {
       if(!serverReady)return;
       dirty=true;
+      // Ningún PNG ni guardado deben usar la previsualización anterior.
+      exporting(false);
       saveMessage('Cambios sin guardar');
     }
     function message(value,error=false){status.textContent=value;status.dataset.error=error?'1':'0';}
