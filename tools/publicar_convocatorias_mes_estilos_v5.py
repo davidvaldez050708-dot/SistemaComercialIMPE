@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 RELEASE='convocatorias-v5-mes-selector-visual-20261023'
-VIEW='app/views/convocatorias/index.php'
+FILES={'app/views/convocatorias/index.php','public/css/convocatorias_gestion_v5.css'}
 
 
 def main():
@@ -25,20 +25,20 @@ def main():
         if manifest.get('source')!=RELEASE:
             raise RuntimeError('Entrega desconocida. SITIO INTACTO.')
         files=manifest.get('files',[])
-        if len(files)!=1 or files[0].get('path')!=VIEW:
-            raise RuntimeError('El paquete visual debe modificar sólo la vista. SITIO INTACTO.')
+        if len(files)!=2 or {row.get('path') for row in files}!=FILES:
+            raise RuntimeError('El paquete visual debe modificar sólo la vista y su CSS. SITIO INTACTO.')
         site=Path(args.site).resolve()
-        item=files[0]
-        old=core.unpack(item['base'])
-        new=core.unpack(item['target'])
-        if old is None or core.sha(new)!=item['sha256']:
-            raise RuntimeError('Paquete corrupto. SITIO INTACTO.')
-        target=core.target(site,VIEW)
-        if not target.is_file():
-            raise RuntimeError('Vista ausente. SITIO INTACTO.')
-        current=target.read_bytes()
-        if core.lf(current) not in (core.lf(old),core.lf(new)):
-            raise RuntimeError('CONFLICTO: vista Hostinger personalizada después del último despliegue. SITIO INTACTO.')
+        for item in files:
+            old=core.unpack(item['base'])
+            new=core.unpack(item['target'])
+            if old is None or core.sha(new)!=item['sha256']:
+                raise RuntimeError('Paquete corrupto. SITIO INTACTO.')
+            target=core.target(site,item['path'])
+            if not target.is_file():
+                raise RuntimeError('Archivo ausente: '+item['path']+'. SITIO INTACTO.')
+            current=target.read_bytes()
+            if core.lf(current) not in (core.lf(old),core.lf(new)):
+                raise RuntimeError('CONFLICTO: personalizado después del último despliegue: '+item['path']+'. SITIO INTACTO.')
         if len(manifest.get('dependencies',[]))!=4:
             raise RuntimeError('Dependencias incompletas. SITIO INTACTO.')
         for dep in manifest['dependencies']:
