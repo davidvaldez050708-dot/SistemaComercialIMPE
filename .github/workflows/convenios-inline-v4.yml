@@ -1,0 +1,108 @@
+name: Convenios V4 y borradores persistentes
+on:
+  pull_request:
+    paths:
+      - 'app/services/ConvocatoriaBorradorService.php'
+      - 'app/controllers/CrearConvocatoriaController.php'
+      - 'app/controllers/ConvocatoriaController.php'
+      - 'app/models/ConvocatoriaModel.php'
+      - 'app/views/convocatorias/crear_desde_convenio.php'
+      - 'app/views/convocatorias/partials/editor_convenio_v4.php'
+      - 'public/javascript/convenios_borradores_v4.js'
+      - 'public/javascript/convocatorias_aliado_multiprograma_v3.js'
+      - 'public/css/convenios_borradores_v4.css'
+      - 'tests/convenios_v4*'
+      - 'tests/preparar_convenios_v4*'
+      - 'tests/publicacion_convenios_inline_v4_test.py'
+      - 'tests/fixtures/v4_hostinger/**'
+      - 'tools/*convenios_inline_v4*'
+      - 'tools/migrar_convocatoria_borradores_v4.php'
+      - 'database/migrations/2026_10_23_convocatoria_borradores_v4.sql'
+      - '.github/workflows/convenios-inline-v4.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  borradores:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['33310:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33310
+      IMPE_DB_USER: root
+      IMPE_DB_NAME: impe_test_handly_aliados_v4_ci
+      IMPE_TEST_DB_NAME: impe_test_handly_aliados_v4_ci
+      IMPE_TEST_MYSQL_PORT: 33310
+      IMPE_BASE_URL: http://127.0.0.1:8110/
+      PLAYWRIGHT_MODULE_PATH: /tmp/v4-browser/node_modules/playwright
+      BOOTSTRAP_MODULE_PATH: /tmp/v4-browser/node_modules/bootstrap
+      JSQR_MODULE_PATH: /tmp/v4-browser/node_modules/jsqr
+      IMPE_V4_OUTPUT: /tmp/v4-visual
+      IMPE_CONVOCATORIA_DRAFT_DIR: /tmp/v4-private-images
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, gd, fileinfo
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/v4-browser playwright bootstrap@5.3.8 jsqr @fontsource/manrope@5.3.0
+      - run: /tmp/v4-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis y paquete selectivo
+        run: |
+          git diff --name-only 5f7a0570 HEAD -- '*.php' | xargs -r -n1 php -l
+          node --check public/javascript/convenios_borradores_v4.js
+          node --check public/javascript/convocatorias_aliado_multiprograma_v3.js
+          python3 tests/publicacion_convenios_inline_v4_test.py
+      - name: Fixture sintética y migración aditiva explícita
+        run: |
+          mkdir -p /tmp/v4-sql-backups
+          php tests/aliados_registro_fixture.php
+          php tools/preparar_handly_formularios.php --apply
+          php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/v4-sql-backups
+          php tools/migrar_extensiones_aliados_20261022.php --apply --backup-dir=/tmp/v4-sql-backups
+          php tools/migrar_canales_manuales_20261022.php --apply --respaldo-confirmado
+          php tools/migrar_convocatorias_multiprograma_20261022.php --apply --respaldo-confirmado
+          php tests/convenios_v4_fixture.php
+          php tools/migrar_convocatoria_borradores_v4.php --check
+          php tools/migrar_convocatoria_borradores_v4.php --apply --backup-dir=/tmp/v4-sql-backups
+          php tools/migrar_convocatoria_borradores_v4.php --check
+          php tests/convenios_v4_db.php
+          php tests/convenios_v4_migracion.php
+      - name: Réplica exacta de variantes Hostinger, navegador, HTTP e imágenes
+        run: |
+          python3 tests/preparar_convenios_v4_replica.py --output "$RUNNER_TEMP/v4-hostinger"
+          IMPE_V4_APP_ROOT="$RUNNER_TEMP/v4-hostinger" node tests/convenios_v4_browser.cjs
+          IMPE_V4_APP_ROOT="$RUNNER_TEMP/v4-hostinger" IMPE_V4_OFFLINE_ONLY=1 node tests/convenios_v4_browser.cjs
+          IMPE_V4_APP_ROOT="$RUNNER_TEMP/v4-hostinger" IMPE_V4_VISUAL_ONLY=1 node tests/convenios_v4_browser.cjs
+          IMPE_V4_APP_ROOT="$RUNNER_TEMP/v4-hostinger" IMPE_V4_LATE_ONLY=1 node tests/convenios_v4_browser.cjs
+      - name: Regresión dirigida de Gestión de Convocatorias V3
+        env:
+          IMPE_BASE_URL: http://127.0.0.1:8112/
+          IMPE_V3_OUTPUT: /tmp/v4-visual/regresion-v3
+          IMPE_V3_LOG: /tmp/v4-visual/regresion-v3-php.log
+        run: |
+          php tests/convocatorias_v3_fixture.php
+          php tests/convocatorias_general_db.php
+          node tests/convocatorias_v3_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: convenios-v4-${{ strategy.job-index }}
+          path: /tmp/v4-visual
