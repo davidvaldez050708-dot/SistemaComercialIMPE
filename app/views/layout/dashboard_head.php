@@ -463,6 +463,7 @@ if ($esReportesDashboard) {
     );
 }
 
+$jsOpcionalHead[] = 'registro_enlaces_amigables.js';
 $jsOpcionalHead = array_values(array_unique($jsOpcionalHead));
 
 ?>

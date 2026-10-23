@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../models/FormularioRegistroModel.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../services/RegistroEnlaceService.php';
 
 class FormularioController
 {
@@ -106,8 +108,8 @@ class FormularioController
          * El mismo formulario de Registro tiene una ruta pública estable.
          * No se requiere guardar tokens ni aplicar una migración adicional.
          */
-        $url = BASE_URL .
-            'index.php?controller=formularioPublico&action=registro';
+        $url = (new RegistroEnlaceService((new Database())->connect()))->acortar(BASE_URL .
+            'index.php?controller=formularioPublico&action=registro');
 
         $this->responderJson([
             'ok' => true,
@@ -116,6 +118,24 @@ class FormularioController
         ]);
     }
 
+
+    /** Acorta exclusivamente destinos públicos de Registro del propio CRM. */
+    public function acortarRegistro()
+    {
+        if(empty($_SESSION['usuario_id'])||(!tieneAlgunPermiso(['convocatorias.crear','formularios_aliados.gestionar_enlaces'])&&strcasecmp(trim((string)($_SESSION['rol']??'')),'Marketing')!==0)){
+            $this->responderJson(['ok'=>false,'mensaje'=>'No tienes permiso para generar enlaces de Registro.'],403);return;
+        }
+        if(($_SERVER['REQUEST_METHOD']??'')!=='POST'){$this->responderJson(['ok'=>false,'mensaje'=>'Método no permitido.'],405);return;}
+        $csrf=(string)($_SESSION['csrf_token']??'');
+        if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??''))){$this->responderJson(['ok'=>false,'mensaje'=>'Recarga la página e intenta nuevamente.'],419);return;}
+        try{
+            $url=$_POST['url']??'';if(!is_string($url)||strlen($url)>8192)throw new DomainException('Enlace de Registro inválido.');
+            $s=new RegistroEnlaceService((new Database())->connect());
+            if($s->parametros($url)===null)throw new DomainException('Sólo se admiten enlaces públicos de Registro del CRM.');
+            $this->responderJson(['ok'=>true,'url'=>$s->acortar($url)]);
+        }catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422);}
+        catch(Throwable $e){error_log('[registro_enlace] '.$e->getMessage());$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo generar el enlace de Registro.'],503);}
+    }
 
     public function guardarRegistro()
     {

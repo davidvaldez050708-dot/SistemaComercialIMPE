@@ -2442,7 +2442,7 @@ document.addEventListener('DOMContentLoaded', function () {
             field?.addEventListener('change', invalidateGeneratedLink);
         });
 
-        buttonLink?.addEventListener('click', function () {
+        buttonLink?.addEventListener('click', async function () {
             if (share.dataset.aliadoRegistroContexto === '1') return;
             if (!canGeneratePublicLink()) {
                 showQrToast(
@@ -2452,7 +2452,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const url = getSelectedUrl();
+            let url;
+            const selectedUrl = getSelectedUrl();
+            try { url = await window.IMPERegistroEnlaces.acortar(selectedUrl); }
+            catch(error) { showQrToast(error.message, true); return; }
+            if (selectedUrl !== getSelectedUrl()) return;
 
             if (url === '') {
                 return;

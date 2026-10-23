@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
+require_once __DIR__ . '/RegistroEnlaceService.php';
 
 /** Operaciones territoriales y perfil de Registro. Nunca crea expedientes. */
 class AliadoRegistroService
@@ -181,7 +182,11 @@ class AliadoRegistroService
         $origen=$this->origen($tipo,$id,$marketing); $col=$tipo==='manual'?'manual_id':'seguimiento_id';
         $perfil=$this->query("SELECT r.*,a.token FROM formulario_aliado_registro r JOIN formulario_aliados a ON a.id=r.aliado_id WHERE r.$col=?",[$id])->get_result()->fetch_assoc();
         $codigos=$perfil?$this->query('SELECT programa_codigo FROM formulario_aliado_programas WHERE aliado_id=?',[(int)$perfil['aliado_id']])->get_result()->fetch_all(MYSQLI_ASSOC):[];
-        return ['origen'=>$origen,'programas'=>array_values(array_unique(array_map([ProgramaEducativo::class,'codigo'],array_column($codigos,'programa_codigo')))),'catalogo'=>$this->catalogo(),'publicado'=>(bool)($perfil['publicado']??false),'habilitado'=>(bool)($perfil['habilitado']??false),'url'=>(($marketing || $mostrarEnlace) && !empty($perfil['publicado']))?BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.$perfil['token']:''];
+        $url=(($marketing || $mostrarEnlace) && !empty($perfil['publicado']))?BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.$perfil['token']:'';
+        // El contexto también se lee dentro de la transacción de publicación.
+        // Reservar el alias en autocommit evita bloquear otra conexión del lote.
+        $enlaces=new RegistroEnlaceService((new Database())->connect());
+        return ['origen'=>$origen,'programas'=>array_values(array_unique(array_map([ProgramaEducativo::class,'codigo'],array_column($codigos,'programa_codigo')))),'catalogo'=>$this->catalogo(),'publicado'=>(bool)($perfil['publicado']??false),'habilitado'=>(bool)($perfil['habilitado']??false),'url'=>$enlaces->acortar($url)];
     }
     public function enlace(string $tipo,int $id,string $accion): array
     {

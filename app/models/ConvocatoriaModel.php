@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 require_once __DIR__ . '/../services/ConvocatoriaOrigenService.php';
+require_once __DIR__ . '/../services/RegistroEnlaceService.php';
 
 class ConvocatoriaModel
 {
@@ -591,12 +592,13 @@ class ConvocatoriaModel
             if (!$actual) throw new RuntimeException('Convocatoria no disponible.');
             if (!empty($actual['aliado']['tiene_relacion'])) {
                 if ($actual['aliado']['estado']!=='verificado' ||
-                    $datos['enlace_registro'] !== $actual['enlace_registro'] ||
+                    !(new RegistroEnlaceService($this->connection))->equivalentes($datos['enlace_registro'],$actual['enlace_registro']) ||
                     $datos['tipo_convocatoria'] !== $actual['tipo_convocatoria'] ||
                     ProgramaEducativo::codigo($datos['subtipo_convocatoria']) !== ProgramaEducativo::codigo($actual['subtipo_convocatoria'])) {
                     throw new RuntimeException('La edición no puede sustituir la identidad del aliado, el programa ni su enlace.');
                 }
                 $estadosIds=$actual['estados_ids'];
+                $datos['enlace_registro']=$actual['enlace_registro'];
             }
             $categoria = strcasecmp(trim((string)$datos['titulo']), 'IMJUVE') === 0
                 ? 'IMJUVE'
@@ -1850,6 +1852,6 @@ class ConvocatoriaModel
             $filas[] = $fila;
         }
 
-        return $filas;
+        return (new RegistroEnlaceService($this->connection))->filas($filas);
     }
 }

@@ -831,7 +831,7 @@ class ConvocatoriaController
         $datos = $this->limpiarDatos($_POST);
         $estadosIds = $this->limpiarEstados($_POST['estados'] ?? []);
         if (!empty($convocatoriaOriginal['aliado']['tiene_relacion'])) {
-            if ($datos['enlace_registro'] !== (string)$convocatoriaOriginal['enlace_registro']) {
+            if (!(new RegistroEnlaceService((new Database())->connect()))->equivalentes($datos['enlace_registro'],(string)$convocatoriaOriginal['enlace_registro'])) {
                 http_response_code(422);
                 exit('El enlace compartido del aliado no se puede modificar desde esta edición.');
             }
@@ -1114,6 +1114,7 @@ class ConvocatoriaController
 
     private function presentarOrigenes(array $filas): array
     {
+        $filas=(new RegistroEnlaceService((new Database())->connect()))->filas($filas);
         foreach ($filas as &$fila) {
             $a=&$fila['aliado'];
             if (($a['estado']??'')==='verificado' && in_array($a['tipo'],['manual','institucional'],true) &&
