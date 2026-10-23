@@ -195,3 +195,268 @@
     event.preventDefault();event.stopImmediatePropagation();open(link);
   },true);
 })();
+
+
+/* IMPE_CONVENIOS_QR_COMPARTIDO_V5_20261023
+ * Personalizador local del QR compartido en el editor de borradores V4.
+ * No altera el enlace del aliado, los campos de programas ni el guardado.
+ */
+(() => {
+  'use strict';
+  if (window.__impeQrConveniosV5) return;
+  window.__impeQrConveniosV5 = true;
+  const installed = new WeakSet();
+  const labels = {
+    square: 'Cuadrado',
+    dots: 'Puntos',
+    rounded: 'Redondeado',
+    'extra-rounded': 'Muy redondeado',
+    classy: 'Clásico',
+    'classy-rounded': 'Clásico redondeado'
+  };
+  const html = String.raw`
+    <div class="impe-v5-qr-heading">
+      <span class="impe-v5-qr-symbol"><i class="bi bi-sliders2" aria-hidden="true"></i></span>
+      <div><strong>Personalizar QR compartido</strong><small>El diseño es para el mismo enlace de Registro de todos los programas.</small></div>
+    </div>
+    <div class="impe-v5-qr-layout">
+      <div class="impe-v5-qr-preview"><span class="impe-v5-qr-preview-label">VISTA PREVIA · QR COMPARTIDO</span></div>
+      <div class="impe-v5-qr-settings">
+        <div class="impe-v5-qr-fields">
+          <label>Color del código <input type="color" data-v5qr="dark" value="#223a84"></label>
+          <label>Color de fondo <input type="color" data-v5qr="light" value="#ffffff"></label>
+          <label>Color de esquinas <input type="color" data-v5qr="finder" value="#223a84"></label>
+          <label>Estilo de puntos <select data-v5qr="dots">
+            <option value="square">Cuadrado</option><option value="dots">Circular</option>
+            <option value="rounded">Redondeado</option><option value="extra-rounded">Muy redondeado</option>
+            <option value="classy">Clásico</option><option value="classy-rounded">Clásico redondeado</option>
+          </select></label>
+          <label>Estilo de esquinas <select data-v5qr="corners">
+            <option value="square">Cuadrado</option><option value="dot">Circular</option>
+            <option value="extra-rounded">Redondeado</option>
+          </select></label>
+          <label>Centro de esquinas <select data-v5qr="centers">
+            <option value="square">Cuadrado</option><option value="dot">Circular</option>
+          </select></label>
+          <label>Resolución PNG <select data-v5qr="size">
+            <option value="400">400 px</option><option value="600" selected>600 px</option>
+            <option value="800">800 px</option><option value="1000">1000 px</option>
+          </select></label>
+          <label>Margen del QR <select data-v5qr="margin">
+            <option value="4" selected>Normal · 4 módulos</option>
+            <option value="6">Amplio · 6 módulos</option><option value="8">Extra · 8 módulos</option>
+          </select></label>
+          <label>Corrección de errores <select data-v5qr="ec">
+            <option value="L">Baja · L</option><option value="M" selected>Media · M</option>
+            <option value="Q">Alta · Q</option><option value="H">Máxima · H</option>
+          </select></label>
+        </div>
+        <label class="impe-v5-qr-check"><input type="checkbox" data-v5qr="transparent"> Fondo transparente</label>
+        <div class="impe-v5-qr-logo">
+          <div class="impe-v5-qr-logo-title"><div><strong>Imagen central</strong><small>Opcional: escudo o logotipo.</small></div>
+            <label class="impe-v5-qr-check"><input type="checkbox" data-v5qr="logo"> Usar imagen</label>
+          </div>
+          <div data-v5qr-logo-config hidden>
+            <div class="impe-v5-qr-source">
+              <label><input type="radio" name="impe_qr_v5_source" value="file" checked> Desde equipo</label>
+              <label><input type="radio" name="impe_qr_v5_source" value="url"> URL pública</label>
+            </div>
+            <label data-v5qr-file-wrap>Seleccionar imagen <input data-v5qr="file" type="file" accept="image/png,image/jpeg,image/webp"></label>
+            <label data-v5qr-url-wrap hidden>URL de la imagen <input data-v5qr="url" type="url" placeholder="https://..."></label>
+            <label>Tamaño de imagen central <output data-v5qr-logo-value>20%</output>
+              <input data-v5qr="logoSize" type="range" min="10" max="30" value="20" step="1">
+            </label>
+          </div>
+        </div>
+        <div class="impe-v5-qr-bottom">
+          <p data-v5qr-status role="status" aria-live="polite">Código listo para personalizar.</p>
+          <button type="button" class="btn btn-system-light" data-v5qr-reset><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Restablecer diseño</button>
+        </div>
+      </div>
+    </div>
+  `;
+  function rounded(ctx,x,y,w,h,r) {
+    r=Math.max(0,Math.min(r,w/2,h/2));
+    ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.fill();
+  }
+  function contrast(one,two) {
+    function lum(hex) {
+      const raw=hex.replace('#','');
+      const rgb=[0,2,4].map(i=>parseInt(raw.slice(i,i+2),16)/255);
+      const l=rgb.map(c=>c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4));
+      return l[0]*.2126+l[1]*.7152+l[2]*.0722;
+    }
+    const a=lum(one),b=lum(two);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+  }
+  function drawDots(ctx,qr,n,p,off,style) {
+    for(let y=0;y<n;y++)for(let x=0;x<n;x++) {
+      // Patrones detectores: se pintan por separado, completos.
+      if ((y<7&&(x<7||x>=n-7))||(y>=n-7&&x<7)) continue;
+      if(!qr.isDark(y,x))continue;
+      const px=off+x*p,py=off+y*p;
+      if(style==='square') ctx.fillRect(px,py,p,p);
+      else if(style==='dots') {ctx.beginPath();ctx.arc(px+p/2,py+p/2,p*.43,0,Math.PI*2);ctx.fill();}
+      else rounded(ctx,px+p*.03,py+p*.03,p*.94,p*.94,
+        style==='rounded'?p*.24:style==='extra-rounded'?p*.46:style==='classy'?p*.30:p*.44);
+    }
+  }
+  function drawFinder(ctx,x,y,p,color,corner,center) {
+    const px=x*p,py=y*p,side=7*p,outer=corner==='square'?0:corner==='dot'?side/2:p*2;
+    ctx.fillStyle=color;rounded(ctx,px,py,side,side,outer);
+    ctx.fillStyle='#ffffff';rounded(ctx,px+p,py+p,side-2*p,side-2*p,
+      corner==='square'?0:corner==='dot'?(side-2*p)/2:p*1.15);
+    ctx.fillStyle=color;rounded(ctx,px+2*p,py+2*p,3*p,3*p,center==='dot'?1.5*p:0);
+  }
+  function getUrl(modal) {
+    const form=modal.querySelector('form');
+    const items=[
+      ...modal.querySelectorAll('.convocatoria-aliado-modulo-registro input[readonly]'),
+      ...modal.querySelectorAll('[data-impe-url-input],[data-impe-enlace-url],[data-impe-url]'),
+      form?.querySelector('[name="enlace_registro"]')
+    ];
+    for(const item of items) {
+      const value=String(item?.value||'').trim();
+      try {const url=new URL(value);if(['https:','http:'].includes(url.protocol))return url.href;}catch(_){}
+    }
+    return '';
+  }
+  function init(modal) {
+    if (!modal || modal.dataset.borradorV4!=='1' || installed.has(modal))return;
+    const wrap=modal.querySelector('[data-impe-qr-wrap]');
+    const canvas=wrap?.querySelector('[data-impe-qr-canvas]');
+    const button=modal.querySelector('[data-impe-crear-qr]');
+    if(!wrap||!canvas||!button)return;
+    installed.add(modal);
+    const original=[...wrap.childNodes];
+    const surface=document.createElement('div');surface.className='impe-v5-qr';surface.innerHTML=html;
+    const preview=surface.querySelector('.impe-v5-qr-preview');
+    original.forEach(node=>preview.append(node));wrap.append(surface);
+    const field=name=>surface.querySelector('[data-v5qr="'+name+'"]');
+    const status=surface.querySelector('[data-v5qr-status]');
+    const buttons=[wrap.querySelector('[data-impe-copiar-qr]'),wrap.querySelector('[data-impe-descargar-qr]')].filter(Boolean);
+    const config=surface.querySelector('[data-v5qr-logo-config]');
+    const fileWrap=surface.querySelector('[data-v5qr-file-wrap]');
+    const urlWrap=surface.querySelector('[data-v5qr-url-wrap]');
+    let localImage='',renderId=0;
+    function source(){return surface.querySelector('[name="impe_qr_v5_source"]:checked')?.value||'file';}
+    function exporting(ready){buttons.forEach(b=>b.disabled=!ready);}
+    function message(value,error=false){status.textContent=value;status.dataset.error=error?'1':'0';}
+    const loadImage=src=>new Promise((resolve,reject)=>{
+      const image=new Image();image.crossOrigin='anonymous';
+      image.onload=()=>resolve(image);
+      image.onerror=()=>reject(new Error('No se pudo cargar la imagen central. Prueba subiéndola desde tu equipo.'));
+      image.src=src;
+    });
+    async function render(){
+      const token=++renderId;exporting(false);
+      try {
+        const url=getUrl(modal);
+        if(!url)throw Error('Primero genera el enlace de Registro compartido.');
+        if(typeof window.qrcode!=='function')throw Error('No está disponible el generador de QR del CRM.');
+        const dark=field('dark').value,light=field('light').value,finder=field('finder').value;
+        if(!field('transparent').checked&&(contrast(dark,light)<4.5||contrast(finder,light)<4.5)){
+          throw Error('El código y las esquinas deben contrastar claramente con el fondo.');
+        }
+        if(field('transparent').checked&&dark.toLowerCase()==='#ffffff')throw Error('Utiliza un color oscuro para un QR transparente.');
+        const enabled=field('logo').checked, imageSource=source();
+        const logoSrc=enabled?(imageSource==='file'?localImage:field('url').value.trim()):'';
+        if(enabled&&!logoSrc)throw Error('Selecciona una imagen central o desactiva esta opción.');
+        if(enabled&&imageSource==='url'&&!/^https?:\/\//i.test(logoSrc))throw Error('Indica una URL HTTP o HTTPS válida.');
+        const ec=enabled?'H':field('ec').value;
+        const qr=window.qrcode(0,ec);qr.addData(url);qr.make();
+        const n=qr.getModuleCount(),size=Number(field('size').value),margin=Number(field('margin').value);
+        const p=Math.floor(size/(n+2*margin));
+        if(p<2)throw Error('El enlace requiere un QR más grande para conservar su legibilidad.');
+        const off=Math.floor((size-n*p)/2);
+        canvas.width=canvas.height=size;
+        const ctx=canvas.getContext('2d');
+        if(!ctx)throw Error('Este navegador no admite la vista previa del QR.');
+        ctx.clearRect(0,0,size,size);
+        if(!field('transparent').checked){ctx.fillStyle=light;ctx.fillRect(0,0,size,size);}
+        ctx.fillStyle=dark;
+        drawDots(ctx,qr,n,p,off,field('dots').value);
+        // Los detectores se dibujan completos, no se recortan por estilización.
+        const corners=[[0,0],[n-7,0],[0,n-7]];
+        corners.forEach(([x,y])=>{
+          // Trasladar el origen a la zona del QR, que incluye margen de seguridad.
+          ctx.save();ctx.translate(off,off);
+          drawFinder(ctx,x,y,p,finder,field('corners').value,field('centers').value);ctx.restore();
+        });
+        if(enabled) {
+          const image=await loadImage(logoSrc);
+          if(token!==renderId)return;
+          const fraction=Number(field('logoSize').value)/100;
+          const side=Math.floor(n*p*fraction),left=Math.round(size/2-side/2);
+          // Área blanca limitada al centro. EC H conserva redundancia para logotipos.
+          ctx.fillStyle='#ffffff';rounded(ctx,left-5,left-5,side+10,side+10,Math.max(5,side*.10));
+          ctx.drawImage(image,left,left,side,side);
+        }
+        if(token!==renderId)return;
+        // Verificar exportabilidad (las imágenes URL deben permitir CORS).
+        canvas.toDataURL('image/png');
+        exporting(true);
+        message('QR personalizado listo. Verifica su lectura antes de compartirlo.');
+      } catch(error) {
+        if(token!==renderId)return;
+        exporting(false);
+        message(error.message||'No se pudo actualizar el código QR.',true);
+      }
+    }
+    function toggleLogo() {
+      config.hidden=!field('logo').checked;
+      field('ec').disabled=field('logo').checked;
+      surface.querySelector('[data-v5qr-logo-value]').textContent=field('logoSize').value+'%';
+      fileWrap.hidden=source()!=='file';urlWrap.hidden=source()!=='url';
+    }
+    surface.addEventListener('input',event=>{
+      if(event.target===field('file')||event.target===field('url'))return;
+      if(event.target===field('logoSize'))surface.querySelector('[data-v5qr-logo-value]').textContent=event.target.value+'%';
+      if(!wrap.classList.contains('d-none'))render();
+    });
+    surface.addEventListener('change',event=>{
+      if(event.target===field('file')) {
+        const file=event.target.files?.[0];
+        if(!file){localImage='';render();return;}
+        if(!/^image\/(png|jpeg|webp)$/i.test(file.type)||file.size>2*1024*1024){
+          localImage='';field('file').value='';message('Utiliza una imagen PNG, JPG o WEBP de máximo 2 MB.',true);exporting(false);return;
+        }
+        const reader=new FileReader();
+        reader.onload=()=>{localImage=String(reader.result||'');render();};
+        reader.onerror=()=>{message('No se pudo leer la imagen.',true);exporting(false);};
+        reader.readAsDataURL(file);return;
+      }
+      if(event.target===field('logo')||event.target.matches('[name="impe_qr_v5_source"]'))toggleLogo();
+      if(!wrap.classList.contains('d-none'))render();
+    });
+    field('url').addEventListener('change',()=>{if(field('logo').checked&&source()==='url')render();});
+    surface.querySelector('[data-v5qr-reset]').addEventListener('click',()=>{
+      for(const [name,value] of Object.entries({
+        dark:'#223a84',light:'#ffffff',finder:'#223a84',dots:'square',
+        corners:'square',centers:'square',size:'600',margin:'4',ec:'M',logoSize:'20'
+      }))field(name).value=value;
+      field('transparent').checked=false;field('logo').checked=false;
+      field('file').value='';field('url').value='';localImage='';
+      surface.querySelector('[name="impe_qr_v5_source"][value="file"]').checked=true;
+      toggleLogo();render();
+    });
+    toggleLogo();
+    button.addEventListener('click',()=>{
+      // El listener existente generó primero el QR y reveló su contenedor.
+      if(!wrap.classList.contains('d-none'))render();
+    });
+    modal.addEventListener('impe:editor-destroyed',()=>{renderId++;localImage='';},{once:true});
+  }
+  document.addEventListener('shown.bs.modal',event=>{
+    if(event.target?.id==='modalCrearConvocatoria')init(event.target);
+  });
+  // Cubre editores que llegan al DOM antes de conectar el módulo.
+  document.addEventListener('click',event=>{
+    if(!event.target.closest('[data-impe-crear-qr]'))return;
+    const modal=event.target.closest('#modalCrearConvocatoria[data-borrador-v4]');
+    if(modal)init(modal);
+  },true);
+})();
