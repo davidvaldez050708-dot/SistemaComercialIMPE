@@ -982,24 +982,42 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         </div>
 
         <div class="convocatoria-filter-field">
-            <label class="form-label login-label" for="filtro_convocatoria_periodo">Mes de convocatoria</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
-                <select class="form-select system-form-control" id="filtro_convocatoria_periodo"
-                    name="periodo" aria-describedby="ayuda_convocatoria_periodo">
-                    <option value="" <?= $periodoMesSeleccionado === '' ? 'selected' : '' ?>>Meses recientes</option>
+            <label class="form-label login-label" for="filtro_convocatoria_periodo_boton">Mes de convocatoria</label>
+            <?php
+            $etiquetaMesConvocatoria = $periodoMesSeleccionado === 'archivo'
+                ? 'Otros meses / archivo' : 'Meses recientes';
+            foreach ($mesesVentanaConvocatorias as $mesVentana) {
+                if ($periodoMesSeleccionado === $mesVentana['valor']) {
+                    $etiquetaMesConvocatoria = (string)$mesVentana['etiqueta'];
+                    break;
+                }
+            }
+            ?>
+            <div class="convocatoria-filter-dropdown" data-convocatoria-month-dropdown>
+                <input type="hidden" id="filtro_convocatoria_periodo"
+                    name="periodo" value="<?= $texto($periodoMesSeleccionado) ?>">
+                <button type="button" class="convocatoria-filter-dropdown-trigger"
+                    id="filtro_convocatoria_periodo_boton"
+                    aria-haspopup="listbox" aria-controls="filtro_convocatoria_periodo_lista"
+                    aria-expanded="false" data-convocatoria-month-trigger>
+                    <span data-convocatoria-month-label><?= $texto($etiquetaMesConvocatoria) ?></span>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="convocatoria-filter-dropdown-menu" id="filtro_convocatoria_periodo_lista"
+                    role="listbox" aria-label="Seleccionar mes de convocatoria" data-convocatoria-month-menu>
+                    <button type="button" class="convocatoria-filter-dropdown-option <?= $periodoMesSeleccionado === '' ? 'is-selected' : '' ?>"
+                        role="option" aria-selected="<?= $periodoMesSeleccionado === '' ? 'true' : 'false' ?>"
+                        data-convocatoria-month-value="">Meses recientes</button>
                     <?php foreach ($mesesVentanaConvocatorias as $mesVentana): ?>
-                        <option value="<?= $texto($mesVentana['valor']) ?>"
-                            <?= $periodoMesSeleccionado === $mesVentana['valor'] ? 'selected' : '' ?>>
-                            <?= $texto($mesVentana['etiqueta']) ?>
-                        </option>
+                        <button type="button" class="convocatoria-filter-dropdown-option <?= $periodoMesSeleccionado === $mesVentana['valor'] ? 'is-selected' : '' ?>"
+                            role="option" aria-selected="<?= $periodoMesSeleccionado === $mesVentana['valor'] ? 'true' : 'false' ?>"
+                            data-convocatoria-month-value="<?= $texto($mesVentana['valor']) ?>"><?= $texto($mesVentana['etiqueta']) ?></button>
                     <?php endforeach; ?>
-                    <option value="archivo" <?= $periodoMesSeleccionado === 'archivo' ? 'selected' : '' ?>>Otros meses / archivo</option>
-                </select>
+                    <button type="button" class="convocatoria-filter-dropdown-option <?= $periodoMesSeleccionado === 'archivo' ? 'is-selected' : '' ?>"
+                        role="option" aria-selected="<?= $periodoMesSeleccionado === 'archivo' ? 'true' : 'false' ?>"
+                        data-convocatoria-month-value="archivo">Otros meses / archivo</button>
+                </div>
             </div>
-            <small class="form-text" id="ayuda_convocatoria_periodo">
-                La ventana avanza mes a mes; las publicaciones antiguas se conservan en el archivo.
-            </small>
             <input type="hidden" id="filtro_convocatoria_fecha" name="fecha" value="<?= $texto($fechaFiltro) ?>">
             <?php if ($fechaFiltro !== ''): ?>
                 <small class="form-text" data-convocatoria-filtro-dia>
@@ -3344,6 +3362,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const filtroBuscar = document.getElementById('filtro_convocatoria_buscar');
     const filtroFecha = document.getElementById('filtro_convocatoria_fecha');
     const filtroMes = document.getElementById('filtro_convocatoria_periodo');
+    const filtroMesDropdown = document.querySelector('[data-convocatoria-month-dropdown]');
+    const filtroMesTrigger = document.querySelector('[data-convocatoria-month-trigger]');
+    const filtroMesLabel = document.querySelector('[data-convocatoria-month-label]');
+    const filtroMesOpciones = Array.from(document.querySelectorAll('[data-convocatoria-month-value]'));
     const filtroCategoria = document.getElementById('filtro_convocatoria_categoria');
     const filtroClasificacion = document.querySelector('[data-convocatoria-clasificacion]');
     const filtroClasificacionDropdown = document.querySelector(
@@ -3753,6 +3775,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
     filtroBuscar?.addEventListener('input', programarBusqueda);
 
+    const actualizarSelectorMes = function () {
+        const valor = String(filtroMes?.value || '');
+        const seleccionada = filtroMesOpciones.find(function (opcion) {
+            return opcion.dataset.convocatoriaMonthValue === valor;
+        });
+        if (filtroMesLabel && seleccionada) {
+            filtroMesLabel.textContent = seleccionada.textContent.trim();
+        }
+        filtroMesOpciones.forEach(function (opcion) {
+            const elegida = opcion === seleccionada;
+            opcion.classList.toggle('is-selected', elegida);
+            opcion.setAttribute('aria-selected', elegida ? 'true' : 'false');
+        });
+    };
+    const cerrarFiltroMes = function () {
+        filtroMesDropdown?.classList.remove('is-open');
+        filtroMesTrigger?.setAttribute('aria-expanded', 'false');
+    };
+    filtroMesTrigger?.addEventListener('click', function () {
+        const abrir = !filtroMesDropdown?.classList.contains('is-open');
+        cerrarFiltroClasificacion();
+        filtroMesDropdown?.classList.toggle('is-open', abrir);
+        filtroMesTrigger.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        if (abrir) {
+            const seleccionada = filtroMesOpciones.find(opcion =>
+                opcion.dataset.convocatoriaMonthValue === String(filtroMes?.value || '')
+            );
+            seleccionada?.focus();
+        }
+    });
+    filtroMesOpciones.forEach(function (opcion) {
+        opcion.addEventListener('click', function () {
+            if (filtroMes) {
+                filtroMes.value = String(opcion.dataset.convocatoriaMonthValue || '');
+            }
+            actualizarSelectorMes();
+            cerrarFiltroMes();
+            filtroMesTrigger?.focus();
+            filtroMes?.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    });
+    actualizarSelectorMes();
+
     const cerrarFiltroClasificacion = function () {
         filtroClasificacionDropdown?.classList.remove('is-open');
         filtroClasificacionTrigger?.setAttribute('aria-expanded', 'false');
@@ -3762,6 +3827,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const abrir = !filtroClasificacionDropdown?.classList.contains('is-open');
 
         if (abrir) {
+            cerrarFiltroMes();
             filtroClasificacionDropdown?.classList.add('is-open');
             filtroClasificacionTrigger.setAttribute('aria-expanded', 'true');
         } else {
@@ -3807,11 +3873,31 @@ document.addEventListener('DOMContentLoaded', function () {
         ) {
             cerrarFiltroClasificacion();
         }
+        if (
+            filtroMesDropdown &&
+            !filtroMesDropdown.contains(event.target)
+        ) {
+            cerrarFiltroMes();
+        }
     });
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
             cerrarFiltroClasificacion();
+            if (filtroMesDropdown?.classList.contains('is-open')) {
+                cerrarFiltroMes();
+                filtroMesTrigger?.focus();
+            }
+        }
+        if (filtroMesDropdown?.classList.contains('is-open') &&
+            (event.key === 'ArrowDown' || event.key === 'ArrowUp') &&
+            filtroMesDropdown.contains(document.activeElement)) {
+            const actual = filtroMesOpciones.indexOf(document.activeElement);
+            if (actual >= 0) {
+                event.preventDefault();
+                const direccion = event.key === 'ArrowDown' ? 1 : -1;
+                filtroMesOpciones[(actual + direccion + filtroMesOpciones.length) % filtroMesOpciones.length]?.focus();
+            }
         }
     });
 
@@ -3864,6 +3950,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (filtroMes) {
             filtroMes.value = '';
+            actualizarSelectorMes();
+            cerrarFiltroMes();
         }
         document.querySelector('[data-convocatoria-filtro-dia]')?.remove();
         sincronizarPeriodoEnUrl();
