@@ -1,0 +1,12 @@
+#modalCrearConvocatoria[data-borrador-v4] [data-v4-status] { flex: 1 0 100%; color: #64748b; font-size: 12px; overflow-wrap: anywhere; }
+#modalCrearConvocatoria[data-borrador-v4] [data-v4-status][data-error="1"] { color: #b42318; }
+#modalCrearConvocatoria[data-borrador-v4] .impe-v4-preview { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; min-width: 0; }
+#modalCrearConvocatoria[data-borrador-v4] .impe-v4-preview img { max-width: 100%; width: auto; height: 100px; object-fit: contain; object-position: left; border-radius: 8px; }
+#modalCrearConvocatoria[data-borrador-v4] .impe-v4-preview small { color: #087f6d; overflow-wrap: anywhere; }
+#modalCrearConvocatoria[data-borrador-v4] .modal-footer { flex-wrap: wrap; }
+@media (max-width: 575px) {
+ #modalCrearConvocatoria[data-borrador-v4] .impe-aliado-multi-dialog { width: calc(100vw - 16px); max-width: calc(100vw - 16px); margin: 8px auto; }
+ #modalCrearConvocatoria[data-borrador-v4] .modal-footer .btn { flex: 1 1 44%; min-width: 0; white-space: normal; }
+ #modalCrearConvocatoria[data-borrador-v4] .modal-footer .btn-system-save { flex-basis: 100%; }
+}
+#modalCrearConvocatoria[data-borrador-v4] .impe-aliado-multi-dialog { width: min(1160px, 95vw); max-width: min(1160px, 95vw); }
