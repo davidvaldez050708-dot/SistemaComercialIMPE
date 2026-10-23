@@ -110,6 +110,14 @@ class PublicacionUnificacion(base.ConveniosDetalleSelectivo):
             with self.assertRaises(RuntimeError):
                 union.overlay_modelo_convocatoria(changed)
 
+    def test_manifiesto_incluye_migrador_vigente(self):
+        row=next(r for r in self.manifest['files'] if r['path']=='tools/lib/UnificarBachillerato.php')
+        target=unpack(row['target'])
+        self.assertEqual(target,(ROOT/'tools/lib/UnificarBachillerato.php').read_bytes().replace(b'\r\n',b'\n'))
+        self.assertEqual(base.hashlib.sha256(target).hexdigest(),row['sha256'])
+        self.assertIn(b'private array $generated=[];',target)
+        self.assertIn(b'array_diff_key($after,array_flip($computed))',target)
+
     def test_dependencia_primero(self):
         self.assertEqual(self.manifest['files'][0]['path'],'app/helpers/ProgramaEducativo.php')
 
