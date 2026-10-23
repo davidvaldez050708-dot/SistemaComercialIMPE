@@ -8,18 +8,20 @@ El código del ejemplo es ilustrativo. Cada destino tiene un código aleatorio d
 
 ## Comportamiento
 
-- Generadores de Registro general, aliados manuales, Vinculación e internacionales; enlaces de Gestión, detalle, edición, Compartir y QR utilizan el formato amigable.
+- Generadores de Registro general, aliados manuales y Vinculación; enlaces de Gestión, detalle, edición, Compartir y QR utilizan el formato amigable.
 - Los generadores generales comprimen también los parámetros de procedencia antes de mostrar/copiar o dibujar el QR.
 - La ruta pública resuelve internamente al mismo controlador de Registro; la barra del navegador conserva la dirección amigable. Las autorizaciones de programas, estado del aliado, publicación/habilitación, CSRF y guardado siguen en el flujo existente.
 - Las ligas largas y QR anteriores siguen funcionando. Los tokens y las URLs históricas almacenadas no se migran masivamente. Editar una publicación reconoce la equivalencia y conserva su valor histórico.
 - Inscripción mantiene sus enlaces. Las referencias o aliados diferentes nunca se fusionan por tener el mismo título.
 - Antes de instalar la tabla adicional, los generadores conservan las ligas anteriores; el publicador de archivos no ejecuta SQL.
 
-Código funcional: `d7ab9f98e8c32ea14c3681188aa6bd4a7fd521f1`, PR #132. La entrega Hostinger revisa 13 archivos: servicio de equivalencias, entrada pública y su `.htaccess` local, migrador, dos JavaScript, controlador de Formularios, servicio de Aliados, modelo y controlador de Convocatorias, modelo de Aliados, vista internacional y carga del script en dashboard_head. Conserva el index modular y el `.htaccess` raíz; no reemplaza CSS, imágenes ni las personalizaciones internacionales del controlador/modelo. El cambio equivalente del index nativo se versiona para instalaciones no modulares, pero no se publica sobre el index personalizado de Hostinger.
+Código funcional: `d7ab9f98e8c32ea14c3681188aa6bd4a7fd521f1`, PR #132. La entrega Hostinger revisa **12 archivos**: servicio de equivalencias, entrada pública y su `.htaccess` local, migrador, dos JavaScript, controlador de Formularios, servicio de Aliados, modelo y controlador de Convocatorias, modelo de Aliados y carga del script en dashboard_head. Conserva el index modular y el `.htaccess` raíz; no reemplaza CSS ni imágenes. El cambio equivalente del index nativo se versiona para instalaciones no modulares, pero no se publica sobre el index personalizado de Hostinger.
+
+**Aliados internacionales retirados:** el paquete excluye `app/views/aliados/internacionales.php` y no incorpora servicios o componentes de ese módulo. Tanto una vista ausente como una vista sustituida por una página desactivada se conservan durante comprobación, instalación y reversión. Las variantes del controlador/modelo sólo sirven para conciliar personalizaciones presentes; no exigen conservar el módulo ni restauran código internacional eliminado del controlador. El conflicto de la entrega anterior ocurrió durante `--check`; esa comprobación no publicó archivos ni ejecutó SQL. Descargar de nuevo con el nuevo SHA de entrega, sin reutilizar el manifiesto de `53d683a4`.
 
 ## Pruebas y límite de validación
 
-MySQL 8.0.44 y MariaDB 10.11.14: 23 comprobaciones de servicio por motor y 20 de HTTP/navegador por motor, incluyendo envío real y procedencia persistida, ambos formatos, permisos/CSRF, alias por contexto y Registro deshabilitado. Otras 17 del editor/publicación Cuenta Clave y 27 de recuperación/descarga QR, con PNG decodificado y cinco tamaños. Doce pruebas del publicador cubren variantes, integridad, LF/CRLF, personalizaciones, conflictos, instalación idempotente y reversión conservando las ligas nuevas.
+MySQL 8.0.44 y MariaDB 10.11.14: 23 comprobaciones de servicio por motor y 20 de HTTP/navegador por motor, incluyendo envío real y procedencia persistida, ambos formatos, permisos/CSRF, alias por contexto y Registro deshabilitado. Otras 17 del editor/publicación Cuenta Clave y 27 de recuperación/descarga QR, con PNG decodificado y cinco tamaños. Quince pruebas del publicador cubren variantes, integridad, LF/CRLF, personalizaciones, conflictos, instalación idempotente, reversión conservando las ligas nuevas y módulo internacional ausente/desactivado.
 
 El arranque de Apache local fue rechazado por la revisión automática con «blocked by policy». La prueba HTTP utilizó PHP con el mismo controlador público y un adaptador de ruta. La regla de Apache/LiteSpeed debe comprobarse en el paso siguiente **antes de activar la tabla**. Si la ruta no resuelve al mensaje indicado, no ejecutar la migración; los generadores seguirán usando las ligas anteriores.
 
@@ -44,7 +46,7 @@ python3 "$PREP/publicar.py" --site "$SITIO" --manifest "$PREP/entrega.json" \
  --backup-root "$HOME/respaldos-impe-registro-amigable" --check
 ```
 
-Revisar el diff y exigir REVISIÓN COMPATIBLE. Los conflictos bloquean toda la entrega. Se concilian las variantes internacionales de V5 y la versión modular confirmada del generador; no forzar sustituciones completas de archivos personalizados.
+Revisar el diff y exigir **REVISIÓN COMPATIBLE: 12 archivos** en la primera instalación. Los conflictos bloquean toda la entrega. Se concilian las variantes de V5 y la versión modular confirmada del generador, conservando las retiradas del módulo internacional; no forzar sustituciones completas de archivos personalizados.
 
 ## 2. Instalar archivos y comprobar la ruta
 
