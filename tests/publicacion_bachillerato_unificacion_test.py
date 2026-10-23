@@ -1,5 +1,6 @@
 """Paquete de identidad única: sin SQL automático, conserva modal y modelo internacional."""
 import importlib.util
+import hashlib
 from pathlib import Path
 import re
 import unittest
@@ -114,7 +115,7 @@ class PublicacionUnificacion(base.ConveniosDetalleSelectivo):
         row=next(r for r in self.manifest['files'] if r['path']=='tools/lib/UnificarBachillerato.php')
         target=unpack(row['target'])
         self.assertEqual(target,(ROOT/'tools/lib/UnificarBachillerato.php').read_bytes().replace(b'\r\n',b'\n'))
-        self.assertEqual(base.hashlib.sha256(target).hexdigest(),row['sha256'])
+        self.assertEqual(hashlib.sha256(target).hexdigest(),row['sha256'])
         self.assertIn(b'private array $generated=[];',target)
         self.assertIn(b'array_diff_key($after,array_flip($computed))',target)
 
