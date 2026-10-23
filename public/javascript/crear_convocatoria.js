@@ -9,7 +9,38 @@ document.addEventListener('DOMContentLoaded', function () {
     const cards = Array.from(
         module.querySelectorAll('[data-convenio-notification]')
     );
+    // Selector territorial: misma navegación visual que en Aliados.
+    const stateCards = Array.from(module.querySelectorAll('[data-convenio-territorio-card]'));
+    const stateSearch = module.querySelector('[data-convenios-territorio-buscar]');
+    const stateKind = module.querySelector('[data-convenios-territorio-tipo]');
+    const stateChooser = module.querySelector('[data-convenios-territorio-seleccionar]');
+    const stateCount = module.querySelector('[data-convenios-territorio-contador]');
+    const stateEmpty = module.querySelector('[data-convenios-territorio-vacio]');
+    const filterStates = () => {
+        const q = String(stateSearch?.value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+        const type = String(stateKind?.value || '');
+        let visible = 0;
+        stateCards.forEach(card => {
+            const name = String(card.dataset.nombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+            const has = card.dataset.tiene === '1';
+            const show = (!q || name.includes(q)) && (!type || (type === 'con' ? has : !has));
+            card.hidden = !show;
+            if (show) visible++;
+        });
+        if (stateCount) stateCount.textContent = visible + (visible === 1 ? ' territorio' : ' territorios');
+        if (stateEmpty) stateEmpty.classList.toggle('d-none', visible > 0);
+    };
+    stateSearch?.addEventListener('input', filterStates);
+    stateKind?.addEventListener('change', filterStates);
+    stateChooser?.addEventListener('change', () => {
+        if (!stateChooser.value) return;
+        const card = stateCards.find(el => el.querySelector('a[href$="estado_id=' + stateChooser.value + '"]'));
+        const link = card?.querySelector('a[href]');
+        if (link) location.assign(link.href);
+    });
     const search = module.querySelector('[data-convenio-search]');
+    const originFilter = module.querySelector('[data-convenio-origin-filter]');
+    const municipalityFilter = module.querySelector('[data-convenio-municipio-filter]');
     const stateFilter = module.querySelector('[data-convenio-state-filter]');
     const stateDropdown = module.querySelector('[data-state-dropdown]');
     const stateTrigger = module.querySelector('[data-state-trigger]');
@@ -36,10 +67,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateClearFilters = function () {
         const hasSearch = String(search?.value || '').trim() !== '';
         const hasState = String(stateFilter?.value || '') !== '';
+        const hasMunicipio = String(municipalityFilter?.value || '') !== '';
 
         clearFilters?.classList.toggle(
             'd-none',
-            !(hasSearch || hasState)
+            !(hasSearch || hasState || hasMunicipio || originFilter?.value)
         );
     };
 
@@ -51,9 +83,12 @@ document.addEventListener('DOMContentLoaded', function () {
         cards.forEach(function (card) {
             const text = normalize(card.dataset.convenioSearchText || '');
             const cardState = String(card.dataset.convenioState || '');
+            const cardMunicipio = String(card.dataset.convenioMunicipio || '');
             const show =
                 (term === '' || text.includes(term)) &&
-                (state === '' || state === cardState);
+                (state === '' || state === cardState) &&
+                (!originFilter?.value || originFilter.value === card.dataset.convenioOrigin) &&
+                (!municipalityFilter?.value || municipalityFilter.value === cardMunicipio);
 
             card.classList.toggle('d-none', !show);
 
@@ -64,12 +99,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (results) {
             results.textContent =
-                visible + (visible === 1 ? ' notificación' : ' notificaciones');
+                visible + (visible === 1 ? ' convenio' : ' convenios');
         }
 
         if (emptyFilter) {
             emptyFilter.classList.toggle('d-none', visible > 0);
         }
+        // No mostrar encabezados de municipio si todas sus filas están filtradas.
+        module.querySelectorAll('[data-convenio-municipio-header]').forEach(header => {
+            let row = header.nextElementSibling;
+            let hasVisible = false;
+            while (row && !row.matches('[data-convenio-municipio-header]')) {
+                if (row.matches('[data-convenio-notification]') && !row.classList.contains('d-none')) hasVisible = true;
+                row = row.nextElementSibling;
+            }
+            header.classList.toggle('d-none', !hasVisible);
+        });
 
         updateClearFilters();
     };
@@ -77,8 +122,12 @@ document.addEventListener('DOMContentLoaded', function () {
     updateClearFilters();
 
     search?.addEventListener('input', applyFilters);
+    originFilter?.addEventListener('change', applyFilters);
+    municipalityFilter?.addEventListener('change', applyFilters);
 
     clearFilters?.addEventListener('click', function () {
+        if (originFilter) originFilter.value = '';
+        if (municipalityFilter) municipalityFilter.value = '';
         if (search) {
             search.value = '';
         }
@@ -219,7 +268,9 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     cards.forEach(function (card) {
-        card.addEventListener('click', function () {
+        // La interacción pertenece al botón nativo, también para Enter y Espacio.
+        card.addEventListener('click', function (event) {
+            if (!event.target.closest('[data-convenio-open]')) return;
             let data = {};
 
             try {
@@ -295,6 +346,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 params.set('desde_convenio', '1');
                 params.set('abrir_nueva_convocatoria', '1');
+                params.set('aliado_tipo', String(data.origen_tipo || 'institucional'));
+                params.set('aliado_id', String(data.origen_id || data.seguimiento_id || 0));
 
                 if (convenioNombre !== '') {
                     params.set('convenio_nombre', convenioNombre);
@@ -305,8 +358,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 createLink.href = baseUrl + '&' + params.toString();
+                createLink.hidden = !Number(data.origen_id || data.seguimiento_id);
+                const help = modalElement.querySelector('.crear-convocatoria-modal-help span');
+                if (help) help.textContent = 'Cada programa del aliado tendrá su propia imagen y convocatoria. El enlace y QR de Registro serán los mismos para todas sus publicaciones.';
             }
 
+            setText('[data-convenio-fecha-label]', data.origen_tipo === 'manual' ? 'Fecha de relación' : 'Fecha del documento');
+            setText('[data-convenio-origin-label]', data.origen_tipo === 'manual' ? 'Relación manual · Sin formalización documental' : 'Vinculación');
+            document.dispatchEvent(new CustomEvent('impe:convenio-abierto', {detail:data}));
             modal.show();
         });
     });

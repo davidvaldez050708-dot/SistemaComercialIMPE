@@ -1,0 +1,47 @@
+{
+  "title": "Aliados/Convenios permisos territoriales 20261022",
+  "base": "beb99ed3e9b40f1758d1493b27a8cdf40fdbd820",
+  "source": "a5da21270d57d737f2debed9074a906d3123ead5",
+  "files": [
+    {
+      "path": "app/helpers/PermissionHelper.php",
+      "base_sha": "49b1f1c78efbb42d79d6dc8aa9d7eaa473bd59b4",
+      "target_sha": "1b5b1d0a1d832fd75f56010ceb7e230b27e329ea"
+    },
+    {
+      "path": "app/controllers/AliadoController.php",
+      "base_sha": "24d5610b48b72235a85adf4babac6aef563c3b92",
+      "target_sha": "56ea7382a870e47bb8c374cbb0936a084597abd9"
+    },
+    {
+      "path": "app/views/aliados/index.php",
+      "base_sha": "17ffde87a52dc191e2c1fceb947161d3a9d89d6b",
+      "target_sha": "35e32dbcbd806caf346cb665d8a7a218859a8391"
+    },
+    {
+      "path": "app/controllers/CrearConvocatoriaController.php",
+      "base_sha": "9ac822212ef5082ea5dc89addc7d0c0db78c952f",
+      "target_sha": "b25f94cc9b4cec15b7b348e7ae6153eff700afb5"
+    },
+    {
+      "path": "app/models/CrearConvocatoriaModel.php",
+      "base_sha": "3d543f70a10ac4dba350c7cf4d5456aebca17c96",
+      "target_sha": "32448a2c0cf60655d816f22eeb6be79acb4a1698"
+    },
+    {
+      "path": "app/views/convocatorias/crear_desde_convenio.php",
+      "base_sha": "e2e5a8854389378fc3c3f7dbce31ef886c112d36",
+      "target_sha": "f36a16fa5e2b5b3d4083107a360fbaa98e267174"
+    },
+    {
+      "path": "app/services/AliadoRegistroService.php",
+      "base_sha": "bd02db3f73994f64e248e2311495a94be23882e9",
+      "target_sha": "150520a9aee71b9d08c9a2babe4502246d5dc5e3"
+    },
+    {
+      "path": "app/controllers/ConvocatoriaController.php",
+      "base_sha": "0e892d7ea2793271a0aa21c281ea6dbc2b2dd2a6",
+      "target_sha": "eafb5244b14ca55e38e863b798aad1dc42bb8123"
+    }
+  ]
+}

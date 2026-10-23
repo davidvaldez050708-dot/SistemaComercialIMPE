@@ -68,16 +68,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
                 <div class="formulario-publico-hero-logo-sep">
                     <img
                         src="<?= BASE_URL ?>public/img/brand/Logo-Sep-Blanco.png"
-                        alt="Secretaría de Educación Pública"
-                        loading="eager">
-                </div>
-                <span class="formulario-publico-hero-logo-separator" aria-hidden="true"></span>
-                <div class="formulario-publico-hero-acuerdo">Acuerdo<br>286</div>
-                <span class="formulario-publico-hero-logo-separator" aria-hidden="true"></span>
-                <div class="formulario-publico-hero-logo formulario-publico-hero-logo-hlc">
-                    <img
-                        src="<?= BASE_URL ?>public/img/brand/logo-huston.png"
-                        alt="HLC Handy Language Center"
+                        alt="SEP · Acuerdo 286"
                         loading="eager">
                 </div>
             </div>

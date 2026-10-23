@@ -68,16 +68,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
                 <div class="formulario-publico-hero-logo-sep">
                     <img
                         src="<?= BASE_URL ?>public/img/brand/Logo-Sep-Blanco.png"
-                        alt="Secretaría de Educación Pública"
-                        loading="eager">
-                </div>
-                <span class="formulario-publico-hero-logo-separator" aria-hidden="true"></span>
-                <div class="formulario-publico-hero-acuerdo">Acuerdo<br>286</div>
-                <span class="formulario-publico-hero-logo-separator" aria-hidden="true"></span>
-                <div class="formulario-publico-hero-logo formulario-publico-hero-logo-hlc">
-                    <img
-                        src="<?= BASE_URL ?>public/img/brand/logo-huston.png"
-                        alt="HLC Handy Language Center"
+                        alt="SEP · Acuerdo 286"
                         loading="eager">
                 </div>
             </div>
@@ -90,6 +81,10 @@ $fechaMaximaNacimiento = date('Y-m-d');
                 novalidate
                 data-formulario-registro-publico>
 
+                <?php if (!empty($aliadoFormulario['registro_gestionado'])): ?>
+                    <input type="hidden" name="registro_csrf" value="<?= $texto($_SESSION['registro_publico_csrf'] ?? '') ?>">
+                    <div hidden aria-hidden="true"><label>Sitio web <input name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
+                <?php endif; ?>
                 <section class="formulario-publico-section">
                     <div class="formulario-publico-section-heading">
                         <span class="formulario-publico-section-icon">

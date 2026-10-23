@@ -68,16 +68,16 @@ $clasificacionesConvocatoria = [
         'etiqueta' => 'Inscripciones abiertas'
     ],
     [
+        'valor' => 'bachillerato|bachillerato-general',
+        'tipo' => 'bachillerato',
+        'subtipo' => 'bachillerato-general',
+        'etiqueta' => 'Bachillerato General'
+    ],
+    [
         'valor' => 'bachillerato|bachillerato-2-anos',
         'tipo' => 'bachillerato',
         'subtipo' => 'bachillerato-2-anos',
         'etiqueta' => 'Bachillerato en 2 años'
-    ],
-    [
-        'valor' => 'bachillerato|bachillerato-286',
-        'tipo' => 'bachillerato',
-        'subtipo' => 'bachillerato-286',
-        'etiqueta' => 'Bachillerato 286'
     ],
     [
         'valor' => 'bachillerato|ingles',
@@ -108,6 +108,16 @@ $clasificacionesDisponibles = array_values(array_filter(
         $tipoConvocatoria === '' ||
         (string)($item['tipo'] ?? '') === $tipoConvocatoria
 ));
+
+$aliadoContextoConvocatoria = $aliadoContextoConvocatoria ?? null;
+$opcionesProgramaAliado = $aliadoContextoConvocatoria['opciones_convocatoria'] ?? [];
+if ($aliadoContextoConvocatoria) {
+    $opcionesValor = array_column($opcionesProgramaAliado, 'clasificacion');
+    $clasificacionesDisponibles = array_values(array_filter(
+        $clasificacionesDisponibles,
+        static fn($item) => in_array($item['valor'], $opcionesValor, true)
+    ));
+}
 
 $clasificacionFiltroActual = strtolower(trim((string)($_GET['clasificacion'] ?? '')));
 if (
@@ -1076,6 +1086,11 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                 enctype="multipart/form-data"
                 novalidate>
                 <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
+                <?php if ($aliadoContextoConvocatoria): ?>
+                    <input type="hidden" name="aliado_tipo" value="<?= $texto($_GET['aliado_tipo'] ?? '') ?>">
+                    <input type="hidden" name="aliado_id" value="<?= (int)($_GET['aliado_id'] ?? 0) ?>">
+                    <input type="hidden" name="programa_codigo" data-programa-aliado-codigo value="<?= $texto($datosCrear['programa_codigo'] ?? '') ?>">
+                <?php endif; ?>
                 <input
                     type="hidden"
                     name="seguimiento_origen_id"
@@ -1093,6 +1108,28 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
                 <div class="modal-body">
                     <div class="system-form-grid">
+                        <?php if ($aliadoContextoConvocatoria): ?>
+                            <section class="system-form-full convocatoria-aliado-programas" data-convocatoria-programas-aliado>
+                                <span class="aliados-eyebrow">PROGRAMAS DEL ALIADO</span>
+                                <h3><?= $texto($aliadoContextoConvocatoria['origen']['nombre_entidad'] ?? 'Aliado') ?></h3>
+                                <p>Elige un programa para esta publicación. Cada programa lleva su propia imagen y clasificación, pero todos conservan el mismo enlace y QR.</p>
+                                <?php if (!$opcionesProgramaAliado): ?>
+                                    <div class="alert alert-warning">Este aliado no tiene programas compatibles con los tipos de convocatoria actuales.</div>
+                                <?php else: ?>
+                                    <div class="convocatoria-aliado-programas-grid">
+                                        <?php foreach ($opcionesProgramaAliado as $opcionAliado): ?>
+                                            <button type="button" class="convocatoria-aliado-programa-option" data-aliado-programa-crear
+                                                data-programa-codigo="<?= $texto($opcionAliado['codigo']) ?>"
+                                                data-programa-clasificacion="<?= $texto($opcionAliado['clasificacion']) ?>">
+                                                <i class="bi bi-mortarboard" aria-hidden="true"></i>
+                                                <span><?= $texto($opcionAliado['nombre']) ?></span>
+                                                <i class="bi bi-check-circle" aria-hidden="true"></i>
+                                            </button>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </section>
+                        <?php endif; ?>
                         <div class="system-form-full">
                             <?php
                             $tipoCrearActual = strtolower(
@@ -1118,7 +1155,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                             ?>
 
                             <label class="form-label login-label" for="crear_convocatoria_clasificacion_boton">
-                                Tipo de convocatoria
+                                <?= $aliadoContextoConvocatoria ? 'Programa de esta convocatoria' : 'Tipo de convocatoria' ?>
                             </label>
 
                             <div
@@ -1139,6 +1176,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                     id="crear_convocatoria_clasificacion_boton"
                                     aria-haspopup="listbox"
                                     aria-expanded="false"
+                                    <?= $aliadoContextoConvocatoria ? 'disabled title="El programa se selecciona en las tarjetas superiores"' : '' ?>
                                     data-convocatoria-classification-trigger>
                                     <span data-convocatoria-classification-label>
                                         <?= $texto($clasificacionCrearLabel) ?>
@@ -1180,6 +1218,11 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
 <div class="system-form-full convocatoria-public-form-share"
                             data-convocatoria-form-share
+                            data-aliado-registro-contexto="<?= $aliadoContextoConvocatoria ? '1' : '0' ?>"
+                            data-aliado-registro-url="<?= $texto($aliadoContextoConvocatoria['url'] ?? '') ?>"
+                            data-aliado-registro-habilitado="<?= !empty($aliadoContextoConvocatoria['habilitado']) ? '1' : '0' ?>"
+                            data-aliado-registro-tipo="<?= $texto($_GET['aliado_tipo'] ?? '') ?>"
+                            data-aliado-registro-id="<?= (int)($_GET['aliado_id'] ?? 0) ?>"
                             data-registro-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=registro"
                             data-inscripcion-url="<?= BASE_URL ?>index.php?controller=formularioPublico&action=inscripcion"
                             data-aliado-id="<?= (int)($seguimientoOrigenId ?? 0) ?>"
@@ -1191,9 +1234,9 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                             <div class="convocatoria-public-form-heading">
                                 <div>
                                     <span class="convocatoria-public-form-kicker">FORMULARIO PÚBLICO</span>
-                                    <strong>Enlace y código QR</strong>
+                                    <strong><?= $aliadoContextoConvocatoria ? 'Enlace y QR compartidos del aliado' : 'Enlace y código QR' ?></strong>
                                     <small>
-                                        Selecciona el formulario que se utilizará para esta convocatoria.
+                                        <?= $aliadoContextoConvocatoria ? 'Todos los programas de este aliado comparten la misma URL y QR de Registro.' : 'Selecciona el formulario que se utilizará para esta convocatoria.' ?>
                                     </small>
                                 </div>
                             </div>
@@ -1206,12 +1249,12 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                         Formulario
                                     </label>
                                     <div
-                                        class="convocatoria-form-type-dropdown"
+                                        class="convocatoria-form-type-dropdown <?= $aliadoContextoConvocatoria ? 'd-none' : '' ?>"
                                         data-convocatoria-form-type-dropdown>
                                         <input
                                             type="hidden"
                                             id="crear_convocatoria_formulario_publico"
-                                            value=""
+                                            value="<?= $aliadoContextoConvocatoria ? 'registro' : '' ?>"
                                             data-convocatoria-form-type>
 
                                         <button
@@ -1279,6 +1322,19 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 </div>
                             </div>
 
+                            <?php if ($aliadoContextoConvocatoria): ?>
+                                <div class="convocatoria-aliado-enlace-estado">
+                                    <span data-aliado-habilitacion-estado></span>
+                                    <button type="button" class="btn btn-system-light" data-aliado-habilitar-registro hidden>Habilitar Registro</button>
+                                </div>
+                                <div class="convocatoria-aliado-qr-panel d-none" data-aliado-qr-panel>
+                                    <canvas data-aliado-qr-canvas role="img" aria-label="Código QR del formulario de Registro del aliado"></canvas>
+                                    <div class="d-flex flex-wrap gap-2 justify-content-center mt-2">
+                                        <button type="button" class="btn btn-system-light" data-aliado-qr-copy><i class="bi bi-copy"></i> Copiar QR</button>
+                                        <button type="button" class="btn btn-system-light" data-aliado-qr-download><i class="bi bi-download"></i> Descargar QR</button>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                             <div
                                 class="convocatoria-public-form-result d-none"
                                 data-convocatoria-form-result>
@@ -1315,7 +1371,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                                 placeholder="https://..."
                                 value="<?= $texto($datosCrear['enlace_registro'] ?? '') ?>">
                             <small class="form-text">
-                                Opcional. Cuenta Clave podrá copiar este enlace al preparar la convocatoria para WhatsApp.
+                                <?= $aliadoContextoConvocatoria ? 'El enlace pertenece al aliado y es idéntico para todas sus convocatorias.' : 'Opcional. Cuenta Clave podrá copiar este enlace al preparar la convocatoria para WhatsApp.' ?>
                             </small>
                         </div>
 
@@ -2172,6 +2228,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         const getSelectedUrl = function () {
+            if (share.dataset.aliadoRegistroContexto === '1') return String(share.dataset.aliadoRegistroUrl || '');
             const type = String(select?.value || '');
             let baseUrl = '';
 
@@ -2363,6 +2420,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         contextFields.forEach(function (field) {
             const invalidateGeneratedLink = function () {
+                if (share.dataset.aliadoRegistroContexto === '1') return;
                 if (!result?.classList.contains('d-none')) {
                     resetShare();
                 }
@@ -2375,6 +2433,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         buttonLink?.addEventListener('click', function () {
+            if (share.dataset.aliadoRegistroContexto === '1') return;
             if (!canGeneratePublicLink()) {
                 showQrToast(
                     'Selecciona el formulario y el tipo de convocatoria antes de generar el enlace.',
@@ -2662,6 +2721,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         buttonQr?.addEventListener('click', function () {
+            if (share.dataset.aliadoRegistroContexto === '1') return;
             const url = String(inputUrl?.value || getSelectedUrl()).trim();
 
             if (url === '' || !qrModalElement) {
@@ -3883,3 +3943,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <?php endif; ?>
 });
 </script>
+
+<?php if ($aliadoContextoConvocatoria): ?>
+<script src="<?= BASE_URL ?>public/vendor/qrcode-generator/qrcode.js" defer></script>
+<?php endif; ?>

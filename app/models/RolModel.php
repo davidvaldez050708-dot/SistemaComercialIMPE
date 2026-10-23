@@ -713,7 +713,6 @@ class RolModel
          * módulo correspondiente exista.
          */
         $codigos = [
-            'prospectos.ver_todos',
             'prospectos.ver_propios',
             'prospectos.editar',
             'prospectos.asignar',
@@ -1345,7 +1344,7 @@ class RolModel
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.editar', 'nombre' => 'Editar roles', 'descripcion' => 'Actualizar datos de roles.'],
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.cambiar_estado', 'nombre' => 'Activar / desactivar roles', 'descripcion' => 'Modificar estado de roles.'],
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.asignar_permisos', 'nombre' => 'Asignar permisos', 'descripcion' => 'Administrar permisos por rol.'],
-            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_todos', 'nombre' => 'Ver todos los prospectos', 'descripcion' => 'Consultar prospectos de todos los equipos.'],
+            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_todos', 'nombre' => 'Ver todos los prospectos', 'descripcion' => 'Consultar los prospectos recibidos desde los formularios de Registro, generales y de aliados.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_propios', 'nombre' => 'Ver prospectos propios', 'descripcion' => 'Consultar prospectos asignados al usuario.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.editar', 'nombre' => 'Editar prospectos', 'descripcion' => 'Actualizar información de prospectos.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.asignar', 'nombre' => 'Asignar prospectos', 'descripcion' => 'Asignar prospectos a usuarios o equipos.'],

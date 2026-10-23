@@ -177,6 +177,10 @@ $seguimientoVista = static function ($estado) {
         <?php endif; ?>
     </section>
 
+    <div class="aliados-origen-resumen" aria-label="Desglose de aliados por procedencia">
+        <span class="aliados-origen-indicador"><i class="bi bi-patch-check" aria-hidden="true"></i><strong><?= (int)($resumenAliados['formalizados'] ?? 0) ?></strong> con formalización documental</span>
+        <span class="aliados-origen-indicador is-manual"><i class="bi bi-pencil-square" aria-hidden="true"></i><strong><?= max(0, count($aliados) - (int)($resumenAliados['formalizados'] ?? 0)) ?></strong> <?= count($aliados) - (int)($resumenAliados['formalizados'] ?? 0) === 1 ? 'relación manual' : 'relaciones manuales' ?></span>
+    </div>
     <section class="dashboard-panel aliados-directory-panel">
         <div class="aliados-directory-controls">
             <div class="aliados-section-heading">
@@ -195,6 +199,9 @@ $seguimientoVista = static function ($estado) {
                 </div>
 
                 <div class="aliados-directory-meta">
+                    <?php if (tienePermiso('aliados.crear_manual') && tienePermiso('aliados.gestionar_programas')): ?>
+                    <button type="button" class="btn btn-system-save" data-registro-abrir><i class="bi bi-plus-lg"></i> Agregar aliado</button>
+                    <?php endif; ?>
                     <?php if (
                         $puedeSeguimientoConvocatorias &&
                         (int)$resumenAliados['seguimientos_pendientes'] > 0
@@ -301,6 +308,7 @@ $seguimientoVista = static function ($estado) {
                     </select>
                 </div>
 
+                <div><label class="form-label" for="aliados_origen">Origen</label><select id="aliados_origen" class="form-select" data-aliados-origen><option value="">Todos</option><option value="manual">Manual</option><option value="institucional">Vinculación</option></select></div>
                 <div class="aliados-filter-actions">
                     <a
                         class="btn aliados-btn-secondary"
@@ -443,6 +451,7 @@ $seguimientoVista = static function ($estado) {
                                         ?>
                                         <tr
                                             data-aliado-row
+                                            data-origen="<?= $texto($aliado['origen_tipo'] ?? 'institucional') ?>"
                                             data-search="<?= $texto($textoBusquedaAliado) ?>"
                                             data-estado-id="<?= (int)($aliado['estado_id'] ?? 0) ?>"
                                             data-municipio-id="<?= (int)($aliado['municipio_id'] ?? 0) ?>"
@@ -455,6 +464,8 @@ $seguimientoVista = static function ($estado) {
                                             <td>
                                                 <div class="aliados-institution-cell">
                                                     <strong><?= $texto($aliado['nombre_entidad'] ?? 'Institución') ?></strong>
+                                                    <span class="aliados-no-send"><?= ($aliado['origen_tipo'] ?? '') === 'manual' ? 'Manual · ' . $texto($aliado['situacion']) : 'Vinculación · Formalizado' ?></span>
+                                                    <span class="aliados-no-send"><?= $texto($aliado['registro_programas'] ?? 'Sin programas asignados') ?></span>
                                                 </div>
                                             </td>
 
@@ -558,11 +569,30 @@ $seguimientoVista = static function ($estado) {
 
                                             <td class="text-end">
                                                 <div class="aliados-actions">
+                                                    <?php $esManualRegistro = ($aliado['origen_tipo'] ?? '') === 'manual'; ?>
+                                                    <?php if (tienePermiso('aliados.gestionar_programas')): ?>
+                                                    <button type="button" class="btn aliados-share-button" data-registro-abrir data-registro-origen="<?= $esManualRegistro ? 'manual' : 'institucional' ?>" data-registro-id="<?= (int)($esManualRegistro ? $aliado['id'] : $aliado['seguimiento_id']) ?>">Programas</button>
+                                                    <?php endif; ?>
+                                                    <?php if ($esManualRegistro && tienePermiso('aliados.gestionar_programas')): ?>
+                                                        <div class="dropdown dropstart aliados-actions-menu">
+                                                            <button type="button" class="aliados-more-button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false" aria-label="Más acciones de <?= $texto($aliado['nombre_entidad'] ?? 'aliado') ?>" title="Más acciones">
+                                                                <i class="bi bi-three-dots" aria-hidden="true"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu aliados-actions-dropdown">
+                                                                <?php if (tienePermiso('aliados.editar_manual') && tienePermiso('aliados.gestionar_programas')): ?>
+                                                                <li><button type="button" class="dropdown-item" data-registro-abrir data-registro-editar data-registro-id="<?= (int)$aliado['id'] ?>"><i class="bi bi-pencil-square"></i><span>Editar aliado</span></button></li>
+                                                                <?php endif; ?>
+                                                                <li><button type="button" class="dropdown-item" data-registro-manual-contactos="<?= (int)$aliado['id'] ?>"><i class="bi bi-person-lines-fill"></i><span>Canales del aliado</span></button></li>
+                                                                <li><button type="button" class="dropdown-item" data-registro-manual-historial="<?= (int)$aliado['id'] ?>"><i class="bi bi-clock-history"></i><span>Historial de difusión</span></button></li>
+                                                            </ul>
+                                                        </div>
+                                                    <?php endif; ?>
                                                     <?php if ($puedeCompartirCorreo || $puedePrepararWhatsapp): ?>
                                                         <button
                                                             type="button"
                                                             class="btn aliados-share-button"
-                                                            data-aliado-share="<?= (int)$aliado['seguimiento_id'] ?>"
+                                                            data-aliado-share="<?= (int)($esManualRegistro ? $aliado['id'] : $aliado['seguimiento_id']) ?>"
+                                                            data-aliado-share-origen="<?= $esManualRegistro ? 'manual' : 'institucional' ?>"
                                                             <?= $puedeCompartirAliado ? '' : 'disabled' ?>
                                                             title="<?= $puedeCompartirAliado
                                                                 ? 'Compartir convocatoria'
@@ -572,6 +602,7 @@ $seguimientoVista = static function ($estado) {
                                                         </button>
                                                     <?php endif; ?>
 
+                                                    <?php if (!$esManualRegistro): ?>
                                                     <?php if ($mostrarAccionesSecundarias): ?>
                                                         <div class="dropdown dropstart aliados-actions-menu">
                                                             <button
@@ -653,6 +684,7 @@ $seguimientoVista = static function ($estado) {
                                                             </ul>
                                                         </div>
                                                     <?php endif; ?>
+                                                    <?php endif; ?>
                                                 </div>
                                             </td>
                                         </tr>
@@ -730,11 +762,16 @@ $seguimientoVista = static function ($estado) {
 
                 <form data-aliado-share-form>
                     <input type="hidden" name="seguimiento_id" value="">
+                    <input type="hidden" name="origen_tipo"><input type="hidden" name="origen_id"><input type="hidden" name="operacion_id">
                     <input type="hidden" name="confirmar_reenvio" value="0">
                     <input type="hidden" name="canal" value="">
 
                     <div class="aliados-share-compose">
                         <div class="aliados-share-selection">
+                            <div data-aliado-share-scope class="d-none">
+                                <label class="form-label" for="aliado_ambito">Publicaciones</label>
+                                <select class="form-select" name="ambito" id="aliado_ambito"><option value="asociadas">Convocatorias del aliado</option><option value="territorial">Difusión territorial de Vinculación</option></select>
+                            </div>
                             <div>
                                 <label class="form-label" for="aliado_convocatoria_id">
                                     Convocatoria vigente
@@ -751,7 +788,8 @@ $seguimientoVista = static function ($estado) {
                             <div class="aliados-convocatoria-preview d-none" data-aliado-convocatoria-preview>
                                 <img src="" alt="" data-aliado-convocatoria-image>
                                 <div>
-                                    <span class="aliados-preview-label">CONVOCATORIA SELECCIONADA</span>
+                                    <span class="aliados-preview-label" data-aliado-convocatoria-programa>CONVOCATORIA SELECCIONADA</span>
+                                    <small data-aliado-convocatoria-estado></small>
                                     <strong data-aliado-convocatoria-title>—</strong>
                                     <small data-aliado-convocatoria-period>—</small>
                                     <small class="aliados-preview-link" data-aliado-convocatoria-link>
@@ -763,6 +801,8 @@ $seguimientoVista = static function ($estado) {
 
                         <div class="aliados-share-message-column">
                             <div class="mb-2" data-aliado-email-only>
+                                <label class="form-label" for="aliado_destinatario">Destinatario</label>
+                                <select class="form-select mb-2" name="destinatario" id="aliado_destinatario"></select>
                                 <label class="form-label" for="aliado_asunto">Asunto</label>
                                 <input
                                     type="text"
@@ -772,6 +812,14 @@ $seguimientoVista = static function ($estado) {
                                     maxlength="255">
                             </div>
 
+                            <div class="mb-2 d-none" data-aliado-whatsapp-destination>
+                                <label class="form-label" for="aliado_contacto_difusion">Número autorizado para WhatsApp</label>
+                                <select class="form-select" name="contacto_id" id="aliado_contacto_difusion"></select>
+                            </div>
+                            <div class="mb-2 d-none" data-aliado-editable-link>
+                                <label class="form-label" for="aliado_enlace_material">Enlace para el mensaje</label>
+                                <input class="form-control" type="url" id="aliado_enlace_material">
+                            </div>
                             <div>
                                 <label class="form-label" for="aliado_mensaje">Mensaje</label>
                                 <textarea
@@ -1185,3 +1233,5 @@ $seguimientoVista = static function ($estado) {
         </div>
     </div>
 </div>
+
+<?php require __DIR__ . '/partials/registro_gestion.php'; ?>

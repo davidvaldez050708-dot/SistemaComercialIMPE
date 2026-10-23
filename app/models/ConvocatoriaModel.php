@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 
 class ConvocatoriaModel
 {
@@ -394,8 +395,14 @@ class ConvocatoriaModel
         return $convocatoria;
     }
 
-    public function crear($datos, $estadosIds)
+    /** Transacción común: evita lotes de convocatorias parcialmente guardados. */
+    public function iniciarLote(): void { $this->connection->begin_transaction(); }
+    public function confirmarLote(): void { $this->connection->commit(); }
+    public function cancelarLote(): void { $this->connection->rollback(); }
+
+    public function crear($datos, $estadosIds, $transaccionExterna = false)
     {
+        $datos = ProgramaEducativo::entrada($datos);
         $esInscripcionesAbiertas =
             (string)($datos['subtipo_convocatoria'] ?? '') === 'inscripciones-abiertas';
         $requiereFechasNulas =
@@ -414,7 +421,7 @@ class ConvocatoriaModel
             return false;
         }
 
-        $this->connection->begin_transaction();
+        if (!$transaccionExterna) $this->connection->begin_transaction();
 
         try {
             $categoria = strcasecmp(trim((string)$datos['titulo']), 'IMJUVE') === 0
@@ -509,19 +516,52 @@ class ConvocatoriaModel
             $convocatoriaId = (int)$this->connection->insert_id;
             $this->guardarEstados($convocatoriaId, $estadosIds);
 
-            $this->connection->commit();
+            // Se guarda el origen para TODO aliado, incluso el que viene de Vinculación.
+            if (!empty($datos['aliado_tipo']) && !empty($datos['aliado_id'])) {
+                $origenTipo = (string)$datos['aliado_tipo'];
+                $origenId = (int)$datos['aliado_id'];
+                $programa = (string)($datos['programa_codigo'] ?? '');
+                if (!in_array($origenTipo,['manual','institucional'],true) ||
+                    $origenId <= 0 || $programa === '') {
+                    throw new RuntimeException('Origen o programa de convocatoria no válido.');
+                }
+                $vinculo = $this->connection->prepare(
+                    'INSERT INTO marketing_aliado_convocatorias_origen (convocatoria_id,origen_tipo,origen_id,programa_codigo,creado_por) VALUES (?,?,?,?,?)'
+                );
+                if (!$vinculo) throw new RuntimeException('Falta instalar el vínculo de convocatorias por programa.');
+                $vinculo->bind_param('isisi',$convocatoriaId,$origenTipo,$origenId,$programa,$datos['usuario_id']);
+                if (!$vinculo->execute()) throw new RuntimeException('No se vinculó la convocatoria al aliado.');
+            }
+
+            // En la misma transacción: imagen/clasificación y origen manual indivisibles.
+            if (!empty($datos['manual_id'])) {
+                $manualId = (int)$datos['manual_id'];
+                $codigo = (string)($datos['programa_codigo'] ?? '');
+                if ($manualId <= 0 || $codigo === '') {
+                    throw new RuntimeException('No se puede asociar una convocatoria sin aliado y programa válidos.');
+                }
+                $stmtManual = $this->connection->prepare(
+                    'INSERT INTO marketing_aliado_manual_convocatorias (manual_id, convocatoria_id, programa_codigo, creado_por) VALUES (?, ?, ?, ?)'
+                );
+                if (!$stmtManual) throw new RuntimeException('No se pudo asociar el origen manual.');
+                $stmtManual->bind_param('iisi', $manualId, $convocatoriaId, $codigo, $datos['usuario_id']);
+                if (!$stmtManual->execute()) throw new RuntimeException('No se pudo asociar la publicación al aliado manual.');
+            }
+
+            if (!$transaccionExterna) $this->connection->commit();
 
             return $convocatoriaId;
         } catch (Throwable $error) {
-            $this->connection->rollback();
+            if (!$transaccionExterna) $this->connection->rollback();
             error_log($error->getMessage());
-
+            if ($transaccionExterna) throw $error;
             return false;
         }
     }
 
     public function actualizar($id, $datos, $estadosIds)
     {
+        $datos = ProgramaEducativo::entrada($datos);
         $esInscripcionesAbiertas =
             (string)($datos['subtipo_convocatoria'] ?? '') === 'inscripciones-abiertas';
         $requiereFechasNulas =

@@ -11,10 +11,10 @@ class AliadoDifusionService
     private $correo;
     private $rootPath;
 
-    public function __construct()
+    public function __construct(?CorreoSalidaInstitucionalService $correo = null)
     {
         $this->modelo = new AliadoModel();
-        $this->correo = new CorreoSalidaInstitucionalService();
+        $this->correo = $correo ?? new CorreoSalidaInstitucionalService();
         $this->rootPath = dirname(__DIR__, 2);
     }
 
@@ -757,6 +757,58 @@ class AliadoDifusionService
             'mensaje' => 'Convocatoria enviada correctamente por correo.',
             'proveedor' => (string)($resultado['proveedor'] ?? '')
         ];
+    }
+
+    /** Mismo proveedor, remitente, tarjeta y adjuntos del envío institucional. */
+    public function enviarCorreoPreparado(int $usuarioId,array $aliado,array $convocatoria,string $asunto,string $mensaje,string $destinatario): array
+    {
+        $remitente = $this->modelo->obtenerUsuarioRemitente((int)$usuarioId);
+        if (!$remitente) {
+            return $this->error(
+                'No fue posible obtener la cuenta institucional del remitente.',
+                422
+            );
+        }
+
+        $correoRemitente = trim((string)($remitente['correo'] ?? ''));
+        if ($correoRemitente === '' || !filter_var($correoRemitente, FILTER_VALIDATE_EMAIL)) {
+            return $this->error(
+                'Tu cuenta no tiene un correo institucional válido para realizar el envío.',
+                422
+            );
+        }
+
+        $nombreRemitente = trim(
+            (string)($remitente['nombre'] ?? '') . ' ' .
+            (string)($remitente['apellidos'] ?? '')
+        );
+
+        $imagenes = [];
+        $htmlAdicional = $this->construirTarjetaHtml($convocatoria, false);
+        $imagen = $this->resolverImagenConvocatoria(
+            (string)($convocatoria['imagen'] ?? '')
+        );
+
+        if ($imagen !== null) {
+            $imagenes[] = [
+                'ruta' => $imagen['ruta'],
+                'cid' => 'convocatoria-aliado',
+                'nombre' => $imagen['nombre'],
+                'mime' => $imagen['mime']
+            ];
+            $htmlAdicional = $this->construirTarjetaHtml($convocatoria, true);
+        }
+
+        return $this->correo->enviar([
+            'remitente' => $correoRemitente,
+            'nombre_remitente' => $nombreRemitente,
+            'destinatario' => $destinatario,
+            'nombre_destinatario' => (string)($aliado['contacto_nombre'] ?? ''),
+            'asunto' => $asunto,
+            'cuerpo' => $mensaje,
+            'imagenes_embebidas' => $imagenes,
+            'html_adicional' => $htmlAdicional
+        ]);
     }
 
     private function seleccionarContactoWhatsapp(array $aliado)

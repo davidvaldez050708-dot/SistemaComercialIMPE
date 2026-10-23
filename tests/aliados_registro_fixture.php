@@ -1,0 +1,23 @@
+<?php
+require __DIR__.'/formulario_aliados_fixture.php';
+$db->query("ALTER TABLE estados ADD clave_inegi VARCHAR(2) DEFAULT '01', ADD nombre_corto VARCHAR(20) DEFAULT ''");
+$db->query("INSERT INTO estados (id,nombre,estado) VALUES (2,'Veracruz',1)");
+$db->query("INSERT INTO municipios VALUES (2,2,'Xalapa',1)");
+$db->query("CREATE TABLE usuarios (id INT PRIMARY KEY,nombre VARCHAR(80),apellidos VARCHAR(100),estado INT DEFAULT 1,correo VARCHAR(180),telefono VARCHAR(30),foto_perfil VARCHAR(255),usuario VARCHAR(80),password VARCHAR(255),rol_id INT DEFAULT 4,ultimo_acceso DATETIME NULL,created_at DATETIME NULL,updated_at DATETIME NULL,requiere_cambio_password INT DEFAULT 0,password_temporal_expira DATETIME NULL) ENGINE=InnoDB");
+$db->query("INSERT INTO usuarios (id,nombre,apellidos) VALUES (1,'Admin','Prueba'),(2,'Cuenta','Clave'),(3,'Analista','Prueba'),(4,'Marketing','Prueba')");
+$db->query("UPDATE usuarios SET rol_id=CASE WHEN id=1 THEN 1 WHEN id=4 THEN 5 ELSE 4 END");
+$db->query("CREATE TABLE roles (id INT PRIMARY KEY,nombre VARCHAR(60),estado INT DEFAULT 1) ENGINE=InnoDB");
+$db->query("INSERT INTO roles (id,nombre) VALUES (1,'Administrador'),(4,'Cuenta Clave'),(5,'Marketing')");
+$db->query("CREATE TABLE permisos (id INT AUTO_INCREMENT PRIMARY KEY,modulo VARCHAR(80),codigo VARCHAR(100) UNIQUE,nombre VARCHAR(120),descripcion VARCHAR(255),estado INT) ENGINE=InnoDB");
+$db->query("CREATE TABLE rol_permisos (rol_id INT,permiso_id INT,PRIMARY KEY(rol_id,permiso_id)) ENGINE=InnoDB");
+$db->query("CREATE TABLE asignaciones_territorio (id INT PRIMARY KEY,usuario_id INT,estado_id INT,tipo_asignacion VARCHAR(30),activo INT,fecha_inicio DATE NULL,fecha_fin DATE NULL) ENGINE=InnoDB");
+$db->query("INSERT INTO asignaciones_territorio VALUES (1,2,1,'CUENTA_CLAVE',1,NULL,NULL)");
+$db->query("CREATE TABLE seguimientos_vinculacion (id INT PRIMARY KEY,estado_id INT,municipio_id INT,nombre_entidad VARCHAR(180),tipo_entidad VARCHAR(30),contacto_nombre VARCHAR(120) DEFAULT '',contacto_cargo VARCHAR(120) DEFAULT '',correo_verificado VARCHAR(180) DEFAULT '',correo_fuente VARCHAR(180) DEFAULT '',telefono_fuente VARCHAR(30) DEFAULT '',telefono_verificado VARCHAR(30) DEFAULT '',whatsapp_verificado VARCHAR(30) DEFAULT '',analista_id INT,activo INT) ENGINE=InnoDB");
+$db->query("INSERT INTO seguimientos_vinculacion (id,estado_id,municipio_id,nombre_entidad,tipo_entidad,analista_id,activo) VALUES (10,1,1,'Instituto Existente','INSTITUCION',3,1)");
+$db->query("CREATE TABLE seguimientos_vinculacion_post_envio (seguimiento_id INT PRIMARY KEY,convenio_fecha DATE,convenio_notas VARCHAR(500),convenio_referencia VARCHAR(180),convenio_formalizado_at DATETIME,convenio_formalizado_por INT) ENGINE=InnoDB");
+$db->query("INSERT INTO seguimientos_vinculacion_post_envio VALUES (10,CURDATE(),'Convenio real','DOC-1',NOW(),3)");
+$db->query("CREATE TABLE aliados_asignaciones (id INT PRIMARY KEY,seguimiento_id INT,cuenta_clave_usuario_id INT,origen_asignacion VARCHAR(30),asignado_at DATETIME,activo INT) ENGINE=InnoDB");
+$db->query("INSERT INTO aliados_asignaciones VALUES (1,10,2,'FORMALIZACION',NOW(),1)");
+$db->query("CREATE TABLE convocatorias (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, titulo VARCHAR(180) DEFAULT '', estado INT NOT NULL DEFAULT 1, fecha_inicio DATE NULL, fecha_termino DATE NULL) ENGINE=InnoDB");
+$db->query("CREATE TABLE aliados_convocatorias_envios (id INT PRIMARY KEY,seguimiento_id INT,convocatoria_titulo VARCHAR(180),canal VARCHAR(20),enviado_at DATETIME,estado_envio VARCHAR(30)) ENGINE=InnoDB");
+echo "OK: fixture territorial e institucional\n";

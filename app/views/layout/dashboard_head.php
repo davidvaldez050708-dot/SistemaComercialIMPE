@@ -215,6 +215,9 @@ if (
     $esHomeDashboard
 ) {
     $cssOpcionalDashboard[] = 'convocatorias.css';
+    if ($esConvocatoriaDashboard) {
+        $cssOpcionalDashboard[] = 'aliados_v2_extension.css';
+    }
 }
 
 if ($controllerDashboard === 'aliadoreporte') {
@@ -227,6 +230,7 @@ if ($esTerritorialDashboard) {
 
 if ($esAliadosDashboard) {
     $cssOpcionalDashboard[] = 'aliados.css';
+    $cssOpcionalDashboard[] = 'aliados_v2_extension.css';
 }
 
 if ($esWhatsappDashboard) {
@@ -242,7 +246,10 @@ if ($esFormulariosDashboard) {
 }
 
 if ($esCrearConvocatoriaDashboard) {
+    // La navegación y las tablas de Convenios reutilizan las piezas visuales de Aliados.
+    $cssOpcionalDashboard[] = 'aliados.css';
     $cssOpcionalDashboard[] = 'crear_convocatoria.css';
+    $cssOpcionalDashboard[] = 'aliados_v2_extension.css';
 }
 
 if ($esDesempenoDashboard) {
@@ -316,6 +323,7 @@ if (tienePermiso('seguimientos_vinculacion.operar_propios')) {
 if ($esAliadosDashboard) {
     $jsOpcionalHead[] = 'aliados.js';
     $jsOpcionalHead[] = 'aliados_seguimiento.js';
+    $jsOpcionalHead[] = 'aliados_registro.js';
 }
 
 if ($controllerDashboard === 'aliadoreporte') {
@@ -336,6 +344,12 @@ if ($esFormulariosDashboard) {
 
 if ($esCrearConvocatoriaDashboard) {
     $jsOpcionalHead[] = 'crear_convocatoria.js';
+    $jsOpcionalHead[] = 'crear_convocatoria_v2_extension.js';
+    $jsOpcionalHead[] = 'aliados_registro.js';
+}
+if ($esConvocatoriaDashboard && $actionDashboard === 'index' &&
+    !empty($_GET['aliado_tipo']) && !empty($_GET['aliado_id'])) {
+    $jsOpcionalHead[] = 'convocatorias_aliado_programas.js';
 }
 
 if ($esDesempenoDashboard) {

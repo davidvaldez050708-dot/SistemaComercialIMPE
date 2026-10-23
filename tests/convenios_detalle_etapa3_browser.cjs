@@ -1,0 +1,102 @@
+const assert=require('node:assert/strict'),{spawn,execFileSync}=require('node:child_process');
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
+const root=path.resolve(__dirname,'..'),php=process.env.PHP_BINARY||'php',base=process.env.IMPE_BASE_URL||'http://127.0.0.1:8097/';
+assert.match(process.env.IMPE_DB_NAME||'',/^impe_test_handly_aliados[a-z0-9_]*$/);
+const baseline=fs.mkdtempSync(path.join(os.tmpdir(),'impe-convenios-base-'));
+const ref='285bfac993d04f5d5cd5e5cdae6cca3d809372dc';
+const assets=['app/views/convocatorias/crear_desde_convenio.php','public/css/aliados_v2_extension.css','public/javascript/crear_convocatoria.js','public/javascript/crear_convocatoria_v2_extension.js'];
+for(const name of assets){const file=path.join(baseline,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,execFileSync('git',['show',ref+':'+name],{cwd:root}));}
+const env={...process.env,APP_ENV:'testing',IMPE_TEST_ALLOW_ROUTER:'1',IMPE_CONVENIOS_BASELINE_DIR:baseline};
+const server=spawn(php,['-S',new URL(base).host,'-t',root,'tests/aliados_registro_router.php'],{cwd:root,env,stdio:['ignore','ignore','pipe']});
+let logs='';server.stderr.on('data',d=>logs+=d);
+const bootstrap=env.BOOTSTRAP_MODULE_PATH||path.join(root,'../browser-deps/node_modules/bootstrap');
+const fixture=base+'_fixture?view=convenios&role=marketing&estado_id=1';
+(async()=>{
+ let browser,count=0;const check=(v,m)=>{assert.ok(v,m);console.log('OK '+m);count++;};
+ try{
+  for(let i=0;i<70;i++){try{await fetch(fixture);break;}catch{await new Promise(r=>setTimeout(r,100));}}
+  browser=await chromium.launch({headless:true,...(env.PLAYWRIGHT_CHANNEL?{channel:env.PLAYWRIGHT_CHANNEL}:{})});
+  const context=await browser.newContext(),page=await context.newPage(),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await context.route('**/*',r=>{
+   const url=new URL(r.request().url());
+   if(url.pathname==='/fixture-bootstrap.css')return r.fulfill({path:path.join(bootstrap,'dist/css/bootstrap.min.css'),contentType:'text/css'});
+   if(url.pathname==='/fixture-bootstrap.js')return r.fulfill({path:path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'),contentType:'application/javascript'});
+   if(url.pathname.includes('/fixture-font/'))return r.fulfill({path:path.join(bootstrap,'../@fontsource/manrope/files',path.basename(url.pathname)),contentType:'font/woff2'});
+   if(url.pathname.includes('/fixture-icon/'))return r.fulfill({path:path.join(bootstrap,'../bootstrap-icons/font/fonts',path.basename(url.pathname)),contentType:'font/woff2'});
+   if(url.searchParams.has('convenios_baseline')&&assets.includes(url.pathname.slice(1)))return r.fulfill({path:path.join(baseline,url.pathname.slice(1)),contentType:url.pathname.endsWith('.css')?'text/css':'application/javascript'});
+   if(url.protocol==='https:')return r.abort();return r.continue();
+  });
+  const modal=page.locator('#modalConvenioCrearConvocatoria'),rows=page.locator('[data-convenio-notification]');
+  const row=name=>rows.filter({hasText:name});
+  const goto=async before=>{
+   await page.goto(fixture+(before?'&baseline=convenios':''));
+   await page.addStyleTag({content:fs.readFileSync(path.join(bootstrap,'../@fontsource/manrope/latin.css'),'utf8').replaceAll('./files/','/fixture-font/')});
+   await page.addStyleTag({content:fs.readFileSync(path.join(bootstrap,'../bootstrap-icons/font/bootstrap-icons.css'),'utf8').replaceAll('./fonts/','/fixture-icon/')});
+   await page.evaluate(()=>document.fonts.ready);await rows.first().waitFor();await page.mouse.move(0,0);
+  };
+  const close=async()=>{await modal.locator('.btn-close').click();await modal.waitFor({state:'hidden'});};
+  const open=async name=>{await row(name).locator('[data-convenio-open]').click();await modal.waitFor({state:'visible'});await page.waitForTimeout(350);};
+  const capture=async(name)=>{if(env.IMPE_CONVENIOS_OUTPUT){fs.mkdirSync(env.IMPE_CONVENIOS_OUTPUT,{recursive:true});await page.screenshot({path:path.join(env.IMPE_CONVENIOS_OUTPUT,name+'.png'),fullPage:true});}};
+  for(const [width,height] of [[1440,900],[1366,900],[1024,768],[768,1024],[390,844],[360,740]]){
+   await page.setViewportSize({width,height});await goto(true);
+   const oldHeight=(await row('Aliado Regional').boundingBox()).height;
+   await capture('antes-directorio-'+width);await open('Aliado Regional');
+   const oldHref=await modal.locator('[data-convenio-create-link]').getAttribute('href');
+   await capture('antes-detalle-'+width);await close();
+   await goto(false);
+   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'directorio sin scroll horizontal '+width);
+   check((await row('Aliado Regional').boundingBox()).height<oldHeight,'fila más compacta que revisión anterior '+width);
+   check(await page.locator('[data-convenio-open]').evaluateAll(nodes=>nodes.every(n=>n.textContent.trim()==='Ver detalle')),'acción uniforme '+width);
+   check(await row('Aliado Regional').locator('.convenios-etiqueta').evaluate(el=>parseFloat(getComputedStyle(el).fontSize))<=11,'tipografía secundaria proporcionada '+width);
+   const target=row('Aliado Regional');
+   check(await target.getAttribute('tabindex')===null,'fila no toma foco de botón '+width);
+   const visual=()=>target.evaluate(el=>{const s=getComputedStyle(el);return [s.backgroundColor,s.boxShadow,s.cursor];});
+   const normal=await visual();await target.hover();assert.deepEqual(await visual(),normal);check(!normal[1].includes('inset')&&normal[2]!=='pointer','sin fondo o barra de hover ni cursor accionable '+width);
+   await target.locator('.convenios-nombre').click();check(!await modal.isVisible(),'clic de información no abre detalle '+width);
+   const button=target.locator('[data-convenio-open]');await button.focus();await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
+   check(await button.evaluate(el=>{const s=getComputedStyle(el);return parseFloat(s.outlineWidth)>0||s.boxShadow!=='none';}),'foco visible en botón '+width);
+   await capture('despues-directorio-'+width);await button.press('Enter');await modal.waitFor({state:'visible'});await page.waitForTimeout(350);
+   check(await modal.locator('[data-convenio-origin-label]').textContent()==='Relación manual','origen compacto manual '+width);
+   check(await modal.locator('[data-convenio-origin-description]').textContent()==='Sin formalización documental','descripción neutral '+width);
+   const chips=modal.locator('[data-convenio-modal-programas] .aliados-source-chip');
+   check(await chips.count()===2,'programas independientes '+width);
+   check((await chips.allTextContents()).includes('Titulación por experiencia laboral · Campus A. Programa autorizado'),'nombre con puntos íntegro en un badge '+width);
+   check(await modal.locator('[data-convenio-create-link]').getAttribute('href')===oldHref,'ruta de Nueva convocatoria intacta '+width);
+   check(await modal.evaluate(el=>el.querySelector('.modal-body').scrollWidth<=el.querySelector('.modal-body').clientWidth),'modal sin desbordamiento '+width);
+   const footer=await modal.locator('.modal-footer').boundingBox(),header=await modal.locator('.modal-header').boundingBox();
+   check(header.y>=0&&footer.y+footer.height<=height+1,'encabezado y footer accesibles '+width);
+   await modal.locator('.modal-body').evaluate(el=>el.scrollTop=el.scrollHeight);
+   check(await modal.locator('.modal-footer').evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1;}),'scroll del cuerpo conserva footer '+width);
+   await capture('despues-detalle-'+width);await close();
+   await button.focus();await button.press('Space');await modal.waitFor({state:'visible'});await page.waitForTimeout(350);check(true,'teclado Espacio abre detalle '+width);await page.keyboard.press('Escape');await modal.waitFor({state:'hidden'});
+  }
+  await page.setViewportSize({width:1440,height:900});await goto(false);
+  await open('Aliado Regional');
+  const notes=modal.locator('[data-convenio-modal-notes]');
+  check((await notes.textContent()).includes('\n\nSegunda línea:'),'notas conservan saltos de línea y contenido completo');
+  check(await notes.evaluate(el=>getComputedStyle(el).whiteSpace)==='pre-line'&&await modal.locator('script').count()===0,'notas se muestran como texto escapado');
+  check(await modal.locator('[data-convenio-modal-document-date]').textContent()==='—','fecha de relación ausente');await close();
+  await open('Instituto Existente');
+  check(await modal.locator('[data-convenio-origin-label]').textContent()==='Vinculación','origen institucional');
+  check(await modal.locator('[data-convenio-modal-received]').textContent()==='22/10/2026','fecha sin 00:00 artificial');
+  check(await notes.textContent()==='Sin notas registradas.'&&await notes.evaluate(el=>el.classList.contains('text-muted')),'notas vacías discretas');
+  check(await notes.evaluate(el=>parseFloat(getComputedStyle(el).fontSize))<=11,'tipografía proporcionada de notas');await close();
+  await open('Institución con hora real');
+  check(await modal.locator('[data-convenio-modal-received]').textContent()==='22/10/2026 12:34','conserva hora significativa');
+  check(await modal.locator('[data-convenio-modal-programas] .aliados-source-chip').count()===1,'un programa sin duplicarlo');await close();
+  await open('Aliado sin programas');
+  check(await modal.locator('[data-convenio-modal-programas] .aliados-source-chip').count()===0&&(await modal.locator('[data-convenio-modal-programas]').textContent()).includes('Sin programas'),'no inventa programas');await close();
+  const search=page.locator('[data-convenio-search]'),city=page.locator('[data-convenio-municipio-filter]'),origin=page.locator('[data-convenio-origin-filter]');
+  await search.fill('Aliado Regional');check(await page.locator('[data-convenio-notification]:visible').count()===1,'filtro de búsqueda conserva funcionamiento');
+  check(await page.locator('[data-convenio-municipio-header]:visible').count()===1,'oculta grupos sin resultados');await search.fill('');
+  await city.selectOption('9002');check(await page.locator('[data-convenio-notification]:visible').evaluateAll(nodes=>nodes.every(n=>n.dataset.convenioMunicipio==='9002')),'filtro municipio');
+  await origin.selectOption('institucional');check(await page.locator('[data-convenio-notification]:visible').count()===1,'filtros combinados de municipio y origen');
+  await page.locator('[data-convenio-clear-filters]').click();check(await page.locator('[data-convenio-municipio-header]:visible').count()===2,'limpiar conserva agrupaciones');
+  await search.fill('no-existe');check(await page.locator('[data-convenio-empty-filter]').isVisible(),'estado vacío de filtros');
+  check(errors.length===0,'sin errores JavaScript: '+errors.join(';'));
+  check(!/PHP (Warning|Fatal|Parse|Deprecated)/.test(logs),'sin errores PHP');
+  console.log('PASS '+count+' comprobaciones de Convenios, comparativas y responsive');
+ }finally{if(browser)await browser.close();server.kill();assert.equal(path.dirname(path.resolve(baseline)),path.resolve(os.tmpdir()));assert.ok(path.basename(baseline).startsWith('impe-convenios-base-'));fs.rmSync(baseline,{recursive:true,force:true});}
+})().catch(e=>{console.error(e);console.error(logs.slice(-2000));process.exitCode=1;});

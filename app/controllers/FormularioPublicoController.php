@@ -8,7 +8,8 @@ class FormularioPublicoController
     {
         $modelo = new FormularioRegistroModel();
         $estados = $modelo->obtenerEstadosActivos();
-        $aliadoFormulario = $this->contextoAliado($modelo);
+        $aliadoFormulario = $this->contextoAliado($modelo, 'registro');
+        if (!empty($aliadoFormulario['registro_gestionado'])) { $_SESSION['registro_publico_csrf'] = $_SESSION['registro_publico_csrf'] ?? bin2hex(random_bytes(32)); }
         $perfilesInteres = $this->perfilesInteres($aliadoFormulario);
 
         /*
@@ -113,7 +114,16 @@ class FormularioPublicoController
             ], 405);
         }
 
-        $aliadoFormulario = $this->contextoAliado();
+        $aliadoFormulario = $this->contextoAliado(null, 'registro');
+        if (!empty($aliadoFormulario['registro_gestionado'])) {
+            $csrf = (string)($_SESSION['registro_publico_csrf'] ?? '');
+            if (!$csrf || !hash_equals($csrf, (string)($_POST['registro_csrf'] ?? '')) || !empty($_POST['sitio_web'])) {
+                $this->responderJson(['ok'=>false,'mensaje'=>'Recarga el formulario y vuelve a enviarlo.'], 419);
+            }
+            $envios = array_filter($_SESSION['registro_envios'] ?? [], fn($t) => $t > time()-600);
+            if (count($envios)>=20) { $this->responderJson(['ok'=>false,'mensaje'=>'Espera unos minutos antes de volver a enviar.'],429); }
+            $envios[]=time(); $_SESSION['registro_envios']=$envios;
+        }
         $datos = $this->normalizarRegistro($_POST);
         if ($aliadoFormulario) { $datos['aliado_token'] = $_GET['aliado']; }
         $errores = $this->validarRegistro($datos, $aliadoFormulario);
@@ -254,12 +264,12 @@ class FormularioPublicoController
         }
     }
 
-    private function contextoAliado($modelo = null)
+    private function contextoAliado($modelo = null, string $tipo = "inscripcion")
     {
         if (!array_key_exists('aliado', $_GET)) { return null; }
         try {
             $modelo = $modelo ?? new FormularioRegistroModel();
-            $aliado = $modelo->aliadoExclusivo($_GET['aliado']);
+            $aliado = $modelo->aliadoExclusivo($_GET['aliado'], $tipo);
             if (!$aliado['programas']) { throw new DomainException('Sin programas autorizados.'); }
             header('Cache-Control: no-store');
             header('Referrer-Policy: same-origin');
@@ -279,7 +289,7 @@ class FormularioPublicoController
         if ($aliado !== null) { return array_column($aliado['programas'], 'nombre'); }
         return [
             'Bachillerato en 2 años',
-            'Bachillerato 286',
+            'Bachillerato General',
             'Inglés',
             'Titulación - Ejecutivas',
             'Titulación por experiencia laboral',
@@ -336,7 +346,7 @@ class FormularioPublicoController
                 trim((string)($entrada['correo_confirmacion'] ?? ''))
             ),
             'perfil_interes' =>
-                $limpiar($entrada['perfil_interes'] ?? ''),
+                ProgramaEducativo::nombre($limpiar($entrada['perfil_interes'] ?? '')),
             'lugar_laboras' =>
                 $limpiar($entrada['lugar_laboras'] ?? ''),
             'cargo_puesto' =>

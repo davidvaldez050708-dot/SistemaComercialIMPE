@@ -1,0 +1,245 @@
+name: Aliados y Registro exclusivo
+on:
+  pull_request:
+    paths:
+      - 'app/**/Aliado*'
+      - 'app/**/Formulario*'
+      - 'app/**/Prospecto*'
+      - 'app/**/CrearConvocatoria*'
+      - 'app/models/RolModel.php'
+      - 'tests/prospectos_acceso_permisos.php'
+      - 'tests/prospectos_permisos_db.php'
+      - 'tests/publicacion_prospectos_acceso_test.py'
+      - 'tools/prospectos_acceso_release.json'
+      - 'app/helpers/AdminRolePolicy.php'
+      - 'app/helpers/PermissionHelper.php'
+      - 'app/helpers/ProgramaEducativo.php'
+      - 'tests/bachillerato_unificacion*'
+      - 'tests/publicacion_bachillerato_unificacion_test.py'
+      - 'tools/*bachillerato*'
+      - 'tools/lib/UnificarBachillerato.php'
+      - 'app/controllers/CrearConvocatoriaController.php'
+      - 'app/views/layout/sidebar.php'
+      - 'app/views/aliados/**'
+      - 'app/views/convocatorias/**'
+      - 'app/views/prospectos/**'
+      - 'app/views/formularios/publico_registro.php'
+      - 'public/javascript/aliados*'
+      - 'public/javascript/crear_convocatoria.js'
+      - 'public/javascript/crear_convocatoria_v2_extension.js'
+      - 'public/css/aliados.css'
+      - 'public/css/aliados_v2_extension.css'
+      - 'public/css/crear_convocatoria.css'
+      - 'database/migrations/2026_10_21_aliados_registro.sql'
+      - 'database/migrations/2026_10_22_*.sql'
+      - 'public/javascript/convocatorias_aliado_programas.js'
+      - 'public/css/convocatorias.css'
+      - 'tools/migrar_extensiones_aliados_20261022.php'
+      - 'tools/migrar_canales_manuales_20261022.php'
+      - 'tools/migrar_convocatorias_multiprograma_20261022.php'
+      - 'tools/publicar_ajustes_aliados_v3.py'
+      - 'tests/publicacion_ajustes_aliados_v3_test.py'
+      - 'tests/convocatorias_multiprograma_db.php'
+      - 'tests/convocatorias_v3*'
+      - 'tests/fixtures/v3_hostinger/**'
+      - 'tests/publicacion_convocatorias_v3_test.py'
+      - 'tools/convocatorias_v3_release.json'
+      - 'public/javascript/convocatorias_aliado_multiprograma_v3.js'
+      - 'public/css/convocatorias_aliado_multiprograma_v3.css'
+      - 'tools/publicar_aliados_convenios_v2.py'
+      - 'tests/publicacion_aliados_convenios_v2_test.py'
+      - 'tools/*aliados_registro*'
+      - 'tools/compat/aliados_registro_pr114/**'
+      - 'tests/*aliados_registro*'
+      - 'tests/aliados_canales*'
+      - 'tests/aliados_compartir*'
+      - 'tests/convenios_detalle_etapa3*'
+      - 'tests/convenios_acceso_permisos.php'
+      - 'tests/publicacion_convenios_acceso_test.py'
+      - 'tools/convenios_acceso_release.json'
+      - 'tests/publicacion_convenios_detalle_etapa3_test.py'
+      - 'tools/convenios_detalle_etapa3_release.json'
+      - 'tests/publicacion_compartir_aliado_etapa2_test.py'
+      - 'tools/compartir_aliado_etapa2_release.json'
+      - 'tests/publicacion_canales_aliado_etapa1_test.py'
+      - 'tools/canales_aliado_etapa1_release.json'
+      - 'tests/convocatorias_pr114_lote_db.php'
+      - 'tests/preparar_modelo_convocatoria_pr114.py'
+      - '.github/workflows/aliados-registro.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  registro:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['33308:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33308
+      IMPE_DB_USER: root
+      IMPE_DB_NAME: impe_test_handly_aliados
+      IMPE_TEST_DB_NAME: impe_test_handly_aliados
+      IMPE_TEST_MYSQL_PORT: 33308
+      IMPE_BASE_URL: http://127.0.0.1:8097/
+      PLAYWRIGHT_MODULE_PATH: /tmp/aliados-browser/node_modules/playwright
+      BOOTSTRAP_MODULE_PATH: /tmp/aliados-browser/node_modules/bootstrap
+      JSQR_MODULE_PATH: /tmp/aliados-browser/node_modules/jsqr
+      IMPE_TEST_OUTPUT: /tmp/aliados-visual
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, zip, gd
+          coverage: none
+          ini-values: opcache.jit=0, opcache.jit_buffer_size=0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dependencias completas en checkout efímero
+        run: |
+          mv vendor /tmp/aliados-vendor-versionado
+          composer install --no-interaction --no-scripts --prefer-dist --no-progress
+      - run: npm install --prefix /tmp/aliados-browser playwright bootstrap@5.3.8 jsqr bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0
+      - run: /tmp/aliados-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis y alcance
+        run: |
+          php tests/convenios_acceso_permisos.php
+          php tests/prospectos_acceso_permisos.php
+          git diff --name-only a90b6aded4a7f606eccc7a27749658e3fed9b9ed HEAD -- '*.php' | xargs -r -n1 php -l
+          node --check public/javascript/aliados_registro.js
+          node --check public/javascript/aliados.js
+          node --check public/javascript/crear_convocatoria.js
+          node --check public/javascript/crear_convocatoria_v2_extension.js
+          node --check public/javascript/convocatorias_aliado_programas.js
+          node --check public/javascript/convocatorias_aliado_multiprograma_v3.js
+          python3 -m py_compile tools/publicar_diseno_programas_aliados.py
+          python3 -m py_compile tools/publicar_aliados_convenios_v2.py
+          python3 -m py_compile tools/publicar_ajustes_aliados_v3.py
+          python3 tests/publicacion_bachillerato_unificacion_test.py
+      - name: Migración e integración con base real aislada
+        run: |
+          mkdir -p /tmp/respaldo-aliados
+          php tests/aliados_registro_fixture.php
+          php tools/preparar_handly_formularios.php --apply >/tmp/handly-preparacion.log
+          php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
+          php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
+          php tools/migrar_aliados_registro.php --check
+          php tools/migrar_extensiones_aliados_20261022.php --apply --backup-dir=/tmp/respaldo-aliados
+          php tools/migrar_extensiones_aliados_20261022.php --check
+          php tools/migrar_canales_manuales_20261022.php --apply --respaldo-confirmado
+          php tools/migrar_canales_manuales_20261022.php --check
+          php tools/migrar_convocatorias_multiprograma_20261022.php --apply --respaldo-confirmado
+          php tools/migrar_convocatorias_multiprograma_20261022.php --check
+          php tests/aliados_registro_db.php
+          php tests/prospectos_permisos_db.php
+          php tests/convocatorias_multiprograma_db.php
+          git fetch origin 20ec4fb64f211b06cde114da76d6c84e65a96db5
+          python3 tests/preparar_modelo_convocatoria_pr114.py --output "$RUNNER_TEMP/modelo-convocatoria-pr114"
+          IMPE_PR114_MODEL="$RUNNER_TEMP/modelo-convocatoria-pr114/app/models/ConvocatoriaModel.php" php tests/convocatorias_pr114_lote_db.php
+      - name: Publicadores reversibles
+        run: |
+          python3 tests/publicacion_aliados_registro_test.py
+          python3 tests/publicacion_diseno_programas_aliados_test.py
+          python3 tests/publicacion_aliados_convenios_v2_test.py
+          python3 tests/publicacion_ajustes_aliados_v3_test.py
+          python3 tests/publicacion_canales_aliado_etapa1_test.py
+          python3 tests/publicacion_compartir_aliado_etapa2_test.py
+          python3 tests/publicacion_convenios_detalle_etapa3_test.py
+          python3 tests/publicacion_convenios_acceso_test.py
+          python3 tests/publicacion_prospectos_acceso_test.py
+          python3 tests/publicacion_convocatorias_v3_test.py
+          python3 tests/publicacion_convenios_etapa3_hostinger_test.py
+          python3 tests/publicacion_convenios_v3_integracion_test.py
+          python3 tests/publicacion_convocatorias_general_test.py
+      - name: Navegador real, QR, HTTP, seguridad y concurrencia
+        run: |
+          node tests/aliados_registro_browser.cjs
+          php tests/aliados_registro_snapshot.php
+      - name: Canales manuales e institucionales, diseño y operaciones reales
+        env:
+          IMPE_CANALES_OUTPUT: /tmp/aliados-visual/canales
+        run: |
+          php tests/aliados_canales_fixture.php
+          node tests/aliados_canales_browser.cjs
+      - name: Compartir asociado, canales autorizados e historial
+        env:
+          IMPE_COMPARTIR_OUTPUT: /tmp/aliados-visual/compartir
+        run: |
+          php tests/aliados_compartir_fixture.php
+          php tests/aliados_compartir_db.php
+          node tests/aliados_compartir_browser.cjs
+      - name: Convenios compactos, detalle, teclado y responsive
+        env:
+          IMPE_CONVENIOS_OUTPUT: /tmp/aliados-visual/convenios-detalle
+        run: |
+          php tests/convenios_detalle_etapa3_fixture.php
+          node tests/convenios_detalle_etapa3_browser.cjs
+          node tests/convenios_etapa3_hostinger_browser.cjs
+      - name: Editor V3 único, visual, guardado y rollback
+        env:
+          IMPE_V3_OUTPUT: /tmp/aliados-visual/v3-unificado
+        run: |
+          php tests/convocatorias_v3_fixture.php
+          php tests/convocatorias_general_db.php
+          node tests/convocatorias_v3_browser.cjs
+      - name: Identidad única de Bachillerato y migración reversible aislada
+        run: |
+          php tests/bachillerato_unificacion_unit.php
+          php tests/bachillerato_unificacion_clone.php impe_test_handly_aliados_union_ci
+          IMPE_DB_NAME=impe_test_handly_aliados_union_ci php tests/bachillerato_unificacion_db.php
+          IMPE_DB_NAME=impe_test_handly_aliados_union_ci php tests/bachillerato_unificacion_variantes.php
+          IMPE_DB_NAME=impe_test_handly_aliados_union_ci php tools/unificar_bachillerato_general.php --check
+          git show 20ec4fb64f211b06cde114da76d6c84e65a96db5:app/services/FormularioUbicacionService.php > "$RUNNER_TEMP/ubicacion-union.php"
+          export IMPE_UNION_SCHEMA="impe_test_handly_aliados_union_internacional_${GITHUB_RUN_ID}${GITHUB_RUN_ATTEMPT}"
+          php -r 'require "config/db_connection.php"; $name=getenv("IMPE_UNION_SCHEMA"); if(!preg_match("/^impe_test_handly_aliados_union_internacional_[0-9]+$/D",$name))exit(2); (new Database())->connect(false)->query("CREATE DATABASE `$name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");'
+          IMPE_DB_NAME="$IMPE_UNION_SCHEMA" IMPE_LOCATION_SERVICE="$RUNNER_TEMP/ubicacion-union.php" php tests/bachillerato_unificacion_internacional.php
+      - name: Compatibilidad con PR114 publicado (réplica aislada)
+        env:
+          IMPE_DB_NAME: impe_test_handly_aliados_pr114
+          IMPE_TEST_DB_NAME: impe_test_handly_aliados_pr114
+        run: |
+          git fetch origin 20ec4fb64f211b06cde114da76d6c84e65a96db5
+          python3 tests/aliados_registro_pr114_prepare.py --output "$RUNNER_TEMP/aliados-pr114"
+          cd "$RUNNER_TEMP/aliados-pr114"
+          php tests/aliados_registro_fixture.php
+          php tools/preparar_handly_formularios.php --apply >/tmp/handly-pr114.log
+          php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
+          php tools/migrar_formularios_ubicacion_internacional.php --apply
+          php tests/aliados_registro_pr114_db.php --prepare
+          php tests/formularios_ubicacion_internacional_db.php
+          php tests/aliados_registro_db_legacy.php
+          # La réplica PR114 no incluye los controles Convenios V2 que exige
+          # aliados_registro_browser_legacy.cjs; la regresión moderna ya
+          # se prueba arriba y abajo continúa el navegador propio de PR114.
+          php tests/aliados_registro_snapshot.php
+          php tests/aliados_registro_pr114_db.php
+          node tests/aliados_registro_pr114_browser.cjs
+      - name: Regresión Handly y formularios generales
+        env:
+          IMPE_DB_NAME: impe_test_handly_legacy
+          IMPE_TEST_DB_NAME: impe_test_handly_legacy
+        run: |
+          php tests/formulario_aliados_fixture.php
+          php tools/preparar_handly_formularios.php --apply >/tmp/handly-legacy.log
+          php tests/formulario_aliados_db.php
+          php tests/aliados_internacionales.php
+          node tests/formulario_aliados_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aliados-registro-${{ strategy.job-index }}
+          path: /tmp/aliados-visual

@@ -1,0 +1,8 @@
+--- a/app/models/FormularioRegistroModel.php
++++ b/app/models/FormularioRegistroModel.php
+@@ -80 +80 @@
+-    public function aliadoExclusivo($token)
++    public function aliadoExclusivo($token, string $tipo = "inscripcion")
+@@ -83 +83 @@
+-        return (new FormularioAliadoService($this->connection))->resolver($token);
++        return (new FormularioAliadoService($this->connection))->resolver($token, false, $tipo);

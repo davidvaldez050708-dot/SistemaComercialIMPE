@@ -622,3 +622,90 @@
     flex-wrap: wrap;
     justify-content: flex-end;
 }
+
+.aliado-registro-enlace{min-width:0;overflow-wrap:anywhere}
+.aliado-registro-enlace canvas{display:block;width:100%;max-width:260px;height:auto}
+#modalConvenioCrearConvocatoria .modal-dialog{max-height:calc(100dvh - 2rem)}
+#modalConvenioCrearConvocatoria .modal-content{max-height:calc(100dvh - 2rem)}
+#modalConvenioCrearConvocatoria .modal-body{overflow-y:auto;min-height:0}
+
+#modalConvenioCrearConvocatoria [hidden]{display:none!important}
+
+.aliado-registro-enlace .form-label{font-size:11px;font-weight:700}
+.aliado-registro-enlace .form-control,.aliado-registro-enlace .form-select{font-size:12px}
+
+/* Convenios: selector territorial y directorio alineados con Aliados */
+.crear-convocatoria-module .convenio-territorio-card[hidden] { display: none !important; }
+.crear-convocatoria-module .convenio-territorio-card { display: flex; flex-direction: column; min-width: 0; }
+.crear-convocatoria-module .convenio-territorio-card .data-card-title { min-width: 0; }
+.crear-convocatoria-module .convenio-territorio-card .btn-system-light { margin-top: auto; align-self: flex-start; }
+.crear-convocatoria-module .convenios-directorio-panel {
+    padding: 0;
+    overflow: visible;
+}
+.crear-convocatoria-module .convenios-tabla-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+.crear-convocatoria-module .convenios-tabla {
+    min-width: 910px;
+    table-layout: fixed;
+}
+.crear-convocatoria-module .convenios-tabla th:nth-child(1) { width: 20%; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(2) { width: 19%; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(3) { width: 22%; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(4) { width: 17%; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(5) { width: 11%; }
+.crear-convocatoria-module .convenios-tabla th:nth-child(6) { width: 11%; }
+.crear-convocatoria-module .convenios-tabla thead th {
+    color: #617189;
+    background: #f7f9fc;
+    font-size: 10px;
+    padding: 14px 13px;
+}
+.crear-convocatoria-module .convenios-tabla tbody td {
+    vertical-align: middle;
+    font-size: 10px;
+    line-height: 1.5;
+    padding: 13px;
+    overflow-wrap: anywhere;
+}
+.crear-convocatoria-module .convenios-tabla tbody td strong {
+    color: var(--color-text, #172642);
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+}
+.crear-convocatoria-module .convenios-tabla tbody td small {
+    display: block;
+    margin-top: 4px;
+    color: var(--color-text-soft, #6b7280);
+    font-size: 9.5px;
+}
+.crear-convocatoria-module .convenios-tabla .convenios-fila {
+    cursor: pointer;
+}
+.crear-convocatoria-module .convenios-tabla .convenios-fila:hover,
+.crear-convocatoria-module .convenios-tabla .convenios-fila:focus-visible {
+    background: #f4f8ff;
+    outline: 0;
+    box-shadow: inset 3px 0 0 var(--color-primary, #273a8a);
+}
+.crear-convocatoria-module .convenios-tabla .convenios-municipio-header th {
+    padding: 11px 14px;
+    background: #f4f7fb;
+    color: #203859;
+    font-size: 11px;
+    border-block: 1px solid var(--color-border, #dfe5ef);
+}
+.crear-convocatoria-module .convenios-tabla .convenios-municipio-header i {
+    margin-right: 8px;
+    color: var(--color-primary, #273a8a);
+}
+.crear-convocatoria-module .convenios-fila-flecha { margin-left: 8px; color: var(--color-primary, #273a8a); }
+.crear-convocatoria-module .convenios-programas { display: block; color: #445575; line-height: 1.6; }
+.crear-convocatoria-module .convenios-etiqueta { font-weight: 750; }
+.crear-convocatoria-module .convenios-tabla .crear-convocatoria-attention-badge { white-space: nowrap; font-size: 9px; }
+@media (max-width: 767.98px) {
+    .crear-convocatoria-module .convenios-tabla { min-width: 850px; }
+}

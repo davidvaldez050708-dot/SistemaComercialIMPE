@@ -18,7 +18,7 @@ class AliadoInternacionalModel
                      INNER JOIN formulario_programas p ON p.codigo = ap.programa_codigo AND p.activo = 1
                      WHERE ap.aliado_id = a.id) AS programas
              FROM formulario_aliados a
-             WHERE a.seguimiento_id IS NULL ORDER BY a.nombre"
+             WHERE a.seguimiento_id IS NULL " . $this->excluirRegistro() . " ORDER BY a.nombre"
         );
     }
 
@@ -38,11 +38,16 @@ class AliadoInternacionalModel
              INNER JOIN formulario_programas p ON p.codigo = d.programa_codigo
              LEFT JOIN formulario_registros r ON d.tipo = 'registro' AND r.id = d.registro_id
              LEFT JOIN formulario_inscripciones i ON d.tipo = 'inscripcion' AND i.id = d.registro_id
-             WHERE a.seguimiento_id IS NULL
+             WHERE a.seguimiento_id IS NULL " . $this->excluirRegistro() . "
              ORDER BY d.created_at DESC, d.id DESC LIMIT 150"
         );
     }
 
+    private function excluirRegistro(): string
+    {
+        return $this->db->query("SHOW TABLES LIKE 'formulario_aliado_registro'")->num_rows
+            ? ' AND NOT EXISTS (SELECT 1 FROM formulario_aliado_registro exclusivo WHERE exclusivo.aliado_id=a.id) ' : '';
+    }
     private function consultar(string $sql): array
     {
         $resultado = $this->db->query($sql);

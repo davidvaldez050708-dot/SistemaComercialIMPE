@@ -289,7 +289,7 @@ class FormularioController
     {
         return [
             'Bachillerato en 2 años',
-            'Bachillerato 286',
+            'Bachillerato General',
             'Inglés',
             'Titulación - Ejecutivas',
             'Titulación por experiencia laboral',
@@ -339,7 +339,7 @@ class FormularioController
                 trim((string)($entrada['correo_confirmacion'] ?? ''))
             ),
             'perfil_interes' =>
-                $limpiar($entrada['perfil_interes'] ?? ''),
+                ProgramaEducativo::nombre($limpiar($entrada['perfil_interes'] ?? '')),
             'lugar_laboras' =>
                 $limpiar($entrada['lugar_laboras'] ?? ''),
             'cargo_puesto' =>

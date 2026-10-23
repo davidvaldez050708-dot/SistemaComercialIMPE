@@ -1,0 +1,80 @@
+# Aliados → Convenios → Convocatorias por programa: despliegue V2
+
+## Alcance
+PR #124, rama feat/aliados-programas-registro. La ampliación V2 **todavía no está desplegada en Hostinger**. Respeta los aliados y datos previos. No cambia Telefonía, Inscripción ni Handly.
+
+Cuenta Clave puede gestionar contactos e historial manual sin expedientes ficticios. Marketing selecciona Estado → Convenios → Aliado y crea una convocatoria **por programa e imagen**, en los apartados existentes de Bachillerato y Titulación. Todas esas imágenes comparten **el mismo enlace único y QR local** de Registro del aliado. Los interesados eligen su programa en el formulario y se almacenan en Prospectos.
+
+## Dependencias
+Se agregan de forma explícita las migraciones:
+- database/migrations/2026_10_22_aliados_manuales_contactos_difusion.sql
+- database/migrations/2026_10_22_marketing_convocatorias_aliados_manuales.sql
+
+En Hostinger `convocatorias.id` es `INT` firmado. La FK `marketing_aliado_manual_convocatorias.convocatoria_id` utiliza exactamente `INT` firmado para evitar incompatibilidad; jamás modificar el tipo del ID productivo. No reinstalar la migración de 2026-10-21. Conservar los respaldos de primera entrega.
+
+## Publicador selectivo
+El publicador verifica SHA de **16 archivos** fijados al commit `a2d22524249570e90a32d196058d9cc50527c21e`, reconcilia con el código de la primera entrega y las personalizaciones de Hostinger, valida PHP/JS, genera respaldo privado y permite restauración. Nunca ejecuta SQL.
+
+**Ejecutar --check primero; no aplicar con conflictos.**
+
+Si la instalación original de `app/views/convocatorias/index.php` contiene funciones nuevas, el `git merge-file` puede detectar solapamientos por contexto. El publicador V2 intenta entonces una conciliación **estrictamente limitada** a las inserciones/cambios revisados del modal, buscando anclas únicas. No reemplaza todo el archivo ni elimina funciones desconocidas; si se personalizó el mismo fragmento, da `CONFLICTO` antes de modificar el sitio. Verificar el resultado de `--check` y la sintaxis real antes de `--apply`.
+
+En Hostinger compartido, `node` puede no estar disponible en `PATH`. Esta versión permite `--check` sin Node y confirma los SHA de los scripts exactos. Un script JavaScript conciliado con personalizaciones ajenas bloquea `--apply` mientras no sea validado con Node.js fuera de Hostinger; no forzar su instalación ni suprimir el control.
+
+```bash
+SITIO="$HOME/domains/fundacionrededumex.org/public_html"
+PAQUETE="$HOME/entregas-impe/aliados-convenios-v2"
+mkdir -p "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
+chmod 700 "$PAQUETE" "$HOME/respaldos-impe-aliados" "$HOME/respaldos-impe-bd"
+curl -fL --proto '=https' --tlsv1.2 \
+"https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/238aa1217ff5514cd3fd1e00c52898abf8398c91/tools/publicar_aliados_convenios_v2.py" \
+-o "$PAQUETE/publicar_aliados_convenios_v2.py"
+python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --check --site "$SITIO"
+```
+
+Sólo después de que la CI de MySQL 8 y MariaDB 10.11 esté aprobada, que el --check sea compatible y que se haya exportado/verificado el respaldo **completo** de producción, ejecutar manualmente:
+
+```bash
+python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --apply --site "$SITIO"
+php "$SITIO/tools/migrar_extensiones_aliados_20261022.php" --apply --backup-dir="$HOME/respaldos-impe-bd"
+php "$SITIO/tools/migrar_extensiones_aliados_20261022.php" --check
+python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --check --site "$SITIO"
+```
+
+Para recuperar los archivos, utilizar la **ruta exacta** anunciada como Respaldo privado:
+```bash
+python3 "$PAQUETE/publicar_aliados_convenios_v2.py" --restore "RUTA_EXACTA" --site "$SITIO"
+```
+
+La restauración de código no revierte SQL ni debe eliminar nuevas respuestas. Una recuperación de base de datos exige revisión separada y copia completa, nunca importar a ciegas el SQL parcial.
+
+## Pruebas de aceptación en CRM
+1. Aliados: resumen de origen, acciones compactas, menús, contactos, historial y toast al guardar/error.
+2. Convenios: Estado → Guanajuato → directorio por municipio, filtros, modal sin generador redundante.
+3. Crear convocatoria para Bachillerato 286, subir imagen y guardar; repetir para Titulación por experiencia laboral con otra imagen. Verificar separación de categorías.
+4. Abrir ambas convocatorias y verificar un **mismo enlace/QR**; al registrarse desde ese enlace poder elegir ambos programas.
+5. Comprobar Prospectos con aliado de origen, evitar duplicados; regresión de Inscripción, Handly y aliados formales.
+
+
+## Hostinger con formulario modular posterior al PR
+
+El archivo real de producción (SHA git `b90bb84bed47a0da0045a53acb19d94e534967cb`) carga `app/views/convocatorias/partials/crear_modal.php` y `public/javascript/convocatoria_crear_compartido.js`. **No se debe reemplazar ese `index.php` modular por el anterior de 3,950 líneas**. La integración del selector de programas y QR debe instalarse por separado, mediante el módulo `aliado_programas_modular.php` junto con sus CSS/JS, con un instalador que verifique el archivo real y permita restauración. El publicador global V2 ahora **bloquea** el despliegue cuando identifica un `index.php` modular que aún no tiene instalado el componente. Una vez instalado, conserva el index sin modificarlo; las demás acciones siguen sujetas a `--check`, pruebas y respaldo completo. El paquete local probado no se publica automáticamente en Hostinger ni forma parte del manifest antiguo de 16 archivos.
+
+
+## CSS personalizado de Hostinger — extensión V2 (22 de octubre)
+
+La conciliación de `public/css/aliados.css` presentó un conflicto real después de revisar los archivos PHP. **Nunca reemplazar CSS personalizado ni forzar el merge.** La actualización revisada separó las reglas nuevas al 100% de los originales de `aliados.css`, `convocatorias.css` y `crear_convocatoria.css`; son adiciones al final (266, 86 y 76 líneas). El nuevo archivo `public/css/aliados_v2_extension.css` las contiene y `dashboard_head.php` lo carga después de las hojas originales para Aliados, Convenios y Gestión de Convocatorias.
+
+El publicador V2 de revisión fija `01655dc1072adf287df995b5a95d24fa7a098c14` **conserva** los tres CSS existentes e instala su hoja complementaria. `--check` debe imprimir `CONSERVADO: 3 CSS base personalizados` y, si es la primera instalación, `PREPARADO: public/css/aliados_v2_extension.css`. Conserva igualmente la vista modular de Convocatorias previamente instalada en Hostinger. Ninguno de esos cambios aplica SQL automáticamente. Si se detecta conflicto en otros archivos, no aplicar.
+
+
+## Convenios con JavaScript personalizado de Hostinger
+
+En la revisión real, `public/javascript/crear_convocatoria.js` produce conflicto; contiene modificaciones productivas adicionales. **No se sobrescribe ni se fusiona**: el publicador V2 conserva este JavaScript y agrega `public/javascript/crear_convocatoria_v2_extension.js` como hoja de comportamiento adicional. Los eventos `impe:convenio-abierto` y las filas `data-convenio-notification` se aprovechan para mostrar programas y construir enlaces con `aliado_tipo` y `aliado_id`, sin cambiar la telefonía ni los manejadores anteriores. El encabezado personalizado carga primero el script de producción y después la extensión; el directorio de estados y filtro de municipio se resuelven desde la extensión. Si falta la estructura esperada, el publicador aborta antes de instalar.
+
+El comando de revisión debe mostrar `CONSERVADO: public/javascript/crear_convocatoria.js` y `PREPARADO: public/javascript/crear_convocatoria_v2_extension.js`; nunca `PREPARADO: public/javascript/crear_convocatoria.js`. Esta adaptación no modifica SQL por sí misma.
+
+
+## Corrección de tipo FK detectada en Hostinger
+
+El primer `--check` de 2026-10-22 identificó `convocatorias.id (esperado int unsigned, actual int)`. La verificación no ejecutó SQL. Se corrigieron únicamente la migración `2026_10_22_marketing_convocatorias_aliados_manuales.sql` y el validador `tools/migrar_extensiones_aliados_20261022.php` para trabajar con el tipo productivo firmado. Tras publicar V2, actualizar sólo esos dos archivos desde un commit GitHub inmutable y validar sus SHA. No volver a ejecutar el publicador global sobre una instalación marcada como completa. Después, correr `php tools/migrar_extensiones_aliados_20261022.php --check`, que devolverá `PENDIENTE` hasta crear las tablas. Nunca ejecutar `ALTER TABLE convocatorias MODIFY id ...`.

@@ -16,7 +16,7 @@ class ReporteConvocatoriaDataService
         $this->modelo->desactivarConvocatoriasVencidas();
 
         $filtros = $this->normalizarFiltros($filtrosEntrada);
-        $detalleCompleto = $this->modelo->obtenerDetalleReporteConvocatorias();
+        $detalleCompleto = array_map([ProgramaEducativo::class,'entrada'], $this->modelo->obtenerDetalleReporteConvocatorias());
         $detalle = $this->filtrarDetalle($detalleCompleto, $filtros);
 
         $coberturaBase = $this->modelo->obtenerCoberturaTerritorialDashboard(32);
@@ -221,7 +221,7 @@ class ReporteConvocatoriaDataService
     private function normalizarFiltros(array $filtros)
     {
         $tipo = strtolower(trim((string)($filtros['tipo'] ?? '')));
-        $subtipo = strtolower(trim((string)($filtros['subtipo'] ?? '')));
+        $subtipo = ProgramaEducativo::codigo(strtolower(trim((string)($filtros['subtipo'] ?? ''))));
 
         $opciones = $this->opcionesFiltro();
         $tiposPermitidos = array_keys($opciones['tipos']);
@@ -272,10 +272,9 @@ class ReporteConvocatoriaDataService
                         'Inscripciones Abiertas'
                 ],
                 'bachillerato' => [
+                    'bachillerato-general' => 'Bachillerato General',
                     'bachillerato-2-anos' =>
                         'Bachillerato en 2 años',
-                    'bachillerato-286' =>
-                        'Bachillerato 286',
                     'ingles' => 'Inglés',
                     'inscripciones-abiertas' =>
                         'Inscripciones Abiertas'
