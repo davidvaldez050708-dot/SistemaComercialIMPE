@@ -7,14 +7,14 @@ const script=p=>fs.readFileSync(path.join(__dirname,'../public/javascript',p),'u
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  try{
  for(const marketing of [false,true]){
-  let read=0,readAll=0,leida=0;const errors=[];
+  let read=0,readAll=0,leida=0,many=false;const errors=[];
   const page=await browser.newPage();await page.clock.install();
   page.on('pageerror',e=>errors.push(e.message));
   const button=marketing
    ? '<button data-convocatoria-notification-read-all>Marcar leídas</button>'
    : '<button data-phone-notification-read-all data-phone-notification-read-all-url="/read-all">Marcar llamadas leídas</button>';
   const shell=marketing
-   ? '<div data-convocatoria-notification-root data-endpoint="/list" data-read-endpoint="/read" data-read-all-endpoint="/read-all"><span data-convocatoria-notification-badge></span>'+button+'<div data-convocatoria-notification-content></div></div>'
+   ? '<div data-convocatoria-notification-root data-endpoint="/list" data-read-endpoint="/read" data-read-all-endpoint="/read-all" data-csrf-token="session-csrf"><span data-convocatoria-notification-badge></span>'+button+'<div data-convocatoria-notification-content></div></div>'
    : '<div data-reminder-root data-reminder-endpoint="/list"><span data-reminder-badge></span>'+button+'<div data-reminder-content></div></div>';
   const html=`<!doctype html><meta charset="UTF-8">
     <style>${fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'))}</style>
@@ -28,16 +28,20 @@ const script=p=>fs.readFileSync(path.join(__dirname,'../public/javascript',p),'u
       mensaje:'Devolución pendiente',accion:'Devolución pendiente',
       created_at:'2026-10-23 08:00:00',fecha:'2026-10-23 08:00:00',
       url:'/devoluciones',icono:'bi-telephone-forward',etiqueta:'Por devolver',estado:'informativa'});
+  const group=()=>many?Array.from({length:18},(_,i)=>({...phone(),id:-23-i,telefonia_id:23+i})): [phone()];
   await page.route('http://avisos-qa.test/**',route=>{
    const u=new URL(route.request().url());
    if(u.pathname==='/list')return route.fulfill({json:{
-     ok:true,total:1,no_leidas:1,recordatorios:[phone()],notificaciones:[phone()],avisos:[]}});
+     ok:true,total:many?18:1,no_leidas:many?18:1,recordatorios:group(),notificaciones:group(),avisos:[]}});
    if(u.pathname==='/read-all'){
      ++readAll;leida=1;
-     if(!marketing)assert.match(route.request().postData()||'',/csrf_token=session-csrf/);
+     assert.match(route.request().postData()||'',/csrf_token=session-csrf/);
      return route.fulfill({json:{ok:true}});
    }
-   if(u.pathname==='/read'){++read;leida=1;return route.fulfill({json:{ok:true}});}
+   if(u.pathname==='/read'){
+     assert.match(route.request().postData()||'',/csrf_token=session-csrf/);
+     ++read;leida=1;return route.fulfill({json:{ok:true}});
+   }
    return route.fulfill({contentType:'text/html',body:u.pathname==='/'?html:'Detalle de devolución'});
   });
   await page.goto('http://avisos-qa.test/');
@@ -57,6 +61,11 @@ const script=p=>fs.readFileSync(path.join(__dirname,'../public/javascript',p),'u
   await row.click();
   await page.waitForURL('**/devoluciones');
   assert.equal(read,1,'Abrir expediente verifica lectura propia');
+  many=true;
+  await page.goto('http://avisos-qa.test/');
+  await page.waitForFunction(()=>document.querySelectorAll('.topbar-reminder-item[data-telefonia-id]').length===18);
+  assert.equal(await page.locator('.topbar-reminder-item[data-telefonia-id]').count(),18,
+    'Campana puede mostrar más de doce obligaciones sin recortes del navegador');
   assert.deepEqual(errors,[],'Sin errores frontend');
   await page.close();
  }

@@ -61,6 +61,7 @@ class ConvocatoriaNotificacionController
             exit;
         }
 
+        if (!$this->verificarLecturaSegura()) { exit; }
         $id = (int)($_POST['id'] ?? 0);
         $modelo = new ConvocatoriaNotificacionModel();
         $ok = $modelo->marcarLeida($id, (int)$_SESSION['usuario_id']);
@@ -79,6 +80,7 @@ class ConvocatoriaNotificacionController
             exit;
         }
 
+        if (!$this->verificarLecturaSegura()) { exit; }
         $modelo = new ConvocatoriaNotificacionModel();
         $ok = $modelo->marcarTodasLeidas((int)$_SESSION['usuario_id']);
         if(tienePermiso('telefonia.usar')&&tienePermiso('telefonia.recibir')){
@@ -88,6 +90,23 @@ class ConvocatoriaNotificacionController
 
         echo json_encode(['ok' => (bool)$ok], JSON_UNESCAPED_UNICODE);
         exit;
+    }
+
+    /** Lectura de alertas: sólo POST autenticado y con CSRF de la sesión. */
+    private function verificarLecturaSegura(): bool
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['ok' => false, 'mensaje' => 'Método no permitido.'], JSON_UNESCAPED_UNICODE);
+            return false;
+        }
+        $token = (string)($_SESSION['csrf_token'] ?? '');
+        if ($token === '' || !hash_equals($token, (string)($_POST['csrf_token'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'mensaje' => 'La sesión de lectura caducó. Recarga el CRM.'], JSON_UNESCAPED_UNICODE);
+            return false;
+        }
+        return true;
     }
 
     private function esMarketingAutenticado()

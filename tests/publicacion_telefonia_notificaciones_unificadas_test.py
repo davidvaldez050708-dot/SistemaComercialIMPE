@@ -6,9 +6,9 @@ script=root/'tools/publicar_telefonia_notificaciones_unificadas_hostinger.sh'
 m=re.search(r"SPEC=json.loads\(r'''(.*?)'''\)",script.read_text(encoding='utf8'),re.S)
 assert m,'No existe manifiesto'
 spec=json.loads(m.group(1))
-assert len(spec['changes'])==7
+assert len(spec['changes'])==9
 assert spec['newFile']['path']=='prueba_telefonia/api/leer_todas_notificaciones_llamada.php'
-assert all('telefonia' in x['path'].lower() or x['path'].endswith(('topbar.php','recordatorios.js','recordatorios.css','ConvocatoriaNotificacionController.php'))
+assert all('telefonia' in x['path'].lower() or x['path'].endswith(('topbar.php','recordatorios.js','recordatorios.css','ConvocatoriaNotificacionController.php','ReminderController.php','convocatoria_notificaciones.js'))
  for x in spec['changes'])
 with tempfile.TemporaryDirectory() as temp:
     parent=pathlib.Path(temp);site=parent/'public_html';site.mkdir()
@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory() as temp:
         return subprocess.run(['bash',str(script)]+list(args),env=env,
             stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
     check=run('--check')
-    assert check.returncode==0 and 'Archivos a modificar: 8' in check.stdout,(check.stdout,check.stderr)
+    assert check.returncode==0 and 'Archivos a modificar: 10' in check.stdout,(check.stdout,check.stderr)
     assert not private.exists() and not new.exists()
     assert all((site/p).read_bytes()==v for p,v in originals.items())
     apply=run('--apply')
@@ -68,4 +68,4 @@ with tempfile.TemporaryDirectory() as temp:
     denial=run('--check')
     assert denial.returncode!=0 and 'CONFLICTO' in denial.stderr
     assert all((site/p).read_bytes()==v for p,v in originals.items() if p!=spec['changes'][0]['path'])
-print('OK: 7 archivos personalizados, endpoint nuevo, CRLF, --check/--apply/--restore, permisos y conflictos')
+print('OK: 9 archivos personalizados, endpoint nuevo, CRLF, --check/--apply/--restore, permisos y conflictos')

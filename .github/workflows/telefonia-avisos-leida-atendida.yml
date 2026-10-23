@@ -33,11 +33,13 @@ jobs:
           php -l app/services/TelefoniaNotificacionService.php
           php -l app/services/TelefoniaNotificacionVentasService.php
           php -l app/controllers/ConvocatoriaNotificacionController.php
+          php -l app/controllers/ReminderController.php
           php -l app/views/layout/topbar.php
           php -l prueba_telefonia/api/leer_todas_notificaciones_llamada.php
           php tests/telefonia_notificaciones_unificacion_smoke.php
           node --check public/javascript/recordatorios.js
           node --check public/javascript/telefonia_notificaciones.js
+          node --check public/javascript/convocatoria_notificaciones.js
           node --check tests/telefonia_notificaciones_leida_atendida_browser.cjs
       - name: Navegacion de ambas campanas, lectura y tareas que permanecen
         run: |

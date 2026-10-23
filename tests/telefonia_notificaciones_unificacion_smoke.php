@@ -13,6 +13,8 @@ $view=$get('app/views/layout/topbar.php');
 $api=$get('prueba_telefonia/api/leer_todas_notificaciones_llamada.php');
 $frontend=$get('public/javascript/telefonia_notificaciones.js');
 $reminders=$get('public/javascript/recordatorios.js');
+$center=$get('app/controllers/ReminderController.php');
+$marketingJs=$get('public/javascript/convocatoria_notificaciones.js');
 $check(str_contains($common,'operativasActuales'),
     'No conservar notificaciones basándose en historial antiguo');
 $check(str_contains($common,'$this->operativasActuales[$llave]=true'),
@@ -38,4 +40,18 @@ $check(!str_contains($api,'devolucion=') && !str_contains($api,'resultado='),
     'Leer nunca escribe estados de negocio');
 $check(str_contains($reminders,'Number(recordatorio.leida||0)===0'),
     'La campana general refleja leída sin ocultar obligación');
-echo "OK: lectura masiva de telefonía, obligaciones operativas visibles y permisos propios.\n";
+$check(str_contains($marketing,'verificarLecturaSegura()') &&
+    str_contains($marketing,'hash_equals($token,') && str_contains($marketing,"'POST'"),
+    'Marketing requiere POST y CSRF en lectura individual/masiva');
+$check(str_contains($marketingJs,"body.set('csrf_token', csrfToken)") &&
+    str_contains($marketingJs,'new URLSearchParams({ csrf_token: csrfToken })'),
+    'Marketing envía token en ambas escrituras');
+$check(str_contains($view,'data-csrf-token='),
+    'Topbar entrega token de Marketing');
+$check(str_contains($center,'$telefoniaActiva') && str_contains($center,'array_merge($telefoniaActiva'),
+    'Centro general conserva todos los pendientes operativos');
+$check(!str_contains($sales,'ORDER BY created_at DESC,id DESC LIMIT 20'),
+    'Ventas no limita obligaciones a 20');
+$check(str_contains($common,'$informativas=') && str_contains($common,'$rows=array_merge($rows,$informativas)'),
+    'Analistas separan informativas de obligaciones');
+echo "OK: CSRF Marketing y campanas sin perder obligaciones.\n";

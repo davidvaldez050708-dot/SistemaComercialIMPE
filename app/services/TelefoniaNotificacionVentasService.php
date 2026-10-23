@@ -76,16 +76,20 @@ final class TelefoniaNotificacionVentasService
         // No se infiere una resolución del clic sobre la campana:
         // resultados, devoluciones, agenda y transferencias conservan su fila
         // hasta que desaparecen realmente de $wanted por su estado de negocio.
-        // Seleccionar claves vivas ANTES del LIMIT; avisos históricos
-        // no pueden desplazar devoluciones ni resultados por registrar.
+        // Seleccionar las claves vivas sin truncar obligaciones por registrar.
         $keys=array_keys($wanted);
         if(!$keys)return [];
         $placeholders=implode(',',array_fill(0,count($keys),'?'));
         $rows=$this->rows("SELECT * FROM telefonia_notificaciones
             WHERE usuario_id=? AND llave IN ($placeholders)
               AND (leida=0 OR llave NOT LIKE '%:perdida')
-            ORDER BY created_at DESC,id DESC LIMIT 20",
+            ORDER BY created_at DESC,id DESC",
             array_merge([$uid],$keys));
+        // Únicamente limitar perdidas informativas; las tareas reales continúan.
+        $info=0;
+        $rows=array_values(array_filter($rows,static function($r)use(&$info){
+            return !str_ends_with((string)$r['llave'],':perdida') || ++$info<=20;
+        }));
         return array_map(static function($r)use($wanted){$meta=$wanted[$r['llave']];
             $kind=str_starts_with($r['llave'],'ventas:devolucion:')?'devolucion':(str_starts_with($r['llave'],'ventas:programada:')?'programada':(str_ends_with($r['llave'],':resultado')?'resultado_pendiente':'llamada_perdida'));
             return [

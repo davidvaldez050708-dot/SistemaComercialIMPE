@@ -105,7 +105,7 @@ final class TelefoniaNotificacionService
             if($source||$op['estado']!=='DEVUELTA'||!empty($op['destino_atendida']))continue;
             $date=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
             $llave='consulta:'.$op['id'].':'.$op['intento'];
-            $this->operativasActuales[$llave]=true;
+            // Informativa sin obligación real de devolución: archivar al leer.
             $this->agregar($user,$ext,$llave,$op['numero'],$date,'Transferencia sin respuesta','Recepción intentó comunicarte con '.$op['numero'].'. Coordina con la extensión '.$op['origen_extension'].' antes de devolver la llamada.');
         }
         }catch(Throwable $e){error_log('[campana_transferencias] '.get_class($e));}
@@ -113,17 +113,25 @@ final class TelefoniaNotificacionService
     public function pendientes(int $user,bool $recepcion): array {
         if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';return (new TelefoniaNotificacionVentasService($this->db))->pendientes($user);}
         $this->sincronizar($user,$recepcion);$ext=$this->extension($user);
-        // Sólo las claves OPERATIVAS que siguen activas superan la lectura.
-        // El IN dinámico filtra ANTES de LIMIT, sin desplazar tareas nuevas
-        // por cientos de avisos históricos ya resueltos.
+        // No truncar obligaciones activas, ni siquiera si están leídas.
         $keys=array_keys($this->operativasActuales);
-        $where="(leida=0 AND llave NOT LIKE 'devolucion:%' AND llave NOT LIKE 'transferencia:%')";
-        if($keys)$where.=' OR llave IN ('.implode(',',array_fill(0,count($keys),'?')).')';
+        $rows=[];
+        if($keys){
+            $placeholders=implode(',',array_fill(0,count($keys),'?'));
+            $s=$this->db->prepare("SELECT * FROM telefonia_notificaciones
+                WHERE usuario_id=? AND extension=? AND llave IN ($placeholders) ORDER BY id DESC");
+            $s->bind_param('is'.str_repeat('s',count($keys)),$user,$ext,...$keys);
+            $s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        }
+        // Sólo las llamadas informativas no leídas tienen límite de 20.
         $s=$this->db->prepare("SELECT * FROM telefonia_notificaciones
-            WHERE usuario_id=? AND extension=? AND (".$where.")
+            WHERE usuario_id=? AND extension=? AND leida=0
+              AND llave NOT LIKE 'devolucion:%' AND llave NOT LIKE 'transferencia:%'
             ORDER BY id DESC LIMIT 20");
-        $s->bind_param('is'.str_repeat('s',count($keys)),$user,$ext,...$keys);
-        $s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        $s->bind_param('is',$user,$ext);$s->execute();
+        $informativas=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        $rows=array_merge($rows,$informativas);
+        usort($rows,static fn($a,$b)=>(int)$b['id']<=>(int)$a['id']);
         return array_map(function($r)use($recepcion){
             $llave = (string)$r['llave'];
             $callback = str_starts_with($llave, 'devolucion:');
