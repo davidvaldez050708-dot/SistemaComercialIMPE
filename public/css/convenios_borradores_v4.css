@@ -280,3 +280,47 @@
     flex-direction: column;
   }
 }
+
+/* QR único por aliado: guardado con el mismo sistema visual del modal V4. */
+#modalCrearConvocatoria[data-borrador-v4] .impe-v5-qr-save-status {
+  flex: 1 1 100%;
+  order: 2;
+  padding: 9px 11px;
+  border: 1px solid #dce6f5;
+  border-radius: 9px;
+  background: #f4f7fc;
+  color: #34517f;
+  font-size: 11px;
+  line-height: 1.55;
+  font-weight: 700;
+}
+#modalCrearConvocatoria[data-borrador-v4] .impe-v5-qr-save-status[data-dirty="1"] {
+  color: #795311;
+  border-color: #efdfb5;
+  background: #fffaf0;
+}
+#modalCrearConvocatoria[data-borrador-v4] .impe-v5-qr-save-status[data-error="1"] {
+  color: #b42318;
+  border-color: #f2c6c3;
+  background: #fff5f3;
+}
+#modalCrearConvocatoria[data-borrador-v4] [data-v5qr-save] {
+  min-height: 42px;
+  padding: 8px 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+}
+#modalCrearConvocatoria[data-borrador-v4] [data-v5qr-save]:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+@media (max-width: 575px) {
+  #modalCrearConvocatoria[data-borrador-v4] .impe-v5-qr-bottom [data-v5qr-save],
+  #modalCrearConvocatoria[data-borrador-v4] .impe-v5-qr-bottom [data-v5qr-reset] {
+    flex: 1 1 100%;
+  }
+}
