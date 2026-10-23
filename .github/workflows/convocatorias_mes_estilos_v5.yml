@@ -42,7 +42,7 @@ jobs:
           assert '.convocatoria-list-workspace-filters.convocatoria-mes-simplificado' in css
           assert 'grid-template-columns: minmax(250px, 1.4fr) minmax(220px, .9fr) auto;' in css
           assert t.count('name="periodo"') == 1
-          assert t.count('data-convocatoria-month-dropdown') == 1
+          assert t.count('data-convocatoria-month-dropdown>') == 1
           assert t.count('filtroMes?.addEventListener(\'change\'') == 1
           assert t.count('data-convocatoria-month-value="archivo"') == 1
           print('OK: sin explicación auxiliar, diseño unificado y eventos del filtro intactos.')
