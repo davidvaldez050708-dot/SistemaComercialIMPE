@@ -158,6 +158,7 @@ jobs:
           python3 tests/publicacion_convocatorias_v3_test.py
           python3 tests/publicacion_convenios_etapa3_hostinger_test.py
           python3 tests/publicacion_convenios_v3_integracion_test.py
+          python3 tests/publicacion_convocatorias_general_test.py
       - name: Navegador real, QR, HTTP, seguridad y concurrencia
         run: |
           node tests/aliados_registro_browser.cjs
