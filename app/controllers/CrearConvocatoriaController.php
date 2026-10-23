@@ -97,6 +97,57 @@ class CrearConvocatoriaController
             }
         },true);
     }
+    /**
+     * Consulta y guarda el diseño único del QR compartido por aliado.
+     * Independiente del borrador y del enlace público de Registro.
+     */
+    public function qrDiseno(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, private');
+        header('X-Content-Type-Options: nosniff');
+        try {
+            if (empty($_SESSION['usuario_id']) || !puedeCrearConvocatoriaDesdeConvenio()) {
+                throw new DomainException('No tienes autorización para gestionar el QR del aliado.',403);
+            }
+            $method=(string)($_SERVER['REQUEST_METHOD']??'GET');
+            if (!in_array($method,['GET','POST'],true)) {
+                throw new DomainException('Método no permitido.',405);
+            }
+            if ($method==='POST') {
+                $csrf=(string)($_SESSION['csrf_token']??'');
+                if (!$csrf || !hash_equals($csrf,(string)($_POST['csrf_token']??''))) {
+                    throw new DomainException('La sesión caducó. Recarga el CRM.',419);
+                }
+                if (empty($_SERVER['CONTENT_LENGTH'])===false &&
+                    (int)$_SERVER['CONTENT_LENGTH']>3000000) {
+                    throw new DomainException('La imagen y el diseño superan el tamaño permitido.',413);
+                }
+            }
+            require_once __DIR__.'/../services/ConvocatoriaQrDisenoService.php';
+            $service=new ConvocatoriaQrDisenoService((new Database())->connect());
+            $input=$method==='POST'?$_POST:$_GET;
+            $tipo=(string)($input['aliado_tipo']??'');
+            $id=(int)($input['aliado_id']??0);
+            $data=$method==='GET'
+                ? $service->consultar($tipo,$id)
+                : $service->guardar($tipo,$id,(int)($input['version']??-1),
+                    (string)($input['config']??''),$_FILES['logo']??[]);
+            echo json_encode(['ok'=>true,'datos'=>$data],
+                JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+        } catch (Throwable $error) {
+            $status=$error instanceof DomainException
+                && (int)$error->getCode()>=400 && (int)$error->getCode()<600
+                ? (int)$error->getCode():500;
+            if ($status===500) error_log('[qr_diseno_aliado] '.$error->getMessage());
+            http_response_code($status);
+            echo json_encode(['ok'=>false,'mensaje'=>$status===500
+                ? 'No fue posible guardar o recuperar el diseño. Intenta nuevamente.'
+                : $error->getMessage()],JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+    }
+
     public function imagenBorrador(): void
     {
         try{
