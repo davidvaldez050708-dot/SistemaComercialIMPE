@@ -314,7 +314,7 @@ class ConvocatoriaController
             : [];
 
         $listadoModalidades = $territorioSeleccionado && $clasificacionValida
-            ? $modelo->obtenerListado($buscar,$estadoFiltro,$estatusFiltro,$categoriaFiltro,'', '',0,0,$fechaFiltro) : [];
+            ? $modelo->obtenerListado($buscar,$estadoFiltro,$estatusFiltro,$categoriaFiltro,$tipoConvocatoria,'',0,0,$fechaFiltro) : [];
         // Conservar los mismos contadores y el mismo periodo entre SSR y AJAX.
         // El modelo no modifica registros ni aplica borrados por antigüedad.
         $convocatorias = ConvocatoriaVentanaMensual::filtrar(
@@ -323,10 +323,7 @@ class ConvocatoriaController
         $listadoModalidades = ConvocatoriaVentanaMensual::filtrar(
             $listadoModalidades,$periodoMesSeleccionado,$mesesVentanaConvocatorias
         );
-        $resumenModalidades = $this->contarModalidades(array_values(array_filter(
-            $listadoModalidades,
-            static fn(array $c): bool => (string)($c['tipo_convocatoria'] ?? '') === $tipoConvocatoria
-        )));
+        $resumenModalidades = $this->contarModalidades($listadoModalidades);
         $convocatorias = $this->presentarOrigenes($convocatorias);
         $mensajeExito = $_SESSION['mensaje_convocatoria'] ?? '';
         $mensajeError = $_SESSION['error_convocatoria'] ?? '';
