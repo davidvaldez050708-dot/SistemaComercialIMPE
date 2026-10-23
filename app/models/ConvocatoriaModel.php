@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
+require_once __DIR__ . '/../services/ConvocatoriaOrigenService.php';
+require_once __DIR__ . '/../services/RegistroEnlaceService.php';
 
 class ConvocatoriaModel
 {
@@ -167,11 +169,8 @@ class ConvocatoriaModel
         $tipos = '';
         $parametros = [];
 
-        if ($buscar !== '') {
-            $sql .= " AND convocatorias.titulo LIKE ?";
-            $tipos .= 's';
-            $parametros[] = '%' . $buscar . '%';
-        }
+        // La búsqueda se aplica después de resolver el aliado auténtico, sin
+        // JOIN multiplicador ni dependencia del título o del enlace.
 
         if ($estadoId > 0) {
             $sql .= " AND EXISTS (
@@ -237,14 +236,17 @@ class ConvocatoriaModel
 
         if ($tipos === '') {
             $resultado = $this->connection->query($sql);
-            return $this->convertirResultadoEnArreglo($resultado);
+            $filas=$this->convertirResultadoEnArreglo($resultado);
+            return ConvocatoriaOrigenService::filtrar((new ConvocatoriaOrigenService($this->connection))->completar($filas), $buscar);
         }
 
         $stmt = $this->connection->prepare($sql);
         $this->vincularParametros($stmt, $tipos, $parametros);
         $stmt->execute();
 
-        return $this->convertirResultadoEnArreglo($stmt->get_result());
+        $filas=$this->convertirResultadoEnArreglo($stmt->get_result());
+        $stmt->close();
+        return ConvocatoriaOrigenService::filtrar((new ConvocatoriaOrigenService($this->connection))->completar($filas), $buscar);
     }
 
     public function obtenerAniosDisponiblesPorClasificacion(
@@ -392,7 +394,7 @@ class ConvocatoriaModel
         $convocatoria['estados_ids'] = $this->obtenerEstadosIds($id);
         $convocatoria['estados'] = $this->obtenerNombresEstados($id);
 
-        return $convocatoria;
+        return (new ConvocatoriaOrigenService($this->connection))->completar([$convocatoria])[0];
     }
 
     /** Transacción común: evita lotes de convocatorias parcialmente guardados. */
@@ -584,6 +586,20 @@ class ConvocatoriaModel
         $this->connection->begin_transaction();
 
         try {
+            $lock=$this->connection->prepare('SELECT id FROM convocatorias WHERE id=? FOR UPDATE');
+            $lock->bind_param('i',$id);$lock->execute();$lock->get_result()->fetch_all();$lock->close();
+            $actual=$this->buscarPorId($id);
+            if (!$actual) throw new RuntimeException('Convocatoria no disponible.');
+            if (!empty($actual['aliado']['tiene_relacion'])) {
+                if ($actual['aliado']['estado']!=='verificado' ||
+                    !(new RegistroEnlaceService($this->connection))->equivalentes($datos['enlace_registro'],$actual['enlace_registro']) ||
+                    $datos['tipo_convocatoria'] !== $actual['tipo_convocatoria'] ||
+                    ProgramaEducativo::codigo($datos['subtipo_convocatoria']) !== ProgramaEducativo::codigo($actual['subtipo_convocatoria'])) {
+                    throw new RuntimeException('La edición no puede sustituir la identidad del aliado, el programa ni su enlace.');
+                }
+                $estadosIds=$actual['estados_ids'];
+                $datos['enlace_registro']=$actual['enlace_registro'];
+            }
             $categoria = strcasecmp(trim((string)$datos['titulo']), 'IMJUVE') === 0
                 ? 'IMJUVE'
                 : null;
@@ -1836,6 +1852,6 @@ class ConvocatoriaModel
             $filas[] = $fila;
         }
 
-        return $filas;
+        return (new RegistroEnlaceService($this->connection))->filas($filas);
     }
 }

@@ -1,0 +1,4 @@
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+RewriteEngine On
+RewriteRule ^([A-Za-z0-9_-]{12})/?$ index.php?codigo=$1 [L]

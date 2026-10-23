@@ -178,4 +178,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     if (rows.length) applyRowFilters();
+    const requestedDetail = new URLSearchParams(window.location.search);
+    let returnToManagement=null;
+    try {
+        const value=requestedDetail.get('volver_gestion');
+        if(value){const candidate=new URL(value,window.location.origin);if(candidate.origin===window.location.origin&&candidate.pathname===window.location.pathname&&candidate.searchParams.get('controller')==='convocatoria'&&candidate.searchParams.get('action')==='index')returnToManagement=candidate;}
+    } catch (_) { /* Un retorno inválido no altera el directorio. */ }
+    if(returnToManagement){
+        const detailModal=document.getElementById('modalConvenioCrearConvocatoria');let closeRequested=false;
+        detailModal?.addEventListener('click',event=>{if(event.target===detailModal||event.target.closest('[data-bs-dismiss="modal"],.btn-close'))closeRequested=true;});
+        detailModal?.addEventListener('keydown',event=>{if(event.key==='Escape')closeRequested=true;});
+        detailModal?.addEventListener('hidden.bs.modal',()=>{if(closeRequested){closeRequested=false;window.location.assign(returnToManagement.href);}});
+    }
+    const detailType = requestedDetail.get('detalle_tipo');
+    const detailId = Number(requestedDetail.get('detalle_id'));
+    if (['manual', 'institucional'].includes(detailType) && detailId > 0) {
+        const row = rows.find(item => {
+            try { const data = JSON.parse(item.dataset.convenio || '{}'); return (data.origen_tipo || 'institucional') === detailType && Number(data.origen_id || data.seguimiento_id) === detailId; }
+            catch (_) { return false; }
+        });
+        row?.querySelector('[data-convenio-open]')?.click();
+    }
 });

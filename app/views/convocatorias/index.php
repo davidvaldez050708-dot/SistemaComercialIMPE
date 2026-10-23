@@ -780,6 +780,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/convocatorias_aliado_multiprograma_v3.css?v=<?= substr(hash_file('sha256', __DIR__.'/../../../public/css/convocatorias_aliado_multiprograma_v3.css'),0,16) ?>">
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/convocatorias_gestion_v5.css?v=<?= substr(hash_file('sha256', __DIR__.'/../../../public/css/convocatorias_gestion_v5.css'),0,16) ?>">
+<script src="<?= BASE_URL ?>public/vendor/qrcode-generator/qrcode.js"></script>
+<script src="<?= BASE_URL ?>public/javascript/convocatorias_gestion_v5.js?v=<?= substr(hash_file('sha256', __DIR__.'/../../../public/javascript/convocatorias_gestion_v5.js'),0,16) ?>"></script>
 <div class="convocatoria-territory-context">
     <a
         class="data-back-link"
@@ -900,7 +904,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
                     class="form-control system-form-control"
                     id="filtro_convocatoria_buscar"
                     name="buscar"
-                    placeholder="Buscar convocatoria..."
+                    placeholder="Buscar por título, aliado o programa..."
                     value="<?= $texto($buscar) ?>">
             </div>
         </div>
@@ -1007,6 +1011,12 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         </div>
     </form>
 
+    <nav class="convocatoria-status-tabs convocatoria-modalities" aria-label="Modalidades educativas">
+        <button type="button" class="convocatoria-status-tab convocatoria-modality" data-v5-modalidad="" aria-pressed="<?= $clasificacionFiltroActual === '' ? 'true' : 'false' ?>">Todas las modalidades <strong data-v5-count=""></strong></button>
+        <?php foreach ($clasificacionesDisponibles as $modalidad): ?>
+        <button type="button" class="convocatoria-status-tab convocatoria-modality" data-v5-modalidad="<?= $texto($modalidad['valor']) ?>" aria-pressed="<?= $clasificacionFiltroActual === $modalidad['valor'] ? 'true' : 'false' ?>"><?= $texto($modalidad['etiqueta'] === 'Ejecutivas' ? 'Titulación ejecutiva' : $modalidad['etiqueta']) ?> <strong data-v5-count="<?= $texto($modalidad['valor']) ?>"></strong></button>
+        <?php endforeach; ?>
+    </nav>
     <div
         class="convocatoria-month-groups"
         data-convocatorias-listado
@@ -2432,7 +2442,7 @@ document.addEventListener('DOMContentLoaded', function () {
             field?.addEventListener('change', invalidateGeneratedLink);
         });
 
-        buttonLink?.addEventListener('click', function () {
+        buttonLink?.addEventListener('click', async function () {
             if (share.dataset.aliadoRegistroContexto === '1') return;
             if (!canGeneratePublicLink()) {
                 showQrToast(
@@ -2442,7 +2452,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const url = getSelectedUrl();
+            let url;
+            const selectedUrl = getSelectedUrl();
+            try { url = await window.IMPEConvocatoriasV5.acortarRegistro(selectedUrl); }
+            catch(error) { showQrToast(error.message, true); return; }
+            if (selectedUrl !== getSelectedUrl()) return;
 
             if (url === '') {
                 return;
@@ -3192,6 +3206,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ((Number(convocatoria.estado) === 1) ? 'Activa' : 'Inactiva') +
                     '</div></div></div>';
 
+                detalleContenido.querySelector('.user-detail-tab-content').insertAdjacentHTML('beforeend', window.IMPEConvocatoriasV5.detail(convocatoria));
                 detalleOffcanvas.show();
             } catch (error) {
                 detalleContenido.innerHTML = '<div class="alert alert-danger">' + escapeHtml(error.message) + '</div>';
@@ -3238,11 +3253,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
 
-                new bootstrap.Modal(document.getElementById('modalEditarConvocatoria')).show();
+                window.IMPEConvocatoriasV5.edit(convocatoria);
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarConvocatoria')).show();
             } catch (error) {
                 window.alert(error.message);
             }
     };
+
+    document.addEventListener('impe:editar-convocatoria',event=>{const id=Number(event.detail?.id);if(Number.isSafeInteger(id)&&id>0)manejarEditarConvocatoria.call({dataset:{id:String(id)}});});
 
     vincularAccionesConvocatorias();
 
@@ -3351,6 +3369,19 @@ document.addEventListener('DOMContentLoaded', function () {
         JSON_HEX_APOS |
         JSON_HEX_QUOT
     ) ?>;
+    let modalidadesActuales = <?= json_encode($resumenModalidades ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const actualizarModalidades = () => {
+        document.querySelectorAll('[data-v5-modalidad]').forEach(button => {const selected=button.dataset.v5Modalidad === String(filtroClasificacion?.value || '');button.setAttribute('aria-pressed',String(selected));button.classList.toggle('is-active',selected);});
+        document.querySelectorAll('[data-v5-count]').forEach(count => {
+            const code = count.dataset.v5Count;
+            count.textContent = String(code ? (modalidadesActuales[code]?.[vistaConvocatorias] || 0) : Object.values(modalidadesActuales).reduce((sum,c)=>sum + (c[vistaConvocatorias] || 0),0));
+        });
+    };
+    document.querySelectorAll('[data-v5-modalidad]').forEach(button => button.addEventListener('click', () => {
+        const value = button.dataset.v5Modalidad;
+        const option = filtroClasificacionOpciones.find(x => x.dataset.convocatoriaFilterValue === value);
+        option?.click();
+    }));
     let temporizadorFiltro = null;
     let controladorFiltro = null;
     let secuenciaFiltro = 0;
@@ -3556,6 +3587,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         actualizarContadoresVista();
         actualizarEncabezadoVista();
+        actualizarModalidades();
 
         const convocatoriasVista = convocatoriasActuales.filter(function (convocatoria) {
             const activa = Number(convocatoria.estado) === 1;
@@ -3578,72 +3610,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const grupos = new Map();
-
-        convocatoriasVista.forEach(function (convocatoria) {
-            const mes = obtenerMesConvocatoria(convocatoria);
-
-            if (!grupos.has(mes.key)) {
-                grupos.set(mes.key, {
-                    key: mes.key,
-                    orden: mes.orden,
-                    titulo: mes.titulo,
-                    icono: mes.icono,
-                    convocatorias: []
-                });
-            }
-
-            grupos.get(mes.key).convocatorias.push(convocatoria);
-        });
-
-        const gruposOrdenados = Array.from(grupos.values()).sort(function (a, b) {
-            if (a.key === 'sin-fecha') {
-                return 1;
-            }
-
-            if (b.key === 'sin-fecha') {
-                return -1;
-            }
-
-            return b.orden - a.orden;
-        });
-
-        listadoConvocatorias.innerHTML = gruposOrdenados.map(function (grupo) {
-            const cantidad = grupo.convocatorias.length;
-            const etiquetaCantidad = cantidad === 1
-                ? '1 convocatoria'
-                : cantidad + ' convocatorias';
-
-            return '<section class="convocatoria-month-group">' +
-                '<div class="convocatoria-month-group-header">' +
-                    '<div class="convocatoria-month-group-title">' +
-                        '<span class="convocatoria-month-group-icon">' +
-                            '<i class="bi ' + escapeHtml(grupo.icono) + '"></i>' +
-                        '</span>' +
-                        '<strong>' + escapeHtml(grupo.titulo) + '</strong>' +
-                    '</div>' +
-                    '<span class="convocatoria-month-group-count">' +
-                        escapeHtml(etiquetaCantidad) +
-                    '</span>' +
-                '</div>' +
-                '<div class="table-responsive">' +
-                    '<table class="table users-table align-middle mb-0 convocatoria-month-table">' +
-                        '<thead><tr>' +
-                            '<th>Imagen</th>' +
-                            '<th>Título</th>' +
-                            '<th>Periodo</th>' +
-                            '<th>Estados</th>' +
-                            '<th>Enlace</th>' +
-                            '<th>Estatus</th>' +
-                            '<th class="text-end">Acciones</th>' +
-                        '</tr></thead>' +
-                        '<tbody>' +
-                            grupo.convocatorias.map(construirFilaConvocatoria).join('') +
-                        '</tbody>' +
-                    '</table>' +
-                '</div>' +
-            '</section>';
-        }).join('');
+        listadoConvocatorias.innerHTML = window.IMPEConvocatoriasV5.render(convocatoriasVista, obtenerMesConvocatoria, construirFilaConvocatoria);
 
         vincularAccionesConvocatorias();
     };
@@ -3723,6 +3690,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            modalidadesActuales = datos.modalidades || {};
             renderConvocatorias(datos.convocatorias || []);
         } catch (error) {
             if (error.name !== 'AbortError') {
@@ -3918,6 +3886,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const nuevoEstado = Number(boton.dataset.estadoNuevo);
             document.getElementById('estado_convocatoria_id').value = boton.dataset.id || '';
             document.getElementById('estado_convocatoria_nuevo').value = String(nuevoEstado);
+            modalEstado.querySelector('[name="tipo"]').value = boton.dataset.tipo || '';
+            modalEstado.querySelector('[name="subtipo"]').value = boton.dataset.subtipo || '';
             document.getElementById('estado_convocatoria_mensaje').textContent =
                 (nuevoEstado === 1 ? '¿Deseas activar "' : '¿Deseas desactivar "') +
                 (boton.dataset.titulo || 'esta convocatoria') +

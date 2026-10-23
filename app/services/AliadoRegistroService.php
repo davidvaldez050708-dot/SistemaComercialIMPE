@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
+require_once __DIR__ . '/RegistroEnlaceService.php';
 
 /** Operaciones territoriales y perfil de Registro. Nunca crea expedientes. */
 class AliadoRegistroService
@@ -32,8 +33,8 @@ class AliadoRegistroService
     }
     public function opcionesConvocatoria(string $tipo,int $id): array
     {
-        // Marketing administra el enlace; Cuenta Clave sólo puede preparar
-        // convocatorias si recibió permisos explícitos y tiene el territorio.
+        // Cuenta Clave prepara convocatorias dentro de su territorio;
+        // administrar el enlace exige además su permiso específico.
         $marketing = strcasecmp(trim((string)($_SESSION['rol']??'')), 'Marketing') === 0;
         if (!puedeCrearConvocatoriaDesdeConvenio()) {
             throw new DomainException('No tienes permiso para crear convocatorias desde Convenios.',403);
@@ -181,13 +182,20 @@ class AliadoRegistroService
         $origen=$this->origen($tipo,$id,$marketing); $col=$tipo==='manual'?'manual_id':'seguimiento_id';
         $perfil=$this->query("SELECT r.*,a.token FROM formulario_aliado_registro r JOIN formulario_aliados a ON a.id=r.aliado_id WHERE r.$col=?",[$id])->get_result()->fetch_assoc();
         $codigos=$perfil?$this->query('SELECT programa_codigo FROM formulario_aliado_programas WHERE aliado_id=?',[(int)$perfil['aliado_id']])->get_result()->fetch_all(MYSQLI_ASSOC):[];
-        return ['origen'=>$origen,'programas'=>array_values(array_unique(array_map([ProgramaEducativo::class,'codigo'],array_column($codigos,'programa_codigo')))),'catalogo'=>$this->catalogo(),'publicado'=>(bool)($perfil['publicado']??false),'habilitado'=>(bool)($perfil['habilitado']??false),'url'=>(($marketing || $mostrarEnlace) && !empty($perfil['publicado']))?BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.$perfil['token']:''];
+        $url=(($marketing || $mostrarEnlace) && !empty($perfil['publicado']))?BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.$perfil['token']:'';
+        // El contexto también se lee dentro de la transacción de publicación.
+        // Reservar el alias en autocommit evita bloquear otra conexión del lote.
+        $enlaces=new RegistroEnlaceService((new Database())->connect());
+        return ['origen'=>$origen,'programas'=>array_values(array_unique(array_map([ProgramaEducativo::class,'codigo'],array_column($codigos,'programa_codigo')))),'catalogo'=>$this->catalogo(),'publicado'=>(bool)($perfil['publicado']??false),'habilitado'=>(bool)($perfil['habilitado']??false),'url'=>$enlaces->acortar($url)];
     }
     public function enlace(string $tipo,int $id,string $accion): array
     {
         $this->autorizar('formularios_aliados.gestionar_enlaces');
-        if (strcasecmp($_SESSION['rol']??'','Marketing')!==0) { throw new DomainException('Operación exclusiva de Marketing.',403); }
-        $this->origen($tipo,$id,true); $col=$tipo==='manual'?'manual_id':'seguimiento_id';
+        $marketing = strcasecmp(trim((string)($_SESSION['rol']??'')), 'Marketing') === 0;
+        if (!$marketing && (int)($_SESSION['rol_id']??0)!==6) { throw new DomainException('Operación disponible para Marketing o Cuenta Clave con permiso de gestionar enlaces.',403); }
+        // El permiso no concede alcance nacional: Cuenta Clave conserva su
+        // asignación activa, incluso cuando el enlace ya lo publicó Marketing.
+        $this->origen($tipo,$id,$marketing); $col=$tipo==='manual'?'manual_id':'seguimiento_id';
         $this->db->begin_transaction();
         try {
             $perfil=$this->query("SELECT aliado_id,habilitado FROM formulario_aliado_registro WHERE $col=?",[$id])->get_result()->fetch_assoc();
@@ -198,7 +206,7 @@ class AliadoRegistroService
             if (!$programas && $accion!=='deshabilitar') { throw new DomainException('El aliado no tiene programas activos.'); }
             if (!in_array($accion,['generar','habilitar','deshabilitar'],true)) { throw new DomainException('Acción inválida.'); }
             $this->query('UPDATE formulario_aliado_registro SET publicado=1,habilitado=?,actualizado_por=? WHERE aliado_id=?',[$accion==='generar'?(int)$perfil['habilitado']:($accion==='deshabilitar'?0:1),(int)$_SESSION['usuario_id'],(int)$perfil['aliado_id']]);
-            $this->db->commit(); return $this->detalle($tipo,$id,true);
+            $this->db->commit(); return $this->detalle($tipo,$id,$marketing,true);
         } catch (Throwable $e) { $this->db->rollback(); throw $e; }
     }
     private function verificarManualModulos(): void

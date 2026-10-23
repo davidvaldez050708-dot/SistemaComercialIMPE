@@ -9,7 +9,8 @@ $esc = static fn($value) => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
  <?php if ($errorExternos !== ''): ?><div class="alert alert-warning" role="alert"><?= $esc($errorExternos) ?></div><?php endif; ?>
  <div class="row g-3">
  <?php foreach ($externos as $aliado): ?>
- <?php $enlaceRegistro=BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.rawurlencode($aliado['token']);
+ <?php require_once __DIR__.'/../../services/RegistroEnlaceService.php';
+       $enlaceRegistro=(new RegistroEnlaceService((new Database())->connect()))->acortar(BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.rawurlencode($aliado['token']));
        $enlaceInscripcion=BASE_URL.'index.php?controller=formularioPublico&action=inscripcion&aliado='.rawurlencode($aliado['token']); ?>
   <div class="col-12 col-xl-6"><article class="card h-100 border rounded-3"><div class="card-body p-4">
    <div class="d-flex justify-content-between gap-2 flex-wrap"><h3 class="h5 mb-1"><?= $esc($aliado['nombre']) ?></h3><span class="badge text-bg-<?= (int)$aliado['activo']===1?'success':'secondary' ?>"><?= (int)$aliado['activo']===1?'Activo':'Inactivo' ?></span></div>

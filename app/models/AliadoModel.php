@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../services/RegistroEnlaceService.php';
 
 class AliadoModel
 {
@@ -276,7 +277,8 @@ class AliadoModel
               WHERE c.estado=1 AND c.fecha_inicio<=CURDATE() AND c.fecha_termino>=CURDATE()
               ORDER BY c.fecha_termino,c.id";
         $params[]=$perfil['id'];$s=$this->connection->prepare($sql);$s->bind_param(str_repeat('s',count($params)),...$params);$s->execute();$filas=$s->get_result()->fetch_all(MYSQLI_ASSOC);
-        foreach($filas as &$fila){$fila['enlace_registro']=BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.rawurlencode($perfil['token']);$fila['estado_texto']='Publicada · Vigente';}
+        $enlace=(new RegistroEnlaceService($this->connection))->acortar(BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.rawurlencode($perfil['token']));
+        foreach($filas as &$fila){$fila['enlace_registro']=$enlace;$fila['estado_texto']='Publicada · Vigente';}
         return $filas;
     }
 
@@ -1801,6 +1803,7 @@ class AliadoModel
             $filas[] = $fila;
         }
 
-        return $filas;
+        require_once __DIR__.'/../services/RegistroEnlaceService.php';
+        return (new RegistroEnlaceService($this->connection))->filas($filas);
     }
 }

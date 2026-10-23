@@ -1,0 +1,119 @@
+name: Gestión de Convocatorias V5
+on:
+  pull_request:
+    paths:
+      - 'app/services/ConvocatoriaOrigenService.php'
+      - 'app/services/AliadoRegistroService.php'
+      - 'app/models/ConvocatoriaModel.php'
+      - 'app/controllers/ConvocatoriaController.php'
+      - 'app/views/convocatorias/index.php'
+      - 'public/javascript/convocatorias_gestion_v5.js'
+      - 'public/javascript/crear_convocatoria_v2_extension.js'
+      - 'public/css/convocatorias_gestion_v5.css'
+      - 'tests/*v5*'
+      - 'tests/enlaces_cuenta_clave_db.php'
+      - 'tests/publicacion_enlaces_cuenta_clave_test.py'
+      - 'tools/*gestion_v5*'
+      - 'tools/aliado_enlaces_cuenta_clave*'
+      - 'app/services/RegistroEnlaceService.php'
+      - 'app/controllers/FormularioController.php'
+      - 'app/models/AliadoModel.php'
+      - 'app/views/aliados/internacionales.php'
+      - 'app/views/layout/dashboard_head.php'
+      - 'public/javascript/registro_enlaces_amigables.js'
+      - 'public/javascript/convocatoria_crear_compartido.js'
+      - 'registro/**'
+      - 'tests/*registro_enlaces*'
+      - 'tools/*registro_enlaces*'
+      - '.github/workflows/convocatorias-gestion-v5.yml'
+  workflow_dispatch:
+jobs:
+  dirigida:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['33310:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33310
+      IMPE_DB_USER: root
+      IMPE_DB_NAME: impe_test_handly_aliados_v4_v5_ci
+      IMPE_TEST_DB_NAME: impe_test_handly_aliados_v4_v5_ci
+      IMPE_TEST_MYSQL_PORT: 33310
+      IMPE_BASE_URL: http://127.0.0.1:8120/
+      PLAYWRIGHT_MODULE_PATH: /tmp/v5-browser/node_modules/playwright
+      BOOTSTRAP_MODULE_PATH: /tmp/v5-browser/node_modules/bootstrap
+      IMPE_V5_APP_ROOT: /tmp/v5-hostinger
+      IMPE_V5_OUTPUT: /tmp/v5-visual
+      IMPE_CONVOCATORIA_DRAFT_DIR: /tmp/v5-private
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, gd, fileinfo
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/v5-browser playwright bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0 jsqr@1.4.0 pngjs@7.0.0
+      - run: /tmp/v5-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis y publicador reversible
+        run: |
+          git diff --name-only d1104ae4 HEAD -- '*.php' | xargs -r -n1 php -l
+          node --check public/javascript/convocatorias_gestion_v5.js
+          node --check public/javascript/crear_convocatoria_v2_extension.js
+          python3 tests/publicacion_convocatorias_gestion_v5_test.py
+          python3 tests/publicacion_convocatorias_v5_ui_test.py
+          python3 tests/publicacion_convocatorias_v5_qr_test.py
+          python3 tests/publicacion_enlaces_cuenta_clave_test.py
+          python3 tests/publicacion_registro_enlaces_test.py
+      - name: Preparación exclusivamente sintética
+        run: |
+          mkdir -p /tmp/v5-sql-backups
+          php tests/aliados_registro_fixture.php
+          php tools/preparar_handly_formularios.php --apply
+          php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/v5-sql-backups
+          php tools/migrar_extensiones_aliados_20261022.php --apply --backup-dir=/tmp/v5-sql-backups
+          php tools/migrar_canales_manuales_20261022.php --apply --respaldo-confirmado
+          php tools/migrar_convocatorias_multiprograma_20261022.php --apply --respaldo-confirmado
+          php tests/convenios_v4_fixture.php
+          php tools/migrar_convocatoria_borradores_v4.php --apply --backup-dir=/tmp/v5-sql-backups
+          php tests/convocatorias_v5_fixture.php
+          php tests/convocatorias_v5_db.php
+          php tests/enlaces_cuenta_clave_db.php
+      - name: Réplica Hostinger, navegador y regresiones afectadas
+        run: |
+          python3 tests/preparar_convocatorias_v5_replica.py --output /tmp/v5-hostinger
+          node tests/convocatorias_v5_browser.cjs
+          IMPE_V5_EXTRA_ONLY=1 node tests/convocatorias_v5_browser.cjs
+          IMPE_V5_ACTIONS_ONLY=1 node tests/convocatorias_v5_browser.cjs
+          IMPE_V5_CORRECTIONS_ONLY=1 node tests/convocatorias_v5_browser.cjs
+          IMPE_V5_QR_ONLY=1 node tests/convocatorias_v5_browser.cjs
+          IMPE_CC_LINKS_ONLY=1 node tests/convocatorias_v5_browser.cjs
+          IMPE_V5_VISUAL_ONLY=1 node tests/convocatorias_v5_browser.cjs
+          php tests/convocatorias_v5_regresion.php
+      - name: Registro amigable, migración explícita sólo en esquema sintético
+        run: |
+          php tools/migrar_enlaces_registro_amigables.php --check
+          php tools/migrar_enlaces_registro_amigables.php --apply
+          php tools/migrar_enlaces_registro_amigables.php --apply
+          php tests/registro_enlaces_db.php
+          node tests/registro_enlaces_carga_browser.cjs
+          node tests/registro_enlaces_browser.cjs
+          IMPE_V5_QR_ONLY=1 node tests/convocatorias_v5_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: convocatorias-v5-${{ strategy.job-index }}
+          path: /tmp/v5-visual
