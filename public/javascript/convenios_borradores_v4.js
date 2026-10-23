@@ -343,6 +343,7 @@
     let savedVersion=0,serverReady=false,saving=false,previewReady=false,dirty=false;
     const saveButton=surface.querySelector('[data-v5qr-save]');
     const saveStatus=surface.querySelector('[data-v5qr-save-status]');
+    const settingsPanel=surface.querySelector('.impe-v5-qr-settings');
     const contextNode=modal.querySelector('#impe-convocatoria-aliado-contexto');
     let allyContext={};
     try { allyContext=JSON.parse(contextNode?.textContent||'{}'); } catch(_) {}
@@ -482,6 +483,7 @@
     }
     async function loadSaved(){
       serverReady=false;saveButton.disabled=true;
+      settingsPanel.inert=true;
       saveMessage('Recuperando diseño del aliado…');
       try {
         if(!['manual','institucional'].includes(allyContext.origen)||Number(allyContext.id)<1) {
@@ -494,11 +496,14 @@
       } catch(error) {
         serverReady=false;saveButton.disabled=true;
         saveMessage(error.message||'No fue posible recuperar el diseño. No se ha guardado nada.',true);
+      } finally {
+        settingsPanel.inert=false;
       }
     }
     saveButton.addEventListener('click',async()=>{
       if(!serverReady||saving||!previewReady)return;
       saving=true;saveButton.disabled=true;
+      settingsPanel.inert=true;
       saveMessage('Guardando diseño del QR…');
       try {
         const body=new FormData();
@@ -524,7 +529,8 @@
         dirty=true;
         saveMessage((error.message||'No se pudo guardar el diseño.')+' Los cambios siguen en pantalla.',true);
       }finally{
-        saving=false;saveButton.disabled=!previewReady||!serverReady;
+        saving=false;settingsPanel.inert=false;
+        saveButton.disabled=!previewReady||!serverReady;
       }
     });
     function toggleLogo() {
