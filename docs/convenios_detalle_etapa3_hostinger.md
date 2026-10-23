@@ -1,5 +1,9 @@
 # Etapa 3 — Directorio y detalle de Convenios
 
+**Compatibilidad Hostinger (22/10):** el paquete original indicado abajo se detiene ante la variante personalizada de `crear_convocatoria.js`. El manifiesto actualizado de este documento incorpora su contenido público exacto (SHA256 `7095c76746feddda854b9f89684e66d832ffcf2976d08b885f29f3cebc0720e1`) y sólo limita la apertura al botón Ver detalle. Conserva las rutas internacionales y el resto del archivo; no copia la versión completa de GitHub sobre esa variante. Usar el commit de conciliación y el SHA256 del manifiesto entregados en la conversación, no el `REV` histórico de abajo. El publicador y los otros cuatro destinos no cambiaron. Una variante diferente sigue requiriendo `--check`; no forzar conflictos.
+
+Validación de esta conciliación: publicación en réplicas LF/CRLF, idempotencia, restauración exacta y bloqueo sin escrituras ante variantes desconocidas. Comparación en Edge del script publicado contra el conciliado, solo y con la extensión V2: rutas, visibilidad, filtros, clic, Enter/Espacio, notas y programas. Sin acceso autenticado, SQL o escrituras en Hostinger.
+
 PR #124, rama `feat/aliados-programas-registro`. Aplicación: `00aae2ce8489728eb9210acece5bd3228276fcd9`. Paquete selectivo: `85b4326626a8d91a71d3ac7a6cb44325f09be532`. Base: `285bfac993d04f5d5cd5e5cdae6cca3d809372dc`, con las etapas 1 y 2.
 
 Filas compactas, sin hover accionable y con botón uniforme Ver detalle; apertura mediante botón nativo con teclado. Origen y programas usan la misma cuadrícula informativa del modal, notas completas con saltos de línea y estado vacío discreto; desplazamiento independiente del cuerpo, fechas sin medianoche artificial. Los programas llegan como una lista estructurada de la consulta existente; se conserva el texto legado para sus otros consumidores, sin alterar autorizaciones.
