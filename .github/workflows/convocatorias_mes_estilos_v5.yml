@@ -1,0 +1,111 @@
+name: Convocatorias - hotfix visual filtro mensual
+on:
+  push:
+    branches:
+      - fix/convocatorias-filtro-mes-estilos-v5-20261023
+  pull_request:
+    branches:
+      - fix/convocatorias-meses-historial-v5-20261023
+jobs:
+  comprobaciones:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Sintaxis y consistencia del selector visual
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/views/convocatorias/index.php
+          python3 -m py_compile tools/preparar_convocatorias_mes_estilos_v5.py tools/publicar_convocatorias_mes_estilos_v5.py
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('app/views/convocatorias/index.php').read_text()
+          assert 'La ventana avanza mes a mes; las publicaciones antiguas se conservan en el archivo.' not in t
+          for token in ['data-convocatoria-month-dropdown','data-convocatoria-month-trigger',
+                        'data-convocatoria-month-label','data-convocatoria-month-value',
+                        'class="convocatoria-filter-dropdown-trigger"',
+                        'Meses recientes','Otros meses / archivo','actualizarSelectorMes()',
+                        'filtroMes?.dispatchEvent(new Event(\'change\'',
+                        'sincronizarPeriodoEnUrl()','data-v5-modalidad']:
+              assert token in t, token
+          assert t.count('id="filtro_convocatoria_periodo"') == 1
+          assert 'id="filtro_convocatoria_clasificacion_boton"' not in t
+          assert t.count('id="filtro_convocatoria_clasificacion"') == 1
+          assert 'filtroClasificacionOpciones' not in t
+          assert 'data-convocatoria-filter-dropdown' not in t
+          css=Path('public/css/convocatorias_gestion_v5.css').read_text()
+          assert '.convocatoria-list-workspace-filters.convocatoria-mes-simplificado' in css
+          assert 'grid-template-columns: minmax(250px, 1.4fr) minmax(220px, .9fr) auto;' in css
+          assert t.count('name="periodo"') == 1
+          assert t.count('data-convocatoria-month-dropdown>') == 1
+          assert t.count('filtroMes?.addEventListener(\'change\'') == 1
+          assert t.count('data-convocatoria-month-value="archivo"') == 1
+          print('OK: sin explicación auxiliar, diseño unificado y eventos del filtro intactos.')
+          PY
+      - name: Construir paquete sobre las personalizaciones verificadas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/mes-estilo"
+          PREP="$RUNNER_TEMP/mes-estilo"
+          cp tools/publicar_aliados_registro.py "$PREP/"
+          cp tools/convocatorias_gestion_v5_release.json "$PREP/"
+          cp tools/convocatorias_gestion_v5_qr_release.json "$PREP/"
+          cp app/helpers/ConvocatoriaVentanaMensual.php "$PREP/"
+          git show ebe671564cd9a33c268156f2cb1a5e6fdae4170a:app/views/convocatorias/index.php > "$PREP/view-v5-before.php"
+          git show 4d72f499f53b8360874e1c2770ddd7d01eb3aff9:app/views/convocatorias/index.php > "$PREP/view-monthly-before.php"
+          cp app/views/convocatorias/index.php "$PREP/view-monthly-after.php"
+          cp public/css/convocatorias_gestion_v5.css "$PREP/convocatorias_gestion_v5_after.css"
+          git show ebe671564cd9a33c268156f2cb1a5e6fdae4170a:app/controllers/ConvocatoriaController.php > "$PREP/controller-v5-before.php"
+          git show 4d72f499f53b8360874e1c2770ddd7d01eb3aff9:app/controllers/ConvocatoriaController.php > "$PREP/controller-monthly-after.php"
+          python3 tools/preparar_convocatorias_mes_estilos_v5.py --directory "$PREP" --output "$PREP/entrega.json"
+      - name: Ensayar publicación restauración e incompatibilidad
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREP="$RUNNER_TEMP/mes-estilo"
+          SITE="$RUNNER_TEMP/hostinger"
+          BACKUP="$RUNNER_TEMP/respaldos"
+          mkdir -p "$SITE" "$BACKUP"
+          cp tools/publicar_convocatorias_mes_estilos_v5.py "$PREP/publicar.py"
+          python3 - "$PREP/entrega.json" "$SITE" <<'PY'
+          import json,base64,gzip,pathlib,sys
+          doc=json.load(open(sys.argv[1]))
+          root=pathlib.Path(sys.argv[2]);(root/'index.php').write_text('<?php')
+          for row in doc['files']:
+              p=root/row['path'];p.parent.mkdir(parents=True,exist_ok=True)
+              p.write_bytes(gzip.decompress(base64.b64decode(row['base'])))
+          for row in doc['dependencies']:
+              p=root/row['path'];p.parent.mkdir(parents=True,exist_ok=True)
+              p.write_bytes(gzip.decompress(base64.b64decode(row['content'])))
+          PY
+          python3 "$PREP/publicar.py" --site "$SITE" --manifest "$PREP/entrega.json" --backup-root "$BACKUP" --check > "$PREP/check.log"
+          grep -q 'REVISIÓN COMPATIBLE: 2 archivos' "$PREP/check.log"
+          python3 "$PREP/publicar.py" --site "$SITE" --manifest "$PREP/entrega.json" --backup-root "$BACKUP" --apply
+          php -l "$SITE/app/views/convocatorias/index.php"
+          python3 "$PREP/publicar.py" --site "$SITE" --manifest "$PREP/entrega.json" --backup-root "$BACKUP" --check > "$PREP/installed.log"
+          grep -q 'REVISIÓN COMPATIBLE: 0 archivos' "$PREP/installed.log"
+          DIR="$(find "$BACKUP" -type f -name respaldo.json -printf '%h\n' | head -1)"
+          test -n "$DIR"
+          python3 "$PREP/publicar.py" --site "$SITE" --manifest "$PREP/entrega.json" --backup-root "$BACKUP" --restore "$DIR"
+          python3 - "$SITE" "$PREP/entrega.json" <<'PY'
+          import json,gzip,base64,pathlib,sys
+          site=pathlib.Path(sys.argv[1]);manifest=json.load(open(sys.argv[2]))
+          for file in manifest['files']:
+              assert (site/file['path']).read_bytes()==gzip.decompress(base64.b64decode(file['base'])),file['path']
+          for dep in manifest['dependencies']:
+              assert (site/dep['path']).read_bytes()==gzip.decompress(base64.b64decode(dep['content']))
+          print('OK: restauración exacta y 4 dependencias conservadas.')
+          PY
+          echo '<?php // personalización desconocida' >> "$SITE/app/views/convocatorias/index.php"
+          if python3 "$PREP/publicar.py" --site "$SITE" --manifest "$PREP/entrega.json" --backup-root "$BACKUP" --check > "$PREP/conflicto.log" 2>&1; then
+            echo 'ERROR: no bloqueó un cambio desconocido' >&2
+            exit 1
+          fi
+          grep -q 'CONFLICTO' "$PREP/conflicto.log"
+          echo "OK: conflictos posteriores bloqueados, sitio intacto."

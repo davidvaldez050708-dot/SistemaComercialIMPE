@@ -884,7 +884,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
     <form
         method="GET"
         action="<?= BASE_URL ?>index.php"
-        class="convocatoria-filter-bar convocatoria-list-workspace-filters">
+        class="convocatoria-filter-bar convocatoria-list-workspace-filters convocatoria-mes-simplificado">
         <input type="hidden" name="controller" value="convocatoria">
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="territorio_id" value="<?= (int)$territorioSeleccionado['id'] ?>">
@@ -909,97 +909,49 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
             </div>
         </div>
 
+        <!-- La modalidad se selecciona en las pestañas visibles inferiores;
+             conservar el parámetro para búsqueda, filtros AJAX y enlaces antiguos. -->
+        <input type="hidden" id="filtro_convocatoria_clasificacion"
+            name="clasificacion" value="<?= $texto($clasificacionFiltroActual) ?>"
+            data-convocatoria-clasificacion>
+
         <div class="convocatoria-filter-field">
-            <label
-                class="form-label login-label"
-                for="filtro_convocatoria_clasificacion_boton">
-                Convocatoria
-            </label>
-
+            <label class="form-label login-label" for="filtro_convocatoria_periodo_boton">Mes de convocatoria</label>
             <?php
-            $clasificacionFiltroEtiqueta = 'Todas las convocatorias';
-
-            foreach ($clasificacionesDisponibles as $clasificacion) {
-                if ($clasificacionFiltroActual === $clasificacion['valor']) {
-                    $clasificacionFiltroEtiqueta =
-                        (string)$clasificacion['etiqueta'];
+            $etiquetaMesConvocatoria = $periodoMesSeleccionado === 'archivo'
+                ? 'Otros meses / archivo' : 'Meses recientes';
+            foreach ($mesesVentanaConvocatorias as $mesVentana) {
+                if ($periodoMesSeleccionado === $mesVentana['valor']) {
+                    $etiquetaMesConvocatoria = (string)$mesVentana['etiqueta'];
                     break;
                 }
             }
             ?>
-
-            <div
-                class="convocatoria-filter-dropdown"
-                data-convocatoria-filter-dropdown>
-
-                <input
-                    type="hidden"
-                    id="filtro_convocatoria_clasificacion"
-                    name="clasificacion"
-                    value="<?= $texto($clasificacionFiltroActual) ?>"
-                    data-convocatoria-clasificacion>
-
-                <button
-                    type="button"
-                    class="convocatoria-filter-dropdown-trigger"
-                    id="filtro_convocatoria_clasificacion_boton"
-                    aria-haspopup="listbox"
-                    aria-expanded="false"
-                    data-convocatoria-filter-trigger>
-                    <span data-convocatoria-filter-label>
-                        <?= $texto($clasificacionFiltroEtiqueta) ?>
-                    </span>
+            <div class="convocatoria-filter-dropdown" data-convocatoria-month-dropdown>
+                <input type="hidden" id="filtro_convocatoria_periodo"
+                    name="periodo" value="<?= $texto($periodoMesSeleccionado) ?>">
+                <button type="button" class="convocatoria-filter-dropdown-trigger"
+                    id="filtro_convocatoria_periodo_boton"
+                    aria-haspopup="listbox" aria-controls="filtro_convocatoria_periodo_lista"
+                    aria-expanded="false" data-convocatoria-month-trigger>
+                    <span data-convocatoria-month-label><?= $texto($etiquetaMesConvocatoria) ?></span>
                     <i class="bi bi-chevron-down" aria-hidden="true"></i>
                 </button>
-
-                <div
-                    class="convocatoria-filter-dropdown-menu"
-                    role="listbox"
-                    aria-label="Seleccionar convocatoria"
-                    data-convocatoria-filter-menu>
-
-                    <button
-                        type="button"
-                        class="convocatoria-filter-dropdown-option <?= $clasificacionFiltroActual === '' ? 'is-selected' : '' ?>"
-                        role="option"
-                        aria-selected="<?= $clasificacionFiltroActual === '' ? 'true' : 'false' ?>"
-                        data-convocatoria-filter-value="">
-                        Todas las convocatorias
-                    </button>
-
-                    <?php foreach ($clasificacionesDisponibles as $clasificacion): ?>
-                        <button
-                            type="button"
-                            class="convocatoria-filter-dropdown-option <?= $clasificacionFiltroActual === $clasificacion['valor'] ? 'is-selected' : '' ?>"
-                            role="option"
-                            aria-selected="<?= $clasificacionFiltroActual === $clasificacion['valor'] ? 'true' : 'false' ?>"
-                            data-convocatoria-filter-value="<?= $texto($clasificacion['valor']) ?>">
-                            <?= $texto($clasificacion['etiqueta']) ?>
-                        </button>
+                <div class="convocatoria-filter-dropdown-menu" id="filtro_convocatoria_periodo_lista"
+                    role="listbox" aria-label="Seleccionar mes de convocatoria" data-convocatoria-month-menu>
+                    <button type="button" class="convocatoria-filter-dropdown-option <?= $periodoMesSeleccionado === '' ? 'is-selected' : '' ?>"
+                        role="option" aria-selected="<?= $periodoMesSeleccionado === '' ? 'true' : 'false' ?>"
+                        data-convocatoria-month-value="">Meses recientes</button>
+                    <?php foreach ($mesesVentanaConvocatorias as $mesVentana): ?>
+                        <button type="button" class="convocatoria-filter-dropdown-option <?= $periodoMesSeleccionado === $mesVentana['valor'] ? 'is-selected' : '' ?>"
+                            role="option" aria-selected="<?= $periodoMesSeleccionado === $mesVentana['valor'] ? 'true' : 'false' ?>"
+                            data-convocatoria-month-value="<?= $texto($mesVentana['valor']) ?>"><?= $texto($mesVentana['etiqueta']) ?></button>
                     <?php endforeach; ?>
+                    <button type="button" class="convocatoria-filter-dropdown-option <?= $periodoMesSeleccionado === 'archivo' ? 'is-selected' : '' ?>"
+                        role="option" aria-selected="<?= $periodoMesSeleccionado === 'archivo' ? 'true' : 'false' ?>"
+                        data-convocatoria-month-value="archivo">Otros meses / archivo</button>
                 </div>
             </div>
-        </div>
-
-        <div class="convocatoria-filter-field">
-            <label class="form-label login-label" for="filtro_convocatoria_periodo">Mes de convocatoria</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
-                <select class="form-select system-form-control" id="filtro_convocatoria_periodo"
-                    name="periodo" aria-describedby="ayuda_convocatoria_periodo">
-                    <option value="" <?= $periodoMesSeleccionado === '' ? 'selected' : '' ?>>Meses recientes</option>
-                    <?php foreach ($mesesVentanaConvocatorias as $mesVentana): ?>
-                        <option value="<?= $texto($mesVentana['valor']) ?>"
-                            <?= $periodoMesSeleccionado === $mesVentana['valor'] ? 'selected' : '' ?>>
-                            <?= $texto($mesVentana['etiqueta']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                    <option value="archivo" <?= $periodoMesSeleccionado === 'archivo' ? 'selected' : '' ?>>Otros meses / archivo</option>
-                </select>
-            </div>
-            <small class="form-text" id="ayuda_convocatoria_periodo">
-                La ventana avanza mes a mes; las publicaciones antiguas se conservan en el archivo.
-            </small>
             <input type="hidden" id="filtro_convocatoria_fecha" name="fecha" value="<?= $texto($fechaFiltro) ?>">
             <?php if ($fechaFiltro !== ''): ?>
                 <small class="form-text" data-convocatoria-filtro-dia>
@@ -3344,20 +3296,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const filtroBuscar = document.getElementById('filtro_convocatoria_buscar');
     const filtroFecha = document.getElementById('filtro_convocatoria_fecha');
     const filtroMes = document.getElementById('filtro_convocatoria_periodo');
+    const filtroMesDropdown = document.querySelector('[data-convocatoria-month-dropdown]');
+    const filtroMesTrigger = document.querySelector('[data-convocatoria-month-trigger]');
+    const filtroMesLabel = document.querySelector('[data-convocatoria-month-label]');
+    const filtroMesOpciones = Array.from(document.querySelectorAll('[data-convocatoria-month-value]'));
     const filtroCategoria = document.getElementById('filtro_convocatoria_categoria');
     const filtroClasificacion = document.querySelector('[data-convocatoria-clasificacion]');
-    const filtroClasificacionDropdown = document.querySelector(
-        '[data-convocatoria-filter-dropdown]'
-    );
-    const filtroClasificacionTrigger = document.querySelector(
-        '[data-convocatoria-filter-trigger]'
-    );
-    const filtroClasificacionLabel = document.querySelector(
-        '[data-convocatoria-filter-label]'
-    );
-    const filtroClasificacionOpciones = Array.from(
-        document.querySelectorAll('[data-convocatoria-filter-value]')
-    );
     const limpiarFiltros = document.querySelector('[data-convocatoria-clear-filters]');
     const listadoConvocatorias = document.querySelector('[data-convocatorias-listado]');
     const tabsConvocatorias = Array.from(
@@ -3389,9 +3333,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
     document.querySelectorAll('[data-v5-modalidad]').forEach(button => button.addEventListener('click', () => {
-        const value = button.dataset.v5Modalidad;
-        const option = filtroClasificacionOpciones.find(x => x.dataset.convocatoriaFilterValue === value);
-        option?.click();
+        if (filtroClasificacion) {
+            filtroClasificacion.value = String(button.dataset.v5Modalidad || '');
+        }
+        actualizarModalidades();
+        window.clearTimeout(temporizadorFiltro);
+        actualizarVisibilidadLimpiar();
+        cargarListadoFiltrado();
     }));
     let temporizadorFiltro = null;
     let controladorFiltro = null;
@@ -3753,65 +3701,74 @@ document.addEventListener('DOMContentLoaded', function () {
 
     filtroBuscar?.addEventListener('input', programarBusqueda);
 
-    const cerrarFiltroClasificacion = function () {
-        filtroClasificacionDropdown?.classList.remove('is-open');
-        filtroClasificacionTrigger?.setAttribute('aria-expanded', 'false');
+    const actualizarSelectorMes = function () {
+        const valor = String(filtroMes?.value || '');
+        const seleccionada = filtroMesOpciones.find(function (opcion) {
+            return opcion.dataset.convocatoriaMonthValue === valor;
+        });
+        if (filtroMesLabel && seleccionada) {
+            filtroMesLabel.textContent = seleccionada.textContent.trim();
+        }
+        filtroMesOpciones.forEach(function (opcion) {
+            const elegida = opcion === seleccionada;
+            opcion.classList.toggle('is-selected', elegida);
+            opcion.setAttribute('aria-selected', elegida ? 'true' : 'false');
+        });
     };
-
-    filtroClasificacionTrigger?.addEventListener('click', function () {
-        const abrir = !filtroClasificacionDropdown?.classList.contains('is-open');
-
+    const cerrarFiltroMes = function () {
+        filtroMesDropdown?.classList.remove('is-open');
+        filtroMesTrigger?.setAttribute('aria-expanded', 'false');
+    };
+    filtroMesTrigger?.addEventListener('click', function () {
+        const abrir = !filtroMesDropdown?.classList.contains('is-open');
+        filtroMesDropdown?.classList.toggle('is-open', abrir);
+        filtroMesTrigger.setAttribute('aria-expanded', abrir ? 'true' : 'false');
         if (abrir) {
-            filtroClasificacionDropdown?.classList.add('is-open');
-            filtroClasificacionTrigger.setAttribute('aria-expanded', 'true');
-        } else {
-            cerrarFiltroClasificacion();
+            const seleccionada = filtroMesOpciones.find(opcion =>
+                opcion.dataset.convocatoriaMonthValue === String(filtroMes?.value || '')
+            );
+            seleccionada?.focus();
         }
     });
-
-    filtroClasificacionOpciones.forEach(function (opcion) {
+    filtroMesOpciones.forEach(function (opcion) {
         opcion.addEventListener('click', function () {
-            const valor = String(
-                opcion.dataset.convocatoriaFilterValue || ''
-            );
-
-            if (filtroClasificacion) {
-                filtroClasificacion.value = valor;
+            if (filtroMes) {
+                filtroMes.value = String(opcion.dataset.convocatoriaMonthValue || '');
             }
-
-            if (filtroClasificacionLabel) {
-                filtroClasificacionLabel.textContent =
-                    opcion.textContent.trim();
-            }
-
-            filtroClasificacionOpciones.forEach(function (item) {
-                const seleccionada = item === opcion;
-                item.classList.toggle('is-selected', seleccionada);
-                item.setAttribute(
-                    'aria-selected',
-                    seleccionada ? 'true' : 'false'
-                );
-            });
-
-            cerrarFiltroClasificacion();
-            window.clearTimeout(temporizadorFiltro);
-            actualizarVisibilidadLimpiar();
-            cargarListadoFiltrado();
+            actualizarSelectorMes();
+            cerrarFiltroMes();
+            filtroMesTrigger?.focus();
+            filtroMes?.dispatchEvent(new Event('change', { bubbles: true }));
         });
     });
+    actualizarSelectorMes();
 
     document.addEventListener('click', function (event) {
         if (
-            filtroClasificacionDropdown &&
-            !filtroClasificacionDropdown.contains(event.target)
+            filtroMesDropdown &&
+            !filtroMesDropdown.contains(event.target)
         ) {
-            cerrarFiltroClasificacion();
+            cerrarFiltroMes();
         }
     });
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
-            cerrarFiltroClasificacion();
+            const mesEstabaAbierto = filtroMesDropdown?.classList.contains('is-open');
+            cerrarFiltroMes();
+            if (mesEstabaAbierto) {
+                filtroMesTrigger?.focus();
+            }
+        }
+        if (filtroMesDropdown?.classList.contains('is-open') &&
+            (event.key === 'ArrowDown' || event.key === 'ArrowUp') &&
+            filtroMesDropdown.contains(document.activeElement)) {
+            const actual = filtroMesOpciones.indexOf(document.activeElement);
+            if (actual >= 0) {
+                event.preventDefault();
+                const direccion = event.key === 'ArrowDown' ? 1 : -1;
+                filtroMesOpciones[(actual + direccion + filtroMesOpciones.length) % filtroMesOpciones.length]?.focus();
+            }
         }
     });
 
@@ -3864,6 +3821,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (filtroMes) {
             filtroMes.value = '';
+            actualizarSelectorMes();
+            cerrarFiltroMes();
         }
         document.querySelector('[data-convocatoria-filtro-dia]')?.remove();
         sincronizarPeriodoEnUrl();
@@ -3876,21 +3835,7 @@ document.addEventListener('DOMContentLoaded', function () {
             filtroClasificacion.value = '';
         }
 
-        if (filtroClasificacionLabel) {
-            filtroClasificacionLabel.textContent =
-                'Todas las convocatorias';
-        }
-
-        filtroClasificacionOpciones.forEach(function (item) {
-            const seleccionada =
-                String(item.dataset.convocatoriaFilterValue || '') === '';
-            item.classList.toggle('is-selected', seleccionada);
-            item.setAttribute(
-                'aria-selected',
-                seleccionada ? 'true' : 'false'
-            );
-        });
-
+        actualizarModalidades();
         actualizarVisibilidadLimpiar();
         cargarListadoFiltrado();
     });
