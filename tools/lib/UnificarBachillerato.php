@@ -110,7 +110,10 @@ final class UnificarBachillerato
                 if($after===$row) continue;
                 if($table==='formulario_aliado_programas') {
                     foreach($rows as $other) if($other['aliado_id']===$after['aliado_id'] && $other['programa_codigo']===ProgramaEducativo::BACHILLERATO) {
-                        if($other!==$after) throw new RuntimeException('Atributos distintos en la asignación duplicada; revisar antes de fusionar.');
+                        $generadas=array_flip($this->generated[$table]??[]);
+                        $fisicaExistente=array_diff_key($other,$generadas);
+                        $fisicaUnificada=array_diff_key($after,$generadas);
+                        if($fisicaExistente!==$fisicaUnificada) throw new RuntimeException('Atributos distintos en la asignación duplicada; revisar antes de fusionar.');
                         $after=null;break;
                     }
                 }
