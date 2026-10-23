@@ -344,7 +344,8 @@
     const saveButton=surface.querySelector('[data-v5qr-save]');
     const saveStatus=surface.querySelector('[data-v5qr-save-status]');
     const settingsPanel=surface.querySelector('.impe-v5-qr-settings');
-    const contextNode=modal.querySelector('#impe-convocatoria-aliado-contexto');
+    const contextNode=modal.closest('[data-v4-container]')?.querySelector('#impe-convocatoria-aliado-contexto') ||
+                      document.getElementById('impe-convocatoria-aliado-contexto');
     let allyContext={};
     try { allyContext=JSON.parse(contextNode?.textContent||'{}'); } catch(_) {}
     const getEndpoint=()=>{
