@@ -5,6 +5,7 @@ require_once __DIR__ . '/../models/CrearConvocatoriaModel.php';
 require_once __DIR__ . '/../services/AliadoRegistroService.php';
 require_once __DIR__ . '/../models/TerritorioModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../helpers/ConvocatoriaVentanaMensual.php';
 
 class ConvocatoriaController
 {
@@ -48,6 +49,10 @@ class ConvocatoriaController
         $mesFiltro = (int)($_GET['mes'] ?? 0);
         $anioFiltro = $anioFiltro >= 2000 && $anioFiltro <= 2100 ? $anioFiltro : 0;
         $mesFiltro = $mesFiltro >= 1 && $mesFiltro <= 12 ? $mesFiltro : 0;
+        $ventanaMeses = ConvocatoriaVentanaMensual::meses();
+        $periodoMensual = ConvocatoriaVentanaMensual::seleccionar(
+            trim((string)($_GET['periodo'] ?? '')), $ventanaMeses
+        );
         $territorioPermitido = $this->usuarioPuedeConsultarTerritorio($estadoFiltro);
         $esChihuahua = $territorioPermitido
             ? $this->esTerritorioChihuahua($modelo, $estadoFiltro)
@@ -93,6 +98,8 @@ class ConvocatoriaController
         $modalidades = ($territorioPermitido && $clasificacionValida)
             ? $modelo->obtenerListado($buscar,$estadoFiltro,$estatusFiltro,$categoriaFiltro,$tipoConvocatoria,'',$anioFiltro,$mesFiltro,$fechaFiltro)
             : [];
+        $convocatorias = ConvocatoriaVentanaMensual::filtrar($convocatorias,$periodoMensual,$ventanaMeses);
+        $modalidades = ConvocatoriaVentanaMensual::filtrar($modalidades,$periodoMensual,$ventanaMeses);
         $convocatorias = $this->presentarOrigenes($convocatorias);
         echo json_encode(
             [
@@ -265,6 +272,10 @@ class ConvocatoriaController
         $mostrarSelectorMes = false;
         $anioSeleccionado = 0;
         $mesSeleccionado = 0;
+        $mesesVentanaConvocatorias = ConvocatoriaVentanaMensual::meses();
+        $periodoMesSeleccionado = ConvocatoriaVentanaMensual::seleccionar(
+            trim((string)($_GET['periodo'] ?? '')), $mesesVentanaConvocatorias
+        );
 
         $clasificacionValida =
             ($tipoConvocatoria === '' && $subtipoConvocatoria === '') ||
@@ -302,8 +313,20 @@ class ConvocatoriaController
             )
             : [];
 
-        $resumenModalidades = $this->contarModalidades($territorioSeleccionado && $clasificacionValida
-            ? $modelo->obtenerListado($buscar,$estadoFiltro,$estatusFiltro,$categoriaFiltro,$tipoConvocatoria,'',0,0,$fechaFiltro) : []);
+        $listadoModalidades = $territorioSeleccionado && $clasificacionValida
+            ? $modelo->obtenerListado($buscar,$estadoFiltro,$estatusFiltro,$categoriaFiltro,'', '',0,0,$fechaFiltro) : [];
+        // Conservar los mismos contadores y el mismo periodo entre SSR y AJAX.
+        // El modelo no modifica registros ni aplica borrados por antigüedad.
+        $convocatorias = ConvocatoriaVentanaMensual::filtrar(
+            $convocatorias,$periodoMesSeleccionado,$mesesVentanaConvocatorias
+        );
+        $listadoModalidades = ConvocatoriaVentanaMensual::filtrar(
+            $listadoModalidades,$periodoMesSeleccionado,$mesesVentanaConvocatorias
+        );
+        $resumenModalidades = $this->contarModalidades(array_values(array_filter(
+            $listadoModalidades,
+            static fn(array $c): bool => (string)($c['tipo_convocatoria'] ?? '') === $tipoConvocatoria
+        )));
         $convocatorias = $this->presentarOrigenes($convocatorias);
         $mensajeExito = $_SESSION['mensaje_convocatoria'] ?? '';
         $mensajeError = $_SESSION['error_convocatoria'] ?? '';
