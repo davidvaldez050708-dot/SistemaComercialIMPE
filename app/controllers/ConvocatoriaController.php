@@ -53,6 +53,12 @@ class ConvocatoriaController
         $periodoMensual = ConvocatoriaVentanaMensual::seleccionar(
             trim((string)($_GET['periodo'] ?? '')), $ventanaMeses
         );
+        // Los enlaces antiguos con fecha exacta deben seguir encontrando
+        // publicaciones que ya pasaron de la ventana mensual al archivo.
+        if ($periodoMensual === '' && $fechaFiltro !== '' && $ventanaMeses &&
+            substr($fechaFiltro,0,7) < $ventanaMeses[0]['valor']) {
+            $periodoMensual = 'archivo';
+        }
         $territorioPermitido = $this->usuarioPuedeConsultarTerritorio($estadoFiltro);
         $esChihuahua = $territorioPermitido
             ? $this->esTerritorioChihuahua($modelo, $estadoFiltro)
@@ -276,6 +282,10 @@ class ConvocatoriaController
         $periodoMesSeleccionado = ConvocatoriaVentanaMensual::seleccionar(
             trim((string)($_GET['periodo'] ?? '')), $mesesVentanaConvocatorias
         );
+        if ($periodoMesSeleccionado === '' && $fechaFiltro !== '' && $mesesVentanaConvocatorias &&
+            substr($fechaFiltro,0,7) < $mesesVentanaConvocatorias[0]['valor']) {
+            $periodoMesSeleccionado = 'archivo';
+        }
 
         $clasificacionValida =
             ($tipoConvocatoria === '' && $subtipoConvocatoria === '') ||
