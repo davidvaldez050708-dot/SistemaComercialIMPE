@@ -45,6 +45,10 @@ def overlay_modelo_convocatoria(data):
         raise RuntimeError('CONFLICTO: dependencia del helper duplicada.')
     hook=b'        $datos = ProgramaEducativo::entrada($datos);'
     for name in (b'crear',b'actualizar'):
+        # Count every declaration, including an unexpected one-line overload.
+        declarations=re.findall(br'\bfunction[ \t]+'+name+br'[ \t]*\(',normalized)
+        if len(declarations)!=1:
+            raise RuntimeError('CONFLICTO: método '+name.decode('ascii')+' ausente o duplicado.')
         pattern=(br'(?m)^[ \t]*public function '+name+br'\([^{}\n]*\)[ \t]*\n[ \t]*\{[ \t]*\n')
         functions=list(re.finditer(pattern,normalized))
         if len(functions)!=1 or b'$datos' not in functions[0].group():
