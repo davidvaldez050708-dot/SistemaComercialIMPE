@@ -26,7 +26,7 @@ foreach ([['manual',$ids['IQJ General V3']],['institucional',9101]] as [$kind,$i
     $check($context['opciones_convocatoria']===[['codigo'=>'bachillerato-general','nombre'=>'Bachillerato General','clasificacion'=>'bachillerato|bachillerato-general']],"clasificación propia General $kind");
 }
 $mixed=$service->opcionesConvocatoria('manual',$ids['General y 286 V3']);
-$check(count($mixed['opciones_convocatoria'])===2 && count(array_unique(array_column($mixed['opciones_convocatoria'],'clasificacion')))===2,'General y 286 permanecen independientes');
+$check(count($mixed['opciones_convocatoria'])===1 && $mixed['opciones_convocatoria'][0]['codigo']==='bachillerato-general','el alias y General se fusionan en una sola opción');
 $unknown=$service->opcionesConvocatoria('manual',$ids['General sin clase V3']);
 $check(count($unknown['opciones_convocatoria'])===2 && in_array('',array_column($unknown['opciones_convocatoria'],'clasificacion'),true),'programa sin mapeo no desaparece silenciosamente del lote');
 $valid=new ReflectionMethod(ConvocatoriaController::class,'esClasificacionValida');

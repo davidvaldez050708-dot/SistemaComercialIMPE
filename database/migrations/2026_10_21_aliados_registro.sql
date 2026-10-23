@@ -44,11 +44,11 @@ CREATE TABLE IF NOT EXISTS formulario_aliado_registro (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Códigos exactos de opciones generales existentes; no se equipara Bachillerato
--- General de Handly con Bachillerato 286 ni se renombra catálogo histórico.
+-- General de Handly con Bachillerato General ni se renombra catálogo histórico.
 INSERT INTO formulario_programas (codigo,nombre)
 SELECT 'bachillerato-2-anos','Bachillerato en 2 años' WHERE NOT EXISTS (SELECT 1 FROM formulario_programas WHERE codigo='bachillerato-2-anos' OR nombre='Bachillerato en 2 años');
 INSERT INTO formulario_programas (codigo,nombre)
-SELECT 'bachillerato-286','Bachillerato 286' WHERE NOT EXISTS (SELECT 1 FROM formulario_programas WHERE codigo='bachillerato-286' OR nombre='Bachillerato 286');
+SELECT 'bachillerato-general','Bachillerato General' WHERE NOT EXISTS (SELECT 1 FROM formulario_programas WHERE codigo='bachillerato-general' OR nombre='Bachillerato General');
 INSERT INTO formulario_programas (codigo,nombre)
 SELECT 'ingles','Inglés' WHERE NOT EXISTS (SELECT 1 FROM formulario_programas WHERE codigo='ingles' OR nombre='Inglés');
 INSERT INTO formulario_programas (codigo,nombre)

@@ -13,9 +13,9 @@ $s=new AliadoRegistroService($db); $form=new FormularioRegistroModel(); $checks=
 function check($ok,$msg) { global $checks; if(!$ok) throw new RuntimeException($msg); $checks++; echo "OK $msg\n"; }
 function rejects(callable $fn,$msg) { try {$fn();} catch(DomainException $e) {check(true,$msg);return;} throw new RuntimeException('ACEPTO: '.$msg); }
 function cc() { $_SESSION=['usuario_id'=>2,'rol_id'=>4,'rol'=>'Cuenta Clave','permisos'=>['aliados.crear_manual','aliados.editar_manual','aliados.gestionar_programas']]; }
-function marketing() { $_SESSION=['usuario_id'=>4,'rol_id'=>5,'rol'=>'Marketing','permisos'=>['formularios_aliados.gestionar_enlaces']]; }
+function marketing() { $_SESSION=['usuario_id'=>4,'rol_id'=>5,'rol'=>'Marketing','permisos'=>['formularios_aliados.gestionar_enlaces','convenios.ver','convocatorias.ver','convocatorias.crear']]; }
 cc();
-$datos=['nombre_entidad'=>'Aliado Regional','tipo_entidad'=>'INSTITUCION','estado_id'=>1,'municipio_id'=>1,'contacto_nombre'=>'Persona de prueba','correo_contacto'=>'contacto@example.test','telefono_fuente'=>'7773456789','programas'=>['bachillerato-286','ingles']];
+$datos=['nombre_entidad'=>'Aliado Regional','tipo_entidad'=>'INSTITUCION','estado_id'=>1,'municipio_id'=>1,'contacto_nombre'=>'Persona de prueba','correo_contacto'=>'contacto@example.test','telefono_fuente'=>'7773456789','programas'=>['bachillerato-general','ingles']];
 rejects(fn()=>$s->guardarManual(array_replace($datos,['estado_id'=>2,'municipio_id'=>2])),'fuera de territorio');
 rejects(fn()=>$s->guardarManual(array_replace($datos,['estado_id'=>99])),'estado inexistente');
 rejects(fn()=>$s->guardarManual(array_replace($datos,['municipio_id'=>2])),'municipio de otro estado');
@@ -52,7 +52,7 @@ check(count($externos)===1 && $externos[0]['slug']==='handly-lenguaje-center','n
 rejects(fn()=>$form->aliadoExclusivo($token),'nuevo Registro no habilita Inscripción');
 check(count($form->aliadoExclusivo($legacy)['programas'])===2,'Handly Inscripción intacta');
 check(count($form->aliadoExclusivo($legacy,'registro')['programas'])===2,'Handly Registro intacto');
-$submission=['nombre'=>'Ana','apellido'=>'Prueba','fecha_nacimiento'=>'1990-01-01','movil'=>'7771234567','correo'=>'ana@example.test','perfil_interes'=>'Bachillerato 286','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>1,'municipio_id'=>1,'creado_por'=>null,'origen'=>'PUBLICO','aliado_token'=>$token];
+$submission=['nombre'=>'Ana','apellido'=>'Prueba','fecha_nacimiento'=>'1990-01-01','movil'=>'7771234567','correo'=>'ana@example.test','perfil_interes'=>'Bachillerato General','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>1,'municipio_id'=>1,'creado_por'=>null,'origen'=>'PUBLICO','aliado_token'=>$token];
 $first=$form->guardar($submission); check($first===$form->guardar($submission),'duplicado idempotente');
 rejects(fn()=>$form->guardar(array_replace($submission,['perfil_interes'=>'Titulación por experiencia laboral'])),'programa ajeno backend');
 rejects(fn()=>$form->guardar(array_replace($submission,['municipio_id'=>2])),'municipio adulterado backend');
@@ -60,7 +60,7 @@ $s->enlace('manual',$id,'deshabilitar'); check(!$s->enlace('manual',$id,'generar
 $s->enlace('manual',$id,'habilitar'); check($form->guardar($submission)===$first,'rehabilitar conserva token y reenvío');
 cc(); $s->configurar('manual',$id,['ingles']);
 rejects(fn()=>$form->guardar($submission),'programa retirado no se acepta');
-check($db->query('SELECT perfil_interes FROM formulario_registros WHERE id='.$first)->fetch_assoc()['perfil_interes']==='Bachillerato 286','programa histórico conservado');
+check($db->query('SELECT perfil_interes FROM formulario_registros WHERE id='.$first)->fetch_assoc()['perfil_interes']==='Bachillerato General','programa histórico conservado');
 $db->query("UPDATE formulario_programas SET activo=0 WHERE codigo='ingles'");
 rejects(fn()=>$form->guardar(array_replace($submission,['perfil_interes'=>'Inglés'])),'programa inactivo backend');
 $db->query("UPDATE formulario_programas SET activo=1 WHERE codigo='ingles'");
@@ -78,7 +78,7 @@ check($prospectos->listar(1,25,['buscar'=>'ZZZ'])['total']===0,'estado vacío');
 cc(); $s->desactivar($id); rejects(fn()=>$form->aliadoExclusivo($token,'registro'),'baja lógica impide captura');
 check((int)$db->query('SELECT COUNT(*) n FROM formulario_registros')->fetch_assoc()['n']===2,'baja conserva historia');
 // Fixture final para navegador: aliado vigente con dos programas, sin alterar tokens.
-$db->query('UPDATE aliados_manuales SET activo=1 WHERE id='.$id); $s->configurar('manual',$id,['bachillerato-286','ingles']);
+$db->query('UPDATE aliados_manuales SET activo=1 WHERE id='.$id); $s->configurar('manual',$id,['bachillerato-general','ingles']);
 // Cobertura de las nuevas herramientas del menú de relaciones manuales.
 cc();
 $s->guardarContactoManual(['id'=>$id,'nombre'=>'Contacto Adicional','correo'=>'adicional@example.test','telefono'=>'7771234567','whatsapp_autorizado'=>1]);
@@ -99,13 +99,13 @@ check(!$s->consultarGestionManual($id)['contactos'],'baja lógica de contacto pr
 marketing();
 $opciones=$s->opcionesConvocatoria('manual',$id);
 check(count($opciones['opciones_convocatoria'])===2,'programas de aliado mapean a clasificaciones individuales');
-check(in_array('bachillerato|bachillerato-286',array_column($opciones['opciones_convocatoria'],'clasificacion'),true),'clasificación Bachillerato 286 correcta');
-$db->query("INSERT INTO convocatorias (titulo) VALUES ('Bachillerato 286 - Prueba')");
+check(in_array('bachillerato|bachillerato-general',array_column($opciones['opciones_convocatoria'],'clasificacion'),true),'clasificación Bachillerato General correcta');
+$db->query("INSERT INTO convocatorias (titulo) VALUES ('Bachillerato General - Prueba')");
 $convocatoriaManual = (int)$db->insert_id;
-$publicacion = $db->prepare("INSERT INTO marketing_aliado_manual_convocatorias (manual_id,convocatoria_id,programa_codigo,creado_por) VALUES (?,?,'bachillerato-286',4)");
+$publicacion = $db->prepare("INSERT INTO marketing_aliado_manual_convocatorias (manual_id,convocatoria_id,programa_codigo,creado_por) VALUES (?,?,'bachillerato-general',4)");
 $publicacion->bind_param('ii',$id,$convocatoriaManual);
 check($publicacion->execute(),'convocatoria por programa enlazada al aliado manual');
-$origenManual = $db->prepare("INSERT INTO marketing_aliado_convocatorias_origen (convocatoria_id,origen_tipo,origen_id,programa_codigo,creado_por) VALUES (?,'manual',?,'bachillerato-286',4)");
+$origenManual = $db->prepare("INSERT INTO marketing_aliado_convocatorias_origen (convocatoria_id,origen_tipo,origen_id,programa_codigo,creado_por) VALUES (?,'manual',?,'bachillerato-general',4)");
 $origenManual->bind_param('ii',$convocatoriaManual,$id);
 check($origenManual->execute(),'vínculo de publicación manual y programa persistido');
 $db->query("INSERT INTO convocatorias (titulo) VALUES ('Inglés - Prueba')");
@@ -123,5 +123,5 @@ check(count($registrosManuales)===1 && (int)$registrosManuales[0]['tiene_convoca
 
 check((int)$db->query('SELECT COUNT(*) n FROM seguimientos_vinculacion')->fetch_assoc()['n']===1,'sin expedientes ficticios en extensiones');
 cc();
-rejects(fn()=>$s->opcionesConvocatoria('manual',$id),'solo Marketing prepara convocatoria por programa');
+rejects(fn()=>$s->opcionesConvocatoria('manual',$id),'sin permisos de creación no prepara convocatoria por programa');
 echo "PASS $checks comprobaciones DB\n";

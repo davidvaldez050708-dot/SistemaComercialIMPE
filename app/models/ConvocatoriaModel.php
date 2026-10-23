@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 
 class ConvocatoriaModel
 {
@@ -401,6 +402,7 @@ class ConvocatoriaModel
 
     public function crear($datos, $estadosIds, $transaccionExterna = false)
     {
+        $datos = ProgramaEducativo::entrada($datos);
         $esInscripcionesAbiertas =
             (string)($datos['subtipo_convocatoria'] ?? '') === 'inscripciones-abiertas';
         $requiereFechasNulas =
@@ -559,6 +561,7 @@ class ConvocatoriaModel
 
     public function actualizar($id, $datos, $estadosIds)
     {
+        $datos = ProgramaEducativo::entrada($datos);
         $esInscripcionesAbiertas =
             (string)($datos['subtipo_convocatoria'] ?? '') === 'inscripciones-abiertas';
         $requiereFechasNulas =

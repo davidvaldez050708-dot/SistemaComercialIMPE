@@ -62,7 +62,7 @@ const fixture=base+'_fixture?view=convenios&role=marketing&estado_id=1';
    check(await modal.locator('[data-convenio-origin-description]').textContent()==='Sin formalización documental','descripción neutral '+width);
    const chips=modal.locator('[data-convenio-modal-programas] .aliados-source-chip');
    check(await chips.count()===2,'programas independientes '+width);
-   check((await chips.allTextContents()).includes('Bachillerato 286 · Campus A. Programa autorizado'),'nombre con puntos íntegro en un badge '+width);
+   check((await chips.allTextContents()).includes('Titulación por experiencia laboral · Campus A. Programa autorizado'),'nombre con puntos íntegro en un badge '+width);
    check(await modal.locator('[data-convenio-create-link]').getAttribute('href')===oldHref,'ruta de Nueva convocatoria intacta '+width);
    check(await modal.evaluate(el=>el.querySelector('.modal-body').scrollWidth<=el.querySelector('.modal-body').clientWidth),'modal sin desbordamiento '+width);
    const footer=await modal.locator('.modal-footer').boundingBox(),header=await modal.locator('.modal-header').boundingBox();

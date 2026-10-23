@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 
 require_once __DIR__ . '/../models/FormularioRegistroModel.php';
 
@@ -289,7 +290,7 @@ class FormularioPublicoController
         if ($aliado !== null) { return array_column($aliado['programas'], 'nombre'); }
         return [
             'Bachillerato en 2 años',
-            'Bachillerato 286',
+            'Bachillerato General',
             'Inglés',
             'Titulación - Ejecutivas',
             'Titulación por experiencia laboral',
@@ -346,7 +347,7 @@ class FormularioPublicoController
                 trim((string)($entrada['correo_confirmacion'] ?? ''))
             ),
             'perfil_interes' =>
-                $limpiar($entrada['perfil_interes'] ?? ''),
+                ProgramaEducativo::nombre($limpiar($entrada['perfil_interes'] ?? '')),
             'lugar_laboras' =>
                 $limpiar($entrada['lugar_laboras'] ?? ''),
             'cargo_puesto' =>

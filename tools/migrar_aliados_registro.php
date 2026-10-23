@@ -9,7 +9,7 @@ try {
     foreach(['usuarios','estados','municipios','seguimientos_vinculacion','aliados_asignaciones','asignaciones_territorio','permisos','roles','rol_permisos','formulario_aliados','formulario_programas','formulario_aliado_programas','formulario_aliado_procedencias','formulario_registros'] as $table) {
         if(!$db->query("SHOW TABLES LIKE '$table'")->num_rows) throw new RuntimeException('Falta dependencia: '.$table);
     }
-    $expected=['bachillerato-2-anos'=>'Bachillerato en 2 años','bachillerato-286'=>'Bachillerato 286','ingles'=>'Inglés','ejecutivas'=>'Titulación - Ejecutivas','titulacion-experiencia-laboral'=>'Titulación por experiencia laboral','inscripciones-abiertas'=>'Inscripciones Abiertas'];
+    $expected=['bachillerato-2-anos'=>'Bachillerato en 2 años','bachillerato-general'=>'Bachillerato General','ingles'=>'Inglés','ejecutivas'=>'Titulación - Ejecutivas','titulacion-experiencia-laboral'=>'Titulación por experiencia laboral','inscripciones-abiertas'=>'Inscripciones Abiertas'];
     $current=$db->query('SELECT codigo,nombre FROM formulario_programas')->fetch_all(MYSQLI_ASSOC);
     foreach($current as $row) {
         if(isset($expected[$row['codigo']]) && $expected[$row['codigo']]!==$row['nombre']) throw new RuntimeException('Código existente con otro nombre oficial: '.$row['codigo']);

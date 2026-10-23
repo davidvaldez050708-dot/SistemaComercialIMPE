@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 
 /** Operaciones territoriales y perfil de Registro. Nunca crea expedientes. */
 class AliadoRegistroService
@@ -17,12 +18,11 @@ class AliadoRegistroService
     {
         return (bool)$this->db->query("SHOW TABLES LIKE 'formulario_aliado_registro'")->num_rows;
     }
-    /** Mapeo explícito: jamás equiparar Bachillerato General con Bachillerato 286. */
+    /** Clasificaciones de los programas canónicos; los alias no son opciones. */
     public static function clasificacionesPorPrograma(): array
     {
         return [
             'bachillerato-general'=>['bachillerato|bachillerato-general'],
-            'bachillerato-286'=>['bachillerato|bachillerato-286'],
             'bachillerato-2-anos'=>['bachillerato|bachillerato-2-anos'],
             'ingles'=>['bachillerato|ingles'],
             'ejecutivas'=>['titulacion|ejecutivas'],
@@ -56,7 +56,7 @@ class AliadoRegistroService
     }
     public function catalogo(): array
     {
-        return $this->db->query('SELECT codigo,nombre FROM formulario_programas WHERE activo=1 ORDER BY nombre')->fetch_all(MYSQLI_ASSOC);
+        return ProgramaEducativo::programas($this->db->query('SELECT codigo,nombre FROM formulario_programas WHERE activo=1 ORDER BY nombre')->fetch_all(MYSQLI_ASSOC));
     }
     public function autorizar(string $permiso): void
     {
@@ -84,7 +84,7 @@ class AliadoRegistroService
     }
     private function programas(array $codigos): array
     {
-        $codigos = array_values(array_unique($codigos));
+        $codigos = array_values(array_unique(array_map([ProgramaEducativo::class,'codigo'],$codigos)));
         $validos = array_column($this->catalogo(),'codigo');
         if (!$codigos || count($codigos)>50 || array_diff($codigos,$validos)) { throw new DomainException('Selecciona programas activos del catálogo.'); }
         return $codigos;
@@ -181,7 +181,7 @@ class AliadoRegistroService
         $origen=$this->origen($tipo,$id,$marketing); $col=$tipo==='manual'?'manual_id':'seguimiento_id';
         $perfil=$this->query("SELECT r.*,a.token FROM formulario_aliado_registro r JOIN formulario_aliados a ON a.id=r.aliado_id WHERE r.$col=?",[$id])->get_result()->fetch_assoc();
         $codigos=$perfil?$this->query('SELECT programa_codigo FROM formulario_aliado_programas WHERE aliado_id=?',[(int)$perfil['aliado_id']])->get_result()->fetch_all(MYSQLI_ASSOC):[];
-        return ['origen'=>$origen,'programas'=>array_column($codigos,'programa_codigo'),'catalogo'=>$this->catalogo(),'publicado'=>(bool)($perfil['publicado']??false),'habilitado'=>(bool)($perfil['habilitado']??false),'url'=>(($marketing || $mostrarEnlace) && !empty($perfil['publicado']))?BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.$perfil['token']:''];
+        return ['origen'=>$origen,'programas'=>array_values(array_unique(array_map([ProgramaEducativo::class,'codigo'],array_column($codigos,'programa_codigo')))),'catalogo'=>$this->catalogo(),'publicado'=>(bool)($perfil['publicado']??false),'habilitado'=>(bool)($perfil['habilitado']??false),'url'=>(($marketing || $mostrarEnlace) && !empty($perfil['publicado']))?BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.$perfil['token']:''];
     }
     public function enlace(string $tipo,int $id,string $accion): array
     {
@@ -333,12 +333,12 @@ class AliadoRegistroService
         foreach ($perfiles as $p) {
             $key=$p['manual_id']?'manual:'.$p['manual_id']:'institucional:'.$p['seguimiento_id'];
             if (!isset($map[$key])) $map[$key]=$p+['programas_items'=>[]];
-            if ($p['codigo']!==null) $map[$key]['programas_items'][]=['codigo'=>$p['codigo'],'nombre'=>$p['nombre']];
+            if ($p['codigo']!==null) $map[$key]['programas_items'][ProgramaEducativo::codigo($p['codigo'])]=['codigo'=>ProgramaEducativo::codigo($p['codigo']),'nombre'=>ProgramaEducativo::codigo($p['codigo'])===ProgramaEducativo::BACHILLERATO?ProgramaEducativo::NOMBRE:$p['nombre']];
         }
         foreach ($filas as &$fila) {
             $tipo=$fila['origen_tipo']??'institucional'; $id=$fila['origen_id']??$fila['seguimiento_id'];
             $p=$map[$tipo.':'.$id]??[];
-            $fila['registro_programas_items']=$p['programas_items']??[];
+            $fila['registro_programas_items']=array_values($p['programas_items']??[]);
             $fila['registro_programas']=implode(' · ',array_column($fila['registro_programas_items'],'nombre'));
             $fila['registro_estado']=empty($p['publicado'])?'Sin enlace':(empty($p['habilitado'])?'Registro deshabilitado':'Registro habilitado');
         }

@@ -1,5 +1,6 @@
 <?php
 /** Autorización y procedencia exclusiva; los formularios generales no usan este servicio. */
+require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 class FormularioAliadoService
 {
     private $db;
@@ -31,14 +32,14 @@ class FormularioAliadoService
         $stmt = $this->db->prepare('SELECT p.codigo, p.nombre FROM formulario_aliado_programas ap INNER JOIN formulario_programas p ON p.codigo = ap.programa_codigo WHERE ap.aliado_id = ? AND p.activo = 1 ORDER BY p.nombre' . ($bloquear ? ' FOR UPDATE' : ''));
         $stmt->bind_param('i', $aliado['id']);
         $stmt->execute();
-        $aliado['programas'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $aliado['programas'] = ProgramaEducativo::programas($stmt->get_result()->fetch_all(MYSQLI_ASSOC));
         return $aliado;
     }
 
     public function autorizar(array $aliado, string $nombre): string
     {
         foreach ($aliado['programas'] as $programa) {
-            if ($programa['nombre'] === $nombre) { return $programa['codigo']; }
+            if (ProgramaEducativo::nombre($programa['nombre']) === ProgramaEducativo::nombre($nombre)) { return ProgramaEducativo::codigo($programa['codigo']); }
         }
         throw new DomainException('El programa seleccionado no está autorizado para este aliado.');
     }
@@ -61,8 +62,10 @@ class FormularioAliadoService
             }
             $codigo = $this->autorizar($aliado, $datos['perfil_interes']);
             $clave = hash('sha256', json_encode([$datos['correo'], $datos['movil'], $datos['fecha_nacimiento'], $codigo], JSON_UNESCAPED_UNICODE));
-            $stmt = $this->db->prepare('SELECT registro_id FROM formulario_aliado_procedencias WHERE aliado_id = ? AND tipo = ? AND clave = ?' . ($tipo === 'registro' ? ' FOR UPDATE' : ''));
-            $stmt->bind_param('iss', $aliado['id'], $tipo, $clave);
+            $claveAnterior = $codigo === ProgramaEducativo::BACHILLERATO
+                ? hash('sha256', json_encode([$datos['correo'], $datos['movil'], $datos['fecha_nacimiento'], ProgramaEducativo::ALIAS], JSON_UNESCAPED_UNICODE)) : $clave;
+            $stmt = $this->db->prepare('SELECT registro_id FROM formulario_aliado_procedencias WHERE aliado_id = ? AND tipo = ? AND clave IN (?,?) ORDER BY id LIMIT 1' . ($tipo === 'registro' ? ' FOR UPDATE' : ''));
+            $stmt->bind_param('isss', $aliado['id'], $tipo, $clave, $claveAnterior);
             $stmt->execute();
             $existente = $stmt->get_result()->fetch_assoc();
             if ($existente) {

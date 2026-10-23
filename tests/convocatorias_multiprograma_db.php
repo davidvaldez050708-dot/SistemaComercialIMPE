@@ -18,13 +18,13 @@ $manual=$db->query("SELECT id FROM aliados_manuales WHERE nombre_entidad='Aliado
 verify((int)($manual['id']??0)>0,'fixture manual existe');
 $id=(int)$manual['id'];
 $datos=[
- 'titulo'=>'Programa Bachillerato 286', 'tipo_convocatoria'=>'bachillerato',
- 'subtipo_convocatoria'=>'bachillerato-286',
+ 'titulo'=>'Programa Bachillerato General', 'tipo_convocatoria'=>'bachillerato',
+ 'subtipo_convocatoria'=>'bachillerato-general',
  'imagen'=>'public/uploads/convocatorias/imagen_prueba_a.png',
  'enlace_registro'=>'https://example.test/registro/compartido',
  'fecha_inicio'=>date('Y-m-d'), 'fecha_termino'=>date('Y-m-d',strtotime('+30 days')),
  'estado'=>1, 'usuario_id'=>4, 'manual_id'=>$id,
- 'aliado_tipo'=>'manual', 'aliado_id'=>$id, 'programa_codigo'=>'bachillerato-286'
+ 'aliado_tipo'=>'manual', 'aliado_id'=>$id, 'programa_codigo'=>'bachillerato-general'
 ];
 $m=new ConvocatoriaModel();
 $m->iniciarLote();

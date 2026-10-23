@@ -190,6 +190,13 @@ jobs:
           php tests/convocatorias_v3_fixture.php
           php tests/convocatorias_general_db.php
           node tests/convocatorias_v3_browser.cjs
+      - name: Identidad única de Bachillerato y migración reversible aislada
+        run: |
+          php tests/bachillerato_unificacion_unit.php
+          php tests/bachillerato_unificacion_clone.php impe_test_handly_aliados_union_ci
+          IMPE_DB_NAME=impe_test_handly_aliados_union_ci php tests/bachillerato_unificacion_db.php
+          IMPE_DB_NAME=impe_test_handly_aliados_union_ci php tests/bachillerato_unificacion_variantes.php
+          IMPE_DB_NAME=impe_test_handly_aliados_union_ci php tools/unificar_bachillerato_general.php --check
       - name: Compatibilidad con PR114 publicado (réplica aislada)
         env:
           IMPE_DB_NAME: impe_test_handly_aliados_pr114

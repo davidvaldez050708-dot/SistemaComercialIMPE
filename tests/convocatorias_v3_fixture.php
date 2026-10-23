@@ -16,9 +16,9 @@ $db->query("INSERT INTO asignaciones_territorio (id,usuario_id,estado_id,tipo_as
 $db->query("INSERT INTO seguimientos_vinculacion (id,estado_id,municipio_id,nombre_entidad,tipo_entidad,analista_id,activo) VALUES (9101,23,9101,'INSTITUTO QUINTANARROENSE DE LA JUVENTUD - IQJ','INSTITUCION',3,1),(9102,22,9102,'Secretaría de Seguridad Pública','SECRETARIA',3,1)");
 $db->query("INSERT INTO aliados_asignaciones (id,seguimiento_id,cuenta_clave_usuario_id,origen_asignacion,asignado_at,activo) VALUES (9101,9101,2,'FORMALIZACION',NOW(),1),(9102,9102,2,'FORMALIZACION',NOW(),1)");
 $service=new AliadoRegistroService($db);
-$service->configurar('institucional',9101,['bachillerato-286']);
-$service->configurar('institucional',9102,['bachillerato-286','titulacion-experiencia-laboral']);
-foreach([['Uno V3',['bachillerato-286']],['Tres V3',['bachillerato-286','ingles','titulacion-experiencia-laboral']]] as [$nombre,$programas])$service->guardarManual(['estado_id'=>23,'municipio_id'=>9101,'nombre_entidad'=>$nombre,'tipo_entidad'=>'INSTITUCION','programas'=>$programas]);
+$service->configurar('institucional',9101,['bachillerato-general']);
+$service->configurar('institucional',9102,['bachillerato-general','titulacion-experiencia-laboral']);
+foreach([['Uno V3',['bachillerato-general']],['Tres V3',['bachillerato-general','ingles','titulacion-experiencia-laboral']]] as [$nombre,$programas])$service->guardarManual(['estado_id'=>23,'municipio_id'=>9101,'nombre_entidad'=>$nombre,'tipo_entidad'=>'INSTITUCION','programas'=>$programas]);
 $db->query("INSERT INTO formulario_programas (codigo,nombre,activo) VALUES ('v3-sin-clase','Programa sin clasificación de prueba',1)");
 $service->guardarManual(['estado_id'=>23,'municipio_id'=>9101,'nombre_entidad'=>'Sin clase V3','tipo_entidad'=>'INSTITUCION','programas'=>['v3-sin-clase']]);
 $_SESSION=['usuario_id'=>4,'rol_id'=>5,'rol'=>'Marketing','permisos'=>['convenios.ver','convocatorias.ver','convocatorias.crear','formularios_aliados.gestionar_enlaces']];

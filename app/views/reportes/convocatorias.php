@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../helpers/ProgramaEducativo.php';
 $reporteConvocatorias = is_array($reporteConvocatorias ?? null)
     ? $reporteConvocatorias
     : [];
@@ -120,14 +121,14 @@ $tipoLabel = static function ($tipo) {
 };
 
 $subtipoLabel = static function ($subtipo) {
-    $subtipo = strtolower(trim((string)$subtipo));
+    $subtipo = ProgramaEducativo::codigo(strtolower(trim((string)$subtipo)));
 
     $etiquetas = [
         'ejecutivas' => 'Ejecutivas',
         'experiencia-laboral' => 'Titulación por experiencia laboral',
         'inscripciones-abiertas' => 'Inscripciones Abiertas',
         'bachillerato-2-anos' => 'Bachillerato en 2 años',
-        'bachillerato-286' => 'Bachillerato 286',
+        'bachillerato-general' => 'Bachillerato General',
         'ingles' => 'Inglés',
         'sindicatos' => 'Sindicatos'
     ];

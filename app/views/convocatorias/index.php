@@ -80,12 +80,6 @@ $clasificacionesConvocatoria = [
         'etiqueta' => 'Bachillerato en 2 años'
     ],
     [
-        'valor' => 'bachillerato|bachillerato-286',
-        'tipo' => 'bachillerato',
-        'subtipo' => 'bachillerato-286',
-        'etiqueta' => 'Bachillerato 286'
-    ],
-    [
         'valor' => 'bachillerato|ingles',
         'tipo' => 'bachillerato',
         'subtipo' => 'ingles',

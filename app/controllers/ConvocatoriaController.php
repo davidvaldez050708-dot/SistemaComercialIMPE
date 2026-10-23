@@ -8,6 +8,12 @@ require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class ConvocatoriaController
 {
+    public function __construct()
+    {
+        $_GET = ProgramaEducativo::entrada($_GET);
+        $_POST = ProgramaEducativo::entrada($_POST);
+    }
+
     public function listadoFiltrado()
     {
         $this->validarPermiso('convocatorias.ver');
@@ -190,7 +196,6 @@ class ConvocatoriaController
             'bachillerato' => [
                 'bachillerato-general',
                 'bachillerato-2-anos',
-                'bachillerato-286',
                 'ingles',
                 'inscripciones-abiertas'
             ],
@@ -601,6 +606,8 @@ class ConvocatoriaController
         $imagenesNuevas = [];
         $imagenOriginal = $_FILES['imagen'] ?? null;
         try {
+            [$entradas,$imagenesNormalizadas] = ProgramaEducativo::lote($entradas, (array)($_FILES['imagenes'] ?? []));
+            $_FILES['imagenes'] = $imagenesNormalizadas;
             $servicio = new AliadoRegistroService((new Database())->connect());
             $contexto = $servicio->opcionesConvocatoria($origenTipo,$origenId);
             if (empty($contexto['habilitado'])) {
@@ -1145,6 +1152,7 @@ class ConvocatoriaController
 
     private function esClasificacionValida($tipo, $subtipo, $esChihuahua = false)
     {
+        $subtipo = ProgramaEducativo::codigo((string)$subtipo);
         $subtiposPermitidos = [
             'titulacion' => [
                 'ejecutivas',
@@ -1154,7 +1162,6 @@ class ConvocatoriaController
             'bachillerato' => [
                 'bachillerato-general',
                 'bachillerato-2-anos',
-                'bachillerato-286',
                 'ingles',
                 'inscripciones-abiertas'
             ]
