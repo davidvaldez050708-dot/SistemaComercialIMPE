@@ -133,7 +133,10 @@ class ConveniosV3Integracion(unittest.TestCase):
         originals, desired = self.fixture()
         for name in ['app/services/AliadoRegistroService.php', 'app/views/convocatorias/crear_desde_convenio.php']:
             row = next(row for row in self.manifest['files'] if row['path'] == name)
-            current = subprocess.check_output(['git', 'show', 'HEAD:' + name], cwd=str(ROOT))
+            # Freeze the territorial-permissions baseline: HEAD now also carries
+            # the independent Bachillerato General migration, which overlaps the
+            # historical reverse-merge but is covered by its own release tests.
+            current = subprocess.check_output(['git', 'show', 'f0474b9eb6e40ef9e228a7d87e8d7a2040b2b419:' + name], cwd=str(ROOT))
             for part, data in [('current', current), ('stage3', unpack(row['target'])), ('previous', unpack(row['base']))]:
                 (self.home / part).write_bytes(data.replace(b'\r\n', b'\n'))
             reverse = subprocess.run(['git', 'merge-file', '-p', str(self.home / 'current'), str(self.home / 'stage3'), str(self.home / 'previous')], stdout=subprocess.PIPE)
