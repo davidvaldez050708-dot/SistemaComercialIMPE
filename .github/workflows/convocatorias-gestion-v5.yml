@@ -15,6 +15,16 @@ on:
       - 'tests/publicacion_enlaces_cuenta_clave_test.py'
       - 'tools/*gestion_v5*'
       - 'tools/aliado_enlaces_cuenta_clave*'
+      - 'app/services/RegistroEnlaceService.php'
+      - 'app/controllers/FormularioController.php'
+      - 'app/models/AliadoModel.php'
+      - 'app/views/aliados/internacionales.php'
+      - 'app/views/layout/dashboard_head.php'
+      - 'public/javascript/registro_enlaces_amigables.js'
+      - 'public/javascript/convocatoria_crear_compartido.js'
+      - 'registro/**'
+      - 'tests/*registro_enlaces*'
+      - 'tools/*registro_enlaces*'
       - '.github/workflows/convocatorias-gestion-v5.yml'
   workflow_dispatch:
 jobs:
@@ -67,6 +77,7 @@ jobs:
           python3 tests/publicacion_convocatorias_v5_ui_test.py
           python3 tests/publicacion_convocatorias_v5_qr_test.py
           python3 tests/publicacion_enlaces_cuenta_clave_test.py
+          python3 tests/publicacion_registro_enlaces_test.py
       - name: Preparación exclusivamente sintética
         run: |
           mkdir -p /tmp/v5-sql-backups
@@ -92,6 +103,14 @@ jobs:
           IMPE_CC_LINKS_ONLY=1 node tests/convocatorias_v5_browser.cjs
           IMPE_V5_VISUAL_ONLY=1 node tests/convocatorias_v5_browser.cjs
           php tests/convocatorias_v5_regresion.php
+      - name: Registro amigable, migración explícita sólo en esquema sintético
+        run: |
+          php tools/migrar_enlaces_registro_amigables.php --check
+          php tools/migrar_enlaces_registro_amigables.php --apply
+          php tools/migrar_enlaces_registro_amigables.php --apply
+          php tests/registro_enlaces_db.php
+          node tests/registro_enlaces_browser.cjs
+          IMPE_V5_QR_ONLY=1 node tests/convocatorias_v5_browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
