@@ -117,39 +117,7 @@ $totalCoberturaPendienteMarketing = count($estadosSinConvocatoria);
     </section>
 </section>
 
-<div class="metric-grid mb-4">
-    <article class="metric-card">
-        <div class="metric-icon"><i class="bi bi-megaphone"></i></div>
-        <div>
-            <p class="metric-value"><?= (int)($resumenMarketing['total'] ?? 0) ?></p>
-            <p class="metric-label">Total de convocatorias</p>
-        </div>
-    </article>
-
-    <article class="metric-card">
-        <div class="metric-icon metric-icon-success"><i class="bi bi-check-circle"></i></div>
-        <div>
-            <p class="metric-value"><?= (int)($resumenMarketing['activas'] ?? 0) ?></p>
-            <p class="metric-label">Convocatorias activas</p>
-        </div>
-    </article>
-
-    <article class="metric-card">
-        <div class="metric-icon metric-icon-muted"><i class="bi bi-slash-circle"></i></div>
-        <div>
-            <p class="metric-value"><?= (int)($resumenMarketing['inactivas'] ?? 0) ?></p>
-            <p class="metric-label">Convocatorias inactivas</p>
-        </div>
-    </article>
-
-    <article class="metric-card">
-        <div class="metric-icon"><i class="bi bi-calendar-check"></i></div>
-        <div>
-            <p class="metric-value"><?= (int)($resumenMarketing['vigentes'] ?? 0) ?></p>
-            <p class="metric-label">Convocatorias vigentes</p>
-        </div>
-    </article>
-</div>
+<?php require __DIR__ . '/marketing_indicadores.php'; ?>
 
 
 <section class="dashboard-panel marketing-expiring-panel">
