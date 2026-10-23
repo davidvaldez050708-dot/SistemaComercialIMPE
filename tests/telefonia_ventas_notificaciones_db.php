@@ -125,7 +125,10 @@ try {
  vcheck(count($notAnswered)===1&&$notAnswered[0]['etiqueta']==='Por devolver','Un solo aviso de devolución sustituye sin confirmar y perdida');
  $event('pbx-transfer-noanswer','NOTIFY_ANSWER');$late=$notices->pendientes(8,false);
  vcheck(count($late)===1&&$late[0]['titulo']==='Resultado pendiente','Respuesta tardía sustituye aviso automático por resultado pendiente');
- $results->guardar(8,'pbx-transfer-noanswer','INTERESADO');vcheck($notices->pendientes(8,false)===[],'Resultado de respuesta tardía cierra sólo devolución automática correspondiente');
+ $results->guardar(8,'pbx-transfer-noanswer','INTERESADO');
+ $despuesGuardar=$notices->pendientes(8,false);
+ vcheck($despuesGuardar===[],'Resultado de respuesta tardía cierra sólo devolución automática correspondiente: '.
+     implode(', ',array_map(static fn($n)=>(string)$n['etiqueta'].'/'.(string)$n['tipo_evento'],$despuesGuardar)));
  // Conciliación uno a uno: dos llamadas o dos intenciones no se eligen por orden.
  $marker=new TelefoniaMarcacionesVentasService($db,false);vreject(fn()=>$marker->iniciar(9,'5556667788',str_repeat('9',32)),'Sin extensión asignada no prepara llamadas salientes');$token=str_repeat('a',32);$marker->iniciar(8,'5556667788',$token);
  $out='out_'.str_repeat('c',32);$event($out,'NOTIFY_OUT_START','150',0,['destination'=>'+525556667788','received_at'=>date('Y-m-d H:i:s'),'call_start'=>date('Y-m-d H:i:s')]);$svc->sincronizar(8);
