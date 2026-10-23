@@ -69,10 +69,9 @@ def overlay_modelo_con_verificacion(row,current,core):
     if current is None:
         raise RuntimeError('CONFLICTO: falta ConvocatoriaModel.php en Hostinger.')
     revised=overlay_modelo_convocatoria(current)
-    if core.lf(revised)==core.lf(current):
-        raise RuntimeError('CONFLICTO: el modelo no necesita sólo la unificación prevista.')
     validate(row['path'],core.lf(revised))
-    print('CONCILIACIÓN QUIRÚRGICA: '+row['path']+' (tres líneas, personalizaciones conservadas)')
+    if core.lf(revised)!=core.lf(current):
+        print('CONCILIACIÓN QUIRÚRGICA: '+row['path']+' (tres líneas, personalizaciones conservadas)')
     return revised
 
 
