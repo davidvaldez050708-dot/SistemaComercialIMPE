@@ -70,12 +70,22 @@ final class TelefoniaNotificacionVentasService
         $existing=$this->rows("SELECT id,llave FROM telefonia_notificaciones WHERE usuario_id=? AND leida=0 AND llave LIKE 'ventas:%'",[$uid]);
         $clear=$this->db->prepare('UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND id=?');
         foreach($existing as $r)if(!isset($wanted[$r['llave']])){$clear->bind_param('ii',$uid,$r['id']);$clear->execute();}$clear->close();
-        $rows=$this->rows("SELECT * FROM telefonia_notificaciones WHERE usuario_id=? AND leida=0 AND llave LIKE 'ventas:%' ORDER BY created_at DESC,id DESC LIMIT 20",[$uid]);
+        // No se infiere una resolución del clic sobre la campana:
+        // resultados, devoluciones, agenda y transferencias conservan su fila
+        // hasta que desaparecen realmente de $wanted por su estado de negocio.
+        $rows=$this->rows("SELECT * FROM telefonia_notificaciones WHERE usuario_id=? AND llave LIKE 'ventas:%' ORDER BY created_at DESC,id DESC LIMIT 200",[$uid]);
+        $rows=array_values(array_filter($rows,static function($r)use($wanted){
+            if(!isset($wanted[$r['llave']]))return false;
+            $informativa=str_ends_with((string)$r['llave'],':perdida');
+            return !$informativa||(int)$r['leida']===0;
+        }));
+        $rows=array_slice($rows,0,20);
         return array_map(static function($r)use($wanted){$meta=$wanted[$r['llave']];
             $kind=str_starts_with($r['llave'],'ventas:devolucion:')?'devolucion':(str_starts_with($r['llave'],'ventas:programada:')?'programada':(str_ends_with($r['llave'],':resultado')?'resultado_pendiente':'llamada_perdida'));
             return [
-            'id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>$kind,'tipo'=>$kind==='resultado_pendiente'?'TELEFONIA_RESULTADO':'TELEFONIA_PERDIDA','leida'=>0,
+            'id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>$kind,'tipo'=>$kind==='resultado_pendiente'?'TELEFONIA_RESULTADO':'TELEFONIA_PERDIDA','leida'=>(int)$r['leida'],
             'titulo'=>$r['titulo'],'mensaje'=>$r['mensaje'],'created_at'=>$r['created_at'],'fecha'=>$r['created_at'],'url'=>$meta['url'],
-            'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>'bi-telephone','etiqueta'=>$meta['etiqueta'],'estado'=>'informativa','prioridad'=>1];},$rows);
+            'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>'bi-telephone','etiqueta'=>$meta['etiqueta'],'estado'=>'informativa','prioridad'=>1,
+            'pendiente_operativo'=>!str_ends_with((string)$r['llave'],':perdida')];},$rows);
     }
 }
