@@ -14,6 +14,7 @@ assert changed==[file],changed
 # Sólo se retira el bloque visual; el resto de la vista y su JS son idénticos.
 a=old.index(b"<?php if ((int)($_SESSION['rol_id'] ?? 0) === 1): ?>");b=old.index(b'<?php endif; ?>',a)+len(b'<?php endif; ?>')
 assert new==old[:a]+old[b:]
+block=old[a:b]
 for eol in [b'\n',b'\r\n']:
  with tempfile.TemporaryDirectory(prefix='impe-aliados-cobertura-test-') as td:
   base=Path(td);live=base/'public_html';live.mkdir();target=live/file;target.parent.mkdir(parents=True)
@@ -34,10 +35,38 @@ for eol in [b'\n',b'\r\n']:
   target.write_bytes(expected+b'/* personalizacion posterior */');run('--restore',backup,ok=False)
   assert target.read_bytes().endswith(b'/* personalizacion posterior */');target.write_bytes(expected)
   run('--restore',backup);assert target.read_bytes()==original;assert 'ya restaurado' in run('--restore',backup)
-  # Respaldos fuera de la carpeta prevista e incompatibles no se aplican.
+  # Respaldos fuera de la carpeta prevista no se aplican.
   run('--restore',str(base),ok=False)
-  target.write_bytes(original+b'/* personalizacion anterior */');run('--check',ok=False)
-  assert target.read_bytes().endswith(b'/* personalizacion anterior */')
+  # Personalizaciones fuera del bloque: conservar cada byte, incluso sin salto final.
+  custom_prefix=b'<!-- Vista personalizada de Hostinger -->'+eol
+  custom_suffix=eol+b'<aside>Contenido local que se conserva</aside>'
+  customized=custom_prefix+original.rstrip(b'\r\n')+custom_suffix
+  expected_custom=custom_prefix+expected.rstrip(b'\r\n')+custom_suffix
+  target.write_bytes(customized)
+  run('--check');assert target.read_bytes()==customized
+  result=run('--apply');custom_backup=re.search(r'^Respaldo: (.+)$',result,re.M)[1]
+  assert target.read_bytes()==expected_custom
+  assert 'tarjeta ausente' in run('--apply');assert target.read_bytes()==expected_custom
+  run('--restore',custom_backup);assert target.read_bytes()==customized
+  # Ningún bloque ambiguo, modificado, inerte o con PHP inválido se publica.
+  invalid=[
+   old+block,
+   old.replace(b'Aliados externos',b'Aliados externos personalizados'),
+   new+b'<!-- Cobertura internacional -->',
+   b'<?php /*\n'+block+b'\n*/ ?>\n'+new,
+   b"<?php $text = <<<'CARD'\n"+block+b'\nCARD; ?>\n'+new,
+   old+b'<?php if (',
+   b'<?php echo "Otra vista"; ?>',
+  ]
+  for candidate in invalid:
+   candidate=candidate.replace(b'\n',eol);target.write_bytes(candidate)
+   backups_before=list((base/'backups').iterdir())
+   run('--check',ok=False);run('--apply',ok=False)
+   assert target.read_bytes()==candidate
+   assert list((base/'backups').iterdir())==backups_before
+  # Mezclar CRLF y LF no convierte silenciosamente la vista.
+  mixed=old.replace(b'\n',b'\r\n',1);target.write_bytes(mixed)
+  run('--apply',ok=False);assert target.read_bytes()==mixed
   assert all(digest(p)==h for p,h in secrets.items())
   assert sorted(p.relative_to(live).as_posix() for p in live.rglob('*') if p.is_file())==sorted([file,'index.php']+[p.relative_to(live).as_posix() for p in secrets])
-print('OK: check sin escritura, apply sólo vista Aliados, restore exacto, LF/CRLF, idempotencia y rechazo de vistas personalizadas; secretos y servicios ficticios intactos.')
+print('OK: check sin escritura, apply sólo bloque exacto, personalizaciones conservadas byte a byte, restore exacto, LF/CRLF, idempotencia y rechazo de bloques ambiguos/inertes/modificados; secretos y servicios ficticios intactos.')
