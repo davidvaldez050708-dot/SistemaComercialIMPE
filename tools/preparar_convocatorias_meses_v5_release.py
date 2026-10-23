@@ -9,6 +9,7 @@ import argparse
 import base64
 import gzip
 import hashlib
+import io
 import importlib.util
 import json
 import subprocess
@@ -26,7 +27,12 @@ def sha(data):
 
 
 def encode(data):
-    return base64.b64encode(gzip.compress(data, mtime=0)).decode('ascii')
+    # Python 3.6 no permite mtime en gzip.compress; GzipFile sí lo soporta.
+    # No incluir nombre de archivo ni timestamp: entrega reproducible.
+    output = io.BytesIO()
+    with gzip.GzipFile(fileobj=output, mode='wb', filename='', mtime=0) as stream:
+        stream.write(data)
+    return base64.b64encode(output.getvalue()).decode('ascii')
 
 
 def decode(value):
