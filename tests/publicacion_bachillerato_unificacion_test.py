@@ -73,6 +73,28 @@ class PublicacionUnificacion(base.ConveniosDetalleSelectivo):
                     reduced=re.sub(br'(?m)^[ \t]*\$datos = ProgramaEducativo::entrada\(\$datos\);[ \t]*\r?\n',b'',reduced)
                     self.assertEqual(reduced,original)
 
+    def test_modelo_personalizado_aplica_y_restaura_aislado(self):
+        spec=importlib.util.spec_from_file_location('union_overlay',str(ROOT/'tools/publicar_bachillerato_unificado.py'))
+        union=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(union)
+        originals=self.install()
+        name='app/models/ConvocatoriaModel.php'
+        current=originals[name]
+        self.assertEqual(current.count(b'        $esInscripcionesAbiertas ='),2)
+        current=current.replace(
+            b'        $esInscripcionesAbiertas =',
+            b'        // HOSTINGER: conservar reglas particulares.\n        $esInscripcionesAbiertas =')
+        (self.site/name).write_bytes(current)
+        originals[name]=current
+        self.run_tool('--check')
+        self.verify_originals(originals)
+        output=self.run_tool('--apply')
+        self.assertEqual((self.site/name).read_bytes(),union.overlay_modelo_convocatoria(current))
+        # Repeated checks must never duplicate identity hooks.
+        self.run_tool('--check')
+        self.run_tool('--restore',output.split('Respaldo: ')[1].splitlines()[0])
+        self.verify_originals(originals)
+
     def test_modelo_overlay_rechaza_estructura_incierta(self):
         spec=importlib.util.spec_from_file_location('union_overlay',str(ROOT/'tools/publicar_bachillerato_unificado.py'))
         union=importlib.util.module_from_spec(spec)
