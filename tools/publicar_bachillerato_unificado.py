@@ -20,6 +20,10 @@ def validate(name,data):
         if data.count(marker)!=count:raise RuntimeError('CONFLICTO: clasificación General ausente o duplicada: '+name)
     if name.startswith('app/') and name!='app/helpers/ProgramaEducativo.php' and re.search(br'bachillerato(?:\s+|-)?286',data,re.I):
         raise RuntimeError('CONFLICTO: referencia activa al programa retirado: '+name)
+    if name=='app/models/ConvocatoriaModel.php':
+        if overlay_modelo_convocatoria(data)!=data:
+            raise RuntimeError('CONFLICTO: la normalización del modelo quedó incompleta.')
+
 
 
 def overlay_modelo_convocatoria(data):
