@@ -18,6 +18,10 @@ $check($files['name']===['bachillerato-general'=>'imagen.png']&&$files['tmp_name
 try{ProgramaEducativo::lote(['bachillerato-286'=>[],'bachillerato-general'=>[]],[]);throw new RuntimeException('Aceptó un duplicado');}catch(DomainException $e){$check(true,'lote con ambos alias se rechaza sin crear duplicados');}
 $method=new ReflectionMethod(ConvocatoriaController::class,'esClasificacionValida');
 $check($method->invoke(new ConvocatoriaController(),'bachillerato','bachillerato-286',false),'enlace anterior continúa válido como alias');
+$identity=['prueba@example.test','7778889900','1990-01-01','bachillerato-286'];
+$keys=ProgramaEducativo::clavesProcedencia($identity,42);
+$check($keys[1]===hash('sha256',hash('sha256',json_encode($identity,JSON_UNESCAPED_UNICODE)).':42'),'deduplicación internacional conserva la clave anterior de su convocatoria');
+$check(!array_intersect($keys,ProgramaEducativo::clavesProcedencia($identity,43)),'dos convocatorias diferentes no se confunden al deduplicar');
 $root=realpath(__DIR__.'/../app');$found=[];
 foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root,FilesystemIterator::SKIP_DOTS)) as $file){
     if($file->getExtension()!=='php'||$file->getFilename()==='ProgramaEducativo.php')continue;

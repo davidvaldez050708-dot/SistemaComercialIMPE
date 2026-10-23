@@ -63,4 +63,14 @@ final class ProgramaEducativo
         }
         return [$result,$imagenes];
     }
+
+    public static function clavesProcedencia(array $identidad, ?int $convocatoria=null): array
+    {
+        $identidad[3]=self::codigo((string)$identidad[3]);
+        $actual=hash('sha256',json_encode($identidad,JSON_UNESCAPED_UNICODE));
+        $anterior=$actual;
+        if($identidad[3]===self::BACHILLERATO){$identidad[3]=self::ALIAS;$anterior=hash('sha256',json_encode($identidad,JSON_UNESCAPED_UNICODE));}
+        if($convocatoria!==null){$actual=hash('sha256',$actual.':'.$convocatoria);$anterior=hash('sha256',$anterior.':'.$convocatoria);}
+        return [$actual,$anterior];
+    }
 }

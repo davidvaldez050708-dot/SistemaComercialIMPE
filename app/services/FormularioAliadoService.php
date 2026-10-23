@@ -61,9 +61,10 @@ class FormularioAliadoService
                 if (!$q->get_result()->num_rows) throw new DomainException('El municipio no corresponde al estado.');
             }
             $codigo = $this->autorizar($aliado, $datos['perfil_interes']);
-            $clave = hash('sha256', json_encode([$datos['correo'], $datos['movil'], $datos['fecha_nacimiento'], $codigo], JSON_UNESCAPED_UNICODE));
-            $claveAnterior = $codigo === ProgramaEducativo::BACHILLERATO
-                ? hash('sha256', json_encode([$datos['correo'], $datos['movil'], $datos['fecha_nacimiento'], ProgramaEducativo::ALIAS], JSON_UNESCAPED_UNICODE)) : $clave;
+            [$clave,$claveAnterior] = ProgramaEducativo::clavesProcedencia(
+                [$datos['correo'], $datos['movil'], $datos['fecha_nacimiento'], $codigo],
+                isset($aliado['convocatoria_id']) ? (int)$aliado['convocatoria_id'] : null
+            );
             $stmt = $this->db->prepare('SELECT registro_id FROM formulario_aliado_procedencias WHERE aliado_id = ? AND tipo = ? AND clave IN (?,?) ORDER BY id LIMIT 1' . ($tipo === 'registro' ? ' FOR UPDATE' : ''));
             $stmt->bind_param('isss', $aliado['id'], $tipo, $clave, $claveAnterior);
             $stmt->execute();
