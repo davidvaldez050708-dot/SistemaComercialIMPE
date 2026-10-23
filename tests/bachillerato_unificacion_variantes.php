@@ -20,10 +20,13 @@ foreach($cases as $label=>$rows){
     $db->query('CREATE TABLE formulario_programas (codigo VARCHAR(64) PRIMARY KEY,nombre VARCHAR(180) UNIQUE,activo TINYINT) ENGINE=InnoDB');
     $db->query('CREATE TABLE formulario_aliado_programas (aliado_id INT,programa_codigo VARCHAR(64),PRIMARY KEY(aliado_id,programa_codigo),FOREIGN KEY(programa_codigo) REFERENCES formulario_programas(codigo)) ENGINE=InnoDB');
     foreach($rows as [$code,$name,$active]){$db->query("INSERT INTO formulario_programas VALUES ('$code','$name',$active)");$db->query("INSERT INTO formulario_aliado_programas VALUES (1,'$code')");}
+    // Replicate calculated columns found in production schemas on both engines.
+    $db->query("ALTER TABLE formulario_aliado_programas ADD COLUMN programa_calculado VARCHAR(96) GENERATED ALWAYS AS (CONCAT('programa:', programa_codigo)) STORED");
     $migration=new UnificarBachillerato($db);$before=$migration->snapshot();$path=$migration->apply($directory);
     $expectedActive=max(array_column($rows,2));$canonical=$db->query('SELECT * FROM formulario_programas')->fetch_all(MYSQLI_ASSOC);
     if(count($canonical)!==1||$canonical[0]['codigo']!=='bachillerato-general'||$canonical[0]['nombre']!=='Bachillerato General'||(int)$canonical[0]['activo']!==$expectedActive)throw new RuntimeException('No unifica '.$label);
     if((int)$db->query('SELECT COUNT(*) FROM formulario_aliado_programas')->fetch_row()[0]!==1)throw new RuntimeException('No conserva autorización '.$label);
+    if($db->query('SELECT programa_calculado FROM formulario_aliado_programas')->fetch_row()[0]!=='programa:bachillerato-general')throw new RuntimeException('No recalcula columna generada '.$label);
     if($migration->apply($directory)!==null)throw new RuntimeException('No es idempotente '.$label);
     if($path!==null)$migration->restore($path);
     if($migration->snapshot()!==$before)throw new RuntimeException('No restaura '.$label);
