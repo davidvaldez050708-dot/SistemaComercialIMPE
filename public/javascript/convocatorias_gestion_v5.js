@@ -164,6 +164,9 @@
             var enlaceConvocatoria = formulario && formulario.querySelector('[data-convocatoria-link-input]');
             var color = editor && editor.querySelector('[data-convocatoria-qr-dark]');
             var enlaceVistaPrevia = editor && editor.querySelector('[data-convocatoria-qr-link]');
+            var imagenQr = editor && editor.querySelector('[data-convocatoria-qr-preview]');
+            var copiarQr = editor && editor.querySelector('[data-convocatoria-copy-qr]');
+            var descargarQr = editor && editor.querySelector('[data-convocatoria-download-qr]');
 
             if (!formulario || !compartir || !editor || !generar || !color ||
                 formulario.querySelector('[data-convocatoria-qr-inline-v5]')) {
@@ -193,6 +196,25 @@
             if (ayuda) cuerpo.appendChild(ayuda);
             compartir.insertAdjacentElement('afterend', panel);
 
+            function permitirExportar(listo) {
+                if (copiarQr) copiarQr.disabled = !listo;
+                if (descargarQr) descargarQr.disabled = !listo;
+            }
+            if (imagenQr) {
+                imagenQr.addEventListener('load', function () { permitirExportar(true); });
+                imagenQr.addEventListener('error', function () { permitirExportar(false); });
+            }
+            editor.addEventListener('input', function (evento) {
+                if (evento.target.matches('input, select')) permitirExportar(false);
+            }, true);
+            editor.addEventListener('change', function (evento) {
+                if (evento.target.matches('input, select')) permitirExportar(false);
+            }, true);
+            var restablecerQr = editor.querySelector('[data-convocatoria-reset-qr]');
+            if (restablecerQr) restablecerQr.addEventListener('click', function () {
+                permitirExportar(false);
+            }, true);
+
             function urlActual() {
                 if (aliado) {
                     if (compartir.dataset.aliadoRegistroHabilitado !== '1') return '';
@@ -215,6 +237,7 @@
                 }
                 if (aliado && urlGenerada) urlGenerada.value = enlace;
                 if (enlaceVistaPrevia) enlaceVistaPrevia.textContent = enlace;
+                permitirExportar(false);
                 // El controlador QR original escucha "input" y actualiza
                 // todos los parámetros y la descarga sin crear otro motor.
                 color.dispatchEvent(new Event('input', { bubbles: true }));
@@ -248,6 +271,12 @@
                 }
             );
 
+            // Cambiar de formulario invalida el enlace generado y su QR.
+            Array.prototype.forEach.call(
+                compartir.querySelectorAll('[data-convocatoria-form-type-value]'),
+                function (opcion) { opcion.addEventListener('click', ocultar); }
+            );
+
             // Si cambia la clasificación, caduca el enlace anterior.
             var clasificacion = formulario.querySelector('[data-convocatoria-context-classification]');
             ['input', 'change'].forEach(function (tipo) {
@@ -268,6 +297,16 @@
                     generar.disabled = true;
                 }
                 ocultar();
+            });
+
+            if (enlaceConvocatoria) enlaceConvocatoria.addEventListener('input', function () {
+                if (aliado || !resultado || resultado.classList.contains('d-none')) return;
+                if (String(enlaceConvocatoria.value || '') !== String(urlGenerada && urlGenerada.value || '')) {
+                    resultado.classList.add('d-none');
+                    if (urlGenerada) urlGenerada.value = '';
+                    generar.disabled = true;
+                    ocultar();
+                }
             });
 
             if (urlGenerada) urlGenerada.addEventListener('input', function () {
