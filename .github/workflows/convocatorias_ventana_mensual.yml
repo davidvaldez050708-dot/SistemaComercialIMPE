@@ -1,0 +1,28 @@
+name: Convocatorias - meses e historial sin pérdida
+on:
+  push:
+    branches:
+      - fix/convocatorias-meses-historial-v5-20261023
+  pull_request:
+    branches:
+      - feat/convocatorias-aliado-segmentacion-v5
+jobs:
+  ventana-mensual:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Sintaxis PHP, acceso y vista
+        run: |
+          php -l app/helpers/ConvocatoriaVentanaMensual.php
+          php -l app/controllers/ConvocatoriaController.php
+          php -l app/views/convocatorias/index.php
+          php -l tests/convocatorias_ventana_mensual_test.php
+      - name: Ventana mensual, cruce de año y archivo
+        run: php tests/convocatorias_ventana_mensual_test.php
+      - name: No existe eliminación mensual de datos
+        run: |
+          ! grep -E 'DELETE[[:space:]]+FROM|TRUNCATE[[:space:]]+TABLE|DROP[[:space:]]+TABLE' app/helpers/ConvocatoriaVentanaMensual.php
+          grep -q 'id="filtro_convocatoria_periodo"' app/views/convocatorias/index.php
