@@ -47,7 +47,7 @@ $db->query("INSERT INTO convocatorias (titulo,fecha_inicio,fecha_termino,estado)
 $desde=$db->insert_id;foreach([$desde,$desde+1] as $cid)$db->query("INSERT INTO marketing_aliado_convocatorias_origen (convocatoria_id,origen_tipo,origen_id,programa_codigo,creado_por) VALUES ($cid,'manual',$manual,'bachillerato-general',4)");
 $perfil=(int)$db->query('SELECT aliado_id FROM formulario_aliado_registro WHERE seguimiento_id=10')->fetch_assoc()['aliado_id'];
 $db->query("INSERT INTO convocatorias (titulo,fecha_inicio,fecha_termino,estado) VALUES ('Internacional Registro ligado',CURDATE(),DATE_ADD(CURDATE(),INTERVAL 20 DAY),1)");$internacional=$db->insert_id;
-$db->query("INSERT INTO formulario_aliado_convocatorias VALUES ($perfil,$internacional,'bachillerato-general','registro')");
+$db->query("INSERT INTO formulario_aliado_convocatorias (aliado_id,convocatoria_id,programa_codigo,formulario) VALUES ($perfil,$internacional,'bachillerato-general','registro')");
 $db->query("INSERT INTO convocatorias (titulo,fecha_inicio,fecha_termino,estado) VALUES ('Internacional Inscripción excluida',CURDATE(),DATE_ADD(CURDATE(),INTERVAL 20 DAY),1)");$inscripcion=$db->insert_id;
-$db->query("INSERT INTO formulario_aliado_convocatorias VALUES ($perfil,$inscripcion,'bachillerato-general','inscripcion')");
+$db->query("INSERT INTO formulario_aliado_convocatorias (aliado_id,convocatoria_id,programa_codigo,formulario) VALUES ($perfil,$inscripcion,'bachillerato-general','inscripcion')");
 echo 'OK: fixture Compartir manual/institucional, programas, canales y relaciones reales'.PHP_EOL;
