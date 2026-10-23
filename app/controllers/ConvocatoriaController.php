@@ -90,10 +90,15 @@ class ConvocatoriaController
             : [];
 
         header('Content-Type: application/json; charset=utf-8');
+        $modalidades = ($territorioPermitido && $clasificacionValida)
+            ? $modelo->obtenerListado($buscar,$estadoFiltro,$estatusFiltro,$categoriaFiltro,$tipoConvocatoria,'',$anioFiltro,$mesFiltro,$fechaFiltro)
+            : [];
+        $convocatorias = $this->presentarOrigenes($convocatorias);
         echo json_encode(
             [
                 'ok' => true,
-                'convocatorias' => $convocatorias
+                'convocatorias' => $convocatorias,
+                'modalidades' => $this->contarModalidades($modalidades)
             ],
             JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
         );
@@ -297,6 +302,9 @@ class ConvocatoriaController
             )
             : [];
 
+        $resumenModalidades = $this->contarModalidades($territorioSeleccionado && $clasificacionValida
+            ? $modelo->obtenerListado($buscar,$estadoFiltro,$estatusFiltro,$categoriaFiltro,$tipoConvocatoria,'',0,0,$fechaFiltro) : []);
+        $convocatorias = $this->presentarOrigenes($convocatorias);
         $mensajeExito = $_SESSION['mensaje_convocatoria'] ?? '';
         $mensajeError = $_SESSION['error_convocatoria'] ?? '';
         $erroresFormulario = $_SESSION['errores_convocatoria'] ?? [];
@@ -798,6 +806,12 @@ class ConvocatoriaController
             $this->redirigir();
         }
 
+        $this->autorizarRegistroActual($convocatoriaOriginal);
+        if (($convocatoriaOriginal['aliado']['estado'] ?? '') === 'revision') {
+            http_response_code(409);
+            exit('Revisa las relaciones de esta convocatoria antes de editarla.');
+        }
+
         if ($tipoConvocatoria === '' || $subtipoConvocatoria === '') {
             $tipoConvocatoria = strtolower(
                 trim((string)($convocatoriaOriginal['tipo_convocatoria'] ?? ''))
@@ -818,6 +832,21 @@ class ConvocatoriaController
 
         $datos = $this->limpiarDatos($_POST);
         $estadosIds = $this->limpiarEstados($_POST['estados'] ?? []);
+        if (!empty($convocatoriaOriginal['aliado']['tiene_relacion'])) {
+            if ($datos['enlace_registro'] !== (string)$convocatoriaOriginal['enlace_registro']) {
+                http_response_code(422);
+                exit('El enlace compartido del aliado no se puede modificar desde esta edición.');
+            }
+            $datos['enlace_registro'] = $convocatoriaOriginal['enlace_registro'];
+            // La edición ordinaria no traslada una publicación ligada a un aliado.
+            $estadosIds = array_map('intval',$convocatoriaOriginal['estados_ids']);
+        }
+        foreach ($estadosIds as $estadoEdicion) {
+            if (!$this->usuarioPuedeConsultarTerritorio($estadoEdicion)) {
+                http_response_code(403);
+                exit('No tienes acceso a los territorios de esta publicación.');
+            }
+        }
         $errores = $this->validarDatos(
             $datos,
             $estadosIds,
@@ -953,6 +982,8 @@ class ConvocatoriaController
             $this->redirigir();
         }
 
+        $this->autorizarRegistroActual($convocatoria);
+
         if (
             !$this->esClasificacionValida($tipoConvocatoria, $subtipoConvocatoria, $esChihuahua) ||
             (string)($convocatoria['tipo_convocatoria'] ?? '') !== $tipoConvocatoria ||
@@ -1011,6 +1042,11 @@ class ConvocatoriaController
             return;
         }
 
+        if (!$this->convocatoriaVisibleParaUsuario($convocatoria)) {
+            http_response_code(403);
+            exit('No tienes acceso a esta convocatoria.');
+        }
+
         $rutaRelativa = ltrim(str_replace('\\', '/', (string)$convocatoria['imagen']), '/');
 
         if (
@@ -1057,12 +1093,55 @@ class ConvocatoriaController
             return;
         }
 
+        $convocatoria = $this->presentarOrigenes([$convocatoria])[0];
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(
             ['ok' => true, 'convocatoria' => $convocatoria],
             JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
         );
         exit;
+    }
+
+    private function contarModalidades(array $filas): array
+    {
+        $resumen=[];
+        foreach ($filas as $fila) {
+            $clave=$fila['tipo_convocatoria'].'|'.ProgramaEducativo::codigo((string)$fila['subtipo_convocatoria']);
+            $vista=(int)$fila['estado']===1?'activas':'historial';
+            if (!isset($resumen[$clave])) $resumen[$clave]=['activas'=>0,'historial'=>0];
+            $resumen[$clave][$vista]++;
+        }
+        return $resumen;
+    }
+
+    private function presentarOrigenes(array $filas): array
+    {
+        foreach ($filas as &$fila) {
+            $a=&$fila['aliado'];
+            if (($a['estado']??'')==='verificado' && in_array($a['tipo'],['manual','institucional'],true) &&
+                puedeConsultarDirectorioConvenios() && $this->usuarioPuedeConsultarTerritorio((int)$a['estado_id'])) {
+                $a['detalle_url']=BASE_URL.'index.php?'.http_build_query([
+                    'controller'=>'crearConvocatoria','action'=>'index','estado_id'=>$a['estado_id'],
+                    'detalle_tipo'=>$a['tipo'],'detalle_id'=>$a['id']
+                ]);
+            }
+            unset($a);
+        }
+        unset($fila);
+        return $filas;
+    }
+
+    private function autorizarRegistroActual(array $convocatoria): void
+    {
+        // Comprobar TODOS los territorios reales evita modificar una publicación
+        // compartida desde un POST que sustituya los estados no autorizados.
+        $permitidos=$this->obtenerIdsTerritoriosPermitidos();
+        if ($permitidos===null) return;
+        $reales=array_map('intval',$convocatoria['estados_ids']??[]);
+        if (!$reales || array_diff($reales,array_map('intval',$permitidos))) {
+            http_response_code(403);
+            exit('No tienes autorización para modificar esta convocatoria.');
+        }
     }
 
     private function tipoAsignacionTerritorialUsuario()

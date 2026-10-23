@@ -178,4 +178,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     if (rows.length) applyRowFilters();
+    const requestedDetail = new URLSearchParams(window.location.search);
+    const detailType = requestedDetail.get('detalle_tipo');
+    const detailId = Number(requestedDetail.get('detalle_id'));
+    if (['manual', 'institucional'].includes(detailType) && detailId > 0) {
+        const row = rows.find(item => {
+            try { const data = JSON.parse(item.dataset.convenio || '{}'); return (data.origen_tipo || 'institucional') === detailType && Number(data.origen_id || data.seguimiento_id) === detailId; }
+            catch (_) { return false; }
+        });
+        row?.querySelector('[data-convenio-open]')?.click();
+    }
 });

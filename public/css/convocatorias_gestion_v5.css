@@ -1,0 +1,41 @@
+/* Alcance exclusivo: listado y datos informativos de Gestión. */
+[data-convocatorias-listado] .convocatoria-month-table { min-width: 0; table-layout: fixed; }
+[data-convocatorias-listado] td, [data-convocatorias-listado] th { overflow-wrap: anywhere; white-space: normal; }
+[data-convocatorias-listado] th:first-child { width: 94px; }
+[data-convocatorias-listado] th:nth-child(2) { width: 21%; }
+[data-convocatorias-listado] th:nth-child(3) { width: 20%; }
+[data-convocatorias-listado] th:last-child { width: 194px; }
+[data-convocatorias-listado] .table-actions { flex-wrap:wrap; }
+.convocatoria-ally-name,.convocatoria-program-name,.convocatoria-ally-detail { display: block; }
+.convocatoria-program-name { margin-top: 6px; color: var(--color-text-secondary,#64748b); font-size: 12px; }
+.convocatoria-origin-tag { display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 12px; background: #edf3ff; color: #273a8a; font-size: 11px; }
+.convocatoria-origin-tag.is-review { color: #8a5300; background: #fff4df; }
+.convocatoria-ally-detail { margin-top: 6px; font-size: 12px; }
+.convocatoria-program-heading { display: flex; gap: 10px; align-items: center; margin: 20px 0 12px; font-size: 16px; color: #172642; }
+.convocatoria-program-heading span { font-size: 12px; padding: 4px 9px; border-radius: 12px; background: #edf3ff; }
+.convocatoria-modalities { display:flex; flex-wrap:wrap; gap:8px; margin: 18px 0; }
+.convocatoria-modality { border:1px solid #dce3f1; border-radius:20px; background:#fff; color:#273a8a; padding:8px 12px; font-size:12px; }
+.convocatoria-modality[aria-pressed=true] { background:#2c398b; border-color:#2c398b; color:#fff; }
+.convocatoria-modality:focus-visible { outline:2px solid #07866f; outline-offset:2px; }
+.convocatoria-modality strong { margin-left:7px; }
+.convocatoria-edit-identity { padding:14px; border:1px solid #dce3f1; border-radius:12px; background:#f7f9fc; }
+.convocatoria-identity-detail { overflow-wrap:anywhere; }
+#modalEditarConvocatoria .modal-content { max-height:calc(100dvh - 24px); }
+#modalEditarConvocatoria .modal-content > form { display:flex; flex-direction:column; flex:1 1 auto; min-height:0; overflow:hidden; }
+#modalEditarConvocatoria .modal-body { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+#modalEditarConvocatoria .modal-header,#modalEditarConvocatoria .modal-footer { flex:0 0 auto; }
+@media(max-width:1100px) {
+    [data-convocatorias-listado] table,[data-convocatorias-listado] tbody,[data-convocatorias-listado] tr,[data-convocatorias-listado] td { display:block; width:100%; }
+    [data-convocatorias-listado] thead { display:none; }
+    [data-convocatorias-listado] tbody { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:12px; }
+    [data-convocatorias-listado] tr { padding:12px; border:1px solid #dce3f1; border-radius:12px; background:#fff; }
+    [data-convocatorias-listado] td { display:grid; grid-template-columns:100px minmax(0,1fr); gap:6px; border:0; padding:7px 0; min-width:0; }
+    [data-convocatorias-listado] td::before { content:attr(data-label); font-weight:600; font-size:12px; color:#64748b; grid-column:1; grid-row:1 / span 4; }
+    [data-convocatorias-listado] td>* { grid-column:2; min-width:0; }
+    [data-convocatorias-listado] .table-actions { flex-wrap:wrap; justify-content:flex-start; }
+}
+@media(max-width:600px) {
+    [data-convocatorias-listado] tbody { grid-template-columns:minmax(0,1fr); padding:8px; }
+    [data-convocatorias-listado] td { grid-template-columns:85px minmax(0,1fr); }
+    .convocatoria-modalities { gap:6px; }
+}
