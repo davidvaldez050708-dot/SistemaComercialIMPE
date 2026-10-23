@@ -37,12 +37,19 @@
   const open = async link => {
     if(opening||active)return;opening=true;link.setAttribute('aria-busy','true');
     let container=null;
+    const unmount = () => {
+      const modal=container?.querySelector('#modalCrearConvocatoria');
+      modal?.dispatchEvent(new Event('impe:editor-destroyed'));if(modal)bootstrap.Modal.getInstance(modal)?.dispose();
+      container?.remove();
+    };
     try{
       const source=new URL(link.href,location.href),tipo=source.searchParams.get('aliado_tipo'),id=Number(source.searchParams.get('aliado_id'));
       if(!['manual','institucional'].includes(tipo)||!Number.isSafeInteger(id)||id<1)throw new Error('No se pudo identificar el aliado.');
       const opened=await post({operacion:'abrir',aliado_tipo:tipo,aliado_id:String(id)});
       const url=endpoint('editorConvenio');url.searchParams.set('aliado_tipo',tipo);url.searchParams.set('aliado_id',String(id));
       const result=(await request(url)).datos;
+      const detail=document.getElementById('modalConvenioCrearConvocatoria');
+      if(!detail?.classList.contains('show')||link.href!==source.href)return;
       container=document.createElement('div');container.dataset.v4Container='1';container.innerHTML=result.html;
       const scripts=[...container.querySelectorAll('script[src]')].map(x=>x.src);
       container.querySelectorAll('script[src]').forEach(x=>x.remove());
@@ -55,12 +62,12 @@
       const modal=container.querySelector('#modalCrearConvocatoria');if(!modal)throw new Error('Falta el contenedor del editor.');
       modal.__draftV4=opened.borrador;document.body.append(container);
       for(const script of scripts)await loadScript(script);
-      const detail=document.getElementById('modalConvenioCrearConvocatoria');
       // Bootstrap ignora hide() durante la transición de apertura del detalle.
       if(detail?.classList.contains('show')){
         await Promise.allSettled((detail.getAnimations?.({subtree:true})||[]).map(animation=>animation.finished));
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
       }
+      if(!detail?.classList.contains('show')||link.href!==source.href){unmount();return;}
       if(detail?.classList.contains('show'))await new Promise(resolve=>{detail.addEventListener('hidden.bs.modal',resolve,{once:true});bootstrap.Modal.getOrCreateInstance(detail).hide();});
       active={container,modal,detail,link,tipo,id};
       modal.addEventListener('hidden.bs.modal',()=>{
@@ -68,7 +75,7 @@
         if(detail)bootstrap.Modal.getOrCreateInstance(detail).show();
       },{once:true});
       bootstrap.Modal.getOrCreateInstance(modal).show();
-    }catch(error){container?.remove();toast(error.message,true);}
+    }catch(error){unmount();if(active?.container===container)active=null;toast(error.message,true);}
     finally{opening=false;link.removeAttribute('aria-busy');}
   };
   const attach = ({modal,form,entries,context,notify,footer}) => {
