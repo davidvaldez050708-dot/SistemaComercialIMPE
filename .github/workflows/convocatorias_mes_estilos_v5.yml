@@ -31,9 +31,16 @@ jobs:
                         'class="convocatoria-filter-dropdown-trigger"',
                         'Meses recientes','Otros meses / archivo','actualizarSelectorMes()',
                         'filtroMes?.dispatchEvent(new Event(\'change\'',
-                        'sincronizarPeriodoEnUrl()','filtroClasificacionOpciones']:
+                        'sincronizarPeriodoEnUrl()','data-v5-modalidad']:
               assert token in t, token
           assert t.count('id="filtro_convocatoria_periodo"') == 1
+          assert 'id="filtro_convocatoria_clasificacion_boton"' not in t
+          assert t.count('id="filtro_convocatoria_clasificacion"') == 1
+          assert 'filtroClasificacionOpciones' not in t
+          assert 'data-convocatoria-filter-dropdown' not in t
+          css=Path('public/css/convocatorias_gestion_v5.css').read_text()
+          assert '.convocatoria-list-workspace-filters.convocatoria-mes-simplificado' in css
+          assert 'grid-template-columns: minmax(250px, 1.4fr) minmax(220px, .9fr) auto;' in css
           assert t.count('name="periodo"') == 1
           assert t.count('data-convocatoria-month-dropdown') == 1
           assert t.count('filtroMes?.addEventListener(\'change\'') == 1
@@ -53,6 +60,7 @@ jobs:
           git show ebe671564cd9a33c268156f2cb1a5e6fdae4170a:app/views/convocatorias/index.php > "$PREP/view-v5-before.php"
           git show 4d72f499f53b8360874e1c2770ddd7d01eb3aff9:app/views/convocatorias/index.php > "$PREP/view-monthly-before.php"
           cp app/views/convocatorias/index.php "$PREP/view-monthly-after.php"
+          cp public/css/convocatorias_gestion_v5.css "$PREP/convocatorias_gestion_v5_after.css"
           git show ebe671564cd9a33c268156f2cb1a5e6fdae4170a:app/controllers/ConvocatoriaController.php > "$PREP/controller-v5-before.php"
           git show 4d72f499f53b8360874e1c2770ddd7d01eb3aff9:app/controllers/ConvocatoriaController.php > "$PREP/controller-monthly-after.php"
           python3 tools/preparar_convocatorias_mes_estilos_v5.py --directory "$PREP" --output "$PREP/entrega.json"
@@ -77,7 +85,7 @@ jobs:
               p.write_bytes(gzip.decompress(base64.b64decode(row['content'])))
           PY
           python3 "$PREP/publicar.py" --site "$SITE" --manifest "$PREP/entrega.json" --backup-root "$BACKUP" --check > "$PREP/check.log"
-          grep -q 'REVISIÓN COMPATIBLE: 1 archivos' "$PREP/check.log"
+          grep -q 'REVISIÓN COMPATIBLE: 2 archivos' "$PREP/check.log"
           python3 "$PREP/publicar.py" --site "$SITE" --manifest "$PREP/entrega.json" --backup-root "$BACKUP" --apply
           php -l "$SITE/app/views/convocatorias/index.php"
           python3 "$PREP/publicar.py" --site "$SITE" --manifest "$PREP/entrega.json" --backup-root "$BACKUP" --check > "$PREP/installed.log"
@@ -88,8 +96,8 @@ jobs:
           python3 - "$SITE" "$PREP/entrega.json" <<'PY'
           import json,gzip,base64,pathlib,sys
           site=pathlib.Path(sys.argv[1]);manifest=json.load(open(sys.argv[2]))
-          view=next(row for row in manifest['files'] if row['path']=='app/views/convocatorias/index.php')
-          assert (site/view['path']).read_bytes()==gzip.decompress(base64.b64decode(view['base']))
+          for file in manifest['files']:
+              assert (site/file['path']).read_bytes()==gzip.decompress(base64.b64decode(file['base'])),file['path']
           for dep in manifest['dependencies']:
               assert (site/dep['path']).read_bytes()==gzip.decompress(base64.b64decode(dep['content']))
           print('OK: restauración exacta y 4 dependencias conservadas.')
