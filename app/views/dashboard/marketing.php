@@ -120,28 +120,7 @@ $totalCoberturaPendienteMarketing = count($estadosSinConvocatoria);
 <?php require __DIR__ . '/marketing_indicadores.php'; ?>
 
 
-<section class="dashboard-panel marketing-expiring-panel">
-    <div class="table-panel-header">
-        <div>
-            <h2 class="panel-title mb-0 marketing-expiring-title">Gestión de Convocatorias</h2>
-            <p class="panel-subtitle mb-0">
-                <?= (int)($resumenMarketing['proximas_finalizar'] ?? 0) ?>
-                convocatorias activas finalizan en los próximos 7 días.
-            </p>
-        </div>
 
-        <?php if (tienePermiso('convocatorias.ver')): ?>
-            <button
-                type="button"
-                class="btn btn-system-primary marketing-expiring-trigger"
-                data-bs-toggle="modal"
-                data-bs-target="#modalConvocatoriasPorVencer">
-                <i class="bi bi-arrow-right-circle me-2"></i>
-                Ir a convocatorias
-            </button>
-        <?php endif; ?>
-    </div>
-</section>
 
 <?php
 $publicacionesRecientesMarketing = is_array($publicacionesRecientesMarketing ?? null)
