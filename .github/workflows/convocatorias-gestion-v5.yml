@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'app/services/ConvocatoriaOrigenService.php'
+      - 'app/services/AliadoRegistroService.php'
       - 'app/models/ConvocatoriaModel.php'
       - 'app/controllers/ConvocatoriaController.php'
       - 'app/views/convocatorias/index.php'
@@ -10,7 +11,10 @@ on:
       - 'public/javascript/crear_convocatoria_v2_extension.js'
       - 'public/css/convocatorias_gestion_v5.css'
       - 'tests/*v5*'
+      - 'tests/enlaces_cuenta_clave_db.php'
+      - 'tests/publicacion_enlaces_cuenta_clave_test.py'
       - 'tools/*gestion_v5*'
+      - 'tools/aliado_enlaces_cuenta_clave*'
       - '.github/workflows/convocatorias-gestion-v5.yml'
   workflow_dispatch:
 jobs:
@@ -62,6 +66,7 @@ jobs:
           python3 tests/publicacion_convocatorias_gestion_v5_test.py
           python3 tests/publicacion_convocatorias_v5_ui_test.py
           python3 tests/publicacion_convocatorias_v5_qr_test.py
+          python3 tests/publicacion_enlaces_cuenta_clave_test.py
       - name: Preparación exclusivamente sintética
         run: |
           mkdir -p /tmp/v5-sql-backups
@@ -75,6 +80,7 @@ jobs:
           php tools/migrar_convocatoria_borradores_v4.php --apply --backup-dir=/tmp/v5-sql-backups
           php tests/convocatorias_v5_fixture.php
           php tests/convocatorias_v5_db.php
+          php tests/enlaces_cuenta_clave_db.php
       - name: Réplica Hostinger, navegador y regresiones afectadas
         run: |
           python3 tests/preparar_convocatorias_v5_replica.py --output /tmp/v5-hostinger
@@ -83,6 +89,7 @@ jobs:
           IMPE_V5_ACTIONS_ONLY=1 node tests/convocatorias_v5_browser.cjs
           IMPE_V5_CORRECTIONS_ONLY=1 node tests/convocatorias_v5_browser.cjs
           IMPE_V5_QR_ONLY=1 node tests/convocatorias_v5_browser.cjs
+          IMPE_CC_LINKS_ONLY=1 node tests/convocatorias_v5_browser.cjs
           IMPE_V5_VISUAL_ONLY=1 node tests/convocatorias_v5_browser.cjs
           php tests/convocatorias_v5_regresion.php
       - uses: actions/upload-artifact@v4

@@ -9,7 +9,7 @@ core=module('core_v5',ROOT/'tools/publicar_aliados_registro.py')
 FILES=['app/services/ConvocatoriaOrigenService.php','public/javascript/convocatorias_gestion_v5.js','public/css/convocatorias_gestion_v5.css','app/models/ConvocatoriaModel.php','app/controllers/ConvocatoriaController.php','public/javascript/crear_convocatoria_v2_extension.js','app/views/convocatorias/index.php']
 def pack(data):return base64.b64encode(gzip.compress(data,mtime=0)).decode('ascii')
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--source',required=True);mode=parser.add_mutually_exclusive_group();mode.add_argument('--correcciones',action='store_true');mode.add_argument('--qr',action='store_true');args=parser.parse_args();reviewed=host.bases();rows=[]
+    parser=argparse.ArgumentParser();parser.add_argument('--source',required=True);mode=parser.add_mutually_exclusive_group();mode.add_argument('--correcciones',action='store_true');mode.add_argument('--qr',action='store_true');mode.add_argument('--enlaces-cc',action='store_true');args=parser.parse_args();reviewed=host.bases();rows=[]
     base=host.BASE;names=FILES
     if args.correcciones:
         base='722d3125d6a8e0e3e337c90dac18e36111715cb1'
@@ -21,9 +21,14 @@ def main():
         previous=json.loads((ROOT/'tools/convocatorias_gestion_v5_ui_release.json').read_text(encoding='utf-8'))
         reviewed={r['path']:core.unpack(r['variants'][0]['target']) for r in previous['files'] if r.get('variants')}
         names=['public/css/convocatorias_gestion_v5.css','public/javascript/convocatorias_gestion_v5.js','app/views/convocatorias/index.php']
+    if args.enlaces_cc:
+        base='ebe671564cd9a33c268156f2cb1a5e6fdae4170a'
+        previous=json.loads((ROOT/'tools/convocatorias_gestion_v5_release.json').read_text(encoding='utf-8'))
+        reviewed={r['path']:core.unpack(r['variants'][0]['target']) for r in previous['files'] if r.get('variants')}
+        names=['app/services/AliadoRegistroService.php','app/controllers/ConvocatoriaController.php']
     with tempfile.TemporaryDirectory() as temp:
         for name in names:
-            old=None if not (args.correcciones or args.qr) and name in FILES[:3] else host.git(base,name)
+            old=None if not (args.correcciones or args.qr or args.enlaces_cc) and name in FILES[:3] else host.git(base,name)
             new=host.git(args.source,name)
             row={'path':name,'base':pack(old) if old is not None else None,'target':pack(new),'sha256':core.sha(new)}
             if name in reviewed:
@@ -40,6 +45,7 @@ def main():
         dependencies.append({'path':name,'sha256':sha,'content':pack(data)})
     output='convocatorias_gestion_v5_ui_release.json' if args.correcciones else 'convocatorias_gestion_v5_release.json'
     if args.qr:output='convocatorias_gestion_v5_qr_release.json'
+    if args.enlaces_cc:output='aliado_enlaces_cuenta_clave_release.json';dependencies=[]
     (ROOT/'tools'/output).write_text(json.dumps({'base':base,'source':args.source,'files':rows,'dependencies':dependencies},indent=2)+'\n',encoding='utf-8')
-    print('ENTREGA V5: {} archivos, 2 componentes modulares conservados. Sin SQL.'.format(len(rows)))
+    print('ENTREGA: {} archivos, {} dependencias comprobadas. Sin SQL.'.format(len(rows),len(dependencies)))
 if __name__=='__main__':main()
