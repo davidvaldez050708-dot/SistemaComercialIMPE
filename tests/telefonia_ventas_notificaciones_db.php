@@ -42,6 +42,26 @@ try {
  require_once dirname(__DIR__).'/app/services/TelefoniaNotificacionService.php';
  require_once dirname(__DIR__).'/app/services/TelefoniaProgramacionVentasService.php';
  $notices=new TelefoniaNotificacionService($db);$program=new TelefoniaProgramacionVentasService($db);$agenda=new TelefoniaContactosService($db);
+ // Analista: sólo una devolución activa puede sobrevivir "Marcar leídas".
+ $db->query("INSERT INTO telefonia_extensiones(usuario_id,extension,created_at,updated_at)
+     VALUES (10,'101',UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+ $rutaAnalista=json_encode(['tipo'=>'INSTITUCION','responsable_id'=>10,'extension'=>'101','referencia_llamada'=>'out_test_read_keep']);
+ $ins=$db->prepare("INSERT INTO telefonia_disponibilidad
+     (origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,
+      numero,ruta_json,estado,expires_at,created_at,updated_at,contacto,telefono,nota,devolucion)
+     VALUES (7,'100',10,'101','out_test_read_keep','+525551119999',?,'DEVOLUCION',
+       UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP(),'Institución','+525551119999',
+       'Devolver llamada','PENDIENTE')");
+ $ins->bind_param('s',$rutaAnalista);$ins->execute();$idAnalista=(int)$db->insert_id;$ins->close();
+ $pendientesAnalista=$notices->pendientes(10,false);
+ vcheck(count($pendientesAnalista)===1&&$pendientesAnalista[0]['pendiente_operativo'],
+     'Analista ve devolución asignada');
+ $notices->leerTodas(10);
+ $leidosAnalista=$notices->pendientes(10,false);
+ vcheck(count($leidosAnalista)===1&&$leidosAnalista[0]['leida']===1,
+     'La devolución del Analista no desaparece al marcar leídas');
+ $db->query("UPDATE telefonia_disponibilidad SET devolucion='ATENDIDA' WHERE id=$idAnalista");
+ vcheck($notices->pendientes(10,false)===[],'Al atender devolución desaparece de campana del Analista');
  $event('pbx-notice-missed','NOTIFY_INTERNAL');$event('pbx-notice-missed','NOTIFY_END');
  $one=$notices->pendientes(8,false);vcheck(count($one)===1&&$one[0]['titulo']==='Llamada perdida','Perdida propia con cierre sin conexión');
  $again=$notices->pendientes(8,false);vcheck($again[0]['telefonia_id']===$one[0]['telefonia_id'],'Polling no duplica aviso');
