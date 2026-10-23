@@ -34,7 +34,7 @@
 
         const INTERVALO_TOAST_VENCIDO = 8 * 60 * 1000;
         const REINTENTO_TOAST_OCULTO = 60 * 1000;
-        const DURACION_TOAST = 7000;
+        const DURACION_TOAST = 8000; // Paridad visual con la campana de Marketing.
         const claveUsuario = ':usuario:' + Number(window.IMPE_CURRENT_USER_ID || 0);
         const CLAVE_ULTIMO_TOAST_VENCIDO_AT =
             'recordatorios:ultimo-toast-vencido-at' + claveUsuario;
