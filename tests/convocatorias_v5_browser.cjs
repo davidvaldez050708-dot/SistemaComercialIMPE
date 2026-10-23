@@ -23,6 +23,30 @@ try{
  const list=async(query={})=>await(await context.request.get(endpoint('listadoFiltrado',{territorio_id:'1',tipo:'bachillerato',...query}))).json();
  const go=async(query={})=>{await page.goto(base+'_v5?'+new URLSearchParams({territorio_id:'1',tipo:'bachillerato',...query}));await page.locator('[data-convocatorias-listado] tbody').first().waitFor();};
  await session('marketing');await go();
+ if(process.env.IMPE_CC_LINKS_ONLY==='1'){
+  const manage=async(operacion,extra={})=>context.request.post(base+'index.php?controller=aliado&action=registroGestion',{form:{csrf_token:'a'.repeat(64),origen:'institucional',id:'10',operacion,...extra}});
+  let response=await manage('generar'),data=await response.json();check(response.ok()&&data.ok,'Marketing recupera enlace mediante endpoint real');const originalUrl=data.datos.url;
+  await session('cc');response=await manage('generar');data=await response.json();check(response.ok()&&data.datos.url===originalUrl,'Cuenta Clave recupera mismo enlace mediante endpoint real');
+  response=await manage('generar',{csrf_token:'invalido'});check(response.status()===419,'CSRF inválido bloquea generar enlace');
+  response=await context.request.get(base+'index.php?controller=aliado&action=registroGestion');check(response.status()===405,'generar enlace exige POST');
+  const manual=(await list({territorio_id:'2',tipo:'titulacion'})).convocatorias.find(c=>c.aliado?.tipo==='manual');
+  // El listado deniega el territorio ajeno: la identidad se obtiene con Marketing para probar el POST directo.
+  await session('marketing');const outside=(await list({territorio_id:'2',tipo:'titulacion'})).convocatorias.find(c=>c.aliado?.tipo==='manual');assert.ok(outside);await session('cc');
+  response=await manage('generar',{origen:'manual',id:String(outside.aliado.id)});check(!manual&&response.status()===403,'POST directo no permite generar enlaces fuera del territorio');
+  for(const role of ['cc-no-links','analyst','admin']){await session(role);response=await manage('generar');check(response.status()===403,'enlace denegado para '+role);}
+  await session('cc');await page.goto(base+'_v4');await page.locator('[data-convenio-notification]').filter({hasText:'IQJ'}).first().locator('[data-convenio-open]').click();await page.locator('[data-convenio-create-link]').click();const editor=page.locator('#modalCrearConvocatoria');await editor.waitFor({state:'visible'});await editor.locator('.impe-aliado-multi-card').first().waitFor();
+  const generated=page.waitForResponse(r=>r.url().includes('action=registroGestion')&&r.request().method()==='POST');await editor.locator('[data-impe-crear-enlace]').click();const generatedResponse=await generated;check(generatedResponse.ok()&&(await generatedResponse.json()).datos.url===originalUrl,'botón Generar enlace de Cuenta Clave funciona en editor V4 real');
+  check(!(await editor.locator('[data-impe-error]').textContent()).includes('exclusiva'),'editor no muestra bloqueo por rol');
+  await editor.locator('[data-impe-crear-qr]').click();check(await editor.locator('[data-impe-qr-wrap]').isVisible(),'QR existente se puede visualizar con Cuenta Clave');
+  const before=await stats(),cards=editor.locator('.impe-aliado-multi-card');const prefix='CC enlace '+before.rows.length;
+  for(let i=0;i<await cards.count();i++){const card=cards.nth(i);await card.locator('input[type="text"]').fill(prefix+' programa '+i);await card.locator('input[type="date"]').nth(0).fill(new Date().toISOString().slice(0,10));await card.locator('input[type="date"]').nth(1).fill(new Date(Date.now()+86400000*20).toISOString().slice(0,10));await card.locator('input[type="file"]').setInputFiles({name:'cc-'+i+'.png',mimeType:'image/png',buffer:tiny});await editor.locator('[data-v4-status]').filter({hasText:/^Borrador guardado/}).waitFor();}
+  const publishing=page.waitForResponse(r=>r.url().includes('action=guardarProgramasAliado')&&r.request().method()==='POST');await editor.locator('button[type="submit"]').click();response=await publishing;data=await response.json();check(response.ok()&&data.ok,'Cuenta Clave publica las convocatorias completas');await editor.waitFor({state:'detached'});
+  const after=await stats(),saved=after.rows.filter(r=>r.titulo.startsWith(prefix));check(saved.length===2&&after.rows.length===before.rows.length+2,'una publicación real por cada programa autorizado');check(saved.every(r=>r.enlace_registro===originalUrl),'publicaciones de Cuenta Clave conservan enlace de Marketing');
+  check(after.links.filter(r=>saved.some(c=>c.id==r.convocatoria_id)).every(r=>r.origen_tipo==='institucional'&&r.origen_id==10),'publicaciones conservan el aliado y origen verificados');
+  response=await context.request.post(endpoint('guardar'),{multipart:{csrf_token:'a'.repeat(64),aliado_tipo:'institucional',aliado_id:'10',programa_codigo:'bachillerato-general',territorio_id:'1',tipo:'bachillerato',subtipo:'bachillerato-general',titulo:prefix+' individual',enlace_registro:originalUrl,fecha_inicio:new Date().toISOString().slice(0,10),fecha_termino:new Date(Date.now()+86400000*20).toISOString().slice(0,10),estado:'1','estados[]':'1',imagen:{name:'individual.png',mimeType:'image/png',buffer:tiny}},maxRedirects:0});
+  const individual=(await stats()).rows.find(r=>r.titulo===prefix+' individual');check(response.status()===302&&individual?.enlace_registro===originalUrl,'ruta individual conserva permisos de Cuenta Clave y enlace compartido');
+  check(errors.length===0&&!/PHP (?:Warning|Fatal|Notice)|Uncaught/.test(logs),'flujo Cuenta Clave sin errores JavaScript/PHP');console.log('PASS '+count+' comprobaciones HTTP/editor/publicación Cuenta Clave');return;
+ }
  if(process.env.IMPE_V5_QR_ONLY==='1'){
   const deps=path.resolve(bootstrap,'..'),decode=require(path.join(deps,'jsqr')),{PNG}=require(path.join(deps,'pngjs'));
   const before=await stats(),posts=[];page.on('request',r=>{if(r.method()==='POST')posts.push(r.url());});

@@ -460,7 +460,7 @@ class ConvocatoriaController
         $servicioRegistroAliado = null;
         if ($tipoAliado !== '' || $idAliado > 0) {
             if (!in_array($tipoAliado,['manual','institucional'],true) || $idAliado <= 0 ||
-                strcasecmp((string)($_SESSION['rol']??''),'Marketing') !== 0 ||
+                !puedeCrearConvocatoriaDesdeConvenio() ||
                 !tienePermiso('formularios_aliados.gestionar_enlaces')) {
                 $errores[] = 'No tienes permiso para crear publicaciones de este aliado.';
             } else {
@@ -656,9 +656,7 @@ class ConvocatoriaController
                 throw new DomainException('Genera y habilita el enlace existente del aliado antes de publicar el borrador.',422);
             }
             if ($enlace === '') {
-                if (strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') !== 0) {
-                    throw new DomainException('Solicita a Marketing generar y habilitar el enlace de Registro antes de publicar.',422);
-                }
+                // El servicio exige permiso y alcance territorial para ambos roles.
                 $detalle = $servicio->enlace($origenTipo,$origenId,'generar');
                 $enlace = (string)($detalle['url'] ?? '');
             }

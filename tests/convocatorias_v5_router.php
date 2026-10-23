@@ -1,6 +1,9 @@
 <?php
 if(getenv('IMPE_TEST_ALLOW_ROUTER')!=='1'||getenv('APP_ENV')!=='testing'||!preg_match('/^impe_test_handly_aliados_v4_v5_[a-z0-9_]+$/D',getenv('IMPE_DB_NAME')?:'')||($_SERVER['REMOTE_ADDR']??'')!=='127.0.0.1'){http_response_code(404);exit;}
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH);
+// El componente productivo conserva la ruta actual (index.php). La página
+// sintética /_v4 debe dirigir esa misma llamada al controlador real.
+if($path==='/_v4'&&($_GET['controller']??'')==='aliado'&&($_GET['action']??'')==='registroGestion')$path='/index.php';
 $appRoot=getenv('IMPE_V5_APP_ROOT')?:__DIR__.'/..';
 if(!in_array($path,['/_v5','/_v5_session','/_v5_stats','/_v5_failure','/index.php'],true)){
     if(str_starts_with($path,'/_v4') || str_contains($path,'convocatorias_aliado_modular')){putenv('IMPE_V4_APP_ROOT='.$appRoot);require __DIR__.'/convenios_v4_router.php';return true;}
@@ -12,10 +15,17 @@ if($path==='/index.php' && (($_GET['controller']??'')==='crearConvocatoria'||($_
 }
 session_start();require_once $appRoot.'/app/controllers/ConvocatoriaController.php';
 $db=(new Database())->connect(false);$controller=new ConvocatoriaController();
+if($path==='/index.php'&&($_GET['controller']??'')==='aliado'&&($_GET['action']??'')==='registroGestion'){
+    require_once $appRoot.'/app/controllers/AliadoRegistroActions.php';
+    $actions=new class {use AliadoRegistroActions;};$actions->registroGestion();exit;
+}
 if($path==='/_v5_session'){
     $role=$_GET['role']??'marketing';
     $_SESSION=['usuario_id'=>$role==='marketing'?4:2,'rol_id'=>$role==='marketing'?5:6,'rol'=>$role==='marketing'?'Marketing':'Cuenta Clave','permisos'=>['convocatorias.ver','convocatorias.editar','convocatorias.cambiar_estado','convocatorias.descargar','convenios.ver','convocatorias.crear','formularios_aliados.gestionar_enlaces'],'csrf_token'=>str_repeat('a',64)];
     if($role==='reader')$_SESSION['permisos']=['convocatorias.ver'];
+    if($role==='cc-no-links')$_SESSION['permisos']=array_values(array_diff($_SESSION['permisos'],['formularios_aliados.gestionar_enlaces']));
+    if($role==='analyst'){$_SESSION['rol_id']=4;$_SESSION['rol']='Analista de Datos';}
+    if($role==='admin'){$_SESSION['rol_id']=1;$_SESSION['rol']='Administrador';}
     header('Content-Type: application/json');echo '{"ok":true}';return true;
 }
 if($path==='/_v5_stats'){
@@ -29,7 +39,7 @@ if($path==='/_v5_failure'){
 }
 if($path==='/index.php' && ($_GET['action']??'')!=='index'){
     $action=$_GET['action']??'';
-    if(!in_array($action,['listadoFiltrado','detalle','actualizar','cambiarEstado','descargarImagen'],true)){http_response_code(404);return true;}
+    if(!in_array($action,['listadoFiltrado','detalle','guardar','actualizar','cambiarEstado','descargarImagen'],true)){http_response_code(404);return true;}
     $controller->$action();exit;
 }
 if(!tienePermiso('convocatorias.ver')){http_response_code(403);exit;}
