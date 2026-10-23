@@ -2630,213 +2630,192 @@
 }
 
 
-/* Publicaciones recientes en el dashboard principal de Marketing. */
-.marketing-recent-publications {
-    padding: 0;
-    overflow: hidden;
+/* Tres widgets operativos: exclusivamente Inicio de Marketing. */
+.marketing-operations-grid {
+    display: grid;
+    grid-template-columns: 1.08fr 1fr .92fr;
+    align-items: stretch;
+    gap: 20px;
+    min-width: 0;
 }
-
-.marketing-recent-heading {
-    padding: 18px 20px 14px;
+.marketing-operations-grid .marketing-operation-card {
+    min-width: 0;
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border: 1px solid #dfe6ef;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 22px rgba(28, 46, 74, .035);
+}
+.marketing-operations-grid .marketing-operation-heading {
+    min-width: 0;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
+    gap: 10px;
 }
-
-.marketing-recent-title {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.marketing-recent-title-icon {
-    width: 50px;
-    height: 50px;
-    flex: 0 0 50px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-    background-color: var(--color-primary-soft);
-    color: var(--color-primary);
-    font-size: 24px;
-}
-
-.marketing-recent-title h2 {
-    margin: 0;
-    color: var(--color-text-primary);
-    font-size: 14px;
+.marketing-operations-grid .marketing-operation-kicker {
+    color: #748198;
+    font-size: 11px;
     font-weight: 800;
-    line-height: 1.2;
+    letter-spacing: .04em;
+    line-height: 1.5;
 }
-
-.marketing-recent-title p {
-    margin: 4px 0 0;
-    color: var(--color-text-secondary);
-    font-size: 12px;
+.marketing-operations-grid .marketing-operation-period {
+    max-width: 52%;
+    color: #748198;
+    font-size: 11px;
     font-weight: 600;
-    line-height: 1.4;
+    line-height: 1.5;
+    text-align: right;
 }
-
-.marketing-recent-link {
-    padding: 4px 0;
+.marketing-operations-grid .marketing-operation-period strong { color: var(--color-primary); }
+.marketing-operations-grid h2 {
+    margin: 5px 0 0;
+    color: #0e1726;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+.marketing-operations-grid .marketing-operation-description {
+    margin: 8px 0 0;
+    color: #748198;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+.marketing-operations-grid .marketing-operation-heading > a {
+    flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     gap: 8px;
     color: var(--color-primary);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
-    white-space: nowrap;
+    line-height: 1.5;
 }
-
-.marketing-recent-table-wrap {
-    width: 100%;
-    overflow-x: auto;
-    padding: 0 20px 18px;
+.marketing-operations-grid .marketing-monthly-metrics {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-content: center;
+    margin-top: 24px;
 }
-
-.marketing-recent-table {
-    width: 100%;
-    min-width: 980px;
-    border-collapse: collapse;
-}
-
-.marketing-recent-table th {
-    padding: 12px 14px;
-    border-top: 1px solid var(--color-border);
-    border-bottom: 1px solid var(--color-border);
-    background-color: #fafbfd;
-    color: var(--color-text-primary);
-    font-size: 11.5px;
+.marketing-operations-grid .marketing-monthly-metrics > div { min-width: 0; padding: 20px 12px; }
+.marketing-operations-grid .marketing-monthly-metrics > div:first-child { padding-left: 0; }
+.marketing-operations-grid .marketing-monthly-metrics > div + div { border-left: 1px solid #e2e7ef; }
+.marketing-operations-grid .marketing-monthly-metrics strong {
+    display: block;
+    color: #0e1726;
+    font-size: 32px;
     font-weight: 800;
-    text-align: left;
-    white-space: nowrap;
+    line-height: 1;
+    overflow-wrap: anywhere;
 }
-
-.marketing-recent-table th:first-child {
-    border-left: 1px solid var(--color-border);
-    border-radius: 10px 0 0 10px;
-}
-
-.marketing-recent-table th:last-child {
-    border-right: 1px solid var(--color-border);
-    border-radius: 0 10px 10px 0;
-}
-
-.marketing-recent-table td {
-    padding: 14px;
-    border-bottom: 1px solid #edf0f4;
-    color: #53627a;
-    font-size: 11.5px;
-    font-weight: 600;
-    vertical-align: middle;
-    white-space: nowrap;
-}
-
-.marketing-recent-table tbody tr:last-child td {
-    border-bottom: 0;
-}
-
-.marketing-recent-name {
-    min-width: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.marketing-recent-name strong {
-    max-width: 300px;
-    overflow: hidden;
-    color: var(--color-text-primary);
+.marketing-operations-grid .marketing-monthly-metrics h3 {
+    margin: 10px 0 0;
+    color: #58687f;
     font-size: 12px;
     font-weight: 700;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
 }
-
-.marketing-recent-row-icon {
-    width: 30px;
-    height: 30px;
-    flex: 0 0 30px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-primary);
-    font-size: 19px;
-}
-
-.marketing-recent-publications .convocatoria-process-badge {
-    min-height: 32px;
-    padding: 6px 14px;
-    font-size: 11px;
-}
-
-.marketing-recent-row-action {
-    width: 30px;
-    height: 30px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    color: var(--color-text-primary);
-    font-size: 18px;
-}
-
-.marketing-recent-row-action:hover {
-    background-color: var(--color-primary-soft);
-    color: var(--color-primary);
-}
-
-.marketing-recent-row-action.is-disabled {
-    opacity: .45;
-}
-
-.marketing-recent-empty {
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 20px;
-    color: var(--color-text-secondary);
+.marketing-operations-grid .marketing-monthly-metrics p {
+    overflow-wrap: anywhere;
+    margin: 7px 0 0;
+    color: #8a96a8;
     font-size: 11px;
     font-weight: 600;
-    text-align: center;
+    line-height: 1.5;
 }
-
-.marketing-recent-empty i {
+.marketing-operations-grid .marketing-operation-list { margin-top: 16px; }
+.marketing-operations-grid .marketing-operation-row {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 72px;
+    padding: 10px 0;
+}
+.marketing-operations-grid .marketing-operation-row + .marketing-operation-row { border-top: 1px solid #edf0f4; }
+.marketing-operations-grid .marketing-operation-icon {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: #f8fbff;
     color: var(--color-primary);
-    font-size: 20px;
+    font-size: 23px;
 }
-
+.marketing-operations-grid .marketing-operation-icon img { width: 34px; height: 34px; object-fit: contain; }
+.marketing-operations-grid .marketing-operation-copy { min-width: 0; }
+.marketing-operations-grid .marketing-operation-copy > :is(a, strong) {
+    display: block;
+    color: #0e1726;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.marketing-operations-grid .marketing-operation-copy > span:not(.marketing-operation-badge) {
+    display: block;
+    margin-top: 3px;
+    color: #58687f;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+.marketing-operations-grid .marketing-operation-badge {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #f0f3f7;
+    color: #58687f;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+.marketing-operations-grid .marketing-operation-badge.is-activa { color: #0a8f7a; background: #eaf7f4; }
+.marketing-operations-grid .marketing-operation-badge.is-proxima { color: #c64a0a; background: #fff5ef; }
+.marketing-operations-grid time { color: #8a96a8; font-size: 11px; font-weight: 700; line-height: 1.5; text-align: right; }
+.marketing-operations-grid .marketing-territory-arrow { color: #94a0b1; padding: 10px 0 10px 8px; }
+.marketing-operations-grid .marketing-operation-empty { margin: 28px 0; color: #748198; font-size: 11px; line-height: 1.5; }
+.marketing-operations-grid a:hover { text-decoration: underline; }
+.marketing-operations-grid a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+@media (min-width: 1200px) and (max-width: 1599.98px) {
+    .marketing-operations-grid { gap: 16px; }
+    .marketing-operations-grid .marketing-operation-card { padding: 16px; }
+    .marketing-operations-grid .marketing-monthly-metrics > div { padding-left: 8px; padding-right: 8px; }
+    .marketing-operations-grid .marketing-monthly-metrics > div:first-child { padding-left: 0; }
+    .marketing-operations-grid .marketing-activity-row { grid-template-columns: 34px minmax(0, 1fr); gap: 8px; }
+    .marketing-operations-grid .marketing-activity-row time { grid-column: 2; text-align: left; }
+    .marketing-operations-grid .marketing-activity-row .marketing-operation-icon { width: 34px; height: 34px; }
+}
+@media (min-width: 1200px) and (max-width: 1399.98px) {
+    .marketing-operations-grid { grid-template-columns: 1.4fr 1fr .9fr; gap: 12px; }
+    .marketing-operations-grid .marketing-monthly-metrics > div { padding-left: 4px; padding-right: 4px; }
+    .marketing-operations-grid .marketing-monthly-metrics h3 { font-size: 10px; overflow-wrap: normal; }
+    .marketing-operations-grid .marketing-monthly-metrics p { font-size: 10px; }
+}
+@media (max-width: 1199.98px) {
+    .marketing-operations-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .marketing-operations-grid .marketing-monthly { grid-column: 1 / -1; }
+}
 @media (max-width: 767.98px) {
-    .marketing-recent-heading {
-        padding: 16px;
-    }
-
-    .marketing-recent-title {
-        align-items: flex-start;
-    }
-
-    .marketing-recent-title-icon {
-        width: 42px;
-        height: 42px;
-        flex-basis: 42px;
-        font-size: 20px;
-    }
-
-    .marketing-recent-title h2 {
-        font-size: 14px;
-    }
-
-    .marketing-recent-table-wrap {
-        padding: 0 16px 16px;
-    }
+    .marketing-operations-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .marketing-operations-grid .marketing-operation-card { min-height: auto; padding: 16px; }
+    .marketing-operations-grid .marketing-monthly-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 0; margin-top: 16px; }
+    .marketing-operations-grid .marketing-monthly-metrics > div { padding: 12px; }
+    .marketing-operations-grid .marketing-monthly-metrics > div:nth-child(odd) { padding-left: 0; border-left: 0; }
+    .marketing-operations-grid .marketing-activity-row { grid-template-columns: 40px minmax(0, 1fr); }
+    .marketing-operations-grid .marketing-activity-row time { grid-column: 2; text-align: left; }
 }
-
 
 /* =========================================================
    PUBLICACIONES DEL DÍA · MARKETING
@@ -4484,7 +4463,6 @@
 /* Inicio de Marketing: acciones y datos de convocatorias legibles
    en móvil, sin alterar la tabla de publicaciones ni escritorio. */
 @media (max-width: 575.98px) {
-    .marketing-recent-publications .marketing-recent-heading,
     .marketing-coverage-heading,
     .marketing-pending-heading {
         flex-wrap: wrap;
@@ -4492,14 +4470,12 @@
         gap: 10px;
     }
 
-    .marketing-recent-publications .marketing-recent-heading > *,
     .marketing-coverage-heading > *,
     .marketing-pending-heading > * {
         min-width: 0;
         max-width: 100%;
     }
 
-    .marketing-recent-publications .marketing-recent-link,
     .marketing-expiring-panel .marketing-expiring-trigger {
         width: 100%;
         min-width: 0;
