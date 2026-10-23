@@ -10,7 +10,7 @@ MODE="${1:---check}"
 SITE="$HOME/domains/fundacionrededumex.org/public_html"
 WORK="$HOME/entregas-impe/qr-persistente-aliado-v6"
 BACKUPS="$HOME/respaldos-impe-qr-persistente-aliados-v6"
-REV="78a21d964fa08326812cf3f16df48f1b5c383aeb"
+REV="3140cb98f73499f3ffc4aa7fa234907292d40f8b"
 BASE="c7f0de765cbb55481af34266668b88344c073717"
 RAW="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE"
 CONT="app/controllers/CrearConvocatoriaController.php"
@@ -24,7 +24,7 @@ expect_hash() {
   case "$1" in
     "$CONT") echo "d4254ac584787ede796922baa78e7491527996cb";;
     "$SERV") echo "8ff4746383bb6e9705aba7364c2a09b5c337059b";;
-    "$JS") echo "29fc1bd8ba7e6f9cb81e4ee77a4c11a306113532";;
+    "$JS") echo "0cf62ecb5368bcf3cf6cd1e7f3c522564c150d55";;
     "$CSS") echo "5ecfebd91b5fd8bacbaae081a1a3d043bff885ad";;
     "$SQL") echo "2aa53362b5be9cb5b68b02c5a7731555738fe1fd";;
     "$MIG") echo "58be5ed04c323363e165c01cc82acfc4ab4bdff6";;
