@@ -1,6 +1,7 @@
-/* Presentación de Gestión y utilidades compartidas del editor. */
+/* Presentación del listado existente; no interviene en creación ni borradores. */
 (() => {
     'use strict';
+    // El generador comparte este cargador sin modificar la cabecera del CRM.
     const registroScript = new URL('registro_enlaces_amigables.js', document.currentScript.src);
     registroScript.search = new URL(document.currentScript.src).search;
     let registroPendiente;
