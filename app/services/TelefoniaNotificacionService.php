@@ -10,7 +10,7 @@ final class TelefoniaNotificacionService
     /** Claves de obligaciones verificadas en esta consulta; leer no las resuelve. */
     private array $operativasActuales=[];
     private static function esOperativa(string $llave): bool {
-        return str_starts_with($llave,'devolucion:') || str_starts_with($llave,'transferencia:') || str_starts_with($llave,'consulta:');
+        return str_starts_with($llave,'devolucion:') || str_starts_with($llave,'transferencia:');
     }
     public function __construct(?mysqli $db=null){
         $this->db=$db??(new Database())->connect();
@@ -66,6 +66,18 @@ final class TelefoniaNotificacionService
                 }
                 $date=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
                 $confirmed=$op['estado']==='SIN_RESPUESTA';
+                // Una devolución verdaderamente atendida cierra también el aviso
+                // antiguo del origen, no sólo el aviso del destinatario.
+                if($confirmed){
+                    $q=$this->db->prepare("SELECT devolucion FROM telefonia_disponibilidad
+                        WHERE origen_usuario=? AND destino_usuario=? AND referencia=?
+                          AND devolucion IN ('PENDIENTE','ATENDIDA') ORDER BY id DESC LIMIT 1");
+                    $sourceUser=(int)$op['origen_usuario'];$destUser=(int)$op['destino_usuario'];
+                    $ref=(string)$op['referencia'];
+                    $q->bind_param('iis',$sourceUser,$destUser,$ref);$q->execute();
+                    $task=$q->get_result()->fetch_assoc();$q->close();
+                    if(($task['devolucion']??'')==='ATENDIDA')continue;
+                }
                 // Cuando la PBX confirmó que no contestaron, el aviso anterior
                 // de 'sin confirmar' para el mismo intento ya está superado.
                 if($confirmed){
@@ -97,7 +109,7 @@ final class TelefoniaNotificacionService
         // Filtrar por estados vivos ANTES del LIMIT para no desplazar alertas recientes.
         $s=$this->db->prepare("SELECT * FROM telefonia_notificaciones
             WHERE usuario_id=? AND extension=? AND
-            (leida=0 OR llave LIKE 'devolucion:%' OR llave LIKE 'transferencia:%' OR llave LIKE 'consulta:%')
+            (leida=0 OR llave LIKE 'devolucion:%' OR llave LIKE 'transferencia:%')
             ORDER BY id DESC LIMIT 200");
         $s->bind_param('is',$user,$ext);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
         $rows=array_values(array_filter($rows,function($row){
