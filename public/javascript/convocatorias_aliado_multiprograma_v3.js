@@ -5,27 +5,43 @@
  */
 (() => {
   'use strict';
+  // El componente puede incluirse más de una vez en una vista personalizada.
+  if (window.__impeAliadoMultiV3Loaded) return;
+  window.__impeAliadoMultiV3Loaded = true;
   const init = () => {
     const modal = document.getElementById('modalCrearConvocatoria');
     const section = modal?.querySelector('[data-convocatoria-aliado-modulo]');
     const ctxNode = document.getElementById('impe-convocatoria-aliado-contexto');
-    if (!modal || !section || !ctxNode || section.dataset.multiV3 === '1') return;
+    if (!modal || !section || section.dataset.multiV3 === '1') return;
     const form = section.closest('form');
     const grid = section.closest('.system-form-grid');
     if (!form || !grid) return;
-    let context;
-    try { context = JSON.parse(ctxNode.textContent || '{}'); } catch (_) { return; }
-    if (!['manual','institucional'].includes(context.origen) || Number(context.id) < 1) return;
+    let context = {}, initializationError = '';
+    try { context = JSON.parse(ctxNode?.textContent || '{}'); }
+    catch (_) { initializationError = 'No se pudo leer el contexto del aliado. Reabre la convocatoria desde Convenios.'; }
+    if (!context || !['manual','institucional'].includes(context.origen) ||
+        !Number.isSafeInteger(Number(context.id)) || Number(context.id) < 1) {
+      initializationError = 'Falta un origen o identificador válido del aliado. Reabre la convocatoria desde Convenios.';
+    }
     const options = [...section.querySelectorAll('[data-impe-programa-option]')];
     const byCode = new Map();
     options.forEach(option => {
       const codigo = String(option.dataset.codigo || '');
       const clase = String(option.dataset.clasificacion || '');
-      if (!codigo || !clase || !/^[a-z0-9-]{2,64}$/.test(codigo)) return;
+      if (!/^[a-z0-9-]{2,64}$/.test(codigo) || !/^[a-z0-9-]{2,64}\|[a-z0-9-]{2,64}$/.test(clase)) {
+        initializationError = 'Hay un programa sin código o clasificación compatible. Revisa los programas autorizados del aliado.';
+        return;
+      }
       if (!byCode.has(codigo)) byCode.set(codigo, {codigo, nombre:option.querySelector('span')?.textContent?.trim() || codigo, clases:[]});
       if (!byCode.get(codigo).clases.includes(clase)) byCode.get(codigo).clases.push(clase);
     });
-    if (!byCode.size || byCode.size > 30) return;
+    if (!byCode.size && !initializationError) {
+      initializationError = 'El aliado no tiene programas con clasificación compatible para convocatorias. Revisa sus programas autorizados; no se puede guardar una publicación sin esa clasificación.';
+    }
+    if (byCode.size > 30) initializationError = 'El aliado supera el límite de 30 programas por publicación. Revisa su configuración.';
+    // Un contexto asociado nunca debe volver al guardado individual, ni publicar
+    // sólo una parte de los programas cuando una opción llega incompleta.
+    if (initializationError) byCode.clear();
     section.dataset.multiV3 = '1';
     form.noValidate = true;
     const dialog = modal.querySelector('.modal-dialog');
@@ -48,8 +64,15 @@
     const intro = section.querySelector('h3 + p');
     if (intro) intro.textContent = 'Cada programa tendrá título, fechas, disponibilidad e imagen independientes. El enlace y QR de Registro pertenecen al aliado y se comparten en todas las publicaciones.';
     const firstOption=options[0];
-    if (firstOption) firstOption.click(); // conserva validadores originales sin guardar un registro simple.
-    const errorBox = section.querySelector('[data-impe-error]');
+    if (firstOption && !initializationError) firstOption.click(); // conserva validadores originales sin guardar un registro simple.
+    let errorBox = section.querySelector('[data-impe-error]');
+    if (!errorBox) {
+      errorBox = document.createElement('div');
+      errorBox.className = 'alert alert-danger d-none mt-2';
+      errorBox.dataset.impeError = '';
+      errorBox.setAttribute('role','alert');
+      section.append(errorBox);
+    }
     const notify = message => {
       errorBox.textContent = message || '';
       errorBox.classList.toggle('d-none',!message);
@@ -114,6 +137,7 @@
     window.addEventListener('submit',async event=>{
       if (event.target !== form || !section.isConnected) return;
       event.preventDefault();event.stopImmediatePropagation();
+      if(initializationError){notify(initializationError);return;}
       if(processing) return;
       const csrf=window.IMPE_CSRF_TOKEN
         || form.querySelector('[name="csrf_token"]')?.value
@@ -164,12 +188,29 @@
       }catch(e){notify(e.message||'No se pudieron guardar las convocatorias.');}
       finally {processing=false;if(footer)footer.disabled=false;}
     },true);
+    if (footer) footer.disabled = Boolean(initializationError);
+    if (initializationError) notify(initializationError);
     modal.addEventListener('hidden.bs.modal',()=>{
       if(processing)return;
       // No limpiar datos mientras el usuario edita; reinicialización bajo
       // contexto de navegación normal conserva los campos del lote.
     });
   };
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
-  else init();
+  const boot = () => {
+    init();
+    const modal = document.getElementById('modalCrearConvocatoria');
+    if (!modal || !document.getElementById('impe-convocatoria-aliado-contexto') ||
+        modal.querySelector('[data-convocatoria-aliado-modulo][data-multi-v3="1"]')) return;
+    // Esperar el montaje del módulo V2 si sus scripts se resuelven más tarde.
+    const observer = new MutationObserver(() => {
+      init();
+      if (modal.querySelector('[data-convocatoria-aliado-modulo][data-multi-v3="1"]')) observer.disconnect();
+    });
+    observer.observe(modal,{childList:true,subtree:true});
+  };
+  document.addEventListener('show.bs.modal',event => {
+    if (event.target?.id === 'modalCrearConvocatoria') init();
+  });
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+  else boot();
 })();

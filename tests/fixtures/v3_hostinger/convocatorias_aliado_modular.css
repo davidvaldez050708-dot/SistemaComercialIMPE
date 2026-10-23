@@ -1,0 +1,24 @@
+/* Integración modular, activa sólo cuando la convocatoria proviene de Convenios */
+.convocatoria-aliado-modulo{border:1px solid var(--color-border,#dfe5ef);border-radius:14px;padding:16px;background:#f8fafc;min-width:0}
+.convocatoria-aliado-modulo-eyebrow{color:var(--color-primary,#273a8a);font-size:10px;font-weight:800;letter-spacing:.08em}
+.convocatoria-aliado-modulo h3{font-size:14px;font-weight:800;margin:7px 0;color:var(--color-text,#172642)}
+.convocatoria-aliado-modulo p{font-size:11px;line-height:1.55;color:var(--color-text-soft,#66768d);margin:0 0 12px}
+.convocatoria-aliado-modulo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.convocatoria-aliado-modulo-programa{min-width:0;min-height:52px;display:flex;gap:9px;align-items:center;padding:10px 12px;border:1px solid #dce5f0;border-radius:11px;background:#fff;color:#263853;cursor:pointer;text-align:left;font-size:11px;font-weight:750}
+.convocatoria-aliado-modulo-programa span{flex:1;min-width:0;overflow-wrap:anywhere}.convocatoria-aliado-modulo-programa i{color:#7389ab}
+.convocatoria-aliado-modulo-programa i:last-child{opacity:0}
+.convocatoria-aliado-modulo-programa:hover{border-color:#aebfde;background:#f7f9ff}
+.convocatoria-aliado-modulo-programa:focus-visible{outline:2px solid var(--color-primary,#273a8a);outline-offset:2px}
+.convocatoria-aliado-modulo-programa.is-selected{background:var(--color-primary-soft,#f0f4ff);border-color:var(--color-primary,#273a8a)}
+.convocatoria-aliado-modulo-programa.is-selected i:last-child{opacity:1;color:#138a72}
+.convocatoria-aliado-modulo-registro{margin-top:16px;padding:14px;border-radius:11px;border:1px solid #dce5f0;background:#fff}
+.convocatoria-aliado-modulo-registro-heading{display:flex;align-items:center;gap:10px;margin-bottom:12px;color:var(--color-primary,#273a8a)}
+.convocatoria-aliado-modulo-registro-heading div{display:grid;gap:3px;min-width:0}
+.convocatoria-aliado-modulo-registro-heading strong{font-size:12px;color:var(--color-text,#172642)}
+.convocatoria-aliado-modulo-registro-heading small{font-size:10px;color:var(--color-text-soft,#6b7280)}
+.convocatoria-aliado-modulo-acciones{display:flex;gap:8px;flex-wrap:wrap}.convocatoria-aliado-modulo-acciones .btn{font-size:10px}
+.convocatoria-aliado-modulo-url{display:flex;gap:7px;align-items:center;margin-top:12px;min-width:0}
+.convocatoria-aliado-modulo-url input{min-width:0;flex:1}.convocatoria-aliado-modulo-estado{margin:10px 0 0!important}
+.convocatoria-aliado-modulo-qr{text-align:center;margin-top:10px;padding:12px;border:1px solid #dce5f0;border-radius:10px}
+.convocatoria-aliado-modulo-qr canvas{width:min(100%,240px);height:auto;display:block;margin:0 auto 12px;image-rendering:pixelated}
+@media(max-width:575.98px){.convocatoria-aliado-modulo{padding:12px}.convocatoria-aliado-modulo-grid{grid-template-columns:1fr}.convocatoria-aliado-modulo-url{flex-direction:column;align-items:stretch}}
