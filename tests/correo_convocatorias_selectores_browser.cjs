@@ -3,6 +3,7 @@ const { chromium } = require(process.env.IMPE_PLAYWRIGHT_PATH || 'playwright');
 const fs=require('fs'), path=require('path'), cp=require('child_process'), assert=require('node:assert/strict');
 const root=process.cwd(), out=path.join(root,'tmp/prueba_correo_convocatorias_selectores');fs.mkdirSync(out,{recursive:true});
 const legacy=process.argv.includes('--legacy');
+const typography=process.argv.includes('--tipografia');
 const php="define('ROOT_PATH',$argv[1]);define('BASE_URL','https://impe-cv.test/');require $argv[1].'/app/views/correos/index.php';";
 const render=cp.spawnSync('C:/xampp/php/php.exe',['-r',php,root],{encoding:'utf8'});assert.equal(render.status,0,render.stderr);
 const html='<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
@@ -24,7 +25,7 @@ const originalLink=id=>({url:'https://impe-cv.test/index.php?controller=formular
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.IMPE_CHROME_PATH});
  try {
-  const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];let catalogs=0,sends=0,sentBody='';
+  const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];let catalogs=0,sends=0,sentBody='',drafts=0;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('https://impe-cv.test/**',async route=>{
    const url=new URL(route.request().url());
@@ -39,10 +40,15 @@ const originalLink=id=>({url:'https://impe-cv.test/index.php?controller=formular
     }
     if(action==='imagenConvocatoria')return route.fulfill({contentType:'image/png',body:image});
     if(action==='enviar'){sends++;sentBody=route.request().postData();return route.fulfill({json:{ok:true,mensaje:'Aceptación simulada',estado_entrega:'ACEPTADO'}});}
+    if(typography && action==='guardarBorrador'){
+     drafts++;const body=route.request().postData();assert.match(body,/Texto QA que debe permanecer/);assert.match(body,/manual.txt/);
+     assert.match(body,/name="convocatoria_id"\r\n\r\n1/);return route.fulfill({json:{ok:true,mensaje:'Borrador simulado'}});
+    }
     return route.fulfill({status:400,json:{ok:false}});
    }
    const local=path.join(root,url.pathname);
    if(!local.startsWith(root)||!fs.existsSync(local))return route.fulfill({status:404});
+   if(typography && url.pathname==='/public/css/correos_marketing.css')return route.fulfill({contentType:'text/css',body:cp.execFileSync('git',['show','8778e74c:public/css/correos_marketing.css'])});
    if(legacy && url.pathname==='/public/javascript/correo_convocatorias.js')return route.fulfill({contentType:'application/javascript',body:cp.execFileSync('git',['show','2ba65dc4:public/javascript/correo_convocatorias.js'])});
    return route.fulfill({body:fs.readFileSync(local),contentType:local.endsWith('.css')?'text/css':'application/javascript'});
   });
@@ -100,12 +106,14 @@ const originalLink=id=>({url:'https://impe-cv.test/index.php?controller=formular
   assert.equal(await page.locator('#selector_ajeno + .uniform-select [data-uniform-select-value]').count(),1,'Selector ajeno intacto');
   await choose(stateMenu,'11');await choose(agreementMenu,'9');await choose(callMenu,'1');
   await page.waitForFunction(()=>document.querySelector('[data-convocatoria-imagen-sha]').value.length===64);
+  if(typography)await require('./correo_modal_tipografia_qa.cjs')(page,root,out);
   await page.screenshot({path:path.join(out,'escritorio.png')});
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:path.join(out,'movil.png')});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Sin desbordamiento horizontal móvil');
   assert.equal(await page.locator('#modalCorreoMarketing .modal-footer').isVisible(),true);
-  assert.equal(catalogs,1,'Una consulta del catálogo');
+  assert.equal(catalogs,typography?2:1,'Una consulta por carga de página');
+  if(typography)assert.equal(drafts,1,'Un borrador exclusivamente interceptado');
   await page.locator('[data-marketing-mail-from]').fill('qa@rededucativamexico.org');
   await page.locator('[data-marketing-mail-to]').fill('destino@example.test');
   await page.locator('[data-marketing-mail-subject]').fill('Prueba QA');
