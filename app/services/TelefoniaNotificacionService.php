@@ -61,6 +61,9 @@ final class TelefoniaNotificacionService
         foreach((new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($user) as $op){
             $direct=$op['modo']==='DIRECTA';$source=(int)$op['origen_usuario']===$user;
             if($direct){
+                // Una respuesta posterior del destinatario tiene prioridad
+                // sobre la clasificación provisional del intento sin respuesta.
+                if(!empty($op['destino_atendida']))continue;
                 if(!in_array($op['estado'],['SIN_RESPUESTA','SIN_CONFIRMAR'],true)){
                     if(!empty($op['destino_atendida'])){$clear=$this->db->prepare("UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND extension=? AND llave IN (?,?)");$k1='transferencia:'.$op['id'].':'.$op['intento'].':SIN_RESPUESTA';$k2='transferencia:'.$op['id'].':'.$op['intento'].':SIN_CONFIRMAR';$clear->bind_param('isss',$user,$ext,$k1,$k2);$clear->execute();$clear->close();}continue;
                 }
