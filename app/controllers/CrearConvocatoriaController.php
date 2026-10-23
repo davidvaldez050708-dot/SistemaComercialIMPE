@@ -85,7 +85,8 @@ class CrearConvocatoriaController
                 case 'cargar':return $service->cargar($id);
                 case 'guardar':
                     if(strlen((string)($_POST['programas']??''))>40000)throw new DomainException('Borrador demasiado grande.',422);
-                    $data=json_decode((string)($_POST['programas']??''),true,64,JSON_THROW_ON_ERROR);
+                    try{$data=json_decode((string)($_POST['programas']??''),true,64,JSON_THROW_ON_ERROR);}
+                    catch(JsonException $error){throw new DomainException('El borrador contiene datos no válidos.',422);}
                     if(!is_array($data))throw new DomainException('Programas inválidos.',422);
                     return $service->guardar($id,$version,$key,$data);
                 case 'imagen':return $service->subir($id,$version,$key,(string)($_POST['programa']??''),$_FILES['imagen']??[]);

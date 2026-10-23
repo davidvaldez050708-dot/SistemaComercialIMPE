@@ -57,7 +57,7 @@ final class ConvocatoriaBorradorService
             $images[$i['programa_codigo']]=['referencia'=>$i['referencia'],'nombre'=>$i['nombre'],'mime'=>$i['mime'],'bytes'=>(int)$i['bytes'],'url'=>BASE_URL.'index.php?controller=crearConvocatoria&action=imagenBorrador&id='.$row['id'].'&programa='.rawurlencode($i['programa_codigo']).'&ref='.$i['referencia']];
         }
         $data=json_decode($row['datos'],true,512,JSON_THROW_ON_ERROR);$complete=[];
-        foreach($data as $code=>$fields)$complete[$code]=!empty(trim($fields['titulo']??''))&&!empty($fields['fecha_inicio'])&&!empty($fields['fecha_termino'])&&$fields['fecha_termino']>=$fields['fecha_inicio']&&in_array($fields['estado']??'', ['0','1'],true)&&!empty($fields['clasificacion'])&&isset($images[$code]);
+        foreach($data as $code=>$fields)$complete[$code]=(bool)($fields['completo']??false);
         return ['id'=>(int)$row['id'],'propietario_id'=>(int)$row['propietario_id'],'aliado_tipo'=>$row['aliado_tipo'],'aliado_id'=>(int)$row['aliado_id'],'territorio_id'=>(int)$row['territorio_id'],'version'=>(int)$row['version'],'estado'=>$row['estado'],'programas'=>(object)$data,'imagenes'=>(object)$images,'completitud'=>(object)$complete,'creado_at'=>$row['creado_at'],'actualizado_at'=>$row['actualizado_at'],'actualizado_por'=>(int)$row['actualizado_por'],'resultado'=>json_decode($row['resultado']??'null',true)];
     }
     public function cargar(int $id): array { return $this->vista($this->row($id)); }
@@ -153,7 +153,9 @@ final class ConvocatoriaBorradorService
             $this->query('INSERT INTO convocatoria_borrador_imagenes (borrador_id,programa_codigo,referencia,sha256,nombre,mime,bytes,actualizado_por) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE referencia=VALUES(referencia),sha256=VALUES(sha256),nombre=VALUES(nombre),mime=VALUES(mime),bytes=VALUES(bytes),actualizado_at=CURRENT_TIMESTAMP,actualizado_por=VALUES(actualizado_por)',[$id,$code,$ref,$hash,$name,$mime,(int)$file['size'],(int)$_SESSION['usuario_id']]);
             $data=json_decode($row['datos'],true,512,JSON_THROW_ON_ERROR);$data[$code]['actualizado_at']=date('Y-m-d H:i:s');$data[$code]['actualizado_por']=(int)$_SESSION['usuario_id'];
             $this->query('UPDATE convocatoria_borradores SET datos=? WHERE id=?',[json_encode($data,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$id]);
-        });if($oldPath&&is_file($oldPath))unlink($oldPath);return $result;}catch(Throwable $e){if($newPath&&is_file($newPath))unlink($newPath);throw $e;}
+        });}catch(Throwable $e){$this->limpiarArchivo($newPath);throw $e;}
+        // Una limpieza fallida nunca debe eliminar el archivo nuevo ya confirmado.
+        $this->limpiarArchivo($oldPath);return $result;
     }
     public function imagen(int $id,string $code,string $ref=''): array
     {
@@ -189,6 +191,12 @@ final class ConvocatoriaBorradorService
             foreach($this->query('SELECT referencia FROM convocatoria_borrador_imagenes WHERE borrador_id=?',[$id])->get_result()->fetch_all(MYSQLI_ASSOC) as $image)$paths[]=$this->path($id,$image['referencia']);
             $this->query("UPDATE convocatoria_borradores SET estado='descartado',clave_activa=NULL,datos='{}' WHERE id=?",[$id]);
             $this->query('DELETE FROM convocatoria_borrador_imagenes WHERE borrador_id=?',[$id]);
-        });foreach($paths as $path)if(is_file($path))unlink($path);return $result;
+        });foreach($paths as $path)$this->limpiarArchivo($path);return $result;
+    }
+    private function limpiarArchivo(?string $path): void
+    {
+        if(!$path||!is_file($path))return;
+        try{if(!@unlink($path))error_log('[borrador_v4] Limpieza de archivo privado obsoleto pendiente.');}
+        catch(Throwable $error){error_log('[borrador_v4] Limpieza de archivo privado obsoleto pendiente.');}
     }
 }

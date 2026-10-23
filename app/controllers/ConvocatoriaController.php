@@ -644,6 +644,9 @@ class ConvocatoriaController
                 throw new DomainException('El aliado no tiene un territorio válido.',422);
             }
             $enlace = (string)($contexto['url'] ?? '');
+            if ($enlace === '' && $borradorServicio !== null) {
+                throw new DomainException('Genera y habilita el enlace existente del aliado antes de publicar el borrador.',422);
+            }
             if ($enlace === '') {
                 if (strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') !== 0) {
                     throw new DomainException('Solicita a Marketing generar y habilitar el enlace de Registro antes de publicar.',422);
