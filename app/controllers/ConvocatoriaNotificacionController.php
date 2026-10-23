@@ -33,7 +33,10 @@ class ConvocatoriaNotificacionController
 
             echo json_encode([
                 'ok' => true,
-                'no_leidas' => $modelo->contarNoLeidas($usuarioId)+count($phone),
+                // La insignia conserva obligaciones telefónicas aun después de leerlas.
+                // Convocatorias siguen contabilizando únicamente las no leídas.
+                'no_leidas' => $modelo->contarNoLeidas($usuarioId)+count(array_filter($phone,
+                    static fn($a)=>(int)($a['leida']??0)===0||!empty($a['pendiente_operativo']))),
                 'notificaciones' => array_merge($phone,$modelo->obtenerPorUsuario($usuarioId, 20))
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } catch (Throwable $error) {
