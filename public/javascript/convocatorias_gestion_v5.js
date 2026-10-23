@@ -140,3 +140,154 @@
     },0),{once:true});
     window.IMPEConvocatoriasV5 = {render,detail,edit};
 })();
+
+
+/* IMPE_QR_INLINE_V5_20261023
+ * Reutiliza los controles y el motor QR ya existentes, sin duplicarlos.
+ * Se instala tras los manejadores del módulo para conservar su vista previa,
+ * descarga, copia y configuración de imagen central.
+ */
+(function () {
+    'use strict';
+
+    function instalarPersonalizadorEnConvocatoria() {
+        window.setTimeout(function () {
+            var modal = document.getElementById('modalCrearConvocatoria');
+            var formulario = modal && modal.querySelector('form.convocatoria-create-form');
+            var compartir = formulario && formulario.querySelector('[data-convocatoria-form-share]');
+            var modalQr = document.querySelector('[data-convocatoria-qr-modal]');
+            var editor = modalQr && modalQr.querySelector('.convocatoria-qr-workspace');
+            var ayuda = modalQr && modalQr.querySelector('.convocatoria-qr-help');
+            var generar = compartir && compartir.querySelector('[data-convocatoria-generate-qr]');
+            var urlGenerada = compartir && compartir.querySelector('[data-convocatoria-form-url]');
+            var resultado = compartir && compartir.querySelector('[data-convocatoria-form-result]');
+            var enlaceConvocatoria = formulario && formulario.querySelector('[data-convocatoria-link-input]');
+            var color = editor && editor.querySelector('[data-convocatoria-qr-dark]');
+            var enlaceVistaPrevia = editor && editor.querySelector('[data-convocatoria-qr-link]');
+
+            if (!formulario || !compartir || !editor || !generar || !color ||
+                formulario.querySelector('[data-convocatoria-qr-inline-v5]')) {
+                return;
+            }
+
+            var aliado = compartir.dataset.aliadoRegistroContexto === '1';
+            var panel = document.createElement('section');
+            panel.className = 'system-form-full convocatoria-qr-inline-v5';
+            panel.setAttribute('data-convocatoria-qr-inline-v5', '');
+            panel.hidden = true;
+            panel.innerHTML =
+                '<div class="convocatoria-qr-inline-heading">' +
+                    '<div class="convocatoria-qr-inline-title">' +
+                        '<span class="convocatoria-qr-inline-icon"><i class="bi bi-qr-code" aria-hidden="true"></i></span>' +
+                        '<div><span class="convocatoria-public-form-kicker">PERSONALIZACIÓN</span>' +
+                        '<h3>Diseño del código QR</h3>' +
+                        '<p>Personaliza el código y consulta los cambios en tiempo real.</p></div>' +
+                    '</div>' +
+                    '<button type="button" class="convocatoria-qr-inline-close" data-convocatoria-qr-inline-close ' +
+                        'aria-label="Cerrar personalizador"><i class="bi bi-x-lg" aria-hidden="true"></i></button>' +
+                '</div>' +
+                '<div class="convocatoria-qr-inline-body" data-convocatoria-qr-inline-body></div>';
+
+            var cuerpo = panel.querySelector('[data-convocatoria-qr-inline-body]');
+            cuerpo.appendChild(editor);
+            if (ayuda) cuerpo.appendChild(ayuda);
+            compartir.insertAdjacentElement('afterend', panel);
+
+            function urlActual() {
+                if (aliado) {
+                    if (compartir.dataset.aliadoRegistroHabilitado !== '1') return '';
+                    return String(compartir.dataset.aliadoRegistroUrl || '').trim();
+                }
+                if (!resultado || resultado.classList.contains('d-none')) return '';
+                return String(urlGenerada && urlGenerada.value || '').trim();
+            }
+
+            function ocultar() {
+                panel.hidden = true;
+                generar.setAttribute('aria-expanded', 'false');
+            }
+
+            function actualizarVistaPrevia() {
+                var enlace = urlActual();
+                if (!enlace) {
+                    ocultar();
+                    return;
+                }
+                if (aliado && urlGenerada) urlGenerada.value = enlace;
+                if (enlaceVistaPrevia) enlaceVistaPrevia.textContent = enlace;
+                // El controlador QR original escucha "input" y actualiza
+                // todos los parámetros y la descarga sin crear otro motor.
+                color.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            generar.setAttribute('aria-controls', 'convocatoriaQrPersonalizadorV5');
+            panel.id = 'convocatoriaQrPersonalizadorV5';
+            generar.setAttribute('aria-expanded', 'false');
+
+            // En convocatorias vinculadas, el enlace y QR son compartidos.
+            // No inventar un enlace ni habilitar uno que siga inactivo.
+            if (aliado) generar.disabled = urlActual() === '';
+
+            generar.addEventListener('click', function (event) {
+                var enlace = urlActual();
+                if (!enlace) return;
+                // Evita que el controlador original abra otro modal encima.
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                panel.hidden = false;
+                generar.setAttribute('aria-expanded', 'true');
+                actualizarVistaPrevia();
+                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, true);
+
+            panel.querySelector('[data-convocatoria-qr-inline-close]').addEventListener(
+                'click',
+                function () {
+                    ocultar();
+                    generar.focus();
+                }
+            );
+
+            // Si cambia la clasificación, caduca el enlace anterior.
+            var clasificacion = formulario.querySelector('[data-convocatoria-context-classification]');
+            ['input', 'change'].forEach(function (tipo) {
+                if (clasificacion) clasificacion.addEventListener(tipo, ocultar);
+            });
+
+            // El título también forma parte del enlace generado. Evitar que
+            // se guarde un QR/enlace anterior si se modifica después.
+            var titulo = formulario.querySelector('[data-convocatoria-context-title]');
+            if (titulo) titulo.addEventListener('input', function () {
+                if (!aliado && resultado && !resultado.classList.contains('d-none')) {
+                    var anterior = String(urlGenerada && urlGenerada.value || '');
+                    resultado.classList.add('d-none');
+                    if (urlGenerada) urlGenerada.value = '';
+                    if (enlaceConvocatoria && enlaceConvocatoria.value === anterior) {
+                        enlaceConvocatoria.value = '';
+                    }
+                    generar.disabled = true;
+                }
+                ocultar();
+            });
+
+            if (urlGenerada) urlGenerada.addEventListener('input', function () {
+                if (!panel.hidden) actualizarVistaPrevia();
+            });
+
+            // El vínculo del aliado puede habilitarse en la misma pantalla.
+            // Refrescar el botón cuando el módulo de aliado lo notifique.
+            compartir.addEventListener('impe:registro-aliado-actualizado', function () {
+                if (aliado) generar.disabled = urlActual() === '';
+                if (!panel.hidden) actualizarVistaPrevia();
+            });
+
+            if (modal) modal.addEventListener('hidden.bs.modal', ocultar);
+        }, 0);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', instalarPersonalizadorEnConvocatoria, { once: true });
+    } else {
+        instalarPersonalizadorEnConvocatoria();
+    }
+})();
