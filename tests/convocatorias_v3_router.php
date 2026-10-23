@@ -41,5 +41,6 @@ $puedeCrear=puedeCrearConvocatoriaDesdeConvenio();$texto=static fn($v)=>htmlspec
 </div></div><div class="modal-footer"><button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-system-save">Guardar convocatoria</button></div></form>
 </div></div></div>
 <script src="/bootstrap.js"></script><script>window.legacySubmits=0;document.querySelector('form').addEventListener('submit',e=>{e.preventDefault();window.legacySubmits++});</script>
-<?php require __DIR__.'/fixtures/v3_hostinger/aliado_programas_modular.php'; ?>
+<?php require (empty($_GET['legacy_assets']) && getenv('IMPE_V3_COMPONENT_PATH'))
+    ? getenv('IMPE_V3_COMPONENT_PATH') : __DIR__.'/fixtures/v3_hostinger/aliado_programas_modular.php'; ?>
 <script>document.addEventListener('DOMContentLoaded',()=>bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCrearConvocatoria')).show());</script></body></html>

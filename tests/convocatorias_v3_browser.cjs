@@ -3,8 +3,17 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
 const root=path.resolve(__dirname,'..'),base=process.env.IMPE_BASE_URL||'http://127.0.0.1:8101/',modules=process.env.BOOTSTRAP_MODULE_PATH||path.resolve(root,'../browser-deps/node_modules/bootstrap');
 assert.match(process.env.IMPE_DB_NAME||'',/^impe_test_handly_aliados[a-z0-9_]*$/);
 const old=execFileSync('git',['show','4b0c3abc:public/javascript/convocatorias_aliado_multiprograma_v3.js'],{cwd:root}),current=fs.readFileSync(path.join(root,'public/javascript/convocatorias_aliado_multiprograma_v3.js'));
-const server=spawn(process.env.PHP_BINARY||'php',['-S',new URL(base).host,'-t',root,'tests/convocatorias_v3_router.php'],{cwd:root,env:{...process.env,IMPE_TEST_ALLOW_ROUTER:'1'},stdio:['ignore','ignore','pipe']});let logs='';server.stderr.on('data',d=>logs+=d);
-(async()=>{let browser,count=0;let baseline=false,delay=false,corrupt='';const check=(ok,m)=>{assert.ok(ok,m);console.log('OK '+m);count++;};
+// Renderizar el componente existente con el mismo overlay de publicación.
+// La réplica mantiene la profundidad de __DIR__ y recursos reales para hash_file.
+const replica=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'impe-v3-recursos-'));
+for(const name of ['public/css/convocatorias_aliado_modular.css','public/javascript/convocatorias_aliado_modular.js','public/css/convocatorias_aliado_multiprograma_v3.css','public/javascript/convocatorias_aliado_multiprograma_v3.js']){
+ const destination=path.join(replica,name);fs.mkdirSync(path.dirname(destination),{recursive:true});
+ fs.copyFileSync(fs.existsSync(path.join(root,name))?path.join(root,name):path.join(root,'tests/fixtures/v3_hostinger',path.basename(name)),destination);
+}
+const component=path.join(replica,'app/views/convocatorias/partials/aliado_programas_modular.php');fs.mkdirSync(path.dirname(component),{recursive:true});
+fs.writeFileSync(component,execFileSync(process.env.PYTHON_BINARY||'python3',['-B','-c',"import sys;sys.path.insert(0,'tools');from publicar_convenios_v3_20261022 import versionar_componente;from pathlib import Path;sys.stdout.buffer.write(versionar_componente(Path('tests/fixtures/v3_hostinger/aliado_programas_modular.php').read_bytes()))"],{cwd:root}));
+const server=spawn(process.env.PHP_BINARY||'php',['-S',new URL(base).host,'-t',root,'tests/convocatorias_v3_router.php'],{cwd:root,env:{...process.env,IMPE_TEST_ALLOW_ROUTER:'1',IMPE_V3_COMPONENT_PATH:component},stdio:['ignore','ignore','pipe']});let logs='';server.stderr.on('data',d=>logs+=d);
+(async()=>{let browser,count=0;let baseline=false,delay=false,corrupt='',staleCache=false;const check=(ok,m)=>{assert.ok(ok,m);console.log('OK '+m);count++;};
 try{
  for(let i=0;i<70;i++){try{await fetch(base+'_fixture_v3');break;}catch{await new Promise(r=>setTimeout(r,100));}}
  browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
@@ -20,7 +29,7 @@ try{
   if(u.pathname.endsWith('/convocatorias_aliado_modular.js')&&delay)return r.fulfill({body:'setTimeout(()=>{'+fs.readFileSync(path.join(root,'tests/fixtures/v3_hostinger/convocatorias_aliado_modular.js'),'utf8')+'},50);',contentType:'application/javascript'});
   if(u.pathname.endsWith('/convocatorias_aliado_multiprograma_v3.js')){
    let prefix='';if(corrupt)prefix="(()=>{const mutate=()=>{const o=document.querySelector('[data-convocatoria-aliado-modulo] [data-impe-programa-option]');if(o)o.dataset."+(corrupt==='codigo'?'codigo':'clasificacion')+"='valor inválido';};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mutate);else mutate();})();\n";
-   return r.fulfill({body:prefix+(baseline?old:current).toString(),contentType:'application/javascript'});
+   return r.fulfill({body:prefix+(baseline||(staleCache&&u.searchParams.get('v')==='3')?old:current).toString(),contentType:'application/javascript'});
   }return r.continue();
  });
  const modal=page.locator('#modalCrearConvocatoria'),cards=modal.locator('.impe-aliado-multi-card'),button=modal.locator('[type=submit]');
@@ -31,6 +40,13 @@ try{
  if(!process.env.IMPE_V3_RESUME){
  baseline=true;await goto('iqj');check(await cards.count()===1,'baseline: un programa válido sí inicia V3');
  await goto('sin-clase');check(await cards.count()===0&&await button.textContent()==='Guardar convocatoria','baseline: sin clasificación retorna al formulario antiguo');
+ baseline=false;staleCache=true;
+ await page.goto(base+'_fixture_v3?caso=sin-clase&legacy_assets=1');await modal.waitFor({state:'visible'});
+ check(await button.textContent()==='Guardar convocatoria','reproduce V3 antiguo conservado con URL fija v=3');
+ await goto('sin-clase');
+ check(await button.textContent()==='Guardar convocatorias'&&await button.isDisabled(),'URL por contenido carga V3 actual y bloquea fallback antiguo');
+ check(await page.locator('script[src*="convocatorias_aliado_multiprograma_v3.js"]').evaluate(el=>/^[a-f0-9]{16}$/.test(new URL(el.src).searchParams.get('v'))),'versión SHA256 real renderizada por PHP');
+ staleCache=false;
  for(const width of [1440,1024,768,390,360]){
   await page.setViewportSize({width,height:900});baseline=true;await goto('ssp');const before=await capture('antes-ssp-'+width);
   baseline=false;await goto('ssp');const after=await capture('despues-ssp-'+width);check(before.equals(after),'SSP diseño aprobado idéntico píxel a píxel '+width);

@@ -28,6 +28,9 @@ $baseline=$view==='convenios'&&($_GET['baseline']??'')==='convenios'&&getenv('IM
 </head><body><main class="p-3">
 <?php
 if ($view==='convenios') {
+    require_once __DIR__.'/../app/helpers/PermissionHelper.php';
+    if ($role==='marketing') $_SESSION['permisos']=array_merge($_SESSION['permisos'],['convenios.ver','convocatorias.crear']);
+    $puedeCrearDesdeConvenio=puedeCrearConvocatoriaDesdeConvenio();
     require_once __DIR__.'/../app/models/CrearConvocatoriaModel.php';
     $m=new CrearConvocatoriaModel(); $convenios=$m->listarConveniosAliados(); $estados=$m->listarEstados(); $estructuraDisponible=true;
     require $baseline?getenv('IMPE_CONVENIOS_BASELINE_DIR').'/app/views/convocatorias/crear_desde_convenio.php':__DIR__.'/../app/views/convocatorias/crear_desde_convenio.php';
