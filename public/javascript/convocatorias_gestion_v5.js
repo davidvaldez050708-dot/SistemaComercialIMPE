@@ -1,6 +1,31 @@
-/* Presentación del listado existente; no interviene en creación ni borradores. */
+/* Presentación de Gestión y utilidades compartidas del editor. */
 (() => {
     'use strict';
+    const registroScript = new URL('registro_enlaces_amigables.js', document.currentScript.src);
+    registroScript.search = new URL(document.currentScript.src).search;
+    let registroPendiente;
+    const acortarRegistro = async value => {
+        if (!window.IMPERegistroEnlaces) {
+            if (!registroPendiente) {
+                registroPendiente = new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = registroScript.href;
+                    script.onload = () => {
+                        script.remove();
+                        if (window.IMPERegistroEnlaces) resolve();
+                        else reject(new Error('No se pudo cargar el generador de enlaces. Intenta nuevamente.'));
+                    };
+                    script.onerror = () => {
+                        script.remove();
+                        reject(new Error('No se pudo cargar el generador de enlaces. Intenta nuevamente.'));
+                    };
+                    document.head.append(script);
+                }).catch(error => { registroPendiente = null; throw error; });
+            }
+            await registroPendiente;
+        }
+        return window.IMPERegistroEnlaces.acortar(value);
+    };
     const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const identity = c => {
         const a = c.aliado || {};
@@ -138,5 +163,5 @@
         const query=new URLSearchParams(location.search),id=Number(query.get('reabrir_convocatoria'));if(!Number.isSafeInteger(id)||id<1)return;
         const top=Number(query.get('gestion_scroll'));if(Number.isFinite(top))window.scrollTo(0,Math.max(0,top));document.querySelector('.btn-ver-convocatoria[data-id="'+id+'"]')?.click();
     },0),{once:true});
-    window.IMPEConvocatoriasV5 = {render,detail,edit};
+    window.IMPEConvocatoriasV5 = {render,detail,edit,acortarRegistro};
 })();

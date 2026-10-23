@@ -4,7 +4,8 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];BASE='32b287c7631d64f94185637d03e90bf82dc81211'
 # La vista internacional fue retirada por el usuario en Hostinger. No forma
 # parte de esta entrega ni debe recrearse, incluso si permanece en el historial Git.
-FILES=['app/services/RegistroEnlaceService.php','registro/el-primer-paso-hacia-tu-meta-comienza-aqui/index.php','registro/el-primer-paso-hacia-tu-meta-comienza-aqui/.htaccess','tools/migrar_enlaces_registro_amigables.php','public/javascript/registro_enlaces_amigables.js','public/javascript/convocatoria_crear_compartido.js','app/controllers/FormularioController.php','app/services/AliadoRegistroService.php','app/models/ConvocatoriaModel.php','app/controllers/ConvocatoriaController.php','app/models/AliadoModel.php','app/views/layout/dashboard_head.php']
+# dashboard_head.php también queda fuera: Gestión carga su helper bajo demanda.
+FILES=['app/services/RegistroEnlaceService.php','registro/el-primer-paso-hacia-tu-meta-comienza-aqui/index.php','registro/el-primer-paso-hacia-tu-meta-comienza-aqui/.htaccess','tools/migrar_enlaces_registro_amigables.php','public/javascript/registro_enlaces_amigables.js','public/javascript/convocatoria_crear_compartido.js','app/controllers/FormularioController.php','app/services/AliadoRegistroService.php','app/models/ConvocatoriaModel.php','app/controllers/ConvocatoriaController.php','app/models/AliadoModel.php','public/javascript/convocatorias_gestion_v5.js']
 def git(ref,path):return subprocess.check_output(['git','show',ref+':'+path],cwd=ROOT)
 def pack(data):return None if data is None else base64.b64encode(gzip.compress(data,mtime=0)).decode()
 def main():

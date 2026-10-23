@@ -38,4 +38,10 @@ class RegistroEnlaces(v5.PublicacionV5):
         self.run_tool('--check');self.run_tool('--apply');self.assertEqual(file.read_bytes().replace(b'\r\n',b'\n'),v5.unpack(row['target']));self.assertNotIn(b'AliadoInternacionalService',file.read_bytes())
     def test_no_sql_ni_borradores(self):
         self.assertTrue(all(not row['path'].endswith('.sql') and 'Borrador' not in row['path'] for row in self.manifest['files']));self.assertNotIn('subprocess',(ROOT/'tools/publicar_registro_enlaces.py').read_text(encoding='utf-8'))
+    def test_cabecera_personalizada_intocable(self):
+        self.install();file=self.site/'app/views/layout/dashboard_head.php';file.parent.mkdir(parents=True,exist_ok=True);data=b'<?php // Cabecera modular: internacionales retirados\r\n$jsOpcionalHead = ["personalizado.js"];\r\n';file.write_bytes(data)
+        self.assertNotIn('app/views/layout/dashboard_head.php',{r['path'] for r in self.manifest['files']})
+        self.run_tool('--check');self.assertEqual(file.read_bytes(),data);out=self.run_tool('--apply');self.assertEqual(file.read_bytes(),data);self.run_tool('--restore',out.split('Respaldo: ')[1].splitlines()[0]);self.assertEqual(file.read_bytes(),data)
+    def test_cabecera_ausente_no_se_recrea(self):
+        self.install();file=self.site/'app/views/layout/dashboard_head.php';self.assertFalse(file.exists());self.run_tool('--check');self.run_tool('--apply');self.assertFalse(file.exists())
 if __name__=='__main__':unittest.main()

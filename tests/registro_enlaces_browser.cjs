@@ -35,8 +35,8 @@ const server=spawn(process.env.PHP_BINARY||'php',['-S',new URL(base).host,'-t',r
  try{await status(false);await page.goto(allyUrl);check(!(await page.locator('[name="nombre"]').count()),'Registro deshabilitado también bloquea alias');await page.goto(legacy);check(!(await page.locator('[name="nombre"]').count()),'Registro deshabilitado bloquea igualmente liga anterior');}finally{await status(true);}
  await page.goto(allyUrl);check(await page.locator('[name="nombre"]').isVisible(),'rehabilitar recupera mismo enlace corto');
  // El helper de navegador acorta los parámetros del editor general antes de dibujar QR.
- await publicContext.request.get(base+'_v5_session?role=cc');await page.goto(base+'_v5');await page.addScriptTag({url:base+'public/javascript/registro_enlaces_amigables.js'});
- const generated=await page.evaluate(async url=>{window.IMPE_CSRF_TOKEN='a'.repeat(64);return window.IMPERegistroEnlaces.acortar(url);},legacy+'&estado_id=1&convocatoria_ref=browser-ref');check(!generated.includes('?')&&generated.includes('/registro/el-primer-'),'helper del editor genera liga contextual limpia');
+ await publicContext.request.get(base+'_v5_session?role=cc');await page.goto(base+'_v5');
+ const generated=await page.evaluate(async url=>{window.IMPE_CSRF_TOKEN='a'.repeat(64);return window.IMPEConvocatoriasV5.acortarRegistro(url);},legacy+'&estado_id=1&convocatoria_ref=browser-ref');check(!generated.includes('?')&&generated.includes('/registro/el-primer-'),'helper del editor genera liga contextual limpia');
  const after=await(await auth.request.get(base+'_v5_stats')).json();check(JSON.stringify(before.rows)===JSON.stringify(after.rows)&&JSON.stringify(before.links)===JSON.stringify(after.links),'acortar no modifica convocatorias ni asociaciones existentes');
  check(errors.length===0&&!/PHP (?:Warning|Fatal|Notice)|Uncaught/.test(log),'sin errores JavaScript/PHP: '+errors.join('; '));console.log('PASS '+count+' comprobaciones HTTP/navegador de Registro amigable');
 }catch(e){console.error(e.stack);console.error(log.slice(-3500));process.exitCode=1;}finally{if(browser)await browser.close();server.kill();}})();

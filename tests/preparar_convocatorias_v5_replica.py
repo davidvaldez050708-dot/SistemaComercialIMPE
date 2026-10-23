@@ -18,7 +18,7 @@ def prepare(out,refresh=False):
                 # Hostinger tiene este generador en convocatoria_crear_compartido.js,
                 # no en el bloque inline que sustituye su personalización modular.
                 new=new.replace(b"buttonLink?.addEventListener('click', async function () {",b"buttonLink?.addEventListener('click', function () {")
-                new=new.replace(b"let url;\n            const selectedUrl = getSelectedUrl();\n            try { url = await window.IMPERegistroEnlaces.acortar(selectedUrl); }\n            catch(error) { showQrToast(error.message, true); return; }\n            if (selectedUrl !== getSelectedUrl()) return;",b'const url = getSelectedUrl();')
+                new=new.replace(b"let url;\n            const selectedUrl = getSelectedUrl();\n            try { url = await window.IMPEConvocatoriasV5.acortarRegistro(selectedUrl); }\n            catch(error) { showQrToast(error.message, true); return; }\n            if (selectedUrl !== getSelectedUrl()) return;",b'const url = getSelectedUrl();')
             if name in reviewed:
                 new=core.merge(reviewed[name],host.git(host.BASE,name),new,Path(temp))
             dest=out/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(new)

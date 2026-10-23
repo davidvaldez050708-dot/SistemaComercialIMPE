@@ -2454,7 +2454,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             let url;
             const selectedUrl = getSelectedUrl();
-            try { url = await window.IMPERegistroEnlaces.acortar(selectedUrl); }
+            try { url = await window.IMPEConvocatoriasV5.acortarRegistro(selectedUrl); }
             catch(error) { showQrToast(error.message, true); return; }
             if (selectedUrl !== getSelectedUrl()) return;
 

@@ -109,6 +109,7 @@ jobs:
           php tools/migrar_enlaces_registro_amigables.php --apply
           php tools/migrar_enlaces_registro_amigables.php --apply
           php tests/registro_enlaces_db.php
+          node tests/registro_enlaces_carga_browser.cjs
           node tests/registro_enlaces_browser.cjs
           IMPE_V5_QR_ONLY=1 node tests/convocatorias_v5_browser.cjs
       - uses: actions/upload-artifact@v4
