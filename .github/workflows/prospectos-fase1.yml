@@ -1,0 +1,71 @@
+name: Prospectos Fase 1
+on:
+  pull_request:
+    paths:
+      - 'app/controllers/ProspectoController.php'
+      - 'app/models/ProspectoModel.php'
+      - 'app/views/prospectos/**'
+      - 'public/css/prospectos_fase1.css'
+      - 'public/javascript/prospectos_fase1.js'
+      - 'tests/*prospectos_fase1*'
+      - 'tools/*prospectos_fase1*'
+      - '.github/workflows/prospectos-fase1.yml'
+  workflow_dispatch:
+jobs:
+  prospectos:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['33410:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33410
+      IMPE_DB_USER: root
+      IMPE_DB_NAME: impe_test_prospectos_fase1_ci
+      IMPE_BASE_URL: http://127.0.0.1:8130/
+      PLAYWRIGHT_MODULE_PATH: /tmp/prospectos-browser/node_modules/playwright
+      IMPE_BROWSER_DEPS: /tmp/prospectos-browser/node_modules
+      IMPE_PROSPECTOS_OUTPUT: /tmp/prospectos-visual
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, gd, dom
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/prospectos-browser playwright bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0
+      - run: /tmp/prospectos-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis y permisos existentes
+        run: |
+          php -l app/controllers/ProspectoController.php
+          php -l app/models/ProspectoModel.php
+          php -l app/views/prospectos/index.php
+          php -l app/views/prospectos/acceso_denegado.php
+          node --check public/javascript/prospectos_fase1.js
+          php tests/prospectos_acceso_permisos.php
+          python3 tests/publicacion_prospectos_fase1_test.py
+      - name: Esquema sintético y consultas de sólo lectura
+        run: |
+          php tests/prospectos_fase1_fixture.php
+          php tests/prospectos_fase1_db.php
+          IMPE_PROSPECTOS_PROBE_REAL=1 python3 tests/publicacion_prospectos_fase1_test.py Publicacion.test_preflight_real
+      - name: Navegador con el controlador y layout reales
+        run: node tests/prospectos_fase1_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prospectos-fase1-${{ strategy.job-index }}
+          path: /tmp/prospectos-visual
