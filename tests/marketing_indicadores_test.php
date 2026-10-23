@@ -67,6 +67,9 @@ kpiCheck($datos['estados_convenios']===2 && $datos['convenios_porcentaje']==6.3,
 kpiCheck($datos['total_estados']===32 && $datos['estados_cubiertos']===2 && $datos['cobertura_porcentaje']==6.3,'Cobertura real sin duplicados de estado');
 kpiCheck($datos['proximas']===2 && $datos['proximas_porcentaje']==66.7,'Hoy y día 7 incluidos, día 8/vencidas/inactivas excluidos');
 $inicial=$datos;
+$db->pdo->exec('UPDATE convocatorias SET estado=1 WHERE id=4');
+kpiCheck(count($conv->obtenerProximasFinalizarDashboard())===2,'Una vencida tampoco entra si su bandera sigue activa');
+$db->pdo->exec('UPDATE convocatorias SET estado=0 WHERE id=4');
 $db->pdo->exec("UPDATE convocatorias SET estado=0 WHERE id=1; INSERT INTO aliados_manuales VALUES(8,3,1)");
 [$cambiados]=kpiObtener($db,$conv);
 kpiCheck($cambiados['publicaciones']===6 && $cambiados['convenios']===6 && $cambiados['aliados']===7 && $cambiados['proximas']===1,'Se actualiza al cambiar datos, sin modificar código');
