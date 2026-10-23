@@ -188,8 +188,8 @@ $totalRecordatoriosSeguimiento = 0;
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu convocatoria-notification-menu">
                         <div class="topbar-reminder-header convocatoria-notification-header">
                             <div>
-                                <strong>Alertas de convocatorias</strong>
-                                <span>Activaciones automáticas y vencimientos próximos.</span>
+                                <strong>Alertas y telefonía</strong>
+                                <span>Convocatorias y llamadas pendientes. Leer no equivale a atender.</span>
                             </div>
                             <button
                                 type="button"
