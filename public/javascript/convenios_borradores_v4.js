@@ -337,7 +337,7 @@
     const config=surface.querySelector('[data-v5qr-logo-config]');
     const fileWrap=surface.querySelector('[data-v5qr-file-wrap]');
     const urlWrap=surface.querySelector('[data-v5qr-url-wrap]');
-    let localImage='',renderId=0;
+    let localImage='',renderId=0,correccionPrevia='M';
     function source(){return surface.querySelector('[name="impe_qr_v5_source"]:checked')?.value||'file';}
     function exporting(ready){buttons.forEach(b=>b.disabled=!ready);}
     function message(value,error=false){status.textContent=value;status.dataset.error=error?'1':'0';}
@@ -404,7 +404,14 @@
     }
     function toggleLogo() {
       config.hidden=!field('logo').checked;
-      field('ec').disabled=field('logo').checked;
+      if(field('logo').checked) {
+        if(!field('ec').disabled) correccionPrevia=field('ec').value;
+        field('ec').value='H';
+        field('ec').disabled=true;
+      } else {
+        if(field('ec').disabled) field('ec').value=correccionPrevia;
+        field('ec').disabled=false;
+      }
       surface.querySelector('[data-v5qr-logo-value]').textContent=field('logoSize').value+'%';
       fileWrap.hidden=source()!=='file';urlWrap.hidden=source()!=='url';
     }
@@ -436,6 +443,7 @@
         corners:'square',centers:'square',size:'600',margin:'4',ec:'M',logoSize:'20'
       }))field(name).value=value;
       field('transparent').checked=false;field('logo').checked=false;
+      field('ec').disabled=false;correccionPrevia='M';
       field('file').value='';field('url').value='';localImage='';
       surface.querySelector('[name="impe_qr_v5_source"][value="file"]').checked=true;
       toggleLogo();render();
