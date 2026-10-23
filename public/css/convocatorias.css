@@ -2293,6 +2293,165 @@
 
 
 /* Bienvenida del panel principal de Marketing. */
+/* Indicadores de Marketing: declaraciones visuales de dashboard_analista_boceto.css
+   y dashboard_analista_boceto_ajustes.css. Sólo se adapta la rejilla a cinco métricas. */
+.marketing-key-indicators {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 130px;
+    padding: 19px 20px;
+    display: grid;
+    grid-template-columns: 185px repeat(5, minmax(0, 1fr)) 180px;
+    align-items: center;
+    gap: 0;
+    border: 1px solid #dfe6ef;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 22px rgba(28, 46, 74, .035);
+}
+.marketing-key-indicators > * { min-width: 0; }
+.marketing-key-indicators .marketing-key-intro { padding-right: 18px; }
+.marketing-key-indicators h2 {
+    margin: 0 0 4px;
+    color: #183f76;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    line-height: 1.2;
+}
+.marketing-key-indicators .marketing-key-intro p {
+    margin: 0;
+    color: #748198;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+.marketing-key-indicators .marketing-key-item {
+    min-height: 82px;
+    align-self: stretch;
+    padding: 5px 19px 0;
+    border-left: 1px solid #e2e7ef;
+}
+.marketing-key-indicators .marketing-key-main { display: block; }
+/* El Analista también oculta sus iconos decorativos para alinear las cifras. */
+.marketing-key-indicators .marketing-key-icon { display: none; }
+.marketing-key-indicators strong {
+    display: block;
+    margin: 0 0 2px;
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 800;
+    color: #0e1726;
+    white-space: nowrap;
+}
+.marketing-key-indicators h3 {
+    margin: 0;
+    color: #58687f;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+.marketing-key-indicators .marketing-key-bar {
+    width: 100%;
+    height: 7px;
+    margin-top: 9px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e6ebf2;
+}
+.marketing-key-indicators .marketing-key-bar > span {
+    display: block;
+    height: 100%;
+    min-width: 0;
+    border-radius: inherit;
+    background: #4b8fd7;
+}
+.marketing-key-indicators .marketing-key-item > p {
+    margin: 6px 0 0;
+    color: #8a96a8;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+.marketing-key-indicators .marketing-key-action {
+    min-height: 82px;
+    padding-left: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-left: 1px solid #e2e7ef;
+}
+.marketing-key-indicators .marketing-key-details {
+    min-height: 52px;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #d9e4f2;
+    border-radius: 10px;
+    background: #f8fbff;
+    color: #17478c;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.3;
+    text-decoration: none;
+}
+.marketing-key-indicators .marketing-key-details > i:first-child {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: #edf4fc;
+}
+.marketing-key-indicators .marketing-key-details:hover { background: #f1f6fd; }
+.marketing-key-indicators .marketing-key-details:focus-visible {
+    outline: 2px solid #17478c;
+    outline-offset: 3px;
+}
+@media (min-width: 1400px) and (max-width: 1599.98px) {
+    .marketing-key-indicators { grid-template-columns: 165px repeat(5, minmax(0, 1fr)) 155px; }
+    .marketing-key-indicators .marketing-key-item { padding-left: 12px; padding-right: 12px; }
+}
+/* Cinco métricas requieren columnas más estrechas; la escala tipográfica no cambia. */
+@media (min-width: 1200px) and (max-width: 1399.98px) {
+    .marketing-key-indicators {
+        grid-template-columns: 125px repeat(3, minmax(0, 1fr)) minmax(122px, 1.15fr) minmax(0, 1fr) 135px;
+    }
+    .marketing-key-indicators .marketing-key-item { padding-left: 8px; padding-right: 8px; }
+    .marketing-key-indicators .marketing-key-action { padding-left: 8px; }
+    .marketing-key-indicators h3 { min-height: 33px; }
+}
+@media (max-width: 1199.98px) {
+    .marketing-key-indicators { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 0; }
+    .marketing-key-indicators .marketing-key-intro { grid-column: 1 / -1; padding: 0 0 8px; }
+    .marketing-key-indicators .marketing-key-action {
+        grid-column: 1 / -1;
+        min-height: auto;
+        padding: 9px 0 0;
+        justify-content: flex-start;
+        border-left: 0;
+        border-top: 1px solid #e7ebf1;
+    }
+    .marketing-key-indicators .marketing-key-item:nth-of-type(3n + 1) { border-left: 0; }
+}
+@media (max-width: 767.98px) {
+    .marketing-key-indicators { grid-template-columns: repeat(2, minmax(0, 1fr)); min-height: 118px; padding: 14px; }
+    .marketing-key-indicators h2 { font-size: 12px; }
+    .marketing-key-indicators .marketing-key-intro p { font-size: 10px; }
+    .marketing-key-indicators .marketing-key-item:nth-of-type(n) { min-height: 72px; padding: 3px 18px 0; border-left: 1px solid #e2e7ef; }
+    .marketing-key-indicators .marketing-key-item:nth-of-type(odd) { border-left: 0; }
+    .marketing-key-indicators strong { font-size: 21px; }
+    .marketing-key-indicators h3 { font-size: 10px; }
+    .marketing-key-indicators .marketing-key-item > p { margin-top: 5px; font-size: 9px; }
+    .marketing-key-indicators .marketing-key-details { min-height: 48px; font-size: 10px; }
+}
+@media (max-width: 380px) {
+    .marketing-key-indicators { padding: 12px; }
+    .marketing-key-indicators .marketing-key-item:nth-of-type(n) { padding-left: 9px; padding-right: 9px; }
+}
+
 .marketing-welcome-shell {
     margin-bottom: 16px;
 }
