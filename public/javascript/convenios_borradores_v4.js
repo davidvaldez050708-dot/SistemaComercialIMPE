@@ -262,6 +262,8 @@
         </div>
         <div class="impe-v5-qr-bottom">
           <p data-v5qr-status role="status" aria-live="polite">Código listo para personalizar.</p>
+          <div class="impe-v5-qr-save-status" data-v5qr-save-status role="status" aria-live="polite">Recuperando diseño del aliado…</div>
+          <button type="button" class="btn btn-system-save" data-v5qr-save disabled><i class="bi bi-floppy" aria-hidden="true"></i> Guardar diseño</button>
           <button type="button" class="btn btn-system-light" data-v5qr-reset><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Restablecer diseño</button>
         </div>
       </div>
@@ -338,8 +340,46 @@
     const fileWrap=surface.querySelector('[data-v5qr-file-wrap]');
     const urlWrap=surface.querySelector('[data-v5qr-url-wrap]');
     let localImage='',renderId=0,correccionPrevia='M';
+    let savedVersion=0,serverReady=false,saving=false,previewReady=false,dirty=false;
+    const saveButton=surface.querySelector('[data-v5qr-save]');
+    const saveStatus=surface.querySelector('[data-v5qr-save-status]');
+    const contextNode=modal.querySelector('#impe-convocatoria-aliado-contexto');
+    let allyContext={};
+    try { allyContext=JSON.parse(contextNode?.textContent||'{}'); } catch(_) {}
+    const getEndpoint=()=>{
+      const src=document.querySelector('[data-crear-convocatoria-module]')?.dataset.convocatoriaBaseUrl||location.href;
+      const url=new URL(src,location.href);
+      if(url.origin!==location.origin)throw Error('El servicio del QR no pertenece al CRM.');
+      url.search='';url.hash='';
+      url.searchParams.set('controller','crearConvocatoria');
+      url.searchParams.set('action','qrDiseno');
+      url.searchParams.set('aliado_tipo',String(allyContext.origen||''));
+      url.searchParams.set('aliado_id',String(allyContext.id||0));
+      return url;
+    };
+    const request=async (url,options={})=>{
+      const response=await fetch(url,{credentials:'same-origin',cache:'no-store',...options});
+      let json;
+      try {json=await response.json();}catch(_){throw Error('El servidor no devolvió un diseño válido.');}
+      if(!response.ok||!json.ok)throw Error(json.mensaje||'No fue posible consultar el diseño del QR.');
+      return json.datos;
+    };
     function source(){return surface.querySelector('[name="impe_qr_v5_source"]:checked')?.value||'file';}
-    function exporting(ready){buttons.forEach(b=>b.disabled=!ready);}
+    function exporting(ready) {
+      previewReady=ready;
+      buttons.forEach(b=>b.disabled=!ready);
+      saveButton.disabled=!ready||!serverReady||saving;
+    }
+    function saveMessage(text,error=false) {
+      saveStatus.textContent=text;
+      saveStatus.dataset.error=error?'1':'0';
+      saveStatus.dataset.dirty=dirty?'1':'0';
+    }
+    function markDirty() {
+      if(!serverReady)return;
+      dirty=true;
+      saveMessage('Cambios sin guardar');
+    }
     function message(value,error=false){status.textContent=value;status.dataset.error=error?'1':'0';}
     const loadImage=src=>new Promise((resolve,reject)=>{
       const image=new Image();image.crossOrigin='anonymous';
@@ -402,6 +442,91 @@
         message(error.message||'No se pudo actualizar el código QR.',true);
       }
     }
+
+    function currentConfig(){
+      const logo=field('logo').checked;
+      return {
+        dark:field('dark').value,light:field('light').value,
+        finder:field('finder').value,dots:field('dots').value,
+        corners:field('corners').value,centers:field('centers').value,
+        size:field('size').value,margin:field('margin').value,
+        ec:logo?'H':field('ec').value,
+        transparent:field('transparent').checked,logo:logo,
+        logoSize:Number(field('logoSize').value),
+        source:logo?source():'none',
+        url:logo&&source()==='url'?field('url').value.trim():''
+      };
+    }
+    async function restoreConfig(data){
+      if(!data||!data.config||!Number.isSafeInteger(Number(data.version))) {
+        throw Error('El servidor devolvió una configuración de QR inválida.');
+      }
+      const c=data.config;
+      for(const name of ['dark','light','finder','dots','corners','centers','size','margin','ec','logoSize']){
+        if(c[name]!==undefined&&field(name))field(name).value=String(c[name]);
+      }
+      field('transparent').checked=Boolean(c.transparent);
+      field('logo').checked=Boolean(c.logo);
+      const method=c.source==='url'?'url':'file';
+      const radio=surface.querySelector('[name="impe_qr_v5_source"][value="'+method+'"]');
+      if(radio)radio.checked=true;
+      field('url').value=String(c.url||'');
+      field('file').value='';
+      localImage=c.logo&&c.source==='file'?String(data.logo_data_uri||''):'';
+      savedVersion=Number(data.version);
+      correccionPrevia=String(c.ec||'M');
+      toggleLogo();
+      dirty=false;
+      saveMessage(savedVersion>0?'Diseño guardado y asociado a este aliado':'Todavía no hay diseño guardado');
+      if(!wrap.classList.contains('d-none'))await render();
+    }
+    async function loadSaved(){
+      serverReady=false;saveButton.disabled=true;
+      saveMessage('Recuperando diseño del aliado…');
+      try {
+        if(!['manual','institucional'].includes(allyContext.origen)||Number(allyContext.id)<1) {
+          throw Error('No fue posible identificar el aliado del QR.');
+        }
+        const data=await request(getEndpoint());
+        await restoreConfig(data);
+        serverReady=true;
+        saveButton.disabled=!previewReady||saving;
+      } catch(error) {
+        serverReady=false;saveButton.disabled=true;
+        saveMessage(error.message||'No fue posible recuperar el diseño. No se ha guardado nada.',true);
+      }
+    }
+    saveButton.addEventListener('click',async()=>{
+      if(!serverReady||saving||!previewReady)return;
+      saving=true;saveButton.disabled=true;
+      saveMessage('Guardando diseño del QR…');
+      try {
+        const body=new FormData();
+        const token=window.IMPE_CSRF_TOKEN||modal.querySelector('[name="csrf_token"]')?.value||
+                    document.querySelector('meta[name="csrf-token"]')?.content||'';
+        if(!token)throw Error('Sesión caducada: recarga el CRM.');
+        body.set('csrf_token',token);
+        body.set('aliado_tipo',String(allyContext.origen||''));
+        body.set('aliado_id',String(allyContext.id||''));
+        body.set('version',String(savedVersion));
+        body.set('config',JSON.stringify(currentConfig()));
+        if(field('logo').checked&&source()==='file'&&field('file').files?.[0]) {
+          body.set('logo',field('file').files[0]);
+        }
+        const result=await request(getEndpoint(),{method:'POST',body});
+        await restoreConfig(result);
+        if(field('logo').checked&&source()==='file'&&!localImage) {
+          throw Error('El servidor no pudo devolver la imagen central guardada.');
+        }
+        dirty=false;
+        saveMessage('Diseño guardado correctamente · se utilizará para este aliado');
+      }catch(error){
+        dirty=true;
+        saveMessage((error.message||'No se pudo guardar el diseño.')+' Los cambios siguen en pantalla.',true);
+      }finally{
+        saving=false;saveButton.disabled=!previewReady||!serverReady;
+      }
+    });
     function toggleLogo() {
       config.hidden=!field('logo').checked;
       if(field('logo').checked) {
@@ -417,10 +542,12 @@
     }
     surface.addEventListener('input',event=>{
       if(event.target===field('file')||event.target===field('url'))return;
+      markDirty();
       if(event.target===field('logoSize'))surface.querySelector('[data-v5qr-logo-value]').textContent=event.target.value+'%';
       if(!wrap.classList.contains('d-none'))render();
     });
     surface.addEventListener('change',event=>{
+      markDirty();
       if(event.target===field('file')) {
         const file=event.target.files?.[0];
         if(!file){localImage='';render();return;}
@@ -436,8 +563,10 @@
       if(event.target===field('logo')||event.target.matches('[name="impe_qr_v5_source"]'))toggleLogo();
       if(!wrap.classList.contains('d-none'))render();
     });
+    field('url').addEventListener('input',()=>markDirty());
     field('url').addEventListener('change',()=>{if(field('logo').checked&&source()==='url')render();});
     surface.querySelector('[data-v5qr-reset]').addEventListener('click',()=>{
+      markDirty();
       for(const [name,value] of Object.entries({
         dark:'#223a84',light:'#ffffff',finder:'#223a84',dots:'square',
         corners:'square',centers:'square',size:'600',margin:'4',ec:'M',logoSize:'20'
@@ -449,6 +578,7 @@
       toggleLogo();render();
     });
     toggleLogo();
+    loadSaved();
     button.addEventListener('click',()=>{
       // El listener existente generó primero el QR y reveló su contenedor.
       if(!wrap.classList.contains('d-none'))render();
