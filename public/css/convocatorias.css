@@ -2817,6 +2817,34 @@
     .marketing-operations-grid .marketing-activity-row time { grid-column: 2; text-align: left; }
 }
 
+/* Resumen mensual compacto: no modifica las otras tarjetas ni Indicadores Clave. */
+.marketing-operations-grid .marketing-operation-card.marketing-monthly {
+    align-self: start;
+    min-height: 312px;
+    padding-block: 16px;
+}
+.marketing-operations-grid .marketing-monthly h2 { font-size: 16px; margin-top: 4px; }
+.marketing-operations-grid .marketing-monthly .marketing-operation-description { margin-top: 6px; font-size: 10px; }
+.marketing-operations-grid .marketing-monthly .marketing-monthly-metrics { margin-top: 18px; }
+.marketing-operations-grid .marketing-monthly .marketing-monthly-metrics > div { padding-block: 14px; }
+.marketing-operations-grid .marketing-monthly .marketing-monthly-metrics strong { font-size: 28px; }
+.marketing-operations-grid .marketing-monthly .marketing-monthly-metrics h3 { margin-top: 8px; font-size: 11px; }
+.marketing-operations-grid .marketing-monthly .marketing-monthly-metrics p { margin-top: 5px; font-size: 10px; }
+@media (min-width: 1200px) {
+    .marketing-operations-grid .marketing-operation-card.marketing-monthly {
+        height: 82%;
+        min-height: min-content;
+    }
+}
+@media (min-width: 1200px) and (max-width: 1399.98px) {
+    .marketing-operations-grid .marketing-monthly .marketing-monthly-metrics h3 { font-size: 10px; }
+}
+@media (max-width: 767.98px) {
+    .marketing-operations-grid .marketing-operation-card.marketing-monthly { min-height: auto; padding-block: 12px; }
+    .marketing-operations-grid .marketing-monthly .marketing-monthly-metrics { margin-top: 12px; gap: 10px 0; }
+    .marketing-operations-grid .marketing-monthly .marketing-monthly-metrics > div { padding-block: 10px; }
+}
+
 /* =========================================================
    PUBLICACIONES DEL DÍA · MARKETING
    ========================================================= */
