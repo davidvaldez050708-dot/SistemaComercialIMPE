@@ -133,12 +133,18 @@
     const footerLabel=modal.querySelector('.modal-title');
     if(footerLabel) footerLabel.textContent='Nueva convocatoria · '+entries.length+' programas';
     let processing=false;
+    const draft = modal.dataset.borradorV4 === '1'
+      ? window.IMPEConvocatoriaDraftV4?.attach({modal,form,entries,context,notify,footer}) : null;
+    const lifecycle = new AbortController();
+    modal.addEventListener('impe:editor-destroyed',()=>lifecycle.abort(),{once:true});
     // Capturar en window antes de los manejadores heredados del modal y el
     // formulario único: no disparar jamás guardar() en un lote multiprograma.
     window.addEventListener('submit',async event=>{
       if (event.target !== form || !section.isConnected) return;
       event.preventDefault();event.stopImmediatePropagation();
       if(initializationError){notify(initializationError);return;}
+      if (draft) { await draft.publish(); return; }
+      if (modal.dataset.borradorV4 === '1') { notify('No se pudo iniciar el guardado del borrador. Reabre el editor.'); return; }
       if(processing) return;
       const csrf=window.IMPE_CSRF_TOKEN
         || form.querySelector('[name="csrf_token"]')?.value
@@ -188,7 +194,7 @@
         window.location.assign(next.href);
       }catch(e){notify(e.message||'No se pudieron guardar las convocatorias.');}
       finally {processing=false;if(footer)footer.disabled=false;}
-    },true);
+    },{capture:true,signal:lifecycle.signal});
     if (footer) footer.disabled = Boolean(initializationError);
     if (initializationError) notify(initializationError);
     modal.addEventListener('hidden.bs.modal',()=>{

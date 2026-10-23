@@ -397,6 +397,7 @@ class ConvocatoriaModel
 
     /** Transacción común: evita lotes de convocatorias parcialmente guardados. */
     public function iniciarLote(): void { $this->connection->begin_transaction(); }
+    public function conexionLote(): mysqli { return $this->connection; }
     public function confirmarLote(): void { $this->connection->commit(); }
     public function cancelarLote(): void { $this->connection->rollback(); }
 

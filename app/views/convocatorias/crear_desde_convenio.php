@@ -438,3 +438,8 @@ $fecha = static function ($valor) {
 </div>
 
 
+<?php if (!empty($puedeCrearDesdeConvenio)): ?>
+<link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/convocatorias.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/convocatorias.css'),0,16) ?>">
+<link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/convenios_borradores_v4.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/convenios_borradores_v4.css'),0,16) ?>">
+<script defer src="<?= $texto(BASE_URL) ?>public/javascript/convenios_borradores_v4.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/convenios_borradores_v4.js'),0,16) ?>"></script>
+<?php endif; ?>

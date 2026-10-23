@@ -598,14 +598,31 @@ class ConvocatoriaController
             $respuesta(403, ['ok'=>false,'mensaje'=>'No tienes permiso para publicar convocatorias de este aliado.']);
         }
         $entradas = $_POST['programas'] ?? null;
-        if (!is_array($entradas) || count($entradas) < 1 || count($entradas) > 30) {
-            $respuesta(422, ['ok'=>false,'mensaje'=>'No se recibieron los programas de la convocatoria.']);
-        }
         $modelo = null;
+        $borradorServicio = null;
+        $borradorId = (int)($_POST['borrador_id'] ?? 0);
         $loteIniciado = false;
         $imagenesNuevas = [];
         $imagenOriginal = $_FILES['imagen'] ?? null;
         try {
+            if ($borradorId > 0) {
+                require_once __DIR__ . '/../services/ConvocatoriaBorradorService.php';
+                $modelo = new ConvocatoriaModel();
+                $modelo->iniciarLote();$loteIniciado = true;
+                $borradorServicio = new ConvocatoriaBorradorService($modelo->conexionLote());
+                $borrador = $borradorServicio->paraPublicar($borradorId,(int)($_POST['version'] ?? 0));
+                if ($borrador['aliado_tipo'] !== $origenTipo || (int)$borrador['aliado_id'] !== $origenId) {
+                    throw new DomainException('El borrador no corresponde a este aliado.',403);
+                }
+                if ($borrador['estado'] === 'publicado') {
+                    $modelo->confirmarLote();$loteIniciado = false;
+                    $respuesta(200,json_decode($borrador['resultado'],true,512,JSON_THROW_ON_ERROR));
+                }
+                $entradas = json_decode($borrador['datos'],true,512,JSON_THROW_ON_ERROR);
+            }
+            if (!is_array($entradas) || count($entradas) < 1 || count($entradas) > 30) {
+                throw new DomainException('No se recibieron los programas de la convocatoria.',422);
+            }
             [$entradas,$imagenesNormalizadas] = ProgramaEducativo::lote($entradas, (array)($_FILES['imagenes'] ?? []));
             $_FILES['imagenes'] = $imagenesNormalizadas;
             $servicio = new AliadoRegistroService((new Database())->connect());
@@ -627,6 +644,9 @@ class ConvocatoriaController
                 throw new DomainException('El aliado no tiene un territorio válido.',422);
             }
             $enlace = (string)($contexto['url'] ?? '');
+            if ($enlace === '' && $borradorServicio !== null) {
+                throw new DomainException('Genera y habilita el enlace existente del aliado antes de publicar el borrador.',422);
+            }
             if ($enlace === '') {
                 if (strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') !== 0) {
                     throw new DomainException('Solicita a Marketing generar y habilitar el enlace de Registro antes de publicar.',422);
@@ -670,22 +690,33 @@ class ConvocatoriaController
                     'error'=>$_FILES['imagenes']['error'][$codigo] ?? UPLOAD_ERR_NO_FILE,
                     'size'=>$_FILES['imagenes']['size'][$codigo] ?? 0
                 ];
-                if ((int)$archivo['error'] === UPLOAD_ERR_NO_FILE) {
+                if ($borradorServicio === null && (int)$archivo['error'] === UPLOAD_ERR_NO_FILE) {
                     $errores[] = 'La imagen es obligatoria para ' . $codigo . '.';
                 }
                 if ($errores) {
                     throw new DomainException(implode(' ', $errores),422);
                 }
+                if ($borradorServicio !== null) {
+                    try { $borradorServicio->imagen($borradorId,$codigo); }
+                    catch (DomainException $error) {
+                        if ($error->getCode() !== 404) throw $error;
+                        throw new DomainException('La imagen es obligatoria para ' . $codigo . '.',422);
+                    }
+                }
                 $procesadas[]=['codigo'=>$codigo,'tipo'=>$tipo,'subtipo'=>$subtipo,
                     'datos'=>$datos,'archivo'=>$archivo];
             }
-            $modelo = new ConvocatoriaModel();
-            $modelo->iniciarLote();
-            $loteIniciado = true;
+            if ($modelo === null) {
+                $modelo = new ConvocatoriaModel();
+                $modelo->iniciarLote();
+                $loteIniciado = true;
+            }
             $ids = [];
             foreach ($procesadas as $item) {
                 $_FILES['imagen'] = $item['archivo'];
-                $imagen = $this->procesarImagen('');
+                $imagen = $borradorServicio !== null
+                    ? $borradorServicio->copiarImagenPublica($borradorId,$item['codigo'])
+                    : $this->procesarImagen('');
                 if ($imagen['error'] !== '' || empty($imagen['nueva'])) {
                     throw new DomainException($imagen['error'] ?: 'Falta la imagen del programa.',422);
                 }
@@ -709,6 +740,12 @@ class ConvocatoriaController
                 }
                 $ids[] = (int)$id;
             }
+            $resultado = [
+                'ok'=>true,'cantidad'=>count($ids),'ids'=>$ids,
+                'mensaje'=>count($ids).' convocatorias registradas correctamente.',
+                'url'=>BASE_URL.'index.php?controller=convocatoria&action=index&territorio_id='.$territorioId
+            ];
+            if ($borradorServicio !== null) $borradorServicio->publicado($borradorId,$resultado);
             $modelo->confirmarLote();
             $loteIniciado = false;
             if ($origenTipo === 'institucional') {
@@ -721,11 +758,7 @@ class ConvocatoriaController
             }
             if ($imagenOriginal === null) unset($_FILES['imagen']);
             else $_FILES['imagen'] = $imagenOriginal;
-            $respuesta(200,[
-                'ok'=>true,'cantidad'=>count($ids),'ids'=>$ids,
-                'mensaje'=>count($ids).' convocatorias registradas correctamente.',
-                'url'=>BASE_URL.'index.php?controller=convocatoria&action=index&territorio_id='.$territorioId
-            ]);
+            $respuesta(200,$resultado);
         } catch (Throwable $error) {
             if ($loteIniciado && $modelo !== null) {
                 try { $modelo->cancelarLote(); }
@@ -736,7 +769,7 @@ class ConvocatoriaController
             else $_FILES['imagen'] = $imagenOriginal;
             error_log('[convocatoria_multiprograma] '.$error->getMessage());
             $status = $error instanceof DomainException &&
-                in_array((int)$error->getCode(),[403,419,422,503],true)
+                in_array((int)$error->getCode(),[403,404,409,419,422,503],true)
                 ? (int)$error->getCode() : 500;
             $respuesta($status,[
                 'ok'=>false,
