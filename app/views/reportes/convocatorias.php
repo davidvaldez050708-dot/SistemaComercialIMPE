@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__ . '/../../helpers/ProgramaEducativo.php';
 $reporteConvocatorias = is_array($reporteConvocatorias ?? null)
     ? $reporteConvocatorias
     : [];
+require_once __DIR__ . '/../../helpers/ProgramaEducativo.php';
 
 $resumen = is_array($reporteConvocatorias['resumen'] ?? null)
     ? $reporteConvocatorias['resumen']

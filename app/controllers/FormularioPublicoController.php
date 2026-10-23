@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 
 require_once __DIR__ . '/../models/FormularioRegistroModel.php';
 

@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 
 require_once __DIR__ . '/ReporteNombreArchivoService.php';
+require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 
 class ReporteConvocatoriaPdfService
 {
