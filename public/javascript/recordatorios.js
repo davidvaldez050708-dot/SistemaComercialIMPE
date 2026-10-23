@@ -444,7 +444,9 @@
                     const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
                     const estadoVisual = estadoVisibleRecordatorio(recordatorio);
                     return (
-                        '<a class="topbar-reminder-item" '+(Number(recordatorio.telefonia_id)>0?'data-telefonia-id="'+Number(recordatorio.telefonia_id)+'" ':'')+'href="' + url + '">' +
+                        '<a class="topbar-reminder-item' +
+                            (Number(recordatorio.telefonia_id)>0 && Number(recordatorio.leida||0)===0 ? ' is-unread' : '') +
+                            '" '+(Number(recordatorio.telefonia_id)>0?'data-telefonia-id="'+Number(recordatorio.telefonia_id)+'" ':'')+'href="' + url + '">' +
                             '<span class="topbar-reminder-icon">' +
                                 '<i class="bi ' + escapar(recordatorio.icono || 'bi-bell') + '"></i>' +
                             '</span>' +
