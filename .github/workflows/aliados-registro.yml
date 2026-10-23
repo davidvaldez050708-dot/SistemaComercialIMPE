@@ -129,6 +129,7 @@ jobs:
           python3 -m py_compile tools/publicar_diseno_programas_aliados.py
           python3 -m py_compile tools/publicar_aliados_convenios_v2.py
           python3 -m py_compile tools/publicar_ajustes_aliados_v3.py
+          python3 tests/publicacion_bachillerato_unificacion_test.py
       - name: Migración e integración con base real aislada
         run: |
           mkdir -p /tmp/respaldo-aliados
@@ -164,7 +165,6 @@ jobs:
           python3 tests/publicacion_convenios_etapa3_hostinger_test.py
           python3 tests/publicacion_convenios_v3_integracion_test.py
           python3 tests/publicacion_convocatorias_general_test.py
-          python3 tests/publicacion_bachillerato_unificacion_test.py
       - name: Navegador real, QR, HTTP, seguridad y concurrencia
         run: |
           node tests/aliados_registro_browser.cjs
