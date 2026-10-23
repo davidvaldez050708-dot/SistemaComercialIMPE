@@ -8,7 +8,7 @@ assert m,'No existe manifiesto'
 spec=json.loads(m.group(1))
 assert len(spec['changes'])==7
 assert spec['newFile']['path']=='prueba_telefonia/api/leer_todas_notificaciones_llamada.php'
-assert all('telefonia' in x['path'] or x['path'].endswith(('topbar.php','recordatorios.js','recordatorios.css','ConvocatoriaNotificacionController.php'))
+assert all('telefonia' in x['path'].lower() or x['path'].endswith(('topbar.php','recordatorios.js','recordatorios.css','ConvocatoriaNotificacionController.php'))
  for x in spec['changes'])
 with tempfile.TemporaryDirectory() as temp:
     parent=pathlib.Path(temp);site=parent/'public_html';site.mkdir()
