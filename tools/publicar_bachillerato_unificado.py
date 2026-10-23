@@ -22,6 +22,60 @@ def validate(name,data):
         raise RuntimeError('CONFLICTO: referencia activa al programa retirado: '+name)
 
 
+def overlay_modelo_convocatoria(data):
+    """Only add the three reviewed identity hooks; keep every other byte/flow."""
+    normalized=data.replace(b'\r\n',b'\n')
+    if not normalized.startswith(b'<?php\n'):
+        raise RuntimeError('CONFLICTO: cabecera PHP del modelo desconocida.')
+    if len(re.findall(br'\bclass\s+ConvocatoriaModel\b',normalized))!=1:
+        raise RuntimeError('CONFLICTO: clase ConvocatoriaModel ambigua.')
+    anchor=br"(?m)^[ \t]*require_once[ \t]+__DIR__[ \t]*\.[ \t]*['\"]/\.\./\.\./config/db_connection\.php['\"];[ \t]*\n"
+    matches=list(re.finditer(anchor,normalized))
+    if len(matches)!=1:
+        raise RuntimeError('CONFLICTO: conexión del modelo no reconocida.')
+    helper=b"require_once __DIR__ . '/../helpers/ProgramaEducativo.php';"
+    if normalized.count(helper)==0:
+        pos=matches[0].end()
+        normalized=normalized[:pos]+helper+b'\n'+normalized[pos:]
+    elif normalized.count(helper)!=1:
+        raise RuntimeError('CONFLICTO: dependencia del helper duplicada.')
+    hook=b'        $datos = ProgramaEducativo::entrada($datos);'
+    for name in (b'crear',b'actualizar'):
+        pattern=(br'(?m)^[ \t]*public function '+name+br'\([^{}\n]*\)[ \t]*\n[ \t]*\{[ \t]*\n')
+        functions=list(re.finditer(pattern,normalized))
+        if len(functions)!=1 or b'$datos' not in functions[0].group():
+            raise RuntimeError('CONFLICTO: firma del método '+name.decode('ascii')+' no revisada.')
+        pos=functions[0].end()
+        if normalized[pos:pos+len(hook)]==hook:
+            continue
+        # If the hook occurs elsewhere we cannot safely infer its execution order.
+        if normalized.count(hook)>2:
+            raise RuntimeError('CONFLICTO: normalización duplicada o desplazada.')
+        normalized=normalized[:pos]+hook+b'\n'+normalized[pos:]
+    if normalized.count(hook)!=2:
+        raise RuntimeError('CONFLICTO: normalización ausente o duplicada.')
+    return normalized.replace(b'\n',b'\r\n') if b'\r\n' in data else normalized
+
+
+def overlay_modelo_con_verificacion(row,current,core):
+    base=core.unpack(row['base'])
+    target=core.unpack(row['target'])
+    if core.sha(target)!=row['sha256']:
+        raise RuntimeError('Entrega corrupta: '+row['path'])
+    # The surgical fallback is allowed only while the delivery delta remains
+    # exactly the three hooks verified against the historical base.
+    if core.lf(overlay_modelo_convocatoria(base))!=core.lf(target):
+        raise RuntimeError('CONFLICTO: cambió el alcance aprobado del modelo.')
+    if current is None:
+        raise RuntimeError('CONFLICTO: falta ConvocatoriaModel.php en Hostinger.')
+    revised=overlay_modelo_convocatoria(current)
+    if core.lf(revised)==core.lf(current):
+        raise RuntimeError('CONFLICTO: el modelo no necesita sólo la unificación prevista.')
+    validate(row['path'],core.lf(revised))
+    print('CONCILIACIÓN QUIRÚRGICA: '+row['path']+' (tres líneas, personalizaciones conservadas)')
+    return revised
+
+
 def load_core():
     spec=importlib.util.spec_from_file_location('publicador_base',str(Path(__file__).with_name('publicar_aliados_registro.py')))
     core=importlib.util.module_from_spec(spec);spec.loader.exec_module(core)
@@ -36,7 +90,12 @@ def load_core():
             try:
                 result=original(candidate,current,stage);validate(row['path'],core.lf(result));accepted[core.lf(result)]=result
             except RuntimeError as error:failures.append(str(error))
-        if not accepted:raise RuntimeError(failures[0])
+        if not accepted:
+            if (row['path']=='app/models/ConvocatoriaModel.php'
+                    and current is not None
+                    and any('CONFLICTO: personalización superpuesta' in e for e in failures)):
+                return overlay_modelo_con_verificacion(row,current,core)
+            raise RuntimeError(failures[0])
         if len(accepted)!=1:raise RuntimeError('CONFLICTO: las revisiones anteriores producen candidatos distintos; SITIO INTACTO.')
         return next(iter(accepted.values()))
     core.prepare_candidate=prepare
