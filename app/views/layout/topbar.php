@@ -240,6 +240,15 @@ $totalRecordatoriosSeguimiento = 0;
 
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu">
                         <div class="topbar-reminder-header">
+                            <?php if ($puedeUsarTelefoniaTopbar && !$esMarketingTopbar &&
+                                    ($puedeRecibirTelefoniaTopbar || ((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')))): ?>
+                                <button type="button" class="convocatoria-notification-read-all"
+                                    data-phone-notification-read-all
+                                    data-phone-notification-read-all-url="<?= BASE_URL ?>prueba_telefonia/api/leer_todas_notificaciones_llamada.php"
+                                    title="Marcar avisos telefónicos como leídos; las tareas pendientes permanecen">
+                                    Marcar llamadas como leídas
+                                </button>
+                            <?php endif; ?>
                             <?php if ($esAdministradorTopbar): ?>
                                 <strong>Notificaciones administrativas</strong>
                                 <span>Supervisión global de reuniones, seguimientos y convocatorias.</span>
