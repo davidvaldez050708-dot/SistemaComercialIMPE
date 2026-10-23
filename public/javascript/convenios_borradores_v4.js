@@ -206,14 +206,6 @@
   if (window.__impeQrConveniosV5) return;
   window.__impeQrConveniosV5 = true;
   const installed = new WeakSet();
-  const labels = {
-    square: 'Cuadrado',
-    dots: 'Puntos',
-    rounded: 'Redondeado',
-    'extra-rounded': 'Muy redondeado',
-    classy: 'Clásico',
-    'classy-rounded': 'Clásico redondeado'
-  };
   const html = String.raw`
     <div class="impe-v5-qr-heading">
       <span class="impe-v5-qr-symbol"><i class="bi bi-sliders2" aria-hidden="true"></i></span>
@@ -304,11 +296,15 @@
         style==='rounded'?p*.24:style==='extra-rounded'?p*.46:style==='classy'?p*.30:p*.44);
     }
   }
-  function drawFinder(ctx,x,y,p,color,corner,center) {
+  function drawFinder(ctx,x,y,p,color,corner,center,background,transparent) {
     const px=x*p,py=y*p,side=7*p,outer=corner==='square'?0:corner==='dot'?side/2:p*2;
     ctx.fillStyle=color;rounded(ctx,px,py,side,side,outer);
-    ctx.fillStyle='#ffffff';rounded(ctx,px+p,py+p,side-2*p,side-2*p,
+    ctx.save();
+    if(transparent)ctx.globalCompositeOperation='destination-out';
+    else ctx.fillStyle=background;
+    rounded(ctx,px+p,py+p,side-2*p,side-2*p,
       corner==='square'?0:corner==='dot'?(side-2*p)/2:p*1.15);
+    ctx.restore();
     ctx.fillStyle=color;rounded(ctx,px+2*p,py+2*p,3*p,3*p,center==='dot'?1.5*p:0);
   }
   function getUrl(modal) {
@@ -384,7 +380,7 @@
         corners.forEach(([x,y])=>{
           // Trasladar el origen a la zona del QR, que incluye margen de seguridad.
           ctx.save();ctx.translate(off,off);
-          drawFinder(ctx,x,y,p,finder,field('corners').value,field('centers').value);ctx.restore();
+          drawFinder(ctx,x,y,p,finder,field('corners').value,field('centers').value,light,field('transparent').checked);ctx.restore();
         });
         if(enabled) {
           const image=await loadImage(logoSrc);
@@ -424,6 +420,7 @@
         if(!/^image\/(png|jpeg|webp)$/i.test(file.type)||file.size>2*1024*1024){
           localImage='';field('file').value='';message('Utiliza una imagen PNG, JPG o WEBP de máximo 2 MB.',true);exporting(false);return;
         }
+        exporting(false);
         const reader=new FileReader();
         reader.onload=()=>{localImage=String(reader.result||'');render();};
         reader.onerror=()=>{message('No se pudo leer la imagen.',true);exporting(false);};
