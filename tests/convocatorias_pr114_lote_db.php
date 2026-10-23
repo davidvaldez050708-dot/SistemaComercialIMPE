@@ -37,6 +37,10 @@ try {
 } catch(Throwable $e) {$m->cancelarLote();throw $e;}
 transactionCheck($count($observer,'convocatorias')===$baseline+3,'commit único del lote');
 transactionCheck($count($db,'marketing_aliado_convocatorias_origen')===$links+2 && $count($db,'marketing_aliado_manual_convocatorias')===$manualLinks+2,'ambas relaciones V2/V3 sin duplicados');
+// Compatibilidad: una petición histórica con 286 conserva sus asociaciones,
+// pero escribe la identidad canónica en tablas con FK al catálogo actual.
+$programasGuardados=$db->query("SELECT programa_codigo FROM marketing_aliado_manual_convocatorias WHERE convocatoria_id IN ($a,$b) ORDER BY programa_codigo")->fetch_all(MYSQLI_ASSOC);
+transactionCheck(array_column($programasGuardados,'programa_codigo')===['bachillerato-general','ingles'],'alias histórico 286 se guarda como General en el modelo PR114');
 $m->iniciarLote();$thrown=false;
 try {$m->crear($commercial,[1],true);$m->crear(array_replace($commercial,['manual_id'=>999999999]),[1],true);}
 catch(Throwable $e) {
