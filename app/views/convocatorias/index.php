@@ -782,6 +782,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/convocatorias_aliado_multiprograma_v3.css?v=<?= substr(hash_file('sha256', __DIR__.'/../../../public/css/convocatorias_aliado_multiprograma_v3.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/convocatorias_gestion_v5.css?v=<?= substr(hash_file('sha256', __DIR__.'/../../../public/css/convocatorias_gestion_v5.css'),0,16) ?>">
+<script src="<?= BASE_URL ?>public/vendor/qrcode-generator/qrcode.js"></script>
 <script src="<?= BASE_URL ?>public/javascript/convocatorias_gestion_v5.js?v=<?= substr(hash_file('sha256', __DIR__.'/../../../public/javascript/convocatorias_gestion_v5.js'),0,16) ?>"></script>
 <div class="convocatoria-territory-context">
     <a

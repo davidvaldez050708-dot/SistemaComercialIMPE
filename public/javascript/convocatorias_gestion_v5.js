@@ -39,7 +39,7 @@
                 '<div class="table-responsive"><table class="table users-table align-middle mb-0 convocatoria-month-table"><thead><tr>' +
                 ['Imagen','Convocatoria y programa','Aliado y procedencia','Periodo','Territorio','Enlace','Estatus','Acciones'].map(x=>'<th scope="col">'+x+'</th>').join('') +
                 '</tr></thead><tbody>'+m.rows.map(c=>row(c,rowOf(c))).join('')+'</tbody></table></div></section>').join('');
-            return '<section class="convocatoria-program-group" data-modalidad="'+escape(code)+'"><h3 class="convocatoria-program-heading">'+escape(program.title)+' <span>'+program.rows.length+'</span></h3>'+body+'</section>';
+            return '<section class="convocatoria-program-group" data-modalidad="'+escape(code)+'"><div class="convocatoria-program-heading convocatoria-month-group-header"><div class="convocatoria-month-group-title"><i class="bi bi-mortarboard convocatoria-month-group-icon" aria-hidden="true"></i><h3>'+escape(program.title)+'</h3></div><span class="convocatoria-month-group-count">'+program.rows.length+' '+(program.rows.length===1?'convocatoria':'convocatorias')+'</span></div>'+body+'</section>';
         }).join('');
     };
     const info = (label,value) => '<div class="user-detail-info-row"><div class="user-detail-info-icon"><i class="bi bi-info-circle" aria-hidden="true"></i></div><div class="user-detail-info-label">'+escape(label)+'</div><div class="user-detail-info-value">'+escape(value || '—')+'</div></div>';
@@ -59,6 +59,31 @@
             const head=make('div','impe-aliado-multi-card-head');
             const heading=make('div');heading.append(make('small','','PUBLICACIÓN DEL ALIADO'),make('h3'),make('p','','Edita esta convocatoria conservando su programa, aliado y enlace de Registro.'));const origin=make('span','impe-aliado-multi-shared-tag');origin.dataset.v5EditOrigin='';head.append(heading,origin);shell.append(head);
             const shared=make('div','convocatoria-edit-shared');shared.append(url.parentElement);shell.append(shared);
+            const qrActions=make('div','convocatoria-edit-qr-actions');
+            const qrButton=(label,icon)=>{const button=make('button','btn btn-system-light');button.type='button';const glyph=make('i','bi '+icon);glyph.setAttribute('aria-hidden','true');button.append(glyph,make('span','',label));qrActions.append(button);return button;};
+            const viewQr=qrButton('Ver QR','bi-qr-code'),downloadQr=qrButton('Descargar PNG','bi-download');viewQr.dataset.v5ViewQr='';downloadQr.dataset.v5DownloadQr='';
+            const qrPanel=make('div','convocatoria-edit-qr');qrPanel.id='convocatoria-editar-qr';qrPanel.hidden=true;
+            const canvas=make('canvas');canvas.width=canvas.height=600;canvas.setAttribute('role','img');canvas.setAttribute('aria-label','Código QR del enlace de Registro guardado');
+            const qrText=make('div');qrText.append(make('strong','','QR de Registro'),make('p','','Puedes volver a descargarlo cuando lo necesites. Corresponde al enlace guardado de esta publicación.'));qrPanel.append(canvas,qrText);
+            viewQr.setAttribute('aria-controls',qrPanel.id);viewQr.setAttribute('aria-expanded','false');
+            const qrError=make('div','alert alert-warning convocatoria-edit-qr-error');qrError.dataset.v5QrError='';qrError.setAttribute('role','alert');qrError.hidden=true;
+            shared.append(qrActions,qrPanel,qrError);
+            const drawQr=()=>{
+                qrError.hidden=true;
+                try{
+                    const savedUrl=String(modal.__v5Publication?.enlace_registro||'');
+                    if(!savedUrl)throw new Error('Esta publicación no tiene un enlace de Registro guardado.');
+                    if(!window.qrcode)throw new Error('No se pudo cargar el generador QR. Cierra el editor y vuelve a abrir la página.');
+                    const qr=window.qrcode(0,'M');qr.addData(savedUrl);qr.make();
+                    const ctx=canvas.getContext('2d');if(!ctx)throw new Error('No se pudo dibujar el QR en este navegador.');
+                    canvas.width=canvas.height=600;ctx.fillStyle='#fff';ctx.fillRect(0,0,600,600);
+                    const modules=qr.getModuleCount(),size=Math.floor(600/(modules+10)),offset=Math.floor((600-modules*size)/2);ctx.fillStyle='#273a8a';
+                    for(let y=0;y<modules;y++)for(let x=0;x<modules;x++)if(qr.isDark(y,x))ctx.fillRect(offset+x*size,offset+y*size,size,size);
+                    qrPanel.hidden=false;viewQr.setAttribute('aria-expanded','true');return true;
+                }catch(error){qrPanel.hidden=true;viewQr.setAttribute('aria-expanded','false');qrError.textContent=error.message;qrError.hidden=false;return false;}
+            };
+            viewQr.addEventListener('click',drawQr);
+            downloadQr.addEventListener('click',()=>{if(!drawQr())return;const link=make('a');link.download='registro-convocatoria-'+Number(modal.__v5Publication.id)+'-qr.png';link.href=canvas.toDataURL('image/png');link.click();});
             const card=make('section','impe-aliado-multi-card');card.dataset.v5EditIdentity='';
             const title=make('div','impe-aliado-multi-card-head');const description=make('div');description.append(make('small','','PROGRAMA'),make('h4'),make('p','','Se actualizará únicamente esta publicación.'));title.append(description,make('span','impe-aliado-multi-shared-tag','Registro y QR compartidos'));card.append(title);
             const field=name=>{const node=form.querySelector('[name="'+name+'"]');const wrap=node.parentElement;wrap.classList.add('impe-aliado-multi-field');return wrap;};
@@ -85,6 +110,10 @@
             });
         }
         modal.__v5Publication=c;modal.dataset.v5Dirty='0';
+        shell.querySelector('.convocatoria-edit-qr').hidden=true;shell.querySelector('[data-v5-qr-error]').hidden=true;
+        shell.querySelector('canvas').getContext('2d')?.clearRect(0,0,600,600);
+        shell.querySelector('[data-v5-view-qr]').setAttribute('aria-expanded','false');
+        shell.querySelectorAll('[data-v5-view-qr],[data-v5-download-qr]').forEach(button=>button.disabled=!c.enlace_registro);
         modal.querySelector('.modal-dialog').classList.add('impe-aliado-multi-dialog','modal-xl');
         shell.querySelector('h3').textContent=c.aliado?.nombre||'Publicación territorial';shell.querySelector('h4').textContent=c.programa_nombre;
         shell.querySelector('[data-v5-edit-origin]').textContent=c.aliado?.procedencia||'Publicación territorial';

@@ -23,6 +23,42 @@ try{
  const list=async(query={})=>await(await context.request.get(endpoint('listadoFiltrado',{territorio_id:'1',tipo:'bachillerato',...query}))).json();
  const go=async(query={})=>{await page.goto(base+'_v5?'+new URLSearchParams({territorio_id:'1',tipo:'bachillerato',...query}));await page.locator('[data-convocatorias-listado] tbody').first().waitFor();};
  await session('marketing');await go();
+ if(process.env.IMPE_V5_QR_ONLY==='1'){
+  const deps=path.resolve(bootstrap,'..'),decode=require(path.join(deps,'jsqr')),{PNG}=require(path.join(deps,'pngjs'));
+  const before=await stats(),posts=[];page.on('request',r=>{if(r.method()==='POST')posts.push(r.url());});
+  const current=(await list({buscar:'IQJ'})).convocatorias.find(c=>c.titulo.includes('editada después'));assert.ok(current?.enlace_registro);
+  const edit=page.locator('#modalEditarConvocatoria');
+  const open=async(c,query={})=>{await go(query);await page.locator(`tr[data-convocatoria-id="${c.id}"] .btn-editar-convocatoria`).click();await edit.waitFor({state:'visible'});await page.waitForFunction(()=>!bootstrap.Modal.getInstance(document.getElementById('modalEditarConvocatoria'))._isTransitioning);};
+  const close=async()=>{await edit.locator('.btn-close').click();await edit.waitFor({state:'hidden'});await page.waitForFunction(()=>!document.querySelector('.modal-backdrop'));};
+  const canvasUrl=async()=>{const url=await edit.locator('canvas').evaluate(c=>c.toDataURL('image/png')),pixels=PNG.sync.read(Buffer.from(url.split(',')[1],'base64'));return decode(pixels.data,pixels.width,pixels.height)?.data;};
+  check(await page.locator('.convocatoria-program-heading.convocatoria-month-group-header .convocatoria-month-group-icon.bi-mortarboard').count()>0,'programas reutilizan encabezado e icono institucional');
+  check(await page.locator('.convocatoria-program-heading h3').evaluateAll(nodes=>nodes.every(n=>getComputedStyle(n).fontWeight==='800'&&getComputedStyle(n).fontSize==='12.5px')),'títulos de programa conservan tipografía institucional');
+  check(await page.locator('.convocatoria-program-heading .convocatoria-month-group-count').evaluateAll(nodes=>nodes.every(n=>/convocatorias?$/.test(n.textContent))),'contadores de programa usan cápsula y texto institucional');
+  await open(current);check(await edit.locator('[data-v5-view-qr].btn-system-light').isVisible()&&await edit.locator('[data-v5-download-qr].btn-system-light').isVisible(),'Ver QR y Descargar PNG accesibles en el editor existente');
+  check(await edit.locator('.convocatoria-edit-qr').isHidden(),'QR oculto inicialmente sin ocupar espacio');
+  await edit.locator('[data-v5-view-qr]').click();check(await canvasUrl()===current.enlace_registro,'QR de Vinculación decodifica exactamente el enlace guardado');
+  check(await edit.locator('[data-v5-view-qr]').getAttribute('aria-expanded')==='true'&&await edit.locator('canvas').getAttribute('aria-label')!==null,'panel QR anuncia expansión y texto accesible');
+  const download=await Promise.all([page.waitForEvent('download'),edit.locator('[data-v5-download-qr]').click()]);const file=path.join(out,'registro-qr.png');await download[0].saveAs(file);const png=PNG.sync.read(fs.readFileSync(file));
+  check(png.width===600&&png.height===600&&decode(png.data,png.width,png.height)?.data===current.enlace_registro,'PNG descargado 600×600 recupera el mismo enlace sin token nuevo');
+  check(await edit.evaluate(m=>m.dataset.v5Dirty)==='0','ver y descargar QR no marca la publicación como modificada');
+  await close();await open(current);check(await edit.locator('.convocatoria-edit-qr').isHidden()&&await edit.locator('[data-v5-view-qr]').getAttribute('aria-expanded')==='false','reabrir editor limpia el QR anterior');
+  await page.evaluate(()=>{window.__testQr=window.qrcode;window.qrcode=undefined;});await edit.locator('[data-v5-view-qr]').click();
+  check(await edit.locator('[data-v5-qr-error]').isVisible()&&await edit.locator('.convocatoria-edit-qr').isHidden(),'fallo del generador muestra aviso institucional sin QR obsoleto');
+  await page.evaluate(()=>{window.qrcode=window.__testQr;});await edit.locator('[data-v5-view-qr]').click();check(await edit.locator('[data-v5-qr-error]').isHidden()&&await canvasUrl()===current.enlace_registro,'reintento recupera QR y limpia el aviso');
+  await page.evaluate(c=>window.IMPEConvocatoriasV5.edit({...c,enlace_registro:''}),current);
+  check(await edit.locator('[data-v5-view-qr]').isDisabled()&&await edit.locator('[data-v5-download-qr]').isDisabled()&&await edit.locator('.convocatoria-edit-qr').isHidden(),'sin enlace guardado no se ofrece un QR incorrecto');
+  await close();
+  const manual=(await list({territorio_id:'2',tipo:'titulacion'})).convocatorias.find(c=>c.aliado?.tipo==='manual'&&c.enlace_registro);assert.ok(manual);check(manual.enlace_registro!==current.enlace_registro,'prueba utiliza dos aliados con enlaces distintos');
+  await open(manual,{territorio_id:'2',tipo:'titulacion'});await edit.locator('[data-v5-download-qr]').click();check(await canvasUrl()===manual.enlace_registro,'descarga directa dibuja QR del aliado manual seleccionado');await close();
+  for(const width of [1440,1024,768,390,360]){
+   await page.setViewportSize({width,height:1000});await go({buscar:'IQJ'});await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:path.join(out,'qr-listado-'+width+'.png'),fullPage:true});
+   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'encabezados sin desbordamiento a '+width);
+   await open(current,{buscar:'IQJ'});await edit.locator('[data-v5-view-qr]').click();await edit.locator('canvas').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(out,'qr-editor-'+width+'.png')});
+   check(await edit.locator('.modal-body').evaluate(n=>n.scrollWidth<=n.clientWidth+1)&&await edit.locator('canvas').evaluate(c=>c.getBoundingClientRect().width>=190),'QR legible sin desbordamiento del editor a '+width);await close();
+  }
+  check(posts.length===0&&JSON.stringify(before)===JSON.stringify(await stats()),'consultar y descargar no envía POST ni modifica publicaciones o relaciones');
+  check(errors.length===0&&!/PHP (?:Warning|Fatal|Notice)|Uncaught/.test(logs),'QR y encabezados sin errores JavaScript/PHP');console.log('PASS '+count+' comprobaciones QR y encabezados');return;
+ }
  if(process.env.IMPE_V5_CORRECTIONS_ONLY==='1'){
   check(await page.locator('[data-v5-modalidad]').evaluateAll(nodes=>nodes.every(n=>n.classList.contains('convocatoria-status-tab'))),'modalidades reutilizan pestañas institucionales');
   check(await page.locator('[data-convocatorias-listado] [data-v5-consultar-aliado]').count()===0,'sin Consultar aliado en filas del listado');
