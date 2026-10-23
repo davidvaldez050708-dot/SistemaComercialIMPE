@@ -107,19 +107,17 @@ final class TelefoniaNotificacionService
     public function pendientes(int $user,bool $recepcion): array {
         if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';return (new TelefoniaNotificacionVentasService($this->db))->pendientes($user);}
         $this->sincronizar($user,$recepcion);$ext=$this->extension($user);
-        // Las obligaciones pendientes siguen en la campana aunque estén leídas.
-        // Una alerta informativa de llamada perdida sí se puede archivar al leer.
-        // Filtrar por estados vivos ANTES del LIMIT para no desplazar alertas recientes.
+        // Sólo las claves OPERATIVAS que siguen activas superan la lectura.
+        // El IN dinámico filtra ANTES de LIMIT, sin desplazar tareas nuevas
+        // por cientos de avisos históricos ya resueltos.
+        $keys=array_keys($this->operativasActuales);
+        $where="(leida=0 AND llave NOT LIKE 'devolucion:%' AND llave NOT LIKE 'transferencia:%')";
+        if($keys)$where.=' OR llave IN ('.implode(',',array_fill(0,count($keys),'?')).')';
         $s=$this->db->prepare("SELECT * FROM telefonia_notificaciones
-            WHERE usuario_id=? AND extension=? AND
-            (leida=0 OR llave LIKE 'devolucion:%' OR llave LIKE 'transferencia:%')
-            ORDER BY id DESC LIMIT 200");
-        $s->bind_param('is',$user,$ext);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
-        $rows=array_values(array_filter($rows,function($row){
-            $llave=(string)$row['llave'];
-            return self::esOperativa($llave)?isset($this->operativasActuales[$llave]):(int)$row['leida']===0;
-        }));
-        $rows=array_slice($rows,0,20);
+            WHERE usuario_id=? AND extension=? AND (".$where.")
+            ORDER BY id DESC LIMIT 20");
+        $s->bind_param('is'.str_repeat('s',count($keys)),$user,$ext,...$keys);
+        $s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
         return array_map(function($r)use($recepcion){
             $llave = (string)$r['llave'];
             $callback = str_starts_with($llave, 'devolucion:');
