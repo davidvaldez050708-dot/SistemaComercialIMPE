@@ -79,6 +79,15 @@ def main():
         raise RuntimeError('La fusión perdió controles del selector o filtros anteriores')
     if b'La ventana avanza mes a mes; las publicaciones antiguas se conservan en el archivo.' in desired:
         raise RuntimeError('El texto auxiliar no fue eliminado de la variante productiva')
+    # El CSS de V5 no fue modificado por la ventana mensual: reutilizar
+    # exactamente la variante QR vigente y aplicar sólo el layout del hotfix.
+    css_entry = next(row for row in qr['files'] if row['path']=='public/css/convocatorias_gestion_v5.css')
+    css_current = decode(css_entry['target'])
+    css_new = (root/'convocatorias_gestion_v5_after.css').read_bytes()
+    if digest(css_current)!=css_entry['sha256'] or b'convocatoria-mes-simplificado' not in css_new:
+        raise RuntimeError('CONFLICTO: CSS V5 anterior no verificado o falta layout mensual')
+    if css_new == css_current:
+        raise RuntimeError('No existen cambios CSS en la etapa visual')
     # Validación independiente de sintaxis del archivo conciliado.
     with tempfile.NamedTemporaryFile(suffix='.php') as output:
         output.write(desired)
@@ -107,8 +116,12 @@ def main():
         dependencies.append({'path':name,'sha256':digest(core.lf(content)), 'content':encode(content)})
     manifest = {
         'source': RELEASE,
-        'files':[{'path':'app/views/convocatorias/index.php',
-                  'base':encode(current),'target':encode(desired),'sha256':digest(desired)}],
+        'files':[
+            {'path':'app/views/convocatorias/index.php',
+             'base':encode(current),'target':encode(desired),'sha256':digest(desired)},
+            {'path':'public/css/convocatorias_gestion_v5.css',
+             'base':encode(css_current),'target':encode(css_new),'sha256':digest(css_new)}
+        ],
         'dependencies': dependencies
     }
     args.output.parent.mkdir(parents=True,exist_ok=True)
@@ -116,7 +129,7 @@ def main():
     print('REVISADO: Vista Hostinger '+digest(current))
     print('CANDIDATO: Selector homogéneo '+digest(desired))
     print('DEPENDENCIAS: controlador mensual, helper y 2 componentes V5')
-    print('ENTREGA VISUAL: 1 archivo. SIN SQL. '+str(args.output))
+    print('ENTREGA VISUAL: 2 archivos. SIN SQL. '+str(args.output))
 
 
 if __name__=='__main__':
