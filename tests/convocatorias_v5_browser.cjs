@@ -10,7 +10,7 @@ const tiny=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4
 try{
  for(let i=0;i<80;i++){try{await fetch(base+'_v5_stats');break;}catch{await new Promise(r=>setTimeout(r,100));}}
  browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
- const context=await browser.newContext(),page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+ const context=await browser.newContext(),page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('dialog',async dialog=>{errors.push(dialog.message());await dialog.dismiss();});
  await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==new URL(base).origin)return route.abort();if(url.pathname==='/fixture-bootstrap.css')return route.fulfill({path:path.join(bootstrap,'dist/css/bootstrap.min.css'),contentType:'text/css'});if(url.pathname==='/fixture-bootstrap.js')return route.fulfill({path:path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'),contentType:'text/javascript'});
  const deps=path.resolve(bootstrap,'..');
  if(url.pathname==='/fixture-icons.css')return route.fulfill({path:path.join(deps,'bootstrap-icons/font/bootstrap-icons.css'),contentType:'text/css'});
@@ -23,6 +23,51 @@ try{
  const list=async(query={})=>await(await context.request.get(endpoint('listadoFiltrado',{territorio_id:'1',tipo:'bachillerato',...query}))).json();
  const go=async(query={})=>{await page.goto(base+'_v5?'+new URLSearchParams({territorio_id:'1',tipo:'bachillerato',...query}));await page.locator('[data-convocatorias-listado] tbody').first().waitFor();};
  await session('marketing');await go();
+ if(process.env.IMPE_V5_CORRECTIONS_ONLY==='1'){
+  check(await page.locator('[data-v5-modalidad]').evaluateAll(nodes=>nodes.every(n=>n.classList.contains('convocatoria-status-tab'))),'modalidades reutilizan pestañas institucionales');
+  check(await page.locator('[data-convocatorias-listado] [data-v5-consultar-aliado]').count()===0,'sin Consultar aliado en filas del listado');
+  check(await page.locator('[data-convocatorias-listado] .convocatoria-date').first().evaluate(n=>getComputedStyle(n).whiteSpace==='nowrap'),'fechas completas sin partir el año');
+  await page.locator('#filtro_convocatoria_buscar').fill('IQJ');await page.locator('[data-v5-modalidad="bachillerato|bachillerato-general"]').click();await page.waitForFunction(()=>document.querySelectorAll('tr[data-convocatoria-id]').length===3);
+  const current=(await list({buscar:'IQJ',clasificacion:'bachillerato|bachillerato-general'})).convocatorias.find(c=>c.titulo.includes('editada después'));
+  assert.ok(current);const row=()=>page.locator(`tr[data-convocatoria-id="${current.id}"]`);
+  await row().locator('.btn-ver-convocatoria').click();const panel=page.locator('#offcanvasDetalleConvocatoria');await panel.waitFor({state:'visible'});
+  check(await page.locator('#convocatoriaDetalleContenido > .user-detail-tab-content > .user-detail-info-row').count()===11,'todas las filas del detalle comparten el mismo contenedor');
+  const positions=await page.locator('#convocatoriaDetalleContenido .user-detail-info-label').evaluateAll(nodes=>nodes.map(n=>Math.round(n.getBoundingClientRect().x)));
+  check(new Set(positions).size===1,'etiquetas originales y nuevas alineadas');
+  check(await panel.locator('.convocatoria-detail-actions .btn-system-light[data-v5-consultar-aliado]').count()===1,'Consultar aliado es una acción institucional del detalle');
+  await panel.locator('[data-v5-consultar-aliado]').click();await page.locator('#modalConvenioCrearConvocatoria.show').waitFor();
+  check((await page.locator('[data-convenio-modal-title]').textContent()).includes('IQJ'),'acción abre el convenio del aliado verificado');
+  await page.locator('#modalConvenioCrearConvocatoria .btn-close').click();await page.waitForURL(/controller=convocatoria.*action=index/);await panel.waitFor({state:'visible'});
+  check(await page.locator('#filtro_convocatoria_buscar').inputValue()==='IQJ'&&await page.locator('[data-convocatoria-clasificacion]').inputValue()==='bachillerato|bachillerato-general','cerrar convenio restaura búsqueda y modalidad de Gestión');
+  check((await panel.textContent()).includes(current.titulo),'se reabre el detalle de la convocatoria original');
+  await panel.locator('[data-bs-dismiss]').click();await panel.waitFor({state:'hidden'});
+  const openEdit=async()=>{await row().locator('.btn-editar-convocatoria').click();await page.locator('#modalEditarConvocatoria').waitFor({state:'visible'});await page.waitForFunction(()=>!bootstrap.Modal.getInstance(document.getElementById('modalEditarConvocatoria'))._isTransitioning);};
+  await openEdit();const edit=page.locator('#modalEditarConvocatoria');
+  check(await edit.locator('.impe-aliado-multi-card').count()===1,'sólo la publicación seleccionada aparece inicialmente');
+  check(await edit.locator('[data-v5-consultar-aliado]').count()===0&&!((await edit.textContent()).includes('Consultar aliado')),'sin enlace improvisado en el editor');
+  check(await edit.locator('.impe-aliado-multi-card h4').textContent()==='Bachillerato General','edición reutiliza tarjeta de programa V3');
+  check(await edit.locator('[name="enlace_registro"]').getAttribute('readonly')!==null,'enlace de Registro permanece protegido');
+  const before=await stats();await edit.locator('[name="titulo"]').fill('Cambio todavía no guardado');await edit.locator('[data-v5-show-others]').click();await edit.locator('[data-v5-other-publications] button').first().waitFor();
+  check(await edit.locator('[data-v5-other-publications] button').count()>=2,'otras publicaciones sólo se despliegan a petición del usuario');
+  await edit.locator('[data-v5-show-others]').click();check(await edit.locator('[data-v5-other-publications]').isHidden(),'Ocultar otras publicaciones las retira efectivamente');await edit.locator('[data-v5-show-others]').click();await edit.locator('[data-v5-other-publications] button').first().waitFor();
+  await edit.locator('[data-v5-other-publications] button').first().click();check((await edit.locator('[role="alert"]').textContent()).includes('Guarda o cancela'),'cambiar de publicación no descarta cambios pendientes');
+  await edit.locator('.btn-close').click();await edit.waitFor({state:'hidden'});await openEdit();await edit.locator('[data-v5-show-others]').click();await edit.locator('[data-v5-other-publications] button').first().waitFor();await edit.locator('[data-v5-other-publications] button').first().click();
+  await page.waitForFunction(id=>document.querySelector('#modalEditarConvocatoria [name="id"]').value!==String(id),current.id);
+  const selectedId=await edit.locator('[name="id"]').inputValue();check(Number(selectedId)!==current.id&&await page.locator('.modal.show').count()===1,'seleccionar otra publicación reutiliza el mismo editor');
+  await edit.locator('[name="titulo"]').fill('V5 UI guardado individual');await Promise.all([page.waitForNavigation(),edit.locator('button[type="submit"]').click()]);
+  const after=await stats();check(after.rows.find(r=>r.id==selectedId).titulo==='V5 UI guardado individual'&&after.rows.find(r=>r.id==current.id).titulo===current.titulo,'guardar actualiza sólo la publicación elegida');
+  check(before.rows.length===after.rows.length&&JSON.stringify(before.links)===JSON.stringify(after.links),'edición conserva número de publicaciones y relaciones');
+  await page.goto(base+'_v4');await page.locator('[data-convenio-notification]').filter({hasText:'IQJ'}).first().locator('[data-convenio-open]').click();await page.locator('[data-convenio-create-link]').click();const create=page.locator('#modalCrearConvocatoria');await create.waitFor({state:'visible'});await create.locator('.impe-aliado-multi-card').first().waitFor();
+  check(await create.locator('.impe-aliado-multi-card').count()===2,'Nueva convocatoria conserva sus dos programas y componente V3');
+  await create.locator('.btn-close').click();await create.waitFor({state:'detached'});
+  for(const width of [1440,1024,768,390,360]){
+   await page.setViewportSize({width,height:1000});await go({buscar:'IQJ'});await page.waitForFunction(()=>!document.querySelector('.modal-backdrop'));await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:path.join(out,'corregido-listado-'+width+'.png'),fullPage:true});
+   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'listado institucional sin desbordamiento a '+width);
+   await openEdit();await page.screenshot({path:path.join(out,'corregido-editor-'+width+'.png')});const box=await edit.locator('button[type="submit"]').boundingBox();check(box.y>=0&&box.y+box.height<=1000,'editor V3 mantiene footer visible a '+width);
+   await edit.locator('.btn-close').click();await edit.waitFor({state:'hidden'});await page.waitForFunction(()=>!document.querySelector('.modal-backdrop'));
+  }
+  check(errors.length===0&&!/PHP (?:Warning|Fatal|Notice)|Uncaught/.test(logs),'correcciones sin errores JavaScript/PHP');console.log('PASS '+count+' correcciones visuales, retorno y edición individual');return;
+ }
  if(process.env.IMPE_V5_ACTIONS_ONLY==='1'){
   const before=await stats(),record=before.rows.find(c=>c.titulo==='V5 Publicación desde Convenios');assert.ok(record);
   const target=()=>page.locator(`tr[data-convocatoria-id="${record.id}"]`);
@@ -79,11 +124,11 @@ try{
  const iqj=(await list({buscar:'IQJ'})).convocatorias.find(c=>c.titulo==='Título independiente del aliado');
  await page.locator(`tr[data-convocatoria-id="${iqj.id}"] .btn-ver-convocatoria`).click();await page.locator('#offcanvasDetalleConvocatoria.show').waitFor();
  check((await page.locator('#convocatoriaDetalleContenido').textContent()).includes('IQJ')&&(await page.locator('#convocatoriaDetalleContenido').textContent()).includes('Bachillerato General'),'detalle informa aliado, procedencia, programa y ubicación');
- check(await page.locator('#convocatoriaDetalleContenido a.convocatoria-ally-detail').count()===1,'consulta del aliado disponible con permisos de Convenios');
+ check(await page.locator('#convocatoriaDetalleContenido [data-v5-consultar-aliado]').count()===1,'consulta del aliado disponible con permisos de Convenios');
  await page.locator('#offcanvasDetalleConvocatoria [data-bs-dismiss]').click();await page.locator('#offcanvasDetalleConvocatoria').waitFor({state:'hidden'});
  await page.locator(`tr[data-convocatoria-id="${iqj.id}"] .btn-editar-convocatoria`).click();const edit=page.locator('#modalEditarConvocatoria');await edit.waitFor({state:'visible'});
  check(await edit.locator('[name="enlace_registro"]').getAttribute('readonly')!==null,'editor existente muestra enlace compartido de sólo lectura');
- check((await edit.locator('[data-v5-edit-identity]').textContent()).includes('IQJ'),'editor muestra contexto verificado');
+ check((await edit.locator('[data-v5-edit-shell]').textContent()).includes('IQJ'),'editor muestra contexto verificado');
  const before=await stats(),original=before.rows.find(c=>c.id==iqj.id);
  await edit.locator('[name="titulo"]').fill('Título actualizado sin alterar vínculo');await edit.locator('button[type="submit"]').click();await page.waitForURL(/action=index/);
  let after=await stats(),saved=after.rows.find(c=>c.id==iqj.id);check(saved.titulo==='Título actualizado sin alterar vínculo'&&saved.imagen===original.imagen,'editar título persiste y conserva imagen si no se selecciona otra');

@@ -6,7 +6,7 @@ def module(name,path):
     spec=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
 host=module('host_v5',ROOT/'tests/preparar_convocatorias_v5_hostinger.py')
 core=module('core_v5',ROOT/'tools/publicar_aliados_registro.py')
-FILES=['app/controllers/ConvocatoriaController.php','app/models/ConvocatoriaModel.php','app/views/convocatorias/index.php','public/javascript/crear_convocatoria_v2_extension.js','app/services/ConvocatoriaOrigenService.php','public/javascript/convocatorias_gestion_v5.js','public/css/convocatorias_gestion_v5.css']
+FILES=['app/controllers/ConvocatoriaController.php','app/models/ConvocatoriaModel.php','app/views/convocatorias/index.php','public/javascript/crear_convocatoria_v2_extension.js','app/services/ConvocatoriaOrigenService.php','public/javascript/convocatorias_gestion_v5.js','public/css/convocatorias_gestion_v5.css','public/css/convocatorias_aliado_multiprograma_v3.css']
 def prepare(out,refresh=False):
     if not refresh:subprocess.check_call([sys.executable,'-B',str(ROOT/'tests/preparar_convenios_v4_replica.py'),'--output',str(out)],stdout=subprocess.DEVNULL)
     elif out.name!='v5-hostinger-replica' or out.parent!=ROOT.parent:raise RuntimeError('Actualizar sólo la réplica local de pruebas.')

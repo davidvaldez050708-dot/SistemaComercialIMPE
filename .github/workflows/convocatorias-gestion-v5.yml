@@ -60,6 +60,7 @@ jobs:
           node --check public/javascript/convocatorias_gestion_v5.js
           node --check public/javascript/crear_convocatoria_v2_extension.js
           python3 tests/publicacion_convocatorias_gestion_v5_test.py
+          python3 tests/publicacion_convocatorias_v5_ui_test.py
       - name: Preparación exclusivamente sintética
         run: |
           mkdir -p /tmp/v5-sql-backups
@@ -79,6 +80,7 @@ jobs:
           node tests/convocatorias_v5_browser.cjs
           IMPE_V5_EXTRA_ONLY=1 node tests/convocatorias_v5_browser.cjs
           IMPE_V5_ACTIONS_ONLY=1 node tests/convocatorias_v5_browser.cjs
+          IMPE_V5_CORRECTIONS_ONLY=1 node tests/convocatorias_v5_browser.cjs
           IMPE_V5_VISUAL_ONLY=1 node tests/convocatorias_v5_browser.cjs
           php tests/convocatorias_v5_regresion.php
       - uses: actions/upload-artifact@v4
