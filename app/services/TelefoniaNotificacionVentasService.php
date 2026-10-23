@@ -39,7 +39,10 @@ final class TelefoniaNotificacionVentasService
         $base='index.php?controller=telefonia&action=misLlamadas';
         foreach($calls as $c)$facts[$c['pbx_call_id'].'|'.$c['extension']]=$c;
         foreach($tasks as $t){$scope=$t['referencia'].'|'.$t['destino_extension'];$covered[$scope]=true;if($t['devolucion']!=='PENDIENTE')continue;
-            if(!empty($facts[$scope]['conectada'])&&empty($facts[$scope]['registro'])&&str_starts_with($t['nota'],'Transferencia no contestada.'))continue;
+            // La devolución AUTOMÁTICA por no respuesta ya no es una tarea real
+            // si Zadarma confirmó conversación, haya o no resultado guardado.
+            // Antes revivía precisamente al guardar el resultado: regresión.
+            if(!empty($facts[$scope]['conectada'])&&str_starts_with($t['nota'],'Transferencia no contestada.'))continue;
             $date=(new DateTimeImmutable($t['updated_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
             $add('ventas:devolucion:'.$t['id'].':'.$t['version'],$t['destino_extension'],$t['telefono'],$date,'Llamada por devolver',$t['nombre'].' · '.$t['nota'],$base.'&vista=devoluciones','Por devolver');
         }
