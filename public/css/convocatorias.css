@@ -2293,6 +2293,146 @@
 
 
 /* Bienvenida del panel principal de Marketing. */
+/* Panel único de indicadores: exclusivo del inicio de Marketing. */
+.marketing-key-indicators {
+    display: grid;
+    grid-template-columns: 1.1fr repeat(5, minmax(0, 1fr)) .85fr;
+    align-items: stretch;
+    min-height: 190px;
+    padding: 30px 20px;
+    border: 1px solid var(--color-border);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 8px 28px rgba(22, 34, 59, .04);
+}
+.marketing-key-indicators > * {
+    min-width: 0;
+    padding: 0 18px;
+}
+.marketing-key-indicators > * + * {
+    border-left: 1px solid var(--color-border);
+}
+.marketing-key-indicators .marketing-key-intro {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-left: 4px;
+}
+.marketing-key-indicators h2 {
+    margin: 0 0 8px;
+    color: var(--color-primary);
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+.marketing-key-indicators p {
+    margin: 12px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+.marketing-key-indicators .marketing-key-intro p {
+    margin: 0;
+    font-size: 14px;
+}
+.marketing-key-indicators .marketing-key-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.marketing-key-indicators .marketing-key-main > div { min-width: 0; }
+.marketing-key-indicators .marketing-key-icon {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: var(--color-primary-soft);
+    color: var(--color-secondary);
+    font-size: 23px;
+}
+.marketing-key-indicators strong {
+    display: block;
+    color: var(--color-navy);
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+.marketing-key-indicators h3 {
+    margin: 5px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+.marketing-key-indicators .marketing-key-bar {
+    height: 8px;
+    margin-top: 17px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-border);
+}
+.marketing-key-indicators .marketing-key-bar > span {
+    height: 100%;
+    display: block;
+    border-radius: inherit;
+    background: var(--color-secondary);
+}
+.marketing-key-indicators .marketing-key-bar + p { margin-top: 9px; }
+.marketing-key-indicators .marketing-key-action {
+    display: flex;
+    align-items: center;
+    padding-right: 4px;
+}
+.marketing-key-indicators .marketing-key-details {
+    width: 100%;
+    min-height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #f8fafc;
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.4;
+    text-decoration: none;
+}
+.marketing-key-indicators .marketing-key-details:focus-visible {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 3px;
+}
+@media (min-width: 1200px) and (max-width: 1599.98px) {
+    .marketing-key-indicators > * { padding-left: 10px; padding-right: 10px; }
+    .marketing-key-indicators .marketing-key-icon { width: 28px; height: 28px; flex-basis: 28px; font-size: 18px; }
+    .marketing-key-indicators .marketing-key-main { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 7px; }
+    .marketing-key-indicators .marketing-key-main > div { display: contents; }
+    .marketing-key-indicators h3 { grid-column: 1 / -1; min-height: 31px; margin-top: 0; }
+    .marketing-key-indicators strong { font-size: 20px; }
+    .marketing-key-indicators h2 { font-size: 14px; }
+    .marketing-key-indicators .marketing-key-details { padding: 8px; gap: 6px; font-size: 11px; }
+}
+@media (max-width: 1199.98px) {
+    .marketing-key-indicators { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 0; }
+    .marketing-key-indicators .marketing-key-intro { grid-column: 1 / -1; padding-left: 18px; }
+    .marketing-key-indicators > :nth-child(2),
+    .marketing-key-indicators > :nth-child(5) { border-left: 0; }
+}
+@media (max-width: 767.98px) {
+    .marketing-key-indicators { grid-template-columns: 1fr; gap: 0; padding: 20px; }
+    .marketing-key-indicators > * { padding: 18px 0; }
+    .marketing-key-indicators > * + * { border-left: 0; border-top: 1px solid var(--color-border); }
+    .marketing-key-indicators .marketing-key-intro { padding: 0 0 18px; }
+    .marketing-key-indicators .marketing-key-action { padding: 18px 0 0; }
+}
+
 .marketing-welcome-shell {
     margin-bottom: 16px;
 }
