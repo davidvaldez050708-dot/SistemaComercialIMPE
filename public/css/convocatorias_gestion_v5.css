@@ -57,3 +57,32 @@
     .convocatoria-edit-qr { flex-direction:column; align-items:flex-start; padding:12px; }
     #modalEditarConvocatoria .impe-aliado-multi-dialog { width:calc(100% - 16px); margin:8px; }
 }
+
+/* El selector de modalidad ya existe en las pestañas: sólo búsqueda y mes. */
+.convocatoria-list-workspace-filters.convocatoria-mes-simplificado {
+    grid-template-columns: minmax(250px, 1.4fr) minmax(220px, .9fr) auto;
+    align-items: end;
+}
+.convocatoria-mes-simplificado .convocatoria-filter-dropdown-trigger {
+    min-height: 46px;
+}
+@media (max-width: 991.98px) {
+    .convocatoria-list-workspace-filters.convocatoria-mes-simplificado {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .convocatoria-list-workspace-filters.convocatoria-mes-simplificado .convocatoria-filter-search {
+        grid-column: auto;
+    }
+    .convocatoria-list-workspace-filters.convocatoria-mes-simplificado .convocatoria-filter-actions {
+        grid-column: 1 / -1;
+    }
+}
+@media (max-width: 575.98px) {
+    .convocatoria-list-workspace-filters.convocatoria-mes-simplificado {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .convocatoria-list-workspace-filters.convocatoria-mes-simplificado .convocatoria-filter-search,
+    .convocatoria-list-workspace-filters.convocatoria-mes-simplificado .convocatoria-filter-actions {
+        grid-column: auto;
+    }
+}
