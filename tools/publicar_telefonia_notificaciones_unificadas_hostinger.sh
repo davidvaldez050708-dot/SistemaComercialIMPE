@@ -18,7 +18,7 @@ backups=Path(os.environ.get('IMPE_CRM_BACKUPS',str(Path.home()/'impe-telefonia-n
 if backups==site or backups in site.parents or site in backups.parents:
     fail('Respaldo debe quedar fuera de public_html')
 files=[x['path'] for x in SPEC['changes']]+[SPEC['newFile']['path']]
-if len(files)!=8 or len(set(files))!=8:fail('Manifiesto no valido')
+if len(files)!=len(SPEC['changes'])+1 or len(set(files))!=len(files):fail('Manifiesto no valido')
 def sha(value):return hashlib.sha256(value).hexdigest()
 def get(name,needed=True):
     p=site/name
