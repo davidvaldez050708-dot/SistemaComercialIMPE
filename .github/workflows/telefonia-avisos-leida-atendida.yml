@@ -11,6 +11,7 @@ on:
       - 'public/css/recordatorios.css'
       - 'prueba_telefonia/api/leer_todas_notificaciones_llamada.php'
       - 'tests/telefonia_ventas_notificaciones_db.php'
+      - 'tests/telefonia_notificaciones_unificacion_smoke.php'
       - 'tests/telefonia_notificaciones_leida_atendida_browser.cjs'
       - 'tools/publicar_telefonia_notificaciones_unificadas_hostinger.sh'
       - 'tests/publicacion_telefonia_notificaciones_unificadas_test.py'
@@ -34,6 +35,7 @@ jobs:
           php -l app/controllers/ConvocatoriaNotificacionController.php
           php -l app/views/layout/topbar.php
           php -l prueba_telefonia/api/leer_todas_notificaciones_llamada.php
+          php tests/telefonia_notificaciones_unificacion_smoke.php
           node --check public/javascript/recordatorios.js
           node --check public/javascript/telefonia_notificaciones.js
           node --check tests/telefonia_notificaciones_leida_atendida_browser.cjs
@@ -44,6 +46,9 @@ jobs:
           PLAYWRIGHT_MODULE_PATH=/tmp/notificaciones-browser/node_modules/playwright \
           BOOTSTRAP_MODULE_PATH=/tmp/notificaciones-browser/node_modules/bootstrap \
           node tests/telefonia_notificaciones_leida_atendida_browser.cjs
+          PLAYWRIGHT_MODULE_PATH=/tmp/notificaciones-browser/node_modules/playwright \
+          BOOTSTRAP_MODULE_PATH=/tmp/notificaciones-browser/node_modules/bootstrap \
+          node tests/telefonia_campana_browser.cjs
       - name: Publicador selectivo, respaldo y rollback
         run: python3 tests/publicacion_telefonia_notificaciones_unificadas_test.py
   estados-mysql-mariadb:
