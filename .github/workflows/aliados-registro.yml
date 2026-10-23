@@ -222,7 +222,9 @@ jobs:
           php tests/aliados_registro_pr114_db.php --prepare
           php tests/formularios_ubicacion_internacional_db.php
           php tests/aliados_registro_db_legacy.php
-          node tests/aliados_registro_browser_legacy.cjs
+          # La réplica PR114 no incluye los controles Convenios V2 que exige
+          # aliados_registro_browser_legacy.cjs; la regresión moderna ya
+          # se prueba arriba y abajo continúa el navegador propio de PR114.
           php tests/aliados_registro_snapshot.php
           php tests/aliados_registro_pr114_db.php
           node tests/aliados_registro_pr114_browser.cjs
