@@ -21,8 +21,9 @@ $check(str_contains($common,"devolucion='PENDIENTE'") || str_contains($common,"'
     'Devolución se retira al atenderse');
 $check(str_contains($common,"'leida'=>(int)"),
     'No restablecer leído a cero cada vez que consulta la campana');
-$check(str_contains($sales,'isset($wanted[$r['),
-    'Venta solo conserva obligaciones aún presentes');
+$check(str_contains($sales,'llave IN ($placeholders)') &&
+    str_contains($sales,"llave NOT LIKE '%:perdida'"),
+    'Venta solo consulta obligaciones activas y permite leer perdidas informativas');
 $check(str_contains($sales,'pendiente_operativo'),
     'Ventas distingue lectura de obligación');
 $check(str_contains($marketing,'pendiente_operativo'),
