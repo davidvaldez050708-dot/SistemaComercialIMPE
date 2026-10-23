@@ -6,6 +6,7 @@ final class UnificarBachillerato
 {
     private mysqli $db;
     private array $tables=[];
+    private array $generated=[];
     private const FIELDS=[
         'formulario_programas'=>['codigo','nombre'],
         'formulario_aliado_programas'=>['programa_codigo'],
@@ -30,7 +31,16 @@ final class UnificarBachillerato
             $columns=$db->query("SHOW COLUMNS FROM `$table`")->fetch_all(MYSQLI_ASSOC);
             foreach($fields as $field) if(!in_array($field,array_column($columns,'Field'),true)) throw new RuntimeException("Estructura no revisada: $table.$field");
             if(strcasecmp($engines[$table],'InnoDB')!==0) throw new RuntimeException("Se requiere InnoDB: $table. No se cambió el motor.");
-            foreach($columns as $column) if(stripos($column['Extra'],'GENERATED')!==false) throw new RuntimeException("Columna generada no revisada: $table");
+            $computed=[];
+            foreach($columns as $column) {
+                if(stripos((string)$column['Extra'],'GENERATED')!==false) $computed[]=$column['Field'];
+            }
+            foreach($fields as $field) {
+                if(in_array($field,$computed,true)) throw new RuntimeException("Campo de identidad calculado, no se puede migrar: $table.$field");
+            }
+            // Read generated columns for verification and backup, but never INSERT,
+            // UPDATE or use their volatile/computed values to locate a row.
+            $this->generated[$table]=$computed;
             $this->tables[$table]=$fields;
         }
         // No dejar referencias nuevas sin migrar: cualquier extensión se revisa.
@@ -121,13 +131,25 @@ final class UnificarBachillerato
         $table=$change['table'];$before=$change['before'];$after=$change['after'];
         if(!isset($this->tables[$table])) throw new RuntimeException('Tabla del respaldo fuera de alcance.');
         foreach(array_keys($before??$after) as $field) if(!preg_match('/^[a-zA-Z0-9_]+$/D',$field)) throw new RuntimeException('Campo no válido.');
+        $computed=$this->generated[$table]??[];
         if($before===null) {
-            $sql="INSERT INTO `$table` (`".implode('`,`',array_keys($after)).'`) VALUES ('.implode(',',array_map([$this,'literal'],array_values($after))).')';
+            $insert=array_diff_key($after,array_flip($computed));
+            $sql="INSERT INTO `$table` (`".implode('`,`',array_keys($insert)).'`) VALUES ('.implode(',',array_map([$this,'literal'],array_values($insert))).')';
         } else {
-            $where=[];foreach($before as $key=>$value) $where[]="BINARY `$key` <=> BINARY ".$this->literal($value);
+            $where=[];
+            foreach($before as $key=>$value) {
+                if(in_array($key,$computed,true)) continue;
+                $where[]="BINARY `$key` <=> BINARY ".$this->literal($value);
+            }
+            if(!$where) throw new RuntimeException('No existen columnas físicas para identificar fila: '.$table);
             if($after===null) $sql="DELETE FROM `$table` WHERE ".implode(' AND ',$where).' LIMIT 1';
             else {
-                $set=[];foreach($after as $key=>$value) $set[]="`$key`=".$this->literal($value);
+                $set=[];
+                foreach($after as $key=>$value) {
+                    if(in_array($key,$computed,true)) continue;
+                    $set[]="`$key`=".$this->literal($value);
+                }
+                if(!$set) throw new RuntimeException('No existen columnas físicas para modificar fila: '.$table);
                 $sql="UPDATE `$table` SET ".implode(',',$set).' WHERE '.implode(' AND ',$where).' LIMIT 1';
             }
         }
