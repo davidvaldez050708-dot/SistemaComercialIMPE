@@ -105,8 +105,8 @@ class FormularioController
         }
 
         /*
-         * El mismo formulario de Registro tiene una ruta pública estable.
-         * No se requiere guardar tokens ni aplicar una migración adicional.
+         * El mismo formulario conserva su ruta pública anterior. Cuando la tabla
+         * de equivalencias está instalada se comparte mediante un alias estable.
          */
         $url = (new RegistroEnlaceService((new Database())->connect()))->acortar(BASE_URL .
             'index.php?controller=formularioPublico&action=registro');
