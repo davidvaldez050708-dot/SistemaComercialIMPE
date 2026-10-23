@@ -982,17 +982,31 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         </div>
 
         <div class="convocatoria-filter-field">
-            <label class="form-label login-label" for="filtro_convocatoria_fecha">Fecha</label>
+            <label class="form-label login-label" for="filtro_convocatoria_periodo">Mes de convocatoria</label>
             <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
-                <input
-                    type="date"
-                    class="form-control system-form-control"
-                    id="filtro_convocatoria_fecha"
-                    name="fecha"
-                    value="<?= $texto($fechaFiltro) ?>"
->
+                <span class="input-group-text"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+                <select class="form-select system-form-control" id="filtro_convocatoria_periodo"
+                    name="periodo" aria-describedby="ayuda_convocatoria_periodo">
+                    <option value="" <?= $periodoMesSeleccionado === '' ? 'selected' : '' ?>>Meses recientes</option>
+                    <?php foreach ($mesesVentanaConvocatorias as $mesVentana): ?>
+                        <option value="<?= $texto($mesVentana['valor']) ?>"
+                            <?= $periodoMesSeleccionado === $mesVentana['valor'] ? 'selected' : '' ?>>
+                            <?= $texto($mesVentana['etiqueta']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                    <option value="archivo" <?= $periodoMesSeleccionado === 'archivo' ? 'selected' : '' ?>>Otros meses / archivo</option>
+                </select>
             </div>
+            <small class="form-text" id="ayuda_convocatoria_periodo">
+                La ventana avanza mes a mes; las publicaciones antiguas se conservan en el archivo.
+            </small>
+            <input type="hidden" id="filtro_convocatoria_fecha" name="fecha" value="<?= $texto($fechaFiltro) ?>">
+            <?php if ($fechaFiltro !== ''): ?>
+                <small class="form-text" data-convocatoria-filtro-dia>
+                    Filtro por día de enlace anterior: <?= $texto($fechaFiltro) ?>.
+                    <button type="button" class="btn btn-link btn-sm p-0" data-quitar-filtro-dia>Quitar filtro por día</button>
+                </small>
+            <?php endif; ?>
         </div>
 
         <input
@@ -1003,7 +1017,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
 
         <div class="convocatoria-filter-actions">
             <a
-                class="filter-clear-link <?= ($buscar === '' && $fechaFiltro === '' && $categoriaFiltro === '' && $clasificacionFiltroActual === '') ? 'd-none' : '' ?>"
+                class="filter-clear-link <?= ($buscar === '' && $fechaFiltro === '' && $categoriaFiltro === '' && $clasificacionFiltroActual === '' && $periodoMesSeleccionado === '') ? 'd-none' : '' ?>"
                 href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index&territorio_id=<?= (int)$territorioSeleccionado['id'] ?>&tipo=<?= $texto($tipoConvocatoria) ?>"
                 data-convocatoria-clear-filters>
                 Limpiar filtros
@@ -3329,6 +3343,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const filtroBuscar = document.getElementById('filtro_convocatoria_buscar');
     const filtroFecha = document.getElementById('filtro_convocatoria_fecha');
+    const filtroMes = document.getElementById('filtro_convocatoria_periodo');
     const filtroCategoria = document.getElementById('filtro_convocatoria_categoria');
     const filtroClasificacion = document.querySelector('[data-convocatoria-clasificacion]');
     const filtroClasificacionDropdown = document.querySelector(
@@ -3386,6 +3401,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const hayFiltros =
             String(filtroBuscar?.value || '').trim() !== '' ||
             String(filtroFecha?.value || '') !== '' ||
+            String(filtroMes?.value || '') !== '' ||
             String(filtroCategoria?.value || '') !== '' ||
             String(filtroClasificacion?.value || '') !== '';
 
@@ -3659,6 +3675,7 @@ document.addEventListener('DOMContentLoaded', function () {
             subtipo: '',
             clasificacion: String(filtroClasificacion?.value || ''),
             fecha: String(filtroFecha?.value || ''),
+            periodo: String(filtroMes?.value || ''),
             categoria: String(filtroCategoria?.value || ''),
             anio: <?= json_encode((string)(int)$anioSeleccionado) ?>,
             mes: <?= json_encode((string)(int)$mesSeleccionado) ?>
@@ -3804,8 +3821,26 @@ document.addEventListener('DOMContentLoaded', function () {
         cargarListadoFiltrado();
     });
 
-    filtroFecha?.addEventListener('change', function () {
+    // Campo oculto de fecha sólo para enlaces históricos que filtran por día.
+    const sincronizarPeriodoEnUrl = function () {
+        const url = new URL(window.location.href);
+        if (filtroMes?.value) url.searchParams.set('periodo',filtroMes.value);
+        else url.searchParams.delete('periodo');
+        if (!filtroFecha?.value) url.searchParams.delete('fecha');
+        window.history.replaceState({},'',url.toString());
+    };
+    filtroMes?.addEventListener('change', function () {
+        if (filtroFecha) filtroFecha.value = '';
+        document.querySelector('[data-convocatoria-filtro-dia]')?.remove();
+        sincronizarPeriodoEnUrl();
         window.clearTimeout(temporizadorFiltro);
+        actualizarVisibilidadLimpiar();
+        cargarListadoFiltrado();
+    });
+    document.querySelector('[data-quitar-filtro-dia]')?.addEventListener('click',function () {
+        if (filtroFecha) filtroFecha.value = '';
+        document.querySelector('[data-convocatoria-filtro-dia]')?.remove();
+        sincronizarPeriodoEnUrl();
         actualizarVisibilidadLimpiar();
         cargarListadoFiltrado();
     });
@@ -3827,6 +3862,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (filtroFecha) {
             filtroFecha.value = '';
         }
+        if (filtroMes) {
+            filtroMes.value = '';
+        }
+        document.querySelector('[data-convocatoria-filtro-dia]')?.remove();
+        sincronizarPeriodoEnUrl();
 
         if (filtroCategoria) {
             filtroCategoria.value = '';
