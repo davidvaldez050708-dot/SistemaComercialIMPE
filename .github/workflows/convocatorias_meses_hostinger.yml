@@ -1,0 +1,70 @@
+name: Convocatorias - publicación mensual Hostinger
+on:
+  push:
+    branches:
+      - fix/convocatorias-meses-historial-v5-20261023
+  pull_request:
+    branches:
+      - feat/convocatorias-aliado-segmentacion-v5
+jobs:
+  compatibilidad-hostinger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Preparar variantes previamente confirmadas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/inputs"
+          cp tools/publicar_aliados_registro.py "$RUNNER_TEMP/inputs/"
+          cp tools/convocatorias_gestion_v5_release.json "$RUNNER_TEMP/inputs/"
+          cp tools/convocatorias_gestion_v5_qr_release.json "$RUNNER_TEMP/inputs/"
+          cp app/helpers/ConvocatoriaVentanaMensual.php "$RUNNER_TEMP/inputs/"
+          git show ebe671564cd9a33c268156f2cb1a5e6fdae4170a:app/controllers/ConvocatoriaController.php > "$RUNNER_TEMP/inputs/controller-before.php"
+          git show ebe671564cd9a33c268156f2cb1a5e6fdae4170a:app/views/convocatorias/index.php > "$RUNNER_TEMP/inputs/view-before.php"
+          cp app/controllers/ConvocatoriaController.php "$RUNNER_TEMP/inputs/controller-after.php"
+          cp app/views/convocatorias/index.php "$RUNNER_TEMP/inputs/view-after.php"
+          python3 tools/preparar_convocatorias_meses_v5_release.py --directory "$RUNNER_TEMP/inputs" --output "$RUNNER_TEMP/inputs/entrega.json"
+      - name: Ensayar revisión publicación y restauración de los 3 archivos
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/inputs" "$RUNNER_TEMP/site" "$RUNNER_TEMP/backups"
+          cp tools/publicar_convocatorias_meses_v5.py "$RUNNER_TEMP/inputs/"
+          python3 - "$RUNNER_TEMP/inputs/entrega.json" "$RUNNER_TEMP/site" <<'PY'
+          import base64,gzip,json,pathlib,sys
+          m=json.load(open(sys.argv[1]));root=pathlib.Path(sys.argv[2]);(root/'index.php').write_text('<?php')
+          for row in m['files']:
+              if row['base'] is None:continue
+              target=root/row['path'];target.parent.mkdir(parents=True,exist_ok=True)
+              target.write_bytes(gzip.decompress(base64.b64decode(row['base'])))
+          for row in m['dependencies']:
+              target=root/row['path'];target.parent.mkdir(parents=True,exist_ok=True)
+              target.write_bytes(gzip.decompress(base64.b64decode(row['content'])))
+          PY
+          python3 "$RUNNER_TEMP/inputs/publicar_convocatorias_meses_v5.py" --site "$RUNNER_TEMP/site" --manifest "$RUNNER_TEMP/inputs/entrega.json" --backup-root "$RUNNER_TEMP/backups" --check > "$RUNNER_TEMP/check.log"
+          grep -q 'REVISIÓN COMPATIBLE: 3 archivos' "$RUNNER_TEMP/check.log"
+          python3 "$RUNNER_TEMP/inputs/publicar_convocatorias_meses_v5.py" --site "$RUNNER_TEMP/site" --manifest "$RUNNER_TEMP/inputs/entrega.json" --backup-root "$RUNNER_TEMP/backups" --apply
+          php -l "$RUNNER_TEMP/site/app/controllers/ConvocatoriaController.php"
+          php -l "$RUNNER_TEMP/site/app/views/convocatorias/index.php"
+          php -l "$RUNNER_TEMP/site/app/helpers/ConvocatoriaVentanaMensual.php"
+          python3 "$RUNNER_TEMP/inputs/publicar_convocatorias_meses_v5.py" --site "$RUNNER_TEMP/site" --manifest "$RUNNER_TEMP/inputs/entrega.json" --backup-root "$RUNNER_TEMP/backups" --check > "$RUNNER_TEMP/check2.log"
+          grep -q 'REVISIÓN COMPATIBLE: 0 archivos' "$RUNNER_TEMP/check2.log"
+          BACKUP="$(find "$RUNNER_TEMP/backups" -mindepth 2 -maxdepth 2 -name respaldo.json -printf '%h\n' | head -1)"
+          test -n "$BACKUP"
+          python3 "$RUNNER_TEMP/inputs/publicar_convocatorias_meses_v5.py" --site "$RUNNER_TEMP/site" --manifest "$RUNNER_TEMP/inputs/entrega.json" --backup-root "$RUNNER_TEMP/backups" --restore "$BACKUP"
+          python3 - "$RUNNER_TEMP/inputs/entrega.json" "$RUNNER_TEMP/site" <<'PY'
+          import base64,gzip,hashlib,json,pathlib,sys
+          m=json.load(open(sys.argv[1]));root=pathlib.Path(sys.argv[2])
+          for row in m['files']:
+              target=root/row['path']
+              if row['base'] is None:assert not target.exists(),row['path']
+              else:assert target.read_bytes()==gzip.decompress(base64.b64decode(row['base'])),row['path']
+          print('OK: archivos originales y QR conservados después de restaurar.')
+          PY
+          php tests/convocatorias_ventana_mensual_test.php
