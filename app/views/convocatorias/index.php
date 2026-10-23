@@ -3883,9 +3883,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
+            const mesEstabaAbierto = filtroMesDropdown?.classList.contains('is-open');
             cerrarFiltroClasificacion();
-            if (filtroMesDropdown?.classList.contains('is-open')) {
-                cerrarFiltroMes();
+            cerrarFiltroMes();
+            if (mesEstabaAbierto) {
                 filtroMesTrigger?.focus();
             }
         }
