@@ -12,13 +12,13 @@ fi
 SITE="$HOME/domains/fundacionrededumex.org/public_html"
 PREP="$HOME/entregas-impe/qr-compartido-convenios-v5"
 BACKUPROOT="$HOME/respaldos-impe-qr-compartido-convenios-v5"
-REV="8ef5fcb28908f584e0be23eb6c6c7c96579aab08"
+REV="0f19ed9b9bca856fa7a8090398f7b1418c97ea51"
 RAW="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/$REV"
 JS="public/javascript/convenios_borradores_v4.js"
 CSS="public/css/convenios_borradores_v4.css"
 JS_ANTES="8ad1fac11905799428df746975c2d359adfc659c"
 CSS_ANTES="7bf5ab4a3547b08aa376c6146b8d859aecde7883"
-JS_DESPUES="526565c9f401003a597a64dd95cff56e7d2d57c0"
+JS_DESPUES="7354879082e6220a0ded60b1963e69fc4294f8c2"
 CSS_DESPUES="c8c04459e5a202ae6917beaa48884496ff911840"
 
 for command in curl git php mktemp cp mv; do
