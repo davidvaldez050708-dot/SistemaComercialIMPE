@@ -73,6 +73,7 @@
       errorBox.setAttribute('role','alert');
       section.append(errorBox);
     }
+    errorBox.classList.add('login-alert');
     const notify = message => {
       errorBox.textContent = message || '';
       errorBox.classList.toggle('d-none',!message);

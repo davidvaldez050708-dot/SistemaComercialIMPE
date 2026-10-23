@@ -68,6 +68,12 @@ $clasificacionesConvocatoria = [
         'etiqueta' => 'Inscripciones abiertas'
     ],
     [
+        'valor' => 'bachillerato|bachillerato-general',
+        'tipo' => 'bachillerato',
+        'subtipo' => 'bachillerato-general',
+        'etiqueta' => 'Bachillerato General'
+    ],
+    [
         'valor' => 'bachillerato|bachillerato-2-anos',
         'tipo' => 'bachillerato',
         'subtipo' => 'bachillerato-2-anos',

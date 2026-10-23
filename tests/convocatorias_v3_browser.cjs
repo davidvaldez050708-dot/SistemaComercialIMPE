@@ -53,7 +53,7 @@ try{
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'sin desbordamiento horizontal '+width);
   const foot=await modal.locator('.modal-footer').boundingBox();check(foot.y>=0&&foot.y+foot.height<=901,'footer accesible '+width);
  }
- for(const role of ['marketing','cc'])for(const [caso,n] of [['iqj',1],['ssp',2],['uno',1],['tres',3]]){
+ for(const role of ['marketing','cc'])for(const [caso,n] of [['iqj',1],['ssp',2],['uno',1],['tres',3],['general',1],['general-mixto',2]]){
   await page.setViewportSize({width:role==='marketing'?1440:390,height:900});
   await goto(caso,role);check(await cards.count()===n,'tarjetas autorizadas '+caso+' '+role);
   check(await modal.locator('.convocatoria-aliado-modulo-eyebrow').textContent()==='PUBLICACIONES POR PROGRAMA','editor único '+caso+' '+role);
@@ -64,6 +64,8 @@ try{
  check((await modal.locator('[data-impe-error]').textContent()).includes('clasificación compatible'),'explicación institucional del dato faltante');
  check(!await modal.locator('[name=titulo]').isVisible(),'sin compatibles: no hay fallback individual');
  check(await page.evaluate(()=>{document.querySelector('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));return window.legacySubmits===0;}),'sin compatibles: el submit antiguo no se ejecuta');
+ check(await modal.locator('[data-impe-error]').evaluate(el=>el.classList.contains('login-alert')&&parseFloat(getComputedStyle(el).fontSize)===12),'aviso de error reutiliza tamaño institucional');
+ await goto('general-sin-clase');check(await button.isDisabled()&&await cards.count()===0,'programa desconocido junto a General bloquea el lote completo');
  }
  for(const mode of ['codigo','clasificacion']){corrupt=mode;await goto('ssp');check(await button.isDisabled()&&await cards.count()===0,'opción incompleta bloquea lote entero: '+mode);}corrupt='';
  delay=true;await goto('ssp');await cards.first().waitFor();check(await cards.count()===2,'montaje tardío V2 recuperado');delay=false;
@@ -71,16 +73,19 @@ try{
  for(const role of ['sin-permiso','sin-territorio']){const response=await page.goto(base+'_fixture_v3?caso=iqj&role='+role);check(response.status()===403,'backend conserva acceso/territorio: '+role);}
  const stats=async()=>await(await context.request.get(base+'_v3_stats')).json();
  const fill=async(fail=false)=>{for(let i=0;i<await cards.count();i++){const c=cards.nth(i);await c.locator('input[type=text]').fill('V3 TEST '+Date.now()+' '+i);const dates=c.locator('input[type=date]');await dates.nth(0).fill('2026-10-22');await dates.nth(1).fill('2026-11-22');await c.locator('select').first().selectOption(String(i%2));await c.locator('input[type=file]').setInputFiles({name:fail&&i===1?'invalida.txt':'imagen-'+i+'.png',mimeType:fail&&i===1?'text/plain':'image/png',buffer:fail&&i===1?Buffer.from('imagen no válida'):fs.readFileSync(path.join(root,'public/img/brand/Logo-Sep-Blanco.png'))});}};
- for(const [caso,role,n] of [['iqj','cc',1],['ssp','marketing',2],['tres','marketing',3]]){
+ for(const [caso,role,n] of [['iqj','cc',1],['ssp','marketing',2],['tres','marketing',3],['general','marketing',1],['general-mixto','marketing',2]]){
   await goto(caso,role);await fill();const before=await stats();let requests=0;const listener=r=>{if(r.url().includes('action=guardarProgramasAliado')&&r.method()==='POST')requests++;};page.on('request',listener);
   const response=page.waitForResponse(r=>r.url().includes('action=guardarProgramasAliado')&&r.request().method()==='POST');
   const legacy=await page.evaluate(()=>{document.querySelector('form').requestSubmit();document.querySelector('form').requestSubmit();return window.legacySubmits;});const res=await response,data=savedResponses.at(-1);check(res.ok()&&data.ok&&data.ids.length===n,'guardado HTTP/DB real '+caso+': '+JSON.stringify(data));
   await page.waitForURL(u=>u.searchParams.get('action')==='index');page.off('request',listener);check(requests===1&&legacy===0,'un único POST multiprograma y ningún submit antiguo '+caso);
   const after=await stats();check(Number(after.n)-Number(before.n)===n&&Number(after.images)-Number(before.images)===n&&Number(after.links)-Number(before.links)===n,'IDs/imágenes/orígenes independientes '+caso);
-  const group=await(await context.request.get(base+'_v3_stats?ids='+data.ids.join(','))).json();check(Number(group.urls)===1&&Number(group.n)===n,'un enlace compartido por aliado '+caso);check(Number(group.manual_links)===(caso==='tres'?n:0),'vínculo manual compatible sin mezclar instituciones '+caso);
+  const group=await(await context.request.get(base+'_v3_stats?ids='+data.ids.join(','))).json();check(Number(group.urls)===1&&Number(group.n)===n,'un enlace compartido por aliado '+caso);check(Number(group.manual_links)===(['tres','general','general-mixto'].includes(caso)?n:0),'vínculo manual compatible sin mezclar instituciones '+caso);
+  if(['iqj','general','general-mixto'].includes(caso))check(group.programas.some(p=>p.programa_codigo==='bachillerato-general'&&p.subtipo_convocatoria==='bachillerato-general'),'General persiste con su código y clasificación propios '+caso);
+  if(caso==='general-mixto')check(group.programas.some(p=>p.programa_codigo==='bachillerato-286'&&p.subtipo_convocatoria==='bachillerato-286'),'286 no se mezcla con General');
  }
  await goto('ssp');await fill(true);const before=await stats();const response=page.waitForResponse(r=>r.url().includes('action=guardarProgramasAliado'));await button.click();const bad=await response;check(!bad.ok(),'rechazo de segunda imagen no válida');const after=await stats();check(Number(after.n)===Number(before.n)&&Number(after.links)===Number(before.links),'rollback completo: no queda el primer programa');
  const forbidden=await context.request.post(base+'index.php?controller=convocatoria&action=guardarProgramasAliado',{multipart:{csrf_token:'a'.repeat(64),aliado_tipo:'institucional',aliado_id:'9101','programas[ingles][clasificacion]':'bachillerato|ingles'}});check(forbidden.status()===422,'backend rechaza programa no autorizado');
+ const wrongClass=await context.request.post(base+'index.php?controller=convocatoria&action=guardarProgramasAliado',{multipart:{csrf_token:'a'.repeat(64),aliado_tipo:'institucional',aliado_id:'9101','programas[bachillerato-general][clasificacion]':'bachillerato|bachillerato-286'}});check(wrongClass.status()===422&&(await wrongClass.json()).mensaje.includes('Clasificación de programa no autorizada'),'backend rechaza reclasificar General como 286');
  const plain=await context.newPage();await plain.setContent('<form><button type=submit>Guardar convocatoria</button></form><script>window.legacySubmits=0;document.querySelector("form").addEventListener("submit",e=>{e.preventDefault();legacySubmits++})</script>');await plain.addScriptTag({content:current.toString()});check(await plain.evaluate(()=>{document.querySelector('form').requestSubmit();return legacySubmits===1;}),'flujo tradicional sin aliado conserva su submit');await plain.close();
  check(errors.length===0,'sin errores de consola: '+errors.join('; '));check(!/PHP (Warning|Fatal|Parse error|Deprecated)/.test(logs),'sin errores PHP');console.log('PASS '+count+' comprobaciones V3, visuales, HTTP, permisos y DB aislada');
 }finally{if(process.env.IMPE_V3_LOG)fs.writeFileSync(process.env.IMPE_V3_LOG,logs);if(browser)await browser.close();server.kill();}})().catch(e=>{console.error(e);process.exitCode=1;});

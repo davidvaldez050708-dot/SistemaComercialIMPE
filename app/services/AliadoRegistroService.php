@@ -21,6 +21,7 @@ class AliadoRegistroService
     public static function clasificacionesPorPrograma(): array
     {
         return [
+            'bachillerato-general'=>['bachillerato|bachillerato-general'],
             'bachillerato-286'=>['bachillerato|bachillerato-286'],
             'bachillerato-2-anos'=>['bachillerato|bachillerato-2-anos'],
             'ingles'=>['bachillerato|ingles'],
@@ -44,7 +45,9 @@ class AliadoRegistroService
         $opciones=[];
         foreach ($detalle['programas'] as $codigo) {
             if (!isset($nombres[$codigo])) continue;
-            foreach ($mapa[$codigo]??[] as $clase) {
+            // Conservar también un programa sin mapeo para que V3 bloquee el
+            // lote completo; jamás omitir silenciosamente parte de la oferta.
+            foreach ($mapa[$codigo]??[''] as $clase) {
                 $opciones[]=['codigo'=>$codigo,'nombre'=>$nombres[$codigo],'clasificacion'=>$clase];
             }
         }

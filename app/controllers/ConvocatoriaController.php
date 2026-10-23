@@ -188,6 +188,7 @@ class ConvocatoriaController
                 'inscripciones-abiertas'
             ],
             'bachillerato' => [
+                'bachillerato-general',
                 'bachillerato-2-anos',
                 'bachillerato-286',
                 'ingles',
@@ -1151,6 +1152,7 @@ class ConvocatoriaController
                 'inscripciones-abiertas'
             ],
             'bachillerato' => [
+                'bachillerato-general',
                 'bachillerato-2-anos',
                 'bachillerato-286',
                 'ingles',

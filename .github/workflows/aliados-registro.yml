@@ -187,6 +187,7 @@ jobs:
           IMPE_V3_OUTPUT: /tmp/aliados-visual/v3-unificado
         run: |
           php tests/convocatorias_v3_fixture.php
+          php tests/convocatorias_general_db.php
           node tests/convocatorias_v3_browser.cjs
       - name: Compatibilidad con PR114 publicado (réplica aislada)
         env:

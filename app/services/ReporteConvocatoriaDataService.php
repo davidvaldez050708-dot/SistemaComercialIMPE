@@ -272,6 +272,7 @@ class ReporteConvocatoriaDataService
                         'Inscripciones Abiertas'
                 ],
                 'bachillerato' => [
+                    'bachillerato-general' => 'Bachillerato General',
                     'bachillerato-2-anos' =>
                         'Bachillerato en 2 años',
                     'bachillerato-286' =>

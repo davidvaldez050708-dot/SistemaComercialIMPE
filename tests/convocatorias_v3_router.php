@@ -13,6 +13,7 @@ if($path==='/_v3_stats'){
     $counts=$db->query("SELECT COUNT(*) n,COUNT(DISTINCT imagen) images,COUNT(DISTINCT enlace_registro) urls FROM convocatorias c WHERE c.titulo LIKE 'V3 TEST %'$filter")->fetch_assoc();
     $counts['links']=$db->query("SELECT COUNT(*) n FROM marketing_aliado_convocatorias_origen o JOIN convocatorias c ON c.id=o.convocatoria_id WHERE c.titulo LIKE 'V3 TEST %'$filter")->fetch_assoc()['n'];
     $counts['manual_links']=$db->query("SELECT COUNT(*) n FROM marketing_aliado_manual_convocatorias o JOIN convocatorias c ON c.id=o.convocatoria_id WHERE c.titulo LIKE 'V3 TEST %'$filter")->fetch_assoc()['n'];
+    $counts['programas']=$db->query("SELECT o.programa_codigo,c.tipo_convocatoria,c.subtipo_convocatoria FROM marketing_aliado_convocatorias_origen o JOIN convocatorias c ON c.id=o.convocatoria_id WHERE c.titulo LIKE 'V3 TEST %'$filter ORDER BY c.id")->fetch_all(MYSQLI_ASSOC);
     header('Content-Type: application/json');echo json_encode($counts);return true;
 }
 if(($_GET['action']??'')==='guardarProgramasAliado'){
@@ -26,7 +27,7 @@ $service=new AliadoRegistroService((new Database())->connect());$db=(new Databas
 $_GET['aliado_tipo']=in_array($case,['iqj','ssp'],true)?'institucional':'manual';
 $_GET['aliado_id']=$case==='iqj'?9101:9102;
 if($_GET['aliado_tipo']==='manual'){
-    $names=['uno'=>'Uno V3','tres'=>'Tres V3','sin-clase'=>'Sin clase V3'];
+    $names=['uno'=>'Uno V3','tres'=>'Tres V3','sin-clase'=>'Sin clase V3','general'=>'IQJ General V3','general-mixto'=>'General y 286 V3','general-sin-clase'=>'General sin clase V3'];
     if(!isset($names[$case])){http_response_code(404);return true;}
     $s=$db->prepare('SELECT id FROM aliados_manuales WHERE nombre_entidad=?');$s->bind_param('s',$names[$case]);$s->execute();$_GET['aliado_id']=(int)$s->get_result()->fetch_assoc()['id'];
 }
