@@ -52,7 +52,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --prefix /tmp/v5-browser playwright bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0
+      - run: npm install --prefix /tmp/v5-browser playwright bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0 jsqr@1.4.0 pngjs@7.0.0
       - run: /tmp/v5-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Sintaxis y publicador reversible
         run: |
@@ -61,6 +61,7 @@ jobs:
           node --check public/javascript/crear_convocatoria_v2_extension.js
           python3 tests/publicacion_convocatorias_gestion_v5_test.py
           python3 tests/publicacion_convocatorias_v5_ui_test.py
+          python3 tests/publicacion_convocatorias_v5_qr_test.py
       - name: Preparación exclusivamente sintética
         run: |
           mkdir -p /tmp/v5-sql-backups
@@ -81,6 +82,7 @@ jobs:
           IMPE_V5_EXTRA_ONLY=1 node tests/convocatorias_v5_browser.cjs
           IMPE_V5_ACTIONS_ONLY=1 node tests/convocatorias_v5_browser.cjs
           IMPE_V5_CORRECTIONS_ONLY=1 node tests/convocatorias_v5_browser.cjs
+          IMPE_V5_QR_ONLY=1 node tests/convocatorias_v5_browser.cjs
           IMPE_V5_VISUAL_ONLY=1 node tests/convocatorias_v5_browser.cjs
           php tests/convocatorias_v5_regresion.php
       - uses: actions/upload-artifact@v4
