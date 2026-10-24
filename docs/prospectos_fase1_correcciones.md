@@ -1,5 +1,7 @@
 # Prospectos: correcciones de Fase 1
 
+La actualización posterior de [búsqueda automática por nombre, teléfono o correo](prospectos_busqueda_automatica.md) se instala después de esta corrección territorial.
+
 Actualización sobre la Fase 1 ya instalada. Entrega: `62d16dd8bf3d1a4b67d216854e4af1a00827ef67`. Código: `4749da923da844862f7886c6e9984af982cbb175`. PR #150.
 
 ## Resultado

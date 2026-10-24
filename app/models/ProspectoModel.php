@@ -94,7 +94,7 @@ class ProspectoModel
             $where .= " AND ($estadoAliado)=?"; $params[]=$estadoId; $types.='i';
         }
         $buscar = trim((string)($filtros['buscar'] ?? ''));
-        if ($buscar !== '') { $where .= ' AND (r.nombre LIKE ? OR r.apellido LIKE ? OR r.movil LIKE ?)'; $params=array_merge($params,array_fill(0,3,'%'.$buscar.'%')); $types.='sss'; }
+        if ($buscar !== '') { $where .= ' AND (r.nombre LIKE ? OR r.apellido LIKE ? OR r.movil LIKE ? OR r.correo LIKE ?)'; $params=array_merge($params,array_fill(0,4,'%'.$buscar.'%')); $types.='ssss'; }
         $origen = (string)($filtros['aliado_id'] ?? '');
         if (!$procedencias && $origen !== '') throw new DomainException('No está disponible la información de procedencia.');
         if ($procedencias && $origen === 'general') $where .= ' AND ap.id IS NULL';
