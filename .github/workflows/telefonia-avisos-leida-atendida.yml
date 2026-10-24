@@ -1,0 +1,87 @@
+name: Telefonia - notificaciones leidas y atendidas
+on:
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaNotificacionService.php'
+      - 'app/services/TelefoniaNotificacionVentasService.php'
+      - 'app/controllers/ConvocatoriaNotificacionController.php'
+      - 'app/views/layout/topbar.php'
+      - 'public/javascript/telefonia_notificaciones.js'
+      - 'public/javascript/recordatorios.js'
+      - 'public/css/recordatorios.css'
+      - 'prueba_telefonia/api/leer_todas_notificaciones_llamada.php'
+      - 'tests/telefonia_ventas_notificaciones_db.php'
+      - 'tests/telefonia_notificaciones_unificacion_smoke.php'
+      - 'tests/telefonia_notificaciones_leida_atendida_browser.cjs'
+      - 'tools/publicar_telefonia_notificaciones_unificadas_hostinger.sh'
+      - 'tests/publicacion_telefonia_notificaciones_unificadas_test.py'
+      - '.github/workflows/telefonia-avisos-leida-atendida.yml'
+jobs:
+  navegador:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis sin modificar otros modulos telefonicos
+        run: |
+          php -l app/services/TelefoniaNotificacionService.php
+          php -l app/services/TelefoniaNotificacionVentasService.php
+          php -l app/controllers/ConvocatoriaNotificacionController.php
+          php -l app/controllers/ReminderController.php
+          php -l app/views/layout/topbar.php
+          php -l prueba_telefonia/api/leer_todas_notificaciones_llamada.php
+          php tests/telefonia_notificaciones_unificacion_smoke.php
+          node --check public/javascript/recordatorios.js
+          node --check public/javascript/telefonia_notificaciones.js
+          node --check public/javascript/convocatoria_notificaciones.js
+          node --check tests/telefonia_notificaciones_leida_atendida_browser.cjs
+      - name: Navegacion de ambas campanas, lectura y tareas que permanecen
+        run: |
+          npm install --prefix /tmp/notificaciones-browser playwright bootstrap@5.3.8
+          /tmp/notificaciones-browser/node_modules/.bin/playwright install --with-deps chromium
+          PLAYWRIGHT_MODULE_PATH=/tmp/notificaciones-browser/node_modules/playwright \
+          BOOTSTRAP_MODULE_PATH=/tmp/notificaciones-browser/node_modules/bootstrap \
+          node tests/telefonia_notificaciones_leida_atendida_browser.cjs
+          PLAYWRIGHT_MODULE_PATH=/tmp/notificaciones-browser/node_modules/playwright \
+          BOOTSTRAP_MODULE_PATH=/tmp/notificaciones-browser/node_modules/bootstrap \
+          node tests/telefonia_campana_browser.cjs
+  publicador:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Publicador selectivo, respaldo y rollback
+        run: python3 tests/publicacion_telefonia_notificaciones_unificadas_test.py
+  estados-mysql-mariadb:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['mysql:8.0','mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['3306/tcp']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - name: Estados de Ventas y Analistas; lectura no resuelve la tarea
+        env:
+          IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: php tests/telefonia_ventas_notificaciones_db.php

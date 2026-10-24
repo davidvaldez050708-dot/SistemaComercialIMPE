@@ -7,6 +7,11 @@ require_once __DIR__.'/TelefoniaDisponibilidadService.php';
 final class TelefoniaNotificacionService
 {
     private mysqli $db;
+    /** Claves de obligaciones verificadas en esta consulta; leer no las resuelve. */
+    private array $operativasActuales=[];
+    private static function esOperativa(string $llave): bool {
+        return str_starts_with($llave,'devolucion:') || str_starts_with($llave,'transferencia:');
+    }
     public function __construct(?mysqli $db=null){
         $this->db=$db??(new Database())->connect();
         $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_notificaciones (
@@ -29,9 +34,12 @@ final class TelefoniaNotificacionService
         $s->bind_param('issssss',$user,$ext,$key,$number,$title,$message,$date);$s->execute();$s->close();
     }
     public function sincronizar(int $user,bool $recepcion): void {
+        $this->operativasActuales=[];
         if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';(new TelefoniaNotificacionVentasService($this->db))->pendientes($user);return;}
         $ext=$this->extension($user);if($ext==='')return;
         foreach((new TelefoniaDisponibilidadService($this->db))->devoluciones($user) as $task){
+            if(($task['devolucion']??'')!=='PENDIENTE')continue;
+            $this->operativasActuales['devolucion:'.$task['id'].':'.$task['version']]=true;
             $date=(new DateTimeImmutable($task['updated_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
             $this->agregar($user,$ext,'devolucion:'.$task['id'].':'.$task['version'],$task['telefono'],$date,'Llamada por devolver',$task['contacto'].' · Recepción dejó sus datos y el motivo.');
         }
@@ -53,11 +61,32 @@ final class TelefoniaNotificacionService
         foreach((new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($user) as $op){
             $direct=$op['modo']==='DIRECTA';$source=(int)$op['origen_usuario']===$user;
             if($direct){
-                if(!in_array($op['estado'],['SIN_RESPUESTA','SIN_CONFIRMAR'],true)){
-                    if(!empty($op['destino_atendida'])){$clear=$this->db->prepare("UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND extension=? AND llave IN (?,?)");$k1='transferencia:'.$op['id'].':'.$op['intento'].':SIN_RESPUESTA';$k2='transferencia:'.$op['id'].':'.$op['intento'].':SIN_CONFIRMAR';$clear->bind_param('isss',$user,$ext,$k1,$k2);$clear->execute();$clear->close();}continue;
+                // Una respuesta posterior del destino invalida la incertidumbre
+                // Y marca leídos los avisos antiguos (ambos participantes).
+                // No basta con ocultar la fila: también limpiamos el estado BD.
+                if(!empty($op['destino_atendida'])){
+                    $clear=$this->db->prepare("UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND extension=? AND llave IN (?,?)");
+                    $k1='transferencia:'.$op['id'].':'.$op['intento'].':SIN_RESPUESTA';
+                    $k2='transferencia:'.$op['id'].':'.$op['intento'].':SIN_CONFIRMAR';
+                    $clear->bind_param('isss',$user,$ext,$k1,$k2);
+                    $clear->execute();$clear->close();
+                    continue;
                 }
+                if(!in_array($op['estado'],['SIN_RESPUESTA','SIN_CONFIRMAR'],true))continue;
                 $date=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
                 $confirmed=$op['estado']==='SIN_RESPUESTA';
+                // Una devolución verdaderamente atendida cierra también el aviso
+                // antiguo del origen, no sólo el aviso del destinatario.
+                if($confirmed){
+                    $q=$this->db->prepare("SELECT devolucion FROM telefonia_disponibilidad
+                        WHERE origen_usuario=? AND destino_usuario=? AND referencia=?
+                          AND devolucion IN ('PENDIENTE','ATENDIDA') ORDER BY id DESC LIMIT 1");
+                    $sourceUser=(int)$op['origen_usuario'];$destUser=(int)$op['destino_usuario'];
+                    $ref=(string)$op['referencia'];
+                    $q->bind_param('iis',$sourceUser,$destUser,$ref);$q->execute();
+                    $task=$q->get_result()->fetch_assoc();$q->close();
+                    if(($task['devolucion']??'')==='ATENDIDA')continue;
+                }
                 // Cuando la PBX confirmó que no contestaron, el aviso anterior
                 // de 'sin confirmar' para el mismo intento ya está superado.
                 if($confirmed){
@@ -69,19 +98,40 @@ final class TelefoniaNotificacionService
                 // Una devolución asignada ya tiene su aviso propio con acceso a Llamar.
                 if(!$source&&$confirmed){$q=$this->db->prepare("SELECT id FROM telefonia_disponibilidad WHERE origen_usuario=? AND destino_usuario=? AND referencia=? AND devolucion IN ('PENDIENTE','ATENDIDA')");$q->bind_param('iis',$op['origen_usuario'],$user,$op['referencia']);$q->execute();$task=$q->get_result()->fetch_assoc();$q->close();if($task)continue;}
                 $message=$confirmed?($source?'La extensión '.$op['destino_extension'].' no contestó a '.$op['numero'].'. Coordina la devolución; no se confirma retorno a recepción.':'No contestaste la transferencia de '.$op['numero'].'. Coordina con recepción antes de llamar.'):'La respuesta de la extensión '.$op['destino_extension'].' aún no está confirmada. Coordina con recepción y revisa el historial antes de llamar.';
-                $this->agregar($user,$ext,'transferencia:'.$op['id'].':'.$op['intento'].':'.$op['estado'],$op['numero'],$date,$confirmed?'Transferencia no contestada':'Transferencia sin confirmación',$message);continue;
+                $llave='transferencia:'.$op['id'].':'.$op['intento'].':'.$op['estado'];
+                $this->operativasActuales[$llave]=true;
+                $this->agregar($user,$ext,$llave,$op['numero'],$date,$confirmed?'Transferencia no contestada':'Transferencia sin confirmación',$message);continue;
             }
             if($source||$op['estado']!=='DEVUELTA'||!empty($op['destino_atendida']))continue;
             $date=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
-            $this->agregar($user,$ext,'consulta:'.$op['id'].':'.$op['intento'],$op['numero'],$date,'Transferencia sin respuesta','Recepción intentó comunicarte con '.$op['numero'].'. Coordina con la extensión '.$op['origen_extension'].' antes de devolver la llamada.');
+            $llave='consulta:'.$op['id'].':'.$op['intento'];
+            // Informativa sin obligación real de devolución: archivar al leer.
+            $this->agregar($user,$ext,$llave,$op['numero'],$date,'Transferencia sin respuesta','Recepción intentó comunicarte con '.$op['numero'].'. Coordina con la extensión '.$op['origen_extension'].' antes de devolver la llamada.');
         }
         }catch(Throwable $e){error_log('[campana_transferencias] '.get_class($e));}
     }
     public function pendientes(int $user,bool $recepcion): array {
         if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';return (new TelefoniaNotificacionVentasService($this->db))->pendientes($user);}
         $this->sincronizar($user,$recepcion);$ext=$this->extension($user);
-        $s=$this->db->prepare('SELECT * FROM telefonia_notificaciones WHERE usuario_id=? AND extension=? AND leida=0 ORDER BY id DESC LIMIT 20');
-        $s->bind_param('is',$user,$ext);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        // No truncar obligaciones activas, ni siquiera si están leídas.
+        $keys=array_keys($this->operativasActuales);
+        $rows=[];
+        if($keys){
+            $placeholders=implode(',',array_fill(0,count($keys),'?'));
+            $s=$this->db->prepare("SELECT * FROM telefonia_notificaciones
+                WHERE usuario_id=? AND extension=? AND llave IN ($placeholders) ORDER BY id DESC");
+            $s->bind_param('is'.str_repeat('s',count($keys)),$user,$ext,...$keys);
+            $s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        }
+        // Sólo las llamadas informativas no leídas tienen límite de 20.
+        $s=$this->db->prepare("SELECT * FROM telefonia_notificaciones
+            WHERE usuario_id=? AND extension=? AND leida=0
+              AND llave NOT LIKE 'devolucion:%' AND llave NOT LIKE 'transferencia:%'
+            ORDER BY id DESC LIMIT 20");
+        $s->bind_param('is',$user,$ext);$s->execute();
+        $informativas=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        $rows=array_merge($rows,$informativas);
+        usort($rows,static fn($a,$b)=>(int)$b['id']<=>(int)$a['id']);
         return array_map(function($r)use($recepcion){
             $llave = (string)$r['llave'];
             $callback = str_starts_with($llave, 'devolucion:');
@@ -97,9 +147,10 @@ final class TelefoniaNotificacionService
                     $url .= '&detalle=1&pbx_call_id=' . rawurlencode($pbx);
                 }
             }
-            return ['id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>'llamada_perdida','tipo'=>'TELEFONIA_PERDIDA','leida'=>0,
+            return ['id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>'llamada_perdida','tipo'=>'TELEFONIA_PERDIDA','leida'=>(int)$r['leida'],
                 'titulo'=>$r['titulo'],'mensaje'=>$r['mensaje'],'created_at'=>$r['created_at'],'url'=>$url,
-                'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>$callback?'bi-telephone-forward':'bi-telephone-x','etiqueta'=>$callback?'Por devolver':($unconfirmed?'Por confirmar':'Sin respuesta'),'estado'=>'informativa','fecha'=>$r['created_at'],'prioridad'=>1];
+                'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>$callback?'bi-telephone-forward':'bi-telephone-x','etiqueta'=>$callback?'Por devolver':($unconfirmed?'Por confirmar':'Sin respuesta'),'estado'=>'informativa','fecha'=>$r['created_at'],'prioridad'=>1,
+                'pendiente_operativo'=>self::esOperativa($llave)];
         },$rows);
     }
     public function leer(int $user,int $id): bool {

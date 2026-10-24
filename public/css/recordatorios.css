@@ -647,15 +647,18 @@
     overflow: visible;
 }
 
-.convocatoria-notification-list .topbar-reminder-item.is-unread {
+.convocatoria-notification-list .topbar-reminder-item.is-unread,
+.topbar-reminder-list .topbar-reminder-item.is-unread {
     background-color: #fbfcff;
 }
 
-.convocatoria-notification-list .topbar-reminder-item.is-unread .topbar-reminder-icon {
+.convocatoria-notification-list .topbar-reminder-item.is-unread .topbar-reminder-icon,
+.topbar-reminder-list .topbar-reminder-item.is-unread .topbar-reminder-icon {
     position: relative;
 }
 
-.convocatoria-notification-list .topbar-reminder-item.is-unread .topbar-reminder-icon::after {
+.convocatoria-notification-list .topbar-reminder-item.is-unread .topbar-reminder-icon::after,
+.topbar-reminder-list .topbar-reminder-item.is-unread .topbar-reminder-icon::after {
     content: "";
     width: 7px;
     height: 7px;

@@ -27,7 +27,7 @@ $mostrarAgendaReuniones =
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 $puedeUsarTelefoniaTopbar = tienePermiso('telefonia.usar');
 $puedeRecibirTelefoniaTopbar = tienePermiso('telefonia.recibir');
-if($puedeUsarTelefoniaTopbar&&($puedeRecibirTelefoniaTopbar||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')))&&empty($_SESSION['csrf_token']))$_SESSION['csrf_token']=bin2hex(random_bytes(32));
+if(($esMarketingTopbar||($puedeUsarTelefoniaTopbar&&($puedeRecibirTelefoniaTopbar||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')))))&&empty($_SESSION['csrf_token']))$_SESSION['csrf_token']=bin2hex(random_bytes(32));
 if($puedeUsarTelefoniaTopbar&&!$esMarketingTopbar&&($puedeRecibirTelefoniaTopbar||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes'))))$mostrarCentroAvisos=true;
 // En Marketing, los permisos son del rol pero la recepción depende de la
 // extensión personal. No ofrecer audífonos inactivos a otras cuentas.
@@ -168,7 +168,8 @@ $totalRecordatoriosSeguimiento = 0;
                     data-convocatoria-notification-root
                     data-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=pendientes"
                     data-read-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=marcarLeida"
-                    data-read-all-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=marcarTodasLeidas">
+                    data-read-all-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=marcarTodasLeidas"
+                    data-csrf-token="<?= htmlspecialchars((string)($_SESSION['csrf_token']??''),ENT_QUOTES,'UTF-8') ?>">
                     <button
                         class="topbar-reminder-button dropdown-toggle"
                         type="button"
@@ -188,8 +189,8 @@ $totalRecordatoriosSeguimiento = 0;
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu convocatoria-notification-menu">
                         <div class="topbar-reminder-header convocatoria-notification-header">
                             <div>
-                                <strong>Alertas de convocatorias</strong>
-                                <span>Activaciones automáticas y vencimientos próximos.</span>
+                                <strong>Alertas y telefonía</strong>
+                                <span>Convocatorias y llamadas pendientes. Leer no equivale a atender.</span>
                             </div>
                             <button
                                 type="button"
@@ -239,13 +240,24 @@ $totalRecordatoriosSeguimiento = 0;
                     </button>
 
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu">
-                        <div class="topbar-reminder-header">
+                        <div class="topbar-reminder-header convocatoria-notification-header">
+                            <div>
                             <?php if ($esAdministradorTopbar): ?>
                                 <strong>Notificaciones administrativas</strong>
                                 <span>Supervisión global de reuniones, seguimientos y convocatorias.</span>
                             <?php else: ?>
                                 <strong>Notificaciones</strong>
-                                <span>Reuniones, seguimientos y acciones próximas.</span>
+                                <span>Reuniones, seguimientos y pendientes telefónicos.</span>
+                            <?php endif; ?>
+                            </div>
+                            <?php if ($puedeUsarTelefoniaTopbar && !$esMarketingTopbar &&
+                                    ($puedeRecibirTelefoniaTopbar || ((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')))): ?>
+                                <button type="button" class="convocatoria-notification-read-all"
+                                    data-phone-notification-read-all
+                                    data-phone-notification-read-all-url="<?= BASE_URL ?>prueba_telefonia/api/leer_todas_notificaciones_llamada.php"
+                                    title="Marcar avisos telefónicos como leídos; las tareas pendientes permanecen">
+                                    Marcar llamadas leídas
+                                </button>
                             <?php endif; ?>
                         </div>
 

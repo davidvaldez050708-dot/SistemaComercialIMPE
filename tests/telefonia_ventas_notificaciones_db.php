@@ -42,6 +42,26 @@ try {
  require_once dirname(__DIR__).'/app/services/TelefoniaNotificacionService.php';
  require_once dirname(__DIR__).'/app/services/TelefoniaProgramacionVentasService.php';
  $notices=new TelefoniaNotificacionService($db);$program=new TelefoniaProgramacionVentasService($db);$agenda=new TelefoniaContactosService($db);
+ // Analista: sólo una devolución activa puede sobrevivir "Marcar leídas".
+ $db->query("INSERT INTO telefonia_extensiones(usuario_id,extension,created_at,updated_at)
+     VALUES (10,'101',UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+ $rutaAnalista=json_encode(['tipo'=>'INSTITUCION','responsable_id'=>10,'extension'=>'101','referencia_llamada'=>'out_test_read_keep']);
+ $ins=$db->prepare("INSERT INTO telefonia_disponibilidad
+     (origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,
+      numero,ruta_json,estado,expires_at,created_at,updated_at,contacto,telefono,nota,devolucion)
+     VALUES (7,'100',10,'101','out_test_read_keep','+525551119999',?,'DEVOLUCION',
+       UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP(),'Institución','+525551119999',
+       'Devolver llamada','PENDIENTE')");
+ $ins->bind_param('s',$rutaAnalista);$ins->execute();$idAnalista=(int)$db->insert_id;$ins->close();
+ $pendientesAnalista=$notices->pendientes(10,false);
+ vcheck(count($pendientesAnalista)===1&&$pendientesAnalista[0]['pendiente_operativo'],
+     'Analista ve devolución asignada');
+ $notices->leerTodas(10);
+ $leidosAnalista=$notices->pendientes(10,false);
+ vcheck(count($leidosAnalista)===1&&$leidosAnalista[0]['leida']===1,
+     'La devolución del Analista no desaparece al marcar leídas');
+ $db->query("UPDATE telefonia_disponibilidad SET devolucion='ATENDIDA' WHERE id=$idAnalista");
+ vcheck($notices->pendientes(10,false)===[],'Al atender devolución desaparece de campana del Analista');
  $event('pbx-notice-missed','NOTIFY_INTERNAL');$event('pbx-notice-missed','NOTIFY_END');
  $one=$notices->pendientes(8,false);vcheck(count($one)===1&&$one[0]['titulo']==='Llamada perdida','Perdida propia con cierre sin conexión');
  $again=$notices->pendientes(8,false);vcheck($again[0]['telefonia_id']===$one[0]['telefonia_id'],'Polling no duplica aviso');
@@ -50,13 +70,19 @@ try {
  $event('pbx-notice-missed','NOTIFY_ANSWER');$corrected=$notices->pendientes(8,false);
  vcheck(count($corrected)===1&&$corrected[0]['titulo']==='Resultado pendiente','Respuesta tardía retira falsa perdida');
  vcheck(str_contains($corrected[0]['url'],'action=misLlamadas')&&!str_contains($corrected[0]['url'],'recibidas'),'Destino comercial autorizado');
- vcheck($notices->leer(8,$corrected[0]['telefonia_id'])&&$notices->pendientes(8,false)===[],'Leído no reaparece en el siguiente polling');
+ vcheck($notices->leer(8,$corrected[0]['telefonia_id']),'Leer resultado propio');
+ $reading=$notices->pendientes(8,false);
+ vcheck(count($reading)===1&&$reading[0]['titulo']==='Resultado pendiente'&&$reading[0]['leida']===1&&$reading[0]['pendiente_operativo'],
+    'Leer no oculta resultado que todavía requiere guardado');
  $results->guardar(8,'pbx-notice-missed','BUZON_VOZ');vcheck($notices->pendientes(8,false)===[],'Buzón no inventa conversación ni nuevo aviso');
  $route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>8,'extension'=>'150','referencia_llamada'=>'pbx-task-notice','estado_id'=>17,'institucion_nombre'=>'María']);
  $st=$db->prepare("INSERT INTO telefonia_disponibilidad(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,ruta_json,estado,expires_at,created_at,updated_at,contacto,telefono,nota,devolucion) VALUES(7,'100',8,'150','pbx-task-notice','+525551112233',?,'DEVOLUCION',UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP(),'María','+525551112233','Informes','PENDIENTE')");$st->bind_param('s',$route);$st->execute();$task=(int)$db->insert_id;$st->close();
  $event('pbx-task-notice','NOTIFY_INTERNAL');$event('pbx-task-notice','NOTIFY_END');
  $callbacks=$notices->pendientes(8,false);vcheck(count($callbacks)===1&&$callbacks[0]['etiqueta']==='Por devolver','Devolución asignada reemplaza aviso duplicado de perdida');
  vcheck(str_contains($callbacks[0]['url'],'vista=devoluciones'),'Devolución dirige a Ventas');
+ $notices->leerTodas(8);$readCallbacks=$notices->pendientes(8,false);
+ vcheck(count($readCallbacks)===1&&$readCallbacks[0]['leida']===1&&$readCallbacks[0]['pendiente_operativo'],
+    'Marcar todas leídas nunca cancela devolución pendiente');
  $db->query("UPDATE telefonia_disponibilidad SET devolucion='ATENDIDA' WHERE id=$task");
  vcheck($notices->pendientes(8,false)===[],'Devolución atendida retira aviso');
  $results->guardar(8,'pbx-task-notice','SIN_RESPUESTA');
@@ -65,6 +91,9 @@ try {
  $db->query("UPDATE telefonia_contactos_personales SET proxima_accion_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE id=".(int)$contact['id']);
  $rem=$program->listar(8)[0];$due=$notices->pendientes(8,false);
  vcheck(count($due)===1&&$due[0]['etiqueta']==='Programada'&&str_contains($due[0]['url'],'vista=agenda'),'Agenda vencida usa campana comercial');
+ $notices->leerTodas(8);$readDue=$notices->pendientes(8,false);
+ vcheck(count($readDue)===1&&$readDue[0]['leida']===1&&$readDue[0]['pendiente_operativo'],
+    'Contacto programado permanece hasta completar agenda');
  vreject(fn()=>$program->completar(9,'agenda',(int)$rem['id'],$rem['fecha']),'No cerrar agenda ajena');
  vreject(fn()=>$program->completar(8,'agenda',(int)$rem['id'],'2000-01-01 12:00:00'),'No cerrar versión modificada');
  $before=(int)$db->query('SELECT COUNT(*) n FROM telefonia_ventas_resultados')->fetch_assoc()['n'];
@@ -87,13 +116,19 @@ try {
  $db->query("UPDATE telefonia_disponibilidad SET estado='ENVIADA' WHERE id=$transferTask");
  $db->query("INSERT INTO telefonia_transferencia_operaciones(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,modo,estado,created_at,updated_at) VALUES(7,'100',8,'150','pbx-transfer-noanswer','+525551112233','DIRECTA','ENVIADA',DATE_SUB(UTC_TIMESTAMP(),INTERVAL 3 MINUTE),UTC_TIMESTAMP())");
  $unconfirmed=$notices->pendientes(8,false);vcheck(count($unconfirmed)===1&&$unconfirmed[0]['etiqueta']==='Por confirmar','Transferencia enviada sin respuesta queda sin confirmar');
+ $notices->leerTodas(8);$marked=$notices->pendientes(8,false);
+ vcheck(count($marked)===1&&$marked[0]['leida']===1&&$marked[0]['pendiente_operativo'],
+    'Transferencia por confirmar no desaparece al marcar lectura');
  $event('pbx-transfer-noanswer','NOTIFY_INTERNAL','150',0,['transfer_from'=>'100']);$event('pbx-transfer-noanswer','NOTIFY_END','150',0,['disposition'=>'no answer']);
  $notAnswered=$notices->pendientes(8,false);$operation=$db->query("SELECT * FROM telefonia_transferencia_operaciones WHERE referencia='pbx-transfer-noanswer'")->fetch_assoc();
  vcheck($operation['estado']==='SIN_RESPUESTA'&&$operation['destino_atendida']===null,'Cierre sin respuesta no marca atendida');
  vcheck(count($notAnswered)===1&&$notAnswered[0]['etiqueta']==='Por devolver','Un solo aviso de devolución sustituye sin confirmar y perdida');
  $event('pbx-transfer-noanswer','NOTIFY_ANSWER');$late=$notices->pendientes(8,false);
  vcheck(count($late)===1&&$late[0]['titulo']==='Resultado pendiente','Respuesta tardía sustituye aviso automático por resultado pendiente');
- $results->guardar(8,'pbx-transfer-noanswer','INTERESADO');vcheck($notices->pendientes(8,false)===[],'Resultado de respuesta tardía cierra sólo devolución automática correspondiente');
+ $results->guardar(8,'pbx-transfer-noanswer','INTERESADO');
+ $despuesGuardar=$notices->pendientes(8,false);
+ vcheck($despuesGuardar===[],'Resultado de respuesta tardía cierra sólo devolución automática correspondiente: '.
+     implode(', ',array_map(static fn($n)=>(string)$n['etiqueta'].'/'.(string)$n['tipo_evento'],$despuesGuardar)));
  // Conciliación uno a uno: dos llamadas o dos intenciones no se eligen por orden.
  $marker=new TelefoniaMarcacionesVentasService($db,false);vreject(fn()=>$marker->iniciar(9,'5556667788',str_repeat('9',32)),'Sin extensión asignada no prepara llamadas salientes');$token=str_repeat('a',32);$marker->iniciar(8,'5556667788',$token);
  $out='out_'.str_repeat('c',32);$event($out,'NOTIFY_OUT_START','150',0,['destination'=>'+525556667788','received_at'=>date('Y-m-d H:i:s'),'call_start'=>date('Y-m-d H:i:s')]);$svc->sincronizar(8);

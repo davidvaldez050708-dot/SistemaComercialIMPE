@@ -39,7 +39,10 @@ final class TelefoniaNotificacionVentasService
         $base='index.php?controller=telefonia&action=misLlamadas';
         foreach($calls as $c)$facts[$c['pbx_call_id'].'|'.$c['extension']]=$c;
         foreach($tasks as $t){$scope=$t['referencia'].'|'.$t['destino_extension'];$covered[$scope]=true;if($t['devolucion']!=='PENDIENTE')continue;
-            if(!empty($facts[$scope]['conectada'])&&empty($facts[$scope]['registro'])&&str_starts_with($t['nota'],'Transferencia no contestada.'))continue;
+            // La devolución AUTOMÁTICA por no respuesta ya no es una tarea real
+            // si Zadarma confirmó conversación, haya o no resultado guardado.
+            // Antes revivía precisamente al guardar el resultado: regresión.
+            if(!empty($facts[$scope]['conectada'])&&str_starts_with($t['nota'],'Transferencia no contestada.'))continue;
             $date=(new DateTimeImmutable($t['updated_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
             $add('ventas:devolucion:'.$t['id'].':'.$t['version'],$t['destino_extension'],$t['telefono'],$date,'Llamada por devolver',$t['nombre'].' · '.$t['nota'],$base.'&vista=devoluciones','Por devolver');
         }
@@ -70,12 +73,29 @@ final class TelefoniaNotificacionVentasService
         $existing=$this->rows("SELECT id,llave FROM telefonia_notificaciones WHERE usuario_id=? AND leida=0 AND llave LIKE 'ventas:%'",[$uid]);
         $clear=$this->db->prepare('UPDATE telefonia_notificaciones SET leida=1 WHERE usuario_id=? AND id=?');
         foreach($existing as $r)if(!isset($wanted[$r['llave']])){$clear->bind_param('ii',$uid,$r['id']);$clear->execute();}$clear->close();
-        $rows=$this->rows("SELECT * FROM telefonia_notificaciones WHERE usuario_id=? AND leida=0 AND llave LIKE 'ventas:%' ORDER BY created_at DESC,id DESC LIMIT 20",[$uid]);
+        // No se infiere una resolución del clic sobre la campana:
+        // resultados, devoluciones, agenda y transferencias conservan su fila
+        // hasta que desaparecen realmente de $wanted por su estado de negocio.
+        // Seleccionar las claves vivas sin truncar obligaciones por registrar.
+        $keys=array_keys($wanted);
+        if(!$keys)return [];
+        $placeholders=implode(',',array_fill(0,count($keys),'?'));
+        $rows=$this->rows("SELECT * FROM telefonia_notificaciones
+            WHERE usuario_id=? AND llave IN ($placeholders)
+              AND (leida=0 OR llave NOT LIKE '%:perdida')
+            ORDER BY created_at DESC,id DESC",
+            array_merge([$uid],$keys));
+        // Únicamente limitar perdidas informativas; las tareas reales continúan.
+        $info=0;
+        $rows=array_values(array_filter($rows,static function($r)use(&$info){
+            return !str_ends_with((string)$r['llave'],':perdida') || ++$info<=20;
+        }));
         return array_map(static function($r)use($wanted){$meta=$wanted[$r['llave']];
             $kind=str_starts_with($r['llave'],'ventas:devolucion:')?'devolucion':(str_starts_with($r['llave'],'ventas:programada:')?'programada':(str_ends_with($r['llave'],':resultado')?'resultado_pendiente':'llamada_perdida'));
             return [
-            'id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>$kind,'tipo'=>$kind==='resultado_pendiente'?'TELEFONIA_RESULTADO':'TELEFONIA_PERDIDA','leida'=>0,
+            'id'=>-(int)$r['id'],'telefonia_id'=>(int)$r['id'],'tipo_evento'=>$kind,'tipo'=>$kind==='resultado_pendiente'?'TELEFONIA_RESULTADO':'TELEFONIA_PERDIDA','leida'=>(int)$r['leida'],
             'titulo'=>$r['titulo'],'mensaje'=>$r['mensaje'],'created_at'=>$r['created_at'],'fecha'=>$r['created_at'],'url'=>$meta['url'],
-            'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>'bi-telephone','etiqueta'=>$meta['etiqueta'],'estado'=>'informativa','prioridad'=>1];},$rows);
+            'nombre_entidad'=>$r['titulo'].' · '.$r['numero'],'accion'=>$r['mensaje'],'icono'=>'bi-telephone','etiqueta'=>$meta['etiqueta'],'estado'=>'informativa','prioridad'=>1,
+            'pendiente_operativo'=>!str_ends_with((string)$r['llave'],':perdida')];},$rows);
     }
 }

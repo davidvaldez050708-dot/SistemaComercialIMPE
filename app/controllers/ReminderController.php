@@ -320,11 +320,14 @@ class ReminderController
         }
         // La campana debe priorizar obligaciones vencidas y acciones que requieren
         // intervención, sin depender del orden en que cada servicio fue consultado.
-        $recordatorios = array_slice(
-            $this->ordenarRecordatorios($recordatorios),
-            0,
-            12
-        );
+        // La campana conserva todas las obligaciones telefónicas actuales,
+        // además de los 12 recordatorios habituales de los demás módulos.
+        $ordenados = $this->ordenarRecordatorios($recordatorios);
+        $telefoniaActiva = array_values(array_filter($ordenados,
+            static fn($item) => (int)($item['telefonia_id'] ?? 0) > 0 && !empty($item['pendiente_operativo'])));
+        $otros = array_values(array_filter($ordenados,
+            static fn($item) => (int)($item['telefonia_id'] ?? 0) <= 0 || empty($item['pendiente_operativo'])));
+        $recordatorios = array_merge($telefoniaActiva, array_slice($otros, 0, 12));
 
         echo json_encode([
             'ok' => $ok||$telefoniaOk,
