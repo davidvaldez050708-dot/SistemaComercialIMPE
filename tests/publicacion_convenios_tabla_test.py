@@ -1,5 +1,7 @@
 """Publicador de tabla: bytes reales Hostinger, QR intacto, conflicto y restauración."""
 import importlib.util
+import hashlib
+import re
 import subprocess
 import unittest
 from pathlib import Path
@@ -42,6 +44,16 @@ class PublicacionTabla(base.ConveniosDetalleSelectivo):
         before,after=[unpack(row['variants'][0][key]) for key in ['base','target']]
         marker=b'/* IMPE_CONVENIOS_QR_COMPARTIDO_V5_20261023'
         self.assertEqual(before[before.index(marker):],after[after.index(marker):])
+    def test_hashes_instrucciones_corresponden_a_descarga_git(self):
+        doc=(ROOT/'docs/CONVENIOS_TABLA_INSTITUCIONAL.md').read_text(encoding='utf-8')
+        revision=re.search(r'(?m)^REV=([0-9a-f]{40})$',doc).group(1)
+        hashes=dict((name,digest) for digest,name in re.findall(r"'([0-9a-f]{64})  (publicar\.py|entrega\.json)'",doc))
+        paths={'publicar.py':'tools/publicar_aliados_registro.py','entrega.json':'tools/convenios_tabla_release.json'}
+        self.assertEqual(set(hashes),set(paths))
+        for name,path in paths.items():
+            # Git almacena LF aunque el checkout Windows convierta a CRLF.
+            published=subprocess.check_output(['git','show',revision+':'+path],cwd=str(ROOT))
+            self.assertEqual(hashes[name],hashlib.sha256(published).hexdigest(),name)
     def test_paquete_coincide_con_commit_y_solo_interfaz(self):
         for row in self.manifest['files']:
             self.assertEqual(unpack(row['target']),subprocess.check_output(['git','show',self.manifest['source']+':'+row['path']],cwd=str(ROOT)).replace(b'\r\n',b'\n'))

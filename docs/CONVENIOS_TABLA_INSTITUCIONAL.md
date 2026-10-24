@@ -19,7 +19,7 @@ curl -fL "$RAW/tools/publicar_aliados_registro.py" -o "$PREP/publicar.py" &&
 curl -fL "$RAW/tools/convenios_tabla_release.json" -o "$PREP/entrega.json" &&
 (cd "$PREP" && printf '%s\n' \
  'da1d2348d317e2073c6fea4a24b46541aaf39e3664b1c32e6d3dab4df7a262cc  publicar.py' \
- '4beff805bd67b320add1929c686f21ff2405a2fd8c77be0b11c6d22711daf119  entrega.json' | sha256sum -c -) &&
+ 'b50a08c9362a6b99e8fc383aa33dee5bcd5d77800a52abe752b151275af4f886  entrega.json' | sha256sum -c -) &&
 python3 "$PREP/publicar.py" --site "$SITIO" \
  --manifest "$PREP/entrega.json" \
  --backup-root "$HOME/respaldos-impe-convenios-tabla" --check
@@ -62,7 +62,7 @@ La restauración comprueba hashes y se detiene si detecta ediciones posteriores.
 ## Validación de la entrega
 
 - Navegador sobre la vista PHP y los componentes V3/V4 reales: 82 comprobaciones en seis tamaños, tanto nativa como sobre las variantes Hostinger confirmadas. Estas comprobaciones simulan el transporte del borrador.
-- Nueve pruebas de publicación selectiva: check sin escrituras, apply, idempotencia, restauración, CRLF, personalizaciones, conflicto sin escrituras, QR intacto y protección de cambios posteriores.
+- Diez pruebas de publicación selectiva: check sin escrituras, apply, idempotencia, restauración, CRLF, personalizaciones, conflicto sin escrituras, QR intacto, protección de cambios posteriores y hashes de descarga contrastados contra el commit publicado.
 - CI aislada con MySQL 8 y MariaDB 10.11: 52 comprobaciones por motor con navegador/HTTP/SQL reales y otras tres de desconexión, cierre y recuperación. Incluyen autoguardado, imágenes, permisos, rollback y publicación sin duplicados.
 
 La entrega no se ha aplicado a producción desde Codex.
