@@ -12,7 +12,7 @@ En SSH, descarga y comprueba:
 (
   set -eu
   PAQUETE="$HOME/impe-aliados-iconos"
-  BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/f0733102a0b4a8d59c8408be691c4b553122fb4a"
+  BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/a4500268931ae550a051fc16f3c8aca30c0b08e0"
   mkdir -p "$PAQUETE"
   chmod 700 "$PAQUETE"
   curl -fsSL "$BASE/tools/publicar_aliados_registro.py" -o "$PAQUETE/publicar.py"
@@ -20,7 +20,7 @@ En SSH, descarga y comprueba:
   cd "$PAQUETE"
   printf '%s\n' \
     'da1d2348d317e2073c6fea4a24b46541aaf39e3664b1c32e6d3dab4df7a262cc  publicar.py' \
-    'e0cf1aee07c7638805340b2d8bca50879be6beb50800d62f56d7e5bfc220ee42  entrega.json' | sha256sum -c -
+    'd4bdfc910546fd815b1fa0cf5ed0021644027f7fe938ff1d7d243085a28577b3  entrega.json' | sha256sum -c -
   python3 publicar.py \
     --site "$HOME/domains/fundacionrededumex.org/public_html" \
     --manifest "$PAQUETE/entrega.json" \
@@ -61,4 +61,4 @@ La restauración verifica hashes para proteger cambios posteriores. La entrega y
 
 ## Validación
 
-90 comprobaciones del flujo visual en seis tamaños, incluidas medidas de separación entre barra y acciones, nombres accesibles, centrado vertical y apariencia del botón. Cuatro pruebas del publicador verifican publicación, idempotencia, restauración exacta, personalizaciones/CRLF y rechazo de conflictos sin cambios al sitio. Los hashes de las descargas se verificaron contra los objetos Git.
+96 comprobaciones del flujo visual en seis tamaños, incluidas medidas de separación entre barra y acciones, nombres accesibles, centrado vertical y apariencia del botón. Cuatro pruebas del publicador verifican publicación, idempotencia, restauración exacta, personalizaciones/CRLF y rechazo de conflictos sin cambios al sitio. Los hashes de las descargas se verificaron contra los objetos Git.
