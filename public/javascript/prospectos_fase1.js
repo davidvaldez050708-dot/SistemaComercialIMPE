@@ -1,4 +1,4 @@
-/* Estados al escribir; los prospectos se consultan completos en PHP, con paginación. */
+/* Sólo búsqueda del catálogo de estados; los prospectos se filtran en PHP. */
 (() => {
     'use strict';
     const init = () => {
@@ -19,6 +19,7 @@
         root.querySelector('[data-prospectos-state-search-form]')?.addEventListener('submit',event=>{event.preventDefault();filter();});
         if(input)filter();
 
+        // La tabla consulta PHP sin recargar ni filtrar únicamente las filas visibles.
         const form=root.querySelector('[data-prospectos-filtros]');
         const results=root.querySelector('[data-prospectos-resultados]');
         if(!form||!results)return;
