@@ -6,8 +6,8 @@ $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH);
 if($path==='/_v4'&&($_GET['controller']??'')==='aliado'&&($_GET['action']??'')==='registroGestion')$path='/index.php';
 $appRoot=getenv('IMPE_V5_APP_ROOT')?:__DIR__.'/..';
 if($path==='/index.php'&&($_GET['controller']??'')==='formularioPublico'){require $appRoot.'/index.php';return true;}
-if(preg_match('#^/registro/el-primer-paso-hacia-tu-meta-comienza-aqui/([A-Za-z0-9_-]{12})/?$#D',$path,$match)){
-    $_GET=['codigo'=>$match[1]];require $appRoot.'/registro/el-primer-paso-hacia-tu-meta-comienza-aqui/index.php';return true;
+if(preg_match('#^/registro/(obtener-beca|el-primer-paso-hacia-tu-meta-comienza-aqui)/([A-Za-z0-9_-]{12})/?$#D',$path,$match)){
+    $_GET=['codigo'=>$match[2]];require $appRoot.'/registro/'.$match[1].'/index.php';return true;
 }
 if(!in_array($path,['/_v5','/_v5_session','/_v5_stats','/_v5_failure','/index.php'],true)){
     if(str_starts_with($path,'/_v4') || str_contains($path,'convocatorias_aliado_modular')){putenv('IMPE_V4_APP_ROOT='.$appRoot);require __DIR__.'/convenios_v4_router.php';return true;}

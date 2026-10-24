@@ -2,9 +2,9 @@
 if(getenv('APP_ENV')!=='testing'||!preg_match('/^impe_test_handly_horario_[a-z0-9_]+$/D',getenv('IMPE_DB_NAME')?:''))exit(2);
 $root=dirname(__DIR__);$path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH);
 if(str_starts_with($path,'/public/'))return false;
-if(preg_match('~^/registro/el-primer-paso-hacia-tu-meta-comienza-aqui/([A-Za-z0-9_-]{12})$~',$path,$match)){
-    $_GET=['codigo'=>$match[1]];
-    require $root.'/registro/el-primer-paso-hacia-tu-meta-comienza-aqui/index.php';return true;
+if(preg_match('~^/registro/(obtener-beca|el-primer-paso-hacia-tu-meta-comienza-aqui)/([A-Za-z0-9_-]{12})$~',$path,$match)){
+    $_GET=['codigo'=>$match[2]];
+    require $root.'/registro/'.$match[1].'/index.php';return true;
 }
 session_start();require $root.'/config/config.php';
 if($path==='/_horario_internal'){

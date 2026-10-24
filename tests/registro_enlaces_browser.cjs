@@ -14,10 +14,10 @@ const server=spawn(process.env.PHP_BINARY||'php',['-S',new URL(base).host,'-t',r
  await auth.request.get(base+'_v5_session?role=cc');const endpoint=base+'index.php?controller=formulario&action=acortarRegistro';
  const shorten=async(url,csrf='a'.repeat(64))=>auth.request.post(endpoint,{form:{url,csrf_token:csrf}});
  const long=base+'index.php?controller=formularioPublico&action=registro';let response=await shorten(long);let data=await response.json();const general=data.url;
- check(response.ok()&&/\/registro\/el-primer-paso-hacia-tu-meta-comienza-aqui\/[A-Za-z0-9_-]{12}$/.test(general),'API devuelve frase completa sin query ni token visible');
+ check(response.ok()&&/\/registro\/obtener-beca\/[A-Za-z0-9_-]{12}$/.test(general),'API devuelve obtener-beca sin query ni token visible');
  response=await shorten('https://evil.example/?controller=formularioPublico&action=registro');check(response.status()===422,'API impide destinos externos');response=await shorten(long,'malo');check(response.status()===419,'API exige CSRF');
  response=await auth.request.get(endpoint);check(response.status()===405,'API exige POST');await auth.request.get(base+'_v5_session?role=reader');response=await shorten(long);check(response.status()===403,'API no concede generación a lector');await auth.request.get(base+'_v5_session?role=cc');
- const listed=await(await auth.request.get(base+'index.php?controller=convocatoria&action=listadoFiltrado&territorio_id=1&tipo=bachillerato')).json();const row=listed.convocatorias.find(c=>c.aliado?.id===10&&c.enlace_registro.includes('/registro/el-primer-'));assert.ok(row);const allyUrl=row.enlace_registro;
+ const listed=await(await auth.request.get(base+'index.php?controller=convocatoria&action=listadoFiltrado&territorio_id=1&tipo=bachillerato')).json();const row=listed.convocatorias.find(c=>c.aliado?.id===10&&c.enlace_registro.includes('/registro/obtener-beca/'));assert.ok(row);const allyUrl=row.enlace_registro;
  await page.goto(general);check(await page.locator('[name="nombre"]').isVisible(),'enlace general abre formulario público sin sesión');
  await page.goto(allyUrl);check(await page.locator('[name="perfil_interes"] option').allTextContents().then(items=>items.some(x=>x.includes('Bachillerato General'))&&!items.some(x=>x.trim()==='Inglés')),'enlace de aliado conserva sólo sus programas');
  const formAction=await page.locator('form').getAttribute('action');const token=new URL(formAction).searchParams.get('aliado');check(/^[a-f0-9]{64}$/.test(token),'formulario conserva token original al guardar');
@@ -30,14 +30,14 @@ const server=spawn(process.env.PHP_BINARY||'php',['-S',new URL(base).host,'-t',r
  const legacy=long+'&aliado='+token;await page.goto(legacy);check(await page.locator('[name="nombre"]').isVisible(),'liga larga anterior sigue funcionando');
  const a=await shorten(legacy),b=await shorten(legacy);check((await a.json()).url===(await b.json()).url,'generar repetidamente recupera mismo código');
  const contextUrl=(await(await shorten(legacy+'&convocatoria_ref=ref-http&estado_id=1&titulo=Prueba')).json()).url;check(contextUrl!==allyUrl&&!contextUrl.includes('?'),'referencia contextual tiene alias propio sin query');
- await page.goto(base+'registro/el-primer-paso-hacia-tu-meta-comienza-aqui/000000000000');check((await page.locator('h1').textContent())==='Registro no disponible','código desconocido no abre Registro general ni otro aliado');
+ await page.goto(base+'registro/obtener-beca/000000000000');check((await page.locator('h1').textContent())==='Registro no disponible','código desconocido no abre Registro general ni otro aliado');
  const before=await(await auth.request.get(base+'_v5_stats')).json();await auth.request.get(base+'_v5_session?role=marketing');
  const status=active=>auth.request.post(base+'index.php?controller=aliado&action=registroGestion',{form:{csrf_token:'a'.repeat(64),origen:'institucional',id:'10',operacion:active?'habilitar':'deshabilitar'}});
  try{await status(false);await page.goto(allyUrl);check(!(await page.locator('[name="nombre"]').count()),'Registro deshabilitado también bloquea alias');await page.goto(legacy);check(!(await page.locator('[name="nombre"]').count()),'Registro deshabilitado bloquea igualmente liga anterior');}finally{await status(true);}
  await page.goto(allyUrl);check(await page.locator('[name="nombre"]').isVisible(),'rehabilitar recupera mismo enlace corto');
  // El helper de navegador acorta los parámetros del editor general antes de dibujar QR.
  await publicContext.request.get(base+'_v5_session?role=cc');await page.goto(base+'_v5');
- const generated=await page.evaluate(async url=>{window.IMPE_CSRF_TOKEN='a'.repeat(64);return window.IMPEConvocatoriasV5.acortarRegistro(url);},legacy+'&estado_id=1&convocatoria_ref=browser-ref');check(!generated.includes('?')&&generated.includes('/registro/el-primer-'),'helper del editor genera liga contextual limpia');
+ const generated=await page.evaluate(async url=>{window.IMPE_CSRF_TOKEN='a'.repeat(64);return window.IMPEConvocatoriasV5.acortarRegistro(url);},legacy+'&estado_id=1&convocatoria_ref=browser-ref');check(!generated.includes('?')&&generated.includes('/registro/obtener-beca/'),'helper del editor genera liga contextual limpia');
  const after=await(await auth.request.get(base+'_v5_stats')).json();check(JSON.stringify(before.rows)===JSON.stringify(after.rows)&&JSON.stringify(before.links)===JSON.stringify(after.links),'acortar no modifica convocatorias ni asociaciones existentes');
  check(errors.length===0&&!/PHP (?:Warning|Fatal|Notice)|Uncaught/.test(log),'sin errores JavaScript/PHP: '+errors.join('; '));console.log('PASS '+count+' comprobaciones HTTP/navegador de Registro amigable');
 }catch(e){console.error(e.stack);console.error(log.slice(-3500));process.exitCode=1;}finally{if(browser)await browser.close();server.kill();}})();

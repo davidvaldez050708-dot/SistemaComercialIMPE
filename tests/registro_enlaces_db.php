@@ -4,7 +4,7 @@ require_once __DIR__.'/../config/db_connection.php';require_once __DIR__.'/../ap
 $db=(new Database())->connect(false);$s=new RegistroEnlaceService($db);$checks=0;
 $check=static function($v,$m)use(&$checks){if(!$v)throw new RuntimeException($m);echo "OK $m\n";$checks++;};
 $tokens=$db->query('SELECT id,token FROM formulario_aliados ORDER BY id')->fetch_all(MYSQLI_ASSOC);$old=BASE_URL.'index.php?controller=formularioPublico&action=registro';
-$url=$s->acortar($old);$check((bool)preg_match('#/registro/el-primer-paso-hacia-tu-meta-comienza-aqui/[A-Za-z0-9_-]{12}$#D',$url),'frase completa y código corto de 12 caracteres');
+$url=$s->acortar($old);$check((bool)preg_match('#/registro/obtener-beca/[A-Za-z0-9_-]{12}$#D',$url),'ruta nueva y código corto de 12 caracteres');
 $code=basename($url);$check($s->resolver($code)===['action'=>'registro','controller'=>'formularioPublico'],'Registro general conserva destino');$check($s->acortar($url)===$url&&$s->acortar($old)===$url,'alias estable e idempotente');
 $token=$db->query('SELECT a.token FROM formulario_aliados a JOIN formulario_aliado_registro r ON r.aliado_id=a.id WHERE r.seguimiento_id=10')->fetch_row()[0];
 $ally=$old.'&aliado='.$token;$short=$s->acortar($ally);$check($s->resolver(basename($short))['aliado']===$token,'alias conserva token del aliado');$check($s->equivalentes($ally,$short),'liga larga y amigable son equivalentes');

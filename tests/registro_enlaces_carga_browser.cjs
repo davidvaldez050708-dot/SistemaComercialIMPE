@@ -8,7 +8,7 @@ const start=native.indexOf("    const share = document.querySelector('[data-conv
 const nativeShare=native.slice(start,native.indexOf('    const modalImagenElemento',start));
 assert.ok(start>0&&!nativeShare.includes('<?'));
 const long=origin+'index.php?controller=formularioPublico&action=registro';
-const short=origin+'registro/el-primer-paso-hacia-tu-meta-comienza-aqui/Ab7K9mP2xQ4Z';
+const short=origin+'registro/obtener-beca/Ab7K9mP2xQ4Z';
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});let count=0;
 const check=(value,message)=>{assert.ok(value,message);console.log('OK '+message);count++;};
 try{for(const variant of ['modular','nativo']){
@@ -39,7 +39,7 @@ try{for(const variant of ['modular','nativo']){
  // Toast usa Bootstrap en el sistema; la fixture registra el mensaje sin depender del framework.
  failHelper=false;
  await page.evaluate(()=>{window.bootstrap={Toast:{getOrCreateInstance:()=>({show(){}})}};});
- await page.locator('[data-convocatoria-generate-link]').click();await page.waitForFunction(()=>document.querySelector('[data-convocatoria-form-url]').value.includes('/registro/el-primer-'));
+ await page.locator('[data-convocatoria-generate-link]').click();await page.waitForFunction(()=>document.querySelector('[data-convocatoria-form-url]').value.includes('/registro/obtener-beca/'));
  check(await page.locator('[data-convocatoria-form-url]').inputValue()===short,variant+': botón real recupera liga amigable');
  check(lastEndpoint==='/crm/index.php'&&lastBody.includes('csrf-local')&&lastBody.includes('convocatoria_ref'),variant+': endpoint en subdirectorio, CSRF y procedencia conservados');
  const loaded=helperLoads;await page.locator('[data-convocatoria-generate-link]').click();await page.waitForFunction(()=>!document.querySelector('[data-convocatoria-generate-qr]').disabled);

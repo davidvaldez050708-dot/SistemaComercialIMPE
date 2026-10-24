@@ -5,8 +5,9 @@
     window.IMPERegistroEnlaces={acortar:async value=>{
         const url=new URL(value,location.href);
         if(url.origin!==location.origin)return value;
-        const short=url.pathname.includes('/registro/el-primer-paso-hacia-tu-meta-comienza-aqui/');
-        if(short&&!url.search)return value;
+        const current=url.pathname.includes('/registro/obtener-beca/');
+        const short=current||url.pathname.includes('/registro/el-primer-paso-hacia-tu-meta-comienza-aqui/');
+        if(current&&!url.search)return value;
         if(!short&&(url.searchParams.get('controller')!=='formularioPublico'||url.searchParams.get('action')!=='registro'))return value;
         const endpoint=new URL('index.php',root);
         endpoint.search='?controller=formulario&action=acortarRegistro';

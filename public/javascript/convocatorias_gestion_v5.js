@@ -4,6 +4,7 @@
     // El generador comparte este cargador sin modificar la cabecera del CRM.
     const registroScript = new URL('registro_enlaces_amigables.js', document.currentScript.src);
     registroScript.search = new URL(document.currentScript.src).search;
+    registroScript.searchParams.set('ruta', 'obtener-beca-20261024');
     let registroPendiente;
     const acortarRegistro = async value => {
         if (!window.IMPERegistroEnlaces) {
