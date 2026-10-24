@@ -77,7 +77,7 @@
                 }
                 if (session?.direction === 'incoming' && !session.isEnded?.()) {
                     if (session.isEstablished?.() || typeof session.terminate !== 'function') {
-                        lastError = 'La invitación SIP ya no admite rechazo.';return false;
+                        lastError = 'La llamada ya no se puede rechazar.';return false;
                     }
                     try {
                         declinedSessions.add(session);
@@ -86,7 +86,7 @@
                         lastError='';return true; // Enviado, no confirmación remota.
                     } catch (_) {
                         declinedSessions.delete(session);
-                        lastError='No se pudo enviar el rechazo SIP.';return false;
+                        lastError='No se pudo rechazar la llamada.';return false;
                     }
                 }
                 // El PUSH puede preceder a RTCSession: conservar el control

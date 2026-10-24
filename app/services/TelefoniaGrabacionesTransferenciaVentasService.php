@@ -37,7 +37,7 @@ final class TelefoniaGrabacionesTransferenciaVentasService
             $id=trim((string)($event['call_id_with_rec']??''));
             if(!ZadarmaPbxIdentifierHelper::callIdValido($id))continue;
             if(!isset($refs[$id]))$refs[$id]=['id'=>$id,'inicio'=>'','segundos'=>null,
-                'extension'=>'','etiqueta'=>'Tramo PBX · participante por verificar'];
+                'extension'=>'','etiqueta'=>'Parte de la llamada · participante por verificar'];
         }
         if(!$sourceStarted||!$destAnswered||$otherParticipant)
             throw new DomainException('ACCESO_NO_AUTORIZADO');
@@ -120,7 +120,7 @@ final class TelefoniaGrabacionesTransferenciaVentasService
                         if(isset($seen[$id])){
                             // Filas estadísticas contradictorias desautorizan
                             // la atribución de extensión, no el RECORD firmado.
-                            $refs[$id]['etiqueta']='Tramo PBX · identidad por verificar';
+                            $refs[$id]['etiqueta']='Parte de la llamada · identidad por verificar';
                             $refs[$id]['extension']='';$refs[$id]['segundos']=null;
                             continue;
                         }

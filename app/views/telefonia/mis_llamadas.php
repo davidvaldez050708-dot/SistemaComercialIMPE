@@ -157,5 +157,5 @@ ksort($paginasVisibles, SORT_NUMERIC);
         </div>
     </nav>
     <?php endif; ?>
-    <p class="impe-my-calls-note"><i class="bi bi-shield-check" aria-hidden="true"></i> Este historial muestra tramos con identificador PBX y atribución verificable, no todas las sesiones WebRTC ni cada intento de transferencia. Consulta «Recibidas y resultados», «Por devolver» o «Recepción» para el historial operativo y sus grabaciones; pueden existir diferencias entre sus totales.</p>
+    <p class="impe-my-calls-note"><i class="bi bi-shield-check" aria-hidden="true"></i> Este historial muestra la actividad telefónica que se pudo atribuir a tu usuario. Una transferencia puede incluir varios participantes. Consulta «Recibidas y resultados», «Por devolver» o «Recepción» para el historial operativo y sus grabaciones; pueden existir diferencias entre sus totales.</p>
 </section>

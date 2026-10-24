@@ -48,8 +48,8 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
         data-marketing-reception-details>
     <p class="marketing-reception-browser-note" data-marketing-reception-browser-note hidden>
         <i class="bi bi-info-circle" aria-hidden="true"></i>
-        <span>La conexión WebRTC permanece en una ventana pequeña. Puedes minimizarla,
-            pero no cerrarla mientras recibas llamadas.</span>
+        <span>El teléfono permanece conectado mientras mantengas abierto el CRM.
+            Si se abrió en otra ventana, puedes minimizarla; mantenla abierta para recibir llamadas.</span>
     </p>
     <div class="marketing-reception-explainer" data-marketing-reception-hint>
         Estamos verificando la extensión telefónica asignada a tu usuario.

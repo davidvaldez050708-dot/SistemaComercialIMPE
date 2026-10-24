@@ -1,0 +1,65 @@
+name: Telefonia - recepcion asesor e historial
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  contratos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          php tests/telefonia_recepcion_historial_contrato.php
+          php tests/telefonia_mis_llamadas_propiedad_smoke.php
+          php tests/telefonia_mis_llamadas_casos_concretos_smoke.php
+          php tests/telefonia_mis_llamadas_vista_smoke.php
+          php tests/telefonia_recepcion_transferencia_resultado_smoke.php
+          php tests/marketing_grabaciones_salientes_smoke.php
+          php tests/telefonia_ventas_grabaciones_transferidas_smoke.php
+          php tests/telefonia_ventas_audio_evidencia.php
+          php -l tools/diagnosticar_telefonia_integridad.php
+          node tests/telefonia_flujo_motor.cjs
+          node tests/telefonia_ventas_fin_transferencia_inmediato.cjs
+          node tests/telefonia_transferencia_operacion.cjs
+          node tests/telefonia_recuperacion_pbx_smoke.cjs
+          node tests/telefonia_webrtc_dtmf_smoke.js
+          node tests/telefonia_ventas_grabaciones_ui_regresion.cjs
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/telefonia_conexion_browser.cjs
+  datos:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['3306/tcp']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - name: Registro, resultados, transferencias y grabaciones en base aislada
+        env:
+          IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          php tests/telefonia_ventas_db.php
+          php tests/telefonia_ventas_audio_db.php
+          php tests/telefonia_ventas_gestion_db.php
+          php tests/telefonia_ventas_notificaciones_db.php
+          php tests/telefonia_atencion_db.php
+          php tests/telefonia_identidad_transferencia_db.php
