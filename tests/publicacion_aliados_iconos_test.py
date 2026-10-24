@@ -32,7 +32,10 @@ class HistorialSelectivo(unittest.TestCase):
             data = unpack(variant['base']); self.targets[row['path']] = unpack(variant['target'])
             if data is not None:
                 if custom:
-                    data = data.replace(b'<?php',b'<?php\n// Personalizacion conservada\n',1) if row['path'].endswith('.php') else b'/* Personalizacion conservada */\n'+data
+                    if row['path'].endswith('.css'):
+                        data = data.replace(b'.aliados-avance-summary progress{',b'/* Personalizacion conservada */\n.aliados-avance-summary progress{',1)
+                    else:
+                        data = data.replace(b'<?php',b'<?php\n// Personalizacion conservada\n',1) if row['path'].endswith('.php') else b'/* Personalizacion conservada */\n'+data
                 if crlf: data = data.replace(b'\r\n',b'\n').replace(b'\n',b'\r\n')
                 file = self.site/row['path']; file.parent.mkdir(parents=True,exist_ok=True); file.write_bytes(data)
             self.originals[row['path']] = data
