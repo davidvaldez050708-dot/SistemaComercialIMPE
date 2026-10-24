@@ -19,7 +19,10 @@ def make(source):
     ]}
     previous=json.loads(git(BASE,'tools/bachillerato_unificacion_release.json'))
     phase2=json.loads(git(BASE,'tools/prospectos_fase2_release.json'))
-    for path in sorted(FILES):
+    # Instalar dependencias antes de activar consumidores en peticiones concurrentes.
+    first=['app/helpers/HorarioContacto.php','app/views/formularios/partials/horario_contacto.php','public/css/horario_contacto.css','public/javascript/horario_contacto.js','tools/migrar_horario_contacto.php','app/models/FormularioRegistroModel.php','app/models/ProspectoModel.php','app/controllers/FormularioPublicoController.php','app/controllers/FormularioController.php','app/views/formularios/publico_registro.php','app/views/formularios/registro.php','app/views/prospectos/index.php']
+    assert set(first)==FILES
+    for path in first:
         target=git(source,path)
         try:base=git(BASE,path)
         except subprocess.CalledProcessError:base=None

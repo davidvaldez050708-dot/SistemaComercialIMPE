@@ -57,6 +57,7 @@ if(!preview){server=spawn(php,['-S',new URL(base).host,'-t',root,path.join(__dir
    check((await(await context.request.get(base+'_horario_rows?buscar='+encodeURIComponent(mail))).json()).length===0,'Horario inválido no crea un prospecto '+kind);
   }
   const response=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().includes('guardarRegistro'));await form.locator('button[type=submit]').click();check((await response).ok(),'Envío con JS original '+kind);
+  if(!preview&&kind!=='interno')await page.waitForURL(/action=gracias(?:&|$)/);
   if(!preview){const rows=await(await context.request.get(base+'_horario_rows?buscar='+encodeURIComponent(mail))).json();check(rows.length===1&&rows[0].horario_contacto==='Lun, Vie · 18:00–20:30 (hora local)','Horario persistido y consultable en Prospectos '+kind);}
   else check(posted.at(-1).includes('contacto_desde')&&posted.at(-1).includes('18:00'),'FormData conserva el horario '+kind);
   await page.goto(url);await page.locator('[data-horario-modo]').selectOption('personalizado');await page.locator('[data-horario-dia]').first().check();await page.locator('[data-horario-modo]').selectOption('sin_preferencia');

@@ -28,6 +28,10 @@ class PublicacionHorario(unittest.TestCase):
         for name,b in orig.items():p=self.site/name;self.assertEqual(p.read_bytes() if p.exists() else None,b,name)
     def test_source_bytes(self):
         self.assertEqual({r['path'] for r in self.data['files']},pub.FILES)
+        order=[r['path'] for r in self.data['files']]
+        self.assertLess(order.index('app/helpers/HorarioContacto.php'),order.index('app/models/FormularioRegistroModel.php'))
+        self.assertLess(order.index('app/models/FormularioRegistroModel.php'),order.index('app/controllers/FormularioPublicoController.php'))
+        self.assertLess(order.index('app/controllers/FormularioPublicoController.php'),order.index('app/views/formularios/publico_registro.php'))
         for r in self.data['files']:
             b=unpack(r['target']);self.assertEqual(hashlib.sha256(b).hexdigest(),r['sha256']);self.assertEqual(b,subprocess.check_output(['git','show',self.data['source']+':'+r['path']],cwd=ROOT))
     def test_review_apply_restore(self):
