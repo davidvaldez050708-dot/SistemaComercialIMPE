@@ -49,6 +49,10 @@ class ReminderController
             ($esSupervisor || $esAnalista);
         $puedeSeguimientoAliados =
             tienePermiso('aliados.seguimiento_convocatorias');
+        $puedeTareasAliado = (int)($_SESSION['rol_id'] ?? 0) === 6 &&
+            tienePermiso('aliados.ver') &&
+            (tienePermiso('aliados.gestionar_programas') ||
+             (function_exists('puedeCrearConvocatoriaDesdeConvenio') && puedeCrearConvocatoriaDesdeConvenio()));
         $puedeTelefonia=tienePermiso('telefonia.usar')&&(tienePermiso('telefonia.recibir')||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')));
 
         if (
@@ -56,7 +60,7 @@ class ReminderController
             (
                 !$esAdministrador &&
                 !$puedeCentroReuniones &&
-                !$puedeSeguimientoAliados && !$puedeTelefonia
+                !$puedeSeguimientoAliados && !$puedeTareasAliado && !$puedeTelefonia
             )
         ) {
             http_response_code(403);
@@ -313,11 +317,16 @@ class ReminderController
 
         // Las tareas de Cuenta Clave provienen de la base de datos, no de los
         // permisos de Marketing ni de marcar como leída una notificación.
-        if ((int)($_SESSION['rol_id'] ?? 0) === 6 && tienePermiso('aliados.ver')) {
+        if ($puedeTareasAliado) {
             try {
                 require_once __DIR__ . '/../services/AliadoConvocatoriaPendienteService.php';
                 $tareas = (new AliadoConvocatoriaPendienteService((new Database())->connect()))
                     ->obtener($usuarioId, false, 100);
+                // Un permiso de Aliados no concede acceso al editor de Convocatorias.
+                $puedePublicar = puedeCrearConvocatoriaDesdeConvenio();
+                $tareas = array_values(array_filter($tareas, static function ($tarea) use ($puedePublicar) {
+                    return $puedePublicar || ($tarea['etiqueta'] ?? '') === 'Configurar programas';
+                }));
                 $recordatorios = array_merge($tareas, $recordatorios);
             } catch (Throwable $e) {
                 error_log('[campana_aliados_convocatorias] ' . get_class($e));

@@ -22,7 +22,10 @@ $mostrarCentroAvisos =
         ($puedeSolicitarReuniones || $puedeGestionarReuniones)
     ) ||
     tienePermiso('aliados.seguimiento_convocatorias') ||
-    ((int)($_SESSION['rol_id'] ?? 0) === 6 && tienePermiso('aliados.ver'));
+    ((int)($_SESSION['rol_id'] ?? 0) === 6 &&
+        tienePermiso('aliados.ver') &&
+        (tienePermiso('aliados.gestionar_programas') ||
+         (function_exists('puedeCrearConvocatoriaDesdeConvenio') && puedeCrearConvocatoriaDesdeConvenio())));
 // Cada perfil presenta una sola campana, aunque comparta permisos.
 if ($esMarketingTopbar) $mostrarCentroAvisos = false;
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');

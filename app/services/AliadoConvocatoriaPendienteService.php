@@ -79,7 +79,7 @@ final class AliadoConvocatoriaPendienteService
                 SELECT 1 FROM marketing_aliado_manual_convocatorias anterior
                 INNER JOIN convocatorias c ON c.id=anterior.convocatoria_id
                 WHERE origen.origen_tipo='manual' AND anterior.manual_id=origen.origen_id
-                  AND anterior.programa_codigo=programas.programa_codigo
+                  AND CONVERT(anterior.programa_codigo USING utf8mb4) COLLATE utf8mb4_unicode_ci=programas.programa_codigo
             )";
         }
         $historicoInstitucional = '';
@@ -113,7 +113,7 @@ final class AliadoConvocatoriaPendienteService
                 SELECT 1 FROM formulario_aliado_convocatorias anterior
                 INNER JOIN convocatorias c ON c.id=anterior.convocatoria_id
                 WHERE anterior.aliado_id=perfil.aliado_id AND anterior.formulario='registro'
-                  AND anterior.programa_codigo=programas.programa_codigo
+                  AND CONVERT(anterior.programa_codigo USING utf8mb4) COLLATE utf8mb4_unicode_ci=programas.programa_codigo
             )";
         }
         $sql = "
@@ -150,7 +150,7 @@ final class AliadoConvocatoriaPendienteService
                         INNER JOIN convocatorias c ON c.id=publicado.convocatoria_id
                         WHERE publicado.origen_tipo=origen.origen_tipo
                           AND publicado.origen_id=origen.origen_id
-                          AND publicado.programa_codigo=programas.programa_codigo
+                          AND CONVERT(publicado.programa_codigo USING utf8mb4) COLLATE utf8mb4_unicode_ci=programas.programa_codigo
                     )
                     $historicoManual
                     $historicoInstitucional
