@@ -33,11 +33,23 @@ const initial=()=>[1,2].map(id=>({id,titulo:id===1?'Bachillerato · Publicación
   const go=async(q='')=>{await page.goto(base+'index.php?'+q);await page.locator('[data-avance-abrir]').first().waitFor();await page.evaluate(()=>document.fonts.ready);};
   const open=async kind=>{await page.locator('[data-avance-abrir][data-origen="'+kind+'"]').click();await modal.locator('.aliados-avance-card').first().waitFor();};
   const close=async()=>{await modal.locator('.modal-footer button').click();await modal.waitFor({state:'hidden'});};
+  if(process.env.IMPE_AVANCE_OUTPUT)fs.mkdirSync(process.env.IMPE_AVANCE_OUTPUT,{recursive:true});
   for(const width of [1440,1366,1024,768,390,360]){
-   await page.setViewportSize({width,height:900});db={manual:initial(),institucional:initial()};await go();await open('manual');
+   await page.setViewportSize({width,height:900});db={manual:initial(),institucional:initial()};await go();
+   check(await page.locator('[data-aliado-row]').evaluateAll(rows=>rows.every(row=>{
+    const cells=row.querySelectorAll('td'),bar=row.querySelector('[data-avance-summary] progress'),actions=row.querySelector('.aliados-actions');
+    const b=bar.getBoundingClientRect(),c=cells[5].getBoundingClientRect(),last=cells[6].getBoundingClientRect(),buttons=[...actions.querySelectorAll(':scope > button,:scope > .aliados-actions-menu > button')];
+    return b.right<=c.right+1&&b.left>=c.left&&buttons.every(n=>{const r=n.getBoundingClientRect();return r.left>=last.left-1&&r.right<=last.right+1&&r.left-b.right>=8;});
+   })),'barra y acciones dentro de sus columnas '+width);
+   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'iconos sin desbordamiento de página '+width);
+   check(await page.getByRole('button',{name:'Programas del aliado',exact:true}).count()===2&&await page.getByRole('button',{name:'Compartir convocatoria',exact:true}).count()===2,'iconos con nombres accesibles '+width);
+   if(process.env.IMPE_AVANCE_OUTPUT)await page.screenshot({path:path.join(process.env.IMPE_AVANCE_OUTPUT,'directorio-iconos-'+width+'.png'),fullPage:true});
+   await open('manual');
    check(await modal.locator('.aliados-avance-card').count()===2,'convocatorias y estados separados '+width);
    check((await modal.textContent()).includes('Sin respuesta registrada')&&!(await modal.textContent()).includes('Esperando respuesta'),'sin espera automática '+width);
    check(await modal.locator('[data-avance-responder]').count()===1,'sólo responde publicaciones compartidas '+width);
+   check(await modal.locator('.aliados-avance-intro').evaluate(n=>{const a=n.querySelector('i').getBoundingClientRect(),b=n.querySelector('p').getBoundingClientRect();return Math.abs((a.top+a.bottom)/2-(b.top+b.bottom)/2)<2;}),'aviso centrado verticalmente '+width);
+   check(await modal.locator('[data-avance-responder]').evaluate(n=>{const css=getComputedStyle(n);return n.querySelector('.bi-chat-left-text')&&css.color==='rgb(255, 255, 255)'&&css.backgroundColor!=='rgb(255, 255, 255)'&&n.getBoundingClientRect().height>=40;}),'acción Registrar respuesta con estilo primario '+width);
    await modal.locator('[data-avance-only-pending]').check();check(await modal.locator('.aliados-avance-card').count()===1&&(await modal.locator('.aliados-avance-card').textContent()).includes('Inglés'),'filtro de pendientes '+width);await modal.locator('[data-avance-only-pending]').uncheck();
    check(await modal.evaluate(n=>n.querySelector('.modal-body').scrollWidth<=n.querySelector('.modal-body').clientWidth),'modal sin desbordamiento '+width);
    if(process.env.IMPE_AVANCE_OUTPUT){fs.mkdirSync(process.env.IMPE_AVANCE_OUTPUT,{recursive:true});await page.screenshot({path:path.join(process.env.IMPE_AVANCE_OUTPUT,'avance-'+width+'.png'),fullPage:true});}

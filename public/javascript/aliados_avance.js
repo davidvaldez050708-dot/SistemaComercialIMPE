@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(p.respuesta.nota)copy.append(el('p','',p.respuesta.nota));
       if(p.respuesta.nota)copy.append(el('small','',(p.respuesta.responsable||'Responsable')+' · '+date(p.respuesta.fecha)));
       response.append(copy);
-      if(p.puede_responder){const button=el('button','btn btn-system-light',p.respuesta.nota?'Actualizar respuesta':'Registrar respuesta');button.type='button';button.dataset.avanceResponder=p.id;button.addEventListener('click',()=>{message('');responseEditor(p);});response.append(button);}
+      if(p.puede_responder){const button=el('button','btn aliados-btn-primary aliados-respuesta-button');button.type='button';button.append(icon('chat-left-text'),el('span','',p.respuesta.nota?'Actualizar respuesta':'Registrar respuesta'));button.dataset.avanceResponder=p.id;button.addEventListener('click',()=>{message('');responseEditor(p);});response.append(button);}
       card.append(response);list.append(card);
     }
     if(!current.respuestas_disponibles&&a.compartidas)list.append(el('p','aliados-avance-empty','La consulta está disponible. El registro de respuestas todavía no está habilitado.'));

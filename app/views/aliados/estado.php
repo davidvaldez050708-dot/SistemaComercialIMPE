@@ -558,20 +558,21 @@ $seguimientoVista = static function ($estado) {
                                                 <div class="aliados-actions">
                                                     <?php $esManualRegistro = ($aliado['origen_tipo'] ?? '') === 'manual'; ?>
                                                     <?php if (tienePermiso('aliados.gestionar_programas')): ?>
-                                                    <button type="button" class="btn aliados-share-button" data-registro-abrir data-registro-origen="<?= $esManualRegistro ? 'manual' : 'institucional' ?>" data-registro-id="<?= (int)($esManualRegistro ? $aliado['id'] : $aliado['seguimiento_id']) ?>">Programas</button>
+                                                    <button type="button" class="btn aliados-share-button aliados-action-icon" title="Programas del aliado" aria-label="Programas del aliado" data-registro-abrir data-registro-origen="<?= $esManualRegistro ? 'manual' : 'institucional' ?>" data-registro-id="<?= (int)($esManualRegistro ? $aliado['id'] : $aliado['seguimiento_id']) ?>"><i class="bi bi-mortarboard" aria-hidden="true"></i><span class="visually-hidden">Programas</span></button>
                                                     <?php endif; ?>
                                                     <?php if ($puedeCompartirCorreo || $puedePrepararWhatsapp): ?>
                                                         <button
                                                             type="button"
-                                                            class="btn aliados-share-button"
+                                                            class="btn aliados-share-button aliados-action-icon"
+                                                            aria-label="Compartir convocatoria"
                                                             data-aliado-share="<?= (int)($esManualRegistro ? $aliado['id'] : $aliado['seguimiento_id']) ?>"
                                                             data-aliado-share-origen="<?= $esManualRegistro ? 'manual' : 'institucional' ?>"
                                                             <?= $puedeCompartirAliado ? '' : 'disabled' ?>
                                                             title="<?= $puedeCompartirAliado
                                                                 ? 'Compartir convocatoria'
                                                                 : 'El aliado no tiene un canal autorizado disponible' ?>">
-                                                            <i class="bi bi-send"></i>
-                                                            Compartir
+                                                            <i class="bi bi-send" aria-hidden="true"></i>
+                                                            <span class="visually-hidden">Compartir</span>
                                                         </button>
                                                     <?php endif; ?>
 
