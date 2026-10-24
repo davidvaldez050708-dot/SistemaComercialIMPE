@@ -23,6 +23,9 @@ usort($conveniosVisibles, static function ($a, $b) {
         ?: strnatcasecmp((string)($a['nombre_entidad'] ?? ''), (string)($b['nombre_entidad'] ?? ''));
 });
 $nombreMunicipioAnterior = null;
+$conteosMunicipio = array_count_values(array_map(
+    static fn($c) => (string)($c['municipio_nombre'] ?? ''), $conveniosVisibles
+));
 $mapaConvenios = static function ($nombreEstado) {
     require_once __DIR__ . '/../../helpers/MapaEstadoHelper.php';
     return impeRutaMapaEstado((string)$nombreEstado);
@@ -65,7 +68,7 @@ $fecha = static function ($valor) {
 ?>
 
 <section
-    class="crear-convocatoria-module"
+    class="crear-convocatoria-module convenios-tabla-module"
     data-crear-convocatoria-module
     data-convocatoria-base-url="<?= $texto(BASE_URL . 'index.php?controller=convocatoria&action=index') ?>">
 
@@ -269,13 +272,36 @@ $fecha = static function ($valor) {
                     );
                     ?>
                     <?php if ($nombreMunicipioAnterior !== $payload['municipio']): ?>
+                        <?php if ($nombreMunicipioAnterior !== null): ?>
+                                </tbody></table></div>
+                            </section>
+                        <?php endif; ?>
                         <?php $nombreMunicipioAnterior = $payload['municipio']; ?>
-                        <div class="convenios-municipio-header" data-convenio-municipio-header>
-                            <strong><i class="bi bi-geo-alt" aria-hidden="true"></i> <?= $texto($payload['municipio'] ?: 'Sin municipio') ?></strong>
-                        </div>
+                        <section class="convenios-municipio-group" data-convenio-group>
+                            <div class="convenios-directory-heading" data-convenio-municipio-header>
+                                <strong><i class="bi bi-geo-alt" aria-hidden="true"></i> <?= $texto($payload['municipio'] ?: 'Sin municipio') ?></strong>
+                                <span data-convenio-group-count><?= $conteosMunicipio[$payload['municipio']] ?> <?= $conteosMunicipio[$payload['municipio']] === 1 ? 'convenio' : 'convenios' ?></span>
+                            </div>
+                            <div class="table-responsive convenios-table-wrap" tabindex="0" role="region" aria-label="Convenios de <?= $texto($payload['municipio'] ?: 'Sin municipio') ?>">
+                                <table class="table align-middle mb-0 convenios-directory-table">
+                                    <caption class="visually-hidden">Convenios de <?= $texto($payload['municipio'] ?: 'Sin municipio') ?></caption>
+                                    <colgroup><col class="convenios-col-ally"><col class="convenios-col-contact"><col class="convenios-col-programs"><col class="convenios-col-origin"><col class="convenios-col-state"><col class="convenios-col-actions"></colgroup>
+                                    <thead><tr>
+                                        <th scope="col">Aliado</th><th scope="col">Contacto</th><th scope="col">Programas ofrecidos</th><th scope="col">Origen</th><th scope="col">Registro</th><th scope="col" class="text-end">Acciones</th>
+                                    </tr></thead>
+                                    <tbody>
                     <?php endif; ?>
-                    <article class="convenios-fila convenios-list-row"
-                        aria-label="Convenio de <?= $texto($payload['institucion']) ?>"
+                    <?php
+                    $crearQuery = [
+                        'controller' => 'convocatoria', 'action' => 'index',
+                        'territorio_id' => $payload['estado_id'], 'estado_nombre' => $payload['estado'],
+                        'desde_convenio' => 1, 'abrir_nueva_convocatoria' => 1,
+                        'aliado_tipo' => $payload['origen_tipo'], 'aliado_id' => $payload['origen_id'],
+                        'convenio_nombre' => $payload['institucion']
+                    ];
+                    if ($payload['seguimiento_id'] > 0) $crearQuery['seguimiento_id'] = $payload['seguimiento_id'];
+                    ?>
+                    <tr
                         data-convenio-notification
                         data-convenio-state="<?= (int)$payload['estado_id'] ?>"
                         data-convenio-municipio="<?= (int)$payload['municipio_id'] ?>"
@@ -288,19 +314,28 @@ $fecha = static function ($valor) {
                             JSON_UNESCAPED_SLASHES |
                             JSON_INVALID_UTF8_SUBSTITUTE
                         )) ?>'>
-                        <div class="convenios-list-cell convenios-cell-ally"><span class="convenios-cell-label">Aliado</span><strong class="convenios-nombre"><?= $texto($payload['institucion']) ?></strong>
+                        <td><div class="convenios-directory-cell"><strong class="convenios-nombre"><?= $texto($payload['institucion']) ?></strong>
                             <small><?= $texto($payload['municipio']) ?></small>
-                            <span class="crear-convocatoria-attention-badge <?= $payload['estado_atencion'] === 'con_convocatoria' ? 'is-done' : 'is-pending' ?>" data-convenio-card-attention><?= $texto($payload['estado_atencion_etiqueta']) ?></span></div>
-                        <div class="convenios-list-cell"><span class="convenios-cell-label">Contacto</span><strong><?= $texto($payload['contacto'] ?: 'Sin contacto') ?></strong>
-                            <small><?= $texto($payload['correo_contacto'] ?: 'Sin correo') ?></small></div>
-                        <div class="convenios-list-cell"><span class="convenios-cell-label">Programas ofrecidos</span><span class="convenios-programas"><?= $texto($payload['registro_programas'] ?: 'Sin programas de Registro') ?></span></div>
-                        <div class="convenios-list-cell"><span class="convenios-cell-label">Origen</span><span class="convenios-etiqueta"><?= $payload['origen_tipo'] === 'manual' ? 'Relación manual' : 'Vinculación' ?></span>
-                            <small><?= $payload['origen_tipo'] === 'manual' ? 'Sin formalización documental' : 'Formalizado ' . $texto($payload['fecha_recibido']) ?></small></div>
-                        <div class="convenios-list-cell convenios-cell-status"><span class="convenios-cell-label">Registro</span><span class="crear-convocatoria-state-badge"><?= $texto($payload['registro_estado']) ?></span></div>
-                        <div class="convenios-list-cell convenios-cell-actions"><span class="convenios-cell-label">Acciones</span>
-                            <button type="button" class="btn btn-system-save convenios-action-button" data-convenio-open aria-label="Ver detalle de <?= $texto($payload['institucion']) ?>">Ver detalle</button></div>
-                    </article>
+                            <span class="crear-convocatoria-attention-badge <?= $payload['estado_atencion'] === 'con_convocatoria' ? 'is-done' : 'is-pending' ?>" data-convenio-card-attention><?= $texto($payload['estado_atencion_etiqueta']) ?></span></div></td>
+                        <td><div class="convenios-directory-cell"><strong><?= $texto($payload['contacto'] ?: 'Sin contacto') ?></strong>
+                            <?php if ($payload['cargo_contacto']): ?><small><?= $texto($payload['cargo_contacto']) ?></small><?php endif; ?>
+                            <small><?= $texto($payload['correo_contacto'] ?: 'Sin correo') ?></small></div></td>
+                        <td><span class="convenios-directory-programs"><?= $texto($payload['registro_programas'] ?: 'Sin programas de Registro') ?></span></td>
+                        <td><div class="convenios-directory-cell"><strong><?= $payload['origen_tipo'] === 'manual' ? 'Relación manual' : 'Vinculación' ?></strong>
+                            <small><?= $payload['origen_tipo'] === 'manual' ? 'Sin formalización documental' : 'Formalizado ' . $texto($payload['fecha_recibido']) ?></small></div></td>
+                        <td><span class="crear-convocatoria-state-badge"><?= $texto($payload['registro_estado']) ?></span></td>
+                        <td><div class="convenios-directory-actions">
+                            <button type="button" class="btn btn-system-light convenios-detail-button" data-convenio-open title="Ver detalle" aria-label="Ver detalle de <?= $texto($payload['institucion']) ?>"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                            <?php if (!empty($puedeCrearDesdeConvenio) && $payload['origen_id'] > 0 && in_array($payload['origen_tipo'], ['manual', 'institucional'], true)): ?>
+                                <a href="<?= $texto(BASE_URL . 'index.php?' . http_build_query($crearQuery)) ?>" class="btn btn-system-save convenios-create-button" data-convenio-create-link data-convenio-create-row aria-label="Crear convocatoria de <?= $texto($payload['institucion']) ?>"><i class="bi bi-megaphone" aria-hidden="true"></i><span>Crear convocatoria</span></a>
+                            <?php endif; ?>
+                        </div></td>
+                    </tr>
                 <?php endforeach; ?>
+                <?php if ($nombreMunicipioAnterior !== null): ?>
+                            </tbody></table></div>
+                        </section>
+                <?php endif; ?>
             </div>
 
             <div
@@ -406,13 +441,6 @@ $fecha = static function ($valor) {
                     <span>Notas del convenio</span>
                     <p class="text-muted" data-convenio-modal-notes>Sin notas registradas.</p>
                 </div>
-                <div class="crear-convocatoria-modal-help">
-                    <i class="bi bi-info-circle"></i>
-                    <span>
-                        La convocatoria se abrirá directamente en el estado
-                        correspondiente al aliado seleccionado.
-                    </span>
-                </div>
             </div>
 
             <div class="modal-footer">
@@ -423,15 +451,7 @@ $fecha = static function ($valor) {
                     Cerrar
                 </button>
 
-                <?php if (!empty($puedeCrearDesdeConvenio)): ?>
-                <a
-                    href="#"
-                    class="btn btn-system-save crear-convocatoria-modal-create"
-                    data-convenio-create-link>
-                    <i class="bi bi-megaphone"></i>
-                    Crear convocatoria
-                </a>
-                <?php endif; ?>
+
             </div>
         </div>
     </div>
@@ -443,3 +463,5 @@ $fecha = static function ($valor) {
 <link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/convenios_borradores_v4.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/convenios_borradores_v4.css'),0,16) ?>">
 <script defer src="<?= $texto(BASE_URL) ?>public/javascript/convenios_borradores_v4.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/convenios_borradores_v4.js'),0,16) ?>"></script>
 <?php endif; ?>
+
+<link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/convenios_directorio_tabla.css?v=<?= substr(hash_file('sha256', __DIR__ . '/../../../public/css/convenios_directorio_tabla.css'), 0, 16) ?>">

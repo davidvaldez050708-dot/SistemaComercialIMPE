@@ -32,10 +32,13 @@ const setup=async()=>{
 };
 const modal=()=>page.locator('#modalCrearConvocatoria'),cards=()=>modal().locator('.impe-aliado-multi-card'),status=()=>modal().locator('[data-v4-status]');
 const open=async(name='Instituto Existente')=>{
- const row=page.locator('[data-convenio-notification]').filter({hasText:name}).first();await row.locator('[data-convenio-open]').click();
- await page.locator('#modalConvenioCrearConvocatoria').waitFor({state:'visible'});await page.locator('[data-convenio-create-link]').click();await modal().waitFor({state:'visible',timeout:10000});await cards().first().waitFor();
+ const row=page.locator('[data-convenio-notification]').filter({hasText:name}).first();
+ if(await row.locator('[data-convenio-create-row]').count())await row.locator('[data-convenio-create-row]').click();
+ else{await row.locator('[data-convenio-open]').click();await page.locator('#modalConvenioCrearConvocatoria').waitFor({state:'visible'});await page.locator('#modalConvenioCrearConvocatoria [data-convenio-create-link]').click();}
+ await modal().waitFor({state:'visible',timeout:10000});await cards().first().waitFor();
 };
-const close=async()=>{await modal().locator('.btn-close').click();await modal().waitFor({state:'detached'});await page.locator('#modalConvenioCrearConvocatoria .btn-close').click();await page.locator('#modalConvenioCrearConvocatoria').waitFor({state:'hidden'});};
+const closeDetail=async()=>{const detail=page.locator('#modalConvenioCrearConvocatoria');if(await detail.isVisible()){await detail.locator('.btn-close').click();await detail.waitFor({state:'hidden'});}};
+const close=async()=>{await modal().locator('.btn-close').click();await modal().waitFor({state:'detached'});await closeDetail();};
 const saved=async()=>{await status().filter({hasText:/^Borrador guardado/}).waitFor();};
 const stats=async()=>await(await context.request.get(base+'_v4_stats')).json();
 const fill=async(index,title)=>{const card=cards().nth(index);await card.locator('input[type=text]').fill(title);const dates=card.locator('input[type=date]');await dates.nth(0).fill('2026-10-22');await dates.nth(1).fill('2026-12-22');};
@@ -108,7 +111,9 @@ try{
  const replacedPreview=await cards().first().locator('.impe-v4-preview img').getAttribute('src');check((await(await context.request.get(replacedPreview)).body()).equals(alternate),'reemplazo restaura la nueva imagen correcta');
  await context.setOffline(true);await cards().first().locator('input[type=text]').fill('V4 General sin conexión');await status().filter({hasText:/Error al guardar/}).waitFor();await modal().locator('.btn-close').click();await status().filter({hasText:/Error al guardar/}).waitFor();check(await modal().isVisible(),'cerrar sin conexión mantiene el editor y permite reintentar sin afirmar guardado');
  await context.setOffline(false);await page.evaluate(()=>window.dispatchEvent(new Event('online')));await saved();check((await modal().evaluate(el=>el.__draftV4)).programas['bachillerato-general'].titulo==='V4 General sin conexión','reconexión sincroniza los cambios pendientes');
- const tab=await context.newPage();await tab.goto(base+'_v4');const tabRow=tab.locator('[data-convenio-notification]').filter({hasText:'Instituto Existente'}).first();await tabRow.locator('[data-convenio-open]').click();await tab.locator('[data-convenio-create-link]').click();await tab.locator('#modalCrearConvocatoria').waitFor({state:'visible'});
+ const tab=await context.newPage();await tab.goto(base+'_v4');const tabRow=tab.locator('[data-convenio-notification]').filter({hasText:'Instituto Existente'}).first();
+ if(await tabRow.locator('[data-convenio-create-row]').count())await tabRow.locator('[data-convenio-create-row]').click();
+ else{await tabRow.locator('[data-convenio-open]').click();await tab.locator('#modalConvenioCrearConvocatoria [data-convenio-create-link]').click();}await tab.locator('#modalCrearConvocatoria').waitFor({state:'visible'});
  await cards().first().locator('input[type=text]').fill('V4 General versión actual');await saved();await tab.locator('.impe-aliado-multi-card input[type=text]').first().fill('V4 No sobrescribir');await tab.locator('[data-v4-reload]').waitFor({state:'visible'});
  check((await modal().evaluate(el=>el.__draftV4)).programas['bachillerato-general'].titulo==='V4 General versión actual','dos pestañas no sobrescriben silenciosamente la versión actual');await tab.close();
  const publish=modal().locator('[type=submit]');let response=page.waitForResponse(r=>r.url().includes('action=guardarProgramasAliado'));await publish.click();check((await response).status()===422&&(await stats()).convocatorias.length===0,'publicación incompleta falla sin crear convocatorias parciales');
@@ -125,9 +130,9 @@ try{
  check((await stats()).convocatorias.length===2&&posts===beforePosts+1,'doble envío sólo confirma un lote aunque se pierda su respuesta HTTP');await publish.click();await modal().waitFor({state:'detached'});
  const finished=await stats();check(finished.convocatorias.length===2&&finished.drafts.some(d=>Number(d.id)===draftId&&d.estado==='publicado'),'reintentar publicación recupera los mismos IDs sin duplicados');
  check(finished.convocatorias.every(c=>c.enlace_registro===originalLink)&&finished.convocatorias.some(c=>c.subtipo_convocatoria==='bachillerato-general')&&finished.convocatorias.some(c=>c.tipo_convocatoria==='titulacion'&&c.subtipo_convocatoria==='experiencia-laboral'),'clasificaciones y enlace compartido correctos en Gestión de Convocatorias');
- check(page.url()===base+'_v4'&&await page.locator('#modalConvenioCrearConvocatoria [data-convenio-modal-attention]').textContent()==='Con convocatoria','éxito permanece en Convenios y actualiza el estado del aliado');
+ check(page.url()===base+'_v4'&&await page.locator('[data-convenio-notification]').filter({hasText:'Instituto Existente'}).first().locator('[data-convenio-card-attention]').textContent()==='Con convocatoria','éxito permanece en Convenios y actualiza el estado del aliado');
  for(const c of finished.convocatorias)check((await context.request.get(base+c.imagen)).ok(),'imagen definitiva existe antes de confirmar el borrador '+c.programa_codigo);
- await page.locator('#modalConvenioCrearConvocatoria .btn-close').click();await open();await cards().first().locator('input[type=text]').fill('V4 Descartar explícito');await saved();page.once('dialog',dialog=>dialog.accept());await modal().locator('[data-v4-discard]').click();await modal().waitFor({state:'detached'});
+ await closeDetail();await open();await cards().first().locator('input[type=text]').fill('V4 Descartar explícito');await saved();page.once('dialog',dialog=>dialog.accept());await modal().locator('[data-v4-discard]').click();await modal().waitFor({state:'detached'});
  check((await stats()).convocatorias.length===2,'descartar otro borrador no afecta convocatorias publicadas');
  check(errors.length===0,'sin errores JavaScript: '+errors.join('; '));
  console.log('PASS '+count+' comprobaciones V4 de navegador/HTTP/SQL');

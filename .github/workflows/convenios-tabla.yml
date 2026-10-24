@@ -1,0 +1,89 @@
+name: Convenios - tabla y acciones
+on:
+  pull_request:
+    paths:
+      - 'app/views/convocatorias/crear_desde_convenio.php'
+      - 'public/css/convenios_directorio_tabla.css'
+      - 'public/javascript/crear_convocatoria*.js'
+      - 'public/javascript/convenios_borradores_v4.js'
+      - 'tests/*convenios_tabla*'
+      - 'tests/fixtures/convenios_tabla_hostinger/**'
+      - 'tools/*convenios_tabla*'
+      - '.github/workflows/convenios-tabla.yml'
+permissions:
+  contents: read
+jobs:
+  dirigida:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['33310:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33310
+      IMPE_DB_USER: root
+      IMPE_DB_NAME: impe_test_handly_aliados_v4_tabla_ci
+      IMPE_TEST_DB_NAME: impe_test_handly_aliados_v4_tabla_ci
+      IMPE_TEST_MYSQL_PORT: 33310
+      IMPE_BASE_URL: http://127.0.0.1:8110/
+      PLAYWRIGHT_MODULE_PATH: /tmp/tabla-browser/node_modules/playwright
+      BOOTSTRAP_MODULE_PATH: /tmp/tabla-browser/node_modules/bootstrap
+      BROWSER_DEPS: /tmp/tabla-browser/node_modules
+      JSQR_MODULE_PATH: /tmp/tabla-browser/node_modules/jsqr
+      IMPE_TABLA_OUTPUT: /tmp/tabla-visual/nativa
+      IMPE_V4_OUTPUT: /tmp/tabla-visual/real-db
+      IMPE_CONVOCATORIA_DRAFT_DIR: /tmp/tabla-private-images
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, gd, fileinfo
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/tabla-browser playwright bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0 jsqr@1.4.0
+      - run: /tmp/tabla-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Publicador y vistas reales sin BD
+        run: |
+          php -l app/views/convocatorias/crear_desde_convenio.php
+          node --check public/javascript/convenios_borradores_v4.js
+          node --check public/javascript/crear_convocatoria.js
+          node --check public/javascript/crear_convocatoria_v2_extension.js
+          python3 tests/publicacion_convenios_tabla_test.py
+          python3 tests/publicacion_convenios_tabla_scroll_test.py
+          node tests/convenios_tabla_browser.cjs
+          python3 tests/preparar_convenios_tabla_replica.py --output /tmp/tabla-hostinger
+          IMPE_TABLA_APP_ROOT=/tmp/tabla-hostinger IMPE_TABLA_OUTPUT=/tmp/tabla-visual/hostinger node tests/convenios_tabla_browser.cjs
+      - name: Esquema sintético aislado de pruebas
+        run: |
+          mkdir -p /tmp/tabla-sql-backups
+          php tests/aliados_registro_fixture.php
+          php tools/preparar_handly_formularios.php --apply
+          php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/tabla-sql-backups
+          php tools/migrar_extensiones_aliados_20261022.php --apply --backup-dir=/tmp/tabla-sql-backups
+          php tools/migrar_canales_manuales_20261022.php --apply --respaldo-confirmado
+          php tools/migrar_convocatorias_multiprograma_20261022.php --apply --respaldo-confirmado
+          php tests/convenios_v4_fixture.php
+          php tools/migrar_convocatoria_borradores_v4.php --apply --backup-dir=/tmp/tabla-sql-backups
+      - name: Apertura directa, borradores, permisos y publicación con SQL real
+        run: |
+          node tests/convenios_v4_browser.cjs
+          IMPE_V4_OFFLINE_ONLY=1 node tests/convenios_v4_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: convenios-tabla-${{ strategy.job-index }}
+          path: /tmp/tabla-visual

@@ -74,14 +74,25 @@ document.addEventListener('DOMContentLoaded', function () {
             if (matches) visible++;
         });
         for (const header of root.querySelectorAll('[data-convenio-municipio-header]')) {
-            let next = header.nextElementSibling;
+            const group = header.closest('[data-convenio-group]');
             let hasVisible = false;
-            while (next && !next.matches('[data-convenio-municipio-header]')) {
-                if (next.matches('[data-convenio-notification]') && !next.classList.contains('d-none')) {
-                    hasVisible = true;
-                    break;
+            if (group) {
+                const visibleRows = [...group.querySelectorAll('[data-convenio-notification]')]
+                    .filter(row => !row.classList.contains('d-none'));
+                hasVisible = visibleRows.length > 0;
+                group.classList.toggle('d-none', !hasVisible);
+                const count = group.querySelector('[data-convenio-group-count]');
+                if (count) count.textContent = visibleRows.length + (visibleRows.length === 1 ? ' convenio' : ' convenios');
+            } else {
+                // Compatibilidad con directorios anteriores personalizados.
+                let next = header.nextElementSibling;
+                while (next && !next.matches('[data-convenio-municipio-header]')) {
+                    if (next.matches('[data-convenio-notification]') && !next.classList.contains('d-none')) {
+                        hasVisible = true;
+                        break;
+                    }
+                    next = next.nextElementSibling;
                 }
-                next = next.nextElementSibling;
             }
             header.classList.toggle('d-none', !hasVisible);
         }

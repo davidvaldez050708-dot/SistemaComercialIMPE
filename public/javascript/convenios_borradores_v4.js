@@ -48,8 +48,11 @@
       const opened=await post({operacion:'abrir',aliado_tipo:tipo,aliado_id:String(id)});
       const url=endpoint('editorConvenio');url.searchParams.set('aliado_tipo',tipo);url.searchParams.set('aliado_id',String(id));
       const result=(await request(url)).datos;
-      const detail=document.getElementById('modalConvenioCrearConvocatoria');
-      if(!detail?.classList.contains('show')||link.href!==source.href)return;
+      const fromRow=link.hasAttribute('data-convenio-create-row');
+      const detail=fromRow?null:document.getElementById('modalConvenioCrearConvocatoria');
+      const isCurrent=()=>link.isConnected&&link.href===source.href&&
+        (fromRow?!link.closest('[data-convenio-notification]')?.classList.contains('d-none')&&!document.querySelector('.modal.show'):detail?.classList.contains('show'));
+      if(!isCurrent())return;
       container=document.createElement('div');container.dataset.v4Container='1';container.innerHTML=result.html;
       const scripts=[...container.querySelectorAll('script[src]')].map(x=>x.src);
       container.querySelectorAll('script[src]').forEach(x=>x.remove());
@@ -60,6 +63,7 @@
         if(![...document.querySelectorAll('link[rel="stylesheet"]')].some(x=>x.href===node.href))document.head.append(node);else node.remove();
       });
       const modal=container.querySelector('#modalCrearConvocatoria');if(!modal)throw new Error('Falta el contenedor del editor.');
+      if(fromRow){const back=modal.querySelector('.modal-footer [data-bs-dismiss="modal"]');if(back)back.textContent='Volver a convenios';}
       modal.__draftV4=opened.borrador;document.body.append(container);
       for(const script of scripts)await loadScript(script);
       // Bootstrap ignora hide() durante la transición de apertura del detalle.
@@ -67,12 +71,13 @@
         await Promise.allSettled((detail.getAnimations?.({subtree:true})||[]).map(animation=>animation.finished));
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
       }
-      if(!detail?.classList.contains('show')||link.href!==source.href){unmount();return;}
+      if(!isCurrent()){unmount();return;}
       if(detail?.classList.contains('show'))await new Promise(resolve=>{detail.addEventListener('hidden.bs.modal',resolve,{once:true});bootstrap.Modal.getOrCreateInstance(detail).hide();});
       active={container,modal,detail,link,tipo,id};
       modal.addEventListener('hidden.bs.modal',()=>{
         modal.dispatchEvent(new Event('impe:editor-destroyed'));bootstrap.Modal.getInstance(modal)?.dispose();container.remove();active=null;
         if(detail)bootstrap.Modal.getOrCreateInstance(detail).show();
+        else if(link.isConnected&&!link.closest('[data-convenio-notification]')?.classList.contains('d-none'))link.focus({preventScroll:true});
       },{once:true});
       bootstrap.Modal.getOrCreateInstance(modal).show();
     }catch(error){unmount();if(active?.container===container)active=null;toast(error.message,true);}
@@ -158,7 +163,7 @@
     modal.addEventListener('hide.bs.modal',event=>{
       if(allowClose)return;
       event.preventDefault();if(publishing)return;
-      flush().then(()=>{allowClose=true;if(active?.link)active.link.lastChild.textContent='Continuar borrador';bootstrap.Modal.getOrCreateInstance(modal).hide();}).catch(()=>{});
+      flush().then(()=>{allowClose=true;if(active?.link&&!active.link.hasAttribute('data-convenio-create-row'))active.link.lastChild.textContent='Continuar borrador';bootstrap.Modal.getOrCreateInstance(modal).hide();}).catch(()=>{});
     },{signal});
     modal.querySelector('[data-v4-discard]').addEventListener('click',async()=>{
       if(publishing||!window.confirm('¿Descartar este borrador y sus imágenes? Las convocatorias ya publicadas se conservarán.'))return;

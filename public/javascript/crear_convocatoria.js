@@ -107,11 +107,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // No mostrar encabezados de municipio si todas sus filas están filtradas.
         module.querySelectorAll('[data-convenio-municipio-header]').forEach(header => {
-            let row = header.nextElementSibling;
+            const group = header.closest('[data-convenio-group]');
             let hasVisible = false;
-            while (row && !row.matches('[data-convenio-municipio-header]')) {
-                if (row.matches('[data-convenio-notification]') && !row.classList.contains('d-none')) hasVisible = true;
-                row = row.nextElementSibling;
+            if (group) {
+                const visibleRows = [...group.querySelectorAll('[data-convenio-notification]')]
+                    .filter(row => !row.classList.contains('d-none'));
+                hasVisible = visibleRows.length > 0;
+                group.classList.toggle('d-none', !hasVisible);
+                const count = group.querySelector('[data-convenio-group-count]');
+                if (count) count.textContent = visibleRows.length + (visibleRows.length === 1 ? ' convenio' : ' convenios');
+            } else {
+                // Compatibilidad con directorios anteriores personalizados.
+                let row = header.nextElementSibling;
+                while (row && !row.matches('[data-convenio-municipio-header]')) {
+                    if (row.matches('[data-convenio-notification]') && !row.classList.contains('d-none')) hasVisible = true;
+                    row = row.nextElementSibling;
+                }
             }
             header.classList.toggle('d-none', !hasVisible);
         });
