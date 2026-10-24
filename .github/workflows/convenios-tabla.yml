@@ -63,6 +63,7 @@ jobs:
           node --check public/javascript/crear_convocatoria.js
           node --check public/javascript/crear_convocatoria_v2_extension.js
           python3 tests/publicacion_convenios_tabla_test.py
+          python3 tests/publicacion_convenios_tabla_scroll_test.py
           node tests/convenios_tabla_browser.cjs
           python3 tests/preparar_convenios_tabla_replica.py --output /tmp/tabla-hostinger
           IMPE_TABLA_APP_ROOT=/tmp/tabla-hostinger IMPE_TABLA_OUTPUT=/tmp/tabla-visual/hostinger node tests/convenios_tabla_browser.cjs
