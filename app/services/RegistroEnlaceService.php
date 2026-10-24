@@ -2,7 +2,8 @@
 /** Alias públicos de Registro. Conserva el destino y nunca cambia tokens. */
 final class RegistroEnlaceService
 {
-    public const RUTA = 'registro/el-primer-paso-hacia-tu-meta-comienza-aqui/';
+    public const RUTA = 'registro/obtener-beca/';
+    public const RUTA_ANTERIOR = 'registro/el-primer-paso-hacia-tu-meta-comienza-aqui/';
     private mysqli $db;
     private ?bool $lista=null;
     public function __construct(mysqli $db) { $this->db=$db; }
@@ -30,8 +31,10 @@ final class RegistroEnlaceService
         if(!is_array($p)||isset($p['user'])||isset($p['pass'])||isset($p['fragment'])||
            strtolower($p['scheme']??'')!==strtolower($base['scheme'])||strtolower($p['host']??'')!==strtolower($base['host'])||($p['port']??null)!==($base['port']??null))return null;
         $prefix=$base['path']??'/';$path=$p['path']??'/';parse_str($p['query']??'',$params);
-        if(str_starts_with($path,$prefix.self::RUTA)){
-            $code=substr($path,strlen($prefix.self::RUTA));
+        $rutaAlias=null;
+        foreach([self::RUTA,self::RUTA_ANTERIOR] as $ruta)if(str_starts_with($path,$prefix.$ruta)){$rutaAlias=$ruta;break;}
+        if($rutaAlias!==null){
+            $code=substr($path,strlen($prefix.$rutaAlias));
             $stored=$this->resolver(rtrim($code,'/'));
             // Contexto añadido por el generador general; no sustituir identidad ni ruta.
             foreach(['controller','action','aliado'] as $key)if(isset($params[$key])&&($stored[$key]??null)!==$params[$key])return null;

@@ -1,0 +1,66 @@
+name: Registro obtener-beca y compatibilidad
+on:
+  pull_request:
+    paths:
+      - 'app/services/RegistroEnlaceService.php'
+      - 'public/javascript/registro_enlaces_amigables.js'
+      - 'public/javascript/convocatorias_gestion_v5.js'
+      - 'registro/**'
+      - 'tests/*registro_beca*'
+      - 'tests/*registro_enlaces*'
+      - 'tools/*registro_beca*'
+      - '.github/workflows/registro-beca.yml'
+  workflow_dispatch:
+jobs:
+  registro:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['33412:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33412
+      IMPE_DB_USER: root
+      IMPE_DB_NAME: impe_test_handly_horario_ci
+      IMPE_TEST_DB_NAME: impe_test_handly_horario_ci
+      IMPE_TEST_MYSQL_PORT: 33412
+      IMPE_BASE_URL: http://127.0.0.1:8142/
+      PLAYWRIGHT_MODULE_PATH: /tmp/horario-browser/node_modules/playwright
+      IMPE_BROWSER_DEPS: /tmp/horario-browser/node_modules
+      IMPE_BECA_SNAPSHOT: /tmp/registro-beca.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, gd, dom
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/horario-browser playwright bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0
+      - run: /tmp/horario-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Preparar ligas reales con el servicio anterior
+        run: |
+          php tests/formulario_aliados_fixture.php
+          php tools/preparar_handly_formularios.php --apply
+          php tools/migrar_enlaces_registro_amigables.php --apply
+          php tools/migrar_horario_contacto.php --apply
+          git show 31049506880ecca15c495e03b3d57a8d8dc5f63d:app/services/RegistroEnlaceService.php > /tmp/registro-servicio-anterior.php
+          php tests/registro_beca_seed.php /tmp/registro-servicio-anterior.php
+      - name: Equivalencia, integridad de códigos y envío desde ambas rutas
+        run: |
+          php tests/registro_beca_db.php
+          node tests/registro_beca_browser.cjs
+          node tests/registro_enlaces_carga_browser.cjs
+          python3 tests/publicacion_registro_beca_test.py
