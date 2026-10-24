@@ -6,6 +6,15 @@ spec=importlib.util.spec_from_file_location('fase1',ROOT/'tests/publicacion_pros
 spec=importlib.util.spec_from_file_location('publisher2',ROOT/'tools/publicar_prospectos_fase2.py');fase1.publisher=importlib.util.module_from_spec(spec);spec.loader.exec_module(fase1.publisher)
 fase1.base.MANIFEST=ROOT/'tools/prospectos_fase2_release.json';fase1.base.PUBLISHER=ROOT/'tools/publicar_prospectos_fase2.py'
 class Publicacion(fase1.Publicacion):
+    test_preflight_ausencia_procedencias_es_aviso=None
+    def test_preflight_exige_procedencias_readonly(self):
+        self.install();bad=fase1.subprocess.CompletedProcess([],1,'{"ok":false}','')
+        with fase1.patch.object(fase1.publisher.subprocess,'run',return_value=bad) as run:
+            with self.assertRaisesRegex(RuntimeError,'Dependencias de BD'):fase1.publisher.validar_bd(self.site)
+            code=run.call_args[0][0][2]
+            self.assertIn("'formulario_aliado_procedencias'=>",code);self.assertIn('START TRANSACTION READ ONLY',code)
+            self.assertNotRegex(code,r'(?i)\b(INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\s')
+
     def test_conflicto_no_escribe_ningun_archivo(self):
         originals=self.install();name='app/models/ProspectoModel.php'
         changed=originals[name].replace(b'SELECT COUNT(*) total FROM formulario_registros r',b'SELECT MAX(r.id) total FROM formulario_registros r')
