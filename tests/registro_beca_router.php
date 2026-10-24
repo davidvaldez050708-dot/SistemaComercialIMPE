@@ -10,4 +10,4 @@ if($path==='/_beca_links'){
 if($path==='/index.php'&&($_GET['controller']??'')==='formulario'&&($_GET['action']??'')==='acortarRegistro'){
     session_start();require __DIR__.'/../config/config.php';require __DIR__.'/../app/controllers/FormularioController.php';(new FormularioController())->acortarRegistro();return true;
 }
-require __DIR__.'/horario_contacto_router.php';
+return require __DIR__.'/horario_contacto_router.php';
