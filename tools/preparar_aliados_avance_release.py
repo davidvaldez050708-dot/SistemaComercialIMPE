@@ -10,6 +10,7 @@ def pack(data):return base64.b64encode(gzip.compress(data,mtime=0)).decode('asci
 def unpack(data):return gzip.decompress(base64.b64decode(data))
 def main():
  p=argparse.ArgumentParser();p.add_argument('--source',required=True);p.add_argument('--output',default=str(ROOT/'tools/aliados_avance_release.json'));args=p.parse_args()
+ args.source=subprocess.check_output(['git','rev-parse',args.source],cwd=str(ROOT)).decode().strip()
  spec=importlib.util.spec_from_file_location('core',str(ROOT/'tools/publicar_aliados_registro.py'));core=importlib.util.module_from_spec(spec);spec.loader.exec_module(core)
  previous=json.loads(git(BASE,'tools/aliados_historial_release.json'));controller=next(r for r in previous['files'] if r['path']=='app/controllers/AliadoController.php')
  host=unpack(controller['variants'][0]['target']);assert core.sha(host)==controller['variants'][0]['sha256']
