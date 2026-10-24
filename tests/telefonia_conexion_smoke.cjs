@@ -33,3 +33,27 @@ assert.equal(monitor.snapshot().sipRegistered,true);
 view.zdrmWebPhone.webPhoneUA.isConnected=()=>false;assert.equal(monitor.snapshot().sipRegistered,false);
 assert.ok(changed>0);
 console.log('PASS: conexión, init/pong, SIP, errores, backoff y sesiones ajenas.');
+
+(async()=>{
+ const source=fs.readFileSync('public/javascript/telefonia_host.js','utf8');
+ const a=source.indexOf('    const loadScript = function'),b=source.indexOf('    // Sólo pistas enviadas',a);
+ assert.ok(a>0&&b>a);
+ let script=null,appends=0,timers=new Map(),seq=0;
+ const win={setTimeout(fn){timers.set(++seq,fn);return seq;},clearTimeout(id){timers.delete(id);}};
+ const element=()=>({dataset:{},events:{},setAttribute(){},
+  addEventListener(name,fn){(this.events[name]??=new Set()).add(fn);},
+  removeEventListener(name,fn){this.events[name]?.delete(fn);},
+  fire(name){for(const fn of [...this.events[name]||[]])fn();},remove(){script=null;}});
+ const doc={querySelector:()=>script,createElement:element,head:{appendChild(node){script=node;appends++;}}};
+ const load=new Function('window','document',source.slice(a,b)+'return loadScript;')(win,doc);
+ const failed=load('https://provider.test/lib.js','lib').then(()=>false,()=>true);
+ for(const fn of [...timers.values()])fn();
+ assert.equal(await failed,true,'carga colgada rechaza en lugar de preparar indefinidamente');
+ const retry=load('https://provider.test/lib.js','lib');
+ assert.equal(appends,1,'no duplica el script lento');script.fire('load');await retry;
+ await load('https://provider.test/lib.js','lib');assert.equal(appends,1,'reutiliza el script que termina tarde');
+ script=null;const error=load('https://provider.test/fn.js','fn').catch(()=>{});script.fire('error');await error;
+ const recovered=load('https://provider.test/fn.js','fn');script.fire('load');await recovered;
+ assert.equal(appends,3,'error de red permite volver a descargar el recurso fallido');
+ console.log('PASS: tiempo límite, carga tardía única y recuperación de error de recurso.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

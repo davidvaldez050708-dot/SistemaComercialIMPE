@@ -492,38 +492,32 @@
     };
 
     const loadScript = function (src, marker) {
-        const selector =
-            'script[data-impe-telephony-host-' + marker + ']';
-        const existing = document.querySelector(selector);
-
-        if (existing) {
-            if (existing.dataset.loaded === '1') {
-                return Promise.resolve();
-            }
-
-            return new Promise(function (resolve, reject) {
-                existing.addEventListener('load', resolve, { once: true });
-                existing.addEventListener('error', reject, { once: true });
-            });
+        const selector = 'script[data-impe-telephony-host-' + marker + ']';
+        let script = document.querySelector(selector);
+        const create = !script;
+        if (!script) {
+            script = document.createElement('script');
+            script.src = src; script.async = true;
+            script.setAttribute('data-impe-telephony-host-' + marker, '');
+            // Conservar un script lento: no inyectar dos copias del proveedor.
+            script.addEventListener('load', () => {script.dataset.loaded = '1';}, {once:true});
+            script.addEventListener('error', () => script.remove(), {once:true});
         }
-
-        return new Promise(function (resolve, reject) {
-            const script = document.createElement('script');
-            script.src = src;
-            script.async = true;
-            script.setAttribute(
-                'data-impe-telephony-host-' + marker,
-                ''
-            );
-            script.addEventListener('load', function () {
-                script.dataset.loaded = '1';
-                resolve();
-            }, { once: true });
-            script.addEventListener('error', function () {
-                script.remove();
-                reject(new Error('No fue posible cargar el teléfono WebRTC.'));
-            }, { once: true });
-            document.head.appendChild(script);
+        if (script.dataset.loaded === '1') return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            const finish = error => {
+                window.clearTimeout(deadline);
+                script.removeEventListener('load', loaded);
+                script.removeEventListener('error', failed);
+                if (error) reject(error); else resolve();
+            };
+            const loaded = () => finish();
+            const failed = () => finish(new Error('No fue posible cargar el teléfono WebRTC.'));
+            const deadline = window.setTimeout(() => finish(new Error(
+                'Zadarma tardó demasiado en responder. Se reintentará la conexión.')), 20000);
+            script.addEventListener('load', loaded, {once:true});
+            script.addEventListener('error', failed, {once:true});
+            if (create) document.head.appendChild(script);
         });
     };
 
@@ -581,7 +575,11 @@
     };
 
     const fetchWebRtcSession = async function () {
+        const controller = new AbortController();
+        const deadline = window.setTimeout(() => controller.abort(), 15000);
+        try {
         const response = await fetch(String(config.webrtcUrl || ''), {
+            signal:controller.signal,
             method: 'GET',
             credentials: 'same-origin',
             cache: 'no-store',
@@ -606,6 +604,7 @@
 
         sipLogin = String(data.sip_login || '').trim();
         webRtcKey = String(data.webrtc_key || '').trim();
+        } finally {window.clearTimeout(deadline);}
     };
 
     // Únicamente las llamadas detectadas por el SDK SIN identificador PBX
