@@ -1,7 +1,7 @@
 """Paquete sobre los tres archivos confirmados en Hostinger, con tipografía V3."""
 import argparse,base64,gzip,hashlib,importlib.util,json,re,subprocess,tempfile
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1];BASE='ee583bcb6ca059c52ed55782e1d9c963084d0f8f'
+ROOT=Path(__file__).resolve().parents[1];BASE='62d16dd8bf3d1a4b67d216854e4af1a00827ef67'
 FILES=['app/controllers/ProspectoController.php','app/models/ProspectoModel.php','app/views/prospectos/index.php','app/views/prospectos/acceso_denegado.php','public/css/prospectos_fase1.css','public/javascript/prospectos_fase1.js']
 def git(ref,name):return subprocess.check_output(['git','show',ref+':'+name],cwd=ROOT)
 def pack(value):return None if value is None else base64.b64encode(gzip.compress(value,mtime=0)).decode()

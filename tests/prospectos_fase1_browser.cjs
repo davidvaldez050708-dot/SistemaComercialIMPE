@@ -56,6 +56,40 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
  check(await page.locator('tbody img').count()===0,'Datos HTML escapados');
  await page.locator('#prospectosCambiarEstado').selectOption('1');await page.locator('.prospectos-state-navigation button[type="submit"]').click();await page.waitForURL(/estado_id=1(?:&|$)/);check(await page.locator('.prospectos-empty').textContent().then(t=>t.includes('No hay prospectos registrados')),'Estado sin prospectos conserva tabla y estado vacío');
  await page.locator('.prospectos-view').filter({hasText:'Todos los prospectos'}).click();await page.waitForURL(/vista=todos/);check(await page.locator('.prospectos-total strong').textContent()==='62','Todos incluye registros generales, de aliados e históricos');
+
+ const searchAndWait=async term=>{await page.locator('#prospectoBuscar').fill(term);await page.waitForFunction(term=>new URL(location.href).searchParams.get('buscar')===term&& !document.querySelector('[data-prospectos-resultados]').hasAttribute('aria-busy'),term);};
+ for(const [scope,expected] of [['&vista=todos','62'],['&estado_id=11','29']]){
+  await page.goto(home+scope);
+  check(await page.locator('[data-prospectos-filtros] button[type="submit"]').count()===0,'Sin botón Buscar redundante en '+scope);
+  await searchAndWait('prueba29@example.test');
+  check(await page.locator('.prospectos-total strong').textContent()==='1'&&await page.locator('tbody td:nth-child(3)').textContent()==='prueba29@example.test','Correo automático encuentra un prospecto fuera de la primera página en '+scope);
+  check(await page.locator('#prospectoBuscar').evaluate(el=>el===document.activeElement),'La actualización conserva el foco del buscador');
+  await searchAndWait('Prospecto 29');check(await page.locator('.prospectos-total strong').textContent()==='1','Nombre sigue disponible en la búsqueda automática');
+  await searchAndWait('7771234567');check(await page.locator('.prospectos-total strong').textContent()===expected,'Teléfono sigue disponible en la búsqueda automática');
+  await searchAndWait('');check(await page.locator('.prospectos-total strong').textContent()===expected,'Limpiar el buscador recupera el conjunto completo');
+  await page.locator('#prospectoAliado').selectOption('7');await page.waitForFunction(()=>new URL(location.href).searchParams.get('aliado_id')==='7');
+  check(await page.locator('.prospectos-total strong').textContent()==='20','El filtro de aliado se aplica automáticamente');
+  await searchAndWait('prueba29@example.test');check(await page.locator('.prospectos-total strong').textContent()==='0','La búsqueda por correo conserva el filtro de aliado');
+  await searchAndWait('');await page.locator('#prospectoAliado').selectOption('');await page.waitForFunction(()=>new URL(location.href).searchParams.get('aliado_id')==='');
+  await page.locator('[rel="next"]').click();await page.waitForURL(/pagina=2/);await searchAndWait('prueba29@example.test');
+  check(!new URL(page.url()).searchParams.has('pagina')&&await page.locator('.prospectos-total strong').textContent()==='1','Un filtro nuevo reinicia la página y conserva el ámbito');
+ }
+ // Incluso si el transporte no respeta AbortController, una respuesta anterior no puede sobrescribir la nueva.
+ await page.goto(home+'&vista=todos');
+ await page.evaluate(()=>{const original=window.fetch;window.fetch=(url,options)=>original(url,{...options,signal:undefined});});
+ let releaseOld,oldRequested;const oldGate=new Promise(resolve=>releaseOld=resolve),requested=new Promise(resolve=>oldRequested=resolve);
+ await page.route('**/index.php?**',async route=>{const url=new URL(route.request().url());if(route.request().resourceType()==='fetch'&&url.searchParams.get('buscar')==='prueba28@example.test'){oldRequested();await oldGate;}await route.fallback();});
+ await page.locator('#prospectoBuscar').fill('prueba28@example.test');await requested;
+ await searchAndWait('prueba29@example.test');const oldResponse=page.waitForResponse(r=>new URL(r.url()).searchParams.get('buscar')==='prueba28@example.test');releaseOld();await oldResponse;
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ check(await page.locator('tbody td:nth-child(3)').textContent()==='prueba29@example.test','Las respuestas fuera de orden no sustituyen la última búsqueda');
+ await page.unroute('**/index.php?**');
+ await page.route('**/index.php?**',async route=>{if(route.request().resourceType()==='fetch')await route.fulfill({status:500,body:'Error simulado'});else await route.fallback();},{times:1});
+ await page.locator('#prospectoBuscar').fill('sin-resultados');await page.locator('[data-prospectos-search-error]').waitFor({state:'visible'});
+ check(await page.locator('.prospectos-total strong').textContent()==='1','Un error de red conserva la tabla e informa que no se actualizó');
+ await page.locator('#prospectoBuscar').press('Enter');await page.waitForFunction(()=>document.querySelector('.prospectos-total strong').textContent==='0');
+ check(await page.locator('[data-prospectos-search-error]').isHidden(),'Enter reintenta la consulta y limpia el error');
+ await page.goto(home);check(await page.locator('[data-prospectos-state-search-form] button').count()===0,'El buscador automático de estados no tiene botón Buscar');
  for(const [width,height] of [[1440,1000],[1024,900],[768,1024],[390,844],[360,800]]){
   await page.setViewportSize({width,height});await page.goto(home);await page.evaluate(()=>document.fonts.ready);
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Inicio sin desbordamiento horizontal a '+width);

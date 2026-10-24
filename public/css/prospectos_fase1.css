@@ -42,7 +42,7 @@
 .prospectos-fase1 .prospectos-state-navigation label{margin:0}
 .prospectos-fase1 .prospectos-state-navigation select{width:auto;min-width:180px;flex:1}
 .prospectos-fase1 .prospectos-state-navigation .uniform-select{width:auto;min-width:180px;max-width:340px;flex:1}
-.prospectos-fase1 .prospectos-list-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:16px;align-items:end;margin-bottom:20px}
+.prospectos-fase1 .prospectos-list-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:end;margin-bottom:20px}
 .prospectos-fase1 .prospectos-table-wrap{min-width:0;max-width:100%;overscroll-behavior-x:contain;border:1px solid var(--color-border,#dfe5ef);border-radius:12px}
 .prospectos-fase1 .prospectos-pagination{flex-wrap:wrap;justify-content:flex-end;gap:10px;line-height:1.5}
 .prospectos-fase1 a:focus-visible,.prospectos-fase1 button:focus-visible,.prospectos-fase1 input:focus-visible,.prospectos-fase1 select:focus-visible,.prospectos-fase1 .prospectos-table-wrap:focus-visible{outline:2px solid var(--color-primary,#273a8a);outline-offset:3px}
@@ -56,3 +56,6 @@
 .prospectos-fase1 .module-search .form-control:focus-visible{outline:none;box-shadow:none;border:0;background:transparent}
 .prospectos-fase1 .module-search:focus-within{border-color:var(--color-primary,#273a8a);box-shadow:0 0 0 3px rgba(39,58,138,.10)}
 .prospectos-fase1 .prospectos-territory-note{margin:0 0 18px;line-height:1.5}
+
+.prospectos-fase1 [data-prospectos-resultados][aria-busy="true"]{opacity:.65}
+.prospectos-fase1 [data-prospectos-search-error]{margin-bottom:16px}

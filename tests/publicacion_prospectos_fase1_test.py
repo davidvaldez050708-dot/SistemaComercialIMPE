@@ -37,8 +37,8 @@ class Publicacion(base.ConveniosDetalleSelectivo):
     def test_hostinger_conserva_tipografia_v3(self):self.hosted=True;self.verify(True,True)
     def test_conflicto_no_escribe_ningun_archivo(self):
         originals=self.install();name='app/models/ProspectoModel.php';changed=originals[name].replace(b'$porPagina = max(1, min(100, (int)$porPagina));',b'$porPagina = 17;')
-        # Se superpone sobre el JOIN que esta fase cambia.
-        changed=changed.replace(b"$join = $procedencias ?",b"$join = false ?");self.assertNotEqual(changed,originals[name]);(self.site/name).write_bytes(changed);originals[name]=changed;self.assertIn('CONFLICTO',self.run_tool('--apply',ok=False));self.unchanged(originals)
+        # Se superpone sobre la condición de búsqueda que esta entrega amplía.
+        changed=changed.replace(b"r.movil LIKE ?",b"r.correo = ?");self.assertNotEqual(changed,originals[name]);(self.site/name).write_bytes(changed);originals[name]=changed;self.assertIn('CONFLICTO',self.run_tool('--apply',ok=False));self.unchanged(originals)
     def test_falta_mapa_detiene_sin_escribir(self):
         originals=self.install();name='public/img/estados/morelos.png';(self.site/name).unlink();originals[name]=None;self.assertIn('Falta dependencia',self.run_tool('--apply',ok=False));self.unchanged(originals)
     def test_globales_y_modulos_intactos(self):

@@ -22,6 +22,12 @@ $check($m->listar(1,25,['estado_id'=>11,'aliado_id'=>'7'])['total']===20,'Aliado
 $check($m->listar(1,25,['estado_id'=>11,'aliado_id'=>'8'])['total']===9,'Aliado institucional histórico inactivo conserva sus registros');
 $check($m->listar(1,25,['estado_id'=>11,'aliado_id'=>'general'])['total']===0,'Generales sólo en Todos, nunca clasificados por residencia');
 $check($m->listar(1,25,['buscar'=>"' OR 1=1 --"])['total']===0,'Parámetros de búsqueda preparados');
+$check(array_column($m->listar(1,25,['buscar'=>'prueba29@example.test'])['registros'],'id')==[29],'Correo completo encuentra un registro fuera de la página inicial');
+$check($m->listar(1,25,['buscar'=>'prueba2'])['total']===11,'Búsqueda parcial de correo sobre todo el conjunto');
+$check($m->listar(1,25,['estado_id'=>11,'buscar'=>'prueba29@example.test'])['total']===1,'Correo dentro del estado del aliado');
+$check($m->listar(1,25,['estado_id'=>22,'buscar'=>'prueba29@example.test'])['total']===0,'Correo no atraviesa el filtro territorial');
+$check($m->listar(1,25,['estado_id'=>11,'aliado_id'=>'7','buscar'=>'prueba29@example.test'])['total']===0,'Correo respeta también el aliado seleccionado');
+$check($m->listar(1,25,['buscar'=>'7771234567'])['total']===62,'Búsqueda existente por teléfono conservada');
 foreach([0,-1,'1 OR 1=1',99,999999] as $invalid){try{$m->listar(1,25,['estado_id'=>$invalid]);throw new RuntimeException('Estado inválido aceptado');}catch(DomainException $e){$check(true,'Estado inválido/inactivo rechazado');}}
 $connection->rollback();$check($snapshot()===$before,'Consultas ejecutadas en transacción READ ONLY; datos históricos y otros módulos intactos');
 try{$db->query('RENAME TABLE formulario_aliado_procedencias TO pruebas_procedencias_temporal');$missing=new ProspectoModel();$s=$missing->resumen();$check($s['total']===62&&$s['aliados']===null&&$s['generales']===null,'Dependencia ausente: procedencia sin verificar, nunca cero inventado');$check($missing->listar()['total']===62,'Sin procedencias se conserva la consulta general');try{$missing->territorios();throw new RuntimeException('Conteos no verificables aceptados');}catch(DomainException $e){$check(true,'Sin procedencias no se inventan conteos territoriales');}try{$missing->listar(1,25,['aliado_id'=>'general']);throw new RuntimeException('Filtro no verificable aceptado');}catch(DomainException $e){$check(true,'Filtro de origen no disponible se informa');}}finally{$db->query('RENAME TABLE pruebas_procedencias_temporal TO formulario_aliado_procedencias');}

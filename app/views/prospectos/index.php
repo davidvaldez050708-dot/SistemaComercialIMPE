@@ -74,7 +74,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
         <form method="get" data-prospectos-state-search-form>
             <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index">
             <label for="prospectosEstadoBuscar">Buscar estado</label>
-            <div class="prospectos-search-controls"><div class="module-search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" id="prospectosEstadoBuscar" name="buscar_estado" type="search" placeholder="Buscar estado…" value="<?= $escaparProspecto($buscarEstadoProspectos) ?>" data-prospectos-state-search></div><button class="btn btn-system-light" type="submit">Buscar</button></div>
+            <div class="prospectos-search-controls"><div class="module-search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" id="prospectosEstadoBuscar" name="buscar_estado" type="search" placeholder="Buscar estado…" value="<?= $escaparProspecto($buscarEstadoProspectos) ?>" data-prospectos-state-search></div></div>
         </form>
     </section>
     <?php if ($errorTerritorial===''): ?>
@@ -103,10 +103,12 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
         <?php if ($mensajeError===''): ?>
         <form method="get" class="prospectos-list-filters" data-prospectos-filtros data-prospectos-navegacion>
             <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><input type="hidden" name="vista" value="<?= $vistaProspectos ?>"><?php if ($estadoProspectos): ?><input type="hidden" name="estado_id" value="<?= (int)$estadoProspectos['id'] ?>"><?php endif; ?>
-            <div><label for="prospectoBuscar">Nombre o teléfono</label><div class="module-search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" type="search" id="prospectoBuscar" name="buscar" maxlength="180" value="<?= $escaparProspecto($buscarProspectos) ?>"></div></div>
+            <div><label for="prospectoBuscar">Nombre, teléfono o correo</label><div class="module-search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" type="search" id="prospectoBuscar" name="buscar" placeholder="Escribe nombre, teléfono o correo…" maxlength="180" value="<?= $escaparProspecto($buscarProspectos) ?>"></div></div>
             <div><label for="prospectoAliado">Aliado de origen</label><select class="form-select" id="prospectoAliado" name="aliado_id" <?= $errorProcedencia!==''?'disabled':'' ?>><option value="">Todos los orígenes</option><option value="general" <?= $aliadoFiltroProspectos==='general'?'selected':'' ?>>Registro general</option><?php foreach (($listado['aliados']??[]) as $origenProspecto): ?><option value="<?= (int)$origenProspecto['id'] ?>" <?= $aliadoFiltroProspectos===(string)$origenProspecto['id']?'selected':'' ?>><?= $escaparProspecto($origenProspecto['nombre']) ?></option><?php endforeach; ?></select></div>
-            <button class="btn btn-system-light" type="submit">Buscar</button>
         </form>
+        <p class="prospectos-message" role="alert" data-prospectos-search-error hidden></p>
+        <span class="visually-hidden" role="status" aria-live="polite" data-prospectos-search-status></span>
+        <div data-prospectos-resultados>
         <div class="prospectos-table-wrap" role="region" aria-label="Listado de prospectos" tabindex="0">
             <table>
                 <thead><tr><th scope="col">Fecha de registro</th><th scope="col">Nombre completo</th><th scope="col">Correo electrónico</th><th scope="col">Teléfono</th><th scope="col">Tel. secundario</th><th scope="col">Tel. recomendado</th><th scope="col">Aliado de origen</th><th scope="col">Perfil de interés</th><th scope="col">Estado de residencia</th><th scope="col">Municipio de residencia</th><th scope="col">Lugar de trabajo</th><th scope="col">Cargo</th><th scope="col">Fecha de nacimiento</th><th scope="col">Origen</th></tr></thead>
@@ -131,6 +133,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
             <?php if ($paginaProspectos < $paginasProspectos): ?><a href="<?= $escaparProspecto($urlProspectos(array_merge($consultaProspectos,['pagina'=>$paginaProspectos+1]))) ?>" rel="next">Siguiente</a><?php endif; ?>
         </nav>
         <?php endif; ?>
+        </div>
         <?php endif; ?>
     </section>
     <?php endif; ?>
