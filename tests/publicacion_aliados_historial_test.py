@@ -52,7 +52,7 @@ class HistorialSelectivo(unittest.TestCase):
 
     def verify(self,**options):
         self.install(**options); self.run_tool('--check'); self.intact()
-        self.assertFalse((self.root/'backup').exists())
+        self.assertEqual(list((self.root/'backup').iterdir()),[])
         output = self.run_tool('--apply')
         for name,target in self.targets.items():
             actual = (self.site/name).read_bytes().replace(b'\r\n',b'\n')
@@ -74,7 +74,7 @@ class HistorialSelectivo(unittest.TestCase):
         self.assertNotEqual(changed,before)
         (self.site/name).write_bytes(changed); self.originals[name] = changed
         self.assertIn('CONFLICTO',self.run_tool('--apply',ok=False)); self.intact()
-        self.assertFalse((self.root/'backup').exists())
+        self.assertEqual(list((self.root/'backup').iterdir()),[])
     def test_controlador_conserva_bloques_ajenos(self):
         self.install(host=True)
         name = 'app/controllers/AliadoController.php'
