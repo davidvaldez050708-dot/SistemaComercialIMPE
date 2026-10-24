@@ -311,6 +311,19 @@ class ReminderController
                 (bool)($seguimientoAliados['ok'] ?? true);
         }
 
+        // Las tareas de Cuenta Clave provienen de la base de datos, no de los
+        // permisos de Marketing ni de marcar como leída una notificación.
+        if ((int)($_SESSION['rol_id'] ?? 0) === 6 && tienePermiso('aliados.ver')) {
+            try {
+                require_once __DIR__ . '/../services/AliadoConvocatoriaPendienteService.php';
+                $tareas = (new AliadoConvocatoriaPendienteService((new Database())->connect()))
+                    ->obtener($usuarioId, false, 100);
+                $recordatorios = array_merge($tareas, $recordatorios);
+            } catch (Throwable $e) {
+                error_log('[campana_aliados_convocatorias] ' . get_class($e));
+            }
+        }
+
         $telefoniaOk=false;
         if($puedeTelefonia){
             try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';
@@ -320,11 +333,17 @@ class ReminderController
         }
         // La campana debe priorizar obligaciones vencidas y acciones que requieren
         // intervención, sin depender del orden en que cada servicio fue consultado.
-        $recordatorios = array_slice(
-            $this->ordenarRecordatorios($recordatorios),
-            0,
-            12
-        );
+        // La campana conserva todas las obligaciones telefónicas actuales,
+        // además de los 12 recordatorios habituales de los demás módulos.
+        $ordenados = $this->ordenarRecordatorios($recordatorios);
+        $telefoniaActiva = array_values(array_filter($ordenados,
+            static fn($item) => (int)($item['telefonia_id'] ?? 0) > 0 && !empty($item['pendiente_operativo'])));
+        $aliadosActivos = array_values(array_filter($ordenados,
+            static fn($item) => ($item['tipo'] ?? '') === 'ALIADO_CONVOCATORIA_PENDIENTE'));
+        $otros = array_values(array_filter($ordenados,
+            static fn($item) => !((int)($item['telefonia_id'] ?? 0) > 0 && !empty($item['pendiente_operativo']))
+                && ($item['tipo'] ?? '') !== 'ALIADO_CONVOCATORIA_PENDIENTE'));
+        $recordatorios = array_merge($telefoniaActiva, $aliadosActivos, array_slice($otros, 0, 12));
 
         echo json_encode([
             'ok' => $ok||$telefoniaOk,

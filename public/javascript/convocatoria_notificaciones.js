@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const content = root.querySelector('[data-convocatoria-notification-content]');
     const badge = root.querySelector('[data-convocatoria-notification-badge]');
     const markAll = root.querySelector('[data-convocatoria-notification-read-all]');
+    const csrfToken = root.dataset.csrfToken || '';
 
     const escapeHtml = function (value) {
         return String(value ?? '')
@@ -46,6 +47,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const eventType = String(item && item.tipo_evento ? item.tipo_evento : '');
 
         if(Number(item?.telefonia_id)>0)return {icon:item.icono||'bi-telephone-forward',tone:'warning',fallbackTitle:'Telefonía'};
+        if(eventType==='aliado_convocatoria_pendiente')return {
+            icon:item.icono||'bi-file-earmark-plus',tone:'warning',fallbackTitle:'Convocatoria pendiente'
+        };
 
         if (eventType === 'vencimiento_hoy') {
             return {
@@ -94,18 +98,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const body = new URLSearchParams();
         body.set('id', String(Number(id || 0)));
+        body.set('csrf_token', csrfToken);
 
         try {
-            await fetch(readEndpoint, {
+            const response = await fetch(readEndpoint, {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
                     'X-Requested-With': 'fetch'
                 },
                 body: body.toString()
             });
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error('No fue posible confirmar la lectura.');
+            return true;
         } catch (error) {
-            // La alerta seguirá visible si no fue posible marcarla.
+            window.IMPE_TELEPHONY_NOTIFY?.(error.message, true);
+            return false;
         }
     };
 
@@ -133,8 +143,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             event.preventDefault();
-            await markAsRead(item.id);
-            window.location.href = toast.href;
+            if (await markAsRead(item.id)) window.location.href = toast.href;
         });
 
         document.body.appendChild(toast);
@@ -254,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return (
                     '<a class="topbar-reminder-item' + (unread ? ' is-unread' : '') + '"' +
                         ' href="' + escapeHtml(url) + '"' +
-                        (Number(item.telefonia_id)>0?' data-telefonia-id="'+Number(item.telefonia_id)+'"':' data-convocatoria-notification-id="' + Number(item.id || 0) + '"')+'>' +
+                        (Number(item.telefonia_id)>0?' data-telefonia-id="'+Number(item.telefonia_id)+'"':(item.pendiente_operativo?'':' data-convocatoria-notification-id="' + Number(item.id || 0) + '"'))+'>' +
                         '<span class="topbar-reminder-icon">' +
                             '<i class="bi ' + visual.icon + '"></i>' +
                         '</span>' +
@@ -263,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             '<span>' + escapeHtml(item.mensaje || '') + '</span>' +
                         '</span>' +
                         '<span class="topbar-reminder-time is-' + timeTone + '">' +
-                            escapeHtml(formatDate(item.created_at)) +
+                            escapeHtml(item.pendiente_operativo ? (item.etiqueta || 'Pendiente') : formatDate(item.created_at)) +
                         '</span>' +
                     '</a>'
                 );
@@ -308,8 +317,9 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault();
 
         const destination = item.getAttribute('href') || '#';
-        await markAsRead(item.dataset.convocatoriaNotificationId || '0');
-        window.location.href = destination;
+        if (await markAsRead(item.dataset.convocatoriaNotificationId || '0')) {
+            window.location.href = destination;
+        }
     });
 
     if (markAll) {
@@ -320,14 +330,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            if (markAll.disabled) return;
+            markAll.disabled = true;
             try {
-                await fetch(readAllEndpoint, {
+                const response = await fetch(readAllEndpoint, {
                     method: 'POST',
-                    headers: { 'X-Requested-With': 'fetch' }
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'fetch' },
+                    body: new URLSearchParams({ csrf_token: csrfToken })
                 });
+                const data = await response.json();
+                if (!response.ok || !data.ok) throw new Error('No fue posible confirmar la lectura.');
                 await load();
             } catch (error) {
-                // Mantener la campana operativa aunque el marcado falle.
+                window.IMPE_TELEPHONY_NOTIFY?.(error.message, true);
+            } finally {
+                markAll.disabled = false;
             }
         });
     }
