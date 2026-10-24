@@ -50,7 +50,7 @@ with tempfile.TemporaryFile() as log:
         endpoint = '/index.php?controller=aliado&action=historial&'
         for role in ['cc', 'marketing']:
             request('/_session?role=' + role)
-            for origin, identifier, expected in [('manual',before['manual_id'],2), ('institucional',10,1)]:
+            for origin, identifier, expected in [('manual',before['manual_id'],2), ('institucional',10,2 if os.environ.get('IMPE_TEST_AVANCE') == '1' else 1)]:
                 status, raw, headers = request(endpoint + 'origen_tipo=%s&id=%d' % (origin,identifier))
                 data = json.loads(raw)
                 check(status == 200 and data['ok'] and len(data['historial']) == expected and data['origen_tipo'] == origin, '%s consulta %s por controlador HTTP' % (role,origin))
