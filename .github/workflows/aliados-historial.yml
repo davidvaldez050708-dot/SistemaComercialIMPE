@@ -9,6 +9,8 @@ on:
       - 'tests/aliados_avance*'
       - 'public/css/aliados_avance.css'
       - 'tools/*aliados_avance*'
+      - 'tools/*aliados_iconos*'
+      - 'tests/publicacion_aliados_iconos_test.py'
       - 'tools/migrar_aliados_respuestas.php'
       - 'database/migrations/2026_10_23_aliados_respuestas.sql'
       - 'tests/publicacion_aliados_historial_test.py'
@@ -70,6 +72,7 @@ jobs:
           php tests/aliados_historial_unit.php
           node tests/aliados_avance_browser.cjs
           python3 tests/publicacion_aliados_avance_test.py
+          python3 tests/publicacion_aliados_iconos_test.py
           node tests/aliados_historial_browser.cjs
           python3 tests/publicacion_aliados_historial_test.py
       - name: Preparación de base desechable
