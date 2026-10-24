@@ -93,3 +93,21 @@ Hacer los ensayos con extensión y destinatarios de prueba autorizados. Registra
 Web Locks coordina pestañas del mismo origen y perfil del navegador; no coordina equipos, perfiles distintos ni dos navegadores. Suspender el PC, cerrar el navegador, congelar/descartar una pestaña desde el sistema, perder red o tener una caída del proveedor impide prometer recepción permanente. Al reanudarse se comprueba la conexión sin simular disponibilidad. La clave WebRTC tiene vigencia definida por Zadarma; una sesión que exceda esa vigencia puede requerir renovar la sesión del proveedor. No se implementa un segundo cliente SIP ni un servicio de telefonía en segundo plano independiente del navegador.
 
 El SDK remoto puede cambiar. Si ya no ofrece la evidencia observada, la disponibilidad queda sin verificar: se debe revisar la integración, no forzar el verde. Un canal verificado y AudioContext activo no prueban volumen físico, altavoces ni una llamada concreta: por eso son obligatorias las pruebas reales de aceptación.
+
+## Cierre de comprobaciones y compatibilidad real de Hostinger
+
+El usuario ejecutó el paquete fijo `fbc0d9ccc71a61b6628b3cf908e18542c23ec600` en Hostinger: ambos hashes de descarga correctos, siete archivos COMPATIBLE y `CHECK OK: sin escrituras`. Los targets de las variantes de shell/host/persistente coinciden con los del manifiesto probado. **No equivale a --apply ni a aceptación de llamadas.**
+
+[CI dirigido sobre 29e763d2](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/40141135921): aprobado, incluidos 153 casos de navegador GitHub + 153 Hostinger y nueve pruebas del publicador. También aprueban Marketing/Recepción, Transferencias seguras, Marcador integrado, UX de extensiones, cierre saliente y fin SIP 100→150. Las correcciones de tests de esta rama exigen transporte y medios verificados; no restauran la antigua política de reinicios.
+
+**El conjunto de Actions no está completamente verde.** Cinco workflows mantienen fallos anteriores o de infraestructura ajena a la entrega:
+
+| Workflow en 29e763d2 | Fallo observado / contraste con base c608387b |
+| --- | --- |
+| Telefonia WebRTC persistente | Publicador histórico: conflicto de CSS de Recepción en `telefonia_shell_upgrade_smoke.sh`. CSS, fixture y publicador idénticos a la base; el nuevo publicador de siete archivos pasa sus nueve réplicas. |
+| Entrantes Analistas | `telefonia_flujo_entrante_webRTC_analista_smoke.sh` exige literales antiguos como `hooks.onIdle();`, ausente también en el observador de la base. El observador, ese test y su instalador no cambian. El test de reserva y llamadas actual sí pasa. |
+| Validar Mis llamadas | `recordatorios_toasts_browser.cjs:65` espera desaparición a siete segundos; `recordatorios.js` usa ocho segundos en la base. El [run anterior de la base](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/40113479271) presenta el mismo `1 !== 0` en la misma línea. Ambos archivos permanecen idénticos. |
+| Ventas por etapas | Fixture `telefonia_recuperacion_pbx_smoke.cjs` no define `config` al evaluar onIdle; callback y fixture idénticos a la base. Otro job de avisos espera ausencia de un aviso fijo. Sus archivos de avisos no se modifican. [Workflow de la base ya fallido](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/40113479544). |
+| Atención del analista | La integración de modal entrante y audio por expediente pasa; el job se detiene en los toasts de recordatorios. [Workflow de la base ya fallido](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/40113479353). |
+
+No se modifican notificadores, estilos históricos ni otros instaladores para ocultar esos fallos; no se afirma que toda la rama pueda integrarse automáticamente. La publicación selectiva comprobada queda separada de esos publicadores y la aceptación real de teléfono sigue pendiente. [Procedimiento de instalación y restauración](telefonia_conexion_hostinger.md).

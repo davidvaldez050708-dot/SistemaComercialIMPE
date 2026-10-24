@@ -34,6 +34,8 @@ python3 -B "$ENTREGA/publicar_telefonia_conexion.py" \
 
 Resultado esperado: siete rutas COMPATIBLE/ACTUALIZADO, sus huellas antes/después y `CHECK OK: sin escrituras`. Si hay CONFLICTO, fallo de integridad o sintaxis: detenerse y enviar la salida; no forzar sustituciones. PHP es obligatorio; si Node está disponible, también se valida JS. La sintaxis JS se valida además en CI.
 
+Comprobación recibida el 24-oct-2026: el usuario confirmó ambas descargas y los siete candidatos COMPATIBLE; `CHECK OK: sin escrituras`. El workflow dirigido de conexión aprobó; los fallos heredados de otros workflows se enumeran en el diagnóstico. No se afirma CI global verde ni instalación realizada.
+
 ## 2. Aplicar en una ventana sin llamadas
 
 Antes de aplicar: comprobar que el workflow dirigido «Telefonia conexion persistente» del PR aprobó; revisar el CHECK de Hostinger. Marketing/Recepción, Analistas y Asesores deben terminar sus llamadas y cerrar **todas** las pestañas del CRM y teléfonos directos del navegador. El código anterior no participa en la nueva reserva; una pestaña antigua abierta impediría verificar un arranque limpio.
