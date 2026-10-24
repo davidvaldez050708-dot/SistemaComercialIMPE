@@ -56,7 +56,7 @@ class HistorialSelectivo(unittest.TestCase):
         output = self.run_tool('--apply')
         for name,target in self.targets.items():
             actual = (self.site/name).read_bytes().replace(b'\r\n',b'\n')
-            cleaned = actual.replace(b'// Personalizacion conservada\n',b'').replace(b'/* Personalizacion conservada */\n',b'')
+            cleaned = actual.replace(b'\n// Personalizacion conservada\n',b'').replace(b'/* Personalizacion conservada */\n',b'')
             self.assertEqual(cleaned,target,name)
         self.assertIn('ya publicada',self.run_tool('--apply'))
         self.run_tool('--restore',output.split('Respaldo: ')[1].splitlines()[0]); self.intact()
