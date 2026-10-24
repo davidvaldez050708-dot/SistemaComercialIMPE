@@ -5,7 +5,7 @@ $root = dirname(__DIR__);
 define('ROOT_PATH', $root);
 $source = (string)file_get_contents($root.'/app/views/layout/topbar.php');
 $inicio = strpos($source, '$puedeSolicitarReuniones =');
-$fin = strpos($source, '/*\n * La campana', $inicio);
+$fin = strpos($source, "/*\n * La campana", $inicio);
 if ($inicio === false || $fin === false) throw new RuntimeException('No se identifico el bloque de configuracion de topbar');
 $codigo = substr($source, $inicio, $fin - $inicio);
 $GLOBALS['permisos_prueba'] = [];
