@@ -89,6 +89,8 @@ $seguimientoVista = static function ($estado) {
             'label' => 'No participará',
             'class' => 'is-closed'
         ],
+        'COMPARTIDA_MANUALMENTE' => ['label'=>'Compartida manualmente', 'class'=>'is-confirmed'],
+        'REGISTRO_MANUAL' => ['label'=>'Registro histórico', 'class'=>'is-empty'],
         'SIN_RESPUESTA' => [
             'label' => 'Sin respuesta',
             'class' => 'is-no-response'
@@ -422,7 +424,9 @@ $seguimientoVista = static function ($estado) {
                                                 $estadoSeguimiento,
                                                 [
                                                     'DIFUSION_CONFIRMADA',
-                                                    'NO_PARTICIPARA'
+                                                    'NO_PARTICIPARA',
+                                                    'COMPARTIDA_MANUALMENTE',
+                                                    'REGISTRO_MANUAL'
                                                 ],
                                                 true
                                             );
@@ -432,11 +436,14 @@ $seguimientoVista = static function ($estado) {
                                                 $estadoSeguimiento,
                                                 [
                                                     'DIFUSION_CONFIRMADA',
-                                                    'NO_PARTICIPARA'
+                                                    'NO_PARTICIPARA',
+                                                    'COMPARTIDA_MANUALMENTE',
+                                                    'REGISTRO_MANUAL'
                                                 ],
                                                 true
                                             );
                                         $puedeAbrirSeguimiento =
+                                            ($aliado['origen_tipo'] ?? '') !== 'manual' &&
                                             $puedeSeguimientoConvocatorias &&
                                             !empty($aliado['ultimo_envio_id']);
                                         $mostrarAccionesSecundarias =
@@ -573,20 +580,6 @@ $seguimientoVista = static function ($estado) {
                                                     <?php if (tienePermiso('aliados.gestionar_programas')): ?>
                                                     <button type="button" class="btn aliados-share-button" data-registro-abrir data-registro-origen="<?= $esManualRegistro ? 'manual' : 'institucional' ?>" data-registro-id="<?= (int)($esManualRegistro ? $aliado['id'] : $aliado['seguimiento_id']) ?>">Programas</button>
                                                     <?php endif; ?>
-                                                    <?php if ($esManualRegistro && tienePermiso('aliados.gestionar_programas')): ?>
-                                                        <div class="dropdown dropstart aliados-actions-menu">
-                                                            <button type="button" class="aliados-more-button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false" aria-label="Más acciones de <?= $texto($aliado['nombre_entidad'] ?? 'aliado') ?>" title="Más acciones">
-                                                                <i class="bi bi-three-dots" aria-hidden="true"></i>
-                                                            </button>
-                                                            <ul class="dropdown-menu aliados-actions-dropdown">
-                                                                <?php if (tienePermiso('aliados.editar_manual') && tienePermiso('aliados.gestionar_programas')): ?>
-                                                                <li><button type="button" class="dropdown-item" data-registro-abrir data-registro-editar data-registro-id="<?= (int)$aliado['id'] ?>"><i class="bi bi-pencil-square"></i><span>Editar aliado</span></button></li>
-                                                                <?php endif; ?>
-                                                                <li><button type="button" class="dropdown-item" data-registro-manual-contactos="<?= (int)$aliado['id'] ?>"><i class="bi bi-person-lines-fill"></i><span>Canales del aliado</span></button></li>
-                                                                <li><button type="button" class="dropdown-item" data-registro-manual-historial="<?= (int)$aliado['id'] ?>"><i class="bi bi-clock-history"></i><span>Historial de difusión</span></button></li>
-                                                            </ul>
-                                                        </div>
-                                                    <?php endif; ?>
                                                     <?php if ($puedeCompartirCorreo || $puedePrepararWhatsapp): ?>
                                                         <button
                                                             type="button"
@@ -602,6 +595,24 @@ $seguimientoVista = static function ($estado) {
                                                         </button>
                                                     <?php endif; ?>
 
+                                                    <?php if ($esManualRegistro && (tienePermiso('aliados.gestionar_programas') || $puedeVerHistorial)): ?>
+                                                        <div class="dropdown dropstart aliados-actions-menu">
+                                                            <button type="button" class="aliados-more-button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false" aria-label="Más acciones de <?= $texto($aliado['nombre_entidad'] ?? 'aliado') ?>" title="Más acciones">
+                                                                <i class="bi bi-three-dots" aria-hidden="true"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu aliados-actions-dropdown">
+                                                                <?php if (tienePermiso('aliados.editar_manual') && tienePermiso('aliados.gestionar_programas')): ?>
+                                                                <li><button type="button" class="dropdown-item" data-registro-abrir data-registro-editar data-registro-id="<?= (int)$aliado['id'] ?>"><i class="bi bi-pencil-square"></i><span>Editar aliado</span></button></li>
+                                                                <?php endif; ?>
+                                                                <?php if (tienePermiso('aliados.gestionar_programas')): ?>
+                                                                <li><button type="button" class="dropdown-item" data-registro-manual-contactos="<?= (int)$aliado['id'] ?>"><i class="bi bi-person-lines-fill"></i><span>Canales del aliado</span></button></li>
+                                                                <?php endif; ?>
+                                                                <?php if ($puedeVerHistorial): ?>
+                                                                <li><button type="button" class="dropdown-item" data-aliado-history-origen="manual" data-aliado-history="<?= (int)$aliado['id'] ?>"><i class="bi bi-clock-history"></i><span>Historial de difusión</span></button></li>
+                                                                <?php endif; ?>
+                                                            </ul>
+                                                        </div>
+                                                    <?php endif; ?>
                                                     <?php if (!$esManualRegistro): ?>
                                                     <?php if ($mostrarAccionesSecundarias): ?>
                                                         <div class="dropdown dropstart aliados-actions-menu">
@@ -646,7 +657,7 @@ $seguimientoVista = static function ($estado) {
                                                                         <button
                                                                             type="button"
                                                                             class="dropdown-item"
-                                                                            data-aliado-history="<?= (int)$aliado['seguimiento_id'] ?>">
+                                                                            data-aliado-history-origen="institucional" data-aliado-history="<?= (int)$aliado['seguimiento_id'] ?>">
                                                                             <i class="bi bi-clock-history"></i>
                                                                             <span>Historial de difusión</span>
                                                                         </button>
@@ -1204,7 +1215,7 @@ $seguimientoVista = static function ($estado) {
     tabindex="-1"
     aria-labelledby="modalAliadoHistorialTitulo"
     aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
         <div class="modal-content aliados-modal">
             <div class="modal-header">
                 <div>
@@ -1230,6 +1241,7 @@ $seguimientoVista = static function ($estado) {
                     </div>
                 </div>
             </div>
+            <div class="modal-footer"><button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cerrar</button></div>
         </div>
     </div>
 </div>

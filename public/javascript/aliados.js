@@ -1169,6 +1169,7 @@ document.addEventListener('DOMContentLoaded', function () {
         icon.className = 'aliados-history-icon';
         const iconElement = document.createElement('i');
         const canal = String(item.canal || '').toUpperCase();
+        const estado = String(item.estado_envio || '').toUpperCase();
         const esWhatsapp = canal.indexOf('WHATSAPP') === 0;
         iconElement.className = esWhatsapp
             ? 'bi bi-whatsapp'
@@ -1185,12 +1186,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const meta = document.createElement('span');
         const canalLabel = canal === 'WHATSAPP_MANUAL'
-            ? 'WhatsApp manual'
+            ? 'WhatsApp · confirmado manualmente'
             : canal === 'WHATSAPP'
                 ? 'WhatsApp'
-                : 'Correo';
+                : canal === 'CORREO' ? 'Correo' : 'Registro manual';
         meta.textContent =
-            canalLabel + ' · ' + formatDateTime(item.enviado_at);
+            (Number(item.convocatoria_id)>0 ? 'Convocatoria #'+item.convocatoria_id+' · ' : '') + canalLabel + (estado === 'REGISTRADO' ? ' · registro histórico' : '') + ' · ' + formatDateTime(item.enviado_at);
 
         const author = document.createElement('small');
         const authorName = String(item.enviado_por_nombre || '').trim();
@@ -1198,7 +1199,7 @@ document.addEventListener('DOMContentLoaded', function () {
             (
                 authorName
                     ? (
-                        canal === 'WHATSAPP_MANUAL'
+                        canal === 'WHATSAPP_MANUAL' || estado === 'REGISTRADO'
                             ? 'Registrado por ' + authorName + ' · '
                             : 'Enviado por ' + authorName + ' · '
                     )
@@ -1207,29 +1208,36 @@ document.addEventListener('DOMContentLoaded', function () {
             String(item.destinatario || '');
 
         copy.append(title, meta, author);
+        if (item.nota) {
+            const note = document.createElement('small');
+            note.textContent = String(item.nota);
+            copy.append(note);
+        }
 
         const status = document.createElement('span');
-        const estado = String(item.estado_envio || '').toUpperCase();
         const success = estado === 'ENVIADO' || estado === 'COMPARTIDO';
         status.className =
             'aliados-history-status ' +
-            (success ? 'is-sent' : 'is-error');
+            (success ? 'is-sent' : estado === 'REGISTRADO' ? '' : 'is-error');
         status.textContent = estado === 'COMPARTIDO'
             ? 'Compartida'
             : estado === 'ENVIADO'
                 ? 'Enviado'
-                : 'Error';
+                : estado === 'REGISTRADO' ? 'Registrado' : 'Error';
 
         article.append(icon, copy, status);
 
         return article;
     };
 
-    const loadHistory = async function (allyId) {
+    let historyRevision = 0;
+    historyModalElement?.addEventListener('hidden.bs.modal', () => { historyRevision++; });
+    const loadHistory = async function (allyId, origin = 'institucional') {
         const id = Number(allyId || 0);
-        if (id <= 0 || !historyList) {
+        if (id <= 0 || !historyList || !['manual','institucional'].includes(origin)) {
             return;
         }
+        const revision = ++historyRevision;
 
         historyList.innerHTML =
             '<div class="aliados-history-loading"><i class="bi bi-arrow-repeat"></i> Consultando historial…</div>';
@@ -1243,8 +1251,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const data = await requestJson(
-            endpoint('historial', { id: id })
+            endpoint('historial', { id: id, origen_tipo: origin })
         );
+        if (revision !== historyRevision) return;
 
         historyList.innerHTML = '';
 
@@ -1910,7 +1919,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const historyButton = event.target.closest('[data-aliado-history]');
         if (historyButton) {
-            loadHistory(historyButton.dataset.aliadoHistory);
+            loadHistory(historyButton.dataset.aliadoHistory, historyButton.dataset.aliadoHistoryOrigen || 'institucional');
         }
     });
 

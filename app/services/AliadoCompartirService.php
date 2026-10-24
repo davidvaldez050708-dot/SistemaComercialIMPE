@@ -31,9 +31,9 @@ class AliadoCompartirService
         $tipo=(string)($datos['origen_tipo']??''); $id=(int)($datos['origen_id']??0);
         if (!in_array($tipo,['manual','institucional'],true)||$id<=0) throw new DomainException('Origen de aliado inválido.',422);
         if ($tipo==='manual') {
-            $aliado=(new AliadoRegistroService($this->db))->origen($tipo,$id);
+            $aliado=(new AliadoRegistroService($this->db))->origen($tipo,$id,puedeConsultarAliadosNacional());
         } else {
-            $aliado=$this->modelo->obtenerAliado($id,(int)$_SESSION['usuario_id'],(int)($_SESSION['rol_id']??0)===1);
+            $aliado=$this->modelo->obtenerAliado($id,(int)$_SESSION['usuario_id'],puedeConsultarAliadosNacional());
             if (!$aliado) throw new DomainException('No tienes acceso a este aliado.',403);
         }
         $ambito=(string)($datos['ambito']??'asociadas');

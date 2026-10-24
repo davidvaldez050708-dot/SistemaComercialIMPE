@@ -1,0 +1,85 @@
+name: Aliados historial unificado
+on:
+  pull_request:
+    paths:
+      - 'app/**/Aliado*'
+      - 'app/views/aliados/**'
+      - 'public/javascript/aliados*'
+      - 'tests/aliados_historial*'
+      - 'tests/publicacion_aliados_historial_test.py'
+      - 'tools/aliados_historial_release.json'
+      - 'tools/preparar_aliados_historial_release.py'
+      - '.github/workflows/aliados-historial.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  historial:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['33308:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33308
+      IMPE_DB_USER: root
+      IMPE_DB_NAME: impe_test_handly_aliados_historial_ci
+      IMPE_TEST_DB_NAME: impe_test_handly_aliados_historial_ci
+      IMPE_TEST_MYSQL_PORT: 33308
+      IMPE_BASE_URL: http://127.0.0.1:8097/
+      PLAYWRIGHT_MODULE_PATH: /tmp/aliados-historial-browser/node_modules/playwright
+      BROWSER_DEPS: /tmp/aliados-historial-browser/node_modules
+      IMPE_HISTORIAL_OUTPUT: /tmp/aliados-historial-visual
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, zip, gd
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dependencias en checkout efímero
+        run: |
+          mv vendor /tmp/aliados-historial-vendor-versionado
+          composer install --no-interaction --no-scripts --prefer-dist --no-progress
+          npm install --prefix /tmp/aliados-historial-browser playwright bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0
+          /tmp/aliados-historial-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Normalización, diseño y entrega reversible
+        run: |
+          php tests/aliados_historial_unit.php
+          node tests/aliados_historial_browser.cjs
+          python3 tests/publicacion_aliados_historial_test.py
+      - name: Preparación de base desechable
+        run: |
+          mkdir -p /tmp/respaldo-aliados-historial
+          php tests/aliados_registro_fixture.php
+          php tools/preparar_handly_formularios.php --apply > /tmp/handly-preparacion.log
+          php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados-historial
+          php tools/migrar_extensiones_aliados_20261022.php --apply --backup-dir=/tmp/respaldo-aliados-historial
+          php tools/migrar_canales_manuales_20261022.php --apply --respaldo-confirmado
+          php tools/migrar_convocatorias_multiprograma_20261022.php --apply --respaldo-confirmado
+          php tests/aliados_registro_db.php
+          php tests/aliados_compartir_fixture.php
+      - name: Proveedor simulado, SQL y controlador HTTP reales
+        run: |
+          php tests/aliados_compartir_db.php
+          php tests/aliados_historial_db.php
+          python3 tests/aliados_historial_http.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aliados-historial-${{ strategy.job-index }}
+          path: /tmp/aliados-historial-visual
