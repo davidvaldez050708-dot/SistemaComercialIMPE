@@ -46,9 +46,7 @@ El publicador respalda los archivos originales antes de cambiarlos. Anota la rut
 5. Generar QR: el personalizador instalado debe seguir disponible con el mismo enlace del aliado.
 6. Con un usuario sin permiso para crear, comprobar que sólo aparece el ojo. Abrir un aliado desde Gestión y cerrar su detalle: debe volver a la misma Gestión.
 
-## Restaurar sólo si se necesita deshacer la entrega
-
-### Ajuste posterior: quitar la barra vertical de cada tabla
+## Ajuste posterior: quitar la barra vertical de cada tabla
 
 Si el directorio ya está publicado, este paquete cambia únicamente su CSS. El contenedor crece con todas las filas y conserva sólo el desplazamiento horizontal cuando falta ancho. Pasaron 87 comprobaciones de navegador, con zoom de 100 %, 110 %, 125 % y 150 %, y cinco pruebas de publicación/restauración.
 
