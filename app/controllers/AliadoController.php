@@ -244,7 +244,7 @@ class AliadoController
                 $estadoSeguimiento !== '' &&
                 !in_array(
                     $estadoSeguimiento,
-                    ['DIFUSION_CONFIRMADA', 'NO_PARTICIPARA'],
+                    ['DIFUSION_CONFIRMADA', 'NO_PARTICIPARA', 'COMPARTIDA_MANUALMENTE', 'REGISTRO_MANUAL'],
                     true
                 );
 
@@ -440,34 +440,21 @@ class AliadoController
     public function historial()
     {
         $this->validarPermiso('aliados.ver_historial');
-
-        $modelo = new AliadoModel();
-        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
-        $seguimientoId = (int)($_GET['id'] ?? 0);
-
-        $aliado = $modelo->obtenerAliado(
-            $seguimientoId,
-            $usuarioId,
-            $esAdministrador
-        );
-
-        if (!$aliado) {
-            $this->responder([
-                'ok' => false,
-                'mensaje' => 'No tienes acceso a este aliado.'
-            ], 403);
+        header('Cache-Control: no-store, private');
+        require_once __DIR__ . '/../services/AliadoHistorialService.php';
+        try {
+            $servicio = new AliadoHistorialService((new Database())->connect());
+            $this->responder($servicio->consultar(
+                (string)($_GET['origen_tipo'] ?? 'institucional'),
+                (int)($_GET['id'] ?? 0)
+            ));
+        } catch (DomainException $error) {
+            $code = in_array($error->getCode(), [401,403,404,422], true) ? $error->getCode() : 422;
+            $this->responder(['ok'=>false,'mensaje'=>$error->getMessage()], $code);
+        } catch (Throwable $error) {
+            error_log('[aliado_historial] '.$error->getMessage());
+            $this->responder(['ok'=>false,'mensaje'=>'No fue posible consultar el historial. Intenta nuevamente.'], 500);
         }
-
-        $this->responder([
-            'ok' => true,
-            'aliado' => $aliado,
-            'historial' => $modelo->obtenerHistorial(
-                $seguimientoId,
-                $usuarioId,
-                $esAdministrador
-            )
-        ]);
     }
 
     public function seguimientoConvocatoria()

@@ -155,7 +155,8 @@ class AliadoModel
                 $filas[] = $manual;
             }
         }
-        return $registro->decorar($filas);
+        require_once __DIR__ . '/../services/AliadoHistorialService.php';
+        return (new AliadoHistorialService($this->connection))->decorarManuales($registro->decorar($filas));
     }
 
     public function obtenerAliado($seguimientoId, $usuarioId, $esAdministrador = false)

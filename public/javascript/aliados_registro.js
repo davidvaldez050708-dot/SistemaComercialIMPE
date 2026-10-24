@@ -115,16 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // Gestión independiente de contactos e historial para aliados manuales.
     const modalContactosEl = document.getElementById('modalManualContactos');
-    const modalHistorialEl = document.getElementById('modalManualHistorial');
-    if (modalContactosEl && modalHistorialEl && window.bootstrap) {
+    if (modalContactosEl && window.bootstrap) {
         const contactosModal = bootstrap.Modal.getOrCreateInstance(modalContactosEl);
-        const historialModal = bootstrap.Modal.getOrCreateInstance(modalHistorialEl);
         const listaContactos = modalContactosEl.querySelector('[data-manual-contactos-list]');
-        const listaHistorial = modalHistorialEl.querySelector('[data-manual-historial-list]');
         const formContacto = modalContactosEl.querySelector('[data-manual-contactos-form]');
-        const formHistorial = modalHistorialEl.querySelector('[data-manual-difusion-form]');
         const errorContactos = modalContactosEl.querySelector('[data-manual-contactos-error]');
-        const errorHistorial = modalHistorialEl.querySelector('[data-manual-historial-error]');
         let manualId = 0, contactosActuales = [];
         const sourceCard = modalContactosEl.querySelector('[data-manual-source-card]');
         const sourcePhone = modalContactosEl.querySelector('[data-manual-source-phone]');
@@ -234,37 +229,19 @@ document.addEventListener('DOMContentLoaded', () => {
             modalContactosEl.querySelector('[data-manual-contacto-limpiar]').classList.remove('d-none');
             formContacto.elements.telefono.focus();
         });
-        const mostrarHistorial = (datos) => {
-            listaHistorial.replaceChildren();
-            if (!datos.historial?.length) {
-                const p=document.createElement('p');p.className='aliados-manual-empty';
-                p.textContent='Sin difusiones registradas. Registra aquí únicamente acciones que realmente se hayan realizado.';
-                listaHistorial.appendChild(p);
-                return;
-            }
-            datos.historial.forEach(h => {
-                const row=document.createElement('div');row.className='aliados-manual-contact-row';
-                const copy=document.createElement('div'),t=document.createElement('strong'),v=document.createElement('small');
-                t.textContent=h.canal+' · '+h.realizado_at;
-                v.textContent=[h.nota,h.responsable].filter(Boolean).join(' · ');
-                copy.append(t,v);row.appendChild(copy);listaHistorial.appendChild(row);
-            });
-        };
         const recargarManual = async () => {
             const d=await request('registroManualDatos',{id:manualId});
-            mostrarContactos(d);mostrarHistorial(d);
+            mostrarContactos(d);
         };
         document.addEventListener('click',async event => {
             const bContacto = event.target.closest('[data-registro-manual-contactos]');
-            const bHistorial = event.target.closest('[data-registro-manual-historial]');
-            const button = bContacto || bHistorial;
+            const button = bContacto;
             if (!button) return;
-            manualId=Number(button.dataset.registroManualContactos || button.dataset.registroManualHistorial || 0);
-            errorIn(errorContactos);errorIn(errorHistorial);limpiarContacto();
-            formHistorial.reset();formHistorial.elements.id.value=String(manualId);
-            (bContacto?contactosModal:historialModal).show();
+            manualId=Number(button.dataset.registroManualContactos || 0);
+            errorIn(errorContactos);limpiarContacto();
+            contactosModal.show();
             try { await recargarManual(); }
-            catch(e) {errorIn(bContacto?errorContactos:errorHistorial,e.message);aviso(e.message,'error');}
+            catch(e) {errorIn(errorContactos,e.message);aviso(e.message,'error');}
         });
         modalContactosEl.querySelector('[data-manual-contacto-limpiar]').addEventListener('click', limpiarContacto);
         formContacto.addEventListener('submit',async event => {
@@ -275,17 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 await request('registroGestion',data,true);
                 aviso('Contacto guardado correctamente.');limpiarContacto();await recargarManual();
             } catch(e){errorIn(errorContactos,e.message);aviso(e.message,'error');}
-            finally{button.disabled=false;}
-        });
-        formHistorial.addEventListener('submit',async event => {
-            event.preventDefault();errorIn(errorHistorial);
-            const button=formHistorial.querySelector('[type=submit]');button.disabled=true;
-            try {
-                const data=new FormData(formHistorial);data.set('operacion','difusion_manual');
-                await request('registroGestion',data,true);
-                aviso('Difusión realizada registrada en el historial.');
-                formHistorial.elements.nota.value='';await recargarManual();
-            } catch(e){errorIn(errorHistorial,e.message);aviso(e.message,'error');}
             finally{button.disabled=false;}
         });
     }
