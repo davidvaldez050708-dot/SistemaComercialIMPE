@@ -12,7 +12,20 @@ for($i=1;$i<=62;$i++){
  $q=$db->prepare("INSERT INTO formulario_registros VALUES(?,?,'Prueba','1990-01-01','7771234567','','',CONCAT('prueba',?,'@example.test'),'Bachillerato General','Trabajo','Cargo',?,?,NULL,'PUBLICO','2026-10-23 12:00:00','2026-10-23 12:00:00')");$q->bind_param('isiii',$i,$nombre,$i,$estado,$municipio);$q->execute();
 }
 $db->query('CREATE TABLE formulario_aliado_procedencias(id BIGINT AUTO_INCREMENT PRIMARY KEY,registro_id BIGINT,tipo VARCHAR(30),aliado_id INT,aliado_nombre VARCHAR(180),programa_codigo VARCHAR(100)) ENGINE=InnoDB');
-for($i=1;$i<=20;$i++)$db->query("INSERT INTO formulario_aliado_procedencias(registro_id,tipo,aliado_id,aliado_nombre,programa_codigo) VALUES($i,'registro',7,'Aliado de otra entidad','bachillerato-general')");
-$db->query("INSERT INTO formulario_aliado_procedencias(registro_id,tipo,aliado_id,aliado_nombre,programa_codigo) VALUES(1,'registro',7,'Aliado de otra entidad','bachillerato-general'),(25,'inscripcion',8,'Sólo Inscripción','ingles')");
-foreach(['formulario_inscripciones','formulario_programas','convocatorias','convocatoria_borradores','registro_enlaces_amigables','formulario_aliados'] as $tabla){$db->query("CREATE TABLE `$tabla`(id INT PRIMARY KEY,marca VARCHAR(100)) ENGINE=InnoDB");$db->query("INSERT INTO `$tabla` VALUES(1,'Intocable')");}
+// Residencias deliberadamente diferentes del territorio de los aliados.
+$db->query('CREATE TABLE formulario_aliados(id INT PRIMARY KEY,seguimiento_id INT NULL) ENGINE=InnoDB');
+$db->query('CREATE TABLE formulario_aliado_registro(aliado_id INT PRIMARY KEY,manual_id INT NULL UNIQUE,seguimiento_id INT NULL UNIQUE) ENGINE=InnoDB');
+$db->query('CREATE TABLE aliados_manuales(id INT PRIMARY KEY,estado_id INT,activo INT) ENGINE=InnoDB');
+$db->query('CREATE TABLE seguimientos_vinculacion(id INT PRIMARY KEY,estado_id INT,activo INT) ENGINE=InnoDB');
+$db->query('INSERT INTO aliados_manuales VALUES(101,11,0),(103,99,1)');
+$db->query('INSERT INTO seguimientos_vinculacion VALUES(201,11,0),(202,22,1),(203,14,1)');
+$db->query('INSERT INTO formulario_aliados VALUES(7,NULL),(8,201),(9,202),(10,NULL),(11,203),(12,203),(13,NULL)');
+$db->query('INSERT INTO formulario_aliado_registro VALUES(7,101,NULL),(8,NULL,201),(11,999,NULL),(12,102,203),(13,103,NULL)');
+for($i=1;$i<=40;$i++){
+ $aliado=$i<=20?7:($i<=29?8:($i<=35?9:$i-26));
+ $db->query("INSERT INTO formulario_aliado_procedencias(registro_id,tipo,aliado_id,aliado_nombre,programa_codigo) VALUES($i,'registro',$aliado,'Aliado $aliado','bachillerato-general')");
+}
+// Otra procedencia del mismo registro no cambia su origen inicial ni duplica filas.
+$db->query("INSERT INTO formulario_aliado_procedencias(registro_id,tipo,aliado_id,aliado_nombre,programa_codigo) VALUES(1,'registro',9,'Origen posterior','bachillerato-general'),(45,'inscripcion',8,'Sólo Inscripción','ingles')");
+foreach(['formulario_inscripciones','formulario_programas','convocatorias','convocatoria_borradores','registro_enlaces_amigables'] as $tabla){$db->query("CREATE TABLE `$tabla`(id INT PRIMARY KEY,marca VARCHAR(100)) ENGINE=InnoDB");$db->query("INSERT INTO `$tabla` VALUES(1,'Intocable')");}
 echo "Fixture sintética creada: $schema · ".$db->server_info."\n";

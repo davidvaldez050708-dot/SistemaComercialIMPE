@@ -53,12 +53,11 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
 </style>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_fase1.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_fase1.css'),0,16) ?>">
 <div class="prospectos-page prospectos-fase1" data-prospectos-modulo>
-    <div class="prospectos-loading login-alert" role="status" aria-live="polite" hidden data-prospectos-loading><i class="bi bi-arrow-repeat" aria-hidden="true"></i><span>Cargando información…</span></div>
     <?php foreach (array_filter([$mensajeError,$errorTerritorial,$errorProcedencia]) as $errorProspectos): ?>
     <div class="login-alert prospectos-message" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span><?= $escaparProspecto($errorProspectos) ?></span></div>
     <?php endforeach; ?>
     <section class="aliados-summary-grid prospectos-summary" aria-label="Indicadores de Prospectos">
-        <?php foreach ([['total','bi-people','Total de prospectos',$resumenProspectos['total']],['estados','bi-map','Estados con registros',$estadosConRegistros],['aliados','bi-buildings','Procedentes de aliados',$resumenProspectos['aliados']],['generales','bi-ui-checks','Formularios generales',$resumenProspectos['generales']]] as [$indicador,$icono,$etiqueta,$cantidad]): ?>
+        <?php foreach ([['total','bi-people','Total de prospectos',$resumenProspectos['total']],['estados','bi-map','Estados de aliados con registros',$estadosConRegistros],['aliados','bi-buildings','Procedentes de aliados',$resumenProspectos['aliados']],['generales','bi-ui-checks','Formularios generales',$resumenProspectos['generales']]] as [$indicador,$icono,$etiqueta,$cantidad]): ?>
         <article class="aliados-summary-card" data-prospectos-indicador="<?= $indicador ?>">
             <span class="aliados-summary-icon"><i class="bi <?= $icono ?>" aria-hidden="true"></i></span>
             <div><strong><?= $cantidad===null?'—':(int)$cantidad ?></strong><span><?= $etiqueta ?></span><?php if ($cantidad===null): ?><small>Sin verificar</small><?php endif; ?></div>
@@ -71,7 +70,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
     </nav>
     <?php if (!$mostrarTablaProspectos): ?>
     <section class="dashboard-panel prospectos-state-toolbar">
-        <div><h2 class="panel-title">Seleccionar estado</h2><p>Consulta los prospectos por su estado de residencia.</p></div>
+        <div><h2 class="panel-title">Seleccionar estado</h2><p>Consulta los prospectos por el estado de su aliado de origen. Los registros generales están en Todos los prospectos.</p></div>
         <form method="get" data-prospectos-state-search-form>
             <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index">
             <label for="prospectosEstadoBuscar">Buscar estado</label>
@@ -85,7 +84,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
         <a class="dashboard-panel data-territorial-card linkage-territory-card prospectos-state-card" href="<?= $escaparProspecto($urlProspectos(['estado_id'=>(int)$territorio['id']])) ?>" data-prospectos-state="<?= $escaparProspecto($territorio['nombre']) ?>" <?= $visible?'':'hidden' ?>>
             <div class="data-card-header"><div class="data-card-heading"><h3><?= $escaparProspecto($territorio['nombre']) ?></h3></div></div>
             <div class="data-state-image"><?php if ($mapa!==''): ?><img src="<?= $escaparProspecto($mapa) ?>" alt="Mapa de <?= $escaparProspecto($territorio['nombre']) ?>" loading="lazy"><?php else: ?><i class="bi bi-map" aria-label="Mapa no disponible"></i><?php endif; ?></div>
-            <dl class="data-card-meta"><div><dt>Prospectos residentes</dt><dd data-prospectos-state-total><?= (int)$territorio['total'] ?></dd></div></dl>
+            <dl class="data-card-meta"><div><dt>Prospectos de aliados</dt><dd data-prospectos-state-total><?= (int)$territorio['total'] ?></dd></div></dl>
             <span class="btn btn-system-light">Ver prospectos</span>
         </a>
         <?php endforeach; ?>
@@ -96,6 +95,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
     <section class="prospectos-panel">
         <div class="prospectos-heading"><div class="prospectos-heading-main"><span class="prospectos-icon"><i class="bi bi-people" aria-hidden="true"></i></span><div><h2><?= $estadoProspectos?'Prospectos de '.$escaparProspecto($estadoProspectos['nombre']):($vistaProspectos==='todos'?'Todos los prospectos':'Estado no encontrado') ?></h2></div></div><?php if ($mensajeError===''): ?><div class="prospectos-total"><strong><?= (int)$listado['total'] ?></strong><span>prospectos</span></div><?php endif; ?></div>
         <?php if ($vistaProspectos==='estados'): ?>
+        <p class="prospectos-territory-note">Prospectos procedentes de aliados de este estado. Las columnas de residencia conservan lo declarado en el formulario.</p>
         <div class="prospectos-state-navigation"><a class="btn btn-system-light" href="<?= $escaparProspecto($urlProspectos()) ?>"><i class="bi bi-arrow-left" aria-hidden="true"></i> Estados</a>
             <form method="get" data-prospectos-navegacion><input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><label for="prospectosCambiarEstado">Cambiar de estado</label><select class="form-select" name="estado_id" id="prospectosCambiarEstado" required><option value="">Seleccionar estado</option><?php foreach ($territoriosProspectos as $territorio): ?><option value="<?= (int)$territorio['id'] ?>" <?= $estadoProspectos && (int)$estadoProspectos['id']===(int)$territorio['id']?'selected':'' ?>><?= $escaparProspecto($territorio['nombre']) ?></option><?php endforeach; ?></select><button type="submit" class="btn btn-system-light">Ver</button></form>
         </div>
@@ -109,7 +109,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
         </form>
         <div class="prospectos-table-wrap" role="region" aria-label="Listado de prospectos" tabindex="0">
             <table>
-                <thead><tr><th scope="col">Fecha de registro</th><th scope="col">Nombre completo</th><th scope="col">Correo electrónico</th><th scope="col">Teléfono</th><th scope="col">Tel. secundario</th><th scope="col">Tel. recomendado</th><th scope="col">Aliado de origen</th><th scope="col">Perfil de interés</th><th scope="col">Estado</th><th scope="col">Municipio</th><th scope="col">Lugar de trabajo</th><th scope="col">Cargo</th><th scope="col">Fecha de nacimiento</th><th scope="col">Origen</th></tr></thead>
+                <thead><tr><th scope="col">Fecha de registro</th><th scope="col">Nombre completo</th><th scope="col">Correo electrónico</th><th scope="col">Teléfono</th><th scope="col">Tel. secundario</th><th scope="col">Tel. recomendado</th><th scope="col">Aliado de origen</th><th scope="col">Perfil de interés</th><th scope="col">Estado de residencia</th><th scope="col">Municipio de residencia</th><th scope="col">Lugar de trabajo</th><th scope="col">Cargo</th><th scope="col">Fecha de nacimiento</th><th scope="col">Origen</th></tr></thead>
                 <tbody>
                 <?php foreach ($registrosProspectos as $prospecto): ?>
                     <tr>
