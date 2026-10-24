@@ -8,7 +8,8 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
  if(!preview)for(let i=0;i<80;i++){try{await fetch(base+'_prospectos_session');break;}catch{await new Promise(r=>setTimeout(r,100));}}
  browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});const context=await browser.newContext(),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const deps=process.env.IMPE_BROWSER_DEPS||path.resolve(root,'../browser-deps/node_modules');
- await context.route('https://**/*',async route=>{
+ const setupRoutes=async target=>{
+ await target.route('https://**/*',async route=>{
   const url=route.request().url();let file,type;
   if(url.includes('bootstrap@')&&url.includes('/css/')){file=path.join(deps,'bootstrap/dist/css/bootstrap.min.css');type='text/css';}
   else if(url.includes('bootstrap@')&&url.includes('/js/')){file=path.join(deps,'bootstrap/dist/js/bootstrap.bundle.min.js');type='application/javascript';}
@@ -17,8 +18,8 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
   else if(url.includes('fonts.googleapis.com')){const css=fs.readFileSync(path.join(deps,'@fontsource/manrope/latin.css'),'utf8').replaceAll('./files/',base+'fixture-font/');await route.fulfill({contentType:'text/css',body:css});return;}
   if(file&&fs.existsSync(file))await route.fulfill({path:file,contentType:type});else await route.abort();
  });
- await context.route(base+'fixture-font/**',route=>route.fulfill({path:path.join(deps,'@fontsource/manrope/files',new URL(route.request().url()).pathname.split('/').pop()),contentType:'font/woff2'}));
- if(preview)await context.route(base+'**',async route=>{
+ await target.route(base+'fixture-font/**',route=>route.fulfill({path:path.join(deps,'@fontsource/manrope/files',new URL(route.request().url()).pathname.split('/').pop()),contentType:'font/woff2'}));
+ if(preview)await target.route(base+'**',async route=>{
   const url=new URL(route.request().url());if(url.pathname.startsWith('/fixture-font/')){await route.fallback();return;}
   if(url.pathname==='/index.php'){
    const html=execFileSync(process.env.PHP_BINARY||'php',[path.join(__dirname,'prospectos_fase1_preview.php'),url.search.slice(1)],{cwd:root,env:process.env,encoding:'utf8'});
@@ -27,8 +28,10 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
   const file=path.resolve(root,'.'+decodeURIComponent(url.pathname));if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){await route.fulfill({status:404,body:''});return;}
   const ext=path.extname(file),types={'.css':'text/css','.js':'application/javascript','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2','.jpg':'image/jpeg'};await route.fulfill({path:file,contentType:types[ext]||'application/octet-stream'});
  });
+ };await setupRoutes(context);
  if(!preview)await context.request.get(base+'_prospectos_session?role=marketing');
- const home=base+'index.php?controller=prospecto&action=index';await page.goto(home);await page.waitForSelector('[data-prospectos-state]');
+ const home=base+'index.php?controller=prospecto&action=index';
+ await page.goto(home);await page.waitForSelector('[data-prospectos-state]');
  check(await page.locator('.prospectos-view[aria-current="page"]').innerText().then(t=>t.includes('Por estados')),'Vista inicial por estados, dos controles institucionales');
  check(await page.locator('.prospectos-view').count()===2&&await page.locator('[data-prospectos-state]').count()===32,'Todos los estados activos del catálogo');
  for(const [key,value] of Object.entries({total:'62',estados:'2',aliados:'40',generales:'22'}))check(await page.locator('[data-prospectos-indicador="'+key+'"] strong').textContent()===value,'Indicador '+key+' correcto');
@@ -90,12 +93,63 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
  await page.locator('#prospectoBuscar').press('Enter');await page.waitForFunction(()=>document.querySelector('.prospectos-total strong').textContent==='0');
  check(await page.locator('[data-prospectos-search-error]').isHidden(),'Enter reintenta la consulta y limpia el error');
  await page.goto(home);check(await page.locator('[data-prospectos-state-search-form] button').count()===0,'El buscador automático de estados no tiene botón Buscar');
+
+ if(process.env.IMPE_PROSPECTOS_FASE2==='1'){
+  const key=(type,value)=>type+':'+Buffer.from(value).toString('base64url');
+  const aGeneral=key('a','bachillerato-general'),aDos=key('a','bachillerato-2-anos'),gGeneral=key('g','Bachillerato General'),gIngles=key('g','Inglés');
+  const waitFilter=async(name,value)=>page.waitForFunction(({name,value})=>(new URL(location.href).searchParams.get(name)||'')===value&&!document.querySelector('[data-prospectos-resultados]').hasAttribute('aria-busy'),{name,value}).catch(async error=>{console.error(await page.evaluate(()=>({url:location.href,program:document.querySelector('#prospectoPrograma')?.value,error:document.querySelector('[data-prospectos-search-error]')?.textContent,options:[...document.querySelectorAll('#prospectoPrograma option')].map(o=>[o.value,o.textContent])})));throw error;});
+  const setAlly=async value=>{await page.locator('#prospectoAliado').selectOption(value);await waitFilter('aliado_id',value);};
+  const setProgram=async value=>{await page.locator('#prospectoPrograma').selectOption(value);await waitFilter('programa',value);};
+  const clearFilters=async()=>{await page.locator('[data-prospectos-limpiar]').click();await page.waitForFunction(()=>!document.querySelector('#prospectoBuscar').value&&!document.querySelector('#prospectoAliado').value&&!document.querySelector('#prospectoPrograma').value&&!new URL(location.href).searchParams.get('aliado_id')&&!document.querySelector('[data-prospectos-resultados]').hasAttribute('aria-busy'));};
+  await page.goto(home+'&estado_id=11');
+  check(await page.locator('#prospectoAliado option').evaluateAll(options=>options.map(o=>o.value).join(','))===',general,7,8','Aliados de este estado por ID, sin catálogo nacional mezclado');
+  const allyBox=page.locator('#prospectoAliado + .prospectos-searchable');
+  await allyBox.locator('.uniform-select-trigger').click();await allyBox.locator('input').fill('Institución duplicada');
+  check(await allyBox.locator('[role="option"]').count()===2&&await allyBox.locator('[role="option"]').allTextContents().then(t=>t.every(v=>v.includes('ID #'))),'Buscador distingue dos aliados con el mismo nombre');
+  await allyBox.locator('input').press('ArrowDown');await page.keyboard.press('Enter');await waitFilter('aliado_id','7');
+  check(await page.locator('.prospectos-total strong').textContent()==='20','Selector con teclado consulta sólo el ID elegido');
+  check(await page.locator('#prospectoPrograma option').count()===2,'Sólo programas con prospectos del aliado, no su oferta actual sin registros');
+  await setProgram(aGeneral);await searchAndWait('Prospecto 2');check(await page.locator('.prospectos-total strong').textContent()==='2','Estado, aliado, programa y nombre combinados');
+  await clearFilters();check(new URL(page.url()).searchParams.get('estado_id')==='11'&&await page.locator('.prospectos-total strong').textContent()==='29'&&await page.locator('[data-prospectos-limpiar]').isHidden(),'Limpiar filtros conserva el estado y oculta la acción cuando no hace falta');
+  await setAlly('8');const programBox=page.locator('#prospectoPrograma + .prospectos-searchable');await programBox.locator('.uniform-select-trigger').click();await programBox.locator('input').fill('2 años');await programBox.locator('[role="option"]').click();await waitFilter('programa',aDos);
+  check(await page.locator('.prospectos-total strong').textContent()==='3','Programas actualizados al cambiar de aliado, con selector buscable');
+  await searchAndWait('prueba29@example.test');check(await page.locator('.prospectos-total strong').textContent()==='1','Los cuatro filtros incluyen el correo');
+  await setAlly('7');check(await page.locator('#prospectoPrograma').inputValue()===''&&await page.locator('#prospectoBuscar').inputValue()==='prueba29@example.test'&&await page.locator('.prospectos-total strong').textContent()==='0','Cambiar aliado limpia sólo el programa incompatible y conserva la búsqueda');
+  await clearFilters();await setProgram(aGeneral);await page.locator('[rel="next"]').click();await page.waitForURL(/pagina=2/);
+  check(new URL(page.url()).searchParams.get('programa')===aGeneral&&new URL(page.url()).searchParams.get('estado_id')==='11'&&await page.locator('tbody tr').count()===1,'Paginación conserva estado y programa con total exacto');
+  await searchAndWait('prueba1@example.test');check(await page.locator('.prospectos-total strong').textContent()==='1'&&!new URL(page.url()).searchParams.has('pagina'),'Nueva búsqueda reinicia página conservando programa y estado');
+  check(await page.locator('tbody img').count()===0,'Datos de nombre escapados también en resultados automáticos');
+  await clearFilters();await setAlly('general');check(await page.locator('.prospectos-total strong').textContent()==='0'&&await page.locator('.prospectos-empty').innerText().then(t=>t.includes('No hay prospectos para este aliado')),'Estado vacío con mensaje institucional, sin usar residencia para generales');
+  await page.goto(home+'&vista=todos');await setAlly('general');check(await page.locator('.prospectos-total strong').textContent()==='22','Generales siguen completos en Todos');
+  await setProgram(gGeneral);check(await page.locator('.prospectos-total strong').textContent()==='8','Perfil general no se confunde con el código de un aliado');
+  await setProgram(gIngles);check(await page.locator('.prospectos-total strong').textContent()==='5','Perfil general real, con acentos');
+  await setAlly('8');check(await page.locator('#prospectoPrograma').inputValue()===''&&await page.locator('.prospectos-total strong').textContent()==='9','No se inventa equivalencia al pasar de perfil general a programa de aliado');
+  await clearFilters();check(new URL(page.url()).searchParams.get('vista')==='todos'&&await page.locator('.prospectos-total strong').textContent()==='62','Limpiar conserva la vista nacional y todos sus registros');
+  await page.locator('#prospectoAliado').evaluate(select=>{for(let i=0;i<100;i++)select.add(new Option('Extra '+i,String(1000+i)));});
+  await allyBox.locator('.uniform-select-trigger').click();check(await allyBox.locator('[role="option"]').count()===40,'Lista acotada a 40 opciones aunque existan muchos aliados');
+  await allyBox.locator('input').fill('Extra 99');check(await allyBox.locator('[role="option"]').count()===1,'La búsqueda localiza un aliado fuera de las primeras 40 opciones');await allyBox.locator('input').press('Escape');
+  await page.goto(home+'&vista=todos');
+  const nojs=await browser.newContext({javaScriptEnabled:false,storageState:await context.storageState()});await setupRoutes(nojs);const fallback=await nojs.newPage();
+  await fallback.goto(home+'&estado_id=11');await fallback.locator('#prospectoAliado').selectOption('8');await fallback.locator('#prospectoPrograma').selectOption(aDos);await fallback.locator('#prospectoBuscar').fill('prueba29@example.test');await fallback.getByRole('button',{name:'Aplicar filtros'}).click();
+  check(await fallback.locator('.prospectos-total strong').textContent()==='1'&&new URL(fallback.url()).searchParams.get('estado_id')==='11','Sin JavaScript: formulario GET combina estado, aliado, programa y correo');
+  await fallback.locator('[data-prospectos-limpiar]').click();check(await fallback.locator('.prospectos-total strong').textContent()==='29'&&new URL(fallback.url()).searchParams.get('estado_id')==='11','Sin JavaScript: limpiar conserva contexto y resultados');
+  await nojs.close();
+  if(!preview)await context.request.get(base+'_prospectos_session?role=clave');
+  await page.goto(home+'&vista=todos'+(preview?'&_role=clave':''));
+  check(await page.locator('#prospectoAliado + .prospectos-searchable .uniform-select-trigger').evaluate(el=>getComputedStyle(el).borderStyle==='solid')&&await page.locator('#prospectoAliado').evaluate(el=>getComputedStyle(el).position==='absolute'),'Mismo selector institucional para Cuenta Clave autorizado, sin ampliar permisos');
+  if(!preview)await context.request.get(base+'_prospectos_session?role=marketing');
+  if(preview){await page.goto(home+'&vista=todos&_case=programs');check(await page.locator('[data-prospectos-program-error]').isVisible()&&await page.locator('#prospectoPrograma').isDisabled()&&await page.locator('.prospectos-total strong').textContent()==='62','Error de programas con estilo, selector deshabilitado y tabla conservada');await page.screenshot({path:path.join(output,'error-programas.png')});}
+ }
  for(const [width,height] of [[1440,1000],[1024,900],[768,1024],[390,844],[360,800]]){
   await page.setViewportSize({width,height});await page.goto(home);await page.evaluate(()=>document.fonts.ready);
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Inicio sin desbordamiento horizontal a '+width);
   await page.screenshot({path:path.join(output,'estados-'+width+'.png')});await page.goto(home+'&estado_id=11');
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1&&document.querySelector('.prospectos-table-wrap').scrollWidth>document.querySelector('.prospectos-table-wrap').clientWidth),'Desplazamiento contenido en la tabla a '+width);
   const font=await page.locator('tbody td').first().evaluate(el=>({family:getComputedStyle(el).fontFamily,size:getComputedStyle(el).fontSize}));check(font.family.includes('Manrope')&&font.size==='12px','Manrope institucional conservada a '+width);
+  if(process.env.IMPE_PROSPECTOS_FASE2==='1'){
+   const heights=await page.locator('.prospectos-fase2-filters').evaluate(form=>[form.querySelector('.module-search'),...form.querySelectorAll('.uniform-select-trigger')].map(el=>el.getBoundingClientRect().height));
+   check(Math.max(...heights)-Math.min(...heights)<=1,'Alturas uniformes de los tres filtros a '+width);
+  }
   await page.screenshot({path:path.join(output,'tabla-'+width+'.png')});
  }
  await page.goto(home+'&estado_id=999999');check(await page.locator('.prospectos-fase1 [role="alert"]').first().textContent().then(t=>t.includes('Estado no encontrado')),'Estado no válido muestra error institucional');

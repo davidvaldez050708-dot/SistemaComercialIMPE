@@ -59,3 +59,25 @@
 
 .prospectos-fase1 [data-prospectos-resultados][aria-busy="true"]{opacity:.65}
 .prospectos-fase1 [data-prospectos-search-error]{margin-bottom:16px}
+
+.prospectos-fase1 .prospectos-fase2-filters{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:12px}
+.prospectos-fase1 .prospectos-fase2-filters .module-search{min-height:44px}
+.prospectos-fase1 .prospectos-filter-summary{display:flex;align-items:center;flex-wrap:wrap;gap:14px;min-height:42px;margin-bottom:16px}
+.prospectos-fase1 .prospectos-filter-summary p{margin:0;font-size:12px}
+.prospectos-fase1 .prospectos-filter-summary strong{color:var(--color-primary,#273a8a);font-weight:800}
+.prospectos-fase1 .prospectos-searching{display:inline-flex;align-items:center;gap:7px;color:var(--color-primary,#273a8a);font-size:12px;font-weight:600}
+.prospectos-fase1 .prospectos-searchable{min-width:0;width:100%}
+.prospectos-fase1 .prospectos-searchable .uniform-select-trigger{min-height:44px;width:100%;font-size:12px}
+.prospectos-fase1 .prospectos-searchable [data-prospectos-selector-label]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prospectos-fase1 .prospectos-searchable .uniform-select-menu{padding:10px;max-height:340px;overflow-y:auto}
+.prospectos-fase1 .prospectos-selector-search{position:sticky;top:-10px;background:#fff;padding:2px 0 9px;z-index:1}
+.prospectos-fase1 .prospectos-selector-search input{font-size:12px}
+.prospectos-fase1 .prospectos-selector-options{display:grid;gap:3px}
+.prospectos-fase1 .prospectos-selector-options .uniform-select-option{font-size:12px;text-align:left;white-space:normal;overflow-wrap:anywhere}
+.prospectos-fase1 .prospectos-selector-note{padding:10px 6px;color:var(--color-text-secondary,#617189);font-size:11px;line-height:1.5}
+@media(max-width:991.98px){.prospectos-fase1 .prospectos-fase2-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.prospectos-fase1 .prospectos-fase2-filters>div:first-of-type{grid-column:1/-1}}
+@media(max-width:575.98px){.prospectos-fase1 .prospectos-fase2-filters{grid-template-columns:minmax(0,1fr)}.prospectos-fase1 .prospectos-fase2-filters>div:first-of-type{grid-column:auto}.prospectos-fase1 .prospectos-searchable .uniform-select-menu{left:0;right:0;min-width:0}}
+
+@media(max-width:575.98px){.prospectos-fase1 .prospectos-searching{font-size:0;margin-left:auto}.prospectos-fase1 .prospectos-searching i{font-size:14px}}
+
+.prospectos-fase1 .prospectos-selector-search input:focus,.prospectos-fase1 .prospectos-selector-search input:focus-visible{outline:none;border-color:var(--color-primary,#273a8a);box-shadow:0 0 0 3px rgba(39,58,138,.08)}

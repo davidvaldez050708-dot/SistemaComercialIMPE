@@ -21,9 +21,12 @@ class ProspectoController
         $estadosConRegistros = null;
         $vistaProspectos = ($_GET['vista']??'') === 'todos' ? 'todos' : 'estados';
         // Los enlaces previos de búsqueda/paginación siguen abriendo el listado.
-        if (!isset($_GET['vista']) && !isset($_GET['estado_id']) && (isset($_GET['buscar']) || isset($_GET['aliado_id']) || isset($_GET['pagina']))) $vistaProspectos='todos';
+        if (!isset($_GET['vista']) && !isset($_GET['estado_id']) && (isset($_GET['buscar']) || isset($_GET['aliado_id']) || isset($_GET['programa']) || isset($_GET['pagina']))) $vistaProspectos='todos';
         $buscarProspectos = is_string($_GET['buscar']??null) ? mb_substr(trim($_GET['buscar']),0,180) : '';
         $aliadoFiltroProspectos = is_string($_GET['aliado_id']??null) && (($_GET['aliado_id']==='general') || ctype_digit($_GET['aliado_id'])) ? $_GET['aliado_id'] : '';
+        $programaFiltroProspectos = is_string($_GET['programa']??null) ? $_GET['programa'] : '';
+        $errorProgramasProspectos = '';
+        $errorAliadosProspectos = '';
         $buscarEstadoProspectos = is_string($_GET['buscar_estado']??null) ? mb_substr(trim($_GET['buscar_estado']),0,80) : '';
         $estadoSolicitado = isset($_GET['estado_id']);
         $estadoId = $estadoSolicitado ? filter_var($_GET['estado_id'],FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]) : null;
@@ -52,10 +55,15 @@ class ProspectoController
                 if ($estadoId===false || !$estadoProspectos) { http_response_code($estadoId===false?400:404); throw new DomainException('Estado no encontrado. Selecciona un estado activo del catálogo.'); }
             }
             if ($mostrarTablaProspectos) {
-                $filtros=['buscar'=>$buscarProspectos,'aliado_id'=>$aliadoFiltroProspectos];
+                foreach (['buscar','aliado_id','programa'] as $campo) if (isset($_GET[$campo]) && !is_string($_GET[$campo])) throw new DomainException('Filtro no válido.');
+                if (isset($_GET['aliado_id']) && $_GET['aliado_id']!=='' && $aliadoFiltroProspectos==='') throw new DomainException('Aliado no válido.');
+                $filtros=['buscar'=>$buscarProspectos,'aliado_id'=>$aliadoFiltroProspectos,'programa'=>$programaFiltroProspectos];
                 if ($estadoProspectos) $filtros['estado_id']=(int)$estadoProspectos['id'];
                 $pagina=filter_var($_GET['pagina']??1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])?:1;
                 $listado=$modelo->listar($pagina,25,$filtros);
+                $programaFiltroProspectos=$listado['programa_aplicado'];
+                $errorProgramasProspectos=$listado['error_programas'];
+                $errorAliadosProspectos=$listado['error_aliados'];
             }
         } catch (DomainException $error) {
             $mensajeError=$error->getMessage();
