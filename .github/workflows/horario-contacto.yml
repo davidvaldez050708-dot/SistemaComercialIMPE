@@ -63,7 +63,11 @@ jobs:
       - name: Envíos reales desde Registro público, interno y liga anterior
         run: node tests/horario_contacto_browser.cjs
       - name: Publicador y variantes de producción
-        run: python3 tests/publicacion_horario_contacto_test.py
+        run: |
+          python3 tests/publicacion_horario_contacto_test.py
+          python3 tests/horario_contacto_variantes.py
+          git show 6edae84c2beb518227a88f18373108afa2c77ec7:public/javascript/formularios_registro_publico.js > /tmp/horario-publico-hostinger.js
+          IMPE_HORARIO_PREVIEW=1 IMPE_HORARIO_JS_VARIANT=/tmp/horario-publico-hostinger.js node tests/horario_contacto_browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

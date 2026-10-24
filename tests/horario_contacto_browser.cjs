@@ -18,9 +18,11 @@ if(!preview){server=spawn(php,['-S',new URL(base).host,'-t',root,path.join(__dir
   if(file)await route.fulfill({path:path.join(deps,file),contentType:type});else await route.abort();
  });
  await context.route(base+'fixture-font/**',r=>r.fulfill({path:path.join(deps,'@fontsource/manrope/files',new URL(r.request().url()).pathname.split('/').pop()),contentType:'font/woff2'}));
+ if(process.env.IMPE_HORARIO_JS_VARIANT)await context.route('**/public/javascript/formularios_registro_publico.js*',r=>r.fulfill({path:process.env.IMPE_HORARIO_JS_VARIANT,contentType:'application/javascript'}));
  let posted=[];
  if(preview)await context.route(base+'**',async route=>{
   const req=route.request(),url=new URL(req.url());if(url.pathname.startsWith('/fixture-font/'))return route.fallback();
+  if(url.pathname.endsWith('/formularios_registro_publico.js')&&process.env.IMPE_HORARIO_JS_VARIANT)return route.fallback();
   if(url.searchParams.get('action')==='municipios')return route.fulfill({json:{ok:true,municipios:[{id:1,nombre:'Cuernavaca'}]}});
   if(req.method()==='POST'){posted.push(req.postData());return route.fulfill({json:{ok:true,registro_id:900,mensaje:'Registro guardado correctamente.'}});}
   if(url.pathname==='/index.php'||url.pathname==='/_horario_internal')return route.fulfill({contentType:'text/html',body:execFileSync(php,[path.join(__dirname,'horario_contacto_preview.php'),url.pathname.includes('internal')?'interno':'publico'],{cwd:root,env:process.env,encoding:'utf8'})});
