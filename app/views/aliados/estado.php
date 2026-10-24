@@ -74,7 +74,7 @@ $seguimientoVista = static function ($estado) {
 
     $mapa = [
         'ESPERANDO_RESPUESTA' => [
-            'label' => 'Esperando respuesta',
+            'label' => 'Sin respuesta registrada',
             'class' => 'is-waiting'
         ],
         'DIFUSION_CONFIRMADA' => [
@@ -358,7 +358,7 @@ $seguimientoVista = static function ($estado) {
                                         <th>Analista de origen</th>
                                         <th>Formalización</th>
                                         <th>Última difusión</th>
-                                        <th>Seguimiento</th>
+                                        <th>Difusión</th>
                                         <th class="text-end">Acciones</th>
                                     </tr>
                                 </thead>
@@ -518,7 +518,7 @@ $seguimientoVista = static function ($estado) {
                                                 </div>
                                             </td>
 
-                                            <td>
+                                            <td data-avance-last>
                                                 <?php if (!empty($aliado['ultimo_envio_id'])): ?>
                                                     <div class="aliados-last-send">
                                                         <strong><?= $texto($aliado['ultima_convocatoria_titulo'] ?? 'Convocatoria') ?></strong>
@@ -541,37 +541,17 @@ $seguimientoVista = static function ($estado) {
                                             </td>
 
                                             <td>
-                                                <?php if (!empty($aliado['ultimo_envio_id'])): ?>
-                                                    <?php if ($puedeAbrirSeguimiento): ?>
-                                                        <button
-                                                            type="button"
-                                                            class="aliados-followup-summary <?= $texto($seguimientoActual['class']) ?> <?= $seguimientoVencido ? 'is-overdue' : '' ?>"
-                                                            data-aliado-followup="<?= (int)$aliado['seguimiento_id'] ?>"
-                                                            title="Abrir seguimiento de la convocatoria">
-                                                            <span class="aliados-followup-pill">
-                                                                <?= $texto(
-                                                                    $seguimientoVencido
-                                                                        ? 'Seguimiento vencido'
-                                                                        : $seguimientoActual['label']
-                                                                ) ?>
-                                                            </span>
-                                                            <?php if ($proximoSeguimientoAt !== ''): ?>
-                                                                <small>
-                                                                    <i class="bi bi-clock"></i>
-                                                                    <?= $texto($fechaHora($proximoSeguimientoAt)) ?>
-                                                                </small>
-                                                            <?php endif; ?>
-                                                        </button>
-                                                    <?php else: ?>
-                                                        <div class="aliados-followup-summary <?= $texto($seguimientoActual['class']) ?>">
-                                                            <span class="aliados-followup-pill">
-                                                                <?= $texto($seguimientoActual['label']) ?>
-                                                            </span>
-                                                        </div>
+                                                <?php $avance = $aliado['difusion_avance'] ?? ['total'=>0,'compartidas'=>0,'pendientes'=>0];
+                                                $tipoAvance = ($aliado['origen_tipo'] ?? '') === 'manual' ? 'manual' : 'institucional';
+                                                $idAvance = (int)($tipoAvance === 'manual' ? $aliado['id'] : $aliado['seguimiento_id']); ?>
+                                                <div class="aliados-avance-summary" data-avance-summary data-origen="<?= $tipoAvance ?>" data-id="<?= $idAvance ?>">
+                                                    <strong data-avance-count><?= (int)$avance['compartidas'] ?> de <?= (int)$avance['total'] ?> compartidas</strong>
+                                                    <progress value="<?= (int)$avance['compartidas'] ?>" max="<?= max(1,(int)$avance['total']) ?>" aria-label="Avance de difusión"></progress>
+                                                    <span data-avance-pending><?= $avance['total'] ? ((int)$avance['pendientes'].' pendientes de compartir') : 'Sin convocatorias vigentes para compartir' ?></span>
+                                                    <?php if ($puedeConsultarConvocatorias || $puedeVerHistorial): ?>
+                                                    <button type="button" class="aliados-avance-link" data-avance-abrir data-origen="<?= $tipoAvance ?>" data-id="<?= $idAvance ?>">Ver avance y respuestas <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
                                                     <?php endif; ?>
-                                                <?php else: ?>
-                                                    <span class="aliados-no-send">Sin seguimiento</span>
-                                                <?php endif; ?>
+                                                </div>
                                             </td>
 
                                             <td class="text-end">
@@ -743,6 +723,7 @@ $seguimientoVista = static function ($estado) {
             </div>
 
             <div class="modal-body">
+                <div data-aliado-envio-avance class="aliados-envio-avance" aria-live="polite"></div>
                 <div class="aliados-channel-selector" data-aliado-channel-selector>
                     <?php if ($puedeCompartirCorreo): ?>
                         <button
@@ -1124,7 +1105,7 @@ $seguimientoVista = static function ($estado) {
                                     name="estado"
                                     required
                                     <?= $puedeOperarSeguimientoConvocatorias ? '' : 'disabled' ?>>
-                                    <option value="ESPERANDO_RESPUESTA">Esperando respuesta</option>
+                                    <option value="ESPERANDO_RESPUESTA">Sin respuesta registrada</option>
                                     <option value="DIFUSION_CONFIRMADA">La institución confirmó la difusión</option>
                                     <option value="SOLICITA_INFORMACION">Solicita información</option>
                                     <option value="SIN_RESPUESTA">Sin respuesta</option>
@@ -1247,3 +1228,5 @@ $seguimientoVista = static function ($estado) {
 </div>
 
 <?php require __DIR__ . '/partials/registro_gestion.php'; ?>
+
+<?php require __DIR__ . '/partials/avance_difusion.php'; ?>

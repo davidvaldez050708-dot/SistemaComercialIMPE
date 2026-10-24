@@ -457,6 +457,36 @@ class AliadoController
         }
     }
 
+    public function avanceDifusion()
+    {
+        $this->responderAvance(false);
+    }
+
+    public function guardarRespuestaDifusion()
+    {
+        $this->responderAvance(true);
+    }
+
+    private function responderAvance(bool $guardar): void
+    {
+        header('Cache-Control: no-store, private');
+        require_once __DIR__.'/../services/AliadoAvanceService.php';
+        try {
+            if ($guardar && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') throw new DomainException('Método no permitido.',405);
+            if ($guardar && (empty($_SESSION['csrf_token']) || !is_string($_POST['csrf_token'] ?? null) || !hash_equals($_SESSION['csrf_token'],$_POST['csrf_token']))) throw new DomainException('Recarga la página e intenta nuevamente.',419);
+            $datos=$guardar?$_POST:$_GET;
+            $servicio=new AliadoAvanceService((new Database())->connect());
+            $tipo=(string)($datos['origen_tipo']??'');$id=(int)($datos['origen_id']??0);
+            $this->responder($guardar?$servicio->guardarRespuesta($tipo,$id,$datos):$servicio->consultar($tipo,$id));
+        } catch (DomainException $e) {
+            $code=in_array($e->getCode(),[401,403,404,405,409,419,422,503],true)?$e->getCode():422;
+            $this->responder(['ok'=>false,'mensaje'=>$e->getMessage()],$code);
+        } catch (Throwable $e) {
+            error_log('[aliado_avance] '.$e->getMessage());
+            $this->responder(['ok'=>false,'mensaje'=>'No fue posible completar la operación. Intenta nuevamente.'],500);
+        }
+    }
+
     public function seguimientoConvocatoria()
     {
         $this->validarPermiso('aliados.ver');

@@ -26,7 +26,7 @@ verifyHistory($share->ejecutar($data,'CORREO')['ok']&&$mail->llamadas===1,'corre
 $events=$history->consultar('manual',$manual)['historial'];$row=$getManual();
 verifyHistory(count($events)===1&&(int)$events[0]['convocatoria_id']===(int)$c['id'],'historial recupera la convocatoria enviada');
 verifyHistory(str_contains($row['ultima_convocatoria_titulo'],$c['titulo'])&&$row['ultimo_envio_canal']==='CORREO','correo ya guardado aparece en última difusión');
-verifyHistory($row['seguimiento_convocatoria_estado']==='ESPERANDO_RESPUESTA','envío manual pendiente de respuesta sin expediente ficticio');
+verifyHistory($row['seguimiento_convocatoria_estado']==='','correo no inventa una respuesta ni expediente');
 verifyHistory($row['ultimo_envio_at']===$events[0]['enviado_at'],'tabla e historial usan la misma fecha');
 $before=$counts();$share->ejecutar($data,'CORREO');verifyHistory($counts()===$before&&$mail->llamadas===1,'reintento no duplica correo ni historial');
 $p=$share->preparar($o);$next=$p['convocatorias'][1];$contact=$p['canales']['whatsapp_manual']['contactos'][0];
@@ -35,7 +35,7 @@ verifyHistory($share->ejecutar($data,'WHATSAPP_MANUAL')['ok']&&$mail->llamadas==
 $events=$history->consultar('manual',$manual)['historial'];$row=$getManual();
 verifyHistory(count($events)===2&&$events[0]['estado_envio']==='COMPARTIDO'&&$events[0]['canal']==='WHATSAPP_MANUAL','WhatsApp tiene evento independiente del correo');
 verifyHistory((int)$events[0]['convocatoria_id']===(int)$next['id']&&$row['ultimo_envio_id']===$events[0]['id'],'última difusión elige la publicación correcta, incluso con fecha empatada');
-verifyHistory($row['seguimiento_convocatoria_estado']==='COMPARTIDA_MANUALMENTE','no confunde WhatsApp marcado con confirmación de la institución');
+verifyHistory($row['seguimiento_convocatoria_estado']==='','no confunde WhatsApp marcado con confirmación de la institución');
 $before=$counts();$last=$row['ultimo_envio_id'];$p=$share->preparar($o);$mail->exito=false;
 verifyHistory(!$share->ejecutar($o+['convocatoria_id'=>$next['id'],'operacion_id'=>$p['operacion_id'],'destinatario'=>$p['canales']['correo']['destinatarios'][0],'asunto'=>'Fallo simulado','mensaje'=>'No enviar'],'CORREO')['ok'],'fallo del proveedor se conserva como fallo');
 verifyHistory($counts()===$before&&$getManual()['ultimo_envio_id']===$last,'fallo no altera el resumen ni crea difusión exitosa');$mail->exito=true;

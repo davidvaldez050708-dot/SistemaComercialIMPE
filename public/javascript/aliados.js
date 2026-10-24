@@ -796,13 +796,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const option = document.createElement('option');
             option.value = String(id);
             option.textContent =
-                (item.programa_nombre ? String(item.programa_nombre) + ' · ' : '') + String(item.titulo || 'Convocatoria') + ' · #' + id +
+                (item.programa_nombre ? String(item.programa_nombre) + ' · ' : '') + String(item.titulo || 'Convocatoria') + ' · #' + id + (item.compartida ? ' · Compartida' : ' · Pendiente') +
                 ' · hasta ' +
                 formatDate(item.fecha_termino);
             convocatoriaSelect.appendChild(option);
         });
 
         convocatoriaSelect.disabled = currentConvocatorias.size === 0;
+        document.dispatchEvent(new CustomEvent('impe:share-progress',{detail:{items:[...currentConvocatorias.values()]}}));
     };
 
     const renderPreview = function (item) {
@@ -862,6 +863,7 @@ document.addEventListener('DOMContentLoaded', function () {
         currentOrigin = origin;
         currentAllyId = Number(allyId || 0);
         resetSendState();
+        document.dispatchEvent(new CustomEvent('impe:share-progress',{detail:{items:[]}}));
         if(scopeSelect)scopeSelect.value=scope;
         shareModalElement.querySelector('[data-aliado-share-scope]')?.classList.toggle('d-none',currentOrigin === 'manual');
 
@@ -1089,9 +1091,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? '<i class="bi bi-check2-circle"></i> Compartida'
                 : '<i class="bi bi-check2-circle"></i> Enviado';
 
-            window.setTimeout(function () {
-                window.location.reload();
-            }, 900);
+            const origin = currentOrigin, id = currentAllyId;
+            await loadShare(id, origin, scopeSelect?.value || 'asociadas');
+            if (revision + 1 !== shareRevision) return;
+            setStatus((data.mensaje || 'Difusión registrada.') + ' Puedes seleccionar la siguiente convocatoria pendiente.', 'success');
+            document.dispatchEvent(new CustomEvent('impe:difusion-actualizada',{detail:{origen:origin,id}}));
             return;
         }
 
