@@ -1,0 +1,70 @@
+/* Directorio de Convenios: mismas columnas y jerarquía que las tablas de Aliados. */
+.convenios-tabla-module .convenios-directorio-panel {
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid var(--color-border, #dfe5ef);
+    border-radius: 16px;
+    background: #fff;
+}
+.convenios-tabla-module .convenios-group-list { display: block; }
+.convenios-tabla-module .convenios-municipio-group + .convenios-municipio-group { border-top: 1px solid #dfe5ef; }
+.convenios-tabla-module .convenios-directory-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid #dfe5ef;
+    background: #f7f9fc;
+    color: var(--color-text, #172642);
+    font-size: 11px;
+}
+.convenios-tabla-module .convenios-directory-heading strong { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+.convenios-tabla-module .convenios-directory-heading i { color: var(--color-primary, #273a8a); font-size: 14px; }
+.convenios-tabla-module [data-convenio-group-count] { border: 1px solid #dfe5ef; border-radius: 20px; padding: 4px 9px; background: #fff; color: #64748b; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.convenios-tabla-module .convenios-table-wrap { overflow-x: auto; }
+.convenios-tabla-module .convenios-directory-table { width: 100%; min-width: 1100px; table-layout: fixed; margin: 0; font-family: inherit; }
+.convenios-tabla-module .convenios-col-ally { width: 19%; }
+.convenios-tabla-module .convenios-col-contact { width: 19%; }
+.convenios-tabla-module .convenios-col-programs { width: 17%; }
+.convenios-tabla-module .convenios-col-origin { width: 15%; }
+.convenios-tabla-module .convenios-col-state { width: 11%; }
+.convenios-tabla-module .convenios-col-actions { width: 19%; }
+.convenios-tabla-module .convenios-directory-table thead th {
+    padding: 12px 16px;
+    border-bottom: 1px solid #dfe5ef;
+    background: #f7f9fc;
+    color: var(--color-text-soft, #6b7280);
+    font-size: 9px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.convenios-tabla-module .convenios-directory-table tbody td {
+    padding: 13px 16px;
+    border-bottom: 1px solid #edf1f6;
+    background: #fff;
+    box-shadow: none;
+    color: var(--color-text, #172642);
+    font-size: 10px;
+    line-height: 1.5;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+.convenios-tabla-module .convenios-directory-table tbody tr:last-child td { border-bottom: 0; }
+.convenios-tabla-module .convenios-directory-cell { display: grid; gap: 3px; min-width: 0; }
+.convenios-tabla-module .convenios-directory-cell strong { color: var(--color-text, #172642); font-size: 10.5px; font-weight: 750; }
+.convenios-tabla-module .convenios-directory-cell small,
+.convenios-tabla-module .convenios-directory-programs { color: var(--color-text-soft, #6b7280); font-size: 9.5px; line-height: 1.5; }
+.convenios-tabla-module .crear-convocatoria-attention-badge,
+.convenios-tabla-module .crear-convocatoria-state-badge { justify-self: start; width: fit-content; max-width: 100%; font-size: 9px; }
+.convenios-tabla-module .convenios-directory-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+.convenios-tabla-module .convenios-detail-button,
+.convenios-tabla-module .convenios-create-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; border-radius: 10px; font-size: 10px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+.convenios-tabla-module .convenios-detail-button { width: 34px; min-width: 34px; padding: 0; border: 1px solid #dfe5ef; background: #fff; color: var(--color-primary, #273a8a); }
+.convenios-tabla-module .convenios-detail-button i { font-size: 16px; }
+.convenios-tabla-module .convenios-create-button { padding: 8px 10px; background: var(--color-primary, #273a8a); color: #fff; }
+.convenios-tabla-module .convenios-detail-button:hover { background: #f7f9fc; border-color: #bdcbe2; }
+.convenios-tabla-module .convenios-create-button:hover { background: #223575; color: #fff; }
+.convenios-tabla-module .convenios-directory-actions [aria-busy="true"] { opacity: .65; cursor: progress; }
+.convenios-tabla-module .convenios-table-wrap:focus-visible,
+.convenios-tabla-module .convenios-directory-actions .btn:focus-visible { outline: 2px solid var(--color-primary, #273a8a); outline-offset: -3px; box-shadow: none; }
