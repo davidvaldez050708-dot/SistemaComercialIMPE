@@ -11,6 +11,8 @@ on:
       - tests/aliados_convocatoria_pendientes_db.php
       - tests/aliados_convocatoria_pendientes_smoke.php
       - .github/workflows/aliados-convocatoria-pendientes.yml
+      - tools/publicar_notificaciones_aliados_convocatorias_hostinger.sh
+      - tests/publicacion_notificaciones_aliados_convocatorias_test.py
 permissions:
   contents: read
 jobs:
@@ -34,6 +36,7 @@ jobs:
           php -l tests/aliados_convocatoria_pendientes_smoke.php
           node --check public/javascript/convocatoria_notificaciones.js
           php tests/aliados_convocatoria_pendientes_smoke.php
+          python3 tests/publicacion_notificaciones_aliados_convocatorias_test.py
   bd:
     runs-on: ubuntu-latest
     strategy:
