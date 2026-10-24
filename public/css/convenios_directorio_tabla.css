@@ -22,7 +22,12 @@
 .convenios-tabla-module .convenios-directory-heading strong { display: flex; align-items: center; gap: 8px; font-weight: 800; }
 .convenios-tabla-module .convenios-directory-heading i { color: var(--color-primary, #273a8a); font-size: 14px; }
 .convenios-tabla-module [data-convenio-group-count] { border: 1px solid #dfe5ef; border-radius: 20px; padding: 4px 9px; background: #fff; color: #64748b; font-size: 9px; font-weight: 700; white-space: nowrap; }
-.convenios-tabla-module .convenios-table-wrap { overflow-x: auto; }
+.convenios-tabla-module .convenios-table-wrap {
+    height: auto;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
 .convenios-tabla-module .convenios-directory-table { width: 100%; min-width: 1100px; table-layout: fixed; margin: 0; font-family: inherit; }
 .convenios-tabla-module .convenios-col-ally { width: 19%; }
 .convenios-tabla-module .convenios-col-contact { width: 19%; }

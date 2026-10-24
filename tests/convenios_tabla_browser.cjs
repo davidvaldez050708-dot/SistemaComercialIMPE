@@ -70,6 +70,17 @@ const render=query=>execFileSync(php,[path.join(root,'tests/convenios_tabla_prev
    await capture('detalle-'+width);await closeDetail();
   }
   await page.setViewportSize({width:1440,height:900});await go();
+  // La altura debe crecer con todas las filas, incluso con zoom y redondeo subpíxel.
+  await row('PRUEBA').evaluate(row=>{for(let i=0;i<20;i++)row.parentElement.append(row.cloneNode(true));});
+  for(const zoom of [1,1.1,1.25,1.5]){
+   await page.locator('[data-crear-convocatoria-module]').evaluate((el,value)=>el.style.zoom=String(value),zoom);
+   const sizes=await page.locator('.convenios-table-wrap').evaluateAll(nodes=>nodes.map(n=>({client:n.clientHeight,scroll:n.scrollHeight,overflow:getComputedStyle(n).overflowY,table:n.querySelector('table').getBoundingClientRect(),wrap:n.getBoundingClientRect()})));
+   check(sizes.every(s=>s.scroll<=s.client+1&&s.overflow!=='scroll'&&s.overflow!=='auto'&&s.table.bottom<=s.wrap.bottom+1),'sin barra vertical ni filas recortadas con zoom '+zoom);
+  }
+  await page.locator('[data-crear-convocatoria-module]').evaluate(el=>el.style.zoom='1');
+  await page.setViewportSize({width:390,height:900});
+  check(await page.locator('.convenios-table-wrap').evaluateAll(nodes=>nodes.every(n=>{n.scrollLeft=100;return n.scrollLeft>0&&n.scrollHeight<=n.clientHeight+1;})),'tabla larga conserva scroll horizontal móvil y muestra todas las filas');
+  await page.setViewportSize({width:1440,height:900});await go();
   await page.locator('[data-convenio-search]').fill('PRUEBA');
   check(await page.locator('[data-convenio-group]:visible').count()===1&&await page.locator('[data-convenio-group-count]:visible').textContent()==='1 convenio','búsqueda oculta grupos y actualiza conteo');
   await page.locator('[data-convenio-search]').fill('');await page.locator('[data-convenio-municipio-filter]').selectOption('2');await page.locator('[data-convenio-origin-filter]').selectOption('institucional');
