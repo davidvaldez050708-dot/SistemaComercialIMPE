@@ -10,8 +10,10 @@ $esAdministradorTopbar = (int)($_SESSION['rol_id'] ?? 0) === 1;
 $esAnalistaDatos =
     !$esAdministradorTopbar &&
     tienePermiso('seguimientos_vinculacion.operar_propios');
+// Un permiso compartido no convierte a Cuenta Clave en Marketing.
 $esMarketingTopbar =
     !$esAdministradorTopbar &&
+    strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0 &&
     tienePermiso('convocatorias.gestionar');
 $mostrarCentroAvisos =
     $esAdministradorTopbar ||
@@ -20,6 +22,10 @@ $mostrarCentroAvisos =
         ($puedeSolicitarReuniones || $puedeGestionarReuniones)
     ) ||
     tienePermiso('aliados.seguimiento_convocatorias');
+// Solo una campana: Marketing utiliza su centro de Convocatorias.
+if ($esMarketingTopbar) {
+    $mostrarCentroAvisos = false;
+}
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
 $mostrarAgendaReuniones =
     tienePermiso('reuniones.ver') &&

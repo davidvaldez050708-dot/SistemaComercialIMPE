@@ -1,0 +1,28 @@
+name: Cuenta Clave - campana unica por rol
+on:
+  pull_request:
+  push:
+    paths:
+      - app/views/layout/topbar.php
+      - tools/publicar_campana_unica_cuenta_clave_hostinger.sh
+      - tests/campana_unica_por_rol_smoke.php
+      - tests/publicacion_campana_unica_hostinger_test.py
+      - .github/workflows/campana-unica-por-rol.yml
+permissions:
+  contents: read
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Validar PHP y una campana por usuario
+        run: |
+          php -l app/views/layout/topbar.php
+          php -l tests/campana_unica_por_rol_smoke.php
+          php tests/campana_unica_por_rol_smoke.php
+      - name: Validar publicacion reversible y personalizaciones
+        run: |
+          python3 tests/publicacion_campana_unica_hostinger_test.py
