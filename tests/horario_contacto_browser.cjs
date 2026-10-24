@@ -32,6 +32,7 @@ if(!preview){server=spawn(php,['-S',new URL(base).host,'-t',root,path.join(__dir
  const urls=[['publico',base+'index.php?controller=formularioPublico&action=registro'],['interno',base+'_horario_internal']];
  if(!preview){const short=execFileSync(php,['-r',"require 'config/db_connection.php';echo (new Database())->connect(false)->query('SELECT codigo FROM registro_enlaces_amigables ORDER BY codigo LIMIT 1')->fetch_row()[0];"],{cwd:root,env:process.env,encoding:'utf8'});urls.push(['liga-anterior',base+'registro/el-primer-paso-hacia-tu-meta-comienza-aqui/'+short]);}
  for(const [kind,url] of urls){
+  if(kind==='liga-anterior')await context.clearCookies(); // Un prospecto abre la liga sin sesión del CRM.
   await page.goto(url);const form=page.locator('form').filter({has:page.locator('[data-horario-contacto]')});
   check(await page.locator('[data-horario-contacto]').count()===1,'Campo único en '+kind);check(!await page.locator('[data-horario-config]').isVisible(),'Configuración oculta al iniciar '+kind);
   await form.evaluate(f=>f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));check(await page.locator('[data-horario-error]').isVisible(),'Preferencia requerida '+kind);
