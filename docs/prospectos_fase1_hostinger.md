@@ -1,5 +1,7 @@
 # Prospectos — Fase 1: entrega selectiva
 
+**Para corregir la Fase 1 ya instalada:** utilizar [el paquete de correcciones](prospectos_fase1_correcciones.md). Esta página conserva las instrucciones de la instalación inicial.
+
 Rama: `feat/prospectos-estados-fase1`, basada en la entrega vigente del PR #132. Sólo esta primera fase; revisar el funcionamiento y diseño en Hostinger antes de autorizar una fase posterior.
 
 ## Archivos operativos

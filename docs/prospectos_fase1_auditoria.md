@@ -1,5 +1,7 @@
 # Auditoría de Prospectos — Fase 1
 
+**Actualización 24/10/2026:** esta auditoría describe la primera entrega. La agrupación por residencia y el aviso de carga descritos abajo fueron sustituidos por la corrección [territorio del aliado y navegación](prospectos_fase1_correcciones.md), conforme a la indicación posterior del usuario.
+
 Base: `544697a162ddecd009fbc2669c4bbd8ab27f883c`. Rama independiente: `feat/prospectos-estados-fase1`. Alcance: portada territorial y listado de consulta. No se continúa a la Fase 2.
 
 ## Producción contrastada
