@@ -1,0 +1,54 @@
+name: Telefonia conexion persistente
+on:
+  push:
+    branches: [fix/telefonia-conexion-persistente]
+  pull_request:
+    paths:
+      - 'public/javascript/telefonia_*.js'
+      - 'app/views/telefonia/*.php'
+      - 'tests/telefonia_conexion*'
+      - 'tests/publicacion_telefonia_conexion_test.py'
+      - 'tools/*telefonia_conexion*'
+      - '.github/workflows/telefonia-conexion-persistente.yml'
+jobs:
+  conexion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Sintaxis, conexiones y regresiones de llamada
+        run: |
+          php -l app/views/telefonia/host.php
+          php -l app/views/telefonia/shell.php
+          node --check public/javascript/telefonia_host.js
+          node --check public/javascript/telefonia_shell.js
+          node --check public/javascript/telefonia_persistente.js
+          php tests/telefonia_shell_smoke.php
+          php tests/telefonia_shell_render_smoke.php
+          php tests/telefonia_ux_admin_smoke.php
+          php tests/telefonia_estado_salientes_permisos_smoke.php
+          node tests/telefonia_flujo_motor.cjs
+          node tests/telefonia_conexion_smoke.cjs
+          node tests/telefonia_shell_runtime_smoke.js
+          node tests/telefonia_analista_estabilidad_smoke.js
+          node tests/telefonia_shell_navegacion_smoke.js
+          node tests/telefonia_sdk_entrantes_observador_smoke.js
+          node tests/telefonia_ventas_fin_transferencia_inmediato.cjs
+          node tests/telefonia_timbrado_antes_sip_smoke.js
+          node tests/telefonia_transferencia_operacion.cjs
+          node tests/telefonia_webrtc_dtmf_smoke.js
+      - name: Navegador con transporte sintetico y Web Locks reales
+        run: node tests/telefonia_conexion_browser.cjs
+      - name: Variantes reales de Hostinger con navegador
+        run: IMPE_PHONE_HOSTINGER_VARIANT=1 node tests/telefonia_conexion_browser.cjs
+      - name: Publicacion selectiva y restauracion sobre replicas
+        run: python3 -B tests/publicacion_telefonia_conexion_test.py
