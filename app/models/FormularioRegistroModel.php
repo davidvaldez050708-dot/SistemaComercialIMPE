@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
+require_once __DIR__ . '/../helpers/HorarioContacto.php';
 
 class FormularioRegistroModel
 {
@@ -130,6 +131,15 @@ class FormularioRegistroModel
             (string)($datos['tel_recomendado'] ?? '')
         );
 
+        $horario = $esInscripcion ? null : HorarioContacto::paraGuardar($datos['horario_contacto'] ?? null);
+        $conHorario = !$esInscripcion && $this->connection->query("SHOW COLUMNS FROM formulario_registros WHERE Field='horario_contacto'")->num_rows > 0;
+        if ($horario !== null && !$conHorario) {
+            throw new DomainException('El horario de contacto aún no está disponible. Intenta nuevamente más tarde.');
+        }
+        $columnaHorario = $conHorario ? 'horario_contacto,' : '';
+        $valorHorario = $conHorario ? '?,' : '';
+        $argumentosHorario = $conHorario ? [$horario] : [];
+
         $sql = "INSERT INTO {$tabla} (
                     nombre,
                     apellido,
@@ -145,9 +155,10 @@ class FormularioRegistroModel
                     municipio_id,
                     creado_por,
                     origen,
+                    {$columnaHorario}
                     created_at,
                     updated_at
-                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, NOW(), NOW())";
+                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, {$valorHorario} NOW(), NOW())";
 
         $stmt = $this->connection->prepare($sql);
 
@@ -160,7 +171,7 @@ class FormularioRegistroModel
         }
 
         $stmt->bind_param(
-            'ssssssssssiiis',
+            'ssssssssssiiis' . ($conHorario ? 's' : ''),
             $datos['nombre'],
             $datos['apellido'],
             $datos['fecha_nacimiento'],
@@ -174,7 +185,8 @@ class FormularioRegistroModel
             $datos['estado_id'],
             $datos['municipio_id'],
             $creadoPor,
-            $origen
+            $origen,
+            ...$argumentosHorario
         );
 
         if (!$stmt->execute()) {

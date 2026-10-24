@@ -1,0 +1,71 @@
+name: Horario de contacto en Registro
+on:
+  pull_request:
+    paths:
+      - 'app/helpers/HorarioContacto.php'
+      - 'app/controllers/Formulario*Controller.php'
+      - 'app/models/FormularioRegistroModel.php'
+      - 'app/models/ProspectoModel.php'
+      - 'app/views/formularios/**'
+      - 'app/views/prospectos/index.php'
+      - 'public/**/horario_contacto.*'
+      - 'tests/*horario_contacto*'
+      - 'tools/*horario_contacto*'
+      - '.github/workflows/horario-contacto.yml'
+  workflow_dispatch:
+jobs:
+  registro:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['33412:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33412
+      IMPE_DB_USER: root
+      IMPE_DB_NAME: impe_test_handly_horario_ci
+      IMPE_TEST_DB_NAME: impe_test_handly_horario_ci
+      IMPE_TEST_MYSQL_PORT: 33412
+      IMPE_BASE_URL: http://127.0.0.1:8142/
+      PLAYWRIGHT_MODULE_PATH: /tmp/horario-browser/node_modules/playwright
+      IMPE_BROWSER_DEPS: /tmp/horario-browser/node_modules
+      IMPE_HORARIO_OUTPUT: /tmp/horario-visual
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, gd, dom
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/horario-browser playwright bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0
+      - run: /tmp/horario-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Validación y esquema sintético anterior a la actualización
+        run: |
+          php tests/horario_contacto_unit.php
+          php tests/formulario_aliados_fixture.php
+          php tools/preparar_handly_formularios.php --apply
+          php tools/migrar_enlaces_registro_amigables.php --apply
+          php -r 'require "config/db_connection.php"; require "app/services/RegistroEnlaceService.php"; $db=(new Database())->connect(false); echo (new RegistroEnlaceService($db))->acortar(BASE_URL."index.php?controller=formularioPublico&action=registro").PHP_EOL;'
+          php tests/horario_contacto_db.php
+      - name: Envíos reales desde Registro público, interno y liga anterior
+        run: node tests/horario_contacto_browser.cjs
+      - name: Publicador y variantes de producción
+        run: python3 tests/publicacion_horario_contacto_test.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: horario-contacto-${{ strategy.job-index }}
+          path: /tmp/horario-visual

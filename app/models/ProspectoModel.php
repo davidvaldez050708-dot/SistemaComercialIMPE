@@ -178,9 +178,11 @@ class ProspectoModel
         $pagina = max(1, min((int)$pagina, $paginas));
         $offset = ($pagina - 1) * $porPagina;
         $origenSelect = $procedencias ? ',ap.aliado_id,ap.aliado_nombre,ap.programa_codigo' : ',NULL aliado_id,NULL aliado_nombre,NULL programa_codigo';
+        $horarioSelect = $this->connection->query("SHOW COLUMNS FROM formulario_registros WHERE Field='horario_contacto'")->num_rows
+            ? ',r.horario_contacto' : ',NULL horario_contacto';
         $sql = "SELECT r.id,r.nombre,r.apellido,r.fecha_nacimiento,r.movil,r.movil_secundario,r.tel_recomendado,
                        r.correo,r.perfil_interes,r.lugar_laboras,r.cargo_puesto,r.origen,r.created_at,
-                       e.nombre estado,m.nombre municipio $origenSelect
+                       e.nombre estado,m.nombre municipio $origenSelect $horarioSelect
                 FROM formulario_registros r $join
                 LEFT JOIN estados e ON e.id=r.estado_id LEFT JOIN municipios m ON m.id=r.municipio_id
                 $where ORDER BY r.created_at DESC,r.id DESC LIMIT ? OFFSET ?";

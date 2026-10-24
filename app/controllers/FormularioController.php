@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/FormularioRegistroModel.php';
+require_once __DIR__ . '/../helpers/HorarioContacto.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/RegistroEnlaceService.php';
 
@@ -151,6 +152,11 @@ class FormularioController
         }
 
         $datos = $this->normalizarRegistro($_POST);
+        try {
+            $datos['horario_contacto'] = HorarioContacto::desdeEntrada($_POST);
+        } catch (DomainException $error) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$error->getMessage()], 422);
+        }
         $errores = $this->validarRegistro($datos);
 
         if (!empty($errores)) {

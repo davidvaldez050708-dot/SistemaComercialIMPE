@@ -47,6 +47,7 @@ const url = (action, t=token) => `${base}index.php?controller=formularioPublico&
    await page.locator('[name=estado_id]').selectOption('1');
    await page.locator('[name=municipio_id] option[value="1"]').waitFor({state:'attached'});
    await page.locator('[name=municipio_id]').selectOption('1');
+   if(await page.locator('[data-horario-modo]').count())await page.locator('[data-horario-modo]').selectOption('sin_preferencia');
    await page.locator('button[type=submit]').click();
    await page.waitForURL(/action=gracias/);
    const save='guardar'+action[0].toUpperCase()+action.slice(1);

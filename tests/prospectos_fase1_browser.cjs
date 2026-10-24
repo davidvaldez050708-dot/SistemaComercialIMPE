@@ -52,9 +52,9 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
  await page.locator('[data-prospectos-state-search]').fill('Guanajuato');await page.locator('[data-prospectos-state="Guanajuato"]').click();await page.waitForSelector('.prospectos-table-wrap');
  check(await page.locator('.prospectos-heading h2').textContent()==='Prospectos de Guanajuato','Tarjeta abre directamente la tabla, sin pantalla intermedia');
  await searchFocus('#prospectoBuscar');
- check(await page.locator('thead th').count()===14,'Conservados los 14 campos y el filtro de aliado confirmado por el usuario');
+ check(await page.locator('thead th').count()===15,'Conservados los 14 campos y añadido horario de contacto');
  check(await page.locator('tbody tr').count()===25,'Primera página de 25 prospectos');
- check(await page.locator('tbody tr td:nth-child(9)').allTextContents().then(rows=>rows.every(value=>value==='Morelos')),'Tabla conserva la residencia Morelos del prospecto cuyo aliado está en Guanajuato');
+ check(await page.locator('tbody tr td:nth-child(10)').allTextContents().then(rows=>rows.every(value=>value==='Morelos')),'Tabla conserva la residencia Morelos del prospecto cuyo aliado está en Guanajuato');
  await page.locator('[rel="next"]').click();await page.waitForURL(/pagina=2/);check(new URL(page.url()).searchParams.get('estado_id')==='11'&&await page.locator('tbody tr').count()===4,'Paginación conserva estado y muestra cuatro restantes');
  check(await page.locator('tbody img').count()===0,'Datos HTML escapados');
  await page.locator('#prospectosCambiarEstado').selectOption('1');await page.locator('.prospectos-state-navigation button[type="submit"]').click();await page.waitForURL(/estado_id=1(?:&|$)/);check(await page.locator('.prospectos-empty').textContent().then(t=>t.includes('No hay prospectos registrados')),'Estado sin prospectos conserva tabla y estado vacío');

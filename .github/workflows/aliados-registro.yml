@@ -134,6 +134,7 @@ jobs:
         run: |
           mkdir -p /tmp/respaldo-aliados
           php tests/aliados_registro_fixture.php
+          if [ -f tools/migrar_horario_contacto.php ]; then php tools/migrar_horario_contacto.php --apply; fi
           php tools/preparar_handly_formularios.php --apply >/tmp/handly-preparacion.log
           php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
           php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
@@ -216,6 +217,7 @@ jobs:
           python3 tests/aliados_registro_pr114_prepare.py --output "$RUNNER_TEMP/aliados-pr114"
           cd "$RUNNER_TEMP/aliados-pr114"
           php tests/aliados_registro_fixture.php
+          if [ -f tools/migrar_horario_contacto.php ]; then php tools/migrar_horario_contacto.php --apply; fi
           php tools/preparar_handly_formularios.php --apply >/tmp/handly-pr114.log
           php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/respaldo-aliados
           php tools/migrar_formularios_ubicacion_internacional.php --apply
@@ -234,6 +236,7 @@ jobs:
           IMPE_TEST_DB_NAME: impe_test_handly_legacy
         run: |
           php tests/formulario_aliados_fixture.php
+          if [ -f tools/migrar_horario_contacto.php ]; then php tools/migrar_horario_contacto.php --apply; fi
           php tools/preparar_handly_formularios.php --apply >/tmp/handly-legacy.log
           php tests/formulario_aliados_db.php
           php tests/aliados_internacionales.php
