@@ -57,10 +57,9 @@ $checks = [
         str_contains($shell, 'marketingShell') &&
         str_contains($shell, "tienePermiso('telefonia.recibir')") &&
         str_contains($shellJs, 'if (autoEnabled) {'),
-    'Auto recepción configurable para el usuario' =>
-        str_contains($layout, 'data-marketing-reception-auto') &&
-        str_contains($client, "'impe:telephony:auto-reception:' + userId") &&
-        str_contains($shellJs, "'impe:telephony:auto-reception:' + userId"),
+    'Conexión automática autorizada sin preferencia antigua que la desactive' =>
+        str_contains($shellJs, 'cfg.autoReception === true || cfg.canCallOut === true') &&
+        !str_contains($shellJs, "'impe:telephony:auto-reception:' + userId"),
     'La navegación no elimina WebRTC en cambios de módulo' =>
         str_contains($shellJs, 'hostRegion.appendChild(frame)') &&
         !str_contains($shellJs, 'crm.appendChild(frame)'),
@@ -69,7 +68,8 @@ $checks = [
         str_contains($shellJs, 'releaseLease()') &&
         str_contains($shellJs, "localStorage.setItem(leaseKey"),
     'No reinicia llamada activa desde controles de recuperación' =>
-        str_contains($shellJs, 'if (freshState(currentState) && currentState.active) return;'),
+        !str_contains($shellJs, 'hostFrame.remove()') &&
+        str_contains($hostJs, 'const active = state.active || Boolean(liveSession'),
     'Salir al login cierra contexto WebRTC' =>
         str_contains($shellJs, "controller === 'login' && action === 'mostrarLogin'") &&
         str_contains($shellJs, 'window.location.replace(String(cfg.loginUrl))'),

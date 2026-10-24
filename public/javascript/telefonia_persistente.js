@@ -659,8 +659,8 @@
             return shell.isPhoneReady() === true;
         }
         const recent =
-            state?.hostReady &&
-            Date.now() - hostSeenAt < 3500;
+            state?.hostReady && state?.connection?.verified === true &&
+            Date.now() - hostSeenAt < 15000;
 
         if (!recent) {
             return false;

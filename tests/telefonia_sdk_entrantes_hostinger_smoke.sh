@@ -51,7 +51,8 @@ cmp -s "$TMP/unmodified.php" "$IMPE_RING_PUBLIC/app/views/telefonia/host.php"
 [[ ! -e "$IMPE_RING_PUBLIC/public/javascript/telefonia_sdk_entrantes_observador.js" ]]
 
 # Protección de rol y de evidencia verificable.
-grep -Fq 'if ($analistaHostSdk):' app/views/telefonia/host.php
+grep -Fq 'if ($receptorHostSdk):' app/views/telefonia/host.php
+grep -Fq '$receptorHostSdk = $analistaHostSdk || $asesorHostSdk;' app/views/telefonia/host.php
 grep -Fq 'analystSdkIncoming' app/views/telefonia/host.php
 grep -Fq 'type: '\''SDK_INCOMING'\''' public/javascript/telefonia_host.js
 grep -Fq "pbxCallId: ''" public/javascript/telefonia_host.js

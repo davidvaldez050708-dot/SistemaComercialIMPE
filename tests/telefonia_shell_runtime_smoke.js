@@ -117,7 +117,7 @@ assert.strictEqual(first.window.IMPE_TELEPHONY_SHELL.ensureHost(),
     first.elements['[data-shell-host-region]'].children[0].contentWindow);
 
 const active = {type:'STATE',state:{
-    userId:8,updatedAt:Date.now(),hostReady:true,active:true,
+    userId:8,updatedAt:Date.now(),hostReady:true,connection:{verified:true},active:true,
     direction:'incoming',destination:'5512345678',phase:'in-progress'
 }};
 first.channels[0].message(active);
@@ -148,7 +148,7 @@ assert.equal(first.elements['[data-incoming-panel]'].style.left,'140px',
 assert.equal(first.elements['[data-incoming-panel]'].style.top,'150px',
     'dragging moves the modal vertically');
 first.channels[0].message({type:'STATE',state:{
-    userId:8,updatedAt:Date.now(),hostReady:true,active:true,
+    userId:8,updatedAt:Date.now(),hostReady:true,connection:{verified:true},active:true,
     direction:'outgoing',destination:'5512345678',phase:'in-progress',
     context:{type:'TELEPHONY_MANUAL'}
 }});
@@ -163,14 +163,14 @@ assert.equal(first.elements['[data-incoming-answer]'].hidden,true,
     'salientes nunca muestran Contestar');
 // Una gestión de Seguimiento mantiene su tarjeta de registro propia.
 first.channels[0].message({type:'STATE',state:{
-    userId:8,updatedAt:Date.now(),hostReady:true,active:true,
+    userId:8,updatedAt:Date.now(),hostReady:true,connection:{verified:true},active:true,
     direction:'outgoing',destination:'5512345678',phase:'in-progress',
     context:{type:'SEGUIMIENTO'}
 }});
 assert.equal(first.elements['[data-incoming-panel]'].hidden,true,
     'seguimiento no recibe una tarjeta saliente duplicada');
 first.channels[0].message({type:'STATE',state:{
-    userId:8,updatedAt:Date.now(),hostReady:true,active:true,
+    userId:8,updatedAt:Date.now(),hostReady:true,connection:{verified:true},active:true,
     direction:'outgoing',destination:'5512345678',phase:'in-progress',
     context:{type:'TELEPHONY_MANUAL'}
 }});
@@ -206,7 +206,7 @@ assert.equal(first.elements['[data-shell-host-region]'].children.length,1,
 // Una saliente terminada muestra un cierre de Marketing, sin solicitar
 // el resultado comercial reservado a Seguimiento.
 first.channels[0].message({type:'STATE',state:{
-    userId:8,updatedAt:Date.now(),hostReady:true,active:false,
+    userId:8,updatedAt:Date.now(),hostReady:true,connection:{verified:true},active:false,
     direction:'outgoing',destination:'5512345678',phase:'finished',
     context:{type:'TELEPHONY_MANUAL'},callToken:'call-marketing',
     duration:37,status:'completed'
@@ -233,7 +233,7 @@ const analyst = boot({analyst:true});
 assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.isPhoneReady(),false,
     'el auricular no anuncia conexión sin confirmación reciente del host');
 analyst.channels[0].message({type:'STATE',state:{
-    userId:8,updatedAt:Date.now(),hostReady:true,active:false,
+    userId:8,updatedAt:Date.now(),hostReady:true,connection:{verified:true},active:false,
     direction:'',phase:'ready',extension:'101'
 }});
 assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.isPhoneReady(),true,
@@ -259,7 +259,7 @@ assert.throws(() => second.window.IMPE_TELEPHONY_SHELL.ensureHost());
 
 storage.clear();
 storage.set('impe:telephony:state:8',JSON.stringify({
-    userId:8,updatedAt:Date.now(),hostReady:true,active:false,
+    userId:8,updatedAt:Date.now(),hostReady:true,connection:{verified:true},active:false,
     direction:'outgoing',phase:'finished',context:{type:'MARKETING_CALLBACK'},
     callToken:'antiguo',duration:185,finalMetadata:{status:'completed'}
 }));
@@ -269,8 +269,8 @@ assert.equal(restarted.elements['[data-incoming-panel]'].hidden,true,
 storage.clear();
 storage.set('impe:telephony:auto-reception:8','0');
 const optedOut = boot();
-assert.equal(optedOut.elements['[data-shell-host-region]'].children.length,0,
-    'auto-activation may be disabled per user');
+assert.equal(optedOut.elements['[data-shell-host-region]'].children.length,1,
+    'una preferencia antigua no bloquea auto conexión autorizada');
 optedOut.window.IMPE_TELEPHONY_SHELL.ensureHost();
 assert.equal(optedOut.elements['[data-shell-host-region]'].children.length,1,
     'manual activation still works');
@@ -306,7 +306,7 @@ frame.contentWindow.IMPE_ZADARMA_INCOMING = {
 };
 const push = (callId,phase,active,duration) => quick.channels[0].message({
     type:'STATE',
-    state:{userId:8,updatedAt:mockNow,hostReady:true,active,
+    state:{userId:8,updatedAt:mockNow,hostReady:true,connection:{verified:true},active,
         direction:'incoming',destination:'5512345678',phase,
         pbxCallId:callId,duration}
 });
@@ -403,7 +403,7 @@ assert.equal(quick.elements['[data-incoming-panel]'].hidden,true);
 storage.clear();
 const noGhost = boot();
 noGhost.channels[0].message({type:'STATE',state:{
-    userId:8,updatedAt:Date.now(),hostReady:true,active:false,
+    userId:8,updatedAt:Date.now(),hostReady:true,connection:{verified:true},active:false,
     direction:'incoming',phase:'incoming-finished',pbxCallId:'anterior'
 }});
 assert.equal(noGhost.elements['[data-incoming-panel]'].hidden,true,
@@ -412,7 +412,7 @@ assert.equal(noGhost.elements['[data-incoming-panel]'].hidden,true,
 storage.clear();
 const missedAnalyst=boot({analyst:true});
 for(const [phase,active] of [['incoming-ringing',true],['incoming-finished',false]]){
-    missedAnalyst.channels[0].message({type:'STATE',state:{userId:8,updatedAt:Date.now(),hostReady:true,active,
+    missedAnalyst.channels[0].message({type:'STATE',state:{userId:8,updatedAt:Date.now(),hostReady:true,connection:{verified:true},active,
         direction:'incoming',phase,pbxCallId:'missed-with-ring-duration',duration:30}});
 }
 assert.equal(missedAnalyst.elements['[data-analyst-call-result]'].hidden,true,'el tiempo de timbrado no habilita Registrar resultado en una perdida');
@@ -420,7 +420,7 @@ console.log('Shell WebRTC: OK (paneles laterales inmediatos, finalización entra
 
 storage.clear();
 const callback=boot({analyst:true});
-for(const [phase,active] of [['in-progress',true],['finished',false]])callback.channels[0].message({type:'STATE',state:{userId:8,updatedAt:Date.now(),hostReady:true,active,direction:'outgoing',phase,destination:'5551112233',callToken:'callback-41',duration:20,context:{type:'DEVOLUCION',callbackAttempt:41}}});
+for(const [phase,active] of [['in-progress',true],['finished',false]])callback.channels[0].message({type:'STATE',state:{userId:8,updatedAt:Date.now(),hostReady:true,connection:{verified:true},active,direction:'outgoing',phase,destination:'5551112233',callToken:'callback-41',duration:20,context:{type:'DEVOLUCION',callbackAttempt:41}}});
 assert.equal(callback.window.IMPE_TELEPHONY_SHELL.getPhoneStatus().pending,true,'devolución terminada exige resultado');
 assert.equal(callback.elements['[data-callback-register-finished]'].hidden,false);
 assert.equal(callback.elements['[data-incoming-close-finished]'].hidden,true);

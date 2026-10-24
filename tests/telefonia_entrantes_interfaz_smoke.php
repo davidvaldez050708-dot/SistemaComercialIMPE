@@ -22,10 +22,10 @@ $checks = [
         str_contains($hostJs, 'window.zadarmaWidgetFn(') &&
         str_contains($hostJs, 'mostrarHostEntrante();') &&
         str_contains($hostView, 'prueba_telefonia/api/zadarma_webrtc.php'),
-    'PBX no declara WebRTC listo sin SDK' =>
-        str_contains($hostJs, 'hostReady: widgetReady,'),
+    'PBX no declara WebRTC listo sin SDK, transporte y medios verificados' =>
+        str_contains($hostJs, 'hostReady: widgetReady && connection.snapshot().verified && mediaUsable(),'),
     'Conexión reconocida luego de llamada entrante finalizada' =>
-        str_contains($shellJs, "'incoming-finished'].includes(String(state.phase))") &&
+        str_contains($shellJs, 'const ready = phoneReady();') &&
         str_contains($phoneJs, "'incoming-finished'"),
     'El shell contiene un solo panel para llamadas entrantes' =>
         str_contains($phoneJs, 'const incomingInShell =') &&
@@ -70,9 +70,9 @@ $checks = [
     'Sin mensaje permanente ni enlace Zadarma' =>
         !str_contains($shellView, 'data-incoming-provider') &&
         !str_contains($shellJs, 'El teléfono está conectando sus controles') &&
-        str_contains($shellJs, "notice.hidden = !actionNotice || incomingCompact"),
+        str_contains($shellJs, "notice.hidden = !(actionNotice||finalNotice) || incomingCompact"),
     'Cada timbrado comienza en cero' =>
-        str_contains($hostJs, "state.phase === 'incoming-ringing') return 0;") &&
+        str_contains($hostJs, "['incoming-ringing', 'answering'].includes(state.phase)) return 0;") &&
         str_contains($hostJs, 'duration: answered') &&
         str_contains($shellJs, ".includes(call.phase) ? 0 :") &&
         str_contains($shellJs, "'incoming-ringing'") &&

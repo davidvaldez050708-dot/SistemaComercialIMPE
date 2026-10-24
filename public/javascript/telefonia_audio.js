@@ -49,7 +49,7 @@
         }
         gain.gain.setTargetAtTime((Date.now()-started)%6000<2000?0.035:0,context.currentTime,0.02);
     };
-    window.IMPE_CALL_AUDIO={unlock,update(value){
+    window.IMPE_CALL_AUDIO={unlock,getStatus:()=>context?.state || 'uninitialized',update(value){
         if(state?.callToken!==value.callToken){audibleUntil=0;source?.disconnect();analyser?.disconnect();source=analyser=stream=null;stop();}
         state=value;
         if(!timer)timer=window.setInterval(sample,100);

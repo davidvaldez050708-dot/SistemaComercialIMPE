@@ -5,9 +5,11 @@ const read=p=>fs.readFileSync(require('node:path').join(__dirname,'../public/jav
  const win={IMPE_TELEPHONY_HOST:{userId:7,extension:'101',permiteEntrantes:true,permiteSalientes:true,permiteTransferir:true,entradaUrl:'http://test/entrada'},
   location:{search:'?display=embed'},setTimeout(){},clearTimeout(){},setInterval(fn){intervals.push(fn);},localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)},
   zdrmWebPhone:{webCallSession:{isEnded:()=>ended}},IMPE_ZADARMA_WEBRTC_DTMF:{send:()=>true}};
- const doc={querySelector:()=>null,body:{classList:{add(){},remove(){}}}};
- const code=read('telefonia_host.js').replace('    captureMicrophone();',`window.test={set(v){state=Object.assign(emptyState(),v);},get(){return state;},fetchIncomingState,applyIncomingState,sendTransferDtmf};return;`);
- vm.runInNewContext(code,{window:win,document:doc,localStorage:win.localStorage,URLSearchParams,Date,Map,Set,WeakSet,console,addEventListener(){},setInterval:win.setInterval,
+ const doc={addEventListener(){},querySelector:()=>null,body:{classList:{add(){},remove(){}}}};
+ win.Date=Date;win.navigator={};win.Proxy=Proxy;win.Reflect=Reflect;win.URL=URL;
+ vm.runInNewContext(read('telefonia_conexion.js'),{window:win});
+ const code=read('telefonia_host.js').replace("    publish({\n        phase: 'loading',", `window.test={set(v){state=Object.assign(emptyState(),v);},get(){return state;},fetchIncomingState,applyIncomingState,sendTransferDtmf};return;    publish({\n        phase: 'loading',`);
+ vm.runInNewContext(code,{window:win,document:doc,navigator:win.navigator,localStorage:win.localStorage,URLSearchParams,Date,Map,Set,WeakSet,console,addEventListener(){},setInterval:win.setInterval,
   fetch:async u=>{urls.push(u);return {ok:true,json:async()=>({ok:true,call:null})}}});
  win.test.set({active:true,direction:'incoming',phase:'incoming-ringing',pbxCallId:'sdk-local-only',context:{type:'SDK_INCOMING'}});
  await win.test.fetchIncomingState();assert.equal(new URL(urls.at(-1)).searchParams.has('pbx_call_id'),false,'no buscar un identificador provisional en la centralita');
