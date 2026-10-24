@@ -171,36 +171,54 @@
         catch (e) { return null; }
     };
 
-    const claimLease = function () {
-        const lease = getLease();
-        if (lease && lease.id !== owner && Date.now() - Number(lease.time || 0) < 9000) {
-            return false;
-        }
-        try {
-            localStorage.setItem(leaseKey, JSON.stringify({id:owner,time:Date.now()}));
-            const confirmed = getLease();
-            owned = confirmed?.id === owner;
-            return owned;
-        } catch (e) {
-            // Sin almacenamiento no existe coordinación segura entre pestañas.
-            mountFailed = 'Activa el almacenamiento del navegador para conectar el teléfono.';
-            return false;
-        }
+    // Web Locks no caduca porque una pestaña oculta tarde en ejecutar timers.
+    // El navegador libera el bloqueo al destruir el documento, incluso tras crash.
+    const locks = window.navigator?.locks;
+    let lockRequested = false, unlock = null;
+    const writeOwner = () => {
+        try {localStorage.setItem(leaseKey,JSON.stringify({id:owner,time:Date.now(),version:2}));}
+        catch (_) { /* Web Locks sigue siendo la autoridad entre pestañas. */ }
     };
-
+    const claimLease = function () {
+        if (owned) return true;
+        if (locks?.request) {
+            if (!lockRequested) {
+                lockRequested = true;
+                void locks.request(leaseKey, async () => {
+                    // Una pestaña antigua no participa en Web Locks: no robar su motor.
+                    const legacy = getLease();
+                    if (legacy && legacy.version !== 2 && legacy.id !== owner) {
+                        mountFailed = 'Cierra las pestañas anteriores del CRM para actualizar el teléfono.';
+                        return;
+                    }
+                    owned = true; writeOwner();
+                    const holding = new Promise(resolve => {unlock = resolve;});
+                    try {ensureHost(); render(); await holding;}
+                    finally {owned = false; unlock = null;}
+                }).catch(() => {
+                    mountFailed = 'No se pudo reservar el teléfono en este navegador.';
+                    render();
+                }).finally(() => {lockRequested = false;});
+            }
+            return false;
+        }
+        // Compatibilidad conservadora: nunca vencer un dueño por falta de heartbeat.
+        const lease = getLease();
+        if (lease && lease.id !== owner) return false;
+        try {writeOwner(); owned = getLease()?.id === owner; return owned;}
+        catch (_) {return false;}
+    };
     const releaseLease = function () {
         if (!owned) return;
-        try {
-            if (getLease()?.id === owner) localStorage.removeItem(leaseKey);
-        } catch (e) { /* navegador restringido */ }
-        owned = false;
+        try {if (getLease()?.id === owner) localStorage.removeItem(leaseKey);} catch (_) {}
+        owned = false; unlock?.();
     };
 
     const ensureHost = function () {
         if (hostFrame) return hostFrame.contentWindow;
         if (!claimLease()) {
             mountFailed = mountFailed ||
-                'La extensión ya se está usando en otra pestaña del CRM. Ciérrala antes de conectar aquí.';
+                'El teléfono está reservado en otra pestaña o esperando su conexión.';
             render();
             throw new Error(mountFailed);
         }
@@ -264,7 +282,8 @@
     window.IMPE_TELEPHONY_SHELL = Object.freeze({
         userId: userId,
         ensureHost: ensureHost,
-        isPhoneReady: function () {return Boolean(freshState(currentState) && currentState.hostReady);},
+        ownsPhoneHost: child => owned && hostFrame?.contentWindow === child,
+        isPhoneReady: function () {return phoneReady();},
         getCallState: function () {
             // Ventas consulta la misma llamada finalizada que renderiza el
             // panel, aunque el host ya publique ready o expire su heartbeat.
@@ -274,7 +293,7 @@
         getReceptionStatus: function () {
             const assigned = cfg.canReceive === true && /^[0-9]{3,6}$/.test(String(cfg.extension || ''));
             return {assigned, extension:assigned ? String(cfg.extension) : '',
-                ready:assigned && Boolean(freshState(currentState) && currentState.hostReady)};
+                ready:assigned && phoneReady()};
         },
         unlockAudio: function () {
             try {hostFrame?.contentWindow.IMPE_CALL_AUDIO?.unlock();}catch(_){}
@@ -291,7 +310,7 @@
             return true;
         },
         getPhoneStatus: function () {
-            return {active:Boolean(currentState?.active),ready:Boolean(freshState(currentState)&&currentState.hostReady),
+            return {active:Boolean(currentState?.active),ready:phoneReady(),
                 pending:Boolean(callbackPending||window.IMPE_CALL_CLOSURE?.hasPending()||window.IMPE_SALES_ATTENTION?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
         },
         openPendingResult: function () {
@@ -407,11 +426,21 @@
         isEmbedded: true
     });
 
+    const phoneReady = function () {
+        try {
+            const live = hostFrame?.contentWindow?.IMPE_PHONE_CONNECTION?.snapshot();
+            if (live) return live.sdkReady === true && live.verified === true;
+        } catch (_) {}
+        // Un estado antiguo o un SDK sin evidencia de transporte nunca es verde.
+        return Boolean(currentState?.hostReady && currentState?.connection?.verified &&
+            Date.now() - Number(currentState.updatedAt) < 15000);
+    };
     const freshState = function (value) {
         return value && Number(value.userId) === userId &&
             Number(value.updatedAt) >= openedAt - 1000 &&
             Number(value.updatedAt) <= Date.now() + 1000 &&
-            Date.now() - Number(value.updatedAt) < 5500;
+            (value === currentState && value.active ||
+                Date.now() - Number(value.updatedAt) < 90000);
     };
 
     const updateState = function (value) {
@@ -603,19 +632,17 @@
             pendingIncomingAction = null;
             actionNotice = '';
         }
-        const ready = Boolean(state && state.hostReady &&
-            ['ready','prepared','incoming-ringing','answering','rejecting','in-progress',
-                'finishing','recovering','dialing','ringing','finished','incoming-finished'].includes(String(state.phase)));
-        const failed = mountFailed || (state?.phase === 'error' ?
+        const ready = phoneReady();
+        const failed = mountFailed || (state?.connection?.microphone && state.connection.microphone !== 'granted' ? state.message : '') || (state?.phase === 'error' ?
             (state.message || 'No fue posible conectar con Zadarma.') : '');
-        const otherOwner = !owned && getLease() &&
-            Date.now() - Number(getLease()?.time || 0) < 9000;
+        const otherOwner = !owned && Boolean(getLease());
 
         status.hidden = ready && !failed;
         statusText.textContent = failed ||
-            (otherOwner ? 'El teléfono está conectado desde otra pestaña.' :
+            (otherOwner ? 'El teléfono está reservado en otra pestaña del CRM.' :
             hostFrame ? 'Preparando recepción de la extensión ' + cfg.extension + '…' :
             'El teléfono está disponible para conectarse.');
+        retry.textContent = 'Activar teléfono';
         retry.hidden = ready && !failed || Boolean(otherOwner && !owned);
         if (!hostFrame && !cfg.autoReception) status.hidden = true;
 
@@ -990,15 +1017,9 @@
     });
     retry?.addEventListener('click', function () {
         if (hostFrame) {
-            // No recargar automáticamente un contexto con llamada activa.
-            if (freshState(currentState) && currentState.active) return;
-            hostFrame.remove();
-            hostFrame = null;
-            currentState = null;
-            mountFailed = '';
-            releaseLease();
-        }
-        try { ensureHost(); } catch (e) { render(); }
+            try {void hostFrame.contentWindow.IMPE_PHONE_CONNECTION?.activate();} catch (_) {}
+        } else {try {ensureHost();} catch (_) {}}
+        render();
     });
 
     const dismissAnalystResult = function () {
@@ -1042,58 +1063,20 @@
         }
     });
 
-    // Mantener única conexión dentro del mismo perfil del navegador.
-    window.setInterval(function () {
-        // Si el Analista abrió una pestaña mientras otra todavía retenía
-        // el lease, volver a intentar después de que expire; no esperar
-        // a que pulse el auricular. Jamás asumir en verde una conexión falsa.
-        if (autoEnabled && !hostFrame && !owned &&
-            Date.now() - lastRecoveryAttempt > 12000) {
-            const lease = getLease();
-            const ocupado = lease && lease.id !== owner &&
-                Date.now() - Number(lease.time || 0) < 9000;
-            if (!ocupado) {
-                lastRecoveryAttempt = Date.now();
-                try { ensureHost(); }
-                catch (error) { mountFailed = String(error?.message || error); }
-            }
+    const synchronize = function () {
+        if (autoEnabled && !hostFrame) {
+            try {ensureHost();} catch (_) {}
         }
-        const hostSinConexion = !freshState(currentState) ||
-            (currentState && !currentState.hostReady &&
-                String(currentState.phase || '') === 'error');
-        const montajeRecuperable = !mountFailed ||
-            mountFailed.startsWith('No se pudo cargar el motor telefónico');
-        if (autoEnabled && hostFrame && hostSinConexion &&
-            !currentState?.active && montajeRecuperable &&
-            Date.now() - hostStartedAt > 25000 &&
-            Date.now() - lastRecoveryAttempt > 60000) {
-            // Reintentar cada minuto, incluso después de tres fallos antiguos.
-            // NUNCA reiniciar el SDK durante una llamada activa ni si otra
-            // pestaña conserva la extensión. La disponibilidad real depende
-            // del navegador, la red y el registro SIP de Zadarma.
-            autoRetries += 1;
-            lastRecoveryAttempt = Date.now();
-            hostFrame.remove();
-            hostFrame = null;
-            currentState = null;
-            releaseLease();
-            try { ensureHost(); } catch (error) { mountFailed = error.message; }
-        }
-        if (owned) {
-            const lease = getLease();
-            if (lease?.id !== owner) {
-                owned = false;
-                mountFailed = 'Otra pestaña asumió el teléfono. Verifica la conexión.';
-                render();
-            } else {
-                try {
-                    localStorage.setItem(leaseKey,
-                        JSON.stringify({id:owner,time:Date.now()}));
-                } catch (e) { /* Sin almacenamiento, avisar al usuario. */ }
-            }
-        }
+        if (owned) writeOwner();
+        try {void hostFrame?.contentWindow.IMPE_PHONE_CONNECTION?.check();} catch (_) {}
+        readState(false);
         render();
-    }, 3000);
+    };
+    window.setInterval(synchronize, 10000);
+    window.addEventListener('focus', synchronize);
+    window.addEventListener('pageshow', synchronize);
+    window.addEventListener('online', synchronize);
+    document.addEventListener('visibilitychange', synchronize);
     window.addEventListener('beforeunload', function (event) {
         if (freshState(currentState) && currentState.active) {
             // Navegar entre módulos internos no descarga este documento.
@@ -1102,23 +1085,15 @@
             event.returnValue = '';
         }
     });
-    window.addEventListener('pagehide', function () {
+    window.addEventListener('pagehide', function (event) {
+        if (event.persisted) return;
         releaseLease();
         channel?.close();
     });
 
     readState(true);
-    let autoEnabled = cfg.autoReception === true;
-    // El Analista con extensión entrante activa debe intentar iniciar WebRTC
-    // en cada login. Una preferencia vieja de Marketing / navegador no puede
-    // desactivar silenciosamente su recepción.
-    if (autoEnabled && !cfg.alwaysReceive && !cfg.analystIncomingResults) {
-        try {
-            autoEnabled = localStorage.getItem(
-                'impe:telephony:auto-reception:' + userId
-            ) !== '0';
-        } catch (error) { /* usar valor predeterminado */ }
-    }
+    // También se inicia automáticamente para extensiones sólo salientes autorizadas.
+    const autoEnabled = cfg.autoReception === true || cfg.canCallOut === true;
     if (autoEnabled) {
         // La autorización del navegador para micrófono/audio podría requerir
         // un clic. En ese caso se deja visible Conectar teléfono.

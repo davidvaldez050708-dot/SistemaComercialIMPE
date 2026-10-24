@@ -387,7 +387,8 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
         window.IMPE_PHONE_SHELL_CONFIG = <?= json_encode([
             'userId' => $usuarioShell,
             'extension' => $extensionShell,
-            'autoReception' => $puedeRecibirShell,
+            'autoReception' => $puedeRecibirShell ||
+                (!empty($asignacionTelefonica['permite_salientes']) && tienePermiso('telefonia.salientes')),
             'canReceive' => $puedeRecibirShell,
             'alwaysReceive' => $puedeRecibirShell,
             'analystIncomingResults' => $analistaEntrantesShell,

@@ -289,7 +289,7 @@
         // El timbrado no es conversación. Algunos eventos de la PBX
         // reutilizan el duration de la llamada previa durante el ring.
         if (state.direction === 'incoming' &&
-            state.phase === 'incoming-ringing') return 0;
+            ['incoming-ringing', 'answering'].includes(state.phase)) return 0;
         let duration = Math.max(0, Number(state.duration || 0));
 
         if (state.active && answeredAtMs > 0) {
@@ -359,10 +359,13 @@
             extension: extension,
             provider: 'ZADARMA',
             // Un webhook PBX por sí solo no confirma WebRTC.
-            hostReady: widgetReady,
+            sdkReady: widgetReady,
+            hostReady: widgetReady && connection.snapshot().verified && mediaUsable(),
+            connection: {...connection.snapshot(), microphone:microphonePermission},
             duration: currentDuration(),
             updatedAt: Date.now()
         });
+        if (!ownsTransport) {render(); return state;}
         syncMicrophone();
 
         try {
@@ -382,6 +385,75 @@
         window.IMPE_CALL_AUDIO?.update(state);
         return state;
     };
+
+    const connection = window.IMPE_PHONE_CONNECTION_FACTORY.create(window, () => publish({}));
+    // El iframe comparte la reserva del shell; una pestaña de teléfono directa
+    // también debe esperar el mismo Web Lock, nunca registrar un segundo motor.
+    let ownsTransport = false, releaseTransport = null;
+    try {ownsTransport = window.parent !== window &&
+        window.parent.IMPE_TELEPHONY_SHELL?.ownsPhoneHost?.(window) === true;} catch (_) {}
+    let microphonePermission = 'prompt';
+    const mediaUsable = () => microphonePermission === 'granted';
+    const permissionMessage = () => microphonePermission === 'denied'
+        ? 'El micrófono está bloqueado. Permítelo en los ajustes de este sitio y pulsa Activar teléfono.'
+        : 'Pulsa Activar teléfono para autorizar el micrófono y el audio del navegador.';
+    void navigator.permissions?.query({name:'microphone'}).then(permission => {
+        const update = () => {microphonePermission = permission.state; publish({});};
+        update(); permission.addEventListener('change', update);
+    }).catch(() => {});
+
+    let initialization = null, startupFailures = 0, startupRetryAt = 0;
+    const ensureWidget = function () {
+        if (!ownsTransport) return Promise.reject(new Error('El teléfono está reservado en otra pestaña.'));
+        if (initialization) return initialization;
+        initialization = initializeWidget().then(() => {
+            startupFailures = 0; startupRetryAt = 0;
+        }).finally(() => { initialization = null; });
+        return initialization;
+    };
+    let healthTask = null;
+    const performHealthCheck = async function () {
+        if (!ownsTransport) return connection.snapshot();
+        // Un temporizador retrasado no termina una llamada ni recrea el SDK.
+        const liveSession = window.zdrmWebPhone?.webCallSession;
+        const active = state.active || Boolean(liveSession && !liveSession.isEnded?.());
+        try {
+            if (!widgetReady && !active && navigator.onLine !== false && Date.now() >= startupRetryAt) {
+                await ensureWidget();
+            }
+            const health = connection.recover(active);
+            if (!active) publish({phase:health.verified && ['error','initializing','idle'].includes(state.phase) ? 'ready' : state.phase,
+                message:health.verified ? (mediaUsable() ? '' : permissionMessage()) :
+                !health.online ? 'Sin conexión de red. Reconectaremos al volver.' :
+                'Verificando conexión con Zadarma…'});
+            return health;
+        } catch (error) {
+            startupRetryAt = Date.now() + Math.min(60000, 5000 * 2 ** Math.min(startupFailures++, 4));
+            publish({phase:active ? state.phase : 'error', message:error.message || 'No se pudo conectar con Zadarma.'});
+            return connection.snapshot();
+        }
+    };
+    const checkConnection = function () {
+        if (healthTask) return healthTask;
+        healthTask = performHealthCheck().finally(() => {healthTask = null;});
+        return healthTask;
+    };
+    window.IMPE_PHONE_CONNECTION = Object.freeze({
+        snapshot: () => ({...connection.snapshot(), sdkReady:widgetReady,
+            verified:connection.snapshot().verified && mediaUsable(), microphone:microphonePermission}),
+        check: checkConnection,
+        activate: async () => {
+            window.IMPE_CALL_AUDIO?.unlock();
+            if (!mediaUsable() && !state.active) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+                    stream.getTracks().forEach(track => track.stop());
+                    microphonePermission = 'granted';
+                } catch (_) {microphonePermission = 'denied'; publish({message:permissionMessage()});}
+            }
+            return checkConnection();
+        }
+    });
 
     const sleep = function (ms) {
         return new Promise(function (resolve) {
@@ -443,6 +515,7 @@
                 resolve();
             }, { once: true });
             script.addEventListener('error', function () {
+                script.remove();
                 reject(new Error('No fue posible cargar el teléfono WebRTC.'));
             }, { once: true });
             document.head.appendChild(script);
@@ -751,7 +824,7 @@
         ) || null;
     };
 
-    const ensureWidget = async function () {
+    const initializeWidget = async function () {
         if (
             widgetReady &&
             window.zdrmWebPhone &&
@@ -782,7 +855,8 @@
         const loadersReady = await waitFor(function () {
             return (
                 typeof window.zadarmaWidgetFn === 'function' &&
-                typeof window.zdrmWebrtcPhoneInterface === 'function'
+                typeof window.zdrmWebrtcPhoneInterface === 'function' &&
+                typeof window.io === 'function'
             );
         }, 15000, 100);
 
@@ -792,6 +866,7 @@
             );
         }
 
+        connection.install();
         if (!widgetInitialized) {
             window.zadarmaWidgetFn(
                 webRtcKey,
@@ -1295,6 +1370,14 @@
         incomingPollBusy = true;
 
         try {
+            // Hostinger: recuperar onConnected perdido sólo con evidencia de audio SDK.
+            if (state.active && state.direction === 'incoming' &&
+                state.phase === 'answering' && analystSdkObserver?.isConnected?.()) {
+                answeredAtMs = Date.now();
+                publish({phase:'in-progress',status:'in-progress',answeredAtMs,duration:0,message:'',
+                    context:Object.assign({},state.context,{sdkConnected:true,source:'SDK_WEBRTC',
+                        verified:Boolean(state.context?.pbxAnswered)})});
+            }
             const requestToken=state.callToken;
             const call =
                 await fetchIncomingState();
@@ -2129,22 +2212,24 @@
                     '…'
     });
 
-    void ensureWidget().then(function () {
-        marcarPestanaEntrante('');
-    }).catch(function (error) {
-        if (modoPestana) {
-            const indicador = document.querySelector('.telephony-host-tab-status');
-            if (indicador) indicador.textContent =
-                error.message || 'No fue posible conectar la recepción.';
-        }
-        publish({
-            phase: 'error',
-            active: false,
-            message:
-                error.message ||
-                'No fue posible preparar el motor WebRTC.'
-        });
-    });
+    if (ownsTransport) void checkConnection();
+    else if (navigator.locks?.request) {
+        publish({message:'El teléfono está reservado en otra pestaña del CRM.'});
+        void navigator.locks.request('impe:telephony:shell-owner:' + userId, async () => {
+            let legacy = null;
+            try {legacy = JSON.parse(localStorage.getItem('impe:telephony:shell-owner:' + userId) || 'null');} catch (_) {}
+            if (legacy && legacy.version !== 2) {
+                publish({phase:'error',message:'Cierra las pestañas anteriores del CRM para actualizar el teléfono.'});
+                return;
+            }
+            ownsTransport = true;
+            const holding = new Promise(resolve => {releaseTransport = resolve;});
+            void checkConnection();
+            await holding;
+            ownsTransport = false;
+        }).catch(() => publish({phase:'error',message:'No se pudo reservar el teléfono.'}));
+    } else publish({phase:'error',message:'Abre el teléfono desde el CRM en un navegador compatible.'});
+    addEventListener('pagehide',event => {if (!event.persisted) releaseTransport?.();});
 
     setInterval(function () {
         const session=window.zdrmWebPhone?.webCallSession;
@@ -2154,12 +2239,16 @@
             widgetReady=true;publish({phase:'in-progress',status:'in-progress',context:{...state.context,sdkConnected:true},message:'Audio del navegador recuperado.'});
             return;
         }
+        void checkConnection();
         publish({});
     }, 1500);
 
     // La pérdida de red no equivale a un cierre PBX y nunca desmonta una llamada activa.
-    addEventListener('offline',()=>{widgetReady=false;publish({phase:state.active?'recovering':'error',status:'recovering',message:'Sin conexión de red. La llamada puede seguir activa en la centralita.'});});
-    addEventListener('online',()=>{if(state.active){void pollIncoming();return;}void ensureWidget().catch(error=>publish({phase:'error',message:error.message}));});
+    addEventListener('offline',()=>{publish({phase:state.active?'recovering':'error',status:'recovering',message:'Sin conexión de red. La llamada puede seguir activa en la centralita.'});});
+    addEventListener('online',()=>{startupRetryAt=0;void checkConnection();if(state.active)void pollIncoming();});
+    addEventListener('focus',()=>void checkConnection());
+    addEventListener('pageshow',()=>void checkConnection());
+    document.addEventListener('visibilitychange',()=>void checkConnection());
 
     setInterval(render, 500);
     render();

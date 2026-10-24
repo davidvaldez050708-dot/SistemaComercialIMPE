@@ -117,6 +117,7 @@ $receptorHostSdk = $analistaHostSdk || $asesorHostSdk;
     <script src="<?= BASE_URL ?>public/javascript/telefonia_audio.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_audio.js') ?>"></script>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_transferencia_runtime.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_transferencia_runtime.js') ?>"></script>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_numeros.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/telefonia_numeros.js') ?>"></script>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_conexion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_conexion.js') ?>"></script>
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_host.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_host.js') ?>">
     </script>
