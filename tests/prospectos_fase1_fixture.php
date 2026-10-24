@@ -13,13 +13,15 @@ for($i=1;$i<=62;$i++){
 }
 $db->query('CREATE TABLE formulario_aliado_procedencias(id BIGINT AUTO_INCREMENT PRIMARY KEY,registro_id BIGINT,tipo VARCHAR(30),aliado_id INT,aliado_nombre VARCHAR(180),programa_codigo VARCHAR(100)) ENGINE=InnoDB');
 // Residencias deliberadamente diferentes del territorio de los aliados.
-$db->query('CREATE TABLE formulario_aliados(id INT PRIMARY KEY,seguimiento_id INT NULL) ENGINE=InnoDB');
+$db->query('CREATE TABLE formulario_aliados(id INT PRIMARY KEY,seguimiento_id INT NULL,nombre VARCHAR(180)) ENGINE=InnoDB');
 $db->query('CREATE TABLE formulario_aliado_registro(aliado_id INT PRIMARY KEY,manual_id INT NULL UNIQUE,seguimiento_id INT NULL UNIQUE) ENGINE=InnoDB');
 $db->query('CREATE TABLE aliados_manuales(id INT PRIMARY KEY,estado_id INT,activo INT) ENGINE=InnoDB');
 $db->query('CREATE TABLE seguimientos_vinculacion(id INT PRIMARY KEY,estado_id INT,activo INT) ENGINE=InnoDB');
 $db->query('INSERT INTO aliados_manuales VALUES(101,11,0),(103,99,1)');
 $db->query('INSERT INTO seguimientos_vinculacion VALUES(201,11,0),(202,22,1),(203,14,1)');
-$db->query('INSERT INTO formulario_aliados VALUES(7,NULL),(8,201),(9,202),(10,NULL),(11,203),(12,203),(13,NULL)');
+$db->query('INSERT INTO formulario_aliados(id,seguimiento_id) VALUES(7,NULL),(8,201),(9,202),(10,NULL),(11,203),(12,203),(13,NULL)');
+$db->query("UPDATE formulario_aliados SET nombre=CONCAT('Aliado ',id)");
+$db->query("UPDATE formulario_aliados SET nombre='Institución duplicada' WHERE id IN (7,8)");
 $db->query('INSERT INTO formulario_aliado_registro VALUES(7,101,NULL),(8,NULL,201),(11,999,NULL),(12,102,203),(13,103,NULL)');
 for($i=1;$i<=40;$i++){
  $aliado=$i<=20?7:($i<=29?8:($i<=35?9:$i-26));
@@ -27,5 +29,14 @@ for($i=1;$i<=40;$i++){
 }
 // Otra procedencia del mismo registro no cambia su origen inicial ni duplica filas.
 $db->query("INSERT INTO formulario_aliado_procedencias(registro_id,tipo,aliado_id,aliado_nombre,programa_codigo) VALUES(1,'registro',9,'Origen posterior','bachillerato-general'),(45,'inscripcion',8,'Sólo Inscripción','ingles')");
-foreach(['formulario_inscripciones','formulario_programas','convocatorias','convocatoria_borradores','registro_enlaces_amigables'] as $tabla){$db->query("CREATE TABLE `$tabla`(id INT PRIMARY KEY,marca VARCHAR(100)) ENGINE=InnoDB");$db->query("INSERT INTO `$tabla` VALUES(1,'Intocable')");}
+foreach(['formulario_inscripciones','convocatorias','convocatoria_borradores','registro_enlaces_amigables'] as $tabla){$db->query("CREATE TABLE `$tabla`(id INT PRIMARY KEY,marca VARCHAR(100)) ENGINE=InnoDB");$db->query("INSERT INTO `$tabla` VALUES(1,'Intocable')");}
+$db->query("CREATE TABLE formulario_programas(codigo VARCHAR(64) PRIMARY KEY,nombre VARCHAR(180),activo INT,marca VARCHAR(100) DEFAULT 'Intocable') ENGINE=InnoDB");
+$db->query("INSERT INTO formulario_programas(codigo,nombre,activo) VALUES('bachillerato-general','Bachillerato General',1),('bachillerato-2-anos','Bachillerato en 2 años',1),('ingles','Inglés',0),('sin-prospectos','Programa sin prospectos',1)");
+$db->query("CREATE TABLE formulario_aliado_programas(aliado_id INT,programa_codigo VARCHAR(64),PRIMARY KEY(aliado_id,programa_codigo)) ENGINE=InnoDB");
+$db->query("INSERT INTO formulario_aliado_programas VALUES(7,'sin-prospectos'),(8,'bachillerato-general')");
+$db->query("UPDATE formulario_aliado_procedencias SET programa_codigo='bachillerato-2-anos' WHERE tipo='registro' AND registro_id BETWEEN 27 AND 29");
+$db->query("UPDATE formulario_aliado_procedencias SET programa_codigo='ingles' WHERE tipo='registro' AND registro_id BETWEEN 30 AND 35");
+$db->query("UPDATE formulario_registros SET perfil_interes='Inglés' WHERE id BETWEEN 41 AND 45");
+$db->query("UPDATE formulario_registros SET perfil_interes='Bachillerato general' WHERE id BETWEEN 54 AND 61");
+$db->query("UPDATE formulario_registros SET perfil_interes='Perfil histórico ¿ñ?' WHERE id=62");
 echo "Fixture sintética creada: $schema · ".$db->server_info."\n";

@@ -8,8 +8,10 @@ $paginasProspectos = (int)($listado['paginas'] ?? 1);
 $urlProspectos = static function (array $params = []) {
     return BASE_URL.'index.php?'.http_build_query(array_merge(['controller'=>'prospecto','action'=>'index'],$params));
 };
-$consultaProspectos = ['vista'=>$vistaProspectos,'buscar'=>$buscarProspectos,'aliado_id'=>$aliadoFiltroProspectos];
+$consultaProspectos = ['vista'=>$vistaProspectos,'buscar'=>$buscarProspectos,'aliado_id'=>$aliadoFiltroProspectos,'programa'=>$programaFiltroProspectos];
 if ($estadoProspectos) $consultaProspectos['estado_id']=(int)$estadoProspectos['id'];
+$hayFiltrosProspectos=$buscarProspectos!=='' || $aliadoFiltroProspectos!=='' || $programaFiltroProspectos!=='';
+$limpiarProspectos=$urlProspectos($estadoProspectos?['estado_id'=>(int)$estadoProspectos['id']]:['vista'=>'todos']);
 $normalizarEstado = static function ($nombre) {
     return strtr(mb_strtolower((string)$nombre),['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ü'=>'u','ñ'=>'n']);
 };
@@ -19,6 +21,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
     return is_file(__DIR__.'/../../../public/img/estados/'.$slug.'.png') ? BASE_URL.'public/img/estados/'.rawurlencode($slug).'.png' : '';
 };
 ?>
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/marketing_selectores_uniformes.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/marketing_selectores_uniformes.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/aliados.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/aliados.css'),0,16) ?>">
 <style>
 .prospectos-page{font-family:Manrope,sans-serif;color:#17233e}
@@ -101,11 +104,19 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
         </div>
         <?php endif; ?>
         <?php if ($mensajeError===''): ?>
-        <form method="get" class="prospectos-list-filters" data-prospectos-filtros data-prospectos-navegacion>
+        <form method="get" class="prospectos-list-filters prospectos-fase2-filters" data-prospectos-filtros data-prospectos-navegacion>
             <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><input type="hidden" name="vista" value="<?= $vistaProspectos ?>"><?php if ($estadoProspectos): ?><input type="hidden" name="estado_id" value="<?= (int)$estadoProspectos['id'] ?>"><?php endif; ?>
-            <div><label for="prospectoBuscar">Nombre, teléfono o correo</label><div class="module-search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" type="search" id="prospectoBuscar" name="buscar" placeholder="Escribe nombre, teléfono o correo…" maxlength="180" value="<?= $escaparProspecto($buscarProspectos) ?>"></div></div>
-            <div><label for="prospectoAliado">Aliado de origen</label><select class="form-select" id="prospectoAliado" name="aliado_id" <?= $errorProcedencia!==''?'disabled':'' ?>><option value="">Todos los orígenes</option><option value="general" <?= $aliadoFiltroProspectos==='general'?'selected':'' ?>>Registro general</option><?php foreach (($listado['aliados']??[]) as $origenProspecto): ?><option value="<?= (int)$origenProspecto['id'] ?>" <?= $aliadoFiltroProspectos===(string)$origenProspecto['id']?'selected':'' ?>><?= $escaparProspecto($origenProspecto['nombre']) ?></option><?php endforeach; ?></select></div>
+            <div><label for="prospectoBuscar">Buscar prospecto</label><div class="module-search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" type="search" id="prospectoBuscar" name="buscar" placeholder="Escribe nombre, teléfono o correo…" maxlength="180" value="<?= $escaparProspecto($buscarProspectos) ?>"></div></div>
+            <div><label for="prospectoAliado" id="prospectoAliadoLabel">Aliado de origen</label><select class="form-select" id="prospectoAliado" name="aliado_id" data-native-select data-prospectos-searchable="aliado" <?= $errorProcedencia!=='' || $errorAliadosProspectos!==''?'disabled':'' ?>><option value="">Todos los orígenes</option><option value="general" <?= $aliadoFiltroProspectos==='general'?'selected':'' ?>>Registro general</option><?php foreach (($listado['aliados']??[]) as $origenProspecto): ?><option value="<?= (int)$origenProspecto['id'] ?>" <?= $aliadoFiltroProspectos===(string)$origenProspecto['id']?'selected':'' ?>><?= $escaparProspecto($origenProspecto['nombre'].' · ID #'.$origenProspecto['id']) ?></option><?php endforeach; ?></select></div>
+            <div><label for="prospectoPrograma" id="prospectoProgramaLabel">Programa educativo</label><select class="form-select" id="prospectoPrograma" name="programa" data-native-select data-prospectos-searchable="programa" <?= $errorProgramasProspectos!=='' || empty($listado['programas'])?'disabled':'' ?>>
+                <option value="">Todos los programas</option>
+                <?php foreach (($listado['programas']??[]) as $opcionPrograma): ?><option value="<?= $escaparProspecto($opcionPrograma['valor']) ?>" <?= $programaFiltroProspectos===$opcionPrograma['valor']?'selected':'' ?>><?= $escaparProspecto($opcionPrograma['nombre']) ?></option><?php endforeach; ?>
+            </select></div>
+            <noscript><button type="submit" class="btn btn-system-light"><i class="bi bi-funnel" aria-hidden="true"></i> Aplicar filtros</button></noscript>
         </form>
+        <div class="prospectos-filter-summary"><p><strong data-prospectos-filter-total><?= (int)$listado['total'] ?></strong> resultados</p><a class="btn btn-system-light" href="<?= $escaparProspecto($limpiarProspectos) ?>" data-prospectos-limpiar <?= $hayFiltrosProspectos?'':'hidden' ?>><i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar filtros</a><span class="prospectos-searching" role="status" data-prospectos-searching hidden><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Buscando prospectos</span></div>
+        <p class="prospectos-message" role="alert" data-prospectos-program-error <?= $errorProgramasProspectos!==''?'':'hidden' ?>><?= $escaparProspecto($errorProgramasProspectos) ?></p>
+        <?php if ($errorAliadosProspectos!==''): ?><p class="prospectos-message" role="alert"><?= $escaparProspecto($errorAliadosProspectos) ?></p><?php endif; ?>
         <p class="prospectos-message" role="alert" data-prospectos-search-error hidden></p>
         <span class="visually-hidden" role="status" aria-live="polite" data-prospectos-search-status></span>
         <div data-prospectos-resultados>
@@ -122,7 +133,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
                         <td><?= $escaparProspecto($prospecto['perfil_interes']) ?></td><td><?= $escaparProspecto($prospecto['estado'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['municipio'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['lugar_laboras']) ?></td><td><?= $escaparProspecto($prospecto['cargo_puesto'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['fecha_nacimiento']) ?></td><td><?= $escaparProspecto($prospecto['origen']) ?></td>
                     </tr>
                 <?php endforeach; ?>
-                <?php if (!$registrosProspectos): ?><tr><td colspan="14" class="prospectos-empty"><div class="prospectos-empty-state"><i class="bi bi-<?= $buscarProspectos!==''||$aliadoFiltroProspectos!==''?'search':'people' ?>" aria-hidden="true"></i><strong><?= $buscarProspectos!==''||$aliadoFiltroProspectos!==''?'No hay resultados en la búsqueda.':'No hay prospectos registrados.' ?></strong></div></td></tr><?php endif; ?>
+                <?php if (!$registrosProspectos): ?><tr><td colspan="14" class="prospectos-empty"><div class="prospectos-empty-state"><i class="bi bi-<?= $buscarProspectos!==''||$aliadoFiltroProspectos!==''?'search':'people' ?>" aria-hidden="true"></i><strong><?= $buscarProspectos!==''?'No se encontraron coincidencias.':($programaFiltroProspectos!==''?'No hay registros para el programa seleccionado.':($aliadoFiltroProspectos!==''?'No hay prospectos para este aliado.':'No hay prospectos registrados.')) ?></strong></div></td></tr><?php endif; ?>
                 </tbody>
             </table>
         </div>
