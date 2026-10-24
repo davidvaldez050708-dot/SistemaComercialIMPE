@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/FormularioRegistroModel.php';
+require_once __DIR__ . '/../helpers/HorarioContacto.php';
 
 class FormularioPublicoController
 {
@@ -125,6 +126,11 @@ class FormularioPublicoController
             $envios[]=time(); $_SESSION['registro_envios']=$envios;
         }
         $datos = $this->normalizarRegistro($_POST);
+        try {
+            $datos['horario_contacto'] = HorarioContacto::desdeEntrada($_POST);
+        } catch (DomainException $error) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$error->getMessage()], 422);
+        }
         if ($aliadoFormulario) { $datos['aliado_token'] = $_GET['aliado']; }
         $errores = $this->validarRegistro($datos, $aliadoFormulario);
 

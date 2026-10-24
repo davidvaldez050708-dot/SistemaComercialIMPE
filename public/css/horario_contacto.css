@@ -1,0 +1,12 @@
+.horario-contacto{grid-column:1/-1;min-width:0;font-family:Manrope,sans-serif}
+.horario-contacto [hidden]{display:none!important}
+.horario-contacto-config{min-width:0;margin:14px 0 0;padding:16px;border:1px solid var(--color-border,#dfe5ef);border-radius:12px;background:#f8fafc}
+.horario-contacto-config legend{float:none;width:auto;padding:0 6px;margin:0;font-size:13px;font-weight:700;color:var(--color-text-primary,#172642)}
+.horario-contacto-label{display:block;margin:8px 0;font-size:12px;font-weight:600;color:var(--color-text-secondary,#617189)}
+.horario-contacto .horario-contacto-dias{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.horario-contacto .horario-contacto-dias label{display:inline-flex;align-items:center;gap:7px;min-height:38px;margin:0;padding:8px 11px;border:1px solid var(--color-border,#dfe5ef);border-radius:9px;background:#fff;color:var(--color-text-primary,#172642);font-size:12px;cursor:pointer}
+.horario-contacto .horario-contacto-dias label:has(input:checked){border-color:var(--color-primary,#273a8a);background:#f0f4ff}
+.horario-contacto .horario-contacto-dias input{appearance:auto;width:16px;height:16px;min-height:0;padding:0;margin:0;box-shadow:none;accent-color:var(--color-primary,#273a8a)}
+.horario-contacto-horas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:8px}
+.horario-contacto .horario-contacto-error{margin:9px 0 0;color:#a33636;font-size:12px;font-weight:600;line-height:1.5}
+@media(max-width:420px){.horario-contacto-config{padding:12px}.horario-contacto .horario-contacto-dias{gap:6px}.horario-contacto .horario-contacto-dias label{padding:7px 9px}}

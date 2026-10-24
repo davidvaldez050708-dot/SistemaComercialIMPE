@@ -260,6 +260,7 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                             Los correos electrónicos no coinciden.
                         </div>
                     </div>
+                    <?php $horarioContactoPublico=false; require __DIR__ . '/partials/horario_contacto.php'; ?>
                 </div>
             </section>
 
@@ -422,3 +423,6 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
         </form>
     </section>
 </div>
+
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/horario_contacto.css?v=<?= filemtime(ROOT_PATH . '/public/css/horario_contacto.css') ?>">
+<script src="<?= BASE_URL ?>public/javascript/horario_contacto.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/horario_contacto.js') ?>"></script>

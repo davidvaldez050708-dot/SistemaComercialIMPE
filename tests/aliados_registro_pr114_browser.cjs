@@ -28,6 +28,7 @@ let logs='';server.stderr.on('data',d=>logs+=d);
    check((await page.request.post(save,{form:{...data,estado_id:'1'}})).status()===422,'IDs mexicanos manipulados '+action);
    for(const key of ['nombre','apellido','fecha_nacimiento','movil','movil_confirmacion','correo','correo_confirmacion','pais_nombre','estado_provincia','ciudad'])await page.locator('[name='+key+']').fill(data[key]);
    await page.locator('[name=perfil_interes]').selectOption(data.perfil_interes);
+   if(await page.locator('[data-horario-modo]').count())await page.locator('[data-horario-modo]').selectOption('sin_preferencia');
    await page.locator('[data-publico-submit]').click();await page.waitForURL(action==='registro'?/action=gracias(?:&|$)/:/action=graciasInscripcion/);
    const a=await page.request.post(save,{form:data}),b=await page.request.post(save,{form:data});
    check(a.status()===200 && (await a.json()).registro_id===(await b.json()).registro_id,'envío y reenvío internacional '+action);

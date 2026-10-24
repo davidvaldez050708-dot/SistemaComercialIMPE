@@ -38,6 +38,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
         rel="stylesheet"
         href="<?= BASE_URL ?>public/css/formularios_publico.css?v=<?= filemtime(ROOT_PATH . '/public/css/formularios_publico.css') ?>">
     <link rel="stylesheet" href="<?= BASE_URL ?>public/css/formularios_hero_institucional.css?v=<?= filemtime(ROOT_PATH . '/public/css/formularios_hero_institucional.css') ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>public/css/horario_contacto.css?v=<?= filemtime(ROOT_PATH . '/public/css/horario_contacto.css') ?>">
 </head>
 
 <body class="formulario-publico-body">
@@ -253,6 +254,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
                                 Los correos electrónicos deben coincidir.
                             </div>
                         </div>
+                        <?php $horarioContactoPublico=true; require __DIR__ . '/partials/horario_contacto.php'; ?>
                     </div>
                 </section>
 
@@ -416,5 +418,6 @@ $fechaMaximaNacimiento = date('Y-m-d');
     <script
         src="<?= BASE_URL ?>public/javascript/formularios_registro_publico.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/formularios_registro_publico.js') ?>">
     </script>
+    <script src="<?= BASE_URL ?>public/javascript/horario_contacto.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/horario_contacto.js') ?>"></script>
 </body>
 </html>

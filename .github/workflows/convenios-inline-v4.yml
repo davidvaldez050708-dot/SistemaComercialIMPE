@@ -74,6 +74,7 @@ jobs:
         run: |
           mkdir -p /tmp/v4-sql-backups
           php tests/aliados_registro_fixture.php
+          if [ -f tools/migrar_horario_contacto.php ]; then php tools/migrar_horario_contacto.php --apply; fi
           php tools/preparar_handly_formularios.php --apply
           php tools/migrar_aliados_registro.php --apply --backup-dir=/tmp/v4-sql-backups
           php tools/migrar_extensiones_aliados_20261022.php --apply --backup-dir=/tmp/v4-sql-backups

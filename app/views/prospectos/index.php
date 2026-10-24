@@ -122,18 +122,18 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
         <div data-prospectos-resultados>
         <div class="prospectos-table-wrap" role="region" aria-label="Listado de prospectos" tabindex="0">
             <table>
-                <thead><tr><th scope="col">Fecha de registro</th><th scope="col">Nombre completo</th><th scope="col">Correo electrónico</th><th scope="col">Teléfono</th><th scope="col">Tel. secundario</th><th scope="col">Tel. recomendado</th><th scope="col">Aliado de origen</th><th scope="col">Perfil de interés</th><th scope="col">Estado de residencia</th><th scope="col">Municipio de residencia</th><th scope="col">Lugar de trabajo</th><th scope="col">Cargo</th><th scope="col">Fecha de nacimiento</th><th scope="col">Origen</th></tr></thead>
+                <thead><tr><th scope="col">Fecha de registro</th><th scope="col">Nombre completo</th><th scope="col">Correo electrónico</th><th scope="col">Teléfono</th><th scope="col">Horario de contacto</th><th scope="col">Tel. secundario</th><th scope="col">Tel. recomendado</th><th scope="col">Aliado de origen</th><th scope="col">Perfil de interés</th><th scope="col">Estado de residencia</th><th scope="col">Municipio de residencia</th><th scope="col">Lugar de trabajo</th><th scope="col">Cargo</th><th scope="col">Fecha de nacimiento</th><th scope="col">Origen</th></tr></thead>
                 <tbody>
                 <?php foreach ($registrosProspectos as $prospecto): ?>
                     <tr>
                         <td><?= $escaparProspecto($prospecto['created_at']) ?></td>
                         <td class="prospectos-name"><?= $escaparProspecto(trim($prospecto['nombre'] . ' ' . $prospecto['apellido'])) ?></td>
-                        <td><?= $escaparProspecto($prospecto['correo']) ?></td><td><?= $escaparProspecto($prospecto['movil']) ?></td><td><?= $escaparProspecto($prospecto['movil_secundario'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['tel_recomendado'] ?: '—') ?></td>
+                        <td><?= $escaparProspecto($prospecto['correo']) ?></td><td><?= $escaparProspecto($prospecto['movil']) ?></td><td><?= $escaparProspecto($prospecto['horario_contacto'] ?? 'Sin indicar') ?></td><td><?= $escaparProspecto($prospecto['movil_secundario'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['tel_recomendado'] ?: '—') ?></td>
                         <td><?= $escaparProspecto($errorProcedencia!==''?'Procedencia no disponible':($prospecto['aliado_nombre']??'Registro general')) ?></td>
                         <td><?= $escaparProspecto($prospecto['perfil_interes']) ?></td><td><?= $escaparProspecto($prospecto['estado'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['municipio'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['lugar_laboras']) ?></td><td><?= $escaparProspecto($prospecto['cargo_puesto'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['fecha_nacimiento']) ?></td><td><?= $escaparProspecto($prospecto['origen']) ?></td>
                     </tr>
                 <?php endforeach; ?>
-                <?php if (!$registrosProspectos): ?><tr><td colspan="14" class="prospectos-empty"><div class="prospectos-empty-state"><i class="bi bi-<?= $buscarProspectos!==''||$aliadoFiltroProspectos!==''?'search':'people' ?>" aria-hidden="true"></i><strong><?= $buscarProspectos!==''?'No se encontraron coincidencias.':($programaFiltroProspectos!==''?'No hay registros para el programa seleccionado.':($aliadoFiltroProspectos!==''?'No hay prospectos para este aliado.':'No hay prospectos registrados.')) ?></strong></div></td></tr><?php endif; ?>
+                <?php if (!$registrosProspectos): ?><tr><td colspan="15" class="prospectos-empty"><div class="prospectos-empty-state"><i class="bi bi-<?= $buscarProspectos!==''||$aliadoFiltroProspectos!==''?'search':'people' ?>" aria-hidden="true"></i><strong><?= $buscarProspectos!==''?'No se encontraron coincidencias.':($programaFiltroProspectos!==''?'No hay registros para el programa seleccionado.':($aliadoFiltroProspectos!==''?'No hay prospectos para este aliado.':'No hay prospectos registrados.')) ?></strong></div></td></tr><?php endif; ?>
                 </tbody>
             </table>
         </div>
