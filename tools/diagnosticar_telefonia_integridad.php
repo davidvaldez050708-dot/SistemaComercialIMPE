@@ -12,6 +12,8 @@ try{
     require_once $root.'/app/services/TelefoniaRecepcionMarketingService.php';
     require_once $root.'/app/services/TelefoniaMisLlamadasService.php';
     $db=(new Database())->connect(false);
+    // La sesión de diagnóstico tampoco puede escribir accidentalmente.
+    $db->begin_transaction(MYSQLI_TRANS_START_READ_ONLY);
     // Una referencia es propia por su inicio, nunca por coincidencia de teléfono.
     $q=$db->prepare("SELECT pbx_call_id,MAX(received_at) fecha FROM telefonia_zadarma_eventos
         WHERE internal=BINARY ? AND evento IN('NOTIFY_INTERNAL','NOTIFY_OUT_START')
@@ -56,6 +58,7 @@ try{
         }
         $output[]=$item;
     }
+    $db->rollback();
     echo json_encode(['extension'=>$ext,'llamadas'=>$output,
         'limite'=>'Ocho referencias de los últimos tres días. Sin nombres, teléfonos, notas, credenciales ni enlaces de audio.',
         'alcance'=>'Un aviso de grabación no acredita que el archivo se pueda reproducir. Confirmar cada audio desde el CRM.'],

@@ -6,7 +6,7 @@ const {execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..'),php=process.env.PHP_BIN||'php';
 const zlib=require('node:zlib');
 const hostinger=process.env.IMPE_PHONE_HOSTINGER_VARIANT==='1';
-const variants=hostinger?JSON.parse(fs.readFileSync('tools/telefonia_conexion_release.json','utf8')).files:[];
+const variants=hostinger?JSON.parse(fs.readFileSync(process.env.IMPE_PHONE_MANIFEST||'tools/telefonia_conexion_release.json','utf8')).files:[];
 const variantSource=name=>{const row=variants.find(r=>r.path===name);return row?zlib.gunzipSync(Buffer.from(row.variants.at(-1).after,'base64')).toString('utf8'):null;};
 const render=(kind,role,out)=>{
  let html=execFileSync(php,['tests/fixtures/telefonia_conexion.php',kind,role,out?'salientes':''],{cwd:root,encoding:'utf8'});
