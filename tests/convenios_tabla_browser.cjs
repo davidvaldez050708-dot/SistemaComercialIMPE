@@ -50,7 +50,7 @@ const render=query=>execFileSync(php,[path.join(root,'tests/convenios_tabla_prev
   const detail=page.locator('#modalConvenioCrearConvocatoria'),editor=page.locator('#modalCrearConvocatoria');
   const row=title=>page.locator('[data-convenio-notification]').filter({hasText:title}).first();
   const closeDetail=async()=>{await detail.locator('.btn-close').click();await detail.waitFor({state:'hidden'});};
-  const capture=async name=>{if(out){fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,name+'.png'),fullPage:true});}};
+  const capture=async name=>{if(out){await page.waitForFunction(()=>[...document.querySelectorAll('.modal.show')].every(m=>!bootstrap.Modal.getInstance(m)?._isTransitioning));fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,name+'.png'),fullPage:true});}};
   for(const width of [1440,1366,1024,768,390,360]){
    await page.setViewportSize({width,height:900});await go();
    check(await page.locator('[data-convenio-group]').count()===2,'grupos por municipio '+width);
