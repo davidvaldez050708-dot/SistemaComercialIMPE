@@ -1,0 +1,67 @@
+name: Aliados - convocatorias pendientes compartidas
+on:
+  pull_request:
+  push:
+    paths:
+      - app/services/AliadoConvocatoriaPendienteService.php
+      - app/controllers/ReminderController.php
+      - app/controllers/ConvocatoriaNotificacionController.php
+      - app/views/layout/topbar.php
+      - public/javascript/convocatoria_notificaciones.js
+      - tests/aliados_convocatoria_pendientes_db.php
+      - tests/aliados_convocatoria_pendientes_smoke.php
+      - .github/workflows/aliados-convocatoria-pendientes.yml
+      - tools/publicar_notificaciones_aliados_convocatorias_hostinger.sh
+      - tests/publicacion_notificaciones_aliados_convocatorias_test.py
+permissions:
+  contents: read
+jobs:
+  validacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis y seguridad
+        run: |
+          php -l app/services/AliadoConvocatoriaPendienteService.php
+          php -l app/controllers/ReminderController.php
+          php -l app/controllers/ConvocatoriaNotificacionController.php
+          php -l app/views/layout/topbar.php
+          php -l tests/aliados_convocatoria_pendientes_smoke.php
+          node --check public/javascript/convocatoria_notificaciones.js
+          php tests/aliados_convocatoria_pendientes_smoke.php
+          python3 tests/publicacion_notificaciones_aliados_convocatorias_test.py
+  bd:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        server: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      db:
+        image: ${{ matrix.server }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports:
+          - 33139:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      IMPE_TEST_DB_HOST: 127.0.0.1
+      IMPE_TEST_DB_PORT: '33139'
+      IMPE_TEST_DB_USER: root
+      IMPE_TEST_DB_PASSWORD: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - name: Casos reales de SQL y responsabilidades
+        run: php tests/aliados_convocatoria_pendientes_db.php
