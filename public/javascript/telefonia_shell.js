@@ -159,8 +159,6 @@
     let mountFailed = '';
     let hostStartedAt = 0;
     let owned = false;
-    let autoRetries = 0;
-    let lastRecoveryAttempt = 0;
 
     // El host debe existir aunque los controles estén minimizados.
     // display:none sobre el contenedor apagaba algunos SDK.
@@ -638,7 +636,7 @@
         const otherOwner = !owned && Boolean(getLease());
 
         status.hidden = ready && !failed;
-        statusText.textContent = failed ||
+        statusText.textContent = failed || state?.message ||
             (otherOwner ? 'El teléfono está reservado en otra pestaña del CRM.' :
             hostFrame ? 'Preparando recepción de la extensión ' + cfg.extension + '…' :
             'El teléfono está disponible para conectarse.');

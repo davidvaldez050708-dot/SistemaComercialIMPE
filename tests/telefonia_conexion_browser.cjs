@@ -4,7 +4,15 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..'),php=process.env.PHP_BIN||'php';
-const render=(kind,role,out)=>execFileSync(php,['tests/fixtures/telefonia_conexion.php',kind,role,out?'salientes':''],{cwd:root,encoding:'utf8'});
+const zlib=require('node:zlib');
+const hostinger=process.env.IMPE_PHONE_HOSTINGER_VARIANT==='1';
+const variants=hostinger?JSON.parse(fs.readFileSync('tools/telefonia_conexion_release.json','utf8')).files:[];
+const variantSource=name=>{const row=variants.find(r=>r.path===name);return row?zlib.gunzipSync(Buffer.from(row.variants.at(-1).after,'base64')).toString('utf8'):null;};
+const render=(kind,role,out)=>{
+ let html=execFileSync(php,['tests/fixtures/telefonia_conexion.php',kind,role,out?'salientes':''],{cwd:root,encoding:'utf8'});
+ if(hostinger&&kind==='shell')html=html.replace(fs.readFileSync('public/javascript/telefonia_shell.js','utf8'),variantSource('public/javascript/telefonia_shell.js'));
+ return html;
+};
 const sdk=`
 window.__sdkStarts=0; window.__socketConnects=0;
 window.io=function(){
@@ -20,7 +28,7 @@ window.zadarmaWidgetFn=function(){window.__sdkStarts++;window.io('https://ws.zad
 let checks=0;const check=(value,msg)=>{assert.ok(value,msg);checks++;};
 (async()=>{
  const browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||undefined,
-  args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
+  args:['--autoplay-policy=no-user-gesture-required','--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
  try {
  for(const [role,out] of [['Marketing',false],['Analista de Datos',false],['Asesor de Ventas',false],['Asesor de Ventas',true]]){
   const context=await browser.newContext({permissions:['microphone'],viewport:{width:1366,height:900}});
@@ -37,7 +45,9 @@ let checks=0;const check=(value,msg)=>{assert.ok(value,msg);checks++;};
      return route.fulfill({json:{ok:true,webrtc_key:'synthetic',sip_login:'test-101'}});
     }
     if(url.pathname.startsWith('/public/')){
-     const file=path.join(root,url.pathname);if(fs.existsSync(file))return route.fulfill({path:file});
+     const file=path.join(root,url.pathname);
+     const custom=variantSource(url.pathname.slice(1));if(custom)return route.fulfill({body:custom,contentType:url.pathname.endsWith('.js')?'application/javascript':'text/html'});
+     if(fs.existsSync(file))return route.fulfill({path:file});
     }
     if(url.pathname.includes('/api/'))return route.fulfill({json:{ok:true,call:null,items:[],datos:[]}});
     return route.fulfill({contentType:'text/html',body:'<!doctype html><title>Módulo sintético</title><h1>CRM</h1>'});
@@ -57,6 +67,7 @@ let checks=0;const check=(value,msg)=>{assert.ok(value,msg);checks++;};
     await host().evaluate(step=>{Date.now=()=>__baseNow()+step*120000;return IMPE_PHONE_CONNECTION.check();},step);
    }
    check(keyRequests===3,'dos errores consecutivos se recuperan automáticamente');
+   await host().evaluate(()=>{Date.now=__baseNow;});
   }
   await page.waitForFunction(()=>document.querySelector('[data-shell-engine]')?.contentWindow.__sdkStarts===1);
   check(await host().evaluate(()=>window.__sdkStarts===1),role+': inicio automático único');
@@ -67,6 +78,15 @@ let checks=0;const check=(value,msg)=>{assert.ok(value,msg);checks++;};
   await host().evaluate(()=>{zdrmWebPhone.webPhoneUA={isRegistered:()=>true,isConnected:()=>true};});
   check(await host().evaluate(()=>IMPE_PHONE_CONNECTION.snapshot().sipRegistered),role+': SIP real separado');
   await host().evaluate(()=>{delete zdrmWebPhone.webPhoneUA;});
+  // Restricción de audio: la evidencia del canal no basta para poner verde.
+  await host().evaluate(()=>{window.__audioStatus=IMPE_CALL_AUDIO.getStatus;IMPE_CALL_AUDIO.getStatus=()=> 'suspended';});
+  check(!(await page.evaluate(()=>IMPE_TELEPHONY_SHELL.isPhoneReady())),role+': audio bloqueado no es disponible');
+  await host().evaluate(()=>IMPE_PHONE_CONNECTION.check());
+  await page.waitForFunction(()=>!document.querySelector('[data-shell-retry]').hidden && document.querySelector('[data-shell-status-text]').textContent.includes('Activar teléfono'));
+  check((await page.locator('[data-shell-status-text]').textContent()).includes('Activar teléfono'),role+': explicación de permiso visible');
+  await host().evaluate(()=>{IMPE_CALL_AUDIO.getStatus=__audioStatus;});
+  await page.locator('[data-shell-retry]').click();
+  await page.waitForFunction(()=>IMPE_TELEPHONY_SHELL.isPhoneReady());
   const direct=await context.newPage();
   await direct.goto('https://phone.test/index.php?controller=telefonia&action=host&display=tab');
   await direct.waitForTimeout(100);
@@ -114,6 +134,6 @@ let checks=0;const check=(value,msg)=>{assert.ok(value,msg);checks++;};
   check(errors.length===0,role+': sin errores JS: '+errors.join('; '));
   await context.close();
  }
- console.log('PASS conexión navegador: '+checks+' comprobaciones; transporte sintético, no llamadas reales Zadarma.');
+ console.log('PASS conexión navegador '+(hostinger?'Hostinger':'GitHub')+': '+checks+' comprobaciones; transporte sintético, no llamadas reales Zadarma.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

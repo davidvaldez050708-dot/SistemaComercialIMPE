@@ -393,10 +393,12 @@
     try {ownsTransport = window.parent !== window &&
         window.parent.IMPE_TELEPHONY_SHELL?.ownsPhoneHost?.(window) === true;} catch (_) {}
     let microphonePermission = 'prompt';
-    const mediaUsable = () => microphonePermission === 'granted';
+    const mediaUsable = () => microphonePermission === 'granted' &&
+        window.IMPE_CALL_AUDIO?.getStatus?.() === 'running';
+    window.IMPE_CALL_AUDIO?.unlock();
     const permissionMessage = () => microphonePermission === 'denied'
         ? 'El micrófono está bloqueado. Permítelo en los ajustes de este sitio y pulsa Activar teléfono.'
-        : 'Pulsa Activar teléfono para autorizar el micrófono y el audio del navegador.';
+        : 'Pulsa Activar teléfono para autorizar el micrófono y habilitar el audio del navegador.';
     void navigator.permissions?.query({name:'microphone'}).then(permission => {
         const update = () => {microphonePermission = permission.state; publish({});};
         update(); permission.addEventListener('change', update);
@@ -412,6 +414,7 @@
         return initialization;
     };
     let healthTask = null;
+    const connectionStartedAt = Date.now();
     const performHealthCheck = async function () {
         if (!ownsTransport) return connection.snapshot();
         // Un temporizador retrasado no termina una llamada ni recrea el SDK.
@@ -425,6 +428,8 @@
             if (!active) publish({phase:health.verified && ['error','initializing','idle'].includes(state.phase) ? 'ready' : state.phase,
                 message:health.verified ? (mediaUsable() ? '' : permissionMessage()) :
                 !health.online ? 'Sin conexión de red. Reconectaremos al volver.' :
+                Date.now()-connectionStartedAt > 30000 ?
+                'No se ha confirmado la conexión con Zadarma. Reintentando; verifica la red y el acceso al proveedor.' :
                 'Verificando conexión con Zadarma…'});
             return health;
         } catch (error) {
@@ -440,7 +445,7 @@
     };
     window.IMPE_PHONE_CONNECTION = Object.freeze({
         snapshot: () => ({...connection.snapshot(), sdkReady:widgetReady,
-            verified:connection.snapshot().verified && mediaUsable(), microphone:microphonePermission}),
+            verified:connection.snapshot().verified && mediaUsable(), microphone:microphonePermission, audio:window.IMPE_CALL_AUDIO?.getStatus?.() || 'unavailable'}),
         check: checkConnection,
         activate: async () => {
             window.IMPE_CALL_AUDIO?.unlock();
