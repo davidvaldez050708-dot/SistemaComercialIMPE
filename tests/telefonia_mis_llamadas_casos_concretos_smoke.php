@@ -66,8 +66,11 @@ $expect(str_contains($shell,"'alwaysReceive' => \$puedeRecibirShell"),
 $expect(str_contains($shell,"'incomingResultsUrl' => BASE_URL . 'index.php?controller=telefonia&action=misLlamadas&vista=recibidas'"),
     'Avisos PBX dirigen a Mis llamadas');
 $recovery = file_get_contents(ROOT_PATH.'/public/javascript/telefonia_shell.js');
-$expect(str_contains($recovery,'!currentState?.active') &&
-    str_contains($recovery,'lastRecoveryAttempt > 60000') &&
-    !str_contains($recovery,'autoRetries < 3'),
-    'No reiniciar llamadas activas; reconectar cuando el motor deja de responder');
+$hostRecovery = file_get_contents(ROOT_PATH.'/public/javascript/telefonia_host.js');
+$connection = file_get_contents(ROOT_PATH.'/public/javascript/telefonia_conexion.js');
+$expect(!str_contains($recovery,'hostFrame.remove()') &&
+    str_contains($hostRecovery,'const active = state.active || Boolean(liveSession') &&
+    str_contains($connection,'if (active || !health.online') &&
+    str_contains($connection,'socket.connect()'),
+    'No reiniciar llamadas activas; reconectar el transporte existente sin expirar dueño');
 echo "OK: llamada 20, transferencia 100→101, sin respuesta, devolución, 00:00 y autoconexión\n";

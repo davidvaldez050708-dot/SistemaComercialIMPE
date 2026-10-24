@@ -32,6 +32,8 @@ jobs:
           node --check public/javascript/telefonia_host.js
           node --check public/javascript/telefonia_shell.js
           node --check public/javascript/telefonia_persistente.js
+          php tests/telefonia_entrantes_interfaz_smoke.php
+          php tests/telefonia_mis_llamadas_casos_concretos_smoke.php
           php tests/telefonia_shell_smoke.php
           php tests/telefonia_shell_render_smoke.php
           php tests/telefonia_ux_admin_smoke.php
