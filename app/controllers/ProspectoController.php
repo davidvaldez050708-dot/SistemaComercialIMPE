@@ -9,7 +9,7 @@ class ProspectoController
         $this->validarAcceso();
 
         $tituloPagina = 'Prospectos';
-        $subtituloPagina = 'Consulta y organiza los prospectos registrados por estado.';
+        $subtituloPagina = 'Consulta los prospectos por aliado de origen o en el listado general.';
         $opcionActiva = 'prospectos';
         $mensajeError = '';
         $listado = ['registros' => [], 'total' => 0, 'pagina' => 1, 'paginas' => 1];

@@ -2,8 +2,7 @@
 .prospectos-fase1.prospectos-access{max-width:620px;margin:10vh auto;padding:20px}
 .prospectos-fase1 [hidden]{display:none!important}
 .prospectos-fase1>*,.prospectos-fase1 .prospectos-panel{min-width:0;max-width:100%}
-.prospectos-fase1 .prospectos-message,.prospectos-fase1 .prospectos-loading{display:flex;align-items:center;gap:10px;margin:0;padding:13px 16px;border:1px solid #efcdca;border-radius:12px;background:#fff5f4;color:#913b35;font-size:12px;font-weight:600;line-height:1.5}
-.prospectos-fase1 .prospectos-loading{border-color:var(--color-border,#dfe5ef);background:#f3f7fd;color:var(--color-primary,#273a8a)}
+.prospectos-fase1 .prospectos-message{display:flex;align-items:center;gap:10px;margin:0;padding:13px 16px;border:1px solid #efcdca;border-radius:12px;background:#fff5f4;color:#913b35;font-size:12px;font-weight:600;line-height:1.5}
 .prospectos-fase1 .prospectos-summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .prospectos-fase1 .aliados-summary-card{min-height:84px;padding:16px}
 .prospectos-fase1 .aliados-summary-card strong{font-size:24px}
@@ -51,3 +50,9 @@
 @media(max-width:991.98px){.prospectos-fase1 .prospectos-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.prospectos-fase1 .prospectos-state-toolbar{align-items:stretch;flex-direction:column;gap:16px}.prospectos-fase1 .prospectos-state-toolbar form{width:100%}}
 @media(max-width:767.98px){.prospectos-fase1{gap:14px}.prospectos-fase1 .prospectos-state-grid{grid-template-columns:minmax(0,1fr)}.prospectos-fase1 .prospectos-list-filters{grid-template-columns:minmax(0,1fr)}.prospectos-fase1 .prospectos-list-filters>button{justify-self:start}.prospectos-fase1 .prospectos-state-toolbar{padding:18px}.prospectos-fase1 .prospectos-state-navigation{gap:10px;flex-wrap:nowrap}.prospectos-fase1 .prospectos-state-navigation form{flex:1}.prospectos-fase1 .prospectos-state-navigation label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.prospectos-fase1 .prospectos-state-navigation select,.prospectos-fase1 .prospectos-state-navigation .uniform-select{min-width:0;max-width:none;flex:1}.prospectos-fase1 .aliados-summary-card{padding:12px;gap:8px}.prospectos-fase1 .aliados-summary-card strong{font-size:22px}.prospectos-fase1 .aliados-summary-icon{width:30px;height:30px;font-size:14px}.prospectos-fase1 .prospectos-total{display:flex;align-items:center;gap:8px;padding:6px 10px;min-width:0}.prospectos-fase1 .prospectos-total strong{font-size:20px}.prospectos-fase1 .prospectos-heading-main{gap:10px}.prospectos-fase1 .prospectos-icon{width:40px;height:40px;font-size:20px}.prospectos-fase1 .prospectos-heading h2{font-size:16px}}
 @media(prefers-reduced-motion:reduce){.prospectos-fase1 .data-territorial-card{transition:none;transform:none}}
+
+/* El buscador tiene un único foco en su contenedor, como los filtros del sistema. */
+.prospectos-fase1 .module-search .form-control:focus,
+.prospectos-fase1 .module-search .form-control:focus-visible{outline:none;box-shadow:none;border:0;background:transparent}
+.prospectos-fase1 .module-search:focus-within{border-color:var(--color-primary,#273a8a);box-shadow:0 0 0 3px rgba(39,58,138,.10)}
+.prospectos-fase1 .prospectos-territory-note{margin:0 0 18px;line-height:1.5}

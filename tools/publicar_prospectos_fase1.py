@@ -9,7 +9,7 @@ def validar_bd(site):
         require $argv[1].'/config/db_connection.php';
         $db=(new Database())->connect(false);
         $db->query('START TRANSACTION READ ONLY');
-        $required=['formulario_registros'=>['id','nombre','apellido','fecha_nacimiento','movil','movil_secundario','tel_recomendado','correo','perfil_interes','lugar_laboras','cargo_puesto','estado_id','municipio_id','origen','created_at'],'estados'=>['id','nombre','estado'],'municipios'=>['id','nombre']];
+        $required=['formulario_registros'=>['id','nombre','apellido','fecha_nacimiento','movil','movil_secundario','tel_recomendado','correo','perfil_interes','lugar_laboras','cargo_puesto','estado_id','municipio_id','origen','created_at'],'estados'=>['id','nombre','estado'],'municipios'=>['id','nombre'],'formulario_aliados'=>['id','seguimiento_id'],'formulario_aliado_registro'=>['aliado_id','manual_id','seguimiento_id'],'aliados_manuales'=>['id','estado_id'],'seguimientos_vinculacion'=>['id','estado_id']];
         foreach($required as $table=>$columns){$actual=array_column($db->query('SHOW COLUMNS FROM '.$table)->fetch_all(MYSQLI_ASSOC),'Field');if(array_diff($columns,$actual))throw new RuntimeException('Estructura incompleta: '.$table);}
         $origin=(bool)$db->query("SHOW TABLES LIKE 'formulario_aliado_procedencias'")->num_rows;
         if($origin){$columns=array_column($db->query('SHOW COLUMNS FROM formulario_aliado_procedencias')->fetch_all(MYSQLI_ASSOC),'Field');$origin=!array_diff(['id','tipo','registro_id','aliado_id','aliado_nombre','programa_codigo'],$columns);}

@@ -18,11 +18,7 @@
         input?.addEventListener('input',filter);
         root.querySelector('[data-prospectos-state-search-form]')?.addEventListener('submit',event=>{event.preventDefault();filter();});
         if(input)filter();
-        const loading=root.querySelector('[data-prospectos-loading]');
-        const busy=()=>{root.setAttribute('aria-busy','true');if(loading)loading.hidden=false;};
-        root.querySelectorAll('[data-prospectos-navegacion]').forEach(form=>form.addEventListener('submit',busy));
-        root.addEventListener('click',event=>{if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(event.target.closest('a[href]'))busy();});
-        window.addEventListener('pageshow',()=>{root.removeAttribute('aria-busy');if(loading)loading.hidden=true;});
+
     };
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
