@@ -48,6 +48,35 @@ El publicador respalda los archivos originales antes de cambiarlos. Anota la rut
 
 ## Restaurar sólo si se necesita deshacer la entrega
 
+### Ajuste posterior: quitar la barra vertical de cada tabla
+
+Si el directorio ya está publicado, este paquete cambia únicamente su CSS. El contenedor crece con todas las filas y conserva sólo el desplazamiento horizontal cuando falta ancho. Pasaron 87 comprobaciones de navegador, con zoom de 100 %, 110 %, 125 % y 150 %, y cinco pruebas de publicación/restauración.
+
+En SSH, reutilizar el publicador descargado en la instalación anterior:
+
+```bash
+PREP="$HOME/impe-convenios-tabla-105bf9a0"
+SITIO="$HOME/domains/fundacionrededumex.org/public_html"
+SCROLL_REV=5abd1844a27f98b37db5573eaa94c4be8a696d11
+curl -fL "https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/$SCROLL_REV/tools/convenios_tabla_scroll_release.json" -o "$PREP/ajuste-scroll.json" &&
+(cd "$PREP" && printf '%s\n' '26e44c2d1db7f83a6dbe8d23fa17053f3c03b6306daf65fd4480db3d00e22ec7  ajuste-scroll.json' | sha256sum -c -) &&
+python3 "$PREP/publicar.py" --site "$SITIO" \
+ --manifest "$PREP/ajuste-scroll.json" \
+ --backup-root "$HOME/respaldos-impe-convenios-tabla" --check
+```
+
+Tras revisar `REVISIÓN COMPATIBLE: 1 archivos`, aplicar:
+
+```bash
+python3 "$PREP/publicar.py" --site "$SITIO" \
+ --manifest "$PREP/ajuste-scroll.json" \
+ --backup-root "$HOME/respaldos-impe-convenios-tabla" --apply
+```
+
+Recargar Convenios con Ctrl+F5. Para restaurar sólo este ajuste, usar la ruta de su propio respaldo y el manifiesto `ajuste-scroll.json`.
+
+## Restauración de la entrega inicial
+
 Usa la ruta completa real que imprimió el publicador. No ejecutes el siguiente bloque con el texto de ejemplo sin sustituirlo:
 
 ```bash
