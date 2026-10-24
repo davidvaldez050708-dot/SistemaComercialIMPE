@@ -7,6 +7,7 @@ const server=spawn(php,['-S',new URL(base).host,'-t',root,path.join(__dirname,'r
  for(let i=0;i<70;i++){try{await fetch(base+'_beca_links');break;}catch{await new Promise(r=>setTimeout(r,100));}}
  browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});const auth=await browser.newContext(),publicContext=await browser.newContext(),page=await publicContext.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await publicContext.route('https://**/*',r=>r.request().url().includes('/bootstrap.bundle.min.js')?r.fulfill({path:path.join(process.env.IMPE_BROWSER_DEPS||path.resolve(root,'../browser-deps/node_modules'),'bootstrap/dist/js/bootstrap.bundle.min.js'),contentType:'application/javascript'}):r.abort());
+ await auth.route('https://**/*',r=>r.abort());
  const links=await(await auth.request.get(base+'_beca_links')).json();const old=links.url,next=old.replace('/el-primer-paso-hacia-tu-meta-comienza-aqui/','/obtener-beca/');
  await auth.request.get(base+'_beca_session');const endpoint=base+'index.php?controller=formulario&action=acortarRegistro';
  let response=await auth.request.post(endpoint,{form:{url:old,csrf_token:'a'.repeat(64)}});check(response.ok()&&(await response.json()).url===next,'Generar enlace de un aliado existente devuelve la ruta nueva con el mismo código');
