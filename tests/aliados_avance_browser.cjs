@@ -41,6 +41,7 @@ const initial=()=>[1,2].map(id=>({id,titulo:id===1?'Bachillerato · Publicación
     const b=bar.getBoundingClientRect(),c=cells[5].getBoundingClientRect(),last=cells[6].getBoundingClientRect(),buttons=[...actions.querySelectorAll(':scope > button,:scope > .aliados-actions-menu > button')];
     return b.right<=c.right+1&&b.left>=c.left&&buttons.every(n=>{const r=n.getBoundingClientRect();return r.left>=last.left-1&&r.right<=last.right+1&&r.left-b.right>=8;});
    })),'barra y acciones dentro de sus columnas '+width);
+   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'iconos sin desbordamiento de página '+width);
    check(await page.getByRole('button',{name:'Programas del aliado',exact:true}).count()===2&&await page.getByRole('button',{name:'Compartir convocatoria',exact:true}).count()===2,'iconos con nombres accesibles '+width);
    if(process.env.IMPE_AVANCE_OUTPUT)await page.screenshot({path:path.join(process.env.IMPE_AVANCE_OUTPUT,'directorio-iconos-'+width+'.png'),fullPage:true});
    await open('manual');
