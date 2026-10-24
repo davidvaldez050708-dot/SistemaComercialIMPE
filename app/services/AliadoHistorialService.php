@@ -91,7 +91,7 @@ class AliadoHistorialService
             $fila['ultimo_envio_canal'] = $last['canal'];
             $fila['ultima_convocatoria_titulo'] = $last['convocatoria_titulo'];
             // Resumen derivado del evento: no simula un seguimiento de Vinculación.
-            $fila['seguimiento_convocatoria_estado'] = $last['estado_envio'] === 'ENVIADO' ? 'ESPERANDO_RESPUESTA' : ($last['estado_envio'] === 'COMPARTIDO' ? 'COMPARTIDA_MANUALMENTE' : 'REGISTRO_MANUAL');
+            $fila['seguimiento_convocatoria_estado'] = ''; // La respuesta humana se consulta por convocatoria.
         }
         unset($fila);
         return $filas;

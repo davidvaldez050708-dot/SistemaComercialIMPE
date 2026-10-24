@@ -1,4 +1,4 @@
-name: Aliados historial unificado
+name: Aliados avance por convocatoria
 on:
   pull_request:
     paths:
@@ -6,6 +6,11 @@ on:
       - 'app/views/aliados/**'
       - 'public/javascript/aliados*'
       - 'tests/aliados_historial*'
+      - 'tests/aliados_avance*'
+      - 'public/css/aliados_avance.css'
+      - 'tools/*aliados_avance*'
+      - 'tools/migrar_aliados_respuestas.php'
+      - 'database/migrations/2026_10_23_aliados_respuestas.sql'
       - 'tests/publicacion_aliados_historial_test.py'
       - 'tools/aliados_historial_release.json'
       - 'tools/preparar_aliados_historial_release.py'
@@ -39,6 +44,8 @@ jobs:
       PLAYWRIGHT_MODULE_PATH: /tmp/aliados-historial-browser/node_modules/playwright
       BROWSER_DEPS: /tmp/aliados-historial-browser/node_modules
       IMPE_HISTORIAL_OUTPUT: /tmp/aliados-historial-visual
+      IMPE_AVANCE_OUTPUT: /tmp/aliados-historial-visual/avance
+      IMPE_TEST_AVANCE: 1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,7 +66,10 @@ jobs:
           /tmp/aliados-historial-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Normalización, diseño y entrega reversible
         run: |
+          php tests/aliados_avance_unit.php
           php tests/aliados_historial_unit.php
+          node tests/aliados_avance_browser.cjs
+          python3 tests/publicacion_aliados_avance_test.py
           node tests/aliados_historial_browser.cjs
           python3 tests/publicacion_aliados_historial_test.py
       - name: Preparación de base desechable
@@ -76,7 +86,11 @@ jobs:
       - name: Proveedor simulado, SQL y controlador HTTP reales
         run: |
           php tests/aliados_compartir_db.php
+          php tools/migrar_aliados_respuestas.php --apply
+          php tools/migrar_aliados_respuestas.php --check
+          php tools/migrar_aliados_respuestas.php --apply
           php tests/aliados_historial_db.php
+          php tests/aliados_avance_db.php
           python3 tests/aliados_historial_http.py
       - uses: actions/upload-artifact@v4
         if: always()

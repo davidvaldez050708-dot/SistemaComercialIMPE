@@ -33,7 +33,7 @@ const render=q=>execFileSync(php,[path.join(root,'tests/aliados_historial_previe
    await page.setViewportSize({width,height:900});await go();
    check(await rows.evaluateAll(rs=>rs.every(r=>{const items=[...r.querySelector('.aliados-actions').children];return items[0].matches('[data-registro-abrir]')&&items[1].matches('[data-aliado-share]')&&items[2].matches('.aliados-actions-menu');})),'Programas, Compartir, Más en ambos orígenes '+width);
    check(await row('manual').locator('.aliados-last-send').textContent().then(s=>s.includes('Bachillerato General')),'última difusión manual visible '+width);
-   check(await row('manual').locator('td').nth(5).textContent().then(s=>s.includes('Esperando respuesta')),'seguimiento manual derivado del correo '+width);
+   check(await row('manual').locator('td').nth(5).textContent().then(s=>s.includes('1 de 2 compartidas')),'avance manual separado de la respuesta '+width);
    check(await page.locator('[data-manual-difusion-form],#modalManualHistorial').count()===0,'sin formulario duplicado de difusión '+width);
    check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'sin desbordamiento de página '+width);await capture('directorio-'+width);
    await open('manual');

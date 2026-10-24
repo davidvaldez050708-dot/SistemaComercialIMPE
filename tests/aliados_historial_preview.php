@@ -9,7 +9,7 @@ if(($_GET['role']??'')==='consulta')$permisos=['aliados.ver','aliados.ver_histor
 if(($_GET['role']??'')==='sin-historial')$permisos=['aliados.ver','aliados.gestionar_programas'];
 $_SESSION=['usuario_id'=>2,'rol_id'=>4,'rol'=>'Cuenta Clave','permisos'=>$permisos];
 $event=AliadoHistorialService::normalizarManual(['id'=>8,'canal'=>'CORREO','realizado_at'=>'2026-10-23 22:32:18','responsable'=>'Susana Molina','nota'=>'Convocatoria #13 · Bachillerato General · Campus A · BACHILLERATO EXAMEN ÚNICO IEPFI · contacto@example.test']);
-$common=['id'=>1,'estado_id'=>1,'estado_nombre'=>'Guanajuato','municipio_id'=>1,'municipio_nombre'=>'Celaya','contacto_nombre'=>'Lic. Contacto de prueba','contacto_cargo'=>'Coordinación académica','correo_contacto'=>'contacto@example.test','analista_nombre'=>'Diego Bahena','convenio_formalizado_at'=>'2025-12-05','registro_programas'=>'Bachillerato General · Inglés','situacion'=>'VIGENTE','ultimo_envio_id'=>8,'ultimo_envio_canal'=>'CORREO','ultimo_envio_at'=>$event['enviado_at'],'seguimiento_convocatoria_estado'=>'ESPERANDO_RESPUESTA'];
+$common=['difusion_avance'=>['total'=>2,'compartidas'=>1,'pendientes'=>1],'id'=>1,'estado_id'=>1,'estado_nombre'=>'Guanajuato','municipio_id'=>1,'municipio_nombre'=>'Celaya','contacto_nombre'=>'Lic. Contacto de prueba','contacto_cargo'=>'Coordinación académica','correo_contacto'=>'contacto@example.test','analista_nombre'=>'Diego Bahena','convenio_formalizado_at'=>'2025-12-05','registro_programas'=>'Bachillerato General · Inglés','situacion'=>'VIGENTE','ultimo_envio_id'=>8,'ultimo_envio_canal'=>'CORREO','ultimo_envio_at'=>$event['enviado_at'],'seguimiento_convocatoria_estado'=>'ESPERANDO_RESPUESTA'];
 $manual=$common+['origen_tipo'=>'manual','origen_id'=>1,'seguimiento_id'=>0,'nombre_entidad'=>'Instituto de Estudios de Prevención y Formación Interdisciplinaria (IEPFI)','ultima_convocatoria_titulo'=>$event['convocatoria_titulo']];
 $inst=$common+['origen_tipo'=>'institucional','origen_id'=>1,'seguimiento_id'=>1,'nombre_entidad'=>'Instituto de la Juventud Celayense','ultima_convocatoria_titulo'=>'Bachillerato General · Convocatoria institucional'];
 if(($_GET['preview']??'')==='historial'){
@@ -29,10 +29,12 @@ function renderRegistroPreview($estado,$texto){
     // Sustituir exclusivamente la consulta inicial del catálogo por un catálogo sintético.
     eval('?><?php if (tienePermiso("aliados.gestionar_programas")): ?>'.substr($partial,$start+2));
 }
+function renderAvancePreview($texto){require __DIR__.'/../app/views/aliados/partials/avance_difusion.php';}
 function renderAliadosPreview(){
     extract($GLOBALS,EXTR_SKIP);
     $view=file_get_contents(__DIR__.'/../app/views/aliados/estado.php');
     $view=str_replace("require __DIR__ . '/partials/registro_gestion.php';",'renderRegistroPreview($estado,$texto);',$view);
+    $view=str_replace("require __DIR__ . '/partials/avance_difusion.php';",'renderAvancePreview($texto);',$view);
     eval('?>'.$view);
 }
 ?><!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="<?= str_repeat('a',64) ?>">

@@ -6,11 +6,12 @@ require_once __DIR__ . '/../services/RegistroEnlaceService.php';
 class AliadoModel
 {
     private $connection;
+    private array $tablasConfirmadas = [];
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
         $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection ?? $database->connect();
     }
 
     public function estructuraDisponible()
@@ -156,7 +157,9 @@ class AliadoModel
             }
         }
         require_once __DIR__ . '/../services/AliadoHistorialService.php';
-        return (new AliadoHistorialService($this->connection))->decorarManuales($registro->decorar($filas));
+        require_once __DIR__ . '/../services/AliadoAvanceService.php';
+        $filas = (new AliadoHistorialService($this->connection))->decorarManuales($registro->decorar($filas));
+        return (new AliadoAvanceService($this->connection))->decorarListado($filas);
     }
 
     public function obtenerAliado($seguimientoId, $usuarioId, $esAdministrador = false)
@@ -235,7 +238,7 @@ class AliadoModel
     }
 
     /** Publicaciones propias: nunca inferir pertenencia por territorio. */
-    public function obtenerConvocatoriasAsociadas(string $tipo,int $id): array
+    public function obtenerConvocatoriasAsociadas(string $tipo,int $id,bool $incluirEnlace = true): array
     {
         require_once __DIR__.'/../services/AliadoRegistroService.php';
         if(!in_array($tipo,['manual','institucional'],true)||$id<=0)return [];
@@ -278,7 +281,7 @@ class AliadoModel
               WHERE c.estado=1 AND c.fecha_inicio<=CURDATE() AND c.fecha_termino>=CURDATE()
               ORDER BY c.fecha_termino,c.id";
         $params[]=$perfil['id'];$s=$this->connection->prepare($sql);$s->bind_param(str_repeat('s',count($params)),...$params);$s->execute();$filas=$s->get_result()->fetch_all(MYSQLI_ASSOC);
-        $enlace=(new RegistroEnlaceService($this->connection))->acortar(BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.rawurlencode($perfil['token']));
+        $enlace=$incluirEnlace ? (new RegistroEnlaceService($this->connection))->acortar(BASE_URL.'index.php?controller=formularioPublico&action=registro&aliado='.rawurlencode($perfil['token'])) : '';
         foreach($filas as &$fila){$fila['enlace_registro']=$enlace;$fila['estado_texto']='Publicada · Vigente';}
         return $filas;
     }
@@ -1758,11 +1761,10 @@ class AliadoModel
             return false;
         }
 
-        $resultado = $this->connection->query(
-            "SHOW TABLES LIKE '" . $tabla . "'"
-        );
-
-        return $resultado && $resultado->num_rows > 0;
+        if (isset($this->tablasConfirmadas[$tabla])) return true;
+        $resultado = $this->connection->query("SHOW TABLES LIKE '" . $tabla . "'");
+        if ($resultado && $resultado->num_rows > 0) { $this->tablasConfirmadas[$tabla] = true; return true; }
+        return false;
     }
 
     private function columnaExiste($tabla, $columna)

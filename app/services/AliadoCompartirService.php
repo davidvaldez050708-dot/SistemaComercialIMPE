@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/AliadoRegistroService.php';
 require_once __DIR__.'/AliadoDifusionService.php';
+require_once __DIR__.'/AliadoAvanceService.php';
 
 /** Adaptador de Compartir: origen explícito; la difusión territorial histórica no cambia. */
 class AliadoCompartirService
@@ -76,7 +77,8 @@ class AliadoCompartirService
         $solicitudes=$_SESSION['aliado_compartir_operaciones']??[];
         $solicitudes[$nonce]=['origen'=>$o['tipo'].':'.$o['id'],'creado'=>time()];
         $_SESSION['aliado_compartir_operaciones']=array_slice($solicitudes,-40,null,true);
-        return ['ok'=>true,'aliado'=>$o['aliado'],'convocatorias'=>$this->publicaciones($o),'canales'=>$this->canales($o),'operacion_id'=>$nonce];
+        $avance=(new AliadoAvanceService($this->db))->publicaciones($o['tipo'],$o['id'],$this->publicaciones($o));
+        return ['ok'=>true,'aliado'=>$o['aliado'],'convocatorias'=>$avance['convocatorias'],'avance'=>$avance,'canales'=>$this->canales($o),'operacion_id'=>$nonce];
     }
     public function borrador(array $datos): array
     {
