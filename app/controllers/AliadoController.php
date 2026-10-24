@@ -472,6 +472,7 @@ class AliadoController
         header('Cache-Control: no-store, private');
         require_once __DIR__.'/../services/AliadoAvanceService.php';
         try {
+            if (empty($_SESSION['usuario_id'])) throw new DomainException('Inicia sesión nuevamente.',401);
             if ($guardar && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') throw new DomainException('Método no permitido.',405);
             if ($guardar && (empty($_SESSION['csrf_token']) || !is_string($_POST['csrf_token'] ?? null) || !hash_equals($_SESSION['csrf_token'],$_POST['csrf_token']))) throw new DomainException('Recarga la página e intenta nuevamente.',419);
             $datos=$guardar?$_POST:$_GET;

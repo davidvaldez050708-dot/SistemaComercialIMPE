@@ -547,7 +547,7 @@ $seguimientoVista = static function ($estado) {
                                                 <div class="aliados-avance-summary" data-avance-summary data-origen="<?= $tipoAvance ?>" data-id="<?= $idAvance ?>">
                                                     <strong data-avance-count><?= (int)$avance['compartidas'] ?> de <?= (int)$avance['total'] ?> compartidas</strong>
                                                     <progress value="<?= (int)$avance['compartidas'] ?>" max="<?= max(1,(int)$avance['total']) ?>" aria-label="Avance de difusión"></progress>
-                                                    <span data-avance-pending><?= $avance['total'] ? ((int)$avance['pendientes'].' pendientes de compartir') : 'Sin convocatorias vigentes para compartir' ?></span>
+                                                    <span data-avance-pending><?= $avance['total'] ? ($avance['pendientes'] ? ((int)$avance['pendientes'].' pendientes de compartir') : 'Todas las convocatorias vigentes compartidas') : 'Sin convocatorias vigentes para compartir' ?></span>
                                                     <?php if ($puedeConsultarConvocatorias || $puedeVerHistorial): ?>
                                                     <button type="button" class="aliados-avance-link" data-avance-abrir data-origen="<?= $tipoAvance ?>" data-id="<?= $idAvance ?>">Ver avance y respuestas <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
                                                     <?php endif; ?>
