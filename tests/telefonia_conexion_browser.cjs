@@ -12,7 +12,22 @@ const variants=hostinger?[
  // La entrega selectiva no sustituye shell, vistas ni audio sin cambios.
  ...JSON.parse(fs.readFileSync(priorManifest,'utf8')).files
 ]:[];
-const variantSource=name=>{const row=variants.find(r=>r.path===name);return row?zlib.gunzipSync(Buffer.from(row.variants.at(-1).after,'base64')).toString('utf8'):null;};
+const operaPatches=JSON.parse(fs.readFileSync('tools/telefonia_opera_release.json','utf8')).files;
+const variantSource=name=>{
+ const row=variants.find(r=>r.path===name);
+ if(!row)return null;
+ let source=zlib.gunzipSync(Buffer.from(row.variants.at(-1).after,'base64')).toString('utf8');
+ const patch=operaPatches.find(p=>p.path===name);
+ if(patch)for(const [before,after] of patch.patches){
+  if(after && source.includes(after))continue;
+  if(!source.includes(before)){
+   if(!after && !source.includes('impe-phone-classic-link'))continue;
+   throw Error('Variante Hostinger no conciliable en '+name);
+  }
+  source=source.replace(before,after);
+ }
+ return source;
+};
 const render=(kind,role,out)=>{
  let html=execFileSync(php,['tests/fixtures/telefonia_conexion.php',kind,role,out?'salientes':''],{cwd:root,encoding:'utf8'});
  if(hostinger&&kind==='shell')html=html.replace(fs.readFileSync('public/javascript/telefonia_shell.js','utf8'),variantSource('public/javascript/telefonia_shell.js'));
