@@ -113,6 +113,21 @@
         let loading = false;
         let initialized = false;
         let receptionConfigured = false;
+        // Abrir la fila es inmediato; la confirmación del audio privado sigue
+        // pendiente hasta que el servidor entregue una respuesta válida.
+        function mostrarComprobacion(slot) {
+            slot.setAttribute('aria-busy', 'true');
+            const status = node('div', 'marketing-reception-muted');
+            status.setAttribute('role', 'status');
+            const spinner = node('span', 'spinner-border spinner-border-sm');
+            spinner.setAttribute('aria-hidden', 'true');
+            status.append(spinner, document.createTextNode(' Preparando grabación…'));
+            slot.replaceChildren(status);
+        }
+        function mostrarErrorGrabacion(slot, mensaje) {
+            slot.replaceChildren(node('p', 'linkage-incoming-player-error',
+                mensaje || 'No fue posible consultar la grabación. Inténtalo nuevamente.'));
+        }
 
         function formatDuration(seconds) {
             const s = Math.max(0, Number(seconds) || 0);
@@ -381,9 +396,10 @@
         async function loadHistory(manual) {
             if (loading) return;
             if (resultModalOpen) return;
-            // No interrumpir una reproducción abierta con el refresco periódico.
-            if (!manual && Array.from(tableBody.querySelectorAll('audio'))
-                .some(function (audio) { return !audio.paused; })) return;
+            // No cerrar el reproductor al refrescar, aunque el audio esté
+            // pausado o el servidor todavía esté verificando su disponibilidad.
+            if (!manual && Array.from(tableBody.querySelectorAll(
+                '.telephony-history-recording-row')).some(row => !row.hidden)) return;
             loading = true;
             refresh.disabled = true;
             refresh.querySelector('i')?.classList.add('marketing-reception-spinning');
@@ -442,7 +458,8 @@
             });
         }
 
-        // Transferencias: solo audios PBX validados por el servidor y la extensión.
+        // Abrir inmediatamente; la verificación remota sólo decide si puede
+        // mostrarse audio, no si se puede desplegar la fila.
         tableBody.addEventListener('click', async function (event) {
             const button = event.target.closest('[data-marketing-pbx-audio]');
             if (!button) return;
@@ -453,75 +470,108 @@
             if (!detail.hidden) {
                 detail.querySelectorAll('audio').forEach(a => a.pause());
                 detail.hidden = true;
-                button.setAttribute('aria-expanded','false');
+                button.setAttribute('aria-expanded', 'false');
+                button.classList.remove('is-open');
                 return;
             }
+            detail.hidden = false;
+            button.setAttribute('aria-expanded', 'true');
+            button.classList.add('is-open');
             const slot = detail.querySelector('[data-marketing-pbx-audios]');
+            if (!slot || slot.dataset.recordingLoaded === '1' ||
+                slot.dataset.recordingLoading === '1') return;
+            slot.dataset.recordingLoading = '1';
+            mostrarComprobacion(slot);
             const endpoint = new URL(button.dataset.marketingPbxAudio);
-            endpoint.searchParams.set('verificar','1');
-            button.disabled = true;
+            endpoint.searchParams.set('verificar', '1');
+            const controller = new AbortController();
+            const timeout = window.setTimeout(() => controller.abort(), 12000);
             try {
-                const response = await fetch(endpoint.toString(),{
-                    credentials:'same-origin',cache:'no-store'});
+                const response = await fetch(endpoint.toString(), {
+                    credentials: 'same-origin', cache: 'no-store', signal: controller.signal
+                });
                 if (!response.ok) throw new Error('No se pudo verificar la grabación.');
                 const info = await response.json();
                 if (!info.ok || !info.disponible || !(info.segmentos > 0))
-                    throw new Error('Zadarma todavía no tiene todos los segmentos.');
-                if (!window.IMPE_TELEPHONY_SEGMENTS?.create(
-                    slot, endpoint.toString(), info.segmentos, info.segmentos_info||[])) {
+                    throw new Error('La grabación todavía está en preparación.');
+                if (!detail.isConnected) return;
+                slot.replaceChildren();
+                if (!window.IMPE_TELEPHONY_SEGMENTS?.create?.(
+                    slot, endpoint.toString(), info.segmentos, info.segmentos_info || [])) {
                     throw new Error('No fue posible preparar el reproductor.');
                 }
+                slot.dataset.recordingLoaded = '1';
             } catch (error) {
-                slot.replaceChildren(node('p','linkage-incoming-player-error',
-                    error.message || 'Grabación no disponible.'));
+                if (detail.isConnected) mostrarErrorGrabacion(slot,
+                    error.name === 'AbortError'
+                        ? 'La consulta tardó demasiado. Inténtalo nuevamente.'
+                        : error.message);
             } finally {
-                detail.hidden = false;
-                button.disabled = false;
-                button.setAttribute('aria-expanded','true');
+                window.clearTimeout(timeout);
+                delete slot.dataset.recordingLoading;
+                slot.removeAttribute('aria-busy');
             }
         });
 
-        // is_recorded sólo garantiza que Zadarma reportó una grabación.
-        // Comprobar el enlace al abrir, sin presentar un reproductor falso.
+        // Cada llamada normal continúa validándose desde el endpoint
+        // privado. La fila, el estado de carga y su cierre son inmediatos.
         tableBody.addEventListener('click', async function (event) {
             const button = event.target.closest('[data-sales-recording-toggle]');
             if (!button || button.dataset.recordingVerified === '1') return;
             event.preventDefault();
             event.stopPropagation();
-            if (button.disabled) return;
-            button.disabled = true;
-            button.innerHTML = '<i class="bi bi-hourglass-split" aria-hidden="true"></i>' +
-                '<span>Comprobando…</span>';
+            const detail = document.getElementById(button.getAttribute('aria-controls'));
+            if (!detail) return;
+            if (!detail.hidden) {
+                detail.hidden = true;
+                button.setAttribute('aria-expanded', 'false');
+                button.classList.remove('is-open');
+                return;
+            }
+            detail.hidden = false;
+            button.setAttribute('aria-expanded', 'true');
+            button.classList.add('is-open');
+            const slot = detail.querySelector('[data-sales-recording-slot]');
+            if (!slot || button.dataset.recordingChecking === '1') return;
+            button.dataset.recordingChecking = '1';
+            mostrarComprobacion(slot);
+            const controller = new AbortController();
+            const timeout = window.setTimeout(() => controller.abort(), 12000);
             try {
                 const url = new URL(button.dataset.recordingUrl, window.location.href);
                 url.searchParams.set('verificar', '1');
                 const response = await fetch(url.toString(), {
-                    credentials:'same-origin', cache:'no-store',
-                    headers: {Accept:'application/json'}
+                    credentials: 'same-origin', cache: 'no-store',
+                    headers: {Accept: 'application/json'}, signal: controller.signal
                 });
                 const result = await response.json();
-                if (!response.ok || !result.ok) throw new Error('Verificación fallida');
-                if (!result.disponible) {
-                    button.innerHTML = '<i class="bi bi-clock-history" aria-hidden="true"></i>' +
-                        '<span>Aún no disponible</span>';
-                    button.title = 'La centralita reportó el audio, pero Zadarma todavía no ' +
-                        'lo entrega. Puedes volver a comprobar más tarde.';
-                    return;
-                }
+                if (!response.ok || !result.ok)
+                    throw new Error('No fue posible verificar la grabación.');
+                if (!result.disponible)
+                    throw new Error('La grabación todavía está en preparación.');
+                if (!detail.isConnected) return;
                 button.dataset.recordingVerified = '1';
                 button.classList.add('is-available');
-                button.innerHTML = '<i class="bi bi-record-circle" aria-hidden="true"></i>' +
-                    '<span>Consultar grabación</span>' +
-                    '<i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>';
-                button.disabled = false;
-                // El reproductor compartido escucha el clic delegado y abre la fila.
-                button.click();
-            } catch (_) {
-                button.innerHTML = '<i class="bi bi-exclamation-circle" aria-hidden="true"></i>' +
-                    '<span>No disponible · Reintentar</span>';
-                button.title = 'No fue posible obtener la grabación. Puedes reintentar cuando Zadarma entregue el audio.';
+                button.title = 'Consultar grabación';
+                slot.replaceChildren();
+                if (!detail.hidden) {
+                    // El reproductor compartido de Asesor conserva los mismos
+                    // controles. El cambio de fila es síncrono y no parpadea.
+                    detail.hidden = true;
+                    button.setAttribute('aria-expanded', 'false');
+                    button.click();
+                }
+            } catch (error) {
+                if (!detail.isConnected) return;
+                mostrarErrorGrabacion(slot,
+                    error.name === 'AbortError'
+                        ? 'La consulta tardó demasiado. Inténtalo nuevamente.'
+                        : error.message);
+                button.title = 'La grabación no pudo verificarse. Puedes volver a intentarlo.';
             } finally {
-                button.disabled = false;
+                window.clearTimeout(timeout);
+                delete button.dataset.recordingChecking;
+                slot.removeAttribute('aria-busy');
             }
         }, true);
 

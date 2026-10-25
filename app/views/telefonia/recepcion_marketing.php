@@ -18,7 +18,6 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <div>
                 <span class="marketing-reception-eyebrow">TU RECEPCIÓN</span>
                 <h2>Recepción telefónica</h2>
-                <p>Consulta tus llamadas entrantes y salientes desde esta extensión, sin mezclar expedientes ni prospectos.</p>
             </div>
         </div>
         <div class="marketing-reception-actions">
@@ -46,14 +45,6 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
     </div>
     <div class="marketing-reception-details" id="marketingRecepcionHistorial"
         data-marketing-reception-details>
-    <p class="marketing-reception-browser-note" data-marketing-reception-browser-note hidden>
-        <i class="bi bi-info-circle" aria-hidden="true"></i>
-        <span>El teléfono permanece conectado mientras mantengas abierto el CRM.
-            Si se abrió en otra ventana, puedes minimizarla; mantenla abierta para recibir llamadas.</span>
-    </p>
-    <div class="marketing-reception-explainer" data-marketing-reception-hint>
-        Estamos verificando la extensión telefónica asignada a tu usuario.
-    </div>
     <div class="marketing-reception-metrics" aria-label="Resumen telefónico de los últimos 30 días">
         <article class="marketing-reception-metric">
             <span class="marketing-reception-metric-icon"><i class="bi bi-telephone-inbound" aria-hidden="true"></i></span>
@@ -125,7 +116,6 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             </button>
         </div>
 
-    <p class="marketing-reception-history-note">El estado lo confirma la centralita. El resultado lo registra recepción y queda definitivo al guardarlo.</p>
     <div class="table-responsive marketing-reception-table-scroll">
         <table class="table align-middle marketing-reception-table telephony-history-table">
             <thead>
