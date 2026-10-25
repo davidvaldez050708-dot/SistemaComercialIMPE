@@ -179,6 +179,41 @@ try {
  vreject(fn()=>$transferAudio->resolver($ref,9,'destino','150',$audios),'Otro asesor no accede a los audios de la transferencia');
  vreject(fn()=>$transferAudio->resolver($ref,7,'origen','150',$audios),'Recepción no usurpa extensión de Ventas');
 
+ // Dos llamadas entrantes del mismo número, distintas referencias exactas.
+ foreach(['pbx-inbound-transfer-one','pbx-inbound-transfer-two'] as $incomingRef){
+  $route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>8,'extension'=>'150','referencia_llamada'=>$incomingRef]);
+  $q=$db->prepare("INSERT INTO telefonia_disponibilidad(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,ruta_json,estado,expires_at,created_at,updated_at) VALUES(7,'100',8,'150',?,'+525551112233',?,'TRANSFERIDA',UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())");$q->bind_param('ss',$incomingRef,$route);$q->execute();$q->close();
+  $q=$db->prepare("INSERT INTO telefonia_transferencia_operaciones(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,modo,estado,evento_desde,created_at,updated_at) VALUES(7,'100',8,'150',?,'+525551112233','DIRECTA','ENTREGADA',0,UTC_TIMESTAMP(),UTC_TIMESTAMP())");$q->bind_param('s',$incomingRef);$q->execute();$q->close();
+  $event($incomingRef,'NOTIFY_INTERNAL','100');$event($incomingRef,'NOTIFY_ANSWER','100');
+  $event($incomingRef,'NOTIFY_INTERNAL','150',0,['transfer_from'=>'100']);$event($incomingRef,'NOTIFY_ANSWER','150');
+  $event($incomingRef,'NOTIFY_END','100',62,['last_internal'=>'150','disposition'=>'answered']);
+  foreach(['reception','advisor'] as $part)$event($incomingRef,'NOTIFY_RECORD','',0,['call_id_with_rec'=>$incomingRef.'-'.$part]);
+  $incomingStats=static fn()=>[
+   ['pbx_call_id'=>$incomingRef,'call_id'=>$incomingRef.'-reception','sip'=>'100','seconds'=>25,'disposition'=>'answered','is_recorded'=>true],
+   ['pbx_call_id'=>$incomingRef,'call_id'=>$incomingRef.'-advisor','sip'=>'150','seconds'=>37,'disposition'=>'answered','is_recorded'=>true],
+   ['pbx_call_id'=>'pbx-foreign-same-number','call_id'=>'foreign-audio','sip'=>'150','seconds'=>100]
+  ];
+  $seenIds=[];$incomingRecord=static function($id)use(&$seenIds){$seenIds[]=$id;return ['link'=>'https://provider.test/'.$id];};
+  $sales=$transferAudio->resolver($incomingRef,8,'destino','150',$incomingRecord,$incomingStats);
+  $reception=$transferAudio->resolver($incomingRef,7,'origen','100',$incomingRecord,$incomingStats);
+  vcheck($sales['segmentos']===2&&$sales['segmentos_info']===$reception['segmentos_info'],'Entrante ofrece los mismos dos tramos en Recepción y Ventas');
+  vcheck($sales['segundos']===37&&$reception['segundos']===25,'Duraciones independientes por extensión, no heredar cierre global de 62 segundos');
+  vcheck(!in_array('foreign-audio',$seenIds,true),'Nunca solicitar audio ajeno por teléfono coincidente');
+  $partial=$transferAudio->resolver($incomingRef,8,'destino','150',static fn($id)=>str_ends_with($id,'-advisor')?['link'=>'https://provider.test/'.$id]:null);
+  vcheck($partial['estado']==='DISPONIBLE_PARCIAL'&&$partial['segmentos_info'][0]['indice']===1,'Segundo tramo disponible conserva su índice aunque el primero se prepare');
+  $pending=$transferAudio->resolver($incomingRef,8,'destino','150',static fn()=>null);
+  vcheck($pending['estado']==='GRABACION_EN_PREPARACION','Entrante autorizada sin archivo se informa en preparación');
+  $temporary=$transferAudio->resolver($incomingRef,8,'destino','150',static function(){throw new RuntimeException('provider unavailable');});
+  vcheck($temporary['estado']==='ERROR_TEMPORAL','Distinguir caída del proveedor de archivo en preparación');
+  vreject(fn()=>$transferAudio->resolver($incomingRef,9,'destino','150',$incomingRecord),'Otro asesor no accede a la entrante transferida');
+  $svc->sincronizar(8);$incomingCall=$svc->obtener(8,$incomingRef,'150');
+  vcheck($incomingCall['finalizada']&&$incomingCall['segundos']===null,'Cierre global recibido sin inventar duración propia');
+  $evidence=new TelefoniaVentasEvidenciaService($db);
+  $confirmedDuration=$evidence->consultar($incomingCall,$incomingStats,$incomingRecord);
+  vcheck($confirmedDuration['segundos']===37,'Conciliación POST confirma duración propia');
+  vcheck($svc->obtener(8,$incomingRef,'150')['segundos']===37,'Duración confirmada persiste al volver al historial');
+ }
+
  vreject(fn()=>$results->guardar(8,$ref,'INTERESADO'),'Resultado único, no reemplazar notas');
  vreject(fn()=>$results->guardar(9,$ref,'INTERESADO'),'Otro usuario no puede clasificar esa transferencia');
  vcheck($ops->paraDestinoConfirmado(8,$rid,'sdk-different-session-123456')===null,'Otra sesión no hereda transferencia vinculada');

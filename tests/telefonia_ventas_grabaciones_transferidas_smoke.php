@@ -38,4 +38,24 @@ $foreign=$events;$foreign[]=$e('NOTIFY_RECORD','','evil?url');
 ok(count(TelefoniaGrabacionesTransferenciaVentasService::referenciasVerificadas($foreign,'100','150'))===2,'ID manipulado descartado');
 $full=$events;for($i=3;$i<=9;$i++)$full[]=$e('NOTIFY_RECORD','','1439981389.2702'.str_pad((string)$i,3,'0',STR_PAD_LEFT));
 denied(static fn()=>TelefoniaGrabacionesTransferenciaVentasService::referenciasVerificadas($full,'100','150'),'más de ocho tramos');
-echo "OK: dos RECORD firmados, PBX común, OUT_END previo, sin identificar extensión por suposición, rechazo de terceros y duplicados\n";
+// La llamada externa entra a Recepción antes de transferirse a Ventas.
+$incoming=[
+ $e('NOTIFY_INTERNAL','100'),$e('NOTIFY_ANSWER','100'),
+ $e('NOTIFY_INTERNAL','150')+['payload_json'=>'{"transfer_from":"100"}'],
+ $e('NOTIFY_ANSWER','150'),$e('NOTIFY_END','100')+['last_internal'=>'150'],
+ $e('NOTIFY_RECORD','','incoming-record-100'),$e('NOTIFY_RECORD','','incoming-record-150')
+];
+ok(count(TelefoniaGrabacionesTransferenciaVentasService::referenciasVerificadas($incoming,'100','150'))===2,'entrante transferida conserva ambos audios');
+ok(count(TelefoniaGrabacionesTransferenciaVentasService::referenciasVerificadas(array_reverse($incoming),'100','150'))===2,'avisos tardíos no cambian la propiedad del grupo');
+$noAnswer=$incoming;unset($noAnswer[1]);
+denied(static fn()=>TelefoniaGrabacionesTransferenciaVentasService::referenciasVerificadas($noAnswer,'100','150'),'timbre de Recepción sin atención no acredita transferencia');
+$noDest=$incoming;unset($noDest[3]);
+denied(static fn()=>TelefoniaGrabacionesTransferenciaVentasService::referenciasVerificadas($noDest,'100','150'),'entrante sin respuesta del asesor');
+$thirdIn=$incoming;$thirdIn[]=$e('NOTIFY_ANSWER','151');
+denied(static fn()=>TelefoniaGrabacionesTransferenciaVentasService::referenciasVerificadas($thirdIn,'100','150'),'tercer participante en entrante');
+$durations=[['extension'=>'100','segundos'=>44],['extension'=>'150','segundos'=>18]];
+ok(TelefoniaGrabacionesTransferenciaVentasService::duracionPropia($durations,'150')===18,'duración propia sin copiar los 44 segundos de Recepción');
+ok(TelefoniaGrabacionesTransferenciaVentasService::duracionPropia([$durations[0]],'150')===null,'sin duración propia no hereda la del origen');
+ok(TelefoniaGrabacionesTransferenciaVentasService::duracionPropia(array_merge($durations,[$durations[1]]),'150')===null,'no sumar tramos potencialmente solapados');
+ok(TelefoniaGrabacionesTransferenciaVentasService::duracionPropia([['extension'=>'150','segundos'=>null]],'150')===null,'duración desconocida no es cero');
+echo "OK: grabaciones entrantes y salientes, eventos tardíos, terceros rechazados y duración propia sin suposiciones\n";
