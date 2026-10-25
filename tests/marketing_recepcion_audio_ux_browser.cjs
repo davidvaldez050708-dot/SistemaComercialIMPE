@@ -116,7 +116,7 @@ try{
  await second.click();await second.click();
  ok(pendingDirect.length===1,'permite reintento desde fila');
  await pendingDirect.shift().fulfill({json:{ok:true,disponible:true}});
- await secondRow.locator('audio').waitFor();
+ await secondRow.locator('audio').waitFor({state:'attached'});
  ok((await secondRow.locator('audio').count())===1,'reintento exitoso conserva llamada');
  ok(errors.length===0,'sin errores de JavaScript: '+errors.join('; '));
  await context.close();
