@@ -40,9 +40,11 @@ $checks = [
     'Autorecepción exclusivamente para Marketing autorizado' =>
         str_contains($html, '"autoReception":true') &&
         str_contains($html, '"extension":"100"'),
-    'Respaldo visible con JavaScript deshabilitado' =>
-        str_contains($html, '<noscript>') &&
-        str_contains($html, 'entra al CRM clásico'),
+    'Explicación sin salida clásica para navegadores sin JavaScript' =>
+        preg_match('/<noscript>(.*?)<\\/noscript>/s', $html, $sinJs) === 1 &&
+        str_contains($sinJs[1], 'Activa JavaScript en tu navegador') &&
+        !str_contains($sinJs[1], '<a ') &&
+        !str_contains($html, 'class="impe-phone-classic-link"'),
     'Sin códigos secretos publicados' =>
         !str_contains($html, 'api_secret') &&
         !str_contains($html, 'api_key'),

@@ -2216,23 +2216,58 @@
                     '…'
     });
 
-    if (ownsTransport) void checkConnection();
-    else if (navigator.locks?.request) {
-        publish({message:'El teléfono está reservado en otra pestaña del CRM.'});
+    const legacyBusy = function (lease) {
+        const now = Date.now(), last = Number(lease?.time || 0);
+        if (last > 0 && last <= now + 10000 && now - last < 30000) return true;
+        // Conservar evidencia que estaba presente ANTES de publicar nuestro
+        // estado loading: evita confundir este host con una pestaña anterior.
+        const candidates = [previousState];
+        try { candidates.push(JSON.parse(localStorage.getItem(stateKey) || 'null')); }
+        catch (_) { /* Estado anterior dañado. */ }
+        return candidates.some(previous => {
+            const at = Number(previous?.updatedAt || 0);
+            if (Number(previous?.userId) !== userId || at <= 0 || at > now + 10000) return false;
+            return (previous.active && now - at < 600000) ||
+                (previous.hostReady && now - at < 30000);
+        });
+    };
+    const reconcileLegacy = function () {
+        try {
+            const key = 'impe:telephony:shell-owner:' + userId;
+            const raw = localStorage.getItem(key);
+            if (!raw) return true;
+            let legacy;
+            try { legacy = JSON.parse(raw); } catch (_) { legacy = null; }
+            if (!legacy || legacy.version === 2) return true;
+            if (legacyBusy(legacy)) return false;
+            if (localStorage.getItem(key) !== raw) return false;
+            localStorage.removeItem(key);
+            return true;
+        } catch (_) { return false; }
+    };
+    let transportLockRequested = false;
+    const claimTransport = function () {
+        if (ownsTransport || transportLockRequested || !navigator.locks?.request) return;
+        transportLockRequested = true;
+        publish({message:'Comprobando la disponibilidad del teléfono en este navegador…'});
         void navigator.locks.request('impe:telephony:shell-owner:' + userId, async () => {
-            let legacy = null;
-            try {legacy = JSON.parse(localStorage.getItem('impe:telephony:shell-owner:' + userId) || 'null');} catch (_) {}
-            if (legacy && legacy.version !== 2) {
-                publish({phase:'error',message:'Cierra las pestañas anteriores del CRM para actualizar el teléfono.'});
+            if (!reconcileLegacy()) {
+                publish({phase:'error',
+                    message:'Comprobando una conexión anterior del teléfono. Si ya se cerró, se activará automáticamente.'});
                 return;
             }
             ownsTransport = true;
             const holding = new Promise(resolve => {releaseTransport = resolve;});
-            void checkConnection();
-            await holding;
-            ownsTransport = false;
-        }).catch(() => publish({phase:'error',message:'No se pudo reservar el teléfono.'}));
-    } else publish({phase:'error',message:'Abre el teléfono desde el CRM en un navegador compatible.'});
+            try { void checkConnection(); await holding; }
+            finally { ownsTransport = false; releaseTransport = null; }
+        }).catch(() => publish({phase:'error',message:'No se pudo reservar el teléfono.'}))
+          .finally(() => { transportLockRequested = false; });
+    };
+    if (ownsTransport) void checkConnection();
+    else if (navigator.locks?.request) claimTransport();
+    else publish({phase:'error',message:'Abre el teléfono desde el CRM en un navegador compatible.'});
+    // Una reserva antigua fresca se revisa sola: no exige F12 ni recargar Opera.
+    setInterval(() => { if (!ownsTransport) claimTransport(); }, 10000);
     addEventListener('pagehide',event => {if (!event.persisted) releaseTransport?.();});
 
     setInterval(function () {

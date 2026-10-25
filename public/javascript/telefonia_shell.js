@@ -177,18 +177,50 @@
         try {localStorage.setItem(leaseKey,JSON.stringify({id:owner,time:Date.now(),version:2}));}
         catch (_) { /* Web Locks sigue siendo la autoridad entre pestañas. */ }
     };
+    // Migración segura: un registro de la versión anterior permanece en Opera
+    // incluso tras cerrar todas las pestañas. Solo quitarlo si NO hay señales
+    // recientes del teléfono previo. Nunca tocar una llamada en curso reciente.
+    const legacyBusy = function (lease) {
+        const now = Date.now(), last = Number(lease?.time || 0);
+        if (last > 0 && last <= now + 10000 && now - last < 30000) return true;
+        try {
+            const previous = JSON.parse(localStorage.getItem(stateKey) || 'null');
+            const at = Number(previous?.updatedAt || 0);
+            if (Number(previous?.userId) !== userId || at <= 0 || at > now + 10000) return false;
+            if (previous.active && now - at < 600000) return true;
+            if (previous.hostReady && now - at < 30000) return true;
+        } catch (_) { /* El registro de estado no es una sesión válida. */ }
+        return false;
+    };
+    const reconcileLegacy = function () {
+        try {
+            const raw = localStorage.getItem(leaseKey);
+            if (!raw) return true;
+            let lease;
+            try { lease = JSON.parse(raw); } catch (_) { lease = null; }
+            if (!lease || lease.version === 2 || lease.id === owner) return true;
+            if (legacyBusy(lease)) {
+                mountFailed = 'Comprobando una conexión anterior del teléfono. Si ya se cerró, se activará automáticamente.';
+                return false;
+            }
+            // No quitar el dueño si otro documento lo actualizó mientras se comprobaba.
+            if (localStorage.getItem(leaseKey) !== raw) return false;
+            localStorage.removeItem(leaseKey);
+            return true;
+        } catch (_) {
+            mountFailed = 'No se pudo verificar la conexión anterior. Comprueba el almacenamiento del navegador.';
+            return false;
+        }
+    };
     const claimLease = function () {
         if (owned) return true;
         if (locks?.request) {
             if (!lockRequested) {
                 lockRequested = true;
                 void locks.request(leaseKey, async () => {
-                    // Una pestaña antigua no participa en Web Locks: no robar su motor.
-                    const legacy = getLease();
-                    if (legacy && legacy.version !== 2 && legacy.id !== owner) {
-                        mountFailed = 'Cierra las pestañas anteriores del CRM para actualizar el teléfono.';
-                        return;
-                    }
+                    // Proteger una pestaña antigua viva, pero recuperar el navegador
+                    // automáticamente cuando dejó un registro abandonado.
+                    if (!reconcileLegacy()) { render(); return; }
                     owned = true; writeOwner();
                     const holding = new Promise(resolve => {unlock = resolve;});
                     try {ensureHost(); render(); await holding;}
@@ -200,7 +232,8 @@
             }
             return false;
         }
-        // Compatibilidad conservadora: nunca vencer un dueño por falta de heartbeat.
+        // Sin Web Locks, tampoco bloquear por un registro antiguo abandonado.
+        if (!reconcileLegacy()) return false;
         const lease = getLease();
         if (lease && lease.id !== owner) return false;
         try {writeOwner(); owned = getLease()?.id === owner; return owned;}

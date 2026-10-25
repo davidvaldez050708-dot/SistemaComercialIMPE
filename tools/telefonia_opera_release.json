@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "description": "Telefono Opera: recuperación de registros antiguos y retirada de modo clásico sin alterar el CSS personalizado",
+  "base": "34d9d4ccd80d3b35fda56daa8de9569667a4a787",
+  "files": [
+    {
+      "path": "public/javascript/telefonia_shell.js",
+      "patches": [
+        [
+          "    const writeOwner = () => {\n        try {localStorage.setItem(leaseKey,JSON.stringify({id:owner,time:Date.now(),version:2}));}\n        catch (_) { /* Web Locks sigue siendo la autoridad entre pestañas. */ }\n    };\n",
+          "    const writeOwner = () => {\n        try {localStorage.setItem(leaseKey,JSON.stringify({id:owner,time:Date.now(),version:2}));}\n        catch (_) { /* Web Locks sigue siendo la autoridad entre pestañas. */ }\n    };\n    // Migración segura: un registro de la versión anterior permanece en Opera\n    // incluso tras cerrar todas las pestañas. Solo quitarlo si NO hay señales\n    // recientes del teléfono previo. Nunca tocar una llamada en curso reciente.\n    const legacyBusy = function (lease) {\n        const now = Date.now(), last = Number(lease?.time || 0);\n        if (last > 0 && last <= now + 10000 && now - last < 30000) return true;\n        try {\n            const previous = JSON.parse(localStorage.getItem(stateKey) || 'null');\n            const at = Number(previous?.updatedAt || 0);\n            if (Number(previous?.userId) !== userId || at <= 0 || at > now + 10000) return false;\n            if (previous.active && now - at < 600000) return true;\n            if (previous.hostReady && now - at < 30000) return true;\n        } catch (_) { /* El registro de estado no es una sesión válida. */ }\n        return false;\n    };\n    const reconcileLegacy = function () {\n        try {\n            const raw = localStorage.getItem(leaseKey);\n            if (!raw) return true;\n            let lease;\n            try { lease = JSON.parse(raw); } catch (_) { lease = null; }\n            if (!lease || lease.version === 2 || lease.id === owner) return true;\n            if (legacyBusy(lease)) {\n                mountFailed = 'Comprobando una conexión anterior del teléfono. Si ya se cerró, se activará automáticamente.';\n                return false;\n            }\n            // No quitar el dueño si otro documento lo actualizó mientras se comprobaba.\n            if (localStorage.getItem(leaseKey) !== raw) return false;\n            localStorage.removeItem(leaseKey);\n            return true;\n        } catch (_) {\n            mountFailed = 'No se pudo verificar la conexión anterior. Comprueba el almacenamiento del navegador.';\n            return false;\n        }\n    };\n"
+        ],
+        [
+          "                    // Una pestaña antigua no participa en Web Locks: no robar su motor.\n                    const legacy = getLease();\n                    if (legacy && legacy.version !== 2 && legacy.id !== owner) {\n                        mountFailed = 'Cierra las pestañas anteriores del CRM para actualizar el teléfono.';\n                        return;\n                    }\n                    owned = true; writeOwner();\n",
+          "                    // Proteger una pestaña antigua viva, pero recuperar el navegador\n                    // automáticamente cuando dejó un registro abandonado.\n                    if (!reconcileLegacy()) { render(); return; }\n                    owned = true; writeOwner();\n"
+        ],
+        [
+          "        // Compatibilidad conservadora: nunca vencer un dueño por falta de heartbeat.\n        const lease = getLease();\n        if (lease && lease.id !== owner) return false;\n",
+          "        // Sin Web Locks, tampoco bloquear por un registro antiguo abandonado.\n        if (!reconcileLegacy()) return false;\n        const lease = getLease();\n        if (lease && lease.id !== owner) return false;\n"
+        ]
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_host.js",
+      "patches": [
+        [
+          "    if (ownsTransport) void checkConnection();\n    else if (navigator.locks?.request) {\n        publish({message:'El teléfono está reservado en otra pestaña del CRM.'});\n        void navigator.locks.request('impe:telephony:shell-owner:' + userId, async () => {\n            let legacy = null;\n            try {legacy = JSON.parse(localStorage.getItem('impe:telephony:shell-owner:' + userId) || 'null');} catch (_) {}\n            if (legacy && legacy.version !== 2) {\n                publish({phase:'error',message:'Cierra las pestañas anteriores del CRM para actualizar el teléfono.'});\n                return;\n            }\n            ownsTransport = true;\n            const holding = new Promise(resolve => {releaseTransport = resolve;});\n            void checkConnection();\n            await holding;\n            ownsTransport = false;\n        }).catch(() => publish({phase:'error',message:'No se pudo reservar el teléfono.'}));\n    } else publish({phase:'error',message:'Abre el teléfono desde el CRM en un navegador compatible.'});\n",
+          "    const legacyBusy = function (lease) {\n        const now = Date.now(), last = Number(lease?.time || 0);\n        if (last > 0 && last <= now + 10000 && now - last < 30000) return true;\n        // Conservar evidencia que estaba presente ANTES de publicar nuestro\n        // estado loading: evita confundir este host con una pestaña anterior.\n        const candidates = [previousState];\n        try { candidates.push(JSON.parse(localStorage.getItem(stateKey) || 'null')); }\n        catch (_) { /* Estado anterior dañado. */ }\n        return candidates.some(previous => {\n            const at = Number(previous?.updatedAt || 0);\n            if (Number(previous?.userId) !== userId || at <= 0 || at > now + 10000) return false;\n            return (previous.active && now - at < 600000) ||\n                (previous.hostReady && now - at < 30000);\n        });\n    };\n    const reconcileLegacy = function () {\n        try {\n            const key = 'impe:telephony:shell-owner:' + userId;\n            const raw = localStorage.getItem(key);\n            if (!raw) return true;\n            let legacy;\n            try { legacy = JSON.parse(raw); } catch (_) { legacy = null; }\n            if (!legacy || legacy.version === 2) return true;\n            if (legacyBusy(legacy)) return false;\n            if (localStorage.getItem(key) !== raw) return false;\n            localStorage.removeItem(key);\n            return true;\n        } catch (_) { return false; }\n    };\n    let transportLockRequested = false;\n    const claimTransport = function () {\n        if (ownsTransport || transportLockRequested || !navigator.locks?.request) return;\n        transportLockRequested = true;\n        publish({message:'Comprobando la disponibilidad del teléfono en este navegador…'});\n        void navigator.locks.request('impe:telephony:shell-owner:' + userId, async () => {\n            if (!reconcileLegacy()) {\n                publish({phase:'error',\n                    message:'Comprobando una conexión anterior del teléfono. Si ya se cerró, se activará automáticamente.'});\n                return;\n            }\n            ownsTransport = true;\n            const holding = new Promise(resolve => {releaseTransport = resolve;});\n            try { void checkConnection(); await holding; }\n            finally { ownsTransport = false; releaseTransport = null; }\n        }).catch(() => publish({phase:'error',message:'No se pudo reservar el teléfono.'}))\n          .finally(() => { transportLockRequested = false; });\n    };\n    if (ownsTransport) void checkConnection();\n    else if (navigator.locks?.request) claimTransport();\n    else publish({phase:'error',message:'Abre el teléfono desde el CRM en un navegador compatible.'});\n    // Una reserva antigua fresca se revisa sola: no exige F12 ni recargar Opera.\n    setInterval(() => { if (!ownsTransport) claimTransport(); }, 10000);\n"
+        ]
+      ]
+    },
+    {
+      "path": "app/views/telefonia/shell.php",
+      "patches": [
+        [
+          "    <noscript>\n      <p style=\"margin:20px;font:600 14px system-ui\">\n        Activa JavaScript para usar telefonía integrada o\n        <a href=\"<?= htmlspecialchars(BASE_URL . 'index.php?controller=home&action=index', ENT_QUOTES, 'UTF-8') ?>\">\n            entra al CRM clásico\n        </a>.\n      </p>\n    </noscript>\n",
+          "    <noscript>\n      <p style=\"margin:20px;font:600 14px system-ui\">\n        Activa JavaScript en tu navegador para utilizar el CRM y su teléfono integrado.\n      </p>\n    </noscript>\n"
+        ],
+        [
+          "        <a class=\"impe-phone-classic-link\"\n           href=\"<?= htmlspecialchars(BASE_URL . 'index.php?controller=home&action=index', ENT_QUOTES, 'UTF-8') ?>\"\n           title=\"Volver al CRM sin navegación persistente\">Modo clásico</a>\n",
+          ""
+        ]
+      ]
+    }
+  ]
+}
