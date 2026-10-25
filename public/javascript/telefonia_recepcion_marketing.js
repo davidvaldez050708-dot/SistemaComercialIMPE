@@ -458,7 +458,8 @@
             });
         }
 
-        // Transferencias: solo audios PBX validados por el servidor y la extensión.
+        // Abrir inmediatamente; la verificación remota sólo decide si puede
+        // mostrarse audio, no si se puede desplegar la fila.
         tableBody.addEventListener('click', async function (event) {
             const button = event.target.closest('[data-marketing-pbx-audio]');
             if (!button) return;
@@ -469,31 +470,46 @@
             if (!detail.hidden) {
                 detail.querySelectorAll('audio').forEach(a => a.pause());
                 detail.hidden = true;
-                button.setAttribute('aria-expanded','false');
+                button.setAttribute('aria-expanded', 'false');
+                button.classList.remove('is-open');
                 return;
             }
+            detail.hidden = false;
+            button.setAttribute('aria-expanded', 'true');
+            button.classList.add('is-open');
             const slot = detail.querySelector('[data-marketing-pbx-audios]');
+            if (!slot || slot.dataset.recordingLoaded === '1' ||
+                slot.dataset.recordingLoading === '1') return;
+            slot.dataset.recordingLoading = '1';
+            mostrarComprobacion(slot);
             const endpoint = new URL(button.dataset.marketingPbxAudio);
-            endpoint.searchParams.set('verificar','1');
-            button.disabled = true;
+            endpoint.searchParams.set('verificar', '1');
+            const controller = new AbortController();
+            const timeout = window.setTimeout(() => controller.abort(), 12000);
             try {
-                const response = await fetch(endpoint.toString(),{
-                    credentials:'same-origin',cache:'no-store'});
+                const response = await fetch(endpoint.toString(), {
+                    credentials: 'same-origin', cache: 'no-store', signal: controller.signal
+                });
                 if (!response.ok) throw new Error('No se pudo verificar la grabación.');
                 const info = await response.json();
                 if (!info.ok || !info.disponible || !(info.segmentos > 0))
-                    throw new Error('Zadarma todavía no tiene todos los segmentos.');
-                if (!window.IMPE_TELEPHONY_SEGMENTS?.create(
-                    slot, endpoint.toString(), info.segmentos, info.segmentos_info||[])) {
+                    throw new Error('La grabación todavía está en preparación.');
+                if (!detail.isConnected) return;
+                slot.replaceChildren();
+                if (!window.IMPE_TELEPHONY_SEGMENTS?.create?.(
+                    slot, endpoint.toString(), info.segmentos, info.segmentos_info || [])) {
                     throw new Error('No fue posible preparar el reproductor.');
                 }
+                slot.dataset.recordingLoaded = '1';
             } catch (error) {
-                slot.replaceChildren(node('p','linkage-incoming-player-error',
-                    error.message || 'Grabación no disponible.'));
+                if (detail.isConnected) mostrarErrorGrabacion(slot,
+                    error.name === 'AbortError'
+                        ? 'La consulta tardó demasiado. Inténtalo nuevamente.'
+                        : error.message);
             } finally {
-                detail.hidden = false;
-                button.disabled = false;
-                button.setAttribute('aria-expanded','true');
+                window.clearTimeout(timeout);
+                delete slot.dataset.recordingLoading;
+                slot.removeAttribute('aria-busy');
             }
         });
 
