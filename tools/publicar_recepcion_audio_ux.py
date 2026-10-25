@@ -151,10 +151,12 @@ def main():
             abort('El archivo no usa UTF-8: ' + name)
         updated = source
         for before, after, marker in entry['patches']:
+            # Los parches aditivos incluyen el anclaje antiguo en el código
+            # nuevo. Comprobar primero el resultado para evitar duplicados.
+            if after and updated.count(after) == 1:
+                continue
             if updated.count(before) == 1:
                 updated = updated.replace(before, after, 1)
-            elif after and updated.count(after) == 1:
-                continue
             elif not after and marker and marker not in updated:
                 continue
             else:
