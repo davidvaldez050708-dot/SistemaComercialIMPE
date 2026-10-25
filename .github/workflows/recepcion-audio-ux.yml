@@ -1,0 +1,30 @@
+name: Recepcion compacta y grabaciones fluidas
+on:
+  pull_request:
+    paths:
+      - app/views/telefonia/recepcion_marketing.php
+      - public/javascript/telefonia_recepcion_marketing.js
+      - tests/marketing_recepcion_audio_ux_browser.cjs
+      - .github/workflows/recepcion-audio-ux.yml
+permissions:
+  contents: read
+jobs:
+  recepcion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          php -l app/views/telefonia/recepcion_marketing.php
+          node --check public/javascript/telefonia_recepcion_marketing.js
+          php tests/telefonia_marketing_recepcion_integrada_smoke.php
+          php tests/marketing_recepcion_operativa_smoke.php
+          node tests/marketing_recepcion_historial_smoke.js
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/marketing_recepcion_audio_ux_browser.cjs
