@@ -65,7 +65,7 @@ class PublicacionOperaTests(unittest.TestCase):
     def test_unknown_variant_is_blocked_atomically(self):
         path=self.site/FILES[0]
         data=path.read_bytes().replace(
-            b'const claimLease = function () {',b'const otroMetodo = function () {')
+            b'const writeOwner = () => {',b'const writeOwnerAlterado = () => {')
         path.write_bytes(data)
         snapshot={rel:(self.site/rel).read_bytes() for rel in FILES}
         r=self.runpub('--apply')
