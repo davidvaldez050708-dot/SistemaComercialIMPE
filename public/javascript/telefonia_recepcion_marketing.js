@@ -119,7 +119,7 @@
             slot.setAttribute('aria-busy', 'true');
             const status = node('div', 'marketing-reception-muted');
             status.setAttribute('role', 'status');
-            const spinner = node('i', 'bi bi-arrow-clockwise marketing-reception-spinning');
+            const spinner = node('span', 'spinner-border spinner-border-sm');
             spinner.setAttribute('aria-hidden', 'true');
             status.append(spinner, document.createTextNode(' Preparando grabación…'));
             slot.replaceChildren(status);
