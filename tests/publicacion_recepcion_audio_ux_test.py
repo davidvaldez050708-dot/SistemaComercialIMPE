@@ -94,12 +94,12 @@ class PublicacionRecepcionTests(unittest.TestCase):
     def test_crlf_and_other_custom_code(self):
         js=self.site/FILES[1]
         suffix=b'\n/* otra personalizacion que no debe alterarse */\n'
-        data=js.read_bytes().replace(b'\n',b'\r\n')+suffix.replace(b'\n',b'\r\n')
+        data=js.read_bytes().replace(b'\r\n',b'\n').replace(b'\n',b'\r\n')+suffix.replace(b'\n',b'\r\n')
         js.write_bytes(data)
         result=self.run_pub('--apply')
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertEqual(js.read_bytes(),
-          (ROOT/FILES[1]).read_bytes().replace(b'\n',b'\r\n')+suffix.replace(b'\n',b'\r\n'))
+          (ROOT/FILES[1]).read_bytes().replace(b'\r\n',b'\n').replace(b'\n',b'\r\n')+suffix.replace(b'\n',b'\r\n'))
     def test_restore_rejects_later_edits(self):
         applied=self.run_pub('--apply')
         self.assertEqual(applied.returncode,0,applied.stderr)
