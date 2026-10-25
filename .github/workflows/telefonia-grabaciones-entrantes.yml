@@ -1,0 +1,61 @@
+name: Telefonia - grabaciones entrantes transferidas
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  contratos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          php -l app/services/TelefoniaGrabacionesTransferenciaVentasService.php
+          php -l app/views/telefonia/ventas_llamadas.php
+          php tests/telefonia_ventas_grabaciones_transferidas_smoke.php
+          php tests/telefonia_ventas_audio_evidencia.php
+          php tests/marketing_grabaciones_salientes_smoke.php
+          node --check public/javascript/telefonia_ventas_resultados.js
+          node tests/telefonia_ventas_grabaciones_ui_regresion.cjs
+          node tests/telefonia_ventas_conciliacion_tardia.cjs
+      - run: npm install --prefix /tmp/grabaciones-browser playwright bootstrap@5.3.8
+      - run: /tmp/grabaciones-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Reproductor real, permisos, tramos parciales y duración independiente
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/grabaciones-browser/node_modules/playwright
+          BOOTSTRAP_MODULE_PATH: /tmp/grabaciones-browser/node_modules/bootstrap
+        run: node tests/telefonia_grabaciones_entrantes_browser.cjs
+      - name: Publicación selectiva y restauración en réplicas
+        run: python3 -B tests/publicacion_grabaciones_entrantes_test.py
+  datos:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['3306/tcp']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - name: Operación exacta, ambos roles, duraciones persistentes y acceso ajeno
+        env:
+          IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          php tests/telefonia_ventas_db.php
+          php tests/telefonia_ventas_audio_db.php

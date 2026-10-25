@@ -23,9 +23,28 @@
   }catch(_){}finally{refreshing=false;}
  }
  const historyTimer=setInterval(()=>{
-  if(root.querySelector('[data-sales-audio-state]')||Array.from(root.querySelectorAll('.linkage-call-recording-duration')).some(el=>el.textContent.includes('Sin duración')))void refreshHistory();
+  if(root.querySelector('[data-sales-audio-state],[data-sales-duration-pending="1"]'))void refreshHistory();
  },60000);
  const notify=(message,error=false)=>window.IMPE_TELEPHONY_NOTIFY?.(message,error);
+ const updateDuration=(audio,seconds)=>{
+  if(!Number.isInteger(seconds)||seconds<0)return;
+  const duration=audio.closest('.linkage-call-history-card')?.querySelector('.linkage-call-recording-duration');
+  if(!duration)return;
+  duration.textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
+  duration.dataset.salesDurationPending='0';
+ };
+ async function reconcileTransferDuration(audio){
+  // Reutilizar la conciliación POST y su caché durable sólo con cierre propio.
+  // Nunca condicionar los audios ya autorizados a que responda esta consulta.
+  if(!root.dataset.evidenceUrl||audio.dataset.salesEnded!=='1')return;
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
+  try{
+   const response=await fetch(root.dataset.evidenceUrl,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,body:new URLSearchParams({csrf_token:root.dataset.csrf,pbx_call_id:audio.dataset.salesAudio,extension:audio.dataset.extension})});
+   const data=await response.json();
+   if(response.ok&&data.ok)updateDuration(audio,data.llamada?.segundos);
+  }catch(_){}finally{clearTimeout(timeout);}
+ }
+
  const request=async url=>{
   const controller=new AbortController();requestController=controller;const timeout=setTimeout(()=>controller.abort(),10000);
   try{const r=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok){const e=Error(j.mensaje||'No se pudo consultar la llamada.');e.status=r.status;throw e;}return j;}
@@ -145,8 +164,7 @@
      const r=await fetch(root.dataset.evidenceUrl,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,body:new URLSearchParams({csrf_token:root.dataset.csrf,pbx_call_id:audio.dataset.salesAudio,extension:audio.dataset.extension})}),j=await r.json();
      if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo verificar la grabacion.');
      const parts=j.llamada?.segmentos;
-     const duration=audio.closest('.linkage-call-history-card')?.querySelector('.linkage-call-recording-duration');
-     if(duration&&Number.isInteger(j.llamada?.segundos))duration.textContent=String(Math.floor(j.llamada.segundos/60)).padStart(2,'0')+':'+String(j.llamada.segundos%60).padStart(2,'0');
+     updateDuration(audio,j.llamada?.segundos);
      if(!Array.isArray(parts)||parts.length<1){notify(j.mensaje||'Grabacion pendiente de confirmar.');return;}
      audio.dataset.segments=String(parts.length);
      if(j.llamada.segmentos_info)audio.dataset.segmentInfo=JSON.stringify(j.llamada.segmentos_info);
@@ -155,6 +173,7 @@
     const url=new URL('prueba_telefonia/api/grabacion_ventas.php',document.baseURI);url.searchParams.set('pbx_call_id',audio.dataset.salesAudio);url.searchParams.set('extension',audio.dataset.extension);
     url.searchParams.set('verificar','1');
     const verified=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal}),data=await verified.json().catch(()=>({}));
+    if(transferred&&verified.ok&&data.ok){updateDuration(audio,data.segundos);void reconcileTransferDuration(audio);}
     if(!verified.ok||!data.ok||!data.disponible)throw Error(window.IMPE_TELEPHONY_SEGMENTS.message(data,verified.status));
     if(!window.IMPE_TELEPHONY_SEGMENTS?.create?.(slot,url.href,Number(data.segmentos),data.segmentos_info||[]))throw Error('No se cargo el reproductor.');
     slot.dataset.loaded='1';

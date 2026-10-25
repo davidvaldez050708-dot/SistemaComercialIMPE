@@ -18,7 +18,8 @@ final class TelefoniaGrabacionesTransferenciaVentasService
         if($source===$dest||!preg_match('/^[0-9]{3,6}$/D',$source)||
             !preg_match('/^[0-9]{3,6}$/D',$dest))
             throw new DomainException('ACCESO_NO_AUTORIZADO');
-        $sourceStarted=false;$destAnswered=false;$otherParticipant=false;$refs=[];
+        $sourceOutgoing=false;$sourceIncoming=false;$sourceAnswered=false;
+        $destAnswered=false;$otherParticipant=false;$refs=[];
         foreach($events as $event){
             $kind=(string)($event['evento']??'');
             $internal=trim((string)($event['internal']??''));
@@ -31,18 +32,31 @@ final class TelefoniaGrabacionesTransferenciaVentasService
                 if(preg_match('/^[0-9]{3,6}$/D',$member) &&
                     $member!==$source && $member!==$dest)
                     $otherParticipant=true;
-            if($kind==='NOTIFY_OUT_START'&&$internal===$source)$sourceStarted=true;
-            if($sourceStarted&&$kind==='NOTIFY_ANSWER'&&$internal===$dest)$destAnswered=true;
+            // La llamada externa puede haber entrado a Recepción o haber sido
+            // marcada por ella. El grupo y la ruta exactos se validan antes.
+            // Los webhooks pueden llegar fuera de orden: conservar los hechos.
+            if($kind==='NOTIFY_OUT_START'&&$internal===$source)$sourceOutgoing=true;
+            if($kind==='NOTIFY_INTERNAL'&&$internal===$source)$sourceIncoming=true;
+            if($kind==='NOTIFY_ANSWER'&&$internal===$source)$sourceAnswered=true;
+            if($kind==='NOTIFY_ANSWER'&&$internal===$dest)$destAnswered=true;
             if($kind!=='NOTIFY_RECORD')continue;
             $id=trim((string)($event['call_id_with_rec']??''));
             if(!ZadarmaPbxIdentifierHelper::callIdValido($id))continue;
             if(!isset($refs[$id]))$refs[$id]=['id'=>$id,'inicio'=>'','segundos'=>null,
                 'extension'=>'','etiqueta'=>'Parte de la llamada · participante por verificar'];
         }
-        if(!$sourceStarted||!$destAnswered||$otherParticipant)
+        if(!($sourceOutgoing||($sourceIncoming&&$sourceAnswered))||!$destAnswered||$otherParticipant)
             throw new DomainException('ACCESO_NO_AUTORIZADO');
         if(count($refs)>8)throw new DomainException('TRAMO_PENDIENTE_VINCULACION');
         return $refs;
+    }
+
+    /** Sólo un tramo atribuido inequívocamente a la extensión: nunca sumar
+     * la conversación de Recepción ni segmentos que puedan solaparse. */
+    public static function duracionPropia(array $refs,string $ext): ?int
+    {
+        $own=array_values(array_filter($refs,static fn($part)=>($part['extension']??'')===$ext));
+        return count($own)===1&&is_int($own[0]['segundos']??null)?$own[0]['segundos']:null;
     }
 
     /** También permite conservar el servicio histórico del Analista. */
@@ -141,8 +155,9 @@ final class TelefoniaGrabacionesTransferenciaVentasService
             }
         }
         $result=['ok'=>true,'estado'=>'GRABACION_EN_PREPARACION','disponible'=>false,
-            'segmentos'=>0,'segmentos_info'=>[],'records'=>[]];
-        $available=0;$missing=0;
+            'segmentos'=>0,'segmentos_info'=>[],'records'=>[],
+            'segundos'=>self::duracionPropia($refs,$ext)];
+        $available=0;$missing=0;$temporary=false;
         foreach(array_values($refs) as $i=>$part){
             try{
                 $audio=$record($part['id']);
@@ -154,11 +169,11 @@ final class TelefoniaGrabacionesTransferenciaVentasService
                     'etiqueta'=>$part['etiqueta'],'extension'=>$part['extension'],
                     'segundos'=>$part['segundos']];
                 $available++;
-            }catch(Throwable $e){$missing++;}
+            }catch(Throwable $e){$missing++;$temporary=true;}
         }
         $result['segmentos']=$available;$result['disponible']=$available>0;
         $result['estado']=$available?($missing?'DISPONIBLE_PARCIAL':'DISPONIBLE'):
-            ($refs?'GRABACION_EN_PREPARACION':'SIN_GRABACION_REPORTADA');
+            ($temporary?'ERROR_TEMPORAL':($refs?'GRABACION_EN_PREPARACION':'SIN_GRABACION_REPORTADA'));
         return $result;
     }
 }
