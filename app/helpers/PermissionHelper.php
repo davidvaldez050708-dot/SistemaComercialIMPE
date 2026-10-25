@@ -65,7 +65,7 @@ if (!function_exists('puedeConsultarDirectorioConvenios')) {
 
 /**
  * Convenios sólo habilita la consulta. La publicación requiere también
- * convocatorias.crear; Cuenta Clave queda limitada por su asignación vigente.
+ * convocatorias.crear; los roles territoriales conservan su asignación vigente.
  */
 if (!function_exists('puedeCrearConvocatoriaDesdeConvenio')) {
     function puedeCrearConvocatoriaDesdeConvenio()
@@ -75,19 +75,24 @@ if (!function_exists('puedeCrearConvocatoriaDesdeConvenio')) {
             !tienePermiso('convocatorias.crear')) {
             return false;
         }
-        $esMarketing = strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
-        if ($esMarketing) {
-            return tienePermiso('formularios_aliados.gestionar_enlaces');
-        }
-        return (int)($_SESSION['rol_id'] ?? 0) === 6;
+        // Crear publicaciones y administrar enlaces son permisos independientes.
+        return true;
     }
 }
 
-/** Marketing consulta Aliados nacionalmente; no hereda asignaciones de Cuenta Clave. */
+/** Sólo los tres roles operativos necesitan una asignación territorial vigente. */
+function tipoAsignacionTerritorialRol(): ?string
+{
+    return [3 => 'ASESOR', 4 => 'ANALISTA_DATOS', 6 => 'CUENTA_CLAVE']
+        [(int)($_SESSION['rol_id'] ?? 0)] ?? null;
+}
+
+/** Alcance de consulta: cada operación sigue exigiendo su permiso propio. */
 if (!function_exists('puedeConsultarAliadosNacional')) {
     function puedeConsultarAliadosNacional()
     {
-        return esRolSupervisionNacional() ||
-            strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
+        return (int)($_SESSION['usuario_id'] ?? 0) > 0 &&
+            (int)($_SESSION['rol_id'] ?? 0) > 0 &&
+            tipoAsignacionTerritorialRol() === null;
     }
 }
