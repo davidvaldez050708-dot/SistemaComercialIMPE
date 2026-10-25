@@ -22,7 +22,7 @@ try{
     $q->bind_param('s',$ext);$q->execute();$starts=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
     $available=[];
     foreach(['telefonia_recepcion_resultados','telefonia_ventas_resultados','telefonia_transferencia_operaciones'] as $table){
-        $q=$db->prepare('SHOW TABLES LIKE ?');$q->bind_param('s',$table);$q->execute();
+        $q=$db->prepare('SELECT 1 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?');$q->bind_param('s',$table);$q->execute();
         $available[$table]=$q->get_result()->num_rows>0;$q->close();
     }
     $output=[];
@@ -64,5 +64,5 @@ try{
         'alcance'=>'Un aviso de grabación no acredita que el archivo se pueda reproducir. Confirmar cada audio desde el CRM.'],
         JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
 }catch(Throwable $e){
-    fwrite(STDERR,'Diagnóstico no disponible: '.get_class($e).'. Sin escrituras.'.PHP_EOL);exit(1);
+    fwrite(STDERR,'Diagnóstico no disponible: '.get_class($e).' (código '.(int)$e->getCode().'). Sin escrituras.'.PHP_EOL);exit(1);
 }
