@@ -513,47 +513,65 @@
             }
         });
 
-        // is_recorded sólo garantiza que Zadarma reportó una grabación.
-        // Comprobar el enlace al abrir, sin presentar un reproductor falso.
+        // Cada llamada normal continúa validándose desde el endpoint
+        // privado. La fila, el estado de carga y su cierre son inmediatos.
         tableBody.addEventListener('click', async function (event) {
             const button = event.target.closest('[data-sales-recording-toggle]');
             if (!button || button.dataset.recordingVerified === '1') return;
             event.preventDefault();
             event.stopPropagation();
-            if (button.disabled) return;
-            button.disabled = true;
-            button.innerHTML = '<i class="bi bi-hourglass-split" aria-hidden="true"></i>' +
-                '<span>Comprobando…</span>';
+            const detail = document.getElementById(button.getAttribute('aria-controls'));
+            if (!detail) return;
+            if (!detail.hidden) {
+                detail.hidden = true;
+                button.setAttribute('aria-expanded', 'false');
+                button.classList.remove('is-open');
+                return;
+            }
+            detail.hidden = false;
+            button.setAttribute('aria-expanded', 'true');
+            button.classList.add('is-open');
+            const slot = detail.querySelector('[data-sales-recording-slot]');
+            if (!slot || button.dataset.recordingChecking === '1') return;
+            button.dataset.recordingChecking = '1';
+            mostrarComprobacion(slot);
+            const controller = new AbortController();
+            const timeout = window.setTimeout(() => controller.abort(), 12000);
             try {
                 const url = new URL(button.dataset.recordingUrl, window.location.href);
                 url.searchParams.set('verificar', '1');
                 const response = await fetch(url.toString(), {
-                    credentials:'same-origin', cache:'no-store',
-                    headers: {Accept:'application/json'}
+                    credentials: 'same-origin', cache: 'no-store',
+                    headers: {Accept: 'application/json'}, signal: controller.signal
                 });
                 const result = await response.json();
-                if (!response.ok || !result.ok) throw new Error('Verificación fallida');
-                if (!result.disponible) {
-                    button.innerHTML = '<i class="bi bi-clock-history" aria-hidden="true"></i>' +
-                        '<span>Aún no disponible</span>';
-                    button.title = 'La centralita reportó el audio, pero Zadarma todavía no ' +
-                        'lo entrega. Puedes volver a comprobar más tarde.';
-                    return;
-                }
+                if (!response.ok || !result.ok)
+                    throw new Error('No fue posible verificar la grabación.');
+                if (!result.disponible)
+                    throw new Error('La grabación todavía está en preparación.');
+                if (!detail.isConnected) return;
                 button.dataset.recordingVerified = '1';
                 button.classList.add('is-available');
-                button.innerHTML = '<i class="bi bi-record-circle" aria-hidden="true"></i>' +
-                    '<span>Consultar grabación</span>' +
-                    '<i class="bi bi-chevron-down linkage-call-recording-chevron" aria-hidden="true"></i>';
-                button.disabled = false;
-                // El reproductor compartido escucha el clic delegado y abre la fila.
-                button.click();
-            } catch (_) {
-                button.innerHTML = '<i class="bi bi-exclamation-circle" aria-hidden="true"></i>' +
-                    '<span>No disponible · Reintentar</span>';
-                button.title = 'No fue posible obtener la grabación. Puedes reintentar cuando Zadarma entregue el audio.';
+                button.title = 'Consultar grabación';
+                slot.replaceChildren();
+                if (!detail.hidden) {
+                    // El reproductor compartido de Asesor conserva los mismos
+                    // controles. El cambio de fila es síncrono y no parpadea.
+                    detail.hidden = true;
+                    button.setAttribute('aria-expanded', 'false');
+                    button.click();
+                }
+            } catch (error) {
+                if (!detail.isConnected) return;
+                mostrarErrorGrabacion(slot,
+                    error.name === 'AbortError'
+                        ? 'La consulta tardó demasiado. Inténtalo nuevamente.'
+                        : error.message);
+                button.title = 'La grabación no pudo verificarse. Puedes volver a intentarlo.';
             } finally {
-                button.disabled = false;
+                window.clearTimeout(timeout);
+                delete button.dataset.recordingChecking;
+                slot.removeAttribute('aria-busy');
             }
         }, true);
 
