@@ -493,8 +493,7 @@ class ConvocatoriaController
         $servicioRegistroAliado = null;
         if ($tipoAliado !== '' || $idAliado > 0) {
             if (!in_array($tipoAliado,['manual','institucional'],true) || $idAliado <= 0 ||
-                !puedeCrearConvocatoriaDesdeConvenio() ||
-                !tienePermiso('formularios_aliados.gestionar_enlaces')) {
+                !puedeCrearConvocatoriaDesdeConvenio()) {
                 $errores[] = 'No tienes permiso para crear publicaciones de este aliado.';
             } else {
                 try {
@@ -550,7 +549,11 @@ class ConvocatoriaController
 
         if ($contextoAliadoGuardar !== null && $servicioRegistroAliado !== null) {
             try {
-                $contextoAliadoGuardar = $servicioRegistroAliado->enlace($tipoAliado,$idAliado,'generar');
+                // Reutilizar el enlace habilitado no administra ni cambia el Registro.
+                // Sólo generar uno ausente requiere el permiso de gestionar enlaces.
+                if (empty($contextoAliadoGuardar['url'])) {
+                    $contextoAliadoGuardar = $servicioRegistroAliado->enlace($tipoAliado,$idAliado,'generar');
+                }
                 $datos['enlace_registro'] = (string)($contextoAliadoGuardar['url']??'');
                 if ($datos['enlace_registro'] === '') {
                     throw new DomainException('No fue posible obtener el enlace estable del aliado.');

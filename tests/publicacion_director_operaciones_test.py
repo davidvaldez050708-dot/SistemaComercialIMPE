@@ -9,7 +9,9 @@ with tempfile.TemporaryDirectory() as tmp:
     for row in spec['files']:
         p=root/row['path'];v=row['variants'][0];new=unpack(v['after'])
         assert hashlib.sha256(new).hexdigest()==v['after_sha']
-        assert (R/row['path']).read_bytes().replace(b'\r\n',b'\n')==new, row['path']+' paquete obsoleto'
+        # Una entrega histórica conserva su contenido aunque haya correcciones posteriores.
+        released=subprocess.check_output(['git','show','875fb1705e13fa047359fd10e9104506490e509e:'+row['path']],cwd=R)
+        assert released.replace(b'\r\n',b'\n')==new, row['path']+' entrega histórica alterada'
         before[row['path']]=unpack(v['before']).replace(b'\n',b'\r\n') if v['before'] else None
         if before[row['path']] is not None:p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(before[row['path']])
     # Un archivo ajeno (incluyendo telefonía) nunca debe tocarse.

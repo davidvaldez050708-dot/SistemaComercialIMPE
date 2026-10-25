@@ -1,0 +1,32 @@
+name: Convenios - publicacion por permisos
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  publicacion:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['3306/tcp']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, fileinfo
+      - name: Editor, borrador, imágenes, QR y publicación HTTP/SQL de ambos orígenes
+        env:
+          IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          python3 tests/convenios_publicacion_http_test.py
+          python3 tests/publicacion_convenios_permisos_test.py
