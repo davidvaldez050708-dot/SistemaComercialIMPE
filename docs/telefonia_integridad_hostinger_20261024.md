@@ -6,7 +6,9 @@ Recepción devuelve `atendida`; el historial leía `contestada`, un campo intern
 
 Los textos visibles del teléfono, teclado, historial, resultados y reproductor usan lenguaje claro. Los identificadores internos y las comprobaciones de propiedad siguen conservándose. Una conexión telefónica no demuestra que respondió una persona: un buzón puede contestar y debe clasificarse como tal en el resultado.
 
-La entrega contiene doce archivos y conserva las variantes verificadas de Hostinger del teléfono persistente, motor y vista de historial. No sustituye el controlador, el servicio de llamadas de Ventas, el shell, credenciales, permisos, enlaces ni base de datos. La comparación adicional del controlador está pendiente; no se ha afirmado que su variante instalada esté usando los métodos ausentes del servicio de Ventas.
+La entrega contiene catorce archivos y conserva las variantes verificadas de Hostinger del teléfono persistente, motor y vista de historial. El controlador y el servicio de Ventas instalados eran coherentes entre sí, pero omitían la consulta de una llamada por la referencia de su sesión del navegador. La entrega actualiza ambos archivos de forma coordinada a la versión ya probada: sólo se recupera una comunicación vinculada al mismo asesor y extensión. No sustituye el shell, credenciales, permisos, enlaces ni base de datos.
+
+Esta entrega reemplaza al paquete anterior de doce archivos. Si ya se aplicó, el publicador reconoce esos doce archivos y sólo actualiza el controlador y el servicio de Ventas. Esa actualización y su restauración se prueban sobre una réplica.
 
 ## 1. Descargar y comprobar, sin cambiar el CRM
 
@@ -16,16 +18,16 @@ Copiar el bloque completo en SSH. Los archivos se descargan fuera de `public_htm
 (
 set -eu
 umask 077
-ENTREGA="$HOME/impe-telefonia-integridad-05261ecf"
-BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/05261ecfca9f4d42bb29cf05504dbb041405a553"
+ENTREGA="$HOME/impe-telefonia-integridad-328bd3c3"
+BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/328bd3c3ce1ad5e30b1de8976f024eb6dbb39a46"
 mkdir -p "$ENTREGA"
 cd "$ENTREGA"
 for f in publicar_telefonia_integridad.py telefonia_integridad_release.json diagnosticar_telefonia_integridad.php; do
   curl -fsSL "$BASE/tools/$f" -o "$f"
 done
 sha256sum -c <<'SHA'
-5bb9db3cf65f0de2c64c57b5a85e1c04a787a91b5004cbc91c47156e3dae89b6  publicar_telefonia_integridad.py
-7b940c38d03705adedc6ea007083b37b8d96046202dd375214c0aae09897b23b  telefonia_integridad_release.json
+a1b6cbd3b22d7b1361ecd548b65bb81b6a3e2856714f342280771106947608e9  publicar_telefonia_integridad.py
+4fc08c6ccc0c94e67656eaf4dc815eb8f340e3f5072e0ce764af5c5541bea75f  telefonia_integridad_release.json
 b31ddafcacc4ec019646eb0f829fbaa5830aea07e414c1538e88cd69ecadd2c2  diagnosticar_telefonia_integridad.php
 SHA
 python3 publicar_telefonia_integridad.py \
@@ -41,7 +43,7 @@ Sólo continuar si los tres archivos dicen `OK` y termina con `CHECK OK`. Si hay
 Hacerlo sin llamadas activas. Cerrar las pestañas y ventanas telefónicas del CRM de los usuarios que van a probar y reabrirlas después. Esto evita conservar código antiguo del teléfono mientras se reemplazan sus archivos.
 
 ```bash
-python3 "$HOME/impe-telefonia-integridad-05261ecf/publicar_telefonia_integridad.py" \
+python3 "$HOME/impe-telefonia-integridad-328bd3c3/publicar_telefonia_integridad.py" \
   --site "$HOME/domains/fundacionrededumex.org/public_html" \
   --backup-root "$HOME/respaldos-impe-telefonia-integridad" --apply
 ```
@@ -49,7 +51,7 @@ python3 "$HOME/impe-telefonia-integridad-05261ecf/publicar_telefonia_integridad.
 Guardar la ruta que imprime `APLICADO. RESPALDO:`. El paquete se puede volver a ejecutar sin duplicar cambios. Para restaurar, reemplazar la ruta de ejemplo por la ruta exacta impresa:
 
 ```bash
-python3 "$HOME/impe-telefonia-integridad-05261ecf/publicar_telefonia_integridad.py" \
+python3 "$HOME/impe-telefonia-integridad-328bd3c3/publicar_telefonia_integridad.py" \
   --site "$HOME/domains/fundacionrededumex.org/public_html" \
   --backup-root "$HOME/respaldos-impe-telefonia-integridad" \
   --restore "$HOME/respaldos-impe-telefonia-integridad/RUTA-EXACTA-DEL-RESPALDO"
@@ -85,8 +87,8 @@ Después de probar, obtener evidencia de las ocho referencias más recientes de 
 
 ```bash
 SITIO="$HOME/domains/fundacionrededumex.org/public_html"
-IMPE_RUNTIME_ROOT="$SITIO" php "$HOME/impe-telefonia-integridad-05261ecf/diagnosticar_telefonia_integridad.php" 100
-IMPE_RUNTIME_ROOT="$SITIO" php "$HOME/impe-telefonia-integridad-05261ecf/diagnosticar_telefonia_integridad.php" 150
+IMPE_RUNTIME_ROOT="$SITIO" php "$HOME/impe-telefonia-integridad-328bd3c3/diagnosticar_telefonia_integridad.php" 100
+IMPE_RUNTIME_ROOT="$SITIO" php "$HOME/impe-telefonia-integridad-328bd3c3/diagnosticar_telefonia_integridad.php" 150
 ```
 
 Un aviso de grabación en el diagnóstico no demuestra por sí mismo que el archivo se pueda reproducir: esa comprobación se hace en el CRM con una sesión autorizada.
@@ -96,6 +98,6 @@ Un aviso de grabación en el diagnóstico no demuestra por sí mismo que el arch
 - 38 comprobaciones nuevas del contrato real Recepción → historial, incluyendo respuesta propia, transferencia, perdida con duración, ocupada, grabación sin respuesta y eventos desordenados.
 - 436 comprobaciones en MySQL 8 y otras 436 en MariaDB 10.11: registro, resultados, propiedad histórica, notificaciones, atención y acceso a grabaciones.
 - Navegador: 153 comprobaciones con el código canónico y 153 con las variantes verificadas de Hostinger y transporte simulado.
-- Ocho pruebas del publicador: comprobación sin escritura, aplicación, repetición, saltos de línea, variantes instaladas, conflictos, publicación parcial y restauración.
+- Nueve pruebas del publicador: comprobación sin escritura, aplicación, repetición, saltos de línea, variantes instaladas, conflictos, publicación parcial, actualización desde el paquete anterior y restauración.
 
-El flujo dedicado está en `.github/workflows/telefonia-integridad.yml`. Los publicadores antiguos tienen pruebas que dependen literalmente de mensajes anteriores y no todos los flujos generales del repositorio pasan; no equivalen a una validación completa de esta entrega. La aceptación final requiere las llamadas reales descritas arriba y conciliar la variante del controlador pendiente.
+El flujo dedicado está en `.github/workflows/telefonia-integridad.yml`. Los publicadores antiguos tienen pruebas que dependen literalmente de mensajes anteriores y no todos los flujos generales del repositorio pasan; no equivalen a una validación completa de esta entrega. La comparación del controlador y del servicio de Ventas quedó conciliada mediante los hashes y diferencias completos de Hostinger. La aceptación final requiere las llamadas reales descritas arriba.
