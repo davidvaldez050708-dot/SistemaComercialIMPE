@@ -34,9 +34,10 @@
   duration.dataset.salesDurationPending='0';
  };
  async function reconcileTransferDuration(audio){
-  // Reutilizar la conciliación POST y su caché durable sólo con cierre propio.
+  // La conciliación verifica la transferencia y guarda la duración propia,
+  // incluso si falta END y ya existen referencias firmadas de grabación.
   // Nunca condicionar los audios ya autorizados a que responda esta consulta.
-  if(!root.dataset.evidenceUrl||audio.dataset.salesEnded!=='1')return;
+  if(!root.dataset.evidenceUrl)return;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
   try{
    const response=await fetch(root.dataset.evidenceUrl,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,body:new URLSearchParams({csrf_token:root.dataset.csrf,pbx_call_id:audio.dataset.salesAudio,extension:audio.dataset.extension})});

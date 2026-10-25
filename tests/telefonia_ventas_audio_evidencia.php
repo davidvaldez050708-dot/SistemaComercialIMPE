@@ -30,4 +30,16 @@ $call['registro']=['resultado'=>'BUZON_VOZ'];$call['segmentos']=['150.123456'];
 $check(!TelefoniaVentasLlamadasService::presentacionAudio($call)['disponible'],'Buzón sigue sin reproducción de conversación.');
 $call['registro']=['resultado'=>'INTERESADO'];$check(TelefoniaVentasLlamadasService::presentacionAudio($call)['disponible'],'Conversación y referencia propia habilitan la consulta.');
 $call['pbx_call_id']='';$check(TelefoniaVentasLlamadasService::presentacionAudio($call)['estado']==='sin_llamada','Intentos sin referencia continúan diferenciados.');
+// El destino explícito identifica el tramo del asesor en una transferencia saliente.
+$destinationRow=['pbx_call_id'=>'pbx-destination-own','sip'=>'+525550000000','destination'=>'150','call_id'=>'destination-record-150','seconds'=>13,'disposition'=>'answered','is_recorded'=>true];
+$check(TelefoniaPbxSegmentosService::extensionDeFila($destinationRow)==='150','Extensión de destino explícita, no inferida por orden');
+$destinationOwn=TelefoniaPbxSegmentosService::propios([$destinationRow],'pbx-destination-own','150');
+$check($destinationOwn['segundos']===13,'Estadística con origen externo y destino 150 recupera sus 13 segundos');
+$check(TelefoniaPbxSegmentosService::propios([$destinationRow],'pbx-other','150')['segundos']===null,'Referencia distinta no hereda duración por destino');
+$destinationRow['sip']='100';
+$check(TelefoniaPbxSegmentosService::extensionDeFila($destinationRow)==='','Dos extensiones distintas no acreditan duración individual');
+$check(TelefoniaPbxSegmentosService::propios([$destinationRow],'pbx-destination-own','150')['segundos']===null,'No contar una consulta interna como conversación externa del asesor');
+$destinationRow['sip']='+525550000000';$destinationRow['destination']='151';
+$check(TelefoniaPbxSegmentosService::propios([$destinationRow],'pbx-destination-own','150')['segundos']===null,'Destino ajeno no aporta duración de 150');
+
 echo "Ventas audio: $checks contratos de evidencia y presentación aprobados.\n";

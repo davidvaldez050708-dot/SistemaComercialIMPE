@@ -29,6 +29,38 @@ foreach(['pbx-inbound-transfer-one','pbx-inbound-transfer-two'] as $incomingRef)
  vcheck($svc->obtener(8,$incomingRef,'150')['segundos']===37,'Duración confirmada persiste al recargar');
 }
 
+// La transferencia antigua conserva dos RECORD y resultado, pero no END del asesor.
+$legacyRef='pbx-early-out-end-before-answer-150';$legacyCall=$svc->obtener(8,$legacyRef,'150');
+$legacyEvents=(int)$db->query('SELECT COUNT(*) FROM telefonia_zadarma_eventos')->fetch_row()[0];
+$legacyResult=$legacyCall['registro'];
+$legacyStats=static fn()=>[
+ ['pbx_call_id'=>$legacyRef,'call_id'=>'early-out-end-record','sip'=>'100','destination'=>'+525551112233','seconds'=>33,'disposition'=>'answered','is_recorded'=>true],
+ ['pbx_call_id'=>$legacyRef,'call_id'=>'second-advisor-candidate','sip'=>'+525551112233','destination'=>'150','seconds'=>13,'disposition'=>'answered','is_recorded'=>true],
+ ['pbx_call_id'=>'foreign-same-number','call_id'=>'foreign-record','sip'=>'+525551112233','destination'=>'150','seconds'=>200,'disposition'=>'answered','is_recorded'=>true]
+];
+$legacyRecord=static fn($id)=>['link'=>'https://provider.test/'.$id];
+$legacyGroup=$transferAudio->resolver($legacyRef,8,'destino','150',$legacyRecord,$legacyStats);
+vcheck($legacyGroup['segundos']===13&&$legacyGroup['segmentos_info'][1]['extension']==='150','Grupo identifica duración propia por destino explícito del tramo');
+$legacyEvidence=new TelefoniaVentasEvidenciaService($db);
+$legacyConfirmed=$legacyEvidence->consultar($legacyCall,$legacyStats,$legacyRecord);
+vcheck($legacyConfirmed['segundos']===13&&!$legacyConfirmed['finalizada'],'Confirma 13 segundos sin fabricar el cierre ausente');
+$legacyReload=$svc->obtener(8,$legacyRef,'150');
+vcheck($legacyReload['segundos']===13&&!$legacyReload['finalizada'],'La duración se conserva al volver al historial aunque falte END');
+vcheck($legacyReload['registro']===$legacyResult,'No modifica el resultado humano al recuperar duración');
+vcheck((int)$db->query('SELECT COUNT(*) FROM telefonia_zadarma_eventos')->fetch_row()[0]===$legacyEvents,'No crea webhooks ni altera eventos históricos');
+$cacheCount=(int)$db->query('SELECT COUNT(*) FROM telefonia_ventas_evidencia')->fetch_row()[0];
+$badCall=$legacyCall;$badCall['usuario_id']=9;
+vreject(fn()=>$legacyEvidence->consultar($badCall,$legacyStats,$legacyRecord),'Otra cuenta no puede confirmar la duración de la transferencia');
+$badRequest=$legacyCall;$badRequest['solicitud_id']++;
+vreject(fn()=>$legacyEvidence->consultar($badRequest,$legacyStats,$legacyRecord),'Solicitud distinta no hereda la duración de una operación');
+vcheck((int)$db->query('SELECT COUNT(*) FROM telefonia_ventas_evidencia')->fetch_row()[0]===$cacheCount,'Denegación no crea cachés de otras cuentas o solicitudes');
+$db->query('UPDATE telefonia_ventas_evidencia SET consultado_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 2 MINUTE)');
+$unannounced=static fn()=>[['pbx_call_id'=>$legacyRef,'call_id'=>'unannounced-record','sip'=>'+525551112233','destination'=>'150','seconds'=>999,'disposition'=>'answered','is_recorded'=>true]];
+vcheck($legacyEvidence->consultar($legacyCall,$unannounced,$legacyRecord)['segundos']===null,'Sin END sólo admite estadísticas con RECORD firmado del mismo grupo');
+$db->query('UPDATE telefonia_ventas_evidencia SET consultado_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 2 MINUTE)');
+$legacyEvidence->consultar($legacyCall,$legacyStats,$legacyRecord);
+vcheck($svc->obtener(8,$legacyRef,'150')['segundos']===13,'Reintento con evidencia exacta recupera el tiempo sin tocar audios');
+
 $refApi='pbx-api-evidencia-01';$event($refApi,'NOTIFY_INTERNAL');$event($refApi,'NOTIFY_ANSWER');$event($refApi,'NOTIFY_END','100',200,['last_internal'=>'150','disposition'=>'answered']);
 $callApi=$svc->obtener(8,$refApi);vcheck($callApi['segundos']===null&&$callApi['segmentos']===[],'Antes de API no inventa duración ni audio');
 $evidence=new TelefoniaVentasEvidenciaService($db);$apiCount=0;$downloads=[];
@@ -52,6 +84,7 @@ $late=$evidence->consultar($callApi,$stats,static fn()=>null);vcheck($late['segm
 $db->query('UPDATE telefonia_ventas_evidencia SET consultado_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 2 MINUTE)');
 vcheck(count($evidence->consultar($callApi,$stats,$record)['segmentos'])===2,'Reconsulta recupera segmentos tardíos sin nuevas llamadas');
 $activeRef='pbx-captura-activa';$event($activeRef,'NOTIFY_INTERNAL');$event($activeRef,'NOTIFY_ANSWER');
+vreject(fn()=>$evidence->consultar($svc->obtener(8,$activeRef),$stats,$record),'Una llamada activa sin transferencia grabada no habilita conciliación sin END');
 $capture=new TelefoniaProspectoLlamadaService($db);$values=['nombre'=>'Diana Estrada','telefono'=>'+527771234567','correo'=>'diana@example.test','programa'=>'Bachillerato 286','notas'=>'Solicita información durante la llamada'];
 $saved=$capture->guardar(8,$activeRef,'150',$values,0);vcheck($saved['version']===1&&$saved['valores']['nombre']==='Diana Estrada','Alta de datos durante llamada activa');
 vcheck(!$svc->obtener(8,$activeRef)['finalizada']&&$svc->obtener(8,$activeRef)['registro']===null,'Guardar notas no finaliza ni crea resultado');
