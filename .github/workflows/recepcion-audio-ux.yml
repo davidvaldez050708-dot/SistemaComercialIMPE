@@ -30,4 +30,17 @@ jobs:
       - run: npm install --no-save --package-lock=false playwright
       - run: npx playwright install --with-deps chromium
       - run: node tests/marketing_recepcion_audio_ux_browser.cjs
-      - run: python3 -B tests/publicacion_recepcion_audio_ux_test.py
+  publicacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Comprobar publicador y restauracion sin tocar produccion
+        run: python3 -B tests/publicacion_recepcion_audio_ux_test.py
