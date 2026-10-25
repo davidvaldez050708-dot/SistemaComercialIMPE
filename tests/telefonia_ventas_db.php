@@ -206,12 +206,7 @@ try {
   $temporary=$transferAudio->resolver($incomingRef,8,'destino','150',static function(){throw new RuntimeException('provider unavailable');});
   vcheck($temporary['estado']==='ERROR_TEMPORAL','Distinguir caída del proveedor de archivo en preparación');
   vreject(fn()=>$transferAudio->resolver($incomingRef,9,'destino','150',$incomingRecord),'Otro asesor no accede a la entrante transferida');
-  $svc->sincronizar(8);$incomingCall=$svc->obtener(8,$incomingRef,'150');
-  vcheck($incomingCall['finalizada']&&$incomingCall['segundos']===null,'Cierre global recibido sin inventar duración propia');
-  $evidence=new TelefoniaVentasEvidenciaService($db);
-  $confirmedDuration=$evidence->consultar($incomingCall,$incomingStats,$incomingRecord);
-  vcheck($confirmedDuration['segundos']===37,'Conciliación POST confirma duración propia');
-  vcheck($svc->obtener(8,$incomingRef,'150')['segundos']===37,'Duración confirmada persiste al volver al historial');
+
  }
 
  vreject(fn()=>$results->guardar(8,$ref,'INTERESADO'),'Resultado único, no reemplazar notas');

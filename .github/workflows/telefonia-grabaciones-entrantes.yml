@@ -32,9 +32,12 @@ jobs:
           PLAYWRIGHT_MODULE_PATH: /tmp/grabaciones-browser/node_modules/playwright
           BOOTSTRAP_MODULE_PATH: /tmp/grabaciones-browser/node_modules/bootstrap
         run: node tests/telefonia_grabaciones_entrantes_browser.cjs
+      - name: Publicación selectiva y restauración en réplicas
+        run: python3 -B tests/publicacion_grabaciones_entrantes_test.py
   datos:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         database: ['mysql:8.0', 'mariadb:10.11']
     services:
