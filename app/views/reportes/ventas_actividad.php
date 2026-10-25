@@ -17,7 +17,7 @@ $filter=['controller'=>$desempeno?'desempeno':'reporte','action'=>$desempeno?'in
 <section class="performance-module sales-activity-module">
     <header class="dashboard-panel performance-hero">
         <div><span class="performance-eyebrow">ASESORES · ACTIVIDAD TELEFÓNICA</span><h1><?= $e($title) ?></h1><p>Consulta las llamadas, sus resultados y el tiempo confirmado de atención en el periodo seleccionado.</p></div>
-        <?php if ($urlActividadPdf!==''): ?><a class="btn btn-system-save" href="<?= $e($urlActividadPdf) ?>" data-sales-report-pdf><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Exportar PDF</a><?php endif; ?>
+        <?php if ($urlActividadPdf!==''): ?><a class="btn btn-system-save" href="<?= $e($urlActividadPdf) ?>" data-sales-report-pdf target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Exportar PDF</a><?php endif; ?>
     </header>
     <nav class="performance-view-tabs" aria-label="Actividad de asesores">
         <?php if (VentasActividadAccess::alcance()!==''): ?><a class="performance-tab <?= !$desempeno?'is-active':'' ?>" href="<?= $e(BASE_URL.'index.php?'.http_build_query(array_replace($filter,['controller'=>'reporte','action'=>'ventas']))) ?>">Reportes</a><?php endif; ?>

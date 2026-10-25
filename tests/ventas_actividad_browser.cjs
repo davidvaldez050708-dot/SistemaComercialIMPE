@@ -23,6 +23,7 @@ const icons=path.dirname(require.resolve('bootstrap-icons/package.json'));
     assert.equal(await page.locator('#salesAdvisor').count(),role.startsWith('global')?1:0);
     assert.equal(await page.locator('[data-sales-custom]:visible').count(),role==='global_long'?2:0);
     assert(await page.locator('[data-sales-report-pdf]').isVisible());
+    assert.equal(await page.locator('[data-sales-report-pdf]').getAttribute('target'),'_blank');
     assert.notEqual(await page.locator('.performance-view-tabs a').first().evaluate(e=>getComputedStyle(e).borderRadius),'0px');
     await page.locator('#salesPeriod').selectOption('personalizado');
     assert.equal(await page.locator('[data-sales-custom]:visible').count(),2);
