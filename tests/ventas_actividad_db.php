@@ -35,6 +35,8 @@ foreach(array_merge(VentasActividadPermisosService::COMUNES,['desempeno.ver_prop
 }
 $installer=new VentasActividadPermisosService($db);$backup=[];
 qcheck(!$installer->comprobar(),'Catálogo inicialmente ausente');
+try{$installer->aplicar(function(){throw new RuntimeException('Respaldo fallido de prueba');});throw new LogicException('Instaló sin respaldo');}catch(RuntimeException $e){qcheck($e->getMessage()==='Respaldo fallido de prueba','Motivo de fallo');}
+qcheck(!$installer->comprobar(),'Fallo de respaldo no instala parcialmente');
 qcheck($installer->aplicar(function($d)use(&$backup){$backup=$d;}),'Instalación inicial');qcheck(count($backup['catalogo_nuevo'])===4,'Respaldo');
 $db->query("DELETE r FROM rol_permisos r JOIN permisos p ON p.id=r.permiso_id WHERE r.rol_id=3 AND p.codigo='reportes.ventas.propio'");
 qcheck(!$installer->aplicar(function(){throw new RuntimeException('No debe reescribir respaldo');}),'Instalación idempotente');
@@ -82,7 +84,7 @@ qcheck($s['segundos']===25 && $s['promedio_segundos']===13 && $s['duraciones_pen
 qcheck($data['organizacion']['programadas']===1 && $data['organizacion']['devoluciones']===1,'Organización actual');
 try{$svc->preparar($f+['persona_id'=>302],false);throw new LogicException('Consultó asesor ajeno');}catch(DomainException $e){}
 qcheck($svc->preparar(['periodo'=>'personalizado','fecha_desde'=>'2024-01-01','fecha_hasta'=>'2024-01-31'],false)['resumen']['llamadas']===1,'Consulta histórica fuera de 90 días sin alterar historial');
-sessionFor($db,6,601);$team=$svc->preparar($f,false);qcheck(array_map('intval',array_column($team['personas'],'id'))===[303,301] || count($team['personas'])===2,'Equipo explícito');
+sessionFor($db,6,601);$team=$svc->preparar($f,false);$teamIds=array_map('intval',array_column($team['personas'],'id'));sort($teamIds);qcheck($teamIds===[301,303],'Equipo explícito');
 try{$svc->preparar($f+['persona_id'=>302],false);throw new LogicException('Consultó asesor ajeno del mismo estado');}catch(DomainException $e){}
 $db->query('UPDATE asignaciones_territorio SET fecha_fin=\'2000-01-01\' WHERE id=1');qcheck(!$svc->preparar($f,false)['personas'],'Vencimiento bloquea equipo');$db->query('UPDATE asignaciones_territorio SET fecha_fin=NULL WHERE id=1');
 sessionFor($db,2,20);qcheck(count($svc->preparar($f,true)['personas'])===3,'Director nacional, asesor inactivo con historial');

@@ -11,6 +11,8 @@ final class VentasActividadService
     {
         $scope=VentasActividadAccess::alcance($desempeno);
         if ($scope==='') throw new DomainException('No tienes permiso para consultar esta actividad.');
+        foreach (['periodo','fecha_desde','fecha_hasta','persona_id','direccion','resultado','pagina'] as $key)
+            if (isset($f[$key]) && !is_scalar($f[$key])) throw new InvalidArgumentException('Los filtros deben contener valores individuales.');
         $people=$this->repo->personas($scope,(int)$_SESSION['usuario_id']);
         $person=filter_var($f['persona_id']??0,FILTER_VALIDATE_INT);
         if ($person===false || $person<0) throw new InvalidArgumentException('Selecciona un asesor válido.');

@@ -97,4 +97,8 @@ final class VentasActividadMetricas
     {
         return $seconds === null ? 'Pendiente' : sprintf('%02d:%02d:%02d', intdiv($seconds,3600),intdiv($seconds%3600,60),$seconds%60);
     }
+    public static function tiempoConfirmado(array $metricas): string
+    {
+        return $metricas['duraciones_confirmadas'] ? self::tiempo($metricas['segundos']) : ($metricas['duraciones_pendientes'] ? 'Pendiente' : '—');
+    }
 }

@@ -6,7 +6,8 @@ $time=[VentasActividadMetricas::class,'tiempo'];
 $scope=$d['vista']??VentasActividadAccess::alcance($desempeno);
 $title=$desempeno?($scope==='propio'?'Mi desempeño telefónico':'Desempeño telefónico del equipo'):'Reporte de actividad telefónica';
 $generated=!empty($d['generado']) && $errorActividad==='';
-$period=$d['periodo']??['clave'=>$_GET['periodo']??'semana','fecha_desde'=>$_GET['fecha_desde']??'','fecha_hasta'=>$_GET['fecha_hasta']??''];
+$inputValue=static fn($key,$default='')=>is_string($_GET[$key]??$default)?($_GET[$key]??$default):$default;
+$period=$d['periodo']??['clave'=>$inputValue('periodo','semana'),'fecha_desde'=>$inputValue('fecha_desde'),'fecha_hasta'=>$inputValue('fecha_hasta')];
 $filter=['controller'=>$desempeno?'desempeno':'reporte','action'=>$desempeno?'index':'ventas','area'=>'asesores','generar'=>1,
     'periodo'=>$period['clave'],'fecha_desde'=>$period['fecha_desde'],'fecha_hasta'=>$period['fecha_hasta'],
     'persona_id'=>$d['persona_id']??0,'direccion'=>$d['direccion']??'','resultado'=>$d['resultado']??''];
@@ -44,7 +45,7 @@ $filter=['controller'=>$desempeno?'desempeno':'reporte','action'=>$desempeno?'in
             <?php endforeach; ?>
         </section>
         <section class="performance-kpi-grid">
-            <?php foreach ([[$time($s['duraciones_confirmadas']?$s['segundos']:null),'Tiempo confirmado del asesor','clock'],[$time($s['promedio_segundos']),'Promedio con duración confirmada','stopwatch'],[$s['por_registrar'],'Llamadas por registrar','journal-check'],[$s['cumplimiento_registro']===null?'—':$s['cumplimiento_registro'].'%','Cumplimiento del registro','check2-circle']] as [$value,$label,$icon]): ?>
+            <?php foreach ([[VentasActividadMetricas::tiempoConfirmado($s),'Tiempo confirmado del asesor','clock'],[$time($s['promedio_segundos']),'Promedio con duración confirmada','stopwatch'],[$s['por_registrar'],'Llamadas por registrar','journal-check'],[$s['cumplimiento_registro']===null?'—':$s['cumplimiento_registro'].'%','Cumplimiento del registro','check2-circle']] as [$value,$label,$icon]): ?>
                 <article><span class="performance-kpi-icon is-success"><i class="bi bi-<?= $icon ?>" aria-hidden="true"></i></span><div><strong><?= $e($value) ?></strong><span><?= $label ?></span><small><?= $s['duraciones_pendientes'] ?> duraciones pendientes</small></div></article>
             <?php endforeach; ?>
         </section>
@@ -52,7 +53,7 @@ $filter=['controller'=>$desempeno?'desempeno':'reporte','action'=>$desempeno?'in
         <section class="dashboard-panel sales-activity-panel">
             <h2 class="panel-title"><?= $scope==='propio'?'Mi actividad':'Actividad por asesor' ?></h2><p class="page-subtitle"><?= $desempeno?'Comparación de actividad, contacto y registro, sin calificación de ventas.':'Resumen individual con los mismos filtros del reporte.' ?></p>
             <div class="sales-activity-table" role="region" aria-label="Actividad por asesor" tabindex="0"><table><thead><tr><th>Asesor</th><th>Salientes</th><th>Entrantes</th><th>Conversaciones</th><th>Tasa de contacto</th><th>Tiempo confirmado</th><th>Por registrar</th></tr></thead><tbody>
-                <?php foreach ($d['personas_resumen'] as $p): ?><tr><td><div class="sales-activity-person"><?= renderAvatarUsuario($p['nombre_completo'],'','Asesor',$p['foto_perfil']??'','sm','general','',false) ?><strong><?= $e($p['nombre_completo']) ?></strong></div></td><td><?= $p['salientes'] ?></td><td><?= $p['entrantes'] ?></td><td><?= $p['conversaciones'] ?></td><td><?= $p['tasa_contacto']===null?'—':$p['tasa_contacto'].'%' ?></td><td><?= $e($time($p['duraciones_confirmadas']?$p['segundos']:null)) ?></td><td><?= $p['por_registrar'] ?></td></tr><?php endforeach; ?>
+                <?php foreach ($d['personas_resumen'] as $p): ?><tr><td><div class="sales-activity-person"><?= renderAvatarUsuario($p['nombre_completo'],'','Asesor',$p['foto_perfil']??'','sm','general','',false) ?><strong><?= $e($p['nombre_completo']) ?></strong></div></td><td><?= $p['salientes'] ?></td><td><?= $p['entrantes'] ?></td><td><?= $p['conversaciones'] ?></td><td><?= $p['tasa_contacto']===null?'—':$p['tasa_contacto'].'%' ?></td><td><?= $e(VentasActividadMetricas::tiempoConfirmado($p)) ?></td><td><?= $p['por_registrar'] ?></td></tr><?php endforeach; ?>
                 <?php if (!$d['personas_resumen']): ?><tr><td colspan="7">No hay asesores dentro de este alcance.</td></tr><?php endif; ?>
             </tbody></table></div>
         </section>

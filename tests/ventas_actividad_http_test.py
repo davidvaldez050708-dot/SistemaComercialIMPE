@@ -85,7 +85,7 @@ try:
         assert request(controller='desempeno',action='index',area='asesores')[0]==200
         for controller,action in [('reporte','ventasPdf'),('desempeno','exportarPdf')]:
             code,headers,pdf=request(controller=controller,action=action,area='asesores')
-            assert code==200 and pdf.startswith(b'%PDF-'),pdf[:1200]
+            assert code==200 and pdf.startswith(b'%PDF-'),(pdf[:1200],(root/'server.log').read_text(errors='replace'))
             assert 'application/pdf' in headers.get('Content-Type','')
             assert 'private' in headers.get('Cache-Control','')
         request(test='revoke')

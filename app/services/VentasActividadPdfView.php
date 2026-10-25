@@ -39,9 +39,9 @@ final class VentasActividadPdfView
         $html.=self::titulo('Resumen del periodo').'<table class="metrics"><tr>';
         foreach (['Salientes'=>$s['salientes'],'Entrantes'=>$s['entrantes'],'Conectadas'=>$s['conectadas'],'Conversaciones registradas'=>$s['conversaciones']] as $k=>$v)
             $html.='<td><span>'.$e($k).'</span><strong>'.$e($v).'</strong></td>';
-        $html.='</tr></table><p class="notice">Tiempo confirmado del asesor: '.$time($s['duraciones_confirmadas']?$s['segundos']:null).' · Promedio con duración confirmada: '.$time($s['promedio_segundos']).' · Duraciones pendientes: '.$s['duraciones_pendientes'].' · Resultados pendientes: '.$s['por_registrar'].' · Intentos sin confirmar: '.$s['intentos'].' · Transferencias pendientes: '.$s['transferencias_pendientes'].'.</p>';
+        $html.='</tr></table><p class="notice">Tiempo confirmado del asesor: '.VentasActividadMetricas::tiempoConfirmado($s).' · Promedio con duración confirmada: '.$time($s['promedio_segundos']).' · Duraciones pendientes: '.$s['duraciones_pendientes'].' · Resultados pendientes: '.$s['por_registrar'].' · Intentos sin confirmar: '.$s['intentos'].' · Transferencias pendientes: '.$s['transferencias_pendientes'].'.</p>';
         $html.=self::titulo('Actividad por asesor');$people=[];
-        foreach ($d['personas_resumen'] as $p) $people[]=[$p['nombre_completo'],$p['salientes'],$p['entrantes'],$p['conversaciones'],$time($p['duraciones_confirmadas']?$p['segundos']:null),$p['por_registrar'],$p['cumplimiento_registro']===null?'—':$p['cumplimiento_registro'].'%'];
+        foreach ($d['personas_resumen'] as $p) $people[]=[$p['nombre_completo'],$p['salientes'],$p['entrantes'],$p['conversaciones'],VentasActividadMetricas::tiempoConfirmado($p),$p['por_registrar'],$p['cumplimiento_registro']===null?'—':$p['cumplimiento_registro'].'%'];
         $html.=self::tabla(['Asesor','Salientes','Entrantes','Conversaciones','Tiempo','Por registrar','Registro'],$people);
         $html.=self::titulo('Evolución por día');$days=[];
         foreach ($d['dias'] as $p) $days[]=[$p['fecha'],$p['salientes'],$p['entrantes'],$p['conversaciones'],$p['duraciones_confirmadas']?$time($p['segundos']):'—',$p['duraciones_pendientes']];
