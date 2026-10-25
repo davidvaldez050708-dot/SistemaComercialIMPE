@@ -1,0 +1,40 @@
+name: Telefonia - captura independiente de Ventas
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  captura:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          php -l app/views/telefonia/shell.php
+          php tests/telefonia_shell_render_smoke.php
+          node --check public/javascript/telefonia_enrutamiento.js
+          node --check public/javascript/telefonia_ventas_prospecto.js
+          node tests/telefonia_flujo_motor.cjs
+          node tests/telefonia_shell_runtime_smoke.js
+          node tests/telefonia_transferencia_operacion.cjs
+      - run: npm install --prefix /tmp/captura-browser playwright bootstrap@5.3.8 @fontsource/manrope@5.2.8 bootstrap-icons@1.13.1
+      - run: /tmp/captura-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Ventanas de Analista y Ventas, campos, borradores y guardado
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/captura-browser/node_modules/playwright
+          BOOTSTRAP_MODULE_PATH: /tmp/captura-browser/node_modules/bootstrap
+          IMPE_CAPTURE_SCREENSHOTS: /tmp/captura-capturas
+        run: node tests/telefonia_captura_compartida_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: captura-analista-ventas
+          path: /tmp/captura-capturas
+      - name: Publicacion selectiva y restauracion en replicas
+        run: python3 -B tests/publicacion_ventas_captura_test.py
