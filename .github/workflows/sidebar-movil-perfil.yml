@@ -1,0 +1,29 @@
+name: Sidebar movil - perfil y salida
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  menu:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/sidebar-deps playwright@1.56.1 bootstrap@5.3.8 bootstrap-icons@1.11.3
+      - run: /tmp/sidebar-deps/node_modules/.bin/playwright install --with-deps ${{ matrix.browser }}
+      - name: Menú real, siete tamaños y escritorio
+        env:
+          NODE_PATH: /tmp/sidebar-deps/node_modules
+          SIDEBAR_BROWSER: ${{ matrix.browser }}
+        run: |
+          php -l app/views/layout/sidebar.php
+          python3 tests/sidebar_movil_fixture.py
+          python3 tests/publicacion_sidebar_movil_test.py
