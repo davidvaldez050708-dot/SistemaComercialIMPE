@@ -113,6 +113,21 @@
         let loading = false;
         let initialized = false;
         let receptionConfigured = false;
+        // Abrir la fila es inmediato; la confirmación del audio privado sigue
+        // pendiente hasta que el servidor entregue una respuesta válida.
+        function mostrarComprobacion(slot) {
+            slot.setAttribute('aria-busy', 'true');
+            const status = node('div', 'marketing-reception-muted');
+            status.setAttribute('role', 'status');
+            const spinner = node('i', 'bi bi-arrow-clockwise marketing-reception-spinning');
+            spinner.setAttribute('aria-hidden', 'true');
+            status.append(spinner, document.createTextNode(' Preparando grabación…'));
+            slot.replaceChildren(status);
+        }
+        function mostrarErrorGrabacion(slot, mensaje) {
+            slot.replaceChildren(node('p', 'linkage-incoming-player-error',
+                mensaje || 'No fue posible consultar la grabación. Inténtalo nuevamente.'));
+        }
 
         function formatDuration(seconds) {
             const s = Math.max(0, Number(seconds) || 0);
@@ -381,9 +396,10 @@
         async function loadHistory(manual) {
             if (loading) return;
             if (resultModalOpen) return;
-            // No interrumpir una reproducción abierta con el refresco periódico.
-            if (!manual && Array.from(tableBody.querySelectorAll('audio'))
-                .some(function (audio) { return !audio.paused; })) return;
+            // No cerrar el reproductor al refrescar, aunque el audio esté
+            // pausado o el servidor todavía esté verificando su disponibilidad.
+            if (!manual && Array.from(tableBody.querySelectorAll(
+                '.telephony-history-recording-row')).some(row => !row.hidden)) return;
             loading = true;
             refresh.disabled = true;
             refresh.querySelector('i')?.classList.add('marketing-reception-spinning');
