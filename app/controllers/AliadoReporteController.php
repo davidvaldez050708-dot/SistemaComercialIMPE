@@ -13,7 +13,7 @@ class AliadoReporteController
         $this->validarAcceso();
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $esAdministrador = esRolSupervisionNacional();
 
         $modeloAliado = new AliadoModel();
         $modeloSeguimiento = new SeguimientoVinculacionModel();
@@ -185,7 +185,7 @@ class AliadoReporteController
         $this->validarAcceso(true);
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $esAdministrador = esRolSupervisionNacional();
         $estadoId = max(0, (int)($_GET['estado_id'] ?? 0));
         $municipioId = max(0, (int)($_GET['municipio_id'] ?? 0));
 

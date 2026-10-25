@@ -3321,7 +3321,7 @@ class SeguimientoVinculacionController
          * Las acciones operativas continúan sujetas a sus permisos específicos.
          */
         if (
-            $rolId === 1 ||
+            esRolSupervisionNacional() ||
             strcasecmp($rolNombre, 'Marketing') === 0
         ) {
             return 'administrador';

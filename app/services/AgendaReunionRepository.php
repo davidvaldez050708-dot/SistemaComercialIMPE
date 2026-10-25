@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../helpers/SupervisionRolePolicy.php';
 
 class AgendaReunionRepository
 {
@@ -41,11 +42,17 @@ class AgendaReunionRepository
                 LEFT JOIN usuarios k ON k.id=r.cuenta_clave_id
                 WHERE r.fecha_propuesta>=? AND r.fecha_propuesta<? AND r.estado<>'CANCELADA'";
 
-        $sql .= " AND (r.analista_id=? OR r.cuenta_clave_id=?)";
+        if (!esRolSupervisionNacional((int)$rolId)) {
+            $sql .= " AND (r.analista_id=? OR r.cuenta_clave_id=?)";
+        }
         $sql .= " ORDER BY r.fecha_propuesta ASC, r.id ASC";
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ssii', $inicio, $fin, $usuarioId, $usuarioId);
+        if (esRolSupervisionNacional((int)$rolId)) {
+            $stmt->bind_param('ss', $inicio, $fin);
+        } else {
+            $stmt->bind_param('ssii', $inicio, $fin, $usuarioId, $usuarioId);
+        }
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
@@ -329,10 +336,16 @@ class AgendaReunionRepository
                 LEFT JOIN usuarios a ON a.id=r.analista_id
                 LEFT JOIN usuarios k ON k.id=r.cuenta_clave_id
                 WHERE r.id=?";
-        $sql .= " AND (r.analista_id=? OR r.cuenta_clave_id=?)";
+        if (!esRolSupervisionNacional((int)$rolId)) {
+            $sql .= " AND (r.analista_id=? OR r.cuenta_clave_id=?)";
+        }
         $sql .= " LIMIT 1";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('iii', $reunionId, $usuarioId, $usuarioId);
+        if (esRolSupervisionNacional((int)$rolId)) {
+            $stmt->bind_param('i', $reunionId);
+        } else {
+            $stmt->bind_param('iii', $reunionId, $usuarioId, $usuarioId);
+        }
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc() ?: null;
     }

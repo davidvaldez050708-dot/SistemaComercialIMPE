@@ -13,7 +13,7 @@ class ReporteController
         }
 
         if (
-            (int)($_SESSION['rol_id'] ?? 0) !== 1 ||
+            !esRolSupervisionNacional() ||
             !tienePermiso('reportes.ver') ||
             !tienePermiso('reportes.usuarios')
         ) {
@@ -85,7 +85,7 @@ class ReporteController
             in_array(true, $tiposReporteSeguimiento, true);
 
         $puedeReporteAdministrador =
-            (int)($_SESSION['rol_id'] ?? 0) === 1 &&
+            esRolSupervisionNacional() &&
             tienePermiso('reportes.usuarios');
 
         $puedeReporteConvocatorias =

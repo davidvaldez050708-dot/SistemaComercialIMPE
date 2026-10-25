@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/SupervisionRolePolicy.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/SeguimientoRutaOperativaService.php';
@@ -93,7 +94,7 @@ class SeguimientoExpedienteService
          * AgendaReunionController reutiliza este alcance para Marketing
          * únicamente al consultar el expediente completo.
          */
-        if ((int)$rolId === 1) {
+        if (esRolSupervisionNacional((int)$rolId)) {
             return true;
         }
 

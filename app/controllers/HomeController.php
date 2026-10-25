@@ -40,8 +40,9 @@ class HomeController
                 break;
 
             case 2:
-                $subtituloPagina = 'Panel de Coordinador Comercial';
-                $vistaPanel = __DIR__ . '/../views/dashboard/coordinador.php';
+                $tituloPagina = 'Director de Operaciones';
+                $subtituloPagina = 'Supervisión nacional y reportes';
+                $vistaPanel = __DIR__ . '/../views/dashboard/director_operaciones.php';
                 break;
 
             case 3:
@@ -164,6 +165,11 @@ class HomeController
                     $resumenMarketing['proximas_finalizar'] =
                         count($proximasFinalizarMarketing);
                     $coberturaMarketing = $modeloConvocatoria->obtenerCoberturaTerritorialDashboard(4);
+                    require_once __DIR__ . '/../models/MarketingIndicadoresModel.php';
+                    $indicadoresClaveMarketing = (new MarketingIndicadoresModel())->obtener(
+                        $resumenMarketing,
+                        $coberturaMarketing
+                    );
                     $estadosSinConvocatoria = $modeloConvocatoria
                         ->obtenerEstadosSinConvocatoriaActivaDashboard();
 
@@ -177,7 +183,9 @@ class HomeController
                     $publicacionesPorTipoMarketing = $modeloConvocatoria
                         ->obtenerPublicacionesPorTipoDashboard($periodoPublicaciones);
                     $publicacionesRecientesMarketing = $modeloConvocatoria
-                        ->obtenerRecientesDashboard(3);
+                        ->obtenerRecientesDashboard(4);
+                    require_once __DIR__ . '/../models/MarketingWidgetsModel.php';
+                    $widgetsMarketing = (new MarketingWidgetsModel())->obtener();
 
                     $vistaPanel = __DIR__ . '/../views/dashboard/marketing.php';
                     break;

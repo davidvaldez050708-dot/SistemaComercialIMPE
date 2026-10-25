@@ -18,14 +18,7 @@ $permisosSoloAdministradorIds = [];
 foreach ($permisosAgrupados as $permisos) {
     foreach ($permisos as $permiso) {
         $codigoPermiso = (string)($permiso['codigo'] ?? '');
-        $permisoSoloAdministrador = in_array(
-            $codigoPermiso,
-            [
-                'reportes.usuarios',
-                'whatsapp.gestionar_cuentas'
-            ],
-            true
-        );
+        $permisoSoloAdministrador = permisoReservadoParaRol((int)($rolSeleccionado['id'] ?? 0), $codigoPermiso);
 
         if ($permisoSoloAdministrador) {
             $permisosSoloAdministradorIds[(int)$permiso['id']] = true;
@@ -156,14 +149,7 @@ $permisosHabilitados = count(array_filter(
                         <?php foreach ($permisos as $permiso): ?>
 
                             <?php
-                            $permisoSoloAdministrador = in_array(
-                                (string)($permiso['codigo'] ?? ''),
-                                [
-                                    'reportes.usuarios',
-                                    'whatsapp.gestionar_cuentas'
-                                ],
-                                true
-                            );
+                            $permisoSoloAdministrador = permisoReservadoParaRol((int)($rolSeleccionado['id'] ?? 0), (string)($permiso['codigo'] ?? ''));
                             $permisoRestringidoAdministrador =
                                 $rolEsAdministrador &&
                                 permisoOperativoRestringidoAdministrador(

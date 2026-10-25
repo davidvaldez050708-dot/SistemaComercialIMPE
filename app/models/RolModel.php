@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../helpers/AdminRolePolicy.php';
+require_once __DIR__ . '/../helpers/SupervisionRolePolicy.php';
 
 class RolModel
 {
@@ -713,7 +714,6 @@ class RolModel
          * módulo correspondiente exista.
          */
         $codigos = [
-            'prospectos.ver_todos',
             'prospectos.ver_propios',
             'prospectos.editar',
             'prospectos.asignar',
@@ -1114,19 +1114,6 @@ class RolModel
 
         $seleccionados = array_fill_keys(array_map('intval', $permisosIds), true);
 
-        /*
-         * El Reporte de Convocatorias forma parte del Centro de Reportes.
-         * Todo rol que conserve reportes.ver debe conservar también esta familia,
-         * sin que eso le conceda acceso operativo al módulo de Convocatorias.
-         */
-        if (
-            isset($idPorCodigo['reportes.ver']) &&
-            isset($idPorCodigo['reportes.convocatorias']) &&
-            isset($seleccionados[(int)$idPorCodigo['reportes.ver']])
-        ) {
-            $seleccionados[(int)$idPorCodigo['reportes.convocatorias']] = true;
-        }
-
         foreach (array_keys($seleccionados) as $permisoId) {
             $codigo = $codigoPorId[(int)$permisoId] ?? '';
 
@@ -1272,24 +1259,13 @@ class RolModel
             return $permisosIds;
         }
 
-        $resultado = $this->connection->query(
-            "SELECT id
-             FROM permisos
-             WHERE codigo IN (
-                'reportes.usuarios',
-                'whatsapp.gestionar_cuentas',
-                'telefonia.configurar'
-             )"
-        );
-
-        if (!$resultado || $resultado->num_rows === 0) {
-            return $permisosIds;
-        }
-
+        $resultado = $this->connection->query('SELECT id, codigo FROM permisos');
+        if (!$resultado) throw new RuntimeException('No fue posible validar los permisos reservados.');
         $permisosSoloAdministrador = [];
-
         while ($permiso = $resultado->fetch_assoc()) {
-            $permisosSoloAdministrador[(int)$permiso['id']] = true;
+            if (permisoReservadoParaRol((int)$rolId, (string)$permiso['codigo'])) {
+                $permisosSoloAdministrador[(int)$permiso['id']] = true;
+            }
         }
 
         return array_values(array_filter(
@@ -1345,7 +1321,7 @@ class RolModel
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.editar', 'nombre' => 'Editar roles', 'descripcion' => 'Actualizar datos de roles.'],
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.cambiar_estado', 'nombre' => 'Activar / desactivar roles', 'descripcion' => 'Modificar estado de roles.'],
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.asignar_permisos', 'nombre' => 'Asignar permisos', 'descripcion' => 'Administrar permisos por rol.'],
-            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_todos', 'nombre' => 'Ver todos los prospectos', 'descripcion' => 'Consultar prospectos de todos los equipos.'],
+            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_todos', 'nombre' => 'Ver todos los prospectos', 'descripcion' => 'Consultar los prospectos recibidos desde los formularios de Registro, generales y de aliados.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_propios', 'nombre' => 'Ver prospectos propios', 'descripcion' => 'Consultar prospectos asignados al usuario.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.editar', 'nombre' => 'Editar prospectos', 'descripcion' => 'Actualizar información de prospectos.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.asignar', 'nombre' => 'Asignar prospectos', 'descripcion' => 'Asignar prospectos a usuarios o equipos.'],
@@ -1403,7 +1379,7 @@ class RolModel
             ['modulo' => 'Reportes', 'codigo' => 'reportes.seguimiento.institucion', 'nombre' => 'Reporte de institución', 'descripcion' => 'Generar el expediente ejecutivo de una institución dentro del alcance autorizado.'],
             ['modulo' => 'Reportes', 'codigo' => 'reportes.territorial', 'nombre' => 'Reporte de información territorial', 'descripcion' => 'Generar reportes de información territorial sobre territorios autorizados.'],
             ['modulo' => 'Reportes', 'codigo' => 'reportes.convocatorias', 'nombre' => 'Reporte de convocatorias', 'descripcion' => 'Consultar y generar el reporte ejecutivo del módulo de Convocatorias.'],
-            ['modulo' => 'Reportes', 'codigo' => 'reportes.usuarios', 'nombre' => 'Reporte administrativo de usuarios', 'descripcion' => 'Generar el reporte transversal de usuarios. Exclusivo del Administrador.'],
+            ['modulo' => 'Reportes', 'codigo' => 'reportes.usuarios', 'nombre' => 'Reporte administrativo de usuarios', 'descripcion' => 'Generar el reporte transversal de usuarios. Disponible para Administración y Dirección de Operaciones con este permiso.'],
             ['modulo' => 'Reportes', 'codigo' => 'reportes.exportar', 'nombre' => 'Exportar reportes', 'descripcion' => 'Exportar a PDF los reportes que el rol tiene autorizados.'],
             ['modulo' => 'Respaldos', 'codigo' => 'respaldos.generar', 'nombre' => 'Generar respaldos', 'descripcion' => 'Crear respaldos del sistema.'],
             ['modulo' => 'Respaldos', 'codigo' => 'respaldos.restaurar', 'nombre' => 'Restaurar respaldos', 'descripcion' => 'Restaurar información desde respaldo.'],

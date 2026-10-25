@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../../helpers/AvatarHelper.php';
+require_once __DIR__ . '/../../services/AliadoInternacionalService.php';
+require_once __DIR__ . '/../../helpers/PermissionHelper.php';
 
 $opcionActiva = $opcionActiva ?? 'inicio';
 $mostrarUsuarios = tienePermiso('usuarios.ver');
@@ -14,9 +16,11 @@ $mostrarMarcadorTelefonia = false;
 $mostrarMisLlamadas = tienePermiso('telefonia.usar') && (int)($_SESSION['usuario_id'] ?? 0) > 0;
 $mostrarDataTerritorial = tienePermiso('data_territorial.ver');
 $mostrarSeguimientoVinculacion = tienePermiso('seguimientos_vinculacion.ver');
-$mostrarAliados = tienePermiso('aliados.ver');
+$mostrarAliados = tienePermiso('aliados.ver') || AliadoInternacionalService::puedeConsultar();
 $mostrarWhatsapp = tienePermiso('whatsapp.ver');
 $mostrarConvocatorias = tienePermiso('convocatorias.ver');
+$mostrarConvenios = puedeConsultarDirectorioConvenios();
+$mostrarProspectos = tienePermiso('prospectos.ver_todos');
 $mostrarReporteTerritorial =
     tienePermiso('reportes.territorial') &&
     $mostrarDataTerritorial;
@@ -28,7 +32,7 @@ $mostrarReporteSeguimiento =
         tienePermiso('reportes.seguimiento.institucion')
     );
 $mostrarReporteUsuarios =
-    (int)($_SESSION['rol_id'] ?? 0) === 1 &&
+    esRolSupervisionNacional() &&
     tienePermiso('reportes.usuarios');
 $mostrarReporteConvocatorias =
     tienePermiso('reportes.convocatorias');
@@ -81,8 +85,7 @@ $claseConvocatoriasReportes =
     $opcionActiva === 'convocatorias_reportes' ? 'active' : '';
 $claseCorreosMarketing =
     $opcionActiva === 'correos_marketing' ? 'active' : '';
-$claseProspectos =
-    $opcionActiva === 'prospectos' ? 'active' : '';
+$claseProspectos = $opcionActiva === 'prospectos' ? 'active' : '';
 $claseFormularios =
     $opcionActiva === 'formularios' ? 'active' : '';
 
@@ -203,21 +206,23 @@ $claseFormularios =
             </div>
         <?php endif; ?>
 
-        <?php if ($mostrarConvocatorias): ?>
+        <?php if ($mostrarConvocatorias || $mostrarConvenios || $mostrarProspectos): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
                     MARKETING
                 </p>
 
+                <?php if ($mostrarConvocatorias): ?>
                 <a
                     href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index"
                     class="sidebar-link <?= $claseConvocatorias ?>">
                     <i class="bi bi-megaphone"></i>
                     <?= htmlspecialchars($etiquetaMenuConvocatorias) ?>
                 </a>
+                <?php endif; ?>
 
-                <?php if ($esRolMarketingSidebar): ?>
+                <?php if ($mostrarConvenios): ?>
                     <a
                         href="<?= BASE_URL ?>index.php?controller=crearConvocatoria&action=index"
                         class="sidebar-link <?= $claseCrearConvocatoria ?>">
@@ -226,7 +231,7 @@ $claseFormularios =
                     </a>
                 <?php endif; ?>
 
-                <?php if ($esRolMarketingSidebar): ?>
+                <?php if ($esRolMarketingSidebar && $mostrarConvocatorias): ?>
                     <a
                         href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
                         class="sidebar-link <?= $claseFormularios ?>">
@@ -235,16 +240,13 @@ $claseFormularios =
                     </a>
                 <?php endif; ?>
 
-                <?php if ($esRolMarketingSidebar): ?>
-                    <a
-                        href="<?= BASE_URL ?>index.php?controller=prospecto&action=index"
-                        class="sidebar-link <?= $claseProspectos ?>">
-                        <i class="bi bi-people"></i>
-                        Prospectos
+                <?php if ($mostrarProspectos): ?>
+                    <a href="<?= BASE_URL ?>index.php?controller=prospecto&action=index" class="sidebar-link <?= $claseProspectos ?>">
+                        <i class="bi bi-people"></i> Prospectos
                     </a>
                 <?php endif; ?>
 
-                <?php if ($esRolMarketingSidebar): ?>
+                <?php if ($esRolMarketingSidebar && $mostrarConvocatorias): ?>
                     <a
                         href="<?= BASE_URL ?>index.php?controller=correoMarketing&action=index"
                         class="sidebar-link <?= $claseCorreosMarketing ?>">
@@ -536,30 +538,32 @@ $claseFormularios =
             </div>
         <?php endif; ?>
 
-        <?php if ($mostrarConvocatorias): ?>
+        <?php if ($mostrarConvocatorias || $mostrarConvenios || $mostrarProspectos): ?>
 
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">
                         MARKETING
                     </p>
 
+                    <?php if ($mostrarConvocatorias): ?>
                     <a
                         href="<?= BASE_URL ?>index.php?controller=convocatoria&action=index"
                         class="sidebar-link <?= $claseConvocatorias ?>">
                         <i class="bi bi-megaphone"></i>
                         <?= htmlspecialchars($etiquetaMenuConvocatorias) ?>
                     </a>
+                    <?php endif; ?>
 
-                    <?php if ($esRolMarketingSidebar): ?>
+                    <?php if ($mostrarConvenios): ?>
                         <a
                             href="<?= BASE_URL ?>index.php?controller=crearConvocatoria&action=index"
                             class="sidebar-link <?= $claseCrearConvocatoria ?>">
                             <i class="bi bi-plus-square"></i>
-                            Crear convocatoria
+                            Convenios
                         </a>
                     <?php endif; ?>
 
-                    <?php if ($esRolMarketingSidebar): ?>
+                    <?php if ($esRolMarketingSidebar && $mostrarConvocatorias): ?>
                         <a
                             href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
                             class="sidebar-link <?= $claseFormularios ?>">
@@ -568,16 +572,13 @@ $claseFormularios =
                         </a>
                     <?php endif; ?>
 
-                    <?php if ($esRolMarketingSidebar): ?>
-                        <a
-                            href="<?= BASE_URL ?>index.php?controller=prospecto&action=index"
-                            class="sidebar-link <?= $claseProspectos ?>">
-                            <i class="bi bi-people"></i>
-                            Prospectos
+                    <?php if ($mostrarProspectos): ?>
+                        <a href="<?= BASE_URL ?>index.php?controller=prospecto&action=index" class="sidebar-link <?= $claseProspectos ?>">
+                            <i class="bi bi-people"></i> Prospectos
                         </a>
                     <?php endif; ?>
 
-                    <?php if ($esRolMarketingSidebar): ?>
+                    <?php if ($esRolMarketingSidebar && $mostrarConvocatorias): ?>
                         <a
                             href="<?= BASE_URL ?>index.php?controller=correoMarketing&action=index"
                             class="sidebar-link <?= $claseCorreosMarketing ?>">

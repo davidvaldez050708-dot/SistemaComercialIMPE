@@ -10,6 +10,7 @@ require_once $root . '/app/helpers/DataTerritorialAccessPolicy.php';
 $casos = [
     [1, 'Administrador', 'TODOS'],
     [2, 'Coordinador Comercial', 'TODOS'],
+    [2, 'Director de Operaciones', 'TODOS'],
     [5, 'Finanzas', 'TODOS'],
     [7, 'Marketing', 'TODOS'],
     [99, 'Nuevo rol de consulta', 'TODOS'],
