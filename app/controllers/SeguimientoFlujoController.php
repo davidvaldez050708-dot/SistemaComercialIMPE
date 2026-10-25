@@ -638,7 +638,7 @@ class SeguimientoFlujoController
         $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
 
         if (
-            $rolId === 1 ||
+            esRolSupervisionNacional() ||
             strcasecmp($rolNombre, 'Marketing') === 0
         ) {
             return 'administrador';

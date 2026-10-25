@@ -508,7 +508,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'reportes.seguimiento.actividad': 'reportes.ver',
             'reportes.seguimiento.institucion': 'reportes.ver',
             'reportes.territorial': 'reportes.ver',
-            'reportes.usuarios': 'reportes.ver'
+            'reportes.usuarios': 'reportes.ver',
+            'reportes.convocatorias': 'reportes.ver'
         };
         const dependenciasAdicionales = {
             'reportes.seguimiento.cartera': [

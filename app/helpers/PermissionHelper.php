@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/AdminRolePolicy.php';
+require_once __DIR__ . '/SupervisionRolePolicy.php';
 
 if (!function_exists('tienePermiso')) {
     function tienePermiso($codigo)
@@ -48,5 +49,45 @@ if (!function_exists('tieneAlgunPermiso')) {
         }
 
         return false;
+    }
+}
+
+if (!function_exists('puedeConsultarDirectorioConvenios')) {
+    function puedeConsultarDirectorioConvenios()
+    {
+        return tieneAlgunPermiso(['convenios.ver', 'convenios.gestionar']) ||
+            (
+                strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0 &&
+                tienePermiso('convocatorias.ver')
+            );
+    }
+}
+
+/**
+ * Convenios sólo habilita la consulta. La publicación requiere también
+ * convocatorias.crear; Cuenta Clave queda limitada por su asignación vigente.
+ */
+if (!function_exists('puedeCrearConvocatoriaDesdeConvenio')) {
+    function puedeCrearConvocatoriaDesdeConvenio()
+    {
+        if (!puedeConsultarDirectorioConvenios() ||
+            !tienePermiso('convocatorias.ver') ||
+            !tienePermiso('convocatorias.crear')) {
+            return false;
+        }
+        $esMarketing = strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
+        if ($esMarketing) {
+            return tienePermiso('formularios_aliados.gestionar_enlaces');
+        }
+        return (int)($_SESSION['rol_id'] ?? 0) === 6;
+    }
+}
+
+/** Marketing consulta Aliados nacionalmente; no hereda asignaciones de Cuenta Clave. */
+if (!function_exists('puedeConsultarAliadosNacional')) {
+    function puedeConsultarAliadosNacional()
+    {
+        return esRolSupervisionNacional() ||
+            strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0;
     }
 }

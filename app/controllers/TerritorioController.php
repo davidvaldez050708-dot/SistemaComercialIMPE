@@ -483,7 +483,8 @@ class TerritorioController
     ) {
         $estados = $modeloTerritorio->obtenerEstados($filtros);
 
-        if (tienePermiso('territorios.asignar')) {
+        if (tienePermiso('territorios.asignar') ||
+            (tienePermiso('territorios.ver') && esRolSupervisionNacional())) {
             return $estados;
         }
 
@@ -525,7 +526,8 @@ class TerritorioController
             return false;
         }
 
-        if (tienePermiso('territorios.asignar')) {
+        if (tienePermiso('territorios.asignar') ||
+            (tienePermiso('territorios.ver') && esRolSupervisionNacional())) {
             return (bool)$modeloTerritorio->buscarEstadoPorId($estadoId);
         }
 

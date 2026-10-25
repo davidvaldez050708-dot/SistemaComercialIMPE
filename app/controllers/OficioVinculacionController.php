@@ -127,7 +127,8 @@ class OficioVinculacionController
             }
 
             $documento = (new OficioDocxPdfService())->generarDocx(
-                (array)($vista['vista_previa'] ?? [])
+                (array)($vista['vista_previa'] ?? []),
+                true // Primera preparación de esta copia, no una descarga de un oficio preparado.
             );
             if (!($documento['ok'] ?? false)) {
                 $this->responderJson([
@@ -601,7 +602,7 @@ class OficioVinculacionController
 
     private function resolverModoAcceso()
     {
-        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+        if (esRolSupervisionNacional()) {
             return 'administrador';
         }
 

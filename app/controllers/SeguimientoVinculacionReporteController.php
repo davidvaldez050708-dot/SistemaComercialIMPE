@@ -2241,7 +2241,7 @@ class SeguimientoVinculacionReporteController
 
     private function resolverModoSeguimiento()
     {
-        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+        if (esRolSupervisionNacional()) {
             return 'administrador';
         }
 
