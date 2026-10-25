@@ -153,11 +153,24 @@ def main():
             abort('El archivo no usa UTF-8: ' + name)
         updated = source
         for before, after in entry['patches']:
-            if after and updated.count(after) == 1:
+            # Un fragmento eliminado no tiene texto nuevo que comparar.
+            # Verificar su ausencia mediante la clase característica.
+            deletion = (name == 'app/views/telefonia/shell.php' and
+                        'impe-phone-classic-link' in before) or (
+                        name == 'public/css/telefonia_shell.css')
+            if deletion:
+                if updated.count(before) == 1:
+                    updated = updated.replace(before, after, 1)
+                elif 'impe-phone-classic-link' not in updated:
+                    continue
+                else:
+                    abort('CONFLICTO: variante distinta del modo clásico: ' + name)
+            elif after and updated.count(after) == 1:
                 continue
-            if updated.count(before) != 1:
+            elif updated.count(before) == 1:
+                updated = updated.replace(before, after, 1)
+            else:
                 abort('CONFLICTO: personalización distinta o fragmento ausente: ' + name)
-            updated = updated.replace(before, after, 1)
         new_data = updated.replace('\n', '\r\n').encode('utf-8') if crlf else updated.encode('utf-8')
         if new_data == original:
             print('ACTUALIZADO: ' + name)
