@@ -41,7 +41,12 @@ qcheck($installer->aplicar(function($d)use(&$backup){$backup=$d;}),'Instalación
 $db->query("DELETE r FROM rol_permisos r JOIN permisos p ON p.id=r.permiso_id WHERE r.rol_id=3 AND p.codigo='reportes.ventas.propio'");
 qcheck(!$installer->aplicar(function(){throw new RuntimeException('No debe reescribir respaldo');}),'Instalación idempotente');
 qcheck((int)$db->query("SELECT COUNT(*) n FROM rol_permisos r JOIN permisos p ON p.id=r.permiso_id WHERE r.rol_id=3 AND p.codigo='reportes.ventas.propio'")->fetch_assoc()['n']===0,'Reinstalar respeta revocación');
-$db->query("INSERT INTO rol_permisos SELECT 3,id FROM permisos WHERE codigo='reportes.ventas.propio'");
+$db->query("INSERT INTO rol_permisos SELECT 7,id FROM permisos WHERE codigo='reportes.ventas.global'");
+try{$installer->restaurar($backup);throw new LogicException('Restauró sobre asignación posterior');}catch(RuntimeException $e){qcheck(str_contains($e->getMessage(),'posteriores'),'Bloquear cambios posteriores');}
+$db->query('DELETE FROM rol_permisos WHERE rol_id=7');
+$installer->restaurar($backup);qcheck(!$installer->comprobar(),'Restaurar catálogo');
+qcheck((int)$db->query('SELECT COUNT(*) n FROM rol_permisos')->fetch_assoc()['n']===0,'Restaurar enlaces anteriores');
+$installer->aplicar(function(){});$installer->verificarEstructura();
 $today=(new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))->format('Y-m-d');
 function callrow(mysqli $db,int $uid,string $ref,string $direction,string $date,string $origin='',?int $request=null):void {
     $s=$db->prepare("INSERT INTO telefonia_ventas_llamadas(usuario_id,extension,pbx_call_id,direccion,numero,fecha,origen_extension,solicitud_id) VALUES(?,'150',?,?,'5550000000',?,?,?)");

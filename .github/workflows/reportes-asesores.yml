@@ -22,10 +22,46 @@ jobs:
         with:
           php-version: '8.2'
           extensions: mysqli, mbstring, gd, zip
-      - run: composer reinstall '*' --no-interaction --prefer-dist --no-scripts --no-progress
+      - run: |
+          composer install --no-interaction --prefer-dist --no-scripts --no-progress
+          composer reinstall '*' --no-interaction --prefer-dist --no-scripts --no-progress
       - name: Métricas, permisos, consultas y PDF por HTTP y SQL
         env:
           IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
           php tests/ventas_actividad_unit.php
           python3 tests/ventas_actividad_http_test.py
+  interfaz:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, gd, zip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/asesores-deps playwright@1.56.1 bootstrap@5.3.8 bootstrap-icons@1.11.3
+      - run: /tmp/asesores-deps/node_modules/.bin/playwright install --with-deps ${{ matrix.browser }}
+      - env:
+          NODE_PATH: /tmp/asesores-deps/node_modules
+          SALES_BROWSER: ${{ matrix.browser }}
+        run: node tests/ventas_actividad_browser.cjs
+  pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, gd, zip
+      - run: |
+          composer install --no-interaction --prefer-dist --no-scripts --no-progress
+          composer reinstall '*' --no-interaction --prefer-dist --no-scripts --no-progress
+          pip install pypdf
+          python3 tests/ventas_actividad_pdf_test.py

@@ -8,7 +8,7 @@ $_SESSION=['usuario_id'=>301,'rol_id'=>$role,'rol'=>$role===3?'Asesor de Ventas'
 $people=[['id'=>301,'nombre_completo'=>'María Fernanda García Hernández','foto_perfil'=>'','activo'=>1]];
 if ($role===2) $people[]=['id'=>302,'nombre_completo'=>'Asesor de prueba sin actividad','foto_perfil'=>'','activo'=>1];
 $period=VentasActividadMetricas::periodo(['periodo'=>'semana']);$rows=[];$today=$period['fecha_hasta'];
-$count=($argv[1]??'')==='pdf'?90:32;
+$count=str_starts_with($argv[1]??'','pdf')?90:32;
 for($i=0;$i<$count;$i++) $rows[]=['id'=>$i+1,'usuario_id'=>301,'extension'=>'150','pbx_call_id'=>'fixture-call-'.str_pad((string)$i,6,'0',STR_PAD_LEFT),
     'fecha'=>$today.' 10:'.sprintf('%02d',$i%60).':00','direccion'=>$i%2?'Entrante':'Saliente','conectada'=>true,'finalizada'=>true,'segundos'=>$i===1?null:13,
     'nombre'=>'Prospecto de prueba','numero'=>'5550000000','origen_extension'=>$i%2?'100':'','solicitud_id'=>$i%2?1:null,
@@ -18,7 +18,14 @@ $actividad=VentasActividadMetricas::calcular($rows,$people,$period)+['area'=>'as
     'vista'=>$role===3?'propio':'global','periodo'=>$period,'personas'=>$people,'persona_id'=>$role===3?301:0,'direccion'=>'','resultado'=>'','generado'=>true,
     'generado_por'=>'Persona de prueba','generado_por_rol'=>$_SESSION['rol'],'fecha_generacion'=>date('d/m/Y H:i'),
     'organizacion'=>['disponible'=>true,'programadas'=>2,'vencidas'=>1,'devoluciones'=>1]];
-if (($argv[1]??'')==='pdf') {
+if (str_starts_with($argv[1]??'','pdf')) {
+    if ($argv[1]==='pdf_analista') {
+        $actividad=array_replace($actividad,['area'=>'analistas','area_label'=>'Analistas','vista'=>'propio',
+            'ranking'=>[['nombre_completo'=>'Analista de prueba','llamadas_realizadas'=>10,'llamadas_con_contacto'=>4,'tasa_contacto'=>40,
+                'interacciones'=>12,'llamadas_efectivas'=>3,'indice'=>null]],
+            'resumen'=>['llamadas_realizadas'=>10,'llamadas_con_contacto'=>4,'tasa_contacto'=>40,'interacciones'=>12,'llamadas_efectivas'=>3],
+            'criterios'=>[],'tendencia'=>[],'territorios'=>[],'reconocimientos'=>[]]);
+    }
     require ROOT_PATH.'/app/services/DesempenoPdfService.php';
     $pdf=(new DesempenoPdfService())->generar($actividad);
     if (!$pdf['ok']) throw new RuntimeException(json_encode($pdf));

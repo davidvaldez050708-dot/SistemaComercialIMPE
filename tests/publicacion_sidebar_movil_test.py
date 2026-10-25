@@ -11,7 +11,9 @@ for crlf in [False, True]:
         for row in spec['files']:
             v=row['variants'][0];new=unpack(v['after']);old=unpack(v['before'])
             assert hashlib.sha256(new).hexdigest()==v['after_sha']
-            assert (ROOT/row['path']).read_bytes().replace(b'\r\n',b'\n')==new
+            # Esta entrega histórica debe seguir comprobando su propio código inmutable.
+            historical=subprocess.check_output(['git','show','323c8bd586808ad455574efc9bd4ee2a56c51b51:'+row['path']],cwd=ROOT)
+            assert historical.replace(b'\r\n',b'\n')==new
             p=site/row['path'];p.parent.mkdir(parents=True,exist_ok=True)
             before[row['path']]=old.replace(b'\n',b'\r\n') if crlf else old
             p.write_bytes(before[row['path']])
