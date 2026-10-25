@@ -32,6 +32,8 @@ jobs:
           node tests/telefonia_recuperacion_pbx_smoke.cjs
           node tests/telefonia_webrtc_dtmf_smoke.js
           node tests/telefonia_ventas_grabaciones_ui_regresion.cjs
+          node tests/telefonia_ventas_conciliacion_tardia.cjs
+          node tests/telefonia_identidad_transferencia_actual.cjs
       - run: npm install --no-save --package-lock=false playwright
       - run: npx playwright install --with-deps chromium
       - run: node tests/telefonia_conexion_browser.cjs
