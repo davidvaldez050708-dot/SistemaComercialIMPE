@@ -10,7 +10,9 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mysqli, mbstring
+          extensions: mysqli, mbstring, gd, zip
+      - name: Completar dependencias del autoload usado por Oficios
+        run: composer reinstall '*' --no-interaction --prefer-dist --no-scripts --no-progress
       - run: |
           php tests/director_operaciones_scope.php
           php tests/data_territorial_acceso_roles_smoke.php
