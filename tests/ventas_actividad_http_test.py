@@ -14,7 +14,8 @@ server=None
 try:
     fixture('--setup')
     with tempfile.TemporaryDirectory() as folder:
-        root=pathlib.Path(folder)
+        root=pathlib.Path(folder)/'sitio';root.mkdir()
+        (root/'index.php').write_text('<?php',encoding='utf8')
         shutil.copytree(R/'app',root/'app')
         shutil.copytree(R/'vendor',root/'vendor')
         for sub in ['css','javascript','img/brand']:
@@ -90,6 +91,13 @@ try:
             assert 'private' in headers.get('Cache-Control','')
         request(test='revoke')
         assert request()[0]==403 and request(action='ventasPdf')[0]==403
+        permission_backup=pathlib.Path(folder)/'respaldos-permisos'
+        cli=[php,str(R/'tools/instalar_reportes_asesores_permisos.php'),'--site',str(root),'--backup-root',str(permission_backup)]
+        for mode in ['--check','--apply']:
+            p=subprocess.run(cli+[mode],env=env,capture_output=True)
+            assert p.returncode==0 and b'Warning:' not in p.stdout+p.stderr,p.stdout+p.stderr
+        assert not permission_backup.exists(),'Reinstalar no crea un respaldo vacío ni vuelve a conceder permisos'
+        assert request()[0]==403,'CLI real conserva permisos revocados'
         server.terminate();server.wait(timeout=10);server=None;log.close()
         logs=(root/'server.log').read_text(errors='replace')
         assert 'PHP Warning' not in logs and 'PHP Fatal' not in logs,logs
