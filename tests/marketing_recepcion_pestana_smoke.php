@@ -37,7 +37,8 @@ $tests = [
         str_contains($recordingApi, "'verificar'") &&
         str_contains($marketingJs, "url.searchParams.set('verificar', '1')") &&
         str_contains($marketingJs, 'Consultar grabación') &&
-        str_contains($marketingJs, 'Aún no disponible') &&
+        str_contains($marketingJs, 'mostrarComprobacion(slot)') &&
+        str_contains($marketingJs, 'La grabación todavía está en preparación.') &&
         str_contains($marketingJs, "recordingVerified = '1'"),
     'Silenciar y temporizador comparten experiencia Seguimiento' =>
         str_contains($shellJs, 'syncIncomingClock(value)') &&
@@ -83,9 +84,11 @@ $tests = [
     'Host page keeps tab info visible' =>
         !str_contains($hostCss, 'body:not(.telephony-host-incoming) > *') &&
         str_contains($hostCss, '.telephony-host-tab-info {'),
-    'Reception warns about closing telephony context' =>
-        str_contains($view, 'data-marketing-reception-browser-note') &&
-        str_contains($persistent, 'marketingBrowserNote.hidden = !active;'),
+    'Recepción elimina avisos duplicados pero conserva el estado operativo' =>
+        !str_contains($view, 'data-marketing-reception-browser-note') &&
+        !str_contains($view, 'data-marketing-reception-hint') &&
+        !str_contains($view, 'marketing-reception-history-note') &&
+        str_contains($view, 'data-marketing-reception-state-text'),
 ];
 foreach ($tests as $name => $ok) {
     if (!$ok) {

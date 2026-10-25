@@ -34,7 +34,8 @@ $check(str_contains($head, "'seguimiento_llamadas_player.css'")
     && str_contains($head, "'telefonia_recepcion_marketing.js'"),
     'Falta CSS/JS del reproductor compartido');
 $check(str_contains($reception, "get('buscar')")
-    && str_contains($reception, 'No disponible · Reintentar'),
+    && str_contains($reception, 'La grabación no pudo verificarse.') &&
+    str_contains($reception, 'mostrarComprobacion(slot)'),
     'Falta búsqueda desde historial o error de audio explícito');
 $check(str_contains($history, 'Ver llamada')
     && str_contains($history, 'actividad telefónica que se pudo atribuir a tu usuario'),
