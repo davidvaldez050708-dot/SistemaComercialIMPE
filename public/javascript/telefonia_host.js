@@ -512,7 +512,7 @@
                 if (error) reject(error); else resolve();
             };
             const loaded = () => finish();
-            const failed = () => finish(new Error('No fue posible cargar el teléfono WebRTC.'));
+            const failed = () => finish(new Error('No fue posible cargar el teléfono.'));
             const deadline = window.setTimeout(() => finish(new Error(
                 'Zadarma tardó demasiado en responder. Se reintentará la conexión.')), 20000);
             script.addEventListener('load', loaded, {once:true});
@@ -598,7 +598,7 @@
         ) {
             throw new Error(
                 data.mensaje ||
-                'No fue posible preparar la telefonía WebRTC.'
+                'No fue posible preparar el teléfono.'
             );
         }
 
@@ -668,7 +668,7 @@
                             sdkInviteId:String(call?.sipSessionId||'')
                         },
                         finalMetadata: null,
-                        message: 'Timbrado detectado en el teléfono WebRTC. Registro PBX pendiente.'
+                        message: 'Se detectó una llamada entrante. Su registro está pendiente.'
                     });
                 },
                 onSessionBound: function (evidence={}) {
@@ -767,8 +767,8 @@
                             status:attachedPbx?'ended-unconfirmed':(wasAnswered?'sdk-ended':'no-answer'), duration,
                             context:{...state.context,sdkEnded:true},
                             message:attachedPbx
-                                ? 'La sesión SIP terminó. El cierre PBX sigue pendiente de confirmación.'
-                                : 'Sesión SIP finalizada. El historial PBX se actualiza por separado.'});
+                                ? 'La llamada terminó en el navegador. Falta confirmar su cierre en el historial.'
+                                : 'La llamada terminó en el navegador. El historial se actualiza por separado.'});
                         ocultarHostEntrante();
                         marcarPestanaEntrante('');
                         return;
@@ -839,7 +839,7 @@
 
         if (location.protocol !== 'https:') {
             throw new Error(
-                'La telefonía WebRTC requiere abrir el sistema mediante HTTPS.'
+                'Abre el sistema desde su dirección segura para utilizar el teléfono.'
             );
         }
 
@@ -866,7 +866,7 @@
 
         if (!loadersReady) {
             throw new Error(
-                'El componente WebRTC de Zadarma no terminó de cargar.'
+                'El componente del teléfono no terminó de cargar.'
             );
         }
 
@@ -893,7 +893,7 @@
 
         if (!apiReady) {
             throw new Error(
-                'Zadarma no publicó el control WebRTC para este dominio.'
+                'El servicio telefónico no habilitó el teléfono para este sitio.'
             );
         }
 
@@ -1012,14 +1012,14 @@
                 state.phase === 'in-progress';
             const sent = Boolean(permiteEntrantes && incomingBridge?.hangup());
             if (sent) {
-                if(sdkOnly)publish({phase:'finishing',status:'ending',message:'Cierre solicitado. Esperando confirmación de la sesión SIP.'});
+                if(sdkOnly)publish({phase:'finishing',status:'ending',message:'Cierre solicitado. Esperando que termine la llamada.'});
                 actualizarEstadoTrasAccion();
             }
             return sent;
         },
         error: function () {
             return String(incomingBridge?.error() ||
-                'No fue posible ejecutar el control WebRTC.');
+                'No fue posible ejecutar la acción del teléfono.');
         }
     });
 
@@ -1925,7 +1925,7 @@
         if (!dtmf || !dtmf.send(tones)) {
             publish({
                 message:'No se pudo enviar la transferencia a ext. ' + ext +
-                    ': ' + (dtmf?.error() || 'DTMF WebRTC no disponible.') +
+                    ': ' + (dtmf?.error() || 'El teclado del teléfono no está disponible.') +
                     ' La llamada permanece activa.'
             });
             return false;
@@ -2074,7 +2074,7 @@
                     pbxCallId:ref,status:'completed',duration,
                     context:{...state.context,pbxEnded:true,
                         pbxAnswered:Boolean(payload.connected)},
-                    message:'Cierre PBX confirmado para esta llamada.'});
+                    message:'El servicio telefónico confirmó el cierre de esta llamada.'});
                 ocultarHostEntrante();
                 marcarPestanaEntrante('');
             }
@@ -2165,7 +2165,7 @@
             publish({active:false,phase:'incoming-finished',status:'ended-unconfirmed',
                 pbxCallId:ref,duration,
                 context:{...state.context,sdkEnded:true,transferPendingReceiver:false},
-                message:'La sesión SIP terminó. Evidencia PBX pendiente.'});
+                message:'La llamada terminó en el navegador. Falta la confirmación del servicio telefónico.'});
             ocultarHostEntrante();marcarPestanaEntrante('');
         },
         consultEnded:op=>{
@@ -2191,7 +2191,7 @@
                     publish({active:false,phase:'incoming-finished',status:'ended-unconfirmed',
                         pbxCallId:ref,duration,
                         context:{...state.context,sdkEnded:true,transferPendingReceiver:false},
-                        message:'La sesión SIP terminó. La evidencia PBX se conciliará por separado.'});
+                        message:'La llamada terminó en el navegador. El historial se actualizará por separado.'});
                     ocultarHostEntrante();marcarPestanaEntrante('');
                     return;
                 }

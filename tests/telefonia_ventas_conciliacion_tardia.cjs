@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 (async()=>{
- let now=Date.now(),confirmed=false,state=null,offer=null,finish=[],requests=[],interval,delay=null;
+ let now=Date.now(),confirmed=false,available=false,state=null,offer=null,finish=[],requests=[],interval,delay=null;
  class Clock extends Date {static now(){return now;}}
  const el=()=>({hidden:false,textContent:'',dataset:{},append(){},after(){},prepend(){},setAttribute(){},addEventListener(k,v){this[k]=v;}});
  const button=el(),actions={querySelector:()=>el(),insertBefore(){},append(){}},panel={querySelector:s=>s==='[data-incoming-register-finished]'?button:s==='.persistent-phone-actions'?actions:el()};
@@ -13,12 +13,15 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
   u=new URL(u);if(u.searchParams.has('pendientes'))return {ok:true,json:async()=>({ok:true,pendientes:[]})};
   requests.push(u);const ref=u.searchParams.get('pbx_call_id')||'pbx-'+u.searchParams.get('solicitud_id');
   if(delay)await delay;
-  return {ok:true,json:async()=>({ok:true,llamada:confirmed?{pbx_call_id:ref,extension:'150',nombre:'actual',finalizada:true,conectada:true,sdk_tokens:[u.searchParams.get('sdk')].filter(Boolean)}:null})};
+  // La llamada propia puede existir antes de que llegue su aviso de cierre.
+  // No confundir falta de identidad con un cierre todavía pendiente.
+  return {ok:true,json:async()=>({ok:true,llamada:available?{pbx_call_id:ref,extension:'150',nombre:'actual',finalizada:confirmed,conectada:true,sdk_tokens:[u.searchParams.get('sdk')].filter(Boolean)}:null})};
  }});
  const tick=async()=>{now+=11000;interval();await new Promise(r=>setImmediate(r));};
  const start=id=>{offer={id,nombre:'Persona '+id,referencia:'pbx-'+id,numero:'+525551112233',at:now,origen_extension:'100'};state={active:true,phase:'in-progress',direction:'incoming',destination:offer.numero,requestedAt:now/1000,callToken:'sdk-session-current-'+id,pbxCallId:'sdk-session-current-'+id,context:{type:'SDK_INCOMING'}};};
  start(91);await tick();assert(requests.some(u=>u.searchParams.get('solicitud_id')==='91'),'SDK local se consulta por solicitud exacta, nunca como PBX');
- state={...state,active:false,phase:'incoming-finished'};await tick();assert.equal(button.disabled,false,'PBX tardía no impide abrir captura tras cierre del teléfono');assert.equal(button.textContent,'Registrar resultado');assert.equal(finish.length,0,'Fin local no inventa confirmación PBX');
+ state={...state,active:false,phase:'incoming-finished'};await tick();assert.equal(button.disabled,true,'Sin llamada propia vinculada no se abre un resultado ajeno');
+ available=true;await tick();assert.equal(button.disabled,false,'La llamada propia permite abrir captura aunque su cierre siga pendiente');assert.equal(button.textContent,'Registrar resultado');assert.equal(finish.length,0,'Fin local no inventa confirmación PBX');
  confirmed=true;await tick();assert(!button.disabled,'PBX tardía habilita resultado sin F5');assert.equal(finish.at(-1).ref,'pbx-91');
  button.click?.();button.click?.(); // La acción real se comprueba en Edge.
  start(92);confirmed=false;let release;delay=new Promise(r=>release=r);await tick();

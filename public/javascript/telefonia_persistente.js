@@ -699,7 +699,7 @@
                     reject(
                         new Error(
                             state.message ||
-                            'No fue posible iniciar el motor WebRTC.'
+                            'No fue posible iniciar el teléfono.'
                         )
                     );
                     return;
@@ -942,7 +942,7 @@
                 } catch (_) { /* no hay comunicación con el shell */ }
                 if (!shell?.isEmbedded || Number(shell.userId) !== userId ||
                     typeof shell.ensureHost !== 'function') {
-                    throw new Error('No se encontró la conexión WebRTC persistente.');
+                    throw new Error('No se encontró la conexión del teléfono.');
                 }
                 shell.ensureHost();
                 await prepare({ openHost: false });
@@ -2679,13 +2679,13 @@
                     marketingBrowserNote.querySelector('span').textContent = usingEmbedded
                         ? 'Telefonía integrada en el CRM. Puedes cambiar de módulo sin cortar la llamada ni abrir ventanas.'
                         : usingTab
-                        ? 'La conexión WebRTC permanece en una pestaña telefónica. Déjala abierta para seguir recibiendo llamadas y vuelve al CRM para trabajar.'
-                        : 'La conexión WebRTC permanece en una ventana pequeña. Puedes minimizarla, pero no cerrarla mientras recibas llamadas.';
+                        ? 'El teléfono permanece conectado en otra pestaña. Déjala abierta para recibir llamadas y vuelve al CRM para trabajar.'
+                        : 'El teléfono permanece conectado en otra ventana. Puedes minimizarla; mantenla abierta para recibir llamadas.';
                 }
                 if (marketingHint) {
                     marketingHint.textContent = active
                         ? 'Extensión ' + extension +
-                            ' conectada a WebRTC. Puedes recibir y transferir llamadas mientras permanezca activa.'
+                            ' conectada. Puedes recibir y transferir llamadas mientras permanezca activa.'
                         : assigned
                             ? 'Extensión ' + extension +
                                 (getHostMode() === 'embedded'
@@ -2712,7 +2712,7 @@
                     throw new Error('Abre el CRM con el teléfono integrado para ver los controles de Zadarma.');
                 }
                 if (!shell.showProviderControls()) {
-                    throw new Error('WebRTC aún no tiene los controles preparados. Intenta nuevamente.');
+                    throw new Error('El teléfono aún no tiene los controles preparados. Intenta nuevamente.');
                 }
                 receptionError = '';
                 return true;

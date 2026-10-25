@@ -144,7 +144,7 @@ class TelefoniaResultadoVentasService
         $pbxPendiente=empty($call['finalizada']);
         if($pbxPendiente&&!$this->transferenciaAtendidaPropia($usuarioId,$call))
             throw new DomainException('No se ha acreditado la transferencia atendida por tu extensión. No se guardó el resultado.');
-        if(self::esConversacion($resultado)&&!$call['conectada'])throw new DomainException('Falta la confirmación PBX de conexión de tu extensión.');
+        if(self::esConversacion($resultado)&&!$call['conectada'])throw new DomainException('El servicio telefónico aún no confirma que tu extensión atendió la llamada.');
         $note=trim((string)($datos['observacion']??''));$name=trim((string)($datos['prospecto_nombre']??$call['nombre']));
         if(mb_strlen($note)>1000||mb_strlen($name)>150)throw new InvalidArgumentException('Limita el nombre a 150 caracteres y las observaciones a 1000.');
         if(in_array($resultado,['OTRO',self::OTRO_SIN_CONTACTO],true)&&mb_strlen($note)<3)throw new InvalidArgumentException('Describe lo que ocurrió en las observaciones.');

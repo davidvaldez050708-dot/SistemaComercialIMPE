@@ -9,7 +9,7 @@ assert(start>0&&end>start);body=source.slice(start,end);
 for(const sdk of [true,false]){
  const timers=[];let polls=0,cleared=0,finals=0;
  const state={active:true,direction:'incoming',phase:'in-progress',pbxCallId:sdk?'':'pbx-recovery-001',context:sdk?{transferReference:'pbx-recovery-001'}:{pbxAnswered:true}};
- const context={state,evidence:{},transferFlow:null,isSdkOnlyIncoming:()=>sdk,clearSdkOnlyIncoming:()=>cleared++,currentDuration:()=>15,answeredAtMs:100,
+ const context={state,evidence:{},config:{salesSdkIncoming:false},transferFlow:null,isSdkOnlyIncoming:()=>sdk,clearSdkOnlyIncoming:()=>cleared++,currentDuration:()=>15,answeredAtMs:100,
   publish:patch=>Object.assign(state,patch),pollIncoming:()=>polls++,finalizarEntrante:()=>finals++,window:{setTimeout:fn=>timers.push(fn)}};
  vm.runInNewContext('(function(){'+body+'})()',context);
  for(const timer of timers)timer();
@@ -27,7 +27,7 @@ env.apply({status:'completed',duration:20});assert.equal(finals,1,'El cierre ver
 const directStart=source.indexOf('consultEnded:op=>{')+'consultEnded:op=>{'.length;
 const directEnd=source.indexOf('\n        }\n    })',directStart);assert(directEnd>directStart);
 const direct={active:true,phase:'answering',context:{transferPendingReceiver:true}};let requests=0;
-const directEnv={state:direct,answeredAtMs:0,publish:p=>Object.assign(direct,p),pollIncoming:()=>requests++};
+const directEnv={window:{},config:{salesSdkIncoming:false},state:direct,answeredAtMs:0,publish:p=>Object.assign(direct,p),pollIncoming:()=>requests++};
 vm.runInNewContext('this.end=function(op){'+source.slice(directStart,directEnd)+'};',directEnv);
 directEnv.end({modo:'DIRECTA',referencia:'pbx-directa-001'});assert.equal(direct.active,true);assert.equal(direct.phase,modernObserver?'finishing':'recovering','El renderer actual distingue intento sin contestar; snapshot histórico aún recupera audio');assert.equal(requests,1);assert.equal(direct.context.transferReference,'pbx-directa-001');
 directEnv.end({modo:'CONSULTADA'});assert.equal(direct.active,false,'El fin de consulta interna conserva su comportamiento');
@@ -42,7 +42,7 @@ incomingEnv.apply({pbx_call_id:'pbx-directa-001',estado:'ended'});assert.equal(c
 if(modernObserver){
 for(const answered of [false,true])for(const ended of [false,true]){
  const state={active:true,direction:'incoming',phase:answered?'in-progress':'incoming-ringing',pbxCallId:'',context:{type:'SDK_INCOMING',sdkInviteId:'sip-current',sdkConnected:answered}};
- let polls=0;const env={state,evidence:{sessionEnded:ended,sessionId:'sip-current'},transferFlow:null,isSdkOnlyIncoming:()=>true,retirePbxCall(){},answeredAtMs:answered?100:0,currentDuration:()=>answered?12:0,publish:p=>Object.assign(state,p),pollIncoming:()=>polls++,window:{setTimeout(){}},clearSdkOnlyIncoming(){},ocultarHostEntrante(){},marcarPestanaEntrante(){}};
+ let polls=0;const env={config:{salesSdkIncoming:false},state,evidence:{sessionEnded:ended,sessionId:'sip-current'},transferFlow:null,isSdkOnlyIncoming:()=>true,retirePbxCall(){},answeredAtMs:answered?100:0,currentDuration:()=>answered?12:0,publish:p=>Object.assign(state,p),pollIncoming:()=>polls++,window:{setTimeout(){}},clearSdkOnlyIncoming(){},ocultarHostEntrante(){},marcarPestanaEntrante(){}};
  vm.runInNewContext('(function(){'+body+'})()',env);
  assert.equal(state.active,!ended);
  assert.equal(state.phase,ended?'incoming-finished':answered?'recovering':'finishing',`answered=${answered} ended=${ended} type=${state.context?.type} invite=${state.context?.sdkInviteId}`);

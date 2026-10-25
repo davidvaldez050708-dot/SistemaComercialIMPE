@@ -77,7 +77,9 @@ final class TelefoniaMisLlamadasService
                 'numero' => (string)($call['numero'] ?? ''),
                 'fecha' => (string)($call['fecha'] ?? ''),
                 'segundos' => max(0, (int)($call['segundos'] ?? 0)),
-                'conectada' => !empty($call['contestada']),
+                // Contrato público de Recepción: contestada sólo existe durante
+                // la reducción de eventos y se elimina antes de devolver datos.
+                'conectada' => !empty($call['atendida']),
                 'resultado' => (string)($call['resultado_etiqueta'] ?? ''),
                 'estado_recepcion' => (string)($call['estado'] ?? ''),
                 'transferida' => (string)($call['estado'] ?? '') === 'Transferida'
@@ -179,7 +181,7 @@ final class TelefoniaMisLlamadasService
             'entrantes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Entrante')),
             'salientes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Saliente')),
             'filtros' => $control['filtros'],
-            'limitacion' => 'Vista inicial de solo lectura: muestra tramos del intervalo consultado, con atribución verificada y paginación de 20 registros. No incluye devoluciones sin PBX confirmado ni registros ambiguos. Marketing conserva una ventana de 30 días; las grabaciones se consultan en sus módulos de origen.'
+            'limitacion' => 'Vista inicial de solo lectura: muestra tramos del intervalo consultado, con atribución verificada y paginación de 20 registros. No incluye devoluciones sin llamada confirmada ni registros ambiguos. Marketing conserva una ventana de 30 días; las grabaciones se consultan en sus módulos de origen.'
         ];
     }
 }

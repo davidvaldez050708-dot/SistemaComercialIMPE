@@ -98,9 +98,9 @@
    }
    recovered=recovered||waiting;waiting=false;
    form.querySelector('[data-sales-form-state]').textContent=call.registro&&!call.finalizada
-     ?'Resultado registrado · Evidencia PBX pendiente · Ext. '+ownExt
+     ?'Resultado registrado · Confirmación de la llamada pendiente · Ext. '+ownExt
      :call.finalizada?call.estado_pbx+' · Ext. '+ownExt
-     :'Atención terminada · Evidencia PBX pendiente · Ext. '+ownExt;
+     :'Atención terminada · Confirmación de la llamada pendiente · Ext. '+ownExt;
    if(call.registro){
     queued=false;
     try{sessionStorage.removeItem(draftKey(ref));}catch(_){}
@@ -186,7 +186,7 @@
    }
    queued=false;try{sessionStorage.removeItem(draftKey(callRef));}catch(_){}
    window.parent?.postMessage({type:'IMPE_SALES_RESULT_SAVED',ref:callRef,extension:call.extension},location.origin);
-   bootstrap.Modal.getInstance(modal)?.hide();notify(j.registro?.pbx_pendiente?'Resultado guardado. La evidencia PBX y la grabación continúan pendientes.':'Resultado comercial guardado.');
+   bootstrap.Modal.getInstance(modal)?.hide();notify(j.registro?.pbx_pendiente?'Resultado guardado. La confirmación de la llamada y la grabación continúan pendientes.':'Resultado comercial guardado.');
    const url=new URL(location.href);for(const key of ['pbx_call_id','extension','detalle','esperando_pbx'])url.searchParams.delete(key);location.replace(url.href);
   }catch(error){queued=false;storeDraft();feedback.textContent=error.message;notify(error.message,true);}
   finally{submit.disabled=false;submit.innerHTML=saveLabel;}
