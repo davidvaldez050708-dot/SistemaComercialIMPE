@@ -36,3 +36,5 @@ jobs:
         with:
           name: captura-analista-ventas
           path: /tmp/captura-capturas
+      - name: Publicacion selectiva y restauracion en replicas
+        run: python3 -B tests/publicacion_ventas_captura_test.py
