@@ -36,6 +36,7 @@ jobs:
         run: |
           python3 -B tests/publicacion_grabaciones_entrantes_test.py
           python3 -B tests/publicacion_boton_grabaciones_test.py
+          python3 -B tests/publicacion_duracion_asesor_test.py
   datos:
     runs-on: ubuntu-latest
     strategy:

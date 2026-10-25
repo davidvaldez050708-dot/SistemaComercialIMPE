@@ -8,6 +8,6 @@ $_SESSION=['csrf_token'=>'fixture-csrf'];$pending=($argv[1]??'')==='pending';
 $ventasBandeja=['filas'=>[['id'=>1,'pbx_call_id'=>'pbx-inbound-recording-001','extension'=>'150',
  'direccion'=>'Entrante','nombre'=>'Prospecto de prueba','numero'=>'5550000000','origen_extension'=>'100',
  'solicitud_id'=>10,'fecha'=>'2026-10-24 21:35:00','finalizada'=>!$pending,'conectada'=>true,
- 'estado_pbx'=>'Conectada','segundos'=>null,'registro'=>['resultado'=>'CONVERSACION_PERSONA'],
+ 'estado_pbx'=>'Conectada','segundos'=>isset($argv[2])&&ctype_digit($argv[2])?(int)$argv[2]:null,'registro'=>['resultado'=>'CONVERSACION_PERSONA'],
  'segmentos'=>$pending?[]:['record-150'],'segmentos_info'=>[]]],'resumen'=>[]];
 require ROOT_PATH.'/app/views/telefonia/ventas_llamadas.php';

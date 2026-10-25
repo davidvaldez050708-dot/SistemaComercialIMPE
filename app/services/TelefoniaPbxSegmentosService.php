@@ -62,13 +62,25 @@ final class TelefoniaPbxSegmentosService
         return ['segmentos'=>$overflow?[]:$ids,'segmentos_info'=>$overflow?[]:$info,'audio_bloqueadas'=>$denied,'audio_motivo'=>$reason,
             'audio_evidencia'=>['referencias_propias'=>count($owned),'avisos_disponibilidad'=>count($ready),'referencias_ambiguas'=>$ambiguous]];
     }
+    /** En la estadística de un tramo entrante transferido, la extensión puede
+     * estar en destination y el origen ser el teléfono externo. Dos extensiones
+     * distintas en la misma fila no identifican una conversación propia. */
+    public static function extensionDeFila(array $row): string
+    {
+        $source=trim((string)($row['sip']??''));
+        $destination=trim((string)($row['destination']??''));
+        $source=preg_match('/^[0-9]{3,6}$/D',$source)?$source:'';
+        $destination=preg_match('/^[0-9]{3,6}$/D',$destination)?$destination:'';
+        if($source!==''&&$destination!==''&&$source!==$destination)return '';
+        return $source!==''?$source:$destination;
+    }
     public static function propios(array $rows,string $pbx,string $extension,array $autorizadas=[]): array
     {
         $segments=[];$foreign=[];$invalid=[];
         foreach($rows as $row){
             if(!is_array($row)||!hash_equals($pbx,(string)($row['pbx_call_id']??'')))continue;
             $id=ZadarmaPbxIdentifierHelper::callIdDeFila($row);if($id==='')continue;
-            $owner=trim((string)($row['sip']??''));
+            $owner=self::extensionDeFila($row);
             if(!in_array($owner,array_merge([$extension],$autorizadas),true)){$foreign[$id]=true;continue;}
             if(strtolower((string)($row['disposition']??''))!=='answered')continue;
             $seconds=filter_var($row['seconds']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>86400]]);

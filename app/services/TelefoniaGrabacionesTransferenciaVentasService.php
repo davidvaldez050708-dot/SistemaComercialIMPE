@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/../helpers/ZadarmaPbxIdentifierHelper.php';
+require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
 
 /**
  * Una llamada transferida es un grupo PBX con varias grabaciones.
@@ -80,18 +81,17 @@ final class TelefoniaGrabacionesTransferenciaVentasService
     }
 
     /**
-     * @return array{ok:bool,estado:string,disponible:bool,segmentos:int,segmentos_info:array,records:array}
-     * No almacenar enlaces del proveedor; se vuelven a resolver por peticion.
+     * Propiedad de la transferencia y referencias firmadas; sólo SELECT.
+     * No descarga audios ni escribe evidencias o estados de llamada.
      */
-    public function resolver(string $pbx,int $user,string $rol,string $ext,
-                             callable $record,?callable $stats=null): array
+    public function contextoVerificado(string $pbx,int $user,string $rol,string $ext): array
     {
         if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$pbx)||
             !preg_match('/^[0-9]{3,6}$/D',$ext)||!in_array($rol,['origen','destino'],true))
             throw new DomainException('ACCESO_NO_AUTORIZADO');
         $owner=$rol==='origen'?'o.origen_usuario':'o.destino_usuario';
         $ownExtension=$rol==='origen'?'o.origen_extension':'o.destino_extension';
-        $sql="SELECT o.*,d.ruta_json FROM telefonia_transferencia_operaciones o
+        $sql="SELECT o.*,d.id AS solicitud_id,d.ruta_json FROM telefonia_transferencia_operaciones o
             INNER JOIN telefonia_disponibilidad d
               ON d.referencia=BINARY o.referencia AND d.origen_usuario=o.origen_usuario
              AND d.destino_usuario=o.destino_usuario
@@ -116,6 +116,16 @@ final class TelefoniaGrabacionesTransferenciaVentasService
         $events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
         $source=(string)$op['origen_extension'];$dest=(string)$op['destino_extension'];
         $refs=self::referenciasVerificadas($events,$source,$dest);
+        return ['referencias'=>$refs,'origen'=>$source,'destino'=>$dest,'eventos'=>$events,
+            'solicitud_id'=>(int)$op['solicitud_id']];
+    }
+
+    public function resolver(string $pbx,int $user,string $rol,string $ext,
+                             callable $record,?callable $stats=null): array
+    {
+        $context=$this->contextoVerificado($pbx,$user,$rol,$ext);
+        $refs=$context['referencias'];$source=$context['origen'];$dest=$context['destino'];
+        $events=$context['eventos'];
         // Estadísticas oficiales: corroboran metadatos para un call_id ya
         // verificado, sin incorporar por proximidad otros audios ni alterar el
         // índice de reproducción estable durante el GET posterior.
@@ -130,7 +140,7 @@ final class TelefoniaGrabacionesTransferenciaVentasService
                         if(!is_array($entry)||!hash_equals($pbx,(string)($entry['pbx_call_id']??'')))continue;
                         $id=ZadarmaPbxIdentifierHelper::callIdDeFila($entry);
                         if(!isset($refs[$id]))continue;
-                        $sip=(string)($entry['sip']??'');
+                        $sip=TelefoniaPbxSegmentosService::extensionDeFila($entry);
                         if(isset($seen[$id])){
                             // Filas estadísticas contradictorias desautorizan
                             // la atribución de extensión, no el RECORD firmado.

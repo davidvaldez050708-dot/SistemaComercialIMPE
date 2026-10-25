@@ -15,11 +15,15 @@ final class TelefoniaVentasEvidenciaService
         $s->bind_param(str_repeat('s',count($args)),...$args);$s->execute();$cache=[];
         foreach($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row)$cache[$row['extension'].'|'.$row['pbx_call_id']]=json_decode($row['datos_json']??'',true)?:[];
         foreach($calls as &$call){
-            if(empty($call['finalizada'])||empty($call['conectada']))continue;
+            if(empty($call['conectada']))continue;
             $data=$cache[$call['extension'].'|'.$call['pbx_call_id']]??[];
+            // La estadística puede confirmar un tramo propio aunque falte END.
+            // Recuperar sólo su duración; no fabricar cierre ni ampliar audios.
+            if($call['segundos']===null&&is_int($data['segundos']??null)&&
+                $data['segundos']>=0&&$data['segundos']<=86400)$call['segundos']=$data['segundos'];
+            if(empty($call['finalizada']))continue;
             $eventInfo=[];foreach($call['segmentos'] as $n=>$id)$eventInfo[$id]=$call['segmentos_info'][$n]??null;
             $call['tramos_verificados']=$data['tramos']??[];
-            if($call['segundos']===null&&isset($data['segundos']))$call['segundos']=$data['segundos'];
             $ids=array_column(array_filter($call['tramos_verificados'],static fn($r)=>!empty($r['audio_verificado'])),'id');
             $call['segmentos']=array_values(array_diff(array_unique(array_merge($call['segmentos'],$ids)),array_merge($data['rechazados']??[],$call['audio_bloqueadas']??[])));
             $call['segmentos_info']=[];
@@ -35,8 +39,21 @@ final class TelefoniaVentasEvidenciaService
     public function consultar(array $call,?callable $stats=null,?callable $record=null): array
     {
         if(!$this->disponible())throw new DomainException('Falta la migración de evidencias comerciales. Solicita su publicación al administrador.');
-        if(empty($call['finalizada'])||empty($call['conectada']))throw new DomainException('Primero debe confirmarse el cierre y la respuesta de tu extensión.');
+        if(empty($call['conectada']))throw new DomainException('Primero debe confirmarse la respuesta de tu extensión.');
         $uid=(int)$call['usuario_id'];$ext=$call['extension'];$ref=$call['pbx_call_id'];
+        $allowed=$call['audio_extensiones']??[];$recordRefs=null;
+        if(empty($call['finalizada'])){
+            if(($call['direccion']??'')!=='Entrante'||empty($call['solicitud_id'])||
+                trim((string)($call['origen_extension']??''))==='')
+                throw new DomainException('Primero debe confirmarse el cierre o una transferencia atendida con grabación.');
+            require_once __DIR__.'/TelefoniaGrabacionesTransferenciaVentasService.php';
+            $context=(new TelefoniaGrabacionesTransferenciaVentasService($this->db))
+                ->contextoVerificado($ref,$uid,'destino',$ext);
+            if($context['solicitud_id']!==(int)$call['solicitud_id']||
+                $context['origen']!==(string)$call['origen_extension']||!$context['referencias'])
+                throw new DomainException('Falta una referencia de grabación de tu transferencia.');
+            $recordRefs=$context['referencias'];$allowed=[$context['origen']];
+        }
         $s=$this->db->prepare('INSERT IGNORE INTO telefonia_ventas_evidencia(usuario_id,extension,pbx_call_id) VALUES(?,?,?)');$s->bind_param('iss',$uid,$ext,$ref);$s->execute();
         // Comparación atómica: dos pestañas no disparan dos consultas al proveedor.
         $s=$this->db->prepare('UPDATE telefonia_ventas_evidencia SET consultado_at=UTC_TIMESTAMP() WHERE usuario_id=? AND extension=? AND pbx_call_id=? AND (consultado_at IS NULL OR consultado_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 60 SECOND))');
@@ -45,7 +62,9 @@ final class TelefoniaVentasEvidenciaService
         $date=new DateTimeImmutable($call['fecha'],new DateTimeZone('America/Mexico_City'));
         $rows=$stats($date->modify('-1 day')->format('Y-m-d H:i:s'),$date->setTimezone(new DateTimeZone('UTC'))->modify('+1 day')->format('Y-m-d H:i:s'));
         if(count($rows)>=1000)throw new DomainException('La consulta está incompleta. No se vinculó ningún audio.');
-        $data=TelefoniaPbxSegmentosService::propios($rows,$ref,$ext,$call['audio_extensiones']??[]);
+        if($recordRefs!==null)$rows=array_values(array_filter($rows,static fn($row)=>
+            is_array($row)&&isset($recordRefs[ZadarmaPbxIdentifierHelper::callIdDeFila($row)])));
+        $data=TelefoniaPbxSegmentosService::propios($rows,$ref,$ext,$allowed);
         if(count($data['tramos'])>8)throw new DomainException('Hay demasiados segmentos para verificarlos de forma segura.');
         foreach($data['tramos'] as &$part){$part['audio_verificado']=false;if($part['grabada']){
             try{$audio=$record($part['id']);$part['audio_verificado']=!empty($audio['link'])&&filter_var($audio['link'],FILTER_VALIDATE_URL)&&str_starts_with(strtolower($audio['link']),'https://');}catch(Throwable $e){/* Audio aún en preparación: reintento posterior sin inventarlo. */}
