@@ -13,6 +13,7 @@ vcheck($migration('--check')!==0,'Check de migración detecta estructura ausente
 vcheck(!$db->query("SHOW TABLES LIKE 'telefonia_ventas_evidencia'")->num_rows,'Check intacto');
 vcheck($migration('--apply')===0&&$migration('--apply')===0,'Migración CLI explícita idempotente');
 vcheck($migration('--check')===0,'Check valida claves y estructuras después de migrar');
+$db->query("UPDATE telefonia_extensiones SET usuario_id=8,created_at=DATE_SUB(NOW(),INTERVAL 20 DAY),updated_at=DATE_SUB(NOW(),INTERVAL 20 DAY) WHERE extension='150'");
 // Los audios entrantes se autorizaron antes de instalar la caché; ahora probar
 // el guardado de su duración con la migración real explícita ya aplicada.
 foreach(['pbx-inbound-transfer-one','pbx-inbound-transfer-two'] as $incomingRef){
@@ -28,7 +29,6 @@ foreach(['pbx-inbound-transfer-one','pbx-inbound-transfer-two'] as $incomingRef)
  vcheck($svc->obtener(8,$incomingRef,'150')['segundos']===37,'Duración confirmada persiste al recargar');
 }
 
-$db->query("UPDATE telefonia_extensiones SET usuario_id=8,created_at=DATE_SUB(NOW(),INTERVAL 20 DAY),updated_at=DATE_SUB(NOW(),INTERVAL 20 DAY) WHERE extension='150'");
 $refApi='pbx-api-evidencia-01';$event($refApi,'NOTIFY_INTERNAL');$event($refApi,'NOTIFY_ANSWER');$event($refApi,'NOTIFY_END','100',200,['last_internal'=>'150','disposition'=>'answered']);
 $callApi=$svc->obtener(8,$refApi);vcheck($callApi['segundos']===null&&$callApi['segmentos']===[],'Antes de API no inventa duración ni audio');
 $evidence=new TelefoniaVentasEvidenciaService($db);$apiCount=0;$downloads=[];
