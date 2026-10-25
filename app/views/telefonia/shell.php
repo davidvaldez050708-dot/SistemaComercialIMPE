@@ -462,7 +462,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     ?>
     </style>
     <?php endif; ?>
-    <?php if ($puedeTransferirShell || $puedeCapturarShell): ?>
+    <?php if ($puedeTransferirShell || $puedeCapturarShell || $esAsesorShell): ?>
     <script id="impeRoutingRuntime">
     <?php
     $routingJs = ROOT_PATH . '/public/javascript/telefonia_enrutamiento.js';

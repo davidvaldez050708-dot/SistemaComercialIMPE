@@ -5,6 +5,9 @@
  const form=dialog.querySelector('form'),feedback=dialog.querySelector('[data-sales-prospect-feedback]');
  const notify=(message,error=false)=>{try{const crm=document.getElementById('impeCrmFrame')?.contentWindow;if(typeof crm?.IMPE_TELEPHONY_NOTIFY==='function'){crm.IMPE_TELEPHONY_NOTIFY(message,error);return;}}catch(_){}window.IMPE_TELEPHONY_NOTIFY?.(message,error);};
  const button=document.createElement('button');button.type='button';button.className='persistent-phone-action';button.textContent='Datos del prospecto';button.dataset.salesProspect='1';button.hidden=true;
+ button.setAttribute('aria-controls',dialog.id);button.setAttribute('aria-expanded','false');
+ const icon=document.createElement('i');icon.className='bi bi-clipboard-check';icon.setAttribute('aria-hidden','true');button.prepend(icon);
+ dialog.setAttribute('role','region');dialog.setAttribute('aria-label','Datos del prospecto');
  const actions=document.querySelector('[data-incoming-panel] .persistent-phone-actions'),close=actions?.querySelector('[data-incoming-close-finished]');
  if(close)actions.insertBefore(button,close);else actions?.append(button);
  let ref='',localId='',version=0,busy=false;const key=id=>'impe:sales-prospect:'+cfg.userId+':'+id;
@@ -15,13 +18,14 @@
   try{const r=await fetch(url,{...options,signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo recuperar la captura.');return j.captura;}
   catch(error){if(error.name==='AbortError')throw Error('La consulta tardó demasiado. Conserva el borrador y vuelve a intentarlo.');throw error;}finally{clearTimeout(timeout);}
  };
- button.addEventListener('click',async()=>{if(busy)return;busy=true;form.reset();feedback.textContent='';version=0;
+ const closePanel=()=>{dialog.hidden=true;button.setAttribute('aria-expanded','false');if(!button.hidden)button.focus({preventScroll:true});};
+ button.addEventListener('click',async()=>{if(busy)return;if(!dialog.hidden){closePanel();return;}busy=true;form.reset();feedback.textContent='';version=0;
   const s=phone.getCallState();ref=String(s?.context?.transferReference||s?.finalMetadata?.pbx_call_id||s?.pbxCallId||'');localId=String(s?.context?.sdkSessionId||s?.callToken||ref);form.elements.telefono.value=s?.destination||'';
   try{if(valid(ref)){const data=await request();version=data.version;for(const [k,v]of Object.entries(data.valores||{}))if(form.elements[k])form.elements[k].value=v;}
    else feedback.textContent='Referencia de la llamada pendiente. Los datos se conservan como borrador en esta pestaña.';
   }catch(e){feedback.textContent=e.message;}
   try{const draft=JSON.parse(sessionStorage.getItem(key(localId))||'null');if(draft&&Date.now()-draft.at<86400000)for(const [k,v]of Object.entries(draft.values))if(form.elements[k])form.elements[k].value=v;}catch(_){}
-  dialog.hidden=false;form.elements.nombre.focus();busy=false;
+  dialog.hidden=false;button.setAttribute('aria-expanded','true');dialog.dispatchEvent(new Event('impe:call-capture-layout',{bubbles:true}));form.elements.nombre.focus({preventScroll:true});busy=false;
  });
  form.addEventListener('input',()=>{try{sessionStorage.setItem(key(localId),JSON.stringify({at:Date.now(),values:Object.fromEntries(new FormData(form))}));}catch(_){}});
  form.addEventListener('submit',async e=>{e.preventDefault();if(busy)return;busy=true;const submit=form.querySelector('[type=submit]');submit.disabled=true;
@@ -30,6 +34,8 @@
    const data=await request(true);version=data.version;try{sessionStorage.removeItem(key(localId));}catch(_){}feedback.textContent='';notify('Datos guardados. La conversación y su resultado permanecen separados.');
   }catch(error){feedback.textContent=error.message;notify(error.message,true);}finally{busy=false;submit.disabled=false;}
  });
- dialog.querySelector('[data-sales-prospect-close]').addEventListener('click',()=>{dialog.hidden=true;});
+ dialog.querySelector('[data-sales-prospect-close]').addEventListener('click',closePanel);
+ window.addEventListener('keydown',event=>{if(event.key==='Escape'&&!dialog.hidden)closePanel();});
+ document.querySelector('[data-incoming-minimize]')?.addEventListener('click',()=>{if(!dialog.hidden)closePanel();});
  const render=()=>{const s=phone.getCallState();button.hidden=!s||s.phase!=='in-progress';};setInterval(render,750);render();
 })();

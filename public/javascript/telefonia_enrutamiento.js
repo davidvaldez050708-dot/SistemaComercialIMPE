@@ -11,6 +11,7 @@
     const panel = $('[data-shell-transfer-panel]');
     const captureToggle = $('[data-shell-capture-toggle]');
     const capturePanel = $('[data-shell-capture-panel]');
+    const salesCapturePanel = $('[data-sales-prospect-dialog]');
     const tipo = $('[data-routing-type]');
     const estado = $('[data-routing-state]');
     const buscar = $('[data-routing-search]');
@@ -25,7 +26,7 @@
     const phonePanel = $('[data-incoming-panel]');
     // Sacar las fichas del panel telefónico para no modificar su tamaño,
     // posición guardada, arrastre ni los controles de colgar/silenciar.
-    [panel, capturePanel].filter(Boolean).forEach(pane => {
+    [panel, capturePanel, salesCapturePanel].filter(Boolean).forEach(pane => {
         pane.classList.add('impe-routing-sidecar');
         document.body.appendChild(pane);
     });
@@ -69,7 +70,11 @@
     const repositionSidecars = () => {
         positionSidecar(panel);
         positionSidecar(capturePanel);
+        positionSidecar(salesCapturePanel);
     };
+    document.addEventListener('impe:call-capture-layout', event => {
+        if (event.target === salesCapturePanel) positionSidecar(salesCapturePanel);
+    });
     window.addEventListener('resize', repositionSidecars);
     window.addEventListener('pointerup', repositionSidecars);
     window.visualViewport?.addEventListener('resize', repositionSidecars);
