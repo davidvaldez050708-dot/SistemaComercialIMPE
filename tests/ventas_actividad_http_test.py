@@ -54,7 +54,7 @@ try:
         else {http_response_code(404);}
         ''',encoding='utf8')
         log=open(root/'server.log','wb')
-        server=subprocess.Popen([php,'-d','opcache.jit=0','-S',f'127.0.0.1:{port}',str(root/'router.php')],cwd=root,env=env,stdout=log,stderr=log)
+        server=subprocess.Popen([php,'-d','opcache.enable_cli=0','-d','opcache.jit_buffer_size=0','-S',f'127.0.0.1:{port}',str(root/'router.php')],cwd=root,env=env,stdout=log,stderr=log)
         for _ in range(100):
             try:
                 with socket.create_connection(('127.0.0.1',port),timeout=.2): break

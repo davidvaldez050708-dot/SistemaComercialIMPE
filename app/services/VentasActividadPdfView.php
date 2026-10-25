@@ -40,6 +40,7 @@ final class VentasActividadPdfView
         foreach (['Salientes'=>$s['salientes'],'Entrantes'=>$s['entrantes'],'Conectadas'=>$s['conectadas'],'Conversaciones registradas'=>$s['conversaciones']] as $k=>$v)
             $html.='<td><span>'.$e($k).'</span><strong>'.$e($v).'</strong></td>';
         $html.='</tr></table><p class="notice">Tiempo confirmado del asesor: '.VentasActividadMetricas::tiempoConfirmado($s).' · Promedio con duración confirmada: '.$time($s['promedio_segundos']).' · Duraciones pendientes: '.$s['duraciones_pendientes'].' · Resultados pendientes: '.$s['por_registrar'].' · Intentos sin confirmar: '.$s['intentos'].' · Transferencias pendientes: '.$s['transferencias_pendientes'].'.</p>';
+        $html.='<p class="notice">Tasa de contacto: '.($s['tasa_contacto']===null?'—':$s['tasa_contacto'].'%').' · Cumplimiento del registro: '.($s['cumplimiento_registro']===null?'—':$s['cumplimiento_registro'].'%').'.</p>';
         $html.=self::titulo('Actividad por asesor');$people=[];
         foreach ($d['personas_resumen'] as $p) $people[]=[$p['nombre_completo'],$p['salientes'],$p['entrantes'],$p['conversaciones'],VentasActividadMetricas::tiempoConfirmado($p),$p['por_registrar'],$p['cumplimiento_registro']===null?'—':$p['cumplimiento_registro'].'%'];
         $html.=self::tabla(['Asesor','Salientes','Entrantes','Conversaciones','Tiempo','Por registrar','Registro'],$people);

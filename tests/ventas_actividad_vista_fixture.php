@@ -2,12 +2,17 @@
 putenv('IMPE_BASE_URL=http://ventas.test/');
 require __DIR__.'/../config/config.php';
 require ROOT_PATH.'/app/services/VentasActividadMetricas.php';require ROOT_PATH.'/app/helpers/VentasActividadAccess.php';
-$role=($argv[2]??'')==='global'?2:3;
+$role=str_starts_with($argv[2]??'','global')?2:3;
 $_SESSION=['usuario_id'=>301,'rol_id'=>$role,'rol'=>$role===3?'Asesor de Ventas':'Director de Operaciones','nombre'=>'Persona','apellidos'=>'de prueba',
     'permisos'=>['reportes.ver','reportes.ventas','reportes.ventas.propio','reportes.ventas.global','reportes.exportar','desempeno.ver','desempeno.ver_propio','desempeno.ver_global','desempeno.exportar']];
 $people=[['id'=>301,'nombre_completo'=>'María Fernanda García Hernández','foto_perfil'=>'','activo'=>1]];
 if ($role===2) $people[]=['id'=>302,'nombre_completo'=>'Asesor de prueba sin actividad','foto_perfil'=>'','activo'=>1];
-$period=VentasActividadMetricas::periodo(['periodo'=>'semana']);$rows=[];$today=$period['fecha_hasta'];
+$period=VentasActividadMetricas::periodo(['periodo'=>'semana']);
+if (($argv[2]??'')==='global_long') {
+    $hoy=new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City'));
+    $period=VentasActividadMetricas::periodo(['periodo'=>'personalizado','fecha_desde'=>$hoy->modify('-365 days')->format('Y-m-d'),'fecha_hasta'=>$hoy->format('Y-m-d')]);
+}
+$rows=[];$today=$period['fecha_hasta'];
 $count=str_starts_with($argv[1]??'','pdf')?90:32;
 for($i=0;$i<$count;$i++) $rows[]=['id'=>$i+1,'usuario_id'=>301,'extension'=>'150','pbx_call_id'=>'fixture-call-'.str_pad((string)$i,6,'0',STR_PAD_LEFT),
     'fecha'=>$today.' 10:'.sprintf('%02d',$i%60).':00','direccion'=>$i%2?'Entrante':'Saliente','conectada'=>true,'finalizada'=>true,'segundos'=>$i===1?null:13,

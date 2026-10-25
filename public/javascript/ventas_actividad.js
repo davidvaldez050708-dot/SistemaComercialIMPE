@@ -13,6 +13,13 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
         period.addEventListener('change', update);
+        function markDirty() {
+            document.querySelectorAll('[data-sales-report-pdf]').forEach(function (link) { link.hidden = true; });
+            const note = form.parentElement.querySelector('[data-sales-dirty-note]');
+            if (note) note.hidden = false;
+        }
+        form.addEventListener('change', markDirty);
+        form.addEventListener('input', markDirty);
         update();
     });
 });

@@ -25,7 +25,8 @@ final class VentasActividadPermisosService
             'telefonia_ventas_evidencia'=>['usuario_id','extension','pbx_call_id','datos_json'],
             'telefonia_ventas_marcaciones'=>['id','usuario_id','extension','destino','pbx_call_id','created_at'],
             'telefonia_contactos_personales'=>['id','usuario_id','proxima_accion_at'],
-            'telefonia_disponibilidad'=>['id','destino_usuario','destino_extension','referencia','ruta_json','devolucion'],
+            'telefonia_disponibilidad'=>['id','origen_usuario','destino_usuario','destino_extension','referencia','ruta_json','devolucion'],
+            'telefonia_transferencia_operaciones'=>['id','origen_usuario','destino_usuario','destino_extension','referencia','numero','created_at'],
         ];
         foreach ($required+$optional as $table=>$columns) {
             $s=$this->db->prepare('SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');$s->bind_param('s',$table);$s->execute();

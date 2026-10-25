@@ -26,7 +26,8 @@ $schema=[
     'CREATE TABLE telefonia_zadarma_eventos(id INT AUTO_INCREMENT PRIMARY KEY,pbx_call_id VARCHAR(100),evento VARCHAR(40),internal VARCHAR(12),disposition VARCHAR(30) NULL,duration INT DEFAULT 0,call_id_with_rec VARCHAR(100) NULL,is_recorded VARCHAR(10) NULL,received_at DATETIME,payload_json LONGTEXT)',
     'CREATE TABLE telefonia_ventas_evidencia(usuario_id INT,extension VARCHAR(12),pbx_call_id VARCHAR(100),datos_json LONGTEXT)',
     'CREATE TABLE telefonia_ventas_marcaciones(id INT AUTO_INCREMENT PRIMARY KEY,usuario_id INT,extension VARCHAR(12),destino VARCHAR(32),pbx_call_id VARCHAR(100) NULL,created_at DATETIME)',
-    'CREATE TABLE telefonia_disponibilidad(id INT PRIMARY KEY,destino_usuario INT,destino_extension VARCHAR(12),referencia VARCHAR(100),ruta_json LONGTEXT,devolucion VARCHAR(20))',
+    'CREATE TABLE telefonia_disponibilidad(id INT PRIMARY KEY,destino_usuario INT,destino_extension VARCHAR(12),referencia VARCHAR(100),ruta_json LONGTEXT,devolucion VARCHAR(20),origen_usuario INT DEFAULT 700)',
+    'CREATE TABLE telefonia_transferencia_operaciones(id INT PRIMARY KEY,origen_usuario INT,destino_usuario INT,destino_extension VARCHAR(12),referencia VARCHAR(100),numero VARCHAR(32),created_at DATETIME)',
     'CREATE TABLE telefonia_contactos_personales(id INT PRIMARY KEY,usuario_id INT,nombre VARCHAR(180),telefono VARCHAR(32),observacion TEXT,proxima_accion_at DATETIME NULL)',
 ];
 foreach($schema as $sql) $db->query($sql);
@@ -76,17 +77,24 @@ foreach(['report-call-direct'=>'INTERESADO','report-call-transfer'=>'CONVERSACIO
 $db->query("INSERT INTO telefonia_ventas_marcaciones(usuario_id,extension,destino,created_at) VALUES(301,'150','5550000000','$today 13:00:00')");
 $db->query("INSERT INTO telefonia_contactos_personales VALUES(1,301,'Contacto','5550000000','Nota','$today 01:00:00')");
 $route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>301,'extension'=>'150','referencia_llamada'=>'callback-ref-001']);
-$s=$db->prepare("INSERT INTO telefonia_disponibilidad VALUES(7,301,'150','callback-ref-001',?,'PENDIENTE')");$s->bind_param('s',$route);$s->execute();
+$s=$db->prepare("INSERT INTO telefonia_disponibilidad(id,destino_usuario,destino_extension,referencia,ruta_json,devolucion) VALUES(7,301,'150','callback-ref-001',?,'PENDIENTE')");$s->bind_param('s',$route);$s->execute();
+$route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>301,'extension'=>'150','referencia_llamada'=>'unconfirmed-transfer-001']);
+$s=$db->prepare("INSERT INTO telefonia_disponibilidad(id,destino_usuario,destino_extension,referencia,ruta_json,devolucion) VALUES(11,301,'150','unconfirmed-transfer-001',?,'')");$s->bind_param('s',$route);$s->execute();
+$db->query("INSERT INTO telefonia_transferencia_operaciones VALUES(11,700,301,'150','unconfirmed-transfer-001','5550000000','$today 08:00:00')");
+$yesterday=(new DateTimeImmutable($today))->modify('-1 day')->format('Y-m-d');
+callrow($db,301,'report-call-late','Saliente',$yesterday.' 23:59:00');ev($db,'report-call-late','NOTIFY_END','150',$today.' 00:00:15',9,['duration'=>9]);
 function sessionFor(mysqli $db,int $role,int $uid):void {
     $perms=[];$s=$db->query('SELECT p.codigo FROM rol_permisos r JOIN permisos p ON p.id=r.permiso_id WHERE r.rol_id='.(int)$role.' AND p.estado=1');
     while($p=$s->fetch_assoc())$perms[]=$p['codigo'];
     $_SESSION=['usuario_id'=>$uid,'rol_id'=>$role,'rol'=>'Prueba','nombre'=>'Cuenta','apellidos'=>'de prueba','permisos'=>$perms];
 }
-$snap=[];foreach(['telefonia_ventas_llamadas','telefonia_zadarma_eventos','telefonia_ventas_resultados','telefonia_ventas_evidencia','telefonia_ventas_marcaciones','telefonia_disponibilidad'] as $t)$snap[$t]=$db->query("SELECT * FROM $t")->fetch_all(MYSQLI_ASSOC);
+$snap=[];foreach(['telefonia_ventas_llamadas','telefonia_zadarma_eventos','telefonia_ventas_resultados','telefonia_ventas_evidencia','telefonia_ventas_marcaciones','telefonia_disponibilidad','telefonia_transferencia_operaciones'] as $t)$snap[$t]=$db->query("SELECT * FROM $t")->fetch_all(MYSQLI_ASSOC);
 sessionFor($db,3,301);$svc=new VentasActividadService($db);$f=['periodo'=>'hoy'];$data=$svc->preparar($f,false);$s=$data['resumen'];
 qcheck($s['llamadas']===3 && $s['intentos']===1 && $s['conversaciones']===2,'Resumen personal exacto');
+qcheck($s['transferencias_pendientes']===1,'Transferencia sin confirmar separada de llamadas');
 qcheck($s['segundos']===25 && $s['promedio_segundos']===13 && $s['duraciones_pendientes']===1,'Duración sólo asesor, evidencia persistida y pendiente');
 qcheck($data['organizacion']['programadas']===1 && $data['organizacion']['devoluciones']===1,'Organización actual');
+qcheck($svc->preparar(['periodo'=>'ayer'],false)['resumen']['segundos']===9,'Evento tardío conserva la fecha de la llamada');
 try{$svc->preparar($f+['persona_id'=>302],false);throw new LogicException('Consultó asesor ajeno');}catch(DomainException $e){}
 qcheck($svc->preparar(['periodo'=>'personalizado','fecha_desde'=>'2024-01-01','fecha_hasta'=>'2024-01-31'],false)['resumen']['llamadas']===1,'Consulta histórica fuera de 90 días sin alterar historial');
 sessionFor($db,6,601);$team=$svc->preparar($f,false);$teamIds=array_map('intval',array_column($team['personas'],'id'));sort($teamIds);qcheck($teamIds===[301,303],'Equipo explícito');

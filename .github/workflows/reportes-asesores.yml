@@ -22,6 +22,7 @@ jobs:
         with:
           php-version: '8.2'
           extensions: mysqli, mbstring, gd, zip
+          coverage: none
       - run: |
           composer install --no-interaction --prefer-dist --no-scripts --no-progress
           composer reinstall '*' --no-interaction --prefer-dist --no-scripts --no-progress
@@ -43,6 +44,7 @@ jobs:
         with:
           php-version: '8.2'
           extensions: mbstring, gd, zip
+          coverage: none
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -60,8 +62,18 @@ jobs:
         with:
           php-version: '8.2'
           extensions: mbstring, gd, zip
+          coverage: none
       - run: |
           composer install --no-interaction --prefer-dist --no-scripts --no-progress
           composer reinstall '*' --no-interaction --prefer-dist --no-scripts --no-progress
           pip install pypdf
           python3 tests/ventas_actividad_pdf_test.py
+  publicacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - run: python3 tests/publicacion_reportes_asesores_test.py

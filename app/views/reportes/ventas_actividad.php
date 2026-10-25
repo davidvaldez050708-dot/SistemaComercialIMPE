@@ -19,7 +19,7 @@ $filter=['controller'=>$desempeno?'desempeno':'reporte','action'=>$desempeno?'in
         <div><span class="performance-eyebrow">ASESORES · ACTIVIDAD TELEFÓNICA</span><h1><?= $e($title) ?></h1><p>Consulta las llamadas, sus resultados y el tiempo confirmado de atención en el periodo seleccionado.</p></div>
         <?php if ($urlActividadPdf!==''): ?><a class="btn btn-system-save" href="<?= $e($urlActividadPdf) ?>" data-sales-report-pdf><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Exportar PDF</a><?php endif; ?>
     </header>
-    <nav class="performance-tabs" aria-label="Actividad de asesores">
+    <nav class="performance-view-tabs" aria-label="Actividad de asesores">
         <?php if (VentasActividadAccess::alcance()!==''): ?><a class="performance-tab <?= !$desempeno?'is-active':'' ?>" href="<?= $e(BASE_URL.'index.php?'.http_build_query(array_replace($filter,['controller'=>'reporte','action'=>'ventas']))) ?>">Reportes</a><?php endif; ?>
         <?php if (VentasActividadAccess::alcance(true)!==''): ?><a class="performance-tab <?= $desempeno?'is-active':'' ?>" href="<?= $e(BASE_URL.'index.php?'.http_build_query(array_replace($filter,['controller'=>'desempeno','action'=>'index']))) ?>"><?= $scope==='propio'?'Mi desempeño':'Desempeño del equipo' ?></a><?php endif; ?>
         <?php if ($scope!=='propio'): ?><a class="performance-tab" href="<?= BASE_URL ?>index.php?controller=desempeno&amp;action=index&amp;area=analistas">Otras áreas</a><?php else: ?><a class="performance-tab" href="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=misLlamadas">Mis llamadas</a><?php endif; ?>
@@ -36,11 +36,12 @@ $filter=['controller'=>$desempeno?'desempeno':'reporte','action'=>$desempeno?'in
             <div class="performance-filter-field" data-sales-custom <?= $period['clave']!=='personalizado'?'hidden':'' ?>><label for="salesTo">Hasta</label><input class="form-control" id="salesTo" type="date" name="fecha_hasta" value="<?= $e($period['fecha_hasta']) ?>" max="<?= date('Y-m-d') ?>"></div>
             <button class="btn btn-system-save" type="submit"><i class="bi bi-bar-chart" aria-hidden="true"></i> <?= $generated?'Actualizar':'Generar reporte' ?></button>
         </form>
+        <p class="sales-activity-note mt-3 mb-0" role="status" data-sales-dirty-note hidden>Los filtros cambiaron. Actualiza el reporte para consultar y exportar el nuevo corte.</p>
     </section>
     <?php if ($generated): ?>
         <div class="performance-context-row"><div><span>ALCANCE</span><strong><?= ['propio'=>'Personal','equipo'=>'Mi equipo territorial','global'=>'Nacional'][$scope] ?></strong></div><div><span>PERIODO</span><strong><?= $e($period['fecha_desde'].' al '.$period['fecha_hasta']) ?></strong></div><div><span>ASESORES</span><strong><?= count($d['personas_resumen']) ?></strong></div><div><span>CONSULTADO</span><strong><?= $e($d['fecha_generacion']) ?></strong></div></div>
         <section class="performance-kpi-grid">
-            <?php foreach ([['salientes','Llamadas salientes','telephone-outbound'],['entrantes','Llamadas entrantes','telephone-inbound'],['conectadas','Conexiones confirmadas','telephone-check'],['conversaciones','Conversaciones registradas','chat-dots']] as [$key,$label,$icon]): ?>
+            <?php foreach ([['salientes','Llamadas salientes','telephone-outbound'],['entrantes','Llamadas entrantes','telephone-inbound'],['conectadas','Conexiones confirmadas','check2-circle'],['conversaciones','Conversaciones registradas','chat-dots']] as [$key,$label,$icon]): ?>
                 <article><span class="performance-kpi-icon"><i class="bi bi-<?= $icon ?>" aria-hidden="true"></i></span><div><strong><?= $s[$key] ?></strong><span><?= $label ?></span><small>En el periodo y filtros seleccionados</small></div></article>
             <?php endforeach; ?>
         </section>
@@ -58,6 +59,26 @@ $filter=['controller'=>$desempeno?'desempeno':'reporte','action'=>$desempeno?'in
             </tbody></table></div>
         </section>
         <section class="dashboard-panel sales-activity-panel"><h2 class="panel-title">Evolución por día</h2><p class="page-subtitle">Los días sin actividad también se incluyen en el periodo.</p>
+            <?php
+            $bloque=max(1,(int)ceil(count($d['dias'])/20));$grafica=[];
+            foreach (array_chunk($d['dias'],$bloque) as $grupo) {
+                $g=['fecha'=>$grupo[0]['fecha'],'salientes'=>0,'entrantes'=>0,'conversaciones'=>0];
+                foreach ($grupo as $dia) foreach (['salientes','entrantes','conversaciones'] as $k) $g[$k]+=$dia[$k];
+                $grafica[]=$g;
+            }
+            $maxDia=max(1,...array_column($grafica,'salientes'),...array_column($grafica,'entrantes'),...array_column($grafica,'conversaciones'));
+            ?>
+            <?php if ($s['llamadas']>0): ?>
+                <div class="performance-chart-scroll" role="region" tabindex="0" aria-label="Gráfica de llamadas por día; desplázate para consultar todas las fechas">
+                    <?php if ($bloque>1): ?><p class="page-subtitle">Gráfica agrupada en bloques de hasta <?= $bloque ?> días; cada etiqueta indica el inicio del bloque. La tabla conserva el detalle diario.</p><?php endif; ?>
+                    <div class="performance-bar-chart" style="--performance-days: <?= count($grafica) ?>">
+                        <?php foreach ($grafica as $day): ?><div class="performance-day"><div class="performance-bars">
+                            <?php foreach (['salientes'=>'is-primary','entrantes'=>'is-secondary','conversaciones'=>'is-tertiary'] as $key=>$class): ?><span class="<?= $class ?>" style="height: <?= number_format(100*$day[$key]/$maxDia,2,'.','') ?>%" title="<?= $e($day['fecha'].' · '.$key.': '.$day[$key]) ?>"></span><?php endforeach; ?>
+                        </div><strong><?= $e(substr($day['fecha'],5)) ?></strong></div><?php endforeach; ?>
+                    </div>
+                </div>
+                <div class="performance-chart-legend"><span><i class="is-primary"></i> Salientes</span><span><i class="is-secondary"></i> Entrantes</span><span><i class="is-tertiary"></i> Conversaciones registradas</span></div>
+            <?php else: ?><p class="performance-chart-empty">Sin llamadas registradas en este periodo y filtros.</p><?php endif; ?>
             <div class="sales-activity-table sales-activity-days" role="region" aria-label="Evolución por día" tabindex="0"><table><thead><tr><th>Fecha</th><th>Salientes</th><th>Entrantes</th><th>Conversaciones</th><th>Tiempo confirmado</th><th>Duraciones pendientes</th></tr></thead><tbody><?php foreach ($d['dias'] as $day): ?><tr><td><?= $e($day['fecha']) ?></td><td><?= $day['salientes'] ?></td><td><?= $day['entrantes'] ?></td><td><?= $day['conversaciones'] ?></td><td><?= $day['duraciones_confirmadas']?$time($day['segundos']):'—' ?></td><td><?= $day['duraciones_pendientes'] ?></td></tr><?php endforeach; ?></tbody></table></div>
         </section>
         <section class="dashboard-panel sales-activity-panel"><h2 class="panel-title">Resultados de las llamadas</h2><div class="sales-activity-results"><?php foreach ($d['resultados'] as $code=>$n): ?><div><span><?= $e(TelefoniaResultadoVentasService::opciones()[$code]??'Sin resultado registrado') ?></span><strong><?= $n ?></strong></div><?php endforeach; ?><?php if (!$d['resultados']): ?><p class="page-subtitle">No hay llamadas registradas con estos filtros.</p><?php endif; ?></div></section>

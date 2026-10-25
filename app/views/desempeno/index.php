@@ -273,7 +273,7 @@ $rankingTitle = $vista === 'propio'
     <?php endif; ?>
 
     <?php if (VentasActividadAccess::alcance(true) !== ''): ?>
-        <nav class="performance-tabs" aria-label="Área de desempeño">
+        <nav class="performance-view-tabs" aria-label="Área de desempeño">
             <a class="performance-tab" href="<?= BASE_URL ?>index.php?controller=desempeno&amp;action=index&amp;area=asesores"><i class="bi bi-headset" aria-hidden="true"></i> Asesores · actividad telefónica</a>
         </nav>
     <?php endif; ?>
