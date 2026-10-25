@@ -68,12 +68,10 @@ class PublicacionRecepcionTests(unittest.TestCase):
         self.assertEqual([x['path'] for x in contents['files']],[FILES[1]])
     def test_conflict_blocks_all_changes(self):
         target=self.site/FILES[0]
-        target.write_bytes(target.read_bytes().replace(
-            b'Consulta tus llamadas entrantes y salientes desde esta extension',
-            b'Consulta tus llamadas entrantes y salientes desde esta variante'))
-        # El texto real usa acentos: forzar una diferencia en el anclaje protegido.
-        data=target.read_bytes().replace('Consulta tus llamadas entrantes'.encode('utf8'),
-                                         'Consulta registros especiales'.encode('utf8'))
+        data=target.read_bytes().replace(
+            'sin mezclar expedientes ni prospectos.'.encode('utf8'),
+            'sin mezclar notas personalizadas.'.encode('utf8'))
+        self.assertNotEqual(data,target.read_bytes())
         target.write_bytes(data)
         snapshot={name:(self.site/name).read_bytes() for name in FILES}
         result=self.run_pub('--apply')

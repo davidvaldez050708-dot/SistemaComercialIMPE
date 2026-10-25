@@ -158,6 +158,14 @@ def main():
             if updated.count(before) == 1:
                 updated = updated.replace(before, after, 1)
             elif not after and marker and marker not in updated:
+                # No confundir una leyenda personalizada con un parche instalado.
+                if marker.startswith('Consulta tus llamadas entrantes'):
+                    left = updated.find('<h2>Recepción telefónica</h2>')
+                    if left < 0:
+                        abort('CONFLICTO: encabezado de Recepción desconocido')
+                    right = updated.find('</div>', left)
+                    if right < 0 or '<p' in updated[left:right]:
+                        abort('CONFLICTO: texto personalizado en el encabezado')
                 continue
             else:
                 abort('CONFLICTO: personalización distinta o fragmento ausente: ' + name)
