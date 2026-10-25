@@ -46,8 +46,8 @@ $filter=['controller'=>$desempeno?'desempeno':'reporte','action'=>$desempeno?'in
             <?php endforeach; ?>
         </section>
         <section class="performance-kpi-grid">
-            <?php foreach ([[VentasActividadMetricas::tiempoConfirmado($s),'Tiempo confirmado del asesor','clock'],[$time($s['promedio_segundos']),'Promedio con duración confirmada','stopwatch'],[$s['por_registrar'],'Llamadas por registrar','journal-check'],[$s['cumplimiento_registro']===null?'—':$s['cumplimiento_registro'].'%','Cumplimiento del registro','check2-circle']] as [$value,$label,$icon]): ?>
-                <article><span class="performance-kpi-icon is-success"><i class="bi bi-<?= $icon ?>" aria-hidden="true"></i></span><div><strong><?= $e($value) ?></strong><span><?= $label ?></span><small><?= $s['duraciones_pendientes'] ?> duraciones pendientes</small></div></article>
+            <?php foreach ([[VentasActividadMetricas::tiempoConfirmado($s),'Tiempo confirmado del asesor','clock',$s['duraciones_pendientes'].' duraciones pendientes'],[$time($s['promedio_segundos']),'Promedio con duración confirmada','stopwatch','Excluye las duraciones pendientes'],[$s['por_registrar'],'Llamadas por registrar','journal-check','Ya permiten registrar su resultado'],[$s['cumplimiento_registro']===null?'—':$s['cumplimiento_registro'].'%','Cumplimiento del registro','check2-circle','Resultados guardados de llamadas habilitadas']] as [$value,$label,$icon,$caption]): ?>
+                <article><span class="performance-kpi-icon is-success"><i class="bi bi-<?= $icon ?>" aria-hidden="true"></i></span><div><strong><?= $e($value) ?></strong><span><?= $label ?></span><small><?= $e($caption) ?></small></div></article>
             <?php endforeach; ?>
         </section>
         <p class="sales-activity-note"><?= $s['intentos'] ?> intentos sin llamada confirmada · <?= $s['transferencias_pendientes'] ?> transferencias pendientes de confirmación. Se muestran aparte y no aumentan las llamadas registradas.</p>
