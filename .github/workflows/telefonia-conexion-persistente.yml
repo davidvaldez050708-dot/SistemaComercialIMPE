@@ -9,6 +9,8 @@ on:
       - 'tests/telefonia_conexion*'
       - 'tests/publicacion_telefonia_conexion_test.py'
       - 'tools/*telefonia_conexion*'
+      - 'tools/*telefonia_opera*'
+      - 'tests/publicacion_telefonia_opera_test.py'
       - '.github/workflows/telefonia-conexion-persistente.yml'
 jobs:
   conexion:
@@ -48,6 +50,7 @@ jobs:
           node tests/telefonia_timbrado_antes_sip_smoke.js
           node tests/telefonia_transferencia_operacion.cjs
           node tests/telefonia_webrtc_dtmf_smoke.js
+          python3 tests/publicacion_telefonia_opera_test.py
       - name: Navegador con transporte sintetico y Web Locks reales
         run: node tests/telefonia_conexion_browser.cjs
       - name: Variantes reales de Hostinger con navegador
