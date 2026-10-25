@@ -40,9 +40,11 @@ $checks = [
     'Autorecepción exclusivamente para Marketing autorizado' =>
         str_contains($html, '"autoReception":true') &&
         str_contains($html, '"extension":"100"'),
-    'Respaldo visible con JavaScript deshabilitado' =>
+    'Explicación sin modo clásico con JavaScript deshabilitado' =>
         str_contains($html, '<noscript>') &&
-        str_contains($html, 'entra al CRM clásico'),
+        str_contains($html, 'Activa JavaScript en tu navegador') &&
+        !str_contains($html, 'CRM clásico') &&
+        !str_contains($html, 'Modo clásico'),
     'Sin códigos secretos publicados' =>
         !str_contains($html, 'api_secret') &&
         !str_contains($html, 'api_key'),

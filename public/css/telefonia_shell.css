@@ -113,11 +113,6 @@ html, body {
  .impe-phone-status { right: 7px; bottom: 7px; }
 }
 
-.impe-phone-classic-link {
-  color: #52698c; font: 600 11px 'Manrope', sans-serif;
-  text-decoration: underline; white-space: nowrap;
-}
-
 
 /* Navegación entre documentos PHP del iframe: ocultar exclusivamente el
    flash blanco del navegador mientras la ruta autenticada termina de cargar.

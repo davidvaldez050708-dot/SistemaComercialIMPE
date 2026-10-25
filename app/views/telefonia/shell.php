@@ -132,10 +132,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
 <body>
     <noscript>
       <p style="margin:20px;font:600 14px system-ui">
-        Activa JavaScript para usar telefonía integrada o
-        <a href="<?= htmlspecialchars(BASE_URL . 'index.php?controller=home&action=index', ENT_QUOTES, 'UTF-8') ?>">
-            entra al CRM clásico
-        </a>.
+        Activa JavaScript en tu navegador para utilizar el CRM y su teléfono integrado.
       </p>
     </noscript>
     <main class="impe-phone-shell" aria-label="Sistema comercial">
@@ -160,9 +157,6 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     <aside class="impe-phone-status" data-shell-status role="status" aria-live="polite" hidden>
         <span data-shell-status-text></span>
         <button type="button" data-shell-retry hidden>Conectar teléfono</button>
-        <a class="impe-phone-classic-link"
-           href="<?= htmlspecialchars(BASE_URL . 'index.php?controller=home&action=index', ENT_QUOTES, 'UTF-8') ?>"
-           title="Volver al CRM sin navegación persistente">Modo clásico</a>
     </aside>
     <aside class="impe-phone-call" data-shell-call hidden aria-label="Teléfono institucional">
         <div class="impe-phone-call-header">
