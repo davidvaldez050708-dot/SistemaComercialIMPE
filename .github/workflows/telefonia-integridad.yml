@@ -72,3 +72,4 @@ jobs:
           php tests/telefonia_ventas_notificaciones_db.php
           php tests/telefonia_atencion_db.php
           php tests/telefonia_identidad_transferencia_db.php
+          php tests/telefonia_integridad_diagnostico_db.php
