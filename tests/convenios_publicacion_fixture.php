@@ -10,7 +10,10 @@ if (($argv[1]??'')==='--verify') {
  foreach($rows as $row){pubcheck((int)$row['creado_por']===10 && (int)$row['estado_id']===2,'Autor Director y estado real');pubcheck(is_file(ROOT_PATH.'/'.$row['imagen']),'Imagen persistida');pubcheck(str_contains($row['enlace_registro'],'aliado='),'Enlace existente conservado');}
  pubcheck((int)$db->query("SELECT COUNT(*) n FROM convocatoria_borradores WHERE estado='publicado'")->fetch_assoc()['n']===2,'Borradores confirmados');
  pubcheck((int)$db->query('SELECT COUNT(*) n FROM formulario_aliado_registro WHERE publicado=1 AND habilitado=1')->fetch_assoc()['n']===2,'Perfiles y enlaces sin cambios');
- echo "Publicación HTTP real: cuatro convocatorias, dos orígenes, imágenes, autor, estados y enlaces persistidos OK\n";exit;
+ $single=$db->query("SELECT * FROM convocatorias WHERE titulo='Publicación tradicional de prueba'")->fetch_assoc();
+ pubcheck($single && (int)$single['creado_por']===10 && str_contains($single['enlace_registro'],'aliado='),'Guardado tradicional sin permiso de administrar enlaces');
+ pubcheck(json_decode(file_get_contents(ROOT_PATH.'/snapshot-perfiles.json'),true)===$db->query('SELECT r.*,a.token FROM formulario_aliado_registro r JOIN formulario_aliados a ON a.id=r.aliado_id ORDER BY r.aliado_id')->fetch_all(MYSQLI_ASSOC),'Publicar conserva perfiles y tokens completos');
+ echo "Publicación HTTP real: cuatro convocatorias multiprograma y una tradicional; imágenes, autor, estados y enlaces persistidos OK\n";exit;
 }
 $schema=[
  "CREATE TABLE estados(id INT PRIMARY KEY,nombre VARCHAR(80),estado INT)",
@@ -58,4 +61,5 @@ try{$svc->enlace('manual',20,'deshabilitar');throw new LogicException('Administr
 $_SESSION['permisos'][]='formularios_aliados.gestionar_enlaces';pubcheck($svc->enlace('manual',20,'generar')['habilitado'],'Gestionar enlace con permiso, sin rol oculto');
 $_SESSION['permisos']=['convenios.ver','convocatorias.ver'];
 try{$svc->opcionesConvocatoria('manual',20);throw new LogicException('Publicación revocada permitida');}catch(DomainException $e){pubcheck($e->getCode()===403,'Revocar crear bloquea editor');}
+file_put_contents(ROOT_PATH.'/snapshot-perfiles.json',json_encode($db->query('SELECT r.*,a.token FROM formulario_aliado_registro r JOIN formulario_aliados a ON a.id=r.aliado_id ORDER BY r.aliado_id')->fetch_all(MYSQLI_ASSOC)));
 echo "Servicios: roles nacionales, tres asignaciones, vencimiento, enlaces y revocación OK\n";

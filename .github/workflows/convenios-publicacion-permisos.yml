@@ -27,4 +27,6 @@ jobs:
       - name: Editor, borrador, imágenes, QR y publicación HTTP/SQL de ambos orígenes
         env:
           IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
-        run: python3 tests/convenios_publicacion_http_test.py
+        run: |
+          python3 tests/convenios_publicacion_http_test.py
+          python3 tests/publicacion_convenios_permisos_test.py

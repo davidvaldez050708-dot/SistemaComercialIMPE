@@ -42,7 +42,7 @@ if(($_GET['action']??'')==='render'){
 }
 if(($_GET['controller']??'')==='convocatoria'){require __DIR__.'/app/controllers/ConvocatoriaController.php';$c=new ConvocatoriaController();}
 else{require __DIR__.'/app/controllers/CrearConvocatoriaController.php';$c=new CrearConvocatoriaController();}
-$action=$_GET['action']??'';if(!in_array($action,['borrador','guardarProgramasAliado','qrDiseno'],true)){http_response_code(404);exit;}$c->$action();
+$action=$_GET['action']??'';if(!in_array($action,['borrador','guardarProgramasAliado','guardar','qrDiseno'],true)){http_response_code(404);exit;}$c->$action();
 ''')
  server=None
  def cli(mode):
@@ -68,8 +68,10 @@ $action=$_GET['action']??'';if(!in_array($action,['borrador','guardarProgramasAl
      parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="imagen"; filename="test.png"\r\nContent-Type: image/png\r\n\r\n'.encode()+file+b'\r\n')
      body=b''.join(parts)+f'--{boundary}--\r\n'.encode();headers['Content-Type']='multipart/form-data; boundary='+boundary
     else:body=urllib.parse.urlencode(data).encode();headers['Content-Type']='application/x-www-form-urlencoded'
+   class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self,*args,**kwargs):return None
    try:
-    with urllib.request.urlopen(urllib.request.Request(url,body,headers),timeout=30) as result:return result.status,result.read().decode()
+    with urllib.request.build_opener(NoRedirect).open(urllib.request.Request(url,body,headers),timeout=30) as result:return result.status,result.read().decode()
    except urllib.error.HTTPError as e:return e.code,e.read().decode()
   code,html=request('render');assert code==200 and 'data-convenio-create-link' in html
   code,html=request('render',role='revocado');assert 'data-convenio-create-link' not in html
@@ -89,6 +91,8 @@ $action=$_GET['action']??'';if(!in_array($action,['borrador','guardarProgramasAl
    code,body=request('guardarProgramasAliado',publish,controller='convocatoria',role='revocado');assert code==403,(code,body)
    code,body=request('guardarProgramasAliado',publish,controller='convocatoria');assert code==200,(code,body);assert json.loads(body)['cantidad']==2
    code,again=request('guardarProgramasAliado',publish,controller='convocatoria');assert code==200 and json.loads(again)['ids']==json.loads(body)['ids'],'Reintento no duplica'
+  code,body=request('guardar',dict(titulo='Publicación tradicional de prueba',territorio_id=2,tipo='bachillerato',subtipo='ingles',aliado_tipo='manual',aliado_id=20,programa_codigo='ingles',fecha_inicio='2026-01-01',fecha_termino='2099-12-31',estado=1),file=png,controller='convocatoria')
+  assert code==302,(code,body)
   cli('--verify')
  finally:
   if server:server.terminate();server.wait(timeout=10);log.close()
