@@ -14,11 +14,14 @@ class Publisher(unittest.TestCase):
    top=Path(temp);site=top/'site';site.mkdir();backup=top/'backups';(site/'index.php').write_bytes(b'<?php // synthetic')
    (site/'other.txt').write_bytes(b'NO CAMBIAR')
    for row in SPEC['files']:
-    variant=row['variants'][-1] if kind=='hostinger' else row['variants'][0]
+    variant=row['variants'][-1] if kind in ('hostinger','previous-release') else row['variants'][0]
     if variant['before'] is not None:
      p=site/row['path'];p.parent.mkdir(parents=True,exist_ok=True);b=data(variant['before'])
      if kind=='crlf':b=b.replace(b'\n',b'\r\n')
      p.write_bytes(b)
+   if kind=='previous-release':
+    prior=json.loads(subprocess.check_output(['git','show','05261ecfca9f4d42bb29cf05504dbb041405a553:tools/telefonia_integridad_release.json'],cwd=ROOT))
+    for row in prior['files']:(site/row['path']).write_bytes(data(row['variants'][-1]['after']))
    if kind=='unknown':(site/HOST).write_bytes(b'// variante no revisada')
    
    if kind=='partial':(site/FIRST).write_bytes(data(SPEC['files'][0]['variants'][0]['after']))
@@ -30,11 +33,20 @@ class Publisher(unittest.TestCase):
    r=run('--check');self.assertEqual(r.returncode,0,r.stderr);self.assertEqual(snapshot(site),before);self.assertFalse(backup.exists())
    r=run('--apply');self.assertEqual(r.returncode,0,r.stdout+r.stderr);after=snapshot(site)
    for row in SPEC['files']:
-    variant=row['variants'][-1] if kind=='hostinger' else row['variants'][0]
+    variant=row['variants'][-1] if kind in ('hostinger','previous-release') else row['variants'][0]
     self.assertEqual((site/row['path']).read_bytes().replace(b'\r\n',b'\n'),data(variant['after']))
    self.assertEqual((site/'other.txt').read_bytes(),b'NO CAMBIAR')
+   if kind in ('hostinger','previous-release'):
+    controller=(site/'app/controllers/TelefoniaController.php').read_text(encoding='utf8')
+    service=(site/'app/services/TelefoniaVentasLlamadasService.php').read_text(encoding='utf8')
+    self.assertIn("if(isset($_GET['sdk']))",controller)
+    self.assertIn('public function obtenerPorSdk(',service)
+    self.assertIn('public function conVinculosSdk(',service)
    r=run('--apply');self.assertEqual(r.returncode,0,r.stderr);self.assertEqual(len(list(backup.iterdir())),1)
    saved=next(backup.iterdir())
+   if kind=='previous-release':
+    changed=json.loads((saved/'manifest.json').read_text(encoding='utf8'))['files']
+    self.assertEqual({r['path'] for r in changed},{'app/controllers/TelefoniaController.php','app/services/TelefoniaVentasLlamadasService.php'})
    if kind=='restore-conflict':
     (site/HOST).write_bytes(b'// cambio posterior')
     changed=snapshot(site);r=run('--restore',str(saved));self.assertNotEqual(r.returncode,0);self.assertEqual(snapshot(site),changed);return
@@ -44,6 +56,7 @@ class Publisher(unittest.TestCase):
    r=run('--restore',str(saved));self.assertEqual(r.returncode,0,r.stdout+r.stderr);self.assertEqual(snapshot(site),before)
  def test_base(self):self.scenario('base')
  def test_hostinger_exact(self):self.scenario('hostinger')
+ def test_previous_release(self):self.scenario('previous-release')
  def test_crlf(self):self.scenario('crlf')
  def test_partial(self):self.scenario('partial')
  def test_unknown(self):self.scenario('unknown')

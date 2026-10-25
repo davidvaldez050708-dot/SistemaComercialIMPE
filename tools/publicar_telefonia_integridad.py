@@ -50,7 +50,7 @@ def main():
     if backups==root or root in backups.parents:fail('El respaldo debe quedar fuera de public_html')
     spec=json.loads(Path(args.manifest).read_text(encoding='utf8'))
     paths=[row['path'] for row in spec['files']]
-    if len(paths)!=12 or len(set(paths))!=12:fail('Manifiesto inválido')
+    if len(paths)!=14 or len(set(paths))!=14:fail('Manifiesto inválido')
     # Verificar todos los blobs incluso para check/restore.
     for row in spec['files']:
         for variant in row['variants']:
