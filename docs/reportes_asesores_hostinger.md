@@ -38,9 +38,9 @@ Los rangos personalizados admiten hasta 366 días, también históricos anterior
 
 ## Instalar en Hostinger
 
-Paquete inmutable: `c004a31fec94d0e2b8045bad10abf2d3be908a17`.
+Paquete inmutable: `bf492d8bb3536c6294ef9b2d99d64d4f56754791`.
 
-Modifica 16 archivos de la interfaz, reportes y permisos. Conserva la personalización del avatar en Desempeño y el pie fijo del menú móvil. Verifica cinco dependencias de telefonía sin reemplazarlas. No cambia `index.php`, estilos globales ni el motor del teléfono.
+Modifica 16 archivos de la interfaz, reportes y permisos. Conserva la personalización del avatar en Desempeño y el pie fijo del menú móvil. Verifica cinco dependencias de telefonía sin reemplazarlas. No cambia `index.php`, estilos globales ni el motor del teléfono. La exportación abre la descarga aparte para conservar el marco del CRM y del teléfono.
 
 Ejecutar el bloque completo en SSH. Las comprobaciones no modifican el sitio ni los datos. La publicación respalda los archivos fuera de `public_html`, instala primero las dependencias nuevas y se detiene ante versiones desconocidas. Después valida la estructura y el generador PDF y activa los permisos del módulo por única vez.
 
@@ -48,9 +48,9 @@ Ejecutar el bloque completo en SSH. Las comprobaciones no modifican el sitio ni 
 (
 set -eu
 SITIO="$HOME/domains/fundacionrededumex.org/public_html"
-PAQUETE="$HOME/impe-reportes-asesores-c004a31f"
+PAQUETE="$HOME/impe-reportes-asesores-bf492d8b"
 RESPALDOS="$HOME/respaldos-impe-reportes-asesores"
-BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/c004a31fec94d0e2b8045bad10abf2d3be908a17/tools"
+BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/bf492d8bb3536c6294ef9b2d99d64d4f56754791/tools"
 mkdir -p "$PAQUETE"
 chmod 700 "$PAQUETE"
 cd "$PAQUETE"
@@ -59,7 +59,7 @@ curl -fsSL "$BASE/reportes_asesores_release.json" -o reportes_asesores_release.j
 curl -fsSL "$BASE/instalar_reportes_asesores_permisos.php" -o instalar_reportes_asesores_permisos.php
 printf '%s\n' \
   '9be51e739dff8c36acb8f90143da7813f379cae2e6c1f0a81719c04a3df6116f  publicar_reportes_asesores.py' \
-  'f755967a7a7b8d888a9be20096206bf74ec0d337e1bab15bc850f6be44592d62  reportes_asesores_release.json' \
+  'e20a9a318486e000364035d444990f86d016948db52519f6da7ffeda090686ca  reportes_asesores_release.json' \
   'f19a12a188068513fb2247ac19c5f0463d7f1bb9687c4d4e237b9f40d71c7b89  instalar_reportes_asesores_permisos.php' | sha256sum -c -
 python3 publicar_reportes_asesores.py --site "$SITIO" --backup-root "$RESPALDOS" --check
 python3 publicar_reportes_asesores.py --site "$SITIO" --backup-root "$RESPALDOS" --apply
@@ -93,12 +93,12 @@ Los permisos pueden ajustarse en Roles y permisos:
 Primero restaurar los permisos usando el archivo exacto impreso como `RESPALDO DE PERMISOS:`; después restaurar los archivos usando la carpeta exacta impresa como `APLICADO. RESPALDO:`. Mantener este orden porque el instalador de permisos utiliza un servicio del módulo.
 
 ```bash
-php "$HOME/impe-reportes-asesores-c004a31f/instalar_reportes_asesores_permisos.php" \
+php "$HOME/impe-reportes-asesores-bf492d8b/instalar_reportes_asesores_permisos.php" \
   --site "$HOME/domains/fundacionrededumex.org/public_html" \
   --backup-root "$HOME/respaldos-impe-reportes-asesores/permisos" \
   --restore "/ruta/exacta/al/respaldo-de-permisos.json"
 
-python3 "$HOME/impe-reportes-asesores-c004a31f/publicar_reportes_asesores.py" \
+python3 "$HOME/impe-reportes-asesores-bf492d8b/publicar_reportes_asesores.py" \
   --site "$HOME/domains/fundacionrededumex.org/public_html" \
   --backup-root "$HOME/respaldos-impe-reportes-asesores" \
   --restore "/ruta/exacta/a/la/carpeta-de-respaldo-de-archivos"
