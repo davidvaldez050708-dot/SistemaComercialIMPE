@@ -1,0 +1,16 @@
+name: Convenios - alcance por rol
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  alcance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - run: |
+          php -l app/controllers/CrearConvocatoriaController.php
+          python3 tests/convenios_alcance_roles_test.py
+          python3 tests/publicacion_convenios_alcance_test.py
