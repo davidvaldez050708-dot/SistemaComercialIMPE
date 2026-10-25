@@ -1,0 +1,29 @@
+<?php
+putenv('IMPE_BASE_URL=http://ventas.test/');
+require __DIR__.'/../config/config.php';
+require ROOT_PATH.'/app/services/VentasActividadMetricas.php';require ROOT_PATH.'/app/helpers/VentasActividadAccess.php';
+$role=($argv[2]??'')==='global'?2:3;
+$_SESSION=['usuario_id'=>301,'rol_id'=>$role,'rol'=>$role===3?'Asesor de Ventas':'Director de Operaciones','nombre'=>'Persona','apellidos'=>'de prueba',
+    'permisos'=>['reportes.ver','reportes.ventas','reportes.ventas.propio','reportes.ventas.global','reportes.exportar','desempeno.ver','desempeno.ver_propio','desempeno.ver_global','desempeno.exportar']];
+$people=[['id'=>301,'nombre_completo'=>'María Fernanda García Hernández','foto_perfil'=>'','activo'=>1]];
+if ($role===2) $people[]=['id'=>302,'nombre_completo'=>'Asesor de prueba sin actividad','foto_perfil'=>'','activo'=>1];
+$period=VentasActividadMetricas::periodo(['periodo'=>'semana']);$rows=[];$today=$period['fecha_hasta'];
+$count=($argv[1]??'')==='pdf'?90:32;
+for($i=0;$i<$count;$i++) $rows[]=['id'=>$i+1,'usuario_id'=>301,'extension'=>'150','pbx_call_id'=>'fixture-call-'.str_pad((string)$i,6,'0',STR_PAD_LEFT),
+    'fecha'=>$today.' 10:'.sprintf('%02d',$i%60).':00','direccion'=>$i%2?'Entrante':'Saliente','conectada'=>true,'finalizada'=>true,'segundos'=>$i===1?null:13,
+    'nombre'=>'Prospecto de prueba','numero'=>'5550000000','origen_extension'=>$i%2?'100':'','solicitud_id'=>$i%2?1:null,
+    'registro'=>['resultado'=>$i%3?'INTERESADO':'CONVERSACION_PERSONA','prospecto_nombre'=>'Prospecto de prueba',
+        'observacion'=>$i===0?str_repeat('Información de seguimiento con observaciones extensas para verificar el salto de página. ',20):'Observación <script>no ejecutar</script> de prueba.']];
+$actividad=VentasActividadMetricas::calcular($rows,$people,$period)+['area'=>'asesores','area_label'=>'Asesores','es_desempeno'=>true,
+    'vista'=>$role===3?'propio':'global','periodo'=>$period,'personas'=>$people,'persona_id'=>$role===3?301:0,'direccion'=>'','resultado'=>'','generado'=>true,
+    'generado_por'=>'Persona de prueba','generado_por_rol'=>$_SESSION['rol'],'fecha_generacion'=>date('d/m/Y H:i'),
+    'organizacion'=>['disponible'=>true,'programadas'=>2,'vencidas'=>1,'devoluciones'=>1]];
+if (($argv[1]??'')==='pdf') {
+    require ROOT_PATH.'/app/services/DesempenoPdfService.php';
+    $pdf=(new DesempenoPdfService())->generar($actividad);
+    if (!$pdf['ok']) throw new RuntimeException(json_encode($pdf));
+    file_put_contents($argv[3],$pdf['contenido_pdf']);echo $pdf['nombre_archivo'];exit;
+}
+$desempeno=true;$errorActividad='';$urlActividadPdf=BASE_URL.'index.php?'.http_build_query(['controller'=>'desempeno','action'=>'exportarPdf','area'=>'asesores','periodo'=>'semana','persona_id'=>$role===3?301:0]);
+echo '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/bootstrap.css"><link rel="stylesheet" href="/public/css/global.css"><link rel="stylesheet" href="/public/css/dashboard.css"><link rel="stylesheet" href="/icons/bootstrap-icons.css"><body style="padding:16px;background:#f4f7fa">';
+require ROOT_PATH.'/app/views/reportes/ventas_actividad.php';echo '</body></html>';

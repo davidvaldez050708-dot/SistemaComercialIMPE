@@ -23,6 +23,17 @@ $puedeExportarReportes = tienePermiso('reportes.exportar');
     </section>
 
     <div class="report-catalog-grid">
+        <?php if (!empty($puedeReporteVentas)): ?>
+            <article class="dashboard-panel report-catalog-card report-catalog-card--seguimiento">
+                <div class="report-card-heading">
+                    <span class="metric-icon report-card-icon"><i class="bi bi-headset" aria-hidden="true"></i></span>
+                    <div><span class="report-card-kicker">ASESORES</span><h3>Actividad telefónica</h3></div>
+                </div>
+                <p class="report-card-description">Consulta llamadas, conversaciones, duración y resultados por asesor y periodo dentro de tu alcance autorizado.</p>
+                <div class="report-card-meta"><span><i class="bi bi-calendar3"></i> Periodo y evolución diaria</span><span><i class="bi bi-telephone"></i> Registro de llamadas</span></div>
+                <a class="btn btn-system-save report-card-action" href="<?= BASE_URL ?>index.php?controller=reporte&amp;action=ventas"><i class="bi bi-arrow-right-circle" aria-hidden="true"></i><span>Generar reporte</span></a>
+            </article>
+        <?php endif; ?>
         <?php if ($puedeReporteTerritorial): ?>
             <article class="dashboard-panel report-catalog-card report-catalog-card--territorial">
                 <div class="report-card-heading">

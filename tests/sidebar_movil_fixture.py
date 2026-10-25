@@ -6,7 +6,7 @@ with tempfile.TemporaryDirectory() as folder:
     site = pathlib.Path(folder)
     for name in ['app/views/layout/sidebar.php', 'app/helpers/AvatarHelper.php',
                  'app/helpers/PermissionHelper.php', 'app/helpers/AdminRolePolicy.php',
-                 'app/helpers/SupervisionRolePolicy.php']:
+                 'app/helpers/SupervisionRolePolicy.php', 'app/helpers/VentasActividadAccess.php']:
         target = site/name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT/name, target)

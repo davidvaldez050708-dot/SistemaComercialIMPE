@@ -1,0 +1,30 @@
+.sales-activity-module { min-width: 0; }
+.sales-activity-module .performance-hero .btn { flex-shrink: 0; }
+.sales-activity-filters { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); align-items: end; gap: 14px; }
+.sales-activity-filters [hidden] { display: none !important; }
+.sales-activity-panel { padding: 20px; min-width: 0; }
+.sales-activity-panel .panel-title { margin-bottom: 8px; }
+.sales-activity-note { margin: 0; padding: 12px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-primary-soft); color: var(--color-text-secondary); font-size: 12px; }
+.sales-activity-table { width: 100%; overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.sales-activity-table:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.sales-activity-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sales-activity-table th { background: var(--color-primary-soft); color: var(--color-primary); font-weight: 800; }
+.sales-activity-table th,.sales-activity-table td { padding: 12px; border-bottom: 1px solid var(--color-border); vertical-align: middle; min-width: 90px; }
+.sales-activity-table td { max-width: 280px; overflow-wrap: anywhere; color: var(--color-text-primary); }
+.sales-activity-table tr:last-child td { border-bottom: 0; }
+.sales-activity-days { max-height: 440px; }
+.sales-activity-days th { position: sticky; top: 0; }
+.sales-activity-person { display: flex; align-items: center; gap: 8px; min-width: 160px; }
+.sales-activity-results { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 10px; }
+.sales-activity-results > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; background: var(--color-primary-soft); border-radius: var(--radius-md); font-size: 12px; }
+.sales-activity-results strong { color: var(--color-primary); font-size: 18px; }
+.sales-activity-criteria { margin: 0; padding-left: 20px; color: var(--color-text-secondary); font-size: 12px; line-height: 1.65; }
+.sales-activity-pagination { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+@media (max-width: 767.98px) {
+    .sales-activity-filters { grid-template-columns: minmax(0,1fr); }
+    .sales-activity-panel { padding: 16px; }
+    .sales-activity-module .performance-hero { align-items: stretch; flex-direction: column; }
+    .sales-activity-module .performance-kpi-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .sales-activity-module .performance-context-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 379.98px) { .sales-activity-module .performance-kpi-grid { grid-template-columns: minmax(0,1fr); } }

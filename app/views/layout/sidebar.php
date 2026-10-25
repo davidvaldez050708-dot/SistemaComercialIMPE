@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 require_once __DIR__ . '/../../services/AliadoInternacionalService.php';
 require_once __DIR__ . '/../../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../../helpers/VentasActividadAccess.php';
 
 $opcionActiva = $opcionActiva ?? 'inicio';
 $mostrarUsuarios = tienePermiso('usuarios.ver');
@@ -53,7 +54,8 @@ $mostrarReportes =
         $mostrarReporteSeguimiento ||
         $mostrarReporteUsuarios ||
         $mostrarReporteConvocatorias ||
-        $mostrarReporteAliados
+        $mostrarReporteAliados ||
+        VentasActividadAccess::alcance() !== ''
     );
 $mostrarReportesEnAnalisis =
     $mostrarReportes;

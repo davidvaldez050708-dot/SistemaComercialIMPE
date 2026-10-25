@@ -1,5 +1,8 @@
 <?php
 
+require_once __DIR__ . '/../../helpers/AvatarHelper.php';
+require_once __DIR__ . '/../../helpers/VentasActividadAccess.php';
+
 $desempeno = is_array($desempeno ?? null)
     ? $desempeno
     : [];
@@ -269,6 +272,11 @@ $rankingTitle = $vista === 'propio'
         </nav>
     <?php endif; ?>
 
+    <?php if (VentasActividadAccess::alcance(true) !== ''): ?>
+        <nav class="performance-tabs" aria-label="Área de desempeño">
+            <a class="performance-tab" href="<?= BASE_URL ?>index.php?controller=desempeno&amp;action=index&amp;area=asesores"><i class="bi bi-headset" aria-hidden="true"></i> Asesores · actividad telefónica</a>
+        </nav>
+    <?php endif; ?>
     <section class="dashboard-panel performance-filter-panel">
         <form
             method="GET"
@@ -610,6 +618,18 @@ $rankingTitle = $vista === 'propio'
                             <?php endif; ?>
 
                             <div class="performance-person">
+                                <?php if ($vista === 'propio'): ?>
+                                    <?= renderAvatarUsuario(
+                                        $nombre,
+                                        '',
+                                        $rolActualDesempeno,
+                                        $fila['foto_perfil'] ?? '',
+                                        'md',
+                                        'general',
+                                        'performance-personal-avatar',
+                                        false
+                                    ) ?>
+                                <?php else: ?>
                                 <span class="performance-avatar">
                                     <?php if ($foto !== ''): ?>
                                         <img src="<?= $esc($foto) ?>" alt="<?= $esc($nombre) ?>">
@@ -617,6 +637,7 @@ $rankingTitle = $vista === 'propio'
                                         <?= $esc($iniciales($nombre)) ?>
                                     <?php endif; ?>
                                 </span>
+                                <?php endif; ?>
                                 <div>
                                     <strong><?= $esc($nombre) ?></strong>
                                     <span>
@@ -875,3 +896,19 @@ $rankingTitle = $vista === 'propio'
         </div>
     </section>
 </section>
+
+<?php if ($vista === 'propio'): ?>
+<script>
+// El footer registra el fallback compartido al terminar DOMContentLoaded.
+// Reentregar sólo los errores de estas fotos que ocurrieron antes de ese registro.
+document.addEventListener('DOMContentLoaded', function () {
+    window.setTimeout(function () {
+        document.querySelectorAll('.performance-module .performance-personal-avatar > .system-avatar-image').forEach(function (imagen) {
+            if (imagen.complete && imagen.naturalWidth === 0) {
+                imagen.dispatchEvent(new Event('error'));
+            }
+        });
+    }, 0);
+}, { once: true });
+</script>
+<?php endif; ?>
