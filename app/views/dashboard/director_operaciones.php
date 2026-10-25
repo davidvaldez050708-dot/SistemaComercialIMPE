@@ -7,7 +7,17 @@ $accesosDireccion = [
     ['prospectos.ver_todos', 'prospecto', 'Prospectos', 'Consulta registros y filtra por aliado y programa.', 'person-lines-fill'],
     ['reportes.ver', 'reporte', 'Reportes', 'Selecciona entre los reportes habilitados para tu rol.', 'file-earmark-bar-graph'],
 ];
-$accesosDireccion = array_filter($accesosDireccion, static fn($item) => tienePermiso($item[0]));
+$puedeAbrirReportesDireccion = tienePermiso('reportes.ver') && (
+    tieneAlgunPermiso(['reportes.usuarios', 'reportes.convocatorias']) ||
+    (tienePermiso('reportes.territorial') && tienePermiso('data_territorial.ver')) ||
+    (tienePermiso('reportes.aliados.panorama') && tienePermiso('aliados.ver')) ||
+    (tienePermiso('seguimientos_vinculacion.ver') && tieneAlgunPermiso([
+        'reportes.seguimiento.cartera', 'reportes.seguimiento.actividad', 'reportes.seguimiento.institucion'
+    ]))
+);
+$accesosDireccion = array_filter($accesosDireccion, static fn($item) =>
+    $item[0] === 'reportes.ver' ? $puedeAbrirReportesDireccion : tienePermiso($item[0])
+);
 $textoDireccion = static fn($value) => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 ?>
 <section class="dashboard-panel mb-4">

@@ -36,6 +36,8 @@ $mostrarReporteUsuarios =
     tienePermiso('reportes.usuarios');
 $mostrarReporteConvocatorias =
     tienePermiso('reportes.convocatorias');
+$mostrarReporteAliados =
+    tienePermiso('reportes.aliados.panorama') && $mostrarAliados;
 $esRolMarketingSidebar = strcasecmp(
     trim((string)($_SESSION['rol'] ?? '')),
     'Marketing'
@@ -50,7 +52,8 @@ $mostrarReportes =
         $mostrarReporteTerritorial ||
         $mostrarReporteSeguimiento ||
         $mostrarReporteUsuarios ||
-        $mostrarReporteConvocatorias
+        $mostrarReporteConvocatorias ||
+        $mostrarReporteAliados
     );
 $mostrarReportesEnAnalisis =
     $mostrarReportes;
