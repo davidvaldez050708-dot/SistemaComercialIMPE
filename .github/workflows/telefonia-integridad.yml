@@ -35,6 +35,13 @@ jobs:
       - run: npm install --no-save --package-lock=false playwright
       - run: npx playwright install --with-deps chromium
       - run: node tests/telefonia_conexion_browser.cjs
+      - name: Variante instalada de Hostinger en navegador
+        env:
+          IMPE_PHONE_HOSTINGER_VARIANT: '1'
+          IMPE_PHONE_MANIFEST: tools/telefonia_integridad_release.json
+        run: node tests/telefonia_conexion_browser.cjs
+      - name: Comprobacion, publicacion y restauracion en replicas
+        run: python3 -B tests/publicacion_telefonia_integridad_test.py
   datos:
     runs-on: ubuntu-latest
     strategy:
