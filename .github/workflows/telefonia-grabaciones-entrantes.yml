@@ -33,7 +33,9 @@ jobs:
           BOOTSTRAP_MODULE_PATH: /tmp/grabaciones-browser/node_modules/bootstrap
         run: node tests/telefonia_grabaciones_entrantes_browser.cjs
       - name: Publicación selectiva y restauración en réplicas
-        run: python3 -B tests/publicacion_grabaciones_entrantes_test.py
+        run: |
+          python3 -B tests/publicacion_grabaciones_entrantes_test.py
+          python3 -B tests/publicacion_boton_grabaciones_test.py
   datos:
     runs-on: ubuntu-latest
     strategy:

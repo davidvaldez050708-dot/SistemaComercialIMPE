@@ -22,9 +22,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
  data={ok:true,disponible:true,estado:'DISPONIBLE',segmentos:2,segmentos_info:parts,segundos:37};
  await load(false);assert.match(await toggle().textContent(),/Consultar grabaciones/);assert.match(await page.locator('.linkage-call-recording-duration').textContent(),/asesor pendiente/);
  await toggle().click();await slot().locator('audio').last().waitFor({state:'attached'});assert.equal(await slot().locator('audio').count(),2);await page.waitForFunction(()=>document.querySelector('.linkage-call-recording-duration').textContent==='00:37');assert.equal(posts,1);assert.match(await slot().textContent(),/Recepción.*100.*Asesor.*150/s);
+ const confirmedButton=await toggle().evaluate(el=>({classes:el.className,icons:[...el.querySelectorAll('i')].map(i=>i.className)}));
  await toggle().click();assert(await slot().isHidden());
  // Sin END del asesor: reproduce, pero no intenta fabricar el cierre ni escribir evidencia.
- await load(true);const oldPosts=posts;await toggle().click();await slot().locator('audio').last().waitFor({state:'attached'});assert.equal(posts,oldPosts);assert.match(await toggle().textContent(),/2 grabaciones/);
+ await load(true);assert.deepEqual(await toggle().evaluate(el=>({classes:el.className,icons:[...el.querySelectorAll('i')].map(i=>i.className)})),confirmedButton,'Llamada antigua pendiente conserva el mismo diseño, icono y flecha');const oldPosts=posts;await toggle().click();await slot().locator('audio').last().waitFor({state:'attached'});assert.equal(posts,oldPosts);assert.match(await toggle().textContent(),/2 grabaciones/);assert.deepEqual(await toggle().evaluate(el=>({classes:el.className,icons:[...el.querySelectorAll('i')].map(i=>i.className)})),confirmedButton,'Verificar dos audios conserva el diseño y ambos iconos');
  // Un tramo listo conserva el índice de origen y no desaparece si falla la conciliación.
  postFails=true;data={...data,segmentos:1,estado:'DISPONIBLE_PARCIAL',segmentos_info:[parts[1]],segundos:37};
  await load(false);await toggle().click();await slot().locator('audio').waitFor({state:'attached'});assert.match(await slot().locator('audio').getAttribute('src'),/segmento=1/);assert.match(await toggle().textContent(),/Consultar grabación/);assert(await slot().isVisible());
