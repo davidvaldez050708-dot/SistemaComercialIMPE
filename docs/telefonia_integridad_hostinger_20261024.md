@@ -18,8 +18,8 @@ Copiar el bloque completo en SSH. Los archivos se descargan fuera de `public_htm
 (
 set -eu
 umask 077
-ENTREGA="$HOME/impe-telefonia-integridad-328bd3c3"
-BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/328bd3c3ce1ad5e30b1de8976f024eb6dbb39a46"
+ENTREGA="$HOME/impe-telefonia-integridad-c9e8c089"
+BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/c9e8c089bdf850883cbd33d5692170385b44262d"
 mkdir -p "$ENTREGA"
 cd "$ENTREGA"
 for f in publicar_telefonia_integridad.py telefonia_integridad_release.json diagnosticar_telefonia_integridad.php; do
@@ -28,7 +28,7 @@ done
 sha256sum -c <<'SHA'
 a1b6cbd3b22d7b1361ecd548b65bb81b6a3e2856714f342280771106947608e9  publicar_telefonia_integridad.py
 4fc08c6ccc0c94e67656eaf4dc815eb8f340e3f5072e0ce764af5c5541bea75f  telefonia_integridad_release.json
-b31ddafcacc4ec019646eb0f829fbaa5830aea07e414c1538e88cd69ecadd2c2  diagnosticar_telefonia_integridad.php
+71c72fd21b8957abcc7f89190d4c1d95da4b43a8b9421e3d4114cfe08123a34e  diagnosticar_telefonia_integridad.php
 SHA
 python3 publicar_telefonia_integridad.py \
   --site "$HOME/domains/fundacionrededumex.org/public_html" \
@@ -43,7 +43,7 @@ Sólo continuar si los tres archivos dicen `OK` y termina con `CHECK OK`. Si hay
 Hacerlo sin llamadas activas. Cerrar las pestañas y ventanas telefónicas del CRM de los usuarios que van a probar y reabrirlas después. Esto evita conservar código antiguo del teléfono mientras se reemplazan sus archivos.
 
 ```bash
-python3 "$HOME/impe-telefonia-integridad-328bd3c3/publicar_telefonia_integridad.py" \
+python3 "$HOME/impe-telefonia-integridad-c9e8c089/publicar_telefonia_integridad.py" \
   --site "$HOME/domains/fundacionrededumex.org/public_html" \
   --backup-root "$HOME/respaldos-impe-telefonia-integridad" --apply
 ```
@@ -51,7 +51,7 @@ python3 "$HOME/impe-telefonia-integridad-328bd3c3/publicar_telefonia_integridad.
 Guardar la ruta que imprime `APLICADO. RESPALDO:`. El paquete se puede volver a ejecutar sin duplicar cambios. Para restaurar, reemplazar la ruta de ejemplo por la ruta exacta impresa:
 
 ```bash
-python3 "$HOME/impe-telefonia-integridad-328bd3c3/publicar_telefonia_integridad.py" \
+python3 "$HOME/impe-telefonia-integridad-c9e8c089/publicar_telefonia_integridad.py" \
   --site "$HOME/domains/fundacionrededumex.org/public_html" \
   --backup-root "$HOME/respaldos-impe-telefonia-integridad" \
   --restore "$HOME/respaldos-impe-telefonia-integridad/RUTA-EXACTA-DEL-RESPALDO"
@@ -87,17 +87,33 @@ Después de probar, obtener evidencia de las ocho referencias más recientes de 
 
 ```bash
 SITIO="$HOME/domains/fundacionrededumex.org/public_html"
-IMPE_RUNTIME_ROOT="$SITIO" php "$HOME/impe-telefonia-integridad-328bd3c3/diagnosticar_telefonia_integridad.php" 100
-IMPE_RUNTIME_ROOT="$SITIO" php "$HOME/impe-telefonia-integridad-328bd3c3/diagnosticar_telefonia_integridad.php" 150
+IMPE_RUNTIME_ROOT="$SITIO" php "$HOME/impe-telefonia-integridad-c9e8c089/diagnosticar_telefonia_integridad.php" 100
+IMPE_RUNTIME_ROOT="$SITIO" php "$HOME/impe-telefonia-integridad-c9e8c089/diagnosticar_telefonia_integridad.php" 150
 ```
 
 Un aviso de grabación en el diagnóstico no demuestra por sí mismo que el archivo se pueda reproducir: esa comprobación se hace en el CRM con una sesión autorizada.
+
+## Recepción mientras se trabaja en Word: Opera
+
+El 24 de octubre se reportó que el teléfono quedaba gris al regresar a Opera después de unos diez minutos y luego recuperaba el verde. La revisión del código no encontró una orden de desconexión al cambiar de aplicación: el cambio de foco y de visibilidad comprueba la conexión existente. El mismo motor y su reserva se conservan; el indicador requiere conexión y audio disponibles.
+
+Opera documenta que su suspensión de pestañas pausa las pestañas inactivas y las reactiva al volver. Su ahorro de batería también reduce la actividad en segundo plano y reprograma temporizadores. Ambas funciones son compatibles con el síntoma reportado; falta la prueba real para establecer la causa en ese equipo. Fuentes oficiales: [suspensión de pestañas](https://help.opera.com/en/latest/features/) y [ahorro de batería](https://www.opera.com/features/battery-saver).
+
+Para el equipo de Recepción:
+
+1. Abrir Configuración de Opera con **Alt+P**. En **Interfaz de usuario**, desactivar **Suspender pestañas inactivas para ahorrar memoria**; también se puede buscar «pestañas inactivas» en Configuración.
+2. Desactivar **Ahorro de batería** durante la atención telefónica.
+3. Reabrir el CRM sin llamadas activas y comprobar que el teléfono esté disponible.
+4. Mantener la computadora despierta y con internet. Trabajar en Word durante **10–15 minutos** y llamar al número de Recepción desde un teléfono de prueba **sin volver antes al CRM**. Debe escucharse el timbre mientras Word sigue en primer plano. Repetir para una transferencia al Asesor.
+
+Ver verde sólo después de regresar no acredita que se hayan recibido llamadas durante ese intervalo. Si la prueba falla, registrar hora, navegador, extensión y si la pestaña se recargó al volver; esa evidencia distingue una página suspendida de una caída de red o de audio. La página no puede ejecutar la recepción mientras el navegador o el sistema operativo la mantienen suspendida.
 
 ## Validación automatizada
 
 - 38 comprobaciones nuevas del contrato real Recepción → historial, incluyendo respuesta propia, transferencia, perdida con duración, ocupada, grabación sin respuesta y eventos desordenados.
 - 436 comprobaciones en MySQL 8 y otras 436 en MariaDB 10.11: registro, resultados, propiedad histórica, notificaciones, atención y acceso a grabaciones.
 - Navegador: 153 comprobaciones con el código canónico y 153 con las variantes verificadas de Hostinger y transporte simulado.
+- Diagnóstico CLI ejecutado en ambas bases aisladas: conserva eventos y tablas y no expone teléfonos, nombres ni enlaces de audio.
 - Nueve pruebas del publicador: comprobación sin escritura, aplicación, repetición, saltos de línea, variantes instaladas, conflictos, publicación parcial, actualización desde el paquete anterior y restauración.
 
 El flujo dedicado está en `.github/workflows/telefonia-integridad.yml`. Los publicadores antiguos tienen pruebas que dependen literalmente de mensajes anteriores y no todos los flujos generales del repositorio pasan; no equivalen a una validación completa de esta entrega. La comparación del controlador y del servicio de Ventas quedó conciliada mediante los hashes y diferencias completos de Hostinger. La aceptación final requiere las llamadas reales descritas arriba.
