@@ -61,9 +61,41 @@ let checks=0;const check=(value,msg)=>{assert.ok(value,msg);checks++;};
    if(url.pathname.includes('loader-phone-fn'))return route.fulfill({contentType:'application/javascript',body:''});
    return route.fulfill({body:'',contentType:'text/css'});
   });
-  const page=await context.newPage();await page.goto('https://phone.test/shell');
+  const page=await context.newPage();
+  // Opera: el navegador conserva una reserva de la versión anterior.
+  // Solamente una reserva realmente abandonada se puede migrar.
+  if(role==='Marketing'||role==='Analista de Datos'){
+   await page.goto('https://phone.test/preload');
+   await page.evaluate(role=>{
+    const now=Date.now(),key='impe:telephony:shell-owner:8';
+    localStorage.setItem(key,JSON.stringify({id:'shell-anterior',time:role==='Marketing'?now-120000:now}));
+    localStorage.setItem('impe:telephony:other-property:8','conservar');
+   },role);
+  }
+  await page.goto('https://phone.test/shell');
+  if(role==='Analista de Datos'){
+   await page.waitForTimeout(200);
+   check(await page.locator('[data-shell-engine]').count()===0,
+     'Opera: conserva una pestaña antigua reciente sin tomar su teléfono');
+   await page.evaluate(()=>{
+    const key='impe:telephony:shell-owner:8';
+    localStorage.setItem(key,JSON.stringify({id:'shell-anterior',time:Date.now()-120000}));
+    dispatchEvent(new Event('focus'));
+   });
+  }
   const host=()=>page.frames().find(f=>f.url().includes('action=host'));
   await page.waitForFunction(()=>!!document.querySelector('[data-shell-engine]'));
+  if(role==='Marketing'||role==='Analista de Datos'){
+   check(await page.evaluate(()=>{
+    const lease=JSON.parse(localStorage.getItem('impe:telephony:shell-owner:8')||'null');
+    return lease?.version===2 && lease?.id!=='shell-anterior' &&
+      localStorage.getItem('impe:telephony:other-property:8')==='conservar';
+   }),role+': migra el teléfono y conserva los demás datos del navegador');
+  }
+  check(await page.locator('.impe-phone-classic-link').count()===0,
+    role+': sin enlace de modo clásico');
+  check(!(await page.content()).includes('entra al CRM clásico'),
+    role+': sin acceso clásico en modo sin JavaScript');
   if(out){
    await page.waitForFunction(()=>document.querySelector('[data-shell-engine]')?.contentWindow.IMPE_PHONE_CONNECTION);
    await host().evaluate(()=>{window.__baseNow=Date.now;});
@@ -136,6 +168,22 @@ let checks=0;const check=(value,msg)=>{assert.ok(value,msg);checks++;};
   check(await host().evaluate(()=>__sdkStarts===1),role+': navegación conserva motor');
   await page.close();await second.waitForFunction(()=>!!document.querySelector('[data-shell-engine]'));
   check(await second.locator('[data-shell-engine]').count()===1,role+': cierre del dueño entrega bloqueo');
+  if(role==='Marketing'){
+   // La pestaña directa también migra una reserva anterior abandonada.
+   await second.close();
+   const directStale=await context.newPage();
+   await directStale.goto('https://phone.test/preload');
+   await directStale.evaluate(()=>{
+    localStorage.setItem('impe:telephony:shell-owner:8',
+      JSON.stringify({id:'shell-anterior',time:Date.now()-120000}));
+    localStorage.removeItem('impe:telephony:state:8');
+   });
+   await directStale.goto('https://phone.test/index.php?controller=telefonia&action=host&display=tab');
+   await directStale.waitForFunction(()=>window.__sdkStarts===1);
+   check(await directStale.evaluate(()=>__sdkStarts===1),
+     'Host directo migra reserva abandonada y conecta una vez');
+   await directStale.close();
+  }
   check(errors.length===0,role+': sin errores JS: '+errors.join('; '));
   await context.close();
  }
