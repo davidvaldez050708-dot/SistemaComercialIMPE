@@ -80,7 +80,7 @@ class PublicacionOperaTests(unittest.TestCase):
         self.assertAllUpdated()
         folder=pathlib.Path(r.stdout.split('APLICADO. RESPALDO: ')[1].splitlines()[0])
         journal=json.loads((folder/'manifest.json').read_text())
-        self.assertEqual(len(journal['files']),3)
+        self.assertEqual(len(journal['files']),2)
     def test_crlf_and_custom_text(self):
         suffix=b'\n/* Personalizacion ajena conservar */\n'
         js=self.site/FILES[0]
@@ -93,6 +93,28 @@ class PublicacionOperaTests(unittest.TestCase):
         self.assertEqual(js.read_bytes(),
            (ROOT/FILES[0]).read_bytes().replace(b'\n',b'\r\n')+
            suffix.replace(b'\n',b'\r\n'))
+    def test_custom_css_hostinger_is_preserved(self):
+        css=self.site/'public/css/telefonia_shell.css'
+        css.parent.mkdir(parents=True,exist_ok=True)
+        content=('.impe-phone-classic-link{color:#4488bb;display:inline;}\\n'
+                 '/* estilo responsive personalizado Hostinger */\\n').encode('utf8')
+        css.write_bytes(content)
+        r=self.runpub('--check')
+        self.assertEqual(r.returncode,0,r.stderr)
+        self.assertEqual(css.read_bytes(),content)
+        r=self.runpub('--apply')
+        self.assertEqual(r.returncode,0,r.stderr)
+        self.assertAllUpdated()
+        self.assertEqual(css.read_bytes(),content)
+        folder=pathlib.Path(r.stdout.split('APLICADO. RESPALDO: ')[1].splitlines()[0])
+        info=json.loads((folder/'manifest.json').read_text())
+        self.assertEqual(len(info['files']),3)
+        self.assertNotIn('public/css/telefonia_shell.css',
+                         [x['path'] for x in info['files']])
+        r=self.runpub('--restore',str(folder))
+        self.assertEqual(r.returncode,0,r.stderr)
+        self.assertEqual(css.read_bytes(),content)
+
     def test_no_restore_over_later_edits(self):
         r=self.runpub('--apply')
         self.assertEqual(r.returncode,0,r.stderr)

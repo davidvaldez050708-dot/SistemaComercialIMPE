@@ -88,10 +88,9 @@ def main():
     allowed = set([
         'public/javascript/telefonia_shell.js',
         'public/javascript/telefonia_host.js',
-        'app/views/telefonia/shell.php',
-        'public/css/telefonia_shell.css'
+        'app/views/telefonia/shell.php'
     ])
-    if spec.get('version') != 1 or len(files) != 4 or set(
+    if spec.get('version') != 1 or len(files) != 3 or set(
             entry.get('path') for entry in files) != allowed:
         abort('Manifiesto inesperado; no se modifica el sitio.')
 
@@ -106,7 +105,7 @@ def main():
         if info.get('release_sha') != digest(content):
             abort('El respaldo pertenece a otra publicación')
         records = info.get('files', [])
-        if not records or len(records) > 4 or not set(
+        if not records or len(records) > 3 or not set(
                 r.get('path') for r in records).issubset(allowed):
             abort('Listado del respaldo no válido')
         restore = []
@@ -156,8 +155,7 @@ def main():
             # Un fragmento eliminado no tiene texto nuevo que comparar.
             # Verificar su ausencia mediante la clase característica.
             deletion = (name == 'app/views/telefonia/shell.php' and
-                        'impe-phone-classic-link' in before) or (
-                        name == 'public/css/telefonia_shell.css')
+                        'impe-phone-classic-link' in before)
             if deletion:
                 if updated.count(before) == 1:
                     updated = updated.replace(before, after, 1)
@@ -209,7 +207,7 @@ def main():
             atomic(target, previous, mode)
         raise
     print('APLICADO. RESPALDO: ' + str(folder))
-    print('Sin SQL, sin credenciales y sin cambios a grabaciones ni llamadas.')
+    print('Sin SQL, sin credenciales; CSS de Hostinger intacto.')
 
 if __name__ == '__main__':
     try:
