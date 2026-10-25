@@ -19,6 +19,7 @@ const records=[baseCall('normal-1','Atendida'),baseCall('transfer-1','Transferid
   baseCall('normal-2','Atendida')];
 let checks=0;
 function ok(value,msg){assert.ok(value,msg);checks++;}
+async function run() {
 const browser=await chromium.launch({headless:true,args:['--autoplay-policy=no-user-gesture-required']});
 try{
  const context=await browser.newContext();
@@ -121,3 +122,5 @@ try{
  await context.close();
  console.log('PASS recepción compacta y grabaciones: '+checks+' verificaciones (audio simulado)');
 }finally{await browser.close();}
+}
+run().catch(error=>{console.error(error);process.exitCode=1;});
