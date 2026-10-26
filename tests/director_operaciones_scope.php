@@ -48,9 +48,11 @@ preg_match('/<input[^>]*id="permiso_2_1"[^>]*>/s',$html,$users);preg_match('/<in
 dcheck(isset($users[0]) && !str_contains($users[0],'disabled'),'Checkbox de reporte habilitado');
 dcheck(isset($phone[0]) && str_contains($phone[0],'disabled'),'Checkbox de gobierno bloqueado');
 $_SESSION['permisos']=['reportes.ver'];
+$tableroDireccion=['permisos'=>['reportes'=>false],'resumen'=>[]];
 ob_start();require dirname(__DIR__).'/app/views/dashboard/director_operaciones.php';$dashboard=ob_get_clean();
 dcheck(!str_contains($dashboard,'controller=reporte'),'No mostrar un acceso a reportes sin familias disponibles');
 $_SESSION['permisos']=['usuarios.ver','territorios.ver','reportes.ver','reportes.usuarios'];
+$tableroDireccion=['permisos'=>['reportes'=>true,'equipo'=>true,'territorios'=>true],'resumen'=>['equipo'=>[3=>1,4=>1,6=>1],'territorios'=>32],'cobertura'=>[]];
 ob_start();require dirname(__DIR__).'/app/views/dashboard/director_operaciones.php';$dashboard=ob_get_clean();
 dcheck(str_contains($dashboard,'controller=reporte') && str_contains($dashboard,'controller=usuario'),'Inicio refleja permisos habilitados');
 echo "Director: alcance nacional, roles territoriales, reporte y controles de permisos OK\n";
