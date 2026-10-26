@@ -84,3 +84,4 @@ jobs:
       - run: |
           python3 tests/publicacion_reportes_asesores_test.py
           python3 tests/publicacion_desempeno_asesores_ranking_test.py
+          python3 tests/publicacion_desempeno_sin_territorio_test.py

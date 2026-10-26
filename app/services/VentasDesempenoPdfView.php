@@ -28,10 +28,8 @@ final class VentasDesempenoPdfView
         foreach (['Generado por'=>$d['generado_por'],'Rol'=>$d['generado_por_rol'],'Generado el'=>$d['fecha_generacion']] as $k=>$v)
             $html.='<tr><td>'.$e($k).'</td><th>'.$e($v).'</th></tr>';
         $html.='</table></td></tr></table><table class="scope"><tr>';
-        $territory='Todos los territorios autorizados';
-        foreach ($d['territorios']??[] as $t) if ((int)$t['id']===(int)$d['estado_id']) $territory=$t['nombre'];
         foreach (['Área'=>'Asesores','Alcance'=>['propio'=>'Personal','equipo'=>'Mi equipo','global'=>'Nacional'][$d['vista']],
-            'Periodo'=>$d['periodo']['fecha_desde'].' al '.$d['periodo']['fecha_hasta'],'Territorio'=>$territory] as $k=>$v)
+            'Periodo'=>$d['periodo']['fecha_desde'].' al '.$d['periodo']['fecha_hasta'],'Participantes'=>count($ranking)] as $k=>$v)
             $html.='<td><span>'.$e($k).'</span><strong>'.$e($v).'</strong></td>';
         $html.='</tr></table>'.self::titulo('Resumen del periodo').'<table class="metrics"><tr>';
         foreach (['Llamadas registradas'=>$s['llamadas'],'Contacto confirmado'=>$s['conversaciones_confirmadas'],

@@ -10,7 +10,8 @@ for crlf in [False,True]:
         for row in spec['files']:
             v=row['variants'][0];after=unpack(v['after'])
             assert hashlib.sha256(after).hexdigest()==v['after_sha']
-            assert (R/row['path']).read_bytes().replace(b'\r\n',b'\n')==after,'Paquete obsoleto: '+row['path']
+            released=subprocess.check_output(['git','show','a8e02fa593c8abdcaab519ece74e37ee244e81f9:'+row['path']],cwd=R)
+            assert released.replace(b'\r\n',b'\n')==after,'Paquete histórico alterado: '+row['path']
             old=unpack(v['before']) if v['before'] is not None else None
             before[row['path']]=old.replace(b'\n',b'\r\n') if old is not None and crlf else old
             if old is not None:

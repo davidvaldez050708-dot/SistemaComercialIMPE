@@ -16,6 +16,7 @@ with tempfile.TemporaryDirectory() as folder:
         elif mode=='pdf_desempeno':
             assert 'Ranking del periodo' in text and 'Gráfica comparativa' in text and 'Destacados del periodo' in text
             assert 'Detalle de llamadas' not in text and 'Criterios de medición' in text
+            assert 'Territorio' not in text and 'Participantes' in text
             assert '00:19:17' in text and '100.0' in text and 'Asesor de prueba sin actividad' in text
         else:
             assert 'Analista de prueba' in text and 'Llamadas válidas' in text

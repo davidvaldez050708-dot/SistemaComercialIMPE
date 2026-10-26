@@ -92,8 +92,13 @@ try:
             assert ('performance-index' in text)==(role!=3)
             assert request(controller='desempeno',action='index',area='asesores',role=role,persona_id=302)[0]==(200 if role in [1,2] else 403)
         assert request(controller='desempeno',action='index',area='asesores',role=2,estado_id=2)[0]==200
-        assert request(controller='desempeno',action='index',area='asesores',role=6,estado_id=2)[0]==403
-        assert request(controller='desempeno',action='index',area='asesores',role=3,estado_id=999)[0]==403
+        assert request(controller='desempeno',action='index',area='asesores',role=6,estado_id=2)[0]==200
+        assert request(controller='desempeno',action='index',area='asesores',role=3,estado_id=999)[0]==200
+        baseline=request(controller='desempeno',action='index',area='asesores',role=2)[2]
+        legacy=request(controller='desempeno',action='index',area='asesores',role=2,estado_id=999)[2]
+        assert baseline.split(b'<div class="performance-main-grid',1)[1]==legacy.split(b'<div class="performance-main-grid',1)[1],'El estado de una URL antigua no filtra el desempeño'
+        assert b'name="estado_id"' not in legacy
+        assert request(controller='desempeno',action='exportarPdf',area='asesores',role=6,estado_id=999,persona_id=302)[0]==403
         for controller,action in [('reporte','ventasPdf'),('desempeno','exportarPdf')]:
             code,headers,pdf=request(controller=controller,action=action,area='asesores')
             assert code==200 and pdf.startswith(b'%PDF-'),(pdf[:1200],(root/'server.log').read_text(errors='replace'))

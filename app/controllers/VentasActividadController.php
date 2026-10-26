@@ -27,7 +27,7 @@ final class VentasActividadController
                 $params=['controller'=>$desempeno?'desempeno':'reporte','action'=>$desempeno?'exportarPdf':'ventasPdf','area'=>'asesores',
                     'periodo'=>$actividad['periodo']['clave'],'fecha_desde'=>$actividad['periodo']['fecha_desde'],
                     'fecha_hasta'=>$actividad['periodo']['fecha_hasta'],'persona_id'=>$actividad['persona_id'],
-                    'direccion'=>$actividad['direccion'],'resultado'=>$actividad['resultado'],'estado_id'=>$actividad['estado_id']];
+                    'direccion'=>$actividad['direccion'],'resultado'=>$actividad['resultado']];
                 $urlActividadPdf=BASE_URL.'index.php?'.http_build_query($params);
             }
         } catch (DomainException $e) { http_response_code(403); echo htmlspecialchars($e->getMessage(),ENT_QUOTES,'UTF-8'); return; }

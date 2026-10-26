@@ -21,16 +21,15 @@ const root=path.resolve(__dirname,'..'),bootstrap=path.dirname(require.resolve('
    assert.equal(await page.locator('.performance-recognition-panel').count(),role==='own'?0:1);
    assert.equal(await page.locator('#performance_area option[value="asesores"]').count(),role==='own'?0:1);
    assert.equal(await page.locator('[data-performance-pdf]').getAttribute('target'),'_blank');
+   assert.equal(await page.locator('[name="estado_id"]').count(),0,'Asesores no muestra ni envía un filtro territorial');
    assert.equal(await page.locator('.performance-person').first().innerText().then(t=>t.includes('María Fernanda')),true);
    assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)),`Desbordamiento: ${role} ${size.width}`);
    if(process.env.SALES_SCREENSHOT_DIR&&[1366,390].includes(size.width))await page.screenshot({path:path.join(process.env.SALES_SCREENSHOT_DIR,`desempeno_asesores_${role}_${size.width}.png`)});
    await page.evaluate(()=>document.querySelector('form').addEventListener('submit',e=>{e.preventDefault();window.submitted=Object.fromEntries(new FormData(e.target));}));
    if(role!=='own'){
-    await page.selectOption('#performance_persona','301');await page.selectOption('#performance_estado','1');
-    assert.equal(await page.locator('#performance_persona').inputValue(),'0','Cambiar territorio limpia persona anterior');
     await page.selectOption('#performance_persona','301');await page.selectOption('#performance_area','analistas');
     const submitted=await page.evaluate(()=>window.submitted);
-    assert.equal(submitted.area,'analistas');assert.equal(submitted.persona_id,'0');assert.equal(submitted.estado_id,'0');
+    assert.equal(submitted.area,'analistas');assert.equal(submitted.persona_id,'0');assert.equal(submitted.estado_id,undefined);
    }
    await page.selectOption('#performance_periodo','personalizado');assert(await page.locator('[data-performance-custom-period]').isVisible());
    assert(!(await page.locator('[data-performance-pdf]').isVisible()),'No exportar el corte anterior con filtros editados');
@@ -38,6 +37,7 @@ const root=path.resolve(__dirname,'..'),bootstrap=path.dirname(require.resolve('
   }
   role='global';await page.goto('http://ventas.test/?area=analistas');
   assert.equal(await page.locator('#performance_area option[value="asesores"]').count(),1,'Analistas permite cambiar a asesores');
+  assert.equal(await page.locator('#performance_estado').count(),1,'Analistas conserva su filtro territorial');
   await Promise.all([page.waitForURL(/area=asesores/),page.selectOption('#performance_area','asesores')]);
   assert.equal(await page.locator('.performance-index').count(),2);
   assert.deepEqual(errors,[]);

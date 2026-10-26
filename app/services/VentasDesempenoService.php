@@ -10,6 +10,8 @@ final class VentasDesempenoService
     {
         // Desempeño compara toda la actividad del periodo; no hereda filtros ocultos del reporte.
         $f['direccion']='';$f['resultado']='';
+        // No hay atribución territorial de contactos: ignorar también enlaces antiguos o manipulados.
+        $f['estado_id']=0;
         return self::presentar((new VentasActividadService($this->db))->preparar($f,true));
     }
 
@@ -56,10 +58,11 @@ final class VentasDesempenoService
             'Cumplimiento del registro: resultados guardados entre llamadas que ya permiten registrar un resultado. Sin llamadas aplicables, se muestra —.',
             'El índice operativo compara el volumen de llamadas (25%), el volumen de contactos confirmados (35%), la tasa de contacto (25%) y el cumplimiento del registro (15%). Los volúmenes se dividen entre el máximo del grupo filtrado. Sólo se compara dentro del mismo periodo y alcance.',
             'Los empates en el índice se ordenan por contactos confirmados, llamadas y nombre. Los reconocimientos comparten el mérito cuando hay empate.',
-            'Territorio filtra asesores por su asignación vigente; no representa el lugar de residencia del prospecto ni reconstruye asignaciones históricas.',
+            'La actividad se consulta por asesor y periodo, sin atribuir llamadas a estados. Cuenta Clave conserva únicamente el acceso a su equipo autorizado.',
             'El tiempo corresponde únicamente al asesor y a duraciones confirmadas. Las duraciones pendientes no se convierten en cero ni influyen en el índice.',
             'Este ranking mide actividad telefónica; no mide ventas, ingresos ni cierres y no asigna automáticamente incentivos.'
         ];
+        $d['territorios']=[];$d['estado_id']=0;
         $d['actualizado_at']=date('d/m/Y H:i:s');
         $d['puede_cambiar_area']=$d['vista']!=='propio';
         $d['puede_cambiar_persona']=$d['vista']!=='propio' && count($d['personas'])>1;

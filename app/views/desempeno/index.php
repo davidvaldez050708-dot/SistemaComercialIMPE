@@ -316,6 +316,7 @@ $rankingTitle = $vista === 'propio'
                 </select>
             </div>
 
+            <?php if (!$esAsesores): ?>
             <div class="performance-filter-field">
                 <label for="performance_estado">Territorio</label>
                 <select
@@ -337,6 +338,8 @@ $rankingTitle = $vista === 'propio'
                     <?php endforeach; ?>
                 </select>
             </div>
+
+            <?php endif; ?>
 
             <?php if (!empty($desempeno['puede_cambiar_persona'])): ?>
                 <div class="performance-filter-field">
@@ -429,9 +432,9 @@ $rankingTitle = $vista === 'propio'
         <div>
             <span>ALCANCE</span>
             <strong>
-                <?= $estadoId > 0
-                    ? 'Territorio filtrado'
-                    : 'Todos los territorios autorizados' ?>
+                <?= $esAsesores
+                    ? $esc(['global'=>'Todos los asesores autorizados','equipo'=>'Asesores de mi equipo','propio'=>'Mi actividad'][$vista] ?? 'Asesores autorizados')
+                    : ($estadoId > 0 ? 'Territorio filtrado' : 'Todos los territorios autorizados') ?>
             </strong>
         </div>
     </div>
