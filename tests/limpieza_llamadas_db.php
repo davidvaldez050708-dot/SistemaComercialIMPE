@@ -49,7 +49,9 @@ try {
  $tool=new LimpiezaLlamadasPrueba($db);$plan=$tool->plan();$finger=LimpiezaLlamadasPrueba::digest($plan);
  cleanCheck(!TelefoniaLimpiezaGuard::existe($db),'Check no crea tabla de exclusiones');
  cleanCheck($plan['compartidas_protegidas']===1,'La llamada compartida se protege');
- cleanCheck($tool->plan($plan['corte'])===$plan,'Plan reproducible y sin escrituras');
+ // Una verificación real puede tardar varios segundos entre --check y --apply.
+ sleep(2);
+ cleanCheck($tool->plan($plan['corte'])===$plan,'Plan reproducible después de dos segundos y sin escrituras');
  $analyst=[];foreach(['interacciones_vinculacion','telefonia_analista_entrantes','telefonia_analista_webrtc_sesiones','telefonia_webrtc_grabaciones_internas','usuarios','telefonia_extensiones','rol_permisos'] as $t)$analyst[$t]=cleanRows($db,$t);
  $contactBefore=cleanRows($db,'telefonia_contactos_personales');
  $sharedBefore=$db->query("SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id='call-shared-analyst' ORDER BY id")->fetch_all(MYSQLI_ASSOC);
