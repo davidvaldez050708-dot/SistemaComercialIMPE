@@ -139,7 +139,10 @@ final class LimpiezaLlamadasPrueba
         }
         usort($blocks,static fn($a,$b)=>strcmp($a['pbx_call_id'].'|'.$a['extension'],$b['pbx_call_id'].'|'.$b['extension']));
         ksort($groups);
-        return ['version'=>1,'base'=>$clock['db'],'corte'=>$cut,'usuarios'=>$users,'grupos'=>array_values($groups),'exclusiones'=>$blocks,'compartidas_protegidas'=>$shared];
+        // La huella del plan tiene que ser estable entre --check y --apply.
+        // 'base' es metadata del corte, NO la hora actual de cada relectura.
+        // De otro modo una diferencia de un segundo rechaza incluso una BD intacta.
+        return ['version'=>1,'base'=>$cut['db'],'corte'=>$cut,'usuarios'=>$users,'grupos'=>array_values($groups),'exclusiones'=>$blocks,'compartidas_protegidas'=>$shared];
     }
     public static function resumen(array $plan): array {
         $counts=[];foreach($plan['grupos'] as $g)$counts[$g['tabla']]=['accion'=>$g['accion']==='agenda'?'quitar_programacion_sin_borrar_contacto':'eliminar','filas'=>count($g['filas'])];
