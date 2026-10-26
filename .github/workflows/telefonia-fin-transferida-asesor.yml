@@ -6,6 +6,7 @@ on:
       - public/javascript/telefonia_transferencia_runtime.js
       - tests/telefonia_ventas_fin_transferencia_inmediato.cjs
       - tests/telefonia_transferencia_receptor_terminado.cjs
+      - tests/telefonia_ventas_transferencia_pbx_adopcion.cjs
       - .github/workflows/telefonia-fin-transferida-asesor.yml
 permissions:
   contents: read
@@ -24,6 +25,7 @@ jobs:
           node --check public/javascript/telefonia_host.js
           node --check public/javascript/telefonia_transferencia_runtime.js
           node tests/telefonia_ventas_fin_transferencia_inmediato.cjs
+          node tests/telefonia_ventas_transferencia_pbx_adopcion.cjs
           node tests/telefonia_transferencia_receptor_terminado.cjs
           node tests/telefonia_ventas_fin_sip_push_tardio.cjs
           node tests/telefonia_ventas_referencia_final.cjs
