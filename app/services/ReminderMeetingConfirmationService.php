@@ -64,8 +64,10 @@ class ReminderMeetingConfirmationService
                         : 'Reunión pendiente de confirmación';
                     $icono = $vencida ? 'bi-calendar-x' : 'bi-hourglass-split';
                 } else {
-                    $accion = 'Confirmar reunión o solicitar ajuste';
-                    $icono = 'bi-calendar-check';
+                    $accion = $vencida
+                        ? 'Solicitud de reunión vencida · requiere nueva fecha'
+                        : 'Confirmar reunión o solicitar ajuste';
+                    $icono = $vencida ? 'bi-calendar-x' : 'bi-calendar-check';
                 }
 
                 $recordatorios[] = [
@@ -91,7 +93,7 @@ class ReminderMeetingConfirmationService
                     : 'Confirmación de reunión vencida';
                 $mensaje = $rolId === self::ROL_ANALISTA
                     ? 'La fecha propuesta para ' . $institucion . ' venció sin confirmación de Cuenta Clave.'
-                    : 'La fecha propuesta para ' . $institucion . ' venció. Confirma la reunión o solicita una nueva fecha.';
+                    : 'La fecha propuesta para ' . $institucion . ' venció. El Analista debe proponer una nueva fecha.';
 
                 $avisos[] = [
                     'id' => $seguimientoId,
@@ -131,10 +133,8 @@ class ReminderMeetingConfirmationService
         $campoUsuario = $rolId === self::ROL_ANALISTA
             ? 'r.analista_id'
             : 'r.cuenta_clave_id';
-        $ventana = $rolId === self::ROL_ANALISTA
-            ? "AND r.fecha_propuesta <= DATE_ADD(NOW(), INTERVAL 3 HOUR)"
-            : "AND r.fecha_propuesta > NOW()
-               AND r.fecha_propuesta <= DATE_ADD(NOW(), INTERVAL 3 HOUR)";
+        $ahora = date('Y-m-d H:i:s');
+        $limiteFecha = date('Y-m-d H:i:s', time() + 3 * 3600);
 
         $sql = "SELECT
                     r.id AS reunion_id,
@@ -148,15 +148,15 @@ class ReminderMeetingConfirmationService
                   AND r.estado = 'SOLICITADA'
                   AND s.activo = 1
                   AND s.estado_seguimiento <> 'DESCARTADO'
-                  {$ventana}
+                  AND r.fecha_propuesta <= ?
                 ORDER BY
-                    CASE WHEN r.fecha_propuesta <= NOW() THEN 0 ELSE 1 END ASC,
+                    CASE WHEN r.fecha_propuesta <= ? THEN 0 ELSE 1 END ASC,
                     r.fecha_propuesta ASC,
                     r.id ASC
                 LIMIT ?";
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ii', $usuarioId, $limite);
+        $stmt->bind_param('issi', $usuarioId, $limiteFecha, $ahora, $limite);
         $stmt->execute();
 
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -168,15 +168,16 @@ class ReminderMeetingConfirmationService
             ? 'notificado_analista_at'
             : 'notificado_kam_at';
 
+        $ahora = date('Y-m-d H:i:s');
         $sql = "UPDATE reuniones_vinculacion
                 SET {$campo} = NOW()
                 WHERE id = ?
                   AND estado = 'SOLICITADA'
-                  AND fecha_propuesta <= NOW()
+                  AND fecha_propuesta <= ?
                   AND {$campo} IS NULL";
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('i', $reunionId);
+        $stmt->bind_param('is', $reunionId, $ahora);
         $stmt->execute();
 
         return $stmt->affected_rows > 0;
