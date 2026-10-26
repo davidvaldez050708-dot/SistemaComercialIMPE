@@ -31,8 +31,8 @@ for crlf in [False,True]:
         run('--check');unchanged();assert not backups.exists()
         target=site/'app/views/reportes/ventas_actividad.php';target.write_bytes(target.read_bytes()+b'\n//custom')
         run('--apply',ok=False);target.write_bytes(before['app/views/reportes/ventas_actividad.php']);unchanged();assert not backups.exists()
-        run('--apply');assert run('--check').count('ACTUALIZADO:')==2
+        run('--apply');assert run('--check').count('ACTUALIZADO:')==3
         backup=next(backups.iterdir());run('--apply');assert len(list(backups.iterdir()))==1
         current=target.read_bytes();target.write_bytes(current+b'\n//later');run('--restore',str(backup),ok=False);target.write_bytes(current)
         run('--restore',str(backup));unchanged()
-print('Publicador: 2 archivos, LF/CRLF, dependencias intactas, conflictos, respaldo, reinstalación y restauración exacta OK')
+print('Publicador: 3 archivos, LF/CRLF, dependencias intactas, conflictos, respaldo, reinstalación y restauración exacta OK')

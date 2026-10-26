@@ -51,7 +51,7 @@ def main():
     if backups==root or root in backups.parents:fail('El respaldo debe quedar fuera de public_html')
     spec=json.loads(Path(args.manifest).read_text(encoding='utf8'))
     paths=[row['path'] for row in spec['files']]
-    if len(paths)!=2 or set(paths)!={'app/views/reportes/ventas_actividad.php', 'app/views/desempeno/index.php'}:fail('Manifiesto inválido')
+    if len(paths)!=3 or set(paths)!={'public/javascript/reportes_pdf_descarga.js', 'app/views/reportes/ventas_actividad.php', 'app/views/desempeno/index.php'}:fail('Manifiesto inválido')
     if not args.restore:
         for dependency in spec.get('dependencies',[]):
             p=safe(root,dependency['path'])

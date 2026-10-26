@@ -20,8 +20,7 @@ const root=path.resolve(__dirname,'..'),bootstrap=path.dirname(require.resolve('
    assert.equal(await page.locator('.performance-index').count(),role==='own'?0:2);
    assert.equal(await page.locator('.performance-recognition-panel').count(),role==='own'?0:1);
    assert.equal(await page.locator('#performance_area option[value="asesores"]').count(),role==='own'?0:1);
-   assert.equal(await page.locator('[data-performance-pdf]').getAttribute('target'),await page.locator('[data-pdf-download-frame]').getAttribute('name'));
-    assert(await page.locator('[data-pdf-download-frame]').isHidden());
+   assert.equal(await page.locator('[data-performance-pdf]').getAttribute('target'),null);
    assert.equal(await page.locator('[name="estado_id"]').count(),0,'Asesores no muestra ni envía un filtro territorial');
    assert.equal(await page.locator('.performance-person').first().innerText().then(t=>t.includes('María Fernanda')),true);
    assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)),`Desbordamiento: ${role} ${size.width}`);
