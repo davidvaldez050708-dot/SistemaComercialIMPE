@@ -2,6 +2,8 @@
 
 La entrega añade el reporte personal de llamadas y la consulta del equipo por asesor y periodo. Integra el área de asesores en Desempeño, reutiliza los componentes visuales del analista y su generador de PDF A4, encabezado institucional, tablas y paginación.
 
+La corrección posterior que integra el ranking en el selector de Área y separa Reportes se publica con su propio paquete: [Desempeño de asesores y ranking](desempeno_asesores_ranking_hostinger.md).
+
 ## Acceso
 
 | Perfil | Alcance |
