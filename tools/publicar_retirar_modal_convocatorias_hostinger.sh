@@ -3,7 +3,7 @@
 set -euo pipefail
 MODE="${1:---check}"
 [[ ( "$#" -le 1 && ( "$MODE" == --check || "$MODE" == --apply ) ) || ( "$MODE" == --restore && "$#" == 2 ) ]] || { echo 'Uso: --check | --apply | --restore RUTA' >&2;exit 2; }
-VERSION='convocatorias-sin-modal-v1'
+VERSION='convocatorias-sin-modal-v2'
 FILES=('app/views/convocatorias/index.php')
 LIVE="${IMPE_CORREOS_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_CORREOS_BACKUPS:-$HOME/respaldos-crm}"
@@ -54,14 +54,21 @@ else
  cat > "$TMP/patch.php" <<'IMPE_PATCH'
 <?php
 try {
- $pairs=json_decode(base64_decode('W1siICAgICAgICA8ZGl2IGNsYXNzPVwibW9kdWxlLXRvb2xiYXItYWN0aW9uc1wiIGRhdGEtY29udm9jYXRvcmlhLWNyZWF0ZS1hY3Rpb24+XG4gICAgICAgICAgICA8P3BocCBpZiAoJHB1ZWRlQ3JlYXIpOiA/PiIsICIgICAgICAgIDxkaXYgY2xhc3M9XCJtb2R1bGUtdG9vbGJhci1hY3Rpb25zXCIgZGF0YS1jb252b2NhdG9yaWEtY3JlYXRlLWFjdGlvbj5cbiAgICAgICAgICAgIDw/cGhwIGlmICgkcHVlZGVDcmVhciAmJiAhZW1wdHkoJGRlc2RlQ29udmVuaW8pKTogPz4iXSwgWyI8ZGl2XG4gICAgY2xhc3M9XCJtb2RhbCBmYWRlXCJcbiAgICBpZD1cIm1vZGFsQ3JlYXJDb252b2NhdG9yaWFcIiIsICI8P3BocCBpZiAoIWVtcHR5KCRkZXNkZUNvbnZlbmlvKSk6ID8+XG48ZGl2XG4gICAgY2xhc3M9XCJtb2RhbCBmYWRlXCJcbiAgICBpZD1cIm1vZGFsQ3JlYXJDb252b2NhdG9yaWFcIiJdLCBbIjxkaXZcbiAgICBjbGFzcz1cIm1vZGFsIGZhZGVcIlxuICAgIGlkPVwibW9kYWxDb252b2NhdG9yaWFRclwiIiwgIjw/cGhwIGVuZGlmOyA/PlxuPGRpdlxuICAgIGNsYXNzPVwibW9kYWwgZmFkZVwiXG4gICAgaWQ9XCJtb2RhbENvbnZvY2F0b3JpYVFyXCIiXV0='),true,512,JSON_THROW_ON_ERROR);
+ $cfg=json_decode(base64_decode('eyJwYWlycyI6IFtbIiAgICAgICAgPGRpdiBjbGFzcz1cIm1vZHVsZS10b29sYmFyLWFjdGlvbnNcIiBkYXRhLWNvbnZvY2F0b3JpYS1jcmVhdGUtYWN0aW9uPlxuICAgICAgICAgICAgPD9waHAgaWYgKCRwdWVkZUNyZWFyKTogPz4iLCAiICAgICAgICA8ZGl2IGNsYXNzPVwibW9kdWxlLXRvb2xiYXItYWN0aW9uc1wiIGRhdGEtY29udm9jYXRvcmlhLWNyZWF0ZS1hY3Rpb24+XG4gICAgICAgICAgICA8P3BocCBpZiAoJHB1ZWRlQ3JlYXIgJiYgIWVtcHR5KCRkZXNkZUNvbnZlbmlvKSk6ID8+Il0sIFsiPGRpdlxuICAgIGNsYXNzPVwibW9kYWwgZmFkZVwiXG4gICAgaWQ9XCJtb2RhbENyZWFyQ29udm9jYXRvcmlhXCIiLCAiPD9waHAgaWYgKCFlbXB0eSgkZGVzZGVDb252ZW5pbykpOiA/PlxuPGRpdlxuICAgIGNsYXNzPVwibW9kYWwgZmFkZVwiXG4gICAgaWQ9XCJtb2RhbENyZWFyQ29udm9jYXRvcmlhXCIiXSwgWyI8ZGl2XG4gICAgY2xhc3M9XCJtb2RhbCBmYWRlXCJcbiAgICBpZD1cIm1vZGFsQ29udm9jYXRvcmlhUXJcIiIsICI8P3BocCBlbmRpZjsgPz5cbjxkaXZcbiAgICBjbGFzcz1cIm1vZGFsIGZhZGVcIlxuICAgIGlkPVwibW9kYWxDb252b2NhdG9yaWFRclwiIl1dLCAic2hhcmVkX29sZCI6ICI8P3BocCByZXF1aXJlIF9fRElSX18gLiAnL3BhcnRpYWxzL2NyZWFyX21vZGFsLnBocCc7ID8+IiwgInNoYXJlZF9uZXciOiAiPD9waHAgcmVxdWlyZSBfX0RJUl9fIC4gJy9wYXJ0aWFscy9jcmVhcl9tb2RhbC5waHAnOyA/PlxuPD9waHAgaWYgKGVtcHR5KCRkZXNkZUNvbnZlbmlvKSk6ID8+XG48c2NyaXB0IGRhdGEtY29udm9jYXRvcmlhLWdlc3Rpb24tc2luLW1vZGFsPlxuKGZ1bmN0aW9uICgpIHtcbiAgICAvLyBTw7NsbyBlc3RhIHBhbnRhbGxhOiBjb25zZXJ2YXIgbGEgcGxhbnRpbGxhIGNvbXBhcnRpZGEgeSBlbCBtb2RhbCBkZSBRUi5cbiAgICBjb25zdCBtb2RhbENyZWFyR2VzdGlvbiA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdtb2RhbENyZWFyQ29udm9jYXRvcmlhJyk7XG4gICAgaWYgKG1vZGFsQ3JlYXJHZXN0aW9uKSBtb2RhbENyZWFyR2VzdGlvbi5yZW1vdmUoKTtcbn0pKCk7XG48L3NjcmlwdD5cbjw/cGhwIGVuZGlmOyA/PiJ9'),true,512,JSON_THROW_ON_ERROR);
  $s=file_get_contents($argv[2]);$crlf=substr_count($s,"\r\n");
  if($crlf&&$crlf!==substr_count($s,"\n"))throw new RuntimeException('Finales de línea mixtos.');
  $s=str_replace("\r\n","\n",$s);
- foreach($pairs as $i=>[$old,$new]){
-  if(substr_count($s,$new)===1)continue;
-  if(substr_count($s,$new)!==0||substr_count($s,$old)!==1)throw new RuntimeException('Bloque incompatible: '.($i+1).'. No se reemplaza la vista completa.');
-  $s=str_replace($old,$new,$s);
+ $reemplazar=static function($s,$old,$new,$name){
+  if(substr_count($s,$new)===1)return $s;
+  if(substr_count($s,$new)!==0||substr_count($s,$old)!==1)throw new RuntimeException('Bloque incompatible: '.$name.'. No se reemplaza la vista completa.');
+  return str_replace($old,$new,$s);
+ };
+ $s=$reemplazar($s,$cfg['pairs'][0][0],$cfg['pairs'][0][1],'botón');
+ if(substr_count($s,$cfg['shared_old'])===1){
+  if(strpos($s,$cfg['pairs'][1][0])!==false)throw new RuntimeException('Vista ambigua con dos definiciones del modal.');
+  $s=$reemplazar($s,$cfg['shared_old'],$cfg['shared_new'],'inclusión compartida');
+ }else{
+  foreach([1,2] as $i)$s=$reemplazar($s,$cfg['pairs'][$i][0],$cfg['pairs'][$i][1],'modal integrado '.($i+1));
  }
  if($crlf)$s=str_replace("\n","\r\n",$s);
  if(file_put_contents($argv[3],$s)!==strlen($s))throw new RuntimeException('No se pudo preparar el archivo.');
@@ -75,7 +82,7 @@ for i in "${!FILES[@]}";do
  AFTER[$i]="$(hash "$TMP/stage.$i")";[[ "${AFTER[$i]}" == "${BEFORE[$i]}" ]] || CHANGED+=("$i")
 done
 if [[ "${#CHANGED[@]}" == 0 ]];then echo 'OK: ya aplicado o restaurado. Ningún archivo reemplazado.';exit 0;fi
-if [[ "$MODE" == --check ]];then echo 'OK: revisión compatible. Sólo visibilidad de Nueva convocatoria en la vista de Gestión. SITIO INTACTO. Sin envíos ni SQL.';exit 0;fi
+if [[ "$MODE" == --check ]];then echo 'OK: revisión compatible. Sólo visibilidad de Nueva convocatoria en la vista de Gestión; modalidad integrada o compartida. SITIO INTACTO. Sin envíos ni SQL.';exit 0;fi
 if [[ "$MODE" == --apply ]];then
  mkdir -p "$BACKUPS";BACKUP="$BACKUPS/convocatorias-sin-modal-$(date +%Y%m%d-%H%M%S)-$$";(umask 077;mkdir "$BACKUP")
  for i in "${!FILES[@]}";do
@@ -94,5 +101,5 @@ for i in "${CHANGED[@]}";do
  WRITTEN+=("$i");mv -f -- "$install" "$LIVE/${FILES[$i]}";INSTALLING=-1
  [[ "$(hash "$LIVE/${FILES[$i]}")" == "${AFTER[$i]}" ]] || fail 'Archivo instalado distinto.'
 done
-echo "OK: $MODE terminado. Sólo visibilidad de Nueva convocatoria en Gestión. Creación desde Convenios y demás acciones conservadas. Sin SQL ni cambios en controladores, modelos, JavaScript o CSS."
+echo "OK: $MODE terminado. Sólo visibilidad de Nueva convocatoria en Gestión. Creación desde Convenios y demás acciones conservadas. Sin SQL ni cambios en controladores, modelos, archivos JavaScript o CSS."
 if [[ "$MODE" == --apply ]];then echo "Respaldo: $BACKUP";printf 'Rollback: bash %q --restore %q\n' "$(realpath "$0")" "$BACKUP";fi
