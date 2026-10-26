@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -27,5 +29,6 @@ jobs:
           node tests/telefonia_ventas_referencia_final.cjs
           node tests/telefonia_ventas_conciliacion_tardia.cjs
           node tests/telefonia_ventas_descartar_modal_resultado.cjs
-          node tests/telefonia_ventas_fin_sip_push_tardio.cjs
           node tests/telefonia_transferencia_confirmada_runtime.cjs
+      - name: Probar paquete reversible en réplica Hostinger
+        run: python3 -B tests/publicacion_ventas_transferida_fin_test.py
