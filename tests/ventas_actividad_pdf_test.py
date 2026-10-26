@@ -20,5 +20,7 @@ with tempfile.TemporaryDirectory() as folder:
             assert '00:19:17' in text and '100.0' in text and 'Asesor de prueba sin actividad' in text
         else:
             assert 'Analista de prueba' in text and 'Llamadas válidas' in text
+        if mode!='pdf_analista':
+            assert 'Pendientes y vencimientos actuales' in text and 'Devoluciones pendientes' in text and 'De ellas, vencidas' in text
         for page in reader.pages: assert abs(float(page.mediabox.width)-595.28)<1
         print(mode,': contenido completo, A4, paginación y cifras OK')

@@ -30,6 +30,8 @@ jobs:
         env:
           IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
+          php tests/ventas_pendientes_policy_test.php
+          php tests/telefonia_ventas_notificaciones_db.php
           php tests/ventas_actividad_unit.php
           php tests/ventas_desempeno_unit.php
           python3 tests/ventas_actividad_http_test.py
@@ -56,6 +58,7 @@ jobs:
           NODE_PATH: /tmp/asesores-deps/node_modules
           SALES_BROWSER: ${{ matrix.browser }}
         run: |
+          node tests/ventas_pendientes_browser.cjs
           node tests/ventas_actividad_browser.cjs
           node tests/ventas_desempeno_browser.cjs
           node tests/ventas_pdf_descarga_browser.cjs
@@ -85,6 +88,7 @@ jobs:
           php-version: '8.2'
           coverage: none
       - run: |
+          python3 tests/publicacion_ventas_pendientes_test.py
           python3 tests/publicacion_reportes_asesores_test.py
           python3 tests/publicacion_desempeno_asesores_ranking_test.py
           python3 tests/publicacion_desempeno_sin_territorio_test.py

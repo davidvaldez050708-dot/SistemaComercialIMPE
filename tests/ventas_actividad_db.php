@@ -76,7 +76,7 @@ foreach(['report-call-direct'=>'INTERESADO','report-call-transfer'=>'CONVERSACIO
 }
 $db->query("INSERT INTO telefonia_ventas_marcaciones(usuario_id,extension,destino,created_at) VALUES(301,'150','5550000000','$today 13:00:00')");
 $db->query("INSERT INTO telefonia_contactos_personales VALUES(1,301,'Contacto','5550000000','Nota','$today 01:00:00')");
-$route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>301,'extension'=>'150','referencia_llamada'=>'callback-ref-001']);
+$route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>301,'extension'=>'150','referencia_llamada'=>'callback-ref-001','devolucion_solicitada_at'=>gmdate('Y-m-d H:i:s',time()-2*86400)]);
 $s=$db->prepare("INSERT INTO telefonia_disponibilidad(id,destino_usuario,destino_extension,referencia,ruta_json,devolucion) VALUES(7,301,'150','callback-ref-001',?,'PENDIENTE')");$s->bind_param('s',$route);$s->execute();
 $route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>301,'extension'=>'150','referencia_llamada'=>'unconfirmed-transfer-001']);
 $s=$db->prepare("INSERT INTO telefonia_disponibilidad(id,destino_usuario,destino_extension,referencia,ruta_json,devolucion) VALUES(11,301,'150','unconfirmed-transfer-001',?,'')");$s->bind_param('s',$route);$s->execute();
@@ -94,10 +94,11 @@ qcheck($s['llamadas']===3 && $s['intentos']===1 && $s['conversaciones']===2,'Res
 qcheck($s['transferencias_pendientes']===1,'Transferencia sin confirmar separada de llamadas');
 qcheck($s['segundos']===25 && $s['promedio_segundos']===13 && $s['duraciones_pendientes']===1,'Duración sólo asesor, evidencia persistida y pendiente');
 qcheck($data['organizacion']['programadas']===1 && $data['organizacion']['devoluciones']===1,'Organización actual');
+qcheck($data['organizacion']['devoluciones_vencidas']===1 && $data['organizacion']['personas'][301]['devoluciones_vencidas']===1,'Vencimientos exactos por asesor');
 qcheck($svc->preparar(['periodo'=>'ayer'],false)['resumen']['segundos']===9,'Evento tardío conserva la fecha de la llamada');
 try{$svc->preparar($f+['persona_id'=>302],false);throw new LogicException('Consultó asesor ajeno');}catch(DomainException $e){}
 qcheck($svc->preparar(['periodo'=>'personalizado','fecha_desde'=>'2024-01-01','fecha_hasta'=>'2024-01-31'],false)['resumen']['llamadas']===1,'Consulta histórica fuera de 90 días sin alterar historial');
-sessionFor($db,6,601);$team=$svc->preparar($f,false);$teamIds=array_map('intval',array_column($team['personas'],'id'));sort($teamIds);qcheck($teamIds===[301,303],'Equipo explícito');
+sessionFor($db,6,601);$team=$svc->preparar($f,false);$teamIds=array_map('intval',array_column($team['personas'],'id'));sort($teamIds);qcheck($teamIds===[301,303],'Equipo explícito');$pendingIds=array_keys($team['organizacion']['personas']);sort($pendingIds);qcheck($pendingIds===[301,303],'Pendientes sólo del equipo autorizado');
 try{$svc->preparar($f+['persona_id'=>302],false);throw new LogicException('Consultó asesor ajeno del mismo estado');}catch(DomainException $e){}
 $db->query('UPDATE asignaciones_territorio SET fecha_fin=\'2000-01-01\' WHERE id=1');qcheck(!$svc->preparar($f,false)['personas'],'Vencimiento bloquea equipo');$db->query('UPDATE asignaciones_territorio SET fecha_fin=NULL WHERE id=1');
 sessionFor($db,2,20);qcheck(count($svc->preparar($f,true)['personas'])===3,'Director nacional, asesor inactivo con historial');

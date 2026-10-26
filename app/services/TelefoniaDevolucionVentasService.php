@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
 require_once __DIR__.'/TelefoniaExtensionService.php';
 require_once __DIR__.'/TelefoniaContactosService.php';
+require_once __DIR__.'/../helpers/VentasPendientesPolicy.php';
 
 /** Devoluciones comerciales. No crea ni consulta expedientes de Vinculación. */
 final class TelefoniaDevolucionVentasService
@@ -26,6 +27,7 @@ final class TelefoniaDevolucionVentasService
         foreach($rows as $r){$route=json_decode($r['ruta_json'],true)?:[];
             if(($route['tipo']??'')!=='PROSPECTO'||(int)($route['responsable_id']??0)!==$uid||(string)($route['extension']??'')!==$r['destino_extension']||(string)($route['referencia_llamada']??'')!==$r['referencia'])continue;
             $r['nombre']=(string)($r['contacto']?:($route['institucion_nombre']??''));$r['estado_id']=(int)($route['estado_id']??0);
+            $r['plazo']=VentasPendientesPolicy::devolucion($r);
             unset($r['ruta_json']);$out[]=$r;
         }
         return $out;

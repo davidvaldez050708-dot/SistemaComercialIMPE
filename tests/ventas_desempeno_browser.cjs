@@ -23,6 +23,9 @@ const root=path.resolve(__dirname,'..'),bootstrap=path.dirname(require.resolve('
    assert.equal(await page.locator('[data-performance-pdf]').getAttribute('target'),null);
    assert.equal(await page.locator('[name="estado_id"]').count(),0,'Asesores no muestra ni envía un filtro territorial');
    assert.equal(await page.locator('.performance-person').first().innerText().then(t=>t.includes('María Fernanda')),true);
+   assert.equal(await page.locator('[data-sales-pending-summary]').count(),1);
+   assert.match(await page.locator('[data-sales-pending-summary]').innerText(),/Devoluciones vencidas/);
+   if(process.env.SALES_SCREENSHOT_DIR&&size.width===1366&&role==='global')await page.locator('[data-sales-pending-summary]').screenshot({path:path.join(process.env.SALES_SCREENSHOT_DIR,'pendientes_desempeno.png')});
    assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)),`Desbordamiento: ${role} ${size.width}`);
    if(process.env.SALES_SCREENSHOT_DIR&&[1366,390].includes(size.width))await page.screenshot({path:path.join(process.env.SALES_SCREENSHOT_DIR,`desempeno_asesores_${role}_${size.width}.png`)});
    await page.evaluate(()=>document.querySelector('form').addEventListener('submit',e=>{e.preventDefault();window.submitted=Object.fromEntries(new FormData(e.target));}));

@@ -35,6 +35,9 @@ const icons=path.dirname(require.resolve('bootstrap-icons/package.json'));
     assert(await page.locator('[data-sales-dirty-note]').isVisible());
     const days=await page.locator('.performance-day').count();assert(days>0&&days<=20);
     assert((await page.locator('body').innerText()).includes('Observación <script>no ejecutar</script>'));
+   assert.equal(await page.locator('[data-sales-pending-summary]').count(),1);
+   assert.match(await page.locator('[data-sales-pending-summary]').innerText(),/Devoluciones vencidas/);
+   if(process.env.SALES_SCREENSHOT_DIR&&size.width===1366&&role==='global')await page.locator('[data-sales-pending-summary]').screenshot({path:path.join(process.env.SALES_SCREENSHOT_DIR,'pendientes_reportes.png')});
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
     assert(!overflow,`Desbordamiento de página: ${role} ${size.width}`);
     for(const selector of ['.performance-hero','.performance-filter-panel','.performance-kpi-grid','.sales-activity-panel']){

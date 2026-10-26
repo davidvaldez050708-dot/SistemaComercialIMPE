@@ -567,6 +567,8 @@ $rankingTitle = $vista === 'propio'
         </section>
     <?php endif; ?>
 
+    <?php if ($esAsesores): $datosPendientes=$desempeno;require __DIR__.'/../telefonia/ventas_pendientes_resumen.php'; endif; ?>
+
     <div class="performance-main-grid <?= empty($reconocimientos) ? 'is-single' : '' ?>">
         <section class="dashboard-panel performance-ranking-panel">
             <div class="performance-panel-heading">

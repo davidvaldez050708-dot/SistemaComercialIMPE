@@ -22,6 +22,23 @@ final class VentasActividadPdfView
         return $html.'</tbody></table>';
     }
     private static function titulo(string $t): string { return '<div class="section-title"><h2>'.self::e($t).'</h2></div>'; }
+    public static function pendientes(array $d): string
+    {
+        $html=self::titulo('Pendientes y vencimientos actuales');
+        $o=$d['organizacion']??[];
+        $html.='<p class="notice">Estado actual de los asesores seleccionados, al consultar '.self::e($o['consultado_at']??$d['fecha_generacion']).' (México). No representa el estado histórico del periodo ni cambia al filtrar resultados. Las programadas vencen en la fecha y hora agendadas; las devoluciones, al terminar el día de la solicitud. Las vencidas están incluidas en los pendientes. No cuentan como llamadas ni alteran el ranking.</p>';
+        if (!empty($o['disponible'])) {
+            $pending=[];
+            foreach ($d['personas_resumen'] as $p) {
+                $v=$o['personas'][(int)$p['id']]??[];
+                $pending[]=[$p['nombre_completo'],(int)($v['programadas']??0),(int)($v['vencidas']??0),(int)($v['devoluciones']??0),(int)($v['devoluciones_vencidas']??0)];
+            }
+            $pending[]=['Total',(int)$o['programadas'],(int)$o['vencidas'],(int)$o['devoluciones'],(int)($o['devoluciones_vencidas']??0)];
+            $html.=self::tabla(['Asesor','Programadas pendientes','De ellas, vencidas','Devoluciones pendientes','De ellas, vencidas'],$pending);
+            if (!empty($o['devoluciones_sin_fecha'])) $html.='<p class="notice">'.(int)$o['devoluciones_sin_fecha'].' devoluciones sin fecha de solicitud confirmada; no se les atribuye vencimiento.</p>';
+        } else $html.='<p class="notice">Organización no disponible con la estructura instalada.</p>';
+        return $html;
+    }
     public function html(array $d,string $logo,string $css): string
     {
         $e=[self::class,'e'];$s=$d['resumen'];$time=[VentasActividadMetricas::class,'tiempo'];
@@ -50,9 +67,7 @@ final class VentasActividadPdfView
         $html.=self::titulo('Distribución de resultados');$results=[];
         foreach ($d['resultados'] as $code=>$n) $results[]=[TelefoniaResultadoVentasService::opciones()[$code]??'Sin resultado registrado',$n];
         $html.=self::tabla(['Resultado','Llamadas'],$results);
-        $html.=self::titulo('Organización actual');
-        $o=$d['organizacion']??[];
-        $html.='<p class="notice">Pendientes al momento de generar; no representan el estado histórico del periodo ni cambian al filtrar resultados. '.(!empty($o['disponible'])?'Contactos programados: '.(int)$o['programadas'].' · De ellos, vencidos: '.(int)$o['vencidas'].' · Devoluciones: '.(int)$o['devoluciones']:'Organización no disponible con la estructura instalada.').'.</p>';
+        $html.=self::pendientes($d);
         $html.=self::titulo('Detalle de llamadas').'<table class="table"><thead><tr>';
         foreach (['Fecha y hora','Asesor','Teléfono','Tipo','Resultado','Duración'] as $h) $html.='<th>'.$e($h).'</th>';
         $html.='</tr></thead><tbody>';

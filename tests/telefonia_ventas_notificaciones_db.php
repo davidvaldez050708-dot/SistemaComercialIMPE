@@ -88,9 +88,12 @@ try {
  $results->guardar(8,'pbx-task-notice','SIN_RESPUESTA');
  $contact=$agenda->guardar(8,'Agenda programada','5551112244',['proxima_accion_at'=>date('Y-m-d H:i:s',time()+3600)]);
  vcheck($notices->pendientes(8,false)===[],'Programación futura no genera aviso vencido');
+ $db->query("UPDATE telefonia_contactos_personales SET proxima_accion_at=DATE_ADD(NOW(),INTERVAL 10 MINUTE) WHERE id=".(int)$contact['id']);
+ $soon=$notices->pendientes(8,false);
+ vcheck(count($soon)===1&&$soon[0]['estado']==='proxima'&&$soon[0]['reiterar_hasta_atender'],'Aviso 15 minutos antes, sin declarar vencida');
  $db->query("UPDATE telefonia_contactos_personales SET proxima_accion_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE id=".(int)$contact['id']);
  $rem=$program->listar(8)[0];$due=$notices->pendientes(8,false);
- vcheck(count($due)===1&&$due[0]['etiqueta']==='Programada'&&str_contains($due[0]['url'],'vista=agenda'),'Agenda vencida usa campana comercial');
+ vcheck(count($due)===1&&$due[0]['etiqueta']==='Vencida'&&$due[0]['estado']==='vencida'&&$due[0]['reiterar_hasta_atender']&&str_contains($due[0]['url'],'vista=agenda'),'Agenda vencida usa campana comercial');
  $notices->leerTodas(8);$readDue=$notices->pendientes(8,false);
  vcheck(count($readDue)===1&&$readDue[0]['leida']===1&&$readDue[0]['pendiente_operativo'],
     'Contacto programado permanece hasta completar agenda');
@@ -129,6 +132,25 @@ try {
  $despuesGuardar=$notices->pendientes(8,false);
  vcheck($despuesGuardar===[],'Resultado de respuesta tardía cierra sólo devolución automática correspondiente: '.
      implode(', ',array_map(static fn($n)=>(string)$n['etiqueta'].'/'.(string)$n['tipo_evento'],$despuesGuardar)));
+ // Fecha de devolución fijada al solicitarla; no se mueve con actualizaciones.
+ $route=json_encode(['tipo'=>'PROSPECTO','responsable_id'=>8,'extension'=>'150','referencia_llamada'=>'callback-plazo-001']);
+ $st=$db->prepare("INSERT INTO telefonia_disponibilidad(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,ruta_json,estado,expires_at,created_at,updated_at) VALUES(7,'100',8,'150','callback-plazo-001','+525551112233',?,'CANCELADA',UTC_TIMESTAMP(),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 2 DAY),UTC_TIMESTAMP())");$st->bind_param('s',$route);$st->execute();$plazoId=(int)$db->insert_id;$st->close();
+ (new TelefoniaDisponibilidadService($db))->accion(7,$plazoId,1,'DEVOLUCION',['contacto'=>'Prueba de fecha','telefono'=>'+525551112233','nota'=>'Devolver hoy']);
+ $taskRow=$db->query("SELECT * FROM telefonia_disponibilidad WHERE id=$plazoId")->fetch_assoc();
+ $plazo=VentasPendientesPolicy::devolucion($taskRow);
+ vcheck($plazo['fecha_original']&&!$plazo['vencida']&&substr($plazo['limite'],0,10)===date('Y-m-d'),'La devolución vence hoy aunque la transferencia sea antigua');
+ $taskJson=json_decode($taskRow['ruta_json'],true);$taskJson['devolucion_solicitada_at']=gmdate('Y-m-d H:i:s',time()-86400*2);
+ $text=json_encode($taskJson);$st=$db->prepare('UPDATE telefonia_disponibilidad SET ruta_json=?,updated_at=UTC_TIMESTAMP() WHERE id=?');$st->bind_param('si',$text,$plazoId);$st->execute();$st->close();
+ $overdue=$notices->pendientes(8,false);
+ vcheck(count($overdue)===1&&$overdue[0]['estado']==='vencida'&&$overdue[0]['prioridad']===0,'Campana clasifica devolución vencida sin reiniciar la fecha');
+ $notices->leerTodas(8);$overdue=$notices->pendientes(8,false);
+ vcheck($overdue[0]['leida']===1&&$overdue[0]['reiterar_hasta_atender'],'Leer no apaga la reiteración de la tarea vencida');
+ require_once dirname(__DIR__).'/app/services/VentasActividadRepository.php';
+ $org=(new VentasActividadRepository($db))->organizacion([8]);
+ vcheck($org['devoluciones_vencidas']===1&&$org['personas'][8]['devoluciones_vencidas']===1,'Reporte atribuye vencimiento al propietario exacto');
+ vcheck((new VentasActividadRepository($db))->organizacion([9])['devoluciones']===0,'Otro asesor no recibe pendientes ajenos');
+ $db->query("UPDATE telefonia_disponibilidad SET devolucion='ATENDIDA' WHERE id=$plazoId");
+ vcheck($notices->pendientes(8,false)===[],'Atender detiene recordatorio recurrente');
  // Conciliación uno a uno: dos llamadas o dos intenciones no se eligen por orden.
  $marker=new TelefoniaMarcacionesVentasService($db,false);vreject(fn()=>$marker->iniciar(9,'5556667788',str_repeat('9',32)),'Sin extensión asignada no prepara llamadas salientes');$token=str_repeat('a',32);$marker->iniciar(8,'5556667788',$token);
  $out='out_'.str_repeat('c',32);$event($out,'NOTIFY_OUT_START','150',0,['destination'=>'+525556667788','received_at'=>date('Y-m-d H:i:s'),'call_start'=>date('Y-m-d H:i:s')]);$svc->sincronizar(8);

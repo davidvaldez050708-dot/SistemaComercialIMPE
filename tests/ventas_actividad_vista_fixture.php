@@ -23,7 +23,7 @@ for($i=0;$i<$count;$i++) $rows[]=['id'=>$i+1,'usuario_id'=>301,'extension'=>'150
 $actividad=VentasActividadMetricas::calcular($rows,$people,$period)+['area'=>'asesores','area_label'=>'Asesores','es_desempeno'=>$esVistaDesempeno,
     'vista'=>$role===3?'propio':'global','periodo'=>$period,'personas'=>$people,'persona_id'=>$role===3?301:0,'direccion'=>'','resultado'=>'','generado'=>true,
     'generado_por'=>'Persona de prueba','generado_por_rol'=>$_SESSION['rol'],'fecha_generacion'=>date('d/m/Y H:i'),
-    'organizacion'=>['disponible'=>true,'programadas'=>2,'vencidas'=>1,'devoluciones'=>1]];
+    'organizacion'=>['disponible'=>true,'consultado_at'=>'26/10/2026 12:00','programadas'=>2,'vencidas'=>1,'devoluciones'=>1,'devoluciones_vencidas'=>1,'personas'=>[301=>['programadas'=>2,'vencidas'=>1,'devoluciones'=>1,'devoluciones_vencidas'=>1]]] ];
 if ($esVistaDesempeno) {
     require ROOT_PATH.'/app/services/VentasDesempenoService.php';
     $actividad=VentasDesempenoService::presentar($actividad+['estado_id'=>0,'territorios'=>[['id'=>1,'nombre'=>'Morelos']]]);

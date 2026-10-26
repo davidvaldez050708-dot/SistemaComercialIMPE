@@ -4,6 +4,7 @@ require_once __DIR__.'/../../config/db_connection.php';
 require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
 require_once __DIR__.'/TelefoniaVentasEvidenciaService.php';
 require_once __DIR__.'/TelefoniaMarcacionesVentasService.php';
+require_once __DIR__.'/../helpers/VentasPendientesPolicy.php';
 
 /** Lectura sin conciliaciones, escrituras, descargas ni consultas al proveedor. */
 final class VentasActividadRepository
@@ -116,24 +117,35 @@ final class VentasActividadRepository
     }
     public function organizacion(array $ids): array
     {
-        $out=['programadas'=>0,'vencidas'=>0,'devoluciones'=>0,'disponible'=>true];
+        $empty=['programadas'=>0,'vencidas'=>0,'devoluciones'=>0,'devoluciones_vencidas'=>0,'devoluciones_sin_fecha'=>0];
+        $out=$empty+['disponible'=>true,'personas'=>[],'consultado_at'=>VentasPendientesPolicy::ahora()->format('d/m/Y H:i')];
+        foreach ($ids as $id) $out['personas'][(int)$id]=$empty;
         if (!$ids) return $out;
         if (!$this->tabla('telefonia_contactos_personales') || !$this->tabla('telefonia_ventas_resultados') || !$this->tabla('telefonia_disponibilidad')) {
             $out['disponible']=false; return $out;
         }
         $marks=implode(',',array_fill(0,count($ids),'?'));
-        $scheduled=$this->rows("SELECT a.proxima_accion_at fecha FROM telefonia_contactos_personales a WHERE a.usuario_id IN ($marks)
+        $scheduled=$this->rows("SELECT a.usuario_id,a.proxima_accion_at fecha FROM telefonia_contactos_personales a WHERE a.usuario_id IN ($marks)
             AND a.proxima_accion_at IS NOT NULL AND NOT EXISTS(SELECT 1 FROM telefonia_ventas_resultados r WHERE r.usuario_id=a.usuario_id
                 AND r.contacto_id=a.id AND r.proxima_accion_at=a.proxima_accion_at AND r.recordatorio_atendido_at IS NULL)
-            UNION ALL SELECT r.proxima_accion_at fecha FROM telefonia_ventas_resultados r JOIN telefonia_ventas_llamadas c
+            UNION ALL SELECT r.usuario_id,r.proxima_accion_at fecha FROM telefonia_ventas_resultados r JOIN telefonia_ventas_llamadas c
                 ON c.usuario_id=r.usuario_id AND c.extension=BINARY r.extension AND c.pbx_call_id=BINARY r.pbx_call_id
             WHERE r.usuario_id IN ($marks) AND r.proxima_accion_at IS NOT NULL AND r.recordatorio_atendido_at IS NULL",array_merge($ids,$ids));
-        $now=(new DateTimeImmutable('now',new DateTimeZone('America/Mexico_City')))->format('Y-m-d H:i:s');
-        foreach ($scheduled as $s) { $out['programadas']++; if ($s['fecha']<$now) $out['vencidas']++; }
-        foreach ($this->rows("SELECT destino_usuario,destino_extension,referencia,ruta_json FROM telefonia_disponibilidad WHERE destino_usuario IN ($marks) AND devolucion='PENDIENTE'",$ids) as $r) {
+        $now=VentasPendientesPolicy::ahora();
+        $increment=static function(int $uid,string $key) use (&$out): void { $out[$key]++;$out['personas'][$uid][$key]++; };
+        foreach ($scheduled as $s) {
+            $increment((int)$s['usuario_id'],'programadas');
+            if (VentasPendientesPolicy::programada($s['fecha'],$now)['vencida']) $increment((int)$s['usuario_id'],'vencidas');
+        }
+        foreach ($this->rows("SELECT * FROM telefonia_disponibilidad WHERE destino_usuario IN ($marks) AND devolucion='PENDIENTE'",$ids) as $r) {
             $route=json_decode($r['ruta_json'],true)?:[];
             if (($route['tipo']??'')==='PROSPECTO' && (int)($route['responsable_id']??0)===(int)$r['destino_usuario'] &&
-                ($route['extension']??'')===$r['destino_extension'] && ($route['referencia_llamada']??'')===$r['referencia']) $out['devoluciones']++;
+                ($route['extension']??'')===$r['destino_extension'] && ($route['referencia_llamada']??'')===$r['referencia']) {
+                $increment((int)$r['destino_usuario'],'devoluciones');
+                $plazo=VentasPendientesPolicy::devolucion($r,$now);
+                if ($plazo['vencida']) $increment((int)$r['destino_usuario'],'devoluciones_vencidas');
+                if ($plazo['limite']===null) $increment((int)$r['destino_usuario'],'devoluciones_sin_fecha');
+            }
         }
         return $out;
     }

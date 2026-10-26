@@ -53,6 +53,7 @@ final class VentasDesempenoService
         $d['tendencia']=array_map(static fn($day)=>['fecha'=>$day['fecha'],'label'=>date('d/m',strtotime($day['fecha'])),
             'principal'=>$day['llamadas'],'secundario'=>$day['conversaciones_confirmadas'],'terciario'=>$day['registradas']],$d['dias']);
         $d['criterios']=[
+            'Los contactos programados, las devoluciones pendientes y sus vencimientos se muestran por asesor como organización actual, independientemente del periodo de llamadas. No cuentan como llamadas realizadas ni alteran el índice. Las devoluciones vencen al terminar el día de la solicitud, en horario de México; las programadas, en la fecha y hora agendadas.',
             'Se cuentan llamadas entrantes y salientes con referencia confirmada, una por asesor, extensión y llamada. Los intentos y transferencias sin confirmar se muestran aparte.',
             'Contacto confirmado: llamada conectada cuyo resultado registrado indica conversación con una persona. La tasa de contacto divide esos contactos entre las llamadas registradas.',
             'Cumplimiento del registro: resultados guardados entre llamadas que ya permiten registrar un resultado. Sin llamadas aplicables, se muestra —.',

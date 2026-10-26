@@ -146,7 +146,7 @@
         };
 
         const fechaRecordatorio = function (recordatorio) {
-            const fechaTexto = String(recordatorio.fecha || '').trim();
+            const fechaTexto = String(recordatorio.fecha_iso || recordatorio.fecha || '').trim();
             if (fechaTexto === '') {
                 return null;
             }
@@ -326,7 +326,7 @@
             const claves = new Set();
             const disponibles = recordatoriosActuales.filter(function (r) {
                 const clave = claveRecordatorio(r);
-                if (claves.has(clave) || Number(r.leida || 0) !== 0) return false;
+                if (claves.has(clave) || (Number(r.leida || 0) !== 0 && r.reiterar_hasta_atender !== true)) return false;
                 const disponible = esRecordatorioVencidoRecurrente(r) ||
                     Number(r.telefonia_id || 0) > 0 ||
                     colaAvisos.some(item => item.clave === clave);
@@ -342,7 +342,7 @@
             const telefono = Number(recordatorio.telefonia_id || 0) > 0;
             const aviso = enCola?.aviso || {
                 ...recordatorio,
-                tipo: telefono ? 'TELEFONIA_PERDIDA' : 'VENCIDA',
+                tipo: esRecordatorioVencidoRecurrente(recordatorio) ? 'VENCIDA' : (telefono ? 'TELEFONIA_PERDIDA' : 'VENCIDA'),
                 titulo: telefono ? (recordatorio.titulo || recordatorio.nombre_entidad || 'Aviso telefónico') : 'Acción vencida',
                 mensaje: telefono ? (recordatorio.mensaje || recordatorio.accion || 'Revisa tu historial') :
                     String(recordatorio.accion || 'Revisar pendiente') + ' · ' +

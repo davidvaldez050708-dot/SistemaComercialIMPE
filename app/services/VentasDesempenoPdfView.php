@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/VentasActividadMetricas.php';
+require_once __DIR__.'/VentasActividadPdfView.php';
 
 /** El mismo corte y orden del ranking, con la hoja y los estilos del analista. */
 final class VentasDesempenoPdfView
@@ -56,6 +57,7 @@ final class VentasDesempenoPdfView
         $html.=self::titulo('Historial diario');$rows=[];
         foreach ($d['dias'] as $day) $rows[]=[$day['fecha'],$day['llamadas'],$day['conversaciones_confirmadas'],$day['registradas']];
         $html.=self::tabla(['Fecha','Llamadas','Contactos confirmados','Resultados registrados'],$rows);
+        $html.=VentasActividadPdfView::pendientes($d);
         $html.=self::titulo('Criterios de medición');
         foreach ($d['criterios'] as $criterion) $html.='<p class="notice">'.$e($criterion).'</p>';
         return $html.'</body></html>';
