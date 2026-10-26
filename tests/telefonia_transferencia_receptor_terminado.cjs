@@ -46,7 +46,7 @@ const runtime=fs.readFileSync('public/javascript/telefonia_transferencia_runtime
  // Saliente de Recepción -> Asesor: el SIP puede terminar cuando
  // la operación sigue ENVIADA. Ese estado no debe enviarse a recuperación.
  let endedBeforeDelivery=false,whenClosing=false,consultations=[],seen=[];
- const directOp={...op,estado:'ENVIADA',destino_atendida:null};
+ let directOp={...op,estado:'ENVIADA',destino_atendida:null};
  const directSession={id:'rtc-own-outgoing-transfer-150',direction:'incoming',
   remote_identity:{uri:{user:'100'}},isEnded:()=>endedBeforeDelivery,
   isEstablished:()=>!endedBeforeDelivery};
@@ -85,6 +85,35 @@ const runtime=fs.readFileSync('public/javascript/telefonia_transferencia_runtime
  assert(seen.includes('TERMINADA'),'Se conserva registro de fin en servicio');
  await directFlow.tick();
  assert.equal(consultations.length,1,'Sin terminar dos veces una misma llamada');
+ assert.equal(seen.filter(action=>action==='TERMINADA').length,1,
+  'La misma sesión terminada solo puede emitir una petición TERMINADA');
 
- console.log('OK: TransferFlow ENTREGADA informa END de SDK exacto una sola vez y no inventa END PBX');
+ // Dos llamadas consecutivas al mismo número deben permitir un nuevo
+ // cierre cuando el proveedor entregue una nueva sesión y un nuevo token.
+ let secondEnded=false;
+ const secondSession={id:'rtc-next-outgoing-transfer-150',direction:'incoming',
+  remote_identity:{uri:{user:'100'}},isEnded:()=>secondEnded,
+  isEstablished:()=>!secondEnded};
+ directWin.zdrmWebPhone.webCallSession=secondSession;
+ directOp={...directOp,id:6,referencia:'out_new_transfer_receiver_150',
+  sdk_consulta:'sdk-next-receiver-150'};
+ directState.callToken='sdk-next-receiver-150';
+ directState.context={type:'SDK_INCOMING',sdkConnected:true};
+ await directFlow.tick();
+ assert.equal(directState.context.transferOperation,6,
+  'Un nuevo INVITE se vuelve a vincular sin heredar la operación anterior');
+ secondEnded=true;
+ await directFlow.tick();
+ assert.equal(consultations.length,2,
+  'Nueva llamada tiene su propia terminación aunque use mismo número');
+ assert.equal(consultations[1].token,'sdk-next-receiver-150',
+  'El cierre nuevo nunca hereda el token anterior');
+ assert.equal(consultations[1].session,secondSession,
+  'RTCSession de segunda llamada queda correctamente identificada');
+ await directFlow.tick();
+ assert.equal(consultations.length,2,'Segunda llamada tampoco se termina dos veces');
+ assert.equal(seen.filter(action=>action==='TERMINADA').length,2,
+  'Exactamente una petición TERMINADA por cada sesión propia');
+
+ console.log('OK: TransferFlow termina una sola vez cada sesión 100->150 y no bloquea llamadas consecutivas');
 })().catch(e=>{console.error(e);process.exitCode=1});
