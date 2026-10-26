@@ -2,6 +2,7 @@
 putenv('IMPE_BASE_URL=http://ventas.test/');
 require __DIR__.'/../config/config.php';
 require ROOT_PATH.'/app/services/VentasActividadMetricas.php';require ROOT_PATH.'/app/helpers/VentasActividadAccess.php';
+$modo=$argv[1]??'html';$esVistaDesempeno=in_array($modo,['desempeno','pdf_desempeno','analistas'],true);
 $role=str_starts_with($argv[2]??'','global')?2:3;
 $_SESSION=['usuario_id'=>301,'rol_id'=>$role,'rol'=>$role===3?'Asesor de Ventas':'Director de Operaciones','nombre'=>'Persona','apellidos'=>'de prueba',
     'permisos'=>['reportes.ver','reportes.ventas','reportes.ventas.propio','reportes.ventas.global','reportes.exportar','desempeno.ver','desempeno.ver_propio','desempeno.ver_global','desempeno.exportar']];
@@ -19,10 +20,14 @@ for($i=0;$i<$count;$i++) $rows[]=['id'=>$i+1,'usuario_id'=>301,'extension'=>'150
     'nombre'=>'Prospecto de prueba','numero'=>'5550000000','origen_extension'=>$i%2?'100':'','solicitud_id'=>$i%2?1:null,
     'registro'=>['resultado'=>$i%3?'INTERESADO':'CONVERSACION_PERSONA','prospecto_nombre'=>'Prospecto de prueba',
         'observacion'=>$i===0?str_repeat('Información de seguimiento con observaciones extensas para verificar el salto de página. ',20):'Observación <script>no ejecutar</script> de prueba.']];
-$actividad=VentasActividadMetricas::calcular($rows,$people,$period)+['area'=>'asesores','area_label'=>'Asesores','es_desempeno'=>true,
+$actividad=VentasActividadMetricas::calcular($rows,$people,$period)+['area'=>'asesores','area_label'=>'Asesores','es_desempeno'=>$esVistaDesempeno,
     'vista'=>$role===3?'propio':'global','periodo'=>$period,'personas'=>$people,'persona_id'=>$role===3?301:0,'direccion'=>'','resultado'=>'','generado'=>true,
     'generado_por'=>'Persona de prueba','generado_por_rol'=>$_SESSION['rol'],'fecha_generacion'=>date('d/m/Y H:i'),
     'organizacion'=>['disponible'=>true,'programadas'=>2,'vencidas'=>1,'devoluciones'=>1]];
+if ($esVistaDesempeno) {
+    require ROOT_PATH.'/app/services/VentasDesempenoService.php';
+    $actividad=VentasDesempenoService::presentar($actividad+['estado_id'=>0,'territorios'=>[['id'=>1,'nombre'=>'Morelos']]]);
+}
 if (str_starts_with($argv[1]??'','pdf')) {
     if ($argv[1]==='pdf_analista') {
         $actividad=array_replace($actividad,['area'=>'analistas','area_label'=>'Analistas','vista'=>'propio',
@@ -38,4 +43,14 @@ if (str_starts_with($argv[1]??'','pdf')) {
 }
 $desempeno=true;$errorActividad='';$urlActividadPdf=BASE_URL.'index.php?'.http_build_query(['controller'=>'desempeno','action'=>'exportarPdf','area'=>'asesores','periodo'=>'semana','persona_id'=>$role===3?301:0]);
 echo '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/bootstrap.css"><link rel="stylesheet" href="/public/css/global.css"><link rel="stylesheet" href="/public/css/dashboard.css"><link rel="stylesheet" href="/icons/bootstrap-icons.css"><body style="padding:16px;background:#f4f7fa">';
-require ROOT_PATH.'/app/views/reportes/ventas_actividad.php';echo '</body></html>';
+if ($esVistaDesempeno) {
+    $desempeno=$actividad;$urlExportarPdf=$urlActividadPdf;$errorDesempeno='';
+    echo '<link rel="stylesheet" href="/public/css/desempeno.css">';
+    if ($modo==='analistas') {
+        $desempeno['area']='analistas';$desempeno['area_label']='Analistas';
+        $desempeno['ranking']=[];$desempeno['resumen']=[];$desempeno['reconocimientos']=[];$desempeno['tendencia']=[];
+    }
+    require ROOT_PATH.'/app/views/desempeno/index.php';
+    echo '<script src="/public/javascript/desempeno.js"></script>';
+} else require ROOT_PATH.'/app/views/reportes/ventas_actividad.php';
+echo '</body></html>';

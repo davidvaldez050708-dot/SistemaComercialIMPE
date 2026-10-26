@@ -101,6 +101,20 @@ sessionFor($db,6,601);$team=$svc->preparar($f,false);$teamIds=array_map('intval'
 try{$svc->preparar($f+['persona_id'=>302],false);throw new LogicException('Consultó asesor ajeno del mismo estado');}catch(DomainException $e){}
 $db->query('UPDATE asignaciones_territorio SET fecha_fin=\'2000-01-01\' WHERE id=1');qcheck(!$svc->preparar($f,false)['personas'],'Vencimiento bloquea equipo');$db->query('UPDATE asignaciones_territorio SET fecha_fin=NULL WHERE id=1');
 sessionFor($db,2,20);qcheck(count($svc->preparar($f,true)['personas'])===3,'Director nacional, asesor inactivo con historial');
+require __DIR__.'/../app/services/VentasDesempenoService.php';
+$performance=new VentasDesempenoService($db);
+$global=$performance->preparar($f);qcheck(count($global['territorios'])===2 && count($global['ranking'])===3,'Desempeño nacional sin asignar Dirección');
+qcheck($global['resumen']===$svc->preparar($f,true)['resumen'],'Cifras de Desempeño y Reportes iguales');
+$db->query("INSERT INTO asignaciones_territorio VALUES(7,602,2,'CUENTA_CLAVE',NULL,1,NULL,NULL),(8,301,2,'ASESOR',7,1,NULL,NULL)");
+$filtered=$performance->preparar($f+['estado_id'=>2]);qcheck(array_map('intval',array_column($filtered['ranking'],'id'))===[301],'Filtro de asesores por territorio vigente');
+sessionFor($db,6,601);
+$teamPerformance=$performance->preparar($f+['estado_id'=>1]);
+qcheck(count($teamPerformance['territorios'])===1 && count($teamPerformance['ranking'])===2,'Cuenta Clave: área y territorio de su equipo explícito');
+try{$performance->preparar($f+['estado_id'=>2]);throw new LogicException('Amplió equipo por otro territorio del mismo asesor');}catch(DomainException $e){}
+try{$performance->preparar($f+['persona_id'=>302]);throw new LogicException('Amplió equipo de desempeño');}catch(DomainException $e){}
+sessionFor($db,3,301);qcheck($performance->preparar($f)['ranking'][0]['indice']===null,'Mi desempeño personal sin ranking');
+try{$performance->preparar($f+['persona_id'=>302]);throw new LogicException('Consultó desempeño personal ajeno');}catch(DomainException $e){}
+$db->query('DELETE FROM asignaciones_territorio WHERE id IN (7,8)');
 $_SESSION['permisos']=[];try{$svc->preparar($f,true);throw new LogicException('Acceso revocado permitido');}catch(DomainException $e){}
 foreach($snap as $t=>$rows)qcheck($db->query("SELECT * FROM $t")->fetch_all(MYSQLI_ASSOC)===$rows,'Consulta modificó '.$t);
 echo "DB real: permisos/revocación, propietario histórico, alcance territorial explícito, fechas, duración propia y consultas sin escrituras OK\n";

@@ -113,6 +113,10 @@ class DesempenoPdfService
     private function html(array $datos)
     {
         if (($datos['area'] ?? '') === 'asesores') {
+            if (!empty($datos['es_desempeno'])) {
+                require_once __DIR__.'/VentasDesempenoPdfView.php';
+                return (new VentasDesempenoPdfView())->html($datos, $this->logoDataUri(), $this->css());
+            }
             require_once __DIR__.'/VentasActividadPdfView.php';
             return (new VentasActividadPdfView())->html($datos, $this->logoDataUri(), $this->css());
         }

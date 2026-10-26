@@ -9,6 +9,7 @@ $desempeno = is_array($desempeno ?? null)
 
 $vista = (string)($desempeno['vista'] ?? 'propio');
 $area = (string)($desempeno['area'] ?? 'analistas');
+$esAsesores = $area === 'asesores';
 $areaLabel = (string)($desempeno['area_label'] ?? 'Analistas');
 $periodo = is_array($desempeno['periodo'] ?? null)
     ? $desempeno['periodo']
@@ -48,7 +49,7 @@ $esAnalistaDesempeno =
 $esMarketingDesempeno =
     strcasecmp($rolActualDesempeno, 'Marketing') === 0;
 
-$mostrarTabGlobal = $puedeGlobal;
+$mostrarTabGlobal = $puedeGlobal && (!$esAsesores || $vista === 'global');
 $mostrarTabEquipo =
     $puedeEquipo &&
     $esCuentaClaveDesempeno;
@@ -57,7 +58,7 @@ $mostrarTabPropio =
     (
         $esCuentaClaveDesempeno ||
         $esAnalistaDesempeno ||
-        $esMarketingDesempeno
+        $esMarketingDesempeno || ($esAsesores && $vista === 'propio')
     );
 
 $esc = static function ($valor) {
@@ -210,7 +211,7 @@ $rankingTitle = $vista === 'propio'
             <h1><?= $esc($vistaLabel) ?></h1>
             <p>
                 <?= $vista === 'equipo'
-                    ? 'Revisa el desempeño de tus Analistas, identifica quién destaca y en qué métricas dentro de tu alcance autorizado.'
+                    ? 'Revisa el desempeño de tu equipo, identifica quién destaca y en qué métricas dentro de tu alcance autorizado.'
                     : (
                         $vista === 'global'
                             ? 'Consulta el desempeño del área seleccionada con métricas comparables y criterios visibles.'
@@ -272,11 +273,6 @@ $rankingTitle = $vista === 'propio'
         </nav>
     <?php endif; ?>
 
-    <?php if (VentasActividadAccess::alcance(true) !== ''): ?>
-        <nav class="performance-view-tabs" aria-label="Área de desempeño">
-            <a class="performance-tab" href="<?= BASE_URL ?>index.php?controller=desempeno&amp;action=index&amp;area=asesores"><i class="bi bi-headset" aria-hidden="true"></i> Asesores · actividad telefónica</a>
-        </nav>
-    <?php endif; ?>
     <section class="dashboard-panel performance-filter-panel">
         <form
             method="GET"
@@ -286,7 +282,7 @@ $rankingTitle = $vista === 'propio'
             <input type="hidden" name="action" value="index">
             <input type="hidden" name="vista" value="<?= $esc($vista) ?>">
 
-            <?php if (!empty($desempeno['puede_cambiar_area'])): ?>
+            <?php if (!empty($desempeno['puede_cambiar_area']) || ($vista === 'equipo' && VentasActividadAccess::alcance(true) !== '')): ?>
                 <div class="performance-filter-field">
                     <label for="performance_area">Área</label>
                     <select
@@ -294,16 +290,9 @@ $rankingTitle = $vista === 'propio'
                         name="area"
                         class="form-select"
                         data-performance-auto-submit>
-                        <option
-                            value="analistas"
-                            <?= $area === 'analistas' ? 'selected' : '' ?>>
-                            Analistas
-                        </option>
-                        <option
-                            value="cuenta_clave"
-                            <?= $area === 'cuenta_clave' ? 'selected' : '' ?>>
-                            Cuenta Clave
-                        </option>
+                        <?php foreach (['analistas'=>'Analistas'] + ($vista === 'global' ? ['cuenta_clave'=>'Cuenta Clave'] : []) + (VentasActividadAccess::alcance(true) !== '' ? ['asesores'=>'Asesores'] : []) as $codigoArea=>$nombreArea): ?>
+                            <option value="<?= $esc($codigoArea) ?>" <?= $area === $codigoArea ? 'selected' : '' ?>><?= $esc($nombreArea) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
             <?php else: ?>
@@ -354,7 +343,7 @@ $rankingTitle = $vista === 'propio'
                     <label for="performance_persona">
                         <?= $area === 'cuenta_clave'
                             ? 'Cuenta Clave'
-                            : 'Analista' ?>
+                            : ($esAsesores ? 'Asesor' : 'Analista') ?>
                     </label>
                     <select
                         id="performance_persona"
@@ -366,7 +355,7 @@ $rankingTitle = $vista === 'propio'
                             <option
                                 value="<?= (int)($persona['id'] ?? 0) ?>"
                                 <?= $personaId === (int)($persona['id'] ?? 0) ? 'selected' : '' ?>>
-                                <?= $esc(trim(
+                                <?= $esc($persona['nombre_completo'] ?? trim(
                                     (string)($persona['nombre'] ?? '') . ' ' .
                                     (string)($persona['apellidos'] ?? '')
                                 )) ?>
@@ -382,7 +371,7 @@ $rankingTitle = $vista === 'propio'
                 <?php if ($urlExportarPdf !== ''): ?>
                     <a
                         href="<?= $esc($urlExportarPdf) ?>"
-                        class="btn btn-system-light">
+                        class="btn btn-system-light" data-performance-pdf target="_blank" rel="noopener">
                         <i class="bi bi-file-earmark-pdf"></i>
                         Exportar PDF
                     </a>
@@ -447,7 +436,20 @@ $rankingTitle = $vista === 'propio'
         </div>
     </div>
 
-    <?php if ($area === 'cuenta_clave'): ?>
+    <?php if ($esAsesores): ?>
+        <section class="performance-kpi-grid is-five">
+            <?php foreach ([
+                ['telephone','Llamadas registradas',(int)($resumen['llamadas']??0),'Entrantes y salientes confirmadas'],
+                ['person-check','Con contacto confirmado',(int)($resumen['conversaciones_confirmadas']??0),'Conexión y conversación registrada'],
+                ['bullseye','Tasa de contacto',isset($resumen['tasa_contacto'])?number_format($resumen['tasa_contacto'],1).'%':'—','Contacto confirmado / llamadas'],
+                ['clipboard-check','Cumplimiento del registro',isset($resumen['cumplimiento_registro'])?number_format($resumen['cumplimiento_registro'],1).'%':'—','Resultados / llamadas capturables'],
+                ['clock','Tiempo confirmado',VentasActividadMetricas::tiempoConfirmado($resumen),(int)($resumen['duraciones_pendientes']??0).' duraciones pendientes']
+            ] as [$icono,$etiqueta,$valor,$ayuda]): ?>
+                <article><span class="performance-kpi-icon"><i class="bi bi-<?= $esc($icono) ?>"></i></span><div><strong><?= $esc($valor) ?></strong><span><?= $esc($etiqueta) ?></span><small><?= $esc($ayuda) ?></small></div></article>
+            <?php endforeach; ?>
+        </section>
+        <div class="performance-decision-note" role="status"><i class="bi bi-info-circle" aria-hidden="true"></i><span><?= (int)($resumen['intentos']??0) ?> intentos y <?= (int)($resumen['transferencias_pendientes']??0) ?> transferencias sin confirmar; se excluyen del ranking de llamadas. <?= (int)($resumen['por_registrar']??0) ?> llamadas por registrar.</span></div>
+    <?php elseif ($area === 'cuenta_clave'): ?>
         <section class="performance-kpi-grid">
             <article>
                 <span class="performance-kpi-icon"><i class="bi bi-building-check"></i></span>
@@ -645,12 +647,19 @@ $rankingTitle = $vista === 'propio'
                                             ? 'Cuenta Clave'
                                             : ($area === 'marketing'
                                                 ? 'Marketing'
-                                                : 'Analista de Datos') ?>
+                                                : ($esAsesores ? 'Asesor de Ventas' : 'Analista de Datos')) ?>
                                     </span>
                                 </div>
                             </div>
 
-                            <?php if ($area === 'cuenta_clave'): ?>
+                            <?php if ($esAsesores): ?>
+                                <div class="performance-row-metrics">
+                                    <div><strong><?= (int)$fila['llamadas'] ?></strong><span>Llamadas</span></div>
+                                    <div><strong><?= (int)$fila['conversaciones_confirmadas'] ?></strong><span>Con contacto</span></div>
+                                    <div><strong><?= $fila['tasa_contacto']===null?'—':$esc(number_format($fila['tasa_contacto'],1)).'%' ?></strong><span>Tasa contacto</span></div>
+                                    <div><strong><?= $fila['cumplimiento_registro']===null?'—':$esc(number_format($fila['cumplimiento_registro'],1)).'%' ?></strong><span>Registro</span></div>
+                                </div>
+                            <?php elseif ($area === 'cuenta_clave'): ?>
                                 <div class="performance-row-metrics is-account">
                                     <div>
                                         <strong><?= (int)($fila['aliados_trabajados'] ?? 0) ?></strong>
@@ -781,7 +790,7 @@ $rankingTitle = $vista === 'propio'
                         ? 'Difusiones, actualizaciones y confirmaciones registradas por día.'
                         : ($area === 'marketing'
                             ? 'Convocatorias publicadas y actualizadas por día.'
-                            : 'Interacciones útiles, llamadas con contacto y llamadas efectivas registradas por día.') ?>
+                            : ($esAsesores ? 'Llamadas, contactos confirmados y resultados registrados por día.' : 'Interacciones útiles, llamadas con contacto y llamadas efectivas registradas por día.')) ?>
                 </p>
             </div>
             <span class="performance-period-badge">
@@ -834,7 +843,7 @@ $rankingTitle = $vista === 'propio'
                                     class="is-secondary"
                                     style="height: <?= $esc(number_format($altoSecundario, 2, '.', '')) ?>%"
                                     title="<?= $secundario ?>"></span>
-                                <?php if ($area === 'cuenta_clave' || $area === 'analistas'): ?>
+                                <?php if ($area === 'cuenta_clave' || $area === 'analistas' || $esAsesores): ?>
                                     <span
                                         class="is-tertiary"
                                         style="height: <?= $esc(number_format($altoTerciario, 2, '.', '')) ?>%"
@@ -852,7 +861,11 @@ $rankingTitle = $vista === 'propio'
             </div>
 
             <div class="performance-chart-legend">
-                <?php if ($area === 'cuenta_clave'): ?>
+                <?php if ($esAsesores): ?>
+                    <span><i class="is-primary"></i> Llamadas</span>
+                    <span><i class="is-secondary"></i> Con contacto confirmado</span>
+                    <span><i class="is-tertiary"></i> Resultados registrados</span>
+                <?php elseif ($area === 'cuenta_clave'): ?>
                     <span><i class="is-primary"></i> Difusiones</span>
                     <span><i class="is-secondary"></i> Actualizaciones</span>
                     <span><i class="is-tertiary"></i> Confirmaciones</span>

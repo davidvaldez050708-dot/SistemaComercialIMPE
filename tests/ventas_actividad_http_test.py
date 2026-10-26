@@ -68,7 +68,8 @@ try:
             except urllib.error.HTTPError as e:return e.code,dict(e.headers),e.read()
         code,headers,body=request()
         assert code==200,body.decode(errors='replace')
-        text=body.decode();assert 'Asesor Propio' in text and 'Asesor Ajeno' not in text
+        text=body.decode();assert 'performance-view-tabs' not in text
+        assert 'Asesor Propio' in text and 'Asesor Ajeno' not in text
         assert '00:00:25' in text and '13:00:00' in text and 'data-sales-report-pdf' in text
         assert 'Warning:' not in text and 'Fatal error' not in text
         assert request(action='index')[0]==200
@@ -83,7 +84,16 @@ try:
         assert request(periodo='personalizado',fecha_desde='2024-01-01',fecha_hasta='2024-01-31')[0]==200
         assert request(resultado='INTERESADO')[0]==200
         assert request(direccion='desconocida')[0]==400
-        assert request(controller='desempeno',action='index',area='asesores')[0]==200
+        for role in [1,2,3,6]:
+            code,_,body=request(controller='desempeno',action='index',area='asesores',role=role)
+            text=body.decode();assert code==200,text
+            assert 'data-performance-filter-form' in text and 'data-sales-activity-form' not in text
+            assert 'Asesor Ajeno' not in text or role in [1,2]
+            assert ('performance-index' in text)==(role!=3)
+            assert request(controller='desempeno',action='index',area='asesores',role=role,persona_id=302)[0]==(200 if role in [1,2] else 403)
+        assert request(controller='desempeno',action='index',area='asesores',role=2,estado_id=2)[0]==200
+        assert request(controller='desempeno',action='index',area='asesores',role=6,estado_id=2)[0]==403
+        assert request(controller='desempeno',action='index',area='asesores',role=3,estado_id=999)[0]==403
         for controller,action in [('reporte','ventasPdf'),('desempeno','exportarPdf')]:
             code,headers,pdf=request(controller=controller,action=action,area='asesores')
             assert code==200 and pdf.startswith(b'%PDF-'),(pdf[:1200],(root/'server.log').read_text(errors='replace'))

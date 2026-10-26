@@ -99,6 +99,6 @@ final class VentasActividadMetricas
     }
     public static function tiempoConfirmado(array $metricas): string
     {
-        return $metricas['duraciones_confirmadas'] ? self::tiempo($metricas['segundos']) : ($metricas['duraciones_pendientes'] ? 'Pendiente' : '—');
+        return !empty($metricas['duraciones_confirmadas']) ? self::tiempo((int)$metricas['segundos']) : (!empty($metricas['duraciones_pendientes']) ? 'Pendiente' : '—');
     }
 }

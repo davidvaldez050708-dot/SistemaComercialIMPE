@@ -11,9 +11,14 @@ final class VentasActividadService
     {
         $scope=VentasActividadAccess::alcance($desempeno);
         if ($scope==='') throw new DomainException('No tienes permiso para consultar esta actividad.');
-        foreach (['periodo','fecha_desde','fecha_hasta','persona_id','direccion','resultado','pagina'] as $key)
+        foreach (['periodo','fecha_desde','fecha_hasta','persona_id','direccion','resultado','pagina','estado_id'] as $key)
             if (isset($f[$key]) && !is_scalar($f[$key])) throw new InvalidArgumentException('Los filtros deben contener valores individuales.');
-        $people=$this->repo->personas($scope,(int)$_SESSION['usuario_id']);
+        $territorios=$desempeno?$this->repo->territorios($scope,(int)$_SESSION['usuario_id']):[];
+        $estadoId=$desempeno?filter_var($f['estado_id']??0,FILTER_VALIDATE_INT):0;
+        if ($estadoId===false || $estadoId<0) throw new InvalidArgumentException('Selecciona un territorio válido.');
+        if ($estadoId>0 && !in_array($estadoId,array_map('intval',array_column($territorios,'id')),true))
+            throw new DomainException('El territorio no pertenece a tu alcance autorizado.');
+        $people=$this->repo->personas($scope,(int)$_SESSION['usuario_id'],$estadoId);
         $person=filter_var($f['persona_id']??0,FILTER_VALIDATE_INT);
         if ($person===false || $person<0) throw new InvalidArgumentException('Selecciona un asesor válido.');
         if ($scope==='propio') {
@@ -30,7 +35,7 @@ final class VentasActividadService
         $calls=array_values(array_filter($calls,static fn($c)=>($direction===''||$c['direccion']===$direction) &&
             ($result===''||($c['registro']['resultado']??'PENDIENTE')===$result)));
         return VentasActividadMetricas::calcular($calls,$selected,$p)+['area'=>'asesores','area_label'=>'Asesores',
-            'vista'=>$scope,'periodo'=>$p,'personas'=>$people,'persona_id'=>$person,'direccion'=>$direction,'resultado'=>$result,
+            'territorios'=>$territorios,'estado_id'=>$estadoId,'vista'=>$scope,'periodo'=>$p,'personas'=>$people,'persona_id'=>$person,'direccion'=>$direction,'resultado'=>$result,
             'organizacion'=>$generar?$this->repo->organizacion(array_column($selected,'id')):[],
             'es_desempeno'=>$desempeno,'generado'=>$generar,'generado_por'=>trim(($_SESSION['nombre']??'').' '.($_SESSION['apellidos']??'')),
             'generado_por_rol'=>$_SESSION['rol']??'','fecha_generacion'=>date('d/m/Y H:i')];

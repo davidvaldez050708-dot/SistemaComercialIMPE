@@ -22,6 +22,25 @@ document.addEventListener('DOMContentLoaded', function () {
         form.submit();
     };
 
+    // Cambiar de área o territorio no debe reenviar una persona de otro equipo.
+    form.querySelector('#performance_area')?.addEventListener('change', function () {
+        const person=form.querySelector('[name="persona_id"]');
+        const territory=form.querySelector('[name="estado_id"]');
+        if (person) person.value='0';
+        if (territory) territory.value='0';
+    });
+    form.querySelector('#performance_estado')?.addEventListener('change', function () {
+        const person=form.querySelector('[name="persona_id"]');if (person) person.value='0';
+    });
+    form.addEventListener('input', function () {
+        const pdf=form.querySelector('[data-performance-pdf]');
+        if (pdf) { pdf.hidden=true;pdf.style.display='none'; }
+    });
+    form.addEventListener('change', function () {
+        const pdf=form.querySelector('[data-performance-pdf]');
+        if (pdf) { pdf.hidden=true;pdf.style.display='none'; }
+    });
+
     const syncCustomPeriod = function () {
         if (!periodSelect || !customPeriod) {
             return false;

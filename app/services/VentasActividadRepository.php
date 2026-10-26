@@ -24,7 +24,7 @@ final class VentasActividadRepository
     {
         return "$a.activo=1 AND ($a.fecha_inicio IS NULL OR $a.fecha_inicio<=CURDATE()) AND ($a.fecha_fin IS NULL OR $a.fecha_fin>=CURDATE())";
     }
-    public function personas(string $scope, int $uid): array
+    public function personas(string $scope, int $uid, int $estadoId = 0): array
     {
         if (!in_array($scope,['propio','equipo','global'],true) || $uid<=0) throw new DomainException('Alcance no autorizado.');
         $where = 'u.rol_id=3'; $args = [];
@@ -35,11 +35,29 @@ final class VentasActividadRepository
                 ON c.id=a.cuenta_clave_asignacion_id AND c.estado_id=a.estado_id
                 JOIN estados e ON e.id=a.estado_id AND e.estado=1
                 WHERE a.usuario_id=u.id AND a.tipo_asignacion=\'ASESOR\' AND c.tipo_asignacion=\'CUENTA_CLAVE\'
-                AND c.usuario_id=? AND '.self::vigente('a').' AND '.self::vigente('c').')';
+                AND c.usuario_id=? AND '.self::vigente('a').' AND '.self::vigente('c').($estadoId>0?' AND a.estado_id='.(int)$estadoId:'').')';
             $args[]=$uid;
+        }
+        if ($estadoId>0 && $scope!=='equipo') {
+            $where .= " AND EXISTS(SELECT 1 FROM asignaciones_territorio a WHERE a.usuario_id=u.id
+                AND a.tipo_asignacion='ASESOR' AND a.estado_id=? AND ".self::vigente('a').')';
+            $args[]=$estadoId;
         }
         return $this->rows("SELECT u.id,CONCAT_WS(' ',u.nombre,u.apellidos) nombre_completo,u.foto_perfil,u.estado activo
             FROM usuarios u WHERE $where ORDER BY u.nombre,u.apellidos,u.id",$args);
+    }
+    /** Territorios vigentes del alcance; la Dirección no necesita asignaciones. */
+    public function territorios(string $scope, int $uid): array
+    {
+        if (!in_array($scope,['propio','equipo','global'],true) || $uid<=0) throw new DomainException('Alcance no autorizado.');
+        if ($scope==='global') return $this->rows('SELECT id,nombre FROM estados WHERE estado=1 ORDER BY nombre');
+        $join='';$condition='a.usuario_id=?';
+        if ($scope==='equipo') {
+            $join=" JOIN asignaciones_territorio c ON c.id=a.cuenta_clave_asignacion_id AND c.estado_id=a.estado_id";
+            $condition="c.usuario_id=? AND c.tipo_asignacion='CUENTA_CLAVE' AND ".self::vigente('c');
+        }
+        return $this->rows("SELECT DISTINCT e.id,e.nombre FROM estados e JOIN asignaciones_territorio a ON a.estado_id=e.id
+            $join WHERE e.estado=1 AND a.tipo_asignacion='ASESOR' AND ".self::vigente('a')." AND $condition ORDER BY e.nombre",[$uid]);
     }
     public function llamadas(array $ids, array $p): array
     {
