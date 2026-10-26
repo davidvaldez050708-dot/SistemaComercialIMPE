@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 
@@ -84,6 +85,8 @@ class ZadarmaWebhookEventStoreService
         }
 
         $internal = trim((string)($registro['internal'] ?? ''));
+        // Aceptar el aviso firmado sin recrear una llamada retirada del CRM.
+        if (TelefoniaLimpiezaGuard::bloqueada($this->connection,$pbxCallId,$internal)) return true;
         $destination = trim((string)($registro['destination'] ?? ''));
         $destinationDigits = $this->soloDigitos($destination);
         $callerId = trim((string)($registro['caller_id'] ?? ''));

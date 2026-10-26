@@ -4,6 +4,7 @@ require_once __DIR__.'/TelefoniaTransferenciaOperacionService.php';
 require_once __DIR__.'/TelefoniaEntrantesAnalistaService.php';
 require_once __DIR__.'/TelefoniaRecepcionMarketingService.php';
 require_once __DIR__.'/TelefoniaDisponibilidadService.php';
+require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 final class TelefoniaNotificacionService
 {
     private mysqli $db;
@@ -59,6 +60,7 @@ final class TelefoniaNotificacionService
         }catch(Throwable $e){error_log('[campana_historial_llamadas] '.get_class($e));}
         try{
         foreach((new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($user) as $op){
+            if (TelefoniaLimpiezaGuard::bloqueada($this->db,$op['referencia'],$ext)) continue;
             $direct=$op['modo']==='DIRECTA';$source=(int)$op['origen_usuario']===$user;
             if($direct){
                 // Una respuesta posterior del destino invalida la incertidumbre

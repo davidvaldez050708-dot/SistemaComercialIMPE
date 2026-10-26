@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/TelefoniaDevolucionVentasService.php';
 require_once __DIR__.'/TelefoniaProgramacionVentasService.php';
 require_once __DIR__.'/TelefoniaDisponibilidadService.php';
+require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 
 /** Usa la campana, lectura y cadencia compartidas. No incorpora otro polling de avisos. */
 final class TelefoniaNotificacionVentasService
@@ -57,6 +58,7 @@ final class TelefoniaNotificacionVentasService
         try{$operations=$this->rows("SELECT o.* FROM telefonia_transferencia_operaciones o WHERE destino_usuario=? AND EXISTS(SELECT 1 FROM telefonia_disponibilidad d WHERE d.destino_usuario=o.destino_usuario AND d.destino_extension=BINARY o.destino_extension AND d.referencia=BINARY o.referencia AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.tipo'))='PROSPECTO') AND estado IN ('SIN_RESPUESTA','SIN_CONFIRMAR') AND created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 DAY) ORDER BY created_at DESC",[$uid]);}
         catch(Throwable $e){error_log('[ventas_avisos_transferencias] '.get_class($e));$operations=[];}
         foreach($operations as $op){$scope=$op['referencia'].'|'.$op['destino_extension'];
+            if (TelefoniaLimpiezaGuard::bloqueada($this->db,$op['referencia'],$op['destino_extension'])) continue;
             if(!empty($facts[$scope]['conectada'])||isset($covered[$scope])||!empty($facts[$scope]['finalizada']))continue;
             $confirmed=$op['estado']==='SIN_RESPUESTA';$date=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
             $add('ventas:transferencia:'.$op['id'].':'.$op['intento'].':'.$op['estado'],$op['destino_extension'],$op['numero'],$date,$confirmed?'Transferencia no contestada':'Transferencia sin confirmación',
