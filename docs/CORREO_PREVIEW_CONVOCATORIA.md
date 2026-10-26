@@ -1,0 +1,11 @@
+# Vista previa de convocatoria en Redactar correo
+
+Base `3ea6d960`. Sólo dos archivos de presentación: `app/views/correos/index.php` mueve la figura debajo del estado/leyenda de la convocatoria; `public/css/correos_marketing.css` limita la imagen a 300 px, `max-width:100%`, `height:auto`, `object-fit:contain` y separa la figura 10 px de la leyenda. Las reglas sólo se aplican dentro de `#modalCorreoMarketing`.
+
+Antes ocupaba todo el ancho disponible. En Chrome con fixtures pasó de 618 a 300 px en escritorio/tableta y de 338 a 300 px a 390 px de pantalla. A 320 px se adapta a 268 px. Imágenes verticales y horizontales conservan su proporción completa. El modal, pie, campos, botones y tipografía mantienen sus dimensiones y estilos; sólo cambia el espacio ocupado por la figura.
+
+Validación dirigida: lint PHP y Chrome a 1440, 820, 390 y 320 px con la vista y JavaScript reales y API/imágenes ficticias. Se comprueban posición, separación, proporciones, cambio de convocatoria, limpieza, datos/archivo del formulario y ausencia de desbordamiento. Cero envíos o guardados. No se modifican JS, endpoints, controladores, servicios, MIME, HTML del mensaje, imágenes originales, filtros, enlaces, borradores, adjuntos, credenciales ni BD.
+
+Publicador: `tools/publicar_preview_convocatoria_correo_hostinger.sh`; SHA256 `31f6b981d08fe73db747aafec086812acd2dd870df3c919e104545153651ffe5`. Admite `--check`, `--apply`, `--restore RUTA`. Parchea únicamente los fragmentos exactos de la vista y el bloque CSS, conservando personalizaciones exteriores y LF/CRLF; rechaza estructuras incompatibles. Valida ambos archivos antes de instalar, guarda respaldo privado fuera de public_html y rechaza restaurar sobre ediciones posteriores. Pruebas sobre sitios ficticios: check sin escritura, aplicación idempotente, reversión exacta, estado parcialmente actualizado, rechazo de incompatibilidades y archivos protegidos intactos.
+
+Tras descargar y verificar como `$HOME/impe-publicadores/preview-convocatoria-correo.sh`, ejecutar `bash "$HOME/impe-publicadores/preview-convocatoria-correo.sh" --check` y después `--apply`. Conservar el comando de restauración y la ruta exacta del respaldo que imprime. Recargar Redactar correo con Ctrl+F5. Pendiente confirmar visualmente en Hostinger después de aplicar; no se despliega ni fusiona automáticamente.

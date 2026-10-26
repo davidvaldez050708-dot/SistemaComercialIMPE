@@ -5,6 +5,7 @@ require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../services/AliadoDifusionService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../models/AliadoInternacionalModel.php';
+require_once __DIR__ . '/../services/AliadoNuevoNotificationService.php';
 
 class AliadoController
 {
@@ -134,6 +135,18 @@ class AliadoController
                 ['estado_id' => $estadoId]
             )
             : [];
+
+        // Sólo el destinatario que abrió el territorio y tiene el aliado en su
+        // listado autorizado puede consumir este aviso. No marca los demás.
+        $avisoAliadoId = (int)($_GET['aviso_aliado'] ?? 0);
+        if (!$esAdministrador && $avisoAliadoId > 0) {
+            foreach ($aliados as $aliadoVisible) {
+                if ((int)($aliadoVisible['aliado_asignacion_id'] ?? 0) === $avisoAliadoId) {
+                    (new AliadoNuevoNotificationService())->marcarLeido($avisoAliadoId, $usuarioId);
+                    break;
+                }
+            }
+        }
 
         $municipiosAliados = [];
         $analistasAliados = [];
