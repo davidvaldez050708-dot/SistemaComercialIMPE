@@ -113,3 +113,35 @@ Pruebas aprobadas de la entrega: MySQL 8 y MariaDB 10.11 por SQL y HTTP, cuatro 
 Chromium y WebKit: vista personal y nacional, filtros, fechas personalizadas, gráfico, rango de 366 días, contenido escapado, diseño de escritorio y móvil de 320, 390 y 844 px. PDF A4 multipágina con cifras y detalle completo y regresión del PDF del analista. Publicador de 16 archivos probado con LF/CRLF, dependencias intactas, conflictos, respaldo y restauración exacta.
 
 La instalación y comprobación final en el sitio real se realizan con el bloque anterior; las pruebas no usan cuentas, contactos ni grabaciones de producción.
+
+## Corrección de alineación de «Exportar PDF»
+
+La entrega `abb6f40a3bd320cf7e0f3677b6c99afb7a88b04f` centra vertical y horizontalmente el texto y el icono del botón. Sólo cambia `public/css/ventas_actividad.css`; no requiere reinstalar permisos ni cerrar el teléfono. Se comprobó en escritorio y móvil, con botones de 40 y 50 píxeles de altura.
+
+Ejecutar este bloque completo en SSH. Comprueba las descargas, valida la versión instalada y respalda el CSS antes de aplicar. Si detecta una personalización desconocida, se detiene sin cambiar el sitio.
+
+```bash
+(
+set -eu
+SITIO="$HOME/domains/fundacionrededumex.org/public_html"
+PAQUETE="$HOME/impe-boton-pdf-abb6f40a"
+BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/abb6f40a3bd320cf7e0f3677b6c99afb7a88b04f"
+mkdir -p "$PAQUETE"
+chmod 700 "$PAQUETE"
+cd "$PAQUETE"
+curl -fsSL "$BASE/tools/publicar_boton_pdf_asesores.py" -o publicar_boton_pdf_asesores.py
+curl -fsSL "$BASE/tools/boton_pdf_asesores_release.json" -o boton_pdf_asesores_release.json
+printf '%s\n' '0724cf5ac3638b23ddb7e2ea348aaa3e585a14ad66d0170870e2c06c7acbe660  publicar_boton_pdf_asesores.py' '8c35acc5c07d42193ac54f51399f1340699abc0de261ba433a418f2a20907053  boton_pdf_asesores_release.json' | sha256sum -c -
+python3 publicar_boton_pdf_asesores.py --site "$SITIO" --backup-root "$HOME/respaldos-impe-boton-pdf" --check
+python3 publicar_boton_pdf_asesores.py --site "$SITIO" --backup-root "$HOME/respaldos-impe-boton-pdf" --apply
+)
+```
+
+Después, recargar la pantalla. La vista versiona el CSS con `filemtime` para solicitar automáticamente el archivo actualizado. Si fuera necesario volver al estilo anterior, utilizar el directorio exacto que mostró `APLICADO. RESPALDO:`:
+
+```bash
+python3 "$HOME/impe-boton-pdf-abb6f40a/publicar_boton_pdf_asesores.py" \
+  --site "$HOME/domains/fundacionrededumex.org/public_html" \
+  --backup-root "$HOME/respaldos-impe-boton-pdf" \
+  --restore "$HOME/respaldos-impe-boton-pdf/REEMPLAZAR_POR_EL_RESPALDO_GENERADO"
+```
