@@ -7,7 +7,7 @@ final class LimpiezaLlamadasPrueba
     private mysqli $db;
     public const PROTECCION=[
         'app/services/TelefoniaLimpiezaGuard.php'=>['17d03adc29084f54b7cdb7b8c09594b9f4da257dc469b674f221b4cdeae227bf'],
-        'app/services/ZadarmaWebhookEventStoreService.php'=>['81d4aa5b90e25b1ae99902f117485543700904aee6776c47a3ca77e5e7e42067'],
+        'app/services/ZadarmaWebhookEventStoreService.php'=>['16558bf31cc095863bee42a2eceb9a9a3e5d3c19f34254e1d229c7f63b3747ee'],
         'app/services/TelefoniaVentasLlamadasService.php'=>['951e7082bf3fc676815eb66298c6b0f9aaa4a83d952988932d978b9682347f1d'],
         'app/services/TelefoniaRecepcionMarketingService.php'=>['3ea80f2a09a7aa16852963940b39a6bc92c074dd355486bbcc9fef5fdec7db46'],
         'app/services/TelefoniaNotificacionService.php'=>['1c2cea7838c75c3e90f4e118180f67c5b11b461d5b14fc516c3389b940e6d3b6','e41aa780935cf14bfd9cb7a98c80ad3a40d372b95aed1039cdcc2c1889952785'],
@@ -110,7 +110,12 @@ final class LimpiezaLlamadasPrueba
             $ext=(string)$r['internal'];$e=$extensions[$ext]??null;
             if(!$e||$r['received_at']>$cut['mx'])continue;
             $since=max((string)$e['created_at'],(string)$e['updated_at']);
-            if($r['received_at']>=$since&&(($r['call_start']??'')===''||$r['call_start']>=$since))$pair($r['pbx_call_id'],$ext);
+            if($r['received_at']>=$since) {
+                $pair($r['pbx_call_id'],$ext);
+                // La bandeja de Recepción consulta received_at. Un inicio anterior
+                // a la asignación se oculta sólo para ese tramo, sin destruir su evidencia.
+                if(($r['call_start']??'')!==''&&$r['call_start']<$since)$protected[$r['pbx_call_id']]=true;
+            }
         }
         // Preservar todas las evidencias de un tramo ajeno o de propiedad incierta.
         foreach($events as $r)if(isset($refs[$r['pbx_call_id']])&&$r['internal']!==''&&!isset($pairs[$r['pbx_call_id']][$r['internal']]))$protected[$r['pbx_call_id']]=true;

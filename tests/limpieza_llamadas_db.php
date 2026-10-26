@@ -62,6 +62,7 @@ try {
  cleanCheck(TelefoniaLimpiezaGuard::bloqueada($db,'call-shared-analyst','100')&&!TelefoniaLimpiezaGuard::bloqueada($db,'call-shared-analyst','101'),'Exclusión por tramo sin bloquear Analista');
  $event('call-clean-sales','150','NOTIFY_ANSWER',date('Y-m-d H:i:s'));$event('call-shared-analyst','100','NOTIFY_ANSWER',date('Y-m-d H:i:s'));
  cleanCheck((int)$db->query("SELECT COUNT(*) n FROM telefonia_zadarma_eventos WHERE pbx_call_id='call-clean-sales'")->fetch_assoc()['n']===0,'Webhook tardío no resucita una llamada borrada');
+ cleanCheck((int)$db->query("SELECT COUNT(*) n FROM telefonia_zadarma_eventos WHERE pbx_call_id='call-shared-analyst'")->fetch_assoc()['n']===count($sharedBefore)+1,'Evento tardío compartido se conserva para el Analista sin reaparecer en Recepción');
  (new TelefoniaVentasLlamadasService($db))->sincronizar(8);cleanCheck(cleanRows($db,'telefonia_ventas_llamadas')===[],'Sincronización no reconstruye ventas anteriores');
  $sql=TelefoniaLimpiezaGuard::condicion($db,'e.pbx_call_id','e.internal');cleanCheck((int)$db->query("SELECT COUNT(*) n FROM telefonia_zadarma_eventos e WHERE $sql AND internal='101'")->fetch_assoc()['n']===1,'La consulta conserva el tramo de Analista');
  $_SESSION=['usuario_id'=>7,'rol_id'=>7,'rol'=>'Marketing','permisos'=>['telefonia.usar','telefonia.recibir','telefonia.salientes']];

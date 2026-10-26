@@ -85,8 +85,9 @@ class ZadarmaWebhookEventStoreService
         }
 
         $internal = trim((string)($registro['internal'] ?? ''));
-        // Aceptar el aviso firmado sin recrear una llamada retirada del CRM.
-        if (TelefoniaLimpiezaGuard::bloqueada($this->connection,$pbxCallId,$internal)) return true;
+        // En llamadas compartidas se conserva todo el evento para el Analista;
+        // sólo una exclusión global impide almacenar la referencia completa.
+        if (TelefoniaLimpiezaGuard::bloqueada($this->connection,$pbxCallId,'')) return true;
         $destination = trim((string)($registro['destination'] ?? ''));
         $destinationDigits = $this->soloDigitos($destination);
         $callerId = trim((string)($registro['caller_id'] ?? ''));
