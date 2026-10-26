@@ -333,7 +333,7 @@ class AgendaReunionService
         }
 
         if (!$this->repo->confirmar($reunionId, (int)$usuarioId, $zoomUrl, $ubicacion, $notas)) {
-            return $this->error('La solicitud fue atendida por otro usuario.', 409);
+            return $this->error('No fue posible actualizar la solicitud. Actualiza la agenda para comprobar su estado y la fecha propuesta.', 409);
         }
 
         $this->repo->registrarInteraccion(
@@ -379,7 +379,7 @@ class AgendaReunionService
         }
 
         if (!$this->repo->solicitarCambio($reunionId, (int)$usuarioId, $motivo)) {
-            return $this->error('La solicitud fue atendida por otro usuario.', 409);
+            return $this->error('No fue posible actualizar la solicitud. Actualiza la agenda para comprobar su estado y la fecha propuesta.', 409);
         }
 
         $this->repo->registrarInteraccion(
@@ -713,11 +713,10 @@ class AgendaReunionService
         }
 
         $esSupervisor =
-            tienePermiso('reuniones.gestionar') &&
-            !tienePermiso('reuniones.solicitar');
+            tienePermiso('reuniones.gestionar');
 
         $filas = $esSupervisor
-            ? $this->repo->pendientesKam((int)$limite)
+            ? $this->repo->pendientesKam((int)$limite, (int)$usuarioId)
             : $this->repo->pendientesAnalista((int)$usuarioId, (int)$limite);
         $salida = [];
         $ahora = new DateTimeImmutable();
