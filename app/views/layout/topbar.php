@@ -19,7 +19,8 @@ $mostrarCentroAvisos =
         tienePermiso('reuniones.ver') &&
         ($puedeSolicitarReuniones || $puedeGestionarReuniones)
     ) ||
-    tienePermiso('aliados.seguimiento_convocatorias');
+    tienePermiso('aliados.seguimiento_convocatorias') ||
+    tienePermiso('aliados.ver');
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
 $mostrarAgendaReuniones =
     tienePermiso('reuniones.ver') &&

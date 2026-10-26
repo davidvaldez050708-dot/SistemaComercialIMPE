@@ -309,6 +309,14 @@ $fechasOpcionalesConvocatoria =
                 data-territory-name="<?= $texto(mb_strtolower($nombreEstado, 'UTF-8')) ?>">
                 <div class="data-card-heading">
                     <h3><?= $texto($nombreEstado) ?></h3>
+                    <p class="small mt-2 mb-0 text-muted">
+                        <?php if (is_array($totalesConvocatoriasPorEstado ?? null)): ?>
+                            <?php $totalEstado = (int)($totalesConvocatoriasPorEstado[(int)$estado['id']] ?? 0); ?>
+                            Total: <strong class="text-dark"><?= $totalEstado ?> <?= $totalEstado === 1 ? 'convocatoria' : 'convocatorias' ?></strong>
+                        <?php else: ?>
+                            Total no disponible
+                        <?php endif; ?>
+                    </p>
                 </div>
 
                 <div class="convocatoria-territory-map">
@@ -854,7 +862,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
         </div>
 
         <div class="module-toolbar-actions" data-convocatoria-create-action>
-            <?php if ($puedeCrear): ?>
+            <?php if ($puedeCrear && !empty($desdeConvenio)): ?>
                 <button
                     type="button"
                     class="btn btn-system-save"
@@ -1052,6 +1060,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
     </div>
 </div>
 
+<?php if (!empty($desdeConvenio)): ?>
 <div
     class="modal fade"
     id="modalCrearConvocatoria"
@@ -1447,6 +1456,7 @@ $convocatoriasHistorialIniciales = array_values(array_filter(
     </div>
 </div>
 
+<?php endif; ?>
 <div
     class="modal fade"
     id="modalConvocatoriaQr"

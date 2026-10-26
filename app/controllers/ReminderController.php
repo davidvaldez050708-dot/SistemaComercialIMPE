@@ -11,6 +11,7 @@ require_once __DIR__ . '/../services/ReminderMeetingConfirmationService.php';
 require_once __DIR__ . '/../services/SeguimientoCambioDatosService.php';
 require_once __DIR__ . '/../services/AliadoSeguimientoReminderService.php';
 require_once __DIR__ . '/../services/AdminNotificationService.php';
+require_once __DIR__ . '/../services/AliadoNuevoNotificationService.php';
 
 class ReminderController
 {
@@ -49,6 +50,7 @@ class ReminderController
             ($esSupervisor || $esAnalista);
         $puedeSeguimientoAliados =
             tienePermiso('aliados.seguimiento_convocatorias');
+        $puedeNovedadesAliados = tienePermiso('aliados.ver');
         $puedeTelefonia=tienePermiso('telefonia.usar')&&(tienePermiso('telefonia.recibir')||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')));
 
         if (
@@ -56,7 +58,7 @@ class ReminderController
             (
                 !$esAdministrador &&
                 !$puedeCentroReuniones &&
-                !$puedeSeguimientoAliados && !$puedeTelefonia
+                !$puedeSeguimientoAliados && !$puedeNovedadesAliados && !$puedeTelefonia
             )
         ) {
             http_response_code(403);
@@ -311,6 +313,15 @@ class ReminderController
                 (bool)($seguimientoAliados['ok'] ?? true);
         }
 
+        if ($puedeNovedadesAliados) {
+            $servicioNuevosAliados = new AliadoNuevoNotificationService();
+            $nuevosAliados = $servicioNuevosAliados->obtener($usuarioId, 10);
+            $recordatorios = array_merge($nuevosAliados['recordatorios'], $recordatorios);
+            $avisos = array_merge($nuevosAliados['avisos'], $avisos);
+            $requiereMigracion = $requiereMigracion || $nuevosAliados['requiere_migracion'];
+            $ok = $ok && $nuevosAliados['ok'];
+        }
+
         $telefoniaOk=false;
         if($puedeTelefonia){
             try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';
@@ -325,6 +336,9 @@ class ReminderController
             0,
             12
         );
+        if (isset($servicioNuevosAliados)) {
+            $servicioNuevosAliados->registrarEntregados($usuarioId, $recordatorios);
+        }
 
         echo json_encode([
             'ok' => $ok||$telefoniaOk,
