@@ -14,10 +14,11 @@ $filter=['controller'=>'reporte','action'=>'ventas','area'=>'asesores','generar'
 ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/desempeno.css?v=<?= filemtime(ROOT_PATH.'/public/css/desempeno.css') ?>">
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/ventas_actividad.css?v=<?= filemtime(ROOT_PATH.'/public/css/ventas_actividad.css') ?>">
+<iframe name="impeReportePdfDownload" title="Descarga de PDF" data-pdf-download-frame hidden aria-hidden="true" tabindex="-1"></iframe>
 <section class="performance-module sales-activity-module">
     <header class="dashboard-panel performance-hero">
         <div><span class="performance-eyebrow">ASESORES · ACTIVIDAD TELEFÓNICA</span><h1><?= $e($title) ?></h1><p>Consulta las llamadas, sus resultados y el tiempo confirmado de atención en el periodo seleccionado.</p></div>
-        <?php if ($urlActividadPdf!==''): ?><a class="btn btn-system-save" href="<?= $e($urlActividadPdf) ?>" data-sales-report-pdf target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Exportar PDF</a><?php endif; ?>
+        <?php if ($urlActividadPdf!==''): ?><a class="btn btn-system-save" href="<?= $e($urlActividadPdf) ?>" data-sales-report-pdf target="impeReportePdfDownload"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Exportar PDF</a><?php endif; ?>
     </header>
     <?php if ($errorActividad!==''): ?><div class="alert alert-danger" role="alert"><?= $e($errorActividad) ?></div><?php endif; ?>
     <section class="dashboard-panel performance-filter-panel">

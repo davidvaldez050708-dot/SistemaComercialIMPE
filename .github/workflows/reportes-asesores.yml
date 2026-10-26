@@ -57,6 +57,7 @@ jobs:
         run: |
           node tests/ventas_actividad_browser.cjs
           node tests/ventas_desempeno_browser.cjs
+          node tests/ventas_pdf_descarga_browser.cjs
   pdf:
     runs-on: ubuntu-latest
     steps:
@@ -85,3 +86,4 @@ jobs:
           python3 tests/publicacion_reportes_asesores_test.py
           python3 tests/publicacion_desempeno_asesores_ranking_test.py
           python3 tests/publicacion_desempeno_sin_territorio_test.py
+          python3 tests/publicacion_pdf_descarga_directa_test.py

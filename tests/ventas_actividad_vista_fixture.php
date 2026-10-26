@@ -41,7 +41,7 @@ if (str_starts_with($argv[1]??'','pdf')) {
     if (!$pdf['ok']) throw new RuntimeException(json_encode($pdf));
     file_put_contents($argv[3],$pdf['contenido_pdf']);echo $pdf['nombre_archivo'];exit;
 }
-$desempeno=true;$errorActividad='';$urlActividadPdf=BASE_URL.'index.php?'.http_build_query(['controller'=>'desempeno','action'=>'exportarPdf','area'=>'asesores','periodo'=>'semana','persona_id'=>$role===3?301:0]);
+$desempeno=true;$errorActividad='';$urlActividadPdf=BASE_URL.'index.php?'.http_build_query(['controller'=>$esVistaDesempeno?'desempeno':'reporte','action'=>$esVistaDesempeno?'exportarPdf':'ventasPdf','area'=>$modo==='analistas'?'analistas':'asesores','periodo'=>'semana','persona_id'=>$role===3?301:0]);
 echo '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/bootstrap.css"><link rel="stylesheet" href="/public/css/global.css"><link rel="stylesheet" href="/public/css/dashboard.css"><link rel="stylesheet" href="/icons/bootstrap-icons.css"><body style="padding:16px;background:#f4f7fa">';
 if ($esVistaDesempeno) {
     $desempeno=$actividad;$urlExportarPdf=$urlActividadPdf;$errorDesempeno='';

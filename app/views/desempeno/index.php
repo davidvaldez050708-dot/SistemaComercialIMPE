@@ -197,6 +197,7 @@ $rankingTitle = $vista === 'propio'
     );
 ?>
 
+<iframe name="impeDesempenoPdfDownload" title="Descarga de PDF" data-pdf-download-frame hidden aria-hidden="true" tabindex="-1"></iframe>
 <section class="performance-module" data-performance-module>
     <?php if (!empty($errorDesempeno)): ?>
         <div class="alert alert-danger login-alert mb-3" role="alert">
@@ -374,7 +375,7 @@ $rankingTitle = $vista === 'propio'
                 <?php if ($urlExportarPdf !== ''): ?>
                     <a
                         href="<?= $esc($urlExportarPdf) ?>"
-                        class="btn btn-system-light" data-performance-pdf target="_blank" rel="noopener">
+                        class="btn btn-system-light" data-performance-pdf target="impeDesempenoPdfDownload">
                         <i class="bi bi-file-earmark-pdf"></i>
                         Exportar PDF
                     </a>
