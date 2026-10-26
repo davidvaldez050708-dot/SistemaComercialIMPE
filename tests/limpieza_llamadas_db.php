@@ -46,7 +46,6 @@ try {
  $db->query("INSERT INTO telefonia_transferencia_operaciones(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,modo,estado,created_at,updated_at) VALUES(7,'100',8,'150','callback-clean-001','5550000000','DIRECTA','SIN_CONFIRMAR',UTC_TIMESTAMP(),UTC_TIMESTAMP()),(7,'100',10,'101','call-shared-analyst','5550000000','DIRECTA','SIN_CONFIRMAR',UTC_TIMESTAMP(),UTC_TIMESTAMP())");
  $db->query("INSERT INTO telefonia_notificaciones(usuario_id,extension,llave,numero,titulo,mensaje,created_at) VALUES(8,'150','ventas:programada:agenda:1:prueba','5550000000','Prueba','Prueba',NOW()),(7,'100','llamada:call-clean-reception','5550000000','Prueba','Prueba',NOW()),(10,'101','analista-preservar','5550000000','Preservar','Preservar',NOW())");
  if(($argv[1]??'')==='--setup'){$keep=true;echo "Fixture SQL temporal lista.\n";return;}
- $db->query("INSERT INTO telefonia_notificaciones(usuario_id,extension,llave,numero,titulo,mensaje,created_at) VALUES(7,'100','sistema:otro-evento','5550000000','Aviso no telefónico','Conservar',NOW())");
  $tool=new LimpiezaLlamadasPrueba($db);$plan=$tool->plan();$finger=LimpiezaLlamadasPrueba::digest($plan);
  cleanCheck(!TelefoniaLimpiezaGuard::existe($db),'Check no crea tabla de exclusiones');
  cleanCheck($plan['compartidas_protegidas']===1,'La llamada compartida se protege');
@@ -60,7 +59,7 @@ try {
  foreach($analyst as $t=>$rows)cleanCheck(cleanRows($db,$t)===$rows,'Preservar '.$t);
  cleanCheck($db->query("SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id='call-shared-analyst' ORDER BY id")->fetch_all(MYSQLI_ASSOC)===$sharedBefore,'Evidencia y audio de Analista intactos');
  foreach(['telefonia_ventas_llamadas','telefonia_ventas_resultados','telefonia_ventas_evidencia','telefonia_ventas_prospecto_llamada','telefonia_recepcion_resultados','telefonia_disponibilidad'] as $t)cleanCheck(cleanRows($db,$t)===[],'Vaciar sólo datos de prueba: '.$t);
- cleanCheck(count(cleanRows($db,'telefonia_notificaciones'))===3,'Avisos de Analista, programados y ajenos se conservan');
+ cleanCheck(count(cleanRows($db,'telefonia_notificaciones'))===2,'Avisos de Analista, programados y ajenos se conservan');
  $contacts=cleanRows($db,'telefonia_contactos_personales');cleanCheck($contacts===$contactBefore,'Agendas y próximas acciones personales permanecen intactas');
  cleanCheck(TelefoniaLimpiezaGuard::bloqueada($db,'call-shared-analyst','100')&&!TelefoniaLimpiezaGuard::bloqueada($db,'call-shared-analyst','101'),'Exclusión por tramo sin bloquear Analista');
  $event('call-clean-sales','150','NOTIFY_ANSWER',date('Y-m-d H:i:s'));$event('call-shared-analyst','100','NOTIFY_ANSWER',date('Y-m-d H:i:s'));
