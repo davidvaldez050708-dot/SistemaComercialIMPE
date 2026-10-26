@@ -26,7 +26,7 @@
     const connected=tracked.session?.isEstablished?.()===true;
     api.external(op,tracked.token,connected);
    }else if(!external && state.active){
-    api.publish({context:{...state.context,consultation:op.modo==='CONSULTADA',transferPendingReceiver:op.modo==='DIRECTA',transferOperation:op.id,transferFrom:op.origen_extension},transferFrom:op.origen_extension,message:op.modo==='CONSULTADA'?'Consulta con recepción. La persona está esperando; recepción debe completar la transferencia.':'Recepción está entregando la llamada.'});
+    api.publish({context:{...state.context,consultation:op.modo==='CONSULTADA',transferPendingReceiver:op.modo==='DIRECTA',transferOperation:op.id,transferReference:op.referencia,transferFrom:op.origen_extension},transferFrom:op.origen_extension,message:op.modo==='CONSULTADA'?'Consulta con recepción. La persona está esperando; recepción debe completar la transferencia.':'Recepción está entregando la llamada.'});
    }
   };
   const tick=async()=>{
