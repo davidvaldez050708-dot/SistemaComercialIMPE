@@ -61,9 +61,10 @@ $mostrarReportesEnAnalisis =
     $mostrarReportes;
 
 $mostrarDesempeno = tienePermiso('desempeno.ver');
+$mostrarSupervisionLlamadas = in_array((int)($_SESSION['rol_id'] ?? 0), [1,2,6], true) && tienePermiso('llamadas.supervision.ver');
 $mostrarAnalisis =
     $mostrarReportesEnAnalisis ||
-    $mostrarDesempeno;
+    $mostrarDesempeno || $mostrarSupervisionLlamadas;
 
 $etiquetaMenuConvocatorias = tienePermiso('convocatorias.gestionar')
     ? 'Gestión de Convocatorias'
@@ -336,6 +337,13 @@ $claseFormularios =
                         class="sidebar-link <?= $claseDesempeno ?>">
                         <i class="bi bi-trophy"></i>
                         Desempeño
+                    </a>
+                <?php endif; ?>
+
+                <?php if ($mostrarSupervisionLlamadas): ?>
+                    <a href="<?= BASE_URL ?>index.php?controller=reporte&amp;action=supervisionLlamadas"
+                       class="sidebar-link <?= $opcionActiva === 'supervision_llamadas' ? 'active' : '' ?>">
+                        <i class="bi bi-headset"></i> Supervisión de llamadas
                     </a>
                 <?php endif; ?>
 
@@ -684,6 +692,13 @@ $claseFormularios =
                             <i class="bi bi-trophy"></i>
                             Desempeño
 
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($mostrarSupervisionLlamadas): ?>
+                        <a href="<?= BASE_URL ?>index.php?controller=reporte&amp;action=supervisionLlamadas"
+                           class="sidebar-link <?= $opcionActiva === 'supervision_llamadas' ? 'active' : '' ?>">
+                            <i class="bi bi-headset"></i> Supervisión de llamadas
                         </a>
                     <?php endif; ?>
 

@@ -1,0 +1,10 @@
+.supervision-calls .supervision-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:end;margin-bottom:22px}
+.supervision-filters .data-filter-field{min-width:0}.supervision-filters .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px}
+.supervision-person{display:flex;align-items:center;gap:10px;margin-bottom:5px}.supervision-person .system-avatar{flex-shrink:0}
+.supervision-actions{display:flex;flex-wrap:wrap;gap:8px}.supervision-calls .linkage-call-history-footer{gap:12px;flex-wrap:wrap}
+.supervision-notice,.supervision-empty{background:#f5f8fc;border:1px solid #dce4f2;border-radius:14px;padding:20px;color:#526580}.supervision-empty{text-align:center}.supervision-empty h3{font-size:18px;margin:12px 0}
+.supervision-pagination{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:24px}
+.supervision-detail{width:min(640px,calc(100% - 32px));max-height:85dvh;overflow:auto;border:1px solid #dce4f2;border-radius:18px;padding:24px;color:#17243d;box-shadow:0 24px 80px #17243d26}
+.supervision-detail::backdrop{background:#17243d66}.supervision-detail header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}.supervision-detail h3{font-size:20px;margin:0}.supervision-detail dl{display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px}.supervision-detail dd{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}.supervision-detail p{color:#71829c;font-size:13px;margin-bottom:0}
+@media(max-width:900px){.supervision-calls .supervision-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.supervision-calls .supervision-filters{grid-template-columns:minmax(0,1fr)}.supervision-detail{padding:18px}.supervision-detail dl{grid-template-columns:minmax(0,1fr);gap:6px}.supervision-detail dd{margin-bottom:10px}.supervision-calls .linkage-call-recording-top{flex-wrap:wrap}.supervision-calls .linkage-call-recording-duration{white-space:normal}.supervision-person strong{overflow-wrap:anywhere}}

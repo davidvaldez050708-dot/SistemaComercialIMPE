@@ -6,6 +6,9 @@ require_once __DIR__ . '/../services/ReporteAdministradorDataService.php';
 
 class ReporteController
 {
+    public function supervisionLlamadas() { require_once __DIR__.'/SupervisionLlamadasController.php'; (new SupervisionLlamadasController())->ejecutar(); }
+    public function supervisionDetalle() { require_once __DIR__.'/SupervisionLlamadasController.php'; (new SupervisionLlamadasController())->ejecutar('detalle'); }
+    public function supervisionAudio() { require_once __DIR__.'/SupervisionLlamadasController.php'; (new SupervisionLlamadasController())->ejecutar('audio'); }
     public function ventas() { require_once __DIR__.'/VentasActividadController.php'; (new VentasActividadController())->mostrar(); }
     public function ventasPdf() { require_once __DIR__.'/VentasActividadController.php'; (new VentasActividadController())->mostrar(false, true); }
     public function usuarios()
