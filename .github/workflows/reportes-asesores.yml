@@ -61,6 +61,8 @@ jobs:
           SALES_BROWSER: ${{ matrix.browser }}
         run: |
           node tests/ventas_pendientes_browser.cjs
+          node tests/telefonia_ventas_saliente_resumen_browser.cjs
+          SALES_SUMMARY_VARIANT=hostinger node tests/telefonia_ventas_saliente_resumen_browser.cjs
           node tests/ventas_actividad_browser.cjs
           node tests/ventas_desempeno_browser.cjs
           node tests/ventas_pdf_descarga_browser.cjs
@@ -91,6 +93,7 @@ jobs:
           coverage: none
       - run: |
           python3 tests/publicacion_limpieza_llamadas_test.py
+          python3 tests/publicacion_ventas_resumen_saliente_test.py
           python3 tests/publicacion_ventas_pendientes_test.py
           python3 tests/publicacion_reportes_asesores_test.py
           python3 tests/publicacion_desempeno_asesores_ranking_test.py
