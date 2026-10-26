@@ -78,6 +78,11 @@ final class LimpiezaLlamadasPrueba
             $selected=[];
             foreach($this->leer($t) as $r) {
                 if(!isset($uids[(int)$r['usuario_id']]))continue;
+                // La campana comparte tabla con recordatorios comerciales:
+                // limpiar sólo llaves telefónicas atribuibles a llamadas.
+                // Preservar avisos "ventas:programada" y cualquier aviso ajeno.
+                if($t==='telefonia_notificaciones' &&
+                    !preg_match('/^(?:llamada:|transferencia:|consulta:|devolucion:|ventas:(?:llamada:|transferencia:|devolucion:))/',(string)($r['llave']??'')))continue;
                 $date=$t==='telefonia_ventas_llamadas'?($r['fecha']??''):($r['created_at']??'');
                 if($zone!==''&&$date!==''&&$date>$cut[$zone])continue;
                 if($t!=='telefonia_notificaciones')$pair((string)($r['pbx_call_id']??''),(string)($r['extension']??$r['extension_destino']??''));
@@ -125,9 +130,8 @@ final class LimpiezaLlamadasPrueba
         }
         $deleteEvents=array_values(array_filter($events,static fn($r)=>isset($refs[$r['pbx_call_id']])&&!isset($protected[$r['pbx_call_id']])&&$r['received_at']<=$cut['mx']));
         if($deleteEvents)$groups['telefonia_zadarma_eventos']=$this->grupo('telefonia_zadarma_eventos',$deleteEvents);
-        $contacts=[];
-        foreach($this->leer('telefonia_contactos_personales') as $r)if(isset($uids[(int)$r['usuario_id']])&&!empty($r['proxima_accion_at']))$contacts[]=$r;
-        if($contacts)$groups['telefonia_contactos_personales']=$this->grupo('telefonia_contactos_personales',$contacts,'agenda');
+        // La agenda y próximas acciones no son registros de llamada.
+        // Quedan intactas incluso cuando el historial se inicia desde cero.
         // Jamás desactivar claves foráneas ni confiar en una cascada desconocida.
         foreach($groups as $t=>$g)if($g['accion']==='delete'&&$g['filas']) {
             if($this->rows('SELECT TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE REFERENCED_TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME=?',[$t]))throw new RuntimeException('Hay claves foráneas hacia '.$t.'. Revisar dependencias antes de borrar.');
@@ -139,7 +143,10 @@ final class LimpiezaLlamadasPrueba
         }
         usort($blocks,static fn($a,$b)=>strcmp($a['pbx_call_id'].'|'.$a['extension'],$b['pbx_call_id'].'|'.$b['extension']));
         ksort($groups);
-        return ['version'=>1,'base'=>$clock['db'],'corte'=>$cut,'usuarios'=>$users,'grupos'=>array_values($groups),'exclusiones'=>$blocks,'compartidas_protegidas'=>$shared];
+        // La huella del plan tiene que ser estable entre --check y --apply.
+        // 'base' es metadata del corte, NO la hora actual de cada relectura.
+        // De otro modo una diferencia de un segundo rechaza incluso una BD intacta.
+        return ['version'=>1,'base'=>$cut['db'],'corte'=>$cut,'usuarios'=>$users,'grupos'=>array_values($groups),'exclusiones'=>$blocks,'compartidas_protegidas'=>$shared];
     }
     public static function resumen(array $plan): array {
         $counts=[];foreach($plan['grupos'] as $g)$counts[$g['tabla']]=['accion'=>$g['accion']==='agenda'?'quitar_programacion_sin_borrar_contacto':'eliminar','filas'=>count($g['filas'])];

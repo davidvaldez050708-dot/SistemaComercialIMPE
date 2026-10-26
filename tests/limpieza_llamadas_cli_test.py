@@ -1,5 +1,5 @@
 """CLI y archivos privados reales; SQL efímero, sin leer configuración privada del CRM."""
-import gzip,json,os,pathlib,shutil,stat,subprocess,tempfile,uuid
+import gzip,json,os,pathlib,shutil,stat,subprocess,tempfile,time,uuid
 R=pathlib.Path(__file__).resolve().parents[1]
 env=os.environ.copy();assert env.get('IMPE_TEST_MYSQL_PORT'),'Indicar sólo el puerto del SQL de pruebas'
 env['IMPE_LIMPIEZA_TEST_DB']='impe_limpieza_test_'+uuid.uuid4().hex[:10]
@@ -32,6 +32,7 @@ try:
         if os.name!='nt':assert stat.S_IMODE(private.stat().st_mode)==0o700 and stat.S_IMODE(backup.stat().st_mode)==0o600
         altered=site/'app/services/TelefoniaVentasLlamadasService.php';before=altered.read_bytes();altered.write_bytes(before+b'\n// Edicion posterior')
         run('--apply',str(backup),ok=False);altered.write_bytes(before)
+        time.sleep(2)  # Antes --apply fallaba aun si la BD no cambiaba.
         assert 'APLICADO' in run('--apply',str(backup));assert 'APLICADO' in run('--apply',str(backup))
         assert 'RESTAURADO' in run('--restore',str(backup))
         bad=folder/'alterado.json.gz';bad.write_bytes(backup.read_bytes());run('--restore',str(bad),ok=False)

@@ -1,0 +1,43 @@
+name: Limpieza CRM — plan estable y restauración
+on:
+  push:
+    branches:
+      - fix/limpieza-llamadas-plan-estable-20261026
+  pull_request:
+    paths:
+      - tools/limpiar_llamadas_prueba.php
+      - tests/limpieza_llamadas_db.php
+      - tests/limpieza_llamadas_cli_test.py
+      - .github/workflows/limpieza-llamadas-plan-estable.yml
+permissions:
+  contents: read
+jobs:
+  limpieza:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.engine }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['3306/tcp']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Probar un plan en SQL real (sin base de producción)
+        env:
+          IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          php -l tools/limpiar_llamadas_prueba.php
+          php tests/limpieza_llamadas_db.php
+          python3 -B tests/limpieza_llamadas_cli_test.py
