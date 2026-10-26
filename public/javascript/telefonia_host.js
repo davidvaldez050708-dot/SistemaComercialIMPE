@@ -2186,7 +2186,11 @@
                     String(state.context?.transferReference||'')===String(op.referencia||''));
                 const ownSessionEnded=Boolean(endedSession?.isEnded?.() &&
                     (!session || session===endedSession || session.isEnded?.()));
-                if(sameOperation && answered && ownSessionEnded){
+                // TIMBRANDO o SOLICITADA no demuestran entrega al cliente:
+                // el audio aún podría ser una consulta interna con Recepción.
+                const delivered=Boolean(['ENVIADA','ENTREGADA'].includes(op.estado) ||
+                    op.destino_atendida);
+                if(sameOperation && delivered && answered && ownSessionEnded){
                     const ref=String(op.referencia||''),duration=currentDuration();
                     answeredAtMs=0;
                     retirePbxCall(ref);
