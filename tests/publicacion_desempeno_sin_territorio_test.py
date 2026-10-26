@@ -17,7 +17,7 @@ for crlf in [False,True]:
             if old is not None:
                 p=site/row['path'];p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(before[row['path']])
         for d in spec['dependencies']:
-            data=(R/d['path']).read_bytes().replace(b'\r\n',b'\n');assert hashlib.sha256(data).hexdigest()==d['sha']
+            data=subprocess.check_output(['git','show','c959c06cffc38915244f5ae1f1e433354819c99d:'+d['path']],cwd=R).replace(b'\r\n',b'\n');assert hashlib.sha256(data).hexdigest()==d['sha']
             p=site/d['path'];p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data);dependencies[d['path']]=data
         extra=site/'public/css/responsive_sistema.css';extra.parent.mkdir(parents=True,exist_ok=True);extra.write_bytes(b'custom styles')
         command=[sys.executable,str(R/'tools/publicar_desempeno_asesores_sin_territorio.py'),'--site',str(site),'--backup-root',str(backups)]
