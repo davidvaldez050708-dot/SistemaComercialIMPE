@@ -43,5 +43,48 @@ const runtime=fs.readFileSync('public/javascript/telefonia_transferencia_runtime
  assert(actions.includes('TERMINADA'),'Informa fin de consulta por API de operación existente');
  await flow.tick();
  assert.equal(received.length,1,'Sin doble terminación ni cierre de llamada nueva');
+ // Saliente de Recepción -> Asesor: el SIP puede terminar cuando
+ // la operación sigue ENVIADA. Ese estado no debe enviarse a recuperación.
+ let endedBeforeDelivery=false,whenClosing=false,consultations=[],seen=[];
+ const directOp={...op,estado:'ENVIADA',destino_atendida:null};
+ const directSession={id:'rtc-own-outgoing-transfer-150',direction:'incoming',
+  remote_identity:{uri:{user:'100'}},isEnded:()=>endedBeforeDelivery,
+  isEstablished:()=>!endedBeforeDelivery};
+ const directState={active:true,direction:'incoming',phase:'in-progress',
+  callToken:'sdk-direct-150',destination:'100',pbxCallId:'',
+  context:{type:'SDK_INCOMING',sdkConnected:true}};
+ const directWin={location:{href:'https://crm.test/index.php'},zdrmWebPhone:{webCallSession:directSession},setTimeout(){}};
+ const directFetch=async(url,options={})=>{
+  const action=options.body?.get('accion')||'';
+  seen.push(action||'CONSULTA');
+  // La respuesta a TERMINADA puede llevar un estado más nuevo: la
+  // referencia entregada al callback debe ser la que cerró localmente.
+  return {ok:true,json:async()=>({ok:true,operacion:{...directOp,estado:action==='TERMINADA'?'SIN_CONFIRMAR':'ENVIADA'}})};
+ };
+ vm.runInNewContext(runtime,{window:directWin,fetch:directFetch,URL,URLSearchParams});
+ const directFlow=directWin.IMPE_TRANSFER_FLOW.create({
+  url:'https://crm.test/op',csrf:'token',
+  read:()=>directState,
+  publish:patch=>Object.assign(directState,patch),
+  external:()=>{throw Error('No se confirmó entrega; no inventar recepción externa')},
+  consultEnded:(operation,token,session)=>consultations.push({operation,token,session}),
+  receiverEnded:()=>{throw Error('No está entregada por PBX')},
+  notice:()=>{},finishSdk:()=>{},release:()=>{}
+ });
+ await directFlow.tick();
+ assert.equal(directState.context.transferReference,directOp.referencia,
+  'Referencia de operación ENVIADA se vincula a la sesión local');
+ assert.equal(directState.context.transferOperation,directOp.id,
+  'ID autorizado queda en el contexto propio');
+ endedBeforeDelivery=true;
+ await directFlow.tick();
+ assert.equal(consultations.length,1,'El cierre del SIP exacto se comunica sin esperar ENTREGADA');
+ assert.equal(consultations[0].operation.estado,'ENVIADA','No sustituir evidencia local por resultado tardío');
+ assert.equal(consultations[0].token,'sdk-direct-150','No heredar otra sesión');
+ assert.equal(consultations[0].session,directSession,'END corresponde al diálogo SIP del asesor');
+ assert(seen.includes('TERMINADA'),'Se conserva registro de fin en servicio');
+ await directFlow.tick();
+ assert.equal(consultations.length,1,'Sin terminar dos veces una misma llamada');
+
  console.log('OK: TransferFlow ENTREGADA informa END de SDK exacto una sola vez y no inventa END PBX');
 })().catch(e=>{console.error(e);process.exitCode=1});
