@@ -7,13 +7,23 @@
       "path": "public/javascript/telefonia_transferencia_runtime.js",
       "patches": [
         [
+          "  let tracked=null,busy=false,posting=false,external=false,delivered=false,endedReported=false,atendida=false,directRelease=false;\n  const reset=()=>{tracked=null;external=false;delivered=false;endedReported=false;atendida=false;directRelease=false;};\n",
+          "  let tracked=null,busy=false,posting=false,external=false,delivered=false,endedReported=false,atendida=false,directRelease=false;\n  // TERMINADA puede devolver el mismo registro durante varios sondeos.\n  // No volver a asociarlo al diálogo SIP ya finalizado, aun si reset() lo\n  // soltó. El token pertenece a una llamada; el siguiente INVITE usa otro.\n  let lastClosedReceiverToken='';\n  const reset=()=>{tracked=null;external=false;delivered=false;endedReported=false;atendida=false;directRelease=false;};\n",
+          ""
+        ],
+        [
           "   }else if(!external && state.active){\n    api.publish({context:{...state.context,consultation:op.modo==='CONSULTADA',transferPendingReceiver:op.modo==='DIRECTA',transferOperation:op.id,transferFrom:op.origen_extension},transferFrom:op.origen_extension,message:op.modo==='CONSULTADA'?'Consulta con recepción. La persona está esperando; recepción debe completar la transferencia.':'Recepción está entregando la llamada.'});\n   }",
           "   }else if(!external && state.active){\n    api.publish({context:{...state.context,consultation:op.modo==='CONSULTADA',transferPendingReceiver:op.modo==='DIRECTA',transferOperation:op.id,transferReference:op.referencia,transferFrom:op.origen_extension},transferFrom:op.origen_extension,message:op.modo==='CONSULTADA'?'Consulta con recepción. La persona está esperando; recepción debe completar la transferencia.':'Recepción está entregando la llamada.'});\n   }",
           ""
         ],
         [
+          "    if(!tracked && state.active && state.direction==='incoming' && (/^\\d{3,6}$/.test(state.destination)||state.context?.availabilityCandidate) && /^sdk-/.test(state.callToken||'')){\n",
+          "    if(!tracked && state.active && state.direction==='incoming' &&\n      String(state.callToken||'')!==lastClosedReceiverToken &&\n      (/^\\d{3,6}$/.test(state.destination)||state.context?.availabilityCandidate) && /^sdk-/.test(state.callToken||'')){\n",
+          ""
+        ],
+        [
           "    if(!tracked.source && session?.isEnded?.() && !endedReported){\n     endedReported=true;try{apply(await request(tracked.op.id,'TERMINADA'));}catch(e){endedReported=false;throw e;}\n     if(!external)api.consultEnded(tracked.op);\n     else api.receiverEnded?.(tracked.op,tracked.token,session);\n     reset();return;\n    }",
-          "    if(!tracked.source && session?.isEnded?.() && !endedReported){\n     // Guardar el diálogo SIP y la referencia de la operación ANTES de la\n     // petición: TERMINADA puede contestar con un estado distinto a ENTREGADA.\n     // La API sólo registra el fin; el END SIP propio acredita el cierre local.\n     const token=tracked.token,ownSession=session,operation=tracked.op;\n     endedReported=true;\n     try{apply(await request(operation.id,'TERMINADA'));}\n     catch(e){endedReported=false;throw e;}\n     // Un nuevo INVITE puede llegar mientras se espera la petición HTTP.\n     // Nunca trasladar su cierre al modal de la llamada siguiente.\n     if(api.read().callToken!==token){reset();return;}\n     if(!external)api.consultEnded(operation,token,ownSession);\n     else api.receiverEnded?.(operation,token,ownSession);\n     reset();return;\n    }",
+          "    if(!tracked.source && session?.isEnded?.() && !endedReported){\n     // Guardar el diálogo SIP y la referencia de la operación ANTES de la\n     // petición: TERMINADA puede contestar con un estado distinto a ENTREGADA.\n     // La API sólo registra el fin; el END SIP propio acredita el cierre local.\n     const token=tracked.token,ownSession=session,operation=tracked.op;\n     endedReported=true;\n     try{apply(await request(operation.id,'TERMINADA'));}\n     catch(e){endedReported=false;throw e;}\n     // Un nuevo INVITE puede llegar mientras se espera la petición HTTP.\n     // Nunca trasladar su cierre al modal de la llamada siguiente.\n     if(api.read().callToken!==token){reset();return;}\n     // Conservar el token de la llamada anterior fuera de reset().\n     // Evita reconsultar la misma transferencia en el siguiente intervalo,\n     // duplicar TERMINADA y reabrir el modal de un diálogo ya cerrado.\n     lastClosedReceiverToken=token;\n     if(!external)api.consultEnded(operation,token,ownSession);\n     else api.receiverEnded?.(operation,token,ownSession);\n     reset();return;\n    }",
           ""
         ]
       ]
