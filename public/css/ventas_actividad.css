@@ -1,6 +1,8 @@
 .sales-activity-module { min-width: 0; }
 .sales-activity-module [hidden] { display: none !important; }
 .sales-activity-module .performance-hero .btn { flex-shrink: 0; }
+.sales-activity-module [data-sales-report-pdf] { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.sales-activity-module [data-sales-report-pdf] > i { flex: 0 0 auto; line-height: 1; }
 .sales-activity-filters { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); align-items: end; gap: 14px; }
 .sales-activity-filters [hidden] { display: none !important; }
 .sales-activity-panel { padding: 20px; min-width: 0; }
