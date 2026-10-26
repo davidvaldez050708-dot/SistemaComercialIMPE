@@ -50,9 +50,7 @@ def lint(name, content):
     exe = 'php' if name.endswith('.php') else 'node' if name.endswith('.js') else ''
     tool = shutil.which(exe) if exe else None
     if not tool:
-        if exe == 'php':
-            abort('PHP CLI necesario para validar el paquete')
-        return
+        abort('Se requiere ' + exe + ' para verificar la sintaxis antes de publicar: ' + name)
     fd, temp = tempfile.mkstemp(suffix=Path(name).suffix)
     try:
         with os.fdopen(fd, 'wb') as out:
