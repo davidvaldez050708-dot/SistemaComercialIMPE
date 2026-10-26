@@ -164,6 +164,11 @@ class HomeController
                     $resumenMarketing['proximas_finalizar'] =
                         count($proximasFinalizarMarketing);
                     $coberturaMarketing = $modeloConvocatoria->obtenerCoberturaTerritorialDashboard(4);
+                    require_once __DIR__ . '/../models/MarketingIndicadoresModel.php';
+                    $indicadoresClaveMarketing = (new MarketingIndicadoresModel())->obtener(
+                        $resumenMarketing,
+                        $coberturaMarketing
+                    );
                     $estadosSinConvocatoria = $modeloConvocatoria
                         ->obtenerEstadosSinConvocatoriaActivaDashboard();
 
@@ -177,7 +182,9 @@ class HomeController
                     $publicacionesPorTipoMarketing = $modeloConvocatoria
                         ->obtenerPublicacionesPorTipoDashboard($periodoPublicaciones);
                     $publicacionesRecientesMarketing = $modeloConvocatoria
-                        ->obtenerRecientesDashboard(3);
+                        ->obtenerRecientesDashboard(4);
+                    require_once __DIR__ . '/../models/MarketingWidgetsModel.php';
+                    $widgetsMarketing = (new MarketingWidgetsModel())->obtener();
 
                     $vistaPanel = __DIR__ . '/../views/dashboard/marketing.php';
                     break;
