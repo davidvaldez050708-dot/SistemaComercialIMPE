@@ -1355,7 +1355,7 @@
                 }
 
                 modal.hide();
-                const buzonRespuestas = String(json.cuenta_salida || correoOrigen).trim();
+                const buzonRespuestas = String(json.identidad_envio?.respuestas_a || json.cuenta_salida || correoOrigen).trim();
                 const mensajeEnviado = 'Correo enviado. Las respuestas se recibirán en el buzón de ' +
                     buzonRespuestas + '.';
                 try {
