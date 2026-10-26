@@ -64,9 +64,18 @@
      return;
     }
     if(!tracked.source && session?.isEnded?.() && !endedReported){
-     endedReported=true;try{apply(await request(tracked.op.id,'TERMINADA'));}catch(e){endedReported=false;throw e;}
-     if(!external)api.consultEnded(tracked.op);
-     else api.receiverEnded?.(tracked.op,tracked.token,session);
+     // Guardar el diálogo SIP y la referencia de la operación ANTES de la
+     // petición: TERMINADA puede contestar con un estado distinto a ENTREGADA.
+     // La API sólo registra el fin; el END SIP propio acredita el cierre local.
+     const token=tracked.token,ownSession=session,operation=tracked.op;
+     endedReported=true;
+     try{apply(await request(operation.id,'TERMINADA'));}
+     catch(e){endedReported=false;throw e;}
+     // Un nuevo INVITE puede llegar mientras se espera la petición HTTP.
+     // Nunca trasladar su cierre al modal de la llamada siguiente.
+     if(api.read().callToken!==token){reset();return;}
+     if(!external)api.consultEnded(operation,token,ownSession);
+     else api.receiverEnded?.(operation,token,ownSession);
      reset();return;
     }
     if(!tracked.source && tracked.op.modo==='CONSULTADA' && !external && session?.isEstablished?.() && !atendida){

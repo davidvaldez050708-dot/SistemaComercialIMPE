@@ -2168,30 +2168,32 @@
                 message:'La llamada terminó en el navegador. Falta la confirmación del servicio telefónico.'});
             ocultarHostEntrante();marcarPestanaEntrante('');
         },
-        consultEnded:op=>{
-            if(!state.active)return;
+        consultEnded:(op,token,endedSession)=>{
+            if(!state.active || (token && String(state.callToken||'')!==String(token)))return;
             if(op.modo==='DIRECTA'){
-                const answered=Boolean(state.context?.sdkConnected||state.context?.pbxAnswered||answeredAtMs>0);
+                const answered=Boolean(state.context?.sdkConnected||state.context?.pbxAnswered||answeredAtMs>0||op.destino_atendida);
                 const session=window.zdrmWebPhone?.webCallSession;
-                // El END de la consulta DIRECTA se comprobó en transferFlow
-                // contra la RTCSession del receptor. Si Zadarma ya acreditó
-                // ENTREGADA y no existe otro diálogo SIP vivo, finalizar
-                // inmediatamente el teléfono local. El END PBX y las
-                // grabaciones continúan conciliándose por separado.
-                const ownDelivered=Boolean(config.salesSdkIncoming &&
-                    op.estado==='ENTREGADA' && answered &&
+                // En una saliente entregada por Recepción el END de la sesión
+                // exacta llega a menudo ANTES del estado ENTREGADA de PBX.
+                // Para cerrar el modal basta el END SIP acreditado y el
+                // vínculo autorizado (operación, referencia y token propios).
+                // No se declara finalizado el PBX ni se habilita guardar sin
+                // autorización: el detalle comercial comprueba esa evidencia.
+                const sameOperation=Boolean(config.salesSdkIncoming &&
                     state.direction==='incoming' &&
+                    ['SDK_INCOMING','INCOMING'].includes(state.context?.type) &&
                     String(state.context?.transferOperation||'')===String(op.id||'') &&
-                    String(state.context?.transferReference||'')===String(op.referencia||'') &&
-                    (!session || session.isEnded?.()));
-                if(ownDelivered){
+                    String(state.context?.transferReference||'')===String(op.referencia||''));
+                const ownSessionEnded=Boolean(endedSession?.isEnded?.() &&
+                    (!session || session===endedSession || session.isEnded?.()));
+                if(sameOperation && answered && ownSessionEnded){
                     const ref=String(op.referencia||''),duration=currentDuration();
                     answeredAtMs=0;
                     retirePbxCall(ref);
                     publish({active:false,phase:'incoming-finished',status:'ended-unconfirmed',
                         pbxCallId:ref,duration,
                         context:{...state.context,sdkEnded:true,transferPendingReceiver:false},
-                        message:'La llamada terminó en el navegador. El historial se actualizará por separado.'});
+                        message:'Llamada finalizada. Puedes registrar el resultado.'});
                     ocultarHostEntrante();marcarPestanaEntrante('');
                     return;
                 }
