@@ -54,8 +54,8 @@ function consult({sales=true,stage='ENTREGADA',sdkEnded=true,contextValid=true,s
  transferOperation:contextValid?77:99,transferReference:ref}},retired:[],hidden:0,polls:0};
  const sdk={id:'rtc-transfer-150',isEnded:()=>sdkEnded};
  const other={id:'rtc-new-150',isEnded:()=>false};
- const fn=new Function('rt','sdk','other','code','sales','sessionDifferent',`
- let state=rt.state,answeredAtMs=500;const config={salesSdkIncoming:sales};
+ const fn=new Function('rt','sdk','other','code','sales','sessionDifferent','answered',`
+ let state=rt.state,answeredAtMs=answered?500:0;const config={salesSdkIncoming:sales};
  const window={zdrmWebPhone:{webCallSession:sessionDifferent?other:sdk}};
  const currentDuration=()=>9;
  const publish=p=>{state={...state,...p};rt.state=state};
@@ -63,7 +63,7 @@ function consult({sales=true,stage='ENTREGADA',sdkEnded=true,contextValid=true,s
  const ocultarHostEntrante=()=>{rt.hidden++};
  const marcarPestanaEntrante=()=>{};
  const pollIncoming=()=>{rt.polls++};
- return eval('('+code+')');`)(rt,sdk,other,cb,sales,sessionDifferent);
+ return eval('('+code+')');`)(rt,sdk,other,cb,sales,sessionDifferent,answered);
  fn({modo:'DIRECTA',estado:stage,id:77,referencia:ref},
     tokenValid?'sdk-transfer-150':'sdk-another-call',sdk);
  return rt;
