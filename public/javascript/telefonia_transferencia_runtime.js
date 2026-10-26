@@ -3,6 +3,10 @@
  'use strict';
  const create=api=>{
   let tracked=null,busy=false,posting=false,external=false,delivered=false,endedReported=false,atendida=false,directRelease=false;
+  // TERMINADA puede devolver el mismo registro durante varios sondeos.
+  // No volver a asociarlo al diálogo SIP ya finalizado, aun si reset() lo
+  // soltó. El token pertenece a una llamada; el siguiente INVITE usa otro.
+  let lastClosedReceiverToken='';
   const reset=()=>{tracked=null;external=false;delivered=false;endedReported=false;atendida=false;directRelease=false;};
   const request=async(id,action)=>{
    const url=new URL(api.url,root.location.href),options={credentials:'same-origin',cache:'no-store'};
@@ -33,7 +37,9 @@
    if(busy||!api.url)return;busy=true;
    try{
     let state=api.read();
-    if(!tracked && state.active && state.direction==='incoming' && (/^\d{3,6}$/.test(state.destination)||state.context?.availabilityCandidate) && /^sdk-/.test(state.callToken||'')){
+    if(!tracked && state.active && state.direction==='incoming' &&
+      String(state.callToken||'')!==lastClosedReceiverToken &&
+      (/^\d{3,6}$/.test(state.destination)||state.context?.availabilityCandidate) && /^sdk-/.test(state.callToken||'')){
      const op=await request(0);if(api.read().callToken!==state.callToken)return;if(op){reset();tracked={source:false,op,token:state.callToken,session:root.zdrmWebPhone?.webCallSession};apply(op);}
      else api.publish({context:{...state.context,operationChecked:true}});
     }
@@ -74,6 +80,10 @@
      // Un nuevo INVITE puede llegar mientras se espera la petición HTTP.
      // Nunca trasladar su cierre al modal de la llamada siguiente.
      if(api.read().callToken!==token){reset();return;}
+     // Conservar el token de la llamada anterior fuera de reset().
+     // Evita reconsultar la misma transferencia en el siguiente intervalo,
+     // duplicar TERMINADA y reabrir el modal de un diálogo ya cerrado.
+     lastClosedReceiverToken=token;
      if(!external)api.consultEnded(operation,token,ownSession);
      else api.receiverEnded?.(operation,token,ownSession);
      reset();return;
