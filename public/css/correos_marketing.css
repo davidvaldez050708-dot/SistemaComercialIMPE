@@ -1228,3 +1228,58 @@
     color: #ffffff !important;
     font-weight: 700;
 }
+
+/* Vista previa de convocatoria: sólo presentación dentro de Redactar correo. */
+#modalCorreoMarketing .correo-marketing-convocatoria-preview {
+    margin: 10px 0 0;
+}
+
+#modalCorreoMarketing .correo-marketing-convocatoria-preview img {
+    display: block;
+    width: 300px;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Redactar correo: escala de los formularios institucionales (dashboard.css).
+   Manrope se hereda de global.css; sólo tipografía, sin cambiar contenedores. */
+#modalCorreoMarketing {
+    font-size: 12px;
+}
+
+#modalCorreoMarketing :is(input, select, textarea, button, .uniform-select) {
+    font-family: inherit;
+}
+
+#modalCorreoMarketing :is(.form-label, .correo-marketing-message-editor-label) {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+#modalCorreoMarketing :is(.system-form-control, .correo-marketing-message,
+    .uniform-select-trigger, .uniform-select-option) {
+    font-size: 12px;
+}
+
+#modalCorreoMarketing .correo-marketing-message {
+    font-weight: 500;
+}
+
+#modalCorreoMarketing :is(.form-text, .correo-marketing-file-help,
+    .correo-marketing-mail-note, .correo-marketing-files > span) {
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+#modalCorreoMarketing :is(a, [data-convocatoria-limpiar]) {
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+#modalCorreoMarketing #correo_marketing_adjuntos::file-selector-button {
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+}

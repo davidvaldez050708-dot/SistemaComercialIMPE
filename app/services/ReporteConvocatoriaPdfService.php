@@ -27,90 +27,63 @@ class ReporteConvocatoriaPdfService
 
     public function generar(array $datosReporte)
     {
-        if (!file_exists($this->templatePath) || !is_file($this->templatePath) || !is_readable($this->templatePath)) {
-            return $this->error(
-                'No fue posible localizar la plantilla del reporte de convocatorias.',
-                'La plantilla no existe, no es un archivo o no tiene permiso de lectura: ' . $this->templatePath
-            );
-        }
-
-        if (!class_exists('ZipArchive') || !class_exists('DOMDocument')) {
-            return $this->error(
-                'No fue posible preparar el reporte de convocatorias.',
-                'Se requieren ZipArchive y DOMDocument para procesar la copia temporal del DOCX.'
-            );
-        }
-
-        if (!function_exists('proc_open')) {
-            return $this->error(
-                'No fue posible convertir el reporte de convocatorias a PDF.',
-                'proc_open no está disponible en este entorno.'
-            );
-        }
-
-        $nombreBase = ReporteNombreArchivoService::corte(
-            'Reporte_Convocatorias',
-            [],
-            date('Y-m-d'),
-            false
-        );
-        $directorioTemporal = $this->rootPath . DIRECTORY_SEPARATOR . 'storage' .
-            DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . 'reportes' .
-            DIRECTORY_SEPARATOR . 'convocatorias' . DIRECTORY_SEPARATOR .
-            'reporte_' . bin2hex(random_bytes(6));
-
-        if (!mkdir($directorioTemporal, 0775, true) && !is_dir($directorioTemporal)) {
-            return $this->error(
-                'No fue posible preparar el reporte de convocatorias.',
-                'No se pudo crear el directorio temporal: ' . $directorioTemporal
-            );
-        }
-
-        $rutaDocx = $directorioTemporal . DIRECTORY_SEPARATOR . $nombreBase . '.docx';
-
+        // Evitar que un aviso técnico se mezcle con los bytes del PDF.
+        set_error_handler(static function ($severity, $message, $file, $line) {
+            if (error_reporting() & $severity) {
+                throw new ErrorException($message, 0, $severity, $file, $line);
+            }
+            return false;
+        });
         try {
-            if (!copy($this->templatePath, $rutaDocx)) {
-                return $this->error(
-                    'No fue posible preparar la plantilla del reporte de convocatorias.',
-                    'copy() falló al crear la copia temporal.'
-                );
+            $autoload = $this->rootPath . '/vendor/autoload.php';
+            if (!is_file($autoload)) {
+                throw new RuntimeException('Dompdf: autoload no disponible.');
             }
-
-            $insertado = $this->insertarContenido($rutaDocx, $datosReporte);
-            if (!($insertado['ok'] ?? false)) {
-                return $insertado;
+            require_once $autoload;
+            require_once __DIR__ . '/ReporteConvocatoriaDompdfService.php';
+            if (!class_exists('ZipArchive') || !class_exists('DOMDocument')) {
+                throw new RuntimeException('Se requieren ZipArchive y DOMDocument.');
             }
-
-            $conversion = $this->convertirAPdf($rutaDocx, $directorioTemporal);
-            if (!($conversion['ok'] ?? false)) {
-                return $conversion;
+            // La plantilla institucional se consulta sólo para diseño y logotipo.
+            // No se crea un DOCX ni se invoca ningún conversor externo.
+            $zip = new ZipArchive();
+            if ($zip->open($this->templatePath, ZipArchive::RDONLY) !== true) {
+                throw new RuntimeException('Plantilla institucional no disponible.');
             }
-
-            $rutaPdf = (string)($conversion['ruta_pdf'] ?? '');
-            $contenidoPdf = $rutaPdf !== '' && is_file($rutaPdf)
-                ? file_get_contents($rutaPdf)
-                : false;
-
-            if ($contenidoPdf === false || $contenidoPdf === '') {
-                return $this->error(
-                    'No fue posible obtener el PDF de convocatorias generado.',
-                    'El archivo PDF temporal no existe, está vacío o no pudo leerse.'
-                );
+            try {
+                $xml = $zip->getFromName('word/document.xml');
+                $logo = $zip->getFromName('word/media/image1.png');
+            } finally {
+                $zip->close();
             }
-
-            return [
-                'ok' => true,
-                'contenido_pdf' => $contenidoPdf,
-                'nombre_archivo' => $nombreBase . '.pdf',
-                'conversor' => (string)($conversion['conversor'] ?? '')
-            ];
+            $plantilla = new DOMDocument();
+            if (!is_string($xml) || !@$plantilla->loadXML($xml, LIBXML_NONET)) {
+                throw new RuntimeException('Plantilla institucional inválida.');
+            }
+            $xpath = new DOMXPath($plantilla);
+            $xpath->registerNamespace('w', self::W_NS);
+            $cuerpo = $xpath->query('//w:body')->item(0);
+            if (!$cuerpo instanceof DOMElement || !is_string($logo) || $logo === '') {
+                throw new RuntimeException('Falta el cuerpo o logotipo institucional.');
+            }
+            $documento = new DOMDocument('1.0', 'UTF-8');
+            $elementos = $this->construirContenido(
+                $documento, $datosReporte, $this->obtenerAnchoUtil($xpath, $cuerpo)
+            );
+            $resultado = (new ReporteConvocatoriaDompdfService())->generar(
+                $elementos, $datosReporte, $plantilla, $logo
+            );
+            $resultado['nombre_archivo'] = ReporteNombreArchivoService::corte(
+                'Reporte_Convocatorias', [], date('Y-m-d'), false
+            ) . '.pdf';
+            return $resultado;
         } catch (Throwable $error) {
             return $this->error(
-                'No fue posible generar el reporte de convocatorias.',
-                $error->getMessage()
+                'No fue posible generar el reporte de convocatorias. Inténtalo de nuevo o solicita soporte.',
+                'PDF_CONVOCATORIAS: ' . get_class($error) . ': ' . $error->getMessage()
             );
         } finally {
-            $this->eliminarDirectorio($directorioTemporal);
+            restore_error_handler();
         }
     }
 
@@ -231,6 +204,11 @@ class ReporteConvocatoriaPdfService
             ],
             $anchoUtil,
             4
+        );
+        $elementos[] = $this->crearParrafo(
+            $documento,
+            'Vigentes: ' . (int)($resumen['vigentes'] ?? 0),
+            ['tamano' => 15, 'color' => self::COLOR_SECUNDARIO, 'antes' => 50]
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
@@ -411,7 +389,8 @@ class ReporteConvocatoriaPdfService
                 $this->formatearFechaSimple($fila['fecha_termino'] ?? null);
 
             $filasDetalle[] = [
-                (string)($fila['titulo'] ?? '—'),
+                (string)($fila['titulo'] ?? '—') . "\nPublicación: " .
+                    $this->formatearFechaSimple($fila['created_at'] ?? null),
                 $this->tipoConvocatoria((string)($fila['tipo_convocatoria'] ?? '')),
                 $this->subtipoConvocatoria((string)($fila['subtipo_convocatoria'] ?? '')),
                 $periodo,
@@ -1315,7 +1294,7 @@ class ReporteConvocatoriaPdfService
 
         $textoNodo = $this->w($documento, 't');
         $textoNodo->setAttributeNS(self::XML_NS, 'xml:space', 'preserve');
-        $textoNodo->nodeValue = $this->textoXml($texto);
+        $textoNodo->appendChild($documento->createTextNode($this->textoXml($texto)));
         $run->appendChild($textoNodo);
         $parrafo->appendChild($run);
 
