@@ -126,6 +126,31 @@ class ConvocatoriaModel
         return $this->convertirResultadoEnArreglo($resultado);
     }
 
+    public function obtenerTotalesPorEstado(array $estadosIds)
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $estadosIds),
+            static fn($id) => $id > 0)));
+        if (!$ids) {
+            return [];
+        }
+
+        $marcadores = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT ce.estado_id, COUNT(DISTINCT c.id) AS total
+                FROM convocatoria_estados ce
+                INNER JOIN convocatorias c ON c.id = ce.convocatoria_id
+                WHERE ce.estado_id IN ($marcadores)
+                GROUP BY ce.estado_id";
+        $stmt = $this->connection->prepare($sql);
+        $this->vincularParametros($stmt, str_repeat('i', count($ids)), $ids);
+        $stmt->execute();
+        $resultado = $stmt->get_result();
+        $totales = [];
+        while ($fila = $resultado->fetch_assoc()) {
+            $totales[(int)$fila['estado_id']] = (int)$fila['total'];
+        }
+        return $totales;
+    }
+
     public function obtenerListado(
         $buscar = '',
         $estadoId = 0,
