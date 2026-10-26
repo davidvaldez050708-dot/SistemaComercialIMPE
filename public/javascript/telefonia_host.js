@@ -1253,6 +1253,14 @@
 
         const samePbxCall = state.direction === 'incoming' &&
             String(state.pbxCallId || '') === pbxCallId;
+        // Si el PBX adopta una transferencia activa del Asesor, conservar
+        // el diálogo SDK que usa TransferFlow para reconocer su END. Antes
+        // se sustituía callToken por el PBX ID y se perdía el vínculo con
+        // el cierre real de la sesión y su operación autorizada.
+        const ownTransferSdk=Boolean(state.active && state.direction==='incoming' &&
+            /^sdk-/.test(String(state.callToken||'')) &&
+            Number(state.context?.transferOperation)>0 &&
+            String(state.context?.transferReference||'')===pbxCallId);
         // Un sondeo "ringing" tardío nunca degrada una llamada que el SDK
         // ya confirmó en conversación, ni reinicia el reloj a cero.
         // El PBX sólo puede absorber una sesión SDK reciente de este host.
@@ -1331,7 +1339,7 @@
                 : Number(state.requestedAt || Math.floor(Date.now() / 1000)),
             answeredAtMs: answeredAtMs,
             pbxCallId: pbxCallId,
-            callToken: pbxCallId,
+            callToken: ownTransferSdk ? state.callToken : pbxCallId,
             context: {
                 type:'INCOMING',
                 callerId:String(call.caller_id || ''),
@@ -1342,6 +1350,8 @@
                 sdkSessionId:sdkSessionId,
                 sdkInviteId:(samePbxCall||sdkSessionId)?String(state.context?.sdkInviteId||''):'',
                 transferFrom:String(call.transfer_from || ''),
+                transferReference:ownTransferSdk ? state.context.transferReference : undefined,
+                transferOperation:ownTransferSdk ? state.context.transferOperation : undefined,
                 transferRequest:samePbxCall && !call.returned_from?state.context?.transferRequest:null
             },
             finalMetadata: null,
