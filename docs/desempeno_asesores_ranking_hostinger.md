@@ -1,5 +1,7 @@
 # Asesores dentro de Desempeño y Reportes independiente
 
+Actualización posterior: [retirar el filtro territorial de Asesores](desempeno_asesores_sin_territorio_hostinger.md). El filtro descrito en esta entrega inicial seleccionaba asesores por asignación, sin atribuir llamadas a estados.
+
 La entrega `a8e02fa593c8abdcaab519ece74e37ee244e81f9` integra a los asesores en la misma vista de Desempeño del analista. El selector **Área** permite cambiar entre Analistas, Cuenta Clave y Asesores según el alcance y los permisos. En Cuenta Clave, la vista de equipo permite alternar entre sus analistas y sus asesores. La vista personal del asesor conserva únicamente su propia información.
 
 Desempeño utiliza los componentes existentes: encabezado, estado de actualización, filtros, cinco indicadores, ranking, destacados, evolución y criterios. Reportes de actividad telefónica conserva los filtros, el detalle y su exportación; se eliminaron sus pestañas de Reportes, Desempeño y Otras áreas.
