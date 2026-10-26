@@ -44,10 +44,10 @@ const analyst=fixture({sales:false});analyst.trigger({sessionEnded:true,sessionI
 assert.equal(analyst.rt.state.active,true,'No cambiar tratamiento del Analista');
 const detached=fixture({ended:true});detached.trigger({sessionEnded:true,sessionId:'rtc-own-150'});
 assert.equal(detached.rt.state.active,false,'SIP terminado por el proveedor también cierra');
-const cbStart=code.indexOf('        consultEnded:op=>{');
+const cbStart=code.indexOf('        consultEnded:(op,token,endedSession)=>{');
 const cbEnd=code.indexOf('\n    })||null;',cbStart);
 assert(cbStart>=0&&cbEnd>cbStart);
-const cb='op=>{'+code.slice(cbStart+'        consultEnded:op=>{'.length,cbEnd).replace(/\n        }\s*$/,'\n}');
+const cb='(op,token,endedSession)=>{'+code.slice(cbStart+'        consultEnded:(op,token,endedSession)=>{'.length,cbEnd).replace(/\n        }\s*$/,'\n}');
 function consult({sales=true,stage='ENTREGADA',sdkEnded=true,contextValid=true,sessionDifferent=false,answered=true,tokenValid=true}={}){
  const ref='pbx-exact-transfer-150',rt={state:{active:true,phase:'in-progress',direction:'incoming',
  callToken:'sdk-transfer-150',pbxCallId:'',duration:9,context:{type:'SDK_INCOMING',sdkConnected:answered,
