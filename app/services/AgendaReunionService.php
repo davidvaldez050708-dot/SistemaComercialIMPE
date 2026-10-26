@@ -719,6 +719,10 @@ class AgendaReunionService
             ? $this->repo->pendientesKam((int)$limite, (int)$usuarioId)
             : $this->repo->pendientesAnalista((int)$usuarioId, (int)$limite);
         $salida = [];
+        $avisos = [];
+        $mostrados = is_array($_SESSION['agenda_reunion_avisos_mostrados'] ?? null)
+            ? $_SESSION['agenda_reunion_avisos_mostrados']
+            : [];
         $ahora = new DateTimeImmutable();
 
         foreach ($filas as $fila) {
@@ -737,7 +741,9 @@ class AgendaReunionService
             $prioridad = 4;
 
             if ($esSupervisor) {
-                $accion = 'Confirmar solicitud de reunión';
+                // Misma clave que el recordatorio urgente: el controlador puede
+                // conservar ese registro al quitar duplicados de la campana.
+                $accion = 'Confirmar reunión o solicitar ajuste';
                 $etiqueta = 'Pendiente de Cuenta Clave';
                 $icono = 'bi-calendar-check';
                 $estadoUi = 'proxima';
@@ -812,9 +818,48 @@ class AgendaReunionService
                 'prioridad' => $prioridad,
                 'url' => 'index.php?controller=agendaReunion&action=index&reunion_id=' . $id
             ];
+
+            // Los eventos informativos usan el presentador y la cola existentes.
+            // No consumen los campos notificado_* reservados al vencimiento.
+            if (!$fecha || $fecha <= $ahora) {
+                continue;
+            }
+            if ($esSupervisor && $estado === 'SOLICITADA') {
+                $tipoAviso = 'REUNION_SOLICITADA';
+                $tituloAviso = 'Nueva solicitud de reunión';
+                $mensajeAviso = 'El Analista de Datos propuso una reunión con ' .
+                    (string)$fila['nombre_entidad'] . ' para ' . $this->fechaLegible($fechaTexto) . '.';
+                $version = (string)($fila['updated_at'] ?? '');
+            } elseif (!$esSupervisor && $estado === 'CONFIRMADA') {
+                $tipoAviso = 'REUNION_CONFIRMADA';
+                $tituloAviso = 'Reunión confirmada por Cuenta Clave';
+                $mensajeAviso = 'Cuenta Clave confirmó la reunión con ' .
+                    (string)$fila['nombre_entidad'] . ' para ' . $this->fechaLegible($fechaTexto) . '.';
+                $version = (string)($fila['confirmada_at'] ?? $fila['updated_at'] ?? '');
+            } else {
+                continue;
+            }
+            $claveAviso = (int)$usuarioId . '|' . $tipoAviso . '|' . $id . '|' .
+                hash('sha256', $fechaTexto . '|' . $version);
+            if (isset($mostrados[$claveAviso])) {
+                continue;
+            }
+            // Incluir acción y fecha del pendiente permite que recordatorios.js
+            // conserve el toast al navegar y descarte los de acciones resueltas.
+            $avisos[] = array_merge($salida[count($salida) - 1], [
+                'tipo' => $tipoAviso,
+                'titulo' => $tituloAviso,
+                'mensaje' => $mensajeAviso
+            ]);
+            $mostrados[$claveAviso] = time();
         }
 
-        return ['recordatorios' => $salida, 'avisos' => []];
+        if (count($mostrados) > 200) {
+            arsort($mostrados);
+            $mostrados = array_slice($mostrados, 0, 200, true);
+        }
+        $_SESSION['agenda_reunion_avisos_mostrados'] = $mostrados;
+        return ['recordatorios' => $salida, 'avisos' => $avisos];
     }
 
 

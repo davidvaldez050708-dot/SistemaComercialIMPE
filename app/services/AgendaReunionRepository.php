@@ -474,7 +474,7 @@ class AgendaReunionRepository
         }
 
         $ahora = date('Y-m-d H:i:s');
-        $sql = "SELECT r.id,r.seguimiento_id,r.fecha_propuesta,s.nombre_entidad
+        $sql = "SELECT r.id,r.seguimiento_id,r.fecha_propuesta,r.estado,r.updated_at,s.nombre_entidad
                 FROM reuniones_vinculacion r JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
                 WHERE r.estado='SOLICITADA'
                   AND r.cuenta_clave_id=?
@@ -495,6 +495,8 @@ class AgendaReunionRepository
                     r.fecha_propuesta,
                     r.duracion_minutos,
                     r.estado,
+                    r.confirmada_at,
+                    r.updated_at,
                     s.nombre_entidad
                 FROM reuniones_vinculacion r
                 JOIN seguimientos_vinculacion s ON s.id = r.seguimiento_id
