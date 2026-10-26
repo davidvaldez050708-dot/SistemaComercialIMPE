@@ -44,32 +44,43 @@ const analyst=fixture({sales:false});analyst.trigger({sessionEnded:true,sessionI
 assert.equal(analyst.rt.state.active,true,'No cambiar tratamiento del Analista');
 const detached=fixture({ended:true});detached.trigger({sessionEnded:true,sessionId:'rtc-own-150'});
 assert.equal(detached.rt.state.active,false,'SIP terminado por el proveedor también cierra');
-const cbStart=code.indexOf('        consultEnded:op=>{');
+const cbStart=code.indexOf('        consultEnded:(op,token,endedSession)=>{');
 const cbEnd=code.indexOf('\n    })||null;',cbStart);
 assert(cbStart>=0&&cbEnd>cbStart);
-const cb='op=>{'+code.slice(cbStart+'        consultEnded:op=>{'.length,cbEnd).replace(/\n        }\s*$/,'\n}');
-function consult({sales=true,stage='ENTREGADA',sdkEnded=true,contextValid=true,stillAlive=true}={}){
+const cb='(op,token,endedSession)=>{'+code.slice(cbStart+'        consultEnded:(op,token,endedSession)=>{'.length,cbEnd).replace(/\n        }\s*$/,'\n}');
+function consult({sales=true,stage='ENTREGADA',sdkEnded=true,contextValid=true,sessionDifferent=false,answered=true,tokenValid=true}={}){
  const ref='pbx-exact-transfer-150',rt={state:{active:true,phase:'in-progress',direction:'incoming',
- pbxCallId:'',duration:9,context:{type:'SDK_INCOMING',sdkConnected:true,
+ callToken:'sdk-transfer-150',pbxCallId:'',duration:9,context:{type:'SDK_INCOMING',sdkConnected:answered,
  transferOperation:contextValid?77:99,transferReference:ref}},retired:[],hidden:0,polls:0};
- const sdk={isEnded:()=>sdkEnded};
- const fn=new Function('rt','sdk','code','sales',`
- let state=rt.state,answeredAtMs=500;const config={salesSdkIncoming:sales};
- const window={zdrmWebPhone:{webCallSession:sdk}};
+ const sdk={id:'rtc-transfer-150',isEnded:()=>sdkEnded};
+ const other={id:'rtc-new-150',isEnded:()=>false};
+ const fn=new Function('rt','sdk','other','code','sales','sessionDifferent','answered',`
+ let state=rt.state,answeredAtMs=answered?500:0;const config={salesSdkIncoming:sales};
+ const window={zdrmWebPhone:{webCallSession:sessionDifferent?other:sdk}};
  const currentDuration=()=>9;
  const publish=p=>{state={...state,...p};rt.state=state};
  const retirePbxCall=x=>rt.retired.push(x);
  const ocultarHostEntrante=()=>{rt.hidden++};
  const marcarPestanaEntrante=()=>{};
  const pollIncoming=()=>{rt.polls++};
- return eval('('+code+')');`)(rt,sdk,cb,sales);
- fn({modo:'DIRECTA',estado:stage,id:77,referencia:ref});
+ return eval('('+code+')');`)(rt,sdk,other,cb,sales,sessionDifferent,answered);
+ fn({modo:'DIRECTA',estado:stage,id:77,referencia:ref},
+    tokenValid?'sdk-transfer-150':'sdk-another-call',sdk);
  return rt;
 }
 assert.equal(consult().state.active,false,'ENTREGADA y sesión terminada liberan modal inmediatamente');
+const sent=consult({stage:'ENVIADA'});
+assert.equal(sent.state.active,false,'Saliente de Recepción transferida a Asesor termina localmente aun con PBX ENVIADA');
+assert.equal(sent.state.phase,'incoming-finished');
+assert.equal(sent.state.status,'ended-unconfirmed','Nunca inventar END PBX');
+assert.equal(sent.state.context.sdkEnded,true,'END exacto sí queda marcado');
+assert.equal(sent.state.context.pbxEnded,undefined,'El audio finalizado no certifica PBX');
 assert.equal(consult({sdkEnded:false}).state.phase,'recovering','No cerrar sesión viva');
+assert.equal(consult({sessionDifferent:true}).state.active,true,'Otra llamada SIP viva impide cerrar la anterior');
 assert.equal(consult({stage:'TIMBRANDO'}).state.phase,'recovering','No cerrar consulta no entregada');
 assert.equal(consult({contextValid:false}).state.active,true,'No cerrar una operación distinta');
+assert.equal(consult({tokenValid:false}).state.active,true,'No cerrar token de llamada distinto');
+assert.equal(consult({answered:false}).state.active,true,'No presentar resultado de un intento sin respuesta');
 assert.equal(consult({sales:false}).state.active,true,'Analista conserva su flujo');
 // Caso real con operación ENTREGADA y RTCSession distinta al primer PUSH:
 // la transferencia externa registra su propio END, aunque onIdle no se dispare.
