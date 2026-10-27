@@ -129,6 +129,7 @@ class SeguimientoVinculacionController
                 throw new DomainException('Operación de importación inválida.',422);
             }
             if($accion==='analizar') {
+                unset($_SESSION['impe_excel_seguimiento_preview']);
                 $estadoId=filter_var($_POST['estado_id']??null,FILTER_VALIDATE_INT,
                     ['options'=>['min_range'=>1]]);
                 if(!$estadoId)throw new DomainException('Selecciona un territorio asignado.',422);
@@ -146,7 +147,7 @@ class SeguimientoVinculacionController
                     'analista'=>$analista,'expires'=>time()+1200,'filas'=>$result['filas']
                 ];
                 $public=array_map(static function($row){
-                    unset($row['registro']);
+                    unset($row['registro'], $row['id']);
                     return $row;
                 },$result['filas']);
                 $this->responderJson(['ok'=>true,'mensaje'=>'Archivo revisado. Confirma únicamente las filas nuevas.',
