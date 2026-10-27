@@ -1,0 +1,45 @@
+name: Supervisión telefónica · estados PBX
+on:
+  push:
+    branches:
+      - fix/supervision-estados-pbx-conciliar-hostinger-20261027
+  pull_request:
+    paths:
+      - app/services/TelefoniaControlService.php
+      - tests/telefonia_control_supervision_estado_pbx_smoke.php
+      - tests/telefonia_supervision_vista_hostinger_smoke.php
+      - tools/conciliar_telefonia_supervision_vista_v1.php
+      - tools/conciliar_supervision_tarjetas_hostinger_v1.php
+      - tests/telefonia_supervision_tarjetas_hostinger_smoke.php
+      - tests/telefonia_supervision_repositorio_resultados_smoke.php
+      - app/services/SupervisionLlamadasRepository.php
+      - app/views/telefonia/supervision_llamadas.php
+      - tools/publicar_supervision_estados_unificados_v1_hostinger.sh
+      - .github/workflows/telefonia-supervision-estados-pbx.yml
+permissions:
+  contents: read
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Validación de sintaxis
+        run: |
+          php -l app/services/TelefoniaControlService.php
+          php -l tests/telefonia_control_supervision_estado_pbx_smoke.php
+          php -l tests/telefonia_supervision_vista_hostinger_smoke.php
+          php -l tools/conciliar_telefonia_supervision_vista_v1.php
+          php -l tools/conciliar_supervision_tarjetas_hostinger_v1.php
+          php -l tests/telefonia_supervision_tarjetas_hostinger_smoke.php
+          php -l app/services/SupervisionLlamadasRepository.php
+          php -l app/views/telefonia/supervision_llamadas.php
+          php -l tests/telefonia_supervision_repositorio_resultados_smoke.php
+      - name: Regresión de motivos de terminación y privacidad por tramo
+        run: |
+          php tests/telefonia_control_supervision_estado_pbx_smoke.php
+          php tests/telefonia_supervision_vista_hostinger_smoke.php
+          php tests/telefonia_supervision_tarjetas_hostinger_smoke.php
+          php tests/telefonia_supervision_repositorio_resultados_smoke.php
