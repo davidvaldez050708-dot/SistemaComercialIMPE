@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../helpers/UsuarioFechaHoraHelper.php';
 
 class UsuarioModel
 {
@@ -48,7 +49,7 @@ class UsuarioModel
     public function actualizarUltimoAcceso($id)
     {
         $sql = "UPDATE usuarios 
-                SET ultimo_acceso = NOW()
+                SET ultimo_acceso = UTC_TIMESTAMP()
                 WHERE id = ?";
 
         $stmt = $this->connection->prepare($sql);
@@ -78,6 +79,14 @@ class UsuarioModel
         return $stmt->execute();
     }
 
+    /** Evita que una recuperación en vuelo reemplace una contraseña ya cambiada. */
+    public function establecerPasswordTemporalSiVigente($id, $hashAnterior, $hashNuevo, $expira): bool
+    {
+        $stmt = $this->connection->prepare("UPDATE usuarios SET password = ?, requiere_cambio_password = 1, password_temporal_expira = ? WHERE id = ? AND BINARY password = BINARY ? AND estado = 1");
+        $stmt->bind_param('ssis', $hashNuevo, $expira, $id, $hashAnterior);
+        return $stmt->execute() && $stmt->affected_rows === 1;
+    }
+
     public function buscarPorId($id)
     {
         $sql = "SELECT
@@ -93,7 +102,9 @@ class UsuarioModel
                     usuarios.rol_id,
                     usuarios.ultimo_acceso,
                     usuarios.created_at,
+                    UNIX_TIMESTAMP(usuarios.created_at) AS __impe_created_at_epoch,
                     usuarios.updated_at,
+                    UNIX_TIMESTAMP(usuarios.updated_at) AS __impe_updated_at_epoch,
                     usuarios.requiere_cambio_password,
                     usuarios.password_temporal_expira,
                     roles.nombre AS rol,
@@ -112,7 +123,7 @@ class UsuarioModel
 
         $resultado = $stmt->get_result();
 
-        return $resultado->fetch_assoc();
+        return UsuarioFechaHoraHelper::normalizar($resultado->fetch_assoc());
     }
 
     public function actualizarPasswordDefinitivo(
@@ -210,7 +221,7 @@ class UsuarioModel
         $usuarios = [];
 
         while ($fila = $resultado->fetch_assoc()) {
-            $usuarios[] = $fila;
+            $usuarios[] = UsuarioFechaHoraHelper::normalizar($fila);
         }
 
         return $usuarios;
@@ -271,7 +282,9 @@ class UsuarioModel
                     usuarios.estado,
                     usuarios.ultimo_acceso,
                     usuarios.created_at,
+                    UNIX_TIMESTAMP(usuarios.created_at) AS __impe_created_at_epoch,
                     usuarios.updated_at,
+                    UNIX_TIMESTAMP(usuarios.updated_at) AS __impe_updated_at_epoch,
                     usuarios.requiere_cambio_password,
                     roles.nombre AS rol
                 FROM usuarios
@@ -585,7 +598,7 @@ class UsuarioModel
         $filas = [];
 
         while ($fila = $resultado->fetch_assoc()) {
-            $filas[] = $fila;
+            $filas[] = UsuarioFechaHoraHelper::normalizar($fila);
         }
 
         return $filas;
