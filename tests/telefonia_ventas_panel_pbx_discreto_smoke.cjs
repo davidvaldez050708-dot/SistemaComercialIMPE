@@ -28,7 +28,10 @@ async function test(kind) {
  const win={IMPE_PHONE_SHELL_CONFIG:{salesResults:true,userId:23,extension:'151',
   salesDetailUrl:'https://crm.test/detail',salesHistoryUrl:'https://crm.test/hist'},
   addEventListener(){},IMPE_AVAILABILITY:null};
- const storage=new Map();
+ // Atención anterior guardada: antes producía un flash en la vista nueva.
+ const storage=new Map([['impe:sales-pending:23',JSON.stringify([
+  {ref:'PBXANTERIOR98765',extension:'151',at:Date.now(),callToken:'token-anterior'}
+ ])]]);
  const localStorage={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)};
  const sessionStorage={getItem(){return null;},removeItem(){},setItem(){}};
  let state={active:true,direction:'outgoing',phase:'in-progress',
@@ -60,6 +63,12 @@ async function test(kind) {
   'CSS debe bloquear el botón antes de confirmar cierre');
  assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
   'El botón inicia sin autorización');
+ // Simula el intervalo de reposo con una atención antigua aún pendiente.
+ state={...state,active:false,phase:'ready'};
+ interval();
+ assert.equal(button.hidden,true,'No mostrar pendiente antiguo al iniciar nueva marcación');
+ assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
+  'El pendiente anterior no debe autorizar el resultado');
  // Simula el marcado y timbrado, con posible resultado previo en sesión.
  // Ni un render en transición debe habilitar Registrar resultado.
  for(const phase of ['dialing','ringing','in-progress']){
