@@ -10,6 +10,8 @@ $cases=[
     'original'=>"<?php if(\$ref!==''&&\$call['finalizada']): ?>",
     'espaciada'=>"<?php if ( \$ref !== '' && \$call['finalizada'] ): ?>",
     'invertida'=>"<?php if (\$call['finalizada'] && \$ref !== ''): ?>",
+    // Esta forma simula un modal/historial totalmente personalizado.
+    'personalizada'=>"<?php if(!empty(\$call['finalizada'])): ?>",
     'protegida'=>"<?php if(\$ref!==''&&(!empty(\$call['registro'])||TelefoniaVentasLlamadasService::resultadoCapturable(\$call))): ?>"
 ];
 try{
@@ -31,6 +33,15 @@ try{
     if($type==='protegida'&&$markup!==$new)throw new RuntimeException('Parche no idempotente.');
     if(strpos($new,'data-sales-detail')===false)throw new RuntimeException('Se eliminó el botón.');
   }
+  // Dos botones de detalle: el conciliador no debe adivinar.
+  $input=$dir.'/duplicados.php';
+  $output=$dir.'/duplicados.out.php';
+  file_put_contents($input,
+    '<div>Vista personalizada</div><button data-sales-detail="a">Registrar</button>'.
+    '<button data-sales-detail="b">Registrar</button><?php echo $call["nombre"]; ?>');
+  $out=[];$status=0;
+  exec(escapeshellarg(PHP_BINARY).' '.escapeshellarg($patch).' '.escapeshellarg($input).' '.escapeshellarg($output).' 2>&1',$out,$status);
+  if($status===0||file_exists($output))throw new RuntimeException('Aceptó vista con varios botones.');
   $input=$dir.'/ambigua.php';
   $output=$dir.'/ambigua.out.php';
   file_put_contents($input,'<button data-sales-detail="x">Registrar resultado</button>');
