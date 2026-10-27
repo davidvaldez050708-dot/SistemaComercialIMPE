@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 
@@ -84,6 +85,9 @@ class ZadarmaWebhookEventStoreService
         }
 
         $internal = trim((string)($registro['internal'] ?? ''));
+        // En llamadas compartidas se conserva todo el evento para el Analista;
+        // sólo una exclusión global impide almacenar la referencia completa.
+        if (TelefoniaLimpiezaGuard::bloqueada($this->connection,$pbxCallId,'')) return true;
         $destination = trim((string)($registro['destination'] ?? ''));
         $destinationDigits = $this->soloDigitos($destination);
         $callerId = trim((string)($registro['caller_id'] ?? ''));

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/TelefoniaExtensionService.php';
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
+require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 
 /**
  * Recepción telefónica de Marketing, independiente de Ventas y Vinculación.
@@ -77,6 +78,11 @@ class TelefoniaRecepcionMarketingService
         return (new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($usuarioId);
     }
 
+    protected function condicionLimpieza(): string
+    {
+        return TelefoniaLimpiezaGuard::condicion($this->db,'inicial.pbx_call_id','inicial.internal');
+    }
+
     public function resumen(int $usuarioId): array
     {
         $data = [
@@ -107,6 +113,7 @@ class TelefoniaRecepcionMarketingService
         // Inicios PBX firmados de esta extensión dentro del período:
         // NOTIFY_INTERNAL (entrante) o NOTIFY_OUT_START (saliente).
         // Ni números ni ID provienen del navegador; el origen es el webhook.
+        $limpieza=$this->condicionLimpieza();
         $permitirSalientes = !empty($asignacion['permite_salientes']) ? 1 : 0;
         $stmt = $this->db->prepare(
             "SELECT e.evento, e.pbx_call_id, e.internal, e.destination,
@@ -120,7 +127,7 @@ class TelefoniaRecepcionMarketingService
                AND e.pbx_call_id IN (
                    SELECT inicial.pbx_call_id
                    FROM telefonia_zadarma_eventos inicial
-                   WHERE inicial.internal = ?
+                   WHERE $limpieza AND inicial.internal = ?
                      AND (
                         inicial.evento = 'NOTIFY_INTERNAL'
                         OR (inicial.evento = 'NOTIFY_OUT_START' AND ? = 1)

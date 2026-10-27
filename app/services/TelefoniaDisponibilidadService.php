@@ -29,6 +29,14 @@ final class TelefoniaDisponibilidadService
         $s->execute();$r=$s->get_result()->fetch_assoc();$s->close();return $r?:null;
     }
     private function change(int $id,array $values): void {
+        if (($values['devolucion'] ?? '') === 'PENDIENTE') {
+            $actual=$this->one('SELECT ruta_json FROM telefonia_disponibilidad WHERE id=?',[$id]);
+            $ruta=json_decode((string)($values['ruta_json'] ?? $actual['ruta_json'] ?? '{}'),true) ?: [];
+            if (($ruta['tipo'] ?? '') === 'PROSPECTO') {
+                $ruta['devolucion_solicitada_at']=gmdate('Y-m-d H:i:s');
+                $values['ruta_json']=json_encode($ruta,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+            }
+        }
         $sets=[];$args=[];foreach($values as $key=>$value){$sets[]="$key=?";$args[]=$value;}
         $args[]=gmdate('Y-m-d H:i:s');$args[]=$id;
         $s=$this->db->prepare('UPDATE telefonia_disponibilidad SET '.implode(',',$sets).',updated_at=? WHERE id=?');

@@ -132,6 +132,7 @@
     submit.disabled=false;submit.innerHTML=saveLabel;
     feedback.textContent=call.finalizada?'':'Puedes guardar tu resultado. La grabación y el cierre de Zadarma seguirán en verificación.';
    }
+   modal.dispatchEvent(new CustomEvent('impe:sales-result-loaded',{detail:{ref,extension:ownExt,saved:Boolean(call.registro)}}));
    show();
 
    // Nunca ejecutar un guardado futuro oculto: sólo lo solicita el asesor.

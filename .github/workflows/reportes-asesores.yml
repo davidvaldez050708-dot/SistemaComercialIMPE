@@ -1,0 +1,106 @@
+name: Asesores - reportes desempeño y PDF
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  datos:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0','mariadb:10.11']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['3306/tcp']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, gd, zip
+          coverage: none
+      - run: |
+          composer install --no-interaction --prefer-dist --no-scripts --no-progress
+          composer reinstall '*' --no-interaction --prefer-dist --no-scripts --no-progress
+      - name: Métricas, permisos, consultas y PDF por HTTP y SQL
+        env:
+          IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          php tests/limpieza_llamadas_db.php
+          python3 tests/limpieza_llamadas_cli_test.py
+          php tests/ventas_pendientes_policy_test.php
+          php tests/telefonia_ventas_notificaciones_db.php
+          php tests/ventas_actividad_unit.php
+          php tests/ventas_desempeno_unit.php
+          python3 tests/ventas_actividad_http_test.py
+          python3 tests/supervision_llamadas_http_test.py
+          python3 tests/ventas_observaciones_http_test.py
+  interfaz:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, gd, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/asesores-deps playwright@1.56.1 bootstrap@5.3.8 bootstrap-icons@1.11.3
+      - run: /tmp/asesores-deps/node_modules/.bin/playwright install --with-deps ${{ matrix.browser }}
+      - env:
+          NODE_PATH: /tmp/asesores-deps/node_modules
+          SALES_BROWSER: ${{ matrix.browser }}
+        run: |
+          node tests/ventas_pendientes_browser.cjs
+          node tests/telefonia_ventas_saliente_resumen_browser.cjs
+          SALES_SUMMARY_VARIANT=hostinger node tests/telefonia_ventas_saliente_resumen_browser.cjs
+          node tests/ventas_actividad_browser.cjs
+          node tests/ventas_desempeno_browser.cjs
+          node tests/ventas_pdf_descarga_browser.cjs
+          node tests/supervision_llamadas_browser.cjs
+          node tests/ventas_observaciones_browser.cjs
+  pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, gd, zip
+          coverage: none
+      - run: |
+          composer install --no-interaction --prefer-dist --no-scripts --no-progress
+          composer reinstall '*' --no-interaction --prefer-dist --no-scripts --no-progress
+          pip install pypdf
+          python3 tests/ventas_actividad_pdf_test.py
+  publicacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - run: |
+          python3 tests/publicacion_limpieza_llamadas_test.py
+          python3 tests/publicacion_ventas_resumen_saliente_test.py
+          python3 tests/publicacion_ventas_pendientes_test.py
+          python3 tests/publicacion_reportes_asesores_test.py
+          python3 tests/publicacion_desempeno_asesores_ranking_test.py
+          python3 tests/publicacion_desempeno_sin_territorio_test.py
+          python3 tests/publicacion_pdf_descarga_directa_test.py
+          python3 tests/publicacion_supervision_llamadas_test.py
+          python3 tests/publicacion_supervision_filtros_test.py
+          python3 tests/publicacion_ventas_observaciones_test.py

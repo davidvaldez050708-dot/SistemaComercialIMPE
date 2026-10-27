@@ -20,6 +20,7 @@ jobs:
           php tests/data_territorial_acceso_roles_smoke.php
           python3 tests/director_reportes_guard_test.py
           python3 tests/publicacion_director_operaciones_test.py
+          python3 tests/publicacion_director_inicio_test.py
   datos:
     runs-on: ubuntu-latest
     strategy:
@@ -41,4 +42,28 @@ jobs:
           extensions: mysqli, mbstring
       - env:
           IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
-        run: php tests/director_operaciones_db.php
+        run: |
+          php tests/director_operaciones_db.php
+          python3 tests/director_inicio_http_test.py
+  inicio_interfaz:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/director-deps playwright@1.56.1 bootstrap@5.3.8 bootstrap-icons@1.11.3
+      - run: /tmp/director-deps/node_modules/.bin/playwright install --with-deps ${{ matrix.browser }}
+      - env:
+          NODE_PATH: /tmp/director-deps/node_modules
+          SALES_BROWSER: ${{ matrix.browser }}
+        run: node tests/director_inicio_browser.cjs

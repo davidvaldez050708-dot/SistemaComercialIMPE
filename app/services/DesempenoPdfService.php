@@ -112,6 +112,14 @@ class DesempenoPdfService
 
     private function html(array $datos)
     {
+        if (($datos['area'] ?? '') === 'asesores') {
+            if (!empty($datos['es_desempeno'])) {
+                require_once __DIR__.'/VentasDesempenoPdfView.php';
+                return (new VentasDesempenoPdfView())->html($datos, $this->logoDataUri(), $this->css());
+            }
+            require_once __DIR__.'/VentasActividadPdfView.php';
+            return (new VentasActividadPdfView())->html($datos, $this->logoDataUri(), $this->css());
+        }
         $area = (string)($datos['area'] ?? 'analistas');
         $areaLabel = (string)(
             $datos['area_label'] ?? 'Analistas'
@@ -1053,6 +1061,10 @@ class DesempenoPdfService
 
     private function nombreArchivo(array $datos)
     {
+        if (($datos['area'] ?? '') === 'asesores') {
+            require_once __DIR__.'/VentasActividadPdfView.php';
+            return VentasActividadPdfView::nombre($datos);
+        }
         $areaActual = (string)($datos['area'] ?? 'analistas');
         $area = $areaActual === 'cuenta_clave'
             ? 'Cuenta_Clave'

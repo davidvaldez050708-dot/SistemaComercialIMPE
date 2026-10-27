@@ -16,6 +16,21 @@
       <div class="col-12"><label class="form-label" for="salesNext">Próxima llamada (opcional)</label><input type="datetime-local" id="salesNext" name="proxima_accion_at" class="form-control"><small class="system-form-modal-subtitle d-block mt-2">Obligatoria si seleccionas «Requiere seguimiento».</small></div>
       <div class="col-12"><label class="form-label" for="salesNote">Observaciones</label><textarea class="form-control" id="salesNote" name="observacion" rows="3" maxlength="1000"></textarea></div>
      </div>
+     <section class="mt-4 border-top pt-3" data-sales-observaciones hidden
+       data-list-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=observacionesVenta"
+       data-add-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=agregarObservacionVenta">
+      <h6 class="form-label mb-2">Observaciones adicionales</h6>
+      <p class="system-form-modal-subtitle">Cada nota conserva su autor y fecha. Una vez guardada, no se puede editar ni eliminar. El resultado y la observación original permanecen iguales.</p>
+      <div data-sales-notes-list aria-live="polite"></div>
+      <button type="button" class="btn btn-system-light mt-2" data-sales-note-open hidden><i class="bi bi-plus-circle" aria-hidden="true"></i> Agregar observación</button>
+      <div class="mt-3" data-sales-note-editor hidden>
+       <label class="form-label" for="salesAdditionalNote">Nueva observación</label>
+       <textarea class="form-control" id="salesAdditionalNote" rows="3" maxlength="1000" data-sales-note-text aria-describedby="salesAdditionalNoteHelp"></textarea>
+       <small id="salesAdditionalNoteHelp" class="system-form-modal-subtitle d-block mt-2">Hasta 1000 caracteres. Esta nota no programa llamadas ni cambia el resultado.</small>
+       <div class="d-flex flex-wrap gap-2 mt-3"><button type="button" class="btn btn-system-save" data-sales-note-save><i class="bi bi-check-circle" aria-hidden="true"></i> Guardar observación</button><button type="button" class="btn btn-system-light" data-sales-note-cancel>Cancelar</button></div>
+      </div>
+      <p class="system-form-modal-subtitle mt-2" data-sales-notes-feedback role="status" aria-live="polite"></p>
+     </section>
      <p class="system-form-modal-subtitle mt-3" data-sales-feedback role="status" aria-live="polite"></p>
     </div>
     <div class="modal-footer system-form-modal-footer linkage-incoming-form-footer"><button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cerrar</button><button class="btn btn-system-save" type="submit" data-sales-submit><i class="bi bi-check-circle"></i> Guardar resultado</button></div>
@@ -23,3 +38,4 @@
   </div>
  </div>
 </div>
+<script src="<?= BASE_URL ?>public/javascript/telefonia_ventas_observaciones.js?v=<?= filemtime(__DIR__.'/../../../public/javascript/telefonia_ventas_observaciones.js') ?>"></script>

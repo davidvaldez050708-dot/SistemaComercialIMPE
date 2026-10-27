@@ -1,10 +1,16 @@
 <?php
 
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../helpers/VentasActividadAccess.php';
 require_once __DIR__ . '/../services/ReporteAdministradorDataService.php';
 
 class ReporteController
 {
+    public function supervisionLlamadas() { require_once __DIR__.'/SupervisionLlamadasController.php'; (new SupervisionLlamadasController())->ejecutar(); }
+    public function supervisionDetalle() { require_once __DIR__.'/SupervisionLlamadasController.php'; (new SupervisionLlamadasController())->ejecutar('detalle'); }
+    public function supervisionAudio() { require_once __DIR__.'/SupervisionLlamadasController.php'; (new SupervisionLlamadasController())->ejecutar('audio'); }
+    public function ventas() { require_once __DIR__.'/VentasActividadController.php'; (new VentasActividadController())->mostrar(); }
+    public function ventasPdf() { require_once __DIR__.'/VentasActividadController.php'; (new VentasActividadController())->mostrar(false, true); }
     public function usuarios()
     {
         if (!isset($_SESSION['usuario_id'])) {
@@ -94,13 +100,15 @@ class ReporteController
         $puedeReporteAliados =
             tienePermiso('reportes.aliados.panorama') &&
             tienePermiso('aliados.ver');
+        $puedeReporteVentas = VentasActividadAccess::alcance() !== '';
 
         if (
             !$puedeReporteTerritorial &&
             !$puedeReporteSeguimiento &&
             !$puedeReporteAdministrador &&
             !$puedeReporteConvocatorias &&
-            !$puedeReporteAliados
+            !$puedeReporteAliados &&
+            !$puedeReporteVentas
         ) {
             http_response_code(403);
             die('No tienes permiso para consultar reportes.');

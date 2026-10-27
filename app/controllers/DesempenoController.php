@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../helpers/VentasActividadAccess.php';
 require_once __DIR__ . '/../services/DesempenoService.php';
 require_once __DIR__ . '/../services/DesempenoPdfService.php';
 
@@ -9,6 +10,10 @@ class DesempenoController
     public function index()
     {
         $this->validarAcceso();
+        if (VentasActividadAccess::esDesempenoAsesor()) {
+            require_once __DIR__.'/VentasActividadController.php';
+            (new VentasActividadController())->mostrar(true); return;
+        }
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $rolNombre = (string)($_SESSION['rol'] ?? '');
@@ -74,6 +79,10 @@ class DesempenoController
     public function exportarPdf()
     {
         $this->validarAcceso(true);
+        if (VentasActividadAccess::esDesempenoAsesor()) {
+            require_once __DIR__.'/VentasActividadController.php';
+            (new VentasActividadController())->mostrar(true, true); return;
+        }
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $rolNombre = (string)($_SESSION['rol'] ?? '');

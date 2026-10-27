@@ -480,17 +480,18 @@
         } else if (value.active) {
             recentFinishedIncoming = null;
         }
-        // El resumen de Marketing sólo nace de una transición REAL de
-        // llamada activa a finalizada en esta sesión, nunca de storage.
+        // El resumen sólo nace de una transición REAL en esta sesión.
+        // Ventas lo conserva para registrar el resultado; Marketing mantiene
+        // su vista temporal. Que el host vuelva a ready no resuelve la atención.
         if (!value.active && value.phase === 'finished' &&
             currentState?.active && currentState.direction === 'outgoing' &&
             isManualOutgoing(value)) {
             recentFinishedOutgoing = {
-                state: value, until: value.context?.type==='DEVOLUCION'?Infinity:Date.now()+8000
+                state: value, until: cfg.salesResults||value.context?.type==='DEVOLUCION'?Infinity:Date.now()+8000
             };
             incomingCompact = false;
-        } else if (value.active || value.phase === 'ready' ||
-            value.phase === 'idle') {
+        } else if (value.active || (!cfg.salesResults &&
+            (value.phase === 'ready' || value.phase === 'idle'))) {
             recentFinishedOutgoing = null;
         }
         if (outgoingAttempt && !value.active && value.phase === 'error') {

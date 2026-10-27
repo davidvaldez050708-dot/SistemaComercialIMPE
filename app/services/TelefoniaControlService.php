@@ -3,6 +3,7 @@ require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 require_once __DIR__ . '/TelefoniaMarcacionesVentasService.php';
 require_once __DIR__ . '/TelefoniaResultadoVentasService.php';
 require_once __DIR__ . '/TelefoniaExtensionService.php';
+require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 
 /**
  * Estadísticas administrativas: fuente técnica = webhooks PBX.
@@ -41,6 +42,7 @@ class TelefoniaControlService
             throw new InvalidArgumentException('Puedes consultar como máximo 90 días recientes por intervalo.');
         }
 
+        $limpieza=TelefoniaLimpiezaGuard::condicion($this->db,'e.pbx_call_id','e.internal');
         $sql = "SELECT
                 e.pbx_call_id, e.internal, MIN(e.received_at) AS fecha,
                 MAX(CASE WHEN e.evento IN ('NOTIFY_OUT_START','NOTIFY_OUT_END')
@@ -78,7 +80,7 @@ class TelefoniaControlService
             LEFT JOIN telefonia_extensiones te
                 ON te.extension = e.internal AND te.proveedor = 'ZADARMA'
                 AND te.activo = 1
-            WHERE e.received_at >= ? AND e.received_at < ?
+            WHERE $limpieza AND e.received_at >= ? AND e.received_at < ?
                 AND e.internal IS NOT NULL AND e.internal <> ''
                 AND e.pbx_call_id <> ''
                 AND e.evento IN ('NOTIFY_INTERNAL', 'NOTIFY_ANSWER',

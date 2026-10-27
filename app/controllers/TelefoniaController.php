@@ -406,6 +406,40 @@ class TelefoniaController
         }
     }
 
+    public function observacionesVenta()
+    {
+        header('Cache-Control: private, no-store, max-age=0');
+        if(($_SERVER['REQUEST_METHOD']??'GET')!=='GET')$this->responderJson(['ok'=>false],405);
+        $uid=(int)($_SESSION['usuario_id']??0);
+        if($uid<=0)$this->responderJson(['ok'=>false,'mensaje'=>'Inicia sesión para consultar las observaciones.'],401);
+        require_once __DIR__.'/../services/TelefoniaObservacionesVentasService.php';
+        try {
+            $svc=new TelefoniaObservacionesVentasService((new Database())->connect(false));
+            if((int)($_SESSION['rol_id']??0)===3){
+                $this->validarAtencionVentaJson(false);
+                $data=$svc->propias($uid,(string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''));
+            } else $data=$svc->supervisadas($uid,(string)($_GET['llamada']??''));
+            $this->responderJson(['ok'=>true]+$data);
+        } catch(InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422);}
+        catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],403);}
+        catch(Throwable $e){error_log('[ventas_observaciones_consulta] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudieron consultar las observaciones adicionales.'],500);}
+    }
+
+    public function agregarObservacionVenta()
+    {
+        header('Cache-Control: private, no-store, max-age=0');
+        $this->validarAtencionVentaJson(true);
+        require_once __DIR__.'/../services/TelefoniaObservacionesVentasService.php';
+        try {
+            $note=(new TelefoniaObservacionesVentasService((new Database())->connect(false)))->agregar(
+                (int)$_SESSION['usuario_id'],(string)($_POST['pbx_call_id']??''),(string)($_POST['extension']??''),
+                (string)($_POST['nota']??''),(string)($_POST['token']??''));
+            $this->responderJson(['ok'=>true,'observacion'=>$note]);
+        } catch(InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422);}
+        catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[ventas_observacion_agregar] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo confirmar el guardado. Reintenta sin cambiar la nota para evitar duplicados.'],500);}
+    }
+
     public function detalleVenta()
     {
         $this->validarAtencionVentaJson(false);

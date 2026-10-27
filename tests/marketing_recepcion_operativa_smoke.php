@@ -142,6 +142,7 @@ class OperacionDB {
 class OperacionServicio extends TelefoniaRecepcionMarketingService {
     // Esta prueba aísla agrupación/resultados. Las operaciones se prueban con MySQL real.
     protected function operacionesDelUsuario(int $usuarioId): array {return [];}
+    protected function condicionLimpieza(): string {return '1=1';} // Sin tabla de exclusiones en este doble.
     public function __construct($db) {
         $property=new ReflectionProperty(TelefoniaRecepcionMarketingService::class,'db');
         $property->setValue($this,$db);

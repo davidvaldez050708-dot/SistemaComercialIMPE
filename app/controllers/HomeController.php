@@ -40,8 +40,19 @@ class HomeController
                 break;
 
             case 2:
-                $tituloPagina = 'Director de Operaciones';
-                $subtituloPagina = 'Supervisión nacional y reportes';
+                $tituloPagina = 'Inicio';
+                $subtituloPagina = 'Supervisión nacional de la operación y del equipo';
+                require_once __DIR__ . '/../services/DirectorOperacionesDashboardService.php';
+                try {
+                    $tableroDireccion = (new DirectorOperacionesDashboardService())->obtener((int)$_SESSION['usuario_id']);
+                } catch (DomainException $error) {
+                    http_response_code(403);
+                    echo 'No tienes acceso al Inicio de Dirección de Operaciones.';
+                    return;
+                } catch (Throwable $error) {
+                    error_log('[inicio_direccion] ' . get_class($error));
+                    $tableroDireccion = ['permisos'=>[], 'resumen'=>[], 'avisos'=>['No se pudo actualizar el Inicio. Vuelve a cargar la página.']];
+                }
                 $vistaPanel = __DIR__ . '/../views/dashboard/director_operaciones.php';
                 break;
 

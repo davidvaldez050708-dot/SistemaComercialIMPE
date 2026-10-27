@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/../../config/db_connection.php';
 require_once __DIR__.'/../helpers/ZadarmaPbxIdentifierHelper.php';
+require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 
 /** Identidad histórica de tramos comerciales; sólo consume eventos PBX verificados. */
 final class TelefoniaVentasLlamadasService
@@ -31,6 +32,7 @@ final class TelefoniaVentasLlamadasService
         if(!in_array($type,['NOTIFY_INTERNAL','NOTIFY_OUT_START','NOTIFY_ANSWER'],true))return;
         $ref=(string)($event['pbx_call_id']??'');$ext=(string)($event['internal']??'');
         if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$ref)||!preg_match('/^[0-9]{3,6}$/D',$ext))return;
+        if (TelefoniaLimpiezaGuard::bloqueada($this->db,$ref,$ext)) return;
         $incoming=$type!=='NOTIFY_OUT_START';$cap=$incoming?'permite_entrantes':'permite_salientes';
         $permission=$incoming?'telefonia.recibir':'telefonia.salientes';
         $owners=$this->rows("SELECT t.usuario_id,GREATEST(t.created_at,t.updated_at) desde
@@ -86,12 +88,15 @@ final class TelefoniaVentasLlamadasService
         require_once __DIR__.'/TelefoniaMarcacionesVentasService.php';
         $assigned=$this->rows("SELECT extension FROM telefonia_extensiones WHERE usuario_id=? AND activo=1 AND proveedor='ZADARMA' AND permite_salientes=1",[$uid]);
         if(count($assigned)===1)(new TelefoniaMarcacionesVentasService($this->db,false))->reconciliarPendientes($uid,$assigned[0]['extension']);
+        $limpiezaEvento=TelefoniaLimpiezaGuard::condicion($this->db,'e.pbx_call_id','e.internal');
+        $limpiezaOperacion=TelefoniaLimpiezaGuard::condicion($this->db,'o.referencia','o.destino_extension');
+        $limpiezaMarcacion=TelefoniaLimpiezaGuard::condicion($this->db,'m.pbx_call_id','m.extension');
         // Backfill por conjuntos: no resolver propietario, permisos y metadata por cada evento.
         $sql="INSERT IGNORE INTO telefonia_ventas_llamadas (usuario_id,extension,pbx_call_id,direccion,numero,fecha)
             SELECT t.usuario_id,e.internal,e.pbx_call_id,IF(e.evento='NOTIFY_OUT_START','Saliente','Entrante'),
               IF(e.evento='NOTIFY_OUT_START',e.destination,e.caller_id),MIN(e.received_at)
             FROM telefonia_zadarma_eventos e JOIN telefonia_extensiones t ON t.extension=BINARY e.internal
-            WHERE t.usuario_id=? AND t.activo=1 AND t.proveedor='ZADARMA'
+            WHERE $limpiezaEvento AND t.usuario_id=? AND t.activo=1 AND t.proveedor='ZADARMA'
               AND NOT EXISTS(SELECT 1 FROM telefonia_extensiones other WHERE other.extension=BINARY t.extension AND other.activo=1 AND other.usuario_id<>t.usuario_id)
               AND ((e.evento='NOTIFY_OUT_START' AND t.permite_salientes=1 AND EXISTS(SELECT 1 FROM usuarios u JOIN rol_permisos rp ON rp.rol_id=u.rol_id JOIN permisos p ON p.id=rp.permiso_id WHERE u.id=t.usuario_id AND p.codigo='telefonia.salientes' AND p.estado=1))
                 OR(e.evento='NOTIFY_INTERNAL' AND t.permite_entrantes=1 AND EXISTS(SELECT 1 FROM usuarios u JOIN rol_permisos rp ON rp.rol_id=u.rol_id JOIN permisos p ON p.id=rp.permiso_id WHERE u.id=t.usuario_id AND p.codigo='telefonia.recibir' AND p.estado=1)))
@@ -107,7 +112,7 @@ final class TelefoniaVentasLlamadasService
             FROM telefonia_transferencia_operaciones o JOIN telefonia_disponibilidad d ON d.origen_usuario=o.origen_usuario AND d.destino_usuario=o.destino_usuario
              AND d.destino_extension=BINARY o.destino_extension AND d.referencia=BINARY o.referencia
             JOIN telefonia_zadarma_eventos e ON e.pbx_call_id=BINARY o.referencia AND e.internal=BINARY o.destino_extension AND e.evento IN('NOTIFY_INTERNAL','NOTIFY_ANSWER')
-            WHERE o.destino_usuario=? AND o.created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 90 DAY)
+            WHERE $limpiezaOperacion AND o.destino_usuario=? AND o.created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 90 DAY)
               AND d.estado IN('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA')
               AND NOT EXISTS(SELECT 1 FROM telefonia_ventas_llamadas old WHERE old.pbx_call_id=BINARY o.referencia AND old.extension=BINARY o.destino_extension)
               AND JSON_VALID(d.ruta_json) AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.tipo'))='PROSPECTO'
@@ -119,7 +124,7 @@ final class TelefoniaVentasLlamadasService
         $sql="INSERT IGNORE INTO telefonia_ventas_llamadas(usuario_id,extension,pbx_call_id,direccion,numero,fecha)
             SELECT m.usuario_id,m.extension,m.pbx_call_id,'Saliente',m.destino,MIN(e.received_at)
             FROM telefonia_ventas_marcaciones m JOIN telefonia_zadarma_eventos e ON e.pbx_call_id=BINARY m.pbx_call_id AND e.internal=BINARY m.extension AND e.evento='NOTIFY_OUT_START'
-            WHERE m.usuario_id=? AND m.created_at>=DATE_SUB(NOW(),INTERVAL 90 DAY)
+            WHERE $limpiezaMarcacion AND m.usuario_id=? AND m.created_at>=DATE_SUB(NOW(),INTERVAL 90 DAY)
               AND NOT EXISTS(SELECT 1 FROM telefonia_ventas_llamadas old WHERE old.pbx_call_id=BINARY m.pbx_call_id AND old.extension=BINARY m.extension)
             GROUP BY m.usuario_id,m.extension,m.pbx_call_id,m.destino";
         $st=$this->db->prepare($sql);$st->bind_param('i',$uid);$st->execute();$st->close();

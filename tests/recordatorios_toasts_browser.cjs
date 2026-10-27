@@ -62,10 +62,10 @@ const refresh=async page=>{
    await p.clock.runFor(1);const toast=p.locator('.reminder-toast[data-telefonia-id="71"]');await toast.waitFor({state:'visible'});
    assert.equal(await count(p),1);assert.equal((await status(p)).lastShownAt,start+period);
    const box=await toast.boundingBox();assert.ok(box.x>900&&box.y<180,'toast del CRM en la esquina superior derecha');
-   await p.clock.runFor(6999);assert.equal(await count(p),1);await p.clock.runFor(1);assert.equal(await count(p),0);
+   await p.clock.runFor(7999);assert.equal(await count(p),1);await p.clock.runFor(1);assert.equal(await count(p),0);
    assert.equal(f.reads.length,0);assert.equal(await p.locator('.topbar-reminder-item').count(),2);
    await p.getByRole('link',{name:'Mis llamadas',exact:true}).click();await p.locator('.topbar-reminder-item').first().waitFor();
-   await p.clock.runFor(period-7000);const next=p.locator('.reminder-toast[data-telefonia-id="72"]');await next.waitFor({state:'visible'});
+   await p.clock.runFor(period-8000);const next=p.locator('.reminder-toast[data-telefonia-id="72"]');await next.waitFor({state:'visible'});
    assert.equal(await count(p),1);await next.click();await p.waitForURL('**/destino?aviso=72');
    assert.equal(f.reads.length,1);assert.match(f.reads[0],/id=72/);assert.match(f.reads[0],/csrf_token=csrf-8/);
    assert.deepEqual(f.errors,[]);await p.close();cases++;
@@ -79,7 +79,7 @@ const refresh=async page=>{
     await p.locator('.reminder-toast').waitFor({state:'visible'});assert.equal(await count(p),1);
     assert.equal(await p.locator('.reminder-toast').getAttribute('data-telefonia-id')||'',id);
     if(!id)assert.match(await p.locator('.reminder-toast').textContent(),/Acción vencida.*Institución Uno/);
-    await p.clock.runFor(7000);
+    await p.clock.runFor(8000);
    }
    assert.equal(f.reads.length,0);assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
@@ -149,10 +149,24 @@ const refresh=async page=>{
    const f=await fixture(browser,{avisos:[...notices],partial}),p=f.page;
    assert.equal(await count(p),0);await p.clock.runFor(period+1);
    await p.locator('.reminder-toast[data-telefonia-id="71"]').waitFor({state:'visible'});
-   assert.equal(await count(p),1);await p.clock.runFor(7000);
+   assert.equal(await count(p),1);await p.clock.runFor(8000);
    assert.equal(await p.locator('.topbar-reminder-item').count(),2);assert.equal(f.reads.length,0);
    assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
-  console.log(`Toasts CRM: ${cases} escenarios de navegador aprobados; Bootstrap opcional, 4+4 minutos, siete segundos, rotación, cola, lectura y sesión.`);
+  // Ventas: leer no resuelve la tarea; las vencidas continúan cada ocho minutos.
+  for(const kind of ['devolucion','programada']){
+   const task={...notices[0],leida:1,tipo_evento:kind,pendiente_operativo:true,reiterar_hasta_atender:true,
+     estado:'vencida',titulo:kind==='devolucion'?'Devolución vencida':'Llamada programada vencida',fecha_iso:'2026-10-17T23:59:59-06:00'};
+   const f=await fixture(browser,{items:[task]}),p=f.page;
+   await p.clock.runFor(period+1);await p.locator('.reminder-toast.is-overdue').waitFor({state:'visible'});
+   assert.match(await p.locator('.reminder-toast').innerText(),/vencida/);
+   assert.equal(f.reads.length,0,'El temporizador no registra lectura ni atención');
+   await p.clock.runFor(period);await p.locator('.reminder-toast.is-overdue').waitFor({state:'visible'});
+   assert.equal(f.shown.length,2,'La tarea leída reaparece al siguiente turno');
+   f.setItems([]);await refresh(p);await p.clock.runFor(period);
+   assert.equal(await count(p),0,'Atender la tarea detiene la reiteración');
+   assert.deepEqual(f.errors,[]);await p.close();cases++;
+  }
+  console.log(`Toasts CRM: ${cases} escenarios de navegador aprobados; Bootstrap opcional, 4+4 minutos, ocho segundos, rotación, cola, lectura y sesión.`);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
