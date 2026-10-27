@@ -44,11 +44,31 @@ sha_base(){
   esac
 }
 
-for utility in git curl php node mktemp cmp cp mv grep; do
+for utility in git curl php mktemp cmp cp mv grep; do
   command -v "$utility" >/dev/null || {
     echo "ERROR: falta $utility. SITIO INTACTO." >&2;exit 1;
   }
 done
+# Hostinger compartido no siempre proporciona Node.js al usuario SSH.
+# El JavaScript se distribuye únicamente si su blob SHA coincide con el
+# archivo previamente comprobado. Comprobar sintaxis local cuando Node exista.
+comprobar_js() {
+  local ruta="$1"
+  [[ "$(git hash-object "$ruta")" == "$(sha_target "$JS")" ]] || {
+    echo "ERROR: JavaScript alterado o no verificado. SITIO INTACTO." >&2
+    return 1
+  }
+  if command -v node >/dev/null 2>&1; then
+    node --check "$ruta"
+    echo "JS: sintaxis e integridad verificadas."
+  elif command -v nodejs >/dev/null 2>&1; then
+    nodejs --check "$ruta"
+    echo "JS: sintaxis e integridad verificadas."
+  else
+    echo "JS: integridad SHA verificada. Node.js ausente en Hostinger;"
+    echo "la sintaxis se comprueba fuera del hosting. No se instala Node.js."
+  fi
+}
 [[ -f "$SITE/index.php" && -f "$SITE/$CONT" && -f "$SITE/$VIEW" &&
     -f "$SITE/$HIST" && -f "$SITE/app/models/SeguimientoVinculacionModel.php" &&
     -f "$SITE/config/db_connection.php" ]] || {
@@ -154,7 +174,7 @@ done
 for file in "$IMPORT" "$TEMPLATE"; do
   php -l "$STAGE/target/$file"
 done
-node --check "$STAGE/target/$JS"
+comprobar_js "$STAGE/target/$JS"
 grep -Fq "public function importarInstitucionesExcel()" "$STAGE/publish/$CONT"
 grep -Fq "public function descargarPlantillaSeguimientoExcel()" "$STAGE/publish/$CONT"
 grep -Fq "public function analistasImportacionExcel()" "$STAGE/publish/$CONT"
@@ -219,7 +239,7 @@ done
 for file in "$CONT" "$HIST" "$IMPORT" "$TEMPLATE" "$VIEW";do
   php -l "$SITE/$file" >/dev/null
 done
-node --check "$SITE/$JS"
+comprobar_js "$SITE/$JS"
 SUCCESS=1
 echo "PUBLICACIÓN COMPLETA · respaldo: $BACKUP"
 echo 'No se modificaron SQL, teléfonos, grabaciones, expedientes ni datos.'
