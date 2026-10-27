@@ -55,6 +55,11 @@
  const name=document.createElement('strong'),hint=document.createElement('p');card.append(name,hint);
  panel.querySelector('.persistent-phone-origin').after(card);
  const button=panel.querySelector('[data-incoming-register-finished]')||document.createElement('button');button.type='button';button.className='persistent-phone-action is-primary';button.textContent='Registrar resultado';button.dataset.incomingRegisterFinished='';button.hidden=true;
+ // La autorización del resultado solo puede provenir del estado FINALIZADO.
+ // Durante Marcando/Timbrando el botón nunca debe hacerse visible ni
+ // durante un frame cuando exista una atención anterior pendiente.
+ panel.classList.add('impe-sales-result-gate-v1');
+ button.removeAttribute('data-impe-sales-result-ready');
  const actions=panel.querySelector('.persistent-phone-actions'),close=actions?.querySelector('[data-incoming-close-finished]');
  if(close)actions.insertBefore(button,close);else actions?.append(button);
  // Los pendientes se notifican desde la campana y los toasts compartidos del CRM.
@@ -63,6 +68,8 @@
  const statusStyle=document.createElement('style');
  statusStyle.textContent=[
   '.impe-incoming-panel.impe-sales-pbx-pending-v1{display:none!important}',
+  /* IMPE_VENTAS_NO_REGISTRAR_DURANTE_MARCACION_V1_20261027 */
+  '.impe-incoming-panel.impe-sales-result-gate-v1 [data-incoming-register-finished]:not([data-impe-sales-result-ready="1"]){display:none!important}',
   '.impe-sales-pbx-status-v1{position:fixed;bottom:22px;right:22px;z-index:1040;',
   'display:flex;align-items:center;gap:11px;max-width:min(390px,calc(100vw - 32px));',
   'padding:13px 16px;border:1px solid #d9e4f1;border-radius:12px;',
@@ -86,6 +93,8 @@
  let waitToken='',waitStarted=0;
  const syncPbxPanel=()=>{
   const state=phone.getCallState(),done=phoneFinished(state)&&state.direction==='outgoing';
+  // Cerrar autorización anterior de inmediato al regresar a marcación.
+  if(!phoneFinished(state))button.removeAttribute('data-impe-sales-result-ready');
   const ref=reference(state);
   const confirmed=Boolean(done&&pbx(ref)&&metadata?.pbx_call_id===ref&&
     metadata.finalizada&&metadata.conectada&&!metadata.registro);
@@ -154,11 +163,17 @@
   const finished=!active&&['finished','incoming-finished'].includes(state?.phase);
   const instant=provisional(state);
   const task=choosePending(state);
-  const canOpen=Boolean(task&&pbx(task.ref)&&String(task.extension)===String(cfg.extension)&&
-   (!(finished&&state?.direction==='outgoing')||
-    (metadata?.pbx_call_id===task.ref&&metadata.finalizada&&metadata.conectada&&!metadata.registro)));
-  button.hidden=active||form||!canOpen;
+  const finalState=phoneFinished(state);
+  const outgoingReady=Boolean(task&&metadata&&state?.direction==='outgoing'&&
+   metadata.pbx_call_id===task.ref&&metadata.finalizada&&metadata.conectada&&
+   !metadata.registro);
+  const canOpen=Boolean(finalState&&!active&&!form&&task&&pbx(task.ref)&&
+   String(task.extension)===String(cfg.extension)&&
+   (state.direction==='incoming'||outgoingReady));
+  button.hidden=!canOpen;
   button.disabled=!canOpen;
+  if(canOpen)button.setAttribute('data-impe-sales-result-ready','1');
+  else button.removeAttribute('data-impe-sales-result-ready');
   button.textContent='Registrar resultado';
   const icon=document.createElement('i');icon.className='bi bi-journal-check';icon.setAttribute?.('aria-hidden','true');button.prepend?.(icon);
   button.dataset.salesPending=canOpen?'1':'0';

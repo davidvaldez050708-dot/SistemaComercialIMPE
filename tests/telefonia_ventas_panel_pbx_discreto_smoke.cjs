@@ -10,10 +10,13 @@ async function test(kind) {
   get href(){return this.s;}toString(){return this.s;}
  }
  const make=tag=>{
-  const cls=new Set();
+  const cls=new Set(),attrs=new Map();
   return{tag,className:'',dataset:{},textContent:'',hidden:false,src:'',lastChild:null,
-   classList:{contains:x=>cls.has(x),toggle:(x,on)=>{if(on)cls.add(x);else cls.delete(x);return on;}},
-   setAttribute(){},after(){},append(...args){this.lastChild=args[args.length-1];},
+   attrs,
+   classList:{contains:x=>cls.has(x),add:x=>cls.add(x),toggle:(x,on)=>{if(on)cls.add(x);else cls.delete(x);return on;}},
+   setAttribute(key,value){attrs.set(key,String(value));},
+   removeAttribute(key){attrs.delete(key);},hasAttribute(key){return attrs.has(key);},
+   after(){},append(...args){this.lastChild=args[args.length-1];},
    appendChild(x){this.lastChild=x;},prepend(){},addEventListener(name,fn){this['on'+name]=fn;},
    insertBefore(){},dispatchEvent(){},querySelector(){return null;}};
  };
@@ -25,7 +28,10 @@ async function test(kind) {
  const win={IMPE_PHONE_SHELL_CONFIG:{salesResults:true,userId:23,extension:'151',
   salesDetailUrl:'https://crm.test/detail',salesHistoryUrl:'https://crm.test/hist'},
   addEventListener(){},IMPE_AVAILABILITY:null};
- const storage=new Map();
+ // Atención anterior guardada: antes producía un flash en la vista nueva.
+ const storage=new Map([['impe:sales-pending:23',JSON.stringify([
+  {ref:'PBXANTERIOR98765',extension:'151',at:Date.now(),callToken:'token-anterior'}
+ ])]]);
  const localStorage={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)};
  const sessionStorage={getItem(){return null;},removeItem(){},setItem(){}};
  let state={active:true,direction:'outgoing',phase:'in-progress',
@@ -51,6 +57,27 @@ async function test(kind) {
   },fetch,console,setInterval:fn=>{interval=fn;return 1;},
   setTimeout:()=>1,clearTimeout:()=>{}};
  vm.runInNewContext(src,sandbox,{filename:'telefonia_ventas_shell.js'});
+ assert.equal(panel.classList.contains('impe-sales-result-gate-v1'),true,
+  'Vista de Ventas debe inicializar puerta visual del resultado');
+ assert.match(head.lastChild.textContent,/data-impe-sales-result-ready/,
+  'CSS debe bloquear el botón antes de confirmar cierre');
+ assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
+  'El botón inicia sin autorización');
+ // Simula el intervalo de reposo con una atención antigua aún pendiente.
+ state={...state,active:false,phase:'ready'};
+ interval();
+ assert.equal(button.hidden,true,'No mostrar pendiente antiguo al iniciar nueva marcación');
+ assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
+  'El pendiente anterior no debe autorizar el resultado');
+ // Simula el marcado y timbrado, con posible resultado previo en sesión.
+ // Ni un render en transición debe habilitar Registrar resultado.
+ for(const phase of ['dialing','ringing','in-progress']){
+  state={...state,active:true,phase};
+  interval();
+  assert.equal(button.hidden,true,'Resultado visible mientras '+phase);
+  assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
+   'Autorización antigua persiste durante '+phase);
+ }
  state={...state,active:false,phase:'finished'};
  interval();
  for(let i=0;i<20;i++)await Promise.resolve();
@@ -62,17 +89,23 @@ async function test(kind) {
   assert.equal(gate,false,'La conversación confirmada debe abrir panel bueno');
   assert.equal(noticeHidden,true,'No mostrar aviso después de confirmar');
   assert.equal(button.hidden,false,'Registrar resultado visible en conversación confirmada');
+  assert.equal(button.hasAttribute('data-impe-sales-result-ready'),true,
+   'El resultado confirmado debe autorizarse explícitamente');
   assert.equal(confirms.length,1,'Se necesita confirmFinishedCall con identidad exacta');
   assert.equal(dismisses.length,0,'No descartar conversación');
  }else if(kind==='cancel'||kind==='saved'){
   assert.equal(gate,true,'No mostrar panel provisional tras cancelación o resultado ya guardado');
   assert.equal(noticeHidden,true,'No insistir después de descartar');
   assert.equal(button.hidden,true,'No pedir resultado');
+  assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
+   'La cancelación o guardado no conserva autorización visual');
   assert.equal(dismisses.length,1,'Debe cerrarse el resumen');
  }else{
   assert.equal(gate,true,'Mientras la PBX concilia, ocultar modal grande');
   assert.equal(noticeHidden,false,'Solo mostrar aviso discreto');
   assert.equal(button.hidden,true,'No permitir formulario provisional');
+  assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
+   'La verificación provisional no autoriza resultado');
   assert.equal(confirms.length,0,'Sin confirmación no abrir panel bueno');
   now+=9000;
   interval();
@@ -89,5 +122,5 @@ async function test(kind) {
  assert.ok(src.includes("state.direction==='outgoing'"),'No debe modificar entrantes');
  assert.ok(src.includes('IMPE_SALES_PROSPECT_CAPTURE'),'Preservar captura comercial');
  assert.ok(src.includes('bindTransferCandidate'),'Preservar transferencia');
- console.log('PASS: 4 escenarios, sin SIP/WebRTC ni consultas reales.');
+ console.log('PASS: marcado, timbrado, conexión, cancelación, pendiente y guardado sin flash de resultado.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
