@@ -24,6 +24,16 @@ final class TelefoniaVentasLlamadasService
                 WHERE rp.rol_id=u.rol_id AND p.codigo='telefonia.usar' AND p.estado=1)",[$uid]))
             throw new DomainException('No tienes acceso a la atención comercial.');
     }
+    /**
+     * Fecha de asignación almacenada en UTC; eventos en hora de México.
+     * Comparar ambos en la misma zona evita perder tramos del asesor.
+     */
+    public static function asignacionLocal(string $utc): string {
+        $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$utc,new DateTimeZone('UTC'));
+        if(!$date || $date->format('Y-m-d H:i:s')!==$utc)
+            throw new DomainException('Fecha de asignación telefónica inválida.');
+        return $date->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
+    }
     /** Llamado DESPUÉS de guardar el webhook; no crea otro evento ni toca SIP. */
     public function capturarEvento(array $event): void {
         if(!$this->disponible())return;
@@ -44,7 +54,8 @@ final class TelefoniaVentasLlamadasService
         if(count($owners)!==1)return;
         $date=(string)($event['received_at']??date('Y-m-d H:i:s'));
         $started=(string)($event['call_start']??$date);
-        if($date<$owners[0]['desde']||($started!==''&&$started<$owners[0]['desde']))return;
+        $assignedLocal=self::asignacionLocal((string)$owners[0]['desde']);
+        if($date<$assignedLocal||($started!==''&&$started<$assignedLocal))return;
         if($type==='NOTIFY_ANSWER'){
             $proof=$this->rows("SELECT ruta_json FROM telefonia_disponibilidad WHERE destino_usuario=? AND destino_extension=? AND referencia=? AND estado IN ('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA') LIMIT 2",[$owners[0]['usuario_id'],$ext,$ref]);
             $route=count($proof)===1?(json_decode($proof[0]['ruta_json'],true)?:[]):[];
@@ -95,8 +106,8 @@ final class TelefoniaVentasLlamadasService
               AND NOT EXISTS(SELECT 1 FROM telefonia_extensiones other WHERE other.extension=BINARY t.extension AND other.activo=1 AND other.usuario_id<>t.usuario_id)
               AND ((e.evento='NOTIFY_OUT_START' AND t.permite_salientes=1 AND EXISTS(SELECT 1 FROM usuarios u JOIN rol_permisos rp ON rp.rol_id=u.rol_id JOIN permisos p ON p.id=rp.permiso_id WHERE u.id=t.usuario_id AND p.codigo='telefonia.salientes' AND p.estado=1))
                 OR(e.evento='NOTIFY_INTERNAL' AND t.permite_entrantes=1 AND EXISTS(SELECT 1 FROM usuarios u JOIN rol_permisos rp ON rp.rol_id=u.rol_id JOIN permisos p ON p.id=rp.permiso_id WHERE u.id=t.usuario_id AND p.codigo='telefonia.recibir' AND p.estado=1)))
-              AND e.received_at>=DATE_SUB(NOW(),INTERVAL 90 DAY) AND e.received_at>=GREATEST(t.created_at,t.updated_at)
-              AND(e.call_start IS NULL OR e.call_start>=GREATEST(t.created_at,t.updated_at))
+              AND e.received_at>=DATE_SUB(NOW(),INTERVAL 90 DAY) AND e.received_at>=CONVERT_TZ(GREATEST(t.created_at,t.updated_at),'+00:00','-06:00')
+              AND(e.call_start IS NULL OR e.call_start>=CONVERT_TZ(GREATEST(t.created_at,t.updated_at),'+00:00','-06:00'))
               AND NOT EXISTS(SELECT 1 FROM telefonia_ventas_llamadas old WHERE old.pbx_call_id=BINARY e.pbx_call_id AND old.extension=BINARY e.internal)
               AND e.pbx_call_id REGEXP '^[A-Za-z0-9_-]{6,100}$' AND e.internal REGEXP '^[0-9]{3,6}$'
             GROUP BY t.usuario_id,e.internal,e.pbx_call_id,e.evento,e.destination,e.caller_id";
