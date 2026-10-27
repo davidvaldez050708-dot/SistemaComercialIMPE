@@ -169,6 +169,23 @@ final class SeguimientoExcelImportService
         return [$id,(int)$found[0]['id']];
     }
 
+    /** Excel almacena las fechas como seriales; jamás convertirlas en actividad del CRM. */
+    private static function fechaHistorica(string $value): string
+    {
+        $value=trim($value);
+        if($value==='')return '';
+        if(ctype_digit($value) && (int)$value>=20000 && (int)$value<90000) {
+            return gmdate('Y-m-d',((int)$value-25569)*86400);
+        }
+        foreach(['!Y-m-d','!d/m/Y'] as $format) {
+            $date=DateTimeImmutable::createFromFormat($format,$value);
+            if($date && $date->format(substr($format,1))===$value) {
+                return $date->format('Y-m-d');
+            }
+        }
+        throw new DomainException('Fecha histórica inválida; usa DD/MM/AAAA o una fecha de Excel.',422);
+    }
+
     private function comprobarFila(array $cells,array $scope,int $analista): array
     {
         foreach(range(1,13) as $idx){
@@ -210,9 +227,9 @@ final class SeguimientoExcelImportService
             'whatsapp'=>trim($cells[8]),'correo'=>mb_strtolower(trim($cells[9]),'UTF-8'),
             'contacto'=>trim($cells[11]),'cargo'=>trim($cells[12]),'actividad'=>trim($cells[5]),
             'direccion'=>trim($cells[6]),'sitio'=>$site,'paso'=>$step,
-            'referencia'=>trim($cells[0]),'fecha_ultima'=>trim($cells[14]),
+            'referencia'=>trim($cells[0]),'fecha_ultima'=>self::fechaHistorica($cells[14]),
             'evidencia'=>trim($cells[15]),'accion'=>trim($cells[16]),
-            'fecha_proxima'=>trim($cells[17]),'observaciones'=>trim($cells[18])
+            'fecha_proxima'=>self::fechaHistorica($cells[17]),'observaciones'=>trim($cells[18])
         ];
     }
 
