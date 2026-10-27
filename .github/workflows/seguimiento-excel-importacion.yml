@@ -1,0 +1,40 @@
+name: Seguimiento · importación Excel de instituciones
+on:
+  pull_request:
+    paths:
+      - 'app/controllers/SeguimientoVinculacionController.php'
+      - 'app/services/SeguimientoExcel*.php'
+      - 'app/services/SeguimientoHistorialImportadoService.php'
+      - 'app/views/seguimiento_vinculacion/index.php'
+      - 'public/javascript/seguimiento_importacion_excel.js'
+      - 'public/css/seguimiento_importacion_excel.css'
+      - 'tests/seguimiento_importador_excel_smoke.php'
+      - '.github/workflows/seguimiento-excel-importacion.yml'
+  push:
+    branches:
+      - 'feat/seguimiento-importador-instituciones-xlsx-v1-20261026'
+permissions:
+  contents: read
+jobs:
+  comprobaciones:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, zip, dom, fileinfo
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Comprobar sintaxis PHP y JavaScript
+        run: |
+          php -l app/controllers/SeguimientoVinculacionController.php
+          php -l app/services/SeguimientoExcelImportService.php
+          php -l app/services/SeguimientoExcelPlantillaService.php
+          php -l app/services/SeguimientoHistorialImportadoService.php
+          php -l app/views/seguimiento_vinculacion/index.php
+          php -l tests/seguimiento_importador_excel_smoke.php
+          node --check public/javascript/seguimiento_importacion_excel.js
+      - name: Generar plantilla y probar pasos declarados
+        run: php tests/seguimiento_importador_excel_smoke.php

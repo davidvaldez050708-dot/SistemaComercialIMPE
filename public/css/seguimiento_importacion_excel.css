@@ -1,0 +1,46 @@
+/* Importador Excel: estilos exclusivamente en Seguimiento de Vinculación. */
+.linkage-selector .impe-import-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.linkage-selector .impe-import-open{min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:Manrope,sans-serif;font-size:12px;font-weight:800;border:1px solid #d8e2f0;border-radius:10px;padding:10px 16px;color:#273b84;background:#fff}
+.linkage-selector .impe-import-open:hover{color:#24367e;border-color:#9badcf;background:#f5f8fd}
+.impe-excel-modal{font-family:Manrope,sans-serif}
+.impe-excel-modal .modal-dialog{max-width:min(1040px,calc(100% - 22px))}
+.impe-excel-modal .system-form-modal-title{display:flex;align-items:center;gap:9px}
+.impe-excel-modal .system-form-modal-title i{color:#2b458b}
+.impe-excel-modal .impe-excel-guide{display:flex;gap:10px;align-items:flex-start;background:#f4f7fc;border:1px solid #dbe5f4;color:#375074;border-radius:10px;padding:13px 15px;font-size:12px;line-height:1.65;margin-bottom:20px}
+.impe-excel-modal .impe-excel-guide i{flex:0 0 auto;color:#273d86;font-size:17px}
+.impe-excel-modal .impe-excel-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.impe-excel-modal .impe-excel-fields>div:last-child{grid-column:1/-1}
+.impe-excel-modal .form-label{font-size:12px;color:#273d65;font-weight:800;margin-bottom:7px}
+.impe-excel-modal .form-control,.impe-excel-modal .form-select{font-family:Manrope,sans-serif;font-size:12px;min-height:45px;border-radius:10px;border:1px solid #d7e1ef;background-color:#f9fbff;color:#1a3154}
+.impe-excel-modal .form-control:focus,.impe-excel-modal .form-select:focus{border-color:#314e96;box-shadow:0 0 0 3px rgba(49,78,150,.12)}
+.impe-excel-modal .impe-excel-help{font-size:11px;color:#667992;margin:10px 0 0;line-height:1.5}
+.impe-excel-modal .impe-excel-alert{margin-top:18px;padding:12px 15px;background:#f2f6fc;border:1px solid #dbe5f2;border-radius:10px;font-size:12px;font-weight:700;color:#2b487b;line-height:1.6}
+.impe-excel-modal .impe-excel-alert[data-error="1"]{background:#fff4f2;border-color:#eecdc8;color:#ae3430}
+.impe-excel-modal .impe-excel-alert[hidden],.impe-excel-modal [hidden]{display:none!important}
+.impe-excel-modal .impe-excel-result{margin-top:20px;border-top:1px solid #e2e9f2;padding-top:18px}
+.impe-excel-modal .impe-excel-result h6{font-size:14px;font-weight:800;color:#1b3054;margin-bottom:14px}
+.impe-excel-modal .impe-excel-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:14px}
+.impe-excel-modal .impe-excel-metric{display:flex;flex-direction:column;align-items:center;gap:3px;background:#f8faff;border:1px solid #e0e8f2;border-radius:10px;padding:11px 7px;text-align:center}
+.impe-excel-modal .impe-excel-metric strong{font-size:19px;color:#283f84}
+.impe-excel-modal .impe-excel-metric span{font-size:10px;font-weight:700;color:#61748f}
+.impe-excel-modal .impe-excel-table-wrap{max-height:310px;overflow:auto;border:1px solid #e0e8f2;border-radius:10px}
+.impe-excel-modal .impe-excel-table{margin:0;font-size:11px;white-space:normal}
+.impe-excel-modal .impe-excel-table th{background:#eef3fa;color:#314973;font-weight:800;padding:10px}
+.impe-excel-modal .impe-excel-table td{vertical-align:middle;padding:10px;color:#4c5d79;border-color:#edf1f7}
+.impe-excel-modal .impe-excel-table td:nth-child(2){font-weight:800;color:#1b3054;min-width:180px}
+.impe-excel-modal .impe-excel-table td:last-child{min-width:230px}
+.impe-excel-modal .impe-excel-badge{display:inline-block;font-size:10px;padding:5px 9px;border:1px solid #dde5ef;background:#f3f5f8;color:#5a6a82;border-radius:15px;font-weight:800}
+.impe-excel-modal tr[data-estado="nueva"] .impe-excel-badge{background:#eaf7f3;color:#137a6b;border-color:#bde7db}
+.impe-excel-modal tr[data-estado="invalida"] .impe-excel-badge{background:#fff1ed;color:#ac3c2e;border-color:#f1c9c0}
+.impe-excel-modal tr[data-estado="revisar"] .impe-excel-badge{background:#fff9e9;color:#8b6815;border-color:#e8d7a5}
+.impe-excel-modal .impe-excel-footer{display:flex;gap:9px;flex-wrap:wrap}
+.impe-excel-modal .impe-excel-footer button{min-height:43px;font-family:Manrope,sans-serif;font-size:12px;font-weight:800;border-radius:10px}
+@media(max-width:767px){
+ .linkage-selector .impe-import-actions{width:100%;justify-content:stretch}
+ .linkage-selector .impe-import-actions .btn{flex:1 1 auto;min-width:0}
+ .impe-excel-modal .impe-excel-fields{grid-template-columns:1fr}
+ .impe-excel-modal .impe-excel-fields>div:last-child{grid-column:auto}
+ .impe-excel-modal .impe-excel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .impe-excel-modal .modal-dialog{margin:10px}
+ .impe-excel-modal .impe-excel-footer button{flex:1 1 auto}
+}

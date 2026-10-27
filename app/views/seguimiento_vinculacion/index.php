@@ -104,6 +104,14 @@ $tarjetasPorPaginaSeguimiento = 12;
                 <p>Busca o selecciona un Estado para consultar su seguimiento de vinculación.</p>
             </div>
 
+            <div class="impe-import-actions">
+                <?php if (tienePermiso('seguimientos_vinculacion.crear')): ?>
+                <button type="button" class="btn btn-system-light linkage-action-button impe-import-open"
+                    data-bs-toggle="modal" data-bs-target="#modalImportacionSeguimientoExcel">
+                    <i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i>
+                    Importar Excel
+                </button>
+                <?php endif; ?>
             <a
                 class="btn btn-system-save linkage-action-button linkage-report-button"
                 href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacionReporte&action=index"
@@ -112,6 +120,7 @@ $tarjetasPorPaginaSeguimiento = 12;
                 <i class="bi bi-file-earmark-bar-graph"></i>
                 Generar Reportes
             </a>
+            </div>
         </div>
 
         <form class="data-territorial-toolbar linkage-territory-toolbar" action="#" method="GET" data-linkage-filters>
@@ -549,3 +558,88 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
     });
 });
 </script>
+
+<?php if (!empty($territorios) && tienePermiso('seguimientos_vinculacion.crear')): ?>
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/seguimiento_importacion_excel.css?v=20261026">
+<div class="modal fade impe-excel-modal" id="modalImportacionSeguimientoExcel" tabindex="-1"
+    aria-labelledby="importacionExcelTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable system-form-dialog">
+        <div class="modal-content system-form-modal">
+            <div class="modal-header system-form-modal-header">
+                <div>
+                    <h5 class="system-form-modal-title" id="importacionExcelTitulo">
+                        <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
+                        Importar instituciones
+                    </h5>
+                    <p class="system-form-modal-subtitle">Analiza tu plantilla antes de incorporarla al seguimiento.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form data-impe-excel-form enctype="multipart/form-data" method="post" novalidate>
+                    <input type="hidden" name="csrf_token" value="<?= $texto($_SESSION['csrf_token']??'') ?>">
+                    <div class="impe-excel-template-link">
+                        <button type="button" class="btn btn-system-light" data-impe-excel-download
+                            data-url="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&amp;action=descargarPlantillaSeguimientoExcel">
+                            <i class="bi bi-download" aria-hidden="true"></i> Descargar plantilla Excel V3
+                        </button>
+                    </div>
+                    <div class="impe-excel-guide">
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                        <div>Utiliza la plantilla Excel V3 con sus 13 campos obligatorios.
+                        No se crearán registros hasta confirmar. Los pasos históricos no sustituyen las actividades reales del CRM.</div>
+                    </div>
+                    <div class="impe-excel-fields">
+                        <div>
+                            <label class="form-label" for="impe_excel_territorio">Territorio de las instituciones *</label>
+                            <select class="form-select" name="estado_id" id="impe_excel_territorio" required>
+                                <option value="">Seleccionar estado</option>
+                                <?php foreach ($territorios as $territorio): ?>
+                                    <option value="<?= (int)$territorio['id'] ?>"><?= $texto($territorio['nombre']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <?php if ($modoSeguimiento!=='analista'): ?>
+                        <div>
+                            <label class="form-label" for="impe_excel_analista">Analista responsable *</label>
+                            <select class="form-select" name="analista_id" id="impe_excel_analista" required
+                                    data-impe-excel-analista>
+                                <option value="">Selecciona primero un estado</option>
+                            </select>
+                            <p class="impe-excel-help">Solo se admiten analistas asignados y autorizados en el territorio.</p>
+                        </div>
+                        <?php endif; ?>
+                        <div>
+                            <label class="form-label" for="impe_excel_file">Archivo Excel (.xlsx) *</label>
+                            <input class="form-control" type="file" id="impe_excel_file" name="archivo"
+                                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                        </div>
+                    </div>
+                    <div class="impe-excel-alert" role="status" aria-live="polite" data-impe-excel-message hidden></div>
+                    <div class="impe-excel-result" data-impe-excel-preview hidden>
+                        <h6>Resultado de la revisión</h6>
+                        <div class="impe-excel-metrics" data-impe-excel-summary></div>
+                        <div class="impe-excel-table-wrap" tabindex="0" role="region" aria-label="Filas verificadas del Excel">
+                            <table class="table impe-excel-table">
+                                <thead><tr><th>Fila</th><th>Institución</th><th>Revisión</th><th>Detalle</th></tr></thead>
+                                <tbody data-impe-excel-rows></tbody>
+                            </table>
+                        </div>
+                        <p class="impe-excel-help">Las filas existentes, ambiguas o inválidas se omitirán. No se modificarán expedientes anteriores.</p>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer impe-excel-footer">
+                <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-system-light" data-impe-excel-analyze>
+                    <i class="bi bi-search" aria-hidden="true"></i> Analizar Excel
+                </button>
+                <button type="button" class="btn btn-system-save" data-impe-excel-confirm hidden disabled>
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i> Confirmar importación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script defer src="<?= BASE_URL ?>public/javascript/seguimiento_importacion_excel.js?v=20261026"></script>
+<?php endif; ?>
