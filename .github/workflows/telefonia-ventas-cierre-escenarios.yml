@@ -1,0 +1,27 @@
+name: Telefonia Ventas - cierre y cancelaciones
+on:
+  push:
+    branches:
+      - fix/ventas-cierre-sin-modal-provisional-20261027
+  pull_request:
+    paths:
+      - public/javascript/telefonia_shell.js
+      - public/javascript/telefonia_ventas_shell.js
+      - tests/telefonia_ventas_cierre_escenarios_smoke.cjs
+      - .github/workflows/telefonia-ventas-cierre-escenarios.yml
+permissions:
+  contents: read
+jobs:
+  validar-cierre:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Revisar sintaxis y seis escenarios de Ventas
+        run: |
+          node --check public/javascript/telefonia_shell.js
+          node --check public/javascript/telefonia_ventas_shell.js
+          node --check tests/telefonia_ventas_cierre_escenarios_smoke.cjs
+          node tests/telefonia_ventas_cierre_escenarios_smoke.cjs
