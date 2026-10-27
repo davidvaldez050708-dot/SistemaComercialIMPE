@@ -3,11 +3,13 @@
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 /**
- * Perfil local REDMEX. Lee siempre el DOCX preparado, nunca texto de la BD.
+ * Perfiles REDMEX general y con cabecera/pie separados. Lee siempre el DOCX,
+ * nunca texto de la BD. Conserva los recursos de la plantilla seleccionada.
  * No es un conversor Word universal: falla antes de renderizar si pierde información.
  */
 final class OficioRedmexPdfRenderer
 {
+    public const VERSION = '20261026-personalizadas-1';
     private const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
     private const NS = [
         'w' => self::W,
@@ -30,6 +32,10 @@ final class OficioRedmexPdfRenderer
     private $needed = [];
     private $texts = [];
     private $fontNamespace;
+    private $separateParts = false;
+    private $margins = [];
+    private $pageWidth = 612.0;
+    private $pageHeight = 792.0;
 
     public function convertir(string $docx, string $directory, string $requestId = ''): array
     {
@@ -57,25 +63,26 @@ final class OficioRedmexPdfRenderer
             $this->open($docx);
             try {
                 $phase = 'GRAPHICS';
-                $actual = $this->graphics();
+                $actual = $this->separateParts ? [] : $this->graphics();
                 $fingerprint = static function ($graphics) {
                     return array_map(static function ($g) {
                         foreach ($g['images'] as &$image) {
-                            $image['data'] = hash('sha256', $image['data']);
+                            unset($image['data']);
                         }
                         return $g;
                     }, $graphics);
                 };
-                $this->ensure($fingerprint($actual) === $fingerprint($expected), 'GRAPHICS_PROFILE');
+                if (!$this->separateParts) {
+                    $this->ensure($fingerprint($actual) === $fingerprint($expected), 'GRAPHICS_PROFILE');
+                }
                 // Cada documento conserva sus imágenes. El perfil sólo comprueba compatibilidad.
                 $this->drawings = $actual;
                 $selectedFonts = $this->fontSources();
-                foreach ($selectedFonts as $key => $data) {
-                    $this->ensure(isset($fontSources[$key]) && hash_equals(hash('sha256',$fontSources[$key]),hash('sha256',$data)), 'FONT_PROFILE');
-                }
+                // Cada DOCX puede incorporar sus propias fuentes. Se validan al
+                // registrarlas, sin exigir los mismos bytes que la plantilla general.
                 $this->fonts = $selectedFonts + $fontSources;
                 $phase = 'HTML';
-                $html = $this->html();
+                $html = $this->separateParts ? $this->htmlWithSeparateParts() : $this->html();
                 $options = new \Dompdf\Options();
                 $options->setChroot($directory);
                 $options->setTempDir($directory);
@@ -109,7 +116,7 @@ final class OficioRedmexPdfRenderer
                     $this->ensure($pdf->getFontMetrics()->registerFont($style, $path), 'FONT_REGISTER');
                 }
                 $phase = 'RENDER';
-                $pdf->setCallbacks([['event'=>'end_frame', 'f'=>function ($frame) {
+                $pdf->setCallbacks([['event'=>'end_frame', 'f'=>function ($frame) use ($pdf) {
                     $node=$frame->get_node();
                     if ($node instanceof DOMElement && $node->hasAttribute('data-redmex-seal')) {
                         [$x,$y,$w,$h]=$frame->get_border_box();
@@ -117,9 +124,19 @@ final class OficioRedmexPdfRenderer
                     }
                     if ($frame->get_node()->nodeType !== XML_TEXT_NODE || preg_match('/^\s*$/u',$frame->get_node()->textContent)) { return; }
                     [$x,$y,$w,$h] = $frame->get_border_box();
-                    $this->ensure($x>=53.5 && $x+$w<=594.5 && $y>=12 && $y+$h<=762.5, 'CONTENT_OVERFLOW');
+                    if ($this->separateParts && $frame instanceof \Dompdf\FrameDecorator\Text) {
+                        $style = $frame->get_style();
+                        $w = $pdf->getFontMetrics()->getTextWidth(rtrim($frame->get_text()), $style->font_family,
+                            $style->font_size, $style->word_spacing + $frame->get_text_spacing(), $style->letter_spacing);
+                    }
+                    // Las plantillas admiten sangrías francesas/negativas dentro
+                    // de la página; no son un desbordamiento del documento.
+                    $left = $this->separateParts ? -0.5 : 53.5;
+                    $right = $this->separateParts ? $this->pageWidth + 0.5 : 594.5;
+                    $bottom = $this->separateParts ? $this->pageHeight - $this->margins['bottom'] + 1 : 762.5;
+                    $this->ensure($x >= $left && $x+$w <= $right && $y >= 12 && $y+$h <= $bottom, 'CONTENT_OVERFLOW');
                 }]]);
-                $pdf->setPaper('letter', 'portrait');
+                $pdf->setPaper([0, 0, $this->pageWidth, $this->pageHeight]);
                 $pdf->loadHtml($html, 'UTF-8');
                 $warnings = count($GLOBALS['_dompdf_warnings'] ?? []);
                 $pdf->render();
@@ -206,15 +223,20 @@ final class OficioRedmexPdfRenderer
         $this->rels = $this->relationships('word/_rels/document.xml.rels');
         $this->ensure($this->xp->query('//w:sectPr')->length === 1, 'SECTIONS');
         $section = $this->xp->query('//w:sectPr')->item(0);
-        $this->checkChildren($section,['w:pgSz','w:pgMar','w:pgNumType','w:cols']);
+        $this->separateParts = $this->xp->query('w:headerReference|w:footerReference', $section)->length > 0;
+        $this->checkChildren($section,['w:pgSz','w:pgMar','w:pgNumType','w:cols','w:headerReference','w:footerReference']);
         $this->ensure(in_array($this->attr('w:cols','num',$section,'1'),['1'],true)
             && in_array($this->attr('w:pgSz','orient',$section,'portrait'),['portrait'],true),'PAGE_LAYOUT');
         $this->ensure($this->attr('w:pgSz', 'w', $section) === '12240'
             && $this->attr('w:pgSz', 'h', $section) === '15840', 'PAGE_SIZE');
+        $this->margins = [];
         foreach (['top'=>340, 'right'=>360, 'bottom'=>0, 'left'=>1080, 'header'=>720, 'footer'=>720, 'gutter'=>0] as $key=>$value) {
-            $this->ensure((int)$this->attr('w:pgMar', $key, $section) === $value, 'MARGINS');
+            $actual = (float)$this->attr('w:pgMar', $key, $section, '0');
+            $this->ensure($this->separateParts ? $actual >= 0 && $actual <= 4000 : (int)$actual === $value, 'MARGINS');
+            $this->margins[$key] = $actual / 20;
         }
-        $this->ensure(!$this->xp->query('//w:headerReference|//w:footerReference|//w:footnoteReference|//w:endnoteReference|//w:ins|//w:del|//w:object|//w:pict|//w:sdt|//w:fldSimple|//w:hyperlink')->length, 'STRUCTURE');
+        $this->ensure($this->margins['gutter'] === 0.0, 'MARGINS');
+        $this->ensure(!$this->xp->query('//w:footnoteReference|//w:endnoteReference|//w:ins|//w:del|//w:object|//w:pict|//w:sdt|//w:fldSimple|//w:hyperlink')->length, 'STRUCTURE');
         $styles = $this->xpath($this->xml($this->read('word/styles.xml')));
         $this->defaults = $styles->query('//w:docDefaults/w:rPrDefault/w:rPr')->item(0);
         $this->styles = [];
@@ -338,9 +360,18 @@ final class OficioRedmexPdfRenderer
         $line=$this->one('a:ln',$sp);
         if ($line) { $this->checkChildren($line,['a:noFill']); }
         $xf = $this->one('pic:spPr/a:xfrm', $pic);
-        $this->ensure($xf && !$xf->hasAttribute('rot') && !$xf->hasAttribute('flipH') && !$xf->hasAttribute('flipV'), 'PICTURE_TRANSFORM');
+        $this->ensure($xf && !$xf->hasAttribute('flipH') && !$xf->hasAttribute('flipV')
+            && ($this->separateParts || !$xf->hasAttribute('rot')), 'PICTURE_TRANSFORM');
         $crop = $this->one('pic:blipFill/a:srcRect', $pic);
-        $this->ensure(!$crop || !$crop->hasAttributes(), 'PICTURE_CROP');
+        $cropping = [0.0, 0.0, 0.0, 0.0];
+        if ($crop && $crop->hasAttributes()) {
+            $this->ensure($this->separateParts, 'PICTURE_CROP');
+            foreach (['l','t','r','b'] as $i=>$side) {
+                $cropping[$i] = (float)$crop->getAttribute($side) / 100000;
+                $this->ensure($cropping[$i] >= 0 && $cropping[$i] < 1, 'PICTURE_CROP');
+            }
+            $this->ensure($cropping[0]+$cropping[2] < 1 && $cropping[1]+$cropping[3] < 1, 'PICTURE_CROP');
+        }
         $blip = $this->one('pic:blipFill/a:blip', $pic);
         $this->ensure($blip !== null, 'PICTURE_BLIP');
         $this->checkChildren($blip,['a:alphaModFix']);
@@ -351,7 +382,12 @@ final class OficioRedmexPdfRenderer
         $data = $this->read($this->rels[$id]);
         $size = @getimagesizefromstring($data);
         $this->ensure($size && in_array($size['mime'], ['image/png','image/jpeg'], true), 'PICTURE_FORMAT');
-        $images[] = ['box'=>$box, 'mime'=>$size['mime'], 'data'=>$data];
+        $image = ['box'=>$box, 'mime'=>$size['mime'], 'data'=>$data];
+        if ($this->separateParts) {
+            $image['crop'] = $cropping;
+            $image['rotation'] = (float)$xf->getAttribute('rot') / 60000;
+        }
+        $images[] = $image;
     }
 
     private function fontSources(): array
@@ -383,6 +419,13 @@ final class OficioRedmexPdfRenderer
         $html = '';
         foreach ($g['images'] as $img) {
             [$x,$y,$w,$h] = $img['box'];
+            if (isset($img['crop'])) {
+                [$l,$t,$r,$b] = $img['crop'];
+                $iw = $w / (1-$l-$r); $ih = $h / (1-$t-$b);
+                $html .= '<span style="display:block;position:absolute;left:'.$x.'pt;top:'.$y.'pt;width:'.$w.'pt;height:'.$h.'pt;overflow:hidden;transform:rotate('.$img['rotation'].'deg)">'
+                    .'<img style="position:absolute;left:'.(-$l*$iw).'pt;top:'.(-$t*$ih).'pt;width:'.$iw.'pt;height:'.$ih.'pt" src="data:'.$img['mime'].';base64,'.base64_encode($img['data']).'"></span>';
+                continue;
+            }
             $html .= '<img '.($seal?'data-redmex-seal="1" ':'').'style="position:absolute;left:'.$x.'pt;top:'.$y.'pt;width:'.$w.'pt;height:'.$h.'pt" src="data:'.$img['mime'].';base64,'.base64_encode($img['data']).'">';
         }
         return $html;
@@ -412,6 +455,110 @@ final class OficioRedmexPdfRenderer
         return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter portrait;margin:100pt 18pt 30pt 54pt}body{margin:0;padding:0}.first-flow{margin-top:-83pt}p{margin:0;position:relative} .closing{page-break-inside:avoid}table{border-collapse:collapse;table-layout:fixed;width:100%}td{vertical-align:top;padding:0}img{border:0}</style></head><body>'.$fixed.'<div class="first-flow">'.$body.'</div></body></html>';
     }
 
+    /** Cabeceras/pies del propio DOCX, sin reconstruirlos desde datos del oficio. */
+    private function htmlWithSeparateParts(): string
+    {
+        $fixed = $this->fixedPart('header') . $this->fixedPart('footer');
+        $body = '';
+        foreach ($this->xp->query('/w:document/w:body/*') as $el) {
+            if ($el->nodeName === 'w:sectPr') { continue; }
+            if ($el->nodeName === 'w:tbl') { $body .= $this->table($el); continue; }
+            $this->ensure($el->nodeName === 'w:p', 'BODY_ELEMENT');
+            $html = $this->paragraph($el);
+            $images = '';
+            foreach ($this->partGraphics($el) as $g) {
+                $this->ensure($g['vertical'] === 'paragraph', 'ANCHOR_ALIGN');
+                $x = $g['x'] - ($g['horizontal'] === 'page' ? $this->margins['left'] : 0);
+                $images .= '<span style="position:absolute;left:'.$x.'pt;top:'.$g['y'].'pt">'.$this->imageHtml($g).'</span>';
+            }
+            $body .= substr($html, 0, -4) . $images . '</p>';
+        }
+        $m = $this->margins;
+        return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter portrait;margin:'
+            .$m['top'].'pt '.$m['right'].'pt '.$m['bottom'].'pt '.$m['left'].'pt}'
+            .'body{margin:0;padding:0}p{margin:0;position:relative}table{border-collapse:collapse;table-layout:fixed;width:100%}td{vertical-align:top;padding:0}img{border:0}'
+            .'</style></head><body>'.$fixed.$body.'</body></html>';
+    }
+
+    private function partGraphics(DOMElement $context): array
+    {
+        $this->ensure(!$this->xp->query('.//wp:inline', $context)->length, 'INLINE_GRAPHICS');
+        $result = [];
+        foreach ($this->xp->query('.//wp:anchor', $context) as $anchor) {
+            $h = $this->one('wp:positionH', $anchor); $v = $this->one('wp:positionV', $anchor);
+            $extent = $this->one('wp:extent', $anchor);
+            $this->ensure($h && $v && $extent && ($this->one('wp:wrapNone', $anchor) || $this->one('wp:wrapSquare', $anchor)), 'ANCHOR');
+            $this->ensure($anchor->getAttribute('hidden') !== '1' && $anchor->getAttribute('simplePos') !== '1', 'ANCHOR_FLAGS');
+            $this->ensure($this->one('wp:posOffset', $h) && $this->one('wp:posOffset', $v), 'ANCHOR_ALIGN');
+            $w = (float)$extent->getAttribute('cx') / 12700; $height = (float)$extent->getAttribute('cy') / 12700;
+            $this->ensure($w > 0 && $height > 0 && $w <= 1500 && $height <= 1500, 'ANCHOR_SIZE');
+            $g = ['x'=>(float)$h->textContent / 12700, 'y'=>(float)$v->textContent / 12700,
+                'w'=>$w, 'h'=>$height, 'horizontal'=>$h->getAttribute('relativeFrom'), 'vertical'=>$v->getAttribute('relativeFrom'), 'images'=>[]];
+            $this->ensure(in_array($g['horizontal'], ['column','margin','page'], true)
+                && in_array($g['vertical'], ['paragraph','page'], true), 'ANCHOR_ALIGN');
+            $data = $this->one('a:graphic/a:graphicData', $anchor);
+            $pic = $data ? $this->one('pic:pic', $data) : null;
+            $this->ensure($pic !== null, 'GRAPHIC_TYPE');
+            $this->picture($pic, [0, 0, $w, $height], $g['images']);
+            $result[] = $g;
+            $this->ensure(count($result) <= 64, 'GRAPHICS_COUNT');
+        }
+        return $result;
+    }
+
+    private function fixedPart(string $kind): string
+    {
+        $refs = $this->xp->query('//w:sectPr/w:'.$kind.'Reference');
+        if (!$refs->length) { return ''; }
+        $this->ensure($refs->length === 1, 'SECTION_VARIANTS');
+        $ref = $refs->item(0);
+        $this->ensure($ref->getAttributeNS(self::W, 'type') === 'default', 'SECTION_VARIANTS');
+        $id = $ref->getAttributeNS(self::NS['r'], 'id');
+        $part = $this->rels[$id] ?? '';
+        $this->ensure(preg_match('~^word/'.$kind.'[0-9]+\.xml$~D', $part) === 1, 'SECTION_RELATION');
+        $xp = $this->xpath($this->xml($this->read($part)));
+        // Word ya almacena una imagen alternativa de los cuadros del pie.
+        // Usarla conserva el recurso del documento sin depender de fuentes del SO.
+        foreach (iterator_to_array($xp->query('//mc:AlternateContent')) as $alt) {
+            $fallback = $xp->query('./mc:Fallback', $alt)->item(0);
+            $this->ensure($fallback && $xp->query('.//pic:pic', $fallback)->length === 1
+                && !$xp->query('.//w:t', $fallback)->length, 'ALTERNATE_CONTENT');
+            foreach (iterator_to_array($fallback->childNodes) as $child) { $alt->parentNode->insertBefore($child, $alt); }
+            $alt->parentNode->removeChild($alt);
+        }
+        $this->ensure(!$xp->query('//w:t')->length, 'SECTION_TEXT');
+        $this->ensure(!$xp->query('//w:pict|//w:object|//w:sdt|//w:hyperlink|//w:fldSimple|//w:ins|//w:del')->length, 'SECTION_STRUCTURE');
+        $this->ensure($xp->query('//w:drawing')->length === $xp->query('//wp:anchor')->length, 'SECTION_STRUCTURE');
+        $savedXp = $this->xp; $savedRels = $this->rels;
+        $this->xp = $xp;
+        $relsPart = 'word/_rels/' . basename($part) . '.rels';
+        try {
+            $this->rels = $this->zip->locateName($relsPart) === false ? [] : $this->relationships($relsPart);
+            $html = ''; $flow = 0;
+            foreach ($xp->document->documentElement->childNodes as $p) {
+                if (!$p instanceof DOMElement) { continue; }
+                $this->ensure($p->nodeName === 'w:p', 'SECTION_STRUCTURE');
+                $graphics = $this->partGraphics($p);
+                // Dibujar primero la franja del fondo y después sus recursos menores.
+                usort($graphics, static function ($a, $b) { return $b['w'] <=> $a['w']; });
+                foreach ($graphics as $g) {
+                    $x = $g['x'] + ($g['horizontal'] === 'page' ? 0 : $this->margins['left']);
+                    $origin = $kind === 'header' ? $this->margins['header'] : $this->pageHeight - $this->margins['footer'];
+                    $y = $g['y'] + ($g['vertical'] === 'page' ? 0 : $origin + $flow);
+                    // Word limita a la página los cuadros de pie con anclaje
+                    // exportado fuera de ella (presente en la plantilla Embajadas).
+                    if ($kind === 'footer' && $y > $this->pageHeight) { $y = $this->pageHeight - $g['h']; }
+                    $this->ensure($x > -1500 && $y >= 0 && $y <= $this->pageHeight, 'SECTION_GRAPHICS');
+                    $html .= '<div style="position:fixed;left:'.($x-$this->margins['left']).'pt;top:'.($y-$this->margins['top']).'pt">'.$this->imageHtml($g).'</div>';
+                }
+                $font = $this->fontStyle($this->one('w:pPr/w:rPr', $p), $this->fontStyle($this->defaults));
+                $line = (float)$this->attr('w:pPr/w:spacing','line',$p,'240');
+                $flow += $font['size'] * $line / 240;
+            }
+            return $html;
+        } finally { $this->xp = $savedXp; $this->rels = $savedRels; }
+    }
+
     private function checkChildren(DOMNode $node, array $allowed): void
     {
         foreach ($node->childNodes as $child) {
@@ -423,7 +570,7 @@ final class OficioRedmexPdfRenderer
     {
         $this->checkChildren($p, ['w:pPr','w:r','w:bookmarkStart','w:bookmarkEnd','w:proofErr','w:commentRangeStart','w:commentRangeEnd']);
         $pr = $this->one('w:pPr',$p);
-        if ($pr) { $this->checkChildren($pr,['w:pBdr','w:rPr','w:spacing','w:ind','w:jc','w:widowControl','w:keepNext','w:keepLines','w:pageBreakBefore','w:pStyle']); }
+        if ($pr) { $this->checkChildren($pr,['w:pBdr','w:rPr','w:spacing','w:ind','w:jc','w:widowControl','w:keepNext','w:keepLines','w:pageBreakBefore','w:pStyle','w:shd']); }
         $styleId = $this->attr('w:pPr/w:pStyle','val',$p,'Normal');
         $this->ensure($styleId === 'Normal', 'PARAGRAPH_STYLE');
         foreach ($this->xp->query('w:pPr/w:pBdr/*',$p) as $border) {
@@ -442,11 +589,19 @@ final class OficioRedmexPdfRenderer
         $indent = ((float)$this->attr('w:pPr/w:ind','firstLine',$p,'0')-(float)$this->attr('w:pPr/w:ind','hanging',$p,'0'))/20;
         $rule = $this->attr('w:pPr/w:spacing','lineRule',$p,'auto');
         $line = (float)$this->attr('w:pPr/w:spacing','line',$p,'240');
-        $this->ensure(in_array($rule,['auto','exact','atLeast'],true) && $left>=0 && $right>=0 && $left+$right<540, 'PARAGRAPH_METRICS');
+        $validIndent = $this->separateParts
+            ? $left >= -$this->margins['left'] && $right >= -$this->margins['right']
+                && $left+$right < $this->pageWidth-$this->margins['left']-$this->margins['right']
+            : $left >= 0 && $right >= 0 && $left+$right < 540;
+        $this->ensure(in_array($rule,['auto','exact','atLeast'],true) && $validIndent, 'PARAGRAPH_METRICS');
         $text = ''; $font = $this->fontStyle($this->defaults);
+        // En los documentos con cabecera/pie exportados por LibreOffice, las
+        // propiedades del párrafo también fijan la fuente de los runs vacíos.
+        if ($this->separateParts) { $font = $this->fontStyle($this->one('w:pPr/w:rPr', $p), $font); }
         foreach ($p->childNodes as $run) {
             if (!($run instanceof DOMElement) || $run->nodeName !== 'w:r') { continue; }
             $this->checkChildren($run,['w:rPr','w:t','w:br','w:cr','w:tab','w:drawing','w:commentReference','w:lastRenderedPageBreak']);
+            if (!$this->xp->query('w:t|w:br|w:cr|w:tab', $run)->length) { continue; }
             $rp = $this->one('w:rPr', $run); $f=$this->fontStyle($rp, $font);
             $value='';
             foreach ($run->childNodes as $n) {
@@ -469,6 +624,8 @@ final class OficioRedmexPdfRenderer
         $lineHeight=$rule==='auto' ? $font['size']*$factor*$line/240 : $line/20;
         $this->ensure($lineHeight >= $font['size'] && $lineHeight<=100, 'LINE_HEIGHT');
         $css=$this->fontCss($font).';line-height:'.$lineHeight.'pt;margin-left:'.$left.'pt;margin-right:'.$right.'pt;padding-top:'.$before.'pt;margin-bottom:'.$after.'pt;text-indent:'.$indent.'pt;text-align:'.($align==='both'?'justify':$align);
+        $shade = $this->one('w:pPr/w:shd', $p);
+        if ($shade) { $css .= $this->shadingCss($shade); }
         if ($empty) { $text='&#160;'; }
         foreach (['pageBreakBefore'=>'page-break-before:always','keepNext'=>'page-break-after:avoid','keepLines'=>'page-break-inside:avoid'] as $tag=>$property) {
             $el=$this->one('w:pPr/w:'.$tag,$p);
@@ -482,7 +639,21 @@ final class OficioRedmexPdfRenderer
     {
         $f=$base ?? ['family'=>'Cambria','size'=>11.0,'weight'=>'normal','style'=>'normal','color'=>'000000','underline'=>false];
         if (!$pr) { return $f; }
-        $this->checkChildren($pr,['w:rFonts','w:b','w:bCs','w:i','w:iCs','w:sz','w:szCs','w:color','w:noProof','w:lang','w:u']);
+        $this->checkChildren($pr,['w:rFonts','w:b','w:bCs','w:i','w:iCs','w:sz','w:szCs','w:color','w:noProof','w:lang','w:u','w:rtl','w:highlight','w:shd','w:smallCaps','w:strike','w:vertAlign','w:rStyle']);
+        foreach (['smallCaps','strike'] as $tag) {
+            $el = $this->one('w:'.$tag,$pr);
+            $this->ensure(!$el || in_array($el->getAttributeNS(self::W,'val'),['0','false','off'],true), 'FONT_STYLE');
+        }
+        $vertical = $this->one('w:vertAlign', $pr);
+        $this->ensure(!$vertical || $vertical->getAttributeNS(self::W,'val') === 'baseline', 'FONT_STYLE');
+        $runStyle = $this->one('w:rStyle', $pr);
+        if ($runStyle) {
+            $style = $this->styles[$runStyle->getAttributeNS(self::W, 'val')] ?? null;
+            $this->ensure($style && !$this->one('w:pPr|w:basedOn', $style), 'RUN_STYLE');
+            $this->ensure(!$this->one('w:rPr', $style), 'RUN_STYLE');
+        }
+        $rtl = $this->one('w:rtl', $pr);
+        $this->ensure(!$rtl || in_array($rtl->getAttributeNS(self::W,'val'),['0','false','off'],true), 'FONT_SCRIPT');
         $f['family']=$this->attr('w:rFonts','ascii',$pr,$f['family']);
         $rf=$this->one('w:rFonts',$pr);
         if ($rf) {
@@ -495,13 +666,25 @@ final class OficioRedmexPdfRenderer
             if ($el) { $f[$prop]=in_array($el->getAttributeNS(self::W,'val'),['0','false','off'],true) ? 'normal' : ($tag==='b'?'bold':'italic'); }
         }
         $f['color']=$this->attr('w:color','val',$pr,$f['color']);
+        $highlight = $this->one('w:highlight', $pr);
+        if ($highlight) {
+            $colors = ['none'=>'transparent','black'=>'000000','blue'=>'0000FF','cyan'=>'00FFFF','green'=>'00FF00',
+                'magenta'=>'FF00FF','red'=>'FF0000','yellow'=>'FFFF00','white'=>'FFFFFF','darkBlue'=>'000080',
+                'darkCyan'=>'008080','darkGreen'=>'008000','darkMagenta'=>'800080','darkRed'=>'800000','darkYellow'=>'808000',
+                'darkGray'=>'808080','lightGray'=>'C0C0C0'];
+            $value = $highlight->getAttributeNS(self::W, 'val');
+            $this->ensure(isset($colors[$value]), 'HIGHLIGHT');
+            $f['background'] = $colors[$value];
+        }
+        $shade = $this->one('w:shd', $pr);
+        if ($shade) { $f['shadeCss'] = $this->shadingCss($shade); }
         if ($this->one('w:u',$pr)) {
             $underline=$this->attr('w:u','val',$pr,'single');
             $this->ensure(in_array($underline,['none','single'],true),'UNDERLINE');
             $f['underline']=$underline==='single';
         }
-        $this->ensure(in_array($f['family'],['Cambria','Times New Roman','Arial','Georgia','Calibri'],true)
-            && $f['size']>=6 && $f['size']<=36 && preg_match('/^[a-fA-F0-9]{6}$/D',$f['color']), 'FONT_STYLE');
+        $this->ensure(in_array($f['family'],['Cambria','Times New Roman','Arial','Georgia','Calibri','Tahoma'],true)
+            && $f['size']>=($this->separateParts ? 0.5 : 6) && $f['size']<=36 && preg_match('/^[a-fA-F0-9]{6}$/D',$f['color']), 'FONT_STYLE');
         return $f;
     }
 
@@ -509,8 +692,22 @@ final class OficioRedmexPdfRenderer
     {
         $variant=($f['weight']==='bold'?'bold':'').($f['style']==='italic'?($f['weight']==='bold'?'_italic':'italic'):'');
         $family=$this->fontNamespace.str_replace(' ','_',$f['family']);
-        $this->needed[$f['family'].'/'.($variant?:'normal')]=['family'=>$family,'weight'=>$f['weight'],'style'=>$f['style']];
-        return 'font-family:'.$family.';font-size:'.$f['size'].'pt;font-weight:'.$f['weight'].';font-style:'.$f['style'].';color:#'.$f['color'].';text-decoration:'.($f['underline']?'underline':'none');
+        $key = $f['family'].'/'.($variant?:'normal');
+        if ($this->separateParts && $f['family'] === 'Times New Roman' && $f['style'] === 'italic' && !isset($this->fonts[$key])) {
+            // PDF incluye Times en sus 14 fuentes estándar; el DOCX Embajadas
+            // declara esta cursiva sin adjuntarla. No depende de fuentes Windows.
+            $family = 'Times';
+        } else { $this->needed[$key]=['family'=>$family,'weight'=>$f['weight'],'style'=>$f['style']]; }
+        $background = isset($f['background']) ? ';background-color:'.($f['background']==='transparent'?'transparent':'#'.$f['background']) : '';
+        return 'font-family:'.$family.';font-size:'.$f['size'].'pt;font-weight:'.$f['weight'].';font-style:'.$f['style'].';color:#'.$f['color'].';text-decoration:'.($f['underline']?'underline':'none').$background.($f['shadeCss'] ?? '');
+    }
+
+    private function shadingCss(DOMElement $shade): string
+    {
+        $this->ensure(in_array($shade->getAttributeNS(self::W,'val'), ['','clear','nil'], true), 'SHADING');
+        $fill = $shade->getAttributeNS(self::W,'fill');
+        $this->ensure($fill === '' || $fill === 'auto' || preg_match('/^[a-fA-F0-9]{6}$/D', $fill), 'SHADING');
+        return $fill === '' || $fill === 'auto' ? '' : ';background-color:#'.$fill;
     }
 
     private function table(DOMElement $table): string

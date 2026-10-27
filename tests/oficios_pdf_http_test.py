@@ -54,6 +54,9 @@ class OficioVinculacionModel {
         good_name = 'generacion_20261020_120000_aabbccddeeff.docx'
         bad_name = 'generacion_20261020_120001_aabbccddeeff.docx'
         shutil.copyfile(ROOT / 'output/pdf/oficios-redmex/preparado.docx', custom / good_name)
+        embassy_name = 'generacion_20261026_120000_aabbccddeeff.docx'
+        embassy_source = ROOT / 'storage/templates/oficios_personalizados/oficio_20260911_115147_e2e9fb4003a1.docx'
+        shutil.copyfile(embassy_source, custom / embassy_name)
         with ZipFile(custom / good_name) as original, ZipFile(custom / bad_name, 'w') as bad:
             for entry in original.infolist():
                 data = original.read(entry.filename)
@@ -70,6 +73,9 @@ class OficioVinculacionModel {
         rows['4']['analista_id'] = 10
         templates = {str(i): dict(id=i, nombre='Modelo institucional', asunto='Programa de Profesionalización', contenido='',
                                 archivo_docx='' if i==11 else 'storage/templates/oficios_personalizados/'+(bad_name if i==13 else good_name)) for i in range(11,14)}
+        rows['5'] = dict(row, id=5, oficio_id=105, plantilla_oficio_id=14)
+        templates['14'] = dict(id=14, nombre='Embajadas', asunto='Solicitud de audiencia', contenido='',
+            archivo_docx='storage/templates/oficios_personalizados/' + embassy_name)
         state_path = work / 'state.json'
         state_path.write_text(json.dumps(dict(rows=rows, templates=templates, updates=0)))
         token = secrets.token_hex(24)
@@ -130,6 +136,23 @@ class OficioVinculacionModel {
                     assert request('/generate', {'seguimiento_id':i})[0]==200
                     assert json.loads(state_path.read_text())==after, 'second generation duplicated state update'
                     print('OK: sesión, preview, DOCX, generación, descarga e idempotencia:', i, flush=True)
+                before = json.loads(state_path.read_text())
+                status, headers, body = request('/preview?seguimiento_id=5')
+                assert status == 200 and headers.get_content_type() == 'application/pdf'
+                with pdfplumber.open(io.BytesIO(body)) as document:
+                    assert len(document.pages) == 1
+                    assert (document.pages[0].width, document.pages[0].height) == (612, 792)
+                    assert 'GiraInternacional' in ''.join(document.pages[0].extract_text().split())
+                    assert len(document.pages[0].images) >= 6
+                assert json.loads(state_path.read_text()) == before
+                status, _, docx = request('/docx?seguimiento_id=5')
+                assert status == 200 and docx == embassy_source.read_bytes()
+                status, _, response = request('/generate', {'seguimiento_id': 5})
+                assert status == 200 and json.loads(response)['ok']
+                after = json.loads(state_path.read_text())
+                assert after['updates'] == 3 and after['rows']['5']['folio'] == before['rows']['5']['folio']
+                assert request('/download?descargar=1&seguimiento_id=5')[0] == 200
+                print('OK: plantilla Embajadas por los endpoints reales; DOCX exacto, PDF con seis imágenes y mismo folio.', flush=True)
                 before=json.loads(state_path.read_text())
                 status, _, body=request('/generate', {'seguimiento_id':3})
                 assert status==500 and not json.loads(body)['ok']
