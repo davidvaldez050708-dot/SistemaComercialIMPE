@@ -164,8 +164,8 @@
   const instant=provisional(state);
   const task=choosePending(state);
   const finalState=phoneFinished(state);
-  const outgoingReady=Boolean(state?.direction==='outgoing'&&
-   metadata?.pbx_call_id===task?.ref&&metadata.finalizada&&metadata.conectada&&
+  const outgoingReady=Boolean(task&&metadata&&state?.direction==='outgoing'&&
+   metadata.pbx_call_id===task.ref&&metadata.finalizada&&metadata.conectada&&
    !metadata.registro);
   const canOpen=Boolean(finalState&&!active&&!form&&task&&pbx(task.ref)&&
    String(task.extension)===String(cfg.extension)&&
