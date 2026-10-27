@@ -62,6 +62,31 @@ if(!function_exists("mb_strtolower"))exit(1);
 echo "DEPENDENCIAS PHP: ZIP, DOM, MySQLi y mbstring OK\n";
 '
 
+echo "Revisando estructura de Seguimiento, solo lectura..."
+php -r '
+require $argv[1];
+$db=(new Database())->connect(false);
+$tables=["seguimientos_vinculacion","estados","municipios","asignaciones_territorio"];
+foreach($tables as $table){
+  $stmt=$db->prepare("SELECT COUNT(*) n FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?");
+  $stmt->bind_param("s",$table);$stmt->execute();
+  if((int)$stmt->get_result()->fetch_assoc()["n"]!==1){
+    fwrite(STDERR,"Falta tabla: $table\n");exit(1);
+  }
+}
+$needed=["estado_id","municipio_id","analista_id","origen","clave_origen","tipo_entidad",
+  "nombre_entidad","actividad_giro","direccion_fuente","telefono_fuente","correo_fuente",
+  "sitio_web_fuente","telefono_verificado","whatsapp_verificado","correo_verificado",
+  "contacto_nombre","contacto_cargo","datos_verificados","estado_seguimiento",
+  "motivo_descarte","observaciones","ultima_interaccion_at","proxima_accion_at",
+  "fecha_inicio","activo"];
+$rows=$db->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='\''seguimientos_vinculacion'\''")->fetch_all(MYSQLI_ASSOC);
+$available=array_column($rows,"COLUMN_NAME");
+$missing=array_diff($needed,$available);
+if($missing){fwrite(STDERR,"Columnas ausentes: ".implode(", ",$missing)."\n");exit(1);}
+echo "ESQUEMA COMPATIBLE: sin escrituras SQL.\n";
+' "$SITE/config/db_connection.php"
+
 for file in "${ALL[@]}"; do
   [[ ! -L "$SITE/$file" ]] || { echo "Ruta simbólica no permitida: $file"; exit 1; }
 done
