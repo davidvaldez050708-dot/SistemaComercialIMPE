@@ -218,7 +218,9 @@ final class SeguimientoExcelImportService
 
     private static function clave(array $r): string
     {
-        return hash('sha256',implode('|',[$r['estado_id'],$r['tipo'],self::norm($r['nombre']),$r['municipio_id']]));
+        return hash('sha256',implode('|',[
+            $r['estado_id'],$r['tipo'],self::norm($r['nombre']),$r['municipio_id'],self::norm($r['direccion'])
+        ]));
     }
 
     /** Coteja seguimientos de todos los orígenes y analistas del mismo estado. */
@@ -242,13 +244,23 @@ final class SeguimientoExcelImportService
             $sameType=(string)$s['tipo_entidad']===$r['tipo'];
             $sameMunicipality=(int)$s['municipio_id']===$r['municipio_id'];
             $sameKey=(string)$s['clave_origen']===$key;
-            if($sameKey||($sameName&&$sameType&&$sameMunicipality))$exact[]=$s;
-            elseif($sameName||strcasecmp((string)$s['correo_fuente'],$r['correo'])===0||
+            $mailMatch=$r['correo']!=='' && (
+                strcasecmp((string)$s['correo_fuente'],$r['correo'])===0 ||
+                strcasecmp((string)$s['correo_verificado'],$r['correo'])===0
+            );
+            $phoneMatch=preg_replace('/D/','',(string)$s['telefono_fuente'])===
+                preg_replace('/D/','',$r['telefono']) ||
+                preg_replace('/D/','',(string)$s['telefono_verificado'])===
+                preg_replace('/D/','',$r['telefono']);
+            if($sameKey||($sameName&&$sameType&&$sameMunicipality&&($mailMatch||$phoneMatch))){
+                $exact[]=$s;
+            }elseif($sameName||strcasecmp((string)$s['correo_fuente'],$r['correo'])===0||
                 strcasecmp((string)$s['correo_verificado'],$r['correo'])===0||
                 preg_replace('/\D/','',(string)$s['telefono_fuente'])===preg_replace('/\D/','',$r['telefono'])){
                 $possible[]=$s;
             }
         }
+        if(count($exact)>1)return ['estado'=>'revisar','id'=>null,'mensaje'=>'Hay varios seguimientos coincidentes; requiere revisión manual.'];
         if($exact)return ['estado'=>'existente','id'=>(int)$exact[0]['id'],'mensaje'=>'Institución previamente registrada; se omite sin alterar su expediente.'];
         if($possible||count($rows)>=30)return ['estado'=>'revisar','id'=>null,'mensaje'=>'Posible coincidencia de nombre o contacto: revisar manualmente.'];
         return ['estado'=>'nueva','id'=>null,'mensaje'=>'Lista para importar.'];
