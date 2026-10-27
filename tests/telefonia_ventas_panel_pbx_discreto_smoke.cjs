@@ -32,6 +32,8 @@ async function test(kind) {
   callToken:'callabcdef1234567',pbxCallId:'PBXABC1234567',context:{}};
  const confirms=[],dismisses=[];
  let interval;
+ let now=Date.now();
+ class FakeDate extends Date{static now(){return now;}}
  win.IMPE_TELEPHONY_SHELL={getCallState:()=>state,
   getPhoneStatus:()=>({active:state.active}),isResultFormOpen:()=>false,
   confirmFinishedCall:(...args)=>confirms.push(args),
@@ -42,7 +44,7 @@ async function test(kind) {
  const fetch=async url=>({ok:true,json:async()=>String(url).includes('pendientes=')
   ?{ok:true,pendientes:[]}:{ok:true,llamada:facts}});
  const sandbox={window:win,document:doc,sessionStorage,localStorage,URL:URLMock,
-  location:{href:'https://crm.test/shell',origin:'https://crm.test'},Date,Math,
+  location:{href:'https://crm.test/shell',origin:'https://crm.test'},Date:FakeDate,Math,
   Set,Array,JSON,String,Boolean,Number,
   MutationObserver:class {observe(){}},AbortController:class {
    constructor(){this.signal={};}abort(){}
@@ -72,6 +74,11 @@ async function test(kind) {
   assert.equal(noticeHidden,false,'Solo mostrar aviso discreto');
   assert.equal(button.hidden,true,'No permitir formulario provisional');
   assert.equal(confirms.length,0,'Sin confirmación no abrir panel bueno');
+  now+=9000;
+  interval();
+  assert.equal(body.lastChild.hidden,true,'El aviso debe desaparecer tras la transición breve');
+  assert.equal(panel.classList.contains('impe-sales-pbx-pending-v1'),true,
+   'Nunca revelar el modal provisional aunque desaparezca el aviso');
  }
 }
 (async()=>{
