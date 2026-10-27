@@ -1,0 +1,62 @@
+name: Telefonia Control Director V2
+on:
+  push:
+    branches:
+      - feat/telefonia-control-director-filtros-auto-v2-20261027
+  pull_request:
+    paths:
+      - 'app/controllers/TelefoniaController.php'
+      - 'app/models/RolModel.php'
+      - 'app/views/telefonia/index.php'
+      - 'app/views/layout/sidebar.php'
+      - 'public/javascript/telefonia_control.js'
+      - 'public/css/telefonia_control_filtros_v2.css'
+      - 'tools/publicar_telefonia_control_director_filtros_v2_hostinger.sh'
+      - '.github/workflows/telefonia-control-director-v2.yml'
+permissions:
+  contents: read
+jobs:
+  syntaxis-y-permisos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis PHP, JS y Shell
+        run: |
+          php -l app/controllers/TelefoniaController.php
+          php -l app/models/RolModel.php
+          php -l app/views/telefonia/index.php
+          php -l app/views/layout/sidebar.php
+          node --check public/javascript/telefonia_control.js
+          bash -n tools/publicar_telefonia_control_director_filtros_v2_hostinger.sh
+      - name: Verificar fronteras de permisos y filtros
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          c=Path('app/controllers/TelefoniaController.php').read_text()
+          r=Path('app/models/RolModel.php').read_text()
+          v=Path('app/views/telefonia/index.php').read_text()
+          s=Path('app/views/layout/sidebar.php').read_text()
+          j=Path('public/javascript/telefonia_control.js').read_text()
+          assert 'validarAccesoControlLlamadas()' in c
+          assert 'private function validarAdministrador()' in c
+          assert 'telefonia.configurar' in c
+          assert 'telefonia.control_ver' in c
+          assert "Director de Operaciones" in r
+          assert r.count("'codigo' => 'telefonia.control_ver'")==1
+          assert "permisoControlTelefoniaNuevo" in r
+          assert '$mostrarTelefoniaControl' in s
+          assert 'data-control-auto-filters' in v
+          assert 'Administrar extensiones' in v
+          assert "if (!empty($puedeAdministrarExtensiones))" in v
+          assert '> Aplicar</button>' not in v
+          assert 'Limpiar filtros' in v
+          assert 'window.location.assign' in j
+          print('PASS: permisos separados y filtros automáticos.')
+          PY
