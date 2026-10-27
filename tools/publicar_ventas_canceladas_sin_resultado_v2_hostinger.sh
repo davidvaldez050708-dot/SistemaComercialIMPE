@@ -107,7 +107,7 @@ grep -Fq 'TelefoniaVentasLlamadasService::resultadoCapturable($call)' "$STAGE/ca
 [[ "$(grep -Fc 'TelefoniaVentasLlamadasService::resultadoCapturable($call)' "$STAGE/candidate/$VIEW")" == 1 ]] || {
  echo "ERROR: condición de resultado no única. SITIO INTACTO." >&2;exit 1;
 }
-if grep -Fq 'if($ref!=='\'''\''&&$call['\''finalizada'\'']):' "$STAGE/candidate/$VIEW";then
+if grep -Fq "if(\$ref!==''&&\$call['finalizada']):" "$STAGE/candidate/$VIEW";then
  echo "ERROR: condición antigua todavía presente. SITIO INTACTO." >&2;exit 1;
 fi
 grep -Fq 'IMPE_VENTAS_PANEL_PBX_DISCRETO_V1_20261027' "$STAGE/candidate/$JS"
@@ -122,10 +122,15 @@ else
  echo "JS: integridad SHA comprobada y sintaxis validada en CI; Node.js no requerido."
 fi
 # Pruebas PHP aisladas con archivo real y vista conciliada, sin cargar BD.
-mkdir -p "$STAGE/tests"
+mkdir -p "$STAGE/tests" "$STAGE/app/services" "$STAGE/app/views/telefonia"
+cp "$STAGE/candidate/$SERVICE" "$STAGE/app/services/TelefoniaVentasLlamadasService.php"
+cp "$STAGE/candidate/$VIEW" "$STAGE/app/views/telefonia/ventas_llamadas.php"
 curl -fLsS --retry 2 "$REPO/$REV/tests/telefonia_ventas_canceladas_no_capturables_smoke.php" \
- -o "$STAGE/tests/smoke.php"
-php "$STAGE/tests/smoke.php"
+ -o "$STAGE/tests/telefonia_ventas_canceladas_no_capturables_smoke.php"
+[[ "$(git hash-object "$STAGE/tests/telefonia_ventas_canceladas_no_capturables_smoke.php")" == "af670ee006b9bef01bc6989ff54a2a5d9c1a43dd" ]] || {
+ echo "ERROR: prueba PHP inesperada. SITIO INTACTO." >&2; exit 1;
+}
+php "$STAGE/tests/telefonia_ventas_canceladas_no_capturables_smoke.php"
 echo "COMPATIBLE: canceladas fuera de pendientes, panel de Ventas y aviso breve."
 for file in "${FILES[@]}";do
  if cmp -s "$SITE/$file" "$STAGE/candidate/$file";then
