@@ -24,15 +24,15 @@ $newState = <<<'NEW'
 NEW;
 $oldResult = <<<'OLD'
 : ($call['proceso'] === 'Recepción'
-                                         ? ($call['conectada'] ? 'Atendida' : 'Sin respuesta confirmada')
-                                         : 'Sin clasificar'));
+                                        ? ($call['conectada'] ? 'Atendida' : 'Sin respuesta confirmada')
+                                        : 'Sin clasificar'));
 OLD;
 $newResult = <<<'NEW'
 : ($call['proceso'] === 'Ventas'
-                                         ? (string)($call['resultado_estado'] ?? 'Sin clasificar')
-                                         : ($call['proceso'] === 'Recepción'
-                                             ? ($call['conectada'] ? 'Atendida' : 'Sin respuesta confirmada')
-                                             : 'Sin clasificar')));
+                                        ? (string)($call['resultado_estado'] ?? 'Sin clasificar')
+                                        : ($call['proceso'] === 'Recepción'
+                                            ? ($call['conectada'] ? 'Atendida' : 'Sin respuesta confirmada')
+                                            : 'Sin clasificar')));
 NEW;
 if (substr_count($src,$oldState) !== 1 || substr_count($src,$oldResult) !== 1) {
     fwrite(STDERR,"CONFLICTO: las dos expresiones originales no coinciden exactamente o están repetidas.\n");
