@@ -578,6 +578,12 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
             <div class="modal-body">
                 <form data-impe-excel-form enctype="multipart/form-data" method="post" novalidate>
                     <input type="hidden" name="csrf_token" value="<?= $texto($_SESSION['csrf_token']??'') ?>">
+                    <div class="impe-excel-template-link">
+                        <button type="button" class="btn btn-system-light" data-impe-excel-download
+                            data-url="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&amp;action=descargarPlantillaSeguimientoExcel">
+                            <i class="bi bi-download" aria-hidden="true"></i> Descargar plantilla Excel V3
+                        </button>
+                    </div>
                     <div class="impe-excel-guide">
                         <i class="bi bi-info-circle" aria-hidden="true"></i>
                         <div>Utiliza la plantilla Excel V3 con sus 13 campos obligatorios.
