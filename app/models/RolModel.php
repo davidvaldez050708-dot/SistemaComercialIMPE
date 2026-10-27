@@ -48,6 +48,8 @@ class RolModel
             !$this->existePermisoPorCodigo('telefonia.salientes') ||
             !$this->existePermisoPorCodigo('telefonia.recibir') ||
             !$this->existePermisoPorCodigo('telefonia.transferir');
+        $permisoControlTelefoniaNuevo =
+            !$this->existePermisoPorCodigo('telefonia.control_ver');
 
         $sql = "INSERT INTO permisos (
                     modulo,
@@ -118,6 +120,9 @@ class RolModel
 
         if ($permisosTelefoniaNuevos) {
             $this->asignarPermisosInicialesTelefonia();
+        }
+        if ($permisoControlTelefoniaNuevo) {
+            $this->asignarPermisoInicialControlTelefonia();
         }
 
         $this->asegurarPermisosAdministrador();
@@ -998,6 +1003,18 @@ class RolModel
         }
     }
 
+    /** Se concede al Director una sola vez: nunca se restaura tras revocación. */
+    private function asignarPermisoInicialControlTelefonia()
+    {
+        $this->connection->query(
+            "INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+             SELECT r.id, p.id FROM roles r
+             INNER JOIN permisos p
+                 ON p.codigo = 'telefonia.control_ver' AND p.estado = 1
+             WHERE r.nombre = 'Director de Operaciones' AND r.estado = 1"
+        );
+    }
+
     private function asignarPermisosInicialesReporteConvocatorias()
     {
         $nombreRol = 'Marketing';
@@ -1386,6 +1403,7 @@ class RolModel
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.salientes', 'nombre' => 'Realizar llamadas salientes', 'descripcion' => 'Originar llamadas desde el CRM mediante la extensión PBX asignada.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.recibir', 'nombre' => 'Recibir llamadas', 'descripcion' => 'Mantener la extensión disponible para llamadas entrantes y recibir avisos de llamadas en el CRM.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.transferir', 'nombre' => 'Transferir llamadas', 'descripcion' => 'Transferir una llamada activa a otra extensión o área autorizada.'],
+            ['modulo' => 'Telefonía', 'codigo' => 'telefonia.control_ver', 'nombre' => 'Ver control de llamadas', 'descripcion' => 'Consultar los indicadores y resultados telefónicos del equipo, sin usar la extensión ni administrar la PBX.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.configurar', 'nombre' => 'Configurar telefonía', 'descripcion' => 'Asignar y administrar extensiones PBX de los usuarios. Exclusivo del Administrador.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.ver', 'nombre' => 'Ver convocatorias', 'descripcion' => 'Consultar convocatorias registradas.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.crear', 'nombre' => 'Crear convocatorias', 'descripcion' => 'Registrar nuevas convocatorias.'],

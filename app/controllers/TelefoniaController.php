@@ -35,8 +35,10 @@ class TelefoniaController
      */
     public function index()
     {
-        $this->validarAdministrador();
+        $this->validarAccesoControlLlamadas();
 
+        $puedeAdministrarExtensiones = (int)($_SESSION['rol_id'] ?? 0) === 1
+            && tienePermiso('telefonia.configurar');
         $actividadTelefonicaError = '';
         $controlTelefonia = [];
         $filtros = [
@@ -1025,6 +1027,30 @@ class TelefoniaController
             JSON_UNESCAPED_SLASHES |
             JSON_INVALID_UTF8_SUBSTITUTE
         );
+        exit;
+    }
+
+    private function validarAccesoControlLlamadas()
+    {
+        if ((int)($_SESSION['usuario_id'] ?? 0) > 0
+            && tienePermiso('telefonia.control_ver')) {
+            return;
+        }
+        http_response_code(403);
+        $tituloPagina = 'Acceso restringido';
+        $subtituloPagina = 'Control de llamadas';
+        $opcionActiva = 'telefonia';
+        require __DIR__ . '/../views/layout/dashboard_head.php';
+        require __DIR__ . '/../views/layout/sidebar.php';
+        require __DIR__ . '/../views/layout/topbar.php';
+        echo '<div class="dashboard-panel" role="alert" style="max-width:780px;margin:20px auto;'
+            . 'padding:24px;border:1px solid #dce5f2;border-radius:14px;background:#fff">'
+            . '<h2 style="font-size:18px;color:#233f7a;font-weight:800;margin:0 0 9px">'
+            . '<i class="bi bi-shield-lock" aria-hidden="true"></i> Acceso restringido</h2>'
+            . '<p style="color:#63738d;font-size:13px;line-height:1.7;margin:0">'
+            . 'Tu perfil no cuenta con el permiso para consultar el Control de llamadas. '
+            . 'Solicita la autorización desde Roles y permisos.</p></div>';
+        require __DIR__ . '/../views/layout/dashboard_footer.php';
         exit;
     }
 

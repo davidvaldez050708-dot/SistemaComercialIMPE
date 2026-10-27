@@ -7,7 +7,9 @@ $mostrarUsuarios = tienePermiso('usuarios.ver');
 $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
 $mostrarTelefoniaConfiguracion =
-    (int)($_SESSION['rol_id'] ?? 0) === 1;
+    (int)($_SESSION['rol_id'] ?? 0) === 1
+    && tienePermiso('telefonia.configurar');
+$mostrarTelefoniaControl = tienePermiso('telefonia.control_ver');
 // El teléfono comercial reside en Inicio de Ventas. Vinculación conserva
 // su propio teléfono y expedientes, sin marcador comercial duplicado.
 $mostrarMarcadorTelefonia = false;
@@ -128,7 +130,7 @@ $claseFormularios =
             $mostrarUsuarios ||
             $mostrarRoles ||
             $mostrarTerritorios ||
-            $mostrarTelefoniaConfiguracion
+             $mostrarTelefoniaControl
         ): ?>
 
             <div class="sidebar-section">
@@ -169,7 +171,7 @@ $claseFormularios =
 
                 <?php endif; ?>
 
-                <?php if ($mostrarTelefoniaConfiguracion): ?>
+                <?php if ($mostrarTelefoniaControl): ?>
 
                     <a
                         href="<?= BASE_URL ?>index.php?controller=telefonia&action=index"
@@ -445,7 +447,7 @@ $claseFormularios =
                 $mostrarUsuarios ||
                 $mostrarRoles ||
                 $mostrarTerritorios ||
-                $mostrarTelefoniaConfiguracion
+                 $mostrarTelefoniaControl
             ): ?>
 
                 <div class="sidebar-section">
@@ -496,7 +498,7 @@ $claseFormularios =
 
                     <?php endif; ?>
 
-                    <?php if ($mostrarTelefoniaConfiguracion): ?>
+                    <?php if ($mostrarTelefoniaControl): ?>
 
                         <a
                             href="<?= BASE_URL ?>index.php?controller=telefonia&action=index"

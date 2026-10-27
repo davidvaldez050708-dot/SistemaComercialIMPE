@@ -38,7 +38,9 @@ $etiquetasResultado = [
 ];
 ?>
 
+<link rel="stylesheet" href="<?= $esc(BASE_URL . 'public/css/telefonia_control_filtros_v2.css?v=20261027') ?>">
 <div class="telephony-admin telephony-control-center" data-telephony-control>
+    <?php if (!empty($puedeAdministrarExtensiones)): ?>
     <nav class="telephony-admin-tabs" aria-label="Secciones de Telefonía">
         <a href="<?= $esc($baseTel . 'index') ?>" class="is-active" aria-current="page">
             <i class="bi bi-bar-chart-line" aria-hidden="true"></i> Control de llamadas
@@ -47,6 +49,7 @@ $etiquetasResultado = [
             <i class="bi bi-diagram-3" aria-hidden="true"></i> Extensiones
         </a>
     </nav>
+    <?php endif; ?>
     <section class="dashboard-panel telephony-control-filter-panel">
         <div class="telephony-control-title-row">
             <div>
@@ -54,14 +57,17 @@ $etiquetasResultado = [
                 <h2>Actividad y desempeño del equipo</h2>
                 <p>Consulta las llamadas verificadas por Zadarma, el tiempo observado y las conversaciones registradas. Los indicadores se ajustan a los filtros.</p>
             </div>
+            <?php if (!empty($puedeAdministrarExtensiones)): ?>
             <a href="<?= $esc($baseTel . 'extensiones') ?>" class="btn btn-system-light telephony-control-config-link">
                 <i class="bi bi-sliders" aria-hidden="true"></i> Administrar extensiones
             </a>
+            <?php endif; ?>
         </div>
         <?php if (!empty($actividadTelefonicaError)): ?>
             <div class="alert alert-warning mb-2" role="alert"><?= $esc($actividadTelefonicaError) ?></div>
         <?php endif; ?>
-        <form action="<?= $esc(BASE_URL . 'index.php') ?>" method="get" class="telephony-control-filters">
+        <form action="<?= $esc(BASE_URL . 'index.php') ?>" method="get"
+            class="telephony-control-filters" data-control-auto-filters>
             <input type="hidden" name="controller" value="telefonia">
             <input type="hidden" name="action" value="index">
             <label>Desde
@@ -110,9 +116,22 @@ $etiquetasResultado = [
                 </select>
             </label>
             <div class="telephony-control-filter-actions">
-                <button type="submit" class="btn btn-system-primary"><i class="bi bi-funnel" aria-hidden="true"></i> Aplicar</button>
-                <a class="btn btn-system-light" href="<?= $esc($baseTel . 'index') ?>">Restablecer</a>
+                <a class="filter-clear-link telephony-control-clear <?= (
+                    !empty($_GET['desde']) || !empty($_GET['hasta']) ||
+                    !empty($_GET['rol']) || !empty($_GET['usuario_id']) ||
+                    !empty($_GET['direccion']) || !empty($_GET['orden'])
+                ) ? '' : 'd-none' ?>"
+                    href="<?= $esc($baseTel . 'index') ?>" data-control-clear>
+                    <i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar filtros
+                </a>
+                <span class="telephony-control-filter-loading" data-control-filter-loading
+                    role="status" aria-live="polite" hidden>
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    Actualizando resultados…
+                </span>
             </div>
+            <p class="telephony-control-filter-message" role="alert"
+                data-control-filter-message hidden></p>
         </form>
         <p class="telephony-control-help">
             <i class="bi bi-info-circle" aria-hidden="true"></i>
