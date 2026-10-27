@@ -130,6 +130,10 @@ grep -Fq "\$call['resultado_estado']" "$STAGE/candidate/$INDEX"
 grep -Fq 'data-supervision-audio' "$STAGE/candidate/$CARD"
 grep -Fq 'data-telephony-control-history-rows' "$STAGE/candidate/$INDEX"
 # Las regresiones aisladas usan exactamente el PHP candidato en staging.
+# Los tests esperan ../app/services; copiar sólo al directorio temporal.
+mkdir -p "$STAGE/app/services"
+cp "$STAGE/candidate/$CONTROL" "$STAGE/app/services/TelefoniaControlService.php"
+cp "$STAGE/candidate/$REPO" "$STAGE/app/services/SupervisionLlamadasRepository.php"
 for test in telefonia_control_supervision_estado_pbx_smoke.php telefonia_supervision_repositorio_resultados_smoke.php;do
  curl -fLsS --retry 2 "$RAW/$REV/tests/$test" -o "$STAGE/tests/$test"
 done
