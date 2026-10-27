@@ -240,6 +240,12 @@ class SeguimientoHistorialImportadoService
 
     public function esConvenioHistorico(array $seguimiento)
     {
+        // La nueva plantilla V3 solo declara el paso: NO acredita una
+        // reunión previa ni autoriza saltarse los requisitos del convenio.
+        if (strpos((string)($seguimiento['observaciones'] ?? ''),
+            'IMPE_ETAPA_REPORTADA_EXCEL_V1=') !== false) {
+            return false;
+        }
         $etapa = $this->resolverEtapa($seguimiento);
 
         return is_array($etapa) && (int)($etapa['paso'] ?? 0) === 13;
