@@ -3,6 +3,7 @@ require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 require_once __DIR__ . '/TelefoniaMarcacionesVentasService.php';
 require_once __DIR__ . '/TelefoniaResultadoVentasService.php';
 require_once __DIR__ . '/TelefoniaExtensionService.php';
+require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 
 /**
  * Estadísticas administrativas: fuente técnica = webhooks PBX.
@@ -23,6 +24,26 @@ class TelefoniaControlService
         (new TelefoniaResultadoVentasService())->asegurarEstructura();
     }
 
+    /**
+     * Estado técnico del propio tramo PBX. Los intentos sin ANSWER nunca
+     * se convierten en conversaciones; el cierre define el motivo.
+     * Se usa exclusivamente la disposición terminal del mismo internal.
+     */
+    public static function estadoFinalPbx(bool $saliente, bool $conectada, bool $finalizada, string $disposicion): string
+    {
+        if ($conectada) return 'Conectada';
+        if (!$finalizada) return 'Sin cierre confirmado';
+        if (!$saliente) return 'Sin conexión confirmada';
+        $disposicion = strtolower(trim($disposicion));
+        return [
+            'busy' => 'Ocupada',
+            'cancel' => 'Cancelada',
+            'no answer' => 'Sin respuesta',
+            'no_answer' => 'Sin respuesta',
+            'failed' => 'Fallida'
+        ][$disposicion] ?? 'Sin conexión confirmada';
+    }
+
     public function consultar(array $filtros = []): array
     {
         $hoy = date('Y-m-d');
@@ -41,6 +62,7 @@ class TelefoniaControlService
             throw new InvalidArgumentException('Puedes consultar como máximo 90 días recientes por intervalo.');
         }
 
+        $limpieza=TelefoniaLimpiezaGuard::condicion($this->db,'e.pbx_call_id','e.internal');
         $sql = "SELECT
                 e.pbx_call_id, e.internal, MIN(e.received_at) AS fecha,
                 MAX(CASE WHEN e.evento IN ('NOTIFY_OUT_START','NOTIFY_OUT_END')
@@ -51,6 +73,14 @@ class TelefoniaControlService
                     LOWER(COALESCE(e.disposition, '')) = 'answered'
                     THEN 1 ELSE 0 END) AS conectada,
                 MAX(CASE WHEN e.evento IN ('NOTIFY_END','NOTIFY_OUT_END')
+                    THEN 1 ELSE 0 END) AS finalizada,
+                SUBSTRING_INDEX(GROUP_CONCAT(
+                    CASE WHEN e.evento IN ('NOTIFY_END','NOTIFY_OUT_END')
+                          AND TRIM(COALESCE(e.disposition,'')) <> ''
+                        THEN LOWER(TRIM(e.disposition)) END
+                    ORDER BY e.id DESC SEPARATOR ','
+                ), ',', 1) AS disposicion_final,
+                MAX(CASE WHEN e.evento IN ('NOTIFY_END','NOTIFY_OUT_END')
                     THEN GREATEST(e.duration, 0) ELSE 0 END) AS segundos,
                 MAX(CASE WHEN e.evento = 'NOTIFY_OUT_START'
                     THEN e.destination ELSE NULL END) AS destino,
@@ -58,6 +88,8 @@ class TelefoniaControlService
                     THEN e.caller_id ELSE NULL END) AS origen,
                 MIN(vm.usuario_id) AS usuario_ventas_min,
                 MAX(vm.usuario_id) AS usuario_ventas_max,
+                MIN(vc.usuario_id) AS usuario_tramo_min,
+                MAX(vc.usuario_id) AS usuario_tramo_max,
                 MAX(vr.resultado) AS resultado_ventas,
                 MIN(iv.usuario_id) AS usuario_vinculacion_min,
                 MAX(iv.usuario_id) AS usuario_vinculacion_max,
@@ -69,8 +101,13 @@ class TelefoniaControlService
             FROM telefonia_zadarma_eventos e
             LEFT JOIN telefonia_ventas_marcaciones vm
                 ON vm.pbx_call_id = e.pbx_call_id AND vm.extension = e.internal
+            LEFT JOIN telefonia_ventas_llamadas vc
+                ON vc.pbx_call_id = BINARY e.pbx_call_id
+                AND vc.extension = BINARY e.internal
             LEFT JOIN telefonia_ventas_resultados vr
-                ON vr.pbx_call_id = e.pbx_call_id AND vr.usuario_id = vm.usuario_id
+                ON vr.pbx_call_id = BINARY e.pbx_call_id
+                AND vr.extension = BINARY e.internal
+                AND vr.usuario_id = COALESCE(vc.usuario_id,vm.usuario_id)
             LEFT JOIN interacciones_vinculacion iv
                 ON iv.id_externo = e.pbx_call_id
                 AND iv.proveedor_externo = 'ZADARMA'
@@ -78,7 +115,7 @@ class TelefoniaControlService
             LEFT JOIN telefonia_extensiones te
                 ON te.extension = e.internal AND te.proveedor = 'ZADARMA'
                 AND te.activo = 1
-            WHERE e.received_at >= ? AND e.received_at < ?
+            WHERE $limpieza AND e.received_at >= ? AND e.received_at < ?
                 AND e.internal IS NOT NULL AND e.internal <> ''
                 AND e.pbx_call_id <> ''
                 AND e.evento IN ('NOTIFY_INTERNAL', 'NOTIFY_ANSWER',
@@ -125,7 +162,7 @@ class TelefoniaControlService
         $userIds = [];
         while ($row = $rs->fetch_assoc()) {
             $raw[] = $row;
-            foreach (['usuario_ventas_max','usuario_vinculacion_max','usuario_extension'] as $campo) {
+            foreach (['usuario_ventas_max','usuario_tramo_max','usuario_vinculacion_max','usuario_extension'] as $campo) {
                 $id = (int)($row[$campo] ?? 0);
                 if ($id > 0) $userIds[$id] = $id;
             }
@@ -154,12 +191,16 @@ class TelefoniaControlService
         $seenPbx = [];
         foreach ($raw as $row) {
             $saliente = (int)$row['saliente'] === 1;
-            $idVentas = (int)($row['usuario_ventas_max'] ?? 0);
+            $idMarcacion = (int)($row['usuario_ventas_max'] ?? 0);
+            $idTramo = (int)($row['usuario_tramo_max'] ?? 0);
+            $idVentas = $idTramo > 0 ? $idTramo : $idMarcacion;
             $idVinculo = (int)($row['usuario_vinculacion_max'] ?? 0);
             $idExtension = (int)($row['usuario_extension'] ?? 0);
             $ambigua =
                 ($idVentas > 0 && $idVinculo > 0 && $idVentas !== $idVinculo) ||
-                ($idVentas > 0 && $idVentas !== (int)($row['usuario_ventas_min'] ?? 0)) ||
+                ($idMarcacion > 0 && $idMarcacion !== (int)($row['usuario_ventas_min'] ?? 0)) ||
+                ($idTramo > 0 && $idTramo !== (int)($row['usuario_tramo_min'] ?? 0)) ||
+                ($idTramo > 0 && $idMarcacion > 0 && $idTramo !== $idMarcacion) ||
                 ($idVinculo > 0 && $idVinculo !== (int)($row['usuario_vinculacion_min'] ?? 0));
             $usuarioId = 0;
             $proceso = 'Sin atribución verificada';
@@ -190,6 +231,8 @@ class TelefoniaControlService
             }
             $segundos = max(0, (int)$row['segundos']);
             $conectada = (int)$row['conectada'] === 1;
+            $finalizada = (int)($row['finalizada'] ?? 0) === 1;
+            $estadoPbx = self::estadoFinalPbx($saliente, $conectada, $finalizada, (string)($row['disposicion_final'] ?? ''));
             $resultado = $proceso === 'Ventas' ?
                 strtoupper(trim((string)($row['resultado_ventas'] ?? ''))) :
                 ($proceso === 'Vinculación' ?
@@ -221,6 +264,8 @@ class TelefoniaControlService
                 'numero' => $saliente ?
                     (string)($row['destino'] ?? '') : (string)($row['origen'] ?? ''),
                 'conectada' => $conectada,
+                'finalizada' => $finalizada,
+                'estado_pbx' => $estadoPbx,
                 'efectiva' => $efectiva,
                 'resultado' => $resultado,
                 'segundos' => $segundos
