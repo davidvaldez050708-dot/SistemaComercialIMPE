@@ -1,0 +1,41 @@
+name: Ventas - no mostrar resultado durante marcado
+on:
+  push:
+    branches:
+      - fix/ventas-ocultar-resultado-al-marcar-v1-20261027
+  pull_request:
+    paths:
+      - public/javascript/telefonia_ventas_shell.js
+      - tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
+      - tools/publicar_ventas_sin_parpadeo_resultado_v1_hostinger.sh
+      - .github/workflows/ventas-boton-resultado-solo-finalizado.yml
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar JS y script de Hostinger
+        run: |
+          node --check public/javascript/telefonia_ventas_shell.js
+          node --check tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
+          bash -n tools/publicar_ventas_sin_parpadeo_resultado_v1_hostinger.sh
+      - name: Escenarios de marcado y cierre
+        run: node tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
+      - name: Comprobar regla CSS y validación de fase
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('public/javascript/telefonia_ventas_shell.js').read_text()
+          assert 'impe-sales-result-gate-v1' in s
+          assert 'data-impe-sales-result-ready' in s
+          assert 'const finalState=phoneFinished(state);' in s
+          assert 'button.hidden=!canOpen;' in s
+          assert 'const outgoingReady=Boolean(task&&metadata' in s
+          assert 'data-impe-sales-result-ready="1"' in s
+          print('PASS: no se muestra resultado sin estado final de llamada.')
+          PY
