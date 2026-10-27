@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../config/db_connection.php';
 class TelefoniaResultadoVentasService
 {
     public const CONVERSACION = 'CONVERSACION_PERSONA';
+    public const INFORMACION_WHATSAPP = 'INFORMACION_ENVIADA_WHATSAPP';
     public const BUZON = 'BUZON_VOZ';
     public const FUERA_HORARIO = 'FUERA_HORARIO';
     public const NUMERO_INEXISTENTE = 'NUMERO_INEXISTENTE';
@@ -25,6 +26,7 @@ class TelefoniaResultadoVentasService
             self::CONVERSACION => 'Conversación con el prospecto',
             'INTERESADO' => 'Prospecto interesado',
             'SOLICITA_INFORMACION' => 'Solicita información',
+            self::INFORMACION_WHATSAPP => 'Información enviada por WhatsApp',
             'REQUIERE_SEGUIMIENTO' => 'Requiere seguimiento',
             'NO_INTERESADO' => 'No interesado',
             'COMUNICACION_INTERRUMPIDA' => 'Comunicación interrumpida',
@@ -41,7 +43,7 @@ class TelefoniaResultadoVentasService
 
     public static function esConversacion(?string $resultado): bool
     {
-        return in_array($resultado, [self::CONVERSACION,'INTERESADO','SOLICITA_INFORMACION','REQUIERE_SEGUIMIENTO','NO_INTERESADO'], true);
+        return in_array($resultado, [self::CONVERSACION,self::INFORMACION_WHATSAPP,'INTERESADO','SOLICITA_INFORMACION','REQUIERE_SEGUIMIENTO','NO_INTERESADO'], true);
     }
 
     private $db;
@@ -93,8 +95,47 @@ class TelefoniaResultadoVentasService
     }
 
     /**
-     * Rechaza IDs arbitrarios: solo llamadas salientes de la extensión propia,
-     * dentro del historial y cuyo fin confirmó el webhook.
+     * El resultado es una declaración humana; no es un cierre de Zadarma.
+     * Para la única excepción sin END PBX se exige la operación de transferencia
+     * exacta, propietario histórico, ruta verificada y ANSWER del asesor.
+     * No se infiere por teléfono, hora, RECORD, SIP local ni el fin de Recepción.
+     */
+    private function transferenciaAtendidaPropia(int $usuarioId, array $call): bool
+    {
+        $ext=(string)($call['extension']??'');
+        $ref=(string)($call['pbx_call_id']??'');
+        $source=(string)($call['origen_extension']??'');
+        if(empty($call['conectada']) || $source==='' || $source===$ext ||
+            empty($call['solicitud_id']) || ($call['direccion']??'')!=='Entrante') return false;
+        $request=(int)$call['solicitud_id'];
+        $stmt=$this->db->prepare("SELECT d.ruta_json FROM telefonia_transferencia_operaciones o
+            JOIN telefonia_disponibilidad d ON d.id=?
+                AND d.destino_usuario=o.destino_usuario
+                AND d.origen_usuario=o.origen_usuario
+                AND d.origen_extension=BINARY o.origen_extension
+                AND d.destino_extension=BINARY o.destino_extension
+                AND d.referencia=BINARY o.referencia
+            WHERE o.destino_usuario=? AND o.destino_extension=BINARY ?
+                AND o.origen_extension=BINARY ? AND o.referencia=BINARY ?
+                AND EXISTS (SELECT 1 FROM telefonia_zadarma_eventos e
+                    WHERE e.pbx_call_id=BINARY o.referencia AND e.internal=BINARY o.destino_extension
+                      AND e.evento='NOTIFY_ANSWER' AND e.id>o.evento_desde)
+            LIMIT 2");
+        $stmt->bind_param('iisss',$request,$usuarioId,$ext,$source,$ref);
+        $stmt->execute();
+        $rows=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        if(count($rows)!==1)return false;
+        $route=json_decode((string)$rows[0]['ruta_json'],true)?:[];
+        return ($route['tipo']??'')==='PROSPECTO'
+            && (int)($route['responsable_id']??0)===$usuarioId
+            && (string)($route['extension']??'')===$ext
+            && (string)($route['referencia_llamada']??'')===$ref;
+    }
+
+    /**
+     * Permite resultado definitivo sin cierre PBX SOLO en transferencia
+     * comercial atendida y vinculada al asesor; PBX/audio siguen pendientes.
      */
     public function guardar(int $usuarioId, string $pbxCallId, string $resultado, array $datos=[]): array
     {
@@ -102,8 +143,10 @@ class TelefoniaResultadoVentasService
         $svc=new TelefoniaVentasLlamadasService($this->db);$svc->sincronizar($usuarioId);
         $call=$svc->obtener($usuarioId,trim($pbxCallId),trim((string)($datos['extension']??'')));
         if(!array_key_exists($resultado,self::opciones()))throw new InvalidArgumentException('Selecciona un resultado comercial válido.');
-        if(!$call['finalizada'])throw new DomainException('La centralita aún no confirma el cierre de tu llamada.');
-        if(self::esConversacion($resultado)&&!$call['conectada'])throw new DomainException('Falta la confirmación PBX de conexión de tu extensión.');
+        $pbxPendiente=empty($call['finalizada']);
+        if($pbxPendiente&&!$this->transferenciaAtendidaPropia($usuarioId,$call))
+            throw new DomainException('No se ha acreditado la transferencia atendida por tu extensión. No se guardó el resultado.');
+        if(self::esConversacion($resultado)&&!$call['conectada'])throw new DomainException('El servicio telefónico aún no confirma que tu extensión atendió la llamada.');
         $note=trim((string)($datos['observacion']??''));$name=trim((string)($datos['prospecto_nombre']??$call['nombre']));
         if(mb_strlen($note)>1000||mb_strlen($name)>150)throw new InvalidArgumentException('Limita el nombre a 150 caracteres y las observaciones a 1000.');
         if(in_array($resultado,['OTRO',self::OTRO_SIN_CONTACTO],true)&&mb_strlen($note)<3)throw new InvalidArgumentException('Describe lo que ocurrió en las observaciones.');
@@ -146,7 +189,8 @@ class TelefoniaResultadoVentasService
         $this->db->commit();
         }catch(Throwable $e){$this->db->rollback();throw $e;}
         return ['pbx_call_id'=>$pbxCallId,'extension'=>$extension,'resultado'=>$resultado,
-            'etiqueta'=>self::opciones()[$resultado],'contacto_real'=>self::esConversacion($resultado)];
+            'etiqueta'=>self::opciones()[$resultado],'contacto_real'=>self::esConversacion($resultado),
+            'pbx_pendiente'=>$pbxPendiente];
     }
 
     /**
