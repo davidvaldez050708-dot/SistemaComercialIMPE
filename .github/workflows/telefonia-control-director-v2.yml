@@ -58,5 +58,11 @@ jobs:
           assert '> Aplicar</button>' not in v
           assert 'Limpiar filtros' in v
           assert 'window.location.assign' in j
-          print('PASS: permisos separados y filtros automáticos.')
+          shell=Path('tools/publicar_telefonia_control_director_filtros_v2_hostinger.sh').read_text()
+          mkdir='mkdir -p "$STAGE/candidate/$(dirname "$file")"'
+          copy='cp "$STAGE/new/$CSS" "$STAGE/candidate/$CSS"'
+          assert mkdir in shell, 'Falta crear directorios para archivos nuevos (CSS)'
+          assert shell.index(mkdir)<shell.index(copy), 'El CSS se copia antes de preparar el directorio'
+          assert '[[ -s "$STAGE/candidate/$file" ]]' in shell, 'Falta verificar candidatos'
+          print('PASS: permisos separados, filtros automáticos y preparación CSS.')
           PY
