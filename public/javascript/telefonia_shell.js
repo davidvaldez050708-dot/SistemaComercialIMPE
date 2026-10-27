@@ -316,6 +316,20 @@
             resultFormOwner = null;
             render();
         },
+        // Sólo Ventas: el resumen saliente no aparece hasta que la PBX
+        // confirma cierre y conexión de un tramo asignado a la extensión.
+        confirmSalesFinished: function (ref) {
+            if (!cfg.salesResults || currentState?.active || !recentFinishedOutgoing) return false;
+            const call = recentFinishedOutgoing.state || {};
+            const ids = [call.pbxCallId,call.finalMetadata?.pbx_call_id,call.context?.transferReference];
+            if (!ids.includes(ref)) return false;
+            recentFinishedOutgoing.commercialReady = true;
+            // La conciliación puede tardar más de ocho segundos; una vez
+            // confirmado, el usuario debe poder registrar el resultado.
+            recentFinishedOutgoing.until = Infinity;
+            render();
+            return true;
+        },
         dismissFinishedCall: function (ref) {
             if(currentState?.active)return false;
             const matches=s=>[s?.pbxCallId,s?.callToken,s?.finalMetadata?.pbx_call_id,s?.context?.transferReference].includes(ref);
@@ -403,7 +417,9 @@
             currentState?.active && currentState.direction === 'outgoing' &&
             isManualOutgoing(value)) {
             recentFinishedOutgoing = {
-                state: value, until: value.context?.type==='DEVOLUCION'?Infinity:Date.now()+8000
+                state: value, until: value.context?.type==='DEVOLUCION'?Infinity:Date.now()+8000,
+                // No cambiar el flujo de Marketing, Analistas ni devoluciones.
+                commercialReady: !cfg.salesResults
             };
             incomingCompact = false;
         } else if (value.active || value.phase === 'ready' ||
@@ -522,7 +538,8 @@
             Date.now() > recentFinishedOutgoing.until) {
             recentFinishedOutgoing = null;
         }
-        const finishedPreview = !state?.active && !preview
+        const finishedPreview = !state?.active && !preview &&
+            (!cfg.salesResults || recentFinishedOutgoing?.commercialReady)
             ? recentFinishedOutgoing?.state || null : null;
         const incomingFinishedPreview = !state?.active
             ? recentFinishedIncoming?.state || null : null;
@@ -702,7 +719,9 @@
                 finishingIncoming || waitingAnswer || ringing;
             const callbackPending=Boolean((finished||finishedIncoming)&&phoneState.context?.type==='DEVOLUCION'&&Number(phoneState.context.callbackAttempt)>0&&!callbackSaved.has(Number(phoneState.context.callbackAttempt)));
             const callbackRegister=document.querySelector('[data-callback-register-finished]');if(callbackRegister)callbackRegister.hidden=!callbackPending;
-            if (closeFinished) closeFinished.hidden = !(finished || finishedIncoming)||callbackPending;
+            if (closeFinished) closeFinished.hidden =
+                !(finished || finishedIncoming) || callbackPending ||
+                (Boolean(cfg.salesResults) && finished && shownOutgoing);
             hangupButton.disabled = Boolean(pending) || Boolean(preview);
             compactHangup.disabled = Boolean(pending) || Boolean(preview);
             // Mismo icono, texto y estado activo del modal de Seguimiento.
