@@ -16,6 +16,9 @@ class SeguimientoVinculacionController
     public function index()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
 
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
@@ -44,6 +47,33 @@ class SeguimientoVinculacionController
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/seguimiento_vinculacion/index.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    /** Analistas autorizados del territorio para la importación. */
+    public function analistasImportacionExcel()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.crear');
+        header('Cache-Control: no-store, private');
+        $usuario=$this->obtenerUsuarioActualId();
+        $modo=$this->resolverModoSeguimiento();
+        $estadoId=filter_var($_GET['estado_id']??null,FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>1]]);
+        if(!$estadoId)$this->responderJson(['ok'=>false,'mensaje'=>'Selecciona un estado válido.'],422);
+        $modelo=new SeguimientoVinculacionModel();
+        $estado=$this->obtenerEstadoPorModo($modelo,$usuario,$estadoId,$modo);
+        if(!$estado)$this->responderJson(['ok'=>false,'mensaje'=>'No tienes acceso al territorio.'],403);
+        if($modo==='analista'){
+            $this->responderJson(['ok'=>true,'analistas'=>[['id'=>$usuario,'nombre'=>'Mi seguimiento']]]);
+        }
+        $analistas=$this->obtenerAnalistasFiltro($modelo,$usuario,$estadoId,$modo);
+        $listado=[];
+        foreach($analistas as $analista){
+            $id=(int)($analista['id']??0);
+            if($id<=0)continue;
+            $nombre=trim((string)($analista['nombre']??'').' '.(string)($analista['apellidos']??''));
+            $listado[]=['id'=>$id,'nombre'=>$nombre];
+        }
+        $this->responderJson(['ok'=>true,'analistas'=>$listado]);
     }
 
     /**
