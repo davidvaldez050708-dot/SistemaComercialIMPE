@@ -1,0 +1,44 @@
+name: Ventas · canceladas no requieren resultado
+on:
+  push:
+    branches:
+      - fix/ventas-canceladas-sin-resultado-aviso-breve-v2-20261027
+  pull_request:
+    paths:
+      - app/services/TelefoniaVentasLlamadasService.php
+      - app/views/telefonia/ventas_llamadas.php
+      - public/javascript/telefonia_ventas_shell.js
+      - tests/telefonia_ventas_canceladas_no_capturables_smoke.php
+      - tests/telefonia_ventas_conciliar_vista_hostinger_smoke.php
+      - tools/conciliar_vista_ventas_canceladas_v2.php
+      - tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
+      - tools/publicar_ventas_canceladas_sin_resultado_v2_hostinger.sh
+      - .github/workflows/ventas-canceladas-sin-resultado-v2.yml
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis PHP, JavaScript y Bash
+        run: |
+          php -l app/services/TelefoniaVentasLlamadasService.php
+          php -l app/views/telefonia/ventas_llamadas.php
+          php -l tests/telefonia_ventas_canceladas_no_capturables_smoke.php
+          php -l tests/telefonia_ventas_conciliar_vista_hostinger_smoke.php
+          php -l tools/conciliar_vista_ventas_canceladas_v2.php
+          node --check public/javascript/telefonia_ventas_shell.js
+          node --check tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
+          bash -n tools/publicar_ventas_canceladas_sin_resultado_v2_hostinger.sh
+      - name: Regresiones: canceladas, conversación y aviso breve
+        run: |
+          php tests/telefonia_ventas_canceladas_no_capturables_smoke.php
+          php tests/telefonia_ventas_conciliar_vista_hostinger_smoke.php
+          node tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
