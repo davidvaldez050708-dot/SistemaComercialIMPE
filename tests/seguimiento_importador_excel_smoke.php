@@ -56,4 +56,14 @@ $assert($norm->invoke(null,'  Institución ÁRBOL  ')==='institucion arbol',
 $date=$reflection->getMethod('fechaHistorica');
 $assert($date->invoke(null,'')==='', 'La fecha histórica debe ser opcional');
 $assert($date->invoke(null,'26/10/2026')==='2026-10-26','Fecha histórica formateada');
+$keyMethod=$reflection->getMethod('clave');
+$a=['estado_id'=>17,'tipo'=>'INSTITUCION','nombre'=>'Institución ÁRBOL',
+    'municipio_id'=>220,'direccion'=>'Av. Central 10'];
+$b=['estado_id'=>17,'tipo'=>'INSTITUCION','nombre'=>'institucion arbol',
+    'municipio_id'=>220,'direccion'=>'AV CENTRAL 10'];
+$c=$b;$c['direccion']='Av Central 22';
+$assert($keyMethod->invoke(null,$a)===$keyMethod->invoke(null,$b),
+    'La misma institución debe tener clave de importación estable');
+$assert($keyMethod->invoke(null,$a)!==$keyMethod->invoke(null,$c),
+    'Planteles diferentes deben poder identificarse por domicilio');
 echo "PASS: plantilla oficial, estados asignados, validación XLSX y pasos 00–13.\n";
