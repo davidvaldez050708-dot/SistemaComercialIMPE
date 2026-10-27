@@ -127,15 +127,79 @@
                     through.setCustomValidity('Selecciona un máximo de 90 días por intervalo.');
                 }
             }
-            from?.addEventListener('change', verify);
-            through?.addEventListener('change', verify);
-            filters.addEventListener('submit', function (event) {
+            const message = filters.querySelector('[data-control-filter-message]');
+            const loading = filters.querySelector('[data-control-filter-loading]');
+            const clear = filters.querySelector('[data-control-clear]');
+            let pending = false;
+            let timer = null;
+
+            function tell(text) {
+                if (!message) return;
+                message.textContent = text || '';
+                message.hidden = !text;
+            }
+
+            function clearStatus() {
+                if (loading) loading.hidden = true;
+                filters.classList.remove('is-updating');
+                pending = false;
+            }
+
+            function apply() {
+                if (pending) return;
                 verify();
                 if (!filters.checkValidity()) {
-                    event.preventDefault();
-                    filters.reportValidity();
+                    clearStatus();
+                    tell(through?.validationMessage || from?.validationMessage ||
+                        'Selecciona fechas válidas antes de actualizar.');
+                    return;
                 }
+                tell('');
+                const params = new URLSearchParams(new FormData(filters));
+                const url = new URL(filters.action, window.location.href);
+                url.search = params.toString();
+                // Mantener métricas, tendencia, ranking e historial sincronizados:
+                // todos se vuelven a consultar en el servidor.
+                const current = new URL(window.location.href);
+                if (url.search === current.search) {
+                    clearStatus();
+                    return;
+                }
+                pending = true;
+                filters.classList.add('is-updating');
+                if (loading) loading.hidden = false;
+                window.location.assign(url.toString());
+            }
+
+            function schedule() {
+                if (pending) return;
+                window.clearTimeout(timer);
+                verify();
+                tell('');
+                timer = window.setTimeout(apply, 240);
+            }
+
+            filters.querySelectorAll('select').forEach(function (field) {
+                field.addEventListener('change', schedule);
             });
+            from?.addEventListener('change', schedule);
+            through?.addEventListener('change', schedule);
+            [from, through].forEach(function (field) {
+                field?.addEventListener('input', function () {
+                    window.clearTimeout(timer);
+                    verify();
+                    tell('');
+                });
+            });
+            filters.addEventListener('submit', function (event) {
+                event.preventDefault();
+                window.clearTimeout(timer);
+                apply();
+            });
+            clear?.addEventListener('click', function () {
+                if (loading) loading.hidden = false;
+            });
+            window.addEventListener('pageshow', clearStatus);
         }
     });
 })();
