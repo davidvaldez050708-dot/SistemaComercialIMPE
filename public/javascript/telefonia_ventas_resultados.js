@@ -7,7 +7,7 @@
  const token='sales-result-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
  const shell=()=>{try{return window.parent!==window?window.parent.IMPE_TELEPHONY_SHELL:null;}catch(_){return null;}};
  const fields=form.querySelector('[data-sales-fields]');
- let call=null,callRef='',callExt='',queued=false,cycle=0,opening=false,timer=null,disposed=false,waiting=false,recovered=false,requestController=null;
+ let call=null,callRef='',callExt='',queued=false,cycle=0,opening=false,timer=null,disposed=false,waiting=false,recovered=false,requestController=null,importedCaptureNote='',captureConflictNote='';
  const saveLabel=submit.innerHTML;
  const cancelRetry=()=>{clearTimeout(timer);timer=null;};
  let refreshing=false;
@@ -54,7 +54,7 @@
  };
  const draftKey=ref=>'impe:sales-result-draft:'+Number(window.IMPE_CURRENT_USER_ID)+':'+ref;
  const readDraft=ref=>{try{const d=JSON.parse(sessionStorage.getItem(draftKey(ref))||'null');return d&&Date.now()-d.at<86400000?d:null;}catch(_){return null;}};
- const storeDraft=()=>{if(!callRef||call?.registro)return;try{sessionStorage.setItem(draftKey(callRef),JSON.stringify({at:Date.now(),queued,values:Object.fromEntries(new FormData(form))}));}catch(_){}};
+ const storeDraft=()=>{if(!callRef||call?.registro)return;try{sessionStorage.setItem(draftKey(callRef),JSON.stringify({at:Date.now(),queued,captureNote:importedCaptureNote,values:Object.fromEntries(new FormData(form))}));}catch(_){}};
  const show=()=>{if(!window.bootstrap?.Modal)throw Error('No se cargó el formulario. Recarga la página.');bootstrap.Modal.getOrCreateInstance(modal).show();};
  const schedule=(ref,ext,attempt,version)=>{const delay=Math.min(1500*2**Math.min(attempt,3),12000);timer=setTimeout(()=>{if(version===cycle&&!disposed&&modal.classList.contains('show'))void open(ref,ext,attempt+1);},delay);};
  async function open(ref,ext,attempt=0){
@@ -63,10 +63,11 @@
   // Nunca trasladar notas, solicitudes de guardado ni datos a otra llamada.
   const changed=callRef!==ref||(callExt&&ext&&callExt!==ext);
   if(changed){
-   call=null;callRef=ref;callExt=ext||'';waiting=false;queued=false;
+   call=null;callRef=ref;callExt=ext||'';waiting=false;queued=false;importedCaptureNote='';captureConflictNote='';
    form.reset();for(const el of form.elements)el.disabled=false;
+   form.elements.namedItem('observacion')?.setCustomValidity?.('');
    const draft=readDraft(ref);
-   if(draft){queued=false; // Borradores anteriores ya no esperan un END PBX inexistente.
+   if(draft){queued=false;importedCaptureNote=typeof draft.captureNote==='string'?draft.captureNote:''; // Borradores anteriores ya no esperan un END PBX inexistente.
     for(const [key,value] of Object.entries(draft.values||{})){
      if(['csrf_token','pbx_call_id','extension'].includes(key))continue;
      const el=form.elements.namedItem(key);if(!el)continue;
@@ -93,14 +94,27 @@
    call=data.llamada;
    if(shell()&&!shell().beginCallResult(token,[ref]))throw Error('Termina la llamada activa antes de registrar.');
    const ownExt=call?.extension||ext||callExt;
+   let localCapture=null,captureNotice='';
+   if(call&&!call.registro){try{localCapture=window.parent!==window?window.parent.IMPE_SALES_PROSPECT_CAPTURE?.forResult?.(ref,ownExt):null;}catch(_){}}
+   const capture=localCapture||call?.captura_prospecto;
    form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;
    form.querySelector('[data-sales-form-number]').textContent=call?.numero||'Llamada transferida';
    const summary=form.querySelector('[data-sales-capture-summary]');
-   if(summary){summary.hidden=!call?.captura_prospecto;summary.textContent=call?.captura_prospecto?['Datos informados durante la atención',call.captura_prospecto.programa,call.captura_prospecto.notas].filter(Boolean).join(' · '):'';}
+   if(summary){summary.hidden=!capture;summary.textContent=capture?['Datos informados durante la atención',capture.programa,capture.notas].filter(Boolean).join(' · '):'';}
    if(call){
     const nombre=form.elements.namedItem('prospecto_nombre'),correo=form.elements.namedItem('correo');
-    if(nombre&&!nombre.value)nombre.value=call.registro?.prospecto_nombre||call.captura_prospecto?.nombre||call.nombre||'';
-    if(correo&&!correo.value)correo.value=call.registro?.correo||call.captura_prospecto?.correo||'';
+    if(nombre&&!nombre.value)nombre.value=call.registro?.prospecto_nombre||capture?.nombre||call.nombre||'';
+    if(correo&&!correo.value)correo.value=call.registro?.correo||capture?.correo||'';
+    const notes=form.elements.namedItem('observacion'),captured=String(capture?.notas||'').trim();
+    if(!call.registro&&notes&&captured&&captured!==importedCaptureNote){
+     const existing=notes.value.trim();
+     const combined=!existing?captured:(existing.includes(captured)?notes.value:captured+'\n\n'+notes.value);
+     if(combined.length<=1000){notes.value=combined;importedCaptureNote=captured;}
+     else{
+      captureNotice='Las notas de atención aparecen arriba. Para guardar, resume o integra ambos textos en Observaciones sin superar 1000 caracteres; tu texto se conserva.';
+      captureConflictNote=captured;notes.setCustomValidity?.(captureNotice);
+     }
+    }
    }
    // La captura y el guardado humano no deben depender de que Zadarma
    // entregue un END tardío. El servidor comprueba la transferencia propia
@@ -134,7 +148,8 @@
     feedback.textContent='Resultado guardado anteriormente.';
    }else{
     submit.disabled=false;submit.innerHTML=saveLabel;
-    feedback.textContent=call.finalizada?'':'Puedes guardar tu resultado. La grabación y el cierre de Zadarma seguirán en verificación.';
+    feedback.textContent=[call.finalizada?'':'Puedes guardar tu resultado. La grabación y el cierre de Zadarma seguirán en verificación.',captureNotice].filter(Boolean).join(' ');
+    storeDraft();
    }
    modal.dispatchEvent(new CustomEvent('impe:sales-result-loaded',{detail:{ref,extension:ownExt,saved:Boolean(call.registro)}}));
    show();
@@ -195,7 +210,14 @@
   }
   slot.hidden=false;audio.setAttribute('aria-expanded','true');
  });
- form.addEventListener('input',storeDraft);
+ form.addEventListener('input',event=>{
+  const notes=form.elements.namedItem('observacion');
+  if(captureConflictNote&&event.target===notes){
+   notes.setCustomValidity?.('');importedCaptureNote=captureConflictNote;captureConflictNote='';
+   feedback.textContent='Revisa las observaciones antes de guardar.';
+  }
+  storeDraft();
+ });
  form.addEventListener('change',storeDraft);
  form.addEventListener('submit',async e=>{
   e.preventDefault();
