@@ -61,6 +61,17 @@
                 const labels={persona:'Persona',numero:'Número',nombre:'Nombre',fecha:'Fecha y hora',direccion:'Tipo',extension:'Extensión',resultado_texto:'Resultado',observacion:'Observaciones'};
                 for(const [name,label] of Object.entries(labels)){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=data.llamada[name]||'—';fields.append(dt,dd);}
                 if(!dialog.open)dialog.showModal();
+                if(key.startsWith('venta:')){
+                    const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent='Observaciones adicionales';dd.textContent='Consultando…';fields.append(dt,dd);
+                    try{
+                        const notesUrl=new URL(root.dataset.detailUrl,location.href);notesUrl.searchParams.set('controller','telefonia');notesUrl.searchParams.set('action','observacionesVenta');notesUrl.searchParams.set('llamada',key);
+                        const notes=await json(notesUrl);
+                        dd.replaceChildren();
+                        if(!notes.disponible)dd.textContent='Las observaciones adicionales aún no están instaladas.';
+                        else if(!notes.observaciones.length)dd.textContent='Sin observaciones adicionales.';
+                        else for(const note of notes.observaciones){const article=document.createElement('article'),title=document.createElement('strong'),text=document.createElement('p');title.textContent=note.autor+' · '+note.fecha+' · hora de México';text.textContent=note.nota;text.style.whiteSpace='pre-wrap';article.append(title,text);dd.append(article);}
+                    }catch(error){dd.textContent=error.message||'No se pudieron consultar las observaciones adicionales.';}
+                }
             }catch(error){notice(error.message||'No se pudo consultar el resultado. Vuelve a intentarlo.');}finally{button.disabled=false;}return;
         }
         const panel=card.querySelector('[data-supervision-player]');

@@ -9,6 +9,7 @@ const root=path.resolve(__dirname,'..'),bootstrap=path.dirname(require.resolve('
    const u=new URL(route.request().url());if(u.hostname!=='supervision.test')return route.abort();
    if(u.pathname==='/sidebar')return route.fulfill({contentType:'text/html',body:'<!doctype html><body>'+[1,2].map(n=>'<aside class="admin-sidebar"><a class="sidebar-link active" href="/index.php?controller=reporte&amp;action=index">Reportes '+n+'</a><a class="sidebar-link" href="/index.php?controller=reporte&amp;action=supervisionLlamadas">Supervisión '+n+'</a></aside>').join('')+'<script src="/public/javascript/reportes_accesos.js"></script></body>'});
    if(u.searchParams.get('action')==='supervisionDetalle')return route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,llamada:{persona:'Persona',observacion:'<img src=x onerror=alert(1)>',resultado_texto:'Conversación con el prospecto'}})});
+   if(u.searchParams.get('action')==='observacionesVenta')return route.fulfill({json:{ok:true,disponible:true,observaciones:[{id:1,autor:'Asesor de prueba',fecha:'26/10/2026 17:15',nota:'Nota adicional <img src=x onerror=alert(1)>'}]}});
    if(u.searchParams.get('action')==='supervisionAudio'){
     if(deny)return route.fulfill({status:403,contentType:'text/plain',body:'Acceso revocado'});
     return route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,disponible:true,segmentos:2,segmentos_info:[{indice:0,etiqueta:'Recepción · Ext. 100'},{indice:1,etiqueta:'Asesor · Ext. 150'}]})});
@@ -28,6 +29,7 @@ const root=path.resolve(__dirname,'..'),bootstrap=path.dirname(require.resolve('
    }
    assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)),`Desbordamiento a ${width}`);
    await page.locator('[data-supervision-detail]').first().click();await page.locator('dialog[open]').waitFor();
+   await page.locator('dialog').getByText('Nota adicional <img src=x onerror=alert(1)>',{exact:true}).waitFor();
    assert((await page.locator('dialog').innerText()).includes('<img src=x onerror=alert(1)>'));assert.equal(await page.locator('dialog img').count(),0);
    await page.locator('[data-supervision-close]').click();
    await page.locator('[data-supervision-audio]').first().click();await page.locator('[data-supervision-player]').first().locator('audio').first().waitFor({state:'attached'});

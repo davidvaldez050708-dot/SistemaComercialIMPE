@@ -16,7 +16,8 @@ for crlf in (False, True):
             old, new = unpack(v['before']), unpack(v['after'])
             assert hashlib.sha256(old).hexdigest() == v['before_sha']
             assert hashlib.sha256(new).hexdigest() == v['after_sha']
-            assert (R / row['path']).read_bytes().replace(b'\r\n', b'\n') == new
+            released = subprocess.check_output(['git','show','3174965da8957eb4dfdbae3c215d7d6096ad37c3:'+row['path']],cwd=R)
+            assert released.replace(b'\r\n', b'\n') == new
             before[row['path']] = old.replace(b'\n', b'\r\n') if crlf else old
             after[row['path']] = new.replace(b'\n', b'\r\n') if crlf else new
             target = site / row['path']

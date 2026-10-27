@@ -38,6 +38,7 @@ jobs:
           php tests/ventas_desempeno_unit.php
           python3 tests/ventas_actividad_http_test.py
           python3 tests/supervision_llamadas_http_test.py
+          python3 tests/ventas_observaciones_http_test.py
   interfaz:
     runs-on: ubuntu-latest
     strategy:
@@ -67,6 +68,7 @@ jobs:
           node tests/ventas_desempeno_browser.cjs
           node tests/ventas_pdf_descarga_browser.cjs
           node tests/supervision_llamadas_browser.cjs
+          node tests/ventas_observaciones_browser.cjs
   pdf:
     runs-on: ubuntu-latest
     steps:
@@ -101,3 +103,4 @@ jobs:
           python3 tests/publicacion_pdf_descarga_directa_test.py
           python3 tests/publicacion_supervision_llamadas_test.py
           python3 tests/publicacion_supervision_filtros_test.py
+          python3 tests/publicacion_ventas_observaciones_test.py
