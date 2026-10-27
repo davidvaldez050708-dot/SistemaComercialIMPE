@@ -192,7 +192,7 @@ try {
     if (is_file($available)) {
         $availableHash=hash_file('sha256',$available);
         $result=(new OficioRedmexPdfRenderer())->convertir($available,$work);
-        expectRedmex(!$result['ok'] && hash_file('sha256',$available)===$availableHash,'real alternate format safely rejected');
+        expectRedmex($result['ok'] && hash_file('sha256',$available)===$availableHash,'real Embajadas format with separate header/footer supported without modifying source');
     }
     // Contenido extenso: debe paginar completo, con cabecera y pie en cada página.
     $incompatible=$custom.'/generacion_20261020_120001_'.bin2hex(random_bytes(6)).'.docx'; $fixtureFiles[]=$incompatible;
