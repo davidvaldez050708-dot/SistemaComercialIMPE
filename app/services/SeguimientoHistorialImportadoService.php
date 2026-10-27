@@ -8,8 +8,33 @@ class SeguimientoHistorialImportadoService
             return null;
         }
 
+        /*
+         * Importación V3: el paso declarado es un antecedente visible, no
+         * evidencia de actividad ni autorización para formalizar un convenio.
+         */
+        $notas=(string)($seguimiento['observaciones']??'');
+        if(preg_match('/(?:^|\n)IMPE_ETAPA_REPORTADA_EXCEL_V1=(0[0-9]|1[0-3])(?:\n|$)/',$notas,$m)){
+            $paso=(int)$m[1];
+            if($paso===0)return null;
+            $nombres=[
+                1=>'Seguimiento iniciado',2=>'Investigación de datos',
+                3=>'Contacto y validación',4=>'Verificación de datos',
+                5=>'Preparación de oficio',6=>'Generación de PDF',
+                7=>'Envío de oficio / correo',8=>'Esperando respuesta',
+                9=>'Respuesta recibida',10=>'Seguimiento por correo',
+                11=>'Reunión agendada',12=>'Reunión realizada',
+                13=>'Convenio en proceso'
+            ];
+            return [
+                'paso'=>$paso,'clave'=>'ETAPA_EXCEL_V3_DECLARADA',
+                'etapa'=>$nombres[$paso].' · histórico reportado',
+                'titulo'=>'Revisar continuidad del seguimiento histórico',
+                'descripcion'=>'El Excel indica este avance previo. No acredita llamadas, correos, reuniones, verificaciones ni convenios realizados en el CRM. Continúa con las acciones reales que correspondan.',
+                'evidencia'=>'Paso '.$paso.' reportado en plantilla Excel V3, pendiente de corroboración'
+            ];
+        }
         $texto = $this->normalizarTexto(
-            (string)($seguimiento['observaciones'] ?? '')
+            $notas
         );
 
         if (
