@@ -13,6 +13,7 @@
   const stateSelect=form.querySelector('[name="estado_id"]');
   const analystSelect=form.querySelector('[data-impe-excel-analista]');
   const fileInput=form.querySelector('[name="archivo"]');
+  const download=modal.querySelector('[data-impe-excel-download]');
   const url=new URL(location.href);
   url.search='';
   url.hash='';
@@ -96,6 +97,28 @@
     const span=document.createElement('span');span.textContent=label;
     card.append(strong,span);summary.append(card);
   };
+  download?.addEventListener('click',async()=>{
+    if(busy)return;
+    download.disabled=true;
+    show('Preparando plantilla Excel V3…');
+    try{
+      const response=await fetch(download.dataset.url,{credentials:'same-origin',cache:'no-store'});
+      const type=response.headers.get('content-type')||'';
+      if(!response.ok||!type.includes('spreadsheetml.sheet')){
+        throw Error('No fue posible obtener la plantilla. Verifica que la extensión ZIP de PHP esté habilitada.');
+      }
+      const blob=await response.blob();
+      if(!blob.size||blob.size>2097152)throw Error('La plantilla no tiene un tamaño válido.');
+      const local=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=local;
+      a.download='plantilla_instituciones_seguimiento_impe_v3.xlsx';
+      document.body.append(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(local),4000);
+      show('Plantilla Excel V3 preparada para descargar.');
+    }catch(error){show(error.message,true);}
+    finally{download.disabled=false;}
+  });
   analyze.addEventListener('click',async()=>{
     if(busy)return;
     hideReview();
