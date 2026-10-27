@@ -35,8 +35,10 @@ class TelefoniaController
      */
     public function index()
     {
-        $this->validarAdministrador();
+        $this->validarAccesoControlLlamadas();
 
+        $puedeAdministrarExtensiones = (int)($_SESSION['rol_id'] ?? 0) === 1
+            && tienePermiso('telefonia.configurar');
         $actividadTelefonicaError = '';
         $controlTelefonia = [];
         $filtros = [
@@ -1026,6 +1028,16 @@ class TelefoniaController
             JSON_INVALID_UTF8_SUBSTITUTE
         );
         exit;
+    }
+
+    private function validarAccesoControlLlamadas()
+    {
+        if ((int)($_SESSION['usuario_id'] ?? 0) > 0
+            && tienePermiso('telefonia.control_ver')) {
+            return;
+        }
+        http_response_code(403);
+        die('No tienes permiso para consultar el control de llamadas.');
     }
 
     private function validarAdministrador()
