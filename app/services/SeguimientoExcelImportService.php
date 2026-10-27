@@ -243,7 +243,7 @@ final class SeguimientoExcelImportService
     /** Coteja seguimientos de todos los orígenes y analistas del mismo estado. */
     private function coincidencias(array $r): array
     {
-        $sql='SELECT id, nombre_entidad, tipo_entidad, municipio_id, telefono_fuente,telefono_verificado,
+        $sql='SELECT id, nombre_entidad, tipo_entidad, municipio_id, direccion_fuente,telefono_fuente,telefono_verificado,
                      correo_fuente,correo_verificado,clave_origen,analista_id,activo
               FROM seguimientos_vinculacion
               WHERE estado_id=? AND (LOWER(TRIM(nombre_entidad))=LOWER(TRIM(?))
@@ -269,7 +269,13 @@ final class SeguimientoExcelImportService
                 preg_replace('/D/','',$r['telefono']) ||
                 preg_replace('/D/','',(string)$s['telefono_verificado'])===
                 preg_replace('/D/','',$r['telefono']);
-            if($sameKey||($sameName&&$sameType&&$sameMunicipality&&($mailMatch||$phoneMatch))){
+            $direccionExistente=self::norm($s['direccion_fuente']??'');
+            $mismaDireccion=$direccionExistente!=='' &&
+                $direccionExistente===self::norm($r['direccion']);
+            $contactosIguales=$mailMatch&&$phoneMatch &&
+                ($direccionExistente===''||$mismaDireccion);
+            if($sameKey||($sameName&&$sameType&&$sameMunicipality&&
+                ($mismaDireccion||$contactosIguales))){
                 $exact[]=$s;
             }elseif($sameName||strcasecmp((string)$s['correo_fuente'],$r['correo'])===0||
                 strcasecmp((string)$s['correo_verificado'],$r['correo'])===0||
