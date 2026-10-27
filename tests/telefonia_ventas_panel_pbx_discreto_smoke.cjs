@@ -13,7 +13,7 @@ async function test(kind) {
   const cls=new Set(),attrs=new Map();
   return{tag,className:'',dataset:{},textContent:'',hidden:false,src:'',lastChild:null,
    attrs,
-   classList:{contains:x=>cls.has(x),toggle:(x,on)=>{if(on)cls.add(x);else cls.delete(x);return on;}},
+   classList:{contains:x=>cls.has(x),add:x=>cls.add(x),toggle:(x,on)=>{if(on)cls.add(x);else cls.delete(x);return on;}},
    setAttribute(key,value){attrs.set(key,String(value));},
    removeAttribute(key){attrs.delete(key);},hasAttribute(key){return attrs.has(key);},
    after(){},append(...args){this.lastChild=args[args.length-1];},
