@@ -9,6 +9,8 @@ on:
       - app/views/telefonia/ventas_llamadas.php
       - public/javascript/telefonia_ventas_shell.js
       - tests/telefonia_ventas_canceladas_no_capturables_smoke.php
+      - tests/telefonia_ventas_conciliar_vista_hostinger_smoke.php
+      - tools/conciliar_vista_ventas_canceladas_v2.php
       - tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
       - tools/publicar_ventas_canceladas_sin_resultado_v2_hostinger.sh
       - .github/workflows/ventas-canceladas-sin-resultado-v2.yml
@@ -30,10 +32,13 @@ jobs:
           php -l app/services/TelefoniaVentasLlamadasService.php
           php -l app/views/telefonia/ventas_llamadas.php
           php -l tests/telefonia_ventas_canceladas_no_capturables_smoke.php
+          php -l tests/telefonia_ventas_conciliar_vista_hostinger_smoke.php
+          php -l tools/conciliar_vista_ventas_canceladas_v2.php
           node --check public/javascript/telefonia_ventas_shell.js
           node --check tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
           bash -n tools/publicar_ventas_canceladas_sin_resultado_v2_hostinger.sh
       - name: Regresiones: canceladas, conversación y aviso breve
         run: |
           php tests/telefonia_ventas_canceladas_no_capturables_smoke.php
+          php tests/telefonia_ventas_conciliar_vista_hostinger_smoke.php
           node tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
