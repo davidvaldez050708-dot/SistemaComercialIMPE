@@ -93,15 +93,17 @@
   const hidePanel=done&&!confirmed;
   if(panel.classList.contains(pendingCss)!==hidePanel)
    panel.classList.toggle(pendingCss,hidePanel);
-  const checking=hidePanel&&!retired.has(ref);
+  const token=String(state?.callToken||ref);
+  if(hidePanel&&token!==waitToken){
+   waitToken=token;
+   waitStarted=Date.now();
+  }
+  // Mostrar sólo un estado de transición breve, nunca un aviso permanente
+  // que simule una llamada sin cerrar cuando el historial ya la resolvió.
+  const checking=hidePanel&&!retired.has(ref)&&Date.now()-waitStarted<8500;
   pbxNotice.hidden=!checking;
-  if(checking){
-   const token=String(state.callToken||ref);
-   if(token!==waitToken){waitToken=token;waitStarted=Date.now();}
-   pbxMessage.textContent=Date.now()-waitStarted>16000
-    ?'La confirmación tarda más de lo habitual. Consulta Mis llamadas.'
-    :'Verificando cierre de llamada con Zadarma…';
-  }else if(!hidePanel){waitToken='';waitStarted=0;}
+  if(checking)pbxMessage.textContent='Verificando cierre de llamada con Zadarma…';
+  if(!hidePanel){waitToken='';waitStarted=0;}
  };
  if(typeof MutationObserver==='function'){
   const uiGuard=new MutationObserver(syncPbxPanel);
