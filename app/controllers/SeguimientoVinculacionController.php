@@ -49,6 +49,35 @@ class SeguimientoVinculacionController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    /** Entrega una plantilla XLSX oficial restringida a los territorios accesibles. */
+    public function descargarPlantillaSeguimientoExcel()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+        if(!tienePermiso('seguimientos_vinculacion.crear')){
+            http_response_code(403);exit('No tienes permiso para descargar la plantilla.');
+        }
+        try {
+            require_once __DIR__.'/../services/SeguimientoExcelPlantillaService.php';
+            $modelo=new SeguimientoVinculacionModel();
+            $estados=$this->obtenerTerritoriosPorModo($modelo,$this->obtenerUsuarioActualId(),
+                $this->resolverModoSeguimiento());
+            if(!$estados)throw new DomainException('No tienes territorios disponibles.',403);
+            $bytes=SeguimientoExcelPlantillaService::archivo($estados);
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="plantilla_instituciones_seguimiento_impe_v3.xlsx"');
+            header('Content-Length: '.strlen($bytes));
+            header('Cache-Control: no-store, private');
+            header('X-Content-Type-Options: nosniff');
+            echo $bytes;exit;
+        }catch(Throwable $error){
+            error_log('[impe_excel_plantilla] '.$error->getMessage());
+            http_response_code(503);
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'No fue posible preparar la plantilla Excel. Intenta nuevamente.';
+            exit;
+        }
+    }
+
     /** Analistas autorizados del territorio para la importación. */
     public function analistasImportacionExcel()
     {
