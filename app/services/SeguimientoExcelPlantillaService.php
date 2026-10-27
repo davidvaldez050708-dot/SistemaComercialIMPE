@@ -39,7 +39,7 @@ final class SeguimientoExcelPlantillaService
         $tmp=tempnam(sys_get_temp_dir(),'impe_xlsx_');
         if(!$tmp)throw new RuntimeException('No se pudo crear la plantilla.');
         $zip=new ZipArchive();
-        if($zip->open($tmp,ZipArchive::OVERWRITE)!==true){
+        if($zip->open($tmp,ZipArchive::CREATE|ZipArchive::OVERWRITE)!==true){
             @unlink($tmp);throw new RuntimeException('No se pudo preparar el XLSX.');
         }
         try{
