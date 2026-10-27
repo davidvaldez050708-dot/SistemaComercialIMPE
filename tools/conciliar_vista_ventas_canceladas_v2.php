@@ -36,8 +36,8 @@ if ($count === 1) {
 } else {
     // Sólo dos formas inequívocas de la condición original (orden permutable).
     // La coincidencia incluye <?php y ?> para no afectar expresiones ajenas.
-    $ref = '\\$ref\\s*!==\\s*(?:\\'\\'|"")';
-    $end = '\\$call\\s*\\[\\s*(?:\\'finalizada\\'|"finalizada")\\s*\\]';
+    $ref = '\\$ref\\s*!==\\s*(?:' . "''" . '|"")';
+    $end = '\\$call\\s*\\[\\s*(?:' . "'finalizada'" . '|"finalizada")\\s*\\]';
     $expr = '(?:' . $ref . '\\s*&&\\s*' . $end
         . '|' . $end . '\\s*&&\\s*' . $ref . ')';
     $pattern = '~(?P<open><\\?php\\s+if\\s*\\(\\s*)' . $expr
