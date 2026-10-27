@@ -1,0 +1,46 @@
+name: Ventas Ext 151 · zona horaria conciliada
+on:
+  push:
+    branches:
+      - fix/ventas-ext151-conciliar-hostinger-4ef800-v2-20261027
+  pull_request:
+    paths:
+      - app/services/TelefoniaVentasLlamadasService.php
+      - tools/publicar_ventas_ext151_conciliacion_v2_hostinger.sh
+      - .github/workflows/ventas-ext151-conciliacion-v2.yml
+permissions:
+  contents: read
+jobs:
+  lint-y-protecciones:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Revisar sintaxis de servicio y publicador
+        run: |
+          php -l app/services/TelefoniaVentasLlamadasService.php
+          bash -n tools/publicar_ventas_ext151_conciliacion_v2_hostinger.sh
+      - name: Comprobar cambio localizado y guardas vigentes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          code = Path('app/services/TelefoniaVentasLlamadasService.php').read_text()
+          script = Path('tools/publicar_ventas_ext151_conciliacion_v2_hostinger.sh').read_text()
+          assert code.count("CONVERT_TZ(GREATEST(t.created_at,t.updated_at),'+00:00','-06:00')")==2
+          assert "self::asignacionLocal((string)$owners[0]['desde'])" in code
+          assert 'TelefoniaLimpiezaGuard::bloqueada' in code
+          assert 'TelefoniaLimpiezaGuard::condicion' in code
+          assert 'NOT EXISTS(SELECT 1 FROM telefonia_extensiones other' in code
+          assert 'public static function presentacionAudio' in code
+          assert 'public static function resultadoCapturable' in code
+          assert 'public static function evidenciaAudio' in code
+          assert 'BEFORE="4ef800bf9f7044dfeb1dbe200ff4666bb2212a10"' in script
+          assert 'AFTER="28ad16380c89afc548e1812cfe4f8855d09b25a6"' in script
+          assert script.index('if [[ "$MODE" == "--check" ]]') < script.index('WRITING=1')
+          print('PASS: conciliación UTC y protecciones de producción conservadas.')
+          PY
+      - name: Prueba de conversión a México
+        run: |
+          php -r '$x=DateTimeImmutable::createFromFormat("!Y-m-d H:i:s","2026-10-27 15:29:57",new DateTimeZone("UTC")); assert($x->setTimezone(new DateTimeZone("America/Mexico_City"))->format("Y-m-d H:i:s")==="2026-10-27 09:29:57"); echo "PASS\n";'
