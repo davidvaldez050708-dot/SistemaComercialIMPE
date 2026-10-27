@@ -2,7 +2,8 @@
 (function(){
   'use strict';
   const modal=document.getElementById('modalImportacionSeguimientoExcel');
-  if(!modal)return;
+  if(!modal||modal.dataset.impeExcelInitialized)return;
+  modal.dataset.impeExcelInitialized='1';
   const form=modal.querySelector('[data-impe-excel-form]');
   const analyze=modal.querySelector('[data-impe-excel-analyze]');
   const confirm=modal.querySelector('[data-impe-excel-confirm]');
@@ -48,12 +49,16 @@
     if(analystSelect)analystSelect.disabled=value;
   };
   async function request(where,options={}) {
-    const response=await fetch(where,{credentials:'same-origin',cache:'no-store',...options});
+    const response=await fetch(where,{credentials:'same-origin',cache:'no-store',...options,
+      headers:{Accept:'application/json','X-Requested-With':'fetch'}});
     let json;
     try{json=await response.json();}catch(_){
       throw Error('No fue posible interpretar la respuesta. Verifica tu sesión.');
     }
-    if(!response.ok||!json.ok)throw Error(json.mensaje||'No se pudo completar la operación.');
+    if(!response.ok||!json.ok){
+      const error=Error(json.mensaje||'No se pudo completar la operación.');
+      error.status=response.status;throw error;
+    }
     return json;
   }
   async function loadAnalysts(){
@@ -133,12 +138,15 @@
     if(analystSelect&&!analystSelect.value){show('Selecciona un analista responsable.',true);return;}
     if(!fileInput.files?.length){show('Selecciona el archivo Excel V3.',true);return;}
     if(fileInput.files[0].size>2097152){show('El archivo no debe superar 2 MB.',true);return;}
+    // FormData omite los controles deshabilitados, incluido el archivo.
+    // Capturar la selección completa ANTES de bloquear el formulario.
+    const data=new FormData(form);data.set('operacion','analizar');
     setBusy(true);show('Revisando archivo, instituciones y posibles duplicados…');
     try{
-      const data=new FormData(form);data.set('operacion','analizar');
       const answer=await request(url,{method:'POST',body:data});
-      token=answer.token||'';
       const counts=answer.resumen||{};
+      token=counts.nuevas>0?String(answer.token||''):'';
+      if(counts.nuevas>0&&!token)throw Error('La revisión no devolvió una confirmación válida. Analiza el Excel nuevamente.');
       addMetric('Nuevas',counts.nuevas||0);
       addMetric('Ya existentes',counts.existentes||0);
       addMetric('Para revisar',counts.revisar||0);
@@ -159,8 +167,8 @@
         rows.append(tr);
       });
       preview.hidden=false;
-      confirm.hidden=!(counts.nuevas>0);
-      confirm.disabled=!(counts.nuevas>0);
+      confirm.hidden=!token;
+      confirm.disabled=!token;
       show(counts.nuevas>0
         ?'Revisión completada. Confirma para importar únicamente las instituciones nuevas.'
         :'Revisión completada. No hay instituciones nuevas para importar.');
@@ -181,12 +189,19 @@
       show('Importación finalizada: '+saved+' instituciones nuevas registradas.'+
            (skipped?' '+skipped+' coincidencias adicionales omitidas.':'')+
            ' Actualiza los estados para ver los nuevos seguimientos.');
-      analyze.disabled=true;
       fileInput.value='';
       syncFileName();
-    }catch(error){show(error.message,true);}
+    }catch(error){
+      // El servidor consume la revisión antes de intentar confirmar. No dejar
+      // un botón que repita un token caducado o cuyo resultado sea incierto.
+      hideReview();
+      show(!error.status||error.status>=500
+        ?'No se pudo confirmar la importación. Revisa los seguimientos antes de analizar el Excel nuevamente; la respuesta pudo interrumpirse después del guardado.'
+        :error.message+' Analiza el Excel nuevamente antes de confirmar.',true);
+    }
     finally{setBusy(false);}
   });
+  form.addEventListener('submit',event=>{event.preventDefault();analyze.click();});
   modal.addEventListener('hidden.bs.modal',()=>{
     if(busy)return;
     hideReview();form.reset();syncFileName();status.hidden=true;

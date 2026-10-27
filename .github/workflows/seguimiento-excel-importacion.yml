@@ -9,10 +9,16 @@ on:
       - 'public/javascript/seguimiento_importacion_excel.js'
       - 'public/css/seguimiento_importacion_excel.css'
       - 'tests/seguimiento_importador_excel_smoke.php'
+      - 'tests/seguimiento_importador_excel_browser.cjs'
+      - 'tests/fixtures/seguimiento_excel_importador.php'
+      - 'tests/publicacion_seguimiento_excel_territorio_test.py'
+      - 'tools/publicar_seguimiento_excel_territorio.py'
+      - 'tools/seguimiento_excel_territorio_release.json'
       - '.github/workflows/seguimiento-excel-importacion.yml'
   push:
     branches:
       - 'feat/seguimiento-importador-instituciones-xlsx-v1-20261026'
+      - 'fix/seguimiento-importador-territorio'
 permissions:
   contents: read
 jobs:
@@ -38,3 +44,27 @@ jobs:
           node --check public/javascript/seguimiento_importacion_excel.js
       - name: Generar plantilla y probar pasos declarados
         run: php tests/seguimiento_importador_excel_smoke.php
+      - name: Verificar publicación selectiva y restauración
+        run: python3 tests/publicacion_seguimiento_excel_territorio_test.py
+  formulario:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, zip, dom
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/seguimiento-excel-deps playwright@1.56.1 bootstrap@5.3.8 bootstrap-icons@1.11.3
+      - run: /tmp/seguimiento-excel-deps/node_modules/.bin/playwright install --with-deps ${{ matrix.browser }}
+      - env:
+          NODE_PATH: /tmp/seguimiento-excel-deps/node_modules
+          SALES_BROWSER: ${{ matrix.browser }}
+        run: node tests/seguimiento_importador_excel_browser.cjs

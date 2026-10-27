@@ -649,5 +649,5 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
         </div>
     </div>
 </div>
-<script defer src="<?= BASE_URL ?>public/javascript/seguimiento_importacion_excel.js?v=20261026-ux2"></script>
+<script defer src="<?= BASE_URL ?>public/javascript/seguimiento_importacion_excel.js?v=<?= filemtime(__DIR__.'/../../../public/javascript/seguimiento_importacion_excel.js') ?>"></script>
 <?php endif; ?>
