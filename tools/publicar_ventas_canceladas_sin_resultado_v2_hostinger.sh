@@ -13,8 +13,9 @@ SITE="$HOME/domains/fundacionrededumex.org/public_html"
 WORK="$HOME/entregas-impe/ventas-canceladas-sin-resultado-v2"
 BACKUPS="$HOME/respaldos-impe-ventas-canceladas-v2"
 REPO="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE"
-REV="600582c4b41c5b352ccd10ed748e8bf9ea17e0a6"
-MAIN="a90b6aded4a7f606eccc7a27749658e3fed9b9ed"
+REV="4d7a4c5bccf769480706347992b17cb7974c0a93"
+PATCH="tools/conciliar_vista_ventas_canceladas_v2.php"
+PATCH_SHA="5337e3f3665f45fcd03a7e8cf6e856ddbfc2c909"
 SERVICE="app/services/TelefoniaVentasLlamadasService.php"
 VIEW="app/views/telefonia/ventas_llamadas.php"
 JS="public/javascript/telefonia_ventas_shell.js"
@@ -85,18 +86,15 @@ for file in "${FILES[@]}";do
   echo "ERROR: fuente no coincide con versión autorizada ($file). SITIO INTACTO." >&2;exit 1;
  }
 done
-echo "2. Conciliando la vista personalizada, sin sobreescribir otros cambios..."
-mkdir -p "$STAGE/base/$(dirname "$VIEW")"
-curl -fLsS --retry 2 "$REPO/$MAIN/$VIEW" -o "$STAGE/base/$VIEW"
-[[ "$(git hash-object "$STAGE/base/$VIEW")" == "ab5bc986c897468920f74ba1e2406e2bcc34b3b6" ]] || {
- echo "ERROR: referencia base de vista incorrecta. SITIO INTACTO." >&2;exit 1;
+echo "2. Corrigiendo exclusivamente la condición de Registrar resultado en la vista personalizada..."
+# No usar merge de toda la vista: Hostinger conserva decenas de estilos y
+# personalizaciones que producirían un conflicto de tres vías innecesario.
+curl -fLsS --retry 2 "$REPO/$REV/$PATCH" -o "$STAGE/conciliar_vista.php"
+[[ "$(git hash-object "$STAGE/conciliar_vista.php")" == "$PATCH_SHA" ]] || {
+ echo "ERROR: conciliador no verificado. SITIO INTACTO." >&2;exit 1;
 }
-# Para vista ya ajustada, permitir solamente conciliación sin conflicto.
-if ! git merge-file -p "$SITE/$VIEW" "$STAGE/base/$VIEW" "$STAGE/target/$VIEW" > "$STAGE/candidate/$VIEW";then
- echo "CONFLICTO: vista de Mis llamadas personalizada no admite conciliación automática." >&2
- echo "Se conserva producción; revisa la línea de Registrar resultado." >&2
- exit 1
-fi
+php -l "$STAGE/conciliar_vista.php"
+php "$STAGE/conciliar_vista.php" "$SITE/$VIEW" "$STAGE/candidate/$VIEW"
 for file in "$SERVICE" "$JS";do
  cp "$STAGE/target/$file" "$STAGE/candidate/$file"
 done
