@@ -45,6 +45,8 @@ for($step=0;$step<=13;$step++){
         $assert((int)($resolved['paso']??0)===$step,'No se recuperó el paso declarado '.$step);
         $assert(strpos((string)$resolved['etapa'],'histórico reportado')!==false,
             'La etapa debe identificarse como histórica');
+        if($step===13)$assert($service->esConvenioHistorico($record)===false,
+            'Un paso 13 declarado no autoriza eludir requisitos del convenio');
     }
 }
 $reflection=new ReflectionClass(SeguimientoExcelImportService::class);
