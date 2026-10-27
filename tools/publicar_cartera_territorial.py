@@ -55,7 +55,11 @@ def main():
     if not args.restore:
         for dependency in spec.get('dependencies',[]):
             p=safe(root,dependency['path'])
-            if not p.is_file() or sha(p.read_bytes().replace(b'\r\n',b'\n'))!=dependency['sha']:
+            accepted=[dependency]+dependency.get('compatible',[])
+            for version in accepted:
+                if 'content' in version:unpack(version['content'],version['sha'])
+            approved={version['sha'] for version in accepted}
+            if not p.is_file() or sha(p.read_bytes().replace(b'\r\n',b'\n')) not in approved:
                 fail('DEPENDENCIA DIFERENTE: '+dependency['path']+'. Sitio intacto; comparar antes de publicar.')
     # Verificar todos los blobs incluso para check/restore.
     for row in spec['files']:

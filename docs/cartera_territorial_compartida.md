@@ -57,3 +57,7 @@ python3 tests/publicacion_cartera_territorial_test.py
 ```
 
 Las pruebas automatizadas no sustituyen la comprobación final en las sesiones reales de Hostinger después de instalar. No se ha ejecutado ninguna transferencia o modificación de datos productivos desde este entorno.
+
+## Compatibilidad de PermissionHelper (entrega 1.1)
+
+La dependencia admite dos versiones exactas verificadas: la de supervisión nacional de Dirección (`0d4441b0…`) y la corrección posterior de Convenios (`1ef40e3d…`, commit `3ec9021b`). Esta última permite publicar por permisos y mantiene territoriales a Asesor, Analista y Cuenta Clave. Sus controles de `tienePermiso` permanecen iguales y son compatibles con la cartera. El publicador verifica ambas variantes mediante SHA256 y conserva la instalada sin escribir ese archivo. Cualquier tercera variante sigue bloqueando la instalación. No cambia el contenido de los 44 archivos que se instalarán.

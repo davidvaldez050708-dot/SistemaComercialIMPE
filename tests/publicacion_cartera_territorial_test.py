@@ -17,8 +17,12 @@ for crlf in (False,True):
    after[row['path']]=new.replace(b'\n',b'\r\n') if crlf and old is not None else new
    target=site/row['path'];target.parent.mkdir(parents=True,exist_ok=True)
    if old is not None:target.write_bytes(before[row['path']])
+  dependencies_before={}
   for dependency in spec['dependencies']:
-   data=unpack(dependency['content']);assert hashlib.sha256(data).hexdigest()==dependency['sha']
+   version=dependency['compatible'][0] if crlf and dependency.get('compatible') else dependency
+   data=unpack(version['content']);assert hashlib.sha256(data).hexdigest()==version['sha']
+   if crlf:data=data.replace(b'\n',b'\r\n')
+   dependencies_before[dependency['path']]=data
    target=site/dependency['path'];target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
   sentinel=site/'storage/audio-test.ogg';sentinel.parent.mkdir(parents=True,exist_ok=True);sentinel.write_bytes(b'grabacion-inalterada')
   backups=private/'respaldos';command=[sys.executable,str(R/'tools/publicar_cartera_territorial.py'),'--site',str(site),'--backup-root',str(backups)]
@@ -29,14 +33,18 @@ for crlf in (False,True):
   def unchanged():
    for p,data in before.items():assert ((site/p).read_bytes() if (site/p).exists() else None)==data,p
    assert sentinel.read_bytes()==b'grabacion-inalterada'
+   assert all((site/p).read_bytes()==data for p,data in dependencies_before.items())
   run('--check');unchanged();assert not backups.exists()
   target=site/spec['files'][-1]['path'];original=target.read_bytes();target.write_bytes(original+b'\nPersonalizacion adicional')
   run('--apply',ok=False);target.write_bytes(original);unchanged();assert not backups.exists()
   dependency=site/spec['dependencies'][0]['path'];original_dep=dependency.read_bytes();dependency.write_bytes(original_dep+b'\nCambio local')
   run('--apply',ok=False);dependency.write_bytes(original_dep);unchanged();assert not backups.exists()
+  permission=site/'app/helpers/PermissionHelper.php';original_permission=permission.read_bytes();permission.write_bytes(original_permission+b'\nVariante desconocida')
+  run('--apply',ok=False);permission.write_bytes(original_permission);unchanged();assert not backups.exists()
   run('--apply');assert all((site/p).read_bytes()==data for p,data in after.items())
+  assert all((site/p).read_bytes()==data for p,data in dependencies_before.items())
   backup=next(backups.iterdir());assert run('--check').count('ACTUALIZADO:')==44
   run('--apply');assert len(list(backups.iterdir()))==1
   current=target.read_bytes();target.write_bytes(current+b'\nEdicion posterior');run('--restore',str(backup),ok=False);target.write_bytes(current)
   run('--restore',str(backup));unchanged();run('--restore',str(backup));unchanged()
-print('PASS: 44 archivos exactos de Hostinger, LF/CRLF, rechazo de variantes/dependencias, check sin escrituras, respaldo, aplicación idempotente y restauración exacta. Audio intacto.')
+print('PASS: 44 archivos exactos de Hostinger, dos versiones de PermissionHelper conservadas, LF/CRLF, rechazo de variantes/dependencias, check sin escrituras, respaldo, aplicación idempotente y restauración exacta. Audio intacto.')
