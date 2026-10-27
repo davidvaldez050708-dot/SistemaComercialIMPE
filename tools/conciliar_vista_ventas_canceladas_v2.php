@@ -35,7 +35,7 @@ if ($count === 1) {
     $message = 'VISTA YA PROTEGIDA: no se cambia su diseño.';
 } else {
     // Sólo dos formas inequívocas de la condición original (orden permutable).
-    // La coincidencia incluye <?php y ?> para no afectar expresiones ajenas.
+    // Delimitar el condicional PHP, sin etiquetas de cierre en comentarios.
     $ref = '\\$ref\\s*!==\\s*(?:' . "''" . '|"")';
     $end = '\\$call\\s*\\[\\s*(?:' . "'finalizada'" . '|"finalizada")\\s*\\]';
     $expr = '(?:' . $ref . '\\s*&&\\s*' . $end
