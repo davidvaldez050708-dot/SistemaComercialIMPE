@@ -560,7 +560,7 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
 </script>
 
 <?php if (!empty($territorios) && tienePermiso('seguimientos_vinculacion.crear')): ?>
-<link rel="stylesheet" href="<?= BASE_URL ?>public/css/seguimiento_importacion_excel.css?v=20261026">
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/seguimiento_importacion_excel.css?v=20261026-ux2">
 <div class="modal fade impe-excel-modal" id="modalImportacionSeguimientoExcel" tabindex="-1"
     aria-labelledby="importacionExcelTitulo" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable system-form-dialog">
@@ -584,10 +584,12 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
                             <i class="bi bi-download" aria-hidden="true"></i> Descargar plantilla Excel V3
                         </button>
                     </div>
-                    <div class="impe-excel-guide">
+                    <div class="impe-excel-guide" role="note">
                         <i class="bi bi-info-circle" aria-hidden="true"></i>
-                        <div>Utiliza la plantilla Excel V3 con sus 13 campos obligatorios.
-                        No se crearán registros hasta confirmar. Los pasos históricos no sustituyen las actividades reales del CRM.</div>
+                        <div class="impe-excel-guide-text">
+                            Utiliza la plantilla oficial Excel V3 con sus 13 campos obligatorios.
+                            No se crearán registros hasta que confirmes la importación.
+                        </div>
                     </div>
                     <div class="impe-excel-fields">
                         <div>
@@ -611,8 +613,14 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
                         <?php endif; ?>
                         <div>
                             <label class="form-label" for="impe_excel_file">Archivo Excel (.xlsx) *</label>
-                            <input class="form-control" type="file" id="impe_excel_file" name="archivo"
-                                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                            <div class="impe-excel-file-picker">
+                                <input class="impe-excel-file-native" type="file" id="impe_excel_file"
+                                    name="archivo" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                    aria-describedby="impe_excel_archivo_nombre" required>
+                                <label class="impe-excel-file-button" for="impe_excel_file">Seleccionar archivo</label>
+                                <span class="impe-excel-file-name" id="impe_excel_archivo_nombre"
+                                    data-impe-excel-file-name aria-live="polite">Ningún archivo seleccionado</span>
+                            </div>
                         </div>
                     </div>
                     <div class="impe-excel-alert" role="status" aria-live="polite" data-impe-excel-message hidden></div>
@@ -641,5 +649,5 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
         </div>
     </div>
 </div>
-<script defer src="<?= BASE_URL ?>public/javascript/seguimiento_importacion_excel.js?v=20261026"></script>
+<script defer src="<?= BASE_URL ?>public/javascript/seguimiento_importacion_excel.js?v=20261026-ux2"></script>
 <?php endif; ?>
