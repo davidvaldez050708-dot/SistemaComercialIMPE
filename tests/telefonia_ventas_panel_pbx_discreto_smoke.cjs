@@ -10,10 +10,13 @@ async function test(kind) {
   get href(){return this.s;}toString(){return this.s;}
  }
  const make=tag=>{
-  const cls=new Set();
+  const cls=new Set(),attrs=new Map();
   return{tag,className:'',dataset:{},textContent:'',hidden:false,src:'',lastChild:null,
+   attrs,
    classList:{contains:x=>cls.has(x),toggle:(x,on)=>{if(on)cls.add(x);else cls.delete(x);return on;}},
-   setAttribute(){},after(){},append(...args){this.lastChild=args[args.length-1];},
+   setAttribute(key,value){attrs.set(key,String(value));},
+   removeAttribute(key){attrs.delete(key);},hasAttribute(key){return attrs.has(key);},
+   after(){},append(...args){this.lastChild=args[args.length-1];},
    appendChild(x){this.lastChild=x;},prepend(){},addEventListener(name,fn){this['on'+name]=fn;},
    insertBefore(){},dispatchEvent(){},querySelector(){return null;}};
  };
@@ -51,6 +54,21 @@ async function test(kind) {
   },fetch,console,setInterval:fn=>{interval=fn;return 1;},
   setTimeout:()=>1,clearTimeout:()=>{}};
  vm.runInNewContext(src,sandbox,{filename:'telefonia_ventas_shell.js'});
+ assert.equal(panel.classList.contains('impe-sales-result-gate-v1'),true,
+  'Vista de Ventas debe inicializar puerta visual del resultado');
+ assert.match(head.lastChild.textContent,/data-impe-sales-result-ready/,
+  'CSS debe bloquear el botón antes de confirmar cierre');
+ assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
+  'El botón inicia sin autorización');
+ // Simula el marcado y timbrado, con posible resultado previo en sesión.
+ // Ni un render en transición debe habilitar Registrar resultado.
+ for(const phase of ['dialing','ringing','in-progress']){
+  state={...state,active:true,phase};
+  interval();
+  assert.equal(button.hidden,true,'Resultado visible mientras '+phase);
+  assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
+   'Autorización antigua persiste durante '+phase);
+ }
  state={...state,active:false,phase:'finished'};
  interval();
  for(let i=0;i<20;i++)await Promise.resolve();
@@ -62,17 +80,23 @@ async function test(kind) {
   assert.equal(gate,false,'La conversación confirmada debe abrir panel bueno');
   assert.equal(noticeHidden,true,'No mostrar aviso después de confirmar');
   assert.equal(button.hidden,false,'Registrar resultado visible en conversación confirmada');
+  assert.equal(button.hasAttribute('data-impe-sales-result-ready'),true,
+   'El resultado confirmado debe autorizarse explícitamente');
   assert.equal(confirms.length,1,'Se necesita confirmFinishedCall con identidad exacta');
   assert.equal(dismisses.length,0,'No descartar conversación');
  }else if(kind==='cancel'||kind==='saved'){
   assert.equal(gate,true,'No mostrar panel provisional tras cancelación o resultado ya guardado');
   assert.equal(noticeHidden,true,'No insistir después de descartar');
   assert.equal(button.hidden,true,'No pedir resultado');
+  assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
+   'La cancelación o guardado no conserva autorización visual');
   assert.equal(dismisses.length,1,'Debe cerrarse el resumen');
  }else{
   assert.equal(gate,true,'Mientras la PBX concilia, ocultar modal grande');
   assert.equal(noticeHidden,false,'Solo mostrar aviso discreto');
   assert.equal(button.hidden,true,'No permitir formulario provisional');
+  assert.equal(button.hasAttribute('data-impe-sales-result-ready'),false,
+   'La verificación provisional no autoriza resultado');
   assert.equal(confirms.length,0,'Sin confirmación no abrir panel bueno');
   now+=9000;
   interval();
@@ -89,5 +113,5 @@ async function test(kind) {
  assert.ok(src.includes("state.direction==='outgoing'"),'No debe modificar entrantes');
  assert.ok(src.includes('IMPE_SALES_PROSPECT_CAPTURE'),'Preservar captura comercial');
  assert.ok(src.includes('bindTransferCandidate'),'Preservar transferencia');
- console.log('PASS: 4 escenarios, sin SIP/WebRTC ni consultas reales.');
+ console.log('PASS: marcado, timbrado, conexión, cancelación, pendiente y guardado sin flash de resultado.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
