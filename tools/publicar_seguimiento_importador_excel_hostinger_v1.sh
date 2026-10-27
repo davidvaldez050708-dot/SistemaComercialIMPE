@@ -10,7 +10,7 @@ MODE="${1:---check}"
 SITE="$HOME/domains/fundacionrededumex.org/public_html"
 WORK="$HOME/entregas-impe/seguimiento-excel-importacion-v1"
 BACKUPS="$HOME/respaldos-impe-seguimiento-excel-importacion"
-REV="6b7d901cf31b9b718781f0d409da1240ec40e5ec"
+REV="5e73ca7090b1cff4f4caf749546d8043893b11d0"
 BASE="a90b6aded4a7f606eccc7a27749658e3fed9b9ed"
 RAW="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE"
 CONT="app/controllers/SeguimientoVinculacionController.php"
@@ -27,7 +27,7 @@ sha_target(){
   case "$1" in
     "$CONT") echo "09f238b1fa403f2442eb1cd04613ca7b44758892";;
     "$VIEW") echo "0e998b67291f4440f5872d348750a9879c334c8f";;
-    "$HIST") echo "f57ebf3205e57c8a535ad47348862c6320227b8b";;
+    "$HIST") echo "04b1cacf361b142edef95c96b48a244b2705a77e";;
     "$IMPORT") echo "6dcb4af841899ac4c62b553bd05107d45cdec2d4";;
     "$TEMPLATE") echo "6d46e73b8f81fae1e900bc2b15329051cba9eb5e";;
     "$JS") echo "f3c94b3449f90da4b1e4e4d867c88f792cd124ca";;
