@@ -22,7 +22,7 @@
   persist();render();
  };
  const open=()=>{
-  const task=pending[0];
+  const task=pending.find(p=>p.ref===metadataRef);
   if(!task||phone.getPhoneStatus().active||!crm||
      metadataRef!==task.ref||!metadata?.finalizada||!metadata?.conectada||
      metadata?.registro)return;
@@ -31,7 +31,7 @@
  button.addEventListener('click',open);noticeButton.addEventListener('click',open);
  const render=()=>{
    const state=phone.getCallState(),active=Boolean(state?.active),form=phone.isResultFormOpen();
-   const task=pending[0];
+   const task=pending.find(p=>p.ref===metadataRef);
    const ready=Boolean(task&&metadataRef===task.ref&&
      metadata?.finalizada&&metadata?.conectada&&!metadata?.registro);
    button.hidden=!ready||active||form;
