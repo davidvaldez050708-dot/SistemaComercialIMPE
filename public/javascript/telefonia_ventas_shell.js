@@ -37,7 +37,11 @@
    button.hidden=!ready||active||form;
    notice.hidden=!ready||active||form;
  };
- window.IMPE_SALES_ATTENTION=Object.freeze({hasPending:()=>pending.length>0,openPending:open});
+ window.IMPE_SALES_ATTENTION=Object.freeze({
+   // Un intento sin conexión PBX confirmada no debe bloquear futuras llamadas.
+   hasPending:()=>pending.some(p=>p.ref===metadataRef&&metadata?.finalizada&&metadata?.conectada&&!metadata?.registro),
+   openPending:open
+  });
  async function lookup(ref,version){
   if(fetching||!valid(ref))return;fetching=true;
   try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pbx_call_id',ref);
