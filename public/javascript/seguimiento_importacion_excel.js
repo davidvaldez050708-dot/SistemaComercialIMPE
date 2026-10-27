@@ -13,6 +13,11 @@
   const stateSelect=form.querySelector('[name="estado_id"]');
   const analystSelect=form.querySelector('[data-impe-excel-analista]');
   const fileInput=form.querySelector('[name="archivo"]');
+  const fileName=modal.querySelector('[data-impe-excel-file-name]');
+  const filePicker=modal.querySelector('.impe-excel-file-picker');
+  const syncFileName=()=>{
+    if(fileName)fileName.textContent=fileInput.files?.[0]?.name||'Ningún archivo seleccionado';
+  };
   const download=modal.querySelector('[data-impe-excel-download]');
   const url=new URL(location.href);
   url.search='';
@@ -38,6 +43,7 @@
     analyze.disabled=value;
     confirm.disabled=value||!token;
     fileInput.disabled=value;
+    if(filePicker)filePicker.classList.toggle('is-busy',value);
     stateSelect.disabled=value;
     if(analystSelect)analystSelect.disabled=value;
   };
@@ -85,6 +91,7 @@
     element.addEventListener('change',()=>{
       hideReview();
       status.hidden=true;
+      if(element===fileInput)syncFileName();
       if(element===stateSelect)loadAnalysts();
     });
   }
@@ -176,12 +183,13 @@
            ' Actualiza los estados para ver los nuevos seguimientos.');
       analyze.disabled=true;
       fileInput.value='';
+      syncFileName();
     }catch(error){show(error.message,true);}
     finally{setBusy(false);}
   });
   modal.addEventListener('hidden.bs.modal',()=>{
     if(busy)return;
-    hideReview();form.reset();status.hidden=true;
+    hideReview();form.reset();syncFileName();status.hidden=true;
     if(analystSelect)analystSelect.replaceChildren(new Option('Selecciona primero un estado',''));
     analyze.disabled=false;
   });
