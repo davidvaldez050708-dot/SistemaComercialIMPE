@@ -86,8 +86,13 @@ for file in "${ALL[@]}"; do
     echo "ERROR: fuente V2 distinta: $file. SITIO INTACTO." >&2;exit 1;
   }
 done
+# Preparar también el directorio del CSS nuevo: no existe dentro de OLD.
+# Sin él, cp fallaba en --check antes de verificar los cambios.
+for file in "${ALL[@]}"; do
+  mkdir -p "$STAGE/candidate/$(dirname "$file")"
+done
 for file in "${OLD[@]}"; do
-  mkdir -p "$STAGE/base/$(dirname "$file")" "$STAGE/candidate/$(dirname "$file")"
+  mkdir -p "$STAGE/base/$(dirname "$file")"
   curl -fLsS --retry 2 "$RAW/$BASE/$file" -o "$STAGE/base/$file"
   [[ "$(git hash-object "$STAGE/base/$file")" == "$(expected_base "$file")" ]] || {
     echo "ERROR: base distinta: $file. SITIO INTACTO." >&2;exit 1;
@@ -108,6 +113,14 @@ if [[ -f "$SITE/$CSS" && "$(git hash-object "$SITE/$CSS")" != "$(expected_new "$
   exit 1
 fi
 cp "$STAGE/new/$CSS" "$STAGE/candidate/$CSS"
+# Cobertura total: todos los archivos deben existir antes de comenzar
+# pruebas o publicaciones; nunca sustituir archivos faltantes.
+for file in "${ALL[@]}"; do
+  [[ -s "$STAGE/candidate/$file" ]] || {
+    echo "ERROR: candidato incompleto: $file. SITIO INTACTO." >&2
+    exit 1
+  }
+done
 
 echo "3. Verificando sintaxis, alcance y permisos..."
 for file in "$CONT" "$ROLE" "$VIEW" "$SIDE"; do php -l "$STAGE/candidate/$file" || exit 1; done
