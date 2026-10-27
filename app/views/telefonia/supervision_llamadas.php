@@ -14,7 +14,7 @@ require_once __DIR__.'/../../helpers/AvatarHelper.php';
    <h2>Supervisión de llamadas</h2><p>Consulta los resultados y las grabaciones disponibles de <?= $scope==='global'?'todos los analistas y asesores':'tu equipo asignado' ?>.</p>
   </div>
  </header>
- <form method="get" class="data-territorial-toolbar linkage-tools-form supervision-filters" aria-label="Filtrar historial">
+ <form method="get" data-supervision-filters class="data-territorial-toolbar linkage-tools-form supervision-filters" aria-label="Filtrar historial">
   <input type="hidden" name="controller" value="reporte"><input type="hidden" name="action" value="supervisionLlamadas">
   <div class="data-filter-field"><label for="supervisionArea">Área</label><select data-native-select class="form-select" id="supervisionArea" name="area"><?php foreach(['asesores'=>'Asesores de ventas','analistas'=>'Analistas de datos'] as $key=>$label): ?><option value="<?= $key ?>" <?= $f['area']===$key?'selected':'' ?>><?= $label ?></option><?php endforeach; ?></select></div>
   <div class="data-filter-field"><label for="supervisionPerson">Persona</label><select data-native-select class="form-select" id="supervisionPerson" name="persona_id"><option value="0">Todo el equipo autorizado</option><?php foreach($data['personas'] as $person): ?><option value="<?= (int)$person['id'] ?>" <?= $f['persona_id']===(int)$person['id']?'selected':'' ?>><?= $esc($person['nombre'].(!$person['activo']?' · Inactivo':'')) ?></option><?php endforeach; ?></select></div>
@@ -22,8 +22,8 @@ require_once __DIR__.'/../../helpers/AvatarHelper.php';
   <div class="data-filter-field"><label for="supervisionUntil">Hasta</label><input class="form-control" id="supervisionUntil" type="date" name="hasta" value="<?= $esc($f['hasta']) ?>" required></div>
   <div class="data-filter-field"><label for="supervisionDirection">Tipo de llamada</label><select data-native-select class="form-select" id="supervisionDirection" name="direccion"><?php foreach([''=>'Entrantes y salientes','Entrante'=>'Entrantes','Saliente'=>'Salientes'] as $key=>$label): ?><option value="<?= $key ?>" <?= $f['direccion']===$key?'selected':'' ?>><?= $label ?></option><?php endforeach; ?></select></div>
   <div class="data-filter-field"><label for="supervisionResult">Resultado</label><select data-native-select class="form-select" id="supervisionResult" name="resultado"><option value="">Todos los resultados</option><?php foreach($data['resultados'] as $key=>$label): ?><option value="<?= $esc($key) ?>" <?= $f['resultado']===$key?'selected':'' ?>><?= $esc($label) ?></option><?php endforeach; ?></select></div>
-  <div class="data-filter-field"><label for="supervisionSearch">Buscar llamada</label><input class="form-control" id="supervisionSearch" name="buscar" type="search" maxlength="100" placeholder="Persona, nombre o teléfono…" value="<?= $esc($f['buscar']) ?>"></div>
-  <button class="btn btn-system-save" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Filtrar</button>
+  <div class="data-filter-field supervision-search-field"><label for="supervisionSearch">Buscar llamada</label><div class="module-search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" id="supervisionSearch" name="buscar" type="search" maxlength="100" placeholder="Persona, nombre o teléfono…" value="<?= $esc($f['buscar']) ?>"></div></div>
+  <noscript><button class="btn btn-system-save" type="submit">Aplicar filtros</button></noscript>
  </form>
  <div class="linkage-call-section-heading linkage-incoming-list-head"><div><strong>Historial de llamadas</strong><p>La duración corresponde a la persona indicada. Las duraciones observadas se identifican por separado.</p></div><span class="linkage-call-recordings-count"><?= $data['total'] ?></span></div>
  <p class="supervision-notice" role="status" data-supervision-notice hidden></p>

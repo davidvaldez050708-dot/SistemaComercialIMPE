@@ -1,13 +1,55 @@
 (() => {
     'use strict';
     const root=document.querySelector('[data-supervision-calls]');
-    if(!root)return;
+    if(!root||root.dataset.supervisionInitialized)return;
+    root.dataset.supervisionInitialized='1';
     const dialog=root.querySelector('dialog'),fields=root.querySelector('[data-supervision-fields]');
     let active=null;
     const endpoint=(base,key)=>{const url=new URL(base,location.href);if(url.origin!==location.origin)throw Error();url.searchParams.set('llamada',key);return url;};
     async function json(url){const response=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});if(!response.ok||!(response.headers.get('content-type')||'').includes('application/json'))throw Error(response.status===403?'Ya no tienes permiso para consultar esta llamada.':'No se pudo consultar la información. Vuelve a intentarlo.');const value=await response.json();if(!value.ok)throw Error();return value;}
     function notice(text){const node=root.querySelector('[data-supervision-notice]');node.textContent=text;node.hidden=false;}
-    root.querySelector('[name=area]').addEventListener('change',function(){root.querySelector('[name=persona_id]').value='0';root.querySelector('[name=resultado]').value='';this.form.requestSubmit();});
+    const form=root.querySelector('[data-supervision-filters]');
+    if(form){
+        const search=form.elements.namedItem('buscar'),from=form.elements.namedItem('desde'),until=form.elements.namedItem('hasta');
+        const focusKey='impe:supervision-filter-focus:'+Number(window.IMPE_CURRENT_USER_ID||0);
+        const parameters=()=>{const values=new URLSearchParams(new FormData(form));values.delete('pagina');return values.toString();};
+        let timer=0,composing=false,last=parameters();
+        try{
+            const saved=JSON.parse(sessionStorage.getItem(focusKey)||'null');sessionStorage.removeItem(focusKey);
+            if(search&&saved&&Date.now()-saved.at<5000&&saved.url===location.pathname+location.search&&saved.value===search.value){search.focus({preventScroll:true});search.setSelectionRange(saved.start,saved.end);}
+        }catch(_){}
+        const valid=()=>{
+            from.setCustomValidity('');
+            if(from.value&&until.value){
+                if(from.value>until.value)from.setCustomValidity('La fecha inicial debe ser anterior o igual a la final.');
+                else if((Date.parse(until.value)-Date.parse(from.value))/86400000>366)from.setCustomValidity('Selecciona un periodo de hasta 366 días.');
+            }
+            return form.checkValidity();
+        };
+        const apply=()=>{clearTimeout(timer);if(!composing&&valid()&&parameters()!==last)form.requestSubmit();};
+        form.addEventListener('submit',event=>{
+            clearTimeout(timer);
+            if(composing||!valid()||parameters()===last){event.preventDefault();return;}
+            last=parameters();form.querySelector('[name=pagina]')?.remove();
+            if(document.activeElement===search)try{
+                const url=new URL(form.getAttribute('action')||location.href,location.href);url.search=last;
+                sessionStorage.setItem(focusKey,JSON.stringify({at:Date.now(),url:url.pathname+url.search,value:search.value,start:search.selectionStart,end:search.selectionEnd}));
+            }catch(_){}
+        });
+        form.addEventListener('change',event=>{
+            if(event.target.name==='area'){form.elements.namedItem('persona_id').value='0';form.elements.namedItem('resultado').value='';}
+            if(event.target!==search)apply();
+        });
+        form.addEventListener('input',event=>{if(event.target===from||event.target===until)from.setCustomValidity('');});
+        if(search){
+            search.addEventListener('input',()=>{clearTimeout(timer);if(!composing)timer=setTimeout(apply,450);});
+            search.addEventListener('search',apply);
+            search.addEventListener('compositionstart',()=>{composing=true;clearTimeout(timer);});
+            search.addEventListener('compositionend',()=>{composing=false;clearTimeout(timer);timer=setTimeout(apply,450);});
+            search.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();apply();}});
+        }
+        window.addEventListener('pagehide',()=>clearTimeout(timer),{once:true});
+    }
     root.querySelector('[data-supervision-close]').addEventListener('click',()=>dialog.close());
     root.addEventListener('click',async event=>{
         const button=event.target.closest('[data-supervision-detail],[data-supervision-audio]');

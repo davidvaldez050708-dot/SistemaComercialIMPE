@@ -100,3 +100,4 @@ jobs:
           python3 tests/publicacion_desempeno_sin_territorio_test.py
           python3 tests/publicacion_pdf_descarga_directa_test.py
           python3 tests/publicacion_supervision_llamadas_test.py
+          python3 tests/publicacion_supervision_filtros_test.py

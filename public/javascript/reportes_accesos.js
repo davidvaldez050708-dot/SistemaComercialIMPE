@@ -22,17 +22,21 @@
     function sincronizarModuloReportesSidebar() {
         const parametros = new URLSearchParams(window.location.search);
         const controladorActual = parametros.get('controller') || '';
+        const esSupervision = controladorActual === 'reporte' &&
+            parametros.get('action') === 'supervisionLlamadas';
 
         if (!controladoresReporte.has(controladorActual)) {
             return;
         }
 
         document.querySelectorAll('.admin-sidebar').forEach(function (sidebar) {
-            const enlaceReportes = sidebar.querySelector(
-                'a.sidebar-link[href*="controller=reporte"][href*="action=index"]'
+            const enlaceModulo = sidebar.querySelector(
+                esSupervision
+                    ? 'a.sidebar-link[href*="controller=reporte"][href*="action=supervisionLlamadas"]'
+                    : 'a.sidebar-link[href*="controller=reporte"][href*="action=index"]'
             );
 
-            if (!enlaceReportes) {
+            if (!enlaceModulo) {
                 return;
             }
 
@@ -40,7 +44,7 @@
                 enlace.classList.remove('active');
             });
 
-            enlaceReportes.classList.add('active');
+            enlaceModulo.classList.add('active');
         });
     }
 
