@@ -13,7 +13,7 @@ final class SeguimientoExcelImportService
     private const MAX_ROWS=250;
     private const MAX_UPLOAD=2097152;
     private const MAX_UNPACKED=6000000;
-    private const HEADERS=[
+    public const HEADERS=[
         'Clave de referencia','Nombre de institución *','Tipo de entidad *','Estado *',
         'Municipio *','Actividad / giro *','Dirección *','Teléfono *',
         'WhatsApp *','Correo institucional *','Sitio web *',
@@ -178,9 +178,14 @@ final class SeguimientoExcelImportService
             if(mb_strlen($value,'UTF-8')>($idx===18?1500:($idx===15?900:240))) {
                 throw new DomainException('Texto demasiado largo: '.self::HEADERS[$idx].'.',422);
             }
-            if(preg_match('/^[=+\-@]/u',$value) && $idx!==14 && $idx!==17){
+            if(preg_match('/^[=+\-@]/u',$value) && !in_array($idx,[7,8,14,17],true)){
                 throw new DomainException('No se admiten valores que comienzan con fórmulas en '.self::HEADERS[$idx].'.',422);
             }
+        }
+        if(mb_strlen($cells[1],'UTF-8')>220 || mb_strlen($cells[7],'UTF-8')>80 ||
+            mb_strlen($cells[8],'UTF-8')>80 || mb_strlen($cells[9],'UTF-8')>180 ||
+            mb_strlen($cells[11],'UTF-8')>180 || mb_strlen($cells[12],'UTF-8')>150) {
+            throw new DomainException('Uno o más datos exceden el tamaño admitido por Seguimiento.',422);
         }
         $type=self::norm($cells[2]);
         $map=['institucion'=>'INSTITUCION','empresa'=>'EMPRESA','organizacion'=>'ORGANIZACION','secretaria'=>'SECRETARIA','municipio'=>'MUNICIPIO','otro'=>'OTRO'];
