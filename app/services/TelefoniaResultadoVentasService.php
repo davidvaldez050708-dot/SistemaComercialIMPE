@@ -146,7 +146,13 @@ class TelefoniaResultadoVentasService
         $pbxPendiente=empty($call['finalizada']);
         if($pbxPendiente&&!$this->transferenciaAtendidaPropia($usuarioId,$call))
             throw new DomainException('No se ha acreditado la transferencia atendida por tu extensión. No se guardó el resultado.');
-        if(self::esConversacion($resultado)&&!$call['conectada'])throw new DomainException('El servicio telefónico aún no confirma que tu extensión atendió la llamada.');
+        if(self::esConversacion($resultado)&&!$call['conectada']){
+            // Un cierre sin respuesta ya es un estado definitivo, no una espera.
+            $fecha=(string)($call['fecha']??'');$cuando='';
+            if(preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):[0-9]{2}$/D',$fecha,$partes))
+                $cuando=' del '.$partes[3].'/'.$partes[2].'/'.$partes[1].' a las '.$partes[4].':'.$partes[5];
+            throw new DomainException('La llamada seleccionada'.$cuando.' figura como «'.($call['estado_pbx']??'Sin respuesta').'», sin conexión confirmada. Revisa que elegiste la llamada atendida; este registro no permite un resultado de conversación.');
+        }
         $note=trim((string)($datos['observacion']??''));$name=trim((string)($datos['prospecto_nombre']??$call['nombre']));
         if(mb_strlen($note)>1000||mb_strlen($name)>150)throw new InvalidArgumentException('Limita el nombre a 150 caracteres y las observaciones a 1000.');
         if(in_array($resultado,['OTRO',self::OTRO_SIN_CONTACTO],true)&&mb_strlen($note)<3)throw new InvalidArgumentException('Describe lo que ocurrió en las observaciones.');

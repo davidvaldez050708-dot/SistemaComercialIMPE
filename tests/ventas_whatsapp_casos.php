@@ -6,6 +6,16 @@ vcheck(TelefoniaResultadoVentasService::esConversacion($code),'WhatsApp posterio
 $event('pbx-whatsapp-sin-contacto','NOTIFY_OUT_START');
 $event('pbx-whatsapp-sin-contacto','NOTIFY_OUT_END','150',0,['disposition'=>'no answer']);
 vreject(fn()=>$results->guardar(8,'pbx-whatsapp-sin-contacto',$code),'No acredita contacto sin conexión PBX');
+$event('pbx-cancelada-aviso','NOTIFY_OUT_START');
+$event('pbx-cancelada-aviso','NOTIFY_OUT_END','150',0,['disposition'=>'cancel']);
+$cancelada=$svc->obtener(8,'pbx-cancelada-aviso');
+try {
+ $results->guardar(8,'pbx-cancelada-aviso',$code);
+ throw new RuntimeException('Aceptó conversación en llamada cancelada');
+}catch(DomainException $e){
+ vcheck(str_contains($e->getMessage(),'«Cancelada»')&&!str_contains($e->getMessage(),'aún no confirma'),'Explica el cierre cancelado en lugar de prometer una espera');
+ vcheck(str_contains($e->getMessage(),date('d/m/Y',strtotime($cancelada['fecha'])))&&str_contains($e->getMessage(),substr($cancelada['fecha'],11,5)),'Identifica fecha y hora de la llamada seleccionada');
+}
 $event('pbx-whatsapp-conversacion','NOTIFY_OUT_START');
 $event('pbx-whatsapp-conversacion','NOTIFY_ANSWER');
 $event('pbx-whatsapp-conversacion','NOTIFY_OUT_END','150',45,['disposition'=>'answered']);
