@@ -77,7 +77,7 @@
    }
   }
   const currentRef=valid(ref)?ref:pending[0]?.ref;
-  if(currentRef&&Date.now()-lastLookup>((metadata?.finalizada)?60000:Math.min(60000,3000*2**Math.min(tries,4)))&&(!metadata||(!state.active&&pending.some(p=>p.ref===currentRef)))){
+  if(!state.active&&currentRef&&Date.now()-lastLookup>((metadata?.finalizada)?60000:Math.min(60000,3000*2**Math.min(tries,4)))&&(!metadata||(!state.active&&pending.some(p=>p.ref===currentRef)))){
    lastLookup=Date.now();tries++;void lookup(currentRef,revision);
   }
   previous=state;render();
