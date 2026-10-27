@@ -13,9 +13,9 @@ SITE="$HOME/domains/fundacionrededumex.org/public_html"
 WORK="$HOME/entregas-impe/ventas-canceladas-sin-resultado-v2"
 BACKUPS="$HOME/respaldos-impe-ventas-canceladas-v2"
 REPO="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE"
-REV="3427d3e0c9c641b99228fcfacf745376ebafcf4e"
+REV="00c8b1b13e3eedf3def01f33abf13cb27b05b319"
 PATCH="tools/conciliar_vista_ventas_canceladas_v2.php"
-PATCH_SHA="afe812537451b66831517080381bd3926f7aefa4"
+PATCH_SHA="a04eb08987a0abccb267f85753a044c80c1ee24c"
 SERVICE="app/services/TelefoniaVentasLlamadasService.php"
 VIEW="app/views/telefonia/ventas_llamadas.php"
 JS="public/javascript/telefonia_ventas_shell.js"
@@ -101,13 +101,15 @@ done
 echo "3. Validando reglas y sintaxis antes de publicar..."
 php -l "$STAGE/candidate/$SERVICE"
 php -l "$STAGE/candidate/$VIEW"
+# La función puede estar presente varias veces en contadores y secciones
+# personalizadas. Comprobar SOLO el marcador colocado sobre el botón.
 grep -Fq 'TelefoniaVentasLlamadasService::resultadoCapturable($call)' "$STAGE/candidate/$VIEW"
-[[ "$(grep -Fc 'TelefoniaVentasLlamadasService::resultadoCapturable($call)' "$STAGE/candidate/$VIEW")" == 1 ]] || {
- echo "ERROR: condición de resultado no única. SITIO INTACTO." >&2;exit 1;
+[[ "$(grep -Fc 'IMPE_VENTAS_GUARD_RESULTADO_V3' "$STAGE/candidate/$VIEW")" == 1 ]] || {
+ echo "ERROR: botón comercial sin protección única. SITIO INTACTO." >&2;exit 1;
 }
-if grep -Fq "if(\$ref!==''&&\$call['finalizada']):" "$STAGE/candidate/$VIEW";then
- echo "ERROR: condición antigua todavía presente. SITIO INTACTO." >&2;exit 1;
-fi
+grep -Fq 'data-sales-detail' "$STAGE/candidate/$VIEW" || {
+ echo "ERROR: se perdió el botón comercial. SITIO INTACTO." >&2;exit 1;
+}
 grep -Fq 'IMPE_VENTAS_PANEL_PBX_DISCRETO_V1_20261027' "$STAGE/candidate/$JS"
 grep -Fq 'Date.now()-waitStarted<8500' "$STAGE/candidate/$JS"
 grep -Fq "public static function resultadoCapturable" "$STAGE/candidate/$SERVICE"
