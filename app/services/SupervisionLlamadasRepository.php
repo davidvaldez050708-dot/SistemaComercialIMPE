@@ -148,6 +148,18 @@ final class SupervisionLlamadasRepository
         $total=count($calls);$pages=max(1,(int)ceil($total/30));$page=min($pages,$f['pagina']);
         return ['personas'=>$people,'llamadas'=>array_slice($calls,($page-1)*30,30),'total'=>$total,'paginas'=>$pages,'pagina'=>$page,'resultados'=>$results];
     }
+    /** Resultado comercial: nunca inventar uno para llamadas sin conexión. */
+    public static function resultadoAuditable(
+        string $source, string $direction, bool $finalizada, bool $conectada, string $result
+    ): array {
+        $guardado=$result!=='';
+        $noRequiere=$source==='venta'&&$direction==='Saliente'&&$finalizada&&!$conectada;
+        $estado=$guardado?'Resultado registrado':
+            ($noRequiere?'No requiere resultado':
+            ($finalizada&&$conectada?'Sin resultado registrado':'Sin resultado confirmado'));
+        return ['guardado'=>$guardado,'estado'=>$estado];
+    }
+
     private function normalizar(string $source,array $r,array $people): array
     {
         $uid=(int)$r['usuario_id'];$person=array_values(array_filter($people,static fn($p)=>(int)$p['id']===$uid))[0];
@@ -202,11 +214,9 @@ final class SupervisionLlamadasRepository
             ($finalizada?'Sin conexión confirmada':'Sin cierre confirmado');
         // No se crea ni inventa un resultado. Un registro requiere una
         // clasificación persistida de ese usuario/extensión/tramo.
-        $resultadoGuardado=$result!=='';
-        $noRequiere=$source==='venta'&&$direction==='Saliente'&&$finalizada&&!$conectada;
-        $resultadoEstado=$resultadoGuardado?'Resultado registrado':
-            ($noRequiere?'No requiere resultado':
-            ($finalizada&&$conectada?'Sin resultado registrado':'Sin resultado confirmado'));
+        $audit=self::resultadoAuditable($source,$direction,$finalizada,$conectada,$result);
+        $resultadoGuardado=$audit['guardado'];
+        $resultadoEstado=$audit['estado'];
         $resultadoTexto=$resultadoGuardado?self::textoResultado($result):$resultadoEstado;
         $number=(string)($r['numero']??$r['telefono_destino']??$r['numero_origen']??'');
         if($number==='')foreach($events as $event){$payload=json_decode((string)($event['payload_json']??''),true)?:[];$number=(string)($event['caller_id']??$payload['caller_id']??'');if($number!=='')break;}
