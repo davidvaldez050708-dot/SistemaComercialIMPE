@@ -1,0 +1,28 @@
+name: Ventas · panel PBX discreto
+on:
+  push:
+    branches:
+      - fix/ventas-modal-pbx-discreto-hostinger-20261027
+  pull_request:
+    paths:
+      - public/javascript/telefonia_ventas_shell.js
+      - tools/publicar_ventas_modal_pbx_discreto_hostinger_v1.sh
+      - tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
+      - .github/workflows/ventas-panel-pbx-discreto.yml
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis JS y Shell
+        run: |
+          node --check public/javascript/telefonia_ventas_shell.js
+          node --check tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
+          bash -n tools/publicar_ventas_modal_pbx_discreto_hostinger_v1.sh
+      - name: Cuatro escenarios de cierre comercial
+        run: node tests/telefonia_ventas_panel_pbx_discreto_smoke.cjs
