@@ -47,6 +47,95 @@ class SeguimientoVinculacionController
     }
 
     /**
+     * Carga y confirmación de Excel V3. Separa lectura/previsualización de la escritura.
+     */
+    public function importarInstitucionesExcel()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.crear');
+        header('Cache-Control: no-store, private');
+        header('X-Content-Type-Options: nosniff');
+        $expected=(string)($_SESSION['csrf_token']??'');
+        $received=(string)($_POST['csrf_token']??'');
+        if(!$expected||!hash_equals($expected,$received)) {
+            $this->responderJson(['ok'=>false,'mensaje'=>'Tu sesión de seguridad caducó. Recarga el CRM.'],419);
+        }
+        try {
+            require_once __DIR__.'/../services/SeguimientoExcelImportService.php';
+            $usuarioId=$this->obtenerUsuarioActualId();
+            $modo=$this->resolverModoSeguimiento();
+            $modelo=new SeguimientoVinculacionModel();
+            $accion=(string)($_POST['operacion']??'');
+            if(!in_array($accion,['analizar','confirmar'],true)) {
+                throw new DomainException('Operación de importación inválida.',422);
+            }
+            if($accion==='analizar') {
+                $estadoId=filter_var($_POST['estado_id']??null,FILTER_VALIDATE_INT,
+                    ['options'=>['min_range'=>1]]);
+                if(!$estadoId)throw new DomainException('Selecciona un territorio asignado.',422);
+                $estado=$this->obtenerEstadoPorModo($modelo,$usuarioId,$estadoId,$modo);
+                if(!$estado)throw new DomainException('No tienes acceso a ese territorio.',403);
+                $analista=$this->resolverAnalistaResponsable($modelo,$usuarioId,$estadoId,$modo);
+                if($analista<=0)throw new DomainException('Selecciona un analista autorizado para ese estado.',422);
+                $db=(new Database())->connect(false);
+                $service=new SeguimientoExcelImportService($db);
+                $rows=$service->leerXlsx($_FILES['archivo']??[]);
+                $result=$service->previsualizar($rows,[$estado],$analista,$usuarioId);
+                $token=bin2hex(random_bytes(20));
+                $_SESSION['impe_excel_seguimiento_preview']=[
+                    'token'=>$token,'usuario'=>$usuarioId,'estado'=>$estadoId,
+                    'analista'=>$analista,'expires'=>time()+1200,'filas'=>$result['filas']
+                ];
+                $public=array_map(static function($row){
+                    unset($row['registro']);
+                    return $row;
+                },$result['filas']);
+                $this->responderJson(['ok'=>true,'mensaje'=>'Archivo revisado. Confirma únicamente las filas nuevas.',
+                    'token'=>$token,'resumen'=>$result['resumen'],'filas'=>$public]);
+            }
+            $preview=$_SESSION['impe_excel_seguimiento_preview']??null;
+            if(!is_array($preview) ||
+               !hash_equals((string)($preview['token']??''),(string)($_POST['token']??'')) ||
+               ($preview['expires']??0)<time() ||
+               (int)($preview['usuario']??0)!==$usuarioId) {
+                throw new DomainException('La revisión caducó. Analiza el Excel nuevamente.',409);
+            }
+            $estadoId=(int)$preview['estado'];
+            $analista=(int)$preview['analista'];
+            $estado=$this->obtenerEstadoPorModo($modelo,$usuarioId,$estadoId,$modo);
+            if(!$estado)throw new DomainException('Tu acceso al territorio cambió. No se importó ningún registro.',403);
+            if($modo==='analista' && $analista!==$usuarioId) {
+                throw new DomainException('El responsable ya no coincide con el usuario activo.',403);
+            }
+            if($modo==='administrador' &&
+                !$modelo->analistaValidoParaAdministradorEstado($estadoId,$analista)) {
+                throw new DomainException('El analista ya no está autorizado en ese estado.',403);
+            }
+            if($modo==='supervisor' &&
+                !$modelo->analistaValidoParaCuentaClaveEstado($usuarioId,$estadoId,$analista)) {
+                throw new DomainException('El analista ya no está autorizado en ese estado.',403);
+            }
+            $nuevas=count(array_filter($preview['filas'],static fn($fila)=>$fila['estado']==='nueva'));
+            if($nuevas===0)throw new DomainException('No hay instituciones nuevas para incorporar.',422);
+            // El token se consume antes de escribir: doble clic no puede repetir el lote.
+            unset($_SESSION['impe_excel_seguimiento_preview']);
+            $db=(new Database())->connect(false);
+            $service=new SeguimientoExcelImportService($db);
+            $resultado=$service->confirmar($preview['filas'],[$estado],$analista,$usuarioId);
+            $this->responderJson(['ok'=>true,'mensaje'=>'Importación confirmada.',
+                'resultado'=>$resultado]);
+        }catch(DomainException $error) {
+            $code=(int)$error->getCode();
+            $this->responderJson(['ok'=>false,'mensaje'=>$error->getMessage()],
+                $code>=400&&$code<600?$code:422);
+        }catch(Throwable $error) {
+            error_log('[impe_excel_seguimiento] '.$error->getMessage());
+            $this->responderJson(['ok'=>false,
+                'mensaje'=>'No fue posible completar la operación. No se creó ningún registro de esta carga.'],500);
+        }
+    }
+
+    /**
      * Bandeja de llamadas entrantes del Analista, sin alterar Seguimiento,
      * Recepción de Marketing ni el registro de llamadas salientes.
      */
