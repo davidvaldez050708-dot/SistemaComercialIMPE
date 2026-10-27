@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class OficioDestinatarioSyncService
@@ -19,7 +20,7 @@ class OficioDestinatarioSyncService
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
 
-        $sql = "SELECT
+        $sql = 'SELECT
                     seguimientos.id,
                     seguimientos.contacto_nombre,
                     seguimientos.contacto_cargo,
@@ -41,9 +42,9 @@ class OficioDestinatarioSyncService
                         LIMIT 1
                     )
                 WHERE seguimientos.id = ?
-                    AND seguimientos.analista_id = ?
+                    AND ' . SeguimientoTerritorialScope::analista('seguimientos') . '
                     AND seguimientos.activo = 1
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $usuarioId);
         $stmt->execute();

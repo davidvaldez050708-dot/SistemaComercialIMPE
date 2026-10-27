@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/SeguimientoHistorialImportadoService.php';
 
@@ -80,11 +81,11 @@ class ReunionResultadoService
             return;
         }
 
-        $sql = "UPDATE seguimientos_vinculacion
+        $sql = 'UPDATE seguimientos_vinculacion
                 SET proxima_accion_at = ?,
                     ultima_interaccion_at = NOW()
                 WHERE id = ?
-                  AND analista_id = ?";
+                  AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion');
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
             'sii',
@@ -111,13 +112,13 @@ class ReunionResultadoService
         );
     }
 
-    public function ajustarFlujo($seguimientoId, $analistaId, $flujo)
+    public function ajustarFlujo($seguimientoId, $analistaId, $flujo, $soloLectura = false)
     {
         if (!is_array($flujo)) {
             return $flujo;
         }
 
-        $estado = $this->obtenerEstado($seguimientoId, $analistaId);
+        $estado = $this->obtenerEstado($seguimientoId, $analistaId, $soloLectura);
         if (!$estado) {
             return $flujo;
         }
@@ -345,12 +346,12 @@ class ReunionResultadoService
                 $stmtPost->execute();
 
                 $motivo = mb_substr($notas, 0, 255);
-                $sqlSeg = "UPDATE seguimientos_vinculacion
-                           SET estado_seguimiento = 'DESCARTADO',
+                $sqlSeg = 'UPDATE seguimientos_vinculacion
+                           SET estado_seguimiento = \'DESCARTADO\',
                                motivo_descarte = ?,
                                ultima_interaccion_at = NOW(),
                                proxima_accion_at = NULL
-                           WHERE id = ? AND analista_id = ?";
+                           WHERE id = ? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion');
                 $stmtSeg = $this->connection->prepare($sqlSeg);
                 $stmtSeg->bind_param('sii', $motivo, $seguimientoId, $analistaId);
                 $stmtSeg->execute();
@@ -428,7 +429,7 @@ class ReunionResultadoService
         ];
     }
 
-    private function obtenerEstado($seguimientoId, $analistaId)
+    private function obtenerEstado($seguimientoId, $analistaId, $soloLectura = false)
     {
         $agendaDisponible = $this->resultadoAgendaDisponible();
         $reactivacionDisponible = $this->reactivacionRutaDisponible();
@@ -474,13 +475,13 @@ class ReunionResultadoService
                     FROM seguimientos_vinculacion s
                     LEFT JOIN seguimientos_vinculacion_post_envio p
                         ON p.seguimiento_id = s.id
-                    " . $joinAgenda . "
+                    " . $joinAgenda . '
                     WHERE s.id = ?
-                      AND s.analista_id = ?
+                      AND ' . ($soloLectura ? SeguimientoTerritorialScope::lectura('s') : SeguimientoTerritorialScope::analista('s')) . '
                       AND s.activo = 1
-                    LIMIT 1";
+                    LIMIT 1';
         } else {
-            $sql = "SELECT
+            $sql = 'SELECT
                         s.id,
                         s.estado_seguimiento,
                         s.clave_origen,
@@ -495,9 +496,9 @@ class ReunionResultadoService
                     LEFT JOIN seguimientos_vinculacion_post_envio p
                         ON p.seguimiento_id = s.id
                     WHERE s.id = ?
-                      AND s.analista_id = ?
+                      AND ' . ($soloLectura ? SeguimientoTerritorialScope::lectura('s') : SeguimientoTerritorialScope::analista('s')) . '
                       AND s.activo = 1
-                    LIMIT 1";
+                    LIMIT 1';
         }
 
         $stmt = $this->connection->prepare($sql);
@@ -517,14 +518,14 @@ class ReunionResultadoService
             return;
         }
 
-        $sql = "UPDATE reuniones_vinculacion
+        $sql = 'UPDATE reuniones_vinculacion
                 SET reunion_resultado = ?,
                     reunion_resultado_notas = ?
                 WHERE seguimiento_id = ?
-                  AND analista_id = ?
-                  AND estado = 'REALIZADA'
+                  AND ' . SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion') . '
+                  AND estado = \'REALIZADA\'
                 ORDER BY id DESC
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
             'ssii',
@@ -707,12 +708,12 @@ class ReunionResultadoService
 
     private function actualizarSeguimientoPrincipal($seguimientoId, $analistaId, $proximaAccion, $motivo)
     {
-        $sql = "UPDATE seguimientos_vinculacion
+        $sql = 'UPDATE seguimientos_vinculacion
                 SET ultima_interaccion_at = NOW(),
                     proxima_accion_at = ?,
                     motivo_descarte = ?
                 WHERE id = ?
-                  AND analista_id = ?";
+                  AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion');
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ssii', $proximaAccion, $motivo, $seguimientoId, $analistaId);
         $stmt->execute();

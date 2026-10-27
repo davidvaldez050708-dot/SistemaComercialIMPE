@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class OficioCorreoHistorialService
@@ -618,33 +619,19 @@ class OficioCorreoHistorialService
         } elseif ($modoAcceso === 'supervisor') {
             $sql = "SELECT seguimientos.id
                     FROM seguimientos_vinculacion seguimientos
-                    INNER JOIN asignaciones_territorio asignacion_analista
-                        ON asignacion_analista.usuario_id = seguimientos.analista_id
-                        AND asignacion_analista.estado_id = seguimientos.estado_id
-                        AND asignacion_analista.tipo_asignacion = 'ANALISTA_DATOS'
-                        AND asignacion_analista.activo = 1
-                        AND (asignacion_analista.fecha_inicio IS NULL OR asignacion_analista.fecha_inicio <= CURDATE())
-                        AND (asignacion_analista.fecha_fin IS NULL OR asignacion_analista.fecha_fin >= CURDATE())
-                    INNER JOIN asignaciones_territorio cuenta_clave
-                        ON cuenta_clave.id = asignacion_analista.cuenta_clave_asignacion_id
-                        AND cuenta_clave.estado_id = seguimientos.estado_id
-                        AND cuenta_clave.tipo_asignacion = 'CUENTA_CLAVE'
-                        AND cuenta_clave.activo = 1
-                        AND cuenta_clave.usuario_id = ?
-                        AND (cuenta_clave.fecha_inicio IS NULL OR cuenta_clave.fecha_inicio <= CURDATE())
-                        AND (cuenta_clave.fecha_fin IS NULL OR cuenta_clave.fecha_fin >= CURDATE())
-                    WHERE seguimientos.id = ?
+                    WHERE " . SeguimientoTerritorialScope::supervisor('seguimientos') . "
+                    AND seguimientos.id = ?
                       AND seguimientos.activo = 1
                     LIMIT 1";
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('ii', $usuarioId, $seguimientoId);
         } else {
-            $sql = "SELECT id
+            $sql = 'SELECT id
                     FROM seguimientos_vinculacion
                     WHERE id = ?
-                      AND analista_id = ?
+                      AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
                       AND activo = 1
-                    LIMIT 1";
+                    LIMIT 1';
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('ii', $seguimientoId, $usuarioId);
         }

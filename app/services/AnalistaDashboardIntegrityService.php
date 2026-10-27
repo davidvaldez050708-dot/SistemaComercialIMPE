@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 
@@ -80,11 +81,10 @@ class AnalistaDashboardIntegrityService
                 INNER JOIN seguimientos_vinculacion seguimientos
                     ON seguimientos.id = interacciones.seguimiento_id
                 WHERE interacciones.usuario_id = ?
-                  AND seguimientos.analista_id = ?
                   AND interacciones.fecha_inicio >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
                   AND interacciones.fecha_inicio < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)";
 
-        $fila = $this->obtenerFila($sql, 'ii', [$usuarioId, $usuarioId]);
+        $fila = $this->obtenerFila($sql, 'i', [$usuarioId]);
         return (int)($fila['total'] ?? 0);
     }
 
@@ -101,7 +101,7 @@ class AnalistaDashboardIntegrityService
                 FROM seguimientos_vinculacion_post_envio post_envio
                 INNER JOIN seguimientos_vinculacion seguimientos
                     ON seguimientos.id = post_envio.seguimiento_id
-                WHERE seguimientos.analista_id = ?
+                WHERE post_envio.reunion_realizada_por = ?
                   AND post_envio.reunion_realizada_at IS NOT NULL
                   AND post_envio.reunion_realizada_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
                   AND post_envio.reunion_realizada_at < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)";
@@ -119,7 +119,6 @@ class AnalistaDashboardIntegrityService
                     SELECT reunion.fecha_propuesta
                     FROM reuniones_vinculacion reunion
                     WHERE reunion.seguimiento_id = seguimientos.id
-                      AND reunion.analista_id = seguimientos.analista_id
                       AND reunion.estado NOT IN ('CANCELADA', 'REALIZADA')
                     ORDER BY reunion.id DESC
                     LIMIT 1
@@ -128,7 +127,6 @@ class AnalistaDashboardIntegrityService
                     SELECT reunion.estado
                     FROM reuniones_vinculacion reunion
                     WHERE reunion.seguimiento_id = seguimientos.id
-                      AND reunion.analista_id = seguimientos.analista_id
                       AND reunion.estado NOT IN ('CANCELADA', 'REALIZADA')
                     ORDER BY reunion.id DESC
                     LIMIT 1
@@ -137,7 +135,6 @@ class AnalistaDashboardIntegrityService
                     SELECT reunion.cambio_solicitado_at
                     FROM reuniones_vinculacion reunion
                     WHERE reunion.seguimiento_id = seguimientos.id
-                      AND reunion.analista_id = seguimientos.analista_id
                       AND reunion.estado NOT IN ('CANCELADA', 'REALIZADA')
                     ORDER BY reunion.id DESC
                     LIMIT 1
@@ -159,7 +156,7 @@ class AnalistaDashboardIntegrityService
                 FROM seguimientos_vinculacion seguimientos
                 LEFT JOIN municipios ON municipios.id = seguimientos.municipio_id
                 LEFT JOIN estados ON estados.id = seguimientos.estado_id
-                WHERE seguimientos.analista_id = ?
+                WHERE " . SeguimientoTerritorialScope::analista('seguimientos') . "
                   AND seguimientos.activo = 1
                   AND seguimientos.estado_seguimiento <> 'DESCARTADO'";
 
@@ -296,7 +293,7 @@ class AnalistaDashboardIntegrityService
                     ON seguimientos.id = interacciones.seguimiento_id
                 LEFT JOIN usuarios ON usuarios.id = interacciones.usuario_id
                 LEFT JOIN roles ON roles.id = usuarios.rol_id
-                WHERE seguimientos.analista_id = ?
+                WHERE " . SeguimientoTerritorialScope::analista('seguimientos') . "
                 ORDER BY interacciones.fecha_inicio DESC, interacciones.id DESC
                 LIMIT {$limiteConsulta}";
 

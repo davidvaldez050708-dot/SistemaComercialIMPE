@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class ReminderDirectLinkService
@@ -51,12 +52,12 @@ class ReminderDirectLinkService
         }
 
         try {
-            $sql = "SELECT estado_id
+            $sql = 'SELECT estado_id
                     FROM seguimientos_vinculacion
                     WHERE id = ?
-                      AND analista_id = ?
+                      AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
                       AND activo = 1
-                    LIMIT 1";
+                    LIMIT 1';
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('ii', $seguimientoId, $analistaId);
             $stmt->execute();

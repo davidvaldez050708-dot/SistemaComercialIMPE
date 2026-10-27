@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__.'/TelefoniaDisponibilidadService.php';
 require_once __DIR__.'/TelefoniaRecepcionMarketingService.php';
 require_once __DIR__.'/TelefoniaEntrantesAnalistaService.php';
@@ -43,7 +45,7 @@ final class TelefoniaDevolucionService
                 $t['seguimiento_id']=(int)$t['intento']['seguimiento_id'];
                 $t['institucion_nombre']=$t['intento']['institucion_nombre'];
             }
-            if($t['seguimiento_id']>0 && !$this->one('SELECT id FROM seguimientos_vinculacion WHERE id=? AND analista_id=? AND activo=1',[$t['seguimiento_id'],$user]))$t['seguimiento_id']=0;
+            if($t['seguimiento_id']>0 && !$this->one('SELECT id FROM seguimientos_vinculacion WHERE id=? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND activo=1',[$t['seguimiento_id'],$user]))$t['seguimiento_id']=0;
         }unset($t);return $tasks;
     }
     public function preparar(int $user,int $id): array {

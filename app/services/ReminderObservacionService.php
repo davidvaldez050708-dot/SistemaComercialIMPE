@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 
@@ -37,16 +38,15 @@ class ReminderObservacionService
                         ON seguimientos.id = observaciones.seguimiento_id
                     INNER JOIN usuarios
                         ON usuarios.id = observaciones.autor_id
-                    WHERE observaciones.destinatario_id = ?
-                        AND observaciones.leida = 0
+                    WHERE observaciones.leida = 0
                         AND observaciones.activo = 1
-                        AND seguimientos.analista_id = ?
+                        AND " . SeguimientoTerritorialScope::analista('seguimientos') . "
                         AND seguimientos.activo = 1
                     ORDER BY observaciones.created_at DESC, observaciones.id DESC
                     LIMIT $limite";
 
             $stmt = $this->connection->prepare($sql);
-            $stmt->bind_param('ii', $analistaId, $analistaId);
+            $stmt->bind_param('i', $analistaId);
             $stmt->execute();
             $resultado = $stmt->get_result();
 

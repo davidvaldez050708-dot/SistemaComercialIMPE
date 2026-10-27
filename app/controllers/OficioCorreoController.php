@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 
 require_once __DIR__ . '/../services/OficioCorreoService.php';
 require_once __DIR__ . '/../services/OficioEnvioService.php';
@@ -290,7 +291,7 @@ class OficioCorreoController
     {
         $esAnalistaResponsable =
             tienePermiso('seguimientos_vinculacion.operar_propios') &&
-            (int)($correo['analista_id'] ?? 0) === (int)$usuarioId;
+            SeguimientoTerritorialScope::puedeTrabajar(['id' => (int)($correo['seguimiento_id'] ?? 0)], (int)$usuarioId);
         $enviado = !empty($correo['enviado']);
         $guardado = !empty($correo['guardado']);
 
@@ -338,7 +339,7 @@ class OficioCorreoController
     {
         $esAnalistaResponsable =
             tienePermiso('seguimientos_vinculacion.operar_propios') &&
-            (int)($programacion['analista_id'] ?? 0) === (int)$usuarioId;
+            SeguimientoTerritorialScope::puedeTrabajar(['id' => (int)($programacion['seguimiento_id'] ?? 0)], (int)$usuarioId);
 
         $programacion['es_analista_responsable'] = $esAnalistaResponsable;
         $programacion['solo_consulta'] = !$esAnalistaResponsable;
@@ -358,7 +359,7 @@ class OficioCorreoController
         $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
 
         if (
-            $rolId === 1 ||
+            esRolSupervisionNacional() ||
             strcasecmp($rolNombre, 'Marketing') === 0
         ) {
             return 'administrador';

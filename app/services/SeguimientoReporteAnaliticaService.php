@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/SeguimientoAtencionOperativaService.php';
@@ -207,25 +208,9 @@ class SeguimientoReporteAnaliticaService
                     WHERE s.id IN ($placeholders)
                       AND s.activo = 1";
         } elseif ($modoAcceso === 'supervisor') {
-            $sql = "SELECT DISTINCT s.id
-                    FROM seguimientos_vinculacion s
-                    INNER JOIN asignaciones_territorio analista
-                        ON analista.usuario_id = s.analista_id
-                        AND analista.estado_id = s.estado_id
-                        AND analista.tipo_asignacion = 'ANALISTA_DATOS'
-                        AND analista.activo = 1
-                        AND (analista.fecha_inicio IS NULL OR analista.fecha_inicio <= CURDATE())
-                        AND (analista.fecha_fin IS NULL OR analista.fecha_fin >= CURDATE())
-                    INNER JOIN asignaciones_territorio cuenta
-                        ON cuenta.id = analista.cuenta_clave_asignacion_id
-                        AND cuenta.estado_id = s.estado_id
-                        AND cuenta.tipo_asignacion = 'CUENTA_CLAVE'
-                        AND cuenta.activo = 1
-                        AND (cuenta.fecha_inicio IS NULL OR cuenta.fecha_inicio <= CURDATE())
-                        AND (cuenta.fecha_fin IS NULL OR cuenta.fecha_fin >= CURDATE())
-                    WHERE s.id IN ($placeholders)
-                      AND s.activo = 1
-                      AND cuenta.usuario_id = ?";
+            $sql = "SELECT DISTINCT s.id FROM seguimientos_vinculacion s
+                    WHERE s.id IN ($placeholders) AND s.activo = 1 AND "
+                . SeguimientoTerritorialScope::supervisor('s');
             $parametros[] = $usuarioId;
             $tipos .= 'i';
         } else {
@@ -233,7 +218,7 @@ class SeguimientoReporteAnaliticaService
                     FROM seguimientos_vinculacion s
                     WHERE s.id IN ($placeholders)
                       AND s.activo = 1
-                      AND s.analista_id = ?";
+                      AND " . SeguimientoTerritorialScope::analista('s') . "";
             $parametros[] = $usuarioId;
             $tipos .= 'i';
         }

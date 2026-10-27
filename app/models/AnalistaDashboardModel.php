@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 
@@ -40,7 +41,6 @@ class AnalistaDashboardModel
                     SELECT 1
                     FROM reuniones_vinculacion reunion_hoy
                     WHERE reunion_hoy.seguimiento_id = seguimientos.id
-                      AND reunion_hoy.analista_id = seguimientos.analista_id
                       AND reunion_hoy.estado NOT IN ('CANCELADA', 'REALIZADA')
                       AND reunion_hoy.fecha_propuesta >= NOW()
                       AND reunion_hoy.fecha_propuesta < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
@@ -51,7 +51,6 @@ class AnalistaDashboardModel
                     SELECT 1
                     FROM reuniones_vinculacion reunion_atrasada
                     WHERE reunion_atrasada.seguimiento_id = seguimientos.id
-                      AND reunion_atrasada.analista_id = seguimientos.analista_id
                       AND reunion_atrasada.estado NOT IN ('CANCELADA', 'REALIZADA')
                       AND reunion_atrasada.fecha_propuesta < NOW()
                 )"
@@ -75,7 +74,7 @@ class AnalistaDashboardModel
                         )
                     ), 0) AS atrasados
                 FROM seguimientos_vinculacion seguimientos
-                WHERE seguimientos.analista_id = ?
+                WHERE " . SeguimientoTerritorialScope::analista('seguimientos') . "
                   AND seguimientos.activo = 1
                   AND seguimientos.estado_seguimiento <> 'DESCARTADO'";
 
@@ -92,14 +91,13 @@ class AnalistaDashboardModel
                             FROM reuniones_vinculacion reuniones
                             INNER JOIN seguimientos_vinculacion seguimientos
                                 ON seguimientos.id = reuniones.seguimiento_id
-                            WHERE reuniones.analista_id = ?
-                              AND seguimientos.analista_id = ?
+                            WHERE " . SeguimientoTerritorialScope::analista('seguimientos') . "
                               AND seguimientos.activo = 1
                               AND seguimientos.estado_seguimiento <> 'DESCARTADO'
                               AND reuniones.estado NOT IN ('CANCELADA', 'REALIZADA')
                               AND reuniones.fecha_propuesta >= NOW()
                               AND reuniones.fecha_propuesta < DATE_ADD(NOW(), INTERVAL 7 DAY)";
-            $fila = $this->obtenerFila($sqlReuniones, 'ii', [$usuarioId, $usuarioId]);
+            $fila = $this->obtenerFila($sqlReuniones, 'i', [$usuarioId]);
             $resumen['reuniones_proximas'] = (int)($fila['total'] ?? 0);
         }
 
@@ -130,17 +128,16 @@ class AnalistaDashboardModel
                 INNER JOIN seguimientos_vinculacion seguimientos
                     ON seguimientos.id = interacciones.seguimiento_id
                 WHERE interacciones.usuario_id = ?
-                  AND seguimientos.analista_id = ?
                   AND interacciones.fecha_inicio >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
                   AND interacciones.fecha_inicio < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)";
-            $fila = $this->obtenerFila($sqlInteracciones, 'ii', [$usuarioId, $usuarioId]);
+            $fila = $this->obtenerFila($sqlInteracciones, 'i', [$usuarioId]);
             $avance['interacciones'] = (int)($fila['interacciones'] ?? 0);
             $avance['contactos_efectivos'] = (int)($fila['contactos_efectivos'] ?? 0);
         }
 
         $sqlVerificados = "SELECT COUNT(*) AS total
                           FROM seguimientos_vinculacion
-                          WHERE analista_id = ?
+                          WHERE datos_verificados_por = ?
                             AND datos_verificados = 1
                             AND datos_verificados_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
                             AND datos_verificados_at < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)";
@@ -152,7 +149,7 @@ class AnalistaDashboardModel
                           FROM oficios_vinculacion oficios
                           INNER JOIN seguimientos_vinculacion seguimientos
                               ON seguimientos.id = oficios.seguimiento_id
-                          WHERE seguimientos.analista_id = ?
+                          WHERE oficios.enviado_por = ?
                             AND oficios.estado_oficio = 'ENVIADO'
                             AND oficios.fecha_envio >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
                             AND oficios.fecha_envio < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)";
@@ -163,10 +160,10 @@ class AnalistaDashboardModel
         if ($this->tablaExiste('reuniones_vinculacion')) {
             $sqlReuniones = "SELECT COUNT(*) AS total
                             FROM reuniones_vinculacion
-                            WHERE analista_id = ?
+                            WHERE realizada_por = ?
                               AND estado = 'REALIZADA'
-                              AND updated_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
-                              AND updated_at < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)";
+                              AND realizada_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+                              AND realizada_at < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)";
             $fila = $this->obtenerFila($sqlReuniones, 'i', [$usuarioId]);
             $avance['reuniones_realizadas'] = (int)($fila['total'] ?? 0);
         }
@@ -183,7 +180,6 @@ class AnalistaDashboardModel
                     SELECT reuniones.fecha_propuesta
                     FROM reuniones_vinculacion reuniones
                     WHERE reuniones.seguimiento_id = seguimientos.id
-                      AND reuniones.analista_id = seguimientos.analista_id
                       AND reuniones.estado <> 'CANCELADA'
                     ORDER BY reuniones.id DESC
                     LIMIT 1
@@ -192,7 +188,6 @@ class AnalistaDashboardModel
                     SELECT reuniones.estado
                     FROM reuniones_vinculacion reuniones
                     WHERE reuniones.seguimiento_id = seguimientos.id
-                      AND reuniones.analista_id = seguimientos.analista_id
                       AND reuniones.estado <> 'CANCELADA'
                     ORDER BY reuniones.id DESC
                     LIMIT 1
@@ -214,7 +209,7 @@ class AnalistaDashboardModel
                 FROM seguimientos_vinculacion seguimientos
                 LEFT JOIN municipios ON municipios.id = seguimientos.municipio_id
                 LEFT JOIN estados ON estados.id = seguimientos.estado_id
-                WHERE seguimientos.analista_id = ?
+                WHERE " . SeguimientoTerritorialScope::analista('seguimientos') . "
                   AND seguimientos.activo = 1
                   AND seguimientos.estado_seguimiento <> 'DESCARTADO'
                 ORDER BY COALESCE(seguimientos.proxima_accion_at, seguimientos.ultima_interaccion_at, seguimientos.fecha_inicio) ASC
@@ -324,7 +319,7 @@ class AnalistaDashboardModel
                             seguimientos.proxima_accion_at AS fecha_evento,
                             'ACCION' AS tipo_evento
                         FROM seguimientos_vinculacion seguimientos
-                        WHERE seguimientos.analista_id = ?
+                        WHERE " . SeguimientoTerritorialScope::analista('seguimientos') . "
                           AND seguimientos.activo = 1
                           AND seguimientos.estado_seguimiento <> 'DESCARTADO'
                           AND seguimientos.proxima_accion_at >= NOW()
@@ -343,8 +338,7 @@ class AnalistaDashboardModel
                             FROM reuniones_vinculacion reuniones
                             INNER JOIN seguimientos_vinculacion seguimientos
                                 ON seguimientos.id = reuniones.seguimiento_id
-                            WHERE reuniones.analista_id = ?
-                              AND seguimientos.analista_id = ?
+                            WHERE " . SeguimientoTerritorialScope::analista('seguimientos') . "
                               AND seguimientos.activo = 1
                               AND seguimientos.estado_seguimiento <> 'DESCARTADO'
                               AND reuniones.estado NOT IN ('CANCELADA', 'REALIZADA')
@@ -354,7 +348,7 @@ class AnalistaDashboardModel
                             LIMIT {$limiteConsulta}";
             $eventos = array_merge(
                 $eventos,
-                $this->obtenerFilas($sqlReuniones, 'ii', [$usuarioId, $usuarioId])
+                $this->obtenerFilas($sqlReuniones, 'i', [$usuarioId])
             );
         }
 
@@ -403,11 +397,10 @@ class AnalistaDashboardModel
                 INNER JOIN seguimientos_vinculacion seguimientos
                     ON seguimientos.id = interacciones.seguimiento_id
                 WHERE interacciones.usuario_id = ?
-                  AND seguimientos.analista_id = ?
                 ORDER BY interacciones.fecha_inicio DESC, interacciones.id DESC
                 LIMIT {$limite}";
 
-        return $this->obtenerFilas($sql, 'ii', [$usuarioId, $usuarioId]);
+        return $this->obtenerFilas($sql, 'i', [$usuarioId]);
     }
 
     private function obtenerTerritorios($usuarioId)
@@ -431,7 +424,6 @@ class AnalistaDashboardModel
                 INNER JOIN estados ON estados.id = asignaciones.estado_id
                 LEFT JOIN seguimientos_vinculacion seguimientos
                     ON seguimientos.estado_id = asignaciones.estado_id
-                   AND seguimientos.analista_id = asignaciones.usuario_id
                 WHERE asignaciones.usuario_id = ?
                   AND asignaciones.tipo_asignacion = 'ANALISTA_DATOS'
                   AND asignaciones.activo = 1

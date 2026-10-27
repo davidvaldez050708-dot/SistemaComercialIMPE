@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class ReminderReunionFollowupService
@@ -22,23 +23,23 @@ class ReminderReunionFollowupService
         }
 
         try {
-            $sql = "SELECT
+            $sql = 'SELECT
                         s.id,
                         s.nombre_entidad,
                         s.proxima_accion_at
                     FROM seguimientos_vinculacion s
                     JOIN seguimientos_vinculacion_post_envio p
                         ON p.seguimiento_id = s.id
-                    WHERE s.analista_id = ?
+                    WHERE ' . SeguimientoTerritorialScope::analista('s') . '
                       AND s.activo = 1
-                      AND s.estado_seguimiento <> 'DESCARTADO'
+                      AND s.estado_seguimiento <> \'DESCARTADO\'
                       AND p.reunion_realizada_at IS NOT NULL
-                      AND p.reunion_resultado = 'REQUIERE_SEGUIMIENTO'
+                      AND p.reunion_resultado = \'REQUIERE_SEGUIMIENTO\'
                       AND p.convenio_formalizado_at IS NULL
                       AND s.proxima_accion_at IS NOT NULL
                       AND s.proxima_accion_at <= DATE_ADD(NOW(), INTERVAL 24 HOUR)
                     ORDER BY s.proxima_accion_at ASC
-                    LIMIT ?";
+                    LIMIT ?';
 
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('ii', $analistaId, $limite);

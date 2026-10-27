@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class ReminderAgendaFilterService
@@ -52,10 +53,10 @@ class ReminderAgendaFilterService
         $ids = [];
 
         if ($this->tablaDisponible('reuniones_vinculacion')) {
-            $sql = "SELECT DISTINCT seguimiento_id
+            $sql = 'SELECT DISTINCT seguimiento_id
                     FROM reuniones_vinculacion
-                    WHERE analista_id = ?
-                      AND estado <> 'CANCELADA'";
+                    WHERE ' . SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion') . '
+                      AND estado <> \'CANCELADA\'';
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('i', $analistaId);
             $stmt->execute();
@@ -70,14 +71,14 @@ class ReminderAgendaFilterService
         }
 
         if ($this->tablaDisponible('seguimientos_vinculacion_post_envio')) {
-            $sql = "SELECT seguimientos.id
+            $sql = 'SELECT seguimientos.id
                     FROM seguimientos_vinculacion seguimientos
                     JOIN seguimientos_vinculacion_post_envio post
                         ON post.seguimiento_id = seguimientos.id
-                    WHERE seguimientos.analista_id = ?
+                    WHERE ' . SeguimientoTerritorialScope::analista('seguimientos') . '
                       AND seguimientos.activo = 1
-                      AND seguimientos.estado_seguimiento <> 'DESCARTADO'
-                      AND post.reunion_realizada_at IS NOT NULL";
+                      AND seguimientos.estado_seguimiento <> \'DESCARTADO\'
+                      AND post.reunion_realizada_at IS NOT NULL';
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('i', $analistaId);
             $stmt->execute();

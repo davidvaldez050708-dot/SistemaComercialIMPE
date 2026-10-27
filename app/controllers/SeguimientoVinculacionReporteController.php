@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
@@ -624,7 +625,8 @@ class SeguimientoVinculacionReporteController
         try {
             $postEnvio = (new SeguimientoPostEnvioService())->obtenerFlujoSiAplica(
                 $seguimientoId,
-                $analistaId
+                $analistaId,
+                    true
             );
 
             if (($postEnvio['ok'] ?? false) && ($postEnvio['aplica'] ?? false)) {
@@ -635,22 +637,26 @@ class SeguimientoVinculacionReporteController
                 $flujo = (new AgendaReunionService())->ajustarFlujoAnalista(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
                 $flujo = (new SeguimientoCorreoService())->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
                 $flujo = (new ReunionFechaGuardService())->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
                 $flujo = (new ReunionResultadoService())->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
 
                 return is_array($flujo) ? $flujo : [];
@@ -658,7 +664,8 @@ class SeguimientoVinculacionReporteController
 
             $resultado = (new SeguimientoFlujoService())->obtenerEstado(
                 $seguimientoId,
-                $analistaId
+                $analistaId,
+                    true
             );
             $flujo = is_array($resultado['flujo'] ?? null)
                 ? $resultado['flujo']
@@ -1187,10 +1194,11 @@ class SeguimientoVinculacionReporteController
                 ) {
                     $filtros['responsable_id'] = 0;
                 } else {
+                    $estadosResponsable = SeguimientoTerritorialScope::estadosAnalista($responsableId);
                     $coinciden = array_values(array_filter(
                         $actuales,
-                        function ($seguimiento) use ($responsableId) {
-                            return (int)($seguimiento['analista_id'] ?? 0) === $responsableId;
+                        function ($seguimiento) use ($estadosResponsable) {
+                            return in_array((int)($seguimiento['estado_id'] ?? 0), $estadosResponsable, true);
                         }
                     ));
 
@@ -1300,23 +1308,17 @@ class SeguimientoVinculacionReporteController
         if ($modo === 'supervisor') {
             $responsables = $responsablesPermitidos;
         } elseif ($modo !== 'analista') {
-            foreach ($actuales as $seguimiento) {
-                $id = (int)($seguimiento['analista_id'] ?? 0);
-                $nombre = trim(
-                    (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
-                    (string)($seguimiento['analista_apellidos'] ?? '')
-                );
-                if ($id > 0 && $nombre !== '') {
-                    $responsables[$id] = $nombre;
-                }
+            foreach (SeguimientoTerritorialScope::analistasVigentes() as $analista) {
+                $responsables[(int)$analista['id']] = (string)$analista['nombre'];
             }
             natcasesort($responsables);
         }
 
         if ((int)$filtros['responsable_id'] > 0) {
             $responsableId = (int)$filtros['responsable_id'];
-            $actuales = array_values(array_filter($actuales, function ($seguimiento) use ($responsableId) {
-                return (int)($seguimiento['analista_id'] ?? 0) === $responsableId;
+            $estadosResponsable = SeguimientoTerritorialScope::estadosAnalista($responsableId);
+            $actuales = array_values(array_filter($actuales, function ($seguimiento) use ($estadosResponsable) {
+                return in_array((int)($seguimiento['estado_id'] ?? 0), $estadosResponsable, true);
             }));
         }
 
@@ -1479,9 +1481,11 @@ class SeguimientoVinculacionReporteController
 
     private function aplicarFiltrosReporte($seguimientos, $filtros)
     {
+        $estadosResponsable = (int)($filtros['responsable_id'] ?? 0) > 0
+            ? SeguimientoTerritorialScope::estadosAnalista((int)$filtros['responsable_id']) : [];
         return array_values(array_filter(
             $seguimientos,
-            function ($seguimiento) use ($filtros) {
+            function ($seguimiento) use ($filtros, $estadosResponsable) {
                 if (
                     (int)$filtros['estado_id'] > 0 &&
                     (int)($seguimiento['estado_id'] ?? 0) !== (int)$filtros['estado_id']
@@ -1513,7 +1517,7 @@ class SeguimientoVinculacionReporteController
 
                 if (
                     (int)$filtros['responsable_id'] > 0 &&
-                    (int)($seguimiento['analista_id'] ?? 0) !== (int)$filtros['responsable_id']
+                    !in_array((int)($seguimiento['estado_id'] ?? 0), $estadosResponsable, true)
                 ) {
                     return false;
                 }
@@ -2041,20 +2045,14 @@ class SeguimientoVinculacionReporteController
 
     private function obtenerResponsablesDisponibles($seguimientos)
     {
+        $estados = array_values(array_unique(array_map('intval', array_column($seguimientos, 'estado_id'))));
         $responsables = [];
-
-        foreach ($seguimientos as $seguimiento) {
-            $id = (int)($seguimiento['analista_id'] ?? 0);
-            $nombre = trim(
-                (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
-                (string)($seguimiento['analista_apellidos'] ?? '')
-            );
-
-            if ($id > 0 && $nombre !== '') {
-                $responsables[$id] = $nombre;
+        foreach (SeguimientoTerritorialScope::analistasVigentes() as $analista) {
+            $id = (int)$analista['id'];
+            if (array_intersect($estados, SeguimientoTerritorialScope::estadosAnalista($id))) {
+                $responsables[$id] = (string)$analista['nombre'];
             }
         }
-
         natcasesort($responsables);
         return $responsables;
     }
@@ -2241,7 +2239,7 @@ class SeguimientoVinculacionReporteController
 
     private function resolverModoSeguimiento()
     {
-        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+        if (esRolSupervisionNacional()) {
             return 'administrador';
         }
 

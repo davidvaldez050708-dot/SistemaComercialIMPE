@@ -61,7 +61,8 @@ class SeguimientoRutaOperativaService
             $flujo = null;
             $postEnvio = $this->postEnvioService->obtenerFlujoSiAplica(
                 $seguimientoId,
-                $analistaId
+                $analistaId,
+                true
             );
 
             if (($postEnvio['ok'] ?? false) && ($postEnvio['aplica'] ?? false)) {
@@ -74,32 +75,38 @@ class SeguimientoRutaOperativaService
                 $flujo = $this->correoService->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $postEnvio['flujo']
+                    $postEnvio['flujo'],
+                    true
                 );
                 $flujo = $this->agendaService->ajustarFlujoAnalista(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
                 $flujo = $this->fechaGuardService->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
                 $flujo = $this->resultadoService->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
                 $flujo = $this->convenioDocumentosService->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
             } else {
                 $resultado = $this->flujoService->obtenerEstado(
                     $seguimientoId,
-                    $analistaId
+                    $analistaId,
+                    true
                 );
 
                 if (
@@ -130,7 +137,8 @@ class SeguimientoRutaOperativaService
                 $flujo = $this->convenioDocumentosService->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
             }
 

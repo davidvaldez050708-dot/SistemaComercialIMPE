@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/VerificacionInstitucionalService.php';
 require_once __DIR__ . '/TelefoniaVerificacionEvidenciaService.php';
@@ -297,14 +298,14 @@ class InteraccionRutaService
                     ? $nuevoContactoCargo
                     : trim((string)($seguimiento['contacto_cargo'] ?? ''));
 
-                $sqlContacto = "UPDATE seguimientos_vinculacion
+                $sqlContacto = 'UPDATE seguimientos_vinculacion
                         SET telefono_verificado = ?,
                             correo_verificado = ?,
                             contacto_nombre = ?,
                             contacto_cargo = ?
                         WHERE id = ?
-                          AND analista_id = ?
-                          AND activo = 1";
+                          AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
+                          AND activo = 1';
                 $stmtContacto = $this->connection->prepare($sqlContacto);
                 $stmtContacto->bind_param(
                     'ssssii',
@@ -319,11 +320,11 @@ class InteraccionRutaService
             }
 
             $etapaPersistencia = 'actualizar la fecha de última interacción';
-            $sqlSeguimiento = "UPDATE seguimientos_vinculacion
+            $sqlSeguimiento = 'UPDATE seguimientos_vinculacion
                     SET ultima_interaccion_at = ?
                     WHERE id = ?
-                        AND analista_id = ?
-                        AND activo = 1";
+                        AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
+                        AND activo = 1';
             $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
             $stmtSeguimiento->bind_param(
                 'sii',
@@ -368,7 +369,7 @@ class InteraccionRutaService
 
     private function obtenerSeguimientoAvanzado($seguimientoId, $usuarioId)
     {
-        $sql = "SELECT
+        $sql = 'SELECT
                     seguimientos.id,
                     seguimientos.estado_seguimiento,
                     seguimientos.telefono_fuente,
@@ -389,9 +390,9 @@ class InteraccionRutaService
                         LIMIT 1
                     )
                 WHERE seguimientos.id = ?
-                    AND seguimientos.analista_id = ?
+                    AND ' . SeguimientoTerritorialScope::analista('seguimientos') . '
                     AND seguimientos.activo = 1
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $usuarioId);
         $stmt->execute();

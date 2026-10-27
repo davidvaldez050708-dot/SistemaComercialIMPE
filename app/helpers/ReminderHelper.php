@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
@@ -16,7 +17,7 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
             $database = new Database();
             $connection = $database->connect();
 
-            $sql = "SELECT
+            $sql = 'SELECT
                         seguimientos.id,
                         seguimientos.estado_id,
                         seguimientos.nombre_entidad,
@@ -24,21 +25,22 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
                         (
                             SELECT TRIM(
                                 SUBSTRING_INDEX(
-                                    SUBSTRING_INDEX(interacciones.notas, 'Próxima acción: ', -1),
-                                    '\n',
+                                    SUBSTRING_INDEX(interacciones.notas, \'Próxima acción: \', -1),
+                                    \'
+\',
                                     1
                                 )
                             )
                             FROM interacciones_vinculacion interacciones
                             WHERE interacciones.seguimiento_id = seguimientos.id
-                                AND interacciones.notas LIKE '%Próxima acción:%'
+                                AND interacciones.notas LIKE \'%Próxima acción:%\'
                             ORDER BY interacciones.fecha_inicio DESC, interacciones.id DESC
                             LIMIT 1
                         ) AS proxima_accion_texto
                     FROM seguimientos_vinculacion seguimientos
-                    WHERE seguimientos.analista_id = ?
+                    WHERE ' . SeguimientoTerritorialScope::analista('seguimientos') . '
                         AND seguimientos.activo = 1
-                        AND seguimientos.estado_seguimiento <> 'DESCARTADO'
+                        AND seguimientos.estado_seguimiento <> \'DESCARTADO\'
                         AND seguimientos.proxima_accion_at IS NOT NULL
                         AND seguimientos.proxima_accion_at <= DATE_ADD(NOW(), INTERVAL 24 HOUR)
                     ORDER BY
@@ -54,7 +56,7 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
                             WHEN seguimientos.proxima_accion_at >= NOW()
                             THEN seguimientos.proxima_accion_at
                         END ASC
-                    LIMIT 100";
+                    LIMIT 100';
 
             $stmt = $connection->prepare($sql);
             $stmt->bind_param('i', $usuarioId);

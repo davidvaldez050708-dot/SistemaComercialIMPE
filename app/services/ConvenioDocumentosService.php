@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/SeguimientoHistorialImportadoService.php';
 require_once __DIR__ . '/CorreoSalidaInstitucionalService.php';
@@ -252,12 +253,12 @@ class ConvenioDocumentosService
                 $documentos
             );
 
-            $sqlSeguimiento = "UPDATE seguimientos_vinculacion
+            $sqlSeguimiento = 'UPDATE seguimientos_vinculacion
                                SET ultima_interaccion_at = NOW(),
                                    proxima_accion_at = NULL
                                WHERE id = ?
-                                 AND analista_id = ?
-                                 AND activo = 1";
+                                 AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
+                                 AND activo = 1';
             $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
             $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
             $stmtSeguimiento->execute();
@@ -590,12 +591,12 @@ class ConvenioDocumentosService
             );
             $stmtInteraccion->execute();
 
-            $sqlSeguimiento = "UPDATE seguimientos_vinculacion
+            $sqlSeguimiento = 'UPDATE seguimientos_vinculacion
                                SET ultima_interaccion_at = NOW(),
                                    proxima_accion_at = NULL
                                WHERE id = ?
-                                 AND analista_id = ?
-                                 AND activo = 1";
+                                 AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
+                                 AND activo = 1';
             $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
             $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
             $stmtSeguimiento->execute();
@@ -743,12 +744,12 @@ class ConvenioDocumentosService
             );
             $stmtInteraccion->execute();
 
-            $sqlSeguimiento = "UPDATE seguimientos_vinculacion
+            $sqlSeguimiento = 'UPDATE seguimientos_vinculacion
                                SET ultima_interaccion_at = NOW(),
                                    proxima_accion_at = NULL
                                WHERE id = ?
-                                 AND analista_id = ?
-                                 AND activo = 1";
+                                 AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
+                                 AND activo = 1';
             $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
             $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
             $stmtSeguimiento->execute();
@@ -971,7 +972,7 @@ class ConvenioDocumentosService
         return ['ok' => true];
     }
 
-    public function ajustarFlujo($seguimientoId, $usuarioId, $flujo)
+    public function ajustarFlujo($seguimientoId, $usuarioId, $flujo, $soloLectura = false)
     {
         if (!is_array($flujo) || (int)($flujo['paso_actual'] ?? 0) !== 13) {
             return $flujo;
@@ -983,7 +984,8 @@ class ConvenioDocumentosService
 
         $seguimiento = $this->obtenerSeguimiento(
             (int)$seguimientoId,
-            (int)$usuarioId
+            (int)$usuarioId,
+            $soloLectura
         );
 
         if (!$seguimiento) {
@@ -1227,7 +1229,7 @@ class ConvenioDocumentosService
         return ['ok' => true];
     }
 
-    private function obtenerSeguimiento($seguimientoId, $usuarioId)
+    private function obtenerSeguimiento($seguimientoId, $usuarioId, $soloLectura = false)
     {
         $sql = "SELECT
                     s.id,
@@ -1253,7 +1255,7 @@ class ConvenioDocumentosService
                     p.convenio_correo_cuerpo,
                     p.convenio_carta_pdf,
                     p.convenio_docx,
-                    " . $this->camposRecepcionSql() . ",
+                    " . $this->camposRecepcionSql() . ',
                     u.nombre AS analista_nombre,
                     u.apellidos AS analista_apellidos,
                     u.correo AS analista_correo
@@ -1261,13 +1263,13 @@ class ConvenioDocumentosService
                 JOIN seguimientos_vinculacion_post_envio p
                     ON p.seguimiento_id = s.id
                 JOIN usuarios u
-                    ON u.id = s.analista_id
+                    ON u.id = ?
                 WHERE s.id = ?
-                    AND s.analista_id = ?
+                    AND ' . ($soloLectura ? SeguimientoTerritorialScope::lectura('s') : SeguimientoTerritorialScope::analista('s')) . '
                     AND s.activo = 1
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ii', $seguimientoId, $usuarioId);
+        $stmt->bind_param('iii', $usuarioId, $seguimientoId, $usuarioId);
         $stmt->execute();
 
         return $stmt->get_result()->fetch_assoc() ?: null;

@@ -307,7 +307,6 @@ class SeguimientoCambioDatosService
                     FROM seguimientos_vinculacion s
                     JOIN asignaciones_territorio analista
                         ON analista.estado_id = s.estado_id
-                        AND analista.usuario_id = s.analista_id
                         AND analista.tipo_asignacion = 'ANALISTA_DATOS'
                         AND analista.activo = 1
                         AND (analista.fecha_inicio IS NULL OR analista.fecha_inicio <= CURDATE())

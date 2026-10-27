@@ -1,6 +1,8 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../helpers/SupervisionRolePolicy.php';
 
 class AgendaReunionRepository
 {
@@ -41,11 +43,17 @@ class AgendaReunionRepository
                 LEFT JOIN usuarios k ON k.id=r.cuenta_clave_id
                 WHERE r.fecha_propuesta>=? AND r.fecha_propuesta<? AND r.estado<>'CANCELADA'";
 
-        $sql .= " AND (r.analista_id=? OR r.cuenta_clave_id=?)";
+        if (!esRolSupervisionNacional((int)$rolId)) {
+            $sql .= ' AND (' . SeguimientoTerritorialScope::reunionAnalista('r') . ' OR ' . SeguimientoTerritorialScope::reunionSupervisor('r') . ')';
+        }
         $sql .= " ORDER BY r.fecha_propuesta ASC, r.id ASC";
 
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ssii', $inicio, $fin, $usuarioId, $usuarioId);
+        if (esRolSupervisionNacional((int)$rolId)) {
+            $stmt->bind_param('ss', $inicio, $fin);
+        } else {
+            $stmt->bind_param('ssii', $inicio, $fin, $usuarioId, $usuarioId);
+        }
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
@@ -56,25 +64,25 @@ class AgendaReunionRepository
             return [];
         }
 
-        $sql = "SELECT s.id, s.nombre_entidad, s.contacto_nombre, s.contacto_cargo,
-                       COALESCE(NULLIF(TRIM(s.correo_verificado),''), NULLIF(TRIM(s.correo_fuente),'')) AS contacto_correo,
+        $sql = 'SELECT s.id, s.nombre_entidad, s.contacto_nombre, s.contacto_cargo,
+                       COALESCE(NULLIF(TRIM(s.correo_verificado),\'\'), NULLIF(TRIM(s.correo_fuente),\'\')) AS contacto_correo,
                        m.nombre AS municipio_nombre
                 FROM seguimientos_vinculacion s
                 JOIN seguimientos_vinculacion_post_envio p ON p.seguimiento_id=s.id
                 LEFT JOIN municipios m ON m.id=s.municipio_id
-                WHERE s.analista_id=? AND s.activo=1 AND s.estado_seguimiento<>'DESCARTADO'
+                WHERE ' . SeguimientoTerritorialScope::analista('s') . ' AND s.activo=1 AND s.estado_seguimiento<>\'DESCARTADO\'
                   AND p.coordinacion_reunion_habilitada_at IS NOT NULL
                   AND p.reunion_agendada_at IS NULL
                   AND (
-                      p.respuesta_tipo <> 'CONTACTAR_DESPUES'
+                      p.respuesta_tipo <> \'CONTACTAR_DESPUES\'
                       OR p.contactar_despues_at IS NULL
                       OR p.contactar_despues_at <= NOW()
                   )
                   AND NOT EXISTS (
                     SELECT 1 FROM reuniones_vinculacion r
-                    WHERE r.seguimiento_id=s.id AND r.estado NOT IN ('CANCELADA','REALIZADA')
+                    WHERE r.seguimiento_id=s.id AND r.estado NOT IN (\'CANCELADA\',\'REALIZADA\')
                   )
-                ORDER BY s.nombre_entidad";
+                ORDER BY s.nombre_entidad';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('i', $analistaId);
         $stmt->execute();
@@ -87,17 +95,17 @@ class AgendaReunionRepository
             return null;
         }
 
-        $sql = "SELECT s.id FROM seguimientos_vinculacion s
+        $sql = 'SELECT s.id FROM seguimientos_vinculacion s
                 JOIN seguimientos_vinculacion_post_envio p ON p.seguimiento_id=s.id
-                WHERE s.id=? AND s.analista_id=? AND s.activo=1 AND s.estado_seguimiento<>'DESCARTADO'
+                WHERE s.id=? AND ' . SeguimientoTerritorialScope::analista('s') . ' AND s.activo=1 AND s.estado_seguimiento<>\'DESCARTADO\'
                   AND p.coordinacion_reunion_habilitada_at IS NOT NULL
                   AND p.reunion_agendada_at IS NULL
                   AND (
-                      p.respuesta_tipo <> 'CONTACTAR_DESPUES'
+                      p.respuesta_tipo <> \'CONTACTAR_DESPUES\'
                       OR p.contactar_despues_at IS NULL
                       OR p.contactar_despues_at <= NOW()
                   )
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $analistaId);
         $stmt->execute();
@@ -106,18 +114,18 @@ class AgendaReunionRepository
 
     public function cuentaClaveParaSeguimiento($seguimientoId, $analistaId)
     {
-        $sql = "SELECT cuenta.usuario_id AS cuenta_clave_id
+        $sql = 'SELECT cuenta.usuario_id AS cuenta_clave_id
                 FROM seguimientos_vinculacion s
                 JOIN asignaciones_territorio analista
                     ON analista.estado_id = s.estado_id
-                    AND analista.usuario_id = s.analista_id
-                    AND analista.tipo_asignacion = 'ANALISTA_DATOS'
+                    AND analista.usuario_id = ?
+                    AND analista.tipo_asignacion = \'ANALISTA_DATOS\'
                     AND analista.activo = 1
                     AND (analista.fecha_inicio IS NULL OR analista.fecha_inicio <= CURDATE())
                     AND (analista.fecha_fin IS NULL OR analista.fecha_fin >= CURDATE())
                 JOIN asignaciones_territorio cuenta
                     ON cuenta.id = analista.cuenta_clave_asignacion_id
-                    AND cuenta.tipo_asignacion = 'CUENTA_CLAVE'
+                    AND cuenta.tipo_asignacion = \'CUENTA_CLAVE\'
                     AND cuenta.activo = 1
                     AND (cuenta.fecha_inicio IS NULL OR cuenta.fecha_inicio <= CURDATE())
                     AND (cuenta.fecha_fin IS NULL OR cuenta.fecha_fin >= CURDATE())
@@ -127,11 +135,11 @@ class AgendaReunionRepository
                 JOIN roles rol_cuenta
                     ON rol_cuenta.id = usuario_cuenta.rol_id
                     AND rol_cuenta.estado = 1
-                WHERE s.id = ? AND s.analista_id = ?
+                WHERE s.id = ? AND ' . SeguimientoTerritorialScope::analista('s') . '
                 ORDER BY analista.id DESC
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ii', $seguimientoId, $analistaId);
+        $stmt->bind_param('iii', $analistaId, $seguimientoId, $analistaId);
         $stmt->execute();
         $fila = $stmt->get_result()->fetch_assoc();
         return (int)($fila['cuenta_clave_id'] ?? 0);
@@ -209,22 +217,25 @@ class AgendaReunionRepository
         $cuentaClaveId,
         $motivo
     ) {
-        $sql = "UPDATE reuniones_vinculacion
-                SET estado = 'CANCELACION_SOLICITADA',
+        // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
+        $ahora = date('Y-m-d H:i:s');
+        $sql = 'UPDATE reuniones_vinculacion
+                SET estado = \'CANCELACION_SOLICITADA\',
                     cancelacion_motivo = ?,
                     cancelada_at = NULL,
                     cancelada_por = NULL,
                     notificado_analista_at = NULL
                 WHERE id = ?
-                  AND cuenta_clave_id = ?
-                  AND estado = 'CORREO_ENVIADO'
-                  AND fecha_propuesta > NOW()";
+                  AND ' . SeguimientoTerritorialScope::reunionSupervisor('reuniones_vinculacion') . '
+                  AND estado = \'CORREO_ENVIADO\'
+                  AND fecha_propuesta > ?';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'sii',
+            'siis',
             $motivo,
             $reunionId,
-            $cuentaClaveId
+            $cuentaClaveId,
+            $ahora
         );
         $stmt->execute();
 
@@ -233,34 +244,37 @@ class AgendaReunionRepository
 
     public function cancelar($reunionId, $usuarioId, $rolId, $motivo)
     {
-        $sql = "UPDATE reuniones_vinculacion
-                SET estado = 'CANCELADA',
+        // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
+        $ahora = date('Y-m-d H:i:s');
+        $sql = 'UPDATE reuniones_vinculacion
+                SET estado = \'CANCELADA\',
                     cancelacion_motivo = ?,
                     cancelada_at = NOW(),
                     cancelada_por = ?,
                     notificado_kam_at = NULL,
                     notificado_analista_at = NULL
                 WHERE id = ?
-                  AND (analista_id = ? OR cuenta_clave_id = ?)
+                  AND (' . SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion') . ' OR ' . SeguimientoTerritorialScope::reunionSupervisor('reuniones_vinculacion') . ')
                   AND estado IN (
-                    'SOLICITADA',
-                    'CAMBIO_SOLICITADO',
-                    'CONFIRMADA',
-                    'CORREO_ENVIADO',
-                    'CANCELACION_SOLICITADA'
+                    \'SOLICITADA\',
+                    \'CAMBIO_SOLICITADO\',
+                    \'CONFIRMADA\',
+                    \'CORREO_ENVIADO\',
+                    \'CANCELACION_SOLICITADA\'
                   )
                   AND (
-                    estado = 'CANCELACION_SOLICITADA'
-                    OR fecha_propuesta > NOW()
-                  )";
+                    estado = \'CANCELACION_SOLICITADA\'
+                    OR fecha_propuesta > ?
+                  )';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'siiii',
+            'siiiis',
             $motivo,
             $usuarioId,
             $reunionId,
             $usuarioId,
-            $usuarioId
+            $usuarioId,
+            $ahora
         );
         $stmt->execute();
 
@@ -329,21 +343,27 @@ class AgendaReunionRepository
                 LEFT JOIN usuarios a ON a.id=r.analista_id
                 LEFT JOIN usuarios k ON k.id=r.cuenta_clave_id
                 WHERE r.id=?";
-        $sql .= " AND (r.analista_id=? OR r.cuenta_clave_id=?)";
+        if (!esRolSupervisionNacional((int)$rolId)) {
+            $sql .= ' AND (' . SeguimientoTerritorialScope::reunionAnalista('r') . ' OR ' . SeguimientoTerritorialScope::reunionSupervisor('r') . ')';
+        }
         $sql .= " LIMIT 1";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('iii', $reunionId, $usuarioId, $usuarioId);
+        if (esRolSupervisionNacional((int)$rolId)) {
+            $stmt->bind_param('i', $reunionId);
+        } else {
+            $stmt->bind_param('iii', $reunionId, $usuarioId, $usuarioId);
+        }
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
-    public function ultimaReunionSeguimiento($seguimientoId, $analistaId)
+    public function ultimaReunionSeguimiento($seguimientoId, $analistaId, $soloLectura = false)
     {
-        $sql = "SELECT * FROM reuniones_vinculacion
+        $sql = 'SELECT * FROM reuniones_vinculacion
                 WHERE seguimiento_id=?
-                  AND analista_id=?
-                  AND estado NOT IN ('CANCELADA','REALIZADA')
-                ORDER BY id DESC LIMIT 1";
+                  AND ' . ($soloLectura ? SeguimientoTerritorialScope::reunionLectura('reuniones_vinculacion') : SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion')) . '
+                  AND estado NOT IN (\'CANCELADA\',\'REALIZADA\')
+                ORDER BY id DESC LIMIT 1';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $analistaId);
         $stmt->execute();
@@ -368,10 +388,10 @@ class AgendaReunionRepository
 
     public function reprogramar($reunionId, $analistaId, $fecha, $duracion, $modalidad, $objetivo, $notas)
     {
-        $sql = "UPDATE reuniones_vinculacion SET fecha_propuesta=?,duracion_minutos=?,modalidad=?,objetivo=?,notas_analista=?,
-                    estado='SOLICITADA',cambio_motivo=NULL,cambio_solicitado_at=NULL,cambio_solicitado_por=NULL,
+        $sql = 'UPDATE reuniones_vinculacion SET fecha_propuesta=?,duracion_minutos=?,modalidad=?,objetivo=?,notas_analista=?,
+                    estado=\'SOLICITADA\',cambio_motivo=NULL,cambio_solicitado_at=NULL,cambio_solicitado_por=NULL,
                     notificado_kam_at=NULL,notificado_analista_at=NULL
-                WHERE id=? AND analista_id=? AND estado='CAMBIO_SOLICITADO'";
+                WHERE id=? AND ' . SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion') . ' AND estado=\'CAMBIO_SOLICITADO\'';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('sisssii', $fecha, $duracion, $modalidad, $objetivo, $notas, $reunionId, $analistaId);
         $stmt->execute();
@@ -380,42 +400,48 @@ class AgendaReunionRepository
 
     public function confirmar($reunionId, $kamId, $zoomUrl, $ubicacion, $notasKam)
     {
-        $sql = "UPDATE reuniones_vinculacion SET cuenta_clave_id=?,zoom_url=?,ubicacion=?,notas_kam=?,estado='CONFIRMADA',
+        // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
+        $ahora = date('Y-m-d H:i:s');
+        $sql = 'UPDATE reuniones_vinculacion SET ' . SeguimientoTerritorialScope::reunionSupervisor('reuniones_vinculacion') . ',zoom_url=?,ubicacion=?,notas_kam=?,estado=\'CONFIRMADA\',
                     confirmada_at=NOW(),confirmada_por=?,notificado_analista_at=NULL
                 WHERE id=?
-                  AND cuenta_clave_id=?
-                  AND estado='SOLICITADA'
-                  AND fecha_propuesta > NOW()";
+                  AND ' . SeguimientoTerritorialScope::reunionSupervisor('reuniones_vinculacion') . '
+                  AND estado=\'SOLICITADA\'
+                  AND fecha_propuesta > ?';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('isssiii', $kamId, $zoomUrl, $ubicacion, $notasKam, $kamId, $reunionId, $kamId);
+        $stmt->bind_param('isssiiis', $kamId, $zoomUrl, $ubicacion, $notasKam, $kamId, $reunionId, $kamId, $ahora);
         $stmt->execute();
         return $stmt->affected_rows > 0;
     }
 
     public function solicitarCambio($reunionId, $kamId, $motivo)
     {
-        $sql = "UPDATE reuniones_vinculacion SET cuenta_clave_id=?,estado='CAMBIO_SOLICITADO',cambio_motivo=?,
+        // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
+        $ahora = date('Y-m-d H:i:s');
+        $sql = 'UPDATE reuniones_vinculacion SET ' . SeguimientoTerritorialScope::reunionSupervisor('reuniones_vinculacion') . ',estado=\'CAMBIO_SOLICITADO\',cambio_motivo=?,
                     cambio_solicitado_at=NOW(),cambio_solicitado_por=?,notificado_analista_at=NULL
                 WHERE id=?
-                  AND cuenta_clave_id=?
-                  AND estado='SOLICITADA'
-                  AND fecha_propuesta > NOW()";
+                  AND ' . SeguimientoTerritorialScope::reunionSupervisor('reuniones_vinculacion') . '
+                  AND estado=\'SOLICITADA\'
+                  AND fecha_propuesta > ?';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('isiii', $kamId, $motivo, $kamId, $reunionId, $kamId);
+        $stmt->bind_param('isiiis', $kamId, $motivo, $kamId, $reunionId, $kamId, $ahora);
         $stmt->execute();
         return $stmt->affected_rows > 0;
     }
 
     public function marcarCorreo($reunionId, $analistaId, $asunto, $cuerpo)
     {
-        $sql = "UPDATE reuniones_vinculacion SET estado='CORREO_ENVIADO',correo_confirmacion_asunto=?,
+        // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
+        $ahora = date('Y-m-d H:i:s');
+        $sql = 'UPDATE reuniones_vinculacion SET estado=\'CORREO_ENVIADO\',correo_confirmacion_asunto=?,
                     correo_confirmacion_cuerpo=?,correo_confirmacion_at=NOW(),correo_confirmacion_por=?
                 WHERE id=?
-                  AND analista_id=?
-                  AND estado='CONFIRMADA'
-                  AND fecha_propuesta > NOW()";
+                  AND ' . SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion') . '
+                  AND estado=\'CONFIRMADA\'
+                  AND fecha_propuesta > ?';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ssiii', $asunto, $cuerpo, $analistaId, $reunionId, $analistaId);
+        $stmt->bind_param('ssiiis', $asunto, $cuerpo, $analistaId, $reunionId, $analistaId, $ahora);
         $stmt->execute();
         return $stmt->affected_rows > 0;
     }
@@ -438,10 +464,10 @@ class AgendaReunionRepository
 
     public function actualizarProximaAccion($seguimientoId, $analistaId, $fecha)
     {
-        $sql = "UPDATE seguimientos_vinculacion SET proxima_accion_at=?,ultima_interaccion_at=NOW()
-                WHERE id=? AND analista_id=?";
+        $sql = 'UPDATE seguimientos_vinculacion SET proxima_accion_at=?,ultima_interaccion_at=NOW()
+                WHERE id=? AND ' . '(' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' OR ' . SeguimientoTerritorialScope::supervisor('seguimientos_vinculacion') . ')' . '';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('sii', $fecha, $seguimientoId, $analistaId);
+        $stmt->bind_param('siii', $fecha, $seguimientoId, $analistaId, $analistaId);
         $stmt->execute();
     }
 
@@ -454,69 +480,73 @@ class AgendaReunionRepository
         $stmt->execute();
     }
 
-    public function pendientesKam($limite)
+    public function pendientesKam($limite, $usuarioId = null)
     {
-        $kamId = (int)($_SESSION['usuario_id'] ?? 0);
+        $kamId = (int)($usuarioId ?? ($_SESSION['usuario_id'] ?? 0));
         if ($kamId <= 0) {
             return [];
         }
 
-        $sql = "SELECT r.id,r.seguimiento_id,r.fecha_propuesta,s.nombre_entidad
+        $ahora = date('Y-m-d H:i:s');
+        $sql = 'SELECT r.id,r.seguimiento_id,r.fecha_propuesta,r.estado,r.updated_at,s.nombre_entidad
                 FROM reuniones_vinculacion r JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
-                WHERE r.estado='SOLICITADA'
-                  AND r.cuenta_clave_id=?
-                  AND r.fecha_propuesta > NOW()
-                ORDER BY r.updated_at DESC LIMIT ?";
+                WHERE r.estado=\'SOLICITADA\'
+                  AND ' . SeguimientoTerritorialScope::reunionSupervisor('r') . '
+                  AND r.fecha_propuesta > ?
+                ORDER BY r.updated_at DESC LIMIT ?';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ii', $kamId, $limite);
+        $stmt->bind_param('isi', $kamId, $ahora, $limite);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
     public function pendientesAnalista($analistaId, $limite)
     {
-        $sql = "SELECT
+        $ahora = date('Y-m-d H:i:s');
+        $sql = 'SELECT
                     r.id,
                     r.seguimiento_id,
                     r.fecha_propuesta,
                     r.duracion_minutos,
                     r.estado,
+                    r.confirmada_at,
+                    r.updated_at,
                     s.nombre_entidad
                 FROM reuniones_vinculacion r
                 JOIN seguimientos_vinculacion s ON s.id = r.seguimiento_id
-                WHERE r.analista_id = ?
+                WHERE ' . SeguimientoTerritorialScope::reunionAnalista('r') . '
                   AND s.activo = 1
-                  AND s.estado_seguimiento <> 'DESCARTADO'
+                  AND s.estado_seguimiento <> \'DESCARTADO\'
                   AND (
                     r.estado IN (
-                        'CAMBIO_SOLICITADO',
-                        'CONFIRMADA',
-                        'CANCELACION_SOLICITADA'
+                        \'CAMBIO_SOLICITADO\',
+                        \'CONFIRMADA\',
+                        \'CANCELACION_SOLICITADA\'
                     )
                     OR (
-                        r.estado = 'CORREO_ENVIADO'
-                        AND r.fecha_propuesta <= DATE_ADD(NOW(), INTERVAL 24 HOUR)
+                        r.estado = \'CORREO_ENVIADO\'
+                        AND r.fecha_propuesta <= DATE_ADD(?, INTERVAL 24 HOUR)
                     )
                   )
                 ORDER BY
                     CASE
-                        WHEN r.estado = 'CANCELACION_SOLICITADA'
+                        WHEN r.estado = \'CANCELACION_SOLICITADA\'
                         THEN 0
-                        WHEN r.estado = 'CORREO_ENVIADO'
+                        WHEN r.estado = \'CORREO_ENVIADO\'
                              AND DATE_ADD(
                                  r.fecha_propuesta,
                                  INTERVAL COALESCE(NULLIF(r.duracion_minutos, 0), 60) MINUTE
-                             ) <= NOW()
+                             ) <= ?
                         THEN 0
-                        WHEN r.estado = 'CONFIRMADA' AND r.fecha_propuesta <= NOW()
+                        WHEN r.estado = \'CONFIRMADA\' AND r.fecha_propuesta <= ?
                         THEN 1
                         ELSE 2
                     END ASC,
                     r.fecha_propuesta ASC,
                     r.updated_at DESC
-                LIMIT ?";
+                LIMIT ?';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ii', $analistaId, $limite);
+        $stmt->bind_param('isssi', $analistaId, $ahora, $ahora, $ahora, $limite);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }

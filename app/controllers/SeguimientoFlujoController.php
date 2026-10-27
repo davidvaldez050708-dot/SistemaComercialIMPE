@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 
 require_once __DIR__ . '/../services/SeguimientoFlujoService.php';
 require_once __DIR__ . '/../services/SeguimientoPostEnvioService.php';
@@ -111,7 +112,7 @@ class SeguimientoFlujoController
         $puedeOperar =
             $modoAcceso === 'analista' &&
             tienePermiso('seguimientos_vinculacion.operar_propios') &&
-            (int)($seguimiento['analista_id'] ?? 0) === $usuarioId;
+            SeguimientoTerritorialScope::puedeTrabajar($seguimiento, $usuarioId);
 
         $resultado['modo_acceso'] = $modoAcceso;
         $resultado['puede_operar'] = $puedeOperar;
@@ -638,7 +639,7 @@ class SeguimientoFlujoController
         $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
 
         if (
-            $rolId === 1 ||
+            esRolSupervisionNacional() ||
             strcasecmp($rolNombre, 'Marketing') === 0
         ) {
             return 'administrador';

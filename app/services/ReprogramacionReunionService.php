@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/AgendaReunionService.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
@@ -72,14 +73,14 @@ class ReprogramacionReunionService
                 'PENDIENTE_KAM'
             );
 
-            $sql = "UPDATE reuniones_vinculacion
-                    SET fecha_propuesta=?, duracion_minutos=?, modalidad=?, estado='SOLICITADA',
+            $sql = 'UPDATE reuniones_vinculacion
+                    SET fecha_propuesta=?, duracion_minutos=?, modalidad=?, estado=\'SOLICITADA\',
                         es_reprogramacion=1, reprogramacion_motivo=?, reprogramacion_solicitada_at=NOW(),
                         reprogramacion_solicitada_por=?, confirmada_at=NULL, confirmada_por=NULL,
                         correo_confirmacion_asunto=NULL, correo_confirmacion_cuerpo=NULL,
                         correo_confirmacion_at=NULL, correo_confirmacion_por=NULL,
                         notificado_kam_at=NULL, notificado_analista_at=NULL
-                    WHERE id=? AND analista_id=? AND estado IN ('CONFIRMADA','CORREO_ENVIADO')";
+                    WHERE id=? AND ' . SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion') . ' AND estado IN (\'CONFIRMADA\',\'CORREO_ENVIADO\')';
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('sissiii', $fecha, $duracion, $modalidad, $motivo, $usuarioId, $reunionId, $usuarioId);
             $stmt->execute();
@@ -219,11 +220,11 @@ class ReprogramacionReunionService
             }
 
             if ($esReprogramacion) {
-                $sql = "UPDATE reuniones_vinculacion
+                $sql = 'UPDATE reuniones_vinculacion
                         SET fecha_propuesta=?,
                             duracion_minutos=?,
                             modalidad=?,
-                            estado='SOLICITADA',
+                            estado=\'SOLICITADA\',
                             reprogramacion_solicitada_at=NOW(),
                             reprogramacion_solicitada_por=?,
                             confirmada_at=NULL,
@@ -235,9 +236,9 @@ class ReprogramacionReunionService
                             notificado_kam_at=NULL,
                             notificado_analista_at=NULL
                         WHERE id=?
-                          AND analista_id=?
-                          AND estado='SOLICITADA'
-                          AND fecha_propuesta <= NOW()";
+                          AND ' . SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion') . '
+                          AND estado=\'SOLICITADA\'
+                          AND fecha_propuesta <= NOW()';
 
                 $stmt = $this->connection->prepare($sql);
                 $stmt->bind_param(
@@ -250,17 +251,17 @@ class ReprogramacionReunionService
                     $usuarioId
                 );
             } else {
-                $sql = "UPDATE reuniones_vinculacion
+                $sql = 'UPDATE reuniones_vinculacion
                         SET fecha_propuesta=?,
                             duracion_minutos=?,
                             modalidad=?,
-                            estado='SOLICITADA',
+                            estado=\'SOLICITADA\',
                             notificado_kam_at=NULL,
                             notificado_analista_at=NULL
                         WHERE id=?
-                          AND analista_id=?
-                          AND estado='SOLICITADA'
-                          AND fecha_propuesta <= NOW()";
+                          AND ' . SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion') . '
+                          AND estado=\'SOLICITADA\'
+                          AND fecha_propuesta <= NOW()';
 
                 $stmt = $this->connection->prepare($sql);
                 $stmt->bind_param(
@@ -360,16 +361,16 @@ class ReprogramacionReunionService
                 'ESPERANDO_PROPUESTA'
             );
 
-            $sql = "UPDATE reuniones_vinculacion
-                    SET estado='CAMBIO_SOLICITADO', es_reprogramacion=1,
+            $sql = 'UPDATE reuniones_vinculacion
+                    SET estado=\'CAMBIO_SOLICITADO\', es_reprogramacion=1,
                         reprogramacion_motivo=?, reprogramacion_solicitada_at=NOW(),
                         reprogramacion_solicitada_por=?, cambio_motivo=?,
                         cambio_solicitado_at=NOW(), cambio_solicitado_por=?,
                         notificado_analista_at=NULL
                     WHERE id=?
-                      AND cuenta_clave_id=?
-                      AND estado IN ('CONFIRMADA','CORREO_ENVIADO')
-                      AND fecha_propuesta > NOW()";
+                      AND ' . SeguimientoTerritorialScope::reunionSupervisor('reuniones_vinculacion') . '
+                      AND estado IN (\'CONFIRMADA\',\'CORREO_ENVIADO\')
+                      AND fecha_propuesta > NOW()';
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('sisiii', $motivo, $usuarioId, $motivo, $usuarioId, $reunionId, $usuarioId);
             $stmt->execute();
@@ -378,7 +379,7 @@ class ReprogramacionReunionService
                 throw new RuntimeException('La reunión cambió de estado. Actualiza la agenda.');
             }
 
-            $this->regresarPasoOnce((int)$reunion['seguimiento_id'], (int)$reunion['analista_id'], null);
+            $this->regresarPasoOnce((int)$reunion['seguimiento_id'], (int)$usuarioId, null);
             $this->registrarInteraccion(
                 (int)$reunion['seguimiento_id'],
                 (int)$usuarioId,
@@ -556,7 +557,7 @@ class ReprogramacionReunionService
         $sql = "SELECT r.*
                 FROM reuniones_vinculacion r
                 WHERE r.id=?
-                  AND " . $campoResponsable . "=?
+                  AND " . ($tipoActor === 'ANALISTA' ? SeguimientoTerritorialScope::reunionAnalista('r') : SeguimientoTerritorialScope::reunionSupervisor('r')) . "
                 LIMIT 1";
 
         $stmt = $this->connection->prepare($sql);
@@ -578,11 +579,11 @@ class ReprogramacionReunionService
         $stmt->bind_param('i', $seguimientoId);
         $stmt->execute();
 
-        $sql = "UPDATE seguimientos_vinculacion
+        $sql = 'UPDATE seguimientos_vinculacion
                 SET proxima_accion_at=?, ultima_interaccion_at=NOW()
-                WHERE id=? AND analista_id=?";
+                WHERE id=? AND ' . '(' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' OR ' . SeguimientoTerritorialScope::supervisor('seguimientos_vinculacion') . ')';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('sii', $fecha, $seguimientoId, $analistaId);
+        $stmt->bind_param('siii', $fecha, $seguimientoId, $analistaId, $analistaId);
         $stmt->execute();
     }
 

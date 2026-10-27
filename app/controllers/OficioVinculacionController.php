@@ -41,7 +41,7 @@ class OficioVinculacionController
 
         $esAnalistaResponsable =
             tienePermiso('seguimientos_vinculacion.operar_propios') &&
-            (int)($estado['analista_id'] ?? 0) === $usuarioId;
+            SeguimientoTerritorialScope::puedeTrabajar($estado, (int)$usuarioId);
 
         $estado['es_analista_responsable'] = $esAnalistaResponsable;
         $estado['solo_consulta'] = !$esAnalistaResponsable;
@@ -127,7 +127,8 @@ class OficioVinculacionController
             }
 
             $documento = (new OficioDocxPdfService())->generarDocx(
-                (array)($vista['vista_previa'] ?? [])
+                (array)($vista['vista_previa'] ?? []),
+                true // Primera preparación de esta copia, no una descarga de un oficio preparado.
             );
             if (!($documento['ok'] ?? false)) {
                 $this->responderJson([
@@ -582,7 +583,7 @@ class OficioVinculacionController
     {
         $esAnalistaResponsable =
             tienePermiso('seguimientos_vinculacion.operar_propios') &&
-            (int)($estadoPdf['analista_id'] ?? 0) === (int)$usuarioId;
+            SeguimientoTerritorialScope::puedeTrabajar($estadoPdf, (int)$usuarioId);
         $tieneFolio = trim((string)($estadoPdf['folio'] ?? '')) !== '';
         $pdfGenerado = !empty($estadoPdf['pdf_generado']);
 
@@ -601,7 +602,7 @@ class OficioVinculacionController
 
     private function resolverModoAcceso()
     {
-        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+        if (esRolSupervisionNacional()) {
             return 'administrador';
         }
 

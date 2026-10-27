@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/CorreoSalidaInstitucionalService.php';
@@ -127,7 +128,6 @@ class CorreoFirmadoService
         }
 
         $envio = $this->sender->enviar([
-            'usuario_id' => $usuarioId,
             'remitente' => (string)($usuario['correo'] ?? ''),
             'nombre_remitente' => $this->nombreUsuario($usuario),
             'destinatario' => $destinatario,
@@ -267,7 +267,6 @@ class CorreoFirmadoService
         }
 
         $envio = $this->sender->enviar([
-            'usuario_id' => $usuarioId,
             'remitente' => (string)($usuario['correo'] ?? ''),
             'nombre_remitente' => $this->nombreUsuario($usuario),
             'destinatario' => $destinatario,
@@ -346,15 +345,15 @@ class CorreoFirmadoService
 
     private function obtenerSeguimiento($seguimientoId, $usuarioId)
     {
-        $sql = "SELECT
+        $sql = 'SELECT
                     s.id,
                     s.analista_id,
                     s.nombre_entidad,
                     s.contacto_nombre,
                     s.estado_seguimiento,
                     COALESCE(
-                        NULLIF(TRIM(s.correo_verificado), ''),
-                        NULLIF(TRIM(s.correo_fuente), '')
+                        NULLIF(TRIM(s.correo_verificado), \'\'),
+                        NULLIF(TRIM(s.correo_fuente), \'\')
                     ) AS destinatario_correo,
                     p.respuesta_at,
                     p.respuesta_tipo,
@@ -364,9 +363,9 @@ class CorreoFirmadoService
                 JOIN seguimientos_vinculacion_post_envio p
                     ON p.seguimiento_id = s.id
                 WHERE s.id = ?
-                    AND s.analista_id = ?
+                    AND ' . SeguimientoTerritorialScope::analista('s') . '
                     AND s.activo = 1
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $usuarioId);
         $stmt->execute();

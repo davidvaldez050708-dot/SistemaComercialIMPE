@@ -165,7 +165,7 @@ final class TelefoniaEnrutamientoService
         $destinos = $this->destinos($actorId, $rol, $estadoId, 'INSTITUCION');
         $permitidos = [];
         foreach ($destinos as $d) {
-            $permitidos[(int)$d['estado_id'] . ':' . (int)$d['usuario_id']] = $d;
+            $permitidos[(int)$d['estado_id']][] = $d;
         }
         if (!$permitidos) return [];
         $q = '%' . mb_substr(trim($busqueda), 0, 80, 'UTF-8') . '%';
@@ -188,9 +188,7 @@ final class TelefoniaEnrutamientoService
         $stmt->close();
         $matches = [];
         foreach ($rows as $row) {
-            $key = (int)$row['estado_id'] . ':' . (int)$row['analista_id'];
-            if (!isset($permitidos[$key])) continue;
-            $responsable = $permitidos[$key];
+            foreach ($permitidos[(int)$row['estado_id']] ?? [] as $responsable) {
             $matches[] = [
                 'seguimiento_id' => (int)$row['id'],
                 'nombre' => (string)$row['nombre_entidad'],
@@ -200,7 +198,8 @@ final class TelefoniaEnrutamientoService
                 'responsable' => (string)$responsable['nombre'],
                 'extension' => (string)$responsable['extension']
             ];
-            if (count($matches) >= 20) break;
+            if (count($matches) >= 20) break 2;
+            }
         }
         return $matches;
     }
@@ -228,8 +227,7 @@ final class TelefoniaEnrutamientoService
         $destinos = $this->destinos($actorId, $rol, 0, 'INSTITUCION');
         $responsables = [];
         foreach ($destinos as $destino) {
-            $responsables[(int)$destino['estado_id'] . ':' .
-                (int)$destino['usuario_id']] = $destino;
+            $responsables[(int)$destino['estado_id']][] = $destino;
         }
         if (!$responsables) return [];
 
@@ -261,10 +259,7 @@ final class TelefoniaEnrutamientoService
         if (count($registros) >= 60) return [];
         $encontrados = [];
         foreach ($registros as $registro) {
-            $key = (int)$registro['estado_id'] . ':' .
-                (int)$registro['analista_id'];
-            if (!isset($responsables[$key])) continue;
-            $responsable = $responsables[$key];
+            foreach ($responsables[(int)$registro['estado_id']] ?? [] as $responsable) {
             $encontrados[] = [
                 'seguimiento_id' => (int)$registro['id'],
                 'nombre' => (string)$registro['nombre_entidad'],
@@ -274,6 +269,7 @@ final class TelefoniaEnrutamientoService
                 'responsable' => (string)$responsable['nombre'],
                 'extension' => (string)$responsable['extension']
             ];
+            }
         }
         return $encontrados;
     }

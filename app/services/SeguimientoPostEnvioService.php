@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/SeguimientoHistorialImportadoService.php';
 
@@ -13,7 +14,7 @@ class SeguimientoPostEnvioService
         $this->connection = $database->connect();
     }
 
-    public function obtenerFlujoSiAplica($seguimientoId, $usuarioId)
+    public function obtenerFlujoSiAplica($seguimientoId, $usuarioId, $soloLectura = false)
     {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
@@ -22,7 +23,7 @@ class SeguimientoPostEnvioService
             return ['ok' => true, 'aplica' => false];
         }
 
-        $seguimiento = $this->obtenerSeguimiento($seguimientoId, $usuarioId);
+        $seguimiento = $this->obtenerSeguimiento($seguimientoId, $usuarioId, $soloLectura);
 
         if (!$seguimiento || (string)$seguimiento['estado_seguimiento'] === 'DESCARTADO') {
             return ['ok' => true, 'aplica' => false];
@@ -351,20 +352,20 @@ class SeguimientoPostEnvioService
 
         if ($tipo === 'NO_INTERESADO') {
             $motivo = mb_substr($texto, 0, 255);
-            $sqlSeg = "UPDATE seguimientos_vinculacion
-                    SET estado_seguimiento = 'DESCARTADO',
+            $sqlSeg = 'UPDATE seguimientos_vinculacion
+                    SET estado_seguimiento = \'DESCARTADO\',
                         motivo_descarte = ?,
                         ultima_interaccion_at = NOW(),
                         proxima_accion_at = NULL
-                    WHERE id = ? AND analista_id = ?";
+                    WHERE id = ? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion');
             $stmtSeg = $this->connection->prepare($sqlSeg);
             $stmtSeg->bind_param('sii', $motivo, $seguimientoId, $usuarioId);
             $stmtSeg->execute();
         } else {
-            $sqlSeg = "UPDATE seguimientos_vinculacion
+            $sqlSeg = 'UPDATE seguimientos_vinculacion
                     SET ultima_interaccion_at = NOW(),
                         proxima_accion_at = ?
-                    WHERE id = ? AND analista_id = ?";
+                    WHERE id = ? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion');
             $stmtSeg = $this->connection->prepare($sqlSeg);
             $stmtSeg->bind_param('sii', $contactarDespues, $seguimientoId, $usuarioId);
             $stmtSeg->execute();
@@ -494,12 +495,12 @@ class SeguimientoPostEnvioService
 
         if ($resultado === 'NO_INTERESADO') {
             $motivo = mb_substr($notas, 0, 255);
-            $sqlSeg = "UPDATE seguimientos_vinculacion
-                    SET estado_seguimiento = 'DESCARTADO',
+            $sqlSeg = 'UPDATE seguimientos_vinculacion
+                    SET estado_seguimiento = \'DESCARTADO\',
                         motivo_descarte = ?,
                         ultima_interaccion_at = NOW(),
                         proxima_accion_at = NULL
-                    WHERE id = ? AND analista_id = ?";
+                    WHERE id = ? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion');
             $stmtSeg = $this->connection->prepare($sqlSeg);
             $stmtSeg->bind_param('sii', $motivo, $seguimientoId, $usuarioId);
             $stmtSeg->execute();
@@ -576,7 +577,7 @@ class SeguimientoPostEnvioService
         $this->actualizarUltimaInteraccion($seguimientoId, $usuarioId, null);
     }
 
-    private function obtenerSeguimiento($seguimientoId, $usuarioId)
+    private function obtenerSeguimiento($seguimientoId, $usuarioId, $soloLectura = false)
     {
         $camposCoordinacion = $this->columnaDisponible(
             'coordinacion_reunion_habilitada_at'
@@ -724,11 +725,11 @@ class SeguimientoPostEnvioService
                     )
                 LEFT JOIN seguimientos_vinculacion_post_envio post
                     ON post.seguimiento_id = seguimientos.id
-                " . $joinAgenda . "
+                " . $joinAgenda . '
                 WHERE seguimientos.id = ?
-                    AND seguimientos.analista_id = ?
+                    AND ' . ($soloLectura ? SeguimientoTerritorialScope::lectura('seguimientos') : SeguimientoTerritorialScope::analista('seguimientos')) . '
                     AND seguimientos.activo = 1
-                LIMIT 1";
+                LIMIT 1';
 
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $usuarioId);
@@ -771,10 +772,10 @@ class SeguimientoPostEnvioService
 
     private function actualizarUltimaInteraccion($seguimientoId, $usuarioId, $proximaAccion)
     {
-        $sql = "UPDATE seguimientos_vinculacion
+        $sql = 'UPDATE seguimientos_vinculacion
                 SET ultima_interaccion_at = NOW(),
                     proxima_accion_at = ?
-                WHERE id = ? AND analista_id = ?";
+                WHERE id = ? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion');
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('sii', $proximaAccion, $seguimientoId, $usuarioId);
         $stmt->execute();
@@ -808,7 +809,7 @@ class SeguimientoPostEnvioService
                     ON analista.id = (
                         SELECT asignacion.id
                         FROM asignaciones_territorio asignacion
-                        WHERE asignacion.usuario_id = s.analista_id
+                        WHERE asignacion.usuario_id = ?
                           AND asignacion.estado_id = s.estado_id
                           AND asignacion.tipo_asignacion = 'ANALISTA_DATOS'
                           AND asignacion.activo = 1
@@ -843,7 +844,7 @@ class SeguimientoPostEnvioService
         $stmt = $this->connection->prepare($sql);
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
-        $stmt->bind_param('ii', $usuarioId, $seguimientoId);
+        $stmt->bind_param('iii', $usuarioId, $usuarioId, $seguimientoId);
 
         if (!$stmt->execute()) {
             throw new RuntimeException(

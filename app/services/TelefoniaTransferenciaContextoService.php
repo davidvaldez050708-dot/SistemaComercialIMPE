@@ -1,4 +1,6 @@
 <?php
+
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 /** Identificación de un expediente realizada por Recepción antes de transferir.
  * No equivale a identidad certificada ni confirma que la PBX completó el traspaso.
  */
@@ -85,9 +87,9 @@ final class TelefoniaTransferenciaContextoService
         // Ningún identificador del navegador puede seleccionar una cartera
         // ajena al destino validado por la autorización de transferencia.
         $stmt = $this->db->prepare(
-            "SELECT id FROM seguimientos_vinculacion
-             WHERE id = ? AND analista_id = ? AND estado_id = ?
-               AND activo = 1 AND estado_seguimiento <> 'DESCARTADO' LIMIT 1"
+            'SELECT id FROM seguimientos_vinculacion
+             WHERE id = ? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND estado_id = ?
+               AND activo = 1 AND estado_seguimiento <> \'DESCARTADO\' LIMIT 1'
         );
         $stmt->bind_param('iii', $seguimientoId, $destinoId, $estadoId);
         $stmt->execute();
@@ -154,9 +156,9 @@ final class TelefoniaTransferenciaContextoService
         $institucion = trim((string)($ruta['institucion_nombre'] ?? ''));
         if ($seguimientoId < 0 || $estadoId <= 0 || $institucion === '') return null;
         if ($seguimientoId > 0) {
-            $stmt = $this->db->prepare("SELECT nombre_entidad FROM seguimientos_vinculacion
-                WHERE id = ? AND analista_id = ? AND estado_id = ? AND activo = 1
-                 AND estado_seguimiento <> 'DESCARTADO' LIMIT 1");
+            $stmt = $this->db->prepare('SELECT nombre_entidad FROM seguimientos_vinculacion
+                WHERE id = ? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND estado_id = ? AND activo = 1
+                 AND estado_seguimiento <> \'DESCARTADO\' LIMIT 1');
             $stmt->bind_param('iii', $seguimientoId, $destinoId, $estadoId);
             $stmt->execute();$expediente = $stmt->get_result()->fetch_assoc();$stmt->close();
             if (!$expediente) return null;

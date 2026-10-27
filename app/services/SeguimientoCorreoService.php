@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class SeguimientoCorreoService
@@ -274,10 +275,10 @@ class SeguimientoCorreoService
                 );
             }
 
-            $sqlSeguimiento = "UPDATE seguimientos_vinculacion
+            $sqlSeguimiento = 'UPDATE seguimientos_vinculacion
                                SET ultima_interaccion_at = NOW(),
                                    proxima_accion_at = NULL
-                               WHERE id = ? AND analista_id = ? AND activo = 1";
+                               WHERE id = ? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND activo = 1';
             $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
             $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
             $stmtSeguimiento->execute();
@@ -614,12 +615,12 @@ class SeguimientoCorreoService
             return $this->error('No fue posible habilitar la coordinación de reunión.', 500);
         }
 
-        $sqlSeguimiento = "UPDATE seguimientos_vinculacion
+        $sqlSeguimiento = 'UPDATE seguimientos_vinculacion
                            SET ultima_interaccion_at = NOW(),
                                proxima_accion_at = NULL
                            WHERE id = ?
-                             AND analista_id = ?
-                             AND activo = 1";
+                             AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
+                             AND activo = 1';
         $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
         $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
         $stmtSeguimiento->execute();
@@ -631,7 +632,7 @@ class SeguimientoCorreoService
         ];
     }
 
-    public function ajustarFlujo($seguimientoId, $usuarioId, $flujo)
+    public function ajustarFlujo($seguimientoId, $usuarioId, $flujo, $soloLectura = false)
     {
         if (!is_array($flujo)) {
             return $flujo;
@@ -646,7 +647,7 @@ class SeguimientoCorreoService
             return $flujo;
         }
 
-        $seguimiento = $this->obtenerEstadoEtapa((int)$seguimientoId, (int)$usuarioId);
+        $seguimiento = $this->obtenerEstadoEtapa((int)$seguimientoId, (int)$usuarioId, $soloLectura);
         if (!$seguimiento || trim((string)($seguimiento['respuesta_at'] ?? '')) === '') {
             return $flujo;
         }
@@ -703,7 +704,7 @@ class SeguimientoCorreoService
             return $flujo;
         }
 
-        if ($this->existeReunionActiva((int)$seguimientoId, (int)$usuarioId)) {
+        if ($this->existeReunionActiva((int)$seguimientoId, (int)$usuarioId, $soloLectura)) {
             return $flujo;
         }
 
@@ -793,7 +794,7 @@ class SeguimientoCorreoService
             return null;
         }
 
-        $sql = "SELECT
+        $sql = 'SELECT
                     s.id,
                     s.analista_id,
                     s.nombre_entidad,
@@ -801,8 +802,8 @@ class SeguimientoCorreoService
                     s.contacto_cargo,
                     s.estado_seguimiento,
                     COALESCE(
-                        NULLIF(TRIM(s.correo_verificado), ''),
-                        NULLIF(TRIM(s.correo_fuente), '')
+                        NULLIF(TRIM(s.correo_verificado), \'\'),
+                        NULLIF(TRIM(s.correo_fuente), \'\')
                     ) AS destinatario_correo,
                     p.respuesta_at,
                     p.respuesta_tipo,
@@ -818,25 +819,25 @@ class SeguimientoCorreoService
                 JOIN seguimientos_vinculacion_post_envio p
                     ON p.seguimiento_id = s.id
                 JOIN usuarios u
-                    ON u.id = s.analista_id
+                    ON u.id = ?
                 WHERE s.id = ?
-                    AND s.analista_id = ?
+                    AND ' . SeguimientoTerritorialScope::analista('s') . '
                     AND s.activo = 1
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ii', $seguimientoId, $usuarioId);
+        $stmt->bind_param('iii', $usuarioId, $seguimientoId, $usuarioId);
         $stmt->execute();
 
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
-    private function obtenerEstadoEtapa($seguimientoId, $usuarioId)
+    private function obtenerEstadoEtapa($seguimientoId, $usuarioId, $soloLectura = false)
     {
         if (!$this->tablaExiste('seguimientos_vinculacion_post_envio')) {
             return null;
         }
 
-        $sql = "SELECT
+        $sql = 'SELECT
                     p.respuesta_at,
                     p.respuesta_tipo,
                     p.contactar_despues_at,
@@ -844,8 +845,8 @@ class SeguimientoCorreoService
                     p.reunion_agendada_at
                 FROM seguimientos_vinculacion s
                 JOIN seguimientos_vinculacion_post_envio p ON p.seguimiento_id = s.id
-                WHERE s.id = ? AND s.analista_id = ? AND s.activo = 1
-                LIMIT 1";
+                WHERE s.id = ? AND ' . ($soloLectura ? SeguimientoTerritorialScope::lectura('s') : SeguimientoTerritorialScope::analista('s')) . ' AND s.activo = 1
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $usuarioId);
         $stmt->execute();
@@ -869,19 +870,19 @@ class SeguimientoCorreoService
         return (int)($fila['total'] ?? 0);
     }
 
-    private function existeReunionActiva($seguimientoId, $analistaId)
+    private function existeReunionActiva($seguimientoId, $analistaId, $soloLectura = false)
     {
         if (!$this->tablaExiste('reuniones_vinculacion')) {
             return false;
         }
 
-        $sql = "SELECT id
+        $sql = 'SELECT id
                 FROM reuniones_vinculacion
                 WHERE seguimiento_id = ?
-                    AND analista_id = ?
-                    AND estado <> 'CANCELADA'
+                    AND ' . ($soloLectura ? SeguimientoTerritorialScope::reunionLectura('reuniones_vinculacion') : SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion')) . '
+                    AND estado <> \'CANCELADA\'
                 ORDER BY id DESC
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $analistaId);
         $stmt->execute();

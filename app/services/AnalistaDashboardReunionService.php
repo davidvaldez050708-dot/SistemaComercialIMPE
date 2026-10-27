@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class AnalistaDashboardReunionService
@@ -37,7 +38,7 @@ class AnalistaDashboardReunionService
 
     private function ajustarResumen(array $resumen, $usuarioId)
     {
-        $sql = "SELECT
+        $sql = 'SELECT
                     COUNT(DISTINCT CASE WHEN (
                         (
                             s.proxima_accion_at IS NOT NULL
@@ -47,8 +48,7 @@ class AnalistaDashboardReunionService
                                 SELECT 1
                                 FROM reuniones_vinculacion r_accion
                                 WHERE r_accion.seguimiento_id = s.id
-                                  AND r_accion.analista_id = s.analista_id
-                                  AND r_accion.estado NOT IN ('CANCELADA', 'REALIZADA')
+                                  AND r_accion.estado NOT IN (\'CANCELADA\', \'REALIZADA\')
                                   AND ABS(TIMESTAMPDIFF(SECOND, r_accion.fecha_propuesta, s.proxima_accion_at)) <= 60
                             )
                         )
@@ -56,15 +56,14 @@ class AnalistaDashboardReunionService
                             SELECT 1
                             FROM reuniones_vinculacion r_hoy
                             WHERE r_hoy.seguimiento_id = s.id
-                              AND r_hoy.analista_id = s.analista_id
                               AND DATE(r_hoy.fecha_propuesta) = CURDATE()
                               AND (
                                   (
-                                      r_hoy.estado IN ('SOLICITADA', 'CONFIRMADA')
+                                      r_hoy.estado IN (\'SOLICITADA\', \'CONFIRMADA\')
                                       AND r_hoy.fecha_propuesta >= NOW()
                                   )
                                   OR (
-                                      r_hoy.estado = 'CORREO_ENVIADO'
+                                      r_hoy.estado = \'CORREO_ENVIADO\'
                                       AND DATE_ADD(
                                           r_hoy.fecha_propuesta,
                                           INTERVAL COALESCE(NULLIF(r_hoy.duracion_minutos, 0), 60) MINUTE
@@ -81,8 +80,7 @@ class AnalistaDashboardReunionService
                                 SELECT 1
                                 FROM reuniones_vinculacion r_accion_vencida
                                 WHERE r_accion_vencida.seguimiento_id = s.id
-                                  AND r_accion_vencida.analista_id = s.analista_id
-                                  AND r_accion_vencida.estado NOT IN ('CANCELADA', 'REALIZADA')
+                                  AND r_accion_vencida.estado NOT IN (\'CANCELADA\', \'REALIZADA\')
                                   AND ABS(TIMESTAMPDIFF(SECOND, r_accion_vencida.fecha_propuesta, s.proxima_accion_at)) <= 60
                             )
                         )
@@ -90,14 +88,13 @@ class AnalistaDashboardReunionService
                             SELECT 1
                             FROM reuniones_vinculacion r_vencida
                             WHERE r_vencida.seguimiento_id = s.id
-                              AND r_vencida.analista_id = s.analista_id
                               AND (
                                   (
-                                      r_vencida.estado IN ('SOLICITADA', 'CONFIRMADA')
+                                      r_vencida.estado IN (\'SOLICITADA\', \'CONFIRMADA\')
                                       AND r_vencida.fecha_propuesta < NOW()
                                   )
                                   OR (
-                                      r_vencida.estado = 'CORREO_ENVIADO'
+                                      r_vencida.estado = \'CORREO_ENVIADO\'
                                       AND DATE_ADD(
                                           r_vencida.fecha_propuesta,
                                           INTERVAL COALESCE(NULLIF(r_vencida.duracion_minutos, 0), 60) MINUTE
@@ -107,22 +104,21 @@ class AnalistaDashboardReunionService
                         )
                     ) THEN s.id END) AS atrasados
                 FROM seguimientos_vinculacion s
-                WHERE s.analista_id = ?
+                WHERE ' . SeguimientoTerritorialScope::analista('s') . '
                   AND s.activo = 1
-                  AND s.estado_seguimiento <> 'DESCARTADO'";
+                  AND s.estado_seguimiento <> \'DESCARTADO\'';
         $fila = $this->obtenerFila($sql, 'i', [$usuarioId]);
 
-        $sqlReuniones = "SELECT COUNT(DISTINCT s.id) AS total
+        $sqlReuniones = 'SELECT COUNT(DISTINCT s.id) AS total
                          FROM reuniones_vinculacion r
                          INNER JOIN seguimientos_vinculacion s ON s.id = r.seguimiento_id
-                         WHERE r.analista_id = ?
-                           AND s.analista_id = ?
+                         WHERE ' . SeguimientoTerritorialScope::analista('s') . '
                            AND s.activo = 1
-                           AND s.estado_seguimiento <> 'DESCARTADO'
-                           AND r.estado IN ('SOLICITADA', 'CONFIRMADA', 'CORREO_ENVIADO')
+                           AND s.estado_seguimiento <> \'DESCARTADO\'
+                           AND r.estado IN (\'SOLICITADA\', \'CONFIRMADA\', \'CORREO_ENVIADO\')
                            AND r.fecha_propuesta >= NOW()
-                           AND r.fecha_propuesta < DATE_ADD(NOW(), INTERVAL 7 DAY)";
-        $filaReuniones = $this->obtenerFila($sqlReuniones, 'ii', [$usuarioId, $usuarioId]);
+                           AND r.fecha_propuesta < DATE_ADD(NOW(), INTERVAL 7 DAY)';
+        $filaReuniones = $this->obtenerFila($sqlReuniones, 'i', [$usuarioId]);
 
         $resumen['para_hoy'] = (int)($fila['para_hoy'] ?? 0);
         $resumen['atrasados'] = (int)($fila['atrasados'] ?? 0);
@@ -133,7 +129,7 @@ class AnalistaDashboardReunionService
 
     private function reunionesActivasPorSeguimiento($usuarioId)
     {
-        $sql = "SELECT
+        $sql = 'SELECT
                     r.id,
                     r.seguimiento_id,
                     r.fecha_propuesta,
@@ -145,13 +141,12 @@ class AnalistaDashboardReunionService
                     s.nombre_entidad
                 FROM reuniones_vinculacion r
                 INNER JOIN seguimientos_vinculacion s ON s.id = r.seguimiento_id
-                WHERE r.analista_id = ?
-                  AND s.analista_id = ?
+                WHERE ' . SeguimientoTerritorialScope::analista('s') . '
                   AND s.activo = 1
-                  AND s.estado_seguimiento <> 'DESCARTADO'
-                  AND r.estado NOT IN ('CANCELADA', 'REALIZADA')
-                ORDER BY r.seguimiento_id ASC, r.id DESC";
-        $filas = $this->obtenerFilas($sql, 'ii', [$usuarioId, $usuarioId]);
+                  AND s.estado_seguimiento <> \'DESCARTADO\'
+                  AND r.estado NOT IN (\'CANCELADA\', \'REALIZADA\')
+                ORDER BY r.seguimiento_id ASC, r.id DESC';
+        $filas = $this->obtenerFilas($sql, 'i', [$usuarioId]);
         $resultado = [];
 
         foreach ($filas as $fila) {
@@ -289,7 +284,7 @@ class AnalistaDashboardReunionService
                             s.proxima_accion_at AS fecha_evento,
                             'ACCION' AS tipo_evento
                         FROM seguimientos_vinculacion s
-                        WHERE s.analista_id = ?
+                        WHERE " . SeguimientoTerritorialScope::analista('s') . "
                           AND s.activo = 1
                           AND s.estado_seguimiento <> 'DESCARTADO'
                           AND s.proxima_accion_at >= NOW()

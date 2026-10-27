@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__.'/../../config/db_connection.php';
 require_once __DIR__.'/TelefoniaTransferenciaOperacionService.php';
 
@@ -29,6 +31,14 @@ final class TelefoniaDisponibilidadService
         $s->execute();$r=$s->get_result()->fetch_assoc();$s->close();return $r?:null;
     }
     private function change(int $id,array $values): void {
+        if (($values['devolucion'] ?? '') === 'PENDIENTE') {
+            $actual=$this->one('SELECT ruta_json FROM telefonia_disponibilidad WHERE id=?',[$id]);
+            $ruta=json_decode((string)($values['ruta_json'] ?? $actual['ruta_json'] ?? '{}'),true) ?: [];
+            if (($ruta['tipo'] ?? '') === 'PROSPECTO') {
+                $ruta['devolucion_solicitada_at']=gmdate('Y-m-d H:i:s');
+                $values['ruta_json']=json_encode($ruta,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+            }
+        }
         $sets=[];$args=[];foreach($values as $key=>$value){$sets[]="$key=?";$args[]=$value;}
         $args[]=gmdate('Y-m-d H:i:s');$args[]=$id;
         $s=$this->db->prepare('UPDATE telefonia_disponibilidad SET '.implode(',',$sets).',updated_at=? WHERE id=?');
@@ -72,7 +82,7 @@ final class TelefoniaDisponibilidadService
         if($dest['extension']!==$route['extension'] || (int)$route['responsable_id']===$user)throw new DomainException('El responsable ya no está disponible.');
         if(($route['tipo']??'')==='INSTITUCION'){
             if((int)($route['seguimiento_id']??0)>0){
-                $inst=$this->one("SELECT nombre_entidad FROM seguimientos_vinculacion WHERE id=? AND analista_id=? AND estado_id=? AND activo=1 AND estado_seguimiento<>'DESCARTADO'",[$route['seguimiento_id'],$route['responsable_id'],$route['estado_id']]);
+                $inst=$this->one('SELECT nombre_entidad FROM seguimientos_vinculacion WHERE id=? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND estado_id=? AND activo=1 AND estado_seguimiento<>\'DESCARTADO\'',[$route['seguimiento_id'],$route['responsable_id'],$route['estado_id']]);
                 if(!$inst)throw new DomainException('El expediente no corresponde al responsable seleccionado.');$route['institucion_nombre']=$inst['nombre_entidad'];
             }elseif(mb_strlen(trim((string)($route['institucion_nombre']??'')))<2 || mb_strlen((string)$route['institucion_nombre'])>150)throw new DomainException('Escribe el nombre de la institución o persona que llama.');
         }
@@ -86,7 +96,9 @@ final class TelefoniaDisponibilidadService
             // Serializar también solicitudes simultáneas de la misma cuenta.
             $this->one('SELECT usuario_id FROM telefonia_extensiones WHERE usuario_id=? FOR UPDATE',[$user]);
             $r=$this->one('SELECT * FROM telefonia_disponibilidad WHERE origen_usuario=? AND referencia=? FOR UPDATE',[$user,$route['referencia_llamada']]);
-            if($r && (in_array($r['estado'],['PENDIENTE','ACEPTADA','ENVIANDO','TRANSFERIDA'],true)||$r['devolucion']==='PENDIENTE'))throw new DomainException('Esta llamada ya tiene una solicitud. Revisa su estado antes de enviar otra.');
+            if($r && (in_array($r['estado'],['PENDIENTE','ACEPTADA','ENVIANDO','TRANSFERIDA'],true)||$r['devolucion']==='PENDIENTE')){
+                $this->db->commit();return $this->obtener($user,(int)$r['id']);
+            }
             $now=gmdate('Y-m-d H:i:s');$until=gmdate('Y-m-d H:i:s',time()+45);$json=json_encode($route,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
             if($r){$id=(int)$r['id'];$this->change($id,['destino_usuario'=>$route['responsable_id'],'destino_extension'=>$route['extension'],'numero'=>$call['numero'],'ruta_json'=>$json,'estado'=>'PENDIENTE','version'=>(int)$r['version']+1,'expires_at'=>$until,'created_at'=>$now]);}
             else {
@@ -117,6 +129,12 @@ final class TelefoniaDisponibilidadService
         $route=json_decode($r['ruta_json'],true)?:[];$r['responsable']=(string)($route['nombre_destino']??'Responsable');
         $r['institucion_nombre']=(string)($route['institucion_nombre']??'');$r['seguimiento_id']=(int)($route['seguimiento_id']??0);
         unset($r['ruta_json']);return $r;
+    }
+    public function delOrigen(int $user,string $ref): ?array {
+        if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$ref))return null;
+        $ext=$this->extension($user);
+        $r=$this->one('SELECT id FROM telefonia_disponibilidad WHERE origen_usuario=? AND origen_extension=? AND referencia=?',[$user,$ext['extension'],$ref]);
+        return $r?$this->obtener($user,(int)$r['id']):null;
     }
     public function entrante(int $user): ?array {
         $this->expire();$ext=$this->extension($user);

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
+require_once __DIR__ . '/../helpers/SupervisionRolePolicy.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/SeguimientoRutaOperativaService.php';
@@ -85,54 +87,11 @@ class SeguimientoExpedienteService
 
     private function puedeConsultar($seguimiento, $usuarioId, $rolId)
     {
-        $analistaId = (int)($seguimiento['analista_id'] ?? 0);
-        $estadoId = (int)($seguimiento['estado_id'] ?? 0);
-
-        /*
-         * El rol 1 representa el alcance institucional de lectura.
-         * AgendaReunionController reutiliza este alcance para Marketing
-         * únicamente al consultar el expediente completo.
-         */
-        if ((int)$rolId === 1) {
+        if (esRolSupervisionNacional((int)$rolId)) {
             return true;
         }
-
-        if ($analistaId === $usuarioId) {
-            return true;
-        }
-
-        if ($this->tablaDisponible('reuniones_vinculacion')) {
-            $sqlReunion = "SELECT id
-                           FROM reuniones_vinculacion
-                           WHERE seguimiento_id = ? AND cuenta_clave_id = ?
-                           LIMIT 1";
-            $stmtReunion = $this->connection->prepare($sqlReunion);
-            $seguimientoId = (int)($seguimiento['id'] ?? 0);
-            $stmtReunion->bind_param('ii', $seguimientoId, $usuarioId);
-            $stmtReunion->execute();
-
-            if ($stmtReunion->get_result()->fetch_assoc()) {
-                return true;
-            }
-        }
-
-        $sql = "SELECT cuenta.id
-                FROM asignaciones_territorio analista
-                JOIN asignaciones_territorio cuenta
-                  ON cuenta.id = analista.cuenta_clave_asignacion_id
-                 AND cuenta.tipo_asignacion = 'CUENTA_CLAVE'
-                 AND cuenta.activo = 1
-                WHERE analista.estado_id = ?
-                  AND analista.usuario_id = ?
-                  AND analista.tipo_asignacion = 'ANALISTA_DATOS'
-                  AND analista.activo = 1
-                  AND cuenta.usuario_id = ?
-                ORDER BY analista.id DESC
-                LIMIT 1";
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('iii', $estadoId, $analistaId, $usuarioId);
-        $stmt->execute();
-        return (bool)$stmt->get_result()->fetch_assoc();
+        return SeguimientoTerritorialScope::puedeTrabajar($seguimiento, $usuarioId, $this->connection)
+            || SeguimientoTerritorialScope::puedeSupervisar($seguimiento, $usuarioId, $this->connection);
     }
 
     private function resolverFlujo($seguimientoId, $analistaId)

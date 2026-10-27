@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../services/VerificacionInstitucionalService.php';
 
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
@@ -3126,7 +3127,7 @@ class SeguimientoVinculacionController
     private function puedeOperarSeguimiento($seguimiento, $usuarioId, $modo)
     {
         $esAnalistaResponsable = $modo === 'analista' &&
-            (int)($seguimiento['analista_id'] ?? 0) === (int)$usuarioId;
+            SeguimientoTerritorialScope::puedeTrabajar($seguimiento, (int)$usuarioId);
 
         return $esAnalistaResponsable &&
             tienePermiso('seguimientos_vinculacion.operar_propios');
@@ -3139,7 +3140,7 @@ class SeguimientoVinculacionController
         }
 
         return $modo === 'analista' &&
-            (int)($seguimiento['analista_id'] ?? 0) === (int)$usuarioId &&
+            SeguimientoTerritorialScope::puedeTrabajar($seguimiento, (int)$usuarioId) &&
             tienePermiso('seguimientos_vinculacion.operar_propios');
     }
 
@@ -3470,7 +3471,7 @@ class SeguimientoVinculacionController
          * Las acciones operativas continúan sujetas a sus permisos específicos.
          */
         if (
-            $rolId === 1 ||
+            esRolSupervisionNacional() ||
             strcasecmp($rolNombre, 'Marketing') === 0
         ) {
             return 'administrador';

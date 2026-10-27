@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class ReunionFechaGuardService
@@ -12,13 +13,13 @@ class ReunionFechaGuardService
         $this->connection = $database->connect();
     }
 
-    public function ajustarFlujo($seguimientoId, $analistaId, $flujo)
+    public function ajustarFlujo($seguimientoId, $analistaId, $flujo, $soloLectura = false)
     {
         if (!is_array($flujo) || (int)($flujo['paso_actual'] ?? 0) !== 12) {
             return $flujo;
         }
 
-        $reunion = $this->obtenerReunionAgenda($seguimientoId, $analistaId);
+        $reunion = $this->obtenerReunionAgenda($seguimientoId, $analistaId, $soloLectura);
         if (!$reunion) {
             return $flujo;
         }
@@ -146,18 +147,18 @@ class ReunionFechaGuardService
         $notas = trim((string)($datos['reunion_resultado_notas'] ?? ''));
 
         if ($this->resultadoAgendaDisponible()) {
-            $sql = "UPDATE reuniones_vinculacion
-                    SET estado = 'REALIZADA',
+            $sql = 'UPDATE reuniones_vinculacion
+                    SET estado = \'REALIZADA\',
                         reunion_resultado = ?,
                         reunion_resultado_notas = ?,
                         realizada_at = NOW(),
                         realizada_por = ?
                     WHERE seguimiento_id = ?
-                      AND analista_id = ?
-                      AND estado = 'CORREO_ENVIADO'
+                      AND ' . SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion') . '
+                      AND estado = \'CORREO_ENVIADO\'
                       AND fecha_propuesta <= NOW()
                     ORDER BY id DESC
-                    LIMIT 1";
+                    LIMIT 1';
 
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param(
@@ -173,27 +174,27 @@ class ReunionFechaGuardService
         }
 
         // Compatibilidad temporal si la migración nueva todavía no se aplicó.
-        $sql = "UPDATE reuniones_vinculacion
-                SET estado = 'REALIZADA'
+        $sql = 'UPDATE reuniones_vinculacion
+                SET estado = \'REALIZADA\'
                 WHERE seguimiento_id = ?
-                  AND analista_id = ?
-                  AND estado = 'CORREO_ENVIADO'
+                  AND ' . SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion') . '
+                  AND estado = \'CORREO_ENVIADO\'
                   AND fecha_propuesta <= NOW()
                 ORDER BY id DESC
-                LIMIT 1";
+                LIMIT 1';
 
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $analistaId);
         $stmt->execute();
     }
 
-    private function obtenerReunionAgenda($seguimientoId, $analistaId)
+    private function obtenerReunionAgenda($seguimientoId, $analistaId, $soloLectura = false)
     {
         if (!$this->tablaDisponible()) {
             return null;
         }
 
-        $sql = "SELECT
+        $sql = 'SELECT
                     id,
                     fecha_propuesta,
                     duracion_minutos,
@@ -223,10 +224,10 @@ class ReunionFechaGuardService
                     END AS disponible
                 FROM reuniones_vinculacion
                 WHERE seguimiento_id = ?
-                  AND analista_id = ?
-                  AND estado <> 'CANCELADA'
+                  AND ' . ($soloLectura ? SeguimientoTerritorialScope::reunionLectura('reuniones_vinculacion') : SeguimientoTerritorialScope::reunionAnalista('reuniones_vinculacion')) . '
+                  AND estado <> \'CANCELADA\'
                 ORDER BY id DESC
-                LIMIT 1";
+                LIMIT 1';
 
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $analistaId);

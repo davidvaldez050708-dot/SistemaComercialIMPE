@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class SeguimientoAtencionOperativaService
@@ -21,7 +22,7 @@ class SeguimientoAtencionOperativaService
         }
 
         return $this->obtener(
-            'seguimientos.analista_id = ?',
+            SeguimientoTerritorialScope::analista('seguimientos'),
             'i',
             [$usuarioId]
         );
@@ -100,7 +101,6 @@ class SeguimientoAtencionOperativaService
                     SELECT reunion.fecha_propuesta
                     FROM reuniones_vinculacion reunion
                     WHERE reunion.seguimiento_id = seguimientos.id
-                      AND reunion.analista_id = seguimientos.analista_id
                       AND reunion.estado NOT IN ('CANCELADA', 'REALIZADA')
                     ORDER BY reunion.id DESC
                     LIMIT 1
@@ -109,7 +109,6 @@ class SeguimientoAtencionOperativaService
                     SELECT reunion.estado
                     FROM reuniones_vinculacion reunion
                     WHERE reunion.seguimiento_id = seguimientos.id
-                      AND reunion.analista_id = seguimientos.analista_id
                       AND reunion.estado NOT IN ('CANCELADA', 'REALIZADA')
                     ORDER BY reunion.id DESC
                     LIMIT 1
@@ -118,7 +117,6 @@ class SeguimientoAtencionOperativaService
                     SELECT reunion.duracion_minutos
                     FROM reuniones_vinculacion reunion
                     WHERE reunion.seguimiento_id = seguimientos.id
-                      AND reunion.analista_id = seguimientos.analista_id
                       AND reunion.estado NOT IN ('CANCELADA', 'REALIZADA')
                     ORDER BY reunion.id DESC
                     LIMIT 1
@@ -127,7 +125,6 @@ class SeguimientoAtencionOperativaService
                     SELECT reunion.cambio_solicitado_at
                     FROM reuniones_vinculacion reunion
                     WHERE reunion.seguimiento_id = seguimientos.id
-                      AND reunion.analista_id = seguimientos.analista_id
                       AND reunion.estado NOT IN ('CANCELADA', 'REALIZADA')
                     ORDER BY reunion.id DESC
                     LIMIT 1

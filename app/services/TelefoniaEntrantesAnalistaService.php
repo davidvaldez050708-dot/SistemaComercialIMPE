@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 require_once __DIR__ . '/TelefoniaAnalistaWebrtcService.php';
@@ -160,6 +161,23 @@ class TelefoniaEntrantesAnalistaService
 
         $llamadas = [];
         $operaciones=(new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($usuarioId);
+        // Sólo SALIENTES de Recepción transferidas a esta extensión para
+        // instituciones acreditadas: no depender del END del Analista.
+        require_once __DIR__.'/TelefoniaGrabacionesTransferenciaInstitucionService.php';
+        $grabacionesInstitucion=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
+        $audiosSalidaRecepcion=[];
+        foreach($operaciones as $op){
+            $ref=(string)($op['referencia']??'');
+            if((int)($op['destino_usuario']??0)!==$usuarioId ||
+               (string)($op['destino_extension']??'')!==$extension ||
+               (empty($op['entregada_at']) &&
+                !(($op['estado']??'')==='ENTREGADA'&&!empty($op['destino_atendida']))) ||
+               !preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$ref))continue;
+            try{
+                $v=$grabacionesInstitucion->verificar($ref,$usuarioId,$extension);
+                if($v['ids'])$audiosSalidaRecepcion[$ref]=true;
+            }catch(DomainException $ignored){ /* sin transferencia propia acreditada */ }
+        }
         $consultas=[];
         foreach($operaciones as $operacion)if((int)$operacion['destino_usuario']===$usuarioId && $operacion['modo']==='CONSULTADA')$consultas[$operacion['referencia']]=$operacion;
         $clasificadorInterno = new TelefoniaAnalistaWebrtcService($this->db);
@@ -186,9 +204,11 @@ class TelefoniaEntrantesAnalistaService
                 'clasificacion' => (string)($registro['estado'] ?? 'PENDIENTE'),
                 'seguimiento_id' => (int)($registro['seguimiento_id'] ?? 0),
                 'interaccion_id' => (int)($registro['interaccion_id'] ?? 0),
-                'grabacion_pbx_reportada' => !empty($call['answer_at']) &&
-                    in_array((string)($call['estado'] ?? ''), ['ended','transferred'], true) &&
-                    $this->eventos->buscarCallIdGrabacion($id) !== '',
+                'grabacion_institucion_transferida' => !empty($audiosSalidaRecepcion[$id]),
+                'grabacion_pbx_reportada' => !empty($audiosSalidaRecepcion[$id]) ||
+                    (!empty($call['answer_at']) &&
+                     in_array((string)($call['estado'] ?? ''), ['ended','transferred'], true) &&
+                     $this->eventos->buscarCallIdGrabacion($id) !== ''),
             ];
         }
         // Dos fuentes distintas: PBX firmada y observación de WebRTC local.
@@ -353,13 +373,13 @@ class TelefoniaEntrantesAnalistaService
         if (mb_strlen($texto, 'UTF-8') < 2) return [];
         $like = '%' . $texto . '%';
         $stmt = $this->db->prepare(
-            "SELECT s.id, s.nombre_entidad, s.estado_id, e.nombre AS estado_nombre
+            'SELECT s.id, s.nombre_entidad, s.estado_id, e.nombre AS estado_nombre
              FROM seguimientos_vinculacion s
              INNER JOIN estados e ON e.id = s.estado_id
-             WHERE s.analista_id = ? AND s.activo = 1
+             WHERE ' . SeguimientoTerritorialScope::analista('s') . ' AND s.activo = 1
                AND (s.nombre_entidad LIKE ? OR s.telefono_fuente LIKE ?
                     OR s.telefono_verificado LIKE ?)
-             ORDER BY s.nombre_entidad LIMIT 20"
+             ORDER BY s.nombre_entidad LIMIT 20'
         );
         $stmt->bind_param('isss', $usuarioId, $like, $like, $like);
         $stmt->execute();
@@ -620,10 +640,10 @@ class TelefoniaEntrantesAnalistaService
             if ($decision === 'existente') {
                 $seguimientoId = (int)($datos['seguimiento_id'] ?? 0);
                 $stmt = $this->db->prepare(
-                    "SELECT id, telefono_fuente, telefono_verificado, correo_fuente,
+                    'SELECT id, telefono_fuente, telefono_verificado, correo_fuente,
                             correo_verificado, contacto_nombre, contacto_cargo, datos_verificados, estado_seguimiento
                      FROM seguimientos_vinculacion
-                     WHERE id = ? AND analista_id = ? AND activo = 1 FOR UPDATE"
+                     WHERE id = ? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND activo = 1 FOR UPDATE'
                 );
                 $stmt->bind_param('ii', $seguimientoId, $usuarioId);
                 $stmt->execute();
@@ -634,7 +654,6 @@ class TelefoniaEntrantesAnalistaService
                 }
             } else {
                 // Serializa altas simultáneas desde llamadas recibidas y devoluciones.
-                $lock=$this->db->prepare('SELECT id FROM usuarios WHERE id=? FOR UPDATE');$lock->bind_param('i',$usuarioId);$lock->execute();$lock->close();
                 $estadoId = (int)($datos['estado_id'] ?? 0);
                 $nombre = trim((string)($datos['nombre_entidad'] ?? ''));
                 $tipo = strtoupper(trim((string)($datos['tipo_entidad'] ?? 'INSTITUCION')));
@@ -646,11 +665,13 @@ class TelefoniaEntrantesAnalistaService
                 if (!in_array($estadoId, array_map('intval', $permitidos), true)) {
                     throw new DomainException('El estado no está asignado actualmente al Analista.');
                 }
+                $lock=$this->db->prepare('SELECT id FROM estados WHERE id=? FOR UPDATE');
+                $lock->bind_param('i',$estadoId);$lock->execute();$lock->close();
                 $stmt = $this->db->prepare(
-                    "SELECT id FROM seguimientos_vinculacion
-                     WHERE analista_id = ? AND estado_id = ?
+                    'SELECT id FROM seguimientos_vinculacion
+                     WHERE ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND estado_id = ?
                        AND LOWER(TRIM(nombre_entidad)) = LOWER(?)
-                       AND activo = 1 LIMIT 1"
+                       AND activo = 1 LIMIT 1'
                 );
                 $stmt->bind_param('iis', $usuarioId, $estadoId, $nombre);
                 $stmt->execute();

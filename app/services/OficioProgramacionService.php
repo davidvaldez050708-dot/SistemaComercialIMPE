@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class OficioProgramacionService
@@ -94,13 +95,13 @@ class OficioProgramacionService
             $stmtInteraccion->bind_param('iis', $seguimientoId, $usuarioId, $notas);
             $stmtInteraccion->execute();
 
-            $sqlActualizar = "UPDATE seguimientos_vinculacion
+            $sqlActualizar = 'UPDATE seguimientos_vinculacion
                     SET proxima_accion_at = ?,
                         ultima_interaccion_at = NOW()
                     WHERE id = ?
-                        AND analista_id = ?
+                        AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
                         AND activo = 1
-                        AND estado_seguimiento = 'OFICIO_PREPARADO'";
+                        AND estado_seguimiento = \'OFICIO_PREPARADO\'';
             $stmtActualizar = $this->connection->prepare($sqlActualizar);
             $stmtActualizar->bind_param('sii', $fecha, $seguimientoId, $usuarioId);
             $stmtActualizar->execute();
@@ -145,30 +146,18 @@ class OficioProgramacionService
             $stmt->bind_param('i', $seguimientoId);
         } elseif ($modoAcceso === 'supervisor') {
             $sql .= "
-                INNER JOIN asignaciones_territorio asignacion_analista
-                    ON asignacion_analista.usuario_id = seguimientos.analista_id
-                    AND asignacion_analista.estado_id = seguimientos.estado_id
-                    AND asignacion_analista.tipo_asignacion = 'ANALISTA_DATOS'
-                    AND asignacion_analista.activo = 1
-                    AND " . $this->condicionAsignacionVigente('asignacion_analista') . "
-                INNER JOIN asignaciones_territorio cuenta_clave
-                    ON cuenta_clave.id = asignacion_analista.cuenta_clave_asignacion_id
-                    AND cuenta_clave.estado_id = seguimientos.estado_id
-                    AND cuenta_clave.tipo_asignacion = 'CUENTA_CLAVE'
-                    AND cuenta_clave.activo = 1
-                    AND cuenta_clave.usuario_id = ?
-                    AND " . $this->condicionAsignacionVigente('cuenta_clave') . "
-                WHERE seguimientos.id = ?
+                WHERE " . SeguimientoTerritorialScope::supervisor('seguimientos') . "
+                    AND seguimientos.id = ?
                     AND seguimientos.activo = 1
                 LIMIT 1";
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('ii', $usuarioId, $seguimientoId);
         } else {
-            $sql .= "
+            $sql .= '
                 WHERE seguimientos.id = ?
-                    AND seguimientos.analista_id = ?
+                    AND ' . SeguimientoTerritorialScope::analista('seguimientos') . '
                     AND seguimientos.activo = 1
-                LIMIT 1";
+                LIMIT 1';
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param('ii', $seguimientoId, $usuarioId);
         }
@@ -180,12 +169,12 @@ class OficioProgramacionService
 
     private function obtenerSeguimientoAnalistaBloqueado($seguimientoId, $usuarioId)
     {
-        $sql = $this->consultaBase() . "
+        $sql = $this->consultaBase() . '
                 WHERE seguimientos.id = ?
-                    AND seguimientos.analista_id = ?
+                    AND ' . SeguimientoTerritorialScope::analista('seguimientos') . '
                     AND seguimientos.activo = 1
                 LIMIT 1
-                FOR UPDATE";
+                FOR UPDATE';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $usuarioId);
         $stmt->execute();

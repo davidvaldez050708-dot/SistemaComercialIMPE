@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 class SeguimientoFlujoService
@@ -12,12 +13,12 @@ class SeguimientoFlujoService
         $this->connection = $database->connect();
     }
 
-    public function obtenerEstado($seguimientoId, $usuarioId)
+    public function obtenerEstado($seguimientoId, $usuarioId, $soloLectura = false)
     {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
 
-        $sql = "SELECT
+        $sql = 'SELECT
                     seguimientos.id,
                     seguimientos.analista_id,
                     seguimientos.nombre_entidad,
@@ -44,20 +45,20 @@ class SeguimientoFlujoService
                         SELECT COUNT(*)
                         FROM interacciones_vinculacion interacciones
                         WHERE interacciones.seguimiento_id = seguimientos.id
-                            AND interacciones.canal = 'LLAMADA_IP'
-                            AND TRIM(COALESCE(interacciones.proveedor_externo, '')) <> ''
-                            AND TRIM(COALESCE(interacciones.id_externo, '')) <> ''
+                            AND interacciones.canal = \'LLAMADA_IP\'
+                            AND TRIM(COALESCE(interacciones.proveedor_externo, \'\')) <> \'\'
+                            AND TRIM(COALESCE(interacciones.id_externo, \'\')) <> \'\'
                             AND COALESCE(interacciones.duracion_segundos, 0) > 0
                     ) AS total_llamadas,
                     (
                         SELECT COUNT(*)
                         FROM interacciones_vinculacion interacciones
                         WHERE interacciones.seguimiento_id = seguimientos.id
-                            AND interacciones.canal = 'LLAMADA_IP'
-                            AND TRIM(COALESCE(interacciones.proveedor_externo, '')) <> ''
-                            AND TRIM(COALESCE(interacciones.id_externo, '')) <> ''
+                            AND interacciones.canal = \'LLAMADA_IP\'
+                            AND TRIM(COALESCE(interacciones.proveedor_externo, \'\')) <> \'\'
+                            AND TRIM(COALESCE(interacciones.id_externo, \'\')) <> \'\'
                             AND COALESCE(interacciones.duracion_segundos, 0) > 0
-                            AND interacciones.resultado IN ('CONTACTADO', 'SOLICITO_INFORMACION', 'MENSAJE_ENVIADO')
+                            AND interacciones.resultado IN (\'CONTACTADO\', \'SOLICITO_INFORMACION\', \'MENSAJE_ENVIADO\')
                     ) AS total_llamadas_validacion,
                     oficio.id AS oficio_id,
                     oficio.folio,
@@ -78,9 +79,9 @@ class SeguimientoFlujoService
                         LIMIT 1
                     )
                 WHERE seguimientos.id = ?
-                    AND seguimientos.analista_id = ?
+                    AND ' . ($soloLectura ? SeguimientoTerritorialScope::lectura('seguimientos') : SeguimientoTerritorialScope::analista('seguimientos')) . '
                     AND seguimientos.activo = 1
-                LIMIT 1";
+                LIMIT 1';
 
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $usuarioId);
