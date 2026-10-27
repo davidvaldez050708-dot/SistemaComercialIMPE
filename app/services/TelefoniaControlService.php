@@ -237,6 +237,11 @@ class TelefoniaControlService
                 strtoupper(trim((string)($row['resultado_ventas'] ?? ''))) :
                 ($proceso === 'Vinculación' ?
                     strtoupper(trim((string)($row['resultado_vinculacion'] ?? ''))) : '');
+            $resultadoGuardado = $resultado !== '';
+            $resultadoEstado = $resultadoGuardado ? 'Resultado registrado' :
+                ($proceso === 'Ventas' && $saliente && $finalizada && !$conectada
+                    ? 'No requiere resultado' :
+                ($finalizada && $conectada ? 'Sin resultado registrado' : 'Sin resultado confirmado'));
             $notas = (string)($row['notas_vinculacion'] ?? '');
             $contactoNoEfectivo = strpos($notas, '[SIN_CONTACTO_EFECTIVO]') !== false ||
                 strpos($notas, '[BUZON_VOZ]') !== false ||
@@ -268,6 +273,8 @@ class TelefoniaControlService
                 'estado_pbx' => $estadoPbx,
                 'efectiva' => $efectiva,
                 'resultado' => $resultado,
+                'resultado_guardado' => $resultadoGuardado,
+                'resultado_estado' => $resultadoEstado,
                 'segundos' => $segundos
             ];
         }
