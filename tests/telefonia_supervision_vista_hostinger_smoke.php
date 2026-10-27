@@ -28,10 +28,10 @@ try{
 A,
         <<<'A'
 : ($call['proceso'] === 'Ventas'
-                                         ? (string)($call['resultado_estado'] ?? 'Sin clasificar')
-                                         : ($call['proceso'] === 'Recepción'
-                                             ? ($call['conectada'] ? 'Atendida' : 'Sin respuesta confirmada')
-                                             : 'Sin clasificar')));
+                                        ? (string)($call['resultado_estado'] ?? 'Sin clasificar')
+                                        : ($call['proceso'] === 'Recepción'
+                                            ? ($call['conectada'] ? 'Atendida' : 'Sin respuesta confirmada')
+                                            : 'Sin clasificar')));
 A
     ],[
         <<<'A'
@@ -39,8 +39,8 @@ A
 A,
         <<<'A'
 : ($call['proceso'] === 'Recepción'
-                                         ? ($call['conectada'] ? 'Atendida' : 'Sin respuesta confirmada')
-                                         : 'Sin clasificar'));
+                                        ? ($call['conectada'] ? 'Atendida' : 'Sin respuesta confirmada')
+                                        : 'Sin clasificar'));
 A
     ],$new,$n);
     if($changedBack!==$old||$n!==2)
