@@ -417,7 +417,8 @@
             currentState?.active && currentState.direction === 'outgoing' &&
             isManualOutgoing(value)) {
             recentFinishedOutgoing = {
-                state: value, until: value.context?.type==='DEVOLUCION'?Infinity:Date.now()+8000,
+                state: value, until: cfg.salesResults || value.context?.type==='DEVOLUCION'
+                    ? Infinity : Date.now()+8000,
                 // No cambiar el flujo de Marketing, Analistas ni devoluciones.
                 commercialReady: !cfg.salesResults
             };
