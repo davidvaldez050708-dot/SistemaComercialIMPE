@@ -12,7 +12,7 @@ SITE="$HOME/domains/fundacionrededumex.org/public_html"
 WORK="$HOME/entregas-impe/telefonia-control-director-v2"
 BACKUPS="$HOME/respaldos-impe-telefonia-control-director-v2"
 RAW="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE"
-REV="30c86e65e6fd8cfd8319d9dc9fe4dfa3659942a0"
+REV="e54e67de39f06ceae3cb3aae184abb6154fd1f49"
 BASE="a90b6aded4a7f606eccc7a27749658e3fed9b9ed"
 
 CONT="app/controllers/TelefoniaController.php"
@@ -25,7 +25,7 @@ OLD=("$CONT" "$ROLE" "$VIEW" "$SIDE" "$JS")
 ALL=("$CONT" "$ROLE" "$VIEW" "$SIDE" "$JS" "$CSS")
 expected_new() {
   case "$1" in
-    "$CONT") echo abac072061f05d3453c021de082b7966a57eafda;;
+    "$CONT") echo 05e76413f1851167d8232f630260a5f6c949f5ae;;
     "$ROLE") echo 57ad0ecb0232a6d0fee35897a27a78cf1772855d;;
     "$VIEW") echo dac667303d0cdb6c78971d7ecae9aaca4179af22;;
     "$SIDE") echo 46ab90757847f40d83d4b64cb6f2e61cfe8d4306;;
