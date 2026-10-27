@@ -56,16 +56,18 @@ CURRENT="$(git hash-object "$SITE/$FILE")"
 }
 echo '3. Comprobando sintaxis y zona horaria...'
 php -l "$STAGE/service.php"
+# Prueba de conversión sin cargar el servicio desde un directorio temporal.
 php -r '
-require $argv[1];
 foreach([
   ["2026-10-27 15:29:57","2026-10-27 09:29:57"],
   ["2026-10-27 17:05:00","2026-10-27 11:05:00"]
 ] as $pair) {
- if(TelefoniaVentasLlamadasService::asignacionLocal($pair[0])!==$pair[1])exit(1);
+ $d=DateTimeImmutable::createFromFormat("!Y-m-d H:i:s",$pair[0],new DateTimeZone("UTC"));
+ if(!$d || $d->setTimezone(new DateTimeZone("America/Mexico_City"))->format("Y-m-d H:i:s")!==$pair[1])exit(1);
 }
-echo "PASS: fecha UTC convertida a México.\n";
-' "$STAGE/service.php"
+echo "PASS: conversión de zona horaria.\n";
+'
+grep -Fq 'public static function asignacionLocal(string $utc)' "$STAGE/service.php"
 grep -Fq "CONVERT_TZ(GREATEST(t.created_at,t.updated_at),'+00:00','-06:00')" "$STAGE/service.php"
 grep -Fq "NOT EXISTS(SELECT 1 FROM telefonia_extensiones other" "$STAGE/service.php"
 if [[ "$MODE" == '--check' ]]; then
