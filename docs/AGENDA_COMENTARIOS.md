@@ -31,9 +31,24 @@ existentes conservan su cadencia, prioridad y rotación. Los comentarios no
 envían correos ni notificaciones fuera del CRM.
 
 Sin hora, el comentario genera una novedad informativa: permanece en la campana
-hasta su lectura y no se convierte en una alarma periódica. Su toast se encola
-una vez por sesión del servidor, siguiendo el comportamiento existente de las
-novedades. No se inventa una hora de medianoche para estos comentarios.
+hasta su lectura y no se convierte en una alarma periódica. El navegador recupera
+su toast desde los comentarios pendientes aunque otra pestaña haya consumido
+`avisos` en la sesión PHP. Registra su presentación sólo cuando fue realmente
+visible y no repite esa novedad sin hora al recargar la misma pestaña. No se
+inventa una hora de medianoche para estos comentarios.
+
+Al abrir un comentario desde la campana o el toast se confirma su lectura con
+POST y CSRF antes de retirarlo y navegar. Un fallo conserva la notificación y
+permite reintentar. La lectura no elimina el comentario compartido ni atiende
+avisos de otros usuarios. Mostrar o cerrar el emergente no marca leído.
+
+El ajuste específico de estos dos puntos se publica con
+`tools/publicar_avisos_comentarios_hostinger.sh --check` y `--apply`: aplica
+fragmentos únicamente a `public/javascript/recordatorios.js`, admite la variante
+de Hostinger y conserva los tiempos de los demás avisos. No ejecuta SQL ni toca
+CSS, colores, selección de pestañas, controladores o permisos. Imprime el
+respaldo y el comando `--restore`. Se reconstruye con
+`python tools/generar_publicador_avisos_comentarios.py`.
 
 Con hora, también se informa de su creación. Al alcanzar la fecha y hora pasa a
 ser un recordatorio pendiente y participa en la rotación periódica hasta que el

@@ -29,6 +29,9 @@
         let temporizadorToastVencido = null;
         let proximoToastAt = 0;
         let toastActivo = null;
+        let totalAvisosActual = 0;
+        const comentariosAbiertos = new Set();
+        const lecturasComentariosPendientes = new Set();
         const memoriaSesion = new Map();
         let almacenamientoPersistente = true;
 
@@ -107,6 +110,16 @@
                 Number(item.recibido) <= Date.now()
             ).slice(0, 30);
         } catch (_) { /* Una cola antigua inválida no impide cargar la campana. */ }
+
+        const CLAVE_COMENTARIOS_MOSTRADOS = 'recordatorios:comentarios-mostrados-v1' + claveUsuario;
+        let comentariosMostrados = {};
+        try {
+            const guardados = JSON.parse(leerSesion(CLAVE_COMENTARIOS_MOSTRADOS) || '{}');
+            if (guardados && typeof guardados === 'object' && !Array.isArray(guardados)) {
+                comentariosMostrados = Object.fromEntries(Object.entries(guardados).filter(([key,at])=>
+                    /^agenda-comentario:\d+\|/.test(key) && Number.isFinite(Number(at)) && Number(at)>0 && Number(at)<=Date.now()).slice(0,500));
+            }
+        } catch (_) { /* Recuperar novedades aunque falte su memoria local. */ }
 
         const claveRecordatorio = function (recordatorio) {
             const comentarioAgendaId = Number(recordatorio.agenda_comentario_id || 0);
@@ -271,6 +284,10 @@
                 toast.dataset.telefoniaId = String(aviso.telefonia_id);
                 toast.setAttribute('href', url);
             }
+            if (Number(aviso.agenda_comentario_id) > 0) {
+                toast.dataset.agendaComentarioId = String(aviso.agenda_comentario_id);
+                toast.setAttribute('href', url);
+            }
             if (url !== '') {
                 toast.classList.add('is-clickable');
                 toast.setAttribute('tabindex', '0');
@@ -311,10 +328,23 @@
         const actualizarColaAvisos = function (avisos) {
             const pendientes = new Set(recordatoriosActuales.map(claveRecordatorio));
             colaAvisos = colaAvisos.filter(item => pendientes.has(item.clave));
-            for (const aviso of Array.isArray(avisos) ? avisos : []) {
+            const novedades = Array.isArray(avisos) ? avisos.slice() : [];
+            // La campana es la fuente de verdad. Otra pestaña pudo consumir
+            // "avisos" en la sesión PHP antes de que ésta guardara su cola.
+            for (const r of recordatoriosActuales) {
+                if (!(Number(r.agenda_comentario_id) > 0)) continue;
+                const clave = claveRecordatorio(r);
+                if (comentariosMostrados[clave] || colaAvisos.some(item => item.clave === clave) ||
+                    novedades.some(item => claveRecordatorio(item) === clave)) continue;
+                novedades.push({...r, tipo:'AGENDA_COMENTARIO',
+                    titulo:esRecordatorioVencidoRecurrente(r)?'Recordatorio de agenda':'Nuevo comentario en la agenda',
+                    mensaje:r.mensaje || [r.nombre_entidad,r.accion].filter(Boolean).join('. ')});
+            }
+            for (const aviso of novedades) {
                 const clave = claveRecordatorio(aviso);
                 // Un aviso sigue a su pendiente real; no revivir acciones resueltas.
                 if (!pendientes.has(clave)) continue;
+                if (Number(aviso.agenda_comentario_id)>0 && comentariosMostrados[clave] && !esRecordatorioVencidoRecurrente(aviso)) continue;
                 const existente = colaAvisos.findIndex(item => item.clave === clave);
                 const item = { clave, aviso, recibido: Date.now() };
                 if (existente >= 0) colaAvisos[existente] = item;
@@ -353,6 +383,12 @@
                     (etiquetaVisibleRecordatorio(recordatorio) ? ' · ' + etiquetaVisibleRecordatorio(recordatorio) : '')
             };
             if (!mostrarToast(aviso)) return false;
+            if (comentarioAgenda) {
+                comentariosMostrados[clave] = Date.now();
+                comentariosMostrados = Object.fromEntries(Object.entries(comentariosMostrados)
+                    .sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,500));
+                guardarSesion(CLAVE_COMENTARIOS_MOSTRADOS, JSON.stringify(comentariosMostrados));
+            }
             // Sólo un aviso realmente visible consume turno y posición de rotación.
             registrarToastVencido(recordatorio);
             colaAvisos = colaAvisos.filter(item => item.clave !== clave);
@@ -405,10 +441,12 @@
             recordatorios,
             totalBackend
         ) {
-            const lista = Array.isArray(recordatorios) ? recordatorios : [];
+            const recibidos = Array.isArray(recordatorios) ? recordatorios : [];
+            const lista = recibidos.filter(item => !comentariosAbiertos.has(claveRecordatorio(item)));
             const totalBadge = usarTotalBackend
-                ? Math.max(0, Number(totalBackend || 0))
+                ? Math.max(0, Number(totalBackend || 0) - (recibidos.length-lista.length))
                 : lista.length;
+            totalAvisosActual = totalBadge;
             recordatoriosActuales = lista;
 
             if (contenido) {
@@ -447,7 +485,7 @@
                     const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
                     const estadoVisual = estadoVisibleRecordatorio(recordatorio);
                     return (
-                        '<a class="topbar-reminder-item" '+(Number(recordatorio.telefonia_id)>0?'data-telefonia-id="'+Number(recordatorio.telefonia_id)+'" ':'')+'href="' + url + '">' +
+                        '<a class="topbar-reminder-item" '+(Number(recordatorio.agenda_comentario_id)>0?'data-agenda-comentario-id="'+Number(recordatorio.agenda_comentario_id)+'" ':'')+(Number(recordatorio.telefonia_id)>0?'data-telefonia-id="'+Number(recordatorio.telefonia_id)+'" ':'')+'href="' + url + '">' +
                             '<span class="topbar-reminder-icon">' +
                                 '<i class="bi ' + escapar(recordatorio.icono || 'bi-bell') + '"></i>' +
                             '</span>' +
@@ -493,6 +531,45 @@
                     '<span>Reintentando automáticamente. También puedes recargar la página.</span>' +
                 '</div>';
         };
+
+        // Sólo interceptar los enlaces de comentarios de esta campana/toast.
+        // La lectura se confirma antes de retirarlos o navegar a la agenda.
+        document.addEventListener('click', async function (event) {
+            const link = event.target.closest?.('[data-agenda-comentario-id]');
+            if (!link || (!root.contains(link) && !link.closest('[data-reminder-toast-container]')) ||
+                event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            const id = Number(link.dataset.agendaComentarioId);
+            const target = new URL(link.getAttribute('href') || '', window.location.href);
+            if (!Number.isSafeInteger(id) || id<=0 || target.origin!==window.location.origin ||
+                target.searchParams.get('controller')!=='agendaReunion' || Number(target.searchParams.get('comentario_id'))!==id) return;
+            event.preventDefault();event.stopImmediatePropagation();
+            if (lecturasComentariosPendientes.has(id)) return;
+            lecturasComentariosPendientes.add(id);link.setAttribute('aria-busy','true');
+            const previousError = link.querySelector('[data-agenda-comment-read-error]');
+            previousError?.remove();
+            try {
+                const url = new URL('index.php', window.location.href);
+                url.search = new URLSearchParams({controller:'agendaComentario',action:'leer'}).toString();
+                const response = await fetch(url,{method:'POST',credentials:'same-origin',cache:'no-store',
+                    headers:{'X-CSRF-Token':String(window.IMPE_CSRF_TOKEN || ''),'X-Requested-With':'XMLHttpRequest'},
+                    body:new URLSearchParams({id:String(id)})});
+                const result = await response.json();
+                if (!response.ok || !result.ok) throw new Error('Lectura no confirmada');
+                recordatoriosActuales.filter(r=>Number(r.agenda_comentario_id)===id).forEach(r=>comentariosAbiertos.add(claveRecordatorio(r)));
+                const matches = item => Number(item.aviso.agenda_comentario_id)===id;
+                colaAvisos = colaAvisos.filter(item=>!matches(item));
+                guardarSesion(CLAVE_COLA_AVISOS,JSON.stringify(colaAvisos));
+                renderizarRecordatorios(recordatoriosActuales,totalAvisosActual);
+                if (Number(toastActivo?.dataset.agendaComentarioId)===id) { toastActivo.remove();toastActivo=null; }
+                window.location.href = target.href;
+            } catch (_) {
+                const message = document.createElement('span');
+                message.dataset.agendaCommentReadError='';message.setAttribute('role','alert');
+                message.style.cssText='display:block;grid-column:1/-1;font-size:12px;color:#b91c1c';
+                message.textContent='No se pudo abrir el comentario. Intenta de nuevo o recarga la página.';
+                link.append(message);
+            } finally { lecturasComentariosPendientes.delete(id);link.removeAttribute('aria-busy'); }
+        }, true);
 
         window.addEventListener('impe:phone-notices-refresh',()=>void consultarRecordatorios());
         window.addEventListener('impe:agenda-comments-refresh',()=>void consultarRecordatorios());
