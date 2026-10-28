@@ -109,6 +109,8 @@
         } catch (_) { /* Una cola antigua inválida no impide cargar la campana. */ }
 
         const claveRecordatorio = function (recordatorio) {
+            const comentarioAgendaId = Number(recordatorio.agenda_comentario_id || 0);
+            if (comentarioAgendaId > 0) return 'agenda-comentario:' + comentarioAgendaId + '|' + String(recordatorio.agenda_comentario_evento || '');
             const telefonoId = Number(recordatorio.telefonia_id || 0);
             if (telefonoId > 0) return 'telefonia:' + telefonoId;
             const reunionId = Number(recordatorio.reunion_id || 0);
@@ -340,10 +342,11 @@
             const clave = claveRecordatorio(recordatorio);
             const enCola = colaAvisos.find(item => item.clave === clave);
             const telefono = Number(recordatorio.telefonia_id || 0) > 0;
+            const comentarioAgenda = Number(recordatorio.agenda_comentario_id || 0) > 0;
             const aviso = enCola?.aviso || {
                 ...recordatorio,
                 tipo: telefono ? 'TELEFONIA_PERDIDA' : 'VENCIDA',
-                titulo: telefono ? (recordatorio.titulo || recordatorio.nombre_entidad || 'Aviso telefónico') : 'Acción vencida',
+                titulo: comentarioAgenda ? 'Recordatorio de agenda' : (telefono ? (recordatorio.titulo || recordatorio.nombre_entidad || 'Aviso telefónico') : 'Acción vencida'),
                 mensaje: telefono ? (recordatorio.mensaje || recordatorio.accion || 'Revisa tu historial') :
                     String(recordatorio.accion || 'Revisar pendiente') + ' · ' +
                     String(recordatorio.nombre_entidad || 'Seguimiento') +
@@ -492,6 +495,7 @@
         };
 
         window.addEventListener('impe:phone-notices-refresh',()=>void consultarRecordatorios());
+        window.addEventListener('impe:agenda-comments-refresh',()=>void consultarRecordatorios());
         const consultarRecordatorios = async function () {
             if (consultaEnCurso || document.hidden) {
                 return;

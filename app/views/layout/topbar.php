@@ -14,6 +14,7 @@ $esMarketingTopbar =
     !$esAdministradorTopbar &&
     tienePermiso('convocatorias.gestionar');
 $mostrarCentroAvisos =
+    tienePermiso('reuniones.ver') ||
     $esAdministradorTopbar ||
     (
         tienePermiso('reuniones.ver') &&
