@@ -7,18 +7,19 @@ import sys
 sys.dont_write_bytecode=True
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
-from agenda_comentarios_compat import recordatorios_hostinger_telefono
+from agenda_comentarios_compat import recordatorios_hostinger_telefono,recordatorios_hostinger_actual
 BASH=os.environ.get('IMPE_TEST_BASH','C:/Program Files/Git/bin/bash.exe' if os.name=='nt' else 'bash')
 R='public/javascript/recordatorios.js';A='public/javascript/agenda_comentarios.js'
 def source(ref,file):return subprocess.check_output(['git','show',ref+':'+file],cwd=ROOT).decode('utf8')
 latest={f:(ROOT/f).read_text(encoding='utf8') for f in [R,A]}
-for r_ref,a_ref in [('7bca643d','9256fa4a'),('9256fa4a','0037e45f'),('5116b62c','9256fa4a')]:
- for phone in [False,True]:
-  for crlf in [False,True]:
+cases=[(r,a,p,c) for r,a in [('7bca643d','9256fa4a'),('9256fa4a','0037e45f'),('5116b62c','9256fa4a')] for p in [False,True] for c in [False,True]]
+cases.extend([('9256fa4a','0037e45f','actual',c) for c in [False,True]])
+for r_ref,a_ref,phone,crlf in cases:
    with tempfile.TemporaryDirectory(prefix='comentarios-integracion-',dir=ROOT/'tmp') as tmp:
     area=Path(tmp);live=area/'web';live.mkdir();(live/'index.php').write_text('<?php',encoding='utf8')
     before={R:source(r_ref,R),A:source(a_ref,A)};after=dict(latest)
-    if phone:before[R],after[R]=recordatorios_hostinger_telefono(before[R],after[R])
+    if phone=='actual':before[R],after[R]=recordatorios_hostinger_actual(before[R],after[R])
+    elif phone:before[R],after[R]=recordatorios_hostinger_telefono(before[R],after[R])
     for f in [R,A]:
      before[f]+='\n// conservar personalizacion\n';after[f]+='\n// conservar personalizacion\n'
      if crlf:before[f]=before[f].replace('\n','\r\n');after[f]=after[f].replace('\n','\r\n')
@@ -45,4 +46,4 @@ for r_ref,a_ref in [('7bca643d','9256fa4a'),('9256fa4a','0037e45f'),('5116b62c',
     (live/A).write_bytes(incompatible.encode())
     changed={f:(live/f).read_bytes() for f in before};run('--apply',ok=False)
     assert all((live/f).read_bytes()==changed[f] for f in changed)
-print('OK: 12 variantes; dos archivos, base/lectura/confirmación previa, formato telefónico, LF/CRLF, idempotencia, restore y CSS intacto. Sin SQL ni red.')
+print('OK: 14 variantes; dos archivos, formato publicado con 8s/ISO/reiteración intactos, LF/CRLF, idempotencia, restore y CSS intacto. Sin SQL ni red.')

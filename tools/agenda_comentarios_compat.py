@@ -89,3 +89,16 @@ def recordatorios_hostinger_telefono(base, integrated):
                             (Number(recordatorio.telefonia_id)>0 && Number(recordatorio.leida||0)===0 ? ' is-unread' : '') +
                             '" '+"""
     return replace_once(before,old,new),replace_once(after,old,new)
+
+def recordatorios_hostinger_actual(base, integrated):
+    """Variante comprobada por HTTP: duración, ISO y obligaciones leídas."""
+    before,after=recordatorios_hostinger_telefono(base,integrated)
+    changes=[
+        ('const DURACION_TOAST = 7000;', 'const DURACION_TOAST = 8000; // Paridad visual con la campana de Marketing.'),
+        ("const fechaTexto = String(recordatorio.fecha || '').trim();", "const fechaTexto = String(recordatorio.fecha_iso || recordatorio.fecha || '').trim();"),
+        ('if (claves.has(clave) || Number(r.leida || 0) !== 0) return false;',
+         'if (claves.has(clave) || (Number(r.leida || 0) !== 0 && r.reiterar_hasta_atender !== true)) return false;')
+    ]
+    for old,new in changes:
+        before=replace_once(before,old,new);after=replace_once(after,old,new)
+    return before,after

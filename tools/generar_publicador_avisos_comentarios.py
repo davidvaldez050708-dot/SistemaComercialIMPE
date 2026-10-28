@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 sys.dont_write_bytecode=True
-from agenda_comentarios_compat import recordatorios_hostinger, recordatorios_hostinger_telefono
+from agenda_comentarios_compat import recordatorios_hostinger, recordatorios_hostinger_telefono, recordatorios_hostinger_actual
 
 ROOT=Path(__file__).resolve().parents[1]
 CONFIRMACION='--confirmacion' in sys.argv
@@ -38,7 +38,8 @@ if INTEGRACION:
     previous=subprocess.check_output(['git','show','9256fa4a:'+FILE],cwd=ROOT).decode('utf8')
     previous_host,current_host=recordatorios_hostinger(previous,after)
     previous_phone,current_phone=recordatorios_hostinger_telefono(previous,after)
-    payload[0]['alternatives'].extend([fragments(previous,after),fragments(previous_host,current_host),fragments(previous_phone,current_phone)])
+    previous_actual,current_actual=recordatorios_hostinger_actual(previous,after)
+    payload[0]['alternatives'].extend([fragments(previous,after),fragments(previous_host,current_host),fragments(previous_phone,current_phone),fragments(previous_actual,current_actual)])
     editor='public/javascript/agenda_comentarios.js'
     editor_before=subprocess.check_output(['git','show','9256fa4a:'+editor],cwd=ROOT).decode('utf8')
     editor_after=(ROOT/editor).read_text(encoding='utf8')

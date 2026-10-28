@@ -35,8 +35,9 @@ el aviso compartido que genera ese mismo comentario.
 `recordatorios.js` detecta los comentarios en su consulta habitual de **60
 segundos** y muestra la novedad al detectarla, durante **2600 ms**. Si hay otro
 toast visible, espera a que termine. La campana permanece hasta abrirlo.
-Los avisos ajenos a comentarios conservan su turno de **8 minutos**, sus **7
-segundos**, prioridad y rotación. Los comentarios no envían correos ni
+Los avisos ajenos a comentarios conservan su turno de **8 minutos**, la duración
+que tengan instalada (incluida la variante de **8 segundos** publicada en
+Hostinger), prioridad y rotación. Los comentarios no envían correos ni
 notificaciones fuera del CRM.
 
 Sin hora, el comentario genera una novedad informativa: permanece en la campana
@@ -67,6 +68,10 @@ Admite también el formato telefónico de Hostinger que añade la clase
 `is-unread`; conserva esa clase y su condición de lectura. Las variantes previas
 sin integración de comentarios también se comprueban de forma explícita, sin
 reemplazar el archivo entero.
+La comprobación directa de los archivos publicados también encontró la duración
+de 8000 ms, la lectura de `fecha_iso` y `reiterar_hasta_atender`. El publicador
+conserva esos tres ajustes y se prueba con esa variante, sin restaurar los valores
+de la versión base.
 
 Con hora, también se informa de su creación. Al alcanzar la fecha y hora pasa a
 ser un recordatorio pendiente y participa en la rotación periódica hasta que el
