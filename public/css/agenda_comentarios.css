@@ -1,8 +1,8 @@
 .agenda-comments-panel[hidden],.agenda-comments-panel [hidden],.agenda-comments-status[hidden],.agenda-layout.has-comment-panel > .agenda-side-card[hidden] { display:none !important; }
 .agenda-page .agenda-day-number { position:relative; padding-right:28px; }
-.agenda-page .agenda-comment-add { position:absolute;right:0;top:0;width:18px;height:18px;border:0;border-radius:50%;background:#6b7280;color:white;display:grid;place-items:center;font-size:10px;padding:0;transition:background-color .15s ease; }
-.agenda-page .agenda-comment-add:not(:disabled):hover { background:#4b5563; }
-.agenda-page .agenda-comment-add:not(:disabled):active { background:#374151; }
+.agenda-page .agenda-comment-add { position:absolute;right:0;top:0;width:16px;height:16px;border:0;border-radius:50%;background:#d1d5db;color:#4b5563;display:grid;place-items:center;font-size:9px;padding:0;transition:background-color .15s ease,color .15s ease; }
+.agenda-page .agenda-comment-add:not(:disabled):hover { background:#b8bec7;color:#374151; }
+.agenda-page .agenda-comment-add:not(:disabled):active { background:#9ca3af;color:#1f2937; }
 .agenda-page .agenda-comment-add:disabled { opacity:.35;cursor:wait; }
 .agenda-page .agenda-comment-add:focus-visible { outline:3px solid #cbd5e1;outline-offset:2px; }
 .agenda-comments-panel button:focus-visible,.agenda-comments-panel summary:focus-visible { outline:3px solid #a7c8ff;outline-offset:2px; }
