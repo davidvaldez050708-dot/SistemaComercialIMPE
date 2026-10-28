@@ -39,6 +39,30 @@
             status.hidden = !message;
             status.classList.toggle('is-error', failure);
         };
+        function mostrarConfirmacionComentario(message) {
+            inform('');
+            let container = document.querySelector('.toast-container');
+            if (!container) {
+                container = node('div','toast-container position-fixed top-0 end-0 p-3');
+                document.body.append(container);
+            }
+            container.style.zIndex = '1095';
+            const toast = node('div','toast system-toast');
+            toast.dataset.agendaCommentConfirmation = '';
+            toast.setAttribute('role','status');
+            toast.setAttribute('aria-live','polite');
+            toast.setAttribute('aria-atomic','true');
+            const body = node('div','toast-body');
+            const icon = node('i','bi bi-check-circle');icon.setAttribute('aria-hidden','true');
+            body.append(icon,node('span','',message));toast.append(body);container.append(toast);
+            toast.addEventListener('hidden.bs.toast',()=>toast.remove(),{once:true});
+            if (window.bootstrap?.Toast) {
+                window.bootstrap.Toast.getOrCreateInstance(toast,{autohide:true,delay:2600}).show();
+            } else {
+                toast.classList.add('show');toast.style.display='block';
+                window.setTimeout(()=>toast.remove(),2600);
+            }
+        }
         function endpoint(action) {
             const url = new URL('index.php', window.location.href);
             url.search = new URLSearchParams({ controller:'agendaComentario', action }).toString();
@@ -252,7 +276,7 @@
             try {
                 await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value});
                 changeVersion++;
-                editor.close();inform('Comentario añadido a la agenda.');
+                editor.close();mostrarConfirmacionComentario('Comentario añadido a la agenda.');
                 await load();refreshBell();
             } catch(e) {error.textContent=e.message;error.hidden=false;}
             finally {saving=false;form.querySelector('[data-agenda-comment-save]').disabled=false;}

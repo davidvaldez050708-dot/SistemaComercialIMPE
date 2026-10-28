@@ -69,6 +69,11 @@ async function toastFixture(browser,kind){
   assert.equal(await p.locator('[name=sin_hora]').isChecked(),true);assert.equal(await p.locator('#agendaComentarioHora').isDisabled(),true);
   await p.locator('#agendaComentarioTexto').fill('Revisar avances del módulo de reportes.');await p.locator('[data-agenda-comment-save]').click();
   await editor.waitFor({state:'hidden'});await p.getByText('Revisar avances del módulo de reportes.',{exact:true}).waitFor();
+  const confirmation=p.locator('[data-agenda-comment-confirmation]');await confirmation.waitFor({state:'visible'});
+  assert.equal(await confirmation.textContent(),'Comentario añadido a la agenda.');
+  assert.equal(await confirmation.evaluate(el=>window.bootstrap.Toast.getInstance(el)._config.delay),2600,'Misma duración que Agenda');
+  assert.equal(await p.locator('[data-agenda-comments-status]').isVisible(),false,'No dejar franja de éxito');
+  await confirmation.waitFor({state:'detached',timeout:4500});
   assert.equal(f.posts.filter(x=>x.action==='crear').length,1);assert.equal(f.posts[0].body.hora,'');assert.equal(f.posts[0].csrf,'qa-csrf');
   assert.equal(await p.locator('[data-agenda-comments-count]').textContent(),'(2)');
   await p.locator('[data-agenda-comments-tab="reuniones"]').click();

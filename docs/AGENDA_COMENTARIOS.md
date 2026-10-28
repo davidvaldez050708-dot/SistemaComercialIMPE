@@ -25,6 +25,15 @@ JavaScript, CSS y almacenamiento propios.
 
 ## Campana y toast
 
+La confirmación inmediata **«Comentario añadido a la agenda»** utiliza
+`toast system-toast` y Bootstrap, con el mismo retraso de ocultación de
+**2600 ms** que las confirmaciones de `agenda_reunion.js`. Se retira el aviso
+verde fijo al guardar. Los errores y las demás acciones conservan su presentación.
+Este ajuste se publica por separado con
+`publicar_confirmacion_comentario_hostinger.sh --check` y `--apply`, que sólo
+modifica fragmentos de `agenda_comentarios.js` y guarda respaldo. Se reconstruye
+con `python tools/generar_publicador_avisos_comentarios.py --confirmacion`.
+
 Se reutiliza `recordatorios.js`: consultas cada **60 segundos**, un turno
 compartido de toast cada **8 minutos** y **7 segundos** de duración. Los avisos
 existentes conservan su cadencia, prioridad y rotación. Los comentarios no
