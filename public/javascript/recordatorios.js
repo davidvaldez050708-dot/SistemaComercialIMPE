@@ -38,6 +38,7 @@
         const INTERVALO_TOAST_VENCIDO = 8 * 60 * 1000;
         const REINTENTO_TOAST_OCULTO = 60 * 1000;
         const DURACION_TOAST = 7000;
+        const DURACION_COMENTARIO = 2600;
         const claveUsuario = ':usuario:' + Number(window.IMPE_CURRENT_USER_ID || 0);
         const CLAVE_ULTIMO_TOAST_VENCIDO_AT =
             'recordatorios:ultimo-toast-vencido-at' + claveUsuario;
@@ -263,7 +264,9 @@
             const contenedor = asegurarContenedorToasts();
             const toast = document.createElement('div');
             const vencida = String(aviso.tipo || '') === 'VENCIDA';
-            toast.className = 'toast reminder-toast show' + (vencida ? ' is-overdue' : '');
+            const comentario = Number(aviso.agenda_comentario_id) > 0;
+            toast.className = comentario ? 'toast system-toast agenda-comment-toast show' :
+                'toast reminder-toast show' + (vencida ? ' is-overdue' : '');
             toast.setAttribute('role', 'status');
             toast.setAttribute('aria-live', 'polite');
             toast.setAttribute('aria-atomic', 'true');
@@ -277,6 +280,11 @@
                     '</span>' +
                 '</div>';
 
+            if (comentario) {
+                toast.innerHTML = '<div class="toast-body"><i class="bi bi-chat-left-text" aria-hidden="true"></i>' +
+                    '<span><strong>' + escapar(aviso.titulo || 'Nuevo comentario en la agenda') + '</strong>' +
+                    '<span style="display:block">' + escapar(aviso.mensaje || aviso.accion || '') + '</span></span></div>';
+            }
             const url = urlRecordatorio(aviso);
             if (Number(aviso.telefonia_id) > 0) {
                 // El lector existente captura este atributo, registra lectura con CSRF
@@ -317,12 +325,34 @@
             window.setTimeout(function () {
                 toast.remove();
                 if (toastActivo === toast) toastActivo = null;
-            }, DURACION_TOAST);
+                mostrarSiguienteComentarioNuevo();
+            }, comentario ? DURACION_COMENTARIO : DURACION_TOAST);
             return true;
         };
 
         const esRecordatorioVencidoRecurrente = function (recordatorio) {
             return estadoVisibleRecordatorio(recordatorio) === 'vencida';
+        };
+
+        const registrarComentarioMostrado = function (item) {
+            const clave = claveRecordatorio(item);
+            comentariosMostrados[clave] = Date.now();
+            comentariosMostrados = Object.fromEntries(Object.entries(comentariosMostrados)
+                .sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,500));
+            guardarSesion(CLAVE_COMENTARIOS_MOSTRADOS, JSON.stringify(comentariosMostrados));
+            colaAvisos = colaAvisos.filter(queued=>queued.clave!==clave);
+            guardarSesion(CLAVE_COLA_AVISOS,JSON.stringify(colaAvisos));
+        };
+        const mostrarSiguienteComentarioNuevo = function () {
+            const item = recordatoriosActuales.find(r=>Number(r.agenda_comentario_id)>0 &&
+                !esRecordatorioVencidoRecurrente(r) && !comentariosMostrados[claveRecordatorio(r)] && Number(r.leida||0)===0);
+            if (!item) return false;
+            const queued = colaAvisos.find(q=>q.clave===claveRecordatorio(item));
+            const aviso = queued?.aviso || {...item,tipo:'AGENDA_COMENTARIO',titulo:'Nuevo comentario en la agenda',
+                mensaje:[item.nombre_entidad,item.accion].filter(Boolean).join('. ')};
+            if (!mostrarToast(aviso)) return false;
+            registrarComentarioMostrado(item);
+            return true;
         };
 
         const actualizarColaAvisos = function (avisos) {
@@ -384,10 +414,7 @@
             };
             if (!mostrarToast(aviso)) return false;
             if (comentarioAgenda) {
-                comentariosMostrados[clave] = Date.now();
-                comentariosMostrados = Object.fromEntries(Object.entries(comentariosMostrados)
-                    .sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,500));
-                guardarSesion(CLAVE_COMENTARIOS_MOSTRADOS, JSON.stringify(comentariosMostrados));
+                registrarComentarioMostrado(recordatorio);
             }
             // Sólo un aviso realmente visible consume turno y posición de rotación.
             registrarToastVencido(recordatorio);
@@ -561,6 +588,7 @@
                 guardarSesion(CLAVE_COLA_AVISOS,JSON.stringify(colaAvisos));
                 renderizarRecordatorios(recordatoriosActuales,totalAvisosActual);
                 if (Number(toastActivo?.dataset.agendaComentarioId)===id) { toastActivo.remove();toastActivo=null; }
+                target.searchParams.set('comentario_leido','1');
                 window.location.href = target.href;
             } catch (_) {
                 const message = document.createElement('span');
@@ -572,7 +600,11 @@
         }, true);
 
         window.addEventListener('impe:phone-notices-refresh',()=>void consultarRecordatorios());
-        window.addEventListener('impe:agenda-comments-refresh',()=>void consultarRecordatorios());
+        window.addEventListener('impe:agenda-comments-refresh',event=>{
+            const ownId=Number(event.detail?.comentarioPropioId);
+            if (Number.isSafeInteger(ownId) && ownId>0) registrarComentarioMostrado({agenda_comentario_id:ownId,agenda_comentario_evento:ownId+'|nuevo'});
+            void consultarRecordatorios();
+        });
         const consultarRecordatorios = async function () {
             if (consultaEnCurso || document.hidden) {
                 return;
@@ -610,6 +642,7 @@
                     temporizadorReintentoCarga = null;
                 }
                 actualizarColaAvisos(datos.avisos || []);
+                mostrarSiguienteComentarioNuevo();
                 programarSiguienteToastVencido();
                 if (datos.requiere_migracion) {
                     if (!avisoMigracionMostrado) {

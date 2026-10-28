@@ -89,7 +89,9 @@
             if (!response.ok || !result.ok) throw new Error(result.mensaje || 'No fue posible procesar el comentario.');
             return result;
         }
-        const refreshBell = () => window.dispatchEvent(new Event('impe:agenda-comments-refresh'));
+        const refreshBell = ownId => window.dispatchEvent(new CustomEvent('impe:agenda-comments-refresh',{
+            detail:{comentarioPropioId:Number(ownId)||0}
+        }));
         function chooseTab(value) {
             tab = value;
             panel.querySelectorAll('[data-agenda-comments-tab]').forEach(button => {
@@ -110,6 +112,7 @@
                 await request('leer', {id:c.id});
                 c.leido = true;
                 if (isDue(c)) { c.atendido = true;c.recordatorio_pendiente = false; }
+                mostrarConfirmacionComentario('Comentario marcado como leído.');
                 refreshBell();
                 renderPanel();
             } catch (e) { inform(e.message, true); }
@@ -207,7 +210,15 @@
                 if (!initialDone) {
                     initialDone=true;
                     const comment=comments.find(c=>c.id===initialId);
-                    if (comment) { tab='comentarios';openDay(comment.fecha);await read(comment); }
+                    if (comment) {
+                        const confirmedRead = comment.leido && !isDue(comment) && params.get('comentario_leido')==='1';
+                        tab='comentarios';openDay(comment.fecha);await read(comment);
+                        if (confirmedRead) mostrarConfirmacionComentario('Comentario marcado como leído.');
+                        if (params.has('comentario_leido')) {
+                            const clean=new URL(window.location.href);clean.searchParams.delete('comentario_leido');
+                            window.history.replaceState(window.history.state,'',clean);
+                        }
+                    }
                     else if (initialId>0) { openDay(initialDay);inform('El comentario ya no está disponible.',true); }
                 }
             } catch (e) {
@@ -274,10 +285,10 @@
             saving=true;error.hidden=true;
             form.querySelector('[data-agenda-comment-save]').disabled=true;
             try {
-                await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value});
+                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value});
                 changeVersion++;
                 editor.close();mostrarConfirmacionComentario('Comentario añadido a la agenda.');
-                await load();refreshBell();
+                refreshBell(saved.comentario?.id);await load();
             } catch(e) {error.textContent=e.message;error.hidden=false;}
             finally {saving=false;form.querySelector('[data-agenda-comment-save]').disabled=false;}
         });
@@ -291,7 +302,7 @@
             try {
                 await request('eliminar',{id:deleting.id});
                 changeVersion++;
-                removeDialog.close();inform('Comentario eliminado de la agenda.');await load();refreshBell();
+                removeDialog.close();mostrarConfirmacionComentario('Comentario eliminado de la agenda.');await load();refreshBell();
                 panel.querySelector('[data-agenda-comments-new]').focus();
             } catch(e){localError.textContent=e.message;localError.hidden=false;}
             finally {removing=false;removeDialog.querySelector('[data-agenda-comment-delete-confirm]').disabled=false;}

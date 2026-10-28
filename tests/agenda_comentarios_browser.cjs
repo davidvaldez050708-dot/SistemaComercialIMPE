@@ -15,6 +15,7 @@ const initial=[{id:1,fecha:'2026-10-14',hora:null,comentario:'Comentario de otra
 async function pageFixture(browser,options={}){
  const page=await browser.newPage({viewport:options.mobile?{width:390,height:844}:{width:1450,height:980},timezoneId:'America/Mexico_City'});
  let notes=structuredClone(initial),nextId=2;const posts=[],errors=[];let fail=false;
+ if(options.read)notes.forEach(c=>c.leido=true);
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',async route=>{
   const request=route.request(),u=new URL(request.url());
@@ -91,10 +92,16 @@ async function toastFixture(browser,kind){
   await p.locator('[data-agenda-comment-save]').click();await editor.waitFor({state:'hidden'});
   await p.getByText('<img src=x onerror="window.comentarioXss=1">',{exact:true}).waitFor();assert.equal(await p.evaluate(()=>window.comentarioXss),undefined);
   assert.equal(await p.locator('[data-comment-id="1"] .is-danger').count(),0,'No ofrecer borrado ajeno');
+  await p.locator('[data-comment-id="1"] summary').click();await p.getByRole('button',{name:'Marcar leído',exact:true}).first().click();
+  const readToast=p.locator('[data-agenda-comment-confirmation]').filter({hasText:'Comentario marcado como leído.'});
+  await readToast.waitFor({state:'visible'});assert.equal(await readToast.evaluate(el=>window.bootstrap.Toast.getInstance(el)._config.delay),2600);
   await p.locator('[data-comment-id="2"] summary').click();await p.locator('[data-comment-id="2"] .is-danger').click();
   await p.locator('[data-agenda-comment-delete-cancel]').click();assert.equal(f.posts.filter(x=>x.action==='eliminar').length,0);
   await p.locator('[data-comment-id="2"] .is-danger').click();await p.locator('[data-agenda-comment-delete-confirm]').click();
   await p.locator('[data-comment-id="2"]').waitFor({state:'detached'});assert.equal(f.posts.filter(x=>x.action==='eliminar').length,1);
+  const deleteToast=p.locator('[data-agenda-comment-confirmation]').filter({hasText:'Comentario eliminado de la agenda.'});
+  await deleteToast.waitFor({state:'visible'});assert.equal(await deleteToast.evaluate(el=>window.bootstrap.Toast.getInstance(el)._config.delay),2600);
+  assert.equal(await p.locator('[data-agenda-comments-status]').isVisible(),false);
   await p.locator('[data-agenda-comments-new]').click();await p.locator('#agendaComentarioTexto').fill('x'.repeat(251));await p.locator('[data-agenda-comment-save]').click();
   assert.match(await p.locator('[data-agenda-comment-error]').textContent(),/250/);assert.equal(f.posts.filter(x=>x.action==='crear').length,3);
   await p.keyboard.press('Escape');await editor.waitFor({state:'hidden'});
@@ -119,26 +126,40 @@ async function toastFixture(browser,kind){
    assert.equal(f.posts.filter(x=>x.action==='leer').length,1);assert.equal(f.posts[0].body.id,'1');assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
   {
+   const f=await pageFixture(browser,{read:true,query:'?dia=2026-10-14&comentario_id=1&comentario_leido=1'}),p=f.page;
+   const toast=p.locator('[data-agenda-comment-confirmation]');await toast.waitFor({state:'visible'});
+   assert.equal(await toast.textContent(),'Comentario marcado como leído.');
+   assert.equal(await toast.evaluate(el=>window.bootstrap.Toast.getInstance(el)._config.delay),2600);
+   assert.equal(f.posts.filter(x=>x.action==='leer').length,0,'No leer dos veces al llegar desde campana');
+   assert.equal(new URL(p.url()).searchParams.has('comentario_leido'),false);await p.close();cases++;
+  }
+  {
    const f=await pageFixture(browser,{unavailable:true}),p=f.page;assert.equal(await p.locator('[data-agenda-comment-add="2026-10-14"]').isDisabled(),true);
    await p.locator('.agenda-calendar-grid [data-agenda-meeting="31"]').click();await p.locator('#modalAgendaDetalle').waitFor({state:'visible'});
    assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
   for(const kind of ['normal','hora']){
    const f=await toastFixture(browser,kind),p=f.page;
-   for(let minute=0;minute<7;minute++){
-    const response=p.waitForResponse('**/pendientes');await p.clock.runFor(60000);await response;
-    await p.waitForFunction(n=>window.IMPE_REMINDER_STATUS().loadedCount>=n,minute+2);
+   if(kind==='hora') {await p.clock.runFor(8*60000-1);assert.equal(await p.locator('.agenda-comment-toast').count(),0);await p.clock.runFor(2);}
+   await p.locator('.agenda-comment-toast').waitFor({state:'visible'});
+   assert.match(await p.locator('.agenda-comment-toast').textContent(),kind==='hora'?/Recordatorio de agenda/:/Nuevo comentario en la agenda/);
+   const firstId=await p.locator('.agenda-comment-toast').getAttribute('data-agenda-comentario-id');
+   const visibleLeft=await p.evaluate(()=>{
+    const shown=JSON.parse(sessionStorage.getItem('recordatorios:comentarios-mostrados-v1:usuario:7')||'{}');
+    return Math.max(...Object.values(shown).map(Number))+2600-Date.now();
+   });
+   await p.clock.runFor(visibleLeft-1);assert.equal(await p.locator('.agenda-comment-toast').count(),1);await p.clock.runFor(1);
+   if(kind==='normal'){
+    await p.locator('.agenda-comment-toast').waitFor({state:'visible'});
+    assert.notEqual(await p.locator('.agenda-comment-toast').getAttribute('data-agenda-comentario-id'),firstId,'Rotar entre dos comentarios nuevos');
+    await p.clock.runFor(2600);await p.clock.runFor(8*60000);
+    assert.equal(await p.locator('.agenda-comment-toast').count(),0,'Sin hora no se vuelve recurrente');
+   }else{
+    const left=await p.evaluate(()=>Math.max(0,window.IMPE_REMINDER_STATUS().lastShownAt+8*60000-Date.now()));
+    await p.clock.runFor(left+1);await p.locator('.agenda-comment-toast').waitFor({state:'visible'});
    }
-   await p.clock.runFor(60000-1);assert.equal(await p.locator('.reminder-toast').count(),0);
-   await p.clock.runFor(1);await p.locator('.reminder-toast').waitFor({state:'visible'});
-   assert.match(await p.locator('.reminder-toast').textContent(),kind==='hora'?/Recordatorio de agenda/:/Nuevo comentario en la agenda/);
-   await p.clock.runFor(6999);assert.equal(await p.locator('.reminder-toast').count(),1);await p.clock.runFor(1);assert.equal(await p.locator('.reminder-toast').count(),0);
-   const left=await p.evaluate(()=>Math.max(0,window.IMPE_REMINDER_STATUS().lastShownAt+8*60000-Date.now()));
-   await p.clock.runFor(left+1);await p.locator('.reminder-toast').waitFor({state:'visible',timeout:3000});
-   if(kind==='hora')assert.match(await p.locator('.reminder-toast').textContent(),/Recordatorio de agenda/);
-   await p.clock.runFor(7000);if(kind==='normal'){await p.clock.runFor(8*60000);assert.equal(await p.locator('.reminder-toast').count(),0,'Sin hora no se vuelve recurrente');}
-   assert.ok(f.calls>=8);assert.deepEqual(f.errors,[]);await p.close();cases++;
+   assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
-  console.log('OK: '+cases+' escenarios: editor, hora opcional, autor/borrado, XSS, errores, reuniones, escritorio/móvil, enlace y cadencia real 60 s / 8 min / 7 s. Sin producción.');
+  console.log('OK: '+cases+' escenarios: agregado/leído/eliminado 2600 ms, aviso compartido al detectar, autor/borrado, errores, reuniones, móvil y recordatorios con hora. Sin producción.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

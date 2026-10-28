@@ -25,19 +25,19 @@ JavaScript, CSS y almacenamiento propios.
 
 ## Campana y toast
 
-La confirmación inmediata **«Comentario añadido a la agenda»** utiliza
+Las confirmaciones de **comentario añadido, marcado como leído y eliminado** utilizan
 `toast system-toast` y Bootstrap, con el mismo retraso de ocultación de
-**2600 ms** que las confirmaciones de `agenda_reunion.js`. Se retira el aviso
-verde fijo al guardar. Los errores y las demás acciones conservan su presentación.
-Este ajuste se publica por separado con
-`publicar_confirmacion_comentario_hostinger.sh --check` y `--apply`, que sólo
-modifica fragmentos de `agenda_comentarios.js` y guarda respaldo. Se reconstruye
-con `python tools/generar_publicador_avisos_comentarios.py --confirmacion`.
+**2600 ms** que las confirmaciones de `agenda_reunion.js`. Se retiran las franjas
+verdes de guardado y borrado. Los errores de los formularios conservan su
+presentación. El autor recibe una confirmación al guardar, sin duplicarla con
+el aviso compartido que genera ese mismo comentario.
 
-Se reutiliza `recordatorios.js`: consultas cada **60 segundos**, un turno
-compartido de toast cada **8 minutos** y **7 segundos** de duración. Los avisos
-existentes conservan su cadencia, prioridad y rotación. Los comentarios no
-envían correos ni notificaciones fuera del CRM.
+`recordatorios.js` detecta los comentarios en su consulta habitual de **60
+segundos** y muestra la novedad al detectarla, durante **2600 ms**. Si hay otro
+toast visible, espera a que termine. La campana permanece hasta abrirlo.
+Los avisos ajenos a comentarios conservan su turno de **8 minutos**, sus **7
+segundos**, prioridad y rotación. Los comentarios no envían correos ni
+notificaciones fuera del CRM.
 
 Sin hora, el comentario genera una novedad informativa: permanece en la campana
 hasta su lectura y no se convierte en una alarma periódica. El navegador recupera
@@ -50,14 +50,19 @@ Al abrir un comentario desde la campana o el toast se confirma su lectura con
 POST y CSRF antes de retirarlo y navegar. Un fallo conserva la notificación y
 permite reintentar. La lectura no elimina el comentario compartido ni atiende
 avisos de otros usuarios. Mostrar o cerrar el emergente no marca leído.
+Al llegar a Agenda desde una lectura confirmada se muestra el toast de leído,
+sin repetir el POST. La marca de confirmación se retira de la URL para no
+repetir el toast al recargar.
 
-El ajuste específico de estos dos puntos se publica con
-`tools/publicar_avisos_comentarios_hostinger.sh --check` y `--apply`: aplica
-fragmentos únicamente a `public/javascript/recordatorios.js`, admite la variante
-de Hostinger y conserva los tiempos de los demás avisos. No ejecuta SQL ni toca
-CSS, colores, selección de pestañas, controladores o permisos. Imprime el
-respaldo y el comando `--restore`. Se reconstruye con
-`python tools/generar_publicador_avisos_comentarios.py`.
+La integración actual de estos avisos se publica con
+`tools/publicar_integracion_toasts_comentarios_hostinger.sh --check` y `--apply`.
+Aplica fragmentos únicamente a `recordatorios.js` y `agenda_comentarios.js`,
+admite las entregas anteriores y conserva los tiempos de los demás avisos. No
+ejecuta SQL ni toca CSS, colores, selección de pestañas, controladores o
+permisos. Imprime el respaldo y el comando `--restore`. Se reconstruye con
+`python tools/generar_publicador_avisos_comentarios.py --integracion`.
+Los publicadores individuales de avisos y confirmación se conservan como
+entregas históricas.
 Admite también el formato telefónico de Hostinger que añade la clase
 `is-unread`; conserva esa clase y su condición de lectura. Las variantes previas
 sin integración de comentarios también se comprueban de forma explícita, sin
@@ -65,7 +70,7 @@ reemplazar el archivo entero.
 
 Con hora, también se informa de su creación. Al alcanzar la fecha y hora pasa a
 ser un recordatorio pendiente y participa en la rotación periódica hasta que el
-destinatario lo atienda. Leerlo antes de su hora no cancela el recordatorio
+destinatario lo atienda, con toast de **2600 ms**. Leerlo antes de su hora no cancela el recordatorio
 futuro. La lectura y atención son individuales: no afectan a otros usuarios.
 Los vencimientos se calculan con la hora de PHP de la agenda, sin depender de
 `NOW()` de MySQL ni de la zona del navegador.
