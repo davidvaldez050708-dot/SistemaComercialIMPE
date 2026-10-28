@@ -12,6 +12,7 @@ class TelefoniaResultadoVentasService
 {
     public const CONVERSACION = 'CONVERSACION_PERSONA';
     public const INFORMACION_WHATSAPP = 'INFORMACION_ENVIADA_WHATSAPP';
+    public const CANCELADA_ASESOR = 'CANCELADA_POR_ASESOR';
     public const BUZON = 'BUZON_VOZ';
     public const FUERA_HORARIO = 'FUERA_HORARIO';
     public const NUMERO_INEXISTENTE = 'NUMERO_INEXISTENTE';
@@ -32,6 +33,7 @@ class TelefoniaResultadoVentasService
             'COMUNICACION_INTERRUMPIDA' => 'Comunicación interrumpida',
             'OTRO' => 'Otro resultado con observaciones',
             self::BUZON => 'Buzón de voz',
+            self::CANCELADA_ASESOR => 'Cancelada por el asesor',
             self::FUERA_HORARIO => 'Fuera de horario de servicio',
             self::NUMERO_INEXISTENTE => 'Número inexistente o incorrecto',
             self::SIN_RESPUESTA => 'No contestó',
@@ -156,6 +158,7 @@ class TelefoniaResultadoVentasService
         $note=trim((string)($datos['observacion']??''));$name=trim((string)($datos['prospecto_nombre']??$call['nombre']));
         if(mb_strlen($note)>1000||mb_strlen($name)>150)throw new InvalidArgumentException('Limita el nombre a 150 caracteres y las observaciones a 1000.');
         if(in_array($resultado,['OTRO',self::OTRO_SIN_CONTACTO],true)&&mb_strlen($note)<3)throw new InvalidArgumentException('Describe lo que ocurrió en las observaciones.');
+        if($resultado===self::CANCELADA_ASESOR&&mb_strlen($note)<3)throw new InvalidArgumentException('Indica brevemente por qué cancelaste la llamada.');
         $contact=(int)($datos['contacto_id']??0);$contact=$contact>0?$contact:null;
         if($contact!==null){
             $s=$this->db->prepare('SELECT id FROM telefonia_contactos_personales WHERE id=? AND usuario_id=?');$s->bind_param('ii',$contact,$usuarioId);$s->execute();$own=$s->get_result()->fetch_assoc();$s->close();

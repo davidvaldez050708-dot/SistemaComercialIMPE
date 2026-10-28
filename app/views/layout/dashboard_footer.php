@@ -4,6 +4,34 @@
 
 </div>
 
+<?php
+// Preparar una sola vez el formulario normal en las pantallas del asesor.
+// Así, al colgar no hay navegación ni consulta previa a mostrar el modal.
+$prepararResultadoVentas = (int)($_SESSION['rol_id'] ?? 0) === 3
+    && empty($_SESSION['requiere_cambio_password'])
+    && function_exists('tienePermiso') && tienePermiso('telefonia.usar')
+    && (tienePermiso('telefonia.salientes') || tienePermiso('telefonia.recibir'))
+    && empty($ventasResultadoFormularioIncluido);
+if ($prepararResultadoVentas):
+    require_once __DIR__ . '/../../services/TelefoniaContactosService.php';
+    require_once __DIR__ . '/../../services/TelefoniaResultadoVentasService.php';
+    if (!is_array($contactosVentas ?? null)) {
+        try { $contactosVentas = (new TelefoniaContactosService())->listar((int)$_SESSION['usuario_id']); }
+        catch (Throwable $e) { $contactosVentas = []; error_log('[ventas_resultado_preparado] ' . get_class($e)); }
+    }
+?>
+<style><?php foreach (['seguimiento_llamadas_expediente.css','seguimiento_llamadas_player.css','seguimiento_entrantes_analista.css','telefonia_ventas_ui.css'] as $cssResultadoVentas) {
+    $rutaCssResultadoVentas = ROOT_PATH . '/public/css/' . $cssResultadoVentas;
+    if (is_readable($rutaCssResultadoVentas)) echo str_ireplace('</style', '<\\/style', (string)file_get_contents($rutaCssResultadoVentas));
+} ?></style>
+<div data-sales-history data-sales-global-result="1"
+ data-save-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=guardarResultadoVenta"
+ data-detail-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=detalleVenta"
+ data-csrf="<?= htmlspecialchars((string)($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+<?php require __DIR__ . '/../telefonia/resultado_ventas_form.php'; ?>
+</div>
+<?php endif; ?>
+
 <?php require_once __DIR__ . '/profile_photo_modal.php'; ?>
 
 <?php if (!empty($_SESSION['requiere_cambio_password'])): ?>

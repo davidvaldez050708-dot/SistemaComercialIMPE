@@ -7,7 +7,7 @@
     'use strict';
     const cfg = window.IMPE_PHONE_SHELL_CONFIG || {};
     const userId = Number(cfg.userId || 0);
-    if (!userId || !cfg.hostUrl) return;
+    if (!userId || !cfg.hostUrl || window.IMPE_TELEPHONY_SHELL) return;
 
     const crm = document.getElementById('impeCrmFrame');
     const call = document.querySelector('[data-shell-call]');
@@ -86,7 +86,7 @@
             state.direction !== 'incoming' ||
             pendingIncomingAction.callId !== incomingCallId(state)) return '';
         // Rehabilitar el modal cuando la PBX no confirmó el comando.
-        if (Date.now() - pendingIncomingAction.at > 4500) {
+        if (pendingIncomingAction.action !== 'decline' && Date.now() - pendingIncomingAction.at > 4500) {
             pendingIncomingAction = null;
             return '';
         }
@@ -159,8 +159,6 @@
     let mountFailed = '';
     let hostStartedAt = 0;
     let owned = false;
-    let autoRetries = 0;
-    let lastRecoveryAttempt = 0;
 
     // El host debe existir aunque los controles estén minimizados.
     // display:none sobre el contenedor apagaba algunos SDK.
@@ -171,36 +169,87 @@
         catch (e) { return null; }
     };
 
-    const claimLease = function () {
-        const lease = getLease();
-        if (lease && lease.id !== owner && Date.now() - Number(lease.time || 0) < 9000) {
-            return false;
-        }
+    // Web Locks no caduca porque una pestaña oculta tarde en ejecutar timers.
+    // El navegador libera el bloqueo al destruir el documento, incluso tras crash.
+    const locks = window.navigator?.locks;
+    let lockRequested = false, unlock = null;
+    const writeOwner = () => {
+        try {localStorage.setItem(leaseKey,JSON.stringify({id:owner,time:Date.now(),version:2}));}
+        catch (_) { /* Web Locks sigue siendo la autoridad entre pestañas. */ }
+    };
+    // Migración segura: un registro de la versión anterior permanece en Opera
+    // incluso tras cerrar todas las pestañas. Solo quitarlo si NO hay señales
+    // recientes del teléfono previo. Nunca tocar una llamada en curso reciente.
+    const legacyBusy = function (lease) {
+        const now = Date.now(), last = Number(lease?.time || 0);
+        if (last > 0 && last <= now + 10000 && now - last < 30000) return true;
         try {
-            localStorage.setItem(leaseKey, JSON.stringify({id:owner,time:Date.now()}));
-            const confirmed = getLease();
-            owned = confirmed?.id === owner;
-            return owned;
-        } catch (e) {
-            // Sin almacenamiento no existe coordinación segura entre pestañas.
-            mountFailed = 'Activa el almacenamiento del navegador para conectar el teléfono.';
+            const previous = JSON.parse(localStorage.getItem(stateKey) || 'null');
+            const at = Number(previous?.updatedAt || 0);
+            if (Number(previous?.userId) !== userId || at <= 0 || at > now + 10000) return false;
+            if (previous.active && now - at < 600000) return true;
+            if (previous.hostReady && now - at < 30000) return true;
+        } catch (_) { /* El registro de estado no es una sesión válida. */ }
+        return false;
+    };
+    const reconcileLegacy = function () {
+        try {
+            const raw = localStorage.getItem(leaseKey);
+            if (!raw) return true;
+            let lease;
+            try { lease = JSON.parse(raw); } catch (_) { lease = null; }
+            if (!lease || lease.version === 2 || lease.id === owner) return true;
+            if (legacyBusy(lease)) {
+                mountFailed = 'Comprobando una conexión anterior del teléfono. Si ya se cerró, se activará automáticamente.';
+                return false;
+            }
+            // No quitar el dueño si otro documento lo actualizó mientras se comprobaba.
+            if (localStorage.getItem(leaseKey) !== raw) return false;
+            localStorage.removeItem(leaseKey);
+            return true;
+        } catch (_) {
+            mountFailed = 'No se pudo verificar la conexión anterior. Comprueba el almacenamiento del navegador.';
             return false;
         }
     };
-
+    const claimLease = function () {
+        if (owned) return true;
+        if (locks?.request) {
+            if (!lockRequested) {
+                lockRequested = true;
+                void locks.request(leaseKey, async () => {
+                    // Proteger una pestaña antigua viva, pero recuperar el navegador
+                    // automáticamente cuando dejó un registro abandonado.
+                    if (!reconcileLegacy()) { render(); return; }
+                    owned = true; writeOwner();
+                    const holding = new Promise(resolve => {unlock = resolve;});
+                    try {ensureHost(); render(); await holding;}
+                    finally {owned = false; unlock = null;}
+                }).catch(() => {
+                    mountFailed = 'No se pudo reservar el teléfono en este navegador.';
+                    render();
+                }).finally(() => {lockRequested = false;});
+            }
+            return false;
+        }
+        // Sin Web Locks, tampoco bloquear por un registro antiguo abandonado.
+        if (!reconcileLegacy()) return false;
+        const lease = getLease();
+        if (lease && lease.id !== owner) return false;
+        try {writeOwner(); owned = getLease()?.id === owner; return owned;}
+        catch (_) {return false;}
+    };
     const releaseLease = function () {
         if (!owned) return;
-        try {
-            if (getLease()?.id === owner) localStorage.removeItem(leaseKey);
-        } catch (e) { /* navegador restringido */ }
-        owned = false;
+        try {if (getLease()?.id === owner) localStorage.removeItem(leaseKey);} catch (_) {}
+        owned = false; unlock?.();
     };
 
     const ensureHost = function () {
         if (hostFrame) return hostFrame.contentWindow;
         if (!claimLease()) {
             mountFailed = mountFailed ||
-                'La extensión ya se está usando en otra pestaña del CRM. Ciérrala antes de conectar aquí.';
+                'El teléfono está reservado en otra pestaña o esperando su conexión.';
             render();
             throw new Error(mountFailed);
         }
@@ -264,12 +313,18 @@
     window.IMPE_TELEPHONY_SHELL = Object.freeze({
         userId: userId,
         ensureHost: ensureHost,
-        isPhoneReady: function () {return Boolean(freshState(currentState) && currentState.hostReady);},
-        getCallState: function () {return freshState(currentState) ? JSON.parse(JSON.stringify(currentState)) : null;},
+        ownsPhoneHost: child => owned && hostFrame?.contentWindow === child,
+        isPhoneReady: function () {return phoneReady();},
+        getCallState: function () {
+            // Ventas consulta la misma llamada finalizada que renderiza el
+            // panel, aunque el host ya publique ready o expire su heartbeat.
+            const finished=cfg.salesResults&&!currentState?.active?(recentFinishedIncoming?.state||recentFinishedOutgoing?.state):null;
+            return finished||freshState(currentState)?JSON.parse(JSON.stringify(finished||currentState)):null;
+        },
         getReceptionStatus: function () {
             const assigned = cfg.canReceive === true && /^[0-9]{3,6}$/.test(String(cfg.extension || ''));
             return {assigned, extension:assigned ? String(cfg.extension) : '',
-                ready:assigned && Boolean(freshState(currentState) && currentState.hostReady)};
+                ready:assigned && phoneReady()};
         },
         unlockAudio: function () {
             try {hostFrame?.contentWindow.IMPE_CALL_AUDIO?.unlock();}catch(_){}
@@ -286,7 +341,7 @@
             return true;
         },
         getPhoneStatus: function () {
-            return {active:Boolean(currentState?.active),ready:Boolean(freshState(currentState)&&currentState.hostReady),
+            return {active:Boolean(currentState?.active),ready:phoneReady(),
                 pending:Boolean(callbackPending||window.IMPE_CALL_CLOSURE?.hasPending()||window.IMPE_SALES_ATTENTION?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
         },
         openPendingResult: function () {
@@ -316,13 +371,60 @@
             resultFormOwner = null;
             render();
         },
-        dismissFinishedCall: function (ref) {
+        confirmFinishedCall: function (ref, facts, token) {
+            if(!facts?.finalizada||facts.pbx_call_id!==ref||String(facts.extension)!==String(cfg.extension))return false;
+            const receipts=Array.isArray(facts.sdk_tokens)?facts.sdk_tokens:[];
+            const match=s=>Boolean(s&&([s.pbxCallId,s.context?.transferReference,s.finalMetadata?.pbx_call_id].includes(ref)||(token&&s.callToken===token&&[s.callToken,s.context?.sdkSessionId].some(x=>receipts.includes(x)))));
+            if(currentState?.active){
+                // La evidencia PBX propia puede llegar mientras el host sigue
+                // en recuperación SIP. Cerrar únicamente el mismo token y
+                // referencia; nunca una conversación más reciente.
+                const ownRef=String(currentState.pbxCallId||currentState.context?.transferReference||'');
+                if(currentState.direction!=='incoming'||
+                    !['recovering','finishing'].includes(currentState.phase)||
+                    ownRef!==ref||!match(currentState))return false;
+                sendPhoneCommand('PBX_CONFIRMED_INCOMING_END',{
+                    callToken:currentState.callToken,ref,
+                    connected:Boolean(facts.conectada),seconds:facts.segundos
+                });
+                return true;
+            }
+            const update=s=>({...s,pbxCallId:ref,status:'completed',duration:Number.isInteger(facts.segundos)?facts.segundos:s.duration,
+                context:{...s.context,pbxEnded:true,pbxAnswered:Boolean(facts.conectada)},message:'Guardada en Mis llamadas.'});
+            let changed=false;
+            if(recentFinishedIncoming&&match(recentFinishedIncoming.state)){recentFinishedIncoming.state=update(recentFinishedIncoming.state);changed=true;}
+            if(recentFinishedOutgoing&&match(recentFinishedOutgoing.state)){recentFinishedOutgoing.state=update(recentFinishedOutgoing.state);changed=true;}
+            if(match(currentState)){currentState=update(currentState);changed=true;}
+            if(changed)render();return changed;
+        },
+        dismissFinishedCall: function (ref, token) {
             if(currentState?.active)return false;
-            const matches=s=>[s?.pbxCallId,s?.callToken,s?.finalMetadata?.pbx_call_id,s?.context?.transferReference].includes(ref);
-            if(recentFinishedIncoming&&matches(recentFinishedIncoming.state))recentFinishedIncoming=null;
-            if(recentFinishedOutgoing&&matches(recentFinishedOutgoing.state))recentFinishedOutgoing=null;
-            if(resultFormOwner?.refs.includes(ref))resultFormOwner=null;
-            render();return true;
+            // La transferencia saliente puede terminar con SDK ID en el
+            // resumen local aunque el resultado autorizado ya tenga PBX ID.
+            // Aceptar sólo la referencia exacta o el token SDK de ese
+            // resultado; el número telefónico no participa en la identidad.
+            const same=s=>Boolean(s&&(
+                [s.pbxCallId,s.finalMetadata?.pbx_call_id,s.context?.transferReference].includes(ref)||
+                (token&&s.callToken===token)
+            ));
+            let dismissed=false;
+            if(recentFinishedIncoming&&same(recentFinishedIncoming.state)){
+                recentFinishedIncoming=null;dismissed=true;
+            }
+            if(recentFinishedOutgoing&&same(recentFinishedOutgoing.state)){
+                recentFinishedOutgoing=null;dismissed=true;
+            }
+            if(resultFormOwner?.refs.includes(ref)){
+                resultFormOwner=null;dismissed=true;
+            }
+            // Limpiar también el resumen retenido por el host del MISMO
+            // diálogo; el host verifica el token y nunca cuelga el audio.
+            if(same(currentState)&&['incoming-finished','finished'].includes(currentState.phase)){
+                sendPhoneCommand('CLEAR_FINISHED',{callToken:currentState.callToken});
+                dismissed=true;
+            }
+            if(dismissed)render();
+            return dismissed;
         },
         isResultFormOpen: function () { return Boolean(resultFormOwner) && !currentState?.active; },
 
@@ -338,6 +440,10 @@
                 ,transferRequest:currentState.context?.transferRequest||null
             };
         },
+        bindTransferCandidate: function (id) {
+            if(!currentState?.active||currentState.direction!=='incoming'||!Number.isInteger(id)||id<=0)return false;
+            sendPhoneCommand('TRANSFER_CANDIDATE',{id,callToken:currentState.callToken});return true;
+        },
         requestAuthorizedTransfer: function (token) {
             if (!cfg.canTransfer || !this.getActiveCall() ||
                 !/^[a-f0-9]{48}$/.test(String(token || ''))) return false;
@@ -351,11 +457,21 @@
         isEmbedded: true
     });
 
+    const phoneReady = function () {
+        try {
+            const live = hostFrame?.contentWindow?.IMPE_PHONE_CONNECTION?.snapshot();
+            if (live) return live.sdkReady === true && live.verified === true;
+        } catch (_) {}
+        // Un estado antiguo o un SDK sin evidencia de transporte nunca es verde.
+        return Boolean(currentState?.hostReady && currentState?.connection?.verified &&
+            Date.now() - Number(currentState.updatedAt) < 15000);
+    };
     const freshState = function (value) {
         return value && Number(value.userId) === userId &&
             Number(value.updatedAt) >= openedAt - 1000 &&
             Number(value.updatedAt) <= Date.now() + 1000 &&
-            Date.now() - Number(value.updatedAt) < 5500;
+            (value === currentState && value.active ||
+                Date.now() - Number(value.updatedAt) < 90000);
     };
 
     const updateState = function (value) {
@@ -397,17 +513,18 @@
         } else if (value.active) {
             recentFinishedIncoming = null;
         }
-        // El resumen de Marketing sólo nace de una transición REAL de
-        // llamada activa a finalizada en esta sesión, nunca de storage.
+        // El resumen sólo nace de una transición REAL en esta sesión.
+        // Ventas lo conserva para registrar el resultado; Marketing mantiene
+        // su vista temporal. Que el host vuelva a ready no resuelve la atención.
         if (!value.active && value.phase === 'finished' &&
             currentState?.active && currentState.direction === 'outgoing' &&
             isManualOutgoing(value)) {
             recentFinishedOutgoing = {
-                state: value, until: value.context?.type==='DEVOLUCION'?Infinity:Date.now()+8000
+                state: value, until: cfg.salesResults||value.context?.type==='DEVOLUCION'?Infinity:Date.now()+8000
             };
             incomingCompact = false;
-        } else if (value.active || value.phase === 'ready' ||
-            value.phase === 'idle') {
+        } else if (value.active || (!cfg.salesResults &&
+            (value.phase === 'ready' || value.phase === 'idle'))) {
             recentFinishedOutgoing = null;
         }
         if (outgoingAttempt && !value.active && value.phase === 'error') {
@@ -439,6 +556,9 @@
         lastHeartbeat = Date.now();
         dialer?.sync(value);
         render();
+        // La interfaz de resultado reacciona en este mismo cambio de estado,
+        // sin esperar al intervalo del observador ni modificar el host WebRTC.
+        window.dispatchEvent(new Event('impe:phone-state-change'));
     };
     document.addEventListener('pointerdown',function(){
         try {hostFrame?.contentWindow.IMPE_CALL_AUDIO?.unlock();}catch(_){}
@@ -547,19 +667,17 @@
             pendingIncomingAction = null;
             actionNotice = '';
         }
-        const ready = Boolean(state && state.hostReady &&
-            ['ready','prepared','incoming-ringing','answering','in-progress',
-                'finishing','dialing','ringing','finished','incoming-finished'].includes(String(state.phase)));
-        const failed = mountFailed || (state?.phase === 'error' ?
+        const ready = phoneReady();
+        const failed = mountFailed || (state?.connection?.microphone && state.connection.microphone !== 'granted' ? state.message : '') || (state?.phase === 'error' ?
             (state.message || 'No fue posible conectar con Zadarma.') : '');
-        const otherOwner = !owned && getLease() &&
-            Date.now() - Number(getLease()?.time || 0) < 9000;
+        const otherOwner = !owned && Boolean(getLease());
 
         status.hidden = ready && !failed;
-        statusText.textContent = failed ||
-            (otherOwner ? 'El teléfono está conectado desde otra pestaña.' :
+        statusText.textContent = failed || state?.message ||
+            (otherOwner ? 'El teléfono está reservado en otra pestaña del CRM.' :
             hostFrame ? 'Preparando recepción de la extensión ' + cfg.extension + '…' :
             'El teléfono está disponible para conectarse.');
+        retry.textContent = 'Activar teléfono';
         retry.hidden = ready && !failed || Boolean(otherOwner && !owned);
         if (!hostFrame && !cfg.autoReception) status.hidden = true;
 
@@ -595,6 +713,8 @@
         if (incomingPanel) {
             incomingPanel.hidden = !customVisible;
             incomingPanel.classList.toggle('is-compact', incomingCompact);
+            if(!ongoing&&(incomingFinishedPreview||finishedPreview))incomingPanel.setAttribute('data-phone-finished','');
+            else incomingPanel.removeAttribute('data-phone-finished');
         }
         const workingCall = Boolean(ongoing && state.phase === 'in-progress' &&
             !finishingIncoming && !pendingOutgoingHangup);
@@ -618,7 +738,7 @@
         }
         if (transferToggle) {
             transferToggle.hidden = !workingCall || !cfg.canTransfer || consultation;
-            transferToggle.disabled = !workingCall || transferPending;
+            transferToggle.disabled = !workingCall || Boolean(ongoing && transferRequest && !['DEVUELTA','FALLIDA','ENTREGADA'].includes(transferRequest.stage));
         }
         if (captureToggle) {
             captureToggle.hidden = !workingCall || !cfg.canCapture || consultation;
@@ -643,7 +763,7 @@
                 !['in-progress','finished'].includes(phoneState.phase);
             // El botón se puede pulsar durante timbrado; el puente comprueba
             // el control del SDK al recibir el clic, sin estado infinito.
-            incomingNumber.textContent = String(phoneState.destination || 'Número desconocido');
+            incomingNumber.textContent = window.IMPE_PHONE_NUMBERS.display(phoneState.destination || 'Número desconocido');
             incomingTitle.textContent = finishedIncoming ? 'Llamada finalizada' : incoming
                 ? (finishingIncoming ? 'Finalizando llamada…' :
                     (waitingAnswer ? 'Conectando llamada…' :
@@ -651,6 +771,7 @@
                 : (finished ? 'Llamada finalizada' :
                     (finishing ? 'Finalizando llamada…' :
                     (dialing ? (phoneState.phase==='ringing'?'Timbrando…':'Marcando…') : 'En conversación')));
+            if(phoneState.active&&phoneState.phase==='recovering')incomingTitle.textContent='Recuperando conexión de audio…';
             if(consultation)incomingTitle.textContent=phoneState.active?'Consulta con recepción':'Consulta finalizada';
             incomingEyebrow.textContent = (finished || finishedIncoming) ? 'LLAMADA FINALIZADA' :
                 (shownOutgoing ? 'LLAMADA SALIENTE' :
@@ -660,6 +781,8 @@
                     ? 'Finalizada · transferencia confirmada por la centralita'
                     : phoneState.status === 'ended-unconfirmed'
                     ? 'Llamada finalizada · actualizando el historial'
+                    : phoneState.status === 'no-answer'
+                    ? 'No contestada · el timbrado finalizó'
                     : 'Finalizada · llamada concluida')
                 : shownOutgoing
                 ? (finished ? 'Finalizada · registrada en el historial telefónico'
@@ -670,6 +793,7 @@
                     (waitingAnswer ? 'Conectando audio…' :
                     (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
                     : 'Conversación en curso')));
+            if(phoneState.active&&phoneState.phase==='recovering')incomingState.textContent='La llamada puede seguir activa en la centralita. Comprobando su estado.';
             if(incomingOrigin && incomingOriginLabel) {
                 const from=String(phoneState.transferFrom||phoneState.context?.transferFrom||'');
                 incomingOriginLabel.textContent=consultation?'Consulta de:':shownOutgoing?'Desde:':from?'Transferida desde:':'Recibida en:';
@@ -702,7 +826,10 @@
                 finishingIncoming || waitingAnswer || ringing;
             const callbackPending=Boolean((finished||finishedIncoming)&&phoneState.context?.type==='DEVOLUCION'&&Number(phoneState.context.callbackAttempt)>0&&!callbackSaved.has(Number(phoneState.context.callbackAttempt)));
             const callbackRegister=document.querySelector('[data-callback-register-finished]');if(callbackRegister)callbackRegister.hidden=!callbackPending;
-            if (closeFinished) closeFinished.hidden = !(finished || finishedIncoming)||callbackPending;
+            if (closeFinished) closeFinished.hidden = !(finished || finishedIncoming)||callbackPending||Boolean(cfg.salesResults&&(Number(phoneState.answeredAtMs)>0||phoneState.context?.sdkConnected||phoneState.context?.pbxAnswered));
+            const uncertain=['recovering','finishing'].includes(phoneState.phase)&&phoneState.active;
+            if(uncertain){hangupButton.hidden=false;compactHangup.hidden=false;}
+            hangupButton.innerHTML='<i class="bi bi-telephone-x" aria-hidden="true"></i>'+ (uncertain?'Comprobar estado':'Colgar');
             hangupButton.disabled = Boolean(pending) || Boolean(preview);
             compactHangup.disabled = Boolean(pending) || Boolean(preview);
             // Mismo icono, texto y estado activo del modal de Seguimiento.
@@ -715,8 +842,10 @@
             compactMute.classList.toggle('is-active', Boolean(phoneState.muted));
             compactMute.title = muteLabel;
             compactMute.setAttribute('aria-label', muteLabel);
-            notice.hidden = !actionNotice || incomingCompact;
-            notice.textContent = actionNotice;
+            const finalNotice=(finished||finishedIncoming)&&phoneState.context?.pbxEnded?phoneState.message:'';
+            notice.hidden = !(actionNotice||finalNotice) || incomingCompact;
+            notice.textContent = actionNotice||finalNotice||'';
+            if(cfg.salesResults)notice.style.color=finalNotice?'#16735a':'';
             centerIncoming();
         }
         callTitle.textContent = finishedIncoming ? 'Llamada finalizada' :
@@ -874,6 +1003,9 @@
     });
     const hangupIncoming = function () {
         if (!freshState(currentState) || !currentState.active) return;
+        if(['recovering','finishing'].includes(currentState.phase)){
+            providerBridge()?.recheck?.();actionNotice='Comprobando el estado; aún no se confirma el cierre.';render();return;
+        }
         if (currentState.direction === 'outgoing') {
             if (pendingOutgoingHangup) return;
             const phone = crmPhone();
@@ -920,15 +1052,9 @@
     });
     retry?.addEventListener('click', function () {
         if (hostFrame) {
-            // No recargar automáticamente un contexto con llamada activa.
-            if (freshState(currentState) && currentState.active) return;
-            hostFrame.remove();
-            hostFrame = null;
-            currentState = null;
-            mountFailed = '';
-            releaseLease();
-        }
-        try { ensureHost(); } catch (e) { render(); }
+            try {void hostFrame.contentWindow.IMPE_PHONE_CONNECTION?.activate();} catch (_) {}
+        } else {try {ensureHost();} catch (_) {}}
+        render();
     });
 
     const dismissAnalystResult = function () {
@@ -941,9 +1067,7 @@
         const url = new URL(String(cfg.incomingResultsUrl), window.location.href);
         if (url.origin !== window.location.origin) return;
         url.searchParams.set('pbx_call_id', analystPendingCall.id);
-        // Abrir el formulario NO significa que MySQL haya guardado el resultado.
-        // Conservar el pendiente hasta la confirmación IMPE_ANALYST_RESULT_SAVED
-        // emitida por el iframe después del guardado real.
+        // No descartar resultado antes de confirmación SQL.
         crm.src = url.toString();
     });
     analystResultDismiss?.addEventListener('click', dismissAnalystResult);
@@ -972,58 +1096,20 @@
         }
     });
 
-    // Mantener única conexión dentro del mismo perfil del navegador.
-    window.setInterval(function () {
-        // Si el Analista abrió una pestaña mientras otra todavía retenía
-        // el lease, volver a intentar después de que expire; no esperar
-        // a que pulse el auricular. Jamás asumir en verde una conexión falsa.
-        if (autoEnabled && !hostFrame && !owned &&
-            Date.now() - lastRecoveryAttempt > 12000) {
-            const lease = getLease();
-            const ocupado = lease && lease.id !== owner &&
-                Date.now() - Number(lease.time || 0) < 9000;
-            if (!ocupado) {
-                lastRecoveryAttempt = Date.now();
-                try { ensureHost(); }
-                catch (error) { mountFailed = String(error?.message || error); }
-            }
+    const synchronize = function () {
+        if (autoEnabled && !hostFrame) {
+            try {ensureHost();} catch (_) {}
         }
-        const hostSinConexion = !freshState(currentState) ||
-            (currentState && !currentState.hostReady &&
-                String(currentState.phase || '') === 'error');
-        const montajeRecuperable = !mountFailed ||
-            mountFailed.startsWith('No se pudo cargar el motor telefónico');
-        if (autoEnabled && hostFrame && hostSinConexion &&
-            !currentState?.active && montajeRecuperable &&
-            Date.now() - hostStartedAt > 25000 &&
-            Date.now() - lastRecoveryAttempt > 60000) {
-            // Reintentar cada minuto, incluso después de tres fallos antiguos.
-            // NUNCA reiniciar el SDK durante una llamada activa ni si otra
-            // pestaña conserva la extensión. La disponibilidad real depende
-            // del navegador, la red y el registro SIP de Zadarma.
-            autoRetries += 1;
-            lastRecoveryAttempt = Date.now();
-            hostFrame.remove();
-            hostFrame = null;
-            currentState = null;
-            releaseLease();
-            try { ensureHost(); } catch (error) { mountFailed = error.message; }
-        }
-        if (owned) {
-            const lease = getLease();
-            if (lease?.id !== owner) {
-                owned = false;
-                mountFailed = 'Otra pestaña asumió el teléfono. Verifica la conexión.';
-                render();
-            } else {
-                try {
-                    localStorage.setItem(leaseKey,
-                        JSON.stringify({id:owner,time:Date.now()}));
-                } catch (e) { /* Sin almacenamiento, avisar al usuario. */ }
-            }
-        }
+        if (owned) writeOwner();
+        try {void hostFrame?.contentWindow.IMPE_PHONE_CONNECTION?.check();} catch (_) {}
+        readState(false);
         render();
-    }, 3000);
+    };
+    window.setInterval(synchronize, 10000);
+    window.addEventListener('focus', synchronize);
+    window.addEventListener('pageshow', synchronize);
+    window.addEventListener('online', synchronize);
+    document.addEventListener('visibilitychange', synchronize);
     window.addEventListener('beforeunload', function (event) {
         if (freshState(currentState) && currentState.active) {
             // Navegar entre módulos internos no descarga este documento.
@@ -1032,23 +1118,15 @@
             event.returnValue = '';
         }
     });
-    window.addEventListener('pagehide', function () {
+    window.addEventListener('pagehide', function (event) {
+        if (event.persisted) return;
         releaseLease();
         channel?.close();
     });
 
     readState(true);
-    let autoEnabled = cfg.autoReception === true;
-    // El Analista con extensión entrante activa debe intentar iniciar WebRTC
-    // en cada login. Una preferencia vieja de Marketing / navegador no puede
-    // desactivar silenciosamente su recepción.
-    if (autoEnabled && !cfg.alwaysReceive && !cfg.analystIncomingResults) {
-        try {
-            autoEnabled = localStorage.getItem(
-                'impe:telephony:auto-reception:' + userId
-            ) !== '0';
-        } catch (error) { /* usar valor predeterminado */ }
-    }
+    // También se inicia automáticamente para extensiones sólo salientes autorizadas.
+    const autoEnabled = cfg.autoReception === true || cfg.canCallOut === true;
     if (autoEnabled) {
         // La autorización del navegador para micrófono/audio podría requerir
         // un clic. En ese caso se deja visible Conectar teléfono.
