@@ -7,13 +7,17 @@ import sys
 sys.dont_write_bytecode=True
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
-from agenda_comentarios_compat import recordatorios_hostinger
+from agenda_comentarios_compat import recordatorios_hostinger, recordatorios_hostinger_telefono
 BASH=os.environ.get('IMPE_TEST_BASH','C:/Program Files/Git/bin/bash.exe' if os.name=='nt' else 'bash')
 FILE='public/javascript/recordatorios.js'
 old=subprocess.check_output(['git','show','7bca643d:'+FILE],cwd=ROOT).decode('utf8')
 new=(ROOT/FILE).read_text(encoding='utf8')
 host_old,host_new=recordatorios_hostinger(old,new)
-for before,after in [(old,new),(host_old,host_new)]:
+legacy=subprocess.check_output(['git','show','5116b62c:'+FILE],cwd=ROOT).decode('utf8')
+legacy_host,_=recordatorios_hostinger(legacy,new)
+phone_old,phone_new=recordatorios_hostinger_telefono(old,new)
+legacy_phone,_=recordatorios_hostinger_telefono(legacy,new)
+for before,after in [(old,new),(host_old,host_new),(phone_old,phone_new),(legacy,new),(legacy_host,host_new),(legacy_phone,phone_new)]:
  for crlf in [False,True]:
   with tempfile.TemporaryDirectory(prefix='avisos-publish-',dir=ROOT/'tmp') as tmp:
    area=Path(tmp);live=area/'web';live.mkdir();(live/'index.php').write_text('<?php',encoding='utf8')

@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 sys.dont_write_bytecode=True
-from agenda_comentarios_compat import recordatorios_hostinger
+from agenda_comentarios_compat import recordatorios_hostinger, recordatorios_hostinger_telefono
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE='7bca643d'
@@ -19,7 +19,13 @@ def fragments(old,new):
     return [{'before':''.join(a[g[0][1]:g[-1][2]]),'after':''.join(b[g[0][3]:g[-1][4]])}
             for g in difflib.SequenceMatcher(None,a,b,autojunk=False).get_grouped_opcodes(3)]
 host_before,host_after=recordatorios_hostinger(before,after)
-payload=[{'path':FILE,'fragments':fragments(before,after),'alternatives':[fragments(host_before,host_after)]}]
+legacy=subprocess.check_output(['git','show','5116b62c:'+FILE],cwd=ROOT).decode('utf8')
+legacy_host,_=recordatorios_hostinger(legacy,after)
+phone_before,phone_after=recordatorios_hostinger_telefono(before,after)
+legacy_phone,_=recordatorios_hostinger_telefono(legacy,after)
+payload=[{'path':FILE,'fragments':fragments(before,after),'alternatives':[
+    fragments(host_before,host_after),fragments(phone_before,phone_after),
+    fragments(legacy,after),fragments(legacy_host,host_after),fragments(legacy_phone,phone_after)]}]
 if not payload[0]['fragments']:raise RuntimeError('Sin cambio de avisos.')
 
 # Reutilizar bloqueo, respaldo y restauración del publicador revisado, sin

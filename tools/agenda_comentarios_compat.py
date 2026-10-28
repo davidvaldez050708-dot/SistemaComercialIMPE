@@ -80,3 +80,12 @@ def recordatorios_hostinger(base, integrated):
     old="                tipo: telefono ? 'TELEFONIA_PERDIDA' : 'VENCIDA',"
     new="                tipo: esRecordatorioVencidoRecurrente(recordatorio) ? 'VENCIDA' : (telefono ? 'TELEFONIA_PERDIDA' : 'VENCIDA'),"
     return replace_once(base,old,new),replace_once(integrated,old,new)
+
+def recordatorios_hostinger_telefono(base, integrated):
+    """Variante SSH: conserva la clase is-unread de los avisos telefónicos."""
+    before,after=recordatorios_hostinger(base,integrated)
+    old="                        '<a class=\"topbar-reminder-item\" '+"
+    new="""                        '<a class="topbar-reminder-item' +
+                            (Number(recordatorio.telefonia_id)>0 && Number(recordatorio.leida||0)===0 ? ' is-unread' : '') +
+                            '" '+"""
+    return replace_once(before,old,new),replace_once(after,old,new)

@@ -49,6 +49,10 @@ de Hostinger y conserva los tiempos de los demás avisos. No ejecuta SQL ni toca
 CSS, colores, selección de pestañas, controladores o permisos. Imprime el
 respaldo y el comando `--restore`. Se reconstruye con
 `python tools/generar_publicador_avisos_comentarios.py`.
+Admite también el formato telefónico de Hostinger que añade la clase
+`is-unread`; conserva esa clase y su condición de lectura. Las variantes previas
+sin integración de comentarios también se comprueban de forma explícita, sin
+reemplazar el archivo entero.
 
 Con hora, también se informa de su creación. Al alcanzar la fecha y hora pasa a
 ser un recordatorio pendiente y participa en la rotación periódica hasta que el
