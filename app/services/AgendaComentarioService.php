@@ -117,7 +117,34 @@ class AgendaComentarioService
                     'mensaje'=>$fila['autor_nombre'].': '.$fila['comentario']]);
             }
         }
+        foreach ($this->repo->vistosPendientes($usuario) as $fila) {
+            $lector=trim((string)$fila['lector_nombre']) ?: 'Usuario';
+            $evento=$fila['id'].'|visto|'.$fila['lector_id'];
+            $mensaje=$lector.' marcó como leído tu comentario: '.$fila['comentario'];
+            $item=['id'=>0,'agenda_comentario_id'=>(int)$fila['id'],
+                'agenda_comentario_evento'=>$evento,'agenda_comentario_visto_por'=>(int)$fila['lector_id'],
+                'nombre_entidad'=>'Tu comentario ya fue visto','accion'=>$mensaje,'mensaje'=>$mensaje,
+                'titulo'=>'Tu comentario ya fue visto','fecha'=>$fila['visto_at'],'estado'=>'normal','etiqueta'=>'Visto',
+                'icono'=>'bi-check2-all','prioridad'=>4,
+                'url'=>'index.php?controller=agendaReunion&action=index&mes='.substr($fila['fecha'],0,7).
+                    '&comentario_id='.(int)$fila['id'].'&dia='.$fila['fecha'].'&comentario_visto_por='.(int)$fila['lector_id']];
+            $salida['recordatorios'][]=$item;
+            if (!isset($_SESSION['agenda_comentarios_avisos'][$usuario.'|'.$evento])) {
+                $salida['avisos'][]=array_merge($item,['tipo'=>'AGENDA_COMENTARIO']);
+            }
+        }
         return $salida;
+    }
+
+    public function leerVisto(int $usuario,int $id,int $lector): array
+    {
+        if ($error=$this->acceso($usuario)) return $error;
+        if (!$this->repo->avisosVistosDisponibles()) return $this->error('Los avisos de lectura aún no están disponibles.',503);
+        $fila=$id>0?$this->repo->obtener($id):null;
+        if (!$fila || $lector<=0 || $lector===$usuario) return $this->error('El aviso ya no está disponible.',404);
+        if ((int)$fila['creado_por']!==$usuario) return $this->error('Este aviso sólo está disponible para el autor.',403);
+        if (!$this->repo->leerAvisoVisto($usuario,$id,$lector,$this->ahora())) return $this->error('El aviso ya no está disponible.',404);
+        return ['ok'=>true,'mensaje'=>'Notificación de lectura marcada como leída.'];
     }
 
     /** Sólo consume los eventos que sobrevivieron al límite de la campana. */
@@ -125,7 +152,7 @@ class AgendaComentarioService
     {
         foreach ($items as $item) {
             $evento = $item['agenda_comentario_evento'] ?? '';
-            if (preg_match('/^\d+\|(nuevo|hora)$/D',$evento)) { $_SESSION['agenda_comentarios_avisos'][$usuario.'|'.$evento] = time(); }
+            if (preg_match('/^\d+\|(nuevo|hora|visto\|\d+)$/D',$evento)) { $_SESSION['agenda_comentarios_avisos'][$usuario.'|'.$evento] = time(); }
         }
         $memoria = $_SESSION['agenda_comentarios_avisos'] ?? [];
         arsort($memoria);

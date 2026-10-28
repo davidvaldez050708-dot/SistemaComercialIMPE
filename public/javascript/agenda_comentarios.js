@@ -211,11 +211,19 @@
                     initialDone=true;
                     const comment=comments.find(c=>c.id===initialId);
                     if (comment) {
-                        const confirmedRead = comment.leido && !isDue(comment) && params.get('comentario_leido')==='1';
-                        tab='comentarios';openDay(comment.fecha);await read(comment);
-                        if (confirmedRead) mostrarConfirmacionComentario('Comentario marcado como leído.');
-                        if (params.has('comentario_leido')) {
-                            const clean=new URL(window.location.href);clean.searchParams.delete('comentario_leido');
+                        const vistoPor=Number(params.get('comentario_visto_por'))||0;
+                        if (vistoPor>0) {
+                            tab='comentarios';openDay(comment.fecha);
+                            await request('leerVisto',{id:comment.id,lector_id:vistoPor});
+                            mostrarConfirmacionComentario('Notificación de lectura marcada como leída.');refreshBell();
+                        } else {
+                            const confirmedRead = comment.leido && !isDue(comment) && params.get('comentario_leido')==='1';
+                            tab='comentarios';openDay(comment.fecha);await read(comment);
+                            if (confirmedRead) mostrarConfirmacionComentario('Comentario marcado como leído.');
+                        }
+                        if (vistoPor>0 || params.has('comentario_leido') || params.has('aviso_visto_leido')) {
+                            const clean=new URL(window.location.href);clean.searchParams.delete('comentario_leido');clean.searchParams.delete('aviso_visto_leido');
+                            if (vistoPor>0) { clean.searchParams.delete('comentario_visto_por');clean.searchParams.delete('comentario_id'); }
                             window.history.replaceState(window.history.state,'',clean);
                         }
                     }

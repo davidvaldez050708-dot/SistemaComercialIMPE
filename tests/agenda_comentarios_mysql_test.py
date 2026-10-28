@@ -6,6 +6,8 @@ import socket
 import subprocess
 import tempfile
 import time
+import sys
+VISTOS='--vistos' in sys.argv
 
 ROOT=Path(__file__).resolve().parents[1]
 PHP=os.environ.get('IMPE_TEST_PHP','C:/xampp/php/php.exe')
@@ -16,11 +18,12 @@ with tempfile.TemporaryDirectory(prefix='agenda-mariadb-',dir=ROOT/'tmp') as tmp
     area=Path(tmp);area.resolve().relative_to((ROOT/'tmp').resolve())
     data=area/'data';site=area/'site';site.mkdir()
     with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
-    env=dict(os.environ,AGENDA_TEST_PORT=str(port))
+    env=dict(os.environ,AGENDA_TEST_PORT=str(port),AGENDA_TEST_VISTOS='1' if VISTOS else '')
     subprocess.run([str(MYSQL/'bin/mysql_install_db.exe'),'--datadir='+str(data),'--silent'],check=True,capture_output=True,creationflags=FLAGS)
     for rel in ['app/services/AgendaComentarioRepository.php','app/services/AgendaComentarioService.php',
                 'app/helpers/PermissionHelper.php','app/helpers/AdminRolePolicy.php',
-                'database/migrations/2026_10_28_agenda_comentarios.sql','tools/configurar_agenda_comentarios.php']:
+                'database/migrations/2026_10_28_agenda_comentarios.sql','tools/configurar_agenda_comentarios.php',
+                'database/migrations/2026_10_28_agenda_comentarios_vistos.sql','tools/configurar_avisos_vistos_agenda.php']:
         p=site/rel;p.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/rel,p)
     (site/'config').mkdir()
     (site/'config/db_connection.php').write_text('''<?php
@@ -53,10 +56,19 @@ check($later->leer(7,$scheduled)['ok']&&$later->leer(7,$scheduled)['ok'],'UPSERT
 check(count($later->notificaciones(7)['recordatorios'])===1,'Atención detiene sólo programado');
 check($later->leer(7,$id)['ok']&&$later->notificaciones(7)['recordatorios']===[],'Lectura sin hora');
 $_SESSION=['usuario_id'=>5,'rol_id'=>4,'permisos'=>['reuniones.ver']];
-check(count($later->notificaciones(5)['recordatorios'])===2,'Lectura individual');
-check($later->eliminar(5,$id)['ok']&&count($later->notificaciones(5)['recordatorios'])===1,'Borrado lógico');
+function normales($s,$id){return array_values(array_filter($s->notificaciones($id)['recordatorios'],fn($r)=>empty($r['agenda_comentario_visto_por'])));}
+check(count(normales($later,5))===2,'Lectura individual');
+check($later->eliminar(5,$id)['ok']&&count(normales($later,5))===1,'Borrado lógico');
 check((int)$db->query('SELECT COUNT(*) FROM usuarios')->fetch_row()[0]===2,'Usuarios intactos');
 check((int)$db->query('SELECT COUNT(*) FROM agenda_comentarios')->fetch_row()[0]===2,'Se conserva trazabilidad');
+if(getenv('AGENDA_TEST_VISTOS')){
+ $receipts=array_values(array_filter($later->notificaciones(5)['recordatorios'],fn($r)=>!empty($r['agenda_comentario_visto_por'])));
+ check(count($receipts)===1&&$receipts[0]['agenda_comentario_visto_por']===7,'Visto autor en SQL real, comentario borrado excluido');
+ check(strpos($receipts[0]['mensaje'],'Cuenta Clave')!==false,'Lector real');
+ check($later->leerVisto(5,$scheduled,7)['ok']&&$later->leerVisto(5,$scheduled,7)['ok'],'Ack idempotente con mysqli');
+ check(count($later->notificaciones(5)['recordatorios'])===1,'Ack retira sólo aviso de lectura');
+ echo "OK: vistos MariaDB: JOIN del lector, permisos de autor, exclusión de borrados y UPSERT idempotente.\\n";
+}
 echo "OK: esquema y SQL reales MariaDB; 250 Unicode, NULL, autor, JOIN, UPSERT, reloj PHP/SQL UTC, lectura por usuario y borrado.\\n";
 ''',encoding='utf8')
     with (area/'server.log').open('w') as log:
@@ -74,6 +86,9 @@ echo "OK: esquema y SQL reales MariaDB; 250 Unicode, NULL, autor, JOIN, UPSERT, 
             check=subprocess.run([PHP,str(site/'tools/configurar_agenda_comentarios.php'),'--check'],env=env,capture_output=True)
             assert check.returncode!=0
             for _ in range(2):subprocess.run([PHP,str(site/'tools/configurar_agenda_comentarios.php'),'--apply'],env=env,check=True,capture_output=True)
+            if VISTOS:
+                for _ in range(2):subprocess.run([PHP,str(site/'tools/configurar_avisos_vistos_agenda.php'),'--apply'],env=env,check=True,capture_output=True)
+                subprocess.run([PHP,str(site/'tools/configurar_avisos_vistos_agenda.php'),'--check'],env=env,check=True,capture_output=True)
             result=subprocess.run([PHP,str(site/'test.php')],env=env,check=True,capture_output=True,text=True,encoding='utf8')
             print(result.stdout.strip())
             subprocess.run([PHP,str(site/'tools/configurar_agenda_comentarios.php'),'--check'],env=env,check=True,capture_output=True)

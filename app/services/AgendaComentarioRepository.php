@@ -7,6 +7,7 @@ class AgendaComentarioRepository
 {
     private $db;
     private $disponible;
+    private $avisosVistosDisponibles;
 
     public function __construct($db = null)
     {
@@ -89,5 +90,47 @@ class AgendaComentarioRepository
         $stmt->bind_param('iss', $usuario, $ahora, $ahora);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function avisosVistosDisponibles(): bool
+    {
+        if ($this->avisosVistosDisponibles !== null) return $this->avisosVistosDisponibles;
+        try {
+            $this->db->query('SELECT comentario_id,lector_id,leido_at FROM agenda_comentarios_vistos_avisos LIMIT 0');
+            return $this->avisosVistosDisponibles=true;
+        } catch (Throwable $e) { return $this->avisosVistosDisponibles=false; }
+    }
+
+    public function vistosPendientes(int $autor): array
+    {
+        if (!$this->avisosVistosDisponibles()) return [];
+        $stmt=$this->db->prepare("SELECT c.id,c.fecha,c.comentario,l.usuario_id AS lector_id,l.novedad_leida_at AS visto_at,
+            TRIM(CONCAT(COALESCE(u.nombre,''),' ',COALESCE(u.apellidos,''))) AS lector_nombre
+            FROM agenda_comentarios c INNER JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id
+            INNER JOIN usuarios u ON u.id=l.usuario_id
+            LEFT JOIN agenda_comentarios_vistos_avisos a ON a.comentario_id=c.id AND a.lector_id=l.usuario_id
+            WHERE c.creado_por=? AND l.usuario_id<>c.creado_por AND c.eliminado_at IS NULL
+              AND l.novedad_leida_at IS NOT NULL AND a.comentario_id IS NULL
+            ORDER BY l.novedad_leida_at DESC,l.usuario_id,c.id LIMIT 20");
+        $stmt->bind_param('i',$autor);$stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function leerAvisoVisto(int $autor,int $comentario,int $lector,string $ahora): bool
+    {
+        $stmt=$this->db->prepare('INSERT INTO agenda_comentarios_vistos_avisos (comentario_id,lector_id,leido_at)
+            SELECT c.id,l.usuario_id,? FROM agenda_comentarios c
+            INNER JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id
+            WHERE c.id=? AND c.creado_por=? AND l.usuario_id=? AND l.usuario_id<>c.creado_por
+              AND c.eliminado_at IS NULL AND l.novedad_leida_at IS NOT NULL
+            ON DUPLICATE KEY UPDATE leido_at=VALUES(leido_at)');
+        $stmt->bind_param('siii',$ahora,$comentario,$autor,$lector);$stmt->execute();
+        // Una lectura idempotente puede devolver 0 filas afectadas. Comprobar
+        // siempre el destinatario y la pareja real de comentario/lector.
+        $check=$this->db->prepare('SELECT a.comentario_id FROM agenda_comentarios_vistos_avisos a
+            INNER JOIN agenda_comentarios c ON c.id=a.comentario_id
+            WHERE a.comentario_id=? AND a.lector_id=? AND c.creado_por=? AND c.eliminado_at IS NULL');
+        $check->bind_param('iii',$comentario,$lector,$autor);$check->execute();
+        return (bool)$check->get_result()->fetch_assoc();
     }
 }

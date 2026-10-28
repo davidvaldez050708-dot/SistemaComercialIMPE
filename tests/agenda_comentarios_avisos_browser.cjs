@@ -14,13 +14,19 @@ async function fixture(browser,options={}){
  await page.clock.install({time:new Date('2026-10-28T17:01:00Z')});await page.clock.pauseAt(new Date('2026-10-28T17:01:01Z'));
  let opened=false,fail=false,finishRead=null,incoming=!options.empty;
  const item={...comment,...(options.timed?{agenda_comentario_evento:'41|hora',estado:'vencida',etiqueta:'Hora programada'}:{})};
+ if(options.receipt)Object.assign(item,{agenda_comentario_evento:'41|visto|7',agenda_comentario_visto_por:7,
+  titulo:'Tu comentario ya fue visto',mensaje:'Diego Bahena marcó como leído tu comentario: Revisar reporte',
+  accion:'Diego Bahena marcó como leído tu comentario: Revisar reporte',url:comment.url+'&comentario_visto_por=7'});
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('http://comment-notices.test/**',async route=>{
   const r=route.request(),u=new URL(r.url());
-  if(u.pathname==='/pendientes')return route.fulfill({json:{ok:true,total:opened||!incoming?1:2,recordatorios:opened||!incoming?[other]:[item,other],avisos:[]}});
+  if(u.pathname==='/pendientes'){
+   const records=[...(opened||!incoming?[]:[item]),...(options.receipt?[comment]:[]),other];
+   return route.fulfill({json:{ok:true,total:records.length,recordatorios:records,avisos:[]}});
+  }
   if(u.searchParams.get('controller')==='agendaComentario'){
    reads.push({method:r.method(),body:r.postData(),csrf:r.headers()['x-csrf-token'],action:u.searchParams.get('action')});
-   assert.equal(u.searchParams.get('action'),'leer','No borrar ni modificar comentarios');
+   assert.equal(u.searchParams.get('action'),options.receipt?'leerVisto':'leer','No borrar ni modificar comentarios');
    if(options.delay)await new Promise(resolve=>{finishRead=resolve});
    if(fail)return route.fulfill({status:419,json:{ok:false}});
    opened=true;return route.fulfill({json:{ok:true}});
@@ -34,6 +40,18 @@ async function popup(p,timed=false){if(timed)await p.clock.runFor(period+1);awai
 (async()=>{
  const browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||'chrome'});let cases=0;
  try{
+  {
+   const f=await fixture(browser,{receipt:true}),p=f.page;
+   const toast=p.locator('.agenda-comment-toast[data-agenda-comentario-visto-por="7"]');await toast.waitFor({state:'visible'});
+   assert.match(await toast.textContent(),/Tu comentario ya fue visto.*Diego Bahena marcó como leído/s);
+   await p.locator('.topbar-reminder-item[data-agenda-comentario-visto-por="7"]').click();
+   await p.waitForURL('**/*aviso_visto_leido=1*');
+   assert.deepEqual(f.reads,[{method:'POST',body:'id=41&lector_id=7',csrf:'qa-csrf',action:'leerVisto'}]);
+   await p.locator('.topbar-reminder-item[data-agenda-comentario-id="41"]').waitFor();
+   assert.equal(await p.locator('.topbar-reminder-item[data-agenda-comentario-visto-por="7"]').count(),0);
+   assert.equal(await p.locator('.topbar-reminder-item[data-agenda-comentario-id="41"]').count(),1,'Ack de visto no retira aviso original del mismo comentario');
+   assert.deepEqual(f.errors,[]);await p.close();cases++;
+  }
   for(const own of [false,true]){
    const f=await fixture(browser,{empty:true}),p=f.page;assert.equal(await p.locator('.agenda-comment-toast').count(),0);f.arrive();
    if(own)await p.evaluate(()=>window.dispatchEvent(new CustomEvent('impe:agenda-comments-refresh',{detail:{comentarioPropioId:41}})));

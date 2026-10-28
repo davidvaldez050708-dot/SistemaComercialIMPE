@@ -134,6 +134,16 @@ async function toastFixture(browser,kind){
    assert.equal(new URL(p.url()).searchParams.has('comentario_leido'),false);await p.close();cases++;
   }
   {
+   const f=await pageFixture(browser,{query:'?dia=2026-10-14&comentario_id=1&comentario_visto_por=7&aviso_visto_leido=1'}),p=f.page;
+   const toast=p.locator('[data-agenda-comment-confirmation]');await toast.waitFor({state:'visible'});
+   assert.equal(await toast.textContent(),'Notificación de lectura marcada como leída.');
+   assert.equal(await toast.evaluate(el=>window.bootstrap.Toast.getInstance(el)._config.delay),2600);
+   assert.deepEqual(f.posts.map(r=>r.action),['leerVisto'],'Abrir visto no lee el comentario original');
+   assert.equal(f.posts[0].body.lector_id,'7');assert.equal(new URL(p.url()).searchParams.has('comentario_visto_por'),false);
+   await p.reload();await p.locator('[data-agenda-comment-add="2026-10-14"]:enabled').waitFor();
+   assert.equal(f.posts.length,1,'Recargar no repite ack de visto');await p.close();cases++;
+  }
+  {
    const f=await pageFixture(browser,{unavailable:true}),p=f.page;assert.equal(await p.locator('[data-agenda-comment-add="2026-10-14"]').isDisabled(),true);
    await p.locator('.agenda-calendar-grid [data-agenda-meeting="31"]').click();await p.locator('#modalAgendaDetalle').waitFor({state:'visible'});
    assert.deepEqual(f.errors,[]);await p.close();cases++;

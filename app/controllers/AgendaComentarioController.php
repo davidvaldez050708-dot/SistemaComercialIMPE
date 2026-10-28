@@ -8,6 +8,7 @@ class AgendaComentarioController
     public function crear() { $this->ejecutar('POST','crear'); }
     public function eliminar() { $this->ejecutar('POST','eliminar'); }
     public function leer() { $this->ejecutar('POST','leer'); }
+    public function leerVisto() { $this->ejecutar('POST','leerVisto'); }
 
     private function responder(array $datos, int $codigo = 200): void
     {
@@ -37,7 +38,10 @@ class AgendaComentarioController
             elseif ($accion === 'crear') { $r=$servicio->crear($usuario,$_POST); }
             else {
                 $id = filter_var($_POST['id'] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]) ?: 0;
-                $r=$servicio->$accion($usuario,(int)$id);
+                if ($accion==='leerVisto') {
+                    $lector=filter_var($_POST['lector_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]) ?: 0;
+                    $r=$servicio->leerVisto($usuario,(int)$id,(int)$lector);
+                } else $r=$servicio->$accion($usuario,(int)$id);
             }
             $codigo=(int)($r['codigo_http']??200);unset($r['codigo_http']);
             $this->responder($r,$codigo);

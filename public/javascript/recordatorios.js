@@ -294,6 +294,7 @@
             }
             if (Number(aviso.agenda_comentario_id) > 0) {
                 toast.dataset.agendaComentarioId = String(aviso.agenda_comentario_id);
+                if (Number(aviso.agenda_comentario_visto_por)>0) toast.dataset.agendaComentarioVistoPor=String(aviso.agenda_comentario_visto_por);
                 toast.setAttribute('href', url);
             }
             if (url !== '') {
@@ -348,8 +349,8 @@
                 !esRecordatorioVencidoRecurrente(r) && !comentariosMostrados[claveRecordatorio(r)] && Number(r.leida||0)===0);
             if (!item) return false;
             const queued = colaAvisos.find(q=>q.clave===claveRecordatorio(item));
-            const aviso = queued?.aviso || {...item,tipo:'AGENDA_COMENTARIO',titulo:'Nuevo comentario en la agenda',
-                mensaje:[item.nombre_entidad,item.accion].filter(Boolean).join('. ')};
+            const aviso = queued?.aviso || {...item,tipo:'AGENDA_COMENTARIO',titulo:item.titulo||'Nuevo comentario en la agenda',
+                mensaje:item.mensaje||[item.nombre_entidad,item.accion].filter(Boolean).join('. ')};
             if (!mostrarToast(aviso)) return false;
             registrarComentarioMostrado(item);
             return true;
@@ -367,7 +368,7 @@
                 if (comentariosMostrados[clave] || colaAvisos.some(item => item.clave === clave) ||
                     novedades.some(item => claveRecordatorio(item) === clave)) continue;
                 novedades.push({...r, tipo:'AGENDA_COMENTARIO',
-                    titulo:esRecordatorioVencidoRecurrente(r)?'Recordatorio de agenda':'Nuevo comentario en la agenda',
+                    titulo:r.titulo || (esRecordatorioVencidoRecurrente(r)?'Recordatorio de agenda':'Nuevo comentario en la agenda'),
                     mensaje:r.mensaje || [r.nombre_entidad,r.accion].filter(Boolean).join('. ')});
             }
             for (const aviso of novedades) {
@@ -512,7 +513,7 @@
                     const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
                     const estadoVisual = estadoVisibleRecordatorio(recordatorio);
                     return (
-                        '<a class="topbar-reminder-item" '+(Number(recordatorio.agenda_comentario_id)>0?'data-agenda-comentario-id="'+Number(recordatorio.agenda_comentario_id)+'" ':'')+(Number(recordatorio.telefonia_id)>0?'data-telefonia-id="'+Number(recordatorio.telefonia_id)+'" ':'')+'href="' + url + '">' +
+                        '<a class="topbar-reminder-item" '+(Number(recordatorio.agenda_comentario_id)>0?'data-agenda-comentario-id="'+Number(recordatorio.agenda_comentario_id)+'" ':'')+(Number(recordatorio.agenda_comentario_visto_por)>0?'data-agenda-comentario-visto-por="'+Number(recordatorio.agenda_comentario_visto_por)+'" ':'')+(Number(recordatorio.telefonia_id)>0?'data-telefonia-id="'+Number(recordatorio.telefonia_id)+'" ':'')+'href="' + url + '">' +
                             '<span class="topbar-reminder-icon">' +
                                 '<i class="bi ' + escapar(recordatorio.icono || 'bi-bell') + '"></i>' +
                             '</span>' +
@@ -566,6 +567,7 @@
             if (!link || (!root.contains(link) && !link.closest('[data-reminder-toast-container]')) ||
                 event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
             const id = Number(link.dataset.agendaComentarioId);
+            const lector=Number(link.dataset.agendaComentarioVistoPor)||0;
             const target = new URL(link.getAttribute('href') || '', window.location.href);
             if (!Number.isSafeInteger(id) || id<=0 || target.origin!==window.location.origin ||
                 target.searchParams.get('controller')!=='agendaReunion' || Number(target.searchParams.get('comentario_id'))!==id) return;
@@ -576,19 +578,20 @@
             previousError?.remove();
             try {
                 const url = new URL('index.php', window.location.href);
-                url.search = new URLSearchParams({controller:'agendaComentario',action:'leer'}).toString();
+                url.search = new URLSearchParams({controller:'agendaComentario',action:lector>0?'leerVisto':'leer'}).toString();
                 const response = await fetch(url,{method:'POST',credentials:'same-origin',cache:'no-store',
                     headers:{'X-CSRF-Token':String(window.IMPE_CSRF_TOKEN || ''),'X-Requested-With':'XMLHttpRequest'},
-                    body:new URLSearchParams({id:String(id)})});
+                    body:new URLSearchParams(lector>0?{id:String(id),lector_id:String(lector)}:{id:String(id)})});
                 const result = await response.json();
                 if (!response.ok || !result.ok) throw new Error('Lectura no confirmada');
-                recordatoriosActuales.filter(r=>Number(r.agenda_comentario_id)===id).forEach(r=>comentariosAbiertos.add(claveRecordatorio(r)));
-                const matches = item => Number(item.aviso.agenda_comentario_id)===id;
+                const same = r => Number(r.agenda_comentario_id)===id && (Number(r.agenda_comentario_visto_por)||0)===lector;
+                recordatoriosActuales.filter(same).forEach(r=>comentariosAbiertos.add(claveRecordatorio(r)));
+                const matches = item => same(item.aviso);
                 colaAvisos = colaAvisos.filter(item=>!matches(item));
                 guardarSesion(CLAVE_COLA_AVISOS,JSON.stringify(colaAvisos));
                 renderizarRecordatorios(recordatoriosActuales,totalAvisosActual);
-                if (Number(toastActivo?.dataset.agendaComentarioId)===id) { toastActivo.remove();toastActivo=null; }
-                target.searchParams.set('comentario_leido','1');
+                if (Number(toastActivo?.dataset.agendaComentarioId)===id && (Number(toastActivo?.dataset.agendaComentarioVistoPor)||0)===lector) { toastActivo.remove();toastActivo=null; }
+                target.searchParams.set(lector>0?'aviso_visto_leido':'comentario_leido','1');
                 window.location.href = target.href;
             } catch (_) {
                 const message = document.createElement('span');

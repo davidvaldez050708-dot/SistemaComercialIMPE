@@ -17,6 +17,7 @@ import urllib.request
 
 ROOT=Path(__file__).resolve().parents[1]
 HOSTINGER='--hostinger' in sys.argv
+VISTOS='--vistos' in sys.argv
 sys.path.insert(0,str(ROOT/'tools'))
 from agenda_comentarios_compat import reminder_hostinger
 PHP=os.environ.get('IMPE_TEST_PHP',r'C:\xampp\php\php.exe' if os.name=='nt' else 'php')
@@ -53,6 +54,9 @@ class Database { public function connect(){return new ComentarioDbPrueba(getenv(
     init=work/'init.php';init.write_text("<?php require __DIR__.'/adapter.php';new ComentarioDbPrueba($argv[1]);",encoding='utf8')
     db=work/'test.sqlite'
     subprocess.run([PHP,str(init),str(db)],check=True,capture_output=True)
+    if VISTOS:
+        sql="CREATE TABLE agenda_comentarios_vistos_avisos(comentario_id INTEGER,lector_id INTEGER,leido_at TEXT,PRIMARY KEY(comentario_id,lector_id))"
+        subprocess.run([PHP,'-r',"$d=new PDO('sqlite:'.$argv[1]);$d->exec($argv[2]);",str(db),sql],check=True,capture_output=True)
     token=secrets.token_hex(24)
     (work/'router.php').write_text('''<?php
 session_start();header('Content-Type: application/json');
@@ -68,7 +72,7 @@ if(($_GET['action']??'')==='pendientes'){
 }
 require __DIR__.'/app/controllers/AgendaComentarioController.php';
 $action=$_GET['action']??'listar';
-if(!in_array($action,['listar','crear','eliminar','leer'],true)){http_response_code(404);exit;}
+if(!in_array($action,['listar','crear','eliminar','leer','leerVisto'],true)){http_response_code(404);exit;}
 (new AgendaComentarioController())->$action();
 ''',encoding='utf8')
     (work/'sessions').mkdir()
@@ -133,6 +137,23 @@ if(!in_array($action,['listar','crear','eliminar','leer'],true)){http_response_c
                 assert request(kam,'pendientes')[1]['total']==30, 'Leer comentario no resuelve tareas de Aliados'
                 login(kam,7,agenda=0,rol=6,tareas=1)
                 bell=request(kam,'pendientes')[1];assert bell['total']==30 and not any(r.get('agenda_comentario_id') for r in bell['recordatorios'])
+            if VISTOS:
+                login(a,5);login(b,7,rol=6)
+                note=request(a,'crear',dict(fecha='2026-10-28',comentario='Lectura entre perfiles',hora=''))[1]['comentario']['id']
+                assert request(b,'leer',dict(id=note,nombre='Falso',lector_id=99))[0]==200
+                assert request(b,'leer',dict(id=note))[0]==200
+                def notices(c):return [r for r in request(c,'pendientes')[1]['recordatorios'] if r.get('agenda_comentario_id')==note and r.get('agenda_comentario_visto_por')]
+                receipts=notices(a);assert len(receipts)==1 and receipts[0]['agenda_comentario_visto_por']==7
+                assert 'Cuenta Clave marcó como leído' in receipts[0]['mensaje'] and notices(b)==[]
+                third=client();login(third,8)
+                assert request(third,'leerVisto',dict(id=note,lector_id=7))[0]==403
+                assert request(a,'leerVisto',dict(id=note,lector_id=7),csrf='incorrecto')[0]==419
+                assert request(a,'leerVisto',dict(id=note,lector_id=7))[0]==200
+                assert request(a,'leerVisto',dict(id=note,lector_id=7))[0]==200 and notices(a)==[]
+                listed=request(a,'listar',query='&desde=2026-10-01&hasta=2026-11-01')[1]['comentarios']
+                assert next(c for c in listed if c['id']==note)['leido'] is False,'Abrir aviso de visto no lee el comentario original'
+                assert request(without,'leerVisto',dict(id=note,lector_id=7))[0]==403
+                print('OK: HTTP de vistos: lector de sesión, sólo autor, sin duplicado, CSRF, ack idempotente y comentario original intacto.')
             print('OK: HTTP real ('+('Hostinger: conserva las 30 tareas de Aliados; ' if HOSTINGER else 'base; ')+
                   'CSRF, autor/borrado, consulta/administrador y exclusión sin Agenda). BD aislada.')
         finally:process.terminate();process.wait(timeout=10)

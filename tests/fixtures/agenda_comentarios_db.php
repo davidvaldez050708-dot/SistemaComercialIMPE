@@ -28,7 +28,8 @@ class ComentarioDbPrueba {
     public function query($sql){$this->queries[]=$sql;return $this->pdo->query($sql);}
     public function prepare($sql){
         $this->queries[]=$sql;
-        $sql=str_replace('ON DUPLICATE KEY UPDATE','ON CONFLICT(comentario_id,usuario_id) DO UPDATE SET',$sql);
+        $key=strpos($sql,'INSERT INTO agenda_comentarios_vistos_avisos')!==false?'comentario_id,lector_id':'comentario_id,usuario_id';
+        $sql=str_replace('ON DUPLICATE KEY UPDATE','ON CONFLICT('.$key.') DO UPDATE SET',$sql);
         $sql=preg_replace('/VALUES\((\w+)\)/','excluded.$1',$sql);
         return new ComentarioSentenciaPrueba($this,$sql);
     }

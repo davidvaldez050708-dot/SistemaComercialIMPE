@@ -25,6 +25,49 @@ JavaScript, CSS y almacenamiento propios.
 
 ## Campana y toast
 
+### Aviso de lectura al autor
+
+Cuando otro usuario marca un comentario como leído, su autor recibe en la
+campana y en un toast de **2600 ms**: **«[Nombre] marcó como leído tu comentario:
+[texto]»**. La detección utiliza la consulta habitual de 60 segundos, sólo para
+usuarios con Agenda. La propia lectura del autor no genera este aviso.
+
+Se usa la lectura real de `agenda_comentarios_lecturas` y el nombre de `usuarios`;
+el cliente no proporciona la identidad del lector. Cada pareja comentario/lector
+tiene un único aviso. Releer no genera otro después de que el autor lo abrió.
+Si varias personas leen el comentario, se muestran avisos separados. Abrir uno
+no retira los demás ni modifica la lectura del comentario original.
+
+La tabla aditiva `agenda_comentarios_vistos_avisos` sólo registra cuáles abrió
+el autor. No altera tablas o datos anteriores. Las lecturas ya registradas se
+reconocen, excepto las del propio autor y las de comentarios eliminados. Sin la
+tabla nueva, las funciones anteriores de Agenda siguen disponibles y sólo se
+deshabilitan estos avisos nuevos.
+
+Instalación específica:
+
+```bash
+bash "$HOME/impe-publicadores/avisos-vistos-agenda.sh" --check
+bash "$HOME/impe-publicadores/avisos-vistos-agenda.sh" --apply
+php "$HOME/domains/fundacionrededumex.org/public_html/tools/configurar_avisos_vistos_agenda.php" --apply
+php "$HOME/domains/fundacionrededumex.org/public_html/tools/configurar_avisos_vistos_agenda.php" --check
+```
+
+El publicador autónomo `tools/publicar_avisos_vistos_agenda_hostinger.sh` añade
+el SQL y el configurador CLI, y aplica fragmentos a tres archivos PHP y dos JS.
+No ejecuta SQL. Conserva las variantes publicadas de avisos, colores, tamaño de
+iconos, reuniones, tareas y permisos. Imprime respaldo y `--restore`; restaurar
+conserva la tabla y sus datos. Se reconstruye con
+`python tools/generar_publicador_avisos_comentarios.py --vistos`.
+
+Pruebas específicas: `php tests/agenda_comentarios_vistos_test.php`,
+`python tests/agenda_comentarios_http_test.py --hostinger --vistos`,
+`python tests/agenda_comentarios_mysql_test.py --vistos`,
+`python tests/agenda_comentarios_vistos_publicador_test.py` y los tests de
+navegador de comentarios/avisos. Comprueban autor, lector, deduplicación,
+lecturas propias excluidas, varios lectores, CSRF, autorización, ack idempotente,
+comentario original intacto y borrados. Sin datos ni notificaciones reales.
+
 Las confirmaciones de **comentario añadido, marcado como leído y eliminado** utilizan
 `toast system-toast` y Bootstrap, con el mismo retraso de ocultación de
 **2600 ms** que las confirmaciones de `agenda_reunion.js`. Se retiran las franjas
