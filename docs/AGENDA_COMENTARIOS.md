@@ -56,6 +56,19 @@ conservando el resto de su contenido y sus saltos LF/CRLF. Añade ocho archivos.
 Rechaza archivos incompatibles o personalizados dentro del nuevo componente;
 no reemplaza vistas o controladores completos.
 
+El encabezado de Hostinger incluye reglas adicionales de Marketing y una
+campana propia para Convocatorias. El publicador añade únicamente la línea
+del permiso de Agenda en la asignación inicial de `$mostrarCentroAvisos`;
+conserva literalmente esas reglas y el resto de la vista. La prueba de
+publicación incluye el encabezado real facilitado por el usuario, en LF y CRLF.
+También admite los fragmentos revisados del controlador de Hostinger con
+`puedeTareasAliado` y `AliadoConvocatoriaPendienteService`: conserva su filtro
+de Cuenta Clave y el orden que mantiene todas las tareas de Aliados y las
+obligaciones telefónicas, además de los 12 recordatorios habituales. No
+restaura el servicio anterior de novedades ni reemplaza el controlador entero.
+El JavaScript admite la clasificación de vencimientos revisada en Hostinger,
+conservando su expresión `esRecordatorioVencidoRecurrente(recordatorio)`.
+
 ```bash
 bash "$HOME/impe-publicadores/agenda-comentarios.sh" --check
 bash "$HOME/impe-publicadores/agenda-comentarios.sh" --apply
@@ -104,6 +117,7 @@ Comandos de pruebas:
 ```text
 php tests/agenda_comentarios_test.php
 python tests/agenda_comentarios_http_test.py
+python tests/agenda_comentarios_http_test.py --hostinger
 python tests/agenda_comentarios_mysql_test.py
 node tests/agenda_comentarios_browser.cjs
 python tests/agenda_comentarios_publicador_test.py

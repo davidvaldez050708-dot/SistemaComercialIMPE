@@ -5,6 +5,9 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+sys.dont_write_bytecode = True
+from agenda_comentarios_compat import reminder_hostinger, recordatorios_hostinger
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = '5116b62c284de2f9e27440f77982964e876c7402'
@@ -19,6 +22,14 @@ NEW = ['app/controllers/AgendaComentarioController.php',
        'tools/configurar_agenda_comentarios.php']
 
 payload = []
+def fragments(before,after):
+    old,new=before.splitlines(keepends=True),after.splitlines(keepends=True)
+    result=[]
+    for group in difflib.SequenceMatcher(None,old,new,autojunk=False).get_grouped_opcodes(3):
+        first,last=group[0],group[-1]
+        result.append({'before':''.join(old[first[1]:last[2]]),'after':''.join(new[first[3]:last[4]])})
+    return result
+
 for name in NEW + MODIFIED:
     current = (ROOT / name).read_text(encoding='utf-8').replace('\r\n', '\n')
     entry = {'path': name}
@@ -28,14 +39,23 @@ for name in NEW + MODIFIED:
         before = subprocess.check_output(['git', 'show', BASE + ':' + name], cwd=ROOT).decode().replace('\r\n', '\n')
         # El salto final no forma parte del cambio de enrutamiento.
         current = current.rstrip('\n') + ('\n' if before.endswith('\n') else '')
-        old, new = before.splitlines(keepends=True), current.splitlines(keepends=True)
-        entry['fragments'] = []
-        for group in difflib.SequenceMatcher(None, old, new, autojunk=False).get_grouped_opcodes(3):
-            first, last = group[0], group[-1]
-            entry['fragments'].append({'before': ''.join(old[first[1]:last[2]]),
-                                       'after': ''.join(new[first[3]:last[4]])})
+        entry['fragments'] = fragments(before,current)
         if not entry['fragments']:
             raise RuntimeError('No hay integración en ' + name)
+        if name == 'app/views/layout/topbar.php':
+            # Hostinger conserva reglas propias para Marketing alrededor de esta
+            # asignación. No exigir contexto de otro rol ni tocar esos filtros.
+            anchor = "$mostrarCentroAvisos =\n    $esAdministradorTopbar ||\n"
+            added = "$mostrarCentroAvisos =\n    tienePermiso('reuniones.ver') ||\n    $esAdministradorTopbar ||\n"
+            if before.count(anchor) != 1 or current != before.replace(anchor, added):
+                raise RuntimeError('La integración de campana excede el fragmento revisado.')
+            entry['fragments'] = [{'before': anchor, 'after': added}]
+        if name == 'app/controllers/ReminderController.php':
+            host_before,host_after=reminder_hostinger(before,current)
+            entry['alternatives']=[fragments(host_before,host_after)]
+        if name == 'public/javascript/recordatorios.js':
+            host_before,host_after=recordatorios_hostinger(before,current)
+            entry['alternatives']=[fragments(host_before,host_after)]
     payload.append(entry)
 
 PROGRAM = r'''<?php
@@ -124,12 +144,18 @@ try {
                 if ($originals[$i]===null) stopDeploy('Falta '.$file['path']);
                 $crlf=strpos($originals[$i],"\r\n")!==false;
                 $text=str_replace("\r\n","\n",$originals[$i]);
-                foreach ($file['fragments'] as $fragment) {
-                    $old=$fragment['before'];$new=$fragment['after'];
-                    $oldCount=substr_count($text,$old);$newCount=substr_count($text,$new);
-                    if ($oldCount===1 && $newCount===0) $text=str_replace($old,$new,$text);
-                    elseif ($oldCount!==0 || $newCount!==1) stopDeploy('Integración incompatible en '.$file['path'].'. SITIO INTACTO.');
+                $compatible=false;
+                foreach (array_merge([$file['fragments']],$file['alternatives']??[]) as $variant) {
+                    $candidate=$text;$matches=true;
+                    foreach ($variant as $fragment) {
+                        $old=$fragment['before'];$new=$fragment['after'];
+                        $oldCount=substr_count($candidate,$old);$newCount=substr_count($candidate,$new);
+                        if ($oldCount===1 && $newCount===0) $candidate=str_replace($old,$new,$candidate);
+                        elseif ($oldCount!==0 || $newCount!==1) { $matches=false;break; }
+                    }
+                    if ($matches) { $text=$candidate;$compatible=true;break; }
                 }
+                if (!$compatible) stopDeploy('Integración incompatible en '.$file['path'].'. SITIO INTACTO.');
                 if ($crlf) $text=str_replace("\n","\r\n",$text);
             }
             if (substr($file['path'],-4)==='.php') token_get_all($text,TOKEN_PARSE);

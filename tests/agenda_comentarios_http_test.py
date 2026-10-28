@@ -9,11 +9,16 @@ import socket
 import subprocess
 import tempfile
 import time
+import sys
+sys.dont_write_bytecode = True
 import urllib.error
 import urllib.parse
 import urllib.request
 
 ROOT=Path(__file__).resolve().parents[1]
+HOSTINGER='--hostinger' in sys.argv
+sys.path.insert(0,str(ROOT/'tools'))
+from agenda_comentarios_compat import reminder_hostinger
 PHP=os.environ.get('IMPE_TEST_PHP',r'C:\xampp\php\php.exe' if os.name=='nt' else 'php')
 (ROOT/'tmp').mkdir(exist_ok=True)
 with tempfile.TemporaryDirectory(prefix='agenda-comments-http-',dir=ROOT/'tmp') as tmp:
@@ -21,15 +26,22 @@ with tempfile.TemporaryDirectory(prefix='agenda-comments-http-',dir=ROOT/'tmp') 
     for rel in ['app/controllers/AgendaComentarioController.php','app/controllers/ReminderController.php','app/services/AgendaComentarioService.php',
                 'app/services/AgendaComentarioRepository.php','app/helpers/PermissionHelper.php','app/helpers/AdminRolePolicy.php']:
         p=work/rel;p.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/rel,p)
+    if HOSTINGER:
+        base=subprocess.check_output(['git','show','5116b62c284de2f9e27440f77982964e876c7402:app/controllers/ReminderController.php'],cwd=ROOT).decode('utf8')
+        _,variant=reminder_hostinger(base,(ROOT/'app/controllers/ReminderController.php').read_text(encoding='utf8'))
+        (work/'app/controllers/ReminderController.php').write_text(variant,encoding='utf8')
     # Aislar los proveedores ajenos: se ejecuta el controlador real de campana
     # con perfiles de sólo consulta, para los que esos proveedores no se llaman.
-    (work/'app/helpers/ReminderHelper.php').write_text('<?php',encoding='utf8')
+    (work/'app/helpers/ReminderHelper.php').write_text('<?php function puedeCrearConvocatoriaDesdeConvenio(){return false;}',encoding='utf8')
     for service in ['AgendaReunionService','ReminderAgendaFilterService','ReminderReunionFollowupService',
                     'ReminderDirectLinkService','ReminderObservacionService','ReminderMeetingConfirmationService',
                     'SeguimientoCambioDatosService','AliadoSeguimientoReminderService','AliadoNuevoNotificationService']:
         (work/f'app/services/{service}.php').write_text('<?php class '+service+' {}',encoding='utf8')
     (work/'app/services/AdminNotificationService.php').write_text('''<?php class AdminNotificationService {
 public function obtener(){return ['ok'=>true,'total'=>1,'recordatorios'=>[['id'=>90,'accion'=>'Resumen previo','estado'=>'normal']], 'avisos'=>[]];}}
+''',encoding='utf8')
+    (work/'app/services/AliadoConvocatoriaPendienteService.php').write_text('''<?php class AliadoConvocatoriaPendienteService {
+public function obtener(...$args){return array_map(static fn($id)=>['id'=>$id,'tipo'=>'ALIADO_CONVOCATORIA_PENDIENTE','etiqueta'=>'Configurar programas','estado'=>'normal','prioridad'=>1],range(100,129));}}
 ''',encoding='utf8')
     shutil.copyfile(ROOT/'tests/fixtures/agenda_comentarios_db.php',work/'adapter.php')
     (work/'config').mkdir()
@@ -48,6 +60,7 @@ if($_SERVER['REQUEST_URI']==='/login'){
  if(!hash_equals(getenv('AGENDA_QA_TOKEN'),$_POST['token']??'')){http_response_code(403);exit;}
  $_SESSION=['usuario_id'=>(int)$_POST['id'],'rol_id'=>(int)($_POST['rol']??4),
  'permisos'=>($_POST['agenda']??'1')==='1'?['reuniones.ver']:[],'csrf_token'=>'qa-csrf'];
+ if(($_POST['tareas']??'0')==='1')$_SESSION['permisos']=array_merge($_SESSION['permisos'],['aliados.ver','aliados.gestionar_programas']);
  echo '{"ok":true}';exit;
 }
 if(($_GET['action']??'')==='pendientes'){
@@ -77,8 +90,8 @@ if(!in_array($action,['listar','crear','eliminar','leer'],true)){http_response_c
                 try:r=c.open(req)
                 except urllib.error.HTTPError as e:r=e
                 with r:return r.status,json.loads(r.read())
-            def login(c,id,agenda=1,rol=4):
-                c.open(f'http://127.0.0.1:{port}/login',urllib.parse.urlencode(dict(token=token,id=id,agenda=agenda,rol=rol)).encode()).close()
+            def login(c,id,agenda=1,rol=4,tareas=0):
+                c.open(f'http://127.0.0.1:{port}/login',urllib.parse.urlencode(dict(token=token,id=id,agenda=agenda,rol=rol,tareas=tareas)).encode()).close()
             a=client();b=client();without=client()
             assert request(a,'listar',query='&desde=2026-10-01&hasta=2026-11-01')[0]==403
             login(a,5);login(b,7,rol=6);login(without,9,agenda=0)
@@ -110,5 +123,16 @@ if(!in_array($action,['listar','crear','eliminar','leer'],true)){http_response_c
             assert len(bell['avisos'])==1 and bell['recordatorios'][0]['id']==90
             login(admin,15,agenda=0,rol=1)
             bell=request(admin,'pendientes')[1];assert bell['total']==1 and bell['avisos']==[]
-            print('OK: HTTP real, CSRF, autor/borrado, lectura individual y campana real: perfil de consulta, administrador, sesión y exclusión sin Agenda. BD aislada.')
+            if HOSTINGER:
+                kam=client();login(kam,7,rol=6,tareas=1)
+                bell=request(kam,'pendientes')[1]
+                assert bell['ok'] and bell['total']==31
+                assert len([r for r in bell['recordatorios'] if r.get('tipo')=='ALIADO_CONVOCATORIA_PENDIENTE'])==30
+                note=next(r for r in bell['recordatorios'] if r.get('agenda_comentario_id'))
+                assert request(kam,'leer',dict(id=note['agenda_comentario_id']))[0]==200
+                assert request(kam,'pendientes')[1]['total']==30, 'Leer comentario no resuelve tareas de Aliados'
+                login(kam,7,agenda=0,rol=6,tareas=1)
+                bell=request(kam,'pendientes')[1];assert bell['total']==30 and not any(r.get('agenda_comentario_id') for r in bell['recordatorios'])
+            print('OK: HTTP real ('+('Hostinger: conserva las 30 tareas de Aliados; ' if HOSTINGER else 'base; ')+
+                  'CSRF, autor/borrado, consulta/administrador y exclusión sin Agenda). BD aislada.')
         finally:process.terminate();process.wait(timeout=10)

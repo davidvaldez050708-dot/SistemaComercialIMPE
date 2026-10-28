@@ -5,6 +5,7 @@ const root=path.resolve(__dirname,'..');
 const bootstrap=process.env.BOOTSTRAP_MODULE_PATH||path.dirname(require.resolve('bootstrap/package.json'));
 const php=process.env.IMPE_TEST_PHP||'C:/xampp/php/php.exe';
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const reminders=process.env.IMPE_REMINDER_TEST_SOURCE?fs.readFileSync(process.env.IMPE_REMINDER_TEST_SOURCE,'utf8'):read('public/javascript/recordatorios.js');
 const out=path.join(root,'tmp/agenda_comentarios');fs.mkdirSync(out,{recursive:true});
 const view=cp.execFileSync(php,[path.join(root,'tests/fixtures/agenda_comentarios_vista.php')],{encoding:'utf8'});
 const style=fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'),'utf8')+['global.css','dashboard.css','agenda_reunion.css','agenda_reunion_refinamientos.css','agenda_comentarios.css','recordatorios.css'].map(f=>read('public/css/'+f)).join('\n');
@@ -52,7 +53,7 @@ async function toastFixture(browser,kind){
  const errors=[];page.on('pageerror',e=>errors.push(e.message));let calls=0;
  await page.route('http://agenda-notices.test/**',async route=>{
   if(new URL(route.request().url()).pathname==='/pendientes'){calls++;return route.fulfill({json:{ok:true,total:payload.recordatorios.length,recordatorios:payload.recordatorios,avisos:calls===1?payload.avisos:[]}});}
-  return route.fulfill({contentType:'text/html',body:'<!doctype html><html><head><style>'+style+'</style><script>window.IMPE_CURRENT_USER_ID=7;</script></head><body><div data-reminder-root data-reminder-endpoint="/pendientes"><span data-reminder-badge></span><div data-reminder-content></div></div><script>'+read('public/javascript/recordatorios.js')+'</script></body></html>'});
+  return route.fulfill({contentType:'text/html',body:'<!doctype html><html><head><style>'+style+'</style><script>window.IMPE_CURRENT_USER_ID=7;</script></head><body><div data-reminder-root data-reminder-endpoint="/pendientes"><span data-reminder-badge></span><div data-reminder-content></div></div><script>'+reminders+'</script></body></html>'});
  });
  await page.goto('http://agenda-notices.test/inicio');await page.locator('.topbar-reminder-item').first().waitFor();
  return {page,errors,get calls(){return calls}};
