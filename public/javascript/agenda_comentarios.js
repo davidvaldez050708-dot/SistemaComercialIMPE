@@ -19,7 +19,7 @@
         layout.before(status);
         const error = form.querySelector('[data-agenda-comment-error]');
         const days = Array.from(root.querySelectorAll('[data-agenda-date]'));
-        let comments = [], selected = '', tab = 'comentarios', deleting = null;
+        let comments = [], selected = '', tab = 'reuniones', deleting = null;
         let saving = false, removing = false, loading = false, available = false, refreshAgain = false;
         let changeVersion = 0;
         let editorOrigin = null, deleteOrigin = null, initialDone = false;
@@ -223,7 +223,7 @@
         root.querySelector('.agenda-calendar-grid').addEventListener('click',event=>{
             if (event.target.closest('button,a,input,textarea,select')) return;
             const day=event.target.closest('[data-agenda-date]');
-            if (day && available) { tab='comentarios';openDay(day.dataset.agendaDate); }
+            if (day && available) { tab='reuniones';openDay(day.dataset.agendaDate); }
         });
         panel.querySelector('[data-agenda-comments-close]').addEventListener('click',closePanel);
         panel.querySelector('[data-agenda-comments-new]').addEventListener('click',event=>openEditor(selected,event.currentTarget));
