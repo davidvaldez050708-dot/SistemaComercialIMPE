@@ -388,7 +388,8 @@ class AgendaReunionRepository
     {
         // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
         $ahora = date('Y-m-d H:i:s');
-        $sql = "UPDATE reuniones_vinculacion SET cuenta_clave_id=?,zoom_url=?,ubicacion=?,notas_kam=?,estado='CONFIRMADA',
+        // SET asigna campos; los predicados de alcance territorial pertenecen a WHERE.
+        $sql = "UPDATE reuniones_vinculacion SET cuenta_clave_id = ?,zoom_url=?,ubicacion=?,notas_kam=?,estado='CONFIRMADA',
                     confirmada_at=NOW(),confirmada_por=?,notificado_analista_at=NULL
                 WHERE id=?
                   AND cuenta_clave_id=?
