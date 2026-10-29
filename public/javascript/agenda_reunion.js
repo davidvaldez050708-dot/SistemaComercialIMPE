@@ -1101,7 +1101,16 @@
                         headers: { 'X-Requested-With': 'fetch' }
                     }
                 );
-                const json = await respuesta.json();
+                const texto = await respuesta.text();
+                let json;
+                try {
+                    json = JSON.parse(texto);
+                    if (!json || typeof json !== 'object' || Array.isArray(json)) throw new Error();
+                } catch (_) {
+                    throw new Error(respuesta.status === 401 || respuesta.redirected
+                        ? 'La sesión expiró. Inicia sesión nuevamente y comprueba el estado de la reunión.'
+                        : 'No fue posible confirmar la respuesta del servidor. Actualiza la agenda para comprobar el estado de la reunión antes de volver a intentarlo.');
+                }
 
                 if (!respuesta.ok || !json.ok) {
                     throw new Error(json.mensaje || 'No fue posible guardar los cambios.');
