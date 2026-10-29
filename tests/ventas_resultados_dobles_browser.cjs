@@ -37,6 +37,13 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   const box=await page.locator('#modalResultadoVenta .modal-content').boundingBox();assert(box.x>=0&&box.x+box.width<=viewport.width+1);assert.deepEqual(errors,[]);
   await page.screenshot({path:path.resolve(__dirname,'../tmp/ventas-lista-doble-'+viewport.width+'.png'),fullPage:true});await page.locator('#salesResultTrigger').click();
   const menuBox=await page.locator('[data-sales-result-options]').boundingBox();assert(menuBox.x>=0&&menuBox.x+menuBox.width<=viewport.width+1);
+  const typography=await page.evaluate(()=>{
+   const control=document.getElementById('salesContact'),choice=document.querySelector('[data-sales-result-choice][value="SMS"]').parentElement;
+   const c=getComputedStyle(control),l=getComputedStyle(choice),s=getComputedStyle(choice.querySelector('span'));
+   return {control:c.fontSize,label:l.fontSize,text:s.fontSize,family:c.fontFamily,labelFamily:l.fontFamily,weight:Number(l.fontWeight),row:choice.getBoundingClientRect().height,field:control.getBoundingClientRect().height,arrow:getComputedStyle(document.getElementById('salesResultTrigger')).backgroundImage};
+  });
+  assert.equal(typography.label,typography.control,'Las opciones usan la misma escala que los campos del modal');assert.equal(typography.text,typography.control);assert.equal(typography.labelFamily,typography.family);assert(typography.weight<=600);assert(typography.row<=typography.field,'Las filas cortas no deben superar la altura del campo');
+  assert.notEqual(typography.arrow,'none','El foco conserva la flecha del selector');
   await page.screenshot({path:path.resolve(__dirname,'../tmp/ventas-lista-doble-menu-'+viewport.width+'.png'),fullPage:true});await page.close();
  }console.log('PASS: lista única con 13 opciones, máximo dos, guardado de una sin motivo, HTTP pendiente, lectura V2/legado, tres históricos preservados, borrador y notas en escritorio/móvil.');}
  finally{await browser.close();}

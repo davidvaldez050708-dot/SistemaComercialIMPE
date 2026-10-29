@@ -1,10 +1,14 @@
 <?php $ventasResultadoFormularioIncluido=true; $escVenta=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8'); ?>
 <style>
-#modalResultadoVenta .sales-result-trigger{height:auto;min-height:54px;text-align:left;white-space:normal;padding-right:2.5rem;line-height:1.5}
-#modalResultadoVenta .sales-result-menu{max-height:310px;overflow:auto;border:1px solid #d5e0f3;border-radius:12px;box-shadow:0 12px 30px rgba(25,45,85,.12)}
-#modalResultadoVenta .sales-result-choice{display:flex;align-items:center;gap:12px;white-space:normal;min-height:42px;margin:0;border-radius:8px;font-size:inherit;cursor:pointer}
-#modalResultadoVenta .sales-result-choice .form-check-input{margin:0;flex-shrink:0}
-#modalResultadoVenta .sales-result-choice:has(input:disabled){opacity:.6;cursor:default}
+#modalResultadoVenta .linkage-incoming-form .sales-result-trigger{height:auto;min-height:43px;text-align:left;white-space:normal;padding-right:2.5rem;line-height:1.4}
+#modalResultadoVenta .linkage-incoming-form .sales-result-trigger:focus{background-image:var(--bs-form-select-bg-img);background-position:right .75rem center;background-size:16px 12px;background-repeat:no-repeat}
+#modalResultadoVenta .sales-result-menu{max-height:260px;overflow-y:auto;overflow-x:hidden;padding:5px;border:1px solid #d6e1f0;border-radius:10px;background:#fff;box-shadow:0 12px 28px rgba(20,35,70,.14);overscroll-behavior:contain}
+#modalResultadoVenta .linkage-incoming-form .sales-result-choice{display:flex;align-items:center;gap:10px;white-space:normal;min-height:34px;margin:0;padding:7px 10px;border:0;border-radius:7px;font-family:inherit;font-size:12.5px;font-weight:500;line-height:1.4;letter-spacing:0;color:#293e60;cursor:pointer}
+#modalResultadoVenta .sales-result-choice > span{font-size:inherit;font-weight:inherit;line-height:inherit;color:inherit}
+#modalResultadoVenta .sales-result-choice .form-check-input{width:16px;height:16px;margin:0;flex:0 0 16px;border:1px solid #aebbd4;border-radius:4px;cursor:inherit}
+#modalResultadoVenta .sales-result-choice:hover{background:#f4f7fb}
+#modalResultadoVenta .sales-result-choice:has(input:disabled),#modalResultadoVenta .sales-result-choice:has(input:disabled):hover{opacity:1;color:#8793a7;background:transparent;cursor:not-allowed}
+#modalResultadoVenta .sales-result-choice:has(input:checked),#modalResultadoVenta .sales-result-choice:has(input:checked):hover{color:#273a8a;background:#edf2fa;font-weight:600}
 </style>
 <div class="modal fade" id="modalResultadoVenta" tabindex="-1" aria-labelledby="tituloResultadoVenta" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg system-form-dialog linkage-incoming-modal-dialog">
@@ -22,7 +26,7 @@
       <div class="col-12"><label class="form-label" id="salesResultLabel" for="salesResultTrigger">Resultado de la llamada</label>
        <input type="hidden" id="salesResult" name="resultado">
        <div class="dropdown" data-sales-result-picker><button type="button" class="form-select sales-result-trigger" id="salesResultTrigger" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-labelledby="salesResultLabel salesResultText"><span id="salesResultText" data-sales-result-text>Selecciona uno o dos resultados</span></button>
-        <div class="dropdown-menu w-100 p-2 sales-result-menu" aria-labelledby="salesResultLabel" data-sales-result-options><?php foreach(TelefoniaResultadoVentasCatalogo::opcionesSeleccion() as $code=>$label): ?><label class="dropdown-item sales-result-choice"><input type="checkbox" class="form-check-input" value="<?= $escVenta($code) ?>" data-sales-result-choice data-requires-connection="<?= TelefoniaResultadoVentasCatalogo::conPersona($code)?'1':'0' ?>"><span><?= $escVenta($label) ?></span></label><?php endforeach; ?></div>
+        <div class="dropdown-menu w-100 sales-result-menu" aria-labelledby="salesResultLabel" data-sales-result-options><?php foreach(TelefoniaResultadoVentasCatalogo::opcionesSeleccion() as $code=>$label): ?><label class="dropdown-item sales-result-choice"><input type="checkbox" class="form-check-input" value="<?= $escVenta($code) ?>" data-sales-result-choice data-requires-connection="<?= TelefoniaResultadoVentasCatalogo::conPersona($code)?'1':'0' ?>"><span><?= $escVenta($label) ?></span></label><?php endforeach; ?></div>
        </div><small class="system-form-modal-subtitle d-block mt-2" data-sales-result-help>Puedes seleccionar uno o hasta dos resultados.</small>
       </div>
       <div class="col-12" data-sales-interrupted hidden><label class="form-label" for="salesInterrupted">¿Hablaste con una persona antes del corte?</label><select data-native-select class="form-select" id="salesInterrupted" name="contacto_antes_corte"><option value="">Selecciona una opción</option><option value="SI">Sí, hablé con una persona</option><option value="NO">No, no hubo conversación con una persona</option></select></div>
