@@ -47,7 +47,7 @@ class AgendaComentarioService
     {
         return ['id'=>(int)$fila['id'], 'fecha'=>(string)$fila['fecha'],
             'hora'=>empty($fila['recordatorio_at']) ? null : substr($fila['recordatorio_at'],11,5),
-            'comentario'=>(string)$fila['comentario'], 'autor'=>(string)$fila['autor_nombre'],
+            'comentario'=>(string)$fila['comentario'], 'autor'=>(string)$fila['autor_nombre'], 'privado'=>!empty($fila['privado']),
             'creado_at'=>(string)$fila['creado_at'], 'puede_eliminar'=>(int)$fila['creado_por']===$usuario,
             'leido'=>!empty($fila['novedad_leida_at']), 'atendido'=>!empty($fila['recordatorio_atendido_at']),
             'recordatorio_pendiente'=>!empty($fila['recordatorio_at']) && $fila['recordatorio_at']<=$this->ahora() && empty($fila['recordatorio_atendido_at'])];
@@ -60,7 +60,8 @@ class AgendaComentarioService
         $dias = (new DateTimeImmutable($desde))->diff(new DateTimeImmutable($hasta));
         if ($dias->invert || $dias->days < 1 || $dias->days > 62) { return $this->error('Consulta hasta 62 días de la agenda.'); }
         $filas = $this->repo->listar($desde, $hasta, $usuario);
-        return ['ok'=>true,'comentarios'=>array_map(fn($f)=>$this->presentar($f,$usuario),array_slice($filas,0,500)), 'hay_mas'=>count($filas)>500];
+        return ['ok'=>true,'comentarios'=>array_map(fn($f)=>$this->presentar($f,$usuario),array_slice($filas,0,500)),
+            'hay_mas'=>count($filas)>500,'privados_disponibles'=>$this->repo->privacidadDisponible()];
     }
 
     public function crear(int $usuario, array $datos): array
@@ -69,19 +70,23 @@ class AgendaComentarioService
         $fecha = $datos['fecha'] ?? '';
         $hora = $datos['hora'] ?? '';
         $texto = $datos['comentario'] ?? '';
+        $privado = $datos['privado'] ?? '0';
+        if (!in_array($privado,[false,true,0,1,'0','1'],true)) return $this->error('Selecciona si el comentario es privado.');
+        $privado = (bool)$privado;
+        if ($privado && !$this->repo->privacidadDisponible()) return $this->error('Los comentarios privados aún no están disponibles. Solicita completar la instalación.',503);
         if (!$this->fechaValida($fecha)) { return $this->error('Selecciona un día válido de la agenda.'); }
         if (!is_string($hora) || ($hora !== '' && !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$hora))) { return $this->error('La hora debe tener el formato HH:MM.'); }
         if (!is_string($texto) || !mb_check_encoding($texto,'UTF-8')) { return $this->error('Escribe un comentario válido.'); }
         $texto = trim(str_replace(["\r\n","\r"],"\n",$texto));
         if ($texto === '' || mb_strlen($texto,'UTF-8')>250 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u',$texto)) { return $this->error('Escribe entre 1 y 250 caracteres.'); }
-        $id = $this->repo->crear($usuario,$fecha,$hora===''?null:$hora,$texto,$this->ahora());
-        return ['ok'=>true,'mensaje'=>'Comentario añadido a la agenda.','comentario'=>$this->presentar($this->repo->obtener($id),$usuario)];
+        $id = $this->repo->crear($usuario,$fecha,$hora===''?null:$hora,$texto,$this->ahora(),$privado);
+        return ['ok'=>true,'mensaje'=>'Comentario añadido a la agenda.','comentario'=>$this->presentar($this->repo->obtener($id,$usuario),$usuario)];
     }
 
     public function eliminar(int $usuario, int $id): array
     {
         if ($error = $this->acceso($usuario)) { return $error; }
-        $fila = $id>0 ? $this->repo->obtener($id) : null;
+        $fila = $id>0 ? $this->repo->obtener($id,$usuario) : null;
         if (!$fila) { return $this->error('El comentario ya no está disponible.',404); }
         if ((int)$fila['creado_por']!==$usuario) { return $this->error('Sólo quien escribió el comentario puede borrarlo.',403); }
         if (!$this->repo->eliminar($id,$usuario,$this->ahora())) { return $this->error('El comentario ya no está disponible.',409); }
@@ -91,7 +96,7 @@ class AgendaComentarioService
     public function leer(int $usuario, int $id): array
     {
         if ($error = $this->acceso($usuario)) { return $error; }
-        if ($id<=0 || !$this->repo->obtener($id)) { return $this->error('El comentario ya no está disponible.',404); }
+        if ($id<=0 || !$this->repo->obtener($id,$usuario)) { return $this->error('El comentario ya no está disponible.',404); }
         $this->repo->marcarLeido($id,$usuario,$this->ahora());
         return ['ok'=>true];
     }
@@ -105,7 +110,7 @@ class AgendaComentarioService
             $vencido = !empty($fila['recordatorio_at']) && $fila['recordatorio_at'] <= $ahora && empty($fila['recordatorio_atendido_at']);
             $evento = $fila['id'].'|'.($vencido?'hora':'nuevo');
             $item = ['id'=>0,'agenda_comentario_id'=>(int)$fila['id'],'agenda_comentario_evento'=>$evento,
-                'nombre_entidad'=>'Comentario de '.$fila['autor_nombre'],
+                'nombre_entidad'=>!empty($fila['privado'])?'Comentario privado · Sólo tú':'Comentario de '.$fila['autor_nombre'],
                 'accion'=>$vencido?'Recordatorio de agenda: '.$fila['comentario']:'Añadió un comentario a la agenda: '.$fila['comentario'],
                 'fecha'=>$vencido?$fila['recordatorio_at']:$fila['creado_at'],
                 'estado'=>$vencido?'vencida':'normal', 'etiqueta'=>$vencido?'Hora programada':(empty($fila['recordatorio_at'])?'Sin hora':'Comentario nuevo'),
@@ -140,7 +145,7 @@ class AgendaComentarioService
     {
         if ($error=$this->acceso($usuario)) return $error;
         if (!$this->repo->avisosVistosDisponibles()) return $this->error('Los avisos de lectura aún no están disponibles.',503);
-        $fila=$id>0?$this->repo->obtener($id):null;
+        $fila=$id>0?$this->repo->obtener($id,$usuario):null;
         if (!$fila || $lector<=0 || $lector===$usuario) return $this->error('El aviso ya no está disponible.',404);
         if ((int)$fila['creado_por']!==$usuario) return $this->error('Este aviso sólo está disponible para el autor.',403);
         if (!$this->repo->leerAvisoVisto($usuario,$id,$lector,$this->ahora())) return $this->error('El aviso ya no está disponible.',404);

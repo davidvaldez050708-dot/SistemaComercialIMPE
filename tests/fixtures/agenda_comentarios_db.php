@@ -25,7 +25,15 @@ class ComentarioDbPrueba {
         $this->pdo->exec('CREATE TABLE agenda_comentarios(id INTEGER PRIMARY KEY AUTOINCREMENT,fecha TEXT,recordatorio_at TEXT,comentario TEXT,creado_por INTEGER,autor_nombre TEXT,creado_at TEXT,eliminado_at TEXT,eliminado_por INTEGER)');
         $this->pdo->exec('CREATE TABLE agenda_comentarios_lecturas(comentario_id INTEGER,usuario_id INTEGER,novedad_leida_at TEXT,recordatorio_atendido_at TEXT,PRIMARY KEY(comentario_id,usuario_id))');
     }
-    public function query($sql){$this->queries[]=$sql;return $this->pdo->query($sql);}
+    public function query($sql){
+        $this->queries[]=$sql;
+        try {return $this->pdo->query($sql);}
+        catch(PDOException $e) {
+            // Equivalencia del error de columna ausente de MySQL.
+            if(strpos($e->getMessage(),'no such column: privado')!==false)throw new mysqli_sql_exception('Columna ausente en prueba',1054);
+            throw $e;
+        }
+    }
     public function prepare($sql){
         $this->queries[]=$sql;
         $key=strpos($sql,'INSERT INTO agenda_comentarios_vistos_avisos')!==false?'comentario_id,lector_id':'comentario_id,usuario_id';

@@ -8,6 +8,7 @@ class AgendaComentarioRepository
     private $db;
     private $disponible;
     private $avisosVistosDisponibles;
+    private $privacidadDisponible;
 
     public function __construct($db = null)
     {
@@ -26,24 +27,44 @@ class AgendaComentarioRepository
 
     public function listar(string $desde, string $hasta, int $usuario): array
     {
+        $visibilidad = $this->privacidadDisponible() ? ' AND (c.privado=0 OR c.creado_por=?)' : '';
         $stmt = $this->db->prepare('SELECT c.*,l.novedad_leida_at,l.recordatorio_atendido_at FROM agenda_comentarios c
             LEFT JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id AND l.usuario_id=?
-            WHERE c.eliminado_at IS NULL AND c.fecha >= ? AND c.fecha < ? ORDER BY c.fecha,c.creado_at,c.id LIMIT 501');
-        $stmt->bind_param('iss', $usuario, $desde, $hasta);
+            WHERE c.eliminado_at IS NULL AND c.fecha >= ? AND c.fecha < ?'.$visibilidad.' ORDER BY c.fecha,c.creado_at,c.id LIMIT 501');
+        if ($visibilidad) $stmt->bind_param('issi', $usuario, $desde, $hasta, $usuario);
+        else $stmt->bind_param('iss', $usuario, $desde, $hasta);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function obtener(int $id)
+    public function obtener(int $id, ?int $usuario = null)
     {
-        $stmt = $this->db->prepare('SELECT * FROM agenda_comentarios WHERE id=? AND eliminado_at IS NULL');
-        $stmt->bind_param('i', $id);
+        $filtrar = $usuario !== null && $this->privacidadDisponible();
+        $stmt = $this->db->prepare('SELECT * FROM agenda_comentarios WHERE id=? AND eliminado_at IS NULL'.($filtrar?' AND (privado=0 OR creado_por=?)':''));
+        if ($filtrar) $stmt->bind_param('ii', $id, $usuario);
+        else $stmt->bind_param('i', $id);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
-    public function crear(int $usuario, string $fecha, ?string $hora, string $texto, string $ahora): int
+    public function privacidadDisponible(): bool
     {
+        if ($this->privacidadDisponible !== null) return $this->privacidadDisponible;
+        try {
+            $this->db->query('SELECT privado FROM agenda_comentarios LIMIT 0');
+            return $this->privacidadDisponible = true;
+        } catch (Throwable $e) {
+            // Sólo una columna aún no instalada permite compatibilidad con
+            // comentarios antiguos. Un fallo de BD nunca omite el filtro.
+            if ((int)$e->getCode() !== 1054) throw $e;
+            return $this->privacidadDisponible = false;
+        }
+    }
+
+    public function crear(int $usuario, string $fecha, ?string $hora, string $texto, string $ahora, bool $privado = false): int
+    {
+        $privacidad = $this->privacidadDisponible();
+        if ($privado && !$privacidad) throw new RuntimeException('AGENDA_PRIVACIDAD_NO_DISPONIBLE');
         $stmt = $this->db->prepare("SELECT TRIM(CONCAT(COALESCE(nombre,''),' ',COALESCE(apellidos,''))) AS autor FROM usuarios WHERE id=?");
         $stmt->bind_param('i', $usuario);
         $stmt->execute();
@@ -51,8 +72,10 @@ class AgendaComentarioRepository
         if (!$fila) { throw new RuntimeException('AGENDA_AUTOR_NO_DISPONIBLE'); }
         $autor = mb_substr(trim((string)$fila['autor']) ?: 'Usuario', 0, 255, 'UTF-8');
         $recordatorio = $hora === null ? null : $fecha . ' ' . $hora . ':00';
-        $stmt = $this->db->prepare('INSERT INTO agenda_comentarios (fecha,recordatorio_at,comentario,creado_por,autor_nombre,creado_at) VALUES (?,?,?,?,?,?)');
-        $stmt->bind_param('sssiss', $fecha, $recordatorio, $texto, $usuario, $autor, $ahora);
+        $stmt = $this->db->prepare('INSERT INTO agenda_comentarios (fecha,recordatorio_at,comentario,creado_por,autor_nombre,creado_at'.($privacidad?',privado':'').') VALUES (?,?,?,?,?,?'.($privacidad?',?':'').')');
+        $visibilidad = (int)$privado;
+        if ($privacidad) $stmt->bind_param('sssissi', $fecha, $recordatorio, $texto, $usuario, $autor, $ahora, $visibilidad);
+        else $stmt->bind_param('sssiss', $fecha, $recordatorio, $texto, $usuario, $autor, $ahora);
         $stmt->execute();
         return (int)$this->db->insert_id;
     }
@@ -67,27 +90,31 @@ class AgendaComentarioRepository
 
     public function marcarLeido(int $id, int $usuario, string $ahora): void
     {
+        $visibilidad = $this->privacidadDisponible() ? ' AND (privado=0 OR creado_por=?)' : '';
         // Leer antes de la hora no cancela el recordatorio futuro. Atenderlo
         // después de su hora afecta sólo al usuario que abrió el comentario.
         $stmt = $this->db->prepare('INSERT INTO agenda_comentarios_lecturas
             (comentario_id,usuario_id,novedad_leida_at,recordatorio_atendido_at)
             SELECT id,?,?,IF(recordatorio_at IS NOT NULL AND recordatorio_at<=?,?,NULL)
-            FROM agenda_comentarios WHERE id=? AND eliminado_at IS NULL
+            FROM agenda_comentarios WHERE id=? AND eliminado_at IS NULL'.$visibilidad.'
             ON DUPLICATE KEY UPDATE novedad_leida_at=VALUES(novedad_leida_at),
               recordatorio_atendido_at=COALESCE(VALUES(recordatorio_atendido_at),recordatorio_atendido_at)');
-        $stmt->bind_param('isssi', $usuario, $ahora, $ahora, $ahora, $id);
+        if ($visibilidad) $stmt->bind_param('isssii', $usuario, $ahora, $ahora, $ahora, $id, $usuario);
+        else $stmt->bind_param('isssi', $usuario, $ahora, $ahora, $ahora, $id);
         $stmt->execute();
     }
 
     public function pendientes(int $usuario, string $ahora): array
     {
+        $visibilidad = $this->privacidadDisponible() ? ' AND (c.privado=0 OR c.creado_por=?)' : '';
         $stmt = $this->db->prepare('SELECT c.*,l.novedad_leida_at,l.recordatorio_atendido_at
             FROM agenda_comentarios c LEFT JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id AND l.usuario_id=?
             WHERE c.eliminado_at IS NULL AND (l.novedad_leida_at IS NULL OR
-              (c.recordatorio_at IS NOT NULL AND c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL))
+              (c.recordatorio_at IS NOT NULL AND c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL))'.$visibilidad.'
             ORDER BY CASE WHEN c.recordatorio_at IS NOT NULL AND c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL THEN 0 ELSE 1 END,
               c.recordatorio_at ASC,c.creado_at DESC,c.id DESC LIMIT 20');
-        $stmt->bind_param('iss', $usuario, $ahora, $ahora);
+        if ($visibilidad) $stmt->bind_param('isis', $usuario, $ahora, $usuario, $ahora);
+        else $stmt->bind_param('iss', $usuario, $ahora, $ahora);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
@@ -104,13 +131,14 @@ class AgendaComentarioRepository
     public function vistosPendientes(int $autor): array
     {
         if (!$this->avisosVistosDisponibles()) return [];
+        $visibilidad = $this->privacidadDisponible() ? ' AND c.privado=0' : '';
         $stmt=$this->db->prepare("SELECT c.id,c.fecha,c.comentario,l.usuario_id AS lector_id,l.novedad_leida_at AS visto_at,
             TRIM(CONCAT(COALESCE(u.nombre,''),' ',COALESCE(u.apellidos,''))) AS lector_nombre
             FROM agenda_comentarios c INNER JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id
             INNER JOIN usuarios u ON u.id=l.usuario_id
             LEFT JOIN agenda_comentarios_vistos_avisos a ON a.comentario_id=c.id AND a.lector_id=l.usuario_id
             WHERE c.creado_por=? AND l.usuario_id<>c.creado_por AND c.eliminado_at IS NULL
-              AND l.novedad_leida_at IS NOT NULL AND a.comentario_id IS NULL
+              AND l.novedad_leida_at IS NOT NULL AND a.comentario_id IS NULL".$visibilidad."
             ORDER BY l.novedad_leida_at DESC,l.usuario_id,c.id LIMIT 20");
         $stmt->bind_param('i',$autor);$stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -118,11 +146,12 @@ class AgendaComentarioRepository
 
     public function leerAvisoVisto(int $autor,int $comentario,int $lector,string $ahora): bool
     {
+        $visibilidad = $this->privacidadDisponible() ? ' AND c.privado=0' : '';
         $stmt=$this->db->prepare('INSERT INTO agenda_comentarios_vistos_avisos (comentario_id,lector_id,leido_at)
             SELECT c.id,l.usuario_id,? FROM agenda_comentarios c
             INNER JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id
             WHERE c.id=? AND c.creado_por=? AND l.usuario_id=? AND l.usuario_id<>c.creado_por
-              AND c.eliminado_at IS NULL AND l.novedad_leida_at IS NOT NULL
+              AND c.eliminado_at IS NULL AND l.novedad_leida_at IS NOT NULL'.$visibilidad.'
             ON DUPLICATE KEY UPDATE leido_at=VALUES(leido_at)');
         $stmt->bind_param('siii',$ahora,$comentario,$autor,$lector);$stmt->execute();
         // Una lectura idempotente puede devolver 0 filas afectadas. Comprobar

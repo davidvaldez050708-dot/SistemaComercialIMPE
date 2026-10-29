@@ -13,8 +13,20 @@
         const removeDialog = root.querySelector('[data-agenda-comment-delete]');
         const form = editor.querySelector('form');
         const text = form.elements.comentario;
-        const hour = form.elements.hora;
+        const hour = form.elements.hora_hora;
+        const minute = form.elements.hora_minuto;
         const noHour = form.elements.sin_hora;
+        const privateComment = form.elements.privado;
+        let privacyAvailable = false;
+        function updateOptions() {
+            hour.disabled = minute.disabled = noHour.checked;
+            privateComment.disabled = !privacyAvailable;
+            form.querySelector('[data-agenda-comment-private-value]').textContent = privateComment.checked ? 'Sí' : 'No';
+            form.querySelector('#agendaComentarioPrivadoAyuda').textContent = !privacyAvailable
+                ? 'Los comentarios privados no están disponibles por el momento.' : privateComment.checked
+                ? 'Sólo tú podrás verlo. Sus avisos y recordatorios serán únicamente para ti.'
+                : 'Compartido con los usuarios que tienen acceso a Agenda.';
+        }
         const status = root.querySelector('[data-agenda-comments-status]');
         layout.before(status);
         const error = form.querySelector('[data-agenda-comment-error]');
@@ -138,6 +150,7 @@
                 const avatar = node('span','agenda-comment-avatar',Array.from(c.autor.trim()).filter((v,i,a)=>i===0||a[i-1]===' ').slice(0,2).join('').toUpperCase() || 'U');
                 const content = node('div','agenda-comment-copy');
                 content.append(node('strong','',c.autor));
+                if (c.privado) content.append(node('span','agenda-comment-private-badge','Privado · Sólo tú'));
                 const date = new Date(c.creado_at.replace(' ','T'));
                 const created = Number.isNaN(date.getTime()) ? c.creado_at : new Intl.DateTimeFormat('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(date);
                 content.append(node('small','',created));
@@ -203,6 +216,8 @@
                 const result=await request('listar');
                 if(version!==changeVersion){refreshAgain=true;return;}
                 comments=Array.isArray(result.comentarios)?result.comentarios:[];
+                privacyAvailable=result.privados_disponibles===true;
+                updateOptions();
                 available=true;
                 root.querySelectorAll('[data-agenda-comment-add]').forEach(b=>b.disabled=false);
                 updateMarkers();renderPanel();
@@ -242,7 +257,7 @@
         function openEditor(date, origin) {
             if (!available || editor.open) return;
             tab='comentarios';openDay(date);
-            form.reset();counter();error.hidden=true;hour.disabled=true;
+            form.reset();counter();error.hidden=true;updateOptions();
             editorOrigin=origin;
             editor.querySelector('[data-agenda-comment-date]').textContent=label(date);
             editor.style.left='';editor.style.top='';editor.classList.remove('is-anchored');
@@ -283,17 +298,24 @@
         editor.addEventListener('cancel',event=>{if(saving)event.preventDefault();});
         editor.addEventListener('close',()=>editorOrigin?.focus());
         text.addEventListener('input',counter);
-        noHour.addEventListener('change',()=>{hour.disabled=noHour.checked;if(noHour.checked)hour.value='';else hour.focus();});
+        noHour.addEventListener('change',()=>{
+            updateOptions();
+            if(noHour.checked) {hour.value='';minute.value='';} else hour.focus();
+        });
+        privateComment.addEventListener('change',updateOptions);
         form.addEventListener('submit',async event=>{
             event.preventDefault();if(saving)return;
             const content=text.value.trim();
-            if (!content||Array.from(content).length>250||(!noHour.checked&&!hour.value)) {
-                error.textContent=!content||Array.from(content).length>250?'Escribe entre 1 y 250 caracteres.':'Selecciona una hora o marca «Sin hora».';error.hidden=false;return;
+            if (privateComment.checked&&!privacyAvailable) {
+                error.textContent='No se puede guardar el comentario privado en este momento.';error.hidden=false;return;
+            }
+            if (!content||Array.from(content).length>250||(!noHour.checked&&(!hour.value||!minute.value))) {
+                error.textContent=!content||Array.from(content).length>250?'Escribe entre 1 y 250 caracteres.':'Selecciona la hora y los minutos o activa «Sin hora».';error.hidden=false;return;
             }
             saving=true;error.hidden=true;
             form.querySelector('[data-agenda-comment-save]').disabled=true;
             try {
-                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value});
+                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value+':'+minute.value,privado:privateComment.checked?'1':'0'});
                 changeVersion++;
                 editor.close();mostrarConfirmacionComentario('Comentario añadido a la agenda.');
                 refreshBell(saved.comentario?.id);await load();

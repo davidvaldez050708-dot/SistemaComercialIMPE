@@ -21,12 +21,12 @@ async function pageFixture(browser,options={}){
   const request=route.request(),u=new URL(request.url());
   if(u.searchParams.get('controller')==='agendaComentario'){
    const action=u.searchParams.get('action');
-   if(action==='listar')return route.fulfill({status:options.unavailable?503:200,json:options.unavailable?{ok:false,mensaje:'Los comentarios de la agenda aún no están disponibles.'}:{ok:true,comentarios:notes,hay_mas:false}});
+   if(action==='listar')return route.fulfill({status:options.unavailable?503:200,json:options.unavailable?{ok:false,mensaje:'Los comentarios de la agenda aún no están disponibles.'}:{ok:true,comentarios:notes,hay_mas:false,privados_disponibles:!options.privacyUnavailable}});
    const body=Object.fromEntries(new URLSearchParams(request.postData()||''));posts.push({action,body,csrf:request.headers()['x-csrf-token']});
    if(fail)return route.fulfill({status:500,json:{ok:false,mensaje:'Fallo de prueba; conserva el comentario.'}});
    if(action==='crear'){
     await new Promise(resolve=>setTimeout(resolve,150));
-    const c={id:nextId++,fecha:body.fecha,hora:body.hora||null,comentario:body.comentario,autor:'Analista de Prueba',creado_at:'2026-10-28 10:00:00',puede_eliminar:true,leido:false,atendido:false};notes.push(c);
+    const c={id:nextId++,fecha:body.fecha,hora:body.hora||null,privado:body.privado==='1',comentario:body.comentario,autor:'Analista de Prueba',creado_at:'2026-10-28 10:00:00',puede_eliminar:true,leido:false,atendido:false};notes.push(c);
     return route.fulfill({json:{ok:true,comentario:c,mensaje:'Comentario añadido.'}});
    }
    if(action==='eliminar')notes=notes.filter(n=>n.id!==Number(body.id));
@@ -84,7 +84,7 @@ async function toastFixture(browser,kind){
   await p.locator('#modalAgendaDetalle .btn-close').click();await p.locator('#modalAgendaDetalle').waitFor({state:'hidden'});
   await p.locator('[data-agenda-comments-tab="comentarios"]').click();
   await p.locator('[data-agenda-comments-new]').click();await p.locator('#agendaComentarioTexto').fill('Recordatorio con hora');await p.locator('[name=sin_hora]').uncheck();
-  await p.locator('#agendaComentarioHora').fill('10:30');await p.locator('[data-agenda-comment-save]').click();
+  await p.locator('#agendaComentarioHora').selectOption('10');await p.locator('[name=hora_minuto]').selectOption('30');await p.locator('[data-agenda-comment-save]').click();
   assert.equal(await p.locator('[data-agenda-comment-save]').isDisabled(),true);
   await editor.waitFor({state:'hidden'});await p.getByText('Recordatorio con hora',{exact:true}).waitFor();
   assert.equal(f.posts.filter(x=>x.action==='crear').length,2);assert.equal(f.posts.at(-1).body.hora,'10:30');
@@ -170,6 +170,50 @@ async function toastFixture(browser,kind){
    }
    assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
-  console.log('OK: '+cases+' escenarios: agregado/leído/eliminado 2600 ms, aviso compartido al detectar, autor/borrado, errores, reuniones, móvil y recordatorios con hora. Sin producción.');
+  for(const mobile of [false,true]){
+   const f=await pageFixture(browser,{mobile}),p=f.page;
+   await p.locator('[data-agenda-comment-add="2026-10-14"]').click();
+   const editor=p.locator('[data-agenda-comment-editor]');
+   assert.equal(await p.getByRole('switch',{name:'Sin hora'}).isChecked(),true);
+   assert.equal(await p.getByRole('switch',{name:/Comentario privado/}).isChecked(),false);
+   await p.locator('#agendaComentarioTexto').fill('Nota personal de prueba');
+   await p.locator('[name=privado]').check();
+   assert.equal(await p.locator('[data-agenda-comment-private-value]').textContent(),'Sí');
+   assert.match(await p.locator('#agendaComentarioPrivadoAyuda').textContent(),/Sólo tú/);
+   await p.locator('[name=sin_hora]').uncheck();
+   await p.locator('#agendaComentarioHora').selectOption('00');
+   await p.locator('[data-agenda-comment-save]').click();
+   assert.equal(f.posts.length,0,'No guardar con minutos incompletos');
+   await p.locator('[data-agenda-comment-error]').waitFor({state:'visible'});
+   await p.locator('[name=hora_minuto]').selectOption('00');
+   const box=await editor.boundingBox(),vp=p.viewportSize();
+   assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=vp.width&&box.y+box.height<=vp.height,'Editor privado dentro de pantalla');
+   await p.screenshot({path:path.join(out,mobile?'privado-movil.png':'privado-escritorio.png')});
+   await p.locator('[data-agenda-comment-save]').click();await editor.waitFor({state:'hidden'});
+   assert.equal(f.posts[0].body.hora,'00:00');assert.equal(f.posts[0].body.privado,'1');
+   await p.locator('[data-comment-id="2"] .agenda-comment-private-badge').waitFor();
+   await p.locator('[data-agenda-comments-new]').click();
+   assert.equal(await p.locator('[name=privado]').isChecked(),false,'Privacidad no se arrastra al nuevo comentario');
+   assert.equal(await p.locator('[name=sin_hora]').isChecked(),true);
+   await p.locator('#agendaComentarioTexto').fill('Otra nota personal sin hora');
+   await p.locator('[name=privado]').check();
+   await p.locator('[name=sin_hora]').uncheck();
+   await p.locator('#agendaComentarioHora').selectOption('23');await p.locator('[name=hora_minuto]').selectOption('59');
+   await p.locator('[name=sin_hora]').check();
+   await p.locator('[data-agenda-comment-save]').click();await editor.waitFor({state:'hidden'});
+   assert.equal(f.posts.at(-1).body.hora,'','Sin hora nunca envía el horario anterior');
+   assert.equal(f.posts.at(-1).body.privado,'1');
+   assert.deepEqual(f.errors,[]);await p.close();cases++;
+  }
+  {
+   const f=await pageFixture(browser,{privacyUnavailable:true}),p=f.page;
+   await p.locator('[data-agenda-comment-add="2026-10-14"]').click();
+   assert.equal(await p.locator('[name=privado]').isDisabled(),true,'No ofrecer privados antes de instalar la columna');
+   await p.locator('#agendaComentarioTexto').fill('Compartido antes de migrar');
+   await p.locator('[data-agenda-comment-save]').click();
+   await p.locator('[data-agenda-comment-editor]').waitFor({state:'hidden'});
+   assert.equal(f.posts[0].body.privado,'0');assert.deepEqual(f.errors,[]);await p.close();cases++;
+  }
+  console.log('OK: '+cases+' escenarios: hora/minutos opcionales, switch privado, medianoche, escritorio/móvil, migración pendiente, toasts 2600 ms y reuniones intactas. Sin producción.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

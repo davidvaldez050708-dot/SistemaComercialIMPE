@@ -8,6 +8,7 @@ import tempfile
 import time
 import sys
 VISTOS='--vistos' in sys.argv
+PRIVADOS='--privados' in sys.argv
 
 ROOT=Path(__file__).resolve().parents[1]
 PHP=os.environ.get('IMPE_TEST_PHP','C:/xampp/php/php.exe')
@@ -18,12 +19,13 @@ with tempfile.TemporaryDirectory(prefix='agenda-mariadb-',dir=ROOT/'tmp') as tmp
     area=Path(tmp);area.resolve().relative_to((ROOT/'tmp').resolve())
     data=area/'data';site=area/'site';site.mkdir()
     with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
-    env=dict(os.environ,AGENDA_TEST_PORT=str(port),AGENDA_TEST_VISTOS='1' if VISTOS else '')
+    env=dict(os.environ,AGENDA_TEST_PORT=str(port),AGENDA_TEST_VISTOS='1' if VISTOS else '',AGENDA_TEST_PRIVADOS='1' if PRIVADOS else '')
     subprocess.run([str(MYSQL/'bin/mysql_install_db.exe'),'--datadir='+str(data),'--silent'],check=True,capture_output=True,creationflags=FLAGS)
     for rel in ['app/services/AgendaComentarioRepository.php','app/services/AgendaComentarioService.php',
                 'app/helpers/PermissionHelper.php','app/helpers/AdminRolePolicy.php',
                 'database/migrations/2026_10_28_agenda_comentarios.sql','tools/configurar_agenda_comentarios.php',
-                'database/migrations/2026_10_28_agenda_comentarios_vistos.sql','tools/configurar_avisos_vistos_agenda.php']:
+                'database/migrations/2026_10_28_agenda_comentarios_vistos.sql','tools/configurar_avisos_vistos_agenda.php',
+                'database/migrations/2026_10_29_agenda_comentarios_privados.sql','tools/configurar_agenda_comentarios_privados.php']:
         p=site/rel;p.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/rel,p)
     (site/'config').mkdir()
     (site/'config/db_connection.php').write_text('''<?php
@@ -69,6 +71,22 @@ if(getenv('AGENDA_TEST_VISTOS')){
  check(count($later->notificaciones(5)['recordatorios'])===1,'Ack retira sólo aviso de lectura');
  echo "OK: vistos MariaDB: JOIN del lector, permisos de autor, exclusión de borrados y UPSERT idempotente.\\n";
 }
+if(getenv('AGENDA_TEST_PRIVADOS')){
+ $_SESSION=['usuario_id'=>5,'rol_id'=>4,'permisos'=>['reuniones.ver']];
+ $a=$later->crear(5,['fecha'=>'2026-10-28','comentario'=>'Privado en MariaDB','hora'=>'23:59','privado'=>'1']);
+ check($a['ok']&&$a['comentario']['privado']&&$a['comentario']['hora']==='23:59','Privado con mysqli real');
+ $private=$a['comentario']['id'];
+ $_SESSION=['usuario_id'=>7,'rol_id'=>6,'permisos'=>['reuniones.ver']];
+ check(count($later->listar(7,'2026-10-01','2026-11-01')['comentarios'])===1,'Filtrado SQL privado antes de LIMIT');
+ check($later->leer(7,$private)['codigo_http']===404&&$later->eliminar(7,$private)['codigo_http']===404,'No acceder por ID ajeno');
+ check(count($later->notificaciones(7)['recordatorios'])===0,'Campana SQL excluye privado ajeno');
+ $repo->marcarLeido($private,7,'2026-10-28 12:00:00');
+ check((int)$db->query('SELECT COUNT(*) FROM agenda_comentarios_lecturas WHERE comentario_id='.$private)->fetch_row()[0]===0,'SQL bloquea escritura de lectura privada ajena');
+ $_SESSION=['usuario_id'=>5,'rol_id'=>4,'permisos'=>['reuniones.ver']];
+ check($later->leer(5,$private)['ok'],'Autor puede leer privado con UPSERT real');
+ check($later->eliminar(5,$private)['ok'],'Autor borra privado');
+ echo "OK: privados MariaDB: migración repetible, datos existentes compartidos, JOIN filtrado, lectura/borrado y SQL de visibilidad.\\n";
+}
 echo "OK: esquema y SQL reales MariaDB; 250 Unicode, NULL, autor, JOIN, UPSERT, reloj PHP/SQL UTC, lectura por usuario y borrado.\\n";
 ''',encoding='utf8')
     with (area/'server.log').open('w') as log:
@@ -89,6 +107,14 @@ echo "OK: esquema y SQL reales MariaDB; 250 Unicode, NULL, autor, JOIN, UPSERT, 
             if VISTOS:
                 for _ in range(2):subprocess.run([PHP,str(site/'tools/configurar_avisos_vistos_agenda.php'),'--apply'],env=env,check=True,capture_output=True)
                 subprocess.run([PHP,str(site/'tools/configurar_avisos_vistos_agenda.php'),'--check'],env=env,check=True,capture_output=True)
+            if PRIVADOS:
+                assert subprocess.run([PHP,str(site/'tools/configurar_agenda_comentarios_privados.php'),'--check'],env=env,capture_output=True).returncode!=0
+                legacy="require $argv[1].'/config/db_connection.php';$d=(new Database())->connect();$d->query(\"INSERT INTO agenda_comentarios (fecha,comentario,creado_por,autor_nombre,creado_at) VALUES ('2026-10-28','Anterior a privacidad',5,'Prueba','2026-10-28 10:00:00')\");"
+                subprocess.run([PHP,'-r',legacy,str(site)],env=env,check=True,capture_output=True)
+                for _ in range(2):subprocess.run([PHP,str(site/'tools/configurar_agenda_comentarios_privados.php'),'--apply'],env=env,check=True,capture_output=True)
+                subprocess.run([PHP,str(site/'tools/configurar_agenda_comentarios_privados.php'),'--check'],env=env,check=True,capture_output=True)
+                preserved="require $argv[1].'/config/db_connection.php';$d=(new Database())->connect();$r=$d->query('SELECT comentario,privado FROM agenda_comentarios')->fetch_assoc();if($r['comentario']!=='Anterior a privacidad'||(int)$r['privado']!==0)exit(1);$d->query('DELETE FROM agenda_comentarios');"
+                subprocess.run([PHP,'-r',preserved,str(site)],env=env,check=True,capture_output=True)
             result=subprocess.run([PHP,str(site/'test.php')],env=env,check=True,capture_output=True,text=True,encoding='utf8')
             print(result.stdout.strip())
             subprocess.run([PHP,str(site/'tools/configurar_agenda_comentarios.php'),'--check'],env=env,check=True,capture_output=True)

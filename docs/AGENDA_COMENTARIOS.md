@@ -14,9 +14,10 @@ JavaScript, CSS y almacenamiento propios.
   **Comentarios**. Cerrar ese panel restablece el panel anterior de pendientes.
 - Se muestran nombre del autor, fecha de creación y hora del recordatorio cuando
   exista. El nombre se obtiene del usuario autenticado en el servidor.
-- Los comentarios son compartidos entre los usuarios con el permiso existente
+- Los comentarios con **Privado: No** son compartidos entre los usuarios con el permiso existente
   `reuniones.ver`, incluidos los perfiles de consulta y el administrador si
-  tienen ese permiso. No se conceden permisos nuevos a ningún rol.
+  tienen ese permiso. Con **Privado: Sí** sólo los ve su autor, incluidos sus
+  avisos y recordatorios. No se conceden permisos nuevos a ningún rol.
 - Sólo el autor puede borrarlos, mediante confirmación. El servidor verifica la
   propiedad; el borrado lógico conserva la trazabilidad y retira los avisos.
 - Cada destinatario puede marcar su comentario leído o atendido desde el menú
@@ -127,6 +128,55 @@ El servicio no consulta comentarios para usuarios sin `reuniones.ver`. La
 campana del perfil de consulta se habilita con ese mismo permiso. Las novedades
 que queden fuera del límite existente de 12 elementos no se consumen antes de
 aparecer en la campana.
+
+## Hora opcional y comentarios privados
+
+El editor permite escoger hora (00–23) y minutos (00–59) mediante selectores con
+el estilo de los formularios del sistema. El switch **Sin hora** está activado
+por defecto. Al activarlo se vacían los selectores y se guarda `NULL`, nunca una
+medianoche implícita. El formato de almacenamiento y las cadencias existentes
+de los recordatorios no cambian.
+
+El switch **Comentario privado: Sí/No** está en No por defecto. En Sí, el autor
+ve la etiqueta **Privado · Sólo tú**. El servidor filtra calendario, conteos,
+campana, toasts y acceso por identificador antes de aplicar los límites. Sólo
+el autor ve el comentario y recibe sus avisos/recordatorios; no existe una
+excepción para administradores. Los compartidos mantienen su alcance y los
+avisos de lectura anteriores. No se pueden cambiar de visibilidad comentarios
+ya creados desde este formulario.
+
+La migración explícita `tools/configurar_agenda_comentarios_privados.php --apply`
+añade exclusivamente `agenda_comentarios.privado`, `TINYINT(1) UNSIGNED NOT NULL
+DEFAULT 0`. Es repetible y conserva como compartidos los comentarios existentes.
+Sin esa columna, siguen funcionando los compartidos, pero crear uno privado
+devuelve 503 y no lo guarda como compartido. Los fallos de BD no desactivan el
+filtro de privacidad. El switch sólo se habilita cuando la respuesta del servidor
+confirma que la privacidad está instalada; los compartidos siguen disponibles.
+
+Publicar esta actualización sobre la entrega de avisos al autor (`192ebe0d`):
+
+```bash
+bash "$HOME/impe-publicadores/agenda-privados.sh" --check
+bash "$HOME/impe-publicadores/agenda-privados.sh" --apply
+php "$HOME/domains/fundacionrededumex.org/public_html/tools/configurar_agenda_comentarios_privados.php" --apply
+php "$HOME/domains/fundacionrededumex.org/public_html/tools/configurar_agenda_comentarios_privados.php" --check
+```
+
+El script autónomo es `tools/publicar_agenda_privados_hostinger.sh`, generado
+por `tools/generar_publicador_privados_agenda.py`. Aplica fragmentos a cinco
+archivos de comentarios y añade únicamente la migración y su CLI. Conserva las
+personalizaciones externas de CSS, los iconos y `recordatorios.js`. Check/apply
+no consultan ni modifican la BD. El respaldo incluye un comando de restore;
+antes de restaurar consulta si hay privados activos y rechaza volver a un
+generador anterior que los mostraría como compartidos. Un fallo al comprobarlo
+también deja el sitio intacto. La columna no se elimina al restaurar.
+
+Pruebas específicas: `php tests/agenda_comentarios_privados_test.php`, HTTP con
+`--hostinger --vistos --privados`, MariaDB con `--vistos --privados`, navegador
+con los selectores y switches en escritorio/móvil y
+`tests/agenda_comentarios_privados_publicador_test.py` para LF/CRLF, instalación
+idempotente, restauración y conservación del resto de módulos. Todas usan datos
+sintéticos y sesiones aisladas, sin crear comentarios en producción.
 
 ## Instalación en Hostinger
 

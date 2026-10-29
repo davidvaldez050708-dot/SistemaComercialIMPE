@@ -18,6 +18,7 @@ import urllib.request
 ROOT=Path(__file__).resolve().parents[1]
 HOSTINGER='--hostinger' in sys.argv
 VISTOS='--vistos' in sys.argv
+PRIVADOS='--privados' in sys.argv
 sys.path.insert(0,str(ROOT/'tools'))
 from agenda_comentarios_compat import reminder_hostinger
 PHP=os.environ.get('IMPE_TEST_PHP',r'C:\xampp\php\php.exe' if os.name=='nt' else 'php')
@@ -58,6 +59,8 @@ class Database { public function connect(){return new ComentarioDbPrueba(getenv(
         sql="CREATE TABLE agenda_comentarios_vistos_avisos(comentario_id INTEGER,lector_id INTEGER,leido_at TEXT,PRIMARY KEY(comentario_id,lector_id))"
         subprocess.run([PHP,'-r',"$d=new PDO('sqlite:'.$argv[1]);$d->exec($argv[2]);",str(db),sql],check=True,capture_output=True)
     token=secrets.token_hex(24)
+    if PRIVADOS:
+        subprocess.run([PHP,'-r',"$d=new PDO('sqlite:'.$argv[1]);$d->exec('ALTER TABLE agenda_comentarios ADD COLUMN privado INTEGER NOT NULL DEFAULT 0');",str(db)],check=True,capture_output=True)
     (work/'router.php').write_text('''<?php
 session_start();header('Content-Type: application/json');
 if($_SERVER['REQUEST_URI']==='/login'){
@@ -154,6 +157,23 @@ if(!in_array($action,['listar','crear','eliminar','leer','leerVisto'],true)){htt
                 assert next(c for c in listed if c['id']==note)['leido'] is False,'Abrir aviso de visto no lee el comentario original'
                 assert request(without,'leerVisto',dict(id=note,lector_id=7))[0]==403
                 print('OK: HTTP de vistos: lector de sesión, sólo autor, sin duplicado, CSRF, ack idempotente y comentario original intacto.')
+            if PRIVADOS:
+                login(a,5);login(b,7,rol=6);login(admin,15,rol=1)
+                code,result=request(a,'crear',dict(fecha='2026-10-28',comentario='Privado HTTP',hora='00:00',privado='1',creado_por=7))
+                assert code==200 and result['comentario']['privado'] is True and result['comentario']['hora']=='00:00'
+                private_id=result['comentario']['id']
+                for other in [b,admin]:
+                    listed=request(other,'listar',query='&desde=2026-10-01&hasta=2026-11-01')[1]['comentarios']
+                    assert not any(c['id']==private_id for c in listed)
+                    assert 'Privado HTTP' not in json.dumps(request(other,'pendientes')[1])
+                    for action in ['leer','eliminar']:
+                        assert request(other,action,dict(id=private_id))[0]==404
+                    assert request(other,'leerVisto',dict(id=private_id,lector_id=5))[0]==404
+                assert any(r.get('agenda_comentario_id')==private_id for r in request(a,'pendientes')[1]['recordatorios'])
+                assert request(a,'leer',dict(id=private_id))[0]==200
+                assert request(a,'eliminar',dict(id=private_id))[0]==200
+                assert request(a,'crear',dict(fecha='2026-10-28',comentario='X',privado='yes'))[0]==422
+                print('OK: privados HTTP: calendario/campana/IDs directos, lector/admin ajenos excluidos y autor con hora opcional.')
             print('OK: HTTP real ('+('Hostinger: conserva las 30 tareas de Aliados; ' if HOSTINGER else 'base; ')+
                   'CSRF, autor/borrado, consulta/administrador y exclusión sin Agenda). BD aislada.')
         finally:process.terminate();process.wait(timeout=10)
