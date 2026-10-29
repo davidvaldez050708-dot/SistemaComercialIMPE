@@ -6,6 +6,8 @@ needle=' // Reasignación: el tramo congelado conserva su propietario histórico
 anchor=" fixture=fixture.replace(\"SET time_zone='-06:00'\",\"SET time_zone='+00:00'\")"
 extra="""
  shutil.copyfile(root/'app/services/TelefoniaMarcacionesVentasService.php',project/'app/services/TelefoniaMarcacionesVentasService.php')
+ legacy=subprocess.check_output(['git','show','5c897450:app/services/TelefoniaMarcacionesVentasService.php'],cwd=root).decode().replace('class TelefoniaMarcacionesVentasService','class TelefoniaMarcacionesVentasLegacy')
+ (project/'app/services/TelefoniaMarcacionesVentasLegacy.php').write_text(legacy,encoding='utf8')
  (project/'tools').mkdir();shutil.copyfile(root/'tools/diagnosticar_historial_ventas.php',project/'tools/diagnosticar_historial_ventas.php')
  fixture=fixture.replace(needle," require __DIR__.'/ventas_historial_diagnostico_casos.php';\\n"+needle)
  shutil.copyfile(root/'tests/ventas_historial_diagnostico_casos.php',project/'tests/ventas_historial_diagnostico_casos.php')

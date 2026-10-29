@@ -209,9 +209,24 @@ class TelefoniaMarcacionesVentasService
         );
         if (!$stmt) throw new RuntimeException('No se pudo vincular la llamada comercial.');
         $stmt->bind_param('ssis', $pbxCallId, $token, $usuarioId, $extension);
-        $stmt->execute();
-        $actualizadas = $stmt->affected_rows;
-        $stmt->close();
+        try {
+            $ok = $stmt->execute();
+            if (!$ok) {
+                if ($stmt->errno === 1062) {
+                    throw new DomainException('La llamada ya está vinculada a otra marcación. Se conserva su asociación original.');
+                }
+                throw new RuntimeException('No se pudo vincular la llamada comercial.');
+            }
+            $actualizadas = $stmt->affected_rows;
+        } catch (mysqli_sql_exception $e) {
+            // Un intento duplicado no debe interrumpir la conciliación de toda
+            // la cuenta. La restricción única mantiene intacta la asociación;
+            // reconciliarPendientes ya conserva las evidencias insuficientes.
+            if ((int)$e->getCode() !== 1062) throw $e;
+            throw new DomainException('La llamada ya está vinculada a otra marcación. Se conserva su asociación original.', 0, $e);
+        } finally {
+            $stmt->close();
+        }
         if ($actualizadas !== 1) {
             throw new DomainException('La llamada comercial no pudo vincularse.');
         }
