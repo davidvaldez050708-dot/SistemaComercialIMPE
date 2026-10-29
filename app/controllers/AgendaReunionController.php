@@ -13,9 +13,14 @@ class AgendaReunionController
 
     public function __construct()
     {
-        $this->service = new AgendaReunionService();
-        $this->reprogramacionService = new ReprogramacionReunionService();
-        $this->expedienteService = new SeguimientoExpedienteService();
+        try {
+            $this->service = new AgendaReunionService();
+        } catch (Throwable $error) {
+            if (strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) !== 'fetch') throw $error;
+            $this->errorAccion($error, 'iniciar');
+        }
+        // Cada acción carga sólo sus dependencias. Confirmar una solicitud no
+        // necesita abrir conexiones del expediente ni de reprogramaciones.
     }
 
     public function index()
@@ -214,6 +219,7 @@ class AgendaReunionController
 
         $rolConsulta = $esMarketing ? 1 : $rolId;
 
+        $this->expedienteService = $this->expedienteService ?: new SeguimientoExpedienteService();
         $resultado = $this->expedienteService->obtener(
             $seguimientoId,
             $usuarioId,
@@ -348,7 +354,11 @@ class AgendaReunionController
             ], 405);
         }
 
-        $resultado = $this->service->$metodo($usuarioId, $rolId, $_POST);
+        try {
+            $resultado = $this->service->$metodo($usuarioId, $rolId, $_POST);
+        } catch (Throwable $error) {
+            $this->errorAccion($error, $metodo);
+        }
         $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
         unset($resultado['codigo_http']);
 
@@ -391,7 +401,12 @@ class AgendaReunionController
             ], 405);
         }
 
-        $resultado = $this->reprogramacionService->$metodo($usuarioId, $rolId, $_POST);
+        try {
+            $this->reprogramacionService = $this->reprogramacionService ?: new ReprogramacionReunionService();
+            $resultado = $this->reprogramacionService->$metodo($usuarioId, $rolId, $_POST);
+        } catch (Throwable $error) {
+            $this->errorAccion($error, $metodo);
+        }
         $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
         unset($resultado['codigo_http']);
 
@@ -400,12 +415,32 @@ class AgendaReunionController
 
     private function responder($datos, $codigoHttp = 200)
     {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
         http_response_code((int)$codigoHttp);
-        echo json_encode(
-            $datos,
-            JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
-        );
+        try {
+            $json = json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+        } catch (Throwable $error) {
+            $this->errorAccion($error, 'respuesta');
+        }
+        echo $json;
         exit;
+    }
+
+    private function errorAccion(Throwable $error, string $accion): void
+    {
+        $referencia = bin2hex(random_bytes(8));
+        $registro = json_encode(['referencia'=>$referencia,'accion'=>$accion,
+            'clase'=>get_class($error),'codigo'=>(int)$error->getCode(),
+            'archivo'=>basename($error->getFile()),'linea'=>$error->getLine()], JSON_UNESCAPED_UNICODE);
+        // No registrar formularios, enlaces, notas, credenciales o mensajes SQL.
+        $directorio = dirname(__DIR__,2) . '/storage/logs';
+        if ((is_dir($directorio) || @mkdir($directorio,0750,true)) && is_writable($directorio)) {
+            if (!@error_log($registro . PHP_EOL,3,$directorio . '/agenda_reunion_json.log')) error_log('[agenda_reunion_json] ' . $registro);
+        } else error_log('[agenda_reunion_json] ' . $registro);
+        $this->responder(['ok'=>false,
+            'mensaje'=>'No fue posible completar la operación. Actualiza la agenda para comprobar el estado de la reunión antes de volver a intentarlo. Referencia: ' . $referencia . '.',
+            'referencia'=>$referencia],500);
     }
 
     private function nombreMes($mes)

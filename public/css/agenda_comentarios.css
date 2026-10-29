@@ -1,0 +1,81 @@
+.agenda-comments-panel[hidden],.agenda-comments-panel [hidden],.agenda-comments-status[hidden],.agenda-layout.has-comment-panel > .agenda-side-card[hidden] { display:none !important; }
+.agenda-page .agenda-day-number { position:relative; padding-right:28px; }
+.agenda-page .agenda-comment-add { position:absolute;right:0;top:0;width:16px;height:16px;border:0;border-radius:50%;background:#d1d5db;color:#4b5563;display:grid;place-items:center;font-size:9px;padding:0;transition:background-color .15s ease,color .15s ease; }
+.agenda-page .agenda-comment-add:not(:disabled):hover { background:#b8bec7;color:#374151; }
+.agenda-page .agenda-comment-add:not(:disabled):active { background:#9ca3af;color:#1f2937; }
+.agenda-page .agenda-comment-add:disabled { opacity:.35;cursor:wait; }
+.agenda-page .agenda-comment-add:focus-visible { outline:3px solid #cbd5e1;outline-offset:2px; }
+.agenda-comments-panel button:focus-visible,.agenda-comments-panel summary:focus-visible { outline:3px solid #a7c8ff;outline-offset:2px; }
+.agenda-page .agenda-day.has-comments-selected { background:#edf5ff;box-shadow:inset 0 0 0 2px #2982ff; }
+.agenda-page .agenda-comment-markers { margin-top:6px; }
+.agenda-page .agenda-comment-day-count { border:0;border-radius:6px;background:#eef4ff;color:#2455a0;font-size:11px;padding:4px 6px;text-align:left;max-width:100%;overflow-wrap:anywhere; }
+.agenda-page .agenda-layout.has-comment-panel { grid-template-columns:minmax(0,1fr) 340px; }
+.agenda-comments-panel { padding:18px;min-width:0; }
+.agenda-comments-heading { display:flex;gap:12px;justify-content:space-between;align-items:flex-start; }
+.agenda-comments-heading h3 { font-size:14px;line-height:1.5;font-weight:750;margin:0;color:var(--color-text-primary,#17243b); }
+.agenda-comments-heading > button { padding:2px;border:0;background:transparent;color:#567299;font-size:16px;flex-shrink:0; }
+.agenda-comments-heading p { margin:3px 0 0;font-size:12px;line-height:1.5;color:var(--color-text-secondary,#68768d); }
+.agenda-comments-tabs { display:flex;border-bottom:1px solid #dde5ef;margin:16px 0; }
+.agenda-comments-tabs [role=tab] { flex:1;border:0;border-bottom:3px solid transparent;background:transparent;color:#6c7b95;font-size:12px;font-weight:700;padding:10px 3px; }
+.agenda-comments-tabs [aria-selected=true] { color:#1265ed;border-bottom-color:#1265ed; }
+.agenda-comments-empty { font-size:12px;line-height:1.6;color:#738099;margin:20px 0; }
+.agenda-comments-panel [data-agenda-comments-meetings] { display:grid;gap:8px; }
+.agenda-comment-card { display:grid;grid-template-columns:30px minmax(0,1fr) 20px;gap:10px;padding:13px 10px;margin-bottom:12px;border:1px solid #e5edf8;background:#f5f8fd;border-radius:12px; }
+.agenda-comment-avatar { width:30px;height:30px;display:grid;place-items:center;border-radius:50%;font-size:11px;font-weight:700;background:#e0edff;color:#1265ed; }
+.agenda-comment-copy { min-width:0; }
+.agenda-comment-copy > strong { display:block;font-size:12px;line-height:1.5;overflow-wrap:anywhere; }
+.agenda-comment-copy > small { display:block;font-size:10px;color:#76849b;line-height:1.6;margin-top:2px; }
+.agenda-comment-text { font-size:12px;line-height:1.6;color:#38516e;margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere; }
+.agenda-comment-time { display:block;font-size:10px;color:#75839a; }
+.agenda-comment-menu { position:relative; }
+.agenda-comment-menu > summary { list-style:none;cursor:pointer;padding:0 4px;color:#577098;line-height:24px;text-align:center;border-radius:4px; }
+.agenda-comment-menu > summary::-webkit-details-marker { display:none; }
+.agenda-comment-menu-actions { position:absolute;right:0;top:26px;min-width:140px;background:#fff;box-shadow:0 8px 24px #1c2e4a24;border:1px solid #dde5f0;border-radius:8px;padding:5px;z-index:5; }
+.agenda-comment-menu-actions button { display:block;width:100%;border:0;background:white;font-size:12px;color:#345173;text-align:left;padding:8px;border-radius:5px; }
+.agenda-comment-menu-actions button:hover { background:#edf4ff; }
+.agenda-comment-menu-actions button:disabled { opacity:.55; }
+.agenda-comment-menu-actions .is-danger { color:#ba3030; }
+.agenda-comments-new { margin-top:12px;font-size:12px;display:inline-flex;align-items:center;gap:8px; }
+.agenda-comments-hint { font-size:11px;line-height:1.5;color:#748198;margin:10px 0 0; }
+.agenda-comments-status { padding:10px 14px;margin:0;border:1px solid #cce8df;border-radius:8px;background:#f1fbf7;color:#247054;font-size:12px; }
+.agenda-comments-status.is-error { color:#a23434;border-color:#f1cdcd;background:#fff5f5; }
+.agenda-comment-editor,.agenda-comment-delete { position:fixed;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;width:430px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;border:1px solid #dce5f2;border-radius:14px;box-shadow:0 14px 48px #263b602b;background:#fff;padding:20px;color:var(--color-text-primary,#17243b);font:inherit;z-index:1065; }
+.agenda-comment-editor.is-anchored { transform:none;max-height:calc(100dvh - var(--agenda-comment-top,16px) - 16px); }
+.agenda-comment-editor::backdrop { background:#172b4612; }
+.agenda-comment-delete::backdrop { background:#172b4633; }
+.agenda-comment-editor textarea { display:block;width:100%;resize:vertical;min-height:105px;max-height:40vh;margin-top:18px;box-sizing:border-box;padding:10px 12px;border:1px solid #d5e0ef;border-radius:8px;color:#304b6c;font:inherit;font-size:13px;line-height:1.5;background:white; }
+.agenda-comment-editor textarea:focus,.agenda-comment-editor input[type=time]:focus { outline:3px solid #d5e6ff;border-color:#5595f6; }
+.agenda-comment-editor textarea[aria-invalid=true] { border-color:#cf6767; }
+.agenda-comment-counter { text-align:right;font-size:12px;color:#75839b;margin:5px 0 15px; }
+.agenda-comment-hour-label { display:block;font-size:12px;font-weight:650;margin-bottom:8px; }
+.agenda-comment-hour-label > span { color:#76849b;font-weight:400; }
+.agenda-comment-recipient { margin-bottom:16px; }
+.agenda-comment-recipient select { width:100%;min-height:40px;font:inherit;font-size:13px;border:1px solid #d5e0ef;border-radius:7px;color:#304b6c; }
+.agenda-comment-recipient select:focus-visible { outline:3px solid #d5e6ff;border-color:#5595f6; }
+.agenda-comment-hour-row { display:flex;align-items:center;gap:16px; }
+.agenda-comment-hour-row > input[type=time] { flex:1;min-width:0;min-height:40px;font-size:13px;padding:8px 10px;border-color:#d5e0ef;border-radius:7px; }
+.agenda-comment-hour-row > input[type=time]:disabled { background-color:#f5f7fa;color:#76849b; }
+.agenda-comment-switch { display:flex;align-items:center;gap:8px;font-size:12px;color:#577097;cursor:pointer; }
+.agenda-comment-hour-row .agenda-comment-switch { white-space:nowrap; }
+.agenda-comment-switch input { appearance:none;-webkit-appearance:none;flex-shrink:0;width:32px;height:18px;border:1px solid #9ca8b8;border-radius:12px;background:#e5e9ef;position:relative;cursor:pointer;transition:background-color .15s; }
+.agenda-comment-switch input::before { content:'';position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #17243b40;transition:transform .15s; }
+.agenda-comment-switch input:checked { background:var(--color-primary,#2d3c8e);border-color:var(--color-primary,#2d3c8e); }
+.agenda-comment-switch input:checked::before { transform:translateX(14px); }
+.agenda-comment-switch input:focus-visible { outline:3px solid #cbd5e1;outline-offset:2px; }
+.agenda-comment-switch input:disabled { opacity:.5;cursor:not-allowed; }
+.agenda-comment-privacy { margin-top:16px;padding-top:14px;border-top:1px solid #e4eaf2; }
+.agenda-comment-private-badge { display:inline-block;font-size:10px;color:#52627a;background:#e9edf3;border-radius:5px;padding:2px 6px;margin-top:4px; }
+.agenda-comment-editor footer,.agenda-comment-delete footer { display:flex;justify-content:flex-end;gap:8px;margin-top:20px; }
+.agenda-comment-editor footer .btn,.agenda-comment-delete footer .btn { min-height:38px;font-size:12px;padding:8px 18px; }
+.agenda-comment-error { font-size:12px;line-height:1.5;color:#a92d2d;background:#fff3f3;padding:8px;border-radius:6px;margin:12px 0 0; }
+.agenda-comment-delete h3 { font-size:16px;margin:0 0 10px; }
+.agenda-comment-delete > p { font-size:13px;line-height:1.6;color:#62748d; }
+@media(max-width:991px) {
+    .agenda-page .agenda-layout.has-comment-panel { grid-template-columns:minmax(0,1fr); }
+    .agenda-comments-panel { min-height:0; }
+}
+@media(max-width:480px) {
+    .agenda-comment-editor,.agenda-comment-delete { padding:16px; }
+    .agenda-comments-panel { padding:15px; }
+    .agenda-comment-hour-row { gap:10px; }
+}
