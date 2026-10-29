@@ -15,8 +15,8 @@ final class SupervisionLlamadasAudioService
     {
         $call=$this->repo->obtener($uid,$key,true);
         $ref=$call['pbx_call_id'];$ext=$call['extension'];$owner=$call['usuario_id'];
-        // El resultado comercial no determina si existe evidencia reproducible.
-        if($call['area']==='asesores'&&!TelefoniaVentasLlamadasService::audioConsultable($call))throw new DomainException('Falta confirmar la respuesta y el cierre o la transferencia autorizada de esta llamada.');
+        // Un envío no anula un resultado sin contacto, ni habilita resultados pendientes.
+        if($call['area']==='asesores'&&!TelefoniaVentasLlamadasService::audioConsultable($call))throw new DomainException('La grabación no está habilitada para el resultado y estado registrados en esta llamada.');
         if($call['area']==='asesores'&&$call['origen_extension']!==''&&$call['solicitud_id']){
             $out=(new TelefoniaGrabacionesTransferenciaVentasService($this->db))->resolver($ref,$owner,'destino',$ext,[$provider,'obtenerGrabacionPorCallId'],$verify?[$provider,'estadisticasPbx']:null);
             return self::sanear($out);

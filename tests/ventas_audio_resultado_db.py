@@ -16,6 +16,8 @@ with tempfile.TemporaryDirectory(prefix='impe-audio-resultado-') as folder:
  for name in cases+['ventas_audio_resultado_api.php']:shutil.copyfile(R/'tests'/name,P/'tests'/name)
  (P/'prueba_telefonia/api').mkdir(parents=True);shutil.copyfile(R/'prueba_telefonia/api/grabacion_ventas.php',P/'prueba_telefonia/api/grabacion_ventas.php')
  shutil.copyfile(R/'app/views/telefonia/ventas_llamadas.php',P/'app/views/telefonia/ventas_llamadas.php')
+ shutil.copyfile(R/'app/views/telefonia/supervision_llamadas.php',P/'app/views/telefonia/supervision_llamadas.php')
+ (P/'app/helpers/AvatarHelper.php').write_text("<?php function renderAvatarUsuario(...$args){return '<span aria-hidden=true>QA</span>';}",encoding='utf8')
  (P/'app/views/telefonia/ventas_paginacion.php').write_bytes(subprocess.check_output(['git','show','8dcab048:app/views/telefonia/ventas_paginacion.php'],cwd=R))
  shutil.copytree(R/'public/css',P/'public/css');shutil.copytree(R/'public/javascript',P/'public/javascript')
  (P/'config/db_connection.php').write_text("<?php class Database {public function connect($persistente=true){$name=getenv('IMPE_TEST_DATABASE');if(!str_starts_with($name,'impe_ventas_test_'))throw new RuntimeException('Solo test local');$db=new mysqli('127.0.0.1','root','',$name,33319);$db->set_charset('utf8mb4');$db->query('SET time_zone='.chr(39).'+00:00'.chr(39));return $db;}}",encoding='utf8')

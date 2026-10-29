@@ -1,5 +1,7 @@
 # Audio independiente del resultado comercial
 
+> Registro de la entrega anterior `a75e4626`. Su política de resultados fue sustituida por [las reglas de reproducción vigentes](ventas_audio_reglas.md), que exigen resultado guardado y bloquean los resultados sin contacto, incluso combinados con envíos.
+
 Un resultado que sólo contiene WhatsApp/SMS se guarda como envío de información, sin acreditar por sí mismo contacto humano. Las tarjetas y las rutas de audio exigían que el resultado se clasificara como conversación: ocultaban grabaciones aunque la llamada tuviera respuesta y audio verificable.
 
 Se añade `TelefoniaVentasLlamadasService::audioConsultable()`, compartido por Mis llamadas, Supervisión y las rutas privadas de reproducción. Permite consultar cuando hay una referencia PBX válida, extensión y respuesta confirmadas, además de cierre o una transferencia entrante atendida. La transferencia conserva la validación de origen distinto de la extensión propia. El resultado comercial no participa en esa decisión.

@@ -239,7 +239,7 @@ final class SupervisionLlamadasRepository
             'estado_pbx'=>$estadoPbx,'observacion'=>$note,
             'segundos'=>$duration,'observada'=>$observed,'conectada'=>(bool)$facts['conectada'],'finalizada'=>(bool)$facts['finalizada'],
             'origen_extension'=>(string)($r['origen_extension']??''),'solicitud_id'=>$r['solicitud_id']??null,'hechos'=>$facts,
-            'audio_consultable'=>$source==='venta'?TelefoniaVentasLlamadasService::audioConsultable(array_replace($r,$facts,['pbx_call_id'=>$ref,'extension'=>$ext,'direccion'=>$direction])):($facts['conectada']||($session!==''&&$classification==='INTERNA'))];
+            'audio_consultable'=>$source==='venta'?TelefoniaVentasLlamadasService::audioConsultable(array_replace($r,$facts,['pbx_call_id'=>$ref,'extension'=>$ext,'direccion'=>$direction,'registro'=>$registroVenta,'resultado_guardado'=>$resultadoGuardado])):($facts['conectada']||($session!==''&&$classification==='INTERNA'))];
     }
     public static function textoResultado(string $value): string
     {
