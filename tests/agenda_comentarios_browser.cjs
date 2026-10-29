@@ -35,6 +35,8 @@ async function pageFixture(browser,options={}){
   }
   if(u.pathname.includes('/public/javascript/agenda_comentarios.js'))return route.fulfill({contentType:'application/javascript',body:read('public/javascript/agenda_comentarios.js')});
   if(u.pathname.includes('/public/css/agenda_comentarios.css'))return route.fulfill({contentType:'text/css',body:read('public/css/agenda_comentarios.css')});
+  if(u.pathname.includes('/public/javascript/agenda_fechas_referencia.js'))return route.fulfill({contentType:'application/javascript',body:read('public/javascript/agenda_fechas_referencia.js')});
+  if(u.pathname.includes('/public/css/agenda_fechas_referencia.css'))return route.fulfill({contentType:'text/css',body:read('public/css/agenda_fechas_referencia.css')});
   if(request.method()!=='GET')throw Error('Se intentó modificar una reunión: '+request.url());
   if(u.hostname==='agenda-comments.test')return route.fulfill({contentType:'text/html',body:html()});
   return route.abort();

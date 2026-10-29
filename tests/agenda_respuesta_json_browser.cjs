@@ -17,7 +17,7 @@ const source=fs.readFileSync(path.join(root,'public/javascript/agenda_reunion.js
    await p.route('**/*',route=>{
     const r=route.request();
     if(r.method()==='POST'){posts++;assert.match(r.url(),/action=confirmar/);return route.fulfill({status:scenario.status,body:scenario.body,contentType:'application/json'});}
-    if(r.url().includes('agenda_comentarios.'))return route.fulfill({body:''});
+    if(r.url().includes('agenda_comentarios.')||r.url().includes('agenda_fechas_referencia.'))return route.fulfill({body:''});
     return route.fulfill({body:'<!doctype html><html><head><meta charset="utf-8"><style>'+css+'</style><script>'+boot+'</script></head><body>'+view+'<script>'+source+'</script></body></html>',contentType:'text/html'});
    });
    await p.goto('http://agenda-json.test/index.php');

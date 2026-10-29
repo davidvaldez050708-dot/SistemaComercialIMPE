@@ -124,6 +124,8 @@ $pendientesAgenda = array_values(array_filter(
         </div>
     </div>
 
+    <?php require __DIR__ . '/partials/agenda_fechas_referencia.php'; ?>
+
     <p class="agenda-mobile-scroll-hint">
         <i class="bi bi-arrows-move" aria-hidden="true"></i>
         Desliza el calendario hacia los lados para consultar todos los días.
