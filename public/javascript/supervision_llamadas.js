@@ -50,29 +50,75 @@
         }
         window.addEventListener('pagehide',()=>clearTimeout(timer),{once:true});
     }
-    root.querySelector('[data-supervision-close]').addEventListener('click',()=>dialog.close());
+    const detailStatus=root.querySelector('[data-supervision-detail-status]');
+    let detailSequence=0,detailTrigger=null;
+    const node=(tag,className,text)=>{const element=document.createElement(tag);if(className)element.className=className;if(text!==undefined)element.textContent=text;return element;};
+    const displayDate=value=>String(value||'').replace(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)$/, '$3/$2/$1 · $4');
+    function releaseDetail(){
+        detailSequence++;
+        const trigger=detailTrigger;detailTrigger=null;
+        if(trigger){trigger.disabled=false;if(trigger.isConnected)trigger.focus({preventScroll:true});}
+    }
+    function closeDetail(){dialog.close();releaseDetail();}
+    root.querySelectorAll('[data-supervision-close]').forEach(button=>button.addEventListener('click',closeDetail));
+    dialog.addEventListener('cancel',event=>{event.preventDefault();closeDetail();});
+    dialog.addEventListener('close',()=>{if(!dialog.open)releaseDetail();});
+    function section(title){
+        const element=node('section','supervision-detail-section');
+        element.append(node('h4','supervision-detail-section-title',title));fields.append(element);return element;
+    }
+    function renderDetail(call){
+        const summary=node('div','supervision-detail-summary'),icon=node('i','bi bi-telephone');icon.setAttribute('aria-hidden','true');
+        const contact=node('div','supervision-detail-contact');contact.append(node('span','supervision-detail-label','Número de la llamada'),node('strong','',call.numero||'Sin número disponible'));
+        summary.append(icon,contact,node('span','supervision-detail-direction',call.direccion||'Sin tipo indicado'));fields.append(summary);
+        const metadata=node('dl','supervision-detail-metadata');
+        for(const [label,value] of [['Persona',call.persona],['Fecha y hora · México',displayDate(call.fecha)],['Nombre registrado',call.nombre],['Extensión',call.extension]]){
+            const pair=node('div','supervision-detail-field');pair.append(node('dt','',label),node('dd','',value||'—'));metadata.append(pair);
+        }
+        fields.append(metadata);
+        const result=section('Resultado registrado');result.append(node('p','supervision-detail-result',call.resultado_texto||'Sin resultado registrado.'));
+        if(call.detalle_resultado)result.append(node('p','supervision-detail-clarification',call.detalle_resultado));
+        section('Observaciones').append(node('p','supervision-detail-text'+(call.observacion?'':' is-empty'),call.observacion||'Sin observaciones registradas.'));
+    }
+    async function openDetail(button,key){
+        const sequence=++detailSequence;
+        if(detailTrigger)detailTrigger.disabled=false;
+        detailTrigger=button;button.disabled=true;
+        fields.replaceChildren();detailStatus.classList.remove('is-error');detailStatus.hidden=false;detailStatus.textContent='Consultando resultado de la llamada…';
+        if(!dialog.open)dialog.showModal();
+        const current=()=>sequence===detailSequence&&dialog.open;
+        try{
+            const data=await json(endpoint(root.dataset.detailUrl,key));if(!current())return;
+            if(!data.llamada||typeof data.llamada!=='object')throw Error('No se pudo consultar el resultado. Vuelve a intentarlo.');
+            renderDetail(data.llamada);detailStatus.hidden=true;
+            if(key.startsWith('venta:')){
+                const notesSection=section('Observaciones adicionales'),notesBody=node('div','supervision-detail-notes');notesSection.append(notesBody);
+                notesBody.append(node('p','supervision-detail-text is-empty','Consultando observaciones…'));
+                try{
+                    const notesUrl=new URL(root.dataset.detailUrl,location.href);notesUrl.searchParams.set('controller','telefonia');notesUrl.searchParams.set('action','observacionesVenta');notesUrl.searchParams.set('llamada',key);
+                    const notes=await json(notesUrl);if(!current())return;
+                    notesBody.replaceChildren();
+                    if(!notes.disponible)notesBody.append(node('p','supervision-detail-text is-empty','Las observaciones adicionales aún no están instaladas.'));
+                    else{
+                        if(!Array.isArray(notes.observaciones))throw Error('No se pudieron consultar las observaciones adicionales.');
+                        if(!notes.observaciones.length)notesBody.append(node('p','supervision-detail-text is-empty','Sin observaciones adicionales.'));
+                        for(const note of notes.observaciones){
+                            const article=node('article','supervision-detail-note'),heading=node('div','supervision-detail-note-heading');
+                            heading.append(node('strong','',note.autor||'Sin autor indicado'),node('span','',displayDate(note.fecha)+' · hora de México'));
+                            article.append(heading,node('p','supervision-detail-text',note.nota||''));notesBody.append(article);
+                        }
+                    }
+                }catch(error){if(current())notesBody.replaceChildren(node('p','supervision-detail-text is-error',error.message||'No se pudieron consultar las observaciones adicionales.'));}
+            }
+        }catch(error){if(current()){fields.replaceChildren();detailStatus.classList.add('is-error');detailStatus.hidden=false;detailStatus.textContent=error.message||'No se pudo consultar el resultado. Vuelve a intentarlo.';}}
+        finally{button.disabled=false;}
+    }
     root.addEventListener('click',async event=>{
         const button=event.target.closest('[data-supervision-detail],[data-supervision-audio]');
         if(!button||button.disabled)return;
         const card=button.closest('[data-call-key]'),key=card.dataset.callKey;
         if(button.hasAttribute('data-supervision-detail')){
-            button.disabled=true;
-            try{const data=await json(endpoint(root.dataset.detailUrl,key));fields.replaceChildren();
-                const labels={persona:'Persona',numero:'Número',nombre:'Nombre',fecha:'Fecha y hora',direccion:'Tipo',extension:'Extensión',resultado_texto:'Resultados',detalle_resultado:'Detalle del resultado',observacion:'Observaciones'};
-                for(const [name,label] of Object.entries(labels)){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=data.llamada[name]||'—';fields.append(dt,dd);}
-                if(!dialog.open)dialog.showModal();
-                if(key.startsWith('venta:')){
-                    const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent='Observaciones adicionales';dd.textContent='Consultando…';fields.append(dt,dd);
-                    try{
-                        const notesUrl=new URL(root.dataset.detailUrl,location.href);notesUrl.searchParams.set('controller','telefonia');notesUrl.searchParams.set('action','observacionesVenta');notesUrl.searchParams.set('llamada',key);
-                        const notes=await json(notesUrl);
-                        dd.replaceChildren();
-                        if(!notes.disponible)dd.textContent='Las observaciones adicionales aún no están instaladas.';
-                        else if(!notes.observaciones.length)dd.textContent='Sin observaciones adicionales.';
-                        else for(const note of notes.observaciones){const article=document.createElement('article'),title=document.createElement('strong'),text=document.createElement('p');title.textContent=note.autor+' · '+note.fecha+' · hora de México';text.textContent=note.nota;text.style.whiteSpace='pre-wrap';article.append(title,text);dd.append(article);}
-                    }catch(error){dd.textContent=error.message||'No se pudieron consultar las observaciones adicionales.';}
-                }
-            }catch(error){notice(error.message||'No se pudo consultar el resultado. Vuelve a intentarlo.');}finally{button.disabled=false;}return;
+            await openDetail(button,key);return;
         }
         const panel=card.querySelector('[data-supervision-player]');
         if(button.getAttribute('aria-expanded')==='true'){panel.querySelectorAll('audio').forEach(a=>a.pause());panel.hidden=true;button.setAttribute('aria-expanded','false');return;}

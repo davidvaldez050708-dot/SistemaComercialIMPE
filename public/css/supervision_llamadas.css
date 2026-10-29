@@ -13,10 +13,68 @@
 .supervision-actions{display:flex;flex-wrap:wrap;gap:8px}.supervision-calls .linkage-call-history-footer{gap:12px;flex-wrap:wrap}
 .supervision-notice,.supervision-empty{background:#f5f8fc;border:1px solid #dce4f2;border-radius:14px;padding:20px;color:#526580}.supervision-empty{text-align:center}.supervision-empty h3{font-size:18px;margin:12px 0}
 .supervision-pagination{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:24px}
-.supervision-detail{width:min(640px,calc(100% - 32px));max-height:85dvh;overflow:auto;border:1px solid #dce4f2;border-radius:18px;padding:24px;color:#17243d;box-shadow:0 24px 80px #17243d26}
-.supervision-detail::backdrop{background:#17243d66}.supervision-detail header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}.supervision-detail h3{font-size:20px;margin:0}.supervision-detail dl{display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px}.supervision-detail dd{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}.supervision-detail p{color:#71829c;font-size:13px;margin-bottom:0}
 @media(max-width:900px){.supervision-calls .supervision-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:480px){.supervision-calls .supervision-filters{grid-template-columns:minmax(0,1fr)}.supervision-calls .supervision-search-field{grid-column:auto}.supervision-detail{padding:18px}.supervision-detail dl{grid-template-columns:minmax(0,1fr);gap:6px}.supervision-detail dd{margin-bottom:10px}.supervision-calls .linkage-call-recording-top{flex-wrap:wrap}.supervision-calls .linkage-call-recording-duration{white-space:normal}.supervision-person strong{overflow-wrap:anywhere}}
+@media(max-width:480px){.supervision-calls .supervision-filters{grid-template-columns:minmax(0,1fr)}.supervision-calls .supervision-search-field{grid-column:auto}.supervision-calls .linkage-call-recording-top{flex-wrap:wrap}.supervision-calls .linkage-call-recording-duration{white-space:normal}.supervision-person strong{overflow-wrap:anywhere}}
 
 /* Resultados multiples: conservar la tarjeta dentro del ancho disponible. */
 .supervision-calls .linkage-call-result-badge.is-result{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+
+/* Consulta de resultados: misma estructura visual que los formularios del sistema. */
+.supervision-detail.system-form-modal{box-sizing:border-box;width:min(720px,calc(100% - 32px));max-width:none;max-height:calc(100dvh - 48px);margin:auto;padding:0;border:1px solid #dce4f2;border-radius:15px;background:#fff;color:var(--color-navy,#16223b);font-family:'Manrope',sans-serif;box-shadow:0 18px 55px rgba(22,34,59,.18);overflow:hidden}
+.supervision-detail[open]{display:flex;flex-direction:column}
+.supervision-detail::backdrop{background:rgba(22,34,59,.42)}
+.supervision-detail .system-form-modal-header{flex-shrink:0;align-items:flex-start;gap:18px;padding:20px 24px;border-bottom:1px solid #e5eaf3}
+.supervision-detail .system-form-modal-title{margin:0;color:#243653;font-size:17px;font-weight:800;line-height:1.5}
+.supervision-detail .system-form-modal-subtitle{margin:5px 0 0;color:#71829c;font-size:12px;line-height:1.65}
+.supervision-detail .btn-close{flex-shrink:0;width:16px;height:16px;padding:8px;opacity:.65}
+.supervision-detail .btn-close:hover{opacity:1}
+.supervision-detail .btn-close:focus-visible{outline:2px solid var(--color-secondary,#0563a6);outline-offset:3px;box-shadow:none}
+.supervision-detail .supervision-detail-body{min-height:0;flex:1 1 auto;overflow:auto;overscroll-behavior:contain;padding:22px 24px}
+.supervision-detail [data-supervision-fields]{display:grid;gap:20px;min-width:0}
+.supervision-detail-summary{display:flex;align-items:center;gap:13px;padding:14px 16px;border:1px solid #dce6f3;border-radius:11px;background:#f5f8fd}
+.supervision-detail-summary>.bi{display:grid;place-items:center;flex:0 0 38px;height:38px;border:1px solid #d2dff1;border-radius:10px;background:#fff;color:var(--color-primary,#273a8a);font-size:18px}
+.supervision-detail-contact{min-width:0;flex:1}
+.supervision-detail-label{display:block;margin-bottom:4px;color:#71829c;font-size:10px;font-weight:600}
+.supervision-detail-contact strong{display:block;color:#344b6b;font-size:13px;font-weight:800;overflow-wrap:anywhere}
+.supervision-detail-direction{flex-shrink:0;padding:5px 10px;border:1px solid #d9e4f3;border-radius:20px;background:#fff;color:#445d80;font-size:11px;font-weight:700}
+.supervision-detail-metadata{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 24px;margin:0;padding:0 2px}
+.supervision-detail-field{min-width:0}
+.supervision-detail-field dt{margin:0 0 5px;color:#71829c;font-size:11px;font-weight:600;line-height:1.5}
+.supervision-detail-field dd{margin:0;color:#344258;font-size:12px;font-weight:600;line-height:1.65;overflow-wrap:anywhere;white-space:pre-wrap}
+.supervision-detail-section{min-width:0;padding-top:17px;border-top:1px solid #e8edf5}
+.supervision-detail .supervision-detail-section-title{margin:0 0 10px;color:#344258;font-size:12px;font-weight:800;line-height:1.5}
+.supervision-detail .supervision-detail-result{margin:0;padding:12px 15px;border:1px solid #d9e4f5;border-radius:10px;background:#edf2fa;color:var(--color-primary,#273a8a);font-size:12px;font-weight:700;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.supervision-detail .supervision-detail-clarification{margin:9px 0 0;color:#64758c;font-size:12px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
+.supervision-detail .supervision-detail-text{margin:0;padding:12px 15px;border:1px solid #e1e8f3;border-radius:10px;background:#f8fafd;color:#425674;font-size:12px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.supervision-detail .is-empty{color:#7a899e;font-weight:400}
+.supervision-detail-notes{display:grid;gap:10px}
+.supervision-detail-note{padding:13px 15px;border:1px solid #dfe7f3;border-radius:10px;background:#f8fafd}
+.supervision-detail-note-heading{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:5px 12px;margin-bottom:8px}
+.supervision-detail-note-heading strong{color:#344b6b;font-size:11px;overflow-wrap:anywhere}
+.supervision-detail-note-heading span{color:#71829c;font-size:10px;overflow-wrap:anywhere}
+.supervision-detail-note .supervision-detail-text{padding:0;border:0;background:transparent}
+.supervision-detail .supervision-detail-status{margin:0;padding:16px;border:1px solid #dce6f3;border-radius:10px;background:#f5f8fd;color:#526580;font-size:12px;line-height:1.7}
+.supervision-detail .is-error{color:#a33131;background:#fff6f5;border-color:#f1d4d0}
+.supervision-detail .system-form-modal-footer{flex-shrink:0;justify-content:space-between;gap:12px;padding:15px 24px;border-top:1px solid #e5eaf3;background:#fff}
+.supervision-detail-readonly{display:flex;align-items:center;gap:7px;margin:0;color:#71829c;font-size:10px}
+.supervision-detail-readonly .bi{color:var(--color-accent,#0a8f7a);font-size:14px}
+.supervision-detail .system-form-modal-footer .btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;margin:0;padding:0 21px;border:1px solid #dce5f2;border-radius:9px;background:#fff;color:#64758c;font-family:inherit;font-size:12px;font-weight:700;line-height:1.4}
+.supervision-detail .system-form-modal-footer .btn:hover{background:#f5f8fd;color:#273a8a}
+@media(max-width:575px){
+ .supervision-detail.system-form-modal{width:calc(100% - 16px);max-height:calc(100dvh - 16px);border-radius:13px}
+ .supervision-detail .system-form-modal-header{padding:17px 16px;gap:10px}
+ .supervision-detail .system-form-modal-title{font-size:16px}
+ .supervision-detail .system-form-modal-subtitle{font-size:11px}
+ .supervision-detail .supervision-detail-body{padding:18px 16px}
+ .supervision-detail-metadata{grid-template-columns:minmax(0,1fr);gap:13px}
+ .supervision-detail-summary{flex-wrap:wrap;padding:12px;gap:10px}
+ .supervision-detail-contact{flex-basis:calc(100% - 48px)}
+ .supervision-detail-direction{margin-left:48px}
+ .supervision-detail .system-form-modal-footer{padding:13px 16px}
+ .supervision-detail-readonly{max-width:60%;line-height:1.5}
+}
+@media(max-height:540px){
+ .supervision-detail.system-form-modal{max-height:calc(100dvh - 16px)}
+ .supervision-detail .system-form-modal-header{padding-top:12px;padding-bottom:12px}
+ .supervision-detail .system-form-modal-footer{padding-top:10px;padding-bottom:10px}
+}
