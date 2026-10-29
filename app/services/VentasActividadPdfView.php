@@ -27,6 +27,19 @@ final class VentasActividadPdfView
         $rows=[];foreach($d['resultados'] as $code=>$n)$rows[]=[TelefoniaResultadoVentasCatalogo::opcionesConsulta()[$code]??'Sin resultado registrado',$n];
         return self::titulo('Distribución de resultados').'<p class="notice">Una llamada puede tener varios resultados. Las categorías no se suman como llamadas adicionales.</p>'.self::tabla(['Resultado','Llamadas'],$rows);
     }
+    private static function horarios(array $d): string
+    {
+        if(!VentasActividadMetricas::mostrarHorarioIndividual($d))return '';
+        $html=self::titulo('Horario de llamadas').'<p class="notice">'.self::e($d['personas_resumen'][0]['nombre_completo']).' · Hora de México. Inicio de las llamadas del reporte, con los mismos filtros de tipo y resultado. Se excluyen intentos y transferencias sin confirmar. Los días sin llamadas se muestran con —.</p>';
+        if(in_array($d['periodo']['clave'],['hoy','ayer'],true)) {
+            $day=$d['dias'][0];$html.='<table class="metrics"><tr>';
+            foreach(['primera_llamada'=>'Primera llamada','ultima_llamada'=>'Última llamada'] as $key=>$label)
+                $html.='<td><span>'.self::e($label).'</span><strong>'.self::e(VentasActividadMetricas::horaInicio($day[$key])).'</strong><span>'.self::e($day['fecha'].(!$day['llamadas']?' · Sin llamadas':'')).'</span></td>';
+            return $html.'</tr></table>';
+        }
+        $rows=[];foreach($d['dias'] as $day)$rows[]=[$day['fecha'],$day['llamadas'],VentasActividadMetricas::horaInicio($day['primera_llamada']),VentasActividadMetricas::horaInicio($day['ultima_llamada'])];
+        return $html.self::tabla(['Fecha','Llamadas','Primera llamada','Última llamada'],$rows);
+    }
     public static function pendientes(array $d): string
     {
         $html=self::titulo('Pendientes y vencimientos actuales');
@@ -59,10 +72,12 @@ final class VentasActividadPdfView
             $html.='<td><span>'.$e($k).'</span><strong>'.$e($v).'</strong></td>';
         $html.='</tr></table><p class="notice">Tipo: '.$e($d['direccion']?:'Entrantes y salientes').' · Resultado: '.$e(TelefoniaResultadoVentasCatalogo::opcionesConsulta()[$d['resultado']]??($d['resultado']==='PENDIENTE'?'Sin resultado registrado':'Todos')).'</p>';
         $html.=self::titulo('Resumen del periodo').'<table class="metrics"><tr>';
-        foreach (['Salientes'=>$s['salientes'],'Entrantes'=>$s['entrantes'],'Conectadas'=>$s['conectadas'],'Conversaciones registradas'=>$s['conversaciones']] as $k=>$v)
+        foreach (['Salientes'=>$s['salientes'],'Entrantes'=>$s['entrantes'],'Buzones de voz'=>$s['buzones'],'Conversaciones registradas'=>$s['conversaciones']] as $k=>$v)
             $html.='<td><span>'.$e($k).'</span><strong>'.$e($v).'</strong></td>';
         $html.='</tr></table><p class="notice">Tiempo confirmado del asesor: '.VentasActividadMetricas::tiempoConfirmado($s).' · Promedio con duración confirmada: '.$time($s['promedio_segundos']).' · Duraciones pendientes: '.$s['duraciones_pendientes'].' · Resultados pendientes: '.$s['por_registrar'].' · Intentos sin confirmar: '.$s['intentos'].' · Transferencias pendientes: '.$s['transferencias_pendientes'].'.</p>';
         $html.='<p class="notice">Tasa de contacto: '.($s['tasa_contacto']===null?'—':$s['tasa_contacto'].'%').' · Cumplimiento del registro: '.($s['cumplimiento_registro']===null?'—':$s['cumplimiento_registro'].'%').'.</p>';
+        $html.='<p class="notice">Buzones de voz: llamadas clasificadas como buzón por el asesor, dentro del periodo y filtros seleccionados.</p>';
+        $html.=self::horarios($d);
         $html.=self::titulo('Actividad por asesor');$people=[];
         foreach ($d['personas_resumen'] as $p) $people[]=[$p['nombre_completo'],$p['salientes'],$p['entrantes'],$p['conversaciones'],VentasActividadMetricas::tiempoConfirmado($p),$p['por_registrar'],$p['cumplimiento_registro']===null?'—':$p['cumplimiento_registro'].'%'];
         $html.=self::tabla(['Asesor','Salientes','Entrantes','Conversaciones','Tiempo','Por registrar','Registro'],$people);

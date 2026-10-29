@@ -14,6 +14,7 @@ $filter=['controller'=>'reporte','action'=>'ventas','area'=>'asesores','generar'
 ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/desempeno.css?v=<?= filemtime(ROOT_PATH.'/public/css/desempeno.css') ?>">
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/ventas_actividad.css?v=<?= filemtime(ROOT_PATH.'/public/css/ventas_actividad.css') ?>">
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/ventas_reporte_horarios.css?v=<?= filemtime(ROOT_PATH.'/public/css/ventas_reporte_horarios.css') ?>">
 <section class="performance-module sales-activity-module">
     <header class="dashboard-panel performance-hero">
         <div><span class="performance-eyebrow">ASESORES · ACTIVIDAD TELEFÓNICA</span><h1><?= $e($title) ?></h1><p>Consulta las llamadas, sus resultados y el tiempo confirmado de atención en el periodo seleccionado.</p></div>
@@ -36,8 +37,8 @@ $filter=['controller'=>'reporte','action'=>'ventas','area'=>'asesores','generar'
     <?php if ($generated): ?>
         <div class="performance-context-row"><div><span>ALCANCE</span><strong><?= ['propio'=>'Personal','equipo'=>'Mi equipo territorial','global'=>'Nacional'][$scope] ?></strong></div><div><span>PERIODO</span><strong><?= $e($period['fecha_desde'].' al '.$period['fecha_hasta']) ?></strong></div><div><span>ASESORES</span><strong><?= count($d['personas_resumen']) ?></strong></div><div><span>CONSULTADO</span><strong><?= $e($d['fecha_generacion']) ?></strong></div></div>
         <section class="performance-kpi-grid">
-            <?php foreach ([['salientes','Llamadas salientes','telephone-outbound'],['entrantes','Llamadas entrantes','telephone-inbound'],['conectadas','Conexiones confirmadas','check2-circle'],['conversaciones','Conversaciones registradas','chat-dots']] as [$key,$label,$icon]): ?>
-                <article><span class="performance-kpi-icon"><i class="bi bi-<?= $icon ?>" aria-hidden="true"></i></span><div><strong><?= $s[$key] ?></strong><span><?= $label ?></span><small>En el periodo y filtros seleccionados</small></div></article>
+            <?php foreach ([['salientes','Llamadas salientes','telephone-outbound','En el periodo y filtros seleccionados'],['entrantes','Llamadas entrantes','telephone-inbound','En el periodo y filtros seleccionados'],['buzones','Buzones de voz','voicemail','Clasificados como buzón por el asesor'],['conversaciones','Conversaciones registradas','chat-dots','En el periodo y filtros seleccionados']] as [$key,$label,$icon,$caption]): ?>
+                <article><span class="performance-kpi-icon"><i class="bi bi-<?= $icon ?>" aria-hidden="true"></i></span><div><strong><?= $s[$key] ?></strong><span><?= $label ?></span><small><?= $caption ?></small></div></article>
             <?php endforeach; ?>
         </section>
         <section class="performance-kpi-grid">
@@ -46,6 +47,23 @@ $filter=['controller'=>'reporte','action'=>'ventas','area'=>'asesores','generar'
             <?php endforeach; ?>
         </section>
         <p class="sales-activity-note"><?= $s['intentos'] ?> intentos sin llamada confirmada · <?= $s['transferencias_pendientes'] ?> transferencias pendientes de confirmación. Se muestran aparte y no aumentan las llamadas registradas.</p>
+        <?php if (VentasActividadMetricas::mostrarHorarioIndividual($d)): ?>
+        <section class="dashboard-panel sales-activity-panel" data-sales-call-schedule>
+            <h2 class="panel-title">Horario de llamadas</h2><p class="page-subtitle"><?= $e($d['personas_resumen'][0]['nombre_completo']) ?> · Hora de México. Inicio de las llamadas del reporte, con los mismos filtros de tipo y resultado.</p>
+            <?php if (in_array($period['clave'],['hoy','ayer'],true)): $horario=$d['dias'][0]; ?>
+                <div class="performance-kpi-grid sales-call-boundaries">
+                    <?php foreach (['primera_llamada'=>['Primera llamada','telephone-outbound'],'ultima_llamada'=>['Última llamada','clock-history']] as $key=>[$label,$icon]): ?>
+                    <article><span class="performance-kpi-icon"><i class="bi bi-<?= $icon ?>" aria-hidden="true"></i></span><div><strong><?= $e(VentasActividadMetricas::horaInicio($horario[$key])) ?></strong><span><?= $label ?></span><small><?= $e($horario['fecha']) ?><?= !$horario['llamadas']?' · Sin llamadas':'' ?></small></div></article>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="sales-activity-table" role="region" aria-label="Primera y última llamada por día" tabindex="0"><table><thead><tr><th>Fecha</th><th>Llamadas</th><th>Primera llamada</th><th>Última llamada</th></tr></thead><tbody>
+                <?php foreach ($d['dias'] as $day): ?><tr><td><?= $e($day['fecha']) ?></td><td><?= $day['llamadas'] ?></td><td><?= $e(VentasActividadMetricas::horaInicio($day['primera_llamada'])) ?></td><td><?= $e(VentasActividadMetricas::horaInicio($day['ultima_llamada'])) ?></td></tr><?php endforeach; ?>
+                </tbody></table></div>
+            <?php endif; ?>
+            <p class="page-subtitle mt-3 mb-0">Se excluyen intentos y transferencias sin confirmar. Los días sin llamadas se muestran con —.</p>
+        </section>
+        <?php endif; ?>
         <section class="dashboard-panel sales-activity-panel">
             <h2 class="panel-title"><?= $scope==='propio'?'Mi actividad':'Actividad por asesor' ?></h2><p class="page-subtitle">Resumen individual con los mismos filtros del reporte.</p>
             <div class="sales-activity-table" role="region" aria-label="Actividad por asesor" tabindex="0"><table><thead><tr><th>Asesor</th><th>Salientes</th><th>Entrantes</th><th>Conversaciones</th><th>Tasa de contacto</th><th>Tiempo confirmado</th><th>Por registrar</th></tr></thead><tbody>

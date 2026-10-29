@@ -1,0 +1,14 @@
+/* Reutilizar las tarjetas de Desempeño para los dos extremos del día. */
+.sales-activity-module .sales-call-boundaries {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 0;
+}
+.sales-activity-module .sales-call-boundaries article,
+.sales-activity-module .sales-call-boundaries article > div {
+    min-width: 0;
+}
+@media (max-width: 600px) {
+    .sales-activity-module .sales-call-boundaries {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

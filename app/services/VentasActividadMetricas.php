@@ -37,7 +37,7 @@ final class VentasActividadMetricas
     {
         return array_fill_keys(['llamadas','salientes','entrantes','conectadas','conversaciones','conversaciones_confirmadas',
             'intentos','transferencias_pendientes','registradas','por_registrar','capturables','segundos','duraciones_confirmadas',
-            'duraciones_pendientes'], 0);
+            'duraciones_pendientes','buzones'], 0);
     }
 
     public static function calcular(array $rows, array $personas, array $periodo): array
@@ -46,7 +46,7 @@ final class VentasActividadMetricas
         foreach ($personas as $person) $people[(int)$person['id']] = $person + self::vacio();
         $date = new DateTimeImmutable($periodo['fecha_desde']);
         while ($date->format('Y-m-d') <= $periodo['fecha_hasta']) {
-            $daily[$date->format('Y-m-d')] = ['fecha'=>$date->format('Y-m-d')] + self::vacio();
+            $daily[$date->format('Y-m-d')] = ['fecha'=>$date->format('Y-m-d'),'primera_llamada'=>null,'ultima_llamada'=>null] + self::vacio();
             $date = $date->modify('+1 day');
         }
         $clean = [];
@@ -74,7 +74,15 @@ final class VentasActividadMetricas
                     else { $m['segundos'] = max(0, (int)$row['segundos']); $m['duraciones_confirmadas'] = 1; }
                 }
                 $codes=TelefoniaResultadoVentasCatalogo::seleccionesRegistro($row['registro']??null)?:['PENDIENTE'];
+                $m['buzones'] = (int)in_array('BUZON_VOZ',$codes,true);
                 foreach($codes as $code)$results[$code]=($results[$code]??0)+1;
+                // fecha ya está expresada en México por el repositorio. Usar el
+                // inicio PBX registrado, sin inferir horarios de intentos o del fin.
+                $inicio=(string)$row['fecha'];
+                if(self::horaInicio($inicio)!=='—') {
+                    if($daily[$day]['primera_llamada']===null || $inicio<$daily[$day]['primera_llamada'])$daily[$day]['primera_llamada']=$inicio;
+                    if($daily[$day]['ultima_llamada']===null || $inicio>$daily[$day]['ultima_llamada'])$daily[$day]['ultima_llamada']=$inicio;
+                }
             }
             foreach ($m as $key=>$value) { $summary[$key] += $value; $daily[$day][$key] += $value; $people[$uid][$key] += $value; }
             $row['asesor'] = $people[$uid]['nombre_completo']; $clean[] = $row;
@@ -100,5 +108,20 @@ final class VentasActividadMetricas
     public static function tiempoConfirmado(array $metricas): string
     {
         return !empty($metricas['duraciones_confirmadas']) ? self::tiempo((int)$metricas['segundos']) : (!empty($metricas['duraciones_pendientes']) ? 'Pendiente' : '—');
+    }
+
+    /** Evitar presentar los extremos de varias personas como el horario de un asesor. */
+    public static function mostrarHorarioIndividual(array $datos): bool
+    {
+        $personas=$datos['personas_resumen']??[];
+        return count($personas)===1 && (($datos['vista']??'')==='propio' ||
+            (int)($datos['persona_id']??0)===(int)($personas[0]['id']??0) && (int)($datos['persona_id']??0)>0);
+    }
+
+    public static function horaInicio(?string $fecha): string
+    {
+        if(!$fecha)return '—';
+        $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$fecha,new DateTimeZone('America/Mexico_City'));
+        return $date && $date->format('Y-m-d H:i:s')===$fecha ? $date->format('H:i:s') : '—';
     }
 }
