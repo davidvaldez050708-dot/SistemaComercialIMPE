@@ -44,15 +44,14 @@
 .agenda-comment-editor::backdrop { background:#172b4612; }
 .agenda-comment-delete::backdrop { background:#172b4633; }
 .agenda-comment-editor textarea { display:block;width:100%;resize:vertical;min-height:105px;max-height:40vh;margin-top:18px;box-sizing:border-box;padding:10px 12px;border:1px solid #d5e0ef;border-radius:8px;color:#304b6c;font:inherit;font-size:13px;line-height:1.5;background:white; }
-.agenda-comment-editor textarea:focus,.agenda-comment-editor select:focus { outline:3px solid #d5e6ff;border-color:#5595f6; }
+.agenda-comment-editor textarea:focus,.agenda-comment-editor input[type=time]:focus { outline:3px solid #d5e6ff;border-color:#5595f6; }
 .agenda-comment-editor textarea[aria-invalid=true] { border-color:#cf6767; }
 .agenda-comment-counter { text-align:right;font-size:12px;color:#75839b;margin:5px 0 15px; }
 .agenda-comment-hour-label { display:block;font-size:12px;font-weight:650;margin-bottom:8px; }
 .agenda-comment-hour-label > span { color:#76849b;font-weight:400; }
 .agenda-comment-hour-row { display:flex;align-items:center;gap:16px; }
-.agenda-comment-time-selects { display:flex;align-items:center;gap:6px;flex:1;min-width:0; }
-.agenda-comment-time-selects select { flex:1;min-width:0;min-height:40px;font-size:13px;padding:8px 25px 8px 8px;border-color:#d5e0ef;border-radius:7px;background-position:right 7px center; }
-.agenda-comment-time-selects select:disabled { background-color:#f5f7fa;color:#76849b; }
+.agenda-comment-hour-row > input[type=time] { flex:1;min-width:0;min-height:40px;font-size:13px;padding:8px 10px;border-color:#d5e0ef;border-radius:7px; }
+.agenda-comment-hour-row > input[type=time]:disabled { background-color:#f5f7fa;color:#76849b; }
 .agenda-comment-switch { display:flex;align-items:center;gap:8px;font-size:12px;color:#577097;cursor:pointer; }
 .agenda-comment-hour-row .agenda-comment-switch { white-space:nowrap; }
 .agenda-comment-switch input { appearance:none;-webkit-appearance:none;flex-shrink:0;width:32px;height:18px;border:1px solid #9ca8b8;border-radius:12px;background:#e5e9ef;position:relative;cursor:pointer;transition:background-color .15s; }

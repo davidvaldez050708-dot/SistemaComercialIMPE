@@ -131,11 +131,20 @@ aparecer en la campana.
 
 ## Hora opcional y comentarios privados
 
-El editor permite escoger hora (00–23) y minutos (00–59) mediante selectores con
-el estilo de los formularios del sistema. El switch **Sin hora** está activado
-por defecto. Al activarlo se vacían los selectores y se guarda `NULL`, nunca una
-medianoche implícita. El formato de almacenamiento y las cadencias existentes
-de los recordatorios no cambian.
+El editor usa un único campo de hora con reloj, que abre el selector nativo del
+navegador con las columnas de hora, minutos y a. m./p. m. en el navegador de
+referencia. No hay listas desplegables independientes de 00 a 23. El campo lleva
+`lang="es-MX"` y precisión de minutos; su presentación nativa depende del idioma
+y configuración regional del navegador. El switch **Sin hora** está activado
+por defecto. Al activarlo se vacía el campo y se guarda `NULL`, nunca una
+medianoche implícita. El valor interno sigue siendo `HH:MM` de 24 horas, por lo
+que no cambian el almacenamiento ni las cadencias de los recordatorios.
+
+La corrección visual se publica con `tools/publicar_hora_agenda_hostinger.sh`
+(`--check`, `--apply`, `--restore RUTA`), generado por
+`tools/generar_publicador_hora_agenda.py`. Actualiza sólo la vista parcial, el
+JavaScript y el CSS del editor sobre `a119dfe5`. No ejecuta SQL ni modifica la
+privacidad, los toasts, los servicios o las reuniones.
 
 El switch **Comentario privado: Sí/No** está en No por defecto. En Sí, el autor
 ve la etiqueta **Privado · Sólo tú**. El servidor filtra calendario, conteos,

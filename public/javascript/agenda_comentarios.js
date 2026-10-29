@@ -13,13 +13,12 @@
         const removeDialog = root.querySelector('[data-agenda-comment-delete]');
         const form = editor.querySelector('form');
         const text = form.elements.comentario;
-        const hour = form.elements.hora_hora;
-        const minute = form.elements.hora_minuto;
+        const hour = form.elements.hora;
         const noHour = form.elements.sin_hora;
         const privateComment = form.elements.privado;
         let privacyAvailable = false;
         function updateOptions() {
-            hour.disabled = minute.disabled = noHour.checked;
+            hour.disabled = noHour.checked;
             privateComment.disabled = !privacyAvailable;
             form.querySelector('[data-agenda-comment-private-value]').textContent = privateComment.checked ? 'Sí' : 'No';
             form.querySelector('#agendaComentarioPrivadoAyuda').textContent = !privacyAvailable
@@ -300,7 +299,7 @@
         text.addEventListener('input',counter);
         noHour.addEventListener('change',()=>{
             updateOptions();
-            if(noHour.checked) {hour.value='';minute.value='';} else hour.focus();
+            if(noHour.checked) hour.value='';else hour.focus();
         });
         privateComment.addEventListener('change',updateOptions);
         form.addEventListener('submit',async event=>{
@@ -309,13 +308,13 @@
             if (privateComment.checked&&!privacyAvailable) {
                 error.textContent='No se puede guardar el comentario privado en este momento.';error.hidden=false;return;
             }
-            if (!content||Array.from(content).length>250||(!noHour.checked&&(!hour.value||!minute.value))) {
-                error.textContent=!content||Array.from(content).length>250?'Escribe entre 1 y 250 caracteres.':'Selecciona la hora y los minutos o activa «Sin hora».';error.hidden=false;return;
+            if (!content||Array.from(content).length>250||(!noHour.checked&&(!hour.value||!hour.validity.valid))) {
+                error.textContent=!content||Array.from(content).length>250?'Escribe entre 1 y 250 caracteres.':'Selecciona una hora o activa «Sin hora».';error.hidden=false;return;
             }
             saving=true;error.hidden=true;
             form.querySelector('[data-agenda-comment-save]').disabled=true;
             try {
-                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value+':'+minute.value,privado:privateComment.checked?'1':'0'});
+                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value,privado:privateComment.checked?'1':'0'});
                 changeVersion++;
                 editor.close();mostrarConfirmacionComentario('Comentario añadido a la agenda.');
                 refreshBell(saved.comentario?.id);await load();

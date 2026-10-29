@@ -24,26 +24,12 @@
         <label class="visually-hidden" for="agendaComentarioTexto">Comentario</label>
         <textarea id="agendaComentarioTexto" name="comentario" rows="4" maxlength="500" placeholder="Escribe un comentario…" aria-describedby="agendaComentarioContador" required></textarea>
         <p id="agendaComentarioContador" class="agenda-comment-counter" data-agenda-comment-counter>0 / 250</p>
-        <span id="agendaComentarioHoraTitulo" class="agenda-comment-hour-label">Hora <span>(opcional)</span></span>
+        <label for="agendaComentarioHora" class="agenda-comment-hour-label">Hora <span>(opcional)</span></label>
         <div class="agenda-comment-hour-row">
-            <div class="agenda-comment-time-selects" role="group" aria-labelledby="agendaComentarioHoraTitulo" aria-describedby="agendaComentarioHoraAyuda">
-                <select id="agendaComentarioHora" name="hora_hora" class="form-select system-form-control" aria-label="Hora del recordatorio" disabled>
-                    <option value="">Hora</option>
-                    <?php for ($h=0; $h<24; $h++): $hh=str_pad((string)$h,2,'0',STR_PAD_LEFT); ?>
-                        <option value="<?= $hh ?>"><?= $hh ?></option>
-                    <?php endfor; ?>
-                </select>
-                <span aria-hidden="true">:</span>
-                <select name="hora_minuto" class="form-select system-form-control" aria-label="Minutos del recordatorio" disabled>
-                    <option value="">Minutos</option>
-                    <?php for ($m=0; $m<60; $m++): $mm=str_pad((string)$m,2,'0',STR_PAD_LEFT); ?>
-                        <option value="<?= $mm ?>"><?= $mm ?></option>
-                    <?php endfor; ?>
-                </select>
-            </div>
+            <input id="agendaComentarioHora" name="hora" class="form-control system-form-control" type="time" lang="es-MX" step="60" disabled aria-describedby="agendaComentarioHoraAyuda">
             <label class="agenda-comment-switch"><input type="checkbox" role="switch" name="sin_hora" checked> Sin hora</label>
         </div>
-        <p class="agenda-comments-hint" id="agendaComentarioHoraAyuda">Formato de 24 horas. Con hora, recibirás el recordatorio habitual. Sin hora, sólo un aviso al añadirlo.</p>
+        <p class="agenda-comments-hint" id="agendaComentarioHoraAyuda">Pulsa el reloj para elegir hora, minutos y a. m./p. m. Con hora, recibirás el recordatorio habitual. Sin hora, sólo un aviso al añadirlo.</p>
         <div class="agenda-comment-privacy">
             <label class="agenda-comment-switch"><input type="checkbox" role="switch" name="privado" aria-describedby="agendaComentarioPrivadoAyuda"> Comentario privado <strong data-agenda-comment-private-value>No</strong></label>
             <p class="agenda-comments-hint" id="agendaComentarioPrivadoAyuda">Compartido con los usuarios que tienen acceso a Agenda.</p>

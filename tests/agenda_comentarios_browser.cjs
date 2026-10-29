@@ -13,7 +13,7 @@ const boot=fs.readFileSync(path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'
 function html(){return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+style+'body{margin:0;padding:20px}body>main{max-width:1450px;margin:auto}</style><script>'+boot+'</script><script>window.IMPE_CURRENT_USER_ID=5;window.IMPE_CSRF_TOKEN="qa-csrf";</script></head><body><main>'+view+'</main><script>'+read('public/javascript/agenda_reunion.js')+'</script></body></html>';}
 const initial=[{id:1,fecha:'2026-10-14',hora:null,comentario:'Comentario de otra persona',autor:'Cuenta Clave',creado_at:'2026-10-14 10:30:00',puede_eliminar:false,leido:false,atendido:false}];
 async function pageFixture(browser,options={}){
- const page=await browser.newPage({viewport:options.mobile?{width:390,height:844}:{width:1450,height:980},timezoneId:'America/Mexico_City'});
+ const page=await browser.newPage({viewport:options.mobile?{width:390,height:844}:{width:1450,height:980},timezoneId:'America/Mexico_City',locale:'es-MX'});
  let notes=structuredClone(initial),nextId=2;const posts=[],errors=[];let fail=false;
  if(options.read)notes.forEach(c=>c.leido=true);
  page.on('pageerror',e=>errors.push(e.message));
@@ -84,7 +84,7 @@ async function toastFixture(browser,kind){
   await p.locator('#modalAgendaDetalle .btn-close').click();await p.locator('#modalAgendaDetalle').waitFor({state:'hidden'});
   await p.locator('[data-agenda-comments-tab="comentarios"]').click();
   await p.locator('[data-agenda-comments-new]').click();await p.locator('#agendaComentarioTexto').fill('Recordatorio con hora');await p.locator('[name=sin_hora]').uncheck();
-  await p.locator('#agendaComentarioHora').selectOption('10');await p.locator('[name=hora_minuto]').selectOption('30');await p.locator('[data-agenda-comment-save]').click();
+  await p.locator('#agendaComentarioHora').fill('10:30');await p.locator('[data-agenda-comment-save]').click();
   assert.equal(await p.locator('[data-agenda-comment-save]').isDisabled(),true);
   await editor.waitFor({state:'hidden'});await p.getByText('Recordatorio con hora',{exact:true}).waitFor();
   assert.equal(f.posts.filter(x=>x.action==='crear').length,2);assert.equal(f.posts.at(-1).body.hora,'10:30');
@@ -181,11 +181,12 @@ async function toastFixture(browser,kind){
    assert.equal(await p.locator('[data-agenda-comment-private-value]').textContent(),'Sí');
    assert.match(await p.locator('#agendaComentarioPrivadoAyuda').textContent(),/Sólo tú/);
    await p.locator('[name=sin_hora]').uncheck();
-   await p.locator('#agendaComentarioHora').selectOption('00');
    await p.locator('[data-agenda-comment-save]').click();
-   assert.equal(f.posts.length,0,'No guardar con minutos incompletos');
+   assert.equal(f.posts.length,0,'No guardar hora vacía si Sin hora está desactivado');
    await p.locator('[data-agenda-comment-error]').waitFor({state:'visible'});
-   await p.locator('[name=hora_minuto]').selectOption('00');
+   assert.equal(await p.locator('[data-agenda-comment-editor] select').count(),0,'Campo único, sin listas desplegables independientes');
+   assert.equal(await p.locator('#agendaComentarioHora').getAttribute('type'),'time');
+   await p.locator('#agendaComentarioHora').fill('00:00');
    const box=await editor.boundingBox(),vp=p.viewportSize();
    assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=vp.width&&box.y+box.height<=vp.height,'Editor privado dentro de pantalla');
    await p.screenshot({path:path.join(out,mobile?'privado-movil.png':'privado-escritorio.png')});
@@ -198,7 +199,7 @@ async function toastFixture(browser,kind){
    await p.locator('#agendaComentarioTexto').fill('Otra nota personal sin hora');
    await p.locator('[name=privado]').check();
    await p.locator('[name=sin_hora]').uncheck();
-   await p.locator('#agendaComentarioHora').selectOption('23');await p.locator('[name=hora_minuto]').selectOption('59');
+   await p.locator('#agendaComentarioHora').fill('23:59');
    await p.locator('[name=sin_hora]').check();
    await p.locator('[data-agenda-comment-save]').click();await editor.waitFor({state:'hidden'});
    assert.equal(f.posts.at(-1).body.hora,'','Sin hora nunca envía el horario anterior');
@@ -214,6 +215,25 @@ async function toastFixture(browser,kind){
    await p.locator('[data-agenda-comment-editor]').waitFor({state:'hidden'});
    assert.equal(f.posts[0].body.privado,'0');assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
-  console.log('OK: '+cases+' escenarios: hora/minutos opcionales, switch privado, medianoche, escritorio/móvil, migración pendiente, toasts 2600 ms y reuniones intactas. Sin producción.');
+  {
+   const f=await pageFixture(browser),p=f.page;
+   await p.locator('[data-agenda-comment-add="2026-10-14"]').click();
+   await p.locator('[name=sin_hora]').uncheck();await p.locator('#agendaComentarioHora').fill('08:51');
+   const timeBox=await p.locator('#agendaComentarioHora').boundingBox();
+   await p.locator('#agendaComentarioHora').click({position:{x:timeBox.width-18,y:timeBox.height/2}});
+   await p.screenshot({path:path.join(out,'selector-hora-nativo.png')});
+   await p.keyboard.press('Escape');
+   assert.equal(await p.locator('[data-agenda-comment-editor]').isVisible(),true,'Escape cierra sólo el selector nativo');
+   await p.locator('[data-agenda-comment-cancel]').first().click();
+   for(const value of ['00:00','12:00','13:05','23:59']){
+    await p.locator('[data-agenda-comment-add="2026-10-14"]').click();
+    await p.locator('#agendaComentarioTexto').fill('Horario '+value);
+    await p.locator('[name=sin_hora]').uncheck();await p.locator('#agendaComentarioHora').fill(value);
+    await p.locator('[data-agenda-comment-save]').click();await p.locator('[data-agenda-comment-editor]').waitFor({state:'hidden'});
+    assert.equal(f.posts.at(-1).body.hora,value,'AM/PM conserva hora real de backend');
+   }
+   assert.deepEqual(f.errors,[]);await p.close();cases++;
+  }
+  console.log('OK: '+cases+' escenarios: reloj nativo único, hora opcional, medianoche/mediodía/PM, privacidad, escritorio/móvil, toasts 2600 ms y reuniones intactas. Sin producción.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

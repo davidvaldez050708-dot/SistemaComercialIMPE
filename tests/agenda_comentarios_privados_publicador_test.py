@@ -25,7 +25,9 @@ class Database {public function connect($persistent=false){return new ConexionGu
     originals={};expected={}
     for path in CHANGED:
         old=subprocess.check_output(['git','show',BASE+':'+path],cwd=ROOT).decode('utf8')
-        new=(ROOT/path).read_text(encoding='utf8')
+        # Esta entrega histórica conserva su contenido publicado; el selector
+        # nativo posterior dispone de su propio publicador y prueba.
+        new=subprocess.check_output(['git','show','a119dfe5:'+path],cwd=ROOT).decode('utf8')
         suffix='\n/* conservar personalización externa */\n' if path.endswith('.css') else '\n// conservar\n'
         old+=suffix;new+=suffix
         if crlf:old=old.replace('\n','\r\n');new=new.replace('\n','\r\n')
