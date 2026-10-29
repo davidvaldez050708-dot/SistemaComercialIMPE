@@ -9,6 +9,34 @@
  const fields=form.querySelector('[data-sales-fields]');
  let call=null,callRef='',callExt='',queued=false,cycle=0,opening=false,timer=null,disposed=false,waiting=false,recovered=false,requestController=null,importedCaptureNote='',captureConflictNote='';
  const saveLabel=submit.innerHTML;
+ const picker=form.querySelector('[data-sales-result-picker]'),pickerButton=form.querySelector('#salesResultTrigger');
+ let selections=[];
+ const selectedFrom=data=>{
+  let values=data?.resultados_seleccionados;
+  if(typeof values==='string')try{values=JSON.parse(values);}catch(_){values=null;}
+  if(Array.isArray(values)&&values.length)return values;
+  let base=String(data?.resultado_principal||data?.resultado||'');
+  if(base==='COMUNICACION_INTERRUMPIDA_PERSONA')base='COMUNICACION_INTERRUMPIDA';
+  const valuesFrom=[];if(base&&!base.startsWith('ENVIO_'))valuesFrom.push(base);
+  const envio=String(data?.envio_informacion||base.replace(/^ENVIO_/,''));
+  if(['WHATSAPP','WHATSAPP_SMS'].includes(envio))valuesFrom.push('WHATSAPP');
+  if(['SMS','WHATSAPP_SMS'].includes(envio))valuesFrom.push('SMS');
+  return Array.from(new Set(valuesFrom));
+ };
+ const setSelections=values=>{
+  if(!picker)return;
+  selections=Array.from(new Set(values.filter(v=>typeof v==='string'&&v)));
+  const options=picker.querySelector('[data-sales-result-options]');
+  for(const code of selections)if(!Array.from(options.querySelectorAll('[data-sales-result-choice]')).some(c=>c.value===code)){
+   const label=document.createElement('label'),check=document.createElement('input'),text=document.createElement('span');
+   label.className='dropdown-item sales-result-choice';label.dataset.salesResultLegacy='1';check.type='checkbox';check.className='form-check-input';check.value=code;check.dataset.salesResultChoice='';
+   const old=Array.from(form.querySelector('[data-sales-historical-options]')?.content.children||[]).find(o=>o.value===code);
+   text.textContent=old?.textContent||code;label.append(check,text);options.append(label);
+  }
+  for(const check of options.querySelectorAll('[data-sales-result-choice]'))check.checked=selections.includes(check.value);
+  form.elements.namedItem('resultados_seleccionados').value=JSON.stringify(selections);
+  form.elements.namedItem('resultado').value=selections[0]||'';
+ };
  let openContext={sessionKey:'',prepared:false,automatic:false},closeReason='user',closingForm=null;
  const draftAliases=new Set();
  const tellParent=data=>{if(window.parent!==window)try{window.parent.postMessage(data,location.origin);}catch(_){}};
@@ -63,17 +91,25 @@
  const resultRules=()=>{
   const result=form.elements.namedItem('resultado'),notes=form.elements.namedItem('observacion');
   if(!result||!notes)return;
-  const interrupted=form.elements.namedItem('contacto_antes_corte'),envio=form.elements.namedItem('envio_informacion'),reason=form.elements.namedItem('motivo_sin_whatsapp');
-  const isInterrupted=result.value==='COMUNICACION_INTERRUMPIDA',historical=Boolean(call?.registro&&String(call.registro.catalogo_version||'')!=='2');
-  const interruptedSection=form.querySelector('[data-sales-interrupted]'),envioSection=form.querySelector('[data-sales-envio]'),exceptionSection=form.querySelector('[data-sales-whatsapp-exception]'),legacySection=form.querySelector('[data-sales-legacy-result]');
-  if(interruptedSection)interruptedSection.hidden=historical||!isInterrupted;
+  const interrupted=form.elements.namedItem('contacto_antes_corte');
+  const picked=picker?selections:[result.value];
+  const explicitHuman=picker&&Array.from(picker.querySelectorAll('[data-sales-result-choice]')).some(c=>picked.includes(c.value)&&c.dataset.requiresConnection==='1');
+  const isInterrupted=picked.includes('COMUNICACION_INTERRUMPIDA')&&!explicitHuman,historical=Boolean(call?.registro&&String(call.registro.catalogo_version||'')!=='3');
+  const interruptedSection=form.querySelector('[data-sales-interrupted]'),legacySection=form.querySelector('[data-sales-legacy-result]');
+  if(interruptedSection)interruptedSection.hidden=call?.registro?
+   !(picked.includes('COMUNICACION_INTERRUMPIDA')&&['SI','NO'].includes(call.registro.contacto_antes_corte)):!isInterrupted;
   if(interrupted){interrupted.required=!historical&&isInterrupted;interrupted.setCustomValidity?.(isInterrupted&&interrupted.value==='SI'&&call?.finalizada&&!call.conectada?'La telefonía no acredita respuesta en esta llamada. Revisa la llamada seleccionada.':'');}
-  if(envioSection)envioSection.hidden=historical;
   if(legacySection)legacySection.hidden=!historical;
-  if(envio)envio.required=!historical;
-  const exception=!historical&&Boolean(envio?.value)&&!['WHATSAPP','WHATSAPP_SMS'].includes(envio.value);
-  if(exceptionSection)exceptionSection.hidden=!exception;
-  if(reason){reason.required=exception;reason.minLength=exception?3:0;}
+  if(picker){
+   const choices=Array.from(picker.querySelectorAll('[data-sales-result-choice]'));
+   for(const choice of choices)choice.disabled=Boolean(call?.registro)||(!choice.checked&&(selections.length>=2||Boolean(call?.finalizada&&!call.conectada&&choice.dataset.requiresConnection==='1')));
+   pickerButton.disabled=Boolean(call?.registro);
+   picker.querySelector('[data-sales-result-text]').textContent=selections.length?selections.map(code=>choices.find(c=>c.value===code)?.parentElement.textContent.trim()||code).join(' · '):'Selecciona uno o dos resultados';
+   const help=form.querySelector('[data-sales-result-help]');if(help)help.textContent=call?.registro?'Resultados registrados.':selections.length>2?'El registro anterior contiene más de dos selecciones; conserva hasta dos para guardar.':'Puedes seleccionar uno o hasta dos resultados.';
+   const previousReason=form.querySelector('[data-sales-previous-reason]'),previousText=form.querySelector('[data-sales-previous-reason-text]');
+   if(previousReason)previousReason.hidden=!call?.registro?.motivo_sin_whatsapp;
+   if(previousText)previousText.textContent=call?.registro?.motivo_sin_whatsapp?'Motivo registrado anteriormente: '+call.registro.motivo_sin_whatsapp:'';
+  }
   const cancelled=result.value==='CANCELADA_POR_ASESOR';notes.required=cancelled;notes.minLength=cancelled?3:0;
   const label=form.querySelector('label[for="salesNote"]');if(label)label.textContent=cancelled?'Motivo de cancelación *':'Observaciones';
   for(const option of result.options||[])option.disabled=Boolean(call?.finalizada&&!call.conectada&&option.dataset.requiresConnection==='1');
@@ -88,6 +124,7 @@
   if(changed){
    storeDraft();call=null;waiting=false;queued=false;importedCaptureNote='';captureConflictNote='';draftAliases.clear();
    form.reset();for(const el of form.elements)el.disabled=false;
+   if(picker){for(const row of picker.querySelectorAll('[data-sales-result-legacy]'))row.remove();setSelections([]);}
    const result=form.elements.namedItem('resultado');
    for(const option of Array.from(result?.options||[]))if(option.dataset.salesHistorical==='1')option.remove();
    form.elements.namedItem('observacion')?.setCustomValidity?.('');
@@ -103,6 +140,7 @@
      if(el.type==='checkbox')el.checked=value==='1';else el.value=String(value??'');
     }
    }
+   if(picker)setSelections(selectedFrom(draft?.values||{}));
   }
   cancelRetry();opening=true;const version=++cycle;
   try{
@@ -147,6 +185,7 @@
      const option=document.createElement('option');option.value=savedResult;option.textContent=previous?.textContent||savedResult;option.dataset.salesHistorical='1';result.appendChild(option);
     }
     for(const[key,value]of Object.entries(call.registro)){const el=form.elements.namedItem(key);if(el&&value!==null)el.value=key==='resultado'?savedResult:key==='proxima_accion_at'?String(value).replace(/(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}):\d{2}/,'$1T$2'):String(value);}
+    if(picker)setSelections(selectedFrom(call.registro));
     for(const el of form.querySelectorAll('input,select,textarea'))el.disabled=true;
     submit.hidden=true;feedback.textContent='Resultado guardado anteriormente.';
     if(openContext.automatic){closeReason='saved';tellParent({type:'IMPE_SALES_RESULT_SAVED',ref,extension:ownExt});bootstrap.Modal.getInstance(modal)?.hide();shell()?.endCallResult(token);return;}
@@ -220,9 +259,19 @@
   }
   storeDraft();
  });
- form.addEventListener('change',()=>{resultRules();storeDraft();});
+ form.addEventListener('change',event=>{
+  const choice=event.target?.closest?.('[data-sales-result-choice]');
+  if(choice&&picker){
+   const next=choice.checked?[...selections.filter(x=>x!==choice.value),choice.value]:selections.filter(x=>x!==choice.value);
+   if(next.length>2){choice.checked=false;feedback.textContent='Puedes seleccionar hasta dos resultados.';return;}
+   setSelections(next);
+  }
+  resultRules();storeDraft();
+ });
  form.addEventListener('submit',async e=>{
   e.preventDefault();
+  if(picker&&(selections.length<1||selections.length>2)){feedback.textContent='Selecciona uno o hasta dos resultados.';pickerButton.focus();return;}
+  if(picker&&call?.finalizada&&!call.conectada&&Array.from(picker.querySelectorAll('[data-sales-result-choice]')).some(c=>c.checked&&c.dataset.requiresConnection==='1')){feedback.textContent='Esta llamada no acredita respuesta. Revisa los resultados seleccionados.';pickerButton.focus();return;}
   if(!callRef||!call||call?.registro||submit.disabled||!form.reportValidity())return;
   if(call.pbx_call_id!==callRef||String(call.extension)!==String(form.elements.extension.value))return;
   const savedContext={...openContext},savedRef=callRef,savedExt=call.extension,savedDrafts=[draftKey(callRef),...draftAliases];

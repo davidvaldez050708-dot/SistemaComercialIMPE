@@ -16,12 +16,10 @@ const base=process.env.IMPE_TEST_URL,fixture=process.env.IMPE_TEST_FIXTURE;
    await page.locator('#salesNote').fill('Notas escritas antes de responder el servidor');
    complete();await page.waitForFunction(()=>!document.querySelector('[data-sales-submit]').disabled);
    assert.equal(await page.locator('#salesNote').inputValue(),'Notas escritas antes de responder el servidor');
-   assert.equal(await page.locator('#salesResult option[value="PROSPECTO_POTENCIAL"]').isDisabled(),true);
-   assert.equal(await page.locator('#salesResult option[value="BUZON_VOZ"]').isDisabled(),false);
-   await page.locator('#salesResult').selectOption('SIN_RESPUESTA');await page.locator('#salesEnvio').selectOption('SIN_ENVIO');
-   assert.equal(await page.locator('#salesWhatsappReason').evaluate(el=>el.checkValidity()),false);
-   await page.locator('#salesWhatsappReason').fill('Marqué un número equivocado.');
-   assert.equal(await page.locator('#salesWhatsappReason').evaluate(el=>el.checkValidity()),true);
+   assert.equal(await page.locator('[data-sales-result-choice][value="PROSPECTO_POTENCIAL"]').isDisabled(),true);
+   assert.equal(await page.locator('[data-sales-result-choice][value="BUZON_VOZ"]').isDisabled(),false);
+   await page.locator('#salesResultTrigger').click();await page.locator('[data-sales-result-choice][value="SIN_RESPUESTA"]').check();await page.locator('#salesResultTrigger').click();
+   assert.equal(await page.locator('#salesEnvio,#salesWhatsappReason').count(),0);
    // Un consumidor que impida cerrar no puede dejar bloqueado el siguiente formulario.
    await page.evaluate(()=>{
     const el=document.getElementById('modalResultadoVenta');
@@ -36,6 +34,6 @@ const base=process.env.IMPE_TEST_URL,fixture=process.env.IMPE_TEST_FIXTURE;
    const output=path.resolve(__dirname,'../tmp/ventas-resultado-inmediato-'+viewport.width+'.png');await page.screenshot({path:output,fullPage:true});
    assert.deepEqual(errors,[]);await page.close();
   }
-  console.log('PASS: Chrome real en escritorio y móvil, modal visible con HTTP pendiente, observaciones conservadas, opciones coherentes y excepción de WhatsApp obligatoria; sin errores JS.');
+  console.log('PASS: Chrome real en escritorio y móvil, modal visible con HTTP pendiente, observaciones conservadas y resultado único sin motivo de envío; sin errores JS.');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

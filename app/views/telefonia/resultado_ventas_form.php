@@ -1,4 +1,11 @@
 <?php $ventasResultadoFormularioIncluido=true; $escVenta=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8'); ?>
+<style>
+#modalResultadoVenta .sales-result-trigger{height:auto;min-height:54px;text-align:left;white-space:normal;padding-right:2.5rem;line-height:1.5}
+#modalResultadoVenta .sales-result-menu{max-height:310px;overflow:auto;border:1px solid #d5e0f3;border-radius:12px;box-shadow:0 12px 30px rgba(25,45,85,.12)}
+#modalResultadoVenta .sales-result-choice{display:flex;align-items:center;gap:12px;white-space:normal;min-height:42px;margin:0;border-radius:8px;font-size:inherit;cursor:pointer}
+#modalResultadoVenta .sales-result-choice .form-check-input{margin:0;flex-shrink:0}
+#modalResultadoVenta .sales-result-choice:has(input:disabled){opacity:.6;cursor:default}
+</style>
 <div class="modal fade" id="modalResultadoVenta" tabindex="-1" aria-labelledby="tituloResultadoVenta" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg system-form-dialog linkage-incoming-modal-dialog">
   <div class="modal-content system-form-modal">
@@ -7,15 +14,20 @@
     <div class="modal-body system-form-modal-body">
      <input type="hidden" name="csrf_token" value="<?= $escVenta($_SESSION['csrf_token']??TelefoniaContactosService::tokenFormulario()) ?>"><input type="hidden" name="pbx_call_id"><input type="hidden" name="extension">
      <input type="hidden" name="catalogo_version" value="<?= $escVenta(TelefoniaResultadoVentasCatalogo::VERSION) ?>">
+     <input type="hidden" name="resultados_seleccionados" value="[]">
      <div class="linkage-incoming-summary"><strong data-sales-form-number></strong><span data-sales-form-state></span></div>
      <p class="system-form-modal-subtitle" data-sales-capture-summary hidden></p>
      <template data-sales-historical-options><?php foreach(TelefoniaResultadoVentasService::opciones() as $code=>$label): ?><option value="<?= $escVenta($code) ?>"><?= $escVenta($label) ?></option><?php endforeach; ?></template>
      <div class="row g-3" data-sales-fields>
-      <div class="col-12"><label class="form-label" for="salesResult">Resultado de la llamada</label><select data-native-select class="form-select" id="salesResult" name="resultado" required><option value="">Selecciona lo que ocurrió</option><?php foreach(TelefoniaResultadoVentasService::opcionesFormulario() as $code=>$label): ?><option value="<?= $escVenta($code) ?>" data-requires-connection="<?= TelefoniaResultadoVentasService::esConversacion($code)?'1':'0' ?>"><?= $escVenta($label) ?></option><?php endforeach; ?></select></div>
+      <div class="col-12"><label class="form-label" id="salesResultLabel" for="salesResultTrigger">Resultado de la llamada</label>
+       <input type="hidden" id="salesResult" name="resultado">
+       <div class="dropdown" data-sales-result-picker><button type="button" class="form-select sales-result-trigger" id="salesResultTrigger" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-labelledby="salesResultLabel salesResultText"><span id="salesResultText" data-sales-result-text>Selecciona uno o dos resultados</span></button>
+        <div class="dropdown-menu w-100 p-2 sales-result-menu" aria-labelledby="salesResultLabel" data-sales-result-options><?php foreach(TelefoniaResultadoVentasCatalogo::opcionesSeleccion() as $code=>$label): ?><label class="dropdown-item sales-result-choice"><input type="checkbox" class="form-check-input" value="<?= $escVenta($code) ?>" data-sales-result-choice data-requires-connection="<?= TelefoniaResultadoVentasCatalogo::conPersona($code)?'1':'0' ?>"><span><?= $escVenta($label) ?></span></label><?php endforeach; ?></div>
+       </div><small class="system-form-modal-subtitle d-block mt-2" data-sales-result-help>Puedes seleccionar uno o hasta dos resultados.</small>
+      </div>
       <div class="col-12" data-sales-interrupted hidden><label class="form-label" for="salesInterrupted">¿Hablaste con una persona antes del corte?</label><select data-native-select class="form-select" id="salesInterrupted" name="contacto_antes_corte"><option value="">Selecciona una opción</option><option value="SI">Sí, hablé con una persona</option><option value="NO">No, no hubo conversación con una persona</option></select></div>
-      <div class="col-12" data-sales-envio><label class="form-label" for="salesEnvio">Envío de información</label><select data-native-select class="form-select" id="salesEnvio" name="envio_informacion" required><option value="">Selecciona lo que enviaste</option><?php foreach(TelefoniaResultadoVentasCatalogo::envios() as $code=>$label): ?><option value="<?= $escVenta($code) ?>"><?= $escVenta($label) ?></option><?php endforeach; ?></select><small class="system-form-modal-subtitle d-block mt-2">Selecciona el envío que realizaste. Este registro no envía mensajes automáticamente.</small></div>
-      <div class="col-12" data-sales-whatsapp-exception hidden><label class="form-label" for="salesWhatsappReason">Motivo por el que no se envió WhatsApp *</label><textarea class="form-control" id="salesWhatsappReason" name="motivo_sin_whatsapp" rows="2" maxlength="300"></textarea><small class="system-form-modal-subtitle d-block mt-2">Por ejemplo: número incorrecto, no tiene WhatsApp o envío pendiente. Hasta 300 caracteres.</small></div>
-      <div class="col-12" data-sales-legacy-result hidden><p class="system-form-modal-subtitle mb-0">Este resultado se guardó con el formulario anterior. El envío por WhatsApp/SMS no se registraba por separado.</p></div>
+      <div class="col-12" data-sales-legacy-result hidden><p class="system-form-modal-subtitle mb-0">Este resultado se guardó con un formulario anterior y se conserva sin cambios.</p></div>
+      <div class="col-12" data-sales-previous-reason hidden><p class="system-form-modal-subtitle mb-0" data-sales-previous-reason-text></p></div>
       <div class="col-12 col-md-6"><label class="form-label" for="salesProspect">Nombre del prospecto</label><input class="form-control" id="salesProspect" name="prospecto_nombre" maxlength="150"><small class="system-form-modal-subtitle d-block mt-2">Dato informado; no equivale a identidad verificada.</small></div>
       <div class="col-12 col-md-6"><label class="form-label" for="salesContact">Contacto de mi agenda</label><select data-native-select class="form-select" id="salesContact" name="contacto_id"><option value="">Sin vincular contacto</option><?php foreach(($contactosVentas??[]) as $contact): ?><option value="<?= (int)$contact['id'] ?>"><?= $escVenta($contact['nombre'].' · '.$contact['telefono']) ?></option><?php endforeach; ?></select></div>
       <div class="col-12"><div class="form-check"><input type="checkbox" class="form-check-input" id="salesSaveContact" name="guardar_contacto" value="1"><label class="form-check-label" for="salesSaveContact">Guardar este prospecto en mi agenda</label></div><label class="form-label mt-2" for="salesEmail">Correo (opcional, para la agenda)</label><input type="email" class="form-control" id="salesEmail" name="correo" maxlength="180"></div>
