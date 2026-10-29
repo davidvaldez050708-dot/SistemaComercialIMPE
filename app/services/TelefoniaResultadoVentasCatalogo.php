@@ -102,19 +102,94 @@ final class TelefoniaResultadoVentasCatalogo
     /** Consulta sólo detalles del resultado ya autorizado por su propietario/tramo. Sin DDL. */
     public static function completarRegistro(mysqli $db,?array $registro): ?array
     {
-        if(!$registro||empty($registro['id']))return $registro;
-        if(!$db->query("SHOW TABLES LIKE 'telefonia_ventas_resultado_detalles'")->num_rows)return $registro;
-        $s=$db->prepare('SELECT d.resultado_principal,d.envio_informacion,d.motivo_sin_whatsapp,d.contacto_antes_corte,d.catalogo_version
-            FROM telefonia_ventas_resultado_detalles d JOIN telefonia_ventas_resultados r ON r.id=d.resultado_id
-            WHERE r.id=? AND r.usuario_id=? AND r.extension=BINARY ? AND r.pbx_call_id=BINARY ?');
-        $s->bind_param('iiss',$registro['id'],$registro['usuario_id'],$registro['extension'],$registro['pbx_call_id']);
-        $s->execute();$detalle=$s->get_result()->fetch_assoc();$s->close();
-        if(!$detalle)return $registro;
-        $registro=array_replace($registro,$detalle);
-        if($detalle['catalogo_version']==='3'){
-            $s=$db->prepare('SELECT codigo FROM telefonia_ventas_resultado_selecciones WHERE resultado_id=? ORDER BY posicion');
-            $s->bind_param('i',$registro['id']);$s->execute();$registro['resultados_seleccionados']=array_column($s->get_result()->fetch_all(MYSQLI_ASSOC),'codigo');$s->close();
+        return self::completarRegistros($db,[$registro])[0];
+    }
+
+    /** Los registros proceden de una consulta ya autorizada. Revalidar su identidad al unir detalles. */
+    public static function completarRegistros(mysqli $db,array $registros): array
+    {
+        $ids=[];foreach($registros as $r)if($r&&!empty($r['id']))$ids[(int)$r['id']]=true;
+        if(!$ids||!$db->query("SHOW TABLES LIKE 'telefonia_ventas_resultado_detalles'")->num_rows)return $registros;
+        $detalles=[];$selecciones=[];$v3=[];
+        foreach(array_chunk(array_keys($ids),500) as $chunk){
+            $s=$db->prepare('SELECT d.*,r.usuario_id,r.extension,r.pbx_call_id FROM telefonia_ventas_resultado_detalles d
+                JOIN telefonia_ventas_resultados r ON r.id=d.resultado_id WHERE r.id IN ('.implode(',',array_fill(0,count($chunk),'?')).')');
+            $s->bind_param(str_repeat('i',count($chunk)),...$chunk);$s->execute();
+            foreach($s->get_result()->fetch_all(MYSQLI_ASSOC) as $d){$id=(int)$d['resultado_id'];$detalles[$id]=$d;if($d['catalogo_version']==='3')$v3[]=$id;}$s->close();
         }
-        return $registro;
+        foreach(array_chunk($v3,500) as $chunk){
+            $s=$db->prepare('SELECT resultado_id,codigo FROM telefonia_ventas_resultado_selecciones WHERE resultado_id IN ('.implode(',',array_fill(0,count($chunk),'?')).') ORDER BY resultado_id,posicion');
+            $s->bind_param(str_repeat('i',count($chunk)),...$chunk);$s->execute();
+            foreach($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row)$selecciones[(int)$row['resultado_id']][]=$row['codigo'];$s->close();
+        }
+        foreach($registros as &$r){
+            if(!$r||empty($r['id']))continue;$id=(int)$r['id'];$d=$detalles[$id]??null;
+            if(!$d||(int)$d['usuario_id']!==(int)($r['usuario_id']??0)||$d['extension']!==($r['extension']??null)||$d['pbx_call_id']!==($r['pbx_call_id']??null))continue;
+            $r=array_replace($r,array_intersect_key($d,array_flip(['resultado_principal','envio_informacion','motivo_sin_whatsapp','contacto_antes_corte','catalogo_version'])));
+            if($d['catalogo_version']==='3')$r['resultados_seleccionados']=$selecciones[$id]??[];
+        }unset($r);
+        return $registros;
+    }
+
+    public static function opcionesConsulta(): array
+    {
+        require_once __DIR__.'/TelefoniaResultadoVentasService.php';
+        return TelefoniaResultadoVentasService::opciones()+self::opcionesSeleccion();
+    }
+
+    public static function seleccionesRegistro(?array $registro): array
+    {
+        if(!$registro||empty($registro['resultado']))return [];
+        if(!empty($registro['resultados_seleccionados'])&&is_array($registro['resultados_seleccionados']))
+            return array_values(array_unique(array_filter($registro['resultados_seleccionados'],static fn($v)=>is_string($v)&&$v!=='')));
+        $codes=[(string)$registro['resultado']];$envio=(string)($registro['envio_informacion']??'');
+        if(in_array($envio,['WHATSAPP','WHATSAPP_SMS'],true))$codes[]='WHATSAPP';
+        if(in_array($envio,['SMS','WHATSAPP_SMS'],true))$codes[]='SMS';
+        return array_values(array_unique($codes));
+    }
+
+    public static function opcionesFiltro(): array
+    {
+        $opciones=self::opcionesConsulta();unset($opciones['ENVIO_WHATSAPP'],$opciones['ENVIO_SMS']);
+        return $opciones;
+    }
+
+    public static function etiquetasRegistro(?array $registro): array
+    {
+        $labels=self::opcionesConsulta();$out=[];
+        foreach(self::seleccionesRegistro($registro) as $code){
+            $labelCode=$code==='COMUNICACION_INTERRUMPIDA'&&($registro['contacto_antes_corte']??'')==='SI'?self::INTERRUMPIDA_PERSONA:$code;
+            $out[]=$labels[$labelCode]??$code;
+        }return $out;
+    }
+
+    public static function textoRegistro(?array $registro): string
+    {
+        return implode(' · ',self::etiquetasRegistro($registro))?:'Sin resultado registrado';
+    }
+
+    public static function aclaracionesRegistro(?array $registro): string
+    {
+        $parts=[];$corte=$registro['contacto_antes_corte']??'';
+        if($corte==='SI')$parts[]='Habló con una persona antes del corte.';
+        elseif($corte==='NO')$parts[]='No hubo conversación con una persona antes del corte.';
+        if(trim((string)($registro['motivo_sin_whatsapp']??''))!=='')$parts[]='Motivo registrado anteriormente: '.$registro['motivo_sin_whatsapp'];
+        return implode(' ',$parts);
+    }
+
+    public static function coincideRegistro(?array $registro,string $codigo): bool
+    {
+        if($codigo==='')return true;if($codigo==='PENDIENTE')return !$registro;
+        if(!$registro)return false;
+        return in_array($codigo,self::codigosFiltroRegistro($registro),true);
+    }
+
+    public static function codigosFiltroRegistro(?array $registro): array
+    {
+        if(!$registro)return [];
+        $codes=self::seleccionesRegistro($registro);if(!empty($registro['resultado']))$codes[]=$registro['resultado'];
+        if(($registro['envio_informacion']??'')==='WHATSAPP_SMS')$codes[]='ENVIO_WHATSAPP_SMS';
+        if(($registro['resultado']??'')==='INFORMACION_ENVIADA_WHATSAPP')$codes[]='WHATSAPP';
+        return array_values(array_unique($codes));
     }
 }

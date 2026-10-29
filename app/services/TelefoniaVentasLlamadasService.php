@@ -289,9 +289,12 @@ final class TelefoniaVentasLlamadasService
         $grouped=[];foreach($events as $event)$grouped[$event['pbx_call_id']][]=$event;
         foreach($rows as &$row){
             $row+=self::hechos($grouped[$row['pbx_call_id']]??[],$row['extension'],(string)($row['origen_extension']??''));
-            $row['registro']=$row['registro_id']===null?null:array_intersect_key($row,array_flip(['resultado','observacion','prospecto_nombre','contacto_id','proxima_accion_at']));
+            $row['registro']=$row['registro_id']===null?null:array_merge(['id'=>$row['registro_id'],'usuario_id'=>$uid,'extension'=>$row['extension'],'pbx_call_id'=>$row['pbx_call_id']],array_intersect_key($row,array_flip(['resultado','observacion','prospecto_nombre','contacto_id','proxima_accion_at'])));
             unset($row['registro_id'],$row['resultado'],$row['observacion'],$row['prospecto_nombre'],$row['contacto_id'],$row['proxima_accion_at']);
         }unset($row);
+        require_once __DIR__.'/TelefoniaResultadoVentasCatalogo.php';
+        $registros=TelefoniaResultadoVentasCatalogo::completarRegistros($this->db,array_column($rows,'registro'));
+        foreach($rows as $i=>&$row)$row['registro']=$registros[$i];unset($row);
         require_once __DIR__.'/TelefoniaVentasEvidenciaService.php';
         return (new TelefoniaVentasEvidenciaService($this->db))->enriquecer($rows,$uid);
     }

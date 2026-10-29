@@ -1,0 +1,22 @@
+.supervision-calls .supervision-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:end;margin-bottom:22px;padding:16px;background:#f7f9fd;border:1px solid #dce6f4;border-radius:13px;font-family:'Manrope',sans-serif}
+.supervision-filters .data-filter-field{min-width:0}.supervision-filters .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px}
+.supervision-calls .supervision-filters label{display:block;margin-bottom:7px;color:#64758c;font-size:12px;font-weight:600}
+.supervision-calls .supervision-filters :is(.form-control,.form-select){width:100%;min-width:0;min-height:44px;box-sizing:border-box;padding:10px 12px;border:1px solid #ccdaeb;border-radius:9px;background-color:#fff;color:#17243d;font-family:inherit;font-size:13px;font-weight:500;line-height:1.4}
+.supervision-calls .supervision-filters .form-select{padding-right:36px}
+.supervision-calls .supervision-filters :is(.form-control,.form-select):focus{border-color:var(--color-secondary,#0563a6);outline:0;box-shadow:0 0 0 3px rgba(5,99,166,.07)}
+.supervision-calls .supervision-search-field{grid-column:span 2}
+.supervision-calls .supervision-filters .module-search{width:100%;min-width:0;min-height:44px;border-color:#ccdaeb;border-radius:9px;background:#fff}
+.supervision-calls .supervision-filters .module-search .form-control{min-height:42px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.supervision-calls .supervision-filters .form-control::placeholder{color:#8290a5;font-size:13px;font-weight:400;opacity:1}
+.supervision-calls .supervision-filters input[type=date]::-webkit-datetime-edit{padding:0;color:inherit;font:inherit}
+.supervision-person{display:flex;align-items:center;gap:10px;margin-bottom:5px}.supervision-person .system-avatar{flex-shrink:0}
+.supervision-actions{display:flex;flex-wrap:wrap;gap:8px}.supervision-calls .linkage-call-history-footer{gap:12px;flex-wrap:wrap}
+.supervision-notice,.supervision-empty{background:#f5f8fc;border:1px solid #dce4f2;border-radius:14px;padding:20px;color:#526580}.supervision-empty{text-align:center}.supervision-empty h3{font-size:18px;margin:12px 0}
+.supervision-pagination{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:24px}
+.supervision-detail{width:min(640px,calc(100% - 32px));max-height:85dvh;overflow:auto;border:1px solid #dce4f2;border-radius:18px;padding:24px;color:#17243d;box-shadow:0 24px 80px #17243d26}
+.supervision-detail::backdrop{background:#17243d66}.supervision-detail header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}.supervision-detail h3{font-size:20px;margin:0}.supervision-detail dl{display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px}.supervision-detail dd{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}.supervision-detail p{color:#71829c;font-size:13px;margin-bottom:0}
+@media(max-width:900px){.supervision-calls .supervision-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.supervision-calls .supervision-filters{grid-template-columns:minmax(0,1fr)}.supervision-calls .supervision-search-field{grid-column:auto}.supervision-detail{padding:18px}.supervision-detail dl{grid-template-columns:minmax(0,1fr);gap:6px}.supervision-detail dd{margin-bottom:10px}.supervision-calls .linkage-call-recording-top{flex-wrap:wrap}.supervision-calls .linkage-call-recording-duration{white-space:normal}.supervision-person strong{overflow-wrap:anywhere}}
+
+/* Resultados multiples: conservar la tarjeta dentro del ancho disponible. */
+.supervision-calls .linkage-call-result-badge.is-result{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
