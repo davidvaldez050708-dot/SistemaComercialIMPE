@@ -157,17 +157,23 @@ final class TelefoniaVentasLlamadasService
         require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
         return TelefoniaPbxSegmentosService::deEventos($events,$ext);
     }
-    /** La conexión y el resultado humano son hechos distintos; no inferir buzón por duración. */
+    /** Permite verificar audio; no acredita contacto humano ni sustituye la autorización del propietario. */
+    public static function audioConsultable(array $call): bool {
+        $ext=(string)($call['extension']??'');$source=(string)($call['origen_extension']??'');
+        $transferida=($call['direccion']??'')==='Entrante'&&!empty($call['solicitud_id'])&&
+            preg_match('/^[0-9]{3,6}$/D',$source)&&$source!==$ext;
+        return (bool)(preg_match('/^[A-Za-z0-9_-]{6,100}$/D',(string)($call['pbx_call_id']??''))&&
+            preg_match('/^[0-9]{3,6}$/D',$ext)&&!empty($call['conectada'])&&
+            (!empty($call['finalizada'])||$transferida));
+    }
+    /** Audio y clasificación comercial se consultan por separado; no inferir contacto por duración. */
     public static function presentacionAudio(array $call): array {
-        require_once __DIR__.'/TelefoniaResultadoVentasService.php';
         $out=['disponible'=>false,'estado'=>'sin_referencia','texto'=>'Grabación sin confirmar','detalle'=>'La centralita todavía no ha enviado una referencia de grabación para este tramo.'];
         if(empty($call['pbx_call_id']))return array_replace($out,['estado'=>'sin_llamada','texto'=>'Sin llamada confirmada','detalle'=>'Es un intento sin referencia confirmada de la centralita; no hay audio verificable.']);
-        if(empty($call['finalizada']))return array_replace($out,!empty($call['registro'])
+        if(empty($call['finalizada'])&&!self::audioConsultable($call))return array_replace($out,!empty($call['registro'])
             ?['estado'=>'por_conciliar','texto'=>'Grabación por verificar','detalle'=>'El resultado humano ya está guardado. Falta evidencia del cierre y de los segmentos de Zadarma.']
             :['estado'=>'en_curso','texto'=>'Grabación al finalizar','detalle'=>'Espera a que la centralita confirme el cierre de la llamada.']);
-        $code=(string)($call['registro']['resultado']??'');
-        if(empty($call['conectada'])||($code!==''&&!TelefoniaResultadoVentasService::esConversacion($code)))return array_replace($out,['estado'=>'no_aplica','texto'=>'Sin grabación de conversación','detalle'=>'Las llamadas sin conversación, buzones y locuciones no habilitan reproducción.']);
-        if($code==='')return array_replace($out,['estado'=>'pendiente_resultado','texto'=>'Pendiente de resultado','detalle'=>'Registra lo ocurrido para distinguir una conversación de un buzón o una locución.']);
+        if(!self::audioConsultable($call))return array_replace($out,['estado'=>'no_aplica','texto'=>'Sin audio verificable del tramo','detalle'=>'Falta una llamada con respuesta confirmada y un tramo autorizado para esta extensión.']);
         if(!empty($call['segmentos']))return array_replace($out,['disponible'=>true,'estado'=>'referencia_propia','texto'=>'Consultar grabación','detalle'=>'Referencia confirmada del tramo de tu extensión. El proveedor verifica el archivo al reproducir.']);
         return match($call['audio_motivo']??'sin_referencia'){
             'no_reportada'=>array_replace($out,['estado'=>'no_reportada','texto'=>'Sin grabación reportada','detalle'=>'La estadística del tramo propio no reporta una grabación. Puedes comprobarla de nuevo si el proveedor la prepara después.']),
