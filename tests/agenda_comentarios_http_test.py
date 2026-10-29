@@ -17,8 +17,9 @@ import urllib.request
 
 ROOT=Path(__file__).resolve().parents[1]
 HOSTINGER='--hostinger' in sys.argv
-VISTOS='--vistos' in sys.argv
-PRIVADOS='--privados' in sys.argv
+DESTINATARIOS='--destinatarios' in sys.argv
+VISTOS='--vistos' in sys.argv or DESTINATARIOS
+PRIVADOS='--privados' in sys.argv or DESTINATARIOS
 sys.path.insert(0,str(ROOT/'tools'))
 from agenda_comentarios_compat import reminder_hostinger
 PHP=os.environ.get('IMPE_TEST_PHP',r'C:\xampp\php\php.exe' if os.name=='nt' else 'php')
@@ -61,6 +62,18 @@ class Database { public function connect(){return new ComentarioDbPrueba(getenv(
     token=secrets.token_hex(24)
     if PRIVADOS:
         subprocess.run([PHP,'-r',"$d=new PDO('sqlite:'.$argv[1]);$d->exec('ALTER TABLE agenda_comentarios ADD COLUMN privado INTEGER NOT NULL DEFAULT 0');",str(db)],check=True,capture_output=True)
+    if DESTINATARIOS:
+        sql="""ALTER TABLE agenda_comentarios ADD COLUMN destinatario_id INTEGER DEFAULT NULL;
+ALTER TABLE usuarios ADD COLUMN rol_id INTEGER DEFAULT 4; ALTER TABLE usuarios ADD COLUMN estado INTEGER DEFAULT 1;
+CREATE TABLE roles(id INTEGER PRIMARY KEY,nombre TEXT,estado INTEGER);
+CREATE TABLE permisos(id INTEGER PRIMARY KEY,codigo TEXT,estado INTEGER);
+CREATE TABLE rol_permisos(rol_id INTEGER,permiso_id INTEGER);
+INSERT INTO roles VALUES(1,'Administrador',1),(4,'Analista',1),(6,'Cuenta Clave',1);
+INSERT INTO permisos VALUES(26,'reuniones.ver',1);
+INSERT INTO rol_permisos VALUES(1,26),(4,26),(6,26);
+UPDATE usuarios SET rol_id=6 WHERE id=7;
+INSERT INTO usuarios VALUES(15,'Admin','Prueba',1,1);"""
+        subprocess.run([PHP,'-r',"$d=new PDO('sqlite:'.$argv[1]);$d->exec($argv[2]);",str(db),sql],check=True,capture_output=True)
     (work/'router.php').write_text('''<?php
 session_start();header('Content-Type: application/json');
 if($_SERVER['REQUEST_URI']==='/login'){
@@ -174,6 +187,29 @@ if(!in_array($action,['listar','crear','eliminar','leer','leerVisto'],true)){htt
                 assert request(a,'eliminar',dict(id=private_id))[0]==200
                 assert request(a,'crear',dict(fecha='2026-10-28',comentario='X',privado='yes'))[0]==422
                 print('OK: privados HTTP: calendario/campana/IDs directos, lector/admin ajenos excluidos y autor con hora opcional.')
+            if DESTINATARIOS:
+                login(a,5);login(b,7,rol=6);login(admin,15,rol=1)
+                third=client();login(third,8)
+                code,result=request(a,'crear',dict(fecha='2026-10-28',comentario='Sólo para destinatario HTTP',destinatario_id=7))
+                assert code==200 and result['comentario']['destinatario_id']==7
+                direct=result['comentario']['id']
+                for other in [third,admin]:
+                    listed=request(other,'listar',query='&desde=2026-10-01&hasta=2026-11-01')[1]
+                    assert 'Sólo para destinatario HTTP' not in json.dumps(listed,ensure_ascii=False)
+                    assert 'Sólo para destinatario HTTP' not in json.dumps(request(other,'pendientes')[1],ensure_ascii=False)
+                    for action in ['leer','eliminar']:
+                        assert request(other,action,dict(id=direct))[0]==404
+                    assert request(other,'leerVisto',dict(id=direct,lector_id=7))[0]==404
+                for participant in [a,b]:
+                    listed=request(participant,'listar',query='&desde=2026-10-01&hasta=2026-11-01')[1]['comentarios']
+                    assert any(c['id']==direct for c in listed)
+                assert any(r.get('agenda_comentario_id')==direct for r in request(b,'pendientes')[1]['recordatorios'])
+                assert not any(r.get('agenda_comentario_id')==direct for r in request(a,'pendientes')[1]['recordatorios'])
+                assert request(b,'eliminar',dict(id=direct))[0]==403
+                assert request(b,'leer',dict(id=direct))[0]==200
+                assert any(r.get('agenda_comentario_id')==direct and r.get('agenda_comentario_visto_por')==7 for r in request(a,'pendientes')[1]['recordatorios'])
+                assert request(a,'eliminar',dict(id=direct))[0]==200
+                print('OK: dirigidos HTTP: sólo autor/destinatario; terceros y administrador sin contenido en calendario/campana ni acceso por ID; aviso de lectura y borrado conservados.')
             print('OK: HTTP real ('+('Hostinger: conserva las 30 tareas de Aliados; ' if HOSTINGER else 'base; ')+
                   'CSRF, autor/borrado, consulta/administrador y exclusión sin Agenda). BD aislada.')
         finally:process.terminate();process.wait(timeout=10)

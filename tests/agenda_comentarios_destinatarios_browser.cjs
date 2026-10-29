@@ -41,7 +41,7 @@ async function setup(browser,mode='ok',mobile=false){
   await p.locator('[data-agenda-comment-editor]').screenshot({path:path.join(out,mobile?'selector-movil.png':'selector-escritorio.png')});
   await p.locator('[data-agenda-comment-save]').click();await p.locator('[data-agenda-comment-editor]').waitFor({state:'hidden'});
   assert.equal(f.posts.length,1);assert.equal(f.posts[0].destinatario_id,'7');assert.equal(f.posts[0].hora,'13:45');
-  await p.getByText('Avisos para: Cuenta <Clave>',{exact:true}).waitFor();assert.deepEqual(f.errors,[]);await p.close();cases++;
+  await p.getByText('Para: Cuenta <Clave> · Sólo autor y destinatario',{exact:true}).waitFor();assert.deepEqual(f.errors,[]);await p.close();cases++;
  }
  {
   const f=await setup(browser),p=f.p;await p.locator('[data-agenda-comment-save]').click();await p.locator('[data-agenda-comment-editor]').waitFor({state:'hidden'});

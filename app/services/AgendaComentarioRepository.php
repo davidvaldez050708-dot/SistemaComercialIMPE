@@ -30,12 +30,15 @@ class AgendaComentarioRepository
     {
         $visibilidad = $this->privacidadDisponible() ? ' AND (c.privado=0 OR c.creado_por=?)' : '';
         $destinatarios = $this->destinatariosDisponibles();
+        $dirigido = $destinatarios ? ' AND (c.destinatario_id IS NULL OR c.destinatario_id=? OR c.creado_por=?)' : '';
         $stmt = $this->db->prepare('SELECT c.*,l.novedad_leida_at,l.recordatorio_atendido_at'.($destinatarios?",TRIM(CONCAT(COALESCE(d.nombre,''),' ',COALESCE(d.apellidos,''))) AS destinatario_nombre":'').' FROM agenda_comentarios c
             LEFT JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id AND l.usuario_id=?
             '.($destinatarios?'LEFT JOIN usuarios d ON d.id=c.destinatario_id':'').'
-            WHERE c.eliminado_at IS NULL AND c.fecha >= ? AND c.fecha < ?'.$visibilidad.' ORDER BY c.fecha,c.creado_at,c.id LIMIT 501');
-        if ($visibilidad) $stmt->bind_param('issi', $usuario, $desde, $hasta, $usuario);
-        else $stmt->bind_param('iss', $usuario, $desde, $hasta);
+            WHERE c.eliminado_at IS NULL AND c.fecha >= ? AND c.fecha < ?'.$visibilidad.$dirigido.' ORDER BY c.fecha,c.creado_at,c.id LIMIT 501');
+        $types='iss';$params=[$usuario,$desde,$hasta];
+        if ($visibilidad) {$types.='i';$params[]=$usuario;}
+        if ($dirigido) {$types.='ii';$params[]=$usuario;$params[]=$usuario;}
+        $stmt->bind_param($types,...$params);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
@@ -44,9 +47,12 @@ class AgendaComentarioRepository
     {
         $filtrar = $usuario !== null && $this->privacidadDisponible();
         $destinatarios = $this->destinatariosDisponibles();
-        $stmt = $this->db->prepare('SELECT c.*'.($destinatarios?",TRIM(CONCAT(COALESCE(d.nombre,''),' ',COALESCE(d.apellidos,''))) AS destinatario_nombre":'').' FROM agenda_comentarios c '.($destinatarios?'LEFT JOIN usuarios d ON d.id=c.destinatario_id':'').' WHERE c.id=? AND c.eliminado_at IS NULL'.($filtrar?' AND (c.privado=0 OR c.creado_por=?)':''));
-        if ($filtrar) $stmt->bind_param('ii', $id, $usuario);
-        else $stmt->bind_param('i', $id);
+        $dirigido = $usuario !== null && $destinatarios;
+        $stmt = $this->db->prepare('SELECT c.*'.($destinatarios?",TRIM(CONCAT(COALESCE(d.nombre,''),' ',COALESCE(d.apellidos,''))) AS destinatario_nombre":'').' FROM agenda_comentarios c '.($destinatarios?'LEFT JOIN usuarios d ON d.id=c.destinatario_id':'').' WHERE c.id=? AND c.eliminado_at IS NULL'.($filtrar?' AND (c.privado=0 OR c.creado_por=?)':'').($dirigido?' AND (c.destinatario_id IS NULL OR c.destinatario_id=? OR c.creado_por=?)':''));
+        $types='i';$params=[$id];
+        if ($filtrar) {$types.='i';$params[]=$usuario;}
+        if ($dirigido) {$types.='ii';$params[]=$usuario;$params[]=$usuario;}
+        $stmt->bind_param($types,...$params);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
@@ -129,16 +135,19 @@ class AgendaComentarioRepository
     public function marcarLeido(int $id, int $usuario, string $ahora): void
     {
         $visibilidad = $this->privacidadDisponible() ? ' AND (privado=0 OR creado_por=?)' : '';
+        $dirigido = $this->destinatariosDisponibles() ? ' AND (destinatario_id IS NULL OR destinatario_id=? OR creado_por=?)' : '';
         // Leer antes de la hora no cancela el recordatorio futuro. Atenderlo
         // después de su hora afecta sólo al usuario que abrió el comentario.
         $stmt = $this->db->prepare('INSERT INTO agenda_comentarios_lecturas
             (comentario_id,usuario_id,novedad_leida_at,recordatorio_atendido_at)
             SELECT id,?,?,IF(recordatorio_at IS NOT NULL AND recordatorio_at<=?,?,NULL)
-            FROM agenda_comentarios WHERE id=? AND eliminado_at IS NULL'.$visibilidad.'
+            FROM agenda_comentarios WHERE id=? AND eliminado_at IS NULL'.$visibilidad.$dirigido.'
             ON DUPLICATE KEY UPDATE novedad_leida_at=VALUES(novedad_leida_at),
               recordatorio_atendido_at=COALESCE(VALUES(recordatorio_atendido_at),recordatorio_atendido_at)');
-        if ($visibilidad) $stmt->bind_param('isssii', $usuario, $ahora, $ahora, $ahora, $id, $usuario);
-        else $stmt->bind_param('isssi', $usuario, $ahora, $ahora, $ahora, $id);
+        $types='isssi';$params=[$usuario,$ahora,$ahora,$ahora,$id];
+        if ($visibilidad) {$types.='i';$params[]=$usuario;}
+        if ($dirigido) {$types.='ii';$params[]=$usuario;$params[]=$usuario;}
+        $stmt->bind_param($types,...$params);
         $stmt->execute();
     }
 
@@ -174,13 +183,14 @@ class AgendaComentarioRepository
     {
         if (!$this->avisosVistosDisponibles()) return [];
         $visibilidad = $this->privacidadDisponible() ? ' AND c.privado=0' : '';
+        $dirigido = $this->destinatariosDisponibles() ? ' AND (c.destinatario_id IS NULL OR c.destinatario_id=l.usuario_id)' : '';
         $stmt=$this->db->prepare("SELECT c.id,c.fecha,c.comentario,l.usuario_id AS lector_id,l.novedad_leida_at AS visto_at,
             TRIM(CONCAT(COALESCE(u.nombre,''),' ',COALESCE(u.apellidos,''))) AS lector_nombre
             FROM agenda_comentarios c INNER JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id
             INNER JOIN usuarios u ON u.id=l.usuario_id
             LEFT JOIN agenda_comentarios_vistos_avisos a ON a.comentario_id=c.id AND a.lector_id=l.usuario_id
             WHERE c.creado_por=? AND l.usuario_id<>c.creado_por AND c.eliminado_at IS NULL
-              AND l.novedad_leida_at IS NOT NULL AND a.comentario_id IS NULL".$visibilidad."
+              AND l.novedad_leida_at IS NOT NULL AND a.comentario_id IS NULL".$visibilidad.$dirigido."
             ORDER BY l.novedad_leida_at DESC,l.usuario_id,c.id LIMIT 20");
         $stmt->bind_param('i',$autor);$stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -189,18 +199,19 @@ class AgendaComentarioRepository
     public function leerAvisoVisto(int $autor,int $comentario,int $lector,string $ahora): bool
     {
         $visibilidad = $this->privacidadDisponible() ? ' AND c.privado=0' : '';
+        $dirigido = $this->destinatariosDisponibles() ? ' AND (c.destinatario_id IS NULL OR c.destinatario_id=l.usuario_id)' : '';
         $stmt=$this->db->prepare('INSERT INTO agenda_comentarios_vistos_avisos (comentario_id,lector_id,leido_at)
             SELECT c.id,l.usuario_id,? FROM agenda_comentarios c
             INNER JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id
             WHERE c.id=? AND c.creado_por=? AND l.usuario_id=? AND l.usuario_id<>c.creado_por
-              AND c.eliminado_at IS NULL AND l.novedad_leida_at IS NOT NULL'.$visibilidad.'
+              AND c.eliminado_at IS NULL AND l.novedad_leida_at IS NOT NULL'.$visibilidad.$dirigido.'
             ON DUPLICATE KEY UPDATE leido_at=VALUES(leido_at)');
         $stmt->bind_param('siii',$ahora,$comentario,$autor,$lector);$stmt->execute();
         // Una lectura idempotente puede devolver 0 filas afectadas. Comprobar
         // siempre el destinatario y la pareja real de comentario/lector.
         $check=$this->db->prepare('SELECT a.comentario_id FROM agenda_comentarios_vistos_avisos a
             INNER JOIN agenda_comentarios c ON c.id=a.comentario_id
-            WHERE a.comentario_id=? AND a.lector_id=? AND c.creado_por=? AND c.eliminado_at IS NULL');
+            WHERE a.comentario_id=? AND a.lector_id=? AND c.creado_por=? AND c.eliminado_at IS NULL'.($dirigido?' AND (c.destinatario_id IS NULL OR c.destinatario_id=a.lector_id)':''));
         $check->bind_param('iii',$comentario,$lector,$autor);$check->execute();
         return (bool)$check->get_result()->fetch_assoc();
     }

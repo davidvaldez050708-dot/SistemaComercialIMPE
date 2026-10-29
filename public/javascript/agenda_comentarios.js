@@ -36,14 +36,15 @@
             form.querySelector('#agendaComentarioPrivadoAyuda').textContent = !privacyAvailable
                 ? 'Los comentarios privados no están disponibles por el momento.' : privateComment.checked
                 ? 'Sólo tú podrás verlo. Sus avisos y recordatorios serán únicamente para ti.'
-                : 'Compartido con los usuarios que tienen acceso a Agenda.';
+                : recipient?.value ? 'Sólo tú y el destinatario podrán verlo.' : 'Compartido con los usuarios que tienen acceso a Agenda.';
             if (recipient) {
                 recipient.disabled=privateComment.checked || !recipientsAvailable;
                 const help=form.querySelector('#agendaComentarioDestinatarioAyuda');
                 if(help) help.textContent=privateComment.checked
                     ? 'Comentario privado: sólo tú recibirás sus avisos y recordatorios.'
                     : !recipientsAvailable ? 'Por ahora se mantienen los avisos generales. Falta completar la instalación de destinatarios.'
-                    : 'Elige quién recibirá el aviso y, si indicas hora, el recordatorio. El comentario compartido seguirá visible en Agenda.';
+                    : recipient.value ? 'Sólo tú y la persona seleccionada podrán verlo. Únicamente ella recibirá el aviso y el recordatorio.'
+                    : 'Todos los usuarios con Agenda podrán verlo y recibir sus avisos.';
             }
         }
         const status = root.querySelector('[data-agenda-comments-status]');
@@ -210,7 +211,7 @@
                 const content = node('div','agenda-comment-copy');
                 content.append(node('strong','',c.autor));
                 if (c.privado) content.append(node('span','agenda-comment-private-badge','Privado · Sólo tú'));
-                else if(c.destinatario_id) content.append(node('span','agenda-comment-private-badge','Avisos para: '+(c.destinatario_nombre||'Usuario seleccionado')));
+                else if(c.destinatario_id) content.append(node('span','agenda-comment-private-badge','Para: '+(c.destinatario_nombre||'Usuario seleccionado')+' · Sólo autor y destinatario'));
                 const date = new Date(c.creado_at.replace(' ','T'));
                 const created = Number.isNaN(date.getTime()) ? c.creado_at : new Intl.DateTimeFormat('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(date);
                 content.append(node('small','',created));
@@ -373,6 +374,7 @@
             if(noHour.checked) hour.value='';else hour.focus();
         });
         privateComment.addEventListener('change',updateOptions);
+        recipient?.addEventListener('change',updateOptions);
         form.addEventListener('submit',async event=>{
             event.preventDefault();if(saving)return;
             const content=text.value.trim();

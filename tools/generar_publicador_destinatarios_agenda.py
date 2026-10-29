@@ -28,11 +28,14 @@ for path in NEW+CHANGED:
         if path=='public/javascript/agenda_comentarios.js':
             old=subprocess.check_output(['git','show','fd787fb7:'+path],cwd=ROOT).decode('utf8')
             entry['alternatives']=[fragments(old,content)]
+        previous=subprocess.check_output(['git','show','f9569c92:'+path],cwd=ROOT).decode('utf8')
+        if previous!=content:
+            entry.setdefault('alternatives',[]).append(fragments(previous,content))
     payload.append(entry)
 tree=ast.parse((ROOT/'tools/generar_publicador_agenda_comentarios.py').read_text(encoding='utf8'))
 program=next(ast.literal_eval(n.value) for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='PROGRAM' for t in n.targets))
 label='agenda-destinatarios'
-program=program.replace("$version = 'agenda-comentarios-v1';",f"$version = '{label}-v1';")
+program=program.replace("$version = 'agenda-comentarios-v1';",f"$version = '{label}-v2';")
 program=program.replace("'/agenda-comentarios-'.date",f"'/{label}-'.date")
 program=program.replace('Sólo archivos listados; ninguna consulta SQL ni envío.','Sólo archivos listados; restore consulta SQL para proteger destinatarios.')
 program=program.replace('Sin SQL, envíos ni cambios de credenciales.','Sin escrituras SQL, envíos ni cambios de credenciales.')
