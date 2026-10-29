@@ -1134,7 +1134,9 @@
                 const caja = document.createElement('div');
                 caja.className = 'agenda-form-error';
                 caja.textContent =
-                    error.message || 'No fue posible guardar los cambios.';
+                    error instanceof TypeError || error.name==='AbortError' || /failed to fetch|networkerror|load failed/i.test(error.message || '')
+                        ? 'No se pudo comprobar la operación por un problema de conexión. Actualiza la agenda para revisar el estado de la reunión antes de volver a intentarlo.'
+                        : (error.message || 'No fue posible guardar los cambios.');
                 form.querySelector('.agenda-form-error')?.remove();
                 form.prepend(caja);
             } finally {

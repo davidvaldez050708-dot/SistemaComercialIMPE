@@ -45,7 +45,9 @@
             if (value !== undefined) el.textContent = value;
             return el;
         };
-        const inform = (message, failure = false) => {
+        let loadStatus = false;
+        const inform = (message, failure = false, fromLoad = false) => {
+            loadStatus = fromLoad;
             status.textContent = message;
             status.hidden = !message;
             status.classList.toggle('is-error', failure);
@@ -81,7 +83,7 @@
         }
         async function request(action, data = null) {
             const url = endpoint(action);
-            const options = { cache:'no-store', credentials:'same-origin', headers:{ 'X-Requested-With':'XMLHttpRequest' } };
+            const options = { cache:'no-store', credentials:'same-origin', headers:{ 'X-Requested-With':'fetch' } };
             if (data) {
                 options.method = 'POST';
                 options.headers['X-CSRF-Token'] = String(window.IMPE_CSRF_TOKEN || '');
@@ -94,11 +96,49 @@
                 url.searchParams.set('desde', start || '');
                 url.searchParams.set('hasta', end.getFullYear()+'-'+String(end.getMonth()+1).padStart(2,'0')+'-'+String(end.getDate()).padStart(2,'0'));
             }
-            const response = await fetch(url, options);
-            let result;
-            try { result = await response.json(); } catch (_) { throw new Error('No fue posible cargar los comentarios. Intenta nuevamente.'); }
-            if (!response.ok || !result.ok) throw new Error(result.mensaje || 'No fue posible procesar el comentario.');
-            return result;
+            const failure = (message, retryable = false, status = 0) => Object.assign(new Error(message), {retryable,status});
+            const offlineMessage = 'No hay conexión en este momento. Los comentarios se cargarán al recuperarla.';
+            const uncertainMessage = 'No se pudo comprobar la operación. Conserva el texto y revisa la agenda antes de volver a intentarlo.';
+            const transientMessage = 'No se pudieron cargar los comentarios. Se volverá a intentar automáticamente.';
+            const attempts = data ? 1 : 3;
+            for (let attempt=0; attempt<attempts; attempt++) {
+                if (navigator.onLine === false) throw failure(data ? 'No hay conexión. Conserva el texto e inténtalo cuando se restablezca.' : offlineMessage,true);
+                const controller = new AbortController();
+                const timeout = window.setTimeout(()=>controller.abort(),data ? 25000 : 15000);
+                try {
+                    let response;
+                    try { response = await fetch(url,{...options,signal:controller.signal}); }
+                    catch (_) { throw failure(data ? uncertainMessage : (navigator.onLine===false ? offlineMessage : transientMessage),true); }
+                    let result;
+                    try {
+                        result = await response.json();
+                        if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error();
+                    } catch (_) {
+                        const expired = response.status===401 || (response.redirected && /[?&]controller=login(?:&|$)/.test(response.url));
+                        if (expired) throw failure('La sesión expiró. Inicia sesión nuevamente para consultar tus comentarios.',false,401);
+                        if (response.status===403) throw failure('No se pudo acceder a los comentarios. Recarga la página para comprobar tu acceso.',false,403);
+                        throw failure(data ? uncertainMessage : transientMessage,true,response.status);
+                    }
+                    if (!response.ok || result.ok!==true) {
+                        const retryable = [408,429,500,502,503,504].includes(response.status);
+                        const message = typeof result.mensaje==='string' ? result.mensaje : (data ? uncertainMessage : transientMessage);
+                        const error = failure(message,retryable,response.status);
+                        const retryAfter = response.headers.get('Retry-After');
+                        // Una limitación explícita del servidor espera al ciclo
+                        // habitual; no acumular reintentos inmediatos.
+                        if (response.status===429 && retryAfter) error.retryable=false;
+                        throw error;
+                    }
+                    if (!data && (!Array.isArray(result.comentarios) || !result.comentarios.every(c=>
+                        c && Number(c.id)>0 && typeof c.fecha==='string' && typeof c.autor==='string' &&
+                        typeof c.comentario==='string' && typeof c.creado_at==='string'
+                    ))) throw failure(transientMessage,true,response.status);
+                    return result;
+                } catch (error) {
+                    if (data || !error.retryable || attempt===attempts-1 || navigator.onLine===false) throw error;
+                } finally { window.clearTimeout(timeout); }
+                await new Promise(resolve=>window.setTimeout(resolve,800*(attempt+1)));
+            }
         }
         const refreshBell = ownId => window.dispatchEvent(new CustomEvent('impe:agenda-comments-refresh',{
             detail:{comentarioPropioId:Number(ownId)||0}
@@ -214,13 +254,14 @@
             try {
                 const result=await request('listar');
                 if(version!==changeVersion){refreshAgain=true;return;}
-                comments=Array.isArray(result.comentarios)?result.comentarios:[];
+                if(loadStatus)inform('');
+                comments=result.comentarios;
                 privacyAvailable=result.privados_disponibles===true;
                 updateOptions();
                 available=true;
                 root.querySelectorAll('[data-agenda-comment-add]').forEach(b=>b.disabled=false);
                 updateMarkers();renderPanel();
-                if (result.hay_mas) inform('Se muestran los primeros 500 comentarios de este intervalo.');
+                if (result.hay_mas) inform('Se muestran los primeros 500 comentarios de este intervalo.',false,true);
                 if (!initialDone) {
                     initialDone=true;
                     const comment=comments.find(c=>c.id===initialId);
@@ -244,8 +285,13 @@
                     else if (initialId>0) { openDay(initialDay);inform('El comentario ya no está disponible.',true); }
                 }
             } catch (e) {
+                if ([401,403].includes(e.status)) {
+                    comments=[];available=false;privacyAvailable=false;updateOptions();updateMarkers();renderPanel();
+                }
                 if (!available) root.querySelectorAll('[data-agenda-comment-add]').forEach(b=>b.disabled=true);
-                inform(e.message,true);
+                inform(available && e.retryable
+                    ? 'No se pudieron actualizar los comentarios. Se conservan los últimos cargados y se volverá a intentar automáticamente.'
+                    : e.message,true,true);
             } finally { loading=false;if(refreshAgain){refreshAgain=false;void load();} }
         }
         function counter() {
@@ -338,6 +384,7 @@
         });
         void load();
         window.setInterval(()=>void load(),60000);
+        window.addEventListener('online',()=>void load());
         document.addEventListener('visibilitychange',()=>{if(!document.hidden)void load();});
     }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();

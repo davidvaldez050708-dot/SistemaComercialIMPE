@@ -12,11 +12,11 @@ const source=fs.readFileSync(path.join(root,'public/javascript/agenda_reunion.js
  try{
   for(const scenario of [{status:500,body:''},{status:200,body:''},{status:502,body:'<html>Error de alojamiento</html>'},{status:200,body:'null'},
    {status:500,body:JSON.stringify({ok:false,mensaje:'Error controlado. Referencia: prueba.'})},{status:409,body:JSON.stringify({ok:false,mensaje:'La solicitud ya no está pendiente.'})},
-   {status:401,body:''}]){
+   {status:401,body:''},{network:true}]){
    const p=await browser.newPage();const errors=[];let posts=0;p.on('pageerror',e=>errors.push(e.message));
    await p.route('**/*',route=>{
     const r=route.request();
-    if(r.method()==='POST'){posts++;assert.match(r.url(),/action=confirmar/);return route.fulfill({status:scenario.status,body:scenario.body,contentType:'application/json'});}
+    if(r.method()==='POST'){posts++;assert.match(r.url(),/action=confirmar/);return scenario.network?route.abort('failed'):route.fulfill({status:scenario.status,body:scenario.body,contentType:'application/json'});}
     if(r.url().includes('agenda_comentarios.')||r.url().includes('agenda_fechas_referencia.'))return route.fulfill({body:''});
     return route.fulfill({body:'<!doctype html><html><head><meta charset="utf-8"><style>'+css+'</style><script>'+boot+'</script></head><body>'+view+'<script>'+source+'</script></body></html>',contentType:'text/html'});
    });
@@ -27,7 +27,7 @@ const source=fs.readFileSync(path.join(root,'public/javascript/agenda_reunion.js
    await form.locator('[name=notas_kam]').fill('Conservar nota ante error');
    await form.locator('[type=submit]').click();
    const error=form.locator('.agenda-form-error');await error.waitFor({state:'visible'});
-   assert.doesNotMatch(await error.textContent(),/Unexpected|JSON input|execute 'json'/i);
+   assert.doesNotMatch(await error.textContent(),/Unexpected|JSON input|execute 'json'|Failed to fetch/i);
    assert.equal(await form.locator('[name=notas_kam]').inputValue(),'Conservar nota ante error');
    assert.equal(await form.locator('[type=submit]').isEnabled(),true);
    await p.waitForTimeout(400);assert.equal(posts,1,'Nunca reintenta automáticamente una confirmación ambigua');
