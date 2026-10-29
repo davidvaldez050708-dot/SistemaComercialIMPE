@@ -92,7 +92,8 @@ final class TelefoniaDevolucionVentasService
     /** Se ejecuta dentro de la transacción que inserta el resultado comercial. */
     public function aplicarResultado(int $uid,array $call,string $code): void {
         $a=$this->rows("SELECT * FROM telefonia_ventas_devolucion_intentos WHERE usuario_id=? AND extension=? AND pbx_call_id=? AND estado<>'CANCELADO' FOR UPDATE",[$uid,$call['extension'],$call['pbx_call_id']]);
-        $close=in_array($code,['CONVERSACION_PERSONA','INFORMACION_ENVIADA_WHATSAPP','INTERESADO','SOLICITA_INFORMACION','NO_INTERESADO','NUMERO_INEXISTENTE'],true);
+        require_once __DIR__.'/TelefoniaResultadoVentasCatalogo.php';
+        $close=TelefoniaResultadoVentasCatalogo::conPersona($code)||in_array($code,['CONVERSACION_PERSONA','INFORMACION_ENVIADA_WHATSAPP','INTERESADO','SOLICITA_INFORMACION','NO_INTERESADO','NUMERO_INEXISTENTE'],true);
         if(!$a){
             // Una respuesta PBX tardía puede superar una devolución automática por falta de respuesta.
             // No cerrar una devolución capturada manualmente ni una conversación sin resultado.

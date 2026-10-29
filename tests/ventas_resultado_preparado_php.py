@@ -4,7 +4,7 @@ R=pathlib.Path(__file__).resolve().parents[1]
 PHP=os.environ.get('PHP_BINARY','php')
 with tempfile.TemporaryDirectory(prefix='impe-resultado-preparado-') as folder:
  P=pathlib.Path(folder)
- for path in ['app/views/layout/dashboard_footer.php','app/views/telefonia/resultado_ventas_form.php','app/services/TelefoniaResultadoVentasService.php','public/javascript/telefonia_ventas_resultados.js']:
+ for path in ['app/views/layout/dashboard_footer.php','app/views/telefonia/resultado_ventas_form.php','app/services/TelefoniaResultadoVentasService.php','app/services/TelefoniaResultadoVentasCatalogo.php','public/javascript/telefonia_ventas_resultados.js']:
   target=P/path;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(R/path,target)
  shutil.copytree(R/'public/css',P/'public/css')
  for name in ['telefonia_ventas_observaciones.js']:
@@ -48,5 +48,5 @@ echo '<!-- agenda_usuario:'.($GLOBALS['agenda_usuario']??'ninguno').' -->';
     try:urllib.request.urlopen('http://127.0.0.1:'+str(port)+'/',timeout=1);break
     except OSError:time.sleep(.1)
    env=dict(os.environ,IMPE_TEST_URL='http://127.0.0.1:'+str(port),IMPE_TEST_FIXTURE=str(P))
-   subprocess.run([os.environ.get('NODE_BINARY','node'),str(R/'tests/ventas_resultado_preparado_browser.cjs')],env=env,check=True)
+   subprocess.run([os.environ.get('NODE_BINARY','node'),str(R/'tests'/os.environ.get('IMPE_BROWSER_SCRIPT','ventas_resultado_preparado_browser.cjs'))],env=env,check=True)
   finally:server.terminate();server.wait(timeout=10)

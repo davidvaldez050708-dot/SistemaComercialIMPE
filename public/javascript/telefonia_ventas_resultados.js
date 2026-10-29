@@ -63,6 +63,17 @@
  const resultRules=()=>{
   const result=form.elements.namedItem('resultado'),notes=form.elements.namedItem('observacion');
   if(!result||!notes)return;
+  const interrupted=form.elements.namedItem('contacto_antes_corte'),envio=form.elements.namedItem('envio_informacion'),reason=form.elements.namedItem('motivo_sin_whatsapp');
+  const isInterrupted=result.value==='COMUNICACION_INTERRUMPIDA',historical=Boolean(call?.registro&&String(call.registro.catalogo_version||'')!=='2');
+  const interruptedSection=form.querySelector('[data-sales-interrupted]'),envioSection=form.querySelector('[data-sales-envio]'),exceptionSection=form.querySelector('[data-sales-whatsapp-exception]'),legacySection=form.querySelector('[data-sales-legacy-result]');
+  if(interruptedSection)interruptedSection.hidden=historical||!isInterrupted;
+  if(interrupted){interrupted.required=!historical&&isInterrupted;interrupted.setCustomValidity?.(isInterrupted&&interrupted.value==='SI'&&call?.finalizada&&!call.conectada?'La telefonía no acredita respuesta en esta llamada. Revisa la llamada seleccionada.':'');}
+  if(envioSection)envioSection.hidden=historical;
+  if(legacySection)legacySection.hidden=!historical;
+  if(envio)envio.required=!historical;
+  const exception=!historical&&Boolean(envio?.value)&&!['WHATSAPP','WHATSAPP_SMS'].includes(envio.value);
+  if(exceptionSection)exceptionSection.hidden=!exception;
+  if(reason){reason.required=exception;reason.minLength=exception?3:0;}
   const cancelled=result.value==='CANCELADA_POR_ASESOR';notes.required=cancelled;notes.minLength=cancelled?3:0;
   const label=form.querySelector('label[for="salesNote"]');if(label)label.textContent=cancelled?'Motivo de cancelación *':'Observaciones';
   for(const option of result.options||[])option.disabled=Boolean(call?.finalizada&&!call.conectada&&option.dataset.requiresConnection==='1');
@@ -77,6 +88,8 @@
   if(changed){
    storeDraft();call=null;waiting=false;queued=false;importedCaptureNote='';captureConflictNote='';draftAliases.clear();
    form.reset();for(const el of form.elements)el.disabled=false;
+   const result=form.elements.namedItem('resultado');
+   for(const option of Array.from(result?.options||[]))if(option.dataset.salesHistorical==='1')option.remove();
    form.elements.namedItem('observacion')?.setCustomValidity?.('');
   }
   const oldKey=draftKey(callRef);openContext={...next};callRef=ref;callExt=ext||callExt;closeReason='user';
@@ -85,7 +98,7 @@
    const draft=readDraft(ref);
    if(draft){importedCaptureNote=typeof draft.captureNote==='string'?draft.captureNote:'';
     for(const[key,value]of Object.entries(draft.values||{})){
-     if(['csrf_token','pbx_call_id','extension'].includes(key))continue;
+     if(['csrf_token','pbx_call_id','extension','catalogo_version'].includes(key))continue;
      const el=form.elements.namedItem(key);if(!el)continue;
      if(el.type==='checkbox')el.checked=value==='1';else el.value=String(value??'');
     }
@@ -128,7 +141,12 @@
    if(call.registro){
     queued=false;waiting=false;
     try{sessionStorage.removeItem(draftKey(ref));for(const key of draftAliases)sessionStorage.removeItem(key);}catch(_){}
-    for(const[key,value]of Object.entries(call.registro)){const el=form.elements.namedItem(key);if(el&&value!==null)el.value=key==='proxima_accion_at'?String(value).replace(/(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}):\d{2}/,'$1T$2'):String(value);}
+    const savedResult=String(call.registro.resultado_principal||call.registro.resultado||''),result=form.elements.namedItem('resultado');
+    if(result?.options&&!Array.from(result.options).some(o=>o.value===savedResult)){
+     const previous=Array.from(form.querySelector('[data-sales-historical-options]')?.content.children||[]).find(o=>o.value===savedResult);
+     const option=document.createElement('option');option.value=savedResult;option.textContent=previous?.textContent||savedResult;option.dataset.salesHistorical='1';result.appendChild(option);
+    }
+    for(const[key,value]of Object.entries(call.registro)){const el=form.elements.namedItem(key);if(el&&value!==null)el.value=key==='resultado'?savedResult:key==='proxima_accion_at'?String(value).replace(/(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}):\d{2}/,'$1T$2'):String(value);}
     for(const el of form.querySelectorAll('input,select,textarea'))el.disabled=true;
     submit.hidden=true;feedback.textContent='Resultado guardado anteriormente.';
     if(openContext.automatic){closeReason='saved';tellParent({type:'IMPE_SALES_RESULT_SAVED',ref,extension:ownExt});bootstrap.Modal.getInstance(modal)?.hide();shell()?.endCallResult(token);return;}

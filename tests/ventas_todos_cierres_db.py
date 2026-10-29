@@ -6,7 +6,7 @@ with tempfile.TemporaryDirectory(prefix='impe-ventas-whatsapp-') as folder:
  # Snapshot publicado sin configuración ni datos: no usa credenciales del CRM.
  with tarfile.open(fileobj=io.BytesIO(subprocess.check_output(['git','archive','08451cb7','app'],cwd=root))) as snapshot:
   snapshot.extractall(project,filter='data')
- for name in ['TelefoniaResultadoVentasService.php','TelefoniaDevolucionVentasService.php','TelefoniaVentasLlamadasService.php']:
+ for name in ['TelefoniaResultadoVentasService.php','TelefoniaResultadoVentasCatalogo.php','TelefoniaDevolucionVentasService.php','TelefoniaVentasLlamadasService.php']:
   shutil.copyfile(root/'app/services'/name,project/'app/services'/name)
  for path in ['app/helpers/VentasPendientesPolicy.php','app/services/VentasActividadMetricas.php']:
   (project/path).write_bytes(subprocess.check_output(['git','show','77d57ada:'+path],cwd=root))

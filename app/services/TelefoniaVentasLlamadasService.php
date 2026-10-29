@@ -266,7 +266,8 @@ final class TelefoniaVentasLlamadasService
         $row=$rows[0];$events=$this->rows('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id',[$ref]);
         $row+=self::hechos($events,$row['extension'],(string)($row['origen_extension']??''));
         $result=$this->rows('SELECT * FROM telefonia_ventas_resultados WHERE usuario_id=? AND extension=? AND pbx_call_id=?',[$uid,$row['extension'],$ref]);
-        $row['registro']=$result[0]??null;
+        require_once __DIR__.'/TelefoniaResultadoVentasCatalogo.php';
+        $row['registro']=TelefoniaResultadoVentasCatalogo::completarRegistro($this->db,$result[0]??null);
         if($this->db->query("SHOW TABLES LIKE 'telefonia_ventas_prospecto_llamada'")->num_rows){
             $capture=$this->rows('SELECT datos_json FROM telefonia_ventas_prospecto_llamada WHERE usuario_id=? AND extension=? AND pbx_call_id=?',[$uid,$row['extension'],$ref]);
             $row['captura_prospecto']=isset($capture[0])?(json_decode($capture[0]['datos_json'],true)?:null):null;
