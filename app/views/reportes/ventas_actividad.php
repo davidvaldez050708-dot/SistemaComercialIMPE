@@ -22,7 +22,7 @@ $filter=['controller'=>'reporte','action'=>'ventas','area'=>'asesores','generar'
     </header>
     <?php if ($errorActividad!==''): ?><div class="alert alert-danger" role="alert"><?= $e($errorActividad) ?></div><?php endif; ?>
     <section class="dashboard-panel performance-filter-panel">
-        <form class="sales-activity-filters" method="get" data-sales-activity-form>
+        <form class="sales-activity-filters" method="get" autocomplete="off" data-sales-activity-form>
             <input type="hidden" name="controller" value="reporte"><input type="hidden" name="action" value="ventas"><input type="hidden" name="area" value="asesores"><input type="hidden" name="generar" value="1">
             <?php if ($scope!=='propio'): ?><div class="performance-filter-field"><label for="salesAdvisor">Asesor</label><select class="form-select" id="salesAdvisor" name="persona_id"><option value="0">Todos los asesores autorizados</option><?php foreach ($d['personas']??[] as $p): ?><option value="<?= (int)$p['id'] ?>" <?= (int)($d['persona_id']??0)===(int)$p['id']?'selected':'' ?>><?= $e($p['nombre_completo']) ?><?= !$p['activo']?' · Inactivo':'' ?></option><?php endforeach; ?></select></div><?php endif; ?>
             <div class="performance-filter-field"><label for="salesPeriod">Periodo</label><select class="form-select" id="salesPeriod" name="periodo" data-sales-period><?php foreach (VentasActividadMetricas::PERIODOS as $key=>$label): ?><option value="<?= $key ?>" <?= $period['clave']===$key?'selected':'' ?>><?= $label ?></option><?php endforeach; ?></select></div>
@@ -30,9 +30,9 @@ $filter=['controller'=>'reporte','action'=>'ventas','area'=>'asesores','generar'
             <div class="performance-filter-field"><label for="salesResult">Resultado</label><select class="form-select" id="salesResult" name="resultado"><?php foreach ([''=>'Todos los resultados','PENDIENTE'=>'Sin resultado registrado']+TelefoniaResultadoVentasCatalogo::opcionesFiltro() as $key=>$label): ?><option value="<?= $key ?>" <?= ($d['resultado']??'')===$key?'selected':'' ?>><?= $label ?></option><?php endforeach; ?></select></div>
             <div class="performance-filter-field" data-sales-custom <?= $period['clave']!=='personalizado'?'hidden':'' ?>><label for="salesFrom">Desde</label><input class="form-control" id="salesFrom" type="date" name="fecha_desde" value="<?= $e($period['fecha_desde']) ?>" max="<?= date('Y-m-d') ?>"></div>
             <div class="performance-filter-field" data-sales-custom <?= $period['clave']!=='personalizado'?'hidden':'' ?>><label for="salesTo">Hasta</label><input class="form-control" id="salesTo" type="date" name="fecha_hasta" value="<?= $e($period['fecha_hasta']) ?>" max="<?= date('Y-m-d') ?>"></div>
-            <button class="btn btn-system-save" type="submit"><i class="bi bi-bar-chart" aria-hidden="true"></i> <?= $generated?'Actualizar':'Generar reporte' ?></button>
+            <noscript><button class="btn btn-system-save" type="submit">Consultar reporte</button></noscript>
         </form>
-        <p class="sales-activity-note mt-3 mb-0" role="status" data-sales-dirty-note hidden>Los filtros cambiaron. Actualiza el reporte para consultar y exportar el nuevo corte.</p>
+        <p class="page-subtitle mt-3 mb-0" role="status" aria-live="polite" data-sales-activity-status hidden></p>
     </section>
     <?php if ($generated): ?>
         <div class="performance-context-row"><div><span>ALCANCE</span><strong><?= ['propio'=>'Personal','equipo'=>'Mi equipo territorial','global'=>'Nacional'][$scope] ?></strong></div><div><span>PERIODO</span><strong><?= $e($period['fecha_desde'].' al '.$period['fecha_hasta']) ?></strong></div><div><span>ASESORES</span><strong><?= count($d['personas_resumen']) ?></strong></div><div><span>CONSULTADO</span><strong><?= $e($d['fecha_generacion']) ?></strong></div></div>
@@ -106,7 +106,7 @@ $filter=['controller'=>'reporte','action'=>'ventas','area'=>'asesores','generar'
         </section>
         <?php $datosPendientes=$d;require __DIR__.'/../telefonia/ventas_pendientes_resumen.php'; ?>
         <section class="dashboard-panel sales-activity-panel"><h2 class="panel-title">Cómo se calculan estos datos</h2><ul class="sales-activity-criteria"><li>Una llamada registrada no significa que se haya hablado con una persona. La conversación la clasifica el asesor al guardar su resultado.</li><li>La tasa de contacto divide las conversaciones con conexión confirmada entre las llamadas registradas del mismo corte.</li><li>El tiempo corresponde únicamente al tramo del asesor. Las duraciones pendientes se excluyen del promedio; el total puede ser parcial.</li><li>El cumplimiento de registro considera únicamente llamadas que ya permiten registrar un resultado. Crear o completar un recordatorio no cuenta como llamada.</li></ul></section>
-    <?php elseif ($errorActividad===''): ?><section class="dashboard-panel sales-activity-panel"><h2 class="panel-title">Prepara tu reporte</h2><p class="page-subtitle">Selecciona el periodo y, si tienes supervisión habilitada, un asesor o todo tu equipo. Después pulsa «Generar reporte».</p></section><?php endif; ?>
+    <?php endif; ?>
 </section>
 <script defer src="<?= BASE_URL ?>public/javascript/ventas_actividad.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/ventas_actividad.js') ?>"></script>
 
