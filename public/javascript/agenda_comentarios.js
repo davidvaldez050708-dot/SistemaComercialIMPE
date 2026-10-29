@@ -16,7 +16,19 @@
         const hour = form.elements.hora;
         const noHour = form.elements.sin_hora;
         const privateComment = form.elements.privado;
+        const recipient = form.elements.destinatario_id;
         let privacyAvailable = false;
+        let recipientsAvailable = false, recipients = [];
+        function updateRecipients() {
+            if (!recipient) return;
+            const current=recipient.value;
+            const options=[new Option('Todos los usuarios con Agenda','')];
+            recipients.forEach(user=>options.push(new Option((user.nombre||'Usuario')+' · '+user.rol,String(user.id))));
+            // Un cambio de permisos no convierte una selección dirigida en
+            // un envío general de forma silenciosa mientras se escribe.
+            if(current && !recipients.some(u=>String(u.id)===current)) options.push(new Option('Destinatario no disponible',current));
+            recipient.replaceChildren(...options);recipient.value=current;
+        }
         function updateOptions() {
             hour.disabled = noHour.checked;
             privateComment.disabled = !privacyAvailable;
@@ -25,6 +37,14 @@
                 ? 'Los comentarios privados no están disponibles por el momento.' : privateComment.checked
                 ? 'Sólo tú podrás verlo. Sus avisos y recordatorios serán únicamente para ti.'
                 : 'Compartido con los usuarios que tienen acceso a Agenda.';
+            if (recipient) {
+                recipient.disabled=privateComment.checked || !recipientsAvailable;
+                const help=form.querySelector('#agendaComentarioDestinatarioAyuda');
+                if(help) help.textContent=privateComment.checked
+                    ? 'Comentario privado: sólo tú recibirás sus avisos y recordatorios.'
+                    : !recipientsAvailable ? 'Por ahora se mantienen los avisos generales. Falta completar la instalación de destinatarios.'
+                    : 'Elige quién recibirá el aviso y, si indicas hora, el recordatorio. El comentario compartido seguirá visible en Agenda.';
+            }
         }
         const status = root.querySelector('[data-agenda-comments-status]');
         layout.before(status);
@@ -190,6 +210,7 @@
                 const content = node('div','agenda-comment-copy');
                 content.append(node('strong','',c.autor));
                 if (c.privado) content.append(node('span','agenda-comment-private-badge','Privado · Sólo tú'));
+                else if(c.destinatario_id) content.append(node('span','agenda-comment-private-badge','Avisos para: '+(c.destinatario_nombre||'Usuario seleccionado')));
                 const date = new Date(c.creado_at.replace(' ','T'));
                 const created = Number.isNaN(date.getTime()) ? c.creado_at : new Intl.DateTimeFormat('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(date);
                 content.append(node('small','',created));
@@ -257,6 +278,9 @@
                 if(loadStatus)inform('');
                 comments=result.comentarios;
                 privacyAvailable=result.privados_disponibles===true;
+                recipientsAvailable=result.destinatarios_disponibles===true && Array.isArray(result.destinatarios);
+                recipients=recipientsAvailable?result.destinatarios.filter(u=>u&&Number(u.id)>0&&typeof u.nombre==='string'&&typeof u.rol==='string'):[];
+                updateRecipients();
                 updateOptions();
                 available=true;
                 root.querySelectorAll('[data-agenda-comment-add]').forEach(b=>b.disabled=false);
@@ -286,7 +310,7 @@
                 }
             } catch (e) {
                 if ([401,403].includes(e.status)) {
-                    comments=[];available=false;privacyAvailable=false;updateOptions();updateMarkers();renderPanel();
+                    comments=[];available=false;privacyAvailable=false;recipientsAvailable=false;recipients=[];updateRecipients();updateOptions();updateMarkers();renderPanel();
                 }
                 if (!available) root.querySelectorAll('[data-agenda-comment-add]').forEach(b=>b.disabled=true);
                 inform(available && e.retryable
@@ -316,6 +340,7 @@
                 left=Math.max(16,Math.min(left,window.innerWidth-width-16));
                 const top=Math.max(16,Math.min(rect.top-130,window.innerHeight-editor.getBoundingClientRect().height-16));
                 editor.style.left=left+'px';editor.style.top=top+'px';
+                editor.style.setProperty('--agenda-comment-top',top+'px');
             } else { editor.style.left='';editor.style.top=''; }
             text.focus();
         }
@@ -354,13 +379,17 @@
             if (privateComment.checked&&!privacyAvailable) {
                 error.textContent='No se puede guardar el comentario privado en este momento.';error.hidden=false;return;
             }
+            const recipientId=privateComment.checked?'':(recipient?.value||'');
+            if (recipientId && (!recipientsAvailable || !recipients.some(u=>String(u.id)===recipientId))) {
+                error.textContent='El destinatario ya no está disponible. Selecciona otro o la opción Todos.';error.hidden=false;return;
+            }
             if (!content||Array.from(content).length>250||(!noHour.checked&&(!hour.value||!hour.validity.valid))) {
                 error.textContent=!content||Array.from(content).length>250?'Escribe entre 1 y 250 caracteres.':'Selecciona una hora o activa «Sin hora».';error.hidden=false;return;
             }
             saving=true;error.hidden=true;
             form.querySelector('[data-agenda-comment-save]').disabled=true;
             try {
-                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value,privado:privateComment.checked?'1':'0'});
+                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value,privado:privateComment.checked?'1':'0',destinatario_id:recipientId});
                 changeVersion++;
                 editor.close();mostrarConfirmacionComentario('Comentario añadido a la agenda.');
                 refreshBell(saved.comentario?.id);await load();

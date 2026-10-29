@@ -7,8 +7,9 @@ import subprocess
 import tempfile
 import time
 import sys
-VISTOS='--vistos' in sys.argv
-PRIVADOS='--privados' in sys.argv
+DESTINATARIOS='--destinatarios' in sys.argv
+VISTOS='--vistos' in sys.argv or DESTINATARIOS
+PRIVADOS='--privados' in sys.argv or DESTINATARIOS
 
 ROOT=Path(__file__).resolve().parents[1]
 PHP=os.environ.get('IMPE_TEST_PHP','C:/xampp/php/php.exe')
@@ -25,7 +26,8 @@ with tempfile.TemporaryDirectory(prefix='agenda-mariadb-',dir=ROOT/'tmp') as tmp
                 'app/helpers/PermissionHelper.php','app/helpers/AdminRolePolicy.php',
                 'database/migrations/2026_10_28_agenda_comentarios.sql','tools/configurar_agenda_comentarios.php',
                 'database/migrations/2026_10_28_agenda_comentarios_vistos.sql','tools/configurar_avisos_vistos_agenda.php',
-                'database/migrations/2026_10_29_agenda_comentarios_privados.sql','tools/configurar_agenda_comentarios_privados.php']:
+                'database/migrations/2026_10_29_agenda_comentarios_privados.sql','tools/configurar_agenda_comentarios_privados.php',
+                'database/migrations/2026_10_29_agenda_comentarios_destinatario.sql','tools/configurar_destinatarios_agenda.php']:
         p=site/rel;p.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/rel,p)
     (site/'config').mkdir()
     (site/'config/db_connection.php').write_text('''<?php
@@ -117,6 +119,10 @@ echo "OK: esquema y SQL reales MariaDB; 250 Unicode, NULL, autor, JOIN, UPSERT, 
                 subprocess.run([PHP,'-r',preserved,str(site)],env=env,check=True,capture_output=True)
             result=subprocess.run([PHP,str(site/'test.php')],env=env,check=True,capture_output=True,text=True,encoding='utf8')
             print(result.stdout.strip())
+            if DESTINATARIOS:
+                directed_env=dict(env,AGENDA_DESTINATARIOS_SITE=str(site))
+                result=subprocess.run([PHP,str(ROOT/'tests/agenda_comentarios_destinatarios_test.php')],env=directed_env,check=True,capture_output=True,text=True,encoding='utf8')
+                print(result.stdout.strip())
             subprocess.run([PHP,str(site/'tools/configurar_agenda_comentarios.php'),'--check'],env=env,check=True,capture_output=True)
         finally:
             server.terminate();server.wait(timeout=20)

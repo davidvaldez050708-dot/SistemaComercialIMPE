@@ -186,7 +186,7 @@ async function toastFixture(browser,kind){
    await p.locator('[data-agenda-comment-save]').click();
    assert.equal(f.posts.length,0,'No guardar hora vacía si Sin hora está desactivado');
    await p.locator('[data-agenda-comment-error]').waitFor({state:'visible'});
-   assert.equal(await p.locator('[data-agenda-comment-editor] select').count(),0,'Campo único, sin listas desplegables independientes');
+   assert.equal(await p.locator('[data-agenda-comment-editor] select[name=hora], [data-agenda-comment-editor] select[name=minutos]').count(),0,'Hora única, sin listas desplegables independientes');
    assert.equal(await p.locator('#agendaComentarioHora').getAttribute('type'),'time');
    await p.locator('#agendaComentarioHora').fill('00:00');
    const box=await editor.boundingBox(),vp=p.viewportSize();

@@ -27,10 +27,13 @@ class ComentarioDbPrueba {
     }
     public function query($sql){
         $this->queries[]=$sql;
-        try {return $this->pdo->query($sql);}
+        try {
+            $result=$this->pdo->query($sql);
+            return strpos($sql,'FROM usuarios u INNER JOIN roles r')!==false ? new ComentarioResultadoPrueba($result->fetchAll(PDO::FETCH_ASSOC)) : $result;
+        }
         catch(PDOException $e) {
             // Equivalencia del error de columna ausente de MySQL.
-            if(strpos($e->getMessage(),'no such column: privado')!==false)throw new mysqli_sql_exception('Columna ausente en prueba',1054);
+            if(preg_match('/no such column: (?:privado|destinatario_id)/',$e->getMessage()))throw new mysqli_sql_exception('Columna ausente en prueba',1054);
             throw $e;
         }
     }

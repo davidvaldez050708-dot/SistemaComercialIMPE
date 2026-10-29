@@ -24,6 +24,13 @@
         <label class="visually-hidden" for="agendaComentarioTexto">Comentario</label>
         <textarea id="agendaComentarioTexto" name="comentario" rows="4" maxlength="500" placeholder="Escribe un comentario…" aria-describedby="agendaComentarioContador" required></textarea>
         <p id="agendaComentarioContador" class="agenda-comment-counter" data-agenda-comment-counter>0 / 250</p>
+        <div class="agenda-comment-recipient">
+            <label for="agendaComentarioDestinatario" class="agenda-comment-hour-label">Notificar a</label>
+            <select id="agendaComentarioDestinatario" name="destinatario_id" class="form-select system-form-control" disabled aria-describedby="agendaComentarioDestinatarioAyuda">
+                <option value="">Todos los usuarios con Agenda</option>
+            </select>
+            <p class="agenda-comments-hint" id="agendaComentarioDestinatarioAyuda">Elige quién recibirá el aviso y, si indicas hora, el recordatorio. El comentario compartido seguirá visible en Agenda.</p>
+        </div>
         <label for="agendaComentarioHora" class="agenda-comment-hour-label">Hora <span>(opcional)</span></label>
         <div class="agenda-comment-hour-row">
             <input id="agendaComentarioHora" name="hora" class="form-control system-form-control" type="time" lang="es-MX" step="60" disabled aria-describedby="agendaComentarioHoraAyuda">

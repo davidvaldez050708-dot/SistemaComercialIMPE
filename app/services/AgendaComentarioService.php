@@ -45,12 +45,15 @@ class AgendaComentarioService
 
     private function presentar(array $fila, int $usuario): array
     {
+        $destinatario = empty($fila['destinatario_id']) ? null : (int)$fila['destinatario_id'];
+        $notificaUsuario = !empty($fila['privado']) ? (int)$fila['creado_por']===$usuario : ($destinatario===null || $destinatario===$usuario);
         return ['id'=>(int)$fila['id'], 'fecha'=>(string)$fila['fecha'],
             'hora'=>empty($fila['recordatorio_at']) ? null : substr($fila['recordatorio_at'],11,5),
             'comentario'=>(string)$fila['comentario'], 'autor'=>(string)$fila['autor_nombre'], 'privado'=>!empty($fila['privado']),
             'creado_at'=>(string)$fila['creado_at'], 'puede_eliminar'=>(int)$fila['creado_por']===$usuario,
+            'destinatario_id'=>$destinatario, 'destinatario_nombre'=>$destinatario===null?null:(trim((string)($fila['destinatario_nombre']??'')) ?: 'Usuario seleccionado'),
             'leido'=>!empty($fila['novedad_leida_at']), 'atendido'=>!empty($fila['recordatorio_atendido_at']),
-            'recordatorio_pendiente'=>!empty($fila['recordatorio_at']) && $fila['recordatorio_at']<=$this->ahora() && empty($fila['recordatorio_atendido_at'])];
+            'recordatorio_pendiente'=>$notificaUsuario && !empty($fila['recordatorio_at']) && $fila['recordatorio_at']<=$this->ahora() && empty($fila['recordatorio_atendido_at'])];
     }
 
     public function listar(int $usuario, $desde, $hasta): array
@@ -61,7 +64,11 @@ class AgendaComentarioService
         if ($dias->invert || $dias->days < 1 || $dias->days > 62) { return $this->error('Consulta hasta 62 días de la agenda.'); }
         $filas = $this->repo->listar($desde, $hasta, $usuario);
         return ['ok'=>true,'comentarios'=>array_map(fn($f)=>$this->presentar($f,$usuario),array_slice($filas,0,500)),
-            'hay_mas'=>count($filas)>500,'privados_disponibles'=>$this->repo->privacidadDisponible()];
+            'hay_mas'=>count($filas)>500,'privados_disponibles'=>$this->repo->privacidadDisponible(),
+            'destinatarios_disponibles'=>$this->repo->destinatariosDisponibles(),
+            'destinatarios'=>$this->repo->destinatariosDisponibles()?array_map(static fn($u)=>[
+                'id'=>(int)$u['id'],'nombre'=>(string)$u['nombre'],'rol'=>(string)$u['rol']
+            ],$this->repo->destinatarios()):[]];
     }
 
     public function crear(int $usuario, array $datos): array
@@ -74,12 +81,22 @@ class AgendaComentarioService
         if (!in_array($privado,[false,true,0,1,'0','1'],true)) return $this->error('Selecciona si el comentario es privado.');
         $privado = (bool)$privado;
         if ($privado && !$this->repo->privacidadDisponible()) return $this->error('Los comentarios privados aún no están disponibles. Solicita completar la instalación.',503);
+        $destinatario = $datos['destinatario_id'] ?? null;
+        if ($destinatario === '') $destinatario = null;
+        if ($destinatario !== null) {
+            if ((!is_string($destinatario) && !is_int($destinatario)) || !preg_match('/^[1-9][0-9]*$/D',(string)$destinatario) ||
+                !filter_var($destinatario,FILTER_VALIDATE_INT)) return $this->error('Selecciona un destinatario válido o la opción Todos.');
+            $destinatario=(int)$destinatario;
+            if ($privado) return $this->error('Un comentario privado sólo puede generar avisos para su autor.');
+            if (!$this->repo->destinatariosDisponibles()) return $this->error('Los destinatarios aún no están disponibles. Solicita completar la instalación.',503);
+            if (!$this->repo->destinatarioHabilitado($destinatario)) return $this->error('El destinatario ya no está activo o no tiene acceso a Agenda. Selecciona otro.');
+        }
         if (!$this->fechaValida($fecha)) { return $this->error('Selecciona un día válido de la agenda.'); }
         if (!is_string($hora) || ($hora !== '' && !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$hora))) { return $this->error('La hora debe tener el formato HH:MM.'); }
         if (!is_string($texto) || !mb_check_encoding($texto,'UTF-8')) { return $this->error('Escribe un comentario válido.'); }
         $texto = trim(str_replace(["\r\n","\r"],"\n",$texto));
         if ($texto === '' || mb_strlen($texto,'UTF-8')>250 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u',$texto)) { return $this->error('Escribe entre 1 y 250 caracteres.'); }
-        $id = $this->repo->crear($usuario,$fecha,$hora===''?null:$hora,$texto,$this->ahora(),$privado);
+        $id = $this->repo->crear($usuario,$fecha,$hora===''?null:$hora,$texto,$this->ahora(),$privado,$destinatario);
         return ['ok'=>true,'mensaje'=>'Comentario añadido a la agenda.','comentario'=>$this->presentar($this->repo->obtener($id,$usuario),$usuario)];
     }
 

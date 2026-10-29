@@ -40,7 +40,7 @@
 .agenda-comments-status { padding:10px 14px;margin:0;border:1px solid #cce8df;border-radius:8px;background:#f1fbf7;color:#247054;font-size:12px; }
 .agenda-comments-status.is-error { color:#a23434;border-color:#f1cdcd;background:#fff5f5; }
 .agenda-comment-editor,.agenda-comment-delete { position:fixed;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;width:430px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;border:1px solid #dce5f2;border-radius:14px;box-shadow:0 14px 48px #263b602b;background:#fff;padding:20px;color:var(--color-text-primary,#17243b);font:inherit;z-index:1065; }
-.agenda-comment-editor.is-anchored { transform:none; }
+.agenda-comment-editor.is-anchored { transform:none;max-height:calc(100dvh - var(--agenda-comment-top,16px) - 16px); }
 .agenda-comment-editor::backdrop { background:#172b4612; }
 .agenda-comment-delete::backdrop { background:#172b4633; }
 .agenda-comment-editor textarea { display:block;width:100%;resize:vertical;min-height:105px;max-height:40vh;margin-top:18px;box-sizing:border-box;padding:10px 12px;border:1px solid #d5e0ef;border-radius:8px;color:#304b6c;font:inherit;font-size:13px;line-height:1.5;background:white; }
@@ -49,6 +49,9 @@
 .agenda-comment-counter { text-align:right;font-size:12px;color:#75839b;margin:5px 0 15px; }
 .agenda-comment-hour-label { display:block;font-size:12px;font-weight:650;margin-bottom:8px; }
 .agenda-comment-hour-label > span { color:#76849b;font-weight:400; }
+.agenda-comment-recipient { margin-bottom:16px; }
+.agenda-comment-recipient select { width:100%;min-height:40px;font:inherit;font-size:13px;border:1px solid #d5e0ef;border-radius:7px;color:#304b6c; }
+.agenda-comment-recipient select:focus-visible { outline:3px solid #d5e6ff;border-color:#5595f6; }
 .agenda-comment-hour-row { display:flex;align-items:center;gap:16px; }
 .agenda-comment-hour-row > input[type=time] { flex:1;min-width:0;min-height:40px;font-size:13px;padding:8px 10px;border-color:#d5e0ef;border-radius:7px; }
 .agenda-comment-hour-row > input[type=time]:disabled { background-color:#f5f7fa;color:#76849b; }
