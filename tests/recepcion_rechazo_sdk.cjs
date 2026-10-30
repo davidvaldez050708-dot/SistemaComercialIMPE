@@ -45,7 +45,7 @@ repeatedSdk.callState='incoming';repeated.allowNewInvitation('same-pbx');
 assert.equal(repeated.decline('same-pbx'),true);assert.equal(repeatedSdk.sent,2,'Nueva oferta del mismo PBX se rechaza realmente, sin heredar deduplicación');
 
 function session(id,direction='incoming',established=false){
- const listeners={};return {id,direction,ended:false,established,sent:0,isEnded(){return this.ended;},isEstablished(){return this.established;},on(k,f){listeners[k]=f;},terminate(o){assert.equal(o.status_code,486);this.sent++;},end(){this.ended=true;listeners.failed?.();}};
+ const listeners={};return {id,direction,ended:false,established,sent:0,isEnded(){return this.ended;},isEstablished(){return this.established;},on(k,f){(listeners[k]??=[]).push(f);},terminate(o){assert.equal(o.status_code,486);this.sent++;},end(){this.ended=true;for(const fn of listeners.failed||[])fn();}};
 }
 const sip=harness();const first=session('sip-1');sip.sdk.webCallSession=first;sip.ring();
 assert.equal(sip.reject(),true);assert.equal(sip.bridge.decline('1'),true);assert.equal(first.sent,1,'Idempotencia por RTCSession');
@@ -68,6 +68,7 @@ const extract=(start,end)=>{const a=source.indexOf(start);assert(a>=0,start);con
 const state={active:true,direction:'incoming',phase:'incoming-ringing',pbxCallId:'pbx-1',callToken:'invite-1',context:{}};
 let sent=0,finals=0;
 const env={state,document:{querySelector:()=>({})},window:{zdrmWebPhone:{webCallSession:first,callState:'canceling'}},declinedInvitations:new Map(),permiteEntrantes:true,incomingBridge:{decline:()=>{sent++;return true;}},analystSdkObserver:{markDeclined(){}},actualizarEstadoTrasAccion(){},publish:p=>Object.assign(state,p),transferFlow:null,config:{},retiredIds:new Map(),finalizarEntrante(){finals++;state.active=false;}};
+env.reconcileReceptionDecline=()=>false; // El cierre nuevo tiene pruebas integradas propias.
 vm.runInNewContext('this.declined=id=>{'+extract('    const declinedInvitation = id => {','\n    };')+'};this.decline=()=>{'+extract('        decline: function () {','\n        },\n        recheck:')+'};this.apply=call=>{'+extract('    const applyIncomingState = function (call) {','\n    };')+'};',env);
 env.declinedInvitation=env.declined;
 env.decline();for(let i=0;i<10;i++)env.decline();assert.equal(sent,1);

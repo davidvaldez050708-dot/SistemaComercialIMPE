@@ -968,6 +968,25 @@
         });
     };
 
+    // Recepción no carga el observador SDK de Analista/Ventas. Al rechazar
+    // debe liberar el teléfono por su cierre local acreditado, sin esperar
+    // a que finalice también el tramo externo (por ejemplo, una locución).
+    const reconcileReceptionDecline = function () {
+        if (config.analystSdkIncoming || !permiteEntrantes || !state.active ||
+            state.direction!=='incoming' || state.phase!=='rejecting' ||
+            !state.context?.declineRequested || state.context?.sdkConnected ||
+            state.context?.pbxAnswered || answeredAtMs>0) return false;
+        const invitation=String(state.callToken || state.pbxCallId || '');
+        if (!invitation || incomingBridge?.declineStatus?.(invitation)?.status!=='ended') return false;
+        answeredAtMs=0;muted=false;
+        state=Object.assign(emptyState(),{hostReady:widgetReady,phase:widgetReady?'ready':'idle'});
+        publish(state);
+        ocultarHostEntrante();marcarPestanaEntrante('');
+        // Sin retirePbxCall: una oferta SDK posterior del mismo PBX sigue
+        // pudiendo recuperar Contestar. No inventar un END ni escribir SQL.
+        return true;
+    };
+
     window.IMPE_ZADARMA_INCOMING = Object.freeze({
         canAnswer: function () {
             return Boolean(permiteEntrantes && incomingBridge?.available());
@@ -1006,12 +1025,14 @@
                 if(ref){declinedInvitations.set(ref,{session,invitation:token||ref,sdkState:String(window.zdrmWebPhone?.callState ?? '')});if(declinedInvitations.size>40)declinedInvitations.delete(declinedInvitations.keys().next().value);}
                 if(String(state.callToken||'')===token)publish({phase:'rejecting',status:'rejecting',context:{...state.context,declineRequested:true},message:'Rechazo enviado. Esperando confirmación de la centralita.'});
                 analystSdkObserver?.markDeclined?.(hadSession?session:null);
+                reconcileReceptionDecline();
                 actualizarEstadoTrasAccion();
             }
             return sent;
         },
         recheck: function () {
             if(!state.active)return false;
+            if(reconcileReceptionDecline())return true;
             if(state.direction==='incoming'){
                 // Consultar no es volver a colgar: el usuario ya pidió
                 // finalizar y repetir finishCall puede cancelar otro diálogo.
@@ -2330,6 +2351,6 @@
     addEventListener('pageshow',()=>void checkConnection());
     document.addEventListener('visibilitychange',()=>void checkConnection());
 
-    setInterval(render, 500);
+    setInterval(function () {reconcileReceptionDecline();render();}, 500);
     render();
 })();
