@@ -38,7 +38,7 @@ talking=false;
 assert.equal(bridge.hangup(),false,'no cuelga la sesión después del fin');
 ringing=true;
 assert.equal(bridge.decline(),true);
-assert.equal(calls.at(-1)[0],'cancel');
+assert.equal(calls.at(-1)[0],'finishCall');
 assert.equal(calls.some(x=>x[0]==='regToAnswer'),false,
     'nunca ejecuta el registro SIP al atender');
 

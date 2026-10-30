@@ -86,7 +86,7 @@
             state.direction !== 'incoming' ||
             pendingIncomingAction.callId !== incomingCallId(state)) return '';
         // Rehabilitar el modal cuando la PBX no confirmó el comando.
-        if (pendingIncomingAction.action !== 'decline' && Date.now() - pendingIncomingAction.at > 4500) {
+        if (Date.now() - pendingIncomingAction.at > 4500) {
             pendingIncomingAction = null;
             return '';
         }
@@ -542,7 +542,9 @@
             outgoingAttempt = null;
         }
         const differentCall = value.direction === 'incoming' &&
-            incomingCallId(value) !== incomingCallId(currentState);
+            (incomingCallId(value) !== incomingCallId(currentState) ||
+                (value.phase === 'incoming-ringing' &&
+                    currentState?.context?.declineRequested && !value.context?.declineRequested));
         const answered = value.phase === 'in-progress' &&
             currentState?.phase === 'incoming-ringing';
         const ended = !value.active || value.phase === 'incoming-finished';
@@ -704,10 +706,12 @@
         // «Finalizando» hasta recibir el evento final del SDK/PBX.
         const finishingIncoming = incoming &&
             (pending === 'hangup' || state.phase === 'finishing');
+        const rejectingIncoming = incoming &&
+            (pending === 'decline' || state.phase === 'rejecting');
         const waitingAnswer = incoming && state.phase === 'answering';
         const callbackRegistration=Boolean(!ongoing && (callbackResultOwner||callbackPending||resultFormOwner));
         const customVisible = !callbackRegistration && (incoming || finishedIncoming || shownOutgoing) &&
-            !nativeVisible && !minimized && pending !== 'decline';
+            !nativeVisible && !minimized;
         if(callbackRegistration)status.hidden=true;
         call.classList.toggle('is-visible', nativeVisible);
         if (incomingPanel) {
@@ -772,6 +776,7 @@
                     (finishing ? 'Finalizando llamada…' :
                     (dialing ? (phoneState.phase==='ringing'?'Timbrando…':'Marcando…') : 'En conversación')));
             if(phoneState.active&&phoneState.phase==='recovering')incomingTitle.textContent='Recuperando conexión de audio…';
+            if(rejectingIncoming)incomingTitle.textContent='Rechazando llamada…';
             if(consultation)incomingTitle.textContent=phoneState.active?'Consulta con recepción':'Consulta finalizada';
             incomingEyebrow.textContent = (finished || finishedIncoming) ? 'LLAMADA FINALIZADA' :
                 (shownOutgoing ? 'LLAMADA SALIENTE' :
@@ -794,6 +799,7 @@
                     (ringing ? 'Llamada entrante a la extensión ' + cfg.extension
                     : 'Conversación en curso')));
             if(phoneState.active&&phoneState.phase==='recovering')incomingState.textContent='La llamada puede seguir activa en la centralita. Comprobando su estado.';
+            if(rejectingIncoming)incomingState.textContent='Rechazo enviado. Esperando confirmación del teléfono.';
             if(incomingOrigin && incomingOriginLabel) {
                 const from=String(phoneState.transferFrom||phoneState.context?.transferFrom||'');
                 incomingOriginLabel.textContent=consultation?'Consulta de:':shownOutgoing?'Desde:':from?'Transferida desde:':'Recibida en:';
@@ -814,12 +820,12 @@
             compactDecline.hidden = !ringing;
             compactAnswer.disabled = !ringing || Boolean(pending);
             compactDecline.disabled = !ringing || Boolean(pending);
-            muteButton.hidden = finished || finishedIncoming || finishing ||
+            muteButton.hidden = rejectingIncoming || finished || finishedIncoming || finishing ||
                 finishingIncoming || waitingAnswer || ringing ||
                 (shownOutgoing && dialing);
             hangupButton.hidden = finished || finishedIncoming || finishing ||
                 finishingIncoming || waitingAnswer || ringing;
-            compactMute.hidden = finished || finishedIncoming || finishing ||
+            compactMute.hidden = rejectingIncoming || finished || finishedIncoming || finishing ||
                 finishingIncoming || waitingAnswer || ringing ||
                 (shownOutgoing && dialing);
             compactHangup.hidden = finished || finishedIncoming || finishing ||
@@ -827,7 +833,7 @@
             const callbackPending=Boolean((finished||finishedIncoming)&&phoneState.context?.type==='DEVOLUCION'&&Number(phoneState.context.callbackAttempt)>0&&!callbackSaved.has(Number(phoneState.context.callbackAttempt)));
             const callbackRegister=document.querySelector('[data-callback-register-finished]');if(callbackRegister)callbackRegister.hidden=!callbackPending;
             if (closeFinished) closeFinished.hidden = !(finished || finishedIncoming)||callbackPending||Boolean(cfg.salesResults&&(Number(phoneState.answeredAtMs)>0||phoneState.context?.sdkConnected||phoneState.context?.pbxAnswered));
-            const uncertain=['recovering','finishing'].includes(phoneState.phase)&&phoneState.active;
+            const uncertain=(rejectingIncoming || ['recovering','finishing'].includes(phoneState.phase))&&phoneState.active;
             if(uncertain){hangupButton.hidden=false;compactHangup.hidden=false;}
             hangupButton.innerHTML='<i class="bi bi-telephone-x" aria-hidden="true"></i>'+ (uncertain?'Comprobar estado':'Colgar');
             hangupButton.disabled = Boolean(pending) || Boolean(preview);
@@ -973,7 +979,7 @@
             actionNotice = providerBridge()?.error() ||
                 'No se pudo rechazar la llamada.';
         } else {
-            // Ocultar inmediatamente; PBX confirmará el fin en segundo plano.
+            // Conservar los controles hasta que el SDK/PBX confirme el fin.
             actionNotice = '';
             pendingIncomingAction = {
                 action:'decline',callId:incomingCallId(currentState),at:Date.now()
@@ -1003,7 +1009,7 @@
     });
     const hangupIncoming = function () {
         if (!freshState(currentState) || !currentState.active) return;
-        if(['recovering','finishing'].includes(currentState.phase)){
+        if(['recovering','finishing','rejecting'].includes(currentState.phase)){
             providerBridge()?.recheck?.();actionNotice='Comprobando el estado; aún no se confirma el cierre.';render();return;
         }
         if (currentState.direction === 'outgoing') {
