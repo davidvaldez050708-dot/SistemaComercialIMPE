@@ -302,3 +302,14 @@ html[data-impe-telephony-shell] .impe-shell-navigation-mask {
     }
   }
 }
+
+/* IMPE_PHONE_ACTIONS_COMPAT_V1
+   Chrome 86 no tiene :has(). Mantener accesibles los botones adicionales
+   de Ventas mediante una disposición simple, sin depender de ese selector. */
+@supports not selector(:has(*)) {
+  .impe-incoming-panel .persistent-phone-actions > [data-sales-open]:not([hidden]),
+  .impe-incoming-panel .persistent-phone-actions > [data-sales-prospect]:not([hidden]) {
+    grid-column:1 / -1; grid-row:auto; width:100%; min-height:48px;
+    margin:0; justify-self:stretch; align-self:stretch;
+  }
+}
