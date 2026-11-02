@@ -1,17 +1,23 @@
 /* Panel compacto del piloto; acotado para no alterar formularios ni teléfono. */
-.impe-audio-devices {position:fixed;left:18px;bottom:14px;z-index:905;max-width:calc(100vw - 36px);font:500 12px/1.6 'Manrope',sans-serif;color:#243c60;}
-.impe-audio-devices > summary {display:block;cursor:pointer;list-style:none;background:#fff;border:1px solid #dbe4f1;border-radius:12px;padding:10px 14px;box-shadow:0 4px 14px #172e5212;color:#2d3f8f;font-weight:800;}
-.impe-audio-devices > summary::-webkit-details-marker {display:none;}
-.impe-audio-devices > summary i {margin-right:6px;}
-.impe-audio-devices-body {position:absolute;left:0;bottom:48px;width:350px;max-width:calc(100vw - 36px);max-height:calc(100vh - 120px);overflow:auto;padding:18px;background:#fff;border:1px solid #dbe4f1;border-radius:16px;box-shadow:0 10px 36px #172e5229;box-sizing:border-box;}
-.impe-audio-devices:not([open]) > .impe-audio-devices-body {display:none;}
+/* El botón usa el tamaño y la tipografía del acceso al auricular. */
+.impe-audio-devices-toggle {position:relative;display:inline-flex;align-items:center;justify-content:center;flex:0 0 52px;width:52px;height:52px;padding:0;border:1px solid #dbe4f1;border-radius:14px;background:#fff;color:#2d3f8f;font-size:19px;cursor:pointer;}
+.impe-audio-devices-toggle.needs-review:after {content:'';position:absolute;right:8px;top:8px;width:7px;height:7px;border-radius:50%;background:#b88225;border:2px solid #fff;}
+.impe-audio-devices {position:fixed;z-index:2200;box-sizing:border-box;width:360px;max-width:calc(100vw - 20px);overflow:auto;border:1px solid #dbe4f1;border-radius:16px;background:#fff;box-shadow:0 10px 36px #172e5229;font:500 12px/1.6 'Manrope',sans-serif;color:#243c60;}
+.impe-audio-devices[hidden],.impe-audio-before-call[hidden] {display:none!important;}
+.impe-audio-devices-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e3eaf5;}
+.impe-audio-devices-heading strong {font-size:14px;font-weight:800;}
+.impe-audio-devices .impe-audio-devices-heading button {padding:5px 9px;font-size:13px;}
+.impe-audio-devices-body {padding:16px 18px;}
 .impe-audio-devices label,.impe-audio-devices dt {display:block;font-size:11px;font-weight:800;color:#627795;}
 .impe-audio-devices select {display:block;box-sizing:border-box;width:100%;min-height:42px;margin:7px 0 14px;padding:9px 11px;border:1px solid #d3dff1;border-radius:10px;background:#f8faff;color:#243c60;font:600 12px 'Manrope',sans-serif;}
 .impe-audio-devices dd {margin:2px 0 12px;overflow-wrap:anywhere;}
 .impe-audio-devices p {padding:10px 12px;margin:12px 0;background:#eef7f7;border-radius:10px;color:#176c70;}
 .impe-audio-devices-actions {display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
-.impe-audio-devices button {border:1px solid #d3dff1;border-radius:10px;padding:9px 12px;background:#f8faff;color:#2d3f8f;font:800 11px 'Manrope',sans-serif;cursor:pointer;}
+.impe-audio-devices button,.impe-audio-before-call button {border:1px solid #d3dff1;border-radius:10px;padding:9px 12px;background:#f8faff;color:#2d3f8f;font:800 11px 'Manrope',sans-serif;cursor:pointer;}
 .impe-audio-devices button:disabled {opacity:.6;cursor:default;}
 .impe-audio-devices small {display:block;font-size:10px;color:#627795;}
 .impe-audio-devices :focus-visible {outline:2px solid #526bcb;outline-offset:3px;}
-@media(max-width:575.98px) {.impe-audio-devices {left:8px;bottom:68px;max-width:calc(100vw - 16px);}.impe-audio-devices-body {max-width:calc(100vw - 16px);}}
+.impe-audio-before-call {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0;padding:10px 12px;border:1px solid #e6d6b6;border-radius:12px;background:#fffaf0;color:#75531d;font:600 11px/1.5 'Manrope',sans-serif;}
+.impe-audio-before-call span {flex:1 1 140px;}
+.impe-audio-before-call button {padding:6px 9px;background:#fff;}
+@media(max-width:575.98px) {.impe-audio-devices-toggle {flex-basis:42px;width:42px;height:42px;border-radius:12px;font-size:17px;}}

@@ -130,7 +130,7 @@ def main():
             if old is None:p.unlink()
             else:atomic(p,old,mode)
         raise
-    print('APLICADO: Micrófonos preparados; bandera privada sin modificar, apagada por defecto. Sólo piloto Prueba.llamadas / 155 al habilitarla. Sin SQL ni PBX. RESPALDO: '+str(backup))
+    print('APLICADO: Dispositivos de audio en encabezado. Configuración privada conservada; scope assigned habilita extensiones autorizadas. Sin SQL ni cambios al flujo de llamadas. RESPALDO: '+str(backup))
 if __name__=='__main__':
     try:main()
     except Exception as error:print('ERROR: '+str(error),file=sys.stderr);sys.exit(1)

@@ -26,7 +26,9 @@ $asesorHostSdk = $motorTelefonicoEmbebido && $extensionHost !== '' &&
     tienePermiso('telefonia.usar') && tienePermiso('telefonia.recibir');
 $receptorHostSdk = $analistaHostSdk || $asesorHostSdk;
 require_once __DIR__ . '/../../helpers/TelefoniaAudioDispositivosPilot.php';
-$audioDispositivosPilot = telefoniaAudioDispositivosPilot($_SESSION, $extensionHost);
+$audioDispositivosPilot = tienePermiso('telefonia.usar') &&
+    (!empty($asignacionTelefonica['permite_salientes']) || !empty($asignacionTelefonica['permite_entrantes'])) &&
+    telefoniaAudioDispositivosPilot($_SESSION, $extensionHost);
 
 ?>
 <!DOCTYPE html>

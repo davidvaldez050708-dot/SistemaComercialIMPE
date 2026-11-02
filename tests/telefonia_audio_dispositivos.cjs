@@ -26,7 +26,7 @@ async function setup(options={}){
 (async()=>{
  // Apagado: identidad de la captura intacta, sin lectores, permisos ni temporizadores.
  const off=await setup({config:{enabled:false}});assert.equal(off.manager,null);assert.equal(off.media.getUserMedia,off.original);assert.equal(off.timers.size,0);
- const other=await setup({config:{extension:'150'}});assert.equal(other.manager,null);assert.equal(other.media.getUserMedia,other.original);
+ const other=await setup({config:{extension:''}});assert.equal(other.manager,null);assert.equal(other.media.getUserMedia,other.original);
  const good=await setup();assert.equal(good.calls.length,0,'Enumerar y observar nunca capturan');
  const sdk={audio:{deviceId:{exact:'usb'},echoCancellation:true,noiseSuppression:true,autoGainControl:true,sampleRate:48000},video:false};
  await good.media.getUserMedia(sdk);assert.equal(good.calls[0],sdk,'ID explícito SDK conservado incluso si CRM prefiere otro');
@@ -85,6 +85,8 @@ async function setup(options={}){
  // Persistencia por cuenta+extensión, sin guardar etiquetas, pistas ni audio.
  const reload=await setup({store:manual.store});assert.equal(reload.manager.snapshot().preferred,'usb');
  const another=await setup({store:manual.store,config:{userId:34}});assert.equal(another.manager.snapshot().preferred,'');
+ const otherExtension=await setup({store:manual.store,config:{extension:'150'}});assert.equal(otherExtension.manager.snapshot().preferred,'');
+ assert.equal(otherExtension.manager.snapshot().reviewRequired,true,'Otra extensión debe revisar su micrófono');
  const scopedKey=[...manual.store.keys()][0];assert.equal(scopedKey,'impe:audio-input:v1:33:155');
  assert.deepEqual(JSON.parse(manual.store.get(scopedKey)),{version:1,deviceId:'usb'});
 

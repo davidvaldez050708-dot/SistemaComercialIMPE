@@ -1,4 +1,4 @@
-name: Micrófonos - piloto aislado sin Zadarma
+name: Dispositivos de audio - pruebas sin Zadarma
 on:
   pull_request:
     paths:

@@ -1,4 +1,4 @@
 <?php
-// Copiar a impe-private/telefonia_audio.local.php. Sólo Prueba.llamadas / 155 / Ventas.
-// No habilitar hasta completar la revisión del PR y coordinar la prueba del piloto.
-return ['enabled' => false];
+// Copiar a impe-private/telefonia_audio.local.php; no sustituir otras configuraciones.
+// assigned: cuentas con extensión activa y permiso de telefonía. pilot: Prueba.llamadas / 155.
+return ['enabled' => false, 'scope' => 'assigned'];

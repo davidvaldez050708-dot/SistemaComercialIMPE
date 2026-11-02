@@ -1,5 +1,7 @@
 # Micrófonos: piloto Prueba.llamadas / extensión 155
 
+> Documento de la primera entrega. El usuario instaló esa versión y confirmó su funcionamiento. La ampliación autorizada a extensiones activas, el acceso del encabezado y el aviso previo se describen en [microfonos_encabezado.md](microfonos_encabezado.md). Para habilitar esa ampliación se necesita `scope => 'assigned'`; sin esa opción se conserva el piloto.
+
 ## Estado y alcance
 
 Implementación para revisión, **sin despliegue ni activación en producción**. Bandera privada apagada por defecto. La comprobación de servidor exige simultáneamente sesión autenticada, rol 3, usuario `Prueba.llamadas` (sin distinguir mayúsculas) y extensión `155`. No se amplía por parámetros del navegador.

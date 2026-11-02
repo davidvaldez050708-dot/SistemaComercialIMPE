@@ -47,3 +47,29 @@ for crlf in (False,True):
   run('--restore',str(backup),ok=False);target.write_bytes(after[spec['files'][-1]['path']])
   run('--restore',str(backup));untouched();run('--restore',str(backup));untouched()
 print('PASS paquete piloto: cinco archivos exactos, runtime previo intacto, LF/CRLF, check sin escrituras, conflictos, idempotencia y restauración. Configuración privada, SQL, shell y audio preservados.')
+
+# Actualización desde la versión e511b05c que el usuario ya instaló: sólo cuatro
+# archivos deben cambiar. El hook y el motor del host permanecen byte por byte.
+with tempfile.TemporaryDirectory(prefix='impe-mic-upgrade-') as folder:
+ root=pathlib.Path(folder);site=root/'public_html';site.mkdir();(site/'index.php').write_bytes(b'<?php')
+ before={};after={}
+ for row in spec['files']:
+  v=row['variants'][-1]
+  old=unpack(v['before']) if len(row['variants'])>1 else unpack(v['after'])
+  p=site/row['path'];p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(old)
+  before[row['path']]=old;after[row['path']]=unpack(v['after'])
+ for dep in spec['dependencies']:
+  p=site/dep['path'];p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes((R/dep['path']).read_bytes())
+ private=site/'config/telefonia_audio.local.php';private.write_bytes(b'<?php return ["enabled"=>true];')
+ backups=root/'backups';cmd=[sys.executable,str(R/'tools/publicar_microfonos_piloto.py'),'--site',str(site),'--backup-root',str(backups)]
+ def update(*args):
+  r=subprocess.run(cmd+list(args),capture_output=True,text=True,encoding='utf8');assert r.returncode==0,r.stdout+r.stderr
+  assert private.read_bytes()==b'<?php return ["enabled"=>true];';return r.stdout
+ assert update('--check').count('COMPATIBLE:')==4
+ assert not backups.exists()
+ update('--apply');assert all((site/p).read_bytes()==b for p,b in after.items())
+ backup=next(backups.iterdir());record=json.loads((backup/'manifest.json').read_text())
+ assert len(record['files'])==4
+ assert not any(f['path']=='public/javascript/telefonia_host.js' for f in record['files'])
+ update('--restore',str(backup));assert all((site/p).read_bytes()==b for p,b in before.items())
+print('PASS actualización e511b05c: cuatro archivos, configuración habilitada intacta, host.js sin escritura y restore exacto al piloto anterior.')
