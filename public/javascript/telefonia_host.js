@@ -584,6 +584,17 @@
         }
     };
 
+    // Piloto de entrada: utiliza la captura del SDK actual, sin otro motor SIP.
+    // Con la bandera apagada ni siquiera se envuelve getUserMedia.
+    if (window.IMPE_AUDIO_DEVICES_CONFIG?.enabled === true) {
+        try {
+            window.IMPE_AUDIO_DEVICES = window.IMPE_AUDIO_DEVICES_FACTORY?.create(
+                window, window.IMPE_AUDIO_DEVICES_CONFIG,
+                () => state, () => window.zdrmWebPhone?.webCallSession, () => ownsTransport
+            );
+        } catch (_) { /* La selección opcional no impide iniciar el teléfono. */ }
+    }
+
     const fetchWebRtcSession = async function () {
         const controller = new AbortController();
         const deadline = window.setTimeout(() => controller.abort(), 15000);

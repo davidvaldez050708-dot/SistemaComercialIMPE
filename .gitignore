@@ -12,6 +12,7 @@ config/zadarma_config.php
 config/ecard_reunion_config.php
 impe-private/
 config/whatsapp.local.php
+config/telefonia_audio.local.php
 
 # Archivos del sistema operativo
 .DS_Store

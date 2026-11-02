@@ -1,0 +1,57 @@
+name: Dispositivos de audio - pruebas sin Zadarma
+on:
+  pull_request:
+    paths:
+      - 'app/helpers/TelefoniaAudioDispositivosPilot.php'
+      - 'app/views/telefonia/host.php'
+      - 'public/javascript/telefonia_host.js'
+      - 'public/javascript/telefonia_audio_dispositivos.js'
+      - 'public/css/telefonia_audio_dispositivos.css'
+      - 'config/telefonia_audio.example.php'
+      - 'tests/telefonia_audio_*'
+      - 'tests/publicacion_microfonos_piloto_test.py'
+      - 'tools/*microfonos_piloto*'
+      - '.github/workflows/microfonos-piloto.yml'
+permissions:
+  contents: read
+jobs:
+  dispositivos-y-regresiones:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Sintaxis, aislamiento, captura y respaldo reversible
+        run: |
+          node --check public/javascript/telefonia_audio_dispositivos.js
+          node --check public/javascript/telefonia_host.js
+          php -l app/views/telefonia/host.php
+          php -l app/helpers/TelefoniaAudioDispositivosPilot.php
+          php -l config/telefonia_audio.example.php
+          node tests/telefonia_audio_dispositivos.cjs
+          php tests/telefonia_audio_pilot.php
+          php tests/telefonia_audio_host_render.php
+          python3 tests/publicacion_microfonos_piloto_test.py
+          node tests/telefonia_transferencia_operacion.cjs
+          node tests/telefonia_transferida_estado_sip_smoke.js
+          node tests/telefonia_analista_resultado_transferido_smoke.js
+          node tests/ventas_resultado_todos_cierres.cjs
+          node tests/recepcion_cierre_local_sdk.cjs
+          node tests/recepcion_rechazo_sdk.cjs
+          php tests/telefonia_shell_render_smoke.php
+      - name: Instalar navegador de pruebas
+        run: |
+          npm install --prefix /tmp/impe-audio-test playwright@1.62.1
+          /tmp/impe-audio-test/node_modules/.bin/playwright install --with-deps chromium
+      - name: Panel y regresiones de UI con red simulada
+        env:
+          NODE_PATH: /tmp/impe-audio-test/node_modules
+        run: |
+          export CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
+          node tests/telefonia_audio_dispositivos_browser.cjs
+          node tests/recepcion_cierre_local_browser.cjs
+          node tests/recepcion_rechazo_browser.cjs
