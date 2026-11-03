@@ -10,16 +10,27 @@ $esAdministradorTopbar = (int)($_SESSION['rol_id'] ?? 0) === 1;
 $esAnalistaDatos =
     !$esAdministradorTopbar &&
     tienePermiso('seguimientos_vinculacion.operar_propios');
+// Un permiso compartido no convierte a Cuenta Clave en Marketing.
 $esMarketingTopbar =
     !$esAdministradorTopbar &&
+    strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Marketing') === 0 &&
     tienePermiso('convocatorias.gestionar');
 $mostrarCentroAvisos =
+    tienePermiso('reuniones.ver') ||
     $esAdministradorTopbar ||
     (
         tienePermiso('reuniones.ver') &&
         ($puedeSolicitarReuniones || $puedeGestionarReuniones)
     ) ||
-    tienePermiso('aliados.seguimiento_convocatorias');
+    tienePermiso('aliados.seguimiento_convocatorias') ||
+    ((int)($_SESSION['rol_id'] ?? 0) === 6 &&
+        tienePermiso('aliados.ver') &&
+        (tienePermiso('aliados.gestionar_programas') ||
+         (function_exists('puedeCrearConvocatoriaDesdeConvenio') && puedeCrearConvocatoriaDesdeConvenio())));
+// Solo una campana: Marketing utiliza su centro de Convocatorias.
+if ($esMarketingTopbar) {
+    $mostrarCentroAvisos = false;
+}
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
 $mostrarAgendaReuniones =
     tienePermiso('reuniones.ver') &&
@@ -27,7 +38,7 @@ $mostrarAgendaReuniones =
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 $puedeUsarTelefoniaTopbar = tienePermiso('telefonia.usar');
 $puedeRecibirTelefoniaTopbar = tienePermiso('telefonia.recibir');
-if($puedeUsarTelefoniaTopbar&&($puedeRecibirTelefoniaTopbar||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')))&&empty($_SESSION['csrf_token']))$_SESSION['csrf_token']=bin2hex(random_bytes(32));
+if(($esMarketingTopbar||($puedeUsarTelefoniaTopbar&&($puedeRecibirTelefoniaTopbar||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')))))&&empty($_SESSION['csrf_token']))$_SESSION['csrf_token']=bin2hex(random_bytes(32));
 if($puedeUsarTelefoniaTopbar&&!$esMarketingTopbar&&($puedeRecibirTelefoniaTopbar||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes'))))$mostrarCentroAvisos=true;
 // En Marketing, los permisos son del rol pero la recepción depende de la
 // extensión personal. No ofrecer audífonos inactivos a otras cuentas.
@@ -47,6 +58,10 @@ $totalRecordatoriosSeguimiento = 0;
 
 ?>
 
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/sidebar_plegable.css?v=<?= substr(hash_file('sha256', ROOT_PATH . '/public/css/sidebar_plegable.css'), 0, 16) ?>">
+<script src="<?= BASE_URL ?>public/javascript/sidebar_plegable.js?v=<?= substr(hash_file('sha256', ROOT_PATH . '/public/javascript/sidebar_plegable.js'), 0, 16) ?>"
+        data-sidebar-user="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>"></script>
+
 <main class="admin-main">
 
     <header class="admin-topbar">
@@ -55,9 +70,11 @@ $totalRecordatoriosSeguimiento = 0;
             <button
                 class="mobile-menu-button d-lg-none"
                 type="button"
+                data-sidebar-toggle
                 data-bs-toggle="offcanvas"
                 data-bs-target="#mobileSidebar"
                 aria-controls="mobileSidebar"
+                aria-expanded="false"
                 aria-label="Abrir navegación">
                 <i class="bi bi-list"></i>
             </button>
@@ -81,7 +98,6 @@ $totalRecordatoriosSeguimiento = 0;
                     class="topbar-reminder-button telephony-reception-toggle"
                     type="button"
                     data-telephony-reception-toggle
-                    <?php if ($esAnalistaDatos): ?>data-telephony-analyst="1"<?php endif; ?>
                     aria-label="Activar recepción telefónica"
                     title="Activar recepción telefónica">
                     <i class="bi bi-headset"></i>
@@ -168,7 +184,8 @@ $totalRecordatoriosSeguimiento = 0;
                     data-convocatoria-notification-root
                     data-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=pendientes"
                     data-read-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=marcarLeida"
-                    data-read-all-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=marcarTodasLeidas">
+                    data-read-all-endpoint="<?= BASE_URL ?>index.php?controller=convocatoriaNotificacion&action=marcarTodasLeidas"
+                    data-csrf-token="<?= htmlspecialchars((string)($_SESSION['csrf_token']??''),ENT_QUOTES,'UTF-8') ?>">
                     <button
                         class="topbar-reminder-button dropdown-toggle"
                         type="button"
@@ -188,8 +205,8 @@ $totalRecordatoriosSeguimiento = 0;
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu convocatoria-notification-menu">
                         <div class="topbar-reminder-header convocatoria-notification-header">
                             <div>
-                                <strong>Alertas de convocatorias</strong>
-                                <span>Activaciones automáticas y vencimientos próximos.</span>
+                                <strong>Alertas y telefonía</strong>
+                                <span>Convocatorias y llamadas pendientes. Leer no equivale a atender.</span>
                             </div>
                             <button
                                 type="button"
@@ -239,13 +256,24 @@ $totalRecordatoriosSeguimiento = 0;
                     </button>
 
                     <div class="dropdown-menu dropdown-menu-end topbar-reminder-menu">
-                        <div class="topbar-reminder-header">
+                        <div class="topbar-reminder-header convocatoria-notification-header">
+                            <div>
                             <?php if ($esAdministradorTopbar): ?>
                                 <strong>Notificaciones administrativas</strong>
                                 <span>Supervisión global de reuniones, seguimientos y convocatorias.</span>
                             <?php else: ?>
                                 <strong>Notificaciones</strong>
-                                <span>Reuniones, seguimientos y acciones próximas.</span>
+                                <span>Reuniones, seguimientos y pendientes telefónicos.</span>
+                            <?php endif; ?>
+                            </div>
+                            <?php if ($puedeUsarTelefoniaTopbar && !$esMarketingTopbar &&
+                                    ($puedeRecibirTelefoniaTopbar || ((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')))): ?>
+                                <button type="button" class="convocatoria-notification-read-all"
+                                    data-phone-notification-read-all
+                                    data-phone-notification-read-all-url="<?= BASE_URL ?>prueba_telefonia/api/leer_todas_notificaciones_llamada.php"
+                                    title="Marcar avisos telefónicos como leídos; las tareas pendientes permanecen">
+                                    Marcar llamadas leídas
+                                </button>
                             <?php endif; ?>
                         </div>
 
