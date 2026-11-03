@@ -78,7 +78,7 @@ def lint_php(content):
 
 def restore(site, backup):
     manifest = json.loads((backup / 'respaldo.json').read_text(encoding='utf-8'))
-    if manifest.get('site') != str(site) or set(x['path'] for x in manifest['files']) != set(FILES):
+    if manifest.get('site') != str(site) or not set(x['path'] for x in manifest['files']).issubset(set(FILES)):
         raise RuntimeError('Respaldo no corresponde a este sitio o a esta entrega.')
     changes = []
     for entry in manifest['files']:
