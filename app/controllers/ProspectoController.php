@@ -263,7 +263,7 @@ class ProspectoController
             header('Location: ' . BASE_URL . 'index.php?controller=login&action=mostrarLogin');
             exit;
         }
-        if (!tienePermiso('prospectos.ver_todos') || (int)($_SESSION['rol_id']??0)===3) {
+        if (!tienePermiso('prospectos.ver_todos')) {
             http_response_code(403);
             require __DIR__.'/../views/prospectos/acceso_denegado.php';
             exit;

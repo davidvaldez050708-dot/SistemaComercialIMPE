@@ -16,6 +16,8 @@ class RolModel
     public function inicializarPermisosSistema()
     {
         $permisos = $this->obtenerCatalogoInicialPermisos();
+        $permisoImportacionMetaNuevo =
+            !$this->existePermisoPorCodigo('prospectos.importar_meta');
         $permisosTerritorioNuevos =
             !$this->existePermisoPorCodigo('territorios.ver') ||
             !$this->existePermisoPorCodigo('territorios.asignar');
@@ -118,6 +120,12 @@ class RolModel
 
         if ($permisosTelefoniaNuevos) {
             $this->asignarPermisosInicialesTelefonia();
+        }
+
+        if ($permisoImportacionMetaNuevo) {
+            // Concesión inicial única a Marketing si ya consultaba Prospectos.
+            // Al revocarla desde Roles y permisos, nunca se restaura.
+            $this->asignarPermisoInicialImportacionMeta();
         }
 
         $this->asegurarPermisosAdministrador();
@@ -955,6 +963,25 @@ class RolModel
         }
     }
 
+    private function asignarPermisoInicialImportacionMeta()
+    {
+        // Mantiene la capacidad que ya tenía Marketing al instalar el importador.
+        // Es una relación editable en rol_permisos, NO una autorización por nombre
+        // de rol durante las peticiones HTTP. No concede nada a roles nuevos.
+        $this->connection->query(
+            "INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+             SELECT r.id, p.id
+               FROM roles r
+               JOIN permisos p ON p.codigo='prospectos.importar_meta' AND p.estado=1
+              WHERE r.nombre='Marketing' AND r.estado=1
+                AND EXISTS (
+                    SELECT 1 FROM rol_permisos rp
+                    JOIN permisos v ON v.id=rp.permiso_id
+                    WHERE rp.rol_id=r.id AND v.codigo='prospectos.ver_todos' AND v.estado=1
+                )"
+        );
+    }
+
     private function asignarPermisosInicialesTelefonia()
     {
         $asignaciones = [
@@ -1033,6 +1060,7 @@ class RolModel
         }
 
         $dependencias = [
+            'prospectos.importar_meta' => 'prospectos.ver_todos',
             'usuarios.crear' => 'usuarios.ver',
             'usuarios.editar' => 'usuarios.ver',
             'usuarios.cambiar_estado' => 'usuarios.ver',
@@ -1344,7 +1372,8 @@ class RolModel
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.editar', 'nombre' => 'Editar roles', 'descripcion' => 'Actualizar datos de roles.'],
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.cambiar_estado', 'nombre' => 'Activar / desactivar roles', 'descripcion' => 'Modificar estado de roles.'],
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.asignar_permisos', 'nombre' => 'Asignar permisos', 'descripcion' => 'Administrar permisos por rol.'],
-            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_todos', 'nombre' => 'Ver todos los prospectos', 'descripcion' => 'Consultar los prospectos recibidos desde los formularios de Registro, generales y de aliados.'],
+            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_todos', 'nombre' => 'Ver todos los prospectos', 'descripcion' => 'Consultar los prospectos del almacén central, incluidos formularios de Registro, aliados y Meta Ads.'],
+            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.importar_meta', 'nombre' => 'Importar prospectos de Meta Ads', 'descripcion' => 'Subir CSV o Excel de Meta, revisar campañas y confirmar su incorporación al almacén central. Requiere ver todos los prospectos.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_propios', 'nombre' => 'Ver prospectos propios', 'descripcion' => 'Consultar prospectos asignados al usuario.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.editar', 'nombre' => 'Editar prospectos', 'descripcion' => 'Actualizar información de prospectos.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.asignar', 'nombre' => 'Asignar prospectos', 'descripcion' => 'Asignar prospectos a usuarios o equipos.'],

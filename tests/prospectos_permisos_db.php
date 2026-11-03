@@ -9,7 +9,7 @@ $db->query("CREATE DATABASE `$schema` CHARACTER SET utf8mb4");$db->select_db($sc
 require_once __DIR__.'/../app/models/RolModel.php';
 require_once __DIR__.'/../app/helpers/PermissionHelper.php';
 $db->query('CREATE TABLE roles (id INT PRIMARY KEY,nombre VARCHAR(80),estado INT DEFAULT 1) ENGINE=InnoDB');
-$db->query("INSERT INTO roles VALUES (1,'Administrador',1),(5,'Marketing',1),(6,'Cuenta Clave',1),(8,'Asesor de Ventas',1)");
+$db->query("INSERT INTO roles VALUES (1,'Administrador',1),(5,'Marketing',1),(6,'Cuenta Clave',1),(7,'Director de Operaciones',1),(8,'Asesor de Ventas',1)");
 $db->query('CREATE TABLE permisos (id INT AUTO_INCREMENT PRIMARY KEY,modulo VARCHAR(100),codigo VARCHAR(100) UNIQUE,nombre VARCHAR(180),descripcion VARCHAR(255),estado INT) ENGINE=InnoDB');
 $db->query('CREATE TABLE rol_permisos (rol_id INT,permiso_id INT,PRIMARY KEY(rol_id,permiso_id)) ENGINE=InnoDB');
 $m=new RolModel();$catalogo=(new ReflectionMethod(RolModel::class,'obtenerCatalogoInicialPermisos'))->invoke($m);
@@ -21,12 +21,15 @@ $count=0;
 function assertProspectosDb($ok,$msg){global $count;if(!$ok)throw new RuntimeException($msg);$count++;}
 $m->inicializarPermisosSistema();
 $grupo=$m->obtenerPermisosAgrupados()['Prospectos']??[];
-assertProspectosDb(array_column($grupo,'codigo')===['prospectos.ver_todos'],'Sólo consulta global disponible en panel Admin');
+assertProspectosDb(array_column($grupo,'codigo')===['prospectos.ver_todos','prospectos.importar_meta'],'Ver e importar son permisos independientes en el catálogo');
 assertProspectosDb(str_contains($grupo[0]['descripcion'],'formularios de Registro'),'Descripción del listado real');
+assertProspectosDb(str_contains($grupo[1]['descripcion'],'CSV o Excel'),'Descripción de importación en el panel');
+assertProspectosDb(!in_array('prospectos.importar_meta',$m->obtenerCodigosPermisosPorRol(1),true),'Administrador no opera importaciones');
 assertProspectosDb($m->obtenerCodigosPermisosPorRol(5)===[],'Sin otorgar acceso automático a Marketing');
 assertProspectosDb($m->obtenerCodigosPermisosPorRol(6)===[],'Sin otorgar acceso automático a Cuenta Clave');
 $id=(int)$grupo[0]['id'];
-foreach([5,6,8] as $rolId){
+$importId=(int)$grupo[1]['id'];
+foreach([5,6,7,8] as $rolId){
     assertProspectosDb($m->actualizarPermisosRol($rolId,[$id],1),'Admin concede permiso');
     $m->inicializarPermisosSistema();
     $_SESSION=['usuario_id'=>2,'rol_id'=>$rolId,'permisos'=>$m->obtenerCodigosPermisosPorRol($rolId)];
@@ -36,5 +39,24 @@ foreach([5,6,8] as $rolId){
     $m->inicializarPermisosSistema();
     $_SESSION['permisos']=$m->obtenerCodigosPermisosPorRol($rolId);
     assertProspectosDb(!tienePermiso('prospectos.ver_todos'),'Revocación persiste tras reinicialización');
+    assertProspectosDb($m->actualizarPermisosRol($rolId,[$importId],1),'Se puede conceder Importar desde Roles y permisos');
+    $asignados=$m->obtenerCodigosPermisosPorRol($rolId);
+    assertProspectosDb(in_array('prospectos.importar_meta',$asignados,true),'El rol recibe Importar Meta');
+    assertProspectosDb(in_array('prospectos.ver_todos',$asignados,true),'Importar agrega la dependencia de consulta');
+    $m->inicializarPermisosSistema();
+    assertProspectosDb(in_array('prospectos.importar_meta',$m->obtenerCodigosPermisosPorRol($rolId),true),'El permiso persiste en el catálogo');
+    assertProspectosDb($m->actualizarPermisosRol($rolId,[$id],1),'El permiso de importación se puede revocar');
+    $m->inicializarPermisosSistema();
+    assertProspectosDb(!in_array('prospectos.importar_meta',$m->obtenerCodigosPermisosPorRol($rolId),true),'La revocación no se restaura');
 }
-echo "PASS $count comprobaciones DB: catálogo Admin, concesión y revocación persistentes, tres perfiles. Esquema $schema.\n";
+// Simula instalación anterior sin el permiso nuevo: concesión inicial única
+// para Marketing que ya tenía lectura; nunca para Dirección.
+assertProspectosDb($m->actualizarPermisosRol(5,[$id],1),'Marketing ya tenía consulta antes de instalar el permiso nuevo');
+$db->query("DELETE FROM permisos WHERE codigo='prospectos.importar_meta'");
+$m->inicializarPermisosSistema();
+assertProspectosDb(in_array('prospectos.importar_meta',$m->obtenerCodigosPermisosPorRol(5),true),'Marketing conserva la operación previa una sola vez');
+assertProspectosDb(!in_array('prospectos.importar_meta',$m->obtenerCodigosPermisosPorRol(7),true),'Dirección debe obtener permiso explícito');
+assertProspectosDb($m->actualizarPermisosRol(5,[$id],1),'Marketing puede revocar la importación');
+$m->inicializarPermisosSistema();
+assertProspectosDb(!in_array('prospectos.importar_meta',$m->obtenerCodigosPermisosPorRol(5),true),'La revocación de Marketing no se revierte');
+echo "PASS $count comprobaciones DB: catálogo Admin, concesión y revocación persistentes, cuatro perfiles. Esquema $schema.\n";

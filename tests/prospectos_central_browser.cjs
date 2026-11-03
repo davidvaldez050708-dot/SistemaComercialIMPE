@@ -46,7 +46,7 @@ let server,log='',browser;
  await page.goto(home+'&seccion=meta');assert.equal(await page.locator('.central-hero').count(),0,'Meta mantiene cabecera compacta');assert.equal(await page.locator('.central-table tbody tr').count(),1);assert.equal(await page.locator('[data-meta-abrir]').count(),1,'Marketing puede importar Meta Ads');
  await page.goto(home+'&seccion=asignaciones');assert.ok((await page.locator('.prospectos-central').innerText()).includes('Aún no hay asignaciones'));
  await page.setViewportSize({width:390,height:844});await page.goto(home);await page.screenshot({path:path.join(output,'todos-movil.png'),fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.locator('.central-table .central-link').first().click();await page.locator('[data-prospecto-ficha-panel] #informacion-formulario').waitFor();await page.screenshot({path:path.join(output,'ficha-movil.png'),fullPage:false});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.keyboard.press('Escape');
- for(const role of ['admin','marketing']) {await context.request.get(base+'_session?rol='+role);assert.equal((await page.goto(home)).status(),200);}
+ for(const role of ['admin','marketing','director','lector','asesor_autorizado']) {await context.request.get(base+'_session?rol='+role);assert.equal((await page.goto(home)).status(),200);}
  for(const role of ['asesor','sin_permiso']) {await context.request.get(base+'_session?rol='+role);for(const url of [home,base+'index.php?controller=prospecto&action=detalle&id=1',base+'index.php?controller=prospecto&action=detalleRegistro&registro_id=1']) {assert.equal((await page.goto(url)).status(),403);assert.equal((await context.request.get(url+'&panel=1',{headers:{'X-Requested-With':'XMLHttpRequest'}})).status(),403);}}
  assert.equal(fixture('--snapshot'),before,'Navegación GET no modifica datos');
  await context.request.get(base+'_session?rol=marketing');
@@ -72,6 +72,14 @@ let server,log='',browser;
  await page.reload();
  assert.equal(await page.locator('[data-meta-abrir]').count(),0,'Administrador mantiene rol de supervisión, sin importador');
  assert.equal((await context.request.post(base+'index.php?controller=prospecto&action=metaConfirmar',{form:{csrf_meta:'no'}})).status(),403);
+ await context.request.get(base+'_session?rol=director');
+ await page.reload();
+ assert.equal(await page.locator('[data-meta-abrir]').count(),1,'Director autorizado desde Roles y permisos puede importar');
+ assert.equal((await context.request.post(base+'index.php?controller=prospecto&action=metaConfirmar',{form:{csrf_meta:'no'}})).status(),422,'Director autorizado pasa el guard y valida CSRF');
+ await context.request.get(base+'_session?rol=lector');
+ await page.reload();
+ assert.equal(await page.locator('[data-meta-abrir]').count(),0,'Solo lectura no habilita Importar');
+ assert.equal((await context.request.post(base+'index.php?controller=prospecto&action=metaConfirmar',{form:{csrf_meta:'no'}})).status(),403,'POST sin permiso denegado');
  await context.request.get(base+'_session?rol=marketing');
  await page.reload();
  const beforeMeta=fixture('--snapshot');

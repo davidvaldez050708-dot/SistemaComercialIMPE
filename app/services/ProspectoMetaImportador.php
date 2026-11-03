@@ -28,9 +28,11 @@ final class ProspectoMetaImportador
 
     public static function puedeImportar(): bool
     {
-        return isset($_SESSION['usuario_id']) && tienePermiso('prospectos.ver_todos')
-            && strcasecmp(trim((string)($_SESSION['rol']??'')),'Marketing')===0
-            && (int)($_SESSION['rol_id']??0)!==1;
+        // Los permisos se asignan por rol desde Roles y permisos.
+        // Ningún nombre de rol condiciona el acceso a esta operación.
+        return isset($_SESSION['usuario_id'])
+            && tienePermiso('prospectos.ver_todos')
+            && tienePermiso('prospectos.importar_meta');
     }
 
     private static function dir(): string
