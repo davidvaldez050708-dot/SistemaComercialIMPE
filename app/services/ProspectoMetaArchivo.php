@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/../helpers/ProspectoCentralDatos.php';
+require_once __DIR__.'/ProspectoMetaClasificacion.php';
 /**
  * Lector limitado de exportaciones de clientes potenciales de Meta.
  * CSV/TSV UTF-8, UTF-16 LE/BE, Windows-1252; XLSX (primera hoja).
@@ -44,10 +45,12 @@ final class ProspectoMetaArchivo
         $filas=[];$errores=[];$duplicados=0;$vistos=[];$campanias=[];$filasRechazadas=0;
         foreach ($matriz as $n=>$valores) {
             $numero=$n+2;
-            $row=[];
+            $row=[];$problemas=[];
+            $labels=['id'=>'ID de lead','created_time'=>'Fecha de Meta','full_name'=>'Nombre','phone_number'=>'Teléfono'];
             foreach (array_merge(self::COLUMNAS,self::OPCIONALES) as $col) {
                 $valor=isset($mapa[$col])?(string)($valores[$mapa[$col]]??''):'';
-                $row[$col]=self::limpiar($valor,($col==='full_name'||str_ends_with($col,'name'))?255:190);
+                try {$row[$col]=self::limpiar($valor,($col==='full_name'||str_ends_with($col,'name'))?255:190);}
+                catch (DomainException $e) {$problemas[]=$labels[$col]??'Metadatos de '.$col;$row[$col]='';}
             }
             // Meta exporta IDs con prefijos como l:, c:, f: y el teléfono como p:+52.
             $id=self::quitarBom($row['id']);
@@ -56,13 +59,13 @@ final class ProspectoMetaArchivo
             $telefono=preg_replace('/^p:/i','',$row['phone_number']);
             $creado=self::fechaUtc($row['created_time']);
             $nombreCompleto=$row['full_name'];
-            $valido=preg_match('/^[0-9]{1,19}$/D',$id) && $creado!==null
-                && $nombreCompleto!=='' && mb_strlen($nombreCompleto)<=255
-                && ProspectoCentralDatos::telefono($telefono)!==null
-                && mb_strlen($telefono)<=64;
-            if (!$valido) {
+            if (!preg_match('/^[0-9]{1,19}$/D',$id)) $problemas[]='ID de lead';
+            if ($creado===null) $problemas[]='Fecha de Meta';
+            if ($nombreCompleto==='') $problemas[]='Nombre';
+            if (ProspectoCentralDatos::telefono($telefono)===null || mb_strlen($telefono)>64) $problemas[]='Teléfono';
+            if ($problemas) {
                 $filasRechazadas++;
-                if (count($errores)<20) $errores[]='Fila '.$numero.': revisa ID, fecha, nombre o teléfono.';
+                if (count($errores)<20) $errores[]='Fila '.$numero.': revisa '.implode(', ',array_unique($problemas)).'.';
                 continue;
             }
             if (isset($vistos[$id])) {$duplicados++;continue;}
@@ -74,6 +77,7 @@ final class ProspectoMetaArchivo
                 $campanias[$clave]=['clave'=>$clave,'id'=>$row['campaign_id'],'nombre'=>$campana,'total'=>0];
             }
             $campanias[$clave]['total']++;
+            $row['id_original']=$row['id'];
             $row['id']=$id;
             $row['phone_number']=$telefono;
             $row['fecha_utc']=$creado;
@@ -83,7 +87,7 @@ final class ProspectoMetaArchivo
         }
         if (!$filas) throw new DomainException('No hay filas importables. Revisa los identificadores, fechas y teléfonos de Meta.');
         uasort($campanias,static fn($a,$b)=>$b['total']<=>$a['total']);
-        return [
+        return ProspectoMetaClasificacion::agrupar([
             'filas'=>$filas,
             'campanias'=>array_values($campanias),
             'total_filas'=>count($matriz),
@@ -92,12 +96,12 @@ final class ProspectoMetaArchivo
             'rechazadas'=>$filasRechazadas,
             'errores'=>$errores,
             'muestra'=>array_slice($filas,0,12),
-        ];
+        ]);
     }
 
     private static function limpiar(string $v,int $max): string
     {
-        $v=trim(self::quitarBom($v));
+        $v=trim(self::quitarBom(trim($v)));
         if (!mb_check_encoding($v,'UTF-8')) throw new DomainException('El archivo contiene caracteres no válidos.');
         if (str_contains($v,"\0") || mb_strlen($v)>$max) throw new DomainException('Una celda supera el tamaño permitido o contiene caracteres no válidos.');
         return $v;
@@ -105,7 +109,10 @@ final class ProspectoMetaArchivo
 
     private static function quitarBom(string $v): string
     {
-        return preg_replace('/^\xEF\xBB\xBF/u','',$v);
+        // Sin /u: aquí se reconoce la secuencia de bytes UTF-8 del BOM,
+        // también antes de convertir un archivo Windows-1252. /u interpretaba
+        // cada \xNN como un carácter distinto y dejaba U+FEFF en el primer ID.
+        return preg_replace('/^(?:\xEF\xBB\xBF)+/','',$v);
     }
 
     private static function fechaUtc(string $v): ?string
