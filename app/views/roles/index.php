@@ -122,25 +122,20 @@ $seleccionado = function ($actual, $valor) {
 
                             <?php if ($puedeCambiarEstadoRoles): ?>
 
-                                <form
-                                    action="<?= BASE_URL ?>index.php?controller=rol&action=cambiarEstado"
-                                    method="POST">
-                                    <input type="hidden" name="id" value="<?= $rolId ?>">
-                                    <input
-                                        type="hidden"
-                                        name="estado"
-                                        value="<?= $rolActivo ? 0 : 1 ?>">
-
-                                    <button
-                                        type="submit"
-                                        class="table-action-button <?= $rolActivo
-                                            ? 'table-action-warning'
-                                            : 'table-action-success' ?>"
-                                        aria-label="<?= $rolActivo ? 'Desactivar rol' : 'Activar rol' ?>"
-                                        <?= $rolProtegido ? 'disabled' : '' ?>>
-                                        <i class="bi <?= $rolActivo ? 'bi-toggle-on' : 'bi-toggle-off' ?>"></i>
-                                    </button>
-                                </form>
+                                <button
+                                    type="button"
+                                    class="table-action-button <?= $rolActivo
+                                        ? 'table-action-warning'
+                                        : 'table-action-success' ?>"
+                                    aria-label="<?= $rolActivo ? 'Desactivar rol' : 'Activar rol' ?>"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalEstadoRol"
+                                    data-id="<?= $rolId ?>"
+                                    data-nombre="<?= $texto($rol['nombre']) ?>"
+                                    data-estado-nuevo="<?= $rolActivo ? 0 : 1 ?>"
+                                    <?= $rolProtegido ? 'disabled' : '' ?>>
+                                    <i class="bi <?= $rolActivo ? 'bi-toggle-on' : 'bi-toggle-off' ?>"></i>
+                                </button>
 
                             <?php endif; ?>
                         </span>
@@ -399,6 +394,45 @@ $seleccionado = function ($actual, $valor) {
     </div>
 </div>
 
+<?php if ($puedeCambiarEstadoRoles): ?>
+<div
+    class="modal fade"
+    id="modalEstadoRol"
+    tabindex="-1"
+    aria-labelledby="modalEstadoRolTitulo"
+    aria-describedby="estado_rol_pregunta"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered system-confirm-dialog">
+        <div class="modal-content system-form-modal">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title" id="modalEstadoRolTitulo">Cambiar estado del rol</h2>
+                    <p class="modal-subtitle">Confirma el cambio de acceso al sistema</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form action="<?= BASE_URL ?>index.php?controller=rol&action=cambiarEstado" method="POST">
+                <input type="hidden" id="estado_rol_id" name="id" value="">
+                <input type="hidden" id="estado_rol_valor" name="estado" value="">
+                <div class="modal-body">
+                    <p class="confirm-text" id="estado_rol_pregunta">
+                        ¿Deseas <strong id="estado_rol_accion">actualizar</strong>
+                        el rol <strong id="estado_rol_nombre">seleccionado</strong>?
+                    </p>
+                    <p class="confirm-text mt-3" id="estado_rol_aviso"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-system-save" id="estado_rol_boton" disabled>
+                        <i class="bi bi-toggle-on me-2" aria-hidden="true"></i>Confirmar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="toast-container position-fixed top-0 end-0 p-3">
     <?php if ($mensajeExito !== ''): ?>
 
@@ -438,6 +472,47 @@ document.addEventListener('DOMContentLoaded', function () {
     const panel = document.getElementById('rolesPermisosPanel');
     const modalAbierto = '<?= $texto($modalAbierto) ?>';
     const modalEditarRol = document.getElementById('modalEditarRol');
+    const modalEstadoRol = document.getElementById('modalEstadoRol');
+
+    if (modalEstadoRol) {
+        const formularioEstado = modalEstadoRol.querySelector('form');
+        const botonEstado = document.getElementById('estado_rol_boton');
+        modalEstadoRol.addEventListener('show.bs.modal', function (event) {
+            const origen = event.relatedTarget;
+            const id = origen?.getAttribute('data-id') || '';
+            const estado = origen?.getAttribute('data-estado-nuevo') || '';
+            if (!/^[1-9][0-9]*$/.test(id) || id === '1' || !['0', '1'].includes(estado)) {
+                event.preventDefault();
+                return;
+            }
+            const activar = estado === '1';
+            document.getElementById('estado_rol_id').value = id;
+            document.getElementById('estado_rol_valor').value = estado;
+            document.getElementById('estado_rol_accion').textContent = activar ? 'activar' : 'desactivar';
+            document.getElementById('estado_rol_nombre').textContent = origen.getAttribute('data-nombre') || 'seleccionado';
+            document.getElementById('modalEstadoRolTitulo').textContent = activar ? 'Activar rol' : 'Desactivar rol';
+            document.getElementById('estado_rol_aviso').textContent = activar
+                ? 'Los usuarios con este rol podrán iniciar sesión si su cuenta está activa.'
+                : 'Los usuarios con este rol no podrán iniciar sesión mientras esté inactivo.';
+            botonEstado.innerHTML = '<i class="bi ' + (activar ? 'bi-toggle-on' : 'bi-toggle-off') +
+                ' me-2" aria-hidden="true"></i>' + (activar ? 'Activar' : 'Desactivar');
+            botonEstado.disabled = false;
+            formularioEstado.removeAttribute('aria-busy');
+        });
+        formularioEstado.addEventListener('submit', function (event) {
+            if (botonEstado.disabled) {
+                event.preventDefault();
+                return;
+            }
+            botonEstado.disabled = true;
+            formularioEstado.setAttribute('aria-busy', 'true');
+        });
+        modalEstadoRol.addEventListener('hidden.bs.modal', function () {
+            document.getElementById('estado_rol_id').value = '';
+            document.getElementById('estado_rol_valor').value = '';
+            botonEstado.disabled = true;
+        });
+    }
 
     const inicializarPanelPermisos = function () {
         const formulario = document.querySelector('[data-permissions-form]');
@@ -508,7 +583,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'reportes.seguimiento.actividad': 'reportes.ver',
             'reportes.seguimiento.institucion': 'reportes.ver',
             'reportes.territorial': 'reportes.ver',
-            'reportes.usuarios': 'reportes.ver'
+            'reportes.usuarios': 'reportes.ver',
+            'reportes.convocatorias': 'reportes.ver'
         };
         const dependenciasAdicionales = {
             'reportes.seguimiento.cartera': [
