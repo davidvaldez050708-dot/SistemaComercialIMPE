@@ -68,7 +68,7 @@ class UsuarioController
         $foto = $this->procesarFotoPerfil();
 
         if ($foto['error'] !== '') {
-            $errores[] = $foto['error'];
+            $errores['foto_perfil'] = $foto['error'];
         }
 
         if (!empty($errores)) {
@@ -86,14 +86,14 @@ class UsuarioController
             PASSWORD_DEFAULT
         );
 
-        if ($modeloUsuario->crearUsuario($datos)) {
+        if ($this->ejecutarCambioUsuario(fn() => $modeloUsuario->crearUsuario($datos))) {
             $_SESSION['mensaje_usuario'] = 'Usuario creado correctamente.';
         } else {
             if (!empty($foto['nueva'])) {
                 $this->eliminarFotoPerfil($foto['ruta']);
             }
 
-            $_SESSION['error_usuario'] = 'No fue posible crear el usuario.';
+            $this->volverConErrores('crear', ['general'=>'No se pudo guardar el usuario. Inténtalo de nuevo.'], $datos);
         }
 
         $this->redirigirAUsuarios();
@@ -131,7 +131,7 @@ class UsuarioController
             $datos['foto_perfil'] = $fotoActual;
             $this->volverConErrores(
                 'editar',
-                ['No puedes quitar y reemplazar la fotografía al mismo tiempo.'],
+                ['foto_perfil'=>'Elige una foto nueva o quita la actual, no ambas opciones.'],
                 $datos
             );
         }
@@ -147,12 +147,12 @@ class UsuarioController
         if ($foto['error'] !== '') {
             $datos['ultimo_acceso'] = $usuarioOriginal['ultimo_acceso'] ?? null;
             $datos['foto_perfil'] = $fotoActual;
-            $this->volverConErrores('editar', [$foto['error']], $datos);
+            $this->volverConErrores('editar', ['foto_perfil'=>$foto['error']], $datos);
         }
 
         $datos['foto_perfil'] = $foto['ruta'];
 
-        if ($modeloUsuario->actualizarUsuario((int)$datos['id'], $datos)) {
+        if ($this->ejecutarCambioUsuario(fn() => $modeloUsuario->actualizarUsuario((int)$datos['id'], $datos))) {
             $_SESSION['mensaje_usuario'] = 'Usuario actualizado correctamente.';
 
             if (
@@ -177,7 +177,9 @@ class UsuarioController
                 $this->eliminarFotoPerfil($foto['ruta']);
             }
 
-            $_SESSION['error_usuario'] = 'No fue posible actualizar el usuario.';
+            $datos['foto_perfil'] = $fotoActual;
+            $datos['ultimo_acceso'] = $usuarioOriginal['ultimo_acceso'] ?? null;
+            $this->volverConErrores('editar', ['general'=>'No se pudieron guardar los cambios. Inténtalo de nuevo.'], $datos);
         }
 
         $this->redirigirAUsuarios();
@@ -387,11 +389,11 @@ class UsuarioController
             $modeloUsuario->contarAdministradoresActivos() <= 1
         ) {
             $_SESSION['error_usuario'] =
-                'No puede quedar el sistema sin al menos un Administrador activo.';
+                'Debe quedar al menos un administrador activo.';
             $this->redirigirAUsuarios();
         }
 
-        if ($modeloUsuario->actualizarEstadoUsuario($id, $estadoNuevo)) {
+        if ($this->ejecutarCambioUsuario(fn() => $modeloUsuario->actualizarEstadoUsuario($id, $estadoNuevo))) {
             $_SESSION['mensaje_usuario'] = $estadoNuevo === 1
                 ? 'Usuario activado correctamente.'
                 : 'Usuario desactivado correctamente.';
@@ -433,11 +435,11 @@ class UsuarioController
             $modeloUsuario->contarAdministradoresActivos() <= 1
         ) {
             $_SESSION['error_usuario'] =
-                'No puede quedar el sistema sin al menos un Administrador activo.';
+                'Debe quedar al menos un administrador activo.';
             $this->redirigirAUsuarios();
         }
 
-        if ($modeloUsuario->actualizarEstadoUsuario($id, 0)) {
+        if ($this->ejecutarCambioUsuario(fn() => $modeloUsuario->actualizarEstadoUsuario($id, 0))) {
             $_SESSION['mensaje_usuario'] = 'Usuario desactivado correctamente.';
         } else {
             $_SESSION['error_usuario'] = 'No fue posible desactivar el usuario.';
@@ -491,20 +493,20 @@ class UsuarioController
     private function limpiarDatosUsuario($origen, $incluyeEstado = false)
     {
         $datos = [
-            'nombre' => trim($origen['nombre'] ?? ''),
-            'apellidos' => trim($origen['apellidos'] ?? ''),
-            'telefono' => trim($origen['telefono'] ?? ''),
-            'foto_perfil' => trim($origen['foto_perfil'] ?? ''),
-            'correo' => trim($origen['correo'] ?? ''),
-            'usuario' => trim($origen['usuario'] ?? ''),
-            'rol_id' => (int)($origen['rol_id'] ?? 0),
-            'password' => $origen['password'] ?? '',
-            'confirmar_password' => $origen['confirmar_password'] ?? ''
+            'nombre' => is_string($origen['nombre'] ?? null) ? trim($origen['nombre']) : '',
+            'apellidos' => is_string($origen['apellidos'] ?? null) ? trim($origen['apellidos']) : '',
+            'telefono' => is_string($origen['telefono'] ?? null) ? trim($origen['telefono']) : '',
+            'foto_perfil' => is_string($origen['foto_perfil'] ?? null) ? trim($origen['foto_perfil']) : '',
+            'correo' => is_string($origen['correo'] ?? null) ? trim($origen['correo']) : '',
+            'usuario' => is_string($origen['usuario'] ?? null) ? trim($origen['usuario']) : '',
+            'rol_id' => filter_var($origen['rol_id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]) ?: 0,
+            'password' => is_string($origen['password'] ?? null) ? $origen['password'] : '',
+            'confirmar_password' => is_string($origen['confirmar_password'] ?? null) ? $origen['confirmar_password'] : ''
         ];
 
         if ($incluyeEstado) {
             $datos['id'] = (int)($origen['id'] ?? 0);
-            $datos['estado'] = in_array((string)($origen['estado'] ?? ''), ['0', '1'], true)
+            $datos['estado'] = in_array($origen['estado'] ?? null, ['0', '1', 0, 1], true)
                 ? (int)$origen['estado']
                 : '';
         }
@@ -521,12 +523,16 @@ class UsuarioController
             true
         );
 
-        if (strlen($datos['password']) < 8) {
-            $errores[] = 'La contraseña debe tener al menos 8 caracteres.';
+        if ($datos['password'] === '') {
+            $errores['password'] = 'Escribe una contraseña.';
+        } elseif (strlen($datos['password']) < 8) {
+            $errores['password'] = 'La contraseña debe tener al menos 8 caracteres.';
         }
 
-        if ($datos['password'] !== $datos['confirmar_password']) {
-            $errores[] = 'La contraseña y la confirmación no coinciden.';
+        if ($datos['confirmar_password'] === '') {
+            $errores['confirmar_password'] = 'Confirma la contraseña.';
+        } elseif ($datos['password'] !== $datos['confirmar_password']) {
+            $errores['confirmar_password'] = 'La contraseña y la confirmación no coinciden.';
         }
 
         return $errores;
@@ -538,17 +544,17 @@ class UsuarioController
         $usuarioOriginal = null;
 
         if ((int)$datos['id'] <= 0) {
-            $errores[] = 'El usuario seleccionado no es válido.';
+            $errores['general'] = 'El usuario seleccionado no es válido.';
         } else {
             $usuarioOriginal = $modeloUsuario->buscarPorId((int)$datos['id']);
 
             if (!$usuarioOriginal) {
-                $errores[] = 'El usuario seleccionado no es válido.';
+                $errores['general'] = 'El usuario seleccionado no es válido.';
             }
         }
 
         if (!in_array($datos['estado'], [0, 1], true)) {
-            $errores[] = 'El estado seleccionado no es válido.';
+            $errores['estado'] = 'El estado seleccionado no es válido.';
         }
 
         if ($usuarioOriginal) {
@@ -559,11 +565,11 @@ class UsuarioController
                 $esCuentaActual &&
                 (int)$datos['rol_id'] !== (int)$usuarioOriginal['rol_id']
             ) {
-                $errores[] = 'Por seguridad, no puedes modificar tu propio rol.';
+                $errores['rol_id'] = 'Por seguridad, no puedes modificar tu propio rol.';
             }
 
             if ($esCuentaActual && (int)$datos['estado'] === 0) {
-                $errores[] = 'Por seguridad, no puedes desactivar tu cuenta.';
+                $errores['estado'] = 'Por seguridad, no puedes desactivar tu cuenta.';
             }
 
             $desactivaUltimoAdministrador =
@@ -577,7 +583,7 @@ class UsuarioController
 
             if ($desactivaUltimoAdministrador) {
                 $errores[] =
-                    'No puede quedar el sistema sin al menos un Administrador activo.';
+                    'Debe quedar al menos un administrador activo.';
             }
         }
 
@@ -597,25 +603,25 @@ class UsuarioController
         $errores = [];
 
         if ($datos['nombre'] === '') {
-            $errores[] = 'El nombre es obligatorio.';
+            $errores['nombre'] = 'El nombre es obligatorio.';
         }
 
         if ($datos['apellidos'] === '') {
-            $errores[] = 'Los apellidos son obligatorios.';
+            $errores['apellidos'] = 'Los apellidos son obligatorios.';
         }
 
         if ($datos['correo'] === '') {
-            $errores[] = 'El correo electrónico es obligatorio.';
+            $errores['correo'] = 'El correo electrónico es obligatorio.';
         } elseif (!filter_var($datos['correo'], FILTER_VALIDATE_EMAIL)) {
-            $errores[] = 'El formato del correo electrónico no es válido.';
+            $errores['correo'] = 'El formato del correo electrónico no es válido.';
         } elseif ($modeloUsuario->existeCorreo($datos['correo'], $idExcluir)) {
-            $errores[] = 'El correo electrónico ya está registrado.';
+            $errores['correo'] = 'El correo electrónico ya está registrado.';
         }
 
         if ($datos['usuario'] === '') {
-            $errores[] = 'El usuario es obligatorio.';
+            $errores['usuario'] = 'El usuario es obligatorio.';
         } elseif ($modeloUsuario->existeUsuario($datos['usuario'], $idExcluir)) {
-            $errores[] = 'El usuario ya está registrado.';
+            $errores['usuario'] = 'El usuario ya está registrado.';
         }
 
         $rolValido = $requiereRolActivo
@@ -623,15 +629,26 @@ class UsuarioController
             : $modeloUsuario->existeRol((int)$datos['rol_id']);
 
         if ((int)$datos['rol_id'] <= 0 || !$rolValido) {
-            $errores[] = 'El rol seleccionado no es válido.';
+            $errores['rol_id'] = 'El rol seleccionado no es válido.';
         }
 
         return $errores;
     }
 
+    private function ejecutarCambioUsuario(callable $operacion): bool
+    {
+        try {
+            return (bool)$operacion();
+        } catch (Throwable $error) {
+            // El proveedor SQL puede incluir datos personales: registrar sólo clase/código.
+            error_log('[usuarios_guardado] '.get_class($error).' codigo='.(int)$error->getCode());
+            return false;
+        }
+    }
+
     private function volverConErrores($modal, $errores, $datos)
     {
-        unset($datos['password'], $datos['confirmar_password']);
+        unset($datos['password'], $datos['confirmar_password'], $datos['password_hash']);
 
         $_SESSION['errores_usuario'] = $errores;
         $_SESSION['datos_usuario'] = $datos;

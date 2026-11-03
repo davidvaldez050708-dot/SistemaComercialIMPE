@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../../helpers/UsuarioFormularioErrores.php';
 
     $usuarios = $usuarios ?? [];
     $roles = $roles ?? [];
@@ -27,6 +28,16 @@
         $modalAbierto === 'editar' &&
         (int)($datosEditar['id'] ?? 0) === $usuarioActualId;
     $puedeCrearUsuarios = tienePermiso('usuarios.crear');
+
+$erroresUsuarioCampo=['crear'=>UsuarioFormularioErrores::preparar($erroresCrear),'editar'=>UsuarioFormularioErrores::preparar($erroresEditar)];
+$atributosErrorUsuario=static function($modo,$campo) use($erroresUsuarioCampo) {
+    $error=$erroresUsuarioCampo[$modo]['campos'][$campo]??'';
+    return 'data-user-field="'.$campo.'" aria-invalid="'.($error!==''?'true':'false').'" aria-describedby="'.$modo.'_'.$campo.'_error"';
+};
+$feedbackUsuario=static function($modo,$campo) use($erroresUsuarioCampo) {
+    $error=$erroresUsuarioCampo[$modo]['campos'][$campo]??'';
+    return '<p class="users-field-error" data-user-error="'.$campo.'" id="'.$modo.'_'.$campo.'_error"'.($error===''?' hidden':'').'>'.htmlspecialchars($error,ENT_QUOTES,'UTF-8').'</p>';
+};
 
 $valor = function ($datos, $campo) {
     return htmlspecialchars((string)($datos[$campo] ?? ''), ENT_QUOTES, 'UTF-8');
@@ -70,6 +81,8 @@ $seleccionado = function ($actual, $valor) {
 
 ?>
 
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/usuarios_validacion.css?v=<?= substr(hash_file('sha256',ROOT_PATH.'/public/css/usuarios_validacion.css'),0,16) ?>">
+<script defer src="<?= BASE_URL ?>public/javascript/usuarios_validacion.js?v=<?= substr(hash_file('sha256',ROOT_PATH.'/public/javascript/usuarios_validacion.js'),0,16) ?>"></script>
 <section class="dashboard-panel users-module-panel">
 
     <form
@@ -572,19 +585,9 @@ $seleccionado = function ($actual, $valor) {
                 novalidate>
 
                 <div class="modal-body">
-                    <?php if (!empty($erroresCrear)): ?>
-
-                        <div class="alert alert-danger login-alert" role="alert">
-                            <i class="bi bi-exclamation-circle"></i>
-
-                            <div>
-                                <?php foreach ($erroresCrear as $error): ?>
-                                    <div><?= htmlspecialchars($error) ?></div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-
-                    <?php endif; ?>
+                    <div class="users-form-summary" data-user-summary role="alert" <?= $erroresUsuarioCampo['crear']['resumen']===''?'hidden':'' ?>>
+                        <i class="bi bi-exclamation-circle" aria-hidden="true"></i><span><?= htmlspecialchars($erroresUsuarioCampo['crear']['resumen'],ENT_QUOTES,'UTF-8') ?></span>
+                    </div>
 
                     <div class="system-form-grid">
                         <div>
@@ -597,7 +600,8 @@ $seleccionado = function ($actual, $valor) {
                                 id="crear_nombre"
                                 name="nombre"
                                 value="<?= $valor($datosCrear, 'nombre') ?>"
-                                required>
+                                required <?= $atributosErrorUsuario('crear','nombre') ?>>
+                            <?= $feedbackUsuario('crear','nombre') ?>
                         </div>
 
                         <div>
@@ -610,7 +614,8 @@ $seleccionado = function ($actual, $valor) {
                                 id="crear_apellidos"
                                 name="apellidos"
                                 value="<?= $valor($datosCrear, 'apellidos') ?>"
-                                required>
+                                required <?= $atributosErrorUsuario('crear','apellidos') ?>>
+                            <?= $feedbackUsuario('crear','apellidos') ?>
                         </div>
 
                         <div>
@@ -635,7 +640,8 @@ $seleccionado = function ($actual, $valor) {
                                 id="crear_correo"
                                 name="correo"
                                 value="<?= $valor($datosCrear, 'correo') ?>"
-                                required>
+                                required <?= $atributosErrorUsuario('crear','correo') ?>>
+                            <?= $feedbackUsuario('crear','correo') ?>
                         </div>
 
                         <div>
@@ -647,7 +653,8 @@ $seleccionado = function ($actual, $valor) {
                                 class="form-control system-form-control"
                                 id="crear_foto_perfil"
                                 name="foto_perfil"
-                                accept="image/jpeg,image/png,image/webp">
+                                accept="image/jpeg,image/png,image/webp" <?= $atributosErrorUsuario('crear','foto_perfil') ?>>
+                            <?= $feedbackUsuario('crear','foto_perfil') ?>
                         </div>
 
                         <div>
@@ -660,77 +667,36 @@ $seleccionado = function ($actual, $valor) {
                                 id="crear_usuario"
                                 name="usuario"
                                 value="<?= $valor($datosCrear, 'usuario') ?>"
-                                required>
+                                required <?= $atributosErrorUsuario('crear','usuario') ?>>
+                            <?= $feedbackUsuario('crear','usuario') ?>
                         </div>
 
                         <div>
                             <label for="crear_rol" class="form-label login-label">
                                 Rol
                             </label>
+                            <select
+                                class="form-select system-form-control"
+                                id="crear_rol"
+                                name="rol_id"
+                                required <?= $atributosErrorUsuario('crear','rol_id') ?>>
+                                <option value="">Seleccionar rol</option>
 
-                            <div
-                                class="system-role-dropdown"
-                                data-system-role-dropdown>
-                                <select
-                                    class="form-select system-form-control system-role-native"
-                                    id="crear_rol"
-                                    name="rol_id"
-                                    data-system-role-select
-                                    required>
-                                    <option value="">Seleccionar rol</option>
+                                <?php foreach ($roles as $rol): ?>
 
-                                    <?php foreach ($roles as $rol): ?>
+                                    <?php if ((int)$rol['estado'] !== 1) {
+                                        continue;
+                                    } ?>
 
-                                        <?php if ((int)$rol['estado'] !== 1) {
-                                            continue;
-                                        } ?>
+                                    <option
+                                        value="<?= (int)$rol['id'] ?>"
+                                        <?= $seleccionado($datosCrear['rol_id'] ?? '', $rol['id']) ?>>
+                                        <?= htmlspecialchars($rol['nombre']) ?>
+                                    </option>
 
-                                        <option
-                                            value="<?= (int)$rol['id'] ?>"
-                                            <?= $seleccionado($datosCrear['rol_id'] ?? '', $rol['id']) ?>>
-                                            <?= htmlspecialchars($rol['nombre']) ?>
-                                        </option>
-
-                                    <?php endforeach; ?>
-                                </select>
-
-                                <button
-                                    type="button"
-                                    class="system-role-trigger"
-                                    data-system-role-trigger
-                                    aria-haspopup="listbox"
-                                    aria-expanded="false">
-                                    <span data-system-role-label>Seleccionar rol</span>
-                                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                                </button>
-
-                                <div
-                                    class="system-role-menu"
-                                    data-system-role-menu
-                                    role="listbox">
-                                    <button
-                                        type="button"
-                                        class="system-role-option"
-                                        data-system-role-option=""
-                                        role="option">
-                                        Seleccionar rol
-                                    </button>
-
-                                    <?php foreach ($roles as $rol): ?>
-                                        <?php if ((int)$rol['estado'] !== 1) {
-                                            continue;
-                                        } ?>
-
-                                        <button
-                                            type="button"
-                                            class="system-role-option"
-                                            data-system-role-option="<?= (int)$rol['id'] ?>"
-                                            role="option">
-                                            <?= htmlspecialchars($rol['nombre']) ?>
-                                        </button>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
+                                <?php endforeach; ?>
+                            </select>
+                            <?= $feedbackUsuario('crear','rol_id') ?>
                         </div>
 
                         <div>
@@ -744,7 +710,7 @@ $seleccionado = function ($actual, $valor) {
                                     id="crear_password"
                                     name="password"
                                     autocomplete="new-password"
-                                    required>
+                                    required <?= $atributosErrorUsuario('crear','password') ?>>
                                 <button
                                     type="button"
                                     class="btn password-toggle password-view-toggle"
@@ -752,6 +718,7 @@ $seleccionado = function ($actual, $valor) {
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
+                            <?= $feedbackUsuario('crear','password') ?>
                         </div>
 
                         <div>
@@ -765,7 +732,7 @@ $seleccionado = function ($actual, $valor) {
                                     id="crear_confirmar_password"
                                     name="confirmar_password"
                                     autocomplete="new-password"
-                                    required>
+                                    required <?= $atributosErrorUsuario('crear','confirmar_password') ?>>
                                 <button
                                     type="button"
                                     class="btn password-toggle password-view-toggle"
@@ -773,6 +740,7 @@ $seleccionado = function ($actual, $valor) {
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
+                            <?= $feedbackUsuario('crear','confirmar_password') ?>
                         </div>
                     </div>
                 </div>
@@ -856,19 +824,9 @@ $seleccionado = function ($actual, $valor) {
                     <?= $edicionCuentaActual ? '' : 'disabled' ?>>
 
                 <div class="modal-body">
-                    <?php if (!empty($erroresEditar)): ?>
-
-                        <div class="alert alert-danger login-alert" role="alert">
-                            <i class="bi bi-exclamation-circle"></i>
-
-                            <div>
-                                <?php foreach ($erroresEditar as $error): ?>
-                                    <div><?= htmlspecialchars($error) ?></div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-
-                    <?php endif; ?>
+                    <div class="users-form-summary" data-user-summary role="alert" <?= $erroresUsuarioCampo['editar']['resumen']===''?'hidden':'' ?>>
+                        <i class="bi bi-exclamation-circle" aria-hidden="true"></i><span><?= htmlspecialchars($erroresUsuarioCampo['editar']['resumen'],ENT_QUOTES,'UTF-8') ?></span>
+                    </div>
 
                     <div
                         class="security-note <?= $edicionCuentaActual ? '' : 'd-none' ?>"
@@ -891,7 +849,8 @@ $seleccionado = function ($actual, $valor) {
                                 id="editar_nombre"
                                 name="nombre"
                                 value="<?= $valor($datosEditar, 'nombre') ?>"
-                                required>
+                                required <?= $atributosErrorUsuario('editar','nombre') ?>>
+                            <?= $feedbackUsuario('editar','nombre') ?>
                         </div>
 
                         <div>
@@ -904,7 +863,8 @@ $seleccionado = function ($actual, $valor) {
                                 id="editar_apellidos"
                                 name="apellidos"
                                 value="<?= $valor($datosEditar, 'apellidos') ?>"
-                                required>
+                                required <?= $atributosErrorUsuario('editar','apellidos') ?>>
+                            <?= $feedbackUsuario('editar','apellidos') ?>
                         </div>
 
                         <div>
@@ -929,7 +889,8 @@ $seleccionado = function ($actual, $valor) {
                                 id="editar_correo"
                                 name="correo"
                                 value="<?= $valor($datosEditar, 'correo') ?>"
-                                required>
+                                required <?= $atributosErrorUsuario('editar','correo') ?>>
+                            <?= $feedbackUsuario('editar','correo') ?>
                         </div>
 
                         <div>
@@ -941,7 +902,8 @@ $seleccionado = function ($actual, $valor) {
                                 class="form-control system-form-control"
                                 id="editar_foto_perfil"
                                 name="foto_perfil"
-                                accept="image/jpeg,image/png,image/webp">
+                                accept="image/jpeg,image/png,image/webp" <?= $atributosErrorUsuario('editar','foto_perfil') ?>>
+                            <?= $feedbackUsuario('editar','foto_perfil') ?>
 
                             <div
                                 class="photo-remove-control d-none"
@@ -972,71 +934,33 @@ $seleccionado = function ($actual, $valor) {
                                 id="editar_usuario"
                                 name="usuario"
                                 value="<?= $valor($datosEditar, 'usuario') ?>"
-                                required>
+                                required <?= $atributosErrorUsuario('editar','usuario') ?>>
+                            <?= $feedbackUsuario('editar','usuario') ?>
                         </div>
 
                         <div>
                             <label for="editar_rol" class="form-label login-label">
                                 Rol
                             </label>
+                            <select
+                                class="form-select system-form-control"
+                                id="editar_rol"
+                                name="rol_id"
+                                <?= $edicionCuentaActual ? 'disabled' : '' ?>
+                                required <?= $atributosErrorUsuario('editar','rol_id') ?>>
+                                <option value="">Seleccionar rol</option>
 
-                            <div
-                                class="system-role-dropdown"
-                                data-system-role-dropdown>
-                                <select
-                                    class="form-select system-form-control system-role-native"
-                                    id="editar_rol"
-                                    name="rol_id"
-                                    data-system-role-select
-                                    <?= $edicionCuentaActual ? 'disabled' : '' ?>
-                                    required>
-                                    <option value="">Seleccionar rol</option>
+                                <?php foreach ($roles as $rol): ?>
 
-                                    <?php foreach ($roles as $rol): ?>
+                                    <option
+                                        value="<?= (int)$rol['id'] ?>"
+                                        <?= $seleccionado($datosEditar['rol_id'] ?? '', $rol['id']) ?>>
+                                        <?= htmlspecialchars($rol['nombre']) ?>
+                                    </option>
 
-                                        <option
-                                            value="<?= (int)$rol['id'] ?>"
-                                            <?= $seleccionado($datosEditar['rol_id'] ?? '', $rol['id']) ?>>
-                                            <?= htmlspecialchars($rol['nombre']) ?>
-                                        </option>
-
-                                    <?php endforeach; ?>
-                                </select>
-
-                                <button
-                                    type="button"
-                                    class="system-role-trigger"
-                                    data-system-role-trigger
-                                    aria-haspopup="listbox"
-                                    aria-expanded="false"
-                                    <?= $edicionCuentaActual ? 'disabled' : '' ?>>
-                                    <span data-system-role-label>Seleccionar rol</span>
-                                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                                </button>
-
-                                <div
-                                    class="system-role-menu"
-                                    data-system-role-menu
-                                    role="listbox">
-                                    <button
-                                        type="button"
-                                        class="system-role-option"
-                                        data-system-role-option=""
-                                        role="option">
-                                        Seleccionar rol
-                                    </button>
-
-                                    <?php foreach ($roles as $rol): ?>
-                                        <button
-                                            type="button"
-                                            class="system-role-option"
-                                            data-system-role-option="<?= (int)$rol['id'] ?>"
-                                            role="option">
-                                            <?= htmlspecialchars($rol['nombre']) ?>
-                                        </button>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
+                                <?php endforeach; ?>
+                            </select>
+                            <?= $feedbackUsuario('editar','rol_id') ?>
                         </div>
 
                         <div>
@@ -1048,7 +972,7 @@ $seleccionado = function ($actual, $valor) {
                                 id="editar_estado"
                                 name="estado"
                                 <?= $edicionCuentaActual ? 'disabled' : '' ?>
-                                required>
+                                required <?= $atributosErrorUsuario('editar','estado') ?>>
                                 <option
                                     value="1"
                                     <?= $seleccionado($datosEditar['estado'] ?? '', '1') ?>>
@@ -1060,6 +984,7 @@ $seleccionado = function ($actual, $valor) {
                                     Inactivo
                                 </option>
                             </select>
+                            <?= $feedbackUsuario('editar','estado') ?>
                         </div>
 
                         <div>
@@ -1515,31 +1440,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 boton.getAttribute('data-usuario') || '';
             document.getElementById('editar_rol').value =
                 boton.getAttribute('data-rol-id') || '';
-
-            const dropdownRolEditar =
-                document.getElementById('editar_rol')
-                    ?.closest('[data-system-role-dropdown]');
-
-            if (dropdownRolEditar) {
-                const selectRolEditar =
-                    dropdownRolEditar.querySelector('[data-system-role-select]');
-                const triggerRolEditar =
-                    dropdownRolEditar.querySelector('[data-system-role-trigger]');
-                const labelRolEditar =
-                    dropdownRolEditar.querySelector('[data-system-role-label]');
-                const optionRolEditar =
-                    selectRolEditar?.options[selectRolEditar.selectedIndex];
-
-                if (labelRolEditar && optionRolEditar) {
-                    labelRolEditar.textContent =
-                        optionRolEditar.textContent.trim();
-                }
-
-                if (triggerRolEditar) {
-                    triggerRolEditar.disabled =
-                        selectRolEditar ? selectRolEditar.disabled : false;
-                }
-            }
             document.getElementById('editar_estado').value =
                 boton.getAttribute('data-estado') || '1';
             document.getElementById('editar_ultimo_acceso').textContent =
@@ -1563,16 +1463,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('editar_nota_cuenta_actual');
 
             rolSelect.disabled = esCuentaActual;
-
-            const triggerRolSelect =
-                rolSelect
-                    .closest('[data-system-role-dropdown]')
-                    ?.querySelector('[data-system-role-trigger]');
-
-            if (triggerRolSelect) {
-                triggerRolSelect.disabled = esCuentaActual;
-            }
-
             estadoSelect.disabled = esCuentaActual;
             rolOculto.disabled = !esCuentaActual;
             estadoOculto.disabled = !esCuentaActual;
@@ -1651,116 +1541,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (modalAbierto === 'editar' && modalEditar) {
         new bootstrap.Modal(modalEditar).show();
     }
-
-    const sincronizarDropdownRol = function (contenedor) {
-        const select = contenedor.querySelector('[data-system-role-select]');
-        const trigger = contenedor.querySelector('[data-system-role-trigger]');
-        const label = contenedor.querySelector('[data-system-role-label]');
-
-        if (!select || !trigger || !label) {
-            return;
-        }
-
-        const opcionSeleccionada =
-            select.options[select.selectedIndex] || select.options[0];
-
-        label.textContent = opcionSeleccionada
-            ? opcionSeleccionada.textContent.trim()
-            : 'Seleccionar rol';
-
-        trigger.disabled = select.disabled;
-
-        contenedor
-            .querySelectorAll('[data-system-role-option]')
-            .forEach(function (opcion) {
-                const activa =
-                    String(opcion.dataset.systemRoleOption || '') ===
-                    String(select.value || '');
-
-                opcion.classList.toggle('is-selected', activa);
-                opcion.setAttribute(
-                    'aria-selected',
-                    activa ? 'true' : 'false'
-                );
-            });
-    };
-
-    const cerrarDropdownsRol = function (excepto) {
-        document
-            .querySelectorAll('[data-system-role-dropdown].is-open')
-            .forEach(function (contenedor) {
-                if (contenedor === excepto) {
-                    return;
-                }
-
-                contenedor.classList.remove('is-open');
-
-                const trigger =
-                    contenedor.querySelector('[data-system-role-trigger]');
-
-                if (trigger) {
-                    trigger.setAttribute('aria-expanded', 'false');
-                }
-            });
-    };
-
-    document
-        .querySelectorAll('[data-system-role-dropdown]')
-        .forEach(function (contenedor) {
-            const select =
-                contenedor.querySelector('[data-system-role-select]');
-            const trigger =
-                contenedor.querySelector('[data-system-role-trigger]');
-            const opciones = Array.from(
-                contenedor.querySelectorAll('[data-system-role-option]')
-            );
-
-            if (!select || !trigger) {
-                return;
-            }
-
-            sincronizarDropdownRol(contenedor);
-
-            trigger.addEventListener('click', function () {
-                if (trigger.disabled || select.disabled) {
-                    return;
-                }
-
-                const abrir = !contenedor.classList.contains('is-open');
-
-                cerrarDropdownsRol(abrir ? contenedor : null);
-                contenedor.classList.toggle('is-open', abrir);
-                trigger.setAttribute(
-                    'aria-expanded',
-                    abrir ? 'true' : 'false'
-                );
-            });
-
-            opciones.forEach(function (opcion) {
-                opcion.addEventListener('click', function () {
-                    select.value =
-                        opcion.dataset.systemRoleOption || '';
-                    select.dispatchEvent(
-                        new Event('change', { bubbles: true })
-                    );
-
-                    sincronizarDropdownRol(contenedor);
-                    contenedor.classList.remove('is-open');
-                    trigger.setAttribute('aria-expanded', 'false');
-                    trigger.focus();
-                });
-            });
-
-            select.addEventListener('change', function () {
-                sincronizarDropdownRol(contenedor);
-            });
-        });
-
-    document.addEventListener('click', function (event) {
-        if (!event.target.closest('[data-system-role-dropdown]')) {
-            cerrarDropdownsRol(null);
-        }
-    });
 
     document.querySelectorAll('.system-toast').forEach(function (toast) {
         new bootstrap.Toast(toast).show();
