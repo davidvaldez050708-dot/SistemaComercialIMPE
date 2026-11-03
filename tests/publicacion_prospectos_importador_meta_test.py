@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(prefix='prospectos-import-meta-test-') as temp:
         file.write_bytes((ROOT/dep).read_bytes())
     new=[]
     for relative,(known,desired) in pub.FILES.items():
-        if not known:
+        if not known or (None in known and relative=='app/services/ProspectoMetaImportador.php'):
             new.append(relative);continue
         file=site/relative;file.parent.mkdir(parents=True,exist_ok=True)
         # Recuperar la versión revisada del PR anterior usando Git (CI tiene historial).
@@ -52,6 +52,15 @@ with tempfile.TemporaryDirectory(prefix='prospectos-import-meta-test-') as temp:
     with patch('sys.argv',args),redirect_stdout(StringIO()):pub.main()
     assert all(not (site/name).exists() for name in new)
     assert all(p.read_bytes()==before[str(p)] for p in site.rglob('*') if p.is_file())
+    # También acepta la instalación de Meta que quedó publicada antes del cambio de permisos.
+    legacy=site/'app/services/ProspectoMetaImportador.php'
+    import subprocess
+    old_service=subprocess.check_output(['git','show',
+        '13f0cae3da684f43149e9f51c6093598bd2e02fb:app/services/ProspectoMetaImportador.php'],cwd=ROOT)
+    assert pub.git_hash(old_service) in pub.FILES['app/services/ProspectoMetaImportador.php'][0]
+    legacy.write_bytes(old_service)
+    assert 'COMPATIBLE: app/services/ProspectoMetaImportador.php' in run(site,backups,'--check')
+    legacy.unlink()
     bad=site/'app/controllers/ProspectoController.php'
     bad.write_bytes(bad.read_bytes()+b'\n// personalizado')
     snapshot=bad.read_bytes()
