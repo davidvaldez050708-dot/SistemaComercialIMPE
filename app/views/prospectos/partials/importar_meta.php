@@ -93,12 +93,13 @@ $metaAnterior=$metaBloqueada&&($metaSeleccion['version']??null)!==2;
                         </div>
                         <div><label class="meta-import-override"><input type="checkbox" name="excepcion_campania[<?= $metaEsc($c['clave']) ?>]" value="1" data-meta-excepcion <?= $excepcion?'checked':'' ?> <?= $metaBloqueada?'disabled':'' ?>> Cambiar sólo esta campaña</label>
                         <label for="metaCampania<?= $metaEsc($c['clave']) ?>" class="meta-import-sr">Programa para <?= $metaEsc($c['nombre']) ?></label>
+                        <div data-meta-excepcion-control <?= !$excepcion?'hidden':'' ?>>
                         <select id="metaCampania<?= $metaEsc($c['clave']) ?>" name="programa[<?= $metaEsc($c['clave']) ?>]" data-meta-programa <?= $metaBloqueada||!$excepcion?'disabled':'' ?> <?= !$excepcion?'hidden':'' ?>>
                             <option value="">Pendiente de clasificar</option>
                             <?php foreach ($metaProgramas as $p): ?>
                             <option value="<?= $metaEsc($p['codigo']) ?>" <?= $seleccion===$p['codigo']?'selected':'' ?>><?= $metaEsc($p['nombre']) ?></option>
                             <?php endforeach; ?>
-                        </select><small data-meta-herencia><?= $excepcion?'Excepción de campaña':'Usa el programa de su formulario' ?></small></div>
+                        </select></div><small data-meta-herencia><?= $excepcion?'Excepción de campaña':'Usa el programa de su formulario' ?></small></div>
                     </div>
                     <?php endforeach; ?>
                 </div>

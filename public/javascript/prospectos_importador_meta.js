@@ -50,6 +50,9 @@
             var check=row.querySelector('[data-meta-excepcion]'),select=row.querySelector('[data-meta-programa]');
             if(!check.disabled)select.disabled=!check.checked;
             select.hidden=!check.checked;
+            row.querySelector('[data-meta-excepcion-control]').hidden=!check.checked;
+            // Actualizar también el selector visual compartido del sistema.
+            select.dispatchEvent(new Event('change',{bubbles:true}));
             var inherited=(row.dataset.metaFormularios||'').split(' ').map(function(key){
                 var form=confirm.querySelector('[data-meta-formulario="'+key+'"]');
                 return form?form.options[form.selectedIndex].textContent.trim():'';
@@ -71,7 +74,10 @@
         var payload=new FormData(confirm);
         // Congelar los controles después de capturar el envío. Los reintentos
         // usan exactamente la misma clasificación que guardó el servidor.
-        confirm.querySelectorAll('select,[data-meta-excepcion]').forEach(function(el){el.disabled=true;});
+        confirm.querySelectorAll('select,[data-meta-excepcion]').forEach(function(el){
+            el.disabled=true;
+            if(el.tagName==='SELECT')el.dispatchEvent(new Event('change',{bubbles:true}));
+        });
         var destino=confirm.action,volver=confirm.dataset.metaVolver;
         try {
             for(var bloque=0;bloque<100;bloque++) {
