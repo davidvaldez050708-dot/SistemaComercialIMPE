@@ -106,7 +106,7 @@ let server,log='',browser;
  assert.ok((await page.locator('.meta-import-result').innerText()).includes('0 prospectos nuevos'),'Segunda carga no duplica');
  const sqlCheck='require "config/db_connection.php";$d=(new Database())->connect(false);echo json_encode(["meta"=>(int)$d->query("SELECT COUNT(*) n FROM prospecto_origenes WHERE tipo_origen=\'META_ADS\'")->fetch_assoc()["n"],"asignaciones"=>(int)$d->query("SELECT COUNT(*) n FROM prospecto_asignaciones")->fetch_assoc()["n"]]);';
  const estadoMeta=JSON.parse(execFileSync(php,['-r',sqlCheck],{cwd:root,env,encoding:'utf8'}));
- assert.equal(estadoMeta.meta,3);assert.equal(estadoMeta.asignaciones,0,'Importador no asigna asesores');
+ assert.equal(estadoMeta.meta,4,'Se conservan las dos procedencias Meta históricas y se agregan dos leads nuevos');assert.equal(estadoMeta.asignaciones,0,'Importador no asigna asesores');
  console.log('PASS Meta Ads: permisos, CSRF, UTF-16, vista previa, campaña, importación idempotente, sin asignaciones.');
 
  assert.deepEqual(errors,[]);assert.ok(!/PHP (Warning|Fatal|Parse)|Uncaught/.test(log),log);
