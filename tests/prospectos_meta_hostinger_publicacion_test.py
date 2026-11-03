@@ -31,7 +31,7 @@ def source(ref,name):
 def execute(site,backup,*flags):
     args=['publisher','--site',str(site),'--backup-root',str(backup)]+list(flags)
     with patch.object(sys,'argv',args),patch.object(pub,'check_extensions',return_value=None),contextlib.redirect_stdout(io.StringIO()):
-        with patch.object(pub,'fetch',side_effect=lambda n,h:(ROOT/n).read_bytes().replace(b'\r\n',b'\n')):
+        with patch.object(pub,'fetch',side_effect=lambda n,h:source(pub.REVISION,n)):
             pub.main()
 
 
@@ -71,7 +71,7 @@ for eol in [b'\n',b'\r\n']:
         assert model.read_bytes()==compat['payload'].replace(b'\n',eol)
         assert dep.read_bytes()==policy
         for name in pub.FILES:
-            if name!=compat['path']:assert (site/name).read_bytes()==(ROOT/name).read_bytes().replace(b'\r\n',b'\n')
+            if name!=compat['path']:assert (site/name).read_bytes()==source(pub.REVISION,name)
         saved=next(backup.glob('*/respaldo.json')).parent
         execute(site,backup,'--apply');assert snapshot()==installed
         # Tras instalar los permisos personalizados, actualizar el selector

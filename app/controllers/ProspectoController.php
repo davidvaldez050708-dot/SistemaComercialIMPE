@@ -78,9 +78,12 @@ class ProspectoController
         try {
             ProspectoMetaImportador::verificarCsrf($_POST['csrf_meta']??null);
             $programas=$_POST['programa']??[];
-            if (!is_array($programas)) throw new DomainException('Selección de programas no válida.');
+            $formularios=$_POST['programa_formulario']??null;
+            $excepciones=$_POST['excepcion_campania']??[];
+            if (!is_array($programas) || ($formularios!==null&&!is_array($formularios)) || !is_array($excepciones))
+                throw new DomainException('Selección de programas no válida.');
             $db=(new Database())->connect(false);
-            $out=ProspectoMetaImportador::procesar($db,$programas);
+            $out=ProspectoMetaImportador::procesar($db,$programas,$formularios,$excepciones);
             echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
         } catch (DomainException $e) {
             http_response_code(422);

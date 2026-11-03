@@ -29,7 +29,7 @@
         if(name)name.textContent=file.files.length?file.files[0].name:'Selecciona un archivo.';
     });
     function focusables(){
-        return Array.from(dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),a[href]'))
+        return Array.from(dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),a[href],summary'))
             .filter(function(el){return el.getClientRects().length>0;});
     }
     layer.addEventListener('keydown',function(e){
@@ -44,7 +44,22 @@
             e.preventDefault();first.focus();
         }
     });
-    if(!confirm || !window.fetch || !window.FormData)return;
+    if(!confirm)return;
+    function refreshCampaigns(){
+        confirm.querySelectorAll('[data-meta-campania]').forEach(function(row){
+            var check=row.querySelector('[data-meta-excepcion]'),select=row.querySelector('[data-meta-programa]');
+            if(!check.disabled)select.disabled=!check.checked;
+            select.hidden=!check.checked;
+            var inherited=(row.dataset.metaFormularios||'').split(' ').map(function(key){
+                var form=confirm.querySelector('[data-meta-formulario="'+key+'"]');
+                return form?form.options[form.selectedIndex].textContent.trim():'';
+            }).filter(function(value,index,all){return value&&all.indexOf(value)===index;});
+            row.querySelector('[data-meta-herencia]').textContent=check.checked?'Excepción de campaña':'Usa: '+inherited.join(' · ');
+        });
+    }
+    confirm.querySelectorAll('[data-meta-excepcion],[data-meta-formulario]').forEach(function(el){el.addEventListener('change',refreshCampaigns);});
+    refreshCampaigns();
+    if(!window.fetch || !window.FormData)return;
     confirm.addEventListener('submit',async function(e){
         e.preventDefault();
         if(running)return;
@@ -54,6 +69,9 @@
         button.textContent='Importando prospectos…';
         if(status)status.hidden=false;
         var payload=new FormData(confirm);
+        // Congelar los controles después de capturar el envío. Los reintentos
+        // usan exactamente la misma clasificación que guardó el servidor.
+        confirm.querySelectorAll('select,[data-meta-excepcion]').forEach(function(el){el.disabled=true;});
         var destino=confirm.action,volver=confirm.dataset.metaVolver;
         try {
             for(var bloque=0;bloque<100;bloque++) {

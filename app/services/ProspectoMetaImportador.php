@@ -87,7 +87,9 @@ final class ProspectoMetaImportador
         $data=json_decode($json,true);
         if (!is_array($data) || !is_array($data['filas']??null) || !is_array($data['campanias']??null))
             {self::borrarAnterior();return null;}
-        return $data;
+        // Actualizar sólo la representación en memoria de vistas previas previas
+        // a la agrupación por formulario. El archivo original no se reescribe.
+        return ProspectoMetaClasificacion::agrupar($data);
     }
 
     public static function resumenCargar(?array $data=null): ?array
@@ -100,9 +102,10 @@ final class ProspectoMetaImportador
             'total_filas'=>$data['total_filas'],'validas'=>$data['validas'],
             'repetidas_archivo'=>$data['repetidas_archivo'],'rechazadas'=>$data['rechazadas'],
             'errores'=>$data['errores'],'muestra'=>$data['muestra'],
-            'campanias'=>$data['campanias'],'ya_existentes'=>$stage['ya_existentes'],
+            'campanias'=>$data['campanias'],'formularios'=>$data['formularios'],'ya_existentes'=>$stage['ya_existentes'],
             'avance'=>$stage['avance'],'nuevos'=>$stage['nuevos'],
             'repetidos'=>$stage['repetidos'],'programas_seleccionados'=>$stage['programas'],
+            'clasificacion_bloqueada'=>$stage['programas']!==null,
         ];
     }
 
@@ -162,23 +165,13 @@ final class ProspectoMetaImportador
         return $repo->consulta('SELECT codigo,nombre FROM formulario_programas ORDER BY nombre LIMIT 500')->fetch_all(MYSQLI_ASSOC);
     }
 
-    public static function procesar(mysqli $db,array $mapa): array
+    public static function procesar(mysqli $db,array $mapa,?array $formularios=null,array $excepciones=[]): array
     {
         $data=self::carga();
         if (!$data) throw new DomainException('La vista previa venció. Vuelve a seleccionar el archivo.');
         $meta=&$_SESSION[self::SESSION];
         if ($meta['programas']===null) {
-            $catalogo=[];
-            foreach (self::programas($db) as $p) $catalogo[$p['codigo']]=$p['nombre'];
-            $guardado=[];
-            foreach ($data['campanias'] as $c) {
-                $key=$c['clave'];
-                $code=$mapa[$key]??'';
-                if (!is_string($code) || ($code!=='' && !isset($catalogo[$code])))
-                    throw new DomainException('Selecciona un programa válido para cada campaña.');
-                $guardado[$key]=['codigo'=>$code?:null,'nombre'=>$code!==''?$catalogo[$code]:null];
-            }
-            $meta['programas']=$guardado;
+            $meta['programas']=ProspectoMetaClasificacion::resolver($data,$mapa,$formularios,$excepciones,self::programas($db));
         }
         $offset=(int)$meta['avance'];$total=count($data['filas']);
         if ($offset>=$total) return self::finalizar($data);
@@ -207,7 +200,7 @@ final class ProspectoMetaImportador
                 ]);
                 $oid=$repo->guardarOrigen($pid,[
                     'tipo_origen'=>'META_ADS','sistema_origen'=>'META_ADS','tipo_registro'=>'LEAD',
-                    'identificador_origen'=>$r['id'],'datos_originales_ref'=>'meta:lead:'.$r['id'],
+                    'identificador_origen'=>$r['id'],'datos_originales_ref'=>'meta:lead:'.($r['id_original']??$r['id']),
                     'formulario_id'=>$r['form_id']?:null,'formulario_nombre'=>$r['form_name']?:null,
                     'campania_id'=>$r['campaign_id']?:null,'campania_nombre'=>$r['campaign_name']?:null,
                     'conjunto_id'=>$r['adset_id']?:null,'conjunto_nombre'=>$r['adset_name']?:null,
@@ -218,7 +211,7 @@ final class ProspectoMetaImportador
                     'fuente_hash'=>hash('sha256',json_encode($r,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)),
                     'lote_importacion_ref'=>$meta['token'],
                 ]);
-                $program=$meta['programas'][$r['campania_clave']]??null;
+                $program=ProspectoMetaClasificacion::programaFila($meta['programas'],$r);
                 if ($program && $program['codigo']) {
                     $repo->interes($pid,$oid,$program['codigo'],$program['nombre'],$r['fecha_utc']);
                 }

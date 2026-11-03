@@ -1,15 +1,18 @@
 <?php
-// Se monta exclusivamente desde Marketing > Prospectos > Meta Ads.
+// El controlador autoriza la importación mediante Roles y permisos.
 $metaEsc=static fn($v)=>htmlspecialchars((string)($v??''),ENT_QUOTES,'UTF-8');
 $metaHayPrevia=is_array($metaResumen??null);
 $metaAbierto=$metaHayPrevia||!empty($metaAviso);
 $metaRuta=BASE_URL.'index.php?controller=prospecto&action=';
+$metaSeleccion=$metaResumen['programas_seleccionados']??null;
+$metaBloqueada=!empty($metaResumen['clasificacion_bloqueada']);
+$metaAnterior=$metaBloqueada&&($metaSeleccion['version']??null)!==2;
 ?>
 <div class="meta-import-overlay" data-meta-overlay data-meta-autoabrir="<?= $metaAbierto?'1':'0' ?>" hidden>
     <button type="button" class="meta-import-backdrop" data-meta-cerrar tabindex="-1" aria-label="Cerrar ventana"></button>
     <section class="meta-import-dialog" role="dialog" aria-modal="true" aria-labelledby="metaImportTitulo" tabindex="-1">
         <header class="meta-import-head">
-            <div><span class="central-eyebrow">MARKETING · META ADS</span><h2 id="metaImportTitulo">Importar prospectos</h2>
+            <div><span class="central-eyebrow">PROSPECTOS · META ADS</span><h2 id="metaImportTitulo">Importar prospectos</h2>
                 <p>Revisa los registros antes de integrarlos al almacén central.</p></div>
             <button class="meta-import-close" type="button" data-meta-cerrar aria-label="Cerrar"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
         </header>
@@ -55,15 +58,18 @@ $metaRuta=BASE_URL.'index.php?controller=prospecto&action=';
                   data-meta-volver="<?= $metaEsc(BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta') ?>">
                 <input type="hidden" name="csrf_meta" value="<?= $metaEsc($metaCsrf) ?>">
                 <input type="hidden" name="token" value="<?= $metaEsc($metaResumen['token']) ?>">
-                <div class="meta-import-subhead"><h3>Clasificación por campaña</h3><p>Selecciona el programa real. No se deduce automáticamente del nombre de la campaña.</p></div>
+                <div class="meta-import-subhead"><h3>Clasificación por formulario</h3><p>Elige una vez para todos sus registros. Puedes indicar excepciones por campaña.</p></div>
+                <?php if ($metaAnterior): ?>
+                <p class="meta-import-hint">Esta carga conserva la clasificación por campaña con la que se inició.</p>
+                <?php endif; ?>
                 <div class="meta-import-campaigns">
-                    <?php foreach ($metaResumen['campanias'] as $c):
-                        $seleccion=$metaResumen['programas_seleccionados'][$c['clave']]['codigo']??'';
+                    <?php foreach ($metaResumen['formularios'] as $f):
+                        $seleccion=$metaSeleccion['formularios'][$f['clave']]['codigo']??'';
                     ?>
                     <div class="meta-import-campaign">
-                        <div><strong><?= $metaEsc($c['nombre']) ?></strong><small><?= (int)$c['total'] ?> prospectos · <?= $c['id']!==''?'Campaña #'.$metaEsc($c['id']):'Sin ID de campaña' ?></small></div>
-                        <div><label for="metaCampania<?= $metaEsc(substr($c['clave'],0,12)) ?>">Programa educativo</label>
-                        <select id="metaCampania<?= $metaEsc(substr($c['clave'],0,12)) ?>" name="programa[<?= $metaEsc($c['clave']) ?>]" data-meta-programa <?= $metaResumen['avance']>0?'disabled':'' ?>>
+                        <div><strong>Formulario: <?= $metaEsc($f['nombre']) ?></strong><small><?= (int)$f['total'] ?> prospectos · <?= $f['id']!==''?$metaEsc($f['id']):'Sin ID de formulario' ?></small></div>
+                        <div><label for="metaFormulario<?= $metaEsc($f['clave']) ?>">Programa educativo</label>
+                        <select id="metaFormulario<?= $metaEsc($f['clave']) ?>" name="programa_formulario[<?= $metaEsc($f['clave']) ?>]" data-meta-formulario="<?= $metaEsc($f['clave']) ?>" <?= $metaBloqueada?'disabled':'' ?>>
                             <option value="">Pendiente de clasificar</option>
                             <?php foreach ($metaProgramas as $p): ?>
                             <option value="<?= $metaEsc($p['codigo']) ?>" <?= $seleccion===$p['codigo']?'selected':'' ?>><?= $metaEsc($p['nombre']) ?></option>
@@ -72,6 +78,34 @@ $metaRuta=BASE_URL.'index.php?controller=prospecto&action=';
                     </div>
                     <?php endforeach; ?>
                 </div>
+                <details class="meta-import-exceptions" <?= $metaAnterior?'open':'' ?>>
+                <summary>Campañas detectadas (<?= count($metaResumen['campanias']) ?>) · Revisar excepciones</summary>
+                <p class="meta-import-hint">Conservamos cada campaña. Una excepción se aplica a sus registros, incluso si utiliza varios formularios.</p>
+                <div class="meta-import-campaigns">
+                    <?php foreach ($metaResumen['campanias'] as $c):
+                        $excepcion=$metaAnterior||isset($metaSeleccion['campanias'][$c['clave']]);
+                        $seleccion=$metaAnterior?($metaSeleccion[$c['clave']]['codigo']??''):($metaSeleccion['campanias'][$c['clave']]['codigo']??'');
+                    ?>
+                    <div class="meta-import-campaign" data-meta-campania data-meta-formularios="<?= $metaEsc(implode(' ',array_keys($c['formularios']))) ?>">
+                        <div><strong><?= $metaEsc($c['nombre']) ?></strong><small><?= (int)$c['total'] ?> prospectos · <?= $c['id']!==''?'Campaña #'.$metaEsc($c['id']):'Sin ID de campaña' ?></small>
+                            <small>Formulario: <?= $metaEsc(implode(' · ',$c['formularios'])) ?></small>
+                            <?php foreach ($c['advertencias'] as $advertencia): ?><p class="meta-import-warning"><i class="bi bi-info-circle" aria-hidden="true"></i> <?= $metaEsc($advertencia) ?></p><?php endforeach; ?>
+                        </div>
+                        <div><label class="meta-import-override"><input type="checkbox" name="excepcion_campania[<?= $metaEsc($c['clave']) ?>]" value="1" data-meta-excepcion <?= $excepcion?'checked':'' ?> <?= $metaBloqueada?'disabled':'' ?>> Cambiar sólo esta campaña</label>
+                        <label for="metaCampania<?= $metaEsc($c['clave']) ?>" class="meta-import-sr">Programa para <?= $metaEsc($c['nombre']) ?></label>
+                        <select id="metaCampania<?= $metaEsc($c['clave']) ?>" name="programa[<?= $metaEsc($c['clave']) ?>]" data-meta-programa <?= $metaBloqueada||!$excepcion?'disabled':'' ?> <?= !$excepcion?'hidden':'' ?>>
+                            <option value="">Pendiente de clasificar</option>
+                            <?php foreach ($metaProgramas as $p): ?>
+                            <option value="<?= $metaEsc($p['codigo']) ?>" <?= $seleccion===$p['codigo']?'selected':'' ?>><?= $metaEsc($p['nombre']) ?></option>
+                            <?php endforeach; ?>
+                        </select><small data-meta-herencia><?= $excepcion?'Excepción de campaña':'Usa el programa de su formulario' ?></small></div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                </details>
+                <?php foreach ($metaResumen['campanias'] as $c): foreach ($c['advertencias'] as $advertencia): ?>
+                <p class="meta-import-warning"><?= $metaEsc($c['nombre']) ?> · <?= $metaEsc($advertencia) ?></p>
+                <?php endforeach; endforeach; ?>
                 <div class="meta-import-subhead"><h3>Ejemplo de registros detectados</h3><p>Primeros <?= count($metaResumen['muestra']) ?> registros de esta importación.</p></div>
                 <div class="central-table-wrap meta-import-table-wrap" tabindex="0" aria-label="Vista previa de contactos de Meta">
                     <table class="central-table"><thead><tr><th>Fecha de Meta</th><th>Nombre</th><th>Teléfono</th><th>Campaña</th><th>Estado declarado</th></tr></thead>
