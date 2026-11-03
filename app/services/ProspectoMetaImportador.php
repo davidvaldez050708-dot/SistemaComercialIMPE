@@ -127,13 +127,16 @@ final class ProspectoMetaImportador
         if (!$repo->estructura()['disponible']) throw new DomainException('El almacén central no está disponible.');
         // Consulta en lotes, no una consulta por fila ni comparaciones por teléfono.
         $ids=array_column($datos['filas'],'id');
-        $existentes=0;
+        $yaVistos=[];
         foreach (array_chunk($ids,250) as $chunk) {
-            $sql="SELECT identificador_origen FROM prospecto_origenes WHERE sistema_origen='META_ADS'
-                AND tipo_registro='LEAD' AND identificador_origen IN (".
-                implode(',',array_fill(0,count($chunk),'?')).')';
-            $existentes+=$repo->consulta($sql,$chunk)->num_rows;
+            $in=implode(',',array_fill(0,count($chunk),'?'));
+            $sql="SELECT COALESCE(meta_lead_id,identificador_origen) lead FROM prospecto_origenes
+                WHERE tipo_origen='META_ADS' AND (meta_lead_id IN ($in) OR
+                (tipo_registro='LEAD' AND identificador_origen IN ($in)))";
+            foreach ($repo->consulta($sql,array_merge($chunk,$chunk))->fetch_all(MYSQLI_ASSOC) as $existing)
+                $yaVistos[$existing['lead']]=true;
         }
+        $existentes=count($yaVistos);
         $json=json_encode($datos,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
         if (strlen($json)>12000000) throw new DomainException('La vista previa supera el límite de seguridad.');
         self::borrarAnterior();
@@ -190,7 +193,10 @@ final class ProspectoMetaImportador
         $db->begin_transaction();
         try {
             foreach ($batch as $r) {
-                if ($repo->origen('META_ADS','LEAD',$r['id'])) {$duplicados++;continue;}
+                // Reconocer también leads importados con el identificador histórico META.
+                if ($repo->consulta("SELECT id FROM prospecto_origenes WHERE tipo_origen='META_ADS'
+                    AND (meta_lead_id=? OR (tipo_registro='LEAD' AND identificador_origen=?)) LIMIT 1",
+                    [$r['id'],$r['id']])->num_rows) {$duplicados++;continue;}
                 $estadoOriginal=$r['estado']!==''?$r['estado']:null;
                 $estadoCodigo=$estadoOriginal!==null?($estados[self::normalizarEstado($estadoOriginal)]??null):null;
                 $pid=$repo->crearPersona([
