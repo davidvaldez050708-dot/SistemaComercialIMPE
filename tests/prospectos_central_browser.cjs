@@ -97,7 +97,7 @@ let server,log='',browser;
  await page.locator('[data-meta-confirmar]').click();
  await page.locator('.meta-import-result').waitFor();
  assert.ok((await page.locator('.meta-import-result').innerText()).includes('2 prospectos nuevos'));
- assert.equal((await page.locator('.central-table tbody tr').count(),2),'Meta filtra sólo importados');
+ assert.equal(await page.locator('.central-table tbody tr').count(),2,'Meta filtra sólo importados');
  await page.screenshot({path:path.join(output,'meta-importacion-completada.png'),fullPage:true});
  await uploadMeta();
  assert.equal(await page.locator('.meta-import-kpis strong').nth(2).innerText(),'2','Vista previa detecta 2 IDs existentes');
