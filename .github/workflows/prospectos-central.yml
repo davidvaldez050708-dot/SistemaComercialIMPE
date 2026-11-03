@@ -11,6 +11,7 @@ on:
       - 'tests/*prospectos_central*'
       - 'tools/*prospectos_central*'
       - 'tools/*prospectos_importador_meta*'
+      - 'tests/*publicacion_prospectos_importador_meta*'
       - 'tests/*prospectos_meta*'
       - 'app/services/ProspectoMeta*'
       - 'public/**/prospectos_importador_meta.*'
@@ -46,6 +47,8 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -64,6 +67,7 @@ jobs:
           python3 tests/publicacion_prospectos_central_test.py
           python3 tests/publicacion_prospectos_central_compacto_test.py
           python3 tests/publicacion_prospectos_ficha_panel_test.py
+          python3 tests/publicacion_prospectos_importador_meta_test.py
           php -l tools/prospectos_referencias_neutrales.php
           node --check public/javascript/prospectos_central.js
           node --check public/javascript/prospectos_importador_meta.js
