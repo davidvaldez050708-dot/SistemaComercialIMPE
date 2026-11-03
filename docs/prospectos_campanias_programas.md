@@ -70,3 +70,65 @@ Se comprueban el filtro combinado, paginación, campañas múltiples, nombres la
 La publicación se prueba sobre copias canónicas y de la variante exacta de Hostinger, con LF/CRLF, conflictos, dependencia distinta, fallos de escritura y restauración. También se prueba el modelo de permisos personalizado de Hostinger contra una base sintética. El paquete anterior del PR #198 conserva sus bytes y se verifica contra su revisión histórica, para impedir que un publicador viejo instale código más reciente sin revisión.
 
 Validación real sin guardar: detectar formularios para revisar su ID; configurar el programa con permiso; en otra sesión autorizada seleccionar el archivo y **Revisar archivo**. Debe mostrar 1,271 importables, un formulario y nueve campañas, con el programa ya seleccionado. No pulsar **Confirmar importación** durante esa comprobación; descartar la vista previa al terminar.
+
+## Cierre de validación de la entrega (3 de noviembre de 2026)
+
+La revisión de código identificada por `92b4a5bc5da6cc6adc65cc9c11f72486cc99ad67` quedó **aprobada** en CI para:
+
+- **Prospectos · almacén central:** [run 41718654358](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/41718654358), MariaDB 10.11 y 11.8. Incluye filtros de campañas, tabla de ocho columnas, asociaciones versionadas, permisos/roles, detección sin escrituras, reanudación y seguridad del publicador.
+- **Prospectos Fase 1:** [run 41718654199](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/41718654199).
+- **Prospectos Fase 2:** [run 41718654454](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/41718654454).
+- **Aliados y Registro exclusivo:** [run 41718654414](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/41718654414).
+- **Horario de contacto:** [run 41718654302](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/41718654302).
+- **Formularios exclusivos, UI responsive y PHP/JS/rutas:** [formularios](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/41718654085), [UI](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/41718654404) y [rutas](https://github.com/davidvaldez050708-dot/SistemaComercialIMPE/actions/runs/41718654301).
+
+Las suites globales de Telefonía conservan fallos ajenos a esta entrega; no se alteró ni se intentó publicar el motor telefónico como parte de Campañas. **La aprobación de CI no implica publicación en producción.**
+
+Los SHA-256 de Hostinger proporcionados para los 13 archivos de Prospectos/roles fueron contrastados con el manifiesto: los **11 archivos de destino ya existentes** son bases compatibles, `app/services/ProspectoMetaClasificacion.php` corresponde a la dependencia verificada y `public/javascript/prospectos_central.js` **no se publica** en este paquete. El estado real debe reconfirmarse con `--check` antes de aplicar, porque Hostinger podría haber cambiado desde que se tomaron esos hashes.
+
+### Descargar el paquete exacto y ejecutar preflight
+
+Descargar el script y el manifiesto **desde la misma revisión inmutable**, no mezclar con otros PR:
+
+```sh
+cd "$HOME/prospectos-fase1-pr191" || exit 1
+REV=92b4a5bc5da6cc6adc65cc9c11f72486cc99ad67
+BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/$REV"
+curl -fsSL "$BASE/tools/publicar_prospectos_campanias.py" -o publicar_prospectos_campanias.py || exit 1
+curl -fsSL "$BASE/tools/prospectos_campanias_release.json" -o prospectos_campanias_release.json || exit 1
+SITIO="$HOME/domains/fundacionrededumex.org/public_html"
+RESPALDOS="$HOME/respaldos-impe-campanias"
+python3 publicar_prospectos_campanias.py --site "$SITIO" --backup-root "$RESPALDOS" --check
+```
+
+Si el preflight termina con **REVISIÓN COMPATIBLE** y **SITIO INTACTO**, publicar sólo los archivos:
+
+```sh
+python3 publicar_prospectos_campanias.py --site "$SITIO" --backup-root "$RESPALDOS" --apply
+```
+
+Conservar la ruta `RESPALDO` que imprima. Si aparece **VERSIÓN DIFERENTE**, **DEPENDENCIA DIFERENTE** o error de sintaxis, **no aplicar ni forzar**: comparar con una copia de los archivos actuales.
+
+Tras instalar el código, el responsable de producción decide **por separado** si crea la tabla vacía de asociaciones. El comando `--check` es de lectura:
+
+```sh
+php "$SITIO/tools/prospectos_formularios_programas.php" --site "$SITIO" --check
+```
+
+El siguiente comando **sí realiza un CREATE TABLE**, sin migración ni actualización de prospectos. Ejecutarlo sólo con autorización explícita y respaldo normal de base de datos del sitio:
+
+```sh
+php "$SITIO/tools/prospectos_formularios_programas.php" --site "$SITIO" --backup-root "$RESPALDOS" --apply
+```
+
+Comprobar como Administrador `Roles y Permisos → Prospectos → Configurar formularios de campañas`. Otorgar el permiso `prospectos.configurar_formularios` a los roles correspondientes y renovar sus sesiones. Desde Campañas, el usuario autorizado detecta el formulario del archivo y registra su programa real del catálogo. **No se conoce todavía el ID real del formulario Bachillerato:** debe obtenerse de su exportación.
+
+Como validación final sin escribir leads, abrir la importación del archivo de Titulación y revisar que muestre **1,271 importables, 0 descartados y 9 campañas** y el programa elegido según la asociación. **No pulsar Confirmar importación** hasta aprobar esta revisión con Marketing.
+
+**Restauración del código**, si es necesaria, usando la ruta efectiva que imprimió `--apply`:
+
+```sh
+python3 publicar_prospectos_campanias.py --site "$SITIO" --restore "/ruta/exacta/RESPALDO"
+```
+
+La restauración del código no elimina la tabla ni su historial; ésta se mantiene para preservar la información.
