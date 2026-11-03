@@ -1,0 +1,7 @@
+#modalCrearUsuario .users-form-summary,#modalEditarUsuario .users-form-summary{display:flex;align-items:center;gap:9px;border:1px solid #f2c7c7;border-radius:10px;padding:11px 14px;margin:0 0 20px;background:#fff6f5;color:#b42318;font:600 12px/1.5 Manrope,sans-serif}
+#modalCrearUsuario .users-field-error,#modalEditarUsuario .users-field-error{font:500 12px/1.45 Manrope,sans-serif;color:#b42318;margin:6px 0 0}
+#modalCrearUsuario [aria-invalid=true],#modalEditarUsuario [aria-invalid=true]{border-color:#d65b55!important;background-image:none}
+#modalCrearUsuario [aria-invalid=true]:focus,#modalEditarUsuario [aria-invalid=true]:focus{box-shadow:0 0 0 3px rgba(214,91,85,.12)}
+#modalCrearUsuario .users-invalid-group,#modalEditarUsuario .users-invalid-group{border:1px solid #d65b55;box-shadow:none}
+#modalCrearUsuario .users-invalid-group input,#modalEditarUsuario .users-invalid-group input{border:0!important}
+#modalCrearUsuario [hidden],#modalEditarUsuario [hidden]{display:none!important}
