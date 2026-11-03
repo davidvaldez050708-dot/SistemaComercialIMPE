@@ -7,9 +7,12 @@ on:
       - 'app/services/FormularioAliadoService.php'
       - 'app/views/prospectos/**'
       - 'public/**/prospectos_central.*'
+      - 'public/**/prospectos_ficha_panel.*'
       - 'database/migrations/2026_11_02_prospectos_almacen_central.sql'
       - 'tests/*prospectos_central*'
       - 'tools/*prospectos_central*'
+      - 'tools/*prospectos_panel_visual*'
+      - 'tests/*prospectos_panel_visual*'
       - 'tools/prospectos_almacen.php'
       - '.github/workflows/prospectos-central.yml'
   workflow_dispatch:
@@ -59,6 +62,7 @@ jobs:
           python3 tests/publicacion_prospectos_central_test.py
           python3 tests/publicacion_prospectos_central_compacto_test.py
           python3 tests/publicacion_prospectos_ficha_panel_test.py
+          python3 tests/publicacion_prospectos_panel_visual_test.py
           php -l tools/prospectos_referencias_neutrales.php
           node --check public/javascript/prospectos_central.js
       - name: Interfaz, permisos y formularios HTTP reales

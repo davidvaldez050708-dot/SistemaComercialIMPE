@@ -6,6 +6,7 @@
     var cuerpo=capa.querySelector('[data-prospecto-ficha-cuerpo]');
     var cerrar=capa.querySelector('.prospecto-ficha-cerrar');
     var anterior=null,seleccionado=null,peticion=null,revision=0,overflowAnterior='';
+    var estado='closed',cierreTimer=null,aperturaFrame=null,paddingAnterior='';
     var selectorFocus='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
     function permitido(url) {
@@ -20,30 +21,61 @@
     }
     function bloquearFondo() {
         overflowAnterior=document.body.style.overflow;
+        paddingAnterior=document.body.style.paddingRight;
+        var barra=Math.max(0,window.innerWidth-document.documentElement.clientWidth);
+        if (barra) document.body.style.paddingRight=(parseFloat(getComputedStyle(document.body).paddingRight)||0)+barra+'px';
         document.body.style.overflow='hidden';
     }
     function desbloquearFondo() {
         document.body.style.overflow=overflowAnterior;
+        document.body.style.paddingRight=paddingAnterior;
     }
     function mostrar() {
-        if (!capa.hidden) return;
-        anterior=document.activeElement;
-        bloquearFondo();
-        capa.hidden=false;
+        if (estado==='open') return;
+        clearTimeout(cierreTimer);
+        if (capa.hidden) {
+            anterior=document.activeElement;
+            bloquearFondo();
+            capa.hidden=false;
+            // Fijar el estado inicial antes del frame de entrada. También
+            // permite abrir/cerrar rápido sin otro backdrop ni otro panel.
+            panel.getBoundingClientRect();
+        }
+        estado='open';
+        aperturaFrame=requestAnimationFrame(function () {
+            aperturaFrame=null;
+            if (estado==='open') capa.classList.add('is-open');
+        });
         panel.focus();
     }
-    function cerrarPanel() {
-        if (capa.hidden) return;
-        revision++;
-        if (peticion) peticion.abort();
-        peticion=null;
+    function terminarCierre() {
+        if (estado!=='closing') return;
+        clearTimeout(cierreTimer);
         capa.hidden=true;
+        estado='closed';
         desbloquearFondo();
-        if (seleccionado) seleccionado.classList.remove('is-ficha-seleccionada');
-        seleccionado=null;
         if (anterior && anterior.isConnected && typeof anterior.focus==='function') anterior.focus();
         anterior=null;
     }
+    function cerrarPanel() {
+        if (estado!=='open') return;
+        revision++;
+        if (peticion) peticion.abort();
+        peticion=null;
+        if (aperturaFrame!==null) {cancelAnimationFrame(aperturaFrame);aperturaFrame=null;}
+        estado='closing';
+        capa.classList.remove('is-open');
+        if (seleccionado) seleccionado.classList.remove('is-ficha-seleccionada');
+        seleccionado=null;
+        // El cierre espera únicamente su transición; una ficha tardía nunca
+        // vuelve a abrirlo. Con movimiento reducido no hay espera artificial.
+        if (!parseFloat(getComputedStyle(panel).transitionDuration)) terminarCierre();
+        else cierreTimer=setTimeout(terminarCierre,350);
+    }
+    panel.addEventListener('transitionend',function (event) {
+        if (event.target===panel && event.propertyName==='transform' &&
+            panel.getBoundingClientRect().left>=capa.getBoundingClientRect().right-1) terminarCierre();
+    });
     function aviso(mensaje) {
         cuerpo.replaceChildren();
         var p=document.createElement('p');
@@ -73,7 +105,7 @@
             if (!respuesta.ok || !respuesta.url.startsWith(location.origin+'/')) throw new Error('HTTP');
             return respuesta.text();
         }).then(function (html) {
-            if (actual!==revision || capa.hidden) return;
+            if (actual!==revision || estado!=='open') return;
             var documento=new DOMParser().parseFromString(html,'text/html');
             var ficha=documento.querySelector('[data-prospecto-ficha-contenido]');
             if (!ficha || !ficha.querySelector('.prospecto-ficha-identidad')) throw new Error('Contenido');
@@ -126,4 +158,7 @@
     addEventListener('pagehide',function () {
         if (peticion) peticion.abort();
     });
+    // Sólo habilitar desplazamiento cuando el controlador está preparado.
+    // Un documento con el script anterior puede seguir mostrando su ficha.
+    capa.classList.add('has-motion');
 })();

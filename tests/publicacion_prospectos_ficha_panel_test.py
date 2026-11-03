@@ -5,6 +5,9 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 import importlib.util
+import base64
+import gzip
+import json
 import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -13,10 +16,23 @@ spec=importlib.util.spec_from_file_location('publicar_prospectos_ficha_panel',st
 publisher=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publisher)
 
+
+def original_publicado(name,expected):
+    data=(ROOT/name).read_bytes().replace(b'\r\n',b'\n')
+    if publisher.git_hash(data)==expected:
+        return data
+    # El paquete anterior sigue anclado a su entrega original. La actualización
+    # visual conserva esos dos originales íntegros en su manifiesto offline.
+    manifest=json.loads((ROOT/'tools/prospectos_panel_visual_release.json').read_text(encoding='utf-8'))
+    row=next(row for row in manifest['files'] if row['path']==name)
+    data=gzip.decompress(base64.b64decode(row['base']))
+    assert publisher.git_hash(data)==expected
+    return data
+
 def run(site,backup,mode):
     args=['publicar_prospectos_ficha_panel.py','--site',str(site),'--backup-root',str(backup),mode]
     output=StringIO()
-    with patch('sys.argv',args),patch.object(publisher,'fetch',side_effect=lambda name,sha:(ROOT/name).read_bytes()):
+    with patch('sys.argv',args),patch.object(publisher,'fetch',side_effect=original_publicado):
         with redirect_stdout(output):
             publisher.main()
     return output.getvalue()
@@ -39,7 +55,7 @@ with tempfile.TemporaryDirectory(prefix='prospectos-panel-offline-') as tmp:
             continue
         file=site/relative
         file.parent.mkdir(parents=True,exist_ok=True)
-        file.write_bytes((ROOT/relative).read_bytes())
+        file.write_bytes(original_publicado(relative,sha))
         assert publisher.git_hash(file.read_bytes())==sha
     original={str(p):p.read_bytes() for p in site.rglob('*') if p.is_file()}
     assert 'CHECK OK' in run(site,backup,'--check')
