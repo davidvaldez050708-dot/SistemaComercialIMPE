@@ -86,3 +86,27 @@
 .prospectos-fase1.prospectos-central .prospectos-view.is-active{border-color:#9eb6f0;background:#edf2ff;color:#21458f;box-shadow:inset 0 0 0 1px rgba(33,69,143,.06)}
 .prospectos-fase1.prospectos-central .prospectos-view:hover:not(.is-active){background:#eaf0fb;color:#21458f}
 .prospectos-fase1.prospectos-central .prospectos-view:focus-visible{outline:2px solid #21458f;outline-offset:2px}
+.central-campaign-cell{max-width:270px;overflow-wrap:anywhere}
+.central-campaign-cell small,.central-form-config-row small{display:block;color:#71849e;font-size:11px;margin-top:5px;overflow-wrap:anywhere}
+.central-campaign-name{display:block;overflow-wrap:anywhere}
+.central-campaign-none{color:#71849e;font-size:11px}
+.central-campaign-details{margin-top:5px;font-size:11px;line-height:1.6}
+.central-campaign-details summary,.central-form-config>summary,.central-form-history>summary{cursor:pointer;color:#21458f;font-weight:700}
+.central-campaign-details ul{list-style:none;margin:8px 0 0;padding:0}
+.central-campaign-details li+li{margin-top:9px;padding-top:8px;border-top:1px solid #e0e8f2}
+.central-form-config>summary{font-size:14px}
+.central-form-config[open]>summary{margin-bottom:12px}
+.central-form-config-grid{display:grid;gap:10px}
+.central-form-config-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:center;gap:14px;padding:14px;border:1px solid #dfe7f1;border-radius:11px;background:#f8fafd}
+.central-form-config-row strong{font-size:12px;overflow-wrap:anywhere}
+.central-form-config-row label{display:block;font-size:11px;font-weight:700;margin-bottom:6px;color:#61748c}
+.central-form-config-row select{width:100%;padding:10px;border:1px solid #d6e1f1;border-radius:9px;font:500 12px Manrope,sans-serif;background:#fff;color:#263b59}
+.central-form-history{margin-top:16px;font-size:12px}
+.central-form-history .central-table-wrap{margin-top:12px;max-height:360px;overflow:auto}
+.central-form-config summary:focus-visible,.central-campaign-details summary:focus-visible{outline:2px solid #21458f;outline-offset:4px}
+@media(max-width:740px){.central-form-config-row{grid-template-columns:minmax(0,1fr)}.central-form-config-row button{justify-self:start}.central-campaign-cell{max-width:220px}}
+.central-config-upload{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:14px;background:#f2f6fc;border:1px solid #dce6f3;border-radius:10px;margin:12px 0}
+.central-config-upload label{font-size:12px;font-weight:700;color:#2a4367}
+.central-config-upload input{max-width:100%;min-width:0;font:500 12px Manrope,sans-serif}
+.central-config-upload small{flex-basis:100%;font-size:11px;color:#71849e}
+.prospectos-central [aria-label="Prospectos comerciales"] td:nth-child(3){white-space:nowrap}

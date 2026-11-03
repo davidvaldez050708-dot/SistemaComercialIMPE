@@ -1061,6 +1061,7 @@ class RolModel
 
         $dependencias = [
             'prospectos.importar_meta' => 'prospectos.ver_todos',
+            'prospectos.configurar_formularios' => 'prospectos.ver_todos',
             'usuarios.crear' => 'usuarios.ver',
             'usuarios.editar' => 'usuarios.ver',
             'usuarios.cambiar_estado' => 'usuarios.ver',
@@ -1374,6 +1375,7 @@ class RolModel
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.asignar_permisos', 'nombre' => 'Asignar permisos', 'descripcion' => 'Administrar permisos por rol.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_todos', 'nombre' => 'Ver todos los prospectos', 'descripcion' => 'Consultar los prospectos del almacén central, incluidos formularios de Registro, aliados y Meta Ads.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.importar_meta', 'nombre' => 'Importar prospectos de Meta Ads', 'descripcion' => 'Subir CSV o Excel de Meta, revisar campañas y confirmar su incorporación al almacén central. Requiere ver todos los prospectos.'],
+            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.configurar_formularios', 'nombre' => 'Configurar formularios de campañas', 'descripcion' => 'Asociar IDs de formularios al catálogo educativo y autorizar excepciones avanzadas por campaña. Requiere ver todos los prospectos.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_propios', 'nombre' => 'Ver prospectos propios', 'descripcion' => 'Consultar prospectos asignados al usuario.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.editar', 'nombre' => 'Editar prospectos', 'descripcion' => 'Actualizar información de prospectos.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.asignar', 'nombre' => 'Asignar prospectos', 'descripcion' => 'Asignar prospectos a usuarios o equipos.'],

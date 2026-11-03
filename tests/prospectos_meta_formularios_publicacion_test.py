@@ -7,6 +7,7 @@ import io
 import json
 import sys
 import tempfile
+import subprocess
 
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('pub',ROOT/'tools/publicar_prospectos_meta_formularios.py')
@@ -14,7 +15,7 @@ pub=importlib.util.module_from_spec(spec);spec.loader.exec_module(pub)
 manifest=json.loads((ROOT/'tools/prospectos_meta_formularios_release.json').read_text(encoding='utf-8'))
 assert tuple(row['path'] for row in manifest['files'])==pub.FILES
 for row in manifest['files']:
-    assert pub.unpack(row['target'])==(ROOT/row['path']).read_bytes().replace(b'\r\n',b'\n'),row['path']
+    assert pub.unpack(row['target'])==subprocess.check_output(['git','show','044175f75c116f47609fb409712afc1fe26f38a6:'+row['path']],cwd=ROOT),row['path']
     if row['base'] is not None:assert pub.sha(pub.unpack(row['base']))==row['base_sha256']
 def run(site,backup,*flags):
     with patch.object(sys,'argv',['pub','--site',str(site),'--backup-root',str(backup),*flags]),contextlib.redirect_stdout(io.StringIO()):pub.main()

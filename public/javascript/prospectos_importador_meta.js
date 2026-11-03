@@ -48,6 +48,7 @@
     function refreshCampaigns(){
         confirm.querySelectorAll('[data-meta-campania]').forEach(function(row){
             var check=row.querySelector('[data-meta-excepcion]'),select=row.querySelector('[data-meta-programa]');
+            if(!check||!select)return;
             if(!check.disabled)select.disabled=!check.checked;
             select.hidden=!check.checked;
             row.querySelector('[data-meta-excepcion-control]').hidden=!check.checked;

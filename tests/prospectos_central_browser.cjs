@@ -7,6 +7,7 @@ const fixture=(op)=>execFileSync(php,[path.join(__dirname,'prospectos_central_fi
 let server,log='',browser;
 (async()=>{try {
  execFileSync(php,[path.join(__dirname,'prospectos_central_db.php')],{cwd:root,env:{...env,IMPE_CENTRAL_KEEP_FIXTURE:'1'},stdio:'inherit'});fixture('--seed');
+ execFileSync(php,['-r','require "config/db_connection.php";$d=(new Database())->connect(false);$d->query(file_get_contents("database/migrations/2026_11_03_prospectos_formularios_programas.sql"));'],{cwd:root,env});
  // Revisión de referencias antiguas, exclusivamente en base de datos ficticia.
  execFileSync(php,['-r',`require 'config/db_connection.php';$d=(new Database())->connect(false);$d->query("UPDATE prospecto_integraciones SET referencia_estable='impe:prospecto:13' WHERE prospecto_id=13 AND sistema='ZOHO'");$d->query("UPDATE prospecto_integraciones SET referencia_estable='impe:prospecto:14',estado='CONFIGURADO',externo_id='fixture-14' WHERE prospecto_id=14 AND sistema='ZOHO'");`],{cwd:root,env});
  const migrador=(modo)=>JSON.parse(execFileSync(php,['tools/prospectos_referencias_neutrales.php','--site',root,modo],{cwd:root,env,encoding:'utf8'}));
@@ -83,6 +84,11 @@ let server,log='',browser;
  for(const action of ['metaPrevisualizar','metaCancelar'])assert.equal((await context.request.post(base+'index.php?controller=prospecto&action='+action,{form:{csrf_meta:'no'}})).status(),403,'Endpoint directo sin permiso: '+action);
  await context.request.get(base+'_session?rol=marketing');
  await page.reload();
+ assert.equal(await page.locator('.central-tabs a[aria-current=page]').innerText(),'Campañas');
+ assert.equal(await page.locator('.central-section-head h3').innerText(),'Prospectos de campañas');
+ assert.equal(await page.locator('#centralCampania').count(),1);assert.equal(await page.locator('#centralOrigen').count(),0);
+ assert.equal(await page.locator('.central-table th').nth(4).innerText(),'Campaña');
+ assert.equal((await context.request.post(base+'index.php?controller=prospecto&action=metaFormularioGuardar',{form:{csrf_meta:'no'}})).status(),403,'Configurar requiere permiso independiente');
  const beforeMeta=fixture('--snapshot');
  const bad=(await context.request.post(base+'index.php?controller=prospecto&action=metaConfirmar',{form:{csrf_meta:'no'}}));
  assert.equal(bad.status(),422,'CSRF de importación obligatorio');
@@ -99,6 +105,8 @@ let server,log='',browser;
    await page.locator('[data-meta-confirmacion]').waitFor();
    assert.equal(await page.locator('.meta-import-kpis strong').nth(1).innerText(),'2','Dos leads únicos');
    assert.equal(await page.locator('.meta-import-kpis strong').nth(3).innerText(),'1','Duplicado dentro del archivo');
+   assert.equal(await page.locator('[data-meta-excepcion]').count(),0,'Importador normal sin nueve casillas/selecciones avanzadas');
+   await page.selectOption('[data-meta-formulario]','programa-a');
  };
  await uploadMeta();
  assert.equal(fixture('--snapshot'),beforeMeta,'La previsualización de Meta no escribe BD');
@@ -121,6 +129,7 @@ let server,log='',browser;
  console.log('PASS Meta Ads: permisos, CSRF, UTF-16, vista previa, campaña, importación idempotente, sin asignaciones.');
 
  // Clasificación por formulario y excepciones: datos ficticios, tres lotes y fallo recuperable.
+ await context.request.get(base+'_session?rol=configurador');
  const sql=(code)=>execFileSync(php,['-r','require "config/db_connection.php";$d=(new Database())->connect(false);'+code],{cwd:root,env,encoding:'utf8'});
  const many=Array.from({length:151},(_,i)=>{
    const r=record(String(900000000+i),'Lote Ficticio '+i,'+525500000001');
@@ -179,6 +188,54 @@ let server,log='',browser;
  });
  assert.equal(Number(JSON.parse(sql('echo json_encode($d->query("SELECT COUNT(*) n FROM prospecto_asignaciones")->fetch_assoc());')).n),0);
  console.log('PASS formularios, excepciones, pendiente explícito, BOM, móvil/teclado, mapa inválido, 151 filas/3 lotes, rollback, reanudación congelada, metadatos y fechas.');
+
+ // Asociaciones administradas por ID, guardado real y precarga en otra sesión.
+ await page.goto(home+'&seccion=meta&configurar_formularios=1');
+ const mappingRow=(id)=>page.locator('.central-form-config-row').filter({has:page.locator('input[name=formulario_id][value="'+id+'"]')});
+ for(const [id,code] of [['f:batch0','programa-a'],['f:batch1','programa-b']]){
+   await mappingRow(id).locator('select').selectOption(code);await mappingRow(id).locator('button[type=submit]').click();
+   await page.waitForURL(/configurar_formularios=1/);await mappingRow(id).locator('input[name=version][value="1"]').waitFor({state:'attached'});
+ }
+ assert.equal(await page.locator('.central-form-history tbody tr').count(),2);
+ await page.setViewportSize({width:375,height:812});
+ assert.ok(await page.locator('.central-form-config').evaluate(el=>el.getBoundingClientRect().width<=375),'Configuración responsive');
+ await page.screenshot({path:path.join(output,'campanias-configuracion-movil.png'),fullPage:true});
+ await page.setViewportSize({width:1440,height:1050});
+ const mappingSnapshot=fixture('--snapshot');
+ await context.request.get(base+'_session?rol=marketing');
+ await page.goto(home+'&seccion=meta');await page.locator('[data-meta-abrir]').click();
+ await page.locator('[data-meta-file]').setInputFiles({name:'Meta_lotes_ficticios',mimeType:'text/plain',buffer:manyBytes});
+ await page.locator('.meta-import-upload button[type=submit]').click();await forms.nth(0).waitFor({state:'attached'});
+ assert.equal(await forms.nth(0).inputValue(),'programa-a');assert.equal(await forms.nth(1).inputValue(),'programa-b','Precarga por ID sin adivinar por nombre');
+ assert.equal(await page.locator('[data-meta-excepcion]').count(),0);assert.equal(fixture('--snapshot'),mappingSnapshot,'Precargar asociación no modifica BD');
+ const normalPayload=await page.locator('[data-meta-confirmacion]').evaluate(el=>Object.fromEntries(new FormData(el)));
+ const formKeys=Object.keys(normalPayload).filter(k=>k.startsWith('programa_formulario['));
+ response=await context.request.post(endpoint,{form:{...normalPayload,[formKeys[0]]:''}});assert.equal(response.status(),422,'Programa obligatorio de formulario');
+ response=await context.request.post(endpoint,{form:{...normalPayload,'excepcion_campania[manipulada]':'1'}});assert.equal(response.status(),422,'Servidor protege corrección excepcional');
+ assert.equal(fixture('--snapshot'),mappingSnapshot,'Intentos inválidos no alteran asociaciones ni prospectos');
+ await context.request.post(base+'index.php?controller=prospecto&action=metaCancelar',{form:{csrf_meta:normalPayload.csrf_meta}});
+ await page.keyboard.press('Escape');
+ await page.goto(home+'&seccion=meta');
+ await page.selectOption('#centralCampania','c:batch1');await page.waitForURL(/campania=c%3Abatch1/);
+ assert.equal(await page.locator('.central-table tbody tr').count(),25);
+ await page.screenshot({path:path.join(output,'campanias-escritorio.png'),fullPage:true});
+ await page.locator('[data-central-results] a[rel=next]').click();await page.waitForURL(/pagina=2/);
+ assert.ok(page.url().includes('campania=c%3Abatch1'),'Paginación conserva campaña');
+ await page.locator('#centralBuscar').fill('Lote Ficticio 1');await page.waitForURL(/buscar=Lote/);
+ assert.ok((await page.locator('.central-table tbody').innerText()).includes('PRUEBA BACHILLERATO'));
+ await page.selectOption('#centralPrograma',{index:1});await page.waitForURL(/programa=/);
+ assert.ok(page.url().includes('campania=c%3Abatch1'),'Programa y búsqueda conservan campaña');
+ await page.goto(home);assert.equal(await page.locator('.central-table th').nth(4).innerText(),'Procedencia');
+ assert.ok(await page.locator('.central-campaign-details').count()>0,'Todos permite consultar campañas sin otra columna');
+ await context.request.get(base+'_session?rol=admin');await page.goto(home+'&seccion=meta&configurar_formularios=1');
+ assert.equal(await page.locator('[data-meta-abrir]').count(),0,'Administración configura sin operar importaciones');
+ const beforeDetection=fixture('--snapshot');
+ await page.locator('#archivoFormularios').setInputFiles({name:'Meta_ficticio.csv',mimeType:'text/csv',buffer:metaBytes});
+ await page.locator('.central-config-upload button').click();await mappingRow('f:900').waitFor();
+ assert.equal(fixture('--snapshot'),beforeDetection,'Detectar formularios no importa leads ni modifica asociaciones');
+ await page.setViewportSize({width:375,height:812});assert.ok(await page.locator('.central-form-config').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+ await page.screenshot({path:path.join(output,'campanias-configuracion-movil.png'),fullPage:true});
+ console.log('PASS Campañas: nombre/ruta, ocho columnas, IDs reales, búsqueda/programa/paginación, asociaciones persistentes por ID, permiso, vista previa y lectura sin escrituras.');
 
  assert.deepEqual(errors,[]);assert.ok(!/PHP (Warning|Fatal|Parse)|Uncaught/.test(log),log);
  console.log('PASS interfaz real: 8 columnas, búsqueda automática, paginación, 32 estados, filtros, ficha, XSS, fechas, desktop/móvil, permisos y GET sin escrituras.');

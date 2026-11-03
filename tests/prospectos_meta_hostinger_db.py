@@ -7,11 +7,17 @@ from pathlib import Path
 import subprocess
 import tempfile
 import uuid
+import sys
 
 ROOT=Path(__file__).resolve().parents[1]
 if os.environ.get('APP_ENV')!='testing' or not os.environ.get('IMPE_DB_HOST','').startswith('127.0.0.1:'):
     raise RuntimeError('Sólo servidor local de pruebas')
 compat=json.loads((ROOT/'tools/prospectos_meta_rol_hostinger_compat.json').read_text(encoding='utf-8'))
+campaigns='--campanias' in sys.argv
+if campaigns:
+    release=json.loads((ROOT/'tools/prospectos_campanias_release.json').read_text(encoding='utf-8'))
+    row=next(r for r in release['files'] if r['path']==compat['path'])
+    compat['target']=row['variants'][0]['target']
 php=os.environ.get('PHP_BINARY','php')
 with tempfile.TemporaryDirectory(prefix='meta-rol-hostinger-') as temp:
     stage=Path(temp)
@@ -46,6 +52,18 @@ assertProspectosDb(!in_array('telefonia.control_ver',$m->obtenerCodigosPermisosP
 echo "PASS variante Hostinger: Dirección, Control de llamadas, reportes reservados, dependencia Meta y revocaciones.\\n";
 '''
     p=stage/'tests/compat.php';p.parent.mkdir(parents=True)
+    if campaigns:
+        extra+='''
+$configure=$codeIds['prospectos.configurar_formularios'];
+assertProspectosDb(in_array('prospectos.configurar_formularios',$m->obtenerCodigosPermisosPorRol(1),true),'Administrador conserva configuración de formularios');
+$m->actualizarPermisosRol(2,[$configure],1);
+$assigned=$m->obtenerCodigosPermisosPorRol(2);
+assertProspectosDb(in_array('prospectos.configurar_formularios',$assigned,true)&&in_array('prospectos.ver_todos',$assigned,true),'Dirección puede administrar asociaciones por permiso y dependencia');
+assertProspectosDb(!in_array('prospectos.importar_meta',$assigned,true),'Configurar no concede importar automáticamente');
+$m->actualizarPermisosRol(2,[],1);$m->inicializarPermisosSistema();
+assertProspectosDb(!in_array('prospectos.configurar_formularios',$m->obtenerCodigosPermisosPorRol(2),true),'Revocación de configuración persiste');
+echo "PASS configuración de formularios sobre modelo Hostinger preservado.\\n";
+'''
     p.write_text('<?php\ntry {\n'+original+extra+'''\n} finally {
     if (isset($db,$schema) && preg_match('/^impe_test_prospectos_permisos_compat_[a-f0-9]+$/D',$schema)) $db->query("DROP DATABASE `$schema`");
 }

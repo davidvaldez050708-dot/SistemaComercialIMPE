@@ -6,13 +6,14 @@ session_start();
 if ($path==='/_session') {
     $role=$_GET['rol']??'marketing';
     $roles=['marketing'=>[5,'Marketing'],'admin'=>[1,'Administrador'],
-        'director'=>[7,'Director de Operaciones'],'lector'=>[9,'Coordinador'],
+        'director'=>[7,'Director de Operaciones'],'configurador'=>[5,'Marketing'],'lector'=>[9,'Coordinador'],
         'asesor'=>[3,'Asesor de Ventas'],'asesor_autorizado'=>[3,'Asesor de Ventas'],
         'sin_permiso'=>[6,'Cuenta Clave']];
     [$id,$nombre]=$roles[$role]??$roles['sin_permiso'];
-    $permisos=in_array($role,['marketing','director'],true)
+    $permisos=in_array($role,['marketing','director','configurador'],true)
         ?['prospectos.ver_todos','prospectos.importar_meta']
         :(in_array($role,['admin','lector','asesor_autorizado'],true)?['prospectos.ver_todos']:[]);
+    if (in_array($role,['admin','configurador'],true)) $permisos[]='prospectos.configurar_formularios';
     $_SESSION=['usuario_id'=>1,'rol_id'=>$id,'rol'=>$nombre,'nombre'=>'Usuario',
         'apellidos'=>'Ficticio','permisos'=>$permisos];
     header('Content-Type: application/json');echo '{"ok":true}';exit;
@@ -24,5 +25,5 @@ if ($path==='/index.php'&&in_array($_GET['controller']??'',['formularioPublico',
 }
 if ($path!=='/index.php'||($_GET['controller']??'')!=='prospecto') {http_response_code(404);exit;}
 require __DIR__.'/../app/controllers/ProspectoController.php';
-$action=$_GET['action']??'index';if (!in_array($action,['index','detalle','detalleRegistro','metaPrevisualizar','metaConfirmar','metaCancelar'],true)) {http_response_code(404);exit;}
+$action=$_GET['action']??'index';if (!in_array($action,['index','detalle','detalleRegistro','metaPrevisualizar','metaConfirmar','metaCancelar','metaFormularioGuardar','metaFormularioDetectar'],true)) {http_response_code(404);exit;}
 (new ProspectoController())->$action();

@@ -19,7 +19,10 @@ class ProspectoController
         $tituloPagina='Prospectos';$subtituloPagina='Almacén central y procedencia de los registros.';$opcionActiva='prospectos';
         $mensajeError='';$centralDisponible=false;$indicadores=$this->indicadores();
         $metaPuedeImportar=$seccionProspectos==='meta' && ProspectoMetaImportador::puedeImportar();
-        $metaCsrf=$metaPuedeImportar?ProspectoMetaImportador::csrf():'';
+        $metaPuedeConfigurar=$seccionProspectos==='meta'&&ProspectoMetaFormularioService::autorizado();
+        $metaCsrf=$metaPuedeImportar||$metaPuedeConfigurar?ProspectoMetaImportador::csrf():'';
+        $formulariosConfiguracion=[];$formulariosHistorial=[];$formulariosDisponible=false;
+        $formularioAviso=(string)($_SESSION['prospectos_formulario_aviso']??'');unset($_SESSION['prospectos_formulario_aviso']);
         $metaResumen=$metaPuedeImportar?ProspectoMetaImportador::resumenCargar():null;
         $metaResultado=$metaPuedeImportar?ProspectoMetaImportador::resultado():null;
         $metaAviso=$metaPuedeImportar?(string)($_SESSION['prospectos_meta_error']??''):'';
@@ -33,7 +36,12 @@ class ProspectoController
             if ($centralDisponible) {
                 if ($seccionProspectos==='asignaciones') $listado=$repo->asignaciones((int)($_GET['pagina']??1));
                 else {$f=$_GET;if ($seccionProspectos==='meta') $f['origen']='META_ADS';$listado=$repo->listar($f);}
-                if ($metaPuedeImportar) $metaProgramas=ProspectoMetaImportador::programas($db);
+                if ($metaPuedeImportar||$metaPuedeConfigurar) $metaProgramas=ProspectoMetaImportador::programas($db);
+                if ($metaPuedeImportar) $metaResumen=ProspectoMetaImportador::resumenCargar(null,$db);
+                if ($metaPuedeConfigurar) {
+                    $svc=new ProspectoMetaFormularioService($db);$formulariosDisponible=$svc->disponible();
+                    $formulariosConfiguracion=$svc->detectados($metaResumen['formularios']??[]);$formulariosHistorial=$svc->historial();
+                }
             }
         } catch (DomainException $e) {http_response_code(400);$mensajeError='Los filtros seleccionados no son válidos.';}
         catch (Throwable $e) {error_log('[prospectos_almacen] '.get_class($e).' codigo='.(int)$e->getCode());$mensajeError='No fue posible consultar los prospectos. Intenta nuevamente.';}
@@ -41,6 +49,40 @@ class ProspectoController
         require __DIR__.'/../views/prospectos/central.php';require __DIR__.'/../views/layout/dashboard_footer.php';
     }
 
+
+    /** Leer exclusivamente los formularios de un archivo, sin importar sus leads. */
+    public function metaFormularioDetectar()
+    {
+        $this->validarAcceso();
+        if (!ProspectoMetaFormularioService::autorizado()){http_response_code(403);exit('Sin permiso para configurar formularios.');}
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST'){http_response_code(405);exit('Método no permitido.');}
+        try {
+            ProspectoMetaImportador::verificarCsrf($_POST['csrf_meta']??null);
+            ProspectoMetaFormularioService::detectar($_FILES['archivo_formularios']??[]);
+            $_SESSION['prospectos_formulario_aviso']='Formularios detectados. Selecciona y guarda explícitamente sus programas; no se importaron prospectos.';
+        }catch(DomainException $e){$_SESSION['prospectos_formulario_aviso']=$e->getMessage();}
+        catch(Throwable $e){error_log('[prospectos_formulario_detectar] '.get_class($e).' codigo='.(int)$e->getCode());$_SESSION['prospectos_formulario_aviso']='No se pudo revisar el archivo.';}
+        header('Location: '.BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta&configurar_formularios=1',true,303);exit;
+    }
+
+    /** Guardar una nueva versión de la asociación explícitamente autorizada. */
+    public function metaFormularioGuardar()
+    {
+        $this->validarAcceso();
+        if (!ProspectoMetaFormularioService::autorizado()){http_response_code(403);exit('Sin permiso para configurar formularios.');}
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST'){http_response_code(405);exit('Método no permitido.');}
+        try {
+            ProspectoMetaImportador::verificarCsrf($_POST['csrf_meta']??null);
+            $id=$_POST['formulario_id']??null;$code=$_POST['programa_codigo']??null;
+            $version=filter_var($_POST['version']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]);
+            if (!is_string($id)||!is_string($code)||$version===false||$version===null) throw new DomainException('Datos de configuración no válidos.');
+            $db=(new Database())->connect(false);$preview=ProspectoMetaImportador::carga();
+            (new ProspectoMetaFormularioService($db))->guardar($id,$code,$version,$preview['formularios']??[]);
+            $_SESSION['prospectos_formulario_aviso']='Asociación guardada. Se utilizará en las próximas importaciones; los prospectos existentes conservan su programa.';
+        }catch(DomainException $e){$_SESSION['prospectos_formulario_aviso']=$e->getMessage();}
+        catch(Throwable $e){error_log('[prospectos_formulario] '.get_class($e).' codigo='.(int)$e->getCode());$_SESSION['prospectos_formulario_aviso']='No se pudo guardar la asociación. Intenta nuevamente.';}
+        header('Location: '.BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta&configurar_formularios=1',true,303);exit;
+    }
 
     /** Recibir archivo Meta; guardar vista previa privada, sin insertar prospectos. */
     public function metaPrevisualizar()

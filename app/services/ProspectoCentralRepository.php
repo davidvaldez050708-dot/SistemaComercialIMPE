@@ -87,14 +87,24 @@ final class ProspectoCentralRepository
         $page=filter_var($filtros['pagina']??1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])?:1;
         $size=filter_var($filtros['limite']??25,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>100]])?:25;
         $search=$filtros['buscar']??'';$source=$filtros['origen']??'';$program=$filtros['programa']??'';
+        $campaign=$source==='META_ADS'?($filtros['campania']??''):'';
+        if (!is_string($campaign)||mb_strlen($campaign)>190) throw new DomainException('Campaña no válida.');
         if (!is_string($search)||mb_strlen($search)>180 || !is_string($source) || !in_array($source,['','ALIADO','FORMULARIO_GENERAL','META_ADS'],true) || !is_string($program) || ($program!==''&&!preg_match('/^[a-f0-9]{64}$/D',$program))) throw new DomainException('Filtros de prospectos no válidos.');
         $where=' WHERE 1=1';$args=[];
         if ($search!=='') {
             $like='%'.strtr(trim($search),['!'=>'!!','%'=>'!%','_'=>'!_']).'%';
             $where.=" AND (p.nombre_completo LIKE ? ESCAPE '!' OR p.telefono_original LIKE ? ESCAPE '!' OR p.telefono_normalizado LIKE ? ESCAPE '!' OR p.correo LIKE ? ESCAPE '!')";$args=[$like,$like,$like,$like];
         }
-        if ($source!=='') {$where.=' AND EXISTS(SELECT 1 FROM prospecto_origenes o WHERE o.prospecto_id=p.id AND o.tipo_origen=?)';$args[]=$source;}
-        if ($program!=='') {$where.=' AND EXISTS(SELECT 1 FROM prospecto_intereses i WHERE i.prospecto_id=p.id AND i.programa_clave=?)';$args[]=$program;}
+        if ($source==='META_ADS') {
+            // Campaña y programa deben pertenecer a la misma procedencia.
+            $where.=" AND EXISTS(SELECT 1 FROM prospecto_origenes o WHERE o.prospecto_id=p.id AND o.tipo_origen='META_ADS'";
+            if ($campaign!=='') {$where.=' AND o.campania_id=BINARY ?';$args[]=$campaign;}
+            if ($program!=='') {$where.=' AND EXISTS(SELECT 1 FROM prospecto_intereses i WHERE i.origen_id=o.id AND i.programa_clave=?)';$args[]=$program;}
+            $where.=')';
+        } else {
+            if ($source!=='') {$where.=' AND EXISTS(SELECT 1 FROM prospecto_origenes o WHERE o.prospecto_id=p.id AND o.tipo_origen=?)';$args[]=$source;}
+            if ($program!=='') {$where.=' AND EXISTS(SELECT 1 FROM prospecto_intereses i WHERE i.prospecto_id=p.id AND i.programa_clave=?)';$args[]=$program;}
+        }
         $total=(int)$this->consulta('SELECT COUNT(*) n FROM prospectos_comerciales p'.$where,$args)->fetch_assoc()['n'];
         $pages=max(1,(int)ceil($total/$size));$page=min($page,$pages);
         $rows=$this->consulta("SELECT p.*,
@@ -105,7 +115,21 @@ final class ProspectoCentralRepository
             (SELECT a.estado FROM prospecto_asignaciones a WHERE a.prospecto_id=p.id AND a.vigente=1 LIMIT 1) gestion
             FROM prospectos_comerciales p $where ORDER BY p.created_at DESC,p.id DESC LIMIT ? OFFSET ?",[...$args,$size,($page-1)*$size])->fetch_all(MYSQLI_ASSOC);
         $programs=$this->consulta('SELECT programa_clave,MIN(nombre_original) nombre FROM prospecto_intereses GROUP BY programa_clave ORDER BY nombre LIMIT 500')->fetch_all(MYSQLI_ASSOC);
-        return ['registros'=>$rows,'total'=>$total,'pagina'=>$page,'paginas'=>$pages,'limite'=>$size,'programas'=>$programs];
+        // Una consulta para todas las campañas de la página; sin GROUP_CONCAT
+        // truncable ni consultas individuales por prospecto.
+        $byPerson=[];
+        if ($rows) {
+            $ids=array_map('intval',array_column($rows,'id'));
+            $in=implode(',',array_fill(0,count($ids),'?'));
+            foreach ($this->consulta("SELECT prospecto_id,campania_id,campania_nombre FROM prospecto_origenes WHERE tipo_origen='META_ADS' AND prospecto_id IN ($in) ORDER BY id",$ids)->fetch_all(MYSQLI_ASSOC) as $o) {
+                $key=json_encode([$o['campania_id'],$o['campania_nombre']],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+                $byPerson[$o['prospecto_id']][$key]=['id'=>$o['campania_id'],'nombre'=>$o['campania_nombre']];
+            }
+        }
+        foreach ($rows as &$r) $r['campanias']=array_values($byPerson[$r['id']]??[]);
+        unset($r);
+        $campaigns=$source==='META_ADS'?$this->consulta("SELECT MIN(campania_id) id,MIN(NULLIF(campania_nombre,'')) nombre FROM prospecto_origenes WHERE tipo_origen='META_ADS' AND campania_id IS NOT NULL AND campania_id<>'' GROUP BY BINARY campania_id ORDER BY nombre,id")->fetch_all(MYSQLI_ASSOC):[];
+        return ['registros'=>$rows,'total'=>$total,'pagina'=>$page,'paginas'=>$pages,'limite'=>$size,'programas'=>$programs,'campanias'=>$campaigns];
     }
     public function detalle(int $id,int $pagina=1,int $paginaIntereses=1,?int $registroId=null): ?array
     {

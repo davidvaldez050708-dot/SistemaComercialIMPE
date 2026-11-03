@@ -2,7 +2,7 @@
 // El controlador autoriza la importación mediante Roles y permisos.
 $metaEsc=static fn($v)=>htmlspecialchars((string)($v??''),ENT_QUOTES,'UTF-8');
 $metaHayPrevia=is_array($metaResumen??null);
-$metaAbierto=$metaHayPrevia||!empty($metaAviso);
+$metaAbierto=($metaHayPrevia||!empty($metaAviso))&&($_GET['configurar_formularios']??'')!=='1';
 $metaRuta=BASE_URL.'index.php?controller=prospecto&action=';
 $metaSeleccion=$metaResumen['programas_seleccionados']??null;
 $metaBloqueada=!empty($metaResumen['clasificacion_bloqueada']);
@@ -12,7 +12,7 @@ $metaAnterior=$metaBloqueada&&($metaSeleccion['version']??null)!==2;
     <button type="button" class="meta-import-backdrop" data-meta-cerrar tabindex="-1" aria-label="Cerrar ventana"></button>
     <section class="meta-import-dialog" role="dialog" aria-modal="true" aria-labelledby="metaImportTitulo" tabindex="-1">
         <header class="meta-import-head">
-            <div><span class="central-eyebrow">PROSPECTOS · META ADS</span><h2 id="metaImportTitulo">Importar prospectos</h2>
+            <div><span class="central-eyebrow">PROSPECTOS · CAMPAÑAS</span><h2 id="metaImportTitulo">Importar prospectos</h2>
                 <p>Revisa los registros antes de integrarlos al almacén central.</p></div>
             <button class="meta-import-close" type="button" data-meta-cerrar aria-label="Cerrar"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
         </header>
@@ -58,19 +58,20 @@ $metaAnterior=$metaBloqueada&&($metaSeleccion['version']??null)!==2;
                   data-meta-volver="<?= $metaEsc(BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta') ?>">
                 <input type="hidden" name="csrf_meta" value="<?= $metaEsc($metaCsrf) ?>">
                 <input type="hidden" name="token" value="<?= $metaEsc($metaResumen['token']) ?>">
-                <div class="meta-import-subhead"><h3>Clasificación por formulario</h3><p>Elige una vez para todos sus registros. Puedes indicar excepciones por campaña.</p></div>
+                <div class="meta-import-subhead"><h3>Clasificación por formulario</h3><p>Verifica el ID y el programa de cada formulario. Se aplicará a todos sus registros.</p></div>
+                <?php if (!empty($metaPuedeConfigurar)): ?><a class="central-link" href="<?= $metaEsc(BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta&configurar_formularios=1#campanias-formularios') ?>">Administrar asociaciones de formularios</a><?php endif; ?>
                 <?php if ($metaAnterior): ?>
                 <p class="meta-import-hint">Esta carga conserva la clasificación por campaña con la que se inició.</p>
                 <?php endif; ?>
                 <div class="meta-import-campaigns">
                     <?php foreach ($metaResumen['formularios'] as $f):
-                        $seleccion=$metaSeleccion['formularios'][$f['clave']]['codigo']??'';
+                        $seleccion=$metaSeleccion['formularios'][$f['clave']]['codigo']??($metaResumen['asociaciones'][$f['clave']]['programa_codigo']??'');
                     ?>
                     <div class="meta-import-campaign">
-                        <div><strong>Formulario: <?= $metaEsc($f['nombre']) ?></strong><small><?= (int)$f['total'] ?> prospectos · <?= $f['id']!==''?$metaEsc($f['id']):'Sin ID de formulario' ?></small></div>
+                        <div><strong>Formulario: <?= $metaEsc($f['nombre']) ?></strong><small><?= (int)$f['total'] ?> prospectos · <?= $f['id']!==''?'ID '.$metaEsc($f['id']):'Sin ID de formulario; no se puede asociar de forma persistente' ?></small><small><?= isset($metaResumen['asociaciones'][$f['clave']])?'Asociación guardada · Verifica el programa antes de importar.':'Selecciona el programa de este formulario.' ?></small></div>
                         <div><label for="metaFormulario<?= $metaEsc($f['clave']) ?>">Programa educativo</label>
-                        <select id="metaFormulario<?= $metaEsc($f['clave']) ?>" name="programa_formulario[<?= $metaEsc($f['clave']) ?>]" data-meta-formulario="<?= $metaEsc($f['clave']) ?>" <?= $metaBloqueada?'disabled':'' ?>>
-                            <option value="">Pendiente de clasificar</option>
+                        <select id="metaFormulario<?= $metaEsc($f['clave']) ?>" name="programa_formulario[<?= $metaEsc($f['clave']) ?>]" data-meta-formulario="<?= $metaEsc($f['clave']) ?>" required <?= $metaBloqueada?'disabled':'' ?>>
+                            <option value="">Selecciona un programa</option>
                             <?php foreach ($metaProgramas as $p): ?>
                             <option value="<?= $metaEsc($p['codigo']) ?>" <?= $seleccion===$p['codigo']?'selected':'' ?>><?= $metaEsc($p['nombre']) ?></option>
                             <?php endforeach; ?>
@@ -78,19 +79,20 @@ $metaAnterior=$metaBloqueada&&($metaSeleccion['version']??null)!==2;
                     </div>
                     <?php endforeach; ?>
                 </div>
-                <details class="meta-import-exceptions" <?= $metaAnterior?'open':'' ?>>
-                <summary>Campañas detectadas (<?= count($metaResumen['campanias']) ?>) · Revisar excepciones</summary>
-                <p class="meta-import-hint">Conservamos cada campaña. Una excepción se aplica a sus registros, incluso si utiliza varios formularios.</p>
+                <details class="meta-import-exceptions">
+                <summary><?= !empty($metaPuedeConfigurar)?'Opciones avanzadas · ':'Procedencia · ' ?>Campañas detectadas (<?= count($metaResumen['campanias']) ?>)</summary>
+                <p class="meta-import-hint">Las campañas conservan su procedencia. El programa de cada formulario se usará para preparar las futuras asignaciones.</p>
                 <div class="meta-import-campaigns">
                     <?php foreach ($metaResumen['campanias'] as $c):
                         $excepcion=$metaAnterior||isset($metaSeleccion['campanias'][$c['clave']]);
                         $seleccion=$metaAnterior?($metaSeleccion[$c['clave']]['codigo']??''):($metaSeleccion['campanias'][$c['clave']]['codigo']??'');
                     ?>
-                    <div class="meta-import-campaign" data-meta-campania data-meta-formularios="<?= $metaEsc(implode(' ',array_keys($c['formularios']))) ?>">
+                    <div class="meta-import-campaign <?= empty($metaPuedeConfigurar)?'meta-import-campaign-provenance':'' ?>" data-meta-campania data-meta-formularios="<?= $metaEsc(implode(' ',array_keys($c['formularios']))) ?>">
                         <div><strong><?= $metaEsc($c['nombre']) ?></strong><small><?= (int)$c['total'] ?> prospectos · <?= $c['id']!==''?'Campaña #'.$metaEsc($c['id']):'Sin ID de campaña' ?></small>
                             <small>Formulario: <?= $metaEsc(implode(' · ',$c['formularios'])) ?></small>
                             <?php foreach ($c['advertencias'] as $advertencia): ?><p class="meta-import-warning"><i class="bi bi-info-circle" aria-hidden="true"></i> <?= $metaEsc($advertencia) ?></p><?php endforeach; ?>
                         </div>
+                        <?php if (!empty($metaPuedeConfigurar)): ?>
                         <div><label class="meta-import-override"><input type="checkbox" name="excepcion_campania[<?= $metaEsc($c['clave']) ?>]" value="1" data-meta-excepcion <?= $excepcion?'checked':'' ?> <?= $metaBloqueada?'disabled':'' ?>> Cambiar sólo esta campaña</label>
                         <label for="metaCampania<?= $metaEsc($c['clave']) ?>" class="meta-import-sr">Programa para <?= $metaEsc($c['nombre']) ?></label>
                         <div data-meta-excepcion-control <?= !$excepcion?'hidden':'' ?>>
@@ -100,6 +102,7 @@ $metaAnterior=$metaBloqueada&&($metaSeleccion['version']??null)!==2;
                             <option value="<?= $metaEsc($p['codigo']) ?>" <?= $seleccion===$p['codigo']?'selected':'' ?>><?= $metaEsc($p['nombre']) ?></option>
                             <?php endforeach; ?>
                         </select></div><small data-meta-herencia><?= $excepcion?'Excepción de campaña':'Usa el programa de su formulario' ?></small></div>
+                        <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
                 </div>

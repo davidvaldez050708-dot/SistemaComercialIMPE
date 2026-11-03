@@ -21,7 +21,7 @@ $count=0;
 function assertProspectosDb($ok,$msg){global $count;if(!$ok)throw new RuntimeException($msg);$count++;}
 $m->inicializarPermisosSistema();
 $grupo=$m->obtenerPermisosAgrupados()['Prospectos']??[];
-assertProspectosDb(array_column($grupo,'codigo')===['prospectos.ver_todos','prospectos.importar_meta'],'Ver e importar son permisos independientes en el catálogo');
+assertProspectosDb(array_slice(array_column($grupo,'codigo'),0,2)===['prospectos.ver_todos','prospectos.importar_meta'],'Ver e importar son permisos independientes en el catálogo');
 assertProspectosDb(str_contains($grupo[0]['descripcion'],'formularios de Registro'),'Descripción del listado real');
 assertProspectosDb(str_contains($grupo[1]['descripcion'],'CSV o Excel'),'Descripción de importación en el panel');
 assertProspectosDb(!in_array('prospectos.importar_meta',$m->obtenerCodigosPermisosPorRol(1),true),'Administrador no opera importaciones');
@@ -59,4 +59,17 @@ assertProspectosDb(!in_array('prospectos.importar_meta',$m->obtenerCodigosPermis
 assertProspectosDb($m->actualizarPermisosRol(5,[$id],1),'Marketing puede revocar la importación');
 $m->inicializarPermisosSistema();
 assertProspectosDb(!in_array('prospectos.importar_meta',$m->obtenerCodigosPermisosPorRol(5),true),'La revocación de Marketing no se revierte');
+
+// También se usa esta suite para la réplica del paquete histórico sin configuración.
+$config=array_values(array_filter($grupo,static fn($p)=>$p['codigo']==='prospectos.configurar_formularios'));
+if ($config) {
+    assertProspectosDb(in_array('prospectos.configurar_formularios',$m->obtenerCodigosPermisosPorRol(1),true),'Administrador configura formularios sin importar');
+    foreach ([5,6,7,8] as $role) {
+        $m->actualizarPermisosRol($role,[(int)$config[0]['id']],1);$codes=$m->obtenerCodigosPermisosPorRol($role);
+        assertProspectosDb(in_array('prospectos.configurar_formularios',$codes,true),'Configurar se concede por permiso a cualquier perfil');
+        assertProspectosDb(in_array('prospectos.ver_todos',$codes,true)&&!in_array('prospectos.importar_meta',$codes,true),'Configurar requiere consulta y no concede importar');
+        $m->actualizarPermisosRol($role,[],1);$m->inicializarPermisosSistema();
+        assertProspectosDb(!in_array('prospectos.configurar_formularios',$m->obtenerCodigosPermisosPorRol($role),true),'Revocación de configuración persiste');
+    }
+}
 echo "PASS $count comprobaciones DB: catálogo Admin, concesión y revocación persistentes, cuatro perfiles. Esquema $schema.\n";

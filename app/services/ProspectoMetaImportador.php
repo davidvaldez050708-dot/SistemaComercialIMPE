@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/ProspectoMetaArchivo.php';
 require_once __DIR__.'/ProspectoCentralRepository.php';
+require_once __DIR__.'/ProspectoMetaFormularioService.php';
 
 /**
  * Carga manual de leads Meta: validación, vista previa y lotes transaccionales.
@@ -92,11 +93,16 @@ final class ProspectoMetaImportador
         return ProspectoMetaClasificacion::agrupar($data);
     }
 
-    public static function resumenCargar(?array $data=null): ?array
+    public static function resumenCargar(?array $data=null,?mysqli $db=null): ?array
     {
         $data=$data??self::carga();
         if (!$data) return null;
         $stage=$_SESSION[self::SESSION];
+        $defaults=[];
+        if ($db&&$stage['programas']===null) {
+            $known=array_column((new ProspectoMetaFormularioService($db))->asociaciones(),null,'formulario_id');
+            foreach ($data['formularios'] as $f) if ($f['id']!==''&&!empty($known[$f['id']]['programa_codigo'])) $defaults[$f['clave']]=$known[$f['id']];
+        }
         return [
             'token'=>$stage['token'],'archivo'=>$stage['archivo'],
             'total_filas'=>$data['total_filas'],'validas'=>$data['validas'],
@@ -106,6 +112,7 @@ final class ProspectoMetaImportador
             'avance'=>$stage['avance'],'nuevos'=>$stage['nuevos'],
             'repetidos'=>$stage['repetidos'],'programas_seleccionados'=>$stage['programas'],
             'clasificacion_bloqueada'=>$stage['programas']!==null,
+            'asociaciones'=>$defaults,
         ];
     }
 
@@ -156,7 +163,7 @@ final class ProspectoMetaImportador
             'avance'=>0,'nuevos'=>0,'repetidos'=>0,'ya_existentes'=>$existentes,'programas'=>null,
         ];
         unset($_SESSION[self::RESUMEN]);
-        return self::resumenCargar($datos);
+        return self::resumenCargar($datos,$db);
     }
 
     public static function programas(mysqli $db): array
@@ -171,6 +178,14 @@ final class ProspectoMetaImportador
         if (!$data) throw new DomainException('La vista previa venció. Vuelve a seleccionar el archivo.');
         $meta=&$_SESSION[self::SESSION];
         if ($meta['programas']===null) {
+            $advanced=ProspectoMetaFormularioService::autorizado();
+            if (!$advanced&&($excepciones||($formularios===null&&$mapa)))
+                throw new DomainException('La clasificación excepcional requiere permiso para configurar formularios.');
+            if ($formularios!==null) foreach ($data['formularios'] as $f) {
+                if (!is_string($formularios[$f['clave']]??null)||$formularios[$f['clave']]==='')
+                    throw new DomainException('Selecciona el programa educativo de cada formulario antes de confirmar.');
+            }
+            if (!$advanced&&$formularios===null) throw new DomainException('Recarga la vista previa para verificar los programas por formulario.');
             $meta['programas']=ProspectoMetaClasificacion::resolver($data,$mapa,$formularios,$excepciones,self::programas($db));
         }
         $offset=(int)$meta['avance'];$total=count($data['filas']);
