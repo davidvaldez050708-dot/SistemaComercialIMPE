@@ -6,7 +6,20 @@ const base='http://127.0.0.1:8149/',env={...process.env,IMPE_BASE_URL:base,IMPE_
 const fixture=(op)=>execFileSync(php,[path.join(__dirname,'prospectos_central_fixture.php'),op],{env,cwd:root,encoding:'utf8'});
 let server,log='',browser;
 (async()=>{try {
- execFileSync(php,[path.join(__dirname,'prospectos_central_db.php')],{cwd:root,env:{...env,IMPE_CENTRAL_KEEP_FIXTURE:'1'},stdio:'inherit'});fixture('--seed');const before=fixture('--snapshot');
+ execFileSync(php,[path.join(__dirname,'prospectos_central_db.php')],{cwd:root,env:{...env,IMPE_CENTRAL_KEEP_FIXTURE:'1'},stdio:'inherit'});fixture('--seed');
+ // Revisión de referencias antiguas, exclusivamente en base de datos ficticia.
+ execFileSync(php,['-r',`require 'config/db_connection.php';$d=(new Database())->connect(false);$d->query("UPDATE prospecto_integraciones SET referencia_estable='impe:prospecto:13' WHERE prospecto_id=13 AND sistema='ZOHO'");$d->query("UPDATE prospecto_integraciones SET referencia_estable='impe:prospecto:14',estado='CONFIGURADO',externo_id='fixture-14' WHERE prospecto_id=14 AND sistema='ZOHO'");`],{cwd:root,env});
+ const migrador=(modo)=>JSON.parse(execFileSync(php,['tools/prospectos_referencias_neutrales.php','--site',root,modo],{cwd:root,env,encoding:'utf8'}));
+ const antesMigracion=fixture('--snapshot'),previoMigracion=migrador('--check');
+ assert.equal(previoMigracion.candidatas,1);assert.equal(previoMigracion.actualizadas,0);
+ assert.equal(fixture('--snapshot'),antesMigracion,'Comprobación de referencias sin escrituras');
+ const corregido=migrador('--apply');
+ assert.equal(corregido.actualizadas,1);assert.equal(corregido.referencias_historicas_despues,1,'Configurados se respetan');
+ assert.equal(migrador('--apply').actualizadas,0,'Conversión de referencia idempotente');
+ const referencias=JSON.parse(execFileSync(php,['-r',`require 'config/db_connection.php';$d=(new Database())->connect(false);echo json_encode($d->query("SELECT prospecto_id,referencia_estable FROM prospecto_integraciones WHERE prospecto_id IN (13,14) ORDER BY prospecto_id")->fetch_all(MYSQLI_ASSOC));`],{cwd:root,env,encoding:'utf8'}));
+ assert.equal(referencias[0].referencia_estable,'CRM-PROS-00013');assert.equal(referencias[1].referencia_estable,'impe:prospecto:14');
+ console.log('PASS referencias neutrales: vista previa, conversión idempotente y protección de vínculos configurados.');
+ const before=fixture('--snapshot');
  server=spawn(php,['-S','127.0.0.1:8149','-t',root,path.join(__dirname,'prospectos_central_router.php')],{cwd:root,env,stdio:['ignore','ignore','pipe']});server.stderr.on('data',b=>log+=b);
  for (let n=0;n<80;n++) {try{await fetch(base+'_session');break;}catch{await new Promise(r=>setTimeout(r,100));}}
  browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});const context=await browser.newContext({viewport:{width:1440,height:1050}}),page=await context.newPage(),errors=[];page.setDefaultTimeout(15000);page.setDefaultNavigationTimeout(15000);page.on('response',r=>{if(r.url().includes('controller=prospecto'))console.log('HTTP',r.status(),r.url());});page.on('pageerror',e=>errors.push(e.message));
