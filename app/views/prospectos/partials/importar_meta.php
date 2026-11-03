@@ -24,7 +24,7 @@ $metaRuta=BASE_URL.'index.php?controller=prospecto&action=';
                     <i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i>
                     <strong>Seleccionar archivo CSV o Excel</strong>
                     <span>CSV, TSV y Excel .xlsx · Hasta 8 MB y 5,000 registros.</span>
-                    <input type="file" id="metaImportArchivo" name="archivo_meta" accept=".csv,.tsv,.txt,.xlsx" required data-meta-file>
+                    <input type="file" id="metaImportArchivo" name="archivo_meta" required data-meta-file>
                     <small data-meta-file-nombre>Selecciona el archivo descargado de los formularios de Meta.</small>
                 </label>
                 <div class="meta-import-hint"><i class="bi bi-info-circle" aria-hidden="true"></i>

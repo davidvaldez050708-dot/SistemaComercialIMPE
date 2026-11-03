@@ -72,8 +72,21 @@ for eol in [b'\n',b'\r\n']:
         assert dep.read_bytes()==policy
         for name in pub.FILES:
             if name!=compat['path']:assert (site/name).read_bytes()==(ROOT/name).read_bytes().replace(b'\r\n',b'\n')
-        execute(site,backup,'--apply');assert snapshot()==installed
         saved=next(backup.glob('*/respaldo.json')).parent
+        execute(site,backup,'--apply');assert snapshot()==installed
+        # Tras instalar los permisos personalizados, actualizar el selector
+        # debe escribir exclusivamente la vista; no volver a tocar Roles.
+        view='app/views/prospectos/partials/importar_meta.php'
+        (site/view).write_bytes(source('13f0cae3da684f43149e9f51c6093598bd2e02fb',view))
+        real_atomic,written=pub.atomic,[]
+
+        def record_site(dest,*args,**kwargs):
+            if site in dest.parents:written.append(dest.relative_to(site).as_posix())
+            return real_atomic(dest,*args,**kwargs)
+
+        with patch.object(pub,'atomic',record_site):execute(site,backup,'--apply')
+        assert written==[view],written
+        assert snapshot()==installed
         execute(site,backup,'--restore',str(saved));assert snapshot()==original
         # Error entre recursos: rollback completo, incluida la política protegida.
         real_atomic,writes=pub.atomic,[0]

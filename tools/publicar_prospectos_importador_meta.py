@@ -15,7 +15,7 @@ import tempfile
 from urllib.request import urlopen
 
 REPO='davidvaldez050708-dot/SistemaComercialIMPE'
-REVISION='e4aef1e2685e2c6e7d82cedb7d23f87e1deb9652'
+REVISION='305a00cf6751a7ad2fdcbcafb6b96bbee500f6dc'
 # Hashes blob de Git de las versiones YA instaladas y la versión nueva.
 # Aceptar sólo la Fase 1 original o la corrección visual compacta validada.
 FILES={
@@ -26,7 +26,7 @@ FILES={
  'app/views/prospectos/central.php': (['034a6454097cc9f4044c990995053cded20dd3c8'], 'e2f70273efc2b323c493940048d32ea66aa215f0'),
  'app/services/ProspectoMetaArchivo.php': ([], '7bca491418bfff4c507c5ab56cad83cc2d73034c'),
  'app/services/ProspectoMetaImportador.php': ([None,'c32d492b07d8515764365b6e5941028053904e31'], 'c959be50bb9fe03ea4b02d9c632a16f6b979a3cf'),
- 'app/views/prospectos/partials/importar_meta.php': ([], '7c2d65a0543497d292fb91cded7872be2973f32e'),
+ 'app/views/prospectos/partials/importar_meta.php': ([None,'7c2d65a0543497d292fb91cded7872be2973f32e'], '7c76ce9bf6f87388cd50bbfa09bb03459ea5f282'),
  'public/css/prospectos_importador_meta.css': ([], '1cb23c9df89164b1e26c5c0df7b8c9155bd1f8f0'),
  'public/javascript/prospectos_importador_meta.js': ([], '7a36dddfff26c5afc29f7e49ff88711ecbe47229'),
 }

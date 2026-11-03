@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(prefix='prospectos-import-meta-test-') as temp:
         file.write_bytes((ROOT/dep).read_bytes())
     new=[]
     for relative,(known,desired) in pub.FILES.items():
-        if not known or (None in known and relative=='app/services/ProspectoMetaImportador.php'):
+        if not known or None in known:
             new.append(relative);continue
         file=site/relative;file.parent.mkdir(parents=True,exist_ok=True)
         # Recuperar la versión revisada del PR anterior usando Git (CI tiene historial).
