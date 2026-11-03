@@ -21,7 +21,19 @@ def module(name, path):
 publisher = module('publisher', 'tools/publicar_sidebar_plegable.py')
 builder = module('builder', 'tools/preparar_sidebar_plegable_release.py')
 manifest = json.loads((ROOT / 'tools/sidebar_plegable_release.json').read_text(encoding='utf-8'))
-assert manifest == builder.build(), 'El manifiesto debe corresponder a las fuentes'
+
+
+def decoded_release(value):
+    # gzip incluye el sistema operativo del generador: Windows y Linux pueden
+    # producir bytes comprimidos distintos para las mismas fuentes exactas.
+    value = json.loads(json.dumps(value))
+    for row in value['files']:
+        for field in ['base', 'target']:
+            row[field] = publisher.unpack(row[field])
+    return value
+
+
+assert decoded_release(manifest) == decoded_release(builder.build()), 'El manifiesto debe corresponder a las fuentes'
 assert {row['path']: row['sha256'] for row in manifest['dependencies']} == builder.DEPENDENCIES
 assert publisher.sha(publisher.unpack(manifest['files'][-1]['base'])) == builder.BASE_SHA
 
