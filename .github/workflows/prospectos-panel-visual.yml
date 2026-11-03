@@ -1,0 +1,51 @@
+name: Prospectos - panel y transiciones
+on:
+  pull_request:
+    paths:
+      - 'public/**/prospectos_ficha_panel.*'
+      - 'app/views/prospectos/**'
+      - 'tests/prospectos_panel_visual*'
+      - 'tests/publicacion_prospectos_panel_visual_test.py'
+      - 'tools/*prospectos_panel_visual*'
+      - '.github/workflows/prospectos-panel-visual.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  panel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis y paquete offline
+        run: |
+          php -l tests/prospectos_panel_visual_fixture.php
+          node --check public/javascript/prospectos_ficha_panel.js
+          python3 tests/publicacion_prospectos_panel_visual_test.py
+          python3 tests/publicacion_prospectos_ficha_panel_test.py
+      - name: Preparar navegador
+        run: |
+          npm install --prefix "$RUNNER_TEMP/panel-deps" playwright@1.56.1 bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0
+          "$RUNNER_TEMP/panel-deps/node_modules/.bin/playwright" install --with-deps ${{ matrix.browser }}
+      - name: Medidas reales, animación y cierres
+        env:
+          IMPE_PANEL_BROWSER: ${{ matrix.browser }}
+          IMPE_BROWSER_DEPS: ${{ runner.temp }}/panel-deps/node_modules
+          NODE_PATH: ${{ runner.temp }}/panel-deps/node_modules
+        run: node tests/prospectos_panel_visual_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prospectos-panel-${{ matrix.browser }}
+          path: tmp/prospectos-panel
+          if-no-files-found: ignore
