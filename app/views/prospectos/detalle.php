@@ -164,15 +164,20 @@ $claveComercial=static fn($id)=>'CRM-PROS-'.str_pad((string)(int)$id,5,'0',STR_P
         <tr><td><?= $esc($valor($a['asesor'])) ?></td><td><?= $esc($fecha($a['asignado_at'])) ?></td>
         <td><?= $esc($valor($a['fecha_trabajo'])) ?></td><td><?= $esc($fecha($a['proxima_accion_at'])) ?></td><td><?= $esc($a['estado']) ?></td></tr>
         <?php endforeach; ?></tbody></table></div><p class="central-muted">Últimas 25 asignaciones.</p><?php endif; ?>
-    <?php foreach ($ficha['integraciones'] as $x): ?>
+    <?php if (!empty($ficha['id'])): ?>
     <div class="prospecto-ficha-integracion">
-        <strong><?= $x['sistema']==='ZOHO'?'Integración futura con Zoho CRM':'Integración externa' ?></strong>
+        <dl class="central-details"><?php $campo('Referencia comercial',$claveComercial($ficha['id'])); ?></dl>
+    </div>
+    <?php endif; ?>
+    <?php foreach ($ficha['integraciones'] as $x):
+        // No presentar una integración ficticia mientras Zoho no esté configurado.
+        if (($x['estado']??'')==='NO_CONFIGURADO' && empty($x['externo_id'])) continue;
+    ?>
+    <div class="prospecto-ficha-integracion">
+        <strong><?= $esc($x['sistema']==='ZOHO'?'Integración con Zoho CRM':'Integración externa') ?></strong>
         <dl class="central-details">
         <?php
-            $estado=(string)$x['estado'];
-            $campo('Estado',$estado==='NO_CONFIGURADO'?'No configurada':str_replace('_',' ',$estado));
-            // La clave pública es neutra. La referencia histórica de interoperabilidad no se expone.
-            if (!empty($ficha['id'])) $campo('Referencia comercial',$claveComercial($ficha['id']));
+            $campo('Estado',str_replace('_',' ',(string)$x['estado']));
             if ($x['externo_id']!==null) $campo('ID externo',$x['externo_id']);
             if ($x['modulo_destino']!==null) $campo('Módulo externo',$x['modulo_destino']);
         ?>
