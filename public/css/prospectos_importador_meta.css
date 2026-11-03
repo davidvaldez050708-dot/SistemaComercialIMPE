@@ -1,0 +1,61 @@
+/* Importación manual Meta Ads: diseño encapsulado dentro del CRM de Prospectos. */
+.meta-import-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.meta-import-toolbar h3{margin-bottom:0}
+.meta-import-trigger,.meta-import-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #25498f;background:#21458f;color:#fff;border-radius:10px;padding:11px 16px;font:700 12px/1.3 Manrope,sans-serif;cursor:pointer;min-height:42px;text-decoration:none}
+.meta-import-trigger:hover,.meta-import-primary:hover{background:#17366f;color:#fff}
+.meta-import-trigger:focus-visible,.meta-import-primary:focus-visible{outline:3px solid #a1b9ed;outline-offset:2px}
+.meta-import-primary:disabled{opacity:.65;cursor:progress}
+.meta-import-result{border:1px solid #bfd8d2;background:#effaf7;border-radius:12px;padding:13px 16px;color:#224f4a;font:600 12px/1.6 Manrope,sans-serif}
+.meta-import-result strong{display:block;font-size:13px}
+.meta-import-overlay[hidden],.meta-import-status[hidden],.meta-import-dialog [hidden]{display:none!important}
+.meta-import-overlay{position:fixed;inset:0;z-index:1600;display:grid;place-items:center;padding:16px;font-family:Manrope,sans-serif}
+.meta-import-backdrop{position:absolute;inset:0;background:rgba(18,33,57,.55);border:0;width:100%;height:100%;padding:0;cursor:default}
+.meta-import-dialog{position:relative;display:flex;flex-direction:column;min-height:0;width:min(100%,960px);max-height:calc(100dvh - 32px);background:#f7f9fc;border:1px solid #d9e3f1;border-radius:17px;box-shadow:0 22px 70px rgba(13,32,62,.24);overflow:hidden;outline:none}
+.meta-import-head{display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #e0e8f2;padding:17px 20px;gap:16px;flex:0 0 auto}
+.meta-import-head h2{font-size:19px!important;font-weight:800;margin:4px 0;color:#1c2d46}
+.meta-import-head p{font-size:12px;color:#61748b;margin:0}
+.meta-import-close{display:grid;place-items:center;border:1px solid #dbe4f1;background:#fff;color:#526580;width:37px;height:37px;border-radius:9px;cursor:pointer}
+.meta-import-close:hover{background:#edf3fb;color:#21458f}
+.meta-import-body{overflow:auto;min-height:0;flex:1 1 auto;padding:19px 20px 24px}
+.meta-import-upload{display:grid;gap:16px}
+.meta-import-drop{display:grid;justify-items:center;gap:8px;text-align:center;padding:30px 15px;background:#fff;border:2px dashed #a9c2e8;border-radius:14px;cursor:pointer}
+.meta-import-drop:hover,.meta-import-drop:focus-within{background:#f1f5fc;border-color:#21458f}
+.meta-import-drop>i{font-size:32px;color:#21458f}
+.meta-import-drop strong{font-size:15px;color:#223a5d}
+.meta-import-drop span,.meta-import-drop small{font-size:12px;color:#667b98;max-width:100%;overflow-wrap:anywhere}
+.meta-import-drop input{display:block;max-width:100%;font:600 12px Manrope,sans-serif;color:#385574}
+.meta-import-hint{display:block;font-size:12px;line-height:1.6;color:#64768f;margin:6px 0}
+.meta-import-hint i{color:#386bad;margin-right:6px}
+.meta-import-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-top:15px}
+.meta-import-file{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#fff;border:1px solid #dfe7f2;border-radius:12px;min-width:0}
+.meta-import-file>i{font-size:25px;color:#21458f}
+.meta-import-file div{min-width:0}
+.meta-import-file strong{display:block;font-size:13px;color:#263954;overflow-wrap:anywhere}
+.meta-import-file span{display:block;color:#72839a;font-size:11px;margin-top:4px}
+.meta-import-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
+.meta-import-kpis>div{background:#fff;border:1px solid #dfe7f1;border-radius:11px;padding:13px}
+.meta-import-kpis small{display:block;font-size:11px;color:#677b95}
+.meta-import-kpis strong{display:block;margin-top:5px;font:800 22px/1.3 Manrope,sans-serif;color:#193d70}
+.meta-import-issues{padding:12px 14px;background:#fff9ee;border:1px solid #f0dcb6;border-radius:10px;font-size:12px;color:#6b5229}
+.meta-import-issues summary{font-weight:700;cursor:pointer}
+.meta-import-issues ul{margin:10px 0 0;padding-left:18px;line-height:1.6}
+.meta-import-issues p{font-size:11px}
+.meta-import-subhead{margin:18px 0 10px}
+.meta-import-subhead h3{font-size:14px;font-weight:800;margin:0;color:#213550}
+.meta-import-subhead p{font-size:11px;color:#74839a;margin:4px 0}
+.meta-import-campaigns{display:grid;gap:9px}
+.meta-import-campaign{display:grid;grid-template-columns:minmax(0,1fr) minmax(215px,.72fr);gap:15px;align-items:center;padding:13px 14px;border:1px solid #e0e7f1;border-radius:11px;background:#fff}
+.meta-import-campaign strong{font-size:12px;color:#243953;display:block;overflow-wrap:anywhere}
+.meta-import-campaign small{display:block;font-size:10px;color:#7c8da4;margin-top:4px;overflow-wrap:anywhere}
+.meta-import-campaign label{font-weight:700;font-size:11px;color:#61738c;display:block;margin-bottom:6px}
+.meta-import-campaign select{font:600 12px Manrope,sans-serif;color:#2a4367;background:#fbfcfe;border:1px solid #d6e1f1;border-radius:9px;padding:9px;width:100%;max-width:100%}
+.meta-import-campaign select:focus-visible{outline:2px solid #9eb6f0;outline-offset:1px}
+.meta-import-table-wrap{max-height:290px;overflow:auto;background:#fff}
+.meta-import-table-wrap .central-table th,.meta-import-table-wrap .central-table td{padding:11px 12px;min-width:115px}
+.meta-import-status{margin:15px 0 10px;padding:11px 13px;border:1px solid #ceddf3;background:#eff5ff;border-radius:10px}
+.meta-import-status p{margin:7px 0 0;font-size:12px;color:#244c83}
+.meta-import-progress{height:9px;border-radius:20px;background:#d4e3f6;overflow:hidden}
+.meta-import-progress>span{display:block;height:100%;background:#21458f;min-width:0;border-radius:20px;transition:width .2s ease}
+.meta-import-overlay button:focus-visible{outline:2px solid #21458f;outline-offset:2px}
+@media(max-width:740px){.meta-import-overlay{padding:0}.meta-import-dialog{width:100vw;height:100dvh;max-height:none;border-radius:0}.meta-import-head{padding:13px 15px}.meta-import-body{padding:14px}.meta-import-campaign{grid-template-columns:minmax(0,1fr)}.meta-import-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.meta-import-actions{justify-content:stretch}.meta-import-actions button{flex:1 1 auto}}
+@media(prefers-reduced-motion:reduce){.meta-import-progress>span{transition:none}}

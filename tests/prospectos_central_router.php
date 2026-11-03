@@ -14,5 +14,5 @@ if ($path==='/index.php'&&in_array($_GET['controller']??'',['formularioPublico',
 }
 if ($path!=='/index.php'||($_GET['controller']??'')!=='prospecto') {http_response_code(404);exit;}
 require __DIR__.'/../app/controllers/ProspectoController.php';
-$action=$_GET['action']??'index';if (!in_array($action,['index','detalle','detalleRegistro'],true)) {http_response_code(404);exit;}
+$action=$_GET['action']??'index';if (!in_array($action,['index','detalle','detalleRegistro','metaPrevisualizar','metaConfirmar','metaCancelar'],true)) {http_response_code(404);exit;}
 (new ProspectoController())->$action();

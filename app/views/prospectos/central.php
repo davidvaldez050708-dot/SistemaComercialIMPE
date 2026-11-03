@@ -6,6 +6,7 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_central.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_central.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_ficha_panel.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_ficha_panel.css'),0,16) ?>">
+<?php if ($seccionProspectos==='meta'): ?><link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_importador_meta.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_importador_meta.css'),0,16) ?>"><?php endif; ?>
 <div class="prospectos-central">
 <?php require __DIR__.'/partials/navegacion.php';require __DIR__.'/partials/resumen.php'; ?>
 <?php if ($mensajeError!==''): ?><p class="central-alert" role="alert"><?= $esc($mensajeError) ?></p><?php endif; ?>
@@ -18,8 +19,18 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 <?php foreach ($listado['registros'] as $r): ?><tr><td><?= $esc($texto($r['nombre_completo'])) ?></td><td><?= $esc($texto($r['asesor'])) ?></td><td><?= $esc(ProspectoFechaHoraHelper::aMexico($r['asignado_at'])) ?></td><td><?= $esc($texto($r['fecha_trabajo'])) ?></td><td><?= $esc($r['estado']) ?></td><td><a class="central-link" href="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=detalle&id='.(int)$r['prospecto_id']) ?>" data-prospecto-ficha>Ver ficha</a></td></tr><?php endforeach; ?>
 </tbody></table></div><?php require __DIR__.'/partials/paginacion_central.php';endif; ?></section>
 <?php else: ?>
-<?php if ($seccionProspectos==='meta'): ?><p class="central-note">La importación de campañas se habilitará en una fase posterior. Esta sección consulta únicamente registros ya incorporados.</p><?php endif; ?>
-<section class="central-panel"><div class="central-section-head"><h3><?= $seccionProspectos==='meta'?'Prospectos de Meta Ads':'Todos los prospectos' ?></h3></div>
+<?php if ($seccionProspectos==='meta' && !empty($metaResultado)): ?>
+<div class="meta-import-result" role="status"><strong>Última importación terminada</strong>
+<?= (int)$metaResultado['nuevos'] ?> prospectos nuevos · <?= (int)$metaResultado['repetidos'] ?> ya existentes · <?= (int)$metaResultado['rechazados'] ?> filas no válidas · <?= (int)$metaResultado['repetidos_archivo'] ?> repetidos dentro del archivo.
+</div><?php endif; ?>
+<?php if ($seccionProspectos==='meta' && !empty($metaAviso)): ?><p class="central-alert" role="alert"><?= $esc($metaAviso) ?></p><?php endif; ?>
+<section class="central-panel">
+<div class="central-section-head <?= $seccionProspectos==='meta'?'meta-import-toolbar':'' ?>">
+<h3><?= $seccionProspectos==='meta'?'Prospectos de Meta Ads':'Todos los prospectos' ?></h3>
+<?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar)): ?>
+<button type="button" class="meta-import-trigger" data-meta-abrir><i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i> Importar archivo</button>
+<?php endif; ?>
+</div>
 <form method="get" class="central-filters" data-central-filtros>
 <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><input type="hidden" name="seccion" value="<?= $esc($seccionProspectos) ?>">
 <div><label for="centralBuscar">Buscar prospecto</label><div class="central-search"><i class="bi bi-search" aria-hidden="true"></i><input id="centralBuscar" name="buscar" type="search" maxlength="180" placeholder="Nombre, teléfono o correo…" value="<?= $esc($filtros['buscar']??'') ?>"></div></div>
@@ -36,5 +47,7 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 <?php endif; ?>
 </div>
 <?php require __DIR__.'/partials/ficha_panel.php'; ?>
+<?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar)): require __DIR__.'/partials/importar_meta.php'; endif; ?>
 <script defer src="<?= BASE_URL ?>public/javascript/prospectos_ficha_panel.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/prospectos_ficha_panel.js'),0,16) ?>"></script>
 <script defer src="<?= BASE_URL ?>public/javascript/prospectos_central.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/prospectos_central.js'),0,16) ?>"></script>
+<?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar)): ?><script defer src="<?= BASE_URL ?>public/javascript/prospectos_importador_meta.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/prospectos_importador_meta.js'),0,16) ?>"></script><?php endif; ?>

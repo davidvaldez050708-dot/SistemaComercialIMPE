@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../models/ProspectoModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/ProspectoCentralRepository.php';
+require_once __DIR__ . '/../services/ProspectoMetaImportador.php';
 
 class ProspectoController
 {
@@ -17,6 +18,13 @@ class ProspectoController
         if ($seccionProspectos==='aliados') {$this->aliados();return;}
         $tituloPagina='Prospectos';$subtituloPagina='Almacén central y procedencia de los registros.';$opcionActiva='prospectos';
         $mensajeError='';$centralDisponible=false;$indicadores=$this->indicadores();
+        $metaPuedeImportar=$seccionProspectos==='meta' && ProspectoMetaImportador::puedeImportar();
+        $metaCsrf=$metaPuedeImportar?ProspectoMetaImportador::csrf():'';
+        $metaResumen=$metaPuedeImportar?ProspectoMetaImportador::resumenCargar():null;
+        $metaResultado=$metaPuedeImportar?ProspectoMetaImportador::resultado():null;
+        $metaAviso=$metaPuedeImportar?(string)($_SESSION['prospectos_meta_error']??''):'';
+        unset($_SESSION['prospectos_meta_error']);
+        $metaProgramas=[];
         $listado=['registros'=>[],'total'=>0,'pagina'=>1,'paginas'=>1,'limite'=>25,'programas'=>[]];
         try {
             $db=(new Database())->connect(false);$repo=new ProspectoCentralRepository($db);
@@ -25,11 +33,79 @@ class ProspectoController
             if ($centralDisponible) {
                 if ($seccionProspectos==='asignaciones') $listado=$repo->asignaciones((int)($_GET['pagina']??1));
                 else {$f=$_GET;if ($seccionProspectos==='meta') $f['origen']='META_ADS';$listado=$repo->listar($f);}
+                if ($metaPuedeImportar) $metaProgramas=ProspectoMetaImportador::programas($db);
             }
         } catch (DomainException $e) {http_response_code(400);$mensajeError='Los filtros seleccionados no son válidos.';}
         catch (Throwable $e) {error_log('[prospectos_almacen] '.get_class($e).' codigo='.(int)$e->getCode());$mensajeError='No fue posible consultar los prospectos. Intenta nuevamente.';}
         require __DIR__.'/../views/layout/dashboard_head.php';require __DIR__.'/../views/layout/sidebar.php';require __DIR__.'/../views/layout/topbar.php';
         require __DIR__.'/../views/prospectos/central.php';require __DIR__.'/../views/layout/dashboard_footer.php';
+    }
+
+
+    /** Recibir archivo Meta; guardar vista previa privada, sin insertar prospectos. */
+    public function metaPrevisualizar()
+    {
+        $this->validarAcceso();
+        if (!ProspectoMetaImportador::puedeImportar()) {http_response_code(403);exit('Sin permiso para importar.');}
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST') {http_response_code(405);exit('Método no permitido.');}
+        try {
+            ProspectoMetaImportador::verificarCsrf($_POST['csrf_meta']??null);
+            $db=(new Database())->connect(false);
+            ProspectoMetaImportador::preparar($_FILES['archivo_meta']??[],$db);
+        } catch (DomainException $e) {
+            $_SESSION['prospectos_meta_error']=$e->getMessage();
+        } catch (Throwable $e) {
+            error_log('[prospectos_meta_previa] '.get_class($e).' codigo='.(int)$e->getCode());
+            $_SESSION['prospectos_meta_error']='No fue posible revisar el archivo. Verifica el formato e inténtalo nuevamente.';
+        }
+        header('Cache-Control: no-store');
+        header('Location: '.BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta',true,303);
+        exit;
+    }
+
+    /** Cada POST confirma como máximo 75 registros, atómicamente y con resumen recuperable. */
+    public function metaConfirmar()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store');
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST') {
+            http_response_code(405);echo json_encode(['ok'=>false,'mensaje'=>'Método no permitido.']);return;
+        }
+        $this->validarAcceso();
+        if (!ProspectoMetaImportador::puedeImportar()) {
+            http_response_code(403);echo json_encode(['ok'=>false,'mensaje'=>'No tienes permiso para importar.']);return;
+        }
+        try {
+            ProspectoMetaImportador::verificarCsrf($_POST['csrf_meta']??null);
+            $programas=$_POST['programa']??[];
+            if (!is_array($programas)) throw new DomainException('Selección de programas no válida.');
+            $db=(new Database())->connect(false);
+            $out=ProspectoMetaImportador::procesar($db,$programas);
+            echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+        } catch (DomainException $e) {
+            http_response_code(422);
+            echo json_encode(['ok'=>false,'mensaje'=>$e->getMessage()],JSON_UNESCAPED_UNICODE);
+        } catch (Throwable $e) {
+            error_log('[prospectos_meta_confirmar] '.get_class($e).' codigo='.(int)$e->getCode());
+            http_response_code(503);
+            echo json_encode(['ok'=>false,'mensaje'=>'No se pudo confirmar este lote. Se conservaron los lotes anteriores; puedes reintentarlo.']);
+        }
+    }
+
+    /** Cancelar una vista previa sin procesamiento; nunca borrar datos importados. */
+    public function metaCancelar()
+    {
+        $this->validarAcceso();
+        if (!ProspectoMetaImportador::puedeImportar()) {http_response_code(403);exit('Sin permiso.');}
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST') {http_response_code(405);exit('Método no permitido.');}
+        try {
+            ProspectoMetaImportador::verificarCsrf($_POST['csrf_meta']??null);
+            ProspectoMetaImportador::cancelar();
+        } catch (DomainException $e) {
+            $_SESSION['prospectos_meta_error']=$e->getMessage();
+        }
+        header('Location: '.BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta',true,303);
+        exit;
     }
 
     public function detalle()

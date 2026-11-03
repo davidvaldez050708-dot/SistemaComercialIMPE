@@ -10,6 +10,10 @@ on:
       - 'database/migrations/2026_11_02_prospectos_almacen_central.sql'
       - 'tests/*prospectos_central*'
       - 'tools/*prospectos_central*'
+      - 'tools/*prospectos_importador_meta*'
+      - 'tests/*prospectos_meta*'
+      - 'app/services/ProspectoMeta*'
+      - 'public/**/prospectos_importador_meta.*'
       - 'tools/prospectos_almacen.php'
       - '.github/workflows/prospectos-central.yml'
   workflow_dispatch:
@@ -45,7 +49,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mysqli, mbstring, dom
+          extensions: mysqli, mbstring, dom, zip, iconv
           coverage: none
       - uses: actions/setup-node@v4
         with:
@@ -56,11 +60,14 @@ jobs:
         run: |
           python3 tests/prospectos_central_db.py
           php tests/horario_contacto_unit.php
+          php tests/prospectos_meta_archivo_unit.php
           python3 tests/publicacion_prospectos_central_test.py
           python3 tests/publicacion_prospectos_central_compacto_test.py
           python3 tests/publicacion_prospectos_ficha_panel_test.py
           php -l tools/prospectos_referencias_neutrales.php
           node --check public/javascript/prospectos_central.js
+          node --check public/javascript/prospectos_importador_meta.js
+          php -l app/services/ProspectoMetaImportador.php
       - name: Interfaz, permisos y formularios HTTP reales
         run: node tests/prospectos_central_browser.cjs
       - uses: actions/upload-artifact@v4
