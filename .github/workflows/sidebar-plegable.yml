@@ -1,0 +1,57 @@
+name: Sidebar plegable - layout y publicación
+on:
+  pull_request:
+    paths:
+      - 'app/views/layout/**'
+      - 'public/css/**'
+      - 'public/javascript/sidebar_plegable.js'
+      - 'tests/sidebar_plegable*'
+      - 'tools/*sidebar_plegable*'
+      - '.github/workflows/sidebar-plegable.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Revisar sintaxis y publicación offline
+        run: |
+          php -l app/views/layout/topbar.php
+          php -l tests/sidebar_plegable_fixture.php
+          node --check public/javascript/sidebar_plegable.js
+          node --check tests/sidebar_plegable_browser.cjs
+          python3 tests/sidebar_plegable_publicador_test.py
+          php tests/responsive_smoke.php
+          php tests/responsive_overflow_smoke.php
+          php tests/roles_cuenta_clave_marketing_responsive_smoke.php
+      - name: Preparar navegador aislado
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sidebar-deps" playwright@1.56.1 bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0
+          "$RUNNER_TEMP/sidebar-deps/node_modules/.bin/playwright" install --with-deps ${{ matrix.browser }}
+      - name: Verificar seis perfiles, formularios, móvil e iframe del CRM
+        env:
+          IMPE_SIDEBAR_BROWSER: ${{ matrix.browser }}
+          IMPE_BROWSER_DEPS: ${{ runner.temp }}/sidebar-deps/node_modules
+          NODE_PATH: ${{ runner.temp }}/sidebar-deps/node_modules
+          APP_ENV: testing
+        run: node tests/sidebar_plegable_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sidebar-${{ matrix.browser }}
+          path: tmp/sidebar-capturas
+          if-no-files-found: ignore
