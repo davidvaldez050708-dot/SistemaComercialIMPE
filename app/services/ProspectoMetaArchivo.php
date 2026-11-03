@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../helpers/ProspectoCentralDatos.php';
 /**
  * Lector limitado de exportaciones de clientes potenciales de Meta.
  * CSV/TSV UTF-8, UTF-16 LE/BE, Windows-1252; XLSX (primera hoja).
@@ -57,7 +58,7 @@ final class ProspectoMetaArchivo
             $nombreCompleto=$row['full_name'];
             $valido=preg_match('/^[0-9]{1,19}$/D',$id) && $creado!==null
                 && $nombreCompleto!=='' && mb_strlen($nombreCompleto)<=255
-                && preg_match('/^\+?[0-9 ()\-.]{8,64}$/D',$telefono)
+                && ProspectoCentralDatos::telefono($telefono)!==null
                 && mb_strlen($telefono)<=64;
             if (!$valido) {
                 $filasRechazadas++;
@@ -112,7 +113,7 @@ final class ProspectoMetaArchivo
         if (!preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$/D',$v)) return null;
         try {
             $d=new DateTimeImmutable($v);
-            if ((int)$d->format('Y')<2000 || (int)$d->format('Y')>2100) return null;
+            if ((int)$d->format('Y')<2000 || (int)$d->format('Y')>2100 || $d->format('Y-m-d\TH:i:s')!==substr($v,0,19)) return null;
             return $d->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
         } catch (Throwable $e) {return null;}
     }

@@ -41,6 +41,9 @@ final class ProspectoMetaImportador
         if (!is_dir($dir) && !mkdir($dir,0700,true) && !is_dir($dir))
             throw new RuntimeException('No se pudo preparar el almacenamiento temporal.');
         @chmod($dir,0700);
+        foreach (glob($dir.DIRECTORY_SEPARATOR.'*.json')?:[] as $stale) {
+            if (!is_link($stale) && is_file($stale) && (int)filemtime($stale)<time()-self::EXPIRA) @unlink($stale);
+        }
         return $dir;
     }
 

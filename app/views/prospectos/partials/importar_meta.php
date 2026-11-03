@@ -35,7 +35,7 @@ $metaRuta=BASE_URL.'index.php?controller=prospecto&action=';
             </form>
             <?php else: ?>
             <div class="meta-import-file"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
-                <div><strong><?= $metaEsc($metaResumen['archivo']) ?></strong><span>Vista previa temporal · No se han guardado registros de esta carga sin confirmar.</span></div>
+                <div><strong><?= $metaEsc($metaResumen['archivo']) ?></strong><span><?= $metaResumen['avance']>0?'Importación en curso · Los lotes anteriores ya fueron guardados.':'Vista previa temporal · Ningún registro guardado todavía.' ?></span></div>
             </div>
             <div class="meta-import-kpis">
                 <div><small>Filas leídas</small><strong><?= (int)$metaResumen['total_filas'] ?></strong></div>
