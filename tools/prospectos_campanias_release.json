@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "source": "Campañas y programas; base 044175f75c116f47609fb409712afc1fe26f38a6",
+  "source": "Campañas y programas; detalle de procedencia sin marcador vacío; base 044175f75c116f47609fb409712afc1fe26f38a6",
   "files": [
     {
       "path": "database/migrations/2026_11_03_prospectos_formularios_programas.sql",
@@ -18,10 +18,18 @@
     },
     {
       "path": "app/views/prospectos/partials/campanias_celda.php",
-      "base_sha256": null,
-      "sha256": "3b33c2abde893c650224aaf418b8f175311946aaf38cd12c1e127b35587c4f25",
-      "base": null,
-      "target": "H4sIAAAAAAACCo2TO27cMBCGe51idiGYUuFV0mpFqbAbdwEcpFlsMaG4NgGKlEkKsAEXOUSukSJn8E1ykowetmWtX9usNBz+8/0zo6Jqr9soy+BSgrDGdzogtNaBtkGCNCA1ONlar4J1ym4p7sHY5qeTHihypQxqevSU7AW2aABvuoc/mygW2NCrQn8mdY08djv2FGL7qtrtt5E6QLJaZKY5VGVU+F5LaPSer4U0waE+HRLVlTk11sh1WVQcYi+FUNZ8c9a3UgTrOeeskQFZxf79+s1ydtbfeviLOfTvJF5kvTjV6M2TQy/zCOj3BPJd3gbLfcCgBBxMEouUl7HYsdE52684N53WJyeLIGPVPJIPBNtBvLf6DuynXGPz6JqanbzETRZt3H3Zp+mxWVOrwzOQsJ0Jy5tp+fX+/hh1tUCt6Vlp/ybtdE7AvmsadHcfz+uHdBBsjR4StnmdbcPS2Ug/SBztT9WjotPl2IWDdRLFNSwvAQnSrHt/hVbvdHrsrG9Q6zGLhq7qxV5MAdoJdnEObDNJjQdpzi6VATpQhnAarO2EO4pmQ/1pZBPvdkjoXWRTc+c7PHxLsmnD3SurMBUdrQ0l3pybqtclYR2bX4rNcWfL9fhHO/IfANz5814EAAA="
+      "base_sha256": "3b33c2abde893c650224aaf418b8f175311946aaf38cd12c1e127b35587c4f25",
+      "sha256": "877e0b630da0c0fa89861439a583df23db4dcb064efefcb80ebba984a30db9e2",
+      "base": "H4sIAAAAAAACCo2TO27cMBCGe51idiGYUuFV0mpFqbAbdwEcpFlsMaG4NgGKlEkKsAEXOUSukSJn8E1ykowetmWtX9usNBz+8/0zo6Jqr9soy+BSgrDGdzogtNaBtkGCNCA1ONlar4J1ym4p7sHY5qeTHihypQxqevSU7AW2aABvuoc/mygW2NCrQn8mdY08djv2FGL7qtrtt5E6QLJaZKY5VGVU+F5LaPSer4U0waE+HRLVlTk11sh1WVQcYi+FUNZ8c9a3UgTrOeeskQFZxf79+s1ydtbfeviLOfTvJF5kvTjV6M2TQy/zCOj3BPJd3gbLfcCgBBxMEouUl7HYsdE52684N53WJyeLIGPVPJIPBNtBvLf6DuynXGPz6JqanbzETRZt3H3Zp+mxWVOrwzOQsJ0Jy5tp+fX+/hh1tUCt6Vlp/ybtdE7AvmsadHcfz+uHdBBsjR4StnmdbcPS2Ug/SBztT9WjotPl2IWDdRLFNSwvAQnSrHt/hVbvdHrsrG9Q6zGLhq7qxV5MAdoJdnEObDNJjQdpzi6VATpQhnAarO2EO4pmQ/1pZBPvdkjoXWRTc+c7PHxLsmnD3SurMBUdrQ0l3pybqtclYR2bX4rNcWfL9fhHO/IfANz5814EAAA=",
+      "target": "H4sIAAAAAAAC/62TO27bQBCGe55iJBBeEoilpKX4KJwU6QLISCOoGC9X9gLLXWp3aUSAixwiF8gBXAQ5gm6Sk2T4kKzQkquwITk7nP/7Z4ZpUT/UwXwOSwHcaNcoj1AbC8p4AUKDUGBFbZz0xkqzoLgDbao7KxxQ5F5qVPToKNlxrFEDbpv98ywIOVb0KtHdCFViFtoVO4bYuihW60UgNxBNRplxEgBdxPRJw60pjXvXUrRixLNDEvL7n/AonbxTIiEawP0vLKUF4eW2ER4dPCLfP6ObHUot97+Vaf3ctFqU3iFbsW2ksKKtX6HlWJLzGi1Cow+CTurBcF+sRQ6d4Fwa/cUaVwvujcuyjFWkzOIEijxIXdsJrtC5bMqF9hbVdWdT3utrbbSY5n++/0jnbR6lt1MgulJuFoFQTvQtODbmVnzzJnMeveSw0VHI4ywP+Yr1YGw9yTLdKHV1NQoyVpxGEkaibPHffGBFPtIig5CGH/2LG43Gunq/jmOqedbzAYibRvvxl3H+4enpNepkhFrSs1TuIu1wTsCuqWjau578cgsK9lVY8KakZYnY7DzbjMUsYS9b9WZib39QD9JG5X0XNsYK5A8w/gioIM269Zcq+Uan+866CpXqs2joshztxRCgnWCfPwKbDaX6gzhhS9p0OpCacCr6FQbcvui80x9GNvAuuoTWxXxo7nGstMPdvy2q2u/OrMIg2lvrJC7OTZbTnLBemx8XO8U9Wa7DjXbkL1uAk4TuBAAA",
+      "variants": [
+        {
+          "base_sha256": null,
+          "sha256": "877e0b630da0c0fa89861439a583df23db4dcb064efefcb80ebba984a30db9e2",
+          "base": null,
+          "target": "H4sIAAAAAAAC/62TO27bQBCGe55iJBBeEoilpKX4KJwU6QLISCOoGC9X9gLLXWp3aUSAixwiF8gBXAQ5gm6Sk2T4kKzQkquwITk7nP/7Z4ZpUT/UwXwOSwHcaNcoj1AbC8p4AUKDUGBFbZz0xkqzoLgDbao7KxxQ5F5qVPToKNlxrFEDbpv98ywIOVb0KtHdCFViFtoVO4bYuihW60UgNxBNRplxEgBdxPRJw60pjXvXUrRixLNDEvL7n/AonbxTIiEawP0vLKUF4eW2ER4dPCLfP6ObHUot97+Vaf3ctFqU3iFbsW2ksKKtX6HlWJLzGi1Cow+CTurBcF+sRQ6d4Fwa/cUaVwvujcuyjFWkzOIEijxIXdsJrtC5bMqF9hbVdWdT3utrbbSY5n++/0jnbR6lt1MgulJuFoFQTvQtODbmVnzzJnMeveSw0VHI4ywP+Yr1YGw9yTLdKHV1NQoyVpxGEkaibPHffGBFPtIig5CGH/2LG43Gunq/jmOqedbzAYibRvvxl3H+4enpNepkhFrSs1TuIu1wTsCuqWjau578cgsK9lVY8KakZYnY7DzbjMUsYS9b9WZib39QD9JG5X0XNsYK5A8w/gioIM269Zcq+Uan+866CpXqs2joshztxRCgnWCfPwKbDaX6gzhhS9p0OpCacCr6FQbcvui80x9GNvAuuoTWxXxo7nGstMPdvy2q2u/OrMIg2lvrJC7OTZbTnLBemx8XO8U9Wa7DjXbkL1uAk4TuBAAA"
+        }
+      ]
     },
     {
       "path": "app/views/prospectos/partials/formularios_programas.php",

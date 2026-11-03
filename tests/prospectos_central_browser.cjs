@@ -227,6 +227,7 @@ let server,log='',browser;
  assert.ok(page.url().includes('campania=c%3Abatch1'),'Programa y búsqueda conservan campaña');
  await page.goto(home);assert.equal(await page.locator('.central-table th').nth(4).innerText(),'Procedencia');
  assert.ok(await page.locator('.central-campaign-details').count()>0,'Todos permite consultar campañas sin otra columna');
+ assert.equal(await page.locator('.central-campaign-none').count(),0,'Todos no muestra Campaña: — en prospectos sin campaña');
  await context.request.get(base+'_session?rol=admin');await page.goto(home+'&seccion=meta&configurar_formularios=1');
  assert.equal(await page.locator('[data-meta-abrir]').count(),0,'Administración configura sin operar importaciones');
  const beforeDetection=fixture('--snapshot');

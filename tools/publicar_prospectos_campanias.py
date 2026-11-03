@@ -69,7 +69,7 @@ def unpack(value):
 def prepare_candidate(row, current, stage):
     actual = sha(lf(current)) if current is not None else None
     variants = [row] + row.get('variants', [])
-    if row.get('variants') and row['path'] != 'app/models/RolModel.php':
+    if row.get('variants') and row['path'] not in ('app/models/RolModel.php', 'app/views/prospectos/partials/campanias_celda.php'):
         raise RuntimeError('Variante ajena al modelo revisado.')
     for version in variants:
         desired = unpack(version['target'])

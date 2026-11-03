@@ -1,9 +1,13 @@
 <?php
 // Se consulta por lote en el repositorio; los nombres originales se escapan aquí.
 $campaniasCelda=$r['campanias']??[];
-if (!$campaniasCelda): ?>
-<span class="central-campaign-none"><?= $seccionProspectos==='meta'?'—':'Campaña: —' ?></span>
-<?php else:
+if (!$campaniasCelda):
+    // En Todos, el origen ya está visible: no añadir etiquetas vacías.
+    // Sólo en Campañas se requiere el marcador para un origen sin nombre.
+    if ($seccionProspectos==='meta'): ?>
+<span class="central-campaign-none">—</span>
+<?php endif;
+else:
     $campaniaTexto=static fn($c)=>$c['nombre']!==null&&$c['nombre']!==''?$c['nombre']:'—';
     if ($seccionProspectos==='meta'): ?>
 <span class="central-campaign-name"><?= $esc($campaniaTexto($campaniasCelda[0])) ?></span>
