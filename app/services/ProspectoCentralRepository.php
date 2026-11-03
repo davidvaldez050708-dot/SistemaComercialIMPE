@@ -33,7 +33,7 @@ final class ProspectoCentralRepository
     {
         $d=ProspectoCentralDatos::persona($datos);$now=gmdate('Y-m-d H:i:s');
         $id=$this->insertar('prospectos_comerciales',$d+['created_at'=>$now,'updated_at'=>$now]);
-        $this->insertar('prospecto_integraciones',['prospecto_id'=>$id,'sistema'=>'ZOHO','referencia_estable'=>'impe:prospecto:'.$id,'estado'=>'NO_CONFIGURADO']);
+        $this->insertar('prospecto_integraciones',['prospecto_id'=>$id,'sistema'=>'ZOHO','referencia_estable'=>'CRM-PROS-'.str_pad((string)$id,5,'0',STR_PAD_LEFT),'estado'=>'NO_CONFIGURADO']);
         return $id;
     }
     public function origen(string $sistema,string $tipo,string $identificador): ?array

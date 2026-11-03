@@ -57,7 +57,11 @@ class ProspectoController
             $r=$repo->registroOriginal($id);if (!$r) {http_response_code(404);throw new DomainException('Registro original no encontrado.');}
             if ($repo->estructura()['disponible']) {
                 $origen=$repo->origen('IMPE_FORMULARIOS','REGISTRO',(string)$id);
-                if ($origen) {header('Location: '.BASE_URL.'index.php?'.http_build_query(['controller'=>'prospecto','action'=>'detalle','id'=>$origen['prospecto_id']]));return;}
+                if ($origen) {
+                    $destino=['controller'=>'prospecto','action'=>'detalle','id'=>$origen['prospecto_id']];
+                    if (($_GET['panel']??'')==='1' && strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH']??''))==='xmlhttprequest') $destino['panel']='1';
+                    header('Location: '.BASE_URL.'index.php?'.http_build_query($destino));return;
+                }
             }
             // Consulta original disponible incluso antes de conciliar. Ningún INSERT en GET.
             $ap=$repo->consulta("SELECT * FROM formulario_aliado_procedencias WHERE tipo='registro' AND registro_id=? ORDER BY id",[$id])->fetch_all(MYSQLI_ASSOC);
@@ -77,6 +81,16 @@ class ProspectoController
 
     private function presentarDetalle(?array $ficha,string $mensajeError): void
     {
+        $vistaPanel=(($_GET['panel']??'')==='1'
+            && strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH']??''))==='xmlhttprequest');
+        if ($vistaPanel) {
+            // Fragmento seguro: los permisos ya se comprobaron antes de llegar aquí.
+            header('Content-Type: text/html; charset=utf-8');
+            header('Cache-Control: private, no-store');
+            require __DIR__.'/../views/prospectos/detalle.php';
+            return;
+        }
+        // Enlaces directos, favoritos y navegación sin JS mantienen una vista accesible.
         $tituloPagina='Ficha del prospecto';$subtituloPagina='Identidad comercial, procedencia y datos originales.';$opcionActiva='prospectos';$seccionProspectos='todos';
         require __DIR__.'/../views/layout/dashboard_head.php';require __DIR__.'/../views/layout/sidebar.php';require __DIR__.'/../views/layout/topbar.php';
         require __DIR__.'/../views/prospectos/detalle.php';require __DIR__.'/../views/layout/dashboard_footer.php';

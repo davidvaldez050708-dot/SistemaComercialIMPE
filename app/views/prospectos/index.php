@@ -72,6 +72,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
 </style>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_fase1.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_fase1.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_central.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_central.css'),0,16) ?>">
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_ficha_panel.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_ficha_panel.css'),0,16) ?>">
 <div class="prospectos-page prospectos-fase1 prospectos-central" data-prospectos-modulo>
     <?php $esc=$escaparProspecto; $seccionProspectos='aliados';require __DIR__.'/partials/navegacion.php'; ?>
     <?php foreach (array_filter([$mensajeError,$errorTerritorial,$errorProcedencia]) as $errorProspectos): ?>
@@ -136,7 +137,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
                 <thead><tr><th scope="col">Fecha de registro · México</th><th scope="col">Nombre</th><th scope="col">Teléfono</th><th scope="col">Programa</th><th scope="col">Procedencia</th><th scope="col">Horario de contacto</th><th scope="col">Gestión</th><th scope="col">Detalle</th></tr></thead>
                 <tbody>
                 <?php foreach ($registrosProspectos as $prospecto): ?>
-                    <tr><td><?= $escaparProspecto($prospecto['created_at']) ?></td><td class="prospectos-name"><?= $escaparProspecto(trim($prospecto['nombre'].' '.$prospecto['apellido'])) ?></td><td><?= $escaparProspecto($prospecto['movil']) ?></td><td><?= $escaparProspecto($prospecto['perfil_interes']) ?></td><td><?= $escaparProspecto($errorProcedencia!==''?'Procedencia no disponible':($prospecto['aliado_nombre']??'Registro general')) ?></td><td><?= $escaparProspecto($prospecto['horario_contacto']??'Sin indicar') ?></td><td><span class="central-badge">Consultar ficha</span></td><td><a class="central-link" href="<?= $escaparProspecto(BASE_URL.'index.php?controller=prospecto&action=detalleRegistro&registro_id='.(int)$prospecto['id']) ?>"><i class="bi bi-eye" aria-hidden="true"></i> Ver ficha</a></td></tr>
+                    <tr><td><?= $escaparProspecto($prospecto['created_at']) ?></td><td class="prospectos-name"><?= $escaparProspecto(trim($prospecto['nombre'].' '.$prospecto['apellido'])) ?></td><td><?= $escaparProspecto($prospecto['movil']) ?></td><td><?= $escaparProspecto($prospecto['perfil_interes']) ?></td><td><?= $escaparProspecto($errorProcedencia!==''?'Procedencia no disponible':($prospecto['aliado_nombre']??'Registro general')) ?></td><td><?= $escaparProspecto($prospecto['horario_contacto']??'Sin indicar') ?></td><td><span class="central-badge">Consultar ficha</span></td><td><a class="central-link" href="<?= $escaparProspecto(BASE_URL.'index.php?controller=prospecto&action=detalleRegistro&registro_id='.(int)$prospecto['id']) ?>" data-prospecto-ficha><i class="bi bi-eye" aria-hidden="true"></i> Ver ficha</a></td></tr>
                 <?php endforeach; ?>
                 <?php if (!$registrosProspectos): ?><tr><td colspan="8" class="prospectos-empty"><div class="prospectos-empty-state"><i class="bi bi-<?= $buscarProspectos!==''||$aliadoFiltroProspectos!==''?'search':'people' ?>" aria-hidden="true"></i><strong><?= $buscarProspectos!==''?'No se encontraron coincidencias.':($programaFiltroProspectos!==''?'No hay registros para el programa seleccionado.':($aliadoFiltroProspectos!==''?'No hay prospectos para este aliado.':'No hay prospectos registrados.')) ?></strong></div></td></tr><?php endif; ?>
                 </tbody>
@@ -154,4 +155,6 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
     </section>
     <?php endif; ?>
 </div>
+<?php require __DIR__.'/partials/ficha_panel.php'; ?>
+<script defer src="<?= BASE_URL ?>public/javascript/prospectos_ficha_panel.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/prospectos_ficha_panel.js'),0,16) ?>"></script>
 <script defer src="<?= BASE_URL ?>public/javascript/prospectos_fase1.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/prospectos_fase1.js'),0,16) ?>"></script>
