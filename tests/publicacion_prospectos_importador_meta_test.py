@@ -16,7 +16,7 @@ def run(site,backup,mode):
     output=StringIO()
     args=['publicar_prospectos_importador_meta.py','--site',str(site),'--backup-root',str(backup),mode]
     with patch('sys.argv',args),patch.object(pub,'check_extensions',return_value=None):
-        with patch.object(pub,'fetch',side_effect=lambda name,sha:(ROOT/name).read_bytes()):
+        with patch.object(pub,'fetch',side_effect=lambda name,sha:(ROOT/name).read_bytes().replace(b'\r\n',b'\n')):
             with redirect_stdout(output):pub.main()
     return output.getvalue()
 
@@ -38,7 +38,7 @@ with tempfile.TemporaryDirectory(prefix='prospectos-import-meta-test-') as temp:
         old=subprocess.check_output(['git','show','4c7182877f0781a8d62d9ea6cc97757efac616d9:'+relative],cwd=ROOT)
         assert pub.git_hash(old) in known,relative
         file.write_bytes(old)
-        assert pub.git_hash((ROOT/relative).read_bytes())==desired,relative
+        assert pub.git_hash((ROOT/relative).read_bytes().replace(b'\r\n',b'\n'))==desired,relative
     before={str(p):p.read_bytes() for p in site.rglob('*') if p.is_file()}
     assert 'CHECK OK' in run(site,backups,'--check')
     assert all(f.read_bytes()==before[str(f)] for f in site.rglob('*') if f.is_file())

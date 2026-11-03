@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Instalación selectiva del importador CSV/XLSX de Meta. Sin SQL ni cambios de telefonía."""
 import argparse
+import base64
 import datetime
+import gzip
 import hashlib
 import json
 import os
@@ -17,9 +19,10 @@ REVISION='e4aef1e2685e2c6e7d82cedb7d23f87e1deb9652'
 # Hashes blob de Git de las versiones YA instaladas y la versión nueva.
 # Aceptar sólo la Fase 1 original o la corrección visual compacta validada.
 FILES={
- 'app/controllers/ProspectoController.php': (['7c645193e82b64d0d38b659a424ea2490e7fb294','dce880d3ea5a1a10b5e4207523cb9864305d9b89'], '4cdc3b2f53d68be6ea3bb0e4e86a43f5be5b55a0'),
- 'app/models/RolModel.php': (['42d2021464a44de46484165273f172e11955921f'], 'b58100296b9699d242c1d3a4b13e8055f214ae6e'),
+ # La política protegida debe instalarse antes de registrar el permiso nuevo.
  'app/helpers/AdminRolePolicy.php': (['094ad89ddb5ceb7eef81fc0175682f973b7260a2'], '87024131a5d5bb8d2bfe7be9440c232422938d0f'),
+ 'app/models/RolModel.php': (['42d2021464a44de46484165273f172e11955921f'], 'b58100296b9699d242c1d3a4b13e8055f214ae6e'),
+ 'app/controllers/ProspectoController.php': (['7c645193e82b64d0d38b659a424ea2490e7fb294','dce880d3ea5a1a10b5e4207523cb9864305d9b89'], '4cdc3b2f53d68be6ea3bb0e4e86a43f5be5b55a0'),
  'app/views/prospectos/central.php': (['034a6454097cc9f4044c990995053cded20dd3c8'], 'e2f70273efc2b323c493940048d32ea66aa215f0'),
  'app/services/ProspectoMetaArchivo.php': ([], '7bca491418bfff4c507c5ab56cad83cc2d73034c'),
  'app/services/ProspectoMetaImportador.php': ([None,'c32d492b07d8515764365b6e5941028053904e31'], 'c959be50bb9fe03ea4b02d9c632a16f6b979a3cf'),
@@ -27,6 +30,23 @@ FILES={
  'public/css/prospectos_importador_meta.css': ([], '1cb23c9df89164b1e26c5c0df7b8c9155bd1f8f0'),
  'public/javascript/prospectos_importador_meta.js': ([], '7a36dddfff26c5afc29f7e49ff88711ecbe47229'),
 }
+
+
+def compatibility(path):
+    if not Path(path).is_file():
+        raise RuntimeError('Falta el manifiesto de compatibilidad. Descarga también prospectos_meta_rol_hostinger_compat.json junto al publicador. Sitio intacto.')
+    data=json.loads(Path(path).read_text(encoding='utf-8'))
+    if (data.get('schema')!=1 or data.get('path')!='app/models/RolModel.php' or
+            data.get('base_sha256')!='94fe92be07ae319335b4c1fbc11e5a1a1f0026ae79b0418616f3d1a9cd9b1225' or
+            data.get('dependency',{}).get('path')!='app/helpers/SupervisionRolePolicy.php' or
+            data['dependency'].get('sha256')!='f9542f3c578d953cfde72f807cf98bc770beffac7e606f8bf9f975d5324d001b'):
+        raise RuntimeError('Manifiesto de compatibilidad ajeno a la variante revisada.')
+    for field,expected in [('base',data['base_sha256']),('target',data['sha256'])]:
+        raw=gzip.decompress(base64.b64decode(data[field]))
+        if hashlib.sha256(raw).hexdigest()!=expected:
+            raise RuntimeError('Manifiesto de compatibilidad corrupto.')
+    data['payload']=gzip.decompress(base64.b64decode(data['target']))
+    return data
 
 
 def git_hash(data):
@@ -131,6 +151,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--site',required=True)
     parser.add_argument('--backup-root',default=str(Path.home()/'respaldos-impe-prospectos-meta'))
+    parser.add_argument('--compat-manifest',default=str(Path(__file__).with_name('prospectos_meta_rol_hostinger_compat.json')))
     actions=parser.add_mutually_exclusive_group(required=True)
     actions.add_argument('--check',action='store_true')
     actions.add_argument('--apply',action='store_true')
@@ -143,6 +164,7 @@ def main():
     if args.restore:
         restore(site,Path(args.restore).resolve())
         return
+    compat=compatibility(args.compat_manifest)
     for dep in ['config/db_connection.php','app/services/ProspectoCentralSchema.php',
                 'public/javascript/prospectos_fase1.js','public/javascript/prospectos_central.js',
                 'app/services/ProspectoCentralRepository.php',
@@ -151,20 +173,38 @@ def main():
             raise RuntimeError('Dependencia del módulo ausente: '+dep)
     check_extensions()
     plan=[]
+    dependency_snapshot=None
     for name,(known,desired) in FILES.items():
         path=local(site,name)
         content=read(path)
         current=git_hash(content) if content is not None else None
+        inline=None
+        if name==compat['path'] and content is not None:
+            normalized=content.replace(b'\r\n',b'\n')
+            digest=hashlib.sha256(normalized).hexdigest()
+            if digest in (compat['base_sha256'],compat['sha256']):
+                dependency=local(site,compat['dependency']['path'])
+                policy=read(dependency)
+                if policy is None or hashlib.sha256(policy.replace(b'\r\n',b'\n')).hexdigest()!=compat['dependency']['sha256']:
+                    raise RuntimeError('DEPENDENCIA DIFERENTE: '+compat['dependency']['path']+'. Sitio intacto.')
+                dependency_snapshot=(dependency,policy)
+                if digest==compat['sha256']:
+                    print('YA INSTALADO: '+name+' (variante Hostinger conservada)')
+                    continue
+                inline=compat['payload']
+                if b'\r\n' in content:
+                    inline=inline.replace(b'\n',b'\r\n')
+                desired=git_hash(inline)
         if current==desired:
             print('YA INSTALADO: '+name)
             continue
-        if current not in known and not (current is None and not known):
+        if inline is None and current not in known and not (current is None and not known):
             raise RuntimeError('VERSIÓN DIFERENTE: '+name+'. Sitio intacto.')
-        plan.append((name,path,content,desired,path.stat().st_mode & 0o777 if content is not None else 0o644))
+        plan.append((name,path,content,desired,path.stat().st_mode & 0o777 if content is not None else 0o644,inline))
         print(('NUEVO: ' if content is None else 'COMPATIBLE: ')+name)
     staged=[]
-    for name,path,original,wanted,mode in plan:
-        data=fetch(name,wanted)
+    for name,path,original,wanted,mode,inline in plan:
+        data=inline if inline is not None else fetch(name,wanted)
         lint(name,data)
         staged.append((name,path,original,data,mode))
     if args.check:
@@ -176,6 +216,8 @@ def main():
     for name,path,original,data,mode in staged:
         if read(path)!=original:
             raise RuntimeError('Cambio concurrente en: '+name)
+    if dependency_snapshot is not None and read(dependency_snapshot[0])!=dependency_snapshot[1]:
+        raise RuntimeError('Cambio concurrente de la política compartida. Sitio intacto.')
     backup_root.mkdir(parents=True,exist_ok=True)
     os.chmod(str(backup_root),0o700)
     backup=Path(tempfile.mkdtemp(prefix=datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S-'),dir=str(backup_root)))

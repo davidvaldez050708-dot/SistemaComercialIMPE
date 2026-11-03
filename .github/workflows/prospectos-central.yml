@@ -13,6 +13,7 @@ on:
       - 'tools/*prospectos_importador_meta*'
       - 'tests/*publicacion_prospectos_importador_meta*'
       - 'tests/*prospectos_meta*'
+      - 'tools/*meta_rol_hostinger*'
       - 'app/services/ProspectoMeta*'
       - 'app/models/RolModel.php'
       - 'app/helpers/AdminRolePolicy.php'
@@ -52,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 20
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -69,6 +70,8 @@ jobs:
           php tests/horario_contacto_unit.php
           php tests/prospectos_meta_archivo_unit.php
           php tests/prospectos_meta_permisos_unit.php
+          python3 tests/prospectos_meta_hostinger_publicacion_test.py
+          python3 tests/prospectos_meta_hostinger_db.py
           php tests/prospectos_permisos_db.php
           php tests/prospectos_acceso_permisos.php
           php -l app/models/RolModel.php
