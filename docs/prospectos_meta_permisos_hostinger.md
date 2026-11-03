@@ -1,5 +1,18 @@
 # Importación Meta: conservar Roles y Permisos de Hostinger
 
+## Actualización del selector CSV
+
+El campo instalado incluía `.csv` en `accept` y el servidor ya podía leer CSV,
+TSV, TXT y XLSX. Se retira únicamente ese filtro orientativo del explorador
+para que el archivo pueda elegirse sin depender de sus asociaciones o su
+extensión. Esto incluye las exportaciones de Meta sin extensión que el lector
+ya admite. Los formatos anunciados y todas las validaciones del servidor
+permanecen iguales: contenido, extensión, cabeceras, 8 MB y 5,000 filas.
+
+El paquete reconoce la vista anterior o su ausencia en una primera instalación.
+Si ya se instalaron los permisos personalizados, sólo cambia la vista del modal;
+la prueba de publicación verifica explícitamente esa única escritura.
+
 El publicador `52426de1` se detuvo en `RolModel.php` antes de la primera
 escritura. El modelo real añade Control de llamadas y su concesión inicial al
 Director, aplica `permisoReservadoParaRol`, permite el reporte administrativo a
