@@ -13,7 +13,7 @@ import tempfile
 from urllib.request import urlopen
 
 REPO='davidvaldez050708-dot/SistemaComercialIMPE'
-REVISION='b23df35decf2cb407ba807f83b2e2d4b6736b7df'
+REVISION='17a97bcf933c820961aff0af987fc5b38c5429ac'
 # Hashes blob de Git de las versiones YA instaladas y la versión nueva.
 # Aceptar sólo la Fase 1 original o la corrección visual compacta validada.
 FILES={
@@ -21,7 +21,7 @@ FILES={
  'public/javascript/prospectos_ficha_panel.js': ([], '64a811c83a05146578594d83fe91a3811ae08a64'),
  'public/css/prospectos_ficha_panel.css': ([], 'b2b306afe6ed8ee714cf1f63888aa5f5bef81e2a'),
  'tools/prospectos_referencias_neutrales.php': ([], '9fe7b529b08120e436f655bb7cb9a722ed7330a8'),
- 'app/views/prospectos/detalle.php': (['f19bdb3363e5479f067a695848832a0a4275eccc'], 'd32bc09f898b0c14a855b87cb687ddafd40a5ba1'),
+ 'app/views/prospectos/detalle.php': (['f19bdb3363e5479f067a695848832a0a4275eccc'], 'b11ceb8c1219c9ea4903bd28665b3b1e6dd0d7d5'),
  'app/services/ProspectoCentralRepository.php': (['cabd3f210e22b7c5f8dd18e97f77a23db354d0d0'], '0e938a264f025a3237f147e6137c5e8d2e189577'),
  'app/controllers/ProspectoController.php': (['09a1f15993c35feec626f527d7c547a461453fb2','54c7e16b5cfcbd5bc9a5547000f530e9567f4d69'], '7c645193e82b64d0d38b659a424ea2490e7fb294'),
  'app/views/prospectos/central.php': (['2962f661f9ee6867328e3f6b5f45a7e407b4be3f','81ecd6d2694cb75f5c977b6f2377994d9737b7d1'], '034a6454097cc9f4044c990995053cded20dd3c8'),
