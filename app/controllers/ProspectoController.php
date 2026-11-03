@@ -94,7 +94,7 @@ class ProspectoController
         $this->validarAcceso();
 
         $tituloPagina = 'Prospectos';
-        $subtituloPagina = 'Consulta los prospectos por aliado de origen o en el listado general.';
+        $subtituloPagina = 'Almacén central y procedencia de los registros.';
         $opcionActiva = 'prospectos';
         $mensajeError = '';
         $listado = ['registros' => [], 'total' => 0, 'pagina' => 1, 'paginas' => 1];
