@@ -97,7 +97,7 @@ let server,log='',browser;
  await page.locator('[data-meta-confirmar]').click();
  await page.locator('.meta-import-result').waitFor();
  assert.ok((await page.locator('.meta-import-result').innerText()).includes('2 prospectos nuevos'));
- assert.equal(await page.locator('.central-table tbody tr').count(),2,'Meta filtra sólo importados');
+ assert.equal(await page.locator('.central-table tbody tr').count(),3,'Meta conserva también la procedencia preexistente');
  await page.screenshot({path:path.join(output,'meta-importacion-completada.png'),fullPage:true});
  await uploadMeta();
  assert.equal(await page.locator('.meta-import-kpis strong').nth(2).innerText(),'2','Vista previa detecta 2 IDs existentes');
@@ -106,7 +106,7 @@ let server,log='',browser;
  assert.ok((await page.locator('.meta-import-result').innerText()).includes('0 prospectos nuevos'),'Segunda carga no duplica');
  const sqlCheck='require "config/db_connection.php";$d=(new Database())->connect(false);echo json_encode(["meta"=>(int)$d->query("SELECT COUNT(*) n FROM prospecto_origenes WHERE tipo_origen=\'META_ADS\'")->fetch_assoc()["n"],"asignaciones"=>(int)$d->query("SELECT COUNT(*) n FROM prospecto_asignaciones")->fetch_assoc()["n"]]);';
  const estadoMeta=JSON.parse(execFileSync(php,['-r',sqlCheck],{cwd:root,env,encoding:'utf8'}));
- assert.equal(estadoMeta.meta,2);assert.equal(estadoMeta.asignaciones,0,'Importador no asigna asesores');
+ assert.equal(estadoMeta.meta,3);assert.equal(estadoMeta.asignaciones,0,'Importador no asigna asesores');
  console.log('PASS Meta Ads: permisos, CSRF, UTF-16, vista previa, campaña, importación idempotente, sin asignaciones.');
 
  assert.deepEqual(errors,[]);assert.ok(!/PHP (Warning|Fatal|Parse)|Uncaught/.test(log),log);
