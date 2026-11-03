@@ -30,17 +30,17 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
  });
  };await setupRoutes(context);
  if(!preview)await context.request.get(base+'_prospectos_session?role=marketing');
- const home=base+'index.php?controller=prospecto&action=index';
+ const home=base+'index.php?controller=prospecto&action=index&seccion=aliados';
  await page.goto(home);await page.waitForSelector('[data-prospectos-state]');
  check(await page.locator('.prospectos-view[aria-current="page"]').innerText().then(t=>t.includes('Por estados')),'Vista inicial por estados, dos controles institucionales');
  check(await page.locator('.prospectos-view').count()===2&&await page.locator('[data-prospectos-state]').count()===32,'Todos los estados activos del catálogo');
- for(const [key,value] of Object.entries({total:'62',estados:'2',aliados:'40',generales:'22'}))check(await page.locator('[data-prospectos-indicador="'+key+'"] strong').textContent()===value,'Indicador '+key+' correcto');
+ for(const [key,value] of Object.entries({personas:'—',meta:'—',aliados:'40',generales:'22'}))check(await page.locator('[data-prospectos-indicador="'+key+'"] strong').textContent()===value,'Indicador '+key+' correcto');
  await page.locator('[data-prospectos-state] img').evaluateAll(images=>images.forEach(image=>image.loading='eager'));await page.waitForFunction(()=>[...document.querySelectorAll('[data-prospectos-state] img')].every(image=>image.complete&&image.naturalWidth>0));
  check(await page.locator('[data-prospectos-state] img').count()===32,'Mapas existentes completos, sin duplicar ni usar imágenes externas');
  const searchFocus=async selector=>{await page.locator(selector).focus();const css=await page.locator(selector).evaluate(el=>({input:getComputedStyle(el).outlineStyle,shadow:getComputedStyle(el).boxShadow,container:getComputedStyle(el.closest('.module-search')).boxShadow}));check(css.input==='none'&&css.shadow==='none'&&css.container!=='none','Buscador con un único foco visible: '+selector);};
  await searchFocus('[data-prospectos-state-search]');
  // Retener la navegación permite comprobar la página antigua mientras espera la respuesta.
- const next=page.locator('.prospectos-view').filter({hasText:'Todos los prospectos'});
+ const next=page.locator('.prospectos-view').filter({hasText:'Todos los registros'});
  await next.evaluate(el=>el.addEventListener('click',event=>event.preventDefault(),{once:true}));
  const oldTop=await page.locator('.prospectos-summary').evaluate(el=>el.getBoundingClientRect().top);await next.click();
  const snapshot=await page.evaluate(()=>({banner:!!document.querySelector('[data-prospectos-loading]'),top:document.querySelector('.prospectos-summary').getBoundingClientRect().top}));
@@ -52,20 +52,20 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
  await page.locator('[data-prospectos-state-search]').fill('Guanajuato');await page.locator('[data-prospectos-state="Guanajuato"]').click();await page.waitForSelector('.prospectos-table-wrap');
  check(await page.locator('.prospectos-heading h2').textContent()==='Prospectos de Guanajuato','Tarjeta abre directamente la tabla, sin pantalla intermedia');
  await searchFocus('#prospectoBuscar');
- check(await page.locator('thead th').count()===15,'Conservados los 14 campos y añadido horario de contacto');
+ check(await page.locator('thead th').count()===8,'Tabla compacta de ocho columnas; datos adicionales disponibles en ficha');
  check(await page.locator('tbody tr').count()===25,'Primera página de 25 prospectos');
- check(await page.locator('tbody tr td:nth-child(10)').allTextContents().then(rows=>rows.every(value=>value==='Morelos')),'Tabla conserva la residencia Morelos del prospecto cuyo aliado está en Guanajuato');
+ check(await page.locator('tbody a[href*=detalleRegistro]').count()===25,'Cada registro conserva acceso a su ficha original; la residencia se verifica también en SQL');
  await page.locator('[rel="next"]').click();await page.waitForURL(/pagina=2/);check(new URL(page.url()).searchParams.get('estado_id')==='11'&&await page.locator('tbody tr').count()===4,'Paginación conserva estado y muestra cuatro restantes');
  check(await page.locator('tbody img').count()===0,'Datos HTML escapados');
  await page.locator('#prospectosCambiarEstado').selectOption('1');await page.locator('.prospectos-state-navigation button[type="submit"]').click();await page.waitForURL(/estado_id=1(?:&|$)/);check(await page.locator('.prospectos-empty').textContent().then(t=>t.includes('No hay prospectos registrados')),'Estado sin prospectos conserva tabla y estado vacío');
- await page.locator('.prospectos-view').filter({hasText:'Todos los prospectos'}).click();await page.waitForURL(/vista=todos/);check(await page.locator('.prospectos-total strong').textContent()==='62','Todos incluye registros generales, de aliados e históricos');
+ await page.locator('.prospectos-view').filter({hasText:'Todos los registros'}).click();await page.waitForURL(/vista=todos/);check(await page.locator('.prospectos-total strong').textContent()==='62','Todos incluye registros generales, de aliados e históricos');
 
  const searchAndWait=async term=>{await page.locator('#prospectoBuscar').fill(term);await page.waitForFunction(term=>new URL(location.href).searchParams.get('buscar')===term&& !document.querySelector('[data-prospectos-resultados]').hasAttribute('aria-busy'),term);};
  for(const [scope,expected] of [['&vista=todos','62'],['&estado_id=11','29']]){
   await page.goto(home+scope);
   check(await page.locator('[data-prospectos-filtros] button[type="submit"]').count()===0,'Sin botón Buscar redundante en '+scope);
   await searchAndWait('prueba29@example.test');
-  check(await page.locator('.prospectos-total strong').textContent()==='1'&&await page.locator('tbody td:nth-child(3)').textContent()==='prueba29@example.test','Correo automático encuentra un prospecto fuera de la primera página en '+scope);
+  check(await page.locator('.prospectos-total strong').textContent()==='1'&&await page.locator('tbody td:nth-child(2)').textContent()==='Prospecto 29 Prueba','Correo automático encuentra un prospecto fuera de la primera página en '+scope);
   check(await page.locator('#prospectoBuscar').evaluate(el=>el===document.activeElement),'La actualización conserva el foco del buscador');
   await searchAndWait('Prospecto 29');check(await page.locator('.prospectos-total strong').textContent()==='1','Nombre sigue disponible en la búsqueda automática');
   await searchAndWait('7771234567');check(await page.locator('.prospectos-total strong').textContent()===expected,'Teléfono sigue disponible en la búsqueda automática');
@@ -85,7 +85,7 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
  await page.locator('#prospectoBuscar').fill('prueba28@example.test');await requested;
  await searchAndWait('prueba29@example.test');const oldResponse=page.waitForResponse(r=>new URL(r.url()).searchParams.get('buscar')==='prueba28@example.test');releaseOld();await oldResponse;
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
- check(await page.locator('tbody td:nth-child(3)').textContent()==='prueba29@example.test','Las respuestas fuera de orden no sustituyen la última búsqueda');
+ check(await page.locator('tbody td:nth-child(2)').textContent()==='Prospecto 29 Prueba','Las respuestas fuera de orden no sustituyen la última búsqueda');
  await page.unroute('**/index.php?**');
  await page.route('**/index.php?**',async route=>{if(route.request().resourceType()==='fetch')await route.fulfill({status:500,body:'Error simulado'});else await route.fallback();},{times:1});
  await page.locator('#prospectoBuscar').fill('sin-resultados');await page.locator('[data-prospectos-search-error]').waitFor({state:'visible'});
@@ -132,7 +132,7 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
   const nojs=await browser.newContext({javaScriptEnabled:false,storageState:await context.storageState()});await setupRoutes(nojs);const fallback=await nojs.newPage();
   await fallback.goto(home+'&estado_id=11');await fallback.locator('#prospectoAliado').selectOption('8');await fallback.locator('#prospectoPrograma').selectOption(aDos);await fallback.locator('#prospectoBuscar').fill('prueba29@example.test');await fallback.getByRole('button',{name:'Aplicar filtros'}).click();
   check(await fallback.locator('.prospectos-total strong').textContent()==='1'&&new URL(fallback.url()).searchParams.get('estado_id')==='11','Sin JavaScript: formulario GET combina estado, aliado, programa y correo');
-  await fallback.locator('[data-prospectos-limpiar]').click();check(await fallback.locator('.prospectos-total strong').textContent()==='29'&&new URL(fallback.url()).searchParams.get('estado_id')==='11','Sin JavaScript: limpiar conserva contexto y resultados');
+  await fallback.screenshot({path:path.join(output,'nojs-pre-clear.png'),fullPage:true});await fallback.locator('[data-prospectos-limpiar]').click();check(await fallback.locator('.prospectos-total strong').textContent()==='29'&&new URL(fallback.url()).searchParams.get('estado_id')==='11','Sin JavaScript: limpiar conserva contexto y resultados');
   await nojs.close();
   if(!preview)await context.request.get(base+'_prospectos_session?role=clave');
   await page.goto(home+'&vista=todos'+(preview?'&_role=clave':''));
@@ -144,7 +144,7 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
   await page.setViewportSize({width,height});await page.goto(home);await page.evaluate(()=>document.fonts.ready);
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Inicio sin desbordamiento horizontal a '+width);
   await page.screenshot({path:path.join(output,'estados-'+width+'.png')});await page.goto(home+'&estado_id=11');
-  check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1&&document.querySelector('.prospectos-table-wrap').scrollWidth>document.querySelector('.prospectos-table-wrap').clientWidth),'Desplazamiento contenido en la tabla a '+width);
+  check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1&&(innerWidth>1024||document.querySelector('.prospectos-table-wrap').scrollWidth>document.querySelector('.prospectos-table-wrap').clientWidth)),'Desplazamiento contenido en la tabla a '+width);
   const font=await page.locator('tbody td').first().evaluate(el=>({family:getComputedStyle(el).fontFamily,size:getComputedStyle(el).fontSize}));check(font.family.includes('Manrope')&&font.size==='12px','Manrope institucional conservada a '+width);
   if(process.env.IMPE_PROSPECTOS_FASE2==='1'){
    const heights=await page.locator('.prospectos-fase2-filters').evaluate(form=>[form.querySelector('.module-search'),...form.querySelectorAll('.uniform-select-trigger')].map(el=>el.getBoundingClientRect().height));
@@ -155,7 +155,7 @@ let server,log='';if(!preview){server=spawn(process.env.PHP_BINARY||'php',['-S',
  await page.goto(home+'&estado_id=999999');check(await page.locator('.prospectos-fase1 [role="alert"]').first().textContent().then(t=>t.includes('Estado no encontrado')),'Estado no válido muestra error institucional');
  if(preview){
   await page.goto(home+'&_case=origin');check(await page.locator('[data-prospectos-indicador="aliados"] strong').textContent()==='—','Procedencia no verificada nunca se presenta como cero');await page.screenshot({path:path.join(output,'procedencia-no-disponible.png')});
-  await page.goto(home+'&_case=territory');check(await page.locator('.prospectos-fase1 [role="alert"]').count()>0&&await page.locator('[data-prospectos-indicador="estados"] strong').textContent()==='—','Error territorial controlado con indicador sin verificar');
+  await page.goto(home+'&_case=territory');check(await page.locator('.prospectos-fase1 [role="alert"]').count()>0&&await page.locator('[data-prospectos-state]').count()===0,'Error territorial controlado con indicador sin verificar');
   await page.goto(home+'&_case=error');check(await page.locator('.prospectos-fase1 [role="alert"]').count()>0&&await page.locator('tbody tr').count()===0,'Error de consulta no se presenta como listado vacío válido');
   await page.goto(home+'&_case=denied');check(await page.locator('.prospectos-fase1 [role="alert"]').textContent().then(t=>t.includes('No tienes permiso')),'Error de permiso con diseño institucional');
  }else{await context.request.get(base+'_prospectos_session?role=denied');const denied=await page.goto(home);check(denied.status()===403&&await page.locator('.prospectos-fase1 [role="alert"]').textContent().then(t=>t.includes('No tienes permiso')),'Permisos actuales: acceso no autorizado devuelve 403');}

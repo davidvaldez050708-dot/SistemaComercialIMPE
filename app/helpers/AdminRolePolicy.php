@@ -13,6 +13,7 @@ if (!function_exists('permisosOperativosRestringidosAdministrador')) {
         return [
             'prospectos.editar',
             'prospectos.asignar',
+            'prospectos.importar_meta',
             'seguimientos_comerciales.crear',
             'seguimientos_comerciales.editar',
             'seguimientos_comerciales.editar_propios',

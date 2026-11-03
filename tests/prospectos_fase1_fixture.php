@@ -1,7 +1,7 @@
 <?php
 // Exclusivamente bases nuevas locales de pruebas. Nunca se publica en Hostinger.
 if(PHP_SAPI!=='cli'||getenv('APP_ENV')!=='testing'||!preg_match('/^127\.0\.0\.1:(33410|33411)$/D',getenv('IMPE_DB_HOST')?:'')||!preg_match('/^impe_test_prospectos_fase1_[a-z0-9_]+$/D',getenv('IMPE_DB_NAME')?:''))exit(2);
-$schema=getenv('IMPE_DB_NAME');$port=(int)substr(getenv('IMPE_DB_HOST'),10);$db=new mysqli('127.0.0.1','root','','',$port);$db->query("CREATE DATABASE `$schema` CHARACTER SET utf8mb4");$db->select_db($schema);
+$schema=getenv('IMPE_DB_NAME');$port=(int)substr(getenv('IMPE_DB_HOST'),10);$db=new mysqli('127.0.0.1','root','','',$port);$db->query("CREATE DATABASE `$schema` CHARACTER SET utf8mb4");$db->select_db($schema);$db->set_charset('utf8mb4');
 $db->query('CREATE TABLE estados(id INT PRIMARY KEY,nombre VARCHAR(100),estado INT) ENGINE=InnoDB');
 $nombres=['Aguascalientes','Baja California','Baja California Sur','Campeche','Coahuila','Colima','Chiapas','Chihuahua','Ciudad de México','Durango','Guanajuato','Guerrero','Hidalgo','Jalisco','Estado de México','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas'];
 $q=$db->prepare('INSERT INTO estados VALUES(?,?,1)');foreach($nombres as $index=>$nombre){$id=$index+1;$q->bind_param('is',$id,$nombre);$q->execute();}$db->query("INSERT INTO estados VALUES(99,'Inactivo',0)");

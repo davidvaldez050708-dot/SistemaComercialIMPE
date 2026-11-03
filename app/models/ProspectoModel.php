@@ -1,15 +1,16 @@
 <?php
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../helpers/ProspectoFechaHoraHelper.php';
 
 class ProspectoModel
 {
     private $connection;
     private $procedenciasDisponibles;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
         $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection ?? $database->connect();
     }
 
     private function tieneProcedencias(): bool
@@ -187,6 +188,11 @@ class ProspectoModel
                 LEFT JOIN estados e ON e.id=r.estado_id LEFT JOIN municipios m ON m.id=r.municipio_id
                 $where ORDER BY r.created_at DESC,r.id DESC LIMIT ? OFFSET ?";
         $registros = $this->consultar($sql,[...$params,$porPagina,$offset],$types.'ii')->fetch_all(MYSQLI_ASSOC);
+        // Convertir sólo al presentar: orden, filtros y valores almacenados conservan UTC.
+        foreach ($registros as &$registro) {
+            $registro['created_at'] = ProspectoFechaHoraHelper::aMexico($registro['created_at']);
+        }
+        unset($registro);
         return ['aliados'=>$aliados,'programas'=>$programas,'programa_aplicado'=>$programaAplicado,
             'error_aliados'=>$errorAliados,'error_programas'=>$errorProgramas,
             'registros'=>$registros,'total'=>$total,'pagina'=>$pagina,'paginas'=>$paginas];

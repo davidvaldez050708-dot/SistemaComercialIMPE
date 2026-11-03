@@ -121,7 +121,9 @@ const fixture=(view,role='cc')=>base+'_fixture?view='+view+'&role='+role;
    await external.locator('[data-publico-submit]').click();await external.waitForURL(/action=gracias/);
   const a=await external.request.post(save,{form:data}),b=await external.request.post(save,{form:data});
   check(a.status()===200&&(await a.json()).registro_id===(await b.json()).registro_id,'reenvíos HTTP idempotentes');
-  await page.goto(fixture('prospectos','marketing'));check(await page.locator('tbody tr').filter({hasText:'navegador@example.test'}).textContent().then(t=>t.includes('Aliado navegador')),'Prospectos muestra institución de origen');
+  // El correo sigue siendo un filtro aunque la tabla compacta lo muestre en la ficha.
+  await page.goto(fixture('prospectos','marketing')+'&buscar='+encodeURIComponent('navegador@example.test'));
+  check(await page.locator('tbody tr').filter({hasText:'Persona Navegador'}).textContent().then(t=>t.includes('Aliado navegador')),'Prospectos muestra institución de origen al buscar por correo');
   await viewport('prospectos');
   check((await page.request.post(auth,{form:{operacion:'generar',origen:'manual',id:'1'}})).status()===419,'CSRF interno obligatorio');
   await page.goto(fixture('aliados','admin'));check(await page.locator('[data-registro-abrir]').count()===0,'Admin consulta sin botones operativos');

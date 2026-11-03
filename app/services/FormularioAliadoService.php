@@ -1,5 +1,6 @@
 <?php
 /** Autorización y procedencia exclusiva; los formularios generales no usan este servicio. */
+require_once __DIR__ . '/FormularioUbicacionService.php';
 require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 class FormularioAliadoService
 {
@@ -16,7 +17,7 @@ class FormularioAliadoService
         // Sólo Registro puede resolverlo mediante su configuración explícita.
         $condicion = ($tipo === 'registro' && $registroDisponible)
             ? '(activo=1 OR EXISTS(SELECT 1 FROM formulario_aliado_registro perfil WHERE perfil.aliado_id=formulario_aliados.id))' : 'activo=1';
-        $stmt = $this->db->prepare('SELECT id, nombre, ubicacion, seguimiento_id FROM formulario_aliados WHERE token = ? AND ' . $condicion . ($bloquear ? ' FOR UPDATE' : ''));
+        $stmt = $this->db->prepare('SELECT * FROM formulario_aliados WHERE token = ? AND ' . $condicion . ($bloquear ? ' FOR UPDATE' : ''));
         $stmt->bind_param('s', $token);
         $stmt->execute();
         $aliado = $stmt->get_result()->fetch_assoc();
@@ -32,8 +33,22 @@ class FormularioAliadoService
         $stmt = $this->db->prepare('SELECT p.codigo, p.nombre FROM formulario_aliado_programas ap INNER JOIN formulario_programas p ON p.codigo = ap.programa_codigo WHERE ap.aliado_id = ? AND p.activo = 1 ORDER BY p.nombre' . ($bloquear ? ' FOR UPDATE' : ''));
         $stmt->bind_param('i', $aliado['id']);
         $stmt->execute();
+        $aliado['internacional'] = empty($aliado['registro_gestionado']) && (isset($aliado['pais_codigo']) ? strtoupper($aliado['pais_codigo']) !== 'MX' : $aliado['seguimiento_id'] === null);
         $aliado['programas'] = ProgramaEducativo::programas($stmt->get_result()->fetch_all(MYSQLI_ASSOC));
         return $aliado;
+    }
+
+    public function resolverConvocatoria($token, $referencia, string $tipo, bool $bloquear = false): array
+    {
+        $aliado=$this->resolver($token,$bloquear,$tipo);
+        if (!is_string($referencia)||!preg_match('/^[a-f0-9]{32}$/D',$referencia)) { throw new DomainException('Convocatoria no disponible.'); }
+        $hoy=date('Y-m-d');
+        $s=$this->db->prepare('SELECT x.convocatoria_id,x.programa_codigo FROM formulario_aliado_convocatorias x INNER JOIN convocatorias c ON c.id=x.convocatoria_id WHERE x.aliado_id=? AND x.referencia=? AND x.formulario=? AND c.estado=1 AND c.fecha_inicio<=? AND c.fecha_termino>=?' . ($bloquear?' FOR UPDATE':''));
+        $s->bind_param('issss',$aliado['id'],$referencia,$tipo,$hoy,$hoy);$s->execute();$fila=$s->get_result()->fetch_assoc();
+        if (!$fila) { throw new DomainException('Convocatoria no disponible.'); }
+        $aliado['programas']=array_values(array_filter($aliado['programas'],static fn($p)=>$p['codigo']===ProgramaEducativo::codigo($fila['programa_codigo'])));
+        if (!$aliado['programas']) { throw new DomainException('Programa de convocatoria no autorizado.'); }
+        $aliado['convocatoria_id']=(int)$fila['convocatoria_id'];return $aliado;
     }
 
     public function autorizar(array $aliado, string $nombre): string
@@ -54,12 +69,8 @@ class FormularioAliadoService
         $this->db->begin_transaction();
         try {
             // Serializa reenvíos por aliado; revalida la autorización antes de insertar.
-            $aliado = $this->resolver($token, true, $tipo);
-            if ($tipo === 'registro') {
-                $q = $this->db->prepare('SELECT m.id FROM municipios m JOIN estados e ON e.id=m.estado_id AND e.estado=1 WHERE m.id=? AND m.estado_id=? AND m.estado=1');
-                $q->bind_param('ii', $datos['municipio_id'], $datos['estado_id']); $q->execute();
-                if (!$q->get_result()->num_rows) throw new DomainException('El municipio no corresponde al estado.');
-            }
+            $aliado = isset($datos['convocatoria_ref']) ? $this->resolverConvocatoria($token,$datos['convocatoria_ref'],$tipo,true) : $this->resolver($token, true, $tipo);
+            $datos = FormularioUbicacionService::validar($datos, $aliado['internacional'], $this->db);
             $codigo = $this->autorizar($aliado, $datos['perfil_interes']);
             [$clave,$claveAnterior] = ProgramaEducativo::clavesProcedencia(
                 [$datos['correo'], $datos['movil'], $datos['fecha_nacimiento'], $codigo],
@@ -73,10 +84,14 @@ class FormularioAliadoService
                 $this->db->commit();
                 return (int)$existente['registro_id'];
             }
-            $id = (int)$insertar();
+            $id = (int)$insertar($datos);
             $stmt = $this->db->prepare('INSERT INTO formulario_aliado_procedencias (aliado_id, tipo, registro_id, programa_codigo, aliado_nombre, aliado_ubicacion, clave) VALUES (?, ?, ?, ?, ?, ?, ?)');
             $stmt->bind_param('isissss', $aliado['id'], $tipo, $id, $codigo, $aliado['nombre'], $aliado['ubicacion'], $clave);
             if (!$stmt->execute()) { throw new RuntimeException('No se pudo guardar la procedencia.'); }
+            if (isset($aliado['convocatoria_id'])) {
+                $s=$this->db->prepare('UPDATE formulario_aliado_procedencias SET convocatoria_id=? WHERE tipo=? AND registro_id=?');
+                $s->bind_param('isi',$aliado['convocatoria_id'],$tipo,$id);$s->execute();
+            }
             $this->db->commit();
             return $id;
         } catch (Throwable $error) {

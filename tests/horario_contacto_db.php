@@ -5,6 +5,11 @@ require __DIR__.'/../app/models/ProspectoModel.php';
 require __DIR__.'/../app/services/RegistroEnlaceService.php';
 $db=(new Database())->connect(false);$n=0;
 function hcheck($ok,$label){global $n;if(!$ok)throw new RuntimeException($label);$n++;echo "OK $label\n";}
+// La variante de producción también conserva ubicación internacional.
+foreach (['formulario_registros','formulario_inscripciones'] as $table) {
+    $columns=array_column($db->query('SHOW COLUMNS FROM '.$table)->fetch_all(MYSQLI_ASSOC),'Field');
+    foreach (['pais_nombre','estado_provincia','ciudad'] as $column) if (!in_array($column,$columns,true)) $db->query("ALTER TABLE $table ADD $column VARCHAR(120) NULL");
+}
 $model=new FormularioRegistroModel();
 $data=['nombre'=>'Ana','apellido'=>'Prueba','fecha_nacimiento'=>'1990-01-01','movil'=>'7771234567','correo'=>'legacy@example.test','perfil_interes'=>'Bachillerato General','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>1,'municipio_id'=>1,'creado_por'=>null,'origen'=>'PUBLICO'];
 $legacy=$model->guardar($data);
@@ -20,7 +25,7 @@ $after=$db->query('SELECT * FROM formulario_registros')->fetch_all(MYSQLI_ASSOC)
 hcheck($after===$old&&$null===null,'Migración idempotente no altera los registros históricos');
 $custom=HorarioContacto::desdeEntrada(['contacto_disponibilidad'=>'personalizado','contacto_dias'=>['lun','vie'],'contacto_desde'=>'17:30','contacto_hasta'=>'20:00']);
 foreach(['PUBLICO','MARKETING'] as $origin){$d=$data;$d['origen']=$origin;$d['correo']=strtolower($origin).'@example.test';$d['horario_contacto']=$custom;$id=$model->guardar($d);hcheck($db->query('SELECT horario_contacto FROM formulario_registros WHERE id='.$id)->fetch_row()[0]===$custom,'Modelo conserva horario '.$origin);}
-$token=$tokens[0]['token'];$d=$data;$d['aliado_token']=$token;$d['correo']='ally@example.test';$d['horario_contacto']='Sin preferencia';$id=$model->guardar($d);$again=$model->guardar($d);
+$token=$tokens[0]['token'];$d=$data;$d['aliado_token']=$token;$d['estado_id']=null;$d['municipio_id']=null;$d['pais_nombre']='País ficticio';$d['estado_provincia']='Provincia ficticia';$d['ciudad']='Ciudad ficticia';$d['correo']='ally@example.test';$d['horario_contacto']='Sin preferencia';$id=$model->guardar($d);$again=$model->guardar($d);
 $p=$db->query("SELECT * FROM formulario_aliado_procedencias WHERE tipo='registro' AND registro_id=$id")->fetch_assoc();
 hcheck($id===$again&&$p['programa_codigo']==='bachillerato-general'&&(int)$p['aliado_id']===(int)$tokens[0]['id'],'Registro del aliado mantiene programa, procedencia y reenvío idempotente');
 $rows=(new ProspectoModel())->listar(1,100,['buscar'=>'ally@example.test'])['registros'];hcheck(count($rows)===1&&$rows[0]['horario_contacto']==='Sin preferencia','Prospectos devuelve horario guardado con filtro de correo');

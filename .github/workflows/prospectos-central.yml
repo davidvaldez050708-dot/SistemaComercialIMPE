@@ -1,0 +1,104 @@
+name: Prospectos · almacén central
+on:
+  pull_request:
+    paths:
+      - 'app/**/Prospecto*'
+      - 'app/models/FormularioRegistroModel.php'
+      - 'app/services/FormularioAliadoService.php'
+      - 'app/views/prospectos/**'
+      - 'public/**/prospectos_central.*'
+      - 'database/migrations/2026_11_02_prospectos_almacen_central.sql'
+      - 'tests/*prospectos_central*'
+      - 'tools/*prospectos_central*'
+      - 'tools/*prospectos_importador_meta*'
+      - 'tests/*publicacion_prospectos_importador_meta*'
+      - 'tests/*prospectos_meta*'
+      - 'tools/*meta_rol_hostinger*'
+      - 'tools/*prospectos_meta_formularios*'
+      - 'tests/*prospectos_campanias*'
+      - 'tools/*prospectos_campanias*'
+      - 'tools/prospectos_formularios_programas.php'
+      - 'database/migrations/2026_11_03_prospectos_formularios_programas.sql'
+      - 'app/services/ProspectoMeta*'
+      - 'app/models/RolModel.php'
+      - 'app/helpers/AdminRolePolicy.php'
+      - 'tests/prospectos_permisos_db.php'
+      - 'tests/prospectos_acceso_permisos.php'
+      - 'public/**/prospectos_importador_meta.*'
+      - 'tools/prospectos_almacen.php'
+      - '.github/workflows/prospectos-central.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  almacen:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mariadb: ['10.11', '11.8']
+    services:
+      database:
+        image: mariadb:${{ matrix.mariadb }}
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+        ports: ['33415:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=15
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33415
+      IMPE_TEST_MYSQL_HOST: 127.0.0.1:33415
+      IMPE_DB_USER: root
+      IMPE_DB_NAME: impe_test_prospectos_browser_ci
+      PHP_BINARY: php
+      NODE_PATH: /tmp/prospectos-central/node_modules
+      IMPE_BROWSER_DEPS: /tmp/prospectos-central/node_modules
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, dom, zip, iconv
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/prospectos-central playwright bootstrap@5.3.8 bootstrap-icons@1.13.1 @fontsource/manrope@5.3.0
+      - run: /tmp/prospectos-central/node_modules/.bin/playwright install --with-deps chromium
+      - name: Almacenamiento, recuperación, concurrencia y estructura
+        run: |
+          python3 tests/prospectos_central_db.py
+          python3 tests/prospectos_campanias_db.py
+          python3 tests/prospectos_campanias_publicacion_test.py
+          php tests/prospectos_campanias_celda_unit.php
+          php tests/horario_contacto_unit.php
+          php tests/prospectos_meta_archivo_unit.php
+          php tests/prospectos_meta_clasificacion_unit.php
+          python3 tests/prospectos_meta_formularios_publicacion_test.py
+          php tests/prospectos_meta_permisos_unit.php
+          python3 tests/prospectos_meta_hostinger_publicacion_test.py
+          python3 tests/prospectos_meta_hostinger_db.py
+          python3 tests/prospectos_meta_hostinger_db.py --campanias
+          php tests/prospectos_permisos_db.php
+          php tests/prospectos_acceso_permisos.php
+          php -l app/models/RolModel.php
+          php -l app/helpers/AdminRolePolicy.php
+          python3 tests/publicacion_prospectos_central_test.py
+          python3 tests/publicacion_prospectos_central_compacto_test.py
+          python3 tests/publicacion_prospectos_ficha_panel_test.py
+          python3 tests/publicacion_prospectos_importador_meta_test.py
+          php -l tools/prospectos_referencias_neutrales.php
+          node --check public/javascript/prospectos_central.js
+          node --check public/javascript/prospectos_importador_meta.js
+          php -l app/services/ProspectoMetaImportador.php
+      - name: Interfaz, permisos y formularios HTTP reales
+        run: node tests/prospectos_central_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prospectos-central-mariadb-${{ matrix.mariadb }}
+          path: docs/prospectos_central_capturas

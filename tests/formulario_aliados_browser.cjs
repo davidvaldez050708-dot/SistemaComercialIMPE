@@ -25,11 +25,11 @@ const url = (action, t=token) => `${base}index.php?controller=formularioPublico&
    return r.abort();
   });
   const expected=['Bachillerato General','Titulación por experiencia laboral'];
-  const data={nombre:'Prueba',apellido:'Navegador',fecha_nacimiento:'1990-01-01',movil:'7772345678',movil_confirmacion:'7772345678',correo:`navegador-${Date.now()}@example.test`,correo_confirmacion:`navegador-${Date.now()}@example.test`,perfil_interes:expected[0],estado_id:'1',municipio_id:'1',lugar_laboras:'',cargo_puesto:''};
+  const data={nombre:'Prueba',apellido:'Navegador',fecha_nacimiento:'1990-01-01',movil:'7772345678',movil_confirmacion:'7772345678',correo:`navegador-${Date.now()}@example.test`,correo_confirmacion:`navegador-${Date.now()}@example.test`,perfil_interes:expected[0],estado_id:'',municipio_id:'',pais_nombre:'País ficticio',estado_provincia:'Provincia ficticia',ciudad:'Ciudad ficticia',lugar_laboras:'',cargo_puesto:''};
   data.correo_confirmacion=data.correo;
   const counts=()=>JSON.parse(execFileSync(php,['-r',`require 'config/db_connection.php'; $d=(new Database())->connect(false); $r=[]; foreach(['formulario_registros','formulario_inscripciones','formulario_aliado_procedencias'] as $t){$r[$t]=(int)$d->query('SELECT COUNT(*) n FROM '.$t)->fetch_assoc()['n'];} echo json_encode($r);`],{cwd:root,env,encoding:'utf8'}));
   for(const action of ['registro','inscripcion']){
-   await page.goto(url(action)); assert.match(await page.locator('h1').textContent(),/Formulario/);
+   await page.goto(url(action));data.csrf_formulario_publico=await page.locator('[name=csrf_formulario_publico]').inputValue(); assert.match(await page.locator('h1').textContent(),/Formulario/);
    assert.deepEqual(await page.locator('[name=perfil_interes] option').allTextContents().then(a=>a.map(x=>x.trim()).filter(x=>x!=='Selecciona una opción'&&expected.includes(x))),expected);
    assert.equal(await page.locator('[name=perfil_interes] option').count(),3);
    assert.match(await page.locator('form').getAttribute('action'),new RegExp('aliado='+token));
@@ -44,9 +44,7 @@ const url = (action, t=token) => `${base}index.php?controller=formularioPublico&
     await page.locator(`[name=${key}]`).fill(key.startsWith('correo')?`ui-${action}@example.test`:data[key]);
    }
    await page.locator('[name=perfil_interes]').selectOption(expected[0]);
-   await page.locator('[name=estado_id]').selectOption('1');
-   await page.locator('[name=municipio_id] option[value="1"]').waitFor({state:'attached'});
-   await page.locator('[name=municipio_id]').selectOption('1');
+   for(const key of ['pais_nombre','estado_provincia','ciudad'])await page.locator('[name='+key+']').fill(data[key]);
    if(await page.locator('[data-horario-modo]').count())await page.locator('[data-horario-modo]').selectOption('sin_preferencia');
    await page.locator('button[type=submit]').click();
    await page.waitForURL(/action=gracias/);
@@ -68,7 +66,7 @@ const url = (action, t=token) => `${base}index.php?controller=formularioPublico&
    // General: catálogo original e Inglés permitidos, sin atribución arbitraria del POST.
    await page.goto(url(action,null));assert.equal(await page.locator('[name=perfil_interes] option').count(),7);
    const beforeGeneral=counts().formulario_aliado_procedencias;
-   const legacy=await page.request.post(url(save,null),{form:{...data,perfil_interes:'Inglés',aliado_id:'999'}});assert.equal((await legacy.json()).ok,true);
+   const legacy=await page.request.post(url(save,null),{form:{...data,estado_id:'1',municipio_id:'1',perfil_interes:'Inglés',aliado_id:'999'}});assert.equal((await legacy.json()).ok,true);
    assert.equal(counts().formulario_aliado_procedencias,beforeGeneral,'formulario general no hereda aliado por sesión ni por POST');
    console.log(`OK: ${action}: UI, responsive, autorización, enlaces, reenvíos y formulario general`);
   }

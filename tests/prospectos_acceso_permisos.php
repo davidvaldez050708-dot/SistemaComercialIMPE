@@ -9,6 +9,7 @@ $casos=[
     'cuenta_clave_sin'=>['Cuenta Clave',['convenios.ver'],false],
     'ventas_propios'=>['Asesor de Ventas',['prospectos.ver_propios'],false],
     'ventas_permitido'=>['Asesor de Ventas',['prospectos.ver_todos'],true],
+    'director_permitido'=>['Director de Operaciones',['prospectos.ver_todos'],true],
     'admin'=>['Administrador',['prospectos.ver_todos'],true],
     'editar_no_es_consultar'=>['Marketing',['prospectos.editar'],false],
     'sin_sesion'=>['Marketing',['prospectos.ver_todos'],false],
@@ -16,7 +17,7 @@ $casos=[
 if (($argv[1]??'')==='--gate') {
     if (!isset($casos[$argv[2]??''])) exit(2);
     [$rol,$permisos]=$casos[$argv[2]];
-    $_SESSION=['rol'=>$rol,'rol_id'=>$rol==='Administrador'?1:6,'permisos'=>$permisos];
+    $_SESSION=['rol'=>$rol,'rol_id'=>$rol==='Administrador'?1:($rol==='Asesor de Ventas'?3:7),'permisos'=>$permisos];
     if ($argv[2]!=='sin_sesion') $_SESSION['usuario_id']=2;
     register_shutdown_function(static function(){ echo '\nSTATUS='.(http_response_code()?:200); });
     (new ReflectionMethod(ProspectoController::class,'validarAcceso'))->invoke(new ProspectoController());
@@ -25,7 +26,7 @@ if (($argv[1]??'')==='--gate') {
 $count=0;
 function checkProspectos($ok,$mensaje){global $count;if(!$ok)throw new RuntimeException($mensaje);$count++;}
 foreach($casos as $nombre=>[$rol,$permisos,$permitido]){
-    $_SESSION=['rol'=>$rol,'rol_id'=>$rol==='Administrador'?1:6,'permisos'=>$permisos];
+    $_SESSION=['rol'=>$rol,'rol_id'=>$rol==='Administrador'?1:($rol==='Asesor de Ventas'?3:7),'permisos'=>$permisos];
     if($nombre!=='sin_sesion')$_SESSION['usuario_id']=2;
     $original=$_SESSION;$nombreCompleto='Usuario de prueba';$opcionActiva='prospectos';
     ob_start();require __DIR__.'/../app/views/layout/sidebar.php';$html=ob_get_clean();
@@ -44,4 +45,4 @@ foreach($casos as $nombre=>[$rol,$permisos,$permitido]){
 }
 $source=file_get_contents(__DIR__.'/../app/controllers/ProspectoController.php');
 checkProspectos(strpos($source,'$this->validarAcceso();')<strpos($source,'new ProspectoModel()'),'Guard antes de DB');
-echo "PASS $count comprobaciones de Prospectos, 10 combinaciones de permisos, sesión, escritorio/móvil y guard real.\n";
+echo "PASS $count comprobaciones de Prospectos, 11 combinaciones de permisos, sesión, escritorio/móvil y guard real.\n";

@@ -14,6 +14,17 @@ if ($role==='guest') { $_SESSION=[]; echo 'Sin sesión de prueba'; return true; 
 if ($role==='contacts') { $_SESSION['permisos'][]='aliados.gestionar_contactos'; $puedeGestionarContactos=true; $estructuraContactosDisponible=true; }
 if ($role==='share') { $_SESSION['permisos']=array_merge($_SESSION['permisos'],['aliados.compartir_correo','aliados.preparar_whatsapp','aliados.ver_historial','convocatorias.ver']); $puedeCompartirCorreo=true; $puedePrepararWhatsapp=true; $puedeConsultarConvocatorias=true; $puedeVerHistorial=true; }
 $view=$_GET['view']??'aliados';
+if ($view==='prospectos') {
+    // La consulta territorial necesita el contrato completo del controlador.
+    // No incluir la vista directamente con sólo $listado: omite sus filtros,
+    // estados e indicadores tanto en la rama base como en el almacén central.
+    $_SESSION['permisos'][]='prospectos.ver_todos';
+    $_GET['seccion']='aliados';
+    $_GET['vista']=$_GET['vista']??'todos';
+    require_once __DIR__.'/../app/controllers/ProspectoController.php';
+    (new ProspectoController())->index();
+    return true;
+}
 $baseline=$view==='convenios'&&($_GET['baseline']??'')==='convenios'&&getenv('IMPE_CONVENIOS_BASELINE_DIR');
 ?><!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aliados prueba aislada</title>
 <link rel="stylesheet" href="/fixture-bootstrap.css"><?php foreach(['global','dashboard','aliados','aliados_v2_extension','crear_convocatoria','responsive_sistema'] as $css): ?><link rel="stylesheet" href="/public/css/<?= $css ?>.css<?= $baseline&&$css==='aliados_v2_extension'?'?convenios_baseline=1':'' ?>"><?php endforeach; ?>
@@ -34,10 +45,6 @@ if ($view==='convenios') {
     require_once __DIR__.'/../app/models/CrearConvocatoriaModel.php';
     $m=new CrearConvocatoriaModel(); $convenios=$m->listarConveniosAliados(); $estados=$m->listarEstados(); $estructuraDisponible=true;
     require $baseline?getenv('IMPE_CONVENIOS_BASELINE_DIR').'/app/views/convocatorias/crear_desde_convenio.php':__DIR__.'/../app/views/convocatorias/crear_desde_convenio.php';
-} elseif ($view==='prospectos') {
-    require_once __DIR__.'/../app/models/ProspectoModel.php';
-    $listado=(new ProspectoModel())->listar((int)($_GET['pagina']??1),25,$_GET); $mensajeError='';
-    require __DIR__.'/../app/views/prospectos/index.php';
 } else {
     require_once __DIR__.'/../app/models/AliadoModel.php';
     $estado=['id'=>1,'nombre'=>'Morelos']; $esAdministrador=$role==='admin';
