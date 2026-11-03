@@ -12,12 +12,12 @@ function snapshot(mysqli $db,bool $central=false): string {
     foreach ($tables as [$t]) if ($central||!str_starts_with($t,'prospecto')) $data[$t]=$db->query('SELECT * FROM `'.$t.'`')->fetch_all(MYSQLI_ASSOC);
     ksort($data);return hash('sha256',json_encode($data,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
 }
-function cli(array $args): array {
+function cli(array $args,bool $acceptError=false): array {
     global $root;
     $command=[PHP_BINARY,$root.'/tools/prospectos_almacen.php','--site',$root,...$args];
     $p=proc_open($command,[1=>['pipe','w'],2=>['pipe','w']],$pipes,$root);
     $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);$code=proc_close($p);
-    if ($code!==0) throw new RuntimeException('CLI falló: '.$err);
+    if ($code!==0&&!$acceptError) throw new RuntimeException('CLI falló: '.$err);
     return json_decode($out,true,512,JSON_THROW_ON_ERROR);
 }
 try {
@@ -136,5 +136,16 @@ try {
     $db->query('ALTER TABLE prospecto_intereses DROP FOREIGN KEY fk_pi_origen');
     $db->query('ALTER TABLE prospecto_intereses ADD CONSTRAINT fk_pi_origen FOREIGN KEY(origen_id,prospecto_id) REFERENCES prospecto_origenes(id,prospecto_id)');
     ok(ProspectoCentralSchema::revisar($db)['disponible'],'estructura final íntegra después de pruebas de incompatibilidad');
+    $cursor=(int)$db->query('SELECT MAX(id) n FROM formulario_registros')->fetch_assoc()['n'];
+    foreach (['Antes del fallo ficticio','Fallo del lote ficticio','Después del fallo ficticio'] as $nombre) {
+        $s=$db->prepare("INSERT INTO formulario_registros(nombre,apellido,fecha_nacimiento,movil,correo,perfil_interes,lugar_laboras,estado_id,municipio_id,origen,created_at,updated_at) SELECT ?,apellido,fecha_nacimiento,movil,correo,perfil_interes,lugar_laboras,estado_id,municipio_id,origen,created_at,updated_at FROM formulario_registros WHERE id=?");$s->bind_param('si',$nombre,$general);$s->execute();
+        if ($nombre==='Fallo del lote ficticio') $failedId=(int)$db->insert_id;
+    }
+    $db->query("CREATE TRIGGER fallo_lote BEFORE INSERT ON prospectos_comerciales FOR EACH ROW BEGIN IF NEW.nombre='Fallo del lote ficticio' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Fallo de prueba del lote'; END IF; END");
+    $source=snapshot($db);$batch=cli(['--apply','--reconciliar','--desde-id',(string)$cursor,'--limite','100'],true);
+    ok(count($batch['errores'])===1 && !$batch['terminado'] && $batch['continuar_desde']===$failedId-1 && snapshot($db)===$source,'fallo parcial devuelve cursor reanudable y no modifica originales');
+    $db->query('DROP TRIGGER fallo_lote');
+    $batch=cli(['--apply','--reconciliar','--desde-id',(string)$batch['continuar_desde'],'--hasta-id',(string)$batch['hasta_id'],'--limite','100']);
+    ok($batch['terminado'] && !$batch['errores'] && $repo->origen('IMPE_FORMULARIOS','REGISTRO',(string)$failedId)!==null,'reanudación recupera el lote parcialmente confirmado sin duplicar');
     echo "PASS almacenamiento, conciliación, original intacto, fallos recuperables y regresiones de formularios.\n";
 } finally {if (getenv('IMPE_CENTRAL_KEEP_FIXTURE')!=='1') $db->query('DROP DATABASE `'.$database.'`');$db->close();}

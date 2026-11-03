@@ -326,6 +326,9 @@ $fechaMaximaNacimiento = date('Y-m-d');
                     </div>
 
                     <div class="formulario-publico-grid">
+                        <?php if (!empty($aliadoFormulario['internacional'])): ?>
+                        <?php require __DIR__.'/ubicacion_internacional.php'; ?>
+                        <?php else: ?>
                         <div class="formulario-publico-field formulario-publico-estado">
                             <label for="registro_publico_estado">
                                 Estado <strong>*</strong>
@@ -366,6 +369,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
                                 Selecciona un municipio.
                             </div>
                         </div>
+                        <?php endif; ?>
                     </div>
                 </section>
 

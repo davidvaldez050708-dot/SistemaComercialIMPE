@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory() as d:
     (site/'app/services/FormularioUbicacionService.php').write_bytes(subprocess.check_output(['git','show','20ec4fb64f211b06cde114da76d6c84e65a96db5:app/services/FormularioUbicacionService.php'],cwd=ROOT))
     code=r'''require $argv[1].'/app/models/FormularioRegistroModel.php';
     $db=(new Database())->connect(false);
-    foreach(['formulario_registros','formulario_inscripciones'] as $t)$db->query("ALTER TABLE $t ADD pais_nombre VARCHAR(120) NULL,ADD estado_provincia VARCHAR(120) NULL,ADD ciudad VARCHAR(120) NULL");
+    foreach(['formulario_registros','formulario_inscripciones'] as $t){$cols=array_column($db->query("SHOW COLUMNS FROM $t")->fetch_all(MYSQLI_ASSOC),'Field');foreach(['pais_nombre','estado_provincia','ciudad'] as $c)if(!in_array($c,$cols,true))$db->query("ALTER TABLE $t ADD $c VARCHAR(120) NULL");}
     $d=['nombre'=>'Variante','apellido'=>'Publicada','fecha_nacimiento'=>'1990-01-01','movil'=>'7771234567','correo'=>'variante@example.test','perfil_interes'=>'Bachillerato General','lugar_laboras'=>'','cargo_puesto'=>'','estado_id'=>1,'municipio_id'=>1,'creado_por'=>null,'origen'=>'PUBLICO','horario_contacto'=>'Lun · 18:00–20:00 (hora local)'];
     $id=(new FormularioRegistroModel())->guardar($d);
     $r=$db->query('SELECT horario_contacto,pais_nombre,estado_provincia,ciudad FROM formulario_registros WHERE id='.$id)->fetch_assoc();

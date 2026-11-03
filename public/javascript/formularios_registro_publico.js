@@ -221,8 +221,10 @@ document.addEventListener('DOMContentLoaded', function () {
             validarTelRecomendado(),
             validarCorreos(),
             validarSelect(perfil),
-            validarSelect(estado),
-            validarSelect(municipio)
+            ...(estado ? [validarSelect(estado), validarSelect(municipio)] :
+                Array.from(form.querySelectorAll('[data-ubicacion-internacional]')).map(function (campo) {
+                    return marcar(campo, campo.value.trim().length >= 2 && campo.checkValidity());
+                }))
         ].every(Boolean);
     };
 

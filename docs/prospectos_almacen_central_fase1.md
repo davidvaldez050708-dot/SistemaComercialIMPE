@@ -6,7 +6,7 @@ La rama parte de `feat/registro-horario-contacto`, commit `31049506880ecca15c495
 
 La versión real de Hostinger se reconstruyó con los hashes y comparaciones proporcionados por el propietario. Se verificaron las variantes de `FormularioRegistroModel`, `FormularioAliadoService`, `FormularioPublicoController` y la tipografía V3 de Prospectos. Las dependencias internacionales, catálogo de programas y conexión coinciden con los tres hashes recibidos el 2 de noviembre de 2026. No se ha accedido a producción ni ejecutado un despliegue o SQL de escritura.
 
-El PR incluye estas conciliaciones de código respecto a su rama base. El publicador **sólo cambia cuatro archivos existentes**: controlador de Prospectos, modelo de Prospectos, modelo de Registro y vista de Prospectos. Las dos vistas públicas de la rama incluyen el campo CSRF oculto que requiere el controlador de producción reconstruido; este ajuste de coherencia de la rama tampoco se publica sobre las vistas personalizadas de Hostinger. Los servicios originales de aliados, controladores de formularios, ubicación, catálogo, conexión y horario se verifican como dependencias; no se reemplazan en Hostinger.
+El PR incluye estas conciliaciones de código respecto a su rama base. El publicador **sólo cambia cuatro archivos existentes**: controlador de Prospectos, modelo de Prospectos, modelo de Registro y vista de Prospectos. Las vistas públicas y su validación cliente de la rama incluyen el campo CSRF y los tres campos internacionales que requiere el controlador de producción reconstruido, conservando la preferencia de horario; este ajuste de coherencia de la rama tampoco se publica sobre las vistas personalizadas de Hostinger. Los servicios originales de aliados, controladores de formularios, ubicación, catálogo, conexión y horario se verifican como dependencias; no se reemplazan en Hostinger.
 
 El archivo Meta aportado se examinó únicamente para reconocer su estructura: TSV con BOM UTF-16, 1,271 filas, identificadores de lead, anuncio, conjunto, campaña y formulario. No se importó ni se copiaron datos personales a fixtures, capturas o commits. No se infiere programa educativo del nombre del archivo o del formulario.
 
@@ -29,7 +29,7 @@ Los indicadores de aliados y formularios generales cuentan solicitudes originale
 
 ## Guardado y recuperación
 
-El formulario conserva su validación, autorización de programa, ubicación internacional, deduplicación y transacción originales. Después de obtener su ID confirmado, Registro intenta incorporarlo mediante una **conexión independiente**. La conciliación bloquea la fila original durante su transacción comercial para serializar dos incorporaciones simultáneas, pero nunca cambia esa fila. Las solicitudes fallidas en el componente comercial permanecen guardadas y pueden recuperarse por CLI. Los errores nuevos sólo registran clase/código, sin SQL ni valores personales.
+El formulario conserva su validación, autorización de programa, ubicación internacional, deduplicación y transacción originales. Después de obtener su ID confirmado, Registro intenta incorporarlo mediante una **conexión independiente**. La conciliación bloquea la fila original durante su transacción comercial para serializar dos incorporaciones simultáneas, pero nunca cambia esa fila. La identidad conserva su primera captura; las futuras correcciones o fusiones de identidad requieren una operación explícita. Las solicitudes fallidas en el componente comercial permanecen guardadas y pueden recuperarse por CLI. Los errores nuevos sólo registran clase/código, sin SQL ni valores personales.
 
 La incorporación preserva el horario recibido y no cambia la fecha de incorporación al repetir un lote. Los eventos originales mantienen su ID y referencia; no se eliminan formularios, inscripciones, procedencias, catálogos, aliados ni convocatorias. Inscripción continúa fuera de la incorporación de Registro. La lista territorial continúa usando el estado **del aliado** y la ficha presenta la residencia **del prospecto** por separado.
 
@@ -111,8 +111,14 @@ Capturas con datos ficticios:
 ![Aliados, escritorio](prospectos_central_capturas/aliados-escritorio.png)
 ![Ficha, móvil](prospectos_central_capturas/ficha-movil.png)
 
-La validación local usa PHP 8.2, MariaDB 10.4 y Chrome. El workflow específico comprueba MariaDB 10.11 y 11.8, versión de la familia instalada en Hostinger. La comprobación final del esquema y los datos reales permanece pendiente de una instalación autorizada. No se afirma haber probado llamadas, campañas reales o sincronizaciones externas: esta fase no modifica sus motores ni sus archivos.
+La validación local usa PHP 8.2, MariaDB 10.4 y Chrome. El workflow específico pasó en GitHub con MariaDB 10.11 y 11.8 en el primer commit del PR. La regresión visual territorial actualizada pasó 92 comprobaciones (incluyendo cinco tamaños, mapas, respuestas fuera de orden, filtros y navegación sin JavaScript). La regresión SQL de horario pasó 13 comprobaciones con el esquema internacional conciliado, además de sus 21 comprobaciones unitarias. La comprobación final del esquema y los datos reales permanece pendiente de una instalación autorizada. No se afirma haber probado llamadas, campañas reales o sincronizaciones externas: esta fase no modifica sus motores ni sus archivos.
 
 ## Límites de esta entrega
 
 No hay importación operativa Meta, carga del archivo entregado, reparto de 80 registros, asignación automática, configuración de jornadas/programas por asesor, nuevas llamadas desde la ficha ni peticiones a Zoho. La asignación se reserva en una tabla, el lote futuro como referencia del origen y Zoho como identificador/estado inactivo; no se crean procesos aparentes. No se cambian telefonía, grabaciones, notificaciones, transferencias, QR ni enlaces existentes.
+
+## Comprobaciones heredadas del repositorio
+
+El PR se mantiene en borrador mientras se concilian los resultados de los workflows históricos. Las pruebas territoriales antiguas se actualizaron para consultar explícitamente Aliados y comprobar ocho columnas, dejando los datos adicionales en la ficha. La fixture de Horario se adaptó a las columnas internacionales que ya exige el modelo instalado, sin cambiar el esquema real.
+
+Hay también fallos de telefonía en la rama base: `php tests/telefonia_shell_smoke.php` reproduce “Auto recepción configurable para el usuario” y los archivos de esa prueba y de su motor no tienen diferencias respecto a `31049506`. No se corrigen motores de llamadas dentro de esta fase ni se presenta el conjunto completo de CI como aprobado. La publicación selectiva no contiene ninguno de esos archivos.

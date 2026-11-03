@@ -10,7 +10,7 @@ class ProspectoController
         $this->validarAcceso();
         $seccionProspectos=$_GET['seccion']??null;
         if ($seccionProspectos===null) {
-            $legacy=array_intersect(['vista','estado_id','buscar_estado','aliado_id'],array_keys($_GET));
+            $legacy=array_intersect(['vista','estado_id','buscar_estado','aliado_id','buscar','programa','pagina'],array_keys($_GET));
             $seccionProspectos=$legacy?'aliados':'todos';
         }
         if (!is_string($seccionProspectos)||!in_array($seccionProspectos,['todos','aliados','meta','asignaciones'],true)) {http_response_code(400);exit('Sección de prospectos no válida.');}

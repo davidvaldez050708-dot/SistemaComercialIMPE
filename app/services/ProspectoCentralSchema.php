@@ -24,6 +24,9 @@ final class ProspectoCentralSchema
                 $normalize=static fn($v)=>preg_replace('/\b(bigint|tinyint|int)\([0-9]+\)/','$1',strtolower($v));
                 if (!$actual || $normalize($actual['Type'])!==$normalize($c[2]) || $actual['Null']!==($c[4]==='NULL'?'YES':'NO') || (!empty($c[3])&&$actual['Collation']!==$c[3])) $conflicts[]=$table.'.'.$c[1];
             }
+            if (preg_match('/^ id .*AUTO_INCREMENT/m',$definition['cuerpo']) && !str_contains($fields['id']['Extra']??'','auto_increment')) $conflicts[]=$table.': identidad no incremental';
+            preg_match_all("/^ ([a-z_]+) [^\n]* DEFAULT '([^']*)'/m",$definition['cuerpo'],$defaults,PREG_SET_ORDER);
+            foreach ($defaults as $default) if (trim((string)($fields[$default[1]]['Default']??''),"'")!==$default[2]) $conflicts[]=$table.': valor inicial '.$default[1];
             $indexes=[];foreach ($db->query('SHOW INDEX FROM `'.$table.'`')->fetch_all(MYSQLI_ASSOC) as $i) {$indexes[$i['Key_name']]['cols'][]=$i['Column_name'];$indexes[$i['Key_name']]['unique']=!(bool)$i['Non_unique'];}
             preg_match_all('/^ (PRIMARY KEY|UNIQUE KEY ([a-z_]+)|KEY ([a-z_]+)) \(([^)]+)\)/m',$definition['cuerpo'],$keys,PREG_SET_ORDER);
             foreach ($keys as $key) {
@@ -36,6 +39,9 @@ final class ProspectoCentralSchema
             }
             preg_match_all('/CONSTRAINT ([a-z_]+) FOREIGN KEY \(([^)]+)\) REFERENCES ([a-z_]+)\(([^)]+)\)/',$definition['cuerpo'],$fks,PREG_SET_ORDER);
             foreach ($fks as $fk) if (($foreign[$fk[1]]??null)!==['cols'=>explode(',',$fk[2]),'table'=>$fk[3],'ref'=>explode(',',$fk[4])]) $conflicts[]=$table.': relación '.$fk[1];
+            foreach ($db->query("SELECT CONSTRAINT_NAME,DELETE_RULE,UPDATE_RULE FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='$table'")->fetch_all(MYSQLI_ASSOC) as $rule) {
+                if (!in_array($rule['DELETE_RULE'],['RESTRICT','NO ACTION'],true)||!in_array($rule['UPDATE_RULE'],['RESTRICT','NO ACTION'],true)) $conflicts[]=$table.': regla de relación '.$rule['CONSTRAINT_NAME'];
+            }
         }
         return ['disponible'=>!$missing&&!$conflicts,'faltantes'=>$missing,'conflictos'=>$conflicts];
     }

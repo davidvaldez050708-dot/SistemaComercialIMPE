@@ -2,6 +2,7 @@
 $escaparProspecto = static function ($valor) {
     return htmlspecialchars((string)($valor ?? ''), ENT_QUOTES, 'UTF-8');
 };
+$indicadores=$indicadores??['personas'=>null,'meta'=>null,'por_incorporar'=>null,'aliados'=>$resumenProspectos['aliados']??null,'generales'=>$resumenProspectos['generales']??null];
 $registrosProspectos = $listado['registros'] ?? [];
 $paginaProspectos = (int)($listado['pagina'] ?? 1);
 $paginasProspectos = (int)($listado['paginas'] ?? 1);
@@ -108,7 +109,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
     <section class="prospectos-panel">
         <div class="prospectos-heading"><div class="prospectos-heading-main"><span class="prospectos-icon"><i class="bi bi-people" aria-hidden="true"></i></span><div><h2><?= $estadoProspectos?'Prospectos de '.$escaparProspecto($estadoProspectos['nombre']):($vistaProspectos==='todos'?'Todos los registros':'Estado no encontrado') ?></h2></div></div><?php if ($mensajeError===''): ?><div class="prospectos-total"><strong><?= (int)$listado['total'] ?></strong><span>prospectos</span></div><?php endif; ?></div>
         <?php if ($vistaProspectos==='estados'): ?>
-        <p class="prospectos-territory-note">Prospectos procedentes de aliados de este estado. Las columnas de residencia conservan lo declarado en el formulario.</p>
+        <p class="prospectos-territory-note">Prospectos procedentes de aliados de este estado. La ficha conserva la residencia declarada en el formulario.</p>
         <div class="prospectos-state-navigation"><a class="btn btn-system-light" href="<?= $escaparProspecto($urlProspectos()) ?>"><i class="bi bi-arrow-left" aria-hidden="true"></i> Estados</a>
             <form method="get" data-prospectos-navegacion><input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><input type="hidden" name="seccion" value="aliados"><label for="prospectosCambiarEstado">Cambiar de estado</label><select class="form-select" name="estado_id" id="prospectosCambiarEstado" required><option value="">Seleccionar estado</option><?php foreach ($territoriosProspectos as $territorio): ?><option value="<?= (int)$territorio['id'] ?>" <?= $estadoProspectos && (int)$estadoProspectos['id']===(int)$territorio['id']?'selected':'' ?>><?= $escaparProspecto($territorio['nombre']) ?></option><?php endforeach; ?></select><button type="submit" class="btn btn-system-light">Ver</button></form>
         </div>
@@ -137,7 +138,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
                 <?php foreach ($registrosProspectos as $prospecto): ?>
                     <tr><td><?= $escaparProspecto($prospecto['created_at']) ?></td><td class="prospectos-name"><?= $escaparProspecto(trim($prospecto['nombre'].' '.$prospecto['apellido'])) ?></td><td><?= $escaparProspecto($prospecto['movil']) ?></td><td><?= $escaparProspecto($prospecto['perfil_interes']) ?></td><td><?= $escaparProspecto($errorProcedencia!==''?'Procedencia no disponible':($prospecto['aliado_nombre']??'Registro general')) ?></td><td><?= $escaparProspecto($prospecto['horario_contacto']??'Sin indicar') ?></td><td><span class="central-badge">Consultar ficha</span></td><td><a class="central-link" href="<?= $escaparProspecto(BASE_URL.'index.php?controller=prospecto&action=detalleRegistro&registro_id='.(int)$prospecto['id']) ?>"><i class="bi bi-eye" aria-hidden="true"></i> Ver ficha</a></td></tr>
                 <?php endforeach; ?>
-                <?php if (!$registrosProspectos): ?><tr><td colspan="8" class="prospectos-empty"><div class="prospectos-empty-state"><i class="bi bi-search" aria-hidden="true"></i><strong>No hay registros con estos filtros.</strong></div></td></tr><?php endif; ?>
+                <?php if (!$registrosProspectos): ?><tr><td colspan="8" class="prospectos-empty"><div class="prospectos-empty-state"><i class="bi bi-<?= $buscarProspectos!==''||$aliadoFiltroProspectos!==''?'search':'people' ?>" aria-hidden="true"></i><strong><?= $buscarProspectos!==''?'No se encontraron coincidencias.':($programaFiltroProspectos!==''?'No hay registros para el programa seleccionado.':($aliadoFiltroProspectos!==''?'No hay prospectos para este aliado.':'No hay prospectos registrados.')) ?></strong></div></td></tr><?php endif; ?>
                 </tbody>
             </table>
         </div>
