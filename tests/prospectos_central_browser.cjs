@@ -1,0 +1,52 @@
+// Only fictional fixtures in a disposable local database. No production sessions.
+const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),{spawn,execFileSync}=require('node:child_process');
+ const {chromium}=require('playwright'),root=path.resolve(__dirname,'..'),php=process.env.PHP_BINARY||'php';
+assert.equal(process.env.APP_ENV,'testing');assert.match(process.env.IMPE_DB_NAME||'',/^impe_test_prospectos_[a-z0-9_]+$/);
+const base='http://127.0.0.1:8149/',env={...process.env,IMPE_BASE_URL:base,IMPE_CENTRAL_BROWSER:'1'},output=path.join(root,'docs/prospectos_central_capturas');fs.mkdirSync(output,{recursive:true});
+const fixture=(op)=>execFileSync(php,[path.join(__dirname,'prospectos_central_fixture.php'),op],{env,cwd:root,encoding:'utf8'});
+let server,log='',browser;
+(async()=>{try {
+ execFileSync(php,[path.join(__dirname,'prospectos_central_db.php')],{cwd:root,env:{...env,IMPE_CENTRAL_KEEP_FIXTURE:'1'},stdio:'inherit'});fixture('--seed');const before=fixture('--snapshot');
+ server=spawn(php,['-S','127.0.0.1:8149','-t',root,path.join(__dirname,'prospectos_central_router.php')],{cwd:root,env,stdio:['ignore','ignore','pipe']});server.stderr.on('data',b=>log+=b);
+ for (let n=0;n<80;n++) {try{await fetch(base+'_session');break;}catch{await new Promise(r=>setTimeout(r,100));}}
+ browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});const context=await browser.newContext({viewport:{width:1440,height:1050}}),page=await context.newPage(),errors=[];page.setDefaultTimeout(15000);page.setDefaultNavigationTimeout(15000);page.on('response',r=>{if(r.url().includes('controller=prospecto'))console.log('HTTP',r.status(),r.url());});page.on('pageerror',e=>errors.push(e.message));
+ const deps=process.env.IMPE_BROWSER_DEPS||path.resolve(root,'../browser-deps/node_modules');
+ await context.route('https://**/*',async route=>{const u=route.request().url();let file,type;
+  if(u.includes('bootstrap-icons')&&u.includes('.css')){file=path.join(deps,'bootstrap-icons/font/bootstrap-icons.min.css');type='text/css';}
+  else if(u.includes('bootstrap-icons')&&/\.woff2?(\?|$)/.test(u)){file=path.join(deps,'bootstrap-icons/font/fonts/bootstrap-icons.woff2');type='font/woff2';}
+  else if(u.includes('bootstrap@')&&u.includes('/css/')){file=path.join(deps,'bootstrap/dist/css/bootstrap.min.css');type='text/css';}
+  else if(u.includes('bootstrap@')&&u.includes('/js/')){file=path.join(deps,'bootstrap/dist/js/bootstrap.bundle.min.js');type='application/javascript';}
+  else if(u.includes('fonts.googleapis.com')){await route.fulfill({body:fs.readFileSync(path.join(deps,'@fontsource/manrope/latin.css'),'utf8').replaceAll('./files/',base+'fixture-font/'),contentType:'text/css'});return;}
+  if(file&&fs.existsSync(file))await route.fulfill({path:file,contentType:type});else await route.abort();
+ });
+ await context.route(base+'fixture-font/**',r=>r.fulfill({path:path.join(deps,'@fontsource/manrope/files',new URL(r.request().url()).pathname.split('/').pop()),contentType:'font/woff2'}));
+ const home=base+'index.php?controller=prospecto&action=index';await context.request.get(base+'_session?rol=marketing');
+ await page.goto(home);await page.locator('.central-table').waitFor();assert.equal(await page.locator('.central-table thead th').count(),8);assert.equal(await page.locator('.central-table tbody tr').count(),25);
+ await page.screenshot({path:path.join(output,'todos-escritorio.png'),fullPage:true});
+ await page.locator('[data-central-results] a[rel=next]').click();await page.waitForURL(/pagina=2/,{timeout:15000});console.log('OK paginación');assert.ok((await page.locator('.central-table tbody tr').count())>0&&(await page.locator('.central-table tbody tr').count())<=25);
+ await page.locator('#centralBuscar').fill('Prospecto ficticio 35');await page.waitForFunction(()=>document.querySelector('[data-central-results]').textContent.includes('1 prospectos'));assert.equal(await page.locator('.central-table tbody tr').count(),1);assert.ok((await page.locator('.central-table').innerText()).includes('ficticio 35'));
+ await page.locator('.central-table .central-link').click();await page.locator('#informacion-formulario').waitFor();assert.ok((await page.locator('#informacion-formulario').innerText()).includes('Empresa ficticia'));assert.ok((await page.locator('.prospectos-central').innerText()).includes('2026-11-02 09:00:00'));await page.screenshot({path:path.join(output,'ficha-escritorio.png'),fullPage:true});
+ await page.goto(base+'index.php?controller=prospecto&action=detalle&id=1');assert.equal(await page.locator('.prospectos-central img').count(),0);assert.ok((await page.locator('h2').innerText()).includes('<img'));
+ await page.goto(home+'&seccion=aliados');assert.equal(await page.locator('[data-prospectos-state]').count(),32);await page.locator('[data-prospectos-state-search]').fill('Guanajuato');assert.equal(await page.locator('[data-prospectos-state]:visible').count(),1);await page.locator('[data-prospectos-state]:visible').click();await page.locator('[data-prospectos-resultados]').waitFor();assert.equal(await page.locator('.prospectos-table-wrap thead th').count(),8);assert.ok(await page.locator('#prospectoAliado option').count()>2);await page.screenshot({path:path.join(output,'aliados-escritorio.png'),fullPage:true});
+ await page.selectOption('#prospectoAliado','1');await page.waitForURL(/aliado_id=1/);await page.selectOption('#prospectoPrograma',{index:1});await page.waitForURL(/programa=.+/);assert.ok((await page.locator('[data-prospectos-resultados]').innerText()).includes('Persona ficticia aliada'));
+ await page.goto(home+'&seccion=meta');assert.equal(await page.locator('.central-table tbody tr').count(),1);assert.ok(!(await page.locator('.prospectos-central').innerText()).includes('Importar archivo'));
+ await page.goto(home+'&seccion=asignaciones');assert.ok((await page.locator('.prospectos-central').innerText()).includes('Aún no hay asignaciones'));
+ await page.setViewportSize({width:390,height:844});await page.goto(home);await page.screenshot({path:path.join(output,'todos-movil.png'),fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.locator('.central-table .central-link').first().click();await page.screenshot({path:path.join(output,'ficha-movil.png'),fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ for(const role of ['admin','marketing']) {await context.request.get(base+'_session?rol='+role);assert.equal((await page.goto(home)).status(),200);}
+ for(const role of ['asesor','sin_permiso']) {await context.request.get(base+'_session?rol='+role);for(const url of [home,base+'index.php?controller=prospecto&action=detalle&id=1',base+'index.php?controller=prospecto&action=detalleRegistro&registro_id=1']) assert.equal((await page.goto(url)).status(),403);}
+ assert.equal(fixture('--snapshot'),before,'Navegación GET no modifica datos');
+ await context.request.get(base+'_session?rol=marketing');
+ await page.goto(base+'index.php?controller=formularioPublico&action=registro');const csrf=await page.locator('input[name=csrf_formulario_publico]').inputValue();assert.equal(csrf.length,64);
+ const form={nombre:'Persona Ficticia',apellido:'HTTP Prueba',fecha_nacimiento:'1990-01-01',movil:'5500000011',movil_confirmacion:'5500000011',correo:'publico-http@example.test',correo_confirmacion:'publico-http@example.test',perfil_interes:'Bachillerato General',lugar_laboras:'Empresa ficticia HTTP',cargo_puesto:'Cargo ficticio',estado_id:'1',municipio_id:'1',contacto_disponibilidad:'sin_preferencia'};
+ const publicUrl=base+'index.php?controller=formularioPublico&action=guardarRegistro';
+ assert.equal((await context.request.post(publicUrl,{form})).status(),403,'CSRF original continúa obligatorio');
+ let response=await context.request.post(publicUrl,{form:{...form,csrf_formulario_publico:csrf}});assert.equal(response.status(),200);assert.ok((await response.json()).ok,'Registro público original');
+ response=await context.request.post(base+'index.php?controller=formulario&action=guardarRegistro',{form:{...form,correo:'interno-http@example.test',correo_confirmacion:'interno-http@example.test'}});assert.equal(response.status(),200);assert.ok((await response.json()).ok,'Registro interno original');
+ const allyForm={...form,correo:'aliado-http@example.test',correo_confirmacion:'aliado-http@example.test',perfil_interes:'Programa A (prueba)',csrf_formulario_publico:csrf};
+ const allyUrl=publicUrl+'&aliado='+('a'.repeat(64));response=await context.request.post(allyUrl,{form:allyForm});assert.equal(response.status(),200);const allySaved=await response.json();assert.ok(allySaved.ok,JSON.stringify(allySaved));
+ const repeat=await (await context.request.post(allyUrl,{form:allyForm})).json();assert.equal(repeat.registro_id,allySaved.registro_id,'Reenvío aliado no duplica original');
+ response=await context.request.post(base+'index.php?controller=formularioPublico&action=guardarInscripcion',{form:{...form,correo:'inscripcion-http@example.test',correo_confirmacion:'inscripcion-http@example.test',csrf_formulario_publico:csrf}});assert.equal(response.status(),200);assert.ok((await response.json()).ok,'Inscripción original');
+ console.log('PASS POST con controladores reales: CSRF, público, interno, aliado repetido e inscripción.');
+ assert.deepEqual(errors,[]);assert.ok(!/PHP (Warning|Fatal|Parse)|Uncaught/.test(log),log);
+ console.log('PASS interfaz real: 8 columnas, búsqueda automática, paginación, 32 estados, filtros, ficha, XSS, fechas, desktop/móvil, permisos y GET sin escrituras.');
+}finally {if(browser)await browser.close();if(server)server.kill();try{fixture('--drop');}catch{}if(/PHP (Warning|Fatal|Parse)/.test(log))console.error(log);}})().catch(e=>{console.error(e);process.exitCode=1;});

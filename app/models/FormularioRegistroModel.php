@@ -73,6 +73,12 @@ class FormularioRegistroModel
         return $stmt->get_result()->num_rows > 0;
     }
 
+    public function convocatoriaExclusiva($token, $referencia, string $tipo)
+    {
+        require_once __DIR__ . '/../services/FormularioAliadoService.php';
+        return (new FormularioAliadoService($this->connection))->resolverConvocatoria($token,$referencia,$tipo);
+    }
+
     public function aliadoExclusivo($token, string $tipo = "inscripcion")
     {
         require_once __DIR__ . '/../services/FormularioAliadoService.php';
@@ -81,6 +87,21 @@ class FormularioRegistroModel
 
     public function guardar($datos)
     {
+        $id=$this->guardarOriginal($datos);
+        $origen=strtoupper(trim((string)($datos['origen']??'')));
+        if ((int)$id>0 && !in_array($origen,['MARKETING_INSCRIPCION','PUBLICO_INSCRIPCION'],true)) {
+            try {
+                require_once __DIR__.'/../services/ProspectoCentralIncorporacionService.php';
+                ProspectoCentralIncorporacionService::despuesDeGuardar((int)$id);
+            } catch (Throwable $e) {
+                error_log('[prospectos_incorporacion_pendiente] '.get_class($e).' codigo='.(int)$e->getCode());
+            }
+        }
+        return $id;
+    }
+
+    private function guardarOriginal($datos)
+    {
         $datos = ProgramaEducativo::entrada($datos);
         if (array_key_exists('aliado_token', $datos)) {
             require_once __DIR__ . '/../services/FormularioAliadoService.php';
@@ -88,9 +109,16 @@ class FormularioRegistroModel
             unset($datos['aliado_token']);
             $tipo = ($datos['origen'] ?? '') === 'PUBLICO_INSCRIPCION' ? 'inscripcion' : 'registro';
             return (new FormularioAliadoService($this->connection))->guardar(
-                $token, $datos, $tipo, function () use ($datos) { return $this->guardar($datos); }
+                $token, $datos, $tipo, function ($validados) { return $this->insertar($validados); }
             );
         }
+        require_once __DIR__ . '/../services/FormularioUbicacionService.php';
+        $datos = FormularioUbicacionService::validar($datos, false, $this->connection);
+        return $this->insertar($datos);
+    }
+
+    private function insertar(array $datos)
+    {
         $origenSolicitado = strtoupper(
             trim((string)($datos['origen'] ?? 'MARKETING'))
         );
@@ -153,12 +181,15 @@ class FormularioRegistroModel
                     cargo_puesto,
                     estado_id,
                     municipio_id,
+                    pais_nombre,
+                    estado_provincia,
+                    ciudad,
                     creado_por,
                     origen,
                     {$columnaHorario}
                     created_at,
                     updated_at
-                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, {$valorHorario} NOW(), NOW())";
+                ) VALUES (?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, ?, {$valorHorario} NOW(), NOW())";
 
         $stmt = $this->connection->prepare($sql);
 
@@ -171,7 +202,7 @@ class FormularioRegistroModel
         }
 
         $stmt->bind_param(
-            'ssssssssssiiis' . ($conHorario ? 's' : ''),
+            'ssssssssssiisssis' . ($conHorario ? 's' : ''),
             $datos['nombre'],
             $datos['apellido'],
             $datos['fecha_nacimiento'],
@@ -184,6 +215,9 @@ class FormularioRegistroModel
             $datos['cargo_puesto'],
             $datos['estado_id'],
             $datos['municipio_id'],
+            $datos['pais_nombre'],
+            $datos['estado_provincia'],
+            $datos['ciudad'],
             $creadoPor,
             $origen,
             ...$argumentosHorario

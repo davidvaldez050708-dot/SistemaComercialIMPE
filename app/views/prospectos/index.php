@@ -6,7 +6,7 @@ $registrosProspectos = $listado['registros'] ?? [];
 $paginaProspectos = (int)($listado['pagina'] ?? 1);
 $paginasProspectos = (int)($listado['paginas'] ?? 1);
 $urlProspectos = static function (array $params = []) {
-    return BASE_URL.'index.php?'.http_build_query(array_merge(['controller'=>'prospecto','action'=>'index'],$params));
+    return BASE_URL.'index.php?'.http_build_query(array_merge(['controller'=>'prospecto','action'=>'index','seccion'=>'aliados'],$params));
 };
 $consultaProspectos = ['vista'=>$vistaProspectos,'buscar'=>$buscarProspectos,'aliado_id'=>$aliadoFiltroProspectos,'programa'=>$programaFiltroProspectos];
 if ($estadoProspectos) $consultaProspectos['estado_id']=(int)$estadoProspectos['id'];
@@ -40,9 +40,9 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
 .prospectos-page .prospectos-table-wrap table th,
 .prospectos-page .prospectos-table-wrap table td,
 .prospectos-page .prospectos-table-wrap table span,
-.prospectos-page .prospectos-table-wrap table a{font-family:'Manrope',sans-serif !important;font-size:12px !important;letter-spacing:normal !important;line-height:1.5 !important}
-.prospectos-page .prospectos-table-wrap table th{font-weight:800 !important}
-.prospectos-page .prospectos-table-wrap table td{font-weight:600 !important}
+.prospectos-page .prospectos-table-wrap table a{font-family:'Manrope',sans-serif !important;font-size:14px !important;letter-spacing:-.01em !important;line-height:1.5 !important}
+.prospectos-page .prospectos-table-wrap table th{font-weight:700 !important}
+.prospectos-page .prospectos-table-wrap table td{font-weight:500 !important}
 .prospectos-page .prospectos-table-wrap table td.prospectos-name{font-weight:700 !important}
 .prospectos-page th{background:#eef4fa;color:#173a65;font-weight:800;text-align:left;padding:12px 14px;border-bottom:1px solid #d9e4ef}
 .prospectos-page td{padding:12px 14px;border-bottom:1px solid #e9eef5;color:#42516a}
@@ -53,29 +53,39 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
 .prospectos-page .prospectos-pagination{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:18px;font-size:13px}
 .prospectos-page .prospectos-pagination a{border:1px solid #dce5ef;border-radius:9px;padding:8px 12px}
 @media(max-width:767px){.prospectos-page .prospectos-panel{padding:16px}}
+/* IMPE_PROSPECTOS_TIPOGRAFIA_V3_INICIO */
+.prospectos-page .prospectos-table-wrap table,
+.prospectos-page .prospectos-table-wrap table th,
+.prospectos-page .prospectos-table-wrap table td,
+.prospectos-page .prospectos-table-wrap table span,
+.prospectos-page .prospectos-table-wrap table a {
+    font-family: 'Manrope', sans-serif !important;
+    font-size: 12px !important;
+    letter-spacing: normal !important;
+    line-height: 1.45 !important;
+}
+.prospectos-page .prospectos-table-wrap table th {font-weight: 800 !important;}
+.prospectos-page .prospectos-table-wrap table td {font-weight: 600 !important;}
+.prospectos-page .prospectos-table-wrap table td.prospectos-name {font-weight: 800 !important;}
+/* IMPE_PROSPECTOS_TIPOGRAFIA_V3_FIN */
 </style>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_fase1.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_fase1.css'),0,16) ?>">
-<div class="prospectos-page prospectos-fase1" data-prospectos-modulo>
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_central.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_central.css'),0,16) ?>">
+<div class="prospectos-page prospectos-fase1 prospectos-central" data-prospectos-modulo>
+    <?php $esc=$escaparProspecto; $seccionProspectos='aliados';require __DIR__.'/partials/navegacion.php'; ?>
     <?php foreach (array_filter([$mensajeError,$errorTerritorial,$errorProcedencia]) as $errorProspectos): ?>
     <div class="login-alert prospectos-message" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span><?= $escaparProspecto($errorProspectos) ?></span></div>
     <?php endforeach; ?>
-    <section class="aliados-summary-grid prospectos-summary" aria-label="Indicadores de Prospectos">
-        <?php foreach ([['total','bi-people','Total de prospectos',$resumenProspectos['total']],['estados','bi-map','Estados de aliados con registros',$estadosConRegistros],['aliados','bi-buildings','Procedentes de aliados',$resumenProspectos['aliados']],['generales','bi-ui-checks','Formularios generales',$resumenProspectos['generales']]] as [$indicador,$icono,$etiqueta,$cantidad]): ?>
-        <article class="aliados-summary-card" data-prospectos-indicador="<?= $indicador ?>">
-            <span class="aliados-summary-icon"><i class="bi <?= $icono ?>" aria-hidden="true"></i></span>
-            <div><strong><?= $cantidad===null?'—':(int)$cantidad ?></strong><span><?= $etiqueta ?></span><?php if ($cantidad===null): ?><small>Sin verificar</small><?php endif; ?></div>
-        </article>
-        <?php endforeach; ?>
-    </section>
+    <?php require __DIR__.'/partials/resumen.php'; ?>
     <nav class="prospectos-views" aria-label="Vistas de Prospectos">
         <a class="prospectos-view<?= $vistaProspectos==='estados'?' is-active':'' ?>" <?= $vistaProspectos==='estados'?'aria-current="page"':'' ?> href="<?= $escaparProspecto($urlProspectos()) ?>"><i class="bi bi-map" aria-hidden="true"></i> Por estados</a>
-        <a class="prospectos-view<?= $vistaProspectos==='todos'?' is-active':'' ?>" <?= $vistaProspectos==='todos'?'aria-current="page"':'' ?> href="<?= $escaparProspecto($urlProspectos(['vista'=>'todos'])) ?>"><i class="bi bi-people" aria-hidden="true"></i> Todos los prospectos</a>
+        <a class="prospectos-view<?= $vistaProspectos==='todos'?' is-active':'' ?>" <?= $vistaProspectos==='todos'?'aria-current="page"':'' ?> href="<?= $escaparProspecto($urlProspectos(['vista'=>'todos'])) ?>"><i class="bi bi-people" aria-hidden="true"></i> Todos los registros</a>
     </nav>
     <?php if (!$mostrarTablaProspectos): ?>
     <section class="dashboard-panel prospectos-state-toolbar">
-        <div><h2 class="panel-title">Seleccionar estado</h2><p>Consulta los prospectos por el estado de su aliado de origen. Los registros generales están en Todos los prospectos.</p></div>
+        <div><h2 class="panel-title">Seleccionar estado</h2><p>Consulta los prospectos por el estado de su aliado de origen. Los registros generales están en Todos los registros.</p></div>
         <form method="get" data-prospectos-state-search-form>
-            <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index">
+            <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><input type="hidden" name="seccion" value="aliados">
             <label for="prospectosEstadoBuscar">Buscar estado</label>
             <div class="prospectos-search-controls"><div class="module-search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" id="prospectosEstadoBuscar" name="buscar_estado" type="search" placeholder="Buscar estado…" value="<?= $escaparProspecto($buscarEstadoProspectos) ?>" data-prospectos-state-search></div></div>
         </form>
@@ -96,16 +106,16 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
     <?php endif; ?>
     <?php else: ?>
     <section class="prospectos-panel">
-        <div class="prospectos-heading"><div class="prospectos-heading-main"><span class="prospectos-icon"><i class="bi bi-people" aria-hidden="true"></i></span><div><h2><?= $estadoProspectos?'Prospectos de '.$escaparProspecto($estadoProspectos['nombre']):($vistaProspectos==='todos'?'Todos los prospectos':'Estado no encontrado') ?></h2></div></div><?php if ($mensajeError===''): ?><div class="prospectos-total"><strong><?= (int)$listado['total'] ?></strong><span>prospectos</span></div><?php endif; ?></div>
+        <div class="prospectos-heading"><div class="prospectos-heading-main"><span class="prospectos-icon"><i class="bi bi-people" aria-hidden="true"></i></span><div><h2><?= $estadoProspectos?'Prospectos de '.$escaparProspecto($estadoProspectos['nombre']):($vistaProspectos==='todos'?'Todos los registros':'Estado no encontrado') ?></h2></div></div><?php if ($mensajeError===''): ?><div class="prospectos-total"><strong><?= (int)$listado['total'] ?></strong><span>prospectos</span></div><?php endif; ?></div>
         <?php if ($vistaProspectos==='estados'): ?>
         <p class="prospectos-territory-note">Prospectos procedentes de aliados de este estado. Las columnas de residencia conservan lo declarado en el formulario.</p>
         <div class="prospectos-state-navigation"><a class="btn btn-system-light" href="<?= $escaparProspecto($urlProspectos()) ?>"><i class="bi bi-arrow-left" aria-hidden="true"></i> Estados</a>
-            <form method="get" data-prospectos-navegacion><input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><label for="prospectosCambiarEstado">Cambiar de estado</label><select class="form-select" name="estado_id" id="prospectosCambiarEstado" required><option value="">Seleccionar estado</option><?php foreach ($territoriosProspectos as $territorio): ?><option value="<?= (int)$territorio['id'] ?>" <?= $estadoProspectos && (int)$estadoProspectos['id']===(int)$territorio['id']?'selected':'' ?>><?= $escaparProspecto($territorio['nombre']) ?></option><?php endforeach; ?></select><button type="submit" class="btn btn-system-light">Ver</button></form>
+            <form method="get" data-prospectos-navegacion><input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><input type="hidden" name="seccion" value="aliados"><label for="prospectosCambiarEstado">Cambiar de estado</label><select class="form-select" name="estado_id" id="prospectosCambiarEstado" required><option value="">Seleccionar estado</option><?php foreach ($territoriosProspectos as $territorio): ?><option value="<?= (int)$territorio['id'] ?>" <?= $estadoProspectos && (int)$estadoProspectos['id']===(int)$territorio['id']?'selected':'' ?>><?= $escaparProspecto($territorio['nombre']) ?></option><?php endforeach; ?></select><button type="submit" class="btn btn-system-light">Ver</button></form>
         </div>
         <?php endif; ?>
         <?php if ($mensajeError===''): ?>
         <form method="get" class="prospectos-list-filters prospectos-fase2-filters" data-prospectos-filtros data-prospectos-navegacion>
-            <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><input type="hidden" name="vista" value="<?= $vistaProspectos ?>"><?php if ($estadoProspectos): ?><input type="hidden" name="estado_id" value="<?= (int)$estadoProspectos['id'] ?>"><?php endif; ?>
+            <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><input type="hidden" name="seccion" value="aliados"><input type="hidden" name="vista" value="<?= $vistaProspectos ?>"><?php if ($estadoProspectos): ?><input type="hidden" name="estado_id" value="<?= (int)$estadoProspectos['id'] ?>"><?php endif; ?>
             <div><label for="prospectoBuscar">Buscar prospecto</label><div class="module-search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" type="search" id="prospectoBuscar" name="buscar" placeholder="Escribe nombre, teléfono o correo…" maxlength="180" value="<?= $escaparProspecto($buscarProspectos) ?>"></div></div>
             <div><label for="prospectoAliado" id="prospectoAliadoLabel">Aliado de origen</label><select class="form-select" id="prospectoAliado" name="aliado_id" data-native-select data-prospectos-searchable="aliado" <?= $errorProcedencia!=='' || $errorAliadosProspectos!==''?'disabled':'' ?>><option value="">Todos los orígenes</option><option value="general" <?= $aliadoFiltroProspectos==='general'?'selected':'' ?>>Registro general</option><?php foreach (($listado['aliados']??[]) as $origenProspecto): ?><option value="<?= (int)$origenProspecto['id'] ?>" <?= $aliadoFiltroProspectos===(string)$origenProspecto['id']?'selected':'' ?>><?= $escaparProspecto($origenProspecto['nombre'].' · ID #'.$origenProspecto['id']) ?></option><?php endforeach; ?></select></div>
             <div><label for="prospectoPrograma" id="prospectoProgramaLabel">Programa educativo</label><select class="form-select" id="prospectoPrograma" name="programa" data-native-select data-prospectos-searchable="programa" <?= $errorProgramasProspectos!=='' || empty($listado['programas'])?'disabled':'' ?>>
@@ -122,18 +132,12 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
         <div data-prospectos-resultados>
         <div class="prospectos-table-wrap" role="region" aria-label="Listado de prospectos" tabindex="0">
             <table>
-                <thead><tr><th scope="col">Fecha de registro</th><th scope="col">Nombre completo</th><th scope="col">Correo electrónico</th><th scope="col">Teléfono</th><th scope="col">Horario de contacto</th><th scope="col">Tel. secundario</th><th scope="col">Tel. recomendado</th><th scope="col">Aliado de origen</th><th scope="col">Perfil de interés</th><th scope="col">Estado de residencia</th><th scope="col">Municipio de residencia</th><th scope="col">Lugar de trabajo</th><th scope="col">Cargo</th><th scope="col">Fecha de nacimiento</th><th scope="col">Origen</th></tr></thead>
+                <thead><tr><th scope="col">Fecha de registro · México</th><th scope="col">Nombre</th><th scope="col">Teléfono</th><th scope="col">Programa</th><th scope="col">Procedencia</th><th scope="col">Horario de contacto</th><th scope="col">Gestión</th><th scope="col">Detalle</th></tr></thead>
                 <tbody>
                 <?php foreach ($registrosProspectos as $prospecto): ?>
-                    <tr>
-                        <td><?= $escaparProspecto($prospecto['created_at']) ?></td>
-                        <td class="prospectos-name"><?= $escaparProspecto(trim($prospecto['nombre'] . ' ' . $prospecto['apellido'])) ?></td>
-                        <td><?= $escaparProspecto($prospecto['correo']) ?></td><td><?= $escaparProspecto($prospecto['movil']) ?></td><td><?= $escaparProspecto($prospecto['horario_contacto'] ?? 'Sin indicar') ?></td><td><?= $escaparProspecto($prospecto['movil_secundario'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['tel_recomendado'] ?: '—') ?></td>
-                        <td><?= $escaparProspecto($errorProcedencia!==''?'Procedencia no disponible':($prospecto['aliado_nombre']??'Registro general')) ?></td>
-                        <td><?= $escaparProspecto($prospecto['perfil_interes']) ?></td><td><?= $escaparProspecto($prospecto['estado'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['municipio'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['lugar_laboras']) ?></td><td><?= $escaparProspecto($prospecto['cargo_puesto'] ?: '—') ?></td><td><?= $escaparProspecto($prospecto['fecha_nacimiento']) ?></td><td><?= $escaparProspecto($prospecto['origen']) ?></td>
-                    </tr>
+                    <tr><td><?= $escaparProspecto($prospecto['created_at']) ?></td><td class="prospectos-name"><?= $escaparProspecto(trim($prospecto['nombre'].' '.$prospecto['apellido'])) ?></td><td><?= $escaparProspecto($prospecto['movil']) ?></td><td><?= $escaparProspecto($prospecto['perfil_interes']) ?></td><td><?= $escaparProspecto($errorProcedencia!==''?'Procedencia no disponible':($prospecto['aliado_nombre']??'Registro general')) ?></td><td><?= $escaparProspecto($prospecto['horario_contacto']??'Sin indicar') ?></td><td><span class="central-badge">Consultar ficha</span></td><td><a class="central-link" href="<?= $escaparProspecto(BASE_URL.'index.php?controller=prospecto&action=detalleRegistro&registro_id='.(int)$prospecto['id']) ?>"><i class="bi bi-eye" aria-hidden="true"></i> Ver ficha</a></td></tr>
                 <?php endforeach; ?>
-                <?php if (!$registrosProspectos): ?><tr><td colspan="15" class="prospectos-empty"><div class="prospectos-empty-state"><i class="bi bi-<?= $buscarProspectos!==''||$aliadoFiltroProspectos!==''?'search':'people' ?>" aria-hidden="true"></i><strong><?= $buscarProspectos!==''?'No se encontraron coincidencias.':($programaFiltroProspectos!==''?'No hay registros para el programa seleccionado.':($aliadoFiltroProspectos!==''?'No hay prospectos para este aliado.':'No hay prospectos registrados.')) ?></strong></div></td></tr><?php endif; ?>
+                <?php if (!$registrosProspectos): ?><tr><td colspan="8" class="prospectos-empty"><div class="prospectos-empty-state"><i class="bi bi-search" aria-hidden="true"></i><strong>No hay registros con estos filtros.</strong></div></td></tr><?php endif; ?>
                 </tbody>
             </table>
         </div>

@@ -81,6 +81,7 @@ $fechaMaximaNacimiento = date('Y-m-d');
                 method="post"
                 novalidate
                 data-formulario-registro-publico>
+                <input type="hidden" name="csrf_formulario_publico" value="<?= $texto($_SESSION['csrf_formulario_publico'] ?? '') ?>">
 
                 <?php if (!empty($aliadoFormulario['registro_gestionado'])): ?>
                     <input type="hidden" name="registro_csrf" value="<?= $texto($_SESSION['registro_publico_csrf'] ?? '') ?>">
