@@ -20,11 +20,12 @@ $record=$form->guardar($datos);
 $oldKey=hash('sha256',json_encode([$datos['correo'],$datos['movil'],$datos['fecha_nacimiento'],'bachillerato-286'],JSON_UNESCAPED_UNICODE));
 $db->query("UPDATE formulario_aliado_procedencias SET programa_codigo='bachillerato-286',clave='$oldKey' WHERE tipo='registro' AND registro_id=$record");
 $db->query("UPDATE formulario_registros SET perfil_interes='Bachillerato 286' WHERE id=$record");
-// Inscripción exclusiva sin perfil de Registro: conservar su token y su ID.
+// Inscripción internacional sin perfil de Registro ni seguimiento mexicano:
+// conservar token/ID y enviar ubicación internacional coherente con el aliado.
 $insToken=bin2hex(random_bytes(32));$slug='union-inscripcion-'.bin2hex(random_bytes(5));
-$db->query("INSERT INTO formulario_aliados (slug,nombre,ubicacion,token,activo) VALUES ('$slug','Prueba Inscripción','México','$insToken',1)");$insAlly=(int)$db->insert_id;
+$db->query("INSERT INTO formulario_aliados (slug,nombre,ubicacion,token,activo) VALUES ('$slug','Prueba Inscripción','Estados Unidos','$insToken',1)");$insAlly=(int)$db->insert_id;
 foreach(['bachillerato-general','bachillerato-286'] as $code)$db->query("INSERT INTO formulario_aliado_programas VALUES ($insAlly,'$code')");
-$insDatos=array_replace($datos,['aliado_token'=>$insToken,'origen'=>'PUBLICO_INSCRIPCION','correo'=>'union-inscripcion@example.test','movil'=>'7778889901']);
+$insDatos=array_replace($datos,['aliado_token'=>$insToken,'origen'=>'PUBLICO_INSCRIPCION','correo'=>'union-inscripcion@example.test','movil'=>'7778889901','estado_id'=>null,'municipio_id'=>null,'pais_nombre'=>'Estados Unidos','estado_provincia'=>'Texas','ciudad'=>'Houston']);
 $insRecord=$form->guardar($insDatos);
 $insKey=hash('sha256',json_encode([$insDatos['correo'],$insDatos['movil'],$insDatos['fecha_nacimiento'],'bachillerato-286'],JSON_UNESCAPED_UNICODE));
 $db->query("UPDATE formulario_aliado_procedencias SET programa_codigo='bachillerato-286',clave='$insKey' WHERE tipo='inscripcion' AND registro_id=$insRecord");
