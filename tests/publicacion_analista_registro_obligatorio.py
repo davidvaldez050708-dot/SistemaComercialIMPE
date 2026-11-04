@@ -6,13 +6,14 @@ for row in spec['files']:
 for variant in [0,1]:
  with tempfile.TemporaryDirectory(prefix='impe-verificacion-vigente-') as folder:
   d=pathlib.Path(folder);site=d/'site';site.mkdir();(site/'index.php').write_text('<?php // fixture');backups=d/'backup'
+  normalized=d/'release.json';normalized.write_bytes((R/'tools/analista_registro_obligatorio_release.json').read_bytes().replace(b'\r\n',b'\n'))
   originals={};targets={}
   for row in spec['files']:
    v=row['variants'][min(variant,len(row['variants'])-1)];p=site/row['path'];p.parent.mkdir(parents=True,exist_ok=True)
    originals[row['path']]=gzip.decompress(base64.b64decode(v['base']));targets[row['path']]=gzip.decompress(base64.b64decode(v['target']));p.write_bytes(originals[row['path']])
   def snapshot():return {p.relative_to(site).as_posix():p.read_bytes() for p in site.rglob('*') if p.is_file()}
   def run(*args,**kw):
-   r=subprocess.run([sys.executable,str(R/'tools/publicar_analista_registro_obligatorio.py'),'--site',str(site),'--backup-root',str(backups)]+list(args),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+   r=subprocess.run([sys.executable,str(R/'tools/publicar_analista_registro_obligatorio.py'),'--site',str(site),'--backup-root',str(backups),'--manifest',str(normalized)]+list(args),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
    assert (r.returncode==0)==kw.get('ok',True),r.stdout+r.stderr
   before=snapshot();run('--check');assert snapshot()==before and not backups.exists()
   js=site/'public/javascript/seguimiento_llamada_registro_obligatorio.js';js.write_bytes(js.read_bytes()+b'// personalizacion');altered=snapshot();run('--apply',ok=False);assert snapshot()==altered

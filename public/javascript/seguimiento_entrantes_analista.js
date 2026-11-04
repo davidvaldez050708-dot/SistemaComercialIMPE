@@ -11,6 +11,7 @@
     if (!page || !form || !modalEl || !window.bootstrap) return;
 
     const callbackMode=page.dataset.resultMode==='DEVOLUCION';
+    const outgoingMode=page.dataset.outgoingResult==='1';
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     const decision = form.querySelector('[data-incoming-decision]');
     const existing = form.querySelector('[data-incoming-existing]');
@@ -89,6 +90,19 @@
         document.body.classList.add('impe-call-result-form-open');
         try { window.parent.IMPE_TELEPHONY_SHELL?.beginCallResult?.(resultModalToken,callRefs); } catch (_) {}
     });
+    modalEl.addEventListener('hide.bs.modal',event=>{
+        if(outgoingMode && !closingAfterSave && !interrupted){
+            event.preventDefault();
+            window.IMPE_TELEPHONY_NOTIFY?.('Guarda el resultado de esta llamada antes de cerrar el formulario.',true);
+        }
+    });
+    document.addEventListener('click',event=>{
+        if(!outgoingMode || closingAfterSave || !modalEl.classList.contains('show'))return;
+        const link=event.target.closest?.('a[href]');
+        if(!link || link.hasAttribute('download') || link.target==='_blank' || event.ctrlKey || event.metaKey || link.getAttribute('href').startsWith('#'))return;
+        event.preventDefault();event.stopImmediatePropagation();
+        window.IMPE_TELEPHONY_NOTIFY?.('Guarda el resultado de esta llamada antes de cambiar de módulo.',true);
+    },true);
     modalEl.addEventListener('hidden.bs.modal',releasePhone);
     window.addEventListener('pagehide',releasePhone);
     window.addEventListener('message',event=>{
@@ -611,6 +625,7 @@
             modalEl.addEventListener('hidden.bs.modal',()=>window.location.assign(new URL(target,window.location.href).toString()),{once:true});
             modal.hide();
         } catch (error) {
+            if(outgoingMode && window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_OUTGOING_SAVE_UNCERTAIN',callId:form.querySelector('[data-incoming-pbx]').value},window.location.origin);
             showError(error.message || 'No fue posible guardar. Intenta nuevamente.');
         } finally {
             if (!closingAfterSave) {

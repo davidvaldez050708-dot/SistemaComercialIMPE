@@ -7,6 +7,7 @@ $llamadas = is_array($bandejaEntrantes['llamadas'] ?? null)
 $seleccionarId = trim((string)($_GET['sdk_session_id'] ?? ($_GET['pbx_call_id'] ?? '')));
 $abrirSoloDetalle = !empty($desdeMisLlamadas) && (string)($_GET['detalle'] ?? '') === '1';
 $estadosEntrantes = $estadosEntrantes ?? [];
+$esSalienteLibre = !empty($_GET['saliente_ref']);
 
 // Paginación en el servidor: no renderizar 100+ tarjetas ni reproductores.
 // Mantener los contadores globales sobre el historial completo.
@@ -76,6 +77,7 @@ $duracionEntrante = static function ($segundos) {
 
 <section class="dashboard-panel linkage-incoming-page"
     data-linkage-incoming
+    data-outgoing-result="<?= $esSalienteLibre ? '1' : '0' ?>"
     data-current-user="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>"
     data-auto-call="<?= $abrirSoloDetalle ? '' : $esc($seleccionarId) ?>"
     data-focus-call="<?= $abrirSoloDetalle ? $esc($seleccionarId) : '' ?>"
@@ -88,8 +90,8 @@ $duracionEntrante = static function ($segundos) {
                 <i class="bi bi-telephone-inbound" aria-hidden="true"></i>
                 SEGUIMIENTO · TELEFONÍA
             </span>
-            <h2>Llamadas recibidas</h2>
-            <p>Consulta tus llamadas entrantes y registra su resultado en el expediente institucional correspondiente.</p>
+            <h2><?= $esSalienteLibre ? 'Resultado de llamada saliente' : 'Llamadas recibidas' ?></h2>
+            <p><?= $esSalienteLibre ? 'Vincula esta llamada a un seguimiento o registra una institución nueva.' : 'Consulta tus llamadas entrantes y registra su resultado en el expediente institucional correspondiente.' ?></p>
         </div>
         <div class="linkage-incoming-heading-actions">
             <span class="linkage-incoming-extension">
@@ -171,7 +173,7 @@ $duracionEntrante = static function ($segundos) {
                         <div class="linkage-call-recording-body">
                             <div class="linkage-call-recording-top">
                                 <div class="linkage-call-history-identity">
-                                    <strong><?= ($llamada['fuente']??'')==='OPERACION' ? 'Transferencia sin respuesta' : ($esInterna ? 'Llamada interna' : 'Llamada entrante') ?></strong>
+                                    <strong><?= ($llamada['fuente']??'')==='OPERACION' ? 'Transferencia sin respuesta' : ($esInterna ? 'Llamada interna' : (($llamada['tipo_llamada'] ?? '') === 'SALIENTE' ? 'Llamada saliente' : 'Llamada entrante')) ?></strong>
                                     <span>
                                         <?= $esInterna
                                             ? 'Ext. ' . $esc($numero) . ' → ' . $esc($bandejaEntrantes['extension'] ?? '')

@@ -60,7 +60,11 @@ class SeguimientoVinculacionController
         try {
             $servicio = new TelefoniaEntrantesAnalistaService();
             $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-            $bandejaEntrantes = $servicio->listar($usuarioId);
+            $referenciaSaliente = $_GET['saliente_ref'] ?? '';
+            if (!is_string($referenciaSaliente)) throw new InvalidArgumentException('Referencia de llamada inválida.');
+            $bandejaEntrantes = $referenciaSaliente !== ''
+                ? $servicio->listarSaliente($usuarioId, $referenciaSaliente)
+                : $servicio->listar($usuarioId);
             $estadosEntrantes = $servicio->estados($usuarioId);
         } catch (Throwable $e) {
             error_log('[llamadas_entrantes_analista] ' . $e->getMessage());
@@ -75,6 +79,23 @@ class SeguimientoVinculacionController
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/seguimiento_vinculacion/llamadas_entrantes.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function estadoResultadoSaliente()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+        try {
+            $ref = $_GET['pbx_call_id'] ?? '';
+            if (!is_string($ref)) throw new InvalidArgumentException('Referencia inválida.');
+            $bandeja = (new TelefoniaEntrantesAnalistaService())->listarSaliente((int)$_SESSION['usuario_id'], $ref);
+            $this->responderJson(['ok'=>true, 'llamada'=>$bandeja['llamadas'][0]]);
+        } catch (DomainException|InvalidArgumentException $e) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[resultado_saliente_analista] '.get_class($e));
+            $this->responderJson(['ok'=>false, 'mensaje'=>'No fue posible comprobar el resultado. Conserva la captura y reintenta.'], 503);
+        }
     }
 
     /**

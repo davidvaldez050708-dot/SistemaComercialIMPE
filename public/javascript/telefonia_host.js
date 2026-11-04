@@ -252,6 +252,10 @@
         ['finished','incoming-finished'].includes(previousState.phase)) {
         retirePbxCall(previousState.pbxCallId);
     }
+    // Una marcación nueva nunca adopta otra vez la referencia que acaba de finalizar.
+    const analystOutgoing = config.analystSdkIncoming === true && config.salesSdkIncoming !== true;
+    const completedOutgoingRefs = new Set(previousState.direction === 'outgoing'
+        ? [previousState.pbxCallId, previousState.finalMetadata?.pbx_call_id].filter(Boolean) : []);
     const manualCall = call =>
         ['TELEPHONY_MANUAL', 'MARKETING_CALLBACK', 'DIALER'].includes(
             String(call?.context?.type || '').toUpperCase()
@@ -1372,6 +1376,10 @@
             call_token: state.callToken
         };
 
+        if (state.direction === 'outgoing' && finalMetadata.pbx_call_id) {
+            completedOutgoingRefs.add(finalMetadata.pbx_call_id);
+            if (completedOutgoingRefs.size > 100) completedOutgoingRefs.delete(completedOutgoingRefs.values().next().value);
+        }
         answeredAtMs = 0;
         muted = false;
 
@@ -1405,6 +1413,9 @@
             return;
         }
 
+        const reference = String(call.pbx_call_id || '');
+        if (analystOutgoing && (!reference || completedOutgoingRefs.has(reference) ||
+            (state.pbxCallId && String(state.pbxCallId) !== reference))) return;
         lastCall = call;
         const status = String(call.status || 'ringing');
         const providerDuration =

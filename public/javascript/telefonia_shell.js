@@ -287,9 +287,11 @@
         },
         getPhoneStatus: function () {
             return {active:Boolean(currentState?.active),ready:Boolean(freshState(currentState)&&currentState.hostReady),
-                pending:Boolean(callbackPending||window.IMPE_CALL_CLOSURE?.hasPending()||window.IMPE_SALES_ATTENTION?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
+                pending:Boolean(window.IMPE_ANALYST_OUTGOING_RESULT?.hasPending()||crm?.contentDocument?.body?.classList.contains('impe-call-registration-pending')||callbackPending||window.IMPE_CALL_CLOSURE?.hasPending()||window.IMPE_SALES_ATTENTION?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
         },
         openPendingResult: function () {
+            if(window.IMPE_ANALYST_OUTGOING_RESULT?.hasPending()){window.IMPE_ANALYST_OUTGOING_RESULT.openPending();return;}
+            if(crm?.contentDocument?.body?.classList.contains('impe-call-registration-pending')){crm.contentWindow.IMPE_TELEPHONY_PERSISTENT?.openContext(true);return;}
             if(window.IMPE_SALES_ATTENTION?.hasPending()){window.IMPE_SALES_ATTENTION.openPending();return;}
             if(callbackPending&&!currentState?.active){
                 if(crm)crm.src=cfg.callbackUrl+'&intento_id='+callbackPending.id;render();return;

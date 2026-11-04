@@ -1,0 +1,71 @@
+name: Analista - formulario compartido de salientes
+on:
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaSalienteAnalistaEstado.php'
+      - 'app/services/TelefoniaEntrantesAnalistaService.php'
+      - 'app/controllers/SeguimientoVinculacionController.php'
+      - 'app/views/seguimiento_vinculacion/llamadas_entrantes.php'
+      - 'public/javascript/seguimiento_entrantes_analista.js'
+      - 'public/javascript/telefonia_host.js'
+      - 'public/javascript/telefonia_shell.js'
+      - 'public/javascript/telefonia_analista_historial_pasivo.js'
+      - 'tests/*analista_salientes*'
+      - 'tests/fixtures/analista_saliente*'
+      - 'tools/*analista_salientes*'
+      - '.github/workflows/analista-salientes.yml'
+  workflow_dispatch:
+jobs:
+  formulario-y-persistencia:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test-only-password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Seguridad, referencias y publicación reversible
+        run: |
+          php tests/analista_salientes_estado.php
+          node tests/analista_salientes_referencias.cjs
+          python tests/analista_salientes_preservacion.py
+          python tests/publicacion_analista_salientes.py
+          python tests/publicacion_verificacion_vigente.py
+          python tests/publicacion_analista_registro_obligatorio.py
+          php tests/verificacion_datos_vigentes.php
+          php tests/horario_contacto_unit.php
+      - name: Guardado y regresiones en base aislada
+        env:
+          IMPE_TEST_MYSQL_PORT: '3306'
+          IMPE_TEST_MYSQL_PASSWORD: test-only-password
+        run: |
+          php tests/telefonia_atencion_db.php
+          php tests/telefonia_analista_entrantes_smoke.php
+      - name: Formulario real compartido y recuperación
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.8
+          npx playwright install --with-deps chromium
+          export CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
+          mkdir -p tmp/bootstrap
+          cp node_modules/bootstrap/dist/css/bootstrap.min.css tmp/bootstrap/
+          cp node_modules/bootstrap/dist/js/bootstrap.bundle.min.js tmp/bootstrap/
+          export BOOTSTRAP_DIR=tmp/bootstrap
+          node tests/analista_salientes_formulario_browser.cjs
+          node tests/telefonia_atencion_browser.cjs
+          node tests/analista_registro_obligatorio_browser.cjs
+          node tests/verificacion_datos_vigentes_browser.cjs

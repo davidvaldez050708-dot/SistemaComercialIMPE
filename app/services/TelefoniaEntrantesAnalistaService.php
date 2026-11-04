@@ -5,6 +5,7 @@ require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 require_once __DIR__ . '/TelefoniaAnalistaWebrtcService.php';
 require_once __DIR__ . '/TelefoniaInternaGrabacionService.php';
 require_once __DIR__ . '/VerificacionInstitucionalService.php';
+require_once __DIR__ . '/TelefoniaSalienteAnalistaEstado.php';
 require_once __DIR__ . '/TelefoniaVerificacionEvidenciaService.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 
@@ -51,7 +52,9 @@ class TelefoniaEntrantesAnalistaService
     private function extensionActual(int $usuarioId): array
     {
         $stmt = $this->db->prepare(
-            "SELECT te.extension, GREATEST(te.created_at, te.updated_at) AS desde
+            "SELECT te.extension, te.permite_salientes, GREATEST(te.created_at, te.updated_at) AS desde,
+                    EXISTS(SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
+                           WHERE rp.rol_id=u.rol_id AND p.codigo='telefonia.salientes' AND p.estado=1) AS permiso_salientes
              FROM telefonia_extensiones te
              INNER JOIN usuarios u ON u.id = te.usuario_id AND u.estado = 1
              WHERE te.usuario_id = ? AND te.proveedor = 'ZADARMA'
@@ -67,13 +70,28 @@ class TelefoniaEntrantesAnalistaService
         return $fila;
     }
 
-    private function inicioVerificado(int $usuarioId, string $pbxCallId): array
+    private function inicioVerificado(int $usuarioId, string $pbxCallId, bool $permitirRegistrada = false): array
     {
         if ($usuarioId <= 0 || !preg_match('/^[a-zA-Z0-9_-]{3,100}$/', $pbxCallId)) {
             throw new InvalidArgumentException('Identificador de llamada no válido.');
         }
         $asignacion = $this->extensionActual($usuarioId);
         $ext = (string)$asignacion['extension'];
+        $saliente = TelefoniaSalienteAnalistaEstado::desdeEventos(
+            $this->eventos->obtenerPorPbxCallId($pbxCallId), $ext, $pbxCallId,
+            max(strtotime('-30 days'), strtotime((string)$asignacion['desde']) ?: 0)
+        );
+        if ($saliente) {
+            if (empty($asignacion['permite_salientes']) || empty($asignacion['permiso_salientes'])) {
+                throw new DomainException('No tienes permiso para registrar llamadas salientes de esta extensión.');
+            }
+            $duplicada = $this->db->prepare("SELECT id AS interaccion_id, seguimiento_id FROM interacciones_vinculacion WHERE usuario_id=? AND proveedor_externo='ZADARMA' AND id_externo=? LIMIT 1");
+            $duplicada->bind_param('is', $usuarioId, $pbxCallId); $duplicada->execute();
+            $registrada = $duplicada->get_result()->fetch_assoc(); $duplicada->close();
+            if ($registrada && !$permitirRegistrada) throw new DomainException('Esta llamada ya tiene una interacción registrada. Consúltala desde el historial.');
+            $saliente['registro_previo'] = $registrada;
+            return $saliente;
+        }
         $stmt = $this->db->prepare(
             "SELECT received_at FROM telefonia_zadarma_eventos
              WHERE pbx_call_id = ? AND internal = ?
@@ -101,6 +119,27 @@ class TelefoniaEntrantesAnalistaService
         $llamada['extension'] = $ext;
         $llamada['fecha_evento'] = (string)$inicio['received_at'];
         return $llamada;
+    }
+
+    /** Abre exclusivamente la referencia seleccionada; no reclasifica el historial anterior. */
+    public function listarSaliente(int $usuarioId, string $referencia): array
+    {
+        $call = $this->inicioVerificado($usuarioId, $referencia, true);
+        if (($call['tipo_llamada'] ?? '') !== 'SALIENTE') throw new DomainException('La referencia no corresponde a una llamada saliente propia.');
+        $stmt = $this->db->prepare('SELECT estado, seguimiento_id, interaccion_id FROM telefonia_analista_entrantes WHERE usuario_id=? AND pbx_call_id=?');
+        $stmt->bind_param('is', $usuarioId, $referencia); $stmt->execute();
+        $registro = $stmt->get_result()->fetch_assoc() ?: []; $stmt->close();
+        if (!empty($call['registro_previo'])) $registro = array_merge($registro, $call['registro_previo'], ['estado'=>'VINCULADA']);
+        return ['extension'=>$call['extension'], 'llamadas'=>[[
+            'pbx_call_id'=>$referencia, 'numero'=>$call['caller_id'], 'transferida_desde'=>'',
+            'fuente'=>'PBX', 'tipo_llamada'=>'SALIENTE', 'fecha'=>$call['fecha_evento'],
+            'duracion'=>self::segundosAtendidos($call), 'estado_pbx'=>$call['estado'],
+            'contestada'=>$call['contestada'], 'pbx_conversacion_confirmada'=>$call['contestada'] && $call['estado']==='ended',
+            'clasificacion'=>$registro['estado'] ?? 'PENDIENTE',
+            'seguimiento_id'=>(int)($registro['seguimiento_id'] ?? 0),
+            'interaccion_id'=>(int)($registro['interaccion_id'] ?? 0),
+            'grabacion_pbx_reportada'=>false
+        ]]];
     }
 
     private static function segundosAtendidos(array $call): int

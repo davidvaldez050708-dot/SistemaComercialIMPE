@@ -1,6 +1,6 @@
 const fs=require('fs'),cp=require('child_process'),assert=require('assert/strict'),{chromium}=require('playwright');
 const source=fs.readFileSync('public/javascript/seguimiento_llamada_registro_obligatorio.js','utf8');
-const bridge=fs.readFileSync('public/javascript/seguimiento_llamada_zadarma.js','utf8');
+const bridge=fs.readFileSync('public/javascript/seguimiento_llamada_zadarma.js','utf8').replace(/\r\n/g,'\n');
 assert.ok(bridge.includes('callToken: token,\n                        pbxCallId: String(metadata.pbx_call_id'));
 const view=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/denue_paginado_vista.php'],{encoding:'utf8'}).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
 const bootstrapDir=process.env.BOOTSTRAP_DIR||'../impe-denue-estabilidad/tmp/denue-bootstrap';
