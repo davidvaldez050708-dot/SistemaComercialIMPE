@@ -43,6 +43,12 @@ Las pruebas automatizadas utilizan datos ficticios, red local y carpetas tempora
 
 ## Comprobación desde Hostinger
 
+### Carga del JavaScript de candidatos
+
+Después de instalar la paginación, el mensaje «Recarga la página para cargar la búsqueda de candidatos» revela que la vista no recibió la utilidad nueva del footer. La prueba de navegador anterior inyectaba el archivo en su cabecera y no detectaba esa dependencia. Se reprodujo el fallo retirando esa inyección. La vista ahora carga su propio script con SHA-256 del contenido y captura esa referencia antes de DOMContentLoaded; un footer personalizado ausente o uno que vuelva a cargar el script antiguo ya no bloquea la búsqueda. La prueba usa la vista real y ambos escenarios, además de las 32 páginas y los filtros. No se modifica el footer global ni sus personalizaciones.
+
+El paquete acepta la vista de 27e6c244 ya instalada. Sobre esa entrega sólo cambia `app/views/seguimiento_vinculacion/estado.php`: los otros siete archivos se verifican y quedan intactos. Se prueba expresamente ese caso con instalación y reversión en carpetas temporales.
+
 Después de descargar el paquete, `tools/diagnosticar_denue_tls.php --site RUTA --ca ARCHIVO_PEM` permite comparar la confianza predeterminada con la cadena completa usando el token privado ya configurado. Sólo muestra códigos HTTP/cURL y banderas de formato/autorización; no imprime token, teléfonos, establecimientos ni cuerpos de respuesta. No modifica el CRM.
 
 La comprobación desde Hostinger con cadena completa devolvió HTTP 200, cURL 0, JSON válido y un establecimiento en 0.66 segundos. Otra comprobación de paginación real en Tláhuac obtuvo 100 registros en el rango 1–100 y otros 100 en 101–200, sin identificadores repetidos.

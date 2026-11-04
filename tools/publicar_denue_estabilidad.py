@@ -4,7 +4,7 @@ import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = 'd293eeb746841bff4f7a5dc9669be7ae6411535e05ef62b377b12117db02e5c6'
+MANIFEST_SHA256 = '89caee64a20ee5a763e84a21a79d76f11de51e78116d7d05891ab83182600eff'
 PATHS = ['config/certificates/inegi-ca-chain.pem', 'app/services/DenueTlsPolicy.php',
          'app/services/DenueCandidatosHttpClient.php', 'app/services/DenueService.php',
          'app/services/DenueCandidatosConsultaService.php', 'public/javascript/seguimiento_candidatos_paginacion.js',

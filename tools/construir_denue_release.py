@@ -39,8 +39,10 @@ for path in paths:
         for original in originals:
             variants.append({'before': digest(original), 'base': pack(original), 'after': digest(lf(path)), 'target': pack(lf(path))})
     elif path in ['app/views/seguimiento_vinculacion/estado.php','public/javascript/seguimiento_candidatos_paginacion.js']:
-        original = blob('ac6c3648', path)
-        variants.append({'before': digest(original), 'base': pack(original), 'after': digest(lf(path)), 'target': pack(lf(path))})
+        refs = ['ac6c3648', '27e6c244'] if path.endswith('/estado.php') else ['ac6c3648']
+        for ref in refs:
+            original = blob(ref, path)
+            variants.append({'before': digest(original), 'base': pack(original), 'after': digest(lf(path)), 'target': pack(lf(path))})
     else:
         variants.append({'before': None, 'after': digest(lf(path)), 'target': pack(lf(path))})
         if path in previous:

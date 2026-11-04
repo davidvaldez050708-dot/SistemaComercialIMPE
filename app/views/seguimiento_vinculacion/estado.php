@@ -1543,7 +1543,10 @@ if (!empty($seguimientosSinMunicipio)) {
 
 <div class="toast-container position-fixed top-0 end-0 p-3"></div>
 
+<script src="<?= BASE_URL ?>public/javascript/seguimiento_candidatos_paginacion.js?v=<?= hash_file('sha256', __DIR__ . '/../../../public/javascript/seguimiento_candidatos_paginacion.js') ?>"></script>
 <script>
+(function (paginacionCandidatos) {
+// Conservar la dependencia de esta vista aunque un footer antiguo vuelva a cargarla.
 window.IMPE_SEGUIMIENTOS_RUTA_INICIAL = <?= json_encode(
     is_array($seguimientosRutaInicial ?? null) ? $seguimientosRutaInicial : [],
     JSON_UNESCAPED_UNICODE |
@@ -3206,14 +3209,14 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const firmaBusquedaActual = function () {
-        return window.SeguimientoCandidatosPaginacion?.crearFirma(
+        return paginacionCandidatos?.crearFirma(
             estadoId, selectorMunicipio?.value, selectorTipo?.value,
             campoBusqueda?.value.trim()
         ) || '';
     };
 
     const mostrarPaginaLocal = function (numeroPagina) {
-        const util = window.SeguimientoCandidatosPaginacion;
+        const util = paginacionCandidatos;
         const catalogo = catalogoAutomaticoCompleto;
         if (!busquedaAutomaticaActiva || !util || !catalogo ||
             catalogo.firma !== firmaBusquedaActual()) {
@@ -3314,7 +3317,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         try {
-            const util = window.SeguimientoCandidatosPaginacion;
+            const util = paginacionCandidatos;
             if (!util?.consultarPagina) throw new Error('Recarga la página para cargar la búsqueda de candidatos.');
             const datos = await util.consultarPagina(urlBuscar + '&' + parametros.toString(), {
                 headers: {'X-Requested-With': 'fetch'}, signal: controladorBusqueda.signal
@@ -3353,7 +3356,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (automatico && !datos.paginacion_denue) {
                 guardarCacheCandidatos(datos.cache_candidatos || datos.candidatos);
-                const util = window.SeguimientoCandidatosPaginacion;
+                const util = paginacionCandidatos;
                 const catalogo = datos.cache_candidatos;
                 const completo = util?.crearPagina(
                     catalogo,
@@ -3743,4 +3746,5 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+})(window.SeguimientoCandidatosPaginacion);
 </script>

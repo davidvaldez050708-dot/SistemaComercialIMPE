@@ -55,4 +55,23 @@ with tempfile.TemporaryDirectory(prefix='impe-denue-release-') as directory:
         run(site, backup, '--restore', str(directory_backup))
         assert snapshot(site) == before, 'Reversión exacta'
     assert controller_variants[1]['before'] == 'cd319b9bdcf1d75a27ff9b3244e7478303b9e51d5eceebe776cff31b24ad414f'
-print('Publicación DENUE: cuatro variantes, sólo lectura, bloqueo, integridad, idempotencia y reversión OK')
+    # Sitio con la paginación 27e6c244 ya instalada: sólo debe actualizar la vista.
+    site, backup = root/'site-carga-vista', root/'backup-carga-vista'
+    site.mkdir()
+    (site/'index.php').write_text('<?php // fixture')
+    view = 'app/views/seguimiento_vinculacion/estado.php'
+    for row in manifest['files']:
+        v = row['variants'][3 if row['path'] == controller else -1]
+        data = gzip.decompress(base64.b64decode(v['base' if row['path'] == view else 'target']))
+        p = site/row['path']; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(data)
+    before = snapshot(site)
+    output = run(site, backup, '--check')
+    assert output.count('COMPATIBLE: ') == 1 and 'COMPATIBLE: '+view in output, output
+    assert snapshot(site) == before and not backup.exists(), 'CHECK del parche sin escrituras'
+    run(site, backup, '--apply')
+    after = snapshot(site)
+    assert [p for p in after if after[p] != before.get(p)] == [view], 'Sólo cambia la vista; los otros siete archivos quedan intactos'
+    directory_backup = next(x for x in backup.iterdir() if x.is_dir())
+    run(site, backup, '--restore', str(directory_backup))
+    assert snapshot(site) == before, 'Reversión exacta del parche de carga'
+print('Publicación DENUE: cuatro variantes y parche de vista, sólo lectura, bloqueo, integridad, idempotencia y reversión OK')
