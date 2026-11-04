@@ -19,19 +19,24 @@ old_reg=gzip.decompress(base64.b64decode(next(row for row in package['files'] if
 git=lambda path:subprocess.check_output(['git','show',SNAPSHOT+':'+path],cwd=str(ROOT))
 old_shell=git(SHELL)+b'\n// PERSONALIZACION LOCAL: se conserva\n'
 old_phone=git(PHONE)+b'\n// PERSONALIZACION LOCAL: se conserva\n'
-target=(ROOT/REG).read_bytes()
+# El publicador histórico conserva el corte anterior; la nueva edición del
+# aviso se publica exclusivamente con publicar_analista_aviso_estable.py.
+NOTICE_SNAPSHOT='1faca902a2b4ea8b4ea1665b2e798fa5a2913a79'
+target=subprocess.check_output(['git','show',NOTICE_SNAPSHOT+':'+REG],cwd=str(ROOT))
 
 with tempfile.TemporaryDirectory(prefix='impe-modal-compartido-test-') as temp:
     root=Path(temp);site=root/'site';site.mkdir()
     (site/'index.php').write_text('<?php // fixture',encoding='utf-8')
     backup=root/'private'
+    archived_target=root/'aviso_original_del_publicador.js'
+    archived_target.write_bytes(target)
     originals={REG:old_reg,SHELL:old_shell,PHONE:old_phone}
     for name,data in originals.items():
         path=site/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
     def snapshot():
         return {p.relative_to(site).as_posix():p.read_bytes() for p in site.rglob('*') if p.is_file()}
     def run(*args,**kw):
-        result=subprocess.run([sys.executable,str(SCRIPT),'--site',str(site),'--backup-root',str(backup),'--target',str(ROOT/REG)]+list(args),
+        result=subprocess.run([sys.executable,str(SCRIPT),'--site',str(site),'--backup-root',str(backup),'--target',str(archived_target)]+list(args),
             stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         if bool(result.returncode==0)!=bool(kw.get('ok',True)):
             raise AssertionError((result.stdout+result.stderr).decode('utf-8',errors='replace'))
