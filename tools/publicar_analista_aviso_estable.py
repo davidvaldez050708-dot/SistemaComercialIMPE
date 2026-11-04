@@ -106,7 +106,10 @@ def lock(root):
         path.unlink()
 
 def apply(site, root, payload):
+    # El preflight no crea carpetas de respaldo si descubre un conflicto.
+    prepare(site, payload)
     with lock(root):
+        # Revalidar bajo bloqueo por si otro proceso cambió el sitio.
         rows = prepare(site, payload)
         changed = [x for x in rows if x['before'] != x['after'] or x['mode'] != 0o644]
         if not changed:
