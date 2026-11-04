@@ -74,4 +74,34 @@ with tempfile.TemporaryDirectory(prefix='impe-denue-release-') as directory:
     directory_backup = next(x for x in backup.iterdir() if x.is_dir())
     run(site, backup, '--restore', str(directory_backup))
     assert snapshot(site) == before, 'Reversión exacta del parche de carga'
+    if os.name == 'posix':
+        # Hash correcto no basta: un archivo público 600 devuelve 403 en Hostinger.
+        site, backup = root/'site-permisos', root/'backup-permisos'
+        site.mkdir()
+        (site/'index.php').write_text('<?php // fixture')
+        for row in manifest['files']:
+            v = row['variants'][3 if row['path'] == controller else -1]
+            p = site/row['path']; p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(gzip.decompress(base64.b64decode(v['target'])))
+            p.chmod(0o600)
+        js = site/'public/javascript/seguimiento_candidatos_paginacion.js'
+        before = snapshot(site)
+        modes = {p: (site/p).stat().st_mode & 0o777 for p in before}
+        output = run(site, backup, '--check')
+        assert '600 -> 644' in output and output.count('COMPATIBLE: ') == 1, output
+        assert snapshot(site) == before and js.stat().st_mode & 0o777 == 0o600 and not backup.exists(), 'CHECK detecta permisos sin cambiarlos'
+        run(site, backup, '--apply')
+        assert snapshot(site) == before, 'Reparar permisos sin cambiar un byte del paquete'
+        assert js.stat().st_mode & 0o777 == 0o644, 'JavaScript legible por HTTP'
+        assert all((site/p).stat().st_mode & 0o777 == mode for p, mode in modes.items() if site/p != js), 'No cambiar permisos de archivos privados'
+        run(site, backup, '--apply')
+        directories = [x for x in backup.iterdir() if x.is_dir()]
+        assert len(directories) == 1, 'Reparación idempotente'
+        js.chmod(0o640)
+        run(site, backup, '--restore', str(directories[0]), ok=False)
+        assert js.stat().st_mode & 0o777 == 0o640, 'No pisar cambios posteriores de permisos'
+        js.chmod(0o644)
+        run(site, backup, '--restore', str(directories[0]))
+        assert snapshot(site) == before and js.stat().st_mode & 0o777 == 0o600, 'Reversión exacta del contenido y permiso original'
+        print('Permisos POSIX: detectar 600, reparar sólo JS a 644, preservar privados y revertir OK')
 print('Publicación DENUE: cuatro variantes y parche de vista, sólo lectura, bloqueo, integridad, idempotencia y reversión OK')

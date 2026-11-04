@@ -49,6 +49,12 @@ Después de instalar la paginación, el mensaje «Recarga la página para cargar
 
 El paquete acepta la vista de 27e6c244 ya instalada. Sobre esa entrega sólo cambia `app/views/seguimiento_vinculacion/estado.php`: los otros siete archivos se verifican y quedan intactos. Se prueba expresamente ese caso con instalación y reversión en carpetas temporales.
 
+### Permisos del archivo público: causa confirmada del bloqueo persistente
+
+La comprobación HTTP posterior obtuvo 403 para `public/javascript/seguimiento_candidatos_paginacion.js`, frente a 200 para otros JavaScript y CSS del mismo sitio. SSH confirmó el contenido exacto de la entrega (`de6305a8ec4a7979550889625b9dda5f01ea9c28ea8cd07edaed90b53ad4d803`) pero permiso 600; el JavaScript vecino tenía 644. El publicador conservaba el permiso del archivo anterior y no lo consideraba al declarar «YA INSTALADO». El parche de carga de la vista no podía solucionar ese rechazo HTTP.
+
+Se añade la comprobación del modo POSIX: únicamente el JavaScript público del manifiesto debe quedar en 644; los permisos de PHP, certificados y configuración se conservan. `--check` detecta y muestra 600 → 644 sin escribir. `--apply` puede reparar sólo el permiso, aun con bytes idénticos, guardando el modo anterior para reversión. La prueba Linux verifica contenido intacto, privados intactos, idempotencia y bloqueo de reversión ante un cambio posterior de permisos. El manifiesto y todos los archivos de ejecución permanecen idénticos a 8983667d.
+
 Después de descargar el paquete, `tools/diagnosticar_denue_tls.php --site RUTA --ca ARCHIVO_PEM` permite comparar la confianza predeterminada con la cadena completa usando el token privado ya configurado. Sólo muestra códigos HTTP/cURL y banderas de formato/autorización; no imprime token, teléfonos, establecimientos ni cuerpos de respuesta. No modifica el CRM.
 
 La comprobación desde Hostinger con cadena completa devolvió HTTP 200, cURL 0, JSON válido y un establecimiento en 0.66 segundos. Otra comprobación de paginación real en Tláhuac obtuvo 100 registros en el rango 1–100 y otros 100 en 101–200, sin identificadores repetidos.

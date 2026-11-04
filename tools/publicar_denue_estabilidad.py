@@ -12,6 +12,13 @@ PATHS = ['config/certificates/inegi-ca-chain.pem', 'app/services/DenueTlsPolicy.
 
 def digest(data): return None if data is None else hashlib.sha256(data).hexdigest()
 def read(path): return path.read_bytes() if path.is_file() else None
+
+def mode_matches(path, mode):
+    # Windows no representa los permisos POSIX; Hostinger sí los exige al servir JS.
+    return os.name != 'posix' or (path.is_file() and path.stat().st_mode & 0o777 == mode)
+
+def needs_change(row):
+    return row['before'] != row['after'] or not mode_matches(row['dest'], row['after_mode'])
 def safe(root, name):
     path = root/name
     if Path(name).is_absolute() or '..' in Path(name).parts or '\\' in name or path.is_symlink() or root not in path.resolve().parents:
@@ -54,9 +61,13 @@ def prepare(site, package):
         variant = next((v for v in file['variants'] if current in [v['before'], v['after']]), None)
         if variant is None: raise RuntimeError('VERSIÓN DIFERENTE: '+file['path']+'. Sitio intacto.')
         after = payload(variant['target'], variant['after'])
-        rows.append({'name': file['path'], 'dest': dest, 'before': before, 'after': after,
-                     'mode': dest.stat().st_mode & 0o777 if before is not None else 0o644})
-        print(('YA INSTALADO: ' if before == after else 'COMPATIBLE: ')+file['path'])
+        mode = dest.stat().st_mode & 0o777 if before is not None else 0o644
+        row = {'name': file['path'], 'dest': dest, 'before': before, 'after': after,
+               'mode': mode, 'after_mode': 0o644 if file['path'] == 'public/javascript/seguimiento_candidatos_paginacion.js' else mode}
+        rows.append(row)
+        print(('COMPATIBLE: ' if needs_change(row) else 'YA INSTALADO: ')+file['path'])
+        if before is not None and not mode_matches(dest, row['after_mode']):
+            print('PERMISOS: '+file['path']+' '+oct(mode)[2:]+' -> '+oct(row['after_mode'])[2:])
     lint(rows)
     return rows
 
@@ -85,7 +96,7 @@ def lock(root):
 def apply(site, root, package):
     with lock(root):
         rows = prepare(site, package)
-        changed = [r for r in rows if r['before'] != r['after']]
+        changed = [r for r in rows if needs_change(r)]
         if not changed: print('YA INSTALADO: sin cambios.'); return
         backup = Path(tempfile.mkdtemp(prefix=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d-%H%M%S-'), dir=root))
         os.chmod(backup, 0o700)
@@ -94,19 +105,23 @@ def apply(site, root, package):
             if r['before'] is not None:
                 dest = safe(backup, 'original/'+r['name']); dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes(r['before'])
-            meta['files'].append({'name': r['name'], 'before': digest(r['before']), 'after': digest(r['after']), 'mode': r['mode']})
+            meta['files'].append({'name': r['name'], 'before': digest(r['before']), 'after': digest(r['after']),
+                                  'mode': r['mode'], 'after_mode': r['after_mode']})
         (backup/'respaldo.json').write_text(json.dumps(meta, indent=2), encoding='utf-8')
         installed = []
         try:
             for r in changed:
-                if read(r['dest']) != r['before']: raise RuntimeError('Archivo cambiado durante la instalación: '+r['name'])
+                if read(r['dest']) != r['before'] or (r['before'] is not None and not mode_matches(r['dest'], r['mode'])):
+                    raise RuntimeError('Archivo cambiado durante la instalación: '+r['name'])
             for r in changed:
-                if read(r['dest']) != r['before']: raise RuntimeError('Archivo cambiado durante la instalación: '+r['name'])
-                atomic(r['dest'], r['after'], r['mode']); installed.append(r)
-                if read(r['dest']) != r['after']: raise RuntimeError('Verificación posterior fallida: '+r['name'])
+                if read(r['dest']) != r['before'] or (r['before'] is not None and not mode_matches(r['dest'], r['mode'])):
+                    raise RuntimeError('Archivo cambiado durante la instalación: '+r['name'])
+                atomic(r['dest'], r['after'], r['after_mode']); installed.append(r)
+                if read(r['dest']) != r['after'] or not mode_matches(r['dest'], r['after_mode']):
+                    raise RuntimeError('Verificación posterior fallida: '+r['name'])
         except BaseException:
             for r in reversed(installed):
-                if read(r['dest']) != r['after']:
+                if read(r['dest']) != r['after'] or not mode_matches(r['dest'], r['after_mode']):
                     print('REVISAR RESTAURACIÓN: archivo editado por otro proceso: '+r['name'], file=sys.stderr)
                     continue
                 if r['before'] is None: r['dest'].unlink()
@@ -126,6 +141,8 @@ def restore(site, root, directory):
             if row['name'] not in PATHS: raise RuntimeError('Archivo fuera del paquete.')
             dest = safe(site, row['name'])
             if digest(read(dest)) != row['after']: raise RuntimeError('Versión modificada después de instalar: '+row['name'])
+            if not mode_matches(dest, row.get('after_mode', row['mode'])):
+                raise RuntimeError('Permisos modificados después de instalar: '+row['name'])
             original = read(safe(backup, 'original/'+row['name'])) if row['before'] is not None else None
             if digest(original) != row['before']: raise RuntimeError('Respaldo dañado.')
             plan.append((dest, original, row['mode']))
