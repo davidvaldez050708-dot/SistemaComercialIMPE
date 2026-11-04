@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix='impe-cierre-safe-tests-') as tmp:
     assert 'CHECK OK' in run('--check')
     assert snapshot()==untouched and not backs.exists(),'Preflight alteró el sitio'
     service=site/spec['files'][1]['path']
-    changed=service.read_bytes().replace(b"'ZADARMA'",b"'OTRO_PROVEEDOR'",1)
+    changed=service.read_bytes().replace(b"require_once __DIR__ . '/TelefoniaSalienteAnalistaEstado.php';",b"require_once __DIR__ . '/OtroServicio.php';",1)
     service.write_bytes(changed)
     failed=snapshot()
     assert 'CONFLICTO' in run('--check',ok=False)
