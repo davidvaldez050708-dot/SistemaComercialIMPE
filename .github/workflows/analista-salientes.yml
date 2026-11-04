@@ -13,6 +13,9 @@ on:
       - 'public/javascript/telefonia_persistente.js'
       - 'public/javascript/telefonia_shell.js'
       - 'public/javascript/seguimiento_llamada_registro_obligatorio.js'
+      - 'public/javascript/seguimiento_llamada_registro_compacto.js'
+      - 'tools/publicar_analista_aviso_estable.py'
+      - 'tests/publicacion_analista_aviso_estable.py'
       - 'tools/publicar_analista_modal_compartido.py'
       - 'tests/publicacion_analista_modal_compartido.py'
       - 'tests/*analista_salientes*'
@@ -54,6 +57,7 @@ jobs:
           python tests/analista_salientes_preservacion.py
           python tests/publicacion_analista_salientes.py
           python tests/publicacion_analista_modal_compartido.py
+          python tests/publicacion_analista_aviso_estable.py
           python tests/publicacion_verificacion_vigente.py
           python tests/publicacion_analista_registro_obligatorio.py
           php tests/verificacion_datos_vigentes.php
