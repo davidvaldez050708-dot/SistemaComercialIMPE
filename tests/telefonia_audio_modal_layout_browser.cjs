@@ -10,7 +10,7 @@ for(const width of [1366,768,390,320]){
  await page.route('https://modal.test/**',r=>r.fulfill({contentType:r.request().url().includes('.css')?'text/css':'text/html',body:r.request().url().includes('.css')?read('public/css/telefonia_audio_dispositivos.css'):'<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body></body></html>'}));
  await page.goto('https://modal.test/?display=tab');
  await page.addStyleTag({content:read('public/css/telefonia_persistente.css')+read('public/css/telefonia_shell.css')+'html,body{margin:0;font-family:Manrope,Arial,sans-serif}.persistent-phone-panel{width:700px;max-width:calc(100vw - 20px);left:10px;top:80px;bottom:auto}'});
- await page.evaluate(markup=>{document.body.innerHTML='<header class="topbar-actions"><button data-telephony-reception-toggle>Teléfono</button></header><section class="persistent-phone-panel">'+markup+'</section>';document.querySelector('[data-phone-transfer-toggle]').hidden=true;
+ await page.evaluate(markup=>{document.body.innerHTML='<header class="topbar-actions"><button data-telephony-reception-toggle>Teléfono</button></header><section class="persistent-phone-panel">'+markup+'</section>';document.querySelector('[data-phone-transfer-toggle]').style.display='none';
  const media=new EventTarget();media.enumerateDevices=async()=>[];media.getUserMedia=async()=>{throw Error('No capturar audio');};Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:media});Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:async()=>{throw Error('Sin permisos ficticios');}}});window.state={active:false};},markup);
  await page.addScriptTag({content:read('public/javascript/telefonia_audio_dispositivos.js')});
  await page.evaluate(()=>{window.audio=IMPE_AUDIO_DEVICES_FACTORY.create(window,{enabled:true,userId:99,extension:'101',cssUrl:'https://modal.test/audio.css'},()=>state,()=>null,()=>true);});
@@ -20,7 +20,7 @@ for(const width of [1366,768,390,320]){
  assert.ok(Math.abs(a.width-grid.width)<2,'El aviso debe ocupar toda la fila a '+width+'px');
  for(const selector of ['[data-phone-start]','[data-phone-mute]','[data-phone-hangup]']){const b=await page.locator(selector).boundingBox();assert.ok(b.y>=a.y+a.height-1,'Aviso separado de acciones');assert.ok(b.height>=44&&b.height<=60,'Altura habitual de botones');}
  await page.locator('[data-audio-review]').click();assert.ok(await page.locator('[data-impe-audio-devices]').isVisible());await page.mouse.click(width-2,898);assert.ok(await page.locator('[data-impe-audio-devices]').isHidden());
- await page.evaluate(()=>document.querySelector('[data-phone-transfer-toggle]').hidden=false);
+ await page.evaluate(()=>document.querySelector('[data-phone-transfer-toggle]').style.display='');
  assert.ok((await page.locator('[data-phone-transfer-toggle]').boundingBox()).height<=60,'Transferir conserva su tamaño');
  await page.evaluate(()=>{state.active=true;audio.observe();});assert.ok(await advice.isHidden(),'Ocultar aviso durante llamada');
  await page.evaluate(()=>{state.active=false;audio.observe();});assert.ok(await advice.isVisible(),'Conservar aviso después');assert.deepEqual(errors,[]);await page.close();
