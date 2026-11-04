@@ -641,7 +641,12 @@
     const completed = new Set();
     try {
         const record = JSON.parse(root.sessionStorage.getItem(key) || 'null');
-        if (record?.user === user && valid(record.token)) pending = record;
+        if (record?.user === user && valid(record.token)) {
+            pending = record;
+            // Una recarga no debe abrir otra vez el bloqueo de preparación
+            // si Zadarma aún no publicó la referencia/final de la llamada.
+            if (!Number.isFinite(Number(pending.at))) pending.at = Date.now() - 12000;
+        }
     } catch (_) {}
     const button = root.document.createElement('button');
     button.type = 'button'; button.className = 'persistent-phone-action is-primary';
@@ -674,13 +679,20 @@
             crm.contentDocument.querySelector('#modalLlamadaEntranteAnalista.show')); } catch (_) { return false; }
     };
     const draw = () => {
-        const preparing=Boolean(pending && !active() && !formReady());
+        const unresolved=Boolean(pending && !active() && !formReady());
+        // Máximo diez segundos de diálogo bloqueante. La obligación y los
+        // reintentos persisten; después hay una acción visible no modal.
+        const preparing=Boolean(unresolved && Date.now() - Number(pending.at || 0) < 10000);
         waiting.style.display=preparing?'flex':'none';
+        button.hidden = !unresolved || preparing;
+        if (!button.hidden) {
+            button.textContent='Resultado pendiente · Reintentar';
+            button.title='La centralita todavía no confirmó la referencia o el cierre. Conservamos el intento sin atribuirlo a otra llamada.';
+        }
         // Reservar la presentación al terminar, antes de esperar al webhook.
         // Así el resumen telefónico no tapa ni sustituye el registro obligatorio.
         if (pending && !active() && !root.IMPE_TELEPHONY_SHELL?.isResultFormOpen())
             root.IMPE_TELEPHONY_SHELL?.beginCallResult('analista-saliente-'+pending.token,[pending.ref||pending.token]);
-        button.hidden = true;
         // Los estilos de acciones usan display:flex y pueden prevalecer sobre [hidden].
         button.style.setProperty('display',button.hidden?'none':'inline-flex','important');
     };
@@ -696,7 +708,7 @@
         } catch (_) {}
         draw(); return true;
     };
-    const registered = async ref => {
+    const resultState = async ref => {
         const url = new URL(String(config.incomingResultsUrl), root.location.href);
         url.searchParams.set('controller','seguimientoVinculacion');
         url.searchParams.set('action','estadoResultadoSaliente'); url.searchParams.delete('vista');
@@ -704,7 +716,11 @@
         const response = await root.fetch(url,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
         const data = await response.json();
         if (!response.ok || !data.ok || data.llamada?.pbx_call_id !== ref) throw new Error('No se pudo comprobar el resultado de esta llamada. El pendiente se conserva.');
-        return ['VINCULADA','SIN_IDENTIFICAR'].includes(data.llamada.clasificacion) ? data.llamada : null;
+        return data.llamada;
+    };
+    const registered = async ref => {
+        const row = await resultState(ref);
+        return ['VINCULADA','SIN_IDENTIFICAR'].includes(row.clasificacion) ? row : null;
     };
     const showRegistered = result => {
         if (!complete(result.pbx_call_id)) return;
@@ -717,16 +733,44 @@
         }
         crm.src=url.href;
     };
+    const openForm = (token, ref) => {
+        if (!pending || pending.token !== token || pending.ref !== ref || active()) return;
+        const url = new URL(String(config.incomingResultsUrl), root.location.href);
+        if (url.origin !== root.location.origin) throw new Error('No se pudo abrir el formulario de resultado.');
+        url.searchParams.set('controller','seguimientoVinculacion');
+        url.searchParams.set('action','llamadasEntrantes'); url.searchParams.delete('vista');
+        url.searchParams.set('saliente_ref',ref); url.searchParams.set('pbx_call_id',ref);
+        root.IMPE_TELEPHONY_SHELL?.beginCallResult('analista-saliente-'+token,[ref]);
+        opening=token;
+        crm.src=url.href;
+    };
     const openPending = async () => {
         if (!pending || active() || busy || formReady() || opening===pending.token) return;
         const token = pending.token;
         busy = true; draw();
         try {
             // La marca de agua pertenece a esta marcación; nunca buscar sólo por teléfono.
+            // Una referencia PBX ya observada puede haberse confirmado por
+            // estadísticas oficiales aunque NOTIFY_OUT_END llegue tarde.
+            // Comprobarla por ID exacto; nunca buscar registros por número.
+            if (valid(pending.ref) && attempts > 0 && attempts % 4 === 0) {
+                const serverRow = await resultState(pending.ref).catch(() => null);
+                if (!pending || pending.token !== token || active()) return;
+                if (serverRow && ['ended','transferred'].includes(serverRow.estado_pbx)) {
+                    if (['VINCULADA','SIN_IDENTIFICAR'].includes(serverRow.clasificacion)) {
+                        showRegistered(serverRow); return;
+                    }
+                    openForm(token, pending.ref); return;
+                }
+            }
             const stateUrl = new URL('prueba_telefonia/api/zadarma_estado_llamada.php', root.document.baseURI);
             stateUrl.searchParams.set('destination', pending.number);
             stateUrl.searchParams.set('since', String(pending.requestedAt));
             stateUrl.searchParams.set('after_id', String(pending.afterEventId));
+            if (attempts > 1 && attempts % 4 === 2) {
+                stateUrl.searchParams.set('final','1');
+                stateUrl.searchParams.set('stats','1');
+            }
             const response = await root.fetch(stateUrl, {credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
             const data = await response.json();
             if (!pending || pending.token !== token || active()) return;
@@ -740,14 +784,7 @@
             const previous = await registered(pending.ref);
             if (!pending || pending.token !== token || active()) return;
             if (previous) { showRegistered(previous); return; }
-            const url = new URL(String(config.incomingResultsUrl), root.location.href);
-            if (url.origin !== root.location.origin) throw new Error('No se pudo abrir el formulario de resultado.');
-            url.searchParams.set('controller','seguimientoVinculacion');
-            url.searchParams.set('action','llamadasEntrantes'); url.searchParams.delete('vista');
-            url.searchParams.set('saliente_ref',pending.ref); url.searchParams.set('pbx_call_id',pending.ref);
-            root.IMPE_TELEPHONY_SHELL?.beginCallResult('analista-saliente-'+token,[pending.ref]);
-            opening=token;
-            crm.src = url.href;
+            openForm(token, pending.ref);
         } catch (e) {
             progress.textContent=e.message || 'No se pudo abrir el resultado. Se reintentará automáticamente; el pendiente se conserva.';
             nextAttempt=Date.now()+Math.min(8000,750*Math.pow(2,Math.min(attempts++,4)));
@@ -760,8 +797,15 @@
         try { state = JSON.parse(root.localStorage.getItem('impe:telephony:state:'+user) || 'null'); } catch (_) {return;}
         if (!state || Number(state.userId) !== user || !manual(state) || !valid(state.callToken)) { draw();return; }
         if (state.active) { observed = state.callToken; draw(); return; }
-        if (state.phase === 'finished' && observed === state.callToken && !completed.has(state.callToken) && !pending) {
-            pending = {user,token:state.callToken,ref:String(state.finalMetadata?.pbx_call_id || state.pbxCallId || ''),
+        // Un colgado inmediato puede ocurrir antes del primer sondeo del
+        // observador (250 ms): el token y checkpoint recién publicados
+        // bastan para conservar el intento, nunca para acreditar PBX.
+        const freshAttempt = Number(state.requestedAt) > 0 &&
+            Math.abs(Date.now()/1000 - Number(state.requestedAt)) < 300 &&
+            state.checkpointReady === true;
+        if (state.phase === 'finished' && (observed === state.callToken || freshAttempt) &&
+            !completed.has(state.callToken) && !pending) {
+            pending = {user,at:Date.now(),token:state.callToken,ref:String(state.finalMetadata?.pbx_call_id || state.pbxCallId || ''),
                 number:String(state.destination || ''),requestedAt:Number(state.requestedAt || 0),
                 afterEventId:Number(state.afterEventId || 0)};
             attempts=0;nextAttempt=0;persist();draw();void openPending();
