@@ -982,6 +982,7 @@
                         feedback
                             .tieneEvidencia ===
                             true &&
+                        feedback.verificacionAplicable !== false &&
                         data.hubo_respuesta !==
                             true
                     ) {
@@ -990,7 +991,7 @@
                     } else if (
                         feedback
                             .tieneEvidencia !==
-                            true
+                            true && feedback.verificacionAplicable === true
                     ) {
                         finalMessage =
                             'Llamada registrada · ' +
@@ -1178,6 +1179,7 @@
                     );
 
                 pendingInteractionFeedback = {
+                    verificacionAplicable: formulario.dataset.verificacionAplicable !== 'false',
                     resultado: resultado,
                     resultadoLabel:
                         labels[resultado] ||

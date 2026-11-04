@@ -142,7 +142,8 @@ class InteraccionRutaService
         $contactoActual = trim((string)($seguimiento['contacto_nombre'] ?? ''));
         $evidenciasVerificacion = [];
 
-        if ($canalFormulario === 'LLAMADA' && $resultadoAdmiteVerificacion) {
+        if ($canalFormulario === 'LLAMADA' && $resultadoAdmiteVerificacion &&
+            (int)($seguimiento['datos_verificados'] ?? 0) !== 1) {
             if ((int)($datos['verificacion_telefono_confirmado'] ?? 0) === 1) {
                 if ($telefonoActual === '') {
                     return $this->error(
@@ -371,6 +372,7 @@ class InteraccionRutaService
         $sql = "SELECT
                     seguimientos.id,
                     seguimientos.estado_seguimiento,
+                    seguimientos.datos_verificados,
                     seguimientos.telefono_fuente,
                     seguimientos.correo_fuente,
                     seguimientos.telefono_verificado,
