@@ -35,7 +35,7 @@ class ProspectoController
             $resumen=(new ProspectoModel($db))->resumen();$indicadores=$this->indicadores($resumen,$repo);
             if ($centralDisponible) {
                 if ($seccionProspectos==='asignaciones') $listado=$repo->asignaciones((int)($_GET['pagina']??1));
-                else {$f=$_GET;if ($seccionProspectos==='meta') $f['origen']='META_ADS';$listado=$repo->listar($f);}
+                else {$f=$_GET;if ($seccionProspectos==='meta') $f['origen']='META_ADS';else unset($f['campania']);$listado=$repo->listar($f);}
                 if ($metaPuedeImportar||$metaPuedeConfigurar) $metaProgramas=ProspectoMetaImportador::programas($db);
                 if ($metaPuedeImportar) $metaResumen=ProspectoMetaImportador::resumenCargar(null,$db);
                 if ($metaPuedeConfigurar) {

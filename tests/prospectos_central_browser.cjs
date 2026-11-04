@@ -94,7 +94,7 @@ let server,log='',browser;
  assert.equal(bad.status(),422,'CSRF de importación obligatorio');
  assert.equal(fixture('--snapshot'),beforeMeta,'CSRF incorrecto no escribe BD');
  const cols=['id','created_time','ad_id','ad_name','adset_id','adset_name','campaign_id','campaign_name','form_id','form_name','is_organic','platform','full_name','phone_number','estado','retailer_item_id'];
- const record=(id,nombre,telefono)=>['l:'+id,'2026-11-01T17:59:45-06:00','ag:12','Anuncio', 'as:12','Conjunto','c:900','Campaña ficticia','f:900','Formulario ficticio','false','fb',nombre,'p:'+telefono,'Morelos',''];
+ const record=(id,nombre,telefono)=>['l:'+id,'2026-11-01T17:59:45-06:00','ag:12','Anuncio', 'as:12','Conjunto','c:900','Campaña ficticia <img src=x onerror=alert(1)>','f:900','Formulario ficticio','false','fb',nombre,'p:'+telefono,'Morelos',''];
  const metaData=[cols,record('9988776655','Importación Ficticia Uno','+525511223344'),record('9988776656','Importación Ficticia Dos','+525544332211'),record('9988776655','Importación Ficticia Uno','+525511223344')].map(row=>row.join('\t')).join('\n');
  const metaBytes=Buffer.concat([Buffer.from([0xff,0xfe]),Buffer.from(metaData,'utf16le')]);
  const uploadMeta=async()=> {
@@ -115,6 +115,8 @@ let server,log='',browser;
  await page.locator('.meta-import-result').waitFor();
  assert.ok((await page.locator('.meta-import-result').innerText()).includes('2 prospectos nuevos'));
  assert.equal(await page.locator('.central-table tbody tr').count(),3,'Meta conserva también la procedencia preexistente');
+ assert.equal(await page.locator('.central-campaign-cell img').count(),0,'Nombres de campaña escapados');
+ assert.equal(await page.locator('.central-campaign-cell').filter({hasText:'<img'}).count(),2,'El nombre original se consulta como texto');
  await page.screenshot({path:path.join(output,'meta-importacion-completada.png'),fullPage:true});
  // Formato histórico: sólo identificador_origen y sistema META, sin meta_lead_id.
  execFileSync(php,['-r','require "config/db_connection.php";$d=(new Database())->connect(false);$d->query("UPDATE prospecto_origenes SET meta_lead_id=NULL,sistema_origen=\'META\' WHERE meta_lead_id=\'9988776655\'");'],{cwd:root,env});
@@ -226,6 +228,10 @@ let server,log='',browser;
  await page.selectOption('#centralPrograma',{index:1});await page.waitForURL(/programa=/);
  assert.ok(page.url().includes('campania=c%3Abatch1'),'Programa y búsqueda conservan campaña');
  await page.goto(home);assert.equal(await page.locator('.central-table th').nth(4).innerText(),'Procedencia');
+ const allCount=await page.locator('.central-count').innerText();
+ await page.goto(home+'&origen=META_ADS');const sourceCount=await page.locator('.central-count').innerText();
+ await page.goto(home+'&origen=META_ADS&campania=desconocida');assert.equal(await page.locator('.central-count').innerText(),sourceCount,'Campaña no es un filtro oculto en Todos');
+ await page.goto(home);assert.equal(await page.locator('.central-count').innerText(),allCount);
  assert.ok(await page.locator('.central-campaign-details').count()>0,'Todos permite consultar campañas sin otra columna');
  await context.request.get(base+'_session?rol=admin');await page.goto(home+'&seccion=meta&configurar_formularios=1');
  assert.equal(await page.locator('[data-meta-abrir]').count(),0,'Administración configura sin operar importaciones');
