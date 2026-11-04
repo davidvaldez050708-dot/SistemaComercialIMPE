@@ -36,9 +36,9 @@ with tempfile.TemporaryDirectory(prefix='impe-analista-overlay-test-') as d:
             if row['path']=='app/views/telefonia/mis_llamadas.php':
                 # Cambios reales de diseño dentro de los tres hunks previos:
                 # enlace de devolución, tarjeta y leyenda del historial.
-                link=b"\$detalleTexto = 'Ver devoluci"
+                link=b"$detalleTexto = 'Ver devoluci"
                 assert old.count(link)==1
-                old=old.replace(link, b"\$detalleTexto = 'Consultar devoluci",1)
+                old=old.replace(link, b"$detalleTexto = 'Consultar devoluci",1)
                 marker=b'<div class="linkage-call-history-footer">'
                 assert old.count(marker)==1
                 old=old.replace(marker,marker+b'\n                        <!-- ESTILO HOSTINGER CONSERVADO -->',1)
