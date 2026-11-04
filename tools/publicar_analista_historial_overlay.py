@@ -54,7 +54,52 @@ def inside(root, name):
 def read(path):
     return path.read_bytes() if path.is_file() else None
 
+def shell_surgical_patch(data, item):
+    """Inserta una sola dependencia delante del observador del Analista.
+    No reemplaza scripts, lógica, permisos ni HTML personalizado del shell.
+    """
+    if data is None:
+        raise ValueError('CONFLICTO: falta la vista shell.php')
+    # El HTML/JS puede estar personalizado: únicamente aceptamos el include
+    # original como ancla, dentro del bloque de Analista con su configuración.
+    existing = b"public/javascript/telefonia_analista_historial_pasivo.js?v="
+    overlay = b"public/javascript/telefonia_analista_resultado_superpuesto.js?v="
+    if data.count(existing) != 1:
+        raise ValueError('CONFLICTO: include del observador de Analista ausente o duplicado')
+    line_start = data.rfind(b'\n', 0, data.index(existing)) + 1
+    line_end = data.find(b'\n', data.index(existing))
+    if line_end < 0: line_end = len(data)
+    line = data[line_start:line_end]
+    if not line.lstrip().startswith(b'<script src="') or b'</script>' not in line:
+        raise ValueError('CONFLICTO: formato del include del Analista no reconocido')
+    prefix = data[max(0, line_start - 3200):line_start]
+    suffix = data[line_end:line_end + 1200]
+    if (b'IMPE_ANALYST_WEBRTC_JOURNAL' not in prefix or
+            b'<?php endif; ?>' not in suffix):
+        raise ValueError('CONFLICTO: el include del Analista no está en su bloque esperado')
+    if overlay in data:
+        if data.count(overlay) != 1 or data.index(overlay) > data.index(existing):
+            raise ValueError('CONFLICTO: el formulario superpuesto ya tiene otro orden')
+        return data
+    # La línea exacta proviene del manifest verificado del commit, no de
+    # una plantilla dinámica inventada por el instalador.
+    after = item['changes'][0]['after'].encode('utf-8')
+    desired = [
+        line for line in after.splitlines()
+        if overlay in line and b'<script src=' in line
+    ]
+    if len(desired) != 1:
+        raise ValueError('INTEGRIDAD: no existe un include único del formulario')
+    wanted = desired[0]
+    indentation = line[:len(line) - len(line.lstrip())]
+    replacement = indentation + wanted.lstrip()
+    newline = b'\r\n' if b'\r\n' in data else b'\n'
+    return data[:line_start] + replacement + newline + data[line_start:]
+
+
 def proposed(data, item):
+    if item['path']=='app/views/telefonia/shell.php' and item['action']=='patch':
+        return shell_surgical_patch(data, item)
     if item['action']=='create':
         candidate=item['content'].encode('utf-8')
         if data is not None and data != candidate:
