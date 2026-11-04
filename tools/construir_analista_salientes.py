@@ -29,12 +29,19 @@ for p in paths:
    originals.append(gzip.decompress(base64.b64decode(row['variants'][1]['target'])))
   if p.endswith('telefonia_analista_historial_pasivo.js'):
    originals.append(gzip.decompress(base64.b64decode((R/'tests/fixtures/analista_salientes_pasivo_hostinger.b64').read_text())))
+   previous=json.loads(blob('110248ab367d9b6de55e3d91f2bf6a35b691f02e','tools/analista_salientes_release.json'))
+   previous_row=next(row for row in previous['files'] if row['path']==p)
+   originals.extend(gzip.decompress(base64.b64decode(v['target'])) for v in previous_row['variants'])
  variants=[]
  for original in originals:
   if any(v['before']==sha(original) for v in variants):continue
   data=target
   if original==target:
    data=target
+  elif p.endswith('telefonia_analista_historial_pasivo.js') and original is not None and b'/* Resultado de marcaci' in original:
+   marker='/* Resultado de marcación libre del Analista. Observa el host existente; no llama al SDK. */'.encode()
+   assert original.count(marker)==1 and target.count(marker)==1
+   data=original.split(marker)[0]+marker+target.split(marker)[1]
   elif original is not None and original!=originals[0] and p.endswith('telefonia_shell.js'):
    text=original.decode()
    a="pending:Boolean(callbackPending||window.IMPE_CALL_CLOSURE?.hasPending()"

@@ -637,7 +637,7 @@
     const key = 'impe:analista:saliente-pendiente:' + user;
     const valid = ref => /^[a-zA-Z0-9_-]{6,100}$/.test(String(ref || ''));
     const manual = s => s?.direction === 'outgoing' && ['DIALER','TELEPHONY_MANUAL'].includes(s.context?.type);
-    let pending = null, observed = '', busy = false;
+    let pending = null, observed = '', busy = false, nextAttempt = 0, attempts = 0, opening = '';
     const completed = new Set();
     try {
         const record = JSON.parse(root.sessionStorage.getItem(key) || 'null');
@@ -649,6 +649,19 @@
     button.dataset.analystOutgoingPending = '';
     Object.assign(button.style,{position:'fixed',right:'20px',bottom:'20px',zIndex:'1085',padding:'12px 18px',display:'none'});
     root.document.body.appendChild(button);
+    const waiting = root.document.createElement('div');
+    waiting.dataset.analystOutgoingPreparing = '';
+    waiting.setAttribute('role','dialog'); waiting.setAttribute('aria-modal','true');
+    waiting.setAttribute('aria-label','Resultado de la llamada');
+    waiting.style.cssText='display:none;position:fixed;inset:0;z-index:1090;background:rgba(20,35,58,.38);padding:24px;align-items:center;justify-content:center;font-family:Manrope,sans-serif';
+    const card=root.document.createElement('section');
+    card.style.cssText='width:100%;max-width:900px;background:#fff;border:1px solid #dce5f2;border-radius:20px;box-shadow:0 20px 60px rgba(20,35,58,.18);overflow:hidden;color:#233654';
+    const title=root.document.createElement('h2');title.textContent='Resultado de la llamada';
+    title.style.cssText='font-size:22px;font-weight:800;margin:0;padding:24px 28px;border-bottom:1px solid #dce5f2';
+    const progress=root.document.createElement('p');progress.setAttribute('role','status');
+    progress.style.cssText='font-size:14px;line-height:1.6;margin:0;padding:28px;color:#63738d';
+    progress.textContent='Preparando el registro. Esperando la confirmación de esta llamada…';
+    card.appendChild(title);card.appendChild(progress);waiting.appendChild(card);root.document.body.appendChild(waiting);
     const persist = () => {
         try {
             if (pending) root.sessionStorage.setItem(key, JSON.stringify(pending));
@@ -656,15 +669,25 @@
         } catch (_) {}
     };
     const active = () => Boolean(root.IMPE_TELEPHONY_SHELL?.getCallState()?.active);
+    const formReady = () => {
+        try { return Boolean(pending && new URL(crm.contentWindow.location.href).searchParams.get('saliente_ref')===pending.ref &&
+            crm.contentDocument.querySelector('#modalLlamadaEntranteAnalista.show')); } catch (_) { return false; }
+    };
     const draw = () => {
-        button.hidden = !pending || active() || busy || root.IMPE_TELEPHONY_SHELL?.isResultFormOpen();
+        const preparing=Boolean(pending && !active() && !formReady());
+        waiting.style.display=preparing?'flex':'none';
+        // Reservar la presentación al terminar, antes de esperar al webhook.
+        // Así el resumen telefónico no tapa ni sustituye el registro obligatorio.
+        if (pending && !active() && !root.IMPE_TELEPHONY_SHELL?.isResultFormOpen())
+            root.IMPE_TELEPHONY_SHELL?.beginCallResult('analista-saliente-'+pending.token,[pending.ref||pending.token]);
+        button.hidden = true;
         // Los estilos de acciones usan display:flex y pueden prevalecer sobre [hidden].
         button.style.setProperty('display',button.hidden?'none':'inline-flex','important');
     };
     const complete = ref => {
         if (!pending || pending.ref !== ref) return false;
         const token = pending.token;
-        completed.add(token); pending = null; persist();
+        completed.add(token); pending = null; opening=''; nextAttempt=0; attempts=0; persist();
         root.IMPE_TELEPHONY_SHELL?.dismissFinishedCall(ref);
         try {
             const channel = new root.BroadcastChannel('impe-telephony-'+user);
@@ -695,7 +718,7 @@
         crm.src=url.href;
     };
     const openPending = async () => {
-        if (!pending || active() || busy) return;
+        if (!pending || active() || busy || formReady() || opening===pending.token) return;
         const token = pending.token;
         busy = true; draw();
         try {
@@ -706,16 +729,16 @@
             stateUrl.searchParams.set('after_id', String(pending.afterEventId));
             const response = await root.fetch(stateUrl, {credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
             const data = await response.json();
-            if (!pending || pending.token !== token) return;
+            if (!pending || pending.token !== token || active()) return;
             const call = data.call;
             if (!response.ok || !data.ok || !valid(call?.pbx_call_id) ||
                 (pending.ref && pending.ref !== call.pbx_call_id) ||
                 !['completed','busy','no-answer','failed','canceled'].includes(call.status)) {
-                throw new Error('La llamada terminó. Espera la confirmación de la centralita y pulsa Registrar resultado pendiente.');
+                throw new Error('Esperando la confirmación de esta llamada. El registro se abrirá automáticamente.');
             }
             pending.ref = call.pbx_call_id; persist();
             const previous = await registered(pending.ref);
-            if (!pending || pending.token !== token) return;
+            if (!pending || pending.token !== token || active()) return;
             if (previous) { showRegistered(previous); return; }
             const url = new URL(String(config.incomingResultsUrl), root.location.href);
             if (url.origin !== root.location.origin) throw new Error('No se pudo abrir el formulario de resultado.');
@@ -723,9 +746,11 @@
             url.searchParams.set('action','llamadasEntrantes'); url.searchParams.delete('vista');
             url.searchParams.set('saliente_ref',pending.ref); url.searchParams.set('pbx_call_id',pending.ref);
             root.IMPE_TELEPHONY_SHELL?.beginCallResult('analista-saliente-'+token,[pending.ref]);
+            opening=token;
             crm.src = url.href;
         } catch (e) {
-            root.IMPE_TELEPHONY_NOTIFY?.(e.message || 'No se pudo abrir el resultado. El pendiente se conserva.', true);
+            progress.textContent=e.message || 'No se pudo abrir el resultado. Se reintentará automáticamente; el pendiente se conserva.';
+            nextAttempt=Date.now()+Math.min(8000,750*Math.pow(2,Math.min(attempts++,4)));
         } finally { busy = false; draw(); }
     };
     root.IMPE_ANALYST_OUTGOING_RESULT = Object.freeze({hasPending:()=>Boolean(pending),openPending});
@@ -739,12 +764,15 @@
             pending = {user,token:state.callToken,ref:String(state.finalMetadata?.pbx_call_id || state.pbxCallId || ''),
                 number:String(state.destination || ''),requestedAt:Number(state.requestedAt || 0),
                 afterEventId:Number(state.afterEventId || 0)};
-            persist(); void openPending();
+            attempts=0;nextAttempt=0;persist();draw();void openPending();
         }
         draw();
     };
     root.addEventListener('storage', event => { if(event.key==='impe:telephony:state:'+user) consume(); });
-    root.setInterval(consume, 250);
+    root.setInterval(()=>{
+        consume();
+        if(pending && !active() && !busy && !formReady() && opening!==pending.token && Date.now()>=nextAttempt) void openPending();
+    },250);
     root.addEventListener('message', event => {
         if (event.origin !== root.location.origin || event.source !== crm.contentWindow ||
             event.data?.type !== 'IMPE_ANALYST_RESULT_SAVED' || !pending ||
@@ -759,8 +787,11 @@
         void registered(ref).then(result=>{if(result && pending?.ref===ref)showRegistered(result);}).catch(()=>{});
     });
     root.addEventListener('beforeunload', event => {if(pending){event.preventDefault();event.returnValue='';}});
-    // Cerrar el formulario no cancela la obligación; el botón permite recuperarlo.
-    crm.addEventListener('load', () => root.setTimeout(draw,300));
+    // Una navegación no cancela la obligación: recuperar el mismo registro automáticamente.
+    crm.addEventListener('load', () => root.setTimeout(()=>{
+        if(pending && !formReady()){opening='';nextAttempt=Date.now()+2000;}
+        draw();
+    },300));
     consume(); draw();
     if (pending) void openPending();
 })(window);

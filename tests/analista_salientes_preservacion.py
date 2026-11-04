@@ -20,5 +20,7 @@ for row in manifest['files']:
    marker='    public function registrarAtencionEnExpediente('
    assert old[old.index(marker):]==new[new.index(marker):],'No duplicar reglas del expediente'
   if row['path'].endswith('telefonia_analista_historial_pasivo.js'):
-   assert new.startswith(old),'Observador de recepción alterado'
+   marker='/* Resultado de marcación libre del Analista.'
+   observer=old.split(marker)[0]
+   assert new.startswith(observer),'Observador de recepción alterado'
 print('PASS preservacion: SDK, marcacion, audio, recepcion, observador entrante y transaccion de expediente identicos en ambas variantes')

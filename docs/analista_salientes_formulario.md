@@ -2,7 +2,7 @@
 
 Este corte añade el registro de las llamadas salientes libres (`DIALER` / `TELEPHONY_MANUAL`). Reutiliza `resultado_analista_form.php`, el buscador de seguimientos y la transacción existente. Las llamadas desde un seguimiento conservan su formulario y su ruta.
 
-Al finalizar una marcación libre, la capa persistente consulta la referencia posterior a la marca de agua tomada antes de marcar. Con la confirmación final de la PBX abre el formulario compartido para vincular un expediente, crear una institución en un territorio autorizado o conservar la llamada sin identificar. Si falta confirmación, queda un botón para recuperar ese mismo resultado. No se busca otra llamada sólo por coincidir el teléfono.
+Al finalizar una marcación libre, la capa persistente abre inmediatamente la ventana de registro y oculta el resumen de llamada finalizada. Consulta la referencia posterior a la marca de agua tomada antes de marcar. Si la confirmación final de la PBX tarda, mantiene un aviso de preparación y reintenta automáticamente, sin exigir pulsar un botón. Al confirmarse, muestra el formulario compartido para vincular un expediente, crear una institución en un territorio autorizado o conservar la llamada sin identificar. No se busca otra llamada sólo por coincidir el teléfono. Una llamada entrante activa conserva prioridad; el registro pendiente se retoma cuando termina.
 
 El servidor obtiene extensión, destino, fechas y segundos de los eventos persistidos. Revalida la extensión activa, sus permisos y la referencia; no acepta esas propiedades desde el formulario. Reutiliza el registro único y la transacción de entrantes sin crear una tabla nueva. La clasificación de una llamada no implica por sí sola contacto humano ni verificación de datos.
 
@@ -13,7 +13,7 @@ La única corrección del reloj en el host impide, para Analista, adoptar refere
 ## Validación
 
 - MariaDB privada local, puerto 33329: 158 comprobaciones de atención, transferencias y nuevos casos de salientes. La suite crea una base desechable y la elimina al terminar.
-- Playwright: vista PHP y Bootstrap reales, formulario compartido, búsqueda de seguimiento, alta territorial, notas, error de guardado, cierre/navegación bloqueados, referencia ajena y dos llamadas consecutivas al mismo número.
+- Playwright: shell y vista PHP reales, confirmación PBX tardía y apertura automática sin clic, resumen oculto, formulario compartido, búsqueda de seguimiento, alta territorial, notas, error de guardado, cierre/navegación bloqueados, referencia ajena y dos llamadas consecutivas al mismo número.
 - Regla pura de eventos y reloj: propiedad, vigencia, fin firmado, referencias viejas y llamadas negativas.
 - Publicación con Python 3.11 y 3.6.8: variantes exactas de Hostinger, dependencias, preflight sin escrituras, permisos 644 de JS, idempotencia y reversión.
 - Regresiones de verificación vigente, registro obligatorio y horario de contacto.
