@@ -10,7 +10,7 @@ sha = lambda data: hashlib.sha256(data).hexdigest()
 
 def run(site, backup, *args, ok=True):
     proc = subprocess.run([sys.executable, str(installer), '--site', str(site), '--backup-root', str(backup), *args],
-                          cwd=ROOT, capture_output=True, text=True)
+                          cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     assert (proc.returncode == 0) == ok, proc.stdout+proc.stderr
     return proc.stdout
 

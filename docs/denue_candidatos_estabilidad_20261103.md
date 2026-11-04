@@ -44,4 +44,10 @@ Con la versión instalada: probar Ciudad de México/Benito Juárez, cambiar a ot
 
 Para revertir usar el mismo publicador con `--site`, `--backup-root` y `--restore RUTA_DEL_RESPALDO`. No hacer `git pull` en `public_html`.
 
+## Compatibilidad del instalador con Python de Hostinger
+
+La primera ejecución se detuvo durante `--check` porque `capture_output` requiere Python 3.7. Se reemplazó por `stdout=PIPE` y `stderr=PIPE`, compatibles con Python 3.6, y se añadió una comprobación explícita de la versión mínima. El fallo ocurrió antes de instalar archivos en el sitio.
+
+El ciclo completo del instalador se probó con Python 3.6.8 oficial y PHP 8.2 real, además de Python 3.11. CI repite la ejecución del intérprete antiguo descargado de python.org con su SHA-256 comprobado. El manifiesto y los cinco archivos del paquete de ejecución permanecen idénticos; sólo se adapta el publicador, su prueba y CI.
+
 Fuentes primarias: [API de DENUE](https://www.inegi.org.mx/servicios/api-denue/), [verificación TLS de curl](https://curl.se/docs/sslcerts.html), [intermedios de Sectigo](https://www.sectigo.com/knowledge-base/detail/Sectigo-Intermediate-Certificates). Procedencia de la cadena en `config/certificates/inegi-ca-chain.md`.

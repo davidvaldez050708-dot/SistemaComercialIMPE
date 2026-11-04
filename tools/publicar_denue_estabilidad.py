@@ -34,14 +34,14 @@ def manifest(path):
 def lint(rows):
     php = shutil.which('php')
     if not php: raise RuntimeError('PHP CLI no disponible.')
-    runtime = subprocess.run([php, '-r', "exit(PHP_VERSION_ID >= 80100 && function_exists('curl_multi_init') && function_exists('openssl_x509_parse') ? 0 : 1);"], capture_output=True)
+    runtime = subprocess.run([php, '-r', "exit(PHP_VERSION_ID >= 80100 && function_exists('curl_multi_init') && function_exists('openssl_x509_parse') ? 0 : 1);"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if runtime.returncode: raise RuntimeError('Se requiere PHP 8.1 o posterior con cURL y OpenSSL.')
     for row in rows:
         if not row['name'].endswith('.php'): continue
         with tempfile.TemporaryDirectory(prefix='impe-denue-lint-') as directory:
             path = Path(directory)/'archivo.php'
             path.write_bytes(row['after'])
-            proc = subprocess.run([php, '-l', str(path)], capture_output=True)
+            proc = subprocess.run([php, '-l', str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if proc.returncode: raise RuntimeError('Sintaxis PHP inválida: '+row['name'])
 
 def prepare(site, package):
@@ -134,6 +134,7 @@ def restore(site, root, directory):
         print('RESTAURADO: versión previa. Sin SQL.')
 
 def main():
+    if sys.version_info < (3, 6): raise RuntimeError('Se requiere Python 3.6 o posterior.')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--site', required=True)
     parser.add_argument('--backup-root', required=True)
