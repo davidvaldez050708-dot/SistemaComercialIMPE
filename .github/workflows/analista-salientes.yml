@@ -21,6 +21,13 @@ on:
       - 'tools/publicar_analista_cierre_seguro.py'
       - 'tools/analista_cierre_seguro_manifest.json'
       - 'tests/publicacion_analista_cierre_seguro.py'
+      - 'tools/publicar_analista_historial_overlay.py'
+      - 'tools/analista_historial_overlay_manifest.json'
+      - 'public/javascript/telefonia_analista_resultado_superpuesto.js'
+      - 'app/services/TelefoniaMisLlamadasService.php'
+      - 'app/views/telefonia/mis_llamadas.php'
+      - 'app/views/telefonia/shell.php'
+      - 'tests/publicacion_analista_historial_overlay.py'
       - 'tests/*analista_salientes*'
       - 'tests/analista_seguimiento_workspace_browser.cjs'
       - 'tests/fixtures/analista_saliente*'
@@ -61,6 +68,7 @@ jobs:
           python tests/publicacion_analista_salientes.py
           python tests/publicacion_analista_modal_compartido.py
           python tests/publicacion_analista_cierre_seguro.py
+          python tests/publicacion_analista_historial_overlay.py
           python tests/publicacion_analista_aviso_estable.py
           python tests/publicacion_verificacion_vigente.py
           python tests/publicacion_analista_registro_obligatorio.py
