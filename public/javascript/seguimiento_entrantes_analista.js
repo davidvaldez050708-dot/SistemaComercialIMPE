@@ -616,6 +616,14 @@
             const message=result.verificacion_confirmada ? 'Atención guardada con verificación efectiva. Máximo una institución por día.' :
                 result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : 'Atención guardada.';
             try {sessionStorage.setItem('impe:call-result-flash',message);}catch(_){}
+            // Al abrirse desde el auricular o una transferencia, el
+            // formulario está en una capa propia del shell: no sustituir
+            // ni redirigir el iframe donde el Analista estaba trabajando.
+            if (new URLSearchParams(location.search).get('impe_result_overlay') === '1' &&
+                window.parent !== window) {
+                modal.hide();
+                return;
+            }
             const linked=Number(result.seguimiento_id||0);
             const isUnifiedIncoming=new URLSearchParams(location.search).get('action')==='misLlamadas'
                 && new URLSearchParams(location.search).get('vista')==='recibidas';
