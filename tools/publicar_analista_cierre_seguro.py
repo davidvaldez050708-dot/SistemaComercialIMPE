@@ -50,10 +50,12 @@ def apply_hunks(data, row):
             after=after.replace(b'\n',b'\r\n')
         count_before=text.count(before)
         count_after=text.count(after)
-        if count_before==1 and count_after==0:
-            text=text.replace(before,after,1)
-        elif count_before==0 and count_after==1:
+        # Una inserción puede incluir literalmente su propio contexto
+        # "before". Si el bloque "after" ya está íntegro, es idempotente.
+        if count_after==1:
             pass
+        elif count_before==1 and count_after==0:
+            text=text.replace(before,after,1)
         else:
             raise RuntimeError('CONFLICTO: fragmento '+str(i+1)+' de '+row['path']+
                 ' modificado o ambiguo; sitio intacto.')
