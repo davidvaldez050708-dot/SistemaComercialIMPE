@@ -20,6 +20,9 @@ REGISTRY = 'public/javascript/seguimiento_llamada_registro_obligatorio.js'
 REGISTRY_BEFORE_SHA256 = '69e64923a4a8c3db216f733e5d631bacf3846fc738c8a7b1e3b605385829fca6'
 REGISTRY_TARGET_GIT_BLOB = '475f62468bcf903e83baecfe0628a0a8d1b36f5c'
 PATCHES = [{"path":"public/javascript/telefonia_shell.js","changes":[{"before":"        // Sólo llamadas manuales usan este resumen visual; Seguimiento\n        // mantiene su propia pantalla para registrar el resultado.\n        const manualOutgoing = isManualOutgoing(shownCall);\n        const shownOutgoing = Boolean(shownCall?.direction === 'outgoing' &&\n            (manualOutgoing || preview || outgoingAttempt));\n","after":"        // El mismo modal del shell sirve para salientes libres y de Seguimiento.\n        // Sólo el borrador vive aquí; el resultado definitivo sigue en el expediente.\n        const manualOutgoing = isManualOutgoing(shownCall);\n        const seguimientoOutgoing = Boolean(shownCall?.direction === 'outgoing' &&\n            String(shownCall?.context?.type || '').toUpperCase() === 'VINCULACION');\n        const shownOutgoing = Boolean(shownCall?.direction === 'outgoing' &&\n            (manualOutgoing || seguimientoOutgoing || preview || outgoingAttempt));\n"},{"before":"        // Sólo se hace visible la interfaz oficial si la llamada es entrante.\n        // Para salientes, el panel del CRM sigue teniendo sus controles.\n","after":"        // Este modal único atiende también las salientes desde Seguimiento.\n        // El Panel de trabajo se reserva para registrar la interacción final.\n"}]},{"path":"public/javascript/telefonia_persistente.js","changes":[{"before":"        const manualOutgoingInShell = embedded &&\n            state?.direction === 'outgoing' &&\n            ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(\n                String(state?.context?.type || '').toUpperCase()\n            ) && (Boolean(state?.active) || state?.phase === 'finished');\n        panel.hidden = !show || managedByShell ||\n            incomingInShell || manualOutgoingInShell || callbackInShell;\n\n        if (!show || managedByShell || incomingInShell ||\n            manualOutgoingInShell || callbackInShell) {\n            return;\n        }\n\n","after":"        const manualOutgoingInShell = embedded &&\n            state?.direction === 'outgoing' &&\n            ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(\n                String(state?.context?.type || '').toUpperCase()\n            ) && (Boolean(state?.active) || state?.phase === 'finished');\n        // El shell ya presenta el teléfono de Seguimiento: evitar un duplicado.\n        const seguimientoInShell = embedded &&\n            state?.direction === 'outgoing' &&\n            String(state?.context?.type || '').toUpperCase() === 'VINCULACION' &&\n            (Boolean(state?.active) || state?.phase === 'finished');\n        panel.hidden = !show || managedByShell ||\n            incomingInShell || manualOutgoingInShell || seguimientoInShell || callbackInShell;\n\n        if (!show || managedByShell || incomingInShell ||\n            manualOutgoingInShell || seguimientoInShell || callbackInShell) {\n            return;\n        }\n\n"}]}]
+HOSTINGER_PERSISTENT_SHA256 = '60a6e0e858fd035f0c3c802bccada78df13c95094444db6e5c980d764b37563d'
+HOSTINGER_PERSISTENT_BEFORE = "        panel.hidden = !show || managedByShell || incomingInShell || manualOutgoingInShell || callbackInShell;\n\n        if (!show || managedByShell || manualOutgoingInShell || callbackInShell) {\n            return;\n        }\n"
+HOSTINGER_PERSISTENT_AFTER = "        // En Seguimiento la llamada vive en el modal telefónico compartido.\n        // La interacción definitiva continúa en el Panel de trabajo.\n        const seguimientoInShell =\n            getHostMode() === 'embedded' &&\n            state?.direction === 'outgoing' &&\n            String(state?.context?.type || '').toUpperCase() === 'VINCULACION' &&\n            (Boolean(state?.active) || state?.phase === 'finished');\n        panel.hidden = !show || managedByShell || incomingInShell ||\n            manualOutgoingInShell || seguimientoInShell || callbackInShell;\n\n        if (!show || managedByShell || manualOutgoingInShell ||\n                seguimientoInShell || callbackInShell) {\n            return;\n        }\n"
 PATHS = [REGISTRY] + [p['path'] for p in PATCHES]
 
 def sha(data):
@@ -46,6 +49,18 @@ def safe(root, name):
     return out
 
 def patched(source, changes, name):
+    # Variante REAL de Hostinger verificada mediante SHA-256, no un parche
+    # flexible que pueda alterar customizaciones de otro módulo.
+    if name == 'public/javascript/telefonia_persistente.js':
+        before = HOSTINGER_PERSISTENT_BEFORE.encode('utf-8')
+        after = HOSTINGER_PERSISTENT_AFTER.encode('utf-8')
+        if sha(source) == HOSTINGER_PERSISTENT_SHA256:
+            if source.count(before) != 1 or source.count(after) != 0:
+                raise RuntimeError('CONFLICTO: variante de Hostinger alterada. Sitio intacto.')
+            return source.replace(before, after)
+        if source.count(after) == 1 and source.count(before) == 0:
+            # Parche ya presente. No reescribir ni reinterpretar la variante.
+            return source
     text = source
     for patch in changes:
         before, after = patch['before'].encode('utf-8'), patch['after'].encode('utf-8')
