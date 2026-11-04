@@ -338,6 +338,7 @@ class SeguimientoVinculacionController
         $candidatos = [];
         $advertencias = [];
         $denueFallido = false;
+        $mensajeDenue = '';
         $claveMunicipio = '0';
         $cacheDenue = [];
         $buscarDenuePorNombre = !$busquedaAutomatica &&
@@ -401,6 +402,7 @@ class SeguimientoVinculacionController
             }
 
             if ($resultadoDenue['ok']) {
+                $advertencias = array_merge($advertencias, $resultadoDenue['advertencias'] ?? []);
                 $denue = $this->completarMunicipiosDenue(
                     $modelo,
                     $estadoId,
@@ -423,6 +425,7 @@ class SeguimientoVinculacionController
                 $candidatos = array_merge($candidatos, $denue);
             } else {
                 $denueFallido = true;
+                $mensajeDenue = $resultadoDenue['mensaje'] ?? 'No fue posible consultar DENUE. Intenta nuevamente.';
             }
         }
 
@@ -443,7 +446,7 @@ class SeguimientoVinculacionController
         $mensajeVacio = 'No existen resultados de este tipo.';
 
         if ($denueFallido && $totalCandidatos === 0) {
-            $mensajeVacio = 'No pudimos consultar DENUE en este momento.';
+            $mensajeVacio = $mensajeDenue;
         } elseif ($denueSolicitado && !$denueFallido) {
             $mensajeVacio = $busquedaAutomatica
                 ? 'No se encontraron candidatos DENUE recomendados.'

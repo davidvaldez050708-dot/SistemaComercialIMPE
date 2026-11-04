@@ -1,0 +1,49 @@
+name: DENUE - certificados y candidatos estables
+on:
+  pull_request:
+    paths:
+      - 'app/services/Denue*'
+      - 'app/controllers/SeguimientoVinculacionController.php'
+      - 'config/certificates/**'
+      - 'tests/denue*'
+      - 'tests/publicacion_denue_estabilidad.py'
+      - 'tools/*denue*'
+      - '.github/workflows/denue-candidatos-estabilidad.yml'
+  workflow_dispatch:
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, openssl
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis y política TLS
+        run: |
+          php -l app/services/DenueService.php
+          php -l app/services/DenueCandidatosHttpClient.php
+          php -l app/services/DenueTlsPolicy.php
+          php -l app/controllers/SeguimientoVinculacionController.php
+          php -l tools/diagnosticar_denue_tls.php
+      - name: Transporte real con servidor local y datos ficticios
+        run: python tests/denue_http_local.py
+      - name: Caché, candidatos y permisos de filtros
+        run: php tests/denue_candidatos_resiliencia.php
+      - name: Paginación y configuración privada
+        run: |
+          php tests/seguimiento_candidatos_paginacion_smoke.php
+          node tests/seguimiento_candidatos_paginacion_smoke.js
+          php tests/private_config_smoke.php
+      - name: Publicación selectiva, variantes Hostinger y reversión
+        run: |
+          python tools/construir_denue_release.py --check
+          python tests/publicacion_denue_estabilidad.py
