@@ -59,8 +59,11 @@ if ($totalPaginasEntrantes > 1) {
 
 $pendientesEntrantes = count(array_filter($llamadas, static function ($fila) {
     return (string)($fila['clasificacion'] ?? 'PENDIENTE') === 'PENDIENTE'
-        && !empty($fila['contestada'])
-        && (string)($fila['tipo_llamada'] ?? 'ENTRANTE') !== 'INTERNA';
+        && (string)($fila['tipo_llamada'] ?? 'ENTRANTE') !== 'INTERNA'
+        && (!empty($fila['contestada']) ||
+            ((string)($fila['tipo_llamada'] ?? '') === 'SALIENTE' &&
+             in_array((string)($fila['estado_pbx'] ?? ''),
+                 ['ended','transferred'], true)));
 }));
 $vinculadasEntrantes = count(array_filter($llamadas, static function ($fila) {
     return (string)($fila['clasificacion'] ?? '') === 'VINCULADA'
@@ -246,7 +249,7 @@ $duracionEntrante = static function ($segundos) {
                             // convertir una entrante perdida en conversación atendida.
                             $puedeRegistrar = !$esInterna && !$vinculada && $finalizada &&
                                 (!empty($llamada['contestada']) ||
-                                 ($esSalienteLibre && ($llamada['tipo_llamada'] ?? '') === 'SALIENTE'));
+                                 (($llamada['tipo_llamada'] ?? '') === 'SALIENTE'));
                             ?>
                             <?php if ($puedeRegistrar): ?>
                                 <span class="linkage-incoming-register-inline">
@@ -420,8 +423,8 @@ $duracionEntrante = static function ($segundos) {
         <?php else: ?>
             <div class="linkage-incoming-empty-panel">
                 <span class="linkage-incoming-empty-icon"><i class="bi bi-telephone-inbound" aria-hidden="true"></i></span>
-                <h3>Aún no hay llamadas recibidas</h3>
-                <p>Cuando tu extensión reciba una llamada, aparecerá aquí para consultar su estado y registrar el resultado.</p>
+                <h3>Aún no hay llamadas para registrar</h3>
+                <p>Las llamadas entrantes transferidas y las salientes de tu extensión aparecerán aquí cuando exista su registro telefónico.</p>
                 <span>Se muestran las llamadas de los últimos 30 días.</span>
             </div>
         <?php endif; ?>
