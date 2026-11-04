@@ -12,7 +12,7 @@ const dir=process.env.BOOTSTRAP_DIR||'../impe-denue-estabilidad/tmp/denue-bootst
 const css=read(dir+'/bootstrap.min.css'),bs=read(dir+'/bootstrap.bundle.min.js');
 const formHtml='<!doctype html><meta charset="utf-8"><style>'+css+'</style>'+view+
  '<a id="otherModule" href="/other">Otro módulo</a><script>'+bs+'</script><script>window.IMPE_CURRENT_USER_ID=1;</script><script>'+read('public/javascript/telefonia_atencion.js')+'</script><script>'+read('public/javascript/seguimiento_entrantes_analista.js')+'</script>';
-const formNoAnswerHtml=formHtml.replace(view,noAnswerView);
+const formNoAnswerHtml=formHtml.replace(view,noAnswerView).replaceAll('out-fixture-001','out-fixture-004');
 const journal=read('public/javascript/telefonia_analista_historial_pasivo.js');
 const html='<!doctype html><meta charset="utf-8"><style>'+css+'\n'+read('public/css/telefonia_persistente.css')+'</style><iframe id="impeCrmFrame" src="/empty" style="width:1300px;height:1000px"></iframe><script>'+bs+'</script><script>'+`
 window.state=null;window.formOpen=false;window.commands=[];
