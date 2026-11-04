@@ -688,6 +688,37 @@ class DenueService
         ];
     }
 
+    /** Página real de DENUE: todos los sectores/tamaños, sin perfiles ni corte de catálogo. */
+    public function buscarPaginaCandidatos(string $estado, string $municipio, string $termino, int $inicio): array
+    {
+        if (!preg_match('/^(0[1-9]|[12][0-9]|3[0-2])$/D', $estado) ||
+            !preg_match('/^(0|[0-9]{3})$/D', $municipio) || $inicio < 1 || $inicio > PHP_INT_MAX - 100) {
+            return ['ok' => false, 'codigo' => 'FILTROS', 'mensaje' => 'Los filtros de DENUE no son válidos.', 'reintentable' => false];
+        }
+        if (!$this->configuracionDisponible()) {
+            return ['ok' => false, 'codigo' => 'CONFIGURACION', 'mensaje' => 'La configuración de DENUE no está disponible.', 'reintentable' => false];
+        }
+        $respuestas = $this->consultarUrlsConcurrentes([['url' => $this->construirUrlBuscarAreaActEstr(
+            $estado, $municipio, trim($termino) === '' ? '0' : trim($termino), $inicio, $inicio + 99, '0', 0)]], 1);
+        $respuesta = $respuestas[0];
+        if (!$respuesta['ok']) return $respuesta;
+        $filas = $respuesta['datos'];
+        $resultados = [];
+        foreach ($filas as $fila) {
+            $candidato = $this->normalizarEstablecimiento($fila);
+            if ($candidato === null) {
+                return ['ok' => false, 'codigo' => 'FORMATO', 'mensaje' => 'DENUE devolvió un registro incompleto. La búsqueda no avanzó; se puede reintentar.', 'reintentable' => true];
+            }
+            // El filtro municipal usa entidad+municipio, aunque DENUE incluya también la localidad.
+            if (ctype_digit((string)$candidato['clave_area']) && strlen($candidato['clave_area']) >= 5) {
+                $candidato['clave_area'] = substr($candidato['clave_area'], 0, 5);
+            }
+            $resultados[] = $candidato;
+        }
+        return ['ok' => true, 'resultados' => $resultados, 'recibidos' => count($filas),
+            'agotado' => count($filas) === 0];
+    }
+
     public function obtenerEstablecimientoPorId(string $idEstablecimiento): array
     {
         $idEstablecimiento = trim($idEstablecimiento);

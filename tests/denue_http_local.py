@@ -26,6 +26,8 @@ class Handler(BaseHTTPRequestHandler):
             body = '<html>No disponible</html>'
         elif self.path == '/empty':
             body = {"message": "No se encontraron registros"}
+        elif self.path == '/end':
+            body = '"No hay resultados."'
         elif self.path == '/limit':
             code, body, retry_after = 429, {}, '10'
         elif self.path.startswith('/slow'):
@@ -33,7 +35,7 @@ class Handler(BaseHTTPRequestHandler):
         raw = body.encode() if isinstance(body, str) else json.dumps(body).encode()
         try:
             self.send_response(code)
-            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Type', 'text/plain; charset=utf-8' if self.path == '/end' else 'application/json')
             self.send_header('Content-Length', str(len(raw)))
             if retry_after:
                 self.send_header('Retry-After', retry_after)
@@ -46,7 +48,7 @@ php = r'''
 require 'app/services/DenueCandidatosHttpClient.php';
 $base = getenv('DENUE_FIXTURE');
 $requests = array_map(fn($p) => ['url' => $base.$p, 'perfil' => ['ruta' => $p]],
-    ['/retry','/auth','/token','/json','/empty','/limit']);
+    ['/retry','/auth','/token','/json','/empty','/end','/limit']);
 $client = new DenueCandidatosHttpClient(2000, 3500);
 $rows = $client->consultar($requests);
 $slow = array_map(fn($i) => ['url' => $base.'/slow'.$i], range(1,18));
@@ -59,7 +61,9 @@ echo json_encode(['rows'=>$rows,'slow'=>$slowRows,'elapsed'=>microtime(true)-$st
  'tls_bundle'=>is_readable($tls[CURLOPT_CAINFO]),'other_bundle'=>isset($other[CURLOPT_CAINFO]),
  'ssl_error'=>DenueCandidatosHttpClient::interpretar('',0,60),
  'invalid_json'=>DenueCandidatosHttpClient::interpretar('null',200),
- 'empty_object'=>DenueCandidatosHttpClient::interpretar('{}',200)]);
+ 'empty_object'=>DenueCandidatosHttpClient::interpretar('{}',200),
+ 'empty_body'=>DenueCandidatosHttpClient::interpretar('',200),
+ 'unknown_string'=>DenueCandidatosHttpClient::interpretar('"Error desconocido"',200)]);
 '''
 
 server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
@@ -80,6 +84,7 @@ try:
     assert not rows['/auth']['ok'] and counts['/auth'] == 1, 'No reintentar 403'
     assert not rows['/token']['ok'] and counts['/token'] == 1, 'HTTP 200 puede contener rechazo'
     assert rows['/empty']['ok'] and rows['/empty']['datos'] == [], 'Vacío válido'
+    assert rows['/end']['ok'] and rows['/end']['datos'] == [] and counts['/end'] == 1, 'Fin real de DENUE: cadena JSON, sin reintentar'
     assert not rows['/limit']['ok'] and counts['/limit'] == 1, 'Respetar Retry-After'
     assert len(data['slow']) == 18 and all(not x['ok'] for x in data['slow']), 'Responder cada trabajo aun vencido'
     assert data['elapsed'] < 1.5, 'Acotar la suma de timeouts, no multiplicarla por 18'
@@ -88,6 +93,8 @@ try:
     assert data['ssl_error']['codigo'] == 'CERTIFICADO' and not data['ssl_error']['reintentable']
     assert not data['invalid_json']['ok']
     assert not data['empty_object']['ok'], 'Objeto vacío no es un catálogo confirmado'
+    assert not data['empty_body']['ok'], 'Cuerpo vacío no confirma fin de resultados'
+    assert not data['unknown_string']['ok'], 'Cadena desconocida no confirma fin de resultados'
     print('DENUE HTTP: 503, JSON, 403, token, vacío, 429, timeout global y TLS OK')
 finally:
     server.shutdown()

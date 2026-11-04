@@ -19,12 +19,13 @@ def snapshot(site):
 
 with tempfile.TemporaryDirectory(prefix='impe-denue-release-') as directory:
     root = Path(directory)
-    for variant in range(2):
+    controller_variants = next(r for r in manifest['files'] if r['path'] == controller)['variants']
+    for variant in range(len(controller_variants)):
         site, backup = root/f'site{variant}', root/f'backup{variant}'
         site.mkdir()
         (site/'index.php').write_text('<?php // fixture')
         for row in manifest['files']:
-            v = row['variants'][variant if row['path'] == controller else 0]
+            v = row['variants'][variant if row['path'] == controller else (-1 if variant >= 2 else 0)]
             if v['before'] is not None:
                 data = gzip.decompress(base64.b64decode(v['base']))
                 assert sha(data) == v['before']
@@ -41,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='impe-denue-release-') as directory:
         run(site, backup, '--apply')
         installed = snapshot(site)
         for row in manifest['files']:
-            v = row['variants'][variant if row['path'] == controller else 0]
+            v = row['variants'][variant if row['path'] == controller else (-1 if variant >= 2 else 0)]
             assert sha((site/row['path']).read_bytes()) == v['after']
         run(site, backup, '--apply')
         assert snapshot(site) == installed, 'Instalación idempotente'
@@ -53,5 +54,5 @@ with tempfile.TemporaryDirectory(prefix='impe-denue-release-') as directory:
         p.write_bytes(installed[controller])
         run(site, backup, '--restore', str(directory_backup))
         assert snapshot(site) == before, 'Reversión exacta'
-    assert manifest['files'][-1]['variants'][1]['before'] == 'cd319b9bdcf1d75a27ff9b3244e7478303b9e51d5eceebe776cff31b24ad414f'
-print('Publicación DENUE: dos variantes, sólo lectura, bloqueo, integridad, idempotencia y reversión OK')
+    assert controller_variants[1]['before'] == 'cd319b9bdcf1d75a27ff9b3244e7478303b9e51d5eceebe776cff31b24ad414f'
+print('Publicación DENUE: cuatro variantes, sólo lectura, bloqueo, integridad, idempotencia y reversión OK')

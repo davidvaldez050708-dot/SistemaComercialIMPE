@@ -370,6 +370,33 @@ class SeguimientoVinculacionController
             );
         }
 
+        if ($denueSolicitado && (int)($_GET['denue_paginado'] ?? 0) === 1) {
+            require_once __DIR__ . '/../services/DenueCandidatosConsultaService.php';
+            $propietarioConsulta = (string)$usuarioId . ':' . session_id();
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+            $consulta = new DenueCandidatosConsultaService();
+            $resultado = $consulta->pagina($propietarioConsulta, [
+                'estado' => str_pad((string)$estado['clave_inegi'], 2, '0', STR_PAD_LEFT),
+                'municipio' => $claveMunicipio, 'tipo' => $tipoCandidato, 'termino' => $termino
+            ], $pagina, function ($filas) use ($tipoCandidato, $estado, $municipioId, $claveMunicipio) {
+                $filas = array_values(array_filter($filas, fn($fila) => $this->candidatoDenuePerteneceEstado($fila, $estado)));
+                if ($municipioId > 0) $filas = $this->filtrarDenuePorMunicipio($filas, $municipioId, $claveMunicipio);
+                return $this->filtrarDenuePorTipoCandidato($filas, $tipoCandidato);
+            });
+            if (!$resultado['ok']) {
+                $this->responderJson($resultado, !empty($resultado['reintentable']) ? 503 : 422);
+            }
+            $filas = $this->completarMunicipiosDenue($modelo, $estadoId, $resultado['candidatos']);
+            $filas = $this->agregarOportunidadCandidatos($filas, $this->obtenerPrioridadesMunicipales($estadoId));
+            $resultado['candidatos'] = $this->agregarEstadoSeguimientoCandidatos($modelo, $estadoId, $filas);
+            $resultado['cache_candidatos'] = [];
+            $resultado['advertencias'] = [];
+            $resultado['denue_solicitado'] = true;
+            $resultado['mensaje_vacio'] = 'No se encontraron candidatos con los criterios seleccionados.';
+            $resultado['puede_crear'] = tienePermiso('seguimientos_vinculacion.crear');
+            $this->responderJson($resultado);
+        }
+
         if ($buscarDenuePorNombre) {
             $cacheDenue = $this->buscarCandidatosDenueEnCache(
                 $estadoId,

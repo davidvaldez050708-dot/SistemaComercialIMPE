@@ -4,8 +4,11 @@ on:
     paths:
       - 'app/services/Denue*'
       - 'app/controllers/SeguimientoVinculacionController.php'
+      - 'app/views/seguimiento_vinculacion/estado.php'
+      - 'public/javascript/seguimiento_candidatos_paginacion.js'
       - 'config/certificates/**'
       - 'tests/denue*'
+      - 'tests/fixtures/denue_paginado_vista.php'
       - 'tests/publicacion_denue_estabilidad.py'
       - 'tools/*denue*'
       - '.github/workflows/denue-candidatos-estabilidad.yml'
@@ -32,12 +35,16 @@ jobs:
           php -l app/services/DenueService.php
           php -l app/services/DenueCandidatosHttpClient.php
           php -l app/services/DenueTlsPolicy.php
+          php -l app/services/DenueCandidatosConsultaService.php
           php -l app/controllers/SeguimientoVinculacionController.php
           php -l tools/diagnosticar_denue_tls.php
       - name: Transporte real con servidor local y datos ficticios
         run: python tests/denue_http_local.py
       - name: Caché, candidatos y permisos de filtros
-        run: php tests/denue_candidatos_resiliencia.php
+        run: |
+          php tests/denue_candidatos_resiliencia.php
+          php tests/denue_consulta_paginada.php
+          node tests/denue_paginacion_cliente.js
       - name: Paginación y configuración privada
         run: |
           php tests/seguimiento_candidatos_paginacion_smoke.php
@@ -47,6 +54,14 @@ jobs:
         run: |
           python tools/construir_denue_release.py --check
           python tests/publicacion_denue_estabilidad.py
+      - name: Modal real, continuación y más de 300 resultados
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          mkdir -p tmp/denue-bootstrap
+          curl -fsSL https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css -o tmp/denue-bootstrap/bootstrap.min.css
+          curl -fsSL https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js -o tmp/denue-bootstrap/bootstrap.bundle.min.js
+          node tests/denue_paginacion_browser.cjs
   python36-hostinger:
     runs-on: windows-latest
     steps:

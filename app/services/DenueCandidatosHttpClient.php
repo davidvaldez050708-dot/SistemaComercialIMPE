@@ -141,6 +141,11 @@ class DenueCandidatosHttpClient
                 in_array($http, [0, 408, 425, 429], true) || $http >= 500);
         }
         $datos = json_decode(ltrim($cuerpo, "\xEF\xBB\xBF"), true);
+        // DENUE devuelve "No hay resultados." como cadena JSON al agotar un rango.
+        // Sólo los mensajes reconocidos abajo son vacíos válidos, nunca HTML ni cuerpos vacíos.
+        if (json_last_error() === JSON_ERROR_NONE && is_string($datos)) {
+            $datos = [$datos];
+        }
         if (!is_array($datos) || json_last_error() !== JSON_ERROR_NONE) {
             return self::fallo('FORMATO', 'DENUE devolvió una respuesta no válida. Intenta nuevamente.', true);
         }

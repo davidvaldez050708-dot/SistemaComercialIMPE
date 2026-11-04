@@ -18,22 +18,36 @@ old_method = base.split(b'    public function buscarCandidatos()')[1].split(b'  
 new_method = target.split(b'    public function buscarCandidatos()')[1].split(b'    public function actualizarSecretariasDenue()')[0]
 assert base.replace(old_method, new_method, 1) == target, 'Hay cambios fuera de buscarCandidatos'
 rows = []
+previous = {r['path']: r for r in json.loads(blob('ac6c3648', 'tools/denue_estabilidad_release.json'))['files']}
 paths = ['config/certificates/inegi-ca-chain.pem', 'app/services/DenueTlsPolicy.php',
-         'app/services/DenueCandidatosHttpClient.php', 'app/services/DenueService.php', controller]
+         'app/services/DenueCandidatosHttpClient.php', 'app/services/DenueService.php',
+         'app/services/DenueCandidatosConsultaService.php', 'public/javascript/seguimiento_candidatos_paginacion.js',
+         controller, 'app/views/seguimiento_vinculacion/estado.php']
 for path in paths:
     variants = []
     if path == controller:
-        for ref in ['0b30eb1e', '94b777efd875fca09df9c2c5e84f09373f40b39b']:
-            original = blob(ref, path)
-            assert original.count(old_method) == 1, 'La variante cambió el método de candidatos'
-            patched = original.replace(old_method, new_method, 1)
+        originals = [blob(ref,path) for ref in ['0b30eb1e','94b777efd875fca09df9c2c5e84f09373f40b39b']]
+        originals += [gzip.decompress(base64.b64decode(v['target'])) for v in previous[path]['variants']]
+        for original in originals:
+            before_method = original.split(b'    public function buscarCandidatos()')[1].split(b'    public function actualizarSecretariasDenue()')[0]
+            patched = original.replace(before_method, new_method, 1)
             variants.append({'before': digest(original), 'base': pack(original),
                              'after': digest(patched), 'target': pack(patched)})
     elif path == 'app/services/DenueService.php':
-        original = blob('ce3b126a8042c9d72b76656f42100f5b8587a9ca', path)
+        originals = [blob('ce3b126a8042c9d72b76656f42100f5b8587a9ca', path),
+                     gzip.decompress(base64.b64decode(previous[path]['variants'][0]['target']))]
+        for original in originals:
+            variants.append({'before': digest(original), 'base': pack(original), 'after': digest(lf(path)), 'target': pack(lf(path))})
+    elif path in ['app/views/seguimiento_vinculacion/estado.php','public/javascript/seguimiento_candidatos_paginacion.js']:
+        original = blob('ac6c3648', path)
         variants.append({'before': digest(original), 'base': pack(original), 'after': digest(lf(path)), 'target': pack(lf(path))})
     else:
         variants.append({'before': None, 'after': digest(lf(path)), 'target': pack(lf(path))})
+        if path in previous:
+            original = gzip.decompress(base64.b64decode(previous[path]['variants'][0]['target']))
+            if digest(original) != digest(lf(path)):
+                variants.append({'before': digest(original), 'base': pack(original),
+                                 'after': digest(lf(path)), 'target': pack(lf(path))})
     rows.append({'path': path, 'variants': variants})
 manifest = {'schema': 1, 'package': 'denue-estabilidad-20261103', 'files': rows}
 raw = (json.dumps(manifest, indent=2)+'\n').encode()

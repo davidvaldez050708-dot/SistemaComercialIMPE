@@ -4,10 +4,11 @@ import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = 'a2947327ac03e006760768677684a5b1cddf0d966e586b1e8e0f489d380c6f2f'
+MANIFEST_SHA256 = 'd293eeb746841bff4f7a5dc9669be7ae6411535e05ef62b377b12117db02e5c6'
 PATHS = ['config/certificates/inegi-ca-chain.pem', 'app/services/DenueTlsPolicy.php',
          'app/services/DenueCandidatosHttpClient.php', 'app/services/DenueService.php',
-         'app/controllers/SeguimientoVinculacionController.php']
+         'app/services/DenueCandidatosConsultaService.php', 'public/javascript/seguimiento_candidatos_paginacion.js',
+         'app/controllers/SeguimientoVinculacionController.php', 'app/views/seguimiento_vinculacion/estado.php']
 
 def digest(data): return None if data is None else hashlib.sha256(data).hexdigest()
 def read(path): return path.read_bytes() if path.is_file() else None
