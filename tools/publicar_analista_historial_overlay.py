@@ -168,10 +168,15 @@ def history_view_surgical_patch(data, item):
         raise ValueError('CONFLICTO: identidad de llamada ausente o duplicada')
     if candidate.count(b'$esc($detalleUrl)')!=1:
         raise ValueError('CONFLICTO: enlace de detalle no identificado de forma única')
+    # Dos estructuras comprobadas: GitHub usa "} elseif" después de la
+    # rama de devolución; Hostinger SHA256 1b66435d... comienza con "if".
+    # El resto de la condición y la referencia deben ser idénticos, únicos,
+    # y seguir inmediatamente por la rama de Marketing.
     expression=re.compile(
-        rb'\}\s*elseif\s*\(\s*!empty\(\s*\$puedeGestionAnalista\s*\)'
+        rb'(?:\}\s*elseif|^[ \t]*if)\s*\(\s*!empty\(\s*\$puedeGestionAnalista\s*\)'
         rb'\s*&&\s*(?:!\s*\$saliente\s*&&\s*)?'
-        rb'\$pbxId\s*!==\s*[\x27][\x27]\s*\)\s*\{'
+        rb'\$pbxId\s*!==\s*[\x27][\x27]\s*\)\s*\{',
+        re.MULTILINE
     )
     found=list(expression.finditer(candidate))
     if len(found)!=1:
