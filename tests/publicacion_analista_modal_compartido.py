@@ -62,4 +62,30 @@ with tempfile.TemporaryDirectory(prefix='impe-modal-compartido-test-') as temp:
     phone.write_bytes(current[PHONE])
     assert 'RESTAURADO' in run('--restore',str(archive))
     assert snapshot()==before,'restaurar la versión personalizada exacta'
+# Variante real Hostinger reconocida sólo con huella SHA-256 exacta.
+# La prueba construye un fragmento sintético y simula exclusivamente esa huella;
+# el chequeo productivo nunca admite un hash arbitrario.
+import importlib.util
+spec=importlib.util.spec_from_file_location('publisher', str(SCRIPT))
+module=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+hostinger_patch=next(row for row in module.PATCHES if row['path']==PHONE)
+hostinger_before=module.HOSTINGER_PERSISTENT_BEFORE.encode('utf-8')
+hostinger_after=module.HOSTINGER_PERSISTENT_AFTER.encode('utf-8')
+fixture=b'// Prologo de una personalizacion local\n'+hostinger_before+b'\n// Epilogo sin modificar\n'
+previous_sha=module.sha
+try:
+    module.sha=lambda data: module.HOSTINGER_PERSISTENT_SHA256
+    fixed=module.patched(fixture,hostinger_patch['changes'],PHONE)
+    assert fixed==fixture.replace(hostinger_before,hostinger_after)
+    assert fixed.endswith(b'// Epilogo sin modificar\n')
+finally:
+    module.sha=previous_sha
+assert module.patched(fixed,hostinger_patch['changes'],PHONE)==fixed,'Idempotencia del parche local'
+try:
+    module.patched(fixture,hostinger_patch['changes'],PHONE)
+    raise AssertionError('No aceptar un archivo desconocido sin la huella exacta')
+except RuntimeError as exc:
+    assert 'CONFLICTO' in str(exc)
+
 print('PASS parche Hostinger: check sin escritura, variantes desconocidas bloqueadas, personalizaciones conservadas, aplicación, idempotencia y rollback')
