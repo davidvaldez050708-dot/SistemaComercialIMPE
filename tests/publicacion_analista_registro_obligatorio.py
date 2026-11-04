@@ -1,8 +1,14 @@
-import base64,gzip,json,pathlib,subprocess,sys,tempfile
+import base64,gzip,hashlib,json,pathlib,subprocess,sys,tempfile
 R=pathlib.Path(__file__).resolve().parents[1]
 spec=json.loads((R/'tools/analista_registro_obligatorio_release.json').read_text())
 for row in spec['files']:
- assert gzip.decompress(base64.b64decode(row['variants'][0]['target'])) == (R/row['path']).read_bytes().replace(b'\r\n',b'\n'), 'Paquete desactualizado: '+row['path']
+ archived=gzip.decompress(base64.b64decode(row['variants'][0]['target']))
+ if row['path']=='public/javascript/seguimiento_llamada_registro_obligatorio.js':
+  # Este publicador archivado conserva el corte #202. La UI actual se valida en
+  # publicacion_analista_salientes.py; no reescribir un paquete ya distribuido.
+  assert hashlib.sha256(archived).hexdigest()=='6b06c267afd6843dc6eb7d313f08c1a9460c0e0df270a91309be11915be3086f','Corte archivado alterado'
+ else:
+  assert archived == (R/row['path']).read_bytes().replace(b'\r\n',b'\n'), 'Paquete desactualizado: '+row['path']
 for variant in [0,1]:
  with tempfile.TemporaryDirectory(prefix='impe-verificacion-vigente-') as folder:
   d=pathlib.Path(folder);site=d/'site';site.mkdir();(site/'index.php').write_text('<?php // fixture');backups=d/'backup'
