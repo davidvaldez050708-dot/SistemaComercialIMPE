@@ -38,6 +38,9 @@ for p in paths:
   data=target
   if original==target:
    data=target
+  elif p.endswith('seguimiento_llamada_registro_obligatorio.js'):
+   # Este archivo pertenece al paquete; sus dos originales exactos no tienen variantes locales.
+   data=target
   elif p.endswith('telefonia_analista_historial_pasivo.js') and original is not None and b'/* Resultado de marcaci' in original:
    marker='/* Resultado de marcación libre del Analista. Observa el host existente; no llama al SDK. */'.encode()
    assert original.count(marker)==1 and target.count(marker)==1

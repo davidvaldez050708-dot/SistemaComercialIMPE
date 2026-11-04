@@ -8,12 +8,15 @@ El servidor obtiene extensión, destino, fechas y segundos de los eventos persis
 
 Se incluyen las protecciones del PR #202 para impedir salir de un seguimiento con una llamada pendiente. El auricular también consulta ese pendiente antes de iniciar otra marcación. Las salientes libres mantienen su obligación en la capa persistente y no permiten cerrar el formulario sin guardar.
 
+Las llamadas desde Seguimiento presentan una ventana institucional centrada con los controles reales del teléfono, la edición de contacto y el formulario de interacción del expediente. Se mueve el mismo nodo de controles dentro del panel existente, sin clonarlo ni reconstruir sus eventos. Se oculta «Llamar» durante la conversación. Los datos de contacto conservan su guardado explícito habitual y la interacción conserva sus reglas según resultado y etapa. La captura y las notas sobreviven al cierre de la llamada y al refresco del resumen; no se habilita guardar el resultado hasta finalizar. El aviso de pendiente utiliza tipografía, espaciado y colores institucionales. Al confirmar el vínculo exacto se devuelve el panel de trabajo a su presentación original.
+
 La única corrección del reloj en el host impide, para Analista, adoptar referencias salientes ya terminadas o cambiar de referencia durante una llamada. `startCall`, `ensureWidget`, `endOutgoingWebrtc`, el observador entrante, recepción y la transacción de expediente permanecen iguales byte por byte frente a cada versión de partida. No se modifica el SDK, la negociación SIP, el audio ni las transferencias.
 
 ## Validación
 
 - MariaDB privada local, puerto 33329: 158 comprobaciones de atención, transferencias y nuevos casos de salientes. La suite crea una base desechable y la elimina al terminar.
 - Playwright: shell y vista PHP reales, confirmación PBX tardía y apertura automática sin clic, resumen oculto, formulario compartido, búsqueda de seguimiento, alta territorial, notas, error de guardado, cierre/navegación bloqueados, referencia ajena y dos llamadas consecutivas al mismo número.
+- Ventana de Seguimiento con teléfono y vista PHP reales en 1440, 1024 y 390 px: controles únicos y accesibles, llamada activa, resultado obligatorio, captura de contacto/notas y restauración del panel. La actualización desde el paquete anterior sólo escribe el JavaScript de presentación/obligatoriedad del seguimiento.
 - Regla pura de eventos y reloj: propiedad, vigencia, fin firmado, referencias viejas y llamadas negativas.
 - Publicación con Python 3.11 y 3.6.8: variantes exactas de Hostinger, dependencias, preflight sin escrituras, permisos 644 de JS, idempotencia y reversión.
 - Regresiones de verificación vigente, registro obligatorio y horario de contacto.

@@ -11,6 +11,7 @@ on:
       - 'public/javascript/telefonia_shell.js'
       - 'public/javascript/telefonia_analista_historial_pasivo.js'
       - 'tests/*analista_salientes*'
+      - 'tests/analista_seguimiento_workspace_browser.cjs'
       - 'tests/fixtures/analista_saliente*'
       - 'tools/*analista_salientes*'
       - '.github/workflows/analista-salientes.yml'
@@ -29,6 +30,8 @@ jobs:
           --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -69,4 +72,5 @@ jobs:
           node tests/telefonia_atencion_browser.cjs
           node tests/telefonia_devoluciones_integracion_browser.cjs
           node tests/analista_registro_obligatorio_browser.cjs
+          node tests/analista_seguimiento_workspace_browser.cjs
           node tests/verificacion_datos_vigentes_browser.cjs

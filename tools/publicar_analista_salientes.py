@@ -4,7 +4,7 @@ import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = '98874bbc1afb649d9a35e958ab72c9d1dfa4b7f181c3b5faadeeb44c7ba49cea'
+MANIFEST_SHA256 = 'eb0c5a33067d10219f22d88bb948ac11058ed7a0a93e002ebe0ea09102231277'
 PATHS = ['app/services/TelefoniaSalienteAnalistaEstado.php', 'app/services/TelefoniaEntrantesAnalistaService.php', 'app/controllers/SeguimientoVinculacionController.php', 'app/views/seguimiento_vinculacion/llamadas_entrantes.php', 'public/javascript/seguimiento_entrantes_analista.js', 'public/javascript/telefonia_host.js', 'public/javascript/telefonia_shell.js', 'public/javascript/telefonia_analista_historial_pasivo.js', 'public/javascript/seguimiento_llamada_registro_obligatorio.js', 'public/javascript/seguimiento_llamada_zadarma.js']
 DEPENDENCIES = {'app/views/telefonia/resultado_analista_form.php': '17993c090599b58cfaa64e177f5f5e2e8c8b2f55b0ffc6fe69394bc88f7cf4b4', 'app/services/TelefoniaAnalistaWebrtcService.php': '547d41c7b55f0e0569bc3f39afa691663c71bbba590276bcc8c5440e12c1c62c', 'prueba_telefonia/api/zadarma_estado_llamada.php': '8f9a5999cbe8ff53b6f9546f90dbbafe30c72d577998af2646b6a284e0ffdd3d'}
 

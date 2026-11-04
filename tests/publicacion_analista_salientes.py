@@ -7,7 +7,7 @@ service=next(row for row in spec['files'] if row['path']=='app/services/Telefoni
 assert any(v['before']=='d8dd441e0b13f836d08f7f285bf563dc9c3e083bc09591b797cb21e3b7239b34' for v in service['variants']),'Falta el servicio territorial instalado en Hostinger'
 for row in spec['files']:
  assert unpack(row['variants'][0]['target'])==(R/row['path']).read_bytes().replace(b'\r\n',b'\n'),'Paquete desactualizado: '+row['path']
-previous=json.loads(subprocess.check_output(['git','show','110248ab367d9b6de55e3d91f2bf6a35b691f02e:tools/analista_salientes_release.json'],cwd=str(R)))
+previous=json.loads(subprocess.check_output(['git','show','f1656f829a7f3b124f96d292853d28c6caa10155:tools/analista_salientes_release.json'],cwd=str(R)))
 installed={row['path']:unpack(row['variants'][-1]['target']) for row in previous['files']}
 for variant in list(range(max(len(row['variants']) for row in spec['files'])))+['installed']:
  with tempfile.TemporaryDirectory(prefix='impe-salientes-publicacion-') as folder:
@@ -39,7 +39,7 @@ for variant in list(range(max(len(row['variants']) for row in spec['files'])))+[
   assert all((site/p).read_bytes()==b for p,b in targets.items())
   if variant=='installed':
    changed={p for p,b in targets.items() if b!=originals[p]}
-   assert changed=={'public/javascript/telefonia_analista_historial_pasivo.js'},changed
+   assert changed=={'public/javascript/seguimiento_llamada_registro_obligatorio.js'},changed
   if os.name=='posix':assert all((site/p).stat().st_mode&0o777==0o644 for p in targets if p.startswith('public/'))
   saved=next(x for x in backups.iterdir() if x.is_dir());run('--apply');assert len(list(backups.iterdir()))==1
   changed_name=next(p for p,b in targets.items() if b!=originals[p])
