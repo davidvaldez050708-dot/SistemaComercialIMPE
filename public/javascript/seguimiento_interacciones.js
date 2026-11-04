@@ -365,7 +365,30 @@
             ];
             const visible =
                 canal === 'LLAMADA' &&
-                resultadosConConversacion.includes(resultado);
+                resultadosConConversacion.includes(resultado) &&
+                !contactoEstaVerificado();
+
+            const normalizarDato = function (campo, valor) {
+                let texto = String(valor || '').trim();
+                if (campo === 'telefono') {
+                    texto = texto.replace(/\D/g, '');
+                    if (texto.length === 12 && texto.startsWith('52')) texto = texto.slice(2);
+                    else if (texto.length === 13 && texto.startsWith('521')) texto = texto.slice(3);
+                    return texto;
+                }
+                return texto.replace(/\s+/g, ' ').toLocaleLowerCase('es');
+            };
+            const cambioReferido = resultado === 'CONTACTO_REFERIDO' && [
+                ['telefono', campoTelefonoReferido, '[data-work-phone]'],
+                ['correo', campoCorreoReferido, '[data-work-email]'],
+                ['contacto', campoNombreReferido, '[data-work-contact-name]'],
+                ['cargo', campoCargoReferido, '[data-work-contact-role]']
+            ].some(function ([campo, entrada, selector]) {
+                const nuevo = String(entrada?.value || '').trim();
+                const anterior = String(document.querySelector(selector)?.textContent || '').trim();
+                return nuevo !== '' && normalizarDato(campo, nuevo) !== normalizarDato(campo, anterior === '—' ? '' : anterior);
+            });
+            formulario.dataset.verificacionAplicable = String(!contactoEstaVerificado() || cambioReferido);
 
             bloqueEvidenciaVerificacion.classList.toggle('d-none', !visible);
 
@@ -454,6 +477,8 @@
                 return true;
             }
 
+            actualizarEvidenciaVerificacion();
+
             if (resultado === 'CONTACTO_REFERIDO') {
                 const telefonoNuevo = String(campoTelefonoReferido?.value || '').trim();
                 const correoNuevo = String(campoCorreoReferido?.value || '').trim();
@@ -479,6 +504,8 @@
             if (!resultadosConConversacion.includes(resultado)) {
                 return true;
             }
+
+            if (formulario.dataset.verificacionAplicable === 'false') return true;
 
             const tieneEvidencia =
                 Boolean(checkTelefono?.checked) ||
@@ -518,6 +545,9 @@
         campoCorreoReferido?.addEventListener('input', function () {
             campoCorreoReferido.setCustomValidity('');
             campoCorreoReferido.classList.remove('is-invalid');
+        });
+        [campoTelefonoReferido, campoCorreoReferido, campoNombreReferido, campoCargoReferido].forEach(function (campo) {
+            campo?.addEventListener('input', actualizarEvidenciaVerificacion);
         });
 
         const pasoRutaActual = function () {

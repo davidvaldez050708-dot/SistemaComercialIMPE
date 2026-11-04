@@ -1255,7 +1255,8 @@ class SeguimientoVinculacionController
 
         if (
             $canalFormulario === 'LLAMADA' &&
-            $resultadoAdmiteVerificacion
+            $resultadoAdmiteVerificacion &&
+            (int)($seguimiento['datos_verificados'] ?? 0) !== 1
         ) {
             if ((int)($_POST['verificacion_telefono_confirmado'] ?? 0) === 1) {
                 if ($telefonoActual === '') {

@@ -44,6 +44,9 @@ final class VerificacionInstitucionalService
         $out=[];
         foreach ($mapa as $campo=>[$check,$nuevo,$anterior,$etiqueta]) {
             $valor=($datos['resultado'] ?? '')==='CONTACTO_REFERIDO' ? trim((string)($datos[$nuevo] ?? '')) : '';
+            // Repetir datos vigentes no genera otra verificación, aunque llegue un POST antiguo.
+            $vigente = (int)($actual['datos_verificados'] ?? 0) === 1;
+            if ($vigente && ($valor === '' || self::mismoDato($campo, (string)$anterior, $valor))) continue;
             if ($valor!=='') {
                 $out[]=['campo'=>$campo,'anterior'=>(string)$anterior,'valor'=>$valor,'accion'=>'REFERIDO','etiqueta'=>$etiqueta.' proporcionado'];
             } elseif ($check!=='' && (int)($datos[$check] ?? 0)===1) {
@@ -52,6 +55,20 @@ final class VerificacionInstitucionalService
             }
         }
         return $out;
+    }
+
+    public static function mismoDato(string $campo, string $anterior, string $nuevo): bool
+    {
+        $normalizar = static function (string $valor) use ($campo): string {
+            if ($campo === 'telefono') {
+                $valor = preg_replace('/\D+/', '', $valor);
+                if (strlen($valor) === 12 && str_starts_with($valor, '52')) $valor = substr($valor, 2);
+                elseif (strlen($valor) === 13 && str_starts_with($valor, '521')) $valor = substr($valor, 3);
+                return $valor;
+            }
+            return mb_strtolower(preg_replace('/\s+/u', ' ', trim($valor)), 'UTF-8');
+        };
+        return $normalizar($anterior) === $normalizar($nuevo);
     }
 
     public static function estadoAtencion(string $actual,bool $descartar): string

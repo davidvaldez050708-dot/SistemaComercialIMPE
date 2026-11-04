@@ -1,0 +1,13 @@
+# Llamadas de seguimiento y datos ya verificados
+
+Seleccionar Contacto correcto no debe convertir una llamada de seguimiento en una nueva verificación. El formulario mostraba las casillas por el resultado elegido, sin comprobar la vigencia de los datos. El registro informativo tampoco consultaba `datos_verificados`, por lo que no podía aplicar esa condición del expediente.
+
+La regla compartida ahora ignora confirmaciones repetidas de una institución con `datos_verificados=1`, incluso en una petición antigua o manipulada. Si en Contacto referido se proporciona un valor realmente diferente, sólo ese dato puede generar evidencia nueva. Comparar teléfonos ignora espacios, separadores y el prefijo mexicano equivalente; comparar correo, contacto y cargo ignora mayúsculas y espacios repetidos. No se altera el requisito de respuesta confirmada por telefonía para contabilizar.
+
+Las casillas de los datos actuales permanecen ocultas y deshabilitadas cuando ya están verificados. La llamada se guarda con su resultado normal y no muestra un aviso de que faltó una verificación. Los campos de un nuevo contacto conservan sus validaciones. La primera validación de una institución sin verificar sigue disponible.
+
+El cambio no reescribe el historial, metas anteriores, etapas, reuniones, convenios ni las asignaciones. No invalida ni vuelve a marcar automáticamente la ficha al registrar una llamada ordinaria. La excepción contemplada aquí es la incorporación de un dato distinto durante el registro del contacto referido; la edición general de la ficha sigue usando sus acciones actuales.
+
+Publicación de cinco archivos: regla compartida, servicio de registro informativo, controlador y dos JavaScript. El paquete incluye las variantes exactas de Hostinger: controlador `bc7a2ae1…` y servicio `76dd567f…`, conservando sus controles de cartera territorial y el método DENUE instalado. No modifica el modelo ni las APIs de vinculación/audio. El publicador comprueba todas las versiones antes de escribir, conserva respaldo privado y permite reversión, sin SQL ni migraciones. Los JavaScript públicos quedan en 644.
+
+Pruebas con datos ficticios: regla del servidor, peticiones con casillas antiguas, primeras verificaciones, equivalencias de formato y cambios reales. El servicio avanzado se ejecuta con conexión simulada para comprobar que guarda la interacción sin marcas de meta, evidencia nueva o DDL para datos vigentes. El navegador utiliza la vista PHP y el JavaScript reales para los pasos 4, 8 y 12, nuevos contactos y el mensaje final. Publicación y reversión comprobadas en carpetas temporales con Python 3.6 y Python 3.11.

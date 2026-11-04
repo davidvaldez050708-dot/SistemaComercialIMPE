@@ -1,0 +1,44 @@
+name: Analista - datos verificados vigentes
+on:
+  pull_request:
+    paths:
+      - 'app/services/VerificacionInstitucionalService.php'
+      - 'app/services/InteraccionRutaService.php'
+      - 'app/controllers/SeguimientoVinculacionController.php'
+      - 'public/javascript/seguimiento_interacciones.js'
+      - 'public/javascript/seguimiento_llamada_zadarma.js'
+      - 'tests/*verificacion*vigente*'
+      - 'tools/*verificacion*vigente*'
+      - '.github/workflows/verificacion-vigente.yml'
+  workflow_dispatch:
+jobs:
+  reglas-y-formulario:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Regla del servidor y publicación reversible aislada
+        run: |
+          php -l app/services/VerificacionInstitucionalService.php
+          php -l app/services/InteraccionRutaService.php
+          php -l app/controllers/SeguimientoVinculacionController.php
+          php tests/verificacion_datos_vigentes.php
+          python tests/publicacion_verificacion_vigente.py
+          node --check public/javascript/seguimiento_interacciones.js
+          node --check public/javascript/seguimiento_llamada_zadarma.js
+          php tests/horario_contacto_unit.php
+      - name: Formulario real sin credenciales ni llamadas
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          export CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
+          node tests/verificacion_datos_vigentes_browser.cjs
