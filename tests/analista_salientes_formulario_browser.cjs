@@ -1,6 +1,13 @@
 const fs=require('fs'),cp=require('child_process'),assert=require('assert/strict'),{chromium}=require('playwright');
 const read=p=>fs.readFileSync(p,'utf8');
 const view=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/analista_saliente_vista.php'],{encoding:'utf8'});
+const noAnswerView=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/analista_saliente_vista.php','sin-respuesta'],{encoding:'utf8'});
+const notEndedView=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/analista_saliente_vista.php','sin-cierre'],{encoding:'utf8'});
+assert.match(noAnswerView,/data-call-id="out-fixture-001"/,'Saliente finalizada sin respuesta debe ofrecer registro');
+assert.match(noAnswerView,/data-answer="0"/,'No inventar conversación humana');
+assert.match(noAnswerView,/Registrar resultado/);
+assert.doesNotMatch(notEndedView,/data-call-id="out-fixture-001"/,'Sin final PBX no habilitar guardado definitivo');
+
 const dir=process.env.BOOTSTRAP_DIR||'../impe-denue-estabilidad/tmp/denue-bootstrap';
 const css=read(dir+'/bootstrap.min.css'),bs=read(dir+'/bootstrap.bundle.min.js');
 const formHtml='<!doctype html><meta charset="utf-8"><style>'+css+'</style>'+view+

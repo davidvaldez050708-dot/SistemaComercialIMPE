@@ -240,7 +240,15 @@ $duracionEntrante = static function ($segundos) {
                                         <span class="linkage-call-result-badge is-no-contact">Pendiente de resultado</span>
                                     <?php endif; ?>
                             <?php // El reproductor y el registro son acciones independientes. ?>
-                            <?php if (!$esInterna && !$vinculada && $finalizada && !empty($llamada['contestada'])): ?>
+                            <?php
+                            // Una saliente sin respuesta también necesita clasificación.
+                            // Nunca habilitar resultados sobre PBX todavía activa, ni
+                            // convertir una entrante perdida en conversación atendida.
+                            $puedeRegistrar = !$esInterna && !$vinculada && $finalizada &&
+                                (!empty($llamada['contestada']) ||
+                                 ($esSalienteLibre && ($llamada['tipo_llamada'] ?? '') === 'SALIENTE'));
+                            ?>
+                            <?php if ($puedeRegistrar): ?>
                                 <span class="linkage-incoming-register-inline">
                                     <button type="button" class="linkage-incoming-open"
                                         data-call-id="<?= $esc($idRegistroResultado) ?>"
