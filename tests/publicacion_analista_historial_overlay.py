@@ -107,4 +107,38 @@ with tempfile.TemporaryDirectory(prefix='impe-analista-overlay-test-') as d:
     target.write_bytes(after[spec['files'][2]['path']])
     assert 'RESTAURADO' in run('--restore',str(archives[0]))
     assert snapshot()==initial, 'Restauración íntegra incluso archivo nuevo'
+
+    # Variante real observada en Hostinger: SIN rama de devolución inicial.
+    # El enlace del Analista es un "if", no un "} elseif"; no inventar
+    # enlaces nuevos para Marketing ni eliminar personalizaciones.
+    history_path='app/views/telefonia/mis_llamadas.php'
+    base_view=subprocess.check_output(
+        ['git','show',spec['base']+':'+history_path],cwd=str(ROOT))
+    first=b"            if (!empty($puedeGestionAnalista) && $saliente\n"
+    second=b"            } elseif (!empty($puedeGestionAnalista) && !$saliente && $pbxId !== '') {"
+    assert base_view.count(first)==1 and base_view.count(second)==1
+    begin=base_view.index(first)
+    end=base_view.index(second)+len(second)
+    hostinger_view=(base_view[:begin] +
+        b"            if (!empty($puedeGestionAnalista) && !$saliente && $pbxId !== '') {" +
+        base_view[end:] + b"\n<!-- PERSONALIZACION HOSTINGER HISTORIAL -->\n")
+    (site/history_path).write_bytes(hostinger_view)
+    snapshot_variant=snapshot()
+    assert 'CHECK OK' in run('--check'), 'El if de Hostinger debe ser compatible'
+    assert snapshot()==snapshot_variant, 'CHECK no debe editar la variante'
+    assert 'APLICADO' in run('--apply')
+    fixed_view=(site/history_path).read_bytes()
+    assert b'PERSONALIZACION HOSTINGER HISTORIAL' in fixed_view
+    assert fixed_view.count(b'&& $pbxId !==')==1
+    assert b'&& !$saliente && $pbxId' not in fixed_view
+    assert fixed_view.count(b'sdk_session_id=')==1
+    assert fixed_view.count(b'pbx_call_id=')>=1
+    assert b"elseif (!empty($puedeRecepcionMarketing))" in fixed_view
+    assert 'Consultar en recepción'.encode('utf-8') in fixed_view
+    assert 'YA INSTALADO' in run('--check')
+    assert 'YA INSTALADO' in run('--apply')
+    variant_archive=sorted([p for p in backup.iterdir() if p.is_dir()])[-1]
+    assert 'RESTAURADO' in run('--restore',str(variant_archive))
+    assert snapshot()==snapshot_variant, 'Revertir la variante exacta de Hostinger'
+
 print('PASS publicador: 8 archivos, cambios locales, idempotencia, conflicto y reversión')
