@@ -40,7 +40,7 @@ $checks = [
     'Llamada no contestada no crea interacción' =>
         str_contains($servicio, "empty(\$call['answer_at']) && empty(\$call['estadistica_contestada'])") &&
         str_contains($servicio, "\$decision !== 'sin_identificar'") &&
-        str_contains($servicio, 'empty(\$call[\'estadistica_solo\'])'),
+        str_contains($servicio, "empty(\$call['estadistica_solo'])"),
     'Un único resultado por analista y llamada' =>
         str_contains($sql, 'UNIQUE KEY uk_analista_llamada (usuario_id, pbx_call_id)') &&
         str_contains($servicio, 'FOR UPDATE'),
