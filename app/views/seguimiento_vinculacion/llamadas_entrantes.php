@@ -180,7 +180,7 @@ $duracionEntrante = static function ($segundos) {
                                     <span>
                                         <?= $esInterna
                                             ? 'Ext. ' . $esc($numero) . ' → ' . $esc($bandejaEntrantes['extension'] ?? '')
-                                            : 'Origen: ' . $esc($numero) ?>
+                                            : (($llamada['tipo_llamada'] ?? '') === 'SALIENTE' ? 'Destino: ' : 'Origen: ') . $esc($numero) ?>
                                     </span>
                                     <?php if (!empty($llamada['transferida_desde'])): ?>
                                         <span><?= ($llamada['fuente']??'')==='OPERACION'?'Intento de transferencia desde extensión':'Transferida desde extensión' ?> <?= $esc($llamada['transferida_desde']) ?></span>

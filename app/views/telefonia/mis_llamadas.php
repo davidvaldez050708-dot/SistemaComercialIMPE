@@ -87,9 +87,10 @@ ksort($paginasVisibles, SORT_NUMERIC);
                 $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
                     . '&vista=devoluciones&detalle_intento=' . (int)$fila['intento_devolucion'];
                 $detalleTexto = 'Ver devolución';
-            } elseif (!empty($puedeGestionAnalista) && !$saliente && $pbxId !== '') {
+            } elseif (!empty($puedeGestionAnalista) && $pbxId !== '') {
                 $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
-                    . '&vista=recibidas&detalle=1&pbx_call_id=' . rawurlencode($pbxId);
+                    . '&vista=recibidas&detalle=1&' .
+                    (($fila['fuente_operativa'] ?? '') === 'SDK_WEBRTC' ? 'sdk_session_id=' : 'pbx_call_id=') . rawurlencode($pbxId);
                 $detalleTexto = 'Ver llamada';
             } elseif (!empty($puedeRecepcionMarketing)) {
                 $detalleUrl = BASE_URL . 'index.php?controller=telefonia&action=misLlamadas'
@@ -112,7 +113,7 @@ ksort($paginasVisibles, SORT_NUMERIC);
                     </div>
                     <div class="linkage-call-history-footer">
                         <div class="linkage-call-result-group">
-                            <span class="linkage-call-result-badge <?= !empty($fila['conectada']) ? 'is-contact' : 'is-no-contact' ?>"><?= !empty($fila['conectada']) ? 'Conectada' : 'Sin conexión confirmada' ?></span>
+                            <span class="linkage-call-result-badge <?= !empty($fila['conectada']) ? 'is-contact' : 'is-no-contact' ?>"><?= !empty($fila['conectada']) ? 'Conectada' : (!empty($fila['observada']) ? 'Conexión WebRTC observada' : 'Sin conexión confirmada') ?></span>
                             <?php if (!empty($fila['resultado'])): ?><span class="linkage-call-result-badge"><?= $esc(str_replace('_',' ',$fila['resultado'])) ?></span><?php endif; ?>
                             <?php if (!empty($fila['transferida'])): ?><span class="linkage-call-result-badge">Transferida</span><?php endif; ?>
                             <?php if (!empty($fila['resultado_devolucion'])): ?><span class="linkage-call-result-badge">Devolución · <?= $esc(str_replace('_',' ',$fila['resultado_devolucion'])) ?></span><?php endif; ?>
@@ -157,5 +158,5 @@ ksort($paginasVisibles, SORT_NUMERIC);
         </div>
     </nav>
     <?php endif; ?>
-    <p class="impe-my-calls-note"><i class="bi bi-shield-check" aria-hidden="true"></i> Este historial muestra tramos con identificador PBX y atribución verificable, no todas las sesiones WebRTC ni cada intento de transferencia. Consulta «Recibidas y resultados», «Por devolver» o «Recepción» para el historial operativo y sus grabaciones; pueden existir diferencias entre sus totales.</p>
+    <p class="impe-my-calls-note"><i class="bi bi-shield-check" aria-hidden="true"></i> Este historial muestra los tramos PBX atribuidos a tu usuario y, para el Analista, sus llamadas operativas con referencia propia. Las sesiones WebRTC se identifican como observaciones: no equivalen a verificación confirmada por Zadarma. Consulta «Recibidas y resultados» para el resultado detallado y las grabaciones disponibles.</p>
 </section>
