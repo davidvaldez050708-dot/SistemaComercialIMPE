@@ -2,7 +2,7 @@ const fs=require('fs'),cp=require('child_process'),assert=require('assert/strict
 const read=p=>fs.readFileSync(p,'utf8');
 const view=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/denue_paginado_vista.php'],{encoding:'utf8'}).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
 const dir=process.env.BOOTSTRAP_DIR||'../impe-denue-estabilidad/tmp/denue-bootstrap';
-const css=read(dir+'/bootstrap.min.css')+read('public/css/global.css')+read('public/css/dashboard.css')+read('public/css/telefonia_persistente.css');
+const css=read(dir+'/bootstrap.min.css')+read('public/css/global.css')+read('public/css/dashboard.css')+read('public/css/telefonia_persistente.css')+read('public/css/seguimiento_llamada_registro_compacto.css');
 const shell=read('public/javascript/telefonia_shell.js'),persistent=read('public/javascript/telefonia_persistente.js');
 assert.match(shell,/const seguimientoOutgoing = Boolean/,'El shell abre la misma ventana para Seguimiento');
 assert.match(persistent,/const seguimientoInShell = embedded/,'No crear una tarjeta telefónica duplicada');
@@ -16,7 +16,7 @@ const setup=[
 "document.querySelector('[data-work-toggle-interaction]').onclick=()=>document.querySelector('[data-work-interaction-form]').classList.remove('d-none');});",
 "window.publish=s=>{s.updatedAt=Date.now();localStorage.setItem('impe:telephony:state:99',JSON.stringify(s));dispatchEvent(new StorageEvent('storage',{key:'impe:telephony:state:99',newValue:JSON.stringify(s)}));};"
 ].join('\n');
-const html='<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style>'+view+'<button data-work-follow-id="10" hidden>Expediente</button><script>'+read(dir+'/bootstrap.bundle.min.js')+'</script><script>'+setup+'</script><script>'+persistent+'</script><script>'+read('public/javascript/seguimiento_llamada_registro_obligatorio.js')+'</script>';
+const html='<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style>'+view+'<button data-work-follow-id="10" hidden>Expediente</button><script>'+read(dir+'/bootstrap.bundle.min.js')+'</script><script>'+setup+'</script><script>'+persistent+'</script><script>'+read('public/javascript/seguimiento_llamada_registro_obligatorio.js')+'</script><script>'+read('public/javascript/seguimiento_llamada_registro_compacto.js')+'</script>';
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{channel:'chrome'})});try{
  for(const width of [1440,1024,390]){
   const page=await browser.newPage({viewport:{width,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -38,9 +38,30 @@ const html='<!doctype html><meta charset="utf-8"><meta name="viewport" content="
   assert.equal(await panel.locator('[data-persistent-phone]').count(),0);
   assert.equal(await panel.locator('[data-work-contact-form]').count(),1,'El formulario de contacto permanece en el panel original');
   const note=panel.locator('[data-call-registration-required-note]');
-  assert.match(await note.textContent(),/Resultado de llamada pendiente/);
+  assert.match(await note.textContent(),/Resultado pendiente/);
   assert.equal(await note.evaluate(e=>getComputedStyle(e).fontSize),'13px');
-  assert.notEqual(await note.evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)','Aviso institucional diseñado');
+  assert.equal(await note.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(248, 250, 252)','Aviso de estilo neutro');
+  assert.equal(await note.evaluate(e=>getComputedStyle(e.querySelector('strong')).fontSize),'12.5px');
+  // El resumen técnico puede aparecer tarde; el script compacto debe ocultarlo,
+  // pero nunca sobrescribir el aviso con duración o estado de grabación.
+  await form.evaluate(f=>{
+    const summary=document.createElement('div');
+    summary.dataset.telephonyCallSummary='';
+    summary.dataset.callDurationSeconds='36';
+    summary.dataset.callRecordingState='none';
+    summary.textContent='Llamada finalizada · 00:36 · Sin grabación';
+    f.append(summary);
+    document.dispatchEvent(new CustomEvent('impe:call-registration-pending-changed',{detail:{pending:true,seguimientoId:10}}));
+  });
+  await page.waitForTimeout(450);
+  assert.equal(await note.locator('strong').textContent(),'Resultado pendiente');
+  assert.match(await note.locator('span').textContent(),/Selecciona el resultado y guarda la interacción/);
+  assert.equal(await form.locator('[data-telephony-call-summary]').isVisible(),false,'Resumen técnico redundante oculto');
+  const avisoEstable=await note.textContent();
+  await page.evaluate(()=>document.dispatchEvent(new CustomEvent('impe:flow-updated')));
+  await page.waitForTimeout(550);
+  assert.equal(await note.textContent(),avisoEstable,'Sin alternancia de mensajes al sondear o refrescar el expediente');
+  assert.doesNotMatch(await note.textContent(),/00:36|grabación/i);
   await form.locator('[name=observacion]').fill('Resultado guardado en el expediente');
   await page.evaluate(()=>document.dispatchEvent(new CustomEvent('impe:flow-updated')));await page.waitForTimeout(70);
   assert.equal(await form.locator('[name=observacion]').inputValue(),'Resultado guardado en el expediente');
