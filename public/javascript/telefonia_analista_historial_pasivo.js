@@ -564,15 +564,39 @@
     retryBtn.addEventListener('click', () => {
         if (finished?.saved === false) saveFinished(finished);
     });
+    const finishIncomingSaved = callId => {
+        if (!finished || finished.id !== callId) return;
+        const completed = finished.id;
+        finished = null;
+        root.document.querySelector('[data-analyst-dismiss-call]')?.click();
+        draw();panel.hidden = true;
+        try {
+            const channel = new root.BroadcastChannel('impe-telephony-' + userId);
+            channel.postMessage({
+                type:'COMMAND',id:'result-saved-'+completed+'-'+Date.now(),
+                action:'CLEAR_FINISHED',payload:{callToken:completed}
+            });
+            channel.close();
+        } catch (_) {}
+    };
     resultBtn.addEventListener('click', () => {
         if (!finished?.answered || finished.saved !== true ||
             !crm || !shell.incomingResultsUrl) return;
         const url = new URL(String(shell.incomingResultsUrl), root.location.href);
         if (url.origin !== root.location.origin) return;
         url.searchParams.set('sdk_session_id', finished.id);
+        const current = finished.id;
+        const opened = root.IMPE_ANALYST_RESULT_OVERLAY?.open(url.href, {
+            refs:[current],
+            onSaved: finishIncomingSaved,
+            onDismiss: () => {
+                if (finished?.id !== current) return;
+                finished.registrationOpen = false;draw();
+            }
+        });
+        if (!opened) return;
         finished.registrationOpen = true;
         draw();
-        crm.src = url.toString();
     });
     // Sólo el formulario del CRM (mismo origen e iframe) confirma que el
     // servidor guardó el resultado; navegar no equivale a registrarlo.
@@ -581,25 +605,7 @@
             event.source !== crm?.contentWindow ||
             event.data?.type !== 'IMPE_ANALYST_RESULT_SAVED' ||
             !finished || String(event.data.callId || '') !== finished.id) return;
-        const completed = finished.id;
-        finished = null;
-        // El aviso inferior usa el estado privado del shell. Liberarlo por
-        // su propio control después del OK del backend, sin duplicados.
-        root.document.querySelector('[data-analyst-dismiss-call]')?.click();
-        draw();
-        panel.hidden = true;
-        // Sólo tras el OK del servidor se despeja la llamada terminada
-        // del motor WebRTC; así no reaparece Cerrar en el shell.
-        try {
-            const channel = new root.BroadcastChannel('impe-telephony-' + userId);
-            channel.postMessage({
-                type:'COMMAND',
-                id:'result-saved-' + completed + '-' + Date.now(),
-                action:'CLEAR_FINISHED',
-                payload:{callToken:completed}
-            });
-            channel.close();
-        } catch (_) {}
+        finishIncomingSaved(finished.id);
     });
     crm?.addEventListener('load', () => {
         if (!finished?.registrationOpen) return;
@@ -675,6 +681,7 @@
     };
     const active = () => Boolean(root.IMPE_TELEPHONY_SHELL?.getCallState()?.active);
     const formReady = () => {
+        if (pending && root.IMPE_ANALYST_RESULT_OVERLAY?.hasRef(pending.ref)) return true;
         try { return Boolean(pending && new URL(crm.contentWindow.location.href).searchParams.get('saliente_ref')===pending.ref &&
             crm.contentDocument.querySelector('#modalLlamadaEntranteAnalista.show')); } catch (_) { return false; }
     };
@@ -725,13 +732,10 @@
     const showRegistered = result => {
         if (!complete(result.pbx_call_id)) return;
         root.IMPE_TELEPHONY_NOTIFY?.('El resultado de esta llamada ya está guardado.');
-        const url = new URL(String(config.incomingResultsUrl), root.location.href);
-        const id = Number(result.seguimiento_id || 0);
-        if (Number.isSafeInteger(id) && id>0) {
-            url.searchParams.set('controller','seguimientoVinculacion'); url.searchParams.set('action','detalle');
-            url.searchParams.delete('vista');url.searchParams.set('id',String(id));
-        }
-        crm.src=url.href;
+        // El resultado ya está confirmado: mantener la vista de origen,
+        // incluso si el registro generó una interacción en Seguimiento.
+        try { crm.contentWindow?.dispatchEvent(new CustomEvent('impe:analyst-result-updated')); }
+        catch (_) {}
     };
     const openForm = (token, ref) => {
         if (!pending || pending.token !== token || pending.ref !== ref || active()) return;
@@ -740,9 +744,22 @@
         url.searchParams.set('controller','seguimientoVinculacion');
         url.searchParams.set('action','llamadasEntrantes'); url.searchParams.delete('vista');
         url.searchParams.set('saliente_ref',ref); url.searchParams.set('pbx_call_id',ref);
+        const opened = root.IMPE_ANALYST_RESULT_OVERLAY?.open(url.href, {
+            refs:[ref],
+            onSaved: () => complete(ref),
+            onDismiss: () => {
+                if (!pending || pending.ref !== ref || pending.token !== token) return;
+                opening='';nextAttempt=Date.now()+5000;draw();
+            },
+            onUncertain: () => {
+                void registered(ref).then(result => {
+                    if (result && pending?.ref === ref) showRegistered(result);
+                }).catch(()=>{});
+            }
+        });
+        if (!opened) throw new Error('No pudo abrirse el formulario de resultado.');
         root.IMPE_TELEPHONY_SHELL?.beginCallResult('analista-saliente-'+token,[ref]);
         opening=token;
-        crm.src=url.href;
     };
     const openPending = async () => {
         if (!pending || active() || busy || formReady() || opening===pending.token) return;
