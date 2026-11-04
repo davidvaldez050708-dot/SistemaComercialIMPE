@@ -22,7 +22,7 @@ function element() {
     };
 }
 async function scenario(conversation,pbxOnly=false) {
-    let now=1000000, stored='', captures=[], dockDismissed=0;
+    let now=1000000, stored='', captures=[], dockDismissed=0, overlayForm=null;
     const sessionStore = new Map();
     const staleKey = 'impe:analyst-incoming-pending:8';
     sessionStore.set(staleKey, JSON.stringify({
@@ -60,6 +60,7 @@ async function scenario(conversation,pbxOnly=false) {
     const root={
         document:doc, console, Date:DateStub, BroadcastChannel:Channel,
         IMPE_ANALYST_WEBRTC_JOURNAL:{enabled:true,endpoint:'/event',csrf:'abc'},
+        IMPE_ANALYST_RESULT_OVERLAY:{open(url,options){overlayForm={url,options};return true;}},
         IMPE_PHONE_SHELL_CONFIG:{
             userId:8,analystIncomingResults:true,incomingResultsUrl:
                 'https://example.test/index.php?controller=seguimientoVinculacion&action=llamadasEntrantes'
@@ -135,14 +136,13 @@ async function scenario(conversation,pbxOnly=false) {
         close.click();
         assert.equal(close.hidden,true,'clic de cierre sin registrar no puede descartarla');
         register.click();
-        assert.ok(crm.src.includes('sdk_session_id='+id));
+        assert.ok(overlayForm?.url.includes('sdk_session_id='+id));
+        assert.equal(crm.src,'','Conservar la pantalla de origen durante el registro');
         assert.equal(panel.hidden,true,'no tapar el formulario de resultado');
         assert.equal(bodyClasses.has('impe-sdk-result-in-modal'),true,
             'mientras el formulario está abierto no mostrar CTA inferior');
         assert.equal(root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.hasFinalized(),true);
-        for(const fn of listeners.message||[])fn({
-            origin:'https://example.test',source:frm,
-            data:{type:'IMPE_ANALYST_RESULT_SAVED',callId:id}});
+        overlayForm.options.onSaved(id);
         assert.equal(root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.hasFinalized(),false);
         assert.equal(captures.at(-1)?.action,'CLEAR_FINISHED');
         assert.equal(dockDismissed,2,'no revivir aviso antiguo tras guardar');
