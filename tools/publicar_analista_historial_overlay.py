@@ -139,11 +139,110 @@ def service_surgical_patch(data, item):
     return data[:target] + insert + data[target:]
 
 
+def history_view_surgical_patch(data, item):
+    """Arregla los enlaces de detalle sin sobrescribir HTML o textos locales.
+
+    Los cambios visuales son opcionales si Hostinger ya personalizó esas
+    etiquetas; el enlace funcional por PBX/SDK sí exige una estructura única.
+    """
+    if data is None:
+        raise ValueError('CONFLICTO: falta la vista Mis llamadas')
+    # Cuando el archivo es exactamente la versión base, conservar la salida
+    # bit a bit del manifiesto verificado por GitHub.
+    if git_blob(data)==item.get('beforeBlob'):
+        result=data
+        for h in item['changes']:
+            before=h['before'].encode('utf-8')
+            after=h['after'].encode('utf-8')
+            if result.count(before)!=1:
+                raise ValueError('INTEGRIDAD: bloque base distinto en Mis llamadas')
+            result=result.replace(before, after, 1)
+        return result
+    if git_blob(data)==item.get('afterBlob'):
+        return data
+    import re
+    candidate=data
+    if candidate.count(b'<?php foreach ($items as $fila):')!=1:
+        raise ValueError('CONFLICTO: bucle de historial personalizado no reconocido')
+    if candidate.count(b'$pbxId =')!=1 or candidate.count(b'$detalleTexto =')<1:
+        raise ValueError('CONFLICTO: identidad de llamada ausente o duplicada')
+    if candidate.count(b'$esc($detalleUrl)')!=1:
+        raise ValueError('CONFLICTO: enlace de detalle no identificado de forma única')
+    expression=re.compile(
+        rb'\}\s*elseif\s*\(\s*!empty\(\s*\$puedeGestionAnalista\s*\)'
+        rb'\s*&&\s*(?:!\s*\$saliente\s*&&\s*)?'
+        rb'\$pbxId\s*!==\s*[\x27][\x27]\s*\)\s*\{'
+    )
+    found=list(expression.finditer(candidate))
+    if len(found)!=1:
+        raise ValueError('CONFLICTO: rama del enlace Analista diferente o duplicada')
+    match=found[0]
+    branch=candidate[match.start():match.end()]
+    revised=re.sub(rb'!\s*\$saliente\s*&&\s*', b'', branch, count=1)
+    candidate=candidate[:match.start()]+revised+candidate[match.end():]
+    match=expression.search(candidate)
+    block=candidate[match.end():]
+    # No modificar el enlace de devoluciones ni recepción Marketing.
+    next_branch=re.search(rb'\}\s*elseif\s*\(',block)
+    if not next_branch or next_branch.start()>1600:
+        raise ValueError('CONFLICTO: ramas de navegación inesperadas')
+    block_end=match.end()+next_branch.start()
+    analyst=candidate[match.end():block_end]
+    assignment=re.search(rb'\$detalleUrl\s*=\s*BASE_URL.*?;',analyst,re.DOTALL)
+    if not assignment or assignment.end()-assignment.start()>850:
+        raise ValueError('CONFLICTO: destino del detalle Analista no reconocido')
+    before_link=assignment.group(0)
+    old=re.compile(rb"'&vista=recibidas&detalle=1&pbx_call_id='\s*\.\s*"
+                   rb'rawurlencode\(\$pbxId\)')
+    if before_link.count(b'sdk_session_id=')==1 and before_link.count(b'pbx_call_id=')==1:
+        updated_link=before_link
+    elif len(old.findall(before_link))==1:
+        newline=b'\r\n' if b'\r\n' in candidate else b'\n'
+        replacement=(b"'&vista=recibidas&detalle=1&' ."+newline+
+                     b"                    (($fila['fuente_operativa'] ?? '') === 'SDK_WEBRTC'"
+                     b" ? 'sdk_session_id=' : 'pbx_call_id=') . rawurlencode($pbxId)")
+        updated_link=old.sub(lambda _:replacement,before_link,count=1)
+    else:
+        raise ValueError('CONFLICTO: enlace de detalle Analista personalizado; no se reemplaza')
+    if (b'&vista=recibidas&detalle=1&' not in updated_link or
+            b'sdk_session_id=' not in updated_link or
+            b'pbx_call_id=' not in updated_link or
+            b'rawurlencode($pbxId)' not in updated_link):
+        raise ValueError('CONFLICTO: destino Analista no cubre ambas referencias')
+    candidate=(candidate[:match.end()+assignment.start()] + updated_link +
+               candidate[match.end()+assignment.end():])
+    # Estado visual: reemplazar sólo una expresión exacta conocida; conservar
+    # los badges personalizados que no coincidan, sin inventar estado PBX.
+    old_badge=b"'Conectada' : 'Sin conexión confirmada'"
+    new_badge=("'Conectada' : (!empty($fila['observada']) ? "
+               "'Conexión WebRTC observada' : 'Sin conexión confirmada')").encode('utf-8')
+    if candidate.count(new_badge)==1:
+        pass
+    elif candidate.count(old_badge)==1:
+        candidate=candidate.replace(old_badge,new_badge,1)
+    else:
+        print('AVISO: indicador de conexión personalizado conservado en Mis llamadas.')
+    # La leyenda es texto informativo: nunca sobrescribir redacción local.
+    previous=item['changes'][2]['before'].encode('utf-8')
+    revised_note=item['changes'][2]['after'].encode('utf-8')
+    old_note=re.search(rb'<p class="impe-my-calls-note">.*?</p>',previous,re.DOTALL)
+    new_note=re.search(rb'<p class="impe-my-calls-note">.*?</p>',revised_note,re.DOTALL)
+    if not old_note or not new_note or candidate.count(b'class="impe-my-calls-note"')!=1:
+        raise ValueError('CONFLICTO: nota de procedencia del historial no reconocida')
+    if old_note.group(0) in candidate:
+        candidate=candidate.replace(old_note.group(0),new_note.group(0),1)
+    elif new_note.group(0) not in candidate:
+        print('AVISO: texto informativo personalizado conservado en Mis llamadas.')
+    return candidate
+
+
 def proposed(data, item):
     if item['path']=='app/views/telefonia/shell.php' and item['action']=='patch':
         return shell_surgical_patch(data, item)
     if item['path']=='app/services/TelefoniaEntrantesAnalistaService.php' and item['action']=='patch':
         return service_surgical_patch(data, item)
+    if item['path']=='app/views/telefonia/mis_llamadas.php' and item['action']=='patch':
+        return history_view_surgical_patch(data, item)
     if item['action']=='create':
         candidate=item['content'].encode('utf-8')
         if data is not None and data != candidate:
