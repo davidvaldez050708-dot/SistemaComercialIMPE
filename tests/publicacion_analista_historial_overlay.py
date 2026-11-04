@@ -27,6 +27,12 @@ with tempfile.TemporaryDirectory(prefix='impe-analista-overlay-test-') as d:
                 assert old.count(marker)==1
                 start=old.rfind(b'\n',0,old.index(marker))+1
                 old=(old[:start]+b'    <!-- BLOQUE PERSONALIZADO DE HOSTINGER -->\n'+old[start:])
+            if row['path']=='app/services/TelefoniaEntrantesAnalistaService.php':
+                # Personalización dentro del primer fragmento heredado.
+                original=b'        // Dos fuentes distintas: PBX firmada y observación de WebRTC local.'
+                changed=b'        // HOSTINGER: conservar la separación de PBX y WebRTC.'
+                assert old.count(original)==1
+                old=old.replace(original,changed)
             path.write_bytes(old+b'\n/* PERSONALIZACION LOCAL INTACTA */\n')
             originals[row['path']]=path.read_bytes()
         else:
@@ -67,6 +73,10 @@ with tempfile.TemporaryDirectory(prefix='impe-analista-overlay-test-') as d:
     assert shell.read_bytes().count(b'BLOQUE PERSONALIZADO DE HOSTINGER')==1
     assert shell.read_bytes().count(b'public/javascript/telefonia_analista_resultado_superpuesto.js?v=')==1
     assert shell.read_bytes().index(b'public/javascript/telefonia_analista_resultado_superpuesto.js?v=') < shell.read_bytes().index(b'public/javascript/telefonia_analista_historial_pasivo.js?v=')
+    service=site/'app/services/TelefoniaEntrantesAnalistaService.php'
+    assert service.read_bytes().count(b'HOSTINGER: conservar la separación de PBX y WebRTC.')==1
+    assert service.read_bytes().count(b'$stmtSalientes = $this->db->prepare(')==1
+    assert service.read_bytes().index(b'$stmtSalientes = $this->db->prepare(')<service.read_bytes().index(b'$sesiones = $clasificadorInterno->listar($usuarioId);')
     archives=[p for p in backup.iterdir() if p.is_dir()]
     assert len(archives)==1
     assert 'YA INSTALADO' in run('--check')
