@@ -213,7 +213,7 @@ def history_view_surgical_patch(data, item):
                candidate[match.end()+assignment.end():])
     # Estado visual: reemplazar sólo una expresión exacta conocida; conservar
     # los badges personalizados que no coincidan, sin inventar estado PBX.
-    old_badge=b"'Conectada' : 'Sin conexión confirmada'"
+    old_badge="'Conectada' : 'Sin conexión confirmada'".encode('utf-8')
     new_badge=("'Conectada' : (!empty($fila['observada']) ? "
                "'Conexión WebRTC observada' : 'Sin conexión confirmada')").encode('utf-8')
     if candidate.count(new_badge)==1:
