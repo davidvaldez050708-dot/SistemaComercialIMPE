@@ -3,11 +3,20 @@ const read=p=>fs.readFileSync(p,'utf8');
 const view=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/denue_paginado_vista.php'],{encoding:'utf8'}).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
 const dir=process.env.BOOTSTRAP_DIR||'../impe-denue-estabilidad/tmp/denue-bootstrap';
 const css=read(dir+'/bootstrap.min.css')+read('public/css/global.css')+read('public/css/dashboard.css')+read('public/css/telefonia_persistente.css');
-const setup=`window.IMPE_CURRENT_ROLE_ID=4;window.IMPE_CURRENT_USER_ID=99;window.IMPE_TELEPHONY_NOTIFY=()=>{};
-document.addEventListener('DOMContentLoaded',()=>{const p=document.getElementById('offcanvasSeguimientoTrabajo');p.dataset.flowSeguimientoId='10';p.querySelector('[data-work-title]').textContent='Institución de prueba';
-document.querySelector('[data-work-toggle-interaction]').onclick=()=>document.querySelector('[data-work-interaction-form]').classList.remove('d-none');});
-window.publish=s=>{s.updatedAt=Date.now();localStorage.setItem('impe:telephony:state:99',JSON.stringify(s));dispatchEvent(new StorageEvent('storage',{key:'impe:telephony:state:99',newValue:JSON.stringify(s)}));};`;
-const html='<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style>'+view+'<button data-work-follow-id="10" hidden>Expediente</button><script>'+read(dir+'/bootstrap.bundle.min.js')+'</script><script>'+setup+'</script><script>'+read('public/javascript/telefonia_persistente.js')+'</script><script>'+read('public/javascript/seguimiento_llamada_registro_obligatorio.js')+'</script>';
+const shell=read('public/javascript/telefonia_shell.js'),persistent=read('public/javascript/telefonia_persistente.js');
+assert.match(shell,/const seguimientoOutgoing = Boolean/,'El shell abre la misma ventana para Seguimiento');
+assert.match(persistent,/const seguimientoInShell = embedded/,'No crear una tarjeta telefónica duplicada');
+const rendered=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/telefonia_flujo_shell.php','analista'],{encoding:'utf8'});
+assert.match(rendered,/data-shell-capture-toggle/,'El analista tiene Datos de llamada');
+assert.match(rendered,/data-routing-capture-form/,'El borrador se captura en el shell');
+assert.match(rendered,/"canCapture":true/,'La ficha de datos está habilitada');
+const setup=[
+"window.IMPE_CURRENT_ROLE_ID=4;window.IMPE_CURRENT_USER_ID=99;window.IMPE_TELEPHONY_NOTIFY=()=>{};",
+"document.addEventListener('DOMContentLoaded',()=>{const p=document.getElementById('offcanvasSeguimientoTrabajo');p.dataset.flowSeguimientoId='10';p.querySelector('[data-work-title]').textContent='Institución de prueba';",
+"document.querySelector('[data-work-toggle-interaction]').onclick=()=>document.querySelector('[data-work-interaction-form]').classList.remove('d-none');});",
+"window.publish=s=>{s.updatedAt=Date.now();localStorage.setItem('impe:telephony:state:99',JSON.stringify(s));dispatchEvent(new StorageEvent('storage',{key:'impe:telephony:state:99',newValue:JSON.stringify(s)}));};"
+].join('\n');
+const html='<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style>'+view+'<button data-work-follow-id="10" hidden>Expediente</button><script>'+read(dir+'/bootstrap.bundle.min.js')+'</script><script>'+setup+'</script><script>'+persistent+'</script><script>'+read('public/javascript/seguimiento_llamada_registro_obligatorio.js')+'</script>';
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{channel:'chrome'})});try{
  for(const width of [1440,1024,390]){
   const page=await browser.newPage({viewport:{width,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -15,46 +24,32 @@ const html='<!doctype html><meta charset="utf-8"><meta name="viewport" content="
   await page.goto('http://workspace.test/');await page.waitForFunction(()=>window.IMPE_TELEPHONY_PERSISTENT&&document.querySelector('[data-persistent-phone]'));
   await page.evaluate(()=>window.originalTelephone=document.querySelector('[data-persistent-phone]'));
   const state={userId:99,hostReady:true,active:true,phase:'in-progress',status:'in-progress',direction:'outgoing',callToken:'workspace-test-call',pbxCallId:'out-workspace-test',destination:'+525551234567',duration:18,context:{type:'VINCULACION',seguimientoId:10,institution:'Institución de prueba'}};
-  await page.evaluate(s=>publish(s),state);
-  const panel=page.locator('#offcanvasSeguimientoTrabajo');await panel.locator('[data-work-interaction-form]').waitFor({state:'visible'});
-  assert.equal(await page.evaluate(()=>document.querySelectorAll('[data-persistent-phone]').length),1);
-  assert.equal(await panel.locator('[data-persistent-phone]').evaluate(e=>e===originalTelephone),true,'Mover los controles reales, sin clonar eventos ni crear otro teléfono');
-  assert.equal(await panel.locator('[data-phone-start]').isVisible(),false,'No mostrar Llamar durante una llamada');
-  assert.equal(await panel.locator('[data-phone-mute]').isEnabled(),true);
-  assert.equal(await panel.locator('[data-phone-hangup]').isEnabled(),true);
-  await panel.locator('[data-persistent-phone]').evaluate(e=>e.classList.add('is-compact'));
-  assert.equal(await panel.locator('[data-phone-compact-actions]').isVisible(),false,'No duplicar controles al recuperar una preferencia compacta');
-  assert.equal(await panel.locator('[data-phone-hangup]').isVisible(),true);
-  assert.equal(await panel.locator('[data-work-interaction-form] [type=submit]').isEnabled(),false);
-  assert.equal(await panel.locator('[name=resultado]').inputValue(),'','Exigir seleccionar el resultado; no guardar Sin respuesta por defecto');
-  assert.equal(await panel.locator('[data-call-registration-required-note]').evaluate(e=>getComputedStyle(e).fontSize),'13px');
-  await page.waitForTimeout(400);
-  assert.equal(await panel.locator('[data-phone-hangup]').isVisible(),true,JSON.stringify(await panel.locator('[data-persistent-phone]').evaluate(e=>({hidden:e.hidden,display:getComputedStyle(e).display,visibility:getComputedStyle(e).visibility,style:e.getAttribute('style'),keep:e.hasAttribute('data-call-workspace-keep'),state:IMPE_TELEPHONY_PERSISTENT.getState(),bodyDisplay:getComputedStyle(e.querySelector('.persistent-phone-body')).display}))));
-  const box=await panel.boundingBox();assert.ok(box.x>=-1&&box.x+box.width<=width+1&&box.y>=-1&&box.height<=900,JSON.stringify({width,box}));
-  const hangupBox=await panel.locator('[data-phone-hangup]').boundingBox();
-  assert.ok(hangupBox.y>=box.y&&hangupBox.y+hangupBox.height<box.y+box.height,'Controles visibles dentro de la ventana al comenzar');
-  assert.equal(await panel.locator('[data-phone-hangup]').evaluate(e=>{const b=e.getBoundingClientRect();return e.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2));}),true,'Colgar no queda recortado ni cubierto por el formulario');
-  await page.screenshot({path:'tmp/analista-seguimiento-activa-'+width+'.png'});
-  await panel.locator('[name=observacion]').fill('Notas durante la llamada');
-  await panel.locator('[data-work-contact-form]').evaluate(e=>e.classList.remove('d-none'));
-  await panel.locator('[data-work-contact-form] [name=correo_verificado]').fill('institucion@example.test');
+  const panel=page.locator('#offcanvasSeguimientoTrabajo'),form=panel.locator('[data-work-interaction-form]');
+  assert.equal(await form.isVisible(),false);
+  await page.evaluate(s=>publish(s),state);await page.waitForTimeout(140);
+  assert.equal(await panel.locator('[data-persistent-phone]').count(),0,'No mover el teléfono al Panel de trabajo');
+  assert.equal(await panel.evaluate(e=>e.classList.contains('impe-call-workspace')),false,'Sin ventana híbrida inventada');
+  assert.equal(await page.locator('[data-persistent-phone]').evaluate(e=>e===originalTelephone),true);
+  assert.equal(await form.isVisible(),false,'No mostrar el formulario definitivo en conversación');
+  assert.equal(await panel.locator('[data-call-registration-required-note]').count(),0);
   await page.evaluate(s=>publish({...s,active:false,phase:'finished',finalMetadata:{pbx_call_id:s.pbxCallId,call_token:s.callToken}}),state);
-  await page.waitForTimeout(400);
-  assert.equal(await panel.locator('[name=observacion]').inputValue(),'Notas durante la llamada');
-  assert.equal(await panel.locator('[data-work-contact-form] [name=correo_verificado]').inputValue(),'institucion@example.test');
-  assert.equal(await panel.locator('[data-work-interaction-form] [type=submit]').isEnabled(),true);
-  assert.match(await panel.locator('[data-call-workspace-heading]').textContent(),/Registrar resultado/);
-  await page.evaluate(()=>{document.querySelector('[data-work-contact-form]').reset();document.dispatchEvent(new CustomEvent('impe:flow-updated'));});
-  await page.waitForTimeout(80);
-  assert.equal(await panel.locator('[data-work-contact-form] [name=correo_verificado]').inputValue(),'institucion@example.test','Conservar captura al refrescar el resumen');
-  await panel.locator('[data-work-interaction-form]').scrollIntoViewIfNeeded();
-  await page.screenshot({path:'tmp/analista-seguimiento-workspace-'+width+'.png'});
-  await page.evaluate(()=>{document.dispatchEvent(new CustomEvent('impe:interaction-exact-id-ready',{detail:{seguimientoId:10,interaccionId:77}}));document.dispatchEvent(new CustomEvent('impe:telephony-call-linked',{detail:{provider:'ZADARMA',callToken:'workspace-test-call',seguimientoId:10,interaccionId:77}}));});
+  await form.waitFor({state:'visible'});
   assert.equal(await panel.evaluate(e=>e.classList.contains('impe-call-workspace')),false);
-  assert.equal(await page.locator('[data-persistent-phone]').evaluate(e=>!e.closest('#offcanvasSeguimientoTrabajo')&&e===originalTelephone),true);
+  assert.equal(await panel.locator('[data-persistent-phone]').count(),0);
+  assert.equal(await panel.locator('[data-work-contact-form]').count(),1,'El formulario de contacto permanece en el panel original');
+  const note=panel.locator('[data-call-registration-required-note]');
+  assert.match(await note.textContent(),/Resultado de llamada pendiente/);
+  assert.equal(await note.evaluate(e=>getComputedStyle(e).fontSize),'13px');
+  assert.notEqual(await note.evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)','Aviso institucional diseñado');
+  await form.locator('[name=observacion]').fill('Resultado guardado en el expediente');
+  await page.evaluate(()=>document.dispatchEvent(new CustomEvent('impe:flow-updated')));await page.waitForTimeout(70);
+  assert.equal(await form.locator('[name=observacion]').inputValue(),'Resultado guardado en el expediente');
+  assert.equal(await form.locator('[type=submit]').isEnabled(),true);
+  await page.evaluate(()=>{document.dispatchEvent(new CustomEvent('impe:interaction-exact-id-ready',{detail:{seguimientoId:10,interaccionId:77}}));document.dispatchEvent(new CustomEvent('impe:telephony-call-linked',{detail:{provider:'ZADARMA',callToken:'workspace-test-call',seguimientoId:10,interaccionId:77}}));});
+  assert.equal(await note.count(),0,'Sólo el vínculo exacto libera el aviso');
   await page.evaluate(s=>publish({...s,callToken:'otra-saliente-prueba',context:{type:'DIALER'}}),state);
-  assert.equal(await panel.evaluate(e=>e.classList.contains('impe-call-workspace')),false,'El ajuste de Seguimiento no captura las salientes libres');
+  assert.equal(await panel.evaluate(e=>e.classList.contains('impe-call-workspace')),false);
   assert.deepEqual(errors,[]);await page.close();
  }
- console.log('PASS ventana institucional real: controles únicos, captura activa, resultado, borradores de contacto/notas, aviso institucional y tres tamaños');
+ console.log('PASS: ventana telefonica separada del Panel de trabajo, borrador del shell, registro final, aviso institucional y tres tamaños');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

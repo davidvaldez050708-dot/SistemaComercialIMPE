@@ -10,6 +10,11 @@ on:
       - 'public/javascript/telefonia_host.js'
       - 'public/javascript/telefonia_shell.js'
       - 'public/javascript/telefonia_analista_historial_pasivo.js'
+      - 'public/javascript/telefonia_persistente.js'
+      - 'public/javascript/telefonia_shell.js'
+      - 'public/javascript/seguimiento_llamada_registro_obligatorio.js'
+      - 'tools/publicar_analista_modal_compartido.py'
+      - 'tests/publicacion_analista_modal_compartido.py'
       - 'tests/*analista_salientes*'
       - 'tests/analista_seguimiento_workspace_browser.cjs'
       - 'tests/fixtures/analista_saliente*'
@@ -48,6 +53,7 @@ jobs:
           node tests/analista_salientes_referencias.cjs
           python tests/analista_salientes_preservacion.py
           python tests/publicacion_analista_salientes.py
+          python tests/publicacion_analista_modal_compartido.py
           python tests/publicacion_verificacion_vigente.py
           python tests/publicacion_analista_registro_obligatorio.py
           php tests/verificacion_datos_vigentes.php

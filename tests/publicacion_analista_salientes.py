@@ -5,8 +5,15 @@ spec=json.loads((R/'tools/analista_salientes_release.json').read_text(encoding='
 unpack=lambda s:None if s is None else gzip.decompress(base64.b64decode(s))
 service=next(row for row in spec['files'] if row['path']=='app/services/TelefoniaEntrantesAnalistaService.php')
 assert any(v['before']=='d8dd441e0b13f836d08f7f285bf563dc9c3e083bc09591b797cb21e3b7239b34' for v in service['variants']),'Falta el servicio territorial instalado en Hostinger'
+# Estos archivos son parte de una entrega ya publicada; sus contenidos son
+# inmutables aunque la fuente actual tenga una corrección visual posterior.
+published={'public/javascript/telefonia_shell.js':'84c14d94564ca8093269e2c2c6b1cfc29001a21f9a4eefb8e601db66d15b2c64','public/javascript/seguimiento_llamada_registro_obligatorio.js':'69e64923a4a8c3db216f733e5d631bacf3846fc738c8a7b1e3b605385829fca6'}
 for row in spec['files']:
- assert unpack(row['variants'][0]['target'])==(R/row['path']).read_bytes().replace(b'\r\n',b'\n'),'Paquete desactualizado: '+row['path']
+ target=unpack(row['variants'][0]['target'])
+ if row['path'] in published:
+  assert hashlib.sha256(target).hexdigest()==published[row['path']],'Paquete publicado alterado: '+row['path']
+ else:
+  assert target==(R/row['path']).read_bytes().replace(b'\r\n',b'\n'),'Paquete desactualizado: '+row['path']
 previous=json.loads(subprocess.check_output(['git','show','f1656f829a7f3b124f96d292853d28c6caa10155:tools/analista_salientes_release.json'],cwd=str(R)))
 installed={row['path']:unpack(row['variants'][-1]['target']) for row in previous['files']}
 for variant in list(range(max(len(row['variants']) for row in spec['files'])))+['installed']:
