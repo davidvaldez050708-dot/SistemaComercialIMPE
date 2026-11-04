@@ -632,7 +632,8 @@
     'use strict';
     const config = root.IMPE_PHONE_SHELL_CONFIG || {}, user = Number(config.userId || 0);
     const crm = root.document.getElementById('impeCrmFrame');
-    if (!config.analystIncomingResults || !user || !crm) return;
+    if (!config.analystIncomingResults || !user || !crm ||
+        typeof root.document.body?.appendChild !== 'function') return;
     const key = 'impe:analista:saliente-pendiente:' + user;
     const valid = ref => /^[a-zA-Z0-9_-]{6,100}$/.test(String(ref || ''));
     const manual = s => s?.direction === 'outgoing' && ['DIALER','TELEPHONY_MANUAL'].includes(s.context?.type);
