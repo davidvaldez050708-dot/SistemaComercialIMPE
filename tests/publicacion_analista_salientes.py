@@ -11,7 +11,8 @@ published={'public/javascript/telefonia_shell.js':'84c14d94564ca8093269e2c2c6b1c
 later_changes={'app/services/TelefoniaSalienteAnalistaEstado.php',
                'app/services/TelefoniaEntrantesAnalistaService.php',
                'app/views/seguimiento_vinculacion/llamadas_entrantes.php',
-               'public/javascript/telefonia_analista_historial_pasivo.js'}
+               'public/javascript/telefonia_analista_historial_pasivo.js',
+               'public/javascript/seguimiento_entrantes_analista.js'}
 for row in spec['files']:
  target=unpack(row['variants'][0]['target'])
  if row['path'] in published:
