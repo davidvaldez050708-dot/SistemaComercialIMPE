@@ -267,7 +267,10 @@ class TelefoniaEntrantesAnalistaService
         $idsExistentes = array_fill_keys(array_column($llamadas, 'pbx_call_id'), true);
         foreach ($salientesRecientes as $salida) {
             $id = (string)$salida['pbx_call_id'];
-            if (isset($idsExistentes[$id])) continue;
+            // Un inicio saliente firmado no distingue auricular de Seguimiento.
+            // Sólo incorporar el que YA tiene clasificación operativa propia:
+            // las llamadas de Seguimiento mantienen su registro en el expediente.
+            if (!isset($clasificaciones[$id]) || isset($idsExistentes[$id])) continue;
             $call = TelefoniaSalienteAnalistaEstado::desdeEventos(
                 $this->eventos->obtenerPorPbxCallId($id), $extension, $id,
                 strtotime($desde) ?: 0
