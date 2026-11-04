@@ -20,8 +20,14 @@ with tempfile.TemporaryDirectory(prefix='impe-analista-overlay-test-') as d:
         if row['action']=='patch':
             old=subprocess.check_output(['git','show',spec['base']+':'+row['path']],cwd=str(ROOT))
             path.parent.mkdir(parents=True,exist_ok=True)
-            # Cambio local permitido fuera del hunk; no debe eliminarse.
-            path.write_bytes(old+b'\n/* PERSONALIZACION LOCAL INTACTA */\n')
+            # Hostinger puede tener personalizaciones DENTRO del hunk
+            # histórico de shell.php; conservarlas y sólo insertar el include.
+            if row['path']=='app/views/telefonia/shell.php':
+                marker=b'public/javascript/telefonia_analista_historial_pasivo.js?v='
+                assert old.count(marker)==1
+                start=old.rfind(b'\\n',0,old.index(marker))+1
+                old=(old[:start]+b'    <!-- BLOQUE PERSONALIZADO DE HOSTINGER -->\\n'+old[start:])
+            path.write_bytes(old+b'\\n/* PERSONALIZACION LOCAL INTACTA */\\n')
             originals[row['path']]=path.read_bytes()
         else:
             originals[row['path']]=None
@@ -57,6 +63,10 @@ with tempfile.TemporaryDirectory(prefix='impe-analista-overlay-test-') as d:
             assert b'/* PERSONALIZACION LOCAL INTACTA */' in path.read_bytes()
         else:
             assert path.read_bytes()==row['content'].encode()
+    shell=site/'app/views/telefonia/shell.php'
+    assert shell.read_bytes().count(b'BLOQUE PERSONALIZADO DE HOSTINGER')==1
+    assert shell.read_bytes().count(b'public/javascript/telefonia_analista_resultado_superpuesto.js?v=')==1
+    assert shell.read_bytes().index(b'public/javascript/telefonia_analista_resultado_superpuesto.js?v=') < shell.read_bytes().index(b'public/javascript/telefonia_analista_historial_pasivo.js?v=')
     archives=[p for p in backup.iterdir() if p.is_dir()]
     assert len(archives)==1
     assert 'YA INSTALADO' in run('--check')
