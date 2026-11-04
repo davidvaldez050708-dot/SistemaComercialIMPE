@@ -1,11 +1,20 @@
 <?php
 
 require_once __DIR__ . '/../../config/api_keys.php';
+require_once __DIR__ . '/DenueCandidatosHttpClient.php';
 
 class DenueService
 {
     private const ACTIVIDAD_TODAS = '0';
     private const ESTRATO_TODOS = '0';
+    private DenueCandidatosHttpClient $httpCandidatos;
+    private string $cacheCandidatos;
+
+    public function __construct(?DenueCandidatosHttpClient $http = null, ?string $cache = null)
+    {
+        $this->httpCandidatos = $http ?? new DenueCandidatosHttpClient();
+        $this->cacheCandidatos = $cache ?? __DIR__ . '/../../storage/cache/denue';
+    }
 
     public function obtenerSectoresEstado(string $claveInegi): array
     {
@@ -477,10 +486,8 @@ class DenueService
         }
 
         if ($consultasCorrectas === 0 && empty($resultadosPorClave)) {
-            return [
-                'ok' => false,
-                'mensaje' => 'No fue posible conectar con DENUE.'
-            ];
+            return $this->recuperarBusquedaFallida($respuestas,
+                $this->obtenerArchivoCacheNombre($claveEstado, $claveMunicipio, $termino), $limite);
         }
 
         $resultados = array_values($resultadosPorClave);
@@ -497,13 +504,18 @@ class DenueService
             return strcasecmp((string)$a['nombre'], (string)$b['nombre']);
         });
 
-        $this->guardarCacheNombre($claveEstado, $claveMunicipio, $termino, $resultados);
+        $archivo = $this->obtenerArchivoCacheNombre($claveEstado, $claveMunicipio, $termino);
+        $estadoConsulta = $this->resolverResultadoCandidatos($respuestas, $resultados, $archivo, true);
+        if (!empty($estadoConsulta['completo'])) {
+            $this->guardarCacheNombre($claveEstado, $claveMunicipio, $termino, $resultados);
+        }
 
         return [
             'ok' => true,
-            'resultados' => array_slice($resultados, 0, $limite),
-            'hay_mas' => count($resultados) > $limite,
-            'cache' => false
+            'resultados' => array_slice($estadoConsulta['resultados'], 0, $limite),
+            'hay_mas' => count($estadoConsulta['resultados']) > $limite,
+            'cache' => $estadoConsulta['cache'],
+            'advertencias' => $estadoConsulta['advertencias']
         ];
     }
 
@@ -643,10 +655,8 @@ class DenueService
         }
 
         if ($consultasCorrectas === 0 && empty($resultadosPorClave)) {
-            return [
-                'ok' => false,
-                'mensaje' => 'No fue posible conectar con DENUE.'
-            ];
+            return $this->recuperarBusquedaFallida($respuestas,
+                $this->obtenerArchivoCacheRecomendados($claveEstado, $claveMunicipio, $sectoresCache), $limite);
         }
 
         $resultados = array_values($resultadosPorClave);
@@ -663,14 +673,50 @@ class DenueService
             return strcasecmp((string)$a['nombre'], (string)$b['nombre']);
         });
 
-        $this->guardarCacheRecomendados($claveEstado, $claveMunicipio, $sectoresCache, $resultados);
+        $archivo = $this->obtenerArchivoCacheRecomendados($claveEstado, $claveMunicipio, $sectoresCache);
+        $estadoConsulta = $this->resolverResultadoCandidatos($respuestas, $resultados, $archivo);
+        if (!empty($estadoConsulta['completo'])) {
+            $this->guardarCacheRecomendados($claveEstado, $claveMunicipio, $sectoresCache, $resultados);
+        }
 
         return [
             'ok' => true,
-            'resultados' => array_slice($resultados, 0, $limite),
-            'hay_mas' => count($resultados) > $limite,
-            'cache' => false
+            'resultados' => array_slice($estadoConsulta['resultados'], 0, $limite),
+            'hay_mas' => count($estadoConsulta['resultados']) > $limite,
+            'cache' => $estadoConsulta['cache'],
+            'advertencias' => $estadoConsulta['advertencias']
         ];
+    }
+
+    /** Página real de DENUE: todos los sectores/tamaños, sin perfiles ni corte de catálogo. */
+    public function buscarPaginaCandidatos(string $estado, string $municipio, string $termino, int $inicio): array
+    {
+        if (!preg_match('/^(0[1-9]|[12][0-9]|3[0-2])$/D', $estado) ||
+            !preg_match('/^(0|[0-9]{3})$/D', $municipio) || $inicio < 1 || $inicio > PHP_INT_MAX - 100) {
+            return ['ok' => false, 'codigo' => 'FILTROS', 'mensaje' => 'Los filtros de DENUE no son válidos.', 'reintentable' => false];
+        }
+        if (!$this->configuracionDisponible()) {
+            return ['ok' => false, 'codigo' => 'CONFIGURACION', 'mensaje' => 'La configuración de DENUE no está disponible.', 'reintentable' => false];
+        }
+        $respuestas = $this->consultarUrlsConcurrentes([['url' => $this->construirUrlBuscarAreaActEstr(
+            $estado, $municipio, trim($termino) === '' ? '0' : trim($termino), $inicio, $inicio + 99, '0', 0)]], 1);
+        $respuesta = $respuestas[0];
+        if (!$respuesta['ok']) return $respuesta;
+        $filas = $respuesta['datos'];
+        $resultados = [];
+        foreach ($filas as $fila) {
+            $candidato = $this->normalizarEstablecimiento($fila);
+            if ($candidato === null) {
+                return ['ok' => false, 'codigo' => 'FORMATO', 'mensaje' => 'DENUE devolvió un registro incompleto. La búsqueda no avanzó; se puede reintentar.', 'reintentable' => true];
+            }
+            // El filtro municipal usa entidad+municipio, aunque DENUE incluya también la localidad.
+            if (ctype_digit((string)$candidato['clave_area']) && strlen($candidato['clave_area']) >= 5) {
+                $candidato['clave_area'] = substr($candidato['clave_area'], 0, 5);
+            }
+            $resultados[] = $candidato;
+        }
+        return ['ok' => true, 'resultados' => $resultados, 'recibidos' => count($filas),
+            'agotado' => count($filas) === 0];
     }
 
     public function obtenerEstablecimientoPorId(string $idEstablecimiento): array
@@ -962,99 +1008,90 @@ class DenueService
 
     private function consultarUrlsConcurrentes(array $solicitudes, int $maximoConcurrente = 4): array
     {
-        if (empty($solicitudes)) {
-            return [];
+        return $this->httpCandidatos->consultar($solicitudes, $maximoConcurrente);
+    }
+
+    private function recuperarBusquedaFallida(array $respuestas, string $archivo, int $limite): array
+    {
+        $estado = $this->resolverResultadoCandidatos($respuestas, [], $archivo);
+        if ($estado['cache']) {
+            return ['ok' => true, 'resultados' => array_slice($estado['resultados'], 0, $limite),
+                'hay_mas' => count($estado['resultados']) > $limite, 'cache' => true,
+                'advertencias' => $estado['advertencias']];
         }
-
-        if (!function_exists('curl_multi_init')) {
-            $respuestas = [];
-
-            foreach ($solicitudes as $solicitud) {
-                $respuesta = $this->consultarUrl($solicitud['url']);
-                $respuesta['perfil'] = $solicitud['perfil'] ?? [];
-                $respuestas[] = $respuesta;
-            }
-
-            return $respuestas;
+        $fallos = array_values(array_filter($respuestas, static fn($r) => empty($r['ok'])));
+        $fallo = $fallos[0] ?? [];
+        foreach ($fallos as $respuesta) {
+            if (empty($respuesta['reintentable'])) { $fallo = $respuesta; break; }
         }
+        return ['ok' => false, 'codigo' => $fallo['codigo'] ?? 'CONEXION',
+            'mensaje' => $fallo['mensaje'] ?? 'No fue posible conectar con DENUE. Intenta nuevamente.'];
+    }
 
-        $multi = curl_multi_init();
-
-        if ($multi === false) {
-            return [];
+    private function resolverResultadoCandidatos(array $respuestas, array $resultados, string $archivo, bool $porNombre = false): array
+    {
+        $fallos = array_values(array_filter($respuestas, static fn($r) => empty($r['ok'])));
+        $estado = ['resultados' => $resultados, 'completo' => !$fallos, 'cache' => false, 'advertencias' => []];
+        if (!$fallos) return $estado;
+        $soloTemporales = !array_filter($fallos, static fn($r) => empty($r['reintentable']));
+        $respaldo = $soloTemporales ? $this->leerCacheCandidatos($archivo, 86400) : null;
+        if ($respaldo !== null) {
+            $porClave = array_column($respaldo, null, 'clave_origen');
+            foreach ($resultados as $candidato) $porClave[$candidato['clave_origen']] = $candidato;
+            $estado['resultados'] = array_values($porClave);
+            usort($estado['resultados'], static function ($a, $b) use ($porNombre) {
+                $campo = $porNombre ? 'estrato_valor' : 'puntaje_denue';
+                return (int)($b[$campo] ?? 0) <=> (int)($a[$campo] ?? 0)
+                    ?: strcasecmp((string)$a['nombre'], (string)$b['nombre']);
+            });
+            $estado['cache'] = true;
+            $estado['advertencias'][] = 'DENUE no completó la consulta. Se incluyen resultados de la última consulta guardada para estos filtros (máximo 24 horas).';
+        } elseif ($resultados) {
+            $estado['advertencias'][] = 'DENUE respondió parcialmente. Puedes trabajar los resultados disponibles y volver a buscar para completar la consulta.';
         }
-
-        $pendientes = array_values($solicitudes);
-        $activos = [];
-        $respuestas = [];
-        $maximoConcurrente = max(1, min(4, $maximoConcurrente));
-        $agregarSolicitud = function () use (&$pendientes, &$activos, $multi) {
-            if (empty($pendientes)) {
-                return;
+        foreach ($fallos as $fallo) {
+            if (empty($fallo['reintentable'])) {
+                $estado['advertencias'][] = $fallo['mensaje'];
+                break;
             }
-
-            $solicitud = array_shift($pendientes);
-            $handle = curl_init();
-
-            if ($handle === false) {
-                return;
-            }
-
-            curl_setopt_array($handle, [
-                CURLOPT_URL => $solicitud['url'],
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_CONNECTTIMEOUT => 6,
-                CURLOPT_TIMEOUT => 16,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_HTTPHEADER => [
-                    'Accept: application/json'
-                ]
-            ]);
-
-            curl_multi_add_handle($multi, $handle);
-            $activos[spl_object_id($handle)] = [
-                'handle' => $handle,
-                'solicitud' => $solicitud
-            ];
-        };
-
-        while (count($activos) < $maximoConcurrente && !empty($pendientes)) {
-            $agregarSolicitud();
         }
+        return $estado;
+    }
 
-        do {
-            do {
-                $estado = curl_multi_exec($multi, $ejecutando);
-            } while ($estado === CURLM_CALL_MULTI_PERFORM);
+    private function leerCacheCandidatos(string $archivo, int $maximaEdad): ?array
+    {
+        clearstatcache(true, $archivo);
+        if (!is_file($archivo) || !is_readable($archivo)) return null;
+        $edad = time() - (int)@filemtime($archivo);
+        if ($edad < -300 || $edad > $maximaEdad) return null;
+        $contenido = @file_get_contents($archivo);
+        $datos = $contenido === false ? null : json_decode($contenido, true);
+        if (!is_array($datos) || !array_is_list($datos)) return null;
+        foreach ($datos as $dato) {
+            if (!is_array($dato) || ($dato['origen'] ?? '') !== 'DENUE' ||
+                !is_string($dato['clave_origen'] ?? null) || empty($dato['nombre'])) return null;
+        }
+        return $datos;
+    }
 
-            while ($info = curl_multi_info_read($multi)) {
-                $handle = $info['handle'];
-                $id = spl_object_id($handle);
-                $activo = $activos[$id] ?? null;
-                $contenido = curl_multi_getcontent($handle);
-                $codigoHttp = (int)curl_getinfo($handle, CURLINFO_HTTP_CODE);
-                $errorCurl = curl_error($handle);
-                $respuesta = $this->procesarRespuestaDenue($contenido, $codigoHttp, $errorCurl);
-                $respuesta['perfil'] = $activo['solicitud']['perfil'] ?? [];
-                $respuestas[] = $respuesta;
-
-                curl_multi_remove_handle($multi, $handle);
-                curl_close($handle);
-                unset($activos[$id]);
-
-                while (count($activos) < $maximoConcurrente && !empty($pendientes)) {
-                    $agregarSolicitud();
-                }
+    private function escribirCacheCandidatos(string $archivo, array $resultados): void
+    {
+        $directorio = dirname($archivo);
+        if (!is_dir($directorio) && !@mkdir($directorio, 0775, true) && !is_dir($directorio)) {
+            error_log('[DENUE candidatos] cache_no_disponible');
+            return;
+        }
+        $json = json_encode($resultados, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        $temporal = @tempnam($directorio, '.denue-');
+        if ($temporal === false) { error_log('[DENUE candidatos] cache_no_disponible'); return; }
+        try {
+            if ($json === false || @file_put_contents($temporal, $json, LOCK_EX) !== strlen($json) ||
+                !@rename($temporal, $archivo)) {
+                error_log('[DENUE candidatos] cache_no_guardada');
             }
-
-            if ($ejecutando > 0) {
-                curl_multi_select($multi, 1.0);
-            }
-        } while ($ejecutando > 0 || !empty($activos));
-
-        curl_multi_close($multi);
-
-        return $respuestas;
+        } finally {
+            if (is_file($temporal)) @unlink($temporal);
+        }
     }
 
     private function normalizarClaveMunicipal(string $claveMunicipio): string
@@ -1145,21 +1182,8 @@ class DenueService
         string $claveMunicipio,
         array $sectores
     ): ?array {
-        $archivo = $this->obtenerArchivoCacheRecomendados($claveEstado, $claveMunicipio, $sectores);
-
-        if (!is_file($archivo) || (time() - filemtime($archivo)) > 1800) {
-            return null;
-        }
-
-        $contenido = file_get_contents($archivo);
-
-        if ($contenido === false) {
-            return null;
-        }
-
-        $datos = json_decode($contenido, true);
-
-        return is_array($datos) ? $datos : null;
+        return $this->leerCacheCandidatos(
+            $this->obtenerArchivoCacheRecomendados($claveEstado, $claveMunicipio, $sectores), 1800);
     }
 
     private function guardarCacheRecomendados(
@@ -1168,22 +1192,8 @@ class DenueService
         array $sectores,
         array $resultados
     ): void {
-        $directorio = dirname(
-            $this->obtenerArchivoCacheRecomendados($claveEstado, $claveMunicipio, $sectores)
-        );
-
-        if (!is_dir($directorio)) {
-            mkdir($directorio, 0775, true);
-        }
-
-        if (!is_dir($directorio) || !is_writable($directorio)) {
-            return;
-        }
-
-        file_put_contents(
-            $this->obtenerArchivoCacheRecomendados($claveEstado, $claveMunicipio, $sectores),
-            json_encode($resultados, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)
-        );
+        $this->escribirCacheCandidatos(
+            $this->obtenerArchivoCacheRecomendados($claveEstado, $claveMunicipio, $sectores), $resultados);
     }
 
     private function obtenerArchivoCacheRecomendados(
@@ -1194,7 +1204,7 @@ class DenueService
         sort($sectores);
         $clave = md5('v5|' . $claveEstado . '|' . $claveMunicipio . '|' . implode(',', $sectores));
 
-        return __DIR__ . '/../../storage/cache/denue/recomendados_' . $clave . '.json';
+        return $this->cacheCandidatos . '/recomendados_' . $clave . '.json';
     }
 
     private function leerCacheNombre(
@@ -1202,21 +1212,8 @@ class DenueService
         string $claveMunicipio,
         string $termino
     ): ?array {
-        $archivo = $this->obtenerArchivoCacheNombre($claveEstado, $claveMunicipio, $termino);
-
-        if (!is_file($archivo) || (time() - filemtime($archivo)) > 900) {
-            return null;
-        }
-
-        $contenido = file_get_contents($archivo);
-
-        if ($contenido === false) {
-            return null;
-        }
-
-        $datos = json_decode($contenido, true);
-
-        return is_array($datos) ? $datos : null;
+        return $this->leerCacheCandidatos(
+            $this->obtenerArchivoCacheNombre($claveEstado, $claveMunicipio, $termino), 900);
     }
 
     private function guardarCacheNombre(
@@ -1225,21 +1222,8 @@ class DenueService
         string $termino,
         array $resultados
     ): void {
-        $archivo = $this->obtenerArchivoCacheNombre($claveEstado, $claveMunicipio, $termino);
-        $directorio = dirname($archivo);
-
-        if (!is_dir($directorio)) {
-            mkdir($directorio, 0775, true);
-        }
-
-        if (!is_dir($directorio) || !is_writable($directorio)) {
-            return;
-        }
-
-        file_put_contents(
-            $archivo,
-            json_encode($resultados, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)
-        );
+        $this->escribirCacheCandidatos(
+            $this->obtenerArchivoCacheNombre($claveEstado, $claveMunicipio, $termino), $resultados);
     }
 
     private function obtenerArchivoCacheNombre(
@@ -1256,7 +1240,7 @@ class DenueService
             $this->normalizarTextoBusqueda($termino)
         );
 
-        return __DIR__ . '/../../storage/cache/denue/busqueda_' . $clave . '.json';
+        return $this->cacheCandidatos . '/busqueda_' . $clave . '.json';
     }
 
     private function consultarUrl(string $url): array
@@ -1285,13 +1269,12 @@ class DenueService
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_CONNECTTIMEOUT => 8,
                 CURLOPT_TIMEOUT => 25,
-                CURLOPT_SSL_VERIFYPEER => true,
                 CURLOPT_USERAGENT =>
                     'SistemaComercialIMPE/1.0 DENUE-sync',
                 CURLOPT_HTTPHEADER => [
                     'Accept: application/json'
                 ]
-            ]);
+            ] + DenueTlsPolicy::opciones($url));
 
             $contenido = curl_exec($ch);
             $codigoHttp =
@@ -1300,6 +1283,7 @@ class DenueService
                     CURLINFO_HTTP_CODE
                 );
             $errorCurl = curl_error($ch);
+            $errnoCurl = curl_errno($ch);
 
             curl_close($ch);
 
@@ -1314,21 +1298,20 @@ class DenueService
                 return $ultimoResultado;
             }
 
-            $transitorio =
+            $transitorio = !in_array($errnoCurl, [51, 58, 60, 77, 83, 90], true) && (
                 $contenido === false ||
                 $errorCurl !== '' ||
                 $codigoHttp === 0 ||
                 $codigoHttp === 408 ||
                 $codigoHttp === 429 ||
-                $codigoHttp >= 500;
+                $codigoHttp >= 500);
 
             error_log(
                 '[DENUE] intento=' .
                 $intento .
                 ' http=' .
                 $codigoHttp .
-                ' curl=' .
-                ($errorCurl !== '' ? $errorCurl : '-') .
+                ' curl_errno=' . $errnoCurl .
                 ' transitorio=' .
                 ($transitorio ? '1' : '0')
             );

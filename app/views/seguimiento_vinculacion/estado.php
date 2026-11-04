@@ -1543,7 +1543,10 @@ if (!empty($seguimientosSinMunicipio)) {
 
 <div class="toast-container position-fixed top-0 end-0 p-3"></div>
 
+<script src="<?= BASE_URL ?>public/javascript/seguimiento_candidatos_paginacion.js?v=<?= hash_file('sha256', __DIR__ . '/../../../public/javascript/seguimiento_candidatos_paginacion.js') ?>"></script>
 <script>
+(function (paginacionCandidatos) {
+// Conservar la dependencia de esta vista aunque un footer antiguo vuelva a cargarla.
 window.IMPE_SEGUIMIENTOS_RUTA_INICIAL = <?= json_encode(
     is_array($seguimientosRutaInicial ?? null) ? $seguimientosRutaInicial : [],
     JSON_UNESCAPED_UNICODE |
@@ -2727,6 +2730,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let candidatosActuales = [];
     let hayMasCandidatos = false;
     let totalResultadosCandidatos = 0;
+    let totalCandidatosExacto = true;
     let resultadosPorPaginaCandidatos = 10;
     let busquedaAutomaticaActiva = false;
     let mensajeResultadosVacios = 'No se encontraron candidatos con los criterios seleccionados.';
@@ -2882,9 +2886,11 @@ document.addEventListener('DOMContentLoaded', function () {
         secuenciaBusqueda += 1;
         catalogoAutomaticoCompleto = null;
         marcarPaginacionEnCurso(false);
+        if (botonBusquedaAutomatica) botonBusquedaAutomatica.disabled = false;
         candidatosActuales = [];
         hayMasCandidatos = false;
         totalResultadosCandidatos = 0;
+        totalCandidatosExacto = true;
         resultadosPorPaginaCandidatos = 10;
         busquedaAutomaticaActiva = false;
         mostrarAlerta(alertaBusqueda, '', '');
@@ -3189,26 +3195,28 @@ document.addEventListener('DOMContentLoaded', function () {
         const totalResultados = Math.max(0, Number(totalResultadosCandidatos) || 0);
         const porPagina = Math.max(1, Number(resultadosPorPaginaCandidatos) || 10);
         const totalPaginas = Math.max(1, Math.ceil(totalResultados / porPagina));
-        const paginaActual = Math.min(Math.max(1, paginaCandidatos), totalPaginas);
+        const paginaActual = totalCandidatosExacto
+            ? Math.min(Math.max(1, paginaCandidatos), totalPaginas) : Math.max(1, paginaCandidatos);
         const inicio = totalResultados === 0 ? 0 : ((paginaActual - 1) * porPagina) + 1;
         const fin = Math.min(paginaActual * porPagina, totalResultados);
 
         paginacion.classList.toggle('d-none', totalResultados === 0);
-        etiquetaPagina.textContent = totalResultados + ' resultados · Mostrando ' +
-            inicio + '–' + fin + ' · Página ' + paginaActual + ' de ' + totalPaginas;
+        etiquetaPagina.textContent = totalCandidatosExacto
+            ? totalResultados + ' resultados · Mostrando ' + inicio + '–' + fin + ' · Página ' + paginaActual + ' de ' + totalPaginas
+            : 'Página ' + paginaActual + ' · Mostrando ' + inicio + '–' + fin + ' · Hay más registros por consultar en DENUE';
         botonAnterior.classList.toggle('disabled', paginaCandidatos === 1);
-        botonSiguiente.classList.toggle('disabled', paginaActual >= totalPaginas || !hayMasCandidatos);
+        botonSiguiente.classList.toggle('disabled', !hayMasCandidatos);
     };
 
     const firmaBusquedaActual = function () {
-        return window.SeguimientoCandidatosPaginacion?.crearFirma(
+        return paginacionCandidatos?.crearFirma(
             estadoId, selectorMunicipio?.value, selectorTipo?.value,
             campoBusqueda?.value.trim()
         ) || '';
     };
 
     const mostrarPaginaLocal = function (numeroPagina) {
-        const util = window.SeguimientoCandidatosPaginacion;
+        const util = paginacionCandidatos;
         const catalogo = catalogoAutomaticoCompleto;
         if (!busquedaAutomaticaActiva || !util || !catalogo ||
             catalogo.firma !== firmaBusquedaActual()) {
@@ -3280,6 +3288,7 @@ document.addEventListener('DOMContentLoaded', function () {
         controladorBusqueda = new AbortController();
         secuenciaBusqueda += 1;
         const secuenciaActual = secuenciaBusqueda;
+        if (botonBusquedaAutomatica) botonBusquedaAutomatica.disabled = true;
 
         if (paginando) {
             // Mantener las tarjetas y la altura del modal hasta recibir
@@ -3288,7 +3297,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (!hayCoincidenciasCache) {
             mostrarEstadoBusqueda(
                 automatico
-                    ? 'Buscando candidatos recomendados...'
+                    ? 'Consultando candidatos en DENUE...'
                     : 'Buscando candidatos...'
             );
             totalResultadosCandidatos = 0;
@@ -3303,38 +3312,21 @@ document.addEventListener('DOMContentLoaded', function () {
             tipo_candidato: selectorTipo.value,
             municipio_id: selectorMunicipio.value,
             pagina: String(paginaCandidatos),
+            denue_paginado: selectorTipo.value === 'SECRETARIA' ? '0' : '1',
             automatico: automatico ? '1' : '0'
         });
 
         try {
-            const respuesta = await fetch(urlBuscar + '&' + parametros.toString(), {
-                headers: {
-                    'X-Requested-With': 'fetch'
-                },
-                signal: controladorBusqueda.signal
+            const util = paginacionCandidatos;
+            if (!util?.consultarPagina) throw new Error('Recarga la página para cargar la búsqueda de candidatos.');
+            const datos = await util.consultarPagina(urlBuscar + '&' + parametros.toString(), {
+                headers: {'X-Requested-With': 'fetch'}, signal: controladorBusqueda.signal
+            }, function (mensaje) {
+                if (secuenciaActual !== secuenciaBusqueda) return;
+                const indicador = paginando
+                    ? paginacion?.querySelector('[data-candidate-page-loading]') : estadoBusqueda;
+                if (indicador) indicador.textContent = mensaje;
             });
-            const contentType = respuesta.headers.get('content-type') || '';
-
-            if (!contentType.includes('application/json')) {
-                const contenido = await respuesta.text();
-                console.error('El servidor devolvió una respuesta que no es JSON:', contenido);
-                throw new Error(
-                    selectorTipo.value === 'SECRETARIA'
-                        ? 'No fue posible actualizar las secretarías. Intenta nuevamente.'
-                        : 'No fue posible consultar candidatos. Intenta nuevamente.'
-                );
-            }
-
-            const datos = await respuesta.json();
-
-            if (!respuesta.ok) {
-                throw new Error(
-                    datos.mensaje ||
-                    (selectorTipo.value === 'SECRETARIA'
-                        ? 'No fue posible actualizar las secretarías. Intenta nuevamente.'
-                        : 'No fue posible consultar candidatos. Intenta nuevamente.')
-                );
-            }
 
             if (secuenciaActual !== secuenciaBusqueda) {
                 return;
@@ -3346,7 +3338,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const candidatosRespuesta = Array.isArray(datos.candidatos) ? datos.candidatos : [];
 
-            if (!paginando && hayCoincidenciasCache && candidatosRespuesta.length === 0) {
+            if (!paginando && hayCoincidenciasCache && candidatosRespuesta.length === 0 && !datos.paginacion_denue) {
                 if (Array.isArray(datos.advertencias) && datos.advertencias.length > 0) {
                     mostrarAlerta(alertaBusqueda, datos.advertencias.join(' '), 'warning');
                 }
@@ -3357,13 +3349,14 @@ document.addEventListener('DOMContentLoaded', function () {
             hayMasCandidatos = Boolean(datos.hay_mas);
             paginaCandidatos = Math.max(1, Number(datos.pagina) || paginaCandidatos);
             totalResultadosCandidatos = Number(datos.total_resultados) || 0;
+            totalCandidatosExacto = datos.total_exacto !== false;
             resultadosPorPaginaCandidatos = Number(datos.resultados_por_pagina) || 10;
             mensajeResultadosVacios = datos.mensaje_vacio ||
                 'No se encontraron candidatos con los criterios seleccionados.';
 
-            if (automatico) {
+            if (automatico && !datos.paginacion_denue) {
                 guardarCacheCandidatos(datos.cache_candidatos || datos.candidatos);
-                const util = window.SeguimientoCandidatosPaginacion;
+                const util = paginacionCandidatos;
                 const catalogo = datos.cache_candidatos;
                 const completo = util?.crearPagina(
                     catalogo,
@@ -3430,6 +3423,7 @@ document.addEventListener('DOMContentLoaded', function () {
             mostrarAlerta(alertaBusqueda, error.message, 'error');
             resetearScrollResultados();
         } finally {
+            if (secuenciaActual === secuenciaBusqueda && botonBusquedaAutomatica) botonBusquedaAutomatica.disabled = false;
             if (secuenciaActual === secuenciaBusqueda && paginando) {
                 marcarPaginacionEnCurso(false);
                 actualizarPaginacion();
@@ -3474,6 +3468,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     botonBusquedaAutomatica?.addEventListener('click', function () {
+        window.clearTimeout(temporizadorCandidatos);
         actualizarEstadoFiltrosCandidato();
         paginaCandidatos = 1;
         buscarCandidatos(true);
@@ -3554,6 +3549,17 @@ document.addEventListener('DOMContentLoaded', function () {
         buscarCandidatos(true);
     });
 
+    modalBuscar?.addEventListener('hidden.bs.modal', function () {
+        const pendiente = botonBusquedaAutomatica?.disabled === true;
+        controladorBusqueda?.abort();
+        secuenciaBusqueda += 1;
+        marcarPaginacionEnCurso(false);
+        if (botonBusquedaAutomatica) botonBusquedaAutomatica.disabled = false;
+        if (pendiente && candidatosActuales.length === 0) {
+            mostrarEstadoBusqueda('Búsqueda en pausa. Pulsa Buscar candidatos automáticamente para continuar.');
+        }
+    });
+
     actualizarEstadoFiltrosCandidato();
     actualizarBotonLimpiarCandidato();
 
@@ -3627,7 +3633,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const totalPaginas = Math.ceil(
             totalResultadosCandidatos / Math.max(1, resultadosPorPaginaCandidatos)
         );
-        if (proxima < 1 || proxima > totalPaginas ||
+        if (proxima < 1 || (totalCandidatosExacto && proxima > totalPaginas) ||
             (direccion > 0 && !hayMasCandidatos)) {
             return;
         }
@@ -3740,4 +3746,5 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+})(window.SeguimientoCandidatosPaginacion);
 </script>
