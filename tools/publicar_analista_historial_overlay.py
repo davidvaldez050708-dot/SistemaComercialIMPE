@@ -97,9 +97,53 @@ def shell_surgical_patch(data, item):
     return data[:line_start] + replacement + newline + data[line_start:]
 
 
+def service_surgical_patch(data, item):
+    """Añade sólo la consulta de salientes clasificadas en listar().
+    Conserva cambios locales en recepción, transferencias, SDK y grabaciones.
+    """
+    if data is None:
+        raise ValueError('CONFLICTO: falta TelefoniaEntrantesAnalistaService.php')
+    anchor = b'        $sesiones = $clasificadorInterno->listar($usuarioId);'
+    method = b'    public function listar(int $usuarioId): array'
+    if data.count(anchor) != 1 or data.count(method) != 1:
+        raise ValueError('CONFLICTO: estructura del historial operativo desconocida')
+    start = data.index(method)
+    target = data.index(anchor)
+    if target <= start:
+        raise ValueError('CONFLICTO: marcador de sesiones fuera de listar()')
+    prefix = data[start:target]
+    for required in [
+        b'$clasificaciones = [];',
+        b'$llamadas = [];',
+        b'foreach ($ids as $id)',
+        b'$llamadas[] = [',
+        b'$clasificadorInterno'
+    ]:
+        if required not in prefix:
+            raise ValueError('CONFLICTO: dependencia ausente en listar(): ' +
+                             required.decode('ascii'))
+    reference = item['changes'][0]['after'].encode('utf-8')
+    begin = reference.index(b'        // Las salientes del auricular')
+    end = reference.index(b'        // Dos fuentes distintas:', begin)
+    insert = reference[begin:end]
+    if b'\r\n' in data:
+        insert = insert.replace(b'\n', b'\r\n')
+    # Prevenir duplicados y estados parcialmente instalados.
+    if data.count(insert) == 1:
+        return data
+    if (b'$stmtSalientes' in data or
+            b"GROUP BY pbx_call_id ORDER BY fecha DESC LIMIT 75" in data):
+        raise ValueError('CONFLICTO: consulta de salientes ya modificada')
+    if b'NOTIFY_OUT_START' in prefix:
+        raise ValueError('CONFLICTO: existe otra consulta saliente en listar()')
+    return data[:target] + insert + data[target:]
+
+
 def proposed(data, item):
     if item['path']=='app/views/telefonia/shell.php' and item['action']=='patch':
         return shell_surgical_patch(data, item)
+    if item['path']=='app/services/TelefoniaEntrantesAnalistaService.php' and item['action']=='patch':
+        return service_surgical_patch(data, item)
     if item['action']=='create':
         candidate=item['content'].encode('utf-8')
         if data is not None and data != candidate:
