@@ -10,6 +10,7 @@ def pack(b):
  z=bytearray(gzip.compress(b,mtime=0));z[9]=255;return base64.b64encode(z).decode()
 paths=['app/services/TelefoniaSalienteAnalistaEstado.php','app/services/TelefoniaEntrantesAnalistaService.php','app/controllers/SeguimientoVinculacionController.php','app/views/seguimiento_vinculacion/llamadas_entrantes.php','public/javascript/seguimiento_entrantes_analista.js','public/javascript/telefonia_host.js','public/javascript/telefonia_shell.js','public/javascript/telefonia_analista_historial_pasivo.js','public/javascript/seguimiento_llamada_registro_obligatorio.js','public/javascript/seguimiento_llamada_zadarma.js']
 refs={
+'app/services/TelefoniaEntrantesAnalistaService.php':'94b777efd875fca09df9c2c5e84f09373f40b39b',
 'app/views/seguimiento_vinculacion/llamadas_entrantes.php':'8b79f611028c402de0728b77975c28b4d439d8fc',
 'public/javascript/seguimiento_entrantes_analista.js':'7858bc2cde0b597b31c997b27629ee11b3d3e495',
 'public/javascript/telefonia_host.js':'e511b05c086edff977cd84bdcbe36b00b858e527',

@@ -3,6 +3,8 @@ import base64,gzip,hashlib,json,os,pathlib,subprocess,sys,tempfile
 R=pathlib.Path(__file__).resolve().parents[1]
 spec=json.loads((R/'tools/analista_salientes_release.json').read_text(encoding='utf8'))
 unpack=lambda s:None if s is None else gzip.decompress(base64.b64decode(s))
+service=next(row for row in spec['files'] if row['path']=='app/services/TelefoniaEntrantesAnalistaService.php')
+assert any(v['before']=='d8dd441e0b13f836d08f7f285bf563dc9c3e083bc09591b797cb21e3b7239b34' for v in service['variants']),'Falta el servicio territorial instalado en Hostinger'
 for row in spec['files']:
  assert unpack(row['variants'][0]['target'])==(R/row['path']).read_bytes().replace(b'\r\n',b'\n'),'Paquete desactualizado: '+row['path']
 for variant in [0,1]:
