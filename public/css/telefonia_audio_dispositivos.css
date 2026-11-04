@@ -20,4 +20,15 @@
 .impe-audio-before-call {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0;padding:10px 12px;border:1px solid #e6d6b6;border-radius:12px;background:#fffaf0;color:#75531d;font:600 11px/1.5 'Manrope',sans-serif;}
 .impe-audio-before-call span {flex:1 1 140px;}
 .impe-audio-before-call button {padding:6px 9px;background:#fff;}
+/* El aviso es una fila informativa, no una acción de la cuadrícula del teléfono. */
+.persistent-phone-actions > .impe-audio-before-call {
+    grid-column:1 / -1;
+    box-sizing:border-box;
+    width:100%;
+    min-width:0;
+    margin:0 0 3px;
+    align-self:start;
+}
+.persistent-phone-actions > .impe-audio-before-call span {min-width:0;flex-basis:240px;}
+.persistent-phone-actions > .impe-audio-before-call button {max-width:100%;}
 @media(max-width:575.98px) {.impe-audio-devices-toggle {flex-basis:42px;width:42px;height:42px;border-radius:12px;font-size:17px;}}

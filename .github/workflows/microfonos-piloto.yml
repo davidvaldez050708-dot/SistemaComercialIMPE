@@ -11,6 +11,8 @@ on:
       - 'tests/telefonia_audio_*'
       - 'tests/publicacion_microfonos_piloto_test.py'
       - 'tools/*microfonos_piloto*'
+      - 'tools/publicar_analista_modal_estilos.py'
+      - 'tests/publicacion_analista_modal_estilos.py'
       - '.github/workflows/microfonos-piloto.yml'
 permissions:
   contents: read
@@ -36,6 +38,7 @@ jobs:
           php tests/telefonia_audio_pilot.php
           php tests/telefonia_audio_host_render.php
           python3 tests/publicacion_microfonos_piloto_test.py
+          python3 tests/publicacion_analista_modal_estilos.py
           node tests/telefonia_transferencia_operacion.cjs
           node tests/telefonia_transferida_estado_sip_smoke.js
           node tests/telefonia_analista_resultado_transferido_smoke.js
@@ -53,5 +56,6 @@ jobs:
         run: |
           export CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
           node tests/telefonia_audio_dispositivos_browser.cjs
+          node tests/telefonia_audio_modal_layout_browser.cjs
           node tests/recepcion_cierre_local_browser.cjs
           node tests/recepcion_rechazo_browser.cjs
