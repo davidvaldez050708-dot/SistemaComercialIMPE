@@ -569,6 +569,7 @@
         const completed = finished.id;
         finished = null;
         root.document.querySelector('[data-analyst-dismiss-call]')?.click();
+        root.IMPE_TELEPHONY_SHELL?.dismissFinishedCall?.(completed);
         draw();panel.hidden = true;
         try {
             const channel = new root.BroadcastChannel('impe-telephony-' + userId);

@@ -12,8 +12,18 @@
         const old = current;
         if (!old) return;
         current = null;
-        old.element.remove();
-        if (!saved) old.onDismiss?.();
+        if (!saved) {
+            // Desreservar el resultado por la vía normal del formulario.
+            // Destruir el iframe sin hide dejaría la telefonía bloqueada.
+            try {
+                old.frame.contentWindow.postMessage(
+                    {type:'IMPE_CALL_RESULT_INTERRUPT'},root.location.origin);
+            } catch (_) {}
+            root.setTimeout(() => old.element.remove(), 180);
+            old.onDismiss?.();
+        } else {
+            old.element.remove();
+        }
         try { crm.contentWindow?.dispatchEvent(new CustomEvent('impe:analyst-result-updated')); }
         catch (_) {}
     };
