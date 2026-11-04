@@ -33,6 +33,17 @@ with tempfile.TemporaryDirectory(prefix='impe-analista-overlay-test-') as d:
                 changed='        // HOSTINGER: conservar la separación de PBX y WebRTC.'.encode('utf-8')
                 assert old.count(original)==1
                 old=old.replace(original,changed)
+            if row['path']=='app/views/telefonia/mis_llamadas.php':
+                # Cambios reales de diseño dentro de los tres hunks previos:
+                # enlace de devolución, tarjeta y leyenda del historial.
+                link=b"\$detalleTexto = 'Ver devoluci"
+                assert old.count(link)==1
+                old=old.replace(link, b"\$detalleTexto = 'Consultar devoluci",1)
+                marker=b'<div class="linkage-call-history-footer">'
+                assert old.count(marker)==1
+                old=old.replace(marker,marker+b'\n                        <!-- ESTILO HOSTINGER CONSERVADO -->',1)
+                old=old.replace('Este historial muestra tramos'.encode('utf-8'),
+                                'Historial personalizado: muestra tramos'.encode('utf-8'),1)
             path.write_bytes(old+b'\n/* PERSONALIZACION LOCAL INTACTA */\n')
             originals[row['path']]=path.read_bytes()
         else:
@@ -77,6 +88,15 @@ with tempfile.TemporaryDirectory(prefix='impe-analista-overlay-test-') as d:
     assert service.read_bytes().count('HOSTINGER: conservar la separación de PBX y WebRTC.'.encode('utf-8'))==1
     assert service.read_bytes().count(b'$stmtSalientes = $this->db->prepare(')==1
     assert service.read_bytes().index(b'$stmtSalientes = $this->db->prepare(')<service.read_bytes().index(b'$sesiones = $clasificadorInterno->listar($usuarioId);')
+    history=site/'app/views/telefonia/mis_llamadas.php'
+    content=history.read_bytes()
+    assert b'ESTILO HOSTINGER CONSERVADO' in content
+    assert b"Consultar devoluci" in content
+    assert 'Historial personalizado: muestra tramos'.encode('utf-8') in content
+    assert b"(!$saliente && $pbxId" not in content
+    assert content.count(b'sdk_session_id=')==1
+    assert content.count(b'pbx_call_id=')>=1
+    assert b'Conexi' in content
     archives=[p for p in backup.iterdir() if p.is_dir()]
     assert len(archives)==1
     assert 'YA INSTALADO' in run('--check')
