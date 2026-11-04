@@ -733,6 +733,7 @@
     const showRegistered = result => {
         if (!complete(result.pbx_call_id)) return;
         root.IMPE_TELEPHONY_NOTIFY?.('El resultado de esta llamada ya está guardado.');
+        root.IMPE_ANALYST_RESULT_OVERLAY?.finish?.(result.pbx_call_id);
         // El resultado ya está confirmado: mantener la vista de origen,
         // incluso si el registro generó una interacción en Seguimiento.
         try { crm.contentWindow?.dispatchEvent(new CustomEvent('impe:analyst-result-updated')); }

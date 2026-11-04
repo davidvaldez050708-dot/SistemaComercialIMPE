@@ -98,6 +98,10 @@
     });
     root.IMPE_ANALYST_RESULT_OVERLAY = Object.freeze({
         open, dismiss: () => close(false),
+        finish: id => {
+            if (!current || !current.refs.includes(String(id))) return false;
+            close(true);return true;
+        },
         isOpen: () => Boolean(current),
         hasRef: id => Boolean(current && current.refs.includes(String(id)))
     });
