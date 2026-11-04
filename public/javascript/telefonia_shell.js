@@ -531,11 +531,13 @@
         const shownCall = state?.active ? state :
             (incomingFinishedPreview || preview || finishedPreview);
         const finishedIncoming = Boolean(incomingFinishedPreview);
-        // Sólo llamadas manuales usan este resumen visual; Seguimiento
-        // mantiene su propia pantalla para registrar el resultado.
+        // El mismo modal del shell sirve para salientes libres y de Seguimiento.
+        // Sólo el borrador vive aquí; el resultado definitivo sigue en el expediente.
         const manualOutgoing = isManualOutgoing(shownCall);
+        const seguimientoOutgoing = Boolean(shownCall?.direction === 'outgoing' &&
+            String(shownCall?.context?.type || '').toUpperCase() === 'VINCULACION');
         const shownOutgoing = Boolean(shownCall?.direction === 'outgoing' &&
-            (manualOutgoing || preview || outgoingAttempt));
+            (manualOutgoing || seguimientoOutgoing || preview || outgoingAttempt));
         const ongoing = Boolean(state?.active);
         if (analystResultNotice) {
             // No convertir el aviso pendiente en una llamada "activa" al
@@ -733,8 +735,8 @@
                 : 'Teléfono de la extensión ' + cfg.extension + '.';
         }
 
-        // Sólo se hace visible la interfaz oficial si la llamada es entrante.
-        // Para salientes, el panel del CRM sigue teniendo sus controles.
+        // Este modal único atiende también las salientes desde Seguimiento.
+        // El Panel de trabajo se reserva para registrar la interacción final.
         if (hostFrame) {
             hostFrame.dataset.callDirection = incoming ? 'incoming' : 'outgoing';
         }

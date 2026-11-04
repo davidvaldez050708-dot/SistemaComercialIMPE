@@ -11,85 +11,35 @@
         const form = () => panel.querySelector('[data-work-interaction-form]');
         let pending = null, restoring = false, lastNotice = 0;
         let completed = [];
-        let phoneHome = null;
-        const workspaceCss = document.createElement('style');
-        workspaceCss.textContent = `
-          #offcanvasSeguimientoTrabajo.impe-call-workspace {
-            left:50%!important;right:auto!important;top:50%!important;bottom:auto!important;
-            transform:translate(-50%,-50%)!important;width:920px!important;max-width:calc(100vw - 32px)!important;
-            height:calc(100vh - 48px)!important;max-height:960px;border:1px solid #dce5f2;
-            border-radius:20px;box-shadow:0 20px 60px rgba(20,35,58,.18);background:#fff;
-            font-family:Manrope,sans-serif;overflow:hidden;
-          }
-          .impe-call-workspace,.impe-call-workspace * {font-family:Manrope,sans-serif!important;}
-          .impe-call-workspace>.offcanvas-header {padding:22px 28px;border-bottom:1px solid #dce5f2;background:#fff;}
-          .impe-call-workspace>.offcanvas-header>div:not([data-call-workspace-heading]) {display:none;}
-          [data-call-workspace-heading] {display:none;}
-          .impe-call-workspace [data-call-workspace-heading] {display:block;}
-          .impe-call-workspace [data-call-workspace-heading] h5 {font-size:22px;font-weight:800;line-height:1.35;margin:0 0 6px;color:#233654;}
-          .impe-call-workspace [data-call-workspace-heading] p {font-size:13px;color:#7385a3;margin:0;}
-          .impe-call-workspace>.offcanvas-body {padding:24px 28px;overflow:auto;overflow-anchor:none;background:#fff;}
-          .impe-call-workspace>.offcanvas-body>:not([data-call-workspace-keep]) {display:none!important;}
-          .impe-call-workspace .linkage-work-section {margin:0 0 20px;padding:20px;border:1px solid #dce5f2;border-radius:16px;}
-          .impe-call-workspace .linkage-work-section-title {margin-bottom:16px;}
-          .impe-call-workspace .linkage-work-contact-grid,.impe-call-workspace [data-work-verify-row],
-          .impe-call-workspace [data-work-contact-form]>.linkage-work-source-row,
-          .impe-call-workspace [data-work-contact-form]>.linkage-work-form-title {display:none;}
-          .impe-call-workspace .linkage-work-form {border:0;padding:0;}
-          .impe-call-workspace .form-label {font-size:13px;font-weight:700;color:#425979;margin-bottom:8px;}
-          .impe-call-workspace .form-control,.impe-call-workspace .form-select {font-family:inherit;font-size:14px;border-color:#d5e0ef;border-radius:12px;min-height:48px;}
-          .impe-call-workspace .linkage-work-form-actions {position:sticky;bottom:-24px;background:#fff;border-top:1px solid #e1e8f2;padding:18px 0 8px;margin-top:20px;z-index:2;}
-          .impe-call-workspace [data-work-cancel-interaction],.impe-call-workspace [data-work-toggle-interaction] {display:none!important;}
-          .impe-call-workspace [data-persistent-phone] {position:static!important;transform:none!important;width:100%!important;max-width:none!important;margin:0 0 20px!important;box-shadow:none!important;border:0;border-radius:0;flex:0 0 auto!important;overflow:visible;}
-          .impe-call-workspace [data-persistent-phone] .persistent-phone-header,
-          .impe-call-workspace [data-phone-compact-actions],.impe-call-workspace [data-phone-result] {display:none!important;}
-          .impe-call-workspace [data-persistent-phone] .persistent-phone-body {display:block!important;padding:0!important;}
-          .impe-call-workspace [data-phone-start] {display:none!important;}
-          .impe-call-workspace [data-phone-active-actions] {display:flex;flex-wrap:wrap;gap:12px;}
-          .impe-call-workspace [data-phone-active-actions][hidden] {display:none!important;}
-          .impe-call-workspace [data-phone-active-actions]>.persistent-phone-action {height:auto;min-height:48px;flex:1;padding:12px 18px;}
-          .impe-call-workspace [data-audio-before-call] {flex-basis:100%;width:100%;font-size:13px;}
-          .impe-call-workspace [data-audio-before-call][hidden] {display:none!important;}
-          .linkage-call-required-note {font-family:Manrope,sans-serif;font-size:13px!important;line-height:1.55;font-weight:500;color:#345782;background:#f0f5fc;border:1px solid #d9e5f6;border-left:3px solid #009d8b;border-radius:12px;padding:12px 16px;margin:0 0 20px;}
-          .linkage-call-required-note button {margin-top:10px;font-size:13px;}
-          @media(max-width:575px) {
-            #offcanvasSeguimientoTrabajo.impe-call-workspace {max-width:calc(100vw - 16px)!important;height:calc(100vh - 16px)!important;border-radius:16px;}
-            .impe-call-workspace>.offcanvas-header {padding:18px;}
-            .impe-call-workspace>.offcanvas-body {padding:16px;}
-            .impe-call-workspace .linkage-work-section {padding:14px;}
-            .impe-call-workspace [data-call-workspace-heading] h5 {font-size:19px;}
-          }
-          @media(prefers-reduced-motion:reduce) {#offcanvasSeguimientoTrabajo.impe-call-workspace{transition:none!important;}}
-        `;
-        document.head.appendChild(workspaceCss);
-        const workHeader=panel.querySelector('.offcanvas-header');
-        const workspaceHeading=document.createElement('div');
-        workspaceHeading.dataset.callWorkspaceHeading='';
-        const workspaceTitle=document.createElement('h5'),workspaceSubtitle=document.createElement('p');
-        workspaceHeading.append(workspaceTitle,workspaceSubtitle);workHeader?.prepend(workspaceHeading);
-        const mountWorkspace=()=>{
-            const body=panel.querySelector('.offcanvas-body');
-            if(!body||!pending)return;
-            const entering=!panel.classList.contains('impe-call-workspace');
-            form()?.closest('section')?.setAttribute('data-call-workspace-keep','');
-            panel.querySelector('[data-work-contact-form]')?.closest('section')?.setAttribute('data-call-workspace-keep','');
-            panel.querySelector('[data-work-alert]')?.setAttribute('data-call-workspace-keep','');
-            const telephone=document.querySelector('[data-persistent-phone]');
-            if(telephone && !panel.contains(telephone)){
-                phoneHome=document.createComment('Ubicación del teléfono institucional');
-                telephone.before(phoneHome);telephone.dataset.callWorkspaceKeep='';body.prepend(telephone);
-            }
-            workspaceTitle.textContent=pending.finished?'Registrar resultado de llamada':'Llamada institucional · Captura de datos';
-            workspaceSubtitle.textContent=panel.querySelector('[data-work-title]')?.textContent||'Expediente institucional';
-            panel.classList.add('impe-call-workspace');
-            if(entering) window.requestAnimationFrame(()=>{body.scrollTop=0;});
-        };
-        const unmountWorkspace=()=>{
-            panel.classList.remove('impe-call-workspace');
-            const telephone=panel.querySelector('[data-persistent-phone]');
-            if(telephone && phoneHome){phoneHome.replaceWith(telephone);delete telephone.dataset.callWorkspaceKeep;}
-            phoneHome=null;
-        };
+        // Aviso propio del Panel de trabajo; no modifica el modal telefónico.
+        if (!document.getElementById('impe-linkage-call-required-style')) {
+            const style = document.createElement('style');
+            style.id = 'impe-linkage-call-required-style';
+            style.textContent = `
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note {
+                    display:flex;align-items:flex-start;gap:11px;padding:14px 15px;
+                    border:1px solid #d6e4f7;border-left:4px solid #248ac2;
+                    border-radius:12px;background:#eff6ff;color:#254b75;
+                    margin:0 0 18px;font:500 13px/1.55 Manrope,sans-serif;
+                }
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note>i {
+                    color:#1674ba;font-size:18px;line-height:1.3;flex:none;
+                }
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note>div {
+                    display:flex;flex-direction:column;gap:3px;min-width:0;
+                }
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note strong {
+                    font-weight:800;color:#1e4875;
+                }
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note span {
+                    display:block;color:#42617f;
+                }
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note button {
+                    align-self:center;margin-left:auto;white-space:nowrap;
+                }
+            `;
+            document.head.appendChild(style);
+        }
         try {
             const stored = JSON.parse(sessionStorage.getItem(key + ':closed') || '[]');
             if (Array.isArray(stored)) completed = stored.filter(validRef).slice(-100);
@@ -127,14 +77,6 @@
                 values[input.name] = input.type === 'checkbox' ? (input.checked ? '1' : '0') : input.value;
             }
             pending.values = values;
-            const contact=panel.querySelector('[data-work-contact-form]');
-            if(contact && (!contact.classList.contains('d-none') || pending.contactValues)){
-                pending.contactValues={};
-                for(const input of contact.elements){
-                    if(input.name && !['hidden','submit','button','file'].includes(input.type))
-                        pending.contactValues[input.name]=input.type==='checkbox'?(input.checked?'1':'0'):input.value;
-                }
-            }
             persist();
         };
         const restore = () => {
@@ -148,33 +90,16 @@
                 else input.value = value;
             }
             target.querySelector('[name="resultado"]')?.dispatchEvent(new Event('change', {bubbles:true}));
-            const contact=panel.querySelector('[data-work-contact-form]');
-            if(contact && pending.contactValues){
-                for(const [name,value] of Object.entries(pending.contactValues)){
-                    const input=contact.elements.namedItem(name);
-                    if(!input||['hidden','file'].includes(input.type))continue;
-                    if(input.type==='checkbox')input.checked=value==='1';else input.value=value;
-                }
-                contact.classList.remove('d-none');
-            }
             restoring = false;
         };
         const showForm = () => {
-            if (!pending) return;
+            // El resultado definitivo se registra sólo después de colgar.
+            if (!pending || !pending.finished) return;
             if (!samePanel()) { phone.openContext(true); return; }
             const target = form();
             if (!target) return;
-            const result=target.querySelector('[name="resultado"]');
-            if(result && !Object.prototype.hasOwnProperty.call(pending.values||{},'resultado') &&
-                !result.querySelector('[data-call-result-placeholder]')){
-                const placeholder=document.createElement('option');
-                placeholder.value='';placeholder.textContent='Selecciona lo que ocurrió';placeholder.disabled=true;
-                placeholder.dataset.callResultPlaceholder='';result.prepend(placeholder);result.value='';
-                result.dispatchEvent(new Event('change',{bubbles:true}));
-            }
             if (target.classList.contains('d-none')) panel.querySelector('[data-work-toggle-interaction]')?.click();
             target.classList.remove('d-none');
-            mountWorkspace();
             window.bootstrap?.Offcanvas.getOrCreateInstance(panel).show();
             let note = target.querySelector('[data-call-registration-required-note]');
             if (!note) {
@@ -182,15 +107,26 @@
                 note.className = 'linkage-call-required-note';
                 note.dataset.callRegistrationRequiredNote = '';
                 note.setAttribute('role', 'status');
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-telephone-check';
+                icon.setAttribute('aria-hidden', 'true');
+                const content = document.createElement('div');
+                content.append(document.createElement('strong'), document.createElement('span'));
+                note.append(icon, content);
                 target.prepend(note);
             }
-            note.textContent = pending.interactionId
-                ? 'Resultado guardado. Vinculación telefónica pendiente; no vuelvas a registrar la interacción.'
-                : pending.finished ? 'La llamada terminó. Registra el resultado para completar su seguimiento.'
-                : 'Puedes completar los datos y las observaciones durante la llamada. Al finalizar, guarda el resultado.';
+            const title = note.querySelector('strong');
+            const message = note.querySelector('span');
+            if (title) title.textContent = pending.interactionId
+                ? 'Interacción guardada' : 'Resultado de llamada pendiente';
+            if (message) message.textContent = pending.interactionId
+                ? 'Vinculación telefónica pendiente. No repitas el registro.'
+                : 'Registra la interacción desde este Panel de trabajo para conservar la llamada en el expediente.';
+            note.querySelector('[data-call-link-retry]')?.remove();
             if (pending.interactionId) {
                 const retry = document.createElement('button');
                 retry.type = 'button'; retry.className = 'btn btn-system-cancel';
+                retry.dataset.callLinkRetry = '';
                 retry.textContent = 'Reintentar vinculación';
                 retry.addEventListener('click', () => {
                     document.dispatchEvent(new CustomEvent('impe:interaction-exact-id-ready', {
@@ -209,7 +145,7 @@
                 }
             }
             const submit = target.querySelector('[type="submit"]');
-            if (submit) submit.disabled = !pending.finished || Boolean(pending.interactionId);
+            if (submit && pending.interactionId) submit.disabled = true;
             restore();
         };
         const observe = state => {
@@ -222,12 +158,10 @@
             if (pending && pending.token !== token) return;
             const finished = state.phase === 'finished' && !state.active;
             const wasFinished = pending?.finished;
-            const firstObservation=!pending;
             if (!pending) pending = {user, token, seguimientoId:id, values:{}, interactionId:0};
             pending.pbx = String(state.finalMetadata?.pbx_call_id || state.pbxCallId || pending.pbx || '');
             pending.finished = finished;
             persist();
-            if(firstObservation && state.active) window.setTimeout(showForm,0);
             if (finished && !wasFinished) {
                 // El puente prepara primero la fecha y el resumen de ESTA llamada.
                 phone.openContext(true);
@@ -301,10 +235,9 @@
                 Number(detail.interaccionId) !== pending.interactionId || !pending.interactionId) return;
             completed = [...completed, pending.token].slice(-100);
             try { sessionStorage.setItem(key + ':closed', JSON.stringify(completed)); } catch (_) {}
-            pending = null; persist();unmountWorkspace();
+            pending = null; persist();
             form()?.querySelector('[data-call-registration-required-note]')?.remove();
             form()?.querySelector('[data-call-locked-channel]')?.remove();
-            form()?.querySelector('[data-call-result-placeholder]')?.remove();
             const channel = form()?.querySelector('select[name="canal"]');
             if (channel) channel.disabled = false;
             const submit = form()?.querySelector('[type="submit"]');
