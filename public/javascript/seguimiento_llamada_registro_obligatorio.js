@@ -17,25 +17,33 @@
             style.id = 'impe-linkage-call-required-style';
             style.textContent = `
                 #offcanvasSeguimientoTrabajo .linkage-call-required-note {
-                    display:flex;align-items:flex-start;gap:11px;padding:14px 15px;
-                    border:1px solid #d6e4f7;border-left:4px solid #248ac2;
-                    border-radius:12px;background:#eff6ff;color:#254b75;
-                    margin:0 0 18px;font:500 13px/1.55 Manrope,sans-serif;
+                    display:flex;align-items:center;gap:10px;padding:10px 12px;
+                    border:1px solid #e2e7ef;border-radius:9px;
+                    background:#f8fafc;color:#46556b;
+                    margin:0 0 14px;font:500 13px/1.45 Manrope,sans-serif;
+                    box-shadow:none;min-width:0;
                 }
                 #offcanvasSeguimientoTrabajo .linkage-call-required-note>i {
-                    color:#1674ba;font-size:18px;line-height:1.3;flex:none;
+                    color:#657992;font-size:17px;line-height:1.2;flex:none;
                 }
                 #offcanvasSeguimientoTrabajo .linkage-call-required-note>div {
-                    display:flex;flex-direction:column;gap:3px;min-width:0;
+                    display:flex;flex-direction:column;gap:2px;min-width:0;
                 }
                 #offcanvasSeguimientoTrabajo .linkage-call-required-note strong {
-                    font-weight:800;color:#1e4875;
+                    display:block;color:#33445c;font-size:12.5px;
+                    font-weight:700;line-height:1.4;
                 }
                 #offcanvasSeguimientoTrabajo .linkage-call-required-note span {
-                    display:block;color:#42617f;
+                    display:block;color:#64748b;font-size:12px;
+                    line-height:1.4;overflow-wrap:anywhere;
                 }
                 #offcanvasSeguimientoTrabajo .linkage-call-required-note button {
-                    align-self:center;margin-left:auto;white-space:nowrap;
+                    margin-left:auto;white-space:normal;flex:none;
+                }
+                @media (max-width:575.98px) {
+                    #offcanvasSeguimientoTrabajo .linkage-call-required-note {
+                        align-items:flex-start;padding:10px;
+                    }
                 }
             `;
             document.head.appendChild(style);
@@ -118,10 +126,10 @@
             const title = note.querySelector('strong');
             const message = note.querySelector('span');
             if (title) title.textContent = pending.interactionId
-                ? 'Interacción guardada' : 'Resultado de llamada pendiente';
+                ? 'Interacción guardada' : 'Resultado pendiente';
             if (message) message.textContent = pending.interactionId
-                ? 'Vinculación telefónica pendiente. No repitas el registro.'
-                : 'Registra la interacción desde este Panel de trabajo para conservar la llamada en el expediente.';
+                ? 'Vinculación telefónica pendiente. No vuelvas a registrar esta llamada.'
+                : 'Selecciona el resultado y guarda la interacción en el expediente.';
             note.querySelector('[data-call-link-retry]')?.remove();
             if (pending.interactionId) {
                 const retry = document.createElement('button');
