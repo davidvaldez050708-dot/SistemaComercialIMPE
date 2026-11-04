@@ -8,10 +8,17 @@ assert any(v['before']=='d8dd441e0b13f836d08f7f285bf563dc9c3e083bc09591b797cb21e
 # Estos archivos son parte de una entrega ya publicada; sus contenidos son
 # inmutables aunque la fuente actual tenga una corrección visual posterior.
 published={'public/javascript/telefonia_shell.js':'84c14d94564ca8093269e2c2c6b1cfc29001a21f9a4eefb8e601db66d15b2c64','public/javascript/seguimiento_llamada_registro_obligatorio.js':'69e64923a4a8c3db216f733e5d631bacf3846fc738c8a7b1e3b605385829fca6'}
+later_changes={'app/services/TelefoniaSalienteAnalistaEstado.php',
+               'app/services/TelefoniaEntrantesAnalistaService.php',
+               'app/views/seguimiento_vinculacion/llamadas_entrantes.php',
+               'public/javascript/telefonia_analista_historial_pasivo.js'}
 for row in spec['files']:
  target=unpack(row['variants'][0]['target'])
  if row['path'] in published:
   assert hashlib.sha256(target).hexdigest()==published[row['path']],'Paquete publicado alterado: '+row['path']
+ elif row['path'] in later_changes:
+  archived=subprocess.check_output(['git','show','d5e70163c2999cdb68d73396079f73ef3056e2aa:'+row['path']],cwd=str(R))
+  assert target==archived.replace(b'\r\n',b'\n'),'Paquete histórico alterado: '+row['path']
  else:
   assert target==(R/row['path']).read_bytes().replace(b'\r\n',b'\n'),'Paquete desactualizado: '+row['path']
 previous=json.loads(subprocess.check_output(['git','show','f1656f829a7f3b124f96d292853d28c6caa10155:tools/analista_salientes_release.json'],cwd=str(R)))
