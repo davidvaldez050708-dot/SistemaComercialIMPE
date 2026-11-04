@@ -1,0 +1,45 @@
+name: Analista - registro obligatorio de llamada
+on:
+  pull_request:
+    paths:
+      - 'public/javascript/seguimiento_llamada_registro_obligatorio.js'
+      - 'public/javascript/seguimiento_llamada_zadarma.js'
+      - 'tests/analista_registro_obligatorio_browser.cjs'
+      - 'tests/publicacion_analista_registro_obligatorio.py'
+      - 'tools/*analista_registro_obligatorio*'
+      - '.github/workflows/analista-registro-obligatorio.yml'
+  workflow_dispatch:
+jobs:
+  panel-y-publicacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Publicación reversible aislada y regresiones
+        run: |
+          node --check public/javascript/seguimiento_llamada_registro_obligatorio.js
+          node --check public/javascript/seguimiento_llamada_zadarma.js
+          python tests/publicacion_analista_registro_obligatorio.py
+          python tests/publicacion_verificacion_vigente.py
+          php tests/verificacion_datos_vigentes.php
+          php tests/horario_contacto_unit.php
+      - name: Panel PHP real dentro del shell, sin llamadas ni SQL
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          mkdir -p tmp/bootstrap
+          curl -fsSL https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css -o tmp/bootstrap/bootstrap.min.css
+          curl -fsSL https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js -o tmp/bootstrap/bootstrap.bundle.min.js
+          export BOOTSTRAP_DIR=tmp/bootstrap
+          export CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
+          node tests/analista_registro_obligatorio_browser.cjs
+          node tests/verificacion_datos_vigentes_browser.cjs

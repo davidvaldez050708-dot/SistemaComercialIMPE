@@ -4,7 +4,7 @@ import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = '9921e9aab0aeeff8b24318cc60b581f50980039ba1b4641bb497806c91194c4d'
+MANIFEST_SHA256 = 'cbc30e3871373d05be8ade14c46e7e90ad24a0eac3f7e761c787e2388ef6b5cd'
 PATHS = ['app/services/VerificacionInstitucionalService.php', 'app/services/InteraccionRutaService.php', 'app/controllers/SeguimientoVinculacionController.php', 'public/javascript/seguimiento_interacciones.js', 'public/javascript/seguimiento_llamada_zadarma.js']
 
 def digest(data): return None if data is None else hashlib.sha256(data).hexdigest()

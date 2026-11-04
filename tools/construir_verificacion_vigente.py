@@ -13,6 +13,7 @@ previous=json.loads(blob('b38a95a7','tools/denue_estabilidad_release.json'))
 rows=[]
 for p in paths:
  originals=[blob('b38a95a7',p)]
+ if p.endswith('seguimiento_llamada_zadarma.js'):originals.append(blob('6db736ac1c88cef50b5ffabdebf1b6708b6878cc',p))
  if p.endswith('InteraccionRutaService.php'):originals.append(blob('ebf34d1cb6c672ca4f828403ab065a86332731fd',p))
  if p.endswith('SeguimientoVinculacionController.php'):
   row=next(r for r in previous['files'] if r['path']==p);originals.append(gzip.decompress(base64.b64decode(row['variants'][1]['target'])))
