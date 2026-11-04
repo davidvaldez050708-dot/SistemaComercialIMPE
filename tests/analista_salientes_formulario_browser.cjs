@@ -13,6 +13,7 @@ const css=read(dir+'/bootstrap.min.css'),bs=read(dir+'/bootstrap.bundle.min.js')
 const formHtml='<!doctype html><meta charset="utf-8"><style>'+css+'</style>'+view+
  '<a id="otherModule" href="/other">Otro módulo</a><script>'+bs+'</script><script>window.IMPE_CURRENT_USER_ID=1;</script><script>'+read('public/javascript/telefonia_atencion.js')+'</script><script>'+read('public/javascript/seguimiento_entrantes_analista.js')+'</script>';
 const formNoAnswerHtml=formHtml.replace(view,noAnswerView).replaceAll('out-fixture-001','out-fixture-004');
+const overlay=read('public/javascript/telefonia_analista_resultado_superpuesto.js');
 const journal=read('public/javascript/telefonia_analista_historial_pasivo.js');
 const html='<!doctype html><meta charset="utf-8"><style>'+css+'\n'+read('public/css/telefonia_persistente.css')+'</style><iframe id="impeCrmFrame" src="/empty" style="width:1300px;height:1000px"></iframe><script>'+bs+'</script><script>'+`
 window.state=null;window.formOpen=false;window.commands=[];
@@ -20,7 +21,7 @@ window.IMPE_PHONE_SHELL_CONFIG={userId:1,analystIncomingResults:true,incomingRes
 window.IMPE_TELEPHONY_NOTIFY=()=>{};
 window.IMPE_TELEPHONY_SHELL={getCallState:()=>state,isResultFormOpen:()=>formOpen,beginCallResult:()=>{formOpen=true;return true;},endCallResult:()=>{formOpen=false;},dismissFinishedCall:()=>{formOpen=false;},getPhoneStatus:()=>({pending:window.IMPE_ANALYST_OUTGOING_RESULT?.hasPending()})};
 window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.stringify(s));dispatchEvent(new StorageEvent('storage',{key:'impe:telephony:state:1'}));};
-`+'</script><script>'+journal+'</script>';
+`+'</script><script>'+overlay+'</script><script>'+journal+'</script>';
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{channel:'chrome'})});try{
  const page=await browser.newPage({viewport:{width:1440,height:1200}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  let posted=null,mode='failure',stateCalls=0,providerRef='out-fixture-001',posts=0;const savedRecords={};
@@ -47,7 +48,7 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  await page.locator('[data-analyst-outgoing-preparing]').waitFor({state:'visible'});
  assert.equal(await page.evaluate(()=>formOpen),true,'Reservar el registro de inmediato sin mostrar el resumen de fin');
  assert.equal(await page.locator('[data-analyst-outgoing-pending]').isVisible(),false,'No exigir un botón mientras llega el webhook');
- await page.waitForFunction(()=>document.querySelector('#impeCrmFrame').contentWindow.location.search.includes('saliente_ref='));
+ await page.waitForFunction(()=>document.querySelector('[data-analyst-result-overlay] iframe')?.contentWindow.location.search.includes('saliente_ref='));
  const frame=page.frames().find(f=>f.url().includes('saliente_ref='));
  assert.ok(frame.url().includes('controller=seguimientoVinculacion'));
  await frame.locator('#modalLlamadaEntranteAnalista.show').waitFor();
@@ -81,6 +82,9 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  mode='success';await frame.locator('[data-incoming-submit]').click();
  await page.waitForFunction(()=>!IMPE_ANALYST_OUTGOING_RESULT.hasPending());
  assert.equal(await page.evaluate(()=>sessionStorage.getItem('impe:analista:saliente-pendiente:1')),null);
+ assert.equal(await page.locator('[data-analyst-result-overlay]').count(),0,'El formulario desaparece tras guardar');
+ assert.equal(await page.locator('#impeCrmFrame').evaluate(e=>new URL(e.contentWindow.location.href).pathname),'/empty',
+  'La pantalla de origen conserva su ubicación y no redirige a Recibidas');
  assert.equal(stateCalls,3,'Abrir automáticamente después de dos respuestas todavía sin confirmación');
  // Una segunda marcación al mismo destino no reutiliza ni el resultado ni el PBX anteriores.
  const second={...active,callToken:'manual-prueba-002',pbxCallId:'out-fixture-002',afterEventId:600};
@@ -90,9 +94,10 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  await page.locator('[data-analyst-outgoing-preparing]').waitFor({state:'visible'});
  assert.equal(JSON.parse(await page.evaluate(()=>sessionStorage.getItem('impe:analista:saliente-pendiente:1'))).ref,'out-fixture-002');
  providerRef='out-fixture-002';
- await page.waitForFunction(()=>document.querySelector('#impeCrmFrame').contentWindow.location.search.includes('out-fixture-002'));
+ await page.waitForFunction(()=>document.querySelector('[data-analyst-result-overlay] iframe')?.contentWindow.location.search.includes('out-fixture-002'));
  const secondForm=page.frames().find(f=>f.url().includes('out-fixture-002'));
  await secondForm.locator('#modalLlamadaEntranteAnalista.show').waitFor();
+ assert.equal(await page.locator('#impeCrmFrame').evaluate(e=>new URL(e.contentWindow.location.href).pathname),'/empty');
  assert.equal(await secondForm.locator('[name=pbx_call_id]').inputValue(),'out-fixture-002');
  assert.equal(await secondForm.locator('[name=observacion]').inputValue(),'','No arrastrar notas anteriores');
  await secondForm.locator('[name=decision]').selectOption('sin_identificar');
@@ -104,7 +109,7 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  const third={...active,callToken:'manual-prueba-003',pbxCallId:providerRef,afterEventId:700};
  await page.evaluate(s=>publish(s),third);
  await page.evaluate(s=>publish({...s,active:false,phase:'finished',finalMetadata:{pbx_call_id:s.pbxCallId}}),third);
- await page.waitForFunction(()=>document.querySelector('#impeCrmFrame').contentWindow.location.search.includes('out-fixture-003'));
+ await page.waitForFunction(()=>document.querySelector('[data-analyst-result-overlay] iframe')?.contentWindow.location.search.includes('out-fixture-003'));
  const thirdForm=page.frames().find(f=>f.url().includes('out-fixture-003'));
  await thirdForm.locator('#modalLlamadaEntranteAnalista.show').waitFor();
  await thirdForm.locator('[name=decision]').selectOption('sin_identificar');
@@ -117,7 +122,7 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  const fourth={...active,callToken:'manual-prueba-004',pbxCallId:providerRef,afterEventId:800};
  await page.evaluate(s=>publish(s),fourth);
  await page.evaluate(s=>publish({...s,active:false,phase:'finished',finalMetadata:{pbx_call_id:s.pbxCallId}}),fourth);
- await page.waitForFunction(()=>document.querySelector('#impeCrmFrame').contentWindow.location.search.includes('out-fixture-004'));
+ await page.waitForFunction(()=>document.querySelector('[data-analyst-result-overlay] iframe')?.contentWindow.location.search.includes('out-fixture-004'));
  const fourthForm=page.frames().find(f=>f.url().includes('out-fixture-004'));
  await fourthForm.locator('#modalLlamadaEntranteAnalista.show').waitFor();
  assert.equal(await fourthForm.locator('[name=decision]').inputValue(),'sin_identificar',
@@ -155,8 +160,11 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  assert.equal(await real.locator('[data-incoming-panel]').isVisible(),false,'El shell real oculta el resumen al reservar el resultado');
  assert.equal(await real.locator('[data-analyst-outgoing-pending]').isVisible(),false);
  confirmed=true;
- await real.frameLocator('#impeCrmFrame').locator('#modalLlamadaEntranteAnalista.show').waitFor();
+ await real.frameLocator('[data-analyst-result-overlay] iframe').locator('#modalLlamadaEntranteAnalista.show').waitFor();
  await real.locator('[data-analyst-outgoing-preparing]').waitFor({state:'hidden'});
+ assert.equal(await real.locator('[data-analyst-result-overlay]').count(),1);
+ assert.notEqual(await real.locator('#impeCrmFrame').evaluate(e=>new URL(e.contentWindow.location.href).searchParams.get('saliente_ref')),'out-real-shell-001',
+  'El shell no sustituye la vista actual mientras captura el resultado');
  assert.equal(await real.locator('[data-incoming-panel]').isVisible(),false,'El resumen tampoco tapa el formulario cargado');
  assert.ok(lookups>=2,'Esperar y reintentar sin clic manual');
  assert.deepEqual(errors,[]);
