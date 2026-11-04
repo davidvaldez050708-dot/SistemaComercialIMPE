@@ -6,6 +6,7 @@ require_once __DIR__ . '/TelefoniaAnalistaWebrtcService.php';
 require_once __DIR__ . '/TelefoniaInternaGrabacionService.php';
 require_once __DIR__ . '/VerificacionInstitucionalService.php';
 require_once __DIR__ . '/TelefoniaSalienteAnalistaEstado.php';
+require_once __DIR__ . '/ZadarmaCallLookupService.php';
 require_once __DIR__ . '/TelefoniaVerificacionEvidenciaService.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 
@@ -81,6 +82,22 @@ class TelefoniaEntrantesAnalistaService
             $this->eventos->obtenerPorPbxCallId($pbxCallId), $ext, $pbxCallId,
             max(strtotime('-30 days'), strtotime((string)$asignacion['desde']) ?: 0)
         );
+        // Si el webhook de fin no llegó, consultar las estadísticas PBX
+        // usando la referencia exacta de un inicio saliente ya firmado.
+        if ($saliente && ($saliente['estado'] ?? '') !== 'ended') {
+            try {
+                $estadistica = (new ZadarmaCallLookupService())->buscarPorPbxCallId($pbxCallId);
+                if ($estadistica) {
+                    $saliente = TelefoniaSalienteAnalistaEstado::desdeEstadistica(
+                        $saliente, $estadistica, $ext, $pbxCallId,
+                        max(strtotime('-30 days'), strtotime((string)$asignacion['desde']) ?: 0)
+                    );
+                }
+            } catch (Throwable $e) {
+                // La falta de la API nunca confirma artificialmente un cierre.
+                error_log('[saliente_analista_estadistica] '.get_class($e));
+            }
+        }
         if ($saliente) {
             if (empty($asignacion['permite_salientes']) || empty($asignacion['permiso_salientes'])) {
                 throw new DomainException('No tienes permiso para registrar llamadas salientes de esta extensión.');
@@ -134,7 +151,10 @@ class TelefoniaEntrantesAnalistaService
             'pbx_call_id'=>$referencia, 'numero'=>$call['caller_id'], 'transferida_desde'=>'',
             'fuente'=>'PBX', 'tipo_llamada'=>'SALIENTE', 'fecha'=>$call['fecha_evento'],
             'duracion'=>self::segundosAtendidos($call), 'estado_pbx'=>$call['estado'],
-            'contestada'=>$call['contestada'], 'pbx_conversacion_confirmada'=>$call['contestada'] && $call['estado']==='ended',
+            'contestada'=>$call['contestada'],
+            'pbx_conversacion_confirmada'=>$call['contestada'] && $call['estado']==='ended'
+                && empty($call['estadistica_solo']),
+            'cierre_estadistica'=>!empty($call['estadistica_solo']),
             'clasificacion'=>$registro['estado'] ?? 'PENDIENTE',
             'seguimiento_id'=>(int)($registro['seguimiento_id'] ?? 0),
             'interaccion_id'=>(int)($registro['interaccion_id'] ?? 0),
@@ -505,7 +525,8 @@ class TelefoniaEntrantesAnalistaService
         }
         // Una comunicación sin respuesta no debe figurar como contacto efectivo
         // ni generar un expediente: sólo admite clasificación sin identificar.
-        if (empty($call['answer_at']) && $decision !== 'sin_identificar') {
+        if (empty($call['answer_at']) && empty($call['estadistica_contestada']) &&
+            $decision !== 'sin_identificar') {
             throw new DomainException('La centralita no confirmó una conversación. Clasifica sin identificar o devuelve la llamada.');
         }
         $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion'] ?? ''));
@@ -767,6 +788,7 @@ class TelefoniaEntrantesAnalistaService
             $referido=$resultadoFormulario==='CONTACTO_REFERIDO' ? VerificacionInstitucionalService::referido($datos) : [];
             $detalles=$admiteVerificacion ? VerificacionInstitucionalService::detalles(array_merge($datos,$referido),$seguimiento) : [];
             $evidencias=array_column($detalles,'etiqueta');
+            $pbxFirmada = !$sdk && empty($call['estadistica_solo']);
             if ($evidencias && ($personaAtendio==='' || $segundosConversacion<=0)) {
                 throw new InvalidArgumentException('Indica con quién hablaste y confirma que hubo una conversación para verificar datos.');
             }
@@ -778,9 +800,10 @@ class TelefoniaEntrantesAnalistaService
             }
             $notas = trim(implode("\n", array_filter([
                 ($call['origen_registro'] ?? 'Llamada entrante recibida en la extensión ' . $extension . '.'),
-                $sdk ? '[WEBRTC OBSERVADO; SIN EVENTO PBX FIRMADO; RESULTADO DECLARADO POR ANALISTA]' : '',
+                $sdk ? '[WEBRTC OBSERVADO; SIN EVENTO PBX FIRMADO; RESULTADO DECLARADO POR ANALISTA]' :
+                    (!empty($call['estadistica_solo']) ? '[FIN CONFIRMADO POR ESTADISTICA ZADARMA; SIN WEBHOOK DE CIERRE]' : ''),
                 $personaAtendio !== '' ? 'Persona atendida: ' . $personaAtendio : '',
-                $evidencias ? ($sdk ? '[VERIFICACION_PENDIENTE_PBX]' : '[VERIFICACION_EFECTIVA]') : '',
+                $evidencias ? ($pbxFirmada ? '[VERIFICACION_EFECTIVA]' : '[VERIFICACION_PENDIENTE_PBX]') : '',
                 $evidencias ? 'Verificación obtenida: ' . implode(' · ', $evidencias) : '',
                 $resultadoFormulario === 'NO_INTERESADO' ? 'Resultado registrado: No interesado' : '',
                 $observacion,
@@ -815,10 +838,11 @@ class TelefoniaEntrantesAnalistaService
             }
 
             $evidenciaStore->guardar($interaccionId,$usuarioId,$seguimientoId,$detalles,$personaAtendio,
-                !$sdk,$sdk?'':$id,$sdk?$id:$aliasSdk);
+                $pbxFirmada,$pbxFirmada?$id:'',$sdk?$id:$aliasSdk);
 
         return ['seguimiento_id'=>$seguimientoId,'interaccion_id'=>$interaccionId,
-            'verificacion_confirmada'=>!$sdk && !empty($evidencias),'verificacion_pendiente'=>$sdk && !empty($evidencias)];
+            'verificacion_confirmada'=>$pbxFirmada && !empty($evidencias),
+            'verificacion_pendiente'=>!$pbxFirmada && !empty($evidencias)];
     }
 
 }
