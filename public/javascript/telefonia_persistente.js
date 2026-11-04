@@ -1996,11 +1996,16 @@
             ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(
                 String(state?.context?.type || '').toUpperCase()
             ) && (Boolean(state?.active) || state?.phase === 'finished');
+        // El shell ya presenta el teléfono de Seguimiento: evitar un duplicado.
+        const seguimientoInShell = embedded &&
+            state?.direction === 'outgoing' &&
+            String(state?.context?.type || '').toUpperCase() === 'VINCULACION' &&
+            (Boolean(state?.active) || state?.phase === 'finished');
         panel.hidden = !show || managedByShell ||
-            incomingInShell || manualOutgoingInShell || callbackInShell;
+            incomingInShell || manualOutgoingInShell || seguimientoInShell || callbackInShell;
 
         if (!show || managedByShell || incomingInShell ||
-            manualOutgoingInShell || callbackInShell) {
+            manualOutgoingInShell || seguimientoInShell || callbackInShell) {
             return;
         }
 

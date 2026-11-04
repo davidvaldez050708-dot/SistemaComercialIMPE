@@ -84,7 +84,9 @@ const panel = Object.assign(node(), {
     }
 });
 const crm={src:''};
+let openedOverlayUrl='';
 const runtime={
+    IMPE_ANALYST_RESULT_OVERLAY:{open(url){openedOverlayUrl=url;return true;}},
     IMPE_PHONE_SHELL_CONFIG: {
         userId:7,analystIncomingResults:true,
         incomingResultsUrl:'https://fundacionrededumex.org/index.php?controller=seguimientoVinculacion&action=llamadasEntrantes'
@@ -205,7 +207,8 @@ assert.equal(panel.hidden,false,'El render del shell no puede ocultar el resumen
     assert.deepEqual(post.map(x=>x.event),
         ['ringing','answered','ringing','answered','ended']);
     status('[data-incoming-register-finished]').listeners.click();
-    assert.match(crm.src,/sdk_session_id=sdk-l5lm1oo-b1c2d3e/);
+    assert.match(openedOverlayUrl,/sdk_session_id=sdk-l5lm1oo-b1c2d3e/);
+    assert.equal(crm.src,'','El formulario no reemplaza la vista abierta');
     assert.equal(panel.hidden,true);
     assert.equal(runtime.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG.hasFinalized(),false);
 

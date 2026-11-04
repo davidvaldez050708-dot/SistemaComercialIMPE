@@ -322,5 +322,6 @@ try {
     $notifications->pendientes(3,true);$notifications->pendientes(1,false);
     check((int)one("SELECT COUNT(*) n FROM telefonia_notificaciones WHERE llave='transferencia:$uid:1:SIN_CONFIRMAR' AND leida=0")['n']===0,'Respuesta confirmada retira el aviso de incertidumbre');
     require __DIR__.'/fixtures/telefonia_integral_assertions.php';
+    require __DIR__.'/fixtures/analista_salientes_db.php';
     echo "Atención analista/MySQL: $checks comprobaciones OK\n";
 } finally {$db->select_db('mysql');$db->query("DROP DATABASE `$name`");$db->close();}

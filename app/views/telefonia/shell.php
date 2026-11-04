@@ -484,6 +484,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'csrf' => (string)$_SESSION['csrf_token']
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_analista_resultado_superpuesto.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_analista_resultado_superpuesto.js') ?>"></script>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_analista_historial_pasivo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_analista_historial_pasivo.js') ?>"></script>
     <?php endif; ?>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_disponibilidad.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_disponibilidad.js') ?>"></script>

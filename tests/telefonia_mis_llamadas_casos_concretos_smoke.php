@@ -46,8 +46,8 @@ $expect(str_contains($html, 'Sin conexión confirmada'),
     'Llamada perdida debe conservar su clasificación');
 $expect(str_contains($html,'impe-call-detail-link'),
     'Acceso de diseño compartido');
-$expect(substr_count($html, 'Ver llamada') === 3,
-    'Solo las tres entrantes tienen acceso a Recibidas');
+$expect(substr_count($html, 'Ver llamada') === 4,
+    'Entrantes y salientes con referencia PBX acceden al detalle operativo');
 $ingreso = file_get_contents(ROOT_PATH.'/app/views/seguimiento_vinculacion/llamadas_entrantes.php');
 $expect(str_contains($ingreso, 'data-focus-call=') &&
     str_contains($ingreso, 'data-auto-call=') &&

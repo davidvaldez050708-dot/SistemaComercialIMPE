@@ -287,9 +287,11 @@
         },
         getPhoneStatus: function () {
             return {active:Boolean(currentState?.active),ready:Boolean(freshState(currentState)&&currentState.hostReady),
-                pending:Boolean(callbackPending||window.IMPE_CALL_CLOSURE?.hasPending()||window.IMPE_SALES_ATTENTION?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
+                pending:Boolean(window.IMPE_ANALYST_OUTGOING_RESULT?.hasPending()||crm?.contentDocument?.body?.classList.contains('impe-call-registration-pending')||callbackPending||window.IMPE_CALL_CLOSURE?.hasPending()||window.IMPE_SALES_ATTENTION?.hasPending()||document.body.classList.contains('impe-sdk-result-in-modal'))};
         },
         openPendingResult: function () {
+            if(window.IMPE_ANALYST_OUTGOING_RESULT?.hasPending()){window.IMPE_ANALYST_OUTGOING_RESULT.openPending();return;}
+            if(crm?.contentDocument?.body?.classList.contains('impe-call-registration-pending')){crm.contentWindow.IMPE_TELEPHONY_PERSISTENT?.openContext(true);return;}
             if(window.IMPE_SALES_ATTENTION?.hasPending()){window.IMPE_SALES_ATTENTION.openPending();return;}
             if(callbackPending&&!currentState?.active){
                 if(crm)crm.src=cfg.callbackUrl+'&intento_id='+callbackPending.id;render();return;
@@ -529,11 +531,13 @@
         const shownCall = state?.active ? state :
             (incomingFinishedPreview || preview || finishedPreview);
         const finishedIncoming = Boolean(incomingFinishedPreview);
-        // Sólo llamadas manuales usan este resumen visual; Seguimiento
-        // mantiene su propia pantalla para registrar el resultado.
+        // El mismo modal del shell sirve para salientes libres y de Seguimiento.
+        // Sólo el borrador vive aquí; el resultado definitivo sigue en el expediente.
         const manualOutgoing = isManualOutgoing(shownCall);
+        const seguimientoOutgoing = Boolean(shownCall?.direction === 'outgoing' &&
+            String(shownCall?.context?.type || '').toUpperCase() === 'VINCULACION');
         const shownOutgoing = Boolean(shownCall?.direction === 'outgoing' &&
-            (manualOutgoing || preview || outgoingAttempt));
+            (manualOutgoing || seguimientoOutgoing || preview || outgoingAttempt));
         const ongoing = Boolean(state?.active);
         if (analystResultNotice) {
             // No convertir el aviso pendiente en una llamada "activa" al
@@ -731,8 +735,8 @@
                 : 'Teléfono de la extensión ' + cfg.extension + '.';
         }
 
-        // Sólo se hace visible la interfaz oficial si la llamada es entrante.
-        // Para salientes, el panel del CRM sigue teniendo sus controles.
+        // Este modal único atiende también las salientes desde Seguimiento.
+        // El Panel de trabajo se reserva para registrar la interacción final.
         if (hostFrame) {
             hostFrame.dataset.callDirection = incoming ? 'incoming' : 'outgoing';
         }

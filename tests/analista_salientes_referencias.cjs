@@ -1,0 +1,12 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
+const host=fs.readFileSync('public/javascript/telefonia_host.js','utf8');
+const begin=host.indexOf('    const applyCallState = function (call) {'),end=host.indexOf('    const poll = async function',begin);
+assert.ok(begin>0&&end>begin);
+const sandbox={analystOutgoing:true,state:{active:true,pbxCallId:'',duration:0,phase:'dialing'},completedOutgoingRefs:new Set(['llamada-anterior']),lastCall:null,answeredAtMs:0,isFinal:s=>s==='completed',currentDuration:()=>sandbox.state.duration,finishCall:()=>{sandbox.ended=true;},publish:patch=>Object.assign(sandbox.state,patch)};
+vm.createContext(sandbox);vm.runInContext(host.slice(begin,end)+'globalThis.apply=applyCallState;',sandbox);
+sandbox.apply({pbx_call_id:'llamada-anterior',status:'in-progress',duration:39});assert.equal(sandbox.state.duration,0,'No retomar 00:39');assert.equal(sandbox.lastCall,null);
+sandbox.apply({pbx_call_id:'llamada-nueva',status:'in-progress',duration:0});assert.equal(sandbox.state.pbxCallId,'llamada-nueva');assert.equal(sandbox.state.duration,0);
+sandbox.apply({pbx_call_id:'llamada-anterior',status:'completed',duration:39});assert.equal(sandbox.ended,undefined,'Fin viejo no cuelga la nueva');
+sandbox.apply({pbx_call_id:'tercera-llamada',status:'completed',duration:70});assert.equal(sandbox.ended,undefined,'No cambiar referencia a mitad de llamada');
+sandbox.apply({pbx_call_id:'llamada-nueva',status:'completed',duration:7});assert.equal(sandbox.state.duration,7);assert.equal(sandbox.ended,true);
+console.log('PASS reloj: 00:00 en nueva referencia, respuestas viejas y fin ajeno ignorados, cierre propio normal');

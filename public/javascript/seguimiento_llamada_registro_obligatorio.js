@@ -11,6 +11,43 @@
         const form = () => panel.querySelector('[data-work-interaction-form]');
         let pending = null, restoring = false, lastNotice = 0;
         let completed = [];
+        // Aviso propio del Panel de trabajo; no modifica el modal telefónico.
+        if (!document.getElementById('impe-linkage-call-required-style')) {
+            const style = document.createElement('style');
+            style.id = 'impe-linkage-call-required-style';
+            style.textContent = `
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note {
+                    display:flex;align-items:center;gap:10px;padding:10px 12px;
+                    border:1px solid #e2e7ef;border-radius:9px;
+                    background:#f8fafc;color:#46556b;
+                    margin:0 0 14px;font:500 13px/1.45 Manrope,sans-serif;
+                    box-shadow:none;min-width:0;
+                }
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note>i {
+                    color:#657992;font-size:17px;line-height:1.2;flex:none;
+                }
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note>div {
+                    display:flex;flex-direction:column;gap:2px;min-width:0;
+                }
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note strong {
+                    display:block;color:#33445c;font-size:12.5px;
+                    font-weight:700;line-height:1.4;
+                }
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note span {
+                    display:block;color:#64748b;font-size:12px;
+                    line-height:1.4;overflow-wrap:anywhere;
+                }
+                #offcanvasSeguimientoTrabajo .linkage-call-required-note button {
+                    margin-left:auto;white-space:normal;flex:none;
+                }
+                @media (max-width:575.98px) {
+                    #offcanvasSeguimientoTrabajo .linkage-call-required-note {
+                        align-items:flex-start;padding:10px;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
         try {
             const stored = JSON.parse(sessionStorage.getItem(key + ':closed') || '[]');
             if (Array.isArray(stored)) completed = stored.filter(validRef).slice(-100);
@@ -64,7 +101,8 @@
             restoring = false;
         };
         const showForm = () => {
-            if (!pending) return;
+            // El resultado definitivo se registra sólo después de colgar.
+            if (!pending || !pending.finished) return;
             if (!samePanel()) { phone.openContext(true); return; }
             const target = form();
             if (!target) return;
@@ -77,14 +115,26 @@
                 note.className = 'linkage-call-required-note';
                 note.dataset.callRegistrationRequiredNote = '';
                 note.setAttribute('role', 'status');
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-telephone-check';
+                icon.setAttribute('aria-hidden', 'true');
+                const content = document.createElement('div');
+                content.append(document.createElement('strong'), document.createElement('span'));
+                note.append(icon, content);
                 target.prepend(note);
             }
-            note.textContent = pending.interactionId
-                ? 'Resultado guardado. Vinculación telefónica pendiente; no vuelvas a registrar la interacción.'
-                : 'Resultado de llamada pendiente. Guarda la interacción antes de salir.';
+            const title = note.querySelector('strong');
+            const message = note.querySelector('span');
+            if (title) title.textContent = pending.interactionId
+                ? 'Interacción guardada' : 'Resultado pendiente';
+            if (message) message.textContent = pending.interactionId
+                ? 'Vinculación telefónica pendiente. No vuelvas a registrar esta llamada.'
+                : 'Selecciona el resultado y guarda la interacción en el expediente.';
+            note.querySelector('[data-call-link-retry]')?.remove();
             if (pending.interactionId) {
                 const retry = document.createElement('button');
                 retry.type = 'button'; retry.className = 'btn btn-system-cancel';
+                retry.dataset.callLinkRetry = '';
                 retry.textContent = 'Reintentar vinculación';
                 retry.addEventListener('click', () => {
                     document.dispatchEvent(new CustomEvent('impe:interaction-exact-id-ready', {

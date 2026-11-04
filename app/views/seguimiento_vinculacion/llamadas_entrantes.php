@@ -7,6 +7,7 @@ $llamadas = is_array($bandejaEntrantes['llamadas'] ?? null)
 $seleccionarId = trim((string)($_GET['sdk_session_id'] ?? ($_GET['pbx_call_id'] ?? '')));
 $abrirSoloDetalle = !empty($desdeMisLlamadas) && (string)($_GET['detalle'] ?? '') === '1';
 $estadosEntrantes = $estadosEntrantes ?? [];
+$esSalienteLibre = !empty($_GET['saliente_ref']);
 
 // Paginación en el servidor: no renderizar 100+ tarjetas ni reproductores.
 // Mantener los contadores globales sobre el historial completo.
@@ -58,8 +59,11 @@ if ($totalPaginasEntrantes > 1) {
 
 $pendientesEntrantes = count(array_filter($llamadas, static function ($fila) {
     return (string)($fila['clasificacion'] ?? 'PENDIENTE') === 'PENDIENTE'
-        && !empty($fila['contestada'])
-        && (string)($fila['tipo_llamada'] ?? 'ENTRANTE') !== 'INTERNA';
+        && (string)($fila['tipo_llamada'] ?? 'ENTRANTE') !== 'INTERNA'
+        && (!empty($fila['contestada']) ||
+            ((string)($fila['tipo_llamada'] ?? '') === 'SALIENTE' &&
+             in_array((string)($fila['estado_pbx'] ?? ''),
+                 ['ended','transferred'], true)));
 }));
 $vinculadasEntrantes = count(array_filter($llamadas, static function ($fila) {
     return (string)($fila['clasificacion'] ?? '') === 'VINCULADA'
@@ -76,6 +80,7 @@ $duracionEntrante = static function ($segundos) {
 
 <section class="dashboard-panel linkage-incoming-page"
     data-linkage-incoming
+    data-outgoing-result="<?= $esSalienteLibre ? '1' : '0' ?>"
     data-current-user="<?= (int)($_SESSION['usuario_id'] ?? 0) ?>"
     data-auto-call="<?= $abrirSoloDetalle ? '' : $esc($seleccionarId) ?>"
     data-focus-call="<?= $abrirSoloDetalle ? $esc($seleccionarId) : '' ?>"
@@ -88,8 +93,8 @@ $duracionEntrante = static function ($segundos) {
                 <i class="bi bi-telephone-inbound" aria-hidden="true"></i>
                 SEGUIMIENTO · TELEFONÍA
             </span>
-            <h2>Llamadas recibidas</h2>
-            <p>Consulta tus llamadas entrantes y registra su resultado en el expediente institucional correspondiente.</p>
+            <h2><?= $esSalienteLibre ? 'Resultado de llamada saliente' : 'Llamadas recibidas' ?></h2>
+            <p><?= $esSalienteLibre ? 'Vincula esta llamada a un seguimiento o registra una institución nueva.' : 'Consulta tus llamadas entrantes y registra su resultado en el expediente institucional correspondiente.' ?></p>
         </div>
         <div class="linkage-incoming-heading-actions">
             <span class="linkage-incoming-extension">
@@ -171,11 +176,11 @@ $duracionEntrante = static function ($segundos) {
                         <div class="linkage-call-recording-body">
                             <div class="linkage-call-recording-top">
                                 <div class="linkage-call-history-identity">
-                                    <strong><?= ($llamada['fuente']??'')==='OPERACION' ? 'Transferencia sin respuesta' : ($esInterna ? 'Llamada interna' : 'Llamada entrante') ?></strong>
+                                    <strong><?= ($llamada['fuente']??'')==='OPERACION' ? 'Transferencia sin respuesta' : ($esInterna ? 'Llamada interna' : (($llamada['tipo_llamada'] ?? '') === 'SALIENTE' ? 'Llamada saliente' : 'Llamada entrante')) ?></strong>
                                     <span>
                                         <?= $esInterna
                                             ? 'Ext. ' . $esc($numero) . ' → ' . $esc($bandejaEntrantes['extension'] ?? '')
-                                            : 'Origen: ' . $esc($numero) ?>
+                                            : (($llamada['tipo_llamada'] ?? '') === 'SALIENTE' ? 'Destino: ' : 'Origen: ') . $esc($numero) ?>
                                     </span>
                                     <?php if (!empty($llamada['transferida_desde'])): ?>
                                         <span><?= ($llamada['fuente']??'')==='OPERACION'?'Intento de transferencia desde extensión':'Transferida desde extensión' ?> <?= $esc($llamada['transferida_desde']) ?></span>
@@ -238,7 +243,15 @@ $duracionEntrante = static function ($segundos) {
                                         <span class="linkage-call-result-badge is-no-contact">Pendiente de resultado</span>
                                     <?php endif; ?>
                             <?php // El reproductor y el registro son acciones independientes. ?>
-                            <?php if (!$esInterna && !$vinculada && $finalizada && !empty($llamada['contestada'])): ?>
+                            <?php
+                            // Una saliente sin respuesta también necesita clasificación.
+                            // Nunca habilitar resultados sobre PBX todavía activa, ni
+                            // convertir una entrante perdida en conversación atendida.
+                            $puedeRegistrar = !$esInterna && !$vinculada && $finalizada &&
+                                (!empty($llamada['contestada']) ||
+                                 (($llamada['tipo_llamada'] ?? '') === 'SALIENTE'));
+                            ?>
+                            <?php if ($puedeRegistrar): ?>
                                 <span class="linkage-incoming-register-inline">
                                     <button type="button" class="linkage-incoming-open"
                                         data-call-id="<?= $esc($idRegistroResultado) ?>"
@@ -410,8 +423,8 @@ $duracionEntrante = static function ($segundos) {
         <?php else: ?>
             <div class="linkage-incoming-empty-panel">
                 <span class="linkage-incoming-empty-icon"><i class="bi bi-telephone-inbound" aria-hidden="true"></i></span>
-                <h3>Aún no hay llamadas recibidas</h3>
-                <p>Cuando tu extensión reciba una llamada, aparecerá aquí para consultar su estado y registrar el resultado.</p>
+                <h3>Aún no hay llamadas para registrar</h3>
+                <p>Las llamadas entrantes transferidas y las salientes de tu extensión aparecerán aquí cuando exista su registro telefónico.</p>
                 <span>Se muestran las llamadas de los últimos 30 días.</span>
             </div>
         <?php endif; ?>

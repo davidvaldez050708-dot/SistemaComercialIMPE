@@ -1,18 +1,25 @@
-import base64,gzip,json,pathlib,subprocess,sys,tempfile
+import base64,gzip,hashlib,json,pathlib,subprocess,sys,tempfile
 R=pathlib.Path(__file__).resolve().parents[1]
 spec=json.loads((R/'tools/analista_registro_obligatorio_release.json').read_text())
 for row in spec['files']:
- assert gzip.decompress(base64.b64decode(row['variants'][0]['target'])) == (R/row['path']).read_bytes().replace(b'\r\n',b'\n'), 'Paquete desactualizado: '+row['path']
+ archived=gzip.decompress(base64.b64decode(row['variants'][0]['target']))
+ if row['path']=='public/javascript/seguimiento_llamada_registro_obligatorio.js':
+  # Este publicador archivado conserva el corte #202. La UI actual se valida en
+  # publicacion_analista_salientes.py; no reescribir un paquete ya distribuido.
+  assert hashlib.sha256(archived).hexdigest()=='6b06c267afd6843dc6eb7d313f08c1a9460c0e0df270a91309be11915be3086f','Corte archivado alterado'
+ else:
+  assert archived == (R/row['path']).read_bytes().replace(b'\r\n',b'\n'), 'Paquete desactualizado: '+row['path']
 for variant in [0,1]:
  with tempfile.TemporaryDirectory(prefix='impe-verificacion-vigente-') as folder:
   d=pathlib.Path(folder);site=d/'site';site.mkdir();(site/'index.php').write_text('<?php // fixture');backups=d/'backup'
+  normalized=d/'release.json';normalized.write_bytes((R/'tools/analista_registro_obligatorio_release.json').read_bytes().replace(b'\r\n',b'\n'))
   originals={};targets={}
   for row in spec['files']:
    v=row['variants'][min(variant,len(row['variants'])-1)];p=site/row['path'];p.parent.mkdir(parents=True,exist_ok=True)
    originals[row['path']]=gzip.decompress(base64.b64decode(v['base']));targets[row['path']]=gzip.decompress(base64.b64decode(v['target']));p.write_bytes(originals[row['path']])
   def snapshot():return {p.relative_to(site).as_posix():p.read_bytes() for p in site.rglob('*') if p.is_file()}
   def run(*args,**kw):
-   r=subprocess.run([sys.executable,str(R/'tools/publicar_analista_registro_obligatorio.py'),'--site',str(site),'--backup-root',str(backups)]+list(args),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+   r=subprocess.run([sys.executable,str(R/'tools/publicar_analista_registro_obligatorio.py'),'--site',str(site),'--backup-root',str(backups),'--manifest',str(normalized)]+list(args),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
    assert (r.returncode==0)==kw.get('ok',True),r.stdout+r.stderr
   before=snapshot();run('--check');assert snapshot()==before and not backups.exists()
   js=site/'public/javascript/seguimiento_llamada_registro_obligatorio.js';js.write_bytes(js.read_bytes()+b'// personalizacion');altered=snapshot();run('--apply',ok=False);assert snapshot()==altered
