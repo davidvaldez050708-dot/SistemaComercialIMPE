@@ -1028,7 +1028,9 @@
                                     .interaccion_id ||
                                 0
                             ),
-                        provider: 'ZADARMA'
+                        provider: 'ZADARMA',
+                        callToken: token,
+                        pbxCallId: String(metadata.pbx_call_id || '')
                     };
 
                     document.dispatchEvent(
