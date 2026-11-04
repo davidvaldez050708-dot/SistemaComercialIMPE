@@ -6,7 +6,7 @@ const css=read(dir+'/bootstrap.min.css'),bs=read(dir+'/bootstrap.bundle.min.js')
 const formHtml='<!doctype html><meta charset="utf-8"><style>'+css+'</style>'+view+
  '<a id="otherModule" href="/other">Otro módulo</a><script>'+bs+'</script><script>window.IMPE_CURRENT_USER_ID=1;</script><script>'+read('public/javascript/telefonia_atencion.js')+'</script><script>'+read('public/javascript/seguimiento_entrantes_analista.js')+'</script>';
 const journal=read('public/javascript/telefonia_analista_historial_pasivo.js');
-const html='<!doctype html><meta charset="utf-8"><style>'+css+'</style><iframe id="impeCrmFrame" src="/empty" style="width:1300px;height:1000px"></iframe><script>'+bs+'</script><script>'+`
+const html='<!doctype html><meta charset="utf-8"><style>'+css+'\n'+read('public/css/telefonia_persistente.css')+'</style><iframe id="impeCrmFrame" src="/empty" style="width:1300px;height:1000px"></iframe><script>'+bs+'</script><script>'+`
 window.state=null;window.formOpen=false;window.commands=[];
 window.IMPE_PHONE_SHELL_CONFIG={userId:1,analystIncomingResults:true,incomingResultsUrl:'http://salientes.test/index.php?controller=telefonia&action=misLlamadas&vista=recibidas'};
 window.IMPE_TELEPHONY_NOTIFY=()=>{};
@@ -31,6 +31,7 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
   return r.fulfill({contentType:'text/html',body:u.pathname==='/empty'?'Inicio':u.searchParams.has('saliente_ref')?formHtml.replaceAll('out-fixture-001',u.searchParams.get('saliente_ref')):u.searchParams.get('action')==='detalle'?'Expediente guardado':html});
  });
  await page.goto('http://salientes.test/');
+ assert.equal(await page.locator('[data-analyst-outgoing-pending]').isVisible(),false,'El botón oculto no bloquea contenido con el CSS real del teléfono');
  const active={userId:1,updatedAt:Date.now(),active:true,phase:'in-progress',direction:'outgoing',context:{type:'DIALER'},callToken:'manual-prueba-001',destination:'+525551234567',requestedAt:1793793600,afterEventId:500,pbxCallId:'out-fixture-001'};
  await page.evaluate(s=>publish(s),active);
  assert.equal(await page.evaluate(()=>IMPE_ANALYST_OUTGOING_RESULT.hasPending()),false);

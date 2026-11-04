@@ -67,5 +67,6 @@ jobs:
           export BOOTSTRAP_DIR=tmp/bootstrap
           node tests/analista_salientes_formulario_browser.cjs
           node tests/telefonia_atencion_browser.cjs
+          node tests/telefonia_devoluciones_integracion_browser.cjs
           node tests/analista_registro_obligatorio_browser.cjs
           node tests/verificacion_datos_vigentes_browser.cjs

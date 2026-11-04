@@ -647,7 +647,7 @@
     button.type = 'button'; button.className = 'persistent-phone-action is-primary';
     button.textContent = 'Registrar resultado pendiente'; button.hidden = true;
     button.dataset.analystOutgoingPending = '';
-    Object.assign(button.style,{position:'fixed',right:'20px',bottom:'20px',zIndex:'1085',padding:'12px 18px'});
+    Object.assign(button.style,{position:'fixed',right:'20px',bottom:'20px',zIndex:'1085',padding:'12px 18px',display:'none'});
     root.document.body.appendChild(button);
     const persist = () => {
         try {
@@ -656,7 +656,11 @@
         } catch (_) {}
     };
     const active = () => Boolean(root.IMPE_TELEPHONY_SHELL?.getCallState()?.active);
-    const draw = () => { button.hidden = !pending || active() || busy || root.IMPE_TELEPHONY_SHELL?.isResultFormOpen(); };
+    const draw = () => {
+        button.hidden = !pending || active() || busy || root.IMPE_TELEPHONY_SHELL?.isResultFormOpen();
+        // Los estilos de acciones usan display:flex y pueden prevalecer sobre [hidden].
+        button.style.setProperty('display',button.hidden?'none':'inline-flex','important');
+    };
     const complete = ref => {
         if (!pending || pending.ref !== ref) return false;
         const token = pending.token;
