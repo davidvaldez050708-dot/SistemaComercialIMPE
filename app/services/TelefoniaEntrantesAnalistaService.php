@@ -250,6 +250,48 @@ class TelefoniaEntrantesAnalistaService
                     $this->eventos->buscarCallIdGrabacion($id) !== '',
             ];
         }
+        // Las salientes del auricular también deben aparecer en la bandeja
+        // operativa. Sólo incorporar un NOTIFY_OUT_START firmado de esta
+        // extensión y posterior a su asignación; nunca buscar por teléfono.
+        $stmtSalientes = $this->db->prepare(
+            "SELECT pbx_call_id, MIN(received_at) AS fecha
+             FROM telefonia_zadarma_eventos
+             WHERE internal = ? AND evento = 'NOTIFY_OUT_START'
+               AND received_at >= ? AND pbx_call_id <> ''
+             GROUP BY pbx_call_id ORDER BY fecha DESC LIMIT 75"
+        );
+        $stmtSalientes->bind_param('ss', $extension, $desde);
+        $stmtSalientes->execute();
+        $salientesRecientes = $stmtSalientes->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtSalientes->close();
+        $idsExistentes = array_fill_keys(array_column($llamadas, 'pbx_call_id'), true);
+        foreach ($salientesRecientes as $salida) {
+            $id = (string)$salida['pbx_call_id'];
+            if (isset($idsExistentes[$id])) continue;
+            $call = TelefoniaSalienteAnalistaEstado::desdeEventos(
+                $this->eventos->obtenerPorPbxCallId($id), $extension, $id,
+                strtotime($desde) ?: 0
+            );
+            if (!$call || ($call['tipo_llamada'] ?? '') !== 'SALIENTE') continue;
+            $registro = $clasificaciones[$id] ?? [];
+            $estado = (string)($registro['estado'] ?? 'PENDIENTE');
+            $finalizada = in_array((string)($call['estado'] ?? ''), ['ended','transferred'], true);
+            $llamadas[] = [
+                'pbx_call_id'=>$id, 'numero'=>(string)$call['caller_id'],
+                'transferida_desde'=>'', 'fuente'=>'PBX', 'tipo_llamada'=>'SALIENTE',
+                'fecha'=>(string)$salida['fecha'],
+                'duracion'=>self::segundosAtendidos($call),
+                'estado_pbx'=>$finalizada || in_array($estado, ['SIN_IDENTIFICAR','VINCULADA'], true)
+                    ? 'ended' : (string)($call['estado'] ?? 'ringing'),
+                'contestada'=>!empty($call['contestada']),
+                'pbx_conversacion_confirmada'=>!empty($call['contestada']) && $finalizada,
+                'clasificacion'=>$estado,
+                'seguimiento_id'=>(int)($registro['seguimiento_id'] ?? 0),
+                'interaccion_id'=>(int)($registro['interaccion_id'] ?? 0),
+                'grabacion_pbx_reportada'=>false
+            ];
+            $idsExistentes[$id] = true;
+        }
         // Dos fuentes distintas: PBX firmada y observación de WebRTC local.
         // La segunda siempre se identifica como NO verificada por PBX.
         $sesiones = $clasificadorInterno->listar($usuarioId);
