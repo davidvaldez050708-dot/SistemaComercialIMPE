@@ -25,9 +25,9 @@ with tempfile.TemporaryDirectory(prefix='impe-analista-overlay-test-') as d:
             if row['path']=='app/views/telefonia/shell.php':
                 marker=b'public/javascript/telefonia_analista_historial_pasivo.js?v='
                 assert old.count(marker)==1
-                start=old.rfind(b'\\n',0,old.index(marker))+1
-                old=(old[:start]+b'    <!-- BLOQUE PERSONALIZADO DE HOSTINGER -->\\n'+old[start:])
-            path.write_bytes(old+b'\\n/* PERSONALIZACION LOCAL INTACTA */\\n')
+                start=old.rfind(b'\n',0,old.index(marker))+1
+                old=(old[:start]+b'    <!-- BLOQUE PERSONALIZADO DE HOSTINGER -->\n'+old[start:])
+            path.write_bytes(old+b'\n/* PERSONALIZACION LOCAL INTACTA */\n')
             originals[row['path']]=path.read_bytes()
         else:
             originals[row['path']]=None
