@@ -49,9 +49,12 @@ def safe(root,name):
         pos=pos.parent
     return path
 
-def apply_hunks(raw,item):
+def apply_hunks(raw,item,skip_indices=None):
     out=raw
+    skip_indices=skip_indices or set()
     for idx,h in enumerate(item['changes']):
+        if idx in skip_indices:
+            continue
         before=h['before'].encode('utf-8')
         after=h['after'].encode('utf-8')
         if b'\r\n' in out:
@@ -93,6 +96,42 @@ def is_existing_hostinger_docx(raw):
     return True
 
 
+# Huella del controlador real compartida en la comprobación de Hostinger.
+# El método YA usa true durante la primera preparación de plantilla.
+# Conservar exactamente su código y comentarios, sin volver a cambiarlo.
+HOSTINGER_OFICIOS_CONTROLLER_SHA256='ada57c90ea7b0a9c08d519bae8f2f23e28129c1cbb9ca08b5c6c8d09c7e7305e'
+
+def controller_has_prepared_flag(raw,item):
+    if raw is None:
+        return False
+    original=(sha(raw)==HOSTINGER_OFICIOS_CONTROLLER_SHA256)
+    # Para admitir --check tras --apply, exigir que las seis modificaciones
+    # restantes YA estén íntegramente presentes; cualquier otra deriva falla.
+    already=all(raw.count(h['after'].encode('utf-8'))==1
+                for i,h in enumerate(item['changes']) if i!=2)
+    if not original and not already:
+        return False
+    start_marker=b'$documento = (new OficioDocxPdfService())->generarDocx('
+    if raw.count(start_marker)!=1:
+        raise RuntimeError('CONFLICTO: llamada de preparacion DOCX duplicada o ausente.')
+    pos=raw.index(start_marker)
+    end=raw.find(b');',pos)
+    if end<pos or end-pos>420:
+        raise RuntimeError('CONFLICTO: estructura de generacion DOCX inesperada.')
+    call=raw[pos:end+2].replace(b'\r\n',b'\n')
+    expected=(b"$documento = (new OficioDocxPdfService())->generarDocx(\n"
+              b"                (array)($vista['vista_previa'] ?? []),\n"
+              b"                true // Primera preparaci")
+    if not call.startswith(expected) or b');' not in call:
+        raise RuntimeError('CONFLICTO: TRUE no se usa en la preparacion esperada.')
+    if b"CUSTOM_TEMPLATE_PROCESSED" not in raw[end:min(len(raw),end+1400)]:
+        raise RuntimeError('CONFLICTO: continuidad de guardado de plantilla no verificada.')
+    download=b"$resultado = (new OficioDocxPdfService())->generarDocx((array)$vista['vista_previa']);"
+    if raw.count(download)!=1:
+        raise RuntimeError('CONFLICTO: descarga DOCX no corresponde al flujo comprobado.')
+    return True
+
+
 def verify(site,manifest):
     if manifest.get('schema')!='impe.vinculacion.oficios.modal.documento-final.v1':
         raise RuntimeError('Manifest no reconocido.')
@@ -107,13 +146,23 @@ def verify(site,manifest):
             raise RuntimeError('Falta archivo de sistema: '+row['path'])
         conservar=(row['path']=='app/services/OficioDocxPdfService.php'
                   and is_existing_hostinger_docx(previous))
-        updated=previous if conservar else apply_hunks(previous,row)
+        preparado=(row['path']=='app/controllers/OficioVinculacionController.php'
+                   and controller_has_prepared_flag(previous,row))
+        updated=(previous if conservar else
+                 apply_hunks(previous,row,{2} if preparado else None))
         if git_blob(previous)==row['beforeBlob'] and git_blob(updated)!=row['afterBlob']:
             raise RuntimeError('INTEGRIDAD: salida inesperada en '+row['path'])
         results.append({'name':row['path'],'path':path,'before':previous,'after':updated,
                         'mode':path.stat().st_mode & 0o777})
-        print(('COMPATIBLE PERSONALIZADO (SIN MODIFICAR): ' if conservar else
-               ('YA INSTALADO: ' if previous==updated else 'COMPATIBLE: '))+row['path'])
+        if conservar:
+            estado='COMPATIBLE PERSONALIZADO (SIN MODIFICAR): '
+        elif previous==updated:
+            estado='YA INSTALADO: '
+        elif preparado:
+            estado='COMPATIBLE (PREPARACION DOCX CONSERVADA): '
+        else:
+            estado='COMPATIBLE: '
+        print(estado+row['path'])
     for row in results:
         suffix=row['path'].suffix
         cmd=(['php','-l'] if suffix=='.php' else
