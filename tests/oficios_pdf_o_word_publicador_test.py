@@ -63,6 +63,29 @@ with tempfile.TemporaryDirectory(prefix='impe-oficios-pdf-word-') as name:
     for path in FILES:
         assert (site/path).read_bytes() == originals[path]
 
+    # Hostinger puede tener lógica propia dentro del convertidor DOCX.
+    # Inyectar sólo guardas PDF/Word, conservando las personalizaciones.
+    word_service = FILES[1]
+    word_marker = b'    public function generarPdf(array $vista)\n    {\n'
+    assert originals[word_service].count(word_marker) == 1
+    local = originals[word_service].replace(
+        word_marker, word_marker + b'        // HOSTINGER PERSONALIZADO: conservar flujo institucional\n', 1
+    )
+    (site/word_service).write_bytes(local)
+    assert 'COMPATIBLE PERSONALIZADO (GUARDAS AISLADAS)' in run('--check')
+    assert (site/word_service).read_bytes() == local
+    assert 'APLICADO' in run('--apply')
+    patched = (site/word_service).read_bytes()
+    assert b'HOSTINGER PERSONALIZADO: conservar flujo institucional' in patched
+    assert patched.count(b'PDF_ORIGINAL') == 1
+    assert patched.count(b'WORD_FINAL_PENDING_PDF') == 1
+    assert 'YA INSTALADO' in run('--apply')
+    folders = [x for x in backup.iterdir() if x.is_dir()]
+    latest = sorted(folders)[-1]
+    assert 'RESTAURADO' in run('--restore', str(latest))
+    assert (site/word_service).read_bytes() == local
+    (site/word_service).write_bytes(originals[word_service])
+
     # Personalización independiente ajena a los fragmentos reemplazados.
     changed = FILES[0]
     (site/changed).write_bytes(originals[changed] + b'\n// custom local trailing comment\n')
