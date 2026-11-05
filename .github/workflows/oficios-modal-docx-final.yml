@@ -11,6 +11,7 @@ on:
       - 'public/css/oficios_selector_compacto.css'
       - 'tests/oficios_*'
       - 'tools/publicar_oficios_*'
+      - 'tools/publicar_fix_oficio_cdmx_fecha.py'
       - '.github/workflows/oficios-modal-docx-final.yml'
   pull_request:
     paths:
@@ -21,6 +22,7 @@ on:
       - 'public/css/oficios_selector_compacto.css'
       - 'tests/oficios_*'
       - 'tools/publicar_oficios_*'
+      - 'tools/publicar_fix_oficio_cdmx_fecha.py'
       - '.github/workflows/oficios-modal-docx-final.yml'
 permissions:
   contents: read
