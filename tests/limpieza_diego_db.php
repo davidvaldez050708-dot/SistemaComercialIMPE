@@ -12,7 +12,7 @@ function fails(callable $f,string $contains):void{try{$f();}catch(Throwable $e){
 try {
  $ddl=[
  'usuarios (id INT PRIMARY KEY,usuario VARCHAR(80),rol_id INT,estado INT)',
- 'telefonia_extensiones (id INT PRIMARY KEY,usuario_id INT,extension VARCHAR(12),activo INT)',
+ 'telefonia_extensiones (id INT PRIMARY KEY,usuario_id INT,extension VARCHAR(12),activo INT,created_at DATETIME,updated_at DATETIME)',
  'seguimientos_vinculacion (id INT PRIMARY KEY,analista_id INT,estado_id INT,clave_origen VARCHAR(100),observaciones TEXT,ultima_interaccion_at DATETIME NULL)',
  'interacciones_vinculacion (id INT PRIMARY KEY,seguimiento_id INT,usuario_id INT,canal VARCHAR(30),fecha_inicio DATETIME,notas TEXT,id_externo VARCHAR(100),FOREIGN KEY(seguimiento_id) REFERENCES seguimientos_vinculacion(id))',
  'seguimientos_vinculacion_post_envio (seguimiento_id INT PRIMARY KEY,convenio_carta_pdf VARCHAR(200),FOREIGN KEY(seguimiento_id) REFERENCES seguimientos_vinculacion(id))',
@@ -35,7 +35,7 @@ try {
  ];
  foreach($ddl as $d)$db->query('CREATE TABLE '.$d.' ENGINE=InnoDB');
  $db->query("INSERT INTO usuarios VALUES(5,'diego.bahena',4,1),(6,'otro',4,1)");
- $db->query("INSERT INTO telefonia_extensiones VALUES(1,5,'101',1),(2,6,'102',1)");
+ $db->query("INSERT INTO telefonia_extensiones VALUES(1,5,'101',1,'2026-09-01','2026-09-01'),(2,6,'102',1,'2026-09-01','2026-09-01')");
  foreach([1351,1353,1354,1356,1357,1358,1359,1360,1361] as $id)$db->query("INSERT INTO seguimientos_vinculacion VALUES($id,5,7,'MANUAL:$id','prueba',NULL)");
  for($i=1;$i<=1303;$i++)$db->query("INSERT INTO seguimientos_vinculacion VALUES($i,5,".($i===1?7:2).",'XLSX:$i','Migrado desde Excel',NULL)");
  $db->query("INSERT INTO seguimientos_vinculacion VALUES(2000,6,7,'MANUAL:otro','otro usuario',NULL)");
@@ -55,7 +55,7 @@ try {
  $db->query('INSERT INTO seguimientos_vinculacion_cambios_datos VALUES(1,1,5,NULL,NULL)');
  $db->query("INSERT INTO recordatorios_vinculacion VALUES(1,1351,5,'2026-10-01',NULL,NULL,NULL,NULL),(2,1,5,'2026-10-01',NULL,NULL,NULL,NULL),(3,2,5,'2099-01-01',NULL,NULL,NULL,NULL),(4,2000,6,'2026-10-01',NULL,NULL,NULL,NULL)");
  $db->query("INSERT INTO observaciones_seguimiento VALUES(3,1351,5,0,NULL)");
- $db->query("INSERT INTO telefonia_zadarma_eventos VALUES(1,'ref1','101','NOTIFY_INTERNAL','2026-10-01 10:00:00'),(2,'ref1','101','NOTIFY_END','2026-10-01 10:01:00'),(3,'ref1','100','NOTIFY_END','2026-10-01 10:02:00'),(4,'ref1','','NOTIFY_RECORD','2026-10-01 10:03:00'),(5,'ref2','102','NOTIFY_END','2026-10-01 10:03:00')");
+ $db->query("INSERT INTO telefonia_zadarma_eventos VALUES(1,'ref1','101','NOTIFY_INTERNAL','2026-10-01 10:00:00'),(2,'ref1','101','NOTIFY_END','2026-10-01 10:01:00'),(3,'ref1','100','NOTIFY_END','2026-10-01 10:02:00'),(4,'ref1','','NOTIFY_RECORD','2026-10-01 10:03:00'),(5,'ref2','102','NOTIFY_END','2026-10-01 10:03:00'),(7,'propietario-anterior','101','NOTIFY_END','2020-01-01 10:00:00')");
  $snapshot=static function()use($db):array{$out=[];foreach($db->query('SHOW TABLES')->fetch_all() as $r)if(!in_array($r[0],['telefonia_crm_exclusiones','telefonia_crm_limpiezas'],true))$out[$r[0]]=rows($db,$r[0]);return $out;};
  $initial=$snapshot();$tool=new LimpiezaPruebasDiego($db);$plan=$tool->plan();ok($snapshot()===$initial,'plan debe ser sólo lectura');
  ok($plan['seguimientos_de_diego_conservados']===1303,'1303 expedientes protegidos');
@@ -69,7 +69,7 @@ try {
  ok((int)$db->query('SELECT COUNT(*) n FROM seguimientos_vinculacion WHERE analista_id=5')->fetch_assoc()['n']===1303,'sólo nueve eliminados');
  ok((int)$db->query("SELECT COUNT(*) n FROM interacciones_vinculacion WHERE usuario_id=5 AND canal='LLAMADA_IP'")->fetch_assoc()['n']===0,'efectivas eliminadas');
  ok(rows($db,'usuarios')===$initial['usuarios']&&rows($db,'telefonia_extensiones')===$initial['telefonia_extensiones'],'configuración intacta');
- ok(count(rows($db,'telefonia_zadarma_eventos'))===3,'tramos 100/102 y grabación compartida intactos');
+ ok(count(rows($db,'telefonia_zadarma_eventos'))===4,'tramos 100/102, propietario anterior y grabación compartida intactos');
  ok(rows($db,'formulario_aliados')[0]['seguimiento_id']===null,'liga preservada y desvinculada');
  ok(rows($db,'formulario_aliado_procedencias')===$initial['formulario_aliado_procedencias'],'prospectos preservados');
  ok(rows($db,'telefonia_notificaciones')===[ $initial['telefonia_notificaciones'][1] ],'avisos de otra cuenta intactos');

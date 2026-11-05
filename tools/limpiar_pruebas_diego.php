@@ -59,6 +59,9 @@ final class LimpiezaPruebasDiego
         if(count($users)!==1||$users[0]['usuario']!=='diego.bahena'||(int)$users[0]['rol_id']!==4)throw new RuntimeException('La identidad/rol de Diego cambió.');
         $assigned=$this->rows('SELECT * FROM telefonia_extensiones WHERE (usuario_id=? AND activo=1) OR (extension=? AND activo=1) ORDER BY id',[self::UID,self::EXT]);
         if(count($assigned)!==1||(int)$assigned[0]['usuario_id']!==self::UID||$assigned[0]['extension']!==self::EXT)throw new RuntimeException('La extensión 101 ya no está asignada exclusivamente a Diego.');
+        $sinceRaw=max((string)($assigned[0]['created_at']??''),(string)($assigned[0]['updated_at']??''));
+        if($sinceRaw==='')throw new RuntimeException('Falta la fecha verificable de asignación de 101.');
+        $since=(new DateTimeImmutable($sinceRaw,new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
         $ids=implode(',',self::TEST_IDS);
         $targets=$this->rows("SELECT * FROM seguimientos_vinculacion WHERE id IN ($ids) ORDER BY id");
         if(count($targets)!==count(self::TEST_IDS))throw new RuntimeException('La lista de nueve seguimientos cambió; se requiere un nuevo inventario.');
@@ -104,7 +107,9 @@ final class LimpiezaPruebasDiego
         if($this->tabla('telefonia_transferencia_contextos_v2'))$add('telefonia_transferencia_contextos_v2',$this->rows('SELECT * FROM telefonia_transferencia_contextos_v2 WHERE (destino_usuario_id=? AND destino_extension=?) OR (origen_usuario_id=? AND origen_extension=?)',[self::UID,self::EXT,self::UID,self::EXT]));
         // Elimina sólo el tramo local 101. Conserva los tramos de Recepción y de otros usuarios,
         // así como los eventos de grabación compartidos y todos los archivos físicos.
-        $events=$this->rows('SELECT * FROM telefonia_zadarma_eventos WHERE internal=? ORDER BY id',[self::EXT]);
+        $events=$this->rows('SELECT * FROM telefonia_zadarma_eventos WHERE internal=? AND received_at>=? ORDER BY id',[self::EXT,$since]);
+        foreach(array_keys($refs) as $ref)foreach($this->rows('SELECT * FROM telefonia_zadarma_eventos WHERE internal=? AND pbx_call_id=BINARY ?',[self::EXT,$ref]) as $row)$events[]=$row;
+        $uniqueEvents=[];foreach($events as $row)$uniqueEvents[$row['id']]=$row;$events=array_values($uniqueEvents);
         $latest=[];foreach($events as $r){$ref=$r['pbx_call_id'];if(in_array($r['evento'],['NOTIFY_OUT_START','NOTIFY_INTERNAL','NOTIFY_ANSWER'],true))$latest[$ref]['start']=max($latest[$ref]['start']??'',$r['received_at']);if(in_array($r['evento'],['NOTIFY_OUT_END','NOTIFY_END'],true))$latest[$ref]['end']=max($latest[$ref]['end']??'',$r['received_at']);}
         $recent=(new DateTimeImmutable($clock['utc'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->modify('-15 minutes')->format('Y-m-d H:i:s');
         foreach($latest as $r)if(($r['start']??'')>=$recent&&($r['end']??'')<($r['start']??''))throw new RuntimeException('Llamada reciente de 101 sin cierre confirmado. Espera antes de limpiar.');
@@ -159,7 +164,7 @@ final class LimpiezaPruebasDiego
         ksort($groups);foreach(array_keys($groups) as $t)$visit($t);
         $blocks=[];ksort($refs);foreach(array_keys($refs) as $ref)$blocks[]=['pbx_call_id'=>$ref,'extension'=>self::EXT];
         $protected=$this->rows("SELECT * FROM seguimientos_vinculacion WHERE id NOT IN ($ids) ORDER BY id");
-        return ['version'=>5101,'corte'=>$cut,'usuarios'=>$users,'asignacion'=>$assigned,'grupos'=>array_merge(array_values($pendingUpdates),array_values($ordered)),'exclusiones'=>$blocks,'seguimientos_protegidos_sha'=>self::digest($protected),'seguimientos_de_diego_conservados'=>count(array_filter($protected,static fn($r)=>(int)$r['analista_id']===self::UID))];
+        return ['version'=>5101,'desde_extension'=>$since,'corte'=>$cut,'usuarios'=>$users,'asignacion'=>$assigned,'grupos'=>array_merge(array_values($pendingUpdates),array_values($ordered)),'exclusiones'=>$blocks,'seguimientos_protegidos_sha'=>self::digest($protected),'seguimientos_de_diego_conservados'=>count(array_filter($protected,static fn($r)=>(int)$r['analista_id']===self::UID))];
     }
     public static function resumen(array $plan): array {
         $counts=[];foreach($plan['grupos'] as $g)$counts[$g['tabla']]=['accion'=>$g['accion'],'filas'=>count($g['filas'])];
@@ -209,7 +214,7 @@ final class LimpiezaPruebasDiego
             $protected=$this->rows('SELECT * FROM seguimientos_vinculacion WHERE id NOT IN ('.implode(',',self::TEST_IDS).') ORDER BY id');
             if(self::digest($protected)!==$plan['seguimientos_protegidos_sha'])throw new RuntimeException('Un expediente protegido cambió; rollback.');
             foreach(['telefonia_analista_entrantes','telefonia_analista_webrtc_sesiones','telefonia_borradores','telefonia_notificaciones','telefonia_verificacion_evidencias'] as $table)if($this->tabla($table)&&$this->rows("SELECT 1 FROM `$table` WHERE usuario_id=? LIMIT 1",[self::UID]))throw new RuntimeException('Apareció actividad nueva de Diego; rollback.');
-            if($this->rows("SELECT 1 FROM interacciones_vinculacion WHERE usuario_id=? AND canal IN ('LLAMADA','LLAMADA_IP') LIMIT 1",[self::UID])||$this->rows('SELECT 1 FROM telefonia_zadarma_eventos WHERE internal=? LIMIT 1',[self::EXT]))throw new RuntimeException('Apareció una llamada nueva; rollback.');
+            if($this->rows("SELECT 1 FROM interacciones_vinculacion WHERE usuario_id=? AND canal IN ('LLAMADA','LLAMADA_IP') LIMIT 1",[self::UID])||$this->rows('SELECT 1 FROM telefonia_zadarma_eventos WHERE internal=? AND received_at>=? LIMIT 1',[self::EXT,$plan['desde_extension']]))throw new RuntimeException('Apareció una llamada nueva; rollback.');
             $s=$this->db->prepare("INSERT INTO telefonia_crm_limpiezas VALUES(?,?,'APLICADA',UTC_TIMESTAMP())");$s->bind_param('ss',$id,$backupSha);$s->execute();$s->close();
             $this->db->commit();
         }catch(Throwable $e){$this->db->rollback();throw $e;}
