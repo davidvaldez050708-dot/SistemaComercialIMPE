@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Actualiza exclusivamente OficioRedmexPdfRenderer.php. --check no escribe."""
+"""Actualiza exclusivamente OficioRedmexPdfRenderer.php: anclas Word left/right. --check no escribe."""
 import argparse
 import datetime
 import hashlib
@@ -14,8 +14,8 @@ import tempfile
 
 PATH = 'app/services/OficioRedmexPdfRenderer.php'
 SERVICE = 'app/services/OficioDocxPdfService.php'
-BASELINE_SHA256 = '9c82890dcc0fd519634ad60f328da86e588f8d1ebd55a4a133cd30e4d376aee3'
-TARGET_BLOB = 'fabab8bcc24b6b6cd1497f105b040ed5720a16a0'
+BASELINE_SHA256 = '623e7b664214ebf4d77b349658c4271bf1d0fb2e422f67dbe50cc6f10ca10f45'
+TARGET_BLOB = '2daf1805f1146e2ce00ef316ec2ab4993b14c84c'
 
 
 def git_blob(data):
