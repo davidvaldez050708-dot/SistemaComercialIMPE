@@ -213,6 +213,89 @@ class OficioPdfService
         ];
     }
 
+    /**
+     * Completa un oficio Word ya adjuntado con su PDF exportado externamente.
+     * Conserva el DOCX, el folio y los permisos. Nunca crea otro oficio.
+     */
+    public function adjuntarPdfTerminado($seguimientoId, $usuarioId, $archivo)
+    {
+        $modelo = new OficioVinculacionModel();
+        $estado = $modelo->obtenerEstadoSeguimiento((int)$seguimientoId, (int)$usuarioId, 'analista');
+        $oficioId = (int)($estado['oficio_id'] ?? 0);
+        $folio = trim((string)($estado['folio'] ?? ''));
+        if (!$estado || !$oficioId || $folio === '') {
+            return $this->error('El Analista responsable debe tener un oficio preparado.', 403);
+        }
+        $stmt = $this->connection->prepare(
+            "SELECT o.archivo_pdf, o.estado_oficio, p.nombre
+             FROM oficios_vinculacion o
+             INNER JOIN plantillas_vinculacion p ON p.id = o.plantilla_oficio_id
+             WHERE o.id = ? LIMIT 1"
+        );
+        $stmt->bind_param('i', $oficioId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?: [];
+        if (strpos((string)($row['nombre'] ?? ''), 'Oficio adjuntado: ') !== 0 ||
+            (string)($row['estado_oficio'] ?? '') !== 'BORRADOR' ||
+            trim((string)($row['archivo_pdf'] ?? '')) !== '') {
+            return $this->error('Este oficio no admite adjuntar un PDF o ya tiene uno registrado.', 409);
+        }
+        if (!is_array($archivo) || (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK ||
+            !preg_match('/\.pdf$/i', (string)($archivo['name'] ?? '')) ||
+            !is_uploaded_file((string)($archivo['tmp_name'] ?? ''))) {
+            return $this->error('Selecciona un PDF válido para este oficio.', 422);
+        }
+        $size = (int)($archivo['size'] ?? 0);
+        $temp = (string)$archivo['tmp_name'];
+        if ($size <= 0 || $size > 20*1024*1024 ||
+            (class_exists('finfo') &&
+            !in_array((new finfo(FILEINFO_MIME_TYPE))->file($temp),
+                ['application/pdf', 'application/octet-stream'], true))) {
+            return $this->error('El PDF debe tener un tamaño máximo de 20 MB.', 422);
+        }
+        $bytes = file_get_contents($temp);
+        if (!is_string($bytes) || strncmp($bytes, '%PDF-', 5) !== 0 ||
+            preg_match('/%%EOF\s*$/D', substr($bytes, -2048)) !== 1 ||
+            preg_match('~/\s*(?:Encrypt|JavaScript|JS|OpenAction|Launch|EmbeddedFile|RichMedia)\b~i', $bytes) === 1) {
+            return $this->error('El PDF no es válido, está cifrado o contiene acciones activas.', 422);
+        }
+
+        $year = date('Y');
+        $folder = $this->storagePath . DIRECTORY_SEPARATOR . $year;
+        if (!is_dir($folder) && !@mkdir($folder, 0775, true) && !is_dir($folder)) {
+            return $this->error('No se pudo preparar el almacenamiento del PDF.', 500);
+        }
+        $filename = $this->nombreArchivoSeguro($folio) . '_adjunto_' . bin2hex(random_bytes(6)) . '.pdf';
+        $path = $folder . DIRECTORY_SEPARATOR . $filename;
+        $relative = 'storage/oficios/' . $year . '/' . $filename;
+        if (file_put_contents($path, $bytes, LOCK_EX) !== strlen($bytes)) {
+            @unlink($path);
+            return $this->error('No se pudo guardar el PDF adjuntado.', 500);
+        }
+        $sql = "UPDATE oficios_vinculacion
+                SET archivo_pdf = ?, estado_oficio = 'GENERADO',
+                    fecha_generacion = NOW(), error_envio = NULL
+                WHERE id = ? AND estado_oficio = 'BORRADOR'
+                  AND (archivo_pdf IS NULL OR archivo_pdf = '')
+                  AND plantilla_oficio_id IN (
+                      SELECT id FROM plantillas_vinculacion
+                      WHERE nombre LIKE 'Oficio adjuntado:%'
+                  )";
+        $update = $this->connection->prepare($sql);
+        $update->bind_param('si', $relative, $oficioId);
+        $ok = $update->execute() && $update->affected_rows === 1;
+        if (!$ok) {
+            @unlink($path);
+            return $this->error('El PDF no se asoció porque el oficio cambió durante la operación.', 409);
+        }
+        return [
+            'ok'=>true,
+            'mensaje'=>'PDF terminado adjuntado al oficio existente.',
+            'folio'=>$folio,
+            'estado_pdf'=>$this->estadoPdfGenerado($seguimientoId, $usuarioId, $oficioId, $folio)
+        ];
+    }
+
     public function obtenerArchivoPdf($seguimientoId, $usuarioId, $modoAcceso)
     {
         $modelo = new OficioVinculacionModel();
