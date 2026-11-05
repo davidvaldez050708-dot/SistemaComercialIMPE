@@ -587,28 +587,25 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
                     <div class="impe-excel-guide" role="note">
                         <i class="bi bi-info-circle" aria-hidden="true"></i>
                         <div class="impe-excel-guide-text">
-                            Utiliza la plantilla oficial Excel V3 con sus 13 campos obligatorios.
+                            Puedes incluir varios estados en el mismo Excel. Cada institución se registrará en el estado de su fila, dentro de los territorios autorizados.
                             No se crearán registros hasta que confirmes la importación.
                         </div>
                     </div>
+                    <details class="impe-excel-help impe-excel-required-fields">
+                        <summary>¿Qué campos debo llenar?</summary>
+                        <p><strong>Obligatorios (B–N):</strong> nombre de institución, tipo de entidad, estado, municipio, actividad/giro, dirección, teléfono, WhatsApp, correo institucional, sitio web, persona de contacto, cargo/área y paso histórico reportado.</p>
+                        <p><strong>Opcionales (A y O–S):</strong> clave de referencia, fecha última gestión, evidencia, próxima acción, fecha próxima acción y observaciones. Usa «00 | Sin historial verificable» si no existe un avance anterior.</p>
+                        <p>Hasta 250 instituciones y 2 MB. No cambies los encabezados. No inventes datos de contacto para completar campos.</p>
+                    </details>
                     <div class="impe-excel-fields">
-                        <div>
-                            <label class="form-label" for="impe_excel_territorio">Territorio de las instituciones *</label>
-                            <select class="form-select" name="estado_id" id="impe_excel_territorio" required>
-                                <option value="">Seleccionar estado</option>
-                                <?php foreach ($territorios as $territorio): ?>
-                                    <option value="<?= (int)$territorio['id'] ?>"><?= $texto($territorio['nombre']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
                         <?php if ($modoSeguimiento!=='analista'): ?>
                         <div>
                             <label class="form-label" for="impe_excel_analista">Analista responsable *</label>
                             <select class="form-select" name="analista_id" id="impe_excel_analista" required
                                     data-impe-excel-analista>
-                                <option value="">Selecciona primero un estado</option>
+                                <option value="">Seleccionar analista</option>
                             </select>
-                            <p class="impe-excel-help">Solo se admiten analistas asignados y autorizados en el territorio.</p>
+                            <p class="impe-excel-help">Sólo se importarán filas de los estados donde este analista esté asignado y tú tengas acceso.</p>
                         </div>
                         <?php endif; ?>
                         <div>
@@ -629,7 +626,7 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
                         <div class="impe-excel-metrics" data-impe-excel-summary></div>
                         <div class="impe-excel-table-wrap" tabindex="0" role="region" aria-label="Filas verificadas del Excel">
                             <table class="table impe-excel-table">
-                                <thead><tr><th>Fila</th><th>Institución</th><th>Revisión</th><th>Detalle</th></tr></thead>
+                                <thead><tr><th>Fila</th><th>Institución</th><th>Estado</th><th>Revisión</th><th>Detalle</th></tr></thead>
                                 <tbody data-impe-excel-rows></tbody>
                             </table>
                         </div>
@@ -649,5 +646,5 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
         </div>
     </div>
 </div>
-<script defer src="<?= BASE_URL ?>public/javascript/seguimiento_importacion_excel.js?v=20261026-ux2"></script>
+<script defer src="<?= BASE_URL ?>public/javascript/seguimiento_importacion_excel.js?v=<?= filemtime(__DIR__.'/../../../public/javascript/seguimiento_importacion_excel.js') ?>"></script>
 <?php endif; ?>

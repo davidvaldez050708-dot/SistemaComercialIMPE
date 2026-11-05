@@ -62,7 +62,7 @@ final class SeguimientoExcelPlantillaService
                 'Captura una institución por fila, sin cambiar el orden ni el nombre de las 19 columnas.',
                 'Obligatorios: B–N (13). Opcionales: A y O–S (6).',
                 'Selecciona tipo, estado y paso desde los desplegables.',
-                'Las instituciones del archivo deben pertenecer al territorio seleccionado en el CRM.',
+                'Puedes incluir varios estados. Cada fila se importará en su estado, dentro de tus territorios y los del analista responsable.',
                 'El municipio debe existir y estar activo dentro del estado indicado.',
                 'Usa teléfonos reales, correo válido y dirección web institucional.',
                 'El paso 00 significa: sin historial verificable. La institución empezará como NUEVO.',
