@@ -2,6 +2,7 @@ name: Ventas - formulario y cierre saliente reconciliado
 on:
   pull_request:
     paths:
+      - 'app/controllers/TelefoniaController.php'
       - 'app/services/ZadarmaCallLookupService.php'
       - 'app/services/TelefoniaVentasCierreApiVerificado.php'
       - 'app/services/TelefoniaResultadoVentasService.php'
@@ -33,6 +34,7 @@ jobs:
           node-version: '22'
       - name: Sintaxis estricta
         run: |
+          php -l app/controllers/TelefoniaController.php
           php -l app/services/ZadarmaCallLookupService.php
           php -l app/services/TelefoniaVentasCierreApiVerificado.php
           php -l app/services/TelefoniaResultadoVentasService.php
