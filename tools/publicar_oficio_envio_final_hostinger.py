@@ -97,6 +97,13 @@ def make_patch(original, base, target):
     if perform(base) != target:
         raise RuntimeError('INTEGRIDAD: cambios de GitHub no coinciden con 4 parches selectivos')
 
+    # Ya está instalada con personalizaciones propias: todos los bloques
+    # tienen que coincidir con el destino aprobado; no introducir duplicados.
+    if all(fragment in original for fragment in [
+        sent + guard, helper + helper_end, new_sql, new_join,
+    ]):
+        return original
+
     if any(token in original for token in [
         helper_start, b'plantilla_oficio.nombre AS plantilla_oficio_nombre',
         b'if ($this->esOficioTerminadoAdjuntado($seguimiento))',
