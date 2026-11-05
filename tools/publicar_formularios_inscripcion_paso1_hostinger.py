@@ -55,6 +55,75 @@ def private(site, backups):
         raise RuntimeError('Respaldo debe estar fuera de public_html')
 
 
+def merge_controller(actual, old, new, name):
+    """Conciliar solo el require, la acción Inscripción y la validación POST.
+
+    Ninguna personalización externa a esas tres secciones se sobrescribe.
+    Cambios dentro de ellas bloquean la publicación por seguridad.
+    """
+    crlf = b'\r\n' in actual
+    current = actual.replace(b'\r\n', b'\n')
+
+    require = b"require_once __DIR__ . '/../models/FormularioRegistroModel.php';"
+    required = require + b"\nrequire_once __DIR__ . '/../services/FormularioInscripcionProgramas.php';"
+    start = b'    public function inscripcion()\n'
+    finish = b'    private function perfilesInteres()\n'
+    save = b'    public function guardarInscripcion()\n'
+    valid_start = b'        $datos = $this->normalizarRegistro($_POST);\n'
+    valid_finish = b'        if (!empty($errores)) {\n'
+
+    def between(data, initial, final, label):
+        if data.count(initial) != 1:
+            raise RuntimeError('CONFLICTO en ' + name + ': ' + label)
+        rest = data.split(initial, 1)[1]
+        if rest.count(final) != 1:
+            raise RuntimeError('CONFLICTO en ' + name + ': final de ' + label)
+        return initial + rest.split(final, 1)[0]
+
+    original_action = between(old, start, finish, 'accion Inscripción')
+    updated_action = between(new, start, finish, 'accion Inscripción')
+
+    def validation(data):
+        if data.count(save) != 1:
+            raise RuntimeError('CONFLICTO en ' + name + ': guardarInscripcion')
+        prefix, tail = data.split(save, 1)
+        if valid_start not in tail or valid_finish not in tail:
+            raise RuntimeError('CONFLICTO en ' + name + ': validacion POST')
+        return prefix, tail, between(tail, valid_start, valid_finish, 'validacion POST')
+
+    _, old_tail, original_check = validation(old)
+    _, new_tail, updated_check = validation(new)
+
+    def inject(data):
+        if data.count(required) == 1:
+            result = data
+        elif data.count(require) == 1:
+            result = data.replace(require, required, 1)
+        else:
+            raise RuntimeError('CONFLICTO en ' + name + ': require original')
+
+        if result.count(updated_action) == 1:
+            pass
+        elif result.count(original_action) == 1:
+            result = result.replace(original_action, updated_action, 1)
+        else:
+            raise RuntimeError('CONFLICTO en ' + name + ': accion personalizada')
+
+        before, tail, actual_check = validation(result)
+        if actual_check == updated_check:
+            return result
+        if actual_check != original_check:
+            raise RuntimeError('CONFLICTO en ' + name + ': validacion POST personalizada')
+        return before + save + tail.replace(original_check, updated_check, 1)
+
+    if inject(old) != new:
+        raise RuntimeError('INTEGRIDAD: el destino modifica secciones inesperadas')
+    patched = inject(current)
+    print(('YA INSTALADO PERSONALIZADO: ' if patched == current
+           else 'COMPATIBLE CONTROLADOR PERSONALIZADO: ') + name)
+    return patched.replace(b'\n', b'\r\n') if crlf else patched
+
+
 def merge_existing(actual, old, new, name):
     crlf = b'\r\n' in actual
     clean = actual.replace(b'\r\n', b'\n')
@@ -136,7 +205,9 @@ def check(site, base, target):
                 if not origin.is_file():
                     raise RuntimeError('Archivo Hostinger ausente: ' + name)
                 old_data = origin.read_bytes()
-                patched = merge_existing(old_data, previous.read_bytes(), newer, name)
+                patched = (merge_controller(old_data, previous.read_bytes(), newer, name)
+                           if name == 'app/controllers/FormularioController.php'
+                           else merge_existing(old_data, previous.read_bytes(), newer, name))
                 modes[name] = stat.S_IMODE(origin.stat().st_mode)
             if name.endswith('.php'):
                 lint_path = Path(tmp) / ('check_%d.php' % index)
