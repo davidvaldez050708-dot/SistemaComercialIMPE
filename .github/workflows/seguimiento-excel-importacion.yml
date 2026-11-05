@@ -69,6 +69,7 @@ jobs:
         run: python3 tests/publicacion_seguimiento_excel_multiestado_test.py
   formulario:
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.56.1-noble
     strategy:
       fail-fast: false
       matrix:
@@ -86,7 +87,6 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --prefix /tmp/seguimiento-excel-deps playwright@1.56.1 bootstrap@5.3.8 bootstrap-icons@1.11.3
-      - run: /tmp/seguimiento-excel-deps/node_modules/.bin/playwright install --with-deps ${{ matrix.browser }}
       - env:
           NODE_PATH: /tmp/seguimiento-excel-deps/node_modules
           SALES_BROWSER: ${{ matrix.browser }}
