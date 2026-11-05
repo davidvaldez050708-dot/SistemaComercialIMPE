@@ -331,11 +331,14 @@ TEXTO;
         ];
 
         try {
+            // MySQL registra created_at en UTC; mostrar fecha local de emisión.
+            $zonaMexico = new DateTimeZone('America/Mexico_City');
             $fechaObjeto = trim((string)$fecha) !== ''
-                ? new DateTime((string)$fecha)
-                : new DateTime();
+                ? new DateTime((string)$fecha, new DateTimeZone('UTC'))
+                : new DateTime('now', $zonaMexico);
+            $fechaObjeto->setTimezone($zonaMexico);
         } catch (Exception $error) {
-            $fechaObjeto = new DateTime();
+            $fechaObjeto = new DateTime('now', new DateTimeZone('America/Mexico_City'));
         }
 
         return sprintf(
