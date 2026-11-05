@@ -271,3 +271,8 @@
     font-size: 11px;
   }
 }
+/* Ayuda de llenado dentro del modal, con el mismo ritmo que los campos. */
+.impe-excel-modal .impe-excel-required-fields{margin:0 0 20px;line-height:1.6}
+.impe-excel-modal .impe-excel-required-fields summary{cursor:pointer;color:#304c7e;font-weight:700}
+.impe-excel-modal .impe-excel-required-fields p{margin:10px 0 0}
+.impe-excel-modal .impe-excel-required-fields summary:focus-visible{outline:2px solid #3349b8;outline-offset:4px;border-radius:4px}

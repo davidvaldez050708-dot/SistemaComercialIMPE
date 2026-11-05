@@ -11,7 +11,6 @@
   const summary=modal.querySelector('[data-impe-excel-summary]');
   const rows=modal.querySelector('[data-impe-excel-rows]');
   const preview=modal.querySelector('[data-impe-excel-preview]');
-  const stateSelect=form.querySelector('[name="estado_id"]');
   const analystSelect=form.querySelector('[data-impe-excel-analista]');
   const fileInput=form.querySelector('[name="archivo"]');
   const fileName=modal.querySelector('[data-impe-excel-file-name]');
@@ -45,7 +44,6 @@
     confirm.disabled=value||!token;
     fileInput.disabled=value;
     if(filePicker)filePicker.classList.toggle('is-busy',value);
-    stateSelect.disabled=value;
     if(analystSelect)analystSelect.disabled=value;
   };
   async function request(where,options={}) {
@@ -66,14 +64,8 @@
     const generation=++loadingAnalysts;
     analystSelect.replaceChildren(new Option('Consultando analistas…',''));
     analystSelect.disabled=true;
-    if(!stateSelect.value){
-      analystSelect.replaceChildren(new Option('Selecciona primero un estado',''));
-      analystSelect.disabled=false;
-      return;
-    }
     const api=new URL(url.href);
     api.searchParams.set('action','analistasImportacionExcel');
-    api.searchParams.set('estado_id',stateSelect.value);
     try{
       const response=await request(api);
       if(generation!==loadingAnalysts)return;
@@ -81,7 +73,7 @@
       (response.analistas||[]).forEach(item=>{
         analystSelect.add(new Option(String(item.nombre||'Analista'),String(item.id)));
       });
-      if((response.analistas||[]).length===0)show('No hay analistas autorizados en este territorio.',true);
+      if((response.analistas||[]).length===0)show('No hay analistas autorizados en tus territorios.',true);
     }catch(error){
       if(generation===loadingAnalysts){
         analystSelect.replaceChildren(new Option('No fue posible cargar analistas',''));
@@ -91,13 +83,12 @@
       if(generation===loadingAnalysts)analystSelect.disabled=busy;
     }
   }
-  for(const element of [stateSelect,fileInput,analystSelect]){
+  for(const element of [fileInput,analystSelect]){
     if(!element)continue;
     element.addEventListener('change',()=>{
       hideReview();
       status.hidden=true;
       if(element===fileInput)syncFileName();
-      if(element===stateSelect)loadAnalysts();
     });
   }
   const addCell=(parent,label)=>{
@@ -134,7 +125,6 @@
   analyze.addEventListener('click',async()=>{
     if(busy)return;
     hideReview();
-    if(!stateSelect.value){show('Selecciona el territorio de la plantilla.',true);return;}
     if(analystSelect&&!analystSelect.value){show('Selecciona un analista responsable.',true);return;}
     if(!fileInput.files?.length){show('Selecciona el archivo Excel V3.',true);return;}
     if(fileInput.files[0].size>2097152){show('El archivo no debe superar 2 MB.',true);return;}
@@ -156,6 +146,7 @@
         tr.dataset.estado=item.estado;
         addCell(tr,item.fila);
         addCell(tr,item.institucion);
+        addCell(tr,item.territorio||'—');
         const st=document.createElement('td');
         const badge=document.createElement('span');
         badge.className='impe-excel-badge';
@@ -201,11 +192,12 @@
     }
     finally{setBusy(false);}
   });
+  if(analystSelect)loadAnalysts();
   form.addEventListener('submit',event=>{event.preventDefault();analyze.click();});
   modal.addEventListener('hidden.bs.modal',()=>{
     if(busy)return;
     hideReview();form.reset();syncFileName();status.hidden=true;
-    if(analystSelect)analystSelect.replaceChildren(new Option('Selecciona primero un estado',''));
+    if(analystSelect)loadAnalysts();
     analyze.disabled=false;
   });
 })();
