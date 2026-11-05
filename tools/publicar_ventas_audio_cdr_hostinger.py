@@ -128,7 +128,7 @@ def reconcile_custom(rel, value):
     # sobre el archivo original, no versiones arbitrarias ni ediciones posteriores.
     reverted=value
     for a,b in reversed(replacements):
-        if reverted.count(b)!=1 or reverted.count(a):
+        if reverted.count(b)!=1:
             raise RuntimeError("VARIANTE DESCONOCIDA (sin cambios): "+rel)
         reverted=reverted.replace(b,a,1)
     if not same_version(reverted,original):
