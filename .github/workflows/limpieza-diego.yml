@@ -1,0 +1,33 @@
+name: Limpieza privada de pruebas Diego
+on:
+  pull_request:
+    paths:
+      - 'tools/limpiar_pruebas_diego.php'
+      - 'tests/limpieza_diego_db.php'
+      - '.github/workflows/limpieza-diego.yml'
+jobs:
+  respaldo-y-restauracion:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1'
+        ports:
+          - 33339:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - run: php -l tools/limpiar_pruebas_diego.php
+      - run: php tests/limpieza_diego_db.php
+        env:
+          IMPE_DIEGO_TEST_DB: impe_diego_test_1234abcd
+          IMPE_DIEGO_TEST_PORT: '33339'
