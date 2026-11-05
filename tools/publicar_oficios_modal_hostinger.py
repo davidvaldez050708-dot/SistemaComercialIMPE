@@ -67,6 +67,27 @@ def apply_hunks(raw,item):
         out=out.replace(before,after,1)
     return out
 
+# Servicio DOCX personalizado comprobado mediante lectura de Hostinger.
+# El parámetro $prepararPlantilla indica:
+# TRUE = rellenar una plantilla nueva; FALSE = usar generacion_* ya procesada.
+# No sustituirlo por un parámetro de significado contrario.
+HOSTINGER_DOCX_SHA256='ff3720e6905ad92ddd4515f6e8a793d68a4cfb9a29476ba2862abd75c2241440'
+
+def is_existing_hostinger_docx(raw):
+    if raw is None or sha(raw)!=HOSTINGER_DOCX_SHA256:
+        return False
+    required=[
+        b'public function generarDocx(array $vista, $prepararPlantilla = false)',
+        b'$procesada = !$prepararPlantilla && preg_match(',
+        b'$rellenado = $procesada ?',
+        b"str_replace('\\\\', '/', (string)($vista['archivo_plantilla'] ?? ''))",
+        b'$this->rellenarConTemplateProcessor($rutaDocx, $vista)'
+    ]
+    if any(raw.count(token)!=1 for token in required):
+        raise RuntimeError('CONFLICTO: comportamiento personalizado DOCX diferente del verificado.')
+    return True
+
+
 def verify(site,manifest):
     if manifest.get('schema')!='impe.vinculacion.oficios.modal.documento-final.v1':
         raise RuntimeError('Manifest no reconocido.')
@@ -79,12 +100,15 @@ def verify(site,manifest):
         previous=read(path)
         if previous is None:
             raise RuntimeError('Falta archivo de sistema: '+row['path'])
-        updated=apply_hunks(previous,row)
+        conservar=(row['path']=='app/services/OficioDocxPdfService.php'
+                  and is_existing_hostinger_docx(previous))
+        updated=previous if conservar else apply_hunks(previous,row)
         if git_blob(previous)==row['beforeBlob'] and git_blob(updated)!=row['afterBlob']:
             raise RuntimeError('INTEGRIDAD: salida inesperada en '+row['path'])
         results.append({'name':row['path'],'path':path,'before':previous,'after':updated,
                         'mode':path.stat().st_mode & 0o777})
-        print(('YA INSTALADO: ' if previous==updated else 'COMPATIBLE: ')+row['path'])
+        print(('COMPATIBLE PERSONALIZADO (SIN MODIFICAR): ' if conservar else
+               ('YA INSTALADO: ' if previous==updated else 'COMPATIBLE: '))+row['path'])
     for row in results:
         suffix=row['path'].suffix
         cmd=(['php','-l'] if suffix=='.php' else
