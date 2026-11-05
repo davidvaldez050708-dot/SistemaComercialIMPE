@@ -51,6 +51,22 @@ class OficioVinculacionController
             $esAnalistaResponsable &&
             tienePermiso('oficios.generar') &&
             !empty($estado['cumple_requisitos_generacion']);
+        $estado['puede_adjuntar_pdf_final'] = false;
+        if ($esAnalistaResponsable && tienePermiso('oficios.generar') &&
+            !empty($estado['oficio_id']) && !empty($estado['folio'])) {
+            $preview = (new OficioPreviewService())->obtenerVistaPrevia(
+                $seguimientoId, $usuarioId, 'analista'
+            );
+            if (($preview['ok'] ?? false) &&
+                strpos((string)($preview['vista_previa']['plantilla'] ?? ''), 'Oficio adjuntado: ') === 0) {
+                $pdfState = (new OficioPdfService())->obtenerEstadoPdf(
+                    $seguimientoId, $usuarioId, 'analista'
+                );
+                $estado['puede_adjuntar_pdf_final'] = ($pdfState['ok'] ?? false) &&
+                    !($pdfState['estado_pdf']['pdf_generado'] ?? false) &&
+                    (string)($pdfState['estado_pdf']['estado_oficio'] ?? '') === 'BORRADOR';
+            }
+        }
 
         $this->responderJson([
             'ok' => true,
@@ -603,6 +619,36 @@ class OficioVinculacionController
         );
 
         $this->responderJson($resultado);
+    }
+
+    /**
+     * PDF exportado por el usuario para un Word previamente adjuntado.
+     * Aplica los mismos permisos del botón Generar PDF.
+     */
+    public function adjuntarPdfTerminado()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('oficios.generar');
+        if (!tienePermiso('seguimientos_vinculacion.operar_propios')) {
+            $this->responderJson(['ok'=>false,
+                'mensaje'=>'Solo el Analista responsable puede adjuntar el PDF.'], 403);
+        }
+        $id = (int)($_POST['seguimiento_id'] ?? 0);
+        if ($id <= 0) {
+            $this->responderJson(['ok'=>false,'mensaje'=>'Seguimiento no válido.'], 422);
+        }
+        $service = new OficioPdfService();
+        $result = $service->adjuntarPdfTerminado($id,
+            (int)($_SESSION['usuario_id'] ?? 0), $_FILES['archivo_pdf'] ?? null);
+        if (!($result['ok'] ?? false)) {
+            $this->responderJson([
+                'ok'=>false, 'mensaje'=>(string)($result['mensaje'] ?? 'No se pudo adjuntar PDF.')
+            ], (int)($result['codigo_http'] ?? 500));
+        }
+        $result['estado_pdf'] = $this->completarPermisosPdf(
+            $result['estado_pdf'] ?? [], (int)($_SESSION['usuario_id'] ?? 0)
+        );
+        $this->responderJson($result);
     }
 
     public function verPdf()
