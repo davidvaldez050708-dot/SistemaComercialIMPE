@@ -105,6 +105,11 @@ def controller_has_prepared_flag(raw,item):
     if raw is None:
         return False
     original=(sha(raw)==HOSTINGER_OFICIOS_CONTROLLER_SHA256)
+    # Distinguir del controlador de GitHub, que también puede tener las
+    # seis inserciones instaladas pero usa una llamada nueva, sin este
+    # comentario Hostinger. Sólo la variante real admite omitir el hunk 3.
+    if not original and b'true // Primera preparaci' not in raw:
+        return False
     # Para admitir --check tras --apply, exigir que las seis modificaciones
     # restantes YA estén íntegramente presentes; cualquier otra deriva falla.
     already=all(raw.count(h['after'].encode('utf-8'))==1
