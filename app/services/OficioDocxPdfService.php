@@ -217,6 +217,10 @@ class OficioDocxPdfService
     private function construirReemplazos(array $vista)
     {
         $reemplazos = [
+            // Compatibilidad de la plantilla general REDMEX: origen fijo legado.
+            // Se sustituye la línea completa ANTES de procesar {{FECHA}}.
+            // El archivo DOCX original y las plantillas personales no se modifican.
+            'Cuernavaca, Morelos, a {{FECHA}}' => trim((string)($vista['lugar_fecha'] ?? $vista['fecha'] ?? '')),
             '{{FOLIO}}' => trim((string)($vista['folio'] ?? '')),
             '{{FECHA}}' => trim((string)($vista['fecha'] ?? '')),
             '{{DESTINATARIO_NOMBRE}}' => $this->mayusculas($vista['destinatario_nombre'] ?? ''),
