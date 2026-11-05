@@ -12,6 +12,9 @@ on:
       - 'tests/seguimiento_importador_excel_browser.cjs'
       - 'tests/fixtures/seguimiento_excel_importador.php'
       - 'tests/publicacion_seguimiento_excel_territorio_test.py'
+      - 'tests/*seguimiento_excel*'
+      - 'tests/fixtures/seguimiento_plantilla_v3_anterior.xlsx'
+      - 'tools/*seguimiento_excel_multiestado*'
       - 'tools/publicar_seguimiento_excel_territorio.py'
       - 'tools/seguimiento_excel_territorio_release.json'
       - '.github/workflows/seguimiento-excel-importacion.yml'
@@ -24,8 +27,21 @@ permissions:
 jobs:
   comprobaciones:
     runs-on: ubuntu-latest
+    env:
+      IMPE_TEST_MYSQL_PORT: 33329
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+        ports: ['33329:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -44,8 +60,13 @@ jobs:
           node --check public/javascript/seguimiento_importacion_excel.js
       - name: Generar plantilla y probar pasos declarados
         run: php tests/seguimiento_importador_excel_smoke.php
+      - name: Verificar alcance y persistencia multiestado en BD aislada
+        run: |
+          php tests/seguimiento_excel_alcance_test.php
+          php tests/seguimiento_excel_multiestado_db.php
+          python3 tests/seguimiento_excel_plantilla_http_test.py
       - name: Verificar publicación selectiva y restauración
-        run: python3 tests/publicacion_seguimiento_excel_territorio_test.py
+        run: python3 tests/publicacion_seguimiento_excel_multiestado_test.py
   formulario:
     runs-on: ubuntu-latest
     strategy:
@@ -54,6 +75,8 @@ jobs:
         browser: [chromium, webkit]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -67,4 +90,11 @@ jobs:
       - env:
           NODE_PATH: /tmp/seguimiento-excel-deps/node_modules
           SALES_BROWSER: ${{ matrix.browser }}
+          SALES_SCREENSHOT_DIR: tmp/excel-multiestado
         run: node tests/seguimiento_importador_excel_browser.cjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: seguimiento-excel-${{ matrix.browser }}
+          path: tmp/excel-multiestado/

@@ -302,10 +302,10 @@ final class SeguimientoExcelImportService
                 }else{
                     $seen[$key]=$num;$state=$this->coincidencias($r);
                 }
-                $result[]=['fila'=>$num,'institucion'=>$r['nombre'],'estado'=>$state['estado'],
+                $result[]=['fila'=>$num,'institucion'=>$r['nombre'],'territorio'=>trim((string)$line['celdas'][3]),'estado'=>$state['estado'],
                     'mensaje'=>$state['mensaje'],'id'=>$state['id'],'registro'=>$r];
             }catch(DomainException $e){
-                $result[]=['fila'=>$num,'institucion'=>mb_substr((string)($line['celdas'][1]??''),0,130),
+                $result[]=['fila'=>$num,'territorio'=>mb_substr((string)($line['celdas'][3]??''),0,120),'institucion'=>mb_substr((string)($line['celdas'][1]??''),0,130),
                     'estado'=>'invalida','mensaje'=>$e->getMessage(),'id'=>null,'registro'=>null];
             }
         }

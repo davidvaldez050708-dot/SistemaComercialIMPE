@@ -80,31 +80,35 @@ class SeguimientoVinculacionController
         }
     }
 
-    /** Analistas autorizados del territorio para la importación. */
+    /** Analistas elegibles en los territorios accesibles, sin fijar un estado al archivo. */
     public function analistasImportacionExcel()
     {
         $this->validarPermisoJson('seguimientos_vinculacion.crear');
         header('Cache-Control: no-store, private');
-        $usuario=$this->obtenerUsuarioActualId();
-        $modo=$this->resolverModoSeguimiento();
-        $estadoId=filter_var($_GET['estado_id']??null,FILTER_VALIDATE_INT,
-            ['options'=>['min_range'=>1]]);
-        if(!$estadoId)$this->responderJson(['ok'=>false,'mensaje'=>'Selecciona un estado válido.'],422);
-        $modelo=new SeguimientoVinculacionModel();
-        $estado=$this->obtenerEstadoPorModo($modelo,$usuario,$estadoId,$modo);
-        if(!$estado)$this->responderJson(['ok'=>false,'mensaje'=>'No tienes acceso al territorio.'],403);
-        if($modo==='analista'){
-            $this->responderJson(['ok'=>true,'analistas'=>[['id'=>$usuario,'nombre'=>'Mi seguimiento']]]);
+        $usuario=$this->obtenerUsuarioActualId();$modo=$this->resolverModoSeguimiento();
+        if($modo==='analista')$this->responderJson(['ok'=>true,'analistas'=>[['id'=>$usuario,'nombre'=>'Mi seguimiento']]]);
+        $modelo=new SeguimientoVinculacionModel();$listado=[];
+        foreach($this->obtenerTerritoriosPorModo($modelo,$usuario,$modo) as $estado){
+            foreach($this->obtenerAnalistasFiltro($modelo,$usuario,(int)$estado['id'],$modo) as $analista){
+                $id=(int)($analista['id']??0);if($id<=0)continue;
+                $listado[$id]=['id'=>$id,'nombre'=>trim((string)($analista['nombre']??'').' '.(string)($analista['apellidos']??''))];
+            }
         }
-        $analistas=$this->obtenerAnalistasFiltro($modelo,$usuario,$estadoId,$modo);
-        $listado=[];
-        foreach($analistas as $analista){
-            $id=(int)($analista['id']??0);
-            if($id<=0)continue;
-            $nombre=trim((string)($analista['nombre']??'').' '.(string)($analista['apellidos']??''));
-            $listado[]=['id'=>$id,'nombre'=>$nombre];
-        }
-        $this->responderJson(['ok'=>true,'analistas'=>$listado]);
+        uasort($listado,static fn($a,$b)=>strcasecmp($a['nombre'],$b['nombre']));
+        $this->responderJson(['ok'=>true,'analistas'=>array_values($listado)]);
+    }
+
+    /** Intersección del alcance del importador y la asignación vigente del responsable. */
+    private function territoriosImportacionExcel($modelo,int $usuario,string $modo,int $analista): array
+    {
+        if($analista<=0||($modo==='analista'&&$analista!==$usuario))return [];
+        return array_values(array_filter($this->obtenerTerritoriosPorModo($modelo,$usuario,$modo),
+            static function($estado)use($modelo,$usuario,$modo,$analista){
+                $id=(int)$estado['id'];
+                if($modo==='administrador')return $modelo->analistaValidoParaAdministradorEstado($id,$analista);
+                if($modo==='supervisor')return $modelo->analistaValidoParaCuentaClaveEstado($usuario,$id,$analista);
+                return true;
+            }));
     }
 
     /**
@@ -132,20 +136,17 @@ class SeguimientoVinculacionController
             }
             if($accion==='analizar') {
                 unset($_SESSION['impe_excel_seguimiento_preview']);
-                $estadoId=filter_var($_POST['estado_id']??null,FILTER_VALIDATE_INT,
-                    ['options'=>['min_range'=>1]]);
-                if(!$estadoId)throw new DomainException('Selecciona un territorio asignado.',422);
-                $estado=$this->obtenerEstadoPorModo($modelo,$usuarioId,$estadoId,$modo);
-                if(!$estado)throw new DomainException('No tienes acceso a ese territorio.',403);
-                $analista=$this->resolverAnalistaResponsable($modelo,$usuarioId,$estadoId,$modo);
-                if($analista<=0)throw new DomainException('Selecciona un analista autorizado para ese estado.',422);
+                $analista=$modo==='analista'?$usuarioId:(int)($_POST['analista_id']??0);
+                if($analista<=0)throw new DomainException('Selecciona un analista responsable.',422);
+                $scope=$this->territoriosImportacionExcel($modelo,$usuarioId,$modo,$analista);
+                if(!$scope)throw new DomainException('El responsable no tiene territorios autorizados para esta importación.',403);
                 $db=(new Database())->connect(false);
                 $service=new SeguimientoExcelImportService($db);
                 $rows=$service->leerXlsx($_FILES['archivo']??[]);
-                $result=$service->previsualizar($rows,[$estado],$analista,$usuarioId);
+                $result=$service->previsualizar($rows,$scope,$analista,$usuarioId);
                 $token=bin2hex(random_bytes(20));
                 $_SESSION['impe_excel_seguimiento_preview']=[
-                    'token'=>$token,'usuario'=>$usuarioId,'estado'=>$estadoId,
+                    'version'=>2,'token'=>$token,'usuario'=>$usuarioId,
                     'analista'=>$analista,'expires'=>time()+1200,'filas'=>$result['filas']
                 ];
                 $public=array_map(static function($row){
@@ -156,34 +157,22 @@ class SeguimientoVinculacionController
                     'token'=>$token,'resumen'=>$result['resumen'],'filas'=>$public]);
             }
             $preview=$_SESSION['impe_excel_seguimiento_preview']??null;
-            if(!is_array($preview) ||
+            if(!is_array($preview) || ($preview['version']??0)!==2 ||
                !hash_equals((string)($preview['token']??''),(string)($_POST['token']??'')) ||
                ($preview['expires']??0)<time() ||
                (int)($preview['usuario']??0)!==$usuarioId) {
                 throw new DomainException('La revisión caducó. Analiza el Excel nuevamente.',409);
             }
-            $estadoId=(int)$preview['estado'];
             $analista=(int)$preview['analista'];
-            $estado=$this->obtenerEstadoPorModo($modelo,$usuarioId,$estadoId,$modo);
-            if(!$estado)throw new DomainException('Tu acceso al territorio cambió. No se importó ningún registro.',403);
-            if($modo==='analista' && $analista!==$usuarioId) {
-                throw new DomainException('El responsable ya no coincide con el usuario activo.',403);
-            }
-            if($modo==='administrador' &&
-                !$modelo->analistaValidoParaAdministradorEstado($estadoId,$analista)) {
-                throw new DomainException('El analista ya no está autorizado en ese estado.',403);
-            }
-            if($modo==='supervisor' &&
-                !$modelo->analistaValidoParaCuentaClaveEstado($usuarioId,$estadoId,$analista)) {
-                throw new DomainException('El analista ya no está autorizado en ese estado.',403);
-            }
+            $scope=$this->territoriosImportacionExcel($modelo,$usuarioId,$modo,$analista);
+            if(!$scope)throw new DomainException('El acceso territorial del responsable cambió. Analiza el Excel nuevamente.',403);
             $nuevas=count(array_filter($preview['filas'],static fn($fila)=>$fila['estado']==='nueva'));
             if($nuevas===0)throw new DomainException('No hay instituciones nuevas para incorporar.',422);
             // El token se consume antes de escribir: doble clic no puede repetir el lote.
             unset($_SESSION['impe_excel_seguimiento_preview']);
             $db=(new Database())->connect(false);
             $service=new SeguimientoExcelImportService($db);
-            $resultado=$service->confirmar($preview['filas'],[$estado],$analista,$usuarioId);
+            $resultado=$service->confirmar($preview['filas'],$scope,$analista,$usuarioId);
             $this->responderJson(['ok'=>true,'mensaje'=>'Importación confirmada.',
                 'resultado'=>$resultado]);
         }catch(DomainException $error) {
