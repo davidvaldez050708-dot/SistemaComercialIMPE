@@ -1,0 +1,19 @@
+name: Ventas - diagnóstico de audio sin OUT_END
+on:
+  pull_request:
+    paths:
+      - tools/diagnosticar_grabacion_ventas_sin_end_hostinger.py
+      - tests/diagnostico_grabacion_ventas_sin_end_test.py
+      - .github/workflows/ventas-audio-diagnostico.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis y diagnóstico ZIP sin producción
+        run: |
+          python3 -m py_compile tools/diagnosticar_grabacion_ventas_sin_end_hostinger.py
+          python3 tests/diagnostico_grabacion_ventas_sin_end_test.py

@@ -242,6 +242,23 @@
    if(audio.disabled)return;audio.disabled=true;
    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
    try{
+    // Saliente propia con resultado guardado y sin OUT_END: el endpoint
+    // independiente valida PBX+SIP+hora+call_id exactos antes de escuchar.
+    // No se cambia la reproducción de transferencias ni el endpoint histórico.
+    if(audio.dataset.salesCdrPending==='1'){
+     const url=new URL('prueba_telefonia/api/grabacion_ventas_cdr.php',document.baseURI);
+     url.searchParams.set('pbx_call_id',audio.dataset.salesAudio);
+     url.searchParams.set('extension',audio.dataset.extension);
+     url.searchParams.set('verificar','1');
+     const r=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal});
+     const j=await r.json().catch(()=>({}));
+     if(!r.ok||!j.ok||!j.disponible)throw Error(j.mensaje||'Zadarma todavía no permite escuchar la grabación de esta llamada.');
+     if(!window.IMPE_TELEPHONY_SEGMENTS?.create?.(slot,url.href,1,j.segmentos_info||[]))
+      throw Error('No fue posible preparar el reproductor.');
+     slot.dataset.loaded='1';
+     slot.hidden=false;audio.setAttribute('aria-expanded','true');
+     return;
+    }
     const transferred=audio.dataset.salesTransferida==='1';
     // El aviso de grabación no depende de un END PBX que no llegó. Para
     // transferencias el endpoint valida la operación y enumera NOTIFY_RECORD.
