@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/FormularioRegistroModel.php';
+require_once __DIR__ . '/../services/FormularioInscripcionProgramas.php';
 
 class FormularioController
 {
@@ -218,6 +219,17 @@ class FormularioController
         $datos = $this->normalizarRegistro($_POST);
         $errores = $this->validarRegistro($datos);
 
+        // La selección del programa debe coincidir con el perfil recibido.
+        // El formulario heredado sin slug conserva compatibilidad.
+        $slugInscripcion = trim((string)($_POST['programa_slug'] ?? ''));
+        if ($slugInscripcion !== '') {
+            $programa = FormularioInscripcionProgramas::porSlug($slugInscripcion);
+            if ($programa === null ||
+                $datos['perfil_interes'] !== $programa['nombre']) {
+                $errores[] = 'El programa de inscripción seleccionado no es válido.';
+            }
+        }
+
         if (!empty($errores)) {
             $this->responderJson([
                 'ok' => false,
@@ -269,19 +281,46 @@ class FormularioController
     {
         $this->validarAccesoMarketing();
 
-        $modelo = new FormularioRegistroModel();
-        $estados = $modelo->obtenerEstadosActivos();
-        $perfilesInteres = $this->perfilesInteres();
-        $urlEnlaceInscripcion = '';
+        $slug = trim((string)($_GET['programa'] ?? ''));
+        $programasInscripcion = FormularioInscripcionProgramas::todos();
+        $programaInscripcion = $slug !== ''
+            ? FormularioInscripcionProgramas::porSlug($slug)
+            : null;
 
-        $tituloPagina = 'Formulario de Inscripción';
-        $subtituloPagina = 'Gestiona la vista destinada a la inscripción.';
+        if ($slug !== '' && $programaInscripcion === null) {
+            http_response_code(404);
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'Programa de inscripción no disponible.';
+            return;
+        }
+
+        $tituloPagina = $programaInscripcion
+            ? 'Inscripción · ' . $programaInscripcion['nombre']
+            : 'Formularios de Inscripción';
+        $subtituloPagina = $programaInscripcion
+            ? 'Captura interna del programa seleccionado.'
+            : 'Elige el programa de inscripción que deseas gestionar.';
         $opcionActiva = 'formularios';
+
+        // El catálogo se muestra sin consultar ni alterar la base de datos.
+        // La captura ya existente sigue disponible mediante ?programa=slug.
+        if ($programaInscripcion !== null) {
+            $modelo = new FormularioRegistroModel();
+            $estados = $modelo->obtenerEstadosActivos();
+            $perfilesInteres = [$programaInscripcion['nombre']];
+            $urlEnlaceInscripcion = '';
+        }
 
         require_once __DIR__ . '/../views/layout/dashboard_head.php';
         require_once __DIR__ . '/../views/layout/sidebar.php';
         require_once __DIR__ . '/../views/layout/topbar.php';
-        require_once __DIR__ . '/../views/formularios/inscripcion.php';
+
+        if ($programaInscripcion !== null) {
+            require_once __DIR__ . '/../views/formularios/inscripcion.php';
+        } else {
+            require_once __DIR__ . '/../views/formularios/inscripcion_programas.php';
+        }
+
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
