@@ -8,6 +8,8 @@ on:
       - 'app/views/formularios/inscripcion.php'
       - 'public/css/formularios.css'
       - 'tests/formularios_inscripcion_programas_paso1_smoke.php'
+      - 'tests/formularios_inscripcion_paso1_publicador_test.py'
+      - 'tools/publicar_formularios_inscripcion_paso1_hostinger.py'
       - '.github/workflows/formularios-inscripcion-programas-paso1.yml'
   pull_request:
     paths:
@@ -17,6 +19,8 @@ on:
       - 'app/views/formularios/inscripcion.php'
       - 'public/css/formularios.css'
       - 'tests/formularios_inscripcion_programas_paso1_smoke.php'
+      - 'tests/formularios_inscripcion_paso1_publicador_test.py'
+      - 'tools/publicar_formularios_inscripcion_paso1_hostinger.py'
       - '.github/workflows/formularios-inscripcion-programas-paso1.yml'
 
 permissions:
@@ -40,3 +44,7 @@ jobs:
           php -l tests/formularios_inscripcion_programas_paso1_smoke.php
       - name: Probar programas y formulario existente sin base de datos
         run: php tests/formularios_inscripcion_programas_paso1_smoke.php
+      - name: Comprobar publicador y restauración en réplica
+        run: |
+          python3 -m py_compile tools/publicar_formularios_inscripcion_paso1_hostinger.py
+          python3 tests/formularios_inscripcion_paso1_publicador_test.py
