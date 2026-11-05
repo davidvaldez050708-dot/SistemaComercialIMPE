@@ -41,7 +41,7 @@ $fechaVenta=static function(string $value): string {
      <time class="linkage-call-history-date" datetime="<?= $esc(str_replace(' ','T',$call['fecha'])) ?>"><i class="bi bi-calendar3" aria-hidden="true"></i> <?= $esc($fechaVenta($call['fecha'])) ?></time>
     </div>
     <div class="linkage-call-result-group" aria-label="Estado y resultado">
-     <span class="linkage-call-result-badge <?= $ref!==''&&$call['conectada']?'is-contact':'' ?>"><?= $esc($ref===''?'Sin llamada confirmada':($result&&!$call['finalizada']?'Resultado registrado · Confirmación de la llamada pendiente':(!$call['finalizada']&&TelefoniaVentasLlamadasService::resultadoCapturable($call)?'Atención realizada · Resultado pendiente · Confirmación de la llamada pendiente':$call['direccion'].' · '.$call['estado_pbx']))) ?></span>
+     <span class="linkage-call-result-badge <?= $ref!==''&&$call['conectada']?'is-contact':'' ?>"><?= $esc($ref===''?'Sin llamada confirmada':($result&&!$call['finalizada']?'Resultado registrado · Cierre PBX pendiente':(!$call['finalizada']&&$call['direccion']==='Saliente'?'Saliente · '.$call['estado_pbx']:$call['direccion'].' · '.$call['estado_pbx']))) ?></span>
      <?php foreach(TelefoniaResultadoVentasCatalogo::etiquetasRegistro($result) as $etiquetaResultado): ?><span class="linkage-call-result-badge is-result"><?= $esc($etiquetaResultado) ?></span><?php endforeach; ?>
     </div>
     <div class="linkage-call-history-footer">

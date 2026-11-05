@@ -164,7 +164,7 @@ final class TelefoniaVentasLlamadasService
         if(empty($call['pbx_call_id']))return array_replace($out,['estado'=>'sin_llamada','texto'=>'Sin llamada confirmada','detalle'=>'Es un intento sin referencia confirmada de la centralita; no hay audio verificable.']);
         if(empty($call['finalizada']))return array_replace($out,!empty($call['registro'])
             ?['estado'=>'por_conciliar','texto'=>'Grabación por verificar','detalle'=>'El resultado humano ya está guardado. Falta evidencia del cierre y de los segmentos de Zadarma.']
-            :['estado'=>'en_curso','texto'=>'Grabación al finalizar','detalle'=>'Espera a que la centralita confirme el cierre de la llamada.']);
+            :['estado'=>'pendiente_cierre','texto'=>'Grabación por conciliar','detalle'=>'Falta confirmar la finalización PBX antes de comprobar la grabación.']);
         $code=(string)($call['registro']['resultado']??'');
         if(empty($call['conectada'])||($code!==''&&!TelefoniaResultadoVentasService::esConversacion($code)))return array_replace($out,['estado'=>'no_aplica','texto'=>'Sin grabación de conversación','detalle'=>'Las llamadas sin conversación, buzones y locuciones no habilitan reproducción.']);
         if($code==='')return array_replace($out,['estado'=>'pendiente_resultado','texto'=>'Pendiente de resultado','detalle'=>'Registra lo ocurrido para distinguir una conversación de un buzón o una locución.']);
@@ -185,7 +185,10 @@ final class TelefoniaVentasLlamadasService
         // una locución de buzón puede terminar técnicamente como cancelada.
         // Entrantes transferidas conservan sus reglas de captura anticipada.
         if (($call['direccion'] ?? '') === 'Saliente') {
-            return !empty($call['finalizada']);
+            // El historial ofrece registro aun con OUT_END tardío. El servicio
+            // guardar() verifica la estadística final propia; esta bandera NO
+            // declara un cierre PBX ni autoriza un resultado sin prueba.
+            return true;
         }
         return !empty($call['finalizada']) || (
             !empty($call['conectada']) && !empty($call['solicitud_id'])
@@ -231,7 +234,7 @@ final class TelefoniaVentasLlamadasService
         $allowed=$transfer['atendida']&&$transfer['finalizada']&&$transfer['origen']!==''?[$transfer['origen']]:[];
         $audio=TelefoniaPbxSegmentosService::deEventos($events,$ext,$allowed);
         return ['finalizada'=>$end,'conectada'=>$answer,'segundos'=>$end?$duration:null,
-            'estado_pbx'=>!$end?($answer?'En conversación':'Sin cierre confirmado'):
+            'estado_pbx'=>!$end?($answer?'Respuesta confirmada · Cierre pendiente':'Cierre pendiente'):
                 ($answer?'Conectada':(['busy'=>'Ocupada','no answer'=>'Sin respuesta','no_answer'=>'Sin respuesta','cancel'=>'Cancelada','failed'=>'Fallida'][$disposition]??'Sin respuesta')),
             'audio_extensiones'=>$allowed]+$audio;
     }

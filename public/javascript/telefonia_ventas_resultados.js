@@ -152,10 +152,21 @@
    form.querySelector('[data-sales-form-state]').textContent='Identificando la llamada de tu extensión · Ext. '+ownExt;
    feedback.textContent='Puedes completar la captura. Guardar se habilitará al confirmar el registro de esta llamada.';
    resultRules();show();storeDraft();
-   if(!ref)return; // El padre sólo podrá vincular la PBX de esta misma sesión.
+   if(!ref){
+    // Captura inmediata de un colgado sin referencia PBX: sin spinner perpetuo
+    // y sin inventar un identificador ni habilitar un guardado ajeno.
+    submit.innerHTML=saveLabel;
+    feedback.textContent='La llamada terminó en el teléfono, pero su referencia PBX aún no está vinculada. Puedes completar la captura; se habilitará Guardar resultado cuando se identifique esta misma sesión.';
+    form.querySelector('[data-sales-form-state]').textContent='Vinculación telefónica pendiente · Ext. '+ownExt;
+    return;
+   }
    const url=new URL(root.dataset.detailUrl,location.href);url.searchParams.set('pbx_call_id',ref);if(ownExt)url.searchParams.set('extension',ownExt);
    const data=await request(url);if(version!==cycle||disposed)return;
-   if(!data.llamada){schedule(ref,ownExt,attempt,version);return;}
+   if(!data.llamada){
+    submit.innerHTML=saveLabel;
+    feedback.textContent='Identidad PBX pendiente de recuperar. La captura se conserva y se vuelve a consultar automáticamente.';
+    schedule(ref,ownExt,attempt,version);return;
+   }
    if(data.llamada.pbx_call_id!==ref||String(data.llamada.extension)!==String(ownExt))throw Error('La confirmación no pertenece a esta llamada.');
    call=data.llamada;
    let localCapture=null,captureNotice='';
@@ -190,16 +201,17 @@
     submit.hidden=true;feedback.textContent='Resultado guardado anteriormente.';
     if(openContext.automatic){closeReason='saved';tellParent({type:'IMPE_SALES_RESULT_SAVED',ref,extension:ownExt});bootstrap.Modal.getInstance(modal)?.hide();shell()?.endCallResult(token);return;}
    }else{
-    // Una saliente contestada sin OUT_END sólo habilita la VERIFICACIÓN.
-    // El servidor exige confirmación final exacta mediante estadísticas PBX.
-    const verificarApi=Boolean(!call.finalizada&&call.conectada&&call.direccion==='Saliente'&&
+    // El resultado humano es capturable al obtener la referencia propia.
+    // Sin OUT_END el servidor verifica automáticamente estadísticas al guardar.
+    // El botón sigue llamándose Guardar resultado: nunca se fabrica un evento PBX.
+    const cierrePendiente=Boolean(!call.finalizada&&call.direccion==='Saliente'&&
       /^out_[A-Za-z0-9_-]{6,100}$/.test(String(call.pbx_call_id||'')));
-    const capturable=Boolean(call.finalizada||verificarApi||
+    const capturable=Boolean(call.finalizada||cierrePendiente||
       (call.conectada&&call.solicitud_id&&call.direccion==='Entrante'&&call.origen_extension&&String(call.origen_extension)!==String(call.extension)));
     waiting=!capturable;submit.disabled=!capturable;
-    submit.innerHTML=verificarApi?'Verificar cierre y guardar':capturable?saveLabel:'Confirmando cierre…';
+    submit.innerHTML=capturable?saveLabel:'Confirmando cierre…';
     feedback.textContent=[
-      verificarApi?'Falta confirmar el cierre. Al guardar, el servidor consultará Zadarma para esta misma llamada. Si no se confirma, la captura se conserva sin guardarse.':
+      cierrePendiente?'Puedes registrar lo ocurrido. Al guardar se validará automáticamente el cierre de esta llamada con Zadarma. Si aún no hay evidencia, tu captura permanece disponible.':
       capturable?'':'Puedes completar los datos. Estamos esperando la confirmación de cierre de esta misma llamada.',
       captureNotice
     ].filter(Boolean).join(' ');
@@ -208,6 +220,7 @@
    resultRules();modal.dispatchEvent(new CustomEvent('impe:sales-result-loaded',{detail:{ref,extension:ownExt,saved:Boolean(call.registro)}}));
   }catch(error){
    if(version!==cycle||disposed)return;
+   submit.innerHTML=saveLabel;
    feedback.textContent=error.message+' La captura se conserva; no se ha guardado el resultado.';
    if(!error.status||error.status===409)schedule(ref,ext,Math.max(attempt,1),version);
   }finally{if(version===cycle)opening=false;}

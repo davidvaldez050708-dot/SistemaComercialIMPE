@@ -192,7 +192,7 @@ class TelefoniaResultadoVentasService
         if($pbxPendiente&&!$this->transferenciaAtendidaPropia($usuarioId,$call)){
             // Sólo ante guardado explícito, después de atribuir la llamada por
             // usuario, extensión y PBX; jamás inventa eventos NOTIFY_OUT_END.
-            if(($call['direccion']??'')==='Saliente' && !empty($call['conectada'])){
+            if(($call['direccion']??'')==='Saliente'){
                 try{
                     require_once __DIR__.'/TelefoniaVentasCierreApiVerificado.php';
                     $cierreApiVerificado=TelefoniaVentasCierreApiVerificado::verificar($call);

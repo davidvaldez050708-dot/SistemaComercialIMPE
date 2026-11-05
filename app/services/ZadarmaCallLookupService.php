@@ -95,6 +95,29 @@ class ZadarmaCallLookupService
         return null;
     }
 
+    /**
+     * Estadísticas finales PBX para una ventana pequeña, sin buscar por teléfono.
+     * El consumidor debe contrastar referencia, extensión y fecha exactas.
+     */
+    public function estadisticasPbx(string $desde, string $hasta): array
+    {
+        $inicio = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $desde, $this->timezone);
+        $fin = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $hasta, $this->timezone);
+        if (!$inicio || !$fin || $inicio->format('Y-m-d H:i:s') !== $desde ||
+            $fin->format('Y-m-d H:i:s') !== $hasta ||
+            $fin->getTimestamp() <= $inicio->getTimestamp() ||
+            $fin->getTimestamp() - $inicio->getTimestamp() > 18000) {
+            throw new InvalidArgumentException('Ventana de estadísticas PBX inválida.');
+        }
+        $filas = $this->estadisticas($inicio->getTimestamp(), $fin->getTimestamp());
+        // La consulta del SDK limita a 1000 filas y no expone paginación.
+        // No decidir unicidad de un PBX con una respuesta posiblemente truncada.
+        if (count($filas) >= 1000) {
+            throw new RuntimeException('Estadísticas PBX truncadas: cierre no verificable.');
+        }
+        return $filas;
+    }
+
     private function estadisticas(int $desdeUnix, int $hastaUnix): array
     {
         $inicio = (new DateTimeImmutable('@' . $desdeUnix))

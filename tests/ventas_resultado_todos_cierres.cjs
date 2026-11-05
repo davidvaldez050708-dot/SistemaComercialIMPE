@@ -39,6 +39,25 @@ const live=(ref='out-call-151',token='sdk-session-151-one')=>({active:true,direc
   assert.equal(child.shown,false);assert(parent.dismissed.some(x=>x.ref===call.pbx_call_id));
   parent.setState({...state,active:false,phase:'finished'});await flush();assert.equal(child.shown,false,'No solicitar de nuevo después de guardar');
  }
+ // Regresión 05/11: la saliente de 09:45 ya no queda bloqueada en
+ // «Confirmando cierre» sólo porque faltó NOTIFY_OUT_END.
+ for(const [estado,conectada] of [['answered',true],['no answer',false]]){
+  const parent=observerHarness(),ref='out_PENDIENTE_'+(conectada?'ANSWER':'NOANSWER');
+  const pendiente={...row(estado,ref),finalizada:false,conectada,
+   estado_pbx:conectada?'Respuesta confirmada · Cierre pendiente':'Cierre pendiente'};
+  parent.server.set(ref,pendiente);
+  const child=await resultHarness(pendiente,parent,null,null,{autostart:false,realModalEvents:true});
+  const state=live(ref,'sdk-falta-out-end-'+estado);
+  parent.setState(state);parent.setState({...state,active:false,phase:'finished'});await flush();
+  assert.equal(child.shown,true,'Form debe abrir al colgar sin OUT_END: '+estado);
+  assert.equal(child.nodes['[data-sales-submit]'].disabled,false,'Guardar habilitado con PBX exacta: '+estado);
+  assert(!String(child.nodes['[data-sales-submit]'].innerHTML).includes('Verificar cierre'),'Sin nuevo botón');
+  child.el.resultado.value=conectada?'CONVERSACION_PERSONA':'BUZON_VOZ';
+  child.el.observacion.value='Resultado humano; PBX se concilia en servidor';
+  await child.form.fire('submit');await flush();
+  assert.equal(child.shown,false,'Registro confirmado y cerrado: '+estado);
+  assert(parent.dismissed.some(x=>x.ref===ref),'Retirar sólo referencia exacta: '+estado);
+ }
  // Sin PBX todavía: captura inmediata, guardado bloqueado y vínculo tardío de la misma sesión.
  const parent=observerHarness(),call=row('cancel','out-late-151');parent.server.set(call.pbx_call_id,call);
  const child=await resultHarness(call,parent,null,null,{autostart:false,realModalEvents:true});
