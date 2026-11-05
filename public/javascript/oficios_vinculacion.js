@@ -484,6 +484,9 @@
                         '<i class="bi bi-file-earmark-text"></i>' +
                         ' Generar oficio' +
                     '</button>' +
+                    '<button type="button" class="btn btn-system-save linkage-work-small-button d-none" data-work-upload-oficio-pdf>' +
+                        '<i class="bi bi-file-earmark-pdf"></i> Adjuntar PDF del oficio' +
+                    '</button>' +
                 '</div>';
 
             referencia.insertAdjacentElement('afterend', seccion);
@@ -521,6 +524,9 @@
                 '<button type="button" class="btn btn-system-save" data-detail-generate-oficio>' +
                     '<i class="bi bi-file-earmark-text me-2"></i>' +
                     'Generar oficio' +
+                '</button>' +
+                '<button type="button" class="btn btn-system-save d-none" data-detail-upload-oficio-pdf>' +
+                    '<i class="bi bi-file-earmark-pdf me-2"></i>Adjuntar PDF del oficio' +
                 '</button>';
             tituloOficios.insertAdjacentElement('afterend', bloque);
 
@@ -631,6 +637,8 @@
             const folio = seccion.querySelector('[data-work-oficio-folio]');
             const status = seccion.querySelector('[data-work-oficio-status]');
             const boton = seccion.querySelector('[data-work-generate-oficio]');
+            const botonPdf = seccion.querySelector('[data-work-upload-oficio-pdf]');
+            botonPdf?.classList.toggle('d-none', !Boolean(estado?.puede_adjuntar_pdf_final));
 
             if (folio) {
                 folio.textContent = tieneFolio ? estado.folio : 'Pendiente';
@@ -692,6 +700,8 @@
             const folio = bloque.querySelector('[data-detail-oficio-folio]');
             const status = bloque.querySelector('[data-detail-oficio-status]');
             const boton = bloque.querySelector('[data-detail-generate-oficio]');
+            const botonPdf = bloque.querySelector('[data-detail-upload-oficio-pdf]');
+            botonPdf?.classList.toggle('d-none', !Boolean(estado?.puede_adjuntar_pdf_final));
 
             if (folio) {
                 folio.textContent = tieneFolio ? estado.folio : 'Pendiente';
@@ -817,6 +827,55 @@
             }
         };
 
+        const adjuntarPdfAOficioExistente = function (id, boton) {
+            if (!id || !boton || boton.disabled) return;
+            const entrada = document.createElement('input');
+            entrada.type = 'file';
+            entrada.accept = '.pdf,application/pdf';
+            entrada.className = 'visually-hidden';
+            entrada.setAttribute('aria-label', 'Seleccionar PDF terminado');
+            document.body.appendChild(entrada);
+            entrada.addEventListener('change', async function () {
+                const archivo = entrada.files?.[0] || null;
+                entrada.remove();
+                if (!archivo) return;
+                if (!/\.pdf$/i.test(archivo.name) || !archivo.size ||
+                    archivo.size > 20 * 1024 * 1024) {
+                    mostrarToast('Selecciona un PDF válido de hasta 20 MB.', true);
+                    return;
+                }
+                const original = boton.innerHTML;
+                boton.disabled = true;
+                boton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adjuntando PDF...';
+                try {
+                    const formulario = new FormData();
+                    formulario.append('seguimiento_id', String(id));
+                    formulario.append('archivo_pdf', archivo, archivo.name);
+                    const respuesta = await fetch(
+                        'index.php?controller=oficioVinculacion&action=adjuntarPdfTerminado', {
+                            method: 'POST',
+                            headers: {'X-Requested-With':'fetch'},
+                            body: formulario
+                        });
+                    const datos = await respuesta.json();
+                    if (!respuesta.ok || !datos.ok) {
+                        throw new Error(datos.mensaje || 'No fue posible adjuntar el PDF.');
+                    }
+                    mostrarToast('PDF adjuntado al mismo oficio. Puedes consultarlo y descargarlo.', false);
+                    await consultarEstado(id);
+                    if (esDetalle && id === seguimientoDetalleId) {
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    mostrarToast(error.message || 'No fue posible adjuntar el PDF.', true);
+                } finally {
+                    boton.disabled = false;
+                    boton.innerHTML = original;
+                }
+            }, {once: true});
+            entrada.click();
+        };
+
         normalizarAccionesBandeja();
         crearBloqueOffcanvas();
 
@@ -830,6 +889,15 @@
                         console.error(error);
                     });
                 }, 80);
+                return;
+            }
+
+            const subirPdf = event.target.closest('[data-work-upload-oficio-pdf], [data-detail-upload-oficio-pdf]');
+            if (subirPdf) {
+                event.preventDefault();
+                const id = subirPdf.matches('[data-detail-upload-oficio-pdf]')
+                    ? seguimientoDetalleId : seguimientoActualId;
+                adjuntarPdfAOficioExistente(id, subirPdf);
                 return;
             }
 
