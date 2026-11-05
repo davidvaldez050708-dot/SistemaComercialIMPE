@@ -1,0 +1,50 @@
+name: Ventas - formulario y cierre saliente reconciliado
+on:
+  pull_request:
+    paths:
+      - 'app/services/ZadarmaCallLookupService.php'
+      - 'app/services/TelefoniaVentasCierreApiVerificado.php'
+      - 'app/services/TelefoniaResultadoVentasService.php'
+      - 'app/services/TelefoniaVentasLlamadasService.php'
+      - 'app/views/telefonia/ventas_llamadas.php'
+      - 'public/javascript/telefonia_host.js'
+      - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'tests/ventas_resultado_todos_cierres.cjs'
+      - 'tests/telefonia_ventas_cierre_api_unit.php'
+      - 'tests/publicacion_ventas_cierre_automatico_test.py'
+      - 'tools/publicar_ventas_cierre_automatico_hostinger.py'
+      - '.github/workflows/ventas-registro-sin-out-end.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  venta-cierre:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis estricta
+        run: |
+          php -l app/services/ZadarmaCallLookupService.php
+          php -l app/services/TelefoniaVentasCierreApiVerificado.php
+          php -l app/services/TelefoniaResultadoVentasService.php
+          php -l app/services/TelefoniaVentasLlamadasService.php
+          php -l app/views/telefonia/ventas_llamadas.php
+          node --check public/javascript/telefonia_host.js
+          node --check public/javascript/telefonia_ventas_resultados.js
+          python3 -m py_compile tools/publicar_ventas_cierre_automatico_hostinger.py
+      - name: Evidencia PBX y registro humano
+        run: |
+          php tests/telefonia_ventas_cierre_api_unit.php
+          node tests/ventas_resultado_todos_cierres.cjs
+          node tests/ventas_captura_transicion.cjs
+      - name: Ensayo de publicación y restauración aislada
+        run: python3 tests/publicacion_ventas_cierre_automatico_test.py
