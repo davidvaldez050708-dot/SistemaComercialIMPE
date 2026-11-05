@@ -55,7 +55,9 @@ class CorreoFirmadoController
             (string)($_POST['asunto'] ?? ''),
             (string)($_POST['cuerpo'] ?? ''),
             (string)($_POST['reprogramacion'] ?? '0') === '1',
-            (string)($_POST['ecard_template'] ?? '')
+            (string)($_POST['ecard_template'] ?? ''),
+            $_FILES['ecard_imagen'] ?? null,
+            (string)($_POST['ecard_personalizada_esperada'] ?? '0') === '1'
         );
 
         $this->responderResultado($resultado);

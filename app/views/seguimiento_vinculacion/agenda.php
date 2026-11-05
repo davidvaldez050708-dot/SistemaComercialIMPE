@@ -457,6 +457,19 @@ $pendientesAgenda = array_values(array_filter(
 
                         <div data-agenda-mail-ecard-section>
                             <div data-agenda-mail-ecard></div>
+                            <div class="agenda-ecard-upload" data-ecard-upload>
+                                <label class="form-label" for="agendaEcardImagen">Usar otra imagen de Ecard</label>
+                                <p>La Ecard predeterminada siempre se incluye. Si tienes otra imagen, puedes reemplazarla sólo para este envío.</p>
+                                <input type="file" id="agendaEcardImagen" name="ecard_imagen"
+                                    class="form-control system-form-control" accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                                    aria-describedby="agendaEcardImagenAyuda" data-ecard-upload-file>
+                                <input type="hidden" name="ecard_personalizada_esperada" value="0" data-ecard-upload-expected>
+                                <div class="agenda-ecard-upload-footer">
+                                    <small id="agendaEcardImagenAyuda">JPG o PNG · Hasta 5 MB y 12 megapíxeles.</small>
+                                    <button type="button" class="btn btn-system-light" data-ecard-upload-reset hidden>Usar predeterminada</button>
+                                </div>
+                                <span class="agenda-ecard-upload-status" role="status" aria-live="polite" data-ecard-upload-status></span>
+                            </div>
                         </div>
 
                         <div class="agenda-mail-note">
@@ -515,3 +528,6 @@ $pendientesAgenda = array_values(array_filter(
         <?= json_encode($seguimientosElegibles, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) ?>
     </script>
 </section>
+
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/reunion_ecard_imagen.css?v=<?= filemtime(ROOT_PATH.'/public/css/reunion_ecard_imagen.css') ?>">
+<script src="<?= BASE_URL ?>public/javascript/reunion_ecard_imagen.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/reunion_ecard_imagen.js') ?>"></script>

@@ -1,0 +1,52 @@
+name: Reuniones Ecard predeterminada o personalizada
+on:
+  pull_request:
+    paths:
+      - 'app/controllers/CorreoFirmadoController.php'
+      - 'app/services/CorreoFirmadoService.php'
+      - 'app/services/ReunionEcardImagen.php'
+      - 'app/services/EcardReunionService.php'
+      - 'app/views/seguimiento_vinculacion/agenda.php'
+      - 'public/javascript/reunion_ecard_imagen.js'
+      - 'public/css/reunion_ecard_imagen.css'
+      - 'tests/*reunion_ecard*'
+      - 'tests/fixtures/reunion_ecard*'
+      - 'tools/*reunion_ecard*'
+      - '.github/workflows/reunion-ecard.yml'
+permissions:
+  contents: read
+jobs:
+  ecard:
+    runs-on: ubuntu-latest
+    env:
+      NODE_PATH: /tmp/impe-ecard/node_modules
+      BOOTSTRAP_MODULE_PATH: /tmp/impe-ecard/node_modules/bootstrap
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: gd, fileinfo, mbstring
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/impe-ecard playwright@1.56.1 bootstrap@5.3.8
+      - run: /tmp/impe-ecard/node_modules/.bin/playwright install --with-deps chromium
+      - name: Controlador, servicio y multipart reales con transporte simulado
+        run: python tests/reunion_ecard_http_test.py
+      - name: Publicación reversible sin SQL
+        run: python tests/publicacion_reunion_ecard_test.py
+      - name: Modal, vista previa, reemplazo y responsivo
+        run: |
+          export CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
+          node tests/reunion_ecard_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reunion-ecard-capturas
+          path: tmp/reunion-ecard-*.png
