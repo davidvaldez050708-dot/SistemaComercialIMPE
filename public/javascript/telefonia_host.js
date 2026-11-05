@@ -1597,12 +1597,21 @@
 
     // JsSIP confirma el progreso antes del siguiente sondeo de la centralita.
     // Escuchar sin sustituir los manejadores del proveedor.
-    const observedOutgoingSessions = new WeakSet();
+    const observedOutgoingSessions = new WeakMap();
     window.setInterval(function () {
         if(!state.active || state.direction!=='outgoing')return;
         const session=window.zdrmWebPhone?.webCallSession;
-        if(!session || session.direction!=='outgoing' || observedOutgoingSessions.has(session) || typeof session.on!=='function')return;
-        observedOutgoingSessions.add(session);
+        if(!session || session.direction!=='outgoing' || typeof session.on!=='function')return;
+        const previous=observedOutgoingSessions.get(session);
+        if(previous){
+            // Si el SDK perdió el callback END, detectar también isEnded().
+            // La sesión debió observarse VIVA con el token de esta llamada:
+            // no atribuir al nuevo marcado un objeto SDK anterior ya cerrado.
+            if(previous.token===state.callToken && session.isEnded?.()===true)
+                previous.ended();
+            return;
+        }
+        if(session.isEnded?.()===true)return; // SDK viejo: no vincular al siguiente intento.
         const token=state.callToken;
         session.on('progress',function(event){
             const code=Number(event?.response?.status_code||0);
@@ -1614,6 +1623,7 @@
             if(transferFlow?.sourcePending())void transferFlow.tick();
             else finishCall(lastCall,state.phase==='in-progress'?'completed':'cancelled');
         };
+        observedOutgoingSessions.set(session,{token,ended});
         session.on('ended',ended);session.on('failed',ended);
     },100);
 
