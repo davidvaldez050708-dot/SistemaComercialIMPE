@@ -41,6 +41,32 @@ if ($zip->open($file, ZipArchive::RDONLY) !== true) {
     fwrite(STDERR, "ERROR: archivo DOCX no legible\n");
     exit(1);
 }
+// Medidas de sección: solamente atributos numéricos, sin contenido del oficio.
+$docXml = $zip->getFromName('word/document.xml');
+if (!is_string($docXml) || strlen($docXml) > 8 * 1024 * 1024 ||
+    preg_match('/<!DOCTYPE|<!ENTITY/i', $docXml)) {
+    fwrite(STDERR, "ERROR: sección XML no segura\n"); exit(1);
+}
+$sectionDoc = new DOMDocument();
+$prior = libxml_use_internal_errors(true);
+$loaded = $sectionDoc->loadXML($docXml, LIBXML_NONET);
+libxml_clear_errors(); libxml_use_internal_errors($prior);
+if (!$loaded) { fwrite(STDERR, "ERROR: sección XML inválida\n"); exit(1); }
+$sectionXp = new DOMXPath($sectionDoc);
+$sectionXp->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+$section = $sectionXp->query('//w:sectPr')->item(0);
+if (!$section) { fwrite(STDERR, "ERROR: sección no encontrada\n"); exit(1); }
+$sizeNode = $sectionXp->query('./w:pgSz', $section)->item(0);
+$marginNode = $sectionXp->query('./w:pgMar', $section)->item(0);
+$wNs = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+$pageWidth = $sizeNode ? (float)$sizeNode->getAttributeNS($wNs,'w')/20 : 612.0;
+$pageHeight = $sizeNode ? (float)$sizeNode->getAttributeNS($wNs,'h')/20 : 792.0;
+$margins = [];
+foreach (['top','bottom','left','right','header','footer'] as $side) {
+    $margins[$side] = $marginNode ? (float)$marginNode->getAttributeNS($wNs,$side)/20 : 0.0;
+}
+echo json_encode(['pagina_pt'=>['ancho'=>$pageWidth,'alto'=>$pageHeight],
+    'margenes_pt'=>$margins], JSON_UNESCAPED_UNICODE) . "\n";
 $parts = ['word/document.xml'];
 for ($index = 0; $index < $zip->numFiles && $index < 1000; $index++) {
     $part = $zip->getNameIndex($index);
@@ -87,7 +113,9 @@ foreach ($parts as $part) {
                 'posOffset' => $offsetNode ? (string)$offsetNode->textContent : null,
                 'align' => $alignNode ? (string)$alignNode->textContent : null,
             ];
-            if (!$offsetNode) { $errors[] = $axis . ': sin posOffset'; }
+            $validAlign = $axis === 'H' && $reference === 'page' && $alignNode &&
+                in_array(trim((string)$alignNode->textContent), ['left', 'right'], true);
+            if (!$offsetNode && !$validAlign) { $errors[] = $axis . ': sin posOffset ni alineación admitida'; }
             if ($axis === 'H' && !in_array($reference, ['column','margin','page'], true)) {
                 $errors[] = 'H: referencia no admitida';
             }
@@ -98,6 +126,36 @@ foreach ($parts as $part) {
                 $errors[] = 'V: imagen del cuerpo no relativa al párrafo';
             }
         }
+        // Reproduce la geometría inicial del renderer, antes de acumular
+        // interlineado de párrafos previos del encabezado o pie.
+        $extent = $xpath->query('./wp:extent', $anchor)->item(0);
+        $width = $extent ? (float)$extent->getAttribute('cx')/12700 : 0.0;
+        $height = $extent ? (float)$extent->getAttribute('cy')/12700 : 0.0;
+        $x = null;
+        if ($positions['H']['relativeFrom'] === 'page') {
+            if ($positions['H']['align'] === 'left') { $x = 0.0; }
+            elseif ($positions['H']['align'] === 'right') { $x = $pageWidth - $width; }
+            elseif ($positions['H']['posOffset'] !== null) {
+                $x = (float)$positions['H']['posOffset']/12700;
+            }
+        }
+        $kind = strpos($part, '/header') !== false ? 'header' :
+            (strpos($part, '/footer') !== false ? 'footer' : 'body');
+        $origin = $kind === 'header' ? $margins['header'] :
+            ($kind === 'footer' ? $pageHeight - $margins['footer'] : 0.0);
+        $initialY = $positions['V']['posOffset'] === null ? null :
+            (float)$positions['V']['posOffset']/12700 +
+            ($positions['V']['relativeFrom'] === 'page' ? 0.0 : $origin);
+        // Este cálculo no añade el avance vertical de párrafos anteriores.
+        // Un resultado fuera de página identifica una causa; uno válido
+        // no descarta el avance de párrafos dentro de fixedPart().
+        $bounds = ['x'=>$x, 'y_sin_avance_parrafos'=>$initialY,
+            'ancho'=>$width, 'alto'=>$height,
+            'y_inferior_sin_avance'=>($initialY === null ? null : $initialY+$height)];
+        if ($x !== null && $x <= -1500) { $errors[] = 'X fuera de límite'; }
+        if ($initialY !== null && ($initialY < 0 || $initialY > $pageHeight)) {
+            $errors[] = 'Y fuera de límite antes del avance de párrafos';
+        }
         if ($errors) { ++$flagged; }
         echo json_encode([
             'parte' => $part === 'word/document.xml' ? 'cuerpo' : (
@@ -106,6 +164,7 @@ foreach ($parts as $part) {
             'ancla' => $count,
             'horizontal' => $positions['H'],
             'vertical' => $positions['V'],
+            'rectangulo_pt' => $bounds,
             'problemas_potenciales' => $errors,
         ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
     }
