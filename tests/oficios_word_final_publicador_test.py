@@ -9,15 +9,15 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 PUBLISHER = ROOT / 'tools/publicar_oficios_word_final_hostinger.py'
 SOURCE = ROOT / 'app/services/OficioRedmexPdfRenderer.php'
-BASE_BLOB = 'ae18cc52a8316f1698340252550897bf3311a4df'
-BASE_HASH = '9c82890dcc0fd519634ad60f328da86e588f8d1ebd55a4a133cd30e4d376aee3'
+BASE_BLOB = 'fabab8bcc24b6b6cd1497f105b040ed5720a16a0'
+BASE_HASH = '623e7b664214ebf4d77b349658c4271bf1d0fb2e422f67dbe50cc6f10ca10f45'
 
 def original():
     cmd = ['git', 'cat-file', '-p', BASE_BLOB]
     p = subprocess.run(cmd, cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if p.returncode:
         fetch = subprocess.run(
-            ['git', 'fetch', '--quiet', 'origin', 'codex/oficios-personalizados-conversion'],
+            ['git', 'fetch', '--quiet', 'origin', 'fix/oficios-cdmx-docx-final-modal-20261104'],
             cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         assert fetch.returncode == 0, 'No se pudo recuperar la versión anterior'
