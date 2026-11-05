@@ -49,3 +49,4 @@ jobs:
           php tests/oficios_documento_final_smoke.php
           node tests/oficios_selector_smoke.cjs
           python3 tests/publicacion_oficios_modal_hostinger.py
+          python3 tests/publicacion_oficios_modal_visual_test.py
