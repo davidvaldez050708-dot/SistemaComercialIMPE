@@ -161,10 +161,12 @@ def check(site):
     for rel,(before,afterblob) in FILES.items():
         try:
             path=target(site,rel)
-            data=fetch(rel,afterblob)
+            data=b'' if rel in CUSTOM else fetch(rel,afterblob)
             old=path.read_bytes() if path.exists() else None
             if rel in CUSTOM:
                 data,status=reconcile_custom(rel,old)
+                if blob(data)!=afterblob:
+                    raise RuntimeError("Integridad del parche personalizado no coincide: "+rel)
             else:
                 if old is None and before is not None:
                     raise RuntimeError("ARCHIVO AUSENTE (sin cambios): "+rel)
