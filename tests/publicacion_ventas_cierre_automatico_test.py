@@ -92,6 +92,36 @@ with tempfile.TemporaryDirectory(prefix='impe-ventas-cierre-seguro-') as temp:
         assert file.read_bytes()==data if data is not None else not file.exists(),path
     for path in deps:
         assert (site/path).read_bytes()==b'// personalizado: no modificar'
+    # Hostinger tiene un controlador con personalizaciones ajenas al método
+    # de Ventas. El publicador debe fusionar sólo detalleVenta y restaurarlo.
+    ctl=site/'app/controllers/TelefoniaController.php'
+    native=ctl.read_bytes()
+    custom=native.replace(b'<?php',b'<?php\n/* PERSONALIZACION HOSTINGER: NO CAMBIAR */',1)
+    ctl.write_bytes(custom)
+    check=execute(site,backup,'--check')
+    assert 'CONCILIADO (SOLO detalleVenta)' in check,check
+    assert ctl.read_bytes()==custom,'--check nunca modifica producción'
+    before_folders=set(backup.iterdir())
+    assert 'APLICADO' in execute(site,backup,'--apply')
+    updated=ctl.read_bytes()
+    assert b'PERSONALIZACION HOSTINGER: NO CAMBIAR' in updated
+    assert pub.CONTROLLER_NEW_METHOD.encode('utf-8') in updated
+    assert pub.CONTROLLER_OLD_METHOD.encode('utf-8') not in updated
+    assert 'YA CONCILIADO' in execute(site,backup,'--check')
+    latest=list(set(backup.iterdir())-before_folders)
+    assert len(latest)==1
+    assert 'RESTAURADO' in execute(site,backup,'--restore',str(latest[0]))
+    assert ctl.read_bytes()==custom,'restauración conserva personalización exacta'
+    # En controladores con detalleVenta distinto no se adivina ni reemplaza.
+    modified=custom.replace(b'public function detalleVenta()',b'public function detalleVenta() /* LOGICA LOCAL */',1)
+    ctl.write_bytes(modified)
+    try:
+        execute(site,backup,'--check')
+        raise AssertionError('Se aceptó un método detalleVenta distinto sin revisar')
+    except RuntimeError as e:
+        assert 'CONFLICTO CONTROLADOR' in str(e),str(e)
+    assert ctl.read_bytes()==modified
+    ctl.write_bytes(custom)
     file=site/'public/javascript/telefonia_host.js'
     file.write_bytes(file.read_bytes()+b'\n// variante desconocida')
     try:
@@ -99,4 +129,4 @@ with tempfile.TemporaryDirectory(prefix='impe-ventas-cierre-seguro-') as temp:
         raise AssertionError('Se aceptó variante no reconocida')
     except RuntimeError as error:
         assert 'VERSIÓN DIFERENTE' in str(error)
-print('PASS: 8 archivos, integridad Git, Python3.6, no SQL, no escrituras en check, respaldo, rollback y conflictos.')
+print('PASS: 8 archivos, integridad Git, Python3.6, no SQL, conciliación selectiva del controlador, respaldo, rollback y conflictos.')
