@@ -593,8 +593,8 @@ document.querySelectorAll('.linkage-territory-card[data-card-url]').forEach(func
                     </div>
                     <details class="impe-excel-help impe-excel-required-fields">
                         <summary>¿Qué campos debo llenar?</summary>
-                        <p><strong>Obligatorios (B–N):</strong> nombre de institución, tipo de entidad, estado, municipio, actividad/giro, dirección, teléfono, WhatsApp, correo institucional, sitio web, persona de contacto, cargo/área y paso histórico reportado.</p>
-                        <p><strong>Opcionales (A y O–S):</strong> clave de referencia, fecha última gestión, evidencia, próxima acción, fecha próxima acción y observaciones. Usa «00 | Sin historial verificable» si no existe un avance anterior.</p>
+                        <p><strong>Obligatorios (B–E):</strong> nombre de institución, tipo de entidad, estado y municipio. Selecciona el municipio de la lista correspondiente al estado de cada fila.</p>
+                        <p><strong>Opcionales (A y F–S):</strong> actividad/giro, dirección, teléfono, WhatsApp, correo, sitio web, persona de contacto, cargo/área y los datos históricos. Deja vacíos los datos que desconozcas; el paso histórico vacío equivale a «00 | Sin historial verificable».</p>
                         <p>Hasta 250 instituciones y 2 MB. No cambies los encabezados. No inventes datos de contacto para completar campos.</p>
                     </details>
                     <div class="impe-excel-fields">

@@ -64,7 +64,13 @@ class SeguimientoVinculacionController
             $estados=$this->obtenerTerritoriosPorModo($modelo,$this->obtenerUsuarioActualId(),
                 $this->resolverModoSeguimiento());
             if(!$estados)throw new DomainException('No tienes territorios disponibles.',403);
-            $bytes=SeguimientoExcelPlantillaService::archivo($estados);
+            $ids=array_values(array_unique(array_filter(array_map(static fn($e)=>(int)$e['id'],$estados),static fn($id)=>$id>0)));
+            if(!$ids)throw new DomainException('No tienes territorios disponibles.',403);
+            $db=(new Database())->connect(false);
+            $stmt=$db->prepare('SELECT id,estado_id,nombre FROM municipios WHERE estado=1 AND estado_id IN ('.implode(',',array_fill(0,count($ids),'?')).') ORDER BY estado_id,nombre,id');
+            $stmt->bind_param(str_repeat('i',count($ids)),...$ids);$stmt->execute();
+            $municipios=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
+            $bytes=SeguimientoExcelPlantillaService::archivo($estados,$municipios);
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             header('Content-Disposition: attachment; filename="plantilla_instituciones_seguimiento_v3.xlsx"');
             header('Content-Length: '.strlen($bytes));
