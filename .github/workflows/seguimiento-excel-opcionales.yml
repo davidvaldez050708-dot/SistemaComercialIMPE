@@ -1,0 +1,75 @@
+name: Seguimiento Excel · municipios y opcionales
+on:
+  pull_request:
+    paths:
+      - 'app/services/SeguimientoExcel*.php'
+      - 'app/controllers/SeguimientoVinculacionController.php'
+      - 'app/views/seguimiento_vinculacion/index.php'
+      - 'tests/seguimiento_excel*'
+      - 'tests/seguimiento_importador_excel_browser.cjs'
+      - 'tests/fixtures/seguimiento_excel*'
+      - 'tests/fixtures/seguimiento_plantilla_v3_anterior.xlsx'
+      - 'tests/publicacion_seguimiento_excel_opcionales_test.py'
+      - 'tools/*seguimiento_excel_opcionales*'
+      - '.github/workflows/seguimiento-excel-opcionales.yml'
+permissions:
+  contents: read
+jobs:
+  catalogos-e-importacion:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1'
+        ports:
+          - 33339:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, zip, dom
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install openpyxl==3.1.5
+      - run: php tests/seguimiento_importador_excel_smoke.php
+      - run: php tests/seguimiento_excel_alcance_test.php
+      - run: php tests/seguimiento_excel_multiestado_db.php
+        env:
+          IMPE_TEST_MYSQL_PORT: '33339'
+      - run: python tests/seguimiento_excel_municipios_test.py
+      - run: python tests/seguimiento_excel_plantilla_http_test.py
+      - run: python tests/publicacion_seguimiento_excel_opcionales_test.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plantilla-municipios-sintetica
+          path: tmp/plantilla_municipios.xlsx
+  interfaz:
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.56.1-noble
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, zip, dom
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.8 bootstrap-icons@1.13.1
+      - run: node tests/seguimiento_importador_excel_browser.cjs
+        env:
+          SALES_SCREENSHOT_DIR: tmp/excel-interfaz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: excel-interfaz
+          path: tmp/excel-interfaz

@@ -10,14 +10,15 @@ final class SeguimientoExcelImportService
 {
     private $db;
     private $model;
+    private array $municipiosCache=[];
     private const MAX_ROWS=250;
     private const MAX_UPLOAD=2097152;
     private const MAX_UNPACKED=6000000;
     public const HEADERS=[
         'Clave de referencia','Nombre de institución *','Tipo de entidad *','Estado *',
-        'Municipio *','Actividad / giro *','Dirección *','Teléfono *',
-        'WhatsApp *','Correo institucional *','Sitio web *',
-        'Persona de contacto *','Cargo / área *','Paso histórico reportado *',
+        'Municipio *','Actividad / giro','Dirección','Teléfono',
+        'WhatsApp','Correo institucional','Sitio web',
+        'Persona de contacto','Cargo / área','Paso histórico reportado',
         'Fecha última gestión','Evidencia / qué se hizo','Próxima acción',
         'Fecha próxima acción','Observaciones'
     ];
@@ -159,14 +160,21 @@ final class SeguimientoExcelImportService
         foreach($scope as $s)if(self::norm($s['nombre'])===self::norm($estado))$match[]=$s;
         if(count($match)!==1)throw new DomainException('Estado fuera de los territorios asignados.',422);
         $id=(int)$match[0]['id'];
-        $stmt=$this->db->prepare('SELECT id,nombre FROM municipios WHERE estado_id=? AND estado=1');
-        $stmt->bind_param('i',$id);$stmt->execute();
         $found=[];
-        foreach($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $m){
+        foreach($this->municipiosEstado($id) as $m){
             if(self::norm($m['nombre'])===self::norm($municipio))$found[]=$m;
         }
         if(count($found)!==1)throw new DomainException('Municipio no encontrado o ambiguo para '.$estado.'.',422);
         return [$id,(int)$found[0]['id']];
+    }
+
+    private function municipiosEstado(int $id): array {
+        if(!array_key_exists($id,$this->municipiosCache)){
+            $stmt=$this->db->prepare('SELECT id,nombre FROM municipios WHERE estado_id=? AND estado=1');
+            $stmt->bind_param('i',$id);$stmt->execute();
+            $this->municipiosCache[$id]=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
+        }
+        return $this->municipiosCache[$id];
     }
 
     /** Excel almacena las fechas como seriales; jamás convertirlas en actividad del CRM. */
@@ -188,7 +196,7 @@ final class SeguimientoExcelImportService
 
     private function comprobarFila(array $cells,array $scope,int $analista): array
     {
-        foreach(range(1,13) as $idx){
+        foreach([1,2,3,4] as $idx){
             if(trim((string)$cells[$idx])==='')throw new DomainException('Falta el campo obligatorio «'.self::HEADERS[$idx].'».',422);
         }
         foreach($cells as $idx=>$value) {
@@ -209,15 +217,19 @@ final class SeguimientoExcelImportService
         $type=$map[$type]??strtoupper($cells[2]);
         if(!in_array($type,self::TYPES,true))throw new DomainException('Tipo de entidad no reconocido.',422);
         [$estado,$municipio]=$this->resolverUbicacion($cells[3],$cells[4],$scope);
-        if(!filter_var($cells[9],FILTER_VALIDATE_EMAIL))throw new DomainException('Correo institucional inválido.',422);
+        if(trim($cells[9])!==''&&!filter_var($cells[9],FILTER_VALIDATE_EMAIL))throw new DomainException('Correo institucional inválido.',422);
         $site=trim($cells[10]);
-        if(!preg_match('#^https?://#i',$site))$site='https://'.$site;
-        if(!filter_var($site,FILTER_VALIDATE_URL)||mb_strlen($site)>255)throw new DomainException('Sitio web inválido.',422);
-        if(!preg_match('/^\s*(0[0-9]|1[0-3])(?:\s*[|.\-]\s*|\s*$)/',$cells[13],$m)){
+        if($site!==''){
+            if(!preg_match('#^https?://#i',$site))$site='https://'.$site;
+            if(!filter_var($site,FILTER_VALIDATE_URL)||mb_strlen($site)>255)throw new DomainException('Sitio web inválido.',422);
+        }
+        $step=0;
+        if(trim($cells[13])!==''&&!preg_match('/^\s*(0[0-9]|1[0-3])(?:\s*[|.\-]\s*|\s*$)/',$cells[13],$m)){
             throw new DomainException('Selecciona un paso histórico del catálogo (00–13).',422);
         }
-        $step=(int)$m[1];
+        if(trim($cells[13])!=='')$step=(int)$m[1];
         foreach([7,8] as $idx){
+            if(trim($cells[$idx])==='')continue;
             $digits=preg_replace('/\D/','',$cells[$idx]);
             if(strlen($digits)<8||strlen($digits)>15)throw new DomainException('Número de teléfono/WhatsApp inválido.',422);
         }
@@ -243,17 +255,14 @@ final class SeguimientoExcelImportService
     /** Coteja seguimientos de todos los orígenes y analistas del mismo estado. */
     private function coincidencias(array $r): array
     {
-        $sql='SELECT id, nombre_entidad, tipo_entidad, municipio_id, direccion_fuente,telefono_fuente,telefono_verificado,
-                     correo_fuente,correo_verificado,clave_origen,analista_id,activo
-              FROM seguimientos_vinculacion
-              WHERE estado_id=? AND (LOWER(TRIM(nombre_entidad))=LOWER(TRIM(?))
-                OR LOWER(TRIM(correo_fuente))=LOWER(TRIM(?))
-                OR LOWER(TRIM(correo_verificado))=LOWER(TRIM(?))
-                OR telefono_fuente=? OR telefono_verificado=?
-                OR clave_origen=?) LIMIT 30';
         $key='XLSX:'.self::clave($r);
+        $conditions=['LOWER(TRIM(nombre_entidad))=LOWER(TRIM(?))','clave_origen=?'];
+        $args=[$r['estado_id'],$r['nombre'],$key];
+        if($r['correo']!==''){$conditions[]='LOWER(TRIM(correo_fuente))=LOWER(TRIM(?)) OR LOWER(TRIM(correo_verificado))=LOWER(TRIM(?))';$args[]=$r['correo'];$args[]=$r['correo'];}
+        if($r['telefono']!==''){$conditions[]='telefono_fuente=? OR telefono_verificado=?';$args[]=$r['telefono'];$args[]=$r['telefono'];}
+        $sql='SELECT id,nombre_entidad,tipo_entidad,municipio_id,direccion_fuente,telefono_fuente,telefono_verificado,correo_fuente,correo_verificado,clave_origen,analista_id,activo FROM seguimientos_vinculacion WHERE estado_id=? AND ('.implode(' OR ',$conditions).') LIMIT 30';
         $stmt=$this->db->prepare($sql);
-        $stmt->bind_param('issssss',$r['estado_id'],$r['nombre'],$r['correo'],$r['correo'],$r['telefono'],$r['telefono'],$key);
+        $types='i'.str_repeat('s',count($args)-1);$stmt->bind_param($types,...$args);
         $stmt->execute();$rows=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $exact=[];$possible=[];
         foreach($rows as $s){
@@ -265,10 +274,8 @@ final class SeguimientoExcelImportService
                 strcasecmp((string)$s['correo_fuente'],$r['correo'])===0 ||
                 strcasecmp((string)$s['correo_verificado'],$r['correo'])===0
             );
-            $phoneMatch=preg_replace('/D/','',(string)$s['telefono_fuente'])===
-                preg_replace('/D/','',$r['telefono']) ||
-                preg_replace('/D/','',(string)$s['telefono_verificado'])===
-                preg_replace('/D/','',$r['telefono']);
+            $digits=preg_replace('/\D/','',$r['telefono']);
+            $phoneMatch=$digits!=='' && (preg_replace('/\D/','',(string)$s['telefono_fuente'])===$digits || preg_replace('/\D/','',(string)$s['telefono_verificado'])===$digits);
             $direccionExistente=self::norm($s['direccion_fuente']??'');
             $mismaDireccion=$direccionExistente!=='' &&
                 $direccionExistente===self::norm($r['direccion']);
@@ -277,9 +284,7 @@ final class SeguimientoExcelImportService
             if($sameKey||($sameName&&$sameType&&$sameMunicipality&&
                 ($mismaDireccion||$contactosIguales))){
                 $exact[]=$s;
-            }elseif($sameName||strcasecmp((string)$s['correo_fuente'],$r['correo'])===0||
-                strcasecmp((string)$s['correo_verificado'],$r['correo'])===0||
-                preg_replace('/\D/','',(string)$s['telefono_fuente'])===preg_replace('/\D/','',$r['telefono'])){
+            }elseif($sameName||$mailMatch||$phoneMatch){
                 $possible[]=$s;
             }
         }
@@ -291,6 +296,7 @@ final class SeguimientoExcelImportService
 
     public function previsualizar(array $rows,array $territorios,int $analista,int $usuario): array
     {
+        $this->municipiosCache=[];
         $result=[];$seen=[];
         foreach($rows as $line){
             $num=$line['fila'];
@@ -302,10 +308,10 @@ final class SeguimientoExcelImportService
                 }else{
                     $seen[$key]=$num;$state=$this->coincidencias($r);
                 }
-                $result[]=['fila'=>$num,'institucion'=>$r['nombre'],'estado'=>$state['estado'],
+                $result[]=['fila'=>$num,'institucion'=>$r['nombre'],'territorio'=>trim((string)$line['celdas'][3]),'estado'=>$state['estado'],
                     'mensaje'=>$state['mensaje'],'id'=>$state['id'],'registro'=>$r];
             }catch(DomainException $e){
-                $result[]=['fila'=>$num,'institucion'=>mb_substr((string)($line['celdas'][1]??''),0,130),
+                $result[]=['fila'=>$num,'territorio'=>mb_substr((string)($line['celdas'][3]??''),0,120),'institucion'=>mb_substr((string)($line['celdas'][1]??''),0,130),
                     'estado'=>'invalida','mensaje'=>$e->getMessage(),'id'=>null,'registro'=>null];
             }
         }
@@ -323,6 +329,7 @@ final class SeguimientoExcelImportService
         $locked=(int)($this->db->query("SELECT GET_LOCK('impe_seguimiento_excel_import_v1',10) AS adquirido")
             ->fetch_assoc()['adquirido']??0);
         if($locked!==1)throw new DomainException('Hay otra importación en curso. Intenta nuevamente.',409);
+        $this->municipiosCache=[];
         $saved=0;$skipped=0;$ids=[];$model=$this->model;
         try {
             $this->db->begin_transaction();
@@ -331,6 +338,8 @@ final class SeguimientoExcelImportService
                 $r=$line['registro'];
                 $allowed=array_filter($scope,static fn($territorio)=>(int)$territorio['id']===(int)$r['estado_id']);
                 if(!$allowed||$r['analista_id']!==$analista)throw new DomainException('El permiso territorial cambió; revisión necesaria.',403);
+                $municipioVigente=array_filter($this->municipiosEstado((int)$r['estado_id']),static fn($m)=>(int)$m['id']===(int)$r['municipio_id']);
+                if(!$municipioVigente)throw new DomainException('El municipio dejó de estar activo o ya no corresponde al estado. Revisa el Excel nuevamente.',422);
                 $check=$this->coincidencias($r);
                 if($check['estado']!=='nueva'){$skipped++;continue;}
                 $notes="Importación Excel V3 · Paso histórico reportado: ".str_pad((string)$r['paso'],2,'0',STR_PAD_LEFT).
@@ -350,7 +359,7 @@ final class SeguimientoExcelImportService
                     'motivo_descarte'=>'','observaciones'=>$notes,'ultima_actividad_at'=>null,
                     'proxima_accion_at'=>null];
                 $id=(int)$model->crearSeguimientoManual($payload,true);
-                $stmt=$this->db->prepare('UPDATE seguimientos_vinculacion SET actividad_giro=?,direccion_fuente=?,sitio_web_fuente=? WHERE id=?');
+                $stmt=$this->db->prepare('UPDATE seguimientos_vinculacion SET actividad_giro=NULLIF(?,\'\'),direccion_fuente=NULLIF(?,\'\'),sitio_web_fuente=NULLIF(?,\'\') WHERE id=?');
                 $stmt->bind_param('sssi',$r['actividad'],$r['direccion'],$r['sitio'],$id);
                 $stmt->execute();
                 $ids[]=$id;$saved++;

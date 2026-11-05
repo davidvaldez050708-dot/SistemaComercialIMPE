@@ -1,0 +1,3 @@
+
+tools/publicar_seguimiento_excel_opcionales.py text eol=lf
+tools/seguimiento_excel_opcionales_release.json text eol=lf

@@ -27,7 +27,8 @@ with tempfile.TemporaryDirectory(prefix='test-excel-sin-impe-') as td:
     (site/'index.php').write_text('<?php // fixture',encoding='utf-8')
     original = {}
     for name,(new,old) in FILES.items():
-        current = (ROOT/name).read_bytes()
+        # Este instalador publicado valida su versión sellada, no futuras mejoras del XLSX.
+        current = subprocess.check_output(['git','show','3544f8a5:'+name],cwd=ROOT)
         assert current.count(new.encode('utf-8')) == 1
         assert old.encode('utf-8') not in current
         current_name = site/name

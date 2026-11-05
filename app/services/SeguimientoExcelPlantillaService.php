@@ -19,7 +19,7 @@ final class SeguimientoExcelPlantillaService
     {
         return '<row r="'.$number.'" ht="'.$height.'" customHeight="1">'.implode('',$cells).'</row>';
     }
-    private static function sheet(string $rows,string $validations='',bool $freeze=false): string
+    private static function sheet(string $rows,string $validations='',bool $freeze=false,string $merges=''): string
     {
         $cols='<cols>';
         $widths=[22,36,20,23,24,27,32,18,18,27,24,26,23,36,22,39,33,23,42];
@@ -31,9 +31,9 @@ final class SeguimientoExcelPlantillaService
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'.
             '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'.
             $views.'<sheetFormatPr defaultRowHeight="20"/>'.$cols.'<sheetData>'.$rows.'</sheetData>'.
-            $validations.'</worksheet>';
+            $merges.$validations.'</worksheet>';
     }
-    public static function archivo(array $estados): string
+    public static function archivo(array $estados,array $municipios=[]): string
     {
         if(!class_exists('ZipArchive'))throw new RuntimeException('Extensión ZIP de PHP no instalada.');
         $tmp=tempnam(sys_get_temp_dir(),'impe_xlsx_');
@@ -45,27 +45,29 @@ final class SeguimientoExcelPlantillaService
         try{
             $headers=[];
             foreach(SeguimientoExcelImportService::HEADERS as $i=>$text){
-                $style=($i>=1&&$i<=13)?2:1;
+                $style=($i>=1&&$i<=4)?2:1;
                 $headers[]=self::cell(self::column($i+1).'1',$text,$style);
             }
             $rows=self::row(1,$headers,52);
-            $validation='<dataValidations count="3">'.
+            $validation='<dataValidations count="4">'.
                 '<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="C2:C251">'.
                 '<formula1>TiposEntidad</formula1></dataValidation>'.
                 '<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="D2:D251">'.
                 '<formula1>EstadosTerritoriales</formula1></dataValidation>'.
+                '<dataValidation type="list" allowBlank="0" showInputMessage="1" showErrorMessage="1" errorStyle="stop" promptTitle="Municipio" prompt="Selecciona primero el estado de esta fila." errorTitle="Municipio no válido" error="Selecciona un municipio del estado indicado." sqref="E2:E251">'.
+                '<formula1>INDIRECT(IFERROR(INDEX(ClavesMunicipales,MATCH($D2,EstadosTerritoriales,0)),"MunicipiosVacios"))</formula1></dataValidation>'.
                 '<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="N2:N251">'.
                 '<formula1>PasosHistoricos</formula1></dataValidation></dataValidations>';
             $sheet1=self::sheet($rows,$validation,true);
             $guide=[
                 'PLANTILLA DE IMPORTACIÓN DE INSTITUCIONES V3',
                 'Captura una institución por fila, sin cambiar el orden ni el nombre de las 19 columnas.',
-                'Obligatorios: B–N (13). Opcionales: A y O–S (6).',
-                'Selecciona tipo, estado y paso desde los desplegables.',
-                'Las instituciones del archivo deben pertenecer al territorio seleccionado en el CRM.',
-                'El municipio debe existir y estar activo dentro del estado indicado.',
-                'Usa teléfonos reales, correo válido y dirección web institucional.',
-                'El paso 00 significa: sin historial verificable. La institución empezará como NUEVO.',
+                'Obligatorios: B–E (4): nombre, tipo de entidad, estado y municipio. Opcionales: A y F–S.',
+                'Selecciona tipo, estado y municipio desde los desplegables. El municipio depende del estado de cada fila.',
+                'Puedes incluir varios estados. Cada fila se importará en su estado, dentro de tus territorios y los del analista responsable.',
+                'Si cambias el estado, vuelve a elegir el municipio. El CRM comprobará que corresponda y esté activo.',
+                'Teléfono, WhatsApp, correo, sitio web, dirección, giro y datos de contacto pueden quedar vacíos si no se conocen.',
+                'Paso histórico vacío o 00: sin historial verificable. No se generan verificaciones ni llamadas ficticias.',
                 'Los pasos 01–13 son antecedentes reportados, no operaciones realizadas por el CRM.',
                 'Fechas, evidencia, próxima acción y observaciones pueden permanecer vacías.',
                 'Si hay duplicados o coincidencias, el sistema los separará para revisión.',
@@ -81,18 +83,27 @@ final class SeguimientoExcelPlantillaService
                 '09 | Respuesta recibida','10 | Seguimiento por correo','11 | Reunión agendada',
                 '12 | Reunión realizada','13 | Convenio (etapa reportada)'
             ];
-            $catalogRows=self::row(1,[self::cell('A1','Tipos de entidad',1),
-                self::cell('B1','Estados disponibles',1),self::cell('C1','Pasos históricos',1)]);
-            $estados=array_values(array_unique(array_filter(array_map(static function($estado){
-                return (string)($estado['nombre']??'');
-            },$estados))));
-            for($i=0;$i<max(count($types),count($estados),count($steps));$i++){
+            $states=[];
+            foreach($estados as $e){$id=(int)($e['id']??0);$name=trim((string)($e['nombre']??''));if($id>0&&$name!=='')$states[$id]=['id'=>$id,'nombre'=>$name];}
+            $states=array_values($states);if(!$states)throw new DomainException('No hay estados autorizados para la plantilla.');
+            $byState=[];
+            foreach($municipios as $m){$id=(int)($m['estado_id']??0);$name=trim((string)($m['nombre']??''));if($name!==''&&(!isset($m['estado'])||(int)$m['estado']===1))$byState[$id][$name]=$name;}
+            $catalogRows=self::row(1,[self::cell('A1','Tipos de entidad',1),self::cell('B1','Estados disponibles',1),self::cell('C1','Pasos históricos',1),self::cell('D1','Lista municipal',1)]);
+            for($i=0;$i<max(count($types),count($states),count($steps));$i++){
                 $cells=[];
                 if(isset($types[$i]))$cells[]=self::cell('A'.($i+2),$types[$i]);
-                if(isset($estados[$i]))$cells[]=self::cell('B'.($i+2),$estados[$i]);
+                if(isset($states[$i])){$cells[]=self::cell('B'.($i+2),$states[$i]['nombre']);$cells[]=self::cell('D'.($i+2),'Municipios_'.$states[$i]['id']);}
                 if(isset($steps[$i]))$cells[]=self::cell('C'.($i+2),$steps[$i]);
                 $catalogRows.=self::row($i+2,$cells);
             }
+            $municipalRows=[];$municipalNames='';
+            foreach($states as $i=>$state){$col=self::column($i+1);$names=array_values($byState[$state['id']]??[]);sort($names,SORT_NATURAL|SORT_FLAG_CASE);
+                $municipalRows[1][]=self::cell($col.'1',$state['nombre'],1);
+                foreach($names as $n=>$name)$municipalRows[$n+2][]=self::cell($col.($n+2),$name);
+                $last=max(2,count($names)+1);
+                $municipalNames.='<definedName name="Municipios_'.$state['id'].'">Municipios!$'.$col.'$2:$'.$col.'$'.$last.'</definedName>';
+            }
+            ksort($municipalRows);$municipalXml='';foreach($municipalRows as $n=>$cells)$municipalXml.=self::row($n,$cells);
             $z=[
                 '[Content_Types].xml'=>'<?xml version="1.0" encoding="UTF-8"?>'.
                     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'.
@@ -103,6 +114,7 @@ final class SeguimientoExcelPlantillaService
                     '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'.
                     '<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'.
                     '<Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'.
+                    '<Override PartName="/xl/worksheets/sheet4.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'.
                     '</Types>',
                 '_rels/.rels'=>'<?xml version="1.0" encoding="UTF-8"?>'.
                     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'.
@@ -114,17 +126,20 @@ final class SeguimientoExcelPlantillaService
                     '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>'.
                     '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/>'.
                     '<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'.
+                    '<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/>'.
                     '</Relationships>',
                 'xl/workbook.xml'=>'<?xml version="1.0" encoding="UTF-8"?>'.
                     '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '.
                     'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'.
                     '<sheets><sheet name="Instituciones" sheetId="1" r:id="rId1"/>'.
                     '<sheet name="Guía de llenado" sheetId="2" r:id="rId2"/>'.
-                    '<sheet name="Catalogos" sheetId="3" r:id="rId3"/></sheets>'.
+                    '<sheet name="Catalogos" sheetId="3" r:id="rId3"/><sheet name="Municipios" sheetId="4" state="hidden" r:id="rId5"/></sheets>'.
                     '<definedNames>'.
                     '<definedName name="TiposEntidad">Catalogos!$A$2:$A$7</definedName>'.
-                    '<definedName name="EstadosTerritoriales">Catalogos!$B$2:$B$'.(count($estados)+1).'</definedName>'.
+                    '<definedName name="EstadosTerritoriales">Catalogos!$B$2:$B$'.(count($states)+1).'</definedName>'.
                     '<definedName name="PasosHistoricos">Catalogos!$C$2:$C$15</definedName>'.
+                    '<definedName name="ClavesMunicipales">Catalogos!$D$2:$D$'.(count($states)+1).'</definedName>'.
+                    '<definedName name="MunicipiosVacios">Municipios!$A$1048576</definedName>'.$municipalNames.
                     '</definedNames></workbook>',
                 'xl/styles.xml'=>'<?xml version="1.0" encoding="UTF-8"?>'.
                     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'.
@@ -141,10 +156,12 @@ final class SeguimientoExcelPlantillaService
                     '<alignment wrapText="1" vertical="center"/></xf>'.
                     '<xf numFmtId="0" fontId="1" fillId="3" borderId="0" xfId="0" applyAlignment="1">'.
                     '<alignment wrapText="1" vertical="center"/></xf></cellXfs>'.
+                    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'.
                     '</styleSheet>',
                 'xl/worksheets/sheet1.xml'=>$sheet1,
-                'xl/worksheets/sheet2.xml'=>self::sheet($guideRows),
-                'xl/worksheets/sheet3.xml'=>self::sheet($catalogRows)
+                'xl/worksheets/sheet2.xml'=>self::sheet($guideRows,'',false,'<mergeCells count="1"><mergeCell ref="A1:H1"/></mergeCells>'),
+                'xl/worksheets/sheet3.xml'=>self::sheet($catalogRows),
+                'xl/worksheets/sheet4.xml'=>self::sheet($municipalXml)
             ];
             foreach($z as $name=>$body) {
                 if(!$zip->addFromString($name,$body))throw new RuntimeException('No se pudo crear la hoja '.$name);
