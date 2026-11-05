@@ -1,0 +1,13 @@
+# Registro obligatorio desde el auricular del Analista
+
+Este corte parte de `1f82798e3c4b6ec7362f8858af768a69d483fc61` y actualiza únicamente tres JavaScript públicos del formulario/capa de resultados. La corrección del usuario en Seguimiento y el panel de trabajo queda fuera del paquete. No se cambian servicios PHP, SDK, telefonía, formularios de asesores ni asignaciones.
+
+Al terminar una saliente libre, la capa propia del resultado abre directamente el formulario real en la vista donde está el usuario. Se elimina la ventana intermedia y el botón flotante. Se puede capturar mientras llega la confirmación, pero Guardar permanece deshabilitado hasta consultar el estado autorizado de la referencia exacta y comprobar su cierre en el servidor. La confirmación actualiza la cabecera y habilita Guardar sin recargar ni borrar los campos. Una respuesta sin conversación conserva las restricciones existentes para no crear expedientes ni acreditar verificaciones por ese intento.
+
+El formulario obligatorio no ofrece X, Cancelar ni Volver a mi pantalla. La API de cierre exterior tampoco permite descartarlo. Una nueva llamada entrante tiene prioridad visual: se oculta temporalmente la capa sin destruir el iframe o su captura. Una recarga recupera el pendiente guardado en la sesión; el navegador conserva su aviso habitual antes de abandonar una captura.
+
+El guardado confirmado emite un solo toast institucional en la pantalla de origen, sin navegar ni depender de recargarla. Los mensajes se aceptan únicamente del iframe esperado, del mismo origen y para una referencia admitida. La recuperación de un OK perdido consulta el registro existente; no repite el POST. Si la confirmación tarda, un aviso informativo comunica el pendiente sin sustituir el formulario por una acción flotante.
+
+La publicación conserva las variantes públicas observadas de Hostinger: el observador entrante se mantiene byte por byte y se preservan los reproductores personalizados. Comprueba como dependencia el shell actual, que no se sustituye. Rechaza variantes desconocidas antes de escribir, sirve JS con modo 644, respalda fuera de public_html y admite restauración protegida.
+
+Validación: formulario PHP y shell reales, cierre exterior y modal bloqueados, captura durante la espera, habilitación posterior sin perder notas, toast de éxito, conservación de la vista, llamadas consecutivas, intento sin respuesta, recuperación del OK perdido, entrante transferida, devoluciones y cuatro tamaños. La prueba aislada del publicador cubre variantes, ausencia de escrituras durante check, conflictos, permisos, idempotencia y reversión. También se ejecuta con Python 3.6.8. No se utilizan llamadas ni bases de producción.

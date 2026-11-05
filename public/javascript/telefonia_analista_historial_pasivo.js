@@ -649,31 +649,12 @@
     try {
         const record = JSON.parse(root.sessionStorage.getItem(key) || 'null');
         if (record?.user === user && valid(record.token)) {
-            pending = record;
+            pending = {...record,ready:false};
             // Una recarga no debe abrir otra vez el bloqueo de preparación
             // si Zadarma aún no publicó la referencia/final de la llamada.
             if (!Number.isFinite(Number(pending.at))) pending.at = Date.now() - 12000;
         }
     } catch (_) {}
-    const button = root.document.createElement('button');
-    button.type = 'button'; button.className = 'persistent-phone-action is-primary';
-    button.textContent = 'Registrar resultado pendiente'; button.hidden = true;
-    button.dataset.analystOutgoingPending = '';
-    Object.assign(button.style,{position:'fixed',right:'20px',bottom:'20px',zIndex:'1085',padding:'12px 18px',display:'none'});
-    root.document.body.appendChild(button);
-    const waiting = root.document.createElement('div');
-    waiting.dataset.analystOutgoingPreparing = '';
-    waiting.setAttribute('role','dialog'); waiting.setAttribute('aria-modal','true');
-    waiting.setAttribute('aria-label','Resultado de la llamada');
-    waiting.style.cssText='display:none;position:fixed;inset:0;z-index:1090;background:rgba(20,35,58,.38);padding:24px;align-items:center;justify-content:center;font-family:Manrope,sans-serif';
-    const card=root.document.createElement('section');
-    card.style.cssText='width:100%;max-width:900px;background:#fff;border:1px solid #dce5f2;border-radius:20px;box-shadow:0 20px 60px rgba(20,35,58,.18);overflow:hidden;color:#233654';
-    const title=root.document.createElement('h2');title.textContent='Resultado de la llamada';
-    title.style.cssText='font-size:22px;font-weight:800;margin:0;padding:24px 28px;border-bottom:1px solid #dce5f2';
-    const progress=root.document.createElement('p');progress.setAttribute('role','status');
-    progress.style.cssText='font-size:14px;line-height:1.6;margin:0;padding:28px;color:#63738d';
-    progress.textContent='Preparando el registro. Esperando la confirmación de esta llamada…';
-    card.appendChild(title);card.appendChild(progress);waiting.appendChild(card);root.document.body.appendChild(waiting);
     const persist = () => {
         try {
             if (pending) root.sessionStorage.setItem(key, JSON.stringify(pending));
@@ -682,27 +663,19 @@
     };
     const active = () => Boolean(root.IMPE_TELEPHONY_SHELL?.getCallState()?.active);
     const formReady = () => {
-        if (pending && root.IMPE_ANALYST_RESULT_OVERLAY?.hasRef(pending.ref)) return true;
+        if (pending && (root.IMPE_ANALYST_RESULT_OVERLAY?.hasRef(pending.token) || root.IMPE_ANALYST_RESULT_OVERLAY?.hasRef(pending.ref))) return true;
         try { return Boolean(pending && new URL(crm.contentWindow.location.href).searchParams.get('saliente_ref')===pending.ref &&
             crm.contentDocument.querySelector('#modalLlamadaEntranteAnalista.show')); } catch (_) { return false; }
     };
     const draw = () => {
-        const unresolved=Boolean(pending && !active() && !formReady());
-        // Máximo diez segundos de diálogo bloqueante. La obligación y los
-        // reintentos persisten; después hay una acción visible no modal.
-        const preparing=Boolean(unresolved && Date.now() - Number(pending.at || 0) < 10000);
-        waiting.style.display=preparing?'flex':'none';
-        button.hidden = !unresolved || preparing;
-        if (!button.hidden) {
-            button.textContent='Resultado pendiente · Reintentar';
-            button.title='La centralita todavía no confirmó la referencia o el cierre. Conservamos el intento sin atribuirlo a otra llamada.';
-        }
-        // Reservar la presentación al terminar, antes de esperar al webhook.
-        // Así el resumen telefónico no tapa ni sustituye el registro obligatorio.
-        if (pending && !active() && !root.IMPE_TELEPHONY_SHELL?.isResultFormOpen())
+        if (!pending || active()) return;
+        if (!formReady() && Date.now()>=nextAttempt) openForm(pending.token,pending.ref||pending.token);
+        if (!root.IMPE_TELEPHONY_SHELL?.isResultFormOpen())
             root.IMPE_TELEPHONY_SHELL?.beginCallResult('analista-saliente-'+pending.token,[pending.ref||pending.token]);
-        // Los estilos de acciones usan display:flex y pueden prevalecer sobre [hidden].
-        button.style.setProperty('display',button.hidden?'none':'inline-flex','important');
+        if (!pending.ready && !pending.noticeSent && Date.now()-Number(pending.at||0)>10000) {
+            pending.noticeSent=true;persist();
+            root.IMPE_ANALYST_RESULT_OVERLAY?.notify('Tienes una llamada pendiente de registrar. Puedes continuar capturando mientras se confirma su cierre.','info');
+        }
     };
     const complete = ref => {
         if (!pending || pending.ref !== ref) return false;
@@ -732,7 +705,6 @@
     };
     const showRegistered = result => {
         if (!complete(result.pbx_call_id)) return;
-        root.IMPE_TELEPHONY_NOTIFY?.('El resultado de esta llamada ya está guardado.');
         root.IMPE_ANALYST_RESULT_OVERLAY?.finish?.(result.pbx_call_id);
         // El resultado ya está confirmado: mantener la vista de origen,
         // incluso si el registro generó una interacción en Seguimiento.
@@ -740,31 +712,35 @@
         catch (_) {}
     };
     const openForm = (token, ref) => {
-        if (!pending || pending.token !== token || pending.ref !== ref || active()) return;
+        if (!pending || pending.token !== token || active()) return;
         const url = new URL(String(config.incomingResultsUrl), root.location.href);
         if (url.origin !== root.location.origin) throw new Error('No se pudo abrir el formulario de resultado.');
         url.searchParams.set('controller','seguimientoVinculacion');
         url.searchParams.set('action','llamadasEntrantes'); url.searchParams.delete('vista');
         url.searchParams.set('saliente_ref',ref); url.searchParams.set('pbx_call_id',ref);
+        url.searchParams.set('impe_prepare_result','1');url.searchParams.set('impe_prepare_token',token);
         const opened = root.IMPE_ANALYST_RESULT_OVERLAY?.open(url.href, {
-            refs:[ref],
-            onSaved: () => complete(ref),
+            refs:[token,ref],required:true,
+            prepare:{token,ref,number:pending.number,duration:Number(pending.duration||0)},
+            onSaved: callId => complete(callId),
             onDismiss: () => {
-                if (!pending || pending.ref !== ref || pending.token !== token) return;
+                if (!pending || pending.token !== token) return;
                 opening='';nextAttempt=Date.now()+5000;draw();
             },
             onUncertain: () => {
-                void registered(ref).then(result => {
-                    if (result && pending?.ref === ref) showRegistered(result);
+                const actual=pending?.token===token?pending.ref:'';
+                if(!valid(actual))return;
+                void registered(actual).then(result => {
+                    if (result && pending?.ref === actual) showRegistered(result);
                 }).catch(()=>{});
             }
         });
-        if (!opened) throw new Error('No pudo abrirse el formulario de resultado.');
+        if (!opened) {nextAttempt=Date.now()+2000;return;}
         root.IMPE_TELEPHONY_SHELL?.beginCallResult('analista-saliente-'+token,[ref]);
         opening=token;
     };
     const openPending = async () => {
-        if (!pending || active() || busy || formReady() || opening===pending.token) return;
+        if (!pending || active() || busy || pending.ready) return;
         const token = pending.token;
         busy = true; draw();
         try {
@@ -779,7 +755,7 @@
                     if (['VINCULADA','SIN_IDENTIFICAR'].includes(serverRow.clasificacion)) {
                         showRegistered(serverRow); return;
                     }
-                    openForm(token, pending.ref); return;
+                    pending.ready=Boolean(root.IMPE_ANALYST_RESULT_OVERLAY?.ready(token,pending.ref));persist();return;
                 }
             }
             const stateUrl = new URL('prueba_telefonia/api/zadarma_estado_llamada.php', root.document.baseURI);
@@ -802,15 +778,14 @@
             pending.ref = call.pbx_call_id; persist();
             const previous = await registered(pending.ref);
             if (!pending || pending.token !== token || active()) return;
-            if (previous) { showRegistered(previous); return; }
-            openForm(token, pending.ref);
+            if (previous) {root.IMPE_ANALYST_RESULT_OVERLAY?.ready(token,pending.ref);showRegistered(previous);return;}
+            pending.ready=Boolean(root.IMPE_ANALYST_RESULT_OVERLAY?.ready(token,pending.ref));persist();
         } catch (e) {
-            progress.textContent=e.message || 'No se pudo abrir el resultado. Se reintentará automáticamente; el pendiente se conserva.';
+            // La captura permanece visible. Los reintentos no recargan el formulario.
             nextAttempt=Date.now()+Math.min(8000,750*Math.pow(2,Math.min(attempts++,4)));
         } finally { busy = false; draw(); }
     };
     root.IMPE_ANALYST_OUTGOING_RESULT = Object.freeze({hasPending:()=>Boolean(pending),openPending});
-    button.addEventListener('click', () => void openPending());
     const consume = () => {
         let state;
         try { state = JSON.parse(root.localStorage.getItem('impe:telephony:state:'+user) || 'null'); } catch (_) {return;}
@@ -825,7 +800,7 @@
         if (state.phase === 'finished' && (observed === state.callToken || freshAttempt) &&
             !completed.has(state.callToken) && !pending) {
             pending = {user,at:Date.now(),token:state.callToken,ref:String(state.finalMetadata?.pbx_call_id || state.pbxCallId || ''),
-                number:String(state.destination || ''),requestedAt:Number(state.requestedAt || 0),
+                number:String(state.destination || ''),duration:Number(state.duration||0),requestedAt:Number(state.requestedAt || 0),
                 afterEventId:Number(state.afterEventId || 0)};
             attempts=0;nextAttempt=0;persist();draw();void openPending();
         }
@@ -834,15 +809,17 @@
     root.addEventListener('storage', event => { if(event.key==='impe:telephony:state:'+user) consume(); });
     root.setInterval(()=>{
         consume();
-        if(pending && !active() && !busy && !formReady() && opening!==pending.token && Date.now()>=nextAttempt) void openPending();
+        if(pending && !active() && !busy && !pending.ready && Date.now()>=nextAttempt) void openPending();
     },250);
     root.addEventListener('message', event => {
+        if(root.IMPE_ANALYST_RESULT_OVERLAY?.isOpen())return;
         if (event.origin !== root.location.origin || event.source !== crm.contentWindow ||
             event.data?.type !== 'IMPE_ANALYST_RESULT_SAVED' || !pending ||
             String(event.data.callId) !== pending.ref) return;
         complete(pending.ref);
     });
     root.addEventListener('message', event => {
+        if(root.IMPE_ANALYST_RESULT_OVERLAY?.isOpen())return;
         if (event.origin!==root.location.origin || event.source!==crm.contentWindow ||
             event.data?.type!=='IMPE_ANALYST_OUTGOING_SAVE_UNCERTAIN' || !pending ||
             String(event.data.callId)!==pending.ref) return;

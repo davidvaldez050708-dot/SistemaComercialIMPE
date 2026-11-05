@@ -1,0 +1,52 @@
+name: Analista - registro obligatorio del auricular
+on:
+  pull_request:
+    paths:
+      - 'public/javascript/telefonia_analista_resultado_superpuesto.js'
+      - 'public/javascript/telefonia_analista_historial_pasivo.js'
+      - 'public/javascript/seguimiento_entrantes_analista.js'
+      - 'tests/analista_salientes_formulario_browser.cjs'
+      - 'tests/helpers/analista_resultado_ui_source.cjs'
+      - 'tests/publicacion_analista_resultado_obligatorio_ui.py'
+      - 'tests/fixtures/analista_resultado_ui_hostinger.json'
+      - 'tools/*analista_resultado_obligatorio_ui*'
+      - '.github/workflows/analista-resultado-obligatorio-ui.yml'
+  workflow_dispatch:
+jobs:
+  cierre-toast-y-captura:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Paquete selectivo y preservación de variantes
+        run: |
+          node --check public/javascript/telefonia_analista_resultado_superpuesto.js
+          node --check public/javascript/telefonia_analista_historial_pasivo.js
+          node --check public/javascript/seguimiento_entrantes_analista.js
+          python tests/publicacion_analista_resultado_obligatorio_ui.py
+      - name: Registro inmediato, cierre obligatorio y regresiones
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.8
+          npx playwright install --with-deps chromium
+          export CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
+          mkdir -p tmp/bootstrap
+          cp node_modules/bootstrap/dist/css/bootstrap.min.css tmp/bootstrap/
+          cp node_modules/bootstrap/dist/js/bootstrap.bundle.min.js tmp/bootstrap/
+          export BOOTSTRAP_DIR=tmp/bootstrap
+          node tests/analista_salientes_formulario_browser.cjs
+          node tests/analista_resultado_transferencia_overlay_browser.cjs
+          node tests/telefonia_atencion_browser.cjs
+          node tests/telefonia_devoluciones_integracion_browser.cjs
+          IMPE_ANALISTA_UI_VARIANT=hostinger node tests/analista_salientes_formulario_browser.cjs
+          IMPE_ANALISTA_UI_VARIANT=hostinger node tests/analista_resultado_transferencia_overlay_browser.cjs
