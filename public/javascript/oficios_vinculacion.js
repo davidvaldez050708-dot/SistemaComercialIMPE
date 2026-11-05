@@ -131,14 +131,18 @@
 
             elemento = document.createElement('div');
             elemento.id = 'modalSeleccionarOficio';
-            elemento.className = 'modal fade';
+            elemento.className = 'modal fade oficio-selector-institucional';
             elemento.tabIndex = -1;
             elemento.setAttribute('aria-hidden', 'true');
+            elemento.setAttribute('aria-labelledby', 'tituloSeleccionarOficio');
             elemento.innerHTML =
                 '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
-                    '<div class="modal-header"><h2 class="modal-title fs-5">Seleccionar oficio</h2>' +
+                    '<div class="modal-header"><div class="oficio-selector-heading">' +
+                    '<span class="oficio-selector-heading-icon" aria-hidden="true"><i class="bi bi-file-earmark-text"></i></span>' +
+                    '<div><h2 class="modal-title fs-5" id="tituloSeleccionarOficio">Preparar oficio</h2>' +
+                    '<p class="oficio-selector-heading-subtitle">Seguimiento de Vinculación</p></div></div>' +
                     '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>' +
-                    '<div class="modal-body"><p>Selecciona el formato de oficio que deseas utilizar.</p>' +
+                    '<div class="modal-body"><p class="oficio-selector-intro">Selecciona cómo deseas preparar el oficio para este seguimiento.</p>' +
                     '<div class="list-group mb-3" data-oficio-template-list></div>' +
                     '<div class="d-none" data-oficio-custom-file>' +
                         '<label class="form-label" for="oficioSavedTemplate">Plantillas guardadas</label>' +
@@ -160,7 +164,14 @@
                         '<div class="text-muted text-center mb-2">o seleccionar archivo desde mi equipo</div>' +
                         '<label class="form-label" for="oficioTemplateFile">Archivo de plantilla</label>' +
                         '<input class="form-control" id="oficioTemplateFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
-                        '<div class="form-text">Archivo DOCX de hasta 20 MB.</div>' +
+                        '<div class="form-text">Archivo DOCX de hasta 20 MB. Las plantillas se completan con los datos del seguimiento.</div>' +
+                    '</div>' +
+                    '<div class="d-none" data-oficio-documento-final>' +
+                        '<label class="form-label" for="oficioDocumentoFinal">Oficio terminado en Word</label>' +
+                        '<input class="form-control" id="oficioDocumentoFinal" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
+                        '<p class="oficio-documento-aviso"><i class="bi bi-shield-check" aria-hidden="true"></i>' +
+                        'Se conservará el contenido del documento. No se sustituirán nombres, fecha ni texto; se utilizará para generar el PDF del oficio.</p>' +
+                        '<div class="form-text" data-oficio-documento-estado role="status">Formato DOCX, máximo 20 MB.</div>' +
                     '</div></div>' +
                     '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>' +
                     '<button type="button" class="btn btn-system-save" data-oficio-use-selected>Generar</button></div>' +
@@ -169,6 +180,7 @@
 
             const selector = elemento.querySelector('#oficioSavedTemplate');
             const manual = elemento.querySelector('#oficioTemplateFile');
+            const documentoFinal = elemento.querySelector('#oficioDocumentoFinal');
             const bloqueAlta = elemento.querySelector('[data-oficio-add-form]');
             const pestañaGuardadas = elemento.querySelector('label[for="oficioSavedTemplate"]');
             const pestañaNueva = elemento.querySelector('[data-oficio-add]');
@@ -228,6 +240,11 @@
             manual.addEventListener('change', function () {
                 if (manual.files.length) selector.value = '';
                 actualizarAccionEliminarPlantilla(elemento);
+            });
+            documentoFinal.addEventListener('change', function () {
+                const archivo = this.files?.[0] || null;
+                elemento.querySelector('[data-oficio-documento-estado]').textContent =
+                    archivo ? archivo.name : 'Formato DOCX, máximo 20 MB.';
             });
             pestañaNueva?.addEventListener('click', function () {
                 mostrarNuevaPlantilla();
@@ -310,14 +327,31 @@
                     'd-none',
                     event.target.value !== 'personalizada'
                 );
+                elemento.querySelector('[data-oficio-documento-final]').classList.toggle(
+                    'd-none',
+                    event.target.value !== 'documento_final'
+                );
             });
             elemento.querySelector('[data-oficio-use-selected]').addEventListener('click', function () {
                 const seleccion = elemento.querySelector('input[name="oficio_plantilla"]:checked');
                 if (!seleccion || !contextoGeneracion) return;
-                const archivo = elemento.querySelector('#oficioTemplateFile')?.files?.[0] || null;
-                const plantillaId = Number(selector.value || 0);
+                const esDocumentoFinal = seleccion.value === 'documento_final';
+                const archivo = esDocumentoFinal
+                    ? (documentoFinal.files?.[0] || null)
+                    : (manual.files?.[0] || null);
+                const plantillaId = esDocumentoFinal ? 0 : Number(selector.value || 0);
                 if (seleccion.value === 'personalizada' && !archivo && !plantillaId) {
                     mostrarToast('Selecciona una plantilla de oficio.', true);
+                    return;
+                }
+                if (esDocumentoFinal && !archivo) {
+                    mostrarToast('Adjunta el oficio terminado en Word (.docx).', true);
+                    documentoFinal.focus();
+                    return;
+                }
+                if (archivo && (!/\.docx$/i.test(archivo.name) || !archivo.size ||
+                    archivo.size > 20 * 1024 * 1024)) {
+                    mostrarToast('Selecciona un archivo DOCX válido de hasta 20 MB.', true);
                     return;
                 }
                 bootstrap.Modal.getOrCreateInstance(elemento).hide();
@@ -355,17 +389,22 @@
             const modal = obtenerModalPlantillas();
             const lista = modal.querySelector('[data-oficio-template-list]');
             const opciones = [
-                { id: 'predeterminada', nombre: 'Oficio predeterminado', descripcion: 'Formato actual del sistema' },
-                { id: 'personalizada', nombre: 'Usar plantilla personalizada', descripcion: 'Seleccionar documento desde mi equipo' }
+                { id: 'predeterminada', icono: 'bi-file-earmark-check', nombre: 'Oficio predeterminado', descripcion: 'Formato institucional · Ciudad de México' },
+                { id: 'personalizada', icono: 'bi-file-earmark-ruled', nombre: 'Usar plantilla personalizada', descripcion: 'Completar una plantilla DOCX con datos del seguimiento' },
+                { id: 'documento_final', icono: 'bi-file-earmark-arrow-up', nombre: 'Adjuntar oficio ya elaborado', descripcion: 'Utilizar un Word terminado sin modificar su contenido' }
             ];
             lista.innerHTML = opciones.map(function (item, indice) {
                 return '<label class="list-group-item d-flex gap-2 align-items-start">' +
                     '<input class="form-check-input mt-1" type="radio" name="oficio_plantilla" value="' + item.id + '" ' + (indice === 0 ? 'checked' : '') + '>' +
-                    '<span><strong class="d-block">' + escapar(item.nombre) + '</strong>' +
+                    '<span class="oficio-selector-card-icon" aria-hidden="true"><i class="bi ' + item.icono + '"></i></span>' +
+                    '<span class="oficio-selector-card-copy"><strong class="d-block">' + escapar(item.nombre) + '</strong>' +
                     '<small class="text-muted">' + escapar(item.descripcion) + '</small></span></label>';
             }).join('');
             modal.querySelector('[data-oficio-custom-file]').classList.add('d-none');
+            modal.querySelector('[data-oficio-documento-final]').classList.add('d-none');
             modal.querySelector('#oficioTemplateFile').value = '';
+            modal.querySelector('#oficioDocumentoFinal').value = '';
+            modal.querySelector('[data-oficio-documento-estado]').textContent = 'Formato DOCX, máximo 20 MB.';
             modal.querySelector('#oficioSavedTemplate').replaceChildren(new Option('Seleccionar una plantilla...', ''));
             modal.dataset.puedeEliminarPlantillas = '0';
             actualizarAccionEliminarPlantilla(modal);
@@ -708,8 +747,10 @@
 
             const formulario = new FormData();
             formulario.append('seguimiento_id', String(seguimientoId));
-            formulario.append('tipo_plantilla', tipoPlantilla === 'personalizada' ? 'personalizada' : 'predeterminada');
-            if (tipoPlantilla === 'personalizada' && archivoPlantilla) {
+            formulario.append('tipo_plantilla', tipoPlantilla);
+            if (tipoPlantilla === 'documento_final' && archivoPlantilla) {
+                formulario.append('archivo_oficio', archivoPlantilla, archivoPlantilla.name);
+            } else if (tipoPlantilla === 'personalizada' && archivoPlantilla) {
                 formulario.append('archivo_plantilla', archivoPlantilla, archivoPlantilla.name);
             } else if (tipoPlantilla === 'personalizada' && plantillaId) {
                 formulario.append('plantilla_id', String(plantillaId));
