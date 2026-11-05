@@ -1,5 +1,5 @@
 const fs=require('fs'),cp=require('child_process'),assert=require('assert/strict'),{chromium}=require('playwright');
-const read=p=>fs.readFileSync(p,'utf8');
+const read=require('./helpers/analista_resultado_ui_source.cjs');
 const view=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/analista_saliente_vista.php'],{encoding:'utf8'});
 const noAnswerView=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/analista_saliente_vista.php','sin-respuesta'],{encoding:'utf8'});
 const notEndedView=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/analista_saliente_vista.php','sin-cierre'],{encoding:'utf8'});
@@ -28,7 +28,7 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  await page.route('http://salientes.test/**',async r=>{
   const u=new URL(r.request().url());
   if(u.pathname.endsWith('zadarma_estado_llamada.php')){stateCalls++;assert.match(u.searchParams.get('after_id'),/^(500|600|700|800)$/);if(stateCalls<=2)return r.fulfill({json:{ok:true,call:null}});return r.fulfill({json:{ok:true,call:{pbx_call_id:providerRef,status:'completed'}}});}
-  if(u.searchParams.get('action')==='estadoResultadoSaliente')return r.fulfill({json:{ok:true,llamada:{pbx_call_id:u.searchParams.get('pbx_call_id'),clasificacion:savedRecords[u.searchParams.get('pbx_call_id')]||'PENDIENTE',seguimiento_id:10}}});
+  if(u.searchParams.get('action')==='estadoResultadoSaliente')return r.fulfill({json:{ok:true,llamada:{pbx_call_id:u.searchParams.get('pbx_call_id'),clasificacion:savedRecords[u.searchParams.get('pbx_call_id')]||'PENDIENTE',seguimiento_id:10,estado_pbx:'ended',numero:'5551234567',duracion:7,contestada:!u.searchParams.get('pbx_call_id').endsWith('004')}}});
   if(u.pathname.endsWith('borrador_llamada.php'))return r.fulfill({json:{ok:true,borrador:null}});
   if(u.pathname.endsWith('municipios_llamada.php'))return r.fulfill({json:{ok:true,municipios:[{id:11,nombre:'Cuernavaca'}]}});
   if(u.searchParams.get('action')==='buscarEntrantesSeguimientos')return r.fulfill({json:{ok:true,resultados:[{id:10,nombre_entidad:'Institución de prueba',estado_nombre:'Morelos'}]}});
@@ -45,7 +45,7 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  await page.evaluate(s=>publish(s),active);
  assert.equal(await page.evaluate(()=>IMPE_ANALYST_OUTGOING_RESULT.hasPending()),false);
  await page.evaluate(s=>publish({...s,active:false,phase:'finished',finalMetadata:{pbx_call_id:s.pbxCallId}}),active);
- await page.locator('[data-analyst-outgoing-preparing]').waitFor({state:'visible'});
+ await page.locator('[data-analyst-result-overlay]').waitFor({state:'visible'});
  assert.equal(await page.evaluate(()=>formOpen),true,'Reservar el registro de inmediato sin mostrar el resumen de fin');
  assert.equal(await page.locator('[data-analyst-outgoing-pending]').isVisible(),false,'No exigir un botón mientras llega el webhook');
  await page.waitForFunction(()=>document.querySelector('[data-analyst-result-overlay] iframe')?.contentWindow.location.search.includes('saliente_ref='));
@@ -54,7 +54,10 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  await frame.locator('#modalLlamadaEntranteAnalista.show').waitFor();
  assert.equal(await frame.locator('[name=pbx_call_id]').inputValue(),'out-fixture-001');
  assert.equal(await frame.locator('[name=sdk_session_id]').inputValue(),'','No fingir una llamada entrante SDK');
+ await frame.waitForFunction(()=>!document.querySelector('[data-incoming-submit]').disabled);
  assert.match(await frame.locator('[data-incoming-duration]').textContent(),/00:07/);
+ assert.equal(await frame.locator('[data-bs-dismiss="modal"]').first().isVisible(),false,'Sin X ni Cancelar para un resultado obligatorio');
+ assert.equal(await page.evaluate(()=>IMPE_ANALYST_RESULT_OVERLAY.dismiss()),false,'La capa exterior tampoco permite abandonar el registro');
  // El mismo formulario permite la selección de expediente o el alta territorial.
  await frame.locator('[data-incoming-lookup]').fill('Institución');
  await frame.locator('[name=seguimiento_id] option[value="10"]').waitFor({state:'attached'});
@@ -72,17 +75,21 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  await page.waitForTimeout(200);
  assert.ok(posted.includes('out-fixture-001'));
  assert.equal(await page.evaluate(()=>IMPE_ANALYST_OUTGOING_RESULT.hasPending()),true,'Error de guardado conserva obligación');
- await frame.locator('#modalLlamadaEntranteAnalista [data-bs-dismiss]').first().click();
+ await frame.evaluate(()=>bootstrap.Modal.getInstance(document.getElementById('modalLlamadaEntranteAnalista')).hide());
  assert.equal(await frame.locator('#modalLlamadaEntranteAnalista.show').count(),1,'No cerrar sin guardar');
  await frame.locator('#otherModule').evaluate(e=>e.click());assert.ok(frame.url().includes('saliente_ref='),'No salir a otro módulo');
  assert.equal(await frame.locator('[name=observacion]').inputValue(),'Notas capturadas en el formulario compartido');
  // Otra referencia no libera este resultado.
  await page.evaluate(()=>dispatchEvent(new MessageEvent('message',{origin:location.origin,source:document.querySelector('#impeCrmFrame').contentWindow,data:{type:'IMPE_ANALYST_RESULT_SAVED',callId:'otra-llamada'}})));
  assert.equal(await page.evaluate(()=>IMPE_ANALYST_OUTGOING_RESULT.hasPending()),true);
+ await page.evaluate(()=>dispatchEvent(new MessageEvent('message',{origin:location.origin,source:document.querySelector('#impeCrmFrame').contentWindow,data:{type:'IMPE_ANALYST_RESULT_SAVED',callId:'out-fixture-001'}})));
+ assert.equal(await page.evaluate(()=>IMPE_ANALYST_OUTGOING_RESULT.hasPending()),true,'La pantalla de origen no confirma el guardado de la capa de resultado');
  mode='success';await frame.locator('[data-incoming-submit]').click();
  await page.waitForFunction(()=>!IMPE_ANALYST_OUTGOING_RESULT.hasPending());
  assert.equal(await page.evaluate(()=>sessionStorage.getItem('impe:analista:saliente-pendiente:1')),null);
  assert.equal(await page.locator('[data-analyst-result-overlay]').count(),0,'El formulario desaparece tras guardar');
+ await page.locator('[data-analyst-result-toasts] .system-toast').first().waitFor({state:'visible'});
+ assert.match(await page.locator('[data-analyst-result-toasts]').textContent(),/registrado correctamente/);
  assert.equal(await page.locator('#impeCrmFrame').evaluate(e=>new URL(e.contentWindow.location.href).pathname),'/empty',
   'La pantalla de origen conserva su ubicación y no redirige a Recibidas');
  assert.equal(stateCalls,3,'Abrir automáticamente después de dos respuestas todavía sin confirmación');
@@ -91,7 +98,7 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  await page.evaluate(s=>publish(s),second);
  await page.evaluate(s=>publish({...s,active:false,phase:'finished',finalMetadata:{pbx_call_id:s.pbxCallId}}),second);
  await page.waitForFunction(()=>IMPE_ANALYST_OUTGOING_RESULT.hasPending());
- await page.locator('[data-analyst-outgoing-preparing]').waitFor({state:'visible'});
+ await page.locator('[data-analyst-result-overlay]').waitFor({state:'visible'});
  assert.equal(JSON.parse(await page.evaluate(()=>sessionStorage.getItem('impe:analista:saliente-pendiente:1'))).ref,'out-fixture-002');
  providerRef='out-fixture-002';
  await page.waitForFunction(()=>document.querySelector('[data-analyst-result-overlay] iframe')?.contentWindow.location.search.includes('out-fixture-002'));
@@ -100,6 +107,7 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  assert.equal(await page.locator('#impeCrmFrame').evaluate(e=>new URL(e.contentWindow.location.href).pathname),'/empty');
  assert.equal(await secondForm.locator('[name=pbx_call_id]').inputValue(),'out-fixture-002');
  assert.equal(await secondForm.locator('[name=observacion]').inputValue(),'','No arrastrar notas anteriores');
+ await secondForm.waitForFunction(()=>!document.querySelector('[data-incoming-submit]').disabled);
  await secondForm.locator('[name=decision]').selectOption('sin_identificar');
  await secondForm.locator('[data-incoming-submit]').click();
  await page.waitForFunction(()=>!IMPE_ANALYST_OUTGOING_RESULT.hasPending());
@@ -112,6 +120,7 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  await page.waitForFunction(()=>document.querySelector('[data-analyst-result-overlay] iframe')?.contentWindow.location.search.includes('out-fixture-003'));
  const thirdForm=page.frames().find(f=>f.url().includes('out-fixture-003'));
  await thirdForm.locator('#modalLlamadaEntranteAnalista.show').waitFor();
+ await thirdForm.waitForFunction(()=>!document.querySelector('[data-incoming-submit]').disabled);
  await thirdForm.locator('[name=decision]').selectOption('sin_identificar');
  const before=posts;await thirdForm.locator('[data-incoming-submit]').click();
  await page.waitForFunction(()=>!IMPE_ANALYST_OUTGOING_RESULT.hasPending());
@@ -125,6 +134,7 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  await page.waitForFunction(()=>document.querySelector('[data-analyst-result-overlay] iframe')?.contentWindow.location.search.includes('out-fixture-004'));
  const fourthForm=page.frames().find(f=>f.url().includes('out-fixture-004'));
  await fourthForm.locator('#modalLlamadaEntranteAnalista.show').waitFor();
+ await fourthForm.waitForFunction(()=>!document.querySelector('[data-incoming-submit]').disabled);
  assert.equal(await fourthForm.locator('[name=decision]').inputValue(),'sin_identificar',
   'No respuesta no equivale a contacto institucional');
  assert.equal(await fourthForm.locator('[name=resultado]').isVisible(),false,
@@ -136,16 +146,21 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  assert.deepEqual(errors,[]);
  // Shell PHP real: el resumen no puede quedar encima mientras llega el webhook.
  const shell=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/telefonia_flujo_shell.php','analista'],{encoding:'utf8'});
- const real=await browser.newPage({viewport:{width:1366,height:900}});let confirmed=false,lookups=0;
+ const real=await browser.newPage({viewport:{width:1366,height:900}});let confirmed=false,lookups=0,earlyPosts=0;
  real.on('pageerror',e=>errors.push(e.message));
  await real.route('http://llamadas.test/**',async r=>{
   const u=new URL(r.request().url());
   if(u.pathname.startsWith('/public/javascript/'))return r.fulfill({contentType:'application/javascript',body:read(u.pathname.slice(1))});
   if(u.pathname.startsWith('/public/css/'))return r.fulfill({contentType:'text/css',body:read(u.pathname.slice(1))});
   if(u.pathname.endsWith('zadarma_estado_llamada.php')){lookups++;return r.fulfill({json:{ok:true,call:confirmed?{pbx_call_id:'out-real-shell-001',status:'completed'}:null}});}
-  if(u.searchParams.get('action')==='estadoResultadoSaliente')return r.fulfill({json:{ok:true,llamada:{pbx_call_id:'out-real-shell-001',clasificacion:'PENDIENTE'}}});
+  if(u.searchParams.get('action')==='estadoResultadoSaliente')return r.fulfill({json:{ok:true,llamada:{pbx_call_id:'out-real-shell-001',clasificacion:'PENDIENTE',estado_pbx:'ended',numero:'5551234567',duracion:7,contestada:true}}});
+  if(u.searchParams.get('action')==='registrarLlamadaEntrante'){earlyPosts++;return r.fulfill({status:503,json:{ok:false,mensaje:'No debe guardar antes de confirmar'}});}
   if(u.pathname==='/')return r.fulfill({contentType:'text/html',body:shell});
-  if(u.searchParams.has('saliente_ref'))return r.fulfill({contentType:'text/html',body:formHtml.replaceAll('out-fixture-001','out-real-shell-001')});
+  if(u.searchParams.has('saliente_ref')){
+   let body=formHtml.replaceAll('out-fixture-001','out-real-shell-001');
+   if(!confirmed)body=body.replace(/<option\s+value="1"[^>]*>Morelos<\/option>/g,'');
+   return r.fulfill({contentType:'text/html',body});
+  }
   return r.fulfill({contentType:'text/html',body:'<!doctype html><title>Motor y módulo de prueba</title>'});
  });
  await real.goto('http://llamadas.test/');
@@ -155,20 +170,34 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
  await publishReal(realState);
  await real.waitForFunction(()=>IMPE_TELEPHONY_SHELL.getCallState()?.active);
  await publishReal({...realState,active:false,phase:'finished'});
- await real.locator('[data-analyst-outgoing-preparing]').waitFor({state:'visible'});
+ await real.frameLocator('[data-analyst-result-overlay] iframe').locator('#modalLlamadaEntranteAnalista.show').waitFor();
+ const earlyForm=real.frames().find(f=>f.url().includes('saliente_ref='));
+ assert.equal(await earlyForm.locator('[data-incoming-submit]').isDisabled(),true,'Captura inmediata con guardado protegido mientras falta confirmación');
+ await earlyForm.locator('[name=observacion]').fill('Captura antes de recibir el webhook final');
+ await earlyForm.locator('[name=decision]').selectOption('sin_identificar');
+ await earlyForm.locator('[data-incoming-form]').evaluate(e=>e.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+ assert.equal(earlyPosts,0,'La captura provisional no ejecuta un POST de resultado');
+ await real.evaluate(s=>{s.updatedAt=Date.now();localStorage.setItem('impe:telephony:state:8',JSON.stringify(s));dispatchEvent(new StorageEvent('storage',{key:'impe:telephony:state:8',newValue:JSON.stringify(s)}));},{...realState,direction:'incoming',phase:'incoming-ringing',callToken:'incoming-priority-test',context:{type:'SDK_INCOMING'}});
+ await real.locator('[data-analyst-result-overlay]').waitFor({state:'hidden'});
+ assert.equal(await real.evaluate(()=>IMPE_ANALYST_OUTGOING_RESULT.hasPending()),true,'Una entrante no descarta el pendiente anterior');
+ await publishReal({...realState,active:false,phase:'finished'});
+ await real.locator('[data-analyst-result-overlay]').waitFor({state:'visible'});
  await real.waitForTimeout(400);
  assert.equal(await real.locator('[data-incoming-panel]').isVisible(),false,'El shell real oculta el resumen al reservar el resultado');
  assert.equal(await real.locator('[data-analyst-outgoing-pending]').isVisible(),false);
  confirmed=true;
  await real.frameLocator('[data-analyst-result-overlay] iframe').locator('#modalLlamadaEntranteAnalista.show').waitFor();
- await real.locator('[data-analyst-outgoing-preparing]').waitFor({state:'hidden'});
+ await earlyForm.waitForFunction(()=>!document.querySelector('[data-incoming-submit]').disabled);
+ assert.equal(await earlyForm.locator('[name=observacion]').inputValue(),'Captura antes de recibir el webhook final','Confirmar sin recargar ni borrar la captura');
+ assert.equal(await earlyForm.locator('[name=estado_id] option[value="1"]').count(),1,'Recuperar el catálogo territorial si la referencia no existía al abrir');
+ assert.equal(await real.locator('[data-analyst-outgoing-preparing]').count(),0,'No mostrar una ventana intermedia de espera');
  assert.equal(await real.locator('[data-analyst-result-overlay]').count(),1);
  assert.notEqual(await real.locator('#impeCrmFrame').evaluate(e=>new URL(e.contentWindow.location.href).searchParams.get('saliente_ref')),'out-real-shell-001',
   'El shell no sustituye la vista actual mientras captura el resultado');
  assert.equal(await real.locator('[data-incoming-panel]').isVisible(),false,'El resumen tampoco tapa el formulario cargado');
  assert.ok(lookups>=2,'Esperar y reintentar sin clic manual');
  assert.deepEqual(errors,[]);
- // El pendiente restaurado no debe reabrir el diálogo bloqueante.
+ // Recuperar el mismo formulario tras recargar, sin un botón flotante.
  const restored=await browser.newPage({viewport:{width:1280,height:800}});
  restored.on('pageerror',e=>errors.push(e.message));
  await restored.addInitScript(()=>sessionStorage.setItem('impe:analista:saliente-pendiente:8',JSON.stringify({
@@ -181,10 +210,12 @@ window.publish=s=>{state=s;localStorage.setItem('impe:telephony:state:1',JSON.st
    if(u.pathname.startsWith('/public/css/'))return r.fulfill({contentType:'text/css',body:read(u.pathname.slice(1))});
    if(u.pathname.endsWith('zadarma_estado_llamada.php'))return r.fulfill({json:{ok:true,call:null}});
    if(u.pathname==='/')return r.fulfill({contentType:'text/html',body:shell});
+   if(u.searchParams.has('saliente_ref'))return r.fulfill({contentType:'text/html',body:formHtml});
    return r.fulfill({contentType:'text/html',body:'<!doctype html><title>Motor o módulo</title>'});
  });
  await restored.goto('http://llamadas.test/');
- await restored.locator('[data-analyst-outgoing-pending]').waitFor({state:'visible'});
+ await restored.frameLocator('[data-analyst-result-overlay] iframe').locator('#modalLlamadaEntranteAnalista.show').waitFor();
+ assert.equal(await restored.locator('[data-analyst-outgoing-pending]').count(),0,'Sin botón flotante');
  assert.equal(await restored.locator('[data-analyst-outgoing-preparing]').isVisible(),false,'No repetir modal al recargar');
  assert.equal(await restored.evaluate(()=>IMPE_ANALYST_OUTGOING_RESULT.hasPending()),true,'Pendiente conservado');
  assert.deepEqual(errors,[]);

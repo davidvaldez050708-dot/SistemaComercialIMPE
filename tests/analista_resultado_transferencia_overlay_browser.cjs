@@ -1,6 +1,6 @@
 'use strict';
 const fs=require('fs'),assert=require('assert/strict'),cp=require('child_process'),{chromium}=require('playwright');
-const read=p=>fs.readFileSync(p,'utf8');
+const read=require('./helpers/analista_resultado_ui_source.cjs');
 const fixture=cp.execFileSync(process.env.PHP_BIN||'php',['tests/fixtures/analista_entrante_transferida_vista.php'],{encoding:'utf8'});
 const dir=process.env.BOOTSTRAP_DIR||'tmp/bootstrap';
 const css=read(dir+'/bootstrap.min.css'),bs=read(dir+'/bootstrap.bundle.min.js');
