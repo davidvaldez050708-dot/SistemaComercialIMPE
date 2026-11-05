@@ -1,0 +1,37 @@
+name: Supervisión - grabación CDR propia sin OUT_END
+on:
+  pull_request:
+    paths:
+      - 'app/services/SupervisionLlamadasRepository.php'
+      - 'app/services/SupervisionLlamadasAudioService.php'
+      - 'app/services/SupervisionVentasAudioCdrPolicy.php'
+      - 'tests/supervision_ventas_audio_cdr_unit.php'
+      - 'tests/publicacion_supervision_audio_cdr_test.py'
+      - 'tools/publicar_supervision_audio_cdr_hostinger.py'
+      - '.github/workflows/supervision-grabacion-cdr.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, mysqli
+      - name: Sintaxis PHP y Python
+        run: |
+          php -l app/services/SupervisionVentasAudioCdrPolicy.php
+          php -l app/services/SupervisionLlamadasRepository.php
+          php -l app/services/SupervisionLlamadasAudioService.php
+          python3 -m py_compile tools/publicar_supervision_audio_cdr_hostinger.py
+      - name: Permisos, CDR 201 segundos y regresiones
+        run: |
+          php tests/telefonia_ventas_grabacion_cdr_unit.php
+          php tests/supervision_ventas_audio_cdr_unit.php
+      - name: Publicación simulada, conflictos y reversión
+        run: python3 tests/publicacion_supervision_audio_cdr_test.py
