@@ -1924,3 +1924,26 @@
         font-size: 9px;
     }
 }
+
+
+/* INSCRIPCION · ACCIONES AZULES Y ACENTOS VERDES · 20261105
+   Los iconos y detalles secundarios conservan el verde institucional.
+   Se aplica exclusivamente a Inscripción, nunca a Registro. */
+.formularios-inscripcion-theme .btn-system-save,
+.formularios-inscripcion-theme .formularios-registration-actions .btn-system-save {
+    background: #223a84;
+    border-color: #223a84;
+    color: #fff;
+}
+
+.formularios-inscripcion-theme .btn-system-save:hover,
+.formularios-inscripcion-theme .formularios-registration-actions .btn-system-save:hover {
+    background: #1a2e70;
+    border-color: #1a2e70;
+    color: #fff;
+}
+
+.formularios-inscripcion-theme .btn-system-save:focus-visible {
+    outline: 2px solid #223a84;
+    outline-offset: 3px;
+}
