@@ -534,7 +534,34 @@ final class OficioRedmexPdfRenderer
             .'</style></head><body>'.$fixed.$body.'</body></html>';
     }
 
-    private function partGraphics(DOMElement $context): array
+
+    /**
+     * Anclajes Word en encabezado/pie: wp:align (left/right) relativo a página
+     * es alternativo a wp:posOffset, no un desplazamiento ausente.
+     * Las imágenes del cuerpo conservan la validación numérica previa.
+     */
+    private function horizontalPosition(DOMElement $position, float $width, bool $allowPageAlignment): float
+    {
+        $offset = $this->one('wp:posOffset', $position);
+        $alignment = $this->one('wp:align', $position);
+        $this->ensure(($offset !== null) !== ($alignment !== null), 'ANCHOR_ALIGN');
+
+        if ($offset !== null) {
+            $value = trim((string)$offset->textContent);
+            $this->ensure(preg_match('/^-?[0-9]{1,14}$/D', $value) === 1, 'ANCHOR_ALIGN');
+            return (float)$value / 12700;
+        }
+
+        $this->ensure($allowPageAlignment &&
+            $position->getAttribute('relativeFrom') === 'page' &&
+            $width > 0 && $width <= $this->pageWidth, 'ANCHOR_ALIGN');
+        $value = trim((string)$alignment->textContent);
+        $this->ensure(in_array($value, ['left', 'right'], true), 'ANCHOR_ALIGN');
+
+        return $value === 'left' ? 0.0 : $this->pageWidth - $width;
+    }
+
+    private function partGraphics(DOMElement $context, bool $allowPageAlignment = false): array
     {
         $this->ensure(!$this->xp->query('.//wp:inline', $context)->length, 'INLINE_GRAPHICS');
         $result = [];
@@ -543,10 +570,15 @@ final class OficioRedmexPdfRenderer
             $extent = $this->one('wp:extent', $anchor);
             $this->ensure($h && $v && $extent && ($this->one('wp:wrapNone', $anchor) || $this->one('wp:wrapSquare', $anchor)), 'ANCHOR');
             $this->ensure($anchor->getAttribute('hidden') !== '1' && $anchor->getAttribute('simplePos') !== '1', 'ANCHOR_FLAGS');
-            $this->ensure($this->one('wp:posOffset', $h) && $this->one('wp:posOffset', $v), 'ANCHOR_ALIGN');
+            $verticalOffset = $this->one('wp:posOffset', $v);
+            $this->ensure($verticalOffset !== null &&
+                $this->one('wp:align', $v) === null &&
+                preg_match('/^-?[0-9]{1,14}$/D', trim((string)$verticalOffset->textContent)) === 1,
+                'ANCHOR_ALIGN');
             $w = (float)$extent->getAttribute('cx') / 12700; $height = (float)$extent->getAttribute('cy') / 12700;
             $this->ensure($w > 0 && $height > 0 && $w <= 1500 && $height <= 1500, 'ANCHOR_SIZE');
-            $g = ['x'=>(float)$h->textContent / 12700, 'y'=>(float)$v->textContent / 12700,
+            $x = $this->horizontalPosition($h, $w, $allowPageAlignment);
+            $g = ['x'=>$x, 'y'=>(float)$verticalOffset->textContent / 12700,
                 'w'=>$w, 'h'=>$height, 'horizontal'=>$h->getAttribute('relativeFrom'), 'vertical'=>$v->getAttribute('relativeFrom'), 'images'=>[]];
             $this->ensure(in_array($g['horizontal'], ['column','margin','page'], true)
                 && in_array($g['vertical'], ['paragraph','page'], true), 'ANCHOR_ALIGN');
@@ -592,7 +624,7 @@ final class OficioRedmexPdfRenderer
             foreach ($xp->document->documentElement->childNodes as $p) {
                 if (!$p instanceof DOMElement) { continue; }
                 $this->ensure($p->nodeName === 'w:p', 'SECTION_STRUCTURE');
-                $graphics = $this->partGraphics($p);
+                $graphics = $this->partGraphics($p, true);
                 // Dibujar primero la franja del fondo y después sus recursos menores.
                 usort($graphics, static function ($a, $b) { return $b['w'] <=> $a['w']; });
                 foreach ($graphics as $g) {
