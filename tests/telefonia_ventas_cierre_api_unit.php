@@ -39,5 +39,16 @@ $inCall=new DateTimeImmutable('2026-11-05 09:47:00',$tz);
 $assert(!$verify($call,static fn()=>[$provider],$inCall),'No acredita una llamada que aún podría estar activa');
 $assert($verify($call,static fn()=>[array_replace($provider,['is_recorded'=>false])]),
   'Grabación no es condición para el resultado humano');
+$noContestada=array_replace($call,['conectada'=>false]);
+foreach (['no answer','no_answer','busy','cancel','canceled','failed'] as $sinContacto) {
+    $cdr=array_replace($provider,['disposition'=>$sinContacto,'seconds'=>0]);
+    $assert($verify($noContestada,static fn()=>[$cdr]),'Cierre sin conversación: '.$sinContacto);
+}
+$assert(!$verify($noContestada,static fn()=>[$provider]),'ANSWERED sin webhook propio no acredita conversación');
+$assert(!$verify($call,static fn()=>[array_replace($provider,['seconds'=>0])]),
+    'Sin segundos de conversación no acreditar cierre conectado');
+require_once __DIR__.'/../app/services/ZadarmaCallLookupService.php';
+$metodo=new ReflectionMethod(ZadarmaCallLookupService::class,'estadisticasPbx');
+$assert($metodo->isPublic(),'La consulta real de estadísticas es pública y existe');
 $assert(!$verify($call,static fn()=>[]),'Proveedor sin coincidencia');
 echo "PASS: PBX y extensión exactas, duración y fin verificados, sin inferir por teléfono ni por grabación.\n";
