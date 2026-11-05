@@ -11,7 +11,7 @@ if(($argv[1]??'')==='xlsx'){
     $xml=$zip->getFromName('xl/worksheets/sheet1.xml');$zip->addFromString('xl/worksheets/sheet1.xml',str_replace('</sheetData>',$row.'</sheetData>',$xml));
     $zip->close();echo file_get_contents($temp);unlink($temp);exit;
 }
-define('ROOT_PATH',dirname(__DIR__,2));define('BASE_URL','http://excel.test/');
+define('ROOT_PATH',dirname(__DIR__,2));define('BASE_URL',getenv('IMPE_EXCEL_TEST_BASE')?:'http://excel.test/');
 require ROOT_PATH.'/app/helpers/PermissionHelper.php';
 $modoSeguimiento=in_array($argv[1]??'',['analista','supervisor','administrador'],true)?$argv[1]:'analista';
 $_SESSION=['usuario_id'=>501,'rol_id'=>$modoSeguimiento==='analista'?4:($modoSeguimiento==='supervisor'?6:2),

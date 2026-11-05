@@ -1,6 +1,6 @@
 /* Formulario y estilos reales. El transporte simula el contrato del controlador;
  * verifica las partes multipart exactas, sin importar instituciones en una base. */
-const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium,webkit}=require('playwright'),root=path.resolve(__dirname,'..');
 const bootstrap=path.dirname(require.resolve('bootstrap/package.json')),icons=path.dirname(require.resolve('bootstrap-icons/package.json'));
 const php=(...args)=>cp.execFileSync(process.env.PHP_BINARY||'php',[path.join(__dirname,'fixtures/seguimiento_excel_importador.php'),...args]);
@@ -9,8 +9,18 @@ const xlsx=php('xlsx'),baseline=process.env.IMPE_EXCEL_BASELINE?cp.execFileSync(
 try{
  const page=await browser.newPage(),errors=[],sent=[];page.on('pageerror',e=>errors.push(e.message));
  let mode='analista',analyses=0,commits=0,fault='',zero=false,missingToken=false,previewToken='';
- await page.route('**/*',async route=>{
-  const req=route.request(),url=new URL(req.url());if(url.hostname!=='excel.test')return route.abort();
+ // WebKit omite los bytes de archivos en Request.postDataBuffer() al interceptar.
+ // Usar HTTP real para comprobar los bytes que llegan, sin reconstruir el multipart.
+ const server=http.createServer(async (incoming,response)=>{
+  try {
+  const chunks=[];for await(const chunk of incoming)chunks.push(chunk);
+  const req={url:()=>base+incoming.url.slice(1),headers:()=>incoming.headers,postDataBuffer:()=>Buffer.concat(chunks)};
+  const route={fulfill:async options=>{
+   response.statusCode=options.status||200;
+   response.setHeader('Content-Type',options.json?'application/json':options.contentType||(options.path?.endsWith('.css')?'text/css':'application/javascript'));
+   response.end(options.json?JSON.stringify(options.json):options.path?fs.readFileSync(options.path):options.body||'');
+  },abort:()=>{response.statusCode=404;response.end();}};
+  const url=new URL(req.url());
   const action=url.searchParams.get('action');
   if(action==='analistasImportacionExcel')return route.fulfill({json:{ok:true,analistas:[{id:501,nombre:'Analista de prueba'},{id:502,nombre:'Otro analista'}]}});
   if(action==='importarInstitucionesExcel'){
@@ -40,7 +50,11 @@ try{
   if(baseline&&url.pathname==='/public/javascript/seguimiento_importacion_excel.js')return route.fulfill({contentType:'application/javascript',body:baseline});
   if(url.pathname.startsWith('/public/')){const file=path.join(root,url.pathname);return fs.existsSync(file)?route.fulfill({path:file}):route.abort();}
   return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/bootstrap.css"><link rel="stylesheet" href="/icons/bootstrap-icons.css"><link rel="stylesheet" href="/public/css/global.css"><link rel="stylesheet" href="/public/css/dashboard.css"><script src="/bootstrap.js"></script><body class="admin-content">'+php(mode).toString('utf8')+'</body></html>'});
+  } catch(error) { errors.push(error.message);response.statusCode=500;response.end(String(error)); }
  });
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const base='http://127.0.0.1:'+server.address().port+'/';process.env.IMPE_EXCEL_TEST_BASE=base;
+ try {
  const modal=page.locator('#modalImportacionSeguimientoExcel'),message=modal.locator('[data-impe-excel-message]'),analyze=modal.locator('[data-impe-excel-analyze]'),confirm=modal.locator('[data-impe-excel-confirm]');
  const prepare=async()=>{
   assert.equal(await modal.locator('[name=estado_id]').count(),0);
@@ -49,7 +63,7 @@ try{
  };
  const review=async()=>{await analyze.click();await message.filter({hasText:'Revisión completada'}).waitFor();};
  for(const [area,width]of [['analista',1366],['supervisor',390],['administrador',1366]]){
-  mode=area;await page.setViewportSize({width,height:900});await page.goto('http://excel.test/index.php?controller=seguimientoVinculacion&action=index');
+  mode=area;await page.setViewportSize({width,height:900});await page.goto(base+'index.php?controller=seguimientoVinculacion&action=index');
   await page.locator('[data-bs-target="#modalImportacionSeguimientoExcel"]').click();await modal.waitFor({state:'visible'});await prepare();
   if(baseline){await analyze.click();await message.filter({hasText:'Selecciona un territorio asignado.'}).waitFor();assert.equal(sent[0].estado,null);assert.equal(sent[0].file,null);console.log('REPRODUCIDO: la versión instalada omite territorio y archivo al deshabilitarlos antes de FormData.');return;}
   const count=analyses;await analyze.click();await analyze.evaluate(el=>el.click());await message.filter({hasText:'Revisión completada'}).waitFor();assert.equal(analyses,count+1,'Sin doble análisis');
@@ -74,4 +88,5 @@ try{
  await prepare();await review();
  await modal.locator('[name=analista_id] option[value="502"]').waitFor({state:'attached'});await modal.locator('[name=analista_id]').selectOption('502');await analyze.click();await message.filter({hasText:'El responsable no tiene territorios autorizados.'}).waitFor();assert(await confirm.isHidden());
  assert.deepEqual(errors,[]);console.log('Importador: XLSX/analista/CSRF completos y estado por fila, análisis sin confirmar, controles recuperables, revisión caducada, errores, límites y diseño analista/equipo/global OK');
+ }finally{await new Promise(resolve=>server.close(resolve));}
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
