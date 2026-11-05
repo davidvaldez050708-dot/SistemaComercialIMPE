@@ -9,6 +9,8 @@ on:
       - 'public/css/formularios.css'
       - 'tests/formularios_inscripcion_programas_paso1_smoke.php'
       - 'tests/formularios_inscripcion_paso1_publicador_test.py'
+      - 'tests/formularios_inscripcion_colores_test.py'
+      - 'tools/publicar_inscripcion_acciones_azules_hostinger.py'
       - 'tools/publicar_formularios_inscripcion_paso1_hostinger.py'
       - '.github/workflows/formularios-inscripcion-programas-paso1.yml'
   pull_request:
@@ -20,6 +22,8 @@ on:
       - 'public/css/formularios.css'
       - 'tests/formularios_inscripcion_programas_paso1_smoke.php'
       - 'tests/formularios_inscripcion_paso1_publicador_test.py'
+      - 'tests/formularios_inscripcion_colores_test.py'
+      - 'tools/publicar_inscripcion_acciones_azules_hostinger.py'
       - 'tools/publicar_formularios_inscripcion_paso1_hostinger.py'
       - '.github/workflows/formularios-inscripcion-programas-paso1.yml'
 
@@ -50,3 +54,5 @@ jobs:
         run: |
           python3 -m py_compile tools/publicar_formularios_inscripcion_paso1_hostinger.py
           python3 tests/formularios_inscripcion_paso1_publicador_test.py
+          python3 -m py_compile tools/publicar_inscripcion_acciones_azules_hostinger.py
+          python3 tests/formularios_inscripcion_colores_test.py
