@@ -8,7 +8,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'tools/publicar_oficio_final_aislado_hostinger.py'
 SRC = ROOT / 'app/services/OficioDocumentoFinalPdfService.php'
-ORIGINAL_BLOB = 'e35bab15324634e9fd98c67b9448ac73b8b0d654'
+ORIGINAL_BLOB = 'a1c9b703ac508fae3b28dddb2daebb36654a253b'
 p = subprocess.run(['git','cat-file','-p',ORIGINAL_BLOB],
                    cwd=str(ROOT),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 assert p.returncode == 0, p.stderr.decode('utf-8','replace')
