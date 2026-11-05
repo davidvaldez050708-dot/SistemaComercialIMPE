@@ -9,6 +9,7 @@ require_once __DIR__ . '/../helpers/PermissionHelper.php';
 class OficioVinculacionController
 {
     private const MAX_DOCX_BYTES = 20 * 1024 * 1024;
+    private const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
     public function estado()
     {
@@ -199,7 +200,7 @@ class OficioVinculacionController
     {
         if (!$archivo || (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             return ['ok' => false, 'mensaje' => $documentoFinal
-                ? 'Adjunta el oficio ya elaborado en formato Word (.docx).'
+                ? 'Adjunta el oficio terminado en PDF o Word (.docx).'
                 : 'Selecciona una plantilla de oficio.', 'codigo_http' => 422];
         }
 
@@ -222,23 +223,37 @@ class OficioVinculacionController
             'upload_error' => (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE)
         ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
 
-        if (strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION)) !== 'docx' || $tamano <= 0 || $tamano > self::MAX_DOCX_BYTES) {
-            return ['ok' => false, 'mensaje' => 'Solo se permiten plantillas DOCX de hasta 20 MB.', 'codigo_http' => 422];
+        $extension = strtolower((string)pathinfo($nombreOriginal, PATHINFO_EXTENSION));
+        $esPdfFinal = $documentoFinal && $extension === 'pdf';
+        if (($extension !== 'docx' && !$esPdfFinal) ||
+            $tamano <= 0 || $tamano > ($esPdfFinal ? self::MAX_PDF_BYTES : self::MAX_DOCX_BYTES)) {
+            return ['ok' => false, 'mensaje' => $documentoFinal
+                ? 'Adjunta un PDF o DOCX válido de hasta 20 MB.'
+                : 'Solo se permiten plantillas DOCX de hasta 20 MB.', 'codigo_http' => 422];
         }
 
         $mime = class_exists('finfo') ? (new finfo(FILEINFO_MIME_TYPE))->file($rutaTemporal) : '';
-        if ($mime !== '' && !in_array($mime, [
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/zip',
-            'application/octet-stream'
-        ], true)) {
-            return ['ok' => false, 'mensaje' => 'El contenido del archivo no corresponde a un DOCX.', 'codigo_http' => 422];
-        }
-
-        $validacion = $this->validarPlantillaDocx($rutaTemporal);
-        if (!($validacion['ok'] ?? false)) {
-            $validacion['codigo_http'] = 422;
-            return $validacion;
+        if ($esPdfFinal) {
+            if ($mime !== '' && !in_array($mime, ['application/pdf', 'application/octet-stream'], true)) {
+                return ['ok' => false, 'mensaje' => 'El contenido del archivo no corresponde a un PDF.', 'codigo_http' => 422];
+            }
+            $bytesPdf = file_get_contents($rutaTemporal);
+            if (!is_string($bytesPdf) || !$this->pdfFinalValido($bytesPdf)) {
+                return ['ok' => false, 'mensaje' => 'El PDF debe ser válido, no estar cifrado ni contener acciones activas.', 'codigo_http' => 422];
+            }
+        } else {
+            if ($mime !== '' && !in_array($mime, [
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/zip',
+                'application/octet-stream'
+            ], true)) {
+                return ['ok' => false, 'mensaje' => 'El contenido del archivo no corresponde a un DOCX.', 'codigo_http' => 422];
+            }
+            $validacion = $this->validarPlantillaDocx($rutaTemporal);
+            if (!($validacion['ok'] ?? false)) {
+                $validacion['codigo_http'] = 422;
+                return $validacion;
+            }
         }
 
         // El documento final ya contiene la redacción aprobada.
@@ -258,7 +273,8 @@ class OficioVinculacionController
             return ['ok' => false, 'mensaje' => 'No fue posible preparar temporalmente la plantilla.', 'codigo_http' => 500];
         }
 
-        $nombreArchivo = ($nombreBiblioteca === null ? 'generacion_' : 'oficio_') . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.docx';
+        $nombreArchivo = ($nombreBiblioteca === null ? 'generacion_' : 'oficio_') .
+            date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . ($esPdfFinal ? '.pdf' : '.docx');
         $rutaFinal = $directorio . DIRECTORY_SEPARATOR . $nombreArchivo;
         if (!($copiar ? copy($rutaTemporal, $rutaFinal) : move_uploaded_file($rutaTemporal, $rutaFinal))) {
             return ['ok' => false, 'mensaje' => 'No fue posible recibir la plantilla seleccionada.', 'codigo_http' => 500];
@@ -266,9 +282,10 @@ class OficioVinculacionController
 
         $nombreVisible = preg_replace('/[^\pL\pN ._()-]+/u', '', pathinfo($nombreOriginal, PATHINFO_FILENAME));
         $rutaRelativa = $directorioRelativo . '/' . $nombreArchivo;
-        $nombreRegistro = $documentoFinal
-            ? 'Oficio adjuntado: ' . ($nombreVisible ?: 'Documento final')
-            : ($nombreBiblioteca ?? ($nombreVisible ?: 'Plantilla personalizada'));
+        $nombreRegistro = $esPdfFinal
+            ? 'Oficio adjuntado PDF: ' . ($nombreVisible ?: 'Documento final')
+            : ($documentoFinal ? 'Oficio adjuntado: ' . ($nombreVisible ?: 'Documento final')
+            : ($nombreBiblioteca ?? ($nombreVisible ?: 'Plantilla personalizada')));
         $id = $modelo->registrarPlantillaOficioDocx($nombreRegistro, $rutaRelativa, $usuarioId);
         if ($id <= 0) {
             @unlink($rutaFinal);
@@ -374,6 +391,21 @@ class OficioVinculacionController
             'ok' => true,
             'mensaje' => 'Plantilla eliminada correctamente.'
         ]);
+    }
+
+    /**
+     * Validación conservadora para PDF terminado, sin transformar el contenido.
+     * También la utiliza el servicio de vista previa antes de servir el archivo.
+     */
+    private function pdfFinalValido($contenido)
+    {
+        if (!is_string($contenido) || strlen($contenido) < 100 ||
+            strncmp($contenido, '%PDF-', 5) !== 0 ||
+            preg_match('/%%EOF\\s*$/D', substr($contenido, -2048)) !== 1) {
+            return false;
+        }
+        return preg_match('~/\\s*(?:Encrypt|JavaScript|JS|OpenAction|Launch|EmbeddedFile|RichMedia)\\b~i',
+            $contenido) !== 1;
     }
 
     private function validarPlantillaDocx($ruta)
