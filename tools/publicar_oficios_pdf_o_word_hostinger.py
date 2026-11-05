@@ -21,7 +21,7 @@ FILES = {
         '3f8a7f5554adf354673713cc56a49f6a4e08fb85'),
     'app/services/OficioDocxPdfService.php': (
         'c33dc457b7df1bd211fae144b52c8c9464a87acf',
-        '754de3657ea1bdcde59931744568d6d83bffee6b'),
+        '1735b3c405f1656a7146ba9d8b1fe3f9b058cdee'),
     'app/services/OficioPdfService.php': (
         '55e06ddb06d636ea7ad160397164ba74b43acf7f',
         'f0d26abf39e51dfbf261a1c3d87efc9548f019d9'),
