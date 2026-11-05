@@ -169,21 +169,31 @@ def lint(data, name, temp):
 def preflight(site, base, target):
     if not (site/'index.php').is_file():
         raise RuntimeError('No se identificó la raíz del CRM')
-    original, output = {}, {}
+    original, output, errors = {}, {}, []
     with tempfile.TemporaryDirectory(prefix='impe-oficio-pdf-final-check-') as tempdir:
         temp = Path(tempdir)
         for name, (expected_base, expected_target) in FILES.items():
-            base_data = under(base, name).read_bytes()
-            target_data = under(target, name).read_bytes()
-            if blob(base_data) != expected_base or blob(target_data) != expected_target:
-                raise RuntimeError('INTEGRIDAD GitHub incorrecta: ' + name)
-            path = under(site, name)
-            source = path.read_bytes()
-            patched = (reconcile_word_service(source, base_data, target_data, name)
-                       if name == 'app/services/OficioDocxPdfService.php'
-                       else reconcile(source, base_data, target_data, name))
-            lint(patched, name, temp)
-            original[name], output[name] = source, patched
+            try:
+                base_data = under(base, name).read_bytes()
+                target_data = under(target, name).read_bytes()
+                if blob(base_data) != expected_base or blob(target_data) != expected_target:
+                    raise RuntimeError('INTEGRIDAD GitHub incorrecta: ' + name)
+                path = under(site, name)
+                source = path.read_bytes()
+                patched = (reconcile_word_service(source, base_data, target_data, name)
+                           if name == 'app/services/OficioDocxPdfService.php'
+                           else reconcile(source, base_data, target_data, name))
+                lint(patched, name, temp)
+                original[name], output[name] = source, patched
+            except (OSError, RuntimeError) as error:
+                actual = site / name
+                digest = sha(actual.read_bytes())[:16] if actual.is_file() else 'AUSENTE'
+                print('INCOMPATIBLE: ' + name + ' sha256=' + digest + ' | ' + str(error),
+                      file=sys.stderr)
+                errors.append(name)
+    if errors:
+        raise RuntimeError('CHECK BLOQUEADO: ' + str(len(errors)) +
+                           ' archivo(s) incompatible(s); sitio intacto')
     print('CHECK OK: 4 archivos; PDF terminado sin REDMEX y DOCX conservado')
     print('Sin SQL, sin motor Word externo, sin modificar producción en --check')
     return original, output
