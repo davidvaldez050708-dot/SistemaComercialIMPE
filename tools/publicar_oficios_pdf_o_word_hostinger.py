@@ -48,6 +48,67 @@ def under(base, name, must_exist=True):
     return file
 
 
+def reconcile_word_service(current, before, after, name):
+    """Adiciona dos guardas al PHP local, sin reemplazar lógica personalizada.
+
+    Es el único método permitido cuando el servicio de Hostinger no coincide
+    exactamente con el archivo base. No cambia funciones, márgenes, marcadores,
+    motor REDMEX ni cualquier bloque existente de una generación anterior.
+    """
+    crlf = b'\r\n' in current
+    raw = current.replace(b'\r\n', b'\n')
+    if raw == after:
+        print('YA INSTALADO: ' + name)
+        return current
+    if raw == before:
+        print('COMPATIBLE EXACTO: ' + name)
+        return after.replace(b'\n', b'\r\n') if crlf else after
+
+    pdf_header = b'    public function generarPdf(array $vista)\n    {\n'
+    doc_header = b'    public function generarDocx(array $vista, $prepararPlantilla = false)\n    {\n'
+    start_body = b'        $rutaPlantilla = '
+    for marker in (pdf_header, doc_header):
+        if raw.count(marker) != 1 or after.count(marker) != 1:
+            raise RuntimeError('CONFLICTO: firma del servicio Word distinta; sitio intacto')
+    if (b'private function resolverRutaPlantilla' not in raw and
+            b'function resolverRutaPlantilla' not in raw):
+        raise RuntimeError('CONFLICTO: no se encuentra el control de rutas del DOCX')
+    if b'function error(' not in raw:
+        raise RuntimeError('CONFLICTO: manejo de errores del servicio personalizado no reconocido')
+    # El target es la fuente única de las guardas, sin duplicar manualmente PHP.
+    def guard(header):
+        tail = after.split(header, 1)[1]
+        if start_body not in tail:
+            raise RuntimeError('INTEGRIDAD: el destino no contiene el bloque esperado')
+        return tail.split(start_body, 1)[0]
+
+    pdf_guard = guard(pdf_header)
+    doc_guard = guard(doc_header)
+    if (b'PDF_ORIGINAL' not in pdf_guard or
+            b'WORD_FINAL_PENDING_PDF' not in pdf_guard or
+            b'PDF_FINAL_NO_DOCX' not in doc_guard):
+        raise RuntimeError('INTEGRIDAD: faltan validaciones para PDF terminado')
+
+    # Si está instalado de manera exacta, no volver a inyectar.
+    pdf_body = raw.split(pdf_header, 1)[1]
+    doc_body = raw.split(doc_header, 1)[1]
+    if pdf_body.startswith(pdf_guard) and doc_body.startswith(doc_guard):
+        print('YA INSTALADO CON PERSONALIZACIONES: ' + name)
+        return current
+
+    # No sobrescribir implementaciones locales de la misma funcionalidad.
+    if (b'PDF_ORIGINAL' in raw or b'PDF_FINAL_SOURCE' in raw or
+            b'PDF_FINAL_NO_DOCX' in raw or b'WORD_FINAL_PENDING_PDF' in raw or
+            b'Oficio adjuntado PDF:' in raw):
+        raise RuntimeError('CONFLICTO: ya existe una ruta PDF local diferente; sitio intacto')
+    patched = raw.replace(pdf_header, pdf_header + pdf_guard, 1)
+    patched = patched.replace(doc_header, doc_header + doc_guard, 1)
+    if patched == raw or patched.count(b'PDF_ORIGINAL') != 1:
+        raise RuntimeError('CONFLICTO: no se pudo conciliar el servicio Word')
+    print('COMPATIBLE PERSONALIZADO (GUARDAS AISLADAS): ' + name)
+    return patched.replace(b'\n', b'\r\n') if crlf else patched
+
+
 def reconcile(current, before, after, name):
     crlf = b'\r\n' in current
     raw = current.replace(b'\r\n', b'\n')
@@ -118,7 +179,9 @@ def preflight(site, base, target):
                 raise RuntimeError('INTEGRIDAD GitHub incorrecta: ' + name)
             path = under(site, name)
             source = path.read_bytes()
-            patched = reconcile(source, base_data, target_data, name)
+            patched = (reconcile_word_service(source, base_data, target_data, name)
+                       if name == 'app/services/OficioDocxPdfService.php'
+                       else reconcile(source, base_data, target_data, name))
             lint(patched, name, temp)
             original[name], output[name] = source, patched
     print('CHECK OK: 4 archivos; PDF terminado sin REDMEX y DOCX conservado')
