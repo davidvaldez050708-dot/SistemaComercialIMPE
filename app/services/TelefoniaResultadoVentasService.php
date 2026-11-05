@@ -188,8 +188,22 @@ class TelefoniaResultadoVentasService
         $call=$svc->obtener($usuarioId,trim($pbxCallId),trim((string)($datos['extension']??'')));
         if(!array_key_exists($resultado,self::opciones()))throw new InvalidArgumentException('Selecciona un resultado comercial válido.');
         $pbxPendiente=empty($call['finalizada']);
-        if($pbxPendiente&&!$this->transferenciaAtendidaPropia($usuarioId,$call))
-            throw new DomainException('No se ha acreditado la transferencia atendida por tu extensión. No se guardó el resultado.');
+        $cierreApiVerificado=false;
+        if($pbxPendiente&&!$this->transferenciaAtendidaPropia($usuarioId,$call)){
+            // Sólo ante guardado explícito, después de atribuir la llamada por
+            // usuario, extensión y PBX; jamás inventa eventos NOTIFY_OUT_END.
+            if(($call['direccion']??'')==='Saliente' && !empty($call['conectada'])){
+                try{
+                    require_once __DIR__.'/TelefoniaVentasCierreApiVerificado.php';
+                    $cierreApiVerificado=TelefoniaVentasCierreApiVerificado::verificar($call);
+                }catch(Throwable $e){
+                    error_log('[ventas_cierre_api_al_guardar] '.get_class($e));
+                    throw new DomainException('No fue posible verificar esta llamada con Zadarma. La captura no se guardó; inténtalo nuevamente.');
+                }
+            }
+            if(!$cierreApiVerificado)
+                throw new DomainException('El proveedor todavía no acredita el cierre de esta llamada. No se guardó el resultado.');
+        }
         if(self::esConversacion($resultado)&&!$call['conectada']){
             // Un cierre sin respuesta ya es un estado definitivo, no una espera.
             $fecha=(string)($call['fecha']??'');$cuando='';
@@ -253,7 +267,7 @@ class TelefoniaResultadoVentasService
         }catch(Throwable $e){$this->db->rollback();throw $e;}
         return array_merge($detalle??[],['pbx_call_id'=>$pbxCallId,'extension'=>$extension,'resultado'=>$resultado,
             'etiqueta'=>self::opciones()[$resultado],'contacto_real'=>self::esConversacion($resultado),
-            'pbx_pendiente'=>$pbxPendiente]);
+            'pbx_pendiente'=>$pbxPendiente,'cierre_api_verificado'=>$cierreApiVerificado]);
     }
 
     /**
