@@ -1,0 +1,58 @@
+name: Inscripción · catálogo de cinco programas
+on:
+  push:
+    paths:
+      - 'app/services/FormularioInscripcionProgramas.php'
+      - 'app/controllers/FormularioController.php'
+      - 'app/views/formularios/inscripcion_programas.php'
+      - 'app/views/formularios/inscripcion.php'
+      - 'public/css/formularios.css'
+      - 'tests/formularios_inscripcion_programas_paso1_smoke.php'
+      - 'tests/formularios_inscripcion_paso1_publicador_test.py'
+      - 'tests/formularios_inscripcion_colores_test.py'
+      - 'tools/publicar_inscripcion_acciones_azules_hostinger.py'
+      - 'tools/publicar_formularios_inscripcion_paso1_hostinger.py'
+      - '.github/workflows/formularios-inscripcion-programas-paso1.yml'
+  pull_request:
+    paths:
+      - 'app/services/FormularioInscripcionProgramas.php'
+      - 'app/controllers/FormularioController.php'
+      - 'app/views/formularios/inscripcion_programas.php'
+      - 'app/views/formularios/inscripcion.php'
+      - 'public/css/formularios.css'
+      - 'tests/formularios_inscripcion_programas_paso1_smoke.php'
+      - 'tests/formularios_inscripcion_paso1_publicador_test.py'
+      - 'tests/formularios_inscripcion_colores_test.py'
+      - 'tools/publicar_inscripcion_acciones_azules_hostinger.py'
+      - 'tools/publicar_formularios_inscripcion_paso1_hostinger.py'
+      - '.github/workflows/formularios-inscripcion-programas-paso1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  catalogo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, mysqli
+      - name: Validar sintaxis PHP
+        run: |
+          php -l app/services/FormularioInscripcionProgramas.php
+          php -l app/controllers/FormularioController.php
+          php -l app/views/formularios/inscripcion_programas.php
+          php -l app/views/formularios/inscripcion.php
+          php -l tests/formularios_inscripcion_programas_paso1_smoke.php
+      - name: Probar programas y formulario existente sin base de datos
+        run: php tests/formularios_inscripcion_programas_paso1_smoke.php
+      - name: Comprobar publicador y restauración en réplica
+        run: |
+          python3 -m py_compile tools/publicar_formularios_inscripcion_paso1_hostinger.py
+          python3 tests/formularios_inscripcion_paso1_publicador_test.py
+          python3 -m py_compile tools/publicar_inscripcion_acciones_azules_hostinger.py
+          python3 tests/formularios_inscripcion_colores_test.py

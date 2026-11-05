@@ -17,6 +17,9 @@ $inscripcionAction = $inscripcionAction ??
 $municipiosUrl = $municipiosUrl ??
     BASE_URL . 'index.php?controller=formulario&action=municipios';
 $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
+$programaInscripcion = is_array($programaInscripcion ?? null)
+    ? $programaInscripcion
+    : null;
 ?>
 
 <div class="formularios-page formularios-detail-page formularios-inscripcion-theme">
@@ -24,9 +27,9 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
         <div class="formularios-back-row">
             <a
                 class="data-back-link"
-                href="<?= BASE_URL ?>index.php?controller=formulario&action=index">
+                href="<?= BASE_URL ?>index.php?controller=formulario&amp;action=inscripcion">
                 <i class="bi bi-arrow-left"></i>
-                Volver a formularios
+                Volver a programas
             </a>
         </div>
     <?php endif; ?>
@@ -39,7 +42,9 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
 
             <div>
                 <span class="formularios-kicker">FORMULARIO</span>
-                <h2>Inscripción</h2>
+                <h2><?= $programaInscripcion
+                    ? $texto('Inscripción · ' . $programaInscripcion['nombre'])
+                    : 'Inscripción' ?></h2>
                 <p>
                     Captura los datos de la persona interesada y valida su información
                     antes de guardar la inscripción.
@@ -71,6 +76,12 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
             method="post"
             novalidate
             data-formulario-registro>
+            <?php if ($programaInscripcion !== null): ?>
+                <input type="hidden" name="programa_slug"
+                       value="<?= $texto($programaInscripcion['slug']) ?>">
+                <input type="hidden" name="perfil_interes"
+                       value="<?= $texto($programaInscripcion['nombre']) ?>">
+            <?php endif; ?>
 
             <section class="formularios-registration-section">
                 <div class="formularios-registration-section-title">
@@ -149,17 +160,19 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
                         <select
                             class="form-select"
                             id="form_registro_perfil"
-                            name="perfil_interes"
+                            <?= $programaInscripcion === null ? 'name="perfil_interes"' : 'disabled' ?>
                             required
                             data-registro-perfil>
                             <option value="">Selecciona una opción</option>
                             <?php foreach ($perfilesInteres as $perfil): ?>
-                                <option value="<?= $texto($perfil) ?>">
+                                <option value="<?= $texto($perfil) ?>"<?= $programaInscripcion !== null ? ' selected' : '' ?>>
                                     <?= $texto($perfil) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <small>Selecciona el programa que le interesa.</small>
+                        <small><?= $programaInscripcion !== null
+                            ? 'Este programa está asociado a la tarjeta de inscripción seleccionada.'
+                            : 'Selecciona el programa que le interesa.' ?></small>
                         <div class="invalid-feedback">
                             Selecciona un perfil de interés.
                         </div>
