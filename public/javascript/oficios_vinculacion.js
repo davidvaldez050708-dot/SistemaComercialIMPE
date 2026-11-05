@@ -167,8 +167,12 @@
                         '<div class="form-text">Archivo DOCX de hasta 20 MB. Las plantillas se completan con los datos del seguimiento.</div>' +
                     '</div>' +
                     '<div class="d-none" data-oficio-documento-final>' +
-                        '<label class="form-label" for="oficioDocumentoFinal">Oficio terminado en Word</label>' +
-                        '<input class="form-control" id="oficioDocumentoFinal" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
+                        '<label class="form-label oficio-file-title" for="oficioDocumentoFinal">Oficio terminado en Word</label>' +
+                        '<input class="oficio-file-input" id="oficioDocumentoFinal" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
+                        '<label class="oficio-file-surface" for="oficioDocumentoFinal">' +
+                            '<span class="oficio-file-action"><i class="bi bi-upload" aria-hidden="true"></i>Seleccionar archivo</span>' +
+                            '<span class="oficio-file-name" data-oficio-documento-nombre aria-live="polite">Ningún archivo seleccionado</span>' +
+                        '</label>' +
                         '<p class="oficio-documento-aviso"><i class="bi bi-shield-check" aria-hidden="true"></i>' +
                         'Se conservará el contenido del documento. No se sustituirán nombres, fecha ni texto; se utilizará para generar el PDF del oficio.</p>' +
                         '<div class="form-text" data-oficio-documento-estado role="status">Formato DOCX, máximo 20 MB.</div>' +
@@ -243,8 +247,10 @@
             });
             documentoFinal.addEventListener('change', function () {
                 const archivo = this.files?.[0] || null;
+                elemento.querySelector('[data-oficio-documento-nombre]').textContent =
+                    archivo ? archivo.name : 'Ningún archivo seleccionado';
                 elemento.querySelector('[data-oficio-documento-estado]').textContent =
-                    archivo ? archivo.name : 'Formato DOCX, máximo 20 MB.';
+                    'Formato DOCX, máximo 20 MB.';
             });
             pestañaNueva?.addEventListener('click', function () {
                 mostrarNuevaPlantilla();
@@ -394,8 +400,8 @@
                 { id: 'documento_final', icono: 'bi-file-earmark-arrow-up', nombre: 'Adjuntar oficio ya elaborado', descripcion: 'Utilizar un Word terminado sin modificar su contenido' }
             ];
             lista.innerHTML = opciones.map(function (item, indice) {
-                return '<label class="list-group-item d-flex gap-2 align-items-start">' +
-                    '<input class="form-check-input mt-1" type="radio" name="oficio_plantilla" value="' + item.id + '" ' + (indice === 0 ? 'checked' : '') + '>' +
+                return '<label class="list-group-item oficio-selector-opcion">' +
+                    '<input class="form-check-input oficio-selector-radio" type="radio" name="oficio_plantilla" value="' + item.id + '" ' + (indice === 0 ? 'checked' : '') + '>' +
                     '<span class="oficio-selector-card-icon" aria-hidden="true"><i class="bi ' + item.icono + '"></i></span>' +
                     '<span class="oficio-selector-card-copy"><strong class="d-block">' + escapar(item.nombre) + '</strong>' +
                     '<small class="text-muted">' + escapar(item.descripcion) + '</small></span></label>';
@@ -404,6 +410,7 @@
             modal.querySelector('[data-oficio-documento-final]').classList.add('d-none');
             modal.querySelector('#oficioTemplateFile').value = '';
             modal.querySelector('#oficioDocumentoFinal').value = '';
+            modal.querySelector('[data-oficio-documento-nombre]').textContent = 'Ningún archivo seleccionado';
             modal.querySelector('[data-oficio-documento-estado]').textContent = 'Formato DOCX, máximo 20 MB.';
             modal.querySelector('#oficioSavedTemplate').replaceChildren(new Option('Seleccionar una plantilla...', ''));
             modal.dataset.puedeEliminarPlantillas = '0';
