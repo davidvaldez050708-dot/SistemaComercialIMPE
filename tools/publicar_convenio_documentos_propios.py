@@ -4,7 +4,7 @@ import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = '164b462e1aaad9717a08d7578f12a3e6d6ed4ad7f16d22ed8b29ed4cd6231a77'
+MANIFEST_SHA256 = '7fee89848727f1d76287201c58c0586824db6197edc754c129e9efc4d5f65ab2'
 PATHS = ['app/services/ConvenioDocumentosService.php', 'app/controllers/SeguimientoFlujoController.php', 'app/services/SeguimientoCorreoService.php', 'public/javascript/seguimiento_post_envio.js', 'public/css/seguimiento_post_envio.css']
 DEPENDENCIES = {}
 

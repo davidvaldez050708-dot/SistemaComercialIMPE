@@ -3,6 +3,8 @@ import base64,gzip,hashlib,json,os,subprocess,sys,tempfile
 from pathlib import Path
 R=Path(__file__).resolve().parents[1]
 P=R/'tools/publicar_convenio_documentos_propios.py';M=R/'tools/convenio_documentos_propios_release.json'
+assert b'\r\n' not in P.read_bytes(), 'El publicador debe conservar LF para sus hashes publicados'
+assert b'\r\n' not in M.read_bytes(), 'El manifiesto debe conservar LF para sus hashes publicados'
 spec=json.loads(M.read_text(encoding='utf8'))
 def sha(b):return hashlib.sha256(b).hexdigest()
 def git(p):return subprocess.check_output(['git','show','e18a6d75:'+p],cwd=R)
