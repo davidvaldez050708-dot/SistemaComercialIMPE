@@ -21,6 +21,26 @@ try {
     $book=$zip->getFromName('xl/workbook.xml');
     $main=$zip->getFromName('xl/worksheets/sheet1.xml');
     $catalog=$zip->getFromName('xl/worksheets/sheet3.xml');
+    $guia=$zip->getFromName('xl/worksheets/sheet2.xml');
+    $assert(is_string($guia), 'Falta la guía de llenado');
+    $assert(strpos($guia, 'PLANTILLA DE IMPORTACIÓN DE INSTITUCIONES V3')!==false,
+        'La guía debe utilizar el título sin marca IMPE');
+    for($i=0;$i<$zip->numFiles;$i++){
+        $item=$zip->getNameIndex($i);
+        if(substr($item,-4)==='.xml'){
+            $xml=$zip->getFromName($item);
+            $assert(is_string($xml) && stripos($xml,'IMPE')===false,
+                'El archivo XLSX no debe contener la palabra IMPE: '.$item);
+        }
+    }
+    $controller=file_get_contents(__DIR__.'/../app/controllers/SeguimientoVinculacionController.php');
+    $javascript=file_get_contents(__DIR__.'/../public/javascript/seguimiento_importacion_excel.js');
+    foreach([$controller,$javascript] as $source){
+        $assert(strpos($source,'plantilla_instituciones_seguimiento_v3.xlsx')!==false,
+            'La descarga debe usar un nombre de archivo sin IMPE');
+        $assert(strpos($source,'plantilla_instituciones_seguimiento_impe_v3.xlsx')===false,
+            'La descarga aún contiene el nombre antiguo');
+    }
     $assert(is_string($book)&&is_string($main)&&is_string($catalog),'Hojas incompletas');
     $assert(strpos($book,'name="Instituciones"')!==false,'Nombre de hoja');
     $assert(strpos($book,'TiposEntidad')!==false,'Falta catálogo de tipos');
