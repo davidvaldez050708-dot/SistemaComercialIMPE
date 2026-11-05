@@ -1101,7 +1101,16 @@
                         headers: { 'X-Requested-With': 'fetch' }
                     }
                 );
-                const json = await respuesta.json();
+                const texto = await respuesta.text();
+                let json;
+                try {
+                    json = JSON.parse(texto);
+                    if (!json || typeof json !== 'object' || Array.isArray(json)) throw new Error();
+                } catch (_) {
+                    throw new Error(respuesta.status === 401 || respuesta.redirected
+                        ? 'La sesión expiró. Inicia sesión nuevamente y comprueba el estado de la reunión.'
+                        : 'No fue posible confirmar la respuesta del servidor. Actualiza la agenda para comprobar el estado de la reunión antes de volver a intentarlo.');
+                }
 
                 if (!respuesta.ok || !json.ok) {
                     throw new Error(json.mensaje || 'No fue posible guardar los cambios.');
@@ -1125,7 +1134,9 @@
                 const caja = document.createElement('div');
                 caja.className = 'agenda-form-error';
                 caja.textContent =
-                    error.message || 'No fue posible guardar los cambios.';
+                    error instanceof TypeError || error.name==='AbortError' || /failed to fetch|networkerror|load failed/i.test(error.message || '')
+                        ? 'No se pudo comprobar la operación por un problema de conexión. Actualiza la agenda para revisar el estado de la reunión antes de volver a intentarlo.'
+                        : (error.message || 'No fue posible guardar los cambios.');
                 form.querySelector('.agenda-form-error')?.remove();
                 form.prepend(caja);
             } finally {
