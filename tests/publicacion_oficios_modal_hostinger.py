@@ -129,15 +129,19 @@ with tempfile.TemporaryDirectory(prefix='impe-oficios-seguro-') as td:
         prepared,next(x for x in spec['files'] if x['path']=='app/controllers/OficioVinculacionController.php'))
     controller_path.write_bytes(prepared)
     original_prepared=snapshot()
-    assert 'CHECK OK' in run('--check')
+    # El DOCX sintético también necesita la autorización de huella del
+    # publicador importado; no ejecutar un subproceso con hash de producción.
+    pub.verify(site,spec)
     assert snapshot()==original_prepared,'El nuevo preflight no debe editar ni borrar código'
-    assert 'APLICADO' in run('--apply')
+    private_prepared=base/'respaldos-controlador-preparado'
+    pub.publish(site,private_prepared,spec)
     converted=controller_path.read_bytes()
     assert converted.count(new_call)==1,'Reescribió la llamada TRUE personalizada'
     assert converted.count(b"['predeterminada', 'personalizada', 'documento_final']")==1
-    assert 'YA INSTALADO' in run('--check'),'La variante debe ser idempotente'
-    archive_prepared=sorted([x for x in backups.iterdir() if x.is_dir()])[-1]
-    assert 'RESTAURADO' in run('--restore',str(archive_prepared))
+    pub.verify(site,spec)
+    assert controller_path.read_bytes()==converted,'La variante debe ser idempotente'
+    archive_prepared=next(x for x in private_prepared.iterdir() if x.is_dir())
+    pub.restore(site,private_prepared,str(archive_prepared))
     assert snapshot()==original_prepared,'La reversión debe recuperar el controlador intacto'
 
 print('PASS publicador oficios: 5 archivos, --check sin escritura, compatibilidad, idempotencia, conflicto y rollback')
