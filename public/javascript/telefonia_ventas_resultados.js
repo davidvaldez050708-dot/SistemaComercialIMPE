@@ -152,10 +152,21 @@
    form.querySelector('[data-sales-form-state]').textContent='Identificando la llamada de tu extensión · Ext. '+ownExt;
    feedback.textContent='Puedes completar la captura. Guardar se habilitará al confirmar el registro de esta llamada.';
    resultRules();show();storeDraft();
-   if(!ref)return; // El padre sólo podrá vincular la PBX de esta misma sesión.
+   if(!ref){
+    // Captura inmediata de un colgado sin referencia PBX: sin spinner perpetuo
+    // y sin inventar un identificador ni habilitar un guardado ajeno.
+    submit.innerHTML=saveLabel;
+    feedback.textContent='La llamada terminó en el teléfono, pero su referencia PBX aún no está vinculada. Puedes completar la captura; se habilitará Guardar resultado cuando se identifique esta misma sesión.';
+    form.querySelector('[data-sales-form-state]').textContent='Vinculación telefónica pendiente · Ext. '+ownExt;
+    return;
+   }
    const url=new URL(root.dataset.detailUrl,location.href);url.searchParams.set('pbx_call_id',ref);if(ownExt)url.searchParams.set('extension',ownExt);
    const data=await request(url);if(version!==cycle||disposed)return;
-   if(!data.llamada){schedule(ref,ownExt,attempt,version);return;}
+   if(!data.llamada){
+    submit.innerHTML=saveLabel;
+    feedback.textContent='Identidad PBX pendiente de recuperar. La captura se conserva y se vuelve a consultar automáticamente.';
+    schedule(ref,ownExt,attempt,version);return;
+   }
    if(data.llamada.pbx_call_id!==ref||String(data.llamada.extension)!==String(ownExt))throw Error('La confirmación no pertenece a esta llamada.');
    call=data.llamada;
    let localCapture=null,captureNotice='';
@@ -204,11 +215,12 @@
       capturable?'':'Puedes completar los datos. Estamos esperando la confirmación de cierre de esta misma llamada.',
       captureNotice
     ].filter(Boolean).join(' ');
-        storeDraft();if(!capturable)schedule(ref,ownExt,attempt,version);
+    storeDraft();if(!capturable)schedule(ref,ownExt,attempt,version);
    }
    resultRules();modal.dispatchEvent(new CustomEvent('impe:sales-result-loaded',{detail:{ref,extension:ownExt,saved:Boolean(call.registro)}}));
   }catch(error){
    if(version!==cycle||disposed)return;
+   submit.innerHTML=saveLabel;
    feedback.textContent=error.message+' La captura se conserva; no se ha guardado el resultado.';
    if(!error.status||error.status===409)schedule(ref,ext,Math.max(attempt,1),version);
   }finally{if(version===cycle)opening=false;}
