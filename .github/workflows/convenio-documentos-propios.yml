@@ -7,6 +7,7 @@ on:
       - 'app/controllers/SeguimientoFlujoController.php'
       - 'public/**/seguimiento_post_envio.*'
       - 'tests/*convenio_documentos_propios*'
+      - 'tests/convenio_permisos_seguimiento_test.py'
       - 'tests/fixtures/convenio_documentos_propios_http.php'
       - 'tools/*convenio_documentos_propios*'
       - '.github/workflows/convenio-documentos-propios.yml'
@@ -30,6 +31,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.8
+      - run: python tests/convenio_permisos_seguimiento_test.py
       - run: python tests/convenio_documentos_propios_http_test.py
       - run: python tests/publicacion_convenio_documentos_propios_test.py
       - run: node tests/convenio_documentos_propios_browser.cjs

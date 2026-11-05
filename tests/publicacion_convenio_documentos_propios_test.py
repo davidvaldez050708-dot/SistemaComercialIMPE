@@ -40,4 +40,11 @@ with tempfile.TemporaryDirectory(prefix='impe-test-supervision-package-') as d:
  p=site/spec['files'][0]['path'];b=p.read_bytes();p.write_bytes(b+b'\n// edicion posterior')
  run('--restore',str(backups[0]),ok=False);p.write_bytes(b)
  assert 'RESTAURADO' in run('--restore',str(backups[0]));assert snapshot()==initial
+ # La instalación anterior confirmada también es compatible y reversible.
+ for row in spec['files']:
+  (site/row['path']).write_bytes(subprocess.check_output(['git','show','0ace3720:'+row['path']],cwd=R))
+ previous=snapshot();assert 'CHECK OK' in run('--check');assert snapshot()==previous
+ assert 'APLICADO' in run('--apply')
+ backups=sorted([p for p in (root/'backup').iterdir() if p.is_dir()])
+ assert 'RESTAURADO' in run('--restore',str(backups[-1]));assert snapshot()==previous
 print('PASS paquete: check sin escrituras, 5 archivos, dependencias intactas, versiones desconocidas, integridad, idempotencia y restauración protegida; Python '+sys.version.split()[0])
