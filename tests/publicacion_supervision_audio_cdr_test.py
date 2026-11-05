@@ -82,7 +82,7 @@ with tempfile.TemporaryDirectory(prefix="impe-supervision-audio-cdr-") as folder
   assert p.read_bytes()==raw
  # No forzar un servicio de Supervisor con personalizaciones extra.
  target=site/"app/services/SupervisionLlamadasAudioService.php"
- target.write_bytes(target.read_bytes()+b"\n// versión no reconocida")
+ target.write_bytes(target.read_bytes()+b"\n// version no reconocida")
  try:
   invoke(site,backup,"--check")
   raise AssertionError("Publicador aceptó servicio distinto")
