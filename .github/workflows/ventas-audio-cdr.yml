@@ -1,0 +1,42 @@
+name: Ventas - grabación segura por CDR sin OUT_END
+on:
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaVentasGrabacionCdrService.php'
+      - 'app/services/ZadarmaCallLookupService.php'
+      - 'prueba_telefonia/api/grabacion_ventas_cdr.php'
+      - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'tests/telefonia_ventas_grabacion_cdr_unit.php'
+      - 'tools/publicar_ventas_audio_cdr_hostinger.py'
+      - 'tests/publicacion_ventas_audio_cdr_test.py'
+      - '.github/workflows/ventas-audio-cdr.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  php-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis PHP, JavaScript y Python
+        run: |
+          php -l app/services/TelefoniaVentasGrabacionCdrService.php
+          php -l app/services/ZadarmaCallLookupService.php
+          php -l prueba_telefonia/api/grabacion_ventas_cdr.php
+          node --check public/javascript/telefonia_ventas_resultados.js
+          php tests/telefonia_ventas_grabacion_cdr_unit.php
+          php tests/zadarma_call_id_decimal_smoke.php
+          node tests/ventas_resultado_todos_cierres.cjs
+      - name: Publicación y rollback en directorio aislado
+        run: |
+          python3 -m py_compile tools/publicar_ventas_audio_cdr_hostinger.py
+          python3 tests/publicacion_ventas_audio_cdr_test.py
