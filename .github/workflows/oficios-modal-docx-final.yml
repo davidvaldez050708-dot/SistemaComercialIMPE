@@ -68,6 +68,7 @@ jobs:
           node --check public/javascript/oficios_vinculacion.js
           php tests/oficios_documento_final_smoke.php
           php tests/oficios_pdf_terminado_smoke.php
+          python3 tests/oficios_pdf_o_word_publicador_test.py
           node tests/oficios_selector_smoke.cjs
           python3 tests/publicacion_oficios_modal_hostinger.py
           python3 tests/publicacion_oficios_modal_visual_test.py
