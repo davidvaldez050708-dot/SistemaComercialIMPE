@@ -9,6 +9,7 @@ require_once __DIR__ . '/../helpers/PermissionHelper.php';
 class OficioVinculacionController
 {
     private const MAX_DOCX_BYTES = 20 * 1024 * 1024;
+    private const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
     public function estado()
     {
@@ -50,6 +51,22 @@ class OficioVinculacionController
             $esAnalistaResponsable &&
             tienePermiso('oficios.generar') &&
             !empty($estado['cumple_requisitos_generacion']);
+        $estado['puede_adjuntar_pdf_final'] = false;
+        if ($esAnalistaResponsable && tienePermiso('oficios.generar') &&
+            !empty($estado['oficio_id']) && !empty($estado['folio'])) {
+            $preview = (new OficioPreviewService())->obtenerVistaPrevia(
+                $seguimientoId, $usuarioId, 'analista'
+            );
+            if (($preview['ok'] ?? false) &&
+                strpos((string)($preview['vista_previa']['plantilla'] ?? ''), 'Oficio adjuntado: ') === 0) {
+                $pdfState = (new OficioPdfService())->obtenerEstadoPdf(
+                    $seguimientoId, $usuarioId, 'analista'
+                );
+                $estado['puede_adjuntar_pdf_final'] = ($pdfState['ok'] ?? false) &&
+                    !($pdfState['estado_pdf']['pdf_generado'] ?? false) &&
+                    (string)($pdfState['estado_pdf']['estado_oficio'] ?? '') === 'BORRADOR';
+            }
+        }
 
         $this->responderJson([
             'ok' => true,
@@ -83,8 +100,23 @@ class OficioVinculacionController
         $tipoPlantilla = (string)($_POST['tipo_plantilla'] ?? 'predeterminada');
         $plantillaId = 0;
         $plantillaCargada = null;
+        if (!in_array($tipoPlantilla, ['predeterminada', 'personalizada', 'documento_final'], true)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Selecciona una opción de oficio válida.'], 422);
+        }
 
-        if ($tipoPlantilla === 'personalizada') {
+        if ($tipoPlantilla === 'documento_final') {
+            // Un DOCX ya redactado no es plantilla: nunca sustituir párrafos,
+            // fechas ni datos. Reutilizar archivo, folio, permisos y PDF existentes.
+            $plantillaCargada = $this->guardarPlantillaParaGeneracion(
+                $_FILES['archivo_oficio'] ?? null, $usuarioId, $modelo, null, false, true
+            );
+            if (!($plantillaCargada['ok'] ?? false)) {
+                $codigoHttp = (int)($plantillaCargada['codigo_http'] ?? 422);
+                unset($plantillaCargada['codigo_http']);
+                $this->responderJson($plantillaCargada, $codigoHttp);
+            }
+            $plantillaId = (int)$plantillaCargada['plantilla_id'];
+        } elseif ($tipoPlantilla === 'personalizada') {
             OficioDocxPdfService::registrarTrazaTemporal('CUSTOM_TEMPLATE_SELECTED', ['seguimiento_id' => $seguimientoId]);
             $plantillaGuardadaId = (int)($_POST['plantilla_id'] ?? 0);
             $plantillaCargada = $plantillaGuardadaId > 0
@@ -116,7 +148,14 @@ class OficioVinculacionController
             $this->responderJson($resultado, $codigoHttp);
         }
 
-        if ($plantillaCargada) {
+        if ($plantillaCargada && !empty($resultado['existente'])) {
+            // El oficio ya está registrado. Evitar dejar un documento
+            // adjunto huérfano o generar un segundo oficio silenciosamente.
+            $modelo->eliminarPlantillaOficioDocx($plantillaId);
+            @unlink((string)$plantillaCargada['ruta_absoluta']);
+        }
+
+        if ($plantillaCargada && $tipoPlantilla === 'personalizada' && empty($resultado['existente'])) {
             $vista = (new OficioPreviewService())->obtenerVistaPrevia(
                 $seguimientoId,
                 $usuarioId,
@@ -126,8 +165,11 @@ class OficioVinculacionController
                 $this->responderJson($vista, (int)($vista['codigo_http'] ?? 500));
             }
 
+            // TRUE sólo al preparar por primera vez la plantilla personalizada.
+            // Es el significado original del segundo argumento en Hostinger.
             $documento = (new OficioDocxPdfService())->generarDocx(
-                (array)($vista['vista_previa'] ?? [])
+                (array)($vista['vista_previa'] ?? []),
+                true
             );
             if (!($documento['ok'] ?? false)) {
                 $this->responderJson([
@@ -170,10 +212,12 @@ class OficioVinculacionController
         ], $usuarioId, $modelo, null, true);
     }
 
-    private function guardarPlantillaParaGeneracion($archivo, $usuarioId, OficioVinculacionModel $modelo, $nombreBiblioteca = null, $copiar = false)
+    private function guardarPlantillaParaGeneracion($archivo, $usuarioId, OficioVinculacionModel $modelo, $nombreBiblioteca = null, $copiar = false, $documentoFinal = false)
     {
         if (!$archivo || (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            return ['ok' => false, 'mensaje' => 'Selecciona una plantilla de oficio.', 'codigo_http' => 422];
+            return ['ok' => false, 'mensaje' => $documentoFinal
+                ? 'Adjunta el oficio terminado en PDF o Word (.docx).'
+                : 'Selecciona una plantilla de oficio.', 'codigo_http' => 422];
         }
 
         $rutaTemporal = (string)($archivo['tmp_name'] ?? '');
@@ -195,29 +239,48 @@ class OficioVinculacionController
             'upload_error' => (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE)
         ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
 
-        if (strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION)) !== 'docx' || $tamano <= 0 || $tamano > self::MAX_DOCX_BYTES) {
-            return ['ok' => false, 'mensaje' => 'Solo se permiten plantillas DOCX de hasta 20 MB.', 'codigo_http' => 422];
+        $extension = strtolower((string)pathinfo($nombreOriginal, PATHINFO_EXTENSION));
+        $esPdfFinal = $documentoFinal && $extension === 'pdf';
+        if (($extension !== 'docx' && !$esPdfFinal) ||
+            $tamano <= 0 || $tamano > ($esPdfFinal ? self::MAX_PDF_BYTES : self::MAX_DOCX_BYTES)) {
+            return ['ok' => false, 'mensaje' => $documentoFinal
+                ? 'Adjunta un PDF o DOCX válido de hasta 20 MB.'
+                : 'Solo se permiten plantillas DOCX de hasta 20 MB.', 'codigo_http' => 422];
         }
 
         $mime = class_exists('finfo') ? (new finfo(FILEINFO_MIME_TYPE))->file($rutaTemporal) : '';
-        if ($mime !== '' && !in_array($mime, [
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/zip',
-            'application/octet-stream'
-        ], true)) {
-            return ['ok' => false, 'mensaje' => 'El contenido del archivo no corresponde a un DOCX.', 'codigo_http' => 422];
+        if ($esPdfFinal) {
+            if ($mime !== '' && !in_array($mime, ['application/pdf', 'application/octet-stream'], true)) {
+                return ['ok' => false, 'mensaje' => 'El contenido del archivo no corresponde a un PDF.', 'codigo_http' => 422];
+            }
+            $bytesPdf = file_get_contents($rutaTemporal);
+            if (!is_string($bytesPdf) || !$this->pdfFinalValido($bytesPdf)) {
+                return ['ok' => false, 'mensaje' => 'El PDF debe ser válido, no estar cifrado ni contener acciones activas.', 'codigo_http' => 422];
+            }
+        } else {
+            if ($mime !== '' && !in_array($mime, [
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/zip',
+                'application/octet-stream'
+            ], true)) {
+                return ['ok' => false, 'mensaje' => 'El contenido del archivo no corresponde a un DOCX.', 'codigo_http' => 422];
+            }
+            $validacion = $this->validarPlantillaDocx($rutaTemporal);
+            if (!($validacion['ok'] ?? false)) {
+                $validacion['codigo_http'] = 422;
+                return $validacion;
+            }
         }
 
-        $validacion = $this->validarPlantillaDocx($rutaTemporal);
-        if (!($validacion['ok'] ?? false)) {
-            $validacion['codigo_http'] = 422;
-            return $validacion;
-        }
-
-        $procesable = (new OficioDocxPdfService())->validarPlantillaProcesable($rutaTemporal);
-        if (!($procesable['ok'] ?? false)) {
-            $procesable['codigo_http'] = 422;
-            return $procesable;
+        // El documento final ya contiene la redacción aprobada.
+        // Validar DOCX/ZIP y tamaño, pero NO exigir marcadores ni convertirlo
+        // en una plantilla estructural: hacerlo alteraría el documento enviado.
+        if (!$documentoFinal) {
+            $procesable = (new OficioDocxPdfService())->validarPlantillaProcesable($rutaTemporal);
+            if (!($procesable['ok'] ?? false)) {
+                $procesable['codigo_http'] = 422;
+                return $procesable;
+            }
         }
 
         $directorioRelativo = 'storage/templates/oficios_personalizados';
@@ -226,7 +289,8 @@ class OficioVinculacionController
             return ['ok' => false, 'mensaje' => 'No fue posible preparar temporalmente la plantilla.', 'codigo_http' => 500];
         }
 
-        $nombreArchivo = ($nombreBiblioteca === null ? 'generacion_' : 'oficio_') . date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.docx';
+        $nombreArchivo = ($nombreBiblioteca === null ? 'generacion_' : 'oficio_') .
+            date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . ($esPdfFinal ? '.pdf' : '.docx');
         $rutaFinal = $directorio . DIRECTORY_SEPARATOR . $nombreArchivo;
         if (!($copiar ? copy($rutaTemporal, $rutaFinal) : move_uploaded_file($rutaTemporal, $rutaFinal))) {
             return ['ok' => false, 'mensaje' => 'No fue posible recibir la plantilla seleccionada.', 'codigo_http' => 500];
@@ -234,7 +298,11 @@ class OficioVinculacionController
 
         $nombreVisible = preg_replace('/[^\pL\pN ._()-]+/u', '', pathinfo($nombreOriginal, PATHINFO_FILENAME));
         $rutaRelativa = $directorioRelativo . '/' . $nombreArchivo;
-        $id = $modelo->registrarPlantillaOficioDocx($nombreBiblioteca ?? ($nombreVisible ?: 'Plantilla personalizada'), $rutaRelativa, $usuarioId);
+        $nombreRegistro = $esPdfFinal
+            ? 'Oficio adjuntado PDF: ' . ($nombreVisible ?: 'Documento final')
+            : ($documentoFinal ? 'Oficio adjuntado: ' . ($nombreVisible ?: 'Documento final')
+            : ($nombreBiblioteca ?? ($nombreVisible ?: 'Plantilla personalizada')));
+        $id = $modelo->registrarPlantillaOficioDocx($nombreRegistro, $rutaRelativa, $usuarioId);
         if ($id <= 0) {
             @unlink($rutaFinal);
             return ['ok' => false, 'mensaje' => 'No fue posible preparar la plantilla seleccionada.', 'codigo_http' => 500];
@@ -341,6 +409,21 @@ class OficioVinculacionController
         ]);
     }
 
+    /**
+     * Validación conservadora para PDF terminado, sin transformar el contenido.
+     * También la utiliza el servicio de vista previa antes de servir el archivo.
+     */
+    private function pdfFinalValido($contenido)
+    {
+        if (!is_string($contenido) || strlen($contenido) < 100 ||
+            strncmp($contenido, '%PDF-', 5) !== 0 ||
+            preg_match('/%%EOF\\s*$/D', substr($contenido, -2048)) !== 1) {
+            return false;
+        }
+        return preg_match('~/\\s*(?:Encrypt|JavaScript|JS|OpenAction|Launch|EmbeddedFile|RichMedia)\\b~i',
+            $contenido) !== 1;
+    }
+
     private function validarPlantillaDocx($ruta)
     {
         if (!class_exists('ZipArchive')) {
@@ -404,6 +487,7 @@ class OficioVinculacionController
             $this->responderTextoPdf((string)($vista['mensaje'] ?? 'No fue posible preparar el oficio.'), (int)($vista['codigo_http'] ?? 500));
         }
 
+        // FALSE por omisión: no rellenar una generación ya guardada.
         $resultado = (new OficioDocxPdfService())->generarDocx((array)$vista['vista_previa']);
         if (!($resultado['ok'] ?? false)) {
             $this->responderTextoPdf((string)($resultado['mensaje'] ?? 'No fue posible generar el DOCX.'), 422);
@@ -537,6 +621,36 @@ class OficioVinculacionController
         $this->responderJson($resultado);
     }
 
+    /**
+     * PDF exportado por el usuario para un Word previamente adjuntado.
+     * Aplica los mismos permisos del botón Generar PDF.
+     */
+    public function adjuntarPdfTerminado()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('oficios.generar');
+        if (!tienePermiso('seguimientos_vinculacion.operar_propios')) {
+            $this->responderJson(['ok'=>false,
+                'mensaje'=>'Solo el Analista responsable puede adjuntar el PDF.'], 403);
+        }
+        $id = (int)($_POST['seguimiento_id'] ?? 0);
+        if ($id <= 0) {
+            $this->responderJson(['ok'=>false,'mensaje'=>'Seguimiento no válido.'], 422);
+        }
+        $service = new OficioPdfService();
+        $result = $service->adjuntarPdfTerminado($id,
+            (int)($_SESSION['usuario_id'] ?? 0), $_FILES['archivo_pdf'] ?? null);
+        if (!($result['ok'] ?? false)) {
+            $this->responderJson([
+                'ok'=>false, 'mensaje'=>(string)($result['mensaje'] ?? 'No se pudo adjuntar PDF.')
+            ], (int)($result['codigo_http'] ?? 500));
+        }
+        $result['estado_pdf'] = $this->completarPermisosPdf(
+            $result['estado_pdf'] ?? [], (int)($_SESSION['usuario_id'] ?? 0)
+        );
+        $this->responderJson($result);
+    }
+
     public function verPdf()
     {
         $this->validarPermisoJson('oficios.ver');
@@ -592,7 +706,13 @@ class OficioVinculacionController
             $esAnalistaResponsable &&
             tienePermiso('oficios.generar') &&
             $tieneFolio &&
-            !$pdfGenerado;
+            !$pdfGenerado &&
+            empty($estadoPdf['pdf_pendiente_por_word']);
+
+        $estadoPdf['puede_adjuntar_pdf_final'] =
+            $esAnalistaResponsable &&
+            tienePermiso('oficios.generar') &&
+            !empty($estadoPdf['pdf_pendiente_por_word']);
 
         unset($estadoPdf['analista_id']);
 

@@ -285,3 +285,328 @@
         padding: 10px 11px !important;
     }
 }
+
+/* Selección de oficios — apariencia institucional, sin afectar otros modales. */
+#modalSeleccionarOficio.oficio-selector-institucional .modal-dialog {
+    width: min(640px, calc(100vw - 28px)) !important;
+    max-width: 640px !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional .modal-content {
+    border-radius: 14px !important;
+    border: 1px solid var(--color-border, #dce4ef) !important;
+    box-shadow: 0 22px 55px rgba(19, 37, 70, .18) !important;
+    font-family: Manrope, sans-serif;
+}
+#modalSeleccionarOficio.oficio-selector-institucional .modal-header {
+    background: var(--color-surface, #fff) !important;
+    border-bottom: 1px solid var(--color-border, #e3eaf3) !important;
+    padding: 18px 22px !important;
+}
+#modalSeleccionarOficio .oficio-selector-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+#modalSeleccionarOficio .oficio-selector-heading-icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 11px;
+    color: var(--color-primary, #1f428c);
+    background: var(--color-primary-soft, #edf2fb);
+    font-size: 19px;
+}
+#modalSeleccionarOficio .oficio-selector-heading-subtitle {
+    margin: 3px 0 0;
+    color: var(--color-text-secondary, #69788b);
+    font-size: 11px;
+    font-weight: 600;
+}
+#modalSeleccionarOficio .oficio-selector-intro {
+    font-size: 13px !important;
+    margin-bottom: 16px !important;
+    line-height: 1.55 !important;
+}
+#modalSeleccionarOficio [data-oficio-template-list] {
+    display: flex;
+    flex-direction: column;
+    gap: 10px !important;
+}
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item {
+    display: grid !important;
+    grid-template-columns: 20px 38px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 14px 16px !important;
+    border: 1px solid var(--color-border, #dce4ef) !important;
+    border-radius: 11px !important;
+    background: var(--color-surface, #fff) !important;
+    cursor: pointer;
+    transition: border-color .12s ease, background-color .12s ease;
+}
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item::before,
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item::after {
+    display: none !important;
+}
+#modalSeleccionarOficio [data-oficio-template-list] .list-group-item:has(input:checked) {
+    border-color: var(--color-primary, #29478b) !important;
+    background: var(--color-primary-soft, #eff4fc) !important;
+}
+#modalSeleccionarOficio .oficio-selector-card-icon {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 40px;
+    border-radius: 9px;
+    background: #f1f5fa;
+    color: var(--color-primary, #29478b);
+    font-size: 19px;
+}
+#modalSeleccionarOficio .oficio-selector-card-copy {min-width: 0}
+#modalSeleccionarOficio .oficio-selector-card-copy strong {
+    color: var(--color-text-primary, #24354a) !important;
+    font-size: 13px !important;
+}
+#modalSeleccionarOficio .oficio-selector-card-copy small {
+    color: var(--color-text-secondary, #64748b) !important;
+    font-size: 11px !important;
+    line-height: 1.55 !important;
+}
+#modalSeleccionarOficio [data-oficio-documento-final]:not(.d-none),
+#modalSeleccionarOficio [data-oficio-custom-file]:not(.d-none) {
+    padding: 14px !important;
+    background: #f8fafc !important;
+    border: 1px solid var(--color-border, #dce4ef) !important;
+    border-radius: 11px !important;
+    margin-bottom: 12px;
+}
+#modalSeleccionarOficio .oficio-documento-aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: 10px 0 5px;
+    color: var(--color-text-secondary, #596a80);
+    font-size: 12px;
+    line-height: 1.55;
+}
+#modalSeleccionarOficio .oficio-documento-aviso .bi {
+    color: var(--color-primary, #29478b);
+    font-size: 15px;
+    flex: 0 0 auto;
+}
+#modalSeleccionarOficio .modal-footer {
+    background: var(--color-surface, #fff) !important;
+    padding: 15px 22px !important;
+}
+#modalSeleccionarOficio [data-oficio-use-selected] {
+    border-radius: 9px !important;
+    background: var(--color-primary, #29478b) !important;
+    border-color: var(--color-primary, #29478b) !important;
+    color: #fff !important;
+}
+@media (max-width: 576px) {
+    #modalSeleccionarOficio.oficio-selector-institucional .modal-dialog {
+        width: calc(100vw - 20px) !important;
+    }
+    #modalSeleccionarOficio [data-oficio-template-list] .list-group-item {
+        grid-template-columns: 20px 32px minmax(0, 1fr) !important;
+        gap: 9px !important;
+        padding: 12px !important;
+    }
+}
+
+/* IMPE: alineación definitiva de modalidades y adjunto Word.
+   Se encapsula en el modal, sin alterar controles ni carga de otros módulos. */
+#modalSeleccionarOficio.oficio-selector-institucional
+[data-oficio-template-list] > label.oficio-selector-opcion {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    min-height: 76px !important;
+    padding: 13px 15px !important;
+    margin: 0 !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+[data-oficio-template-list] > label.oficio-selector-opcion::before,
+#modalSeleccionarOficio.oficio-selector-institucional
+[data-oficio-template-list] > label.oficio-selector-opcion::after {
+    display: none !important;
+    content: none !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-selector-opcion > input.oficio-selector-radio {
+    flex: 0 0 19px !important;
+    width: 19px !important;
+    height: 19px !important;
+    margin: 0 !important;
+    position: static !important;
+    align-self: center !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-selector-opcion > .oficio-selector-card-icon {
+    position: static !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 39px !important;
+    width: 39px !important;
+    height: 39px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    background: var(--color-primary-soft, #edf2fb) !important;
+    color: var(--color-primary, #29478b) !important;
+    font-size: 19px !important;
+    line-height: 1 !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-selector-opcion > .oficio-selector-card-icon > i {
+    position: static !important;
+    display: inline-block !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-selector-opcion > .oficio-selector-card-copy {
+    position: static !important;
+    display: block !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-selector-card-copy > strong,
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-selector-card-copy > small {
+    display: block !important;
+    position: static !important;
+    margin: 0 !important;
+    white-space: normal !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-selector-card-copy > small {
+    margin-top: 4px !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-selector-opcion:has(.oficio-selector-radio:checked) > .oficio-selector-card-icon {
+    background: var(--color-primary-soft, #e7effc) !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+[data-oficio-documento-final]:not(.d-none) {
+    padding: 15px 16px !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-file-title {
+    display: block !important;
+    margin: 0 0 9px !important;
+    color: var(--color-text-primary, #23354e) !important;
+    font-family: Manrope, sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    line-height: 1.4 !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+input.oficio-file-input {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    clip-path: inset(50%) !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-file-surface {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 6px !important;
+    margin: 0 !important;
+    border: 1px solid var(--color-border, #d7e1ee) !important;
+    border-radius: 9px !important;
+    background: var(--color-surface, #fff) !important;
+    color: var(--color-text-secondary, #69788b) !important;
+    font-family: Manrope, sans-serif !important;
+    cursor: pointer;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-file-surface:hover {
+    border-color: var(--color-primary, #29478b) !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+input.oficio-file-input:focus-visible + .oficio-file-surface {
+    outline: 2px solid var(--color-primary, #29478b) !important;
+    outline-offset: 2px !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-file-action {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    min-height: 34px !important;
+    flex: 0 0 auto !important;
+    padding: 6px 12px !important;
+    border-radius: 7px !important;
+    background: var(--color-primary-soft, #edf2fb) !important;
+    color: var(--color-primary, #29478b) !important;
+    font-family: Manrope, sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    line-height: 1.25 !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-file-action > .bi {
+    font-size: 15px !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+.oficio-file-name {
+    display: block !important;
+    flex: 1 1 160px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    color: var(--color-text-secondary, #69788b) !important;
+    font-family: Manrope, sans-serif !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+}
+#modalSeleccionarOficio.oficio-selector-institucional
+[data-oficio-documento-final] > .form-text {
+    margin: 9px 0 0 !important;
+    color: var(--color-text-secondary, #69788b) !important;
+    font-size: 11px !important;
+}
+@media (max-width: 575.98px) {
+    #modalSeleccionarOficio.oficio-selector-institucional
+    [data-oficio-template-list] > label.oficio-selector-opcion {
+        gap: 10px !important;
+        padding: 12px !important;
+    }
+    #modalSeleccionarOficio.oficio-selector-institucional
+    .oficio-selector-opcion > .oficio-selector-card-icon {
+        flex-basis: 34px !important;
+        width: 34px !important;
+        height: 36px !important;
+    }
+    #modalSeleccionarOficio.oficio-selector-institucional
+    .oficio-file-action {
+        width: 100% !important;
+    }
+    #modalSeleccionarOficio.oficio-selector-institucional
+    .oficio-file-name {
+        padding: 0 7px 3px !important;
+    }
+}

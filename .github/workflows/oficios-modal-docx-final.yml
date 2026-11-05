@@ -1,0 +1,81 @@
+name: Oficios - modal institucional y documento Word final
+on:
+  push:
+    branches:
+      - fix/oficios-cdmx-docx-final-modal-20261104
+    paths:
+      - 'app/controllers/OficioVinculacionController.php'
+      - 'app/services/OficioPreviewService.php'
+      - 'app/services/OficioDocxPdfService.php'
+      - 'app/services/OficioPdfService.php'
+      - 'app/services/OficioRedmexPdfRenderer.php'
+      - 'public/javascript/oficios_vinculacion.js'
+      - 'public/css/oficios_selector_compacto.css'
+      - 'tests/oficios_*'
+      - 'tools/publicar_oficios_*'
+      - 'tools/publicar_oficio_envio_final_hostinger.py'
+      - 'tools/publicar_fix_oficio_cdmx_fecha.py'
+      - 'tools/diagnosticar_oficio_final_estructura.php'
+      - 'tools/diagnosticar_oficio_word_anclas.php'
+      - 'tools/publicar_oficios_word_final_hostinger.py'
+      - '.github/workflows/oficios-modal-docx-final.yml'
+  pull_request:
+    paths:
+      - 'app/controllers/OficioVinculacionController.php'
+      - 'app/services/OficioPreviewService.php'
+      - 'app/services/OficioDocxPdfService.php'
+      - 'app/services/OficioPdfService.php'
+      - 'app/services/OficioRedmexPdfRenderer.php'
+      - 'public/javascript/oficios_vinculacion.js'
+      - 'public/css/oficios_selector_compacto.css'
+      - 'tests/oficios_*'
+      - 'tools/publicar_oficios_*'
+      - 'tools/publicar_oficio_envio_final_hostinger.py'
+      - 'tools/publicar_fix_oficio_cdmx_fecha.py'
+      - 'tools/diagnosticar_oficio_final_estructura.php'
+      - 'tools/diagnosticar_oficio_word_anclas.php'
+      - 'tools/publicar_oficios_word_final_hostinger.py'
+      - '.github/workflows/oficios-modal-docx-final.yml'
+permissions:
+  contents: read
+jobs:
+  oficios-seguros:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: zip, mbstring, dom, xml, fileinfo
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dependencias de documentos
+        run: composer install --no-interaction --no-progress --prefer-dist
+      - name: Sintaxis y regresiones de generación
+        run: |
+          php -l app/controllers/OficioVinculacionController.php
+          php -l app/services/OficioPreviewService.php
+          php -l app/services/OficioDocxPdfService.php
+          php -l app/services/OficioPdfService.php
+          php -l app/services/OficioEnvioService.php
+          php -l tools/diagnosticar_oficio_final_estructura.php
+          php -l tools/diagnosticar_oficio_word_anclas.php
+          php -l app/services/OficioRedmexPdfRenderer.php
+          php tests/oficios_word_final_metadata_test.php
+          php tests/oficios_word_final_alineacion_test.php
+          php tests/oficios_word_final_ruta_independiente_test.php
+          python3 tests/oficios_word_final_publicador_test.py
+          node --check public/javascript/oficios_vinculacion.js
+          php tests/oficios_documento_final_smoke.php
+          php tests/oficios_pdf_terminado_smoke.php
+          php tests/oficios_envio_pdf_final_smoke.php
+          python3 tests/oficios_envio_final_publicador_test.py
+          python3 tests/oficios_pdf_o_word_publicador_test.py
+          node tests/oficios_selector_smoke.cjs
+          python3 tests/publicacion_oficios_modal_hostinger.py
+          python3 tests/publicacion_oficios_modal_visual_test.py
+          php tests/oficios_cdmx_fecha_smoke.php
+          python3 tests/oficios_cdmx_fecha_publicador_test.py

@@ -33,6 +33,40 @@ class OficioDocxPdfService
 
     public function generarPdf(array $vista)
     {
+        // Un PDF adjuntado ya está terminado: se entrega byte a byte, sin conversión.
+        if (strpos(trim((string)($vista['plantilla'] ?? '')), 'Oficio adjuntado PDF: ') === 0) {
+            $relative = str_replace('\\', '/', trim((string)($vista['archivo_plantilla'] ?? '')));
+            if (!preg_match('~^storage/templates/oficios_personalizados/generacion_[0-9]{8}_[0-9]{6}_[a-f0-9]{12}\.pdf$~D', $relative)) {
+                return $this->error('No se encontró el PDF original adjuntado.', 'PDF_FINAL_SOURCE');
+            }
+            $file = $this->resolverRutaPlantilla($vista);
+            if (!is_file($file) || filesize($file) <= 0 || filesize($file) > 20 * 1024 * 1024) {
+                return $this->error('El PDF original no está disponible.', 'PDF_FINAL_SOURCE');
+            }
+            $pdf = file_get_contents($file);
+            if (!is_string($pdf) || strncmp($pdf, '%PDF-', 5) !== 0 ||
+                preg_match('/%%EOF\s*$/D', substr($pdf, -2048)) !== 1 ||
+                preg_match('~/\s*(?:Encrypt|JavaScript|JS|OpenAction|Launch|EmbeddedFile|RichMedia)\b~i', $pdf) === 1) {
+                return $this->error('El PDF adjuntado no es válido o contiene acciones no admitidas.', 'PDF_FINAL_INVALID');
+            }
+            return ['ok' => true, 'contenido_pdf' => $pdf, 'conversor' => 'PDF_ORIGINAL'];
+        }
+        // El Word terminado se conserva, pero Hostinger no dispone de LibreOffice.
+        // Nunca intentar convertirlo con REDMEX ni simular un PDF.
+        if (strpos(trim((string)($vista['plantilla'] ?? '')), 'Oficio adjuntado: ') === 0) {
+            $relative = str_replace('\\', '/', trim((string)($vista['archivo_plantilla'] ?? '')));
+            if (!preg_match('~^storage/templates/oficios_personalizados/generacion_[0-9]{8}_[0-9]{6}_[a-f0-9]{12}\.docx$~D', $relative)) {
+                return $this->error('No se encontró el Word terminado.', 'WORD_FINAL_SOURCE');
+            }
+            $file = $this->resolverRutaPlantilla($vista);
+            if (!is_file($file) || !is_readable($file)) {
+                return $this->error('El Word terminado no está disponible.', 'WORD_FINAL_SOURCE');
+            }
+            return $this->error(
+                'El oficio Word está guardado sin modificaciones. Para obtener la vista previa PDF, adjunta el archivo PDF exportado desde Word al mismo oficio.',
+                'WORD_FINAL_PENDING_PDF'
+            );
+        }
         $rutaPlantilla = $this->resolverRutaPlantilla($vista);
         $personalizada = trim((string)($vista['archivo_plantilla'] ?? '')) !== '';
         // Paso 5 guarda el resultado en esta misma ruta, asociada al oficio.
@@ -217,6 +251,10 @@ class OficioDocxPdfService
     private function construirReemplazos(array $vista)
     {
         $reemplazos = [
+            // Compatibilidad de la plantilla general REDMEX: origen fijo legado.
+            // Se sustituye la línea completa ANTES de procesar {{FECHA}}.
+            // El archivo DOCX original y las plantillas personales no se modifican.
+            'Cuernavaca, Morelos, a {{FECHA}}' => trim((string)($vista['lugar_fecha'] ?? $vista['fecha'] ?? '')),
             '{{FOLIO}}' => trim((string)($vista['folio'] ?? '')),
             '{{FECHA}}' => trim((string)($vista['fecha'] ?? '')),
             '{{DESTINATARIO_NOMBRE}}' => $this->mayusculas($vista['destinatario_nombre'] ?? ''),
@@ -246,9 +284,25 @@ class OficioDocxPdfService
         return $reemplazos + $personalizados;
     }
 
-    public function generarDocx(array $vista)
+    public function generarDocx(array $vista, $prepararPlantilla = false)
     {
+        if (strpos(trim((string)($vista['plantilla'] ?? '')), 'Oficio adjuntado PDF: ') === 0) {
+            return $this->error('Este oficio se adjuntó como PDF terminado; no existe versión DOCX.', 'PDF_FINAL_NO_DOCX');
+        }
         $rutaPlantilla = $this->resolverRutaPlantilla($vista);
+        $rutaRelativa = str_replace('\\', '/', (string)($vista['archivo_plantilla'] ?? ''));
+        // FALSE: descargar una generación almacenada, sin rellenarla.
+        // TRUE: preparar por primera vez una plantilla personalizada.
+        // Mantener compatibilidad semántica con Hostinger.
+        if (!$prepararPlantilla && preg_match(
+            '~^storage/templates/oficios_personalizados/generacion_\\d{8}_\\d{6}_[a-f0-9]{12}\\.docx$~D',
+            $rutaRelativa
+        ) === 1 && is_file($rutaPlantilla)) {
+            $contenido = file_get_contents($rutaPlantilla);
+            return $contenido !== false && $contenido !== ''
+                ? ['ok' => true, 'contenido_docx' => $contenido]
+                : $this->error('No fue posible leer el DOCX adjuntado.', 'Archivo vacío o ilegible.');
+        }
         if (!is_file($rutaPlantilla) || (!class_exists('ZipArchive') && !class_exists('PharData'))) {
             return $this->error('No fue posible abrir la plantilla DOCX seleccionada.', 'Plantilla o soporte ZIP no disponible.');
         }

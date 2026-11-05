@@ -44,6 +44,29 @@ class OficioEnvioService
             return $correoService->enviarAhora($seguimientoId, $usuarioId);
         }
 
+        /*
+         * Un oficio ya elaborado no debe regenerarse ni sincronizar su folio:
+         * su PDF es el documento definitivo que aprobó el analista.
+         * El nombre físico puede incluir "_adjunto_<token>" y por eso no
+         * coincide con la convención de los PDFs institucionales.
+         */
+        if ($this->esOficioTerminadoAdjuntado($seguimiento)) {
+            if (!$this->pdfTerminadoDisponible($seguimiento)) {
+                return $this->error(
+                    'El PDF terminado no está disponible o no es válido. Revisa el archivo adjuntado antes de enviar.',
+                    422
+                );
+            }
+
+            $resultado = $correoService->enviarAhora($seguimientoId, $usuarioId);
+            if ($resultado['ok'] ?? false) {
+                $resultado['folio_actualizado_al_enviar'] = false;
+                $resultado['pdf_regenerado_al_enviar'] = false;
+                $resultado['folio_envio'] = trim((string)($seguimiento['folio'] ?? ''));
+            }
+            return $resultado;
+        }
+
         $ajuste = $this->sincronizarFolioConFechaActual(
             (int)$seguimiento['oficio_id'],
             $seguimientoId
@@ -94,6 +117,45 @@ class OficioEnvioService
         }
 
         return $resultado;
+    }
+
+    private function esOficioTerminadoAdjuntado($seguimiento)
+    {
+        $nombre = trim((string)($seguimiento['plantilla_oficio_nombre'] ?? ''));
+        return strpos($nombre, 'Oficio adjuntado: ') === 0 ||
+            strpos($nombre, 'Oficio adjuntado PDF: ') === 0;
+    }
+
+    private function pdfTerminadoDisponible($seguimiento)
+    {
+        $ruta = $this->rutaAbsolutaPdf((string)($seguimiento['archivo_pdf'] ?? ''));
+        if ($ruta === '' || !is_file($ruta) || !is_readable($ruta) ||
+            !$this->rutaDentroDeStorageOficios($ruta)) {
+            return false;
+        }
+        $size = filesize($ruta);
+        if ($size === false || $size < 100 || $size > 35 * 1024 * 1024) {
+            return false;
+        }
+
+        $stream = @fopen($ruta, 'rb');
+        if (!$stream) {
+            return false;
+        }
+        try {
+            $header = fread($stream, 5);
+            if ($header !== '%PDF-') {
+                return false;
+            }
+            if (fseek($stream, max(0, $size - 2048), SEEK_SET) !== 0) {
+                return false;
+            }
+            $end = stream_get_contents($stream);
+            return is_string($end) &&
+                preg_match('/%%EOF\\s*$/D', $end) === 1;
+        } finally {
+            fclose($stream);
+        }
     }
 
     private function listoParaAjustarDocumento($seguimiento)
@@ -357,7 +419,8 @@ class OficioEnvioService
                     oficio.cuerpo_correo,
                     oficio.archivo_pdf,
                     oficio.estado_oficio,
-                    oficio.fecha_envio
+                    oficio.fecha_envio,
+                    plantilla_oficio.nombre AS plantilla_oficio_nombre
                 FROM seguimientos_vinculacion seguimientos
                 LEFT JOIN oficios_vinculacion oficio
                     ON oficio.id = (
@@ -367,6 +430,8 @@ class OficioEnvioService
                         ORDER BY oficio_reciente.id DESC
                         LIMIT 1
                     )
+                LEFT JOIN plantillas_vinculacion plantilla_oficio
+                    ON plantilla_oficio.id = oficio.plantilla_oficio_id
                 WHERE seguimientos.id = ?
                     AND seguimientos.analista_id = ?
                     AND seguimientos.activo = 1

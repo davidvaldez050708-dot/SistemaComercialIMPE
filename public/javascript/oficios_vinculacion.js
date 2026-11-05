@@ -131,14 +131,18 @@
 
             elemento = document.createElement('div');
             elemento.id = 'modalSeleccionarOficio';
-            elemento.className = 'modal fade';
+            elemento.className = 'modal fade oficio-selector-institucional';
             elemento.tabIndex = -1;
             elemento.setAttribute('aria-hidden', 'true');
+            elemento.setAttribute('aria-labelledby', 'tituloSeleccionarOficio');
             elemento.innerHTML =
                 '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
-                    '<div class="modal-header"><h2 class="modal-title fs-5">Seleccionar oficio</h2>' +
+                    '<div class="modal-header"><div class="oficio-selector-heading">' +
+                    '<span class="oficio-selector-heading-icon" aria-hidden="true"><i class="bi bi-file-earmark-text"></i></span>' +
+                    '<div><h2 class="modal-title fs-5" id="tituloSeleccionarOficio">Preparar oficio</h2>' +
+                    '<p class="oficio-selector-heading-subtitle">Seguimiento de Vinculación</p></div></div>' +
                     '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>' +
-                    '<div class="modal-body"><p>Selecciona el formato de oficio que deseas utilizar.</p>' +
+                    '<div class="modal-body"><p class="oficio-selector-intro">Selecciona cómo deseas preparar el oficio para este seguimiento.</p>' +
                     '<div class="list-group mb-3" data-oficio-template-list></div>' +
                     '<div class="d-none" data-oficio-custom-file>' +
                         '<label class="form-label" for="oficioSavedTemplate">Plantillas guardadas</label>' +
@@ -160,7 +164,18 @@
                         '<div class="text-muted text-center mb-2">o seleccionar archivo desde mi equipo</div>' +
                         '<label class="form-label" for="oficioTemplateFile">Archivo de plantilla</label>' +
                         '<input class="form-control" id="oficioTemplateFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
-                        '<div class="form-text">Archivo DOCX de hasta 20 MB.</div>' +
+                        '<div class="form-text">Archivo DOCX de hasta 20 MB. Las plantillas se completan con los datos del seguimiento.</div>' +
+                    '</div>' +
+                    '<div class="d-none" data-oficio-documento-final>' +
+                        '<label class="form-label oficio-file-title" for="oficioDocumentoFinal">Oficio terminado (PDF o Word)</label>' +
+                        '<input class="oficio-file-input" id="oficioDocumentoFinal" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
+                        '<label class="oficio-file-surface" for="oficioDocumentoFinal">' +
+                            '<span class="oficio-file-action"><i class="bi bi-upload" aria-hidden="true"></i>Seleccionar archivo</span>' +
+                            '<span class="oficio-file-name" data-oficio-documento-nombre aria-live="polite">Ningún archivo seleccionado</span>' +
+                        '</label>' +
+                        '<p class="oficio-documento-aviso"><i class="bi bi-shield-check" aria-hidden="true"></i>' +
+                        'PDF: se mostrará y guardará tal como fue adjuntado. Word: se conservará el DOCX original sin convertirlo ni imponerle formato REDMEX.</p>' +
+                        '<div class="form-text" data-oficio-documento-estado role="status">PDF o DOCX, máximo 20 MB.</div>' +
                     '</div></div>' +
                     '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>' +
                     '<button type="button" class="btn btn-system-save" data-oficio-use-selected>Generar</button></div>' +
@@ -169,6 +184,7 @@
 
             const selector = elemento.querySelector('#oficioSavedTemplate');
             const manual = elemento.querySelector('#oficioTemplateFile');
+            const documentoFinal = elemento.querySelector('#oficioDocumentoFinal');
             const bloqueAlta = elemento.querySelector('[data-oficio-add-form]');
             const pestañaGuardadas = elemento.querySelector('label[for="oficioSavedTemplate"]');
             const pestañaNueva = elemento.querySelector('[data-oficio-add]');
@@ -228,6 +244,17 @@
             manual.addEventListener('change', function () {
                 if (manual.files.length) selector.value = '';
                 actualizarAccionEliminarPlantilla(elemento);
+            });
+            documentoFinal.addEventListener('change', function () {
+                const archivo = this.files?.[0] || null;
+                elemento.querySelector('[data-oficio-documento-nombre]').textContent =
+                    archivo ? archivo.name : 'Ningún archivo seleccionado';
+                elemento.querySelector('[data-oficio-documento-estado]').textContent =
+                    archivo && /\.pdf$/i.test(archivo.name)
+                        ? 'PDF terminado: vista previa directa sin modificaciones.'
+                        : (archivo && /\.docx$/i.test(archivo.name)
+                            ? 'Word terminado: se conservará el archivo, sin convertirlo a PDF en Hostinger.'
+                            : 'PDF o DOCX, máximo 20 MB.');
             });
             pestañaNueva?.addEventListener('click', function () {
                 mostrarNuevaPlantilla();
@@ -310,14 +337,33 @@
                     'd-none',
                     event.target.value !== 'personalizada'
                 );
+                elemento.querySelector('[data-oficio-documento-final]').classList.toggle(
+                    'd-none',
+                    event.target.value !== 'documento_final'
+                );
             });
             elemento.querySelector('[data-oficio-use-selected]').addEventListener('click', function () {
                 const seleccion = elemento.querySelector('input[name="oficio_plantilla"]:checked');
                 if (!seleccion || !contextoGeneracion) return;
-                const archivo = elemento.querySelector('#oficioTemplateFile')?.files?.[0] || null;
-                const plantillaId = Number(selector.value || 0);
+                const esDocumentoFinal = seleccion.value === 'documento_final';
+                const archivo = esDocumentoFinal
+                    ? (documentoFinal.files?.[0] || null)
+                    : (manual.files?.[0] || null);
+                const plantillaId = esDocumentoFinal ? 0 : Number(selector.value || 0);
                 if (seleccion.value === 'personalizada' && !archivo && !plantillaId) {
                     mostrarToast('Selecciona una plantilla de oficio.', true);
+                    return;
+                }
+                if (esDocumentoFinal && !archivo) {
+                    mostrarToast('Adjunta el oficio terminado en PDF o DOCX.', true);
+                    documentoFinal.focus();
+                    return;
+                }
+                if (archivo && (!(esDocumentoFinal ? /\.(?:pdf|docx)$/i : /\.docx$/i).test(archivo.name) || !archivo.size ||
+                    archivo.size > 20 * 1024 * 1024)) {
+                    mostrarToast(esDocumentoFinal
+                        ? 'Selecciona un PDF o DOCX válido de hasta 20 MB.'
+                        : 'Selecciona un DOCX válido de hasta 20 MB.', true);
                     return;
                 }
                 bootstrap.Modal.getOrCreateInstance(elemento).hide();
@@ -355,17 +401,23 @@
             const modal = obtenerModalPlantillas();
             const lista = modal.querySelector('[data-oficio-template-list]');
             const opciones = [
-                { id: 'predeterminada', nombre: 'Oficio predeterminado', descripcion: 'Formato actual del sistema' },
-                { id: 'personalizada', nombre: 'Usar plantilla personalizada', descripcion: 'Seleccionar documento desde mi equipo' }
+                { id: 'predeterminada', icono: 'bi-file-earmark-check', nombre: 'Oficio predeterminado', descripcion: 'Formato institucional · Ciudad de México' },
+                { id: 'personalizada', icono: 'bi-file-earmark-ruled', nombre: 'Usar plantilla personalizada', descripcion: 'Completar una plantilla DOCX con datos del seguimiento' },
+                { id: 'documento_final', icono: 'bi-file-earmark-arrow-up', nombre: 'Adjuntar oficio ya elaborado', descripcion: 'PDF listo para consultar o DOCX para conservar sin conversión' }
             ];
             lista.innerHTML = opciones.map(function (item, indice) {
-                return '<label class="list-group-item d-flex gap-2 align-items-start">' +
-                    '<input class="form-check-input mt-1" type="radio" name="oficio_plantilla" value="' + item.id + '" ' + (indice === 0 ? 'checked' : '') + '>' +
-                    '<span><strong class="d-block">' + escapar(item.nombre) + '</strong>' +
+                return '<label class="list-group-item oficio-selector-opcion">' +
+                    '<input class="form-check-input oficio-selector-radio" type="radio" name="oficio_plantilla" value="' + item.id + '" ' + (indice === 0 ? 'checked' : '') + '>' +
+                    '<span class="oficio-selector-card-icon" aria-hidden="true"><i class="bi ' + item.icono + '"></i></span>' +
+                    '<span class="oficio-selector-card-copy"><strong class="d-block">' + escapar(item.nombre) + '</strong>' +
                     '<small class="text-muted">' + escapar(item.descripcion) + '</small></span></label>';
             }).join('');
             modal.querySelector('[data-oficio-custom-file]').classList.add('d-none');
+            modal.querySelector('[data-oficio-documento-final]').classList.add('d-none');
             modal.querySelector('#oficioTemplateFile').value = '';
+            modal.querySelector('#oficioDocumentoFinal').value = '';
+            modal.querySelector('[data-oficio-documento-nombre]').textContent = 'Ningún archivo seleccionado';
+            modal.querySelector('[data-oficio-documento-estado]').textContent = 'PDF o DOCX, máximo 20 MB.';
             modal.querySelector('#oficioSavedTemplate').replaceChildren(new Option('Seleccionar una plantilla...', ''));
             modal.dataset.puedeEliminarPlantillas = '0';
             actualizarAccionEliminarPlantilla(modal);
@@ -432,6 +484,9 @@
                         '<i class="bi bi-file-earmark-text"></i>' +
                         ' Generar oficio' +
                     '</button>' +
+                    '<button type="button" class="btn btn-system-save linkage-work-small-button d-none" data-work-upload-oficio-pdf>' +
+                        '<i class="bi bi-file-earmark-pdf"></i> Adjuntar PDF del oficio' +
+                    '</button>' +
                 '</div>';
 
             referencia.insertAdjacentElement('afterend', seccion);
@@ -469,6 +524,9 @@
                 '<button type="button" class="btn btn-system-save" data-detail-generate-oficio>' +
                     '<i class="bi bi-file-earmark-text me-2"></i>' +
                     'Generar oficio' +
+                '</button>' +
+                '<button type="button" class="btn btn-system-save d-none" data-detail-upload-oficio-pdf>' +
+                    '<i class="bi bi-file-earmark-pdf me-2"></i>Adjuntar PDF del oficio' +
                 '</button>';
             tituloOficios.insertAdjacentElement('afterend', bloque);
 
@@ -579,6 +637,8 @@
             const folio = seccion.querySelector('[data-work-oficio-folio]');
             const status = seccion.querySelector('[data-work-oficio-status]');
             const boton = seccion.querySelector('[data-work-generate-oficio]');
+            const botonPdf = seccion.querySelector('[data-work-upload-oficio-pdf]');
+            botonPdf?.classList.toggle('d-none', !Boolean(estado?.puede_adjuntar_pdf_final));
 
             if (folio) {
                 folio.textContent = tieneFolio ? estado.folio : 'Pendiente';
@@ -640,6 +700,8 @@
             const folio = bloque.querySelector('[data-detail-oficio-folio]');
             const status = bloque.querySelector('[data-detail-oficio-status]');
             const boton = bloque.querySelector('[data-detail-generate-oficio]');
+            const botonPdf = bloque.querySelector('[data-detail-upload-oficio-pdf]');
+            botonPdf?.classList.toggle('d-none', !Boolean(estado?.puede_adjuntar_pdf_final));
 
             if (folio) {
                 folio.textContent = tieneFolio ? estado.folio : 'Pendiente';
@@ -708,8 +770,10 @@
 
             const formulario = new FormData();
             formulario.append('seguimiento_id', String(seguimientoId));
-            formulario.append('tipo_plantilla', tipoPlantilla === 'personalizada' ? 'personalizada' : 'predeterminada');
-            if (tipoPlantilla === 'personalizada' && archivoPlantilla) {
+            formulario.append('tipo_plantilla', tipoPlantilla);
+            if (tipoPlantilla === 'documento_final' && archivoPlantilla) {
+                formulario.append('archivo_oficio', archivoPlantilla, archivoPlantilla.name);
+            } else if (tipoPlantilla === 'personalizada' && archivoPlantilla) {
                 formulario.append('archivo_plantilla', archivoPlantilla, archivoPlantilla.name);
             } else if (tipoPlantilla === 'personalizada' && plantillaId) {
                 formulario.append('plantilla_id', String(plantillaId));
@@ -763,6 +827,55 @@
             }
         };
 
+        const adjuntarPdfAOficioExistente = function (id, boton) {
+            if (!id || !boton || boton.disabled) return;
+            const entrada = document.createElement('input');
+            entrada.type = 'file';
+            entrada.accept = '.pdf,application/pdf';
+            entrada.className = 'visually-hidden';
+            entrada.setAttribute('aria-label', 'Seleccionar PDF terminado');
+            document.body.appendChild(entrada);
+            entrada.addEventListener('change', async function () {
+                const archivo = entrada.files?.[0] || null;
+                entrada.remove();
+                if (!archivo) return;
+                if (!/\.pdf$/i.test(archivo.name) || !archivo.size ||
+                    archivo.size > 20 * 1024 * 1024) {
+                    mostrarToast('Selecciona un PDF válido de hasta 20 MB.', true);
+                    return;
+                }
+                const original = boton.innerHTML;
+                boton.disabled = true;
+                boton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adjuntando PDF...';
+                try {
+                    const formulario = new FormData();
+                    formulario.append('seguimiento_id', String(id));
+                    formulario.append('archivo_pdf', archivo, archivo.name);
+                    const respuesta = await fetch(
+                        'index.php?controller=oficioVinculacion&action=adjuntarPdfTerminado', {
+                            method: 'POST',
+                            headers: {'X-Requested-With':'fetch'},
+                            body: formulario
+                        });
+                    const datos = await respuesta.json();
+                    if (!respuesta.ok || !datos.ok) {
+                        throw new Error(datos.mensaje || 'No fue posible adjuntar el PDF.');
+                    }
+                    mostrarToast('PDF adjuntado al mismo oficio. Puedes consultarlo y descargarlo.', false);
+                    await consultarEstado(id);
+                    if (esDetalle && id === seguimientoDetalleId) {
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    mostrarToast(error.message || 'No fue posible adjuntar el PDF.', true);
+                } finally {
+                    boton.disabled = false;
+                    boton.innerHTML = original;
+                }
+            }, {once: true});
+            entrada.click();
+        };
+
         normalizarAccionesBandeja();
         crearBloqueOffcanvas();
 
@@ -776,6 +889,15 @@
                         console.error(error);
                     });
                 }, 80);
+                return;
+            }
+
+            const subirPdf = event.target.closest('[data-work-upload-oficio-pdf], [data-detail-upload-oficio-pdf]');
+            if (subirPdf) {
+                event.preventDefault();
+                const id = subirPdf.matches('[data-detail-upload-oficio-pdf]')
+                    ? seguimientoDetalleId : seguimientoActualId;
+                adjuntarPdfAOficioExistente(id, subirPdf);
                 return;
             }
 
