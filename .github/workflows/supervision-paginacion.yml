@@ -1,0 +1,65 @@
+name: Supervisión paginación y rendimiento
+on:
+  pull_request:
+    paths:
+      - 'app/services/SupervisionLlamadasRepository.php'
+      - 'app/views/telefonia/supervision_llamadas.php'
+      - 'public/css/supervision_llamadas.css'
+      - 'tests/supervision_paginacion*'
+      - 'tests/fixtures/supervision_paginacion*'
+      - 'tests/publicacion_supervision_paginacion_test.py'
+      - 'tools/*supervision_paginacion*'
+      - '.github/workflows/supervision-paginacion.yml'
+permissions:
+  contents: read
+jobs:
+  supervision:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+        ports:
+          - 33329:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      IMPE_TEST_MYSQL_PORT: 33329
+      NODE_PATH: /tmp/impe-supervision/node_modules
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/impe-supervision playwright@1.56.1
+      - run: /tmp/impe-supervision/node_modules/.bin/playwright install --with-deps chromium
+      - name: Paridad y rendimiento con 89 páginas; más de 3000 registros
+        run: php -d memory_limit=1G tests/supervision_paginacion_db.php
+      - name: Publicación selectiva y reversible
+        run: python tests/publicacion_supervision_paginacion_test.py
+      - name: Paginación con vista real y cuatro tamaños
+        run: |
+          export CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")"
+          node tests/supervision_paginacion_browser.cjs
+      - name: Regresión del modal de resultados y botones de audio
+        run: |
+          export CHROME_BINARY="$(node -p "require('playwright').chromium.executablePath()")"
+          python tests/supervision_resultado_diseno_qa.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: supervision-paginacion-capturas
+          path: |
+            tmp/supervision-paginacion-*.png
+            tmp/supervision-resultado-diseno/

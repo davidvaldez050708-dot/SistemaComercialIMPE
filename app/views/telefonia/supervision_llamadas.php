@@ -54,7 +54,24 @@ require_once __DIR__.'/../../helpers/AvatarHelper.php';
  <?php endforeach; ?>
  <?php if(!$data['llamadas']): ?><div class="supervision-empty"><i class="bi bi-telephone" aria-hidden="true"></i><h3>No hay llamadas para estos filtros</h3><p>Selecciona otra persona o amplía el periodo.</p></div><?php endif; ?>
  </div>
- <?php if($data['paginas']>1): ?><nav class="supervision-pagination" aria-label="Páginas del historial"><?php if($data['pagina']>1): ?><a class="btn btn-system-light" href="<?= $esc($url('supervisionLlamadas',array_merge($f,['pagina'=>$data['pagina']-1]))) ?>">Anterior</a><?php endif; ?><span>Página <?= $data['pagina'] ?> de <?= $data['paginas'] ?></span><?php if($data['pagina']<$data['paginas']): ?><a class="btn btn-system-light" href="<?= $esc($url('supervisionLlamadas',array_merge($f,['pagina'=>$data['pagina']+1]))) ?>">Siguiente</a><?php endif; ?></nav><?php endif; ?>
+ <?php if($data['paginas']>1):
+ $actual=(int)$data['pagina'];$ultima=(int)$data['paginas'];
+ $numeros=$ultima<=7?range(1,$ultima):array_values(array_unique(array_merge([1,$ultima],range(max(1,$actual-1),min($ultima,$actual+1)))));
+ sort($numeros);
+ $paginaUrl=static fn($n)=>$url('supervisionLlamadas',array_merge($f,['pagina'=>$n]));
+ ?>
+ <nav class="data-pagination supervision-pagination" aria-label="Páginas del historial de llamadas">
+  <span class="supervision-page-summary">Mostrando <?= ($actual-1)*30+1 ?>–<?= min($actual*30,(int)$data['total']) ?> de <?= (int)$data['total'] ?> llamadas</span>
+  <div class="supervision-pages">
+   <?php if($actual>1): ?><a class="supervision-page" href="<?= $esc($paginaUrl($actual-1)) ?>" rel="prev" aria-label="Página anterior" title="Página anterior"><span aria-hidden="true">‹</span></a><?php else: ?><span class="supervision-page is-disabled" aria-disabled="true" aria-label="Página anterior"><span aria-hidden="true">‹</span></span><?php endif; ?>
+   <?php $anterior=0;foreach($numeros as $n): ?>
+    <?php if($anterior&&$n>$anterior+1): ?><span class="supervision-page-gap" aria-hidden="true">…</span><?php endif; ?>
+    <?php if($n===$actual): ?><span class="supervision-page is-current" aria-current="page" aria-label="Página <?= $n ?>, actual"><?= $n ?></span><?php else: ?><a class="supervision-page<?= $ultima>7&&$n!==1&&$n!==$ultima?' is-neighbor':'' ?>" href="<?= $esc($paginaUrl($n)) ?>" aria-label="Ir a la página <?= $n ?>"><?= $n ?></a><?php endif; ?>
+   <?php $anterior=$n;endforeach; ?>
+   <?php if($actual<$ultima): ?><a class="supervision-page" href="<?= $esc($paginaUrl($actual+1)) ?>" rel="next" aria-label="Página siguiente" title="Página siguiente"><span aria-hidden="true">›</span></a><?php else: ?><span class="supervision-page is-disabled" aria-disabled="true" aria-label="Página siguiente"><span aria-hidden="true">›</span></span><?php endif; ?>
+  </div>
+ </nav>
+ <?php endif; ?>
  <dialog class="supervision-detail system-form-modal" aria-labelledby="supervisionDetailTitle" aria-describedby="supervisionDetailSubtitle">
   <header class="modal-header system-form-modal-header">
    <div><h3 class="system-form-modal-title" id="supervisionDetailTitle">Resultado de la llamada</h3><p class="system-form-modal-subtitle" id="supervisionDetailSubtitle">Consulta los datos y observaciones registrados por la persona que atendió.</p></div>

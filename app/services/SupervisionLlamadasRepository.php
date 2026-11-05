@@ -9,7 +9,7 @@ require_once __DIR__.'/TelefoniaResultadoVentasCatalogo.php';
  * nunca del teléfono, de la hora o del usuario actual de una extensión. */
 final class SupervisionLlamadasRepository
 {
-    private array $tables=[],$events=[],$relations=[],$salesFacts=[];
+    private array $tables=[],$events=[],$relations=[],$salesFacts=[],$relationIndexes=[];
     public function __construct(private mysqli $db) {}
     public function rows(string $sql,array $args=[]): array
     {
@@ -55,14 +55,24 @@ final class SupervisionLlamadasRepository
     }
     private function relacionados(string $table,array $identity): array
     {
-        if(isset($this->relations[$table]))return array_values(array_filter($this->relations[$table],static function($row)use($identity){foreach($identity as $key=>$value)if((string)($row[$key]??'')!==(string)$value)return false;return true;}));
+        if(isset($this->relations[$table])){
+            $columns=array_keys($identity);$index=implode('|',$columns);
+            if(!isset($this->relationIndexes[$table][$index])){
+                $map=[];foreach($this->relations[$table] as $row){
+                    $key=json_encode(array_map(static fn($column)=>(string)($row[$column]??''),$columns));
+                    $map[$key][]=$row;
+                }
+                $this->relationIndexes[$table][$index]=$map;
+            }
+            return $this->relationIndexes[$table][$index][json_encode(array_map('strval',array_values($identity)))]??[];
+        }
         $conditions=[];foreach($identity as $key=>$value)$conditions[]="$key=BINARY ?";
         return $this->rows("SELECT * FROM $table WHERE ".implode(' AND ',$conditions).' LIMIT 2',array_values($identity));
     }
     /** Cargar las relaciones y eventos por lotes, sin una consulta por tarjeta. */
     private function precargar(array $raw,array $ids): void
     {
-        $this->relations=[];$this->events=[];$this->salesFacts=[];
+        $this->relations=[];$this->events=[];$this->salesFacts=[];$this->relationIndexes=[];
         $refs=[];$iv=[];$sdk=[];$sales=[];
         foreach($raw as [$source,$r]){
             $ref=(string)($r['pbx_call_id']??'');if($ref!=='')$refs[$ref]=true;
@@ -123,16 +133,26 @@ final class SupervisionLlamadasRepository
         $people=$this->personas($uid,$f['area']);$ids=array_map('intval',array_column($people,'id'));
         if($f['persona_id']&&!in_array($f['persona_id'],$ids,true))throw new DomainException('La persona seleccionada está fuera de tu equipo.');
         if($f['persona_id'])$ids=[$f['persona_id']];
+        // La clasificación comercial se filtra sin descargar eventos/audio de
+        // todas las páginas. Las consultas por estado sin resultado conservan
+        // el camino completo: su texto depende de la evidencia PBX real.
+        $auditSearch=$f['buscar']!==''&&array_filter(['No requiere resultado','Sin resultado registrado','Sin resultado confirmado'],
+            static fn($label)=>mb_stripos($label,$f['buscar'])!==false);
+        if($f['area']==='asesores'&&!$auditSearch)return $this->listadoVentas($ids,$people,$f);
+        return $this->listadoCompleto($ids,$people,$f);
+    }
+    private function listadoCompleto(array $ids,array $people,array $f): array
+    {
         $all=[];$raw=[];
         if($ids)foreach(self::SOURCES as $source=>[$table,$date]){
             if(($f['area']==='asesores')!==($source==='venta')||!$this->tabla($table))continue;
             $marks=implode(',',array_fill(0,count($ids),'?'));
             $rows=$this->rows("SELECT * FROM $table WHERE usuario_id IN ($marks) AND $date BETWEEN ? AND ?".
-                ($source==='interaccion'?" AND canal='LLAMADA_IP'":'')." ORDER BY $date DESC,id DESC LIMIT 3001",array_merge($ids,[$f['desde'].' 00:00:00',$f['hasta'].' 23:59:59']));
-            if(count($rows)>3000)throw new InvalidArgumentException('Hay demasiadas llamadas. Reduce el periodo o selecciona una persona.');
+                ($source==='interaccion'?" AND canal='LLAMADA_IP'":'')." ORDER BY $date DESC,id DESC".($source==='venta'?'':' LIMIT 3001'),array_merge($ids,[$f['desde'].' 00:00:00',$f['hasta'].' 23:59:59']));
+            if($source!=='venta'&&count($rows)>3000)throw new InvalidArgumentException('Hay demasiadas llamadas. Reduce el periodo o selecciona una persona.');
             foreach($rows as $row)$raw[]=[$source,$row];
         }
-        if(count($raw)>3000)throw new InvalidArgumentException('Hay demasiadas llamadas. Reduce el periodo o selecciona una persona.');
+        if($f['area']!=='asesores'&&count($raw)>3000)throw new InvalidArgumentException('Hay demasiadas llamadas. Reduce el periodo o selecciona una persona.');
         if($raw){$this->precargar($raw,$ids);foreach($raw as [$source,$row])$all[]=$this->normalizar($source,$row,$people);}
         // Mismo vínculo exacto: priorizar la interacción y después la clasificación.
         // Las sesiones sin vínculo inequívoco conservan su identidad independiente.
@@ -149,6 +169,58 @@ final class SupervisionLlamadasRepository
         $results=[];foreach($canonical as $c)foreach($c['resultados_codigos'] as $code)$results[$code]=self::textoResultado($code);asort($results);
         $total=count($calls);$pages=max(1,(int)ceil($total/30));$page=min($pages,$f['pagina']);
         return ['personas'=>$people,'llamadas'=>array_slice($calls,($page-1)*30,30),'total'=>$total,'paginas'=>$pages,'pagina'=>$page,'resultados'=>$results];
+    }
+    private function listadoVentas(array $ids,array $people,array $f): array
+    {
+        $empty=['personas'=>$people,'llamadas'=>[],'total'=>0,'paginas'=>1,'pagina'=>1,'resultados'=>[]];
+        if(!$ids||!$this->tabla('telefonia_ventas_llamadas'))return $empty;
+        $marks=implode(',',array_fill(0,count($ids),'?'));
+        $raw=$this->rows("SELECT id,usuario_id,extension,pbx_call_id,direccion,numero,nombre,fecha
+            FROM telefonia_ventas_llamadas WHERE usuario_id IN ($marks) AND fecha BETWEEN ? AND ?
+            ORDER BY fecha DESC,id DESC",array_merge($ids,[$f['desde'].' 00:00:00',$f['hasta'].' 23:59:59']));
+        // Las filas históricas sin referencia PBX o con referencia SDK requieren
+        // la normalización completa. También si una búsqueda necesita recuperar
+        // el número desde eventos: no perder coincidencias por optimizar.
+        foreach($raw as $row)if((string)$row['pbx_call_id']===''||str_starts_with((string)$row['pbx_call_id'],'sdk-')||
+            ($f['buscar']!==''&&(string)$row['numero']===''))return $this->listadoCompleto($ids,$people,$f);
+        $refs=array_values(array_unique(array_filter(array_column($raw,'pbx_call_id'))));$saved=[];
+        if($refs&&$this->tabla('telefonia_ventas_resultados'))foreach(array_chunk($refs,500) as $chunk){
+            $saved=array_merge($saved,$this->rows("SELECT id,usuario_id,extension,pbx_call_id,resultado,prospecto_nombre
+                FROM telefonia_ventas_resultados WHERE usuario_id IN ($marks) AND pbx_call_id IN (".
+                implode(',',array_fill(0,count($chunk),'?')).')',array_merge($ids,$chunk)));
+        }
+        $registry=[];
+        foreach(TelefoniaResultadoVentasCatalogo::completarRegistros($this->db,$saved) as $r){
+            $key=json_encode([(string)$r['usuario_id'],(string)$r['extension'],(string)$r['pbx_call_id']]);
+            if(!isset($registry[$key]))$registry[$key]=$r;
+        }
+        $names=array_column($people,'nombre','id');$seen=[];$candidates=[];$results=[];
+        foreach($raw as $row){
+            $ref=(string)$row['pbx_call_id'];$identity=json_encode([(string)$row['usuario_id'],(string)$row['extension'],$ref!==''?$ref:'key:'.$row['id']]);
+            if(isset($seen[$identity]))continue;$seen[$identity]=true;
+            $registro=$registry[json_encode([(string)$row['usuario_id'],(string)$row['extension'],$ref])]??null;
+            $codes=TelefoniaResultadoVentasCatalogo::seleccionesRegistro($registro);
+            foreach($codes as $code)$results[$code]=self::textoResultado($code);
+            if($f['direccion']!==''&&$row['direccion']!==$f['direccion'])continue;
+            if($f['resultado']!==''&&!in_array($f['resultado'],TelefoniaResultadoVentasCatalogo::codigosFiltroRegistro($registro),true))continue;
+            $name=(string)($registro['prospecto_nombre']??$row['nombre']);
+            $text=!empty($registro['resultado'])?TelefoniaResultadoVentasCatalogo::textoRegistro($registro):'';
+            if($f['buscar']!==''&&mb_stripos($names[$row['usuario_id']].' '.$row['numero'].' '.$name.' '.$text,$f['buscar'])===false)continue;
+            $candidates[]=$row;
+        }
+        usort($candidates,static fn($a,$b)=>strcmp($b['fecha'],$a['fecha'])?:strcmp('venta:'.$b['id'],'venta:'.$a['id']));
+        $total=count($candidates);$pages=max(1,(int)ceil($total/30));$page=min($pages,$f['pagina']);
+        $visible=array_slice($candidates,($page-1)*30,30);$rawPage=[];
+        if($visible){
+            $pageIds=array_column($visible,'id');
+            $rows=$this->rows("SELECT * FROM telefonia_ventas_llamadas WHERE usuario_id IN ($marks) AND id IN (".
+                implode(',',array_fill(0,count($pageIds),'?')).')',array_merge($ids,$pageIds));
+            $byId=array_column($rows,null,'id');foreach($visible as $row)if(isset($byId[$row['id']]))$rawPage[]=['venta',$byId[$row['id']]];
+        }
+        $calls=[];
+        if($rawPage){$this->precargar($rawPage,$ids);foreach($rawPage as [$source,$row])$calls[]=$this->normalizar($source,$row,$people);}
+        asort($results);
+        return ['personas'=>$people,'llamadas'=>$calls,'total'=>$total,'paginas'=>$pages,'pagina'=>$page,'resultados'=>$results];
     }
     /** Resultado comercial: nunca inventar uno para llamadas sin conexión. */
     public static function resultadoAuditable(
@@ -192,7 +264,9 @@ final class SupervisionLlamadasRepository
             $starts=[];foreach($events as $e)if($e['evento']==='NOTIFY_OUT_START'&&preg_match('/^[0-9]{3,6}$/D',(string)$e['internal']))$starts[(string)$e['internal']]=true;
             if(count($starts)===1)$ext=(string)array_key_first($starts);
         }
-        $facts=TelefoniaVentasLlamadasService::hechos($events,$ext,(string)($r['origen_extension']??''));
+        $facts=$source==='venta'&&isset($this->salesFacts[$uid.'|'.$ext.'|'.$ref])
+            ?$this->salesFacts[$uid.'|'.$ext.'|'.$ref]
+            :TelefoniaVentasLlamadasService::hechos($events,$ext,(string)($r['origen_extension']??''));
         // La evidencia PBX es la fuente de estado; el enriquecimiento
         // posterior de Ventas no debe borrarla accidentalmente.
         $pbxFacts=$facts;
