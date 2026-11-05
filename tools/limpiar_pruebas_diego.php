@@ -180,7 +180,11 @@ final class LimpiezaPruebasDiego
         foreach(['usuarios','asignacion','desde_extension','exclusiones'] as $key)if(self::digest([$old[$key]??null])!==self::digest([$now[$key]??null]))$out['objetivo'][]=$key;
         $a=[];$b=[];foreach($old['grupos'] as $g)$a[$g['tabla'].'|'.$g['accion']]=$g;foreach($now['grupos'] as $g)$b[$g['tabla'].'|'.$g['accion']]=$g;
         foreach(array_unique(array_merge(array_keys($a),array_keys($b))) as $key)if(self::digest([$a[$key]??null])!==self::digest([$b[$key]??null])){
-            $out['tablas'][$key]=['filas_antes'=>count($a[$key]['filas']??[]),'filas_ahora'=>count($b[$key]['filas']??[])];
+            $fields=[];$before=[];$after=[];$pk=$a[$key]['estructura']['pk']??$b[$key]['estructura']['pk'];
+            foreach($a[$key]['filas']??[] as $row)$before[self::key($row,$pk)]=$row;
+            foreach($b[$key]['filas']??[] as $row)$after[self::key($row,$pk)]=$row;
+            foreach(array_intersect(array_keys($before),array_keys($after)) as $id)foreach(array_unique(array_merge(array_keys($before[$id]),array_keys($after[$id]))) as $field)if(self::digest([$before[$id][$field]??null])!==self::digest([$after[$id][$field]??null]))$fields[$field]=($fields[$field]??0)+1;
+            $out['tablas'][$key]=['filas_antes'=>count($a[$key]['filas']??[]),'filas_ahora'=>count($b[$key]['filas']??[]),'campos_modificados'=>$fields];
         }
         $out['otros_seguimientos_cambiaron']=($old['seguimientos_protegidos_sha']??null)!==($now['seguimientos_protegidos_sha']??null);
         return $out;
@@ -190,7 +194,7 @@ final class LimpiezaPruebasDiego
     private function wherePk(array $row,array $pk): array {
         return [implode(' AND ',array_map(static fn($c)=>"`$c` <=> ?",$pk)),array_map(static fn($c)=>$row[$c],$pk)];
     }
-    public function aplicar(array $plan,string $id,string $backupSha): void {
+    public function aplicar(array $plan,string $id,string $backupSha,bool $transaccionAbierta=false): void {
         if(($plan['version']??0)!==5101)throw new RuntimeException('El plan no pertenece a esta limpieza de la extensión 101.');
         if(!preg_match('/^[a-f0-9]{32}$/D',$id)||!preg_match('/^[a-f0-9]{64}$/D',$backupSha))throw new RuntimeException('Identificación de respaldo inválida.');
         if($this->tabla('telefonia_crm_limpiezas')) {
@@ -203,7 +207,7 @@ final class LimpiezaPruebasDiego
         $this->esquemaLimpieza();
         $old=$this->rows('SELECT * FROM telefonia_crm_limpiezas WHERE id=?',[$id]);
         if($old)throw new RuntimeException('Ese plan ya fue aplicado o restaurado. Crear otro plan si es necesario.');
-        $this->db->begin_transaction();
+        if(!$transaccionAbierta)$this->db->begin_transaction();
         try {
             // Congelar la identidad/asignación antes de revalidar las filas del plan.
             $this->rows('SELECT id FROM usuarios WHERE id=? FOR UPDATE',[self::UID]);
@@ -231,11 +235,50 @@ final class LimpiezaPruebasDiego
             }
             $protected=$this->rows('SELECT * FROM seguimientos_vinculacion WHERE id NOT IN ('.implode(',',self::TEST_IDS).') ORDER BY id');
             if(self::digest($protected)!==$protectedBefore)throw new RuntimeException('Un expediente protegido cambió; rollback.');
-            foreach(['telefonia_analista_entrantes','telefonia_analista_webrtc_sesiones','telefonia_borradores','telefonia_notificaciones','telefonia_verificacion_evidencias'] as $table)if($this->tabla($table)&&$this->rows("SELECT 1 FROM `$table` WHERE usuario_id=? LIMIT 1",[self::UID]))throw new RuntimeException('Apareció actividad nueva de Diego; rollback.');
-            if($this->rows("SELECT 1 FROM interacciones_vinculacion WHERE usuario_id=? AND canal IN ('LLAMADA','LLAMADA_IP') LIMIT 1",[self::UID])||$this->rows('SELECT 1 FROM telefonia_zadarma_eventos WHERE internal=? AND received_at>=? LIMIT 1',[self::EXT,$plan['desde_extension']]))throw new RuntimeException('Apareció una llamada nueva; rollback.');
+            foreach(['telefonia_analista_entrantes','telefonia_analista_webrtc_sesiones','telefonia_borradores','telefonia_notificaciones','telefonia_verificacion_evidencias'] as $table)if($this->tabla($table)&&$this->rows("SELECT 1 FROM `$table` WHERE usuario_id=? LIMIT 1 FOR UPDATE",[self::UID]))throw new RuntimeException('Apareció actividad nueva de Diego; rollback.');
+            if($this->rows("SELECT 1 FROM interacciones_vinculacion WHERE usuario_id=? AND canal IN ('LLAMADA','LLAMADA_IP') LIMIT 1 FOR UPDATE",[self::UID])||$this->rows('SELECT 1 FROM telefonia_zadarma_eventos WHERE internal=? AND received_at>=? LIMIT 1 FOR UPDATE',[self::EXT,$plan['desde_extension']]))throw new RuntimeException('Apareció una llamada nueva; rollback.');
             $s=$this->db->prepare("INSERT INTO telefonia_crm_limpiezas VALUES(?,?,'APLICADA',UTC_TIMESTAMP())");$s->bind_param('ss',$id,$backupSha);$s->execute();$s->close();
             $this->db->commit();
         }catch(Throwable $e){$this->db->rollback();throw $e;}
+    }
+    private static function guardarRespaldo(string $directory,array $plan): array {
+        $id=bin2hex(random_bytes(16));$bytes=gzencode(json_encode(['id'=>$id,'plan'=>$plan],JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),9);
+        $file=$directory.'/plan-diego-'.$id.'.json.gz';$f=fopen($file,'xb');if(!$f)throw new RuntimeException('No se pudo guardar el respaldo bloqueado.');
+        try{if(fwrite($f,$bytes)!==strlen($bytes)||!fflush($f)||!fsync($f))throw new RuntimeException('Respaldo incompleto.');}finally{fclose($f);}chmod($file,0600);
+        return ['id'=>$id,'sha'=>hash('sha256',$bytes),'archivo'=>$file];
+    }
+    /** Normaliza únicamente metadatos que el sondeo vuelve a publicar de una transferencia ya cerrada.
+     * Nunca se usan estos datos normalizados como respaldo ni para ejecutar/restaurar SQL. */
+    private static function normalizarSondeo(array $old,array $now): array {
+        $before=[];foreach($old['grupos'] as $g)if($g['tabla']==='telefonia_transferencia_operaciones'&&$g['accion']==='delete')foreach($g['filas'] as $r)$before[(string)$r['id']]=$r;
+        foreach($now['grupos'] as &$g){if($g['tabla']!=='telefonia_transferencia_operaciones'||$g['accion']!=='delete')continue;
+            foreach($g['filas'] as &$row){$r=$before[(string)$row['id']]??null;if(!$r)continue;
+                // Sólo se admite la nueva fecha de revisión de la misma fila; cualquier otro cambio se rechaza.
+                if(array_key_exists('updated_at',$r))$row['updated_at']=$r['updated_at'];
+                // La versión actual del sondeo repite gmdate() en un rechazo ya DEVUELTO.
+                if(($row['estado']??'')==='DEVUELTA'&&($r['estado']??'')==='DEVUELTA'&&!empty($row['destino_fin'])&&!empty($r['destino_fin']))$row['destino_fin']=$r['destino_fin'];
+            }unset($row);
+        }unset($g);return $now;
+    }
+    public function aplicarBloqueado(array $reviewed,string $directory): array {
+        if(($reviewed['version']??0)!==5101)throw new RuntimeException('Plan ajeno.');
+        $this->db->query('SET SESSION innodb_lock_wait_timeout=10');
+        $this->db->begin_transaction();$backup=null;
+        try {
+            $this->rows('SELECT id FROM usuarios WHERE id=? FOR UPDATE',[self::UID]);
+            $this->rows('SELECT usuario_id FROM telefonia_extensiones WHERE usuario_id=? OR extension=? FOR UPDATE',[self::UID,self::EXT]);
+            // Los sondeos esperan mientras se respalda y retira esta lista exacta de filas.
+            foreach($reviewed['grupos'] as $g)foreach($g['filas'] as $row){
+                [$where,$args]=$this->wherePk($row,$g['estructura']['pk']);
+                $this->rows("SELECT * FROM `{$g['tabla']}` WHERE $where FOR UPDATE",$args);
+            }
+            $fresh=$this->plan($reviewed['corte']);
+            if(self::digestObjetivo(self::normalizarSondeo($reviewed,$fresh))!==self::digestObjetivo($reviewed))throw new RuntimeException('Cambió el objetivo de limpieza; no se borró nada. Detalle: '.json_encode(self::diferencias($reviewed,$fresh),JSON_UNESCAPED_UNICODE));
+            // Este respaldo recoge los valores REALES obtenidos bajo bloqueo, incluidos todos los timestamps.
+            $backup=self::guardarRespaldo($directory,$fresh);
+            $this->aplicar($fresh,$backup['id'],$backup['sha'],true);
+            return ['estado'=>'APLICADO: limpieza con respaldo transaccional bloqueado.','plan_privado'=>$backup['archivo'],'resumen'=>self::resumen($fresh)];
+        }catch(Throwable $e){$this->db->rollback();throw new RuntimeException($e->getMessage().($backup?' Respaldo conservado: '.$backup['archivo']:''),0,$e);}
     }
     public function restaurar(array $plan,string $id,string $backupSha): void {
         if(($plan['version']??0)!==5101)throw new RuntimeException('Plan de otra limpieza.');
@@ -268,7 +311,7 @@ final class LimpiezaPruebasDiego
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__) {
     try {
         umask(0077);
-        $a=getopt('',['site:','backup-root:','check','apply:','restore:','compare:']);
+        $a=getopt('',['site:','backup-root:','check','apply:','restore:','compare:','apply-locked:']);
         $root=realpath((string)($a['site']??''));$private=(string)($a['backup-root']??'');
         if(!$root||!is_file($root.'/index.php')||$private===''||!preg_match('~^(?:/|[a-zA-Z]:/)~',str_replace('\\','/',$private)))throw new RuntimeException('Indica --site y --backup-root con rutas absolutas.');
         $parent=realpath(dirname($private));
@@ -278,7 +321,7 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__) {
         if(str_starts_with(strtolower($privatePath),strtolower($sitePath)))throw new RuntimeException('El respaldo debe quedar fuera de public_html.');
         if(!is_dir($private)&&!mkdir($private,0700))throw new RuntimeException('No se pudo crear la carpeta privada.');
         chmod($private,0700);
-        if(count(array_intersect(['check','apply','restore','compare'],array_keys($a)))!==1)throw new RuntimeException('Usa únicamente --check, --compare PLAN, --apply PLAN o --restore PLAN.');
+        if(count(array_intersect(['check','apply','restore','compare','apply-locked'],array_keys($a)))!==1)throw new RuntimeException('Usa únicamente --check, --compare PLAN, --apply PLAN, --apply-locked PLAN o --restore PLAN.');
         require_once $root.'/config/db_connection.php';mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);$db=(new Database())->connect(false);$tool=new LimpiezaPruebasDiego($db);
         if(isset($a['check'])) {
             $db->query('START TRANSACTION READ ONLY');try{$plan=$tool->plan();}finally{$db->rollback();}$id=bin2hex(random_bytes(16));$bytes=gzencode(json_encode(['id'=>$id,'plan'=>$plan],JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),9);
@@ -286,19 +329,20 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__) {
             try{if(fwrite($f,$bytes)!==strlen($bytes)||!fflush($f)||!fsync($f))throw new RuntimeException('Respaldo incompleto.');}finally{fclose($f);}chmod($file,0600);
             echo json_encode(LimpiezaPruebasDiego::resumen($plan)+['plan_privado'=>$file,'estado'=>'CHECK OK: base de datos sin cambios; respaldo previo guardado.'],JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
         }else {
-            $file=realpath((string)($a['apply']??$a['restore']??$a['compare']));
-            if(!$file||is_link((string)($a['apply']??$a['restore']??$a['compare']))||dirname($file)!==$private||!preg_match('/^plan-diego-[a-f0-9]{32}\.json\.gz$/D',basename($file)))throw new RuntimeException('Plan privado no válido.');
+            $file=realpath((string)($a['apply']??$a['restore']??$a['compare']??$a['apply-locked']));
+            if(!$file||is_link((string)($a['apply']??$a['restore']??$a['compare']??$a['apply-locked']))||dirname($file)!==$private||!preg_match('/^plan-diego-[a-f0-9]{32}\.json\.gz$/D',basename($file)))throw new RuntimeException('Plan privado no válido.');
             $bytes=file_get_contents($file);$saved=json_decode(gzdecode($bytes),true,512,JSON_THROW_ON_ERROR);$sha=hash('sha256',$bytes);
             if(isset($a['compare'])) {
                 $db->query('START TRANSACTION READ ONLY');
                 try{$actual=$tool->plan($saved['plan']['corte']);}finally{$db->rollback();}
                 echo json_encode(['diferencias'=>LimpiezaPruebasDiego::diferencias($saved['plan'],$actual),'estado'=>'Sólo lectura; no se aplicó ninguna limpieza.'],JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE).PHP_EOL;
-            }elseif(isset($a['apply'])) {
+            }elseif(isset($a['apply'])||isset($a['apply-locked'])) {
                 foreach(LimpiezaPruebasDiego::PROTECCION as $path=>$hashes) {
                     $source=is_file($root.'/'.$path)?str_replace("\r\n","\n",file_get_contents($root.'/'.$path)):'';
                     if(!in_array(hash('sha256',$source),$hashes,true))throw new RuntimeException('Protección no instalada o versión diferente: '.$path);
                 }
-                $tool->aplicar($saved['plan'],$saved['id'],$sha);echo 'APLICADO: pruebas de Diego retiradas del CRM. Los demás seguimientos, archivos físicos, configuración y proveedor se conservan. Respaldo: '.$file.PHP_EOL;
+                if(isset($a['apply-locked'])){echo json_encode($tool->aplicarBloqueado($saved['plan'],$private),JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE).PHP_EOL;}
+                else {$tool->aplicar($saved['plan'],$saved['id'],$sha);echo 'APLICADO: pruebas de Diego retiradas del CRM. Los demás seguimientos, archivos físicos, configuración y proveedor se conservan. Respaldo: '.$file.PHP_EOL;}
             }else {$tool->restaurar($saved['plan'],$saved['id'],$sha);echo 'RESTAURADO: filas originales recuperadas; Zadarma no se modificó.'.PHP_EOL;}
         }
     }catch(Throwable $e){fwrite(STDERR,'ERROR: '.$e->getMessage().PHP_EOL);exit(1);}

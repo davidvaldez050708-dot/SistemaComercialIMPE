@@ -29,6 +29,7 @@ try {
  'observaciones_seguimiento (id INT PRIMARY KEY,seguimiento_id INT,destinatario_id INT,leida INT,leida_at DATETIME NULL)',
  'seguimientos_vinculacion_cambios_datos (id INT PRIMARY KEY,seguimiento_id INT,destinatario_id INT,leida_at DATETIME NULL,leida_por INT NULL)',
  'recordatorios_vinculacion (id INT PRIMARY KEY,seguimiento_id INT,usuario_id INT,proxima_accion_at DATETIME,aviso_3h_at DATETIME NULL,aviso_1h_at DATETIME NULL,aviso_10m_at DATETIME NULL,aviso_vencida_at DATETIME NULL)',
+ 'telefonia_transferencia_operaciones (id INT PRIMARY KEY,origen_usuario INT,origen_extension VARCHAR(12),destino_usuario INT,destino_extension VARCHAR(12),referencia VARCHAR(100),numero VARCHAR(30),estado VARCHAR(30),destino_fin DATETIME NULL,created_at DATETIME,updated_at DATETIME)',
  'telefonia_zadarma_eventos (id INT PRIMARY KEY,pbx_call_id VARCHAR(100),internal VARCHAR(12),evento VARCHAR(40),received_at DATETIME)',
  'telefonia_crm_exclusiones (pbx_call_id VARCHAR(100),extension VARCHAR(12),limpieza_id CHAR(32),PRIMARY KEY(pbx_call_id,extension))',
  'telefonia_crm_limpiezas (id CHAR(32) PRIMARY KEY,backup_sha CHAR(64),estado VARCHAR(12),created_at DATETIME)'
@@ -55,6 +56,7 @@ try {
  $db->query('INSERT INTO seguimientos_vinculacion_cambios_datos VALUES(1,1,5,NULL,NULL)');
  $db->query("INSERT INTO recordatorios_vinculacion VALUES(1,1351,5,'2026-10-01',NULL,NULL,NULL,NULL),(2,1,5,'2026-10-01',NULL,NULL,NULL,NULL),(3,2,5,'2099-01-01',NULL,NULL,NULL,NULL),(4,2000,6,'2026-10-01',NULL,NULL,NULL,NULL)");
  $db->query("INSERT INTO observaciones_seguimiento VALUES(3,1351,5,0,NULL)");
+ $db->query("INSERT INTO telefonia_transferencia_operaciones VALUES(1,100,'100',5,'101','ref1','5550000000','DEVUELTA','2026-10-01','2026-10-01','2026-10-01'),(2,100,'100',6,'102','ref2','5550000001','DEVUELTA','2026-10-01','2026-10-01','2026-10-01')");
  $db->query("INSERT INTO telefonia_zadarma_eventos VALUES(1,'ref1','101','NOTIFY_INTERNAL','2026-10-01 10:00:00'),(2,'ref1','101','NOTIFY_END','2026-10-01 10:01:00'),(3,'ref1','100','NOTIFY_END','2026-10-01 10:02:00'),(4,'ref1','','NOTIFY_RECORD','2026-10-01 10:03:00'),(5,'ref2','102','NOTIFY_END','2026-10-01 10:03:00'),(7,'propietario-anterior','101','NOTIFY_END','2020-01-01 10:00:00')");
  $snapshot=static function()use($db):array{$out=[];foreach($db->query('SHOW TABLES')->fetch_all() as $r)if(!in_array($r[0],['telefonia_crm_exclusiones','telefonia_crm_limpiezas'],true))$out[$r[0]]=rows($db,$r[0]);return $out;};
  $initial=$snapshot();$tool=new LimpiezaPruebasDiego($db);$plan=$tool->plan();ok($snapshot()===$initial,'plan debe ser sólo lectura');
@@ -105,10 +107,30 @@ try {
   $comparison=json_decode($cli(['--compare',$file]),true,512,JSON_THROW_ON_ERROR);ok($comparison['diferencias']['otros_seguimientos_cambiaron']&&empty($comparison['diferencias']['tablas']),'diagnóstico distingue actividad ajena');
   ok(str_contains($cli(['--apply',$file]),'APLICADO'),'apply CLI');
   ok(str_contains($cli(['--restore',$file]),'RESTAURADO'),'restore CLI');ok($snapshot()===$initial,'CLI restaura exactamente');
+  // Reproducir sondeos sobre las mismas transferencias después de --check.
+  $out=json_decode($cli(['--check']),true,512,JSON_THROW_ON_ERROR);$oldFile=$out['plan_privado'];$oldSha=hash_file('sha256',$oldFile);
+  $db->query("UPDATE telefonia_transferencia_operaciones SET updated_at='2026-11-05 20:31:00',destino_fin='2026-11-05 20:31:00' WHERE id=1");
+  $comparison=json_decode($cli(['--compare',$oldFile]),true,512,JSON_THROW_ON_ERROR);
+  ok(isset($comparison['diferencias']['tablas']['telefonia_transferencia_operaciones|delete']['campos_modificados']['updated_at']),'diagnóstico identifica campo exacto');
+  fails(fn()=>$cli(['--apply',$oldFile]),'datos cambiaron');
+  $db->query("UPDATE telefonia_transferencia_operaciones SET numero='numero-que-cambio' WHERE id=1");
+  fails(fn()=>$cli(['--apply-locked',$oldFile]),'Cambió el objetivo');
+  $db->query("UPDATE telefonia_transferencia_operaciones SET numero='5550000000' WHERE id=1");$initial=$snapshot();
+  // InnoDB impide que el sondeo modifique la operación mientras está bloqueada.
+  $db->begin_transaction();$db->query('SELECT * FROM telefonia_transferencia_operaciones WHERE id=1 FOR UPDATE');
+  $peer=new mysqli('127.0.0.1','root','',$name,$port);$peer->query('SET SESSION innodb_lock_wait_timeout=1');
+  try{$peer->query("UPDATE telefonia_transferencia_operaciones SET updated_at=UTC_TIMESTAMP() WHERE id=1");throw new RuntimeException('El sondeo no debió atravesar el bloqueo');}catch(mysqli_sql_exception $e){ok($e->getCode()===1205,'bloqueo de fila efectivo');}finally{$peer->close();$db->rollback();}
+  $out=json_decode($cli(['--apply-locked',$oldFile]),true,512,JSON_THROW_ON_ERROR);$lockedFile=$out['plan_privado'];
+  ok(str_contains($out['estado'],'APLICADO')&&$lockedFile!==$oldFile,'backup nuevo bajo bloqueo y apply exitoso');
+  ok(hash_file('sha256',$oldFile)===$oldSha,'el respaldo anterior nunca se sobrescribe');
+  $saved=json_decode(gzdecode(file_get_contents($lockedFile)),true,512,JSON_THROW_ON_ERROR);$found=false;
+  foreach($saved['plan']['grupos'] as $g)if($g['tabla']==='telefonia_transferencia_operaciones'){$found=true;ok($g['filas'][0]['updated_at']==='2026-11-05 20:31:00'&&$g['filas'][0]['destino_fin']==='2026-11-05 20:31:00','respaldo contiene valores reales sin normalizar');}
+  ok($found,'transferencia respaldada');ok(str_contains($cli(['--restore',$lockedFile]),'RESTAURADO'),'restore del backup bloqueado');ok($snapshot()===$initial,'restaura valores exactos al momento del bloqueo');
+
  } finally {
   foreach(glob($dir.'/backup/*')?:[] as $f)unlink($f);rmdir($dir.'/backup');
   unlink($dir.'/site/app/services/TelefoniaLimpiezaGuard.php');rmdir($dir.'/site/app/services');rmdir($dir.'/site/app');
   unlink($dir.'/site/config/db_connection.php');rmdir($dir.'/site/config');unlink($dir.'/site/index.php');rmdir($dir.'/site');rmdir($dir);
  }
- echo "PASS: MariaDB aislada; nueve pruebas, 1303 seguimientos conservados, llamadas/efectivas y avisos retirados, otras cuentas/tramos/ligas/prospectos protegidos, cambios en el objetivo bloqueados y actividad ajena permitida/conservada, idempotencia y restauración exacta.\n";
+ echo "PASS: MariaDB aislada; nueve pruebas, 1303 seguimientos conservados, llamadas/efectivas y avisos retirados, otras cuentas/tramos/ligas/prospectos protegidos, cambios en el objetivo bloqueados y actividad ajena permitida/conservada, idempotencia, respaldo bajo bloqueo ante sondeos y restauración exacta.\n";
 }finally{$db->query("DROP DATABASE `$name`");}
