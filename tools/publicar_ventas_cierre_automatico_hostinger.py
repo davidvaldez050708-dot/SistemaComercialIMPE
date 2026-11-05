@@ -138,28 +138,37 @@ def check(site):
             raise RuntimeError("DEPENDENCIA DIFERENTE (sin cambios): "+rel)
         print("DEPENDENCIA COMPATIBLE:",rel)
     plan=[]
+    problems=[]
     for rel,(before,afterblob) in FILES.items():
-        path=target(site,rel)
-        data=fetch(rel,afterblob)
-        old=path.read_bytes() if path.exists() else None
-        if old is None and before is not None:
-            raise RuntimeError("ARCHIVO AUSENTE (sin cambios): "+rel)
-        if old is not None and before is None and old!=data:
-            raise RuntimeError("ARCHIVO NUEVO YA PERSONALIZADO (sin cambios): "+rel)
-        permitted=(old is None or old==data or (
-            (before or '').startswith('blob:') and blob(old)==before[5:] or
-            (before or '').startswith('sha256:') and digest(old)==before[7:]))
-        status="YA INSTALADO" if old==data else "NUEVO" if old is None else "COMPATIBLE"
-        if not permitted and rel==CONTROLLER_REL:
-            data,status=reconcile_controller(old)
-            permitted=True
-        if not permitted:
-            raise RuntimeError("VERSIÓN DIFERENTE (sin cambios): "+rel)
-        # El candidato final, incluida la fusión sobre personalizaciones,
-        # debe pasar PHP -l antes de planificar cualquier escritura.
-        syntax(rel,data)
-        print(status+":",rel)
-        plan.append((rel,old,data))
+        try:
+            path=target(site,rel)
+            data=fetch(rel,afterblob)
+            old=path.read_bytes() if path.exists() else None
+            if old is None and before is not None:
+                raise RuntimeError("ARCHIVO AUSENTE (sin cambios): "+rel)
+            if old is not None and before is None and old!=data:
+                raise RuntimeError("ARCHIVO NUEVO YA PERSONALIZADO (sin cambios): "+rel)
+            permitted=(old is None or old==data or (
+                (before or '').startswith('blob:') and blob(old)==before[5:] or
+                (before or '').startswith('sha256:') and digest(old)==before[7:]))
+            status="YA INSTALADO" if old==data else "NUEVO" if old is None else "COMPATIBLE"
+            if not permitted and rel==CONTROLLER_REL:
+                data,status=reconcile_controller(old)
+                permitted=True
+            if not permitted:
+                raise RuntimeError("VERSIÓN DIFERENTE (sin cambios): "+rel)
+            # El candidato final, incluida la fusión sobre personalizaciones,
+            # debe pasar PHP -l antes de planificar cualquier escritura.
+            syntax(rel,data)
+            print(status+":",rel)
+            plan.append((rel,old,data))
+        except Exception as ex:
+            reason=str(ex)
+            print("INCOMPATIBLE:",rel,"-",reason)
+            problems.append(rel+": "+reason)
+    if problems:
+        raise RuntimeError("SIN PUBLICAR: "+str(len(problems))+
+                           " incompatibilidad(es): "+" | ".join(problems))
     print("PREPUBLICACIÓN COMPATIBLE:",sum(x[1]!=x[2] for x in plan),"archivos. Sin SQL.")
     return plan
 
