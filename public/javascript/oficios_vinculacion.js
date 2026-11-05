@@ -167,15 +167,15 @@
                         '<div class="form-text">Archivo DOCX de hasta 20 MB. Las plantillas se completan con los datos del seguimiento.</div>' +
                     '</div>' +
                     '<div class="d-none" data-oficio-documento-final>' +
-                        '<label class="form-label oficio-file-title" for="oficioDocumentoFinal">Oficio terminado en Word</label>' +
-                        '<input class="oficio-file-input" id="oficioDocumentoFinal" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
+                        '<label class="form-label oficio-file-title" for="oficioDocumentoFinal">Oficio terminado (PDF o Word)</label>' +
+                        '<input class="oficio-file-input" id="oficioDocumentoFinal" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">' +
                         '<label class="oficio-file-surface" for="oficioDocumentoFinal">' +
                             '<span class="oficio-file-action"><i class="bi bi-upload" aria-hidden="true"></i>Seleccionar archivo</span>' +
                             '<span class="oficio-file-name" data-oficio-documento-nombre aria-live="polite">Ningún archivo seleccionado</span>' +
                         '</label>' +
                         '<p class="oficio-documento-aviso"><i class="bi bi-shield-check" aria-hidden="true"></i>' +
-                        'Se conservará el contenido del documento. No se sustituirán nombres, fecha ni texto; se utilizará para generar el PDF del oficio.</p>' +
-                        '<div class="form-text" data-oficio-documento-estado role="status">Formato DOCX, máximo 20 MB.</div>' +
+                        'PDF: se mostrará y guardará tal como fue adjuntado. Word: se conservará el DOCX original sin convertirlo ni imponerle formato REDMEX.</p>' +
+                        '<div class="form-text" data-oficio-documento-estado role="status">PDF o DOCX, máximo 20 MB.</div>' +
                     '</div></div>' +
                     '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>' +
                     '<button type="button" class="btn btn-system-save" data-oficio-use-selected>Generar</button></div>' +
@@ -250,7 +250,11 @@
                 elemento.querySelector('[data-oficio-documento-nombre]').textContent =
                     archivo ? archivo.name : 'Ningún archivo seleccionado';
                 elemento.querySelector('[data-oficio-documento-estado]').textContent =
-                    'Formato DOCX, máximo 20 MB.';
+                    archivo && /\.pdf$/i.test(archivo.name)
+                        ? 'PDF terminado: vista previa directa sin modificaciones.'
+                        : (archivo && /\.docx$/i.test(archivo.name)
+                            ? 'Word terminado: se conservará el archivo, sin convertirlo a PDF en Hostinger.'
+                            : 'PDF o DOCX, máximo 20 MB.');
             });
             pestañaNueva?.addEventListener('click', function () {
                 mostrarNuevaPlantilla();
@@ -351,13 +355,15 @@
                     return;
                 }
                 if (esDocumentoFinal && !archivo) {
-                    mostrarToast('Adjunta el oficio terminado en Word (.docx).', true);
+                    mostrarToast('Adjunta el oficio terminado en PDF o DOCX.', true);
                     documentoFinal.focus();
                     return;
                 }
-                if (archivo && (!/\.docx$/i.test(archivo.name) || !archivo.size ||
+                if (archivo && (!(esDocumentoFinal ? /\.(?:pdf|docx)$/i : /\.docx$/i).test(archivo.name) || !archivo.size ||
                     archivo.size > 20 * 1024 * 1024)) {
-                    mostrarToast('Selecciona un archivo DOCX válido de hasta 20 MB.', true);
+                    mostrarToast(esDocumentoFinal
+                        ? 'Selecciona un PDF o DOCX válido de hasta 20 MB.'
+                        : 'Selecciona un DOCX válido de hasta 20 MB.', true);
                     return;
                 }
                 bootstrap.Modal.getOrCreateInstance(elemento).hide();
@@ -397,7 +403,7 @@
             const opciones = [
                 { id: 'predeterminada', icono: 'bi-file-earmark-check', nombre: 'Oficio predeterminado', descripcion: 'Formato institucional · Ciudad de México' },
                 { id: 'personalizada', icono: 'bi-file-earmark-ruled', nombre: 'Usar plantilla personalizada', descripcion: 'Completar una plantilla DOCX con datos del seguimiento' },
-                { id: 'documento_final', icono: 'bi-file-earmark-arrow-up', nombre: 'Adjuntar oficio ya elaborado', descripcion: 'Utilizar un Word terminado sin modificar su contenido' }
+                { id: 'documento_final', icono: 'bi-file-earmark-arrow-up', nombre: 'Adjuntar oficio ya elaborado', descripcion: 'PDF listo para consultar o DOCX para conservar sin conversión' }
             ];
             lista.innerHTML = opciones.map(function (item, indice) {
                 return '<label class="list-group-item oficio-selector-opcion">' +
@@ -411,7 +417,7 @@
             modal.querySelector('#oficioTemplateFile').value = '';
             modal.querySelector('#oficioDocumentoFinal').value = '';
             modal.querySelector('[data-oficio-documento-nombre]').textContent = 'Ningún archivo seleccionado';
-            modal.querySelector('[data-oficio-documento-estado]').textContent = 'Formato DOCX, máximo 20 MB.';
+            modal.querySelector('[data-oficio-documento-estado]').textContent = 'PDF o DOCX, máximo 20 MB.';
             modal.querySelector('#oficioSavedTemplate').replaceChildren(new Option('Seleccionar una plantilla...', ''));
             modal.dataset.puedeEliminarPlantillas = '0';
             actualizarAccionEliminarPlantilla(modal);
