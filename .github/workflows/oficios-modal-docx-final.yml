@@ -17,6 +17,7 @@ on:
       - 'tools/diagnosticar_oficio_final_estructura.php'
       - 'tools/diagnosticar_oficio_word_anclas.php'
       - 'tools/publicar_oficios_word_final_hostinger.py'
+      - 'tools/publicar_oficio_final_aislado_hostinger.py'
       - '.github/workflows/oficios-modal-docx-final.yml'
   pull_request:
     paths:
@@ -33,6 +34,7 @@ on:
       - 'tools/diagnosticar_oficio_final_estructura.php'
       - 'tools/diagnosticar_oficio_word_anclas.php'
       - 'tools/publicar_oficios_word_final_hostinger.py'
+      - 'tools/publicar_oficio_final_aislado_hostinger.py'
       - '.github/workflows/oficios-modal-docx-final.yml'
 permissions:
   contents: read
@@ -64,6 +66,7 @@ jobs:
           php tests/oficios_word_final_metadata_test.php
           php tests/oficios_word_final_alineacion_test.php
           php tests/oficios_word_final_ruta_independiente_test.php
+          python3 tests/oficios_word_final_publicacion_aislada_test.py
           python3 tests/oficios_word_final_publicador_test.py
           node --check public/javascript/oficios_vinculacion.js
           php tests/oficios_documento_final_smoke.php
