@@ -48,7 +48,7 @@ def read_sources(site):
             "bytes": len(data),
             "sha256": hashlib.sha256(data).hexdigest(),
             "git_blob": hashlib.sha1(
-                b"blob " + str(len(data)).encode("ascii") + b"\\0" + data
+                b"blob " + str(len(data)).encode("ascii") + b"\0" + data
             ).hexdigest(),
         })
     return sources, manifest
