@@ -64,7 +64,7 @@ class SeguimientoVinculacionController
             if(!$estados)throw new DomainException('No tienes territorios disponibles.',403);
             $bytes=SeguimientoExcelPlantillaService::archivo($estados);
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            header('Content-Disposition: attachment; filename="plantilla_instituciones_seguimiento_impe_v3.xlsx"');
+            header('Content-Disposition: attachment; filename="plantilla_instituciones_seguimiento_v3.xlsx"');
             header('Content-Length: '.strlen($bytes));
             header('Cache-Control: no-store, private');
             header('X-Content-Type-Options: nosniff');
