@@ -1751,3 +1751,176 @@
 .formularios-field-full {
     grid-column: 1 / -1;
 }
+
+/* =========================================================
+   INSCRIPCIÓN · PASO 1: CATÁLOGO POR PROGRAMA
+   Reutiliza tipografía, tarjetas y botones de Formularios.
+   No afecta a la pantalla de Registro ni al formulario público.
+   ========================================================= */
+
+.formularios-inscripcion-catalogo {
+    display: grid;
+    gap: 17px;
+}
+
+.formularios-inscripcion-catalogo-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 5px 3px 0;
+}
+
+.formularios-inscripcion-catalogo-heading h3 {
+    margin: 4px 0 5px;
+    color: var(--color-text-primary, #17233d);
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.formularios-inscripcion-catalogo-heading p {
+    max-width: 680px;
+    margin: 0;
+    color: var(--color-text-secondary, #657289);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.formularios-inscripcion-total {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    padding: 9px 13px;
+    border-radius: 12px;
+    border: 1px solid #dce9e4;
+    background: #f1faf7;
+    color: #087d68;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.formularios-inscripcion-catalogo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.formularios-inscripcion-programa {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+    min-height: 228px;
+    padding: 22px 24px;
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.formularios-inscripcion-programa:hover,
+.formularios-inscripcion-programa:focus-within {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(27, 50, 82, .09);
+}
+
+.formularios-inscripcion-programa-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.formularios-inscripcion-programa-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 49px;
+    height: 49px;
+    border: 1px solid #d5e8e1;
+    border-radius: 15px;
+    background: #eaf7f2;
+    color: #09836b;
+    font-size: 21px;
+}
+
+.formularios-inscripcion-pendiente {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 9px;
+    border: 1px solid #e2e8f1;
+    border-radius: 999px;
+    background: #f6f8fc;
+    color: #65738b;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.formularios-inscripcion-programa-copy {
+    flex: 1;
+}
+
+.formularios-inscripcion-programa-copy h4 {
+    margin: 5px 0 7px;
+    color: var(--color-text-primary, #14233e);
+    font-size: 17px;
+    line-height: 1.35;
+    font-weight: 800;
+}
+
+.formularios-inscripcion-programa-copy p {
+    margin: 0;
+    color: var(--color-text-secondary, #657289);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.formularios-inscripcion-programa-action .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 42px;
+    width: 100%;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.formularios-inscripcion-catalogo-nota {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    color: #637189;
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+.formularios-inscripcion-catalogo-nota i {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: #087d68;
+}
+
+@media (max-width: 820px) {
+    .formularios-inscripcion-catalogo-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 575px) {
+    .formularios-inscripcion-catalogo-heading {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .formularios-inscripcion-programa {
+        min-height: auto;
+        padding: 18px;
+    }
+
+    .formularios-inscripcion-pendiente {
+        font-size: 9px;
+    }
+}
