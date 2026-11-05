@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../services/VerificacionInstitucionalService.php';
+require_once __DIR__ . '/../services/InteraccionProximaAccion.php';
 
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../models/DataTerritorialModel.php';
@@ -210,7 +211,11 @@ class SeguimientoVinculacionController
         try {
             $servicio = new TelefoniaEntrantesAnalistaService();
             $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-            $bandejaEntrantes = $servicio->listar($usuarioId);
+            $referenciaSaliente = $_GET['saliente_ref'] ?? '';
+            if (!is_string($referenciaSaliente)) throw new InvalidArgumentException('Referencia de llamada inválida.');
+            $bandejaEntrantes = $referenciaSaliente !== ''
+                ? $servicio->listarSaliente($usuarioId, $referenciaSaliente)
+                : $servicio->listar($usuarioId);
             $estadosEntrantes = $servicio->estados($usuarioId);
         } catch (Throwable $e) {
             error_log('[llamadas_entrantes_analista] ' . $e->getMessage());
@@ -225,6 +230,23 @@ class SeguimientoVinculacionController
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/seguimiento_vinculacion/llamadas_entrantes.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function estadoResultadoSaliente()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+        try {
+            $ref = $_GET['pbx_call_id'] ?? '';
+            if (!is_string($ref)) throw new InvalidArgumentException('Referencia inválida.');
+            $bandeja = (new TelefoniaEntrantesAnalistaService())->listarSaliente((int)$_SESSION['usuario_id'], $ref);
+            $this->responderJson(['ok'=>true, 'llamada'=>$bandeja['llamadas'][0]]);
+        } catch (DomainException|InvalidArgumentException $e) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[resultado_saliente_analista] '.get_class($e));
+            $this->responderJson(['ok'=>false, 'mensaje'=>'No fue posible comprobar el resultado. Conserva la captura y reintenta.'], 503);
+        }
     }
 
     /**
@@ -488,6 +510,7 @@ class SeguimientoVinculacionController
         $candidatos = [];
         $advertencias = [];
         $denueFallido = false;
+        $mensajeDenue = '';
         $claveMunicipio = '0';
         $cacheDenue = [];
         $buscarDenuePorNombre = !$busquedaAutomatica &&
@@ -517,6 +540,33 @@ class SeguimientoVinculacionController
             $claveMunicipio = $this->normalizarClaveMunicipalDenue(
                 $municipio['clave_inegi'] ?? ''
             );
+        }
+
+        if ($denueSolicitado && (int)($_GET['denue_paginado'] ?? 0) === 1) {
+            require_once __DIR__ . '/../services/DenueCandidatosConsultaService.php';
+            $propietarioConsulta = (string)$usuarioId . ':' . session_id();
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+            $consulta = new DenueCandidatosConsultaService();
+            $resultado = $consulta->pagina($propietarioConsulta, [
+                'estado' => str_pad((string)$estado['clave_inegi'], 2, '0', STR_PAD_LEFT),
+                'municipio' => $claveMunicipio, 'tipo' => $tipoCandidato, 'termino' => $termino
+            ], $pagina, function ($filas) use ($tipoCandidato, $estado, $municipioId, $claveMunicipio) {
+                $filas = array_values(array_filter($filas, fn($fila) => $this->candidatoDenuePerteneceEstado($fila, $estado)));
+                if ($municipioId > 0) $filas = $this->filtrarDenuePorMunicipio($filas, $municipioId, $claveMunicipio);
+                return $this->filtrarDenuePorTipoCandidato($filas, $tipoCandidato);
+            });
+            if (!$resultado['ok']) {
+                $this->responderJson($resultado, !empty($resultado['reintentable']) ? 503 : 422);
+            }
+            $filas = $this->completarMunicipiosDenue($modelo, $estadoId, $resultado['candidatos']);
+            $filas = $this->agregarOportunidadCandidatos($filas, $this->obtenerPrioridadesMunicipales($estadoId));
+            $resultado['candidatos'] = $this->agregarEstadoSeguimientoCandidatos($modelo, $estadoId, $filas);
+            $resultado['cache_candidatos'] = [];
+            $resultado['advertencias'] = [];
+            $resultado['denue_solicitado'] = true;
+            $resultado['mensaje_vacio'] = 'No se encontraron candidatos con los criterios seleccionados.';
+            $resultado['puede_crear'] = tienePermiso('seguimientos_vinculacion.crear');
+            $this->responderJson($resultado);
         }
 
         if ($buscarDenuePorNombre) {
@@ -551,6 +601,7 @@ class SeguimientoVinculacionController
             }
 
             if ($resultadoDenue['ok']) {
+                $advertencias = array_merge($advertencias, $resultadoDenue['advertencias'] ?? []);
                 $denue = $this->completarMunicipiosDenue(
                     $modelo,
                     $estadoId,
@@ -573,6 +624,7 @@ class SeguimientoVinculacionController
                 $candidatos = array_merge($candidatos, $denue);
             } else {
                 $denueFallido = true;
+                $mensajeDenue = $resultadoDenue['mensaje'] ?? 'No fue posible consultar DENUE. Intenta nuevamente.';
             }
         }
 
@@ -593,7 +645,7 @@ class SeguimientoVinculacionController
         $mensajeVacio = 'No existen resultados de este tipo.';
 
         if ($denueFallido && $totalCandidatos === 0) {
-            $mensajeVacio = 'No pudimos consultar DENUE en este momento.';
+            $mensajeVacio = $mensajeDenue;
         } elseif ($denueSolicitado && !$denueFallido) {
             $mensajeVacio = $busquedaAutomatica
                 ? 'No se encontraron candidatos DENUE recomendados.'
@@ -1244,7 +1296,12 @@ class SeguimientoVinculacionController
         }
 
         $fechaInicio = $this->normalizarFechaFormulario($_POST['fecha_inicio'] ?? '');
-        $proximaAccionAt = $this->normalizarFechaFormulario($_POST['proxima_accion_at'] ?? '', true);
+        try {
+            $programacion = InteraccionProximaAccion::validar($_POST);
+        } catch (DomainException $error) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$error->getMessage()], 422);
+        }
+        $proximaAccionAt = $programacion['fecha'];
 
         if ($fechaInicio === '') {
             $this->responderJson([
@@ -1286,7 +1343,7 @@ class SeguimientoVinculacionController
         }
 
         $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['persona_atendio'] ?? ''));
-        $proximaAccion = trim((string)($_POST['proxima_accion'] ?? ''));
+        $proximaAccion = $programacion['accion'];
         $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
         $origenLlamada = strtoupper(trim((string)($_POST['origen_llamada'] ?? 'MANUAL')));
         if (!in_array($origenLlamada, ['ZADARMA', 'PRUEBA', 'MANUAL'], true)) {
@@ -1375,7 +1432,8 @@ class SeguimientoVinculacionController
 
         if (
             $canalFormulario === 'LLAMADA' &&
-            $resultadoAdmiteVerificacion
+            $resultadoAdmiteVerificacion &&
+            (int)($seguimiento['datos_verificados'] ?? 0) !== 1
         ) {
             if ((int)($_POST['verificacion_telefono_confirmado'] ?? 0) === 1) {
                 if ($telefonoActual === '') {
@@ -1478,7 +1536,8 @@ class SeguimientoVinculacionController
                   ) . implode(' · ', $evidenciasVerificacion)
                 : '',
             $observacion,
-            $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : '',
+            $proximaAccionAt !== null ? 'Próxima acción: ' . $proximaAccion : '',
+            $proximaAccionAt !== null ? 'Fecha próxima acción: ' . $proximaAccionAt : '',
             $descartar ? 'Motivo de descarte: ' . $motivoDescarte : ''
         ])));
 
@@ -3174,7 +3233,7 @@ class SeguimientoVinculacionController
          * envío o confirmación pendiente y debe conservarse aunque existan
          * interacciones más recientes.
          */
-        if ($seguimientoDescartado || $estado === 'DATOS_VERIFICADOS') {
+        if ($seguimientoDescartado || ($estado === 'DATOS_VERIFICADOS' && empty($seguimiento['proxima_accion_programada']))) {
             $proximaAccion = '';
             $proximaAccionTexto = '';
         }
