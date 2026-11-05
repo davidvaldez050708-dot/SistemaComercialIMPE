@@ -1,0 +1,19 @@
+name: Supervisión - diagnóstico grabación Ext. 154
+on:
+  pull_request:
+    paths:
+      - 'tools/diagnosticar_supervision_audio_154_hostinger.py'
+      - 'tests/diagnostico_supervision_audio_154_test.py'
+      - '.github/workflows/supervision-grabacion-diagnostico.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxis y diagnóstico ZIP privado
+        run: |
+          python3 -m py_compile tools/diagnosticar_supervision_audio_154_hostinger.py
+          python3 tests/diagnostico_supervision_audio_154_test.py
