@@ -9,7 +9,7 @@ require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
  */
 final class OficioRedmexPdfRenderer
 {
-    public const VERSION = '20261105-word-final-metadata-1';
+    public const VERSION = '20261105-word-final-alineacion-2';
     private const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
     private const NS = [
         'w' => self::W,
