@@ -14,6 +14,8 @@ on:
       - 'tests/telefonia_ventas_cierre_api_unit.php'
       - 'tests/publicacion_ventas_cierre_automatico_test.py'
       - 'tools/publicar_ventas_cierre_automatico_hostinger.py'
+      - 'tools/diagnosticar_tres_conflictos_ventas_hostinger.py'
+      - 'tests/diagnostico_conflictos_ventas_hostinger_test.py'
       - '.github/workflows/ventas-registro-sin-out-end.yml'
   workflow_dispatch:
 permissions:
@@ -43,10 +45,13 @@ jobs:
           node --check public/javascript/telefonia_host.js
           node --check public/javascript/telefonia_ventas_resultados.js
           python3 -m py_compile tools/publicar_ventas_cierre_automatico_hostinger.py
+          python3 -m py_compile tools/diagnosticar_tres_conflictos_ventas_hostinger.py
       - name: Evidencia PBX y registro humano
         run: |
           php tests/telefonia_ventas_cierre_api_unit.php
           node tests/ventas_resultado_todos_cierres.cjs
           node tests/ventas_captura_transicion.cjs
       - name: Ensayo de publicación y restauración aislada
-        run: python3 tests/publicacion_ventas_cierre_automatico_test.py
+        run: |
+          python3 tests/publicacion_ventas_cierre_automatico_test.py
+          python3 tests/diagnostico_conflictos_ventas_hostinger_test.py
