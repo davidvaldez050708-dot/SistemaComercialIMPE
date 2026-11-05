@@ -59,6 +59,7 @@ jobs:
           php -l tools/diagnosticar_oficio_word_anclas.php
           php -l app/services/OficioRedmexPdfRenderer.php
           php tests/oficios_word_final_metadata_test.php
+          php tests/oficios_word_final_alineacion_test.php
           python3 tests/oficios_word_final_publicador_test.py
           node --check public/javascript/oficios_vinculacion.js
           php tests/oficios_documento_final_smoke.php
