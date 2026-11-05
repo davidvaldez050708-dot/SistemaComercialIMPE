@@ -9,6 +9,8 @@ on:
       - 'public/javascript/seguimiento_importacion_excel.js'
       - 'public/css/seguimiento_importacion_excel.css'
       - 'tests/seguimiento_importador_excel_smoke.php'
+      - 'tests/seguimiento_plantilla_sin_impe_publicador_test.py'
+      - 'tools/publicar_plantilla_seguimiento_sin_impe_hostinger.py'
       - '.github/workflows/seguimiento-excel-importacion.yml'
   push:
     branches:
@@ -37,4 +39,7 @@ jobs:
           php -l tests/seguimiento_importador_excel_smoke.php
           node --check public/javascript/seguimiento_importacion_excel.js
       - name: Generar plantilla y probar pasos declarados
-        run: php tests/seguimiento_importador_excel_smoke.php
+        run: |
+          php tests/seguimiento_importador_excel_smoke.php
+          python3 -m py_compile tools/publicar_plantilla_seguimiento_sin_impe_hostinger.py
+          python3 tests/seguimiento_plantilla_sin_impe_publicador_test.py

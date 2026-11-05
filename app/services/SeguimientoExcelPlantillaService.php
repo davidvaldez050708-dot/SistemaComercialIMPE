@@ -58,7 +58,7 @@ final class SeguimientoExcelPlantillaService
                 '<formula1>PasosHistoricos</formula1></dataValidation></dataValidations>';
             $sheet1=self::sheet($rows,$validation,true);
             $guide=[
-                'PLANTILLA OFICIAL IMPE · IMPORTACIÓN DE INSTITUCIONES V3',
+                'PLANTILLA DE IMPORTACIÓN DE INSTITUCIONES V3',
                 'Captura una institución por fila, sin cambiar el orden ni el nombre de las 19 columnas.',
                 'Obligatorios: B–N (13). Opcionales: A y O–S (6).',
                 'Selecciona tipo, estado y paso desde los desplegables.',

@@ -119,7 +119,7 @@
       const local=URL.createObjectURL(blob);
       const a=document.createElement('a');
       a.href=local;
-      a.download='plantilla_instituciones_seguimiento_impe_v3.xlsx';
+      a.download='plantilla_instituciones_seguimiento_v3.xlsx';
       document.body.append(a);a.click();a.remove();
       setTimeout(()=>URL.revokeObjectURL(local),4000);
       show('Plantilla Excel V3 preparada para descargar.');
