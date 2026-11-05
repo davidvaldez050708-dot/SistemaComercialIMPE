@@ -110,4 +110,34 @@ with tempfile.TemporaryDirectory(prefix='impe-oficios-seguro-') as td:
     pub.restore(site,private_variant,str(folder_variant))
     assert snapshot()==variant_snapshot,'Rollback debe dejar intacto el convertidor personalizado'
 
+
+    # Reproducir el controlador real reportado por Hostinger: el método ya
+    # pasa TRUE al preparar una copia y conserva FALSE al descargarla.
+    controller_path=site/'app/controllers/OficioVinculacionController.php'
+    controller_base=controller_path.read_bytes()
+    old_call=(b'            $documento = (new OficioDocxPdfService())->generarDocx(\n'
+              b"                (array)($vista['vista_previa'] ?? [])\n"
+              b'            );')
+    new_call=(b'            $documento = (new OficioDocxPdfService())->generarDocx(\n'
+              b"                (array)($vista['vista_previa'] ?? []),\n"
+              b'                true // Primera preparaci\xc3\xb3n de esta copia, no una descarga de un oficio preparado.\n'
+              b'            );')
+    assert controller_base.count(old_call)==1,'La prueba no reconoce el controlador base'
+    prepared=controller_base.replace(old_call,new_call,1)
+    pub.HOSTINGER_OFICIOS_CONTROLLER_SHA256=pub.sha(prepared)
+    assert pub.controller_has_prepared_flag(
+        prepared,next(x for x in spec['files'] if x['path']=='app/controllers/OficioVinculacionController.php'))
+    controller_path.write_bytes(prepared)
+    original_prepared=snapshot()
+    assert 'CHECK OK' in run('--check')
+    assert snapshot()==original_prepared,'El nuevo preflight no debe editar ni borrar código'
+    assert 'APLICADO' in run('--apply')
+    converted=controller_path.read_bytes()
+    assert converted.count(new_call)==1,'Reescribió la llamada TRUE personalizada'
+    assert converted.count(b"['predeterminada', 'personalizada', 'documento_final']")==1
+    assert 'YA INSTALADO' in run('--check'),'La variante debe ser idempotente'
+    archive_prepared=sorted([x for x in backups.iterdir() if x.is_dir()])[-1]
+    assert 'RESTAURADO' in run('--restore',str(archive_prepared))
+    assert snapshot()==original_prepared,'La reversión debe recuperar el controlador intacto'
+
 print('PASS publicador oficios: 5 archivos, --check sin escritura, compatibilidad, idempotencia, conflicto y rollback')
