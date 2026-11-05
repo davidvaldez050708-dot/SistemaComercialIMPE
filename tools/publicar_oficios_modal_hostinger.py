@@ -76,14 +76,19 @@ HOSTINGER_DOCX_SHA256='ff3720e6905ad92ddd4515f6e8a793d68a4cfb9a29476ba2862abd75c
 def is_existing_hostinger_docx(raw):
     if raw is None or sha(raw)!=HOSTINGER_DOCX_SHA256:
         return False
+    method=b'public function generarDocx(array $vista, $prepararPlantilla = false)'
+    start=raw.find(method)
+    end=raw.find(b'public function validarPlantillaProcesable',start+len(method))
+    if start<0 or end<=start or raw.count(method)!=1:
+        raise RuntimeError('CONFLICTO: la firma personalizada DOCX fue modificada.')
+    chunk=raw[start:end]
     required=[
-        b'public function generarDocx(array $vista, $prepararPlantilla = false)',
         b'$procesada = !$prepararPlantilla && preg_match(',
         b'$rellenado = $procesada ?',
         b"str_replace('\\\\', '/', (string)($vista['archivo_plantilla'] ?? ''))",
         b'$this->rellenarConTemplateProcessor($rutaDocx, $vista)'
     ]
-    if any(raw.count(token)!=1 for token in required):
+    if any(token not in chunk for token in required):
         raise RuntimeError('CONFLICTO: comportamiento personalizado DOCX diferente del verificado.')
     return True
 
