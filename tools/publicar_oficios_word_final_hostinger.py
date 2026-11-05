@@ -112,9 +112,7 @@ def publish(site, backup, source):
             raise RuntimeError('CONFLICTO: modificación concurrente antes de publicar')
         atomic(dest, new, mode)
         if dest.read_bytes() != new:
-            if dest.read_bytes() == new:
-                atomic(dest, old, mode)
-            raise RuntimeError('ERROR: instalación no verificada')
+            raise RuntimeError('ERROR: instalación no verificada; revisar el respaldo')
         print('APLICADO: renderer compatible con metadatos Word final')
         print('RESPALDO: ' + str(folder))
         print('Solo un PHP; sin SQL, plantilla DOCX, base de datos, folios ni otros módulos')
