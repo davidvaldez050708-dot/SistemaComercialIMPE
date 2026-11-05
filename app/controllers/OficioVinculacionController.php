@@ -706,7 +706,13 @@ class OficioVinculacionController
             $esAnalistaResponsable &&
             tienePermiso('oficios.generar') &&
             $tieneFolio &&
-            !$pdfGenerado;
+            !$pdfGenerado &&
+            empty($estadoPdf['pdf_pendiente_por_word']);
+
+        $estadoPdf['puede_adjuntar_pdf_final'] =
+            $esAnalistaResponsable &&
+            tienePermiso('oficios.generar') &&
+            !empty($estadoPdf['pdf_pendiente_por_word']);
 
         unset($estadoPdf['analista_id']);
 
