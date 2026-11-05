@@ -15,9 +15,12 @@ import subprocess
 import tempfile
 import urllib.request
 
-REVISION = "82b2cc8c71f4ad104e7f7b72d7e17407703f0632"
+REVISION = "d143895ac021b3daa3cb81db37a9f044107fff45"
 REPO = "davidvaldez050708-dot/SistemaComercialIMPE"
 FILES = {
+    "app/controllers/TelefoniaController.php": (
+        "blob:fbe30cfbd69b2d881c8e330fe5988e6674ff36b2",
+        "afa1efad35b5280c5ef4cce8a96d0455ea480ffc"),
     "app/services/ZadarmaCallLookupService.php": (
         "blob:2352da1881ddeeeee1440ca5e1bedd5fe3ad59b0",
         "c5839eaeddec5c88bfd8ae72d5adda5d85fc84c4"),
@@ -28,13 +31,13 @@ FILES = {
         "644a0af9af5d96c5d9aed4de89f242d8e4ac00cc"),
     "app/services/TelefoniaVentasLlamadasService.php": (
         "sha256:46bece86dcfdc3b3f2434276440644c71de9b206bf34b90848fc9de7ce18a0dd",
-        "597d48171a09cd8b71a52a585f7c73f8bc5633e1"),
+        "09a83784595d5f510fd16f8a44c9f705f00bc4ba"),
     "app/views/telefonia/ventas_llamadas.php": (
         "blob:4a771f59d5393d2d05904ed8c187588c6185a570",
         "91bf740d73c8961cc189117ba34ef23fee3a39e3"),
     "public/javascript/telefonia_ventas_resultados.js": (
         "sha256:8f7983d9b387c17a2581ad1ef2153abe1dd434291045285b96d4fc8e62058e19",
-        "c0ed64f06c18309ae41714540e572a0ea4b9dcc0"),
+        "d7d90fb6d4067217dc67f961da0ce5fee4e457f7"),
     "public/javascript/telefonia_host.js": (
         "blob:2b316120cbcf419666942b2897b77ee09ba3567e",
         "15a28b710ca54d5d16aab91c7b1078537ddb5bd9"),
