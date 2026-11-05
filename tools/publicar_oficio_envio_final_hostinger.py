@@ -104,6 +104,9 @@ def make_patch(original, base, target):
     ]):
         return original
 
+    if original.count(folio) != 1:
+        raise RuntimeError('CONFLICTO: sincronización de folio personalizada; sitio intacto')
+
     if any(token in original for token in [
         helper_start, b'plantilla_oficio.nombre AS plantilla_oficio_nombre',
         b'if ($this->esOficioTerminadoAdjuntado($seguimiento))',
