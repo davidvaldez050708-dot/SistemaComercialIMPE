@@ -42,7 +42,7 @@ const live=(ref='out-call-151',token='sdk-session-151-one')=>({active:true,direc
  // Regresión 05/11: la saliente de 09:45 ya no queda bloqueada en
  // «Confirmando cierre» sólo porque faltó NOTIFY_OUT_END.
  for(const [estado,conectada] of [['answered',true],['no answer',false]]){
-  const parent=observerHarness(),ref='out-PENDIENTE-'+(conectada?'ANSWER':'NOANSWER');
+  const parent=observerHarness(),ref='out_PENDIENTE_'+(conectada?'ANSWER':'NOANSWER');
   const pendiente={...row(estado,ref),finalizada:false,conectada,
    estado_pbx:conectada?'Respuesta confirmada · Cierre pendiente':'Cierre pendiente'};
   parent.server.set(ref,pendiente);
