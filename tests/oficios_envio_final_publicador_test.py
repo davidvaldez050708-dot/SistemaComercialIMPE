@@ -47,7 +47,8 @@ with tempfile.TemporaryDirectory(prefix='impe-oficio-envio-final-') as temp:
     assert 'YA INSTALADO' in run('--apply')
     folders = [p for p in backup.iterdir() if p.is_dir()]
     assert len(folders) == 1
-    assert 'RESTAURADO' in run('--restore',str(folders[0]))
+    first_backup = folders[0]
+    assert 'RESTAURADO' in run('--restore',str(first_backup))
     assert path.read_bytes() == original
 
     # La producción puede conservar personalizaciones ajenas a la reparación.
@@ -65,9 +66,11 @@ with tempfile.TemporaryDirectory(prefix='impe-oficio-envio-final-') as temp:
     assert b'esOficioTerminadoAdjuntado' in applied
     assert b'pdfTerminadoDisponible' in applied
     assert 'YA INSTALADO' in run('--check')
-    folders = sorted(p for p in backup.iterdir() if p.is_dir())
+    folders = [p for p in backup.iterdir() if p.is_dir()]
     assert len(folders) == 2
-    assert 'RESTAURADO' in run('--restore',str(folders[-1]))
+    latest = [p for p in folders if p != first_backup]
+    assert len(latest) == 1
+    assert 'RESTAURADO' in run('--restore',str(latest[0]))
     assert path.read_bytes() == custom
 
     # No reemplazar a ciegas la secuencia de envío personalizada.
