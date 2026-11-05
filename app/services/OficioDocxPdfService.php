@@ -33,6 +33,15 @@ class OficioDocxPdfService
 
     public function generarPdf(array $vista)
     {
+        // Un DOCX terminado no necesita marcadores ni plantilla REDMEX.
+        if (strpos(trim((string)($vista['plantilla'] ?? '')), 'Oficio adjuntado: ') === 0) {
+            $word = str_replace('\\', '/', trim((string)($vista['archivo_plantilla'] ?? '')));
+            if (!preg_match('~^storage/templates/oficios_personalizados/generacion_[0-9]{8}_[0-9]{6}_[a-f0-9]{12}\.docx$~D', $word)) {
+                return $this->error('No se encontró el oficio Word terminado.', 'WORD_FINAL_SOURCE');
+            }
+            require_once __DIR__ . '/OficioDocumentoFinalPdfService.php';
+            return (new OficioDocumentoFinalPdfService())->convertir($this->resolverRutaPlantilla($vista));
+        }
         $rutaPlantilla = $this->resolverRutaPlantilla($vista);
         $personalizada = trim((string)($vista['archivo_plantilla'] ?? '')) !== '';
         // Paso 5 guarda el resultado en esta misma ruta, asociada al oficio.
