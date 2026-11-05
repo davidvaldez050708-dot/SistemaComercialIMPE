@@ -9,6 +9,7 @@ require_once __DIR__ . '/AgendaReunionRepository.php';
 require_once __DIR__ . '/AgendaReunionService.php';
 require_once __DIR__ . '/ReprogramacionReunionService.php';
 require_once __DIR__ . '/EcardReunionService.php';
+require_once __DIR__ . '/ReunionEcardImagen.php';
 
 class CorreoFirmadoService
 {
@@ -65,7 +66,9 @@ class CorreoFirmadoService
         $asunto,
         $cuerpo,
         $esReprogramacion = false,
-        $ecardTemplate = ''
+        $ecardTemplate = '',
+        $ecardImagen = null,
+        $ecardPersonalizadaEsperada = false
     ) {
         $reunionId = (int)$reunionId;
         $usuarioId = (int)$usuarioId;
@@ -119,7 +122,15 @@ class CorreoFirmadoService
             return $this->error('No fue posible identificar al remitente.', 404);
         }
 
-        $ecard = $this->ecardService->generar($reunion, $ecardTemplate);
+        try {
+            $personalizada = ReunionEcardImagen::preparar($ecardImagen, (bool)$ecardPersonalizadaEsperada);
+        } catch (DomainException $error) {
+            return $this->error($error->getMessage(), 422);
+        } catch (Throwable $error) {
+            error_log('REUNION_ECARD preparación fallida: '.get_class($error));
+            return $this->error('No fue posible preparar la Ecard. El correo no se ha enviado.', 500);
+        }
+        $ecard = $personalizada ?? $this->ecardService->generar($reunion, $ecardTemplate);
         if (!($ecard['ok'] ?? false)) {
             return $this->error(
                 (string)($ecard['mensaje'] ?? 'No fue posible generar la Ecard de la reunión.'),
@@ -127,21 +138,26 @@ class CorreoFirmadoService
             );
         }
 
-        $envio = $this->sender->enviar([
-            'remitente' => (string)($usuario['correo'] ?? ''),
-            'nombre_remitente' => $this->nombreUsuario($usuario),
-            'destinatario' => $destinatario,
-            'nombre_destinatario' => (string)($reunion['contacto_nombre'] ?? ''),
-            'asunto' => $asunto,
-            'cuerpo' => $cuerpo,
-            'imagenes_embebidas' => [[
-                'ruta' => (string)$ecard['ruta'],
-                'cid' => (string)$ecard['cid'],
-                'nombre' => (string)$ecard['archivo'],
-                'mime' => (string)$ecard['mime']
-            ]],
-            'html_adicional' => $this->construirBloqueEcardCorreo($ecard, $reunion)
-        ]);
+        try {
+            $envio = $this->sender->enviar([
+                'remitente' => (string)($usuario['correo'] ?? ''),
+                'nombre_remitente' => $this->nombreUsuario($usuario),
+                'destinatario' => $destinatario,
+                'nombre_destinatario' => (string)($reunion['contacto_nombre'] ?? ''),
+                'asunto' => $asunto,
+                'cuerpo' => $cuerpo,
+                'imagenes_embebidas' => [[
+                    'ruta' => (string)$ecard['ruta'],
+                    'cid' => (string)$ecard['cid'],
+                    'nombre' => (string)$ecard['archivo'],
+                    'mime' => (string)$ecard['mime']
+                ]],
+                'html_adicional' => $this->construirBloqueEcardCorreo($ecard, $reunion)
+            ]);
+        } finally {
+            // El transporte es síncrono; la imagen pertenece únicamente a este envío.
+            if ($personalizada !== null && is_file($personalizada['ruta'])) unlink($personalizada['ruta']);
+        }
 
         if (!($envio['ok'] ?? false)) {
             return $envio;

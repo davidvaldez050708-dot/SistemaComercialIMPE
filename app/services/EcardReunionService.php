@@ -7,7 +7,7 @@ class EcardReunionService
     public const TEMPLATE_SERGIO = 'SERGIO';
     public const TEMPLATE_MANUEL = 'MANUEL';
     public const CID = 'ecard-reunion';
-    public const VERSION = '20260920-14';
+    public const VERSION = '20261026-tipografia-1';
 
     private $connection;
     private $rootPath;
@@ -63,6 +63,11 @@ class EcardReunionService
             return $this->error(
                 'No fue posible generar la Ecard porque la extensión GD de PHP no está disponible.'
             );
+        }
+
+        if (!function_exists('imagettftext') || !function_exists('imagettfbbox') ||
+            $this->resolverFuente(false) === '' || $this->resolverFuente(true) === '') {
+            return $this->error('No fue posible generar la Ecard: faltan las fuentes TrueType o FreeType del servidor.');
         }
 
         $reunionId = (int)($reunion['id'] ?? 0);
@@ -1286,6 +1291,13 @@ class EcardReunionService
 
         $altoTotal += max(0, count($metricas) - 1) * (int)$separacion;
         $zonaAlto = max(1, (int)$yInferior - (int)$ySuperior);
+        if ($altoTotal > $zonaAlto && $tamano > 12) {
+            $this->dibujarBloqueTextoCentradoVertical(
+                $imagen, $lineas, $tamano - 1, $ySuperior, $yInferior,
+                $color, $fuente, $separacion
+            );
+            return;
+        }
         $cursorY = (int)$ySuperior + max(0, (int)(($zonaAlto - $altoTotal) / 2));
 
         foreach ($metricas as $metrica) {
@@ -1728,18 +1740,21 @@ class EcardReunionService
     {
         $candidatas = $bold
             ? [
+                $this->rootPath . '/vendor/dompdf/dompdf/lib/fonts/DejaVuSans-Bold.ttf',
                 'C:/Windows/Fonts/arialbd.ttf',
                 '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
                 '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf'
             ]
             : [
+                $this->rootPath . '/vendor/dompdf/dompdf/lib/fonts/DejaVuSans.ttf',
                 'C:/Windows/Fonts/arial.ttf',
                 '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
                 '/usr/share/fonts/dejavu/DejaVuSans.ttf'
             ];
 
         foreach ($candidatas as $ruta) {
-            if (is_file($ruta)) {
+            if (is_file($ruta) && function_exists('imagettfbbox') &&
+                @imagettfbbox(20, 0, $ruta, 'Reunión México') !== false) {
                 return $ruta;
             }
         }

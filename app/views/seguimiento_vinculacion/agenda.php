@@ -124,6 +124,8 @@ $pendientesAgenda = array_values(array_filter(
         </div>
     </div>
 
+    <?php require __DIR__ . '/partials/agenda_fechas_referencia.php'; ?>
+
     <p class="agenda-mobile-scroll-hint">
         <i class="bi bi-arrows-move" aria-hidden="true"></i>
         Desliza el calendario hacia los lados para consultar todos los días.
@@ -149,6 +151,7 @@ $pendientesAgenda = array_values(array_filter(
                         data-agenda-date="<?= htmlspecialchars((string)$celda['fecha'], ENT_QUOTES, 'UTF-8') ?>">
 
                         <div class="agenda-day-number">
+                            <button type="button" class="agenda-comment-add" data-agenda-comment-add="<?= htmlspecialchars((string)$celda['fecha'], ENT_QUOTES, 'UTF-8') ?>" aria-label="Agregar comentario al <?= htmlspecialchars((string)$celda['fecha'], ENT_QUOTES, 'UTF-8') ?>" title="Agregar comentario"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
                             <span><?= htmlspecialchars((string)$celda['numero'], ENT_QUOTES, 'UTF-8') ?></span>
                             <?php if (!empty($celda['es_hoy'])): ?>
                                 <small>Hoy</small>
@@ -454,6 +457,19 @@ $pendientesAgenda = array_values(array_filter(
 
                         <div data-agenda-mail-ecard-section>
                             <div data-agenda-mail-ecard></div>
+                            <div class="agenda-ecard-upload" data-ecard-upload>
+                                <label class="form-label" for="agendaEcardImagen">Usar otra imagen de Ecard</label>
+                                <p>La Ecard predeterminada siempre se incluye. Si tienes otra imagen, puedes reemplazarla sólo para este envío.</p>
+                                <input type="file" id="agendaEcardImagen" name="ecard_imagen"
+                                    class="form-control system-form-control" accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                                    aria-describedby="agendaEcardImagenAyuda" data-ecard-upload-file>
+                                <input type="hidden" name="ecard_personalizada_esperada" value="0" data-ecard-upload-expected>
+                                <div class="agenda-ecard-upload-footer">
+                                    <small id="agendaEcardImagenAyuda">JPG o PNG · Hasta 5 MB y 12 megapíxeles.</small>
+                                    <button type="button" class="btn btn-system-light" data-ecard-upload-reset hidden>Usar predeterminada</button>
+                                </div>
+                                <span class="agenda-ecard-upload-status" role="status" aria-live="polite" data-ecard-upload-status></span>
+                            </div>
                         </div>
 
                         <div class="agenda-mail-note">
@@ -502,6 +518,8 @@ $pendientesAgenda = array_values(array_filter(
         </div>
     </div>
 
+    <?php require __DIR__ . '/partials/agenda_comentarios.php'; ?>
+
     <script type="application/json" id="agendaReunionesData">
         <?= json_encode($agendaReuniones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) ?>
     </script>
@@ -510,3 +528,6 @@ $pendientesAgenda = array_values(array_filter(
         <?= json_encode($seguimientosElegibles, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) ?>
     </script>
 </section>
+
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/reunion_ecard_imagen.css?v=<?= filemtime(ROOT_PATH.'/public/css/reunion_ecard_imagen.css') ?>">
+<script src="<?= BASE_URL ?>public/javascript/reunion_ecard_imagen.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/reunion_ecard_imagen.js') ?>"></script>
