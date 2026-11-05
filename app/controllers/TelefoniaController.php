@@ -413,8 +413,30 @@ class TelefoniaController
         try {
             $svc=new TelefoniaVentasLlamadasService();$uid=(int)$_SESSION['usuario_id'];
             $svc->sincronizar($uid);
+            $extension=trim((string)($_GET['extension']??''));
+            // El observador del teléfono pide sus pendientes sin asumir que
+            // la última referencia del mismo número pertenece a la sesión.
+            if((string)($_GET['pendientes']??'')==='1'){
+                $bandeja=$svc->bandeja($uid,['estado'=>'pendientes',
+                    'desde'=>date('Y-m-d',strtotime('-7 days')),'hasta'=>date('Y-m-d')]);
+                $filas=array_values(array_filter($bandeja['filas'],static function($c)use($extension){
+                    return !empty($c['pbx_call_id'])&&
+                        ($extension===''||(string)$c['extension']===$extension);
+                }));
+                $this->responderJson(['ok'=>true,'pendientes'=>$svc->conVinculosSdk($uid,$filas)]);
+            }
+            $sdk=trim((string)($_GET['sdk']??''));
+            if($sdk!==''){
+                $call=$svc->obtenerPorSdk($uid,$sdk);
+                if($call!==null&&(
+                    ($extension!==''&&(string)$call['extension']!==$extension)||
+                    ((int)($_GET['solicitud_id']??0)>0 &&
+                     (int)($call['solicitud_id']??0)!==(int)$_GET['solicitud_id'])
+                ))throw new DomainException('La sesión no coincide con la llamada del asesor.');
+                $this->responderJson(['ok'=>true,'llamada'=>$call]);
+            }
             $this->responderJson(['ok'=>true,'llamada'=>$svc->obtener($uid,
-                (string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''))]);
+                (string)($_GET['pbx_call_id']??''),$extension)]);
         }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
         catch(Throwable $e){error_log('[detalle_venta] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo consultar tu llamada.'],500);}
     }
