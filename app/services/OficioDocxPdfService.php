@@ -33,6 +33,24 @@ class OficioDocxPdfService
 
     public function generarPdf(array $vista)
     {
+        // Un PDF adjuntado ya está terminado: se entrega byte a byte, sin conversión.
+        if (strpos(trim((string)($vista['plantilla'] ?? '')), 'Oficio adjuntado PDF: ') === 0) {
+            $relative = str_replace('\\', '/', trim((string)($vista['archivo_plantilla'] ?? '')));
+            if (!preg_match('~^storage/templates/oficios_personalizados/generacion_[0-9]{8}_[0-9]{6}_[a-f0-9]{12}\.pdf$~D', $relative)) {
+                return $this->error('No se encontró el PDF original adjuntado.', 'PDF_FINAL_SOURCE');
+            }
+            $file = $this->resolverRutaPlantilla($vista);
+            if (!is_file($file) || filesize($file) <= 0 || filesize($file) > 20 * 1024 * 1024) {
+                return $this->error('El PDF original no está disponible.', 'PDF_FINAL_SOURCE');
+            }
+            $pdf = file_get_contents($file);
+            if (!is_string($pdf) || strncmp($pdf, '%PDF-', 5) !== 0 ||
+                preg_match('/%%EOF\s*$/D', substr($pdf, -2048)) !== 1 ||
+                preg_match('~/\s*(?:Encrypt|JavaScript|JS|OpenAction|Launch|EmbeddedFile|RichMedia)\b~i', $pdf) === 1) {
+                return $this->error('El PDF adjuntado no es válido o contiene acciones no admitidas.', 'PDF_FINAL_INVALID');
+            }
+            return ['ok' => true, 'contenido_pdf' => $pdf, 'conversor' => 'PDF_ORIGINAL'];
+        }
         // Un DOCX terminado no necesita marcadores ni plantilla REDMEX.
         if (strpos(trim((string)($vista['plantilla'] ?? '')), 'Oficio adjuntado: ') === 0) {
             $word = str_replace('\\', '/', trim((string)($vista['archivo_plantilla'] ?? '')));
@@ -261,6 +279,9 @@ class OficioDocxPdfService
 
     public function generarDocx(array $vista, $prepararPlantilla = false)
     {
+        if (strpos(trim((string)($vista['plantilla'] ?? '')), 'Oficio adjuntado PDF: ') === 0) {
+            return $this->error('Este oficio se adjuntó como PDF terminado; no existe versión DOCX.', 'PDF_FINAL_NO_DOCX');
+        }
         $rutaPlantilla = $this->resolverRutaPlantilla($vista);
         $rutaRelativa = str_replace('\\', '/', (string)($vista['archivo_plantilla'] ?? ''));
         // FALSE: descargar una generación almacenada, sin rellenarla.
