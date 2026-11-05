@@ -121,12 +121,16 @@ with tempfile.TemporaryDirectory(prefix='impe-ventas-cierre-seguro-') as temp:
     except RuntimeError as e:
         assert 'CONFLICTO CONTROLADOR' in str(e),str(e)
     assert ctl.read_bytes()==modified
-    ctl.write_bytes(custom)
+    ctl.write_bytes(modified)
     file=site/'public/javascript/telefonia_host.js'
     file.write_bytes(file.read_bytes()+b'\n// variante desconocida')
     try:
         execute(site,backup,'--check')
-        raise AssertionError('Se aceptó variante no reconocida')
+        raise AssertionError('Se aceptaron dos variantes no reconocidas')
     except RuntimeError as error:
+        assert 'CONFLICTO CONTROLADOR' in str(error)
         assert 'VERSIÓN DIFERENTE' in str(error)
-print('PASS: 8 archivos, integridad Git, Python3.6, no SQL, conciliación selectiva del controlador, respaldo, rollback y conflictos.')
+        assert '2 incompatibilidad(es)' in str(error)
+    assert ctl.read_bytes()==modified
+    assert file.read_bytes().endswith(b'// variante desconocida')
+print('PASS: 8 archivos, integridad Git, Python3.6, conciliación selectiva, informe de todos los conflictos y rollback sin SQL.')
