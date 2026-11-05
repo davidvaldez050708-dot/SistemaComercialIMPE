@@ -54,6 +54,14 @@ class OficioDocxPdfService
         // El Word terminado se conserva, pero Hostinger no dispone de LibreOffice.
         // Nunca intentar convertirlo con REDMEX ni simular un PDF.
         if (strpos(trim((string)($vista['plantilla'] ?? '')), 'Oficio adjuntado: ') === 0) {
+            $relative = str_replace('\\', '/', trim((string)($vista['archivo_plantilla'] ?? '')));
+            if (!preg_match('~^storage/templates/oficios_personalizados/generacion_[0-9]{8}_[0-9]{6}_[a-f0-9]{12}\.docx$~D', $relative)) {
+                return $this->error('No se encontró el Word terminado.', 'WORD_FINAL_SOURCE');
+            }
+            $file = $this->resolverRutaPlantilla($vista);
+            if (!is_file($file) || !is_readable($file)) {
+                return $this->error('El Word terminado no está disponible.', 'WORD_FINAL_SOURCE');
+            }
             return $this->error(
                 'El oficio Word está guardado sin modificaciones. Para obtener la vista previa PDF, adjunta el archivo PDF exportado desde Word al mismo oficio.',
                 'WORD_FINAL_PENDING_PDF'
