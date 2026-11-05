@@ -1,0 +1,48 @@
+name: Oficios - modal institucional y documento Word final
+on:
+  push:
+    branches:
+      - fix/oficios-cdmx-docx-final-modal-20261104
+    paths:
+      - 'app/controllers/OficioVinculacionController.php'
+      - 'app/services/OficioPreviewService.php'
+      - 'app/services/OficioDocxPdfService.php'
+      - 'public/javascript/oficios_vinculacion.js'
+      - 'public/css/oficios_selector_compacto.css'
+      - 'tests/oficios_*'
+      - 'tools/publicar_oficios_*'
+      - '.github/workflows/oficios-modal-docx-final.yml'
+  pull_request:
+    paths:
+      - 'app/controllers/OficioVinculacionController.php'
+      - 'app/services/OficioPreviewService.php'
+      - 'app/services/OficioDocxPdfService.php'
+      - 'public/javascript/oficios_vinculacion.js'
+      - 'public/css/oficios_selector_compacto.css'
+      - 'tests/oficios_*'
+      - 'tools/publicar_oficios_*'
+      - '.github/workflows/oficios-modal-docx-final.yml'
+permissions:
+  contents: read
+jobs:
+  oficios-seguros:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: zip, mbstring, dom, xml, fileinfo
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dependencias de documentos
+        run: composer install --no-interaction --no-progress --prefer-dist
+      - name: Sintaxis y regresiones de generación
+        run: |
+          php -l app/controllers/OficioVinculacionController.php
+          php -l app/services/OficioPreviewService.php
+          php -l app/services/OficioDocxPdfService.php
+          node --check public/javascript/oficios_vinculacion.js
+          php tests/oficios_documento_final_smoke.php
+          node tests/oficios_selector_smoke.cjs
