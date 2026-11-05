@@ -170,8 +170,7 @@ class SeguimientoFlujoController
 
         if (
             $usuarioId <= 0 ||
-            !tienePermiso('seguimientos_vinculacion.operar_propios') ||
-            !tienePermiso('convenios.ver')
+            !tienePermiso('seguimientos_vinculacion.operar_propios')
         ) {
             $this->responder([
                 'ok' => false,
@@ -209,20 +208,11 @@ class SeguimientoFlujoController
             exit;
         }
 
-        $esMarketing = strcasecmp(
-            trim((string)($_SESSION['rol'] ?? '')),
-            'Marketing'
-        ) === 0;
-
-        if (
-            !tienePermiso('convenios.ver') &&
-            !(
-                $esMarketing &&
-                tienePermiso('seguimientos_vinculacion.ver')
-            )
-        ) {
+        // Son documentos del expediente, no del módulo general Convenios.
+        // El alcance del seguimiento se comprueba antes de servir el archivo.
+        if (!tienePermiso('seguimientos_vinculacion.ver')) {
             http_response_code(403);
-            echo 'No tienes permiso para consultar convenios.';
+            echo 'No tienes permiso para consultar documentos de seguimiento.';
             exit;
         }
 
@@ -369,24 +359,9 @@ class SeguimientoFlujoController
             ], 422);
         }
 
-        $accionesConvenio = [
-            'ENVIAR_DOCUMENTACION_CONVENIO',
-            'REGISTRAR_CONVENIO_RECIBIDO',
-            'REGISTRAR_CONVENIO_CORREGIDO',
-            'APROBAR_CONVENIO_RECIBIDO',
-            'SOLICITAR_CORRECCIONES_CONVENIO',
-            'FORMALIZAR_CONVENIO'
-        ];
-
-        if (
-            in_array($accion, $accionesConvenio, true) &&
-            !tienePermiso('convenios.gestionar')
-        ) {
-            $this->responder([
-                'ok' => false,
-                'mensaje' => 'No tienes permiso para gestionar convenios.'
-            ], 403);
-        }
+        // Las acciones de este expediente se autorizan con operar_propios y
+        // el alcance territorial/etapa de cada servicio. convenios.* sólo
+        // corresponde al módulo general y no concede acceso a Seguimiento.
 
         if ($accion === 'ENVIAR_SEGUIMIENTO_CORREO') {
             $resultado = $this->seguimientoCorreoService->enviar(
@@ -482,7 +457,9 @@ class SeguimientoFlujoController
                 $usuarioId,
                 $_POST['carta_fecha'] ?? '',
                 $_POST['asunto'] ?? '',
-                $_POST['cuerpo'] ?? ''
+                $_POST['cuerpo'] ?? '',
+                $_FILES,
+                ['carta'=>$_POST['carta_origen']??'sistema','convenio'=>$_POST['convenio_origen']??'sistema']
             );
             $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
             unset($resultado['codigo_http']);

@@ -1,0 +1,44 @@
+name: Convenio documentos propios
+on:
+  pull_request:
+    paths:
+      - 'app/services/ConvenioDocumentosService.php'
+      - 'app/services/SeguimientoCorreoService.php'
+      - 'app/controllers/SeguimientoFlujoController.php'
+      - 'public/**/seguimiento_post_envio.*'
+      - 'tests/*convenio_documentos_propios*'
+      - 'tests/convenio_permisos_seguimiento_test.py'
+      - 'tests/fixtures/convenio_documentos_propios_http.php'
+      - 'tools/*convenio_documentos_propios*'
+      - '.github/workflows/convenio-documentos-propios.yml'
+jobs:
+  documentos:
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.56.1-noble
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, zip, dom, fileinfo
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.8
+      - run: python tests/convenio_permisos_seguimiento_test.py
+      - run: python tests/convenio_documentos_propios_http_test.py
+      - run: python tests/publicacion_convenio_documentos_propios_test.py
+      - run: node tests/convenio_documentos_propios_browser.cjs
+        env:
+          BOOTSTRAP_MODULE_PATH: ${{ github.workspace }}/node_modules/bootstrap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: convenio-vistas
+          path: tmp/convenio-propios-*.png

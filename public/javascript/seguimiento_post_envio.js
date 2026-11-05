@@ -93,6 +93,20 @@
 
             modal.querySelector('[data-post-envio-form]').addEventListener('submit', guardar);
             modal.addEventListener('change', function (event) {
+                const origen = event.target.closest('[data-convenio-origen]');
+                if (origen) {
+                    const tipo = origen.dataset.convenioOrigen;
+                    const propio = origen.value === 'propio';
+                    const bloque = modal.querySelector('[data-convenio-upload="' + tipo + '"]');
+                    const predeterminado = modal.querySelector('[data-convenio-default="' + tipo + '"]');
+                    bloque.hidden = !propio; predeterminado.hidden = propio;
+                    const archivo = bloque.querySelector('input'); archivo.disabled = !propio; archivo.required = propio;
+                    if (tipo === 'carta') {
+                        const fecha = modal.querySelector('[data-convenio-carta-fecha]');
+                        fecha.hidden = propio; fecha.querySelector('input').disabled = propio; fecha.querySelector('input').required = !propio;
+                    }
+                }
+
                 if (event.target.matches('[name="respuesta_tipo"]')) {
                     const bloque = modal.querySelector('[data-contactar-despues]');
                     const campo = modal.querySelector('[name="contactar_despues_at"]');
@@ -330,69 +344,30 @@
 
         const camposDocumentacionConvenio = function (correo) {
             const datos = correo || {};
-            const documentos = Array.isArray(datos.documentos)
-                ? datos.documentos
-                : [];
-
-            const tarjetas = documentos.map(function (documento) {
-                const tipo = escapar(documento.tipo || 'Archivo');
-                const nombre = escapar(documento.nombre || 'Documento');
-                const detalle = escapar(documento.detalle || '');
-                const icono = String(documento.tipo || '').toUpperCase() === 'PDF'
-                    ? 'bi-file-earmark-pdf'
-                    : 'bi-file-earmark-word';
-
-                return '<div class="convenio-document-card">' +
-                    '<span class="convenio-document-icon"><i class="bi ' + icono + '"></i></span>' +
-                    '<div>' +
-                        '<strong>' + nombre + '</strong>' +
-                        '<span>' + tipo + '</span>' +
-                        '<p>' + detalle + '</p>' +
-                    '</div>' +
-                '</div>';
-            }).join('');
-
-            return '' +
-                '<div class="convenio-mail-summary">' +
-                    '<div>' +
-                        '<span class="convenio-mail-summary-label">Destinatario</span>' +
-                        '<strong>' + escapar(datos.para || '') + '</strong>' +
-                    '</div>' +
-                    '<span class="convenio-mail-summary-badge"><i class="bi bi-paperclip"></i> 2 adjuntos</span>' +
-                '</div>' +
-                '<div class="row g-3">' +
-                    '<div class="col-md-5">' +
-                        '<label class="form-label">Fecha de la carta propuesta</label>' +
-                        '<input class="form-control" type="date" name="carta_fecha" value="' +
-                            escaparAtributo(datos.carta_fecha || '') + '" required>' +
-                        '<div class="form-text convenio-field-help">Es el único dato que se modifica dentro de la carta antes de convertirla a PDF.</div>' +
-                    '</div>' +
-                    '<div class="col-md-7">' +
-                        '<label class="form-label">Para</label>' +
-                        '<input class="form-control" type="email" value="' +
-                            escaparAtributo(datos.para || '') + '" readonly>' +
-                    '</div>' +
-                    '<div class="col-12">' +
-                        '<label class="form-label">Asunto</label>' +
-                        '<input class="form-control" type="text" name="asunto" maxlength="255" value="' +
-                            escaparAtributo(datos.asunto || '') + '" required>' +
-                    '</div>' +
-                    '<div class="col-12">' +
-                        '<label class="form-label">Mensaje</label>' +
-                        '<textarea class="form-control" name="cuerpo" rows="8" maxlength="20000" required>' +
-                            escapar(datos.cuerpo || '') +
-                        '</textarea>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="convenio-documents-heading">' +
-                    '<span>Documentos que se enviarán</span>' +
-                    '<small>La carta se genera en PDF y el convenio permanece editable.</small>' +
-                '</div>' +
-                '<div class="convenio-document-grid">' + tarjetas + '</div>' +
-                '<div class="convenio-mail-note">' +
-                    '<i class="bi bi-info-circle"></i>' +
-                    '<span>El convenio se adjunta sin rellenar ni modificar su contenido para que el aliado capture sus datos.</span>' +
-                '</div>';
+            const documento = function (tipo, titulo, nombre, formatos) {
+                const carta = tipo === 'carta';
+                return '<section class="convenio-compose-document">' +
+                    '<strong><i class="bi ' + (carta ? 'bi-file-earmark-pdf' : 'bi-file-earmark-word') + '" aria-hidden="true"></i> ' + titulo + '</strong>' +
+                    '<label class="form-label" for="convenioOrigen_' + tipo + '">Documento a enviar</label>' +
+                    '<select class="form-select" name="' + tipo + '_origen" id="convenioOrigen_' + tipo + '" data-convenio-origen="' + tipo + '">' +
+                    '<option value="sistema">Usar documento del sistema</option><option value="propio">Subir archivo propio</option></select>' +
+                    '<small data-convenio-default="' + tipo + '">' + escapar(nombre) + '</small>' +
+                    '<div data-convenio-upload="' + tipo + '" hidden><label class="form-label" for="convenioArchivo_' + tipo + '">Seleccionar ' + formatos + '</label>' +
+                    '<input type="file" class="form-control" id="convenioArchivo_' + tipo + '" name="' + tipo + '_archivo" accept="' + (carta ? '.pdf,application/pdf' : '.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document') + '" disabled>' +
+                    '<small>Reemplaza sólo este documento. Se envía sin modificarlo.</small></div>' +
+                    (carta ? '<div data-convenio-carta-fecha><label class="form-label" for="convenioCartaFecha">Fecha de la carta</label><input class="form-control" id="convenioCartaFecha" type="date" name="carta_fecha" value="' + escaparAtributo(datos.carta_fecha || '') + '" required><small>Se actualiza antes de generar el PDF del sistema.</small></div>' : '') +
+                    '</section>';
+            };
+            return '<div class="convenio-compose-grid"><div class="convenio-compose-message">' +
+                '<div class="convenio-mail-summary"><div><span class="convenio-mail-summary-label">Para</span><strong>' + escapar(datos.para || '') + '</strong></div>' +
+                '<span class="convenio-mail-summary-badge"><i class="bi bi-paperclip"></i> 2 adjuntos</span></div>' +
+                '<label class="form-label" for="convenioCorreoAsunto">Asunto</label><input class="form-control" id="convenioCorreoAsunto" type="text" name="asunto" maxlength="255" value="' + escaparAtributo(datos.asunto || '') + '" required>' +
+                '<label class="form-label" for="convenioCorreoCuerpo">Mensaje</label><textarea class="form-control" id="convenioCorreoCuerpo" name="cuerpo" rows="6" maxlength="20000" required>' + escapar(datos.cuerpo || '') + '</textarea>' +
+                '</div><aside class="convenio-compose-files" aria-label="Documentos que se enviarán">' +
+                documento('carta','Carta propuesta','Carta_propuesta_colaboracion.pdf','PDF') +
+                documento('convenio','Convenio','Convenio_colaboracion.docx','PDF o DOCX') +
+                '<p class="convenio-compose-help">Hasta 8 MB por archivo propio. Los documentos elegidos quedan en el expediente; no cambian las plantillas del sistema.</p>' +
+                '</aside></div>';
         };
 
         const fechaLocalHoy = function () {
@@ -568,6 +543,7 @@
 
             accionActual = codigo;
             const modal = asegurarModal();
+            modal.classList.toggle('convenio-compose', codigo === 'ENVIAR_DOCUMENTACION_CONVENIO');
             const form = modal.querySelector('[data-post-envio-form]');
             const titulo = modal.querySelector('[data-post-envio-title]');
             const subtitulo = modal.querySelector('[data-post-envio-subtitle]');
@@ -581,7 +557,7 @@
 
             if (codigo === 'ENVIAR_DOCUMENTACION_CONVENIO') {
                 titulo.textContent = 'Enviar documentación de convenio';
-                subtitulo.textContent = 'Revisa la fecha, el mensaje y los dos archivos antes de enviarlos a la institución.';
+                subtitulo.textContent = 'Revisa el mensaje y elige los dos documentos que recibirá la institución.';
                 campos.innerHTML =
                     '<div class="convenio-loading">' +
                         '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' +

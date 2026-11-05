@@ -1,0 +1,4 @@
+
+# Keep release checksums identical on Windows, GitHub and Hostinger.
+tools/publicar_convenio_documentos_propios.py text eol=lf
+tools/convenio_documentos_propios_release.json text eol=lf

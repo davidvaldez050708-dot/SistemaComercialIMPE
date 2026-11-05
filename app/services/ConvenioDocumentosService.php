@@ -68,7 +68,7 @@ class ConvenioDocumentosService
             '',
             'En seguimiento a nuestra reunión, compartimos la documentación para continuar con el proceso de colaboración.',
             '',
-            'Adjuntamos la carta propuesta de colaboración en formato PDF y el convenio de colaboración en Word editable, para que puedan completar los datos correspondientes.',
+            'Adjuntamos la carta propuesta y el convenio de colaboración para su revisión y, en su caso, completar los datos correspondientes.',
             '',
             'Una vez requisitado el convenio, agradeceremos nos lo compartan para continuar con la formalización.',
             '',
@@ -112,7 +112,7 @@ class ConvenioDocumentosService
         ];
     }
 
-    public function enviar($seguimientoId, $usuarioId, $cartaFecha, $asunto, $cuerpo)
+    public function enviar($seguimientoId, $usuarioId, $cartaFecha, $asunto, $cuerpo, array $archivos = [], array $opciones = [])
     {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
@@ -141,7 +141,7 @@ class ConvenioDocumentosService
             );
         }
 
-        if (!$this->fechaValida($cartaFecha)) {
+        if (($opciones['carta'] ?? 'sistema') !== 'propio' && !$this->fechaValida($cartaFecha)) {
             return $this->error('Indica una fecha válida para la carta propuesta.', 422);
         }
         if ($asunto === '' || $cuerpo === '') {
@@ -157,13 +157,14 @@ class ConvenioDocumentosService
         $documentos = $this->prepararDocumentos(
             $seguimientoId,
             (string)($seguimiento['nombre_entidad'] ?? ''),
-            $cartaFecha
+            $cartaFecha, $archivos, $opciones
         );
 
         if (!($documentos['ok'] ?? false)) {
             return $documentos;
         }
 
+        if (!empty($documentos['carta_propia'])) $cartaFecha = null;
         $correo = new CorreoSalidaInstitucionalService();
         $resultadoEnvio = $correo->enviar([
             'remitente' => (string)($seguimiento['analista_correo'] ?? ''),
@@ -184,7 +185,7 @@ class ConvenioDocumentosService
                 [
                     'ruta' => $documentos['convenio_docx_absoluta'],
                     'nombre' => $documentos['convenio_docx_nombre'],
-                    'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    'mime' => $documentos['convenio_mime'] ?? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
                 ]
             ]
         ]);
@@ -198,8 +199,10 @@ class ConvenioDocumentosService
         $nota = "Documentación de convenio enviada\n" .
             'Para: ' . $destinatario . "\n" .
             'Carta propuesta: ' . $documentos['carta_pdf_nombre'] . "\n" .
-            'Convenio editable: ' . $documentos['convenio_docx_nombre'] . "\n" .
-            'Fecha de carta: ' . $cartaFecha . "\n" .
+            'Convenio: ' . $documentos['convenio_docx_nombre'] . "\n" .
+            'Fecha de carta: ' . ($cartaFecha ?? 'Documento propio, sin modificar') . "\n" .
+            'Documentos: carta ' . (!empty($documentos['carta_propia']) ? 'propia' : 'del sistema') .
+            '; convenio ' . (!empty($documentos['convenio_propio']) ? 'propio' : 'del sistema') . "\n" .
             'Asunto: ' . $asunto;
 
         $this->connection->begin_transaction();
@@ -279,7 +282,7 @@ class ConvenioDocumentosService
 
         return [
             'ok' => true,
-            'mensaje' => 'Carta propuesta y convenio editable enviados correctamente.',
+            'mensaje' => 'Carta propuesta y convenio enviados correctamente.',
             'documentos' => [
                 'carta' => $documentos['carta_pdf_nombre'],
                 'convenio' => $documentos['convenio_docx_nombre']
@@ -339,7 +342,7 @@ class ConvenioDocumentosService
             [
                 'archivo' => (string)($documentos['convenio_docx_relativa'] ?? ''),
                 'nombre' => (string)($documentos['convenio_docx_nombre'] ?? ''),
-                'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'mime' => $documentos['convenio_mime'] ?? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 'tamano' => @filesize((string)($documentos['convenio_docx_absoluta'] ?? '')) ?: 0
             ]
         ];
@@ -1501,109 +1504,61 @@ class ConvenioDocumentosService
         return $real;
     }
 
-    private function prepararDocumentos($seguimientoId, $institucion, $cartaFecha)
+    private function prepararDocumentos($seguimientoId, $institucion, $cartaFecha, array $archivos = [], array $opciones = [])
     {
-        if (!is_file($this->templateCarta)) {
-            return $this->error(
-                'No se encontró la plantilla institucional de la carta propuesta.',
-                500
-            );
+        $propios=[];
+        foreach (['carta','convenio'] as $tipo) {
+            $modo=$opciones[$tipo]??'sistema';
+            if (!in_array($modo,['sistema','propio'],true)) return $this->error('Selecciona el origen de cada documento.',422);
+            $file=$archivos[$tipo.'_archivo']??null;
+            $presente=is_array($file)&&($file['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE;
+            if ($modo==='sistema') {
+                if ($presente) return $this->error('Selecciona «Archivo propio» para enviar el documento que subiste.',422);
+                continue;
+            }
+            $validado=$this->validarArchivoRecibido($file);
+            if (!($validado['ok']??false)) return $validado;
+            if ($tipo==='carta'&&$validado['extension']!=='pdf') return $this->error('La carta propuesta propia debe estar en PDF.',422);
+            if (filesize($file['tmp_name'])>8*1024*1024) return $this->error('Cada documento propio debe pesar hasta 8 MB.',422);
+            if ($validado['extension']==='docx') {
+                $zip=new ZipArchive();$zip->open($file['tmp_name']);
+                $macro=$zip->locateName('word/vbaProject.bin',ZipArchive::FL_NOCASE)!==false;$zip->close();
+                if ($macro) return $this->error('Selecciona un convenio DOCX sin macros o un PDF.',422);
+            }
+            $propios[$tipo]=$validado+['tmp'=>$file['tmp_name']];
         }
-        if (!is_file($this->templateConvenio)) {
-            return $this->error(
-                'No se encontró la plantilla editable del convenio.',
-                500
-            );
-        }
-
-        $anio = date('Y');
-        $directorio = $this->storagePath . DIRECTORY_SEPARATOR . $anio .
-            DIRECTORY_SEPARATOR . 'seguimiento_' . (int)$seguimientoId;
-
-        if (
-            !is_dir($directorio) &&
-            !mkdir($directorio, 0775, true) &&
-            !is_dir($directorio)
-        ) {
-            return $this->error(
-                'No fue posible preparar la carpeta de documentos del convenio.',
-                500
-            );
-        }
-
-        $nombreCarta = 'Carta_propuesta_colaboracion.pdf';
-        $nombreConvenio = 'Convenio_colaboracion.docx';
-        $rutaCarta = $directorio . DIRECTORY_SEPARATOR . $nombreCarta;
-        $rutaConvenio = $directorio . DIRECTORY_SEPARATOR . $nombreConvenio;
-        $rutaCartaDocx = $directorio . DIRECTORY_SEPARATOR .
-            '.carta_' . bin2hex(random_bytes(5)) . '.docx';
-
-        if (!copy($this->templateCarta, $rutaCartaDocx)) {
-            return $this->error(
-                'No fue posible preparar la carta propuesta.',
-                500
-            );
-        }
-
+        if (!isset($propios['carta'])&&!is_file($this->templateCarta)) return $this->error('No se encontró la plantilla institucional de la carta propuesta.',500);
+        if (!isset($propios['convenio'])&&!is_file($this->templateConvenio)) return $this->error('No se encontró la plantilla editable del convenio.',500);
+        // Cada intento conserva su propia pareja de archivos; no pisa documentos anteriores.
+        $relativa='storage/convenios/'.date('Y').'/seguimiento_'.(int)$seguimientoId.'/envio_'.bin2hex(random_bytes(8)).'/';
+        $directorio=$this->rootPath.'/'.rtrim($relativa,'/');
+        if (!is_dir($directorio)&&!mkdir($directorio,0775,true)&&!is_dir($directorio)) return $this->error('No fue posible preparar la carpeta de documentos del convenio.',500);
+        $carta=$directorio.'/Carta_propuesta_colaboracion.pdf';
+        $ext=$propios['convenio']['extension']??'docx';$convenio=$directorio.'/Convenio_colaboracion.'.$ext;
+        $docx=$directorio.'/.carta.docx';$completo=false;
         try {
-            $fechaActualizada = $this->actualizarFechaCarta(
-                $rutaCartaDocx,
-                $cartaFecha
-            );
-
-            if (!($fechaActualizada['ok'] ?? false)) {
-                return $fechaActualizada;
+            if (isset($propios['carta'])) {
+                if (!move_uploaded_file($propios['carta']['tmp'],$carta)) return $this->error('No fue posible guardar la carta propia.',500);
+            } else {
+                if (!copy($this->templateCarta,$docx)) return $this->error('No fue posible preparar la carta propuesta.',500);
+                $fecha=$this->actualizarFechaCarta($docx,$cartaFecha);
+                if (!($fecha['ok']??false)) return $fecha;
+                $pdf=(new OficioDocxPdfService())->convertirArchivoAPdf($docx);
+                if (!($pdf['ok']??false)) return $this->error((string)($pdf['mensaje']??'No fue posible convertir la carta propuesta a PDF.'),500);
+                if (empty($pdf['contenido_pdf'])||file_put_contents($carta,$pdf['contenido_pdf'],LOCK_EX)===false) return $this->error('No fue posible guardar la carta propuesta en PDF.',500);
             }
-
-            $conversor = new OficioDocxPdfService();
-            $resultadoPdf = $conversor->convertirArchivoAPdf($rutaCartaDocx);
-
-            if (!($resultadoPdf['ok'] ?? false)) {
-                $detalle = trim((string)($resultadoPdf['mensaje_tecnico'] ?? ''));
-                if ($detalle !== '') {
-                    error_log('Carta propuesta DOCX/PDF: ' . $detalle);
-                }
-
-                return $this->error(
-                    (string)($resultadoPdf['mensaje'] ??
-                        'No fue posible convertir la carta propuesta a PDF.'),
-                    500
-                );
-            }
-
-            $contenidoPdf = (string)($resultadoPdf['contenido_pdf'] ?? '');
-            if (
-                $contenidoPdf === '' ||
-                file_put_contents($rutaCarta, $contenidoPdf, LOCK_EX) === false
-            ) {
-                return $this->error(
-                    'No fue posible guardar la carta propuesta en PDF.',
-                    500
-                );
-            }
-
-            if (!copy($this->templateConvenio, $rutaConvenio)) {
-                @unlink($rutaCarta);
-                return $this->error(
-                    'No fue posible preparar el convenio editable.',
-                    500
-                );
-            }
-
-            $relativaBase = 'storage/convenios/' . $anio .
-                '/seguimiento_' . (int)$seguimientoId . '/';
-
-            return [
-                'ok' => true,
-                'carta_pdf_absoluta' => $rutaCarta,
-                'carta_pdf_relativa' => $relativaBase . $nombreCarta,
-                'carta_pdf_nombre' => $nombreCarta,
-                'convenio_docx_absoluta' => $rutaConvenio,
-                'convenio_docx_relativa' => $relativaBase . $nombreConvenio,
-                'convenio_docx_nombre' => $nombreConvenio
-            ];
+            $ok=isset($propios['convenio'])?move_uploaded_file($propios['convenio']['tmp'],$convenio):copy($this->templateConvenio,$convenio);
+            if (!$ok) return $this->error('No fue posible preparar el convenio.',500);
+            $completo=true;
+            return ['ok'=>true,'carta_pdf_absoluta'=>$carta,'carta_pdf_relativa'=>$relativa.basename($carta),
+                'carta_pdf_nombre'=>$propios['carta']['nombre_original']??'Carta_propuesta_colaboracion.pdf',
+                'convenio_docx_absoluta'=>$convenio,'convenio_docx_relativa'=>$relativa.basename($convenio),
+                'convenio_docx_nombre'=>$propios['convenio']['nombre_original']??'Convenio_colaboracion.docx',
+                'convenio_mime'=>$ext==='pdf'?'application/pdf':'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'carta_propia'=>isset($propios['carta']),'convenio_propio'=>isset($propios['convenio'])];
         } finally {
-            @unlink($rutaCartaDocx);
+            @unlink($docx);
+            if (!$completo) { @unlink($carta);@unlink($convenio);@rmdir($directorio); }
         }
     }
 

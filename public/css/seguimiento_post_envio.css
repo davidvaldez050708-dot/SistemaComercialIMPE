@@ -899,3 +899,24 @@
         gap: 4px;
     }
 }
+/* Envío de convenio: composición compacta, sin desplazar el modal en escritorio. */
+#modalSeguimientoPostEnvio.convenio-compose .modal-dialog{max-width:1120px}
+#modalSeguimientoPostEnvio.convenio-compose .convenio-compose-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,1fr);gap:22px}
+#modalSeguimientoPostEnvio.convenio-compose .convenio-compose-message,#modalSeguimientoPostEnvio.convenio-compose .convenio-compose-files{min-width:0}
+#modalSeguimientoPostEnvio.convenio-compose .convenio-mail-summary{padding:12px;margin:0 0 14px;gap:12px}
+#modalSeguimientoPostEnvio.convenio-compose .convenio-mail-summary strong{font-size:13px;overflow-wrap:anywhere}
+#modalSeguimientoPostEnvio.convenio-compose .form-label{display:block;margin:12px 0 6px;font-size:12px;font-weight:700}
+#modalSeguimientoPostEnvio.convenio-compose .form-control,#modalSeguimientoPostEnvio.convenio-compose .form-select{min-height:40px;font-family:'Manrope',sans-serif;font-size:13px}
+#modalSeguimientoPostEnvio.convenio-compose textarea.form-control{height:276px;min-height:140px;max-height:310px;resize:vertical}
+#modalSeguimientoPostEnvio.convenio-compose .convenio-compose-document{padding:14px;border:1px solid #dce5f2;border-radius:12px;background:#f8fafd;margin-bottom:12px}
+#modalSeguimientoPostEnvio.convenio-compose .convenio-compose-document>strong{display:flex;align-items:center;gap:9px;color:#243d64;font-size:13px}
+#modalSeguimientoPostEnvio.convenio-compose .convenio-compose-document>strong i{color:#3047ad;font-size:20px}
+#modalSeguimientoPostEnvio.convenio-compose .convenio-compose-document small{display:block;font-size:11px;color:#71829d;margin-top:7px;overflow-wrap:anywhere;line-height:1.5}
+#modalSeguimientoPostEnvio.convenio-compose .convenio-compose-help{color:#71829d;font-size:11px;line-height:1.5;margin:0}
+#modalSeguimientoPostEnvio.convenio-compose [hidden]{display:none!important}
+@media(max-width:991px){#modalSeguimientoPostEnvio.convenio-compose .convenio-compose-grid{grid-template-columns:1fr;gap:16px}#modalSeguimientoPostEnvio.convenio-compose textarea.form-control{height:160px}#modalSeguimientoPostEnvio.convenio-compose .modal-content{max-height:calc(100vh - 24px)}#modalSeguimientoPostEnvio.convenio-compose .modal-body{overflow-y:auto;min-height:0}#modalSeguimientoPostEnvio.convenio-compose .modal-header,#modalSeguimientoPostEnvio.convenio-compose .modal-footer{flex-shrink:0}}
+#modalSeguimientoPostEnvio.convenio-compose .modal-content{max-height:calc(100vh - 32px)}
+#modalSeguimientoPostEnvio.convenio-compose [data-post-envio-form]{display:flex;flex-direction:column;min-height:0;max-height:inherit}
+#modalSeguimientoPostEnvio.convenio-compose .modal-body{overflow-y:auto;min-height:0}
+#modalSeguimientoPostEnvio.convenio-compose .modal-header,#modalSeguimientoPostEnvio.convenio-compose .modal-footer{flex-shrink:0}
+@media(min-width:992px) and (min-height:800px){#modalSeguimientoPostEnvio.convenio-compose .modal-content,#modalSeguimientoPostEnvio.convenio-compose .modal-body{max-height:none!important;overflow:visible!important}}
