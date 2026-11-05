@@ -46,6 +46,30 @@ DEPS = {
     "app/services/TelefoniaVentasEvidenciaService.php":
         "01b6e68744e90a1d2770823eb0c9f7deb683f5272ff4193d3c9eb85b27b253b4",
 }
+
+# Fusion selectiva del único método comercial. Rechazar controladores con
+# detalleVenta personalizado, distinto al método conocido, sin escribir nada.
+CONTROLLER_REL = "app/controllers/TelefoniaController.php"
+CONTROLLER_OLD_METHOD = "    public function detalleVenta()\n    {\n        $this->validarAtencionVentaJson(false);\n        require_once __DIR__.'/../services/TelefoniaVentasLlamadasService.php';\n        try {\n            $svc=new TelefoniaVentasLlamadasService();$uid=(int)$_SESSION['usuario_id'];\n            $svc->sincronizar($uid);\n            $this->responderJson(['ok'=>true,'llamada'=>$svc->obtener($uid,\n                (string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''))]);\n        }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}\n        catch(Throwable $e){error_log('[detalle_venta] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo consultar tu llamada.'],500);}\n    }\n\n"
+CONTROLLER_NEW_METHOD = "    public function detalleVenta()\n    {\n        $this->validarAtencionVentaJson(false);\n        require_once __DIR__.'/../services/TelefoniaVentasLlamadasService.php';\n        try {\n            $svc=new TelefoniaVentasLlamadasService();$uid=(int)$_SESSION['usuario_id'];\n            $svc->sincronizar($uid);\n            $extension=trim((string)($_GET['extension']??''));\n            // El observador del teléfono pide sus pendientes sin asumir que\n            // la última referencia del mismo número pertenece a la sesión.\n            if((string)($_GET['pendientes']??'')==='1'){\n                $bandeja=$svc->bandeja($uid,['estado'=>'pendientes',\n                    'desde'=>date('Y-m-d',strtotime('-7 days')),'hasta'=>date('Y-m-d')]);\n                $filas=array_values(array_filter($bandeja['filas'],static function($c)use($extension){\n                    return !empty($c['pbx_call_id'])&&\n                        ($extension===''||(string)$c['extension']===$extension);\n                }));\n                $this->responderJson(['ok'=>true,'pendientes'=>$svc->conVinculosSdk($uid,$filas)]);\n            }\n            $sdk=trim((string)($_GET['sdk']??''));\n            if($sdk!==''){\n                $call=$svc->obtenerPorSdk($uid,$sdk);\n                if($call!==null&&(\n                    ($extension!==''&&(string)$call['extension']!==$extension)||\n                    ((int)($_GET['solicitud_id']??0)>0 &&\n                     (int)($call['solicitud_id']??0)!==(int)$_GET['solicitud_id'])\n                ))throw new DomainException('La sesión no coincide con la llamada del asesor.');\n                $this->responderJson(['ok'=>true,'llamada'=>$call]);\n            }\n            $this->responderJson(['ok'=>true,'llamada'=>$svc->obtener($uid,\n                (string)($_GET['pbx_call_id']??''),$extension)]);\n        }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}\n        catch(Throwable $e){error_log('[detalle_venta] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo consultar tu llamada.'],500);}\n    }\n\n"
+
+def reconcile_controller(live):
+    crlf = b"\r\n" in live
+    old = CONTROLLER_OLD_METHOD.encode("utf-8")
+    new = CONTROLLER_NEW_METHOD.encode("utf-8")
+    if crlf:
+        old = old.replace(b"\n", b"\r\n")
+        new = new.replace(b"\n", b"\r\n")
+    if live.count(new)==1 and live.count(old)==0:
+        return live, "YA CONCILIADO (PERSONALIZADO)"
+    if live.count(old)!=1 or live.count(b"public function detalleVenta")!=1:
+        raise RuntimeError(
+            "CONFLICTO CONTROLADOR (sin cambios): detalleVenta personalizado. "
+            "No se reemplaza el controlador completo.")
+    revised=live.replace(old,new,1)
+    if revised==live:
+        raise RuntimeError("CONFLICTO CONTROLADOR: sustitución no realizada.")
+    return revised, "CONCILIADO (SOLO detalleVenta)"
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -117,17 +141,23 @@ def check(site):
     for rel,(before,afterblob) in FILES.items():
         path=target(site,rel)
         data=fetch(rel,afterblob)
-        syntax(rel,data)
         old=path.read_bytes() if path.exists() else None
         if old is None and before is not None:
             raise RuntimeError("ARCHIVO AUSENTE (sin cambios): "+rel)
         if old is not None and before is None and old!=data:
             raise RuntimeError("ARCHIVO NUEVO YA PERSONALIZADO (sin cambios): "+rel)
-        if old is not None and old!=data and not (
+        permitted=(old is None or old==data or (
             (before or '').startswith('blob:') and blob(old)==before[5:] or
-            (before or '').startswith('sha256:') and digest(old)==before[7:]):
-            raise RuntimeError("VERSIÓN DIFERENTE (sin cambios): "+rel)
+            (before or '').startswith('sha256:') and digest(old)==before[7:]))
         status="YA INSTALADO" if old==data else "NUEVO" if old is None else "COMPATIBLE"
+        if not permitted and rel==CONTROLLER_REL:
+            data,status=reconcile_controller(old)
+            permitted=True
+        if not permitted:
+            raise RuntimeError("VERSIÓN DIFERENTE (sin cambios): "+rel)
+        # El candidato final, incluida la fusión sobre personalizaciones,
+        # debe pasar PHP -l antes de planificar cualquier escritura.
+        syntax(rel,data)
         print(status+":",rel)
         plan.append((rel,old,data))
     print("PREPUBLICACIÓN COMPATIBLE:",sum(x[1]!=x[2] for x in plan),"archivos. Sin SQL.")
