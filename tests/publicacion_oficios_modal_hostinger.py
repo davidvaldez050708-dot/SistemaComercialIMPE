@@ -63,4 +63,51 @@ with tempfile.TemporaryDirectory(prefix='impe-oficios-seguro-') as td:
     f.write_bytes(after[f.relative_to(site).as_posix()])
     assert 'RESTAURADO' in run('--restore',str(folders[0]))
     assert snapshot()==initial,'El rollback debe preservar íntegramente las personalizaciones'
+
+    # Simula el método de Hostinger descrito en el diagnóstico del sitio.
+    # La prueba autoriza el hash de la variante de laboratorio; en producción
+    # el publicador sólo acepta el SHA256 exacto verificado en Hostinger.
+    import importlib.util
+    spec_pub=importlib.util.spec_from_file_location('oficios_publicador',str(PUB))
+    pub=importlib.util.module_from_spec(spec_pub)
+    spec_pub.loader.exec_module(pub)
+    assert pub.HOSTINGER_DOCX_SHA256=='ff3720e6905ad92ddd4515f6e8a793d68a4cfb9a29476ba2862abd75c2241440'
+    path_converter=site/'app/services/OficioDocxPdfService.php'
+    source=path_converter.read_bytes()
+    old_signature=b'public function generarDocx(array $vista)'
+    assert source.count(old_signature)==1
+    synthetic=source.replace(old_signature,
+        b'public function generarDocx(array $vista, $prepararPlantilla = false)',1)
+    old_fill=b'            $rellenado = $this->rellenarConTemplateProcessor($rutaDocx, $vista);'
+    assert synthetic.count(old_fill)==1
+    new_fill=r"""
+            // Como en Hostinger: omitir relleno de generaciones guardadas.
+            $procesada = !$prepararPlantilla && preg_match(
+                '~^storage/templates/oficios_personalizados/generacion_\d{8}_\d{6}_[a-f0-9]{12}\.docx$~D',
+                str_replace('\\', '/', (string)($vista['archivo_plantilla'] ?? ''))
+            ) === 1;
+            $rellenado = $procesada ? ['ok' => true] : (
+                trim((string)($vista['archivo_plantilla'] ?? '')) !== ''
+                    ? $this->rellenarConTemplateProcessor($rutaDocx, $vista)
+                    : $this->rellenarDocx($rutaDocx, $this->construirReemplazos($vista))
+            );""".encode('utf-8')
+    synthetic=synthetic.replace(old_fill,new_fill,1)
+    pub.HOSTINGER_DOCX_SHA256=pub.sha(synthetic)
+    assert pub.is_existing_hostinger_docx(synthetic)
+    assert not pub.is_existing_hostinger_docx(source)
+    path_converter.write_bytes(synthetic)
+    variant_snapshot=snapshot()
+    rows=pub.verify(site,spec)
+    entry=next(x for x in rows if x['name']=='app/services/OficioDocxPdfService.php')
+    assert entry['before']==entry['after']==synthetic,'No reescribir el convertidor que ya cumple'
+    private_variant=base/'respaldos-convertidor-personalizado'
+    pub.publish(site,private_variant,spec)
+    assert path_converter.read_bytes()==synthetic,'El convertidor personalizado no debe cambiar tras publicar'
+    published=snapshot()
+    assert published['app/controllers/OficioVinculacionController.php']!=variant_snapshot['app/controllers/OficioVinculacionController.php']
+    assert len([x for x in private_variant.iterdir() if x.is_dir()])==1
+    folder_variant=next(x for x in private_variant.iterdir() if x.is_dir())
+    pub.restore(site,private_variant,str(folder_variant))
+    assert snapshot()==variant_snapshot,'Rollback debe dejar intacto el convertidor personalizado'
+
 print('PASS publicador oficios: 5 archivos, --check sin escritura, compatibilidad, idempotencia, conflicto y rollback')
