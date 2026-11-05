@@ -73,7 +73,7 @@ with tempfile.TemporaryDirectory(prefix='impe-inscripcion-paso1-') as tmp:
     (site/b).write_bytes(olds[b] + b'\n/* estilo local no relacionado */\n')
     assert 'CHECK OK' in run('--check')
     assert 'APLICADO' in run('--apply')
-    assert b'personalizaci\xc3\xb3n local' in (site/a).read_bytes()
+    assert b'personalizacion local' in (site/a).read_bytes()
     assert b'estilo local no relacionado' in (site/b).read_bytes()
     assert 'YA INSTALADO' in run('--apply')
     latest=[x for x in backup.iterdir() if x.is_dir() and x != folders[0]]
