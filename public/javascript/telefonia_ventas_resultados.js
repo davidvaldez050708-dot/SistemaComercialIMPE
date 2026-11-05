@@ -190,9 +190,19 @@
     submit.hidden=true;feedback.textContent='Resultado guardado anteriormente.';
     if(openContext.automatic){closeReason='saved';tellParent({type:'IMPE_SALES_RESULT_SAVED',ref,extension:ownExt});bootstrap.Modal.getInstance(modal)?.hide();shell()?.endCallResult(token);return;}
    }else{
-    const capturable=Boolean(call.finalizada||(call.conectada&&call.solicitud_id&&call.direccion==='Entrante'&&call.origen_extension&&String(call.origen_extension)!==String(call.extension)));
-    waiting=!capturable;submit.disabled=!capturable;submit.innerHTML=capturable?saveLabel:'Confirmando cierre…';
-    feedback.textContent=[capturable?'':'Puedes completar los datos. Estamos esperando la confirmación de cierre de esta misma llamada.',captureNotice].filter(Boolean).join(' ');
+    // Una saliente contestada sin OUT_END sólo habilita la VERIFICACIÓN.
+    // El servidor exige confirmación final exacta mediante estadísticas PBX.
+    const verificarApi=Boolean(!call.finalizada&&call.conectada&&call.direccion==='Saliente'&&
+      /^out_[A-Za-z0-9_-]{6,100}$/.test(String(call.pbx_call_id||'')));
+    const capturable=Boolean(call.finalizada||verificarApi||
+      (call.conectada&&call.solicitud_id&&call.direccion==='Entrante'&&call.origen_extension&&String(call.origen_extension)!==String(call.extension)));
+    waiting=!capturable;submit.disabled=!capturable;
+    submit.innerHTML=verificarApi?'Verificar cierre y guardar':capturable?saveLabel:'Confirmando cierre…';
+    feedback.textContent=[
+      verificarApi?'Falta confirmar el cierre. Al guardar, el servidor consultará Zadarma para esta misma llamada. Si no se confirma, la captura se conserva sin guardarse.':
+      capturable?'':'Puedes completar los datos. Estamos esperando la confirmación de cierre de esta misma llamada.',
+      captureNotice
+    ].filter(Boolean).join(' ');
     storeDraft();if(!capturable)schedule(ref,ownExt,attempt,version);
    }
    resultRules();modal.dispatchEvent(new CustomEvent('impe:sales-result-loaded',{detail:{ref,extension:ownExt,saved:Boolean(call.registro)}}));

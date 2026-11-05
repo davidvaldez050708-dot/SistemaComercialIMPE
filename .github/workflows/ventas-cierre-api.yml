@@ -1,0 +1,37 @@
+name: Ventas - cierre verificado por API Zadarma
+on:
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaResultadoVentasService.php'
+      - 'app/services/TelefoniaVentasCierreApiVerificado.php'
+      - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'tools/publicar_ventas_cierre_api_verificado.py'
+      - 'tests/*ventas_cierre_api*'
+      - '.github/workflows/ventas-cierre-api.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cierre-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxis de cambios y contratos de verificación
+        run: |
+          php -l app/services/TelefoniaVentasCierreApiVerificado.php
+          php -l app/services/TelefoniaResultadoVentasService.php
+          node --check public/javascript/telefonia_ventas_resultados.js
+          php tests/telefonia_ventas_cierre_api_unit.php
+      - name: Publicación selectiva reversible sin datos reales
+        run: |
+          python3 -m py_compile tools/publicar_ventas_cierre_api_verificado.py
+          python3 tests/publicacion_ventas_cierre_api_test.py
