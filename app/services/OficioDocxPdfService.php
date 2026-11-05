@@ -51,14 +51,13 @@ class OficioDocxPdfService
             }
             return ['ok' => true, 'contenido_pdf' => $pdf, 'conversor' => 'PDF_ORIGINAL'];
         }
-        // Un DOCX terminado no necesita marcadores ni plantilla REDMEX.
+        // El Word terminado se conserva, pero Hostinger no dispone de LibreOffice.
+        // Nunca intentar convertirlo con REDMEX ni simular un PDF.
         if (strpos(trim((string)($vista['plantilla'] ?? '')), 'Oficio adjuntado: ') === 0) {
-            $word = str_replace('\\', '/', trim((string)($vista['archivo_plantilla'] ?? '')));
-            if (!preg_match('~^storage/templates/oficios_personalizados/generacion_[0-9]{8}_[0-9]{6}_[a-f0-9]{12}\.docx$~D', $word)) {
-                return $this->error('No se encontró el oficio Word terminado.', 'WORD_FINAL_SOURCE');
-            }
-            require_once __DIR__ . '/OficioDocumentoFinalPdfService.php';
-            return (new OficioDocumentoFinalPdfService())->convertir($this->resolverRutaPlantilla($vista));
+            return $this->error(
+                'El oficio Word está guardado sin modificaciones. Para obtener la vista previa PDF, adjunta el archivo PDF exportado desde Word al mismo oficio.',
+                'WORD_FINAL_PENDING_PDF'
+            );
         }
         $rutaPlantilla = $this->resolverRutaPlantilla($vista);
         $personalizada = trim((string)($vista['archivo_plantilla'] ?? '')) !== '';
