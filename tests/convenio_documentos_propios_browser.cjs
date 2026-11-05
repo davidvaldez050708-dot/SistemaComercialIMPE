@@ -16,11 +16,12 @@ const fs=require('fs'),path=require('path'),assert=require('assert/strict'),{chr
    return route.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.css')?'text/css':'application/javascript'});
   });
   await page.goto('http://convenio.test/');await page.getByText('Expediente',{exact:true}).click();await page.getByText('Preparar documentos',{exact:true}).click();
-  const modal=page.locator('#modalSeguimientoPostEnvio');await modal.locator('[name=carta_origen]').waitFor();
+  const modal=page.locator('#modalSeguimientoPostEnvio');await modal.locator('[name=carta_origen]').waitFor();await page.waitForFunction(()=>{const m=document.querySelector('#modalSeguimientoPostEnvio'),d=m?.querySelector('.modal-dialog');return m&&getComputedStyle(m).opacity==='1'&&d&&getComputedStyle(d).transform==='none';});
   assert.equal(await modal.locator('[name=carta_archivo]').isDisabled(),true);assert.equal(await modal.locator('[name=carta_fecha]').isVisible(),true);
   await modal.locator('[name=carta_origen]').selectOption('propio');assert.equal(await modal.locator('[name=carta_fecha]').isDisabled(),true);assert.equal(await modal.locator('[name=carta_fecha]').isVisible(),false);
   await modal.locator('[name=carta_archivo]').setInputFiles({name:'Mi carta.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 test')});
   await modal.locator('[name=convenio_origen]').selectOption('propio');await modal.locator('[name=convenio_archivo]').setInputFiles({name:'Convenio actualizado.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 test')});
+  const header=await modal.locator('.modal-header').boundingBox();assert.ok(header.y>=0,'Encabezado accesible');
   const footer=await modal.locator('.modal-footer').boundingBox();assert.ok(footer.y>=0&&footer.y+footer.height<=height+1,'Botones accesibles');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   if(width===1366)assert.ok(await modal.locator('.modal-body').evaluate(e=>e.scrollHeight<=e.clientHeight+1),'Sin scroll interno en escritorio');
