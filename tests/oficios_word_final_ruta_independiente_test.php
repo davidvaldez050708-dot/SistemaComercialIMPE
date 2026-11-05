@@ -34,8 +34,8 @@ try {
         'folio'=>'PRUEBA/0001'
     ]);
     checkFinalWord(empty($result['ok']), 'motor faltante no genera PDF falso');
-    checkFinalWord(($result['mensaje_tecnico'] ?? '') === 'WORD_FINAL_ENGINE_MISSING',
-        'Word terminado se separa de las validaciones REDMEX');
+    checkFinalWord(($result['mensaje_tecnico'] ?? '') === 'WORD_FINAL_PENDING_PDF',
+        'Word guardado sin convertir y sin aplicar REDMEX');
     checkFinalWord(hash_file('sha256',$file) === $before, 'Word original intacto');
     echo "PASS Word terminado: sin REDMEX, original intacto y motor requerido\n";
 } finally {
