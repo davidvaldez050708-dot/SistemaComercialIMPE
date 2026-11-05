@@ -121,7 +121,8 @@ def check(site):
         if old is not None and before is None and old!=data:
             raise RuntimeError("ARCHIVO NUEVO YA PERSONALIZADO (sin cambios): "+rel)
         if old is not None and old!=data and not (
-            (before or '').startswith('blob:') and blob(old)==before[5:] or\n            (before or '').startswith('sha256:') and digest(old)==before[7:]):
+            (before or '').startswith('blob:') and blob(old)==before[5:] or
+            (before or '').startswith('sha256:') and digest(old)==before[7:]):
             raise RuntimeError("VERSIÓN DIFERENTE (sin cambios): "+rel)
         status="YA INSTALADO" if old==data else "NUEVO" if old is None else "COMPATIBLE"
         print(status+":",rel)
