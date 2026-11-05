@@ -1,12 +1,12 @@
 {
   "schema": "impe.vinculacion.oficios.modal.documento-final.v1",
   "base": "a90b6aded4a7f606eccc7a27749658e3fed9b9ed",
-  "head": "6e1dcd36bb6f21d9f7744b470ad0d105431ac3ac",
+  "head": "1e215a646a2e36d02dad9455df5dfd15f25e05d6",
   "files": [
     {
       "path": "app/controllers/OficioVinculacionController.php",
       "beforeBlob": "57f1d1656e15896999f3ab730ee11cc260c3a203",
-      "afterBlob": "2275eb0a302e15fdfdc40b427e520b563798d4d8",
+      "afterBlob": "b79170a9103a7970cc30ff5aeeed59c522bb88c0",
       "changes": [
         {
           "before": "        $tipoPlantilla = (string)($_POST['tipo_plantilla'] ?? 'predeterminada');\n        $plantillaId = 0;\n        $plantillaCargada = null;\n\n        if ($tipoPlantilla === 'personalizada') {\n            OficioDocxPdfService::registrarTrazaTemporal('CUSTOM_TEMPLATE_SELECTED', ['seguimiento_id' => $seguimientoId]);\n            $plantillaGuardadaId = (int)($_POST['plantilla_id'] ?? 0);\n            $plantillaCargada = $plantillaGuardadaId > 0",
@@ -15,6 +15,10 @@
         {
           "before": "            $this->responderJson($resultado, $codigoHttp);\n        }\n\n        if ($plantillaCargada) {\n            $vista = (new OficioPreviewService())->obtenerVistaPrevia(\n                $seguimientoId,\n                $usuarioId,",
           "after": "            $this->responderJson($resultado, $codigoHttp);\n        }\n\n        if ($plantillaCargada && !empty($resultado['existente'])) {\n            // El oficio ya está registrado. Evitar dejar un documento\n            // adjunto huérfano o generar un segundo oficio silenciosamente.\n            $modelo->eliminarPlantillaOficioDocx($plantillaId);\n            @unlink((string)$plantillaCargada['ruta_absoluta']);\n        }\n\n        if ($plantillaCargada && $tipoPlantilla === 'personalizada' && empty($resultado['existente'])) {\n            $vista = (new OficioPreviewService())->obtenerVistaPrevia(\n                $seguimientoId,\n                $usuarioId,"
+        },
+        {
+          "before": "                $this->responderJson($vista, (int)($vista['codigo_http'] ?? 500));\n            }\n\n            $documento = (new OficioDocxPdfService())->generarDocx(\n                (array)($vista['vista_previa'] ?? [])\n            );\n            if (!($documento['ok'] ?? false)) {\n                $this->responderJson([",
+          "after": "                $this->responderJson($vista, (int)($vista['codigo_http'] ?? 500));\n            }\n\n            // TRUE sólo al preparar por primera vez la plantilla personalizada.\n            // Es el significado original del segundo argumento en Hostinger.\n            $documento = (new OficioDocxPdfService())->generarDocx(\n                (array)($vista['vista_previa'] ?? []),\n                true\n            );\n            if (!($documento['ok'] ?? false)) {\n                $this->responderJson(["
         },
         {
           "before": "        ], $usuarioId, $modelo, null, true);\n    }\n\n    private function guardarPlantillaParaGeneracion($archivo, $usuarioId, OficioVinculacionModel $modelo, $nombreBiblioteca = null, $copiar = false)\n    {\n        if (!$archivo || (int)($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {\n            return ['ok' => false, 'mensaje' => 'Selecciona una plantilla de oficio.', 'codigo_http' => 422];\n        }\n\n        $rutaTemporal = (string)($archivo['tmp_name'] ?? '');",
@@ -29,8 +33,8 @@
           "after": "\n        $nombreVisible = preg_replace('/[^\\pL\\pN ._()-]+/u', '', pathinfo($nombreOriginal, PATHINFO_FILENAME));\n        $rutaRelativa = $directorioRelativo . '/' . $nombreArchivo;\n        $nombreRegistro = $documentoFinal\n            ? 'Oficio adjuntado: ' . ($nombreVisible ?: 'Documento final')\n            : ($nombreBiblioteca ?? ($nombreVisible ?: 'Plantilla personalizada'));\n        $id = $modelo->registrarPlantillaOficioDocx($nombreRegistro, $rutaRelativa, $usuarioId);\n        if ($id <= 0) {\n            @unlink($rutaFinal);\n            return ['ok' => false, 'mensaje' => 'No fue posible preparar la plantilla seleccionada.', 'codigo_http' => 500];"
         },
         {
-          "before": "            $this->responderTextoPdf((string)($vista['mensaje'] ?? 'No fue posible preparar el oficio.'), (int)($vista['codigo_http'] ?? 500));\n        }\n\n        $resultado = (new OficioDocxPdfService())->generarDocx((array)$vista['vista_previa']);\n        if (!($resultado['ok'] ?? false)) {\n            $this->responderTextoPdf((string)($resultado['mensaje'] ?? 'No fue posible generar el DOCX.'), 422);\n        }",
-          "after": "            $this->responderTextoPdf((string)($vista['mensaje'] ?? 'No fue posible preparar el oficio.'), (int)($vista['codigo_http'] ?? 500));\n        }\n\n        $resultado = (new OficioDocxPdfService())->generarDocx((array)$vista['vista_previa'], true);\n        if (!($resultado['ok'] ?? false)) {\n            $this->responderTextoPdf((string)($resultado['mensaje'] ?? 'No fue posible generar el DOCX.'), 422);\n        }"
+          "before": "            $this->responderTextoPdf((string)($vista['mensaje'] ?? 'No fue posible preparar el oficio.'), (int)($vista['codigo_http'] ?? 500));\n        }\n\n        $resultado = (new OficioDocxPdfService())->generarDocx((array)$vista['vista_previa']);\n        if (!($resultado['ok'] ?? false)) {\n            $this->responderTextoPdf((string)($resultado['mensaje'] ?? 'No fue posible generar el DOCX.'), 422);",
+          "after": "            $this->responderTextoPdf((string)($vista['mensaje'] ?? 'No fue posible preparar el oficio.'), (int)($vista['codigo_http'] ?? 500));\n        }\n\n        // FALSE por omisión: no rellenar una generación ya guardada.\n        $resultado = (new OficioDocxPdfService())->generarDocx((array)$vista['vista_previa']);\n        if (!($resultado['ok'] ?? false)) {\n            $this->responderTextoPdf((string)($resultado['mensaje'] ?? 'No fue posible generar el DOCX.'), 422);"
         }
       ]
     },
@@ -48,11 +52,11 @@
     {
       "path": "app/services/OficioDocxPdfService.php",
       "beforeBlob": "41bb66b60b777c710bbe83417d9ddaeb035c7248",
-      "afterBlob": "3b823cd511c60ca9fd8613c8496b35d2870fb5aa",
+      "afterBlob": "5035c88d26de744986baf91cc3df8d667cf63b24",
       "changes": [
         {
           "before": "        return $reemplazos + $personalizados;\n    }\n\n    public function generarDocx(array $vista)\n    {\n        $rutaPlantilla = $this->resolverRutaPlantilla($vista);\n        if (!is_file($rutaPlantilla) || (!class_exists('ZipArchive') && !class_exists('PharData'))) {\n            return $this->error('No fue posible abrir la plantilla DOCX seleccionada.', 'Plantilla o soporte ZIP no disponible.');\n        }",
-          "after": "        return $reemplazos + $personalizados;\n    }\n\n    public function generarDocx(array $vista, $conservarDocumentoGenerado = false)\n    {\n        $rutaPlantilla = $this->resolverRutaPlantilla($vista);\n        $rutaRelativa = str_replace('\\\\', '/', (string)($vista['archivo_plantilla'] ?? ''));\n        // Una generación guardada (personalizada procesada o documento\n        // terminado) se descarga exactamente como fue almacenada.\n        // La generación inicial de plantillas sigue usando el rellenado.\n        if ($conservarDocumentoGenerado && preg_match(\n            '~^storage/templates/oficios_personalizados/generacion_\\\\d{8}_\\\\d{6}_[a-f0-9]{12}\\\\.docx$~D',\n            $rutaRelativa\n        ) === 1 && is_file($rutaPlantilla)) {\n            $contenido = file_get_contents($rutaPlantilla);\n            return $contenido !== false && $contenido !== ''\n                ? ['ok' => true, 'contenido_docx' => $contenido]\n                : $this->error('No fue posible leer el DOCX adjuntado.', 'Archivo vacío o ilegible.');\n        }\n        if (!is_file($rutaPlantilla) || (!class_exists('ZipArchive') && !class_exists('PharData'))) {\n            return $this->error('No fue posible abrir la plantilla DOCX seleccionada.', 'Plantilla o soporte ZIP no disponible.');\n        }"
+          "after": "        return $reemplazos + $personalizados;\n    }\n\n    public function generarDocx(array $vista, $prepararPlantilla = false)\n    {\n        $rutaPlantilla = $this->resolverRutaPlantilla($vista);\n        $rutaRelativa = str_replace('\\\\', '/', (string)($vista['archivo_plantilla'] ?? ''));\n        // FALSE: descargar una generación almacenada, sin rellenarla.\n        // TRUE: preparar por primera vez una plantilla personalizada.\n        // Mantener compatibilidad semántica con Hostinger.\n        if (!$prepararPlantilla && preg_match(\n            '~^storage/templates/oficios_personalizados/generacion_\\\\d{8}_\\\\d{6}_[a-f0-9]{12}\\\\.docx$~D',\n            $rutaRelativa\n        ) === 1 && is_file($rutaPlantilla)) {\n            $contenido = file_get_contents($rutaPlantilla);\n            return $contenido !== false && $contenido !== ''\n                ? ['ok' => true, 'contenido_docx' => $contenido]\n                : $this->error('No fue posible leer el DOCX adjuntado.', 'Archivo vacío o ilegible.');\n        }\n        if (!is_file($rutaPlantilla) || (!class_exists('ZipArchive') && !class_exists('PharData'))) {\n            return $this->error('No fue posible abrir la plantilla DOCX seleccionada.', 'Plantilla o soporte ZIP no disponible.');\n        }"
         }
       ]
     },
