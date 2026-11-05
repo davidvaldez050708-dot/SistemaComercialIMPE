@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../services/VerificacionInstitucionalService.php';
 require_once __DIR__ . '/../services/TelefoniaVerificacionEvidenciaService.php';
+require_once __DIR__ . '/../services/InteraccionProximaAccion.php';
 
 class SeguimientoVinculacionModel
 {
@@ -1996,6 +1997,7 @@ class SeguimientoVinculacionModel
 
     private function consultaSeguimientosBase()
     {
+        $programada = InteraccionProximaAccion::condicionSql('seguimientos');
         return "SELECT DISTINCT
                     seguimientos.id,
                     seguimientos.nombre_entidad,
@@ -2009,16 +2011,17 @@ class SeguimientoVinculacionModel
                     seguimientos.fecha_inicio,
                     CASE
                         WHEN seguimientos.proxima_accion_at IS NULL THEN NULL
-                        WHEN seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS' THEN NULL
+                        WHEN seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS' AND NOT ($programada) THEN NULL
                         ELSE seguimientos.proxima_accion_at
                     END AS proxima_accion_at,
+                    ($programada) AS proxima_accion_programada,
                     seguimientos.created_at,
                     seguimientos.updated_at,
                     seguimientos.analista_id,
                     seguimientos.municipio_id,
                     CASE
                         WHEN seguimientos.proxima_accion_at IS NULL THEN NULL
-                        WHEN seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS' THEN NULL
+                        WHEN seguimientos.estado_seguimiento = 'DATOS_VERIFICADOS' AND NOT ($programada) THEN NULL
                         ELSE (
                             SELECT TRIM(
                                 SUBSTRING_INDEX(
@@ -2105,8 +2108,10 @@ class SeguimientoVinculacionModel
 
     private function consultaDetalleSeguimientoBase()
     {
+        $programada = InteraccionProximaAccion::condicionSql('seguimientos');
         return "SELECT
                     seguimientos.*,
+                    ($programada) AS proxima_accion_programada,
                     estados.nombre AS estado_nombre,
                     (
                         SELECT TRIM(

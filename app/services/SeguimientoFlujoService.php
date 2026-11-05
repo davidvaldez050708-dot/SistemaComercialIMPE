@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/InteraccionProximaAccion.php';
 
 class SeguimientoFlujoService
 {
@@ -16,6 +17,7 @@ class SeguimientoFlujoService
     {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
+        $programada = InteraccionProximaAccion::condicionSql('seguimientos');
 
         $sql = "SELECT
                     seguimientos.id,
@@ -33,6 +35,7 @@ class SeguimientoFlujoService
                     seguimientos.contacto_cargo,
                     seguimientos.ultima_interaccion_at,
                     seguimientos.proxima_accion_at,
+                    ($programada) AS proxima_accion_programada,
                     post.reunion_resultado,
                     post.reunion_realizada_at,
                     (
@@ -127,7 +130,7 @@ class SeguimientoFlujoService
          * confirmación pendiente, por lo que no se invalida por existir una
          * interacción más reciente.
          */
-        if ($estado === 'DATOS_VERIFICADOS') {
+        if ($estado === 'DATOS_VERIFICADOS' && empty($seguimiento['proxima_accion_programada'])) {
             $proximaAccionAt = '';
         }
 

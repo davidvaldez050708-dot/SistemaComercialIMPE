@@ -10,6 +10,9 @@ for row in spec['files']:
  latest=R/'tools/analista_cancelacion_inmediata_release.json'
  if latest.exists():
   current=next((r for r in json.loads(latest.read_text(encoding='utf8'))['files'] if r['path']==row['path']),current)
+ schedule=R/'tools/analista_proxima_accion_release.json'
+ if schedule.exists():
+  current=next((r for r in json.loads(schedule.read_text(encoding='utf8'))['files'] if r['path']==row['path']),current)
  assert gzip.decompress(base64.b64decode(current['variants'][0]['target'])) == (R/row['path']).read_bytes().replace(b'\r\n',b'\n'), 'Paquete activo desactualizado: '+row['path']
 for variant in [0,1]:
  with tempfile.TemporaryDirectory(prefix='impe-verificacion-vigente-') as folder:

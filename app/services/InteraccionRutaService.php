@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/VerificacionInstitucionalService.php';
 require_once __DIR__ . '/TelefoniaVerificacionEvidenciaService.php';
+require_once __DIR__ . '/InteraccionProximaAccion.php';
 
 class InteraccionRutaService
 {
@@ -218,6 +219,14 @@ class InteraccionRutaService
         if ($fechaInicioTs === false || $fechaInicioTs > (time() + 60)) {
             return $this->error('La fecha de interacción no puede estar en el futuro.', 422);
         }
+        try {
+            $programacion = InteraccionProximaAccion::validar($datos);
+            if ($programacion['accion'] !== '' && $programacion['fecha'] === null) {
+                throw new DomainException('Selecciona una acción de seguimiento con fecha y hora.');
+            }
+        } catch (DomainException $error) {
+            return $this->error($error->getMessage(), 422);
+        }
 
         $notas = trim(implode("\n", array_filter([
             $personaAtendio !== '' ? 'Persona atendió: ' . $personaAtendio : '',
@@ -247,7 +256,9 @@ class InteraccionRutaService
                         : 'Verificación registrada sin contabilizar: '
                   ) . implode(' · ', $evidenciasVerificacion)
                 : '',
-            $observacion
+            $observacion,
+            $programacion['accion'] !== '' ? 'Próxima acción: ' . $programacion['accion'] : '',
+            $programacion['fecha'] !== null ? 'Fecha próxima acción: ' . $programacion['fecha'] : ''
         ])));
 
         if ($notas === '') {
@@ -321,17 +332,20 @@ class InteraccionRutaService
 
             $etapaPersistencia = 'actualizar la fecha de última interacción';
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
-                    SET ultima_interaccion_at = ?
+                    SET ultima_interaccion_at = ?";
+            // Omitir la programación conserva cualquier acción o reunión ya pendiente.
+            // El estado de ruta y reuniones_vinculacion nunca se modifican aquí.
+            if ($programacion['fecha'] !== null) $sqlSeguimiento .= ", proxima_accion_at = ?";
+            $sqlSeguimiento .= "
                     WHERE id = ?
                         AND analista_id = ?
                         AND activo = 1";
             $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
-            $stmtSeguimiento->bind_param(
-                'sii',
-                $fechaInicio,
-                $seguimientoId,
-                $usuarioId
-            );
+            if ($programacion['fecha'] !== null) {
+                $stmtSeguimiento->bind_param('ssii', $fechaInicio, $programacion['fecha'], $seguimientoId, $usuarioId);
+            } else {
+                $stmtSeguimiento->bind_param('sii', $fechaInicio, $seguimientoId, $usuarioId);
+            }
             $stmtSeguimiento->execute();
 
             $this->connection->commit();
