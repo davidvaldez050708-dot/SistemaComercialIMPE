@@ -144,7 +144,10 @@ class ZadarmaCallLookupService
             'get'
         );
 
-        $data = json_decode((string)$body, true);
+        // call_id de grabación puede ser decimal con más dígitos de los
+        // admitidos por float; conservar sus caracteres tal cual envía Zadarma.
+        require_once __DIR__ . '/../helpers/ZadarmaPbxIdentifierHelper.php';
+        $data = ZadarmaPbxIdentifierHelper::decodificarEstadisticas((string)$body);
         if (!is_array($data) || ($data['status'] ?? '') !== 'success') {
             $this->estadisticasCache[$clave] = [];
             return [];
