@@ -22,4 +22,28 @@ assert.match(converter,/\$prepararPlantilla/,'La preparación no debe confundirs
 assert.match(preview,/Ciudad de México, a /,'Ciudad de emisión institucional');
 assert.match(preview,/\$esPredeterminada/,'El cambio no debe alterar plantillas externas');
 assert.match(css,/\.oficio-selector-institucional/);
+assert.match(js,/class="list-group-item oficio-selector-opcion"/,
+  'Las tarjetas no deben mezclar d-flex de Bootstrap con grid');
+assert.doesNotMatch(js,/class="list-group-item d-flex gap-2 align-items-start"/,
+  'Se debe retirar la combinación que superponía iconos y textos');
+assert.match(js,/class="form-check-input oficio-selector-radio"/);
+assert.match(js,/class="oficio-selector-card-icon"/);
+assert.match(css,/display: flex !important;/);
+assert.match(css,/flex: 0 0 39px !important;/,
+  'El icono tiene anchura fija separada del texto');
+assert.match(css,/flex: 1 1 0 !important;/,
+  'La columna de texto debe ocupar sólo el espacio restante');
+assert.match(css,/content: none !important;/,
+  'No deben competir pseudo-iconos decorativos del diseño anterior');
+assert.match(js,/class="oficio-file-input" id="oficioDocumentoFinal" type="file"/,
+  'El mismo input de subida debe permanecer operativo');
+assert.match(js,/class="oficio-file-surface" for="oficioDocumentoFinal"/,
+  'El selector visible debe abrir el campo de archivo');
+assert.match(js,/data-oficio-documento-nombre aria-live="polite"/);
+assert.match(js,/\[data-oficio-documento-nombre\]/,
+  'Mostrar el nombre del archivo elegido y restablecerlo');
+assert.match(css,/input\.oficio-file-input:focus-visible \+ \.oficio-file-surface/,
+  'La selección por teclado mantiene un indicador de enfoque');
+assert.match(css,/\[data-oficio-documento-final\]:not\(\.d-none\)/,
+  'Los estilos están encapsulados y respetan el selector activo');
 console.log('PASS selector: 3 modalidades, archivo final sin relleno, fecha CDMX y estilos encapsulados');
