@@ -148,8 +148,11 @@ class OficioVinculacionController
                 $this->responderJson($vista, (int)($vista['codigo_http'] ?? 500));
             }
 
+            // TRUE sólo al preparar por primera vez la plantilla personalizada.
+            // Es el significado original del segundo argumento en Hostinger.
             $documento = (new OficioDocxPdfService())->generarDocx(
-                (array)($vista['vista_previa'] ?? [])
+                (array)($vista['vista_previa'] ?? []),
+                true
             );
             if (!($documento['ok'] ?? false)) {
                 $this->responderJson([
@@ -436,7 +439,8 @@ class OficioVinculacionController
             $this->responderTextoPdf((string)($vista['mensaje'] ?? 'No fue posible preparar el oficio.'), (int)($vista['codigo_http'] ?? 500));
         }
 
-        $resultado = (new OficioDocxPdfService())->generarDocx((array)$vista['vista_previa'], true);
+        // FALSE por omisión: no rellenar una generación ya guardada.
+        $resultado = (new OficioDocxPdfService())->generarDocx((array)$vista['vista_previa']);
         if (!($resultado['ok'] ?? false)) {
             $this->responderTextoPdf((string)($resultado['mensaje'] ?? 'No fue posible generar el DOCX.'), 422);
         }

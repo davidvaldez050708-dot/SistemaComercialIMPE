@@ -246,14 +246,14 @@ class OficioDocxPdfService
         return $reemplazos + $personalizados;
     }
 
-    public function generarDocx(array $vista, $conservarDocumentoGenerado = false)
+    public function generarDocx(array $vista, $prepararPlantilla = false)
     {
         $rutaPlantilla = $this->resolverRutaPlantilla($vista);
         $rutaRelativa = str_replace('\\', '/', (string)($vista['archivo_plantilla'] ?? ''));
-        // Una generación guardada (personalizada procesada o documento
-        // terminado) se descarga exactamente como fue almacenada.
-        // La generación inicial de plantillas sigue usando el rellenado.
-        if ($conservarDocumentoGenerado && preg_match(
+        // FALSE: descargar una generación almacenada, sin rellenarla.
+        // TRUE: preparar por primera vez una plantilla personalizada.
+        // Mantener compatibilidad semántica con Hostinger.
+        if (!$prepararPlantilla && preg_match(
             '~^storage/templates/oficios_personalizados/generacion_\\d{8}_\\d{6}_[a-f0-9]{12}\\.docx$~D',
             $rutaRelativa
         ) === 1 && is_file($rutaPlantilla)) {

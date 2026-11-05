@@ -18,7 +18,7 @@ assert.match(js,/tipoPlantilla === 'personalizada'/);
 assert.match(php,/\$_FILES\['archivo_oficio'\]/);
 assert.match(php,/if \(!\$documentoFinal\)/,'No rellenar Word terminado');
 assert.match(php,/&& !empty\(\$resultado\['existente'\]\)/,'No conservar carga huérfana si ya hay oficio');
-assert.match(converter,/\$conservarDocumentoGenerado/,'Descarga íntegra del documento final');
+assert.match(converter,/\$prepararPlantilla/,'La preparación no debe confundirse con la descarga');
 assert.match(preview,/Ciudad de México, a /,'Ciudad de emisión institucional');
 assert.match(preview,/\$esPredeterminada/,'El cambio no debe alterar plantillas externas');
 assert.match(css,/\.oficio-selector-institucional/);

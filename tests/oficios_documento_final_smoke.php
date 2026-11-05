@@ -53,7 +53,7 @@ try {
     $descarga = $convertidor->generarDocx([
         'archivo_plantilla'=>$modelo->ultimaRuta,
         'folio'=>'IMPE-PRUEBA-1'
-    ], true);
+    ]);
     exigir(!empty($descarga['ok']) && $descarga['contenido_docx'] === $bytesOriginales,
         'La descarga volvió a procesar o alteró el Word terminado');
     $invalido = $metodo->invoke($controller,
