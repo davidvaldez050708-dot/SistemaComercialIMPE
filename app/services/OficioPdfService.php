@@ -58,6 +58,8 @@ class OficioPdfService
         }
 
         $rutaReal = $this->resolverRutaPdf((string)($oficio['archivo_pdf'] ?? ''));
+        $wordPendientePdf = $rutaReal === null &&
+            strpos((string)($oficio['plantilla_nombre'] ?? ''), 'Oficio adjuntado: ') === 0;
 
         return [
             'ok' => true,
@@ -68,6 +70,7 @@ class OficioPdfService
                 'folio' => $folio,
                 'estado_oficio' => (string)($oficio['estado_oficio'] ?? ''),
                 'pdf_generado' => $rutaReal !== null,
+                'pdf_pendiente_por_word' => $wordPendientePdf,
                 'fecha_generacion' => (string)($oficio['fecha_generacion'] ?? ''),
                 'fecha_generacion_label' => $this->formatearFechaHora(
                     (string)($oficio['fecha_generacion'] ?? '')
@@ -344,6 +347,9 @@ class OficioPdfService
             'pdf_generado' => $this->resolverRutaPdf(
                 (string)($oficio['archivo_pdf'] ?? '')
             ) !== null,
+            'pdf_pendiente_por_word' =>
+                $this->resolverRutaPdf((string)($oficio['archivo_pdf'] ?? '')) === null &&
+                strpos((string)($oficio['plantilla_nombre'] ?? ''), 'Oficio adjuntado: ') === 0,
             'fecha_generacion' => (string)($oficio['fecha_generacion'] ?? ''),
             'fecha_generacion_label' => $this->formatearFechaHora(
                 (string)($oficio['fecha_generacion'] ?? '')
@@ -353,9 +359,11 @@ class OficioPdfService
 
     private function obtenerDatosPdfPorOficio($oficioId)
     {
-        $sql = "SELECT id, archivo_pdf, estado_oficio, fecha_generacion
-                FROM oficios_vinculacion
-                WHERE id = ?
+        $sql = "SELECT o.id, o.archivo_pdf, o.estado_oficio, o.fecha_generacion,
+                       p.nombre AS plantilla_nombre
+                FROM oficios_vinculacion o
+                LEFT JOIN plantillas_vinculacion p ON p.id = o.plantilla_oficio_id
+                WHERE o.id = ?
                 LIMIT 1";
         $stmt = $this->connection->prepare($sql);
         $oficioId = (int)$oficioId;
