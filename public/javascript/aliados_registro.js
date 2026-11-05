@@ -88,29 +88,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (detail) {
                     for (const [name,value] of Object.entries(detail.origen)) {
                         const input = form.elements.namedItem(name);
-                        if (input && name !== 'id') input.value = value ?? '';
+                        // El origen de captura del seguimiento (DENUE/MANUAL) no es
+                        // el tipo de aliado del formulario (institucional/manual).
+                        if (input && name !== 'id' && name !== 'origen') input.value = value ?? '';
                     }
                     form.querySelectorAll('[name="programas[]"]').forEach(el => { el.checked = detail.programas.includes(el.value); });
                     admin.querySelector('[data-registro-subtitulo]').textContent = detail.origen.nombre_entidad;
                 } else admin.querySelector('[data-registro-subtitulo]').textContent = 'Relación registrada manualmente, sin formalización documental.';
                 save.disabled = false;
-            } catch (e) { errorIn(error,e.message); }
+            } catch (e) { errorIn(error); aviso(e.message,'error'); }
             finally { loading = false; }
         };
         document.querySelectorAll('[data-registro-abrir]').forEach(b => b.addEventListener('click',() => open(b)));
         admin.addEventListener('hidden.bs.modal',() => { revision++; });
         form.addEventListener('submit',async e => {
             e.preventDefault(); if (loading || save.disabled) return;
-            if (!form.querySelector('[name="programas[]"]:checked')) { errorIn(error,'Selecciona al menos un programa.'); return; }
+            if (!form.querySelector('[name="programas[]"]:checked')) { errorIn(error); aviso('Selecciona al menos un programa.','error'); return; }
             loading = true; save.disabled = true; errorIn(error);
             try { const data = new FormData(form); data.set('operacion',operation); await request('registroGestion',data,true); completar(operation === 'programas' ? 'Programas actualizados correctamente.' : (form.elements.id.value ? 'Aliado actualizado correctamente.' : 'Aliado agregado correctamente.')); }
-            catch (e) { errorIn(error,e.message); aviso(e.message,'error'); loading=false; save.disabled=false; }
+            catch (e) { errorIn(error); aviso(e.message,'error'); loading=false; save.disabled=false; }
         });
         deactivate.addEventListener('click',async () => {
             if (loading || !window.confirm('¿Desactivar este aliado y su acceso de Registro? Se conservará el historial.')) return;
             loading=true;
             try { const data=new FormData(form); data.set('operacion','desactivar_manual'); await request('registroGestion',data,true); completar('Aliado desactivado. El historial se conserva.'); }
-            catch (e) { errorIn(error,e.message); aviso(e.message,'error'); loading=false; }
+            catch (e) { errorIn(error); aviso(e.message,'error'); loading=false; }
         });
     }
     // Gestión independiente de contactos e historial para aliados manuales.
