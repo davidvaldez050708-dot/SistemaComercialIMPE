@@ -14,6 +14,7 @@ on:
       - 'tools/publicar_oficios_*'
       - 'tools/publicar_fix_oficio_cdmx_fecha.py'
       - 'tools/diagnosticar_oficio_final_estructura.php'
+      - 'tools/diagnosticar_oficio_word_anclas.php'
       - 'tools/publicar_oficios_word_final_hostinger.py'
       - '.github/workflows/oficios-modal-docx-final.yml'
   pull_request:
@@ -28,6 +29,7 @@ on:
       - 'tools/publicar_oficios_*'
       - 'tools/publicar_fix_oficio_cdmx_fecha.py'
       - 'tools/diagnosticar_oficio_final_estructura.php'
+      - 'tools/diagnosticar_oficio_word_anclas.php'
       - 'tools/publicar_oficios_word_final_hostinger.py'
       - '.github/workflows/oficios-modal-docx-final.yml'
 permissions:
@@ -54,6 +56,7 @@ jobs:
           php -l app/services/OficioPreviewService.php
           php -l app/services/OficioDocxPdfService.php
           php -l tools/diagnosticar_oficio_final_estructura.php
+          php -l tools/diagnosticar_oficio_word_anclas.php
           php -l app/services/OficioRedmexPdfRenderer.php
           php tests/oficios_word_final_metadata_test.php
           python3 tests/oficios_word_final_publicador_test.py
