@@ -8,6 +8,7 @@ assert any(v['before']=='d8dd441e0b13f836d08f7f285bf563dc9c3e083bc09591b797cb21e
 # Estos archivos son parte de una entrega ya publicada; sus contenidos son
 # inmutables aunque la fuente actual tenga una corrección visual posterior.
 published={'public/javascript/telefonia_shell.js':'84c14d94564ca8093269e2c2c6b1cfc29001a21f9a4eefb8e601db66d15b2c64','public/javascript/seguimiento_llamada_registro_obligatorio.js':'69e64923a4a8c3db216f733e5d631bacf3846fc738c8a7b1e3b605385829fca6'}
+published['app/controllers/SeguimientoVinculacionController.php']='9c16ea76fab9d5ed58926b2a311a7ebe2bf2bfcf83ae55de9512b74b3d6349a8'
 later_changes={'app/services/TelefoniaSalienteAnalistaEstado.php',
                'app/services/TelefoniaEntrantesAnalistaService.php',
                'app/views/seguimiento_vinculacion/llamadas_entrantes.php',

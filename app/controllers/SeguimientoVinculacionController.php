@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../services/VerificacionInstitucionalService.php';
+require_once __DIR__ . '/../services/InteraccionProximaAccion.php';
 
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../models/DataTerritorialModel.php';
@@ -1145,7 +1146,12 @@ class SeguimientoVinculacionController
         }
 
         $fechaInicio = $this->normalizarFechaFormulario($_POST['fecha_inicio'] ?? '');
-        $proximaAccionAt = $this->normalizarFechaFormulario($_POST['proxima_accion_at'] ?? '', true);
+        try {
+            $programacion = InteraccionProximaAccion::validar($_POST);
+        } catch (DomainException $error) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$error->getMessage()], 422);
+        }
+        $proximaAccionAt = $programacion['fecha'];
 
         if ($fechaInicio === '') {
             $this->responderJson([
@@ -1187,7 +1193,7 @@ class SeguimientoVinculacionController
         }
 
         $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['persona_atendio'] ?? ''));
-        $proximaAccion = trim((string)($_POST['proxima_accion'] ?? ''));
+        $proximaAccion = $programacion['accion'];
         $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
         $origenLlamada = strtoupper(trim((string)($_POST['origen_llamada'] ?? 'MANUAL')));
         if (!in_array($origenLlamada, ['ZADARMA', 'PRUEBA', 'MANUAL'], true)) {
@@ -1380,7 +1386,8 @@ class SeguimientoVinculacionController
                   ) . implode(' · ', $evidenciasVerificacion)
                 : '',
             $observacion,
-            $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : '',
+            $proximaAccionAt !== null ? 'Próxima acción: ' . $proximaAccion : '',
+            $proximaAccionAt !== null ? 'Fecha próxima acción: ' . $proximaAccionAt : '',
             $descartar ? 'Motivo de descarte: ' . $motivoDescarte : ''
         ])));
 
@@ -3076,7 +3083,7 @@ class SeguimientoVinculacionController
          * envío o confirmación pendiente y debe conservarse aunque existan
          * interacciones más recientes.
          */
-        if ($seguimientoDescartado || $estado === 'DATOS_VERIFICADOS') {
+        if ($seguimientoDescartado || ($estado === 'DATOS_VERIFICADOS' && empty($seguimiento['proxima_accion_programada']))) {
             $proximaAccion = '';
             $proximaAccionTexto = '';
         }

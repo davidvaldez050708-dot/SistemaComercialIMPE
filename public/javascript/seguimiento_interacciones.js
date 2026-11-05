@@ -24,11 +24,6 @@
         const urlResumenVerificacion =
             'index.php?controller=seguimientoVinculacion&action=resumenVerificacionTelefonicaHoy';
         const panelVerificacionDiaria = document.querySelector('[data-call-verification-daily]');
-        const accionesConHorarioObligatorio = [
-            'Volver a llamar',
-            'Enviar WhatsApp',
-            'Enviar oficio/correo'
-        ];
         const accionesQueCierranRecordatorio = [
             'Verificar información de contacto',
             'Generar oficio'
@@ -61,7 +56,7 @@
             '<div class="alert alert-light border mb-1 py-2 px-3 small">' +
                 '<i class="bi bi-info-circle me-1"></i>' +
                 '<strong>Registro informativo.</strong> ' +
-                'Se guardará en el expediente sin modificar la ruta ni la próxima acción.' +
+        'Se guardará en el expediente sin modificar la etapa. Puedes programar la próxima acción.' +
             '</div>';
         filaFormulario?.prepend(avisoInformativo);
 
@@ -581,22 +576,11 @@
         };
 
         const actualizarFechaSegunAccion = function () {
-            if (esRutaAvanzada()) {
-                selectorProximaAccion.value = '';
-                selectorProximaAccion.disabled = true;
-                campoFechaProximaAccion.value = '';
-                campoFechaProximaAccion.disabled = true;
-                campoFechaProximaAccion.required = false;
-                actualizarEtiquetaFecha(false);
-                return;
-            }
 
             const accion = String(selectorProximaAccion.value || '');
-            const resultado = String(selectorResultado.value || '');
             const sinAccion = accion === '';
-            const resultadoManual = resultado === 'OTRO';
-            const fechaObligatoria = accionesConHorarioObligatorio.includes(accion);
             const cierraRecordatorio = accionesQueCierranRecordatorio.includes(accion);
+            const fechaObligatoria = !sinAccion && !cierraRecordatorio;
 
             if (cierraRecordatorio) {
                 campoFechaProximaAccion.value = '';
@@ -606,11 +590,11 @@
                 return;
             }
 
-            campoFechaProximaAccion.disabled = sinAccion && !resultadoManual;
+            campoFechaProximaAccion.disabled = sinAccion;
             campoFechaProximaAccion.required = fechaObligatoria;
             actualizarEtiquetaFecha(fechaObligatoria);
 
-            if (sinAccion && !resultadoManual) {
+            if (sinAccion) {
                 campoFechaProximaAccion.value = '';
             }
         };
@@ -618,19 +602,16 @@
         const aplicarModoRuta = function () {
             const avanzada = esRutaAvanzada();
             avisoInformativo.classList.toggle('d-none', !avanzada);
-            contenedorProximaAccion?.classList.toggle('d-none', avanzada);
-            contenedorFechaProximaAccion?.classList.toggle('d-none', avanzada);
-
-            if (avanzada) {
-                selectorProximaAccion.value = '';
-                selectorProximaAccion.disabled = true;
-                campoFechaProximaAccion.value = '';
-                campoFechaProximaAccion.disabled = true;
-                campoFechaProximaAccion.required = false;
-                actualizarEtiquetaFecha(false);
-            } else {
-                selectorProximaAccion.disabled = false;
-            }
+            contenedorProximaAccion?.classList.remove('d-none');
+            contenedorFechaProximaAccion?.classList.remove('d-none');
+            selectorProximaAccion.disabled = false;
+            Array.from(selectorProximaAccion.options).forEach(opcion => {
+                if (accionesQueCierranRecordatorio.includes(opcion.value)) {
+                    opcion.disabled = avanzada;
+                    opcion.hidden = avanzada;
+                    if (avanzada && opcion.selected) selectorProximaAccion.value = '';
+                }
+            });
         };
 
         const aplicarResultadoInteraccion = function () {
@@ -641,9 +622,11 @@
             switch (resultado) {
                 case 'SIN_RESPUESTA':
                 case 'OCUPADO':
+                case 'BUZON_VOZ':
                     accionSugerida = 'Volver a llamar';
                     break;
                 case 'NUMERO_INCORRECTO':
+                case 'FUERA_SERVICIO':
                     accionSugerida = 'Investigar nuevo contacto';
                     break;
                 case 'CONTACTO_INCORRECTO':
@@ -658,7 +641,7 @@
                      * acción de verificación: primero pueden faltar persona,
                      * cargo o correo.
                      */
-                    accionSugerida = contactoEstaVerificado()
+                    accionSugerida = contactoEstaVerificado() && !esRutaAvanzada()
                         ? 'Generar oficio'
                         : '';
                     break;
@@ -678,13 +661,13 @@
 
             if (
                 !conservarSeleccionManual &&
-                !esRutaAvanzada() &&
                 !proximaAccionEditadaManualmente
             ) {
                 selectorProximaAccion.value = accionSugerida;
             }
 
             const noInteresado = resultado === 'NO_INTERESADO';
+            selectorProximaAccion.required = resultado === 'SOLICITO_LLAMAR_DESPUES';
             contenedorMotivo.classList.toggle('d-none', !noInteresado);
 
             if (campoMotivoNoInteres) {
@@ -693,16 +676,6 @@
                 if (!noInteresado) {
                     campoMotivoNoInteres.value = '';
                 }
-            }
-
-            if (esRutaAvanzada()) {
-                selectorProximaAccion.value = '';
-                selectorProximaAccion.disabled = true;
-                campoFechaProximaAccion.value = '';
-                campoFechaProximaAccion.disabled = true;
-                campoFechaProximaAccion.required = false;
-                actualizarEtiquetaFecha(false);
-                return;
             }
 
             selectorProximaAccion.disabled = noInteresado;
@@ -771,8 +744,6 @@
             const formData = new FormData(formulario);
             const resultado = String(selectorResultado.value || '');
 
-            formData.delete('proxima_accion');
-            formData.delete('proxima_accion_at');
 
             if (resultado === 'NO_INTERESADO') {
                 const motivo = String(campoMotivoNoInteres?.value || '').trim();
