@@ -12,6 +12,7 @@ on:
       - 'tests/oficios_*'
       - 'tools/publicar_oficios_*'
       - 'tools/publicar_fix_oficio_cdmx_fecha.py'
+      - 'tools/diagnosticar_oficio_final_estructura.php'
       - '.github/workflows/oficios-modal-docx-final.yml'
   pull_request:
     paths:
@@ -23,6 +24,7 @@ on:
       - 'tests/oficios_*'
       - 'tools/publicar_oficios_*'
       - 'tools/publicar_fix_oficio_cdmx_fecha.py'
+      - 'tools/diagnosticar_oficio_final_estructura.php'
       - '.github/workflows/oficios-modal-docx-final.yml'
 permissions:
   contents: read
@@ -47,6 +49,7 @@ jobs:
           php -l app/controllers/OficioVinculacionController.php
           php -l app/services/OficioPreviewService.php
           php -l app/services/OficioDocxPdfService.php
+          php -l tools/diagnosticar_oficio_final_estructura.php
           node --check public/javascript/oficios_vinculacion.js
           php tests/oficios_documento_final_smoke.php
           node tests/oficios_selector_smoke.cjs
