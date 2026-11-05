@@ -14,7 +14,7 @@ final class TelefoniaVentasCierreApiVerificado
     public static function verificar(array $call, ?callable $estadisticas=null, ?DateTimeImmutable $ahora=null): bool
     {
         if (($call['direccion']??'')!=='Saliente' || !empty($call['finalizada'])
-            || empty($call['conectada']) || !empty($call['registro'])) return false;
+            || !empty($call['registro'])) return false;
 
         $ref=trim((string)($call['pbx_call_id']??''));
         $ext=trim((string)($call['extension']??''));
@@ -36,8 +36,8 @@ final class TelefoniaVentasCierreApiVerificado
         $hasta=$inicio->modify('+4 hours');
         if ($hasta>$ahora) $hasta=$ahora;
         if ($estadisticas===null) {
-            require_once __DIR__.'/ZadarmaRecordingService.php';
-            $api=new ZadarmaRecordingService(false);
+            require_once __DIR__.'/ZadarmaCallLookupService.php';
+            $api=new ZadarmaCallLookupService();
             $estadisticas=static fn(string $de,string $a): array=>$api->estadisticasPbx($de,$a);
         }
         $filas=$estadisticas($desde,$hasta->format('Y-m-d H:i:s'));
@@ -51,11 +51,16 @@ final class TelefoniaVentasCierreApiVerificado
         }
         if (count($coincidencias)!==1) return false;
         $registro=$coincidencias[0];
-        if (!hash_equals($ext,trim((string)($registro['sip']??'')))
-            || strtolower(trim((string)($registro['disposition']??'')))!=='answered') return false;
+        if (!hash_equals($ext,trim((string)($registro['sip']??'')))) return false;
+        $estado=strtolower(trim((string)($registro['disposition']??'')));
+        $contestada=!empty($call['conectada']);
+        // Si PBX acredita ANSWER, sólo CDR answered puede cerrar esa llamada.
+        // Sin ANSWER sólo admitimos estados finales sin contacto confirmado.
+        if ($contestada ? $estado!=='answered'
+            : !in_array($estado,['busy','no answer','no_answer','cancel','canceled','cancelled','failed'],true)) return false;
         $segundos=$registro['seconds']??null;
         if ((!is_int($segundos) && (!is_string($segundos) || !ctype_digit($segundos)))
-            || (int)$segundos<1 || (int)$segundos>14400) return false;
+            || (int)$segundos<($contestada?1:0) || (int)$segundos>14400) return false;
 
         $inicioProveedor=(string)($registro['callstart']??'');
         if (!preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/D',$inicioProveedor)) return false;
