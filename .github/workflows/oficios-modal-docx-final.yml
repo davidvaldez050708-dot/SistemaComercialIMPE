@@ -50,3 +50,5 @@ jobs:
           node tests/oficios_selector_smoke.cjs
           python3 tests/publicacion_oficios_modal_hostinger.py
           python3 tests/publicacion_oficios_modal_visual_test.py
+          php tests/oficios_cdmx_fecha_smoke.php
+          python3 tests/oficios_cdmx_fecha_publicador_test.py
