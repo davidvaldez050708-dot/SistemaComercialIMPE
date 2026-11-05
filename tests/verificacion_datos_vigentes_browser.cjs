@@ -21,8 +21,8 @@ assert.equal(await page.locator('[data-work-interaction-form]').getAttribute('da
 await page.evaluate(()=>{document.querySelector('[data-work-verified-status]').textContent='Datos sin verificar';document.querySelector('[data-work-verify-contact]').textContent='Marcar información como verificada';document.querySelector('[name=resultado]').value='CONTACTO_CORRECTO';document.dispatchEvent(new CustomEvent('impe:flow-updated'));});
 assert.equal(await page.locator('[data-call-verification-evidence]').evaluate(e=>e.classList.contains('d-none')),false,'Primera verificación disponible');
 assert.deepEqual(errors,[]);
-const phone=read('public/javascript/seguimiento_llamada_zadarma.js');const a=phone.indexOf('                    const feedback =');const b=phone.indexOf('                    pendingInteractionFeedback =',a);assert.ok(a>0&&b>a);
-const message=vm.runInNewContext('(function(data,pendingInteractionFeedback){'+phone.slice(a,b)+'return finalMessage;})');
+const phone=read('public/javascript/seguimiento_llamada_zadarma.js');const a=phone.indexOf('                    const feedback =');const b=phone.indexOf('                    if (ownsForm) pendingInteractionFeedback =',a);assert.ok(a>0&&b>a);
+const message=vm.runInNewContext('(function(data,input){const job={feedback:input};'+phone.slice(a,b)+'return finalMessage;})');
 const normal=message({verificacion_efectiva:false,hubo_respuesta:true},{resultadoLabel:'Contacto correcto',tieneEvidencia:false,verificacionAplicable:false});
 assert.equal(normal,'Llamada registrada · Contacto correcto.');assert.ok(!normal.includes('verificación'));
 console.log('PASS UI real: pasos 4/8/12, casillas ocultas/deshabilitadas, dato distinto, primera validación y mensaje normal');
