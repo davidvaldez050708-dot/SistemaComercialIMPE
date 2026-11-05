@@ -246,9 +246,22 @@ class OficioDocxPdfService
         return $reemplazos + $personalizados;
     }
 
-    public function generarDocx(array $vista)
+    public function generarDocx(array $vista, $conservarDocumentoGenerado = false)
     {
         $rutaPlantilla = $this->resolverRutaPlantilla($vista);
+        $rutaRelativa = str_replace('\\', '/', (string)($vista['archivo_plantilla'] ?? ''));
+        // Una generación guardada (personalizada procesada o documento
+        // terminado) se descarga exactamente como fue almacenada.
+        // La generación inicial de plantillas sigue usando el rellenado.
+        if ($conservarDocumentoGenerado && preg_match(
+            '~^storage/templates/oficios_personalizados/generacion_\\d{8}_\\d{6}_[a-f0-9]{12}\\.docx$~D',
+            $rutaRelativa
+        ) === 1 && is_file($rutaPlantilla)) {
+            $contenido = file_get_contents($rutaPlantilla);
+            return $contenido !== false && $contenido !== ''
+                ? ['ok' => true, 'contenido_docx' => $contenido]
+                : $this->error('No fue posible leer el DOCX adjuntado.', 'Archivo vacío o ilegible.');
+        }
         if (!is_file($rutaPlantilla) || (!class_exists('ZipArchive') && !class_exists('PharData'))) {
             return $this->error('No fue posible abrir la plantilla DOCX seleccionada.', 'Plantilla o soporte ZIP no disponible.');
         }

@@ -70,7 +70,13 @@ class OficioPreviewService
         $lugar = implode(', ', array_filter([$municipio, $estadoNombre], static function ($valor) {
             return $valor !== '';
         }));
-        $lugarFecha = ($lugar !== '' ? $lugar . ', a ' : '') . $fecha;
+        // El oficio institucional sale de Ciudad de México.
+        // Ubicación del destinatario se conserva en el bloque del destinatario.
+        // Los oficios personalizados mantienen el lugar propio de su formato.
+        $esPredeterminada = trim((string)($plantilla['archivo_docx'] ?? '')) === '';
+        $lugarFecha = $esPredeterminada
+            ? 'Ciudad de México, a ' . $fecha
+            : ($lugar !== '' ? $lugar . ', a ' : '') . $fecha;
         $analistaNombre = trim(
             (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
             (string)($seguimiento['analista_apellidos'] ?? '')
