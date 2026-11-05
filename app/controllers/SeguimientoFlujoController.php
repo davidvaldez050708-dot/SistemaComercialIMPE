@@ -482,7 +482,9 @@ class SeguimientoFlujoController
                 $usuarioId,
                 $_POST['carta_fecha'] ?? '',
                 $_POST['asunto'] ?? '',
-                $_POST['cuerpo'] ?? ''
+                $_POST['cuerpo'] ?? '',
+                $_FILES,
+                ['carta'=>$_POST['carta_origen']??'sistema','convenio'=>$_POST['convenio_origen']??'sistema']
             );
             $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
             unset($resultado['codigo_http']);

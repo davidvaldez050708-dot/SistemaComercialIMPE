@@ -442,8 +442,8 @@ class SeguimientoCorreoService
             ],
             [
                 'ruta' => trim((string)($convenio['convenio_docx'] ?? '')),
-                'nombre' => 'Convenio_colaboracion.docx',
-                'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                'nombre' => strtolower(pathinfo((string)($convenio['convenio_docx']??''), PATHINFO_EXTENSION))==='pdf' ? 'Convenio_colaboracion.pdf' : 'Convenio_colaboracion.docx',
+                'mime' => strtolower(pathinfo((string)($convenio['convenio_docx']??''), PATHINFO_EXTENSION))==='pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
             ]
         ];
 
