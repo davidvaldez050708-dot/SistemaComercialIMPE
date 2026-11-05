@@ -29,6 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -46,3 +48,4 @@ jobs:
           node --check public/javascript/oficios_vinculacion.js
           php tests/oficios_documento_final_smoke.php
           node tests/oficios_selector_smoke.cjs
+          python3 tests/publicacion_oficios_modal_hostinger.py
