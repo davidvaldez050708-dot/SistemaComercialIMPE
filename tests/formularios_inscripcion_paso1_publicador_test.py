@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix='impe-inscripcion-paso1-') as tmp:
 
     # Personalizaciones fuera de los bloques cambiados.
     a='app/controllers/FormularioController.php'
-    (site/a).write_bytes(olds[a].replace(b'<?php',b'<?php\n// personalización local\n',1))
+    (site/a).write_bytes(olds[a].replace(b'<?php',b'<?php\n// personalizacion local\n',1))
     b='public/css/formularios.css'
     (site/b).write_bytes(olds[b] + b'\n/* estilo local no relacionado */\n')
     assert 'CHECK OK' in run('--check')
