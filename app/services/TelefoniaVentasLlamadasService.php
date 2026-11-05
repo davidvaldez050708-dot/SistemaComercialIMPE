@@ -185,7 +185,10 @@ final class TelefoniaVentasLlamadasService
         // una locución de buzón puede terminar técnicamente como cancelada.
         // Entrantes transferidas conservan sus reglas de captura anticipada.
         if (($call['direccion'] ?? '') === 'Saliente') {
-            return !empty($call['finalizada']);
+            // El historial ofrece registro aun con OUT_END tardío. El servicio
+            // guardar() verifica la estadística final propia; esta bandera NO
+            // declara un cierre PBX ni autoriza un resultado sin prueba.
+            return true;
         }
         return !empty($call['finalizada']) || (
             !empty($call['conectada']) && !empty($call['solicitud_id'])
@@ -231,7 +234,7 @@ final class TelefoniaVentasLlamadasService
         $allowed=$transfer['atendida']&&$transfer['finalizada']&&$transfer['origen']!==''?[$transfer['origen']]:[];
         $audio=TelefoniaPbxSegmentosService::deEventos($events,$ext,$allowed);
         return ['finalizada'=>$end,'conectada'=>$answer,'segundos'=>$end?$duration:null,
-            'estado_pbx'=>!$end?($answer?'En conversación':'Sin cierre confirmado'):
+            'estado_pbx'=>!$end?($answer?'Respuesta confirmada · Cierre pendiente':'Cierre pendiente'):
                 ($answer?'Conectada':(['busy'=>'Ocupada','no answer'=>'Sin respuesta','no_answer'=>'Sin respuesta','cancel'=>'Cancelada','failed'=>'Fallida'][$disposition]??'Sin respuesta')),
             'audio_extensiones'=>$allowed]+$audio;
     }
