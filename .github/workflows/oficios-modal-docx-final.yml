@@ -7,6 +7,7 @@ on:
       - 'app/controllers/OficioVinculacionController.php'
       - 'app/services/OficioPreviewService.php'
       - 'app/services/OficioDocxPdfService.php'
+      - 'app/services/OficioPdfService.php'
       - 'app/services/OficioDocumentoFinalPdfService.php'
       - 'app/services/OficioRedmexPdfRenderer.php'
       - 'public/javascript/oficios_vinculacion.js'
@@ -24,6 +25,7 @@ on:
       - 'app/controllers/OficioVinculacionController.php'
       - 'app/services/OficioPreviewService.php'
       - 'app/services/OficioDocxPdfService.php'
+      - 'app/services/OficioPdfService.php'
       - 'app/services/OficioDocumentoFinalPdfService.php'
       - 'app/services/OficioRedmexPdfRenderer.php'
       - 'public/javascript/oficios_vinculacion.js'
@@ -59,6 +61,7 @@ jobs:
           php -l app/controllers/OficioVinculacionController.php
           php -l app/services/OficioPreviewService.php
           php -l app/services/OficioDocxPdfService.php
+          php -l app/services/OficioPdfService.php
           php -l app/services/OficioDocumentoFinalPdfService.php
           php -l tools/diagnosticar_oficio_final_estructura.php
           php -l tools/diagnosticar_oficio_word_anclas.php
@@ -70,6 +73,7 @@ jobs:
           python3 tests/oficios_word_final_publicador_test.py
           node --check public/javascript/oficios_vinculacion.js
           php tests/oficios_documento_final_smoke.php
+          php tests/oficios_pdf_terminado_smoke.php
           node tests/oficios_selector_smoke.cjs
           python3 tests/publicacion_oficios_modal_hostinger.py
           python3 tests/publicacion_oficios_modal_visual_test.py
