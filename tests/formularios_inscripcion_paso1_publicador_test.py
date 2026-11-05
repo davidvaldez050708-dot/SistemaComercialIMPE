@@ -32,7 +32,16 @@ with tempfile.TemporaryDirectory(prefix='impe-inscripcion-paso1-') as tmp:
     olds={}
     for i,path in enumerate(FILES):
         (target/path).parent.mkdir(parents=True,exist_ok=True)
-        (target/path).write_bytes((ROOT/path).read_bytes())
+        # El publicador del paso 1 conserva la versión del panel previa
+        # al ajuste cromático, que tiene su propio publicador reversible.
+        if path == 'public/css/formularios.css':
+            previous = subprocess.run(
+                ['git','show','c2375488f333fc82af669e09839bd3f8c92376ee:'+path],
+                cwd=str(ROOT),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            assert previous.returncode == 0, previous.stderr.decode('utf-8','replace')
+            (target/path).write_bytes(previous.stdout)
+        else:
+            (target/path).write_bytes((ROOT/path).read_bytes())
         (site/path).parent.mkdir(parents=True,exist_ok=True)
         if i < BASE_COUNT:
             before=read_base(path)
