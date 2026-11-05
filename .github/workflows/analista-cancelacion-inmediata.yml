@@ -1,0 +1,46 @@
+name: Analista - cancelación inmediata sin bloqueo
+on:
+  pull_request:
+    paths:
+      - 'public/javascript/seguimiento_llamada_zadarma.js'
+      - 'public/javascript/seguimiento_llamada_registro_obligatorio.js'
+      - 'tests/*analista_cancelacion*'
+      - 'tools/*analista_cancelacion*'
+      - '.github/workflows/analista-cancelacion-inmediata.yml'
+  workflow_dispatch:
+jobs:
+  regresion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Paquete y reglas de verificación
+        run: |
+          node --check public/javascript/seguimiento_llamada_zadarma.js
+          node --check public/javascript/seguimiento_llamada_registro_obligatorio.js
+          python tests/publicacion_analista_cancelacion_inmediata.py
+          python tests/publicacion_analista_registro_obligatorio.py
+          python tests/publicacion_verificacion_vigente.py
+          php tests/verificacion_datos_vigentes.php
+          php tests/horario_contacto_unit.php
+      - name: Panel real, cancelación, recarga y llamadas consecutivas simuladas
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          mkdir -p tmp/bootstrap
+          curl -fsSL https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css -o tmp/bootstrap/bootstrap.min.css
+          curl -fsSL https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js -o tmp/bootstrap/bootstrap.bundle.min.js
+          export BOOTSTRAP_DIR=tmp/bootstrap
+          export CHROME_PATH="$(node -p "require('playwright').chromium.executablePath())"
+          node tests/analista_cancelacion_inmediata_browser.cjs
+          node tests/analista_registro_obligatorio_browser.cjs
+          node tests/verificacion_datos_vigentes_browser.cjs

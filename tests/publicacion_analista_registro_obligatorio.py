@@ -8,7 +8,8 @@ for row in spec['files']:
   # publicacion_analista_salientes.py; no reescribir un paquete ya distribuido.
   assert hashlib.sha256(archived).hexdigest()=='6b06c267afd6843dc6eb7d313f08c1a9460c0e0df270a91309be11915be3086f','Corte archivado alterado'
  else:
-  assert archived == (R/row['path']).read_bytes().replace(b'\r\n',b'\n'), 'Paquete desactualizado: '+row['path']
+  original=subprocess.check_output(['git','show','1f82798e3c4b6ec7362f8858af768a69d483fc61:'+row['path']],cwd=str(R))
+  assert archived == original.replace(b'\r\n',b'\n'), 'Corte archivado alterado: '+row['path']
 for variant in [0,1]:
  with tempfile.TemporaryDirectory(prefix='impe-verificacion-vigente-') as folder:
   d=pathlib.Path(folder);site=d/'site';site.mkdir();(site/'index.php').write_text('<?php // fixture');backups=d/'backup'

@@ -216,11 +216,12 @@
             if (!pending) return;
             capture(); event.preventDefault(); event.returnValue = '';
         };
-        window.addEventListener('beforeunload', beforeUnload);
+        let unloadOwner = window;
         // El contenedor permanece al navegar el iframe: proteger también su recarga.
         try {
             if (window.parent !== window) {
                 window.parent.document.addEventListener('click', preventNavigation, true);
+                unloadOwner = window.parent;
                 window.parent.addEventListener('beforeunload', beforeUnload);
                 window.addEventListener('pagehide', () => {
                     window.parent.document.removeEventListener('click', preventNavigation, true);
@@ -228,6 +229,7 @@
                 }, {once:true});
             }
         } catch (_) { /* Fuera del shell conserva la protección del documento. */ }
+        if (unloadOwner === window) window.addEventListener('beforeunload', beforeUnload);
         const saved = event => {
             if (!pending?.finished || Number(event.detail?.seguimientoId) !== pending.seguimientoId ||
                 !(Number(event.detail?.interaccionId) > 0)) return;
@@ -236,9 +238,19 @@
         };
         document.addEventListener('impe:interaction-exact-id-ready', saved);
         document.addEventListener('impe:interaction-informative-saved', saved);
-        document.addEventListener('impe:telephony-call-linked', event => {
+        document.addEventListener('impe:call-result-secured', event => {
             const detail = event.detail || {};
-            if (!pending || detail.provider !== 'ZADARMA' || detail.callToken !== pending.token ||
+            if (!pending?.finished || detail.callToken !== pending.token ||
+                Number(detail.seguimientoId) !== pending.seguimientoId ||
+                !(Number(detail.interaccionId) > 0) ||
+                (pending.interactionId && Number(detail.interaccionId) !== pending.interactionId)) return;
+            // Liberar por guardado durable, sin inventar un vínculo ni acreditar la meta.
+            pending.interactionId = Number(detail.interaccionId);
+            document.dispatchEvent(new CustomEvent('impe:call-registration-complete', {detail}));
+        });
+        const complete = event => {
+            const detail = event.detail || {};
+            if (!pending || detail.callToken !== pending.token ||
                 Number(detail.seguimientoId) !== pending.seguimientoId ||
                 Number(detail.interaccionId) !== pending.interactionId || !pending.interactionId) return;
             completed = [...completed, pending.token].slice(-100);
@@ -250,6 +262,10 @@
             if (channel) channel.disabled = false;
             const submit = form()?.querySelector('[type="submit"]');
             if (submit) submit.disabled = false;
+        };
+        document.addEventListener('impe:call-registration-complete', complete);
+        document.addEventListener('impe:telephony-call-linked', event => {
+            if (event.detail?.provider === 'ZADARMA') complete(event);
         });
     });
 })();
