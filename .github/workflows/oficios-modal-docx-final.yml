@@ -8,7 +8,6 @@ on:
       - 'app/services/OficioPreviewService.php'
       - 'app/services/OficioDocxPdfService.php'
       - 'app/services/OficioPdfService.php'
-      - 'app/services/OficioDocumentoFinalPdfService.php'
       - 'app/services/OficioRedmexPdfRenderer.php'
       - 'public/javascript/oficios_vinculacion.js'
       - 'public/css/oficios_selector_compacto.css'
@@ -18,7 +17,6 @@ on:
       - 'tools/diagnosticar_oficio_final_estructura.php'
       - 'tools/diagnosticar_oficio_word_anclas.php'
       - 'tools/publicar_oficios_word_final_hostinger.py'
-      - 'tools/publicar_oficio_final_aislado_hostinger.py'
       - '.github/workflows/oficios-modal-docx-final.yml'
   pull_request:
     paths:
@@ -26,7 +24,6 @@ on:
       - 'app/services/OficioPreviewService.php'
       - 'app/services/OficioDocxPdfService.php'
       - 'app/services/OficioPdfService.php'
-      - 'app/services/OficioDocumentoFinalPdfService.php'
       - 'app/services/OficioRedmexPdfRenderer.php'
       - 'public/javascript/oficios_vinculacion.js'
       - 'public/css/oficios_selector_compacto.css'
@@ -36,7 +33,6 @@ on:
       - 'tools/diagnosticar_oficio_final_estructura.php'
       - 'tools/diagnosticar_oficio_word_anclas.php'
       - 'tools/publicar_oficios_word_final_hostinger.py'
-      - 'tools/publicar_oficio_final_aislado_hostinger.py'
       - '.github/workflows/oficios-modal-docx-final.yml'
 permissions:
   contents: read
@@ -62,14 +58,12 @@ jobs:
           php -l app/services/OficioPreviewService.php
           php -l app/services/OficioDocxPdfService.php
           php -l app/services/OficioPdfService.php
-          php -l app/services/OficioDocumentoFinalPdfService.php
           php -l tools/diagnosticar_oficio_final_estructura.php
           php -l tools/diagnosticar_oficio_word_anclas.php
           php -l app/services/OficioRedmexPdfRenderer.php
           php tests/oficios_word_final_metadata_test.php
           php tests/oficios_word_final_alineacion_test.php
           php tests/oficios_word_final_ruta_independiente_test.php
-          python3 tests/oficios_word_final_publicacion_aislada_test.py
           python3 tests/oficios_word_final_publicador_test.py
           node --check public/javascript/oficios_vinculacion.js
           php tests/oficios_documento_final_smoke.php
