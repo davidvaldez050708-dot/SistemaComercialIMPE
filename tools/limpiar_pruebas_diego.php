@@ -170,6 +170,21 @@ final class LimpiezaPruebasDiego
         $counts=[];foreach($plan['grupos'] as $g)$counts[$g['tabla']]=['accion'=>$g['accion'],'filas'=>count($g['filas'])];
         return ['objetivo'=>'diego.bahena · cuenta 5 · extensión 101','seguimientos_chiapas'=>self::TEST_IDS,'seguimientos_de_diego_conservados'=>$plan['seguimientos_de_diego_conservados'],'registros'=>$counts,'corte_utc'=>$plan['corte']['utc'],'archivos_fisicos_y_proveedor'=>'Sin cambios','huella'=>self::digest($plan)];
     }
+    /** El respaldo conserva el inventario global, pero sólo las filas objetivo autorizan el borrado. */
+    private static function digestObjetivo(array $plan): string {
+        unset($plan['seguimientos_protegidos_sha'],$plan['seguimientos_de_diego_conservados']);
+        return self::digest($plan);
+    }
+    public static function diferencias(array $old,array $now): array {
+        $out=[];
+        foreach(['usuarios','asignacion','desde_extension','exclusiones'] as $key)if(self::digest([$old[$key]??null])!==self::digest([$now[$key]??null]))$out['objetivo'][]=$key;
+        $a=[];$b=[];foreach($old['grupos'] as $g)$a[$g['tabla'].'|'.$g['accion']]=$g;foreach($now['grupos'] as $g)$b[$g['tabla'].'|'.$g['accion']]=$g;
+        foreach(array_unique(array_merge(array_keys($a),array_keys($b))) as $key)if(self::digest([$a[$key]??null])!==self::digest([$b[$key]??null])){
+            $out['tablas'][$key]=['filas_antes'=>count($a[$key]['filas']??[]),'filas_ahora'=>count($b[$key]['filas']??[])];
+        }
+        $out['otros_seguimientos_cambiaron']=($old['seguimientos_protegidos_sha']??null)!==($now['seguimientos_protegidos_sha']??null);
+        return $out;
+    }
     private function esquemaLimpieza(): void { $this->comprobarTablasControl(); }
 
     private function wherePk(array $row,array $pk): array {
@@ -183,7 +198,8 @@ final class LimpiezaPruebasDiego
             if($old&&$old[0]['backup_sha']===$backupSha&&$old[0]['estado']==='APLICADA')return;
             if($old)throw new RuntimeException('Ese plan ya se utilizó con otro respaldo o fue restaurado.');
         }
-        if(self::digest($this->plan($plan['corte']))!==self::digest($plan))throw new RuntimeException('Los datos cambiaron desde la comprobación. Crear otro plan; no se borró nada.');
+        $actual=$this->plan($plan['corte']);
+        if(self::digestObjetivo($actual)!==self::digestObjetivo($plan))throw new RuntimeException('Los datos cambiaron en las filas objetivo. No se borró nada. Detalle: '.json_encode(self::diferencias($plan,$actual),JSON_UNESCAPED_UNICODE));
         $this->esquemaLimpieza();
         $old=$this->rows('SELECT * FROM telefonia_crm_limpiezas WHERE id=?',[$id]);
         if($old)throw new RuntimeException('Ese plan ya fue aplicado o restaurado. Crear otro plan si es necesario.');
@@ -193,7 +209,9 @@ final class LimpiezaPruebasDiego
             $this->rows('SELECT id FROM usuarios WHERE id=? FOR UPDATE',[self::UID]);
             $this->rows('SELECT usuario_id FROM telefonia_extensiones WHERE usuario_id=? OR extension=? FOR UPDATE',[self::UID,self::EXT]);
             // Revalidar dentro de la transacción, antes de la primera eliminación.
-            if(self::digest($this->plan($plan['corte']))!==self::digest($plan))throw new RuntimeException('Cambio concurrente; limpieza cancelada.');
+            $actual=$this->plan($plan['corte']);
+            if(self::digestObjetivo($actual)!==self::digestObjetivo($plan))throw new RuntimeException('Cambio concurrente en filas objetivo; limpieza cancelada. Detalle: '.json_encode(self::diferencias($plan,$actual),JSON_UNESCAPED_UNICODE));
+            $protectedBefore=$actual['seguimientos_protegidos_sha'];
             foreach($plan['grupos'] as $g)foreach($g['filas'] as $row) {
                 [$where,$args]=$this->wherePk($row,$g['estructura']['pk']);
                 $locked=$this->rows("SELECT * FROM `{$g['tabla']}` WHERE $where FOR UPDATE",$args);
@@ -212,7 +230,7 @@ final class LimpiezaPruebasDiego
                 $s=$this->db->prepare($sql);$s->bind_param(str_repeat('s',count($args)),...$args);$s->execute();if($s->affected_rows!==1)throw new RuntimeException('No se pudo completar una fila; rollback.');$s->close();
             }
             $protected=$this->rows('SELECT * FROM seguimientos_vinculacion WHERE id NOT IN ('.implode(',',self::TEST_IDS).') ORDER BY id');
-            if(self::digest($protected)!==$plan['seguimientos_protegidos_sha'])throw new RuntimeException('Un expediente protegido cambió; rollback.');
+            if(self::digest($protected)!==$protectedBefore)throw new RuntimeException('Un expediente protegido cambió; rollback.');
             foreach(['telefonia_analista_entrantes','telefonia_analista_webrtc_sesiones','telefonia_borradores','telefonia_notificaciones','telefonia_verificacion_evidencias'] as $table)if($this->tabla($table)&&$this->rows("SELECT 1 FROM `$table` WHERE usuario_id=? LIMIT 1",[self::UID]))throw new RuntimeException('Apareció actividad nueva de Diego; rollback.');
             if($this->rows("SELECT 1 FROM interacciones_vinculacion WHERE usuario_id=? AND canal IN ('LLAMADA','LLAMADA_IP') LIMIT 1",[self::UID])||$this->rows('SELECT 1 FROM telefonia_zadarma_eventos WHERE internal=? AND received_at>=? LIMIT 1',[self::EXT,$plan['desde_extension']]))throw new RuntimeException('Apareció una llamada nueva; rollback.');
             $s=$this->db->prepare("INSERT INTO telefonia_crm_limpiezas VALUES(?,?,'APLICADA',UTC_TIMESTAMP())");$s->bind_param('ss',$id,$backupSha);$s->execute();$s->close();
@@ -250,7 +268,7 @@ final class LimpiezaPruebasDiego
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__) {
     try {
         umask(0077);
-        $a=getopt('',['site:','backup-root:','check','apply:','restore:']);
+        $a=getopt('',['site:','backup-root:','check','apply:','restore:','compare:']);
         $root=realpath((string)($a['site']??''));$private=(string)($a['backup-root']??'');
         if(!$root||!is_file($root.'/index.php')||$private===''||!preg_match('~^(?:/|[a-zA-Z]:/)~',str_replace('\\','/',$private)))throw new RuntimeException('Indica --site y --backup-root con rutas absolutas.');
         $parent=realpath(dirname($private));
@@ -260,7 +278,7 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__) {
         if(str_starts_with(strtolower($privatePath),strtolower($sitePath)))throw new RuntimeException('El respaldo debe quedar fuera de public_html.');
         if(!is_dir($private)&&!mkdir($private,0700))throw new RuntimeException('No se pudo crear la carpeta privada.');
         chmod($private,0700);
-        if(count(array_intersect(['check','apply','restore'],array_keys($a)))!==1)throw new RuntimeException('Usa únicamente --check, --apply PLAN o --restore PLAN.');
+        if(count(array_intersect(['check','apply','restore','compare'],array_keys($a)))!==1)throw new RuntimeException('Usa únicamente --check, --compare PLAN, --apply PLAN o --restore PLAN.');
         require_once $root.'/config/db_connection.php';mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);$db=(new Database())->connect(false);$tool=new LimpiezaPruebasDiego($db);
         if(isset($a['check'])) {
             $db->query('START TRANSACTION READ ONLY');try{$plan=$tool->plan();}finally{$db->rollback();}$id=bin2hex(random_bytes(16));$bytes=gzencode(json_encode(['id'=>$id,'plan'=>$plan],JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),9);
@@ -268,10 +286,14 @@ if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__) {
             try{if(fwrite($f,$bytes)!==strlen($bytes)||!fflush($f)||!fsync($f))throw new RuntimeException('Respaldo incompleto.');}finally{fclose($f);}chmod($file,0600);
             echo json_encode(LimpiezaPruebasDiego::resumen($plan)+['plan_privado'=>$file,'estado'=>'CHECK OK: base de datos sin cambios; respaldo previo guardado.'],JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
         }else {
-            $file=realpath((string)($a['apply']??$a['restore']));
-            if(!$file||is_link((string)($a['apply']??$a['restore']))||dirname($file)!==$private||!preg_match('/^plan-diego-[a-f0-9]{32}\.json\.gz$/D',basename($file)))throw new RuntimeException('Plan privado no válido.');
+            $file=realpath((string)($a['apply']??$a['restore']??$a['compare']));
+            if(!$file||is_link((string)($a['apply']??$a['restore']??$a['compare']))||dirname($file)!==$private||!preg_match('/^plan-diego-[a-f0-9]{32}\.json\.gz$/D',basename($file)))throw new RuntimeException('Plan privado no válido.');
             $bytes=file_get_contents($file);$saved=json_decode(gzdecode($bytes),true,512,JSON_THROW_ON_ERROR);$sha=hash('sha256',$bytes);
-            if(isset($a['apply'])) {
+            if(isset($a['compare'])) {
+                $db->query('START TRANSACTION READ ONLY');
+                try{$actual=$tool->plan($saved['plan']['corte']);}finally{$db->rollback();}
+                echo json_encode(['diferencias'=>LimpiezaPruebasDiego::diferencias($saved['plan'],$actual),'estado'=>'Sólo lectura; no se aplicó ninguna limpieza.'],JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE).PHP_EOL;
+            }elseif(isset($a['apply'])) {
                 foreach(LimpiezaPruebasDiego::PROTECCION as $path=>$hashes) {
                     $source=is_file($root.'/'.$path)?str_replace("\r\n","\n",file_get_contents($root.'/'.$path)):'';
                     if(!in_array(hash('sha256',$source),$hashes,true))throw new RuntimeException('Protección no instalada o versión diferente: '.$path);

@@ -65,7 +65,9 @@ try {
  $id=str_repeat('a',32);$sha=str_repeat('b',64);
  $db->query("UPDATE telefonia_notificaciones SET llave='cambió' WHERE id=1");fails(fn()=>$tool->aplicar($plan,$id,$sha),'datos cambiaron');$db->query("UPDATE telefonia_notificaciones SET llave='llamada:ref1' WHERE id=1");
  $db->query("INSERT INTO telefonia_zadarma_eventos VALUES(6,'activa','101','NOTIFY_OUT_START',UTC_TIMESTAMP())");fails(fn()=>$tool->plan(),'reciente');$db->query('DELETE FROM telefonia_zadarma_eventos WHERE id=6');
- $plan=$tool->plan();$tool->aplicar($plan,$id,$sha);
+ $plan=$tool->plan();
+ $db->query("UPDATE seguimientos_vinculacion SET observaciones='Trabajo real ajeno mientras se revisaba el plan' WHERE id=2000");
+ $initial=$snapshot();$tool->aplicar($plan,$id,$sha);
  ok((int)$db->query('SELECT COUNT(*) n FROM seguimientos_vinculacion WHERE analista_id=5')->fetch_assoc()['n']===1303,'sólo nueve eliminados');
  ok((int)$db->query("SELECT COUNT(*) n FROM interacciones_vinculacion WHERE usuario_id=5 AND canal='LLAMADA_IP'")->fetch_assoc()['n']===0,'efectivas eliminadas');
  ok(rows($db,'usuarios')===$initial['usuarios']&&rows($db,'telefonia_extensiones')===$initial['telefonia_extensiones'],'configuración intacta');
@@ -98,6 +100,9 @@ try {
   $out=json_decode($cli(['--check']),true,512,JSON_THROW_ON_ERROR);$file=$out['plan_privado'];
   ok(is_file($file)&&$snapshot()===$initial,'check CLI guarda respaldo sin escribir SQL');
   ok(json_decode(gzdecode(file_get_contents($file)),true)['plan']['version']===5101,'respaldo legible');
+  $comparison=json_decode($cli(['--compare',$file]),true,512,JSON_THROW_ON_ERROR);ok(empty($comparison['diferencias']['tablas']),'compare CLI sin cambios objetivo');
+  $db->query("UPDATE seguimientos_vinculacion SET observaciones='Otra actividad real ajena' WHERE id=2000");$initial=$snapshot();
+  $comparison=json_decode($cli(['--compare',$file]),true,512,JSON_THROW_ON_ERROR);ok($comparison['diferencias']['otros_seguimientos_cambiaron']&&empty($comparison['diferencias']['tablas']),'diagnóstico distingue actividad ajena');
   ok(str_contains($cli(['--apply',$file]),'APLICADO'),'apply CLI');
   ok(str_contains($cli(['--restore',$file]),'RESTAURADO'),'restore CLI');ok($snapshot()===$initial,'CLI restaura exactamente');
  } finally {
@@ -105,5 +110,5 @@ try {
   unlink($dir.'/site/app/services/TelefoniaLimpiezaGuard.php');rmdir($dir.'/site/app/services');rmdir($dir.'/site/app');
   unlink($dir.'/site/config/db_connection.php');rmdir($dir.'/site/config');unlink($dir.'/site/index.php');rmdir($dir.'/site');rmdir($dir);
  }
- echo "PASS: MariaDB aislada; nueve pruebas, 1303 seguimientos conservados, llamadas/efectivas y avisos retirados, otras cuentas/tramos/ligas/prospectos protegidos, cambios concurrentes bloqueados, idempotencia y restauración exacta.\n";
+ echo "PASS: MariaDB aislada; nueve pruebas, 1303 seguimientos conservados, llamadas/efectivas y avisos retirados, otras cuentas/tramos/ligas/prospectos protegidos, cambios en el objetivo bloqueados y actividad ajena permitida/conservada, idempotencia y restauración exacta.\n";
 }finally{$db->query("DROP DATABASE `$name`");}
