@@ -4,7 +4,7 @@ import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = '002d9e96d160ac92d5f99d0dcb08c1df50bc83db870f3fc5c71a4bd6b8447d9f'
+MANIFEST_SHA256 = 'c9efa4347b2d02b32f1ae8649c7d950231b5dd1207385bb26f301ca664228300'
 PATHS = ['public/javascript/formularios_registro.js', 'public/javascript/formularios_registro_publico.js', 'public/javascript/formularios_inscripcion_completa.js', 'public/javascript/formularios_revision_envio.js', 'public/css/formularios_revision_envio.css']
 DEPENDENCIES = {}
 
