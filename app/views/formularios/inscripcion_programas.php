@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../helpers/FormularioPermisos.php';
 $programasInscripcion = is_array($programasInscripcion ?? null)
     ? $programasInscripcion
     : [];
@@ -65,10 +66,12 @@ $texto = static function ($valor) {
                            href="<?= BASE_URL ?>index.php?controller=formulario&amp;action=inscripcion&amp;programa=<?= rawurlencode($programa['slug']) ?>">
                             Abrir formulario <i class="bi bi-arrow-right" aria-hidden="true"></i>
                         </a>
+                        <?php if (FormularioPermisos::puede(FormularioPermisos::COMPARTIR)): ?>
                         <a class="btn btn-system-cancel" target="_blank" rel="noopener"
                            href="<?= BASE_URL ?>ya-estas-inscrito/?programa=<?= rawurlencode($programa['slug']) ?>">
                             <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Abrir enlace público
                         </a>
+                        <?php endif; ?>
                     </div>
                 </article>
             <?php endforeach; ?>

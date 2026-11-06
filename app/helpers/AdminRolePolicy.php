@@ -13,6 +13,7 @@ if (!function_exists('permisosOperativosRestringidosAdministrador')) {
         return [
             'prospectos.editar',
             'prospectos.asignar',
+            'prospectos.importar_meta',
             'seguimientos_comerciales.crear',
             'seguimientos_comerciales.editar',
             'seguimientos_comerciales.editar_propios',
@@ -27,6 +28,10 @@ if (!function_exists('permisosOperativosRestringidosAdministrador')) {
             'seguimientos_vinculacion.operar_propios',
             'seguimientos_vinculacion.supervisar',
             'seguimientos_vinculacion.comentar',
+            'aliados.crear_manual',
+            'aliados.editar_manual',
+            'aliados.gestionar_programas',
+            'formularios_aliados.gestionar_enlaces',
             'aliados.gestionar_contactos',
             'aliados.compartir_correo',
             'aliados.preparar_whatsapp',

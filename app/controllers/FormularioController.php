@@ -1,10 +1,12 @@
 <?php
 
 require_once __DIR__ . '/../models/FormularioRegistroModel.php';
+require_once __DIR__ . '/../helpers/FormularioPermisos.php';
 require_once __DIR__ . '/../services/FormularioInscripcionProgramas.php';
 require_once __DIR__ . '/../services/FormularioEjecutivasPerfiles.php';
 require_once __DIR__ . '/../services/FormularioEjecutivasValidacion.php';
 require_once __DIR__ . '/../helpers/HorarioContacto.php';
+require_once __DIR__ . '/../helpers/ProgramaEducativo.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/RegistroEnlaceService.php';
 
@@ -12,7 +14,7 @@ class FormularioController
 {
     public function index()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::VER, false);
 
         $tituloPagina = 'Formularios';
         $subtituloPagina = 'Administra los formularios de registro e inscripción.';
@@ -27,7 +29,7 @@ class FormularioController
 
     public function registro()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::VER, false);
 
         $modelo = new FormularioRegistroModel();
         $estados = $modelo->obtenerEstadosActivos();
@@ -53,7 +55,7 @@ class FormularioController
 
     public function municipios()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::VER, true);
 
         $estadoId = (int)($_GET['estado_id'] ?? 0);
 
@@ -97,7 +99,7 @@ class FormularioController
 
     public function generarEnlaceRegistro()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::COMPARTIR, true);
 
         if (
             strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST'
@@ -126,7 +128,7 @@ class FormularioController
     /** Acorta exclusivamente destinos públicos de Registro del propio CRM. */
     public function acortarRegistro()
     {
-        if(empty($_SESSION['usuario_id'])||(!tieneAlgunPermiso(['convocatorias.crear','formularios_aliados.gestionar_enlaces'])&&strcasecmp(trim((string)($_SESSION['rol']??'')),'Marketing')!==0)){
+        if(empty($_SESSION['usuario_id'])||(!tieneAlgunPermiso(['convocatorias.crear','formularios_aliados.gestionar_enlaces'])&&!FormularioPermisos::puede(FormularioPermisos::COMPARTIR))){
             $this->responderJson(['ok'=>false,'mensaje'=>'No tienes permiso para generar enlaces de Registro.'],403);return;
         }
         if(($_SERVER['REQUEST_METHOD']??'')!=='POST'){$this->responderJson(['ok'=>false,'mensaje'=>'Método no permitido.'],405);return;}
@@ -143,7 +145,7 @@ class FormularioController
 
     public function guardarRegistro()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::REGISTRO, true);
 
         if (
             strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST'
@@ -224,7 +226,7 @@ class FormularioController
      */
     public function validarEjecutivas()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::VER, true);
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
             $this->responderJson(['ok'=>false,'mensaje'=>'Método no permitido.'],405);
         }
@@ -251,7 +253,7 @@ class FormularioController
 
     public function generarEnlaceInscripcion()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::COMPARTIR, true);
 
         if (
             strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST'
@@ -274,7 +276,7 @@ class FormularioController
 
     public function guardarInscripcion()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::INSCRIPCION, true);
 
         if (
             strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST'
@@ -348,7 +350,7 @@ class FormularioController
 
     public function inscripcion()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::VER, false);
 
         $slug = trim((string)($_GET['programa'] ?? ''));
         $programasInscripcion = FormularioInscripcionProgramas::todos();
@@ -391,7 +393,7 @@ class FormularioController
 
     public function guardarInscripcionCompleta()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::INSCRIPCION, true);
         require_once __DIR__ . '/../services/FormularioInscripcionPantalla.php';
         FormularioInscripcionPantalla::guardar(false);
     }
@@ -399,7 +401,7 @@ class FormularioController
 
     public function comprobanteInscripcion()
     {
-        $this->validarAccesoMarketing();
+        FormularioPermisos::exigir(FormularioPermisos::COMPROBANTES, true);
         require_once __DIR__ . '/../services/FormularioInscripcionPantalla.php';
         FormularioInscripcionPantalla::descargarComprobante();
     }
@@ -605,22 +607,4 @@ class FormularioController
         exit;
     }
 
-    private function validarAccesoMarketing()
-    {
-        if (!isset($_SESSION['usuario_id'])) {
-            header(
-                'Location: ' .
-                BASE_URL .
-                'index.php?controller=login&action=mostrarLogin'
-            );
-            exit;
-        }
-
-        $rol = trim((string)($_SESSION['rol'] ?? ''));
-
-        if (strcasecmp($rol, 'Marketing') !== 0) {
-            http_response_code(403);
-            die('No tienes permiso para acceder al módulo de Formularios.');
-        }
-    }
 }

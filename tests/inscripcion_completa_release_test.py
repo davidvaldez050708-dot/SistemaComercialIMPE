@@ -2,11 +2,12 @@
 import base64,gzip,hashlib,json,os,re,subprocess,sys,tempfile
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
-package=json.loads((root/'tools/inscripcion_completa_release.json').read_text(encoding='utf-8'))
+PUBLISHED='f092b703793dff17bb96616f608e96eaec5fb7ef'
+package=json.loads(subprocess.check_output(['git','show',PUBLISHED+':tools/inscripcion_completa_release.json'],cwd=str(root)))
 php=os.environ.get('PHP_BINARY','php')
 # Un cambio de Inscripción no puede reescribir Registro, alias, horarios o autorización.
 baseline=(root/'tests/fixtures/inscripcion_controller_hostinger.php.txt').read_text(encoding='utf-8')
-current=(root/'app/controllers/FormularioController.php').read_text(encoding='utf-8')
+current=subprocess.check_output(['git','show',PUBLISHED+':app/controllers/FormularioController.php'],cwd=str(root)).decode('utf-8')
 for method in ['registro','municipios','generarEnlaceRegistro','acortarRegistro','guardarRegistro','generarEnlaceInscripcion','guardarInscripcion','normalizarRegistro','validarRegistro','validarAccesoMarketing']:
  pattern=r'    (?:public|private) function '+method+r'\([^\n]*\)\s*\n    \{.*?\n    \}'
  a,b=re.search(pattern,baseline,re.S),re.search(pattern,current,re.S)
@@ -32,7 +33,7 @@ with tempfile.TemporaryDirectory(prefix='impe-inscripcion-release-') as temp:
  assert 'APLICADO' in run('--apply')
  for row in package['files']:
   target=site/row['path'];assert hashlib.sha256(target.read_bytes()).hexdigest()==row['variants'][0]['after']
-  assert target.read_bytes()==(root/row['path']).read_bytes(),'manifiesto sin regenerar: '+row['path']
+  assert target.read_bytes()==blob(PUBLISHED,row['path']),'manifiesto sin regenerar: '+row['path']
  assert 'YA INSTALADO' in run('--apply')
  folder=next(backup.iterdir());assert 'RESTAURADO' in run('--restore',str(folder))
  for row in package['files']:

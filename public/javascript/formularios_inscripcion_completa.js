@@ -57,7 +57,7 @@
     });
     let busy = false;
     form.addEventListener('submit', async e => {
-        e.preventDefault(); if (busy) return;
+        e.preventDefault(); if (busy || form.dataset.formulariosConsulta === '1') return;
         let invalid = false;
         Array.from(form.elements).forEach(input => {
             if (!input.disabled && input.willValidate && !input.checkValidity()) {

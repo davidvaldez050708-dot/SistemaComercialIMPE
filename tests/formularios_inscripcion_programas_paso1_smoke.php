@@ -36,6 +36,9 @@ foreach ($esperados as $slug => $nombre) {
 if (!defined('BASE_URL')) {
     define('BASE_URL', 'https://example.invalid/');
 }
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', dirname(__DIR__));
+}
 
 $render = static function (string $view, array $args): string {
     extract($args, EXTR_SKIP);
