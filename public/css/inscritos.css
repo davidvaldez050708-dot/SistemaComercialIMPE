@@ -1,0 +1,204 @@
+/* Inscripciones recibidas · diseño del módulo Prospectos, una sola tabla. */
+.inscritos-page {
+    font-family:'Manrope',sans-serif; color:#17233e;
+    width:100%; padding:0 0 26px;
+}
+.inscritos-page .inscritos-panel {
+    background:#fff; border:1px solid #e1e8f0;
+    border-radius:16px; padding:24px;
+    box-shadow:0 8px 24px rgba(24,43,72,.04);
+}
+.inscritos-page .inscritos-heading {
+    display:flex; justify-content:space-between; align-items:center;
+    gap:18px; flex-wrap:wrap; margin-bottom:22px;
+}
+.inscritos-page .inscritos-heading-main {
+    display:flex; align-items:center; gap:16px; min-width:0;
+}
+.inscritos-page .inscritos-heading-icon {
+    display:inline-flex; flex:0 0 52px;
+    align-items:center; justify-content:center;
+    width:52px; height:52px; border-radius:14px;
+    color:#09836b; background:#e9f6f3; font-size:24px;
+}
+.inscritos-eyebrow {font-weight:800; letter-spacing:.075em; color:#09836b; font-size:10px;}
+.inscritos-page h2 {font-size:18px; font-weight:800; margin:2px 0 5px;}
+.inscritos-page p {font-size:12px; color:#617189; margin:0;}
+.inscritos-page .inscritos-count {
+    border:1px solid #e1e8f0; border-radius:14px;
+    padding:10px 20px; text-align:center; min-width:118px;
+}
+.inscritos-page .inscritos-count strong {display:block; font-size:24px; font-weight:800; line-height:1.2;}
+.inscritos-page .inscritos-count span {font-size:11px; color:#617189;}
+.inscritos-page .inscritos-filters {
+    display:grid;
+    grid-template-columns:minmax(220px,2.1fr) minmax(165px,1.35fr)
+                          minmax(130px,1fr) minmax(130px,1fr) auto;
+    gap:12px; align-items:end;
+    padding:17px; border:1px solid #e3eaf3; border-radius:14px;
+    background:#f9fbfd; margin-bottom:16px;
+}
+.inscritos-page .inscritos-field {display:flex; flex-direction:column; gap:6px; min-width:0;}
+.inscritos-page .inscritos-field label {font-size:11px; font-weight:800; color:#344766;}
+.inscritos-page .inscritos-field input,
+.inscritos-page .inscritos-field select {
+    width:100%; border:1px solid #d8e2ee; border-radius:10px; background:#fff;
+    min-height:41px; padding:8px 11px; outline:0; font-size:12px;
+    font-family:inherit; font-weight:600; color:#1d3356; min-width:0;
+}
+.inscritos-page .inscritos-field input:focus,
+.inscritos-page .inscritos-field select:focus {
+    border-color:#223a84; box-shadow:0 0 0 3px rgba(34,58,132,.09);
+}
+.inscritos-page .inscritos-search-control {position:relative;}
+.inscritos-page .inscritos-search-control i {
+    position:absolute; left:13px; top:50%; transform:translateY(-50%);
+    color:#73849d; font-size:14px; pointer-events:none;
+}
+.inscritos-page .inscritos-search-control input {padding-left:37px;}
+.inscritos-page .inscritos-clear {
+    display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    height:41px; border:1px solid #d8e2ee; border-radius:10px;
+    padding:0 15px; background:#fff; color:#385071;
+    font-family:inherit; font-size:12px; font-weight:800; cursor:pointer;
+}
+.inscritos-page .inscritos-clear:hover {border-color:#223a84; color:#223a84;}
+.inscritos-page .inscritos-results-toolbar {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; margin:0 0 14px; flex-wrap:wrap;
+}
+.inscritos-page .inscritos-results-toolbar p {font-size:12px; font-weight:650;}
+.inscritos-page .inscritos-excel {
+    display:inline-flex; align-items:center; gap:9px;
+    color:#fff; background:#223a84; border:1px solid #223a84;
+    border-radius:10px; min-height:39px; padding:9px 17px; cursor:pointer;
+    font-size:12px; font-family:inherit; font-weight:800;
+}
+.inscritos-page .inscritos-excel:hover:not(:disabled) {background:#192d70;}
+.inscritos-page .inscritos-excel:disabled {opacity:.55; cursor:not-allowed;}
+.inscritos-page .inscritos-table-wrap {
+    width:100%; overflow-x:auto; border:1px solid #e3eaf1; border-radius:12px;
+}
+.inscritos-page table {
+    width:100%; border-collapse:collapse; font-size:12px; white-space:nowrap;
+    font-family:'Manrope',sans-serif;
+}
+.inscritos-page th {
+    background:#eef4fa; color:#173a65; font-weight:800; text-align:left;
+    padding:13px 14px; border-bottom:1px solid #d9e4ef;
+}
+.inscritos-page td {
+    padding:13px 14px; border-bottom:1px solid #e9eef5;
+    color:#42516a; font-weight:600;
+}
+.inscritos-page tbody tr:last-child td {border-bottom:0;}
+.inscritos-page tbody tr:hover {background:#f7fafc;}
+.inscritos-page .inscritos-name {font-weight:800; color:#17233e;}
+.inscritos-page .inscritos-date {color:#6a7990; font-variant-numeric:tabular-nums;}
+.inscritos-page .inscritos-program-badge {
+    display:inline-flex; align-items:center; white-space:normal; max-width:250px;
+    border-radius:8px; padding:6px 10px; color:#235077;
+    font-size:11px; font-weight:750; background:#edf5ff;
+}
+.inscritos-page .inscritos-origin {
+    color:#116c57; font-weight:800; font-size:10px;
+    border:1px solid #c5e9dd; background:#eefaf5;
+    border-radius:7px; padding:5px 9px;
+}
+.inscritos-page .inscritos-view {
+    border:1px solid #d7e2f0; color:#223a84; background:#fff;
+    border-radius:9px; font-family:inherit; font-size:11px;
+    font-weight:800; padding:7px 11px; white-space:nowrap; cursor:pointer;
+}
+.inscritos-page .inscritos-view:hover {background:#eef4ff; border-color:#223a84;}
+.inscritos-page .inscritos-message {
+    text-align:center; white-space:normal; padding:34px !important;
+    color:#617189; font-weight:600;
+}
+.inscritos-page .inscritos-message.is-error {color:#a2233c;}
+.inscritos-page .inscritos-footer {
+    margin:16px 0 0; display:flex; justify-content:space-between;
+    align-items:center; flex-wrap:wrap; gap:12px;
+}
+.inscritos-page .inscritos-footer small {font-size:10px; color:#74849d;}
+.inscritos-page .inscritos-pagination {display:flex; align-items:center; gap:11px; font-size:12px;}
+.inscritos-page .inscritos-pagination button {
+    border:1px solid #dce5ef; border-radius:9px; padding:8px 12px;
+    background:#fff; color:#223a84; font-weight:750; cursor:pointer; font-family:inherit;
+}
+.inscritos-page .inscritos-pagination button:disabled {opacity:.38; cursor:not-allowed;}
+.inscritos-page .inscritos-export-note {font-size:10px; margin-top:14px; line-height:1.6; color:#7a879c;}
+.inscritos-overlay[hidden],.inscritos-drawer[hidden] {display:none !important;}
+.inscritos-overlay {
+    position:fixed; inset:0; z-index:1104;
+    background:rgba(15,28,55,.44); backdrop-filter:blur(2px);
+}
+.inscritos-drawer {
+    position:fixed; right:0; top:0; bottom:0; z-index:1105;
+    display:flex; flex-direction:column; width:min(500px,100%);
+    background:#fff; box-shadow:-15px 0 50px rgba(15,31,56,.16);
+    font-family:'Manrope',sans-serif; color:#17233e;
+}
+.inscritos-drawer .inscritos-drawer-header {
+    display:flex; gap:15px; align-items:flex-start; justify-content:space-between;
+    padding:25px 26px 22px; border-bottom:1px solid #e3eaf2;
+}
+.inscritos-drawer h3 {font-size:18px; font-weight:850; margin:4px 0 5px;}
+.inscritos-drawer p {font-size:12px; margin:0; line-height:1.6; color:#687890;}
+.inscritos-drawer .inscritos-close {
+    border:1px solid #dde6f0; border-radius:11px;
+    background:#fff; width:38px; height:38px; flex:0 0 38px;
+    color:#344766; cursor:pointer;
+}
+.inscritos-drawer .inscritos-close:hover {background:#f3f7fc;}
+.inscritos-drawer-scroll {flex:1; padding:22px 26px; overflow-y:auto;}
+.inscritos-drawer-loading {padding:20px 0; text-align:center; color:#617189;}
+.inscritos-ficha-section {margin-bottom:25px;}
+.inscritos-ficha-section h4 {
+    font-size:12px; font-weight:900; margin:0 0 12px; color:#223a84;
+    display:flex; align-items:center; gap:9px; padding-bottom:10px;
+    border-bottom:1px solid #e8edf3;
+}
+.inscritos-ficha-grid {display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.inscritos-ficha-item {min-width:0;}
+.inscritos-ficha-item.is-wide {grid-column:1/-1;}
+.inscritos-ficha-item dt {
+    color:#7b8799; font-size:10px; font-weight:750;
+    margin:0 0 4px;
+}
+.inscritos-ficha-item dd {
+    font-size:12px; color:#263957; font-weight:750; margin:0;
+    overflow-wrap:anywhere; white-space:pre-line;
+}
+.inscritos-drawer-actions {border-top:1px solid #e6edf4; padding:18px 25px;}
+.inscritos-drawer-actions[hidden] {display:none;}
+.inscritos-download {
+    display:flex; justify-content:center; align-items:center; gap:8px;
+    width:100%; background:#223a84; border-radius:10px; padding:11px 15px;
+    color:#fff !important; font-size:12px; font-weight:800; text-decoration:none;
+}
+.inscritos-drawer-actions small {display:block; font-size:10px; margin-top:9px; color:#76849a;}
+body.inscritos-modal-abierto {overflow:hidden;}
+@media(max-width:1100px) {
+    .inscritos-page .inscritos-filters {
+        grid-template-columns:minmax(220px,2fr) minmax(150px,1fr) 1fr 1fr;
+    }
+    .inscritos-page .inscritos-clear {grid-column:1/-1; justify-self:end;}
+}
+@media(max-width:767px) {
+    .inscritos-page .inscritos-panel {padding:16px;}
+    .inscritos-page .inscritos-heading-icon {width:44px; height:44px; flex-basis:44px;}
+    .inscritos-page .inscritos-filters {grid-template-columns:1fr 1fr; padding:12px;}
+    .inscritos-page .inscritos-search,
+    .inscritos-page .inscritos-programa {grid-column:1/-1;}
+    .inscritos-page .inscritos-clear {grid-column:1/-1; justify-self:stretch;}
+    .inscritos-page .inscritos-footer {align-items:flex-start;}
+    .inscritos-drawer .inscritos-drawer-header {padding:18px;}
+    .inscritos-drawer-scroll {padding:17px 18px;}
+    .inscritos-page .inscritos-heading {gap:12px;}
+    .inscritos-page .inscritos-heading-main {gap:12px;}
+}
+@media(max-width:390px) {
+    .inscritos-page .inscritos-filters {grid-template-columns:1fr;}
+    .inscritos-page .inscritos-fecha {grid-column:1/-1;}
+}
