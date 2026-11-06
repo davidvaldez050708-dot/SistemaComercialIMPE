@@ -1,0 +1,66 @@
+name: Inscripciones recibidas - tabla y Excel
+on:
+  pull_request:
+    paths:
+      - 'app/controllers/InscritosController.php'
+      - 'app/models/InscritosModel.php'
+      - 'app/helpers/InscritosPermisos.php'
+      - 'app/models/RolModel.php'
+      - 'app/views/layout/sidebar.php'
+      - 'app/views/inscritos/**'
+      - 'app/services/InscritosExcelService.php'
+      - 'public/css/inscritos.css'
+      - 'public/javascript/inscritos.js'
+      - 'index.php'
+      - 'tests/inscritos_*'
+      - 'tools/publicar_inscritos_hostinger.py'
+      - '.github/workflows/inscritos-bandeja.yml'
+permissions:
+  contents: read
+jobs:
+  inscritos:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0','mariadb:11.8']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 33339:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent || mariadb-admin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33339
+      IMPE_DB_USER: root
+      IMPE_DB_PASSWORD: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring,zip,xml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Lint PHP and JS
+        run: |
+          for file in app/controllers/InscritosController.php app/models/InscritosModel.php \
+                      app/helpers/InscritosPermisos.php app/services/InscritosExcelService.php \
+                      app/models/RolModel.php app/views/layout/sidebar.php \
+                      app/views/inscritos/index.php index.php tests/inscritos_db_smoke.php
+          do php -l "$file"; done
+          node --check public/javascript/inscritos.js
+      - name: DB filters, protection, Excel with synthetic records
+        run: php tests/inscritos_db_smoke.php
+      - name: Safe Hostinger publisher test
+        run: |
+          python3 -m py_compile tools/publicar_inscritos_hostinger.py
+          python3 tests/inscritos_release_test.py

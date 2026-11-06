@@ -586,6 +586,17 @@ switch ($controller) {
         break;
 
 
+    case 'inscritos':
+
+        require_once __DIR__ .
+            '/app/controllers/InscritosController.php';
+
+        $controllerInstance =
+            new InscritosController();
+
+        break;
+
+
     case 'formulario':
 
         require_once __DIR__ .
