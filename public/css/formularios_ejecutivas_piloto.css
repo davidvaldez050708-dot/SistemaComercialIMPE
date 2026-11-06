@@ -1,0 +1,110 @@
+/* Piloto de Ejecutivas A286: reutiliza el hero y controles del Registro público. */
+.formulario-ejecutivas-piloto .ejecutivas-piloto-superior {
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    gap:12px; margin:0 0 18px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-volver {
+    display:inline-flex; align-items:center; gap:8px; color:#223a84;
+    font-size:13px; font-weight:800; text-decoration:none;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-volver:hover { text-decoration:underline; }
+.formulario-ejecutivas-piloto .ejecutivas-piloto-chip {
+    display:inline-flex; gap:8px; align-items:center; border-radius:50px;
+    padding:8px 12px; background:#f1f6fd; border:1px solid #cfdaeb;
+    color:#274478; font-size:11px; font-weight:800;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-intro {
+    display:flex; gap:14px; align-items:center; padding:10px 0 26px;
+    border-bottom:1px solid #e4eaf3;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-icon {
+    display:grid; place-items:center; width:54px; height:54px; flex-shrink:0;
+    border:1px solid #cce8df; border-radius:17px; background:#eaf8f3;
+    font-size:24px; color:#07866b;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-eyebrow {
+    font-size:11px; font-weight:900; letter-spacing:.07em; color:#07866b;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-intro h2 {
+    margin:3px 0 5px; font-weight:800; color:#16213a; font-size:23px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-intro p,
+.formulario-ejecutivas-piloto .ejecutivas-piloto-descripcion {
+    margin:0; font-size:12px; line-height:1.65; color:#64728a;
+}
+.formulario-ejecutivas-piloto .formulario-publico-section-heading {
+    display:flex; align-items:center; gap:14px;
+}
+.formulario-ejecutivas-piloto .formulario-publico-section-heading > div { min-width:0; }
+.formulario-ejecutivas-piloto .formulario-publico-field input[type=file] {
+    min-height:48px; padding:11px 12px;
+}
+.formulario-ejecutivas-piloto .formulario-publico-field input[type=file]:disabled {
+    cursor:not-allowed; background:#f3f6fa; color:#77839b; opacity:1;
+}
+.formulario-ejecutivas-piloto .formulario-publico-field a {
+    color:#223a84; font-weight:750; text-decoration:underline;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-legal {
+    display:grid; gap:14px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-legal-card {
+    display:flex; align-items:flex-start; gap:12px; padding:16px;
+    background:#f6f9fc; border:1px solid #e0e8f2; border-radius:16px;
+    color:#203454;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-legal-card i {
+    display:grid; place-items:center; flex:0 0 36px; width:36px; height:36px;
+    background:#e8f7f1; border-radius:11px; color:#09876e; font-size:18px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-legal-card strong {
+    display:block; font-size:13px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-legal-card small {
+    display:block; margin-top:4px; font-size:11px; color:#62748d;
+    line-height:1.65;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-check {
+    display:flex; align-items:flex-start; gap:9px; font-size:12px;
+    line-height:1.6; color:#52627b;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-check input { margin-top:3px; accent-color:#223a84; }
+.formulario-ejecutivas-piloto .ejecutivas-piloto-validacion {
+    margin:18px 0; padding:16px 18px; border-radius:14px; border:1px solid #c8e5d9;
+    background:#f0faf6; color:#17674e; font-size:13px; line-height:1.6;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-validacion.is-error {
+    background:#fff5f5; border-color:#f0cece; color:#923c3c;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-validacion[hidden] { display:none; }
+.formulario-ejecutivas-piloto .ejecutivas-piloto-validacion ul { margin:8px 0 0; padding-left:19px; }
+.formulario-ejecutivas-piloto .formulario-publico-submit {
+    background:#223a84; border-color:#223a84; color:#fff;
+}
+.formulario-ejecutivas-piloto .formulario-publico-submit:hover {
+    background:#1a2e70; border-color:#1a2e70; color:#fff;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-pie {
+    margin:12px 0 0; color:#62748d; font-size:11px; line-height:1.65; text-align:center;
+}
+@media(max-width:640px) {
+    .formulario-ejecutivas-piloto .ejecutivas-piloto-intro { align-items:flex-start; }
+    .formulario-ejecutivas-piloto .ejecutivas-piloto-intro h2 { font-size:19px; }
+    .formulario-ejecutivas-piloto .ejecutivas-piloto-chip { font-size:10px; }
+}
+
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo {
+    border:1px solid #cde6db; background:#f2faf6; border-radius:16px;
+    padding:18px 20px; margin:24px 0 8px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo .ejecutivas-piloto-check {
+    margin:0; align-items:flex-start; color:#193e42; font-weight:600;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo input {
+    flex:0 0 auto; margin-top:4px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo a { color:#223a84; }
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo-error {
+    margin-top:9px; color:#b42330; font-size:12px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo-error[hidden] { display:none; }

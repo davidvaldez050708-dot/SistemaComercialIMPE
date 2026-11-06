@@ -58,15 +58,29 @@ $texto = static function ($valor) {
                     <div class="formularios-inscripcion-programa-copy">
                         <span class="formularios-kicker">INSCRIPCIÓN</span>
                         <h4><?= $texto($programa['nombre']) ?></h4>
-                        <p>Accede al formulario interno de este programa.</p>
+                        <p><?= $programa['slug'] === 'titulacion-ejecutivas'
+                            ? 'Piloto del formulario completo: vista pública y validación de datos sin guardar.'
+                            : 'Accede al formulario interno de este programa.' ?></p>
                     </div>
 
                     <div class="formularios-inscripcion-programa-action">
-                        <a class="btn btn-system-save"
-                           href="<?= BASE_URL ?>index.php?controller=formulario&amp;action=inscripcion&amp;programa=<?= rawurlencode($programa['slug']) ?>">
-                            Abrir formulario
-                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                        </a>
+                        <?php if ($programa['slug'] === 'titulacion-ejecutivas'): ?>
+                            <a class="btn btn-system-save"
+                               href="<?= BASE_URL ?>index.php?controller=formulario&amp;action=previsualizarEjecutivas">
+                                Revisar formulario piloto
+                                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                            </a>
+                            <a class="formularios-inscripcion-programa-legacy-link"
+                               href="<?= BASE_URL ?>index.php?controller=formulario&amp;action=inscripcion&amp;programa=<?= rawurlencode($programa['slug']) ?>">
+                                Abrir captura interna anterior
+                            </a>
+                        <?php else: ?>
+                            <a class="btn btn-system-save"
+                               href="<?= BASE_URL ?>index.php?controller=formulario&amp;action=inscripcion&amp;programa=<?= rawurlencode($programa['slug']) ?>">
+                                Abrir formulario
+                                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </article>
             <?php endforeach; ?>

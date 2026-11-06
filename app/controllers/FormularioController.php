@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/../models/FormularioRegistroModel.php';
 require_once __DIR__ . '/../services/FormularioInscripcionProgramas.php';
+require_once __DIR__ . '/../services/FormularioEjecutivasPerfiles.php';
+require_once __DIR__ . '/../services/FormularioEjecutivasValidacion.php';
 
 class FormularioController
 {
@@ -178,6 +180,62 @@ class FormularioController
                     'No fue posible guardar el registro. Verifica que la migración del formulario esté aplicada.'
             ], 500);
         }
+    }
+
+    /**
+     * VISTA DE PRUEBA INTERNA: misma imagen, logos y CSS del Registro público.
+     * Sin enlace público, envío, subida de recibos ni escrituras en la BD.
+     */
+    public function previsualizarEjecutivas()
+    {
+        $this->validarAccesoMarketing();
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
+            http_response_code(405);
+            echo 'Método no permitido.';
+            return;
+        }
+
+        header('Cache-Control: private, no-store, max-age=0');
+        header('X-Robots-Tag: noindex, nofollow');
+        header('Referrer-Policy: same-origin');
+        if (empty($_SESSION['csrf_ejecutivas_piloto'])) {
+            $_SESSION['csrf_ejecutivas_piloto'] = bin2hex(random_bytes(32));
+        }
+        $csrfEjecutivas = (string)$_SESSION['csrf_ejecutivas_piloto'];
+        $perfilesEjecutivas = FormularioEjecutivasPerfiles::todos();
+
+        require __DIR__ . '/../views/formularios/inscripcion_ejecutivas_previa.php';
+    }
+
+    /**
+     * Valida datos solamente en sesión Marketing; no guarda ni consulta RENAPO.
+     * No se aceptan archivos para evitar capturar comprobantes prematuramente.
+     */
+    public function validarEjecutivas()
+    {
+        $this->validarAccesoMarketing();
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+            $this->responderJson(['ok'=>false,'mensaje'=>'Método no permitido.'],405);
+        }
+        header('Cache-Control: private, no-store, max-age=0');
+        header('X-Robots-Tag: noindex, nofollow');
+
+        $enviado = trim((string)($_POST['csrf_piloto'] ?? ''));
+        $esperado = (string)($_SESSION['csrf_ejecutivas_piloto'] ?? '');
+        if ($esperado === '' || $enviado === '' || !hash_equals($esperado, $enviado)) {
+            $this->responderJson(['ok'=>false,'mensaje'=>'Validación de seguridad no disponible. Recarga la vista.'],403);
+        }
+        if (!empty($_FILES)) {
+            $this->responderJson(['ok'=>false,'mensaje'=>'El piloto no recibe archivos ni comprobantes.'],422);
+        }
+        if (($_POST['programa_slug'] ?? '') !== 'titulacion-ejecutivas') {
+            $this->responderJson(['ok'=>false,'mensaje'=>'Programa de inscripción no válido.'],422);
+        }
+        $resultado = FormularioEjecutivasValidacion::validar($_POST);
+        $resultado['mensaje'] = $resultado['ok']
+            ? 'La captura supera las verificaciones locales; confirma CURP y documentos antes de inscribir.'
+            : 'Hay datos por revisar. No se guardó información.';
+        $this->responderJson($resultado, $resultado['ok'] ? 200 : 422);
     }
 
     public function generarEnlaceInscripcion()
