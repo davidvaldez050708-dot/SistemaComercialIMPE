@@ -169,15 +169,19 @@ final class VentasContactoHistorico30
             self::fail('Respaldo requiere carpeta privada 0700, fuera de public_html.');
         $name='backup_contactos_30_'.substr($payload['plan_sha'],0,16).'_'.bin2hex(random_bytes(4)).'.json';
         $dest=$real.DIRECTORY_SEPARATOR.$name;
-        $handle=fopen($dest,'x');
-        if(!$handle)self::fail('No se puede crear respaldo.');
-        chmod($dest,0600);
+        $umask=umask(0077);
         try {
-            $content=json_encode($payload,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
-            if(fwrite($handle,$content)!==strlen($content))
-                self::fail('No se pudo escribir el respaldo completo.');
-            fflush($handle);
-        }finally{fclose($handle);}
+            $handle=fopen($dest,'x');
+            if(!$handle)self::fail('No se puede crear respaldo.');
+            try {
+                $content=json_encode($payload,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+                if(fwrite($handle,$content)!==strlen($content))
+                    self::fail('No se pudo escribir el respaldo completo.');
+                fflush($handle);
+                chmod($dest,0600);
+            } catch(Throwable $e) { @unlink($dest); throw $e;
+            } finally {fclose($handle);}
+        }finally{umask($umask);}
         return $dest;
     }
 
