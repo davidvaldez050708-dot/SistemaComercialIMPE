@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/../tools/ventas_contacto_historico_aplicar_30.php';
+require_once __DIR__.'/../tools/ventas_contacto_historico_restaurar_30.php';
 mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
 $port=(int)getenv('IMPE_TEST_MYSQL_PORT');
 if($port<=0)throw new RuntimeException('Puerto de base de prueba requerido');
@@ -147,7 +148,32 @@ try{
     $assert(strpos($e->getMessage(),'ausente/ambigua')!==false,'no vincular PBX ajeno');
     $db->rollback();
  }
- echo "PASS: 118 resultados, 30 conversiones, 88 intactos, misma fecha, WhatsApp preservado, backup, idempotencia, PBX propia.\n";
+ $saved=VentasContactoHistoricoRestaurar30::leer($backup,$dir.'/private',$dir.'/site');
+ $assert(count($saved['antes'])===30,'30 resultados en respaldo');
+ $db->query('START TRANSACTION READ ONLY');
+ VentasContactoHistoricoRestaurar30::comprobar($db,$saved,false);
+ $db->commit();
+ $db->begin_transaction();
+ VentasContactoHistoricoRestaurar30::comprobar($db,$saved,true);
+ VentasContactoHistoricoRestaurar30::restaurar($db,$saved);
+ $db->commit();
+ $all=$db->query("SELECT resultado,COUNT(*) n FROM telefonia_ventas_resultados GROUP BY resultado")->fetch_all(MYSQLI_ASSOC);
+ $assert(count($all)===1&&$all[0]['resultado']==='ENVIO_WHATSAPP'&&(int)$all[0]['n']===118,
+         'Rollback restauró 118 resultados como estaban');
+ $d=$db->query("SELECT resultado_principal,catalogo_version,COUNT(*) n
+     FROM telefonia_ventas_resultado_detalles
+     GROUP BY resultado_principal,catalogo_version")->fetch_all(MYSQLI_ASSOC);
+ $assert(count($d)===1&&$d[0]['resultado_principal']==='ENVIO_WHATSAPP'&&$d[0]['catalogo_version']==='3'&&(int)$d[0]['n']===118,
+         'Rollback restauró detalles V3 exactos');
+ $db->begin_transaction();
+ try {
+     VentasContactoHistoricoRestaurar30::comprobar($db,$saved,true);
+     throw new RuntimeException('FAIL: restore repetido no rechazado');
+ } catch(RuntimeException $ex) {
+     $assert(strpos($ex->getMessage(),'ya no conserva')!==false,'No restauración duplicada');
+     $db->rollback();
+ }
+ echo "PASS: 30 conversiones exactas, 88 intactas, WhatsApp, respaldo, restauración transaccional, idempotencia y PBX propia.\n";
 }finally{
  $db->query("DROP DATABASE `$name`");
  $db->close();
