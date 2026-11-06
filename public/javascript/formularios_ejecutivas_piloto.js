@@ -87,6 +87,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const ok = first === 'correo' ? a.toLowerCase() === b.toLowerCase() : a === b;
             if (!mark(field(second), ok && a !== '', message)) valid = false;
         }
+        const confirmacion = form.querySelector('[data-ejecutivas-confirmar]');
+        const aviso = form.querySelector('[data-ejecutivas-confirmar-error]');
+        if (confirmacion) {
+            const confirmado = confirmacion.checked;
+            confirmacion.setAttribute('aria-invalid', confirmado ? 'false' : 'true');
+            if (aviso) aviso.hidden = confirmado;
+            if (!confirmado) valid = false;
+        }
         return valid;
     }
 
@@ -126,6 +134,12 @@ document.addEventListener('DOMContentLoaded', function () {
     field('curp')?.addEventListener('input', function () {
         this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 18);
         if (this.value.length === 18) validarCurp();
+    });
+
+    form.querySelector('[data-ejecutivas-confirmar]')?.addEventListener('change', function () {
+        this.setAttribute('aria-invalid', this.checked ? 'false' : 'true');
+        const aviso = form.querySelector('[data-ejecutivas-confirmar-error]');
+        if (aviso) aviso.hidden = this.checked;
     });
 
     form.addEventListener('submit', async function (event) {
