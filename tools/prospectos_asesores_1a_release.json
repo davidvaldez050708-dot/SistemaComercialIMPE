@@ -46,7 +46,7 @@
     },
     {
       "path": "app/models/RolModel.php",
-      "sha256": "51678bbbaa437d278859dc33d25319b808dcd3a75cb50b4d6992"
+      "sha256": "51678bbbaa437d278859dc33d25319b808dcd48b21e2018cd3a75cb50b4d6992"
     }
   ]
 }
