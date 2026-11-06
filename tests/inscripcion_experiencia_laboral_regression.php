@@ -58,7 +58,7 @@ foreach (['bachillerato-en-2-anos', 'bachillerato-286', 'ingles'] as $slug) {
 
 // Validación real de datos sintéticos: la ruta de guardado aplica las mismas
 // comprobaciones a internos y públicos. No se consulta RENAPO ni escribe SQL.
-$prefijo = 'GARR000101HDFRRS0';
+$prefijo = 'GARR000101HDFRRSA';
 $curp = $prefijo . FormularioEjecutivasValidacion::digitoVerificador($prefijo);
 $datos = [
     'nombre'=>'Roberto','apellidos'=>'García Ruiz',
