@@ -39,6 +39,41 @@ php tests/prospectos_asesores_config_unit.php
 La integración `tests/prospectos_asesores_config_db.php` requiere MySQL **desechable** y `IMPE_ASESORES_TEST_DB=YES`, para crear y borrar una base aislada con nombre aleatorio. No usar credenciales ni conexión a la base real.
 El workflow `.github/workflows/prospectos-asesores-config.yml` ejecuta sintaxis, pruebas unitarias y transacciones en MySQL 8.
 
+## Conciliación con Hostinger: SHA proporcionados el 06/11/2026
+
+| Archivo existente | SHA-256 confirmado | Acción |
+|---|---|---|
+| `app/controllers/ProspectoController.php` | `d5c1bc9d555773de82f34388667826dceffc28265951afdc8126ba6260aff234` | Actualizar tras `--check` |
+| `app/views/prospectos/central.php` | `e083eaf8530917de928ce84918b84c7ea09e885b965ec85062d3bd1cdd42efba` | Actualizar tras `--check` |
+| `public/css/prospectos_central.css` | `93600e7097cee8c6aebb6396a163faf033cc6ef3360b2fa93206959c6bc0993a` | Dependencia en sólo lectura |
+| `app/models/RolModel.php` | `51678bbbaa437d278859dc33d25319b808dcd3a75cb50b4d6992` | Versión personalizada: no reemplazar |
+
+Las tres primeras huellas corresponden exactamente a las del objetivo del paquete `prospectos_campanias_release.json`, corroboradas con SHA-256 sobre el código base real del PR #191. La cuarta huella es personalizada y no coincide con las variantes anteriores; se conserva tal cual.
+
+## Publicador sellado, preparado, todavía NO instalado
+
+Archivos de la entrega:
+- `tools/publicar_prospectos_asesores_1a.py`: publicador `--check`, `--apply`, `--restore` Python 3.6+, sin SQL.
+- `tools/prospectos_asesores_1a_release.json`: manifiesto con los dos SHA-256 originales validados, contenido completo y huellas objetivo de cinco archivos.
+- `tests/prospectos_asesores_publicacion_test.py`: ejercita estos modos sobre una copia de pruebas, incluida la conservación de `RolModel.php`.
+
+**Archivos modificables:** controlador y vista `central.php` (sobre los hashes anteriores) más tres archivos nuevos: servicio, vista parcial y CSS. **No cambiar:** `RolModel.php`, `prospectos_central.css`, telefonía, datos de prospectos, formularios, asignaciones o tablas existentes.
+
+Comprobación SSH autorizada **solo lectura** (ajustar `REV` con el SHA exacto del commit validado al descargar):
+```bash
+SITIO="$HOME/domains/fundacionrededumex.org/public_html"
+REV="<SHA_CONFIRMADO_DEL_PR_235>"
+BASE="https://raw.githubusercontent.com/davidvaldez050708-dot/SistemaComercialIMPE/$REV/tools"
+mkdir -p "$HOME/impe-asesores-1a-check"
+cd "$HOME/impe-asesores-1a-check"
+curl -fLsS "$BASE/publicar_prospectos_asesores_1a.py" -o publicar_prospectos_asesores_1a.py
+curl -fLsS "$BASE/prospectos_asesores_1a_release.json" -o prospectos_asesores_1a_release.json
+python3 publicar_prospectos_asesores_1a.py --site "$SITIO" --check
+```
+No usar `--apply` ni la migración hasta: CI específico aprobado, preflight compatible, confirmación del estado real de permisos/estructura en Hostinger y autorización del responsable. Un cambio de SHA provoca `CONFLICTO` sin escrituras.
+
+`--apply` (únicamente en instalación posterior autorizada) exige `--backup-root "$HOME/respaldos-impe-asesores"`, guarda originales fuera de `public_html`, y `--restore RUTA_RESPALDO` valida integridad antes de restituir. El publicador no ejecuta DDL ni DML: migración de las tres tablas y permiso es una acción independiente que requiere respaldo habitual de base y revisión de SQL.
+
 ## Entregas posteriores, expresamente no incluidas
 1B: reparto de 80 registros Meta por asesor/día, con pendientes y comprobación de duplicados.
 1C: asignación inmediata de Aliados según programa y preferencia de horario, sin límite; atender jornadas y ausencias/excepciones calendarias.
