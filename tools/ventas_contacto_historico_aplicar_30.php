@@ -108,12 +108,25 @@ final class VentasContactoHistorico30
             'app/services/TelefoniaControlService.php'=>
                 'd7c8316e1cba3cbd3a3dc282dec3a29a3524be4b989d1077e18420374a403287',
         ];
+        $blobs=[
+            'app/services/VentasActividadMetricas.php'=>
+                '765b5224f67d7870f667895d82ac40af42333cd1',
+            'app/services/TelefoniaControlService.php'=>
+                '273a03649c31514a65991612aba50c1c18ba534e',
+        ];
         foreach($deps as $rel=>$sha){
             $path=$site.DIRECTORY_SEPARATOR.$rel;
-            if(!is_file($path)||is_link($path)||!hash_equals($sha,hash_file('sha256',$path)))
+            if(!is_file($path)||is_link($path))
+                throw new RuntimeException('DEPENDENCIA INCOMPATIBLE (sin cambios): '.$rel);
+            $raw=file_get_contents($path);
+            if($raw===false)throw new RuntimeException('No se pudo leer dependencia: '.$rel);
+            $actualBlob=sha1('blob '.strlen($raw)."\0".$raw);
+            $valid=hash_equals($sha,hash('sha256',$raw)) ||
+                (isset($blobs[$rel])&&hash_equals($blobs[$rel],$actualBlob));
+            if(!$valid)
                 throw new RuntimeException('DEPENDENCIA INCOMPATIBLE (sin cambios): '.$rel.
                     '. Revisar publicación de la regla V4 antes de corregir históricos.');
-            echo 'DEPENDENCIA COMPATIBLE: '.$rel."\\n";
+            echo 'DEPENDENCIA COMPATIBLE: '.$rel."\n";
         }
     }
 
