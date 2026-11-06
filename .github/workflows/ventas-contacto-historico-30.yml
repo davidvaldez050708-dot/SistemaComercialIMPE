@@ -4,6 +4,7 @@ on:
     paths:
       - 'tools/ventas_contacto_historico_validar_revision.py'
       - 'tools/ventas_contacto_historico_aplicar_30.php'
+      - 'tools/ventas_contacto_historico_restaurar_30.php'
       - 'tests/ventas_contacto_historico_aplicar_30_db.php'
       - 'tests/ventas_contacto_historico_validar_revision_test.py'
       - '.github/workflows/ventas-contacto-historico-30.yml'
@@ -33,6 +34,7 @@ jobs:
       - name: Sintaxis y revisión sin observaciones individuales
         run: |
           php -l tools/ventas_contacto_historico_aplicar_30.php
+          php -l tools/ventas_contacto_historico_restaurar_30.php
           php -l tests/ventas_contacto_historico_aplicar_30_db.php
           python3 -m py_compile tools/ventas_contacto_historico_validar_revision.py
           python3 tests/ventas_contacto_historico_validar_revision_test.py
