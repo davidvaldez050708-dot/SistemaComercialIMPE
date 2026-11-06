@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+"""Aviso y confirmaciÃ³n institucional antes de enviar formularios. Cinco archivos pÃºblicos; sin SQL ni cambios de permisos o vistas PHP."""
+import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
+from pathlib import Path
+import shutil, subprocess, sys, tempfile
+
+MANIFEST_SHA256 = 'f26569e0e5e15a3e787375b0f2a6db6906824821debcaee472bc6197a1ed9c2f'
+PATHS = ['public/javascript/formularios_registro.js', 'public/javascript/formularios_registro_publico.js', 'public/javascript/formularios_inscripcion_completa.js', 'public/javascript/formularios_revision_envio.js', 'public/css/formularios_revision_envio.css']
+DEPENDENCIES = {}
+
+def digest(data): return None if data is None else hashlib.sha256(data).hexdigest()
+def read(path): return path.read_bytes() if path.is_file() else None
+
+def mode_matches(path, mode):
+    # Windows no representa los permisos POSIX; Hostinger sÃ­ los exige al servir JS.
+    return os.name != 'posix' or (path.is_file() and path.stat().st_mode & 0o777 == mode)
+
+def needs_change(row):
+    return row['before'] != row['after'] or not mode_matches(row['dest'], row['after_mode'])
+def safe(root, name):
+    path = root/name
+    if Path(name).is_absolute() or '..' in Path(name).parts or '\\' in name or path.is_symlink() or root not in path.resolve().parents:
+        raise RuntimeError('Ruta fuera del alcance: '+name)
+    return path
+
+def payload(encoded, expected):
+    data = gzip.decompress(base64.b64decode(encoded, validate=True))
+    if len(data) > 2*1024*1024 or digest(data) != expected:
+        raise RuntimeError('Contenido del paquete alterado.')
+    return data
+
+def manifest(path):
+    raw = path.read_bytes()
+    if digest(raw) != MANIFEST_SHA256: raise RuntimeError('Manifiesto diferente; sitio intacto.')
+    data = json.loads(raw)
+    if data.get('schema') != 1 or [r['path'] for r in data['files']] != PATHS:
+        raise RuntimeError('Paquete ajeno.')
+    if data.get('dependencies') != DEPENDENCIES: raise RuntimeError('Dependencias ajenas.')
+    return data['files']
+
+def lint(rows):
+    # Public assets were syntax-checked and browser-tested before sealing.
+    return
+
+def prepare(site, package):
+    for name, expected in DEPENDENCIES.items():
+        if digest(read(safe(site, name))) != expected:
+            raise RuntimeError('DEPENDENCIA DIFERENTE: '+name+'. Sitio intacto.')
+    rows = []
+    for file in package:
+        dest = safe(site, file['path'])
+        before = read(dest)
+        current = digest(before)
+        variant = next((v for v in file['variants'] if current in [v['before'], v['after']]), None)
+        if variant is None: raise RuntimeError('VERSIÃ“N DIFERENTE: '+file['path']+'. Sitio intacto.')
+        after = payload(variant['target'], variant['after'])
+        mode = dest.stat().st_mode & 0o777 if before is not None else 0o644
+        row = {'name': file['path'], 'dest': dest, 'before': before, 'after': after,
+               'mode': mode, 'after_mode': 0o644 if file['path'].startswith(('public/','ya-estas-inscrito/')) else mode}
+        rows.append(row)
+        print(('COMPATIBLE: ' if needs_change(row) else 'YA INSTALADO: ')+file['path'])
+        if before is not None and not mode_matches(dest, row['after_mode']):
+            print('PERMISOS: '+file['path']+' '+oct(mode)[2:]+' -> '+oct(row['after_mode'])[2:])
+    lint(rows)
+    return rows
+
+def atomic(dest, data, mode):
+    missing = []
+    parent = dest.parent
+    while not parent.exists():
+        missing.append(parent); parent = parent.parent
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    for parent in reversed(missing): os.chmod(str(parent), 0o755)
+    fd, name = tempfile.mkstemp(prefix='.impe-formularios-revision-', dir=dest.parent)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(data); stream.flush(); os.fsync(stream.fileno())
+        os.chmod(name, mode)
+        os.replace(name, dest)
+    finally:
+        if os.path.exists(name): os.unlink(name)
+
+@contextlib.contextmanager
+def lock(root):
+    root.mkdir(parents=True, exist_ok=True)
+    name = root/'.publicacion-formularios-revision.lock'
+    fd = os.open(name, os.O_WRONLY|os.O_CREAT|os.O_EXCL, 0o600)
+    try:
+        os.write(fd, str(os.getpid()).encode()); os.close(fd)
+        yield
+    finally:
+        name.unlink()
+
+def apply(site, root, package):
+    prepare(site, package)
+    with lock(root):
+        rows = prepare(site, package)
+        changed = [r for r in rows if needs_change(r)]
+        if not changed: print('YA INSTALADO: sin cambios.'); return
+        backup = Path(tempfile.mkdtemp(prefix=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d-%H%M%S-'), dir=root))
+        os.chmod(backup, 0o700)
+        meta = {'site': str(site), 'files': []}
+        for r in changed:
+            if r['before'] is not None:
+                dest = safe(backup, 'original/'+r['name']); dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(r['before'])
+            meta['files'].append({'name': r['name'], 'before': digest(r['before']), 'after': digest(r['after']),
+                                  'mode': r['mode'], 'after_mode': r['after_mode']})
+        (backup/'respaldo.json').write_text(json.dumps(meta, indent=2), encoding='utf-8')
+        installed = []
+        try:
+            for r in changed:
+                if read(r['dest']) != r['before'] or (r['before'] is not None and not mode_matches(r['dest'], r['mode'])):
+                    raise RuntimeError('Archivo cambiado durante la instalaciÃ³n: '+r['name'])
+            for r in changed:
+                if read(r['dest']) != r['before'] or (r['before'] is not None and not mode_matches(r['dest'], r['mode'])):
+                    raise RuntimeError('Archivo cambiado durante la instalaciÃ³n: '+r['name'])
+                atomic(r['dest'], r['after'], r['after_mode']); installed.append(r)
+                if read(r['dest']) != r['after'] or not mode_matches(r['dest'], r['after_mode']):
+                    raise RuntimeError('VerificaciÃ³n posterior fallida: '+r['name'])
+        except BaseException:
+            for r in reversed(installed):
+                if read(r['dest']) != r['after'] or not mode_matches(r['dest'], r['after_mode']):
+                    print('REVISAR RESTAURACIÃ“N: archivo editado por otro proceso: '+r['name'], file=sys.stderr)
+                    continue
+                if r['before'] is None: r['dest'].unlink()
+                else: atomic(r['dest'], r['before'], r['mode'])
+            raise
+        print('APLICADO: Aviso y confirmaciÃ³n antes de enviar formularios. Sin SQL; permisos, vistas PHP y datos intactos. RESPALDO: '+str(backup))
+
+def restore(site, root, directory):
+    backup = Path(directory).resolve()
+    if backup == site or site in backup.parents or root not in backup.parents:
+        raise RuntimeError('Respaldo fuera del directorio privado indicado.')
+    with lock(root):
+        data = json.loads((backup/'respaldo.json').read_text(encoding='utf-8'))
+        if data.get('site') != str(site) or not data.get('files'): raise RuntimeError('Respaldo ajeno.')
+        plan = []
+        for row in data['files']:
+            if row['name'] not in PATHS: raise RuntimeError('Archivo fuera del paquete.')
+            dest = safe(site, row['name'])
+            if digest(read(dest)) != row['after']: raise RuntimeError('VersiÃ³n modificada despuÃ©s de instalar: '+row['name'])
+            if not mode_matches(dest, row.get('after_mode', row['mode'])):
+                raise RuntimeError('Permisos modificados despuÃ©s de instalar: '+row['name'])
+            original = read(safe(backup, 'original/'+row['name'])) if row['before'] is not None else None
+            if digest(original) != row['before']: raise RuntimeError('Respaldo daÃ±ado.')
+            plan.append((dest, original, row['mode']))
+        for dest, original, mode in reversed(plan):
+            if original is None: dest.unlink()
+            else: atomic(dest, original, mode)
+        print('RESTAURADO: versiÃ³n previa. Sin SQL.')
+
+def main():
+    if sys.version_info < (3, 6): raise RuntimeError('Se requiere Python 3.6 o posterior.')
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--site', required=True)
+    parser.add_argument('--backup-root', required=True)
+    parser.add_argument('--manifest', default=str(Path(__file__).with_name('formularios_revision_envio_release.json')))
+    actions = parser.add_mutually_exclusive_group(required=True)
+    actions.add_argument('--check', action='store_true')
+    actions.add_argument('--apply', action='store_true')
+    actions.add_argument('--restore')
+    args = parser.parse_args()
+    site, root = Path(args.site).resolve(), Path(args.backup_root).resolve()
+    if not (site/'index.php').is_file(): raise RuntimeError('El sitio no tiene index.php.')
+    if root == site or site in root.parents: raise RuntimeError('El respaldo debe estar fuera del sitio.')
+    package = manifest(Path(args.manifest))
+    if args.restore: restore(site, root, args.restore)
+    elif args.apply: apply(site, root, package)
+    else:
+        prepare(site, package)
+        print('CHECK OK: compatibilidad y huellas selladas; sin escrituras ni consultas SQL.')
+
+if __name__ == '__main__':
+    try: main()
+    except Exception as error:
+        print('ERROR: '+str(error), file=sys.stderr)
+        sys.exit(1)

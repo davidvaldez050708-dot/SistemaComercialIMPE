@@ -1,3 +1,18 @@
+// Shared review assets load independently of the CRM/public page layouts.
+var publicoRevisionLista = (function () {
+    if (window.impeFormularioRevisionLista) return window.impeFormularioRevisionLista;
+    var origen = document.currentScript.src;
+    var promesa = new Promise(function (resolve, reject) {
+        var script = document.createElement('script');
+        script.src = new URL('formularios_revision_envio.js?v=20261106-1', origen).href;
+        script.onload = function () { window.FormularioRevision ? resolve(window.FormularioRevision) : reject(new Error('Revisión no disponible.')); };
+        script.onerror = function () { reject(new Error('No se pudo cargar la revisión. Recarga la página e intenta nuevamente.')); };
+        document.head.appendChild(script);
+    });
+    promesa.catch(function () {});
+    window.impeFormularioRevisionLista = promesa;
+    return promesa;
+}());
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
 
@@ -8,6 +23,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!form) {
         return;
     }
+    let confirmandoRevision = false;
+    publicoRevisionLista.then(function (revision) { revision.montar(form); }).catch(function () {});
+
 
     const nombre = form.querySelector('[data-publico-nombre]');
     const apellido = form.querySelector('[data-publico-apellido]');
@@ -221,8 +239,10 @@ document.addEventListener('DOMContentLoaded', function () {
             validarTelRecomendado(),
             validarCorreos(),
             validarSelect(perfil),
-            validarSelect(estado),
-            validarSelect(municipio)
+            ...(estado ? [validarSelect(estado), validarSelect(municipio)] :
+                Array.from(form.querySelectorAll('[data-ubicacion-internacional]')).map(function (campo) {
+                    return marcar(campo, campo.value.trim().length >= 2 && campo.checkValidity());
+                }))
         ].every(Boolean);
     };
 
@@ -385,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('submit', async function (event) {
         event.preventDefault();
 
-        if (guardando || cargandoMunicipios) {
+        if (guardando || confirmandoRevision || cargandoMunicipios) {
             return;
         }
 
@@ -397,6 +417,14 @@ document.addEventListener('DOMContentLoaded', function () {
             );
             return;
         }
+
+        confirmandoRevision = true;
+        try {
+            if (!(await (await publicoRevisionLista).confirmar(form))) return;
+        } catch (error) {
+            mostrarToast(error.message || 'No se pudo preparar la revisión. Intenta nuevamente.', true);
+            return;
+        } finally { confirmandoRevision = false; }
 
         const data = new FormData(form);
 

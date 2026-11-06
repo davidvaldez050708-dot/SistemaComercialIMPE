@@ -1,3 +1,18 @@
+// Shared review assets load independently of the CRM/public page layouts.
+var registroRevisionLista = (function () {
+    if (window.impeFormularioRevisionLista) return window.impeFormularioRevisionLista;
+    var origen = document.currentScript.src;
+    var promesa = new Promise(function (resolve, reject) {
+        var script = document.createElement('script');
+        script.src = new URL('formularios_revision_envio.js?v=20261106-1', origen).href;
+        script.onload = function () { window.FormularioRevision ? resolve(window.FormularioRevision) : reject(new Error('Revisión no disponible.')); };
+        script.onerror = function () { reject(new Error('No se pudo cargar la revisión. Recarga la página e intenta nuevamente.')); };
+        document.head.appendChild(script);
+    });
+    promesa.catch(function () {});
+    window.impeFormularioRevisionLista = promesa;
+    return promesa;
+}());
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
 
@@ -6,6 +21,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!form) {
         return;
     }
+    let confirmandoRevision = false;
+    registroRevisionLista.then(function (revision) { revision.montar(form); }).catch(function () {});
+
 
     const estado = form.querySelector('[data-registro-estado]');
     const municipio = form.querySelector('[data-registro-municipio]');
@@ -1419,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('submit', async function (event) {
         event.preventDefault();
 
-        if (guardando || cargandoMunicipios) {
+        if (guardando || confirmandoRevision || cargandoMunicipios) {
             return;
         }
 
@@ -1433,6 +1451,14 @@ document.addEventListener('DOMContentLoaded', function () {
             );
             return;
         }
+
+        confirmandoRevision = true;
+        try {
+            if (!(await (await registroRevisionLista).confirmar(form))) return;
+        } catch (error) {
+            mostrarToast(error.message || 'No se pudo preparar la revisión. Intenta nuevamente.', true);
+            return;
+        } finally { confirmandoRevision = false; }
 
         const htmlOriginal = botonSubmit?.innerHTML || '';
 

@@ -79,6 +79,7 @@ const file={name:'pago.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-
   await page.locator('[name=comprobante]').setInputFiles(file);
   const pending=page.waitForResponse(r=>r.url().includes('accion=guardar'));
   await page.locator('button[type=submit]').click();
+  await page.locator('.formulario-revision-confirmar').click();
   const response=await pending;const saved={status:response.status(),data:await response.json()};
   assert.equal(saved.status,200,JSON.stringify(saved));assert.equal(saved.data.ok,true);
   await page.locator('[data-inscripcion-estado]').filter({hasText:'Inscripción guardada correctamente'}).waitFor();

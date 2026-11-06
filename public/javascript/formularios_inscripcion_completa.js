@@ -1,3 +1,18 @@
+// Shared review assets load independently of the CRM/public page layouts.
+var inscripcionRevisionLista = (function () {
+    if (window.impeFormularioRevisionLista) return window.impeFormularioRevisionLista;
+    var origen = document.currentScript.src;
+    var promesa = new Promise(function (resolve, reject) {
+        var script = document.createElement('script');
+        script.src = new URL('formularios_revision_envio.js?v=20261106-1', origen).href;
+        script.onload = function () { window.FormularioRevision ? resolve(window.FormularioRevision) : reject(new Error('Revisión no disponible.')); };
+        script.onerror = function () { reject(new Error('No se pudo cargar la revisión. Recarga la página e intenta nuevamente.')); };
+        document.head.appendChild(script);
+    });
+    promesa.catch(function () {});
+    window.impeFormularioRevisionLista = promesa;
+    return promesa;
+}());
 (function () {
     'use strict';
     const form = document.querySelector('[data-inscripcion-completa]');
@@ -55,9 +70,10 @@
         try { await navigator.clipboard.writeText(input.value); toast('Enlace copiado correctamente.', false); }
         catch (_) { input.focus(); input.select(); toast('Copia el enlace seleccionado.', false); }
     });
-    let busy = false;
+    let busy = false, confirmandoRevision = false;
+    inscripcionRevisionLista.then(revision => revision.montar(form)).catch(() => {});
     form.addEventListener('submit', async e => {
-        e.preventDefault(); if (busy || form.dataset.formulariosConsulta === '1') return;
+        e.preventDefault(); if (busy || confirmandoRevision || form.dataset.formulariosConsulta === '1') return;
         let invalid = false;
         Array.from(form.elements).forEach(input => {
             if (!input.disabled && input.willValidate && !input.checkValidity()) {
@@ -73,6 +89,13 @@
         const file = field('comprobante').files[0];
         if (file && file.size > 8 * 1024 * 1024) { errorFor('comprobante', 'El comprobante supera 8 MB.'); invalid = true; }
         if (invalid) { toast('Revisa los campos señalados antes de enviar.', true); form.querySelector('.is-invalid')?.focus(); return; }
+        confirmandoRevision = true;
+        try {
+            if (!(await (await inscripcionRevisionLista).confirmar(form))) return;
+        } catch (error) {
+            toast(error.message || 'No se pudo preparar la revisión. Intenta nuevamente.', true);
+            return;
+        } finally { confirmandoRevision = false; }
         busy = true; const button = form.querySelector('[type=submit]'); button.disabled = true; state.textContent = 'Guardando inscripción…';
         try {
             const response = await fetch(form.action, {method:'POST',body:new FormData(form), credentials:'same-origin',headers:{'X-Requested-With':'fetch'}});
