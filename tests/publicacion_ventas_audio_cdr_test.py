@@ -13,6 +13,12 @@ SPEC=importlib.util.spec_from_file_location(
  "pub_audio",ROOT/"tools/publicar_ventas_audio_cdr_hostinger.py")
 pub=importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(pub)
+
+# Un publicador histórico debe probar su contenido sellado, aunque el código
+# actual evolucione. La publicación nueva tiene su propio contrato de hashes.
+def released(path):
+ return subprocess.check_output(['git','cat-file','blob',pub.FILES[path][1]],cwd=str(ROOT))
+
 assert len(pub.FILES)==5 and len(pub.CUSTOM)==1 and len(pub.DEPS)==2
 
 view_rel="app/views/telefonia/ventas_llamadas.php"
@@ -54,14 +60,14 @@ with tempfile.TemporaryDirectory(prefix="impe-ventas-audio-cdr-") as directory:
    pub.FILES[rel]=("sha256:"+pub.digest(raw),pub.blob(after))
   elif oldpin is None:
    originals[rel]=None
-   assert pub.blob((ROOT/rel).read_bytes())==newblob
+   assert pub.blob(released(rel))==newblob
    continue
   else:
    raw=old_from_git(rel)
    assert pub.same_version(raw,oldpin),rel
-   assert pub.blob((ROOT/rel).read_bytes())==newblob
+   assert pub.blob(released(rel))==newblob
   p.write_bytes(raw);originals[rel]=raw
- pub.fetch=lambda rel,sha:(ROOT/rel).read_bytes()
+ pub.fetch=lambda rel,sha:released(rel)
  original={p:p.read_bytes() for p in site.rglob("*") if p.is_file()}
  result=execute(site,backup,"--check")
  assert "CONCILIADO PERSONALIZADO" in result,result
@@ -72,7 +78,7 @@ with tempfile.TemporaryDirectory(prefix="impe-ventas-audio-cdr-") as directory:
  assert "APLICADO" in result,result
  assert (site/view_rel).read_bytes()!=fake_view
  assert pub.reconcile_custom(view_rel,(site/view_rel).read_bytes())[1]=="YA CONCILIADO PERSONALIZADO"
- assert all((site/rel).read_bytes()==(ROOT/rel).read_bytes() for rel in pub.FILES if rel!=view_rel)
+ assert all((site/rel).read_bytes()==released(rel) for rel in pub.FILES if rel!=view_rel)
  assert "YA INSTALADO" in execute(site,backup,"--apply")
  folder=next(backup.iterdir())
  modified=site/"public/javascript/telefonia_ventas_resultados.js"

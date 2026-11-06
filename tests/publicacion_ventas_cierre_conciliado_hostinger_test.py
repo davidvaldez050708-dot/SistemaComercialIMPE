@@ -14,6 +14,12 @@ SPEC=importlib.util.spec_from_file_location(
     "impe_ventas_conciliado",ROOT/"tools/publicar_ventas_cierre_conciliado_hostinger.py")
 pub=importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(pub)
+
+# Un publicador histórico debe probar su contenido sellado, aunque el código
+# actual evolucione. La publicación nueva tiene su propio contrato de hashes.
+def released(path):
+ return subprocess.check_output(['git','cat-file','blob',pub.FILES[path][1]],cwd=str(ROOT))
+
 assert len(pub.FILES)==7
 assert len(pub.DEPS)==2
 assert len(pub.CUSTOM)==3
@@ -66,7 +72,7 @@ with tempfile.TemporaryDirectory(prefix="impe-conciliado-ventas-") as temp:
         path:(("sha256:"+pub.digest(original[path])) if original[path] is not None else None,after)
         for path,(_,after) in pub.FILES.items()
     }
-    pub.fetch=lambda path,sha:(ROOT/path).read_bytes()
+    pub.fetch=lambda path,sha:released(path)
     before={p:p.read_bytes() for p in site.rglob("*") if p.is_file()}
     report=execute(site,backups,"--check")
     assert report.count("CONCILIADO PERSONALIZADO:")==3,report

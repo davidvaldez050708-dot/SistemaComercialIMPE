@@ -15,10 +15,16 @@ SPEC=importlib.util.spec_from_file_location(
 pub=importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(pub)
 
+# Un publicador histórico debe probar su contenido sellado, aunque el código
+# actual evolucione. La publicación nueva tiene su propio contrato de hashes.
+def released(path):
+ return subprocess.check_output(['git','cat-file','blob',pub.FILES[path][1]],cwd=str(ROOT))
+
+
 assert len(pub.FILES)==8
 assert len(pub.DEPS)==1
 assert pub.REVISION=='d143895ac021b3daa3cb81db37a9f044107fff45'
-assert pub.blob((ROOT/'app/services/TelefoniaVentasCierreApiVerificado.php').read_bytes())==pub.FILES['app/services/TelefoniaVentasCierreApiVerificado.php'][1]
+assert pub.blob(released('app/services/TelefoniaVentasCierreApiVerificado.php'))==pub.FILES['app/services/TelefoniaVentasCierreApiVerificado.php'][1]
 
 def old_content(path):
     ref='2b65829adcb30d4e4b92e2f8adc79a7457e76f9d' if path in (
@@ -66,15 +72,15 @@ with tempfile.TemporaryDirectory(prefix='impe-ventas-cierre-seguro-') as temp:
                     pub.FILES[path]=('sha256:'+pub.digest(raw),after)
             else:
                 assert pub.blob(raw)==before[5:],path
-        assert pub.blob((ROOT/path).read_bytes())==after,path
-    pub.fetch=lambda rel, sha:(ROOT/rel).read_bytes()
+        assert pub.blob(released(path))==after,path
+    pub.fetch=lambda rel, sha:released(rel)
     snap={p:p.read_bytes() for p in site.rglob('*') if p.is_file()}
     assert 'SITIO INTACTO' in execute(site,backup,'--check')
     assert not backup.exists()
     assert all(p.read_bytes()==data for p,data in snap.items())
     assert 'APLICADO' in execute(site,backup,'--apply')
     for path in pub.FILES:
-        assert (site/path).read_bytes()==(ROOT/path).read_bytes(),path
+        assert (site/path).read_bytes()==released(path),path
     folder=next(backup.iterdir())
     assert 'YA INSTALADO' in execute(site,backup,'--apply')
     assert len(list(backup.iterdir()))==1
@@ -85,7 +91,7 @@ with tempfile.TemporaryDirectory(prefix='impe-ventas-cierre-seguro-') as temp:
         raise AssertionError('No debe restaurar sobre cambios ajenos')
     except RuntimeError as error:
         assert 'VERSIÓN DIFERENTE' in str(error)
-    target.write_bytes((ROOT/'public/javascript/telefonia_ventas_resultados.js').read_bytes())
+    target.write_bytes(released('public/javascript/telefonia_ventas_resultados.js'))
     assert 'RESTAURADO' in execute(site,backup,'--restore',str(folder))
     for path,data in original.items():
         file=site/path

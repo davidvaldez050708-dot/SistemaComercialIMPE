@@ -5,6 +5,12 @@ from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 SPEC=importlib.util.spec_from_file_location('cierre_api',ROOT/'tools/publicar_ventas_cierre_api_verificado.py')
 pub=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(pub)
+
+# Un publicador histórico debe probar su contenido sellado, aunque el código
+# actual evolucione. La publicación nueva tiene su propio contrato de hashes.
+def released(path):
+ return subprocess.check_output(['git','cat-file','blob',pub.FILES[path][1]],cwd=str(ROOT))
+
 assert pub.REVISION=='6f9b6156954ba5504529a0fc18837076a20ad82f'
 assert len(pub.FILES)==3 and len(pub.DEPS)==2
 assert 'app/services/TelefoniaVentasLlamadasService.php' in pub.DEPS
@@ -31,14 +37,14 @@ with tempfile.TemporaryDirectory(prefix='impe-ventas-cierre-api-') as dir:
             assert pub.digest(content)==sha_before,path
             old[path]=content;file.write_bytes(content)
         else:old[path]=None
-        assert pub.blob((ROOT/path).read_bytes())==after,path
-    pub.fetch=lambda rel,sha:(ROOT/rel).read_bytes()
+        assert pub.blob(released(path))==after,path
+    pub.fetch=lambda rel,sha:released(rel)
     before={str(x):x.read_bytes() for x in site.rglob('*') if x.is_file()}
     assert 'SITIO INTACTO' in run(site,backup,'--check')
     assert not backup.exists()
     assert all(x.read_bytes()==before[str(x)] for x in site.rglob('*') if x.is_file())
     assert 'APLICADO' in run(site,backup,'--apply')
-    assert all((site/path).read_bytes()==(ROOT/path).read_bytes() for path in pub.FILES)
+    assert all((site/path).read_bytes()==released(path) for path in pub.FILES)
     folder=next(backup.iterdir())
     assert 'YA INSTALADO' in run(site,backup,'--apply')
     assert len(list(backup.iterdir()))==1
@@ -46,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix='impe-ventas-cierre-api-') as dir:
     target.write_bytes(target.read_bytes()+b'\n// modificacion concurrente')
     try:run(site,backup,'--restore',str(folder));raise AssertionError('Reversión insegura')
     except RuntimeError as e:assert 'VERSIÓN DIFERENTE' in str(e)
-    target.write_bytes((ROOT/'public/javascript/telefonia_ventas_resultados.js').read_bytes())
+    target.write_bytes(released('public/javascript/telefonia_ventas_resultados.js'))
     assert 'RESTAURADO' in run(site,backup,'--restore',str(folder))
     assert all((site/path).read_bytes()==content if content is not None else not (site/path).exists() for path,content in old.items())
     assert all((site/path).read_bytes()==before[str(site/path)] for path in pub.DEPS)
