@@ -209,6 +209,21 @@ $secciones = [
                     </section>
                 <?php endforeach; ?>
 
+                <div class="ejecutivas-piloto-cotejo">
+                    <label class="ejecutivas-piloto-check">
+                        <input type="checkbox" name="confirmacion_identidad" value="1"
+                               required data-ejecutivas-confirmar>
+                        <span>Confirmo que he cotejado mi nombre, apellidos, fecha de nacimiento
+                            y CURP con mi constancia oficial de
+                            <a href="https://www.gob.mx/curp/" target="_blank" rel="noopener noreferrer">RENAPO</a>.
+                            <strong>Esto no sustituye la validación oficial de identidad.</strong>
+                        </span>
+                    </label>
+                    <div class="ejecutivas-piloto-cotejo-error" data-ejecutivas-confirmar-error hidden>
+                        Verifica tu constancia y confirma los datos.
+                    </div>
+                </div>
+
                 <section class="formulario-publico-section">
                     <div class="formulario-publico-section-heading">
                         <span class="formulario-publico-section-icon" aria-hidden="true"><i class="bi bi-receipt"></i></span>
