@@ -95,6 +95,28 @@ final class VentasContactoHistorico30
                 'plan_sha'=>hash_file('sha256',$planPath),'csv_sha'=>hash_file('sha256',$revisionPath)];
     }
 
+    /** No cambiar datos históricos si la definición V4 aún no está instalada. */
+    public static function verifyRuntime(string $site): void
+    {
+        $deps=[
+            'app/services/TelefoniaResultadoVentasCatalogo.php'=>
+                '0afa0fb569125c74da87b8f84724c5aa4ae0c87b046dcd0d39677a3598cc1c5b',
+            'app/services/TelefoniaResultadoVentasService.php'=>
+                '2f7a30228ee8df1156d131c2e57311dacf44036d198f1821fb7772f5ae847dfb',
+            'app/services/VentasActividadMetricas.php'=>
+                '0da74c9c4b6d35b67c2b79f4b4af17c21dd4a426aa5d04f26bd17a18d9f01e21',
+            'app/services/TelefoniaControlService.php'=>
+                'd7c8316e1cba3cbd3a3dc282dec3a29a3524be4b989d1077e18420374a403287',
+        ];
+        foreach($deps as $rel=>$sha){
+            $path=$site.DIRECTORY_SEPARATOR.$rel;
+            if(!is_file($path)||is_link($path)||!hash_equals($sha,hash_file('sha256',$path)))
+                throw new RuntimeException('DEPENDENCIA INCOMPATIBLE (sin cambios): '.$rel.
+                    '. Revisar publicación de la regla V4 antes de corregir históricos.');
+            echo 'DEPENDENCIA COMPATIBLE: '.$rel."\\n";
+        }
+    }
+
     private static function sqlRow(mysqli $db,array $entry,bool $forUpdate): array
     {
         $query="SELECT r.*,d.resultado_principal,d.envio_informacion,
@@ -233,6 +255,7 @@ if(PHP_SAPI==='cli' && isset($_SERVER['SCRIPT_FILENAME']) &&
             if($item===false||strpos($item,$site.DIRECTORY_SEPARATOR)===0)
                 throw new RuntimeException('El documento privado --'.$key.' no debe estar en public_html.');
         }
+        VentasContactoHistorico30::verifyRuntime($site);
         $plan=VentasContactoHistorico30::verifyPlan($flags['plan'],$flags['audit'],$flags['revision']);
         require_once $site.'/config/db_connection.php';
         mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
