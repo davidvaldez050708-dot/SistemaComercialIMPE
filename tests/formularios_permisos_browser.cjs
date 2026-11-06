@@ -7,7 +7,9 @@ const db=action=>execFileSync(php,['tests/formularios_permisos_db.php',action],{
 (async()=>{let browser,server,created=false;try{
  console.log(db('crear').trim());created=true;fs.mkdirSync(path.join(root,'tmp'),{recursive:true});
  const log=fs.openSync(path.join(root,'tmp/formularios-permisos-http.log'),'w');
- server=spawn(php,['-S','127.0.0.1:8129','-t',root],{cwd:root,env,stdio:['ignore',log,log]});
+ // CI loads instrumentation extensions incompatible with PHP JIT. Keep genuine
+ // application warnings fatal to this test, without enabling JIT on its server.
+ server=spawn(php,['-d','opcache.jit=0','-d','opcache.enable_cli=0','-S','127.0.0.1:8129','-t',root],{cwd:root,env,stdio:['ignore',log,log]});
  for(let i=0;i<80;i++){try{await fetch(base+'public/css/formularios.css');break;}catch{await new Promise(r=>setTimeout(r,100));}}
  browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -33,6 +35,6 @@ const db=action=>execFileSync(php,['tests/formularios_permisos_db.php',action],{
  await page.locator('.formularios-registration-section').last().screenshot({path:path.join(root,'tmp/formularios-errores-desktop.png')});
  await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('body').evaluate(e=>e.scrollWidth<=innerWidth+1),true);await page.locator('.formularios-registration-section').last().screenshot({path:path.join(root,'tmp/formularios-errores-movil.png')});
  assert.deepEqual(errors,[]);
- const logs=fs.readFileSync(path.join(root,'tmp/formularios-permisos-http.log'),'utf8');assert(!/PHP (Warning|Fatal)/.test(logs),logs.slice(-5000));
+ const logs=fs.readFileSync(path.join(root,'tmp/formularios-permisos-http.log'),'utf8');assert(!/PHP (Warning|Fatal)/.test(logs),logs.split('\n').filter(line=>/PHP (Warning|Fatal)/.test(line)).join('\n'));
  console.log('PASS HTTP/UI: nueve rutas protegidas, roles independientes, consulta sin captura, compartir y comprobantes separados, menús sin Convocatorias, público y errores uniformes en escritorio/móvil.');
 }finally{if(browser)await browser.close();if(server){server.kill();await new Promise(r=>server.once('exit',r));}if(created)console.log(db('limpiar').trim());}})().catch(e=>{console.error(e);process.exitCode=1;});
