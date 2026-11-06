@@ -48,7 +48,7 @@ verificarExperiencia(in_array('Licenciatura en contaduría A286', $perfiles, tru
 verificarExperiencia(!in_array('Licenciatura en pedagogía A286', $perfiles, true),
     'no incorporar perfiles de Ejecutivas a Experiencia Laboral');
 
-foreach (['bachillerato-en-2-anos', 'bachillerato-286', 'ingles'] as $slug) {
+foreach (['bachillerato-en-2-anos', 'ingles'] as $slug) {
     $legal = FormularioInscripcionValidacion::legales($slug);
     verificarExperiencia($legal['terminos'] === '',
         'no habilitar términos de otro programa: ' . $slug);
@@ -88,4 +88,4 @@ $resultado = FormularioInscripcionValidacion::validar($fallido,'titulacion-exper
 verificarExperiencia($resultado['ok'] === false &&
     isset($resultado['errores']['perfil_evaluacion']), 'rechazar perfil ajeno');
 
-echo "PASS: Experiencia Laboral habilitada, ocho perfiles, contrato y privacidad originales, tres programas pendientes y validaciones intactas\n";
+echo "PASS: Experiencia Laboral habilitada, ocho perfiles, contrato y privacidad originales, dos programas pendientes y validaciones intactas\n";

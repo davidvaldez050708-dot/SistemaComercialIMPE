@@ -13,7 +13,13 @@ p = subprocess.run(['git','show',BASE+':'+SERVICE],cwd=str(ROOT),
                    stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 assert p.returncode == 0, p.stderr.decode('utf-8','replace')
 old = p.stdout
-new = (ROOT / SERVICE).read_bytes()
+# La prueba de publicación de Experiencia debe usar el paquete histórico
+# validado en PR #224; Bachillerato modifica después el mismo servicio.
+released = '6b7905d8839a4ff21ea770a83c5a269db19b5707'
+q = subprocess.run(['git','show',released+':'+SERVICE],cwd=str(ROOT),
+                   stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+assert q.returncode == 0, q.stderr.decode('utf-8','replace')
+new = q.stdout
 assert old != new
 assert b'titulacion-experiencia-laboral' in new
 
@@ -25,10 +31,12 @@ with tempfile.TemporaryDirectory(prefix='impe-experiencia-legal-') as tmp:
     dest.parent.mkdir(parents=True)
     (site / 'index.php').write_text('<?php // sitio de pruebas',encoding='utf-8')
     dest.write_bytes(old)
+    source = root / 'release_experiencia.php'
+    source.write_bytes(new)
 
     def run(*args, success=True):
         command = [sys.executable, str(PUBLISHER),
-                   '--site',str(site), '--source',str(ROOT/SERVICE),
+                   '--site',str(site), '--source',str(source),
                    '--backup-root',str(backup)] + list(args)
         proc = subprocess.run(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         output = (proc.stdout+proc.stderr).decode('utf-8','replace')

@@ -7,6 +7,8 @@ final class FormularioInscripcionValidacion
 {
     public static function perfiles(string $slug): array
     {
+        // Bachillerato General (Examen Único) no tiene perfil de evaluación.
+        if ($slug === 'bachillerato-286') return [];
         if ($slug === 'titulacion-ejecutivas') return FormularioEjecutivasPerfiles::todos();
         // Catálogo publicado por la Fundación, consultado el 05/11/2026.
         // https://www.fundacionredmex.org/titulacion-experiencia.html
@@ -27,6 +29,14 @@ final class FormularioInscripcionValidacion
         // Ambos programas de titulación A286 usan el contrato confirmado
         // por la institución. Los otros tres siguen sin términos habilitados.
         $programasContratoA286 = ['titulacion-ejecutivas', 'titulacion-experiencia-laboral'];
+        if ($slug === 'bachillerato-286') {
+            // Documentos originales de Bachillerato General aportados por la institución.
+            // Son diferentes de los de Titulación: nivel medio superior y domicilio propios.
+            return [
+                'terminos'=>(string)file_get_contents($dir . 'terminos-bachillerato-general.txt'),
+                'privacidad'=>(string)file_get_contents($dir . 'privacidad-bachillerato-general.txt')
+            ];
+        }
         $terminos = in_array($slug, $programasContratoA286, true)
             ? (string)file_get_contents($dir . 'terminos-ejecutivas.txt') : '';
         return ['terminos'=>$terminos, 'privacidad'=>(string)file_get_contents($dir . 'privacidad.txt')];
@@ -41,7 +51,12 @@ final class FormularioInscripcionValidacion
         $copia = $entrada;
         $copia['perfil_evaluacion'] = FormularioEjecutivasPerfiles::todos()[0];
         $resultado = FormularioEjecutivasValidacion::validar($copia);
-        if (!is_string($perfil) || !in_array($perfil, $perfiles, true)) {
+        if ($slug === 'bachillerato-286') {
+            // La captura no envía Perfil de evaluación. Rechazar inyección de otro programa.
+            if ($perfil !== null && (!is_string($perfil) || trim($perfil) !== '')) {
+                $resultado['errores']['perfil_evaluacion'] = 'Bachillerato General no utiliza perfil de evaluación.';
+            }
+        } elseif (!is_string($perfil) || !in_array($perfil, $perfiles, true)) {
             $resultado['errores']['perfil_evaluacion'] = 'Selecciona un perfil del programa elegido.';
         }
         $curp = strtoupper(is_string($entrada['curp'] ?? null) ? trim($entrada['curp']) : '');

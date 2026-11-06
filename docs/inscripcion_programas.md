@@ -6,8 +6,18 @@
 - Cada tarjeta abre su captura y un enlace `ya-estas-inscrito/?programa=SLUG`. Sólo el enlace público usa la fotografía y los dos logotipos del encabezado de Registro actual. Sin HLC ni el bloque de texto separado «Acuerdo 286». Registro, sus alias `obtener-beca`, los horarios y formularios de Aliados no se sustituyen.
 - Cinco programas; los slugs anteriores se conservan, incluido `bachillerato-286` (nombre visible canónico: Bachillerato General).
 - Titulación–Ejecutivas conserva los diez perfiles A286 y el contrato aportado, confirmados por el usuario el 05/11/2026.
-- Los otros cuatro programas permiten revisar los campos pero no enviar hasta contar con sus términos específicos. No se presupone que el importe del contrato de Ejecutivas corresponda a otros programas.
+- Los programas de Titulación (Ejecutivas y Experiencia Laboral) conservan el contrato A286 compartido; Bachillerato General / Examen Único usa su contrato y aviso de privacidad **originales de Educación Media Superior**. **Inglés y Bachillerato en 2 años** siguen sin términos confirmados y no pueden enviar.
+- Bachillerato General **no requiere ni muestra Perfil de evaluación**, tampoco acepta perfiles ajenos ni lo guarda en el JSON de la inscripción. El campo histórico `formulario_inscripciones.perfil_interes` mantiene el nombre del programa sin migraciones SQL. La sección laboral y los datos personales, CURP, pago, domicilio y consentimientos se conservan.
+- **Diferencia documental por revisar:** el original Bachillerato aportado indica Teopanzolco **98** en contrato y privacidad; el contrato de Titulación indica **101** y su aviso **107**. Los textos se conservaron tal cual; la institución debe verificar domicilios, responsables y vigencia antes de difundir el nuevo enlace. No se presupone que la cuota del contrato de Titulación sea aplicable a Bachillerato.
 - Experiencia laboral tiene ocho áreas en el [catálogo público consultado](https://www.fundacionredmex.org/titulacion-experiencia.html), consultado el 05/11/2026. No incorpora Administración o Pedagogía por inferencia. El catálogo del piloto confirmado por el usuario se mantiene separado de las [Carreras Ejecutivas con RVOE](https://www.fundacionredmex.org/carreras-ejecutivas-detalle.html).
+
+## Ajuste Bachillerato General — Examen Único A286
+
+El formulario usa `ya-estas-inscrito/?programa=bachillerato-286` y conserva encabezado, foto y logotipos públicos de Registro. Agrega sólo la leyenda `Examen Único · Acuerdo 286` para distinguir este programa, sin modificar los otros encabezados.
+
+Documentos específicos `app/resources/inscripcion/terminos-bachillerato-general.txt` y `privacidad-bachillerato-general.txt`, extraídos del formulario original proporcionado por la institución, sin reescribir cláusulas. Estos textos **no son idénticos** al contrato ni al aviso de Titulación y no deben intercambiarse. La aceptación sigue registrada mediante la huella de cada archivo y fecha.
+
+No incluye el campo `Apertura` porque fue retirado del formulario unificado de Inscripción. No se incorpora una nueva tabla ni se cambian filas históricas. El publicador `publicar_inscripcion_bachillerato_general_hostinger.py` modifica cuatro PHP y agrega dos textos legales con respaldo privado y restauración; `--check` no escribe.
 
 ## Datos y validación
 
