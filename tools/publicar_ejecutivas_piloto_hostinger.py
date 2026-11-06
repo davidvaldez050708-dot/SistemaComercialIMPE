@@ -40,7 +40,7 @@ def file_under(root, relative):
 
 
 def only_once(data, before, after, label):
-    if data.count(after) == 1 and data.count(before) == 0:
+    if data.count(after) == 1:
         return data
     if data.count(before) != 1 or data.count(after) != 0:
         raise RuntimeError('CONFLICTO de personalización: ' + label)
