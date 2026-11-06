@@ -56,7 +56,7 @@ try {
     $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_horarios WHERE usuario_id=3')->fetch_assoc()['n']===2,'dos días guardados');
     $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_auditoria WHERE usuario_id=3')->fetch_assoc()['n']===2,'auditoría actualizada');
     try {$svc->guardar(4,1,$base);throw new RuntimeException('Se aceptó rol ajeno');}
-    catch(DomainException $e){$check(str_contains($e->getMessage(),'Asesor de Ventas'),'rol ajeno rechazado');}
+    catch(DomainException $e){$check(str_contains($e->getMessage(),'asesor de ventas'),'rol ajeno rechazado');}
     try {$svc->guardar(5,1,$base);throw new RuntimeException('Se aceptó asesor inactivo');}
     catch(DomainException $e){$check(str_contains($e->getMessage(),'activo'),'asesor inactivo rechazado');}
     $_SESSION['permisos']=['prospectos.ver_todos'];
