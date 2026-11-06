@@ -4,8 +4,8 @@ import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = '6d0d58459bc37c6f9469aac0a500e95554cddf05998e7db7acc52f50aee8479e'
-PATHS = ['app/controllers/ReporteAdministradorController.php', 'app/services/ReporteAdministradorPdfService.php', 'app/views/reportes/administrador_usuarios.php', 'app/services/ReporteAdministradorDompdfService.php', 'public/javascript/reporte_usuarios_pdf.js']
+MANIFEST_SHA256 = 'b0ce74fd4cc2a9a6b02a93ee6a56ab0f0825d30065afa0a496114ba195793660'
+PATHS = ['app/services/ReporteAdministradorDompdfService.php', 'public/javascript/reporte_usuarios_pdf.js', 'app/services/ReporteAdministradorPdfService.php', 'app/controllers/ReporteAdministradorController.php', 'app/views/reportes/administrador_usuarios.php']
 DEPENDENCIES = {'app/services/ReporteAdministradorDataService.php': '76095d2ddad4d12c00f6067bd1cb1f9632d10e340b135ef6ea424930918faad9', 'app/models/ReporteAdministradorModel.php': 'd9a118b21bebf48276a4c1b867c90f4e5de37eeac7f561a353e922be38d43c21'}
 
 def digest(data): return None if data is None else hashlib.sha256(data).hexdigest()
