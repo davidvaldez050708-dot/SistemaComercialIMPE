@@ -71,6 +71,14 @@ try{
  mkdir($dir.'/site',0700);
  file_put_contents($dir.'/site/index.php','<?php');
  mkdir($dir.'/private',0700);
+ mkdir($dir.'/site/app/services',0700,true);
+ foreach(['TelefoniaResultadoVentasCatalogo.php','TelefoniaResultadoVentasService.php',
+          'VentasActividadMetricas.php','TelefoniaControlService.php'] as $f){
+      copy(__DIR__.'/../app/services/'.$f,$dir.'/site/app/services/'.$f);
+ }
+ ob_start();
+ VentasContactoHistorico30::verifyRuntime($dir.'/site');
+ ob_end_clean();
  $auditFile=$dir.'/private/audit.json';
  file_put_contents($auditFile,json_encode([
     'tipo'=>'AUDITORIA_SOLO_LECTURA',
@@ -99,6 +107,18 @@ try{
     'auditoria_sha256'=>$auditSha,'csv_sha256'=>$csvSha,'aprobadas'=>$selected
  ],JSON_UNESCAPED_UNICODE));
  $plan=VentasContactoHistorico30::verifyPlan($planFile,$auditFile,$csvFile);
+ // El CSV no debe proceder de una instalación con catálogo/contadores desactualizados.
+ $metric=$dir.'/site/app/services/VentasActividadMetricas.php';
+ file_put_contents($metric,file_get_contents($metric)."\\n// cambio concurrente");
+ try{
+     ob_start();VentasContactoHistorico30::verifyRuntime($dir.'/site');
+     ob_end_clean();
+     throw new RuntimeException('FAIL: permitió métricas distintas');
+ }catch(RuntimeException $e){
+     if(ob_get_level()>0)ob_end_clean();
+     $assert(strpos($e->getMessage(),'DEPENDENCIA INCOMPATIBLE')!==false,'hash métricas');
+ }
+ copy(__DIR__.'/../app/services/VentasActividadMetricas.php',$metric);
  $db->query('START TRANSACTION READ ONLY');
  $snapshot=VentasContactoHistorico30::inspect($db,$plan,false);
  $db->commit();
