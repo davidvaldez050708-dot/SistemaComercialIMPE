@@ -18,7 +18,6 @@ jobs:
         options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
     env:
       PHP_BINARY: php
-      IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
       IMPE_BROWSER_TEST: '1'
       IMPE_BROWSER_SCRIPT: ventas_resultados_dobles_browser.cjs
       NODE_PATH: /tmp/contacto-browser/node_modules
@@ -35,6 +34,8 @@ jobs:
         with:
           node-version: '22'
       - name: Persistencia, contacto, históricos, permisos, reportes y Desempeño PDF
+        env:
+          IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: python3 tests/ventas_contacto_whatsapp_reportes_db.py
       - name: Publicación selectiva reversible sin SQL
         run: python3 tests/ventas_contacto_whatsapp_release_test.py
