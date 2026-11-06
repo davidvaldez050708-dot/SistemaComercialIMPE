@@ -1,0 +1,46 @@
+name: Ventas - confirmar 30 contactos históricos WhatsApp
+on:
+  pull_request:
+    paths:
+      - 'tools/ventas_contacto_historico_validar_revision.py'
+      - 'tools/ventas_contacto_historico_aplicar_30.php'
+      - 'tests/ventas_contacto_historico_aplicar_30_db.php'
+      - 'tests/ventas_contacto_historico_validar_revision_test.py'
+      - '.github/workflows/ventas-contacto-historico-30.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contacto-30:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0', 'mariadb:11.8']
+    services:
+      db:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['3306/tcp']
+        options: --health-cmd="mariadb-admin ping -h 127.0.0.1 || mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - name: Sintaxis y revisión sin observaciones individuales
+        run: |
+          php -l tools/ventas_contacto_historico_aplicar_30.php
+          php -l tests/ventas_contacto_historico_aplicar_30_db.php
+          python3 -m py_compile tools/ventas_contacto_historico_validar_revision.py
+          python3 tests/ventas_contacto_historico_validar_revision_test.py
+      - name: Corrección SQL exacta en base desechable
+        env:
+          IMPE_TEST_MYSQL_PORT: ${{ job.services.db.ports[3306] }}
+        run: php tests/ventas_contacto_historico_aplicar_30_db.php
+      - name: Compatibilidad Python 3.6
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src python:3.6 \
+            python tests/ventas_contacto_historico_validar_revision_test.py
