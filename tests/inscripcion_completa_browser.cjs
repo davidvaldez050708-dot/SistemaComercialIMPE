@@ -116,15 +116,53 @@ const file={name:'pago.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-
   assert.equal(enviadaExperiencia.status(),200,await enviadaExperiencia.text());
   assert.equal(Number(JSON.parse(run('conteo')).total),2,
       'una misma CURP de prueba se inscribe en dos programas distintos sin mezclar expedientes');
+
+  // Bachillerato General (Examen Único) conserva su contrato de Educación
+  // Media Superior y elimina completamente el selector de Perfil de evaluación.
+  await page.goto(base+'ya-estas-inscrito/?programa=bachillerato-286');
+  assert.match(await page.locator('.formulario-publico-hero-slogan').innerText(),/Examen Único/);
+  assert.equal(await page.locator('[name=perfil_evaluacion]').count(),0);
+  assert.equal((await page.locator('body').innerText()).includes('Perfil de evaluación'),false);
+  assert.equal(await page.locator('button[type=submit]').isEnabled(),true);
+  assert.equal((await page.locator('body').innerText()).includes('Formulario en preparación'),false);
+  assert.equal(await page.locator('[name=apertura]').count(),0);
+  const bachContrato = await page.locator('.inscripcion-documento').nth(0).textContent();
+  const bachPrivacidad = await page.locator('.inscripcion-documento').nth(1).textContent();
+  assert.match(bachContrato,/Certificado de Bachillerato/);
+  assert.match(bachContrato,/Teopanzolco #98/);
+  assert.match(bachPrivacidad,/Teopanzolco No\. 98/);
+  assert.notEqual(bachContrato,terminosEjecutivas,
+      'contrato Bachillerato distinto de Titulación profesional');
+  assert.notEqual(bachPrivacidad,privacidadEjecutivas,
+      'aviso Bachillerato original distinto al aviso de Titulación');
+  const bachTokens = {
+    csrf_inscripcion:await page.locator('[name=csrf_inscripcion]').inputValue(),
+    solicitud_token:await page.locator('[name=solicitud_token]').inputValue()
+  };
+  const {perfil_evaluacion: noUsado,...sinPerfil} = valid;
+  const postBach = async(overrides={}) => {
+    const r=await page.request.post(base+'ya-estas-inscrito/?accion=guardar',
+      {multipart:{...sinPerfil,...bachTokens,programa_slug:'bachillerato-286',...overrides,comprobante:file}});
+    return {status:r.status(),data:await r.json()};
+  };
+  assert.equal((await postBach({perfil_evaluacion:'Licenciatura en derecho A286'})).status,422,
+      'el servidor rechaza manipulación con perfil ajeno');
+  const bachGuardada = await postBach();
+  assert.equal(bachGuardada.status,200,JSON.stringify(bachGuardada));
+  assert.equal(bachGuardada.data.ok,true);
+  assert.equal(Number(JSON.parse(run('conteo')).total),3,
+      'tercer expediente independiente por programa');
+  assert.equal(JSON.parse(run('campos_bachillerato')).includes('perfil_evaluacion'),false,
+      'el JSON guardado no conserva el campo eliminado');
   const privateDir=path.join(root,'../impe-inscripciones-private');
   const filesBefore=fs.readdirSync(privateDir).sort();run('fallo');
   const secondPrefix='GARR010101HDFRRSA';
   const secondDigit=(10-[...secondPrefix].reduce((n,c,i)=>n+alphabet.indexOf(c)*(18-i),0)%10)%10;
   const failure=await post({curp:secondPrefix+secondDigit,fecha_nacimiento:'2001-01-01'});
   assert.equal(failure.status,503,'fallo en detalle revierte inscripción');
-  assert.equal(Number(JSON.parse(run('conteo')).total),2,'sin inscripción parcial');
+  assert.equal(Number(JSON.parse(run('conteo')).total),3,'sin inscripción parcial');
   assert.deepEqual(fs.readdirSync(privateDir).sort(),filesBefore,'sin comprobante huérfano después de rollback');
-  for(const slug of ['ingles','bachillerato-286','bachillerato-en-2-anos']){
+  for(const slug of ['ingles','bachillerato-en-2-anos']){
    await page.goto(base+'ya-estas-inscrito/?programa='+slug);
    assert.equal(await page.locator('button[type=submit]').isDisabled(),true);
   }
