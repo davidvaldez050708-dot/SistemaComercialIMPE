@@ -92,3 +92,19 @@
     .formulario-ejecutivas-piloto .ejecutivas-piloto-intro h2 { font-size:19px; }
     .formulario-ejecutivas-piloto .ejecutivas-piloto-chip { font-size:10px; }
 }
+
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo {
+    border:1px solid #cde6db; background:#f2faf6; border-radius:16px;
+    padding:18px 20px; margin:24px 0 8px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo .ejecutivas-piloto-check {
+    margin:0; align-items:flex-start; color:#193e42; font-weight:600;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo input {
+    flex:0 0 auto; margin-top:4px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo a { color:#223a84; }
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo-error {
+    margin-top:9px; color:#b42330; font-size:12px;
+}
+.formulario-ejecutivas-piloto .ejecutivas-piloto-cotejo-error[hidden] { display:none; }
