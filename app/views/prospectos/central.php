@@ -8,17 +8,46 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_central.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_central.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_ficha_panel.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_ficha_panel.css'),0,16) ?>">
 <?php if ($seccionProspectos==='meta'): ?><link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_importador_meta.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_importador_meta.css'),0,16) ?>"><?php endif; ?>
+<?php if ($seccionProspectos==='asignaciones'): ?><link rel="stylesheet" href="<?= BASE_URL ?>public/css/prospectos_asesores.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/prospectos_asesores.css'),0,16) ?>"><?php endif; ?>
 <div class="prospectos-central">
 <?php require __DIR__.'/partials/navegacion.php';require __DIR__.'/partials/resumen.php'; ?>
 <?php if ($mensajeError!==''): ?><p class="central-alert" role="alert"><?= $esc($mensajeError) ?></p><?php endif; ?>
 <?php if (!$centralDisponible): ?>
 <section class="central-panel central-empty"><i class="bi bi-archive" aria-hidden="true"></i><h3>El almacén central aún no está disponible</h3><p>Los registros originales continúan disponibles en Aliados.</p><a class="central-link" href="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=index&seccion=aliados') ?>">Consultar registros de formularios</a></section>
 <?php elseif ($seccionProspectos==='asignaciones'): ?>
+<nav class="asesores-subtabs" aria-label="Apartados de Asignaciones">
+<?php foreach ([
+    'asesores'=>['bi-gear','Configuración de asesores'],
+    'distribucion'=>['bi-diagram-3','Distribución diaria'],
+    'historial'=>['bi-clock-history','Historial']
+] as $clave=>$dato):
+    if ($clave==='asesores'&&!$puedeConfigurarAsesores) continue;
+?>
+<a href="<?= $esc(BASE_URL.'index.php?'.http_build_query(['controller'=>'prospecto','action'=>'index','seccion'=>'asignaciones','sub'=>$clave])) ?>" <?= $subAsignaciones===$clave?'aria-current="page"':'' ?>><i class="bi <?= $esc($dato[0]) ?>" aria-hidden="true"></i><?= $esc($dato[1]) ?></a>
+<?php endforeach; ?>
+</nav>
+<?php if (is_array($mensajeConfiguracion) && !empty($mensajeConfiguracion['texto'])): ?>
+<div class="asesores-alert <?= ($mensajeConfiguracion['tipo']??'')==='exito'?'asesores-alert--success':'' ?>" role="<?= ($mensajeConfiguracion['tipo']??'')==='exito'?'status':'alert' ?>">
+<i class="bi <?= ($mensajeConfiguracion['tipo']??'')==='exito'?'bi-check-circle':'bi-exclamation-circle' ?>" aria-hidden="true"></i>
+<?= $esc($mensajeConfiguracion['texto']) ?>
+</div>
+<?php endif; ?>
+<?php if ($subAsignaciones==='asesores'): ?>
+<?php require __DIR__.'/partials/configuracion_asesores.php'; ?>
+<?php elseif ($subAsignaciones==='distribucion'): ?>
+<section class="central-panel central-empty">
+<i class="bi bi-diagram-3" aria-hidden="true"></i>
+<h3>Distribución diaria · Próxima entrega</h3>
+<p>La configuración de asesores se habilita en esta fase. El reparto automático de Meta (80 nuevos diarios) y la asignación inmediata de Aliados se incorporarán después de validar las jornadas y el procedimiento de distribución.</p>
+<p>No se han realizado repartos desde esta pantalla.</p>
+</section>
+<?php else: ?>
 <section class="central-panel"><div class="central-section-head"><h3>Historial de asignaciones</h3><p>Se muestran únicamente asignaciones existentes. La distribución automática se habilitará en una fase posterior.</p></div>
 <?php if (!$listado['registros']): ?><div class="central-empty"><i class="bi bi-person-check" aria-hidden="true"></i><h3>Aún no hay asignaciones registradas</h3><p>Los prospectos del almacén no se presentan como asignados.</p></div>
 <?php else: ?><div class="central-table-wrap" tabindex="0" role="region" aria-label="Asignaciones"><table class="central-table"><thead><tr><th>Prospecto</th><th>Asesor</th><th>Fecha de asignación · México</th><th>Fecha de trabajo</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>
 <?php foreach ($listado['registros'] as $r): ?><tr><td><?= $esc($texto($r['nombre_completo'])) ?></td><td><?= $esc($texto($r['asesor'])) ?></td><td><?= $esc(ProspectoFechaHoraHelper::aMexico($r['asignado_at'])) ?></td><td><?= $esc($texto($r['fecha_trabajo'])) ?></td><td><?= $esc($r['estado']) ?></td><td><a class="central-link" href="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=detalle&id='.(int)$r['prospecto_id']) ?>" data-prospecto-ficha>Ver ficha</a></td></tr><?php endforeach; ?>
 </tbody></table></div><?php require __DIR__.'/partials/paginacion_central.php';endif; ?></section>
+<?php endif; ?>
 <?php else: ?>
 <?php if ($seccionProspectos==='meta') require __DIR__.'/partials/formularios_programas.php'; ?>
 <?php if ($seccionProspectos==='meta' && !empty($metaResultado)): ?>
