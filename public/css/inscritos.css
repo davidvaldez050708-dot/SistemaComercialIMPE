@@ -5,46 +5,30 @@
 }
 .inscritos-page .inscritos-panel {
     background:#fff; border:1px solid #e1e8f0;
-    border-radius:16px; padding:24px;
+    border-radius:18px; padding:24px;
     box-shadow:0 8px 24px rgba(24,43,72,.04);
 }
 .inscritos-page .inscritos-heading {
     display:flex; justify-content:space-between; align-items:center;
     gap:18px; flex-wrap:wrap; margin-bottom:22px;
 }
-.inscritos-page .inscritos-heading-main {
-    display:flex; align-items:center; gap:16px; min-width:0;
-}
-.inscritos-page .inscritos-heading-icon {
-    display:inline-flex; flex:0 0 52px;
-    align-items:center; justify-content:center;
-    width:52px; height:52px; border-radius:14px;
-    color:#09836b; background:#e9f6f3; font-size:24px;
-}
 .inscritos-eyebrow {font-weight:800; letter-spacing:.075em; color:#09836b; font-size:10px;}
 .inscritos-page h2 {font-size:18px; font-weight:800; margin:2px 0 5px;}
 .inscritos-page p {font-size:12px; color:#617189; margin:0;}
-.inscritos-page .inscritos-count {
-    border:1px solid #e1e8f0; border-radius:14px;
-    padding:10px 20px; text-align:center; min-width:118px;
-}
-.inscritos-page .inscritos-count strong {display:block; font-size:24px; font-weight:800; line-height:1.2;}
-.inscritos-page .inscritos-count span {font-size:11px; color:#617189;}
 .inscritos-page .inscritos-filters {
     display:grid;
     grid-template-columns:minmax(220px,2.1fr) minmax(165px,1.35fr)
                           minmax(130px,1fr) minmax(130px,1fr) auto;
     gap:12px; align-items:end;
-    padding:17px; border:1px solid #e3eaf3; border-radius:14px;
-    background:#f9fbfd; margin-bottom:16px;
+    padding:0; border:0; background:transparent; margin-bottom:22px;
 }
 .inscritos-page .inscritos-field {display:flex; flex-direction:column; gap:6px; min-width:0;}
-.inscritos-page .inscritos-field label {font-size:11px; font-weight:800; color:#344766;}
+.inscritos-page .inscritos-field label {font-size:12px; font-weight:700; color:#617189;}
 .inscritos-page .inscritos-field input,
 .inscritos-page .inscritos-field select {
     width:100%; border:1px solid #d8e2ee; border-radius:10px; background:#fff;
-    min-height:41px; padding:8px 11px; outline:0; font-size:12px;
-    font-family:inherit; font-weight:600; color:#1d3356; min-width:0;
+    min-height:45px; padding:10px 12px; outline:0; font-size:13px;
+    font-family:inherit; font-weight:500; color:#1d3356; min-width:0;
 }
 .inscritos-page .inscritos-field input:focus,
 .inscritos-page .inscritos-field select:focus {
@@ -58,7 +42,7 @@
 .inscritos-page .inscritos-search-control input {padding-left:37px;}
 .inscritos-page .inscritos-clear {
     display:inline-flex; align-items:center; justify-content:center; gap:7px;
-    height:41px; border:1px solid #d8e2ee; border-radius:10px;
+    height:45px; border:1px solid #d8e2ee; border-radius:10px;
     padding:0 15px; background:#fff; color:#385071;
     font-family:inherit; font-size:12px; font-weight:800; cursor:pointer;
 }
@@ -89,11 +73,12 @@
 }
 .inscritos-page td {
     padding:13px 14px; border-bottom:1px solid #e9eef5;
-    color:#42516a; font-weight:600;
+    color:#42516a; font-weight:500;
 }
 .inscritos-page tbody tr:last-child td {border-bottom:0;}
 .inscritos-page tbody tr:hover {background:#f7fafc;}
-.inscritos-page .inscritos-name {font-weight:800; color:#17233e;}
+.inscritos-page .inscritos-name {font-weight:700; color:#17233e; white-space:normal; min-width:150px; max-width:240px; overflow-wrap:anywhere;}
+.inscritos-page td:nth-child(4) {white-space:normal; max-width:220px; overflow-wrap:anywhere;}
 .inscritos-page .inscritos-date {color:#6a7990; font-variant-numeric:tabular-nums;}
 .inscritos-page .inscritos-program-badge {
     display:inline-flex; align-items:center; white-space:normal; max-width:250px;
@@ -121,16 +106,19 @@
     align-items:center; flex-wrap:wrap; gap:12px;
 }
 .inscritos-page .inscritos-footer small {font-size:10px; color:#74849d;}
-.inscritos-page .inscritos-pagination {display:flex; align-items:center; gap:11px; font-size:12px;}
-.inscritos-page .inscritos-pagination button {
-    border:1px solid #dce5ef; border-radius:9px; padding:8px 12px;
-    background:#fff; color:#223a84; font-weight:750; cursor:pointer; font-family:inherit;
-}
-.inscritos-page .inscritos-pagination button:disabled {opacity:.38; cursor:not-allowed;}
+.inscritos-page .inscritos-pagination {display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px;font-size:12px;max-width:100%;}
+.inscritos-page .inscritos-pagination[hidden] {display:none;}
+.inscritos-page .inscritos-pagination button {display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:36px;padding:0 9px;border:1px solid #dce5ef;border-radius:10px;background:#fff;color:#294187;font:700 12px/1 'Manrope',sans-serif;cursor:pointer;}
+.inscritos-page .inscritos-pagination button:hover:not(:disabled) {background:#eff4ff;border-color:#b7c9ee;}
+.inscritos-page .inscritos-pagination button.is-current {background:#2c3c90;border-color:#2c3c90;color:#fff;opacity:1;}
+.inscritos-page .inscritos-pagination button:disabled {opacity:.4;cursor:default;}
+.inscritos-page .inscritos-pagination button.is-current:disabled {opacity:1;}
+.inscritos-page .inscritos-pagination button:focus-visible {outline:3px solid #bad1f7;outline-offset:2px;}
+.inscritos-page .inscritos-pagination-ellipsis {padding:0 3px;color:#7a879c;}
 .inscritos-page .inscritos-export-note {font-size:10px; margin-top:14px; line-height:1.6; color:#7a879c;}
 .inscritos-overlay[hidden],.inscritos-drawer[hidden] {display:none !important;}
 .inscritos-overlay {
-    position:fixed; inset:0; z-index:1104;
+    position:fixed; top:0; right:0; bottom:0; left:0; z-index:1104;
     background:rgba(15,28,55,.44); backdrop-filter:blur(2px);
 }
 .inscritos-drawer {
@@ -187,8 +175,7 @@ body.inscritos-modal-abierto {overflow:hidden;}
 }
 @media(max-width:767px) {
     .inscritos-page .inscritos-panel {padding:16px;}
-    .inscritos-page .inscritos-heading-icon {width:44px; height:44px; flex-basis:44px;}
-    .inscritos-page .inscritos-filters {grid-template-columns:1fr 1fr; padding:12px;}
+    .inscritos-page .inscritos-filters {grid-template-columns:1fr 1fr; padding:0;}
     .inscritos-page .inscritos-search,
     .inscritos-page .inscritos-programa {grid-column:1/-1;}
     .inscritos-page .inscritos-clear {grid-column:1/-1; justify-self:stretch;}
@@ -196,7 +183,6 @@ body.inscritos-modal-abierto {overflow:hidden;}
     .inscritos-drawer .inscritos-drawer-header {padding:18px;}
     .inscritos-drawer-scroll {padding:17px 18px;}
     .inscritos-page .inscritos-heading {gap:12px;}
-    .inscritos-page .inscritos-heading-main {gap:12px;}
 }
 @media(max-width:390px) {
     .inscritos-page .inscritos-filters {grid-template-columns:1fr;}

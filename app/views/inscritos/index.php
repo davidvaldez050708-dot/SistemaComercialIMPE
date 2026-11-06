@@ -8,20 +8,9 @@ $baseInscritos = BASE_URL . 'index.php?controller=inscritos&action=';
      data-detail-url="<?= $e($baseInscritos.'detalle') ?>"
      data-export-url="<?= $e($baseInscritos.'exportar') ?>"
      data-comprobante-url="<?= $e(BASE_URL.'index.php?controller=formulario&action=comprobanteInscripcion') ?>">
-    <section class="inscritos-panel" aria-label="Inscripciones recibidas">
+    <section class="inscritos-panel" aria-labelledby="inscritos-listado-titulo">
         <div class="inscritos-heading">
-            <div class="inscritos-heading-main">
-                <span class="inscritos-heading-icon"><i class="bi bi-person-lines-fill" aria-hidden="true"></i></span>
-                <div>
-                    <span class="inscritos-eyebrow">INSCRIPCIONES</span>
-                    <h2>Inscripciones recibidas</h2>
-                    <p>Consulta los inscritos de todos los programas desde una sola tabla.</p>
-                </div>
-            </div>
-            <div class="inscritos-count" aria-live="polite">
-                <strong data-inscritos-total>—</strong>
-                <span>resultados</span>
-            </div>
+            <h2 id="inscritos-listado-titulo">Todos los inscritos</h2>
         </div>
 
         <form class="inscritos-filters" data-inscritos-filtros autocomplete="off" role="search">
@@ -85,15 +74,11 @@ $baseInscritos = BASE_URL . 'index.php?controller=inscritos&action=';
             </table>
         </div>
         <div class="inscritos-footer">
-            <small>Solo inscripciones completas. Fechas mostradas en horario de México.</small>
-            <nav class="inscritos-pagination" aria-label="Paginación de inscripciones">
-                <button type="button" data-inscritos-prev disabled><i class="bi bi-chevron-left" aria-hidden="true"></i> Anterior</button>
-                <span data-inscritos-pagina>Página 1 de 1</span>
-                <button type="button" data-inscritos-next disabled>Siguiente <i class="bi bi-chevron-right" aria-hidden="true"></i></button>
-            </nav>
+            <small>Inscripciones de los formularios actuales · Hora de México.</small>
+            <nav class="inscritos-pagination" data-inscritos-paginacion aria-label="Páginas de inscritos" hidden></nav>
         </div>
         <?php if ($puedeExportarInscritos): ?>
-            <p class="inscritos-export-note">El Excel incluirá <strong>todos los resultados filtrados</strong>, no solo la página visible (hasta 10,000 registros por descarga). Los comprobantes recibidos están pendientes de revisión.</p>
+            <p class="inscritos-export-note">El Excel incluye todos los resultados del filtro, hasta 10,000 registros por descarga.</p>
         <?php endif; ?>
     </section>
 </div>
@@ -118,7 +103,7 @@ $baseInscritos = BASE_URL . 'index.php?controller=inscritos&action=';
         <a class="inscritos-download" data-inscritos-comprobante href="#">
             <i class="bi bi-download" aria-hidden="true"></i> Descargar comprobante
         </a>
-        <small>Comprobante recibido. Su revisión no implica validación de pago.</small>
+        <small>El archivo adjunto no confirma que el pago haya sido acreditado.</small>
     </div>
 </aside>
 <script src="<?= BASE_URL ?>public/javascript/inscritos.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/inscritos.js') ?>" defer></script>

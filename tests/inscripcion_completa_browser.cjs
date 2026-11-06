@@ -81,6 +81,7 @@ const file={name:'pago.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-
   await page.locator('button[type=submit]').click();
   const response=await pending;const saved={status:response.status(),data:await response.json()};
   assert.equal(saved.status,200,JSON.stringify(saved));assert.equal(saved.data.ok,true);
+  assert.equal(JSON.parse(run('bandeja')).total,1,'el envío público de Ejecutivas llega al modelo real de Inscritos');
   await page.locator('[data-inscripcion-estado]').filter({hasText:'Inscripción guardada correctamente'}).waitFor();
   assert.match(await page.locator('.system-toast').last().textContent(),/Inscripción registrada correctamente/);
   const retry=await post();assert.equal(retry.data.registro_id,saved.data.registro_id);assert.equal(Number(JSON.parse(run('conteo')).total),1);
@@ -154,13 +155,26 @@ const file={name:'pago.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-
       'tercer expediente independiente por programa');
   assert.equal(JSON.parse(run('campos_bachillerato')).includes('perfil_evaluacion'),false,
       'el JSON guardado no conserva el campo eliminado');
+  const bandeja=JSON.parse(run('bandeja'));
+  assert.equal(bandeja.total,3,'los tres programas públicos habilitados llegan a Inscritos');
+  assert.deepEqual(Object.keys(bandeja.programas).sort(),['bachillerato-286','titulacion-ejecutivas','titulacion-experiencia-laboral'].sort());
+  // The internal CRM uses the same authorized storage path and the same inbox.
+  await page.goto(base+'tests/inscripcion_completa_fixture.php?programa=titulacion-ejecutivas');
+  const internoPrefix='GARR020101HDFRRSA';
+  const internoDigit=(10-[...internoPrefix].reduce((n,c,i)=>n+alphabet.indexOf(c)*(18-i),0)%10)%10;
+  const interno=await page.request.post(base+'tests/inscripcion_completa_fixture.php?accion=guardar',{multipart:{...valid,
+    csrf_inscripcion:await page.locator('[name=csrf_inscripcion]').inputValue(),
+    solicitud_token:await page.locator('[name=solicitud_token]').inputValue(),
+    curp:internoPrefix+internoDigit,fecha_nacimiento:'2002-01-01',comprobante:file}});
+  assert.equal(interno.status(),200,await interno.text());
+  const conInterno=JSON.parse(run('bandeja'));assert.equal(conInterno.total,4);assert.equal(conInterno.origenes.MARKETING,1,'la captura CRM aparece como interna');
   const privateDir=path.join(root,'../impe-inscripciones-private');
   const filesBefore=fs.readdirSync(privateDir).sort();run('fallo');
   const secondPrefix='GARR010101HDFRRSA';
   const secondDigit=(10-[...secondPrefix].reduce((n,c,i)=>n+alphabet.indexOf(c)*(18-i),0)%10)%10;
   const failure=await post({curp:secondPrefix+secondDigit,fecha_nacimiento:'2001-01-01'});
   assert.equal(failure.status,503,'fallo en detalle revierte inscripción');
-  assert.equal(Number(JSON.parse(run('conteo')).total),3,'sin inscripción parcial');
+  assert.equal(Number(JSON.parse(run('conteo')).total),4,'sin inscripción parcial');
   assert.deepEqual(fs.readdirSync(privateDir).sort(),filesBefore,'sin comprobante huérfano después de rollback');
   for(const slug of ['ingles','bachillerato-en-2-anos']){
    await page.goto(base+'ya-estas-inscrito/?programa='+slug);

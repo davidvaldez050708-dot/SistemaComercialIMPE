@@ -80,6 +80,18 @@ try{
   afirma((string)$zip->getFromName('xl/styles.xml')!=='','estilos XLSX');
   $zip->close();
  }finally{unlink($archivo);}
+ // Verify the actual download boundary, beyond the visible 25-row page.
+ $nombre='Carga';$apellido='Sintética';$correo='carga@example.test';$movil='5500000000';
+ $origen='PUBLICO';$created='2026-11-06 18:00:00';$programa='bachillerato-286';
+ $datos=json_encode(['curp'=>'SINTETICA','fecha_inscripcion'=>'2026-11-06']);
+ $db->begin_transaction();
+ for($n=3;$n<10000;$n++){$insert->execute();$id=(int)$db->insert_id;$detail->execute();}
+ $db->commit();
+ afirma($m->listar($all)['total']===10000&&count($m->listar($all)['registros'])===25,'tabla pagina sin cargar 10000 registros');
+ afirma(count($m->exportar($all))===10000,'Excel reúne los 10000 resultados, no la página');
+ $insert->execute();$id=(int)$db->insert_id;$detail->execute();
+ try{$m->exportar($all);throw new RuntimeException('Se permitió superar 10000');}
+ catch(DomainException $e){afirma($e->getCode()===422,'10001 se rechazan sin truncar la descarga');}
  $_SESSION=['usuario_id'=>99,'rol_id'=>8,'rol'=>'Marketing','permisos'=>[]];
  afirma(!InscritosPermisos::puede(InscritosPermisos::VER),'sin permisos no hay consulta');
  $_SESSION['permisos']=[InscritosPermisos::VER];
@@ -87,7 +99,7 @@ try{
  $_SESSION['permisos']=[InscritosPermisos::VER,InscritosPermisos::EXPORTAR];
  afirma(InscritosPermisos::puede(InscritosPermisos::EXPORTAR),'permiso explícito Excel');
  $sidebar=file_get_contents(dirname(__DIR__).'/app/views/layout/sidebar.php');
- afirma(substr_count($sidebar,'Inscripciones recibidas')===2,'desktop y móvil');
+ afirma(substr_count($sidebar,'</i> Inscritos')===2,'desktop y móvil');
  afirma(strpos(file_get_contents(dirname(__DIR__).'/index.php'),"case 'inscritos':")!==false,'router protegido');
  echo "PASS inscritos: búsqueda, filtros, fechas México, detalle, permisos, XLSX real y seguridad\n";
 }finally{$db->query('DROP DATABASE IF EXISTS '.$name);}
