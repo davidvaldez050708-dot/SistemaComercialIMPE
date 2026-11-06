@@ -42,7 +42,7 @@
         try {
             const url = new URL(form.dataset.municipiosUrl, location.href); url.searchParams.set('estado_id', this.value);
             const response = await fetch(url, {credentials:'same-origin', headers:{'X-Requested-With':'fetch'}});
-            const data = await response.json(); if (seq !== revision) return;
+            const data = await response.json().catch(() => { throw new Error('No se pudieron consultar los municipios. Vuelve a intentarlo.'); }); if (seq !== revision) return;
             if (!response.ok || !data.ok) throw new Error(data.mensaje || 'No se pudieron consultar los municipios.');
             municipio.replaceChildren(new Option('Selecciona un municipio', ''));
             data.municipios.forEach(m => municipio.add(new Option(m.nombre, String(m.id))));
@@ -76,7 +76,7 @@
         busy = true; const button = form.querySelector('[type=submit]'); button.disabled = true; state.textContent = 'Guardando inscripción…';
         try {
             const response = await fetch(form.action, {method:'POST',body:new FormData(form), credentials:'same-origin',headers:{'X-Requested-With':'fetch'}});
-            const data = await response.json();
+            const data = await response.json().catch(() => { throw new Error('No se pudo completar el envío. Revisa tu sesión e intenta nuevamente.'); });
             if (!response.ok || !data.ok) {
                 Object.entries(data.errores || {}).forEach(([name,text]) => errorFor(name,text));
                 throw new Error(data.mensaje || 'No se pudo guardar la inscripción.');
@@ -85,7 +85,7 @@
             toast('Inscripción registrada correctamente.', false);
             // Mantener el mismo token para reintentos; no producir otra inscripción con doble clic.
             form.querySelectorAll('input,select,button').forEach(input => { input.disabled = true; });
-        } catch (error) { state.textContent = ''; toast(error.message || 'No se pudo completar el envío. Intenta nuevamente.', true); button.disabled = false; form.querySelector('.is-invalid')?.focus(); }
+        } catch (error) { state.textContent = ''; toast(error.name === 'TypeError' ? 'No se pudo conectar. Revisa tu conexión e intenta nuevamente.' : (error.message || 'No se pudo completar el envío. Intenta nuevamente.'), true); button.disabled = false; form.querySelector('.is-invalid')?.focus(); }
         finally { busy = false; }
     });
 }());
