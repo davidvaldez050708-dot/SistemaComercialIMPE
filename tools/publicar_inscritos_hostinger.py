@@ -124,6 +124,17 @@ def merge(base, target, current, name):
             before = b''.join(oldlines[a1:a2])
             after = b''.join(newlines[b1:b2])
             if before:
+                # Sidebar tiene dos copias idénticas del guard de Marketing
+                # (desktop/móvil). Ambas deben cambiar y ninguna otra.
+                if (name == 'app/views/layout/sidebar.php'
+                        and b'$mostrarConvocatorias || $mostrarConvenios' in before
+                        and old.count(before) == 2 and new.count(after) == 2):
+                    pendientes = data.count(before)
+                    aplicadas = data.count(after)
+                    if pendientes + aplicadas != 2:
+                        raise RuntimeError('CONFLICTO: guard de sidebar duplicado o alterado')
+                    data = data.replace(before, after)
+                    continue
                 if data.count(before) == 1:
                     data = data.replace(before, after, 1)
                     continue
