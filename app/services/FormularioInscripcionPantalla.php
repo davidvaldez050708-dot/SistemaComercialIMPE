@@ -83,6 +83,11 @@ final class FormularioInscripcionPantalla
             // Lista cerrada: no guardar tokens CSRF, confirmaciones duplicadas ni claves arbitrarias.
             $datos = [];
             foreach (['nombre','apellidos','fecha_nacimiento','genero','curp','correo','movil','nombre_padres','calle','numero','ciudad','codigo_postal','municipio','entidad_federativa','empresa_labora','cargo_puesto','perfil_evaluacion','fecha_inscripcion'] as $campo) $datos[$campo] = trim((string)($entrada[$campo] ?? ''));
+            // Bachillerato General no solicita Perfil de evaluación: tampoco se
+            // persiste esa clave vacía dentro de los datos de la inscripción.
+            if ($permiso['programa'] === 'bachillerato-286') {
+                unset($datos['perfil_evaluacion']);
+            }
             $datos['curp'] = strtoupper($datos['curp']);
             $datos['programa_slug'] = $permiso['programa']; $datos['estado_id'] = (int)$estado; $datos['municipio_id'] = (int)$municipio;
             require_once __DIR__ . '/FormularioInscripcionRepository.php';
