@@ -12,6 +12,8 @@ on:
       - 'tools/*inscripcion_completa*'
       - 'tests/inscripcion_completa*'
       - 'tests/inscripcion_experiencia_laboral*'
+      - 'tests/inscripcion_bachillerato_general*'
+      - 'tools/publicar_inscripcion_bachillerato_general_hostinger.py'
       - 'tools/publicar_inscripcion_experiencia_laboral_hostinger.py'
       - '.github/workflows/inscripcion-completa.yml'
 permissions:
@@ -56,6 +58,14 @@ jobs:
       - run: /tmp/inscripcion-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Contrato A286, privacidad, ocho perfiles y consentimiento
         run: php tests/inscripcion_experiencia_laboral_regression.php
+      - name: Bachillerato General sin perfil, documentos originales y consentimiento
+        run: |
+          php -l app/services/FormularioInscripcionValidacion.php
+          php -l app/services/FormularioInscripcionPantalla.php
+          php -l app/views/formularios/inscripcion_completa.php
+          php -l app/views/formularios/publico_inscripcion_completa.php
+          php -l tests/inscripcion_bachillerato_general_regression.php
+          php tests/inscripcion_bachillerato_general_regression.php
       - name: Publicador reversible de un único PHP
         run: |
           python3 -m py_compile tools/publicar_inscripcion_experiencia_laboral_hostinger.py
