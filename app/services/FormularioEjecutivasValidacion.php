@@ -109,6 +109,11 @@ final class FormularioEjecutivasValidacion
             $errores['fecha_inscripcion'] = 'Revisa la fecha real de inscripción; no puede estar en el futuro.';
         }
 
+        if ($valor('confirmacion_identidad') !== '1') {
+            $errores['confirmacion_identidad'] =
+                'Confirma que cotejaste nombre, apellidos, fecha y CURP con tu constancia oficial.';
+        }
+
         // En esta etapa no se recibe ni persiste el comprobante de pago.
         // La validación del archivo y los documentos legales se implementará
         // únicamente junto con almacenamiento seguro y textos aprobados.
