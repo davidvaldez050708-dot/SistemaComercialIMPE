@@ -27,6 +27,12 @@ installed="""
  assert b'VentasActividadAccess::esDesempenoAsesor()' in controller and b'(new VentasActividadController())->mostrar(true)' in controller
 """
 runner=runner.replace(anchor,installed+anchor)
+control="""
+ shutil.copyfile(root/'app/services/TelefoniaControlService.php',project/'app/services/TelefoniaControlService.php')
+ shutil.copyfile(root/'tests/ventas_contacto_control_smoke.php',project/'tests/ventas_contacto_control_smoke.php')
+"""
+runner=runner.replace(anchor,control+anchor)
+runner=runner.replace(" require __DIR__.'/ventas_consulta_doble_casos.php';\\n", " require __DIR__.'/ventas_consulta_doble_casos.php';\\n require __DIR__.'/ventas_contacto_control_smoke.php';\\n")
 with tempfile.NamedTemporaryFile(prefix='consulta_runner_',suffix='.py',dir=R/'tests',delete=False) as f:
  p=pathlib.Path(f.name);f.write(runner.encode())
 try:subprocess.run([os.sys.executable,str(p)],check=True)

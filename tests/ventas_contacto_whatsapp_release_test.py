@@ -5,7 +5,7 @@ root=Path(__file__).resolve().parents[1]
 package=json.loads((root/'tools/ventas_contacto_whatsapp_release.json').read_text(encoding='utf-8'))
 base=json.loads((root/'tests/fixtures/ventas_contacto_whatsapp_hostinger.json').read_text(encoding='utf-8'))
 sha=lambda b:hashlib.sha256(b).hexdigest()
-assert len(package['files'])==4
+assert len(package['files'])==5
 with tempfile.TemporaryDirectory(prefix='impe-ventas-contacto-whatsapp-') as temp:
  site=Path(temp)/'public_html';backup=Path(temp)/'backup';site.mkdir();(site/'index.php').write_text('<?php // replica')
  for row in package['files']:
@@ -32,4 +32,4 @@ with tempfile.TemporaryDirectory(prefix='impe-ventas-contacto-whatsapp-') as tem
  saved=next(p for p in backup.iterdir() if p.is_dir());assert 'RESTAURADO' in run('--restore',str(saved));assert snapshot()==initial
  p=site/'app/views/telefonia/resultado_ventas_form.php';p.write_bytes(p.read_bytes()+b'\n// personalizacion')
  current=snapshot();assert 'DIFERENTE' in run('--check',ok=False);assert snapshot()==current
- print('PASS: cuatro archivos Hostinger exactos, dependencias de reportes intactas, check sin escrituras, apply, idempotencia, restore y rechazo de variantes. Sin SQL.')
+ print('PASS: cinco archivos Hostinger exactos, dependencias de reportes intactas, check sin escrituras, apply, idempotencia, restore y rechazo de variantes. Sin SQL.')

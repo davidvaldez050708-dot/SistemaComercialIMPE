@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Contacto en envíos WhatsApp/SMS. Cuatro archivos; sin SQL ni cambios de históricos."""
+"""Contacto en envíos WhatsApp/SMS. Cinco archivos; sin SQL ni cambios de históricos."""
 import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = '981425e31b338043072e02c36887260aa54595ed0e1999808a6ca96869f1f21c'
-PATHS = ['app/services/TelefoniaResultadoVentasCatalogo.php', 'app/services/TelefoniaResultadoVentasService.php', 'app/views/telefonia/resultado_ventas_form.php', 'public/javascript/telefonia_ventas_resultados.js']
+MANIFEST_SHA256 = '43bdbd044417bc1fa68a7aa8ff6d3aef92b28a86dbc6a07a826c4174887cdc41'
+PATHS = ['app/services/TelefoniaResultadoVentasCatalogo.php', 'app/services/TelefoniaResultadoVentasService.php', 'app/views/telefonia/resultado_ventas_form.php', 'public/javascript/telefonia_ventas_resultados.js', 'app/services/TelefoniaControlService.php']
 DEPENDENCIES = {'app/services/VentasActividadMetricas.php': '0da74c9c4b6d35b67c2b79f4b4af17c21dd4a426aa5d04f26bd17a18d9f01e21', 'app/services/VentasActividadRepository.php': '9e284e443a2f6bbc3f99ef297d280fa5c8a219c63159b5570395cc5583fed702', 'app/controllers/DesempenoController.php': '53222a725504482258cf1c5b3244189a605ba8c48c7533fc5f569e0e8ce53d27', 'app/services/DesempenoService.php': 'ad7c1a80e3166137022902b833d48055ce483a0febe6d7f328b9acbd011616d0'}
 
 def digest(data): return None if data is None else hashlib.sha256(data).hexdigest()
