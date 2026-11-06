@@ -217,7 +217,7 @@ $claseFormularios =
             </div>
         <?php endif; ?>
 
-        <?php if ($mostrarConvocatorias || $mostrarConvenios || $mostrarProspectos || $mostrarFormularios || $mostrarInscritos): ?>
+        <?php if ($mostrarConvocatorias || $mostrarConvenios): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
@@ -242,6 +242,21 @@ $claseFormularios =
                     </a>
                 <?php endif; ?>
 
+                <?php if ($esRolMarketingSidebar && $mostrarConvocatorias): ?>
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=correoMarketing&action=index"
+                        class="sidebar-link <?= $claseCorreosMarketing ?>">
+                        <i class="bi bi-envelope"></i>
+                        Correos
+                    </a>
+                <?php endif; ?>
+            </div>
+
+        <?php endif; ?>
+
+        <?php if ($mostrarFormularios || $mostrarProspectos || $mostrarInscritos): ?>
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">COMERCIAL</p>
                 <?php if ($mostrarFormularios): ?>
                     <a
                         href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
@@ -262,17 +277,7 @@ $claseFormularios =
                         <i class="bi bi-person-check"></i> Inscritos
                     </a>
                 <?php endif; ?>
-
-                <?php if ($esRolMarketingSidebar && $mostrarConvocatorias): ?>
-                    <a
-                        href="<?= BASE_URL ?>index.php?controller=correoMarketing&action=index"
-                        class="sidebar-link <?= $claseCorreosMarketing ?>">
-                        <i class="bi bi-envelope"></i>
-                        Correos
-                    </a>
-                <?php endif; ?>
             </div>
-
         <?php endif; ?>
 
         <?php if ($mostrarWhatsapp): ?>
@@ -562,7 +567,7 @@ $claseFormularios =
             </div>
         <?php endif; ?>
 
-        <?php if ($mostrarConvocatorias || $mostrarConvenios || $mostrarProspectos || $mostrarFormularios || $mostrarInscritos): ?>
+        <?php if ($mostrarConvocatorias || $mostrarConvenios): ?>
 
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">
@@ -587,7 +592,24 @@ $claseFormularios =
                         </a>
                     <?php endif; ?>
 
-                    <?php if ($mostrarFormularios): ?>
+                    <?php if ($esRolMarketingSidebar && $mostrarConvocatorias): ?>
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=correoMarketing&action=index"
+                            class="sidebar-link <?= $claseCorreosMarketing ?>">
+                            <i class="bi bi-envelope"></i>
+                            Correos
+                        </a>
+                    <?php endif; ?>
+                </div>
+
+            <?php endif; ?>
+
+
+            <!-- VINCULACIÓN -->
+            <?php if ($mostrarFormularios || $mostrarProspectos || $mostrarInscritos): ?>
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">COMERCIAL</p>
+                <?php if ($mostrarFormularios): ?>
                         <a
                             href="<?= BASE_URL ?>index.php?controller=formulario&action=index"
                             class="sidebar-link <?= $claseFormularios ?>">
@@ -607,22 +629,10 @@ $claseFormularios =
                             <i class="bi bi-person-check"></i> Inscritos
                         </a>
                     <?php endif; ?>
+            </div>
+        <?php endif; ?>
 
-                    <?php if ($esRolMarketingSidebar && $mostrarConvocatorias): ?>
-                        <a
-                            href="<?= BASE_URL ?>index.php?controller=correoMarketing&action=index"
-                            class="sidebar-link <?= $claseCorreosMarketing ?>">
-                            <i class="bi bi-envelope"></i>
-                            Correos
-                        </a>
-                    <?php endif; ?>
-                </div>
-
-            <?php endif; ?>
-
-
-            <!-- VINCULACIÓN -->
-            <?php if ($mostrarWhatsapp): ?>
+        <?php if ($mostrarWhatsapp): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">

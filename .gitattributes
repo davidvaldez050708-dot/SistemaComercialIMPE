@@ -12,3 +12,6 @@ tests/fixtures/formularios_rbac_hostinger.json text eol=lf
 tools/publicar_inscritos_diseno.py text eol=lf
 tools/inscritos_diseno_release.json text eol=lf
 tests/fixtures/inscritos_diseno_hostinger.json text eol=lf
+
+tools/publicar_sidebar_comercial.py text eol=lf
+tools/sidebar_comercial_release.json text eol=lf
