@@ -10,6 +10,8 @@ on:
       - 'public/css/formularios_ejecutivas_piloto.css'
       - 'public/javascript/formularios_ejecutivas_piloto.js'
       - 'tests/formularios_ejecutivas_piloto_smoke.php'
+      - 'tools/publicar_ejecutivas_piloto_hostinger.py'
+      - 'tests/formularios_ejecutivas_publicador_test.py'
       - '.github/workflows/formularios-ejecutivas-piloto.yml'
   pull_request:
     paths:
@@ -21,6 +23,8 @@ on:
       - 'public/css/formularios_ejecutivas_piloto.css'
       - 'public/javascript/formularios_ejecutivas_piloto.js'
       - 'tests/formularios_ejecutivas_piloto_smoke.php'
+      - 'tools/publicar_ejecutivas_piloto_hostinger.py'
+      - 'tests/formularios_ejecutivas_publicador_test.py'
       - '.github/workflows/formularios-ejecutivas-piloto.yml'
 
 permissions:
@@ -31,6 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -46,3 +52,7 @@ jobs:
           node --check public/javascript/formularios_ejecutivas_piloto.js
       - name: Diez perfiles y validación CURP sin datos reales
         run: php tests/formularios_ejecutivas_piloto_smoke.php
+      - name: Publicación selectiva y restauración sin datos reales
+        run: |
+          python3 -m py_compile tools/publicar_ejecutivas_piloto_hostinger.py
+          python3 tests/formularios_ejecutivas_publicador_test.py
