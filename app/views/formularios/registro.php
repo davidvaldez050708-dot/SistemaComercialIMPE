@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../helpers/FormularioPermisos.php';
 $estados = is_array($estados ?? null) ? $estados : [];
 $perfilesInteres = is_array($perfilesInteres ?? null)
     ? $perfilesInteres
@@ -17,8 +18,10 @@ $registroAction = $registroAction ??
 $municipiosUrl = $municipiosUrl ??
     BASE_URL . 'index.php?controller=formulario&action=municipios';
 $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
+$soloConsultaFormulario = !$esFormularioPublico && !FormularioPermisos::puede(FormularioPermisos::REGISTRO);
 ?>
 
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/formularios_permisos.css?v=<?= filemtime(ROOT_PATH.'/public/css/formularios_permisos.css') ?>">
 <div class="formularios-page formularios-detail-page">
     <?php if (!$esFormularioPublico): ?>
         <div class="formularios-back-row">
@@ -71,6 +74,8 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
             method="post"
             novalidate
             data-formulario-registro>
+            <?php if ($soloConsultaFormulario): ?><div class="formularios-consulta-nota" role="status">Vista de consulta. Tu perfil no tiene permiso para guardar esta captura.</div><?php endif; ?>
+            <fieldset class="formularios-consulta-fieldset" <?= $soloConsultaFormulario ? 'disabled' : '' ?>>
 
             <section class="formularios-registration-section">
                 <div class="formularios-registration-section-title">
@@ -260,6 +265,7 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                             Los correos electrónicos no coinciden.
                         </div>
                     </div>
+                    <?php $horarioContactoPublico=false; require __DIR__ . '/partials/horario_contacto.php'; ?>
                 </div>
             </section>
 
@@ -403,6 +409,7 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                 </div>
             </section>
 
+            <?php if (!$soloConsultaFormulario): ?>
             <div class="formularios-registration-actions">
                 <button
                     type="reset"
@@ -419,6 +426,11 @@ $urlEnlaceRegistro = trim((string)($urlEnlaceRegistro ?? ''));
                     Guardar registro
                 </button>
             </div>
+            <?php endif; ?>
+            </fieldset>
         </form>
     </section>
 </div>
+
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/horario_contacto.css?v=<?= filemtime(ROOT_PATH . '/public/css/horario_contacto.css') ?>">
+<script src="<?= BASE_URL ?>public/javascript/horario_contacto.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/horario_contacto.js') ?>"></script>

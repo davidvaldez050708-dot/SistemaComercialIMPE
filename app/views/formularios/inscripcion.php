@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../helpers/FormularioPermisos.php';
 $estados = is_array($estados ?? null) ? $estados : [];
 $perfilesInteres = is_array($perfilesInteres ?? null)
     ? $perfilesInteres
@@ -20,8 +21,10 @@ $urlEnlaceInscripcion = trim((string)($urlEnlaceInscripcion ?? ''));
 $programaInscripcion = is_array($programaInscripcion ?? null)
     ? $programaInscripcion
     : null;
+$soloConsultaFormulario = !$esFormularioPublico && !FormularioPermisos::puede(FormularioPermisos::INSCRIPCION);
 ?>
 
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/formularios_permisos.css?v=<?= filemtime(ROOT_PATH.'/public/css/formularios_permisos.css') ?>">
 <div class="formularios-page formularios-detail-page formularios-inscripcion-theme">
     <?php if (!$esFormularioPublico): ?>
         <div class="formularios-back-row">
@@ -76,6 +79,8 @@ $programaInscripcion = is_array($programaInscripcion ?? null)
             method="post"
             novalidate
             data-formulario-registro>
+            <?php if ($soloConsultaFormulario): ?><div class="formularios-consulta-nota" role="status">Vista de consulta. Tu perfil no tiene permiso para guardar esta captura.</div><?php endif; ?>
+            <fieldset class="formularios-consulta-fieldset" <?= $soloConsultaFormulario ? 'disabled' : '' ?>>
             <?php if ($programaInscripcion !== null): ?>
                 <input type="hidden" name="programa_slug"
                        value="<?= $texto($programaInscripcion['slug']) ?>">
@@ -416,6 +421,7 @@ $programaInscripcion = is_array($programaInscripcion ?? null)
                 </div>
             </section>
 
+            <?php if (!$soloConsultaFormulario): ?>
             <div class="formularios-registration-actions">
                 <button
                     type="reset"
@@ -432,6 +438,8 @@ $programaInscripcion = is_array($programaInscripcion ?? null)
                     Guardar inscripción
                 </button>
             </div>
+            <?php endif; ?>
+            </fieldset>
         </form>
     </section>
 </div>

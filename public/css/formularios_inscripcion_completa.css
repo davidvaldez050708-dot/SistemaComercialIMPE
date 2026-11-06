@@ -26,3 +26,8 @@
 .inscripcion-completa .formularios-field input[type="file"]{height:42px;padding:8px 12px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;line-height:24px;cursor:pointer}
 .inscripcion-completa .formularios-field input[type="file"]::-webkit-file-upload-button{height:40px;margin:-8px 12px -8px -12px;padding:8px 12px;border:0;border-right:1px solid #dce5f2;background:#eef3fc;color:#233a79;font:inherit;font-weight:700;line-height:24px;cursor:pointer;vertical-align:middle}
 .inscripcion-completa .formularios-field input[type="file"]::file-selector-button{height:40px;margin:-8px 12px -8px -12px;padding:8px 12px;border:0;border-right:1px solid #dce5f2;background:#eef3fc;color:#233a79;font:inherit;font-weight:700;line-height:24px;cursor:pointer;vertical-align:middle}
+
+/* Misma escala de error para campos y consentimientos. */
+.inscripcion-completa .formularios-registration-form .invalid-feedback{margin-top:5px;font-family:'Manrope',sans-serif;font-size:9px;font-weight:700;line-height:1.4;color:#d9544f}
+.inscripcion-completa .formularios-field input[type="date"].is-invalid,.inscripcion-completa .formularios-field input[type="file"].is-invalid{background-image:none}
+.inscripcion-completa .inscripcion-consentimiento input.is-invalid{outline:1px solid #d9544f;outline-offset:2px}
