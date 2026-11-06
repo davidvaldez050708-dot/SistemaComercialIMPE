@@ -1,0 +1,15 @@
+# Contacto en llamadas de Ventas y envío de información
+
+El catálogo V3 permitía guardar únicamente WHATSAPP/SMS y normalizaba a ENVIO_WHATSAPP/ENVIO_SMS/ENVIO_WHATSAPP_SMS. Esos resultados no acreditan conversación. El estado PBX conectado y una grabación pueden incluir buzones, locuciones o silencio. El conteo del reporte exige conexión propia y un resultado humano.
+
+En V4, si sólo se seleccionan envíos, aparece la pregunta obligatoria «¿Hablaste con una persona durante la llamada?». SI usa el código humano existente CONVERSACION_PERSONA y conserva las selecciones originales. NO conserva ENVIO_*. El servidor valida la declaración y no admite conversación si no existe conexión propia acreditada. No hay columnas o tablas nuevas ni migración. Resultados humanos o sin contacto explícitos no necesitan esta pregunta adicional; un campo oculto sobrante no cambia su clasificación. Se conservan máximo dos selecciones y todos los flujos de teléfono, audio y guardado definitivo.
+
+Con contacto: prospecto potencial, no interesado, fuera de presupuesto, inscrito, no cumple requisitos, no solicitó información, siguiente apertura, comunicación interrumpida con persona y códigos humanos históricos. Sin contacto: no contestó, buzón, número incorrecto y corte sin conversación. WhatsApp/SMS por sí solos no deciden contacto. El resultado legado INFORMACION_ENVIADA_WHATSAPP se conserva con su semántica humana anterior.
+
+La corrección usa CONVERSACION_PERSONA, ya reconocido por esConversacion, de modo que VentasActividadMetricas, porcentajes, ranking, Desempeño, PDF e historial usan la misma regla sin duplicarla. El DesempenoController instalado deriva las ventas a VentasActividadController. Las dependencias reales se verifican por hash y no se reemplazan.
+
+Los registros V3 anteriores que sólo dicen WhatsApp siguen ambiguos: no se reclasifican por existencia de audio, duración, texto libre ni por cambiar el catálogo. Las cuatro llamadas señaladas necesitan revisión antes de cualquier corrección histórica. Esta publicación no modifica registros anteriores ni introduce una ruta para saltar el guardado definitivo.
+
+Publicación selectiva de cuatro archivos: catálogo, servicio de resultados (sólo aceptación/persistencia V4), vista y JavaScript. Se reconstruyeron exactamente los ocho hashes aportados de Hostinger. Se preservan las 17 líneas de audio CDR del JavaScript instalado. Manifiesto sellado, check sin escrituras, apply con respaldo privado, restore protegido, Python 3.6+ y permisos 644. Sin SQL ni llamadas al proveedor.
+
+Validación: 333 comprobaciones en MariaDB aislado con datos sintéticos, incluyendo persistencia V2/V3/V4, transacción, rechazo de contacto sin respuesta, duplicados, permisos/equipos, lecturas por lotes, filtros y HTML PDF de Reportes/Desempeño con la misma tasa. Formulario PHP/JS real en escritorio y móvil. La prueba de contacto usa cierres PBX explícitos; excluye del fixture la antigua aserción que prohibía capturar una saliente pendiente, anterior a la conciliación API instalada, sin cambiar esa regla productiva.

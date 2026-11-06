@@ -38,3 +38,26 @@ $m=VentasActividadMetricas::calcular([$svc->obtener(8,'pbx-doble-prueba-3'),$svc
 vcheck($m['resumen']['llamadas']===2&&$m['resumen']['conversaciones_confirmadas']===1,'Dos resultados o dos canales no inflan llamadas ni contacto');
 vcheck($svc->obtener(8,'pbx-catalogo-both')['registro']['envio_informacion']==='WHATSAPP_SMS','Registros V2 conservan ambos envíos y su resultado original');
 echo "Selección doble V3: lista, máximo dos, coherencia, guardado atómico, históricos y conteo sin duplicados comprobados.\n";
+
+// V4: el envío no sustituye la declaración de contacto; sin cambios históricos.
+foreach ([['WHATSAPP'],['SMS'],['WHATSAPP','SMS']] as $i=>$selection) {
+ foreach (['SI','NO'] as $answer) {
+  $ref='pbx-contacto-v4-'.$i.'-'.$answer;$make3($ref,true);
+  $data=['catalogo_version'=>'4','resultados_seleccionados'=>json_encode($selection),'contacto_persona'=>$answer];
+  $results->guardar(8,$ref,'',$data);$r=$svc->obtener(8,$ref)['registro'];
+  vcheck($r['catalogo_version']==='4'&&$r['resultados_seleccionados']===$selection,'V4 conserva envío y versión');
+  vcheck(TelefoniaResultadoVentasService::esConversacion($r['resultado'])===($answer==='SI'),'Contacto explícito V4: '.$answer);
+  $day=substr($svc->obtener(8,$ref)['fecha'],0,10);
+  $m=VentasActividadMetricas::calcular([$svc->obtener(8,$ref)],[['id'=>8,'nombre_completo'=>'Asesor']],['fecha_desde'=>$day,'fecha_hasta'=>$day]);
+  vcheck($m['resumen']['conversaciones_confirmadas']===($answer==='SI'?1:0),'Reportes, tasa y ranking usan el mismo resultado');
+ }
+}
+foreach ([null,'','tal vez',[],1] as $bad) vreject(fn()=>TelefoniaResultadoVentasCatalogo::normalizarSeleccion(['catalogo_version'=>'4','resultados_seleccionados'=>'["WHATSAPP"]','contacto_persona'=>$bad]),'V4 exige declaración válida');
+$ref='pbx-contacto-v4-no-answer';$make3($ref,false);
+vreject(fn()=>$results->guardar(8,$ref,'',['catalogo_version'=>'4','resultados_seleccionados'=>'["WHATSAPP"]','contacto_persona'=>'SI']),'Una declaración humana no elimina evidencia PBX');
+$results->guardar(8,$ref,'',['catalogo_version'=>'4','resultados_seleccionados'=>'["WHATSAPP"]','contacto_persona'=>'NO']);
+foreach (['SIN_RESPUESTA','BUZON_VOZ','NUMERO_INEXISTENTE'] as $code) {
+ $r=TelefoniaResultadoVentasCatalogo::normalizarSeleccion(['catalogo_version'=>'4','resultados_seleccionados'=>json_encode([$code,'WHATSAPP']),'contacto_persona'=>'SI']);
+ vcheck(!TelefoniaResultadoVentasService::esConversacion($r['resultado']),'Campo sobrante no convierte no contacto en conversación');
+}
+echo "V4: contacto explícito con envíos, evidencia PBX, persistencia y métricas comprobados.\n";

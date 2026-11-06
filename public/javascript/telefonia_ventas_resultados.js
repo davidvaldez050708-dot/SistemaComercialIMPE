@@ -94,11 +94,21 @@
   const interrupted=form.elements.namedItem('contacto_antes_corte');
   const picked=picker?selections:[result.value];
   const explicitHuman=picker&&Array.from(picker.querySelectorAll('[data-sales-result-choice]')).some(c=>picked.includes(c.value)&&c.dataset.requiresConnection==='1');
-  const isInterrupted=picked.includes('COMUNICACION_INTERRUMPIDA')&&!explicitHuman,historical=Boolean(call?.registro&&String(call.registro.catalogo_version||'')!=='3');
+  const isInterrupted=picked.includes('COMUNICACION_INTERRUMPIDA')&&!explicitHuman,historical=Boolean(call?.registro&&!['3','4'].includes(String(call.registro.catalogo_version||'')));
   const interruptedSection=form.querySelector('[data-sales-interrupted]'),legacySection=form.querySelector('[data-sales-legacy-result]');
   if(interruptedSection)interruptedSection.hidden=call?.registro?
    !(picked.includes('COMUNICACION_INTERRUMPIDA')&&['SI','NO'].includes(call.registro.contacto_antes_corte)):!isInterrupted;
   if(interrupted){interrupted.required=!historical&&isInterrupted;interrupted.setCustomValidity?.(isInterrupted&&interrupted.value==='SI'&&call?.finalizada&&!call.conectada?'La telefonía no acredita respuesta en esta llamada. Revisa la llamada seleccionada.':'');}
+  const contactPerson=form.elements.namedItem('contacto_persona'),contactSection=form.querySelector('[data-sales-contact-person]');
+  const onlySend=picked.length>0&&picked.every(code=>['WHATSAPP','SMS'].includes(code));
+  const savedContact=Boolean(call?.registro&&String(call.registro.catalogo_version||'')==='4'&&onlySend);
+  if(contactSection)contactSection.hidden=call?.registro?!savedContact:!onlySend;
+  if(contactPerson){
+   if(savedContact)contactPerson.value=call.registro.resultado==='CONVERSACION_PERSONA'?'SI':'NO';
+   contactPerson.disabled=Boolean(call?.registro)||!onlySend;
+   contactPerson.required=!call?.registro&&onlySend;
+   contactPerson.setCustomValidity?.(onlySend&&contactPerson.value==='SI'&&call?.finalizada&&!call.conectada?'La telefonía no acredita respuesta en esta llamada. Revisa la llamada seleccionada.':'');
+  }
   if(legacySection)legacySection.hidden=!historical;
   if(picker){
    const choices=Array.from(picker.querySelectorAll('[data-sales-result-choice]'));

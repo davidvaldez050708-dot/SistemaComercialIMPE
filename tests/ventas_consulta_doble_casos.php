@@ -64,3 +64,15 @@ if($out=getenv('IMPE_TEST_CONSULTA_OUT')){
     file_put_contents($out.'/datos.json',json_encode(['actividad'=>$d,'historial'=>[$entry],'supervision'=>$sup->listado(1,$f)['llamadas']],JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT));
 }
 echo "Consulta múltiple: históricos, propietario, lotes, filtros, roles, equipo, métricas y PDF coherentes; sin escrituras.\n";
+
+// Los mismos resultados V4 llegan a la lectura por lotes y a ambas salidas PDF.
+$refs=['pbx-contacto-v4-0-SI','pbx-contacto-v4-0-NO'];
+$rows=array_values(array_filter($repo->llamadas([8],$period),static fn($r)=>in_array($r['pbx_call_id'],$refs,true)));
+$m=VentasActividadMetricas::calcular($rows,[['id'=>8,'nombre_completo'=>'Asesor Uno']],$period);
+vcheck(count($rows)===2&&$m['resumen']['conversaciones_confirmadas']===1&&$m['resumen']['tasa_contacto']===50.0,'Repositorio y métricas distinguen envíos con y sin contacto');
+vcheck(count(array_filter($rows,static fn($r)=>str_contains($catalogo::textoRegistro($r['registro']),'Habló con una persona')))===1,'Consulta muestra la declaración de contacto junto al envío');
+$d=array_replace($d,$m);$d['ranking']=array_map(static fn($p)=>$p+['posicion'=>1,'indice'=>null],$m['personas_resumen']);$d['reconocimientos']=[];$d['criterios']=[];
+foreach([new VentasActividadPdfView(),new VentasDesempenoPdfView()] as $view){
+ $pdfHtml=$view->html($d,'','');
+ vcheck(str_contains($pdfHtml,'50.0%')||str_contains($pdfHtml,'50%'),'Reportes y Desempeño PDF reciben la misma tasa de contacto');
+}

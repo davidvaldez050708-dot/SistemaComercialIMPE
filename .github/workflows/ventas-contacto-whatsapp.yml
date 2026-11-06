@@ -1,0 +1,44 @@
+name: Ventas - contacto con envíos WhatsApp
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  contacto:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0', 'mariadb:11.8']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['3306/tcp']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      PHP_BINARY: php
+      IMPE_TEST_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+      IMPE_BROWSER_TEST: '1'
+      IMPE_BROWSER_SCRIPT: ventas_resultados_dobles_browser.cjs
+      NODE_PATH: /tmp/contacto-browser/node_modules
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, fileinfo
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Persistencia, contacto, históricos, permisos, reportes y Desempeño PDF
+        run: python3 tests/ventas_contacto_whatsapp_reportes_db.py
+      - name: Publicación selectiva reversible sin SQL
+        run: python3 tests/ventas_contacto_whatsapp_release_test.py
+      - run: npm install --prefix /tmp/contacto-browser playwright bootstrap@5.3.8
+      - run: /tmp/contacto-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Formulario real en escritorio y móvil
+        run: python3 tests/ventas_resultado_preparado_php.py

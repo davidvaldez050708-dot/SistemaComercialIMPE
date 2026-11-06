@@ -1,6 +1,6 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path');
 (async()=>{
- const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BINARY||'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BINARY||(process.platform==='win32'?'C:/Program Files/Google/Chrome/Application/chrome.exe':undefined)});
  try{for(const viewport of [{width:1366,height:900},{width:390,height:844}]){
   const page=await browser.newPage({viewport}),errors=[],saved=new Map(),posts=[];page.on('pageerror',e=>errors.push(e.message));
   saved.set('out-legacy-151',{resultado:'INTERESADO',observacion:'Nota original histórica'});
@@ -11,7 +11,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   let release;const pending=new Promise(resolve=>release=resolve);
   await page.route('**/index.php?controller=telefonia&action=detalleVenta*',async r=>{const ref=new URL(r.request().url()).searchParams.get('pbx_call_id');if(ref==='out-pending-151')await pending;
    await r.fulfill({json:{ok:true,llamada:{pbx_call_id:ref,extension:'151',usuario_id:15,direccion:'Saliente',fecha:'2026-10-28 10:00:00',numero:'5555555555',nombre:'Persona de prueba',finalizada:true,conectada:!ref.includes('no-answer'),estado_pbx:ref.includes('no-answer')?'Sin respuesta':'Conectada',registro:saved.get(ref)||null}}});});
-  await page.route('**/index.php?controller=telefonia&action=guardarResultadoVenta',r=>{const d=Object.fromEntries(new URLSearchParams(r.request().postData()));posts.push(d);saved.set(d.pbx_call_id,{...d,resultados_seleccionados:JSON.parse(d.resultados_seleccionados)});return r.fulfill({json:{ok:true,registro:{pbx_call_id:d.pbx_call_id,extension:d.extension}}});});
+  await page.route('**/index.php?controller=telefonia&action=guardarResultadoVenta',r=>{const d=Object.fromEntries(new URLSearchParams(r.request().postData()));posts.push(d);saved.set(d.pbx_call_id,{...d,resultado:d.contacto_persona==='SI'?'CONVERSACION_PERSONA':d.resultado,resultados_seleccionados:JSON.parse(d.resultados_seleccionados)});return r.fulfill({json:{ok:true,registro:{pbx_call_id:d.pbx_call_id,extension:d.extension}}});});
   await page.goto(process.env.IMPE_TEST_URL+'/');await page.waitForFunction(()=>Boolean(window.IMPE_SALES_RESULT_FORM));
   const open=async(ref,wait=true)=>{await page.evaluate(ref=>window.IMPE_SALES_RESULT_FORM.open({ref,extension:'151',sessionKey:ref,automatic:false}),ref);await page.locator('#modalResultadoVenta.show').waitFor({state:'visible'});if(wait)await page.waitForFunction(()=>document.querySelector('[data-sales-submit]').hidden||!document.querySelector('[data-sales-submit]').disabled);};
   const close=async()=>{await page.locator('#modalResultadoVenta .btn-close').click();await page.locator('#modalResultadoVenta').waitFor({state:'hidden'});};
@@ -21,7 +21,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   assert.equal(await page.locator('#salesNote').inputValue(),'Escrito antes de confirmar');assert.equal(await page.locator('[data-sales-result-choice]').count(),13);assert.equal(await page.locator('#salesEnvio,#salesWhatsappReason').count(),0);
   await choose('PROSPECTO_POTENCIAL');await choose('WHATSAPP');assert.equal(await page.locator('[data-sales-result-choice][value="SMS"]').isDisabled(),true);
   await page.locator('#salesResultTrigger').click();await page.locator('[data-sales-submit]').click();await page.locator('#modalResultadoVenta').waitFor({state:'hidden'});
-  assert.equal(posts.length,1);assert.equal(posts[0].catalogo_version,'3');assert.deepEqual(JSON.parse(posts[0].resultados_seleccionados),['PROSPECTO_POTENCIAL','WHATSAPP']);assert(!('motivo_sin_whatsapp' in posts[0]));
+  assert.equal(posts.length,1);assert.equal(posts[0].catalogo_version,'4');assert.deepEqual(JSON.parse(posts[0].resultados_seleccionados),['PROSPECTO_POTENCIAL','WHATSAPP']);assert(!('motivo_sin_whatsapp' in posts[0]));
   await open('out-pending-151');assert.deepEqual(await selected(),['PROSPECTO_POTENCIAL','WHATSAPP']);assert.equal(await page.locator('#salesResultTrigger').isDisabled(),true);await close();
   await open('out-v2-151');assert.deepEqual(await selected(),['PROSPECTO_POTENCIAL','WHATSAPP','SMS']);assert.equal(await page.locator('[data-sales-legacy-result]').isVisible(),true);await close();
   await open('out-v2-reason-151');assert.equal(await page.locator('[data-sales-previous-reason]').textContent(),'Motivo registrado anteriormente: Número sin WhatsApp');await close();
@@ -30,6 +30,15 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   await open('out-no-answer-151');assert.equal(await page.locator('[data-sales-result-choice][value="PROSPECTO_POTENCIAL"]').isDisabled(),true);await choose('SIN_RESPUESTA');
   await page.locator('#salesResultTrigger').click();await page.locator('[data-sales-submit]').click();await page.locator('#modalResultadoVenta').waitFor({state:'hidden'});
   assert.deepEqual(JSON.parse(posts[1].resultados_seleccionados),['SIN_RESPUESTA']);assert.equal(posts.length,2);
+  await open('out-contact-v4');await choose('WHATSAPP');await page.locator('#salesResultTrigger').click();
+  assert.equal(await page.locator('#salesContactPerson').isVisible(),true);
+  await page.locator('[data-sales-submit]').click();assert.equal(posts.length,2,'No guarda un envío sin aclarar contacto');
+  await page.locator('#salesContactPerson').selectOption('SI');await page.locator('[data-sales-submit]').click();await page.locator('#modalResultadoVenta').waitFor({state:'hidden'});
+  assert.equal(posts[2].contacto_persona,'SI');await open('out-contact-v4');assert.equal(await page.locator('#salesContactPerson').inputValue(),'SI');assert.equal(await page.locator('#salesContactPerson').isDisabled(),true);await close();
+  await open('out-v4-no-answer');await choose('WHATSAPP');await page.locator('#salesResultTrigger').click();await page.locator('#salesContactPerson').selectOption('SI');
+  await page.locator('[data-sales-submit]').click();assert.equal(posts.length,3,'No acredita contacto sin respuesta PBX');
+  await page.locator('#salesContactPerson').selectOption('NO');await page.locator('[data-sales-submit]').click();await page.locator('#modalResultadoVenta').waitFor({state:'hidden'});
+  assert.equal(posts[3].contacto_persona,'NO');
   await page.evaluate(()=>sessionStorage.setItem('impe:sales-result-draft:15:out-old-draft-151',JSON.stringify({at:Date.now(),values:{resultado:'PROSPECTO_POTENCIAL',envio_informacion:'WHATSAPP_SMS',observacion:'Borrador V2 conservado'}})));
   await open('out-old-draft-151');assert.equal((await selected()).length,3);assert.equal(await page.locator('#salesNote').inputValue(),'Borrador V2 conservado');
   await choose('SMS',false);await page.locator('#salesResultTrigger').click();await close();await page.reload();await page.waitForFunction(()=>Boolean(window.IMPE_SALES_RESULT_FORM));await open('out-old-draft-151');
@@ -45,6 +54,6 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   assert.equal(typography.label,typography.control,'Las opciones usan la misma escala que los campos del modal');assert.equal(typography.text,typography.control);assert.equal(typography.labelFamily,typography.family);assert(typography.weight<=600);assert(typography.row<=typography.field,'Las filas cortas no deben superar la altura del campo');
   assert.notEqual(typography.arrow,'none','El foco conserva la flecha del selector');
   await page.screenshot({path:path.resolve(__dirname,'../tmp/ventas-lista-doble-menu-'+viewport.width+'.png'),fullPage:true});await page.close();
- }console.log('PASS: lista única con 13 opciones, máximo dos, guardado de una sin motivo, HTTP pendiente, lectura V2/legado, tres históricos preservados, borrador y notas en escritorio/móvil.');}
+ }console.log('PASS: contacto V4 obligatorio sólo para envíos aislados, persistencia de SI/NO, protección sin respuesta PBX, lista doble y lectura histórica en escritorio/móvil.');}
  finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

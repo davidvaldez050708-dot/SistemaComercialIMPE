@@ -3,7 +3,7 @@
 /** Clasificación declarada por el asesor; nunca acredita por sí sola audio o efectividad. */
 final class TelefoniaResultadoVentasCatalogo
 {
-    public const VERSION = '3';
+    public const VERSION = '4';
     public const INTERRUMPIDA_PERSONA = 'COMUNICACION_INTERRUMPIDA_PERSONA';
 
     public static function resultados(): array
@@ -59,6 +59,15 @@ final class TelefoniaResultadoVentasCatalogo
         $envio=$whatsapp?($sms?'WHATSAPP_SMS':'WHATSAPP'):($sms?'SMS':'SIN_ENVIO');
         $bases=array_values(array_intersect($seleccion,array_keys(self::resultados())));
         $principal=$humanos[0]??($bases[0]??('ENVIO_'.$envio));
+        // Un envío aislado no acredita conversación por audio o duración.
+        // V4 conserva las selecciones y utiliza el resultado humano existente.
+        if (($datos['catalogo_version'] ?? '') === '4' && !$bases) {
+            $hablo = $datos['contacto_persona'] ?? null;
+            if (!in_array($hablo, ['SI','NO'], true)) {
+                throw new InvalidArgumentException('Indica si hablaste con una persona durante esta llamada.');
+            }
+            if ($hablo === 'SI') $principal = 'CONVERSACION_PERSONA';
+        }
         $contacto='';
         if(in_array('COMUNICACION_INTERRUMPIDA',$seleccion,true)){
             $contacto=$humanos?'SI':($datos['contacto_antes_corte']??null);
@@ -68,7 +77,7 @@ final class TelefoniaResultadoVentasCatalogo
         }
         return ['resultado'=>$principal,'resultado_principal'=>$principal===self::INTERRUMPIDA_PERSONA?'COMUNICACION_INTERRUMPIDA':$principal,
             'envio_informacion'=>$envio,'motivo_sin_whatsapp'=>'','contacto_antes_corte'=>$contacto,
-            'contacto_humano'=>self::conPersona($principal),'resultados_seleccionados'=>$seleccion];
+            'contacto_humano'=>self::conPersona($principal)||$principal==='CONVERSACION_PERSONA','resultados_seleccionados'=>$seleccion];
     }
 
     public static function conPersona(string $resultado): bool
@@ -115,7 +124,7 @@ final class TelefoniaResultadoVentasCatalogo
             $s=$db->prepare('SELECT d.*,r.usuario_id,r.extension,r.pbx_call_id FROM telefonia_ventas_resultado_detalles d
                 JOIN telefonia_ventas_resultados r ON r.id=d.resultado_id WHERE r.id IN ('.implode(',',array_fill(0,count($chunk),'?')).')');
             $s->bind_param(str_repeat('i',count($chunk)),...$chunk);$s->execute();
-            foreach($s->get_result()->fetch_all(MYSQLI_ASSOC) as $d){$id=(int)$d['resultado_id'];$detalles[$id]=$d;if($d['catalogo_version']==='3')$v3[]=$id;}$s->close();
+            foreach($s->get_result()->fetch_all(MYSQLI_ASSOC) as $d){$id=(int)$d['resultado_id'];$detalles[$id]=$d;if(in_array($d['catalogo_version'],['3','4'],true))$v3[]=$id;}$s->close();
         }
         foreach(array_chunk($v3,500) as $chunk){
             $s=$db->prepare('SELECT resultado_id,codigo FROM telefonia_ventas_resultado_selecciones WHERE resultado_id IN ('.implode(',',array_fill(0,count($chunk),'?')).') ORDER BY resultado_id,posicion');
@@ -126,7 +135,7 @@ final class TelefoniaResultadoVentasCatalogo
             if(!$r||empty($r['id']))continue;$id=(int)$r['id'];$d=$detalles[$id]??null;
             if(!$d||(int)$d['usuario_id']!==(int)($r['usuario_id']??0)||$d['extension']!==($r['extension']??null)||$d['pbx_call_id']!==($r['pbx_call_id']??null))continue;
             $r=array_replace($r,array_intersect_key($d,array_flip(['resultado_principal','envio_informacion','motivo_sin_whatsapp','contacto_antes_corte','catalogo_version'])));
-            if($d['catalogo_version']==='3')$r['resultados_seleccionados']=$selecciones[$id]??[];
+            if(in_array($d['catalogo_version'],['3','4'],true))$r['resultados_seleccionados']=$selecciones[$id]??[];
         }unset($r);
         return $registros;
     }
@@ -157,6 +166,11 @@ final class TelefoniaResultadoVentasCatalogo
     public static function etiquetasRegistro(?array $registro): array
     {
         $labels=self::opcionesConsulta();$out=[];
+        $seleccion=self::seleccionesRegistro($registro);
+        if (($registro['catalogo_version']??'')==='4' && $seleccion && !array_diff($seleccion,['WHATSAPP','SMS'])) {
+            $out[]=($registro['resultado']??'')==='CONVERSACION_PERSONA'
+                ? 'Habló con una persona' : 'Sin conversación con una persona';
+        }
         foreach(self::seleccionesRegistro($registro) as $code){
             $labelCode=$code==='COMUNICACION_INTERRUMPIDA'&&($registro['contacto_antes_corte']??'')==='SI'?self::INTERRUMPIDA_PERSONA:$code;
             $out[]=$labels[$labelCode]??$code;
@@ -171,6 +185,12 @@ final class TelefoniaResultadoVentasCatalogo
     public static function aclaracionesRegistro(?array $registro): string
     {
         $parts=[];$corte=$registro['contacto_antes_corte']??'';
+        if (($registro['catalogo_version']??'')==='4' && self::seleccionesRegistro($registro) &&
+            !array_diff(self::seleccionesRegistro($registro),['WHATSAPP','SMS'])) {
+            $parts[]=($registro['resultado']??'')==='CONVERSACION_PERSONA'
+                ? 'Habló con una persona durante la llamada.'
+                : 'No hubo conversación con una persona durante la llamada.';
+        }
         if($corte==='SI')$parts[]='Habló con una persona antes del corte.';
         elseif($corte==='NO')$parts[]='No hubo conversación con una persona antes del corte.';
         if(trim((string)($registro['motivo_sin_whatsapp']??''))!=='')$parts[]='Motivo registrado anteriormente: '.$registro['motivo_sin_whatsapp'];

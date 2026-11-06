@@ -21,5 +21,5 @@ with tempfile.TemporaryDirectory(prefix='impe-ventas-whatsapp-') as folder:
  (project/'tests/telefonia_ventas_db.php').write_text(fixture,encoding='utf8')
  shutil.copyfile(root/'tests/ventas_whatsapp_casos.php',project/'tests/ventas_whatsapp_casos.php')
  shutil.copyfile(root/'tests/ventas_todos_cierres_casos.php',project/'tests/ventas_todos_cierres_casos.php')
- env=dict(os.environ,IMPE_TEST_MYSQL_PORT='33319',IMPE_TEST_MYSQL_USER='root',IMPE_TEST_MYSQL_PASSWORD='')
+ env=dict(os.environ,IMPE_TEST_MYSQL_PORT=os.environ.get('IMPE_TEST_MYSQL_PORT','33319'),IMPE_TEST_MYSQL_USER='root',IMPE_TEST_MYSQL_PASSWORD='')
  subprocess.run([os.environ.get('PHP_BINARY','php'),str(project/'tests/telefonia_ventas_db.php')],env=env,check=True)

@@ -176,7 +176,7 @@ class TelefoniaResultadoVentasService
     {
         $detalle=null;
         if(array_key_exists('catalogo_version',$datos)){
-            if($datos['catalogo_version']==='3')$detalle=TelefoniaResultadoVentasCatalogo::normalizarSeleccion($datos);
+            if(in_array($datos['catalogo_version'],['3','4'],true))$detalle=TelefoniaResultadoVentasCatalogo::normalizarSeleccion($datos);
             elseif($datos['catalogo_version']==='2')$detalle=TelefoniaResultadoVentasCatalogo::normalizar($resultado,$datos);
             else throw new InvalidArgumentException('Recarga el formulario para usar la lista actual de resultados.');
             $resultado=$detalle['resultado'];
@@ -253,7 +253,7 @@ class TelefoniaResultadoVentasService
                 VALUES(?,?,?,?,?,?,UTC_TIMESTAMP())');
             $s->bind_param('isssss',$resultadoId,$detalle['resultado_principal'],$detalle['envio_informacion'],
                 $detalle['motivo_sin_whatsapp'],$detalle['contacto_antes_corte'],$version);$s->execute();$s->close();
-            if($version==='3')foreach($detalle['resultados_seleccionados'] as $posicion=>$codigo){
+            if(in_array($version,['3','4'],true))foreach($detalle['resultados_seleccionados'] as $posicion=>$codigo){
                 $s=$this->db->prepare('INSERT INTO telefonia_ventas_resultado_selecciones(resultado_id,codigo,posicion) VALUES(?,?,?)');
                 $s->bind_param('isi',$resultadoId,$codigo,$posicion);$s->execute();$s->close();
             }
