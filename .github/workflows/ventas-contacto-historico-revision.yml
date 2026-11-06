@@ -25,5 +25,5 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/src" -w /src python:3.6 \
             python tests/ventas_contacto_historico_revision_csv_test.py
-          docker run --rm -v "$PWD:/src" -w /src python:3.6 \\
+          docker run --rm -v "$PWD:/src" -w /src python:3.6 \
             python tests/ventas_contacto_historico_validar_revision_test.py
