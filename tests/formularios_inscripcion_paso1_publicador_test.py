@@ -32,9 +32,11 @@ with tempfile.TemporaryDirectory(prefix='impe-inscripcion-paso1-') as tmp:
     olds={}
     for i,path in enumerate(FILES):
         (target/path).parent.mkdir(parents=True,exist_ok=True)
-        # El publicador del paso 1 conserva la versión del panel previa
-        # al ajuste cromático, que tiene su propio publicador reversible.
-        if path == 'public/css/formularios.css':
+        # El publicador original del paso 1 usa exactamente sus archivos
+        # aprobados, sin cambios acumulados de etapas posteriores.
+        if path in ('public/css/formularios.css',
+                    'app/controllers/FormularioController.php',
+                    'app/views/formularios/inscripcion_programas.php'):
             previous = subprocess.run(
                 ['git','show','c2375488f333fc82af669e09839bd3f8c92376ee:'+path],
                 cwd=str(ROOT),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
