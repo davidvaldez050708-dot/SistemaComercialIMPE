@@ -65,10 +65,19 @@ with tempfile.TemporaryDirectory(prefix='impe-inscritos-release-') as tmp:
 
  # Conservar personalizaciones ajenas de producción.
  personalized=originals['index.php'].replace(b'<?php',b'<?php\n// ESTILO LOCAL AJENO\n',1)
+ # Otro equipo agregó una ruta propia justo antes de Formularios: el parche
+ # antiguo con seis líneas de contexto rechazaba esta personalización.
+ additional_route=(b"    case 'institucionalExtra':\n\n"
+                   b"        // RUTA DE OTRA AREA, NO TOCAR\n"
+                   b"        break;\n\n\n")
+ personalized=personalized.replace(b"    case 'formulario':",
+                                  additional_route+b"    case 'formulario':",1)
+ assert additional_route in personalized
  (site/'index.php').write_bytes(personalized)
  assert 'CHECK OK' in cmd('--check')
  assert 'APLICADO' in cmd('--apply')
  assert b'ESTILO LOCAL AJENO' in (site/'index.php').read_bytes()
+ assert additional_route in (site/'index.php').read_bytes()
  assert 'YA INSTALADO' in cmd('--apply')
  another=[p for p in backup.iterdir() if p != folders[0]]
  assert len(another)==1
