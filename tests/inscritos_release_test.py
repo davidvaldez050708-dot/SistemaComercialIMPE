@@ -5,6 +5,8 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PUBLISHER=ROOT/'tools/publicar_inscritos_hostinger.py'
 BASE='fb446b08a80dfbab1ec2c970cec749d2e1512a35'
+PUBLISHED='21368e3a8596f7714c9c970e388c7ec2702fa85b'
+def blob(file):return subprocess.check_output(['git','show',PUBLISHED+':'+file],cwd=str(ROOT))
 FILES=[
  'index.php','app/models/RolModel.php','app/views/layout/sidebar.php',
  'app/controllers/InscritosController.php','app/models/InscritosModel.php',
@@ -25,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='impe-inscritos-release-') as tmp:
  for file in FILES:
   live=site/file;live.parent.mkdir(parents=True,exist_ok=True)
   after=target/file;after.parent.mkdir(parents=True,exist_ok=True)
-  after.write_bytes((ROOT/file).read_bytes())
+  after.write_bytes(blob(file))
   if file in FILES[:3]:
    p=subprocess.run(['git','show',BASE+':'+file],cwd=str(ROOT),
                     stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -37,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix='impe-inscritos-release-') as tmp:
    originals[file]=old
  for file in DEPS:
   dest=site/file;dest.parent.mkdir(parents=True,exist_ok=True)
-  dest.write_bytes((ROOT/file).read_bytes())
+  dest.write_bytes(blob(file))
  def cmd(*args,success=True):
   p=subprocess.run([sys.executable,str(PUBLISHER),'--site',str(site),
       '--base-dir',str(base),'--target-dir',str(target),
@@ -55,7 +57,7 @@ with tempfile.TemporaryDirectory(prefix='impe-inscritos-release-') as tmp:
  assert snapshot()==initial and not backup.exists(),'CHECK is read-only'
  assert 'APLICADO' in cmd('--apply')
  for file in FILES:
-  assert (site/file).read_bytes()==(ROOT/file).read_bytes(),file
+  assert (site/file).read_bytes()==blob(file),file
  assert 'YA INSTALADO' in cmd('--check')
  assert 'YA INSTALADO' in cmd('--apply')
  folders=list(backup.iterdir())

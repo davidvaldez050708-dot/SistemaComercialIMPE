@@ -14,6 +14,10 @@ on:
       - 'index.php'
       - 'tests/inscritos_*'
       - 'tools/publicar_inscritos_hostinger.py'
+      - 'tools/publicar_inscritos_diseno.py'
+      - 'tools/inscritos_diseno_release.json'
+      - 'tests/fixtures/inscritos_diseno_hostinger.json'
+      - 'tests/inscripcion_completa*'
       - '.github/workflows/inscritos-bandeja.yml'
 permissions:
   contents: read
@@ -39,6 +43,9 @@ jobs:
       IMPE_DB_HOST: 127.0.0.1:33339
       IMPE_DB_USER: root
       IMPE_DB_PASSWORD: ''
+      PHP_BINARY: php
+      NODE_PATH: /tmp/inscritos-browser/node_modules
+      BOOTSTRAP_MODULE_PATH: /tmp/inscritos-browser/node_modules/bootstrap
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,7 +53,9 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mysqli,mbstring,zip,xml
+          extensions: mysqli,mbstring,zip,xml,fileinfo
+          coverage: none
+          ini-values: upload_max_filesize=8M, post_max_size=10M, opcache.jit_buffer_size=0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -64,3 +73,18 @@ jobs:
         run: |
           python3 -m py_compile tools/publicar_inscritos_hostinger.py
           python3 tests/inscritos_release_test.py
+          python3 tests/inscritos_diseno_release_test.py
+      - run: npm install --prefix /tmp/inscritos-browser playwright bootstrap@5.3.8
+      - run: /tmp/inscritos-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Diseño, números, filtros y descarga
+        run: node tests/inscritos_diseno_browser.cjs
+      - name: Formularios públicos e internos llegan a Inscritos
+        run: node tests/inscripcion_completa_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inscritos-${{ strategy.job-index }}
+          path: |
+            tmp/inscritos-diseno-*.png
+            tmp/inscritos-diseno-http.log
+            tmp/inscripcion-php.log

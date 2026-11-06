@@ -4,11 +4,9 @@
     if (!app) return;
     const form = app.querySelector('[data-inscritos-filtros]');
     const body = app.querySelector('[data-inscritos-body]');
-    const count = app.querySelector('[data-inscritos-total]');
     const summary = app.querySelector('[data-inscritos-resumen]');
-    const pageText = app.querySelector('[data-inscritos-pagina]');
-    const prev = app.querySelector('[data-inscritos-prev]');
-    const next = app.querySelector('[data-inscritos-next]');
+    const pagination = app.querySelector('[data-inscritos-paginacion]');
+    const vistaCompacta = window.matchMedia('(max-width:600px)');
     const clear = app.querySelector('[data-inscritos-limpiar]');
     const exportButton = app.querySelector('[data-inscritos-excel]');
     const drawer = document.querySelector('[data-inscritos-drawer]');
@@ -68,11 +66,40 @@
     function showError(text) {
         mensaje(text,true);
         summary.textContent=text;
-        count.textContent='—';
         if (exportButton) exportButton.disabled=true;
-        prev.disabled=true;next.disabled=true;
+        pagination.replaceChildren(); pagination.hidden=true;
     }
 
+    function renderPaginacion() {
+        pagination.replaceChildren();pagination.hidden=total===0;
+        if(total===0) return;
+        const boton=(numero,texto,etiqueta,deshabilitado)=>{
+            const b=document.createElement('button');b.type='button';
+            b.dataset.inscritosPagina=String(numero);b.textContent=texto;
+            b.setAttribute('aria-label',etiqueta);b.disabled=deshabilitado;
+            if(numero===pagina&&texto===String(numero)){
+                b.className='is-current';b.setAttribute('aria-current','page');
+            }
+            pagination.appendChild(b);
+        };
+        boton(pagina-1,'‹','Página anterior',pagina<=1);
+        const numeros=new Set([1,paginas]);
+        if(vistaCompacta.matches&&paginas>5){
+            if(pagina<=3){numeros.add(2);numeros.add(3);}
+            else if(pagina>=paginas-2){numeros.add(paginas-2);numeros.add(paginas-1);}
+            else numeros.add(pagina);
+        }else{
+            const inicio=Math.max(2,Math.min(pagina-2,paginas-5));
+            for(let n=inicio;n<=Math.min(paginas-1,inicio+4);n++) numeros.add(n);
+        }
+        let anterior=0;
+        Array.from(numeros).sort((a,b)=>a-b).forEach(n=>{
+            if(anterior&&n-anterior>1){const separador=document.createElement('span');separador.className='inscritos-pagination-ellipsis';separador.textContent='…';separador.setAttribute('aria-hidden','true');pagination.appendChild(separador);}
+            boton(n,String(n),'Página '+n+(n===pagina?' (actual)':''),n===pagina);
+            anterior=n;
+        });
+        boton(pagina+1,'›','Página siguiente',pagina>=paginas);
+    }
     function render(registros) {
         body.replaceChildren();
         if (!Array.isArray(registros) || registros.length===0) {
@@ -116,6 +143,7 @@
             showError('La fecha inicial no puede ser posterior a la fecha final.');
             return;
         }
+        pagination.querySelectorAll('button').forEach(button=>{button.disabled=true;});
         mensaje('Buscando inscripciones…',false);
         summary.textContent='Actualizando resultados…';
         if (exportButton) exportButton.disabled=true;
@@ -132,14 +160,12 @@
             pagina=Number(json.pagina)||1;
             paginas=Number(json.paginas)||1;
             total=Number(json.total)||0;
-            count.textContent=total.toLocaleString('es-MX');
-            const desde=total===0?0:(pagina-1)*25+1;
-            const hasta=Math.min(pagina*25,total);
-            summary.textContent=total===0?'No hay inscripciones en este filtro.':
-                'Mostrando '+desde+'–'+hasta+' de '+total.toLocaleString('es-MX')+' inscripciones';
-            pageText.textContent='Página '+pagina+' de '+paginas;
-            prev.disabled=pagina<=1;
-            next.disabled=pagina>=paginas;
+            const porPagina=Number(json.por_pagina)||25;
+            const desde=total===0?0:(pagina-1)*porPagina+1;
+            const hasta=Math.min(pagina*porPagina,total);
+            summary.textContent=total===0?'0 inscritos':
+                'Mostrando '+desde+'–'+hasta+' de '+total.toLocaleString('es-MX')+' inscritos';
+            renderPaginacion();
             if (exportButton) {
                 exportButton.disabled=total===0||total>10000;
                 exportButton.title=total>10000
@@ -169,8 +195,12 @@
         form.reset();pagina=1;clearTimeout(timer);cargar();
         form.elements.namedItem('buscar').focus();
     });
-    prev.addEventListener('click',()=>{if(pagina>1){pagina--;cargar();}});
-    next.addEventListener('click',()=>{if(pagina<paginas){pagina++;cargar();}});
+    pagination.addEventListener('click',event=>{
+        const button=event.target.closest('button[data-inscritos-pagina]');
+        if(!button||button.disabled) return;
+        const destino=Number(button.dataset.inscritosPagina);
+        if(destino>=1&&destino<=paginas&&destino!==pagina){pagina=destino;cargar();}
+    });
     exportButton?.addEventListener('click',()=>{
         if (total<1||total>10000) return;
         // Mismos parámetros que el listado, excluyendo solo la paginación.
@@ -248,7 +278,7 @@
                 ['Perfil de evaluación',r.programa_slug==='bachillerato-286'?'No aplica':d.perfil_evaluacion,true]
             ]);
             agregarSeccion('Documentación y consentimiento','bi-shield-check',[
-                ['Comprobante de pago',r.comprobante_recibido?'Recibido · pendiente de revisión':'No disponible',true],
+                ['Comprobante de pago',r.comprobante_recibido?'Archivo recibido · pago sin validar':'No disponible',true],
                 ['Términos y condiciones',r.terminos_registrados?'Aceptación registrada':'Sin constancia'],
                 ['Aviso de privacidad',r.privacidad_registrada?'Aceptación registrada':'Sin constancia'],
                 ['Aceptado el',localDate(r.aceptado_at)]
@@ -292,5 +322,7 @@
             else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
         }
     });
+    if(vistaCompacta.addEventListener) vistaCompacta.addEventListener('change',renderPaginacion);
+    else if(vistaCompacta.addListener) vistaCompacta.addListener(renderPaginacion);
     cargar();
 })();

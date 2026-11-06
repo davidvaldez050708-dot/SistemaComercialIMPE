@@ -13,8 +13,8 @@ final class InscritosController
     public function index(): void
     {
         InscritosPermisos::exigir(InscritosPermisos::VER);
-        $tituloPagina = 'Inscripciones recibidas';
-        $subtituloPagina = 'Consulta y seguimiento de inscritos por programa';
+        $tituloPagina = 'Inscritos';
+        $subtituloPagina = 'Consulta las inscripciones recibidas por programa.';
         $opcionActiva = 'inscritos';
         $programasInscritos = FormularioInscripcionProgramas::todos();
         $puedeExportarInscritos = InscritosPermisos::puede(InscritosPermisos::EXPORTAR);

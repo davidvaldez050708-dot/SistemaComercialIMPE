@@ -259,7 +259,7 @@ $claseFormularios =
 
                 <?php if ($mostrarInscritos): ?>
                     <a href="<?= BASE_URL ?>index.php?controller=inscritos&amp;action=index" class="sidebar-link <?= $claseInscritos ?>">
-                        <i class="bi bi-person-check"></i> Inscripciones recibidas
+                        <i class="bi bi-person-check"></i> Inscritos
                     </a>
                 <?php endif; ?>
 
@@ -604,7 +604,7 @@ $claseFormularios =
 
                     <?php if ($mostrarInscritos): ?>
                         <a href="<?= BASE_URL ?>index.php?controller=inscritos&amp;action=index" class="sidebar-link <?= $claseInscritos ?>">
-                            <i class="bi bi-person-check"></i> Inscripciones recibidas
+                            <i class="bi bi-person-check"></i> Inscritos
                         </a>
                     <?php endif; ?>
 
