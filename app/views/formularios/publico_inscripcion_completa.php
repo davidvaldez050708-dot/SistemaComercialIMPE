@@ -33,7 +33,7 @@
             <div class="formulario-publico-hero-copy">
                 <h1>Formulario de inscripción</h1>
                 <p class="formulario-publico-hero-slogan">
-                    <?= $texto($programaInscripcion['nombre']) ?>
+                    <?= $texto($programaInscripcion['nombre']) ?><?= $programaInscripcion['slug'] === 'bachillerato-286' ? ' · Examen Único · Acuerdo 286' : '' ?>
                 </p>
                 <p class="formulario-publico-hero-required">
                     Los campos marcados con <strong>*</strong> son obligatorios.
