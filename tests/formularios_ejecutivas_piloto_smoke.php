@@ -66,7 +66,8 @@ $datos = [
     'empresa_labora'=>'Empresa Ejemplo',
     'cargo_puesto'=>'Analista',
     'perfil_evaluacion'=>'Licenciatura en contaduría A286',
-    'fecha_inscripcion'=>'2026-10-20'
+    'fecha_inscripcion'=>'2026-10-20',
+    'confirmacion_identidad'=>'1'
 ];
 $ok = FormularioEjecutivasValidacion::validar($datos);
 exige($ok['ok'] === true, 'captura completa pasa validación');
@@ -86,7 +87,8 @@ foreach ([
     ['perfil_evaluacion','Licenciatura en medicina A286'],
     ['fecha_inscripcion','2099-01-01'],
     ['nombre_padres',''],
-    ['empresa_labora','']
+    ['empresa_labora',''],
+    ['confirmacion_identidad','0']
 ] as $caso) {
     [$clave,$valor] = $caso;
     $copia=$datos;
@@ -116,6 +118,7 @@ foreach (['red-graduacion.jpeg','Logotipos-blanco.png','Logo-Sep-Blanco.png',
     'logo-huston.png','formularios_hero_institucional.css','formularios_publico.css',
     'name="curp"','name="fecha_nacimiento"','name="perfil_evaluacion"',
     'name="fecha_inscripcion"','name="csrf_piloto"',
+    'name="confirmacion_identidad"','data-ejecutivas-confirmar',
     'Términos y condiciones A286','Aviso de privacidad',
     'Validar datos de prueba (sin guardar)'] as $needle) {
     // La foto institucional está referenciada por el CSS compartido.
