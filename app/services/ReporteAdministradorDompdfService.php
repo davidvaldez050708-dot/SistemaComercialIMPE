@@ -131,7 +131,7 @@ final class ReporteAdministradorDompdfService
         foreach ($this->xp->query('./w:tblGrid/w:gridCol',$tbl) as $col) $widths[]=(int)$col->getAttributeNS(self::W,'w');
         $sum=array_sum($widths);$out='<table><colgroup>';
         foreach ($widths as $width) $out.='<col style="width:'.($sum?round(100*$width/$sum,2):0).'%">';
-        $out.='</colgroup>';$head='';$body='';
+        $out.='</colgroup>';$head='';$body=[];
         foreach ($this->xp->query('./w:tr',$tbl) as $tr) {
             $header=$this->xp->query('./w:trPr/w:tblHeader',$tr)->length>0;
             $row='<tr>';
@@ -146,8 +146,14 @@ final class ReporteAdministradorDompdfService
                 $row.='<'.$tag.' style="'.$style.'"'.(ctype_digit($span)?' colspan="'.(int)$span.'"':'').'>'.$this->hijos($tc).'</'.$tag.'>';
             }
             $row.='</tr>';
-            if ($header) $head.=$row;else $body.=$row;
+            if ($header) $head.=$row;else $body[]=$row;
         }
-        return $out.($head!==''?'<thead>'.$head.'</thead>':'').'<tbody>'.$body.'</tbody></table>';
+        // Acotar cada tabla evita el coste de repartir una única tabla enorme
+        // entre páginas. No se recortan filas; cada bloque repite sus títulos.
+        $result='';
+        foreach (array_chunk($body?:[''],40) as $chunk) {
+            $result.=$out.($head!==''?'<thead>'.$head.'</thead>':'').'<tbody>'.implode('',$chunk).'</tbody></table>';
+        }
+        return $result;
     }
 }
