@@ -18,6 +18,13 @@ if(($argv[1]??'')==='tabla_completa'){
 if(($argv[1]??'')==='conteo'){
  $db->select_db($name);echo json_encode($db->query('SELECT COUNT(*) total FROM formulario_inscripciones')->fetch_assoc());exit;
 }
+if(($argv[1]??'')==='campos_bachillerato'){
+ $db->select_db($name);
+ $r=$db->query("SELECT datos FROM formulario_inscripciones_completas WHERE programa_slug='bachillerato-286' LIMIT 1")->fetch_assoc();
+ $datos=$r ? json_decode($r['datos'],true) : [];
+ // Devolver únicamente nombres de campos, nunca datos de personas.
+ echo json_encode(array_keys($datos),JSON_UNESCAPED_UNICODE);exit;
+}
 $db->query("CREATE DATABASE `$name` CHARACTER SET utf8mb4");$db->select_db($name);
 $db->query('CREATE TABLE estados(id INT PRIMARY KEY,nombre VARCHAR(90),estado INT) ENGINE=InnoDB');
 $db->query("INSERT INTO estados VALUES(1,'Morelos',1),(2,'Chiapas',1)");
