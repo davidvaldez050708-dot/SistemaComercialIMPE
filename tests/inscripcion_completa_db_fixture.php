@@ -1,0 +1,26 @@
+<?php
+if(PHP_SAPI!=='cli')exit(1);
+$name=getenv('IMPE_DB_NAME')?:'';
+if(!preg_match('/^impe_test_inscripcion_[a-z0-9_]+$/D',$name))throw new RuntimeException('Base aislada requerida.');
+require dirname(__DIR__).'/config/db_connection.php';
+$db=new mysqli(getenv('IMPE_DB_HOST')?:'127.0.0.1:33339',getenv('IMPE_DB_USER')?:'root',getenv('IMPE_DB_PASSWORD')?:'');
+if(($argv[1]??'')==='limpiar'){
+ $db->select_db($name);$r=$db->query('SELECT comprobante_archivo FROM formulario_inscripciones_completas');
+ while($f=$r->fetch_assoc())if(preg_match('/^[a-f0-9]{48}\.(pdf|jpg|png)$/D',$f['comprobante_archivo'])){ $p=dirname(ROOT_PATH).'/impe-inscripciones-private/'.$f['comprobante_archivo'];if(is_file($p))unlink($p); }
+ $db->query("DROP DATABASE `$name`");echo "CLEAN OK\n";exit;
+}
+if(($argv[1]??'')==='fallo'){
+ $db->select_db($name);$db->query("CREATE TRIGGER prueba_fallo BEFORE INSERT ON formulario_inscripciones_completas FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fallo sintetico'");echo "FAILURE READY\n";exit;
+}
+if(($argv[1]??'')==='conteo'){
+ $db->select_db($name);echo json_encode($db->query('SELECT COUNT(*) total FROM formulario_inscripciones')->fetch_assoc());exit;
+}
+$db->query("CREATE DATABASE `$name` CHARACTER SET utf8mb4");$db->select_db($name);
+$db->query('CREATE TABLE estados(id INT PRIMARY KEY,nombre VARCHAR(90),estado INT) ENGINE=InnoDB');
+$db->query("INSERT INTO estados VALUES(1,'Morelos',1),(2,'Chiapas',1)");
+$db->query('CREATE TABLE municipios(id INT PRIMARY KEY,estado_id INT,nombre VARCHAR(90),estado INT) ENGINE=InnoDB');
+$db->query("INSERT INTO municipios VALUES(1,1,'Cuernavaca',1),(2,2,'Tuxtla',1)");
+$db->query('CREATE TABLE formulario_inscripciones(id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,nombre VARCHAR(80) NOT NULL,apellido VARCHAR(120) NOT NULL,fecha_nacimiento DATE NOT NULL,movil VARCHAR(10) NOT NULL,correo VARCHAR(190) NOT NULL,perfil_interes VARCHAR(100) NOT NULL,lugar_laboras VARCHAR(180) NOT NULL,cargo_puesto VARCHAR(160),estado_id INT NOT NULL,municipio_id INT NOT NULL,creado_por INT,origen VARCHAR(30),created_at DATETIME,updated_at DATETIME) ENGINE=InnoDB');
+$sql=file_get_contents(dirname(__DIR__).'/database/migrations/2026_11_05_inscripcion_completa.sql');
+$db->query($sql);
+echo "FIXTURE OK\n";

@@ -34,16 +34,11 @@ with tempfile.TemporaryDirectory(prefix='impe-inscripcion-paso1-') as tmp:
         (target/path).parent.mkdir(parents=True,exist_ok=True)
         # El publicador original del paso 1 usa exactamente sus archivos
         # aprobados, sin cambios acumulados de etapas posteriores.
-        if path in ('public/css/formularios.css',
-                    'app/controllers/FormularioController.php',
-                    'app/views/formularios/inscripcion_programas.php'):
-            previous = subprocess.run(
-                ['git','show','c2375488f333fc82af669e09839bd3f8c92376ee:'+path],
-                cwd=str(ROOT),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            assert previous.returncode == 0, previous.stderr.decode('utf-8','replace')
-            (target/path).write_bytes(previous.stdout)
-        else:
-            (target/path).write_bytes((ROOT/path).read_bytes())
+        previous = subprocess.run(
+            ['git','show','c2375488f333fc82af669e09839bd3f8c92376ee:'+path],
+            cwd=str(ROOT),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        assert previous.returncode == 0, previous.stderr.decode('utf-8','replace')
+        (target/path).write_bytes(previous.stdout)
         (site/path).parent.mkdir(parents=True,exist_ok=True)
         if i < BASE_COUNT:
             before=read_base(path)

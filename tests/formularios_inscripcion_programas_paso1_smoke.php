@@ -17,7 +17,7 @@ function comprobar($condicion, string $mensaje): void
 $programas = FormularioInscripcionProgramas::todos();
 $esperados = [
     'bachillerato-en-2-anos' => 'Bachillerato en 2 años',
-    'bachillerato-286' => 'Bachillerato 286',
+    'bachillerato-286' => 'Bachillerato General',
     'ingles' => 'Inglés',
     'titulacion-ejecutivas' => 'Titulación - Ejecutivas',
     'titulacion-experiencia-laboral' => 'Titulación por experiencia laboral'
@@ -57,8 +57,8 @@ foreach ($esperados as $slug => $nombre) {
     comprobar(strpos($catalogo, htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8')) !== false,
         'nombre visible ' . $slug);
 }
-comprobar(strpos($catalogo, 'Enlace público en preparación') !== false,
-    'se avisa que los enlaces públicos aún no están listos');
+comprobar(strpos($catalogo, 'Formulario por programa') !== false,
+    'se identifica el formulario por programa');
 comprobar(strpos($catalogo, 'controller=formularioPublico') === false,
     'no distribuir enlaces públicos prematuros');
 comprobar(strpos($catalogo, '<form') === false,
@@ -84,7 +84,7 @@ comprobar(strpos($controller, 'FormularioInscripcionProgramas::porSlug($slug)') 
     'GET valido por slug cerrado');
 comprobar(strpos($controller, 'FormularioInscripcionProgramas::porSlug($slugInscripcion)') !== false,
     'POST verifica programa y perfil');
-comprobar(strpos($controller, "require_once __DIR__ . '/../views/formularios/inscripcion_programas.php'") !== false,
+comprobar(strpos($controller, "require __DIR__ . '/../views/formularios/inscripcion_programas.php'") !== false,
     'dashboard presenta selector inicial');
 
 echo "PASS inscripción paso 1: cinco programas, vista interna y enlaces públicos no habilitados\n";

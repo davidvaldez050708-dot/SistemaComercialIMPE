@@ -33,8 +33,7 @@ $texto = static function ($valor) {
             <div>
                 <span class="formularios-kicker">PROGRAMAS</span>
                 <h3>Formularios por programa</h3>
-                <p>Las capturas internas están disponibles. Los enlaces públicos se habilitarán
-                    cuando cada formulario incluya comprobantes y documentación legal.</p>
+                <p>Abre la captura interna o comparte el enlace público del programa correspondiente.</p>
             </div>
             <span class="formularios-inscripcion-total">
                 <i class="bi bi-ui-checks-grid" aria-hidden="true"></i>
@@ -51,36 +50,25 @@ $texto = static function ($valor) {
                         </span>
                         <span class="formularios-inscripcion-pendiente">
                             <i class="bi bi-clock" aria-hidden="true"></i>
-                            Enlace público en preparación
+                            Formulario por programa
                         </span>
                     </div>
 
                     <div class="formularios-inscripcion-programa-copy">
                         <span class="formularios-kicker">INSCRIPCIÓN</span>
                         <h4><?= $texto($programa['nombre']) ?></h4>
-                        <p><?= $programa['slug'] === 'titulacion-ejecutivas'
-                            ? 'Piloto del formulario completo: vista pública y validación de datos sin guardar.'
-                            : 'Accede al formulario interno de este programa.' ?></p>
+<p>Captura interna y enlace público independiente para este programa.</p>
                     </div>
 
                     <div class="formularios-inscripcion-programa-action">
-                        <?php if ($programa['slug'] === 'titulacion-ejecutivas'): ?>
-                            <a class="btn btn-system-save"
-                               href="<?= BASE_URL ?>index.php?controller=formulario&amp;action=previsualizarEjecutivas">
-                                Revisar formulario piloto
-                                <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                            </a>
-                            <a class="formularios-inscripcion-programa-legacy-link"
-                               href="<?= BASE_URL ?>index.php?controller=formulario&amp;action=inscripcion&amp;programa=<?= rawurlencode($programa['slug']) ?>">
-                                Abrir captura interna anterior
-                            </a>
-                        <?php else: ?>
-                            <a class="btn btn-system-save"
-                               href="<?= BASE_URL ?>index.php?controller=formulario&amp;action=inscripcion&amp;programa=<?= rawurlencode($programa['slug']) ?>">
-                                Abrir formulario
-                                <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                            </a>
-                        <?php endif; ?>
+                        <a class="btn btn-system-save"
+                           href="<?= BASE_URL ?>index.php?controller=formulario&amp;action=inscripcion&amp;programa=<?= rawurlencode($programa['slug']) ?>">
+                            Abrir formulario <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                        </a>
+                        <a class="btn btn-system-cancel" target="_blank" rel="noopener"
+                           href="<?= BASE_URL ?>ya-estas-inscrito/?programa=<?= rawurlencode($programa['slug']) ?>">
+                            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Abrir enlace público
+                        </a>
                     </div>
                 </article>
             <?php endforeach; ?>
@@ -88,8 +76,7 @@ $texto = static function ($valor) {
 
         <p class="formularios-inscripcion-catalogo-nota">
             <i class="bi bi-shield-lock" aria-hidden="true"></i>
-            Todavía no se pueden compartir enlaces públicos de inscripción por programa.
-            Las inscripciones públicas anteriores permanecen sin cambios.
+            Los datos y comprobantes se validan antes del envío. La disponibilidad depende de la configuración del programa.
         </p>
     </section>
 </div>

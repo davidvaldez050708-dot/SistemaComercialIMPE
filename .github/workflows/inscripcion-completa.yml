@@ -1,0 +1,65 @@
+name: Inscripción por programa y comprobantes
+on:
+  pull_request:
+    paths:
+      - 'app/**/FormularioInscripcion*'
+      - 'app/controllers/FormularioController.php'
+      - 'app/views/formularios/**'
+      - 'app/resources/inscripcion/**'
+      - 'public/**/formularios_inscripcion_completa*'
+      - 'ya-estas-inscrito/**'
+      - 'database/migrations/2026_11_05_inscripcion_completa.sql'
+      - 'tools/*inscripcion_completa*'
+      - 'tests/inscripcion_completa*'
+      - '.github/workflows/inscripcion-completa.yml'
+permissions:
+  contents: read
+jobs:
+  inscripcion:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database: ['mysql:8.0', 'mariadb:11.8']
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 33339:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33339
+      IMPE_DB_USER: root
+      IMPE_DB_PASSWORD: ''
+      PHP_BINARY: php
+      NODE_PATH: /tmp/inscripcion-browser/node_modules
+      BOOTSTRAP_MODULE_PATH: /tmp/inscripcion-browser/node_modules/bootstrap
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring, fileinfo
+          ini-values: upload_max_filesize=8M, post_max_size=10M
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/inscripcion-browser playwright bootstrap@5.3.8
+      - run: /tmp/inscripcion-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Comprobantes, validación, duplicados, transacción y vistas
+        run: node tests/inscripcion_completa_browser.cjs
+      - name: Publicación reversible y preservación de Registro
+        run: python3 tests/inscripcion_completa_release_test.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inscripcion-${{ strategy.job-index }}
+          path: |
+            tmp/inscripcion-*.png
+            tmp/inscripcion-php.log

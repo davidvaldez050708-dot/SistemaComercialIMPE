@@ -31,7 +31,7 @@ with tempfile.TemporaryDirectory(prefix='impe-ejecutivas-publicador-') as temp:
     olds = {}
     for i,name in enumerate(FILES):
         (target/name).parent.mkdir(parents=True,exist_ok=True)
-        (target/name).write_bytes((ROOT/name).read_bytes())
+        (target/name).write_bytes(subprocess.check_output(['git','show','8b9630b5:'+name],cwd=str(ROOT)))
         (site/name).parent.mkdir(parents=True,exist_ok=True)
         if i < 2:
             raw=git_base(name)
