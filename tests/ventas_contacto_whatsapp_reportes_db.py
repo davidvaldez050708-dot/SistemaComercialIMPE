@@ -14,6 +14,19 @@ extra="""
  (project/'app/helpers/PermissionHelper.php').write_text('<?php function tienePermiso($code){global $db; $role=(int)($_SESSION["rol_id"]??0);$s=$db->prepare("SELECT p.id FROM permisos p JOIN rol_permisos r ON r.permiso_id=p.id WHERE r.rol_id=? AND p.codigo=? AND p.estado=1");$s->bind_param("is",$role,$code);$s->execute();return (bool)$s->get_result()->fetch_assoc();}',encoding='utf8')
 """
 assert anchor in runner;runner=runner.replace(anchor,extra+anchor)
+# Las dependencias de lectura se cotejaron con Hostinger y permanecen intactas
+# en producción. Ejecutar la integración contra esas mismas versiones exactas.
+installed="""
+ import base64,gzip,hashlib,json
+ baseline=json.loads((root/'tests/fixtures/ventas_contacto_whatsapp_hostinger.json').read_text(encoding='utf8'))
+ for name in ['app/services/VentasActividadMetricas.php','app/services/VentasActividadRepository.php']:
+  item=baseline[name];raw=gzip.decompress(base64.b64decode(item['content']))
+  assert hashlib.sha256(raw).hexdigest()==item['sha256']
+  (project/name).write_bytes(raw)
+ controller=gzip.decompress(base64.b64decode(baseline['app/controllers/DesempenoController.php']['content']))
+ assert b'VentasActividadAccess::esDesempenoAsesor()' in controller and b'(new VentasActividadController())->mostrar(true)' in controller
+"""
+runner=runner.replace(anchor,installed+anchor)
 with tempfile.NamedTemporaryFile(prefix='consulta_runner_',suffix='.py',dir=R/'tests',delete=False) as f:
  p=pathlib.Path(f.name);f.write(runner.encode())
 try:subprocess.run([os.sys.executable,str(p)],check=True)
