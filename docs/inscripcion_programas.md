@@ -43,3 +43,9 @@ Requiere PHP 8.1+, mysqli, mbstring y fileinfo; configurar el PHP del sitio con 
 No se ejecutaron SQL ni importaciones reales en Hostinger.
 
 El CLI de habilitación se distribuye aparte del paquete: debe descargarse y comprobarse por hash desde el mismo commit. Su check puede ejecutarse antes de instalar los archivos. La creación de tabla requiere --apply explícito; el publicador Python sigue sin ejecutar SQL.
+
+## Ajuste visual de campos y consentimientos
+
+El publicador `publicar_inscripcion_estilos.py` con `inscripcion_estilos_release.json` actualiza solamente `public/css/formularios_inscripcion_completa.css`. Reconoce por hash el CSS publicado anteriormente, crea respaldo privado y permite check/apply/restore; no ejecuta SQL ni cambia formularios, datos o validaciones. El paquete completo también incluye el mismo CSS actualizado y admite la versión anterior instalada.
+
+Revisión en navegador con las hojas reales del formulario público: selector de archivo de 42 px con botón centrado, consentimientos de 11 px y títulos de documentos de 12 px. Los botones de enlace tienen 40 px de alto y se alinean con el campo en escritorio; en móvil pasan juntos debajo del enlace sin desbordamiento. Verificados el paquete independiente con Python 3.12/3.6.8 y la publicación completa.

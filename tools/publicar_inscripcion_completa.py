@@ -4,7 +4,7 @@ import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = '13a504ceba6388e4d9ce5ad4fc4a84f5eb23027b96f0539220e4f17ac6487907'
+MANIFEST_SHA256 = '76f939de5ffe949b34f42837ea06a993113f1f0fd8b65fcbdbdd44a082f9adba'
 PATHS = ['app/controllers/FormularioController.php', 'app/services/FormularioInscripcionProgramas.php', 'app/views/formularios/inscripcion_programas.php', 'app/services/FormularioInscripcionCampos.php', 'app/services/FormularioInscripcionValidacion.php', 'app/services/FormularioInscripcionPantalla.php', 'app/services/FormularioInscripcionRepository.php', 'app/views/formularios/inscripcion_completa.php', 'app/views/formularios/publico_inscripcion_completa.php', 'public/css/formularios_inscripcion_completa.css', 'public/javascript/formularios_inscripcion_completa.js', 'app/resources/inscripcion/terminos-ejecutivas.txt', 'app/resources/inscripcion/privacidad.txt', 'ya-estas-inscrito/index.php', 'database/migrations/2026_11_05_inscripcion_completa.sql']
 DEPENDENCIES = {'app/models/FormularioRegistroModel.php': '5089e339748fa7cd40bc78b659ea21870a48ace6618dc987b2e52b7047791f12', 'app/services/FormularioEjecutivasPerfiles.php': 'd931ba4bba856e64165c34bb4de56bfc62d778b11c96eb4ce51cffef7e337806', 'app/services/FormularioEjecutivasValidacion.php': '8a6221a508308781c1950a2c8d4fc63ccae5a653c5dba60353f4f5c1a2030df1', 'app/services/RegistroEnlaceService.php': '7eb4d1c689ecfb35bc3f850dc90b437e81f7239b7abe6377b5fe6f5914b88c87'}
 

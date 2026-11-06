@@ -1,21 +1,28 @@
 .inscripcion-completa .dashboard-panel{background:#fff;border:1px solid #dce5f2;border-radius:20px}
 .inscripcion-completa .btn-system-cancel{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;border:1px solid #dce5f2;border-radius:12px;background:#fff;color:#435c7c;font-size:13px;font-weight:700}
 .inscripcion-completa .btn-system-cancel:hover{background:#f3f7fe;color:#223a84}
-.inscripcion-completa .inscripcion-enlace .btn{flex:0 0 auto}
-.inscripcion-completa .inscripcion-enlace{display:flex;align-items:center;gap:12px;margin:22px 0;padding:22px 28px}
+.inscripcion-completa .inscripcion-enlace .btn-system-cancel{height:40px;min-height:40px;margin:0;padding:0 14px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;line-height:1.4;white-space:nowrap}
+.inscripcion-completa .inscripcion-enlace .btn-system-cancel i{font-size:14px;line-height:1}
+.inscripcion-completa .inscripcion-enlace{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:end;gap:10px;margin:22px 0;padding:20px 24px}
 .inscripcion-completa .inscripcion-enlace>div{flex:1;min-width:0}
-.inscripcion-completa .inscripcion-enlace p{margin:5px 0 10px;font-size:12px;color:#657289}
-.inscripcion-completa .inscripcion-enlace input{width:100%;border:1px solid #dce5f2;border-radius:10px;padding:10px 12px;background:#f8faff;color:#223a84;font:inherit;font-size:12px}
+.inscripcion-completa .inscripcion-enlace strong{font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;line-height:1.5}
+.inscripcion-completa .inscripcion-enlace p{margin:5px 0 10px;font-size:11px;line-height:1.6;color:#657289}
+.inscripcion-completa .inscripcion-enlace input{width:100%;height:40px;min-width:0;border:1px solid #dce5f2;border-radius:10px;padding:0 12px;background:#f8faff;color:#223a84;font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;line-height:38px}
 .inscripcion-completa .inscripcion-nota{display:flex;gap:10px;padding:15px 18px;margin-bottom:22px;border:1px solid #d7e5f7;border-radius:12px;background:#f3f7fe;color:#435c7c;font-size:13px;line-height:1.6}
-.inscripcion-completa .inscripcion-documento{margin:18px 0;border:1px solid #dce5f2;border-radius:12px;background:#fff}
-.inscripcion-completa .inscripcion-documento summary{padding:15px 18px;font-weight:700;color:#233a79;cursor:pointer}
-.inscripcion-completa .inscripcion-documento>div{padding:0 18px 18px;font-size:12px;line-height:1.8;color:#52627a;overflow-wrap:anywhere;max-height:300px;overflow:auto}
-.inscripcion-completa .inscripcion-consentimiento{display:flex;align-items:flex-start;gap:10px;margin:14px 0 6px;font-size:13px;line-height:1.65;color:#344967;cursor:pointer}
-.inscripcion-completa .inscripcion-consentimiento input{flex:0 0 auto;width:18px;height:18px;margin-top:2px;accent-color:#273b8b}
+.inscripcion-completa .inscripcion-documento{margin:12px 0;border:1px solid #dce5f2;border-radius:12px;background:#fff}
+.inscripcion-completa .inscripcion-documento summary{min-height:42px;padding:11px 14px;font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;line-height:20px;color:#233a79;cursor:pointer}
+.inscripcion-completa .inscripcion-documento>div{padding:0 14px 14px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:500;line-height:1.8;color:#52627a;overflow-wrap:anywhere;max-height:300px;overflow:auto}
+.inscripcion-completa .inscripcion-consentimiento{display:flex;align-items:flex-start;gap:9px;margin:12px 0 6px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;line-height:1.65;color:#344967;cursor:pointer}
+.inscripcion-completa .inscripcion-consentimiento input{flex:0 0 auto;width:16px;height:16px;margin:1px 0 0;accent-color:#273b8b}
 .inscripcion-completa .invalid-feedback:not(:empty){display:block}
 .inscripcion-completa .formularios-field{min-width:0}
 .inscripcion-completa .form-control,.inscripcion-completa .form-select{max-width:100%}
 .inscripcion-completa [data-inscripcion-estado]{font-size:13px;line-height:1.6;color:#087d68;margin-top:14px}
 .formulario-publico-body .inscripcion-completa{margin-top:24px}
 .formulario-publico-body .inscripcion-completa .formularios-registration-panel{margin:0;width:100%;max-width:none}
-@media(max-width:767px){.inscripcion-completa .inscripcion-enlace{flex-wrap:wrap;padding:18px}.inscripcion-completa .inscripcion-enlace>div{flex-basis:100%}.inscripcion-completa .formularios-registration-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:767px){.inscripcion-completa .inscripcion-enlace{grid-template-columns:repeat(2,minmax(0,1fr));padding:18px}.inscripcion-completa .inscripcion-enlace>div{grid-column:1/-1}.inscripcion-completa .inscripcion-enlace .btn-system-cancel{width:100%;padding:0 8px}.inscripcion-completa .formularios-registration-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* El control nativo conserva el nombre del archivo y su acceso por teclado. */
+.inscripcion-completa .formularios-field input[type="file"]{height:42px;padding:8px 12px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;line-height:24px;cursor:pointer}
+.inscripcion-completa .formularios-field input[type="file"]::-webkit-file-upload-button{height:40px;margin:-8px 12px -8px -12px;padding:8px 12px;border:0;border-right:1px solid #dce5f2;background:#eef3fc;color:#233a79;font:inherit;font-weight:700;line-height:24px;cursor:pointer;vertical-align:middle}
+.inscripcion-completa .formularios-field input[type="file"]::file-selector-button{height:40px;margin:-8px 12px -8px -12px;padding:8px 12px;border:0;border-right:1px solid #dce5f2;background:#eef3fc;color:#233a79;font:inherit;font-weight:700;line-height:24px;cursor:pointer;vertical-align:middle}
