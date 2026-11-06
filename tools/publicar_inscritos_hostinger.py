@@ -73,51 +73,90 @@ def private_backup(site, backup):
 
 
 def merge(base, target, current, name):
-    """Aplica únicamente bloques con contexto exacto. Nunca reemplaza el archivo."""
-    if current == target:
-        return current
-    if base == target:
-        raise RuntimeError('INTEGRIDAD: base y destino no difieren: ' + name)
-    original = current
+    """Conciliación de cambios mínimos; nunca sustituye un archivo completo.
+
+    1. Comprueba que los parches sobre la BASE produzcan exactamente TARGET.
+    2. Reaplica cada edición local sobre CURRENT, que puede tener otras rutas,
+       permisos, clases y bloques personalizados.
+    3. Si falta el fragmento preciso, falla SIN escrituras.
+    """
     crlf = b'\r\n' in current
-    current = current.replace(b'\r\n', b'\n')
+    original = current
     old = base.replace(b'\r\n', b'\n')
     new = target.replace(b'\r\n', b'\n')
+    current = current.replace(b'\r\n', b'\n')
     if current == new:
         return original
 
-    before_lines = old.splitlines(keepends=True)
-    after_lines = new.splitlines(keepends=True)
-    groups = list(difflib.SequenceMatcher(
-        a=before_lines, b=after_lines, autojunk=False
-    ).get_grouped_opcodes(6))
-    if not groups:
-        raise RuntimeError('INTEGRIDAD: diferencia no identificada: ' + name)
+    # El router normalmente recibe nuevos casos de otros módulos en Hostinger.
+    # Insertamos SOLO el caso de Inscritos delante de la ruta de Formularios,
+    # usando un ancla pequeña y única; nunca comparamos vecinos ajenos.
+    if name == 'index.php':
+        anchor = b"    case 'formulario':"
+        marker = b"    case 'inscritos':"
+        if old.count(anchor) != 1 or new.count(marker) != 1 or new.count(anchor) != 1:
+            raise RuntimeError('INTEGRIDAD: router no identificable')
+        start = new.index(marker)
+        stop = new.index(anchor, start)
+        addition = new[start:stop]
+        if old.replace(anchor, addition + anchor, 1) != new:
+            raise RuntimeError('INTEGRIDAD: cambio inesperado en router GitHub')
+        if current.count(marker) == 1:
+            if current.count(addition) == 1:
+                return original
+            raise RuntimeError('CONFLICTO: ruta Inscritos ya personalizada; sitio intacto')
+        if current.count(anchor) != 1:
+            raise RuntimeError('CONFLICTO: ancla Formularios no única en index.php; sitio intacto')
+        result = current.replace(anchor, addition + anchor, 1)
+        return result.replace(b'\n', b'\r\n') if crlf else result
 
-    def apply(chunks):
-        data = chunks
-        for group in groups:
-            a1, a2 = group[0][1], group[-1][2]
-            b1, b2 = group[0][3], group[-1][4]
-            needle = b''.join(before_lines[a1:a2])
-            patch = b''.join(after_lines[b1:b2])
-            if not needle or not patch or needle == patch:
-                raise RuntimeError('INTEGRIDAD: fragmento vacío o ambiguo: ' + name)
-            if data.count(needle) == 1:
-                data = data.replace(needle, patch, 1)
-            elif data.count(patch) == 1:
-                pass  # Fragmento ya aplicado
-            else:
-                raise RuntimeError('CONFLICTO de personalización en ' + name +
-                                   '; se conserva intacto')
+    # Para Roles y Sidebar usamos opcodes SIN agrupar con seis líneas de
+    # contexto. El publicador anterior fallaba cuando un módulo distinto
+    # cambiaba alguna línea próxima a las nuevas.
+    oldlines = old.splitlines(keepends=True)
+    newlines = new.splitlines(keepends=True)
+    changes = [item for item in difflib.SequenceMatcher(
+        a=oldlines, b=newlines, autojunk=False
+    ).get_opcodes() if item[0] != 'equal']
+
+    def patch(data):
+        for tag, a1, a2, b1, b2 in changes:
+            before = b''.join(oldlines[a1:a2])
+            after = b''.join(newlines[b1:b2])
+            if before:
+                if data.count(before) == 1:
+                    data = data.replace(before, after, 1)
+                    continue
+                if after and data.count(after) == 1:
+                    continue  # Edición ya aplicada en Hostinger.
+                raise RuntimeError('CONFLICTO: edición existente de ' + name
+                                   + ' no coincide; sitio intacto')
+            # Insertar antes de una ancla inmediata, única y no modificada.
+            # Se amplía SOLO lo indispensable para evitar falsos positivos.
+            anchored = False
+            for size in range(1, min(16, len(oldlines) - a1) + 1):
+                anchor = b''.join(oldlines[a1:a1 + size])
+                if not anchor or data.count(anchor) != 1:
+                    continue
+                if data.count(after + anchor) == 1:
+                    anchored = True
+                    break
+                if after in data:
+                    raise RuntimeError('CONFLICTO: bloque insertado distinto en '
+                                       + name + '; sitio intacto')
+                data = data.replace(anchor, after + anchor, 1)
+                anchored = True
+                break
+            if not anchored:
+                raise RuntimeError('CONFLICTO: no hay ancla única para inserción en '
+                                   + name + '; sitio intacto')
         return data
 
-    if apply(old) != new:
-        raise RuntimeError('INTEGRIDAD: el parche produce resultado distinto: ' + name)
-    result = apply(current)
-    if crlf:
-        result = result.replace(b'\n', b'\r\n')
-    return result
+    if patch(old) != new:
+        raise RuntimeError('INTEGRIDAD: parches del archivo base no reproducen destino: '
+                           + name)
+    result = patch(current)
+    return result.replace(b'\n', b'\r\n') if crlf else result
 
 
 def check(site, base, target):
