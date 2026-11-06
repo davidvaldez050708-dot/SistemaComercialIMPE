@@ -32,6 +32,14 @@ exigirBach($legalBach['privacidad'] !== $legalEjecutivas['privacidad'],
 exigirBach($legalExperiencia['terminos'] === $legalEjecutivas['terminos'] &&
     $legalExperiencia['privacidad'] === $legalEjecutivas['privacidad'],
     'otros programas de titulación intactos');
+// Huellas exactas de los dos textos que recibió el usuario en el formulario
+// original (sin encabezados de campos ni controles ajenos al texto legal).
+exigirBach(hash('sha256',$legalBach['terminos']) ===
+    'c6d5e8ec4e583d4b539996c93edbd7030606a5516b0278d40fa19f34eccbb7ca',
+    'contrato de origen sin modificaciones');
+exigirBach(hash('sha256',$legalBach['privacidad']) ===
+    '4037c8f557916464339af95d9ad1d230d3581baaaedf3fc7e714e411976a421d',
+    'aviso de origen sin modificaciones');
 exigirBach(hash_file('sha256',$raiz.'/app/resources/inscripcion/terminos-bachillerato-general.txt')
     === hash('sha256',$legalBach['terminos']), 'contrato íntegro');
 exigirBach(hash_file('sha256',$raiz.'/app/resources/inscripcion/privacidad-bachillerato-general.txt')
