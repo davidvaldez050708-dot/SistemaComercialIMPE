@@ -86,15 +86,45 @@ const file={name:'pago.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-
   const retry=await post();assert.equal(retry.data.registro_id,saved.data.registro_id);assert.equal(Number(JSON.parse(run('conteo')).total),1);
   await page.goto(url);tokens.solicitud_token=await page.locator('[name=solicitud_token]').inputValue();
   assert.equal((await post()).status,409,'duplicate CURP/program protected with new token');
+
+  // Experiencia laboral comparte el contrato A286 y aviso de privacidad, pero
+  // mantiene sus ocho perfiles propios y un expediente independiente.
+  const terminosEjecutivas = await page.locator('.inscripcion-documento').nth(0).textContent();
+  const privacidadEjecutivas = await page.locator('.inscripcion-documento').nth(1).textContent();
+  await page.goto(base+'ya-estas-inscrito/?programa=titulacion-experiencia-laboral');
+  assert.equal(await page.locator('[name=perfil_evaluacion] option').count(),9,
+      'ocho perfiles actuales y opción vacía; no se modifica el catálogo');
+  assert.equal(await page.locator('button[type=submit]').isEnabled(),true,
+      'Experiencia Laboral habilitada con términos y esquema');
+  assert.equal((await page.locator('body').innerText()).includes('Formulario en preparación'),false);
+  assert.equal((await page.locator('body').innerText()).includes('Pendiente de confirmar el documento'),false);
+  assert.equal(await page.locator('.inscripcion-documento').nth(0).textContent(),terminosEjecutivas,
+      'ambos programas de titulación muestran el mismo contrato A286');
+  assert.equal(await page.locator('.inscripcion-documento').nth(1).textContent(),privacidadEjecutivas,
+      'ambos programas usan el mismo aviso de privacidad');
+  assert.match(terminosEjecutivas,/5,000\.00/,
+      'se conserva el monto original, no se inventa uno nuevo');
+  const tokenExperiencia = {
+    csrf_inscripcion:await page.locator('[name=csrf_inscripcion]').inputValue(),
+    solicitud_token:await page.locator('[name=solicitud_token]').inputValue()
+  };
+  const enviadaExperiencia = await page.request.post(
+    base+'ya-estas-inscrito/?accion=guardar',
+    {multipart:{...valid,...tokenExperiencia,
+      programa_slug:'titulacion-experiencia-laboral',comprobante:file}}
+  );
+  assert.equal(enviadaExperiencia.status(),200,await enviadaExperiencia.text());
+  assert.equal(Number(JSON.parse(run('conteo')).total),2,
+      'una misma CURP de prueba se inscribe en dos programas distintos sin mezclar expedientes');
   const privateDir=path.join(root,'../impe-inscripciones-private');
   const filesBefore=fs.readdirSync(privateDir).sort();run('fallo');
   const secondPrefix='GARR010101HDFRRSA';
   const secondDigit=(10-[...secondPrefix].reduce((n,c,i)=>n+alphabet.indexOf(c)*(18-i),0)%10)%10;
   const failure=await post({curp:secondPrefix+secondDigit,fecha_nacimiento:'2001-01-01'});
   assert.equal(failure.status,503,'fallo en detalle revierte inscripción');
-  assert.equal(Number(JSON.parse(run('conteo')).total),1,'sin inscripción parcial');
+  assert.equal(Number(JSON.parse(run('conteo')).total),2,'sin inscripción parcial');
   assert.deepEqual(fs.readdirSync(privateDir).sort(),filesBefore,'sin comprobante huérfano después de rollback');
-  for(const slug of ['ingles','bachillerato-286','bachillerato-en-2-anos','titulacion-experiencia-laboral']){
+  for(const slug of ['ingles','bachillerato-286','bachillerato-en-2-anos']){
    await page.goto(base+'ya-estas-inscrito/?programa='+slug);
    assert.equal(await page.locator('button[type=submit]').isDisabled(),true);
   }
