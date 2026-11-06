@@ -18,12 +18,19 @@ function exigir($ok,$msg){if(!$ok)throw new RuntimeException($msg);}
 $m=new RolModel();$m->inicializarPermisosSistema();
 function codigos($m,$id){return array_values(array_filter($m->obtenerCodigosPermisosPorRol($id),static fn($c)=>str_starts_with($c,'formularios.')));}
 exigir(count(codigos($m,5))===5,'Marketing conserva inicialmente cinco permisos');
+function codigosInscritos($m,$id){return array_values(array_filter(
+ $m->obtenerCodigosPermisosPorRol($id),static fn($c)=>str_starts_with($c,'inscritos.')
+));}
+exigir(count(codigosInscritos($m,5))===2,'Marketing recibe dos permisos iniciales de Inscritos');
+exigir(count(codigosInscritos($m,2))===0,'Director no recibe inscripciones por nombre del rol');
+exigir(count($m->obtenerPermisosAgrupados()['Inscripciones']??[])===2,'permisos de Inscripciones visibles en Roles');
 exigir(count(codigos($m,2))===0,'Director no recibe acceso por nombre de rol');
 exigir(in_array('usuarios.ver',$m->obtenerCodigosPermisosPorRol(2),true),'permiso anterior de otro módulo conservado');
 exigir(count($m->obtenerPermisosAgrupados()['Formularios']??[])===5,'catálogo visible en Roles y Permisos');
 $ids=array_column($db->query('SELECT codigo,id FROM permisos')->fetch_all(MYSQLI_ASSOC),'id','codigo');
 exigir($m->actualizarPermisosRol(5,[],1),'revocar Marketing');$m->inicializarPermisosSistema();
 exigir(codigos($m,5)===[],'inicialización no restaura revocaciones');
+exigir(codigosInscritos($m,5)===[],'nuevos permisos revocados no reaparecen tras inicializar');
 $_SESSION=['usuario_id'=>1,'rol_id'=>5,'rol'=>'Marketing','permisos'=>[]];
 exigir(!FormularioPermisos::puede(FormularioPermisos::VER),'Marketing sin permiso no tiene acceso');
 exigir($m->actualizarPermisosRol(2,[$ids[FormularioPermisos::INSCRIPCION]],1),'conceder al Director');
@@ -34,6 +41,12 @@ exigir(!FormularioPermisos::puede(FormularioPermisos::REGISTRO),'Registro es ind
 exigir(!FormularioPermisos::puede(FormularioPermisos::COMPROBANTES),'comprobantes protegidos por separado');
 exigir($m->actualizarPermisosRol(2,[],1),'revocar Director');$m->inicializarPermisosSistema();
 exigir(codigos($m,2)===[],'revocación del Director persistente');
+exigir($m->actualizarPermisosRol(2,[$ids[InscritosPermisos::EXPORTAR]],1),'conceder exportación al Director');
+exigir(in_array(InscritosPermisos::VER,codigosInscritos($m,2),true),'exportación exige permiso ver Inscripciones');
+exigir(!in_array(FormularioPermisos::VER,codigos($m,2),true),'Inscripciones no concede acceso a Formularios');
+exigir($m->actualizarPermisosRol(2,[],1),'revocar permisos Inscripciones al Director');
+$m->inicializarPermisosSistema();
+exigir(codigosInscritos($m,2)===[],'revocación Excel persistente');
 exigir((int)$db->query('SELECT COUNT(*) n FROM auditoria_roles_permisos')->fetch_assoc()['n']>=3,'auditoría de cambios conservada');
 // Configuraciones para las pruebas HTTP y de vistas. No son cuentas reales.
 $sets=[2=>[FormularioPermisos::VER],3=>[FormularioPermisos::REGISTRO],4=>[FormularioPermisos::INSCRIPCION],5=>array_column(FormularioPermisos::catalogo(),'codigo'),6=>[FormularioPermisos::COMPROBANTES],7=>[FormularioPermisos::COMPARTIR],8=>[],9=>['convocatorias.crear']];
