@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../helpers/AdminRolePolicy.php';
 require_once __DIR__ . '/../helpers/FormularioPermisos.php';
+require_once __DIR__ . '/../helpers/InscritosPermisos.php';
 require_once __DIR__ . '/../helpers/SupervisionRolePolicy.php';
 
 class RolModel
@@ -17,7 +18,13 @@ class RolModel
 
     public function inicializarPermisosSistema()
     {
-        $permisos = array_merge($this->obtenerCatalogoInicialPermisos(), FormularioPermisos::catalogo());
+        $permisos = array_merge($this->obtenerCatalogoInicialPermisos(), FormularioPermisos::catalogo(), InscritosPermisos::catalogo());
+        $inscritosNuevos = [];
+        foreach (InscritosPermisos::catalogo() as $permiso) {
+            if (!$this->existePermisoPorCodigo($permiso['codigo'])) {
+                $inscritosNuevos[] = $permiso['codigo'];
+            }
+        }
         $formulariosNuevos = [];
         foreach (FormularioPermisos::catalogo() as $permisoFormulario) {
             if (!$this->existePermisoPorCodigo($permisoFormulario['codigo'])) {
@@ -142,6 +149,7 @@ class RolModel
         }
 
         $this->asignarPermisosInicialesFormularios($formulariosNuevos);
+        $this->asignarPermisosInicialesInscritos($inscritosNuevos);
         $this->asegurarPermisosAdministrador();
     }
 
@@ -977,6 +985,33 @@ class RolModel
         }
     }
 
+    /**
+     * Concesión inicial una sola vez: Marketing con acceso previo a Formularios.
+     * Revocaciones posteriores no se restauran porque se detecta sólo si el
+     * permiso NO existía previamente en el catálogo.
+     */
+    private function asignarPermisosInicialesInscritos(array $codigos): void
+    {
+        if (!$codigos) return;
+        $stmt = $this->connection->prepare(
+            "INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+             SELECT r.id, p.id
+               FROM roles r
+               JOIN permisos p ON p.codigo=? AND p.estado=1
+              WHERE r.nombre='Marketing' AND r.estado=1
+                AND EXISTS (
+                    SELECT 1 FROM rol_permisos rp
+                    JOIN permisos ver ON ver.id=rp.permiso_id
+                    WHERE rp.rol_id=r.id
+                      AND ver.codigo='formularios.ver' AND ver.estado=1
+                )"
+        );
+        foreach ($codigos as $codigo) {
+            $stmt->bind_param('s', $codigo);
+            $stmt->execute();
+        }
+    }
+
     private function asignarPermisoInicialImportacionMeta()
     {
         // Mantiene la capacidad que ya tenía Marketing al instalar el importador.
@@ -1102,6 +1137,7 @@ class RolModel
             FormularioPermisos::INSCRIPCION => FormularioPermisos::VER,
             FormularioPermisos::COMPARTIR => FormularioPermisos::VER,
             FormularioPermisos::COMPROBANTES => FormularioPermisos::VER,
+            InscritosPermisos::EXPORTAR => InscritosPermisos::VER,
             'prospectos.importar_meta' => 'prospectos.ver_todos',
             'prospectos.configurar_formularios' => 'prospectos.ver_todos',
             'usuarios.crear' => 'usuarios.ver',
