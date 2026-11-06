@@ -8,3 +8,7 @@ tools/inscripcion_estilos_release.json text eol=lf
 tools/publicar_formularios_permisos.py text eol=lf
 tools/formularios_permisos_release.json text eol=lf
 tests/fixtures/formularios_rbac_hostinger.json text eol=lf
+
+tools/publicar_formularios_revision_envio.py text eol=lf
+tools/formularios_revision_envio_release.json text eol=lf
+tests/fixtures/formularios_revision_hostinger.json text eol=lf

@@ -4,6 +4,7 @@ $name=getenv('IMPE_DB_NAME')?:'';
 if(!preg_match('/^impe_test_inscripcion_[a-z0-9_]+$/D',$name))throw new RuntimeException('Base aislada requerida.');
 require dirname(__DIR__).'/config/db_connection.php';
 $db=new mysqli(getenv('IMPE_DB_HOST')?:'127.0.0.1:33339',getenv('IMPE_DB_USER')?:'root',getenv('IMPE_DB_PASSWORD')?:'');
+$db->set_charset('utf8mb4');
 if(($argv[1]??'')==='limpiar'){
  $db->select_db($name);$hay=$db->query("SHOW TABLES LIKE 'formulario_inscripciones_completas'")->num_rows; $r=$hay?$db->query('SELECT comprobante_archivo FROM formulario_inscripciones_completas'):null;
  while($r && ($f=$r->fetch_assoc()))if(preg_match('/^[a-f0-9]{48}\.(pdf|jpg|png)$/D',$f['comprobante_archivo'])){ $p=dirname(ROOT_PATH).'/impe-inscripciones-private/'.$f['comprobante_archivo'];if(is_file($p))unlink($p); }

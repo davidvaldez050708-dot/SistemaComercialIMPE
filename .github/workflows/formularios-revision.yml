@@ -1,0 +1,51 @@
+name: Formularios - confirmación antes de enviar
+on:
+  pull_request:
+    paths:
+      - 'public/javascript/formularios_registro*.js'
+      - 'public/javascript/formularios_inscripcion_completa.js'
+      - 'public/javascript/formularios_revision_envio.js'
+      - 'public/css/formularios_revision_envio.css'
+      - 'tests/formularios_revision*'
+      - 'tests/fixtures/formularios_revision_hostinger.json'
+      - 'tools/*formularios_revision_envio*'
+      - '.github/workflows/formularios-revision.yml'
+permissions:
+  contents: read
+jobs:
+  revision:
+    runs-on: ubuntu-latest
+    env:
+      PHP_BINARY: php
+      NODE_PATH: /tmp/revision-browser/node_modules
+      BOOTSTRAP_MODULE_PATH: /tmp/revision-browser/node_modules/bootstrap
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring
+          coverage: none
+          ini-values: opcache.jit_buffer_size=0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/revision-browser playwright bootstrap@5.3.8
+      - run: /tmp/revision-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Sintaxis JavaScript
+        run: |
+          node --check public/javascript/formularios_registro.js
+          node --check public/javascript/formularios_registro_publico.js
+          node --check public/javascript/formularios_inscripcion_completa.js
+          node --check public/javascript/formularios_revision_envio.js
+      - name: Formularios públicos y CRM, confirmación, cancelación y móvil
+        run: node tests/formularios_revision_browser.cjs
+      - name: Publicación selectiva reversible sin SQL
+        run: python3 tests/formularios_revision_release_test.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: formularios-revision
+          path: |
+            tmp/formulario-revision-*.png
+            tmp/formularios-revision-http.log
