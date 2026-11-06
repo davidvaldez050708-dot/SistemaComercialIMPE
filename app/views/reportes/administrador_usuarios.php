@@ -192,6 +192,7 @@ foreach ($estadoUsuarios as $datoEstado) {
     <div class="d-flex justify-content-end mb-4">
         <a
             class="btn btn-system-save report-export-action"
+            data-admin-users-pdf download
             href="<?= $texto($urlExportarPdf) ?>">
             <i class="bi bi-file-earmark-pdf"></i>
             Exportar PDF
@@ -559,3 +560,5 @@ document.addEventListener('DOMContentLoaded', function () {
     aplicarEstadoTodos();
 });
 </script>
+
+<script src="<?= BASE_URL ?>public/javascript/reporte_usuarios_pdf.js?v=<?= filemtime(__DIR__.'/../../../public/javascript/reporte_usuarios_pdf.js') ?>"></script>

@@ -41,13 +41,6 @@ class ReporteAdministradorPdfService
             );
         }
 
-        if (!function_exists('proc_open')) {
-            return $this->error(
-                'No fue posible convertir el reporte administrativo a PDF.',
-                'proc_open no está disponible en este entorno.'
-            );
-        }
-
         $nombreBase = ReporteNombreArchivoService::corte(
             'Reporte_Usuarios',
             [],
@@ -1028,23 +1021,9 @@ class ReporteAdministradorPdfService
 
     private function convertirAPdf($rutaDocx, $directorioSalida)
     {
-        $conversor = $this->detectarConversor();
-        if (!($conversor['ok'] ?? false)) {
-            return $this->error(
-                'No se encontró un conversor DOCX a PDF disponible.',
-                (string)($conversor['detalle'] ?? 'Instala LibreOffice o Microsoft Word.')
-            );
-        }
-
-        if (($conversor['tipo'] ?? '') === 'libreoffice') {
-            return $this->convertirConLibreOffice(
-                (string)$conversor['ruta'],
-                $rutaDocx,
-                $directorioSalida
-            );
-        }
-
-        return $this->convertirConWord($rutaDocx, $directorioSalida);
+        // Generar desde el contenido DOCX preparado, sin procesos externos.
+        require_once __DIR__ . '/ReporteAdministradorDompdfService.php';
+        return (new ReporteAdministradorDompdfService())->convertir($rutaDocx, $directorioSalida);
     }
 
     private function detectarConversor()
