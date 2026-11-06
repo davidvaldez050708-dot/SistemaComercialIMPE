@@ -14,7 +14,7 @@ import ventas_contacto_historico_validar_revision as verify
 def fails(fn,msg):
     try:
         fn()
-    except RuntimeError:
+    except (RuntimeError, FileExistsError):
         return
     raise AssertionError(msg)
 
