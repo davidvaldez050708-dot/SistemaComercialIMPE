@@ -24,7 +24,10 @@ final class FormularioInscripcionValidacion
     public static function legales(string $slug): array
     {
         $dir = __DIR__ . '/../resources/inscripcion/';
-        $terminos = $slug === 'titulacion-ejecutivas'
+        // Ambos programas de titulación A286 usan el contrato confirmado
+        // por la institución. Los otros tres siguen sin términos habilitados.
+        $programasContratoA286 = ['titulacion-ejecutivas', 'titulacion-experiencia-laboral'];
+        $terminos = in_array($slug, $programasContratoA286, true)
             ? (string)file_get_contents($dir . 'terminos-ejecutivas.txt') : '';
         return ['terminos'=>$terminos, 'privacidad'=>(string)file_get_contents($dir . 'privacidad.txt')];
     }
