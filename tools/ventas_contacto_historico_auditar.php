@@ -118,11 +118,21 @@ final class VentasContactoHistoricoAuditoria
     {
         $site=realpath($site);
         if($site===false)throw new RuntimeException('No existe la ruta del sitio.');
-        $destDir=rtrim($root,DIRECTORY_SEPARATOR);
-        if($destDir===''||$destDir===$site||
+        $sourceDir=rtrim($root,DIRECTORY_SEPARATOR);
+        if($sourceDir===''||is_link($sourceDir))
+            throw new RuntimeException('La ruta del diagnóstico no es segura.');
+        // Resolver rutas con ".." ANTES de crear archivos o carpetas.
+        $destDir=realpath($sourceDir);
+        if($destDir===false){
+            $parent=realpath(dirname($sourceDir));
+            if($parent===false||!is_dir($parent))
+                throw new RuntimeException('El directorio padre del diagnóstico debe existir.');
+            $destDir=$parent.DIRECTORY_SEPARATOR.basename($sourceDir);
+        }
+        if($destDir===$site||
             strncmp($destDir,$site.DIRECTORY_SEPARATOR,strlen($site)+1)===0)
             throw new RuntimeException('El diagnóstico debe quedar fuera de public_html.');
-        if(!is_dir($destDir) && !mkdir($destDir,0700,true) && !is_dir($destDir))
+        if(!is_dir($destDir) && !mkdir($destDir,0700) && !is_dir($destDir))
             throw new RuntimeException('No fue posible crear carpeta privada.');
         chmod($destDir,0700);
         $file=$destDir.'/ventas_whatsapp_historico_'.date('Ymd_His').'_'.bin2hex(random_bytes(3)).'.json';
