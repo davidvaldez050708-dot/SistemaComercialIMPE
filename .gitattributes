@@ -2,3 +2,4 @@ tools/publicar_inscripcion_completa.py text eol=lf
 tools/inscripcion_completa_release.json text eol=lf
 app/resources/inscripcion/*.txt text eol=lf
 tests/fixtures/inscripcion_controller_hostinger.php.txt text eol=lf
+tools/habilitar_inscripcion_completa.php text eol=lf

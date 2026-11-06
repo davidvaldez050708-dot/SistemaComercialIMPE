@@ -18,6 +18,19 @@ const file={name:'pago.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-
  let browser,server;
  try{
   console.log(run('crear').trim());
+  const schemaBackup=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'inscripcion-schema-'));
+  const schema=(action)=>execFileSync(php,['tools/habilitar_inscripcion_completa.php','--site',root,'--backup-root',schemaBackup,'--schema',path.join(root,'database/migrations/2026_11_05_inscripcion_completa.sql'),action],{cwd:root,env,encoding:'utf8'});
+  assert.equal(run('tabla_completa'),'0');
+  assert.match(schema('--check'),/CHECK OK/);
+  assert.equal(run('tabla_completa'),'0','check del esquema sólo lee');
+  assert.equal(fs.readdirSync(schemaBackup).length,0,'check no escribe respaldo');
+  assert.match(schema('--apply'),/APLICADO/);
+  assert.equal(run('tabla_completa'),'1');
+  assert.equal(Number(JSON.parse(run('conteo')).total),0,'preparación no importa personas');
+  assert.equal(fs.readdirSync(schemaBackup).length,1,'respaldo privado de esquema');
+  assert.match(schema('--apply'),/YA HABILITADO/);
+  assert.match(schema('--check'),/ya preparada/);
+
   server=spawn(php,['-S',new URL(base).host,'-t',root],{cwd:root,env,stdio:['ignore',out,out]});
   for(let i=0;i<80;i++){try{await fetch(base+'public/css/formularios.css');break;}catch{await new Promise(r=>setTimeout(r,100));}}
   browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});

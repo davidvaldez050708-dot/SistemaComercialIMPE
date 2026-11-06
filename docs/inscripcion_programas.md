@@ -21,10 +21,10 @@ Los datos básicos siguen en `formulario_inscripciones`. Los campos completos, h
 
 ## Publicación controlada
 
-El paquete contiene 15 archivos y conserva exactamente la variante instalada del controlador (SHA256 inicial `9494565f6f4d825dde1afefc320e65b36a1edc78285042db3cb7bd94e41504b3`). Sus métodos de Registro, horarios, alias y autorización están cubiertos por una prueba de igualdad contra la copia reconstruida de Hostinger.
+El paquete de código contiene 15 archivos y conserva exactamente la variante instalada del controlador (SHA256 inicial `9494565f6f4d825dde1afefc320e65b36a1edc78285042db3cb7bd94e41504b3`). Sus métodos de Registro, horarios, alias y autorización están cubiertos por una prueba de igualdad contra la copia reconstruida de Hostinger.
 
 1. Respaldar la base de datos y conservar el directorio privado de comprobantes en los respaldos futuros.
-2. Revisar la ampliación aditiva `database/migrations/2026_11_05_inscripcion_completa.sql`. No altera tablas existentes ni incorpora personas. **No se ejecuta desde el instalador.** Aplicarla requiere la operación controlada de base de datos correspondiente.
+2. Revisar la ampliación aditiva `database/migrations/2026_11_05_inscripcion_completa.sql`. No altera tablas existentes ni incorpora personas. **No se ejecuta desde el instalador.** El CLI `habilitar_inscripcion_completa.php --site RUTA --backup-root RUTA_PRIVADA --schema ARCHIVO --check` valida el esquema sin escribir; con `--apply` guarda respaldo de la estructura y crea únicamente la tabla nueva. No modifica ni borra filas existentes. Rechaza tablas adicionales incompatibles.
 3. Descargar desde el mismo commit `publicar_inscripcion_completa.py` y `inscripcion_completa_release.json`, comprobar sus hashes y ejecutar `--check`. No consulta SQL ni escribe archivos del sitio. Rechaza variantes desconocidas y dependencias distintas.
 4. Ejecutar `--apply` únicamente tras revisar el resultado. Produce respaldo privado, reemplazos atómicos, permisos públicos 644 y directorios nuevos 755. Es compatible con Python 3.6.
 5. Si la tabla adicional no está preparada, el formulario muestra su estado y deshabilita el envío; no intenta crear tablas automáticamente.
@@ -41,3 +41,5 @@ Requiere PHP 8.1+, mysqli, mbstring y fileinfo; configurar el PHP del sitio con 
 - CI añade MySQL 8.0 y MariaDB 11.8; los workflows existentes de Aliados se conservan.
 
 No se ejecutaron SQL ni importaciones reales en Hostinger.
+
+El CLI de habilitación se distribuye aparte del paquete: debe descargarse y comprobarse por hash desde el mismo commit. Su check puede ejecutarse antes de instalar los archivos. La creación de tabla requiere --apply explícito; el publicador Python sigue sin ejecutar SQL.
