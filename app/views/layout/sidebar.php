@@ -25,6 +25,7 @@ $mostrarConvocatorias = tienePermiso('convocatorias.ver');
 $mostrarFormularios = tienePermiso('formularios.ver');
 $mostrarConvenios = puedeConsultarDirectorioConvenios();
 $mostrarProspectos = tienePermiso('prospectos.ver_todos');
+$mostrarInscritos = tienePermiso('inscritos.ver');
 $mostrarReporteTerritorial =
     tienePermiso('reportes.territorial') &&
     $mostrarDataTerritorial;
@@ -95,6 +96,7 @@ $claseConvocatoriasReportes =
 $claseCorreosMarketing =
     $opcionActiva === 'correos_marketing' ? 'active' : '';
 $claseProspectos = $opcionActiva === 'prospectos' ? 'active' : '';
+$claseInscritos = $opcionActiva === 'inscritos' ? 'active' : '';
 $claseFormularios =
     $opcionActiva === 'formularios' ? 'active' : '';
 
@@ -215,7 +217,7 @@ $claseFormularios =
             </div>
         <?php endif; ?>
 
-        <?php if ($mostrarConvocatorias || $mostrarConvenios || $mostrarProspectos || $mostrarFormularios): ?>
+        <?php if ($mostrarConvocatorias || $mostrarConvenios || $mostrarProspectos || $mostrarFormularios || $mostrarInscritos): ?>
 
             <div class="sidebar-section">
                 <p class="sidebar-section-title">
@@ -252,6 +254,12 @@ $claseFormularios =
                 <?php if ($mostrarProspectos): ?>
                     <a href="<?= BASE_URL ?>index.php?controller=prospecto&action=index" class="sidebar-link <?= $claseProspectos ?>">
                         <i class="bi bi-people"></i> Prospectos
+                    </a>
+                <?php endif; ?>
+
+                <?php if ($mostrarInscritos): ?>
+                    <a href="<?= BASE_URL ?>index.php?controller=inscritos&amp;action=index" class="sidebar-link <?= $claseInscritos ?>">
+                        <i class="bi bi-person-check"></i> Inscripciones recibidas
                     </a>
                 <?php endif; ?>
 
@@ -554,7 +562,7 @@ $claseFormularios =
             </div>
         <?php endif; ?>
 
-        <?php if ($mostrarConvocatorias || $mostrarConvenios || $mostrarProspectos || $mostrarFormularios): ?>
+        <?php if ($mostrarConvocatorias || $mostrarConvenios || $mostrarProspectos || $mostrarFormularios || $mostrarInscritos): ?>
 
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">
@@ -591,6 +599,12 @@ $claseFormularios =
                     <?php if ($mostrarProspectos): ?>
                         <a href="<?= BASE_URL ?>index.php?controller=prospecto&action=index" class="sidebar-link <?= $claseProspectos ?>">
                             <i class="bi bi-people"></i> Prospectos
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($mostrarInscritos): ?>
+                        <a href="<?= BASE_URL ?>index.php?controller=inscritos&amp;action=index" class="sidebar-link <?= $claseInscritos ?>">
+                            <i class="bi bi-person-check"></i> Inscripciones recibidas
                         </a>
                     <?php endif; ?>
 
