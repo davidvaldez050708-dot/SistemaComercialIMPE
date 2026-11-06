@@ -4,6 +4,8 @@ on:
     paths:
       - 'tools/ventas_contacto_historico_preparar_revision.py'
       - 'tests/ventas_contacto_historico_revision_csv_test.py'
+      - 'tools/ventas_contacto_historico_validar_revision.py'
+      - 'tests/ventas_contacto_historico_validar_revision_test.py'
       - '.github/workflows/ventas-contacto-historico-revision.yml'
   workflow_dispatch:
 permissions:
@@ -17,7 +19,11 @@ jobs:
         run: |
           python3 -m py_compile tools/ventas_contacto_historico_preparar_revision.py
           python3 tests/ventas_contacto_historico_revision_csv_test.py
+          python3 -m py_compile tools/ventas_contacto_historico_validar_revision.py
+          python3 tests/ventas_contacto_historico_validar_revision_test.py
       - name: Compatibilidad Python 3.6 de Hostinger
         run: |
           docker run --rm -v "$PWD:/src" -w /src python:3.6 \
             python tests/ventas_contacto_historico_revision_csv_test.py
+          docker run --rm -v "$PWD:/src" -w /src python:3.6 \\
+            python tests/ventas_contacto_historico_validar_revision_test.py
