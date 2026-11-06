@@ -70,6 +70,27 @@ with tempfile.TemporaryDirectory(prefix="impe-revisiones-humanas-") as temp:
     overwrite()
     fails(lambda:verify.validate(original,csv_path),"Debió rechazar aprobación sin evidencia")
     sheet[0]["observacion_revision"]="Audio revisado: conversación con una persona"
+    # Confirmación global del responsable: 30 SI no exigen notas individuales,
+    # pero jamás se aceptan sin flag explícita.
+    for row in sheet[:30]:
+        row["revision_humana"]="SI"
+        row["observacion_revision"]=""
+    sheet[1]["revision_humana"]="NO"
+    sheet[1]["observacion_revision"]=""
+    overwrite()
+    fails(lambda:verify.validate(original,csv_path),"Sin flag debe exigir nota")
+    approved=verify.validate(original,csv_path,confirmacion_global=True)
+    assert sum(x["revision_humana"]=="SI" for x in approved)==29
+    assert sum(x["revision_humana"]=="NO" for x in approved)==1
+    plan_file,plan=verify.private_report(site,csv_path,approved,private,confirmacion_global=True)
+    assert plan["confirmacion_global_sin_notas"] is True
+    assert plan["auditoria_sha256"]==approved[0]["auditoria_sha256"]
+    assert plan["confirmadas_por_revision"]==29
+    assert plan["descartadas_por_revision"]==1
+    assert plan_file.stat().st_mode&0o777==0o600
+    sheet[1]["revision_humana"]="PENDIENTE"
+    sheet[1]["observacion_revision"]=""
+    sheet[0]["observacion_revision"]="Audio revisado: conversación con una persona"
     sheet[116]["revision_humana"]="SI"
     sheet[116]["observacion_revision"]="Grabación encontrada en registro distinto"
     overwrite()
