@@ -17,6 +17,15 @@ RELEASE = json.loads((ROOT/'tools/prospectos_asesores_1a_release.json').read_tex
 PREV = json.loads((ROOT/'tools/prospectos_campanias_release.json').read_text(encoding='utf8'))
 checks = 0
 
+# Huella independiente proporcionada desde Hostinger el 06/11/2026.
+# En la ejecución aislada se sustituye la dependencia por datos ficticios
+# solo después de verificar que el manifiesto público usa el SHA real.
+ROL_SHA_HOSTINGER = '51678bbbaa437d278859dc33d25319b808dcd48b21e2018cd3a75cb50b4d6992'
+assert next(d['sha256'] for d in RELEASE['dependencies']
+            if d['path']=='app/models/RolModel.php') == ROL_SHA_HOSTINGER, (
+                'RolModel.php debe conservar el SHA original de Hostinger.'
+            )
+
 def check(value, msg):
     global checks
     if not value:
