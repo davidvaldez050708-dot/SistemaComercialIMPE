@@ -228,6 +228,9 @@ class FormularioController
         if (!empty($_FILES)) {
             $this->responderJson(['ok'=>false,'mensaje'=>'El piloto no recibe archivos ni comprobantes.'],422);
         }
+        if (($_POST['programa_slug'] ?? '') !== 'titulacion-ejecutivas') {
+            $this->responderJson(['ok'=>false,'mensaje'=>'Programa de inscripción no válido.'],422);
+        }
         $resultado = FormularioEjecutivasValidacion::validar($_POST);
         $resultado['mensaje'] = $resultado['ok']
             ? 'La captura supera las verificaciones locales; confirma CURP y documentos antes de inscribir.'
