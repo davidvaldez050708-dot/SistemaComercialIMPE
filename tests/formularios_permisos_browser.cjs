@@ -9,7 +9,7 @@ const db=action=>execFileSync(php,['tests/formularios_permisos_db.php',action],{
  const log=fs.openSync(path.join(root,'tmp/formularios-permisos-http.log'),'w');
  // CI loads instrumentation extensions incompatible with PHP JIT. Keep genuine
  // application warnings fatal to this test, without enabling JIT on its server.
- server=spawn(php,['-d','opcache.jit=0','-d','opcache.enable_cli=0','-S','127.0.0.1:8129','-t',root],{cwd:root,env,stdio:['ignore',log,log]});
+ server=spawn(php,['-d','opcache.jit_buffer_size=0','-d','opcache.jit=0','-d','opcache.enable_cli=0','-S','127.0.0.1:8129','-t',root],{cwd:root,env,stdio:['ignore',log,log]});
  for(let i=0;i<80;i++){try{await fetch(base+'public/css/formularios.css');break;}catch{await new Promise(r=>setTimeout(r,100));}}
  browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
