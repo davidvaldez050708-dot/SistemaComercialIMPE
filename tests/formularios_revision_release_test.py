@@ -29,7 +29,19 @@ with tempfile.TemporaryDirectory(prefix='impe-revision-release-') as temp:
   p=site/row['path'];assert sha(p.read_bytes())==row['variants'][0]['after']
   if os.name=='posix':assert p.stat().st_mode&0o777==0o644
  assert 'YA INSTALADO' in run('--apply')
- saved=next(p for p in backup.iterdir() if p.is_dir());assert 'RESTAURADO' in run('--restore',str(saved));assert snapshot()==initial
+ # Existing installations of PR226 only need the CSS refinement. Preserve JS.
+ css='public/css/formularios_revision_envio.css'
+ old=gzip.decompress(base64.b64decode(base[css]['content']))
+ (site/css).write_bytes(old)
+ js={str(p.relative_to(site)):p.read_bytes() for p in (site/'public/javascript').glob('*.js')}
+ assert 'CHECK OK' in run('--check');assert 'APLICADO' in run('--apply')
+ assert js=={str(p.relative_to(site)):p.read_bytes() for p in (site/'public/javascript').glob('*.js')}
+ # Restore the original full installation, after rolling back the one-file patch.
+ patches=[p for p in backup.iterdir() if p.is_dir() and len(json.loads((p/'respaldo.json').read_text())['files'])==1]
+ assert len(patches)==1
+ assert 'RESTAURADO' in run('--restore',str(patches[0]));assert (site/css).read_bytes()==old
+ (site/css).write_bytes(gzip.decompress(base64.b64decode(next(r for r in package['files'] if r['path']==css)['variants'][0]['target'])))
+ saved=next(p for p in backup.iterdir() if p.is_dir() and len(json.loads((p/'respaldo.json').read_text())['files'])==5);assert 'RESTAURADO' in run('--restore',str(saved));assert snapshot()==initial
  p=site/'public/javascript/formularios_registro.js';p.write_bytes(p.read_bytes()+b'\n// personalizacion')
  current=snapshot();assert 'DIFERENTE' in run('--check',ok=False);assert snapshot()==current
  print('PASS: cinco archivos públicos exactos, check sin escrituras, apply, idempotencia, permisos 644, restore y bloqueo de variantes; sin SQL.')

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Aviso y confirmación institucional antes de enviar formularios. Cinco archivos públicos; sin SQL ni cambios de permisos o vistas PHP."""
+"""Aviso y confirmaciÃ³n institucional antes de enviar formularios. Cinco archivos pÃºblicos; sin SQL ni cambios de permisos o vistas PHP."""
 import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = 'c9efa4347b2d02b32f1ae8649c7d950231b5dd1207385bb26f301ca664228300'
+MANIFEST_SHA256 = 'f26569e0e5e15a3e787375b0f2a6db6906824821debcaee472bc6197a1ed9c2f'
 PATHS = ['public/javascript/formularios_registro.js', 'public/javascript/formularios_registro_publico.js', 'public/javascript/formularios_inscripcion_completa.js', 'public/javascript/formularios_revision_envio.js', 'public/css/formularios_revision_envio.css']
 DEPENDENCIES = {}
 
@@ -12,7 +12,7 @@ def digest(data): return None if data is None else hashlib.sha256(data).hexdiges
 def read(path): return path.read_bytes() if path.is_file() else None
 
 def mode_matches(path, mode):
-    # Windows no representa los permisos POSIX; Hostinger sí los exige al servir JS.
+    # Windows no representa los permisos POSIX; Hostinger sÃ­ los exige al servir JS.
     return os.name != 'posix' or (path.is_file() and path.stat().st_mode & 0o777 == mode)
 
 def needs_change(row):
@@ -52,7 +52,7 @@ def prepare(site, package):
         before = read(dest)
         current = digest(before)
         variant = next((v for v in file['variants'] if current in [v['before'], v['after']]), None)
-        if variant is None: raise RuntimeError('VERSIÓN DIFERENTE: '+file['path']+'. Sitio intacto.')
+        if variant is None: raise RuntimeError('VERSIÃ“N DIFERENTE: '+file['path']+'. Sitio intacto.')
         after = payload(variant['target'], variant['after'])
         mode = dest.stat().st_mode & 0o777 if before is not None else 0o644
         row = {'name': file['path'], 'dest': dest, 'before': before, 'after': after,
@@ -111,22 +111,22 @@ def apply(site, root, package):
         try:
             for r in changed:
                 if read(r['dest']) != r['before'] or (r['before'] is not None and not mode_matches(r['dest'], r['mode'])):
-                    raise RuntimeError('Archivo cambiado durante la instalación: '+r['name'])
+                    raise RuntimeError('Archivo cambiado durante la instalaciÃ³n: '+r['name'])
             for r in changed:
                 if read(r['dest']) != r['before'] or (r['before'] is not None and not mode_matches(r['dest'], r['mode'])):
-                    raise RuntimeError('Archivo cambiado durante la instalación: '+r['name'])
+                    raise RuntimeError('Archivo cambiado durante la instalaciÃ³n: '+r['name'])
                 atomic(r['dest'], r['after'], r['after_mode']); installed.append(r)
                 if read(r['dest']) != r['after'] or not mode_matches(r['dest'], r['after_mode']):
-                    raise RuntimeError('Verificación posterior fallida: '+r['name'])
+                    raise RuntimeError('VerificaciÃ³n posterior fallida: '+r['name'])
         except BaseException:
             for r in reversed(installed):
                 if read(r['dest']) != r['after'] or not mode_matches(r['dest'], r['after_mode']):
-                    print('REVISAR RESTAURACIÓN: archivo editado por otro proceso: '+r['name'], file=sys.stderr)
+                    print('REVISAR RESTAURACIÃ“N: archivo editado por otro proceso: '+r['name'], file=sys.stderr)
                     continue
                 if r['before'] is None: r['dest'].unlink()
                 else: atomic(r['dest'], r['before'], r['mode'])
             raise
-        print('APLICADO: Aviso y confirmación antes de enviar formularios. Sin SQL; permisos, vistas PHP y datos intactos. RESPALDO: '+str(backup))
+        print('APLICADO: Aviso y confirmaciÃ³n antes de enviar formularios. Sin SQL; permisos, vistas PHP y datos intactos. RESPALDO: '+str(backup))
 
 def restore(site, root, directory):
     backup = Path(directory).resolve()
@@ -139,16 +139,16 @@ def restore(site, root, directory):
         for row in data['files']:
             if row['name'] not in PATHS: raise RuntimeError('Archivo fuera del paquete.')
             dest = safe(site, row['name'])
-            if digest(read(dest)) != row['after']: raise RuntimeError('Versión modificada después de instalar: '+row['name'])
+            if digest(read(dest)) != row['after']: raise RuntimeError('VersiÃ³n modificada despuÃ©s de instalar: '+row['name'])
             if not mode_matches(dest, row.get('after_mode', row['mode'])):
-                raise RuntimeError('Permisos modificados después de instalar: '+row['name'])
+                raise RuntimeError('Permisos modificados despuÃ©s de instalar: '+row['name'])
             original = read(safe(backup, 'original/'+row['name'])) if row['before'] is not None else None
-            if digest(original) != row['before']: raise RuntimeError('Respaldo dañado.')
+            if digest(original) != row['before']: raise RuntimeError('Respaldo daÃ±ado.')
             plan.append((dest, original, row['mode']))
         for dest, original, mode in reversed(plan):
             if original is None: dest.unlink()
             else: atomic(dest, original, mode)
-        print('RESTAURADO: versión previa. Sin SQL.')
+        print('RESTAURADO: versiÃ³n previa. Sin SQL.')
 
 def main():
     if sys.version_info < (3, 6): raise RuntimeError('Se requiere Python 3.6 o posterior.')
