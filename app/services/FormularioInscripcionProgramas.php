@@ -1,7 +1,7 @@
 <?php
 /**
  * Catálogo estable para el selector interno de los cinco programas.
- * Etapa 1: no habilita enlaces públicos ni realiza consultas o escrituras.
+ * Los slugs se conservan para compatibilidad con los enlaces compartidos.
  *
  * Los nombres coinciden con los perfiles admitidos hoy por los controladores
  * de registro e inscripción para evitar cambios accidentales de persistencia.
@@ -18,7 +18,7 @@ final class FormularioInscripcionProgramas
             ],
             [
                 'slug' => 'bachillerato-286',
-                'nombre' => 'Bachillerato 286',
+                'nombre' => 'Bachillerato General',
                 'icono' => 'bi-patch-check',
             ],
             [

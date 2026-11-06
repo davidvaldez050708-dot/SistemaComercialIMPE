@@ -4,6 +4,9 @@ require_once __DIR__ . '/../models/FormularioRegistroModel.php';
 require_once __DIR__ . '/../services/FormularioInscripcionProgramas.php';
 require_once __DIR__ . '/../services/FormularioEjecutivasPerfiles.php';
 require_once __DIR__ . '/../services/FormularioEjecutivasValidacion.php';
+require_once __DIR__ . '/../helpers/HorarioContacto.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../services/RegistroEnlaceService.php';
 
 class FormularioController
 {
@@ -106,11 +109,11 @@ class FormularioController
         }
 
         /*
-         * El mismo formulario de Registro tiene una ruta pública estable.
-         * No se requiere guardar tokens ni aplicar una migración adicional.
+         * El mismo formulario conserva su ruta pública anterior. Cuando la tabla
+         * de equivalencias está instalada se comparte mediante un alias estable.
          */
-        $url = BASE_URL .
-            'index.php?controller=formularioPublico&action=registro';
+        $url = (new RegistroEnlaceService((new Database())->connect()))->acortar(BASE_URL .
+            'index.php?controller=formularioPublico&action=registro');
 
         $this->responderJson([
             'ok' => true,
@@ -119,6 +122,24 @@ class FormularioController
         ]);
     }
 
+
+    /** Acorta exclusivamente destinos públicos de Registro del propio CRM. */
+    public function acortarRegistro()
+    {
+        if(empty($_SESSION['usuario_id'])||(!tieneAlgunPermiso(['convocatorias.crear','formularios_aliados.gestionar_enlaces'])&&strcasecmp(trim((string)($_SESSION['rol']??'')),'Marketing')!==0)){
+            $this->responderJson(['ok'=>false,'mensaje'=>'No tienes permiso para generar enlaces de Registro.'],403);return;
+        }
+        if(($_SERVER['REQUEST_METHOD']??'')!=='POST'){$this->responderJson(['ok'=>false,'mensaje'=>'Método no permitido.'],405);return;}
+        $csrf=(string)($_SESSION['csrf_token']??'');
+        if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??''))){$this->responderJson(['ok'=>false,'mensaje'=>'Recarga la página e intenta nuevamente.'],419);return;}
+        try{
+            $url=$_POST['url']??'';if(!is_string($url)||strlen($url)>8192)throw new DomainException('Enlace de Registro inválido.');
+            $s=new RegistroEnlaceService((new Database())->connect());
+            if($s->parametros($url)===null)throw new DomainException('Sólo se admiten enlaces públicos de Registro del CRM.');
+            $this->responderJson(['ok'=>true,'url'=>$s->acortar($url)]);
+        }catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422);}
+        catch(Throwable $e){error_log('[registro_enlace] '.$e->getMessage());$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo generar el enlace de Registro.'],503);}
+    }
 
     public function guardarRegistro()
     {
@@ -134,6 +155,11 @@ class FormularioController
         }
 
         $datos = $this->normalizarRegistro($_POST);
+        try {
+            $datos['horario_contacto'] = HorarioContacto::desdeEntrada($_POST);
+        } catch (DomainException $error) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$error->getMessage()], 422);
+        }
         $errores = $this->validarRegistro($datos);
 
         if (!empty($errores)) {
@@ -183,28 +209,13 @@ class FormularioController
     }
 
     /**
-     * VISTA DE PRUEBA INTERNA: misma imagen, logos y CSS del Registro público.
-     * Sin enlace público, envío, subida de recibos ni escrituras en la BD.
+     * Compatibilidad con el acceso anterior al piloto. Presenta la captura
+     * interna dentro del dashboard, nunca una página pública en el shell.
      */
     public function previsualizarEjecutivas()
     {
-        $this->validarAccesoMarketing();
-        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
-            http_response_code(405);
-            echo 'Método no permitido.';
-            return;
-        }
-
-        header('Cache-Control: private, no-store, max-age=0');
-        header('X-Robots-Tag: noindex, nofollow');
-        header('Referrer-Policy: same-origin');
-        if (empty($_SESSION['csrf_ejecutivas_piloto'])) {
-            $_SESSION['csrf_ejecutivas_piloto'] = bin2hex(random_bytes(32));
-        }
-        $csrfEjecutivas = (string)$_SESSION['csrf_ejecutivas_piloto'];
-        $perfilesEjecutivas = FormularioEjecutivasPerfiles::todos();
-
-        require __DIR__ . '/../views/formularios/inscripcion_ejecutivas_previa.php';
+        $_GET['programa'] = 'titulacion-ejecutivas';
+        $this->inscripcion();
     }
 
     /**
@@ -360,33 +371,44 @@ class FormularioController
             : 'Elige el programa de inscripción que deseas gestionar.';
         $opcionActiva = 'formularios';
 
-        // El catálogo se muestra sin consultar ni alterar la base de datos.
-        // La captura ya existente sigue disponible mediante ?programa=slug.
         if ($programaInscripcion !== null) {
+            require_once __DIR__ . '/../services/FormularioInscripcionPantalla.php';
             $modelo = new FormularioRegistroModel();
             $estados = $modelo->obtenerEstadosActivos();
-            $perfilesInteres = [$programaInscripcion['nombre']];
-            $urlEnlaceInscripcion = '';
+            FormularioInscripcionPantalla::preparar($programaInscripcion, false);
+            extract(FormularioInscripcionPantalla::variables(false), EXTR_SKIP);
         }
-
         require_once __DIR__ . '/../views/layout/dashboard_head.php';
         require_once __DIR__ . '/../views/layout/sidebar.php';
         require_once __DIR__ . '/../views/layout/topbar.php';
-
         if ($programaInscripcion !== null) {
-            require_once __DIR__ . '/../views/formularios/inscripcion.php';
+            require __DIR__ . '/../views/formularios/inscripcion_completa.php';
         } else {
-            require_once __DIR__ . '/../views/formularios/inscripcion_programas.php';
+            require __DIR__ . '/../views/formularios/inscripcion_programas.php';
         }
-
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function guardarInscripcionCompleta()
+    {
+        $this->validarAccesoMarketing();
+        require_once __DIR__ . '/../services/FormularioInscripcionPantalla.php';
+        FormularioInscripcionPantalla::guardar(false);
+    }
+
+
+    public function comprobanteInscripcion()
+    {
+        $this->validarAccesoMarketing();
+        require_once __DIR__ . '/../services/FormularioInscripcionPantalla.php';
+        FormularioInscripcionPantalla::descargarComprobante();
     }
 
     private function perfilesInteres()
     {
         return [
             'Bachillerato en 2 años',
-            'Bachillerato 286',
+            'Bachillerato General',
             'Inglés',
             'Titulación - Ejecutivas',
             'Titulación por experiencia laboral',
@@ -436,7 +458,7 @@ class FormularioController
                 trim((string)($entrada['correo_confirmacion'] ?? ''))
             ),
             'perfil_interes' =>
-                $limpiar($entrada['perfil_interes'] ?? ''),
+                ProgramaEducativo::nombre($limpiar($entrada['perfil_interes'] ?? '')),
             'lugar_laboras' =>
                 $limpiar($entrada['lugar_laboras'] ?? ''),
             'cargo_puesto' =>

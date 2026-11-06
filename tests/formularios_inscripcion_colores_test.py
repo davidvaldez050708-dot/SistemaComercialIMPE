@@ -13,7 +13,7 @@ old = subprocess.run(['git','show', BASE_SHA+':public/css/formularios.css'],
     cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 assert old.returncode == 0, old.stderr.decode('utf-8','replace')
 base_css = old.stdout
-new_css = TARGET.read_bytes()
+new_css = TARGET.read_bytes().replace(b'\r\n', b'\n')
 assert new_css.startswith(base_css.rstrip(b'\n'))
 assert b'ACCIONES AZULES Y ACENTOS VERDES' in new_css
 assert b'.formularios-inscripcion-theme .btn-system-save' in new_css
