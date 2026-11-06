@@ -1,0 +1,61 @@
+name: Prospectos - configuración comercial de asesores (fase 1A)
+on:
+  push:
+    branches:
+      - feat/prospectos-configuracion-asesores-20261106
+  pull_request:
+    paths:
+      - 'app/controllers/ProspectoController.php'
+      - 'app/services/ProspectoAsesorConfiguracionService.php'
+      - 'app/views/prospectos/**'
+      - 'public/css/prospectos_asesores.css'
+      - 'database/migrations/2026_11_06_prospectos_asesores_config.sql'
+      - 'tests/prospectos_asesores_config_*'
+      - '.github/workflows/prospectos-asesores-config.yml'
+permissions:
+  contents: read
+jobs:
+  unitarias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - name: Sintaxis PHP y validadores puros
+        run: |
+          php -l app/controllers/ProspectoController.php
+          php -l app/services/ProspectoAsesorConfiguracionService.php
+          php -l app/views/prospectos/central.php
+          php -l app/views/prospectos/partials/configuracion_asesores.php
+          php -l tests/prospectos_asesores_config_unit.php
+          php -l tests/prospectos_asesores_config_db.php
+          php tests/prospectos_asesores_config_unit.php
+  integracion:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - name: Guardado, permisos y auditoría en MySQL desechable
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+          IMPE_ASESORES_TEST_DB: YES
+        run: php tests/prospectos_asesores_config_db.php
