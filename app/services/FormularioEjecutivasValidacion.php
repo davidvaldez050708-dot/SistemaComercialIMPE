@@ -46,6 +46,12 @@ final class FormularioEjecutivasValidacion
         $curpError = self::errorCurp($curp, $valor('fecha_nacimiento'), $sexo);
         if ($curpError !== null) {
             $errores['curp'] = $curpError;
+            if (strpos($curpError, 'fecha de nacimiento no coincide') !== false) {
+                $errores['fecha_nacimiento'] = 'La fecha de nacimiento y la CURP deben coincidir.';
+            }
+            if (strpos($curpError, 'sexo capturado no coincide') !== false) {
+                $errores['genero'] = 'El sexo registrado y la CURP deben coincidir.';
+            }
         } else {
             // El prefijo de la CURP depende de reglas oficiales y excepciones;
             // una discrepancia genera revisión, nunca "corrección" automática.
