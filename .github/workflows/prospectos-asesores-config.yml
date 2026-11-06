@@ -32,6 +32,12 @@ jobs:
           php -l tests/prospectos_asesores_config_unit.php
           php -l tests/prospectos_asesores_config_db.php
           php tests/prospectos_asesores_config_unit.php
+  publicacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preflight, respaldo, apply y restore sobre copia ficticia
+        run: python3 tests/prospectos_asesores_publicacion_test.py
   integracion:
     runs-on: ubuntu-latest
     services:
