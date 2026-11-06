@@ -15,3 +15,7 @@ tests/fixtures/inscritos_diseno_hostinger.json text eol=lf
 
 tools/publicar_sidebar_comercial.py text eol=lf
 tools/sidebar_comercial_release.json text eol=lf
+
+tools/publicar_reporte_usuarios_pdf.py text eol=lf
+tools/reporte_usuarios_pdf_release.json text eol=lf
+tests/fixtures/reporte_usuarios_pdf_hostinger.json text eol=lf

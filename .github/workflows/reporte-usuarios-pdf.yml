@@ -1,0 +1,55 @@
+name: Reporte de usuarios - PDF Hostinger
+on:
+  pull_request:
+    paths:
+      - 'app/controllers/ReporteAdministradorController.php'
+      - 'app/services/ReporteAdministrador*'
+      - 'app/views/reportes/administrador_usuarios.php'
+      - 'public/javascript/reporte_usuarios_pdf.js'
+      - 'tests/reporte_usuarios_pdf*'
+      - 'tools/publicar_reporte_usuarios_pdf.py'
+      - 'tools/reporte_usuarios_pdf_release.json'
+      - '.github/workflows/reporte-usuarios-pdf.yml'
+permissions:
+  contents: read
+jobs:
+  pdf:
+    runs-on: ubuntu-latest
+    env:
+      PHP_BINARY: php
+      IMPE_TEST_VENDOR: /tmp/usuarios-pdf/vendor
+      NODE_PATH: /tmp/usuarios-browser/node_modules
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: zip, dom, mbstring, gd, fileinfo, mysqli
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencias aisladas del renderizador
+        run: |
+          mkdir -p /tmp/usuarios-pdf
+          printf '%s\n' '{"require":{"dompdf/dompdf":"^3.1"}}' > /tmp/usuarios-pdf/composer.json
+          composer install --working-dir=/tmp/usuarios-pdf --no-interaction --prefer-dist --no-progress
+          python3 -m pip install pypdf
+      - name: PDF HTTP real con procesos externos deshabilitados
+        run: python3 tests/reporte_usuarios_pdf_hostinger_test.py
+      - name: Publicación reversible y dependencias intactas
+        run: python3 tests/reporte_usuarios_pdf_release_test.py
+      - run: npm install --prefix /tmp/usuarios-browser playwright
+      - run: /tmp/usuarios-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Descarga, errores y timeout en escritorio y móvil
+        run: node tests/reporte_usuarios_pdf_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usuarios-pdf-pruebas-sinteticas
+          path: tmp/pdfs/

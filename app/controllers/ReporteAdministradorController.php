@@ -9,6 +9,8 @@ class ReporteAdministradorController
     public function exportarPdf()
     {
         $this->validarAdministrador();
+        // Liberar la sesión ya autorizada durante la generación/descarga.
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 
         try {
             $datosService = new ReporteAdministradorDataService();
@@ -72,7 +74,7 @@ class ReporteAdministradorController
         }
 
         if (
-            (int)($_SESSION['rol_id'] ?? 0) !== 1 ||
+            !esRolSupervisionNacional() ||
             !tienePermiso('reportes.ver') ||
             !tienePermiso('reportes.usuarios') ||
             !tienePermiso('reportes.exportar')
