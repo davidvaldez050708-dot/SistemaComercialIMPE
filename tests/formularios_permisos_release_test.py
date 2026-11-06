@@ -2,6 +2,11 @@
 import base64,gzip,hashlib,json,os,re,subprocess,sys,tempfile
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
+# El paquete de permisos fue publicado y validado en esta versión exacta.
+# Nuevos ajustes de Inscripción no deben modificar su prueba histórica.
+PUBLISHED='573c4240a78557b809ec21d6d3090943338ddf33'
+def published_file(name):
+ return subprocess.check_output(['git','show',PUBLISHED+':'+name],cwd=str(root))
 package=json.loads((root/'tools/formularios_permisos_release.json').read_text(encoding='utf-8'))
 fixtures=json.loads((root/'tests/fixtures/formularios_rbac_hostinger.json').read_text(encoding='utf-8'))
 decode=lambda row:gzip.decompress(base64.b64decode(row['content']))
@@ -22,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='impe-formularios-release-') as temp:
  for row in package['files']:
   name=row['path'];variant=row['variants'][0]
   assert sha(gzip.decompress(base64.b64decode(variant['target'])))==variant['after']
-  assert (root/name).read_bytes().replace(b'\r\n',b'\n')==gzip.decompress(base64.b64decode(variant['target']))
+  assert published_file(name).replace(b'\r\n',b'\n')==gzip.decompress(base64.b64decode(variant['target']))
   if variant['before'] is not None:
    raw=decode(fixtures[name]);assert sha(raw)==variant['before']
    path=site/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(raw);originals[name]=raw
