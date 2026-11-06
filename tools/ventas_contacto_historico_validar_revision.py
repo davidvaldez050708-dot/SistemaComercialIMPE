@@ -23,7 +23,7 @@ import ventas_contacto_historico_preparar_revision as base
 ALLOWED = set(("PENDIENTE", "SI", "NO"))
 
 
-def validate(audit, reviewed):
+def validate(audit, reviewed, confirmacion_global=False):
     expected = base.load_report(audit)
     baseline = {str(row["resultado_id"]): row for row in expected}
     sha = hashlib.sha256(audit.read_bytes()).hexdigest()
@@ -59,8 +59,8 @@ def validate(audit, reviewed):
             if len(note) > 500 or any(ord(c) < 32 and c not in "\t" for c in note):
                 raise RuntimeError("Observación inválida: resultado " + identifier)
             if decision != "PENDIENTE":
-                if len(note) < 10:
-                    raise RuntimeError("La decisión exige observación de revisión (mínimo 10 caracteres). ID " + identifier)
+                if len(note) < 10 and not (confirmacion_global and note == ""):
+                    raise RuntimeError("La decisión requiere observación o confirmación global explícita. ID " + identifier)
                 if original["categoria"] != base.CANDIDATE:
                     raise RuntimeError("No se puede aprobar automáticamente una llamada sin ANSWER/audio propio. ID " + identifier)
             elif note:
@@ -81,7 +81,7 @@ def validate(audit, reviewed):
     return rows
 
 
-def private_report(site, reviewed, rows, out_dir):
+def private_report(site, reviewed, rows, out_dir, confirmacion_global=False):
     site = site.resolve(strict=True)
     if not (site / "index.php").is_file():
         raise RuntimeError("Sitio no reconocido")
@@ -97,6 +97,11 @@ def private_report(site, reviewed, rows, out_dir):
         "tipo": "PLAN_REVISION_HISTORICA_NO_APLICADO",
         "advertencia": "NO ES AUTORIZACIÓN DE CAMBIOS. Falta verificar datos vigentes y preparar respaldo transaccional.",
         "total": len(rows),
+        "confirmacion_global_sin_notas": bool(confirmacion_global),
+        "confirmacion_declarada": ("El responsable confirma los SI/NO del CSV sin descripciones por llamada."
+            if confirmacion_global else ""),
+        "auditoria_sha256": approved[0]["auditoria_sha256"] if approved else (rows[0]["auditoria_sha256"] if rows else ""),
+        "csv_sha256": hashlib.sha256(reviewed.read_bytes()).hexdigest(),
         "pendientes": pending,
         "confirmadas_por_revision": len(approved),
         "descartadas_por_revision": rejected,
@@ -120,10 +125,14 @@ def main():
     parser.add_argument("--revision", required=True)
     parser.add_argument("--site", required=True)
     parser.add_argument("--out-dir", required=True)
+    parser.add_argument("--confirmo-sin-observaciones", action="store_true",
+        help="Declara que el responsable ya confirmó las decisiones SI/NO; no exige notas individuales.")
     args = parser.parse_args()
-    rows = validate(Path(args.audit), Path(args.revision))
+    rows = validate(Path(args.audit), Path(args.revision),
+                    confirmacion_global=args.confirmo_sin_observaciones)
     dest, stats = private_report(Path(args.site), Path(args.revision),
-                                 rows, Path(args.out_dir))
+                                 rows, Path(args.out_dir),
+                                 confirmacion_global=args.confirmo_sin_observaciones)
     print("VALIDACION DE REVISION OK. Sitio y base intactos.")
     print("REVISADAS CON CONTACTO:", stats["confirmadas_por_revision"])
     print("REVISADAS SIN CONTACTO:", stats["descartadas_por_revision"])
