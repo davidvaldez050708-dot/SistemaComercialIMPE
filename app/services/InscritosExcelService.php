@@ -133,7 +133,7 @@ final class InscritosExcelService
         if ($destino===false) throw new RuntimeException('No fue posible preparar la exportación.');
         $zip=new ZipArchive();
         try {
-            if ($zip->open($destino, ZipArchive::OVERWRITE)!==true) {
+            if ($zip->open($destino, ZipArchive::CREATE | ZipArchive::OVERWRITE)!==true) {
                 throw new RuntimeException('No se pudo abrir el libro Excel.');
             }
             $archivos=[
