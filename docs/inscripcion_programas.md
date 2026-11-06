@@ -3,7 +3,7 @@
 ## Alcance y disponibilidad
 
 - La captura interna usa las tarjetas, campos, Manrope y controles de Registro dentro del dashboard. La ruta anterior del piloto ahora presenta esa misma captura interna.
-- Cada tarjeta abre su captura y un enlace `ya-estas-inscrito/?programa=SLUG`. Sólo el enlace público usa la fotografía y los logotipos del encabezado de Registro. Registro, sus alias `obtener-beca`, los horarios y formularios de Aliados no se sustituyen.
+- Cada tarjeta abre su captura y un enlace `ya-estas-inscrito/?programa=SLUG`. Sólo el enlace público usa la fotografía y los dos logotipos del encabezado de Registro actual. Sin HLC ni el bloque de texto separado «Acuerdo 286». Registro, sus alias `obtener-beca`, los horarios y formularios de Aliados no se sustituyen.
 - Cinco programas; los slugs anteriores se conservan, incluido `bachillerato-286` (nombre visible canónico: Bachillerato General).
 - Titulación–Ejecutivas conserva los diez perfiles A286 y el contrato aportado, confirmados por el usuario el 05/11/2026.
 - Los otros cuatro programas permiten revisar los campos pero no enviar hasta contar con sus términos específicos. No se presupone que el importe del contrato de Ejecutivas corresponda a otros programas.

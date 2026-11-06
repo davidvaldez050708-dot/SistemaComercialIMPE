@@ -32,6 +32,9 @@ const file={name:'pago.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-
   const url=base+'ya-estas-inscrito/?programa=titulacion-ejecutivas';
   await page.goto(url);
   assert.equal(await page.locator('h1').textContent(),'Formulario de inscripción');
+  assert.equal(await page.locator('.formulario-publico-hero img').count(),2,'mismos dos logotipos que Registro actual');
+  assert.equal(await page.locator('.formulario-publico-hero-logo-hlc,.formulario-publico-hero-acuerdo').count(),0,'sin HLC ni bloque de texto A286');
+  assert.equal((await page.locator('.formulario-publico-hero').innerText()).includes('Acuerdo'),false);
   assert.equal(await page.locator('[name=perfil_evaluacion] option').count(),11);
   assert.equal(await page.locator('[name=apertura]').count(),0);
   assert.equal(await page.locator('[name=comprobante]').count(),1);
