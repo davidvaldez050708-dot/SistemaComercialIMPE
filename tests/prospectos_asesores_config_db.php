@@ -63,6 +63,14 @@ try {
     try {$svc->guardar(3,1,$base);throw new RuntimeException('Se aceptó usuario sin permiso');}
     catch(DomainException $e){$check(str_contains($e->getMessage(),'permiso'),'permiso efectivo obligatorio');}
     $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_config')->fetch_assoc()['n']===1,'ningún asesor adicional configurado');
+    // Reejecutar migración tras revocación: no debe restaurar permiso retirado.
+    $db->query("DELETE FROM rol_permisos WHERE rol_id=1 AND permiso_id=$permiso");
+    if (!$db->multi_query($sql)) throw new RuntimeException('Falló la migración repetida en BD de pruebas.');
+    do {if ($res=$db->store_result()) $res->free();} while ($db->more_results() && $db->next_result());
+    $check((int)$db->query("SELECT COUNT(*) n FROM rol_permisos WHERE rol_id=1 AND permiso_id=$permiso")->fetch_assoc()['n']===0,
+        'migración repetida respeta permisos revocados');
+    $check((int)$db->query("SELECT COUNT(*) n FROM permisos WHERE codigo='prospectos.configurar_asesores'")->fetch_assoc()['n']===1,
+        'migración repetida no duplica permiso');
     echo "OK: $checkCount comprobaciones en BD desechable.\n";
 } finally {
     $db->select_db('information_schema');
