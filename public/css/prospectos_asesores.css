@@ -85,6 +85,8 @@
 .prospectos-central .asesores-form .asesores-check-ui{position:relative;display:inline-grid;place-items:center;flex:0 0 16px;width:16px;height:16px;border:1.5px solid #b2c3dc;border-radius:5px;background:#fff;box-shadow:0 1px 2px rgba(17,44,86,.04);transition:background-color .14s,border-color .14s}
 .prospectos-central .asesores-form input[type="checkbox"]:checked+.asesores-check-ui{border-color:#2555a2;background:#2555a2}
 .prospectos-central .asesores-form input[type="checkbox"]:checked+.asesores-check-ui::after{content:"";position:absolute;width:4px;height:8px;left:5px;top:2px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.prospectos-central .asesores-form input[type="checkbox"]:indeterminate+.asesores-check-ui{background:#e9f0fc;border-color:#3465ad}
+.prospectos-central .asesores-form input[type="checkbox"]:indeterminate+.asesores-check-ui::after{content:"";position:absolute;left:3px;right:3px;top:6px;height:2px;border-radius:2px;background:#2457a2}
 .prospectos-central .asesores-form input[type="checkbox"]:focus-visible+.asesores-check-ui{outline:3px solid #99baee;outline-offset:3px}
 .prospectos-central .asesores-form label:hover>.asesores-check-ui{border-color:#5681c4}
 .prospectos-central .asesores-form .asesores-seleccionar-grupo .asesores-check-ui{flex-basis:13px;width:13px;height:13px;border-radius:4px}
