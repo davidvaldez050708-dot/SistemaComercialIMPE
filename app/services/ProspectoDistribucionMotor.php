@@ -238,6 +238,7 @@ final class ProspectoDistribucionMotor
             'inspeccionados'=>0,'asignados'=>0,'pendientes'=>0,
             'motivos'=>[],'lotes_confirmados'=>0];
         if ($aplicar) $this->lock();
+        $virtual=[]; // Simulación fiel: reservar cupo virtualmente sin escribir BD.
         try {
             $resumen['lotes_confirmados']=(int)$this->consulta(
                 'SELECT COUNT(*) n FROM prospecto_meta_lotes_confirmados'
@@ -267,6 +268,12 @@ final class ProspectoDistribucionMotor
                     if ($codigo===null) $motivo=count($programas)===0?'SIN_PROGRAMA':'PROGRAMA_AMBIGUO';
                     else {
                         $opciones=$this->asesorProgramado($codigo,$dia,$fechaJornada);
+                        if (!$aplicar) foreach ($opciones as &$op) {
+                            $delta=$virtual[(int)$op['usuario_id']]??0;
+                            $op['meta_dia']=(int)$op['meta_dia']+$delta;
+                            $op['total_activos']=(int)$op['total_activos']+$delta;
+                        }
+                        unset($op);
                         $opciones=array_values(array_filter($opciones,
                             static fn($a)=>(int)$a['meta_dia']<
                             ProspectoDistribucionReglas::META_POR_ASESOR_DIA));
@@ -275,6 +282,10 @@ final class ProspectoDistribucionMotor
                     }
                     if ($motivo===null && $elegido) {
                         $resumen['asignados']++;
+                        if (!$aplicar) {
+                            $a=(int)$elegido['usuario_id'];
+                            $virtual[$a]=($virtual[$a]??0)+1;
+                        }
                         if ($aplicar) $this->asignar(
                             $id,$origen,(int)$elegido['usuario_id'],'META',
                             $fechaJornada,null,(string)$row['lote_importacion_ref']
@@ -324,6 +335,23 @@ final class ProspectoDistribucionMotor
             else $resumen['omitidos']++;
         }
         return $resumen;
+    }
+
+    /**
+     * Salvaguarda cuando el disparador inmediato no pudo obtener el bloqueo.
+     * Guarda una tarea pendiente sin impedir el registro original.
+     */
+    public function encolarAliado(int $prospectoId): void
+    {
+        if (!$this->disponible() || $prospectoId<1) return;
+        $row=$this->consulta(
+            "SELECT id FROM prospecto_origenes
+             WHERE prospecto_id=? AND tipo_origen='ALIADO' AND origen_padre_id IS NULL
+             LIMIT 1",[$prospectoId]
+        )->fetch_assoc();
+        if ($row && $this->noAsignado($prospectoId)) {
+            $this->pendiente($prospectoId,(int)$row['id'],'ALIADO','REINTENTO_PENDIENTE');
+        }
     }
 
     /** Se invoca DESPUÉS del COMMIT del formulario original y su incorporación. */
