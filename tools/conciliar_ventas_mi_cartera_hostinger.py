@@ -97,13 +97,9 @@ def parche_sidebar(contenido):
         r"(?m)^\$mostrarProspectos\s*=\s*tienePermiso\(\s*'prospectos\.ver_todos'\s*\);",
         permiso,"control de permiso Prospectos"
     )
-    contenido=reemplazo_unico(
-        contenido,
-        r"(?m)^(\$claseProspectos\s*=\s*\r?\n\s*\$opcionActiva\s*===\s*'prospectos'\s*\?\s*'active'\s*:\s*'';)",
-        lambda m:m.group(1)+salto+"$claseMiCartera ="+salto+
-            "    $opcionActiva === 'mi_cartera' ? 'active' : '';",
-        "clase activa del menú"
-    )
+    # Las personalizaciones de Hostinger pueden usar otra forma de declarar
+    # la clase activa. No tocamos esa definición; la opción nueva calcula
+    # su propia clase en el enlace sin necesitar ningún anclaje adicional.
     anchors=list(re.finditer(
         r"(?m)^([ \t]*)<\?php[ \t]+if[ \t]*\([ \t]*\$mostrarMisLlamadas[ \t]*\)[ \t]*:[ \t]*\?>",
         contenido
@@ -118,7 +114,7 @@ def parche_sidebar(contenido):
             indent+'    <div class="sidebar-section">',
             indent+'        <p class="sidebar-section-title">COMERCIAL</p>',
             indent+'        <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"',
-            indent+'           class="sidebar-link <?= $claseMiCartera ?>">',
+            indent+'           class="sidebar-link <?= ($opcionActiva ?? \'\') === \'mi_cartera\' ? \'active\' : \'\' ?>">',
             indent+'            <i class="bi bi-person-vcard" aria-hidden="true"></i> Mi cartera',
             indent+'        </a>',
             indent+'    </div>',
