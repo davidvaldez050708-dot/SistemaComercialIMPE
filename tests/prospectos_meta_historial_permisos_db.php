@@ -73,7 +73,7 @@ try {
          WHERE p.codigo='prospectos.ver_historial_meta'
          ORDER BY rp.rol_id"
     )->fetch_all(MYSQLI_ASSOC);
-    $test(array_column($rows,'rol_id')===[1,5],
+    $test(array_map('intval',array_column($rows,'rol_id'))===[1,5],
         'se otorga a Administrador y Marketing ya autorizados');
     $new=$db->query(
         "SELECT estado,modulo,nombre FROM permisos
@@ -99,7 +99,7 @@ try {
          FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
          WHERE p.codigo='prospectos.ver_historial_meta'"
     )->fetch_all(MYSQLI_ASSOC);
-    $test(array_column($rows,'rol_id')===[1],
+    $test(array_map('intval',array_column($rows,'rol_id'))===[1],
         'volver a instalar no restablece la revocación de Marketing');
     $test((int)$db->query(
         "SELECT COUNT(*) n FROM permisos
