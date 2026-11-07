@@ -575,6 +575,18 @@ switch ($controller) {
         break;
 
 
+    // Mi cartera nunca reutiliza las rutas administrativas de Prospectos.
+    case 'miCartera':
+
+        require_once __DIR__ .
+            '/app/controllers/MiCarteraController.php';
+
+        $controllerInstance =
+            new MiCarteraController();
+
+        break;
+
+
     case 'prospecto':
 
         require_once __DIR__ .
