@@ -32,6 +32,14 @@ jobs:
           php tests/prospectos_meta_archivo_unit.php
           php tests/prospectos_meta_clasificacion_unit.php
           php tests/prospectos_motores_reglas_unit.php
+  publicacion-protegida:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar paquete SHA y restauración en sitio desechable
+        run: |
+          python3 -m py_compile tools/publicar_prospectos_meta_escalable.py
+          python3 tests/prospectos_meta_escalable_release_test.py
   mysql-escalabilidad:
     runs-on: ubuntu-latest
     services:
