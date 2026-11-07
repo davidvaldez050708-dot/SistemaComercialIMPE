@@ -28,6 +28,15 @@ final class ProspectoCentralIncorporacionService
                         $motor->asignarAliado((int)$resultado['prospecto_id']);
                     }
                 } catch (Throwable $e) {
+                    // El registro original ya quedó confirmado. Si el motor
+                    // está ocupado, encolar para el reintento sin duplicar.
+                    try {
+                        if (isset($motor) && $motor instanceof ProspectoDistribucionMotor) {
+                            $motor->encolarAliado((int)$resultado['prospecto_id']);
+                        }
+                    } catch (Throwable $pendiente) {
+                        error_log('[prospectos_cola_aliado] '.get_class($pendiente));
+                    }
                     error_log('[prospectos_asignacion_aliado_pendiente] '.
                         get_class($e).' codigo='.(int)$e->getCode());
                 }
