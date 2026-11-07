@@ -38,15 +38,24 @@ CREATE TABLE IF NOT EXISTS prospecto_asesores_auditoria (
     CONSTRAINT fk_paa_actor FOREIGN KEY (actor_id) REFERENCES usuarios(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Permiso independiente; su concesión posterior es revocable desde Roles.
--- No reasignar permisos revocados ni alterar catálogo de otros módulos.
+-- Comprobar existencia antes del alta, para no reactivar permisos revocados
+-- si un administrador reejecuta accidentalmente la migración.
+SET @impe_permiso_asesores_primera_alta := (
+    SELECT COUNT(*)=0 FROM permisos
+    WHERE codigo='prospectos.configurar_asesores'
+);
+
+-- Permiso independiente; ninguna asignación automática de otros módulos.
 INSERT IGNORE INTO permisos (modulo,codigo,nombre,descripcion,estado)
 VALUES ('Prospectos','prospectos.configurar_asesores',
     'Configurar asesores comerciales',
     'Administrar un programa, jornada y horarios de asesores de Ventas.',1);
 
--- Solo Administrador obtiene permiso inicial. Coordinador: autorización explícita en Roles.
+-- Solo Administrador recibe el permiso inicialmente. Un reintento de migración
+-- no puede restablecer la concesión si fue revocada expresamente.
+-- Coordinador Comercial: autorización explícita desde Roles y permisos.
 INSERT IGNORE INTO rol_permisos (rol_id,permiso_id)
 SELECT r.id,p.id FROM roles r JOIN permisos p
  ON p.codigo='prospectos.configurar_asesores'
-WHERE r.nombre='Administrador' AND p.estado=1;
+WHERE r.nombre='Administrador' AND p.estado=1
+  AND @impe_permiso_asesores_primera_alta=1;
