@@ -1,6 +1,7 @@
 <?php
 /** Renderizados de Campañas: listar, editar y consultar historial son excluyentes. */
 define('BASE_URL','/crm/');
+require_once __DIR__.'/../app/helpers/ProspectoFechaHoraHelper.php';
 $view=__DIR__.'/../app/views/prospectos/central.php';
 function renderHistoryTest(string $mode,int $pages=3,int $page=2):string
 {
