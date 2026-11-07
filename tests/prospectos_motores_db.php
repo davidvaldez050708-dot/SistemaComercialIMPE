@@ -232,7 +232,7 @@ try {
     $check((int)$db->query(
         "SELECT COUNT(*) n FROM prospecto_distribucion_corridas WHERE tipo_origen='META'"
     )->fetch_assoc()['n']===3,'registro de corridas sin PII');
-    // Stress funcional de paginación: 12 archivos completos en una sola
+    // Stress funcional de paginación: 28 archivos completos en una sola
     // jornada, con pendientes masivos al principio y un Bachillerato elegible
     // al final. La primera página NO puede ocultar indefinidamente el final.
     $insertPersona=$db->prepare(
@@ -248,12 +248,12 @@ try {
         "INSERT INTO prospecto_intereses(origen_id,prospecto_id,programa_codigo)
          VALUES (?,?,?)"
     );
-    for ($n=0;$n<12;$n++) {
+    for ($n=0;$n<28;$n++) {
         $token=str_pad(dechex($n+1),32,'c',STR_PAD_LEFT);
         $motor->confirmarLoteMeta($token,10,12);
         for ($z=0;$z<12;$z++) {
             $id=5000+$n*12+$z;
-            $codigo=$n===11 && $z===11?'BACH':'INGLES';
+            $codigo=$n===27 && $z===11?'BACH':'INGLES';
             $insertPersona->bind_param('i',$id);$insertPersona->execute();
             $insertOrigen->bind_param('iis',$id,$id,$token);$insertOrigen->execute();
             $insertInteres->bind_param('iis',$id,$id,$codigo);$insertInteres->execute();
@@ -272,13 +272,13 @@ try {
         $vistos+=$chunk['inspeccionados'];$asignados+=$chunk['asignados'];
         $cursores[]=$chunk['continuar_desde'];
         $rondas++;
-        $check($rondas<=8,'recorrido termina en rondas acotadas');
+        $check($rondas<=15,'recorrido termina en rondas acotadas');
     } while (!$chunk['terminado']);
-    $check($vistos===144 && $rondas===6,'doce lotes recorridos en seis páginas');
+    $check($vistos===336 && $rondas===14,'veintiocho lotes recorridos en catorce páginas');
     $check(count(array_unique($cursores))===$rondas,'cursor asciende sin repetir páginas');
     $check($asignados===1,'un Bachillerato al final supera los pendientes previos');
     $check((int)$db->query(
-        'SELECT COUNT(*) n FROM prospecto_asignaciones WHERE prospecto_id=5143'
+        'SELECT COUNT(*) n FROM prospecto_asignaciones WHERE prospecto_id=5335'
     )->fetch_assoc()['n']===1,'último prospecto llegó al asesor correcto');
     $repetir=$motor->distribuirMeta('2026-11-07',25,true);
     $check($repetir['inspeccionados']===0 && $repetir['terminado'],
@@ -286,7 +286,7 @@ try {
     $nuevoDia=$motor->distribuirMeta('2026-11-08',25,false);
     $check($nuevoDia['inspeccionados']===25 && !$nuevoDia['terminado'],
         'siguiente jornada vuelve a revisar pendientes, sin perderlos');
-    echo "OK: $checks pruebas SQL en BD temporal; 14 archivos Meta, reparto de 80, colas paginadas, horarios y duplicados.\n";
+    echo "OK: $checks pruebas SQL en BD temporal; 30 archivos Meta, reparto de 80, colas paginadas, horarios y duplicados.\n";
 } finally {
     $db->select_db('information_schema');
     $db->query("DROP DATABASE IF EXISTS `$name`");
