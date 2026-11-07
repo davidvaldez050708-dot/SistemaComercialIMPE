@@ -32,11 +32,19 @@ class ProspectoController
         $mensajeError='';$centralDisponible=false;$indicadores=$this->indicadores();
         $metaPuedeImportar=$seccionProspectos==='meta' && ProspectoMetaImportador::puedeImportar();
         $metaPuedeConfigurar=$seccionProspectos==='meta'&&ProspectoMetaFormularioService::autorizado();
-        // El historial se habilita sólo a usuarios con permiso de importar Meta.
-        // Ni el parámetro GET ni el resto del CRM elevan estos permisos.
-        $metaHistorialVisible=$metaPuedeImportar &&
-            ($_GET['historial_importaciones']??'')==='1' &&
-            ($_GET['configurar_formularios']??'')!=='1';
+        // Consultar el historial es una operación de SOLO LECTURA:
+        // no necesita prospectos.importar_meta, que el Administrador
+        // tiene restringido por la política de separación operativa.
+        $metaPuedeConsultarHistorial=$seccionProspectos==='meta'
+            && ProspectoMetaImportacionesHistorial::puedeConsultar();
+        $historialSolicitado=($_GET['historial_importaciones']??'')==='1'
+            && ($_GET['configurar_formularios']??'')!=='1';
+        if ($seccionProspectos==='meta' && $historialSolicitado
+            && !$metaPuedeConsultarHistorial) {
+            http_response_code(403);
+            exit('Sin permiso para consultar el historial de importaciones.');
+        }
+        $metaHistorialVisible=$metaPuedeConsultarHistorial && $historialSolicitado;
         $metaHistorialDisponible=false;
         $metaHistorialListado=['registros'=>[],'total'=>0,'pagina'=>1,
             'paginas'=>1,'limite'=>15,'indicadores'=>[
