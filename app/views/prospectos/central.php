@@ -54,27 +54,36 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 // no una segunda tarjeta desplegable permanentemente visible.
 $metaEnConfiguracion=$seccionProspectos==='meta' && !empty($metaPuedeConfigurar)
     && ($_GET['configurar_formularios']??'')==='1';
+$metaEnHistorial=$seccionProspectos==='meta' && !empty($metaHistorialVisible);
 ?>
-<?php if ($seccionProspectos==='meta' && !empty($metaResultado)): ?>
+<?php if ($seccionProspectos==='meta' && !$metaEnHistorial && !$metaEnConfiguracion && !empty($metaResultado)): ?>
 <div class="meta-import-result" role="status"><strong>Última importación terminada</strong>
 <?= (int)$metaResultado['nuevos'] ?> prospectos nuevos · <?= (int)$metaResultado['repetidos'] ?> ya existentes · <?= (int)$metaResultado['rechazados'] ?> filas no válidas · <?= (int)$metaResultado['repetidos_archivo'] ?> repetidos dentro del archivo.
 </div><?php endif; ?>
 <?php if ($seccionProspectos==='meta' && !empty($metaAviso)): ?><p class="central-alert" role="alert"><?= $esc($metaAviso) ?></p><?php endif; ?>
 <section class="central-panel">
 <div class="central-section-head <?= $seccionProspectos==='meta'?'meta-import-toolbar':'' ?>">
-<h3><?= $metaEnConfiguracion?'Formularios y programas educativos':($seccionProspectos==='meta'?'Prospectos de campañas':'Todos los prospectos') ?></h3>
-<?php if ($seccionProspectos==='meta'&&!empty($metaPuedeConfigurar)): ?>
+<h3><?= $metaEnConfiguracion?'Formularios y programas educativos':($metaEnHistorial?'Historial de importaciones':($seccionProspectos==='meta'?'Prospectos de campañas':'Todos los prospectos')) ?></h3>
+<div class="meta-campaign-actions">
+<?php if ($metaEnHistorial): ?>
+<a class="central-link meta-config-action" href="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta') ?>"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a campañas</a>
+<?php endif; ?>
+<?php if ($seccionProspectos==='meta'&&!$metaEnHistorial&&!empty($metaPuedeConfigurar)): ?>
 <a class="central-link meta-config-action" href="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta'.($metaEnConfiguracion?'':'&configurar_formularios=1#campanias-formularios')) ?>">
 <i class="bi <?= $metaEnConfiguracion?'bi-arrow-left':'bi-sliders' ?>" aria-hidden="true"></i>
 <?= $metaEnConfiguracion?'Volver a campañas':'Configurar formularios' ?>
 </a>
 <?php endif; ?>
-<?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar) && !$metaEnConfiguracion): ?>
+<?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar) && !$metaEnHistorial && !$metaEnConfiguracion): ?>
+<a class="central-link meta-history-action" href="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta&historial_importaciones=1') ?>"><i class="bi bi-clock-history" aria-hidden="true"></i> Historial</a>
 <button type="button" class="meta-import-trigger" data-meta-abrir><i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i> Importar archivo</button>
 <?php endif; ?>
 </div>
+</div>
 <?php if ($metaEnConfiguracion): ?>
 <?php require __DIR__.'/partials/formularios_programas.php'; ?>
+<?php elseif ($metaEnHistorial): ?>
+<?php require __DIR__.'/partials/historial_importaciones_meta.php'; ?>
 <?php else: ?>
 <form method="get" class="central-filters" data-central-filtros>
 <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><input type="hidden" name="seccion" value="<?= $esc($seccionProspectos) ?>">
