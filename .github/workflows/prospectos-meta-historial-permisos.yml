@@ -1,0 +1,70 @@
+name: Prospectos - permiso independiente para historial Meta
+on:
+  push:
+    branches:
+      - fix/prospectos-meta-historial-permisos-independientes-20261107
+  pull_request:
+    paths:
+      - 'app/services/ProspectoMetaImportacionesHistorial.php'
+      - 'app/controllers/ProspectoController.php'
+      - 'app/views/prospectos/central.php'
+      - 'database/migrations/2026_11_07_prospectos_meta_historial_permiso_consulta.sql'
+      - 'tests/prospectos_meta_historial_*'
+      - 'tools/publicar_prospectos_meta_historial_permisos.py'
+      - 'tools/prospectos_meta_historial_permisos_release.json'
+      - '.github/workflows/prospectos-meta-historial-permisos.yml'
+permissions:
+  contents: read
+jobs:
+  acceso-y-vistas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli,zip,xml
+      - name: Sintaxis y rol sin privilegio operativo
+        run: |
+          php -l app/services/ProspectoMetaImportacionesHistorial.php
+          php -l app/controllers/ProspectoController.php
+          php -l app/views/prospectos/central.php
+          php tests/prospectos_meta_historial_acceso_permisos_unit.php
+          php tests/prospectos_meta_historial_ui_test.php
+          php tests/prospectos_meta_permisos_unit.php
+          php tests/prospectos_campanias_formularios_unificado_ui_test.php
+  sql-permisos:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: Permiso granular, concesión única, revocación persistente
+        env:
+          IMPE_HIST_PERM_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/prospectos_meta_historial_permisos_db.php
+  restauracion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check, backup y restauración en sitio ficticio
+        run: |
+          python3 -m py_compile tools/publicar_prospectos_meta_historial_permisos.py
+          python3 tests/prospectos_meta_historial_permisos_release_test.py
