@@ -1,0 +1,24 @@
+name: Ventas - sidebar Comercial único Mi cartera
+on:
+  push:
+    branches:
+      - fix/mi-cartera-sidebar-comercial-unico-20261106
+  pull_request:
+    paths:
+      - 'tools/ajustar_mi_cartera_sidebar_comercial.py'
+      - 'tests/mi_cartera_sidebar_comercial_test.py'
+      - '.github/workflows/ventas-mi-cartera-sidebar-comercial.yml'
+permissions:
+  contents: read
+jobs:
+  menu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Sintaxis y regresión de menú duplicado
+        run: |
+          python3 -m py_compile tools/ajustar_mi_cartera_sidebar_comercial.py
+          python3 tests/mi_cartera_sidebar_comercial_test.py
