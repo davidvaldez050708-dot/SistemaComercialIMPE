@@ -1,0 +1,37 @@
+name: Prospectos - interfaz compacta de asesores 1A.3
+on:
+  push:
+    branches:
+      - fix/prospectos-asesores-ui-compacta-20261106
+  pull_request:
+    paths:
+      - 'app/views/prospectos/partials/configuracion_asesores.php'
+      - 'public/css/prospectos_asesores.css'
+      - 'tests/prospectos_asesores_ui_compacta_test.py'
+      - 'tools/prospectos_asesores_ui_compacta_release.json'
+      - 'tools/publicar_prospectos_asesores_ui_compacta.py'
+      - 'tests/prospectos_asesores_ui_compacta_release_test.py'
+      - '.github/workflows/prospectos-asesores-ui-compacta.yml'
+permissions:
+  contents: read
+jobs:
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Sintaxis y compatibilidad de formulario
+        run: |
+          php -l app/views/prospectos/partials/configuracion_asesores.php
+          php -l app/views/prospectos/central.php
+          node --check public/javascript/prospectos_asesores.js
+          python3 tests/prospectos_asesores_ui_compacta_test.py
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: SHA, compatibilidad, copia, publish y restore
+        run: python3 tests/prospectos_asesores_ui_compacta_release_test.py
