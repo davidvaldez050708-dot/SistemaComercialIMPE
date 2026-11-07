@@ -3,6 +3,7 @@ require_once __DIR__ . '/../models/ProspectoModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/ProspectoCentralRepository.php';
 require_once __DIR__ . '/../services/ProspectoMetaImportador.php';
+require_once __DIR__ . '/../services/ProspectoAsesorConfiguracionService.php';
 
 class ProspectoController
 {
@@ -16,6 +17,16 @@ class ProspectoController
         }
         if (!is_string($seccionProspectos)||!in_array($seccionProspectos,['todos','aliados','meta','asignaciones'],true)) {http_response_code(400);exit('Sección de prospectos no válida.');}
         if ($seccionProspectos==='aliados') {$this->aliados();return;}
+        $puedeConfigurarAsesores=ProspectoAsesorConfiguracionService::autorizado();
+        $subAsignaciones=$_GET['sub']??($puedeConfigurarAsesores?'asesores':'historial');
+        if (!is_string($subAsignaciones)||!in_array($subAsignaciones,['asesores','distribucion','historial'],true)
+            ||($seccionProspectos==='asignaciones'&&$subAsignaciones==='asesores'&&!$puedeConfigurarAsesores)) {
+            http_response_code(403);exit('Apartado de Asignaciones no autorizado.');
+        }
+        $mensajeConfiguracion=$_SESSION['prospectos_asesores_mensaje']??null;
+        unset($_SESSION['prospectos_asesores_mensaje']);
+        $configuracionDisponible=false;$asesoresConfigurados=[];$programasAsesores=[];
+        $csrfAsesores=$puedeConfigurarAsesores?ProspectoAsesorConfiguracionService::csrf():'';
         $tituloPagina='Prospectos';$subtituloPagina='Almacén central y procedencia de los registros.';$opcionActiva='prospectos';
         $mensajeError='';$centralDisponible=false;$indicadores=$this->indicadores();
         $metaPuedeImportar=$seccionProspectos==='meta' && ProspectoMetaImportador::puedeImportar();
@@ -34,7 +45,16 @@ class ProspectoController
             $centralDisponible=$repo->estructura()['disponible'];
             $resumen=(new ProspectoModel($db))->resumen();$indicadores=$this->indicadores($resumen,$repo);
             if ($centralDisponible) {
-                if ($seccionProspectos==='asignaciones') $listado=$repo->asignaciones((int)($_GET['pagina']??1));
+                if ($seccionProspectos==='asignaciones') {
+                    if ($subAsignaciones==='historial') {
+                        $listado=$repo->asignaciones((int)($_GET['pagina']??1));
+                    } elseif ($subAsignaciones==='asesores') {
+                        $svc=new ProspectoAsesorConfiguracionService($db);
+                        $configuracionDisponible=$svc->disponible();
+                        $programasAsesores=$svc->programas();
+                        $asesoresConfigurados=$svc->asesores($configuracionDisponible);
+                    }
+                }
                 else {$f=$_GET;if ($seccionProspectos==='meta') $f['origen']='META_ADS';$listado=$repo->listar($f);}
                 if ($metaPuedeImportar||$metaPuedeConfigurar) $metaProgramas=ProspectoMetaImportador::programas($db);
                 if ($metaPuedeImportar) $metaResumen=ProspectoMetaImportador::resumenCargar(null,$db);
@@ -151,6 +171,40 @@ class ProspectoController
         }
         header('Location: '.BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta',true,303);
         exit;
+    }
+
+    /** POST con CSRF y permisos; no ejecuta asignación ni alteración de telefonía. */
+    public function guardarConfiguracionAsesor()
+    {
+        $this->validarAcceso();
+        if ($_SERVER['REQUEST_METHOD']!=='POST') {
+            http_response_code(405);exit('Método no permitido.');
+        }
+        if (!ProspectoAsesorConfiguracionService::autorizado()) {
+            http_response_code(403);exit('No tienes permiso para configurar asesores.');
+        }
+        $id=filter_var($_POST['usuario_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        try {
+            ProspectoAsesorConfiguracionService::verificarCsrf($_POST['csrf_asesores']??null);
+            if ($id===false||$id===null) throw new DomainException('Selecciona un asesor válido.');
+            $db=(new Database())->connect(false);
+            (new ProspectoAsesorConfiguracionService($db))->guardar(
+                (int)$id,(int)$_SESSION['usuario_id'],$_POST
+            );
+            $_SESSION['prospectos_asesores_mensaje']=[
+                'tipo'=>'exito','texto'=>'Configuración del asesor guardada correctamente. Las asignaciones actuales se conservaron.'
+            ];
+        } catch (DomainException $e) {
+            $_SESSION['prospectos_asesores_mensaje']=['tipo'=>'error','texto'=>$e->getMessage()];
+        } catch (Throwable $e) {
+            error_log('[prospectos_asesores_guardar] '.get_class($e).' codigo='.(int)$e->getCode());
+            $_SESSION['prospectos_asesores_mensaje']=[
+                'tipo'=>'error','texto'=>'No fue posible guardar la configuración. No se modificaron los prospectos.'
+            ];
+        }
+        $url=BASE_URL.'index.php?controller=prospecto&action=index&seccion=asignaciones&sub=asesores';
+        if ($id!==false&&$id!==null) $url.='&asesor_id='.(int)$id;
+        header('Location: '.$url,true,303);exit;
     }
 
     public function detalle()
