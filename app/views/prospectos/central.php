@@ -74,8 +74,10 @@ $metaEnHistorial=$seccionProspectos==='meta' && !empty($metaHistorialVisible);
 <?= $metaEnConfiguracion?'Volver a campañas':'Configurar formularios' ?>
 </a>
 <?php endif; ?>
-<?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar) && !$metaEnHistorial && !$metaEnConfiguracion): ?>
+<?php if ($seccionProspectos==='meta' && !$metaEnHistorial && !$metaEnConfiguracion && !empty($metaPuedeConsultarHistorial)): ?>
 <a class="central-link meta-history-action" href="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta&historial_importaciones=1') ?>"><i class="bi bi-clock-history" aria-hidden="true"></i> Historial</a>
+<?php endif; ?>
+<?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar) && !$metaEnHistorial && !$metaEnConfiguracion): ?>
 <button type="button" class="meta-import-trigger" data-meta-abrir><i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i> Importar archivo</button>
 <?php endif; ?>
 </div>
