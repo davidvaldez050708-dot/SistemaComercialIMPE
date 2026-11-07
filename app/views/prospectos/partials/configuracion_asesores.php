@@ -82,7 +82,7 @@ $nombresProgramas=array_column($programasAsesores,'nombre','codigo');
                         <input type="hidden" name="version" value="<?= (int)$asesor['version'] ?>">
                         <fieldset class="asesores-programas">
                             <legend>Programas que atiende</legend>
-                            <p>Puedes seleccionar un área completa, varios programas o combinar áreas. Los programas futuros aparecen desde el catálogo vigente.</p>
+                            <p>Selecciona modalidades, áreas completas o combínalas. Los nuevos programas se mostrarán aquí.</p>
                             <?php if (!$gruposProgramas): ?>
                                 <p class="central-alert" role="alert">No hay programas educativos activos para configurar.</p>
                             <?php else: ?>
@@ -97,7 +97,8 @@ $nombresProgramas=array_column($programasAsesores,'nombre','codigo');
                                         <?php if ($totalGrupo>1): ?>
                                         <label class="asesores-seleccionar-grupo">
                                             <input type="checkbox" data-asesores-todos <?= $seleccionGrupo===$totalGrupo?'checked':'' ?>>
-                                            Todos
+                                            <span class="asesores-check-ui" aria-hidden="true"></span>
+                                            <span>Todos</span>
                                         </label>
                                         <?php endif; ?>
                                     </div>
@@ -105,7 +106,8 @@ $nombresProgramas=array_column($programasAsesores,'nombre','codigo');
                                     <?php foreach ($programasGrupo as $p): ?>
                                         <label class="asesores-programa-opcion">
                                             <input type="checkbox" name="programas[]" value="<?= $esc($p['codigo']) ?>" data-asesores-programa <?= in_array((string)$p['codigo'],$seleccionados,true)?'checked':'' ?>>
-                                            <span><?= $esc($p['nombre']) ?></span>
+                                            <span class="asesores-check-ui" aria-hidden="true"></span>
+                                            <span class="asesores-programa-nombre"><?= $esc($p['nombre']) ?></span>
                                         </label>
                                     <?php endforeach; ?>
                                     </div>
@@ -115,16 +117,20 @@ $nombresProgramas=array_column($programasAsesores,'nombre','codigo');
                             <?php endif; ?>
                         </fieldset>
                         <div class="asesores-form-grid">
-                            <div><label for="asesor-jornada-<?= $id ?>">Tipo de jornada</label>
+                            <div class="asesores-jornada"><label for="asesor-jornada-<?= $id ?>">Tipo de jornada</label>
                                 <select id="asesor-jornada-<?= $id ?>" name="jornada" required>
                                     <option value="MEDIO_TIEMPO" <?= $asesor['jornada']==='MEDIO_TIEMPO'?'selected':'' ?>>Medio tiempo</option>
                                     <option value="TIEMPO_COMPLETO" <?= $asesor['jornada']==='TIEMPO_COMPLETO'?'selected':'' ?>>Tiempo completo</option>
                                 </select>
                             </div>
-                            <label class="asesores-toggle">
-                                <input type="checkbox" name="activo" value="1" <?= $activo?'checked':'' ?>>
-                                <span>Disponible para futuras asignaciones</span>
-                            </label>
+                            <div class="asesores-disponibilidad">
+                                <span class="asesores-field-title">Estado del asesor</span>
+                                <label class="asesores-toggle">
+                                    <input type="checkbox" name="activo" value="1" <?= $activo?'checked':'' ?>>
+                                    <span class="asesores-switch" aria-hidden="true"></span>
+                                    <span>Disponible para futuras asignaciones</span>
+                                </label>
+                            </div>
                         </div>
                         <fieldset class="asesores-horarios">
                             <legend>Días y horarios laborales</legend>
@@ -137,6 +143,7 @@ $nombresProgramas=array_column($programasAsesores,'nombre','codigo');
                                 <div class="asesores-dia" data-asesores-dia>
                                     <label class="asesores-dia-nombre">
                                         <input type="checkbox" name="dias[<?= $dia ?>][activo]" value="1" <?= $marcado?'checked':'' ?> data-asesores-dia-check>
+                                        <span class="asesores-check-ui" aria-hidden="true"></span>
                                         <span><?= $esc($nombreDia) ?></span>
                                     </label>
                                     <label class="asesores-hora"><span>Entrada</span>
