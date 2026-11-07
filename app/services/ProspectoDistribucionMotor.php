@@ -11,6 +11,7 @@ final class ProspectoDistribucionMotor
     private mysqli $db;
     private const LOCK_NAME='impe_prospectos_distribucion_v1';
     private const REQUIRED=[
+        'prospecto_distribucion_control',
         'prospectos_comerciales','prospecto_origenes','prospecto_intereses',
         'prospecto_asignaciones','prospecto_asesores_config',
         'prospecto_asesores_programas','prospecto_asesores_horarios',
@@ -55,6 +56,15 @@ final class ProspectoDistribucionMotor
         $id=(int)$this->db->insert_id;
         $s->close();
         return $id;
+    }
+
+    public function habilitado(string $tipo): bool
+    {
+        $this->exigirEsquema();
+        if (!in_array($tipo,['META','ALIADO'],true)) throw new DomainException('Motor no válido.');
+        $campo=$tipo==='META'?'meta_habilitado':'aliados_habilitado';
+        $fila=$this->consulta('SELECT '.$campo.' activo FROM prospecto_distribucion_control WHERE id=1')->fetch_assoc();
+        return (int)($fila['activo']??0)===1;
     }
 
     private function exigirEsquema(): void
@@ -229,6 +239,9 @@ final class ProspectoDistribucionMotor
     public function distribuirMeta(string $fechaJornada,int $limite=500,bool $aplicar=false): array
     {
         $this->exigirEsquema();
+        if ($aplicar && !$this->habilitado('META')) {
+            throw new DomainException('Motor nocturno Meta desactivado; sin asignaciones.');
+        }
         if (!preg_match('/^20\d{2}-\d{2}-\d{2}$/D',$fechaJornada)||
             !checkdate((int)substr($fechaJornada,5,2),(int)substr($fechaJornada,8,2),(int)substr($fechaJornada,0,4)) ||
             $limite<1||$limite>2000) throw new DomainException('Jornada o límite no válido.');
@@ -359,6 +372,10 @@ final class ProspectoDistribucionMotor
     {
         $this->exigirEsquema();
         if ($prospectoId<1) throw new DomainException('Prospecto inválido.');
+        if ($aplicar && !$this->habilitado('ALIADO')) {
+            $this->encolarAliado($prospectoId);
+            return ['estado'=>'DESACTIVADO'];
+        }
         $ahora=$ahora??new DateTimeImmutable('now',new DateTimeZone('UTC'));
         if ($aplicar) $this->lock();
         try {
