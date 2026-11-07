@@ -17,7 +17,21 @@ final class ProspectoCentralIncorporacionService
             $db=(new Database())->connect(false);
             $svc=new self($db);
             if (!$svc->repo->estructura()['disponible']) return;
-            $svc->incorporarRegistro($id);
+            $resultado=$svc->incorporarRegistro($id);
+            // Se asigna después de confirmar tanto formulario como almacén.
+            // Un fallo de asignación nunca revierte el registro original.
+            if ((int)($resultado['prospecto_id']??0)>0) {
+                try {
+                    require_once __DIR__.'/ProspectoDistribucionMotor.php';
+                    $motor=new ProspectoDistribucionMotor($db);
+                    if ($motor->disponible()) {
+                        $motor->asignarAliado((int)$resultado['prospecto_id']);
+                    }
+                } catch (Throwable $e) {
+                    error_log('[prospectos_asignacion_aliado_pendiente] '.
+                        get_class($e).' codigo='.(int)$e->getCode());
+                }
+            }
         } catch (Throwable $e) {
             // Sin SQL, nombres, teléfonos, correo, tokens ni mensajes del proveedor.
             error_log('[prospectos_incorporacion_pendiente] '.get_class($e).' codigo='.(int)$e->getCode());
