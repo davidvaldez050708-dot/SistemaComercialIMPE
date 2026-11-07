@@ -1,0 +1,73 @@
+name: Prospectos - motores Meta + Aliados
+on:
+  push:
+    branches:
+      - feat/prospectos-motores-meta-aliados-20261106
+  pull_request:
+    paths:
+      - 'app/services/ProspectoDistribucion*.php'
+      - 'app/services/ProspectoMetaImportador.php'
+      - 'app/services/ProspectoCentralIncorporacionService.php'
+      - 'database/migrations/2026_11_06_prospectos_motores_distribucion.sql'
+      - 'tools/distribuir_prospectos.php'
+      - 'tests/prospectos_motores_*'
+      - '.github/workflows/prospectos-motores-distribucion.yml'
+permissions:
+  contents: read
+jobs:
+  syntax-and-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli,zip,xml
+      - name: PHP lint y reglas puras
+        run: |
+          php -l app/services/ProspectoDistribucionReglas.php
+          php -l app/services/ProspectoDistribucionMotor.php
+          php -l app/services/ProspectoMetaImportador.php
+          php -l app/services/ProspectoCentralIncorporacionService.php
+          php -l tools/distribuir_prospectos.php
+          php -l app/services/ProspectoDistribucionCli.php
+          php -l tests/prospectos_motores_reglas_unit.php
+          php -l tests/prospectos_motores_db.php
+          php tests/prospectos_motores_reglas_unit.php
+          php tests/prospectos_meta_archivo_unit.php
+          php tests/prospectos_meta_clasificacion_unit.php
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publicador incremental seguro
+        run: |
+          python3 -m py_compile tools/publicar_prospectos_motores.py
+          python3 tests/prospectos_motores_release_test.py
+  database:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: Motor sobre BD desechable con 2 importaciones y Aliados
+        env:
+          IMPE_MOTORES_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/prospectos_motores_db.php

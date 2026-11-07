@@ -2,6 +2,7 @@
 require_once __DIR__.'/ProspectoMetaArchivo.php';
 require_once __DIR__.'/ProspectoCentralRepository.php';
 require_once __DIR__.'/ProspectoMetaFormularioService.php';
+require_once __DIR__.'/ProspectoDistribucionMotor.php';
 
 /**
  * Carga manual de leads Meta: validación, vista previa y lotes transaccionales.
@@ -189,7 +190,7 @@ final class ProspectoMetaImportador
             $meta['programas']=ProspectoMetaClasificacion::resolver($data,$mapa,$formularios,$excepciones,self::programas($db));
         }
         $offset=(int)$meta['avance'];$total=count($data['filas']);
-        if ($offset>=$total) return self::finalizar($data);
+        if ($offset>=$total) return self::finalizar($data,$db);
         $repo=new ProspectoCentralRepository($db);
         if (!$repo->estructura()['disponible']) throw new DomainException('El almacén central no está disponible.');
         $estados=[];
@@ -239,7 +240,7 @@ final class ProspectoMetaImportador
         $meta['avance']+=count($batch);
         $meta['nuevos']+=$guardados;
         $meta['repetidos']+=$duplicados;
-        if ($meta['avance']>=$total) return self::finalizar($data);
+        if ($meta['avance']>=$total) return self::finalizar($data,$db);
         return [
             'ok'=>true,'terminado'=>false,'avance'=>$meta['avance'],'total'=>$total,
             'nuevos'=>$meta['nuevos'],'repetidos'=>$meta['repetidos'],
@@ -247,9 +248,15 @@ final class ProspectoMetaImportador
         ];
     }
 
-    private static function finalizar(array $data): array
+    private static function finalizar(array $data,mysqli $db): array
     {
         $meta=$_SESSION[self::SESSION];
+        // Sólo un archivo CONFIRMADO íntegramente entra a la cola de reparto.
+        // Un CSV/XLSX Bachillerato y otro Titulación generan dos lotes
+        // independientes; no se reparte un lote parcialmente importado.
+        (new ProspectoDistribucionMotor($db))->confirmarLoteMeta(
+            (string)$meta['token'],(int)$meta['usuario_id'],(int)$meta['nuevos']
+        );
         $out=[
             'ok'=>true,'terminado'=>true,'avance'=>$meta['avance'],
             'total'=>$data['validas'],'nuevos'=>$meta['nuevos'],'repetidos'=>$meta['repetidos'],
