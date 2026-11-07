@@ -12,7 +12,7 @@ tests={
   'sigue cargando fotografía de Usuarios': 'renderAvatarUsuario(' in view and "'foto_perfil'" in view,
   'sigue permitiendo múltiples programas': 'name="programas[]"' in view and 'data-asesores-programa' in view,
   'selección completa por grupo intacta': 'data-asesores-todos' in view and 'refrescarGrupo' in js,
-  'controles visuales en programas': bool(re.search(r'name="programas\\[\\]".*?<span class="asesores-check-ui"',view,re.S)),
+  'controles visuales en programas': bool(re.search(r'name="programas\[\]".*?<span class="asesores-check-ui"',view,re.S)),
   'controles visuales en grupos': bool(re.search(r'data-asesores-todos.*?<span class="asesores-check-ui"',view,re.S)),
   'controles visuales en días': bool(re.search(r'data-asesores-dia-check.*?<span class="asesores-check-ui"',view,re.S)),
   'campo POST de disponibilidad intacto': 'name="activo" value="1"' in view and 'input[name="activo"]' in js,
