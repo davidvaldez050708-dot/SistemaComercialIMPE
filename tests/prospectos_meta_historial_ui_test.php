@@ -65,7 +65,8 @@ $ok(strpos($history,'id="campanias-formularios"')===false,'configuración no dup
 $ok(strpos($history,'bachillerato_01.csv')!==false,'archivo conservado');
 $ok(strpos($history,'Bachillerato General')!==false,'programa reconocido');
 $ok(strpos($history,'Tania Ejemplo')!==false,'responsable identificado');
-$ok(strpos($history,'>10</strong>')!==false,'contador de nuevos mostrado');
+$ok(strpos($history,'class="meta-history-number meta-history-new">10</td>')!==false,
+    'contador de nuevos mostrado en la tabla');
 $ok(strpos($history,'>5 en CRM')!==false||strpos($history,'5 en CRM')!==false,
     'repetidos distinguen CRM y repetidos del archivo');
 $ok(strpos($history,'aria-current="page" aria-label="Página 2"')!==false,
