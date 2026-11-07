@@ -19,7 +19,12 @@ $mostrarAliados = tienePermiso('aliados.ver');
 $mostrarWhatsapp = tienePermiso('whatsapp.ver');
 $mostrarConvocatorias = tienePermiso('convocatorias.ver');
 $mostrarConvenios = puedeConsultarDirectorioConvenios();
-$mostrarProspectos = tienePermiso('prospectos.ver_todos');
+// El rol Asesor de Ventas no consulta el almacén global, incluso si por error
+// se le concediera ese permiso. Mi cartera tiene su autorización independiente.
+$mostrarProspectos = tienePermiso('prospectos.ver_todos') &&
+    (int)($_SESSION['rol_id']??0)!==3;
+$mostrarMiCartera = (int)($_SESSION['rol_id']??0)===3 &&
+    tienePermiso('prospectos.mi_cartera');
 $mostrarReporteTerritorial =
     tienePermiso('reportes.territorial') &&
     $mostrarDataTerritorial;
@@ -86,6 +91,8 @@ $claseCorreosMarketing =
     $opcionActiva === 'correos_marketing' ? 'active' : '';
 $claseProspectos =
     $opcionActiva === 'prospectos' ? 'active' : '';
+$claseMiCartera =
+    $opcionActiva === 'mi_cartera' ? 'active' : '';
 $claseFormularios =
     $opcionActiva === 'formularios' ? 'active' : '';
 
@@ -184,6 +191,16 @@ $claseFormularios =
                 <?php endif; ?>
             </div>
 
+        <?php endif; ?>
+
+        <?php if ($mostrarMiCartera): ?>
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">COMERCIAL</p>
+                <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
+                   class="sidebar-link <?= $claseMiCartera ?>">
+                    <i class="bi bi-person-vcard" aria-hidden="true"></i> Mi cartera
+                </a>
+            </div>
         <?php endif; ?>
 
         <?php if ($mostrarMisLlamadas): ?>
@@ -518,6 +535,16 @@ $claseFormularios =
 
             <?php endif; ?>
 
+
+            <?php if ($mostrarMiCartera): ?>
+                <div class="sidebar-section">
+                    <p class="sidebar-section-title">COMERCIAL</p>
+                    <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
+                       class="sidebar-link <?= $claseMiCartera ?>">
+                        <i class="bi bi-person-vcard" aria-hidden="true"></i> Mi cartera
+                    </a>
+                </div>
+            <?php endif; ?>
 
             <?php if ($mostrarMisLlamadas): ?>
                 <div class="sidebar-section">

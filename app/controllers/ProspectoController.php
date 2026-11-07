@@ -362,7 +362,10 @@ class ProspectoController
             header('Location: ' . BASE_URL . 'index.php?controller=login&action=mostrarLogin');
             exit;
         }
-        if (!tienePermiso('prospectos.ver_todos')) {
+        // Los Asesores de Ventas únicamente consultan sus asignaciones por
+        // Mi cartera. Nunca habilitar el almacén global por permisos heredados.
+        if ((int)($_SESSION['rol_id']??0)===3 ||
+            !tienePermiso('prospectos.ver_todos')) {
             http_response_code(403);
             require __DIR__.'/../views/prospectos/acceso_denegado.php';
             exit;

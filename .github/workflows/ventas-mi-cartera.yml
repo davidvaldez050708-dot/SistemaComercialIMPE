@@ -1,0 +1,83 @@
+name: Ventas - Mi cartera solo prospectos propios
+on:
+  push:
+    branches:
+      - feat/ventas-mi-cartera-propia-20261106
+  pull_request:
+    paths:
+      - 'app/controllers/MiCarteraController.php'
+      - 'app/services/MiCarteraRepository.php'
+      - 'app/views/mi_cartera/**'
+      - 'public/css/mi_cartera.css'
+      - 'app/controllers/ProspectoController.php'
+      - 'app/views/layout/sidebar.php'
+      - 'index.php'
+      - 'database/migrations/2026_11_06_ventas_mi_cartera_permiso.sql'
+      - 'tests/mi_cartera_*'
+      - '.github/workflows/ventas-mi-cartera.yml'
+permissions:
+  contents: read
+jobs:
+  php-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+      - name: PHP lint y verificación de alcance
+        run: |
+          php -l index.php
+          php -l app/views/layout/sidebar.php
+          php -l app/controllers/ProspectoController.php
+          php -l app/controllers/MiCarteraController.php
+          php -l app/services/MiCarteraRepository.php
+          php -l app/views/mi_cartera/index.php
+          php -l app/views/mi_cartera/detalle.php
+          php -l tests/mi_cartera_mysql_test.php
+          python3 tests/mi_cartera_contract_test.py
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar publicación con preflight, backup, directorios y restore
+        run: python3 tests/mi_cartera_release_test.py
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Probar conciliación sobre Hostinger ficticio sin sobrescribir personalizaciones
+        run: |
+          python3 -m py_compile tools/conciliar_ventas_mi_cartera_hostinger.py
+          python3 tests/mi_cartera_conciliacion_hostinger_test.py
+  database:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Cruce de asesores y fichas denegadas en base desechable
+        env:
+          IMPE_MI_CARTERA_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/mi_cartera_mysql_test.php
