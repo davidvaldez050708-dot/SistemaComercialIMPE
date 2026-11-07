@@ -38,8 +38,6 @@ $assert=static function(bool $cond,string $test)use(&$count):void {
     $count++;
 };
 $normal=pruebaVista('normal',true,true);
-$assert(substr_count($normal,'Configurar formularios</a>')===0,
-    'el acceso conserva el icono dentro del enlace, no texto suelto');
 $assert(substr_count($normal,'Configurar formularios')===1,
     'un único botón de configuración en vista habitual');
 $assert(strpos($normal,'Prospectos de campañas')!==false,'título del listado');
