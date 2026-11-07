@@ -62,6 +62,11 @@ try {
     $migration=file_get_contents(__DIR__.'/../database/migrations/2026_11_06_prospectos_motores_distribucion.sql');
     $db->multi_query($migration);
     do {$r=$db->store_result();if($r)$r->free();} while ($db->more_results() && $db->next_result());
+    $cursorMigration=file_get_contents(
+        __DIR__.'/../database/migrations/2026_11_07_prospectos_meta_cursor_escalable.sql'
+    );
+    $db->multi_query($cursorMigration);
+    do {$r=$db->store_result();if($r)$r->free();} while ($db->more_results() && $db->next_result());
 
     $db->query("INSERT INTO roles VALUES (3,'Asesor de Ventas',1)");
     $db->query("INSERT INTO usuarios VALUES (10,3,1),(20,3,1),(30,3,1),(40,3,1)");
@@ -227,7 +232,66 @@ try {
     $check((int)$db->query(
         "SELECT COUNT(*) n FROM prospecto_distribucion_corridas WHERE tipo_origen='META'"
     )->fetch_assoc()['n']===3,'registro de corridas sin PII');
-    echo "OK: $checks pruebas SQL en BD temporal; dos archivos Meta, cuota, horario, pendientes, reintento y duplicados.\n";
+    // El asesor de INGLÉS solo se activó para la prueba previa de reintento;
+    // en esta prueba de escala debe permanecer inactivo, de modo que
+    // los registros sin asesor compatible ocupen las primeras páginas.
+    $db->query("UPDATE prospecto_asesores_config SET activo=0 WHERE usuario_id=40");
+
+    // Stress funcional de paginación: 28 archivos completos en una sola
+    // jornada, con pendientes masivos al principio y un Bachillerato elegible
+    // al final. La primera página NO puede ocultar indefinidamente el final.
+    $insertPersona=$db->prepare(
+        "INSERT INTO prospectos_comerciales(id,pais_nombre,estado_provincia)
+         VALUES (?,'México','Puebla')"
+    );
+    $insertOrigen=$db->prepare(
+        "INSERT INTO prospecto_origenes(id,prospecto_id,tipo_origen,origen_padre_id,
+         lote_importacion_ref,incorporado_at)
+         VALUES (?,?,'META_ADS',NULL,?,'2026-11-06 23:00:00')"
+    );
+    $insertInteres=$db->prepare(
+        "INSERT INTO prospecto_intereses(origen_id,prospecto_id,programa_codigo)
+         VALUES (?,?,?)"
+    );
+    for ($n=0;$n<28;$n++) {
+        $token=str_pad(dechex($n+1),32,'c',STR_PAD_LEFT);
+        $motor->confirmarLoteMeta($token,10,12);
+        for ($z=0;$z<12;$z++) {
+            $id=5000+$n*12+$z;
+            $codigo=$n===27 && $z===11?'BACH':'INGLES';
+            $insertPersona->bind_param('i',$id);$insertPersona->execute();
+            $insertOrigen->bind_param('iis',$id,$id,$token);$insertOrigen->execute();
+            $insertInteres->bind_param('iis',$id,$id,$codigo);$insertInteres->execute();
+        }
+    }
+    $insertPersona->close();$insertOrigen->close();$insertInteres->close();
+    $cursorAntes=$db->query('SELECT ultimo_origen_id FROM prospecto_distribucion_meta_cursor WHERE id=1')->fetch_assoc();
+    $preview=$motor->distribuirMeta('2026-11-07',25,false);
+    $check($preview['inspeccionados']===25 && !$preview['terminado'],
+        'preview paginado sin límite total de archivos');
+    $cursorDespues=$db->query('SELECT ultimo_origen_id FROM prospecto_distribucion_meta_cursor WHERE id=1')->fetch_assoc();
+    $check($cursorAntes===$cursorDespues,'simulación no avanza el cursor real');
+    $rondas=0;$vistos=0;$asignados=0;$cursores=[];
+    do {
+        $chunk=$motor->distribuirMeta('2026-11-07',25,true);
+        $vistos+=$chunk['inspeccionados'];$asignados+=$chunk['asignados'];
+        $cursores[]=$chunk['continuar_desde'];
+        $rondas++;
+        $check($rondas<=15,'recorrido termina en rondas acotadas');
+    } while (!$chunk['terminado']);
+    $check($vistos===336 && $rondas===14,'veintiocho lotes recorridos en catorce páginas');
+    $check(count(array_unique($cursores))===$rondas,'cursor asciende sin repetir páginas');
+    $check($asignados===1,'un Bachillerato al final supera los pendientes previos');
+    $check((int)$db->query(
+        'SELECT COUNT(*) n FROM prospecto_asignaciones WHERE prospecto_id=5335'
+    )->fetch_assoc()['n']===1,'último prospecto llegó al asesor correcto');
+    $repetir=$motor->distribuirMeta('2026-11-07',25,true);
+    $check($repetir['inspeccionados']===0 && $repetir['terminado'],
+        'mismo día completo no escanea otra vez');
+    $nuevoDia=$motor->distribuirMeta('2026-11-08',25,false);
+    $check($nuevoDia['inspeccionados']===25 && !$nuevoDia['terminado'],
+        'siguiente jornada vuelve a revisar pendientes, sin perderlos');
+    echo "OK: $checks pruebas SQL en BD temporal; 30 archivos Meta, reparto de 80, colas paginadas, horarios y duplicados.\n";
 } finally {
     $db->select_db('information_schema');
     $db->query("DROP DATABASE IF EXISTS `$name`");
