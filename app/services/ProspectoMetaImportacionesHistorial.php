@@ -108,9 +108,18 @@ final class ProspectoMetaImportacionesHistorial
         }
         $forms=self::resumenFormularios($data,$meta['programas']??[]);
         $json=json_encode($forms,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
-        if (strlen($json)>60000) throw new RuntimeException(
-            'El resumen de formularios supera el tamaño permitido.'
-        );
+        // Un archivo de hasta 5,000 leads puede contener muchos formularios
+        // con nombres Unicode extensos. El historial no debe bloquear la
+        // confirmación por exceder TEXT: conservar los totales y recortar
+        // sólo el detalle mostrado, empezando por los formularios menores.
+        while (strlen($json)>60000 && $forms['formularios']) {
+            array_pop($forms['formularios']);
+            $forms['mostrados']=count($forms['formularios']);
+            $json=json_encode($forms,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+        }
+        if (strlen($json)>60000) {
+            throw new RuntimeException('No se pudo acotar el resumen de formularios.');
+        }
         $campanias=count($data['campanias']??[]);
         $anterior=$this->consulta(
             'SELECT usuario_id,nombre_archivo,filas_leidas,filas_importables,
