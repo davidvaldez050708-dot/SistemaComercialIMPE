@@ -22,12 +22,12 @@ try {
     $db->query("CREATE DATABASE `$name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
     $db->select_db($name);
     $db->query('CREATE TABLE roles(id INT NOT NULL PRIMARY KEY,nombre VARCHAR(60) NOT NULL,estado TINYINT NOT NULL DEFAULT 1) ENGINE=InnoDB');
-    $db->query('CREATE TABLE usuarios(id INT NOT NULL PRIMARY KEY,nombre VARCHAR(100),apellidos VARCHAR(100),rol_id INT NOT NULL,estado TINYINT NOT NULL) ENGINE=InnoDB');
+    $db->query('CREATE TABLE usuarios(id INT NOT NULL PRIMARY KEY,nombre VARCHAR(100),apellidos VARCHAR(100),foto_perfil VARCHAR(255) DEFAULT NULL,rol_id INT NOT NULL,estado TINYINT NOT NULL) ENGINE=InnoDB');
     $db->query('CREATE TABLE formulario_programas(codigo VARCHAR(64) NOT NULL PRIMARY KEY,nombre VARCHAR(180) NOT NULL,activo TINYINT NOT NULL DEFAULT 1) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
     $db->query('CREATE TABLE permisos(id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,modulo VARCHAR(100),codigo VARCHAR(120) NOT NULL UNIQUE,nombre VARCHAR(200),descripcion TEXT,estado TINYINT NOT NULL) ENGINE=InnoDB');
     $db->query('CREATE TABLE rol_permisos(rol_id INT NOT NULL,permiso_id INT NOT NULL,PRIMARY KEY(rol_id,permiso_id)) ENGINE=InnoDB');
     $db->query("INSERT INTO roles VALUES(1,'Administrador',1),(3,'Asesor de Ventas',1),(4,'Otro rol',1)");
-    $db->query("INSERT INTO usuarios VALUES(1,'Admin','Uno',1,1),(3,'Mayra','Prueba',3,1),(4,'No','Asesor',4,1),(5,'Asesor','Inactivo',3,0)");
+    $db->query("INSERT INTO usuarios VALUES(1,'Admin','Uno','',1,1),(3,'Mayra','Prueba','public/uploads/usuarios/foto.png',3,1),(4,'No','Asesor','',4,1),(5,'Asesor','Inactivo','',3,0)");
     $db->query("INSERT INTO formulario_programas VALUES('BACH286','Bachillerato 286',1),('TIT_EXP','Experiencia laboral',1),('INGLES','Inglés (nuevo)',1),('BAJA','Inactivo',0)");
     $sql=file_get_contents(__DIR__.'/../database/migrations/2026_11_06_prospectos_asesores_config.sql');
     if ($sql===false||!$db->multi_query($sql))throw new RuntimeException('No se pudo ejecutar la migración en la BD aislada.');
@@ -44,7 +44,7 @@ try {
     $check($svc->disponible(),'estructura disponible');
     $check(count($svc->programas())===3,'solo programas vigentes más Inglés');
     $asesores=$svc->asesores(true);
-    $check((string)$asesores[1]['foto_perfil']==='','foto opcional del usuario');
+    $check((string)$asesores[0]['foto_perfil']==='public/uploads/usuarios/foto.png','recupera ruta de foto del usuario sin replicarla');
     $check($asesores[1]['programas']===['TIT_EXP'],'lee selección heredada');
     $check(count($svc->asesores(true))===2,'listado del rol correcto, incluso inactivos');
     $permiso=(int)$db->query("SELECT id FROM permisos WHERE codigo='prospectos.configurar_asesores'")->fetch_assoc()['id'];
