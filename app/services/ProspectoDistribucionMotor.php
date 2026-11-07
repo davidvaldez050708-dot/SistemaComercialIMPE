@@ -148,8 +148,8 @@ final class ProspectoDistribucionMotor
     {
         // El programa siempre procede del formulario/origen confirmado.
         $filas=$this->consulta(
-            'SELECT DISTINCT programa_codigo FROM prospecto_intereses
-             WHERE origen_id=? AND programa_codigo IS NOT NULL AND programa_codigo<>''',
+            "SELECT DISTINCT programa_codigo FROM prospecto_intereses
+             WHERE origen_id=? AND programa_codigo IS NOT NULL AND programa_codigo<>''",
             [$origenId]
         )->fetch_all(MYSQLI_ASSOC);
         return array_column($filas,'programa_codigo');
@@ -158,10 +158,10 @@ final class ProspectoDistribucionMotor
     private function programaAliado(int $prospectoId): array
     {
         $filas=$this->consulta(
-            'SELECT DISTINCT i.programa_codigo FROM prospecto_intereses i
+            "SELECT DISTINCT i.programa_codigo FROM prospecto_intereses i
              JOIN prospecto_origenes o ON o.id=i.origen_id
              WHERE o.prospecto_id=? AND i.programa_codigo IS NOT NULL
-               AND i.programa_codigo<>'' AND o.tipo_origen='ALIADO'',
+               AND i.programa_codigo<>'' AND o.tipo_origen='ALIADO'",
             [$prospectoId]
         )->fetch_all(MYSQLI_ASSOC);
         return array_column($filas,'programa_codigo');
