@@ -1,0 +1,61 @@
+name: Meta - cola escalable y duplicados
+on:
+  push:
+    branches:
+      - feat/prospectos-meta-cola-escalable-deduplicacion-20261107
+  pull_request:
+    paths:
+      - 'app/services/ProspectoDistribucionMotor.php'
+      - 'app/services/ProspectoDistribucionCli.php'
+      - 'database/migrations/2026_11_07_prospectos_meta_cursor_escalable.sql'
+      - 'tests/prospectos_motores_db.php'
+      - 'tests/prospectos_duplicados_identidad_unit.php'
+      - '.github/workflows/prospectos-meta-cola-escalable.yml'
+permissions:
+  contents: read
+jobs:
+  php-y-duplicados:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli,zip,xml
+      - name: Sintaxis, identidades y lector
+        run: |
+          php -l app/services/ProspectoDistribucionMotor.php
+          php -l app/services/ProspectoDistribucionCli.php
+          php -l tests/prospectos_motores_db.php
+          php -l tests/prospectos_duplicados_identidad_unit.php
+          php tests/prospectos_duplicados_identidad_unit.php
+          php tests/prospectos_meta_archivo_unit.php
+          php tests/prospectos_meta_clasificacion_unit.php
+          php tests/prospectos_motores_reglas_unit.php
+  mysql-escalabilidad:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: 30 archivos Meta en lotes reanudables y Aliados
+        env:
+          IMPE_MOTORES_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/prospectos_motores_db.php
