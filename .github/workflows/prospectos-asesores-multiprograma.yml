@@ -1,0 +1,63 @@
+name: Prospectos - asesores varios programas 1A.2
+on:
+  push:
+    branches:
+      - feat/prospectos-asesores-multiprograma-20261106
+  pull_request:
+    paths:
+      - 'app/services/ProspectoAsesorConfiguracionService.php'
+      - 'app/views/prospectos/partials/configuracion_asesores.php'
+      - 'app/views/prospectos/central.php'
+      - 'public/css/prospectos_asesores.css'
+      - 'public/javascript/prospectos_asesores.js'
+      - 'database/migrations/2026_11_06_prospectos_asesores_multiprograma.sql'
+      - 'tests/prospectos_asesores_config_*'
+      - 'tests/prospectos_asesores_multiprograma_*'
+      - '.github/workflows/prospectos-asesores-multiprograma.yml'
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Sintaxis y reglas de validación
+        run: |
+          php -l app/services/ProspectoAsesorConfiguracionService.php
+          php -l app/views/prospectos/partials/configuracion_asesores.php
+          php -l app/views/prospectos/central.php
+          php -l tests/prospectos_asesores_config_unit.php
+          php -l tests/prospectos_asesores_config_db.php
+          php tests/prospectos_asesores_config_unit.php
+          node --check public/javascript/prospectos_asesores.js
+          python3 tests/prospectos_asesores_multiprograma_ui_test.py
+  mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Migración compatible y cambios múltiples en BD desechable
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+          IMPE_ASESORES_TEST_DB: YES
+        run: php tests/prospectos_asesores_config_db.php
