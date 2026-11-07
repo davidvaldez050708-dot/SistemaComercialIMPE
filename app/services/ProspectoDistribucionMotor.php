@@ -11,7 +11,7 @@ final class ProspectoDistribucionMotor
     private mysqli $db;
     private const LOCK_NAME='impe_prospectos_distribucion_v1';
     private const REQUIRED=[
-        'prospecto_distribucion_control',
+        'prospecto_distribucion_control','prospecto_distribucion_meta_cursor',
         'prospectos_comerciales','prospecto_origenes','prospecto_intereses',
         'prospecto_asignaciones','prospecto_asesores_config',
         'prospecto_asesores_programas','prospecto_asesores_horarios',
@@ -253,6 +253,24 @@ final class ProspectoDistribucionMotor
         if ($aplicar) $this->lock();
         $virtual=[]; // Simulación fiel: reservar cupo virtualmente sin escribir BD.
         try {
+            // Cursor persistente por ID de origen, no OFFSET: los pendientes
+            // anteriores no pueden bloquear indefinidamente los nuevos.
+            $estadoCursor=$this->consulta(
+                'SELECT ultimo_origen_id,fecha_jornada,ciclo_terminado
+                 FROM prospecto_distribucion_meta_cursor WHERE id=1'
+            )->fetch_assoc();
+            if (!$estadoCursor) throw new RuntimeException(
+                'La migración de cursor Meta no se completó.'
+            );
+            $cursor=(int)$estadoCursor['ultimo_origen_id'];
+            // Ciclo completo se reinicia en una NUEVA jornada para revisar
+            // los pendientes que quedaron por cupo o falta de asesor.
+            // Si no terminó, se continúa aunque cambie de día para no
+            // quedarse siempre en los primeros dos mil.
+            if ((int)$estadoCursor['ciclo_terminado']===1 &&
+                (string)$estadoCursor['fecha_jornada']!==$fechaJornada) {
+                $cursor=0;
+            }
             $resumen['lotes_confirmados']=(int)$this->consulta(
                 'SELECT COUNT(*) n FROM prospecto_meta_lotes_confirmados'
             )->fetch_assoc()['n'];
@@ -261,13 +279,16 @@ final class ProspectoDistribucionMotor
                  FROM prospecto_origenes o
                  JOIN prospecto_meta_lotes_confirmados l ON l.lote_ref=o.lote_importacion_ref
                  WHERE o.tipo_origen='META_ADS' AND o.origen_padre_id IS NULL
+                   AND o.id>?
                    AND NOT EXISTS (SELECT 1 FROM prospecto_asignaciones a WHERE a.prospecto_id=o.prospecto_id)
                    AND NOT EXISTS (SELECT 1 FROM prospecto_distribucion_registros d WHERE d.prospecto_id=o.prospecto_id)
-                 ORDER BY o.incorporado_at,o.id LIMIT ?",
-                [$limite]
+                 ORDER BY o.id LIMIT ?",
+                [$cursor,$limite]
             )->fetch_all(MYSQLI_ASSOC);
+            $ultimoVisitado=$cursor;
             foreach ($solicitudes as $row) {
                 $id=(int)$row['prospecto_id'];$origen=(int)$row['origen_id'];
+                $ultimoVisitado=$origen;
                 $resumen['inspeccionados']++;
                 if ($aplicar) $this->db->begin_transaction();
                 try {
@@ -314,7 +335,37 @@ final class ProspectoDistribucionMotor
                     throw $e;
                 }
             }
+            // El lote puede terminar exactamente al alcanzar el límite.
+            // Una consulta mínima confirma si existe otra página pendiente.
+            $mas=false;
+            if (count($solicitudes)===$limite) {
+                $mas=$this->consulta(
+                    "SELECT o.id FROM prospecto_origenes o
+                     JOIN prospecto_meta_lotes_confirmados l
+                       ON l.lote_ref=o.lote_importacion_ref
+                     WHERE o.tipo_origen='META_ADS' AND o.origen_padre_id IS NULL
+                       AND o.id>?
+                       AND NOT EXISTS (SELECT 1 FROM prospecto_asignaciones a
+                           WHERE a.prospecto_id=o.prospecto_id)
+                       AND NOT EXISTS (SELECT 1 FROM prospecto_distribucion_registros d
+                           WHERE d.prospecto_id=o.prospecto_id)
+                     ORDER BY o.id LIMIT 1",
+                    [$ultimoVisitado]
+                )->num_rows>0;
+            }
+            $resumen['terminado']=!$mas;
+            $resumen['continuar_desde']=$ultimoVisitado;
             if ($aplicar) {
+                // La transacción de asignación ya se confirmó por registro;
+                // el cursor se guarda únicamente tras terminar el lote.
+                // Si ocurre un fallo antes, repetir es seguro: la unicidad
+                // de asignaciones evita asignar dos veces un prospecto.
+                $this->ejecutar(
+                    'UPDATE prospecto_distribucion_meta_cursor
+                     SET ultimo_origen_id=?,fecha_jornada=?,ciclo_terminado=?,
+                         updated_at=UTC_TIMESTAMP() WHERE id=1',
+                    [$ultimoVisitado,$fechaJornada,$mas?0:1]
+                );
                 $this->ejecutar(
                     "INSERT INTO prospecto_distribucion_corridas
                     (tipo_origen,fecha_jornada,inicio_at,fin_at,asignados,pendientes,inspeccionados,modo)
