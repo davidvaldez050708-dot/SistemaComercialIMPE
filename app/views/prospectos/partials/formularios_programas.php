@@ -1,15 +1,24 @@
 <?php if (!empty($metaPuedeConfigurar)): ?>
-<details class="central-panel central-form-config" id="campanias-formularios" <?= ($_GET['configurar_formularios']??'')==='1'?'open':'' ?>>
-<summary>Configurar formularios y programas educativos</summary>
-<div class="central-section-head"><p>Asocia cada ID de formulario con un programa del catálogo. Los cambios se guardan explícitamente, conservan su historial y se aplican a futuras importaciones.</p></div>
-<form class="central-config-upload" method="post" enctype="multipart/form-data" action="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=metaFormularioDetectar') ?>">
+<div class="central-form-config meta-config-workspace" id="campanias-formularios">
+<div class="meta-config-intro">
+<span class="meta-config-intro-icon"><i class="bi bi-diagram-3" aria-hidden="true"></i></span>
+<p>Relaciona el ID de cada formulario de Meta con un programa del catálogo. La asociación se reutiliza en futuras importaciones; no altera prospectos existentes.</p>
+</div>
+<form class="central-config-upload meta-config-upload" method="post" enctype="multipart/form-data" action="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=metaFormularioDetectar') ?>">
 <input type="hidden" name="csrf_meta" value="<?= $esc($metaCsrf) ?>">
-<label for="archivoFormularios">Detectar formularios de un archivo de Meta</label><input type="file" id="archivoFormularios" name="archivo_formularios" required>
-<button class="central-link" type="submit">Detectar formularios</button><small>Identifica sus IDs sin importar prospectos ni cambiar asociaciones guardadas.</small>
+<div class="meta-config-upload-field">
+<label for="archivoFormularios"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i> Detectar formularios desde un archivo de Meta</label>
+<input type="file" id="archivoFormularios" name="archivo_formularios" accept=".csv,.tsv,.txt,.xlsx" required>
+</div>
+<button class="central-link meta-config-upload-button" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Detectar formularios</button>
+<small><i class="bi bi-info-circle" aria-hidden="true"></i> Solo identifica los IDs: no importa prospectos ni modifica las asociaciones guardadas.</small>
 </form>
 <?php if ($formularioAviso!==''): ?><p class="central-note" role="status"><?= $esc($formularioAviso) ?></p><?php endif; ?>
 <?php if (!$formulariosDisponible): ?><p class="central-note">La configuración persistente requiere instalar su estructura. Puedes seguir revisando archivos y seleccionar sus programas antes de importar.</p>
-<?php elseif (!$formulariosConfiguracion): ?><p class="central-note">Todavía no hay IDs de formulario detectados. Aparecerán al revisar un archivo autorizado o al consultar campañas ya incorporadas.</p>
+<?php elseif (!$formulariosConfiguracion): ?>
+<div class="meta-config-empty" role="status"><i class="bi bi-inbox" aria-hidden="true"></i>
+<p>Aún no hay formularios detectados. Selecciona un archivo de Meta para identificar sus formularios y después asociarlos con sus programas.</p>
+</div>
 <?php else: ?>
 <div class="central-form-config-grid">
 <?php foreach ($formulariosConfiguracion as $f): $a=$f['asociacion']??[]; ?>
@@ -26,5 +35,5 @@
 <details class="central-form-history"><summary>Últimos cambios de asociaciones</summary><div class="central-table-wrap" tabindex="0" aria-label="Historial de asociaciones"><table class="central-table"><thead><tr><th>Formulario e ID</th><th>Programa</th><th>Versión</th><th>Usuario</th><th>Fecha · México</th></tr></thead><tbody>
 <?php foreach ($formulariosHistorial as $h): ?><tr><td><?= $esc($h['formulario_nombre']) ?><small><?= $esc($h['formulario_id']) ?></small></td><td><?= $esc($h['programa_nombre']??'Asociación retirada') ?></td><td><?= (int)$h['version'] ?></td><td>#<?= (int)$h['usuario_id'] ?></td><td><?= $esc(ProspectoFechaHoraHelper::aMexico($h['created_at'])) ?></td></tr><?php endforeach; ?>
 </tbody></table></div></details><?php endif; endif; ?>
-</details>
+</div>
 <?php endif; ?>

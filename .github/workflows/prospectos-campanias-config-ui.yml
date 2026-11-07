@@ -1,0 +1,40 @@
+name: Campañas - configuración de formularios compacta
+on:
+  push:
+    branches:
+      - fix/prospectos-campanias-formularios-diseno-unificado-20261107
+  pull_request:
+    paths:
+      - 'app/views/prospectos/central.php'
+      - 'app/views/prospectos/partials/formularios_programas.php'
+      - 'public/css/prospectos_importador_meta.css'
+      - 'tests/prospectos_campanias_formularios_unificado_*'
+      - 'tools/publicar_prospectos_campanias_formularios_ui.py'
+      - 'tools/prospectos_campanias_formularios_ui_release.json'
+      - '.github/workflows/prospectos-campanias-config-ui.yml'
+permissions:
+  contents: read
+jobs:
+  ui-php-css:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: Sintaxis PHP y render de Campañas
+        run: |
+          php -l app/views/prospectos/central.php
+          php -l app/views/prospectos/partials/formularios_programas.php
+          php tests/prospectos_campanias_formularios_unificado_ui_test.php
+      - name: Accesibilidad y CSS
+        run: python3 tests/prospectos_campanias_formularios_unificado_css_test.py
+  publicacion-segura:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publicador exacto y restauración en sitio desechable
+        run: |
+          python3 -m py_compile tools/publicar_prospectos_campanias_formularios_ui.py
+          python3 tests/prospectos_campanias_formularios_unificado_release_test.py
