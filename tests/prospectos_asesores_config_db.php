@@ -28,31 +28,46 @@ try {
     $db->query('CREATE TABLE rol_permisos(rol_id INT NOT NULL,permiso_id INT NOT NULL,PRIMARY KEY(rol_id,permiso_id)) ENGINE=InnoDB');
     $db->query("INSERT INTO roles VALUES(1,'Administrador',1),(3,'Asesor de Ventas',1),(4,'Otro rol',1)");
     $db->query("INSERT INTO usuarios VALUES(1,'Admin','Uno',1,1),(3,'Mayra','Prueba',3,1),(4,'No','Asesor',4,1),(5,'Asesor','Inactivo',3,0)");
-    $db->query("INSERT INTO formulario_programas VALUES('BACH286','Bachillerato 286',1),('TIT_EXP','Experiencia laboral',1),('BAJA','Inactivo',0)");
+    $db->query("INSERT INTO formulario_programas VALUES('BACH286','Bachillerato 286',1),('TIT_EXP','Experiencia laboral',1),('INGLES','Inglés (nuevo)',1),('BAJA','Inactivo',0)");
     $sql=file_get_contents(__DIR__.'/../database/migrations/2026_11_06_prospectos_asesores_config.sql');
     if ($sql===false||!$db->multi_query($sql))throw new RuntimeException('No se pudo ejecutar la migración en la BD aislada.');
     do {if ($res=$db->store_result())$res->free();} while($db->more_results()&&$db->next_result());
+    // Simular una configuración previa del asesor inactivo, creada en la 1A.
+    $db->query("INSERT INTO prospecto_asesores_config
+        (usuario_id,programa_codigo,jornada,activo,version,actualizado_por,updated_at)
+        VALUES (5,'TIT_EXP','MEDIO_TIEMPO',0,1,1,UTC_TIMESTAMP())");
+    $multiSql=file_get_contents(__DIR__.'/../database/migrations/2026_11_06_prospectos_asesores_multiprograma.sql');
+    if ($multiSql===false||!$db->multi_query($multiSql))throw new RuntimeException('Falló la migración multiprograma.');
+    do {if ($res=$db->store_result())$res->free();} while($db->more_results()&&$db->next_result());
+    $check((int)$db->query("SELECT COUNT(*) n FROM prospecto_asesores_programas WHERE usuario_id=5 AND programa_codigo='TIT_EXP'")->fetch_assoc()['n']===1,'conserva programa legacy');
     $svc=new ProspectoAsesorConfiguracionService($db);
     $check($svc->disponible(),'estructura disponible');
-    $check(count($svc->programas())===2,'solo programas vigentes');
+    $check(count($svc->programas())===3,'solo programas vigentes más Inglés');
+    $asesores=$svc->asesores(true);
+    $check((string)$asesores[1]['foto_perfil']==='','foto opcional del usuario');
+    $check($asesores[1]['programas']===['TIT_EXP'],'lee selección heredada');
     $check(count($svc->asesores(true))===2,'listado del rol correcto, incluso inactivos');
     $permiso=(int)$db->query("SELECT id FROM permisos WHERE codigo='prospectos.configurar_asesores'")->fetch_assoc()['id'];
     $check($permiso>0,'permiso registrado');
     $check((int)$db->query("SELECT COUNT(*) n FROM rol_permisos WHERE rol_id=1 AND permiso_id=$permiso")->fetch_assoc()['n']===1,'administración con permiso inicial');
     $_SESSION=['usuario_id'=>1,'rol_id'=>1,'permisos'=>['prospectos.ver_todos','prospectos.configurar_asesores']];
-    $base=['programa_codigo'=>'BACH286','jornada'=>'MEDIO_TIEMPO','activo'=>'1','version'=>'0',
+    $base=['programas'=>['BACH286','TIT_EXP','INGLES'],'jornada'=>'MEDIO_TIEMPO','activo'=>'1','version'=>'0',
         'dias'=>[1=>['activo'=>'1','desde'=>'16:00','hasta'=>'21:00']]];
     $svc->guardar(3,1,$base);
     $c=$db->query('SELECT * FROM prospecto_asesores_config WHERE usuario_id=3')->fetch_assoc();
     $check($c['programa_codigo']==='BACH286'&&(int)$c['version']===1,'inserción versionada');
+    $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_programas WHERE usuario_id=3')->fetch_assoc()['n']===3,'combinación de bachillerato titulación e inglés');
     $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_horarios WHERE usuario_id=3')->fetch_assoc()['n']===1,'horario persistido');
     $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_auditoria WHERE usuario_id=3')->fetch_assoc()['n']===1,'auditoría inicial');
     try {$svc->guardar(3,1,$base);throw new RuntimeException('Version duplicada aceptada');}
     catch(DomainException $e){$check(str_contains($e->getMessage(),'modificó'),'version obsoleta rechazada');}
     $update=$base;$update['version']='1';$update['jornada']='TIEMPO_COMPLETO';
+    $update['programas']=['TIT_EXP'];
     $update['dias'][2]=['activo'=>'1','desde'=>'09:00','hasta'=>'18:00'];
     $svc->guardar(3,1,$update);
     $check((int)$db->query('SELECT version FROM prospecto_asesores_config WHERE usuario_id=3')->fetch_assoc()['version']===2,'actualización versionada');
+    $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_programas WHERE usuario_id=3')->fetch_assoc()['n']===1,'sustituye selección múltiple de forma controlada');
+    $check((string)$db->query('SELECT programa_codigo FROM prospecto_asesores_config WHERE usuario_id=3')->fetch_assoc()['programa_codigo']==='TIT_EXP','campo legacy sincronizado');
     $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_horarios WHERE usuario_id=3')->fetch_assoc()['n']===2,'dos días guardados');
     $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_auditoria WHERE usuario_id=3')->fetch_assoc()['n']===2,'auditoría actualizada');
     try {$svc->guardar(4,1,$base);throw new RuntimeException('Se aceptó rol ajeno');}
@@ -62,7 +77,11 @@ try {
     $_SESSION['permisos']=['prospectos.ver_todos'];
     try {$svc->guardar(3,1,$base);throw new RuntimeException('Se aceptó usuario sin permiso');}
     catch(DomainException $e){$check(str_contains($e->getMessage(),'permiso'),'permiso efectivo obligatorio');}
-    $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_config')->fetch_assoc()['n']===1,'ningún asesor adicional configurado');
+    $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_config')->fetch_assoc()['n']===2,'solo asesor de prueba y registro previo');
+    // Al reejecutar 1A.2 no debe recrear programas que el administrador quitó.
+    if (!$db->multi_query($multiSql))throw new RuntimeException('No se pudo reejecutar la migración multiprograma.');
+    do {if ($res=$db->store_result())$res->free();} while($db->more_results()&&$db->next_result());
+    $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asesores_programas WHERE usuario_id=3')->fetch_assoc()['n']===1,'idempotencia sin revivir programas retirados');
     // Reejecutar migración tras revocación: no debe restaurar permiso retirado.
     $db->query("DELETE FROM rol_permisos WHERE rol_id=1 AND permiso_id=$permiso");
     if (!$db->multi_query($sql)) throw new RuntimeException('Falló la migración repetida en BD de pruebas.');
