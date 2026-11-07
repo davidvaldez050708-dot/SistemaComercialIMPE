@@ -43,6 +43,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar publicación con preflight, backup, directorios y restore
         run: python3 tests/mi_cartera_release_test.py
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Probar conciliación sobre Hostinger ficticio sin sobrescribir personalizaciones
+        run: |
+          python3 -m py_compile tools/conciliar_ventas_mi_cartera_hostinger.py
+          python3 tests/mi_cartera_conciliacion_hostinger_test.py
   database:
     runs-on: ubuntu-latest
     services:
