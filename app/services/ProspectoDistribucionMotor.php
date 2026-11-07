@@ -302,6 +302,30 @@ final class ProspectoDistribucionMotor
         return $resumen;
     }
 
+    /**
+     * Reconsiderar registros de Aliados que llegaron sin compatibilidad.
+     * Por defecto se consulta sin escribir; solo afecta asignaciones pendientes.
+     */
+    public function reintentarAliados(int $limite=200,bool $aplicar=false): array
+    {
+        $this->exigirEsquema();
+        if ($limite<1||$limite>2000) throw new DomainException('Límite no válido.');
+        $ids=$this->consulta(
+            "SELECT prospecto_id FROM prospecto_distribucion_pendientes
+             WHERE tipo_origen='ALIADO' ORDER BY revisado_at,prospecto_id LIMIT ?",
+            [$limite]
+        )->fetch_all(MYSQLI_ASSOC);
+        $resumen=['inspeccionados'=>0,'asignados'=>0,'pendientes'=>0,'omitidos'=>0];
+        foreach ($ids as $row) {
+            $resultado=$this->asignarAliado((int)$row['prospecto_id'],$aplicar);
+            $resumen['inspeccionados']++;
+            if (in_array($resultado['estado'],['ASIGNADO','SIMULACION'],true)) $resumen['asignados']++;
+            elseif ($resultado['estado']==='PENDIENTE') $resumen['pendientes']++;
+            else $resumen['omitidos']++;
+        }
+        return $resumen;
+    }
+
     /** Se invoca DESPUÉS del COMMIT del formulario original y su incorporación. */
     public function asignarAliado(int $prospectoId,bool $aplicar=true,?DateTimeImmutable $ahora=null): array
     {
