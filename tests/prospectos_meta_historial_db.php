@@ -84,14 +84,17 @@ try {
     $check((int)$db->query(
         'SELECT COUNT(*) n FROM prospecto_meta_importaciones_historial'
     )->fetch_assoc()['n']===1,'archivo parcial no se registra');
+    // El mismo archivo reimportado con otro lote registra otro EVENTO,
+    // pero todos los leads ya existentes: cero nuevos y tres repetidos.
     $sameFile=$stage;$sameFile['token']=str_repeat('b',32);
+    $sameFile['nuevos']=0;$sameFile['repetidos']=3;
     $service->registrarCompletada($sameFile,$data);
     $check((int)$db->query(
         'SELECT COUNT(*) n FROM prospecto_meta_importaciones_historial'
     )->fetch_assoc()['n']===2,'dos cargas del mismo archivo cuentan como eventos distintos');
     $history=$service->listar();
-    $check($history['total']===2 && $history['indicadores']['nuevos']===4 &&
-        $history['indicadores']['repetidos']===4 &&
+    $check($history['total']===2 && $history['indicadores']['nuevos']===2 &&
+        $history['indicadores']['repetidos']===6 &&
         $history['indicadores']['filas']===10 &&
         $history['indicadores']['rechazados']===2,
         'indicadores agregados conservan repetidos y rechazados');
