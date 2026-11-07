@@ -3,7 +3,8 @@
 define('BASE_URL','/crm/');
 require_once __DIR__.'/../app/helpers/ProspectoFechaHoraHelper.php';
 $view=__DIR__.'/../app/views/prospectos/central.php';
-function renderHistoryTest(string $mode,int $pages=3,int $page=2):string
+function renderHistoryTest(string $mode,int $pages=3,int $page=2,
+    bool $canHistory=true,bool $canImport=true,bool $canConfigure=true):string
 {
     global $view;
     $_GET=['seccion'=>'meta'];
@@ -13,8 +14,9 @@ function renderHistoryTest(string $mode,int $pages=3,int $page=2):string
     }
     if ($mode==='config') $_GET['configurar_formularios']='1';
     $seccionProspectos='meta';
-    $metaPuedeConfigurar=true;
-    $metaPuedeImportar=true;
+    $metaPuedeConfigurar=$canConfigure;
+    $metaPuedeImportar=$canImport;
+    $metaPuedeConsultarHistorial=$canHistory;
     $metaEnHistoriaGuardada=$mode==='history';
     $metaHistorialVisible=$metaEnHistoriaGuardada;
     $metaHistorialDisponible=true;
@@ -87,4 +89,30 @@ $ok(strpos($config,'name="csrf_meta"')!==false,
     'CSRF de edición intacto');
 $ok(strpos($config,'id="campanias-historial"')===false,
     'historial no invade la edición');
-echo "OK: $checks verificaciones de render de Campañas con 3 vistas independientes.\n";
+// El Administrador puede consultar la bitácora sin importar archivos.
+$admin=renderHistoryTest('normal',3,2,true,false,true);
+$ok(substr_count($admin,'> Historial</a>')===1,'Administrador: botón Historial visible');
+$ok(strpos($admin,'Configurar formularios')!==false,'Administrador configura');
+$ok(strpos($admin,'data-meta-abrir')===false,'Administrador NO recibe botón importar');
+$adminHistory=renderHistoryTest('history',3,2,true,false,true);
+$ok(strpos($adminHistory,'id="campanias-historial"')!==false,
+    'Administrador puede consultar el historial con permiso');
+// Marketing conserva la acción de importar sin configurar formularios.
+$marketing=renderHistoryTest('normal',3,2,true,true,false);
+$ok(substr_count($marketing,'> Historial</a>')===1 &&
+    strpos($marketing,'data-meta-abrir')!==false,
+    'Marketing ve historial e importación según permisos');
+$ok(strpos($marketing,'Configurar formularios')===false,
+    'Marketing sin permiso de configurar no lo obtiene');
+// El permiso del historial se puede revocar sin afectar la importación.
+$sinHistorial=renderHistoryTest('normal',3,2,false,true,true);
+$ok(strpos($sinHistorial,'> Historial</a>')===false &&
+    strpos($sinHistorial,'data-meta-abrir')!==false,
+    'Historial revocado, importar se mantiene');
+// Un coordinador de sólo lectura puede ver historial sin importar.
+$consulta=renderHistoryTest('normal',3,2,true,false,false);
+$ok(strpos($consulta,'> Historial</a>')!==false &&
+    strpos($consulta,'data-meta-abrir')===false &&
+    strpos($consulta,'Configurar formularios')===false,
+    'Rol con permiso exclusivo puede consultar sin operar');
+echo "OK: $checks verificaciones UI de Administrador, Marketing, revocación y paginación.\n";
