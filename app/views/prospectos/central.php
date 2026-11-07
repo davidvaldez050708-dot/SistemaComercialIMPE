@@ -49,7 +49,12 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 </tbody></table></div><?php require __DIR__.'/partials/paginacion_central.php';endif; ?></section>
 <?php endif; ?>
 <?php else: ?>
-<?php if ($seccionProspectos==='meta') require __DIR__.'/partials/formularios_programas.php'; ?>
+<?php
+// La configuración de formularios es una vista dentro de Campañas,
+// no una segunda tarjeta desplegable permanentemente visible.
+$metaEnConfiguracion=$seccionProspectos==='meta' && !empty($metaPuedeConfigurar)
+    && ($_GET['configurar_formularios']??'')==='1';
+?>
 <?php if ($seccionProspectos==='meta' && !empty($metaResultado)): ?>
 <div class="meta-import-result" role="status"><strong>Última importación terminada</strong>
 <?= (int)$metaResultado['nuevos'] ?> prospectos nuevos · <?= (int)$metaResultado['repetidos'] ?> ya existentes · <?= (int)$metaResultado['rechazados'] ?> filas no válidas · <?= (int)$metaResultado['repetidos_archivo'] ?> repetidos dentro del archivo.
@@ -57,12 +62,20 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 <?php if ($seccionProspectos==='meta' && !empty($metaAviso)): ?><p class="central-alert" role="alert"><?= $esc($metaAviso) ?></p><?php endif; ?>
 <section class="central-panel">
 <div class="central-section-head <?= $seccionProspectos==='meta'?'meta-import-toolbar':'' ?>">
-<h3><?= $seccionProspectos==='meta'?'Prospectos de campañas':'Todos los prospectos' ?></h3>
-<?php if ($seccionProspectos==='meta'&&!empty($metaPuedeConfigurar)): ?><a class="central-link" href="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta&configurar_formularios=1#campanias-formularios') ?>"><i class="bi bi-sliders" aria-hidden="true"></i> Configurar formularios</a><?php endif; ?>
-<?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar)): ?>
+<h3><?= $metaEnConfiguracion?'Formularios y programas educativos':($seccionProspectos==='meta'?'Prospectos de campañas':'Todos los prospectos') ?></h3>
+<?php if ($seccionProspectos==='meta'&&!empty($metaPuedeConfigurar)): ?>
+<a class="central-link meta-config-action" href="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=index&seccion=meta'.($metaEnConfiguracion?'':'&configurar_formularios=1#campanias-formularios')) ?>">
+<i class="bi <?= $metaEnConfiguracion?'bi-arrow-left':'bi-sliders' ?>" aria-hidden="true"></i>
+<?= $metaEnConfiguracion?'Volver a campañas':'Configurar formularios' ?>
+</a>
+<?php endif; ?>
+<?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar) && !$metaEnConfiguracion): ?>
 <button type="button" class="meta-import-trigger" data-meta-abrir><i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i> Importar archivo</button>
 <?php endif; ?>
 </div>
+<?php if ($metaEnConfiguracion): ?>
+<?php require __DIR__.'/partials/formularios_programas.php'; ?>
+<?php else: ?>
 <form method="get" class="central-filters" data-central-filtros>
 <input type="hidden" name="controller" value="prospecto"><input type="hidden" name="action" value="index"><input type="hidden" name="seccion" value="<?= $esc($seccionProspectos) ?>">
 <div><label for="centralBuscar">Buscar prospecto</label><div class="central-search"><i class="bi bi-search" aria-hidden="true"></i><input id="centralBuscar" name="buscar" type="search" maxlength="180" placeholder="Nombre, teléfono o correo…" value="<?= $esc($filtros['buscar']??'') ?>"></div></div>
@@ -79,7 +92,9 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 <div class="central-table-wrap" tabindex="0" role="region" aria-label="Prospectos comerciales"><table class="central-table"><thead><tr><th>Fecha de registro</th><th>Nombre</th><th>Teléfono</th><th>Programa</th><th><?= $seccionProspectos==='meta'?'Campaña':'Procedencia' ?></th><th>Horario de contacto</th><th>Gestión</th><th>Detalle</th></tr></thead><tbody>
 <?php foreach ($listado['registros'] as $r): ?><tr><td><?= $esc($r['fecha_origen']?ProspectoFechaHoraHelper::aMexico($r['fecha_origen']):'Fecha de origen sin confirmar') ?></td><td class="central-name"><?= $esc($texto($r['nombre_completo'])) ?><small>ID comercial #<?= (int)$r['id'] ?></small></td><td><?= $esc($texto($r['telefono_original'])) ?></td><td><?= $esc($texto($r['programas'])) ?></td><td class="central-campaign-cell"><?php if ($seccionProspectos!=='meta'): ?><?= $esc($texto($r['procedencias'])) ?><?php endif; require __DIR__.'/partials/campanias_celda.php'; ?></td><td><?= $esc($texto($r['horario'])) ?></td><td><span class="central-badge"><?= $esc($r['gestion']??'Sin asignación') ?></span></td><td><a class="central-link" href="<?= $esc(BASE_URL.'index.php?controller=prospecto&action=detalle&id='.(int)$r['id']) ?>" data-prospecto-ficha><i class="bi bi-eye" aria-hidden="true"></i> Ver ficha</a></td></tr><?php endforeach; ?>
 <?php if (!$listado['registros']): ?><tr><td colspan="8"><div class="central-empty"><i class="bi bi-search" aria-hidden="true"></i><h3>No hay prospectos con estos filtros</h3><p>Los registros originales se conservan en Aliados.</p></div></td></tr><?php endif; ?>
-</tbody></table></div><?php require __DIR__.'/partials/paginacion_central.php'; ?></div></section>
+</tbody></table></div><?php require __DIR__.'/partials/paginacion_central.php'; ?></div>
+<?php endif; ?>
+</section>
 <?php endif; ?>
 </div>
 <?php require __DIR__.'/partials/ficha_panel.php'; ?>
