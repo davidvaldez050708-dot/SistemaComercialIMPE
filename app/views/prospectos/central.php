@@ -86,4 +86,5 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 <?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar)): require __DIR__.'/partials/importar_meta.php'; endif; ?>
 <script defer src="<?= BASE_URL ?>public/javascript/prospectos_ficha_panel.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/prospectos_ficha_panel.js'),0,16) ?>"></script>
 <script defer src="<?= BASE_URL ?>public/javascript/prospectos_central.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/prospectos_central.js'),0,16) ?>"></script>
+<?php if ($seccionProspectos==='asignaciones'): ?><script defer src="<?= BASE_URL ?>public/javascript/prospectos_asesores.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/prospectos_asesores.js'),0,16) ?>"></script><?php endif; ?>
 <?php if ($seccionProspectos==='meta' && !empty($metaPuedeImportar)): ?><script defer src="<?= BASE_URL ?>public/javascript/prospectos_importador_meta.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/prospectos_importador_meta.js'),0,16) ?>"></script><?php endif; ?>
