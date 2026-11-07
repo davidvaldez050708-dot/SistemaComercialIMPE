@@ -30,11 +30,20 @@ jobs:
           php -l app/services/ProspectoMetaImportador.php
           php -l app/services/ProspectoCentralIncorporacionService.php
           php -l tools/distribuir_prospectos.php
+          php -l app/services/ProspectoDistribucionCli.php
           php -l tests/prospectos_motores_reglas_unit.php
           php -l tests/prospectos_motores_db.php
           php tests/prospectos_motores_reglas_unit.php
           php tests/prospectos_meta_archivo_unit.php
           php tests/prospectos_meta_clasificacion_unit.php
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publicador incremental seguro
+        run: |
+          python3 -m py_compile tools/publicar_prospectos_motores.py
+          python3 tests/prospectos_motores_release_test.py
   database:
     runs-on: ubuntu-latest
     services:
