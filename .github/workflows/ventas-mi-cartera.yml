@@ -37,6 +37,12 @@ jobs:
           php -l app/views/mi_cartera/detalle.php
           php -l tests/mi_cartera_mysql_test.php
           python3 tests/mi_cartera_contract_test.py
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar publicación con preflight, backup, directorios y restore
+        run: python3 tests/mi_cartera_release_test.py
   database:
     runs-on: ubuntu-latest
     services:
