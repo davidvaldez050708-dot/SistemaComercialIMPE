@@ -232,6 +232,11 @@ try {
     $check((int)$db->query(
         "SELECT COUNT(*) n FROM prospecto_distribucion_corridas WHERE tipo_origen='META'"
     )->fetch_assoc()['n']===3,'registro de corridas sin PII');
+    // El asesor de INGLÉS solo se activó para la prueba previa de reintento;
+    // en esta prueba de escala debe permanecer inactivo, de modo que
+    // los registros sin asesor compatible ocupen las primeras páginas.
+    $db->query("UPDATE prospecto_asesores_config SET activo=0 WHERE usuario_id=40");
+
     // Stress funcional de paginación: 28 archivos completos en una sola
     // jornada, con pendientes masivos al principio y un Bachillerato elegible
     // al final. La primera página NO puede ocultar indefinidamente el final.
