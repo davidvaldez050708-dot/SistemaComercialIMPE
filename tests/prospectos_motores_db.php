@@ -84,6 +84,16 @@ try {
         (40,6,'08:00','14:00')");
     $motor=new ProspectoDistribucionMotor($db);
     $check($motor->disponible(),'estructura creada');
+    $check(!$motor->habilitado('META')&&!$motor->habilitado('ALIADO'),
+        'migración no activa reparto automático');
+    try {
+        $motor->distribuirMeta('2026-11-07',200,true);
+        throw new RuntimeException('Meta activo antes de autorización');
+    } catch (DomainException $esperado) {
+        $checks++;
+    }
+    $db->query("UPDATE prospecto_distribucion_control
+        SET meta_habilitado=1,aliados_habilitado=1 WHERE id=1");
 
     // Dos archivos independientes de la misma noche, 82 + 8 leads nuevos.
     $loteA=str_repeat('a',32);$loteB=str_repeat('b',32);
