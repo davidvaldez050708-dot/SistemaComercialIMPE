@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/ProspectoMetaClasificacion.php';
+require_once __DIR__.'/../helpers/PermissionHelper.php';
 
 /**
  * Bitácora inmutable por archivo Meta COMPLETADO.
@@ -11,6 +12,17 @@ final class ProspectoMetaImportacionesHistorial
     private mysqli $db;
     private const POR_PAGINA=15;
     private const MAX_FORMULARIOS_DETALLE=30;
+
+    /**
+     * Permiso de consulta específico, separado de la operación de importar.
+     * Se administra desde Roles y permisos, con la consulta global requerida.
+     */
+    public static function puedeConsultar(): bool
+    {
+        return isset($_SESSION['usuario_id'])
+            && tienePermiso('prospectos.ver_todos')
+            && tienePermiso('prospectos.ver_historial_meta');
+    }
 
     public function __construct(mysqli $db) {$this->db=$db;}
 
