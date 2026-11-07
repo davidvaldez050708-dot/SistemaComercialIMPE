@@ -13,6 +13,8 @@ on:
       - 'database/migrations/2026_11_06_prospectos_asesores_multiprograma.sql'
       - 'tests/prospectos_asesores_config_*'
       - 'tests/prospectos_asesores_multiprograma_*'
+      - 'tools/publicar_prospectos_asesores_multiprograma.py'
+      - 'tools/prospectos_asesores_multiprograma_release.json'
       - '.github/workflows/prospectos-asesores-multiprograma.yml'
 permissions:
   contents: read
@@ -35,6 +37,12 @@ jobs:
           php tests/prospectos_asesores_config_unit.php
           node --check public/javascript/prospectos_asesores.js
           python3 tests/prospectos_asesores_multiprograma_ui_test.py
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preflight, publicación y restauración contra copia 1A
+        run: python3 tests/prospectos_asesores_multiprograma_release_test.py
   mysql:
     runs-on: ubuntu-latest
     services:
