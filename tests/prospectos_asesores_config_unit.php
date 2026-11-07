@@ -20,7 +20,7 @@ $falla=function(array $datos,string $esperado)use(&$comprobaciones):void{
 };
 
 $base=[
-    'programa_codigo'=>'BACH286','jornada'=>'MEDIO_TIEMPO','activo'=>'1',
+    'programas'=>['BACH286','TIT_EXP'],'jornada'=>'MEDIO_TIEMPO','activo'=>'1',
     'version'=>'0','dias'=>[
         '1'=>['activo'=>'1','desde'=>'16:00','hasta'=>'21:00'],
         '2'=>['activo'=>'1','desde'=>'16:00','hasta'=>'21:00'],
@@ -28,14 +28,23 @@ $base=[
     ],
 ];
 $correcto=ProspectoAsesorConfiguracionService::validar($base,['BACH286','TIT_EXP']);
-$check($correcto['programa_codigo']==='BACH286','programa único');
+$check($correcto['programa_codigo']==='BACH286','código de compatibilidad');
+$check($correcto['programas']===['BACH286','TIT_EXP'],'múltiples programas en una jornada');
+$combinado=ProspectoAsesorConfiguracionService::validar(
+    array_replace($base,['programas'=>['TIT_EXP','BACH286','TIT_EXP']]),['BACH286','TIT_EXP']
+);
+$check($combinado['programas']===['BACH286','TIT_EXP'],'eliminar duplicados sin perder un programa');
 $check($correcto['jornada']==='MEDIO_TIEMPO','medio tiempo');
 $check($correcto['meta_diarios']===80,'cuota Meta fija');
 $check(count($correcto['horarios'])===2,'sólo días marcados');
 $check(!isset($correcto['horarios'][3]),'día inactivo excluido');
 $check($correcto['version']===0,'versión inicial');
 $check(count(ProspectoAsesorConfiguracionService::DIAS)===7,'semana completa');
-$falla(array_replace($base,['programa_codigo'=>'INVENTADO']),'programa educativo');
+$falla(array_replace($base,['programas'=>['BACH286','INVENTADO']]),'programas vigentes');
+$falla(array_replace($base,['programas'=>[]]),'al menos un programa');
+$falla(array_replace($base,['programas'=>'TIT_EXP']),'al menos un programa');
+$falla(array_replace($base,['programas'=>[['BACH286']]]),'programas vigentes');
+$falla(array_replace($base,['programas'=>['BAJA']]),'programas vigentes');
 $falla(array_replace($base,['jornada'=>'OTRA']),'jornada laboral');
 $falla(array_replace($base,['version'=>'-1']),'versión');
 $falla(array_replace($base,['version'=>'no']),'versión');

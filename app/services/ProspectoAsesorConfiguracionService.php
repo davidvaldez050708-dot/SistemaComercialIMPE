@@ -37,7 +37,7 @@ final class ProspectoAsesorConfiguracionService
 
     public function disponible(): bool
     {
-        $nombres=['prospecto_asesores_config','prospecto_asesores_horarios','prospecto_asesores_auditoria'];
+        $nombres=['prospecto_asesores_config','prospecto_asesores_horarios','prospecto_asesores_auditoria','prospecto_asesores_programas'];
         $encontradas=[];
         foreach ($nombres as $nombre) {
             $st=$this->db->prepare('SELECT COUNT(*) n FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');
@@ -49,7 +49,8 @@ final class ProspectoAsesorConfiguracionService
         foreach ([
             'prospecto_asesores_config'=>['usuario_id','programa_codigo','jornada','activo','version','actualizado_por','updated_at'],
             'prospecto_asesores_horarios'=>['usuario_id','dia_semana','hora_desde','hora_hasta'],
-            'prospecto_asesores_auditoria'=>['id','usuario_id','actor_id','antes_json','despues_json','created_at']
+            'prospecto_asesores_auditoria'=>['id','usuario_id','actor_id','antes_json','despues_json','created_at'],
+            'prospecto_asesores_programas'=>['usuario_id','programa_codigo']
         ] as $tabla=>$campos) {
             $rs=$this->db->query("SHOW COLUMNS FROM ".$tabla);
             $existentes=array_column($rs->fetch_all(MYSQLI_ASSOC),'Field');
@@ -70,12 +71,15 @@ final class ProspectoAsesorConfiguracionService
         $campos=$disponible
             ? 'c.programa_codigo,c.jornada,c.activo configuracion_activa,c.version,c.actualizado_por,c.updated_at'
             : 'NULL programa_codigo,NULL jornada,NULL configuracion_activa,0 version,NULL actualizado_por,NULL updated_at';
-        $sql="SELECT u.id,u.nombre,u.apellidos,u.estado usuario_activo,$campos
+        $sql="SELECT u.id,u.nombre,u.apellidos,u.foto_perfil,u.estado usuario_activo,$campos
               FROM usuarios u JOIN roles r ON r.id=u.rol_id $join
               WHERE r.nombre='Asesor de Ventas' ORDER BY u.estado DESC,u.nombre,u.apellidos,u.id";
         $asesores=$this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
-        $horarios=[];
+        $horarios=[];$programas=[];
         if ($disponible) {
+            $todos=$this->db->query('SELECT usuario_id,programa_codigo FROM prospecto_asesores_programas ORDER BY programa_codigo')
+                ->fetch_all(MYSQLI_ASSOC);
+            foreach ($todos as $fila) $programas[(int)$fila['usuario_id']][]=(string)$fila['programa_codigo'];
             $filas=$this->db->query('SELECT h.usuario_id,h.dia_semana,h.hora_desde,h.hora_hasta FROM prospecto_asesores_horarios h ORDER BY h.usuario_id,h.dia_semana')
                 ->fetch_all(MYSQLI_ASSOC);
             foreach ($filas as $fila) {
@@ -87,6 +91,10 @@ final class ProspectoAsesorConfiguracionService
         }
         foreach ($asesores as &$asesor) {
             $asesor['horarios']=$horarios[(int)$asesor['id']]??[];
+            // Fallback defensivo: preserva la selección antigua si la migración
+            // fue aplicada sobre un registro que aún no se ha guardado de nuevo.
+            $asesor['programas']=$programas[(int)$asesor['id']]
+                ?? ($asesor['programa_codigo']!==null?[(string)$asesor['programa_codigo']]:[]);
             $asesor['version']=(int)$asesor['version'];
         }
         unset($asesor);
@@ -96,16 +104,25 @@ final class ProspectoAsesorConfiguracionService
     /** Valida datos sin consultar ni modificar BD; reutilizable en pruebas. */
     public static function validar(array $datos,array $programas): array
     {
-        $codigo=$datos['programa_codigo']??null;
+        $seleccion=$datos['programas']??null;
+        if (!is_array($seleccion)||!$seleccion||count($seleccion)>500) {
+            throw new DomainException('Selecciona al menos un programa educativo.');
+        }
+        $codigos=[];
+        foreach ($seleccion as $codigo) {
+            if (!is_string($codigo)||$codigo===''||strlen($codigo)>64||!in_array($codigo,$programas,true)) {
+                throw new DomainException('Selecciona únicamente programas vigentes del catálogo.');
+            }
+            $codigos[$codigo]=$codigo;
+        }
+        $codigos=array_values($codigos);
+        sort($codigos,SORT_STRING);
+        $codigo=$codigos[0];
         $jornada=$datos['jornada']??null;
         $activo=($datos['activo']??'0')==='1';
         $version=filter_var($datos['version']??null,FILTER_VALIDATE_INT,[
             'options'=>['min_range'=>0]
         ]);
-        if (!is_string($codigo) || strlen($codigo)>64 || $codigo===''
-            || !in_array($codigo,$programas,true)) {
-            throw new DomainException('Selecciona un programa educativo vigente del catálogo.');
-        }
         if (!is_string($jornada)||!in_array($jornada,['MEDIO_TIEMPO','TIEMPO_COMPLETO'],true)) {
             throw new DomainException('Selecciona una jornada laboral válida.');
         }
@@ -129,7 +146,7 @@ final class ProspectoAsesorConfiguracionService
         }
         if ($activo&&!$horarios) throw new DomainException('Selecciona al menos un día de trabajo para activar al asesor.');
         ksort($horarios);
-        return ['programa_codigo'=>$codigo,'jornada'=>$jornada,'activo'=>$activo?1:0,
+        return ['programa_codigo'=>$codigo,'programas'=>$codigos,'jornada'=>$jornada,'activo'=>$activo?1:0,
             'version'=>$version,'horarios'=>$horarios,'meta_diarios'=>self::META_DIARIOS];
     }
 
@@ -155,7 +172,10 @@ final class ProspectoAsesorConfiguracionService
             $st=$this->db->prepare('SELECT dia_semana,hora_desde,hora_hasta FROM prospecto_asesores_horarios WHERE usuario_id=? ORDER BY dia_semana');
             $st->bind_param('i',$usuarioId);$st->execute();
             $antesHoras=$st->get_result()->fetch_all(MYSQLI_ASSOC);$st->close();
-            $antes=['configuracion'=>$actual,'horarios'=>$antesHoras];
+            $st=$this->db->prepare('SELECT programa_codigo FROM prospecto_asesores_programas WHERE usuario_id=? ORDER BY programa_codigo FOR UPDATE');
+            $st->bind_param('i',$usuarioId);$st->execute();
+            $antesProgramas=array_column($st->get_result()->fetch_all(MYSQLI_ASSOC),'programa_codigo');$st->close();
+            $antes=['configuracion'=>$actual,'horarios'=>$antesHoras,'programas'=>$antesProgramas];
             $codigo=$validado['programa_codigo'];$jornada=$validado['jornada'];$activo=$validado['activo'];
             if ($actual) {
                 $st=$this->db->prepare('UPDATE prospecto_asesores_config SET programa_codigo=?,jornada=?,activo=?,version=version+1,actualizado_por=?,updated_at=UTC_TIMESTAMP() WHERE usuario_id=?');
@@ -165,6 +185,12 @@ final class ProspectoAsesorConfiguracionService
                 $st->bind_param('issii',$usuarioId,$codigo,$jornada,$activo,$actorId);
             }
             $st->execute();$st->close();
+            $st=$this->db->prepare('DELETE FROM prospecto_asesores_programas WHERE usuario_id=?');
+            $st->bind_param('i',$usuarioId);$st->execute();$st->close();
+            foreach ($validado['programas'] as $programaCodigo) {
+                $st=$this->db->prepare('INSERT INTO prospecto_asesores_programas(usuario_id,programa_codigo) VALUES (?,?)');
+                $st->bind_param('is',$usuarioId,$programaCodigo);$st->execute();$st->close();
+            }
             $st=$this->db->prepare('DELETE FROM prospecto_asesores_horarios WHERE usuario_id=?');
             $st->bind_param('i',$usuarioId);$st->execute();$st->close();
             foreach ($validado['horarios'] as $dia=>$horas) {

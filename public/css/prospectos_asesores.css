@@ -52,3 +52,40 @@
 .prospectos-central .asesores-guardar{width:100%}
 }
 @media(prefers-reduced-motion:reduce){.prospectos-central .asesores-card-arrow{transition:none}}
+
+/* 1A.2: misma foto de Usuarios, catálogo multiselección y filas compactas. */
+.prospectos-central .asesores-card-head>.asesores-avatar-usuario{flex:0 0 40px;width:40px;height:40px;border-radius:50%;margin:0}
+.prospectos-central .asesores-card-head>.asesores-avatar-usuario img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.prospectos-central .asesores-card-head>.asesores-avatar-usuario.system-avatar-photo-button{cursor:pointer}
+.prospectos-central .asesores-persona small{line-height:1.45;max-width:700px;overflow-wrap:anywhere}
+.prospectos-central .asesores-form{gap:13px}
+.prospectos-central .asesores-form-grid{grid-template-columns:minmax(220px,320px) 1fr;gap:12px;align-items:end}
+.prospectos-central .asesores-programas{border:1px solid #dfe7f1;border-radius:12px;padding:12px 14px 14px;margin:0;min-width:0}
+.prospectos-central .asesores-programas legend{float:none;width:auto;padding:0 6px;margin:0;font-size:12px;font-weight:800;color:#183b70}
+.prospectos-central .asesores-programas>p{margin-bottom:11px}
+.prospectos-central .asesores-programas-grupos{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:9px}
+.prospectos-central .asesores-programa-grupo{border:1px solid #e1e8f3;border-radius:10px;background:white;padding:11px;min-width:0}
+.prospectos-central .asesores-programa-grupo-cabecera{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #e9eef6;padding-bottom:9px;margin-bottom:9px;font-size:12px;color:#203f72}
+.prospectos-central .asesores-seleccionar-grupo{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#304f83;cursor:pointer}
+.prospectos-central .asesores-programa-opciones{display:grid;gap:7px}
+.prospectos-central .asesores-programa-opcion{display:flex;align-items:flex-start;gap:8px;font-size:12px;font-weight:600;color:#314763;cursor:pointer;line-height:1.5}
+.prospectos-central .asesores-programa-opcion input,.prospectos-central .asesores-seleccionar-grupo input{width:15px;height:15px;margin-top:1px;flex:none;accent-color:#214b95}
+.prospectos-central .asesores-horarios{padding:12px 14px}
+.prospectos-central .asesores-horarios p{margin-bottom:9px}
+.prospectos-central .asesores-dias{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 9px}
+.prospectos-central .asesores-dia{grid-template-columns:minmax(105px,1fr) minmax(90px,115px) minmax(90px,115px);gap:8px;padding:7px 10px;min-height:58px}
+.prospectos-central .asesores-dia-nombre{gap:7px}
+.prospectos-central .asesores-hora{gap:2px;min-width:0}
+.prospectos-central .asesores-hora input{min-height:33px;height:34px;padding:5px 6px;font-size:11px;border-radius:7px}
+.prospectos-central .asesores-hora span{font-size:9px}
+.prospectos-central .asesores-dia:not(.is-active){background:#f8fafd}
+.prospectos-central .asesores-dia:not(.is-active) .asesores-hora{opacity:.62}
+.prospectos-central .asesores-programa-opcion input:focus-visible,.prospectos-central .asesores-seleccionar-grupo input:focus-visible,.prospectos-central .asesores-avatar-usuario:focus-visible{outline:2px solid #94b3ec;outline-offset:2px}
+@media(max-width:1050px){.prospectos-central .asesores-dias{grid-template-columns:1fr}}
+@media(max-width:700px){
+.prospectos-central .asesores-form-grid{grid-template-columns:1fr}
+.prospectos-central .asesores-dias{grid-template-columns:1fr}
+.prospectos-central .asesores-dia{grid-template-columns:minmax(92px,1fr) minmax(88px,118px) minmax(88px,118px)}
+.prospectos-central .asesores-dia-nombre{grid-column:auto}
+}
+@media(max-width:400px){.prospectos-central .asesores-dia{grid-template-columns:minmax(76px,1fr) minmax(72px,1fr) minmax(72px,1fr);gap:4px;padding:7px}}
