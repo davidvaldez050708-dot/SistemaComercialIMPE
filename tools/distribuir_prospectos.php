@@ -15,7 +15,7 @@ require_once __DIR__.'/../app/services/ProspectoDistribucionMotor.php';
 
 $opciones=array_slice($argv,1);
 $flags=['--meta','--reintentar-aliados','--preview','--apply','--confirmar-produccion'];
-$modo=null;$apply=null;$confirmar=false;$fecha=null;$limite=500;
+$modo=null;$apply=null;$confirmar=false;$fecha=null;$limite=2000;
 foreach ($opciones as $op) {
     if ($op==='--meta'||$op==='--reintentar-aliados') {
         if ($modo!==null) throw new InvalidArgumentException('Escoge un solo motor.');
@@ -38,7 +38,7 @@ foreach ($opciones as $op) {
     }
 }
 if ($modo===null||$apply===null) {
-    fwrite(STDERR,"Uso: php tools/distribuir_prospectos.php --meta|--reintentar-aliados --preview|--apply [--fecha=AAAA-MM-DD] [--limite=500] [--confirmar-produccion]\n");
+    fwrite(STDERR,"Uso: php tools/distribuir_prospectos.php --meta|--reintentar-aliados --preview|--apply [--fecha=AAAA-MM-DD] [--limite=2000] [--confirmar-produccion]\n");
     exit(2);
 }
 if ($apply&&!$confirmar) {
