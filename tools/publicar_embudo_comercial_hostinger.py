@@ -82,7 +82,7 @@ def patch_router(text):
         # Hostinger puede haber eliminado o personalizado el comentario.
         # Localizar una única ruta real de Mi cartera, NO usar texto de comentarios.
         candidates = list(re.finditer(
-            r"(?m)^[ \\t]*case[ \\t]+['\\\"]miCartera['\\\"][ \\t]*:",
+            r"(?m)^[ \t]*case[ \t]+'miCartera'[ \t]*:",
             text
         ))
         if len(candidates) != 1:
