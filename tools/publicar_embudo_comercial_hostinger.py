@@ -71,8 +71,24 @@ def patch_router(text):
 """
     if "// Embudo comercial: autorización propia por vista y por asesor." in text and "case 'embudoComercial':" not in text:
         raise Conflicto("Router: inserción previa alterada; detener sin sustituir")
-    text = insert_once(text, marker, addition,
-                       "case 'embudoComercial':", "router del embudo")
+    if "case 'embudoComercial':" in text:
+        if text.count("case 'embudoComercial':") != 1 or addition not in text:
+            raise Conflicto("Router: ruta previa distinta; detener sin sobrescribir")
+    elif text.count(marker) == 1:
+        # Preferir el ancla histórica si está intacta.
+        text = insert_once(text, marker, addition,
+                           "case 'embudoComercial':", "router del embudo")
+    else:
+        # Hostinger puede haber eliminado o personalizado el comentario.
+        # Localizar una única ruta real de Mi cartera, NO usar texto de comentarios.
+        candidates = list(re.finditer(
+            r"(?m)^[ \\t]*case[ \\t]+['\\\"]miCartera['\\\"][ \\t]*:",
+            text
+        ))
+        if len(candidates) != 1:
+            raise Conflicto("Router: falta un ancla segura de Mi cartera; coincidencias={}".format(len(candidates)))
+        position = candidates[0].start()
+        text = text[:position] + addition + text[position:]
     start = text.find("$controladoresProtegidosCsrf = [")
     if start < 0:
         raise Conflicto("Router: falta lista de CSRF")
