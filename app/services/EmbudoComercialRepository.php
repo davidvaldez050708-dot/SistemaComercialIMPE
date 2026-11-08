@@ -25,7 +25,8 @@ final class EmbudoComercialRepository
     {
         foreach ([
             'prospectos_comerciales','prospecto_asignaciones','prospecto_origenes',
-            'prospecto_intereses','prospecto_embudo_etapas','prospecto_embudo_movimientos'
+            'prospecto_intereses','prospecto_preferencias_contacto',
+            'prospecto_embudo_etapas','prospecto_embudo_movimientos'
         ] as $nombre) {
             $st=$this->db->prepare(
                 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?'
