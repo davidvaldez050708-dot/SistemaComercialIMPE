@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/ventas-embudo-kanban-permisos-fase1-20261108
+      - fix/ventas-sidebar-gestion-comercial-20261108
   pull_request:
     paths:
       - 'app/controllers/EmbudoComercialController.php'
@@ -43,3 +44,7 @@ jobs:
         run: |
           python3 -m py_compile tools/publicar_embudo_comercial_hostinger.py
           python3 tests/embudo_publicador_hostinger_test.py
+      - name: Comprobar reparación visual y respaldos en Hostinger simulado
+        run: |
+          python3 -m py_compile tools/ajustar_sidebar_gestion_comercial_hostinger.py
+          python3 tests/gestion_comercial_sidebar_hostinger_test.py
