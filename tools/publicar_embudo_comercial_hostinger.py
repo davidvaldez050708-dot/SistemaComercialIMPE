@@ -69,6 +69,8 @@ def patch_router(text):
 
 
 """
+    if "// Embudo comercial: autorización propia por vista y por asesor." in text and "case 'embudoComercial':" not in text:
+        raise Conflicto("Router: inserción previa alterada; detener sin sustituir")
     text = insert_once(text, marker, addition,
                        "case 'embudoComercial':", "router del embudo")
     start = text.find("$controladoresProtegidosCsrf = [")
