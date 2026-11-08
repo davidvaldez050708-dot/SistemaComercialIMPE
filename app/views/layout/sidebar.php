@@ -201,23 +201,10 @@ $claseFormularios =
 
         <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial || $mostrarMiCartera): ?>
             <div class="sidebar-section">
-                <p class="sidebar-section-title">COMERCIAL</p>
-                <?php if ($mostrarEmbudoComercial): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=embudo"
-                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='embudo'?'active':'' ?>">
-                    <i class="bi bi-kanban" aria-hidden="true"></i> Embudo comercial
-                </a>
-                <?php endif; ?>
-                <?php if ($mostrarRecuperacionComercial): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=recuperacion"
-                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='recuperacion'?'active':'' ?>">
-                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación
-                </a>
-                <?php endif; ?>
-                <?php if ($mostrarDescartadosComercial): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=descartados"
-                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='descartados'?'active':'' ?>">
-                    <i class="bi bi-archive" aria-hidden="true"></i> Descartados
+                <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial): ?>
+                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=<?= $mostrarEmbudoComercial?'embudo':($mostrarRecuperacionComercial?'recuperacion':'descartados') ?>"
+                   class="sidebar-link <?= $seccionComercialActiva?'active':'' ?>">
+                    <i class="bi bi-kanban" aria-hidden="true"></i> Gestión comercial
                 </a>
                 <?php endif; ?>
                 <?php if ($mostrarMiCartera && !$mostrarEmbudoComercial): ?>
@@ -564,23 +551,10 @@ $claseFormularios =
 
             <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial || $mostrarMiCartera): ?>
             <div class="sidebar-section">
-                <p class="sidebar-section-title">COMERCIAL</p>
-                <?php if ($mostrarEmbudoComercial): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=embudo"
-                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='embudo'?'active':'' ?>">
-                    <i class="bi bi-kanban" aria-hidden="true"></i> Embudo comercial
-                </a>
-                <?php endif; ?>
-                <?php if ($mostrarRecuperacionComercial): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=recuperacion"
-                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='recuperacion'?'active':'' ?>">
-                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación
-                </a>
-                <?php endif; ?>
-                <?php if ($mostrarDescartadosComercial): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=descartados"
-                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='descartados'?'active':'' ?>">
-                    <i class="bi bi-archive" aria-hidden="true"></i> Descartados
+                <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial): ?>
+                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=<?= $mostrarEmbudoComercial?'embudo':($mostrarRecuperacionComercial?'recuperacion':'descartados') ?>"
+                   class="sidebar-link <?= $seccionComercialActiva?'active':'' ?>">
+                    <i class="bi bi-kanban" aria-hidden="true"></i> Gestión comercial
                 </a>
                 <?php endif; ?>
                 <?php if ($mostrarMiCartera && !$mostrarEmbudoComercial): ?>
