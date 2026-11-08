@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 require_once __DIR__ . '/../../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../../helpers/EmbudoComercialAcceso.php';
 
 $opcionActiva = $opcionActiva ?? 'inicio';
 $mostrarUsuarios = tienePermiso('usuarios.ver');
@@ -25,6 +26,11 @@ $mostrarProspectos = tienePermiso('prospectos.ver_todos') &&
     (int)($_SESSION['rol_id']??0)!==3;
 $mostrarMiCartera = (int)($_SESSION['rol_id']??0)===3 &&
     tienePermiso('prospectos.mi_cartera');
+$mostrarEmbudoComercial = EmbudoComercialAcceso::puede('embudo');
+$mostrarRecuperacionComercial = EmbudoComercialAcceso::puede('recuperacion');
+$mostrarDescartadosComercial = EmbudoComercialAcceso::puede('descartados');
+$vistaComercialActual = (string)($_GET['vista']??'embudo');
+$seccionComercialActiva = $opcionActiva === 'embudo_comercial';
 $mostrarReporteTerritorial =
     tienePermiso('reportes.territorial') &&
     $mostrarDataTerritorial;
@@ -193,13 +199,33 @@ $claseFormularios =
 
         <?php endif; ?>
 
-        <?php if ($mostrarMiCartera): ?>
+        <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial || $mostrarMiCartera): ?>
             <div class="sidebar-section">
                 <p class="sidebar-section-title">COMERCIAL</p>
+                <?php if ($mostrarEmbudoComercial): ?>
+                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=embudo"
+                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='embudo'?'active':'' ?>">
+                    <i class="bi bi-kanban" aria-hidden="true"></i> Embudo comercial
+                </a>
+                <?php endif; ?>
+                <?php if ($mostrarRecuperacionComercial): ?>
+                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=recuperacion"
+                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='recuperacion'?'active':'' ?>">
+                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación
+                </a>
+                <?php endif; ?>
+                <?php if ($mostrarDescartadosComercial): ?>
+                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=descartados"
+                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='descartados'?'active':'' ?>">
+                    <i class="bi bi-archive" aria-hidden="true"></i> Descartados
+                </a>
+                <?php endif; ?>
+                <?php if ($mostrarMiCartera && !$mostrarEmbudoComercial): ?>
                 <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
                    class="sidebar-link <?= $claseMiCartera ?>">
                     <i class="bi bi-person-vcard" aria-hidden="true"></i> Mi cartera
                 </a>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
@@ -536,15 +562,35 @@ $claseFormularios =
             <?php endif; ?>
 
 
-            <?php if ($mostrarMiCartera): ?>
-                <div class="sidebar-section">
-                    <p class="sidebar-section-title">COMERCIAL</p>
-                    <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
-                       class="sidebar-link <?= $claseMiCartera ?>">
-                        <i class="bi bi-person-vcard" aria-hidden="true"></i> Mi cartera
-                    </a>
-                </div>
-            <?php endif; ?>
+            <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial || $mostrarMiCartera): ?>
+            <div class="sidebar-section">
+                <p class="sidebar-section-title">COMERCIAL</p>
+                <?php if ($mostrarEmbudoComercial): ?>
+                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=embudo"
+                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='embudo'?'active':'' ?>">
+                    <i class="bi bi-kanban" aria-hidden="true"></i> Embudo comercial
+                </a>
+                <?php endif; ?>
+                <?php if ($mostrarRecuperacionComercial): ?>
+                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=recuperacion"
+                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='recuperacion'?'active':'' ?>">
+                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación
+                </a>
+                <?php endif; ?>
+                <?php if ($mostrarDescartadosComercial): ?>
+                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=descartados"
+                   class="sidebar-link <?= $seccionComercialActiva && $vistaComercialActual==='descartados'?'active':'' ?>">
+                    <i class="bi bi-archive" aria-hidden="true"></i> Descartados
+                </a>
+                <?php endif; ?>
+                <?php if ($mostrarMiCartera && !$mostrarEmbudoComercial): ?>
+                <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
+                   class="sidebar-link <?= $claseMiCartera ?>">
+                    <i class="bi bi-person-vcard" aria-hidden="true"></i> Mi cartera
+                </a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
 
             <?php if ($mostrarMisLlamadas): ?>
                 <div class="sidebar-section">
