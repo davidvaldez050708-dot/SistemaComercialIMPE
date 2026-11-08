@@ -1,0 +1,38 @@
+name: Historial Meta - paquete compatible Hostinger
+on:
+  push:
+    branches:
+      - fix/prospectos-historial-meta-hostinger-permissionhelper-20261107
+  pull_request:
+    paths:
+      - 'tools/prospectos_meta_historial_permisos_release.json'
+      - 'tests/prospectos_meta_historial_hostinger_variante_test.py'
+      - '.github/workflows/prospectos-meta-historial-hostinger.yml'
+permissions:
+  contents: read
+jobs:
+  variante-exacta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar exactamente el diff de Hostinger y las otras dependencias
+        run: python3 tests/prospectos_meta_historial_hostinger_variante_test.py
+      - name: Probar publicación selectiva, conflicto y restore en sitio simulado
+        run: |
+          python3 -m py_compile tools/publicar_prospectos_meta_historial_permisos.py
+          python3 tests/prospectos_meta_historial_permisos_release_test.py
+  permisos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: Comprobar PHP y permisos independientes
+        run: |
+          php -l app/controllers/ProspectoController.php
+          php -l app/views/prospectos/central.php
+          php -l app/services/ProspectoMetaImportacionesHistorial.php
+          php tests/prospectos_meta_historial_acceso_permisos_unit.php
+          php tests/prospectos_meta_historial_ui_test.php
