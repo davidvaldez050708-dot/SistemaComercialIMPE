@@ -54,7 +54,7 @@ with tempfile.TemporaryDirectory() as tmp:
     require(len(directories)==1,'no crea respaldo al repetir')
     require((directories[0]/mod.FILE).read_bytes()==original,'respaldo conserva original')
     # Rechazar edición posterior sin escribir
-    target.write_bytes(changed.replace(b'Gestión comercial',b'Otro nombre',1))
+    target.write_bytes(changed.replace('Gestión comercial'.encode('utf-8'),b'Otro nombre',1))
     modified=target.read_bytes()
     result=run(site,backup,'--check')
     require(result.returncode!=0,'bloquea conflicto parcial')
