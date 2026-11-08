@@ -25,7 +25,7 @@
   "dependencies": [
     {
       "path": "app/helpers/PermissionHelper.php",
-      "sha256": "00d910af5b49fde69ece33829569d33b86f14c4d0270639dc10409cbecb6e666"
+      "sha256": "1ef40e3df10307ec89d047c32a373c8244fd03e83828200d63af9d34680f5bc2"
     },
     {
       "path": "app/helpers/AdminRolePolicy.php",
