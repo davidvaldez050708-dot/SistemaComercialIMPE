@@ -86,4 +86,39 @@ with tempfile.TemporaryDirectory(prefix="impe-embudo-fixture-") as directory:
     (site/"index.php").write_bytes(current.replace(b"case 'embudoComercial':",
                                                       b"case 'otroComercial':"))
     check(cli(site,backups,"--check").returncode!=0,"router modificado bloquear")
-print("CHECK OK: preflight sin escrituras, conservación de personalizaciones, respaldo, idempotencia y bloqueo de conflictos.")
+# Hostinger puede conservar el case de Mi cartera aunque haya quitado el comentario.
+# Debe conciliar sólo en el ancla estructural y preservar el resto.
+with tempfile.TemporaryDirectory(prefix="impe-embudo-hostinger-sin-comentario-") as directory:
+    base=Path(directory)
+    site=base/"public_html"
+    backup=base/"respaldo"
+    site.mkdir()
+    for path in ["index.php","app/views/layout/sidebar.php",
+                 "app/helpers/PermissionHelper.php","app/helpers/AdminRolePolicy.php"]:
+        put(site,path,git_base(path))
+    route=site/"index.php"
+    marker=b"    // Mi cartera nunca reutiliza las rutas administrativas de Prospectos."
+    original=route.read_bytes()
+    check(original.count(marker)==1,"fixture contiene marcador historico")
+    route.write_bytes(original.replace(marker,b"    // RUTA DE CARTERA PERSONALIZADA"))
+    personal=route.read_bytes()
+    first=cli(site,backup,"--check")
+    check(first.returncode==0,
+          "Hostinger sin comentario debe conciliar: "+first.stderr)
+    check(route.read_bytes()==personal,"check con comentario distinto no escribe")
+    applied=cli(site,backup,"--apply")
+    check(applied.returncode==0,
+          "Hostinger sin comentario debe publicar: "+applied.stderr)
+    changed=route.read_text(encoding="utf-8")
+    check(changed.count("case 'embudoComercial':")==1,"router nuevo unico")
+    check(changed.count("case 'miCartera':")==1,"router cartera conservado")
+    check("RUTA DE CARTERA PERSONALIZADA" in changed,"comentario Hostinger preservado")
+    check(cli(site,backup,"--check").returncode==0,"idempotencia sin comentario")
+    # No debe inventar un ancla si desaparece la ruta de cartera.
+    route.write_bytes(route.read_bytes().replace(b"case 'miCartera':",
+                                                b"case 'carteraMovida':").replace(
+        b"case 'embudoComercial':",b"case 'embudoModificado':"))
+    blocked=cli(site,backup,"--check")
+    check(blocked.returncode!=0,"sin ancla de cartera bloquea")
+print("CHECK OK: marcador ausente, Hostinger personalizado, rollback, idempotencia y aislamiento.")
+
