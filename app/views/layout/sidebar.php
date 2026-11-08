@@ -200,20 +200,20 @@ $claseFormularios =
         <?php endif; ?>
 
         <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial || $mostrarMiCartera): ?>
-            <div class="sidebar-section">
-                <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=<?= $mostrarEmbudoComercial?'embudo':($mostrarRecuperacionComercial?'recuperacion':'descartados') ?>"
-                   class="sidebar-link <?= $seccionComercialActiva?'active':'' ?>">
-                    <i class="bi bi-kanban" aria-hidden="true"></i> Gestión comercial
-                </a>
-                <?php endif; ?>
-                <?php if ($mostrarMiCartera && !$mostrarEmbudoComercial): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
-                   class="sidebar-link <?= $claseMiCartera ?>">
-                    <i class="bi bi-person-vcard" aria-hidden="true"></i> Mi cartera
-                </a>
-                <?php endif; ?>
-            </div>
+            <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial): ?>
+            <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=<?= $mostrarEmbudoComercial?'embudo':($mostrarRecuperacionComercial?'recuperacion':'descartados') ?>"
+               class="sidebar-link <?= $seccionComercialActiva?'active':'' ?>">
+                <i class="bi bi-kanban" aria-hidden="true"></i>
+                Gestión comercial
+            </a>
+            <?php endif; ?>
+            <?php if ($mostrarMiCartera && !$mostrarEmbudoComercial): ?>
+            <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
+               class="sidebar-link <?= $claseMiCartera ?>">
+                <i class="bi bi-person-vcard" aria-hidden="true"></i>
+                Mi cartera
+            </a>
+            <?php endif; ?>
         <?php endif; ?>
 
         <?php if ($mostrarMisLlamadas): ?>
@@ -550,20 +550,20 @@ $claseFormularios =
 
 
             <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial || $mostrarMiCartera): ?>
-            <div class="sidebar-section">
-                <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=<?= $mostrarEmbudoComercial?'embudo':($mostrarRecuperacionComercial?'recuperacion':'descartados') ?>"
-                   class="sidebar-link <?= $seccionComercialActiva?'active':'' ?>">
-                    <i class="bi bi-kanban" aria-hidden="true"></i> Gestión comercial
-                </a>
-                <?php endif; ?>
-                <?php if ($mostrarMiCartera && !$mostrarEmbudoComercial): ?>
-                <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
-                   class="sidebar-link <?= $claseMiCartera ?>">
-                    <i class="bi bi-person-vcard" aria-hidden="true"></i> Mi cartera
-                </a>
-                <?php endif; ?>
-            </div>
+            <?php if ($mostrarEmbudoComercial || $mostrarRecuperacionComercial || $mostrarDescartadosComercial): ?>
+            <a href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index&amp;vista=<?= $mostrarEmbudoComercial?'embudo':($mostrarRecuperacionComercial?'recuperacion':'descartados') ?>"
+               class="sidebar-link <?= $seccionComercialActiva?'active':'' ?>">
+                <i class="bi bi-kanban" aria-hidden="true"></i>
+                Gestión comercial
+            </a>
+            <?php endif; ?>
+            <?php if ($mostrarMiCartera && !$mostrarEmbudoComercial): ?>
+            <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
+               class="sidebar-link <?= $claseMiCartera ?>">
+                <i class="bi bi-person-vcard" aria-hidden="true"></i>
+                Mi cartera
+            </a>
+            <?php endif; ?>
         <?php endif; ?>
 
             <?php if ($mostrarMisLlamadas): ?>
