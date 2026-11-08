@@ -9,7 +9,7 @@ import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
 TOOL=ROOT/'tools/corregir_ancho_gestion_comercial_hostinger.py'
-BASE='f055503323ce8ab8148e1774d5c94a10cd4059a1'
+BASE='34de9e8291af01e137f077762093e2e6d44efb78'
 
 def require(value,reason):
     if not value: raise AssertionError(reason)
@@ -23,7 +23,18 @@ def run(site,backup,mode):
 p=subprocess.run(['git','show',BASE+':app/views/layout/sidebar.php'],
     cwd=str(ROOT),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 require(p.returncode==0,'commit anterior disponible')
-source=p.stdout
+# Reproducir exactamente ambos publicadores previos sobre el sidebar base
+# para recrear el archivo instalado en Hostinger, no el de la rama de desarrollo.
+original_tool=ROOT/'tools/publicar_embudo_comercial_hostinger.py'
+prev_tool=ROOT/'tools/ajustar_sidebar_gestion_comercial_hostinger.py'
+old_spec=importlib.util.spec_from_file_location('sidebar_original',str(original_tool))
+original_publisher=importlib.util.module_from_spec(old_spec)
+old_spec.loader.exec_module(original_publisher)
+prev_spec=importlib.util.spec_from_file_location('sidebar_previo',str(prev_tool))
+prev_publisher=importlib.util.module_from_spec(prev_spec)
+prev_spec.loader.exec_module(prev_publisher)
+initial=original_publisher.patch_sidebar(p.stdout.decode('utf-8')).encode('utf-8')
+source=prev_publisher.parchear_menu(initial)
 spec=importlib.util.spec_from_file_location('sidebar_tamano',str(TOOL))
 mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
 require(source.count(mod.OLD_NAV.encode('utf-8'))==2,'ambos enlaces previos')
