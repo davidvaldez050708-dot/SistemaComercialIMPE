@@ -40,7 +40,8 @@ jobs:
           php -l tools/embudo_comercial_db_preflight.php
       - name: Autorización por rol y filtros
         run: php tests/embudo_comercial_fase1_unit.php
-      - name: Publicador Hostinger en sandbox con personalizaciones
+      - name: Publicador inicial en sandbox (solo rama fase 1)
+        if: github.ref_name == 'feat/ventas-embudo-kanban-permisos-fase1-20261108'
         run: |
           python3 -m py_compile tools/publicar_embudo_comercial_hostinger.py
           python3 tests/embudo_publicador_hostinger_test.py
