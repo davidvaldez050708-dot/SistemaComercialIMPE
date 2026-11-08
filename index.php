@@ -237,7 +237,8 @@ $controladoresProtegidosCsrf = [
     'whatsapp',
     'rol',
     'usuario',
-    'telefonia'
+    'telefonia',
+    'embudoComercial'
 ];
 
 if (
