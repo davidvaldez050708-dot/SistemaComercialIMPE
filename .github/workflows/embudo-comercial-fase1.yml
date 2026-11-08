@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -36,3 +38,5 @@ jobs:
           php -l app/views/embudo_comercial/detalle.php
       - name: Autorización por rol y filtros
         run: php tests/embudo_comercial_fase1_unit.php
+      - name: Publicador Hostinger en sandbox con personalizaciones
+        run: python3 tests/embudo_publicador_hostinger_test.py
