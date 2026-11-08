@@ -208,11 +208,13 @@ $claseFormularios =
             </a>
             <?php endif; ?>
             <?php if ($mostrarMiCartera && !$mostrarEmbudoComercial): ?>
-            <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
-               class="sidebar-link <?= $claseMiCartera ?>">
-                <i class="bi bi-person-vcard" aria-hidden="true"></i>
-                Mi cartera
-            </a>
+            <div class="sidebar-section">
+                <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
+                   class="sidebar-link <?= $claseMiCartera ?>">
+                    <i class="bi bi-person-vcard" aria-hidden="true"></i>
+                    Mi cartera
+                </a>
+            </div>
             <?php endif; ?>
         <?php endif; ?>
 
@@ -558,11 +560,13 @@ $claseFormularios =
             </a>
             <?php endif; ?>
             <?php if ($mostrarMiCartera && !$mostrarEmbudoComercial): ?>
-            <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
-               class="sidebar-link <?= $claseMiCartera ?>">
-                <i class="bi bi-person-vcard" aria-hidden="true"></i>
-                Mi cartera
-            </a>
+            <div class="sidebar-section">
+                <a href="<?= BASE_URL ?>index.php?controller=miCartera&amp;action=index"
+                   class="sidebar-link <?= $claseMiCartera ?>">
+                    <i class="bi bi-person-vcard" aria-hidden="true"></i>
+                    Mi cartera
+                </a>
+            </div>
             <?php endif; ?>
         <?php endif; ?>
 
