@@ -36,7 +36,10 @@ jobs:
           php -l app/controllers/EmbudoComercialController.php
           php -l app/views/embudo_comercial/index.php
           php -l app/views/embudo_comercial/detalle.php
+          php -l tools/embudo_comercial_db_preflight.php
       - name: Autorización por rol y filtros
         run: php tests/embudo_comercial_fase1_unit.php
       - name: Publicador Hostinger en sandbox con personalizaciones
-        run: python3 tests/embudo_publicador_hostinger_test.py
+        run: |
+          python3 -m py_compile tools/publicar_embudo_comercial_hostinger.py
+          python3 tests/embudo_publicador_hostinger_test.py
