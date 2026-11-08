@@ -36,12 +36,12 @@ final class EmbudoComercialController
     {
         extract($datos,EXTR_SKIP);
         $titulos=[
-            'embudo'=>'Embudo comercial de ventas',
+            'embudo'=>'Gestión comercial',
             'recuperacion'=>'Recuperación comercial',
             'descartados'=>'Prospectos descartados'
         ];
         $tituloPagina=$titulos[$vista];
-        $subtituloPagina='Atención y seguimiento de prospectos comerciales.';
+        $subtituloPagina='Control de etapas, atención y seguimiento de prospectos.';
         $opcionActiva='embudo_comercial';
         require __DIR__.'/../views/layout/dashboard_head.php';
         require __DIR__.'/../views/layout/sidebar.php';
