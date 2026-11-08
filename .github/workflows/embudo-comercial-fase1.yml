@@ -1,0 +1,38 @@
+name: Ventas - Embudo Kanban fase 1
+on:
+  push:
+    branches:
+      - feat/ventas-embudo-kanban-permisos-fase1-20261108
+  pull_request:
+    paths:
+      - 'app/controllers/EmbudoComercialController.php'
+      - 'app/helpers/EmbudoComercialAcceso.php'
+      - 'app/services/EmbudoComercialRepository.php'
+      - 'app/views/embudo_comercial/**'
+      - 'public/css/embudo_comercial.css'
+      - 'app/views/layout/sidebar.php'
+      - 'index.php'
+      - 'database/migrations/2026_11_08_ventas_embudo_kanban_fase1.sql'
+      - 'tests/embudo_comercial_fase1_unit.php'
+permissions:
+  contents: read
+jobs:
+  php-and-access:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Sintaxis del enrutador, menús, tablero y servicio
+        run: |
+          php -l index.php
+          php -l app/views/layout/sidebar.php
+          php -l app/helpers/EmbudoComercialAcceso.php
+          php -l app/services/EmbudoComercialRepository.php
+          php -l app/controllers/EmbudoComercialController.php
+          php -l app/views/embudo_comercial/index.php
+          php -l app/views/embudo_comercial/detalle.php
+      - name: Autorización por rol y filtros
+        run: php tests/embudo_comercial_fase1_unit.php
