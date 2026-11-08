@@ -39,11 +39,11 @@ class Conflicto(Exception):
 def blob(b):
     return hashlib.sha1(("blob %d\0" % len(b)).encode("ascii") + b).hexdigest()
 
-def unico(text, needle, descripcion):
+def unico(text, needle, reemplazo, descripcion):
     n = text.count(needle)
     if n != 1:
         raise Conflicto("{}: marcador esperado una vez; encontrado {}".format(descripcion, n))
-    return text.replace(needle, needle, 1)
+    return text.replace(needle, reemplazo, 1)
 
 def insert_once(text, needle, addition, sentinel, desc):
     if sentinel in text:
