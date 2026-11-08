@@ -49,6 +49,25 @@ foreach ([
     catch(DomainException $e) {$error=true;}
     comprobar($error,'filtro inválido');
 }
+// Inspeccionar la consulta estructural sin conectar a una base de datos.
+$repoRef=new ReflectionClass(EmbudoComercialRepository::class);
+$repoVacio=$repoRef->newInstanceWithoutConstructor();
+$condiciones=$repoRef->getMethod('condiciones');
+$datosFiltro=EmbudoComercialRepository::filtros(['origen'=>'META_ADS','buscar'=>'Ana'],false);
+[$sqlAsesor,$argsAsesor]=$condiciones->invoke($repoVacio,7,false,$datosFiltro);
+comprobar(strpos($sqlAsesor,'a.asesor_id=?')!==false && $argsAsesor[0]===7,
+    'todas las consultas de asesor filtran propietario en servidor');
+comprobar(strpos($sqlAsesor,'a.vigente=1')!==false,
+    'sólo asignaciones vigentes');
+comprobar(strpos($sqlAsesor,'EXISTS')!==false,
+    'origen se filtra sin duplicar filas');
+[$sqlAdmin,$argsAdmin]=$condiciones->invoke(
+    $repoVacio,7,true,EmbudoComercialRepository::filtros(['asesor'=>'24'],true)
+);
+comprobar(strpos($sqlAdmin,'a.asesor_id=?')!==false && $argsAdmin[0]===24,
+    'el filtro de supervisión es explícito');
+comprobar(!isset(EmbudoComercialRepository::ETAPAS['INSCRITOS']),
+    'Inscritos no figura entre las etapas comerciales');
 comprobar(EmbudoComercialRepository::POR_COLUMNA===20,'límite por columna');
 comprobar(count(EmbudoComercialRepository::ETAPAS)===8,'seis activas y dos vistas externas');
 echo "CHECK OK: permisos, aislamiento por rol, filtros y paginación.\n";
