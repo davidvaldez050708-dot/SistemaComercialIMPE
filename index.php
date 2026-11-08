@@ -575,6 +575,18 @@ switch ($controller) {
         break;
 
 
+    // El tablero comercial usa permisos y consultas independientes del almacén.
+    case 'embudoComercial':
+
+        require_once __DIR__ .
+            '/app/controllers/EmbudoComercialController.php';
+
+        $controllerInstance =
+            new EmbudoComercialController();
+
+        break;
+
+
     // Mi cartera nunca reutiliza las rutas administrativas de Prospectos.
     case 'miCartera':
 
