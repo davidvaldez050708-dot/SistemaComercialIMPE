@@ -26,8 +26,8 @@ $mostrarLlamadas=tienePermiso('telefonia.usar') && !$supervisor;
 <div class="impe-embudo">
     <header class="impe-embudo-hero">
         <div>
-            <span class="impe-embudo-kicker"><i class="bi bi-diagram-3" aria-hidden="true"></i> GESTIÓN COMERCIAL</span>
-            <h2><?= $esc($vista==='embudo'?'Embudo comercial de ventas':($vista==='recuperacion'?'Recuperación de prospectos':'Prospectos descartados')) ?></h2>
+            <span class="impe-embudo-kicker"><i class="bi bi-diagram-3" aria-hidden="true"></i> VENTAS · PROSPECTOS ASIGNADOS</span>
+            <h2><?= $esc($vista==='embudo'?'Gestión comercial':($vista==='recuperacion'?'Recuperación de prospectos':'Prospectos descartados')) ?></h2>
             <p><?= $supervisor?'Supervisión de asignaciones comerciales vigentes. Consulta de solo lectura.':'Tus prospectos asignados, organizados para su atención y seguimiento.' ?></p>
         </div>
         <span class="impe-embudo-hero-icon"><i class="bi bi-kanban" aria-hidden="true"></i></span>
@@ -35,7 +35,7 @@ $mostrarLlamadas=tienePermiso('telefonia.usar') && !$supervisor;
 
     <nav class="impe-embudo-tabs" aria-label="Vistas comerciales">
         <?php foreach ([
-            'embudo'=>['bi-kanban','Embudo comercial'],
+            'embudo'=>['bi-kanban','Embudo de ventas'],
             'recuperacion'=>['bi-arrow-repeat','Recuperación'],
             'descartados'=>['bi-archive','Descartados']
         ] as $clave=>$datos): ?>
