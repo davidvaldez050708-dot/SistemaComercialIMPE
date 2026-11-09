@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Pruebas sin Hosting real: reemplazos conservadores e idempotencia.
+Las funciones usadas no escriben archivos ni ejecutan SQL.
+"""
+import importlib.util
+from pathlib import Path
+import subprocess
+import tempfile
+import sys
+
+ROOT=Path(__file__).resolve().parents[1]
+TOOL=ROOT/'tools/conciliar_embudo_telefonia_personalizada_hostinger.py'
+OLD='62f57c06352ad637a283a90fee234e038aab0f75'
+
+def check(value,detail):
+    if not value:raise AssertionError(detail)
+
+def gitshow(path):
+    p=subprocess.run(['git','show',OLD+':'+path],cwd=str(ROOT),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    check(p.returncode==0,'git show '+path)
+    return p.stdout.decode('utf-8')
+
+spec=importlib.util.spec_from_file_location('conciliar',str(TOOL))
+m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+
+service=gitshow(m.PHP_SERVICE)
+# Personalización ajena: se conserva texto, no depende del formato del return.
+service=service.replace('class TelefoniaResultadoVentasService',
+ '/* CATALOGO PERSONALIZADO CONSERVADO */\nclass TelefoniaResultadoVentasService')
+after=m.render_service(service)
+check(after.count('IMPE_EMBUDO_PBX_POSTCOMMIT_V1')==1,'bridge único')
+check('CATALOGO PERSONALIZADO CONSERVADO' in after,'conservar servicio existente')
+check(after.index(m.ANCHOR_SERVICE)<after.index('IMPE_EMBUDO_PBX_POSTCOMMIT_V1'),
+      'vincular después de commit/catch')
+check(after.replace(m.ANCHOR_SERVICE+'\n'+m.BRIDGE,m.ANCHOR_SERVICE)==service,
+      'cambio mínimo exacto de servicio')
+m.lint_php(after.encode('utf-8'),m.PHP_SERVICE)
+
+form=gitshow(m.PHP_FORM)
+form=form.replace('name="extension">','name="extension"><input type="hidden" name="catalogo_version" value="1">')
+form=form.replace('data-sales-form>', 'data-sales-form data-catalogo-personalizado>')
+new=m.render_form(form)
+check('catalogo_version' in new and 'data-catalogo-personalizado' in new,
+      'conservar extensiones del modal personalizado')
+check(new.count('name="prospecto_asignacion_id"')==1,'nuevo campo único')
+m.lint_php(new.encode('utf-8'),m.PHP_FORM)
+
+calls=gitshow(m.PHP_CALLS)
+calls=calls.replace('data-save-url=', 'data-evidence-url="prueba" data-save-url=')
+calls=calls.replace('<form method="get" class="impe-callback-filter-panel">',
+ '<form method="get" class="impe-callback-filter-panel"><!-- personalizada -->')
+newcalls=m.render_calls(calls)
+check('data-evidence-url="prueba"' in newcalls,'mantener evidencia de PBX')
+check('personalizada' in newcalls,'mantener filtros del sitio')
+check(newcalls.count('data-sales-assignment-id')==1,'data de asignación una vez')
+check(newcalls.count('name="prospecto_asignacion_id"')==1,'filtro de asignación una vez')
+m.lint_php(newcalls.encode('utf-8'),m.PHP_CALLS)
+
+# Caso de host especializado: redacción de resultados con borradores múltiples.
+js = """(()=>{
+ 'use strict';
+ const root=document.querySelector('[data-sales-history]');
+ const form={elements:{pbx_call_id:{},extension:{},prospecto_asignacion_id:{}}};
+ const ref='123456',ownExt='150';
+ const draftKey=ref=>'x:'+ref;
+ const oldKey=draftKey(ref);
+ const otherDraft=draftKey(ref);
+ function saveDraft(){new FormData(form);}
+ function saveResult(){new URLSearchParams(new FormData(form));}
+ form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;
+})();
+"""
+newjs=m.render_js(js)
+check(newjs.count('IMPE_EMBUDO_ASIGNACION_RESULTADO_V1')==1,
+      'ancla de JS de registro única')
+check('const otherDraft=draftKey(ref)' in newjs,
+      'múltiples borradores conservados')
+check(newjs.count('new FormData(form)')==2,'guardar envíos de código original')
+check(newjs.replace(
+ 'form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;\n'+m.JS_ASSIGN,
+ 'form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;')==js,
+ 'solo agregar campo en JS')
+m.lint_js(newjs.encode('utf-8'),m.JS)
+
+for function,original in [
+ (m.render_service,service),(m.render_form,form),
+ (m.render_calls,calls),(m.render_js,js)
+]:
+    modified=function(original)
+    blocked=False
+    try:function(modified)
+    except m.Conflicto:blocked=True
+    check(blocked,'bloqueo ante repetición de integración')
+
+# Comprobar que un cambio de estructura de PBX no permite parchear.
+broken=service.replace('if($callbacks)$callbacks->aplicarResultado($usuarioId,$call,$resultado);','// omitido')
+blocked=False
+try:m.render_service(broken)
+except m.Conflicto:blocked=True
+check(blocked,'bloquear devolución de llamadas personalizada desconocida')
+
+print('CHECK OK: conciliación mínima en 4 archivos, PHP y JS válidos, datos personalizados intactos.')
