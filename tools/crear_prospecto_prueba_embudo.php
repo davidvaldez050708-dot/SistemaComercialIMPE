@@ -65,14 +65,14 @@ function preflightFixture(mysqli $db,?int $asesor): array {
     $dbName=(string)$db->query('SELECT DATABASE() nombre')->fetch_assoc()['nombre'];
     if ($dbName==='') throw new RuntimeException('No se pudo identificar la base conectada.');
     echo "BASE DE DATOS DETECTADA: $dbName\n";
-    $isTest=(bool)preg_match('/(?:^|[_-])(test|testing|prueba|staging|sandbox)(?:[_-]|$)/i',$dbName);
+    $isTest=(bool)preg_match('/(?:^|[_-])(test|testing|prueba|pruebas|staging|sandbox)(?:[_-]|$)/i',$dbName);
     echo $isTest?"ENTORNO: base de PRUEBAS identificada\n":
         "ADVERTENCIA: la base NO está identificada como pruebas; --apply se bloqueará.\n";
 
     $required=[
         'prospectos_comerciales','prospecto_integraciones','prospecto_origenes',
         'prospecto_intereses','prospecto_preferencias_contacto',
-        'prospecto_asignaciones','prospecto_embudo_etapas',
+        'prospecto_asignaciones','prospecto_embudo_etapas','formulario_programas',
         'prospecto_embudo_agenda','prospecto_distribucion_control'
     ];
     foreach ($required as $name) {
@@ -95,7 +95,8 @@ function preflightFixture(mysqli $db,?int $asesor): array {
     // IDs solamente; no se imprimen nombres, emails ni teléfonos.
     $asesores=simpleQuery($db,
         "SELECT u.id FROM usuarios u JOIN roles r ON r.id=u.rol_id
-          WHERE u.estado=1 AND r.estado=1 AND r.nombre='Asesor de Ventas'
+          WHERE u.estado=1 AND r.estado=1 AND r.id=3
+            AND r.nombre='Asesor de Ventas'
           ORDER BY u.id LIMIT 30");
     $ids=array_map('intval',array_column($asesores,'id'));
     echo "ASESORES ACTIVOS (IDs): ".($ids?implode(', ',$ids):'NINGUNO')."\n";
@@ -103,12 +104,27 @@ function preflightFixture(mysqli $db,?int $asesor): array {
         // Comprobar independiente del límite de visualización (30).
         $found=simpleQuery($db,
             "SELECT u.id FROM usuarios u JOIN roles r ON r.id=u.rol_id
-             WHERE u.id=? AND u.estado=1 AND r.estado=1
+             WHERE u.id=? AND u.estado=1 AND r.estado=1 AND r.id=3
                AND r.nombre='Asesor de Ventas'",[$asesor]);
         if (count($found)!==1) {
             throw new RuntimeException('El asesor indicado no existe, está inactivo o tiene otro rol.');
         }
     }
+    // El controlador y la acción operativa del embudo exigen rol_id=3
+    // y concesiones explícitas al rol. No usar una ficha que no será visible.
+    $grants=simpleQuery($db,
+        "SELECT p.codigo FROM permisos p
+         JOIN rol_permisos rp ON rp.permiso_id=p.id
+         WHERE rp.rol_id=3 AND p.estado=1
+           AND p.codigo IN ('ventas.embudo.ver','ventas.embudo.mover')");
+    $codes=array_column($grants,'codigo');
+    if (!in_array('ventas.embudo.ver',$codes,true) ||
+        !in_array('ventas.embudo.mover',$codes,true)) {
+        throw new RuntimeException(
+            'El rol Asesor de Ventas necesita permisos de ver y mover en el embudo.'
+        );
+    }
+    echo "PERMISOS: consulta y movimiento de Asesor OK\n";
     $existing=simpleQuery($db,
         "SELECT o.prospecto_id,a.id asignacion_id,a.asesor_id
            FROM prospecto_origenes o
