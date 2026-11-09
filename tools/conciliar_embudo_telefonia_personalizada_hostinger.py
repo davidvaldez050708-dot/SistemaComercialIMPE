@@ -122,11 +122,11 @@ def render_calls(s):
     return s
 
 def render_js(s):
-    if 'IMPE_EMBUDO_ASIGNACION_RESULTADO_V1' in s or
-        'form.elements.prospecto_asignacion_id.value' in s:
+    if ('IMPE_EMBUDO_ASIGNACION_RESULTADO_V1' in s or
+        'form.elements.prospecto_asignacion_id.value' in s):
         raise Conflicto('JS: referencia previa de embudo no conciliada')
-    if 'const root=document.querySelector' not in s or
-        'data-sales-history' not in s:
+    if ('const root=document.querySelector' not in s or
+        'data-sales-history' not in s):
         raise Conflicto('JS: contexto de llamada personalizado diferente')
     target='form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;'
     return unico(s,target,target+'\n'+JS_ASSIGN,'JS: selección de llamada PBX')
