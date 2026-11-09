@@ -14,6 +14,23 @@ CREATE TABLE IF NOT EXISTS prospecto_embudo_agenda (
     FOREIGN KEY (asignacion_id) REFERENCES prospecto_asignaciones(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Solo resultados PBX explícitamente asociados a la asignación por el asesor.
+-- Esta relación se inserta dentro de la transacción del resultado ya validado.
+CREATE TABLE IF NOT EXISTS prospecto_embudo_llamadas (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  asignacion_id BIGINT UNSIGNED NOT NULL,
+  usuario_id INT NOT NULL,
+  extension VARCHAR(20) NOT NULL,
+  pbx_call_id VARCHAR(100) NOT NULL,
+  resultado VARCHAR(36) NOT NULL,
+  creado_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_embudo_llamada_pbx (extension,pbx_call_id),
+  KEY idx_embudo_llamada_asignacion (asignacion_id,creado_at),
+  CONSTRAINT fk_embudo_llamada_asignacion FOREIGN KEY (asignacion_id)
+    REFERENCES prospecto_asignaciones(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET @perm_mover_nuevo := (SELECT COUNT(*)=0 FROM permisos WHERE codigo='ventas.embudo.mover');
 SET @perm_recuperar_nuevo := (SELECT COUNT(*)=0 FROM permisos WHERE codigo='ventas.recuperacion.gestionar');
 SET @perm_descartar_nuevo := (SELECT COUNT(*)=0 FROM permisos WHERE codigo='ventas.descartados.gestionar');
