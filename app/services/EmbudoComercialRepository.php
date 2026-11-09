@@ -126,10 +126,15 @@ final class EmbudoComercialRepository
             array_push($args,$pat,$pat,$pat);
         }
         if ($f['vencidos']) {
-            $sql.=" AND ((a.proxima_accion_at IS NOT NULL AND a.proxima_accion_at<UTC_TIMESTAMP())
-                      OR (a.proxima_accion_at IS NULL AND a.fecha_trabajo<?))";
-            $args[]=(new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))
+            $sql.=" AND (
+                COALESCE(ag.proxima_accion_at,a.proxima_accion_at)<UTC_TIMESTAMP()
+                OR ag.revision_fecha<=?
+                OR (ag.revision_fecha IS NULL
+                    AND COALESCE(ag.proxima_accion_at,a.proxima_accion_at) IS NULL
+                    AND a.fecha_trabajo<?))";
+            $hoy=(new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))
                 ->format('Y-m-d');
+            array_push($args,$hoy,$hoy);
         }
         return [$sql,$args];
     }
