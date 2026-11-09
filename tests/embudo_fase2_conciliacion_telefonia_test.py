@@ -100,4 +100,47 @@ try:m.render_service(broken)
 except m.Conflicto:blocked=True
 check(blocked,'bloquear devolución de llamadas personalizada desconocida')
 
-print('CHECK OK: conciliación mínima en 4 archivos, PHP y JS válidos, datos personalizados intactos.')
+# Simular --check y --apply en un sitio ficticio con los cuatro hashes
+# esperados generados a partir de los originales personalizados.
+with tempfile.TemporaryDirectory(prefix='impe-embudo-telefono-fake-host-') as d:
+    site=Path(d)/'public_html'
+    backup=Path(d)/'backups'
+    fixtures={
+        m.PHP_SERVICE:service,
+        m.PHP_FORM:form,
+        m.PHP_CALLS:calls,
+        m.JS:js
+    }
+    site.mkdir()
+    expected={}
+    for path,value in fixtures.items():
+        file=site/path
+        file.parent.mkdir(parents=True,exist_ok=True)
+        raw=value.encode('utf-8')
+        file.write_bytes(raw)
+        expected[path]=m.blob(raw)
+    m.FILES=expected
+    originals={name:(site/name).read_bytes() for name in expected}
+    proposed=m.preparar(site)
+    check(len(proposed)==4,'cuatro ficheros conciliables')
+    for name,raw in originals.items():
+        check((site/name).read_bytes()==raw,'check no altera '+name)
+    check(not backup.exists(),'check sin respaldos')
+    m.publicar(site,backup,proposed)
+    check(len(list(backup.iterdir()))==1,'se generó un respaldo privado')
+    check(len(m.preparar(site))==0,'idempotencia sin escrituras')
+    # La copia de producción conserva íntegro su texto original
+    # con solo los reemplazos autorizados.
+    for name in originals:
+        check((site/name).read_bytes() == proposed[name][1],
+              'mismo contenido aprobado en '+name)
+    # Una modificación posterior debe bloquear cualquier operación nueva.
+    target=site/m.PHP_SERVICE
+    target.write_bytes(target.read_bytes().replace(
+        b'IMPE_EMBUDO_PBX_POSTCOMMIT_V1',b'IMPE_EMBUDO_XYZ_POSTCOMMIT_V1'
+    ))
+    ok=False
+    try:m.preparar(site)
+    except m.Conflicto:ok=True
+    check(ok,'bloquear integración parcial y hashes inesperados')
+print('CHECK OK: fusión mínima, respaldo, idempotencia, bloqueo de conflictos y PBX intacta.')
