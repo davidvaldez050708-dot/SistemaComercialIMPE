@@ -157,7 +157,7 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
                                 'controller'=>'telefonia','action'=>'misLlamadas',
                                 'prospecto_asignacion_id'=>(int)$p['asignacion_id'],
                                 'q'=>(string)$p['telefono_original']
-                            ])) ?>" title="Consultar y registrar resultado en Mis llamadas" aria-label="Registrar resultado de llamadas del prospecto"><i class="bi bi-telephone" aria-hidden="true"></i></a>
+                            ])) ?>" title="Consultar y registrar resultado en Mis llamadas" aria-label="Registrar resultado de llamadas del prospecto"><i class="bi bi-journal-check" aria-hidden="true"></i></a>
                             <?php endif; ?>
                             <a href="<?= $esc($detalle) ?>" title="Ver ficha" aria-label="Ver ficha de <?= $esc($p['nombre_completo']) ?>"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
                             <?php if ($puedeMover && $etapa!=='PAGO_CONFIRMADO' && $etapa!=='DESCARTADO'): ?>
@@ -216,7 +216,9 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
             </div>
         </form>
     </dialog>
-    <script src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_movimientos.js?v=1" defer></script>
+    <?php endif; ?>
+    <?php if ($puedeMover || $puedeLlamar): ?>
+    <script src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_movimientos.js?v=2" defer></script>
     <?php endif; ?>
     <p class="impe-embudo-note"><i class="bi bi-shield-check" aria-hidden="true"></i>
         Las etapas manuales conservan auditoría; las llamadas siguen registrándose en Telefonía.
