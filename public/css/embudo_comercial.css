@@ -69,3 +69,25 @@
 .impe-embudo a:focus-visible,.impe-embudo select:focus-visible,.impe-embudo input:focus-visible,.impe-embudo button:focus-visible{outline:3px solid #9dbdf3;outline-offset:2px}
 @media(max-width:900px){.impe-embudo-hero{padding:14px}.impe-embudo-detalles{grid-template-columns:1fr}.impe-embudo-detalles-wide{grid-column:auto}}
 @media(max-width:600px){.impe-embudo-hero-icon{display:none}.impe-embudo-hero h2{font-size:17px}.impe-embudo-lane{flex-basis:220px;min-width:220px;max-width:220px}.impe-embudo-detalles dl{grid-template-columns:1fr}.impe-embudo-filtros>label{max-width:none}}
+
+/* Etapas operativas: sin modificar botones ni componentes de otros módulos. */
+.impe-embudo-card[draggable="true"]{cursor:grab;touch-action:pan-y}
+.impe-embudo-card.is-dragging{opacity:.5;cursor:grabbing}
+.impe-embudo-lane.is-drop-target{outline:2px dashed #336bc4;outline-offset:-3px;background:#edf4ff}
+.impe-embudo-card-actions button{width:24px;height:24px;border:1px solid #d9e4f2;color:#315fa0;background:#f9fbfe;border-radius:7px;display:grid;place-items:center;font-size:11px;cursor:pointer}
+.impe-embudo-card-actions button:hover{background:#e9f1ff}
+.impe-embudo-dialog{border:1px solid #cbdcf3;background:#fff;color:#1b365e;border-radius:16px;padding:0;width:min(480px,calc(100vw - 32px));box-shadow:0 24px 90px rgba(18,40,79,.3);font-family:Manrope,sans-serif}
+.impe-embudo-dialog::backdrop{background:rgba(19,37,66,.6)}
+.impe-embudo-dialog form{display:grid;gap:14px;padding:20px}
+.impe-embudo-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.impe-embudo-dialog h3{font-size:16px;font-weight:800;margin:0}
+.impe-embudo-dialog p{margin:0;font-size:12px;color:#657a99}
+.impe-embudo-dialog header button{border:0;background:transparent;color:#526d92;font-size:15px;cursor:pointer}
+.impe-embudo-dialog label{display:grid;gap:6px;color:#3c577c;font-size:11px;font-weight:800}
+.impe-embudo-dialog select,.impe-embudo-dialog textarea,.impe-embudo-dialog input{border:1px solid #cfdaeb;background:#fff;color:#1a355d;border-radius:9px;padding:10px;font-family:inherit;font-size:12px;width:100%;min-width:0}
+.impe-embudo-dialog [hidden]{display:none!important}
+.impe-embudo-dialog #impe-embudo-mover-error{border:1px solid #ebbbbb;background:#fff1f1;padding:10px;border-radius:8px;color:#a23535}
+.impe-embudo-dialog-footer{display:flex;justify-content:flex-end;gap:8px}
+.impe-embudo-dialog-footer button{border:1px solid #cfdaeb;border-radius:9px;padding:9px 13px;font:800 11px Manrope,sans-serif;color:#3b5b84;background:#fff;cursor:pointer}
+.impe-embudo-dialog-footer button[type="submit"]{background:#2556a5;color:#fff;border-color:#2556a5}
+.impe-embudo-dialog-footer button:disabled{opacity:.55;cursor:wait}
