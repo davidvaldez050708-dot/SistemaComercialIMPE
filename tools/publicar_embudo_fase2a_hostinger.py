@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -68,6 +69,65 @@ NEW = {
 class Conflicto(Exception):
     pass
 
+ADMIN_POLICY = 'app/helpers/AdminRolePolicy.php'
+ADMIN_REQUIRED = (
+    'ventas.embudo.mover',
+    'ventas.recuperacion.gestionar',
+    'ventas.descartados.gestionar'
+)
+
+def merge_admin_policy(raw):
+    """Añade exclusivamente permisos faltantes en la lista operativa del Admin.
+
+    No presupone hash antiguo porque este archivo es compartido por todos
+    los módulos y puede contener personalizaciones que deben conservarse.
+    Si la política dejó de ser una lista literal verificable, BLOQUEAR.
+    """
+    if raw is None:
+        raise Conflicto('AdminRolePolicy.php ausente, publicación bloqueada')
+    try:
+        text = raw.decode('utf-8')
+    except UnicodeError:
+        raise Conflicto('AdminRolePolicy.php debe ser UTF-8')
+    pattern = re.compile(
+        r"(?ms)^[ \t]*function[ \t]+permisosOperativosRestringidosAdministrador"
+        r"[ \t]*\(\s*\)[ \t]*\{\s*return[ \t]*\[(.*?)^[ \t]*\];"
+    )
+    blocks=list(pattern.finditer(text))
+    if len(blocks)!=1:
+        raise Conflicto('Política Administrador: lista operativa no identificada de forma única')
+    block=blocks[0].group(1)
+    if ('prospectos.importar_meta' not in block or
+        "'telefonia.usar'" not in block or
+        "'pagos.validar'" not in block):
+        raise Conflicto('Política Administrador: anclas de permisos conocidas ausentes')
+    # Requerir arreglo literal estático, sin condiciones, PHP o variables
+    # que pudieran alterar el significado de la lista de restricciones.
+    for line in block.splitlines():
+        t=line.strip()
+        if t and not re.match(r"^'[-a-zA-Z0-9_.]+',?$",t):
+            raise Conflicto('Política Administrador: entradas dinámicas/personalizadas no seguras')
+    items = re.findall(r"'([a-zA-Z0-9_.-]+)'", block)
+    if len(items)!=len(set(items)):
+        raise Conflicto('Política Administrador: hay permisos duplicados')
+    missing=[code for code in ADMIN_REQUIRED if code not in items]
+    if not missing:
+        return raw
+    anchor="'prospectos.importar_meta',"
+    if items.count('prospectos.importar_meta')!=1 or block.count(anchor)!=1:
+        raise Conflicto('Política Administrador: ancla para permisos nuevos ambigua')
+    newline='\r\n' if '\r\n' in text else '\n'
+    matched=re.search(r"(?m)^([ \t]*)"+re.escape(anchor)+r"[ \t]*$",block)
+    if not matched:
+        raise Conflicto('Política Administrador: ancla no está en línea propia')
+    indent=matched.group(1)
+    addition=''.join(newline+indent+"'"+code+"'," for code in missing)
+    updated=block.replace(anchor,anchor+addition,1)
+    revised=text[:blocks[0].start(1)]+updated+text[blocks[0].end(1):]
+    if len(re.findall(r"function\s+permisoOperativoRestringidoAdministrador\s*\(",revised))!=1:
+        raise Conflicto('Política Administrador: verificador de restricciones no único')
+    return revised.encode('utf-8')
+
 def blob(raw):
     return hashlib.sha1(('blob %d\0' % len(raw)).encode('ascii')+raw).hexdigest()
 
@@ -117,17 +177,25 @@ def preparar(site,root):
             raise Conflicto('Destino no es archivo regular: '+path)
         old=target.read_bytes() if exists else None
         h=blob(old) if old is not None else None
-        if path in CHANGES and h not in CHANGES[path]:
+        if path != ADMIN_POLICY and path in CHANGES and h not in CHANGES[path]:
             raise Conflicto('Archivo personalizado ajeno a la fase 2A: {} hash {}'.format(path,h))
         if path in NEW and h not in (None,NEW[path]):
             raise Conflicto('Archivo nuevo ya personalizado: {} hash {}'.format(path,h))
-        new=source(path,root)
+        # La política del Administrador es institucional y compartida.
+        # Jamás reemplazar sus otras personalizaciones con un blob GitHub.
+        approved=source(path,root)
+        if path == ADMIN_POLICY:
+            new=merge_admin_policy(old)
+            if h == CHANGES[path][0] and blob(new)!=CHANGES[path][1]:
+                raise Conflicto('Política Administrador estándar no coincide con GitHub')
+        else:
+            new=approved
         syntax(new,path)
         if old==new:
             print('YA APLICADO: '+path)
         else:
             pending[path]=(old,new)
-            print('COMPATIBLE PARA PUBLICAR: '+path)
+            print(('CONCILIADO CONSERVANDO PERSONALIZACIONES: ' if path==ADMIN_POLICY else 'COMPATIBLE PARA PUBLICAR: ')+path)
     print('CHECK DE ARCHIVOS: {} por publicar de 10; sin SQL ni cambios en sitio.'.format(len(pending)))
     return pending
 
