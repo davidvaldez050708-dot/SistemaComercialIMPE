@@ -53,6 +53,7 @@ jobs:
           php tests/embudo_comercial_fase2_unit.php
           node --check public/javascript/embudo_comercial_movimientos.js
           node --check public/javascript/telefonia_ventas_resultados.js
+          python3 -m py_compile tools/embudo_fase2_preflight_hostinger.py
       - name: Publicador inicial en sandbox (solo rama fase 1)
         if: github.ref_name == 'feat/ventas-embudo-kanban-permisos-fase1-20261108'
         run: |
