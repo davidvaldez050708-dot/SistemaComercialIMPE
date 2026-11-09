@@ -183,10 +183,19 @@ def preparar(site):
                 JS:'IMPE_EMBUDO_ASIGNACION_RESULTADO_V1'
             }
             marker=markers[path]
-            if s.count(marker)==1:
+            signatures={
+                PHP_SERVICE: ANCHOR_SERVICE+'\n'+BRIDGE,
+                PHP_FORM: '<input type="hidden" name="extension"><input type="hidden" name="prospecto_asignacion_id">',
+                PHP_CALLS: CALLS_ATTR+'data-save-url=',
+                JS: 'form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;\n'+JS_ASSIGN
+            }
+            already=s.count(marker)==1 and s.count(signatures[path])==1
+            if path==PHP_CALLS:
+                already=already and s.count(CALLS_HIDDEN)==1
+            if already:
                 print('APLICADO / PERSONALIZADO: {} git_blob={}'.format(path,actual))
                 continue
-            raise Conflicto('Archivo distinto del diagnóstico: {} git_blob={}'.format(path,actual))
+            raise Conflicto('Archivo distinto del diagnóstico o parcial: {} git_blob={}'.format(path,actual))
         revised=render(s).encode('utf-8')
         if revised==original:
             raise Conflicto('Sin diferencias en '+path)
