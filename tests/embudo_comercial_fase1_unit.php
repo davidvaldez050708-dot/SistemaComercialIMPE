@@ -69,5 +69,5 @@ comprobar(strpos($sqlAdmin,'a.asesor_id=?')!==false && $argsAdmin[0]===24,
 comprobar(!isset(EmbudoComercialRepository::ETAPAS['INSCRITOS']),
     'Inscritos no figura entre las etapas comerciales');
 comprobar(EmbudoComercialRepository::POR_COLUMNA===20,'límite por columna');
-comprobar(count(EmbudoComercialRepository::ETAPAS)===8,'seis activas y dos vistas externas');
+comprobar(count(EmbudoComercialRepository::ETAPAS)===7,'cinco activas y dos vistas externas');
 echo "CHECK OK: permisos, aislamiento por rol, filtros y paginación.\n";
