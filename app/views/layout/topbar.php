@@ -306,15 +306,6 @@ $totalRecordatoriosSeguimiento = 0;
                         </a>
                     </li>
 
-                    <?php if ($esAdministradorTopbar): ?>
-                        <li>
-                            <a class="dropdown-item" href="<?= BASE_URL ?>index.php?controller=respaldo&amp;action=index">
-                                <i class="bi bi-database me-2"></i>
-                                Respaldo
-                            </a>
-                        </li>
-                    <?php endif; ?>
-
                     <li>
                         <a
                             class="dropdown-item"

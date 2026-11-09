@@ -129,11 +129,6 @@
                 </div>
 
                 <div class="modal-footer">
-                    <?php if ((int)($_SESSION['rol_id'] ?? 0) === 1): ?>
-                        <a class="btn btn-system-cancel me-auto" href="<?= BASE_URL ?>index.php?controller=respaldo&amp;action=index">
-                            <i class="bi bi-database me-1"></i> Respaldo
-                        </a>
-                    <?php endif; ?>
                     <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-system-save" data-my-profile-submit>Actualizar perfil</button>
                 </div>

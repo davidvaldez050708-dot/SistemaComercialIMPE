@@ -17,6 +17,11 @@ NUEVOS = (
     "app/services/RespaldoBaseDatos.php",
     "app/views/respaldo/index.php",
 )
+MENU = (
+    "app/views/layout/sidebar.php",
+    "app/views/layout/topbar.php",
+    "app/views/layout/my_profile_modal.php",
+)
 
 
 def ejecutar(*comando, **opciones):
@@ -27,6 +32,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site", required=True, type=Path)
     parser.add_argument("--backup-root", type=Path)
+    parser.add_argument("--menu", action="store_true", help="Publica el traslado de Respaldo al menú lateral")
     modo = parser.add_mutually_exclusive_group(required=True)
     modo.add_argument("--check", action="store_true")
     modo.add_argument("--apply", action="store_true")
@@ -41,14 +47,17 @@ def main():
             parser.error("--backup-root debe estar fuera del sitio")
 
     repo = Path(__file__).resolve().parent.parent
+    existentes = MENU if args.menu else EXISTENTES
+    archivos = MENU if args.menu else EXISTENTES + NUEVOS
+    filtro = () if args.menu else ("--diff-filter=A",)
+    archivo_commit = MENU[0] if args.menu else NUEVOS[0]
     commit = ejecutar(
-        "git", "log", "-1", "--format=%H", "--diff-filter=A", "HEAD", "--", NUEVOS[0],
+        "git", "log", "-1", "--format=%H", *filtro, "HEAD", "--", archivo_commit,
         cwd=repo, stdout=subprocess.PIPE,
     ).stdout.decode("ascii").strip()
     if not commit:
         parser.error("El clon de preparación no contiene el commit de Respaldo")
 
-    archivos = EXISTENTES + NUEVOS
     parche = ejecutar(
         "git", "show", "--format=", "--binary", commit, "--", *archivos,
         cwd=repo, stdout=subprocess.PIPE,
@@ -69,7 +78,7 @@ def main():
     raiz.mkdir(parents=True, exist_ok=True, mode=0o700)
     respaldo = Path(tempfile.mkdtemp(prefix="respaldo-bd-", dir=raiz))
     with tarfile.open(respaldo / "archivos-antes.tar.gz", "w:gz") as copia:
-        for nombre in EXISTENTES:
+        for nombre in existentes:
             copia.add(sitio / nombre, arcname=nombre)
     (respaldo / "cambios.patch").write_bytes(parche)
     print(f"Copia del código anterior: {respaldo}", flush=True)
