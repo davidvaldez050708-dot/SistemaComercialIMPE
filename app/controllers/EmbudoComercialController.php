@@ -121,4 +121,58 @@ final class EmbudoComercialController
             'vista','usuarioId','supervisor','prospecto','error'
         ));
     }
+    /** POST exclusivo de Asesor: cambio de etapa con control de concurrencia. */
+    public function moverEtapa(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store, max-age=0');
+        $respond=static function(bool $ok,string $mensaje,int $status,array $extra=[]): void {
+            http_response_code($status);
+            echo json_encode(array_merge(['ok'=>$ok,'mensaje'=>$mensaje],$extra),
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        };
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST') {
+            $respond(false,'Método no permitido.',405);
+            return;
+        }
+        $usuario=(int)($_SESSION['usuario_id']??0);
+        if ($usuario<1 || (int)($_SESSION['rol_id']??0)!==3 ||
+            !tienePermiso('ventas.embudo.ver') ||
+            !tienePermiso('ventas.embudo.mover')) {
+            $respond(false,'Esta gestión no está autorizada para tu cuenta.',403);
+            return;
+        }
+        foreach (['asignacion_id','etapa_anterior','etapa_nueva','motivo','proxima_accion'] as $clave) {
+            if (isset($_POST[$clave]) && !is_string($_POST[$clave])) {
+                $respond(false,'Los datos del movimiento no son válidos.',422);
+                return;
+            }
+        }
+        $id=filter_var($_POST['asignacion_id']??null,FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>1]]);
+        if (!$id) {
+            $respond(false,'La tarjeta no es válida.',422);
+            return;
+        }
+        try {
+            require_once __DIR__.'/../services/EmbudoComercialMovimientoService.php';
+            $db=(new Database())->connect(false);
+            $svc=new EmbudoComercialMovimientoService($db);
+            $mov=$svc->moverManual(
+                $usuario,(int)$id,
+                (string)($_POST['etapa_anterior']??''),
+                (string)($_POST['etapa_nueva']??''),
+                (string)($_POST['motivo']??''),
+                (string)($_POST['proxima_accion']??'')
+            );
+            $respond(true,'Etapa actualizada y movimiento registrado.',200,
+                ['movimiento'=>$mov]);
+        } catch (DomainException $e) {
+            $respond(false,$e->getMessage(),409);
+        } catch (Throwable $e) {
+            error_log('[embudo_mover] '.get_class($e).' codigo='.(int)$e->getCode());
+            $respond(false,'No fue posible actualizar la etapa. No se confirmó el movimiento.',503);
+        }
+    }
+
 }
