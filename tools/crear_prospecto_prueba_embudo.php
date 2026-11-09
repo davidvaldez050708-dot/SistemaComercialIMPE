@@ -7,8 +7,11 @@
  * php crear_prospecto_prueba_embudo.php --site=/ruta/staging/public_html --apply
  *     --asesor=8 --expect-db=nombre_exacto_test --backup-root=/ruta/privada
  *
- * SOLO BASES CON IDENTIFICADOR "test/prueba/staging/sandbox" EN SU NOMBRE.
- * Nunca escribe en BD productiva, no activa motores ni genera llamadas.
+ * Por defecto SOLO BASES "test/prueba/staging/sandbox". Excepción en
+ * producción: --confirm-production=SOLO_UN_PROSPECTO_SIN_TELEFONO junto
+ * con --expect-db=nombre_exacto y --asesor=ID, bajo autorización expresa.
+ * La excepción inserta UNA ficha sintética, no altera prospectos reales.
+ * No activa motores ni genera llamadas.
  * La transacción completa se revierte ante cualquier fallo.
  */
 if (PHP_SAPI!=='cli') { http_response_code(403); exit('Solo CLI.'); }
@@ -21,6 +24,13 @@ const CODIGO_PROGRAMA_TEST = '286';
 function opcionesFixture(array $argv): array {
     $o=[];
     foreach (array_slice($argv,1) as $param) {
+        if ($param==='--confirm-production=SOLO_UN_PROSPECTO_SIN_TELEFONO') {
+            if (isset($o['confirm-production'])) {
+                throw new RuntimeException('Confirmación de producción repetida.');
+            }
+            $o['confirm-production']=true;
+            continue;
+        }
         if ($param==='--check'||$param==='--apply') {
             $k=substr($param,2);
             if (isset($o[$k])) throw new RuntimeException('Opción repetida: '.$param);
@@ -67,7 +77,7 @@ function preflightFixture(mysqli $db,?int $asesor): array {
     echo "BASE DE DATOS DETECTADA: $dbName\n";
     $isTest=(bool)preg_match('/(?:^|[_-])(test|testing|prueba|pruebas|staging|sandbox)(?:[_-]|$)/i',$dbName);
     echo $isTest?"ENTORNO: base de PRUEBAS identificada\n":
-        "ADVERTENCIA: la base NO está identificada como pruebas; --apply se bloqueará.\n";
+        "ADVERTENCIA: base no aislada. Solo se permitirá UNA ficha sintética con confirmación explícita.\n";
 
     $required=[
         'prospectos_comerciales','prospecto_integraciones','prospecto_origenes',
@@ -184,9 +194,14 @@ try {
         echo "CHECK COMPLETO: sin escrituras, sin SQL y sin llamadas.\n";
         exit(0);
     }
-    if (!$isTest) {
+    if (!$isTest && empty($o['confirm-production'])) {
         throw new RuntimeException(
-            'PROHIBIDO: la BD conectada no tiene identificador de entorno de pruebas.'
+            'BLOQUEADO: base principal sin confirmación de UNA ficha sintética.'
+        );
+    }
+    if ($isTest && !empty($o['confirm-production'])) {
+        throw new RuntimeException(
+            'La confirmación de producción no se utiliza en bases de pruebas.'
         );
     }
     if (!hash_equals((string)$o['expect-db'],$dbName)) {
@@ -199,6 +214,10 @@ try {
         }
         echo "YA INSTALADA: la prueba está asignada a ese asesor, sin escrituras.\n";
         exit(0);
+    }
+    if (!$isTest) {
+        echo "AUTORIZACIÓN EXPLÍCITA: 1 ficha sintética en la base principal.\n";
+        echo "ASESOR ELEGIDO: $advisor. Sin teléfono, correo ni llamadas.\n";
     }
     respaldoFixture((string)$o['backup-root'],$site,$dbName,$advisor);
     require_once $site.'/app/services/ProspectoCentralRepository.php';
