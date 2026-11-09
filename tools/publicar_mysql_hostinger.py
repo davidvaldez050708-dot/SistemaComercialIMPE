@@ -11,6 +11,8 @@ import tempfile
 
 BASE = "a90b6ade"
 AMBITO = ("config/db_connection.php", "index.php", "app", "public", "prueba_telefonia")
+CONTROLADOR_TELEFONIA = "app/controllers/TelefoniaController.php"
+SERVICIO_DISPONIBILIDAD = "app/services/TelefoniaDisponibilidadService.php"
 
 
 def git(*args, **kwargs):
@@ -64,8 +66,34 @@ def verificar_esquema(sitio):
     print("Esquema de telefonía verificado con consultas de solo lectura.")
 
 
+def variante_transferencia(sitio, nombre, instalado, base, entrega):
+    if nombre != CONTROLADOR_TELEFONIA:
+        return base, entrega
+
+    # La versión de Hostinger recupera por referencia cuando no hay un ID.
+    original = b"'solicitud'=>(int)($_POST['id']??0)>0?$svc->obtener($user,(int)$_POST['id']):null,"
+    alternativo = original.replace(
+        b":null,", b":$svc->delOrigen($user,(string)($_POST['referencia']??'')),",
+    )
+    retorno = b"return $svc->delOrigen($user, (string)($_POST['referencia'] ?? ''));"
+    if instalado.count(alternativo) != 1 and instalado.count(retorno) != 1:
+        return base, entrega
+
+    argumento = b"($_POST['consultar_devoluciones'] ?? '1') === '1'"
+    if (base.count(original) != 1 or entrega.count(argumento) != 1
+            or b"public function delOrigen(" not in archivo(sitio, SERVICIO_DISPONIBILIDAD).read_bytes()):
+        raise SystemExit("No se pudo verificar la variante de transferencia por referencia. Sitio intacto.")
+    return base.replace(original, alternativo), entrega.replace(
+        argumento,
+        argumento + b",\n                        static function () use ($svc, $user) {\n"
+        b"                            " + retorno + b"\n"
+        b"                        }",
+    )
+
+
 def preparar(sitio, repo, temporal, nombres):
     anteriores, posteriores = {}, {}
+    conflictos = []
     for nombre in nombres:
         vivo = archivo(sitio, nombre).read_bytes()
         base = git("show", BASE + ":" + nombre, cwd=repo)
@@ -78,6 +106,7 @@ def preparar(sitio, repo, temporal, nombres):
         finales = vivo.replace(b"\r\n", b"\n")
         base = base.replace(b"\r\n", b"\n")
         entrega = entrega.replace(b"\r\n", b"\n")
+        base, entrega = variante_transferencia(sitio, nombre, finales, base, entrega)
         if finales == entrega:
             estado = "ya actualizado"
         elif finales == base:
@@ -92,7 +121,8 @@ def preparar(sitio, repo, temporal, nombres):
                 ("git", "merge-file", "-p", str(local), str(original), str(cambio)), stdout=subprocess.PIPE,
             )
             if resultado.returncode:
-                raise SystemExit("Personalización en conflicto: " + nombre + ". Sitio intacto.")
+                conflictos.append(nombre)
+                continue
             finales, estado = resultado.stdout, "personalizado; integración sin conflicto"
         if b"\r\n" in vivo:
             finales = finales.replace(b"\n", b"\r\n")
@@ -102,6 +132,8 @@ def preparar(sitio, repo, temporal, nombres):
         print(estado + " | " + nombre + " | sha256 instalado " + digest(vivo), flush=True)
         if vivo != finales:
             anteriores[nombre], posteriores[nombre] = digest(vivo), digest(finales)
+    if conflictos:
+        raise SystemExit("Personalizaciones en conflicto:\n- " + "\n- ".join(conflictos) + "\nSitio intacto.")
     resultado = subprocess.run(
         ("git", "-c", "core.autocrlf=false", "diff", "--no-index", "--binary", "--", "antes", "despues"),
         cwd=temporal, stdout=subprocess.PIPE,

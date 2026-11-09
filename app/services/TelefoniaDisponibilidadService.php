@@ -35,13 +35,18 @@ final class TelefoniaDisponibilidadService
         $this->expiracionSondeo = $this->extensionesSondeo !== null;
     }
 
-    public function sondear(int $usuario, bool $disponible, int $id, bool $contarDevoluciones): array
-    {
+    public function sondear(
+        int $usuario,
+        bool $disponible,
+        int $id,
+        bool $contarDevoluciones,
+        ?Closure $buscarSolicitudSinId = null
+    ): array {
         $this->extensionesSondeo = [];
         try {
             $this->presencia($usuario, $disponible);
             return [
-                'solicitud' => $id > 0 ? $this->obtener($usuario, $id) : null,
+                'solicitud' => $id > 0 ? $this->obtener($usuario, $id) : $buscarSolicitudSinId?->__invoke(),
                 'entrante' => $this->entrante($usuario),
                 'devoluciones' => $contarDevoluciones ? count($this->devoluciones($usuario)) : null,
             ];
