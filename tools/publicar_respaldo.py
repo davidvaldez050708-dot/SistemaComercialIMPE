@@ -159,6 +159,13 @@ def main():
             ).stdout
         elif not compatible:
             parche = adaptar_menu(sitio, repo, commit)
+    elif args.vista and subprocess.run(
+        comprobar, cwd=sitio, input=parche, stderr=subprocess.PIPE,
+    ).returncode != 0:
+        parche = ejecutar(
+            "git", "diff", "--binary", "6049d55c", commit, "--", *archivos,
+            cwd=repo, stdout=subprocess.PIPE,
+        ).stdout
     ejecutar(*comprobar, cwd=sitio, input=parche)
     if args.check:
         print("Parche compatible con el sitio.")

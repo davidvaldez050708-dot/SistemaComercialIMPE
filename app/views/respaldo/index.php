@@ -3,7 +3,6 @@
 $escapar = static fn ($valor): string => htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
 $descargaUrl = static fn (string $nombre): string => $urlRespaldo . '&descargar=' . rawurlencode($nombre);
 $csrf = $escapar($_SESSION['csrf_token']);
-$confirmarRestauracion = 'La restauración puede sobrescribir los datos actuales. Se guardará una copia previa. ¿Deseas continuar?';
 $avisoError = !empty($aviso['error']);
 $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-center';
 
@@ -84,15 +83,14 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
                                     <a class="btn btn-sm btn-system-cancel <?= $clasesBoton ?>" href="<?= $escapar($descargaUrl($respaldo['nombre'])) ?>">
                                         <i class="bi bi-download me-1" aria-hidden="true"></i> Descargar
                                     </a>
-                                    <form class="d-flex flex-wrap align-items-center gap-2" method="post" action="<?= $escapar($urlRespaldo) ?>">
+                                    <form class="d-flex flex-wrap align-items-center gap-2" method="post"
+                                        action="<?= $escapar($urlRespaldo) ?>" data-respaldo-confirmar>
                                         <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                                         <input type="hidden" name="nombre" value="<?= $escapar($respaldo['nombre']) ?>">
-                                        <button type="submit" class="btn btn-sm btn-system-cancel <?= $clasesBoton ?>" name="operacion" value="restaurar"
-                                            onclick="return confirm('<?= $escapar($confirmarRestauracion) ?>')">
+                                        <button type="submit" class="btn btn-sm btn-system-cancel <?= $clasesBoton ?>" name="operacion" value="restaurar">
                                             <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Restaurar
                                         </button>
-                                        <button type="submit" class="btn btn-sm btn-system-danger <?= $clasesBoton ?>" name="operacion" value="eliminar"
-                                            onclick="return confirm('¿Deseas eliminar este respaldo del historial?')">
+                                        <button type="submit" class="btn btn-sm btn-system-danger <?= $clasesBoton ?>" name="operacion" value="eliminar">
                                             <i class="bi bi-trash me-1" aria-hidden="true"></i> Eliminar
                                         </button>
                                     </form>
@@ -113,7 +111,7 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
         <p class="page-subtitle mb-3" id="respaldo-ayuda">Selecciona un archivo SQL de confianza para restaurar la información del sistema.</p>
         <form method="post" action="<?= $escapar($urlRespaldo) ?>" enctype="multipart/form-data"
             class="d-flex flex-wrap align-items-end gap-3"
-            onsubmit="return confirm('<?= $escapar($confirmarRestauracion) ?>')">
+            data-respaldo-confirmar>
             <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
             <div>
                 <label class="form-label login-label" for="respaldo-archivo">Archivo de respaldo (.sql)</label>
@@ -126,3 +124,88 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
         </form>
     </div>
 </section>
+
+<div class="modal fade" id="modalConfirmarRespaldo" tabindex="-1"
+    aria-labelledby="modalConfirmarRespaldoTitulo" aria-describedby="modalConfirmarRespaldoTexto" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content logout-confirm-modal">
+            <div class="modal-body text-center">
+                <div class="logout-confirm-icon">
+                    <i class="bi" aria-hidden="true" data-respaldo-icono></i>
+                </div>
+                <h5 class="logout-confirm-title" id="modalConfirmarRespaldoTitulo"></h5>
+                <p class="logout-confirm-text" id="modalConfirmarRespaldoTexto"></p>
+                <div class="logout-confirm-actions">
+                    <button type="button" class="btn logout-cancel-button" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn logout-confirm-button" data-respaldo-aceptar></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const ventana = document.getElementById('modalConfirmarRespaldo');
+    const modal = new bootstrap.Modal(ventana);
+    const titulo = document.getElementById('modalConfirmarRespaldoTitulo');
+    const texto = document.getElementById('modalConfirmarRespaldoTexto');
+    const icono = ventana.querySelector('[data-respaldo-icono]');
+    const aceptar = ventana.querySelector('[data-respaldo-aceptar]');
+    const cancelar = ventana.querySelector('[data-bs-dismiss="modal"]');
+    const restaurar = {
+        titulo: '¿Restaurar la base de datos?',
+        texto: 'La restauración puede sobrescribir los datos actuales. Se guardará una copia previa.',
+        icono: 'bi-arrow-counterclockwise',
+        aceptar: 'Sí, restaurar'
+    };
+    const eliminar = {
+        titulo: '¿Eliminar respaldo?',
+        texto: '¿Estás seguro de que deseas eliminar este respaldo del historial?',
+        icono: 'bi-trash',
+        aceptar: 'Sí, eliminar'
+    };
+    let botonPendiente;
+    let confirmado = false;
+
+    document.querySelectorAll('[data-respaldo-confirmar]').forEach(function (formulario) {
+        formulario.addEventListener('submit', function (evento) {
+            if (confirmado) {
+                return;
+            }
+            evento.preventDefault();
+            botonPendiente = evento.submitter || formulario.querySelector('button[name="operacion"]');
+            const accion = botonPendiente.value === 'eliminar' ? eliminar : restaurar;
+            titulo.textContent = accion.titulo;
+            texto.textContent = accion.texto;
+            icono.className = 'bi ' + accion.icono;
+            aceptar.textContent = accion.aceptar;
+            modal.show();
+        });
+    });
+
+    ventana.addEventListener('shown.bs.modal', function () {
+        cancelar.focus();
+    });
+
+    ventana.addEventListener('hidden.bs.modal', function () {
+        botonPendiente?.focus();
+        botonPendiente = null;
+        aceptar.disabled = false;
+    });
+
+    aceptar.addEventListener('click', function () {
+        if (!botonPendiente) {
+            return;
+        }
+        aceptar.disabled = true;
+        confirmado = true;
+        try {
+            botonPendiente.form.requestSubmit(botonPendiente);
+        } finally {
+            confirmado = false;
+            modal.hide();
+        }
+    });
+});
+</script>
