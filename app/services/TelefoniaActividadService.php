@@ -8,10 +8,9 @@ class TelefoniaActividadService
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?mysqli $conexion = null)
     {
-        $database = new Database();
-        $this->db = $database->connect();
+        $this->db = $conexion ?? (new Database())->connect();
     }
 
     public function consultar(?string $extension = null, ?int $usuarioId = null): array

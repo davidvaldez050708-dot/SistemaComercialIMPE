@@ -38,12 +38,14 @@ usarse para sustituir el directorio público completo.
 
 ## Política de conexiones
 
-`Database::compartida()` conserva una sola referencia por petición y es la
-única ruta persistente por defecto en el SAPI web. Las conexiones
-independientes cierran al liberarse y `connect(false)` mantiene su semántica.
-`connect(true)` conserva compatibilidad para un llamador explícito.
-`IMPE_DB_PERSISTENT=0` desactiva el pool de la conexión compartida para un
-ensayo controlado. CLI usa una conexión compartida no persistente.
+`Database::compartida()` conserva una sola referencia por petición. Inicio
+del Asesor y el sondeo de disponibilidad reutilizan esa referencia en sus
+consultas secuenciales. Tras observar 503 durante el tráfico normal, se
+restableció la persistencia web predeterminada de las conexiones
+independientes. `connect(false)` sigue abriendo una sesión no persistente.
+`IMPE_DB_INDEPENDENT_PERSISTENT=0` permite ensayar la otra política de forma
+controlada. `IMPE_DB_PERSISTENT=0` controla el pool de la conexión compartida.
+CLI abre conexiones no persistentes por defecto.
 
 Cada proceso PHP mantiene su propio pool. Acordar con Hostinger un número
 efectivo de procesos y un máximo de una conexión persistente por proceso

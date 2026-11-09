@@ -11,10 +11,10 @@ class TelefoniaContactosService
 {
     private $connection;
 
-    public function __construct(?mysqli $db=null)
+    public function __construct(?mysqli $db=null, bool $preparar=true)
     {
         $this->connection = $db ?? (new Database())->connect();
-        $this->asegurarEstructura();
+        if ($preparar) $this->asegurarEstructura();
     }
 
     public static function tokenFormulario(): string

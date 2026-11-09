@@ -745,7 +745,9 @@ class TelefoniaController
             $this->responderJson(['ok'=>false],403);
         }
         try{
-            $user=(int)$_SESSION['usuario_id'];$svc=new TelefoniaDisponibilidadService();
+            $user=(int)$_SESSION['usuario_id'];
+            $sondeo = $metodo === 'POST' && ($_POST['accion'] ?? '') === 'POLL';
+            $svc = new TelefoniaDisponibilidadService($sondeo ? Database::compartida() : null);
             if($metodo==='GET'){
                 $id=(int)($_GET['id']??0);
                 $this->responderJson(['ok'=>true,'solicitud'=>$id?$svc->obtener($user,$id):$svc->entrante($user),'devoluciones'=>$id?null:count($svc->devoluciones($user))]);

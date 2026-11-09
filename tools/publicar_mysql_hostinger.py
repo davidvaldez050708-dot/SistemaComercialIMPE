@@ -10,6 +10,7 @@ import tempfile
 
 
 BASE = "a90b6ade"
+PRIMERA_PUBLICACION = "17cbf0af"
 AMBITO = ("config/db_connection.php", "index.php", "app", "public", "prueba_telefonia")
 CONTROLADOR_TELEFONIA = "app/controllers/TelefoniaController.php"
 SERVICIO_DISPONIBILIDAD = "app/services/TelefoniaDisponibilidadService.php"
@@ -54,6 +55,7 @@ def verificar_esquema(sitio):
                 'SELECT estado, expires_at, devolucion FROM telefonia_disponibilidad LIMIT 0',
                 'SELECT referencia, estado, sdk_consulta FROM telefonia_transferencia_operaciones LIMIT 0',
                 'SELECT event_hash, internal, evento, received_at FROM telefonia_zadarma_eventos LIMIT 0',
+                'SELECT id, usuario_id, nombre, telefono FROM telefonia_contactos_personales LIMIT 0',
             ] as $consulta) {
                 if (!$db->query($consulta)) exit(1);
             }
@@ -157,12 +159,12 @@ def variantes_javascript(nombre, instalado, base, entrega):
     return base, entrega
 
 
-def preparar(sitio, repo, temporal, nombres):
+def preparar(sitio, repo, temporal, nombres, revision_base=BASE):
     anteriores, posteriores = {}, {}
     conflictos = []
     for nombre in nombres:
         vivo = archivo(sitio, nombre).read_bytes()
-        base = git("show", BASE + ":" + nombre, cwd=repo)
+        base = git("show", revision_base + ":" + nombre, cwd=repo)
         entrega = git("show", "HEAD:" + nombre, cwd=repo)
         antes = temporal / "antes" / nombre
         despues = temporal / "despues" / nombre
@@ -172,8 +174,9 @@ def preparar(sitio, repo, temporal, nombres):
         finales = vivo.replace(b"\r\n", b"\n")
         base = base.replace(b"\r\n", b"\n")
         entrega = entrega.replace(b"\r\n", b"\n")
-        base, entrega = variante_transferencia(sitio, nombre, finales, base, entrega)
-        base, entrega = variantes_javascript(nombre, finales, base, entrega)
+        if revision_base == BASE:
+            base, entrega = variante_transferencia(sitio, nombre, finales, base, entrega)
+            base, entrega = variantes_javascript(nombre, finales, base, entrega)
         if finales == entrega:
             estado = "ya actualizado"
         elif finales == base:
@@ -241,11 +244,13 @@ def main():
             parser.error("El respaldo debe guardarse fuera del sitio")
 
     repo = Path(__file__).resolve().parent.parent
-    nombres = git("diff", "--name-only", BASE, "HEAD", "--", *AMBITO, cwd=repo).decode("utf-8").splitlines()
+    conexion_instalada = archivo(sitio, "config/db_connection.php").read_bytes()
+    revision_base = PRIMERA_PUBLICACION if b"public static function compartida()" in conexion_instalada else BASE
+    nombres = git("diff", "--name-only", revision_base, "HEAD", "--", *AMBITO, cwd=repo).decode("utf-8").splitlines()
     if not nombres:
         raise SystemExit("No se encontraron archivos de la entrega.")
     with tempfile.TemporaryDirectory() as temporal:
-        parche, antes, despues = preparar(sitio, repo, Path(temporal), nombres)
+        parche, antes, despues = preparar(sitio, repo, Path(temporal), nombres, revision_base)
     if not parche:
         print("El sitio ya está actualizado.")
         return

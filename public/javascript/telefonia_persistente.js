@@ -418,13 +418,16 @@
                 }
             }
         ).then(async function (response) {
-            const data = await response.json();
+            const data = await response.json().catch(function () { return {}; });
 
             if (!response.ok || !data.ok) {
-                throw new Error(
+                const error = new Error(
                     data.mensaje ||
-                    'La telefonía no está configurada para tu usuario.'
+                    'No fue posible verificar la telefonía.'
                 );
+                error.status = response.status;
+                error.sinExtension = data.codigo === 'EXTENSION_NO_ASIGNADA';
+                throw error;
             }
 
             availability = data;

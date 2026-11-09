@@ -2,6 +2,7 @@
 $puedeUsarMarcadorVentas = $puedeUsarMarcadorVentas ?? false;
 $panelTelefonoVentas = is_array($panelTelefono ?? null) ? $panelTelefono : [];
 $extensionVentas = trim((string)($panelTelefonoVentas['extension'] ?? ''));
+$extensionSinAsignar = ($panelTelefonoVentas['estado_extension'] ?? '') === 'sin_asignar';
 ?>
 <?php if ($puedeUsarMarcadorVentas): ?>
     <div class="telephony-sales-dashboard">
@@ -18,10 +19,10 @@ $extensionVentas = trim((string)($panelTelefonoVentas['extension'] ?? ''));
                 <div>
                     <strong data-telephony-sales-extension-status><?= $extensionVentas !== ''
                         ? 'Extensión ' . htmlspecialchars($extensionVentas, ENT_QUOTES, 'UTF-8')
-                        : 'Extensión pendiente' ?></strong>
+                        : ($extensionSinAsignar ? 'Extensión pendiente' : 'Verificando extensión…') ?></strong>
                     <span data-telephony-sales-extension-caption><?= $extensionVentas !== ''
                         ? 'Teléfono asignado a tu usuario'
-                        : 'Solicita la configuración al administrador' ?></span>
+                        : ($extensionSinAsignar ? 'Solicita la configuración al administrador' : 'Esperando respuesta de telefonía') ?></span>
                 </div>
             </div>
         </section>

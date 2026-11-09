@@ -9,14 +9,17 @@ class Database
 
     /**
      * Sesión independiente para consumidores con transacciones, bloqueos
-     * o estado de sesión propio. La persistencia entre peticiones es optativa.
+     * o estado de sesión propio. En web se conserva el pool de Hostinger
+     * mientras se mide la tasa de aperturas de las sesiones independientes.
      */
     public function connect(?bool $persistente = null): mysqli
     {
         if (self::$falloConexion !== null) {
             throw self::$falloConexion;
         }
-        $persistente = $persistente ?? false;
+        $persistente = $persistente ?? (
+            PHP_SAPI !== 'cli' && getenv('IMPE_DB_INDEPENDENT_PERSISTENT') !== '0'
+        );
         $host = preg_replace('/^p:/', '', DB_HOST);
         try {
             $conexion = mysqli_init();

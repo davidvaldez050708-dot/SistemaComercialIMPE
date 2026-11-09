@@ -59,6 +59,8 @@
         let dialing = false;
         let saving = false;
         let checkingPhone = false;
+        let reintentoExtension = null;
+        let fallosExtension = 0;
         let extensionAssigned = root.dataset.canCall === '1';
 
         function say(text, error) {
@@ -313,11 +315,14 @@
                 row.hidden = !visible.has(row);
             });
 
-            contactEmpty.hidden = all.length > 0;
+            const contactosNoCargados = root.dataset.contactsUnavailable === '1';
+            contactEmpty.hidden = all.length > 0 || contactosNoCargados;
             contactNoResults.hidden = all.length === 0 || matching.length > 0;
             contactSearchClear.hidden = contactSearch.value === '';
 
-            if (all.length === 0) {
+            if (contactosNoCargados) {
+                contactCount.textContent = '';
+            } else if (all.length === 0) {
                 contactCount.textContent = '0 prospectos guardados';
             } else if (matching.length === 0) {
                 contactCount.textContent = '0 resultados de ' + all.length + ' contactos';
@@ -744,21 +749,33 @@
 
         function verifyExtension(forceRefresh) {
             if (!api || typeof api.probe !== 'function' || checkingPhone) return;
-            if (api?.getState?.()?.active) return;
+            if (api?.getState?.()?.active || document.hidden) return;
+            window.clearTimeout(reintentoExtension);
+            reintentoExtension = null;
             checkingPhone = true;
             void api.probe(Boolean(forceRefresh)).then(function (info) {
+                fallosExtension = 0;
                 applyExtension(info);
             }).catch(function (error) {
+                if (error.sinExtension) {
+                    fallosExtension = 0;
+                    applyExtension(null);
+                    return;
+                }
                 ready = false;
-                extensionAssigned = false;
                 root.dataset.canCall = '0';
-                if (salesStatus) salesStatus.textContent = 'Extensión pendiente';
-                if (salesCaption) salesCaption.textContent = 'Solicita la configuración al administrador';
-                if (identity) identity.textContent = 'Sin extensión asignada';
-                if (warning && !warning.hidden) {
-                    say('');
-                } else {
-                    say(error.message || 'No fue posible consultar la extensión.', true);
+                if (salesStatus && !extensionAssigned) salesStatus.textContent = 'Extensión por verificar';
+                if (identity && !extensionAssigned) identity.textContent = 'Extensión por verificar';
+                if (salesCaption) salesCaption.textContent = 'Esperando respuesta de telefonía';
+                if (warning) warning.hidden = true;
+                say(error.message || 'No fue posible consultar la extensión.', true);
+                if (!error.status || error.status >= 500 || error.status === 429) {
+                    const demora = Math.min(15000, 3000 * 2 ** fallosExtension);
+                    fallosExtension = Math.min(fallosExtension + 1, 3);
+                    reintentoExtension = window.setTimeout(function () {
+                        reintentoExtension = null;
+                        verifyExtension(true);
+                    }, demora + Math.floor(Math.random() * 300));
                 }
                 renderCall();
             }).finally(function () {
