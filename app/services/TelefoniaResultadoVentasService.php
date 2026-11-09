@@ -143,23 +143,28 @@ class TelefoniaResultadoVentasService
             $contact=(int)$saved['id'];$update=$this->db->prepare('UPDATE telefonia_ventas_resultados SET contacto_id=? WHERE usuario_id=? AND extension=? AND pbx_call_id=?');$update->bind_param('iiss',$contact,$usuarioId,$extension,$pbxCallId);$update->execute();$update->close();
         }
         if($callbacks)$callbacks->aplicarResultado($usuarioId,$call,$resultado);
-        // La asignación debe provenir del contexto explícito del embudo.
-        $vinculoEmbudo=null;
-        $asignacionRaw=$datos['prospecto_asignacion_id']??'';
-        if (!is_scalar($asignacionRaw) || is_bool($asignacionRaw)) {
-            throw new InvalidArgumentException('La referencia de asignación no es válida.');
-        }
-        $asignacionRaw=trim((string)$asignacionRaw);
-        if ($asignacionRaw!=='') {
-            if (!ctype_digit($asignacionRaw) || (int)$asignacionRaw<1) {
-                throw new InvalidArgumentException('La referencia de asignación no es válida.');
-            }
-            require_once __DIR__.'/EmbudoComercialResultadoBridge.php';
-            $vinculoEmbudo=(new EmbudoComercialResultadoBridge($this->db))
-                ->aplicar($usuarioId,(int)$asignacionRaw,$call,$resultado,$next);
-        }
         $this->db->commit();
         }catch(Throwable $e){$this->db->rollback();throw $e;}
+        // La telefonía es la operación principal: un problema del embudo JAMÁS
+        // revierte un resultado PBX ya registrado correctamente.
+        $vinculoEmbudo=null;
+        $raw=$datos['prospecto_asignacion_id']??'';
+        if (is_scalar($raw) && !is_bool($raw) &&
+            ctype_digit(trim((string)$raw)) && (int)$raw>0) {
+            try {
+                require_once __DIR__.'/EmbudoComercialResultadoBridge.php';
+                $this->db->begin_transaction();
+                $vinculoEmbudo=(new EmbudoComercialResultadoBridge($this->db))
+                    ->aplicar($usuarioId,(int)$raw,$call,$resultado,$next);
+                $this->db->commit();
+            } catch (Throwable $e) {
+                $this->db->rollback();
+                error_log('[embudo_vinculo_resultado] '.get_class($e).' codigo='.(int)$e->getCode());
+                $vinculoEmbudo=[
+                    'vinculada'=>false,'movida'=>false,'advertencia'=>
+                    'Resultado telefónico guardado. No se pudo vincular automáticamente al embudo.'];
+            }
+        }
         return ['pbx_call_id'=>$pbxCallId,'extension'=>$extension,'resultado'=>$resultado,
             'etiqueta'=>self::opciones()[$resultado],'contacto_real'=>self::esConversacion($resultado),
             'embudo'=>$vinculoEmbudo];
