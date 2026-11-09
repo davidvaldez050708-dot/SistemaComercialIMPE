@@ -11,7 +11,10 @@ assert "if (!empty($o['check']))" in src
 assert src.index("if (!empty($o['check']))") < src.index(
     'respaldoFixture((string)$o[', src.index('try {',src.index('function respaldoFixture'))
 ), 'check must return before backup'
-assert src.index("if (!$isTest)") < src.index("respaldoFixture((string)$o[")
+assert src.index("if (!$isTest && empty($o['confirm-production']))") < src.index("respaldoFixture((string)$o[")
+assert "confirm-production=SOLO_UN_PROSPECTO_SIN_TELEFONO" in src
+assert "if ($isTest && !empty($o['confirm-production']))" in src
+assert "empty($o['confirm-production'])" in src
 assert "hash_equals((string)$o['expect-db'],$dbName)" in src, 'exact matching DB required'
 assert "prueba|pruebas|staging|sandbox" in src
 assert "p.codigo IN ('ventas.embudo.ver','ventas.embudo.mover')" in src
