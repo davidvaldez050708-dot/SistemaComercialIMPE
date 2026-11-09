@@ -4,8 +4,6 @@ require_once __DIR__ . '/../../helpers/AvatarHelper.php';
 require_once __DIR__ . '/../../helpers/ReminderHelper.php';
 require_once __DIR__ . '/../../helpers/TelefoniaMarketingAccessHelper.php';
 
-$puedeSolicitarReuniones = tienePermiso('reuniones.solicitar');
-$puedeGestionarReuniones = tienePermiso('reuniones.gestionar');
 $esAdministradorTopbar = (int)($_SESSION['rol_id'] ?? 0) === 1;
 $esAnalistaDatos =
     !$esAdministradorTopbar &&
@@ -13,15 +11,7 @@ $esAnalistaDatos =
 $esMarketingTopbar =
     !$esAdministradorTopbar &&
     tienePermiso('convocatorias.gestionar');
-$mostrarCentroAvisos =
-    tienePermiso('reuniones.ver') ||
-    $esAdministradorTopbar ||
-    (
-        tienePermiso('reuniones.ver') &&
-        ($puedeSolicitarReuniones || $puedeGestionarReuniones)
-    ) ||
-    tienePermiso('aliados.seguimiento_convocatorias') ||
-    tienePermiso('aliados.ver');
+$mostrarCentroAvisos = !empty($_SESSION['usuario_id']);
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
 $mostrarAgendaReuniones =
     tienePermiso('reuniones.ver') &&

@@ -23,7 +23,9 @@ class AgendaComentarioController
     private function ejecutar(string $metodo, string $accion): void
     {
         $usuario = (int)($_SESSION['usuario_id'] ?? 0);
-        if (!AgendaComentarioService::puedeAcceder($usuario)) { $this->responder(['ok'=>false,'mensaje'=>'No tienes acceso a los comentarios de la agenda.'],403); }
+        $autorizado = $accion === 'leer' ? AgendaComentarioService::esUsuarioActual($usuario)
+            : AgendaComentarioService::puedeAcceder($usuario);
+        if (!$autorizado) { $this->responder(['ok'=>false,'mensaje'=>'No tienes acceso a los comentarios de la agenda.'],403); }
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== $metodo) { $this->responder(['ok'=>false,'mensaje'=>'Método no permitido.'],405); }
         if ($metodo === 'POST') {
             $sesion = $_SESSION['csrf_token'] ?? '';

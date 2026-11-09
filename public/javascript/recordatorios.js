@@ -113,6 +113,9 @@
         } catch (_) { /* Una cola antigua inválida no impide cargar la campana. */ }
 
         const CLAVE_COMENTARIOS_MOSTRADOS = 'recordatorios:comentarios-mostrados-v1' + claveUsuario;
+        const CLAVE_HORARIOS_MOSTRADOS = 'recordatorios:agenda-horarios-v1' + claveUsuario;
+        let horariosActuales = [];
+        let desfaseServidor = 0;
         let comentariosMostrados = {};
         try {
             const guardados = JSON.parse(leerSesion(CLAVE_COMENTARIOS_MOSTRADOS) || '{}');
@@ -294,6 +297,7 @@
             }
             if (Number(aviso.agenda_comentario_id) > 0) {
                 toast.dataset.agendaComentarioId = String(aviso.agenda_comentario_id);
+                if (aviso.agenda_solo_aviso) toast.dataset.agendaSoloAviso = '1';
                 if (Number(aviso.agenda_comentario_visto_por)>0) toast.dataset.agendaComentarioVistoPor=String(aviso.agenda_comentario_visto_por);
                 toast.setAttribute('href', url);
             }
@@ -345,6 +349,7 @@
             guardarSesion(CLAVE_COLA_AVISOS,JSON.stringify(colaAvisos));
         };
         const mostrarSiguienteComentarioNuevo = function () {
+            if (mostrarSiguienteAvisoHorario()) return true;
             const item = recordatoriosActuales.find(r=>Number(r.agenda_comentario_id)>0 &&
                 !esRecordatorioVencidoRecurrente(r) && !comentariosMostrados[claveRecordatorio(r)] && Number(r.leida||0)===0);
             if (!item) return false;
@@ -354,6 +359,33 @@
             if (!mostrarToast(aviso)) return false;
             registrarComentarioMostrado(item);
             return true;
+        };
+
+        const mostrarSiguienteAvisoHorario = function () {
+            let vistos;
+            try { vistos = JSON.parse(leerSesion(CLAVE_HORARIOS_MOSTRADOS) || '{}') || {}; }
+            catch (_) { vistos = {}; }
+            const ahora = Date.now() + desfaseServidor;
+            for (const item of horariosActuales) {
+                const hora = Number(item.agenda_horario_at);
+                const minutos = Math.ceil((hora * 1000 - ahora) / 60000);
+                if (!(minutos > 0 && minutos <= 30)) continue;
+                if (![30, 20, 10, 5].includes(minutos)) continue;
+                const comentario = Number(item.agenda_comentario_id) > 0;
+                const clave = (comentario ? 'c' + item.agenda_comentario_id : 'r' + item.reunion_id) + ':' + hora + ':' + minutos;
+                if (vistos[clave]) continue;
+                if (!mostrarToast({
+                    ...item,
+                    titulo: comentario ? 'Recordatorio de agenda' : 'Reunión próxima',
+                    mensaje: 'En ' + minutos + ' minutos · ' + item.agenda_horario_mensaje
+                })) return false;
+                vistos[clave] = hora;
+                guardarSesion(CLAVE_HORARIOS_MOSTRADOS, JSON.stringify(Object.fromEntries(
+                    Object.entries(vistos).filter(([, fin]) => Number(fin) > ahora / 1000)
+                )));
+                return true;
+            }
+            return false;
         };
 
         const actualizarColaAvisos = function (avisos) {
@@ -513,7 +545,7 @@
                     const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
                     const estadoVisual = estadoVisibleRecordatorio(recordatorio);
                     return (
-                        '<a class="topbar-reminder-item" '+(Number(recordatorio.agenda_comentario_id)>0?'data-agenda-comentario-id="'+Number(recordatorio.agenda_comentario_id)+'" ':'')+(Number(recordatorio.agenda_comentario_visto_por)>0?'data-agenda-comentario-visto-por="'+Number(recordatorio.agenda_comentario_visto_por)+'" ':'')+(Number(recordatorio.telefonia_id)>0?'data-telefonia-id="'+Number(recordatorio.telefonia_id)+'" ':'')+'href="' + url + '">' +
+                        '<a class="topbar-reminder-item" '+(recordatorio.agenda_solo_aviso?'data-agenda-solo-aviso="1" ':'')+(Number(recordatorio.agenda_comentario_id)>0?'data-agenda-comentario-id="'+Number(recordatorio.agenda_comentario_id)+'" ':'')+(Number(recordatorio.agenda_comentario_visto_por)>0?'data-agenda-comentario-visto-por="'+Number(recordatorio.agenda_comentario_visto_por)+'" ':'')+(Number(recordatorio.telefonia_id)>0?'data-telefonia-id="'+Number(recordatorio.telefonia_id)+'" ':'')+'href="' + url + '">' +
                             '<span class="topbar-reminder-icon">' +
                                 '<i class="bi ' + escapar(recordatorio.icono || 'bi-bell') + '"></i>' +
                             '</span>' +
@@ -591,6 +623,10 @@
                 guardarSesion(CLAVE_COLA_AVISOS,JSON.stringify(colaAvisos));
                 renderizarRecordatorios(recordatoriosActuales,totalAvisosActual);
                 if (Number(toastActivo?.dataset.agendaComentarioId)===id && (Number(toastActivo?.dataset.agendaComentarioVistoPor)||0)===lector) { toastActivo.remove();toastActivo=null; }
+                if (link.dataset.agendaSoloAviso === '1') {
+                    void consultarRecordatorios();
+                    return;
+                }
                 target.searchParams.set(lector>0?'aviso_visto_leido':'comentario_leido','1');
                 window.location.href = target.href;
             } catch (_) {
@@ -645,6 +681,8 @@
                     temporizadorReintentoCarga = null;
                 }
                 actualizarColaAvisos(datos.avisos || []);
+                horariosActuales = Array.isArray(datos.horarios) ? datos.horarios : [];
+                desfaseServidor = Number(datos.servidor_at) > 0 ? Number(datos.servidor_at) * 1000 - Date.now() : 0;
                 mostrarSiguienteComentarioNuevo();
                 programarSiguienteToastVencido();
                 if (datos.requiere_migracion) {

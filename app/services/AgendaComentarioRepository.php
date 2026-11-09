@@ -85,13 +85,9 @@ class AgendaComentarioRepository
 
     public function destinatarios(): array
     {
-        // La misma autorización de Agenda: permiso reuniones.ver. No se
-        // conceden permisos nuevos ni se limita a nombres de rol concretos.
         return $this->db->query("SELECT u.id,TRIM(CONCAT(COALESCE(u.nombre,''),' ',COALESCE(u.apellidos,''))) AS nombre,r.nombre AS rol
             FROM usuarios u INNER JOIN roles r ON r.id=u.rol_id AND r.estado=1
-            WHERE u.estado=1 AND EXISTS (SELECT 1 FROM rol_permisos rp
-                INNER JOIN permisos p ON p.id=rp.permiso_id AND p.estado=1
-                WHERE rp.rol_id=u.rol_id AND p.codigo='reuniones.ver')
+            WHERE u.estado=1
             ORDER BY u.nombre,u.apellidos,u.id")->fetch_all(MYSQLI_ASSOC);
     }
 
@@ -151,20 +147,25 @@ class AgendaComentarioRepository
         $stmt->execute();
     }
 
-    public function pendientes(int $usuario, string $ahora): array
+    public function pendientes(int $usuario, string $ahora, bool $soloDirigidos = false): array
     {
         $visibilidad = $this->privacidadDisponible() ? ' AND (c.privado=0 OR c.creado_por=?)' : '';
-        $destinatario = $this->destinatariosDisponibles() ? ' AND (c.destinatario_id IS NULL OR c.destinatario_id=?)' : '';
+        $dirigidos = $this->destinatariosDisponibles();
+        if ($soloDirigidos && !$dirigidos) return [];
+        $destinatario = $soloDirigidos ? ' AND c.destinatario_id=?'
+            : ($dirigidos ? ' AND (c.destinatario_id IS NULL OR c.destinatario_id=?)' : '');
+        $hasta = (new DateTimeImmutable($ahora))->modify('+30 minutes')->format('Y-m-d H:i:s');
         $stmt = $this->db->prepare('SELECT c.*,l.novedad_leida_at,l.recordatorio_atendido_at
             FROM agenda_comentarios c LEFT JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id AND l.usuario_id=?
             WHERE c.eliminado_at IS NULL AND (l.novedad_leida_at IS NULL OR
               (c.recordatorio_at IS NOT NULL AND c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL))'.$visibilidad.$destinatario.'
-            ORDER BY CASE WHEN c.recordatorio_at IS NOT NULL AND c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL THEN 0 ELSE 1 END,
+            ORDER BY CASE WHEN c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL THEN 0
+                          WHEN c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL THEN 1 ELSE 2 END,
               c.recordatorio_at ASC,c.creado_at DESC,c.id DESC LIMIT 20');
-        $types='is';$params=[$usuario,$ahora];
+        $types='is';$params=[$usuario,$hasta];
         if ($visibilidad) {$types.='i';$params[]=$usuario;}
         if ($destinatario) {$types.='i';$params[]=$usuario;}
-        $types.='s';$params[]=$ahora;
+        $types.='ss';$params[]=$ahora;$params[]=$hasta;
         $stmt->bind_param($types,...$params);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

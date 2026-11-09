@@ -706,6 +706,26 @@ class AgendaReunionService
         return $flujo;
     }
 
+    public function avisosHorario(int $usuario): array
+    {
+        if ($usuario <= 0 || $usuario !== (int)($_SESSION['usuario_id'] ?? 0)
+            || !tienePermiso('reuniones.ver') || !$this->tablaDisponible()) {
+            return [];
+        }
+        $ahora = new DateTimeImmutable();
+        $filas = $this->repo->horariosProximos($usuario, $ahora->format('Y-m-d H:i:s'),
+            $ahora->modify('+30 minutes')->format('Y-m-d H:i:s'));
+        return array_map(static function (array $fila): array {
+            return [
+                'reunion_id' => (int)$fila['id'],
+                'agenda_horario_at' => strtotime($fila['fecha_propuesta']),
+                'agenda_horario_mensaje' => $fila['nombre_entidad'],
+                'icono' => 'bi-calendar-check',
+                'url' => 'index.php?controller=agendaReunion&action=index&reunion_id=' . (int)$fila['id'],
+            ];
+        }, $filas);
+    }
+
     public function obtenerNotificacionesCampana($usuarioId, $rolId, $limite = 10)
     {
         if (!$this->puedeAcceder($rolId) || !$this->tablaDisponible()) {

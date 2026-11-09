@@ -16,7 +16,12 @@ class AgendaComentarioService
 
     public static function puedeAcceder(int $usuario): bool
     {
-        return $usuario > 0 && $usuario === (int)($_SESSION['usuario_id'] ?? 0) && tienePermiso('reuniones.ver');
+        return self::esUsuarioActual($usuario) && tienePermiso('reuniones.ver');
+    }
+
+    public static function esUsuarioActual(int $usuario): bool
+    {
+        return $usuario > 0 && $usuario === (int)($_SESSION['usuario_id'] ?? 0);
     }
 
     private function ahora(): string
@@ -89,7 +94,7 @@ class AgendaComentarioService
             $destinatario=(int)$destinatario;
             if ($privado) return $this->error('Un comentario privado sólo puede generar avisos para su autor.');
             if (!$this->repo->destinatariosDisponibles()) return $this->error('Los destinatarios aún no están disponibles. Solicita completar la instalación.',503);
-            if (!$this->repo->destinatarioHabilitado($destinatario)) return $this->error('El destinatario ya no está activo o no tiene acceso a Agenda. Selecciona otro.');
+            if (!$this->repo->destinatarioHabilitado($destinatario)) return $this->error('El destinatario ya no está activo. Selecciona otro.');
         }
         if (!$this->fechaValida($fecha)) { return $this->error('Selecciona un día válido de la agenda.'); }
         if (!is_string($hora) || ($hora !== '' && !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$hora))) { return $this->error('La hora debe tener el formato HH:MM.'); }
@@ -112,8 +117,12 @@ class AgendaComentarioService
 
     public function leer(int $usuario, int $id): array
     {
-        if ($error = $this->acceso($usuario)) { return $error; }
-        if ($id<=0 || !$this->repo->obtener($id,$usuario)) { return $this->error('El comentario ya no está disponible.',404); }
+        if (!self::esUsuarioActual($usuario)) return $this->error('No tienes acceso a los comentarios de la agenda.',403);
+        if (!$this->repo->disponible()) return $this->error('Los comentarios de la agenda aún no están disponibles.',503);
+        $fila = $id > 0 ? $this->repo->obtener($id, $usuario) : null;
+        if (!$fila || (!self::puedeAcceder($usuario) && ((int)($fila['destinatario_id'] ?? 0) !== $usuario || !empty($fila['privado'])))) {
+            return $this->error('El comentario ya no está disponible.',404);
+        }
         $this->repo->marcarLeido($id,$usuario,$this->ahora());
         return ['ok'=>true];
     }
@@ -121,9 +130,10 @@ class AgendaComentarioService
     public function notificaciones(int $usuario): array
     {
         $salida = ['recordatorios'=>[], 'avisos'=>[]];
-        if (!self::puedeAcceder($usuario) || !$this->repo->disponible()) { return $salida; }
+        if (!self::esUsuarioActual($usuario) || !$this->repo->disponible()) { return $salida; }
+        $soloDirigidos = !self::puedeAcceder($usuario);
         $ahora = $this->ahora();
-        foreach ($this->repo->pendientes($usuario,$ahora) as $fila) {
+        foreach ($this->repo->pendientes($usuario,$ahora,$soloDirigidos) as $fila) {
             $vencido = !empty($fila['recordatorio_at']) && $fila['recordatorio_at'] <= $ahora && empty($fila['recordatorio_atendido_at']);
             $evento = $fila['id'].'|'.($vencido?'hora':'nuevo');
             $item = ['id'=>0,'agenda_comentario_id'=>(int)$fila['id'],'agenda_comentario_evento'=>$evento,
@@ -132,14 +142,21 @@ class AgendaComentarioService
                 'fecha'=>$vencido?$fila['recordatorio_at']:$fila['creado_at'],
                 'estado'=>$vencido?'vencida':'normal', 'etiqueta'=>$vencido?'Hora programada':(empty($fila['recordatorio_at'])?'Sin hora':'Comentario nuevo'),
                 'icono'=>'bi-chat-left-text','prioridad'=>$vencido?0:4,
+                'agenda_solo_aviso'=>$soloDirigidos,
                 'url'=>'index.php?controller=agendaReunion&action=index&mes='.substr($fila['fecha'],0,7).'&comentario_id='.(int)$fila['id'].'&dia='.$fila['fecha']];
+            if (!$vencido && empty($fila['recordatorio_atendido_at']) && !empty($fila['recordatorio_at'])) {
+                $item['agenda_horario_at'] = strtotime($fila['recordatorio_at']);
+                $item['agenda_horario_mensaje'] = $fila['comentario'];
+                $salida['horarios'][] = $item;
+            }
+            if (!$vencido && !empty($fila['novedad_leida_at'])) continue;
             $salida['recordatorios'][] = $item;
             if (!isset($_SESSION['agenda_comentarios_avisos'][$usuario.'|'.$evento])) {
                 $salida['avisos'][] = array_merge($item,['tipo'=>'AGENDA_COMENTARIO','titulo'=>$vencido?'Recordatorio de agenda':'Nuevo comentario en la agenda',
                     'mensaje'=>$fila['autor_nombre'].': '.$fila['comentario']]);
             }
         }
-        foreach ($this->repo->vistosPendientes($usuario) as $fila) {
+        foreach ($soloDirigidos ? [] : $this->repo->vistosPendientes($usuario) as $fila) {
             $lector=trim((string)$fila['lector_nombre']) ?: 'Usuario';
             $evento=$fila['id'].'|visto|'.$fila['lector_id'];
             $mensaje=$lector.' marcó como leído tu comentario: '.$fila['comentario'];

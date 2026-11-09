@@ -35,7 +35,7 @@ $repo=new AgendaComentarioRepository($db);$now=new DateTimeImmutable('2026-10-29
 dsess(5);
 $list=$s->listar(5,'2026-10-01','2026-11-01');
 dcheck($list['destinatarios_disponibles']===true,'Anunciar instalación');
-$ids=array_column($list['destinatarios'],'id');sort($ids);dcheck($ids===[5,7,8,15],'Sólo usuarios activos con rol y permiso de Agenda activos');
+$ids=array_column($list['destinatarios'],'id');sort($ids);dcheck($ids===[5,7,8,9,15],'Usuarios activos con rol activo, aunque no tengan Agenda');
 $general=$s->crear(5,['fecha'=>'2026-10-29','comentario'=>'General','destinatario_id'=>''])['comentario']['id'];
 $direct=$s->crear(5,['fecha'=>'2026-10-29','comentario'=>'Para Cuenta Clave','hora'=>'11:00','destinatario_id'=>'7'])['comentario'];
 $id=$direct['id'];dcheck($direct['destinatario_id']===7&&$direct['destinatario_nombre']==='Cuenta Clave','Persistir ID y nombre real');
@@ -66,14 +66,25 @@ $countSql='SELECT COUNT(*) AS total FROM agenda_comentarios_lecturas WHERE comen
 $count=isset($db->pdo)?$db->pdo->query($countSql)->fetch(PDO::FETCH_ASSOC):$db->query($countSql)->fetch_assoc();
 dcheck((int)$count['total']===0,'SQL bloquea también escrituras de lectura ajenas');
 dsess(7);dcheck($repo->obtener($id,7)['comentario']==='Para Cuenta Clave','Destinatario conserva acceso al comentario');
-dsess(9,false);dcheck($s->notificaciones(9)===['recordatorios'=>[],'avisos'=>[]],'Sin Agenda no recibe');
+dsess(9,false);dcheck($s->notificaciones(9)===['recordatorios'=>[],'avisos'=>[]],'Sin Agenda no recibe generales ni comentarios ajenos');
+dsess(5);
+$dirigidoSinAgenda=$s->crear(5,['fecha'=>'2026-10-29','comentario'=>'Para un usuario sin Agenda','hora'=>'10:10','destinatario_id'=>9])['comentario']['id'];
+dsess(9,false);
+$dirigidos=$s->notificaciones(9);
+dcheck(array_column($dirigidos['recordatorios'],'agenda_comentario_id')===[$dirigidoSinAgenda],'Recibe únicamente su comentario dirigido');
+dcheck($dirigidos['recordatorios'][0]['agenda_solo_aviso'],'No se concede acceso a la Agenda');
+dcheck($s->leer(9,$dirigidoSinAgenda)['ok'],'Puede marcar su comentario como leído');
+$recordatorio=$s->notificaciones(9);
+dcheck(!$recordatorio['recordatorios'] && array_column($recordatorio['horarios'],'agenda_comentario_id')===[$dirigidoSinAgenda],
+    'Leer antes de la hora conserva el aviso previo del destinatario');
 dsess(5);$seen=$s->notificaciones(5)['recordatorios'];dcheck(count(array_filter($seen,fn($n)=>($n['agenda_comentario_visto_por']??0)===7))===1,'Autor conserva aviso de quién leyó');
 // Lecturas antiguas de terceros no generan avisos ni admiten ack después del cambio.
 dsql("INSERT INTO agenda_comentarios_lecturas(comentario_id,usuario_id,novedad_leida_at) VALUES(".$id.",8,'2026-10-29 11:02:00')");
-dcheck(count($repo->vistosPendientes(5))===1,'Excluir recibos históricos de lectores ajenos al destinatario');
+dcheck(count(array_filter($repo->vistosPendientes(5),fn($fila)=>(int)$fila['id']===$id))===1,
+    'Excluir recibos históricos de lectores ajenos al destinatario');
 dcheck(!$repo->leerAvisoVisto(5,$id,8,'2026-10-29 11:03:00'),'No validar recibo histórico de tercero');
 dcheck($repo->obtener($id,5)!==null,'Autor conserva consulta y borrado de sus dirigidos');
-foreach (['0','-1','7abc','1.5',[],true,9,10,11,99999] as $invalid) {
+foreach (['0','-1','7abc','1.5',[],true,10,11,99999] as $invalid) {
     $r=$s->crear(5,['fecha'=>'2026-10-29','comentario'=>'Inválido','destinatario_id'=>$invalid]);
     dcheck(($r['codigo_http']??0)===422,'Rechazar ID inválido/inactivo/sin Agenda, sin difundir a todos');
 }

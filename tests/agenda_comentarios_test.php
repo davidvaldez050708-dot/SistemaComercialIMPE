@@ -18,9 +18,10 @@ foreach([['fecha'=>'2026-02-30'],['fecha'=>'no'],['hora'=>'25:10'],['hora'=>[]],
     comprobarComentario($service->crear(5,$data)['codigo_http']===422,'Validar datos sin normalizarlos silenciosamente');
 }
 comprobarComentario($service->crear(5,['fecha'=>'2026-10-28','comentario'=>str_repeat('😀',250),'hora'=>''])['ok'],'250 caracteres Unicode');
-sesionComentario(9,false);$queries=count($db->queries);
-foreach([$service->listar(9,'2026-10-01','2026-11-01'),$service->crear(9,['fecha'=>'2026-10-28','comentario'=>'no']),$service->leer(9,$sinHora),$service->eliminar(9,$sinHora)]as$r)comprobarComentario($r['codigo_http']===403,'Sin Agenda no hay acceso');
-comprobarComentario($service->notificaciones(9)===['recordatorios'=>[],'avisos'=>[]]&&count($db->queries)===$queries,'Sin Agenda no se consultan ni notifican comentarios');
+sesionComentario(9,false);
+foreach([$service->listar(9,'2026-10-01','2026-11-01'),$service->crear(9,['fecha'=>'2026-10-28','comentario'=>'no']),$service->eliminar(9,$sinHora)]as$r)comprobarComentario($r['codigo_http']===403,'Sin Agenda no hay acceso');
+comprobarComentario($service->leer(9,$sinHora)['codigo_http']===404,'Sin Agenda sólo se pueden leer comentarios dirigidos');
+comprobarComentario($service->notificaciones(9)===['recordatorios'=>[],'avisos'=>[]],'Sin Agenda no se notifican comentarios generales');
 sesionComentario(7,true,6);
 $notas=$service->listar(7,'2026-09-28','2026-11-09');comprobarComentario($notas['ok']&&count($notas['comentarios'])===2,'Comentarios compartidos sin alterar alcance de reuniones');
 comprobarComentario(!$notas['comentarios'][0]['puede_eliminar'],'Cuenta Clave no borra comentarios ajenos');

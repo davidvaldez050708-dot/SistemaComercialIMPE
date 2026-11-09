@@ -467,6 +467,21 @@ class AgendaReunionRepository
         $stmt->execute();
     }
 
+    public function horariosProximos(int $usuario, string $desde, string $hasta): array
+    {
+        $stmt = $this->connection->prepare("SELECT r.id, r.fecha_propuesta, s.nombre_entidad
+            FROM reuniones_vinculacion r
+            INNER JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
+            WHERE (r.analista_id=? OR r.cuenta_clave_id=?)
+              AND r.estado IN ('CONFIRMADA', 'CORREO_ENVIADO')
+              AND s.activo=1 AND s.estado_seguimiento <> 'DESCARTADO'
+              AND r.fecha_propuesta > ? AND r.fecha_propuesta <= ?
+            ORDER BY r.fecha_propuesta, r.id LIMIT 20");
+        $stmt->bind_param('iiss', $usuario, $usuario, $desde, $hasta);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
     public function pendientesKam($limite, $usuarioId = null)
     {
         $kamId = (int)($usuarioId ?? ($_SESSION['usuario_id'] ?? 0));
