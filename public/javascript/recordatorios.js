@@ -370,14 +370,15 @@
                 const hora = Number(item.agenda_horario_at);
                 const minutos = Math.ceil((hora * 1000 - ahora) / 60000);
                 if (!(minutos > 0 && minutos <= 30)) continue;
-                if (![30, 20, 10, 5].includes(minutos)) continue;
+                if (![30, 20, 10, 5, 1].includes(minutos)) continue;
                 const comentario = Number(item.agenda_comentario_id) > 0;
                 const clave = (comentario ? 'c' + item.agenda_comentario_id : 'r' + item.reunion_id) + ':' + hora + ':' + minutos;
                 if (vistos[clave]) continue;
                 if (!mostrarToast({
                     ...item,
                     titulo: comentario ? 'Recordatorio de agenda' : 'Reunión próxima',
-                    mensaje: 'En ' + minutos + ' minutos · ' + item.agenda_horario_mensaje
+                    mensaje: (minutos === 1 ? 'En 1 minuto' : 'En ' + minutos + ' minutos') +
+                        ' · ' + item.agenda_horario_mensaje
                 })) return false;
                 vistos[clave] = hora;
                 guardarSesion(CLAVE_HORARIOS_MOSTRADOS, JSON.stringify(Object.fromEntries(

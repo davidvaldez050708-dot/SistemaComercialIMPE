@@ -10,7 +10,8 @@ import tempfile
 
 
 BASE = "10b875ce"
-ENTREGA = "fa814c2a"
+ENTREGA = "HEAD"
+PRIMERA_ENTREGA = "fa814c2a"
 CONTROLADOR = "app/controllers/ReminderController.php"
 BARRA = "app/views/layout/topbar.php"
 SCRIPT = "public/javascript/recordatorios.js"
@@ -86,7 +87,13 @@ def main():
         if raiz == sitio or sitio in raiz.parents:
             parser.error("--backup-root debe estar fuera del sitio")
 
-    nombres = ejecutar("git", "diff", "--name-only", BASE, ENTREGA, "--", "app", "public",
+    javascript = (sitio / SCRIPT).read_bytes()
+    instalada = b"const CLAVE_HORARIOS_MOSTRADOS" in javascript
+    if instalada and b"![30, 20, 10, 5, 1].includes(minutos)" in javascript:
+        print("El aviso de 1 minuto ya está instalado.")
+        return
+    base = PRIMERA_ENTREGA if instalada else BASE
+    nombres = ejecutar("git", "diff", "--name-only", base, ENTREGA, "--", "app", "public",
                        cwd=repo, stdout=subprocess.PIPE).stdout.decode("ascii").splitlines()
     with tempfile.TemporaryDirectory() as temporal:
         temporal = Path(temporal)
@@ -98,9 +105,14 @@ def main():
             actual = datos.decode("utf-8").replace("\r\n", "\n")
             anterior, nuevo = [
                 ejecutar("git", "show", revision + ":" + nombre, cwd=repo, stdout=subprocess.PIPE)
-                .stdout.decode("utf-8").replace("\r\n", "\n") for revision in (BASE, ENTREGA)
+                .stdout.decode("utf-8").replace("\r\n", "\n") for revision in (base, ENTREGA)
             ]
-            destino = nuevo if actual == anterior else adaptar(actual, anterior, nuevo, nombre)
+            if actual == anterior:
+                destino = nuevo
+            elif instalada:
+                destino = aplicar_fragmentos(actual, anterior, nuevo, nombre)
+            else:
+                destino = adaptar(actual, anterior, nuevo, nombre)
             if b"\r\n" in datos:
                 destino = destino.replace("\n", "\r\n")
             for carpeta, contenido in (("antes", datos), ("despues", destino.encode("utf-8"))):
