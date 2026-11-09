@@ -61,6 +61,7 @@ jobs:
           php -l tools/embudo_fase2_db_preflight.php
           python3 -m py_compile tools/publicar_embudo_fase2a_hostinger.py
           python3 tests/embudo_fase2_publicador_hostinger_test.py
+          python3 tests/embudo_fase2_conciliar_admin_policy_test.py
           php -l tools/instalar_embudo_fase2a_hostinger.php
           python3 tests/embudo_fase2_instalador_sql_test.py
       - name: Publicador inicial en sandbox (solo rama fase 1)
