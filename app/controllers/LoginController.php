@@ -11,8 +11,9 @@ class LoginController
 
     public function __construct()
     {
-        $this->usuarioModel = new UsuarioModel();
-        $this->rolModel = new RolModel();
+        $conexion = Database::compartida();
+        $this->usuarioModel = new UsuarioModel($conexion);
+        $this->rolModel = new RolModel($conexion);
     }
 
     public function mostrarLogin()

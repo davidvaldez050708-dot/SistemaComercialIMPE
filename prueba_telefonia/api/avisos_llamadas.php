@@ -48,6 +48,7 @@ try {
     }
     responderAvisos(['ok'=>true,'extension'=>$data['extension'],'llamadas'=>$calls]);
 }catch(Throwable $e){
+    if (Database::responderFalloTemporal($e)) exit;
     error_log('[avisos_llamadas] '.$e->getMessage());
     responderAvisos(['ok'=>false,'mensaje'=>'No se pudo actualizar el cierre de llamadas.'],500);
 }

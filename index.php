@@ -2,6 +2,17 @@
 
 session_start();
 
+set_exception_handler(static function (Throwable $error): void {
+    $ajax = in_array(strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), ['fetch', 'xmlhttprequest'], true);
+    if (class_exists(Database::class, false) && Database::responderFalloTemporal($error, $ajax)) {
+        return;
+    }
+    error_log('[impe_peticion] ' . get_class($error) . ' en ' . basename($error->getFile()) . ':' . $error->getLine());
+    http_response_code(500);
+    header('Content-Type: ' . ($ajax ? 'application/json' : 'text/plain') . '; charset=utf-8');
+    echo $ajax ? '{"ok":false,"mensaje":"No se pudo completar la solicitud."}' : 'No se pudo completar la solicitud.';
+});
+
 if (isset($_SESSION['usuario_id'])) {
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     header('Pragma: no-cache');
@@ -160,7 +171,7 @@ if (isset($_SESSION['usuario_id'])) {
     require_once __DIR__ . '/app/models/UsuarioModel.php';
     require_once __DIR__ . '/app/models/RolModel.php';
 
-    $modeloUsuarioSesion = new UsuarioModel();
+    $modeloUsuarioSesion = new UsuarioModel(Database::compartida());
     $usuarioSesion = $modeloUsuarioSesion->buscarPorId(
         (int)$_SESSION['usuario_id']
     );
@@ -197,7 +208,7 @@ if (isset($_SESSION['usuario_id'])) {
     $_SESSION['requiere_cambio_password'] =
         (int)($usuarioSesion['requiere_cambio_password'] ?? 0);
 
-    $modeloRolSesion = new RolModel();
+    $modeloRolSesion = new RolModel(Database::compartida());
     $_SESSION['permisos'] =
         $modeloRolSesion->obtenerCodigosPermisosPorRol(
             (int)$_SESSION['rol_id']

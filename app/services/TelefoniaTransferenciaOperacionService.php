@@ -6,24 +6,7 @@ require_once __DIR__.'/../../config/db_connection.php';
 final class TelefoniaTransferenciaOperacionService
 {
     private mysqli $db;
-    private static ?WeakMap $ready=null;
-    public function __construct(?mysqli $db=null){$this->db=$db??(new Database())->connect();$this->estructura();}
-    private function estructura(): void {
-        self::$ready??=new WeakMap();if(isset(self::$ready[$this->db]))return;
-        $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_transferencia_operaciones (
-            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, origen_usuario INT NOT NULL,
-            origen_extension VARCHAR(12) NOT NULL, destino_usuario INT NOT NULL,
-            destino_extension VARCHAR(12) NOT NULL, referencia VARCHAR(100) NOT NULL,
-            numero VARCHAR(40) NOT NULL, modo VARCHAR(16) NOT NULL, estado VARCHAR(24) NOT NULL,
-            intento INT NOT NULL DEFAULT 1, evento_desde BIGINT NOT NULL DEFAULT 0,
-            sdk_consulta VARCHAR(100) NULL, destino_atendida DATETIME NULL,
-            destino_fin DATETIME NULL, entregada_at DATETIME NULL,
-            created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL,
-            UNIQUE KEY uk_tr_operacion (origen_usuario,referencia),
-            KEY idx_tr_destino (destino_usuario,estado,created_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-        self::$ready[$this->db]=true;
-    }
+    public function __construct(?mysqli $db=null){$this->db=$db??(new Database())->connect();}
     private function fila(string $sql,array $args=[]): ?array {
         $s=$this->db->prepare($sql);
         if($args)$s->bind_param(str_repeat('s',count($args)),...$args);

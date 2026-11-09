@@ -527,6 +527,7 @@ try {
         )),
     ]);
 } catch (Throwable $e) {
+    if (Database::responderFalloTemporal($e)) exit;
     if (isset($connection) && $connection instanceof mysqli) $connection->rollback();
     responderJson([
         'ok' => false,

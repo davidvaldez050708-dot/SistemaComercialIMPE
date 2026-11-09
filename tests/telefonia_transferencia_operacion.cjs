@@ -47,4 +47,26 @@ async function scenario(mode,answer,replaceDialog=false,outage=false,fastAnswer=
   assert.equal(s.state.context.transferRequest.stage,'DEVUELTA');assert.match(s.state.message,/Retoma/);
  }
 }
-(async()=>{await scenario('CONSULTADA',true);await scenario('CONSULTADA',false);await scenario('DIRECTA',true);await scenario('DIRECTA',true,false,false,true);await scenario('CONSULTADA',true,true);await scenario('CONSULTADA',true,false,true);console.log('Operaciones: consulta atendida sin entrega prematura, entrega explícita, directa y devolución sin respuesta: OK');})().catch(e=>{console.error(e);process.exitCode=1;});
+async function recuperacion503(){
+ let ahora=1000, consultas=0, liberaciones=0;
+ const op={id:1,modo:'CONSULTADA',estado:'ENTREGANDO'};
+ const state={active:true,callToken:'llamada',context:{}};
+ const w={location:{href:'http://test/'},zdrmWebPhone:{webCallSession:{isEnded:()=>true}}};
+ vm.runInNewContext(source,{window:w,URL,URLSearchParams,Date:{now:()=>ahora},fetch:async()=>{
+  consultas++;
+  if(consultas===1)return {ok:false,status:503};
+  return {ok:true,json:async()=>({ok:true,operacion:{...op}})};
+ }});
+ const flujo=w.IMPE_TRANSFER_FLOW.create({url:'http://test/op',read:()=>state,
+  publish:p=>Object.assign(state,p),release:()=>{liberaciones++;},notice:()=>{}});
+ flujo.start(op);
+ await flujo.tick();
+ await flujo.tick();
+ assert.equal(consultas,1,'El 503 aplica una espera al sondeo');
+ assert.equal(liberaciones,0,'Una indisponibilidad no convierte la transferencia en fallida');
+ ahora+=3000;
+ await flujo.tick();
+ assert.equal(consultas,3,'El sondeo y la confirmación se recuperan');
+ assert.equal(liberaciones,1);
+}
+(async()=>{await scenario('CONSULTADA',true);await scenario('CONSULTADA',false);await scenario('DIRECTA',true);await scenario('DIRECTA',true,false,false,true);await scenario('CONSULTADA',true,true);await scenario('CONSULTADA',true,false,true);await recuperacion503();console.log('Operaciones: consulta, entrega, devolución y recuperación tras 503: OK');})().catch(e=>{console.error(e);process.exitCode=1;});

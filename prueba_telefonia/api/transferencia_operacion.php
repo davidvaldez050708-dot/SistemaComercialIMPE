@@ -9,15 +9,17 @@ function trResponder(array $data,int $status=200): void{http_response_code($stat
 $user=(int)($_SESSION['usuario_id']??0);
 if(!$user)trResponder(['ok'=>false],401);
 if(!tienePermiso('telefonia.usar')||!tienePermiso('telefonia.recibir'))trResponder(['ok'=>false],403);
+$metodo = $_SERVER['REQUEST_METHOD'] ?? '';
+if(!in_array($metodo,['GET','POST'],true))trResponder(['ok'=>false],405);
+if($metodo==='POST' && (empty($_SESSION['csrf_token']) ||
+    !hash_equals((string)$_SESSION['csrf_token'],(string)($_POST['csrf_token']??''))))trResponder(['ok'=>false],403);
 try{
     $svc=new TelefoniaTransferenciaOperacionService();
-    if(($_SERVER['REQUEST_METHOD']??'')==='GET'){
+    if($metodo==='GET'){
         $id=(int)($_GET['id']??0);
         $op=$id?$svc->obtener($user,$id):$svc->paraDestino($user,trim((string)($_GET['origen']??'')),trim((string)($_GET['sdk']??'')));
         trResponder(['ok'=>true,'operacion'=>$op]);
     }
-    if(($_SERVER['REQUEST_METHOD']??'')!=='POST')trResponder(['ok'=>false],405);
-    if(!hash_equals((string)($_SESSION['csrf_token']??''),(string)($_POST['csrf_token']??''))||empty($_SESSION['csrf_token']))trResponder(['ok'=>false],403);
     trResponder(['ok'=>true,'operacion'=>$svc->accion($user,(int)($_POST['id']??0),(string)($_POST['accion']??''))]);
 }catch(DomainException $e){trResponder(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
-catch(Throwable $e){error_log('[transferencia_operacion] '.get_class($e));trResponder(['ok'=>false,'mensaje'=>'No se pudo actualizar la transferencia.'],500);}
+catch(Throwable $e){if(Database::responderFalloTemporal($e))exit;error_log('[transferencia_operacion] '.get_class($e));trResponder(['ok'=>false,'mensaje'=>'No se pudo actualizar la transferencia.'],500);}

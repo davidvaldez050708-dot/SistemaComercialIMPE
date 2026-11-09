@@ -251,6 +251,7 @@ try {
     header('Content-Length: ' . strlen($body));
     echo $body;
 } catch (Throwable $error) {
+    if (Database::responderFalloTemporal($error, false)) exit;
     error_log('[telefonia_marketing_grabacion] ' . $error->getMessage());
     http_response_code(502);
     exit('No fue posible recuperar la grabación en este momento.');

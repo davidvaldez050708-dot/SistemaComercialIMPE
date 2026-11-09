@@ -3,13 +3,19 @@
  'use strict';
  const create=api=>{
   let tracked=null,busy=false,posting=false,external=false,delivered=false,endedReported=false,atendida=false,directRelease=false;
+  let nextPoll=0, failures=0;
   const reset=()=>{tracked=null;external=false;delivered=false;endedReported=false;atendida=false;directRelease=false;};
   const request=async(id,action)=>{
    const url=new URL(api.url,root.location.href),options={credentials:'same-origin',cache:'no-store'};
    if(action){options.method='POST';options.body=new URLSearchParams({id:String(id),accion:action,csrf_token:api.csrf});}
    else if(id)url.searchParams.set('id',String(id));
    else {url.searchParams.set('origen',api.read().destination);url.searchParams.set('sdk',api.read().callToken);}
-   const response=await fetch(url,options),data=await response.json();
+   const response=await fetch(url,options);
+   if(response.status===503){
+    const error=Error('La telefonía está temporalmente ocupada. Intenta nuevamente en unos segundos.');
+    error.temporal=true;throw error;
+   }
+   const data=await response.json();
    if(!response.ok||!data.ok)throw Error(data.mensaje||'No se pudo actualizar la transferencia.');
    return data.operacion;
   };
@@ -29,7 +35,8 @@
    }
   };
   const tick=async()=>{
-   if(busy||!api.url)return;busy=true;
+   if(busy||!api.url||Date.now()<nextPoll)return;busy=true;
+   let temporary=false;
    try{
     let state=api.read();
     if(!tracked && state.active && state.direction==='incoming' && /^\d{3,6}$/.test(state.destination) && /^sdk-/.test(state.callToken||'')){
@@ -57,7 +64,7 @@
     }
     if(tracked.source && session?.isEnded?.() && !delivered){
      try{const op=await request(tracked.op.id,'LIBERADA');delivered=true;apply(op);api.release(op);reset();}
-     catch(e){api.release({...tracked.op,estado:'FALLIDA'});throw e;}
+     catch(e){if(!e.temporal)api.release({...tracked.op,estado:'FALLIDA'});throw e;}
      return;
     }
     if(!tracked.source && session?.isEnded?.() && !endedReported){
@@ -68,10 +75,16 @@
      apply(await request(tracked.op.id,'ATENDIDA'));atendida=true;
     }
    }catch(e){
+    if(e.temporal){
+     temporary=true;
+     nextPoll=Date.now()+Math.min(8000,2000*2**failures)+Math.floor(Math.random()*400);
+     failures=Math.min(failures+1,2);
+     return;
+    }
     if(tracked?.source && tracked.session?.isEnded?.() && api.read().active)api.release({...tracked.op,estado:'FALLIDA'});
     if(tracked&&api.read().active)api.notice(e.message);
    }
-   finally{busy=false;}
+   finally{if(!temporary)failures=0;busy=false;}
   };
   return {
    start(op){reset();tracked={source:true,op,token:api.read().callToken,session:root.zdrmWebPhone?.webCallSession};apply(op);},

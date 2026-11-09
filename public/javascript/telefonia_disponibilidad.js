@@ -72,6 +72,7 @@
  try{watched=JSON.parse(sessionStorage.getItem(key)||'null');}catch(_){}
  const persist=()=>{try{if(watched)sessionStorage.setItem(key,JSON.stringify(watched));else sessionStorage.removeItem(key);}catch(_){}};
  const refreshBell=()=>document.getElementById('impeCrmFrame')?.contentWindow?.postMessage({type:'IMPE_PHONE_CALL_CHANGED'},location.origin);
+ let siguientePoll=0, fallosPoll=0, consultarDevoluciones=0;
  const request=async(data=null,id=0)=>{
   const url=new URL(cfg.availabilityUrl,location.href),options={credentials:'same-origin',cache:'no-store'};
   if(data){options.method='POST';options.body=new URLSearchParams({...data,csrf_token:cfg.routingCsrf});}
@@ -101,10 +102,14 @@
  const store=op=>{watched=op;persist();render();window.dispatchEvent(new Event('impe:availability-state'));};
  const closeIncoming=()=>{stopSound();if(incoming?.open)incoming.close();received=null;};
  const tick=async()=>{
-  if(polling||!incoming)return;polling=true;
+  if(polling||!incoming||Date.now()<siguientePoll)return;polling=true;
   try{
-   const data=await request({accion:'POLL',id:watched?.id||0,disponible:busy()?'0':'1'});
-   if(watched){
+   const consulta=watched;
+   const consultar=Date.now()>=consultarDevoluciones;
+   const data=await request({accion:'POLL',id:consulta?.id||0,disponible:busy()?'0':'1',consultar_devoluciones:consultar?'1':'0'});
+   fallosPoll=0;
+   if(consultar)consultarDevoluciones=Date.now()+15000;
+   if(watched&&watched===consulta){
     const next=data.solicitud;
     if(!next||Number(next.version)!==Number(watched.version)){store(null);}
     else{
@@ -131,7 +136,12 @@
    $('[data-availability-countdown]').textContent='Responde en '+op.segundos+' s. Aceptar reserva tu disponibilidad durante 30 s.';
    if(!incoming.open){incoming.showModal();$('[data-availability-accept]').focus();}
    signalAvailability(op);
-  }catch(e){if(watched){$('[data-availability-source-copy]').textContent=e.message;}if(incoming.open)$('[data-availability-feedback]').textContent=e.message;}
+  }catch(e){
+   siguientePoll=Date.now()+Math.min(12000,3000*2**fallosPoll)+Math.floor(Math.random()*500);
+   fallosPoll=Math.min(fallosPoll+1,2);
+   if(watched)$('[data-availability-source-copy]').textContent=e.message;
+   if(incoming.open)$('[data-availability-feedback]').textContent=e.message;
+  }
   finally{polling=false;}
  };
  const respond=async which=>{

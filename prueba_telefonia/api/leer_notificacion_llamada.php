@@ -8,4 +8,5 @@ if(!$id||!tienePermiso('telefonia.usar')||(!tienePermiso('telefonia.recibir')&&!
 if(($_SERVER['REQUEST_METHOD']??'')!=='POST'){http_response_code(405);exit;}
 if(empty($_SESSION['csrf_token'])||!hash_equals((string)$_SESSION['csrf_token'],(string)($_POST['csrf_token']??''))){http_response_code(403);exit;}
 try{$svc=new TelefoniaNotificacionService();echo json_encode(['ok'=>$svc->leer($id,(int)($_POST['id']??0))]);}
-catch(Throwable $e){error_log('[telefono_notificacion_leer] '.get_class($e));http_response_code(500);echo '{"ok":false}';}
+catch(Throwable $e){
+    if (Database::responderFalloTemporal($e)) exit;error_log('[telefono_notificacion_leer] '.get_class($e));http_response_code(500);echo '{"ok":false}';}

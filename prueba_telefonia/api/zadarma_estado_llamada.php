@@ -146,9 +146,10 @@ $logPath = $rootPath . '/storage/zadarma_webhooks.log';
 
 try {
     $asignacionTelefonica =
-        (new TelefoniaExtensionService())
+        (new TelefoniaExtensionService(Database::compartida()))
             ->resolverParaUsuario($usuarioId);
 } catch (Throwable $e) {
+    if (Database::responderFalloTemporal($e)) exit;
     responderJson([
         'ok' => false,
         'mensaje' => 'No fue posible consultar la extensión telefónica del usuario.'
@@ -186,7 +187,7 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
  */
 if ($solicitarCheckpoint) {
     try {
-        $ultimoId = (new ZadarmaWebhookEventStoreService())
+        $ultimoId = (new ZadarmaWebhookEventStoreService(Database::compartida()))
             ->ultimoInicioSalienteId($extension);
         responderJson(['ok' => true, 'after_id' => $ultimoId]);
     } catch (Throwable $error) {
@@ -210,7 +211,7 @@ $inicioSeleccionado = null;
 $eventStore = null;
 
 try {
-    $eventStore = new ZadarmaWebhookEventStoreService();
+    $eventStore = new ZadarmaWebhookEventStoreService(Database::compartida());
     $inicioPersistido = $eventStore->buscarInicioSalienteReciente(
         $extension,
         $destino,
@@ -227,6 +228,7 @@ try {
         }
     }
 } catch (Throwable $errorStore) {
+    if ($conMarcaDeAgua && Database::responderFalloTemporal($errorStore)) exit;
     error_log('[zadarma_estado_store] ' . $errorStore->getMessage());
 }
 

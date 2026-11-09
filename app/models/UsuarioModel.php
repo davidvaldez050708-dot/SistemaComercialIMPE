@@ -6,10 +6,9 @@ class UsuarioModel
 {
     private $connection;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection ?? (new Database())->connect();
     }
 
     public function buscarPorUsuarioOCorreo($dato)

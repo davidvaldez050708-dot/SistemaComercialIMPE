@@ -824,7 +824,6 @@
             pollInterval = null;
         }
 
-        pollBusy = false;
     };
 
     const fetchIncomingState = async function () {
@@ -1138,10 +1137,13 @@
         }
     };
 
+    let proximoSondeoEntrante = 0;
+    let fallosSondeoEntrante = 0;
     const pollIncoming = async function () {
         if (
             !permiteEntrantes ||
             incomingPollBusy ||
+            Date.now() < proximoSondeoEntrante ||
             (
                 state.active &&
                 state.direction !== 'incoming'
@@ -1156,10 +1158,14 @@
             const call =
                 await fetchIncomingState();
 
+            fallosSondeoEntrante = 0;
             if (call) {
                 applyIncomingState(call);
             }
         } catch (error) {
+            proximoSondeoEntrante = Date.now() + Math.min(7500, 1800 * 2 ** fallosSondeoEntrante) +
+                Math.floor(Math.random() * 350);
+            fallosSondeoEntrante = Math.min(fallosSondeoEntrante + 1, 3);
             console.debug(
                 'No fue posible consultar la llamada entrante.',
                 error
@@ -1437,8 +1443,10 @@
         }
     };
 
+    let proximoPoll = 0;
+    let fallosPoll = 0;
     const poll = async function () {
-        if (!state.active || pollBusy) {
+        if (!state.active || pollBusy || Date.now() < proximoPoll) {
             return;
         }
 
@@ -1456,10 +1464,16 @@
                 return;
             }
 
+            fallosPoll = 0;
+            proximoPoll = Date.now() + (state.phase === 'in-progress' ? 2200 : 1200);
             if (call) {
                 applyCallState(call);
             }
         } catch (error) {
+            if (String(state.callToken || '') === token) {
+                proximoPoll = Date.now() + Math.min(8000, 2000 * 2 ** fallosPoll) + Math.floor(Math.random() * 400);
+                fallosPoll = Math.min(fallosPoll + 1, 2);
+            }
             console.warn(error);
         } finally {
             pollBusy = false;
@@ -1468,6 +1482,8 @@
 
     const startPolling = function () {
         stopPolling();
+        proximoPoll = 0;
+        fallosPoll = 0;
         void poll();
         pollInterval = setInterval(poll, 800);
     };

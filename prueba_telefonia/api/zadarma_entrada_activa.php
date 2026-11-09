@@ -52,7 +52,7 @@ if (
 
 try {
     $asignacion =
-        (new TelefoniaExtensionService())
+        (new TelefoniaExtensionService(Database::compartida()))
             ->resolverParaUsuario($usuarioId);
 
     if (
@@ -74,7 +74,7 @@ try {
         (string)($_GET['pbx_call_id'] ?? '')
     );
     $eventStore =
-        new ZadarmaWebhookEventStoreService();
+        new ZadarmaWebhookEventStoreService(Database::compartida());
 
     $llamada = $pbxCallId !== ''
         ? $eventStore->obtenerEstadoEntrantePorPbxCallId(
@@ -95,6 +95,7 @@ try {
         'call' => $llamada,
     ]);
 } catch (Throwable $error) {
+    if (Database::responderFalloTemporal($error)) exit;
     error_log(
         '[zadarma_entrada_activa] ' .
         $error->getMessage()

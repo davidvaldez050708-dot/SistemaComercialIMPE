@@ -86,6 +86,7 @@ try {
         (new TelefoniaExtensionService())
             ->resolverParaUsuario($usuarioId);
 } catch (Throwable $e) {
+    if (Database::responderFalloTemporal($e)) exit;
     responderJson([
         'ok' => false,
         'mensaje' => 'No fue posible consultar la extensión telefónica del usuario.'

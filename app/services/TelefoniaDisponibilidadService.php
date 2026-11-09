@@ -7,22 +7,10 @@ require_once __DIR__.'/TelefoniaTransferenciaOperacionService.php';
 final class TelefoniaDisponibilidadService
 {
     private mysqli $db;
+    private ?array $extensionesSondeo = null;
+    private bool $expiracionSondeo = false;
     public function __construct(?mysqli $db=null){
         $this->db=$db??(new Database())->connect();
-        new TelefoniaTransferenciaOperacionService($this->db);
-        $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_presencia (
-            usuario_id INT PRIMARY KEY,extension VARCHAR(12) NOT NULL,ocupado TINYINT NOT NULL,
-            updated_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-        $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_disponibilidad (
-            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,origen_usuario INT NOT NULL,
-            origen_extension VARCHAR(12) NOT NULL,destino_usuario INT NOT NULL,destino_extension VARCHAR(12) NOT NULL,
-            referencia VARCHAR(100) NOT NULL,numero VARCHAR(40) NOT NULL,ruta_json TEXT NOT NULL,
-            estado VARCHAR(20) NOT NULL,version INT NOT NULL DEFAULT 1,expires_at DATETIME NOT NULL,
-            created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,
-            contacto VARCHAR(100) NOT NULL DEFAULT '',telefono VARCHAR(40) NOT NULL DEFAULT '',
-            nota VARCHAR(500) NOT NULL DEFAULT '',devolucion VARCHAR(12) NOT NULL DEFAULT '',
-            UNIQUE KEY uk_disp_origen(origen_usuario,referencia),KEY idx_disp_destino(destino_usuario,estado,expires_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
     private function one(string $sql,array $values=[]): ?array {
         $s=$this->db->prepare($sql);if($values)$s->bind_param(str_repeat('s',count($values)),...$values);
@@ -35,11 +23,32 @@ final class TelefoniaDisponibilidadService
         $s->bind_param(str_repeat('s',count($args)),...$args);$s->execute();$s->close();
     }
     private function extension(int $user): array {
+        if (isset($this->extensionesSondeo[$user])) return $this->extensionesSondeo[$user];
         $r=$this->one("SELECT t.*,GREATEST(t.created_at,t.updated_at) AS desde FROM telefonia_extensiones t JOIN usuarios u ON u.id=t.usuario_id AND u.estado=1 WHERE t.usuario_id=? AND t.activo=1 AND t.proveedor='ZADARMA' AND t.permite_entrantes=1",[$user]);
-        if(!$r)throw new DomainException('Tu extensión no está habilitada.');return $r;
+        if(!$r)throw new DomainException('Tu extensión no está habilitada.');
+        if ($this->extensionesSondeo !== null) $this->extensionesSondeo[$user] = $r;
+        return $r;
     }
     private function expire(): void {
+        if ($this->expiracionSondeo) return;
         $this->db->query("UPDATE telefonia_disponibilidad SET estado='VENCIDA',updated_at=UTC_TIMESTAMP() WHERE estado IN ('PENDIENTE','ACEPTADA') AND expires_at<=UTC_TIMESTAMP()");
+        $this->expiracionSondeo = $this->extensionesSondeo !== null;
+    }
+
+    public function sondear(int $usuario, bool $disponible, int $id, bool $contarDevoluciones): array
+    {
+        $this->extensionesSondeo = [];
+        try {
+            $this->presencia($usuario, $disponible);
+            return [
+                'solicitud' => $id > 0 ? $this->obtener($usuario, $id) : null,
+                'entrante' => $this->entrante($usuario),
+                'devoluciones' => $contarDevoluciones ? count($this->devoluciones($usuario)) : null,
+            ];
+        } finally {
+            $this->extensionesSondeo = null;
+            $this->expiracionSondeo = false;
+        }
     }
     private function live(int $user,string $ref): array {
         if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$ref))throw new DomainException('Espera a que se identifique la llamada.');

@@ -34,8 +34,12 @@ if ($interaccionId <= 0 || $usuarioId <= 0) {
     exit('Interacción no válida.');
 }
 
-$database = new Database();
-$connection = $database->connect();
+try {
+    $connection = Database::compartida();
+} catch (Throwable $error) {
+    if (Database::responderFalloTemporal($error, false)) exit;
+    throw $error;
+}
 $sql = "SELECT
             id,
             seguimiento_id,
@@ -59,7 +63,7 @@ if (!$interaccion || strtoupper((string)$interaccion['canal']) !== 'LLAMADA_IP')
 }
 
 $seguimientoId = (int)$interaccion['seguimiento_id'];
-$modelo = new SeguimientoVinculacionModel();
+$modelo = new SeguimientoVinculacionModel($connection);
 $rolId = (int)($_SESSION['rol_id'] ?? 0);
 $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
 $esConsultaGlobal =

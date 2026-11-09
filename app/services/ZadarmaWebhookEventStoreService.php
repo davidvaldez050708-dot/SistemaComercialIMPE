@@ -11,7 +11,6 @@ class ZadarmaWebhookEventStoreService
         // Permite reutilizar la conexión del expediente en consultas del
         // historial; el resto de los consumidores sigue funcionando igual.
         $this->connection = $connection ?? (new Database())->connect();
-        $this->asegurarEstructura();
     }
 
     public function asegurarEstructura()

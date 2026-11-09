@@ -15,7 +15,6 @@ class TelefoniaRecepcionMarketingService
     public function __construct(?mysqli $connection=null)
     {
         $this->db = $connection??(new Database())->connect();
-        (new ZadarmaWebhookEventStoreService($this->db))->asegurarEstructura();
     }
 
     public static function esMarketing(): bool

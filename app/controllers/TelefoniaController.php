@@ -702,7 +702,8 @@ class TelefoniaController
             require_once __DIR__.'/../services/TelefoniaEnrutamientoService.php';
             require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
             $usuarioId=(int)$_SESSION['usuario_id'];$rol=(string)($_SESSION['rol']??'');
-            $disponibilidad=new TelefoniaDisponibilidadService();
+            $conexion = (new Database())->connect();
+            $disponibilidad=new TelefoniaDisponibilidadService($conexion);
             $solicitar=($_POST['intencion']??'')==='SOLICITAR';
             $id=(int)($_POST['disponibilidad_id']??0);$version=(int)($_POST['version']??0);
             $route=$solicitar?[
@@ -715,7 +716,7 @@ class TelefoniaController
                 'referencia_llamada'=>trim((string)($_POST['referencia_llamada']??'')),
                 'modo'=>'DIRECTA'
             ]:$disponibilidad->rutaAceptada($usuarioId,$id,$version);
-            $destino=(new TelefoniaEnrutamientoService())->validarDestino($usuarioId,$rol,
+            $destino=(new TelefoniaEnrutamientoService($conexion))->validarDestino($usuarioId,$rol,
                 (string)$route['extension'],(int)$route['estado_id'],(string)$route['tipo'],(int)$route['responsable_id']);
             if($solicitar){
                 $route['nombre_destino']=(string)$destino['nombre'];
@@ -729,7 +730,7 @@ class TelefoniaController
             $this->responderJson(['ok'=>true,'token'=>$token,'destino'=>$destino,
                 'mensaje'=>'Responsable confirmado. La transferencia aún no se ha enviado.']);
         }catch(InvalidArgumentException|DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
-        catch(Throwable $e){error_log('[telefonia_disponibilidad_autorizar] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No fue posible solicitar la atención.'],500);}
+        catch(Throwable $e){if(Database::responderFalloTemporal($e))exit;error_log('[telefonia_disponibilidad_autorizar] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No fue posible solicitar la atención.'],500);}
     }
 
     public function disponibilidad()
@@ -737,26 +738,32 @@ class TelefoniaController
         $this->validarUsuarioTelefoniaJson();
         if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);
         require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
+        $metodo = $_SERVER['REQUEST_METHOD'] ?? '';
+        if (!in_array($metodo, ['GET', 'POST'], true)) $this->responderJson(['ok'=>false],405);
+        if ($metodo === 'POST' && (empty($_SESSION['csrf_token']) ||
+            !hash_equals((string)$_SESSION['csrf_token'], (string)($_POST['csrf_token'] ?? '')))) {
+            $this->responderJson(['ok'=>false],403);
+        }
         try{
             $user=(int)$_SESSION['usuario_id'];$svc=new TelefoniaDisponibilidadService();
-            if(($_SERVER['REQUEST_METHOD']??'')==='GET'){
+            if($metodo==='GET'){
                 $id=(int)($_GET['id']??0);
                 $this->responderJson(['ok'=>true,'solicitud'=>$id?$svc->obtener($user,$id):$svc->entrante($user),'devoluciones'=>$id?null:count($svc->devoluciones($user))]);
             }
-            if(($_SERVER['REQUEST_METHOD']??'')!=='POST')$this->responderJson(['ok'=>false],405);
-            $csrf=(string)($_SESSION['csrf_token']??'');
-            if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);
             if(in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)){
+                if (($_POST['accion'] ?? '') === 'POLL') {
+                    $this->responderJson(['ok'=>true] + $svc->sondear(
+                        $user, ($_POST['disponible'] ?? '') === '1', (int)($_POST['id'] ?? 0),
+                        ($_POST['consultar_devoluciones'] ?? '1') === '1'
+                    ));
+                }
                 $svc->presencia($user,($_POST['disponible']??'')==='1');
-                if(($_POST['accion']??'')==='POLL')$this->responderJson(['ok'=>true,
-                    'solicitud'=>(int)($_POST['id']??0)>0?$svc->obtener($user,(int)$_POST['id']):null,
-                    'entrante'=>$svc->entrante($user),'devoluciones'=>count($svc->devoluciones($user))]);
                 $this->responderJson(['ok'=>true]);
             }
             if(($_POST['accion']??'')==='ATENDIDA')$this->responderJson(['ok'=>false,'mensaje'=>'Registra el resultado desde Llamadas por devolver.'],409);
             $this->responderJson(['ok'=>true,'solicitud'=>$svc->accion($user,(int)($_POST['id']??0),(int)($_POST['version']??0),(string)($_POST['accion']??''),$_POST)]);
         }catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
-        catch(Throwable $e){error_log('[telefonia_disponibilidad] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la solicitud. Intenta de nuevo.'],500);}
+        catch(Throwable $e){if(Database::responderFalloTemporal($e))exit;error_log('[telefonia_disponibilidad] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la solicitud. Intenta de nuevo.'],500);}
     }
 
     public function completarProgramacionVenta(): void {

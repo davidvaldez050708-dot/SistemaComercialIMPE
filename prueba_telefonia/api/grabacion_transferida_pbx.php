@@ -149,6 +149,7 @@ try {
     header('Content-Length: '.strlen($body));
     echo $body;
 } catch (Throwable $error) {
+    if (Database::responderFalloTemporal($error, false)) exit;
     error_log('[audio_transferido_pbx] '.get_class($error));
     if (!headers_sent()) http_response_code(502);
     exit('Grabación temporalmente no disponible.');

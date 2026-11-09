@@ -39,6 +39,7 @@ try {
         'recepcion' => (new TelefoniaRecepcionMarketingService())->resumen($usuarioId)
     ]);
 } catch (Throwable $error) {
+    if (Database::responderFalloTemporal($error)) exit;
     error_log('[telefonia_marketing_historial] ' . $error->getMessage());
     responderHistorialMarketing([
         'ok' => false,

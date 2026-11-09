@@ -104,6 +104,7 @@ try {
     header('Content-Length: ' . strlen($body));
     echo $body;
 } catch (Throwable $e) {
+    if (Database::responderFalloTemporal($e, false)) exit;
     error_log('[grabacion_interna_analista] ' . get_class($e) . ': ' . $e->getCode());
     if (!headers_sent()) http_response_code(502);
     exit('No fue posible recuperar el audio en este momento.');

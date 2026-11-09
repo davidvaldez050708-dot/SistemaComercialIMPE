@@ -21,6 +21,7 @@ try{
     $rows=(new SeguimientoVinculacionModel($db))->obtenerMunicipiosActivosEstado($estado);
     echo json_encode(['ok'=>true,'municipios'=>array_map(static fn($r)=>['id'=>(int)$r['id'],'nombre'=>(string)$r['nombre']],$rows)],JSON_UNESCAPED_UNICODE|JSON_INVALID_UTF8_SUBSTITUTE);
 }catch(Throwable $e){
+    if (Database::responderFalloTemporal($e)) exit;
     error_log('[municipios_llamada] '.get_class($e));http_response_code(503);
     echo json_encode(['ok'=>false,'mensaje'=>'No se pudo cargar el catálogo de municipios. Intenta nuevamente.']);
 }

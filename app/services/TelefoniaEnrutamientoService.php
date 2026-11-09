@@ -45,7 +45,7 @@ final class TelefoniaEnrutamientoService
         if ($estadoId < 0) {
             throw new InvalidArgumentException('Estado inválido.');
         }
-        $asignacion = (new TelefoniaExtensionService())->resolverParaUsuario($actorId);
+        $asignacion = (new TelefoniaExtensionService($this->db))->resolverParaUsuario($actorId);
         if (!$asignacion || empty($asignacion['permite_transferir']) ||
             empty($asignacion['permite_entrantes'])) {
             return [];

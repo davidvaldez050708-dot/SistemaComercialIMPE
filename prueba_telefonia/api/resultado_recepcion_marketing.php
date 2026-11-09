@@ -44,6 +44,7 @@ try {
 } catch (DomainException $e) {
     responderResultadoRecepcion(['ok'=>false,'mensaje'=>$e->getMessage()],$e->getCode() === 409 ? 409 : 403);
 } catch (Throwable $e) {
+    if (Database::responderFalloTemporal($e)) exit;
     error_log('[recepcion_resultado] '.get_class($e));
     responderResultadoRecepcion(['ok'=>false,'mensaje'=>'No se pudo guardar. Inténtalo nuevamente.'],500);
 }
