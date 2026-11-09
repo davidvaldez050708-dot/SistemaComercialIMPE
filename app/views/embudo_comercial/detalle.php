@@ -62,7 +62,11 @@ $volver=BASE_URL.'index.php?'.http_build_query([
     <p class="impe-embudo-note"><i class="bi bi-info-circle"></i>
         Los resultados y grabaciones se conservan en Telefonía. Esta ficha no los vincula automáticamente ni registra conversaciones por ahora.
         <?php if (!$supervisor && tienePermiso('telefonia.usar')): ?>
-        <a href="<?= $esc(BASE_URL.'index.php?controller=telefonia&action=misLlamadas') ?>">Consultar Mis llamadas</a>.
+        <a href="<?= $esc(BASE_URL.'index.php?'.http_build_query([
+              'controller'=>'telefonia','action'=>'misLlamadas',
+              'prospecto_asignacion_id'=>(int)$prospecto['asignacion_id'],
+              'q'=>(string)$prospecto['telefono_original']
+           ])) ?>">Consultar llamadas del prospecto</a>.
         <?php endif; ?>
     </p>
     <?php endif; ?>
