@@ -10,6 +10,7 @@ if (PHP_SAPI !== 'cli') {
 }
 $site = $argv[1] ?? '';
 $file = $argv[2] ?? '';
+$requiereInstalada = ($argv[3] ?? '') === '--installed';
 if (!is_string($site) || !is_dir($site) ||
     !is_string($file) || !is_file($file)) {
     fwrite(STDERR, "Uso: php embudo_fase2_db_preflight.php SITIO SQL\n");
@@ -111,6 +112,9 @@ try {
     foreach ($nuevas as $tabla => $campos) {
         $engine = $obtenerTabla($tabla);
         if ($engine === null) {
+            if ($requiereInstalada) {
+                throw new RuntimeException("Migración 2A sin instalar: $tabla");
+            }
             echo "PENDIENTE DE MIGRACIÓN: $tabla\n";
             continue;
         }
@@ -135,6 +139,9 @@ try {
         $q->execute();
         $rows = $q->get_result()->fetch_all(MYSQLI_ASSOC);
         if (!$rows) {
+            if ($requiereInstalada) {
+                throw new RuntimeException("Permiso de fase 2A sin instalar: $codigo");
+            }
             echo "PERMISO POR INSTALAR: $codigo\n";
         } elseif (count($rows) !== 1 || (int)$rows[0]['estado'] !== 1) {
             throw new RuntimeException("Permiso existente incompatible o inactivo: $codigo");
@@ -143,7 +150,9 @@ try {
         }
     }
     $q->close();
-    echo "CHECK BD FASE 2A OK: SQL íntegro, sin escrituras.\n";
+    echo ($requiereInstalada
+        ? "CHECK BD 2A INSTALADA OK: tablas y permisos activos; sin escrituras.\n"
+        : "CHECK BD FASE 2A OK: SQL íntegro, sin escrituras.\n");
     $db->close();
 } catch (Throwable $e) {
     error_log('[embudo_fase2_preflight] '.get_class($e).' codigo='.(int)$e->getCode());
