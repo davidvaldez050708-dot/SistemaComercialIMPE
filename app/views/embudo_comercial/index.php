@@ -21,6 +21,12 @@ $paginaUrl=static function(string $etapa,int $numero) use ($urlBase,$baseParamet
 };
 $fecha=static fn($utc)=>$utc?ProspectoFechaHoraHelper::aMexico($utc):'Sin programar';
 $mostrarLlamadas=tienePermiso('telefonia.usar') && !$supervisor;
+$puedeMover=!$supervisor && tienePermiso('ventas.embudo.mover') &&
+    EmbudoComercialAcceso::puede('embudo');
+$puedeRecuperar=$puedeMover && tienePermiso('ventas.recuperacion.gestionar') &&
+    EmbudoComercialAcceso::puede('recuperacion');
+$puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
+    EmbudoComercialAcceso::puede('descartados');
 ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/embudo_comercial.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial.css'),0,16) ?>">
 <div class="impe-embudo">
@@ -94,13 +100,13 @@ $mostrarLlamadas=tienePermiso('telefonia.usar') && !$supervisor;
 
     <div class="impe-embudo-board-info">
         <span><i class="bi bi-people" aria-hidden="true"></i> <?= number_format((int)$tablero['total']) ?> asignaciones<?= $supervisor?' bajo supervisión':' propias' ?></span>
-        <small>20 tarjetas por página y columna · sin cambios automáticos de etapa</small>
+        <small>20 tarjetas por columna · <?= $puedeMover?'Arrastra una ficha o usa el menú de acciones':'Vista de consulta' ?></small>
     </div>
 
     <div class="impe-embudo-board <?= $vista==='embudo'?'':'impe-embudo-board--single' ?>" role="region" tabindex="0"
          aria-label="<?= $esc($vista==='embudo'?'Columnas del embudo comercial':'Lista de '.$vista) ?>">
         <?php foreach ($tablero['columnas'] as $etapa=>$col): ?>
-        <section class="impe-embudo-lane impe-embudo-lane--<?= $esc(strtolower($etapa)) ?>" aria-label="<?= $esc($col['etiqueta']) ?>">
+        <section class="impe-embudo-lane impe-embudo-lane--<?= $esc(strtolower($etapa)) ?>" data-etapa="<?= $esc($etapa) ?>" aria-label="<?= $esc($col['etiqueta']) ?>">
             <div class="impe-embudo-lane-head">
                 <div>
                     <h3><?= $esc($col['etiqueta']) ?></h3>
@@ -119,7 +125,11 @@ $mostrarLlamadas=tienePermiso('telefonia.usar') && !$supervisor;
                     ]);
                     $origen=(string)($p['tipo_origen']??'');
                 ?>
-                <article class="impe-embudo-card">
+                <article class="impe-embudo-card"
+                   data-asignacion-id="<?= (int)$p['asignacion_id'] ?>"
+                   data-etapa="<?= $esc($etapa) ?>"
+                   data-nombre="<?= $esc($p['nombre_completo']) ?>"
+                   <?= $puedeMover && $vista==='embudo' && $etapa!=='PAGO_CONFIRMADO'?'draggable="true"':'' ?>>
                     <div class="impe-embudo-card-line">
                         <a class="impe-embudo-persona" href="<?= $esc($detalle) ?>" title="<?= $esc($p['nombre_completo']) ?>"><?= $esc($p['nombre_completo']) ?></a>
                         <span class="impe-embudo-source <?= $origen==='META_ADS'?'is-meta':($origen==='ALIADO'?'is-aliado':'') ?>"><?= $esc($origen==='META_ADS'?'Meta':($origen==='ALIADO'?'Aliado':'Registro')) ?></span>
@@ -128,13 +138,23 @@ $mostrarLlamadas=tienePermiso('telefonia.usar') && !$supervisor;
                     <div class="impe-embudo-card-bottom">
                         <span class="impe-embudo-next" title="<?= $esc($p['horario_contacto']??'') ?>">
                             <i class="bi bi-calendar-event" aria-hidden="true"></i>
-                            <?= $esc($p['proxima_accion_at']?$fecha($p['proxima_accion_at']):('Jornada: '.$def($p['fecha_trabajo'],'Sin fecha'))) ?>
+                            <?= $esc($etapa==='RECUPERACION' && !empty($p['revision_fecha'])
+                                ?('Revisar: '.$p['revision_fecha'])
+                                :($p['proxima_accion_at']?$fecha($p['proxima_accion_at']):
+                                    ('Jornada: '.$def($p['fecha_trabajo'],'Sin fecha')))) ?>
                         </span>
                         <div class="impe-embudo-card-actions">
                             <?php if ($mostrarLlamadas): ?>
                             <a href="<?= $esc(BASE_URL.'index.php?controller=telefonia&action=misLlamadas') ?>" title="Mis llamadas (no marca automáticamente)" aria-label="Consultar Mis llamadas"><i class="bi bi-telephone" aria-hidden="true"></i></a>
                             <?php endif; ?>
                             <a href="<?= $esc($detalle) ?>" title="Ver ficha" aria-label="Ver ficha de <?= $esc($p['nombre_completo']) ?>"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+                            <?php if ($puedeMover && $etapa!=='PAGO_CONFIRMADO' && $etapa!=='DESCARTADO'): ?>
+                            <button type="button" class="impe-embudo-action-mover"
+                                data-mover-tarjeta aria-label="Cambiar etapa de <?= $esc($p['nombre_completo']) ?>"
+                                title="Mover prospecto con registro de motivo">
+                                <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                            </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </article>
@@ -151,8 +171,45 @@ $mostrarLlamadas=tienePermiso('telefonia.usar') && !$supervisor;
         </section>
         <?php endforeach; ?>
     </div>
+    <?php if ($puedeMover): ?>
+    <dialog class="impe-embudo-dialog" id="impe-embudo-dialog"
+        aria-labelledby="impe-embudo-dialog-title">
+        <form id="impe-embudo-mover-form" method="dialog">
+            <header>
+                <h3 id="impe-embudo-dialog-title">Cambiar etapa</h3>
+                <button type="button" data-cerrar-dialogo aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <p id="impe-embudo-dialog-subtitulo"></p>
+            <label>Nueva etapa
+                <select name="etapa_nueva" id="impe-embudo-destino" required>
+                    <?php foreach (EmbudoComercialRepository::ETAPAS as $clave=>$nombre):
+                        if ($clave==='PAGO_CONFIRMADO') continue;
+                        if ($clave==='RECUPERACION' && !$puedeRecuperar) continue;
+                        if ($clave==='DESCARTADO' && !$puedeDescartar) continue; ?>
+                    <option value="<?= $esc($clave) ?>"><?= $esc($nombre) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label id="impe-embudo-motivo-wrap">Motivo / evidencia de gestión
+                <textarea name="motivo" id="impe-embudo-motivo" maxlength="190" rows="3"
+                    placeholder="Qué ocurrió y por qué se cambia la etapa"></textarea>
+            </label>
+            <label id="impe-embudo-fecha-wrap" hidden>Próxima llamada
+                <input type="datetime-local" name="proxima_accion" id="impe-embudo-fecha">
+            </label>
+            <p id="impe-embudo-mover-error" role="alert" hidden></p>
+            <div class="impe-embudo-dialog-footer">
+                <button type="button" data-cerrar-dialogo>Cancelar</button>
+                <button type="submit" id="impe-embudo-mover-enviar">Confirmar movimiento</button>
+            </div>
+        </form>
+    </dialog>
+    <script src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_movimientos.js?v=1" defer></script>
+    <?php endif; ?>
     <p class="impe-embudo-note"><i class="bi bi-shield-check" aria-hidden="true"></i>
-        Primera fase de consulta: no se registran llamadas, no se cambian etapas ni se actualizan pagos desde este tablero. Inscritos conserva su módulo independiente.
+        Las etapas manuales conservan auditoría; las llamadas siguen registrándose en Telefonía.
+        No se confirma ningún pago ni se inscribe a nadie desde este tablero.
+        Recuperación establece una revisión para mañana, pero no envía mensajes automáticos.
     </p>
     <?php endif; ?>
 </div>
