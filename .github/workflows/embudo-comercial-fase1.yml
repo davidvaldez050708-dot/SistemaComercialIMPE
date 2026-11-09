@@ -5,6 +5,7 @@ on:
       - feat/ventas-embudo-kanban-permisos-fase1-20261108
       - fix/ventas-sidebar-gestion-comercial-20261108
       - fix/ventas-sidebar-ancho-gestion-comercial-20261108
+      - feat/ventas-etapas-recuperacion-automatizacion-20261109
   pull_request:
     paths:
       - 'app/controllers/EmbudoComercialController.php'
@@ -39,18 +40,31 @@ jobs:
           php -l app/views/embudo_comercial/index.php
           php -l app/views/embudo_comercial/detalle.php
           php -l tools/embudo_comercial_db_preflight.php
+          php -l app/services/EmbudoComercialEtapas.php
+          php -l app/services/EmbudoComercialMovimientoService.php
+          php -l app/services/EmbudoComercialResultadoBridge.php
+          php -l app/services/TelefoniaResultadoVentasService.php
+          php -l app/views/telefonia/ventas_llamadas.php
+          php -l app/views/telefonia/resultado_ventas_form.php
+          php -l app/helpers/AdminRolePolicy.php
       - name: Autorización por rol y filtros
-        run: php tests/embudo_comercial_fase1_unit.php
+        run: |
+          php tests/embudo_comercial_fase1_unit.php
+          php tests/embudo_comercial_fase2_unit.php
+          node --check public/javascript/embudo_comercial_movimientos.js
+          node --check public/javascript/telefonia_ventas_resultados.js
       - name: Publicador inicial en sandbox (solo rama fase 1)
         if: github.ref_name == 'feat/ventas-embudo-kanban-permisos-fase1-20261108'
         run: |
           python3 -m py_compile tools/publicar_embudo_comercial_hostinger.py
           python3 tests/embudo_publicador_hostinger_test.py
       - name: Comprobar reparación visual y respaldos en Hostinger simulado
+        if: github.ref_name == 'fix/ventas-sidebar-gestion-comercial-20261108' || github.ref_name == 'fix/ventas-sidebar-ancho-gestion-comercial-20261108'
         run: |
           python3 -m py_compile tools/ajustar_sidebar_gestion_comercial_hostinger.py
           python3 tests/gestion_comercial_sidebar_hostinger_test.py
       - name: Ajustar solo ancho de Gestión comercial en ambos menús
+        if: github.ref_name == 'fix/ventas-sidebar-ancho-gestion-comercial-20261108'
         run: |
           python3 -m py_compile tools/corregir_ancho_gestion_comercial_hostinger.py
           python3 tests/gestion_comercial_ancho_sidebar_test.py
