@@ -13,6 +13,8 @@ BASE = "a90b6ade"
 AMBITO = ("config/db_connection.php", "index.php", "app", "public", "prueba_telefonia")
 CONTROLADOR_TELEFONIA = "app/controllers/TelefoniaController.php"
 SERVICIO_DISPONIBILIDAD = "app/services/TelefoniaDisponibilidadService.php"
+JS_DISPONIBILIDAD = "public/javascript/telefonia_disponibilidad.js"
+JS_TRANSFERENCIA = "public/javascript/telefonia_transferencia_runtime.js"
 
 
 def git(*args, **kwargs):
@@ -91,6 +93,70 @@ def variante_transferencia(sitio, nombre, instalado, base, entrega):
     )
 
 
+def sustituir_variante(contenido, original, variante, nombre):
+    if contenido.count(original) != 1:
+        raise SystemExit("No se pudo verificar la variante de " + nombre + ". Sitio intacto.")
+    return contenido.replace(original, variante, 1)
+
+
+def variantes_javascript(nombre, instalado, base, entrega):
+    if nombre == JS_DISPONIBILIDAD:
+        original = (
+            b"   const data=await request({accion:'POLL',id:watched?.id||0,disponible:busy()?'0':'1'});\n"
+            b"   if(watched){\n"
+        )
+        personalizado = (
+            b"   const snapshot=watched,active=phone.getActiveCall();\n"
+            b"   const data=await request({accion:'POLL',id:snapshot?.id||0,referencia:active?.id||'',disponible:busy()?'0':'1'});\n"
+            b"   // No pisar una solicitud creada mientras el polling estaba en vuelo.\n"
+            b"   if(watched===snapshot){\n"
+        )
+        corregido = (
+            b"   const consulta=watched;\n"
+            b"   const consultar=Date.now()>=consultarDevoluciones;\n"
+            b"   const data=await request({accion:'POLL',id:consulta?.id||0,disponible:busy()?'0':'1',consultar_devoluciones:consultar?'1':'0'});\n"
+            b"   fallosPoll=0;\n"
+            b"   if(consultar)consultarDevoluciones=Date.now()+15000;\n"
+            b"   if(watched&&watched===consulta){\n"
+        )
+        integrado = (
+            b"   const snapshot=watched,active=phone.getActiveCall();\n"
+            b"   const consultar=Date.now()>=consultarDevoluciones;\n"
+            b"   const data=await request({accion:'POLL',id:snapshot?.id||0,referencia:active?.id||'',disponible:busy()?'0':'1',consultar_devoluciones:consultar?'1':'0'});\n"
+            b"   fallosPoll=0;\n"
+            b"   if(consultar)consultarDevoluciones=Date.now()+15000;\n"
+            b"   // No pisar una solicitud creada mientras el polling estaba en vuelo.\n"
+            b"   if(watched===snapshot){\n"
+        )
+        if instalado.count(personalizado) == 1 or instalado.count(integrado) == 1:
+            base = sustituir_variante(base, original, personalizado, nombre)
+            entrega = sustituir_variante(entrega, corregido, integrado, nombre)
+
+    if nombre == JS_TRANSFERENCIA:
+        bloqueo = (
+            b"  // TERMINADA puede devolver el mismo registro durante varios sondeos.\n"
+            b"  // No volver a asociarlo al di\xc3\xa1logo SIP ya finalizado, aun si reset() lo\n"
+            b"  // solt\xc3\xb3. El token pertenece a una llamada; el siguiente INVITE usa otro.\n"
+            b"  let lastClosedReceiverToken='';\n"
+        )
+        sondeo = b"  let nextPoll=0, failures=0;\n"
+        reinicio = b"  const reset=()=>"
+        parametros = b"url.searchParams.set('sdk',api.read().callToken);}"
+        con_solicitud = (
+            b"url.searchParams.set('sdk',api.read().callToken);"
+            b"if(api.read().context?.availabilityCandidate)"
+            b"url.searchParams.set('solicitud_id',api.read().context.availabilityCandidate);}"
+        )
+        if instalado.count(bloqueo) == 1:
+            base = sustituir_variante(base, reinicio, bloqueo + reinicio, nombre)
+            entrega = sustituir_variante(entrega, sondeo, bloqueo + sondeo, nombre)
+        if instalado.count(con_solicitud) == 1:
+            base = sustituir_variante(base, parametros, con_solicitud, nombre)
+            entrega = sustituir_variante(entrega, parametros, con_solicitud, nombre)
+
+    return base, entrega
+
+
 def preparar(sitio, repo, temporal, nombres):
     anteriores, posteriores = {}, {}
     conflictos = []
@@ -107,6 +173,7 @@ def preparar(sitio, repo, temporal, nombres):
         base = base.replace(b"\r\n", b"\n")
         entrega = entrega.replace(b"\r\n", b"\n")
         base, entrega = variante_transferencia(sitio, nombre, finales, base, entrega)
+        base, entrega = variantes_javascript(nombre, finales, base, entrega)
         if finales == entrega:
             estado = "ya actualizado"
         elif finales == base:
