@@ -117,8 +117,17 @@ def render_calls(s):
     if len(re.findall(r'<section\b[^>]*\bdata-sales-history\b',s))!=1:
         raise Conflicto('Mis llamadas: contenedor no único')
     s=unico(s,'data-save-url=',CALLS_ATTR+'data-save-url=','Mis llamadas: guardado')
-    frm='<form method="get" class="impe-callback-filter-panel">'
-    s=unico(s,frm,frm+'\n  '+CALLS_HIDDEN,'Mis llamadas: filtro')
+    # El formulario de Hostinger conserva la petición GET, pero su clase
+    # y atributos pueden haber cambiado para filtros/evidencias de PBX.
+    # Insertar solo después de la etiqueta <form> original, sin reemplazarla.
+    formas=list(re.finditer(
+        r'<form\\b[^>]*\\bmethod\\s*=\\s*([\\x22\\x27])get\\1[^>]*>',
+        s, re.IGNORECASE
+    ))
+    if len(formas)!=1:
+        raise Conflicto('Mis llamadas: filtro GET no único ({} coincidencias)'.format(len(formas)))
+    m=formas[0]
+    s=s[:m.end()]+'\n  '+CALLS_HIDDEN+s[m.end():]
     return s
 
 def render_js(s):
