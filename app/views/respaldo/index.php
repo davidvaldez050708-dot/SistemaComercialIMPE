@@ -1,0 +1,108 @@
+<?php
+
+$escapar = static fn ($valor): string => htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
+$descargaUrl = static fn (string $nombre): string => $urlRespaldo . '&descargar=' . rawurlencode($nombre);
+$csrf = $escapar($_SESSION['csrf_token']);
+$confirmarRestauracion = 'La restauración puede sobrescribir los datos actuales. Se guardará una copia previa. ¿Deseas continuar?';
+
+?>
+<section aria-label="Respaldos de base de datos">
+    <?php if (!empty($aviso['mensaje'])): ?>
+        <div class="alert <?= empty($aviso['error']) ? 'alert-success' : 'alert-danger' ?>" role="alert">
+            <?= $escapar($aviso['mensaje']) ?>
+            <?php if (!empty($aviso['descarga'])): ?>
+                <a class="alert-link" href="<?= $escapar($descargaUrl($aviso['descarga'])) ?>">Descargar archivo</a>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!empty($aviso['descarga'])): ?>
+        <iframe hidden title="Descarga del nuevo respaldo" src="<?= $escapar($descargaUrl($aviso['descarga'])) ?>"></iframe>
+    <?php endif; ?>
+
+    <div class="dashboard-panel p-3 p-md-4 mb-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <span class="metric-icon"><i class="bi bi-database-check" aria-hidden="true"></i></span>
+                <div>
+                    <div class="page-subtitle mb-1">Último respaldo guardado en el servidor</div>
+                    <strong><?= $historial ? date('d/m/Y H:i:s', $historial[0]['fecha']) : 'Todavía no hay respaldos' ?></strong>
+                </div>
+            </div>
+            <form method="post" action="<?= $escapar($urlRespaldo) ?>">
+                <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                <button type="submit" class="btn btn-system-save" name="operacion" value="generar">
+                    <i class="bi bi-cloud-arrow-down me-1" aria-hidden="true"></i> Generar y descargar nuevo respaldo
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="dashboard-panel p-3 p-md-4 mb-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <h2 class="panel-title mb-0"><i class="bi bi-clock-history me-2" aria-hidden="true"></i>Historial de respaldos</h2>
+            <small class="page-subtitle mb-0">Se conservan los últimos <?= RespaldoBaseDatos::LIMITE_HISTORIAL ?> respaldos.</small>
+        </div>
+        <div class="table-responsive">
+            <table class="table users-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Nombre del archivo</th>
+                        <th scope="col">Fecha de creación</th>
+                        <th scope="col">Tamaño</th>
+                        <th scope="col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($historial as $respaldo): ?>
+                        <tr>
+                            <td><?= $escapar($respaldo['nombre']) ?></td>
+                            <td class="text-nowrap"><?= date('d/m/Y H:i:s', $respaldo['fecha']) ?></td>
+                            <td class="text-nowrap"><?= number_format($respaldo['bytes'] / 1024, 2) ?> KB</td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a class="btn btn-sm btn-system-cancel" href="<?= $escapar($descargaUrl($respaldo['nombre'])) ?>">
+                                        <i class="bi bi-download me-1" aria-hidden="true"></i> Descargar
+                                    </a>
+                                    <form method="post" action="<?= $escapar($urlRespaldo) ?>">
+                                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                                        <input type="hidden" name="nombre" value="<?= $escapar($respaldo['nombre']) ?>">
+                                        <button type="submit" class="btn btn-sm btn-system-cancel" name="operacion" value="restaurar"
+                                            onclick="return confirm('<?= $escapar($confirmarRestauracion) ?>')">
+                                            <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Restaurar
+                                        </button>
+                                        <button type="submit" class="btn btn-sm btn-system-danger" name="operacion" value="eliminar"
+                                            onclick="return confirm('¿Deseas eliminar este respaldo del historial?')">
+                                            <i class="bi bi-trash me-1" aria-hidden="true"></i> Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (!$historial): ?>
+                        <tr><td colspan="4" class="text-center py-4">Aún no hay archivos en el historial.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="dashboard-panel p-3 p-md-4">
+        <h2 class="panel-title mb-2"><i class="bi bi-cloud-arrow-up me-2" aria-hidden="true"></i>Restaurar desde un archivo</h2>
+        <p class="page-subtitle mb-3" id="respaldo-ayuda">Selecciona un archivo SQL de confianza para restaurar la información del sistema.</p>
+        <form method="post" action="<?= $escapar($urlRespaldo) ?>" enctype="multipart/form-data"
+            class="d-flex flex-wrap align-items-end gap-3"
+            onsubmit="return confirm('<?= $escapar($confirmarRestauracion) ?>')">
+            <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+            <div>
+                <label class="form-label login-label" for="respaldo-archivo">Archivo de respaldo (.sql)</label>
+                <input class="form-control system-form-control" type="file" id="respaldo-archivo"
+                    name="archivo_sql" accept=".sql" aria-describedby="respaldo-ayuda" required>
+            </div>
+            <button type="submit" class="btn btn-system-save" name="operacion" value="subir">
+                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Restaurar archivo
+            </button>
+        </form>
+    </div>
+</section>

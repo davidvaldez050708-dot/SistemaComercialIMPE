@@ -311,6 +311,11 @@ switch ($controller) {
         break;
 
 
+    case 'respaldo':
+        require_once __DIR__ . '/app/controllers/RespaldoController.php';
+        $controllerInstance = new RespaldoController();
+        break;
+
     case 'usuario':
 
         require_once __DIR__ .
