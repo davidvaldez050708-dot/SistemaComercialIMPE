@@ -1,21 +1,22 @@
 <?php
+require_once __DIR__.'/EmbudoComercialEtapas.php';
 /**
- * Fase 1 del kanban: consultas limitadas y exclusivas de las asignaciones vigentes.
+ * Fase 2 del kanban: consultas limitadas y exclusivas de las asignaciones vigentes.
  * La etapa no se deduce de telefonía ni del estado administrativo de asignación.
  * No realiza escrituras ni crea automáticamente etapas.
  */
 final class EmbudoComercialRepository
 {
     public const ETAPAS = [
-        'NUEVO'=>'Nuevos',
-        'EN_CONTACTO'=>'En contacto',
-        'CONTACTADO'=>'Contactado',
-        'INTERESADO'=>'Interesado',
-        'SEGUIMIENTO'=>'Seguimiento',
-        'PAGO_CONFIRMADO'=>'Pago confirmado / Inscripción pendiente',
-        'RECUPERACION'=>'En recuperación',
-        'DESCARTADO'=>'Descartados'
+        'NUEVO' => 'Nuevos',
+        'CONTACTADO' => 'Contactados',
+        'INTERESADO' => 'Interesados',
+        'SEGUIMIENTO' => 'Seguimiento',
+        'PAGO_CONFIRMADO' => 'Pago confirmado / Inscripción pendiente',
+        'RECUPERACION' => 'En recuperación',
+        'DESCARTADO' => 'Descartados'
     ];
+    public const ACTIVAS = ['NUEVO','CONTACTADO','INTERESADO','SEGUIMIENTO','PAGO_CONFIRMADO'];
     public const POR_COLUMNA = 20;
     private mysqli $db;
 
@@ -26,7 +27,8 @@ final class EmbudoComercialRepository
         foreach ([
             'prospectos_comerciales','prospecto_asignaciones','prospecto_origenes',
             'prospecto_intereses','prospecto_preferencias_contacto',
-            'prospecto_embudo_etapas','prospecto_embudo_movimientos'
+            'prospecto_embudo_etapas','prospecto_embudo_movimientos',
+            'prospecto_embudo_agenda'
         ] as $nombre) {
             $st=$this->db->prepare(
                 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?'
@@ -94,6 +96,7 @@ final class EmbudoComercialRepository
         $sql=" FROM prospecto_asignaciones a
             JOIN prospectos_comerciales p ON p.id=a.prospecto_id
             LEFT JOIN prospecto_embudo_etapas e ON e.asignacion_id=a.id
+            LEFT JOIN prospecto_embudo_agenda ag ON ag.asignacion_id=a.id
             WHERE a.vigente=1";
         $args=[];
         if (!$supervisor) {
@@ -159,8 +162,10 @@ final class EmbudoComercialRepository
     {
         [$from,$args]=$this->condiciones($usuarioId,$supervisor,$f);
         $agregado=$this->rows(
-            "SELECT COALESCE(e.etapa,'NUEVO') etapa, COUNT(*) total
-             $from GROUP BY COALESCE(e.etapa,'NUEVO')",
+            "SELECT CASE WHEN e.etapa='EN_CONTACTO' THEN 'RECUPERACION'
+                         ELSE COALESCE(e.etapa,'NUEVO') END etapa, COUNT(*) total
+             $from GROUP BY CASE WHEN e.etapa='EN_CONTACTO' THEN 'RECUPERACION'
+                                  ELSE COALESCE(e.etapa,'NUEVO') END",
             $args
         );
         $conteos=[];
@@ -169,7 +174,7 @@ final class EmbudoComercialRepository
             if (isset(self::ETAPAS[$clave])) $conteos[$clave]=(int)$fila['total'];
         }
         $etapas=$vista==='embudo'
-            ?array_slice(array_keys(self::ETAPAS),0,6)
+            ?self::ACTIVAS
             :[$vista==='recuperacion'?'RECUPERACION':'DESCARTADO'];
         $datos=[];
         foreach ($etapas as $etapa) {
@@ -178,7 +183,9 @@ final class EmbudoComercialRepository
             $pagina=min($paginas,$f['paginas'][$etapa]);
             $offset=($pagina-1)*self::POR_COLUMNA;
             $campos="SELECT a.id asignacion_id,a.prospecto_id,a.asesor_id,
-                a.asignado_at,a.fecha_trabajo,a.proxima_accion_at,
+                a.asignado_at,a.fecha_trabajo,
+                COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
+                ag.revision_fecha,
                 p.nombre_completo,p.telefono_original,
                 (SELECT GROUP_CONCAT(DISTINCT i.nombre_original SEPARATOR ' · ')
                     FROM prospecto_intereses i WHERE i.prospecto_id=p.id) programas,
@@ -189,12 +196,17 @@ final class EmbudoComercialRepository
                     JOIN prospecto_origenes o ON o.id=pref.origen_id
                     WHERE o.prospecto_id=p.id ORDER BY o.id DESC LIMIT 1) horario_contacto";
             $items=$this->rows(
-                "$campos $from AND COALESCE(e.etapa,'NUEVO')=?
+                "$campos $from AND CASE WHEN e.etapa='EN_CONTACTO' THEN 'RECUPERACION'
+                      ELSE COALESCE(e.etapa,'NUEVO') END=?
                  ORDER BY
-                  CASE WHEN a.proxima_accion_at IS NOT NULL AND a.proxima_accion_at<UTC_TIMESTAMP()
-                          THEN 0 WHEN a.proxima_accion_at IS NULL AND a.fecha_trabajo<
-                          ? THEN 0 ELSE 1 END,
-                  COALESCE(a.proxima_accion_at,CONCAT(a.fecha_trabajo,' 12:00:00'),a.asignado_at),
+                  CASE WHEN COALESCE(ag.proxima_accion_at,a.proxima_accion_at) IS NOT NULL
+                           AND COALESCE(ag.proxima_accion_at,a.proxima_accion_at)<UTC_TIMESTAMP()
+                          THEN 0
+                       WHEN ag.revision_fecha IS NOT NULL AND ag.revision_fecha<? THEN 0
+                       ELSE 1 END,
+                  COALESCE(ag.proxima_accion_at,a.proxima_accion_at,
+                           CONCAT(ag.revision_fecha,' 12:00:00'),
+                           CONCAT(a.fecha_trabajo,' 12:00:00'),a.asignado_at),
                   a.id
                  LIMIT ? OFFSET ?",
                 [...$args,$etapa,
@@ -215,17 +227,21 @@ final class EmbudoComercialRepository
         $params=[$prospectoId];
         $sql="SELECT p.id,p.nombre_completo,p.telefono_original,p.correo,
                      p.pais_nombre,p.estado_provincia,p.ciudad,
-                     a.asesor_id,a.asignado_at,a.fecha_trabajo,a.proxima_accion_at,
-                     COALESCE(e.etapa,'NUEVO') etapa
+                     a.id asignacion_id,a.asesor_id,a.asignado_at,a.fecha_trabajo,
+                     COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
+                     ag.revision_fecha,
+                     CASE WHEN e.etapa='EN_CONTACTO' THEN 'RECUPERACION'
+                          ELSE COALESCE(e.etapa,'NUEVO') END etapa
               FROM prospecto_asignaciones a
               JOIN prospectos_comerciales p ON p.id=a.prospecto_id
               LEFT JOIN prospecto_embudo_etapas e ON e.asignacion_id=a.id
+              LEFT JOIN prospecto_embudo_agenda ag ON ag.asignacion_id=a.id
               WHERE p.id=? AND a.vigente=1";
         if (!$supervisor) {$sql.=' AND a.asesor_id=?';$params[]=$usuarioId;}
-        if ($vista==='recuperacion') $sql.=" AND COALESCE(e.etapa,'NUEVO')='RECUPERACION'";
+        if ($vista==='recuperacion') $sql.=" AND e.etapa IN ('RECUPERACION','EN_CONTACTO')";
         elseif ($vista==='descartados') $sql.=" AND COALESCE(e.etapa,'NUEVO')='DESCARTADO'";
         else $sql.=" AND COALESCE(e.etapa,'NUEVO') IN (
-            'NUEVO','EN_CONTACTO','CONTACTADO','INTERESADO','SEGUIMIENTO','PAGO_CONFIRMADO')";
+            'NUEVO','CONTACTADO','INTERESADO','SEGUIMIENTO','PAGO_CONFIRMADO')";
         $sql.=' LIMIT 1';
         $rows=$this->rows($sql,$params);
         if (!$rows) return null;
