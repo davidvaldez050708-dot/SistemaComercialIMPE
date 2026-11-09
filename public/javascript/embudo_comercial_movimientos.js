@@ -5,18 +5,6 @@
   'use strict';
   const root = document.querySelector('.impe-embudo');
   if (!root) return;
-  const dialog = root.querySelector('#impe-embudo-dialog');
-  const form = root.querySelector('#impe-embudo-mover-form');
-  if (!dialog || !form) return;
-  const destino = form.querySelector('#impe-embudo-destino');
-  const motivo = form.querySelector('#impe-embudo-motivo');
-  const fecha = form.querySelector('#impe-embudo-fecha');
-  const labelFecha = form.querySelector('#impe-embudo-fecha-wrap');
-  const error = form.querySelector('#impe-embudo-mover-error');
-  const enviar = form.querySelector('#impe-embudo-mover-enviar');
-  let tarjeta = null;
-  let drag = null;
-
   // Reutiliza el mismo teléfono persistente de Inicio y Mis llamadas.
   root.querySelectorAll('[data-embudo-marcar]').forEach(b=>b.addEventListener('click',()=>{
     const numero=String(b.dataset.embudoMarcar||'').trim();
@@ -28,6 +16,18 @@
       window.alert('El teléfono no está disponible en esta sesión.');
     }
   }));
+
+  const dialog = root.querySelector('#impe-embudo-dialog');
+  const form = root.querySelector('#impe-embudo-mover-form');
+  if (!dialog || !form) return;
+  const destino = form.querySelector('#impe-embudo-destino');
+  const motivo = form.querySelector('#impe-embudo-motivo');
+  const fecha = form.querySelector('#impe-embudo-fecha');
+  const labelFecha = form.querySelector('#impe-embudo-fecha-wrap');
+  const error = form.querySelector('#impe-embudo-mover-error');
+  const enviar = form.querySelector('#impe-embudo-mover-enviar');
+  let tarjeta = null;
+  let drag = null;
 
   const activo = (etapa) => ['NUEVO','CONTACTADO','INTERESADO','SEGUIMIENTO'].includes(etapa);
   function actualizarCampos() {
