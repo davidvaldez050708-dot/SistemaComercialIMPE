@@ -18,9 +18,11 @@
    if(shell()&&!shell().beginCallResult(token,[ref]))throw Error('Termina la llamada activa antes de abrir este registro.');
    form.reset();for(const el of form.elements)el.disabled=false;feedback.textContent='';
    form.elements.pbx_call_id.value=ref;form.elements.extension.value=call.extension;
+    const asignacion=String(root.dataset.salesAssignmentId||'');
+    form.elements.prospecto_asignacion_id.value=/^[1-9][0-9]*$/.test(asignacion)?asignacion:'';
    const values=call.registro||{prospecto_nombre:call.nombre};
    for(const [key,value]of Object.entries(values)){const el=form.elements.namedItem(key);if(el&&value!==null)el.value=key==='proxima_accion_at'?String(value).replace(/(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}):\d{2}/,'$1T$2'):String(value);}
-   if(!call.registro){try{const d=JSON.parse(sessionStorage.getItem(draftKey(ref))||'null');if(d&&Date.now()-d.at<86400000)for(const [k,v]of Object.entries(d.values||{})){const el=form.elements.namedItem(k);if(el&&!['csrf_token','pbx_call_id','extension'].includes(k)){if(el.type==='checkbox')el.checked=v==='1';else el.value=v;}}}catch(_){}}
+   if(!call.registro){try{const d=JSON.parse(sessionStorage.getItem(draftKey(ref))||'null');if(d&&Date.now()-d.at<86400000)for(const [k,v]of Object.entries(d.values||{})){const el=form.elements.namedItem(k);if(el&&!['csrf_token','pbx_call_id','extension','prospecto_asignacion_id'].includes(k)){if(el.type==='checkbox')el.checked=v==='1';else el.value=v;}}}catch(_){}}
    form.querySelector('[data-sales-form-number]').textContent=call.numero;
    form.querySelector('[data-sales-form-state]').textContent=call.estado_pbx+' · Ext. '+call.extension;
    submit.hidden=Boolean(call.registro);
