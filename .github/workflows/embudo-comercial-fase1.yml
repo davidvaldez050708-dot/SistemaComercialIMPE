@@ -56,6 +56,8 @@ jobs:
           node --check public/javascript/telefonia_ventas_resultados.js
           python3 -m py_compile tools/embudo_fase2_preflight_hostinger.py
           python3 -m py_compile tools/diagnosticar_anclas_embudo_telefonia.py
+          python3 -m py_compile tools/conciliar_embudo_telefonia_personalizada_hostinger.py
+          python3 tests/embudo_fase2_conciliacion_telefonia_test.py
       - name: Publicador inicial en sandbox (solo rama fase 1)
         if: github.ref_name == 'feat/ventas-embudo-kanban-permisos-fase1-20261108'
         run: |
