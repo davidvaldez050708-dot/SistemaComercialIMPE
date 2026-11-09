@@ -143,10 +143,26 @@ class TelefoniaResultadoVentasService
             $contact=(int)$saved['id'];$update=$this->db->prepare('UPDATE telefonia_ventas_resultados SET contacto_id=? WHERE usuario_id=? AND extension=? AND pbx_call_id=?');$update->bind_param('iiss',$contact,$usuarioId,$extension,$pbxCallId);$update->execute();$update->close();
         }
         if($callbacks)$callbacks->aplicarResultado($usuarioId,$call,$resultado);
+        // La asignación debe provenir del contexto explícito del embudo.
+        $vinculoEmbudo=null;
+        $asignacionRaw=$datos['prospecto_asignacion_id']??'';
+        if (!is_scalar($asignacionRaw) || is_bool($asignacionRaw)) {
+            throw new InvalidArgumentException('La referencia de asignación no es válida.');
+        }
+        $asignacionRaw=trim((string)$asignacionRaw);
+        if ($asignacionRaw!=='') {
+            if (!ctype_digit($asignacionRaw) || (int)$asignacionRaw<1) {
+                throw new InvalidArgumentException('La referencia de asignación no es válida.');
+            }
+            require_once __DIR__.'/EmbudoComercialResultadoBridge.php';
+            $vinculoEmbudo=(new EmbudoComercialResultadoBridge($this->db))
+                ->aplicar($usuarioId,(int)$asignacionRaw,$call,$resultado,$next);
+        }
         $this->db->commit();
         }catch(Throwable $e){$this->db->rollback();throw $e;}
         return ['pbx_call_id'=>$pbxCallId,'extension'=>$extension,'resultado'=>$resultado,
-            'etiqueta'=>self::opciones()[$resultado],'contacto_real'=>self::esConversacion($resultado)];
+            'etiqueta'=>self::opciones()[$resultado],'contacto_real'=>self::esConversacion($resultado),
+            'embudo'=>$vinculoEmbudo];
     }
 
     /**
