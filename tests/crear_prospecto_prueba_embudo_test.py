@@ -13,7 +13,9 @@ assert src.index("if (!empty($o['check']))") < src.index(
 ), 'check must return before backup'
 assert src.index("if (!$isTest)") < src.index("respaldoFixture((string)$o[")
 assert "hash_equals((string)$o['expect-db'],$dbName)" in src, 'exact matching DB required'
-assert "prueba|staging|sandbox" in src
+assert "prueba|pruebas|staging|sandbox" in src
+assert "p.codigo IN ('ventas.embudo.ver','ventas.embudo.mover')" in src
+assert "r.id=3" in src
 assert "'telefono_original'=>null" in src
 assert "SIN TELEFONO" in src
 assert "IF NOT EXISTS" not in src, 'fixture may not change schema'
