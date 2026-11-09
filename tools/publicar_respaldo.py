@@ -103,7 +103,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site", required=True, type=Path)
     parser.add_argument("--backup-root", type=Path)
-    parser.add_argument("--menu", action="store_true", help="Publica el traslado de Respaldo al menú lateral")
+    alcance = parser.add_mutually_exclusive_group()
+    alcance.add_argument("--menu", action="store_true", help="Publica el traslado de Respaldo al menú lateral")
+    alcance.add_argument("--vista", action="store_true", help="Publica solo la vista de Respaldo")
     modo = parser.add_mutually_exclusive_group(required=True)
     modo.add_argument("--check", action="store_true")
     modo.add_argument("--apply", action="store_true")
@@ -118,10 +120,14 @@ def main():
             parser.error("--backup-root debe estar fuera del sitio")
 
     repo = Path(__file__).resolve().parent.parent
-    existentes = MENU if args.menu else EXISTENTES
-    archivos = MENU if args.menu else EXISTENTES + NUEVOS
-    filtro = () if args.menu else ("--diff-filter=A",)
-    archivo_commit = MENU[0] if args.menu else NUEVOS[0]
+    if args.menu:
+        existentes = archivos = MENU
+    elif args.vista:
+        existentes = archivos = ("app/views/respaldo/index.php",)
+    else:
+        existentes, archivos = EXISTENTES, EXISTENTES + NUEVOS
+    filtro = () if args.menu or args.vista else ("--diff-filter=A",)
+    archivo_commit = archivos[0] if args.menu or args.vista else NUEVOS[0]
     commit = ejecutar(
         "git", "log", "-1", "--format=%H", *filtro, "HEAD", "--", archivo_commit,
         cwd=repo, stdout=subprocess.PIPE,

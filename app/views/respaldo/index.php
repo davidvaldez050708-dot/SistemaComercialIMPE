@@ -4,16 +4,36 @@ $escapar = static fn ($valor): string => htmlspecialchars((string)$valor, ENT_QU
 $descargaUrl = static fn (string $nombre): string => $urlRespaldo . '&descargar=' . rawurlencode($nombre);
 $csrf = $escapar($_SESSION['csrf_token']);
 $confirmarRestauracion = 'La restauración puede sobrescribir los datos actuales. Se guardará una copia previa. ¿Deseas continuar?';
+$avisoError = !empty($aviso['error']);
+$clasesBoton = 'd-inline-flex align-items-center justify-content-center text-center';
 
 ?>
 <section aria-label="Respaldos de base de datos">
     <?php if (!empty($aviso['mensaje'])): ?>
-        <div class="alert <?= empty($aviso['error']) ? 'alert-success' : 'alert-danger' ?>" role="alert">
-            <?= $escapar($aviso['mensaje']) ?>
-            <?php if (!empty($aviso['descarga'])): ?>
-                <a class="alert-link" href="<?= $escapar($descargaUrl($aviso['descarga'])) ?>">Descargar archivo</a>
-            <?php endif; ?>
+        <div class="toast-container position-fixed top-0 end-0 p-3">
+            <div
+                id="respaldo-toast"
+                class="toast system-toast<?= $avisoError ? ' system-toast-error' : '' ?>"
+                role="<?= $avisoError ? 'alert' : 'status' ?>"
+                aria-live="<?= $avisoError ? 'assertive' : 'polite' ?>"
+                aria-atomic="true"
+                data-bs-delay="<?= $avisoError ? 4200 : 3200 ?>">
+                <div class="toast-body">
+                    <i class="bi <?= $avisoError ? 'bi-exclamation-circle' : 'bi-check2-circle' ?>" aria-hidden="true"></i>
+                    <span>
+                        <?= $escapar($aviso['mensaje']) ?>
+                        <?php if (!empty($aviso['descarga'])): ?>
+                            <a href="<?= $escapar($descargaUrl($aviso['descarga'])) ?>">Descargar archivo</a>
+                        <?php endif; ?>
+                    </span>
+                </div>
+            </div>
         </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            new bootstrap.Toast(document.getElementById('respaldo-toast')).show();
+        });
+        </script>
     <?php endif; ?>
 
     <?php if (!empty($aviso['descarga'])): ?>
@@ -31,7 +51,7 @@ $confirmarRestauracion = 'La restauración puede sobrescribir los datos actuales
             </div>
             <form method="post" action="<?= $escapar($urlRespaldo) ?>">
                 <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-                <button type="submit" class="btn btn-system-save" name="operacion" value="generar">
+                <button type="submit" class="btn btn-system-save <?= $clasesBoton ?>" name="operacion" value="generar">
                     <i class="bi bi-cloud-arrow-down me-1" aria-hidden="true"></i> Generar y descargar nuevo respaldo
                 </button>
             </form>
@@ -60,18 +80,18 @@ $confirmarRestauracion = 'La restauración puede sobrescribir los datos actuales
                             <td class="text-nowrap"><?= date('d/m/Y H:i:s', $respaldo['fecha']) ?></td>
                             <td class="text-nowrap"><?= number_format($respaldo['bytes'] / 1024, 2) ?> KB</td>
                             <td>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <a class="btn btn-sm btn-system-cancel" href="<?= $escapar($descargaUrl($respaldo['nombre'])) ?>">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <a class="btn btn-sm btn-system-cancel <?= $clasesBoton ?>" href="<?= $escapar($descargaUrl($respaldo['nombre'])) ?>">
                                         <i class="bi bi-download me-1" aria-hidden="true"></i> Descargar
                                     </a>
-                                    <form method="post" action="<?= $escapar($urlRespaldo) ?>">
+                                    <form class="d-flex flex-wrap align-items-center gap-2" method="post" action="<?= $escapar($urlRespaldo) ?>">
                                         <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                                         <input type="hidden" name="nombre" value="<?= $escapar($respaldo['nombre']) ?>">
-                                        <button type="submit" class="btn btn-sm btn-system-cancel" name="operacion" value="restaurar"
+                                        <button type="submit" class="btn btn-sm btn-system-cancel <?= $clasesBoton ?>" name="operacion" value="restaurar"
                                             onclick="return confirm('<?= $escapar($confirmarRestauracion) ?>')">
                                             <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Restaurar
                                         </button>
-                                        <button type="submit" class="btn btn-sm btn-system-danger" name="operacion" value="eliminar"
+                                        <button type="submit" class="btn btn-sm btn-system-danger <?= $clasesBoton ?>" name="operacion" value="eliminar"
                                             onclick="return confirm('¿Deseas eliminar este respaldo del historial?')">
                                             <i class="bi bi-trash me-1" aria-hidden="true"></i> Eliminar
                                         </button>
@@ -100,7 +120,7 @@ $confirmarRestauracion = 'La restauración puede sobrescribir los datos actuales
                 <input class="form-control system-form-control" type="file" id="respaldo-archivo"
                     name="archivo_sql" accept=".sql" aria-describedby="respaldo-ayuda" required>
             </div>
-            <button type="submit" class="btn btn-system-save" name="operacion" value="subir">
+            <button type="submit" class="btn btn-system-save <?= $clasesBoton ?>" name="operacion" value="subir">
                 <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Restaurar archivo
             </button>
         </form>
