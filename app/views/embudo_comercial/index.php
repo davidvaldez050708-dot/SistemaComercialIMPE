@@ -21,6 +21,7 @@ $paginaUrl=static function(string $etapa,int $numero) use ($urlBase,$baseParamet
 };
 $fecha=static fn($utc)=>$utc?ProspectoFechaHoraHelper::aMexico($utc):'Sin programar';
 $mostrarLlamadas=tienePermiso('telefonia.usar') && !$supervisor;
+$puedeLlamar=$mostrarLlamadas && tienePermiso('telefonia.salientes');
 $puedeMover=!$supervisor && tienePermiso('ventas.embudo.mover') &&
     EmbudoComercialAcceso::puede('embudo');
 $puedeRecuperar=$puedeMover && tienePermiso('ventas.recuperacion.gestionar') &&
@@ -144,12 +145,19 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
                                     ('Jornada: '.$def($p['fecha_trabajo'],'Sin fecha')))) ?>
                         </span>
                         <div class="impe-embudo-card-actions">
+                            <?php if ($puedeLlamar && !empty($p['telefono_original'])): ?>
+                            <button type="button" data-embudo-marcar="<?= $esc($p['telefono_original']) ?>"
+                                title="Abrir marcador para este prospecto"
+                                aria-label="Llamar a <?= $esc($p['nombre_completo']) ?>">
+                                <i class="bi bi-telephone" aria-hidden="true"></i>
+                            </button>
+                            <?php endif; ?>
                             <?php if ($mostrarLlamadas): ?>
                             <a href="<?= $esc(BASE_URL.'index.php?'.http_build_query([
                                 'controller'=>'telefonia','action'=>'misLlamadas',
                                 'prospecto_asignacion_id'=>(int)$p['asignacion_id'],
                                 'q'=>(string)$p['telefono_original']
-                            ])) ?>" title="Mis llamadas del prospecto (sin marcar automáticamente)" aria-label="Consultar llamadas del prospecto"><i class="bi bi-telephone" aria-hidden="true"></i></a>
+                            ])) ?>" title="Consultar y registrar resultado en Mis llamadas" aria-label="Registrar resultado de llamadas del prospecto"><i class="bi bi-telephone" aria-hidden="true"></i></a>
                             <?php endif; ?>
                             <a href="<?= $esc($detalle) ?>" title="Ver ficha" aria-label="Ver ficha de <?= $esc($p['nombre_completo']) ?>"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
                             <?php if ($puedeMover && $etapa!=='PAGO_CONFIRMADO' && $etapa!=='DESCARTADO'): ?>
