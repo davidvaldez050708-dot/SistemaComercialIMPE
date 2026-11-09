@@ -55,7 +55,8 @@ $mostrarReportesEnAnalisis =
 $mostrarDesempeno = tienePermiso('desempeno.ver');
 $mostrarAnalisis =
     $mostrarReportesEnAnalisis ||
-    $mostrarDesempeno;
+    $mostrarDesempeno ||
+    $mostrarRespaldo;
 
 $etiquetaMenuConvocatorias = tienePermiso('convocatorias.gestionar')
     ? 'Gestión de Convocatorias'
@@ -342,16 +343,17 @@ $claseFormularios =
                         Reportes
                     </a>
                 <?php endif; ?>
+
+                <?php if ($mostrarRespaldo): ?>
+                    <a
+                        href="<?= BASE_URL ?>index.php?controller=respaldo&amp;action=index"
+                        class="sidebar-link <?= $claseRespaldo ?>">
+                        <i class="bi bi-database"></i>
+                        Respaldo
+                    </a>
+                <?php endif; ?>
             </div>
 
-        <?php endif; ?>
-        <?php if ($mostrarRespaldo): ?>
-            <a
-                href="<?= BASE_URL ?>index.php?controller=respaldo&amp;action=index"
-                class="sidebar-link <?= $claseRespaldo ?>">
-                <i class="bi bi-database"></i>
-                Respaldo
-            </a>
         <?php endif; ?>
     </nav>
 
@@ -702,18 +704,19 @@ $claseFormularios =
                         </a>
                     <?php endif; ?>
 
+                    <?php if ($mostrarRespaldo): ?>
+                        <a
+                            href="<?= BASE_URL ?>index.php?controller=respaldo&amp;action=index"
+                            class="sidebar-link <?= $claseRespaldo ?>">
+                            <i class="bi bi-database"></i>
+                            Respaldo
+                        </a>
+                    <?php endif; ?>
+
                 </div>
 
             <?php endif; ?>
 
-            <?php if ($mostrarRespaldo): ?>
-                <a
-                    href="<?= BASE_URL ?>index.php?controller=respaldo&amp;action=index"
-                    class="sidebar-link <?= $claseRespaldo ?>">
-                    <i class="bi bi-database"></i>
-                    Respaldo
-                </a>
-            <?php endif; ?>
         </nav>
 
 

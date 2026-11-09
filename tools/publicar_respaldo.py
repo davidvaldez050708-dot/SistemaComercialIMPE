@@ -58,10 +58,8 @@ def main():
     if not commit:
         parser.error("El clon de preparación no contiene el commit de Respaldo")
 
-    parche = ejecutar(
-        "git", "show", "--format=", "--binary", commit, "--", *archivos,
-        cwd=repo, stdout=subprocess.PIPE,
-    ).stdout
+    revision = ("diff", "6049d55c", commit) if args.menu else ("show", "--format=", commit)
+    parche = ejecutar("git", *revision, "--binary", "--", *archivos, cwd=repo, stdout=subprocess.PIPE).stdout
     if not parche:
         parser.error("El parche de Respaldo está vacío")
 
@@ -70,7 +68,18 @@ def main():
         ejecutar("php", "-l", input=contenido)
 
     aplicar = ("git", "apply", "--", "-")
-    ejecutar("git", "apply", "--check", "--", "-", cwd=sitio, input=parche)
+    comprobar = ("git", "apply", "--check", "--", "-")
+    if args.menu:
+        compatible = subprocess.run(
+            comprobar, cwd=sitio, input=parche, stderr=subprocess.PIPE,
+        ).returncode == 0
+        if not compatible and all(b"controller=respaldo" not in (sitio / nombre).read_bytes() for nombre in MENU[1:]):
+            # Una instalación intermedia ya retiró los enlaces del perfil.
+            parche = ejecutar(
+                "git", "show", "--format=", "--binary", commit, "--", MENU[0],
+                cwd=repo, stdout=subprocess.PIPE,
+            ).stdout
+    ejecutar(*comprobar, cwd=sitio, input=parche)
     if args.check:
         print("Parche compatible con el sitio.")
         return
