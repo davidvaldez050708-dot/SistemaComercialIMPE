@@ -145,7 +145,11 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
                         </span>
                         <div class="impe-embudo-card-actions">
                             <?php if ($mostrarLlamadas): ?>
-                            <a href="<?= $esc(BASE_URL.'index.php?controller=telefonia&action=misLlamadas') ?>" title="Mis llamadas (no marca automáticamente)" aria-label="Consultar Mis llamadas"><i class="bi bi-telephone" aria-hidden="true"></i></a>
+                            <a href="<?= $esc(BASE_URL.'index.php?'.http_build_query([
+                                'controller'=>'telefonia','action'=>'misLlamadas',
+                                'prospecto_asignacion_id'=>(int)$p['asignacion_id'],
+                                'q'=>(string)$p['telefono_original']
+                            ])) ?>" title="Mis llamadas del prospecto (sin marcar automáticamente)" aria-label="Consultar llamadas del prospecto"><i class="bi bi-telephone" aria-hidden="true"></i></a>
                             <?php endif; ?>
                             <a href="<?= $esc($detalle) ?>" title="Ver ficha" aria-label="Ver ficha de <?= $esc($p['nombre_completo']) ?>"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
                             <?php if ($puedeMover && $etapa!=='PAGO_CONFIRMADO' && $etapa!=='DESCARTADO'): ?>
