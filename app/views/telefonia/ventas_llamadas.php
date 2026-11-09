@@ -1,16 +1,19 @@
 <?php
 $esc=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');
 $rows=$ventasBandeja['filas']??[];$stats=$ventasBandeja['resumen']??[];
+$referenciaEmbudo=$_GET['prospecto_asignacion_id']??'';
+$referenciaEmbudo=is_string($referenciaEmbudo) &&
+    preg_match('/^[1-9][0-9]*$/D',$referenciaEmbudo) ? $referenciaEmbudo : '';
 ?>
 <style><?php foreach(['seguimiento_llamadas_expediente.css','seguimiento_llamadas_player.css','seguimiento_entrantes_analista.css','telefonia_devoluciones.css','telefonia_ventas_ui.css'] as $css)echo file_get_contents(ROOT_PATH.'/public/css/'.$css); ?></style>
 <section class="dashboard-panel linkage-incoming-page impe-callbacks sales-calls-page" data-sales-history data-auto-call="<?= $esc($_GET['pbx_call_id']??'') ?>" data-auto-extension="<?= $esc($_GET['extension']??'') ?>"
- data-sales-assignment-id="<?= $esc($_GET['prospecto_asignacion_id']??'') ?>" data-save-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=guardarResultadoVenta" data-detail-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=detalleVenta">
+ data-sales-assignment-id="<?= $esc($referenciaEmbudo) ?>" data-save-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=guardarResultadoVenta" data-detail-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=detalleVenta">
  <header class="linkage-incoming-heading"><div class="linkage-incoming-heading-copy"><span class="linkage-incoming-eyebrow"><i class="bi bi-headset"></i> VENTAS · TELEFONÍA</span><h2>Mis llamadas comerciales</h2><p>Historial y resultados de tus llamadas. La conexión la confirma la centralita; el resultado lo registras tú.</p></div><a class="btn btn-system-light linkage-incoming-back" href="<?= BASE_URL ?>index.php?controller=home&amp;action=index"><i class="bi bi-arrow-left"></i> Mi teléfono y agenda</a></header>
  <nav class="sales-history-tabs" aria-label="Bandeja comercial"><a class="btn btn-system-save" href="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=misLlamadas">Historial</a><a class="btn btn-system-light" href="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=misLlamadas&amp;vista=devoluciones">Por devolver</a><a class="btn btn-system-light" href="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=misLlamadas&amp;vista=agenda">Programadas</a></nav>
  <div class="linkage-call-summary linkage-incoming-stats sales-history-stats"><?php foreach(['pbx'=>'Llamadas PBX','intentos'=>'Marcaciones sin conciliar','pendientes'=>'Por registrar','perdidas'=>'Perdidas','conversaciones'=>'Conversaciones registradas'] as $key=>$label): ?><div><span><?= $label ?></span><strong><?= (int)($stats[$key]??0) ?></strong></div><?php endforeach; ?></div>
  <?php if(!empty($errorMisLlamadas)): ?><p role="alert"><?= $esc($errorMisLlamadas) ?></p><?php endif; ?>
  <form method="get" class="impe-callback-filter-panel">
-  <input type="hidden" name="prospecto_asignacion_id" value="<?= $esc($_GET['prospecto_asignacion_id']??'') ?>">
+  <input type="hidden" name="prospecto_asignacion_id" value="<?= $esc($referenciaEmbudo) ?>">
   <input type="hidden" name="controller" value="telefonia"><input type="hidden" name="action" value="misLlamadas">
   <div class="impe-callback-filter-field"><label for="salesSearch">Buscar nombre o teléfono</label><input class="form-control" id="salesSearch" type="search" name="q" value="<?= $esc($_GET['q']??'') ?>" maxlength="100"></div>
   <div class="impe-callback-filter-field"><label for="salesFilter">Mostrar</label><select data-native-select class="form-select" id="salesFilter" name="estado"><?php foreach([''=>'Todas','pendientes'=>'Pendientes de resultado','Entrante'=>'Entrantes','Saliente'=>'Salientes','transferidas'=>'Transferidas desde Recepción','perdidas'=>'Perdidas','sin_conexion'=>'Sin conexión confirmada'] as $key=>$label): ?><option value="<?= $esc($key) ?>" <?= ($key===($_GET['estado']??''))?'selected':'' ?>><?= $label ?></option><?php endforeach; ?></select></div>
