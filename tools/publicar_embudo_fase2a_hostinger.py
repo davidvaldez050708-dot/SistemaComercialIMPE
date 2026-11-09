@@ -91,7 +91,7 @@ def merge_admin_policy(raw):
         raise Conflicto('AdminRolePolicy.php debe ser UTF-8')
     pattern = re.compile(
         r"(?ms)^[ \t]*function[ \t]+permisosOperativosRestringidosAdministrador"
-        r"[ \t]*\(\s*\)[ \t]*\{\s*return[ \t]*\[(.*?)^[ \t]*\];"
+        r"[ \t]*\(\s*\)\s*\{\s*return[ \t]*\[(.*?)^[ \t]*\];"
     )
     blocks=list(pattern.finditer(text))
     if len(blocks)!=1:
