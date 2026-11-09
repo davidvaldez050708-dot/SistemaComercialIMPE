@@ -24,6 +24,7 @@ MENU = (
     "app/views/layout/topbar.php",
     "app/views/layout/my_profile_modal.php",
 )
+ACCESO = (MENU[0], "app/controllers/RespaldoController.php", "app/helpers/AdminRolePolicy.php")
 
 
 def ejecutar(*comando, **opciones):
@@ -82,6 +83,10 @@ def adaptar_menu(sitio, repo, commit):
         if nombre not in cambios or b"controller=respaldo" in cambios[nombre]:
             raise SystemExit("No se pudo identificar el bloque de Respaldo en " + nombre)
 
+    return generar_parche(originales, cambios)
+
+
+def generar_parche(originales, cambios):
     with tempfile.TemporaryDirectory() as directorio:
         temporal = Path(directorio)
         for nombre, contenido in cambios.items():
@@ -106,6 +111,7 @@ def main():
     alcance = parser.add_mutually_exclusive_group()
     alcance.add_argument("--menu", action="store_true", help="Publica el traslado de Respaldo al menú lateral")
     alcance.add_argument("--vista", action="store_true", help="Publica solo la vista de Respaldo")
+    alcance.add_argument("--acceso", action="store_true", help="Publica el acceso del Director de Operaciones")
     modo = parser.add_mutually_exclusive_group(required=True)
     modo.add_argument("--check", action="store_true")
     modo.add_argument("--apply", action="store_true")
@@ -124,10 +130,12 @@ def main():
         existentes = archivos = MENU
     elif args.vista:
         existentes = archivos = ("app/views/respaldo/index.php",)
+    elif args.acceso:
+        existentes = archivos = ACCESO
     else:
         existentes, archivos = EXISTENTES, EXISTENTES + NUEVOS
-    filtro = () if args.menu or args.vista else ("--diff-filter=A",)
-    archivo_commit = archivos[0] if args.menu or args.vista else NUEVOS[0]
+    filtro = () if args.menu or args.vista or args.acceso else ("--diff-filter=A",)
+    archivo_commit = archivos[0] if not filtro else NUEVOS[0]
     commit = ejecutar(
         "git", "log", "-1", "--format=%H", *filtro, "HEAD", "--", archivo_commit,
         cwd=repo, stdout=subprocess.PIPE,
@@ -166,6 +174,29 @@ def main():
             "git", "diff", "--binary", "6049d55c", commit, "--", *archivos,
             cwd=repo, stdout=subprocess.PIPE,
         ).stdout
+    elif args.acceso and subprocess.run(
+        comprobar, cwd=sitio, input=parche, stderr=subprocess.PIPE,
+    ).returncode != 0:
+        nombre = ACCESO[0]
+        lateral = (sitio / nombre).read_bytes()
+        condicion = b"<?php if ((int)($_SESSION['rol_id'] ?? 0) === 1): ?>"
+        enlace = rb'(\s*<a href="<\?= BASE_URL \?>index\.php\?controller=respaldo&amp;action=index")'
+        lateral_nuevo, cambios = re.subn(re.escape(condicion) + enlace, rb"<?php if (puedeGestionarRespaldos()): ?>\1", lateral)
+        bloque = b"<?php if ($mostrarAnalisis): ?>"
+        if cambios != 2 or lateral.count(bloque) != 2:
+            raise SystemExit("No se reconocieron los dos accesos a Respaldo en el menú instalado.")
+        lateral_nuevo = lateral_nuevo.replace(bloque, b"<?php if ($mostrarAnalisis || puedeGestionarRespaldos()): ?>")
+        incluir = b"require_once __DIR__ . '/../../helpers/AvatarHelper.php';"
+        if lateral_nuevo.count(incluir) != 1:
+            raise SystemExit("No se identificó el inicio del menú instalado.")
+        salto = b"\r\n" if b"\r\n" in lateral else b"\n"
+        lateral_nuevo = lateral_nuevo.replace(
+            incluir, incluir + salto + b"require_once __DIR__ . '/../../helpers/AdminRolePolicy.php';",
+        )
+        parche = ejecutar(
+            "git", "show", "--format=", "--binary", commit, "--", *ACCESO[1:],
+            cwd=repo, stdout=subprocess.PIPE,
+        ).stdout + generar_parche({nombre: lateral}, {nombre: lateral_nuevo})
     ejecutar(*comprobar, cwd=sitio, input=parche)
     if args.check:
         print("Parche compatible con el sitio.")

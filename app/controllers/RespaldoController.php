@@ -9,9 +9,9 @@ final class RespaldoController
 
     public function index(): void
     {
-        if (empty($_SESSION['usuario_id']) || !esAdministradorSistema()) {
+        if (!puedeGestionarRespaldos()) {
             http_response_code(403);
-            echo 'Solo el administrador puede gestionar los respaldos.';
+            echo 'Solo el Administrador y el Director de Operaciones pueden gestionar los respaldos.';
             return;
         }
 

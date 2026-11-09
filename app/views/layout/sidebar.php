@@ -1,12 +1,13 @@
 <?php
 
 require_once __DIR__ . '/../../helpers/AvatarHelper.php';
+require_once __DIR__ . '/../../helpers/AdminRolePolicy.php';
 
 $opcionActiva = $opcionActiva ?? 'inicio';
 $mostrarUsuarios = tienePermiso('usuarios.ver');
 $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
-$mostrarRespaldo = (int)($_SESSION['rol_id'] ?? 0) === 1;
+$mostrarRespaldo = puedeGestionarRespaldos();
 $mostrarTelefoniaConfiguracion =
     (int)($_SESSION['rol_id'] ?? 0) === 1;
 // El teléfono comercial reside en Inicio de Ventas. Vinculación conserva

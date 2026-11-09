@@ -54,6 +54,16 @@ if (!function_exists('esAdministradorSistema')) {
     }
 }
 
+if (!function_exists('puedeGestionarRespaldos')) {
+    function puedeGestionarRespaldos(): bool
+    {
+        return !empty($_SESSION['usuario_id']) && (
+            esAdministradorSistema() ||
+            strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Director de Operaciones') === 0
+        );
+    }
+}
+
 if (!function_exists('permisoOperativoRestringidoAdministrador')) {
     function permisoOperativoRestringidoAdministrador($codigo)
     {
