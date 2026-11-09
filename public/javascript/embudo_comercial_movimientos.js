@@ -17,6 +17,18 @@
   let tarjeta = null;
   let drag = null;
 
+  // Reutiliza el mismo teléfono persistente de Inicio y Mis llamadas.
+  root.querySelectorAll('[data-embudo-marcar]').forEach(b=>b.addEventListener('click',()=>{
+    const numero=String(b.dataset.embudoMarcar||'').trim();
+    if (!numero) return;
+    const dial=window.IMPE_TELEPHONY_PERSISTENT;
+    if (dial && typeof dial.openDialer==='function') {
+      dial.openDialer({number:numero});
+    } else {
+      window.alert('El teléfono no está disponible en esta sesión.');
+    }
+  }));
+
   const activo = (etapa) => ['NUEVO','CONTACTADO','INTERESADO','SEGUIMIENTO'].includes(etapa);
   function actualizarCampos() {
     const stage = destino.value;
