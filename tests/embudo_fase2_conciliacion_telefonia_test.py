@@ -57,6 +57,35 @@ check(newcalls.count('data-sales-assignment-id')==1,'data de asignación una vez
 check(newcalls.count('name="prospecto_asignacion_id"')==1,'filtro de asignación una vez')
 m.lint_php(newcalls.encode('utf-8'),m.PHP_CALLS)
 
+# Formulario real de Hostinger puede llevar clase personalizada, atributos
+# reordenados, GET en mayúsculas y estilos de filtros adicionales.
+base_calls=gitshow(m.PHP_CALLS)
+base_form='<form method="get" class="impe-callback-filter-panel">'
+check(base_calls.count(base_form)==1,'fixture tiene un formulario GET')
+for form_tag in [
+    '<form class="filtros-comerciales-hostinger" method="get">',
+    '<form id="filtroVentas" data-filtros="avanzados" method="GET" class="impe-filtros-v2">',
+    "<form data-operacion='ventas' method='get' class='ventas-filtro-personalizado'>",
+    '<form method = "get" data-estado="personalizado" class="filtro-ventas">',
+]:
+    specialized=base_calls.replace(base_form,form_tag)
+    adjusted=m.render_calls(specialized)
+    check(adjusted.count(form_tag)==1,'se preserva literalmente cada <form> personalizado')
+    check(adjusted.count('name="prospecto_asignacion_id"')==1,'campo oculto insertado una vez')
+    check(adjusted.count('data-sales-assignment-id')==1,'atributo nuevo insertado una vez')
+    check(
+        adjusted.replace(m.CALLS_ATTR+'data-save-url=','data-save-url=')
+          .replace(form_tag+'\n  '+m.CALLS_HIDDEN,form_tag)==specialized,
+        'solo se agregan las dos referencias, sin modificar filtros originales'
+    )
+    m.lint_php(adjusted.encode('utf-8'),m.PHP_CALLS)
+# En caso de formularios GET duplicados, preferimos bloquear la publicación.
+ambiguous=base_calls.replace(base_form,base_form+'\n'+base_form)
+refused=False
+try:m.render_calls(ambiguous)
+except m.Conflicto:refused=True
+check(refused,'dos formularios GET no son un ancla segura')
+
 # Caso de host especializado: redacción de resultados con borradores múltiples.
 js = """(()=>{
  'use strict';
