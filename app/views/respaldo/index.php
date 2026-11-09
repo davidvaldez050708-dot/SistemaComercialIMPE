@@ -7,6 +7,43 @@ $avisoError = !empty($aviso['error']);
 $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-center';
 
 ?>
+<style>
+.respaldo-btn-descargar,
+.respaldo-btn-restaurar {
+    min-height: 40px;
+    padding: 0 17px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.respaldo-btn-descargar {
+    --bs-btn-color: #14633c;
+    --bs-btn-bg: #ecf8f0;
+    --bs-btn-border-color: #abd8bb;
+    --bs-btn-hover-color: #104e30;
+    --bs-btn-hover-bg: #dff1e5;
+    --bs-btn-hover-border-color: #83bd98;
+    --bs-btn-active-color: var(--bs-btn-hover-color);
+    --bs-btn-active-bg: var(--bs-btn-hover-bg);
+    --bs-btn-active-border-color: var(--bs-btn-hover-border-color);
+    --bs-btn-focus-shadow-rgb: 20, 99, 60;
+}
+
+.respaldo-btn-restaurar {
+    --bs-btn-color: #804305;
+    --bs-btn-bg: #fff4dd;
+    --bs-btn-border-color: #edc58b;
+    --bs-btn-hover-color: #633304;
+    --bs-btn-hover-bg: #ffe7bc;
+    --bs-btn-hover-border-color: #d8a35b;
+    --bs-btn-active-color: var(--bs-btn-hover-color);
+    --bs-btn-active-bg: var(--bs-btn-hover-bg);
+    --bs-btn-active-border-color: var(--bs-btn-hover-border-color);
+    --bs-btn-focus-shadow-rgb: 128, 67, 5;
+}
+</style>
+
 <section aria-label="Respaldos de base de datos">
     <?php if (!empty($aviso['mensaje'])): ?>
         <div class="toast-container position-fixed top-0 end-0 p-3">
@@ -80,14 +117,14 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
                             <td class="text-nowrap"><?= number_format($respaldo['bytes'] / 1024, 2) ?> KB</td>
                             <td>
                                 <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <a class="btn btn-sm btn-system-cancel <?= $clasesBoton ?>" href="<?= $escapar($descargaUrl($respaldo['nombre'])) ?>">
+                                    <a class="btn btn-sm respaldo-btn-descargar <?= $clasesBoton ?>" href="<?= $escapar($descargaUrl($respaldo['nombre'])) ?>">
                                         <i class="bi bi-download me-1" aria-hidden="true"></i> Descargar
                                     </a>
                                     <form class="d-flex flex-wrap align-items-center gap-2" method="post"
                                         action="<?= $escapar($urlRespaldo) ?>" data-respaldo-confirmar>
                                         <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                                         <input type="hidden" name="nombre" value="<?= $escapar($respaldo['nombre']) ?>">
-                                        <button type="submit" class="btn btn-sm btn-system-cancel <?= $clasesBoton ?>" name="operacion" value="restaurar">
+                                        <button type="submit" class="btn btn-sm respaldo-btn-restaurar <?= $clasesBoton ?>" name="operacion" value="restaurar">
                                             <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Restaurar
                                         </button>
                                         <button type="submit" class="btn btn-sm btn-system-danger <?= $clasesBoton ?>" name="operacion" value="eliminar">
