@@ -92,7 +92,7 @@ def syntax(data,path):
             print('AVISO: Node.js ausente. Este JS se verificó en CI; revisar antes de aplicar.')
             return
         raise Conflicto('PHP no disponible para validar '+path)
-    fd,tmp=tempfile.mkstemp(suffix='.'+binary,prefix='impe-embudo2a-')
+    fd,tmp=tempfile.mkstemp(suffix='.php' if binary=='php' else '.js',prefix='impe-embudo2a-')
     try:
         with os.fdopen(fd,'wb') as f:
             f.write(data)
