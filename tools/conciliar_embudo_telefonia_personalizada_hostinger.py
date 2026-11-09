@@ -121,7 +121,7 @@ def render_calls(s):
     # y atributos pueden haber cambiado para filtros/evidencias de PBX.
     # Insertar solo después de la etiqueta <form> original, sin reemplazarla.
     formas=list(re.finditer(
-        r'<form\\b[^>]*\\bmethod\\s*=\\s*([\\x22\\x27])get\\1[^>]*>',
+        r'<form\b[^>]*\bmethod\s*=\s*(["\x27])get\1[^>]*>',
         s, re.IGNORECASE
     ))
     if len(formas)!=1:
