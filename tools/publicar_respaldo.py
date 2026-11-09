@@ -32,30 +32,32 @@ def main():
     modo.add_argument("--apply", action="store_true")
     args = parser.parse_args()
 
-    if args.apply and args.backup_root is None:
-        parser.error("--apply requiere --backup-root")
     sitio = args.site.resolve(strict=True)
-    if args.apply and (raiz := args.backup_root.resolve()).is_relative_to(sitio):
-        parser.error("--backup-root debe estar fuera del sitio")
+    if args.apply:
+        if args.backup_root is None:
+            parser.error("--apply requiere --backup-root")
+        raiz = args.backup_root.resolve()
+        if raiz == sitio or sitio in raiz.parents:
+            parser.error("--backup-root debe estar fuera del sitio")
 
     repo = Path(__file__).resolve().parent.parent
     commit = ejecutar(
         "git", "log", "-1", "--format=%H", "--diff-filter=A", "HEAD", "--", NUEVOS[0],
-        cwd=repo, capture_output=True, text=True,
-    ).stdout.strip()
+        cwd=repo, stdout=subprocess.PIPE,
+    ).stdout.decode("ascii").strip()
     if not commit:
         parser.error("El clon de preparación no contiene el commit de Respaldo")
 
     archivos = EXISTENTES + NUEVOS
     parche = ejecutar(
         "git", "show", "--format=", "--binary", commit, "--", *archivos,
-        cwd=repo, capture_output=True,
+        cwd=repo, stdout=subprocess.PIPE,
     ).stdout
     if not parche:
         parser.error("El parche de Respaldo está vacío")
 
     for nombre in archivos:
-        contenido = ejecutar("git", "show", f"{commit}:{nombre}", cwd=repo, capture_output=True).stdout
+        contenido = ejecutar("git", "show", f"{commit}:{nombre}", cwd=repo, stdout=subprocess.PIPE).stdout
         ejecutar("php", "-l", input=contenido)
 
     aplicar = ("git", "apply", "--", "-")
