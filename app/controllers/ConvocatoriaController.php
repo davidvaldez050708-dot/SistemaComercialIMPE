@@ -125,6 +125,15 @@ class ConvocatoriaController
             $estados,
             $territorioId
         );
+        $totalesConvocatoriasPorEstado = null;
+        if (!$territorioSeleccionado) {
+            try {
+                $totalesConvocatoriasPorEstado = $modelo->obtenerTotalesPorEstado(array_column($estados, 'id'));
+            } catch (Throwable $error) {
+                // El contador informativo no debe impedir consultar las convocatorias.
+                error_log('[convocatorias_totales_estado] ' . get_class($error));
+            }
+        }
         $esChihuahua = $territorioSeleccionado &&
             strcasecmp(trim((string)($territorioSeleccionado['nombre'] ?? '')), 'Chihuahua') === 0;
 

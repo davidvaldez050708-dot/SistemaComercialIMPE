@@ -209,6 +209,8 @@ class AgendaReunionRepository
         $cuentaClaveId,
         $motivo
     ) {
+        // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
+        $ahora = date('Y-m-d H:i:s');
         $sql = "UPDATE reuniones_vinculacion
                 SET estado = 'CANCELACION_SOLICITADA',
                     cancelacion_motivo = ?,
@@ -218,13 +220,14 @@ class AgendaReunionRepository
                 WHERE id = ?
                   AND cuenta_clave_id = ?
                   AND estado = 'CORREO_ENVIADO'
-                  AND fecha_propuesta > NOW()";
+                  AND fecha_propuesta > ?";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'sii',
+            'siis',
             $motivo,
             $reunionId,
-            $cuentaClaveId
+            $cuentaClaveId,
+            $ahora
         );
         $stmt->execute();
 
@@ -233,6 +236,8 @@ class AgendaReunionRepository
 
     public function cancelar($reunionId, $usuarioId, $rolId, $motivo)
     {
+        // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
+        $ahora = date('Y-m-d H:i:s');
         $sql = "UPDATE reuniones_vinculacion
                 SET estado = 'CANCELADA',
                     cancelacion_motivo = ?,
@@ -251,16 +256,17 @@ class AgendaReunionRepository
                   )
                   AND (
                     estado = 'CANCELACION_SOLICITADA'
-                    OR fecha_propuesta > NOW()
+                    OR fecha_propuesta > ?
                   )";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
-            'siiii',
+            'siiiis',
             $motivo,
             $usuarioId,
             $reunionId,
             $usuarioId,
-            $usuarioId
+            $usuarioId,
+            $ahora
         );
         $stmt->execute();
 
@@ -380,42 +386,48 @@ class AgendaReunionRepository
 
     public function confirmar($reunionId, $kamId, $zoomUrl, $ubicacion, $notasKam)
     {
+        // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
+        $ahora = date('Y-m-d H:i:s');
         $sql = "UPDATE reuniones_vinculacion SET cuenta_clave_id=?,zoom_url=?,ubicacion=?,notas_kam=?,estado='CONFIRMADA',
                     confirmada_at=NOW(),confirmada_por=?,notificado_analista_at=NULL
                 WHERE id=?
                   AND cuenta_clave_id=?
                   AND estado='SOLICITADA'
-                  AND fecha_propuesta > NOW()";
+                  AND fecha_propuesta > ?";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('isssiii', $kamId, $zoomUrl, $ubicacion, $notasKam, $kamId, $reunionId, $kamId);
+        $stmt->bind_param('isssiiis', $kamId, $zoomUrl, $ubicacion, $notasKam, $kamId, $reunionId, $kamId, $ahora);
         $stmt->execute();
         return $stmt->affected_rows > 0;
     }
 
     public function solicitarCambio($reunionId, $kamId, $motivo)
     {
+        // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
+        $ahora = date('Y-m-d H:i:s');
         $sql = "UPDATE reuniones_vinculacion SET cuenta_clave_id=?,estado='CAMBIO_SOLICITADO',cambio_motivo=?,
                     cambio_solicitado_at=NOW(),cambio_solicitado_por=?,notificado_analista_at=NULL
                 WHERE id=?
                   AND cuenta_clave_id=?
                   AND estado='SOLICITADA'
-                  AND fecha_propuesta > NOW()";
+                  AND fecha_propuesta > ?";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('isiii', $kamId, $motivo, $kamId, $reunionId, $kamId);
+        $stmt->bind_param('isiiis', $kamId, $motivo, $kamId, $reunionId, $kamId, $ahora);
         $stmt->execute();
         return $stmt->affected_rows > 0;
     }
 
     public function marcarCorreo($reunionId, $analistaId, $asunto, $cuerpo)
     {
+        // Las propuestas se guardan en la zona horaria de PHP, no en la del servidor SQL.
+        $ahora = date('Y-m-d H:i:s');
         $sql = "UPDATE reuniones_vinculacion SET estado='CORREO_ENVIADO',correo_confirmacion_asunto=?,
                     correo_confirmacion_cuerpo=?,correo_confirmacion_at=NOW(),correo_confirmacion_por=?
                 WHERE id=?
                   AND analista_id=?
                   AND estado='CONFIRMADA'
-                  AND fecha_propuesta > NOW()";
+                  AND fecha_propuesta > ?";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ssiii', $asunto, $cuerpo, $analistaId, $reunionId, $analistaId);
+        $stmt->bind_param('ssiiis', $asunto, $cuerpo, $analistaId, $reunionId, $analistaId, $ahora);
         $stmt->execute();
         return $stmt->affected_rows > 0;
     }
@@ -454,33 +466,37 @@ class AgendaReunionRepository
         $stmt->execute();
     }
 
-    public function pendientesKam($limite)
+    public function pendientesKam($limite, $usuarioId = null)
     {
-        $kamId = (int)($_SESSION['usuario_id'] ?? 0);
+        $kamId = (int)($usuarioId ?? ($_SESSION['usuario_id'] ?? 0));
         if ($kamId <= 0) {
             return [];
         }
 
-        $sql = "SELECT r.id,r.seguimiento_id,r.fecha_propuesta,s.nombre_entidad
+        $ahora = date('Y-m-d H:i:s');
+        $sql = "SELECT r.id,r.seguimiento_id,r.fecha_propuesta,r.estado,r.updated_at,s.nombre_entidad
                 FROM reuniones_vinculacion r JOIN seguimientos_vinculacion s ON s.id=r.seguimiento_id
                 WHERE r.estado='SOLICITADA'
                   AND r.cuenta_clave_id=?
-                  AND r.fecha_propuesta > NOW()
+                  AND r.fecha_propuesta > ?
                 ORDER BY r.updated_at DESC LIMIT ?";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ii', $kamId, $limite);
+        $stmt->bind_param('isi', $kamId, $ahora, $limite);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
     public function pendientesAnalista($analistaId, $limite)
     {
+        $ahora = date('Y-m-d H:i:s');
         $sql = "SELECT
                     r.id,
                     r.seguimiento_id,
                     r.fecha_propuesta,
                     r.duracion_minutos,
                     r.estado,
+                    r.confirmada_at,
+                    r.updated_at,
                     s.nombre_entidad
                 FROM reuniones_vinculacion r
                 JOIN seguimientos_vinculacion s ON s.id = r.seguimiento_id
@@ -495,7 +511,7 @@ class AgendaReunionRepository
                     )
                     OR (
                         r.estado = 'CORREO_ENVIADO'
-                        AND r.fecha_propuesta <= DATE_ADD(NOW(), INTERVAL 24 HOUR)
+                        AND r.fecha_propuesta <= DATE_ADD(?, INTERVAL 24 HOUR)
                     )
                   )
                 ORDER BY
@@ -506,9 +522,9 @@ class AgendaReunionRepository
                              AND DATE_ADD(
                                  r.fecha_propuesta,
                                  INTERVAL COALESCE(NULLIF(r.duracion_minutos, 0), 60) MINUTE
-                             ) <= NOW()
+                             ) <= ?
                         THEN 0
-                        WHEN r.estado = 'CONFIRMADA' AND r.fecha_propuesta <= NOW()
+                        WHEN r.estado = 'CONFIRMADA' AND r.fecha_propuesta <= ?
                         THEN 1
                         ELSE 2
                     END ASC,
@@ -516,7 +532,7 @@ class AgendaReunionRepository
                     r.updated_at DESC
                 LIMIT ?";
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ii', $analistaId, $limite);
+        $stmt->bind_param('isssi', $analistaId, $ahora, $ahora, $ahora, $limite);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }

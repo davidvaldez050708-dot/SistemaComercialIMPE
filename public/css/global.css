@@ -522,6 +522,81 @@ a {
     line-height: 1;
 }
 
+/* Perfil: mismo centrado en el encabezado y la tarjeta lateral, sin cambiar
+   las dimensiones propias del avatar ni la lógica de foto/iniciales. */
+.topbar-user-avatar.system-avatar,
+.sidebar-user > .system-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+.topbar-user-avatar.system-avatar > .system-avatar-image,
+.sidebar-user > .system-avatar > .system-avatar-image {
+    display: block;
+    flex: 0 0 100%;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    object-fit: cover;
+    object-position: center;
+}
+
+#modalMiPerfil [data-my-profile-preview] > strong {
+    display: block;
+    margin: 0;
+    font-size: inherit;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+}
+
+#modalMiPerfil [data-my-profile-preview] > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+/* Conservar el input nativo y su foco; alinear botón y nombre a 44 px. */
+#modalMiPerfil #mi_perfil_foto {
+    min-width: 0;
+    max-width: 100%;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 12px 0 0;
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 42px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#modalMiPerfil #mi_perfil_foto::file-selector-button {
+    height: 42px;
+    margin: 0 12px 0 0;
+    padding: 0 14px;
+    border: 0;
+    border-right: 1px solid var(--color-border);
+    background-color: #f8fafc;
+    color: inherit;
+    font: inherit;
+    line-height: 42px;
+    vertical-align: middle;
+}
+
 .profile-photo-viewer-dialog {
     max-width: 520px;
 }

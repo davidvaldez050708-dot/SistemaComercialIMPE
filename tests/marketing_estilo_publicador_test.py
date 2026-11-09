@@ -1,0 +1,44 @@
+"""Sólo sitio ficticio: publicación/reversión de un CSS, sin BD ni proveedor."""
+from pathlib import Path
+import hashlib,os,re,subprocess,sys,tempfile
+root=Path(__file__).resolve().parents[1]
+bash,phpdir=sys.argv[1:3]
+script=root/'tools/publicar_estilo_indicadores_marketing_hostinger.sh'
+file='public/css/convocatorias.css'
+old=subprocess.check_output(['git','show','04e2ada1:'+file],cwd=root).replace(b'\r\n',b'\n')
+new=(root/file).read_bytes().replace(b'\r\n',b'\n')
+digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+# La única modificación de producción es CSS; vistas y lógica idénticas.
+changed=subprocess.check_output(['git','diff','--name-only','04e2ada1','--','app','public','config'],cwd=root,text=True).splitlines()
+assert changed==[file],changed
+# Fuera del bloque de indicadores, el CSS permanece byte por byte igual.
+a=old.index(b'/* Panel \xc3\xbanico de indicadores:');b=old.index(b'.marketing-welcome-shell {',a)
+c=new.index(b'/* Indicadores de Marketing:');d=new.index(b'.marketing-welcome-shell {',c)
+assert old[:a]==new[:c] and old[b:]==new[d:]
+for eol in [b'\n',b'\r\n']:
+ with tempfile.TemporaryDirectory(prefix='impe-marketing-estilo-test-') as td:
+  base=Path(td);live=base/'public_html';live.mkdir();target=live/file;target.parent.mkdir(parents=True)
+  original=old.replace(b'\n',eol);expected=new.replace(b'\n',eol);target.write_bytes(original)
+  (live/'index.php').write_text('<?php // sitio ficticio',encoding='utf-8')
+  secrets={}
+  for name in ['config/mail_central.local.php','config/password_reset_mail.local.php','app/services/CorreoHostingerApiService.php','public/javascript/correos_marketing.js']:
+   p=live/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('SECRETO FICTICIO INTACTO',encoding='utf-8');secrets[p]=digest(p)
+  env=os.environ.copy();env['PATH']=phpdir+os.pathsep+env['PATH'];env['IMPE_CORREOS_PUBLIC']=live.as_posix();env['IMPE_CORREOS_BACKUPS']=(base/'backups').as_posix()
+  def run(*args,ok=True):
+   r=subprocess.run([bash,script.as_posix(),*args],cwd=root,env=env,capture_output=True,text=True,timeout=30)
+   assert (r.returncode==0)==ok,r.stdout+r.stderr
+   return r.stdout
+  run('--check');assert target.read_bytes()==original;assert not (base/'backups').exists()
+  result=run('--apply');backup=re.search(r'^Respaldo: (.+)$',result,re.M)[1]
+  assert target.read_bytes()==expected
+  assert 'ya aplicado' in run('--apply');assert len(list((base/'backups').iterdir()))==1
+  target.write_bytes(expected+b'/* personalizacion posterior */');run('--restore',backup,ok=False)
+  assert target.read_bytes().endswith(b'/* personalizacion posterior */');target.write_bytes(expected)
+  run('--restore',backup);assert target.read_bytes()==original;assert 'ya restaurado' in run('--restore',backup)
+  # Respaldos fuera de la carpeta prevista e incompatibles no se aplican.
+  run('--restore',str(base),ok=False)
+  target.write_bytes(original+b'/* personalizacion anterior */');run('--check',ok=False)
+  assert target.read_bytes().endswith(b'/* personalizacion anterior */')
+  assert all(digest(p)==h for p,h in secrets.items())
+  assert sorted(p.relative_to(live).as_posix() for p in live.rglob('*') if p.is_file())==sorted([file,'index.php']+[p.relative_to(live).as_posix() for p in secrets])
+print('OK: check sin escritura, apply sólo CSS, restore exacto, LF/CRLF, idempotencia y rechazo de CSS personalizados; secretos y servicios ficticios intactos.')

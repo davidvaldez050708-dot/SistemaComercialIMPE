@@ -56,16 +56,7 @@ $tarjetasPorPagina = 12;
     </div>
 <?php endif; ?>
 
-<?php if ((int)($_SESSION['rol_id'] ?? 0) === 1): ?>
-<section class="dashboard-panel mb-3" style="padding:20px">
- <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-  <div><span class="text-muted text-uppercase"><i class="bi bi-globe-americas"></i> Cobertura internacional</span>
-  <h2 class="panel-title mt-2 mb-1">Aliados externos</h2>
-  <p class="text-muted mb-0">Consulta Handly Lenguaje Center y otros aliados sin asignación territorial mexicana, sus enlaces exclusivos y las respuestas recibidas.</p></div>
-  <a class="btn btn-system-save" href="<?= BASE_URL ?>index.php?controller=aliado&amp;action=internacionales"><i class="bi bi-arrow-up-right-circle"></i> Ver aliados internacionales</a>
- </div>
-</section>
-<?php endif; ?>
+
 
 <?php if (!empty($territorios)): ?>
     <section class="dashboard-panel data-territorial-selector aliados-territory-selector">

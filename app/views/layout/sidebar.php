@@ -6,6 +6,7 @@ $opcionActiva = $opcionActiva ?? 'inicio';
 $mostrarUsuarios = tienePermiso('usuarios.ver');
 $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
+$mostrarRespaldo = (int)($_SESSION['rol_id'] ?? 0) === 1;
 $mostrarTelefoniaConfiguracion =
     (int)($_SESSION['rol_id'] ?? 0) === 1;
 // El teléfono comercial reside en Inicio de Ventas. Vinculación conserva
@@ -63,6 +64,7 @@ $etiquetaMenuConvocatorias = tienePermiso('convocatorias.gestionar')
 $claseInicio = $opcionActiva === 'inicio' ? 'active' : '';
 $claseUsuarios = $opcionActiva === 'usuarios' ? 'active' : '';
 $claseRoles = $opcionActiva === 'roles' ? 'active' : '';
+$claseRespaldo = $opcionActiva === 'respaldo' ? 'active' : '';
 $claseTerritorios = $opcionActiva === 'territorios' ? 'active' : '';
 $claseTelefonia = $opcionActiva === 'telefonia' ? 'active' : '';
 $claseMarcadorTelefonia = $opcionActiva === 'telefono_marcador' ? 'active' : '';
@@ -342,6 +344,14 @@ $claseFormularios =
                 <?php endif; ?>
             </div>
 
+        <?php endif; ?>
+        <?php if ($mostrarRespaldo): ?>
+            <a
+                href="<?= BASE_URL ?>index.php?controller=respaldo&amp;action=index"
+                class="sidebar-link <?= $claseRespaldo ?>">
+                <i class="bi bi-database"></i>
+                Respaldo
+            </a>
         <?php endif; ?>
     </nav>
 
@@ -696,6 +706,14 @@ $claseFormularios =
 
             <?php endif; ?>
 
+            <?php if ($mostrarRespaldo): ?>
+                <a
+                    href="<?= BASE_URL ?>index.php?controller=respaldo&amp;action=index"
+                    class="sidebar-link <?= $claseRespaldo ?>">
+                    <i class="bi bi-database"></i>
+                    Respaldo
+                </a>
+            <?php endif; ?>
         </nav>
 
 

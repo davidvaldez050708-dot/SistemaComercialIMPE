@@ -85,7 +85,7 @@
             // Los avisos del formulario se muestran mediante toast.
         };
 
-        const mostrarToast = function (mensaje, esError) {
+        const mostrarToast = function (mensaje, esError, duracion) {
             let contenedor = document.querySelector('.toast-container');
 
             if (!contenedor) {
@@ -124,9 +124,20 @@
 
             bootstrap.Toast.getOrCreateInstance(toast, {
                 autohide: true,
-                delay: esError ? 4500 : 3000
+                delay: duracion || (esError ? 4500 : 3000)
             }).show();
         };
+
+        // Mantener el aviso de envío durante la recarga existente de la bandeja.
+        const claveToastEnvio = 'correoMarketingToastEnvio:' + String(window.IMPE_CURRENT_USER_ID || 'sesion');
+        try {
+            const pendiente = JSON.parse(sessionStorage.getItem(claveToastEnvio) || 'null');
+            sessionStorage.removeItem(claveToastEnvio);
+            const restante = Number(pendiente?.hasta || 0) - Date.now();
+            if (typeof pendiente?.mensaje === 'string' && restante > 0 && restante <= 3500) {
+                mostrarToast(pendiente.mensaje, false, restante);
+            }
+        } catch (_) { /* El almacenamiento opcional no impide redactar ni enviar. */ }
 
         const mostrarError = function (mensaje) {
             mostrarToast(
@@ -262,6 +273,7 @@
             claveEnvio = nuevaClaveEnvio();
             form?.reset();
             adjuntosBorradorActual = [];
+            modalElement.dispatchEvent(new CustomEvent('correo:convocatoria-limpiar'));
 
             if (correoIdInput) {
                 correoIdInput.value = '';
@@ -524,6 +536,7 @@
             }
 
             correoDetalleActual = correo;
+            modalDetalleElement.dispatchEvent(new CustomEvent('correo:convocatoria-detalle', { detail: correo.convocatoria_seleccion || null }));
 
             const estadoCodigo = String(
                 correo.estado_codigo || ''
@@ -1100,6 +1113,8 @@
                 cuerpo.value = String(correo.cuerpo || '');
             }
 
+            modalElement.dispatchEvent(new CustomEvent('correo:convocatoria-borrador', { detail: correo.convocatoria_seleccion || null }));
+
             adjuntosBorradorActual = Array.isArray(correo.adjuntos)
                 ? correo.adjuntos.slice()
                 : [];
@@ -1340,9 +1355,19 @@
                 }
 
                 modal.hide();
+                const buzonRespuestas = String(json.identidad_envio?.respuestas_a || json.cuenta_salida || correoOrigen).trim();
+                const mensajeEnviado = 'Correo enviado. Las respuestas se recibirán en el buzón de ' +
+                    buzonRespuestas + '.';
+                try {
+                    sessionStorage.setItem(claveToastEnvio, JSON.stringify({
+                        mensaje: mensajeEnviado,
+                        hasta: Date.now() + 3500
+                    }));
+                } catch (_) { /* El toast actual permanece disponible sin almacenamiento. */ }
                 mostrarToast(
-                    json.mensaje || 'Correo enviado correctamente.',
-                    false
+                    mensajeEnviado,
+                    false,
+                    3500
                 );
                 sessionStorage.setItem(
                     'correoMarketingTab',

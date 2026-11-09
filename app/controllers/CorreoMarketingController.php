@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/CorreoMarketingService.php';
-require_once __DIR__ . '/../models/ConvocatoriaModel.php';
+require_once __DIR__ . '/../services/CorreoConvocatoriaComposicion.php';
 
 class CorreoMarketingController
 {
@@ -21,19 +21,7 @@ class CorreoMarketingController
         $correos = $service->listar($usuarioId);
 
         $convocatoriasMarketing = [];
-        try {
-            $convocatoriaModel = new ConvocatoriaModel();
-            $convocatoriasMarketing = $convocatoriaModel->obtenerListado(
-                '',
-                0,
-                '1'
-            );
-        } catch (Throwable $error) {
-            error_log(
-                'Correos Marketing - listado de convocatorias: ' .
-                $error->getMessage()
-            );
-        }
+        // El selector aislado consulta el catálogo una vez al abrir el modal.
 
         require_once __DIR__ . '/../views/layout/dashboard_head.php';
         require_once __DIR__ . '/../views/layout/sidebar.php';
@@ -94,10 +82,54 @@ class CorreoMarketingController
                 : []
         );
 
-        $this->responder([
-            'ok' => true,
-            'correo' => $correo
-        ]);
+        try {
+            $composicion = new CorreoConvocatoriaComposicion();
+            $correo['convocatoria_seleccion'] = $composicion->publico(
+                $composicion->leer((int)$_SESSION['usuario_id'], $correoId), $correoId
+            );
+        } catch (Throwable $error) {
+            error_log('MAIL_CONVOCATORIA lectura_metadata exception=' . get_class($error));
+            $correo['convocatoria_seleccion'] = null;
+        }
+        $this->responder(['ok' => true, 'correo' => $correo]);
+    }
+
+    public function convocatorias()
+    {
+        $this->validarAccesoMarketing();
+        try {
+            $composicion = new CorreoConvocatoriaComposicion();
+            $id = CorreoConvocatoriaComposicion::id($_GET['id'] ?? '');
+            $datos = $id ? ['convocatoria' => $composicion->publico($composicion->detalle($id))] : $composicion->catalogo();
+            $this->responder(['ok' => true] + $datos);
+        } catch (Throwable $error) {
+            error_log('MAIL_CONVOCATORIA consulta exception=' . get_class($error));
+            $this->responder(['ok' => false, 'mensaje' => 'No fue posible consultar la convocatoria. Puedes redactar sin seleccionarla.'], 422);
+        }
+    }
+
+    public function imagenConvocatoria()
+    {
+        $this->validarAccesoMarketing();
+        try {
+            $composicion = new CorreoConvocatoriaComposicion();
+            $id = CorreoConvocatoriaComposicion::id($_GET['id'] ?? '');
+            $mail = CorreoConvocatoriaComposicion::id($_GET['correo_id'] ?? '');
+            if ($mail) {
+                if (!(new CorreoMarketingService())->obtener((int)$_SESSION['usuario_id'], $mail)) { throw new RuntimeException('CONVOCATORIA_ACCESO'); }
+                $row = $composicion->leer((int)$_SESSION['usuario_id'], $mail);
+                if ((int)($row['id'] ?? 0) !== $id) { throw new RuntimeException('CONVOCATORIA_ACCESO'); }
+            } else { $row = $composicion->detalle($id); }
+            $image = $composicion->imagen($row);
+            if (!$image || !is_string($_GET['v'] ?? null) || !hash_equals($image['sha'], $_GET['v'])) { throw new RuntimeException('CONVOCATORIA_IMAGEN'); }
+            header('Content-Type: ' . $image['mime']);
+            header('Content-Length: ' . $image['tamano']);
+            header('Content-Disposition: inline; filename="convocatoria-' . $id . '.' . pathinfo($image['nombre'], PATHINFO_EXTENSION) . '"');
+            header('X-Content-Type-Options: nosniff');
+            header('Cache-Control: private, max-age=300');
+            @readfile($image['ruta']);
+        } catch (Throwable $error) { http_response_code(404); echo 'Imagen no disponible.'; }
+        exit;
     }
 
     public function archivo()
@@ -199,11 +231,13 @@ class CorreoMarketingController
         }
 
         $service = new CorreoMarketingService();
+        [$composicion, $seleccion] = $this->seleccionConvocatoria($service);
         $resultado = $service->guardarBorrador(
             (int)($_SESSION['usuario_id'] ?? 0),
             $_POST,
             $_FILES['adjuntos'] ?? null
         );
+        $this->registrarConvocatoria($resultado, $composicion, $seleccion);
 
         $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
         unset($resultado['codigo_http']);
@@ -223,16 +257,47 @@ class CorreoMarketingController
         }
 
         $service = new CorreoMarketingService();
+        [$composicion, $seleccion] = $this->seleccionConvocatoria($service);
+        if ($seleccion) { $service = new CorreoMarketingService(null, $composicion->envio($seleccion)); }
         $resultado = $service->enviar(
             (int)($_SESSION['usuario_id'] ?? 0),
             $_POST,
             $_FILES['adjuntos'] ?? null
         );
+        $this->registrarConvocatoria($resultado, $composicion, $seleccion);
 
         $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
         unset($resultado['codigo_http']);
 
         $this->responder($resultado, $codigoHttp);
+    }
+
+    private function seleccionConvocatoria($service): array
+    {
+        try {
+            $composicion = new CorreoConvocatoriaComposicion();
+            $previous = [];
+            $mail = CorreoConvocatoriaComposicion::id($_POST['correo_id'] ?? '');
+            if ($mail && !empty($_POST['convocatoria_id']) && $service->obtener((int)$_SESSION['usuario_id'], $mail)) {
+                $previous = $composicion->leer((int)$_SESSION['usuario_id'], $mail);
+            }
+            return [$composicion, $composicion->seleccionar($_POST, $previous)];
+        } catch (Throwable $error) {
+            error_log('MAIL_CONVOCATORIA seleccion exception=' . get_class($error));
+            $this->responder(['ok' => false, 'mensaje' => 'La convocatoria o su imagen cambió. Revisa la selección; también puedes limpiarla y enviar sin convocatoria.'], 422);
+        }
+    }
+
+    private function registrarConvocatoria(array &$resultado, $composicion, array $seleccion): void
+    {
+        if (empty($resultado['ok']) || empty($resultado['correo_id'])) { return; }
+        if (!$seleccion && empty($_POST['correo_id'])) { return; }
+        // Un fallo de metadatos nunca transforma un envío aceptado en un error para reintentarlo.
+        try { $composicion->registrar((int)$_SESSION['usuario_id'], (int)$resultado['correo_id'], $seleccion, ($resultado['estado_entrega'] ?? '') === 'ACEPTADO'); }
+        catch (Throwable $error) {
+            error_log('MAIL_CONVOCATORIA guardar_metadata exception=' . get_class($error));
+            $resultado['mensaje'] .= ' No se pudo guardar la referencia de la convocatoria.';
+        }
     }
 
     private function validarAccesoMarketing()
