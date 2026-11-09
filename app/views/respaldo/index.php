@@ -42,6 +42,25 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
     --bs-btn-active-border-color: var(--bs-btn-hover-border-color);
     --bs-btn-focus-shadow-rgb: 128, 67, 5;
 }
+
+#respaldo-archivo,
+.respaldo-btn-subir {
+    min-height: 44px;
+}
+
+#respaldo-archivo {
+    max-width: 100%;
+    padding: 0 12px 0 0;
+    line-height: 42px;
+}
+
+#respaldo-archivo::file-selector-button {
+    height: 42px;
+    margin: 0 12px 0 0;
+    padding: 0 14px;
+    line-height: 42px;
+    vertical-align: middle;
+}
 </style>
 
 <section aria-label="Respaldos de base de datos">
@@ -147,15 +166,15 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
         <h2 class="panel-title mb-2"><i class="bi bi-cloud-arrow-up me-2" aria-hidden="true"></i>Restaurar desde un archivo</h2>
         <p class="page-subtitle mb-3" id="respaldo-ayuda">Selecciona un archivo SQL de confianza para restaurar la información del sistema.</p>
         <form method="post" action="<?= $escapar($urlRespaldo) ?>" enctype="multipart/form-data"
-            class="d-flex flex-wrap align-items-end gap-3"
+            class="d-flex flex-wrap justify-content-center align-items-end gap-3"
             data-respaldo-confirmar>
             <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-            <div>
+            <div class="mw-100">
                 <label class="form-label login-label" for="respaldo-archivo">Archivo de respaldo (.sql)</label>
                 <input class="form-control system-form-control" type="file" id="respaldo-archivo"
                     name="archivo_sql" accept=".sql" aria-describedby="respaldo-ayuda" required>
             </div>
-            <button type="submit" class="btn btn-system-save <?= $clasesBoton ?>" name="operacion" value="subir">
+            <button type="submit" class="btn btn-system-save respaldo-btn-subir <?= $clasesBoton ?>" name="operacion" value="subir">
                 <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Restaurar archivo
             </button>
         </form>
