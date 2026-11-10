@@ -5,12 +5,15 @@ require_once __DIR__.'/../helpers/PermissionHelper.php';
 /**
  * Puente opt-in a la llamada PBX YA validada por TelefoniaResultadoVentasService.
  *
- * Importante: no se vincula por coincidencias heurísticas, nombres, últimos
- * dígitos ni datos del navegador. Solo se utiliza una asignación explícita
- * del asesor y coincidencia telefónica exacta tras quitar separadores.
+ * Importante: no se vincula por nombres, últimos dígitos arbitrarios
+ * ni datos de identificación del navegador. Requiere asignación explícita
+ * y el número completo. La PBX mexicana puede entregar 10 dígitos nacionales
+ * aunque el almacén conserve el mismo destino con +52; solo se permite
+ * ese caso, exclusivamente si el país declarado es México.
  *
- * Este método corre DENTRO de la transacción del resultado telefónico.
- * Nunca llama begin_transaction, commit ni rollback.
+ * TelefoniaResultadoVentasService confirma y guarda primero el resultado PBX.
+ * Este puente opera dentro de una transacción comercial separada,
+ * sin modificar el resultado telefónico ante errores del embudo.
  */
 final class EmbudoComercialResultadoBridge
 {
@@ -23,6 +26,32 @@ final class EmbudoComercialResultadoBridge
         // Rechazar extensiones y números demasiado breves; nunca usar últimos 10.
         $digits=preg_replace('/\D+/', '',$num);
         return strlen($digits)>=10 && strlen($digits)<=15 ? $digits : '';
+    }
+
+    /**
+     * Comparación estricta para una asignación YA autorizada y un resultado PBX
+     * definitivo. La única equivalencia adicional aceptada es:
+     * "+52" + 10 dígitos (prospecto mexicano) == 10 dígitos (PBX).
+     *
+     * No se aceptan sufijos, números de otras naciones, números ambiguos,
+     * extensiones, tramos truncados ni números con letras.
+     */
+    public static function mismoNumeroAsignado(string $normalizado,
+        string $numeroPbx,?string $pais): bool
+    {
+        $guardado=self::numeroCanonico($normalizado);
+        $marcado=self::numeroCanonico($numeroPbx);
+        if ($guardado==='' || $marcado==='') return false;
+        if (hash_equals($guardado,$marcado)) return true;
+
+        $pais=mb_strtolower(trim((string)$pais),'UTF-8');
+        if (!in_array($pais,['méxico','mexico'],true) ||
+            !preg_match('/^\\+52[0-9]{10}$/D',trim($normalizado)) ||
+            !preg_match('/^[0-9 ()\\.\\-]+$/D',trim($numeroPbx)) ||
+            strlen($marcado)!==10) {
+            return false;
+        }
+        return hash_equals(substr($guardado,2),$marcado);
     }
 
     public function aplicar(int $usuarioId,int $asignacionId,
@@ -42,7 +71,7 @@ final class EmbudoComercialResultadoBridge
         }
         $s=$this->db->prepare(
             "SELECT a.asesor_id,a.vigente,
-                    p.telefono_normalizado,
+                    p.telefono_normalizado,p.pais_nombre,
                     COALESCE(e.etapa,'NUEVO') etapa
              FROM prospecto_asignaciones a
              JOIN prospectos_comerciales p ON p.id=a.prospecto_id
@@ -57,9 +86,11 @@ final class EmbudoComercialResultadoBridge
             (int)$row['vigente']!==1) {
             throw new DomainException('La asignación ya no pertenece a tu usuario.');
         }
-        $telProspecto=self::numeroCanonico((string)$row['telefono_normalizado']);
-        $telLlamada=self::numeroCanonico((string)($call['numero']??''));
-        if ($telProspecto==='' || $telLlamada==='' || !hash_equals($telProspecto,$telLlamada)) {
+        if (!self::mismoNumeroAsignado(
+            (string)$row['telefono_normalizado'],
+            (string)($call['numero']??''),
+            (string)($row['pais_nombre']??'')
+        )) {
             throw new DomainException(
                 'El número PBX no coincide exactamente con el del prospecto asignado. ' .
                 'El resultado no se vinculó al embudo.'
