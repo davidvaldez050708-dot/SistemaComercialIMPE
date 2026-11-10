@@ -233,10 +233,23 @@ try {
         exit(0);
     }
     if ((int)$preflight['numero_nacional_en_pbx']>0) {
-        throw new RuntimeException(
-            'Existe formato PBX nacional de 10 dígitos; verificar la '.
-            'coincidencia del puente antes de crear la prueba'
-        );
+        // Validar que la equivalencia mexicana ya fue publicada EN EL PUENTE
+        // y que el sitio actual no contiene la variante incompatible.
+        // No cambiar ni ejecutar servicios de Telefonía para esta prueba.
+        require_once $site.'/app/services/EmbudoComercialResultadoBridge.php';
+        if (!method_exists('EmbudoComercialResultadoBridge','mismoNumeroAsignado') ||
+            !EmbudoComercialResultadoBridge::mismoNumeroAsignado(
+                '+527771234567','7771234567','México') ||
+            EmbudoComercialResultadoBridge::mismoNumeroAsignado(
+                '+527771234567','7771234568','México') ||
+            EmbudoComercialResultadoBridge::mismoNumeroAsignado(
+                '+527771234567','7771234567','Estados Unidos')) {
+            throw new RuntimeException(
+                'El puente comercial del sitio aún no fue validado para PBX '.
+                'nacional de 10 dígitos. No se crea ninguna ficha.'
+            );
+        }
+        echo "VALIDACIÓN PUENTE: compatibilidad mexicana +52/10 confirmada en sitio.\n";
     }
     if (!hash_equals(IMPE_PBX_TEST_DB,(string)$o['expect-db'])) {
         throw new RuntimeException('--expect-db incorrecta');
