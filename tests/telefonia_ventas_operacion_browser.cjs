@@ -13,8 +13,8 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  await page.route('http://ventas.test/**',route=>{const u=new URL(route.request().url()),action=u.searchParams.get('action');
   if(u.pathname.startsWith('/public/javascript/'))return route.fulfill({contentType:'application/javascript',body:read(u.pathname.slice(1))});
   if(action==='disponibilidad')return route.fulfill({json:{ok:true,entrante:null,devoluciones:0}});
-  if(action==='detalleVenta')return route.fulfill({json:{ok:true,llamada:{...call,registro:saved?{resultado:'INTERESADO',observacion:'Enviar información',prospecto_nombre:'María'}:null}}});
-  if(action==='guardarResultadoVenta'){payload=Object.fromEntries(new URLSearchParams(route.request().postData()));saved=true;return route.fulfill({json:{ok:true,registro:{resultado:'INTERESADO'}}});}
+  if(action==='detalleVenta')return route.fulfill({json:{ok:true,llamada:{...call,registro:saved?{resultado:'PROSPECTO_POTENCIAL',observacion:'Enviar información',prospecto_nombre:'María'}:null}}});
+  if(action==='guardarResultadoVenta'){payload=Object.fromEntries(new URLSearchParams(route.request().postData()));saved=true;return route.fulfill({json:{ok:true,registro:{resultado:'PROSPECTO_POTENCIAL'}}});}
   if(action==='host')return route.fulfill({contentType:'text/html',body:'<html>Transporte PBX simulado</html>'});
   return route.fulfill({contentType:'text/html',body:u.pathname==='/'?shell:view(u)});
  });
@@ -54,9 +54,12 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  // Recarga con llamada finalizada: conserva el pendiente, sin necesitar otra llamada.
  await page.reload();await page.waitForFunction(()=>window.IMPE_SALES_ATTENTION?.hasPending());
  await page.locator('.impe-analyst-call-result button').click();await modal.waitFor({state:'visible'});assert.equal(await modal.locator('[name=observacion]').inputValue(),'Borrador comercial conservado');assert.equal(await modal.locator('[name=guardar_contacto]').isChecked(),true);assert.equal(await phone.isVisible(),false);
- await modal.locator('[name=resultado]').selectOption('INTERESADO');await modal.locator('[name=observacion]').fill('Enviar información');
+ await modal.locator('#salesResultTrigger').click();
+ await modal.locator('[data-sales-result-choice][value=PROSPECTO_POTENCIAL]').check();
+ assert.equal(await modal.locator('[name=resultado]').inputValue(),'PROSPECTO_POTENCIAL');
+ assert.equal(await modal.locator('[name=resultados_seleccionados]').inputValue(),'["PROSPECTO_POTENCIAL"]');await modal.locator('[name=observacion]').fill('Enviar información');
  await modal.locator('[data-sales-submit]').click();await modal.waitFor({state:'hidden'});
- assert.equal(payload.pbx_call_id,call.pbx_call_id);assert.equal(payload.extension,'150');assert.equal(payload.resultado,'INTERESADO');assert.equal(payload.prospecto_nombre,'María');
+ assert.equal(payload.pbx_call_id,call.pbx_call_id);assert.equal(payload.extension,'150');assert.equal(payload.resultado,'PROSPECTO_POTENCIAL');assert.equal(payload.prospecto_nombre,'María');
  await page.waitForFunction(()=>!IMPE_SALES_ATTENTION.hasPending());
  await crm.locator('[data-sales-audio]').waitFor();await crm.locator('[data-sales-audio]').click();assert.equal(await crm.locator('[data-sales-audio-slot] audio').count(),2,'reproductor compartido de múltiples segmentos');
  assert.deepEqual(errors,[]);console.log('Ventas C: fin → formulario sin superposición, responsive, resultado y dos segmentos propios: OK');
