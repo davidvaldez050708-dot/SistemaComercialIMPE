@@ -11,6 +11,17 @@
     if (!numero) return;
     const dial=window.IMPE_TELEPHONY_PERSISTENT;
     if (dial && typeof dial.openDialer==='function') {
+      const tarjeta=b.closest('.impe-embudo-card');
+      const asignacionId=String(tarjeta?.dataset.asignacionId||'');
+      const digitos=numero.replace(/\D/g,'');
+      const usuarioId=Number(window.IMPE_CURRENT_USER_ID||0);
+      // Contexto explícito del botón del prospecto. No acredita una llamada:
+      // PBX, propiedad, número completo y permisos se comprueban en servidor.
+      // Se guarda antes de abrir el marcador, para que persista al cambiar de vista.
+      if (/^[1-9][0-9]*$/.test(asignacionId)&&usuarioId>0&&digitos.length>=10&&digitos.length<=15) {
+        try{sessionStorage.setItem('impe:embudo:llamada-pendiente:'+usuarioId,
+          JSON.stringify({asignacionId,numero,creada:Date.now()}));}catch(_){}
+      }
       dial.openDialer({number:numero});
     } else {
       window.alert('El teléfono no está disponible en esta sesión.');
