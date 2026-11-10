@@ -1,0 +1,33 @@
+name: Ventas V4 Hostinger - Conciliación exacta
+on:
+  push:
+    branches:
+      - fix/ventas-v4-hostinger-personalizaciones-reconciliadas-20261110
+permissions:
+  contents: read
+jobs:
+  validar-sin-escribir-produccion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Sintaxis PHP JS y publicador
+        run: |
+          php -l app/services/TelefoniaResultadoVentasCatalogo.php
+          php -l app/services/TelefoniaResultadoVentasService.php
+          php -l app/services/TelefoniaControlService.php
+          php -l app/views/telefonia/resultado_ventas_form.php
+          php -l app/views/telefonia/index.php
+          node --check public/javascript/telefonia_ventas_resultados.js
+          python3 -m py_compile tools/publicar_ventas_v4_contacto_seguimiento_reportes_hostinger.py
+      - name: Comparación de hashes reales y flujo de asesoras
+        run: |
+          python3 tests/hostinger_v4_personalizaciones_fixtures.py
+          php tests/telefonia_ventas_v4_contacto_seguimiento_smoke.php
+          python3 tests/telefonia_ventas_v4_reportes_estatico_test.py
+          python3 tests/publicar_ventas_v4_hostinger_personalizado_test.py
