@@ -85,8 +85,8 @@ js = unique_replace(
     js,
     "   try{\n    for(const key of savedDrafts)sessionStorage.removeItem(key);\n"
     "    if(vinculo)sessionStorage.removeItem('impe:embudo:llamada-pendiente');\n"
-    "   }catch(_){}",
-    "   try{for(const key of savedDrafts)sessionStorage.removeItem(key);}catch(_){}")
+    "   }catch(_){}\n\n",
+    "   try{for(const key of savedDrafts)sessionStorage.removeItem(key);}catch(_){}\n")
 before[js_path] = js.encode('utf-8')
 
 service = sources[service_path].decode('utf-8')
