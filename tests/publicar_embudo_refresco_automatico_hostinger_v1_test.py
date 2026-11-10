@@ -94,7 +94,7 @@ try:
         assert_(all((site/p).read_bytes()==raw for p,raw in guard_payloads.items()),
             'Rollback alteró guardias')
 
-        (site/expected[1]).write_bytes(original[expected[1]]+b'\n// personalización')
+        (site/expected[1]).write_bytes(original[expected[1]]+b'\n// personalizacion')
         try:pub.scan(site,sources)
         except pub.Blocked:pass
         else:raise AssertionError('Se aceptó personalización no auditada')
