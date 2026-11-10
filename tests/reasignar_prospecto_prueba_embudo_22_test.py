@@ -23,7 +23,7 @@ must=[
     'impeManifest((string)$options',
     '$db->begin_transaction();',
     'UPDATE prospecto_asignaciones SET asesor_id=?',
-    'AND vigente=1 AND estado=\\'NUEVO\\'',
+    "AND vigente=1 AND estado='NUEVO'",
     'if ($changed!==1)',
     '$db->rollback();',
     '$db->commit();'
