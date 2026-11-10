@@ -73,6 +73,8 @@ jobs:
           python3 tests/crear_prospecto_prueba_embudo_test.py
           php -l tools/reasignar_prospecto_prueba_embudo_22.php
           python3 tests/reasignar_prospecto_prueba_embudo_22_test.py
+          php -l tools/crear_prospecto_prueba_pbx_157.php
+          python3 tests/crear_prospecto_prueba_pbx_157_test.py
       - name: Publicador inicial en sandbox (solo rama fase 1)
         if: github.ref_name == 'feat/ventas-embudo-kanban-permisos-fase1-20261108'
         run: |
