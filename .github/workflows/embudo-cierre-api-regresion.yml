@@ -8,10 +8,12 @@ on:
       - 'app/services/TelefoniaVentasCierreApiVerificado.php'
       - 'app/views/telefonia/resultado_ventas_form.php'
       - 'app/views/embudo_comercial/index.php'
+      - 'app/views/embudo_comercial/detalle.php'
       - 'public/javascript/telefonia_ventas_resultados.js'
       - 'public/javascript/embudo_comercial_movimientos.js'
       - 'tools/publicar_embudo_cierre_api_hostinger_v1.py'
       - 'tests/publicar_embudo_cierre_api_hostinger_v1_test.py'
+      - 'tests/embudo_historial_resultados_legibles_unit.php'
       - '.github/workflows/embudo-cierre-api-regresion.yml'
   workflow_dispatch:
 jobs:
@@ -32,6 +34,9 @@ jobs:
           php -l app/services/TelefoniaVentasCierreApiVerificado.php
           php -l app/views/telefonia/resultado_ventas_form.php
           php -l app/views/embudo_comercial/index.php
+          php -l app/views/embudo_comercial/detalle.php
+      - name: Comprobar etiquetas de resultados históricos y V4
+        run: php tests/embudo_historial_resultados_legibles_unit.php
       - name: Comprobar JavaScript
         run: |
           node --check public/javascript/telefonia_ventas_resultados.js
