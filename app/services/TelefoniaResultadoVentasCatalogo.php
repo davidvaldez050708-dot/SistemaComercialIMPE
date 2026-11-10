@@ -12,7 +12,9 @@ final class TelefoniaResultadoVentasCatalogo
             'BUZON_VOZ'=>'Buzón de voz',
             'NUMERO_INEXISTENTE'=>'Número inexistente o incorrecto',
             'NO_INTERESADO'=>'No interesado',
+            'CONVERSACION_PERSONA'=>'Se habló con el prospecto',
             'PROSPECTO_POTENCIAL'=>'Prospecto potencial',
+            'REQUIERE_SEGUIMIENTO'=>'En seguimiento',
             'FUERA_PRESUPUESTO'=>'Fuera del presupuesto',
             'INSCRITO'=>'Inscrito',
             'NO_CUMPLE_REQUISITOS'=>'No cumple con los requisitos',
@@ -55,10 +57,24 @@ final class TelefoniaResultadoVentasCatalogo
         if(count($sinContacto)>1||($sinContacto&&$humanos)||
             (in_array('PROSPECTO_POTENCIAL',$seleccion,true)&&in_array('NO_INTERESADO',$seleccion,true)))
             throw new InvalidArgumentException('Los resultados seleccionados se contradicen. Revisa lo que ocurrió en esta llamada.');
+        if(in_array('REQUIERE_SEGUIMIENTO',$seleccion,true)){
+            if(array_intersect($seleccion,['NO_INTERESADO','NO_CUMPLE_REQUISITOS',
+                'NO_SOLICITO_INFORMACION','BUZON_VOZ','NUMERO_INEXISTENTE','SIN_RESPUESTA']))
+                throw new InvalidArgumentException('En seguimiento no se puede combinar con rechazo, falta de requisitos o ausencia de contacto.');
+            if(trim((string)($datos['proxima_accion_at']??''))==='')
+                throw new InvalidArgumentException('En seguimiento requiere programar la fecha y hora de la próxima llamada.');
+        }
         $whatsapp=in_array('WHATSAPP',$seleccion,true);$sms=in_array('SMS',$seleccion,true);
         $envio=$whatsapp?($sms?'WHATSAPP_SMS':'WHATSAPP'):($sms?'SMS':'SIN_ENVIO');
         $bases=array_values(array_intersect($seleccion,array_keys(self::resultados())));
-        $principal=$humanos[0]??($bases[0]??('ENVIO_'.$envio));
+        // Prioridad definida del resultado principal sin perder las dos selecciones.
+        // Una simple conversación no oculta una clasificación más específica.
+        $especificos=array_values(array_filter($humanos,static function($codigo){
+            return $codigo!=='CONVERSACION_PERSONA'&&$codigo!=='REQUIERE_SEGUIMIENTO';
+        }));
+        $principal=in_array('REQUIERE_SEGUIMIENTO',$seleccion,true)
+            ?'REQUIERE_SEGUIMIENTO'
+            :($especificos[0]??($humanos[0]??($bases[0]??('ENVIO_'.$envio))));
         // Un envío aislado no acredita conversación por audio o duración.
         // V4 conserva las selecciones y utiliza el resultado humano existente.
         if (($datos['catalogo_version'] ?? '') === '4' && !$bases) {
@@ -82,7 +98,8 @@ final class TelefoniaResultadoVentasCatalogo
 
     public static function conPersona(string $resultado): bool
     {
-        return in_array($resultado,['NO_INTERESADO','PROSPECTO_POTENCIAL','FUERA_PRESUPUESTO',
+        return in_array($resultado,['CONVERSACION_PERSONA','REQUIERE_SEGUIMIENTO',
+            'NO_INTERESADO','PROSPECTO_POTENCIAL','FUERA_PRESUPUESTO',
             'INSCRITO','NO_CUMPLE_REQUISITOS','NO_SOLICITO_INFORMACION','SIGUIENTE_APERTURA',self::INTERRUMPIDA_PERSONA],true);
     }
 
