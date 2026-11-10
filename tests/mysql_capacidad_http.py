@@ -54,9 +54,17 @@ TRANSFERENCIA = "/prueba_telefonia/api/transferencia_operacion.php?id=1"
 
 def preparar_base(args):
     mysql = [args.mysql, "--no-defaults", "-h127.0.0.1", "--port=" + str(args.port), "-uroot", "impe_test_capacidad"]
-    def sql(texto):
-        subprocess.run(mysql + ["--default-character-set=utf8mb4"], input=texto.encode("utf-8"),
-                       check=True, stdout=subprocess.DEVNULL, timeout=30)
+    def sql(texto, leer=False):
+        return subprocess.run(
+            mysql + ["--default-character-set=utf8mb4", "--batch", "--skip-column-names"],
+            input=texto.encode("utf-8"), check=True, timeout=30,
+            stdout=subprocess.PIPE if leer else subprocess.DEVNULL,
+        ).stdout
+    if args.limitar:
+        limite = sql("SELECT max_user_connections FROM mysql.user "
+                     "WHERE User='impe_capacity' AND Host='127.0.0.1';", leer=True)
+        if limite.strip() != b"75":
+            raise RuntimeError("El usuario del laboratorio debe tener MAX_USER_CONNECTIONS 75.")
     if args.esquema:
         esquema = args.esquema.read_text(encoding="utf-8-sig")
         tablas = re.findall(r"(?ims)^CREATE TABLE `[a-z0-9_]+` \(.*?;[ \t]*$", esquema)
@@ -122,6 +130,19 @@ def preparar_base(args):
                      "VALUES ({0},'Prueba','{0}','prueba{0}@invalid.test','prueba{0}','{1}',{2});".format(usuario,hash_pw,rol))
         filas.append("INSERT INTO telefonia_extensiones (usuario_id,proveedor,extension,activo,permite_salientes,permite_entrantes) "
                      "VALUES ({},'ZADARMA','{}',1,1,1);".format(usuario,100+usuario))
+    if args.verificar_avisos:
+        ahora, horario = subprocess.check_output([
+            args.php, "-r",
+            "$a=new DateTimeImmutable('now',new DateTimeZone('America/Mexico_City'));"
+            "echo $a->format('Y-m-d H:i:s'),'|',$a->modify('+20 minutes')->format('Y-m-d H:i:s');",
+        ]).decode().split("|")
+        for usuario in range(1, 31):
+            filas.append(
+                "INSERT INTO agenda_comentarios (id, fecha, recordatorio_at, comentario, creado_por, "
+                "autor_nombre, creado_at, destinatario_id) VALUES "
+                f"({usuario}, '{horario[:10]}', '{horario}', 'Recordatorio de laboratorio', "
+                f"{2 if usuario == 1 else 1}, 'Autor de prueba', '{ahora}', {usuario});"
+            )
     sql("\n".join(filas))
     return sql
 
@@ -195,7 +216,7 @@ def autenticar(puerto, usuario):
     return ("login", "login_rechazado" if estado == 302 and not valido else estado, ms), cookie if valido else None
 
 
-def escenario(puerto, usuario, inicio, cookie=None, registrar=None):
+def escenario(puerto, usuario, inicio, cookie=None, registrar=None, verificar_avisos=False):
     time.sleep(max(0, inicio - time.monotonic()))
     datos = []
 
@@ -217,6 +238,13 @@ def escenario(puerto, usuario, inicio, cookie=None, registrar=None):
                 r = json.loads(body)
                 if not r.get("ok") and not r.get("parcial"):
                     e = "campana_no_disponible"
+                elif verificar_avisos:
+                    recordatorios = {a["agenda_comentario_id"] for a in r.get("recordatorios", [])
+                                     if a.get("agenda_comentario_id")}
+                    horarios = {a["agenda_comentario_id"] for a in r.get("horarios", [])
+                                if a.get("agenda_comentario_id")}
+                    if recordatorios != {usuario} or horarios != {usuario}:
+                        e = "campana_destinatario_u_horario_incorrecto"
             except ValueError:
                 e = "json_invalido"
         agregar((nombre, e, ms), http)
@@ -287,7 +315,7 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
         primera_muestra_rafaga = len(muestras)
         with ThreadPoolExecutor(max_workers=cantidad) as executor:
             inicio=time.monotonic()+1.1
-            tareas=[executor.submit(escenario,p,i+1,inicio+i*intervalo,sesiones[i],registrar) for i,(p,_) in enumerate(servers)]
+            tareas=[executor.submit(escenario,p,i+1,inicio+i*intervalo,sesiones[i],registrar,args.verificar_avisos) for i,(p,_) in enumerate(servers)]
             while not all(t.done() for t in tareas):
                 muestrear()
                 time.sleep(0.025)
@@ -363,6 +391,8 @@ def main():
     parser.add_argument("--cambios",type=Path,required=True)
     parser.add_argument("--log",type=Path,required=True)
     parser.add_argument("--esquema", type=Path, help="Definiciones SHOW CREATE TABLE de la copia instalada")
+    parser.add_argument("--verificar-avisos", action="store_true",
+                        help="Comprueba un comentario con horario y destinatario distinto por usuario")
     parser.add_argument("--limitar", action="store_true", help="Aplica el máximo de 20 aperturas en una ventana móvil")
     parser.add_argument("--sin-escalonar", action="store_true", help="Ejecuta sólo la ráfaga simultánea")
     parser.add_argument("--metricas", type=Path, help="Guarda resultados detallados por segundo en JSONL")
@@ -370,6 +400,8 @@ def main():
     parser.add_argument("--solo", choices=("base", "candidato"))
     parser.add_argument("--preautenticar", action="store_true", help="Mide recargas con sesiones válidas y pools fríos")
     args=parser.parse_args()
+    if args.verificar_avisos and not args.esquema:
+        parser.error("--verificar-avisos requiere --esquema con las tablas de Agenda")
     observador=iniciar(args.php,args.port,"observer")
     try:
         muestra(observador)  # Verifica el datadir de laboratorio antes de DDL.
@@ -405,6 +437,13 @@ def main():
                         print(json.dumps(resumen), flush=True)
                 if variante == "candidato":
                     probar_acceso(args, sitio, sql, log)
+                if args.verificar_avisos:
+                    lecturas = sql(
+                        "SELECT COUNT(*) FROM agenda_comentarios_lecturas "
+                        "WHERE novedad_leida_at IS NOT NULL OR recordatorio_atendido_at IS NOT NULL;",
+                        leer=True,
+                    )
+                    assert lecturas.strip() == b"0", "El sondeo no debe marcar avisos como leídos o atendidos"
     finally:
         observador.stdin.close()
         observador.wait(timeout=10)

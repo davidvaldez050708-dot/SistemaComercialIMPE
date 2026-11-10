@@ -132,3 +132,23 @@ Se verificó el paquete de 28 archivos contra las huellas de la copia de Hosting
 Para reproducir con los límites, usar `--limitar --metricas resultados.jsonl`. Para el perfil caliente usar también `--pool-caliente --sin-escalonar`. La opción `--preautenticar` separa las recargas de la autenticación. La opción `--esquema` admite las definiciones de tablas obtenidas de `SHOW CREATE TABLE` y las instala únicamente en la base vacía del laboratorio.
 
 Con sesiones autenticadas antes de la ventana de carga, también pasaron las recargas simultáneas de 10 y 30 usuarios en caliente. Inicio y las dos consultas de campana respondieron correctamente para todos. Hubo 16 y 46 sesiones respectivamente, cuatro intentos/s durante el calentamiento, ningún rechazo y un p95 de 109 y 281 ms. Las consultas simuladas de telefonía y transferencias devolvieron 200. La ejecución de sesiones válidas y el perfil frío final también completaron las pruebas de caída y recuperación de conexión.
+
+## Validación con la estructura exportada de Hostinger
+
+Archivo recibido `impe-esquema-revision.sql`, SHA-256 `61bd6ca46167fd642b441d2a4994681d1a5b072d67888b924b6c1915169b4210`. Se verificaron 128 definiciones `CREATE TABLE` y se importaron sin cambios en MariaDB 10.11.16 portátil. La primera importación en MariaDB 10.4.32 devolvió 1273 porque esa instancia local no reconocía `utf8mb4_uca1400_ai_ci`. Las cifras de esta sección corresponden a la exportación original, incluida esa collation.
+
+El esquema contiene `convocatorias.estado`, `reuniones_vinculacion.realizada_por` y la tabla `telefonia_ventas_llamadas`. Esto confirma que las tres omisiones de los primeros ensayos estaban en el esquema sintético. Los datos y permisos del ensayo siguen siendo sintéticos.
+
+Con `--verificar-avisos` se sembró un comentario distinto y con hora para cada usuario. Se comprobó en las dos lecturas de la campana que el comentario y el horario correspondían al destinatario, sin avisos de otros usuarios. También se comprobó que el sondeo no creó lecturas ni registros de atención para esos comentarios.
+
+| Variante y condición | Usuarios | Login | Inicio | Campana con aviso correcto | Sesiones pico | Intentos en 1 s | Rechazos de apertura | HTTP 500 / 503 | p95 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Instalada, frío simultáneo | 10 | 2/10 | 2/10 | 0/10 | 20 | 24 | 4 | 8 / 4 | 344 ms |
+| Candidato, frío simultáneo | 10 | 10/10 | 10/10 | 10/10 | 16 | 16 | 0 | 0 / 0 | 250 ms |
+| Instalada, frío simultáneo | 30 | 1/30 | 0/30 | 0/30 | 20 | 33 | 13 | 19 / 13 | 391 ms |
+| Candidato, frío simultáneo | 30 | 20/30 | 19/30 | 20/30 | 20 | 39 | 19 | 0 / 11 | 250 ms |
+| Candidato, frío escalonado a 110 ms | 30 | 30/30 | 30/30 | 30/30 | 46 | 15 | 0 | 0 / 0 | 172 ms |
+
+El escenario escalonado alcanzó el margen definido de 60 sesiones y 15 aperturas/s. El espaciado solo pertenece al ensayo. La ráfaga en frío sigue sin cumplir el criterio de aceptación. Se confirmó el cierre de sesión, revocación, fallos temporales 503 y recuperación. La exportación no contiene los registros y los perfiles reales del CRM, ni reproduce el ciclo de vida de los workers de LiteSpeed. El publicador conserva el bloqueo de aplicación.
+
+Con sesiones previamente autenticadas y pools calientes, pasaron todas las recargas, Inicio y las dos consultas de campana de 10 y 30 usuarios. Se observaron 16 y 46 sesiones, respectivamente, y cuatro aperturas/s durante el calentamiento, sin aperturas nuevas en la ráfaga ni rechazos. El p95 fue de 109 y 313 ms. Para 30 usuarios respondieron correctamente 12 consultas por cada recorrido simulado de WebRTC, entrada activa, estado y transferencia. La verificación deliberada de 401, 403 por revocación y 503 por caída de MySQL pasó aparte. Estos resultados validan los avisos sembrados y las rutas simuladas en el laboratorio, con la aceptación del alojamiento aún pendiente por el caso frío.
