@@ -1,0 +1,25 @@
+name: Embudo - Etiquetas comerciales asesoras
+on:
+  push:
+    branches:
+      - fix/embudo-resultados-asesoras-20261110
+permissions:
+  contents: read
+jobs:
+  ficha-auditoria:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Historial legible, auditoría y publicador anterior
+        run: |
+          php -l app/views/embudo_comercial/detalle.php
+          php tests/embudo_historial_resultados_legibles_unit.php
+          php tests/embudo_comercial_ficha_historial_unit.php
+          python3 tests/embudo_comercial_ficha_historial_estatico_test.py
+          python3 tests/publicar_historial_movimientos_legibles_hostinger_test.py
