@@ -18,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -34,3 +36,5 @@ jobs:
         run: |
           php tests/telefonia_ventas_contacto_seguimiento_catalogo_unit.php
           python3 tests/ventas_seguimiento_reportes_estatico_test.py
+          python3 -m py_compile tools/publicar_opciones_y_reportes_ventas_hostinger.py
+          python3 tests/publicar_opciones_y_reportes_ventas_hostinger_test.py
