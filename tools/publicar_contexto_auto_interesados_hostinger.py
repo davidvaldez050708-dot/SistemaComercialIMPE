@@ -27,7 +27,7 @@ FILES = {
         '05ee0263bb677cdc0be5c58e633d23e99e585e81'),
     'public/javascript/telefonia_ventas_resultados.js': (
         'ce80806d0af17d3c660781e9f10148d6d16a1b56',
-        '9b6404514ace14ac7425875f261c3ae6ef0efe13'),
+        'ef2aecbc24427aebbf8e11a27b4382c0a7ea15a0'),
     'app/services/EmbudoComercialEtapas.php': (
         'db47554c68443bcf9f48c58bd25e18a1a0373007',
         'a2cc9493b3d5b980096c768b15fecbfa9af710a8')
