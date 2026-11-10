@@ -41,14 +41,15 @@ with tempfile.TemporaryDirectory(prefix='impe-pbx-mx-') as d:
     must(not backups.exists(),'check no crea respaldo')
     must(untouched.read_bytes()==b'UNTOUCHED','no tocar Telefonía')
 
-    # Ventana sin llamadas: la confirmación es manual y obligatoria.
+    # Confirmación manual obligatoria, independientemente de la actividad.
     denied=False
     try:pub.apply(site,target,BRIDGE,backups,None)
     except pub.Blocked:denied=True
     must(denied and target.read_bytes()==original,'apply sin confirmación bloqueado')
     must(not backups.exists(),'sin confirmación no crea respaldo')
 
-    pub.apply(site,target,BRIDGE,backups,pub.CONFIRM)
+    # Escenario real: operar con asesores activos, con aceptación explícita.
+    pub.apply(site,target,BRIDGE,backups,pub.CONFIRM_ACTIVE)
     must(pub.blob(target.read_bytes())==pub.AFTER,'publicar puente íntegro')
     must(untouched.read_bytes()==b'UNTOUCHED','telefonía no tocada')
     must(len(list(backups.iterdir()))==1,'un respaldo exacto')
@@ -66,6 +67,16 @@ with tempfile.TemporaryDirectory(prefix='impe-pbx-mx-') as d:
     except pub.Blocked:denied=True
     must(denied and pub.blob(target.read_bytes())==pub.AFTER,
          'rollback sin confirmación bloqueado')
+    denied=False
+    try:pub.apply(site,target,BRIDGE,backups,'ACEPTO_RIESGO')
+    except pub.Blocked:denied=True
+    must(denied and pub.blob(target.read_bytes())==pub.AFTER,
+         'confirmación ambigua no debe publicar')
+    denied=False
+    try:pub.rollback(site,target,folder,'ACEPTO_RIESGO')
+    except pub.Blocked:denied=True
+    must(denied and pub.blob(target.read_bytes())==pub.AFTER,
+         'confirmación ambigua no debe restaurar')
 
     # No sobrescribir una personalización posterior o una edición concurrente.
     customized=BRIDGE.read_bytes()+b'\n// PERSONALIZADO EN HOSTINGER\n'
@@ -80,7 +91,7 @@ with tempfile.TemporaryDirectory(prefix='impe-pbx-mx-') as d:
     must(denied and target.read_bytes()==customized,'rollback no pisa cambios nuevos')
 
     target.write_bytes(BRIDGE.read_bytes())
-    pub.rollback(site,target,folder,pub.CONFIRM)
+    pub.rollback(site,target,folder,pub.CONFIRM_ACTIVE)
     must(target.read_bytes()==original,'restauración exacta del original')
     must(untouched.read_bytes()==b'UNTOUCHED','rollback tampoco toca telefonía')
     pub.rollback(site,target,folder,pub.CONFIRM)
