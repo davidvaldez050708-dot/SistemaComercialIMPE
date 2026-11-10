@@ -1,0 +1,29 @@
+name: Embudo - Vinculación del formulario automático
+on:
+  push:
+    branches:
+      - fix/embudo-contexto-formulario-automatico-20261110
+permissions:
+  contents: read
+jobs:
+  validar-sin-telefono-ni-bd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Sintaxis y reglas del embudo
+        run: |
+          php -l app/services/EmbudoComercialEtapas.php
+          php tests/embudo_comercial_fase2_unit.php
+          node --check public/javascript/embudo_comercial_movimientos.js
+          node --check public/javascript/telefonia_ventas_resultados.js
+          node tests/embudo_contexto_formulario_automatico.cjs
+      - name: Despliegue simulado con hashes productivos
+        run: |
+          python3 -m py_compile tools/publicar_contexto_auto_interesados_hostinger.py
+          python3 tests/publicar_contexto_auto_interesados_hostinger_test.py
