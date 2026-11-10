@@ -18,9 +18,9 @@
       // Contexto explícito del botón del prospecto. No acredita una llamada:
       // PBX, propiedad, número completo y permisos se comprueban en servidor.
       // Se guarda antes de abrir el marcador, para que persista al cambiar de vista.
-      if (/^[1-9][0-9]*$/.test(asignacionId)&&usuarioId>0&&digitos.length>=10&&digitos.length<=15) {
-        try{sessionStorage.setItem('impe:embudo:llamada-pendiente:'+usuarioId,
-          JSON.stringify({asignacionId,numero,creada:Date.now()}));}catch(_){}
+      if (/^[1-9][0-9]*$/.test(asignacionId)&&digitos.length>=10&&digitos.length<=15) {
+        try{sessionStorage.setItem('impe:embudo:llamada-pendiente',
+          JSON.stringify({asignacionId,numero,usuarioId,creada:Date.now()}));}catch(_){}
       }
       dial.openDialer({number:numero});
     } else {
