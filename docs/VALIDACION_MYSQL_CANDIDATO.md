@@ -284,3 +284,73 @@ En estos ensayos el control conservó el margen físico a costa de disponibilida
 - Función ausente, 30 usuarios. 503 por ruta `entrada` (1), `estado_activo` (1), `inicio` (4), `login` (7), `transferencia` (1).
 
 Una prueba adicional con estadísticas activas entregó dos veces y en paralelo el mismo webhook saliente con firma sintética. Ambos PHP devolvieron 200, dos pestañas consultaron el mismo identificador de llamada y la tabla conservó una sola fila del evento. La repetición de la ráfaga fría de 30 también terminó con 30 accesos, Inicio y campanas correctos, 12 aperturas/s y cero rechazos MySQL, 500 o 503 en la carga. El publicador conserva `apto_para_publicar: false`. Falta ejecutar la matriz de LSAPI y confirmar la disponibilidad de estadísticas, las latencias y el comportamiento con el sistema de archivos de la réplica.
+
+## Réplica FastCGI, revisión del pool y preparación de LSAPI
+
+Hostinger reportó PHP 8.2.35 en Linux, SAPI CGI/FastCGI, mysqlnd con estadísticas activas, persistencia permitida y `mysqli.max_persistent` ilimitado. El SAPI reportado no determina el gestor de procesos ni demuestra que todos los workers compartan un mismo sistema de archivos. Se mantiene la comprobación separada de la topología y el reciclaje real.
+
+El laboratorio añade un puente HTTP de loopback a procesos `php-cgi`, una sonda que lee contadores sin llamar a MySQL y un ejecutor para una futura réplica Linux con vhost OpenLiteSpeed. La prueba local se ejecutó con PHP 8.2.12 CGI/FastCGI en Windows, MariaDB desechable, el esquema original de 128 tablas, perfiles sintéticos y un limitador físico de 20 aperturas/s. Los reemplazos de diez workers conservaron el directorio de sesiones y el de admisión. Esto prueba el SAPI FastCGI y la coordinación local entre procesos. Linux, LSAPI, permisos POSIX y el sistema de archivos del alojamiento quedan pendientes.
+
+### Ensayo Linux preparado
+
+1. Usar una máquina de pruebas independiente, con PHP 8.2 CLI y OpenLiteSpeed con LSPHP 8.2. Preparar MariaDB en loopback con un datadir desechable terminado en `mysql-capacidad-<hex>/data`, una base vacía `impe_test_capacidad` y el usuario local de laboratorio `impe_capacity` con `MAX_USER_CONNECTIONS 75`. El cliente del banco accede como root sólo a esa instancia. La exportación debe contener exclusivamente `SHOW CREATE TABLE`. Usar una base vacía por ejecución.
+2. Ejecutar `tests/mysql_lsapi.py` con `--php`, `--mysql`, `--port`, `--base` para la copia conciliada de producción, `--cambios` para el overlay probado, `--esquema` y `--salida`. Repetir con `--usuarios 10` y `--usuarios 30` y los perfiles `frio`, `caliente`, `reciclaje` y `reciclaje-login`. El script prepara un docroot temporal, imprime sus variables sintéticas y mantiene el proxy local abierto. Antes de enviar tráfico exige el SAPI `litespeed` y un identificador aleatorio que debe coincidir con la sonda de ese docroot.
+3. Configurar un vhost exclusivamente de loopback en el puerto `--puerto-lsapi` (18082 por defecto). Ejecutar LSPHP con el mismo UID del laboratorio para que pueda acceder al docroot temporal y al directorio de admisión 0700. Usar ProcessGroup y los valores de procesos y conexiones LSAPI correspondientes a la prueba. Aplicar el `session.save_path` impreso. Para el perfil de reciclaje, conservar sesiones y estado de admisión. Confirmar los diez reemplazos comparando PIDs del grupo de pruebas. Detener el vhost antes de cerrar el banco.
+4. Revisar el JSON por ruta y por segundo. Conservar las trazas de mysqlnd de la réplica y contrastarlas con los intentos físicos del proxy. Repetir con los sondeos, webhooks y transferencias simulados del banco local. La prueba de `flock`, proceso terminado y permisos POSIX se ejecuta con `php tests/mysql_admision_smoke.php` en la misma máquina Linux y como el UID de LSPHP.
+
+[Configuración PHP de OpenLiteSpeed](https://docs.openlitespeed.org/config/php/) · [Opciones de procesos y reciclaje LSPHP](https://docs.litespeedtech.com/lsws/extapp/php/configuration/options/)
+
+### Comprobación pasiva en Hostinger
+
+Usar la información PHP web ya disponible para comprobar SAPI, versión, estadísticas y configuración. Eso confirma que el runtime tiene la capacidad de medición. Para verificar una reutilización real, pedir a Hostinger una captura privada desde un observador web **ya disponible** alrededor de peticiones legítimas del CRM. El observador únicamente lee `PHP_SAPI`, `PHP_VERSION`, `getmypid()`, `ini_get('mysqlnd.collect_statistics')`, `mysqli_get_client_stats()['connection_reused']` y, si existe, `mysqli_get_links_stats()`. Comparar dos muestras del mismo PID y del mismo ciclo de vida. Un incremento de `connection_reused` confirma reutilización. Un contador estable no permite concluir que haya una falla, ya que el worker puede no haber atendido una petición que reutilice su pool. Si los PIDs cambian o los contadores se reinician, descartar esa comparación.
+
+La sonda de `tests/mysql_snapshot_web.php` implementa esta lectura en el laboratorio sin cargar la app, abrir conexiones ni ejecutar SQL. La prueba de FastCGI compara los intentos del proxy antes y después de consultar todas las sondas. El archivo es exclusivo del laboratorio. En Hostinger, sin un observador web preexistente, queda pendiente la medición del delta. La CLI por SSH usa otro SAPI y otro proceso. Activar una variable de traza, instalar un PHP público o crear conexiones para la prueba excedería la comprobación autorizada.
+
+[Contadores de mysqlnd](https://www.php.net/manual/en/mysqlnd.stats.php) · [Estadísticas del cliente MySQLi](https://www.php.net/manual/en/function.mysqli-get-client-stats.php)
+
+### Procedimiento condicionado a la revisión final
+
+1. Completar la matriz LSAPI con estadísticas activas y comprobar en la réplica los mismos permisos, archivos de estado y dominio de coordinación que tendrá el despliegue. Verificar el margen de 60 sesiones y 15 aperturas/s, el 30/30 de login, Inicio y campana, cero 500/503 de admisión bajo carga normal, y la recuperación de telefonía, transferencias y webhooks. Conservar latencias por ruta y no incluir las caídas deliberadas en el conteo normal.
+2. Fijar el commit y comprobar el parche con `tools/publicar_mysql_capacidad.py --check` sobre una copia representativa. Comparar las huellas instaladas antes de una ventana autorizada. Cualquier diferencia en archivos personalizados detiene el proceso. Conservar una copia externa de los archivos y el manifiesto de integridad, incluida la configuración privada relevante bajo custodia del operador.
+3. En una ventana autorizada, separar la instalación del código de la activación del control. Verificar primero los recorridos básicos con la opción de admisión desactivada. Activar primero en la réplica y después en un grupo de producción que se pueda controlar y observar, sólo si el proveedor confirma el alcance de los workers y el directorio privado. La apertura de otros procesos de la cuenta debe medirse junto a la del grupo. Drenar el grupo anterior para evitar mezclas de formatos de estado y mantener el margen de toda la cuenta.
+4. Detener el avance ante un rechazo de MySQL, regresiones HTTP o pérdidas de eventos. En una restauración autorizada, drenar los workers, revertir la activación y usar `--restore` con el respaldo exacto del publicador. La restauración comprueba las huellas y se detiene si detecta cambios ajenos posteriores. Repetir inicio de sesión, Inicio, campana y telefonía antes de reanudar tráfico normal.
+
+El manifiesto conserva `apto_para_publicar: false`. Este procedimiento documenta puntos de control para una revisión posterior. Los archivos de la sonda y los ejecutores de prueba quedan fuera del paquete de publicación.
+
+### Evaluación de mysqli.max_persistent
+
+En frío, 30 workers conservaron 46 conexiones en caché. Dieciocho workers quedaron con una, ocho con dos y cuatro con tres. El proxy registró exactamente 46 aperturas físicas y las sondas de mysqlnd sumaron 46 conexiones exitosas y 154 reutilizaciones. Las consultas a la sonda no aumentaron los intentos del proxy.
+
+En el mismo muestreo, `mysqli_get_links_stats()` sumó 154 en `active_plinks` con `total=0` en todos los workers. PHP registra un doble incremento de ese contador al reutilizar mediante `mysqli::real_connect()`. El código publicado de 8.2.35 conserva la ruta relevante. Esa coincidencia explica la discrepancia observada en el laboratorio y justifica verificar el binario del proveedor antes de usar un tope. No se ha medido ese contador en el proceso web real de Hostinger. Para estimar capacidad, correlacionar `connection_reused`, `cached_plinks`, las aperturas del proxy y las sesiones de MySQL.
+
+Un tope de tres por worker no limita por sí mismo la cuenta a 75 conexiones. Con 60 workers, su cota teórica sería 180 antes de contar otros procesos. La admisión limita la tasa de apertura. La cota simultánea necesita medición del pool, procesos y usuarios MySQL de la cuenta. `mysqli.max_persistent` es una directiva de sistema y cualquier cambio debe validarse en la réplica con la compilación efectiva del proveedor.
+
+[Reporte de doble conteo en MySQLi](https://github.com/php/php-src/issues/22631) · [Código fuente MySQLi de PHP 8.2.35](https://github.com/php/php-src/blob/php-8.2.35/ext/mysqli/mysqli_nonapi.c) · [Directivas de MySQLi](https://www.php.net/manual/en/mysqli.configuration.php)
+
+### Resultados FastCGI con el candidato intacto
+
+| Escenario sin tope por worker | Usuarios | Login o recarga | Inicio y campana | Pico sesiones | Aperturas/s | HTTP 500 / 503 | p95 global |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Frío simultáneo | 10 | 10/10 | 10/10 | 16 | 12 | 0 / 0 | 985 ms |
+| Frío simultáneo | 30 | 30/30 | 30/30 | 46 | 12 | 0 / 0 | 3.047 ms |
+| Caliente, sesiones válidas | 10 | 10/10 | 10/10 | 16 | 3 | 0 / 0 | 578 ms |
+| Caliente, sesiones válidas | 30 | 30/30 | 30/30 | 46 | 3 | 0 / 0 | 1.687 ms |
+| Diez reemplazos, sesiones válidas | 10 | 10/10 | 10/10 | 16 | 12 | 0 / 0 | 1.312 ms |
+| Diez reemplazos, sesiones válidas | 30 | 30/30 | 30/30 | 46 | 12 | 0 / 0 | 1.594 ms |
+| Diez reemplazos, login simultáneo | 10 | 10/10 | 10/10 | 16 | 12 | 0 / 0 | 1.172 ms |
+| Diez reemplazos, login simultáneo | 30 | 30/30 | 30/30 | 46 | 12 | 0 / 0 | 984 ms |
+
+El p95 local de entrada activa para 30 usuarios varió entre 94 y 422 ms y el de estado activo entre 63 y 296 ms. Estas mediciones incluyen el puente HTTP local. Las simulaciones verificaron múltiples pestañas, transferencias y cierre SIP, y dos entregas simultáneas del webhook firmado conservaron un solo evento. También pasaron cierre de sesión, revocación, caída deliberada de MySQL y recuperación.
+
+En frío, los topes de 1 y 2 devolvieron 500 en Inicio para uno de diez y cuatro de treinta usuarios cada uno. El tope de 3 pasó esa ráfaga fría, con 38 sesiones para 30 usuarios. Al reasignar roles en caliente con ese mismo tope, Inicio devolvió 500 para uno de diez y cuatro de treinta. El tope de 3 tampoco se considera apto.
+
+### Acumulación al rotar usuarios entre workers
+
+| Usuarios | Pool tras calentamiento | Rotación 1 | Rotación 2 | Rotación 3 | Rotación 4 |
+|---|---:|---:|---:|---:|---:|
+| 10 | 16 | 19 | 22 | 24 | 25 |
+| 30 | 46 | 58 | 69 | 75 | 75 |
+
+Con 30 workers y sin tope, cuatro rotaciones de roles alcanzaron el límite simultáneo de 75. El máximo físico fue de 8 intentos/s y el proxy no rechazó aperturas por tasa. MariaDB sí rechazó siete aperturas independientes con código 1226 al alcanzar el límite simultáneo. Cinco fueron de Inicio, cuatro al resolver la visibilidad de Recepción de Marketing y una al preparar resultados de Ventas. Dos fueron de la sincronización de convocatorias de la campana administrativa. Las rutas HTTP devolvieron 200 mediante los recorridos parciales existentes. Por ello, un 200 y cero rechazos en el proxy no bastan como verificación de salud.
+
+No se propone aplicar un tope por worker a Hostinger con esta evidencia. Hace falta controlar la ocupación simultánea de los pools y repetir con rotación de roles en Linux/LSAPI. El umbral de 60 sesiones se superó en la segunda rotación de 30 usuarios. La matriz LSAPI queda preparada para una réplica autorizada. La comprobación de solo lectura del paquete pasó contra la copia original, y la publicación continúa bloqueada.

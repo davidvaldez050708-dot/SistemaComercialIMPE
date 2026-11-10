@@ -20,6 +20,7 @@ from urllib.parse import urlencode
 
 from mysql_capacidad import iniciar, muestra
 from mysql_limite_aperturas import LimitadorMySQL
+from mysql_fastcgi import WorkerFastCGI
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -157,6 +158,7 @@ def preparar_sitio(destino, base, cambios):
     for archivo in ("config/config.php", "config/private_config.php"):
         shutil.copyfile(REPO / archivo, destino / archivo)
     shutil.copyfile(REPO / "logout.php", destino / "logout.php")
+    shutil.copyfile(REPO / "tests/mysql_snapshot_web.php", destino / "mysql_snapshot_web.php")
     vendor = destino / "vendor"
     vendor.mkdir()
     (vendor / "autoload.php").write_text(PROVEEDOR, encoding="utf-8")
@@ -193,11 +195,22 @@ def servidor(args, sitio, log, db_port=None):
     ajustes = ["-d", "mysqlnd.collect_statistics=" + ("0" if args.mysqlnd == "deshabilitadas" else "1")]
     if args.mysqlnd == "ausente":
         ajustes += ["-d", "disable_functions=mysqli_get_client_stats"]
-    proceso = subprocess.Popen(
-        [args.php, *ajustes, "-d", "display_errors=0", "-d", "session.save_path=" + str(sitio / "sesiones-prueba"),
-         "-S", "127.0.0.1:" + str(puerto), "-t", str(sitio)],
-        env=env, stdout=log, stderr=log,
-    )
+    if args.max_persistentes is not None:
+        ajustes += ["-d", "mysqli.max_persistent=" + str(args.max_persistentes)]
+    ajustes += ["-d", "display_errors=0", "-d", "session.save_path=" + str(sitio / "sesiones-prueba")]
+    env["IMPE_LAB_SNAPSHOT"] = "1"
+    if args.php_cgi:
+        puerto_fcgi = libre()
+        while puerto_fcgi == puerto:
+            puerto_fcgi = libre()
+        env.update(PHP_FCGI_CHILDREN="0", PHP_FCGI_MAX_REQUESTS="10000")
+        ajustes += ["-d", "log_errors=1", "-d", "error_log="]
+        proceso = WorkerFastCGI([args.php_cgi, *ajustes], env, log, sitio, puerto, puerto_fcgi)
+    else:
+        proceso = subprocess.Popen(
+            [args.php, *ajustes, "-S", "127.0.0.1:" + str(puerto), "-t", str(sitio)],
+            env=env, stdout=log, stderr=log,
+        )
     return puerto, proceso
 
 
@@ -336,14 +349,40 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
             esperar(servers[:reciclados])
             muestrear()
         primera_muestra_rafaga = len(muestras)
+        resultados = []
+        rondas = []
         with ThreadPoolExecutor(max_workers=cantidad) as executor:
-            inicio=time.monotonic()+1.1
-            tareas=[executor.submit(escenario,p,i+1,inicio+i*intervalo,sesiones[i],registrar,args.verificar_avisos) for i,(p,_) in enumerate(servers)]
-            while not all(t.done() for t in tareas):
+            for ronda in range(1, max(1, args.rotar_roles) + 1):
+                inicio = time.monotonic() + 1.1
+                desplazamiento = ronda if args.rotar_roles else 0
+                usuarios = [(i + desplazamiento) % cantidad + 1 for i in range(cantidad)]
+                tareas = [executor.submit(escenario, p, usuario, inicio + i * intervalo,
+                                          sesiones[usuario - 1], registrar, args.verificar_avisos)
+                          for i, ((p, _), usuario) in enumerate(zip(servers, usuarios))]
+                desde = len(muestras)
+                while not all(t.done() for t in tareas):
+                    muestrear()
+                    time.sleep(0.025)
                 muestrear()
-                time.sleep(0.025)
-            muestrear()
-            resultados=[r for tarea in tareas for r in tarea.result()[0]]
+                respuestas = [r for tarea in tareas for r in tarea.result()[0]]
+                resultados.extend(respuestas)
+                rondas.append({
+                    "ronda": ronda, "pico_sesiones": max(m[2] for m in muestras[desde:]),
+                    "sleep_final": muestras[-1][3],
+                    "fallos": dict(Counter(f"{ruta}:{estado}" for ruta, estado, _ in respuestas
+                                           if estado not in (200, 302))),
+                })
+        pools = []
+        if args.php_cgi:
+            intentos_antes = sum(x["intentos"] for x in limitador.ventana.por_segundo.values()) if limitador else None
+            for puerto, _ in servers:
+                estado, _, cuerpo, _ = peticion(puerto, "/mysql_snapshot_web.php")
+                assert estado == 200
+                snapshot = json.loads(cuerpo)
+                assert snapshot["sapi"] == "cgi-fcgi", snapshot["sapi"]
+                pools.append(snapshot)
+            if limitador:
+                assert intentos_antes == sum(x["intentos"] for x in limitador.ventana.por_segundo.values()), "La sonda abrió MySQL"
         exitos=sorted(ms for _,e,ms in resultados if e in (200,302))
         por_segundo = {}
         for segundo, (ruta, estado, ms), http in eventos:
@@ -353,13 +392,21 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
             fila["latencias_ms"].setdefault(ruta, []).append(round(ms, 1))
         resumen={
             "usuarios":cantidad,"intervalo_arranque":intervalo,"preautenticado":args.preautenticar,"mysqlnd":args.mysqlnd,
-            "pool_caliente":args.pool_caliente, "workers_reciclados":reciclados, "admision":args.admision, "pico_sesiones_rafaga":max(m[2] for m in muestras[primera_muestra_rafaga:]),
+            "pool_caliente":args.pool_caliente, "roles_rotados":args.rotar_roles, "workers_reciclados":reciclados, "admision":args.admision, "pico_sesiones_rafaga":max(m[2] for m in muestras[primera_muestra_rafaga:]),
             "pico_sesiones":max(m[2] for m in muestras),"sleep_final":muestras[-1][3],
             "intentos_max_1s_observados":max(b[1]-a[1] for b in muestras for a in muestras if 0<=b[0]-a[0]<=1),
             "p95_ms_exitosas":round(exitos[math.ceil(.95*len(exitos))-1],1) if exitos else None,
-            "muestras_db_por_segundo":segundos_db,"http_por_segundo":por_segundo,
+            "muestras_db_por_segundo":segundos_db,"http_por_segundo":por_segundo,"rondas":rondas,
             "rutas":{ruta:dict(Counter(str(e) for n,e,_ in resultados if n==ruta)) for ruta in sorted({n for n,_,_ in resultados})},
         }
+        if pools:
+            resumen.update({
+                "sapi": pools[0]["sapi"], "php_web": pools[0]["php"],
+                "max_persistentes_configurado": pools[0]["max_persistentes"],
+                "max_cache_por_worker": max(p["enlaces"].get("cached_plinks", 0) for p in pools),
+                "reutilizaciones_mysqlnd": sum(int(p["contadores"].get("connection_reused", 0)) for p in pools),
+                "pool_por_worker": pools,
+            })
         if limitador:
             ventana = limitador.ventana
             resumen.update({
@@ -441,6 +488,8 @@ def probar_acceso(args, sitio, sql, log):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--php",required=True)
+    parser.add_argument("--php-cgi", help="Ejecuta los workers con PHP FastCGI en loopback")
+    parser.add_argument("--max-persistentes", type=int, help="Tope MySQLi por proceso, sólo en el laboratorio")
     parser.add_argument("--mysql",required=True)
     parser.add_argument("--port",type=int,required=True)
     parser.add_argument("--base",type=Path,required=True)
@@ -454,6 +503,8 @@ def main():
     parser.add_argument("--metricas", type=Path, help="Guarda resultados detallados por segundo en JSONL")
     parser.add_argument("--pool-caliente", action="store_true", help="Conserva las conexiones tras un arranque gradual medido")
     parser.add_argument("--reciclar", type=int, default=0, help="Reinicia esa cantidad de workers antes de la ráfaga")
+    parser.add_argument("--rotar-roles", type=int, nargs="?", const=1, default=0,
+                        help="Cantidad de ráfagas que reasignan usuarios tras calentar el pool")
     parser.add_argument("--admision", action="store_true", help="Activa la admisión PHP en el laboratorio")
     parser.add_argument("--traza", action="store_true", help="Registra reaperturas y reutilizaciones de mysqlnd")
     parser.add_argument("--mysqlnd", choices=("activas", "deshabilitadas", "ausente"), default="activas",
@@ -461,6 +512,8 @@ def main():
     parser.add_argument("--solo", choices=("base", "candidato"))
     parser.add_argument("--preautenticar", action="store_true", help="Mide recargas con sesiones válidas y pools fríos")
     args=parser.parse_args()
+    if args.rotar_roles < 0 or (args.rotar_roles and not args.pool_caliente):
+        parser.error("--rotar-roles requiere --pool-caliente")
     if args.reciclar < 0 or (args.reciclar and not args.pool_caliente):
         parser.error("--reciclar requiere --pool-caliente y un número positivo")
     if args.admision and args.solo != "candidato":
@@ -498,7 +551,7 @@ def main():
                         if args.metricas:
                             with args.metricas.open("a", encoding="utf-8") as metricas:
                                 metricas.write(json.dumps(resultado) + "\n")
-                        resumen = {k: v for k, v in resultado.items() if not k.endswith("_por_segundo")}
+                        resumen = {k: v for k, v in resultado.items() if not k.endswith("_por_segundo") and k != "pool_por_worker"}
                         print(json.dumps(resumen), flush=True)
                 if variante == "candidato":
                     if args.mysqlnd != "activas":
