@@ -27,7 +27,17 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  assert.equal(await modal.isVisible(),false,'No abrir resultado automáticamente encima del teléfono');
  await phone.waitFor({state:'visible'});
  await page.locator('[data-sales-open]').click();
- await modal.waitFor({state:'visible'});await phone.waitFor({state:'hidden'});
+ await modal.waitFor({state:'visible'});
+ // Diagnóstico sin mutar el teléfono: registrar si el shell sostiene la
+ // propiedad del resultado, si el atributo hidden se aplica y si hay CSS.
+ const diagnosis=await page.evaluate(()=>({
+   formOwned:window.IMPE_TELEPHONY_SHELL?.isResultFormOpen(),
+   panelHidden:document.querySelector('[data-incoming-panel]')?.hidden,
+   panelDisplay:getComputedStyle(document.querySelector('[data-incoming-panel]')).display,
+   frameUrl:document.querySelector('#impeCrmFrame')?.contentWindow?.location?.href||''
+ }));
+ console.log('VENTAS_PANEL_DIAGNOSTICO',JSON.stringify(diagnosis));
+ await phone.waitFor({state:'hidden'});
  assert.equal(await page.evaluate(()=>IMPE_TELEPHONY_SHELL.isResultFormOpen()),true);
  assert.equal(await crm.locator('.modal-backdrop').count(),1);
  for(const size of [{width:1366,height:900},{width:390,height:600},{width:740,height:360}]){
