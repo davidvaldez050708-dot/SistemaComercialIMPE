@@ -1,8 +1,9 @@
 <?php
-require_once __DIR__.'/../../helpers/ProspectoFechaHoraHelper.php';
+require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
 $esc=static fn($x)=>htmlspecialchars((string)($x??''),ENT_QUOTES,'UTF-8');
 $def=static fn($x)=>trim((string)($x??''))!==''?(string)$x:'Sin indicar';
-$fecha=static fn($x)=>$x?ProspectoFechaHoraHelper::aMexico($x):'Sin programar';
+$fecha=static fn($x)=>EmbudoComercialPresentacion::fechaUtc($x);
+$dia=static fn($x)=>EmbudoComercialPresentacion::fechaLocal($x);
 $volver=BASE_URL.'index.php?'.http_build_query([
     'controller'=>'embudoComercial','action'=>'index','vista'=>$vista
 ]);
@@ -36,7 +37,7 @@ $volver=BASE_URL.'index.php?'.http_build_query([
             <dl>
                 <div><dt>Asesor asignado</dt><dd>ID #<?= (int)$prospecto['asesor_id'] ?></dd></div>
                 <div><dt>Fecha de asignación</dt><dd><?= $esc($fecha($prospecto['asignado_at'])) ?></dd></div>
-                <div><dt>Jornada de trabajo</dt><dd><?= $esc($def($prospecto['fecha_trabajo'])) ?></dd></div>
+                <div><dt>Jornada de trabajo</dt><dd><?= $esc($dia($prospecto['fecha_trabajo'])) ?></dd></div>
                 <div><dt>Próxima acción</dt><dd><?= $esc($fecha($prospecto['proxima_accion_at'])) ?></dd></div>
             </dl>
         </section>
@@ -58,9 +59,44 @@ $volver=BASE_URL.'index.php?'.http_build_query([
             <ul><?php foreach ($prospecto['preferencias'] as $p): ?><li><?= $esc($def($p['valor_original'])) ?> · <?= $esc($def($p['zona_horaria'])) ?></li><?php endforeach; ?></ul>
             <?php endif; ?>
         </section>
+        <section class="impe-embudo-detalles-wide impe-embudo-historial" aria-labelledby="impe-embudo-historial-titulo">
+            <div class="impe-embudo-historial-head">
+                <div>
+                    <h3 id="impe-embudo-historial-titulo">Historial de movimientos</h3>
+                    <p>Registro de cambios de etapa de esta asignación comercial.</p>
+                </div>
+                <?php if (!empty($prospecto['historial_movimientos'])): ?>
+                <span class="impe-embudo-historial-total"><?= count($prospecto['historial_movimientos']) ?> movimientos<?= !empty($prospecto['historial_truncado'])?' recientes':'' ?></span>
+                <?php endif; ?>
+            </div>
+            <?php if (empty($prospecto['historial_movimientos'])): ?>
+            <p class="impe-embudo-muted">Todavía no se han registrado cambios de etapa.</p>
+            <?php else: ?>
+            <ol class="impe-embudo-timeline">
+                <?php foreach ($prospecto['historial_movimientos'] as $mov):
+                    $etapaAnterior=EmbudoComercialRepository::ETAPAS[$mov['etapa_anterior']]??str_replace('_',' ',$mov['etapa_anterior']);
+                    $etapaNueva=EmbudoComercialRepository::ETAPAS[$mov['etapa_nueva']]??str_replace('_',' ',$mov['etapa_nueva']);
+                    $autor=trim((string)($mov['autor']??''));
+                    if ($autor==='') $autor='Usuario #'.(int)$mov['usuario_id'];
+                ?>
+                <li class="impe-embudo-timeline-item">
+                    <div class="impe-embudo-timeline-main">
+                        <strong><?= $esc($etapaAnterior) ?> <i class="bi bi-arrow-right" aria-hidden="true"></i> <?= $esc($etapaNueva) ?></strong>
+                        <time datetime="<?= $esc(str_replace(' ','T',(string)$mov['creado_at']).'Z') ?>"><?= $esc($fecha($mov['creado_at'])) ?></time>
+                    </div>
+                    <p class="impe-embudo-timeline-motivo"><?= $esc($mov['motivo']) ?></p>
+                    <span class="impe-embudo-timeline-autor"><i class="bi bi-person" aria-hidden="true"></i> <?= $esc($autor) ?></span>
+                </li>
+                <?php endforeach; ?>
+            </ol>
+            <?php if (!empty($prospecto['historial_truncado'])): ?>
+            <p class="impe-embudo-historial-aviso">Se muestran los últimos 50 movimientos. Los anteriores permanecen registrados en la base de datos.</p>
+            <?php endif; ?>
+            <?php endif; ?>
+        </section>
     </div>
     <p class="impe-embudo-note"><i class="bi bi-info-circle"></i>
-        Los resultados y grabaciones se conservan en Telefonía. Esta ficha no los vincula automáticamente ni registra conversaciones por ahora.
+        Los resultados y grabaciones se conservan en Telefonía. La relación con el embudo requiere una llamada PBX finalizada, un resultado registrado por el asesor y la asignación explícita al prospecto; no se infiere ninguna conversación.
         <?php if (!$supervisor && tienePermiso('telefonia.usar')): ?>
         <a href="<?= $esc(BASE_URL.'index.php?'.http_build_query([
               'controller'=>'telefonia','action'=>'misLlamadas',
