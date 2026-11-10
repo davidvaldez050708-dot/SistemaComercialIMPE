@@ -6,13 +6,14 @@ const read=p=>fs.readFileSync(path.join(repo,p),'utf8');
 const css=fs.readFileSync(path.join(bs,'dist/css/bootstrap.min.css'),'utf8')+['global.css','dashboard.css','telefonia.css','telefonia_marcador.css','responsive_sistema.css'].map(f=>read('public/css/'+f)).join('\n');
 const view=mode=>`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style><body><script>window.IMPE_CURRENT_USER_ID=8;window.testReady=true;window.IMPE_TELEPHONY_PERSISTENT={getState:()=>({hostReady:window.testReady,active:false}),subscribe:()=>{},probe:async()=>({extension:'150',permite_salientes:true}),startCall:async p=>window.testCall=p};window.IMPE_TELEPHONY_NOTIFY=(m,e)=>window.testNotice=m;</script>${cp.execFileSync('php',[path.join(__dirname,'fixtures/telefonia_ventas_gestion.php'),mode],{encoding:'utf8'})}<script>${read('public/javascript/'+(mode==='agenda'?'telefonia_marcador.js':mode==='programadas'?'telefonia_ventas_resultados.js':'telefonia_ventas_devoluciones.js'))}</script></body>`;
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});try{
- const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));let payload,preparations=0,mode='agenda';
+ const page=await browser.newPage(),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('VENTAS_GESTION_PAGEERROR',e.stack||e.message);});let payload,preparations=0,mode='agenda';
  await page.route('http://ventas.test/**',async route=>{const u=new URL(route.request().url()),action=u.searchParams.get('action');
   if(u.pathname.endsWith('/telefonia_ventas_auto_filtros.js'))return route.fulfill({contentType:'application/javascript',body:read('public/javascript/telefonia_ventas_auto_filtros.js')});
   if(action==='guardarContacto'){payload=Object.fromEntries(new URLSearchParams(route.request().postData()));return route.fulfill({json:{ok:true,contacto:{id:1,nombre:payload.nombre,telefono:'+525551112233',correo:payload.correo,observacion:payload.observacion,proxima_accion_at:payload.proxima_accion_at||null}}});}
   if(action==='completarProgramacionVenta'){payload=Object.fromEntries(new URLSearchParams(route.request().postData()));return route.fulfill({json:{ok:true}});}
   if(action==='eliminarContacto')return route.fulfill({json:{ok:true}});
   if(action==='devolucionVenta'){preparations++;return route.fulfill({json:{ok:true,intento:{id:20,numero:'+525551112233',estado:'PREPARADO',pbx_call_id:null,llamada:null,created_at:new Date().toISOString().slice(0,19).replace('T',' ')}}});}
+  if(route.request().resourceType()==='script')console.error('VENTAS_GESTION_SCRIPT_SIN_MOCK',u.href);
   return route.fulfill({contentType:'text/html',body:view(mode)});
  });
  await page.goto('http://ventas.test/');
