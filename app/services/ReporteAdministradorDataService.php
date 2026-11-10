@@ -145,21 +145,9 @@ class ReporteAdministradorDataService
             ];
         }
 
-        $requierenAtencion = 0;
-        $ahora = new DateTimeImmutable();
-
         foreach ($pendientes as &$pendiente) {
             $codigo = (string)($pendiente['estado_seguimiento'] ?? '');
             $pendiente['estado_label'] = self::ESTADOS_SEGUIMIENTO[$codigo] ?? $codigo;
-
-            $sinActividad = trim((string)($pendiente['ultima_interaccion_at'] ?? '')) === '';
-            $masSieteDias = !$sinActividad && (int)($pendiente['dias_sin_actividad'] ?? 0) > 7;
-            $proximaAccion = $this->crearFecha($pendiente['proxima_accion_at'] ?? null);
-            $accionVencida = $proximaAccion instanceof DateTimeImmutable && $proximaAccion <= $ahora;
-
-            if ($sinActividad || $masSieteDias || $accionVencida) {
-                $requierenAtencion++;
-            }
         }
         unset($pendiente);
 
@@ -170,17 +158,13 @@ class ReporteAdministradorDataService
             'roles_registrados' => (int)$rolesRegistrados,
             'total_seguimientos' => $totalSeguimientos,
             'acciones_pendientes' => $accionesPendientes,
-            'acciones_vencidas' => $accionesVencidas,
-            'requieren_atencion' => $requierenAtencion
+            'acciones_vencidas' => $accionesVencidas
         ];
 
         $hallazgos = [
             $accionesVencidas > 0
                 ? 'Existen ' . $accionesVencidas . ' acciones vencidas.'
                 : 'No se registran acciones vencidas.',
-            $requierenAtencion > 0
-                ? $requierenAtencion . ' seguimientos requieren atención.'
-                : 'No se registran seguimientos que requieran atención.',
             $usuariosSinAcceso > 0
                 ? $usuariosSinAcceso . ' usuarios no tienen acceso registrado.'
                 : 'Todos los usuarios incluidos tienen acceso registrado.',
@@ -200,20 +184,5 @@ class ReporteAdministradorDataService
             ],
             'hallazgos' => $hallazgos
         ];
-    }
-
-    private function crearFecha($valor)
-    {
-        $valor = trim((string)$valor);
-
-        if ($valor === '') {
-            return null;
-        }
-
-        try {
-            return new DateTimeImmutable($valor);
-        } catch (Exception $error) {
-            return null;
-        }
     }
 }

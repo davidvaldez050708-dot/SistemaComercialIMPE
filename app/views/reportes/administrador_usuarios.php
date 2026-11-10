@@ -259,14 +259,6 @@ foreach ($estadoUsuarios as $datoEstado) {
                 <p class="metric-label">Vencidas</p>
             </div>
         </article>
-
-        <article class="metric-card">
-            <div class="metric-icon"><i class="bi bi-exclamation-diamond"></i></div>
-            <div>
-                <p class="metric-value"><?= (int)($resumen['requieren_atencion'] ?? 0) ?></p>
-                <p class="metric-label">Requieren atención</p>
-            </div>
-        </article>
     </section>
 
     <div class="territorial-section-title">
@@ -393,14 +385,6 @@ foreach ($estadoUsuarios as $datoEstado) {
             <div>
                 <p class="metric-value"><?= (int)($resumen['acciones_vencidas'] ?? 0) ?></p>
                 <p class="metric-label">Acciones vencidas</p>
-            </div>
-        </article>
-
-        <article class="metric-card">
-            <div class="metric-icon"><i class="bi bi-exclamation-diamond"></i></div>
-            <div>
-                <p class="metric-value"><?= (int)($resumen['requieren_atencion'] ?? 0) ?></p>
-                <p class="metric-label">Requieren atención</p>
             </div>
         </article>
     </section>

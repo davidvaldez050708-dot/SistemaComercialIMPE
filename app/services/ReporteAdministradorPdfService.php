@@ -209,8 +209,7 @@ class ReporteAdministradorPdfService
                 ['etiqueta' => 'Roles', 'valor' => (int)($resumen['roles_registrados'] ?? 0)],
                 ['etiqueta' => 'Seguimientos', 'valor' => (int)($resumen['total_seguimientos'] ?? 0)],
                 ['etiqueta' => 'Pendientes', 'valor' => (int)($resumen['acciones_pendientes'] ?? 0)],
-                ['etiqueta' => 'Vencidas', 'valor' => (int)($resumen['acciones_vencidas'] ?? 0)],
-                ['etiqueta' => 'Requieren atención', 'valor' => (int)($resumen['requieren_atencion'] ?? 0)]
+                ['etiqueta' => 'Vencidas', 'valor' => (int)($resumen['acciones_vencidas'] ?? 0)]
             ],
             $anchoUtil,
             4
@@ -269,8 +268,7 @@ class ReporteAdministradorPdfService
         $elementos[] = $this->crearTarjetasIndicadores(
             $documento,
             [
-                ['etiqueta' => 'Acciones vencidas', 'valor' => (int)($resumen['acciones_vencidas'] ?? 0)],
-                ['etiqueta' => 'Requieren atención', 'valor' => (int)($resumen['requieren_atencion'] ?? 0)]
+                ['etiqueta' => 'Acciones vencidas', 'valor' => (int)($resumen['acciones_vencidas'] ?? 0)]
             ],
             $anchoUtil,
             2
@@ -530,13 +528,12 @@ class ReporteAdministradorPdfService
 
         foreach (array_chunk($indicadores, $columnas) as $grupo) {
             $fila = $this->crearFila($documento, false);
-            foreach ($anchos as $indice => $ancho) {
-                $indicador = $grupo[$indice] ?? ['etiqueta' => '', 'valor' => ''];
+            foreach ($grupo as $indice => $indicador) {
                 $fila->appendChild($this->crearCeldaIndicador(
                     $documento,
                     (string)($indicador['valor'] ?? ''),
                     (string)($indicador['etiqueta'] ?? ''),
-                    $ancho
+                    $anchos[$indice]
                 ));
             }
             $tabla->appendChild($fila);
