@@ -48,7 +48,10 @@ $checks = [
     'Devolución usa WebRTC persistente y soporta transferencia' =>
         str_contains($jsRecepcion, 'telefono.openDialer?.({') &&
         str_contains($jsRecepcion, "'MARKETING_CALLBACK'") &&
-        str_contains($recepcion, 'data-marketing-reception-callback-status'),
+        str_contains($jsRecepcion, "'MARKETING_CALLBACK'") &&
+        str_contains($jsRecepcion, 'explicarDevolucion(') &&
+        str_contains($jsRecepcion, 'bootstrap.Toast.getOrCreateInstance') &&
+        str_contains($recepcion, 'data-marketing-reception-rows'),
     'Historial telefónico no se elimina' =>
         str_contains($recepcion, 'data-marketing-reception-rows') &&
         str_contains($recepcion, 'data-marketing-reception-filter') &&
