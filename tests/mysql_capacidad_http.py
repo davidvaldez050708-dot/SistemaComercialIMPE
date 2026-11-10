@@ -166,6 +166,7 @@ def preparar_sitio(destino, base, cambios):
     for estilo in ("global.css", "dashboard.css", "recordatorios.css"):
         (destino / "public/css" / estilo).touch()
     (destino / "sesiones-prueba").mkdir()
+    (destino.parent / "admision-mysql").mkdir(mode=0o700, exist_ok=True)
 
 
 def libre():
@@ -182,8 +183,12 @@ def servidor(args, sitio, log, db_port=None):
                IMPE_DB_HOST="127.0.0.1:" + str(db_port or args.port),
                IMPE_DB_NAME="impe_test_capacidad", IMPE_DB_USER="impe_capacity", IMPE_DB_PASSWORD="",
                IMPE_BASE_URL="http://127.0.0.1:" + str(puerto) + "/", APP_ENV="development")
+    if args.admision:
+        env["IMPE_DB_ADMISION_DIR"] = str(sitio.parent / "admision-mysql")
+    if args.traza:
+        env["IMPE_DB_TRAZA"] = "1"
     proceso = subprocess.Popen(
-        [args.php, "-d", "display_errors=0", "-d", "session.save_path=" + str(sitio / "sesiones-prueba"),
+        [args.php, "-d", "mysqlnd.collect_statistics=1", "-d", "display_errors=0", "-d", "session.save_path=" + str(sitio / "sesiones-prueba"),
          "-S", "127.0.0.1:" + str(puerto), "-t", str(sitio)],
         env=env, stdout=log, stderr=log,
     )
@@ -273,10 +278,8 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
         fila = segundos_db.setdefault(segundo, {"pico_sesiones": 0, "pico_sleep": 0})
         fila["pico_sesiones"] = max(fila["pico_sesiones"], registro[2])
         fila["pico_sleep"] = max(fila["pico_sleep"], registro[3])
-    try:
-        for _ in range(cantidad):
-            servers.append(servidor(args, sitio, log, puerto_mysql))
-        for puerto, proceso in servers:
+    def esperar(pendientes):
+        for puerto, proceso in pendientes:
             for _ in range(100):
                 try:
                     with socket.create_connection(("127.0.0.1",puerto),timeout=0.2):
@@ -287,6 +290,10 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
                     time.sleep(0.05)
             else:
                 raise RuntimeError("PHP no inició")
+    try:
+        for _ in range(cantidad):
+            servers.append(servidor(args, sitio, log, puerto_mysql))
+        esperar(servers)
         sesiones = [None] * cantidad
         if args.preautenticar:
             # Las cookies se preparan con otro proceso para que la medición
@@ -311,7 +318,16 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
                 escenario(puerto, i + 1, time.monotonic(), cookie)
                 muestrear()
                 time.sleep(0.28)
-            time.sleep(1.05)
+            time.sleep(1.06)
+        reciclados = min(args.reciclar, cantidad)
+        if reciclados:
+            for i in range(reciclados):
+                _, proceso = servers[i]
+                proceso.terminate()
+                proceso.wait(timeout=10)
+                servers[i] = servidor(args, sitio, log, puerto_mysql)
+            esperar(servers[:reciclados])
+            muestrear()
         primera_muestra_rafaga = len(muestras)
         with ThreadPoolExecutor(max_workers=cantidad) as executor:
             inicio=time.monotonic()+1.1
@@ -330,7 +346,7 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
             fila["latencias_ms"].setdefault(ruta, []).append(round(ms, 1))
         resumen={
             "usuarios":cantidad,"intervalo_arranque":intervalo,"preautenticado":args.preautenticar,
-            "pool_caliente":args.pool_caliente, "pico_sesiones_rafaga":max(m[2] for m in muestras[primera_muestra_rafaga:]),
+            "pool_caliente":args.pool_caliente, "workers_reciclados":reciclados, "admision":args.admision, "pico_sesiones_rafaga":max(m[2] for m in muestras[primera_muestra_rafaga:]),
             "pico_sesiones":max(m[2] for m in muestras),"sleep_final":muestras[-1][3],
             "intentos_max_1s_observados":max(b[1]-a[1] for b in muestras for a in muestras if 0<=b[0]-a[0]<=1),
             "p95_ms_exitosas":round(exitos[math.ceil(.95*len(exitos))-1],1) if exitos else None,
@@ -397,9 +413,16 @@ def main():
     parser.add_argument("--sin-escalonar", action="store_true", help="Ejecuta sólo la ráfaga simultánea")
     parser.add_argument("--metricas", type=Path, help="Guarda resultados detallados por segundo en JSONL")
     parser.add_argument("--pool-caliente", action="store_true", help="Conserva las conexiones tras un arranque gradual medido")
+    parser.add_argument("--reciclar", type=int, default=0, help="Reinicia esa cantidad de workers antes de la ráfaga")
+    parser.add_argument("--admision", action="store_true", help="Activa la admisión PHP en el laboratorio")
+    parser.add_argument("--traza", action="store_true", help="Registra reaperturas y reutilizaciones de mysqlnd")
     parser.add_argument("--solo", choices=("base", "candidato"))
     parser.add_argument("--preautenticar", action="store_true", help="Mide recargas con sesiones válidas y pools fríos")
     args=parser.parse_args()
+    if args.reciclar < 0 or (args.reciclar and not args.pool_caliente):
+        parser.error("--reciclar requiere --pool-caliente y un número positivo")
+    if args.admision and args.solo != "candidato":
+        parser.error("--admision requiere --solo candidato")
     if args.verificar_avisos and not args.esquema:
         parser.error("--verificar-avisos requiere --esquema con las tablas de Agenda")
     observador=iniciar(args.php,args.port,"observer")

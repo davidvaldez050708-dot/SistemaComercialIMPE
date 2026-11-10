@@ -750,6 +750,275 @@ index 0000000..0b8e64b
 +        return true;
 +    }
 +}
+diff --git a/config/db_connection.php b/config/db_connection.php
+index 69e5c1b..0375086 100644
+--- a/config/db_connection.php
++++ b/config/db_connection.php
+@@ -1,6 +1,7 @@
+ <?php
+ 
+ require_once __DIR__ . '/config.php';
++require_once __DIR__ . '/mysql_admision.php';
+ 
+ class Database
+ {
+@@ -13,6 +14,11 @@ class Database
+      * mientras se mide la tasa de aperturas de las sesiones independientes.
+      */
+     public function connect(?bool $persistente = null): mysqli
++    {
++        return $this->abrir($persistente, false);
++    }
++
++    private function abrir(?bool $persistente, bool $compartida): mysqli
+     {
+         if (self::$falloConexion !== null) {
+             throw self::$falloConexion;
+@@ -21,24 +27,97 @@ class Database
+             PHP_SAPI !== 'cli' && getenv('IMPE_DB_INDEPENDENT_PERSISTENT') !== '0'
+         );
+         $host = preg_replace('/^p:/', '', DB_HOST);
++        $directorio = (string)getenv('IMPE_DB_ADMISION_DIR');
++        $trazar = getenv('IMPE_DB_TRAZA') === '1';
++        $ruta = ($directorio !== '' || $trazar) ? self::ruta() : '';
++        $admision = null;
++        $reserva = null;
++        $inicio = hrtime(true);
++        $espera = 0;
++        $resultado = 'sin_intento';
++        $codigo = 0;
+         try {
++            if ($directorio !== '') {
++                $admision = new AdmisionMysql($directorio);
++                $urgente = (str_starts_with($ruta, 'api.') && $ruta !== 'api.zadarma_webrtc') ||
++                    in_array($ruta, [
++                        'telefonia.disponibilidad', 'telefonia.autorizarTransferencia',
++                        'telefonia.contextoTransferencia', 'telefonia.validarOrdenTransferencia',
++                        'telefonia.iniciarMarcacionVenta', 'telefonia.vincularMarcacionVenta',
++                    ], true);
++                $reserva = $admision->reservar($urgente);
++                $espera = (int)((hrtime(true) - $inicio) / 1000000);
++            }
++            $antes = ($admision !== null || $trazar) ? self::reutilizaciones() : null;
++            $resultado = 'intento_fallido';
+             $conexion = mysqli_init();
+             if (!$conexion || !$conexion->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3) ||
+                 !@$conexion->real_connect(($persistente ? 'p:' : '') . $host, DB_USER, DB_PASSWORD, DB_NAME)) {
+                 throw new mysqli_sql_exception('Conexión MySQL no disponible.', mysqli_connect_errno());
+             }
++            $despues = $antes !== null ? self::reutilizaciones() : null;
++            $resultado = $despues === null ? 'sin_medicion' :
++                ($despues > $antes ? 'reutilizada' : 'nueva');
+             if (!$conexion->set_charset('utf8mb4')) {
+                 throw new RuntimeException('No fue posible configurar la conexión.');
+             }
+             return $conexion;
+         } catch (Throwable $e) {
+-            error_log('[impe_mysql] fallo de conexión; código=' . (int)$e->getCode());
++            $codigo = (int)$e->getCode();
++            if ($e instanceof AdmisionMysqlOcupada) {
++                $resultado = 'sin_cupo';
++                $espera = (int)((hrtime(true) - $inicio) / 1000000);
++            }
++            error_log('[impe_mysql] fallo de conexión; código=' . $codigo);
+             $error = new RuntimeException('No fue posible conectar con la base de datos.', 0, $e);
+             if (self::esFalloTemporal($error)) {
+                 self::$falloConexion = $error;
+             }
+             throw $error;
++        } finally {
++            if ($admision !== null && $reserva !== null) {
++                try {
++                    $admision->completar($reserva, $resultado === 'reutilizada');
++                } catch (AdmisionMysqlOcupada $error) {
++                    error_log('[impe_mysql_admision] No fue posible confirmar la reserva.');
++                }
++            }
++            if ($trazar) {
++                error_log('[impe_mysql_traza] ' . json_encode([
++                    'ruta' => $ruta, 'pid' => getmypid(), 'compartida' => $compartida,
++                    'persistente' => $persistente, 'resultado' => $resultado,
++                    'codigo' => $codigo, 'espera_ms' => $espera,
++                ]));
++            }
++        }
++    }
++
++    private static function reutilizaciones(): ?int
++    {
++        if (!function_exists('mysqli_get_client_stats') || !filter_var(ini_get('mysqlnd.collect_statistics'), FILTER_VALIDATE_BOOLEAN)) {
++            return null;
+         }
++        return (int)(mysqli_get_client_stats()['connection_reused'] ?? 0);
++    }
++
++    private static function ruta(): string
++    {
++        $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
++        if (preg_match('/^(zadarma_[a-z_]+|avisos_llamadas|transferencia_operacion|borrador_llamada)\.php$/D', $script, $coincidencia)) {
++            return 'api.' . $coincidencia[1];
++        }
++        $controlador = $_GET['controller'] ?? '';
++        $accion = $_GET['action'] ?? '';
++        if (is_string($controlador) && is_string($accion) &&
++            in_array($controlador, ['login', 'home', 'reminder', 'telefonia'], true) &&
++            in_array($accion, [
++                'iniciarSesion', 'mostrarLogin', 'index', 'pendientes', 'shell', 'disponibilidad',
++                'autorizarTransferencia', 'contextoTransferencia', 'validarOrdenTransferencia',
++                'iniciarMarcacionVenta', 'vincularMarcacionVenta',
++            ], true)) {
++            return $controlador . '.' . $accion;
++        }
++        return 'otras';
+     }
+ 
+     /**
+@@ -48,12 +127,15 @@ class Database
+     public static function compartida(): mysqli
+     {
+         $persistente = PHP_SAPI !== 'cli' && getenv('IMPE_DB_PERSISTENT') !== '0';
+-        return self::$compartida ??= (new self())->connect($persistente);
++        return self::$compartida ??= (new self())->abrir($persistente, true);
+     }
+ 
+     public static function esFalloTemporal(Throwable $error): bool
+     {
+         do {
++            if ($error instanceof AdmisionMysqlOcupada) {
++                return true;
++            }
+             if ($error instanceof mysqli_sql_exception &&
+                 in_array((int)$error->getCode(), [1040, 1203, 1226, 2002, 2003, 2006, 2013], true)) {
+                 return true;
+diff --git a/config/mysql_admision.php b/config/mysql_admision.php
+new file mode 100644
+index 0000000..0f432ed
+--- /dev/null
++++ b/config/mysql_admision.php
+@@ -0,0 +1,123 @@
++<?php
++
++final class AdmisionMysqlOcupada extends RuntimeException
++{
++}
++
++/** Coordina aperturas de una cuenta entre workers del mismo host. */
++final class AdmisionMysql
++{
++    private const VENTANA = 1.05;
++    private const PENDIENTE = 30.0;
++    private const MAXIMO = 15;
++    private const CUPO_NORMAL = 13;
++
++    private string $directorio;
++
++    public function __construct(string $directorio)
++    {
++        $ruta = realpath($directorio);
++        $publico = realpath(dirname(__DIR__));
++        if ($ruta === false || !is_dir($ruta) || !is_writable($ruta) || $publico === false ||
++            str_starts_with(strtolower($ruta . DIRECTORY_SEPARATOR), strtolower($publico . DIRECTORY_SEPARATOR)) ||
++            (PHP_OS_FAMILY !== 'Windows' && (fileperms($ruta) & 0077) !== 0)) {
++            throw new AdmisionMysqlOcupada('El directorio privado de admisión no está disponible.');
++        }
++        $this->directorio = $ruta . DIRECTORY_SEPARATOR;
++    }
++
++    public function reservar(bool $urgente): string
++    {
++        $marca = $this->directorio . 'mysql-cupo-' . bin2hex(random_bytes(16)) . '.reserva';
++        $limite = self::ahora() + ($urgente ? 0.24 : 4.2);
++        $cupo = $urgente ? self::MAXIMO : self::CUPO_NORMAL;
++
++        do {
++            if ($this->registrarSiHayCupo($marca, $cupo)) {
++                return $marca;
++            }
++            $restante = $limite - self::ahora();
++            if ($restante <= 0) {
++                break;
++            }
++            usleep((int)min($restante * 1000000, random_int(12000, 30000)));
++        } while (self::ahora() < $limite);
++
++        throw new AdmisionMysqlOcupada('No hay cupo inmediato para abrir una conexión.');
++    }
++
++    public function completar(string $marca, bool $reutilizada): void
++    {
++        // El resultado se escribe por separado. Un lector puede estar
++        // leyendo la reserva en un sistema que no admite borrar archivos abiertos.
++        $this->guardar($marca . '.fin', $reutilizada ? 0.0 : self::ahora() + self::VENTANA);
++    }
++
++    private function registrarSiHayCupo(string $marca, int $cupo): bool
++    {
++        $candado = @fopen($this->directorio . 'mysql-aperturas.lock', 'c+b');
++        if ($candado === false) {
++            throw new AdmisionMysqlOcupada('No fue posible abrir el candado de admisión.');
++        }
++        try {
++            if (!flock($candado, LOCK_EX | LOCK_NB)) {
++                return false;
++            }
++            $marcas = glob($this->directorio . 'mysql-cupo-*.reserva', GLOB_NOSORT);
++            if ($marcas === false) {
++                throw new AdmisionMysqlOcupada('No fue posible consultar el estado de admisión.');
++            }
++            $ahora = self::ahora();
++            $ocupadas = 0;
++            foreach ($marcas as $archivo) {
++                $fin = $archivo . '.fin';
++                // Ausencia de confirmación se contabiliza conservadoramente.
++                $cerrada = is_file($fin);
++                $contenido = @file_get_contents($cerrada ? $fin : $archivo, false, null, 0, 64);
++                if ($contenido === false || !preg_match('/^\d+\.\d{6}$/D', $contenido)) {
++                    throw new AdmisionMysqlOcupada('El estado de admisión requiere revisión.');
++                }
++                $vence = (float)$contenido;
++                // Tras un reinicio del host cambia el origen del reloj monotónico.
++                if ($vence <= $ahora || $vence > $ahora + self::PENDIENTE + 0.001) {
++                    if (@unlink($archivo) && $cerrada) {
++                        @unlink($fin);
++                    }
++                    continue;
++                }
++                $ocupadas++;
++            }
++            if ($ocupadas >= $cupo) {
++                return false;
++            }
++            $this->guardar($marca, $ahora + self::PENDIENTE);
++            return true;
++        } finally {
++            fclose($candado);
++        }
++    }
++
++    private function guardar(string $marca, float $vence): void
++    {
++        $temporal = @tempnam($this->directorio, '.mysql-aperturas-');
++        if ($temporal === false) {
++            throw new AdmisionMysqlOcupada('No fue posible guardar la reserva de admisión.');
++        }
++        try {
++            $contenido = sprintf('%.6F', $vence);
++            if (@file_put_contents($temporal, $contenido) !== strlen($contenido) ||
++                !@rename($temporal, $marca)) {
++                throw new AdmisionMysqlOcupada('No fue posible guardar la reserva de admisión.');
++            }
++        } finally {
++            if (is_file($temporal)) {
++                @unlink($temporal);
++            }
++        }
++    }
++
++    private static function ahora(): float
++    {
++        return hrtime(true) / 1000000000;
++    }
++}
 diff --git a/prueba_telefonia/api/avisos_llamadas.php b/prueba_telefonia/api/avisos_llamadas.php
 index 77ea1ef..e86ead5 100644
 --- a/prueba_telefonia/api/avisos_llamadas.php

@@ -1,6 +1,6 @@
 {
   "apto_para_publicar": false,
-  "parche": "a8b478767ee447ffd16c02fc40cbdc66e3d2b03fb18f40108f4fd04629bf28ea",
+  "parche": "4d2ecb44528486e0e1b1db3602083297863f4e2589742f1f9e344cdf8c8631ce",
   "antes": {
     "app/controllers/HomeController.php": "bf5114735e43a9663948ea59f5ff726eb24309cd472f3e7ce57252f992d6138e",
     "app/controllers/LoginController.php": "efc86029cf097e06cd6571376697622f614e7958bb37de4947567e3587964db7",
@@ -25,6 +25,8 @@
     "app/services/TelefoniaEntrantesAnalistaService.php": "0a6d762269051ed225ee4ec1a7257bcb8f65249ce69901ce0212585cf3a2589c",
     "app/services/TelefoniaNotificacionService.php": "e41aa780935cf14bfd9cb7a98c80ad3a40d372b95aed1039cdcc2c1889952785",
     "app/services/TelefoniaSesionService.php": null,
+    "config/db_connection.php": "b677c716f3bb7d5fcc47f134e7514311277618c17498feeeffcad8f206a01601",
+    "config/mysql_admision.php": null,
     "prueba_telefonia/api/avisos_llamadas.php": "ccb39db91c0406615a3ec755c7876c405669a130f0fcabd305ad5e358f4971aa",
     "prueba_telefonia/api/zadarma_entrada_activa.php": "a8e6a94016fa83178dcbc284ca746fe05e66120a8def69da33e69c0ea09786bc",
     "prueba_telefonia/api/zadarma_estado_llamada.php": "9ff6d24b27212d10fa1b61cc5070a40961f74f24c23651adf76950a80f9bc6fb",
@@ -55,6 +57,8 @@
     "app/services/TelefoniaEntrantesAnalistaService.php": "37216f9505926b5dd6430cf6645f80596d22151301eab5e54f1e5ccfe49fdd85",
     "app/services/TelefoniaNotificacionService.php": "0d46dd650871e95134068355231e2ec531827e1158229f8a266d97db0221433d",
     "app/services/TelefoniaSesionService.php": "7b2f5108aa846177eacaabf4dc9d60b1534f9a7520634c847fe0cb6cf15ff044",
+    "config/db_connection.php": "0a0f55ee6938ac0de07a3b503b392aa810909a76e3d6f58444797779f643d54f",
+    "config/mysql_admision.php": "48e8778758edad05e54ab2ead8d7304c5dcb688a34d6056a16b233f2f62a4aeb",
     "prueba_telefonia/api/avisos_llamadas.php": "1f45be337c7163351dee048c54de221cf72522dfc9826b28996872b72d778b5d",
     "prueba_telefonia/api/zadarma_entrada_activa.php": "0e2aa693f1bb5f265626008b0210b42c35516e6be776c247944ef24a578c696d",
     "prueba_telefonia/api/zadarma_estado_llamada.php": "a86e7008a1d8d06949a41d556b57660995e852b594909873314d7764b9bd435f",
@@ -62,7 +66,6 @@
     "public/javascript/recordatorios.js": "4147a9bb6c381bffeac7ec09f7894d711c8f2bfcb5064697984e28ae5e4ea3f6"
   },
   "contexto": {
-    "config/db_connection.php": "b677c716f3bb7d5fcc47f134e7514311277618c17498feeeffcad8f206a01601",
     "index.php": "4e10d4771b68a28178822c692bb52f03601df6728e4d59de98a5f21ae5013c8b",
     "app/services/TelefoniaControlService.php": "442c431767c9d091bd44a4f748f86159bbf8887a38751292c8476d21cd586b88",
     "app/services/TelefoniaDisponibilidadService.php": "93fc35e3f5d4d0c19509e12bd9d64ae2b2170f50b984edd45b6d5559abc15cf5",

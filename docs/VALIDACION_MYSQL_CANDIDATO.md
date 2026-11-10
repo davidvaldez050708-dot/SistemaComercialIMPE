@@ -152,3 +152,68 @@ Con `--verificar-avisos` se sembró un comentario distinto y con hora para cada 
 El escenario escalonado alcanzó el margen definido de 60 sesiones y 15 aperturas/s. El espaciado solo pertenece al ensayo. La ráfaga en frío sigue sin cumplir el criterio de aceptación. Se confirmó el cierre de sesión, revocación, fallos temporales 503 y recuperación. La exportación no contiene los registros y los perfiles reales del CRM, ni reproduce el ciclo de vida de los workers de LiteSpeed. El publicador conserva el bloqueo de aplicación.
 
 Con sesiones previamente autenticadas y pools calientes, pasaron todas las recargas, Inicio y las dos consultas de campana de 10 y 30 usuarios. Se observaron 16 y 46 sesiones, respectivamente, y cuatro aperturas/s durante el calentamiento, sin aperturas nuevas en la ráfaga ni rechazos. El p95 fue de 109 y 313 ms. Para 30 usuarios respondieron correctamente 12 consultas por cada recorrido simulado de WebRTC, entrada activa, estado y transferencia. La verificación deliberada de 401, 403 por revocación y 503 por caída de MySQL pasó aparte. Estos resultados validan los avisos sembrados y las rutas simuladas en el laboratorio, con la aceptación del alojamiento aún pendiente por el caso frío.
+
+## Admisión de aperturas y reciclaje de workers
+
+### Causa del pico en frío
+
+La conexión compartida evita abrir varias sesiones compatibles en la misma petición. El pool persistente de PHP pertenece a cada worker. Al arrancar 30 workers fríos, cada primer login necesita su propio socket. Las rutas con una conexión independiente pueden necesitar otro socket aunque el worker ya tenga uno ocupado. En esta configuración, un pool frío de 30 workers supera el límite de 20/s aun si cada login abre una sola sesión.
+
+La traza del laboratorio diferencia la conexión compartida de la independiente y clasifica cada `real_connect` por el delta de `connection_reused` de mysqlnd. El intermediario TCP cuenta intentos físicos, incluidos los rechazos. Los dos indicadores tienen alcances distintos. La traza no incluye credenciales, parámetros, cookies, SQL ni usuarios.
+
+| Ruta | Nuevas compartidas | Nuevas independientes | Reutilizadas compartidas | Reutilizadas independientes |
+|---|---:|---:|---:|---:|
+| Autenticación | 32 | 0 | 1 | 0 |
+| Inicio | 0 | 6 | 32 | 0 |
+| Campana y recarga | 0 | 2 | 64 | 2 |
+| WebRTC, entrada y estado | 0 | 0 | 43 | 0 |
+| Consulta de transferencia | 0 | 0 | 0 | 13 |
+
+La tabla agrega los ensayos sin admisión de 10 y 30 usuarios y las sondas de verificación. Las rutas de telefonía se ejecutan después de Inicio y campana en ese recorrido. Un worker que reciba una petición telefónica como primera solicitud todavía puede necesitar una apertura nueva. Los intentos fallidos se ven en la traza separadamente.
+
+### Admisión opcional
+
+`IMPE_DB_ADMISION_DIR` activa la coordinación en un directorio privado fuera del sitio. La admisión usa un candado de archivo al reservar y una marca independiente por intento. El worker escribe un archivo de confirmación separado y no vuelve a competir por el candado. La siguiente reserva descuenta las confirmaciones de reutilización. Cada archivo se escribe mediante renombrado atómico. Ninguna conexión ni consulta SQL se ejecuta bajo el candado. Se admiten hasta 15 posibles aperturas por 1,05 s, 13 para peticiones normales y 15 para las rutas telefónicas urgentes. Una conexión en caché puede haber caducado, por lo que todo real_connect requiere admisión. El cupo se devuelve cuando mysqlnd confirma una reutilización y se conserva durante la ventana en caso de apertura nueva, intento fallido o medición no disponible.
+
+La espera máxima de admisión es 4,2 s en autenticación, Inicio, campana y demás rutas normales, y 240 ms para las rutas telefónicas prioritarias. El presupuesto cubre la espera por el cupo. Una vez concedido, MySQLi conserva su propio tiempo de conexión. No se repite ninguna operación SQL ni petición HTTP. Las esperas se dispersan y ocurren antes de intentar abrir una conexión. Si el proceso muere antes de confirmar, la reserva se conserva hasta 30 s. El fallo de admisión responde 503 por el recorrido temporal existente.
+
+El margen de cinco aperturas por segundo contempla otros consumidores de la cuenta, cuyos intentos no pasan necesariamente por este componente. Hace falta verificar que todos los workers usan el mismo directorio y que su sistema de archivos soporta `flock` y renombrados atómicos. Se requiere un solo host coordinado para este diseño. La publicación sigue bloqueada hasta validar esos requisitos, el comportamiento de LiteSpeed y las rutas urgentes con la topología real.
+
+En el laboratorio, `--traza` habilita los eventos de mysqlnd, `--admision` activa el control y `--pool-caliente --reciclar 10` detiene diez workers y crea reemplazos antes de la ráfaga. `--preautenticar` conserva cookies válidas para el ensayo de recargas. El estado de admisión se crea fuera de la raíz del sitio temporal. La prueba usa la exportación original de 128 tablas y ocho perfiles sintéticos, el limitador TCP de 20 aperturas/s y el límite real de 75 conexiones del usuario de MariaDB.
+
+### Comparación del control inicial
+
+Los casos sin admisión usan el mismo candidato funcional y el mismo esquema, con el control apagado. El pico en la ventana móvil lo informa el intermediario TCP. El p95 se calcula sobre respuestas exitosas.
+
+| Condición | Usuarios | Login | Inicio | Campana inicial | Sesiones pico | Intentos físicos/s | Rechazos MySQL | HTTP 500 / 503 | p95 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Frío simultáneo, sin admisión | 10 | 10/10 | 10/10 | 10/10 | 16 | 16 | 0 | 0 / 0 | 234 ms |
+| Frío simultáneo, sin admisión | 30 | 20/30 | 18/30 | 20/30 | 20 | 41 | 21 | 0 / 12 | 172 ms |
+| Frío simultáneo, con admisión | 10 | 10/10 | 10/10 | 10/10 | 16 | 13 | 0 | 0 / 0 | 1.250 ms |
+| Frío simultáneo, con admisión | 30 | 30/30 | 30/30 | 30/30 | 46 | 13 | 0 | 0 / 5 | 2.406 ms |
+| Diez workers reemplazados, sesiones válidas | 10 | — | 10/10 | 10/10 | 16 | 13 | 0 | 0 / 1 | 1.032 ms |
+| Diez workers reemplazados, sesiones válidas | 30 | — | 30/30 | 30/30 | 46 | 13 | 0 | 0 / 7 | 1.985 ms |
+| Diez workers reemplazados, login simultáneo | 10 | 10/10 | 10/10 | 10/10 | 16 | 13 | 0 | 0 / 0 | 1.125 ms |
+| Diez workers reemplazados, login simultáneo | 30 | 30/30 | 30/30 | 30/30 | 46 | 6 | 0 | 0 / 5 | 1.813 ms |
+
+En este primer diseño de estado compartido, los 503 con admisión se produjeron en consultas urgentes de entrada, estado o transferencia por agotamiento de su plazo local. Los distingue el resultado `sin_cupo` en la traza. No se reintentaron operaciones automáticamente. La mayor espera de admisión observada en login frío fue de 4.142 ms. Aumentar la reserva para telefonía a cuatro cupos y dar prioridad a sesiones posiblemente reutilizables no mejoró los resultados de forma consistente, por lo que se conservó la política de 13 cupos normales y dos adicionales para telefonía urgente.
+
+Pasaron las pruebas de revocación, cierre de sesión, caída de MySQL y recuperación en los perfiles ejecutados, además de los ensayos Node de múltiples pestañas, transferencia simulada y cierre SIP. El control de admisión pasó el ensayo de cupo reservado, devolución por reutilización, caducidad y rechazo de un estado inválido. El paquete selectivo incluye los dos archivos de configuración de esta revisión y conserva la huella de `TelefoniaControlService.php`.
+
+
+### Resultados con confirmaciones separadas
+
+| Condición | Usuarios | Login | Inicio | Campana inicial | Sesiones pico | Intentos físicos/s | Rechazos MySQL | HTTP 500 / 503 | p95 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Frío simultáneo | 10 | 10/10 | 10/10 | 10/10 | 16 | 13 | 0 | 0 / 0 | 875 ms |
+| Frío simultáneo | 30 | 30/30 | 30/30 | 30/30 | 46 | 12 | 0 | 0 / 5 | 2.875 ms |
+| Pools calientes, sesiones válidas | 10 | — | 10/10 | 10/10 | 16 | 4 | 0 | 0 / 0 | 266 ms |
+| Pools calientes, sesiones válidas | 30 | — | 30/30 | 30/30 | 46 | 4 | 0 | 0 / 1 | 1.141 ms |
+| Diez workers reemplazados, sesiones válidas | 10 | — | 10/10 | 10/10 | 16 | 13 | 0 | 0 / 1 | 1.219 ms |
+| Diez workers reemplazados, sesiones válidas | 30 | — | 30/30 | 30/30 | 46 | 12 | 0 | 0 / 2 | 1.234 ms |
+| Diez workers reemplazados, login simultáneo | 10 | 10/10 | 10/10 | 10/10 | 16 | 13 | 0 | 0 / 0 | 1.063 ms |
+| Diez workers reemplazados, login simultáneo | 30 | 30/30 | 30/30 | 30/30 | 46 | 10 | 0 | 0 / 3 | 1.250 ms |
+
+El p95 en frío para el login de 30 usuarios fue de 3.532 ms y la espera de admisión máxima observada en ese recorrido fue de 3.984 ms. El p95 global incluye únicamente respuestas exitosas. En caliente, el pico físico incluye el calentamiento anterior a la ráfaga. Las recargas de cada usuario se validaron con su aviso de agenda dirigido y horario, y sin marcarlo como leído o atendido.
+
+La admisión eliminó rechazos MySQL en esta matriz aislada. Todavía se observaron 503 locales en rutas telefónicas y un aumento de latencia respecto a un pool caliente sin control. Falta verificar el rendimiento y la coordinación con el filesystem, la distribución de peticiones y el reciclaje real de LiteSpeed. Los resultados de transferencias y múltiples pestañas son de simulación y los perfiles son sintéticos. Se mantiene bloqueado el publicador.
