@@ -32,7 +32,9 @@ required=[
     "MANIFIESTO PRIVADO",
     "if (!empty($o['check']))",
     "numero_nacional_en_pbx",
-    "Existe formato PBX nacional de 10 dígitos"
+    "mismoNumeroAsignado",
+    "El puente comercial del sitio aún no fue validado",
+    "numero_nacional_en_pbx"
 ]
 for string in required:
     assert string in src,string
