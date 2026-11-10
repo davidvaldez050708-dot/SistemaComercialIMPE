@@ -52,6 +52,9 @@ jobs:
         run: |
           php tests/embudo_comercial_fase1_unit.php
           php tests/embudo_comercial_fase2_unit.php
+          php -l app/services/EmbudoComercialPresentacion.php
+          php tests/embudo_comercial_ficha_historial_unit.php
+          python3 tests/embudo_comercial_ficha_historial_estatico_test.py
           node --check public/javascript/embudo_comercial_movimientos.js
           node --check public/javascript/telefonia_ventas_resultados.js
           python3 -m py_compile tools/embudo_fase2_preflight_hostinger.py
