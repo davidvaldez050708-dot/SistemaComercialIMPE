@@ -20,7 +20,10 @@ assert "array_slice($historial,0,50)" in scope
 assert "ORDER BY m.creado_at DESC,m.id DESC" in scope
 assert "LEFT JOIN usuarios u" in scope
 assert "historial_movimientos" in detail and "historial_truncado" in detail
-assert "$esc($mov['motivo'])" in detail
+assert "$presentarMotivo($mov['motivo']??'')" in detail, 'motivo derivado solo en presentación'
+assert "$esc($motivoPresentado['descripcion'])" in detail, 'motivo visible escapado'
+assert "$esc($motivoPresentado['referencia_tecnica'])" in detail, 'referencia PBX escapada'
+assert '<details class="impe-embudo-timeline-tecnico">' in detail, 'referencia plegada'
 assert "$esc($autor)" in detail
 assert "EmbudoComercialPresentacion::fechaUtc" in view
 assert "EmbudoComercialPresentacion::fechaUtc" in detail
