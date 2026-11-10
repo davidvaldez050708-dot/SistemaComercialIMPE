@@ -34,7 +34,9 @@ def production(rel):
     if p.returncode:
         raise RuntimeError("No se localizó referencia V4 para "+rel)
     s=p.stdout.decode("utf-8")
-    if rel=="public/javascript/telefonia_ventas_resultados.js":
+    if rel=="app/services/TelefoniaResultadoVentasCatalogo.php":
+        pass  # La versión 4 del catálogo sí coincide literalmente con Hostinger.
+    elif rel=="public/javascript/telefonia_ventas_resultados.js":
         old="   form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;\n"
         new=old+(
             "    // IMPE_EMBUDO_ASIGNACION_RESULTADO_V1: contexto opt-in del prospecto.\n"
