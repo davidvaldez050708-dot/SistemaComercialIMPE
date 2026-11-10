@@ -30,13 +30,15 @@ def git(ref,path):
 
 def production_result_js():
     src=git(GIT_BASE_V4,'public/javascript/telefonia_ventas_resultados.js').decode('utf-8')
-    marker='   form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;'
+    marker='   form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;\n'
     must(src.count(marker)==1,'marcador productivo esperado único')
     patch='''   form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;
     // IMPE_EMBUDO_ASIGNACION_RESULTADO_V1: contexto opt-in del prospecto.
     const asignacionEmbudo = String(root.dataset.salesAssignmentId || '');
     form.elements.prospecto_asignacion_id.value =
-      /^[1-9][0-9]*$/.test(asignacionEmbudo) ? asignacionEmbudo : '';'''
+      /^[1-9][0-9]*$/.test(asignacionEmbudo) ? asignacionEmbudo : '';
+
+'''
     out=src.replace(marker,patch)
     return out.encode('utf-8')
 
