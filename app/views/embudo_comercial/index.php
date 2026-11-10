@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__.'/../../helpers/ProspectoFechaHoraHelper.php';
+require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
 require_once __DIR__.'/../../helpers/EmbudoComercialAcceso.php';
 $esc=static fn($x)=>htmlspecialchars((string)($x??''),ENT_QUOTES,'UTF-8');
 $def=static fn($x,$f='Sin indicar')=>trim((string)($x??''))!==''?(string)$x:$f;
@@ -19,7 +19,8 @@ $paginaUrl=static function(string $etapa,int $numero) use ($urlBase,$baseParamet
     if ($numero<=1) unset($q[$k]); else $q[$k]=$numero;
     return $urlBase.http_build_query($q);
 };
-$fecha=static fn($utc)=>$utc?ProspectoFechaHoraHelper::aMexico($utc):'Sin programar';
+$fecha=static fn($utc)=>EmbudoComercialPresentacion::fechaUtc($utc);
+$dia=static fn($fecha)=>EmbudoComercialPresentacion::fechaLocal($fecha);
 $mostrarLlamadas=tienePermiso('telefonia.usar') && !$supervisor;
 $puedeLlamar=$mostrarLlamadas && tienePermiso('telefonia.salientes');
 $puedeMover=!$supervisor && tienePermiso('ventas.embudo.mover') &&
@@ -101,7 +102,7 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
 
     <div class="impe-embudo-board-info">
         <span><i class="bi bi-people" aria-hidden="true"></i> <?= number_format((int)$tablero['total']) ?> asignaciones<?= $supervisor?' bajo supervisión':' propias' ?></span>
-        <small>20 tarjetas por columna · <?= $puedeMover?'Arrastra una ficha o usa el menú de acciones':'Vista de consulta' ?></small>
+        <small>20 tarjetas por columna · <?= !$puedeMover?'Vista de consulta':($vista==='embudo'?'Arrastra una ficha o usa las acciones de la tarjeta':'Usa las acciones de cada prospecto para actualizar su seguimiento') ?></small>
     </div>
 
     <div class="impe-embudo-board <?= $vista==='embudo'?'':'impe-embudo-board--single' ?>" role="region" tabindex="0"
@@ -137,12 +138,13 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
                     </div>
                     <p class="impe-embudo-programa" title="<?= $esc($p['programas']) ?>"><i class="bi bi-mortarboard" aria-hidden="true"></i><?= $esc($def($p['programas'],'Programa pendiente')) ?></p>
                     <div class="impe-embudo-card-bottom">
-                        <span class="impe-embudo-next" title="<?= $esc($p['horario_contacto']??'') ?>">
+                        <?php $fechaTarjeta=$etapa==='RECUPERACION' && !empty($p['revision_fecha'])
+                            ?('Revisar: '.$dia($p['revision_fecha']))
+                            :($p['proxima_accion_at']?('Próxima acción: '.$fecha($p['proxima_accion_at'])):
+                                ('Jornada: '.$dia($p['fecha_trabajo']))); ?>
+                        <span class="impe-embudo-next" title="<?= $esc($fechaTarjeta) ?>">
                             <i class="bi bi-calendar-event" aria-hidden="true"></i>
-                            <?= $esc($etapa==='RECUPERACION' && !empty($p['revision_fecha'])
-                                ?('Revisar: '.$p['revision_fecha'])
-                                :($p['proxima_accion_at']?$fecha($p['proxima_accion_at']):
-                                    ('Jornada: '.$def($p['fecha_trabajo'],'Sin fecha')))) ?>
+                            <?= $esc($fechaTarjeta) ?>
                         </span>
                         <div class="impe-embudo-card-actions">
                             <?php if ($puedeLlamar && !empty($p['telefono_original'])): ?>
@@ -206,7 +208,7 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
                 <textarea name="motivo" id="impe-embudo-motivo" maxlength="190" rows="3"
                     placeholder="Qué ocurrió y por qué se cambia la etapa"></textarea>
             </label>
-            <label id="impe-embudo-fecha-wrap" hidden>Próxima llamada
+            <label id="impe-embudo-fecha-wrap" hidden>Próxima acción
                 <input type="datetime-local" name="proxima_accion" id="impe-embudo-fecha">
             </label>
             <p id="impe-embudo-mover-error" role="alert" hidden></p>
