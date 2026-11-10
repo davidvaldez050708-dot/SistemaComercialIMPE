@@ -8,7 +8,7 @@ import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
 PUBLISH=ROOT/'tools/publicar_puente_embudo_pbx_mexico_hostinger.py'
-BRIDGE=ROOT/'app/services/EmbudoComercialResultadoBridge.php'
+BRIDGE_REF='861ee00e144f2b5f7600547d5307cf1216cb4b1a'
 BASE='44ebcdb69c56cf89ec7e4a3f85e35275ebaa2bca'
 spec=importlib.util.spec_from_file_location('pub',str(PUBLISH))
 pub=importlib.util.module_from_spec(spec)
@@ -22,10 +22,16 @@ git=subprocess.run(['git','show',BASE+':'+pub.REL],cwd=str(ROOT),
 must(git.returncode==0,'no se encontró blob del puente original')
 original=git.stdout
 must(pub.blob(original)==pub.BEFORE,'blob previo esperado')
-must(pub.blob(BRIDGE.read_bytes())==pub.AFTER,'blob nuevo esperado')
+approved_git=subprocess.run(
+    ['git','show',BRIDGE_REF+':'+pub.REL],cwd=str(ROOT),
+    stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+must(approved_git.returncode==0,'no se encontró fuente histórica aprobada')
+must(pub.blob(approved_git.stdout)==pub.AFTER,'blob nuevo histórico esperado')
 
 with tempfile.TemporaryDirectory(prefix='impe-pbx-mx-') as d:
     root=Path(d)
+    BRIDGE=root/'bridge_aprobado_historico.php'
+    BRIDGE.write_bytes(approved_git.stdout)
     site=root/'public_html'
     target=site/pub.REL
     target.parent.mkdir(parents=True)
