@@ -157,10 +157,10 @@
    const ownExt=ext||callExt,ownerRef=ref||'pending-'+String(openContext.sessionKey).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,80);
    if(shell()&&!shell().beginCallResult(token,[ownerRef]))throw Error('Termina la llamada activa antes de registrar.');
    form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;
-   // IMPE_EMBUDO_ASIGNACION_RESULTADO_V1: contexto opt-in del prospecto.
-   const asignacionEmbudo = String(root.dataset.salesAssignmentId || '');
-   form.elements.prospecto_asignacion_id.value =
-     /^[1-9][0-9]*$/.test(asignacionEmbudo) ? asignacionEmbudo : '';
+    // IMPE_EMBUDO_ASIGNACION_RESULTADO_V1: contexto opt-in del prospecto.
+    const asignacionEmbudo = String(root.dataset.salesAssignmentId || '');
+    form.elements.prospecto_asignacion_id.value =
+      /^[1-9][0-9]*$/.test(asignacionEmbudo) ? asignacionEmbudo : '';
    if(fields)fields.hidden=false;submit.hidden=false;submit.disabled=true;submit.innerHTML='Identificando llamada…';waiting=true;
    form.querySelector('[data-sales-form-number]').textContent=openContext.number||call?.numero||'Llamada finalizada';
    form.querySelector('[data-sales-form-state]').textContent='Identificando la llamada de tu extensión · Ext. '+ownExt;
