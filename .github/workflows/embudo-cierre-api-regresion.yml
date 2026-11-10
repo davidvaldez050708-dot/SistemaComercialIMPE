@@ -14,6 +14,8 @@ on:
       - 'public/javascript/telefonia_ventas_observaciones.js'
       - 'public/javascript/embudo_comercial_movimientos.js'
       - 'tests/embudo_actualizacion_tras_llamada_unit.cjs'
+      - 'tools/publicar_embudo_refresco_automatico_hostinger_v1.py'
+      - 'tests/publicar_embudo_refresco_automatico_hostinger_v1_test.py'
       - 'tools/publicar_embudo_cierre_api_hostinger_v1.py'
       - 'tools/publicar_shell_modal_ventas_hostinger_v1.py'
       - 'tests/publicar_embudo_cierre_api_hostinger_v1_test.py'
@@ -53,4 +55,5 @@ jobs:
       - name: Verificar publicación, guardias y rollback con datos ficticios
         run: |
           python3 tests/publicar_embudo_cierre_api_hostinger_v1_test.py
+          python3 tests/publicar_embudo_refresco_automatico_hostinger_v1_test.py
           python3 tests/publicar_shell_modal_ventas_hostinger_v1_test.py
