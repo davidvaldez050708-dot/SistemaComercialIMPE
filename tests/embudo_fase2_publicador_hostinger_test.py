@@ -55,7 +55,7 @@ with tempfile.TemporaryDirectory(prefix='impe-embudo-fase2a-fake-') as d:
     must(denied,'bloquear apply sin preflight DB')
     publisher.publicar(site,backup,planned)
     must(len(list(backup.iterdir()))==1,'respaldo de una operación')
-    must(not publisher.preparar(site,ROOT),'después de aplicar no quedan cambios')
+    must(not publisher.preparar(site,approved),'después de aplicar no quedan cambios')
     for path,new in publisher.NEW.items():
         must(publisher.blob((site/path).read_bytes())==new,
              'nuevo archivo exacto '+path)
@@ -72,7 +72,7 @@ with tempfile.TemporaryDirectory(prefix='impe-embudo-fase2a-fake-') as d:
     target.write_bytes(target.read_bytes()+b'\n/*PERSONALIZACION*/\n')
     personalized=target.read_bytes()
     denied=False
-    try:publisher.preparar(site,ROOT)
+    try:publisher.preparar(site,approved)
     except publisher.Conflicto:denied=True
     must(denied and target.read_bytes()==personalized,
          'bloquear sobreescritura de personalizaciones')
