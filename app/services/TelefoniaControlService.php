@@ -308,7 +308,8 @@ class TelefoniaControlService
 
         $stats = [
             'atenciones' => 0, 'llamadas_unicas' => 0, 'conectadas' => 0,
-            'efectivas' => 0, 'salientes' => 0, 'entrantes' => 0,
+            'efectivas' => 0, 'en_seguimiento_ventas' => 0,
+            'salientes' => 0, 'entrantes' => 0,
             'segundos' => 0, 'sin_atribucion' => 0,
             'por_usuario' => [], 'por_extension' => [], 'por_rol' => [],
             'tendencia' => [], 'historial' => []
@@ -320,6 +321,8 @@ class TelefoniaControlService
             $uniqueCalls[$call['pbx_call_id']] = true;
             if ($call['conectada']) $stats['conectadas']++;
             if ($call['efectiva']) $stats['efectivas']++;
+            if ($call['proceso']==='Ventas' && $call['resultado']==='REQUIERE_SEGUIMIENTO')
+                $stats['en_seguimiento_ventas']++;
             $stats[$call['direccion'] === 'Saliente' ? 'salientes' : 'entrantes']++;
             $stats['segundos'] += $call['segundos'];
             if (!$call['usuario_id']) $stats['sin_atribucion']++;
@@ -349,7 +352,8 @@ class TelefoniaControlService
                     $stats['por_usuario'][$uid] = [
                         'usuario_id' => $uid,'usuario'=>$call['usuario'],
                         'rol'=>$call['rol'],'atenciones'=>0,'segundos'=>0,
-                        'conectadas'=>0,'efectivas'=>0,'salientes'=>0,'entrantes'=>0
+                        'conectadas'=>0,'efectivas'=>0,'en_seguimiento_ventas'=>0,
+                        'salientes'=>0,'entrantes'=>0
                     ];
                 }
                 $ref = &$stats['por_usuario'][$uid];
@@ -357,6 +361,8 @@ class TelefoniaControlService
                 $ref['segundos'] += $call['segundos'];
                 if ($call['conectada']) $ref['conectadas']++;
                 if ($call['efectiva']) $ref['efectivas']++;
+                if ($call['proceso']==='Ventas' && $call['resultado']==='REQUIERE_SEGUIMIENTO')
+                    $ref['en_seguimiento_ventas']++;
                 $ref[$call['direccion'] === 'Saliente' ? 'salientes' : 'entrantes']++;
                 unset($ref);
             }
