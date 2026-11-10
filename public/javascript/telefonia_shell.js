@@ -952,7 +952,10 @@
     // iframe: salir del shell desmonta también el contexto WebRTC.
     crm?.addEventListener('load', function () {
         try {
-            if(resultFormOwner && !crm.contentDocument?.querySelector('#modalLlamadaEntranteAnalista.show')){
+            // El formulario comercial puede inicializarse antes de que Bootstrap
+            // marque el modal como .show al cargar el iframe. No liberar
+            // su propietario mientras exista el formulario de Ventas.
+            if(resultFormOwner && !crm.contentDocument?.querySelector('#modalLlamadaEntranteAnalista.show,#modalResultadoVenta')){
                 resultFormOwner=null;
                 render();
             }
