@@ -4,7 +4,7 @@ session_start();
 require_once dirname(__DIR__, 2) .
     '/app/services/TelefoniaExtensionService.php';
 require_once dirname(__DIR__, 2) .
-    '/app/models/RolModel.php';
+    '/app/services/TelefoniaSesionService.php';
 require_once dirname(__DIR__, 2) .
     '/app/helpers/PermissionHelper.php';
 
@@ -33,15 +33,16 @@ if ($usuarioId <= 0) {
     ], 401);
 }
 
-if (!isset($_SESSION['permisos'])) {
-    $modeloRol = new RolModel();
-    $modeloRol->inicializarPermisosSistema();
-    $_SESSION['permisos'] =
-        $modeloRol->obtenerCodigosPermisosPorRol(
-            (int)($_SESSION['rol_id'] ?? 0)
-        );
+try {
+    $conexion = Database::compartida();
+    $sesionVigente = TelefoniaSesionService::actualizarPermisos($usuarioId, $conexion);
+} catch (Throwable $error) {
+    if (Database::responderFalloTemporal($error)) exit;
+    responderJson(['ok' => false, 'mensaje' => 'No fue posible verificar los permisos de telefonía.'], 500);
 }
-
+if (!$sesionVigente) {
+    responderJson(['ok' => false, 'mensaje' => 'Tu cuenta o perfil de acceso no está activo.'], 403);
+}
 if (!tienePermiso('telefonia.usar')) {
     responderJson([
         'ok' => false,
@@ -83,7 +84,7 @@ if ($apiKey === '' || $apiSecret === '') {
 
 try {
     $asignacionTelefonica =
-        (new TelefoniaExtensionService(Database::compartida()))
+        (new TelefoniaExtensionService($conexion))
             ->resolverParaUsuario($usuarioId);
 } catch (Throwable $e) {
     if (Database::responderFalloTemporal($e)) exit;

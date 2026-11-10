@@ -6,7 +6,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
 $root = dirname(__DIR__, 2);
 require_once $root . '/app/helpers/PermissionHelper.php';
-require_once $root . '/app/models/RolModel.php';
+require_once $root . '/app/services/TelefoniaSesionService.php';
 require_once $root . '/app/services/TelefoniaExtensionService.php';
 require_once $root . '/app/services/ZadarmaWebhookEventStoreService.php';
 
@@ -31,15 +31,16 @@ if ($usuarioId <= 0) {
     ], 401);
 }
 
-if (!isset($_SESSION['permisos'])) {
-    $modeloRol = new RolModel();
-    $modeloRol->inicializarPermisosSistema();
-    $_SESSION['permisos'] =
-        $modeloRol->obtenerCodigosPermisosPorRol(
-            (int)($_SESSION['rol_id'] ?? 0)
-        );
+try {
+    $conexion = Database::compartida();
+    $sesionVigente = TelefoniaSesionService::actualizarPermisos($usuarioId, $conexion);
+} catch (Throwable $error) {
+    if (Database::responderFalloTemporal($error)) exit;
+    responderEntrada(['ok' => false, 'mensaje' => 'No fue posible verificar los permisos de telefonía.'], 500);
 }
-
+if (!$sesionVigente) {
+    responderEntrada(['ok' => false, 'mensaje' => 'Tu cuenta o perfil de acceso no está activo.'], 403);
+}
 if (
     !tienePermiso('telefonia.usar') ||
     !tienePermiso('telefonia.recibir')
@@ -52,7 +53,7 @@ if (
 
 try {
     $asignacion =
-        (new TelefoniaExtensionService(Database::compartida()))
+        (new TelefoniaExtensionService($conexion))
             ->resolverParaUsuario($usuarioId);
 
     if (
@@ -74,7 +75,7 @@ try {
         (string)($_GET['pbx_call_id'] ?? '')
     );
     $eventStore =
-        new ZadarmaWebhookEventStoreService(Database::compartida());
+        new ZadarmaWebhookEventStoreService($conexion);
 
     $llamada = $pbxCallId !== ''
         ? $eventStore->obtenerEstadoEntrantePorPbxCallId(

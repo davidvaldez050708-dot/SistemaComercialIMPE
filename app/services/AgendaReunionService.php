@@ -12,9 +12,9 @@ class AgendaReunionService
     private $repo;
     private $ecardService;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $this->repo = new AgendaReunionRepository();
+        $this->repo = new AgendaReunionRepository($connection);
         $this->ecardService = new EcardReunionService($this->repo->connection());
     }
 

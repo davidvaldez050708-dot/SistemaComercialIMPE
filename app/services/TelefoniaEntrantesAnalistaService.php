@@ -17,12 +17,14 @@ class TelefoniaEntrantesAnalistaService
 {
     private $db;
     private $eventos;
+    private bool $preparar;
 
-    public function __construct(?mysqli $connection=null)
+    public function __construct(?mysqli $connection=null, bool $preparar=true)
     {
         $this->db = $connection ?? (new Database())->connect();
         $this->eventos = new ZadarmaWebhookEventStoreService($this->db);
-        $this->asegurarEstructura();
+        $this->preparar = $preparar;
+        if ($preparar) $this->asegurarEstructura();
     }
 
     private function asegurarEstructura(): void
@@ -207,7 +209,7 @@ class TelefoniaEntrantesAnalistaService
         // dispone del reproductor hasta completar su desvinculación segura.
         try {
             $grabacionesInternas = new TelefoniaInternaGrabacionService($this->db);
-            $grabacionesInternas->asegurarEstructura();
+            if ($this->preparar) $grabacionesInternas->asegurarEstructura();
             $conAudio = $grabacionesInternas->porUsuario($usuarioId);
         } catch (Throwable $e) {
             error_log('[telefonia_grabaciones_internas] ' . $e->getMessage());

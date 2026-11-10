@@ -246,7 +246,7 @@ class LoginController
         ) {
             try {
                 require_once __DIR__ . '/../services/TelefoniaExtensionService.php';
-                $ext = (new TelefoniaExtensionService())->resolverParaUsuario(
+                $ext = (new TelefoniaExtensionService(Database::compartida()))->resolverParaUsuario(
                     (int)$usuario['id']
                 );
                 if ($ext && (

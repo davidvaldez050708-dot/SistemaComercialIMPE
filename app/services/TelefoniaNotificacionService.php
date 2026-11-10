@@ -7,8 +7,11 @@ require_once __DIR__.'/TelefoniaDisponibilidadService.php';
 final class TelefoniaNotificacionService
 {
     private mysqli $db;
-    public function __construct(?mysqli $db=null){
+    private bool $preparar;
+    public function __construct(?mysqli $db=null, bool $preparar=true){
         $this->db=$db??(new Database())->connect();
+        $this->preparar = $preparar;
+        if (!$preparar) return;
         $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_notificaciones (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,usuario_id INT NOT NULL,
             extension VARCHAR(12) NOT NULL,llave VARCHAR(150) NOT NULL,numero VARCHAR(40) NOT NULL,
@@ -38,7 +41,7 @@ final class TelefoniaNotificacionService
         $s=$this->db->prepare("UPDATE telefonia_notificaciones n JOIN telefonia_disponibilidad d ON n.llave=CONCAT('devolucion:',d.id,':',d.version) SET n.leida=1 WHERE n.usuario_id=? AND n.extension=? AND d.destino_usuario=n.usuario_id AND d.devolucion='ATENDIDA'");
         $s->bind_param('is',$user,$ext);$s->execute();$s->close();
         try{
-        $history=$recepcion?(new TelefoniaRecepcionMarketingService($this->db))->resumen($user):(new TelefoniaEntrantesAnalistaService($this->db))->listar($user);
+        $history=$recepcion?(new TelefoniaRecepcionMarketingService($this->db))->resumen($user):(new TelefoniaEntrantesAnalistaService($this->db, $this->preparar))->listar($user);
         foreach($history['llamadas'] as $c){
             if(($c['fuente']??'')==='OPERACION')continue; // Tiene su aviso exacto por intento debajo.
             $missed=$recepcion?($c['tipo']==='Entrante'&&$c['estado']==='Perdida'):

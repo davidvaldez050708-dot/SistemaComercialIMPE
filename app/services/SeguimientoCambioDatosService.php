@@ -15,10 +15,9 @@ class SeguimientoCambioDatosService
         'observaciones' => 'Observaciones'
     ];
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection ?? (new Database())->connect();
     }
 
     public function registrarCambios($seguimientoId, $autorId, $antes, $despues)

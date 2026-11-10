@@ -491,53 +491,75 @@
                 '</div>';
         };
 
-        window.addEventListener('impe:phone-notices-refresh',()=>void consultarRecordatorios());
-        const consultarRecordatorios = async function () {
-            if (consultaEnCurso || document.hidden) {
+        window.addEventListener('impe:phone-notices-refresh',()=>void consultarRecordatorios(true));
+        const procesarDatosCampana = function (datos) {
+            renderizarRecordatorios(
+                datos.recordatorios || [],
+                datos.total || 0
+            );
+            cargaInicialCompletada = true;
+            consultasCompletadas += 1;
+            fallosDeCarga = 0;
+            if (temporizadorReintentoCarga !== null) {
+                window.clearTimeout(temporizadorReintentoCarga);
+                temporizadorReintentoCarga = null;
+            }
+            actualizarColaAvisos(datos.avisos || []);
+            programarSiguienteToastVencido();
+            if (datos.requiere_migracion) {
+                if (!avisoMigracionMostrado) {
+                    avisoMigracionMostrado = true;
+                    console.warn(
+                        'Recordatorios: ejecuta database/migrations/2026_09_03_recordatorios_vinculacion.sql para habilitar los avisos automáticos.'
+                    );
+                }
+                return;
+            }
+        };
+
+        const tokenCampana = String(window.IMPE_CSRF_TOKEN || '');
+        const claveCampana = 'impe-campana:' + claveUsuario + ':' + tokenCampana;
+        const canalCampana = tokenCampana && typeof window.BroadcastChannel === 'function' &&
+            typeof window.navigator?.locks?.request === 'function'
+            ? new window.BroadcastChannel(claveCampana) : null;
+        if (canalCampana) {
+            canalCampana.addEventListener('message', function (evento) {
+                const datos = evento.data;
+                if (datos && (datos.ok || datos.parcial)) procesarDatosCampana(datos);
+            });
+        }
+
+        const cargarCampana = async function () {
+            const respuesta = await fetch(endpoint, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+                cache: 'no-store'
+            });
+            if (!respuesta.ok) throw new Error('Respuesta HTTP ' + respuesta.status);
+            const datos = await respuesta.json();
+            if (!datos || (!datos.ok && !datos.parcial)) {
+                throw new Error('Respuesta de recordatorios no disponible');
+            }
+            return datos;
+        };
+
+        let refrescoPendiente = false;
+        const consultarRecordatorios = async function (explicita = false) {
+            if (document.hidden) return;
+            if (consultaEnCurso) {
+                if (explicita) refrescoPendiente = true;
                 return;
             }
 
             consultaEnCurso = true;
 
             try {
-                const respuesta = await fetch(endpoint, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    cache: 'no-store'
-                });
-
-                if (!respuesta.ok) {
-                    throw new Error('Respuesta HTTP ' + respuesta.status);
-                }
-
-                const datos = await respuesta.json();
-
-                if (!datos || (!datos.ok && !datos.parcial)) {
-                    throw new Error('Respuesta de recordatorios no disponible');
-                }
-
-                renderizarRecordatorios(
-                    datos.recordatorios || [],
-                    datos.total || 0
-                );
-                cargaInicialCompletada = true;
-                consultasCompletadas += 1;
-                fallosDeCarga = 0;
-                if (temporizadorReintentoCarga !== null) {
-                    window.clearTimeout(temporizadorReintentoCarga);
-                    temporizadorReintentoCarga = null;
-                }
-                actualizarColaAvisos(datos.avisos || []);
-                programarSiguienteToastVencido();
-                if (datos.requiere_migracion) {
-                    if (!avisoMigracionMostrado) {
-                        avisoMigracionMostrado = true;
-                        console.warn(
-                            'Recordatorios: ejecuta database/migrations/2026_09_03_recordatorios_vinculacion.sql para habilitar los avisos automáticos.'
-                        );
-                    }
-                    return;
+                const datos = canalCampana
+                    ? await window.navigator.locks.request(claveCampana, {ifAvailable: !explicita},
+                        lock => lock ? cargarCampana() : null)
+                    : await cargarCampana();
+                if (datos) {
+                    procesarDatosCampana(datos);
+                    canalCampana?.postMessage(datos);
                 }
 
             } catch (error) {
@@ -546,12 +568,25 @@
                 console.error('No fue posible actualizar las notificaciones.', error);
             } finally {
                 consultaEnCurso = false;
-                if (!cargaInicialCompletada) programarReintentoCarga();
+                if (refrescoPendiente) {
+                    refrescoPendiente = false;
+                    void consultarRecordatorios(true);
+                } else if (!cargaInicialCompletada) {
+                    programarReintentoCarga();
+                }
             }
         };
 
         consultarRecordatorios();
-        window.setInterval(consultarRecordatorios, 60000);
+        // Mantener la primera consulta y los refrescos explícitos inmediatos.
+        // Dispersar sólo los sondeos rutinarios entre navegadores.
+        if (canalCampana) {
+            window.setTimeout(function () {
+                window.setInterval(consultarRecordatorios, 60000);
+            }, Math.floor(Math.random() * 1500));
+        } else {
+            window.setInterval(consultarRecordatorios, 60000);
+        }
         programarSiguienteToastVencido();
 
         window.addEventListener('pageshow', function () {

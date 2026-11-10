@@ -14,28 +14,6 @@ require_once __DIR__ . '/../services/AdminNotificationService.php';
 
 class ReminderController
 {
-    private $agendaReunionService;
-    private $reminderAgendaFilterService;
-    private $reminderReunionFollowupService;
-    private $reminderDirectLinkService;
-    private $reminderObservacionService;
-    private $reminderMeetingConfirmationService;
-    private $seguimientoCambioDatosService;
-    private $aliadoSeguimientoReminderService;
-
-    public function __construct()
-    {
-        $this->agendaReunionService = new AgendaReunionService();
-        $this->reminderAgendaFilterService = new ReminderAgendaFilterService();
-        $this->reminderReunionFollowupService = new ReminderReunionFollowupService();
-        $this->reminderDirectLinkService = new ReminderDirectLinkService();
-        $this->reminderObservacionService = new ReminderObservacionService();
-        $this->reminderMeetingConfirmationService = new ReminderMeetingConfirmationService();
-        $this->seguimientoCambioDatosService = new SeguimientoCambioDatosService();
-        $this->aliadoSeguimientoReminderService =
-            new AliadoSeguimientoReminderService();
-    }
-
     public function pendientes()
     {
         header('Content-Type: application/json; charset=utf-8');
@@ -67,8 +45,10 @@ class ReminderController
             exit;
         }
 
+        $conexion = Database::compartida();
+
         if ($esAdministrador) {
-            $resultado = (new AdminNotificationService())->obtener();
+            $resultado = (new AdminNotificationService($conexion))->obtener();
 
             echo json_encode(
                 $resultado,
@@ -93,7 +73,7 @@ class ReminderController
                 ? AgendaReunionService::ROL_CUENTA_CLAVE
                 : AgendaReunionService::ROL_ANALISTA;
 
-            $agenda = $this->agendaReunionService->obtenerNotificacionesCampana(
+            $agenda = (new AgendaReunionService($conexion))->obtenerNotificacionesCampana(
                 $usuarioId,
                 $rolContexto,
                 10
@@ -105,7 +85,7 @@ class ReminderController
 
             // Las reuniones que siguen SOLICITADAS requieren una lectura adicional.
             $confirmaciones =
-                $this->reminderMeetingConfirmationService->obtener(
+                (new ReminderMeetingConfirmationService($conexion))->obtener(
                     $usuarioId,
                     $rolContexto,
                     10
@@ -158,7 +138,7 @@ class ReminderController
         );
 
         if ($puedeCentroReuniones && $esSupervisor) {
-            $cambiosDatos = $this->seguimientoCambioDatosService->obtenerNotificaciones(
+            $cambiosDatos = (new SeguimientoCambioDatosService($conexion))->obtenerNotificaciones(
                 $usuarioId,
                 10
             );
@@ -182,21 +162,23 @@ class ReminderController
         }
 
         if ($puedeCentroReuniones && $esAnalista) {
-            $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId);
+            $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId, $conexion);
+            $filtroAgenda = new ReminderAgendaFilterService($conexion);
+            $enlaces = new ReminderDirectLinkService($conexion);
             $recordatoriosSeguimiento = serializarRecordatoriosSeguimiento(
                 $resultado['recordatorios'] ?? []
             );
 
             // Los pasos administrados por la agenda/reunión no deben conservar
             // recordatorios antiguos como "Enviar oficio/correo".
-            $recordatoriosSeguimiento = $this->reminderAgendaFilterService
+            $recordatoriosSeguimiento = $filtroAgenda
                 ->filtrarRecordatoriosSeguimiento($recordatoriosSeguimiento, $usuarioId);
-            $avisosSeguimiento = $this->reminderAgendaFilterService
+            $avisosSeguimiento = $filtroAgenda
                 ->filtrarAvisosSeguimiento($resultado['avisos'] ?? [], $usuarioId);
 
             // Después de una reunión realizada con acuerdos pendientes usamos un
             // recordatorio propio: "Dar seguimiento a acuerdos".
-            $seguimientoReunion = $this->reminderReunionFollowupService->obtener(
+            $seguimientoReunion = (new ReminderReunionFollowupService($conexion))->obtener(
                 $usuarioId,
                 10
             );
@@ -209,7 +191,7 @@ class ReminderController
 
             // Las observaciones de Cuenta Clave se muestran como notificaciones
             // persistentes hasta que el Analista abra ese seguimiento.
-            $observaciones = $this->reminderObservacionService->obtener(
+            $observaciones = (new ReminderObservacionService($conexion))->obtener(
                 $usuarioId,
                 10
             );
@@ -253,19 +235,19 @@ class ReminderController
             // Las notificaciones operativas del Analista deben abrir directamente
             // el panel "Trabajar" del seguimiento. Las notificaciones de agenda
             // conservan su URL propia hacia la reunión correspondiente.
-            $recordatoriosSeguimiento = $this->reminderDirectLinkService->aplicar(
+            $recordatoriosSeguimiento = $enlaces->aplicar(
                 $recordatoriosSeguimiento,
                 $usuarioId
             );
-            $avisosSeguimiento = $this->reminderDirectLinkService->aplicar(
+            $avisosSeguimiento = $enlaces->aplicar(
                 $avisosSeguimiento,
                 $usuarioId
             );
-            $recordatoriosAcuerdos = $this->reminderDirectLinkService->aplicar(
+            $recordatoriosAcuerdos = $enlaces->aplicar(
                 $recordatoriosAcuerdos,
                 $usuarioId
             );
-            $avisosAcuerdos = $this->reminderDirectLinkService->aplicar(
+            $avisosAcuerdos = $enlaces->aplicar(
                 $avisosAcuerdos,
                 $usuarioId
             );
@@ -290,7 +272,7 @@ class ReminderController
 
         if ($puedeSeguimientoAliados) {
             $seguimientoAliados =
-                $this->aliadoSeguimientoReminderService->obtener(
+                (new AliadoSeguimientoReminderService($conexion))->obtener(
                     $usuarioId,
                     10
                 );
@@ -314,9 +296,12 @@ class ReminderController
         $telefoniaOk=false;
         if($puedeTelefonia){
             try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';
-                $phone=(new TelefoniaNotificacionService())->pendientes($usuarioId,false);
+                $phone=(new TelefoniaNotificacionService($conexion, false))->pendientes($usuarioId,false);
                 $recordatorios=array_merge($phone,$recordatorios);$telefoniaOk=true;
-            }catch(Throwable $e){error_log('[campana_telefonia] '.get_class($e));}
+            }catch(Throwable $e){
+                if (Database::esFalloTemporal($e)) throw $e;
+                error_log('[campana_telefonia] '.get_class($e));
+            }
         }
         // La campana debe priorizar obligaciones vencidas y acciones que requieren
         // intervención, sin depender del orden en que cada servicio fue consultado.

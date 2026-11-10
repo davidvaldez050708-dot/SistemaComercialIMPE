@@ -1,0 +1,889 @@
+diff --git a/app/controllers/LoginController.php b/app/controllers/LoginController.php
+index d185528..ecf03fa 100644
+--- a/app/controllers/LoginController.php
++++ b/app/controllers/LoginController.php
+@@ -246,7 +246,7 @@ class LoginController
+         ) {
+             try {
+                 require_once __DIR__ . '/../services/TelefoniaExtensionService.php';
+-                $ext = (new TelefoniaExtensionService())->resolverParaUsuario(
++                $ext = (new TelefoniaExtensionService(Database::compartida()))->resolverParaUsuario(
+                     (int)$usuario['id']
+                 );
+                 if ($ext && (
+diff --git a/app/controllers/ReminderController.php b/app/controllers/ReminderController.php
+index 0e3279b..b7d0070 100644
+--- a/app/controllers/ReminderController.php
++++ b/app/controllers/ReminderController.php
+@@ -15,28 +15,6 @@ require_once __DIR__ . '/../services/AgendaComentarioService.php';
+ 
+ class ReminderController
+ {
+-    private $agendaReunionService;
+-    private $reminderAgendaFilterService;
+-    private $reminderReunionFollowupService;
+-    private $reminderDirectLinkService;
+-    private $reminderObservacionService;
+-    private $reminderMeetingConfirmationService;
+-    private $seguimientoCambioDatosService;
+-    private $aliadoSeguimientoReminderService;
+-
+-    public function __construct()
+-    {
+-        $this->agendaReunionService = new AgendaReunionService();
+-        $this->reminderAgendaFilterService = new ReminderAgendaFilterService();
+-        $this->reminderReunionFollowupService = new ReminderReunionFollowupService();
+-        $this->reminderDirectLinkService = new ReminderDirectLinkService();
+-        $this->reminderObservacionService = new ReminderObservacionService();
+-        $this->reminderMeetingConfirmationService = new ReminderMeetingConfirmationService();
+-        $this->seguimientoCambioDatosService = new SeguimientoCambioDatosService();
+-        $this->aliadoSeguimientoReminderService =
+-            new AliadoSeguimientoReminderService();
+-    }
+-
+     public function pendientes()
+     {
+         header('Content-Type: application/json; charset=utf-8');
+@@ -65,21 +43,23 @@ class ReminderController
+             exit;
+         }
+ 
++        $conexion = Database::compartida();
++        $agendaReuniones = tienePermiso('reuniones.ver') ? new AgendaReunionService($conexion) : null;
+         $horarios = [];
+         try {
+-            $horarios = $this->agendaReunionService->avisosHorario($usuarioId);
++            $horarios = $agendaReuniones?->avisosHorario($usuarioId) ?? [];
+         } catch (Throwable $e) {
+             error_log('[agenda_horarios] ' . get_class($e));
+         }
+ 
+         if ($esAdministrador) {
+-            $resultado = (new AdminNotificationService())->obtener();
++            $resultado = (new AdminNotificationService($conexion))->obtener();
+             // Integración de comentarios para cualquier perfil con Agenda,
+             // también cuando su campana utiliza el resumen administrativo.
+             $resultado['horarios'] = $horarios;
+             $resultado['servidor_at'] = time();
+             try {
+-                $comentariosAgenda = new AgendaComentarioService();
++                $comentariosAgenda = new AgendaComentarioService(new AgendaComentarioRepository($conexion));
+                 $novedades = $comentariosAgenda->notificaciones($usuarioId);
+                 $resultado['recordatorios'] = array_merge($resultado['recordatorios'] ?? [], $novedades['recordatorios']);
+                 $resultado['avisos'] = array_merge($resultado['avisos'] ?? [], $novedades['avisos']);
+@@ -112,7 +92,7 @@ class ReminderController
+                 ? AgendaReunionService::ROL_CUENTA_CLAVE
+                 : AgendaReunionService::ROL_ANALISTA;
+ 
+-            $agenda = $this->agendaReunionService->obtenerNotificacionesCampana(
++            $agenda = $agendaReuniones->obtenerNotificacionesCampana(
+                 $usuarioId,
+                 $rolContexto,
+                 10
+@@ -124,7 +104,7 @@ class ReminderController
+ 
+             // Las reuniones que siguen SOLICITADAS requieren una lectura adicional.
+             $confirmaciones =
+-                $this->reminderMeetingConfirmationService->obtener(
++                (new ReminderMeetingConfirmationService($conexion))->obtener(
+                     $usuarioId,
+                     $rolContexto,
+                     10
+@@ -177,7 +157,7 @@ class ReminderController
+         );
+ 
+         if ($puedeCentroReuniones && $esSupervisor) {
+-            $cambiosDatos = $this->seguimientoCambioDatosService->obtenerNotificaciones(
++            $cambiosDatos = (new SeguimientoCambioDatosService($conexion))->obtenerNotificaciones(
+                 $usuarioId,
+                 10
+             );
+@@ -201,21 +181,23 @@ class ReminderController
+         }
+ 
+         if ($puedeCentroReuniones && $esAnalista) {
+-            $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId);
++            $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId, $conexion);
++            $filtroAgenda = new ReminderAgendaFilterService($conexion);
++            $enlaces = new ReminderDirectLinkService($conexion);
+             $recordatoriosSeguimiento = serializarRecordatoriosSeguimiento(
+                 $resultado['recordatorios'] ?? []
+             );
+ 
+             // Los pasos administrados por la agenda/reunión no deben conservar
+             // recordatorios antiguos como "Enviar oficio/correo".
+-            $recordatoriosSeguimiento = $this->reminderAgendaFilterService
++            $recordatoriosSeguimiento = $filtroAgenda
+                 ->filtrarRecordatoriosSeguimiento($recordatoriosSeguimiento, $usuarioId);
+-            $avisosSeguimiento = $this->reminderAgendaFilterService
++            $avisosSeguimiento = $filtroAgenda
+                 ->filtrarAvisosSeguimiento($resultado['avisos'] ?? [], $usuarioId);
+ 
+             // Después de una reunión realizada con acuerdos pendientes usamos un
+             // recordatorio propio: "Dar seguimiento a acuerdos".
+-            $seguimientoReunion = $this->reminderReunionFollowupService->obtener(
++            $seguimientoReunion = (new ReminderReunionFollowupService($conexion))->obtener(
+                 $usuarioId,
+                 10
+             );
+@@ -228,7 +210,7 @@ class ReminderController
+ 
+             // Las observaciones de Cuenta Clave se muestran como notificaciones
+             // persistentes hasta que el Analista abra ese seguimiento.
+-            $observaciones = $this->reminderObservacionService->obtener(
++            $observaciones = (new ReminderObservacionService($conexion))->obtener(
+                 $usuarioId,
+                 10
+             );
+@@ -272,19 +254,19 @@ class ReminderController
+             // Las notificaciones operativas del Analista deben abrir directamente
+             // el panel "Trabajar" del seguimiento. Las notificaciones de agenda
+             // conservan su URL propia hacia la reunión correspondiente.
+-            $recordatoriosSeguimiento = $this->reminderDirectLinkService->aplicar(
++            $recordatoriosSeguimiento = $enlaces->aplicar(
+                 $recordatoriosSeguimiento,
+                 $usuarioId
+             );
+-            $avisosSeguimiento = $this->reminderDirectLinkService->aplicar(
++            $avisosSeguimiento = $enlaces->aplicar(
+                 $avisosSeguimiento,
+                 $usuarioId
+             );
+-            $recordatoriosAcuerdos = $this->reminderDirectLinkService->aplicar(
++            $recordatoriosAcuerdos = $enlaces->aplicar(
+                 $recordatoriosAcuerdos,
+                 $usuarioId
+             );
+-            $avisosAcuerdos = $this->reminderDirectLinkService->aplicar(
++            $avisosAcuerdos = $enlaces->aplicar(
+                 $avisosAcuerdos,
+                 $usuarioId
+             );
+@@ -309,7 +291,7 @@ class ReminderController
+ 
+         if ($puedeSeguimientoAliados) {
+             $seguimientoAliados =
+-                $this->aliadoSeguimientoReminderService->obtener(
++                (new AliadoSeguimientoReminderService($conexion))->obtener(
+                     $usuarioId,
+                     10
+                 );
+@@ -335,7 +317,7 @@ class ReminderController
+         if ($puedeTareasAliado) {
+             try {
+                 require_once __DIR__ . '/../services/AliadoConvocatoriaPendienteService.php';
+-                $tareas = (new AliadoConvocatoriaPendienteService((new Database())->connect()))
++                $tareas = (new AliadoConvocatoriaPendienteService($conexion))
+                     ->obtener($usuarioId, false, 100);
+                 // Un permiso de Aliados no concede acceso al editor de Convocatorias.
+                 $puedePublicar = puedeCrearConvocatoriaDesdeConvenio();
+@@ -349,7 +331,7 @@ class ReminderController
+         }
+ 
+         try {
+-            $comentariosAgenda = new AgendaComentarioService();
++            $comentariosAgenda = new AgendaComentarioService(new AgendaComentarioRepository($conexion));
+             $novedades = $comentariosAgenda->notificaciones($usuarioId);
+             $recordatorios = array_merge($recordatorios, $novedades['recordatorios']);
+             $avisos = array_merge($avisos, $novedades['avisos']);
+@@ -359,9 +341,12 @@ class ReminderController
+         $telefoniaOk=false;
+         if($puedeTelefonia){
+             try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';
+-                $phone=(new TelefoniaNotificacionService())->pendientes($usuarioId,false);
++                $phone=(new TelefoniaNotificacionService($conexion, false))->pendientes($usuarioId,false);
+                 $recordatorios=array_merge($phone,$recordatorios);$telefoniaOk=true;
+-            }catch(Throwable $e){error_log('[campana_telefonia] '.get_class($e));}
++            }catch(Throwable $e){
++                if (Database::esFalloTemporal($e)) throw $e;
++                error_log('[campana_telefonia] '.get_class($e));
++            }
+         }
+         // La campana debe priorizar obligaciones vencidas y acciones que requieren
+         // intervención, sin depender del orden en que cada servicio fue consultado.
+diff --git a/app/helpers/ReminderHelper.php b/app/helpers/ReminderHelper.php
+index 668a1be..dcab64b 100644
+--- a/app/helpers/ReminderHelper.php
++++ b/app/helpers/ReminderHelper.php
+@@ -4,7 +4,7 @@ require_once __DIR__ . '/SeguimientoTerritorialScope.php';
+ require_once __DIR__ . '/../../config/db_connection.php';
+ 
+ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
+-    function obtenerRecordatoriosSeguimientoAnalista($usuarioId, $limite = 8)
++    function obtenerRecordatoriosSeguimientoAnalista($usuarioId, $limite = 8, ?mysqli $connection = null)
+     {
+         $usuarioId = (int)$usuarioId;
+         $limite = max(1, min(50, (int)$limite));
+@@ -14,8 +14,7 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
+         }
+ 
+         try {
+-            $database = new Database();
+-            $connection = $database->connect();
++            $connection ??= (new Database())->connect();
+ 
+             $sql = 'SELECT
+                         seguimientos.id,
+@@ -90,7 +89,7 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
+ }
+ 
+ if (!function_exists('obtenerAvisosPendientesRecordatoriosAnalista')) {
+-    function obtenerAvisosPendientesRecordatoriosAnalista($usuarioId)
++    function obtenerAvisosPendientesRecordatoriosAnalista($usuarioId, ?mysqli $connection = null)
+     {
+         $usuarioId = (int)$usuarioId;
+ 
+@@ -103,11 +102,10 @@ if (!function_exists('obtenerAvisosPendientesRecordatoriosAnalista')) {
+             ];
+         }
+ 
+-        $recordatorios = obtenerRecordatoriosSeguimientoAnalista($usuarioId, 50);
++        $recordatorios = obtenerRecordatoriosSeguimientoAnalista($usuarioId, 50, $connection);
+ 
+         try {
+-            $database = new Database();
+-            $connection = $database->connect();
++            $connection ??= (new Database())->connect();
+ 
+             if (!existeTablaRecordatoriosVinculacion($connection)) {
+                 return [
+diff --git a/app/services/AdminNotificationService.php b/app/services/AdminNotificationService.php
+index 5e59fe8..bd27477 100644
+--- a/app/services/AdminNotificationService.php
++++ b/app/services/AdminNotificationService.php
+@@ -13,10 +13,9 @@ class AdminNotificationService
+ {
+     private $connection;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function obtener()
+diff --git a/app/services/AgendaReunionRepository.php b/app/services/AgendaReunionRepository.php
+index 31fd360..81d39c5 100644
+--- a/app/services/AgendaReunionRepository.php
++++ b/app/services/AgendaReunionRepository.php
+@@ -8,10 +8,9 @@ class AgendaReunionRepository
+ {
+     private $connection;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function connection()
+diff --git a/app/services/AgendaReunionService.php b/app/services/AgendaReunionService.php
+index 7de5e2f..599d18c 100644
+--- a/app/services/AgendaReunionService.php
++++ b/app/services/AgendaReunionService.php
+@@ -12,9 +12,9 @@ class AgendaReunionService
+     private $repo;
+     private $ecardService;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $this->repo = new AgendaReunionRepository();
++        $this->repo = new AgendaReunionRepository($connection);
+         $this->ecardService = new EcardReunionService($this->repo->connection());
+     }
+ 
+diff --git a/app/services/AliadoSeguimientoReminderService.php b/app/services/AliadoSeguimientoReminderService.php
+index 666d061..51c5514 100644
+--- a/app/services/AliadoSeguimientoReminderService.php
++++ b/app/services/AliadoSeguimientoReminderService.php
+@@ -8,12 +8,10 @@ class AliadoSeguimientoReminderService
+     private $modelo;
+     private $connection;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $this->modelo = new AliadoModel();
+-
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
++        $this->modelo = new AliadoModel($this->connection);
+     }
+ 
+     public function obtener($usuarioId, $limite = 10)
+diff --git a/app/services/ReminderAgendaFilterService.php b/app/services/ReminderAgendaFilterService.php
+index f91a694..ab5eb55 100644
+--- a/app/services/ReminderAgendaFilterService.php
++++ b/app/services/ReminderAgendaFilterService.php
+@@ -7,10 +7,9 @@ class ReminderAgendaFilterService
+ {
+     private $connection;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function filtrarRecordatoriosSeguimiento($items, $analistaId)
+diff --git a/app/services/ReminderDirectLinkService.php b/app/services/ReminderDirectLinkService.php
+index 820f963..6f5794f 100644
+--- a/app/services/ReminderDirectLinkService.php
++++ b/app/services/ReminderDirectLinkService.php
+@@ -8,10 +8,9 @@ class ReminderDirectLinkService
+     private $connection;
+     private $cacheEstados = [];
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function aplicar($items, $analistaId)
+diff --git a/app/services/ReminderMeetingConfirmationService.php b/app/services/ReminderMeetingConfirmationService.php
+index 3dffbd4..2b92650 100644
+--- a/app/services/ReminderMeetingConfirmationService.php
++++ b/app/services/ReminderMeetingConfirmationService.php
+@@ -9,10 +9,9 @@ class ReminderMeetingConfirmationService
+ 
+     private $connection;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function obtener($usuarioId, $rolId, $limite = 10)
+diff --git a/app/services/ReminderObservacionService.php b/app/services/ReminderObservacionService.php
+index 8e56237..6615544 100644
+--- a/app/services/ReminderObservacionService.php
++++ b/app/services/ReminderObservacionService.php
+@@ -7,10 +7,9 @@ class ReminderObservacionService
+ {
+     private $connection;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function obtener($analistaId, $limite = 10)
+diff --git a/app/services/ReminderReunionFollowupService.php b/app/services/ReminderReunionFollowupService.php
+index 5ae474c..4dee501 100644
+--- a/app/services/ReminderReunionFollowupService.php
++++ b/app/services/ReminderReunionFollowupService.php
+@@ -7,10 +7,9 @@ class ReminderReunionFollowupService
+ {
+     private $connection;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function obtener($analistaId, $limite = 10)
+diff --git a/app/services/SeguimientoCambioDatosService.php b/app/services/SeguimientoCambioDatosService.php
+index 873d031..9ce9ca6 100644
+--- a/app/services/SeguimientoCambioDatosService.php
++++ b/app/services/SeguimientoCambioDatosService.php
+@@ -15,10 +15,9 @@ class SeguimientoCambioDatosService
+         'observaciones' => 'Observaciones'
+     ];
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function registrarCambios($seguimientoId, $autorId, $antes, $despues)
+diff --git a/app/services/TelefoniaEntrantesAnalistaService.php b/app/services/TelefoniaEntrantesAnalistaService.php
+index 35f6e05..9540002 100644
+--- a/app/services/TelefoniaEntrantesAnalistaService.php
++++ b/app/services/TelefoniaEntrantesAnalistaService.php
+@@ -20,12 +20,14 @@ class TelefoniaEntrantesAnalistaService
+ {
+     private $db;
+     private $eventos;
++    private bool $preparar;
+ 
+-    public function __construct(?mysqli $connection=null)
++    public function __construct(?mysqli $connection=null, bool $preparar=true)
+     {
+         $this->db = $connection ?? (new Database())->connect();
+         $this->eventos = new ZadarmaWebhookEventStoreService($this->db);
+-        $this->asegurarEstructura();
++        $this->preparar = $preparar;
++        if ($preparar) $this->asegurarEstructura();
+     }
+ 
+     private function asegurarEstructura(): void
+@@ -331,7 +333,7 @@ class TelefoniaEntrantesAnalistaService
+         // dispone del reproductor hasta completar su desvinculación segura.
+         try {
+             $grabacionesInternas = new TelefoniaInternaGrabacionService($this->db);
+-            $grabacionesInternas->asegurarEstructura();
++            if ($this->preparar) $grabacionesInternas->asegurarEstructura();
+             $conAudio = $grabacionesInternas->porUsuario($usuarioId);
+         } catch (Throwable $e) {
+             error_log('[telefonia_grabaciones_internas] ' . $e->getMessage());
+diff --git a/app/services/TelefoniaNotificacionService.php b/app/services/TelefoniaNotificacionService.php
+index 00e0a6e..b7bf9c2 100644
+--- a/app/services/TelefoniaNotificacionService.php
++++ b/app/services/TelefoniaNotificacionService.php
+@@ -8,13 +8,16 @@ require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
+ final class TelefoniaNotificacionService
+ {
+     private mysqli $db;
++    private bool $preparar;
+     /** Claves de obligaciones verificadas en esta consulta; leer no las resuelve. */
+     private array $operativasActuales=[];
+     private static function esOperativa(string $llave): bool {
+         return str_starts_with($llave,'devolucion:') || str_starts_with($llave,'transferencia:');
+     }
+-    public function __construct(?mysqli $db=null){
++    public function __construct(?mysqli $db=null, bool $preparar=true){
+         $this->db=$db??(new Database())->connect();
++        $this->preparar = $preparar;
++        if (!$preparar) return;
+         $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_notificaciones (
+             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,usuario_id INT NOT NULL,
+             extension VARCHAR(12) NOT NULL,llave VARCHAR(150) NOT NULL,numero VARCHAR(40) NOT NULL,
+@@ -47,7 +50,7 @@ final class TelefoniaNotificacionService
+         $s=$this->db->prepare("UPDATE telefonia_notificaciones n JOIN telefonia_disponibilidad d ON n.llave=CONCAT('devolucion:',d.id,':',d.version) SET n.leida=1 WHERE n.usuario_id=? AND n.extension=? AND d.destino_usuario=n.usuario_id AND d.devolucion='ATENDIDA'");
+         $s->bind_param('is',$user,$ext);$s->execute();$s->close();
+         try{
+-        $history=$recepcion?(new TelefoniaRecepcionMarketingService($this->db))->resumen($user):(new TelefoniaEntrantesAnalistaService($this->db))->listar($user);
++        $history=$recepcion?(new TelefoniaRecepcionMarketingService($this->db))->resumen($user):(new TelefoniaEntrantesAnalistaService($this->db, $this->preparar))->listar($user);
+         foreach($history['llamadas'] as $c){
+             if(($c['fuente']??'')==='OPERACION')continue; // Tiene su aviso exacto por intento debajo.
+             $missed=$recepcion?($c['tipo']==='Entrante'&&$c['estado']==='Perdida'):
+diff --git a/app/services/TelefoniaSesionService.php b/app/services/TelefoniaSesionService.php
+new file mode 100644
+index 0000000..0b8e64b
+--- /dev/null
++++ b/app/services/TelefoniaSesionService.php
+@@ -0,0 +1,33 @@
++<?php
++
++require_once __DIR__ . '/../../config/db_connection.php';
++
++/** Revalida la sesión en las rutas directas que no pasan por index.php. */
++final class TelefoniaSesionService
++{
++    public static function actualizarPermisos(int $usuarioId, mysqli $conexion): bool
++    {
++        $stmt = $conexion->prepare(
++            'SELECT r.id AS rol_id, r.nombre AS rol, p.codigo
++             FROM usuarios u
++             INNER JOIN roles r ON r.id = u.rol_id AND r.estado = 1
++             LEFT JOIN rol_permisos rp ON rp.rol_id = r.id
++             LEFT JOIN permisos p ON p.id = rp.permiso_id AND p.estado = 1
++             WHERE u.id = ? AND u.estado = 1
++             ORDER BY p.codigo'
++        );
++        $stmt->bind_param('i', $usuarioId);
++        $stmt->execute();
++        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
++        $stmt->close();
++        if (!$filas) {
++            $_SESSION['permisos'] = [];
++            return false;
++        }
++
++        $_SESSION['rol_id'] = (int)$filas[0]['rol_id'];
++        $_SESSION['rol'] = (string)$filas[0]['rol'];
++        $_SESSION['permisos'] = array_values(array_filter(array_column($filas, 'codigo'), 'is_string'));
++        return true;
++    }
++}
+diff --git a/prueba_telefonia/api/avisos_llamadas.php b/prueba_telefonia/api/avisos_llamadas.php
+index 77ea1ef..e86ead5 100644
+--- a/prueba_telefonia/api/avisos_llamadas.php
++++ b/prueba_telefonia/api/avisos_llamadas.php
+@@ -6,7 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
+ header('Cache-Control: private, no-store');
+ $root = dirname(__DIR__, 2);
+ require_once $root . '/app/helpers/PermissionHelper.php';
+-require_once $root . '/app/models/RolModel.php';
++require_once $root . '/app/services/TelefoniaSesionService.php';
+ require_once $root . '/app/services/TelefoniaRecepcionMarketingService.php';
+ require_once $root . '/app/services/TelefoniaEntrantesAnalistaService.php';
+ function responderAvisos(array $data, int $status=200): void {
+@@ -16,8 +16,13 @@ function responderAvisos(array $data, int $status=200): void {
+ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') responderAvisos(['ok'=>false],405);
+ $id=(int)($_SESSION['usuario_id'] ?? 0);
+ if (!$id) responderAvisos(['ok'=>false],401);
+-$roles=new RolModel();$roles->inicializarPermisosSistema();
+-$_SESSION['permisos']=$roles->obtenerCodigosPermisosPorRol((int)($_SESSION['rol_id'] ?? 0));
++try {
++    $conexion = Database::compartida();
++    if (!TelefoniaSesionService::actualizarPermisos($id, $conexion)) responderAvisos(['ok'=>false],403);
++} catch (Throwable $error) {
++    if (Database::responderFalloTemporal($error)) exit;
++    responderAvisos(['ok'=>false,'mensaje'=>'No fue posible verificar los permisos de telefonía.'],500);
++}
+ $recepcion=TelefoniaRecepcionMarketingService::tienePermisos();
+ $analista=strcasecmp(trim((string)($_SESSION['rol'] ?? '')),'Analista de Datos')===0 &&
+     tienePermiso('telefonia.usar') && tienePermiso('telefonia.recibir') &&
+@@ -25,8 +30,8 @@ $analista=strcasecmp(trim((string)($_SESSION['rol'] ?? '')),'Analista de Datos')
+ if (!$recepcion && !$analista) responderAvisos(['ok'=>false],403);
+ session_write_close();
+ try {
+-    $data=$recepcion?(new TelefoniaRecepcionMarketingService())->resumen($id):
+-        (new TelefoniaEntrantesAnalistaService())->listar($id);
++    $data=$recepcion?(new TelefoniaRecepcionMarketingService($conexion))->resumen($id):
++        (new TelefoniaEntrantesAnalistaService($conexion, false))->listar($id);
+     $calls=[];
+     foreach ($data['llamadas'] as $call) {
+         if (!$recepcion && ($call['tipo_llamada'] ?? '')==='INTERNA') continue;
+diff --git a/prueba_telefonia/api/zadarma_entrada_activa.php b/prueba_telefonia/api/zadarma_entrada_activa.php
+index a89c3b3..ce5ab80 100644
+--- a/prueba_telefonia/api/zadarma_entrada_activa.php
++++ b/prueba_telefonia/api/zadarma_entrada_activa.php
+@@ -6,7 +6,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+ 
+ $root = dirname(__DIR__, 2);
+ require_once $root . '/app/helpers/PermissionHelper.php';
+-require_once $root . '/app/models/RolModel.php';
++require_once $root . '/app/services/TelefoniaSesionService.php';
+ require_once $root . '/app/services/TelefoniaExtensionService.php';
+ require_once $root . '/app/services/ZadarmaWebhookEventStoreService.php';
+ 
+@@ -31,15 +31,16 @@ if ($usuarioId <= 0) {
+     ], 401);
+ }
+ 
+-if (!isset($_SESSION['permisos'])) {
+-    $modeloRol = new RolModel();
+-    $modeloRol->inicializarPermisosSistema();
+-    $_SESSION['permisos'] =
+-        $modeloRol->obtenerCodigosPermisosPorRol(
+-            (int)($_SESSION['rol_id'] ?? 0)
+-        );
++try {
++    $conexion = Database::compartida();
++    $sesionVigente = TelefoniaSesionService::actualizarPermisos($usuarioId, $conexion);
++} catch (Throwable $error) {
++    if (Database::responderFalloTemporal($error)) exit;
++    responderEntrada(['ok' => false, 'mensaje' => 'No fue posible verificar los permisos de telefonía.'], 500);
++}
++if (!$sesionVigente) {
++    responderEntrada(['ok' => false, 'mensaje' => 'Tu cuenta o perfil de acceso no está activo.'], 403);
+ }
+-
+ if (
+     !tienePermiso('telefonia.usar') ||
+     !tienePermiso('telefonia.recibir')
+@@ -52,7 +53,7 @@ if (
+ 
+ try {
+     $asignacion =
+-        (new TelefoniaExtensionService(Database::compartida()))
++        (new TelefoniaExtensionService($conexion))
+             ->resolverParaUsuario($usuarioId);
+ 
+     if (
+@@ -74,7 +75,7 @@ try {
+         (string)($_GET['pbx_call_id'] ?? '')
+     );
+     $eventStore =
+-        new ZadarmaWebhookEventStoreService(Database::compartida());
++        new ZadarmaWebhookEventStoreService($conexion);
+ 
+     $llamada = $pbxCallId !== ''
+         ? $eventStore->obtenerEstadoEntrantePorPbxCallId(
+diff --git a/prueba_telefonia/api/zadarma_estado_llamada.php b/prueba_telefonia/api/zadarma_estado_llamada.php
+index d1fc14e..d7f212e 100644
+--- a/prueba_telefonia/api/zadarma_estado_llamada.php
++++ b/prueba_telefonia/api/zadarma_estado_llamada.php
+@@ -7,7 +7,7 @@ require_once dirname(__DIR__, 2) .
+ require_once dirname(__DIR__, 2) .
+     '/app/services/ZadarmaWebhookEventStoreService.php';
+ require_once dirname(__DIR__, 2) .
+-    '/app/models/RolModel.php';
++    '/app/services/TelefoniaSesionService.php';
+ require_once dirname(__DIR__, 2) .
+     '/app/helpers/PermissionHelper.php';
+ 
+@@ -110,15 +110,16 @@ if ($usuarioId <= 0) {
+ 
+ // El control de seguimiento saliente depende de permisos operativos, no
+ // del nombre del rol: Marketing puede llamar desde su propia extensión.
+-// Mantener la misma inicialización de permisos que el endpoint WebRTC.
+-if (!isset($_SESSION['permisos'])) {
+-    $modeloRol = new RolModel();
+-    $modeloRol->inicializarPermisosSistema();
+-    $_SESSION['permisos'] = $modeloRol->obtenerCodigosPermisosPorRol(
+-        (int)($_SESSION['rol_id'] ?? 0)
+-    );
++try {
++    $conexion = Database::compartida();
++    $sesionVigente = TelefoniaSesionService::actualizarPermisos($usuarioId, $conexion);
++} catch (Throwable $error) {
++    if (Database::responderFalloTemporal($error)) exit;
++    responderJson(['ok' => false, 'mensaje' => 'No fue posible verificar los permisos de telefonía.'], 500);
++}
++if (!$sesionVigente) {
++    responderJson(['ok' => false, 'mensaje' => 'Tu cuenta o perfil de acceso no está activo.'], 403);
+ }
+-
+ if (
+     !tienePermiso('telefonia.usar') ||
+     !tienePermiso('telefonia.salientes')
+@@ -146,7 +147,7 @@ $logPath = $rootPath . '/storage/zadarma_webhooks.log';
+ 
+ try {
+     $asignacionTelefonica =
+-        (new TelefoniaExtensionService(Database::compartida()))
++        (new TelefoniaExtensionService($conexion))
+             ->resolverParaUsuario($usuarioId);
+ } catch (Throwable $e) {
+     if (Database::responderFalloTemporal($e)) exit;
+@@ -187,7 +188,7 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
+  */
+ if ($solicitarCheckpoint) {
+     try {
+-        $ultimoId = (new ZadarmaWebhookEventStoreService(Database::compartida()))
++        $ultimoId = (new ZadarmaWebhookEventStoreService($conexion))
+             ->ultimoInicioSalienteId($extension);
+         responderJson(['ok' => true, 'after_id' => $ultimoId]);
+     } catch (Throwable $error) {
+@@ -211,7 +212,7 @@ $inicioSeleccionado = null;
+ $eventStore = null;
+ 
+ try {
+-    $eventStore = new ZadarmaWebhookEventStoreService(Database::compartida());
++    $eventStore = new ZadarmaWebhookEventStoreService($conexion);
+     $inicioPersistido = $eventStore->buscarInicioSalienteReciente(
+         $extension,
+         $destino,
+diff --git a/prueba_telefonia/api/zadarma_webrtc.php b/prueba_telefonia/api/zadarma_webrtc.php
+index 1644726..3d8d32c 100644
+--- a/prueba_telefonia/api/zadarma_webrtc.php
++++ b/prueba_telefonia/api/zadarma_webrtc.php
+@@ -4,7 +4,7 @@ session_start();
+ require_once dirname(__DIR__, 2) .
+     '/app/services/TelefoniaExtensionService.php';
+ require_once dirname(__DIR__, 2) .
+-    '/app/models/RolModel.php';
++    '/app/services/TelefoniaSesionService.php';
+ require_once dirname(__DIR__, 2) .
+     '/app/helpers/PermissionHelper.php';
+ 
+@@ -33,15 +33,16 @@ if ($usuarioId <= 0) {
+     ], 401);
+ }
+ 
+-if (!isset($_SESSION['permisos'])) {
+-    $modeloRol = new RolModel();
+-    $modeloRol->inicializarPermisosSistema();
+-    $_SESSION['permisos'] =
+-        $modeloRol->obtenerCodigosPermisosPorRol(
+-            (int)($_SESSION['rol_id'] ?? 0)
+-        );
++try {
++    $conexion = Database::compartida();
++    $sesionVigente = TelefoniaSesionService::actualizarPermisos($usuarioId, $conexion);
++} catch (Throwable $error) {
++    if (Database::responderFalloTemporal($error)) exit;
++    responderJson(['ok' => false, 'mensaje' => 'No fue posible verificar los permisos de telefonía.'], 500);
++}
++if (!$sesionVigente) {
++    responderJson(['ok' => false, 'mensaje' => 'Tu cuenta o perfil de acceso no está activo.'], 403);
+ }
+-
+ if (!tienePermiso('telefonia.usar')) {
+     responderJson([
+         'ok' => false,
+@@ -83,7 +84,7 @@ if ($apiKey === '' || $apiSecret === '') {
+ 
+ try {
+     $asignacionTelefonica =
+-        (new TelefoniaExtensionService(Database::compartida()))
++        (new TelefoniaExtensionService($conexion))
+             ->resolverParaUsuario($usuarioId);
+ } catch (Throwable $e) {
+     if (Database::responderFalloTemporal($e)) exit;
+diff --git a/public/javascript/recordatorios.js b/public/javascript/recordatorios.js
+index 18530b7..8e3603b 100644
+--- a/public/javascript/recordatorios.js
++++ b/public/javascript/recordatorios.js
+@@ -641,61 +641,83 @@
+             } finally { lecturasComentariosPendientes.delete(id);link.removeAttribute('aria-busy'); }
+         }, true);
+ 
+-        window.addEventListener('impe:phone-notices-refresh',()=>void consultarRecordatorios());
++        window.addEventListener('impe:phone-notices-refresh',()=>void consultarRecordatorios(true));
+         window.addEventListener('impe:agenda-comments-refresh',event=>{
+             const ownId=Number(event.detail?.comentarioPropioId);
+             if (Number.isSafeInteger(ownId) && ownId>0) registrarComentarioMostrado({agenda_comentario_id:ownId,agenda_comentario_evento:ownId+'|nuevo'});
+-            void consultarRecordatorios();
++            void consultarRecordatorios(true);
+         });
+-        const consultarRecordatorios = async function () {
+-            if (consultaEnCurso || document.hidden) {
++        const procesarDatosCampana = function (datos) {
++            renderizarRecordatorios(
++                datos.recordatorios || [],
++                datos.total || 0
++            );
++            cargaInicialCompletada = true;
++            consultasCompletadas += 1;
++            fallosDeCarga = 0;
++            if (temporizadorReintentoCarga !== null) {
++                window.clearTimeout(temporizadorReintentoCarga);
++                temporizadorReintentoCarga = null;
++            }
++            actualizarColaAvisos(datos.avisos || []);
++            horariosActuales = Array.isArray(datos.horarios) ? datos.horarios : [];
++            desfaseServidor = Number(datos.servidor_at) > 0 ? Number(datos.servidor_at) * 1000 - Date.now() : 0;
++            mostrarSiguienteComentarioNuevo();
++            programarSiguienteToastVencido();
++            if (datos.requiere_migracion) {
++                if (!avisoMigracionMostrado) {
++                    avisoMigracionMostrado = true;
++                    console.warn(
++                        'Recordatorios: ejecuta database/migrations/2026_09_03_recordatorios_vinculacion.sql para habilitar los avisos automáticos.'
++                    );
++                }
+                 return;
+             }
++        };
+ 
+-            consultaEnCurso = true;
+-
+-            try {
+-                const respuesta = await fetch(endpoint, {
+-                    headers: {
+-                        'X-Requested-With': 'XMLHttpRequest'
+-                    },
+-                    cache: 'no-store'
+-                });
++        const tokenCampana = String(window.IMPE_CSRF_TOKEN || '');
++        const claveCampana = 'impe-campana:' + claveUsuario + ':' + tokenCampana;
++        const canalCampana = tokenCampana && typeof window.BroadcastChannel === 'function' &&
++            typeof window.navigator?.locks?.request === 'function'
++            ? new window.BroadcastChannel(claveCampana) : null;
++        if (canalCampana) {
++            canalCampana.addEventListener('message', function (evento) {
++                const datos = evento.data;
++                if (datos && (datos.ok || datos.parcial)) procesarDatosCampana(datos);
++            });
++        }
+ 
+-                if (!respuesta.ok) {
+-                    throw new Error('Respuesta HTTP ' + respuesta.status);
+-                }
++        const cargarCampana = async function () {
++            const respuesta = await fetch(endpoint, {
++                headers: {'X-Requested-With': 'XMLHttpRequest'},
++                cache: 'no-store'
++            });
++            if (!respuesta.ok) throw new Error('Respuesta HTTP ' + respuesta.status);
++            const datos = await respuesta.json();
++            if (!datos || (!datos.ok && !datos.parcial)) {
++                throw new Error('Respuesta de recordatorios no disponible');
++            }
++            return datos;
++        };
+ 
+-                const datos = await respuesta.json();
++        let refrescoPendiente = false;
++        const consultarRecordatorios = async function (explicita = false) {
++            if (document.hidden) return;
++            if (consultaEnCurso) {
++                if (explicita) refrescoPendiente = true;
++                return;
++            }
+ 
+-                if (!datos || (!datos.ok && !datos.parcial)) {
+-                    throw new Error('Respuesta de recordatorios no disponible');
+-                }
++            consultaEnCurso = true;
+ 
+-                renderizarRecordatorios(
+-                    datos.recordatorios || [],
+-                    datos.total || 0
+-                );
+-                cargaInicialCompletada = true;
+-                consultasCompletadas += 1;
+-                fallosDeCarga = 0;
+-                if (temporizadorReintentoCarga !== null) {
+-                    window.clearTimeout(temporizadorReintentoCarga);
+-                    temporizadorReintentoCarga = null;
+-                }
+-                actualizarColaAvisos(datos.avisos || []);
+-                horariosActuales = Array.isArray(datos.horarios) ? datos.horarios : [];
+-                desfaseServidor = Number(datos.servidor_at) > 0 ? Number(datos.servidor_at) * 1000 - Date.now() : 0;
+-                mostrarSiguienteComentarioNuevo();
+-                programarSiguienteToastVencido();
+-                if (datos.requiere_migracion) {
+-                    if (!avisoMigracionMostrado) {
+-                        avisoMigracionMostrado = true;
+-                        console.warn(
+-                            'Recordatorios: ejecuta database/migrations/2026_09_03_recordatorios_vinculacion.sql para habilitar los avisos automáticos.'
+-                        );
+-                    }
+-                    return;
++            try {
++                const datos = canalCampana
++                    ? await window.navigator.locks.request(claveCampana, {ifAvailable: !explicita},
++                        lock => lock ? cargarCampana() : null)
++                    : await cargarCampana();
++                if (datos) {
++                    procesarDatosCampana(datos);
++                    canalCampana?.postMessage(datos);
+                 }
+ 
+             } catch (error) {
+@@ -704,12 +726,25 @@
+                 console.error('No fue posible actualizar las notificaciones.', error);
+             } finally {
+                 consultaEnCurso = false;
+-                if (!cargaInicialCompletada) programarReintentoCarga();
++                if (refrescoPendiente) {
++                    refrescoPendiente = false;
++                    void consultarRecordatorios(true);
++                } else if (!cargaInicialCompletada) {
++                    programarReintentoCarga();
++                }
+             }
+         };
+ 
+         consultarRecordatorios();
+-        window.setInterval(consultarRecordatorios, 60000);
++        // Mantener la primera consulta y los refrescos explícitos inmediatos.
++        // Dispersar sólo los sondeos rutinarios entre navegadores.
++        if (canalCampana) {
++            window.setTimeout(function () {
++                window.setInterval(consultarRecordatorios, 60000);
++            }, Math.floor(Math.random() * 1500));
++        } else {
++            window.setInterval(consultarRecordatorios, 60000);
++        }
+         programarSiguienteToastVencido();
+ 
+         window.addEventListener('pageshow', function () {

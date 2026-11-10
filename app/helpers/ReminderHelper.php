@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../../config/db_connection.php';
 
 if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
-    function obtenerRecordatoriosSeguimientoAnalista($usuarioId, $limite = 8)
+    function obtenerRecordatoriosSeguimientoAnalista($usuarioId, $limite = 8, ?mysqli $connection = null)
     {
         $usuarioId = (int)$usuarioId;
         $limite = max(1, min(50, (int)$limite));
@@ -13,8 +13,7 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
         }
 
         try {
-            $database = new Database();
-            $connection = $database->connect();
+            $connection ??= (new Database())->connect();
 
             $sql = "SELECT
                         seguimientos.id,
@@ -88,7 +87,7 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
 }
 
 if (!function_exists('obtenerAvisosPendientesRecordatoriosAnalista')) {
-    function obtenerAvisosPendientesRecordatoriosAnalista($usuarioId)
+    function obtenerAvisosPendientesRecordatoriosAnalista($usuarioId, ?mysqli $connection = null)
     {
         $usuarioId = (int)$usuarioId;
 
@@ -101,11 +100,10 @@ if (!function_exists('obtenerAvisosPendientesRecordatoriosAnalista')) {
             ];
         }
 
-        $recordatorios = obtenerRecordatoriosSeguimientoAnalista($usuarioId, 50);
+        $recordatorios = obtenerRecordatoriosSeguimientoAnalista($usuarioId, 50, $connection);
 
         try {
-            $database = new Database();
-            $connection = $database->connect();
+            $connection ??= (new Database())->connect();
 
             if (!existeTablaRecordatoriosVinculacion($connection)) {
                 return [

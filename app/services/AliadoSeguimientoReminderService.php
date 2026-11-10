@@ -8,12 +8,10 @@ class AliadoSeguimientoReminderService
     private $modelo;
     private $connection;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $this->modelo = new AliadoModel();
-
-        $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection ?? (new Database())->connect();
+        $this->modelo = new AliadoModel($this->connection);
     }
 
     public function obtener($usuarioId, $limite = 10)

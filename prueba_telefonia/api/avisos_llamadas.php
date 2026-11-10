@@ -6,7 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store');
 $root = dirname(__DIR__, 2);
 require_once $root . '/app/helpers/PermissionHelper.php';
-require_once $root . '/app/models/RolModel.php';
+require_once $root . '/app/services/TelefoniaSesionService.php';
 require_once $root . '/app/services/TelefoniaRecepcionMarketingService.php';
 require_once $root . '/app/services/TelefoniaEntrantesAnalistaService.php';
 function responderAvisos(array $data, int $status=200): void {
@@ -16,8 +16,13 @@ function responderAvisos(array $data, int $status=200): void {
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') responderAvisos(['ok'=>false],405);
 $id=(int)($_SESSION['usuario_id'] ?? 0);
 if (!$id) responderAvisos(['ok'=>false],401);
-$roles=new RolModel();$roles->inicializarPermisosSistema();
-$_SESSION['permisos']=$roles->obtenerCodigosPermisosPorRol((int)($_SESSION['rol_id'] ?? 0));
+try {
+    $conexion = Database::compartida();
+    if (!TelefoniaSesionService::actualizarPermisos($id, $conexion)) responderAvisos(['ok'=>false],403);
+} catch (Throwable $error) {
+    if (Database::responderFalloTemporal($error)) exit;
+    responderAvisos(['ok'=>false,'mensaje'=>'No fue posible verificar los permisos de telefonía.'],500);
+}
 $recepcion=TelefoniaRecepcionMarketingService::tienePermisos();
 $analista=strcasecmp(trim((string)($_SESSION['rol'] ?? '')),'Analista de Datos')===0 &&
     tienePermiso('telefonia.usar') && tienePermiso('telefonia.recibir') &&
@@ -25,8 +30,8 @@ $analista=strcasecmp(trim((string)($_SESSION['rol'] ?? '')),'Analista de Datos')
 if (!$recepcion && !$analista) responderAvisos(['ok'=>false],403);
 session_write_close();
 try {
-    $data=$recepcion?(new TelefoniaRecepcionMarketingService())->resumen($id):
-        (new TelefoniaEntrantesAnalistaService())->listar($id);
+    $data=$recepcion?(new TelefoniaRecepcionMarketingService($conexion))->resumen($id):
+        (new TelefoniaEntrantesAnalistaService($conexion, false))->listar($id);
     $calls=[];
     foreach ($data['llamadas'] as $call) {
         if (!$recepcion && ($call['tipo_llamada'] ?? '')==='INTERNA') continue;
