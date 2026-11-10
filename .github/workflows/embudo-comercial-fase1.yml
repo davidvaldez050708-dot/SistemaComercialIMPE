@@ -55,6 +55,7 @@ jobs:
           php tests/embudo_pbx_normalizacion_mexico_unit.php
           php -l app/services/EmbudoComercialPresentacion.php
           php tests/embudo_comercial_ficha_historial_unit.php
+          php tests/embudo_historial_resultados_legibles_unit.php
           php tests/embudo_busqueda_historial_telefonico_unit.php
           python3 tests/embudo_comercial_ficha_historial_estatico_test.py
           python3 -m py_compile tools/publicar_embudo_ficha_historial_hostinger.py
