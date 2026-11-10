@@ -5,6 +5,40 @@
   'use strict';
   const root = document.querySelector('.impe-embudo');
   if (!root) return;
+  // El resultado ya fue confirmado por el servidor en Mis llamadas. La
+  // notificación sólo solicita releer la vista del embudo; jamás modifica
+  // etapas, llamadas o grabaciones desde el navegador.
+  const usuarioId=Number(window.IMPE_CURRENT_USER_ID||0);
+  const cambioKey='impe:embudo:resultado-guardado:'+usuarioId;
+  const vistaCargadaAt=Date.now();
+  let actualizacionSolicitada=false;
+  const refrescarVista=()=>{
+    if (actualizacionSolicitada||usuarioId<1||document.hidden) return;
+    let cambio=null;
+    try {cambio=JSON.parse(localStorage.getItem(cambioKey)||'null');}catch(_){return;}
+    if (!cambio||Number(cambio.usuarioId)!==usuarioId||
+        !/^[1-9][0-9]*$/.test(String(cambio.asignacionId||''))||
+        !Number.isFinite(Number(cambio.creada))||
+        Number(cambio.creada)<=vistaCargadaAt ||
+        Date.now()-Number(cambio.creada)>60000) return;
+    // Solo actualizar el documento del tablero cuando el teléfono esté libre.
+    // Bajo el shell WebRTC, este reload afecta al iframe CRM, NO al host SDK.
+    const telefono=window.IMPE_TELEPHONY_PERSISTENT;
+    let activa=false;
+    try{
+      activa=Boolean(telefono?.getState?.()?.active ||
+        (window.parent!==window&&window.parent.IMPE_TELEPHONY_SHELL?.getPhoneStatus?.()?.active));
+    }catch(_){activa=true;}
+    if (activa) return;
+    actualizacionSolicitada=true;
+    window.location.reload();
+  };
+  window.addEventListener('storage',event=>{
+    if(event.key===cambioKey) refrescarVista();
+  });
+  window.addEventListener('focus',refrescarVista);
+  document.addEventListener('visibilitychange',refrescarVista);
+  window.addEventListener('pageshow',event=>{if(event.persisted)refrescarVista();});
   // Reutiliza el mismo teléfono persistente de Inicio y Mis llamadas.
   root.querySelectorAll('[data-embudo-marcar]').forEach(b=>b.addEventListener('click',()=>{
     const numero=String(b.dataset.embudoMarcar||'').trim();
