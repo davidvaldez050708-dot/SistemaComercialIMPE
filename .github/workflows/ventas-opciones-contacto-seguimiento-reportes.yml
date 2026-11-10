@@ -1,0 +1,36 @@
+name: Ventas - Contacto, seguimiento y reportes
+on:
+  push:
+    branches:
+      - fix/ventas-opciones-contacto-seguimiento-reportes-20261110
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaResultadoVentasCatalogo.php'
+      - 'app/services/TelefoniaControlService.php'
+      - 'app/views/telefonia/index.php'
+      - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'tests/telefonia_ventas_contacto_seguimiento_catalogo_unit.php'
+      - 'tests/ventas_seguimiento_reportes_estatico_test.py'
+permissions:
+  contents: read
+jobs:
+  validar-sin-bd-ni-pbx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Sintaxis y selector existente
+        run: |
+          php -l app/services/TelefoniaResultadoVentasCatalogo.php
+          php -l app/services/TelefoniaControlService.php
+          php -l app/views/telefonia/index.php
+          php -l app/views/telefonia/resultado_ventas_form.php
+          php -l app/services/TelefoniaResultadoVentasService.php
+          node --check public/javascript/telefonia_ventas_resultados.js
+      - name: Casos comerciales sin conectar a producción
+        run: |
+          php tests/telefonia_ventas_contacto_seguimiento_catalogo_unit.php
+          python3 tests/ventas_seguimiento_reportes_estatico_test.py
