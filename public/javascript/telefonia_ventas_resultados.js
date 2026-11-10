@@ -337,9 +337,10 @@
   try{
    const user=Number(window.IMPE_CURRENT_USER_ID||0);
    if(user<1)return '';
-   const data=JSON.parse(sessionStorage.getItem('impe:embudo:llamada-pendiente:'+user)||'null');
+   const data=JSON.parse(sessionStorage.getItem('impe:embudo:llamada-pendiente')||'null');
    const age=Date.now()-Number(data?.creada||0);
-   if(!data || !Number.isFinite(age)||age<0||age>30*60*1000||
+   if(!data || (Number(data.usuarioId||0)>0&&Number(data.usuarioId)!==user) ||
+      !Number.isFinite(age)||age<0||age>30*60*1000||
       !/^[1-9][0-9]*$/.test(String(data.asignacionId||''))||
       !numeroComparable(data.numero,call.numero))return '';
    return String(data.asignacionId);
@@ -369,7 +370,7 @@
    }
    try{
     for(const key of savedDrafts)sessionStorage.removeItem(key);
-    if(vinculo)sessionStorage.removeItem('impe:embudo:llamada-pendiente:'+Number(window.IMPE_CURRENT_USER_ID||0));
+    if(vinculo)sessionStorage.removeItem('impe:embudo:llamada-pendiente');
    }catch(_){}
    window.parent?.postMessage({type:'IMPE_SALES_RESULT_SAVED',ref:savedRef,extension:savedExt},location.origin);
    if(!sameForm()||disposed)return;
