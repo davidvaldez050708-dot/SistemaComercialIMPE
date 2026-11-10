@@ -16,10 +16,10 @@ $presentarMotivo=static function($valor): array {
         return ['descripcion'=>$original,'referencia_tecnica'=>null];
     }
     $etiquetas=[
-        'CONVERSACION_PERSONA'=>'Conversación con el prospecto',
+        'CONVERSACION_PERSONA'=>'Se habló con el prospecto',
         'INTERESADO'=>'Prospecto interesado',
         'SOLICITA_INFORMACION'=>'Solicita información',
-        'REQUIERE_SEGUIMIENTO'=>'Requiere seguimiento',
+        'REQUIERE_SEGUIMIENTO'=>'En seguimiento',
         'NO_INTERESADO'=>'No interesado',
         'COMUNICACION_INTERRUMPIDA'=>'Comunicación interrumpida',
         'OTRO'=>'Otro resultado con observaciones',
