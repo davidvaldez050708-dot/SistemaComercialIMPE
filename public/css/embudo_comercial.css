@@ -91,3 +91,28 @@
 .impe-embudo-dialog-footer button{border:1px solid #cfdaeb;border-radius:9px;padding:9px 13px;font:800 11px Manrope,sans-serif;color:#3b5b84;background:#fff;cursor:pointer}
 .impe-embudo-dialog-footer button[type="submit"]{background:#2556a5;color:#fff;border-color:#2556a5}
 .impe-embudo-dialog-footer button:disabled{opacity:.55;cursor:wait}
+
+
+/* Ficha: trazabilidad legible, aislada de otros módulos y sin alterar modales. */
+.impe-embudo-historial-head{display:flex;align-items:start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.impe-embudo-historial-head h3{margin:0 0 6px}
+.impe-embudo-historial-head p{margin:0;color:#7286a5;font:500 11px/1.5 Manrope,sans-serif}
+.impe-embudo-historial-total{background:#edf3fe;color:#2b568e;border-radius:99px;padding:6px 10px;font:800 10px Manrope,sans-serif;white-space:nowrap}
+.impe-embudo-timeline{list-style:none;margin:0;padding:0 0 0 19px;display:grid;gap:10px;border-left:2px solid #e3ebf7}
+.impe-embudo-timeline-item{position:relative;background:#fafcff;border:1px solid #e0e9f4;border-radius:10px;padding:12px 14px;min-width:0}
+.impe-embudo-timeline-item::before{content:"";position:absolute;left:-26px;top:17px;width:11px;height:11px;background:#2d5daa;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #bdd1ed}
+.impe-embudo-timeline-main{display:flex;justify-content:space-between;align-items:baseline;gap:9px;flex-wrap:wrap}
+.impe-embudo-timeline-main strong{font:800 11px/1.6 Manrope,sans-serif;color:#234878;overflow-wrap:anywhere}
+.impe-embudo-timeline-main strong i{font-size:10px;margin:0 4px;color:#87a2c2}
+.impe-embudo-timeline-main time{font:600 10px/1.5 Manrope,sans-serif;color:#647e9e}
+.impe-embudo-timeline-motivo{margin:8px 0 6px!important;font:600 11px/1.6 Manrope,sans-serif;color:#375779;overflow-wrap:anywhere;white-space:pre-wrap}
+.impe-embudo-timeline-autor{font:600 10px Manrope,sans-serif;color:#7187a5}
+.impe-embudo-timeline-autor i{margin-right:4px}
+.impe-embudo-historial-aviso{margin:10px 0 0;color:#667d9c;font-size:10px}
+
+/* Tarjetas: identidad visible en hasta dos líneas y próxima acción sin recorte. */
+.impe-embudo-card-line{align-items:flex-start}
+.impe-embudo-persona{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;white-space:normal;overflow:hidden;text-overflow:ellipsis;overflow-wrap:anywhere;flex:1}
+.impe-embudo-card-bottom{flex-direction:column;align-items:stretch;gap:7px}
+.impe-embudo-next{font-size:10px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+.impe-embudo-card-actions{justify-content:flex-end}
