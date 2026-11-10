@@ -8,7 +8,20 @@ import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
 PUBLISH=ROOT/'tools/publicar_historial_movimientos_legibles_hostinger.py'
-VIEW=ROOT/'app/views/embudo_comercial/detalle.php'
+# El publicador anterior es inmutable: validar con la revisión histórica
+# aprobada, no con un cambio posterior de presentación.
+import atexit
+APPROVED='f1724383a62b22d22ad3176ae2a38b91259c8618'
+hist=subprocess.run(['git','show',APPROVED+':app/views/embudo_comercial/detalle.php'],
+    cwd=str(ROOT),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+if hist.returncode!=0:raise RuntimeError('No se localizó ficha aprobada')
+handle=tempfile.NamedTemporaryFile(prefix='impe-ficha-aprobada-',suffix='.php',delete=False)
+try:
+    handle.write(hist.stdout)
+finally:
+    handle.close()
+VIEW=Path(handle.name)
+atexit.register(lambda: VIEW.unlink() if VIEW.exists() else None)
 BASE='6773f0a9c152ba8a3338eede55d8a45c306d2d17'
 spec=importlib.util.spec_from_file_location('pub',str(PUBLISH))
 pub=importlib.util.module_from_spec(spec)
