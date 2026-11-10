@@ -30,4 +30,5 @@ jobs:
           python3 tests/hostinger_v4_personalizaciones_fixtures.py
           php tests/telefonia_ventas_v4_contacto_seguimiento_smoke.php
           python3 tests/telefonia_ventas_v4_reportes_estatico_test.py
+          python3 tests/telefonia_v4_produccion_flujo_preservado_test.py
           python3 tests/publicar_ventas_v4_hostinger_personalizado_test.py
