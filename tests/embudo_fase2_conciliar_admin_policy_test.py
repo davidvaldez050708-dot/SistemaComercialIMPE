@@ -89,5 +89,5 @@ with tempfile.TemporaryDirectory(prefix='impe-admin-policy-merge-') as d:
     require(len(list(backups.iterdir()))==1,'crea respaldo privado')
     backup=next(backups.iterdir())/POL
     require(backup.read_bytes()==site_custom,'respaldo conserva archivo anterior')
-    require(len(pub.preparar(site,ROOT))==0,'postcheck, idempotente')
+    require(len(pub.preparar(site,approved))==0,'postcheck, idempotente')
 print('CHECK OK: AdminPolicy personalizada conservada, 3 permisos, respaldos y doble check.')
