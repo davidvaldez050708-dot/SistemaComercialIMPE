@@ -37,7 +37,9 @@ final class EmbudoComercialEtapas
             return 'RECUPERACION';
         }
         if ($resultado === 'CONVERSACION_PERSONA') return 'CONTACTADO';
-        if (in_array($resultado, ['INTERESADO','SOLICITA_INFORMACION'],true)) {
+        // PROSPECTO_POTENCIAL es el resultado visible de las asesoras en el catálogo V4.
+        // Se considera interés declarado, nunca prueba de pago o inscripción.
+        if (in_array($resultado, ['INTERESADO','SOLICITA_INFORMACION','PROSPECTO_POTENCIAL'],true)) {
             return 'INTERESADO';
         }
         if ($resultado === 'REQUIERE_SEGUIMIENTO') {
