@@ -5,16 +5,6 @@ require_once __DIR__ . '/../models/ReporteAdministradorModel.php';
 
 class ReporteAdministradorDataService
 {
-    private const ESTADOS_SEGUIMIENTO = [
-        'NUEVO' => 'Nuevo',
-        'CONTACTANDO' => 'Contactando',
-        'DATOS_VERIFICADOS' => 'Datos verificados',
-        'NO_LOCALIZADO' => 'No localizado',
-        'DESCARTADO' => 'Descartado',
-        'OFICIO_PREPARADO' => 'Oficio preparado',
-        'ESPERANDO_RESPUESTA' => 'Esperando respuesta'
-    ];
-
     private $modeloUsuario;
     private $modeloReporte;
 
@@ -87,7 +77,6 @@ class ReporteAdministradorDataService
         $rolesFiltro = is_array($rolesSeleccionados) ? $rolesSeleccionados : [];
 
         $usuarios = $this->modeloReporte->obtenerUsuariosConSeguimiento($rolesFiltro);
-        $pendientes = $this->modeloReporte->obtenerSeguimientosQueRequierenAtencion($rolesFiltro);
 
         if ($rolesSeleccionados === null) {
             $conteoUsuarios = $this->modeloUsuario->contarUsuarios();
@@ -145,12 +134,6 @@ class ReporteAdministradorDataService
             ];
         }
 
-        foreach ($pendientes as &$pendiente) {
-            $codigo = (string)($pendiente['estado_seguimiento'] ?? '');
-            $pendiente['estado_label'] = self::ESTADOS_SEGUIMIENTO[$codigo] ?? $codigo;
-        }
-        unset($pendiente);
-
         $resumen = [
             'usuarios_registrados' => (int)($conteoUsuarios['registrados'] ?? 0),
             'usuarios_activos' => (int)($conteoUsuarios['activos'] ?? 0),
@@ -176,7 +159,6 @@ class ReporteAdministradorDataService
         return [
             'resumen' => $resumen,
             'usuarios' => $usuarios,
-            'pendientes' => $pendientes,
             'usuarios_por_rol' => $datosRoles,
             'estado_usuarios' => [
                 ['etiqueta' => 'Activos', 'valor' => (int)$resumen['usuarios_activos']],

@@ -189,7 +189,6 @@ class ReporteAdministradorPdfService
     {
         $resumen = $datosReporte['resumen'] ?? [];
         $usuarios = $datosReporte['usuarios'] ?? [];
-        $pendientes = $datosReporte['pendientes'] ?? [];
         $datosRoles = is_array($datosReporte['usuarios_por_rol'] ?? null)
             ? $datosReporte['usuarios_por_rol']
             : [];
@@ -273,42 +272,6 @@ class ReporteAdministradorPdfService
             $anchoUtil,
             2
         );
-        $elementos[] = $this->crearEspaciador($documento, 80);
-
-        $elementos[] = $this->crearSubtitulo(
-            $documento,
-            'Pendientes y seguimientos que requieren atención'
-        );
-        if (empty($pendientes)) {
-            $elementos[] = $this->crearParrafo(
-                $documento,
-                'No se encontraron seguimientos con acciones programadas, sin actividad o con más de 7 días sin movimiento.',
-                ['tamano' => 16, 'color' => self::COLOR_SECUNDARIO, 'despues' => 80]
-            );
-        } else {
-            $filasPendientes = [];
-            foreach ($pendientes as $pendiente) {
-                $filasPendientes[] = [
-                    trim((string)($pendiente['responsable_nombre'] ?? '') . ' ' . (string)($pendiente['responsable_apellidos'] ?? '')),
-                    (string)($pendiente['nombre_entidad'] ?? '—'),
-                    (string)($pendiente['estado_nombre'] ?? '—'),
-                    (string)($pendiente['estado_label'] ?? $pendiente['estado_seguimiento'] ?? '—'),
-                    $this->formatearFechaHora($pendiente['ultima_interaccion_at'] ?? null, 'Sin actividad'),
-                    $pendiente['dias_sin_actividad'] === null
-                        ? '—'
-                        : (string)((int)$pendiente['dias_sin_actividad']),
-                    $this->formatearFechaHora($pendiente['proxima_accion_at'] ?? null, 'Sin fecha')
-                ];
-            }
-
-            $elementos[] = $this->crearTablaDetalle(
-                $documento,
-                ['Responsable', 'Institución', 'Estado', 'Estatus', 'Última actividad', 'Días', 'Próxima acción'],
-                $filasPendientes,
-                $this->anchos($anchoUtil, [17, 23, 13, 14, 14, 7, 12])
-            );
-        }
-
         $elementos[] = $this->crearEspaciador($documento, 100);
         $elementos[] = $this->crearTituloSeccion($documento, 'HALLAZGOS ADMINISTRATIVOS');
 

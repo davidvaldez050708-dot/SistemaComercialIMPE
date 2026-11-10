@@ -16,9 +16,6 @@ $resumen = is_array($reporteAdministrador['resumen'] ?? null)
 $usuarios = is_array($reporteAdministrador['usuarios'] ?? null)
     ? $reporteAdministrador['usuarios']
     : [];
-$pendientes = is_array($reporteAdministrador['pendientes'] ?? null)
-    ? $reporteAdministrador['pendientes']
-    : [];
 $usuariosPorRol = is_array($reporteAdministrador['usuarios_por_rol'] ?? null)
     ? $reporteAdministrador['usuarios_por_rol']
     : [];
@@ -376,7 +373,7 @@ foreach ($estadoUsuarios as $datoEstado) {
 
     <div class="territorial-section-title">
         <h2>ATENCIÓN REQUERIDA</h2>
-        <p>Acciones y seguimientos que requieren revisión dentro del alcance seleccionado.</p>
+        <p>Acciones vencidas dentro del alcance seleccionado.</p>
     </div>
 
     <section class="report-two-column mb-4" aria-label="Indicadores de atención requerida">
@@ -387,61 +384,6 @@ foreach ($estadoUsuarios as $datoEstado) {
                 <p class="metric-label">Acciones vencidas</p>
             </div>
         </article>
-    </section>
-
-    <section class="dashboard-panel report-section mb-4">
-        <div class="report-section-heading">
-            <div>
-                <h3>Pendientes y seguimientos que requieren atención</h3>
-            </div>
-        </div>
-
-        <?php if (empty($pendientes)): ?>
-            <p class="data-empty-text mb-0">
-                No se encontraron seguimientos con acciones programadas, sin actividad
-                o con más de 7 días sin movimiento.
-            </p>
-        <?php else: ?>
-            <div class="table-responsive">
-                <table class="table users-table data-table align-middle report-table">
-                    <thead>
-                        <tr>
-                            <th>Responsable</th>
-                            <th>Institución</th>
-                            <th>Estado</th>
-                            <th>Estatus</th>
-                            <th>Última actividad</th>
-                            <th>Días</th>
-                            <th>Próxima acción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($pendientes as $pendiente): ?>
-                            <tr>
-                                <td>
-                                    <strong>
-                                        <?= $texto(trim(
-                                            (string)($pendiente['responsable_nombre'] ?? '') . ' ' .
-                                            (string)($pendiente['responsable_apellidos'] ?? '')
-                                        )) ?>
-                                    </strong>
-                                </td>
-                                <td><?= $texto($pendiente['nombre_entidad'] ?? '—') ?></td>
-                                <td><?= $texto($pendiente['estado_nombre'] ?? '—') ?></td>
-                                <td><?= $texto($pendiente['estado_label'] ?? $pendiente['estado_seguimiento'] ?? '—') ?></td>
-                                <td><?= $texto($fechaHora($pendiente['ultima_interaccion_at'] ?? null, 'Sin actividad')) ?></td>
-                                <td>
-                                    <?= $pendiente['dias_sin_actividad'] === null
-                                        ? '—'
-                                        : (int)$pendiente['dias_sin_actividad'] ?>
-                                </td>
-                                <td><?= $texto($fechaHora($pendiente['proxima_accion_at'] ?? null, 'Sin fecha')) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
     </section>
 
     <div class="territorial-section-title">
