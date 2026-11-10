@@ -39,7 +39,11 @@ function renderHistorial($motivo) {
     return ob_get_clean();
 }
 $opciones=TelefoniaResultadoVentasService::opciones();
-ensureHistorial(count($opciones)===14,'catálogo actual de 14 resultados telefónicos');
+ensureHistorial(count($opciones)>=14 &&
+    isset($opciones['PROSPECTO_POTENCIAL']) &&
+    isset($opciones['REQUIERE_SEGUIMIENTO']) &&
+    isset($opciones['SIN_RESPUESTA']),
+    'catálogo V4 vigente e históricos disponibles');
 foreach ($opciones as $codigo=>$etiqueta) {
     $raw='Resultado PBX verificado: '.$codigo.' · ref '.$ref;
     $html=renderHistorial($raw);
@@ -84,4 +88,4 @@ $xssHtml=renderHistorial($xss);
 ensureHistorial(strpos($xssHtml,'<script>')===false,'entrada no confiable no ejecutable');
 ensureHistorial(strpos($xssHtml,'Ver referencia técnica')===false,
     'referencia no válida no se oculta como auditable');
-echo "CHECK OK: catálogo completo de 14 resultados, datos técnicos plegados, XSS y motivos manuales intactos.\n";
+echo "CHECK OK: catálogo V4 y resultados históricos legibles, referencias plegadas, XSS y motivos manuales intactos.\n";

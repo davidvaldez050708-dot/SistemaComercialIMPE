@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/TelefoniaExtensionService.php';
 require_once __DIR__ . '/TelefoniaContactosService.php';
+require_once __DIR__ . '/TelefoniaResultadoVentasCatalogo.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 /**
@@ -11,6 +12,8 @@ require_once __DIR__ . '/../../config/db_connection.php';
 class TelefoniaResultadoVentasService
 {
     public const CONVERSACION = 'CONVERSACION_PERSONA';
+    public const INFORMACION_WHATSAPP = 'INFORMACION_ENVIADA_WHATSAPP';
+    public const CANCELADA_ASESOR = 'CANCELADA_POR_ASESOR';
     public const BUZON = 'BUZON_VOZ';
     public const FUERA_HORARIO = 'FUERA_HORARIO';
     public const NUMERO_INEXISTENTE = 'NUMERO_INEXISTENTE';
@@ -21,15 +24,29 @@ class TelefoniaResultadoVentasService
 
     public static function opciones(): array
     {
+        return array_replace(self::opcionesHistoricas(),TelefoniaResultadoVentasCatalogo::resultados(),TelefoniaResultadoVentasCatalogo::etiquetasEnvio(),[
+            TelefoniaResultadoVentasCatalogo::INTERRUMPIDA_PERSONA=>'Comunicación interrumpida · habló con una persona'
+        ]);
+    }
+
+    public static function opcionesFormulario(): array
+    {
+        return TelefoniaResultadoVentasCatalogo::resultados();
+    }
+
+    private static function opcionesHistoricas(): array
+    {
         return [
             self::CONVERSACION => 'Conversación con el prospecto',
             'INTERESADO' => 'Prospecto interesado',
             'SOLICITA_INFORMACION' => 'Solicita información',
+            self::INFORMACION_WHATSAPP => 'Información enviada por WhatsApp',
             'REQUIERE_SEGUIMIENTO' => 'Requiere seguimiento',
             'NO_INTERESADO' => 'No interesado',
             'COMUNICACION_INTERRUMPIDA' => 'Comunicación interrumpida',
             'OTRO' => 'Otro resultado con observaciones',
             self::BUZON => 'Buzón de voz',
+            self::CANCELADA_ASESOR => 'Cancelada por el asesor',
             self::FUERA_HORARIO => 'Fuera de horario de servicio',
             self::NUMERO_INEXISTENTE => 'Número inexistente o incorrecto',
             self::SIN_RESPUESTA => 'No contestó',
@@ -41,7 +58,8 @@ class TelefoniaResultadoVentasService
 
     public static function esConversacion(?string $resultado): bool
     {
-        return in_array($resultado, [self::CONVERSACION,'INTERESADO','SOLICITA_INFORMACION','REQUIERE_SEGUIMIENTO','NO_INTERESADO'], true);
+        return TelefoniaResultadoVentasCatalogo::conPersona((string)$resultado) ||
+            in_array($resultado, [self::CONVERSACION,self::INFORMACION_WHATSAPP,'INTERESADO','SOLICITA_INFORMACION','REQUIERE_SEGUIMIENTO','NO_INTERESADO'], true);
     }
 
     private $db;
@@ -72,6 +90,25 @@ class TelefoniaResultadoVentasService
         if (!$ok) {
             throw new RuntimeException('No fue posible preparar los resultados de llamadas de Ventas.');
         }
+        // Tabla nueva: no alterar resultados ni observaciones de llamadas anteriores.
+        $ok=$this->db->query("CREATE TABLE IF NOT EXISTS telefonia_ventas_resultado_detalles (
+            resultado_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+            resultado_principal VARCHAR(36) NOT NULL,
+            envio_informacion VARCHAR(16) NOT NULL,
+            motivo_sin_whatsapp VARCHAR(300) NOT NULL DEFAULT '',
+            contacto_antes_corte VARCHAR(2) NOT NULL DEFAULT '',
+            catalogo_version VARCHAR(10) NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_ventas_detalle_resultado FOREIGN KEY (resultado_id)
+                REFERENCES telefonia_ventas_resultados(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        if(!$ok)throw new RuntimeException('No fue posible preparar el registro de envíos de información.');
+        $ok=$this->db->query("CREATE TABLE IF NOT EXISTS telefonia_ventas_resultado_selecciones (
+            resultado_id BIGINT UNSIGNED NOT NULL,codigo VARCHAR(36) NOT NULL,posicion TINYINT UNSIGNED NOT NULL,
+            PRIMARY KEY(resultado_id,codigo),UNIQUE KEY uk_ventas_seleccion_posicion(resultado_id,posicion),
+            CONSTRAINT fk_ventas_seleccion_resultado FOREIGN KEY(resultado_id) REFERENCES telefonia_ventas_resultados(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        if(!$ok)throw new RuntimeException('No fue posible preparar la selección de resultados.');
     }
 
     public static function extensionPropia(int $usuarioId): string
@@ -93,20 +130,91 @@ class TelefoniaResultadoVentasService
     }
 
     /**
-     * Rechaza IDs arbitrarios: solo llamadas salientes de la extensión propia,
-     * dentro del historial y cuyo fin confirmó el webhook.
+     * El resultado es una declaración humana; no es un cierre de Zadarma.
+     * Para la única excepción sin END PBX se exige la operación de transferencia
+     * exacta, propietario histórico, ruta verificada y ANSWER del asesor.
+     * No se infiere por teléfono, hora, RECORD, SIP local ni el fin de Recepción.
+     */
+    private function transferenciaAtendidaPropia(int $usuarioId, array $call): bool
+    {
+        $ext=(string)($call['extension']??'');
+        $ref=(string)($call['pbx_call_id']??'');
+        $source=(string)($call['origen_extension']??'');
+        if(empty($call['conectada']) || $source==='' || $source===$ext ||
+            empty($call['solicitud_id']) || ($call['direccion']??'')!=='Entrante') return false;
+        $request=(int)$call['solicitud_id'];
+        $stmt=$this->db->prepare("SELECT d.ruta_json FROM telefonia_transferencia_operaciones o
+            JOIN telefonia_disponibilidad d ON d.id=?
+                AND d.destino_usuario=o.destino_usuario
+                AND d.origen_usuario=o.origen_usuario
+                AND d.origen_extension=BINARY o.origen_extension
+                AND d.destino_extension=BINARY o.destino_extension
+                AND d.referencia=BINARY o.referencia
+            WHERE o.destino_usuario=? AND o.destino_extension=BINARY ?
+                AND o.origen_extension=BINARY ? AND o.referencia=BINARY ?
+                AND EXISTS (SELECT 1 FROM telefonia_zadarma_eventos e
+                    WHERE e.pbx_call_id=BINARY o.referencia AND e.internal=BINARY o.destino_extension
+                      AND e.evento='NOTIFY_ANSWER' AND e.id>o.evento_desde)
+            LIMIT 2");
+        $stmt->bind_param('iisss',$request,$usuarioId,$ext,$source,$ref);
+        $stmt->execute();
+        $rows=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        if(count($rows)!==1)return false;
+        $route=json_decode((string)$rows[0]['ruta_json'],true)?:[];
+        return ($route['tipo']??'')==='PROSPECTO'
+            && (int)($route['responsable_id']??0)===$usuarioId
+            && (string)($route['extension']??'')===$ext
+            && (string)($route['referencia_llamada']??'')===$ref;
+    }
+
+    /**
+     * Permite resultado definitivo sin cierre PBX SOLO en transferencia
+     * comercial atendida y vinculada al asesor; PBX/audio siguen pendientes.
      */
     public function guardar(int $usuarioId, string $pbxCallId, string $resultado, array $datos=[]): array
     {
+        $detalle=null;
+        if(array_key_exists('catalogo_version',$datos)){
+            if(in_array($datos['catalogo_version'],['3','4'],true))$detalle=TelefoniaResultadoVentasCatalogo::normalizarSeleccion($datos);
+            elseif($datos['catalogo_version']==='2')$detalle=TelefoniaResultadoVentasCatalogo::normalizar($resultado,$datos);
+            else throw new InvalidArgumentException('Recarga el formulario para usar la lista actual de resultados.');
+            $resultado=$detalle['resultado'];
+        }elseif(!isset(self::opcionesHistoricas()[$resultado])){
+            throw new InvalidArgumentException('Recarga el formulario para completar el resultado y el envío de información.');
+        }
         require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
         $svc=new TelefoniaVentasLlamadasService($this->db);$svc->sincronizar($usuarioId);
         $call=$svc->obtener($usuarioId,trim($pbxCallId),trim((string)($datos['extension']??'')));
         if(!array_key_exists($resultado,self::opciones()))throw new InvalidArgumentException('Selecciona un resultado comercial válido.');
-        if(!$call['finalizada'])throw new DomainException('La centralita aún no confirma el cierre de tu llamada.');
-        if(self::esConversacion($resultado)&&!$call['conectada'])throw new DomainException('Falta la confirmación PBX de conexión de tu extensión.');
+        $pbxPendiente=empty($call['finalizada']);
+        $cierreApiVerificado=false;
+        if($pbxPendiente&&!$this->transferenciaAtendidaPropia($usuarioId,$call)){
+            // Sólo ante guardado explícito, después de atribuir la llamada por
+            // usuario, extensión y PBX; jamás inventa eventos NOTIFY_OUT_END.
+            if(($call['direccion']??'')==='Saliente'){
+                try{
+                    require_once __DIR__.'/TelefoniaVentasCierreApiVerificado.php';
+                    $cierreApiVerificado=TelefoniaVentasCierreApiVerificado::verificar($call);
+                }catch(Throwable $e){
+                    error_log('[ventas_cierre_api_al_guardar] '.get_class($e));
+                    throw new DomainException('No fue posible verificar esta llamada con Zadarma. La captura no se guardó; inténtalo nuevamente.');
+                }
+            }
+            if(!$cierreApiVerificado)
+                throw new DomainException('El proveedor todavía no acredita el cierre de esta llamada. No se guardó el resultado.');
+        }
+        if(self::esConversacion($resultado)&&!$call['conectada']){
+            // Un cierre sin respuesta ya es un estado definitivo, no una espera.
+            $fecha=(string)($call['fecha']??'');$cuando='';
+            if(preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):[0-9]{2}$/D',$fecha,$partes))
+                $cuando=' del '.$partes[3].'/'.$partes[2].'/'.$partes[1].' a las '.$partes[4].':'.$partes[5];
+            throw new DomainException('La llamada seleccionada'.$cuando.' figura como «'.($call['estado_pbx']??'Sin respuesta').'», sin conexión confirmada. Revisa que elegiste la llamada atendida; este registro no permite un resultado de conversación.');
+        }
         $note=trim((string)($datos['observacion']??''));$name=trim((string)($datos['prospecto_nombre']??$call['nombre']));
         if(mb_strlen($note)>1000||mb_strlen($name)>150)throw new InvalidArgumentException('Limita el nombre a 150 caracteres y las observaciones a 1000.');
         if(in_array($resultado,['OTRO',self::OTRO_SIN_CONTACTO],true)&&mb_strlen($note)<3)throw new InvalidArgumentException('Describe lo que ocurrió en las observaciones.');
+        if($resultado===self::CANCELADA_ASESOR&&mb_strlen($note)<3)throw new InvalidArgumentException('Indica brevemente por qué cancelaste la llamada.');
         $contact=(int)($datos['contacto_id']??0);$contact=$contact>0?$contact:null;
         if($contact!==null){
             $s=$this->db->prepare('SELECT id FROM telefonia_contactos_personales WHERE id=? AND usuario_id=?');$s->bind_param('ii',$contact,$usuarioId);$s->execute();$own=$s->get_result()->fetch_assoc();$s->close();
@@ -138,6 +246,18 @@ class TelefoniaResultadoVentasService
         try{$s->bind_param('isssssis',$usuarioId,$extension,$pbxCallId,$resultado,$note,$name,$contact,$next);$s->execute();}
         catch(mysqli_sql_exception $e){if($e->getCode()===1062)throw new DomainException('El resultado de esta llamada ya se guardó y es definitivo.');throw $e;}
         finally{$s->close();}
+        if($detalle!==null){
+            $resultadoId=(int)$this->db->insert_id;$version=$datos['catalogo_version'];
+            $s=$this->db->prepare('INSERT INTO telefonia_ventas_resultado_detalles
+                (resultado_id,resultado_principal,envio_informacion,motivo_sin_whatsapp,contacto_antes_corte,catalogo_version,created_at)
+                VALUES(?,?,?,?,?,?,UTC_TIMESTAMP())');
+            $s->bind_param('isssss',$resultadoId,$detalle['resultado_principal'],$detalle['envio_informacion'],
+                $detalle['motivo_sin_whatsapp'],$detalle['contacto_antes_corte'],$version);$s->execute();$s->close();
+            if(in_array($version,['3','4'],true))foreach($detalle['resultados_seleccionados'] as $posicion=>$codigo){
+                $s=$this->db->prepare('INSERT INTO telefonia_ventas_resultado_selecciones(resultado_id,codigo,posicion) VALUES(?,?,?)');
+                $s->bind_param('isi',$resultadoId,$codigo,$posicion);$s->execute();$s->close();
+            }
+        }
         if($agenda){
             $saved=$agenda->guardar($usuarioId,$name,$call['numero'],['correo'=>(string)($datos['correo']??''),'observacion'=>mb_substr($note,0,500),'proxima_accion_at'=>'']);
             $contact=(int)$saved['id'];$update=$this->db->prepare('UPDATE telefonia_ventas_resultados SET contacto_id=? WHERE usuario_id=? AND extension=? AND pbx_call_id=?');$update->bind_param('iiss',$contact,$usuarioId,$extension,$pbxCallId);$update->execute();$update->close();
@@ -145,29 +265,29 @@ class TelefoniaResultadoVentasService
         if($callbacks)$callbacks->aplicarResultado($usuarioId,$call,$resultado);
         $this->db->commit();
         }catch(Throwable $e){$this->db->rollback();throw $e;}
-        // La telefonía es la operación principal: un problema del embudo JAMÁS
-        // revierte un resultado PBX ya registrado correctamente.
-        $vinculoEmbudo=null;
-        $raw=$datos['prospecto_asignacion_id']??'';
-        if (is_scalar($raw) && !is_bool($raw) &&
-            ctype_digit(trim((string)$raw)) && (int)$raw>0) {
+        // IMPE_EMBUDO_PBX_POSTCOMMIT_V1
+        // Telefonía ya registró el resultado definitivo. Si la vinculación
+        // comercial falla, no se revierte ni se altera ese registro PBX.
+        $idComercial = $datos['prospecto_asignacion_id'] ?? '';
+        if (is_string($idComercial) &&
+            preg_match('/^[1-9][0-9]*$/D', $idComercial)) {
             try {
                 require_once __DIR__.'/EmbudoComercialResultadoBridge.php';
                 $this->db->begin_transaction();
-                $vinculoEmbudo=(new EmbudoComercialResultadoBridge($this->db))
-                    ->aplicar($usuarioId,(int)$raw,$call,$resultado,$next);
+                (new EmbudoComercialResultadoBridge($this->db))->aplicar(
+                    $usuarioId, (int)$idComercial, $call, $resultado, $next ?? null,
+                    (bool)$cierreApiVerificado
+                );
                 $this->db->commit();
             } catch (Throwable $e) {
                 $this->db->rollback();
-                error_log('[embudo_vinculo_resultado] '.get_class($e).' codigo='.(int)$e->getCode());
-                $vinculoEmbudo=[
-                    'vinculada'=>false,'movida'=>false,'advertencia'=>
-                    'Resultado telefónico guardado. No se pudo vincular automáticamente al embudo.'];
+                error_log('[embudo_resultado_pbx] '.get_class($e).' codigo='.(int)$e->getCode());
             }
         }
-        return ['pbx_call_id'=>$pbxCallId,'extension'=>$extension,'resultado'=>$resultado,
+
+        return array_merge($detalle??[],['pbx_call_id'=>$pbxCallId,'extension'=>$extension,'resultado'=>$resultado,
             'etiqueta'=>self::opciones()[$resultado],'contacto_real'=>self::esConversacion($resultado),
-            'embudo'=>$vinculoEmbudo];
+            'pbx_pendiente'=>$pbxPendiente,'cierre_api_verificado'=>$cierreApiVerificado]);
     }
 
     /**

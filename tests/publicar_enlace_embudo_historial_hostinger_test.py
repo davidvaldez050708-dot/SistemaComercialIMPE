@@ -8,7 +8,7 @@ import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
 PUBLISH=ROOT/'tools/publicar_enlace_embudo_historial_hostinger.py'
-VIEW=ROOT/'app/views/embudo_comercial/index.php'
+VIEW_REF='861ee00e144f2b5f7600547d5307cf1216cb4b1a'
 BASE='71640a0ffd10d60d6826bf03f6833e25482b50b0'
 spec=importlib.util.spec_from_file_location('pub',str(PUBLISH))
 pub=importlib.util.module_from_spec(spec)
@@ -22,10 +22,16 @@ git=subprocess.run(['git','show',BASE+':'+pub.REL],cwd=str(ROOT),
 must(git.returncode==0,'no se encontró blob del puente original')
 original=git.stdout
 must(pub.blob(original)==pub.BEFORE,'blob previo esperado')
-must(pub.blob(VIEW.read_bytes())==pub.AFTER,'blob nuevo esperado')
+approved_git=subprocess.run(
+    ['git','show',VIEW_REF+':'+pub.REL],cwd=str(ROOT),
+    stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+must(approved_git.returncode==0,'no se encontró vista histórica aprobada')
+must(pub.blob(approved_git.stdout)==pub.AFTER,'blob histórico esperado')
 
 with tempfile.TemporaryDirectory(prefix='impe-pbx-mx-') as d:
     root=Path(d)
+    VIEW=root/'vista_aprobada_historica.php'
+    VIEW.write_bytes(approved_git.stdout)
     site=root/'public_html'
     target=site/pub.REL
     target.parent.mkdir(parents=True)

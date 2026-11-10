@@ -55,7 +55,8 @@ final class EmbudoComercialResultadoBridge
     }
 
     public function aplicar(int $usuarioId,int $asignacionId,
-        array $call,string $resultado,?string $proximaAccion): array
+        array $call,string $resultado,?string $proximaAccion,
+        bool $cierreApiVerificado=false): array
     {
         if ($usuarioId<1 || $asignacionId<1 ||
             (int)($_SESSION['usuario_id']??0)!==$usuarioId ||
@@ -64,9 +65,14 @@ final class EmbudoComercialResultadoBridge
         }
         $ext=(string)($call['extension']??'');
         $pbx=(string)($call['pbx_call_id']??'');
+        // Cierre saliente acreditado por API: no es un evento NOTIFY_OUT_END.
+        $finalizada = !empty($call['finalizada']) ||
+            ($cierreApiVerificado &&
+             ($call['direccion']??'')==='Saliente' &&
+             preg_match('/^out_[A-Za-z0-9_-]{6,100}$/D',$pbx));
         if (!preg_match('/^\d{3,6}$/D',$ext) ||
             !preg_match('/^[a-zA-Z0-9_-]{6,100}$/D',$pbx) ||
-            empty($call['finalizada'])) {
+            !$finalizada) {
             throw new DomainException('No se ha confirmado una llamada PBX válida.');
         }
         $s=$this->db->prepare(

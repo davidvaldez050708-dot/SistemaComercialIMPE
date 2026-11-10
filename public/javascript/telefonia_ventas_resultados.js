@@ -120,6 +120,13 @@
    if(previousReason)previousReason.hidden=!call?.registro?.motivo_sin_whatsapp;
    if(previousText)previousText.textContent=call?.registro?.motivo_sin_whatsapp?'Motivo registrado anteriormente: '+call.registro.motivo_sin_whatsapp:'';
   }
+  // La próxima acción sólo es obligatoria con En seguimiento;
+  // no cambia el flujo habitual ni la pregunta de contacto por WhatsApp/SMS.
+  const nextDate=form.elements.namedItem('proxima_accion_at');
+  const seguimiento=Boolean(!call?.registro&&picked.includes('REQUIERE_SEGUIMIENTO'));
+  if(nextDate)nextDate.required=seguimiento;
+  const nextLabel=form.querySelector('label[for="salesNext"]');
+  if(nextLabel)nextLabel.textContent=seguimiento?'Próxima llamada (obligatoria para En seguimiento)':'Próxima llamada (opcional)';
   const cancelled=result.value==='CANCELADA_POR_ASESOR';notes.required=cancelled;notes.minLength=cancelled?3:0;
   const label=form.querySelector('label[for="salesNote"]');if(label)label.textContent=cancelled?'Motivo de cancelación *':'Observaciones';
   for(const option of result.options||[])option.disabled=Boolean(call?.finalizada&&!call.conectada&&option.dataset.requiresConnection==='1');
@@ -157,10 +164,10 @@
    const ownExt=ext||callExt,ownerRef=ref||'pending-'+String(openContext.sessionKey).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,80);
    if(shell()&&!shell().beginCallResult(token,[ownerRef]))throw Error('Termina la llamada activa antes de registrar.');
    form.elements.pbx_call_id.value=ref;form.elements.extension.value=ownExt;
-    // IMPE_EMBUDO_ASIGNACION_RESULTADO_V1: contexto opt-in del prospecto.
-    const asignacionEmbudo = String(root.dataset.salesAssignmentId || '');
-    form.elements.prospecto_asignacion_id.value =
-      /^[1-9][0-9]*$/.test(asignacionEmbudo) ? asignacionEmbudo : '';
+   // IMPE_EMBUDO_ASIGNACION_RESULTADO_V1: contexto opt-in del prospecto.
+   const asignacionEmbudo = String(root.dataset.salesAssignmentId || '');
+   form.elements.prospecto_asignacion_id.value =
+     /^[1-9][0-9]*$/.test(asignacionEmbudo) ? asignacionEmbudo : '';
    if(fields)fields.hidden=false;submit.hidden=false;submit.disabled=true;submit.innerHTML='Identificando llamada…';waiting=true;
    form.querySelector('[data-sales-form-number]').textContent=openContext.number||call?.numero||'Llamada finalizada';
    form.querySelector('[data-sales-form-state]').textContent='Identificando la llamada de tu extensión · Ext. '+ownExt;
@@ -332,7 +339,7 @@
    (y.length===12&&y.startsWith('52')&&y.slice(2)===x&&x.length===10);
  };
  const asignacionAutomatica=()=>{
-  if(!call||call.registro||!call.conectada||call.pbx_call_id!==callRef||
+  if(!call||call.registro||call.pbx_call_id!==callRef||
      String(call.direccion||'').toLowerCase()!=='saliente')return '';
   try{
    const user=Number(window.IMPE_CURRENT_USER_ID||0);
@@ -372,6 +379,16 @@
     for(const key of savedDrafts)sessionStorage.removeItem(key);
     if(vinculo)sessionStorage.removeItem('impe:embudo:llamada-pendiente');
    }catch(_){}
+
+   // Después del OK real del servidor, notificar a cualquier tablero abierto
+   // de este mismo asesor para que relea la etapa desde MySQL. No mover
+   // tarjetas ni inferir etapas en el navegador; no afecta al host WebRTC.
+   const asignacionGuardada=String(campo?.value||'');
+   const usuarioGuardado=Number(window.IMPE_CURRENT_USER_ID||0);
+   if(usuarioGuardado>0&&/^[1-9][0-9]*$/.test(asignacionGuardada)){
+    try{localStorage.setItem('impe:embudo:resultado-guardado:'+usuarioGuardado,
+     JSON.stringify({usuarioId:usuarioGuardado,asignacionId:asignacionGuardada,creada:Date.now()}));}catch(_){}
+   }
    window.parent?.postMessage({type:'IMPE_SALES_RESULT_SAVED',ref:savedRef,extension:savedExt},location.origin);
    if(!sameForm()||disposed)return;
    queued=false;closeReason='saved';

@@ -232,7 +232,7 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
     </dialog>
     <?php endif; ?>
     <?php if ($puedeMover || $puedeLlamar): ?>
-    <script src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_movimientos.js?v=2" defer></script>
+    <script src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_movimientos.js?v=<?= filemtime(__DIR__.'/../../../public/javascript/embudo_comercial_movimientos.js') ?>" defer></script>
     <?php endif; ?>
     <p class="impe-embudo-note"><i class="bi bi-shield-check" aria-hidden="true"></i>
         Las etapas manuales conservan auditoría; las llamadas siguen registrándose en Telefonía.

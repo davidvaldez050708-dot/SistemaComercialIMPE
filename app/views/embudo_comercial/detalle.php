@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
+require_once __DIR__.'/../../services/TelefoniaResultadoVentasService.php';
 $esc=static fn($x)=>htmlspecialchars((string)($x??''),ENT_QUOTES,'UTF-8');
 $def=static fn($x)=>trim((string)($x??''))!==''?(string)$x:'Sin indicar';
 $fecha=static fn($x)=>EmbudoComercialPresentacion::fechaUtc($x);
@@ -15,22 +16,11 @@ $presentarMotivo=static function($valor): array {
         $original,$m)) {
         return ['descripcion'=>$original,'referencia_tecnica'=>null];
     }
-    $etiquetas=[
-        'CONVERSACION_PERSONA'=>'Se habló con el prospecto',
-        'INTERESADO'=>'Prospecto interesado',
-        'SOLICITA_INFORMACION'=>'Solicita información',
-        'REQUIERE_SEGUIMIENTO'=>'En seguimiento',
-        'NO_INTERESADO'=>'No interesado',
-        'COMUNICACION_INTERRUMPIDA'=>'Comunicación interrumpida',
-        'OTRO'=>'Otro resultado con observaciones',
-        'BUZON_VOZ'=>'Buzón de voz',
-        'FUERA_HORARIO'=>'Fuera de horario de servicio',
-        'NUMERO_INEXISTENTE'=>'Número inexistente o incorrecto',
-        'SIN_RESPUESTA'=>'No contestó',
-        'OCUPADO'=>'Línea ocupada',
-        'MENSAJE_AUTOMATICO'=>'Mensaje de operadora o grabadora',
-        'OTRO_SIN_CONTACTO'=>'Otra situación sin contacto'
-    ];
+    // Catálogo V4 y etiquetas históricas: los resultados del asesor
+    // se presentan legibles sin alterar el código PBX en la bitácora.
+    $etiquetas=TelefoniaResultadoVentasService::opciones();
+    $etiquetas['CONVERSACION_PERSONA']='Se habló con el prospecto';
+    $etiquetas['REQUIERE_SEGUIMIENTO']='En seguimiento';
     $etiqueta=$etiquetas[$m[1]]??'Resultado telefónico no identificado';
     return [
         'descripcion'=>'Llamada comercial — '.$etiqueta,

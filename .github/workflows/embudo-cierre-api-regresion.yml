@@ -1,0 +1,59 @@
+name: Embudo comercial - cierre API Hostinger V4
+on:
+  pull_request:
+    paths:
+      - 'app/services/TelefoniaResultadoVentasService.php'
+      - 'app/services/EmbudoComercialResultadoBridge.php'
+      - 'app/services/TelefoniaResultadoVentasCatalogo.php'
+      - 'app/services/TelefoniaVentasCierreApiVerificado.php'
+      - 'app/views/telefonia/resultado_ventas_form.php'
+      - 'app/views/embudo_comercial/index.php'
+      - 'app/views/embudo_comercial/detalle.php'
+      - 'public/javascript/telefonia_shell.js'
+      - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'public/javascript/telefonia_ventas_observaciones.js'
+      - 'public/javascript/embudo_comercial_movimientos.js'
+      - 'tests/embudo_actualizacion_tras_llamada_unit.cjs'
+      - 'tools/publicar_embudo_refresco_automatico_hostinger_v1.py'
+      - 'tests/publicar_embudo_refresco_automatico_hostinger_v1_test.py'
+      - 'tools/publicar_embudo_cierre_api_hostinger_v1.py'
+      - 'tools/publicar_shell_modal_ventas_hostinger_v1.py'
+      - 'tests/publicar_embudo_cierre_api_hostinger_v1_test.py'
+      - 'tests/publicar_shell_modal_ventas_hostinger_v1_test.py'
+      - 'tests/embudo_historial_resultados_legibles_unit.php'
+      - '.github/workflows/embudo-cierre-api-regresion.yml'
+  workflow_dispatch:
+jobs:
+  publicador-regresion:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Comprobar PHP
+        run: |
+          php -l app/services/TelefoniaResultadoVentasService.php
+          php -l app/services/EmbudoComercialResultadoBridge.php
+          php -l app/services/EmbudoComercialEtapas.php
+          php -l app/services/TelefoniaResultadoVentasCatalogo.php
+          php -l app/services/TelefoniaVentasCierreApiVerificado.php
+          php -l app/views/telefonia/resultado_ventas_form.php
+          php -l app/views/embudo_comercial/index.php
+          php -l app/views/embudo_comercial/detalle.php
+      - name: Comprobar etiquetas de resultados históricos y V4
+        run: php tests/embudo_historial_resultados_legibles_unit.php
+      - name: Comprobar JavaScript
+        run: |
+          node --check public/javascript/telefonia_shell.js
+          node --check public/javascript/telefonia_ventas_resultados.js
+          node --check public/javascript/telefonia_ventas_observaciones.js
+          node --check public/javascript/embudo_comercial_movimientos.js
+          node --check tests/embudo_actualizacion_tras_llamada_unit.cjs
+          node tests/embudo_actualizacion_tras_llamada_unit.cjs
+      - name: Verificar publicación, guardias y rollback con datos ficticios
+        run: |
+          python3 tests/publicar_embudo_cierre_api_hostinger_v1_test.py
+          python3 tests/publicar_embudo_refresco_automatico_hostinger_v1_test.py
+          python3 tests/publicar_shell_modal_ventas_hostinger_v1_test.py
