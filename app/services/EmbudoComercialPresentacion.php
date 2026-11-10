@@ -14,6 +14,26 @@ final class EmbudoComercialPresentacion
         7=>'jul',8=>'ago',9=>'sep',10=>'oct',11=>'nov',12=>'dic'
     ];
 
+    /**
+     * Búsqueda textual para Mis llamadas desde las tarjetas comerciales.
+     * La PBX puede almacenar diez dígitos aunque el prospecto tenga +52.
+     * Buscar esos diez dígitos encuentra ambos formatos sin modificar
+     * ni el teléfono del prospecto ni el sistema de Telefonía.
+     */
+    public static function buscarTelefonoEnLlamadas(?string $telefono): string
+    {
+        $valor=trim((string)($telefono??''));
+        if ($valor==='' ||
+            !preg_match('/^\+?[0-9 ().-]+$/D',$valor)) {
+            return $valor;
+        }
+        $digitos=preg_replace('/\D+/', '',$valor)??'';
+        if (strlen($digitos)===12 && substr($digitos,0,2)==='52') {
+            return substr($digitos,2);
+        }
+        return $valor;
+    }
+
     public static function fechaLocal(?string $fecha): string
     {
         if (!is_string($fecha) ||
