@@ -158,7 +158,7 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
                             <a href="<?= $esc(BASE_URL.'index.php?'.http_build_query([
                                 'controller'=>'telefonia','action'=>'misLlamadas',
                                 'prospecto_asignacion_id'=>(int)$p['asignacion_id'],
-                                'q'=>(string)$p['telefono_original']
+                                'q'=>EmbudoComercialPresentacion::buscarTelefonoEnLlamadas((string)$p['telefono_original'])
                             ])) ?>" title="Consultar y registrar resultado en Mis llamadas" aria-label="Registrar resultado de llamadas del prospecto"><i class="bi bi-journal-check" aria-hidden="true"></i></a>
                             <?php endif; ?>
                             <a href="<?= $esc($detalle) ?>" title="Ver ficha" aria-label="Ver ficha de <?= $esc($p['nombre_completo']) ?>"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
