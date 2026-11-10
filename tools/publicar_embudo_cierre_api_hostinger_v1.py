@@ -36,7 +36,10 @@ FILES = {
         '6d990a8b12d4856c83e61dc67ad87b34e7767748'),
     'app/views/embudo_comercial/index.php': (
         '0b0c361e1eef700e00ff18cea18d479053441003',
-        '8c12c1af24c73badcb68ff372ea04e1ba0622c7c')
+        '8c12c1af24c73badcb68ff372ea04e1ba0622c7c'),
+    'app/views/embudo_comercial/detalle.php': (
+        'cc6f4774817ffbe8fe7a3b4b971549788526c0e0',
+        'e93e64c10088bb6351af3f0412b0d12cfee736a9')
 }
 GUARDS = {
     'app/views/telefonia/resultado_ventas_form.php':
@@ -234,7 +237,7 @@ def main():
     if sources==site or site in sources.parents:raise Blocked('Fuente no puede ser sitio productivo')
     if args.check:
         scan(site,sources)
-        print('CHECK OK: inspección solo lectura, cinco archivos y tres guardias sin conflictos.')
+        print('CHECK OK: inspección solo lectura, seis archivos y tres guardias sin conflictos.')
     else:publish(site,sources,args.backup_root,args.confirm)
 if __name__=='__main__':
     try:main()
