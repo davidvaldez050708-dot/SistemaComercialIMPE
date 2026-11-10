@@ -23,3 +23,5 @@ jobs:
           php tests/embudo_comercial_ficha_historial_unit.php
           python3 tests/embudo_comercial_ficha_historial_estatico_test.py
           python3 tests/publicar_historial_movimientos_legibles_hostinger_test.py
+          python3 -m py_compile tools/publicar_etiquetas_asesoras_embudo_hostinger.py
+          python3 tests/publicar_etiquetas_asesoras_embudo_test.py
