@@ -12,6 +12,7 @@ require_once __DIR__ . '/../services/SeguimientoCambioDatosService.php';
 require_once __DIR__ . '/../services/AliadoSeguimientoReminderService.php';
 require_once __DIR__ . '/../services/AdminNotificationService.php';
 require_once __DIR__ . '/../services/AliadoNuevoNotificationService.php';
+require_once __DIR__ . '/../services/AgendaComentarioService.php';
 
 class ReminderController
 {
@@ -51,6 +52,7 @@ class ReminderController
         $puedeSeguimientoAliados =
             tienePermiso('aliados.seguimiento_convocatorias');
         $puedeNovedadesAliados = tienePermiso('aliados.ver');
+        $puedeComentariosAgenda = tienePermiso('reuniones.ver');
         $puedeTelefonia=tienePermiso('telefonia.usar')&&(tienePermiso('telefonia.recibir')||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')));
 
         if (
@@ -58,7 +60,7 @@ class ReminderController
             (
                 !$esAdministrador &&
                 !$puedeCentroReuniones &&
-                !$puedeSeguimientoAliados && !$puedeNovedadesAliados && !$puedeTelefonia
+                !$puedeSeguimientoAliados && !$puedeNovedadesAliados && !$puedeTelefonia && !$puedeComentariosAgenda
             )
         ) {
             http_response_code(403);
@@ -71,6 +73,19 @@ class ReminderController
 
         if ($esAdministrador) {
             $resultado = (new AdminNotificationService())->obtener();
+            // Integración de comentarios para cualquier perfil con Agenda,
+            // también cuando su campana utiliza el resumen administrativo.
+            if ($puedeComentariosAgenda) {
+                try {
+                    $comentariosAgenda = new AgendaComentarioService();
+                    $novedades = $comentariosAgenda->notificaciones($usuarioId);
+                    $resultado['recordatorios'] = array_merge($resultado['recordatorios'] ?? [], $novedades['recordatorios']);
+                    $resultado['avisos'] = array_merge($resultado['avisos'] ?? [], $novedades['avisos']);
+                    $resultado['total'] = (int)($resultado['total'] ?? 0) + count($novedades['recordatorios']);
+                    if (empty($resultado['ok']) && $novedades['recordatorios']) { $resultado['parcial'] = true; }
+                    $comentariosAgenda->registrarEntregados($usuarioId, $novedades['recordatorios']);
+                } catch (Throwable $e) { error_log('[agenda_comentarios_campana] '.get_class($e)); }
+            }
 
             echo json_encode(
                 $resultado,
@@ -322,6 +337,15 @@ class ReminderController
             $ok = $ok && $nuevosAliados['ok'];
         }
 
+        if ($puedeComentariosAgenda) {
+            try {
+                $comentariosAgenda = new AgendaComentarioService();
+                $novedades = $comentariosAgenda->notificaciones($usuarioId);
+                $recordatorios = array_merge($recordatorios, $novedades['recordatorios']);
+                $avisos = array_merge($avisos, $novedades['avisos']);
+            } catch (Throwable $e) { error_log('[agenda_comentarios_campana] '.get_class($e)); }
+        }
+
         $telefoniaOk=false;
         if($puedeTelefonia){
             try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';
@@ -338,6 +362,9 @@ class ReminderController
         );
         if (isset($servicioNuevosAliados)) {
             $servicioNuevosAliados->registrarEntregados($usuarioId, $recordatorios);
+        }
+        if (isset($comentariosAgenda)) {
+            $comentariosAgenda->registrarEntregados($usuarioId, $recordatorios);
         }
 
         echo json_encode([

@@ -1,0 +1,16 @@
+EXISTS (SELECT 1 FROM seguimientos_vinculacion cartera_expediente
+            WHERE cartera_expediente.id=reuniones_vinculacion.seguimiento_id AND cartera_expediente.activo=1 AND EXISTS (SELECT 1 FROM asignaciones_territorio cartera_cuenta
+            JOIN usuarios cartera_kam ON cartera_kam.id=cartera_cuenta.usuario_id AND cartera_kam.estado=1 AND cartera_kam.rol_id=6
+            JOIN roles cartera_rol ON cartera_rol.id=cartera_kam.rol_id AND cartera_rol.estado=1
+            JOIN estados cartera_estado ON cartera_estado.id=cartera_cuenta.estado_id AND cartera_estado.estado=1
+            JOIN asignaciones_territorio cartera_analista ON cartera_analista.cuenta_clave_asignacion_id=cartera_cuenta.id
+                AND cartera_analista.estado_id=cartera_cuenta.estado_id AND cartera_analista.tipo_asignacion='ANALISTA_DATOS'
+                AND cartera_analista.activo=1
+            JOIN usuarios cartera_usuario ON cartera_usuario.id=cartera_analista.usuario_id AND cartera_usuario.estado=1 AND cartera_usuario.rol_id=4
+            JOIN roles cartera_rol_analista ON cartera_rol_analista.id=cartera_usuario.rol_id AND cartera_rol_analista.estado=1
+            WHERE cartera_cuenta.usuario_id=? AND cartera_cuenta.estado_id=cartera_expediente.estado_id
+              AND cartera_cuenta.tipo_asignacion='CUENTA_CLAVE' AND cartera_cuenta.activo=1
+              AND (cartera_cuenta.fecha_inicio IS NULL OR cartera_cuenta.fecha_inicio<=CURDATE())
+              AND (cartera_cuenta.fecha_fin IS NULL OR cartera_cuenta.fecha_fin>=CURDATE())
+              AND (cartera_analista.fecha_inicio IS NULL OR cartera_analista.fecha_inicio<=CURDATE())
+              AND (cartera_analista.fecha_fin IS NULL OR cartera_analista.fecha_fin>=CURDATE())))

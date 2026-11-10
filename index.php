@@ -525,6 +525,11 @@ switch ($controller) {
         break;
 
 
+    case 'agendaComentario':
+        require_once __DIR__ . '/app/controllers/AgendaComentarioController.php';
+        $controllerInstance = new AgendaComentarioController();
+        break;
+
     case 'agendaReunion':
 
         require_once __DIR__ .

@@ -1,0 +1,564 @@
+{
+  "version": "agenda-fechas-2026-2027-v1",
+  "consultado": "2026-10-29",
+  "fuentes": [
+    "https://calendario.mx/",
+    "https://calendario.mx/2027/"
+  ],
+  "eventos": {
+    "2026-01-01": [
+      {
+        "nombre": "Año Nuevo",
+        "categoria": "oficial"
+      }
+    ],
+    "2026-01-06": [
+      {
+        "nombre": "Día de Reyes",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-02-02": [
+      {
+        "nombre": "Día de la Constitución",
+        "categoria": "oficial"
+      },
+      {
+        "nombre": "Día de la Candelaria",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-02-05": [
+      {
+        "nombre": "Aniversario de la Constitución de 1917",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-02-14": [
+      {
+        "nombre": "Día del Amor y la Amistad",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-02-17": [
+      {
+        "nombre": "Martes de Carnaval",
+        "categoria": "santa"
+      }
+    ],
+    "2026-02-18": [
+      {
+        "nombre": "Miércoles de Ceniza",
+        "categoria": "santa"
+      }
+    ],
+    "2026-02-19": [
+      {
+        "nombre": "Día del Ejército Mexicano",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-02-24": [
+      {
+        "nombre": "Día de la Bandera",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-03-08": [
+      {
+        "nombre": "Día Internacional de la Mujer",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-03-16": [
+      {
+        "nombre": "Natalicio de Benito Juárez",
+        "categoria": "oficial"
+      }
+    ],
+    "2026-03-18": [
+      {
+        "nombre": "Expropiación Petrolera",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-03-21": [
+      {
+        "nombre": "Natalicio de Benito Juárez (fecha conmemorativa)",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-03-29": [
+      {
+        "nombre": "Domingo de Ramos",
+        "categoria": "santa"
+      }
+    ],
+    "2026-04-02": [
+      {
+        "nombre": "Jueves Santo",
+        "categoria": "santa"
+      }
+    ],
+    "2026-04-03": [
+      {
+        "nombre": "Viernes Santo",
+        "categoria": "santa"
+      }
+    ],
+    "2026-04-04": [
+      {
+        "nombre": "Sábado de Gloria",
+        "categoria": "santa"
+      }
+    ],
+    "2026-04-05": [
+      {
+        "nombre": "Domingo de Resurrección",
+        "categoria": "santa"
+      }
+    ],
+    "2026-04-30": [
+      {
+        "nombre": "Día del Niño",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-05-01": [
+      {
+        "nombre": "Día del Trabajo",
+        "categoria": "oficial"
+      }
+    ],
+    "2026-05-03": [
+      {
+        "nombre": "Día de la Santa Cruz",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-05-05": [
+      {
+        "nombre": "Batalla de Puebla",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-05-10": [
+      {
+        "nombre": "Día de las Madres",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-05-15": [
+      {
+        "nombre": "Día del Maestro",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-06-01": [
+      {
+        "nombre": "Día de la Marina",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-06-21": [
+      {
+        "nombre": "Día del Padre",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-09-13": [
+      {
+        "nombre": "Niños Héroes",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-09-15": [
+      {
+        "nombre": "Grito de Independencia",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-09-16": [
+      {
+        "nombre": "Día de la Independencia",
+        "categoria": "oficial"
+      }
+    ],
+    "2026-09-27": [
+      {
+        "nombre": "Consumación de la Independencia",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-10-12": [
+      {
+        "nombre": "Día de la Raza",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-11-01": [
+      {
+        "nombre": "Día de Todos los Santos",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-11-02": [
+      {
+        "nombre": "Día de Muertos",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-11-16": [
+      {
+        "nombre": "Día de la Revolución",
+        "categoria": "oficial"
+      }
+    ],
+    "2026-11-20": [
+      {
+        "nombre": "Aniversario de la Revolución (fecha conmemorativa)",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-12-12": [
+      {
+        "nombre": "Día de la Virgen de Guadalupe",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-12-16": [
+      {
+        "nombre": "Inicio de las Posadas",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-12-24": [
+      {
+        "nombre": "Nochebuena",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-12-25": [
+      {
+        "nombre": "Navidad",
+        "categoria": "oficial"
+      }
+    ],
+    "2026-12-28": [
+      {
+        "nombre": "Día de los Santos Inocentes",
+        "categoria": "tradicional"
+      }
+    ],
+    "2026-12-31": [
+      {
+        "nombre": "Nochevieja",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-01-01": [
+      {
+        "nombre": "Año Nuevo",
+        "categoria": "oficial"
+      }
+    ],
+    "2027-01-06": [
+      {
+        "nombre": "Día de Reyes",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-02-01": [
+      {
+        "nombre": "Día de la Constitución",
+        "categoria": "oficial"
+      }
+    ],
+    "2027-02-02": [
+      {
+        "nombre": "Día de la Candelaria",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-02-05": [
+      {
+        "nombre": "Aniversario de la Constitución de 1917",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-02-09": [
+      {
+        "nombre": "Martes de Carnaval",
+        "categoria": "santa"
+      }
+    ],
+    "2027-02-10": [
+      {
+        "nombre": "Miércoles de Ceniza",
+        "categoria": "santa"
+      }
+    ],
+    "2027-02-14": [
+      {
+        "nombre": "Día del Amor y la Amistad",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-02-19": [
+      {
+        "nombre": "Día del Ejército Mexicano",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-02-24": [
+      {
+        "nombre": "Día de la Bandera",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-03-08": [
+      {
+        "nombre": "Día Internacional de la Mujer",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-03-15": [
+      {
+        "nombre": "Natalicio de Benito Juárez",
+        "categoria": "oficial"
+      }
+    ],
+    "2027-03-18": [
+      {
+        "nombre": "Expropiación Petrolera",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-03-21": [
+      {
+        "nombre": "Domingo de Ramos",
+        "categoria": "santa"
+      },
+      {
+        "nombre": "Natalicio de Benito Juárez (fecha conmemorativa)",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-03-25": [
+      {
+        "nombre": "Jueves Santo",
+        "categoria": "santa"
+      }
+    ],
+    "2027-03-26": [
+      {
+        "nombre": "Viernes Santo",
+        "categoria": "santa"
+      }
+    ],
+    "2027-03-27": [
+      {
+        "nombre": "Sábado de Gloria",
+        "categoria": "santa"
+      }
+    ],
+    "2027-03-28": [
+      {
+        "nombre": "Domingo de Resurrección",
+        "categoria": "santa"
+      }
+    ],
+    "2027-04-30": [
+      {
+        "nombre": "Día del Niño",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-05-01": [
+      {
+        "nombre": "Día del Trabajo",
+        "categoria": "oficial"
+      }
+    ],
+    "2027-05-03": [
+      {
+        "nombre": "Día de la Santa Cruz",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-05-05": [
+      {
+        "nombre": "Batalla de Puebla",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-05-10": [
+      {
+        "nombre": "Día de las Madres",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-05-15": [
+      {
+        "nombre": "Día del Maestro",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-06-01": [
+      {
+        "nombre": "Día de la Marina",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-06-06": [
+      {
+        "nombre": "Jornada electoral federal",
+        "categoria": "oficial",
+        "origen": "electoral"
+      }
+    ],
+    "2027-06-20": [
+      {
+        "nombre": "Día del Padre",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-09-13": [
+      {
+        "nombre": "Niños Héroes",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-09-15": [
+      {
+        "nombre": "Grito de Independencia",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-09-16": [
+      {
+        "nombre": "Día de la Independencia",
+        "categoria": "oficial"
+      }
+    ],
+    "2027-09-27": [
+      {
+        "nombre": "Consumación de la Independencia",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-10-12": [
+      {
+        "nombre": "Día de la Raza",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-11-01": [
+      {
+        "nombre": "Día de Todos los Santos",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-11-02": [
+      {
+        "nombre": "Día de Muertos",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-11-15": [
+      {
+        "nombre": "Día de la Revolución",
+        "categoria": "oficial"
+      }
+    ],
+    "2027-11-20": [
+      {
+        "nombre": "Aniversario de la Revolución (fecha conmemorativa)",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-12-12": [
+      {
+        "nombre": "Día de la Virgen de Guadalupe",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-12-16": [
+      {
+        "nombre": "Inicio de las Posadas",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-12-24": [
+      {
+        "nombre": "Nochebuena",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-12-25": [
+      {
+        "nombre": "Navidad",
+        "categoria": "oficial"
+      }
+    ],
+    "2027-12-28": [
+      {
+        "nombre": "Día de los Santos Inocentes",
+        "categoria": "tradicional"
+      }
+    ],
+    "2027-12-31": [
+      {
+        "nombre": "Nochevieja",
+        "categoria": "tradicional"
+      }
+    ]
+  },
+  "fines_semana_largos": [
+    {
+      "desde": "2026-01-31",
+      "hasta": "2026-02-02",
+      "motivo": "Día de la Constitución"
+    },
+    {
+      "desde": "2026-03-14",
+      "hasta": "2026-03-16",
+      "motivo": "Natalicio de Benito Juárez"
+    },
+    {
+      "desde": "2026-05-01",
+      "hasta": "2026-05-03",
+      "motivo": "Día del Trabajo"
+    },
+    {
+      "desde": "2026-11-14",
+      "hasta": "2026-11-16",
+      "motivo": "Día de la Revolución"
+    },
+    {
+      "desde": "2026-12-25",
+      "hasta": "2026-12-27",
+      "motivo": "Navidad"
+    },
+    {
+      "desde": "2027-01-01",
+      "hasta": "2027-01-03",
+      "motivo": "Año Nuevo"
+    },
+    {
+      "desde": "2027-01-30",
+      "hasta": "2027-02-01",
+      "motivo": "Día de la Constitución"
+    },
+    {
+      "desde": "2027-03-13",
+      "hasta": "2027-03-15",
+      "motivo": "Natalicio de Benito Juárez"
+    },
+    {
+      "desde": "2027-11-13",
+      "hasta": "2027-11-15",
+      "motivo": "Día de la Revolución"
+    }
+  ]
+}

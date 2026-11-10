@@ -1,0 +1,422 @@
+(function () {
+    'use strict';
+    function iniciar() {
+        const root = document.querySelector('[data-agenda-root]');
+        const panel = root?.querySelector('[data-agenda-comments-panel]');
+        if (!root || !panel || root.dataset.commentsReady === '1') return;
+        root.dataset.commentsReady = '1';
+        const layout = root.querySelector('.agenda-layout');
+        const previousPanel = layout.querySelector('.agenda-side-card');
+        const previousHidden = previousPanel?.hidden || false;
+        layout.append(panel);
+        const editor = root.querySelector('[data-agenda-comment-editor]');
+        const removeDialog = root.querySelector('[data-agenda-comment-delete]');
+        const form = editor.querySelector('form');
+        const text = form.elements.comentario;
+        const hour = form.elements.hora;
+        const noHour = form.elements.sin_hora;
+        const privateComment = form.elements.privado;
+        const recipient = form.elements.destinatario_id;
+        let privacyAvailable = false;
+        let recipientsAvailable = false, recipients = [];
+        function updateRecipients() {
+            if (!recipient) return;
+            const current=recipient.value;
+            const options=[new Option('Todos los usuarios con Agenda','')];
+            recipients.forEach(user=>options.push(new Option((user.nombre||'Usuario')+' · '+user.rol,String(user.id))));
+            // Un cambio de permisos no convierte una selección dirigida en
+            // un envío general de forma silenciosa mientras se escribe.
+            if(current && !recipients.some(u=>String(u.id)===current)) options.push(new Option('Destinatario no disponible',current));
+            recipient.replaceChildren(...options);recipient.value=current;
+        }
+        function updateOptions() {
+            hour.disabled = noHour.checked;
+            privateComment.disabled = !privacyAvailable;
+            form.querySelector('[data-agenda-comment-private-value]').textContent = privateComment.checked ? 'Sí' : 'No';
+            form.querySelector('#agendaComentarioPrivadoAyuda').textContent = !privacyAvailable
+                ? 'Los comentarios privados no están disponibles por el momento.' : privateComment.checked
+                ? 'Sólo tú podrás verlo. Sus avisos y recordatorios serán únicamente para ti.'
+                : recipient?.value ? 'Sólo tú y el destinatario podrán verlo.' : 'Compartido con los usuarios que tienen acceso a Agenda.';
+            if (recipient) {
+                recipient.disabled=privateComment.checked || !recipientsAvailable;
+                const help=form.querySelector('#agendaComentarioDestinatarioAyuda');
+                if(help) help.textContent=privateComment.checked
+                    ? 'Comentario privado: sólo tú recibirás sus avisos y recordatorios.'
+                    : !recipientsAvailable ? 'Por ahora se mantienen los avisos generales. Falta completar la instalación de destinatarios.'
+                    : recipient.value ? 'Sólo tú y la persona seleccionada podrán verlo. Únicamente ella recibirá el aviso y el recordatorio.'
+                    : 'Todos los usuarios con Agenda podrán verlo y recibir sus avisos.';
+            }
+        }
+        const status = root.querySelector('[data-agenda-comments-status]');
+        layout.before(status);
+        const error = form.querySelector('[data-agenda-comment-error]');
+        const days = Array.from(root.querySelectorAll('[data-agenda-date]'));
+        let comments = [], selected = '', tab = 'reuniones', deleting = null;
+        let saving = false, removing = false, loading = false, available = false, refreshAgain = false;
+        let changeVersion = 0;
+        let editorOrigin = null, deleteOrigin = null, initialDone = false;
+        const readsInFlight = new Set();
+        const params = new URLSearchParams(window.location.search);
+        const initialId = Number(params.get('comentario_id') || 0);
+        const initialDay = params.get('dia') || '';
+        const label = date => new Intl.DateTimeFormat('es-MX', { weekday:'long',day:'numeric',month:'long',year:'numeric' }).format(new Date(date+'T12:00:00'));
+        const node = (tag, cls, value) => {
+            const el = document.createElement(tag);
+            if (cls) el.className = cls;
+            if (value !== undefined) el.textContent = value;
+            return el;
+        };
+        let loadStatus = false;
+        const inform = (message, failure = false, fromLoad = false) => {
+            loadStatus = fromLoad;
+            status.textContent = message;
+            status.hidden = !message;
+            status.classList.toggle('is-error', failure);
+        };
+        function mostrarConfirmacionComentario(message) {
+            inform('');
+            let container = document.querySelector('.toast-container');
+            if (!container) {
+                container = node('div','toast-container position-fixed top-0 end-0 p-3');
+                document.body.append(container);
+            }
+            container.style.zIndex = '1095';
+            const toast = node('div','toast system-toast');
+            toast.dataset.agendaCommentConfirmation = '';
+            toast.setAttribute('role','status');
+            toast.setAttribute('aria-live','polite');
+            toast.setAttribute('aria-atomic','true');
+            const body = node('div','toast-body');
+            const icon = node('i','bi bi-check-circle');icon.setAttribute('aria-hidden','true');
+            body.append(icon,node('span','',message));toast.append(body);container.append(toast);
+            toast.addEventListener('hidden.bs.toast',()=>toast.remove(),{once:true});
+            if (window.bootstrap?.Toast) {
+                window.bootstrap.Toast.getOrCreateInstance(toast,{autohide:true,delay:2600}).show();
+            } else {
+                toast.classList.add('show');toast.style.display='block';
+                window.setTimeout(()=>toast.remove(),2600);
+            }
+        }
+        function endpoint(action) {
+            const url = new URL('index.php', window.location.href);
+            url.search = new URLSearchParams({ controller:'agendaComentario', action }).toString();
+            return url;
+        }
+        async function request(action, data = null) {
+            const url = endpoint(action);
+            const options = { cache:'no-store', credentials:'same-origin', headers:{ 'X-Requested-With':'fetch' } };
+            if (data) {
+                options.method = 'POST';
+                options.headers['X-CSRF-Token'] = String(window.IMPE_CSRF_TOKEN || '');
+                options.body = new URLSearchParams(data);
+            } else {
+                const start = days[0]?.dataset.agendaDate;
+                const last = days[days.length-1]?.dataset.agendaDate;
+                const end = new Date(last+'T12:00:00');
+                end.setDate(end.getDate()+1);
+                url.searchParams.set('desde', start || '');
+                url.searchParams.set('hasta', end.getFullYear()+'-'+String(end.getMonth()+1).padStart(2,'0')+'-'+String(end.getDate()).padStart(2,'0'));
+            }
+            const failure = (message, retryable = false, status = 0) => Object.assign(new Error(message), {retryable,status});
+            const offlineMessage = 'No hay conexión en este momento. Los comentarios se cargarán al recuperarla.';
+            const uncertainMessage = 'No se pudo comprobar la operación. Conserva el texto y revisa la agenda antes de volver a intentarlo.';
+            const transientMessage = 'No se pudieron cargar los comentarios. Se volverá a intentar automáticamente.';
+            const attempts = data ? 1 : 3;
+            for (let attempt=0; attempt<attempts; attempt++) {
+                if (navigator.onLine === false) throw failure(data ? 'No hay conexión. Conserva el texto e inténtalo cuando se restablezca.' : offlineMessage,true);
+                const controller = new AbortController();
+                const timeout = window.setTimeout(()=>controller.abort(),data ? 25000 : 15000);
+                try {
+                    let response;
+                    try { response = await fetch(url,{...options,signal:controller.signal}); }
+                    catch (_) { throw failure(data ? uncertainMessage : (navigator.onLine===false ? offlineMessage : transientMessage),true); }
+                    let result;
+                    try {
+                        result = await response.json();
+                        if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error();
+                    } catch (_) {
+                        const expired = response.status===401 || (response.redirected && /[?&]controller=login(?:&|$)/.test(response.url));
+                        if (expired) throw failure('La sesión expiró. Inicia sesión nuevamente para consultar tus comentarios.',false,401);
+                        if (response.status===403) throw failure('No se pudo acceder a los comentarios. Recarga la página para comprobar tu acceso.',false,403);
+                        throw failure(data ? uncertainMessage : transientMessage,true,response.status);
+                    }
+                    if (!response.ok || result.ok!==true) {
+                        const retryable = [408,429,500,502,503,504].includes(response.status);
+                        const message = typeof result.mensaje==='string' ? result.mensaje : (data ? uncertainMessage : transientMessage);
+                        const error = failure(message,retryable,response.status);
+                        const retryAfter = response.headers.get('Retry-After');
+                        // Una limitación explícita del servidor espera al ciclo
+                        // habitual; no acumular reintentos inmediatos.
+                        if (response.status===429 && retryAfter) error.retryable=false;
+                        throw error;
+                    }
+                    if (!data && (!Array.isArray(result.comentarios) || !result.comentarios.every(c=>
+                        c && Number(c.id)>0 && typeof c.fecha==='string' && typeof c.autor==='string' &&
+                        typeof c.comentario==='string' && typeof c.creado_at==='string'
+                    ))) throw failure(transientMessage,true,response.status);
+                    return result;
+                } catch (error) {
+                    if (data || !error.retryable || attempt===attempts-1 || navigator.onLine===false) throw error;
+                } finally { window.clearTimeout(timeout); }
+                await new Promise(resolve=>window.setTimeout(resolve,800*(attempt+1)));
+            }
+        }
+        const refreshBell = ownId => window.dispatchEvent(new CustomEvent('impe:agenda-comments-refresh',{
+            detail:{comentarioPropioId:Number(ownId)||0}
+        }));
+        function chooseTab(value) {
+            tab = value;
+            panel.querySelectorAll('[data-agenda-comments-tab]').forEach(button => {
+                const active = button.dataset.agendaCommentsTab === value;
+                button.setAttribute('aria-selected', String(active));
+                button.tabIndex = active ? 0 : -1;
+            });
+            panel.querySelector('[data-agenda-comments-meetings]').hidden = value !== 'reuniones';
+            panel.querySelector('[data-agenda-comments-list]').hidden = value !== 'comentarios';
+            panel.querySelector('[data-agenda-comments-new]').hidden = value !== 'comentarios';
+        }
+        // El servidor decide el vencimiento en la misma zona horaria de la agenda.
+        function isDue(c) { return Boolean(c.recordatorio_pendiente) && !c.atendido; }
+        async function read(c) {
+            if (readsInFlight.has(c.id) || (c.leido && !isDue(c))) return;
+            readsInFlight.add(c.id);
+            try {
+                await request('leer', {id:c.id});
+                c.leido = true;
+                if (isDue(c)) { c.atendido = true;c.recordatorio_pendiente = false; }
+                mostrarConfirmacionComentario('Comentario marcado como leído.');
+                refreshBell();
+                renderPanel();
+            } catch (e) { inform(e.message, true); }
+            finally { readsInFlight.delete(c.id); }
+        }
+        function renderPanel() {
+            if (!selected) return;
+            panel.querySelector('[data-agenda-comments-date]').textContent = label(selected);
+            const cell = days.find(d => d.dataset.agendaDate === selected);
+            const meetings = cell ? Array.from(cell.querySelectorAll('.agenda-day-events [data-agenda-meeting]')) : [];
+            const meetingList = panel.querySelector('[data-agenda-comments-meetings]');
+            meetingList.replaceChildren(...meetings.map(button => button.cloneNode(true)));
+            if (!meetings.length) meetingList.append(node('p','agenda-comments-empty','No hay reuniones para este día.'));
+            panel.querySelector('[data-agenda-comments-meeting-count]').textContent = '('+meetings.length+')';
+            const today = comments.filter(c => c.fecha === selected);
+            panel.querySelector('[data-agenda-comments-count]').textContent = '('+today.length+')';
+            const list = panel.querySelector('[data-agenda-comments-list]');
+            list.replaceChildren();
+            if (!today.length) list.append(node('p','agenda-comments-empty','Aún no hay comentarios para este día.'));
+            today.forEach(c => {
+                const card = node('article', 'agenda-comment-card'+(c.leido?' is-read':''));
+                card.dataset.commentId = c.id;
+                const avatar = node('span','agenda-comment-avatar',Array.from(c.autor.trim()).filter((v,i,a)=>i===0||a[i-1]===' ').slice(0,2).join('').toUpperCase() || 'U');
+                const content = node('div','agenda-comment-copy');
+                content.append(node('strong','',c.autor));
+                if (c.privado) content.append(node('span','agenda-comment-private-badge','Privado · Sólo tú'));
+                else if(c.destinatario_id) content.append(node('span','agenda-comment-private-badge','Para: '+(c.destinatario_nombre||'Usuario seleccionado')+' · Sólo autor y destinatario'));
+                const date = new Date(c.creado_at.replace(' ','T'));
+                const created = Number.isNaN(date.getTime()) ? c.creado_at : new Intl.DateTimeFormat('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(date);
+                content.append(node('small','',created));
+                content.append(node('p','agenda-comment-text',c.comentario));
+                content.append(node('span','agenda-comment-time',c.hora ? 'Recordatorio: '+c.hora : 'Sin hora'));
+                const menu = node('details','agenda-comment-menu');
+                const summary = node('summary','','⋮'); summary.setAttribute('aria-label','Opciones del comentario de '+c.autor);
+                menu.append(summary);
+                const actions = node('div','agenda-comment-menu-actions');
+                const readButton = node('button','',isDue(c)?'Marcar atendido':(c.leido?'Leído':'Marcar leído'));
+                readButton.type = 'button'; readButton.disabled = c.leido && !isDue(c);
+                readButton.addEventListener('click',()=>void read(c)); actions.append(readButton);
+                if (c.puede_eliminar) {
+                    const button = node('button','is-danger','Eliminar'); button.type='button';
+                    button.addEventListener('click',()=>{
+                        deleting=c; deleteOrigin=button;
+                        removeDialog.querySelector('[data-agenda-comment-delete-error]').hidden=true;
+                        removeDialog.showModal();
+                    });
+                    actions.append(button);
+                }
+                menu.append(actions); card.append(avatar,content,menu); list.append(card);
+            });
+            chooseTab(tab);
+        }
+        function openDay(date, focus = false) {
+            if (!days.some(d=>d.dataset.agendaDate===date)) return;
+            selected=date;
+            panel.hidden=false;
+            layout.classList.add('has-comment-panel');
+            if (previousPanel) previousPanel.hidden=true;
+            days.forEach(d=>d.classList.toggle('has-comments-selected',d.dataset.agendaDate===date));
+            renderPanel();
+            if (focus) panel.querySelector('[data-agenda-comments-tab="comentarios"]').focus();
+        }
+        function closePanel() {
+            const origin=days.find(d=>d.dataset.agendaDate===selected)?.querySelector('[data-agenda-comment-add]');
+            panel.hidden=true; layout.classList.remove('has-comment-panel');
+            if (previousPanel) previousPanel.hidden=previousHidden;
+            days.forEach(d=>d.classList.remove('has-comments-selected'));
+            selected='';
+            origin?.focus();
+        }
+        function updateMarkers() {
+            days.forEach(day=>{
+                let holder=day.querySelector('.agenda-comment-markers');
+                if (!holder) { holder=node('div','agenda-comment-markers');day.append(holder); }
+                holder.replaceChildren();
+                const notes=comments.filter(c=>c.fecha===day.dataset.agendaDate);
+                if (notes.length) {
+                    const button=node('button','agenda-comment-day-count',notes.length+' comentario'+(notes.length===1?'':'s'));
+                    button.type='button';button.addEventListener('click',()=>{tab='comentarios';openDay(day.dataset.agendaDate,true);});
+                    holder.append(button);
+                }
+            });
+        }
+        async function load() {
+            if (loading) { refreshAgain=true;return; }
+            if (document.hidden) return;
+            loading=true;
+            const version=changeVersion;
+            try {
+                const result=await request('listar');
+                if(version!==changeVersion){refreshAgain=true;return;}
+                if(loadStatus)inform('');
+                comments=result.comentarios;
+                privacyAvailable=result.privados_disponibles===true;
+                recipientsAvailable=result.destinatarios_disponibles===true && Array.isArray(result.destinatarios);
+                recipients=recipientsAvailable?result.destinatarios.filter(u=>u&&Number(u.id)>0&&typeof u.nombre==='string'&&typeof u.rol==='string'):[];
+                updateRecipients();
+                updateOptions();
+                available=true;
+                root.querySelectorAll('[data-agenda-comment-add]').forEach(b=>b.disabled=false);
+                updateMarkers();renderPanel();
+                if (result.hay_mas) inform('Se muestran los primeros 500 comentarios de este intervalo.',false,true);
+                if (!initialDone) {
+                    initialDone=true;
+                    const comment=comments.find(c=>c.id===initialId);
+                    if (comment) {
+                        const vistoPor=Number(params.get('comentario_visto_por'))||0;
+                        if (vistoPor>0) {
+                            tab='comentarios';openDay(comment.fecha);
+                            await request('leerVisto',{id:comment.id,lector_id:vistoPor});
+                            mostrarConfirmacionComentario('Notificación de lectura marcada como leída.');refreshBell();
+                        } else {
+                            const confirmedRead = comment.leido && !isDue(comment) && params.get('comentario_leido')==='1';
+                            tab='comentarios';openDay(comment.fecha);await read(comment);
+                            if (confirmedRead) mostrarConfirmacionComentario('Comentario marcado como leído.');
+                        }
+                        if (vistoPor>0 || params.has('comentario_leido') || params.has('aviso_visto_leido')) {
+                            const clean=new URL(window.location.href);clean.searchParams.delete('comentario_leido');clean.searchParams.delete('aviso_visto_leido');
+                            if (vistoPor>0) { clean.searchParams.delete('comentario_visto_por');clean.searchParams.delete('comentario_id'); }
+                            window.history.replaceState(window.history.state,'',clean);
+                        }
+                    }
+                    else if (initialId>0) { openDay(initialDay);inform('El comentario ya no está disponible.',true); }
+                }
+            } catch (e) {
+                if ([401,403].includes(e.status)) {
+                    comments=[];available=false;privacyAvailable=false;recipientsAvailable=false;recipients=[];updateRecipients();updateOptions();updateMarkers();renderPanel();
+                }
+                if (!available) root.querySelectorAll('[data-agenda-comment-add]').forEach(b=>b.disabled=true);
+                inform(available && e.retryable
+                    ? 'No se pudieron actualizar los comentarios. Se conservan los últimos cargados y se volverá a intentar automáticamente.'
+                    : e.message,true,true);
+            } finally { loading=false;if(refreshAgain){refreshAgain=false;void load();} }
+        }
+        function counter() {
+            const length=Array.from(text.value).length;
+            form.querySelector('[data-agenda-comment-counter]').textContent=length+' / 250';
+            text.setAttribute('aria-invalid',String(length>250));
+        }
+        function openEditor(date, origin) {
+            if (!available || editor.open) return;
+            tab='comentarios';openDay(date);
+            form.reset();counter();error.hidden=true;updateOptions();
+            editorOrigin=origin;
+            editor.querySelector('[data-agenda-comment-date]').textContent=label(date);
+            editor.style.left='';editor.style.top='';editor.classList.remove('is-anchored');
+            editor.showModal();
+            const rect=origin?.getBoundingClientRect();
+            if (rect && window.innerWidth>760) {
+                editor.classList.add('is-anchored');
+                const width=editor.getBoundingClientRect().width;
+                let left=rect.right+12;
+                if (left+width>window.innerWidth-16) left=rect.left-width-12;
+                left=Math.max(16,Math.min(left,window.innerWidth-width-16));
+                const top=Math.max(16,Math.min(rect.top-130,window.innerHeight-editor.getBoundingClientRect().height-16));
+                editor.style.left=left+'px';editor.style.top=top+'px';
+                editor.style.setProperty('--agenda-comment-top',top+'px');
+            } else { editor.style.left='';editor.style.top=''; }
+            text.focus();
+        }
+        root.querySelectorAll('[data-agenda-comment-add]').forEach(button=>{
+            button.disabled=true;
+            button.addEventListener('click',()=>openEditor(button.dataset.agendaCommentAdd,button));
+        });
+        root.querySelector('.agenda-calendar-grid').addEventListener('click',event=>{
+            if (event.target.closest('button,a,input,textarea,select')) return;
+            const day=event.target.closest('[data-agenda-date]');
+            if (day && available) { tab='reuniones';openDay(day.dataset.agendaDate); }
+        });
+        panel.querySelector('[data-agenda-comments-close]').addEventListener('click',closePanel);
+        panel.querySelector('[data-agenda-comments-new]').addEventListener('click',event=>openEditor(selected,event.currentTarget));
+        panel.querySelectorAll('[data-agenda-comments-tab]').forEach(button=>{
+            button.addEventListener('click',()=>chooseTab(button.dataset.agendaCommentsTab));
+            button.addEventListener('keydown',event=>{
+                if (event.key==='ArrowLeft'||event.key==='ArrowRight') {
+                    event.preventDefault();chooseTab(tab==='comentarios'?'reuniones':'comentarios');
+                    panel.querySelector('[aria-selected="true"]').focus();
+                }
+            });
+        });
+        form.querySelectorAll('[data-agenda-comment-cancel]').forEach(b=>b.addEventListener('click',()=>{if(!saving)editor.close();}));
+        editor.addEventListener('cancel',event=>{if(saving)event.preventDefault();});
+        editor.addEventListener('close',()=>editorOrigin?.focus());
+        text.addEventListener('input',counter);
+        noHour.addEventListener('change',()=>{
+            updateOptions();
+            if(noHour.checked) hour.value='';else hour.focus();
+        });
+        privateComment.addEventListener('change',updateOptions);
+        recipient?.addEventListener('change',updateOptions);
+        form.addEventListener('submit',async event=>{
+            event.preventDefault();if(saving)return;
+            const content=text.value.trim();
+            if (privateComment.checked&&!privacyAvailable) {
+                error.textContent='No se puede guardar el comentario privado en este momento.';error.hidden=false;return;
+            }
+            const recipientId=privateComment.checked?'':(recipient?.value||'');
+            if (recipientId && (!recipientsAvailable || !recipients.some(u=>String(u.id)===recipientId))) {
+                error.textContent='El destinatario ya no está disponible. Selecciona otro o la opción Todos.';error.hidden=false;return;
+            }
+            if (!content||Array.from(content).length>250||(!noHour.checked&&(!hour.value||!hour.validity.valid))) {
+                error.textContent=!content||Array.from(content).length>250?'Escribe entre 1 y 250 caracteres.':'Selecciona una hora o activa «Sin hora».';error.hidden=false;return;
+            }
+            saving=true;error.hidden=true;
+            form.querySelector('[data-agenda-comment-save]').disabled=true;
+            try {
+                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value,privado:privateComment.checked?'1':'0',destinatario_id:recipientId});
+                changeVersion++;
+                editor.close();mostrarConfirmacionComentario('Comentario añadido a la agenda.');
+                refreshBell(saved.comentario?.id);await load();
+            } catch(e) {error.textContent=e.message;error.hidden=false;}
+            finally {saving=false;form.querySelector('[data-agenda-comment-save]').disabled=false;}
+        });
+        removeDialog.querySelector('[data-agenda-comment-delete-cancel]').addEventListener('click',()=>{if(!removing)removeDialog.close();});
+        removeDialog.addEventListener('cancel',event=>{if(removing)event.preventDefault();});
+        removeDialog.addEventListener('close',()=>deleteOrigin?.isConnected?deleteOrigin.focus():panel.querySelector('[data-agenda-comments-new]').focus());
+        removeDialog.querySelector('[data-agenda-comment-delete-confirm]').addEventListener('click',async event=>{
+            if(removing||!deleting)return;
+            removing=true;event.currentTarget.disabled=true;
+            const localError=removeDialog.querySelector('[data-agenda-comment-delete-error]');localError.hidden=true;
+            try {
+                await request('eliminar',{id:deleting.id});
+                changeVersion++;
+                removeDialog.close();mostrarConfirmacionComentario('Comentario eliminado de la agenda.');await load();refreshBell();
+                panel.querySelector('[data-agenda-comments-new]').focus();
+            } catch(e){localError.textContent=e.message;localError.hidden=false;}
+            finally {removing=false;removeDialog.querySelector('[data-agenda-comment-delete-confirm]').disabled=false;}
+        });
+        void load();
+        window.setInterval(()=>void load(),60000);
+        window.addEventListener('online',()=>void load());
+        document.addEventListener('visibilitychange',()=>{if(!document.hidden)void load();});
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();
+})();

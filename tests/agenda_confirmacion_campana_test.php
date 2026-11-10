@@ -52,9 +52,10 @@ function repositorioAgendaPrueba($class,$db) {
 $root=dirname(__DIR__);
 $before=shell_exec('git show 12d9c62d:app/services/AgendaReunionRepository.php');
 verificar(is_string($before)&&strpos($before,'class AgendaReunionRepository')!==false,'Falta versión anterior para reproducir');
+$before=str_replace("\r\n","\n",$before);
 $before=str_replace("require_once __DIR__ . '/../../config/db_connection.php';",'', $before);
 $before=str_replace('class AgendaReunionRepository','class AgendaReunionRepositoryAntes',$before);
-$actual = file_get_contents($root . '/app/services/AgendaReunionRepository.php');
+$actual = str_replace("\r\n","\n",file_get_contents($root . '/app/services/AgendaReunionRepository.php'));
 foreach (['cuentaClaveParaSeguimiento','insertarSolicitud','reunion','reunionesMes'] as $method) {
     $pattern = '/    public function '.preg_quote($method,'/').'\([\s\S]*?(?=    public function )/';
     verificar(preg_match($pattern,$before,$originalMethod)===1 && preg_match($pattern,$actual,$currentMethod)===1 && $originalMethod[0]===$currentMethod[0], 'No modificar asignación ni acceso: '.$method);
