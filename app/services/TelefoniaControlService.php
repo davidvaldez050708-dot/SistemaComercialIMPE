@@ -18,10 +18,9 @@ class TelefoniaControlService
     public function __construct()
     {
         $this->db = (new Database())->connect();
-        (new ZadarmaWebhookEventStoreService())->asegurarEstructura();
-        (new TelefoniaExtensionService())->asegurarEstructura();
-        (new TelefoniaMarcacionesVentasService())->asegurarEstructura();
-        (new TelefoniaResultadoVentasService())->asegurarEstructura();
+        (new TelefoniaExtensionService($this->db))->asegurarEstructura();
+        new TelefoniaMarcacionesVentasService($this->db);
+        new TelefoniaResultadoVentasService($this->db);
     }
 
     /**
