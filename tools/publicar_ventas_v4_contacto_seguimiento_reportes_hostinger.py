@@ -26,16 +26,22 @@ FILES = {
         '19b295219d1d709b38440b292565c19da84a34da',
         '6d5396e4dfb7a5c535ed5b8e964d93fab7a04a88'),
     'public/javascript/telefonia_ventas_resultados.js': (
-        'bfcc67613e16c27b508536649081e9e356816da9',
-        '1ae64007f9faf57f1632d27e5863589a874a0617'),
+        'ce80806d0af17d3c660781e9f10148d6d16a1b56',
+        'cc28197921d366001e4b15f0edd1bdc1e0cc626d'),
     'app/services/TelefoniaControlService.php': (
-        '273a03649c31514a65991612aba50c1c18ba534e',
-        '91c3a39289bd7cd591a252c1f6cfd18414407b83'),
+        '849b971b360df0afe001ccf543def214ba224f63',
+        '6df71d0a723c7c503296f08ffe23d0762fdb0dd2'),
     'app/views/telefonia/index.php': (
-        '6cf7ef079d647a3c0879b8b262e1c3d31274e55d',
-        '5951de4b657cab916bf3a538be0fe39b7789a1c4')
+        '1c080d3daf37d602b186959a5bd5f206d6898505',
+        '8004a58653d6f405f6fe8cc17b42c6ac780a1880')
 }
-CONFIRM = 'PUBLICAR_CONCILIADO_V4_OPCIONES_REPORTES'
+GUARDS = {
+    'app/services/TelefoniaResultadoVentasService.php':
+        '83c072703cc7023bd6f0b313cef4ee4e2f0e7d22',
+    'app/views/telefonia/resultado_ventas_form.php':
+        '483441e232c69d5ee62019994162820838a9b717'
+}
+CONFIRM = 'PUBLICAR_V4_PERSONALIZADO_OPCIONES_REPORTES'
 
 class Blocked(Exception): pass
 
@@ -76,6 +82,13 @@ def valid_php(path):
         raise Blocked('PHP inválido: '+str(path)+' '+p.stderr[:400])
 
 def scan(site, sources=None):
+    # Servicios de guardado y formulario comercial no se reemplazan.
+    # Sin embargo, deben conservar la personalización de vínculo al embudo.
+    for rel,expected in GUARDS.items():
+        actual=blob(site_path(site,rel).read_bytes())
+        if actual!=expected:
+            raise Blocked('SERVICIO CRÍTICO PERSONALIZADO: '+rel+' '+actual+'. Sitio intacto.')
+        print('PROTEGIDO SIN MODIFICAR: '+rel+' '+actual)
     seen={}
     for rel,(old,new) in FILES.items():
         target=site_path(site,rel)
