@@ -18,7 +18,7 @@ assert 'name="prospecto_asignacion_id"' in form
 assert "IMPE_EMBUDO_PBX_POSTCOMMIT_V1" in service
 assert service.index("$this->db->commit();")<service.index("IMPE_EMBUDO_PBX_POSTCOMMIT_V1")
 assert "EmbudoComercialResultadoBridge($this->db)" in service
-assert "error_log('[embudo_resultado_pbx]'" in service
+assert "error_log('[embudo_resultado_pbx] '" in service
 assert "TelefoniaExtensionService($this->db)" in control
 assert "new TelefoniaResultadoVentasService($this->db)" in control
 assert "(new ZadarmaWebhookEventStoreService())->asegurarEstructura()" not in control
