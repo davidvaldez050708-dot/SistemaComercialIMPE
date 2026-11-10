@@ -266,6 +266,23 @@ final class EmbudoComercialRepository
              JOIN prospecto_origenes o ON o.id=pref.origen_id
              WHERE o.prospecto_id=? ORDER BY o.id DESC LIMIT 5',[$prospectoId]
         );
+        // La autorización de propietario/supervisor quedó confirmada ARRIBA
+        // al obtener esta asignación vigente: jamás consultar por ID sin ella.
+        // Mostrar como máximo 50 movimientos, más uno para señalar truncamiento.
+        // No crear, actualizar ni suprimir eventos de la bitácora.
+        $historial=$this->rows(
+            "SELECT m.id,m.etapa_anterior,m.etapa_nueva,m.motivo,
+                    m.usuario_id,m.creado_at,
+                    TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) autor
+             FROM prospecto_embudo_movimientos m
+             LEFT JOIN usuarios u ON u.id=m.usuario_id
+             WHERE m.asignacion_id=?
+             ORDER BY m.creado_at DESC,m.id DESC
+             LIMIT 51",
+            [(int)$p['asignacion_id']]
+        );
+        $p['historial_truncado']=count($historial)>50;
+        $p['historial_movimientos']=array_slice($historial,0,50);
         return $p;
     }
 }
