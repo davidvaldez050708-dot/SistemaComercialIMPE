@@ -5,13 +5,21 @@ const bootstrap=process.env.BOOTSTRAP_MODULE_PATH||path.dirname(require.resolve(
 const read=p=>fs.readFileSync(path.join(repo,p),'utf8'),php=(f,...args)=>cp.execFileSync('php',[path.join(__dirname,'fixtures',f),...args],{encoding:'utf8'});
 const shell=php('telefonia_ventas_shell.php');
 const css=fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'),'utf8')+['global.css','dashboard.css','telefonia.css','telefonia_marcador.css','telefonia_persistente.css','telefonia_teclado.css','responsive_sistema.css'].map(f=>read('public/css/'+f)).join('\n');
-let saved=false,payload;
+let saved=false,payload,audioChecks=0;
 const call={id:1,pbx_call_id:'pbx-sales-call-001',usuario_id:8,extension:'150',direccion:'Entrante',numero:'+525551112233',nombre:'María',origen_extension:'100',fecha:'2026-10-19 10:00:00',finalizada:true,conectada:true,segundos:18,estado_pbx:'Conectada',segmentos:['record-sales-a','record-sales-b'],registro:null};
 const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style><script>window.IMPE_CURRENT_USER_ID=8;</script><body><main class="admin-shell">${php('telefonia_ventas_vista.php',u.searchParams.get('pbx_call_id')||'',u.searchParams.get('extension')||'',saved?'guardado':'')}</main><script>${fs.readFileSync(path.join(bootstrap,'dist/js/bootstrap.bundle.min.js'),'utf8')}</script><script>${read('public/javascript/telefonia_atencion.js')}</script><script>${read('public/javascript/telefonia_segmentos_player.js')}</script><script>${read('public/javascript/telefonia_ventas_resultados.js')}</script></body>`;
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHANNEL?{channel:process.env.PLAYWRIGHT_CHANNEL}:{})});try{
  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('http://ventas.test/**',route=>{const u=new URL(route.request().url()),action=u.searchParams.get('action');
   if(u.pathname.startsWith('/public/javascript/'))return route.fulfill({contentType:'application/javascript',body:read(u.pathname.slice(1))});
+  // Una grabación sólo aparece después de que el servidor acredita el
+  // tramo PBX. El navegador de pruebas no toca audio ni Zadarma reales.
+  if(u.pathname==='/prueba_telefonia/api/grabacion_ventas.php'&&u.searchParams.get('verificar')==='1'){
+   audioChecks++;
+   assert.equal(u.searchParams.get('pbx_call_id'),call.pbx_call_id);
+   assert.equal(u.searchParams.get('extension'),call.extension);
+   return route.fulfill({json:{ok:true,disponible:true,segmentos:2,segmentos_info:[]}});
+  }
   if(action==='disponibilidad')return route.fulfill({json:{ok:true,entrante:null,devoluciones:0}});
   if(action==='detalleVenta')return route.fulfill({json:{ok:true,llamada:{...call,registro:saved?{resultado:'PROSPECTO_POTENCIAL',observacion:'Enviar información',prospecto_nombre:'María'}:null}}});
   if(action==='guardarResultadoVenta'){payload=Object.fromEntries(new URLSearchParams(route.request().postData()));saved=true;return route.fulfill({json:{ok:true,registro:{resultado:'PROSPECTO_POTENCIAL'}}});}
@@ -61,6 +69,9 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  await modal.locator('[data-sales-submit]').click();await modal.waitFor({state:'hidden'});
  assert.equal(payload.pbx_call_id,call.pbx_call_id);assert.equal(payload.extension,'150');assert.equal(payload.resultado,'PROSPECTO_POTENCIAL');assert.equal(payload.prospecto_nombre,'María');
  await page.waitForFunction(()=>!IMPE_SALES_ATTENTION.hasPending());
- await crm.locator('[data-sales-audio]').waitFor();await crm.locator('[data-sales-audio]').click();assert.equal(await crm.locator('[data-sales-audio-slot] audio').count(),2,'reproductor compartido de múltiples segmentos');
+ await crm.locator('[data-sales-audio]').waitFor();await crm.locator('[data-sales-audio]').click();
+ await crm.locator('[data-sales-audio-slot] audio').first().waitFor({state:'attached'});
+ assert.equal(audioChecks,1,'el audio requiere verificación previa del tramo PBX');
+ assert.equal(await crm.locator('[data-sales-audio-slot] audio').count(),2,'reproductor compartido de múltiples segmentos');
  assert.deepEqual(errors,[]);console.log('Ventas C: fin → formulario sin superposición, responsive, resultado y dos segmentos propios: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
