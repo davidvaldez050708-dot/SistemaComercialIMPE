@@ -380,6 +380,15 @@
     if(vinculo)sessionStorage.removeItem('impe:embudo:llamada-pendiente');
    }catch(_){}
 
+   // Después del OK real del servidor, notificar a cualquier tablero abierto
+   // de este mismo asesor para que relea la etapa desde MySQL. No mover
+   // tarjetas ni inferir etapas en el navegador; no afecta al host WebRTC.
+   const asignacionGuardada=String(campo?.value||'');
+   const usuarioGuardado=Number(window.IMPE_CURRENT_USER_ID||0);
+   if(usuarioGuardado>0&&/^[1-9][0-9]*$/.test(asignacionGuardada)){
+    try{localStorage.setItem('impe:embudo:resultado-guardado:'+usuarioGuardado,
+     JSON.stringify({usuarioId:usuarioGuardado,asignacionId:asignacionGuardada,creada:Date.now()}));}catch(_){}
+   }
    window.parent?.postMessage({type:'IMPE_SALES_RESULT_SAVED',ref:savedRef,extension:savedExt},location.origin);
    if(!sameForm()||disposed)return;
    queued=false;closeReason='saved';
