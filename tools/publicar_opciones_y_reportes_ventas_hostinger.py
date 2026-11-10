@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Publicador por lista cerrada: catálogo del resultado comercial + vista/JS + reporte.
+NUNCA toca la centralita, el teléfono persistente, grabaciones, datos o MySQL.
+--check es completamente de solo lectura en el sitio.
+--apply exige confirmación, SHA exactos, respaldo externo y revisión previa;
+--rollback exige el manifiesto íntegro y las versiones desplegadas exactas.
+Compatible con Python 3.6 en Hostinger; no usa capture_output.
+"""
+from __future__ import print_function
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import stat
+import subprocess
+import tempfile
+from datetime import datetime
+
+FILES = {
+    'app/services/TelefoniaResultadoVentasCatalogo.php': (
+        '170340b416bb010a43f6903c9083fb665c8a071d',
+        'd3d0cc099eaa151be91eee295fdc47a4a5cbf0e0'),
+    'public/javascript/telefonia_ventas_resultados.js': (
+        'f80b30229859a5f7921c2723a4032989fbb7c425',
+        '59256346cb5a8b13763ef8b5c1c232e4cf97d3f4'),
+    'app/services/TelefoniaControlService.php': (
+        '7616f426c28a85c820a5c14e66f73776c1f0fb9b',
+        '729e59fe31ed3ed4026eb480a37c512c6e64ae59'),
+    'app/views/telefonia/index.php': (
+        '6cf7ef079d647a3c0879b8b262e1c3d31274e55d',
+        '5951de4b657cab916bf3a538be0fe39b7789a1c4')
+}
+CONFIRM = 'PUBLICAR_OPCIONES_Y_REPORTES_CON_ASESORES_ACTIVOS'
+
+class Blocked(Exception): pass
+
+def blob(raw):
+    return hashlib.sha1(('blob %d\0' % len(raw)).encode('ascii')+raw).hexdigest()
+
+def regular(path):
+    if path.is_symlink() or not path.is_file():
+        raise Blocked('Archivo ausente, no regular o simbólico: '+str(path))
+
+def site_path(root, rel):
+    path=root
+    for part in rel.split('/'):
+        path=path/part
+        if path.is_symlink():
+            raise Blocked('Enlace simbólico bloqueado: '+str(path))
+    regular(path)
+    return path
+
+def root_site(value):
+    root=Path(value).resolve(strict=True)
+    if not root.is_dir() or root.name!='public_html':
+        raise Blocked('--site debe apuntar a public_html existente')
+    return root
+
+def source_path(source_dir, rel):
+    source=source_dir
+    for part in rel.split('/'):
+        source=source/part
+        if source.is_symlink():raise Blocked('Fuente simbólica bloqueada: '+str(source))
+    regular(source)
+    return source
+
+def valid_php(path):
+    p=subprocess.run(['php','-l',str(path)],stdout=subprocess.PIPE,
+                     stderr=subprocess.PIPE,universal_newlines=True)
+    if p.returncode:
+        raise Blocked('PHP inválido: '+str(path)+' '+p.stderr[:400])
+
+def scan(site, sources=None):
+    seen={}
+    for rel,(old,new) in FILES.items():
+        target=site_path(site,rel)
+        current=blob(target.read_bytes())
+        if current not in (old,new):
+            raise Blocked('CONFLICTO DE PERSONALIZACIÓN: '+rel+' '+current+'. No se modifica nada.')
+        if sources is not None:
+            src=source_path(sources,rel)
+            if blob(src.read_bytes())!=new:
+                raise Blocked('Fuente GitHub no coincide con hash aprobado: '+rel)
+            if rel.endswith('.php'): valid_php(src)
+        seen[rel]=current
+        print(('YA PUBLICADO' if current==new else 'COMPATIBLE')+': '+rel+' '+current)
+    return seen
+
+def atomic(path, raw):
+    mode=stat.S_IMODE(path.stat().st_mode)
+    fd,tmp=tempfile.mkstemp(prefix='.impe-opciones-',dir=str(path.parent))
+    try:
+        with os.fdopen(fd,'wb') as out:
+            out.write(raw);out.flush();os.fsync(out.fileno())
+        os.chmod(tmp,mode)
+        os.replace(tmp,str(path))
+    finally:
+        if os.path.exists(tmp):os.unlink(tmp)
+
+def private_root(site,root):
+    root=Path(root).resolve()
+    if root==site or site in root.parents:
+        raise Blocked('Backups deben estar fuera de public_html')
+    if root.exists() and not root.is_dir():
+        raise Blocked('Backup root no es directorio')
+    return root
+
+def publish(site,sources,backup_root,confirmation):
+    if confirmation!=CONFIRM:
+        raise Blocked('No autorizado; se requiere token explícito para publicación con asesores activos')
+    observed=scan(site,sources)
+    changed=[r for r in FILES if observed[r]==FILES[r][0]]
+    if not changed:
+        print('SIN CAMBIOS: las cuatro versiones ya coinciden.')
+        return
+    if not backup_root:
+        raise Blocked('Se requiere --backup-root fuera del sitio')
+    base=private_root(site,backup_root)
+    base.mkdir(parents=True,exist_ok=True)
+    folder=base/('ventas-opciones-reportes-'+datetime.utcnow().strftime('%Y%m%d-%H%M%S')+'-'+str(os.getpid()))
+    folder.mkdir(mode=0o700)
+    original={}
+    for rel in changed:
+        target=site_path(site,rel);raw=target.read_bytes()
+        if blob(raw)!=FILES[rel][0]:
+            raise Blocked('Cambió el sitio durante respaldo: '+rel)
+        original[rel]=raw
+        backup=folder/rel
+        backup.parent.mkdir(parents=True,exist_ok=True)
+        backup.write_bytes(raw);os.chmod(str(backup),0o600)
+        if blob(backup.read_bytes())!=FILES[rel][0]:
+            raise Blocked('Copia de respaldo inválida: '+rel)
+    manifest={'version':1,'archivo_por_archivo':{
+        rel:{'antes':FILES[rel][0],'despues':FILES[rel][1]} for rel in changed
+    },'sin_sql':True,'fecha_utc':datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}
+    mf=folder/'manifest.json'
+    mf.write_text(json.dumps(manifest,indent=2,ensure_ascii=False),encoding='utf-8')
+    os.chmod(str(mf),0o600)
+    try:
+        for rel in changed:
+            target=site_path(site,rel)
+            if blob(target.read_bytes())!=FILES[rel][0]:
+                raise Blocked('Archivo cambió antes de reemplazar: '+rel)
+            raw=source_path(sources,rel).read_bytes()
+            if blob(raw)!=FILES[rel][1]:
+                raise Blocked('Archivo fuente cambió: '+rel)
+            atomic(target,raw)
+            if blob(target.read_bytes())!=FILES[rel][1]:
+                raise Blocked('Publicación no íntegra: '+rel)
+            if rel.endswith('.php'):valid_php(target)
+            print('PUBLICADO: '+rel)
+    except Exception:
+        for rel in reversed(changed):
+            target=site_path(site,rel)
+            if blob(target.read_bytes())==FILES[rel][1]:
+                atomic(target,original[rel])
+            elif blob(target.read_bytes())!=FILES[rel][0]:
+                print('ALERTA: archivo con cambios externos; NO SOBRESCRIBIR: '+rel)
+        raise
+    print('RESPALDO PRIVADO: '+str(folder))
+    print('POST-CHECK OK: sin SQL, PBX, grabaciones, sesiones ni teléfonos modificados.')
+
+def rollback(site,folder,confirmation):
+    if confirmation!=CONFIRM:raise Blocked('Rollback requiere confirmación explícita')
+    folder=Path(folder).resolve(strict=True)
+    if site==folder or site in folder.parents:raise Blocked('Respaldo no privado')
+    mf=folder/'manifest.json';regular(mf)
+    m=json.loads(mf.read_text(encoding='utf-8'))
+    if m.get('version')!=1 or m.get('sin_sql') is not True:
+        raise Blocked('Manifiesto inválido')
+    listing=m.get('archivo_por_archivo')
+    if not isinstance(listing,dict) or not listing:
+        raise Blocked('Manifiesto vacío')
+    data={}
+    for rel,item in listing.items():
+        if rel not in FILES or item!={'antes':FILES[rel][0],'despues':FILES[rel][1]}:
+            raise Blocked('Manifiesto adulterado: '+rel)
+        raw=source_path(folder,rel).read_bytes()
+        if blob(raw)!=FILES[rel][0]:raise Blocked('Backup adulterado: '+rel)
+        target=site_path(site,rel)
+        if blob(target.read_bytes()) not in FILES[rel]:
+            raise Blocked('Rollback bloqueado por personalización: '+rel)
+        data[rel]=raw
+    for rel,raw in data.items():
+        target=site_path(site,rel)
+        if blob(target.read_bytes())==FILES[rel][1]:
+            atomic(target,raw)
+            print('RESTAURADO: '+rel)
+        else:
+            print('SIN CAMBIOS: '+rel)
+    print('ROLLBACK OK; no se alteraron datos.')
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--site',required=True)
+    parser.add_argument('--source-dir')
+    parser.add_argument('--backup-root')
+    parser.add_argument('--backup-folder')
+    parser.add_argument('--confirm')
+    action=parser.add_mutually_exclusive_group(required=True)
+    action.add_argument('--check',action='store_true')
+    action.add_argument('--apply',action='store_true')
+    action.add_argument('--rollback',action='store_true')
+    args=parser.parse_args()
+    site=root_site(args.site)
+    if args.rollback:
+        if not args.backup_folder:raise Blocked('Falta --backup-folder')
+        rollback(site,args.backup_folder,args.confirm)
+        return
+    if not args.source_dir:raise Blocked('Falta --source-dir')
+    sources=Path(args.source_dir).resolve(strict=True)
+    if sources==site or site in sources.parents:raise Blocked('Fuente no puede ser sitio productivo')
+    if args.check:
+        scan(site,sources)
+        print('CHECK OK: inspección solo lectura, cuatro archivos sin conflictos.')
+    else:publish(site,sources,args.backup_root,args.confirm)
+if __name__=='__main__':
+    try:main()
+    except (Blocked,OSError,ValueError,subprocess.SubprocessError) as e:
+        raise SystemExit('BLOQUEADO: '+str(e))
