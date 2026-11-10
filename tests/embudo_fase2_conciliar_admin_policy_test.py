@@ -14,8 +14,8 @@ POL='app/helpers/AdminRolePolicy.php'
 def require(ok,why):
     if not ok:raise AssertionError(why)
 
-def gitshow(path):
-    p=subprocess.run(['git','show',BASE+':'+path],cwd=str(ROOT),
+def gitshow(path,revision=BASE):
+    p=subprocess.run(['git','show',revision+':'+path],cwd=str(ROOT),
                      stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     require(p.returncode==0,'git fuente '+path)
     return p.stdout
@@ -66,7 +66,13 @@ require(blocked,'anclas ausentes bloquean')
 with tempfile.TemporaryDirectory(prefix='impe-admin-policy-merge-') as d:
     site=Path(d)/'public_html'
     backups=Path(d)/'backups'
+    approved=Path(d)/'approved_phase2a_snapshot'
     site.mkdir()
+    for path in list(pub.CHANGES)+list(pub.NEW):
+        item=approved/path
+        item.parent.mkdir(parents=True,exist_ok=True)
+        item.write_bytes(gitshow(path,pub.REV))
+        require(pub.blob(item.read_bytes())==(pub.CHANGES[path][1] if path in pub.CHANGES else pub.NEW[path]),'snapshot fase2a '+path)
     for path in pub.CHANGES:
         file=site/path
         file.parent.mkdir(parents=True,exist_ok=True)
@@ -74,7 +80,7 @@ with tempfile.TemporaryDirectory(prefix='impe-admin-policy-merge-') as d:
     for path in pub.NEW:
         (site/path).parent.mkdir(parents=True,exist_ok=True)
     before=(site/POL).read_bytes()
-    plan=pub.preparar(site,ROOT)
+    plan=pub.preparar(site,approved)
     require(len(plan)==10,'10 archivos con AdminPolicy personalizada')
     require((site/POL).read_bytes()==before,'check solo lectura')
     require(plan[POL][1]==revised,'publicador conserva modificaciones locales')
