@@ -24,6 +24,13 @@ assertTrue(EmbudoComercialEtapas::sugerenciaPorResultado('CONVERSACION_PERSONA',
 assertTrue(EmbudoComercialEtapas::sugerenciaPorResultado('INTERESADO',null)==='INTERESADO','interés');
 assertTrue(EmbudoComercialEtapas::sugerenciaPorResultado('SOLICITA_INFORMACION',null)==='INTERESADO',
     'solicita información');
+assertTrue(EmbudoComercialEtapas::sugerenciaPorResultado('PROSPECTO_POTENCIAL',null)==='INTERESADO',
+    'opción V4 Prospecto potencial mueve a Interesados');
+foreach(['NO_INTERESADO','FUERA_PRESUPUESTO','INSCRITO','NO_CUMPLE_REQUISITOS',
+         'NO_SOLICITO_INFORMACION','SIGUIENTE_APERTURA','WHATSAPP','SMS'] as $codigoV4) {
+    assertTrue(EmbudoComercialEtapas::sugerenciaPorResultado($codigoV4,null)===null,
+        'opción V4 distinta no se convierte en interés: '.$codigoV4);
+}
 assertTrue(EmbudoComercialEtapas::sugerenciaPorResultado('REQUIERE_SEGUIMIENTO',null)===null,
     'seguimiento necesita fecha');
 assertTrue(EmbudoComercialEtapas::sugerenciaPorResultado('REQUIERE_SEGUIMIENTO','2027-12-31 12:00:00')==='SEGUIMIENTO',
