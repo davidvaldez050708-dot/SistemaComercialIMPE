@@ -134,10 +134,10 @@ function pbxPreflight(mysqli $db): array
     }
     echo "PBX FORMATO (sin mostrar números): +52=".
          $formatos['mex_52'].", nacional 10=".
-         $formatos['mex_10'].", otros=".$formatos['otros'].".\\n";
+         $formatos['mex_10'].", otros=".$formatos['otros'].".\n";
     if ($formatos['mex_10']>0) {
         echo "AVISO: la PBX también guarda destinos de diez dígitos;".
-             " el puente exige coincidencia internacional exacta.\\n";
+             " el puente exige coincidencia internacional exacta.\n";
     }
     $existing=pbxRows($db,
         "SELECT o.prospecto_id,a.id asignacion_id,a.asesor_id,
