@@ -120,6 +120,13 @@
    if(previousReason)previousReason.hidden=!call?.registro?.motivo_sin_whatsapp;
    if(previousText)previousText.textContent=call?.registro?.motivo_sin_whatsapp?'Motivo registrado anteriormente: '+call.registro.motivo_sin_whatsapp:'';
   }
+  // La próxima acción sólo es obligatoria con En seguimiento;
+  // no cambia el flujo habitual ni la pregunta de contacto por WhatsApp/SMS.
+  const nextDate=form.elements.namedItem('proxima_accion_at');
+  const seguimiento=Boolean(!call?.registro&&picked.includes('REQUIERE_SEGUIMIENTO'));
+  if(nextDate)nextDate.required=seguimiento;
+  const nextLabel=form.querySelector('label[for="salesNext"]');
+  if(nextLabel)nextLabel.textContent=seguimiento?'Próxima llamada (obligatoria para En seguimiento)':'Próxima llamada (opcional)';
   const cancelled=result.value==='CANCELADA_POR_ASESOR';notes.required=cancelled;notes.minLength=cancelled?3:0;
   const label=form.querySelector('label[for="salesNote"]');if(label)label.textContent=cancelled?'Motivo de cancelación *':'Observaciones';
   for(const option of result.options||[])option.disabled=Boolean(call?.finalizada&&!call.conectada&&option.dataset.requiresConnection==='1');
