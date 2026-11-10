@@ -11,7 +11,7 @@ $dia=static fn($x)=>EmbudoComercialPresentacion::fechaLocal($x);
  */
 $presentarMotivo=static function($valor): array {
     $original=(string)($valor??'');
-    if (!preg_match('/^Resultado PBX verificado: ([A-Z_]{3,36}) · ref ([A-Za-z0-9_-]{6,100})$/Du',
+    if (!preg_match('/^Resultado PBX verificado: ([A-Z0-9_]{3,36}) · ref ([A-Za-z0-9_-]{6,100})$/Du',
         $original,$m)) {
         return ['descripcion'=>$original,'referencia_tecnica'=>null];
     }
