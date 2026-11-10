@@ -14,8 +14,8 @@ BASE='62f57c06352ad637a283a90fee234e038aab0f75'
 def must(ok,reason):
     if not ok:raise AssertionError(reason)
 
-def gitshow(path):
-    p=subprocess.run(['git','show',BASE+':'+path],cwd=str(ROOT),
+def gitshow(path,revision=BASE):
+    p=subprocess.run(['git','show',revision+':'+path],cwd=str(ROOT),
         stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     must(p.returncode==0,'git show '+path+' '+p.stderr.decode('utf-8','replace'))
     return p.stdout
@@ -26,7 +26,13 @@ spec.loader.exec_module(publisher)
 with tempfile.TemporaryDirectory(prefix='impe-embudo-fase2a-fake-') as d:
     site=Path(d)/'public_html'
     backup=Path(d)/'backups'
+    approved=Path(d)/'approved_phase2a_snapshot'
     site.mkdir()
+    for path in list(publisher.CHANGES)+list(publisher.NEW):
+        item=approved/path
+        item.parent.mkdir(parents=True,exist_ok=True)
+        item.write_bytes(gitshow(path,publisher.REV))
+        assert publisher.blob(item.read_bytes())==(publisher.CHANGES[path][1] if path in publisher.CHANGES else publisher.NEW[path])
     old={}
     for path in publisher.CHANGES:
         target=site/path
@@ -37,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix='impe-embudo-fase2a-fake-') as d:
         target.write_bytes(old[path])
     for path in publisher.NEW:
         (site/path).parent.mkdir(parents=True,exist_ok=True)
-    planned=publisher.preparar(site,ROOT)
+    planned=publisher.preparar(site,approved)
     must(len(planned)==10,'diez archivos previstos')
     must(not backup.exists(),'preparación no crea respaldo')
     for path,raw in old.items():
