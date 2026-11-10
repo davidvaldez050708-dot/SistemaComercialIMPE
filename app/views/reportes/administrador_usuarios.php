@@ -240,22 +240,6 @@ foreach ($estadoUsuarios as $datoEstado) {
                 <p class="metric-label">Seguimientos</p>
             </div>
         </article>
-
-        <article class="metric-card">
-            <div class="metric-icon"><i class="bi bi-clock-history"></i></div>
-            <div>
-                <p class="metric-value"><?= (int)($resumen['acciones_pendientes'] ?? 0) ?></p>
-                <p class="metric-label">Pendientes</p>
-            </div>
-        </article>
-
-        <article class="metric-card">
-            <div class="metric-icon"><i class="bi bi-exclamation-circle"></i></div>
-            <div>
-                <p class="metric-value"><?= (int)($resumen['acciones_vencidas'] ?? 0) ?></p>
-                <p class="metric-label">Vencidas</p>
-            </div>
-        </article>
     </section>
 
     <div class="territorial-section-title">
@@ -369,21 +353,6 @@ foreach ($estadoUsuarios as $datoEstado) {
                 </table>
             </div>
         <?php endif; ?>
-    </section>
-
-    <div class="territorial-section-title">
-        <h2>ATENCIÓN REQUERIDA</h2>
-        <p>Acciones vencidas dentro del alcance seleccionado.</p>
-    </div>
-
-    <section class="report-two-column mb-4" aria-label="Indicadores de atención requerida">
-        <article class="metric-card">
-            <div class="metric-icon"><i class="bi bi-calendar-x"></i></div>
-            <div>
-                <p class="metric-value"><?= (int)($resumen['acciones_vencidas'] ?? 0) ?></p>
-                <p class="metric-label">Acciones vencidas</p>
-            </div>
-        </article>
     </section>
 
     <div class="territorial-section-title">

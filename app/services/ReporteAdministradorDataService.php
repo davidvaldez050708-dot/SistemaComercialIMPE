@@ -102,8 +102,6 @@ class ReporteAdministradorDataService
         }
 
         $totalSeguimientos = 0;
-        $accionesPendientes = 0;
-        $accionesVencidas = 0;
         $usuariosPorRol = [];
         $usuariosSinAcceso = 0;
         $mayorCarga = 0;
@@ -111,8 +109,6 @@ class ReporteAdministradorDataService
         foreach ($usuarios as $usuario) {
             $totalUsuario = (int)($usuario['total_seguimientos'] ?? 0);
             $totalSeguimientos += $totalUsuario;
-            $accionesPendientes += (int)($usuario['acciones_pendientes'] ?? 0);
-            $accionesVencidas += (int)($usuario['acciones_vencidas'] ?? 0);
             $mayorCarga = max($mayorCarga, $totalUsuario);
 
             $rol = trim((string)($usuario['rol'] ?? ''));
@@ -139,15 +135,10 @@ class ReporteAdministradorDataService
             'usuarios_activos' => (int)($conteoUsuarios['activos'] ?? 0),
             'usuarios_inactivos' => (int)($conteoUsuarios['inactivos'] ?? 0),
             'roles_registrados' => (int)$rolesRegistrados,
-            'total_seguimientos' => $totalSeguimientos,
-            'acciones_pendientes' => $accionesPendientes,
-            'acciones_vencidas' => $accionesVencidas
+            'total_seguimientos' => $totalSeguimientos
         ];
 
         $hallazgos = [
-            $accionesVencidas > 0
-                ? 'Existen ' . $accionesVencidas . ' acciones vencidas.'
-                : 'No se registran acciones vencidas.',
             $usuariosSinAcceso > 0
                 ? $usuariosSinAcceso . ' usuarios no tienen acceso registrado.'
                 : 'Todos los usuarios incluidos tienen acceso registrado.',

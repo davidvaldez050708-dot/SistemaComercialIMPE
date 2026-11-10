@@ -206,9 +206,7 @@ class ReporteAdministradorPdfService
                 ['etiqueta' => 'Activos', 'valor' => (int)($resumen['usuarios_activos'] ?? 0)],
                 ['etiqueta' => 'Inactivos', 'valor' => (int)($resumen['usuarios_inactivos'] ?? 0)],
                 ['etiqueta' => 'Roles', 'valor' => (int)($resumen['roles_registrados'] ?? 0)],
-                ['etiqueta' => 'Seguimientos', 'valor' => (int)($resumen['total_seguimientos'] ?? 0)],
-                ['etiqueta' => 'Pendientes', 'valor' => (int)($resumen['acciones_pendientes'] ?? 0)],
-                ['etiqueta' => 'Vencidas', 'valor' => (int)($resumen['acciones_vencidas'] ?? 0)]
+                ['etiqueta' => 'Seguimientos', 'valor' => (int)($resumen['total_seguimientos'] ?? 0)]
             ],
             $anchoUtil,
             4
@@ -250,29 +248,6 @@ class ReporteAdministradorPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $filasCarga = [];
-        foreach ($usuarios as $usuario) {
-            $filasCarga[] = [
-                (string)($usuario['usuario'] ?? '—'),
-                (string)($usuario['rol'] ?? '—'),
-                (string)((int)($usuario['total_seguimientos'] ?? 0)),
-                (string)((int)($usuario['acciones_pendientes'] ?? 0)),
-                (string)((int)($usuario['acciones_vencidas'] ?? 0)),
-                (string)((int)($usuario['sin_actividad'] ?? 0)),
-                (string)((int)($usuario['mas_7_dias'] ?? 0))
-            ];
-        }
-
-        $elementos[] = $this->crearTituloSeccion($documento, 'ATENCIÓN REQUERIDA');
-        $elementos[] = $this->crearTarjetasIndicadores(
-            $documento,
-            [
-                ['etiqueta' => 'Acciones vencidas', 'valor' => (int)($resumen['acciones_vencidas'] ?? 0)]
-            ],
-            $anchoUtil,
-            2
-        );
-        $elementos[] = $this->crearEspaciador($documento, 100);
         $elementos[] = $this->crearTituloSeccion($documento, 'HALLAZGOS ADMINISTRATIVOS');
 
         foreach ($hallazgos as $hallazgo) {
@@ -360,7 +335,7 @@ class ReporteAdministradorPdfService
             '<w:tc><w:tcPr><w:tcW w:w="' . $anchoTexto . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
             $this->parrafoHeaderXml('Sistema de Gestión Comercial', 13, self::COLOR_PRIMARIO, true) .
             $this->parrafoHeaderXml('Reporte Administrativo de Usuarios', 21, self::COLOR_TEXTO, true) .
-            $this->parrafoHeaderXml('Usuarios, carga de seguimiento y pendientes operativos', 14, self::COLOR_SECUNDARIO, false) .
+            $this->parrafoHeaderXml('Usuarios y carga de seguimiento', 14, self::COLOR_SECUNDARIO, false) .
             $meta .
             '</w:tc></w:tr></w:tbl>' .
             '<w:p><w:pPr>' .
