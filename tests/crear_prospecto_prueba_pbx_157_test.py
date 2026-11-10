@@ -30,7 +30,9 @@ required=[
     "$db->rollback()",
     "$db->commit()",
     "MANIFIESTO PRIVADO",
-    "if (!empty($o['check']))"
+    "if (!empty($o['check']))",
+    "numero_nacional_en_pbx",
+    "Existe formato PBX nacional de 10 dígitos"
 ]
 for string in required:
     assert string in src,string
