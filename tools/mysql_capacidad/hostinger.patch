@@ -1,8 +1,127 @@
+diff --git a/app/controllers/HomeController.php b/app/controllers/HomeController.php
+index aae2d90..974acbb 100644
+--- a/app/controllers/HomeController.php
++++ b/app/controllers/HomeController.php
+@@ -29,7 +29,7 @@ class HomeController
+ 
+         switch ($idRol) {
+             case 1:
+-                $modeloUsuario = new UsuarioModel();
++                $modeloUsuario = new UsuarioModel(Database::compartida());
+ 
+                 $conteoUsuarios = $modeloUsuario->contarUsuarios();
+                 $totalRoles = $modeloUsuario->contarRoles();
+@@ -44,7 +44,7 @@ class HomeController
+                 $subtituloPagina = 'Supervisión nacional de la operación y del equipo';
+                 require_once __DIR__ . '/../services/DirectorOperacionesDashboardService.php';
+                 try {
+-                    $tableroDireccion = (new DirectorOperacionesDashboardService())->obtener((int)$_SESSION['usuario_id']);
++                    $tableroDireccion = (new DirectorOperacionesDashboardService(Database::compartida()))->obtener((int)$_SESSION['usuario_id']);
+                 } catch (DomainException $error) {
+                     http_response_code(403);
+                     echo 'No tienes acceso al Inicio de Dirección de Operaciones.';
+@@ -81,23 +81,24 @@ class HomeController
+                 $subtituloPagina = 'Resumen operativo de tus seguimientos de vinculación';
+ 
+                 $usuarioId = (int)$_SESSION['usuario_id'];
+-                $modeloDashboardAnalista = new AnalistaDashboardModel();
++                $conexion = Database::compartida();
++                $modeloDashboardAnalista = new AnalistaDashboardModel($conexion);
+                 $tableroAnalista = $modeloDashboardAnalista->obtenerTablero($usuarioId);
+ 
+-                $servicioReunionesDashboard = new AnalistaDashboardReunionService();
++                $servicioReunionesDashboard = new AnalistaDashboardReunionService($conexion);
+                 $tableroAnalista = $servicioReunionesDashboard->ajustar(
+                     $tableroAnalista,
+                     $usuarioId
+                 );
+ 
+-                $servicioIntegridadDashboard = new AnalistaDashboardIntegrityService();
++                $servicioIntegridadDashboard = new AnalistaDashboardIntegrityService($conexion);
+                 $tableroAnalista = $servicioIntegridadDashboard->ajustar(
+                     $tableroAnalista,
+                     $usuarioId
+                 );
+ 
+                 // Fuente única final para "requieren atención" en Inicio y Reportes.
+-                $servicioAtencionOperativa = new SeguimientoAtencionOperativaService();
++                $servicioAtencionOperativa = new SeguimientoAtencionOperativaService($conexion);
+                 $atencionesOperativas = $servicioAtencionOperativa->obtenerPorAnalista($usuarioId);
+                 $totalAtencionesOperativas = count($atencionesOperativas);
+ 
+@@ -144,7 +145,7 @@ class HomeController
+                     'Resumen de supervisión, vinculación y red institucional';
+ 
+                 $servicioCuentaClaveDashboard =
+-                    new CuentaClaveDashboardService();
++                    new CuentaClaveDashboardService(Database::compartida());
+                 $tableroCuentaClave =
+                     $servicioCuentaClaveDashboard->obtener(
+                         (int)$_SESSION['usuario_id'],
+@@ -177,7 +178,7 @@ class HomeController
+                         count($proximasFinalizarMarketing);
+                     $coberturaMarketing = $modeloConvocatoria->obtenerCoberturaTerritorialDashboard(4);
+                     require_once __DIR__ . '/../models/MarketingIndicadoresModel.php';
+-                    $indicadoresClaveMarketing = (new MarketingIndicadoresModel())->obtener(
++                    $indicadoresClaveMarketing = (new MarketingIndicadoresModel(Database::compartida()))->obtener(
+                         $resumenMarketing,
+                         $coberturaMarketing
+                     );
+@@ -196,7 +197,7 @@ class HomeController
+                     $publicacionesRecientesMarketing = $modeloConvocatoria
+                         ->obtenerRecientesDashboard(4);
+                     require_once __DIR__ . '/../models/MarketingWidgetsModel.php';
+-                    $widgetsMarketing = (new MarketingWidgetsModel())->obtener();
++                    $widgetsMarketing = (new MarketingWidgetsModel(Database::compartida()))->obtener();
+ 
+                     $vistaPanel = __DIR__ . '/../views/dashboard/marketing.php';
+                     break;
 diff --git a/app/controllers/LoginController.php b/app/controllers/LoginController.php
-index d185528..ecf03fa 100644
+index d185528..eef6d5b 100644
 --- a/app/controllers/LoginController.php
 +++ b/app/controllers/LoginController.php
-@@ -246,7 +246,7 @@ class LoginController
+@@ -184,6 +184,10 @@ class LoginController
+         /*
+         * Inicio de sesión correcto
+         */
++        $this->rolModel->prepararCatalogoParaAutenticacion();
++        $permisos = $this->rolModel->obtenerCodigosPermisosPorRol((int)$usuario['rol_id']);
++        $this->usuarioModel->actualizarUltimoAcceso($usuario['id']);
++
+         session_regenerate_id(true);
+ 
+ 
+@@ -208,12 +212,7 @@ class LoginController
+         $_SESSION['rol'] =
+             $usuario['rol'];
+ 
+-        $this->rolModel->inicializarPermisosSistema();
+-
+-        $_SESSION['permisos'] =
+-            $this->rolModel->obtenerCodigosPermisosPorRol(
+-                (int)$usuario['rol_id']
+-            );
++        $_SESSION['permisos'] = $permisos;
+ 
+         $_SESSION['requiere_cambio_password'] =
+             (int)$usuario['requiere_cambio_password'];
+@@ -222,15 +221,6 @@ class LoginController
+             time();
+ 
+ 
+-        /*
+-        * Registrar último acceso
+-        */
+-        $this->usuarioModel
+-            ->actualizarUltimoAcceso(
+-                $usuario['id']
+-            );
+-
+-
+         /*
+         * Todos ingresan al dashboard.
+         *
+@@ -246,7 +236,7 @@ class LoginController
          ) {
              try {
                  require_once __DIR__ . '/../services/TelefoniaExtensionService.php';
@@ -247,6 +366,47 @@ index 668a1be..dcab64b 100644
  
              if (!existeTablaRecordatoriosVinculacion($connection)) {
                  return [
+diff --git a/app/models/AnalistaDashboardModel.php b/app/models/AnalistaDashboardModel.php
+index 37e6f13..878d53c 100644
+--- a/app/models/AnalistaDashboardModel.php
++++ b/app/models/AnalistaDashboardModel.php
+@@ -8,10 +8,9 @@ class AnalistaDashboardModel
+     private $connection;
+     private $tablas = [];
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function obtenerTablero($usuarioId)
+diff --git a/app/models/RolModel.php b/app/models/RolModel.php
+index 16e0bb3..651ec24 100644
+--- a/app/models/RolModel.php
++++ b/app/models/RolModel.php
+@@ -15,6 +15,19 @@ class RolModel
+         $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
++    public function prepararCatalogoParaAutenticacion(): void
++    {
++        $filas = $this->connection->query('SELECT codigo FROM permisos');
++        $codigos = array_fill_keys(array_column($filas->fetch_all(MYSQLI_ASSOC), 'codigo'), true);
++        foreach ($this->obtenerCatalogoInicialPermisos() as $permiso) {
++            if (!isset($codigos[$permiso['codigo']])) {
++                // Conserva el aprovisionamiento de instalaciones sin el catálogo actualizado.
++                $this->inicializarPermisosSistema();
++                return;
++            }
++        }
++    }
++
+     public function inicializarPermisosSistema()
+     {
+         $permisos = array_merge($this->obtenerCatalogoInicialPermisos(), FormularioPermisos::catalogo(), InscritosPermisos::catalogo());
 diff --git a/app/services/AdminNotificationService.php b/app/services/AdminNotificationService.php
 index 5e59fe8..bd27477 100644
 --- a/app/services/AdminNotificationService.php
@@ -317,6 +477,60 @@ index 666d061..51c5514 100644
      }
  
      public function obtener($usuarioId, $limite = 10)
+diff --git a/app/services/AnalistaDashboardIntegrityService.php b/app/services/AnalistaDashboardIntegrityService.php
+index 4ebded3..df4e2f0 100644
+--- a/app/services/AnalistaDashboardIntegrityService.php
++++ b/app/services/AnalistaDashboardIntegrityService.php
+@@ -9,10 +9,9 @@ class AnalistaDashboardIntegrityService
+     private $tablas = [];
+     private $columnas = [];
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function ajustar(array $tablero, $usuarioId)
+diff --git a/app/services/AnalistaDashboardReunionService.php b/app/services/AnalistaDashboardReunionService.php
+index 0404bcb..25e3f97 100644
+--- a/app/services/AnalistaDashboardReunionService.php
++++ b/app/services/AnalistaDashboardReunionService.php
+@@ -7,10 +7,9 @@ class AnalistaDashboardReunionService
+ {
+     private $connection;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function ajustar(array $tablero, $usuarioId)
+diff --git a/app/services/CuentaClaveDashboardService.php b/app/services/CuentaClaveDashboardService.php
+index 6a23fba..6aa4983 100644
+--- a/app/services/CuentaClaveDashboardService.php
++++ b/app/services/CuentaClaveDashboardService.php
+@@ -10,11 +10,11 @@ class CuentaClaveDashboardService
+     private $aliados;
+     private $atencion;
+ 
+-    public function __construct()
++    public function __construct(?mysqli $conexion = null)
+     {
+-        $this->seguimientos = new SeguimientoVinculacionModel();
+-        $this->aliados = new AliadoModel();
+-        $this->atencion = new SeguimientoAtencionOperativaService();
++        $this->seguimientos = new SeguimientoVinculacionModel($conexion);
++        $this->aliados = new AliadoModel($conexion);
++        $this->atencion = new SeguimientoAtencionOperativaService($conexion);
+     }
+ 
+     public function obtener(
 diff --git a/app/services/ReminderAgendaFilterService.php b/app/services/ReminderAgendaFilterService.php
 index f91a694..ab5eb55 100644
 --- a/app/services/ReminderAgendaFilterService.php
@@ -402,6 +616,23 @@ index 5ae474c..4dee501 100644
      }
  
      public function obtener($analistaId, $limite = 10)
+diff --git a/app/services/SeguimientoAtencionOperativaService.php b/app/services/SeguimientoAtencionOperativaService.php
+index b93716a..9011be9 100644
+--- a/app/services/SeguimientoAtencionOperativaService.php
++++ b/app/services/SeguimientoAtencionOperativaService.php
+@@ -8,10 +8,9 @@ class SeguimientoAtencionOperativaService
+     private $connection;
+     private $tablas = [];
+ 
+-    public function __construct()
++    public function __construct(?mysqli $connection = null)
+     {
+-        $database = new Database();
+-        $this->connection = $database->connect();
++        $this->connection = $connection ?? (new Database())->connect();
+     }
+ 
+     public function obtenerPorAnalista($usuarioId)
 diff --git a/app/services/SeguimientoCambioDatosService.php b/app/services/SeguimientoCambioDatosService.php
 index 873d031..9ce9ca6 100644
 --- a/app/services/SeguimientoCambioDatosService.php
@@ -728,10 +959,10 @@ index 1644726..3d8d32c 100644
  } catch (Throwable $e) {
      if (Database::responderFalloTemporal($e)) exit;
 diff --git a/public/javascript/recordatorios.js b/public/javascript/recordatorios.js
-index 18530b7..8e3603b 100644
+index 18530b7..29ab5a3 100644
 --- a/public/javascript/recordatorios.js
 +++ b/public/javascript/recordatorios.js
-@@ -641,61 +641,83 @@
+@@ -641,61 +641,88 @@
              } finally { lecturasComentariosPendientes.delete(id);link.removeAttribute('aria-busy'); }
          }, true);
  
@@ -782,6 +1013,10 @@ index 18530b7..8e3603b 100644
 -                    },
 -                    cache: 'no-store'
 -                });
+-
+-                if (!respuesta.ok) {
+-                    throw new Error('Respuesta HTTP ' + respuesta.status);
++        let ultimaCampanaCorrecta = 0;
 +        const tokenCampana = String(window.IMPE_CSRF_TOKEN || '');
 +        const claveCampana = 'impe-campana:' + claveUsuario + ':' + tokenCampana;
 +        const canalCampana = tokenCampana && typeof window.BroadcastChannel === 'function' &&
@@ -790,13 +1025,14 @@ index 18530b7..8e3603b 100644
 +        if (canalCampana) {
 +            canalCampana.addEventListener('message', function (evento) {
 +                const datos = evento.data;
-+                if (datos && (datos.ok || datos.parcial)) procesarDatosCampana(datos);
++                if (datos && (datos.ok || datos.parcial)) {
++                    ultimaCampanaCorrecta = Date.now();
++                    procesarDatosCampana(datos);
+                 }
 +            });
 +        }
  
--                if (!respuesta.ok) {
--                    throw new Error('Respuesta HTTP ' + respuesta.status);
--                }
+-                const datos = await respuesta.json();
 +        const cargarCampana = async function () {
 +            const respuesta = await fetch(endpoint, {
 +                headers: {'X-Requested-With': 'XMLHttpRequest'},
@@ -810,19 +1046,16 @@ index 18530b7..8e3603b 100644
 +            return datos;
 +        };
  
--                const datos = await respuesta.json();
+-                if (!datos || (!datos.ok && !datos.parcial)) {
+-                    throw new Error('Respuesta de recordatorios no disponible');
+-                }
 +        let refrescoPendiente = false;
 +        const consultarRecordatorios = async function (explicita = false) {
-+            if (document.hidden) return;
++            if (document.hidden || (!explicita && Date.now() - ultimaCampanaCorrecta < 2000)) return;
 +            if (consultaEnCurso) {
 +                if (explicita) refrescoPendiente = true;
 +                return;
 +            }
- 
--                if (!datos || (!datos.ok && !datos.parcial)) {
--                    throw new Error('Respuesta de recordatorios no disponible');
--                }
-+            consultaEnCurso = true;
  
 -                renderizarRecordatorios(
 -                    datos.recordatorios || [],
@@ -848,18 +1081,21 @@ index 18530b7..8e3603b 100644
 -                        );
 -                    }
 -                    return;
++            consultaEnCurso = true;
++
 +            try {
 +                const datos = canalCampana
 +                    ? await window.navigator.locks.request(claveCampana, {ifAvailable: !explicita},
 +                        lock => lock ? cargarCampana() : null)
 +                    : await cargarCampana();
 +                if (datos) {
++                    ultimaCampanaCorrecta = Date.now();
 +                    procesarDatosCampana(datos);
 +                    canalCampana?.postMessage(datos);
                  }
  
              } catch (error) {
-@@ -704,12 +726,25 @@
+@@ -704,21 +731,37 @@
                  console.error('No fue posible actualizar las notificaciones.', error);
              } finally {
                  consultaEnCurso = false;
@@ -873,17 +1109,32 @@ index 18530b7..8e3603b 100644
              }
          };
  
-         consultarRecordatorios();
+-        consultarRecordatorios();
 -        window.setInterval(consultarRecordatorios, 60000);
-+        // Mantener la primera consulta y los refrescos explícitos inmediatos.
-+        // Dispersar sólo los sondeos rutinarios entre navegadores.
-+        if (canalCampana) {
-+            window.setTimeout(function () {
-+                window.setInterval(consultarRecordatorios, 60000);
-+            }, Math.floor(Math.random() * 1500));
-+        } else {
-+            window.setInterval(consultarRecordatorios, 60000);
-+        }
++        let sondeoProgramado = null;
++        const programarSondeo = function () {
++            if (document.hidden || sondeoProgramado !== null) return;
++            sondeoProgramado = window.setTimeout(function () {
++                sondeoProgramado = null;
++                void consultarRecordatorios();
++            }, 200 + Math.floor(Math.random() * 1800));
++        };
++        // Sólo el sondeo de fondo tiene dispersión. Las llamadas entrantes,
++        // eventos de telefonía y la apertura de la campana siguen su flujo.
++        root.addEventListener('show.bs.dropdown', () => void consultarRecordatorios(true));
++        programarSondeo();
++        window.setInterval(programarSondeo, 60000);
          programarSiguienteToastVencido();
  
          window.addEventListener('pageshow', function () {
+-            void consultarRecordatorios();
++            programarSondeo();
+             programarSiguienteToastVencido();
+         });
+         document.addEventListener('visibilitychange', function () {
+             if (!document.hidden) {
+-                consultarRecordatorios();
++                programarSondeo();
+                 programarSiguienteToastVencido();
+             }
+         });

@@ -517,6 +517,7 @@
             }
         };
 
+        let ultimaCampanaCorrecta = 0;
         const tokenCampana = String(window.IMPE_CSRF_TOKEN || '');
         const claveCampana = 'impe-campana:' + claveUsuario + ':' + tokenCampana;
         const canalCampana = tokenCampana && typeof window.BroadcastChannel === 'function' &&
@@ -525,7 +526,10 @@
         if (canalCampana) {
             canalCampana.addEventListener('message', function (evento) {
                 const datos = evento.data;
-                if (datos && (datos.ok || datos.parcial)) procesarDatosCampana(datos);
+                if (datos && (datos.ok || datos.parcial)) {
+                    ultimaCampanaCorrecta = Date.now();
+                    procesarDatosCampana(datos);
+                }
             });
         }
 
@@ -544,7 +548,7 @@
 
         let refrescoPendiente = false;
         const consultarRecordatorios = async function (explicita = false) {
-            if (document.hidden) return;
+            if (document.hidden || (!explicita && Date.now() - ultimaCampanaCorrecta < 2000)) return;
             if (consultaEnCurso) {
                 if (explicita) refrescoPendiente = true;
                 return;
@@ -558,6 +562,7 @@
                         lock => lock ? cargarCampana() : null)
                     : await cargarCampana();
                 if (datos) {
+                    ultimaCampanaCorrecta = Date.now();
                     procesarDatosCampana(datos);
                     canalCampana?.postMessage(datos);
                 }
@@ -577,25 +582,28 @@
             }
         };
 
-        consultarRecordatorios();
-        // Mantener la primera consulta y los refrescos explícitos inmediatos.
-        // Dispersar sólo los sondeos rutinarios entre navegadores.
-        if (canalCampana) {
-            window.setTimeout(function () {
-                window.setInterval(consultarRecordatorios, 60000);
-            }, Math.floor(Math.random() * 1500));
-        } else {
-            window.setInterval(consultarRecordatorios, 60000);
-        }
+        let sondeoProgramado = null;
+        const programarSondeo = function () {
+            if (document.hidden || sondeoProgramado !== null) return;
+            sondeoProgramado = window.setTimeout(function () {
+                sondeoProgramado = null;
+                void consultarRecordatorios();
+            }, 200 + Math.floor(Math.random() * 1800));
+        };
+        // Sólo el sondeo de fondo tiene dispersión. Las llamadas entrantes,
+        // eventos de telefonía y la apertura de la campana siguen su flujo.
+        root.addEventListener('show.bs.dropdown', () => void consultarRecordatorios(true));
+        programarSondeo();
+        window.setInterval(programarSondeo, 60000);
         programarSiguienteToastVencido();
 
         window.addEventListener('pageshow', function () {
-            void consultarRecordatorios();
+            programarSondeo();
             programarSiguienteToastVencido();
         });
         document.addEventListener('visibilitychange', function () {
             if (!document.hidden) {
-                consultarRecordatorios();
+                programarSondeo();
                 programarSiguienteToastVencido();
             }
         });

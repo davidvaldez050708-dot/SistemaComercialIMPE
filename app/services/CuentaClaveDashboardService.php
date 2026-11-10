@@ -10,11 +10,11 @@ class CuentaClaveDashboardService
     private $aliados;
     private $atencion;
 
-    public function __construct()
+    public function __construct(?mysqli $conexion = null)
     {
-        $this->seguimientos = new SeguimientoVinculacionModel();
-        $this->aliados = new AliadoModel();
-        $this->atencion = new SeguimientoAtencionOperativaService();
+        $this->seguimientos = new SeguimientoVinculacionModel($conexion);
+        $this->aliados = new AliadoModel($conexion);
+        $this->atencion = new SeguimientoAtencionOperativaService($conexion);
     }
 
     public function obtener(

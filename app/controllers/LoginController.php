@@ -184,6 +184,10 @@ class LoginController
         /*
         * Inicio de sesión correcto
         */
+        $this->rolModel->prepararCatalogoParaAutenticacion();
+        $permisos = $this->rolModel->obtenerCodigosPermisosPorRol((int)$usuario['rol_id']);
+        $this->usuarioModel->actualizarUltimoAcceso($usuario['id']);
+
         session_regenerate_id(true);
 
 
@@ -208,27 +212,13 @@ class LoginController
         $_SESSION['rol'] =
             $usuario['rol'];
 
-        $this->rolModel->inicializarPermisosSistema();
-
-        $_SESSION['permisos'] =
-            $this->rolModel->obtenerCodigosPermisosPorRol(
-                (int)$usuario['rol_id']
-            );
+        $_SESSION['permisos'] = $permisos;
 
         $_SESSION['requiere_cambio_password'] =
             (int)$usuario['requiere_cambio_password'];
 
         $_SESSION['ultima_actividad'] =
             time();
-
-
-        /*
-        * Registrar último acceso
-        */
-        $this->usuarioModel
-            ->actualizarUltimoAcceso(
-                $usuario['id']
-            );
 
 
         /*

@@ -29,7 +29,7 @@ class HomeController
 
         switch ($idRol) {
             case 1:
-                $modeloUsuario = new UsuarioModel();
+                $modeloUsuario = new UsuarioModel(Database::compartida());
 
                 $conteoUsuarios = $modeloUsuario->contarUsuarios();
                 $totalRoles = $modeloUsuario->contarRoles();
@@ -69,23 +69,24 @@ class HomeController
                 $subtituloPagina = 'Resumen operativo de tus seguimientos de vinculación';
 
                 $usuarioId = (int)$_SESSION['usuario_id'];
-                $modeloDashboardAnalista = new AnalistaDashboardModel();
+                $conexion = Database::compartida();
+                $modeloDashboardAnalista = new AnalistaDashboardModel($conexion);
                 $tableroAnalista = $modeloDashboardAnalista->obtenerTablero($usuarioId);
 
-                $servicioReunionesDashboard = new AnalistaDashboardReunionService();
+                $servicioReunionesDashboard = new AnalistaDashboardReunionService($conexion);
                 $tableroAnalista = $servicioReunionesDashboard->ajustar(
                     $tableroAnalista,
                     $usuarioId
                 );
 
-                $servicioIntegridadDashboard = new AnalistaDashboardIntegrityService();
+                $servicioIntegridadDashboard = new AnalistaDashboardIntegrityService($conexion);
                 $tableroAnalista = $servicioIntegridadDashboard->ajustar(
                     $tableroAnalista,
                     $usuarioId
                 );
 
                 // Fuente única final para "requieren atención" en Inicio y Reportes.
-                $servicioAtencionOperativa = new SeguimientoAtencionOperativaService();
+                $servicioAtencionOperativa = new SeguimientoAtencionOperativaService($conexion);
                 $atencionesOperativas = $servicioAtencionOperativa->obtenerPorAnalista($usuarioId);
                 $totalAtencionesOperativas = count($atencionesOperativas);
 
@@ -132,7 +133,7 @@ class HomeController
                     'Resumen de supervisión, vinculación y red institucional';
 
                 $servicioCuentaClaveDashboard =
-                    new CuentaClaveDashboardService();
+                    new CuentaClaveDashboardService(Database::compartida());
                 $tableroCuentaClave =
                     $servicioCuentaClaveDashboard->obtener(
                         (int)$_SESSION['usuario_id'],

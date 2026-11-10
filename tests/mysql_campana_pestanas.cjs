@@ -4,8 +4,8 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 const fuente = fs.readFileSync(process.argv[2], 'utf8');
-const inicio = fuente.indexOf('        const tokenCampana =');
-const fin = fuente.indexOf('\n        consultarRecordatorios();', inicio);
+const inicio = fuente.indexOf('        let ultimaCampanaCorrecta =');
+const fin = fuente.indexOf('\n        let sondeoProgramado =', inicio);
 assert.ok(inicio >= 0 && fin > inicio);
 const bloque = fuente.slice(inicio, fin);
 const mensajes = new Map();
@@ -14,6 +14,7 @@ const pausas = [];
 let solicitudes = 0;
 let reintentos = 0;
 let caida = false;
+let reloj = 100000;
 const respuesta = {ok: true, recordatorios: [{id: 1, pendiente_operativo: true}], avisos: []};
 
 class Canal {
@@ -49,6 +50,7 @@ function pestaña(token) {
         window: {IMPE_CSRF_TOKEN: token, BroadcastChannel: Canal, navigator: {locks}},
         claveUsuario: ':usuario:3',
         endpoint: '/pendientes',
+        Date: {now: () => reloj},
         consultaEnCurso: false,
         document: {hidden: false},
         cargaInicialCompletada: false,
@@ -93,6 +95,9 @@ function pestaña(token) {
     await recuperacion;
     assert.deepEqual(ajena.recibidos, [respuesta]);
 
+    await b.consultar();
+    assert.equal(solicitudes, 3, 'Otra pestaña aprovecha una respuesta reciente');
+    reloj += 2001;
     const rutinaria = a.consultar();
     const explicita = b.consultar(true);
     pausas.shift()();

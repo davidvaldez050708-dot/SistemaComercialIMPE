@@ -12,6 +12,19 @@ class RolModel
         $this->connection = $connection ?? (new Database())->connect();
     }
 
+    public function prepararCatalogoParaAutenticacion(): void
+    {
+        $filas = $this->connection->query('SELECT codigo FROM permisos');
+        $codigos = array_fill_keys(array_column($filas->fetch_all(MYSQLI_ASSOC), 'codigo'), true);
+        foreach ($this->obtenerCatalogoInicialPermisos() as $permiso) {
+            if (!isset($codigos[$permiso['codigo']])) {
+                // Conserva el aprovisionamiento de instalaciones sin el catálogo actualizado.
+                $this->inicializarPermisosSistema();
+                return;
+            }
+        }
+    }
+
     public function inicializarPermisosSistema()
     {
         $permisos = $this->obtenerCatalogoInicialPermisos();

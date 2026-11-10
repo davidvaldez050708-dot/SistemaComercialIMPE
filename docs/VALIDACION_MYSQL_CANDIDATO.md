@@ -66,3 +66,69 @@ Con 30 sesiones válidas el candidato redujo el pico observado de 81 a 62 y las 
 - Completar la regresión de telefonía y campana en todos los recorridos y repetir con límites reproducibles. Se mantiene el bloqueo de aplicación hasta entonces.
 
 El ensayo está en `tests/mysql_capacidad_http.py`. Requiere una instancia desechable de MariaDB en localhost con un directorio de datos que termine en `mysql-capacidad-<hex>/data`, una base vacía `impe_test_capacidad` y una cuenta local `impe_capacity` con permisos sobre esa base y máximo de 75 conexiones. Usa `--base` para la copia instalada y `--cambios` para una copia de laboratorio a la que se haya aplicado el parche. Ejecutar cada variante del ensayo contra una base vacía. Con `--preautenticar` mide recargas sin incluir el inicio de sesión en la ventana medida.
+
+## Segunda revisión sobre `d9d827cb`
+
+### Excepciones reproducidas
+
+Se instrumentó una copia desechable de los PHP instalados para registrar los códigos y mensajes completos. Los registros detallados quedaron en el laboratorio.
+
+| Recorrido | Excepción reproducida | Origen |
+|---|---|---|
+| Autenticación | `mysqli_sql_exception 1213`, interbloqueo | `RolModel.php:94` ejecuta el `INSERT … ON DUPLICATE KEY UPDATE` del catálogo en cada login. La inicialización también normaliza roles dentro de una transacción. Las solicitudes concurrentes escribían las mismas filas aun con el catálogo instalado. |
+| Inicio de Analista | `mysqli_sql_exception 1054`, columna `realizada_por` | `AnalistaDashboardModel.php:503`. El esquema anterior del laboratorio omitió el ALTER de la migración de integridad de Agenda. |
+| Inicio de Marketing | `mysqli_sql_exception 1054`, columna `estado` | `ConvocatoriaModel.php:1480`. La definición histórica de `convocatorias` tenía `estatus` y la prueba saltaba la definición moderna. |
+| Campana administrativa | `mysqli_sql_exception 1054`, columna `estado` | El mismo esquema histórico de Convocatorias impedía calcular el resumen. |
+| Campana de Asesor | `DomainException`, migración de telefonía comercial ausente | Faltaba la tabla `telefonia_ventas_llamadas`, creada por la migración PHP `TelefoniaVentasSchema`. |
+
+El código de autenticación consulta el catálogo y los permisos vigentes. Solo llama al inicializador si faltan códigos del catálogo. La sesión autenticada se escribe después de completar las lecturas de permisos y el registro del acceso. Se conserva el aprovisionamiento cuando faltan códigos y la gestión administrativa de permisos. Los `1054` de Inicio se corrigieron en el esquema de ensayo, sin cambiar las consultas ni convertir sus excepciones en respuestas exitosas. Esos fallos se observaron en el laboratorio, y queda pendiente cotejar la estructura efectiva de Hostinger.
+
+Los recorridos de lectura de Inicio usan la conexión de la petición en Administrador, Analista y Cuenta Clave, y en las consultas compatibles de Dirección y Marketing de la variante instalada. Se conservan las conexiones independientes de las operaciones transaccionales. La campana dispersa únicamente los sondeos de fondo y deduplica respuestas recientes entre pestañas de la misma sesión. La apertura manual de la campana y los eventos urgentes se atienden por sus recorridos inmediatos.
+
+### Límites explícitos y margen
+
+MariaDB del laboratorio aplica `MAX_USER_CONNECTIONS 75` al usuario del CRM. Un intermediario TCP compartido entre los clientes del ensayo cuenta los intentos de conexión y rechaza con error MySQL 1226 cuando se han admitido 20 aperturas en la ventana móvil anterior. `--metricas` registra por segundo aperturas, sesiones, Sleep, éxitos, fallos, códigos HTTP y latencias. La meta de margen del ensayo es mantener como máximo 60 conexiones y 15 aperturas por segundo. El intermediario solo se usa en el laboratorio y no simula la asignación y el reciclaje de procesos de LiteSpeed ni la actividad de otros consumidores en la cuenta real.
+
+`--pool-caliente` hace un arranque medido y gradual de los workers de prueba antes de iniciar la ráfaga de usuarios. El escalonamiento de este banco no se aplica a la autenticación del producto. En frío, 30 workers que necesitan conectar a la vez pueden superar el límite aun con una conexión por petición. Hace falta validar la reutilización y el reciclaje del pool bajo las condiciones del alojamiento, o disponer de un mecanismo de pooling compatible con transacciones y bloqueos que reduzca las aperturas físicas sin retrasar las rutas urgentes.
+
+### Comparación con límites activos
+
+Los resultados corresponden al esquema sintético corregido. Cada fila usa pools nuevos o el calentamiento explícito indicado. La columna de campana cuenta la primera consulta de cada usuario. Las pruebas de carga posteriores también consultan la campana por segunda vez. Los 500 y 503 se cuentan en las rutas de carga. Los fallos provocados para verificar recuperación se prueban aparte.
+
+| Variante y condición | Usuarios | Login | Inicio | Campana | Pico sesiones | Intentos en 1 s | Rechazos MySQL | HTTP 500 / 503 | p95 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Instalada, frío simultáneo | 10 | 4/10 | 4/10 | 0/10 | 20 | 28 | 8 | 6 / 8 | 391 ms |
+| Candidato, frío simultáneo | 10 | 10/10 | 10/10 | 10/10 | 16 | 16 | 0 | 0 / 0 | 218 ms |
+| Instalada, frío simultáneo | 30 | 2/30 | 1/30 | 0/30 | 20 | 38 | 18 | 18 / 15 | 422 ms |
+| Candidato, frío simultáneo | 30 | 20/30 | 17/30 | 20/30 | 20 | 39 | 19 | 0 / 13 | 187 ms |
+| Candidato, frío escalonado a 110 ms | 30 | 30/30 | 30/30 | 30/30 | 46 | 16 | 0 | 0 / 0 | 79 ms |
+| Candidato, caliente simultáneo | 10 | 10/10 | 10/10 | 10/10 | 16 | 4 | 0 | 0 / 0 | 94 ms |
+| Candidato, caliente simultáneo | 30 | 30/30 | 30/30 | 30/30 | 46 | 4 | 0 | 0 / 0 | 313 ms |
+
+En las dos pruebas calientes, las aperturas se concentraron en el calentamiento y no se registraron aperturas nuevas en la ráfaga posterior. En frío, el límite protege MySQL y deja solicitudes sin atender. La fila escalonada completó todos los recorridos y excedió por una apertura el margen objetivo de 15/s. El p95 de cada fila solo incluye respuestas exitosas, así que un tiempo menor con muchos rechazos no indica una mejor experiencia.
+
+Las pruebas HTTP verificaron cierre de sesión, rechazo de la cookie anterior, revocación de permiso con sesión activa, 503 por caída de la conexión en autenticación, campana y WebRTC, y recuperación sin perder la sesión válida. Los ensayos Node verificaron coordinación de pestañas, conservación de avisos operativos, transferencia simulada y cierre SIP. Las consultas de telefonía HTTP usaron proveedor simulado y perfiles representativos. La distribución de avisos reales de todos los roles queda pendiente de validar con un esquema representativo y datos de prueba por rol.
+
+Se verificó el paquete de 28 archivos contra las huellas de la copia de Hostinger. La huella de `TelefoniaControlService.php` sigue siendo un requisito de integridad del paquete. `--check` pasó y `--apply` sigue bloqueado. La ráfaga en frío, el margen para otros consumidores y la equivalencia del esquema siguen pendientes de aceptación.
+
+### Archivos de la segunda revisión
+
+- `app/controllers/HomeController.php`
+- `app/controllers/LoginController.php`
+- `app/models/AnalistaDashboardModel.php`
+- `app/models/RolModel.php`
+- `app/services/AnalistaDashboardIntegrityService.php`
+- `app/services/AnalistaDashboardReunionService.php`
+- `app/services/CuentaClaveDashboardService.php`
+- `app/services/SeguimientoAtencionOperativaService.php`
+- `public/javascript/recordatorios.js`
+- `tests/mysql_campana_pestanas.cjs`
+- `tests/mysql_capacidad_http.py`
+- `tests/mysql_limite_aperturas.py`
+- `tools/mysql_capacidad/hostinger.patch`
+- `tools/mysql_capacidad/huellas.json`
+- `docs/VALIDACION_MYSQL_CANDIDATO.md`
+
+Para reproducir con los límites, usar `--limitar --metricas resultados.jsonl`. Para el perfil caliente usar también `--pool-caliente --sin-escalonar`. La opción `--preautenticar` separa las recargas de la autenticación. La opción `--esquema` admite las definiciones de tablas obtenidas de `SHOW CREATE TABLE` y las instala únicamente en la base vacía del laboratorio.
+
+Con sesiones autenticadas antes de la ventana de carga, también pasaron las recargas simultáneas de 10 y 30 usuarios en caliente. Inicio y las dos consultas de campana respondieron correctamente para todos. Hubo 16 y 46 sesiones respectivamente, cuatro intentos/s durante el calentamiento, ningún rechazo y un p95 de 109 y 281 ms. Las consultas simuladas de telefonía y transferencias devolvieron 200. La ejecución de sesiones válidas y el perfil frío final también completaron las pruebas de caída y recuperación de conexión.
