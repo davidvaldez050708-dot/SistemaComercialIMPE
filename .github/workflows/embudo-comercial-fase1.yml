@@ -52,6 +52,7 @@ jobs:
         run: |
           php tests/embudo_comercial_fase1_unit.php
           php tests/embudo_comercial_fase2_unit.php
+          php tests/embudo_pbx_normalizacion_mexico_unit.php
           php -l app/services/EmbudoComercialPresentacion.php
           php tests/embudo_comercial_ficha_historial_unit.php
           python3 tests/embudo_comercial_ficha_historial_estatico_test.py
