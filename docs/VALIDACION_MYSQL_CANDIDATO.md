@@ -217,3 +217,70 @@ Pasaron las pruebas de revocación, cierre de sesión, caída de MySQL y recuper
 El p95 en frío para el login de 30 usuarios fue de 3.532 ms y la espera de admisión máxima observada en ese recorrido fue de 3.984 ms. El p95 global incluye únicamente respuestas exitosas. En caliente, el pico físico incluye el calentamiento anterior a la ráfaga. Las recargas de cada usuario se validaron con su aviso de agenda dirigido y horario, y sin marcarlo como leído o atendido.
 
 La admisión eliminó rechazos MySQL en esta matriz aislada. Todavía se observaron 503 locales en rutas telefónicas y un aumento de latencia respecto a un pool caliente sin control. Falta verificar el rendimiento y la coordinación con el filesystem, la distribución de peticiones y el reciclaje real de LiteSpeed. Los resultados de transferencias y múltiples pestañas son de simulación y los perfiles son sintéticos. Se mantiene bloqueado el publicador.
+
+## Prioridades de telefonía y recuperación de cupos
+
+### Diagnóstico y cambio
+
+En `12c310e4`, la mayor parte de los 503 internos de telefonía se registró como `sin_cupo`. Los procesos competían por el mismo candado incluso cuando la conexión se reutilizaba. Las consultas de estado, los checkpoints previos a marcar y las acciones de transferencia compartían el presupuesto urgente de 240 ms. Esto podía agotar el plazo antes de que MySQLi intentara conectar. Con la primera prueba por cupos se aisló un segundo motivo. El login devolvió 503 de estado a los 26 ms al fallar la escritura atómica de una reserva. La traza anterior no distinguía la creación del temporal del reemplazo final. Ese caso fue previo al plazo y al intento de conexión.
+
+La admisión usa 15 cupos independientes, cada uno con su propio candado y estado. Un intento mantiene solo el candado de su cupo mientras abre o restablece la sesión MySQLi. Los otros cupos siguen disponibles. El estado se escribe atómicamente antes de conectar. Se libera en cuanto mysqlnd confirma reutilización y se conserva 1,05 s después de los demás intentos. Si falla un reemplazo, se hacen hasta tres intentos breves de I/O local y luego se omite el cupo durante esa admisión. Esto no repite la petición ni ejecuta de nuevo operaciones SQL.
+
+| Clase | Rutas | Presupuesto de admisión |
+|---|---|---:|
+| Crítica | Entrada activa, estado de llamada en curso, webhook Zadarma, POST de transferencia y acciones de marcado y transferencia | 240 ms |
+| Preparación | Clave WebRTC y checkpoint previo a marcar | 1.250 ms y acceso preferente al cupo 13 |
+| Sondeo | Consulta GET de transferencia, avisos, contexto y sondeos de disponibilidad | 1.250 ms, sin cupo reservado |
+| Normal | Login, Inicio, campana y resto de rutas | 4.200 ms, sin cupo reservado |
+
+Los cupos 14 y 15 quedan reservados para operaciones críticas. La ruta de WebRTC requiere autorización vigente y prepara el transporte antes de usar el SDK. El checkpoint fija la marca previa a la marcación. Las consultas GET de transferencia conservan su lógica existente, que puede actualizar el estado durante el sondeo, por lo que este cambio no añade reintentos de esas peticiones. El plazo de admisión se suma a la conexión y a la ejecución de la ruta. Las latencias de laboratorio se miden de extremo a extremo.
+
+### Estadísticas y archivos
+
+Con `mysqlnd.collect_statistics=0`, con la función deshabilitada o con un contador inválido, el control contabiliza todo intento como posible apertura y no devuelve anticipadamente el cupo. El proxy del laboratorio mide la apertura física de manera independiente. En este modo puede caer el número de peticiones atendidas aun cuando MySQL esté reutilizando conexiones. La disponibilidad de las estadísticas forma parte de la verificación antes de habilitar la admisión.
+
+El sistema operativo libera el candado si el proceso termina. El estado pendiente permanece hasta 30 s para conservar margen si la conexión llegó a iniciarse. Un archivo de estado incompleto o ilegible deja fuera un cupo, mientras los demás pueden seguir operando. Un directorio ausente, dentro del sitio o con permisos abiertos en Unix impide activar el control. Un temporal incompleto queda fuera del estado activo. Si Linux permite leer el identificador de arranque, el control reconoce un reinicio del mismo host. Si no puede verificarlo, la recuperación tras reinicio debe hacerse con los workers detenidos y un directorio de estado nuevo.
+
+El diseño requiere una sola máquina y un directorio privado con `flock` y renombrado atómico. Un directorio compartido entre hosts no forma parte de este diseño. Para cambiar de versión de admisión, drenar primero todos los workers que usen la versión anterior y esperar la ventana de aperturas. Las dos versiones mantienen formatos distintos y no deben operar en paralelo. No borrar el estado mientras haya workers activos.
+
+### Entorno de validación LSAPI
+
+La prueba ejecutada localmente usa PHP 8.2, una instancia MariaDB desechable con las 128 tablas de la exportación, sesiones sintéticas y el intermediario TCP del laboratorio. Los workers persistentes se calientan y se reemplazan por procesos nuevos usando el mismo directorio de sesiones. Este entorno verifica concurrencia, reutilización y reemplazo de procesos. El proceso administrador de LSAPI, el almacenamiento y el comportamiento del alojamiento real requieren una réplica Linux independiente.
+
+Para repetir en esa réplica, preparar el sitio con la copia conciliada y el mismo proveedor simulado de `preparar_sitio` en `tests/mysql_capacidad_http.py`. Usar MariaDB de pruebas y una cuenta con `MAX_USER_CONNECTIONS 75`. Ejecutar el `LimitadorMySQL` del laboratorio en loopback y apuntar a él las variables `IMPE_DB_HOST` y demás credenciales exclusivamente sintéticas. Configurar el vhost de OpenLiteSpeed en loopback con LSPHP 8.2 en ProcessGroup, 30 procesos y máximo de conexiones LSAPI equivalente. Usar una serie con `LSAPI_MAX_REQS` bajo para inducir reciclaje, otra con procesos calientes y otra con diez reemplazos observados por PID. Mantener el directorio de admisión fuera del docroot con permisos 0700 y el mismo usuario de LSPHP. Verificar el SAPI, mysqlnd y los PIDs antes de medir. Reproducir las rutas de `escenario` con 10 y 30 cookies reales de la réplica y conservar las métricas HTTP y del proxy. Los límites del proveedor para la cuenta completa y la topología de Hostinger siguen requiriendo comprobación fuera de producción.
+
+### Resultados con estadísticas activas
+
+| Escenario | Usuarios | Login | Inicio y dos consultas de campana | Pico sesiones | Intentos físicos/s | Rechazos MySQL | HTTP 500 / 503 | p95 global |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Frío simultáneo | 10 | 10/10 | 10/10 | 16 | 12 | 0 | 0 / 0 | 984 ms |
+| Frío simultáneo | 30 | 30/30 | 30/30 | 46 | 10 | 0 | 0 / 0 | 2.484 ms |
+| Caliente, sesiones válidas | 10 | — | 10/10 | 16 | 4 | 0 | 0 / 0 | 141 ms |
+| Caliente, sesiones válidas | 30 | — | 30/30 | 46 | 4 | 0 | 0 / 0 | 469 ms |
+| Diez reemplazos, sesiones válidas | 10 | — | 10/10 | 16 | 12 | 0 | 0 / 0 | 1.062 ms |
+| Diez reemplazos, sesiones válidas | 30 | — | 30/30 | 46 | 12 | 0 | 0 / 0 | 1.140 ms |
+| Diez reemplazos, login simultáneo | 10 | 10/10 | 10/10 | 16 | 12 | 0 | 0 / 0 | 953 ms |
+| Diez reemplazos, login simultáneo | 30 | 30/30 | 30/30 | 46 | 11 | 0 | 0 / 0 | 1.015 ms |
+
+El p95 de login frío de 30 usuarios fue 2.453 ms. En las pruebas de 30, los p95 de entrada y estado activo estuvieron entre 47 y 63 ms. El sondeo de transferencia llegó a 1.016 ms en frío y la preparación WebRTC a 718 ms en el escenario de login tras reciclaje. La matriz verificó dos lecturas de agenda por usuario, con aviso y horario dirigidos, y no registró lectura ni atención automática. Las pruebas deliberadas de fallo temporal sí comprobaron el 503 y la recuperación por separado.
+
+Las pruebas de archivos comprobaron que terminar un hijo libera su candado y conserva la reserva pendiente. Se simuló el vencimiento mediante un estado expirado para comprobar que el cupo vuelve a estar disponible. Se probó un estado incompleto y el rechazo de un directorio dentro del sitio. La prueba de permisos 0755 queda condicionada a ejecutar la suite en Unix. Pasaron las simulaciones de múltiples pestañas, transferencia, recuperación y cierre SIP.
+
+[Parámetros de procesos y reciclaje LSPHP](https://docs.litespeedtech.com/lsws/extapp/php/configuration/options/) · [Estadísticas mysqlnd](https://www.php.net/manual/en/function.mysqli-get-client-stats.php)
+
+
+### Resultados sin estadísticas
+
+| Modo | Usuarios | Login | Inicio | Primera campana | Intentos físicos/s | Rechazos MySQL | HTTP 500 / 503 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Estadísticas deshabilitadas | 10 | 10/10 | 10/10 | 10/10 | 10 | 0 | 0 / 0 |
+| Estadísticas deshabilitadas | 30 | 27/30 | 21/30 | 24/30 | 12 | 0 | 0 / 21 |
+| Función ausente | 10 | 10/10 | 10/10 | 10/10 | 10 | 0 | 0 / 0 |
+| Función ausente | 30 | 23/30 | 19/30 | 23/30 | 12 | 0 | 0 / 14 |
+
+En estos ensayos el control conservó el margen físico a costa de disponibilidad. Los 503 de la carga se originaron al agotar el plazo local sin reembolso de cupos reutilizados, que la traza identifica como `sin_cupo`. `estado` corresponde al checkpoint y `estado_activo` a la consulta de una llamada en curso.
+
+- Estadísticas deshabilitadas, 30 usuarios. 503 por ruta `campana` (3), `entrada` (2), `estado` (1), `estado_activo` (2), `inicio` (6), `login` (3), `transferencia` (1), `webrtc` (3).
+- Función ausente, 30 usuarios. 503 por ruta `entrada` (1), `estado_activo` (1), `inicio` (4), `login` (7), `transferencia` (1).
+
+Una prueba adicional con estadísticas activas entregó dos veces y en paralelo el mismo webhook saliente con firma sintética. Ambos PHP devolvieron 200, dos pestañas consultaron el mismo identificador de llamada y la tabla conservó una sola fila del evento. La repetición de la ráfaga fría de 30 también terminó con 30 accesos, Inicio y campanas correctos, 12 aperturas/s y cero rechazos MySQL, 500 o 503 en la carga. El publicador conserva `apto_para_publicar: false`. Falta ejecutar la matriz de LSAPI y confirmar la disponibilidad de estadísticas, las latencias y el comportamiento con el sistema de archivos de la réplica.

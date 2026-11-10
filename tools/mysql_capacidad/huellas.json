@@ -1,6 +1,6 @@
 {
   "apto_para_publicar": false,
-  "parche": "4d2ecb44528486e0e1b1db3602083297863f4e2589742f1f9e344cdf8c8631ce",
+  "parche": "22ba0327dc070a8c89f36b5f6830cbe882e5da4c5db11b4da4f214bea7c80b34",
   "antes": {
     "app/controllers/HomeController.php": "bf5114735e43a9663948ea59f5ff726eb24309cd472f3e7ce57252f992d6138e",
     "app/controllers/LoginController.php": "efc86029cf097e06cd6571376697622f614e7958bb37de4947567e3587964db7",
@@ -57,8 +57,8 @@
     "app/services/TelefoniaEntrantesAnalistaService.php": "37216f9505926b5dd6430cf6645f80596d22151301eab5e54f1e5ccfe49fdd85",
     "app/services/TelefoniaNotificacionService.php": "0d46dd650871e95134068355231e2ec531827e1158229f8a266d97db0221433d",
     "app/services/TelefoniaSesionService.php": "7b2f5108aa846177eacaabf4dc9d60b1534f9a7520634c847fe0cb6cf15ff044",
-    "config/db_connection.php": "0a0f55ee6938ac0de07a3b503b392aa810909a76e3d6f58444797779f643d54f",
-    "config/mysql_admision.php": "48e8778758edad05e54ab2ead8d7304c5dcb688a34d6056a16b233f2f62a4aeb",
+    "config/db_connection.php": "a2e0961c61c301ce84e1c7075abc55befc3cd82024e686f3a4d49ebee776efa4",
+    "config/mysql_admision.php": "f2c0c74ae26c48ea22cb59f39158b24a897064f9d68f3ddcf62dab2c41bf38c1",
     "prueba_telefonia/api/avisos_llamadas.php": "1f45be337c7163351dee048c54de221cf72522dfc9826b28996872b72d778b5d",
     "prueba_telefonia/api/zadarma_entrada_activa.php": "0e2aa693f1bb5f265626008b0210b42c35516e6be776c247944ef24a578c696d",
     "prueba_telefonia/api/zadarma_estado_llamada.php": "a86e7008a1d8d06949a41d556b57660995e852b594909873314d7764b9bd435f",

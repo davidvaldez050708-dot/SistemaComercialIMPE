@@ -1,6 +1,8 @@
 """Ensayo HTTP sobre copias exactas del código y una MariaDB desechable."""
 
 import argparse
+import base64
+import hmac
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 import http.client
@@ -48,6 +50,7 @@ LOGIN = "/index.php?controller=login&action=iniciarSesion"
 CAMPANA = "/index.php?controller=reminder&action=pendientes"
 WEBRTC = "/prueba_telefonia/api/zadarma_webrtc.php"
 ESTADO = "/prueba_telefonia/api/zadarma_estado_llamada.php?destination=525500000001&checkpoint=1"
+ESTADO_ACTIVO = "/prueba_telefonia/api/zadarma_estado_llamada.php?destination=525500000001&after_id=0"
 ENTRADA = "/prueba_telefonia/api/zadarma_entrada_activa.php"
 TRANSFERENCIA = "/prueba_telefonia/api/transferencia_operacion.php?id=1"
 
@@ -187,16 +190,19 @@ def servidor(args, sitio, log, db_port=None):
         env["IMPE_DB_ADMISION_DIR"] = str(sitio.parent / "admision-mysql")
     if args.traza:
         env["IMPE_DB_TRAZA"] = "1"
+    ajustes = ["-d", "mysqlnd.collect_statistics=" + ("0" if args.mysqlnd == "deshabilitadas" else "1")]
+    if args.mysqlnd == "ausente":
+        ajustes += ["-d", "disable_functions=mysqli_get_client_stats"]
     proceso = subprocess.Popen(
-        [args.php, "-d", "mysqlnd.collect_statistics=1", "-d", "display_errors=0", "-d", "session.save_path=" + str(sitio / "sesiones-prueba"),
+        [args.php, *ajustes, "-d", "display_errors=0", "-d", "session.save_path=" + str(sitio / "sesiones-prueba"),
          "-S", "127.0.0.1:" + str(puerto), "-t", str(sitio)],
         env=env, stdout=log, stderr=log,
     )
     return puerto, proceso
 
 
-def peticion(puerto, ruta, cookie=None, datos=None):
-    headers = {"X-Requested-With": "fetch"}
+def peticion(puerto, ruta, cookie=None, datos=None, cabeceras=None):
+    headers = {"X-Requested-With": "fetch", **(cabeceras or {})}
     if cookie:
         headers["Cookie"] = cookie
     if datos is not None:
@@ -254,7 +260,8 @@ def escenario(puerto, usuario, inicio, cookie=None, registrar=None, verificar_av
                 e = "json_invalido"
         agregar((nombre, e, ms), http)
     if list(ROLES)[(usuario-1)%len(ROLES)] in (3,4,7):
-        for nombre, ruta in (("webrtc", WEBRTC), ("entrada", ENTRADA), ("estado", ESTADO), ("transferencia", TRANSFERENCIA)):
+        for nombre, ruta in (("webrtc", WEBRTC), ("entrada", ENTRADA), ("estado", ESTADO),
+                             ("estado_activo", ESTADO_ACTIVO), ("transferencia", TRANSFERENCIA)):
             e, _, _, ms = peticion(puerto,ruta,cookie)
             agregar((nombre, e, ms))
     return datos, cookie
@@ -345,7 +352,7 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
             fila["http"][str(http)] += 1
             fila["latencias_ms"].setdefault(ruta, []).append(round(ms, 1))
         resumen={
-            "usuarios":cantidad,"intervalo_arranque":intervalo,"preautenticado":args.preautenticar,
+            "usuarios":cantidad,"intervalo_arranque":intervalo,"preautenticado":args.preautenticar,"mysqlnd":args.mysqlnd,
             "pool_caliente":args.pool_caliente, "workers_reciclados":reciclados, "admision":args.admision, "pico_sesiones_rafaga":max(m[2] for m in muestras[primera_muestra_rafaga:]),
             "pico_sesiones":max(m[2] for m in muestras),"sleep_final":muestras[-1][3],
             "intentos_max_1s_observados":max(b[1]-a[1] for b in muestras for a in muestras if 0<=b[0]-a[0]<=1),
@@ -367,6 +374,37 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
             p.terminate()
         for _,p in servers:
             p.wait(timeout=10)
+
+
+def probar_evento_activo(args, sitio, puerto, cookie, sql, log):
+    instante = subprocess.check_output([
+        args.php, "-r", "date_default_timezone_set('America/Mexico_City'); echo date('Y-m-d H:i:s');",
+    ]).decode()
+    evento = {"event": "NOTIFY_OUT_START", "pbx_call_id": "lab-activa-102",
+              "internal": "102", "destination": "525500000001", "call_start": instante}
+    cadena = (evento["internal"] + evento["destination"] + instante).encode()
+    firma = base64.b64encode(hmac.new(b"fixture", cadena, "sha1").hexdigest().encode()).decode()
+    puerto2, segundo = servidor(args, sitio, log)
+    try:
+        time.sleep(0.5)
+        with ThreadPoolExecutor(max_workers=2) as tareas:
+            entregas = list(tareas.map(
+                lambda p: peticion(p, "/prueba_telefonia/api/zadarma_webhook.php",
+                                   datos=evento, cabeceras={"Signature": firma}), (puerto, puerto2)))
+            for estado, _, cuerpo, _ in entregas:
+                assert estado == 200 and json.loads(cuerpo)["status"] == "success", ("Webhook simulado", estado)
+            respuestas = list(tareas.map(lambda p: peticion(p, ESTADO_ACTIVO, cookie), (puerto, puerto2)))
+        for estado, _, cuerpo, _ in respuestas:
+            assert estado == 200, ("Estado activo en dos pestañas", estado)
+            assert json.loads(cuerpo)["call"]["pbx_call_id"] == "lab-activa-102"
+        cantidad = sql("SELECT COUNT(*) FROM telefonia_zadarma_eventos "
+                       "WHERE pbx_call_id='lab-activa-102';", leer=True)
+        assert cantidad.strip() == b"1", "Entregar el mismo webhook y consultar la llamada no duplica su evento"
+        print("Webhook simulado: dos entregas firmadas, mismo identificador en dos workers y un solo evento persistido.", flush=True)
+    finally:
+        segundo.terminate()
+        segundo.wait(timeout=10)
+
 
 
 def probar_acceso(args, sitio, sql, log):
@@ -391,6 +429,8 @@ def probar_acceso(args, sitio, sql, log):
         assert peticion(puerto, WEBRTC, cookie)[0] == 401, "La cookie anterior pierde autorización"
         _, nueva_cookie = autenticar(puerto, 2)
         assert nueva_cookie and peticion(puerto, WEBRTC, nueva_cookie)[0] == 200, "Nuevo acceso después del cierre"
+        if args.verificar_avisos and args.mysqlnd == "activas":
+            probar_evento_activo(args, sitio, puerto, nueva_cookie, sql, log)
         print("WebRTC simulado: 401, 403 por revocación, 503 en autenticación, campana y WebRTC, recuperación y cierre verificados.", flush=True)
     finally:
         for proceso in (web, proceso_caido):
@@ -416,6 +456,8 @@ def main():
     parser.add_argument("--reciclar", type=int, default=0, help="Reinicia esa cantidad de workers antes de la ráfaga")
     parser.add_argument("--admision", action="store_true", help="Activa la admisión PHP en el laboratorio")
     parser.add_argument("--traza", action="store_true", help="Registra reaperturas y reutilizaciones de mysqlnd")
+    parser.add_argument("--mysqlnd", choices=("activas", "deshabilitadas", "ausente"), default="activas",
+                        help="Simula estadísticas deshabilitadas o función ausente")
     parser.add_argument("--solo", choices=("base", "candidato"))
     parser.add_argument("--preautenticar", action="store_true", help="Mide recargas con sesiones válidas y pools fríos")
     args=parser.parse_args()
@@ -459,6 +501,8 @@ def main():
                         resumen = {k: v for k, v in resultado.items() if not k.endswith("_por_segundo")}
                         print(json.dumps(resumen), flush=True)
                 if variante == "candidato":
+                    if args.mysqlnd != "activas":
+                        time.sleep(1.1)
                     probar_acceso(args, sitio, sql, log)
                 if args.verificar_avisos:
                     lecturas = sql(

@@ -32,6 +32,7 @@ class Database
         $ruta = ($directorio !== '' || $trazar) ? self::ruta() : '';
         $admision = null;
         $reserva = null;
+        $prioridad = self::prioridad($ruta);
         $inicio = hrtime(true);
         $espera = 0;
         $resultado = 'sin_intento';
@@ -39,13 +40,7 @@ class Database
         try {
             if ($directorio !== '') {
                 $admision = new AdmisionMysql($directorio);
-                $urgente = (str_starts_with($ruta, 'api.') && $ruta !== 'api.zadarma_webrtc') ||
-                    in_array($ruta, [
-                        'telefonia.disponibilidad', 'telefonia.autorizarTransferencia',
-                        'telefonia.contextoTransferencia', 'telefonia.validarOrdenTransferencia',
-                        'telefonia.iniciarMarcacionVenta', 'telefonia.vincularMarcacionVenta',
-                    ], true);
-                $reserva = $admision->reservar($urgente);
+                $reserva = $admision->reservar($prioridad);
                 $espera = (int)((hrtime(true) - $inicio) / 1000000);
             }
             $antes = ($admision !== null || $trazar) ? self::reutilizaciones() : null;
@@ -65,10 +60,12 @@ class Database
         } catch (Throwable $e) {
             $codigo = (int)$e->getCode();
             if ($e instanceof AdmisionMysqlOcupada) {
-                $resultado = 'sin_cupo';
+                $resultado = $codigo === AdmisionMysqlOcupada::PLAZO ? 'sin_cupo' : 'estado_no_disponible';
                 $espera = (int)((hrtime(true) - $inicio) / 1000000);
+                error_log('[impe_mysql_admision] ' . $e->getMessage());
+            } else {
+                error_log('[impe_mysql] fallo de conexión; código=' . $codigo);
             }
-            error_log('[impe_mysql] fallo de conexión; código=' . $codigo);
             $error = new RuntimeException('No fue posible conectar con la base de datos.', 0, $e);
             if (self::esFalloTemporal($error)) {
                 self::$falloConexion = $error;
@@ -86,7 +83,7 @@ class Database
                 error_log('[impe_mysql_traza] ' . json_encode([
                     'ruta' => $ruta, 'pid' => getmypid(), 'compartida' => $compartida,
                     'persistente' => $persistente, 'resultado' => $resultado,
-                    'codigo' => $codigo, 'espera_ms' => $espera,
+                    'codigo' => $codigo, 'espera_ms' => $espera, 'prioridad' => $prioridad,
                 ]));
             }
         }
@@ -97,7 +94,28 @@ class Database
         if (!function_exists('mysqli_get_client_stats') || !filter_var(ini_get('mysqlnd.collect_statistics'), FILTER_VALIDATE_BOOLEAN)) {
             return null;
         }
-        return (int)(mysqli_get_client_stats()['connection_reused'] ?? 0);
+        $valor = mysqli_get_client_stats()['connection_reused'] ?? null;
+        return filter_var($valor, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0], 'flags' => FILTER_NULL_ON_FAILURE]);
+    }
+
+    private static function prioridad(string $ruta): string
+    {
+        $metodo = $_SERVER['REQUEST_METHOD'] ?? '';
+        return match ($ruta) {
+            'api.zadarma_webhook', 'api.zadarma_entrada_activa',
+            'telefonia.autorizarTransferencia', 'telefonia.validarOrdenTransferencia',
+            'telefonia.iniciarMarcacionVenta', 'telefonia.vincularMarcacionVenta' => AdmisionMysql::CRITICA,
+            'api.zadarma_webrtc' => AdmisionMysql::ARRANQUE_TELEFONO,
+            'api.zadarma_estado_llamada' => (int)($_GET['checkpoint'] ?? 0) === 1 ?
+                AdmisionMysql::ARRANQUE_TELEFONO : AdmisionMysql::CRITICA,
+            'api.transferencia_operacion' => $metodo === 'POST' ? AdmisionMysql::CRITICA : AdmisionMysql::SONDEO,
+            'telefonia.disponibilidad' => $metodo === 'POST' &&
+                !in_array($_POST['accion'] ?? '', ['POLL', 'PRESENCIA'], true) ?
+                AdmisionMysql::CRITICA : AdmisionMysql::SONDEO,
+            'api.avisos_llamadas', 'api.borrador_llamada',
+            'telefonia.contextoTransferencia' => AdmisionMysql::SONDEO,
+            default => AdmisionMysql::NORMAL,
+        };
     }
 
     private static function ruta(): string
