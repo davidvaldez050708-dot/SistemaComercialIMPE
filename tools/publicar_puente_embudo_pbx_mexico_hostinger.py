@@ -4,14 +4,17 @@
 Publicador controlado EXCLUSIVAMENTE para el puente comercial PBX México.
 
 --check: lee y valida una sola ruta, sin escrituras en public_html ni BD.
---apply: verifica versión previa, confirmación de ventana libre, crea copia
-         privada y reemplaza atómicamente ese único archivo PHP.
+--apply: verifica versión previa y autorización explícita (incluso con
+         asesores activos), crea respaldo privado y reemplaza atómicamente
+         ese único archivo PHP.
 --rollback: restaura la versión anterior solo desde un respaldo íntegro,
             siempre que el sitio conserve exactamente la versión publicada.
 
 No ejecuta SQL, no reinicia servicios, no limpia OPcache, no toca Telefonía
 (ni WebRTC, ni Zadarma, ni grabaciones, ni resultados existentes).
-La bandera --confirm es una DECLARACIÓN MANUAL: no verifica llamadas activas.
+La bandera --confirm es una DECLARACIÓN MANUAL. Si hay llamadas activas,
+se acepta un token distinto y explícito de publicación con riesgo conocido.
+No se verifica el estado de las llamadas en tiempo real.
 Compatible con Python 3.6 y PHP CLI.
 """
 from __future__ import print_function
@@ -31,6 +34,7 @@ REL = 'app/services/EmbudoComercialResultadoBridge.php'
 BEFORE = '4a60948e006879995b279fab331a1cb822359c2d'
 AFTER = 'de7371eb9077948e503939f59e60a84137e47052'
 CONFIRM = 'VENTANA_SIN_LLAMADAS_AUTORIZADA_157'
+CONFIRM_ACTIVE = 'PUBLICAR_CON_ASESORES_ACTIVOS_ACEPTO_RIESGO_157'
 
 class Blocked(RuntimeError):
     pass
@@ -147,8 +151,10 @@ def backup_before(site, target, root, before):
     return folder
 
 def apply(site, target, source, root, confirm):
-    if confirm != CONFIRM:
-        raise Blocked('Sin confirmación de ventana sin llamadas; no se publica')
+    if confirm not in (CONFIRM, CONFIRM_ACTIVE):
+        raise Blocked('Confirmación explícita ausente; no se publica')
+    if confirm == CONFIRM_ACTIVE:
+        print('AUTORIZADO CON ASESORES ACTIVOS: riesgo de versiones PHP concurrentes aceptado')
     before = baseline(site, target, source)
     if blob(before) == AFTER:
         print('SIN CAMBIOS: la versión compatible ya está publicada.')
@@ -180,8 +186,10 @@ def apply(site, target, source, root, confirm):
     print('POST-CHECK OK: un PHP actualizado; sin reinicios, SQL ni cambios PBX')
 
 def rollback(site, target, folder, confirm):
-    if confirm != CONFIRM:
-        raise Blocked('Sin confirmación de ventana sin llamadas; no se restaura')
+    if confirm not in (CONFIRM, CONFIRM_ACTIVE):
+        raise Blocked('Confirmación explícita ausente; no se restaura')
+    if confirm == CONFIRM_ACTIVE:
+        print('RESTAURACIÓN CON ASESORES ACTIVOS: riesgo de versiones PHP concurrentes aceptado')
     if folder is None:
         raise Blocked('Falta --backup-folder')
     folder = folder.resolve(strict=True)
