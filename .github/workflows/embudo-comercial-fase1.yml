@@ -79,6 +79,8 @@ jobs:
           python3 tests/crear_prospecto_prueba_pbx_157_test.py
           python3 -m py_compile tools/publicar_puente_embudo_pbx_mexico_hostinger.py
           python3 tests/publicar_puente_embudo_pbx_mexico_hostinger_test.py
+          python3 -m py_compile tools/publicar_enlace_embudo_historial_hostinger.py
+          python3 tests/publicar_enlace_embudo_historial_hostinger_test.py
       - name: Publicador inicial en sandbox (solo rama fase 1)
         if: github.ref_name == 'feat/ventas-embudo-kanban-permisos-fase1-20261108'
         run: |
