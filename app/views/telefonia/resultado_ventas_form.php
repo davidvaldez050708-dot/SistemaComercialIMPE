@@ -16,7 +16,7 @@
    <div class="modal-header system-form-modal-header"><div><h5 id="tituloResultadoVenta" class="system-form-modal-title">Resultado de llamada comercial</h5><p class="system-form-modal-subtitle">Registra lo que ocurrió. El resultado guardado es definitivo.</p></div><button class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
    <form class="linkage-incoming-form" data-sales-form>
     <div class="modal-body system-form-modal-body">
-     <input type="hidden" name="csrf_token" value="<?= $escVenta($_SESSION['csrf_token']??TelefoniaContactosService::tokenFormulario()) ?>"><input type="hidden" name="pbx_call_id"><input type="hidden" name="extension">
+     <input type="hidden" name="csrf_token" value="<?= $escVenta($_SESSION['csrf_token']??TelefoniaContactosService::tokenFormulario()) ?>"><input type="hidden" name="pbx_call_id"><input type="hidden" name="extension"><input type="hidden" name="prospecto_asignacion_id">
      <input type="hidden" name="catalogo_version" value="<?= $escVenta(TelefoniaResultadoVentasCatalogo::VERSION) ?>">
      <input type="hidden" name="resultados_seleccionados" value="[]">
      <div class="linkage-incoming-summary"><strong data-sales-form-number></strong><span data-sales-form-state></span></div>
