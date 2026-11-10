@@ -38,14 +38,7 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  await modal.waitFor({state:'visible'});
  // Diagnóstico sin mutar el teléfono: registrar si el shell sostiene la
  // propiedad del resultado, si el atributo hidden se aplica y si hay CSS.
- const diagnosis=await page.evaluate(()=>({
-   formOwned:window.IMPE_TELEPHONY_SHELL?.isResultFormOpen(),
-   panelHidden:document.querySelector('[data-incoming-panel]')?.hidden,
-   panelDisplay:getComputedStyle(document.querySelector('[data-incoming-panel]')).display,
-   frameUrl:document.querySelector('#impeCrmFrame')?.contentWindow?.location?.href||''
- }));
- console.log('VENTAS_PANEL_DIAGNOSTICO',JSON.stringify(diagnosis));
- await phone.waitFor({state:'hidden'});
+await phone.waitFor({state:'hidden'});
  assert.equal(await page.evaluate(()=>IMPE_TELEPHONY_SHELL.isResultFormOpen()),true);
  assert.equal(await crm.locator('.modal-backdrop').count(),1);
  for(const size of [{width:1366,height:900},{width:390,height:600},{width:740,height:360}]){
@@ -67,7 +60,7 @@ const view=u=>`<!doctype html><meta charset="utf-8"><meta name="viewport" conten
  assert.equal(await modal.locator('[name=resultado]').inputValue(),'PROSPECTO_POTENCIAL');
  assert.equal(await modal.locator('[name=resultados_seleccionados]').inputValue(),'["PROSPECTO_POTENCIAL"]');await modal.locator('[name=observacion]').fill('Enviar información');
  await modal.locator('[data-sales-submit]').click();await modal.waitFor({state:'hidden'});
- assert.equal(payload.pbx_call_id,call.pbx_call_id);assert.equal(payload.extension,'150');assert.equal(payload.resultado,'PROSPECTO_POTENCIAL');assert.equal(payload.prospecto_nombre,'María');
+ assert.equal(payload.pbx_call_id,call.pbx_call_id);assert.equal(payload.extension,'150');assert.equal(payload.resultado,'PROSPECTO_POTENCIAL');assert.equal(payload.resultados_seleccionados,'["PROSPECTO_POTENCIAL"]');assert.equal(payload.prospecto_nombre,'María');
  await page.waitForFunction(()=>!IMPE_SALES_ATTENTION.hasPending());
  await crm.locator('[data-sales-audio]').waitFor();await crm.locator('[data-sales-audio]').click();
  await crm.locator('[data-sales-audio-slot] audio').first().waitFor({state:'attached'});
