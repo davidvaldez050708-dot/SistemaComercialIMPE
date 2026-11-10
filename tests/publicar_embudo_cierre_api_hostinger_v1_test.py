@@ -17,6 +17,7 @@ spec.loader.exec_module(pub)
 
 GIT_BASE_MOVIMIENTO = 'f1724383a62b22d22ad3176ae2a38b91259c8618'
 GIT_BASE_TELEFONIA = 'bc1c6c635fca7ed3b89e61c15aa2edef7064d911'
+GIT_BASE_FICHA = '861ee00e144f2b5f7600547d5307cf1216cb4b1a'
 
 
 def need(value, reason):
@@ -50,12 +51,14 @@ js_path = 'public/javascript/telefonia_ventas_resultados.js'
 service_path = 'app/services/TelefoniaResultadoVentasService.php'
 bridge_path = 'app/services/EmbudoComercialResultadoBridge.php'
 board_path = 'app/views/embudo_comercial/index.php'
+detail_path = 'app/views/embudo_comercial/detalle.php'
 move_path = 'public/javascript/embudo_comercial_movimientos.js'
-need(len(pub.FILES) == 5, 'Solo cinco archivos autorizados')
+need(len(pub.FILES) == 6, 'Solo seis archivos autorizados')
 need(len(pub.GUARDS) == 3, 'Formulario, cierre API y etapas protegidos')
 need(service_path in pub.FILES and bridge_path in pub.FILES, 'Puente y servicio en lista')
 need(js_path in pub.FILES and move_path in pub.FILES, 'Solo JS del embudo y resultados')
-need(board_path in pub.FILES, 'Cache-busting de embudo')
+need(board_path in pub.FILES and detail_path in pub.FILES,
+     'Tablero y ficha comercial V4 en lista')
 
 sources = {}
 for name, (_, after) in pub.FILES.items():
@@ -124,6 +127,7 @@ board = unique_replace(
     "public/javascript/embudo_comercial_movimientos.js?v=<?= filemtime(__DIR__.'/../../../public/javascript/embudo_comercial_movimientos.js') ?>",
     "public/javascript/embudo_comercial_movimientos.js?v=2")
 before[board_path] = board.encode('utf-8')
+before[detail_path] = git(GIT_BASE_FICHA, detail_path)
 before[move_path] = git(GIT_BASE_MOVIMIENTO, move_path)
 
 for name, (old, _) in pub.FILES.items():
@@ -194,4 +198,4 @@ with tempfile.TemporaryDirectory(prefix='impe-embudo-publisher-test-') as work:
     need(all((site / name).read_bytes() == raw for name, raw in guards.items()),
          'Rollback modifico formulario o servicios protegidos')
 
-print('CHECK OK: 5 archivos, hashes exactos, precheck, guardias, respaldo, idempotencia y rollback; solo fixtures.')
+print('CHECK OK: 6 archivos, hashes exactos, precheck, guardias, respaldo, idempotencia y rollback; solo fixtures.')
