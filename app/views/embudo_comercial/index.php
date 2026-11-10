@@ -19,6 +19,18 @@ $paginaUrl=static function(string $etapa,int $numero) use ($urlBase,$baseParamet
     if ($numero<=1) unset($q[$k]); else $q[$k]=$numero;
     return $urlBase.http_build_query($q);
 };
+// Enlace de consulta: la PBX guarda en ocasiones diez dígitos nacionales
+// mientras que el almacén comercial conserva el número con prefijo +52.
+// Cambiar únicamente el texto de búsqueda; no alterar teléfono ni marcación.
+$buscarNumeroLlamadas=static function(?string $telefono): string {
+    $valor=trim((string)($telefono??''));
+    if ($valor==='' || !preg_match('/^\+?[0-9 ().-]+$/D',$valor)) {
+        return $valor;
+    }
+    $digitos=preg_replace('/\D+/', '',$valor)??'';
+    return strlen($digitos)===12 && substr($digitos,0,2)==='52'
+        ? substr($digitos,2) : $valor;
+};
 $fecha=static fn($utc)=>EmbudoComercialPresentacion::fechaUtc($utc);
 $dia=static fn($fecha)=>EmbudoComercialPresentacion::fechaLocal($fecha);
 $mostrarLlamadas=tienePermiso('telefonia.usar') && !$supervisor;
@@ -158,7 +170,7 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
                             <a href="<?= $esc(BASE_URL.'index.php?'.http_build_query([
                                 'controller'=>'telefonia','action'=>'misLlamadas',
                                 'prospecto_asignacion_id'=>(int)$p['asignacion_id'],
-                                'q'=>EmbudoComercialPresentacion::buscarTelefonoEnLlamadas((string)$p['telefono_original'])
+                                'q'=>$buscarNumeroLlamadas((string)$p['telefono_original'])
                             ])) ?>" title="Consultar y registrar resultado en Mis llamadas" aria-label="Registrar resultado de llamadas del prospecto"><i class="bi bi-journal-check" aria-hidden="true"></i></a>
                             <?php endif; ?>
                             <a href="<?= $esc($detalle) ?>" title="Ver ficha" aria-label="Ver ficha de <?= $esc($p['nombre_completo']) ?>"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
