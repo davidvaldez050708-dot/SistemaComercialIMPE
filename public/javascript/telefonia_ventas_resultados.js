@@ -110,6 +110,12 @@
    if(previousReason)previousReason.hidden=!call?.registro?.motivo_sin_whatsapp;
    if(previousText)previousText.textContent=call?.registro?.motivo_sin_whatsapp?'Motivo registrado anteriormente: '+call.registro.motivo_sin_whatsapp:'';
   }
+  // Afecta únicamente la validación del formulario de resultado comercial.
+  const nextDate=form.elements.namedItem('proxima_accion_at');
+  const seguimiento=Boolean(!call?.registro&&picked.includes('REQUIERE_SEGUIMIENTO'));
+  if(nextDate)nextDate.required=seguimiento;
+  const nextLabel=form.querySelector('label[for="salesNext"]');
+  if(nextLabel)nextLabel.textContent=seguimiento?'Próxima llamada (obligatoria para En seguimiento)':'Próxima llamada (opcional)';
   const cancelled=result.value==='CANCELADA_POR_ASESOR';notes.required=cancelled;notes.minLength=cancelled?3:0;
   const label=form.querySelector('label[for="salesNote"]');if(label)label.textContent=cancelled?'Motivo de cancelación *':'Observaciones';
   for(const option of result.options||[])option.disabled=Boolean(call?.finalizada&&!call.conectada&&option.dataset.requiresConnection==='1');
