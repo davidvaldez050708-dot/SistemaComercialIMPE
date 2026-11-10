@@ -10,6 +10,7 @@ on:
       - 'app/views/embudo_comercial/index.php'
       - 'app/views/embudo_comercial/detalle.php'
       - 'public/javascript/telefonia_ventas_resultados.js'
+      - 'public/javascript/telefonia_ventas_observaciones.js'
       - 'public/javascript/embudo_comercial_movimientos.js'
       - 'tools/publicar_embudo_cierre_api_hostinger_v1.py'
       - 'tests/publicar_embudo_cierre_api_hostinger_v1_test.py'
@@ -40,6 +41,7 @@ jobs:
       - name: Comprobar JavaScript
         run: |
           node --check public/javascript/telefonia_ventas_resultados.js
+          node --check public/javascript/telefonia_ventas_observaciones.js
           node --check public/javascript/embudo_comercial_movimientos.js
       - name: Verificar publicación, guardias y rollback con datos ficticios
         run: python3 tests/publicar_embudo_cierre_api_hostinger_v1_test.py
