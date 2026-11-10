@@ -4,11 +4,53 @@ $esc=static fn($x)=>htmlspecialchars((string)($x??''),ENT_QUOTES,'UTF-8');
 $def=static fn($x)=>trim((string)($x??''))!==''?(string)$x:'Sin indicar';
 $fecha=static fn($x)=>EmbudoComercialPresentacion::fechaUtc($x);
 $dia=static fn($x)=>EmbudoComercialPresentacion::fechaLocal($x);
+/*
+ * Traducción exclusiva de la vista: la bitácora conserva el motivo PBX
+ * íntegro para auditoría y los movimientos manuales quedan intactos.
+ * Es un catálogo de presentación, no altera Telefonía ni decisiones de etapa.
+ */
+$presentarMotivo=static function($valor): array {
+    $original=(string)($valor??'');
+    if (!preg_match('/^Resultado PBX verificado: ([A-Z_]{3,36}) · ref ([A-Za-z0-9_-]{6,100})$/Du',
+        $original,$m)) {
+        return ['descripcion'=>$original,'referencia_tecnica'=>null];
+    }
+    $etiquetas=[
+        'CONVERSACION_PERSONA'=>'Conversación con el prospecto',
+        'INTERESADO'=>'Prospecto interesado',
+        'SOLICITA_INFORMACION'=>'Solicita información',
+        'REQUIERE_SEGUIMIENTO'=>'Requiere seguimiento',
+        'NO_INTERESADO'=>'No interesado',
+        'COMUNICACION_INTERRUMPIDA'=>'Comunicación interrumpida',
+        'OTRO'=>'Otro resultado con observaciones',
+        'BUZON_VOZ'=>'Buzón de voz',
+        'FUERA_HORARIO'=>'Fuera de horario de servicio',
+        'NUMERO_INEXISTENTE'=>'Número inexistente o incorrecto',
+        'SIN_RESPUESTA'=>'No contestó',
+        'OCUPADO'=>'Línea ocupada',
+        'MENSAJE_AUTOMATICO'=>'Mensaje de operadora o grabadora',
+        'OTRO_SIN_CONTACTO'=>'Otra situación sin contacto'
+    ];
+    $etiqueta=$etiquetas[$m[1]]??'Resultado telefónico no identificado';
+    return [
+        'descripcion'=>'Llamada comercial — '.$etiqueta,
+        'referencia_tecnica'=>$original
+    ];
+};
 $volver=BASE_URL.'index.php?'.http_build_query([
     'controller'=>'embudoComercial','action'=>'index','vista'=>$vista
 ]);
 ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/embudo_comercial.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial.css'),0,16) ?>">
+<style>
+.impe-embudo .impe-embudo-timeline-tecnico{margin:0 0 8px;color:#7187a5;font:600 10px/1.5 Manrope,sans-serif}
+.impe-embudo .impe-embudo-timeline-tecnico summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:#607b9d;list-style:none;width:fit-content}
+.impe-embudo .impe-embudo-timeline-tecnico summary::-webkit-details-marker{display:none}
+.impe-embudo .impe-embudo-timeline-tecnico summary::before{content:"▸";font-size:11px}
+.impe-embudo .impe-embudo-timeline-tecnico[open] summary::before{content:"▾"}
+.impe-embudo .impe-embudo-timeline-tecnico summary:focus-visible{outline:2px solid #9dbdf3;outline-offset:3px;border-radius:3px}
+.impe-embudo .impe-embudo-timeline-tecnico code{display:block;max-width:100%;margin-top:6px;padding:7px 9px;color:#506b8e;background:#eff4fc;border:1px solid #dce7f4;border-radius:7px;font:500 10px/1.5 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap}
+</style>
 <div class="impe-embudo">
     <a class="impe-embudo-back" href="<?= $esc($volver) ?>"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a <?= $esc($vista==='embudo'?'Embudo':($vista==='recuperacion'?'Recuperación':'Descartados')) ?></a>
     <?php if ($error!==''): ?>
@@ -76,6 +118,7 @@ $volver=BASE_URL.'index.php?'.http_build_query([
                 <?php foreach ($prospecto['historial_movimientos'] as $mov):
                     $etapaAnterior=EmbudoComercialRepository::ETAPAS[$mov['etapa_anterior']]??str_replace('_',' ',$mov['etapa_anterior']);
                     $etapaNueva=EmbudoComercialRepository::ETAPAS[$mov['etapa_nueva']]??str_replace('_',' ',$mov['etapa_nueva']);
+                    $motivoPresentado=$presentarMotivo($mov['motivo']??'');
                     $autor=trim((string)($mov['autor']??''));
                     if ($autor==='') $autor='Usuario #'.(int)$mov['usuario_id'];
                 ?>
@@ -84,7 +127,13 @@ $volver=BASE_URL.'index.php?'.http_build_query([
                         <strong><?= $esc($etapaAnterior) ?> <i class="bi bi-arrow-right" aria-hidden="true"></i> <?= $esc($etapaNueva) ?></strong>
                         <time datetime="<?= $esc(str_replace(' ','T',(string)$mov['creado_at']).'Z') ?>"><?= $esc($fecha($mov['creado_at'])) ?></time>
                     </div>
-                    <p class="impe-embudo-timeline-motivo"><?= $esc($mov['motivo']) ?></p>
+                    <p class="impe-embudo-timeline-motivo"><?= $esc($motivoPresentado['descripcion']) ?></p>
+                    <?php if ($motivoPresentado['referencia_tecnica']!==null): ?>
+                    <details class="impe-embudo-timeline-tecnico">
+                        <summary>Ver referencia técnica</summary>
+                        <code><?= $esc($motivoPresentado['referencia_tecnica']) ?></code>
+                    </details>
+                    <?php endif; ?>
                     <span class="impe-embudo-timeline-autor"><i class="bi bi-person" aria-hidden="true"></i> <?= $esc($autor) ?></span>
                 </li>
                 <?php endforeach; ?>
