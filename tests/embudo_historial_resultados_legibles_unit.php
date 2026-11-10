@@ -43,7 +43,10 @@ ensureHistorial(count($opciones)===14,'catálogo actual de 14 resultados telefó
 foreach ($opciones as $codigo=>$etiqueta) {
     $raw='Resultado PBX verificado: '.$codigo.' · ref '.$ref;
     $html=renderHistorial($raw);
-    $visible='Llamada comercial — '.$etiqueta;
+    $visible='Llamada comercial — '.([
+        'CONVERSACION_PERSONA'=>'Se habló con el prospecto',
+        'REQUIERE_SEGUIMIENTO'=>'En seguimiento'
+    ][$codigo]??$etiqueta);
     ensureHistorial(strpos($html,
         '<p class="impe-embudo-timeline-motivo">'.$visible.'</p>')!==false,
         'etiqueta legible del resultado '.$codigo);
