@@ -163,7 +163,7 @@ function pbxPreflight(mysqli $db): array
         echo "YA EXISTE: prospecto=".(int)$existing[0]['prospecto_id'].
              " asignacion=".(int)$existing[0]['asignacion_id']."\n";
     } else echo "PENDIENTE: una ficha PBX de prueba controlada.\n";
-    return $existing;
+    return ['existing'=>$existing,'numero_nacional_en_pbx'=>$formatos['mex_10']];
 }
 
 function pbxNumeroAutorizado(string $raw): string
@@ -226,10 +226,17 @@ try {
     }
     require_once $site.'/config/db_connection.php';
     $db=(new Database())->connect(false);
-    $existing=pbxPreflight($db);
+    $preflight=pbxPreflight($db);
+    $existing=$preflight['existing'];
     if (!empty($o['check'])) {
         echo "CHECK COMPLETO: sin escrituras y sin consultar números privados.\n";
         exit(0);
+    }
+    if ((int)$preflight['numero_nacional_en_pbx']>0) {
+        throw new RuntimeException(
+            'Existe formato PBX nacional de 10 dígitos; verificar la '.
+            'coincidencia del puente antes de crear la prueba'
+        );
     }
     if (!hash_equals(IMPE_PBX_TEST_DB,(string)$o['expect-db'])) {
         throw new RuntimeException('--expect-db incorrecta');
