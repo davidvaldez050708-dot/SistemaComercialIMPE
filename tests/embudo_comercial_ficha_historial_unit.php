@@ -16,6 +16,25 @@ testEmbudo(EmbudoComercialPresentacion::fechaLocal('2026-02-31')==='Fecha no vá
 testEmbudo(EmbudoComercialPresentacion::fechaUtc('texto arbitrario')==='Fecha no disponible',
     'no imprimir valores arbitrarios como fechas');
 
+// Búsqueda de historial: 10 dígitos hacen match con PBX nacional y +52.
+// No modifica el destino de marcación ni el teléfono almacenado.
+testEmbudo(EmbudoComercialPresentacion::buscarTelefonoEnLlamadas('+527775083225')===
+    '7775083225','México +52 a búsqueda nacional');
+testEmbudo(EmbudoComercialPresentacion::buscarTelefonoEnLlamadas('+52 (777) 508-3225')===
+    '7775083225','México con separadores');
+testEmbudo(EmbudoComercialPresentacion::buscarTelefonoEnLlamadas('527775083225')===
+    '7775083225','México sin signo internacional');
+testEmbudo(EmbudoComercialPresentacion::buscarTelefonoEnLlamadas('7775083225')===
+    '7775083225','nacional sin cambios');
+testEmbudo(EmbudoComercialPresentacion::buscarTelefonoEnLlamadas('+12025550123')===
+    '+12025550123','internacional fuera de México intacto');
+testEmbudo(EmbudoComercialPresentacion::buscarTelefonoEnLlamadas('+5217775083225')===
+    '+5217775083225','prefijo de 13 dígitos intacto');
+testEmbudo(EmbudoComercialPresentacion::buscarTelefonoEnLlamadas(null)==='',
+    'sin teléfono sin búsqueda');
+testEmbudo(EmbudoComercialPresentacion::buscarTelefonoEnLlamadas('12345')==='12345',
+    'teléfono parcial no reescrito');
+
 if (!defined('BASE_URL')) define('BASE_URL','/');
 function tienePermiso($codigo) { return false; }
 final class EmbudoComercialRepository {
