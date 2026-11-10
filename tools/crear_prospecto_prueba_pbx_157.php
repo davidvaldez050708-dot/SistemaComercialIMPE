@@ -75,8 +75,8 @@ function pbxPreflight(mysqli $db): array
         'prospecto_asignaciones','prospecto_embudo_etapas',
         'prospecto_embudo_movimientos','prospecto_embudo_llamadas',
         'prospecto_distribucion_control','telefonia_extensiones',
-        'telefonia_ventas_resultados','formulario_programas',
-        'prospecto_asesores_config'
+        'telefonia_ventas_resultados','telefonia_ventas_llamadas',
+        'formulario_programas'
     ];
     foreach ($tables as $table) {
         $row=pbxRows($db,'SELECT ENGINE FROM information_schema.TABLES
@@ -116,6 +116,28 @@ function pbxPreflight(mysqli $db): array
         if (!in_array($required,$codes,true)) {
             throw new RuntimeException('Falta permiso de asesor: '.$required);
         }
+    }
+    // Revisar solamente formato y longitud de números PBX históricos.
+    // No se imprime ningún número. Esto identifica posibles diferencias
+    // entre marcación +52 y eventos con diez dígitos nacionales.
+    $samples=pbxRows($db,
+        "SELECT numero FROM telefonia_ventas_llamadas
+          WHERE usuario_id=22 AND extension='157' AND direccion='Saliente'
+          ORDER BY id DESC LIMIT 30");
+    $formatos=['mex_10'=>0,'mex_52'=>0,'otros'=>0];
+    foreach ($samples as $sample) {
+        $digitos=preg_replace('/\\D/','',(string)$sample['numero']);
+        if (strlen($digitos)===10) $formatos['mex_10']++;
+        elseif (strlen($digitos)===12 && substr($digitos,0,2)==='52') {
+            $formatos['mex_52']++;
+        } else $formatos['otros']++;
+    }
+    echo "PBX FORMATO (sin mostrar números): +52=".
+         $formatos['mex_52'].", nacional 10=".
+         $formatos['mex_10'].", otros=".$formatos['otros'].".\\n";
+    if ($formatos['mex_10']>0) {
+        echo "AVISO: la PBX también guarda destinos de diez dígitos;".
+             " el puente exige coincidencia internacional exacta.\\n";
     }
     $existing=pbxRows($db,
         "SELECT o.prospecto_id,a.id asignacion_id,a.asesor_id,
@@ -157,8 +179,6 @@ function pbxNumeroAutorizado(string $raw): string
     if (strlen($digits)===10) $digits='52'.$digits;
     $phone='+'.$digits;
     // Verificar misma normalización que PBX y repositorio comercial.
-    require_once __DIR__.'/../app/helpers/ProspectoCentralDatos.php';
-    require_once __DIR__.'/../app/services/TelefoniaContactosService.php';
     $normalizado=ProspectoCentralDatos::telefono($phone);
     $normalPBX=TelefoniaContactosService::normalizarTelefono($phone);
     if (!is_string($normalizado) || $normalizado!==$normalPBX) {
