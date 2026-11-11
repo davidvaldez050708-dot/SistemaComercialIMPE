@@ -83,7 +83,8 @@ function verificarColumnas(mysqli $db,string $tabla,array $esperadas): void {
     // Solo nombres y tipos de datos; ningún dato personal.
     $s=$db->prepare("SELECT COLUMN_NAME, COLUMN_TYPE
       FROM information_schema.COLUMNS
-      WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?");
+      WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?
+      ORDER BY ORDINAL_POSITION");
     $s->bind_param('s',$tabla);$s->execute();
     $campos=[];
     foreach($s->get_result()->fetch_all(MYSQLI_ASSOC) as $fila) {
