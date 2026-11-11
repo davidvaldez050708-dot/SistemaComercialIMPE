@@ -86,9 +86,9 @@ try{
     $r=new EmbudoComercialRepository($db);
     $f=EmbudoComercialRepository::filtros([],false);
     $own=$r->listadoV3Preparacion(8,false,$f);
-    okV3p($own['total']===5,'cinco asignaciones vigentes del asesor');
-    okV3p($own['total_activos']===2,
-        'la revisión legacy y dos bandejas externas se contabilizan correctamente');
+    okV3p($own['total']===6,'seis asignaciones vigentes del asesor');
+    okV3p($own['total_activos']===3,
+        'revisión legacy, Nuevo y Seguimiento se incluyen fuera de bandejas externas');
     okV3p($own['registros_sin_clasificar']===1,
         'INTERESADO histórico exige revisión sin ascenso');
     okV3p($own['columnas']['CONTACTADO']['total']===0,
