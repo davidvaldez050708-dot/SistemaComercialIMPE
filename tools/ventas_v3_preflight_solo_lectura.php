@@ -11,7 +11,14 @@ if (PHP_SAPI!=='cli') {
     http_response_code(403);
     exit('Solo se permite desde CLI.');
 }
-require_once dirname(__DIR__).'/config/db_connection.php';
+// Se permite ejecutar una copia privada fuera de public_html.
+$siteRoot=getenv('IMPE_SITE_ROOT')?:dirname(__DIR__);
+$siteRoot=realpath($siteRoot);
+if(!$siteRoot || !is_file($siteRoot.'/config/db_connection.php')){
+    fwrite(STDERR,"BLOQUEADO: raíz de sitio no válida. No se consultó la base de datos.\n");
+    exit(2);
+}
+require_once $siteRoot.'/config/db_connection.php';
 mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
 
 $tablas=[
