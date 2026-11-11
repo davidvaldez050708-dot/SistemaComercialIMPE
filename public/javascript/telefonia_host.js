@@ -2187,7 +2187,7 @@
         } else if (action === 'COMPLETE_TRANSFER') {
             void transferFlow?.complete();
         } else if (action === 'IVR_DIGIT') {
-            if (extension !== '157' || !state.active || state.phase !== 'in-progress' || !state.callToken ||
+            if (!['157', '102'].includes(extension) || !state.active || state.phase !== 'in-progress' || !state.callToken ||
                 payload.callToken !== state.callToken || transferFlow?.sourcePending() ||
                 transferFlow?.holdsIncoming() || typeof payload.digit !== 'string' ||
                 !/^[0-9]$/.test(payload.digit)) return;

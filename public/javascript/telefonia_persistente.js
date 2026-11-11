@@ -418,13 +418,16 @@
                 }
             }
         ).then(async function (response) {
-            const data = await response.json();
+            const data = await response.json().catch(function () { return {}; });
 
             if (!response.ok || !data.ok) {
-                throw new Error(
+                const error = new Error(
                     data.mensaje ||
-                    'La telefonía no está configurada para tu usuario.'
+                    'No fue posible verificar la telefonía.'
                 );
+                error.status = response.status;
+                error.sinExtension = data.codigo === 'EXTENSION_NO_ASIGNADA';
+                throw error;
             }
 
             availability = data;
@@ -641,26 +644,10 @@
         return popup;
     };
 
-    const embeddedPhone = function () {
-        try {
-            const shell = window.parent !== window
-                ? window.parent.IMPE_TELEPHONY_SHELL : null;
-            return shell?.isEmbedded && Number(shell.userId) === userId
-                ? shell : null;
-        } catch (_) {
-            return null;
-        }
-    };
     const hostUsable = function () {
-        // El marco principal conserva WebRTC entre vistas. Consultarlo
-        // evita apagar falsamente el indicador al cambiar de módulo.
-        const shell = embeddedPhone();
-        if (shell && typeof shell.isPhoneReady === 'function') {
-            return shell.isPhoneReady() === true;
-        }
         const recent =
-            state?.hostReady &&
-            Date.now() - hostSeenAt < 3500;
+            state?.hostReady && state?.connection?.verified === true &&
+            Date.now() - hostSeenAt < 15000;
 
         if (!recent) {
             return false;
@@ -699,7 +686,7 @@
                     reject(
                         new Error(
                             state.message ||
-                            'No fue posible iniciar el motor WebRTC.'
+                            'No fue posible iniciar el teléfono.'
                         )
                     );
                     return;
@@ -930,10 +917,8 @@
 
         try {
             /*
-             * En modo embebido existe UN SOLO SDK de Zadarma en el shell.
-             * Abrir otra ventana aquí se apodera del registro SIP, desconecta
-             * la recepción de Marketing y deja la llamada sin panel.
-             * Conservar la ventana anterior únicamente para modo clásico.
+             * prepare() abre la ventana dentro del clic real del usuario.
+             * El primer botón del flujo solo prepara la tarjeta del CRM.
              */
             if (getHostMode() === 'embedded') {
                 let shell = null;
@@ -942,7 +927,7 @@
                 } catch (_) { /* no hay comunicación con el shell */ }
                 if (!shell?.isEmbedded || Number(shell.userId) !== userId ||
                     typeof shell.ensureHost !== 'function') {
-                    throw new Error('No se encontró la conexión WebRTC persistente.');
+                    throw new Error('No se encontró la conexión del teléfono.');
                 }
                 shell.ensureHost();
                 await prepare({ openHost: false });
@@ -1681,9 +1666,8 @@
             'click',
             function () {
                 if (
-                    state?.phase === 'incoming-finished' ||
-                    (state?.phase === 'finished' &&
-                        String(state?.context?.type || '').toUpperCase() === 'DIALER')
+                    state?.phase === 'finished' &&
+                    String(state?.context?.type || '').toUpperCase() === 'DIALER'
                 ) {
                     clearFinished();
                 } else {
@@ -1946,6 +1930,124 @@
         });
     };
 
+    let tecladoAnalista = null;
+    let llamadaTecladoAnalista = '';
+
+    function tokenTecladoAnalista() {
+        return Number(window.IMPE_CURRENT_ROLE_ID) === 4 &&
+            String(state?.extension || '').trim() === '102' &&
+            state.active && state.phase === 'in-progress' ? String(state.callToken || '') : '';
+    }
+
+    function actualizarTecladoAnalista() {
+        const token = panel.hidden ? '' : tokenTecladoAnalista();
+        if (token && !tecladoAnalista) {
+            const estilo = document.createElement('style');
+            estilo.textContent = `.impe-ivr-keypad { position: relative; margin-top: 10px; width: fit-content; max-width: 100%; }
+.impe-ivr-keypad[hidden] { display: none; }
+.impe-ivr-keypad > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-height: 40px;
+    padding: 8px 14px;
+    line-height: 1.35;
+    list-style: none;
+    cursor: pointer;
+}
+.impe-ivr-keypad summary::-webkit-details-marker { display: none; }
+.impe-ivr-panel {
+    position: absolute;
+    z-index: 5;
+    inset-inline-start: 0;
+    inset-block-end: calc(100% + 8px);
+    width: min(230px, calc(100vw - 48px));
+    padding: 12px;
+    border: 1px solid #d8e2f1;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(22,34,59,.18);
+}
+.impe-ivr-readout {
+    display: block;
+    margin-bottom: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    background: #eef3fb;
+    color: #223a84;
+    font: 700 13px/1.4 Manrope, sans-serif;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+.impe-ivr-keys {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 6px;
+}
+.impe-ivr-keys > button { min-height: 34px; padding: 4px; }
+.impe-ivr-keys > button:active { background: #223a84; color: #fff; }
+.impe-ivr-keys > button:last-child { grid-column: 2; }
+`;
+            document.head.appendChild(estilo);
+            const keypad = document.createElement('details');
+            keypad.className = 'impe-ivr-keypad';
+            keypad.hidden = true;
+            const keypadToggle = document.createElement('summary');
+            keypadToggle.className = 'persistent-phone-action';
+            keypadToggle.textContent = 'Teclado de extensión';
+            keypad.appendChild(keypadToggle);
+            const keypadPanel = document.createElement('div');
+            keypadPanel.className = 'impe-ivr-panel';
+            const keypadReadout = document.createElement('output');
+            keypadReadout.className = 'impe-ivr-readout';
+            keypadReadout.setAttribute('aria-live', 'polite');
+            keypadReadout.setAttribute('aria-label', 'Dígitos pulsados');
+            keypadReadout.textContent = 'Marca la extensión';
+            let pressedDigits = '';
+            keypadPanel.appendChild(keypadReadout);
+            const keypadButtons = document.createElement('div');
+            keypadButtons.className = 'impe-ivr-keys';
+            for (const digit of '1234567890') {
+                const key = document.createElement('button');
+                key.type = 'button';
+                key.className = 'persistent-phone-action';
+                key.textContent = digit;
+                key.addEventListener('click', () => {
+                    if (!tokenTecladoAnalista() || panel.hidden) return;
+                    pressedDigits = (pressedDigits + digit).slice(-16);
+                    keypadReadout.textContent = pressedDigits;
+                    sendCommand('IVR_DIGIT', {digit, callToken:state.callToken});
+                });
+                keypadButtons.appendChild(key);
+            }
+            keypadPanel.appendChild(keypadButtons);
+            keypad.appendChild(keypadPanel);
+            keypad.addEventListener('keydown', event => {
+                if (event.key !== 'Escape' || !keypad.open) return;
+                event.stopPropagation();
+                keypad.open = false;
+                keypadToggle.focus();
+            });
+            document.addEventListener('pointerdown', event => {
+                if (keypad.open && !keypad.contains(event.target)) keypad.open = false;
+            });
+            const acciones = panel.querySelector('[data-phone-mute]')?.closest('.persistent-phone-actions');
+            if (!acciones) return;
+            acciones.after(keypad);
+            tecladoAnalista = {elemento:keypad, limpiar() {
+                keypad.open = false;
+                pressedDigits = '';
+                keypadReadout.textContent = 'Marca la extensión';
+            }};
+        }
+        if (tecladoAnalista) {
+            if (llamadaTecladoAnalista !== token) tecladoAnalista.limpiar();
+            tecladoAnalista.elemento.hidden = !token;
+        }
+        llamadaTecladoAnalista = token;
+    }
+
     function renderPanel() {
         if (!panel) {
             return;
@@ -1983,29 +2085,31 @@
         // con una acción de contestar inexistente en nuestro cliente PBX.
         // Una llamada entrante, incluso finalizada, pertenece a una sola
         // interfaz: el shell. No crear segundo panel ni resumen huérfano.
-        const embedded = getHostMode() === 'embedded';
-        const incomingInShell = embedded &&
-            state?.direction === 'incoming';
-        // El teclado institucional y las devoluciones de Marketing
-        // entregan su conversación al mismo modal del shell.
-        // No crear un segundo panel encima. Seguimiento conserva su
-        // tarjeta propia cuando necesita registrar el resultado.
-        const callbackInShell=embedded && String(state?.context?.type||'').toUpperCase()==='DEVOLUCION';
-        const manualOutgoingInShell = embedded &&
+        const incomingInShell =
+            state?.direction === 'incoming' &&
+            getHostMode() === 'embedded';
+                // El marcador manual usa la misma tarjeta móvil del shell.
+        // Seguimiento conserva su propia tarjeta de resultados.
+        const callbackInShell=getHostMode()==='embedded' && String(state?.context?.type||'').toUpperCase()==='DEVOLUCION';
+        const manualOutgoingInShell =
+            getHostMode() === 'embedded' &&
             state?.direction === 'outgoing' &&
-            ['TELEPHONY_MANUAL','MARKETING_CALLBACK','DIALER'].includes(
+            ['TELEPHONY_MANUAL', 'MARKETING_CALLBACK', 'DIALER'].includes(
                 String(state?.context?.type || '').toUpperCase()
             ) && (Boolean(state?.active) || state?.phase === 'finished');
-        // El shell ya presenta el teléfono de Seguimiento: evitar un duplicado.
-        const seguimientoInShell = embedded &&
+        // En Seguimiento la llamada vive en el modal telefónico compartido.
+        // La interacción definitiva continúa en el Panel de trabajo.
+        const seguimientoInShell =
+            getHostMode() === 'embedded' &&
             state?.direction === 'outgoing' &&
             String(state?.context?.type || '').toUpperCase() === 'VINCULACION' &&
             (Boolean(state?.active) || state?.phase === 'finished');
-        panel.hidden = !show || managedByShell ||
-            incomingInShell || manualOutgoingInShell || seguimientoInShell || callbackInShell;
+        panel.hidden = !show || managedByShell || incomingInShell ||
+            manualOutgoingInShell || seguimientoInShell || callbackInShell;
+        actualizarTecladoAnalista();
 
-        if (!show || managedByShell || incomingInShell ||
-            manualOutgoingInShell || seguimientoInShell || callbackInShell) {
+        if (!show || managedByShell || manualOutgoingInShell ||
+                seguimientoInShell || callbackInShell) {
             return;
         }
 
@@ -2198,15 +2302,15 @@
                 state.active ||
                 (
                     finished
-                        ? !(isIndependentDialer || incoming)
+                        ? !isIndependentDialer
                         : ![
                             'preparing',
                             'prepared',
                             'error'
                         ].includes(phase)
                 );
-            closeButton.title = finished
-                ? 'Cerrar resumen de llamada finalizada'
+            closeButton.title = finished && isIndependentDialer
+                ? 'Cerrar llamada finalizada'
                 : 'Cerrar teléfono';
         }
 
@@ -2616,13 +2720,25 @@
             let receptionBusy = false;
             let receptionError = '';
 
-            // El shell autenticado ya resolvió extensión y permisos. Su estado
-            // vigente evita depender de otro GET que puede fallar al navegar.
+            // Hostinger: usar estado autenticado del shell solo en Ventas.
+            // Los otros roles conservan sus estados y controles actuales.
             const receptionState = function () {
-                const embedded = embeddedPhone()?.getReceptionStatus?.();
-                return embedded || {assigned:Boolean(availability?.permite_entrantes),
-                    extension:String(availability?.extension || ''), ready:hostUsable()};
+                try {
+                    if (window.parent !== window &&
+                        window.parent.IMPE_PHONE_SHELL_CONFIG?.salesResults === true) {
+                        const shell = window.parent.IMPE_TELEPHONY_SHELL;
+                        if (shell?.isEmbedded && Number(shell.userId) === userId &&
+                            typeof shell.getReceptionStatus === 'function') {
+                            const info = shell.getReceptionStatus();
+                            if (info && typeof info.assigned === 'boolean' &&
+                                typeof info.ready === 'boolean') return info;
+                        }
+                    }
+                } catch (_) { /* El modo independiente mantiene el estado original. */ }
+                return {assigned: Boolean(availability?.permite_entrantes),
+                    extension: String(availability?.extension || ''), ready: hostUsable()};
             };
+
             const renderReceptionState = function () {
                 if (!receptionButton && !marketingReception) return;
 
@@ -2645,9 +2761,7 @@
                                 ? 'Extensión pendiente'
                                 : 'Recepción no disponible';
                 const title = active
-                    ? (receptionButton?.dataset.telephonyAnalyst === '1'
-                        ? 'Abrir controles de Zadarma · Extensión ' + extension
-                        : 'Abrir teléfono institucional (recepción conectada)')
+                    ? 'Abrir teléfono institucional (recepción conectada)'
                     : assigned
                         ? 'Activar recepción telefónica'
                         : missing
@@ -2684,13 +2798,13 @@
                     marketingBrowserNote.querySelector('span').textContent = usingEmbedded
                         ? 'Telefonía integrada en el CRM. Puedes cambiar de módulo sin cortar la llamada ni abrir ventanas.'
                         : usingTab
-                        ? 'La conexión WebRTC permanece en una pestaña telefónica. Déjala abierta para seguir recibiendo llamadas y vuelve al CRM para trabajar.'
-                        : 'La conexión WebRTC permanece en una ventana pequeña. Puedes minimizarla, pero no cerrarla mientras recibas llamadas.';
+                        ? 'El teléfono permanece conectado en otra pestaña. Déjala abierta para recibir llamadas y vuelve al CRM para trabajar.'
+                        : 'El teléfono permanece conectado en otra ventana. Puedes minimizarla; mantenla abierta para recibir llamadas.';
                 }
                 if (marketingHint) {
                     marketingHint.textContent = active
                         ? 'Extensión ' + extension +
-                            ' conectada a WebRTC. Puedes recibir y transferir llamadas mientras permanezca activa.'
+                            ' conectada. Puedes recibir y transferir llamadas mientras permanezca activa.'
                         : assigned
                             ? 'Extensión ' + extension +
                                 (getHostMode() === 'embedded'
@@ -2710,39 +2824,20 @@
                 }
             };
 
-            const abrirControlesAnalista = function () {
-                if (receptionButton?.dataset.telephonyAnalyst !== '1') return false;
-                const shell = embeddedPhone();
-                if (!shell?.showProviderControls) {
-                    throw new Error('Abre el CRM con el teléfono integrado para ver los controles de Zadarma.');
-                }
-                if (!shell.showProviderControls()) {
-                    throw new Error('WebRTC aún no tiene los controles preparados. Intenta nuevamente.');
-                }
-                receptionError = '';
-                return true;
-            };
-
-            const activarRecepcion = function (abrirAlConectar = false) {
+            const activarRecepcion = function () {
                 if (!receptionState().assigned || receptionBusy) return;
                 receptionBusy = true;
                 receptionError = '';
                 renderReceptionState();
 
-                // El motor SIP se abre dentro del clic original; al confirmar
-                // conexión, ese MISMO clic también abre el visor del Analista.
-                // Marketing conserva su flujo normal de activación.
+                // Mantener la apertura del host WebRTC dentro del clic real:
+                // la ventana no puede abrirse tras otra promesa de validación.
                 void prepare({openHost: true}).then(function () {
                     sendCommand('PING', {});
-                    if (abrirAlConectar) abrirControlesAnalista();
                     window.setTimeout(renderReceptionState, 300);
                 }).catch(function (error) {
                     console.warn(error);
                     receptionError = String(error?.message || 'No fue posible activar recepción.');
-                    if (receptionButton) {
-                        receptionButton.title = receptionError;
-                        receptionButton.setAttribute('aria-label', receptionError);
-                    }
                 }).finally(function () {
                     receptionBusy = false;
                     renderReceptionState();
@@ -2751,24 +2846,13 @@
 
             const abrirOActivar = function () {
                 if (!receptionState().assigned || receptionBusy) return;
-                const esAnalista = receptionButton?.dataset.telephonyAnalyst === '1';
-                if (hostUsable()) {
-                    if (esAnalista) {
-                        try {
-                            abrirControlesAnalista();
-                        } catch (error) {
-                            receptionError = String(error?.message || 'No se pudo abrir Zadarma.');
-                            console.warn('[Telefonía Analista]', error);
-                        }
-                        renderReceptionState();
-                        return;
-                    }
+                if (receptionState().ready) {
                     if (!openDialer({})) {
                         receptionError = 'No se pudo abrir el teléfono. Recarga la página.';
                         renderReceptionState();
                     }
                 } else {
-                    activarRecepcion(esAnalista);
+                    activarRecepcion();
                 }
             };
             receptionButton?.addEventListener('click', abrirOActivar);
