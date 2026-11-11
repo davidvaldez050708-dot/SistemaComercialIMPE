@@ -49,6 +49,12 @@ try{
             prospecto_id BIGINT UNSIGNED NOT NULL,
             programa_codigo VARCHAR(80) NULL,nombre_original VARCHAR(120)
         ) ENGINE=InnoDB',
+        'CREATE TABLE prospecto_preferencias_contacto (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            origen_id BIGINT UNSIGNED NOT NULL,
+            valor_original VARCHAR(120),
+            zona_horaria VARCHAR(80),interpretacion_estado VARCHAR(40)
+        ) ENGINE=InnoDB',
         'CREATE TABLE prospecto_embudo_subetapas (
             asignacion_id BIGINT UNSIGNED PRIMARY KEY,
             subetapa VARCHAR(40) NOT NULL,
@@ -269,6 +275,87 @@ try{
         $extra['columnas']['NUEVO']['truncado'],
         '20 tarjetas + totales completos y aviso de truncamiento');
 
+    // El asesor V3 puede recorrer todas las páginas, no sólo las primeras
+    // 20 tarjetas. La consulta conserva permisos y no mueve Prospectos.
+    require_once __DIR__.'/../app/helpers/PermissionHelper.php';
+    require_once __DIR__.'/../app/services/EmbudoComercialV3MovimientosPermitidos.php';
+    $_SESSION=[
+        'usuario_id'=>8,'rol_id'=>3,
+        'permisos'=>['ventas.embudo.ver','ventas.embudo.mover']
+    ];
+    $pg=EmbudoComercialRepository::paginasV3Operativo([]);
+    $ops=$r->listadoV3Operativo(8,$f,$pg);
+    okV3p($ops['columnas']['NUEVO']['total']===23 &&
+        $ops['columnas']['NUEVO']['paginas']===2 &&
+        count($ops['columnas']['NUEVO']['registros'])===20,
+        'vista operativa V3 muestra 20/23 con navegación completa');
+    okV3p($ops['columnas']['REVISION_LEGACY']['total']===1 &&
+        $ops['columnas']['REVISION_LEGACY']['registros'][0]['etapa_original']==='INTERESADO',
+        'asesor ve su legacy sin convertirlo en Potencial');
+    okV3p($ops['columnas']['POTENCIAL']['total']===0 &&
+        $ops['columnas']['PROCESO_INSCRIPCION']['total']===0 &&
+        $ops['columnas']['SEGUIMIENTO']['total']===1,
+        'no reinterpreta legados y conserva Seguimiento');
+    okV3p($ops['total_activos']===25 &&
+        $ops['externos']['RECUPERACION']===2 &&
+        $ops['externos']['DESCARTADO']===1,
+        'totales completos sin duplicados ni bandejas mezcladas');
+    $pg2=EmbudoComercialRepository::paginasV3Operativo(['p3_nuevo'=>'2']);
+    $page2=$r->listadoV3Operativo(8,$f,$pg2);
+    okV3p($page2['columnas']['NUEVO']['pagina']===2 &&
+        count($page2['columnas']['NUEVO']['registros'])===3,
+        'la segunda página muestra tres prospectos restantes');
+    $over=EmbudoComercialRepository::paginasV3Operativo(['p3_nuevo'=>'999']);
+    okV3p($r->listadoV3Operativo(8,$f,$over)['columnas']['NUEVO']['pagina']===2,
+        'la paginación fuera de rango se ajusta al máximo');
+    foreach(['0','-1','1e4','11.2','10001'] as $badPage) {
+        try{
+            EmbudoComercialRepository::paginasV3Operativo(['p3_nuevo'=>$badPage]);
+            throw new RuntimeException('Se aceptó una página inválida');
+        }catch(DomainException $ok){}
+    }
+    $foreign=$r->listadoV3Operativo(8,
+        EmbudoComercialRepository::filtros(['asesor'=>'9'],false),$pg);
+    okV3p($foreign['columnas']['POTENCIAL']['total']===0 &&
+        $foreign['columnas']['PROCESO_INSCRIPCION']['total']===0,
+        'filtro manipulado no deja ver asignaciones del asesor 9');
+    okV3p(EmbudoComercialV3MovimientosPermitidos::destinos('NUEVO')===['CONTACTADO'] &&
+        EmbudoComercialV3MovimientosPermitidos::destinos('CONTACTADO')===['SEGUIMIENTO'] &&
+        EmbudoComercialV3MovimientosPermitidos::destinos('SEGUIMIENTO')===['CONTACTADO'],
+        'sólo transiciones manuales compatibles con backend V1');
+    foreach([
+        ['NUEVO','RECUPERACION'],
+        ['NUEVO','POTENCIAL'],
+        ['INTERESADO','POTENCIAL'],
+        ['SEGUIMIENTO','PROCESO_INSCRIPCION'],
+        ['POTENCIAL','CONTACTADO'],
+        ['CONTACTADO','DESCARTADO']
+    ] as $pair) {
+        try{
+            EmbudoComercialV3MovimientosPermitidos::validar($pair[0],$pair[1]);
+            throw new RuntimeException('Se permitió movimiento sin evidencia');
+        }catch(DomainException $ok){}
+    }
+    okV3p(EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
+        $db,8,13),'conversación telefónica real en asignación propia');
+    okV3p(!EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
+        $db,8,11),'sin conversación PBX explícita de asesor y asignación');
+    okV3p(!EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
+        $db,8,14),'no atribuye conversación de asesor ajeno');
+    $_SESSION['rol_id']=1;
+    try{
+        $r->listadoV3Operativo(8,$f,$pg);
+        throw new RuntimeException('Se permitió operativo V3 al administrador');
+    }catch(DomainException $ok){}
+    $_SESSION=['usuario_id'=>9,'rol_id'=>3,
+        'permisos'=>['ventas.embudo.ver','ventas.embudo.mover']];
+    try{
+        $r->listadoV3Operativo(8,$f,$pg);
+        throw new RuntimeException('Se permitió suplantar identidad en V3');
+    }catch(DomainException $ok){}
+    $_SESSION=['usuario_id'=>8,'rol_id'=>3,
+        'permisos'=>['ventas.embudo.ver','ventas.embudo.mover']];
+
     $source=file_get_contents(__DIR__.'/../app/services/EmbudoComercialRepository.php');
     foreach(['UPDATE prospecto_embudo','INSERT INTO prospecto_embudo',
         '->begin_transaction(', '->commit('] as $forbidden) {
@@ -280,7 +367,7 @@ try{
         okV3p(strpos($view,$forbidden)===false,
             'la vista previa no activa teléfono ni movimientos');
     }
-    echo "CHECK OK: cinco columnas V3, históricos visibles fuera de columnas, permisos de asesor, supervisor, filtros, subetapas, tareas, límites y cero escrituras. MySQL temporal.\n";
+    echo "CHECK OK: preview y operativo V3, paginación >20, propietario, PBX real, transiciones seguras y legacy sin conversión. MySQL temporal.\n";
 }finally{
     if($created)$db->query('DROP DATABASE '.$name);
     $db->close();
