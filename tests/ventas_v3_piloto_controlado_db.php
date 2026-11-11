@@ -100,7 +100,7 @@ try {
             usuario_id INT,creado_at DATETIME
         ) ENGINE=InnoDB'
     ] as $sql)$db->query($sql);
-    foreach ([101=>8,102=>9,103=>8,104=>8,105=>8] as $asig=>$asesor) {
+    foreach ([101=>8,102=>9,103=>8,104=>8,105=>8,106=>8,107=>8] as $asig=>$asesor) {
         $db->query("INSERT INTO prospectos_comerciales VALUES
             ($asig,'+527771234567','México')");
         $db->query("INSERT INTO prospecto_asignaciones VALUES
@@ -295,6 +295,45 @@ try {
         'el vínculo incorrecto no entra al embudo');
     validarV3(cantidad($db,'telefonia_ventas_resultados',"pbx_call_id='out_85abc2234'")===1,
         'el registro telefónico previamente guardado nunca se pierde');
+
+    // Si antes hubo una conversación declarada (aunque la calificación V4
+    // sea insuficiente para Potenciales), nunca se envía a Recuperación.
+    $previo=$add(106,8,'out_86abc1111','PROSPECTO_POTENCIAL',
+        '2026-11-11 08:00:00');
+    $primero=$apply(106,8,$previo,'PROSPECTO_POTENCIAL');
+    validarV3(!$primero['movida'] && actual($db,106)==='NUEVO',
+        'declaración potencial sin programa/requisitos queda sin ascenso');
+    for($i=0;$i<3;$i++){
+        $pbx='out_86'.($i+1).'abc222';
+        $c=$add(106,8,$pbx,'SIN_RESPUESTA',
+            '2026-11-11 '.(12+$i).':00:00');
+        $resp=$apply(106,8,$c,'SIN_RESPUESTA');
+    }
+    validarV3(actual($db,106)==='NUEVO' && !$resp['movida'] &&
+        $resp['accion_comercial']==='CONTACTO_ANTERIOR_REQUIERE_REVISION',
+        'conversación anterior impide recuperación errónea');
+    validarV3($resp['subetapa']==='REVISION_CONTACTO_PREVIO',
+        'subetapa advierte revisión sin esconder historial');
+    validarV3(cantidad($db,'prospecto_embudo_movimientos','asignacion_id=106')===0,
+        'contacto previo no recibe movimiento indebido');
+
+    // No interesado explícito sí descarta y cancela una acción anterior;
+    // no hay ninguna inscripción, pago ni remarketing automático.
+    $db->query("INSERT INTO prospecto_embudo_agenda
+        VALUES(107,'2026-11-15 13:00:00','2026-11-16',UTC_TIMESTAMP(),8)");
+    $rejection=$add(107,8,'out_87abc1111','NO_INTERESADO',
+        '2026-11-11 17:00:00');
+    $closed=$apply(107,8,$rejection,'NO_INTERESADO');
+    validarV3($closed['movida'] && actual($db,107)==='DESCARTADO' &&
+        $closed['subetapa']==='NO_INTERESADO',
+        'rechazo explícito mueve a Descartados con causa');
+    $agenda=$db->query('SELECT proxima_accion_at,revision_fecha
+        FROM prospecto_embudo_agenda WHERE asignacion_id=107')->fetch_assoc();
+    validarV3($agenda['proxima_accion_at']===null &&
+        $agenda['revision_fecha']===null,
+        'descartado no mantiene citas automáticas');
+    validarV3(cantidad($db,'prospecto_embudo_movimientos','asignacion_id=107')===1,
+        'descarte auditable una vez');
 
     // Desactivar de nuevo preserva todo el camino V1, sin modificar los
     // permisos de las sesiones de ningún asesor.
