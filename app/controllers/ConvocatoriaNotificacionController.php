@@ -27,8 +27,8 @@ class ConvocatoriaNotificacionController
             $modelo = new ConvocatoriaNotificacionModel();
             $phone=[];
             if(tienePermiso('telefonia.usar')&&tienePermiso('telefonia.recibir')){
-                try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';$phone=(new TelefoniaNotificacionService())->pendientes($usuarioId,true);}
-                catch(Throwable $e){error_log('[campana_marketing_telefonia] '.get_class($e));}
+                require_once __DIR__.'/../services/TelefoniaNotificacionService.php';
+                $phone=(new TelefoniaNotificacionService())->pendientes($usuarioId,true);
             }
 
             echo json_encode([
@@ -38,7 +38,7 @@ class ConvocatoriaNotificacionController
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } catch (Throwable $error) {
             error_log($error->getMessage());
-            http_response_code(500);
+            http_response_code(Database::esFalloTemporal($error) ? 503 : 500);
             echo json_encode([
                 'ok' => false,
                 'mensaje' => 'No fue posible consultar las notificaciones.'

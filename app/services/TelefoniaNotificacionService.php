@@ -8,7 +8,7 @@ final class TelefoniaNotificacionService
 {
     private mysqli $db;
     private bool $preparar;
-    public function __construct(?mysqli $db=null, bool $preparar=true){
+    public function __construct(?mysqli $db=null, bool $preparar=false){
         $this->db=$db??(new Database())->connect();
         $this->preparar = $preparar;
         if (!$preparar) return;
@@ -33,14 +33,16 @@ final class TelefoniaNotificacionService
     }
     public function sincronizar(int $user,bool $recepcion): void {
         if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';(new TelefoniaNotificacionVentasService($this->db))->pendientes($user);return;}
-        $ext=$this->extension($user);if($ext==='')return;
+        $ext=$this->extension($user);
+        if($ext!=='')$this->sincronizarExtension($user,$recepcion,$ext);
+    }
+    private function sincronizarExtension(int $user,bool $recepcion,string $ext): void {
         foreach((new TelefoniaDisponibilidadService($this->db))->devoluciones($user) as $task){
             $date=(new DateTimeImmutable($task['updated_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
             $this->agregar($user,$ext,'devolucion:'.$task['id'].':'.$task['version'],$task['telefono'],$date,'Llamada por devolver',$task['contacto'].' · Recepción dejó sus datos y el motivo.');
         }
-        $s=$this->db->prepare("UPDATE telefonia_notificaciones n JOIN telefonia_disponibilidad d ON n.llave=CONCAT('devolucion:',d.id,':',d.version) SET n.leida=1 WHERE n.usuario_id=? AND n.extension=? AND d.destino_usuario=n.usuario_id AND d.devolucion='ATENDIDA'");
+        $s=$this->db->prepare("UPDATE telefonia_notificaciones n JOIN telefonia_disponibilidad d ON n.llave=CONCAT('devolucion:',d.id,':',d.version) SET n.leida=1 WHERE n.usuario_id=? AND n.extension=? AND d.destino_usuario=n.usuario_id AND d.devolucion='ATENDIDA' AND n.leida=0");
         $s->bind_param('is',$user,$ext);$s->execute();$s->close();
-        try{
         $history=$recepcion?(new TelefoniaRecepcionMarketingService($this->db))->resumen($user):(new TelefoniaEntrantesAnalistaService($this->db, $this->preparar))->listar($user);
         foreach($history['llamadas'] as $c){
             if(($c['fuente']??'')==='OPERACION')continue; // Tiene su aviso exacto por intento debajo.
@@ -51,8 +53,6 @@ final class TelefoniaNotificacionService
             $number=(string)($c['numero']??'Número privado');
             $this->agregar($user,$ext,'llamada:'.$c['pbx_call_id'],$number,(string)$c['fecha'],'Llamada perdida',$number.' · Revisa el historial y coordina su devolución.');
         }
-        }catch(Throwable $e){error_log('[campana_historial_llamadas] '.get_class($e));}
-        try{
         foreach((new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($user) as $op){
             $direct=$op['modo']==='DIRECTA';$source=(int)$op['origen_usuario']===$user;
             if($direct){
@@ -78,11 +78,12 @@ final class TelefoniaNotificacionService
             $date=(new DateTimeImmutable($op['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
             $this->agregar($user,$ext,'consulta:'.$op['id'].':'.$op['intento'],$op['numero'],$date,'Transferencia sin respuesta','Recepción intentó comunicarte con '.$op['numero'].'. Coordina con la extensión '.$op['origen_extension'].' antes de devolver la llamada.');
         }
-        }catch(Throwable $e){error_log('[campana_transferencias] '.get_class($e));}
     }
     public function pendientes(int $user,bool $recepcion): array {
         if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';return (new TelefoniaNotificacionVentasService($this->db))->pendientes($user);}
-        $this->sincronizar($user,$recepcion);$ext=$this->extension($user);
+        $ext=$this->extension($user);
+        if($ext==='')return [];
+        $this->sincronizarExtension($user,$recepcion,$ext);
         $s=$this->db->prepare('SELECT * FROM telefonia_notificaciones WHERE usuario_id=? AND extension=? AND leida=0 ORDER BY id DESC LIMIT 20');
         $s->bind_param('is',$user,$ext);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
         return array_map(function($r)use($recepcion){

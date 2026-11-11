@@ -299,8 +299,10 @@ class ReminderController
                 $phone=(new TelefoniaNotificacionService($conexion, false))->pendientes($usuarioId,false);
                 $recordatorios=array_merge($phone,$recordatorios);$telefoniaOk=true;
             }catch(Throwable $e){
-                if (Database::esFalloTemporal($e)) throw $e;
                 error_log('[campana_telefonia] '.get_class($e));
+                http_response_code(Database::esFalloTemporal($e) ? 503 : 500);
+                echo json_encode(['ok'=>false,'mensaje'=>'No fue posible consultar las notificaciones.'], JSON_UNESCAPED_UNICODE);
+                exit;
             }
         }
         // La campana debe priorizar obligaciones vencidas y acciones que requieren

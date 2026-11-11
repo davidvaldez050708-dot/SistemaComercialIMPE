@@ -134,8 +134,20 @@ final class TelefoniaDisponibilidadService
     }
     public function entrante(int $user): ?array {
         $this->expire();$ext=$this->extension($user);
-        if($this->one("SELECT id FROM telefonia_disponibilidad WHERE destino_usuario=? AND (estado='ACEPTADA' OR (estado='ENVIANDO' AND updated_at>=?)) LIMIT 1",[$user,gmdate('Y-m-d H:i:s',time()-30)]))return null;
-        $r=$this->one("SELECT id FROM telefonia_disponibilidad WHERE destino_usuario=? AND destino_extension=? AND estado='PENDIENTE' ORDER BY id LIMIT 1",[$user,$ext['extension']]);
+        $r=$this->one(
+            "SELECT pendiente.id FROM telefonia_disponibilidad pendiente
+             WHERE pendiente.destino_usuario=? AND pendiente.destino_extension=?
+               AND pendiente.estado='PENDIENTE'
+               AND NOT EXISTS (
+                   SELECT 1 FROM telefonia_disponibilidad reservada
+                   WHERE reservada.destino_usuario=? AND (
+                       reservada.estado='ACEPTADA' OR
+                       (reservada.estado='ENVIANDO' AND reservada.updated_at>=?)
+                   )
+               )
+             ORDER BY pendiente.id LIMIT 1",
+            [$user,$ext['extension'],$user,gmdate('Y-m-d H:i:s',time()-30)]
+        );
         return $r?$this->obtener($user,(int)$r['id']):null;
     }
     public function accion(int $user,int $id,int $version,string $action,array $data=[]): array {
