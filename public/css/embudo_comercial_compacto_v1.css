@@ -1,0 +1,138 @@
+/* Gestión comercial · ajuste visual v1.
+ * Se carga sólo en la lista Kanban y después del CSS existente.
+ * No modifica sidebar, telefonía, modales ni estilos de otros módulos.
+ */
+.impe-embudo.impe-embudo--compact {
+    gap: 10px;
+    padding-bottom: 18px;
+}
+.impe-embudo--compact .impe-embudo-tabs {
+    margin: 0;
+    flex-wrap: nowrap;
+    width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+.impe-embudo--compact .impe-embudo-tabs a {
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+.impe-embudo--compact .impe-embudo-filtros {
+    padding: 11px 13px;
+    gap: 9px;
+}
+.impe-embudo--compact .impe-embudo-board-info {
+    gap: 6px 12px;
+}
+.impe-embudo--compact .impe-embudo-board-hint-mobile {
+    display: none;
+}
+.impe-embudo--compact .impe-embudo-board {
+    gap: 9px;
+    min-width: 0;
+    max-width: 100%;
+}
+.impe-embudo--compact .impe-embudo-lane {
+    min-height: 350px;
+}
+.impe-embudo--compact .impe-embudo-lane-head {
+    padding: 11px 10px;
+    min-height: 76px;
+    align-items: flex-start;
+}
+.impe-embudo--compact .impe-embudo-lane-head > div {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.impe-embudo--compact .impe-embudo-lane-head h3 {
+    overflow-wrap: anywhere;
+}
+.impe-embudo--compact .impe-embudo-lane-count {
+    flex: 0 0 auto;
+}
+.impe-embudo--compact .impe-embudo-lane-list {
+    min-height: 240px;
+}
+.impe-embudo--compact .impe-embudo-card {
+    min-width: 0;
+}
+.impe-embudo--compact .impe-embudo-card-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* En escritorio, cinco columnas completas dentro del ancho disponible.
+   Esto elimina el corte lateral mostrado en el diseño anterior. */
+@media (min-width: 1280px) {
+    .impe-embudo--compact .impe-embudo-board:not(.impe-embudo-board--single) {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-items: stretch;
+        overflow-x: visible;
+        width: 100%;
+    }
+    .impe-embudo--compact .impe-embudo-board:not(.impe-embudo-board--single) > .impe-embudo-lane {
+        box-sizing: border-box;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        flex: none;
+    }
+}
+/* Pantallas y paneles reducidos: no comprimir las tarjetas hasta hacerlas
+   ilegibles. Desplazamiento explícito, con cada columna alineada al deslizar. */
+@media (max-width: 1279px) {
+    .impe-embudo--compact .impe-embudo-board:not(.impe-embudo-board--single) {
+        display: flex;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x proximity;
+        scrollbar-width: thin;
+        padding-bottom: 14px;
+    }
+    .impe-embudo--compact .impe-embudo-board:not(.impe-embudo-board--single) > .impe-embudo-lane {
+        box-sizing: border-box;
+        flex: 0 0 clamp(235px, 30vw, 285px);
+        min-width: 235px;
+        max-width: 285px;
+        scroll-snap-align: start;
+    }
+    .impe-embudo--compact .impe-embudo-board-info > small:not(.impe-embudo-board-hint-mobile) {
+        display: none;
+    }
+    .impe-embudo--compact .impe-embudo-board-hint-mobile {
+        display: inline;
+    }
+}
+/* Recuperación y Descartados siempre muestran una bandeja, nunca
+   cinco columnas ni un carrusel vacío. */
+.impe-embudo--compact .impe-embudo-board--single {
+    display: flex;
+    overflow-x: visible;
+}
+.impe-embudo--compact .impe-embudo-board--single > .impe-embudo-lane {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    width: min(100%, 750px);
+    min-width: 0;
+    max-width: 750px;
+}
+@media (max-width: 600px) {
+    .impe-embudo.impe-embudo--compact {
+        gap: 9px;
+    }
+    .impe-embudo--compact .impe-embudo-filtros {
+        padding: 10px;
+    }
+    .impe-embudo--compact .impe-embudo-filtros > label:not(.impe-embudo-check) {
+        max-width: none;
+    }
+    .impe-embudo--compact .impe-embudo-tabs a {
+        padding: 9px 11px;
+    }
+    .impe-embudo--compact .impe-embudo-board--single > .impe-embudo-lane {
+        width: 100%;
+        max-width: 100%;
+    }
+}
