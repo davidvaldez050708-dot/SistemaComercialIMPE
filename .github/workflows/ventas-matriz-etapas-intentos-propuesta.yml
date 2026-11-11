@@ -1,0 +1,31 @@
+name: Ventas - propuesta de etapas, subetapas y tres intentos
+on:
+  push:
+    branches:
+      - feat/ventas-matriz-etapas-subetapas-intentos-20261111
+  pull_request:
+    paths:
+      - 'app/services/EmbudoComercialPoliticaPropuesta.php'
+      - 'tests/embudo_comercial_politica_propuesta_unit.php'
+      - 'docs/ventas_matriz_etapas_subetapas_intentos_propuesta_20261111.md'
+      - '.github/workflows/ventas-matriz-etapas-intentos-propuesta.yml'
+permissions:
+  contents: read
+jobs:
+  reglas-aisladas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: Sintaxis y contrato propuesto sin BD ni PBX
+        run: |
+          php -l app/services/EmbudoComercialPoliticaPropuesta.php
+          php -l tests/embudo_comercial_politica_propuesta_unit.php
+          php tests/embudo_comercial_politica_propuesta_unit.php
+      - name: Regresión de reglas existentes - sin cambiar producción
+        run: |
+          php tests/embudo_comercial_fase2_unit.php
+          php tests/embudo_comercial_fase1_unit.php
