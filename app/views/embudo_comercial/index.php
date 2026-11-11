@@ -59,6 +59,18 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
         </a>
         <?php endif; ?>
         <?php endforeach; ?>
+        <?php // Acceso voluntario: el tablero vigente sigue siendo el predeterminado.
+            // Esta liga sólo se muestra a asesores con permiso de embudo.
+            if ($vista==='embudo' && !$supervisor &&
+                (int)($_SESSION['rol_id']??0)===3 &&
+                EmbudoComercialAcceso::puede('embudo')): ?>
+        <a href="<?= $esc($urlBase.http_build_query([
+            'controller'=>'embudoComercial','action'=>'index',
+            'vista'=>'embudo','operativo_v3'=>'1'
+        ])) ?>" title="Abrir el nuevo embudo de trabajo sin cerrar el teléfono">
+            <i class="bi bi-columns-gap" aria-hidden="true"></i> Nuevo embudo V3
+        </a>
+        <?php endif; ?>
     </nav>
 
     <?php if ($error!==''): ?>
