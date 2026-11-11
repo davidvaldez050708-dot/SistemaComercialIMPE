@@ -473,7 +473,8 @@ final class EmbudoComercialRepository
         ];
     }
 
-    public function detalle(int $usuarioId,bool $supervisor,int $prospectoId,string $vista): ?array
+    public function detalle(int $usuarioId,bool $supervisor,int $prospectoId,string $vista,
+        bool $operativoV3=false): ?array
     {
         if ($prospectoId<1) return null;
         $params=[$prospectoId];
@@ -492,6 +493,9 @@ final class EmbudoComercialRepository
         if (!$supervisor) {$sql.=' AND a.asesor_id=?';$params[]=$usuarioId;}
         if ($vista==='recuperacion') $sql.=" AND e.etapa IN ('RECUPERACION','EN_CONTACTO')";
         elseif ($vista==='descartados') $sql.=" AND COALESCE(e.etapa,'NUEVO')='DESCARTADO'";
+        elseif($operativoV3) $sql.=" AND COALESCE(e.etapa,'NUEVO') IN (
+            'NUEVO','CONTACTADO','POTENCIAL','SEGUIMIENTO',
+            'PROCESO_INSCRIPCION','INTERESADO','PAGO_CONFIRMADO')"; 
         else $sql.=" AND COALESCE(e.etapa,'NUEVO') IN (
             'NUEVO','CONTACTADO','INTERESADO','SEGUIMIENTO','PAGO_CONFIRMADO')";
         $sql.=' LIMIT 1';
