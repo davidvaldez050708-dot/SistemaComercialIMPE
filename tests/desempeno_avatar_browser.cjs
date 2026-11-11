@@ -6,6 +6,12 @@ const png=(w,h)=>{const crc=b=>{let n=0xffffffff;for(const v of b){n^=v;for(let 
 const fakeRoot=path.join(out,'fixture'),uploads=path.join(fakeRoot,'public/uploads/usuarios');fs.mkdirSync(uploads,{recursive:true});const images={'horizontal.png':png(180,60),'vertical.png':png(60,180),'fallida.png':png(180,60)};for(const[name,b]of Object.entries(images))fs.writeFileSync(path.join(uploads,name),b);
 const baseline=path.join(out,'baseline.php');fs.writeFileSync(baseline,cp.execFileSync('git',['show','59716bbf:app/views/desempeno/index.php']));const cssBefore=cp.execFileSync('git',['show','59716bbf:public/css/desempeno.css']);
 const php=`define('ROOT_PATH',$argv[2]);define('BASE_URL','https://desempeno-avatar.test/');require $argv[1].'/app/helpers/AvatarHelper.php';function tienePermiso($p){return true;}$urlExportarPdf=BASE_URL.'index.php?controller=desempeno&action=exportarPdf';$_SESSION=['rol'=>$argv[5],'nombre'=>'Diana','apellidos'=>'marke'];$desempeno=['vista'=>$argv[6],'area'=>'marketing','periodo'=>['clave'=>'mes','label'=>'Periodo de prueba'],'ranking'=>[['nombre_completo'=>'Diana marke','foto_perfil'=>$argv[4],'publicaciones'=>2,'territorios_cubiertos'=>1,'actualizaciones'=>3,'vigentes'=>1]],'resumen'=>['publicaciones'=>2,'territorios_cubiertos'=>1,'actualizaciones'=>3,'vigentes'=>1]];
+if ($argv[6]==='global') {
+ $desempeno['ranking'][0]['posicion']=3;
+ $desempeno['ranking'][0]['indice']=80;
+ $desempeno['ranking'][]=['nombre_completo'=>'Otro usuario','posicion'=>4,'indice'=>75];
+ $desempeno['reconocimientos']=[['nombre'=>'Diana marke','titulo'=>'Prueba','foto_perfil'=>$argv[4]]];
+}
 echo '<div class="topbar-account-button">'.renderAvatarUsuario('Diana','marke',$_SESSION['rol'],$argv[4],'sm','general','topbar-user-avatar',false).'</div>';require $argv[3];`;
 const render=(before,photo,role='Marketing',view='propio')=>{const r=cp.spawnSync('C:/xampp/php/php.exe',['-r',php,root,fakeRoot,before?baseline:path.join(root,'app/views/desempeno/index.php'),photo,role,view],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);assert.ok(!/Warning:|Fatal error:/.test(r.stdout),(r.stdout.match(/(?:Warning:|Fatal error:)[^\n]*/g)||[]).join('\n'));return r.stdout;};
 const footer=fs.readFileSync('app/views/layout/dashboard_footer.php','utf8'),fallback=footer.match(/<script>\s*(document\.addEventListener\('DOMContentLoaded',[\s\S]*?)<\/script>/)[1];
@@ -14,6 +20,10 @@ const html=(body,before)=>'<!doctype html><html lang="es"><head><meta charset="u
  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">'+['global.css','dashboard.css','desempeno.css','responsive_sistema.css'].map(f=>`<link rel="stylesheet" href="/public/css/${f}${before?'?before=1':''}">`).join('')+'</head><body><div class="admin-main"><main class="admin-content">'+body+'</main></div><script>'+fallback+'</script></body></html>';
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.IMPE_CHROME_PATH});try{
  const page=await browser.newPage(),errors=[];page.setDefaultTimeout(5000);page.setDefaultNavigationTimeout(30000);page.on('pageerror',e=>errors.push(e.message));await page.route('https://desempeno-avatar.test/**',async route=>{const u=new URL(route.request().url());if(u.pathname==='/')return route.fulfill({contentType:'text/html',body:html(render(u.searchParams.has('before'),u.searchParams.get('photo')||'',u.searchParams.get('role')||'Marketing',u.searchParams.get('view')||'propio'),u.searchParams.has('before'))});if(u.pathname.endsWith('fallida.png'))return route.fulfill({status:404});if(u.pathname.startsWith('/public/uploads/usuarios/'))return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(fakeRoot,u.pathname))});const p=path.join(root,u.pathname);return route.fulfill({contentType:'text/css',body:u.pathname.endsWith('/desempeno.css')&&u.searchParams.has('before')?cssBefore:fs.readFileSync(p)});});
+ if(process.env.IMPE_BOOTSTRAP_CSS){
+  await page.route('https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css',route=>
+   route.fulfill({contentType:'text/css',path:process.env.IMPE_BOOTSTRAP_CSS}));
+ }
  const goto=async params=>{await page.goto('https://desempeno-avatar.test/?'+new URLSearchParams(params),{waitUntil:'networkidle'});await page.evaluate(()=>document.fonts.ready);};
  const snapshot=()=>page.evaluate(()=>{const e=document.querySelector('.performance-module'),c=e.cloneNode(true),avatar=c.querySelector('.performance-person > span');if(avatar)avatar.remove();return {html:c.outerHTML.replace(/>\s+</g,'><'),card:(()=>{const r=e.querySelector('.performance-person-row').getBoundingClientRect();return[r.width,r.height];})(),rest:Array.from(e.querySelectorAll('.performance-person > div,.performance-row-metrics,.performance-kpi-grid')).map(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n);return[r.width,r.height,s.fontSize,s.color];})};});
  const metrics=[];
@@ -30,6 +40,34 @@ const html=(body,before)=>'<!doctype html><html lang="es"><head><meta charset="u
   // 404 HTTP a pesar de existir el archivo local: fallback real del footer, sin modificarlo.
   await goto({photo:'public/uploads/usuarios/fallida.png'});await page.locator('.performance-personal-avatar.system-avatar-initials').waitFor();assert.equal(await page.locator('.performance-personal-avatar').innerText(),'DM');
  }
- for(const role of ['Marketing','Analista de Datos','Cuenta Clave']){await goto({role,view:'global',before:'1'});const before=await snapshot();await goto({role,view:'global'});assert.deepEqual(await snapshot(),before,'Vistas ajenas al resumen sin cambios');assert.equal(await page.locator('.performance-personal-avatar').count(),0);}
+ for(const role of ['Marketing','Analista de Datos','Cuenta Clave']){
+  for(const photo of ['', 'public/uploads/usuarios/ausente.png', 'public/uploads/usuarios/fallida.png']){
+   await goto({role,view:'global',photo});
+   const rankedUser=page.locator('.performance-person-row').first();
+   assert.equal(await rankedUser.locator('.performance-position strong').innerText(),'3');
+   const avatars=rankedUser.locator('.performance-avatar').or(
+    page.locator('.performance-recognition-person .performance-avatar'));
+   assert.equal(await avatars.count(),2);
+   for(const [index,size] of [44,36].entries()){
+    const avatar=avatars.nth(index);
+    assert.equal(await avatar.innerText(),'DM');
+    assert.equal(await avatar.locator('img').count(),0);
+    const center=await avatar.evaluate(element=>{
+     const bounds=element.getBoundingClientRect();
+     const text=document.createRange();
+     text.selectNodeContents(element);
+     const letters=text.getBoundingClientRect();
+     return {
+      width:bounds.width,height:bounds.height,
+      dx:Math.abs(letters.x+letters.width/2-bounds.x-bounds.width/2),
+      dy:Math.abs(letters.y+letters.height/2-bounds.y-bounds.height/2)
+     };
+    });
+    assert.equal(center.width,size);
+    assert.equal(center.height,size);
+    assert.ok(center.dx<1&&center.dy<1);
+   }
+  }
+ }
  assert.deepEqual(errors,[]);fs.writeFileSync(path.join(out,'medidas.json'),JSON.stringify(metrics,null,2));console.log('OK: causa reproducida, DM centrado, fotos válidas/horizontales/verticales, archivo ausente y 404 con fallback real; encabezado y datos/dimensiones intactos en escritorio/tableta/móvil.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

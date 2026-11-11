@@ -67,35 +67,6 @@ $esc = static function ($valor) {
     );
 };
 
-$iniciales = static function ($nombre) {
-    $partes = preg_split(
-        '/\s+/u',
-        trim((string)$nombre),
-        -1,
-        PREG_SPLIT_NO_EMPTY
-    );
-
-    if (empty($partes)) {
-        return 'U';
-    }
-
-    $resultado = '';
-    foreach (array_slice($partes, 0, 2) as $parte) {
-        $resultado .= function_exists('mb_substr')
-            ? mb_substr($parte, 0, 1, 'UTF-8')
-            : substr($parte, 0, 1);
-    }
-
-    return strtoupper($resultado);
-};
-
-$fotoUrl = static function ($ruta) {
-    $ruta = trim((string)$ruta);
-    return $ruta !== ''
-        ? BASE_URL . ltrim($ruta, '/')
-        : '';
-};
-
 $urlVista = static function ($vistaDestino) use ($desempeno) {
     $params = [
         'controller' => 'desempeno',
@@ -598,7 +569,6 @@ $rankingTitle = $vista === 'propio'
                     <?php foreach ($ranking as $fila): ?>
                         <?php
                         $nombre = (string)($fila['nombre_completo'] ?? '');
-                        $foto = $fotoUrl($fila['foto_perfil'] ?? '');
                         $posicion = (int)($fila['posicion'] ?? 0);
                         ?>
                         <article class="performance-person-row <?= $posicion <= 3 && $esComparativo ? 'is-top' : '' ?> <?= !$esComparativo ? 'is-summary' : '' ?>">
@@ -612,26 +582,16 @@ $rankingTitle = $vista === 'propio'
                             <?php endif; ?>
 
                             <div class="performance-person">
-                                <?php if ($vista === 'propio'): ?>
-                                    <?= renderAvatarUsuario(
-                                        $nombre,
-                                        '',
-                                        $rolActualDesempeno,
-                                        $fila['foto_perfil'] ?? '',
-                                        'md',
-                                        'general',
-                                        'performance-personal-avatar',
-                                        false
-                                    ) ?>
-                                <?php else: ?>
-                                <span class="performance-avatar">
-                                    <?php if ($foto !== ''): ?>
-                                        <img src="<?= $esc($foto) ?>" alt="<?= $esc($nombre) ?>">
-                                    <?php else: ?>
-                                        <?= $esc($iniciales($nombre)) ?>
-                                    <?php endif; ?>
-                                </span>
-                                <?php endif; ?>
+                                <?= renderAvatarUsuario(
+                                    $nombre,
+                                    '',
+                                    '',
+                                    $fila['foto_perfil'] ?? '',
+                                    'md',
+                                    'general',
+                                    $vista === 'propio' ? 'performance-avatar performance-personal-avatar' : 'performance-avatar',
+                                    false
+                                ) ?>
                                 <div>
                                     <strong><?= $esc($nombre) ?></strong>
                                     <span>
@@ -734,7 +694,6 @@ $rankingTitle = $vista === 'propio'
                 <div class="performance-recognition-list">
                     <?php foreach ($reconocimientos as $reconocimiento): ?>
                         <?php
-                        $foto = $fotoUrl($reconocimiento['foto_perfil'] ?? '');
                         $nombre = (string)($reconocimiento['nombre'] ?? '');
                         ?>
                         <article>
@@ -742,13 +701,16 @@ $rankingTitle = $vista === 'propio'
                                 <i class="bi <?= $esc($reconocimiento['icono'] ?? 'bi-award') ?>"></i>
                             </span>
                             <div class="performance-recognition-person">
-                                <span class="performance-avatar is-small">
-                                    <?php if ($foto !== ''): ?>
-                                        <img src="<?= $esc($foto) ?>" alt="<?= $esc($nombre) ?>">
-                                    <?php else: ?>
-                                        <?= $esc($iniciales($nombre)) ?>
-                                    <?php endif; ?>
-                                </span>
+                                <?= renderAvatarUsuario(
+                                    $nombre,
+                                    '',
+                                    '',
+                                    $reconocimiento['foto_perfil'] ?? '',
+                                    'sm',
+                                    'general',
+                                    'performance-avatar is-small',
+                                    false
+                                ) ?>
                                 <div>
                                     <span><?= $esc($reconocimiento['titulo'] ?? '') ?></span>
                                     <strong><?= $esc($nombre) ?></strong>
@@ -891,13 +853,12 @@ $rankingTitle = $vista === 'propio'
     </section>
 </section>
 
-<?php if ($vista === 'propio'): ?>
 <script>
 // El footer registra el fallback compartido al terminar DOMContentLoaded.
 // Reentregar sólo los errores de estas fotos que ocurrieron antes de ese registro.
 document.addEventListener('DOMContentLoaded', function () {
     window.setTimeout(function () {
-        document.querySelectorAll('.performance-module .performance-personal-avatar > .system-avatar-image').forEach(function (imagen) {
+        document.querySelectorAll('.performance-module .performance-avatar > .system-avatar-image').forEach(function (imagen) {
             if (imagen.complete && imagen.naturalWidth === 0) {
                 imagen.dispatchEvent(new Event('error'));
             }
@@ -905,4 +866,3 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 0);
 }, { once: true });
 </script>
-<?php endif; ?>
