@@ -32,6 +32,20 @@
 - Los filtros de propiedad protegen los prospectos del asesor 9 de una consulta propia del asesor 8.
 - Las subetapas y tareas siguen intactas, la vista normal no se altera, no se escribe ni en etapas ni en histórico.
 
+## Conciliación de archivos de Hostinger preparada en esta entrega
+
+El script `tools/ventas_v3_preflight_integridad_archivos.php` revisa **18 archivos concretos** del área comercial y sus dependencias de Telefonía antes de que exista un publicador. Se ejecuta **fuera de public_html**, exclusivamente mediante CLI con `--site RAIZ --check`. No usa credenciales de bases de datos ni accede a servicios externos.
+
+Reconoce cuatro situaciones principales:
+- `BASE_V1`: coincide exactamente con el código operativo conocido de PR #247.
+- `V3_PREPARADO`: coincide exactamente con el contenido ya revisado de PR #255.
+- `AUSENTE_NUEVO`: archivo V3 nuevo todavía no instalado, estado normal mientras se prepara la publicación.
+- `PERSONALIZADO`, `AUSENTE_REQUERIDO` o `BLOQUEADO`: **detener cualquier despliegue** y conciliar con el archivo instalado. Ninguna copia o sobrescritura automática está permitida.
+
+Una personalización en `TelefoniaResultadoVentasService.php` o `EmbudoComercialResultadoBridge.php` bloquea el proceso aunque las pruebas del repositorio sean correctas. Este diagnóstico protege las adaptaciones del servidor Hostinger, no es una autorización para activar un piloto.
+
+El test `tests/ventas_v3_preflight_integridad_archivos_unit.php` se ejecuta sobre un **sitio ficticio temporal** sin BD y comprueba clasificación correcta, rechazo de `--install`, archivos nuevos ausentes y detección de personalizaciones.
+
 ## Pendiente antes de una publicación real
 
 1. Confirmar los tres jobs de PHP/regresión, MySQL y MariaDB en CI para el SHA definitivo.
