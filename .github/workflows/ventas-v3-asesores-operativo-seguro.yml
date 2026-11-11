@@ -1,0 +1,98 @@
+name: Ventas V3 - operativo institucional para asesores
+on:
+  push:
+    branches:
+      - feat/ventas-v3-asesores-operativo-institucional-20261111
+  pull_request:
+    paths:
+      - 'app/controllers/EmbudoComercialController.php'
+      - 'app/services/EmbudoComercialRepository.php'
+      - 'app/services/EmbudoComercialV3MovimientosPermitidos.php'
+      - 'app/views/embudo_comercial/operativo_v3.php'
+      - 'app/views/embudo_comercial/detalle.php'
+      - 'public/css/embudo_v3_operativo.css'
+      - 'public/javascript/embudo_comercial_v3_operativo.js'
+      - 'tests/embudo_comercial_v3_previsualizacion_db.php'
+      - 'tests/ventas_v3_asesor_operativo_render_unit.php'
+      - '.github/workflows/ventas-v3-asesores-operativo-seguro.yml'
+permissions:
+  contents: read
+jobs:
+  lint-regresion-y-render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Sintaxis, instituciones, llamadas y regresión
+        run: |
+          php -l app/controllers/EmbudoComercialController.php
+          php -l app/services/EmbudoComercialRepository.php
+          php -l app/services/EmbudoComercialV3MovimientosPermitidos.php
+          php -l app/views/embudo_comercial/operativo_v3.php
+          php -l app/views/embudo_comercial/detalle.php
+          php -l tests/ventas_v3_asesor_operativo_render_unit.php
+          php -l tests/embudo_comercial_v3_previsualizacion_db.php
+          node --check public/javascript/embudo_comercial_v3_operativo.js
+          php tests/ventas_v3_asesor_operativo_render_unit.php
+          php tests/ventas_v3_tarjetas_render_solo_lectura_unit.php
+          php tests/embudo_comercial_fase1_unit.php
+          php tests/embudo_comercial_fase2_unit.php
+          php tests/embudo_comercial_politica_propuesta_unit.php
+          php tests/embudo_comercial_planificador_v3_unit.php
+  mysql-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Propiedad, 23 tarjetas, PBX, legados, whitelist
+        env:
+          IMPE_V3_PREVIA_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/embudo_comercial_v3_previsualizacion_db.php
+  mariadb-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Propiedad, 23 tarjetas, PBX, legados y paginación
+        env:
+          IMPE_V3_PREVIA_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/embudo_comercial_v3_previsualizacion_db.php
