@@ -133,7 +133,8 @@ final class EmbudoComercialPoliticaPropuesta
         string $etapa, string $resultado, int $intentosConfirmadosHoy,
         array $contexto=[]
     ): array {
-        if (!isset((self::ETAPAS_ACTIVAS + self::BANDEJAS)[$etapa])) {
+        $catalogo=self::ETAPAS_ACTIVAS + self::BANDEJAS;
+        if (!isset($catalogo[$etapa])) {
             // Prohibido reinterpretar automáticamente datos legacy como
             // INTERESADO o PAGO_CONFIRMADO: primero conciliar su significado.
             throw new DomainException('Etapa fuera del nuevo catálogo: requiere conciliación.');
@@ -291,7 +292,8 @@ final class EmbudoComercialPoliticaPropuesta
     public static function evaluarEventoInstitucional(
         string $etapa, string $evento, bool $evidenciaInstitucional
     ): array {
-        if (!isset((self::ETAPAS_ACTIVAS + self::BANDEJAS)[$etapa])) {
+        $catalogo=self::ETAPAS_ACTIVAS + self::BANDEJAS;
+        if (!isset($catalogo[$etapa])) {
             throw new DomainException('Etapa no disponible.');
         }
         if (!in_array($evento, ['TRAMITE_INICIADO', 'PAGO_VERIFICADO', 'INSCRIPCION_CONFIRMADA'], true)) {
