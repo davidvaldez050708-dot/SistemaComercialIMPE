@@ -1,4 +1,6 @@
--- PREPARACIÓN ADITIVA / NO DESPLEGAR AÚN EN HOSTINGER
+-- MIGRACIÓN ADITIVA: instalación exclusivamente con publicador CLI verificado
+-- tools/ventas_instalar_subetapas_hostinger_v1.php
+-- NO ejecutar directamente en phpMyAdmin ni cargar desde aplicaciones web.
 -- No activa el motor de decisiones, no toca Telefonía, no migra los
 -- códigos legacy INTERESADO o PAGO_CONFIRMADO y no altera filas históricas.
 --
@@ -6,8 +8,8 @@
 -- prospecto_embudo_llamadas + telefonia_ventas_llamadas + resultados.
 -- La subetapa y su auditoría sí necesitan persistencia para trámites.
 --
--- Ejecutar únicamente tras respaldo SQL verificado, auditoría de estructura,
--- preflight de compatibilidad real y autorización explícita.
+-- Ejecutar únicamente tras comprobación de estructura, respaldo privado
+-- de metadatos/esquemas originales y autorización explícita.
 CREATE TABLE IF NOT EXISTS prospecto_embudo_subetapas (
   asignacion_id BIGINT UNSIGNED NOT NULL,
   subetapa VARCHAR(40) NOT NULL,
