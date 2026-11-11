@@ -91,6 +91,30 @@
                 return false;
             }
         }
+        function sendDigit(digit) {
+            lastError = '';
+            if (typeof digit !== 'string' || !/^[0-9]$/.test(digit)) return false;
+            if (!installed && !install()) return false;
+            const sender = senderActivo();
+            if (!sender) {
+                lastError = 'La llamada aún no tiene un canal de audio para enviar tonos.';
+                return false;
+            }
+            const queued = sender.toneBuffer || '';
+            // Nunca combinar teclas manuales con comandos de transferencia.
+            if (!/^[0-9]{0,12}$/.test(queued)) {
+                lastError = 'Espera a que termine el envío de tonos.';
+                return false;
+            }
+            try {
+                sender.insertDTMF(queued + digit, 180, 100);
+                return true;
+            } catch (_) {
+                lastError = 'No se pudo enviar el tono.';
+                return false;
+            }
+        }
+
         // Diagnóstico de sólo lectura: no altera pistas, volumen, SDP ni SIP.
         // Ejecutar durante una llamada desde la consola del host autenticado.
         async function diagnoseAudio() {
@@ -141,6 +165,7 @@
         return Object.freeze({
             install,
             send,
+            sendDigit,
             error: () => lastError,
             trackedCount: () => peers.size,
             diagnoseAudio

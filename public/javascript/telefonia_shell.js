@@ -507,7 +507,36 @@
         }
     }, 250);
 
+    const keypad = document.createElement('details');
+    keypad.className = 'impe-ivr-keypad';
+    keypad.hidden = true;
+    const keypadToggle = document.createElement('summary');
+    keypadToggle.className = 'persistent-phone-action';
+    keypadToggle.textContent = 'Teclado de extensión';
+    keypad.appendChild(keypadToggle);
+    const keypadButtons = document.createElement('div');
+    for (const digit of '1234567890') {
+        const key = document.createElement('button');
+        key.type = 'button';
+        key.className = 'persistent-phone-action';
+        key.textContent = digit;
+        key.addEventListener('click', () => {
+            if (!freshState(currentState) || !currentState.active ||
+                currentState.phase !== 'in-progress' || !currentState.callToken) return;
+            sendPhoneCommand('IVR_DIGIT', {digit, callToken:currentState.callToken});
+        });
+        keypadButtons.appendChild(key);
+    }
+    keypad.appendChild(keypadButtons);
+    muteButton?.closest('.persistent-phone-actions')?.after(keypad);
+    let keypadCall = '';
+
     const render = function () {
+        const nextKeypadCall = freshState(currentState) && currentState.active &&
+            currentState.phase === 'in-progress' ? String(currentState.callToken || '') : '';
+        if (nextKeypadCall !== keypadCall) keypad.open = false;
+        keypadCall = nextKeypadCall;
+        keypad.hidden = !keypadCall;
         const state = freshState(currentState) ? currentState : null;
         const incoming = Boolean(state?.active && state.direction === 'incoming');
         const outgoing = Boolean(state?.active && state.direction === 'outgoing');

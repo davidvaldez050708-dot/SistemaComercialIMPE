@@ -47,6 +47,18 @@ assert.equal(bridge.send('#101#'),true,'tras cerrar otra conexión');
 a.iceConnectionState='disconnected';
 assert.equal(bridge.send('#101#'),false,'sin conexión ICE');
 
+assert.equal(bridge.sendDigit('1'),false,'sin conexión no hay teclado');
+a.iceConnectionState='connected';
+assert.equal(bridge.sendDigit('4'),true);
+assert.equal(sent.at(-1).tones,'4');
+a.dtmf.toneBuffer='56';
+assert.equal(bridge.sendDigit('7'),true,'las pulsaciones rápidas conservan el orden');
+assert.equal(sent.at(-1).tones,'567');
+a.dtmf.toneBuffer='#101#';
+assert.equal(bridge.sendDigit('2'),false,'no mezclar tonos con transferencias');
+for (const invalid of ['#','*','12','',5]) assert.equal(bridge.sendDigit(invalid),false);
+assert.equal(sent.at(-1).tones,'567');
+
 const fs = require('node:fs');
 const host = fs.readFileSync('public/javascript/telefonia_host.js','utf8');
 const routing = fs.readFileSync('public/javascript/telefonia_enrutamiento.js','utf8');

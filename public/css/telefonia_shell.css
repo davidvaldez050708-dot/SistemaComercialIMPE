@@ -223,3 +223,16 @@ html, body {
     grid-column: 1; grid-row: 1;
   }
 }
+
+.impe-ivr-keypad { margin-top: 10px; }
+.impe-ivr-keypad[hidden] { display: none; }
+.impe-ivr-keypad summary { width: fit-content; list-style: none; cursor: pointer; }
+.impe-ivr-keypad summary::-webkit-details-marker { display: none; }
+.impe-ivr-keypad > div {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 6px;
+    max-width: 240px;
+    margin-top: 8px;
+}
+.impe-ivr-keypad button:last-child { grid-column: 2; }
