@@ -22,7 +22,8 @@ final class EmbudoComercialIntentosPbxRepository
      * NO equivalen por sí solos a autorización del controlador.
      * Una eventual integración debe exigir sesión del asesor y permisos.
      */
-    public function resumenJornada(int $usuarioId, int $asignacionId, string $diaLocal): array
+    public function resumenJornada(int $usuarioId, int $asignacionId, string $diaLocal,
+        ?string $fechaLimiteLocal=null, ?int $llamadaIdLimite=null): array
     {
         if ($usuarioId<1 || $asignacionId<1) {
             throw new InvalidArgumentException('Usuario o asignación no válida.');
@@ -34,6 +35,17 @@ final class EmbudoComercialIntentosPbxRepository
         }
         $desde=$inicio->format('Y-m-d H:i:s');
         $hasta=$inicio->modify('+1 day')->format('Y-m-d H:i:s');
+        $restringir=$fechaLimiteLocal!==null || $llamadaIdLimite!==null;
+        if ($restringir && (
+            $fechaLimiteLocal===null || $llamadaIdLimite===null ||
+            $llamadaIdLimite<1 ||
+            !preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/D',
+                $fechaLimiteLocal) ||
+            substr($fechaLimiteLocal,0,10)!==$diaLocal ||
+            $fechaLimiteLocal<$desde || $fechaLimiteLocal>=$hasta
+        )) {
+            throw new InvalidArgumentException('Límite PBX de la jornada inválido.');
+        }
 
         // SQL estático y parametrizado: intersección de tres registros
         // independientes, identidad PBX exacta y asignación vigente del asesor.
@@ -57,10 +69,20 @@ final class EmbudoComercialIntentosPbxRepository
                   ON d.resultado_id=r.id
                 WHERE l.asignacion_id=? AND l.usuario_id=?
                   AND c.direccion='Saliente'
-                  AND c.fecha>=? AND c.fecha<?
-                ORDER BY c.fecha ASC,l.id ASC";
+                  AND c.fecha>=? AND c.fecha<?";
+        if ($restringir) {
+            // Para reconstruir la primera/segunda/tercera llamada de una
+            // jornada con resultados ya guardados posteriormente.
+            $sql.=" AND (c.fecha<? OR (c.fecha=? AND c.id<=?))";
+        }
+        $sql.=" ORDER BY c.fecha ASC,c.id ASC,l.id ASC";
         $stmt=$this->db->prepare($sql);
-        $stmt->bind_param('iiss',$asignacionId,$usuarioId,$desde,$hasta);
+        if ($restringir) {
+            $stmt->bind_param('iissssi',$asignacionId,$usuarioId,$desde,
+                $hasta,$fechaLimiteLocal,$fechaLimiteLocal,$llamadaIdLimite);
+        } else {
+            $stmt->bind_param('iiss',$asignacionId,$usuarioId,$desde,$hasta);
+        }
         try {
             $stmt->execute();
             $registros=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);
