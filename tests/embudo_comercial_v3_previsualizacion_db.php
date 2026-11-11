@@ -339,7 +339,7 @@ try{
     okV3p(EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
         $db,8,13),'conversación telefónica real en asignación propia');
     okV3p(!EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
-        $db,8,11),'sin conversación PBX explícita de asesor y asignación');
+        $db,8,12),'sin conversación PBX explícita de asesor y asignación');
     okV3p(!EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
         $db,8,14),'no atribuye conversación de asesor ajeno');
     $_SESSION['rol_id']=1;
