@@ -43,16 +43,9 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
     EmbudoComercialAcceso::puede('descartados');
 ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/embudo_comercial.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial.css'),0,16) ?>">
-<div class="impe-embudo">
-    <header class="impe-embudo-hero">
-        <div>
-            <span class="impe-embudo-kicker"><i class="bi bi-diagram-3" aria-hidden="true"></i> VENTAS · PROSPECTOS ASIGNADOS</span>
-            <h2><?= $esc($vista==='embudo'?'Gestión comercial':($vista==='recuperacion'?'Recuperación de prospectos':'Prospectos descartados')) ?></h2>
-            <p><?= $supervisor?'Supervisión de asignaciones comerciales vigentes. Consulta de solo lectura.':'Tus prospectos asignados, organizados para su atención y seguimiento.' ?></p>
-        </div>
-        <span class="impe-embudo-hero-icon"><i class="bi bi-kanban" aria-hidden="true"></i></span>
-    </header>
-
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/embudo_comercial_compacto_v1.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial_compacto_v1.css'),0,16) ?>">
+<div class="impe-embudo impe-embudo--compact">
+    <?php // El título y subtítulo ya se muestran en el encabezado de la página. ?>
     <nav class="impe-embudo-tabs" aria-label="Vistas comerciales">
         <?php foreach ([
             'embudo'=>['bi-kanban','Embudo de ventas'],
@@ -115,6 +108,9 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
     <div class="impe-embudo-board-info">
         <span><i class="bi bi-people" aria-hidden="true"></i> <?= number_format((int)$tablero['total']) ?> asignaciones<?= $supervisor?' bajo supervisión':' propias' ?></span>
         <small>20 tarjetas por columna · <?= !$puedeMover?'Vista de consulta':($vista==='embudo'?'Arrastra una ficha o usa las acciones de la tarjeta':'Usa las acciones de cada prospecto para actualizar su seguimiento') ?></small>
+        <?php if ($vista==='embudo'): ?>
+        <small class="impe-embudo-board-hint-mobile"><i class="bi bi-arrows" aria-hidden="true"></i> Desliza horizontalmente para ver todas las etapas</small>
+        <?php endif; ?>
     </div>
 
     <div class="impe-embudo-board <?= $vista==='embudo'?'':'impe-embudo-board--single' ?>" role="region" tabindex="0"

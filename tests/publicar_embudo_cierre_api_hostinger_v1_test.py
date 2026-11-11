@@ -66,7 +66,7 @@ for name, (_, after) in pub.FILES.items():
     # siguieron evolucionando y su prueba debe fijar el commit aprobado,
     # no utilizar por error la próxima versión de refresco visual.
     raw = (git('37e4b7031208790b5111dfc4124db445d1f44cfe',name)
-           if name in (js_path,move_path) else (ROOT / name).read_bytes())
+           if name in (js_path,move_path,board_path) else (ROOT / name).read_bytes())
     need(pub.blob(raw) == after, 'Fuente nueva inesperada: ' + name)
     sources[name] = raw
 need(b'if(nextDate)nextDate.required=seguimiento;' in sources[js_path],
