@@ -119,7 +119,7 @@ isV3(strpos($js,'action=moverEtapaV3')!==false &&
 isV3(strpos($js,"fetch('https://")===false,
     'no hace llamadas a otros dominios');
 $controller=file_get_contents(__DIR__.'/../app/controllers/EmbudoComercialController.php');
-isV3(strpos($controller,"($_GET['operativo_v3']??null)==='1'")!==false,
+isV3(strpos($controller,"($_GET[".chr(39)."operativo_v3".chr(39)."]??null)===".chr(39)."1".chr(39))!==false,
     'modo requiere parámetro explícito');
 isV3(strpos($controller,"$"."operativoV3?'operativo_v3':'index'")!==false,
     'ruta normal conserva tablero anterior');
