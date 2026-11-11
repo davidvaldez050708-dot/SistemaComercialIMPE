@@ -4,3 +4,5 @@
 /tools/teclado_157_ui_release.json text eol=lf
 /tools/publicar_teclado_102.py text eol=lf
 /tools/teclado_102_release.json text eol=lf
+/tools/publicar_teclado_102_conexion.py text eol=lf
+/tools/teclado_102_conexion_release.json text eol=lf

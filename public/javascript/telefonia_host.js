@@ -1712,6 +1712,8 @@
         }
     };
 
+    let seguimientoPilot = null;
+
     const applyCallState = function (call) {
         if (!call || !state.active) {
             return;
@@ -1721,7 +1723,10 @@
         if (analystOutgoing && (!reference || completedOutgoingRefs.has(reference) ||
             (state.pbxCallId && String(state.pbxCallId) !== reference))) return;
         lastCall = call;
-        const status = String(call.status || 'ringing');
+        const providerStatus = String(call.status || 'ringing');
+        const status = seguimientoPilot?.token === state.callToken &&
+            seguimientoPilot.connected && providerStatus === 'ringing'
+            ? 'in-progress' : providerStatus;
         const providerDuration =
             Math.max(0, Number(call.duration || 0));
 
@@ -1891,6 +1896,10 @@
                 message: ''
             });
 
+            seguimientoPilot = extension === '102' &&
+                String(payload.context?.type || '').toUpperCase() === 'VINCULACION'
+                ? {token:callToken, anterior:window.zdrmWebPhone?.webCallSession, session:null, connected:false}
+                : null;
             const result = window.zdrmWebPhone.regToCall(
                 normalizarDestinoWebrtc(destination)
             );
@@ -1921,16 +1930,26 @@
         if(!state.active || state.direction!=='outgoing')return;
         const session=window.zdrmWebPhone?.webCallSession;
         if(!session || session.direction!=='outgoing' || typeof session.on!=='function')return;
+        const pilot = seguimientoPilot;
+        if (pilot?.token === state.callToken && session !== pilot.anterior &&
+            !session.isEnded?.() && ['dialing','ringing'].includes(state.phase)) {
+            if (!pilot.session) pilot.session = session;
+            if (pilot.session === session && session.isEstablished?.() === true) {
+                pilot.connected = true;
+                if (answeredAtMs <= 0) answeredAtMs = Date.now();
+                publish({phase:'in-progress',status:'in-progress',answeredAtMs,message:''});
+            }
+        }
         const previous=observedOutgoingSessions.get(session);
         if(previous){
             // Si el SDK perdió el callback END, detectar también isEnded().
             // La sesión debió observarse VIVA con el token de esta llamada:
             // no atribuir al nuevo marcado un objeto SDK anterior ya cerrado.
-            if(previous.token===state.callToken && session.isEnded?.()===True)
+            if(previous.token===state.callToken && session.isEnded?.()===true)
                 previous.ended();
             return;
         }
-        if(session.isEnded?.()===True)return; // SDK viejo: no vincular al siguiente intento.
+        if(session.isEnded?.()===true)return; // SDK viejo: no vincular al siguiente intento.
         const token=state.callToken;
         session.on('progress',function(event){
             const code=Number(event?.response?.status_code||0);
