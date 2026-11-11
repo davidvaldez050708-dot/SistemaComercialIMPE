@@ -59,6 +59,31 @@ try{
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             asignacion_id BIGINT UNSIGNED NOT NULL,
             etapa_en_evento VARCHAR(40) NOT NULL
+        ) ENGINE=InnoDB',
+        'CREATE TABLE prospecto_embudo_llamadas(
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            asignacion_id BIGINT UNSIGNED NOT NULL,usuario_id INT NOT NULL,
+            extension VARCHAR(20) NOT NULL,pbx_call_id VARCHAR(100) NOT NULL,
+            resultado VARCHAR(36) NOT NULL,creado_at DATETIME NOT NULL,
+            UNIQUE KEY uq_pbx_link(extension,pbx_call_id)
+        ) ENGINE=InnoDB',
+        'CREATE TABLE telefonia_ventas_llamadas(
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT NOT NULL,extension VARCHAR(20) NOT NULL,
+            pbx_call_id VARCHAR(100) NOT NULL,fecha DATETIME NOT NULL,
+            direccion VARCHAR(12) NOT NULL,
+            UNIQUE KEY uq_tramo(extension,pbx_call_id)
+        ) ENGINE=InnoDB',
+        'CREATE TABLE telefonia_ventas_resultados(
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT NOT NULL,extension VARCHAR(20) NOT NULL,
+            pbx_call_id VARCHAR(100) NOT NULL,resultado VARCHAR(36) NOT NULL,
+            UNIQUE KEY uq_definitivo(extension,pbx_call_id)
+        ) ENGINE=InnoDB',
+        'CREATE TABLE telefonia_ventas_resultado_detalles(
+            resultado_id BIGINT UNSIGNED PRIMARY KEY,
+            catalogo_version VARCHAR(10) NOT NULL,
+            contacto_antes_corte VARCHAR(2) NOT NULL DEFAULT \'\'
         ) ENGINE=InnoDB'
     ] as $sql)$db->query($sql);
     $etapas=[
@@ -83,6 +108,42 @@ try{
         VALUES(12,'CONTACTO_ACORDADO','2026-11-11 12:00:00',8,1)");
     $db->query("INSERT INTO prospecto_intereses(prospecto_id,programa_codigo,nombre_original)
         VALUES(14,'286','Programa Prueba')");
+    // Resultados ficticios, siempre ligados a una asignación concreta,
+    // fecha ORIGINAL de la llamada en America/Mexico_City.
+    $hoy=(new DateTimeImmutable('today',
+        new DateTimeZone('America/Mexico_City')))->format('Y-m-d');
+    $ayer=(new DateTimeImmutable('yesterday',
+        new DateTimeZone('America/Mexico_City')))->format('Y-m-d');
+    $add=function(int $asig,int $user,string $pbx,string $codigo,
+        string $dia,string $hora='10:00:00',string $dir='Saliente',
+        string $version='',string $corte='',bool $vinculo=true)use($db){
+        $extension=$user===9?'151':'150';
+        $fecha=$dia.' '.$hora;
+        $s=$db->prepare('INSERT INTO telefonia_ventas_llamadas
+            (usuario_id,extension,pbx_call_id,fecha,direccion)
+            VALUES(?,?,?,?,?)');
+        $s->bind_param('issss',$user,$extension,$pbx,$fecha,$dir);
+        $s->execute();$s->close();
+        $s=$db->prepare('INSERT INTO telefonia_ventas_resultados
+            (usuario_id,extension,pbx_call_id,resultado) VALUES(?,?,?,?)');
+        $s->bind_param('isss',$user,$extension,$pbx,$codigo);
+        $s->execute();$resultadoId=(int)$db->insert_id;$s->close();
+        if($version!==''){
+            $s=$db->prepare('INSERT INTO telefonia_ventas_resultado_detalles
+                (resultado_id,catalogo_version,contacto_antes_corte)
+                VALUES(?,?,?)');
+            $s->bind_param('iss',$resultadoId,$version,$corte);
+            $s->execute();$s->close();
+        }
+        if($vinculo){
+            $save='2026-11-12 15:00:00';
+            $s=$db->prepare('INSERT INTO prospecto_embudo_llamadas
+                (asignacion_id,usuario_id,extension,pbx_call_id,resultado,creado_at)
+                VALUES(?,?,?,?,?,?)');
+            $s->bind_param('iissss',$asig,$user,$extension,$pbx,$codigo,$save);
+            $s->execute();$s->close();
+        }
+    };
     $r=new EmbudoComercialRepository($db);
     $f=EmbudoComercialRepository::filtros([],false);
     $own=$r->listadoV3Preparacion(8,false,$f);
@@ -111,6 +172,57 @@ try{
         'sólo cinco columnas nuevas más panel de clasificación');
     okV3p($own['modo']==='PREVISUALIZACION_SIN_ESCRITURAS',
         'no aplicar movimientos');
+    okV3p($own['dia_indicadores']===$hoy,'indicadores usan día de México');
+    okV3p($own['columnas']['NUEVO']['registros'][0]['intentos_hoy']['intentos']===0,
+        'sin PBX hay 0 intentos verificados hoy, no tres por histórico');
+    // Un prospecto en Nuevos pasa de 0 a 1/3, 2/3 y 3/3 sólo en la
+    // vista previa: NO se mueve a Recuperación automáticamente.
+    $add(13,8,'out_13111111','BUZON_VOZ',$hoy,'09:00:00');
+    $uno=$r->listadoV3Preparacion(8,false,$f);
+    okV3p($uno['columnas']['NUEVO']['registros'][0]['intentos_hoy']['intentos']===1,
+        'primera llamada acreditada 1/3');
+    $add(13,8,'out_13222222','SIN_RESPUESTA',$hoy,'12:00:00');
+    $dos=$r->listadoV3Preparacion(8,false,$f);
+    okV3p($dos['columnas']['NUEVO']['registros'][0]['intentos_hoy']['intentos']===2,
+        'dos PBX distintos acreditan 2/3');
+    $add(13,8,'out_13333333','COMUNICACION_INTERRUMPIDA',
+        $hoy,'15:00:00','Saliente','4','NO');
+    $tres=$r->listadoV3Preparacion(8,false,$f);
+    okV3p($tres['columnas']['NUEVO']['registros'][0]['intentos_hoy']['intentos']===3,
+        'comunicación interrumpida sin persona cuenta en 3/3');
+    okV3p($tres['columnas']['NUEVO']['total']===1 &&
+        (int)$db->query("SELECT COUNT(*) n FROM prospecto_embudo_etapas
+            WHERE asignacion_id=13 AND etapa='NUEVO'")->fetch_assoc()['n']===1,
+        'vista previa de 3/3 nunca mueve a Recuperación');
+    // Entrantes, jornada distinta, resultados con contacto y PBX sin
+    // vínculo comercial no deben inflar la barra de progreso.
+    $add(13,8,'in_13444444','SIN_RESPUESTA',$hoy,'17:00:00','Entrante');
+    $add(13,8,'out_13555555','SIN_RESPUESTA',$ayer,'10:00:00');
+    $add(13,8,'out_13666666','CONVERSACION_PERSONA',$hoy,'18:00:00');
+    $add(13,8,'out_13777777','SIN_RESPUESTA',$hoy,
+        '20:00:00','Saliente','','',false);
+    okV3p($r->listadoV3Preparacion(8,false,$f)['columnas']['NUEVO']
+        ['registros'][0]['intentos_hoy']['intentos']===3,
+        'contacto humano, entrante, ayer y sin vínculo excluidos');
+
+    // Una asignación legacy con TRES llamadas vinculadas incluye sólo
+    // dos intentos sin respuesta, por lo que no puede mostrar 3/3.
+    $add(11,8,'out_11111111','BUZON_VOZ',$hoy,'09:00:00');
+    $add(11,8,'out_11222222','PROSPECTO_POTENCIAL',$hoy,'10:00:00');
+    $add(11,8,'out_11333333','SIN_RESPUESTA',$hoy,'11:00:00');
+    $legacy=$r->listadoV3Preparacion(8,false,$f);
+    okV3p($legacy['columnas']['REVISION_LEGACY']['registros'][0]
+        ['intentos_hoy']['intentos']===2,
+        'tres llamadas históricas no equivalen a 3 intentos sin contacto');
+    okV3p($legacy['columnas']['REVISION_LEGACY']['registros'][0]
+        ['etapa_original']==='INTERESADO','legacy visible sin reclasificar');
+    // De otro asesor, los PBX sólo se muestran a supervisor o al dueño.
+    $add(14,9,'out_14111111','BUZON_VOZ',$hoy,'12:30:00');
+    $ownProtected=$r->listadoV3Preparacion(8,false,$f);
+    okV3p($ownProtected['total']===6 &&
+        $ownProtected['columnas']['POTENCIAL']['total']===0,
+        'asesor 8 no puede consultar asesor 9');
+
     // Supervisor ve todos los propios y no propios; asesor nunca ve ajenos.
     $all=$r->listadoV3Preparacion(8,true,
         EmbudoComercialRepository::filtros([],true));
@@ -119,6 +231,9 @@ try{
         $all['columnas']['POTENCIAL']['total']===1 &&
         $all['columnas']['PROCESO_INSCRIPCION']['total']===1,
         'supervisor ve 5 etapas, históricos aislados y todos los asesores');
+    okV3p($all['columnas']['POTENCIAL']['registros'][0]['intentos_hoy']
+        ['intentos']===1,
+        'supervisor ve 1 PBX sin respuesta de Potencial ajeno sin cambiar etapa');
     $only9=$r->listadoV3Preparacion(8,true,
         EmbudoComercialRepository::filtros(['asesor'=>'9'],true));
     okV3p($only9['total']===3 &&
