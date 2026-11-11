@@ -16,7 +16,7 @@
             if (typeof NativePeer !== 'function' ||
                 typeof view?.Proxy !== 'function' ||
                 typeof view?.Reflect?.construct !== 'function') {
-                lastError = 'Este navegador no permite observar el canal WebRTC.';
+                lastError = 'Este navegador no permite utilizar el teclado del teléfono.';
                 return false;
             }
             // Proxy intercepta SOLO la construcción de conexiones de ESTE
@@ -44,7 +44,7 @@
                 installed = true;
                 return true;
             } catch (_) {
-                lastError = 'No se pudo preparar DTMF WebRTC.';
+                lastError = 'No se pudo preparar el teclado del teléfono.';
                 return false;
             }
         }
@@ -78,7 +78,7 @@
             if (!installed && !install()) return false;
             const sender = senderActivo();
             if (!sender) {
-                lastError = 'No hay un canal de audio WebRTC único con DTMF habilitado. Verifica la conexión SIP de esta extensión.';
+                lastError = 'El teclado no está disponible para esta llamada. Comprueba que el teléfono esté conectado.';
                 return false;
             }
             try {
