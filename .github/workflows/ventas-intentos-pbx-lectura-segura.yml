@@ -1,0 +1,58 @@
+name: Ventas - intentos PBX en lectura segura
+on:
+  push:
+    branches:
+      - feat/ventas-intentos-pbx-lectura-segura-20261111
+  pull_request:
+    paths:
+      - 'app/services/EmbudoComercialIntentosPbxRepository.php'
+      - 'database/migrations/2026_11_11_ventas_subetapas_comerciales_propuesta.sql'
+      - 'tests/embudo_intentos_pbx_db.php'
+      - 'docs/ventas_intentos_pbx_lectura_segura_20261111.md'
+      - '.github/workflows/ventas-intentos-pbx-lectura-segura.yml'
+permissions:
+  contents: read
+jobs:
+  lint-y-regresiones:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: PHP lint, reglas y regresión previa
+        run: |
+          php -l app/services/EmbudoComercialIntentosPbxRepository.php
+          php -l tests/embudo_intentos_pbx_db.php
+          php -l app/services/EmbudoComercialPoliticaPropuesta.php
+          php tests/embudo_comercial_politica_propuesta_unit.php
+          php tests/embudo_comercial_fase2_unit.php
+          php tests/embudo_comercial_fase1_unit.php
+  mysql-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: Leer PBX real y ensayar SQL aditivo sólo en base desechable
+        env:
+          IMPE_EMBUDO_PBX_TEST_DB: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/embudo_intentos_pbx_db.php
