@@ -2023,7 +2023,18 @@
             }
             keypadPanel.appendChild(keypadButtons);
             keypad.appendChild(keypadPanel);
+            keypad.addEventListener('toggle', () => {
+                if (keypad.open) keypadToggle.focus();
+            });
             keypad.addEventListener('keydown', event => {
+                if (keypad.open && !event.repeat && !event.isComposing &&
+                    !event.ctrlKey && !event.altKey && !event.metaKey && /^[0-9]$/.test(event.key)) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const index = (Number(event.key) + 9) % 10;
+                    keypadButtons.children[index].click();
+                    return;
+                }
                 if (event.key !== 'Escape' || !keypad.open) return;
                 event.stopPropagation();
                 keypad.open = false;
