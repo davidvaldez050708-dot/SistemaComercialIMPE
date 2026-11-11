@@ -289,6 +289,29 @@ final class EmbudoComercialV3PilotoControlado
                 $s->bind_param('isi',$asignacionId,$fecha,$usuarioId);
                 $s->execute();$s->close();
             }
+            if ($propuesta==='DESCARTADO') {
+                // Un rechazo explícito no debe mantener tareas de contacto
+                // ni una campaña pendiente sobre la misma asignación.
+                $s=$this->db->prepare(
+                    "UPDATE prospecto_embudo_agenda SET
+                        proxima_accion_at=NULL,revision_fecha=NULL,
+                        actualizado_at=UTC_TIMESTAMP(),actualizado_por=?
+                     WHERE asignacion_id=?"
+                );
+                $s->bind_param('ii',$usuarioId,$asignacionId);
+                $s->execute();$s->close();
+            } elseif ($etapaBloqueada==='RECUPERACION' &&
+                $propuesta==='CONTACTADO') {
+                // Un prospecto efectivamente contactado deja de necesitar
+                // la revisión automática de Recuperación, sin borrar citas.
+                $s=$this->db->prepare(
+                    "UPDATE prospecto_embudo_agenda SET
+                        revision_fecha=NULL,actualizado_at=UTC_TIMESTAMP(),
+                        actualizado_por=? WHERE asignacion_id=?"
+                );
+                $s->bind_param('ii',$usuarioId,$asignacionId);
+                $s->execute();$s->close();
+            }
             $razon=mb_substr(
                 'Decisión comercial V3 PBX: '.$resultado.' · '.$referenciaPbx,
                 0,190
