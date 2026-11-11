@@ -1,0 +1,36 @@
+name: Gestión comercial - diseño compacto seguro
+on:
+  push:
+    branches:
+      - fix/embudo-vista-compacta-5-columnas-20261110
+  pull_request:
+    paths:
+      - 'app/views/embudo_comercial/index.php'
+      - 'public/css/embudo_comercial_compacto_v1.css'
+      - 'tools/publicar_embudo_diseno_compacto_hostinger_v1.py'
+      - 'tests/publicar_embudo_diseno_compacto_hostinger_v1_test.py'
+      - '.github/workflows/embudo-diseno-compacto.yml'
+permissions:
+  contents: read
+jobs:
+  ui-y-publicacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Sintaxis PHP y estructura funcional
+        run: |
+          php -l app/views/embudo_comercial/index.php
+          php -l app/controllers/EmbudoComercialController.php
+          php tests/embudo_comercial_fase1_unit.php
+          php tests/embudo_comercial_fase2_unit.php
+      - name: Verificar CSS, datos del tablero y publicador irreversible protegido
+        run: |
+          python3 -m py_compile tools/publicar_embudo_diseno_compacto_hostinger_v1.py
+          python3 tests/publicar_embudo_diseno_compacto_hostinger_v1_test.py
+          node --check public/javascript/embudo_comercial_movimientos.js
