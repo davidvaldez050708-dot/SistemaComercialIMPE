@@ -13,7 +13,10 @@ on:
       - 'tests/ventas_v3_tarjetas_render_solo_lectura_unit.php'
       - 'tests/ventas_v3_preflight_integridad_archivos_unit.php'
       - 'tools/ventas_v3_preflight_integridad_archivos.php'
+      - 'tools/publicar_ventas_v3_previsualizacion_hostinger.py'
+      - 'tests/ventas_v3_publicador_preview_unit.py'
       - 'docs/ventas_v3_tarjetas_pbxs_readonly_20261111.md'
+      - 'docs/ventas_v3_publicacion_preview_20261111.md'
       - '.github/workflows/ventas-v3-indicadores-tarjetas-readonly.yml'
 permissions:
   contents: read
@@ -22,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -37,6 +42,9 @@ jobs:
           php -l tests/ventas_v3_preflight_integridad_archivos_unit.php
           php tests/ventas_v3_tarjetas_render_solo_lectura_unit.php
           php tests/ventas_v3_preflight_integridad_archivos_unit.php
+          python3 -m py_compile tools/publicar_ventas_v3_previsualizacion_hostinger.py
+          python3 -m py_compile tests/ventas_v3_publicador_preview_unit.py
+          python3 tests/ventas_v3_publicador_preview_unit.py
           php tests/embudo_comercial_fase1_unit.php
           php tests/embudo_comercial_fase2_unit.php
           php tests/embudo_comercial_politica_propuesta_unit.php
