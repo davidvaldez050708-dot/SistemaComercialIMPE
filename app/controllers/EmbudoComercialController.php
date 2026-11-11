@@ -149,6 +149,92 @@ final class EmbudoComercialController
             'vista','usuarioId','supervisor','prospecto','error','operativoV3'
         ));
     }
+    /**
+     * POST exclusivo de la V3 operativa para asesores.
+     * Reutiliza el movimiento V1 verificado y su transacción/auditoría,
+     * con lista blanca ADICIONAL que impide mover sin evidencia a Potencial,
+     * Recuperación o Proceso Inscripción mientras esa política no se active.
+     *
+     * No activa el piloto PBX, ni altera la telefonía ni otros endpoints.
+     */
+    public function moverEtapaV3(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store, max-age=0');
+        $reply=static function(bool $ok,string $message,int $status,array $extra=[]): void {
+            http_response_code($status);
+            echo json_encode(array_merge(['ok'=>$ok,'mensaje'=>$message],$extra),
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        };
+        if(($_SERVER['REQUEST_METHOD']??'')!=='POST'){
+            $reply(false,'Método no permitido.',405);
+            return;
+        }
+        $uid=(int)($_SESSION['usuario_id']??0);
+        if($uid<1 || (int)($_SESSION['rol_id']??0)!==3 ||
+            !tienePermiso('ventas.embudo.ver') ||
+            !tienePermiso('ventas.embudo.mover')) {
+            $reply(false,'Esta operación no está autorizada.',403);
+            return;
+        }
+        // El dashboard_head ya entrega el token de sesión a los formularios
+        // del CRM. Se comprueba aquí de forma efectiva (no solo en JS).
+        $token=(string)($_SESSION['csrf_token']??'');
+        $received=(string)($_SERVER['HTTP_X_CSRF_TOKEN']??'');
+        if($token==='' || $received==='' ||
+            !hash_equals($token,$received)){
+            $reply(false,'Sesión de seguridad vencida. Recarga la página.',403);
+            return;
+        }
+        foreach(['asignacion_id','etapa_anterior','etapa_nueva',
+                 'motivo','proxima_accion'] as $key) {
+            if(isset($_POST[$key]) && !is_string($_POST[$key])) {
+                $reply(false,'Datos de movimiento inválidos.',422);
+                return;
+            }
+        }
+        $asig=filter_var($_POST['asignacion_id']??null,
+            FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if(!$asig){
+            $reply(false,'La asignación no es válida.',422);
+            return;
+        }
+        $anterior=(string)($_POST['etapa_anterior']??'');
+        $nueva=(string)($_POST['etapa_nueva']??'');
+        $motivo=trim((string)($_POST['motivo']??''));
+        $fecha=(string)($_POST['proxima_accion']??'');
+        if(mb_strlen($motivo)>190 || mb_strlen($motivo)<8) {
+            $reply(false,'Describe brevemente la gestión (8 a 190 caracteres).',422);
+            return;
+        }
+        try{
+            require_once __DIR__.'/../services/EmbudoComercialV3MovimientosPermitidos.php';
+            EmbudoComercialV3MovimientosPermitidos::validar($anterior,$nueva);
+            $db=(new Database())->connect(false);
+            if(EmbudoComercialV3MovimientosPermitidos::requiereConversacion(
+                $anterior,$nueva
+            ) && !EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
+                $db,$uid,(int)$asig
+            )) {
+                throw new DomainException(
+                    'El primer contacto requiere conversación humana '.
+                    'acreditada en el resultado PBX de esta asignación.'
+                );
+            }
+            require_once __DIR__.'/../services/EmbudoComercialMovimientoService.php';
+            $mov=(new EmbudoComercialMovimientoService($db))->moverManual(
+                $uid,(int)$asig,$anterior,$nueva,$motivo,$fecha
+            );
+            $reply(true,'Movimiento registrado y auditado.',200,['movimiento'=>$mov]);
+        }catch(DomainException $e){
+            $reply(false,$e->getMessage(),409);
+        }catch(Throwable $e){
+            error_log('[ventas_v3_movimiento] '.get_class($e).
+                ' codigo='.(int)$e->getCode());
+            $reply(false,'No se pudo confirmar el movimiento. No se guardó.',503);
+        }
+    }
+
     /** POST exclusivo de Asesor: cambio de etapa con control de concurrencia. */
     public function moverEtapa(): void
     {
