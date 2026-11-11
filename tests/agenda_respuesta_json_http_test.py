@@ -38,7 +38,7 @@ class ReprogramacionReunionService {
     (services/'SeguimientoExpedienteService.php').write_text('<?php class SeguimientoExpedienteService {public function __construct(){throw new RuntimeException("Expediente no requerido");}}',encoding='utf8')
     (area/'router.php').write_text('''<?php
 ini_set('display_errors','0');
-$_SESSION=['usuario_id'=>7,'rol_id'=>6,'permisos'=>(($_GET['scenario']??'')==='denied'?['reuniones.ver']:['reuniones.ver','reuniones.gestionar'])];
+$_SESSION=['usuario_id'=>7,'rol_id'=>6,'permisos'=>(($_GET['scenario']??'')==='denied'?['agenda.ver','reuniones.ver']:['agenda.ver','reuniones.ver','reuniones.gestionar'])];
 require __DIR__.'/app/controllers/AgendaReunionController.php';
 $c=new AgendaReunionController();$action=$_GET['action']??'confirmar';$c->$action();
 ''',encoding='utf8')

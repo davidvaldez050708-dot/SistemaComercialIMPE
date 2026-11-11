@@ -37,7 +37,7 @@ date_default_timezone_set('America/Mexico_City');mysqli_report(MYSQLI_REPORT_ERR
 class Database {public function connect($persistent=true){$d=new mysqli('127.0.0.1','root','','agenda_confirm',(int)getenv('AGENDA_TEST_PORT'));$d->set_charset('utf8mb4');$d->query("SET time_zone='+00:00'");return $d;}}
 ''',encoding='utf8')
     (site/'router.php').write_text('''<?php
-ini_set('display_errors','0');$_SESSION=['usuario_id'=>7,'rol_id'=>6,'permisos'=>['reuniones.ver','reuniones.gestionar']];
+ini_set('display_errors','0');$_SESSION=['usuario_id'=>7,'rol_id'=>6,'permisos'=>['agenda.ver','reuniones.ver','reuniones.gestionar']];
 require __DIR__.'/app/controllers/AgendaReunionController.php';$c=new AgendaReunionController();$action=$_GET['action']??'confirmar';$c->$action();
 ''',encoding='utf8')
     (site/'init.php').write_text('''<?php

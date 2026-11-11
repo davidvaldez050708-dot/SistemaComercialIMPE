@@ -12,6 +12,7 @@
         const editor = root.querySelector('[data-agenda-comment-editor]');
         const removeDialog = root.querySelector('[data-agenda-comment-delete]');
         const form = editor.querySelector('form');
+        const newComment = panel.querySelector('[data-agenda-comments-new]');
         const text = form.elements.comentario;
         const hour = form.elements.hora;
         const noHour = form.elements.sin_hora;
@@ -173,7 +174,7 @@
             });
             panel.querySelector('[data-agenda-comments-meetings]').hidden = value !== 'reuniones';
             panel.querySelector('[data-agenda-comments-list]').hidden = value !== 'comentarios';
-            panel.querySelector('[data-agenda-comments-new]').hidden = value !== 'comentarios';
+            newComment.hidden = newComment.disabled || value !== 'comentarios';
         }
         // El servidor decide el vencimiento en la misma zona horaria de la agenda.
         function isDue(c) { return Boolean(c.recordatorio_pendiente) && !c.atendido; }
@@ -325,7 +326,7 @@
             text.setAttribute('aria-invalid',String(length>250));
         }
         function openEditor(date, origin) {
-            if (!available || editor.open) return;
+            if (newComment.disabled || !available || editor.open) return;
             tab='comentarios';openDay(date);
             form.reset();counter();error.hidden=true;updateOptions();
             editorOrigin=origin;

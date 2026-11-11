@@ -3,7 +3,7 @@
 require_once __DIR__.'/../app/services/AgendaComentarioService.php';
 require_once __DIR__.'/fixtures/agenda_comentarios_db.php';
 function vistoCheck($ok,$message){if(!$ok)throw new RuntimeException($message);}
-function vistoSession($id,$agenda=true){$_SESSION=['usuario_id'=>$id,'rol_id'=>4,'permisos'=>$agenda?['reuniones.ver']:[]];}
+function vistoSession($id,$agenda=true){$_SESSION=['usuario_id'=>$id,'rol_id'=>4,'permisos'=>$agenda?['reuniones.ver','agenda.ver','agenda.comentarios.ver','agenda.comentarios.crear','agenda.comentarios.eliminar','agenda.comentarios.recibir_dirigidos']:[]];}
 function vistoItems($s,$id){return array_values(array_filter($s->notificaciones($id)['recordatorios'],fn($r)=>isset($r['agenda_comentario_visto_por'])));}
 $db=new ComentarioDbPrueba();
 $db->pdo->exec('CREATE TABLE agenda_comentarios_vistos_avisos(comentario_id INTEGER,lector_id INTEGER,leido_at TEXT,PRIMARY KEY(comentario_id,lector_id))');

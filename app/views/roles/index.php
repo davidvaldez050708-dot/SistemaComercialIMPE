@@ -446,7 +446,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const esAdministrador = formulario.dataset.admin === '1';
         const contador = formulario.querySelector('[data-permissions-count]') ||
             document.querySelector('[data-permissions-count]');
         const estado = formulario.querySelector('[data-permissions-status]');
@@ -616,12 +615,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (estado) {
                 estado.textContent = modificado
                     ? 'Cambios sin guardar'
-                    : (esAdministrador ? 'Política protegida' : 'Sin cambios pendientes');
+                    : 'Sin cambios pendientes';
                 estado.classList.toggle('has-changes', modificado);
             }
 
             if (botonGuardar) {
-                botonGuardar.disabled = esAdministrador || !modificado;
+                botonGuardar.disabled = !modificado;
             }
         };
 

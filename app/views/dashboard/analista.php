@@ -133,6 +133,7 @@ $textoResultado = static function ($resultado) {
 
 $totalAtencion = (int)($resumen['requieren_atencion'] ?? count($atenciones));
 $seguimientoIndexUrl = BASE_URL . 'index.php?controller=seguimientoVinculacion&action=index';
+$puedeVerAgenda = tienePermiso('agenda.ver');
 $agendaUrl = BASE_URL . 'index.php?controller=agendaReunion&action=index';
 $territoriosUrl = BASE_URL . 'index.php?controller=territorio&action=index';
 
@@ -175,7 +176,7 @@ $maxMetricaMes = max(1, ...array_map(static function ($metrica) {
 }, $metricasMes));
 ?>
 
-<section class="analyst-dashboard analyst-dashboard-v2" data-analyst-dashboard>
+<section class="analyst-dashboard analyst-dashboard-v2" data-analyst-dashboard data-analyst-can-view-agenda="<?= $puedeVerAgenda ? '1' : '0' ?>">
     <section class="analyst-welcome">
         <div class="analyst-welcome-copy">
             <span class="analyst-welcome-eyebrow">TU JORNADA</span>
@@ -299,7 +300,9 @@ $maxMetricaMes = max(1, ...array_map(static function ($metrica) {
                     <span class="analyst-section-kicker">PRÓXIMAMENTE</span>
                     <h2 class="panel-title mb-0">Tu agenda de los próximos 7 días</h2>
                 </div>
-                <a class="analyst-panel-link" href="<?= $esc($agendaUrl) ?>">Ver agenda <i class="bi bi-arrow-right"></i></a>
+                <?php if ($puedeVerAgenda): ?>
+                    <a class="analyst-panel-link" href="<?= $esc($agendaUrl) ?>">Ver agenda <i class="bi bi-arrow-right"></i></a>
+                <?php endif; ?>
             </div>
 
             <?php if (!empty($proximos)): ?>
@@ -330,9 +333,11 @@ $maxMetricaMes = max(1, ...array_map(static function ($metrica) {
                         </a>
                     <?php endforeach; ?>
                 </div>
-                <div class="analyst-upcoming-footer">
-                    <a href="<?= $esc($agendaUrl) ?>">Ver todos los eventos <i class="bi bi-arrow-right"></i></a>
-                </div>
+                <?php if ($puedeVerAgenda): ?>
+                    <div class="analyst-upcoming-footer">
+                        <a href="<?= $esc($agendaUrl) ?>">Ver todos los eventos <i class="bi bi-arrow-right"></i></a>
+                    </div>
+                <?php endif; ?>
             <?php else: ?>
                 <div class="analyst-empty-state analyst-empty-state-small">
                     <span><i class="bi bi-calendar2"></i></span>

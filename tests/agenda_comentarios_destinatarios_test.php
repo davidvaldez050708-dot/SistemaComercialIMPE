@@ -6,7 +6,7 @@ if ($site) $db=(new Database())->connect(false);
 else {require_once __DIR__.'/fixtures/agenda_comentarios_db.php';$db=new ComentarioDbPrueba();}
 function dcheck($ok,$message){if(!$ok)throw new RuntimeException($message);}
 function dsql($sql){global $db;return isset($db->pdo)?$db->pdo->exec($sql):$db->query($sql);}
-function dsess($id,$agenda=true){$_SESSION=['usuario_id'=>$id,'rol_id'=>$id===7?6:4,'permisos'=>$agenda?['reuniones.ver']:[]];}
+function dsess($id,$agenda=true){$_SESSION=['usuario_id'=>$id,'rol_id'=>$id===7?6:4,'permisos'=>$agenda?['reuniones.ver','agenda.ver','agenda.comentarios.ver','agenda.comentarios.crear','agenda.comentarios.eliminar','agenda.comentarios.recibir_dirigidos']:['agenda.comentarios.recibir_dirigidos']];}
 if (!$site) {
     dsql('ALTER TABLE agenda_comentarios ADD COLUMN privado INTEGER NOT NULL DEFAULT 0');
     dsql('ALTER TABLE agenda_comentarios ADD COLUMN destinatario_id INTEGER DEFAULT NULL');
@@ -18,8 +18,8 @@ dsql('CREATE TABLE roles(id INT PRIMARY KEY,nombre VARCHAR(100),estado INT)');
 dsql('CREATE TABLE permisos(id INT PRIMARY KEY,codigo VARCHAR(100),estado INT)');
 dsql('CREATE TABLE rol_permisos(rol_id INT,permiso_id INT)');
 dsql("INSERT INTO roles VALUES(1,'Administrador',1),(4,'Analista',1),(6,'Cuenta Clave',1),(8,'Otro con Agenda',1),(9,'Sin Agenda',1),(10,'Rol inactivo',0)");
-dsql("INSERT INTO permisos VALUES(26,'reuniones.ver',1),(27,'otro',1)");
-dsql('INSERT INTO rol_permisos VALUES(1,26),(4,26),(6,26),(8,26),(9,27),(10,26)');
+dsql("INSERT INTO permisos VALUES(26,'reuniones.ver',1),(27,'agenda.comentarios.recibir_dirigidos',1)");
+dsql('INSERT INTO rol_permisos VALUES(1,27),(4,27),(6,27),(8,27),(9,27),(10,27)');
 dsql('UPDATE usuarios SET rol_id=6 WHERE id=7');
 // Los datos iniciales del runner MariaDB y de SQLite tienen dos y cuatro usuarios.
 dsql('DELETE FROM usuarios WHERE id NOT IN (5,7)');

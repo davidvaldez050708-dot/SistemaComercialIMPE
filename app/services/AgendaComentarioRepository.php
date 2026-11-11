@@ -87,7 +87,15 @@ class AgendaComentarioRepository
     {
         return $this->db->query("SELECT u.id,TRIM(CONCAT(COALESCE(u.nombre,''),' ',COALESCE(u.apellidos,''))) AS nombre,r.nombre AS rol
             FROM usuarios u INNER JOIN roles r ON r.id=u.rol_id AND r.estado=1
-            WHERE u.estado=1
+            WHERE u.estado=1 AND (
+                EXISTS (
+                    SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
+                    WHERE rp.rol_id=r.id AND p.estado=1 AND p.codigo='agenda.comentarios.recibir_dirigidos'
+                ) OR 2 = (
+                    SELECT COUNT(DISTINCT p.codigo) FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
+                    WHERE rp.rol_id=r.id AND p.estado=1 AND p.codigo IN ('agenda.ver','agenda.comentarios.ver')
+                )
+            )
             ORDER BY u.nombre,u.apellidos,u.id")->fetch_all(MYSQLI_ASSOC);
     }
 

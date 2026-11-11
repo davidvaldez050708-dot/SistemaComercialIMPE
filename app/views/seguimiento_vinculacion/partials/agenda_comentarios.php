@@ -12,7 +12,7 @@
     </div>
     <div id="agendaComentariosReuniones" role="tabpanel" aria-labelledby="agendaComentariosTabReuniones" data-agenda-comments-meetings hidden></div>
     <div id="agendaComentariosLista" role="tabpanel" aria-labelledby="agendaComentariosTabComentarios" data-agenda-comments-list></div>
-    <button type="button" class="btn btn-system-save agenda-comments-new" data-agenda-comments-new><i class="bi bi-chat-left-text" aria-hidden="true"></i> Agregar comentario</button>
+    <button type="button" class="btn btn-system-save agenda-comments-new" data-agenda-comments-new <?= $agendaPuedeCrearComentarios ? '' : 'hidden disabled' ?>><i class="bi bi-chat-left-text" aria-hidden="true"></i> Agregar comentario</button>
     <p class="agenda-comments-hint">Para todos: visible en Agenda. Dirigido: sólo autor y destinatario. Privado: sólo tú.</p>
 </aside>
 <dialog class="agenda-comment-editor" data-agenda-comment-editor aria-labelledby="agendaComentarioTitulo">

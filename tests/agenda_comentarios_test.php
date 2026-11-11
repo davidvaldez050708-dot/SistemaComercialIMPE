@@ -4,7 +4,7 @@ require_once __DIR__.'/../app/services/AgendaComentarioService.php';
 set_error_handler(static function($n,$m,$f,$l){if(error_reporting()&$n)throw new ErrorException($m,0,$n,$f,$l);return false;});
 function comprobarComentario($ok,$mensaje){if(!$ok)throw new RuntimeException($mensaje);}
 require_once __DIR__.'/fixtures/agenda_comentarios_db.php';
-function sesionComentario($id,$permiso=true,$rol=4){$_SESSION=['usuario_id'=>$id,'rol_id'=>$rol,'permisos'=>$permiso?['reuniones.ver']:[]];}
+function sesionComentario($id,$permiso=true,$rol=4){$_SESSION=['usuario_id'=>$id,'rol_id'=>$rol,'permisos'=>$permiso?['reuniones.ver','agenda.ver','agenda.comentarios.ver','agenda.comentarios.crear','agenda.comentarios.eliminar','agenda.comentarios.recibir_dirigidos']:[]];}
 $db=new ComentarioDbPrueba();$repo=new AgendaComentarioRepository($db);
 $ahora=new DateTimeImmutable('2026-10-28 10:00:00');$service=new AgendaComentarioService($repo,$ahora);
 sesionComentario(5);
@@ -19,6 +19,7 @@ foreach([['fecha'=>'2026-02-30'],['fecha'=>'no'],['hora'=>'25:10'],['hora'=>[]],
 }
 comprobarComentario($service->crear(5,['fecha'=>'2026-10-28','comentario'=>str_repeat('😀',250),'hora'=>''])['ok'],'250 caracteres Unicode');
 sesionComentario(9,false);
+$_SESSION['permisos'][] = 'agenda.comentarios.recibir_dirigidos';
 foreach([$service->listar(9,'2026-10-01','2026-11-01'),$service->crear(9,['fecha'=>'2026-10-28','comentario'=>'no']),$service->eliminar(9,$sinHora)]as$r)comprobarComentario($r['codigo_http']===403,'Sin Agenda no hay acceso');
 comprobarComentario($service->leer(9,$sinHora)['codigo_http']===404,'Sin Agenda sólo se pueden leer comentarios dirigidos');
 comprobarComentario($service->notificaciones(9)===['recordatorios'=>[],'avisos'=>[]],'Sin Agenda no se notifican comentarios generales');
@@ -62,3 +63,18 @@ $out=dirname(__DIR__).'/tmp/agenda_comentarios';if(!is_dir($out))mkdir($out,0700
 file_put_contents($out.'/avisos.json',json_encode(['normal'=>['recordatorios'=>[$avisos['recordatorios'][0]],'avisos'=>[$avisos['avisos'][0]]],
     'hora'=>['recordatorios'=>$due,'avisos'=>array_values(array_filter($horaPayload['avisos'],fn($r)=>$r['agenda_comentario_id']===$conHora))]],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
 echo "OK: alta, fecha/hora, autor, 250 Unicode, permisos, borrado, lectura por usuario, cadencia sin hora/con hora, límite y tablas ausentes. Sin BD real.\n";
+
+sesionComentario(5);
+$propio = $service->crear(5, ['fecha' => '2026-10-28', 'comentario' => 'Control por rol'])['comentario']['id'];
+$_SESSION['permisos'] = ['agenda.ver', 'agenda.comentarios.ver'];
+$comentarios = $service->listar(5, '2026-10-01', '2026-11-01')['comentarios'];
+$fila = array_values(array_filter($comentarios, static fn ($c) => $c['id'] === $propio))[0];
+comprobarComentario(!$fila['puede_eliminar'], 'Sólo lectura oculta eliminar, incluso al autor');
+comprobarComentario($service->crear(5, [])['codigo_http'] === 403, 'Sólo lectura bloquea el alta');
+comprobarComentario($service->eliminar(5, $propio)['codigo_http'] === 403, 'Sólo lectura bloquea el borrado');
+$_SESSION['permisos'][] = 'agenda.comentarios.eliminar';
+comprobarComentario($service->eliminar(5, $propio)['ok'], 'El permiso de borrar es independiente del permiso de agregar');
+$_SESSION['permisos'] = ['agenda.comentarios.ver', 'agenda.comentarios.crear', 'reuniones.ver'];
+comprobarComentario($service->listar(5, '2026-10-01', '2026-11-01')['codigo_http'] === 403, 'Revocar el calendario corta el acceso a comentarios');
+comprobarComentario($service->notificaciones(5) === ['recordatorios'=>[], 'avisos'=>[]], 'Sin permiso para avisos no se entrega contenido');
+echo "OK: permisos de Agenda independientes y revocación efectiva.\n";

@@ -8,7 +8,7 @@ if(is_string($mesPrueba)&&preg_match('/^20[0-9]{2}-(0[1-9]|1[0-2])$/D',$mesPrueb
     $tituloMesAgenda=$mesAgenda;
 }
 $agendaSeguimientoInicial=0;$agendaReunionInicial=0;$agendaRolId=4;$agendaModo='SOLICITUD';
-$agendaPuedeSolicitar=true;$agendaPuedeGestionar=false;$agendaPuedeVerSeguimiento=false;$agendaRequiereMigracion=false;
+$agendaPuedeSolicitar=true;$agendaPuedeGestionar=false;$agendaPuedeVerSeguimiento=false;$agendaRequiereMigracion=false;$agendaPuedeVerComentarios=true;$agendaPuedeCrearComentarios=true;
 $seguimientosElegibles=[];
 $agendaReuniones=[['id'=>31,'seguimiento_id'=>12,'nombre_entidad'=>'Institución de prueba','fecha_propuesta'=>'2026-10-14 12:30:00','duracion_minutos'=>60,
  'estado'=>'SOLICITADA','estado_visual'=>'solicitada','estado_etiqueta'=>'Solicitada','fecha_legible'=>'14/10/2026 12:30','modalidad'=>'VIRTUAL',

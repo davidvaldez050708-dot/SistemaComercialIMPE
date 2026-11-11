@@ -121,6 +121,60 @@ class RolModel
         }
 
         $this->asegurarPermisosAdministrador();
+        $this->inicializarPermisosAgenda();
+    }
+
+    private function inicializarPermisosAgenda()
+    {
+        $catalogo = [
+            ['agenda.ver', 'Ver agenda', 'Abrir el calendario. Las reuniones conservan sus permisos y su alcance.'],
+            ['agenda.comentarios.ver', 'Ver comentarios', 'Consultar los comentarios visibles para el usuario y recibir sus avisos. Requiere Ver agenda.'],
+            ['agenda.comentarios.crear', 'Agregar comentarios', 'Crear comentarios compartidos, dirigidos o privados. Requiere Ver comentarios.'],
+            ['agenda.comentarios.eliminar', 'Eliminar comentarios propios', 'Eliminar los comentarios que escribió el usuario. Requiere Ver comentarios.'],
+            ['agenda.comentarios.recibir_dirigidos', 'Recibir avisos dirigidos sin acceso a comentarios', 'Recibir avisos de comentarios asignados al usuario aunque su rol no pueda consultar los comentarios en la Agenda.']
+        ];
+
+        $registrados = $this->connection->query(
+            "SELECT codigo FROM permisos WHERE codigo LIKE 'agenda.%'"
+        );
+        $codigos = array_column($registrados->fetch_all(MYSQLI_ASSOC), 'codigo');
+        $catalogo = array_filter($catalogo, static fn ($permiso) => !in_array($permiso[0], $codigos, true));
+        if (!$catalogo) {
+            return;
+        }
+
+        $this->connection->begin_transaction();
+        try {
+            $registrar = $this->connection->prepare(
+                "INSERT IGNORE INTO permisos (modulo, codigo, nombre, descripcion, estado)
+                 VALUES ('Agenda', ?, ?, ?, 1)"
+            );
+            $asignar = $this->connection->prepare(
+                "INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+                 SELECT r.id, ?
+                 FROM roles r
+                 WHERE ? = 1 OR EXISTS (
+                     SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
+                     WHERE rp.rol_id = r.id AND p.codigo = 'reuniones.ver' AND p.estado = 1
+                 )"
+            );
+
+            foreach ($catalogo as [$codigo, $nombre, $descripcion]) {
+                $registrar->bind_param('sss', $codigo, $nombre, $descripcion);
+                $registrar->execute();
+                if ($registrar->affected_rows !== 1) {
+                    continue;
+                }
+                $permisoId = (int)$registrar->insert_id;
+                $todos = (int)in_array($codigo, ['agenda.ver', 'agenda.comentarios.recibir_dirigidos'], true);
+                $asignar->bind_param('ii', $permisoId, $todos);
+                $asignar->execute();
+            }
+            $this->connection->commit();
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            throw $error;
+        }
     }
 
     public function obtenerRoles()
@@ -324,21 +378,22 @@ class RolModel
 
     public function actualizarPermisosRol($rolId, $permisosIds, $actorUsuarioId = 0)
     {
-        if ((int)$rolId === 1) {
-            /*
-             * Administrador es un rol protegido. Sus permisos se mantienen desde
-             * el catálogo del sistema y no pueden editarse desde la interfaz.
-             */
-            $this->asegurarPermisosAdministrador();
-            return true;
-        }
-
         $permisosIds = array_values(array_unique(array_map('intval', $permisosIds)));
-        $permisosIds = $this->normalizarDependenciasPermisos($permisosIds);
-        $permisosIds = $this->retirarPermisosSoloAdministrador(
-            (int)$rolId,
-            $permisosIds
-        );
+        $esAdministrador = (int)$rolId === 1;
+        $permisosAgenda = [];
+        if ($esAdministrador) {
+            if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
+                return false;
+            }
+            $resultado = $this->connection->query(
+                "SELECT id FROM permisos WHERE estado = 1 AND codigo LIKE 'agenda.%'"
+            );
+            $permisosAgenda = array_map('intval', array_column($resultado->fetch_all(MYSQLI_ASSOC), 'id'));
+            $permisosIds = array_values(array_intersect($permisosIds, $permisosAgenda));
+        } else {
+            $permisosIds = $this->normalizarDependenciasPermisos($permisosIds);
+            $permisosIds = $this->retirarPermisosSoloAdministrador((int)$rolId, $permisosIds);
+        }
 
         if (!$this->validarPermisosExistentes($permisosIds)) {
             return false;
@@ -349,8 +404,10 @@ class RolModel
         $this->connection->begin_transaction();
 
         try {
-            $sqlEliminar = "DELETE FROM rol_permisos
-                            WHERE rol_id = ?";
+            $sqlEliminar = $esAdministrador
+                ? "DELETE rp FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
+                   WHERE rp.rol_id = ? AND p.codigo LIKE 'agenda.%'"
+                : "DELETE FROM rol_permisos WHERE rol_id = ?";
             $stmtEliminar = $this->connection->prepare($sqlEliminar);
             $stmtEliminar->bind_param("i", $rolId);
 
@@ -378,7 +435,9 @@ class RolModel
                 (int)$rolId,
                 (int)$actorUsuarioId,
                 $permisosAnteriores,
-                $permisosIds
+                $esAdministrador
+                    ? array_merge(array_diff($permisosAnteriores, $permisosAgenda), $permisosIds)
+                    : $permisosIds
             );
 
             $this->connection->commit();
@@ -463,7 +522,8 @@ class RolModel
                      SELECT 1, p.id
                      FROM permisos p
                      WHERE p.estado = 1
-                       AND p.codigo NOT IN ($marcadores)";
+                       AND p.codigo NOT IN ($marcadores)
+                       AND p.codigo NOT LIKE 'agenda.%'";
 
                 $stmtAsignar = $this->connection->prepare(
                     $sqlAsignar
@@ -482,7 +542,7 @@ class RolModel
                      )
                      SELECT 1, p.id
                      FROM permisos p
-                     WHERE p.estado = 1"
+                     WHERE p.estado = 1 AND p.codigo NOT LIKE 'agenda.%'"
                 );
             }
 
@@ -589,7 +649,8 @@ class RolModel
                         INNER JOIN permisos
                             ON permisos.id = rol_permisos.permiso_id
                         WHERE roles.nombre = ?
-                            AND permisos.estado = 1";
+                            AND permisos.estado = 1
+                            AND permisos.codigo NOT LIKE 'agenda.%'";
 
         $sqlInsertar = "INSERT IGNORE INTO rol_permisos (
                     rol_id,

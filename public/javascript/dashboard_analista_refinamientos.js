@@ -183,7 +183,7 @@
         }
 
         const vacioProximos = proximos?.querySelector('.analyst-empty-state');
-        if (!vacioProximos) {
+        if (!vacioProximos || tablero.dataset.analystCanViewAgenda === '0') {
             return;
         }
 
@@ -208,6 +208,9 @@
                 .trim()
                 .toLowerCase();
             const href = etiqueta.includes('reuniones') ? agendaUrl : seguimientoUrl;
+            if (href === agendaUrl && tablero.dataset.analystCanViewAgenda === '0') {
+                return;
+            }
 
             tarjeta.classList.add('is-actionable');
             tarjeta.tabIndex = 0;

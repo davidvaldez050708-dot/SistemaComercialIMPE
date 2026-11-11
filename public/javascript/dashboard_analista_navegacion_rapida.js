@@ -156,7 +156,7 @@
             tarjeta.removeAttribute('role');
             tarjeta.removeAttribute('aria-label');
 
-            if (!etiqueta.includes('reuniones')) {
+            if (!etiqueta.includes('reuniones') || tablero.dataset.analystCanViewAgenda === '0') {
                 return;
             }
 

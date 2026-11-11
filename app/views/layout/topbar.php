@@ -14,7 +14,7 @@ $esMarketingTopbar =
 $mostrarCentroAvisos = !empty($_SESSION['usuario_id']);
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
 $mostrarAgendaReuniones =
-    tienePermiso('reuniones.ver') &&
+    tienePermiso('agenda.ver') &&
     $agendaDisponible;
 $trabajarNotificacionId = (int)($_GET['trabajar_id'] ?? 0);
 $puedeUsarTelefoniaTopbar = tienePermiso('telefonia.usar');

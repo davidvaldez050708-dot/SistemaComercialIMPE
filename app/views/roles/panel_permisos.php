@@ -11,7 +11,7 @@ $textoRol = function ($valor) {
 
 $rolEsAdministrador = $rolSeleccionado &&
     (int)$rolSeleccionado['id'] === 1;
-$panelBloqueado = !$puedeAsignarPermisos || $rolEsAdministrador;
+$puedeEditarAgendaAdministrador = $puedeAsignarPermisos && (int)($_SESSION['rol_id'] ?? 0) === 1;
 $totalPermisos = 0;
 $permisosSoloAdministradorIds = [];
 
@@ -95,7 +95,7 @@ $permisosHabilitados = count(array_filter(
 
         <div class="roles-note">
             <i class="bi bi-shield-check"></i>
-            El Administrador conserva acceso transversal de consulta, configuración y reportes. Las acciones operativas permanecen reservadas al rol responsable de cada área.
+            Los permisos de Agenda se pueden configurar para el Administrador. Los demás permisos siguen la política del sistema.
         </div>
 
     <?php elseif (!$puedeAsignarPermisos): ?>
@@ -111,8 +111,7 @@ $permisosHabilitados = count(array_filter(
         class="roles-permissions-form"
         action="<?= BASE_URL ?>index.php?controller=rol&action=guardarPermisos"
         method="POST"
-        data-permissions-form
-        data-admin="<?= $rolEsAdministrador ? '1' : '0' ?>">
+        data-permissions-form>
 
         <input
             type="hidden"
@@ -134,6 +133,10 @@ $permisosHabilitados = count(array_filter(
 
         <div class="permissions-grid">
             <?php foreach ($permisosAgrupados as $modulo => $permisos): ?>
+                <?php
+                $grupoEditable = $puedeAsignarPermisos &&
+                    (!$rolEsAdministrador || ($modulo === 'Agenda' && $puedeEditarAgendaAdministrador));
+                ?>
 
                 <section
                     class="permission-group"
@@ -147,7 +150,7 @@ $permisosHabilitados = count(array_filter(
                             type="button"
                             class="permission-group-toggle"
                             data-permission-group-toggle
-                            <?= $panelBloqueado ? 'disabled' : '' ?>>
+                            <?= !$grupoEditable ? 'disabled' : '' ?>>
                             Marcar todos
                         </button>
                     </div>
@@ -173,7 +176,7 @@ $permisosHabilitados = count(array_filter(
                                 !$permisoRestringidoAdministrador &&
                                 isset($permisosRol[(int)$permiso['id']]);
                             $permisoBloqueado =
-                                $panelBloqueado ||
+                                !$grupoEditable ||
                                 ($permisoSoloAdministrador &&
                                     !$rolEsAdministrador);
                             $checkboxId =
@@ -227,7 +230,7 @@ $permisosHabilitados = count(array_filter(
             <span
                 class="permissions-changes-status"
                 data-permissions-status>
-                <?= $rolEsAdministrador ? 'Política protegida' : 'Sin cambios pendientes' ?>
+                Sin cambios pendientes
             </span>
 
             <button

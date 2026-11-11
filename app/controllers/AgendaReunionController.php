@@ -28,7 +28,7 @@ class AgendaReunionController
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
-        if ($usuarioId <= 0 || !$this->service->puedeAcceder($rolId)) {
+        if ($usuarioId <= 0 || !tienePermiso('agenda.ver')) {
             http_response_code(403);
             die('No tienes acceso a la agenda de reuniones.');
         }
@@ -57,8 +57,10 @@ class AgendaReunionController
         $agendaReuniones = $agenda['reuniones'] ?? [];
         $seguimientosElegibles = $agenda['seguimientos_elegibles'] ?? [];
         $agendaRequiereMigracion = (bool)($agenda['requiere_migracion'] ?? false);
-        $permisoSolicitarReunion = tienePermiso('reuniones.solicitar');
-        $permisoGestionarReunion = tienePermiso('reuniones.gestionar');
+        $permisoSolicitarReunion = $this->service->puedeAcceder($rolId) && tienePermiso('reuniones.solicitar');
+        $permisoGestionarReunion = $this->service->puedeAcceder($rolId) && tienePermiso('reuniones.gestionar');
+        $agendaPuedeVerComentarios = tienePermiso('agenda.comentarios.ver');
+        $agendaPuedeCrearComentarios = $agendaPuedeVerComentarios && tienePermiso('agenda.comentarios.crear');
 
         if ($rolId === AgendaReunionService::ROL_CUENTA_CLAVE) {
             $agendaPuedeSolicitar = false;
@@ -135,6 +137,11 @@ class AgendaReunionController
 
     public function ecardPreview()
     {
+        if (!tienePermiso('agenda.ver')) {
+            http_response_code(403);
+            exit('No tienes acceso a la agenda de reuniones.');
+        }
+
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $rolId = (int)($_SESSION['rol_id'] ?? 0);
         $reunionId = (int)($_GET['reunion_id'] ?? 0);
@@ -308,7 +315,7 @@ class AgendaReunionController
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
-        if ($usuarioId <= 0 || !$this->service->puedeAcceder($rolId)) {
+        if ($usuarioId <= 0 || !tienePermiso('agenda.ver') || !$this->service->puedeAcceder($rolId)) {
             $this->responder([
                 'ok' => false,
                 'mensaje' => 'No tienes acceso a esta acción.'
@@ -372,7 +379,7 @@ class AgendaReunionController
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $rolId = (int)($_SESSION['rol_id'] ?? 0);
 
-        if ($usuarioId <= 0 || !$this->service->puedeAcceder($rolId)) {
+        if ($usuarioId <= 0 || !tienePermiso('agenda.ver') || !$this->service->puedeAcceder($rolId)) {
             $this->responder([
                 'ok' => false,
                 'mensaje' => 'No tienes acceso a esta acción.'

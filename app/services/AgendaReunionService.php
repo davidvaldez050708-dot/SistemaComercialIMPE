@@ -129,14 +129,15 @@ class AgendaReunionService
         $rolId = (int)$rolId;
         $mes = $this->normalizarMes($mes);
 
-        if (!$this->puedeAcceder($rolId)) {
+        if ($usuarioId <= 0 || !tienePermiso('agenda.ver')) {
             return $this->error('No tienes acceso a la agenda de reuniones.', 403);
         }
 
-        if (!$this->tablaDisponible()) {
+        $puedeVerReuniones = $this->puedeAcceder($rolId);
+        if (!$puedeVerReuniones || !$this->tablaDisponible()) {
             return [
                 'ok' => true,
-                'requiere_migracion' => true,
+                'requiere_migracion' => $puedeVerReuniones,
                 'mes' => $mes,
                 'reuniones' => [],
                 'seguimientos_elegibles' => []

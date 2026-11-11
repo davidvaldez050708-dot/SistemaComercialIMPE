@@ -69,7 +69,7 @@ CREATE TABLE roles(id INTEGER PRIMARY KEY,nombre TEXT,estado INTEGER);
 CREATE TABLE permisos(id INTEGER PRIMARY KEY,codigo TEXT,estado INTEGER);
 CREATE TABLE rol_permisos(rol_id INTEGER,permiso_id INTEGER);
 INSERT INTO roles VALUES(1,'Administrador',1),(4,'Analista',1),(6,'Cuenta Clave',1);
-INSERT INTO permisos VALUES(26,'reuniones.ver',1);
+INSERT INTO permisos VALUES(26,'agenda.comentarios.recibir_dirigidos',1);
 INSERT INTO rol_permisos VALUES(1,26),(4,26),(6,26);
 UPDATE usuarios SET rol_id=6 WHERE id=7;
 INSERT INTO usuarios VALUES(15,'Admin','Prueba',1,1);"""
@@ -79,7 +79,7 @@ session_start();header('Content-Type: application/json');
 if($_SERVER['REQUEST_URI']==='/login'){
  if(!hash_equals(getenv('AGENDA_QA_TOKEN'),$_POST['token']??'')){http_response_code(403);exit;}
  $_SESSION=['usuario_id'=>(int)$_POST['id'],'rol_id'=>(int)($_POST['rol']??4),
- 'permisos'=>($_POST['agenda']??'1')==='1'?['reuniones.ver']:[],'csrf_token'=>'qa-csrf'];
+ 'permisos'=>($_POST['agenda']??'1')==='1'?['reuniones.ver','agenda.ver','agenda.comentarios.ver','agenda.comentarios.crear','agenda.comentarios.eliminar','agenda.comentarios.recibir_dirigidos']:['agenda.comentarios.recibir_dirigidos'],'csrf_token'=>'qa-csrf'];
  if(($_POST['tareas']??'0')==='1')$_SESSION['permisos']=array_merge($_SESSION['permisos'],['aliados.ver','aliados.gestionar_programas']);
  echo '{"ok":true}';exit;
 }
@@ -137,7 +137,8 @@ if(!in_array($action,['listar','crear','eliminar','leer','leerVisto'],true)){htt
             assert request(b,'crear',dict(fecha='2026-10-28',comentario='Desde perfil con Agenda',hora='18:30'))[0]==200
             code,bell=request(b,'pendientes');assert code==200 and bell['ok'] and len(bell['recordatorios'])==1 and len(bell['avisos'])==1
             assert request(b,'pendientes')[1]['avisos']==[], 'Novedad no repetida en cada consulta'
-            assert request(without,'pendientes')[0]==403
+            code,bell=request(without,'pendientes')
+            assert code==200 and not any(r.get('agenda_comentario_id') for r in bell['recordatorios'])
             admin=client();login(admin,15,rol=1)
             code,bell=request(admin,'pendientes');assert code==200 and bell['ok'] and bell['total']==2
             assert len(bell['avisos'])==1 and bell['recordatorios'][0]['id']==90

@@ -151,7 +151,9 @@ $pendientesAgenda = array_values(array_filter(
                         data-agenda-date="<?= htmlspecialchars((string)$celda['fecha'], ENT_QUOTES, 'UTF-8') ?>">
 
                         <div class="agenda-day-number">
-                            <button type="button" class="agenda-comment-add" data-agenda-comment-add="<?= htmlspecialchars((string)$celda['fecha'], ENT_QUOTES, 'UTF-8') ?>" aria-label="Agregar comentario al <?= htmlspecialchars((string)$celda['fecha'], ENT_QUOTES, 'UTF-8') ?>" title="Agregar comentario"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+                            <?php if ($agendaPuedeCrearComentarios): ?>
+                                <button type="button" class="agenda-comment-add" data-agenda-comment-add="<?= htmlspecialchars((string)$celda['fecha'], ENT_QUOTES, 'UTF-8') ?>" aria-label="Agregar comentario al <?= htmlspecialchars((string)$celda['fecha'], ENT_QUOTES, 'UTF-8') ?>" title="Agregar comentario"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+                            <?php endif; ?>
                             <span><?= htmlspecialchars((string)$celda['numero'], ENT_QUOTES, 'UTF-8') ?></span>
                             <?php if (!empty($celda['es_hoy'])): ?>
                                 <small>Hoy</small>
@@ -505,7 +507,9 @@ $pendientesAgenda = array_values(array_filter(
         </div>
     </div>
 
-    <?php require __DIR__ . '/partials/agenda_comentarios.php'; ?>
+    <?php if ($agendaPuedeVerComentarios): ?>
+        <?php require __DIR__ . '/partials/agenda_comentarios.php'; ?>
+    <?php endif; ?>
 
     <script type="application/json" id="agendaReunionesData">
         <?= json_encode($agendaReuniones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) ?>

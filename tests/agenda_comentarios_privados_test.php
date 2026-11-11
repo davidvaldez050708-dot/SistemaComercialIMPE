@@ -3,7 +3,7 @@
 require_once __DIR__.'/../app/services/AgendaComentarioService.php';
 require_once __DIR__.'/fixtures/agenda_comentarios_db.php';
 function privadoCheck($ok,$message){if(!$ok)throw new RuntimeException($message);}
-function privadoSession($id,$rol=4,$agenda=true){$_SESSION=['usuario_id'=>$id,'rol_id'=>$rol,'permisos'=>$agenda?['reuniones.ver']:[]];}
+function privadoSession($id,$rol=4,$agenda=true){$_SESSION=['usuario_id'=>$id,'rol_id'=>$rol,'permisos'=>$agenda?['reuniones.ver','agenda.ver','agenda.comentarios.ver','agenda.comentarios.crear','agenda.comentarios.eliminar','agenda.comentarios.recibir_dirigidos']:[]];}
 $db=new ComentarioDbPrueba();
 $db->pdo->exec('ALTER TABLE agenda_comentarios ADD COLUMN privado INTEGER NOT NULL DEFAULT 0');
 $db->pdo->exec('CREATE TABLE agenda_comentarios_vistos_avisos(comentario_id INTEGER,lector_id INTEGER,leido_at TEXT,PRIMARY KEY(comentario_id,lector_id))');
