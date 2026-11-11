@@ -79,13 +79,39 @@
     margin-block-start: 8px;
 }
 .prospectos-fechas .prospectos-rango label { display: grid; gap: 4px; margin: 0; font-size: 12px !important; }
-.prospectos-fechas details[open] { flex-basis: 100%; order: 1; }
+.prospectos-fechas details { position: relative; }
+.prospectos-fechas details[open] > summary { background: #e8effb; }
+.prospectos-fechas .prospectos-rango {
+    position: absolute;
+    z-index: 10;
+    inset-inline-start: 0;
+    width: max-content;
+    max-width: calc(100vw - 40px);
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #d5e0f1;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(24,43,72,.12);
+}
+.prospectos-fechas .prospectos-limpiar { background: #fff; text-decoration: none; }
+.prospectos-page:has(.prospectos-fechas) [data-prospectos-limpiar] { display: none; }
+@media (max-width: 650px) {
+    .prospectos-fechas details { position: static; }
+    .prospectos-fechas { position: relative; }
+    .prospectos-fechas .prospectos-rango { inset-inline-start: 0; }
+}
 @media (max-width: 480px) {
     .prospectos-fechas .prospectos-exportar { margin-inline-start: 0; }
 }
 </style>
 <?php
 $fechaFiltro = static fn(string $campo): string => htmlspecialchars(is_string($_GET[$campo]??null)?$_GET[$campo]:'',ENT_QUOTES,'UTF-8');
+$limpiarFiltros = ['controller'=>'prospecto','action'=>'index','seccion'=>$seccionProspectos];
+if ($seccionProspectos==='aliados') {
+    $limpiarFiltros['vista']=$vistaProspectos;
+    if (!empty($estadoProspectos)) $limpiarFiltros['estado_id']=(int)$estadoProspectos['id'];
+}
+$urlLimpiarFiltros=BASE_URL.'index.php?'.http_build_query($limpiarFiltros);
 ?>
 <div class="prospectos-fechas">
     <label class="prospectos-periodo">Periodo
@@ -95,19 +121,43 @@ $fechaFiltro = static fn(string $campo): string => htmlspecialchars(is_string($_
             <?php endforeach; ?>
         </select>
     </label>
-    <details <?= empty($_GET['periodo']) && ($fechaFiltro('desde')!=='' || $fechaFiltro('hasta')!=='') ? 'open' : '' ?>>
+    <details>
         <summary class="central-link"><i class="bi bi-calendar3" aria-hidden="true"></i> Rango de fechas</summary>
         <div class="prospectos-rango">
             <label>Desde <input type="date" name="desde" value="<?= $fechaFiltro('desde') ?>"></label>
             <label>Hasta <input type="date" name="hasta" value="<?= $fechaFiltro('hasta') ?>"></label>
+            <button type="submit" class="central-link" data-aplicar-rango>Aplicar</button>
         </div>
     </details>
-    <button type="submit" class="central-link">Aplicar fechas</button>
+    <a class="central-link prospectos-limpiar" href="<?= htmlspecialchars($urlLimpiarFiltros,ENT_QUOTES,'UTF-8') ?>"><i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar filtros</a>
+    <noscript><button type="submit" class="central-link">Aplicar periodo</button></noscript>
     <button type="submit" name="exportar" value="xlsx" class="central-link prospectos-exportar"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Exportar Excel</button>
 </div>
 <script>
 (() => {
     const barra = document.currentScript.previousElementSibling;
+    const rango = barra.querySelector('details');
+    const periodo = barra.querySelector('[name=periodo]');
+    const formulario = barra.closest('form');
+    const aplicar = barra.querySelector('[data-aplicar-rango]');
+    aplicar.addEventListener('click', () => {
+        periodo.value = '';
+        rango.open = false;
+    });
+    periodo.addEventListener('change', () => {
+        barra.querySelectorAll('input[type=date]').forEach(campo => { campo.value = ''; });
+        rango.open = false;
+        if (formulario.hasAttribute('data-prospectos-filtros') && formulario.requestSubmit) formulario.requestSubmit();
+    });
+    document.addEventListener('click', evento => {
+        if (rango.open && !rango.contains(evento.target)) rango.open = false;
+    });
+    rango.addEventListener('keydown', evento => {
+        if (evento.key === 'Escape' && rango.open) {
+            rango.open = false;
+            rango.querySelector('summary').focus();
+        }
+    });
     barra.querySelectorAll('input[type=date]').forEach(campo => {
         campo.addEventListener('change', () => { barra.querySelector('select[name=periodo]').value = ''; });
     });

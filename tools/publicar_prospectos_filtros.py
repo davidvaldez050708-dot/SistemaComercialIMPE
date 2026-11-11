@@ -4,7 +4,7 @@ import argparse, base64, contextlib, datetime, gzip, hashlib, json, os
 from pathlib import Path
 import shutil, subprocess, sys, tempfile
 
-MANIFEST_SHA256 = '78f23482ba16276b08f8e7862e8c02c964e04f2831713b2ee00d43fd05ddabb5'
+MANIFEST_SHA256 = '2872cb3de6eb9bb9568590a45330c15c87ee0a8c15f2200ff294606d77b85e74'
 PATHS = ['app/views/prospectos/partials/filtros_exportacion.php']
 DEPENDENCIES = {}
 
