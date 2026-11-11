@@ -636,7 +636,17 @@
     keypadToggle.className = 'persistent-phone-action';
     keypadToggle.textContent = 'Teclado de extensión';
     keypad.appendChild(keypadToggle);
+    const keypadPanel = document.createElement('div');
+    keypadPanel.className = 'impe-ivr-panel';
+    const keypadReadout = document.createElement('output');
+    keypadReadout.className = 'impe-ivr-readout';
+    keypadReadout.setAttribute('aria-live', 'polite');
+    keypadReadout.setAttribute('aria-label', 'Dígitos pulsados');
+    keypadReadout.textContent = 'Marca la extensión';
+    let pressedDigits = '';
+    keypadPanel.appendChild(keypadReadout);
     const keypadButtons = document.createElement('div');
+    keypadButtons.className = 'impe-ivr-keys';
     for (const digit of '1234567890') {
         const key = document.createElement('button');
         key.type = 'button';
@@ -645,11 +655,23 @@
         key.addEventListener('click', () => {
             if (!freshState(currentState) || !currentState.active ||
                 currentState.phase !== 'in-progress' || !currentState.callToken) return;
+            pressedDigits = (pressedDigits + digit).slice(-16);
+            keypadReadout.textContent = pressedDigits;
             sendPhoneCommand('IVR_DIGIT', {digit, callToken:currentState.callToken});
         });
         keypadButtons.appendChild(key);
     }
-    keypad.appendChild(keypadButtons);
+    keypadPanel.appendChild(keypadButtons);
+    keypad.appendChild(keypadPanel);
+    keypad.addEventListener('keydown', event => {
+        if (event.key !== 'Escape' || !keypad.open) return;
+        event.stopPropagation();
+        keypad.open = false;
+        keypadToggle.focus();
+    });
+    document.addEventListener('pointerdown', event => {
+        if (keypad.open && !keypad.contains(event.target)) keypad.open = false;
+    });
     const keypadPilot = String(cfg.extension || '').trim() === '157';
     if (keypadPilot) muteButton?.closest('.persistent-phone-actions')?.after(keypad);
     let keypadCall = '';
@@ -657,7 +679,11 @@
     const render = function () {
         const nextKeypadCall = keypadPilot && freshState(currentState) && currentState.active &&
             currentState.phase === 'in-progress' ? String(currentState.callToken || '') : '';
-        if (nextKeypadCall !== keypadCall) keypad.open = false;
+        if (nextKeypadCall !== keypadCall) {
+            keypad.open = false;
+            pressedDigits = '';
+            keypadReadout.textContent = 'Marca la extensión';
+        }
         keypadCall = nextKeypadCall;
         keypad.hidden = !keypadCall;
         const state = freshState(currentState) ? currentState : null;

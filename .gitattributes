@@ -1,2 +1,4 @@
 /tools/publicar_teclado_157.py text eol=lf
 /tools/teclado_157_release.json text eol=lf
+/tools/publicar_teclado_157_ui.py text eol=lf
+/tools/teclado_157_ui_release.json text eol=lf

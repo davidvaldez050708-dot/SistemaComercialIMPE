@@ -314,15 +314,48 @@ html[data-impe-telephony-shell] .impe-shell-navigation-mask {
   }
 }
 
-.impe-ivr-keypad { margin-top: 10px; }
+.impe-ivr-keypad { position: relative; margin-top: 10px; width: fit-content; max-width: 100%; }
 .impe-ivr-keypad[hidden] { display: none; }
-.impe-ivr-keypad summary { width: fit-content; list-style: none; cursor: pointer; }
+.impe-ivr-keypad > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-height: 40px;
+    padding: 8px 14px;
+    line-height: 1.35;
+    list-style: none;
+    cursor: pointer;
+}
 .impe-ivr-keypad summary::-webkit-details-marker { display: none; }
-.impe-ivr-keypad > div {
+.impe-ivr-panel {
+    position: absolute;
+    z-index: 5;
+    inset-inline-start: 0;
+    inset-block-end: calc(100% + 8px);
+    width: min(230px, calc(100vw - 48px));
+    padding: 12px;
+    border: 1px solid #d8e2f1;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(22,34,59,.18);
+}
+.impe-ivr-readout {
+    display: block;
+    margin-bottom: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    background: #eef3fb;
+    color: #223a84;
+    font: 700 13px/1.4 Manrope, sans-serif;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+.impe-ivr-keys {
     display: grid;
     grid-template-columns: repeat(3,minmax(0,1fr));
     gap: 6px;
-    max-width: 240px;
-    margin-top: 8px;
 }
-.impe-ivr-keypad button:last-child { grid-column: 2; }
+.impe-ivr-keys > button { min-height: 34px; padding: 4px; }
+.impe-ivr-keys > button:active { background: #223a84; color: #fff; }
+.impe-ivr-keys > button:last-child { grid-column: 2; }
