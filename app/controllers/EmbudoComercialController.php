@@ -58,6 +58,10 @@ final class EmbudoComercialController
             exit('Vista no válida.');
         }
         [$usuarioId,$supervisor]=$this->autorizar($vista);
+        // Una vista de SOLO LECTURA reservada a supervisores.
+        // No reconfigurar el Kanban normal ni exponerla a asesores.
+        $previsualizacionV3=$vista==='embudo' && $supervisor &&
+            ($_GET['previsualizacion_v3']??null)==='1';
         $error='';
         $disponible=false;
         $opciones=['programas'=>[],'asesores'=>[]];
@@ -72,7 +76,9 @@ final class EmbudoComercialController
             $disponible=$repo->disponible();
             if ($disponible) {
                 $opciones=$repo->opciones($usuarioId,$supervisor);
-                $tablero=$repo->listado($usuarioId,$supervisor,$filtros,$vista);
+                $tablero=$previsualizacionV3
+                    ?$repo->listadoV3Preparacion($usuarioId,$supervisor,$filtros)
+                    :$repo->listado($usuarioId,$supervisor,$filtros,$vista);
             }
         } catch (DomainException $e) {
             http_response_code(400);
@@ -82,8 +88,10 @@ final class EmbudoComercialController
             error_log('[embudo_comercial_consulta] '.get_class($e).' codigo='.(int)$e->getCode());
             $error='No fue posible consultar el embudo comercial en este momento.';
         }
-        $this->presentar('index',$vista,compact(
-            'vista','usuarioId','supervisor','error','disponible','opciones','tablero','filtros'
+        $archivo=$previsualizacionV3?'previsualizacion_v3':'index';
+        $this->presentar($archivo,$vista,compact(
+            'vista','usuarioId','supervisor','error','disponible','opciones',
+            'tablero','filtros','previsualizacionV3'
         ));
     }
 
