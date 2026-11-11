@@ -1843,7 +1843,7 @@
         } else if (action === 'COMPLETE_TRANSFER') {
             void transferFlow?.complete();
         } else if (action === 'IVR_DIGIT') {
-            if (!state.active || state.phase !== 'in-progress' || !state.callToken ||
+            if (extension !== '157' || !state.active || state.phase !== 'in-progress' || !state.callToken ||
                 payload.callToken !== state.callToken || transferFlow?.sourcePending() ||
                 transferFlow?.holdsIncoming() || typeof payload.digit !== 'string' ||
                 !/^[0-9]$/.test(payload.digit)) return;

@@ -528,11 +528,12 @@
         keypadButtons.appendChild(key);
     }
     keypad.appendChild(keypadButtons);
-    muteButton?.closest('.persistent-phone-actions')?.after(keypad);
+    const keypadPilot = String(cfg.extension || '').trim() === '157';
+    if (keypadPilot) muteButton?.closest('.persistent-phone-actions')?.after(keypad);
     let keypadCall = '';
 
     const render = function () {
-        const nextKeypadCall = freshState(currentState) && currentState.active &&
+        const nextKeypadCall = keypadPilot && freshState(currentState) && currentState.active &&
             currentState.phase === 'in-progress' ? String(currentState.callToken || '') : '';
         if (nextKeypadCall !== keypadCall) keypad.open = false;
         keypadCall = nextKeypadCall;
