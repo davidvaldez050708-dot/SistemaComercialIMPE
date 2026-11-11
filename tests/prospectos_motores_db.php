@@ -26,6 +26,7 @@ try {
         "CREATE TABLE estados(id INT PRIMARY KEY,nombre VARCHAR(100)) ENGINE=InnoDB",
         "CREATE TABLE prospectos_comerciales(
             id BIGINT UNSIGNED PRIMARY KEY,estado_id INT NULL,
+            nombre_completo VARCHAR(255) DEFAULT '', correo VARCHAR(190) NULL, telefono_normalizado VARCHAR(32) NULL,
             pais_nombre VARCHAR(120),estado_provincia VARCHAR(120)) ENGINE=InnoDB",
         "CREATE TABLE prospecto_origenes(
             id BIGINT UNSIGNED PRIMARY KEY,prospecto_id BIGINT UNSIGNED,
@@ -291,6 +292,13 @@ try {
     $nuevoDia=$motor->distribuirMeta('2026-11-08',25,false);
     $check($nuevoDia['inspeccionados']===25 && !$nuevoDia['terminado'],
         'siguiente jornada vuelve a revisar pendientes, sin perderlos');
+    $agregaAliado(206,'BACH','Puebla','LIBRE');
+    $db->query("UPDATE prospectos_comerciales SET nombre_completo='Persona Cruce', telefono_normalizado='+525511122233' WHERE id IN (206,5335)");
+    $resultado=$motor->asignarAliado(206,true,$time);
+    $check($resultado['estado']==='PENDIENTE' && $resultado['motivo']==='IDENTIDAD_EN_REVISION',
+        'posible duplicado de Campañas no genera otra asignación en Aliados');
+    $check((int)$db->query('SELECT COUNT(*) n FROM prospecto_asignaciones WHERE prospecto_id IN (206,5335)')->fetch_assoc()['n']===1,
+        'el asesor conserva una sola asignación para la coincidencia');
     echo "OK: $checks pruebas SQL en BD temporal; 30 archivos Meta, reparto de 80, colas paginadas, horarios y duplicados.\n";
 } finally {
     $db->select_db('information_schema');

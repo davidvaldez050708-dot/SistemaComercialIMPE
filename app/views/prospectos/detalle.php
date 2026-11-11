@@ -27,7 +27,7 @@ $claveComercial=static fn($id)=>'CRM-PROS-'.str_pad((string)(int)$id,5,'0',STR_P
 </header>
 <?php if (($ficha['coincidencias']??0)>0): ?>
 <p class="central-note" role="status"><i class="bi bi-info-circle" aria-hidden="true"></i>
-<?= (int)$ficha['coincidencias'] ?> <?= (int)$ficha['coincidencias']===1?'ficha comparte':'fichas comparten' ?> este teléfono normalizado. Son identidades separadas; la coincidencia queda pendiente de revisión.</p>
+Hay posibles coincidencias por nombre, correo o teléfono. Revisa la identidad antes de asignar esta ficha.</p>
 <?php endif; ?>
 <section class="central-panel">
     <div class="central-section-head"><h3>Datos personales</h3><p>Información declarada, pendiente de verificación.</p></div>

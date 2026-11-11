@@ -10,8 +10,9 @@ $urlProspectos = static function (array $params = []) {
     return BASE_URL.'index.php?'.http_build_query(array_merge(['controller'=>'prospecto','action'=>'index','seccion'=>'aliados'],$params));
 };
 $consultaProspectos = ['vista'=>$vistaProspectos,'buscar'=>$buscarProspectos,'aliado_id'=>$aliadoFiltroProspectos,'programa'=>$programaFiltroProspectos];
+$consultaProspectos+=array_intersect_key($_GET,array_flip(['periodo','desde','hasta']));
 if ($estadoProspectos) $consultaProspectos['estado_id']=(int)$estadoProspectos['id'];
-$hayFiltrosProspectos=$buscarProspectos!=='' || $aliadoFiltroProspectos!=='' || $programaFiltroProspectos!=='';
+$hayFiltrosProspectos=!empty($_GET['periodo']) || !empty($_GET['desde']) || !empty($_GET['hasta']) || $buscarProspectos!=='' || $aliadoFiltroProspectos!=='' || $programaFiltroProspectos!=='';
 $limpiarProspectos=$urlProspectos($estadoProspectos?['estado_id'=>(int)$estadoProspectos['id']]:['vista'=>'todos']);
 $normalizarEstado = static function ($nombre) {
     return strtr(mb_strtolower((string)$nombre),['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ü'=>'u','ñ'=>'n']);
@@ -124,6 +125,7 @@ $mapaProspectos = static function ($nombre) use ($normalizarEstado) {
                 <option value="">Todos los programas</option>
                 <?php foreach (($listado['programas']??[]) as $opcionPrograma): ?><option value="<?= $escaparProspecto($opcionPrograma['valor']) ?>" <?= $programaFiltroProspectos===$opcionPrograma['valor']?'selected':'' ?>><?= $escaparProspecto($opcionPrograma['nombre']) ?></option><?php endforeach; ?>
             </select></div>
+            <?php require __DIR__.'/partials/filtros_exportacion.php'; ?>
             <noscript><button type="submit" class="btn btn-system-light"><i class="bi bi-funnel" aria-hidden="true"></i> Aplicar filtros</button></noscript>
         </form>
         <div class="prospectos-filter-summary"><p><strong data-prospectos-filter-total><?= (int)$listado['total'] ?></strong> resultados</p><a class="btn btn-system-light" href="<?= $escaparProspecto($limpiarProspectos) ?>" data-prospectos-limpiar <?= $hayFiltrosProspectos?'':'hidden' ?>><i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar filtros</a><span class="prospectos-searching" role="status" data-prospectos-searching hidden><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Buscando prospectos</span></div>

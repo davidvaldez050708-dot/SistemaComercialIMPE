@@ -24,7 +24,7 @@
             }).finally(function () {if (current===revision) document.querySelector('[data-central-results]').removeAttribute('aria-busy');});
     }
     function submit() {var url=new URL(form.getAttribute('action')||location.href,location.href);url.search=new URLSearchParams(new FormData(form)).toString();load(url.toString(),true);}
-    form.addEventListener('submit',function (e) {e.preventDefault();clearTimeout(timer);submit();});
+    form.addEventListener('submit',function (e) {if (e.submitter?.name==='exportar') return;e.preventDefault();clearTimeout(timer);submit();});
     form.addEventListener('input',function (e) {if (e.target.type!=='search') return;clearTimeout(timer);timer=setTimeout(submit,350);});
     form.addEventListener('change',function (e) {if (e.target.tagName==='SELECT') {clearTimeout(timer);submit();}});
     document.addEventListener('click',function (e) {var a=e.target.closest('[data-central-results] .central-pagination a');if (!a||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey) return;e.preventDefault();clearTimeout(timer);load(a.href,true);});

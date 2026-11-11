@@ -84,6 +84,30 @@ try {
         $o=$repo->origen('IMPE_FORMULARIOS','REGISTRO',(string)$rid);$h=$repo->consulta('SELECT * FROM prospecto_preferencias_contacto WHERE origen_id=?',[(int)$o['id']])->fetch_assoc();
         ok($h['valor_original']===$horario,'preferencia sin horario o histórica vacía preservada '.$i);
     }
+    $repo->bloquearIdentidad();
+    try {
+        $db->begin_transaction();
+        $primero=$repo->identificarPersona(['nombre_completo'=>'Persona Cruce','telefono_original'=>'5511122233']);
+        $segundo=$repo->identificarPersona(['nombre_completo'=>'persona cruce','telefono_original'=>'+525511122233','correo'=>'cruce@example.test']);
+        ok($primero['nuevo'] && !$segundo['nuevo'] && $primero['id']===$segundo['id'],'mismo nombre y teléfono normalizado reutilizan la ficha');
+        $distinto=$repo->identificarPersona(['nombre_completo'=>'Persona Cruce','telefono_original'=>'5511122244']);
+        ok($distinto['id']!==$primero['id'] && $repo->tieneCoincidencias($distinto['id']),'nombre sin contacto compatible requiere revisión');
+        $db->rollback();
+    } finally {$repo->liberarIdentidad();}
+    $acotado=$m->listar(1,1,['desde'=>'2000-01-01','hasta'=>'2099-12-31'],true);
+    ok(count($acotado['registros'])===$acotado['total'] && $acotado['total']>1,'Excel de Aliados incluye más que la página visible');
+    $sinFechas=$repo->listar(['desde'=>'2099-01-01','hasta'=>'2099-01-01'],true);
+    ok($sinFechas['total']===0,'filtro central respeta el rango');
+    ok(ProspectoFechaHoraHelper::rango(['desde'=>'2026-11-11','hasta'=>'2026-11-11'])===['2026-11-11 06:00:00','2026-11-12 06:00:00'],'día local completo en UTC');
+    require_once $root.'/app/services/ProspectoExcel.php';
+    $excel=ProspectoExcel::crear([['id'=>1,'created_at'=>'2026-11-11 00:00:00','nombre'=>'=2+2','movil'=>'0012345678']],'aliados');
+    try {
+        $zip=new ZipArchive();
+        ok($zip->open($excel)===true,'se genera XLSX real');
+        $hoja=$zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        ok(str_contains($hoja,'=2+2') && str_contains($hoja,'0012345678') && !str_contains($hoja,'<f>'),'Excel conserva los teléfonos y trata fórmulas como texto');
+    } finally {unlink($excel);}
     $beforeSource=snapshot($db);
     $db->begin_transaction();$minimal=$repo->crearPersona(['nombre_completo'=>'Prospecto mínimo ficticio','telefono_original'=>'+525500000003','estado_id'=>1]);
     $metaId='000123456789012345678901234567890';

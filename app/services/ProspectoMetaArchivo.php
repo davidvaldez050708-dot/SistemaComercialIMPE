@@ -13,7 +13,7 @@ final class ProspectoMetaArchivo
     public const MAX_UNCOMPRESSED=33554432;
     private const COLUMNAS=['id','created_time','full_name','phone_number'];
     private const OPCIONALES=['ad_id','ad_name','adset_id','adset_name','campaign_id',
-        'campaign_name','form_id','form_name','is_organic','platform','estado','retailer_item_id'];
+        'campaign_name','form_id','form_name','is_organic','platform','estado','retailer_item_id','email'];
 
     public static function leer(string $path,string $nombre): array
     {
@@ -80,6 +80,7 @@ final class ProspectoMetaArchivo
             $row['id_original']=$row['id'];
             $row['id']=$id;
             $row['phone_number']=$telefono;
+            $row['email']=filter_var($row['email'], FILTER_VALIDATE_EMAIL) ?: null;
             $row['fecha_utc']=$creado;
             $row['campania_clave']=$clave;
             $row['linea']=$numero;

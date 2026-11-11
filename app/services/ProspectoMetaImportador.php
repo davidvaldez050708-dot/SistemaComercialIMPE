@@ -201,8 +201,9 @@ final class ProspectoMetaImportador
         }
         $guardados=0;$duplicados=0;
         $batch=array_slice($data['filas'],$offset,self::CHUNK);
-        $db->begin_transaction();
+        $repo->bloquearIdentidad();
         try {
+            $db->begin_transaction();
             foreach ($batch as $r) {
                 // Reconocer también leads importados con el identificador histórico META.
                 if ($repo->consulta("SELECT id FROM prospecto_origenes WHERE tipo_origen='META_ADS'
@@ -210,10 +211,12 @@ final class ProspectoMetaImportador
                     [$r['id'],$r['id']])->num_rows) {$duplicados++;continue;}
                 $estadoOriginal=$r['estado']!==''?$r['estado']:null;
                 $estadoCodigo=$estadoOriginal!==null?($estados[self::normalizarEstado($estadoOriginal)]??null):null;
-                $pid=$repo->crearPersona([
+                $identidad=$repo->identificarPersona([
                     'nombre_completo'=>$r['full_name'],'telefono_original'=>$r['phone_number'],
+                    'correo'=>$r['email']??null,
                     'estado_id'=>$estadoCodigo,'estado_provincia'=>$estadoOriginal,
                 ]);
+                $pid=$identidad['id'];
                 $oid=$repo->guardarOrigen($pid,[
                     'tipo_origen'=>'META_ADS','sistema_origen'=>'META_ADS','tipo_registro'=>'LEAD',
                     'identificador_origen'=>$r['id'],'datos_originales_ref'=>'meta:lead:'.($r['id_original']??$r['id']),
@@ -236,7 +239,7 @@ final class ProspectoMetaImportador
             $db->commit();
         } catch (Throwable $e) {
             $db->rollback();throw $e;
-        }
+        } finally {$repo->liberarIdentidad();}
         $meta['avance']+=count($batch);
         $meta['nuevos']+=$guardados;
         $meta['repetidos']+=$duplicados;

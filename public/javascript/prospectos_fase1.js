@@ -77,7 +77,8 @@
         const filterTotal=root.querySelector('[data-prospectos-filter-total]');
         const searching=root.querySelector('[data-prospectos-searching]');
         const programError=root.querySelector('[data-prospectos-program-error]');
-        const active=()=>{clear.hidden=!search.value.trim()&&!ally.value&&!program.value;};
+        const fechas=Array.from(form.querySelectorAll('[name=periodo], [name=desde], [name=hasta]'));
+        const active=()=>{clear.hidden=!search.value.trim()&&!ally.value&&!program.value&&!fechas.some(campo=>campo.value);};
         const error=root.querySelector('[data-prospectos-search-error]');
         const status=root.querySelector('[data-prospectos-search-status]');
         const total=root.querySelector('.prospectos-total strong');
@@ -146,8 +147,8 @@
         search.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();update();}});
         ally.addEventListener('change',update);
         program.addEventListener('change',update);
-        clear.addEventListener('click',event=>{event.preventDefault();search.value='';ally.value='';program.value='';allyWidget.sync();programWidget.sync();search.focus();update();});
-        form.addEventListener('submit',event=>{event.preventDefault();update();});
+        clear.addEventListener('click',event=>{event.preventDefault();search.value='';ally.value='';program.value='';fechas.forEach(campo=>{campo.value='';});allyWidget.sync();programWidget.sync();search.focus();update();});
+        form.addEventListener('submit',event=>{if (event.submitter?.name==='exportar') return;event.preventDefault();update();});
         // Evita que una respuesta pendiente cambie la tabla al volver desde la caché.
         window.addEventListener('pagehide',()=>{invalidate();results.removeAttribute('aria-busy');searching.hidden=true;});
     };

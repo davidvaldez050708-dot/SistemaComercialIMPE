@@ -177,6 +177,12 @@ final class ProspectoDistribucionMotor
         return array_column($filas,'programa_codigo');
     }
 
+    private function identidadEnRevision(int $id): bool
+    {
+        require_once __DIR__.'/ProspectoCentralRepository.php';
+        return (new ProspectoCentralRepository($this->db))->tieneCoincidencias($id);
+    }
+
     private function noAsignado(int $prospectoId): bool
     {
         return $this->consulta(
@@ -299,7 +305,8 @@ final class ProspectoDistribucionMotor
                     $programas=$this->programaOrigen($origen);
                     $codigo=self::soloUnPrograma($programas);
                     $motivo=null;$elegido=null;
-                    if ($codigo===null) $motivo=count($programas)===0?'SIN_PROGRAMA':'PROGRAMA_AMBIGUO';
+                    if ($this->identidadEnRevision($id)) $motivo='IDENTIDAD_EN_REVISION';
+                    else if ($codigo===null) $motivo=count($programas)===0?'SIN_PROGRAMA':'PROGRAMA_AMBIGUO';
                     else {
                         $opciones=$this->asesorProgramado($codigo,$dia,$fechaJornada);
                         if (!$aplicar) foreach ($opciones as &$op) {
@@ -457,7 +464,8 @@ final class ProspectoDistribucionMotor
                 $programas=$this->programaAliado($prospectoId);
                 $codigo=self::soloUnPrograma($programas);
                 $motivo=null;$elegido=null;$turno=null;
-                if ($codigo===null) $motivo=count($programas)===0?'SIN_PROGRAMA':'PROGRAMA_AMBIGUO';
+                if ($this->identidadEnRevision($prospectoId)) $motivo='IDENTIDAD_EN_REVISION';
+                else if ($codigo===null) $motivo=count($programas)===0?'SIN_PROGRAMA':'PROGRAMA_AMBIGUO';
                 else {
                     $preferencia=$this->consulta(
                         'SELECT valor_original,dias_semana,hora_desde,hora_hasta,

@@ -129,7 +129,7 @@ class ProspectoModel
         return $opciones;
     }
 
-    public function listar($pagina = 1, $porPagina = 25, array $filtros = [])
+    public function listar($pagina = 1, $porPagina = 25, array $filtros = [], bool $exportar = false)
     {
         $porPagina = max(1, min(100, (int)$porPagina));
         foreach (['buscar','aliado_id','programa'] as $campo) if (isset($filtros[$campo]) && !is_string($filtros[$campo]) && !($campo === 'aliado_id' && is_int($filtros[$campo]))) throw new DomainException('Filtro no válido.');
@@ -174,7 +174,12 @@ class ProspectoModel
             $params[]=$opcion['dato']; $types.='s';
         }
         if ($buscar !== '') { $where .= ' AND (r.nombre LIKE ? OR r.apellido LIKE ? OR r.movil LIKE ? OR r.correo LIKE ?)'; $params=array_merge($params,array_fill(0,4,'%'.$buscar.'%')); $types.='ssss'; }
+        [$desde,$hasta]=ProspectoFechaHoraHelper::rango($filtros);
+        if ($desde) {$where.=' AND r.created_at>=?';$params[]=$desde;$types.='s';}
+        if ($hasta) {$where.=' AND r.created_at<?';$params[]=$hasta;$types.='s';}
         $total = (int)$this->consultar('SELECT COUNT(*) total FROM formulario_registros r'.$join.$where,$params,$types)->fetch_assoc()['total'];
+        if ($exportar && $total>10000) throw new DomainException("Acota los filtros a 10,000 resultados para exportar.");
+        if ($exportar) {$porPagina=max(1,$total);$pagina=1;}
         $paginas = max(1, (int)ceil($total / $porPagina));
         $pagina = max(1, min((int)$pagina, $paginas));
         $offset = ($pagina - 1) * $porPagina;

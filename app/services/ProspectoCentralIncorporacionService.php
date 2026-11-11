@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__.'/ProspectoCentralRepository.php';
 
-/** Copia vinculada y recuperable; no cambia formularios ni deduplica personas. */
+/** Incorporación de formularios con procedencia e identidad comercial. */
 final class ProspectoCentralIncorporacionService
 {
     private mysqli $db;
@@ -50,15 +50,17 @@ final class ProspectoCentralIncorporacionService
     public function incorporarRegistro(int $id): array
     {
         if ($id<=0 || !$this->repo->estructura()['disponible']) throw new RuntimeException('El almacén no está preparado.');
-        $this->db->begin_transaction();
+        $this->repo->bloquearIdentidad();
         try {
+            $this->db->begin_transaction();
             // Serializar por la solicitud original evita dos identidades al conciliar
             // mientras el formulario recién guardado intenta incorporarse también.
             $row=$this->repo->consulta('SELECT * FROM formulario_registros WHERE id=? FOR UPDATE',[$id])->fetch_assoc();
             if (!$row) throw new DomainException('Registro original no encontrado.');
             $ap=$this->repo->consulta("SELECT * FROM formulario_aliado_procedencias WHERE tipo='registro' AND registro_id=? ORDER BY id FOR UPDATE",[$id])->fetch_all(MYSQLI_ASSOC);
             $existing=$this->repo->origen('IMPE_FORMULARIOS','REGISTRO',(string)$id);
-            $persona=$existing?(int)$existing['prospecto_id']:$this->repo->crearPersona($row);
+            $identidad=$existing?['id'=>(int)$existing['prospecto_id'],'nuevo'=>false]:$this->repo->identificarPersona($row);
+            $persona=$identidad['id'];
             $before=(int)$this->repo->consulta('SELECT COUNT(*) n FROM prospecto_origenes WHERE prospecto_id=?',[$persona])->fetch_assoc()['n'];
             $date=$this->fecha($row['created_at']??null);
             $common=['registro_tabla'=>'formulario_registros','registro_id'=>(string)$id,'formulario_id'=>'registro',
@@ -83,8 +85,9 @@ final class ProspectoCentralIncorporacionService
             }
             $after=(int)$this->repo->consulta('SELECT COUNT(*) n FROM prospecto_origenes WHERE prospecto_id=?',[$persona])->fetch_assoc()['n'];
             $this->db->commit();
-            return ['prospecto_id'=>$persona,'nuevo'=>$existing===null,'procedencias_nuevas'=>$after-$before];
+            return ['prospecto_id'=>$persona,'nuevo'=>$identidad['nuevo'],'procedencias_nuevas'=>$after-$before];
         } catch (Throwable $e) {$this->db->rollback();throw $e;}
+        finally {$this->repo->liberarIdentidad();}
     }
     private function fecha(?string $v): ?string
     {

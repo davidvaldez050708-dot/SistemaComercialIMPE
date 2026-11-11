@@ -1,7 +1,7 @@
 <?php
 $esc=static fn($v)=>htmlspecialchars((string)($v??''),ENT_QUOTES,'UTF-8');
 $texto=static fn($v)=>$v===null||$v===''?'Sin indicar':(string)$v;
-$filtros=[];foreach (['buscar','origen','programa','limite','campania'] as $k) if (isset($_GET[$k])&&is_string($_GET[$k])) $filtros[$k]=$_GET[$k];
+$filtros=[];foreach (['buscar','origen','programa','limite','campania','periodo','desde','hasta'] as $k) if (isset($_GET[$k])&&is_string($_GET[$k])) $filtros[$k]=$_GET[$k];
 if ($seccionProspectos!=='meta') unset($filtros['campania']);
 $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>'prospecto','action'=>'index','seccion'=>$seccionProspectos]+$filtros+['pagina'=>$p]);
 ?>
@@ -73,7 +73,8 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 <?php endif; ?>
 <div><label for="centralPrograma">Programa educativo</label><select id="centralPrograma" name="programa"><option value="">Todos los programas</option><?php foreach ($listado['programas'] as $p): ?><option value="<?= $esc($p['programa_clave']) ?>" <?= ($filtros['programa']??'')===$p['programa_clave']?'selected':'' ?>><?= $esc($p['nombre']) ?></option><?php endforeach; ?></select></div>
 <div><label for="centralLimite">Por página</label><select id="centralLimite" name="limite"><?php foreach ([25,50,100] as $n): ?><option <?= $listado['limite']===$n?'selected':'' ?>><?= $n ?></option><?php endforeach; ?></select></div>
-<noscript><button type="submit" class="central-link">Buscar</button></noscript></form>
+<noscript><button type="submit" class="central-link">Buscar</button></noscript><?php require __DIR__.'/partials/filtros_exportacion.php'; ?>
+</form>
 <p class="central-alert" role="alert" data-central-error hidden></p><span class="central-loading" role="status" aria-live="polite" data-central-status></span>
 <div data-central-results><p class="central-count"><?= (int)$listado['total'] ?> prospectos · Fechas en hora de México.</p>
 <div class="central-table-wrap" tabindex="0" role="region" aria-label="Prospectos comerciales"><table class="central-table"><thead><tr><th>Fecha de registro</th><th>Nombre</th><th>Teléfono</th><th>Programa</th><th><?= $seccionProspectos==='meta'?'Campaña':'Procedencia' ?></th><th>Horario de contacto</th><th>Gestión</th><th>Detalle</th></tr></thead><tbody>

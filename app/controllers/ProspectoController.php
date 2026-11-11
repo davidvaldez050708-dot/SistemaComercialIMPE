@@ -16,6 +16,10 @@ class ProspectoController
             $seccionProspectos=$legacy?'aliados':'todos';
         }
         if (!is_string($seccionProspectos)||!in_array($seccionProspectos,['todos','aliados','meta','asignaciones'],true)) {http_response_code(400);exit('Sección de prospectos no válida.');}
+        if (($_GET['exportar']??null)==='xlsx' && in_array($seccionProspectos,['todos','aliados','meta'],true)) {
+            $this->exportarExcel($seccionProspectos);
+            return;
+        }
         if ($seccionProspectos==='aliados') {$this->aliados();return;}
         $puedeConfigurarAsesores=ProspectoAsesorConfiguracionService::autorizado();
         $subAsignaciones=$_GET['sub']??($puedeConfigurarAsesores?'asesores':'historial');
@@ -278,6 +282,31 @@ class ProspectoController
         return $c+['aliados'=>$fuentes['aliados']??null,'generales'=>$fuentes['generales']??null];
     }
 
+    private function exportarExcel(string $seccion): void
+    {
+        header('Cache-Control: private, no-store');
+        try {
+            $filtros=$_GET;
+            $db=(new Database())->connect(false);
+            if ($seccion==='aliados') {
+                $datos=(new ProspectoModel($db))->listar(1,25,$filtros,true);
+            } else {
+                if ($seccion==='meta') $filtros['origen']='META_ADS';
+                $datos=(new ProspectoCentralRepository($db))->listar($filtros,true);
+            }
+            require_once __DIR__.'/../services/ProspectoExcel.php';
+            ProspectoExcel::descargar($datos['registros'],$seccion);
+        } catch (DomainException $e) {
+            http_response_code(422);
+            header('Content-Type: text/plain; charset=UTF-8');
+            echo $e->getMessage();
+        } catch (Throwable $e) {
+            error_log('[prospectos_excel] '.get_class($e));
+            http_response_code(500);
+            echo 'No se pudo generar el Excel.';
+        }
+    }
+
     private function aliados()
     {
         $this->validarAcceso();
@@ -331,7 +360,7 @@ class ProspectoController
             if ($mostrarTablaProspectos) {
                 foreach (['buscar','aliado_id','programa'] as $campo) if (isset($_GET[$campo]) && !is_string($_GET[$campo])) throw new DomainException('Filtro no válido.');
                 if (isset($_GET['aliado_id']) && $_GET['aliado_id']!=='' && $aliadoFiltroProspectos==='') throw new DomainException('Aliado no válido.');
-                $filtros=['buscar'=>$buscarProspectos,'aliado_id'=>$aliadoFiltroProspectos,'programa'=>$programaFiltroProspectos];
+                $filtros=['buscar'=>$buscarProspectos,'aliado_id'=>$aliadoFiltroProspectos,'programa'=>$programaFiltroProspectos]+array_intersect_key($_GET,array_flip(['periodo','desde','hasta']));
                 if ($estadoProspectos) $filtros['estado_id']=(int)$estadoProspectos['id'];
                 $pagina=filter_var($_GET['pagina']??1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])?:1;
                 $listado=$modelo->listar($pagina,25,$filtros);

@@ -36,6 +36,63 @@ final class ProspectoCentralRepository
         $this->insertar('prospecto_integraciones',['prospecto_id'=>$id,'sistema'=>'ZOHO','referencia_estable'=>'CRM-PROS-'.str_pad((string)$id,5,'0',STR_PAD_LEFT),'estado'=>'NO_CONFIGURADO']);
         return $id;
     }
+    public function bloquearIdentidad(): void
+    {
+        $fila=$this->consulta("SELECT GET_LOCK('impe_prospectos_identidad',10) adquirido")->fetch_assoc();
+        if ((int)$fila['adquirido']!==1) throw new RuntimeException('No se pudo comprobar la identidad. Reintenta.');
+    }
+
+    public function liberarIdentidad(): void
+    {
+        $this->consulta("SELECT RELEASE_LOCK('impe_prospectos_identidad')");
+    }
+
+    private function candidatosIdentidad(array $persona, int $excluir=0): array
+    {
+        $correo=mb_strtolower(trim($persona['correo']??''));
+        $nombre=trim($persona['nombre_completo']??'');
+        return $this->consulta(
+            "SELECT id,nombre_completo,correo,telefono_normalizado FROM prospectos_comerciales
+             WHERE id<>? AND ((?<>'' AND LOWER(TRIM(correo))=?)
+             OR telefono_normalizado=? OR (?<>'' AND TRIM(nombre_completo) COLLATE utf8mb4_unicode_ci = ?))
+             LIMIT 2",
+            [$excluir,$correo,$correo,
+                $persona['telefono_normalizado'],$nombre,$nombre]
+        )->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /** El llamador mantiene el bloqueo hasta confirmar origen e intereses. */
+    public function identificarPersona(array $datos): array
+    {
+        $persona=ProspectoCentralDatos::persona($datos);
+        $candidatos=$this->candidatosIdentidad($persona);
+        if (count($candidatos)===1) {
+            $candidato=$candidatos[0];
+            $correo=mb_strtolower(trim($persona['correo']??''));
+            $otroCorreo=mb_strtolower(trim($candidato['correo']??''));
+            $tel=$persona['telefono_normalizado'];
+            $otroTel=$candidato['telefono_normalizado'];
+            $nombre=static fn($s)=>mb_strtolower(trim(preg_replace('/\s+/u',' ',$s??'')));
+            $mismoContacto=($correo!=='' && $correo===$otroCorreo) || ($tel!==null && $tel===$otroTel);
+            if ($mismoContacto && $nombre($persona['nombre_completo'])===$nombre($candidato['nombre_completo'])
+                && ($correo==='' || $otroCorreo==='' || $correo===$otroCorreo)
+                && (!$tel || !$otroTel || $tel===$otroTel)) {
+                $this->ejecutar("UPDATE prospectos_comerciales
+                    SET correo=COALESCE(NULLIF(correo,''),?), telefono_original=COALESCE(NULLIF(telefono_original,''),?),
+                        telefono_normalizado=COALESCE(telefono_normalizado,?) WHERE id=?",
+                    [$persona['correo'],$persona['telefono_original'],$tel,(int)$candidato['id']]);
+                return ['id'=>(int)$candidato['id'],'nuevo'=>false];
+            }
+        }
+        return ['id'=>$this->crearPersona($datos),'nuevo'=>true];
+    }
+
+    public function tieneCoincidencias(int $id): bool
+    {
+        $persona=$this->consulta('SELECT nombre_completo,correo,telefono_normalizado FROM prospectos_comerciales WHERE id=?',[$id])->fetch_assoc();
+        return $persona && (bool)$this->candidatosIdentidad($persona,$id);
+    }
+
     public function origen(string $sistema,string $tipo,string $identificador): ?array
     {
         return $this->consulta('SELECT * FROM prospecto_origenes WHERE sistema_origen=? AND tipo_registro=? AND identificador_origen=?',[$sistema,$tipo,$identificador])->fetch_assoc();
@@ -82,7 +139,7 @@ final class ProspectoCentralRepository
         $pending=(int)$this->consulta("SELECT COUNT(*) n FROM formulario_registros r WHERE NOT EXISTS(SELECT 1 FROM prospecto_origenes o WHERE o.sistema_origen='IMPE_FORMULARIOS' AND o.tipo_registro='REGISTRO' AND o.identificador_origen=CAST(r.id AS CHAR))")->fetch_assoc()['n'];
         return ['personas'=>$personas,'meta'=>$meta,'por_incorporar'=>$pending];
     }
-    public function listar(array $filtros): array
+    public function listar(array $filtros, bool $exportar = false): array
     {
         $page=filter_var($filtros['pagina']??1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])?:1;
         $size=filter_var($filtros['limite']??25,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>100]])?:25;
@@ -105,15 +162,27 @@ final class ProspectoCentralRepository
             if ($source!=='') {$where.=' AND EXISTS(SELECT 1 FROM prospecto_origenes o WHERE o.prospecto_id=p.id AND o.tipo_origen=?)';$args[]=$source;}
             if ($program!=='') {$where.=' AND EXISTS(SELECT 1 FROM prospecto_intereses i WHERE i.prospecto_id=p.id AND i.programa_clave=?)';$args[]=$program;}
         }
+        [$desde,$hasta]=ProspectoFechaHoraHelper::rango($filtros);
+        if ($desde || $hasta) {
+            $where .= " AND EXISTS (SELECT 1 FROM prospecto_origenes f WHERE f.prospecto_id=p.id AND f.zona_horaria_origen='UTC'";
+            if ($desde) {$where.=' AND f.fecha_registro_original>=?';$args[]=$desde;}
+            if ($hasta) {$where.=' AND f.fecha_registro_original<?';$args[]=$hasta;}
+            if ($source !== '') {$where.=' AND f.tipo_origen=?';$args[]=$source;}
+            if ($campaign !== '') {$where.=' AND f.campania_id=BINARY ?';$args[]=$campaign;}
+            if ($program !== '') {$where.=' AND EXISTS(SELECT 1 FROM prospecto_intereses i WHERE i.origen_id=f.id AND i.programa_clave=?)';$args[]=$program;}
+            $where.=')';
+        }
         $total=(int)$this->consulta('SELECT COUNT(*) n FROM prospectos_comerciales p'.$where,$args)->fetch_assoc()['n'];
+        if ($exportar && $total>10000) throw new DomainException("Acota los filtros a 10,000 resultados para exportar.");
+        if ($exportar) {$size=max(1,$total);$page=1;}
         $pages=max(1,(int)ceil($total/$size));$page=min($page,$pages);
-        $rows=$this->consulta("SELECT p.*,
+        $rows=$this->consulta("SELECT p.*,e.nombre estado_nombre,m.nombre municipio_nombre,
             (SELECT MIN(o.fecha_registro_original) FROM prospecto_origenes o WHERE o.prospecto_id=p.id AND o.origen_padre_id IS NULL AND o.zona_horaria_origen='UTC') fecha_origen,
             (SELECT GROUP_CONCAT(DISTINCT i.nombre_original ORDER BY i.id SEPARATOR ' · ') FROM prospecto_intereses i WHERE i.prospecto_id=p.id) programas,
             (SELECT GROUP_CONCAT(DISTINCT COALESCE(o.aliado_nombre,CASE o.tipo_origen WHEN 'META_ADS' THEN COALESCE(o.formulario_nombre,'Meta Ads') WHEN 'FORMULARIO_GENERAL' THEN COALESCE(o.formulario_nombre,'Registro general') ELSE NULL END) ORDER BY o.id SEPARATOR ' · ') FROM prospecto_origenes o WHERE o.prospecto_id=p.id) procedencias,
             (SELECT pref.valor_original FROM prospecto_preferencias_contacto pref JOIN prospecto_origenes o ON o.id=pref.origen_id WHERE o.prospecto_id=p.id ORDER BY o.fecha_registro_original DESC,o.id DESC LIMIT 1) horario,
             (SELECT a.estado FROM prospecto_asignaciones a WHERE a.prospecto_id=p.id AND a.vigente=1 LIMIT 1) gestion
-            FROM prospectos_comerciales p $where ORDER BY p.created_at DESC,p.id DESC LIMIT ? OFFSET ?",[...$args,$size,($page-1)*$size])->fetch_all(MYSQLI_ASSOC);
+            FROM prospectos_comerciales p LEFT JOIN estados e ON e.id=p.estado_id LEFT JOIN municipios m ON m.id=p.municipio_id $where ORDER BY p.created_at DESC,p.id DESC LIMIT ? OFFSET ?",[...$args,$size,($page-1)*$size])->fetch_all(MYSQLI_ASSOC);
         $programs=$this->consulta('SELECT programa_clave,MIN(nombre_original) nombre FROM prospecto_intereses GROUP BY programa_clave ORDER BY nombre LIMIT 500')->fetch_all(MYSQLI_ASSOC);
         // Una consulta para todas las campañas de la página; sin GROUP_CONCAT
         // truncable ni consultas individuales por prospecto.
@@ -144,7 +213,7 @@ final class ProspectoCentralRepository
         $p['intereses']=$this->consulta('SELECT i.* FROM prospecto_intereses i WHERE i.prospecto_id=? ORDER BY i.id DESC LIMIT 25 OFFSET ?',[$id,($p['intereses_pagina']-1)*25])->fetch_all(MYSQLI_ASSOC);
         $p['asignaciones']=$this->consulta('SELECT a.*,CONCAT_WS(CHAR(32),u.nombre,u.apellidos) asesor FROM prospecto_asignaciones a LEFT JOIN usuarios u ON u.id=a.asesor_id WHERE a.prospecto_id=? ORDER BY a.id DESC LIMIT 25',[$id])->fetch_all(MYSQLI_ASSOC);
         $p['integraciones']=$this->consulta('SELECT sistema,externo_id,modulo_destino,estado,ultimo_intento_at,sincronizado_at,referencia_estable FROM prospecto_integraciones WHERE prospecto_id=?',[$id])->fetch_all(MYSQLI_ASSOC);
-        $p['coincidencias']=$p['telefono_normalizado']===null?0:(int)$this->consulta('SELECT COUNT(*) n FROM prospectos_comerciales WHERE telefono_normalizado=? AND id<>?',[$p['telefono_normalizado'],$id])->fetch_assoc()['n'];
+        $p['coincidencias']=count($this->candidatosIdentidad($p,$id));
         $root=$this->consulta("SELECT registro_id FROM prospecto_origenes WHERE prospecto_id=? AND sistema_origen='IMPE_FORMULARIOS' AND tipo_registro='REGISTRO' ".($registroId!==null?' AND registro_id=?':'').' ORDER BY id LIMIT 1', $registroId!==null?[$id,(string)$registroId]:[$id])->fetch_assoc();
         $p['original']=$root?$this->registroOriginal((int)$root['registro_id']):null;
         return $p;
