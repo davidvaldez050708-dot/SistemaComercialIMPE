@@ -27,8 +27,7 @@ PHP=os.environ.get('IMPE_TEST_PHP',r'C:\xampp\php\php.exe' if os.name=='nt' else
 with tempfile.TemporaryDirectory(prefix='agenda-comments-http-',dir=ROOT/'tmp') as tmp:
     work=Path(tmp)
     for rel in ['app/controllers/AgendaComentarioController.php','app/controllers/ReminderController.php','app/services/AgendaComentarioService.php',
-                'app/services/AgendaComentarioRepository.php','app/helpers/PermissionHelper.php','app/helpers/AdminRolePolicy.php',
-                'config/private_config.php']:
+                'app/services/AgendaComentarioRepository.php','app/helpers/PermissionHelper.php','app/helpers/AdminRolePolicy.php']:
         p=work/rel;p.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/rel,p)
     if HOSTINGER:
         base=subprocess.check_output(['git','show','5116b62c284de2f9e27440f77982964e876c7402:app/controllers/ReminderController.php'],cwd=ROOT).decode('utf8')
@@ -48,6 +47,7 @@ public function obtener(){return ['ok'=>true,'total'=>1,'recordatorios'=>[['id'=
 public function obtener(...$args){return array_map(static fn($id)=>['id'=>$id,'tipo'=>'ALIADO_CONVOCATORIA_PENDIENTE','etiqueta'=>'Configurar programas','estado'=>'normal','prioridad'=>1],range(100,129));}}
 ''',encoding='utf8')
     shutil.copyfile(ROOT/'tests/fixtures/agenda_comentarios_db.php',work/'adapter.php')
+    (work/'config').mkdir()
     (work/'config/db_connection.php').write_text('''<?php
 date_default_timezone_set('America/Mexico_City');
 require_once __DIR__.'/../adapter.php';

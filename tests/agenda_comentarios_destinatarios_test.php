@@ -114,24 +114,20 @@ dsql("INSERT INTO usuarios(id,nombre,apellidos,rol_id,estado) VALUES
     (20,'Directora','Autorizada',2,1),(21,'Otro','Director',2,1),
     (22,'Usuario','RH',12,1),(23,'Usuario','Marketing',13,1),(24,'Otra','Cuenta Clave',6,1)");
 dsql('UPDATE usuarios SET estado=1 WHERE id=7');
-if ($site) {
-    file_put_contents($site . '/config/agenda.local.php', '<?php return ["director_autorizado_id" => 20];');
-}
-$conExcepcion = new AgendaComentarioService(new AgendaComentarioRepository($db, $site ? null : 20), $now);
-foreach ([5 => false, 7 => true, 15 => false, 20 => true, 21 => false, 22 => true, 23 => false, 24 => true] as $autor => $permitido) {
+foreach ([5 => false, 7 => true, 15 => false, 20 => true, 21 => true, 22 => true, 23 => false, 24 => true] as $autor => $permitido) {
     dsess($autor);
-    $lista = $conExcepcion->listar($autor, '2026-10-01', '2026-11-01')['destinatarios'];
+    $lista = $s->listar($autor, '2026-10-01', '2026-11-01')['destinatarios'];
     dcheck(in_array(15, array_column($lista, 'id'), true) === $permitido, "Visibilidad de Administrador para $autor");
-    $resultado = $conExcepcion->crear($autor, [
+    $resultado = $s->crear($autor, [
         'fecha' => '2026-10-29', 'comentario' => 'Mensaje directo', 'destinatario_id' => 15
     ]);
     dcheck($resultado['ok'] === $permitido, "Validación del envío directo para $autor");
 }
 dsql('UPDATE usuarios SET rol_id=13 WHERE id=20');
 dsess(20);
-dcheck(!$conExcepcion->crear(20, ['fecha'=>'2026-10-29','comentario'=>'Ya no es directora','destinatario_id'=>15])['ok'],
-    'La excepción personal requiere conservar el rol de Dirección');
+dcheck(!$s->crear(20, ['fecha'=>'2026-10-29','comentario'=>'Ya no es directora','destinatario_id'=>15])['ok'],
+    'El permiso se revoca al cambiar a un rol sin acceso');
 dsess(23);
-dcheck($conExcepcion->crear(23, ['fecha'=>'2026-10-29','comentario'=>'Aviso general'])['ok'],
+dcheck($s->crear(23, ['fecha'=>'2026-10-29','comentario'=>'Aviso general'])['ok'],
     'Marketing conserva el envío general');
-echo "OK: destinatarios activos, privacidad, avisos y restricción de destinatario Administrador por rol y cuenta.\n";
+echo "OK: destinatarios activos, privacidad, avisos y restricción de destinatario Administrador por rol.\n";

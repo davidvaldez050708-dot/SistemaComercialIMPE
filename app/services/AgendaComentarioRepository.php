@@ -1,7 +1,6 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
-require_once __DIR__ . '/../../config/private_config.php';
 
 /** Almacenamiento independiente; no modifica reuniones ni seguimientos. */
 class AgendaComentarioRepository
@@ -11,12 +10,10 @@ class AgendaComentarioRepository
     private $avisosVistosDisponibles;
     private $privacidadDisponible;
     private $destinatariosDisponibles;
-    private $directorAutorizadoId;
 
-    public function __construct($db = null, ?int $directorAutorizadoId = null)
+    public function __construct($db = null)
     {
         $this->db = $db ?: (new Database())->connect();
-        $this->directorAutorizadoId = $directorAutorizadoId;
     }
 
     public function disponible(): bool
@@ -93,12 +90,6 @@ class AgendaComentarioRepository
 
     private function consultarDestinatarios(int $autor, ?int $destinatario = null): array
     {
-        $this->directorAutorizadoId ??= filter_var(
-            impeLeerConfigPrivada('agenda.local.php')['director_autorizado_id'] ?? null,
-            FILTER_VALIDATE_INT,
-            ['options' => ['min_range' => 1]]
-        ) ?: 0;
-
         $sql = "SELECT u.id,TRIM(CONCAT(COALESCE(u.nombre,''),' ',COALESCE(u.apellidos,''))) AS nombre,r.nombre AS rol
             FROM usuarios u INNER JOIN roles r ON r.id=u.rol_id AND r.estado=1
             WHERE u.estado=1 AND (
@@ -112,16 +103,15 @@ class AgendaComentarioRepository
             ) AND (r.id <> 1 OR EXISTS (
                 SELECT 1 FROM usuarios a INNER JOIN roles ra ON ra.id=a.rol_id AND ra.estado=1
                 WHERE a.id=? AND a.estado=1 AND (
-                    LOWER(TRIM(ra.nombre)) IN ('rh','recursos humanos','cuenta clave')
-                    OR (a.id=? AND LOWER(TRIM(ra.nombre))='director de operaciones')
+                    LOWER(TRIM(ra.nombre)) IN ('rh','recursos humanos','cuenta clave','director de operaciones')
                 )
             ))";
         $stmt = $this->db->prepare($sql . ($destinatario === null
             ? ' ORDER BY u.nombre,u.apellidos,u.id' : ' AND u.id=?'));
         if ($destinatario === null) {
-            $stmt->bind_param('ii', $autor, $this->directorAutorizadoId);
+            $stmt->bind_param('i', $autor);
         } else {
-            $stmt->bind_param('iii', $autor, $this->directorAutorizadoId, $destinatario);
+            $stmt->bind_param('ii', $autor, $destinatario);
         }
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
