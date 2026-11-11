@@ -26,7 +26,8 @@ final class EmbudoComercialPoliticaPropuesta
         'NUEVO' => [
             'SIN_GESTION' => 'Pendiente de primera llamada',
             'INTENTO_1' => 'Primer intento sin contacto',
-            'INTENTO_2' => 'Segundo intento sin contacto'
+            'INTENTO_2' => 'Segundo intento sin contacto',
+            'REVISION_CONTACTO_PREVIO' => 'Verificar conversación anterior'
         ],
         'CONTACTADO' => [
             'PRIMER_CONTACTO' => 'Primer contacto realizado',
