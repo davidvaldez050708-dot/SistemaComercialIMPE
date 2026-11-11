@@ -9,10 +9,9 @@ class ConvocatoriaModel
     private $soportaNotificacionesConvocatorias = null;
     private $fechasOpcionalesConfiguradas = null;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection ?? (new Database())->connect();
     }
 
     public function desactivarConvocatoriasVencidas()

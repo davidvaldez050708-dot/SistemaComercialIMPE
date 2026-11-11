@@ -34,6 +34,53 @@ try {
     $db->query('DELETE FROM telefonia_disponibilidad WHERE id=2');
     if ((int)$svc->sondear(1,true,0,false)['entrante']['id'] !== 1) throw new RuntimeException('La solicitud pendiente debe aparecer.');
 
+    $inserciones = $counter('Com_insert');
+    $svc->sondear(1,true,0,false,null,false);
+    if ($counter('Com_insert') !== $inserciones) {
+        throw new RuntimeException('El sondeo sin heartbeat escribió presencia.');
+    }
+
+    require_once __DIR__.'/../app/helpers/TelefoniaPresenciaRitmo.php';
+    $db->query('DELETE FROM telefonia_disponibilidad');
+    for ($usuario=2;$usuario<=30;$usuario++) {
+        $rol = [3, 4, 7][$usuario % 3];
+        $db->query("INSERT INTO usuarios VALUES ($usuario,1,$rol)");
+        $ext = (string)(200+$usuario);
+        $db->query("INSERT INTO telefonia_extensiones VALUES ($usuario,'$ext',1,'ZADARMA',1,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+    }
+    foreach ([10,30] as $usuarios) {
+        $resultados = [];
+        foreach ([false,true] as $optimizado) {
+            $insert = $counter('Com_insert');
+            $select = $counter('Com_select');
+            for ($ronda=0;$ronda<10;$ronda++) {
+                $sesiones = [];
+                for ($segundo=0;$segundo<=9;$segundo+=3) {
+                    $hora = 1000+$ronda*20+$segundo;
+                    for ($posicion=0;$posicion<$usuarios;$posicion++) {
+                        $usuario = ($posicion+$ronda)%$usuarios+1;
+                        $sesiones[$usuario] ??= [];
+                        // Las dos pestañas comparten la misma sesión PHP.
+                        for ($tab=0;$tab<2;$tab++) {
+                            $disponible = $segundo !== 3;
+                            $actualizar = !$optimizado || TelefoniaPresenciaRitmo::debeActualizar(
+                                $sesiones[$usuario],$usuario,$disponible,$hora);
+                            $svc->sondear($usuario,$disponible,0,false,null,$actualizar);
+                            if ($actualizar) TelefoniaPresenciaRitmo::confirmar(
+                                $sesiones[$usuario],$usuario,$disponible,$hora);
+                        }
+                    }
+                }
+            }
+            $resultados[] = [$counter('Com_insert')-$insert,$counter('Com_select')-$select];
+        }
+        if ($resultados !== [[$usuarios*80,$usuarios*160],[$usuarios*30,$usuarios*160]]) {
+            throw new RuntimeException('Contadores de rotación inesperados: '.json_encode($resultados));
+        }
+        echo "$usuarios usuarios, 10 rotaciones y 2 pestañas sintéticas: UPSERT ".
+            $resultados[0][0].' -> '.$resultados[1][0].", SELECT ".$resultados[1][1]."\n";
+    }
+
     $ddl = $counter('Com_create_table');
     new TelefoniaNotificacionService($db);
     if ($counter('Com_create_table') !== $ddl) throw new RuntimeException('La campana ejecutó DDL.');

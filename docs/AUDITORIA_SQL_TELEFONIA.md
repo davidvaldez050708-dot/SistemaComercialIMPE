@@ -31,3 +31,13 @@ Comparar el mismo escenario contra 0899e689. Registrar sentencias y escrituras p
 Las rotaciones previas llegaron a 46, 58, 69 y 75 conexiones. No se ha demostrado que el pool llegue a una meseta por debajo del límite. Medir por PID y credencial con reciclaje controlado antes de proponer una vida útil o una política de persistencia. Para reducir escrituras de presencia, medir primero cuánto margen queda en la ventana de 15 s con latencia y pestañas en segundo plano, y conservar la publicación inmediata cuando cambia el estado.
 
 Este entorno Windows no tiene un vhost LSAPI disponible. No se ejecutó la matriz de larga duración ni carga contra Hostinger. Hostinger debe confirmar los límites relevantes, el alcance temporal de la protección y qué métricas puede facilitar para correlacionar el incidente. La reducción observada en un ciclo no permite afirmar estabilidad para 30 trabajadores.
+
+## Integración de la corrección de presencia
+
+La corrección de 32d825a conserva el sondeo de tres segundos y confirma el heartbeat en la sesión PHP sólo después de éxito. El sello toma la hora anterior al UPSERT para no extender la vigencia aparente cuando la consulta tarda. Un cambio ocupado/disponible actualiza en el siguiente sondeo y la acción explícita invalida la marca. La frecuencia de seis segundos deja margen frente a la ventana de 15 s durante sondeos regulares; retrasos del navegador, interrupciones y sesiones concurrentes independientes requieren validación HTTP.
+
+La prueba local ejecutó dos pestañas por sesión simulada, diez rotaciones, cuatro ciclos por rotación y cambios de disponibilidad con 10 y 30 usuarios sintéticos. Los UPSERT medidos bajaron de 800 a 300 y de 2400 a 900 (62.5% en este escenario). Los SELECT quedaron en 1600 y 4800 respectivamente frente al mismo código con heartbeat incondicional. Este ensayo serial usa una sola conexión y un reloj simulado. No mide conexiones simultáneas, latencia web ni códigos HTTP.
+
+La campana administrativa reutiliza el handle de la petición para sincronizar convocatorias y después consultar avisos. El sincronizador termina su transacción antes de las lecturas posteriores. Esto elimina una apertura de handle independiente en ese recorrido, sin cambiar los límites de persistencia. No demuestra que el pool bajo LSAPI deje de crecer.
+
+Pasaron las pruebas de ritmo, sondeo, orden de avisos, identidad de transferencia y admisión. La prueba de notificaciones de Ventas no completó: su fixture no crea las tablas de eventos y transferencias requeridas por la rama. Se mantiene como pendiente, junto con el ensayo HTTP, webhooks, Inicio y la matriz LSAPI de una hora. Windows cuenta con PHP CLI y MariaDB local, pero WSL no está instalado y no hay vhost LSAPI. El publicador sigue bloqueado.

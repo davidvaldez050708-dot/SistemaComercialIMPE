@@ -754,12 +754,29 @@ class TelefoniaController
             }
             if(in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)){
                 if (($_POST['accion'] ?? '') === 'POLL') {
-                    $this->responderJson(['ok'=>true] + $svc->sondear(
-                        $user, ($_POST['disponible'] ?? '') === '1', (int)($_POST['id'] ?? 0),
-                        ($_POST['consultar_devoluciones'] ?? '1') === '1'
-                    ));
+                    require_once __DIR__.'/../helpers/TelefoniaPresenciaRitmo.php';
+                    $disponible = ($_POST['disponible'] ?? '') === '1';
+                    $sesionActiva = session_status() === PHP_SESSION_ACTIVE;
+                    // Registrar un instante anterior al UPSERT para no ampliar
+                    // la vigencia aparente si la reconciliación tarda.
+                    $inicioPresencia = time();
+                    $actualizarPresencia = !$sesionActiva ||
+                        TelefoniaPresenciaRitmo::debeActualizar($_SESSION, $user, $disponible, $inicioPresencia);
+                    $resultado = $svc->sondear(
+                        $user, $disponible, (int)($_POST['id'] ?? 0),
+                        ($_POST['consultar_devoluciones'] ?? '1') === '1',
+                        null, $actualizarPresencia
+                    );
+                    if ($sesionActiva && $actualizarPresencia) {
+                        TelefoniaPresenciaRitmo::confirmar($_SESSION, $user, $disponible, $inicioPresencia);
+                    }
+                    $this->responderJson(['ok'=>true] + $resultado);
                 }
                 $svc->presencia($user,($_POST['disponible']??'')==='1');
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    require_once __DIR__.'/../helpers/TelefoniaPresenciaRitmo.php';
+                    TelefoniaPresenciaRitmo::invalidar($_SESSION);
+                }
                 $this->responderJson(['ok'=>true]);
             }
             if(($_POST['accion']??'')==='ATENDIDA')$this->responderJson(['ok'=>false,'mensaje'=>'Registra el resultado desde Llamadas por devolver.'],409);

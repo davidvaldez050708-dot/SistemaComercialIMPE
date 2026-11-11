@@ -26,14 +26,8 @@ class AdminNotificationService
         try {
             // Mantiene el estado temporal de convocatorias sincronizado aunque
             // no haya un usuario de Marketing consultando su campana.
-            try {
-                (new ConvocatoriaModel())->sincronizarConvocatoriasPorFecha();
-            } catch (Throwable $error) {
-                error_log(
-                    'No fue posible sincronizar convocatorias para el centro administrativo: ' .
-                    $error->getMessage()
-                );
-            }
+            // La sincronización abre y cierra su transacción antes de las lecturas.
+            (new ConvocatoriaModel($this->connection))->sincronizarConvocatoriasPorFecha();
 
             $reuniones = $this->resumenReuniones();
             if ((int)$reuniones['total'] > 0) {
@@ -152,11 +146,10 @@ class AdminNotificationService
                 'total' => $total
             ];
         } catch (Throwable $error) {
-            error_log(
-                'No fue posible cargar notificaciones administrativas: ' .
-                $error->getMessage()
-            );
-
+            error_log('[campana_administrador] ' . get_class($error));
+            if (Database::esFalloTemporal($error)) {
+                throw $error;
+            }
             return [
                 'ok' => false,
                 'requiere_migracion' => false,
