@@ -283,11 +283,10 @@ final class EmbudoComercialRepository
                     (SELECT GROUP_CONCAT(DISTINCT i.nombre_original SEPARATOR ' · ')
                      FROM prospecto_intereses i WHERE i.prospecto_id=p.id) programas,
                     COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
-                    e.etapa etapa_original,st.subetapa
-                $from
-                LEFT JOIN prospecto_embudo_subetapas st
-                    ON st.asignacion_id=a.id
-                WHERE $expr=?
+                    e.etapa etapa_original,
+                    (SELECT st.subetapa FROM prospecto_embudo_subetapas st
+                     WHERE st.asignacion_id=a.id LIMIT 1) subetapa
+                $from AND $expr=?
                 ORDER BY COALESCE(ag.proxima_accion_at,a.proxima_accion_at,
                             a.asignado_at),a.id
                 LIMIT 21",array_merge($args,[$etapa])
