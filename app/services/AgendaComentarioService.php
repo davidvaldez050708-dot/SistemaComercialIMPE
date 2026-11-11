@@ -92,7 +92,7 @@ class AgendaComentarioService
             'destinatarios_disponibles'=>$destinatariosDisponibles,
             'destinatarios'=>$destinatariosDisponibles?array_map(static fn($u)=>[
                 'id'=>(int)$u['id'],'nombre'=>(string)$u['nombre'],'rol'=>(string)$u['rol']
-            ],$this->repo->destinatarios()):[]];
+            ],$this->repo->destinatarios($usuario)):[]];
     }
 
     public function crear(int $usuario, array $datos): array
@@ -116,7 +116,7 @@ class AgendaComentarioService
             $destinatario=(int)$destinatario;
             if ($privado) return $this->error('Un comentario privado sólo puede generar avisos para su autor.');
             if (!$this->repo->destinatariosDisponibles()) return $this->error('Los destinatarios aún no están disponibles. Solicita completar la instalación.',503);
-            if (!$this->repo->destinatarioHabilitado($destinatario)) return $this->error('El destinatario ya no puede recibir avisos de Agenda. Selecciona otro.');
+            if (!$this->repo->destinatarioHabilitado($destinatario, $usuario)) return $this->error('El destinatario no está disponible para tu perfil. Selecciona otro.');
         }
         if (!$this->fechaValida($fecha)) { return $this->error('Selecciona un día válido de la agenda.'); }
         if (!is_string($hora) || ($hora !== '' && !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D',$hora))) { return $this->error('La hora debe tener el formato HH:MM.'); }

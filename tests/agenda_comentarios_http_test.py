@@ -27,7 +27,8 @@ PHP=os.environ.get('IMPE_TEST_PHP',r'C:\xampp\php\php.exe' if os.name=='nt' else
 with tempfile.TemporaryDirectory(prefix='agenda-comments-http-',dir=ROOT/'tmp') as tmp:
     work=Path(tmp)
     for rel in ['app/controllers/AgendaComentarioController.php','app/controllers/ReminderController.php','app/services/AgendaComentarioService.php',
-                'app/services/AgendaComentarioRepository.php','app/helpers/PermissionHelper.php','app/helpers/AdminRolePolicy.php']:
+                'app/services/AgendaComentarioRepository.php','app/helpers/PermissionHelper.php','app/helpers/AdminRolePolicy.php',
+                'config/private_config.php']:
         p=work/rel;p.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/rel,p)
     if HOSTINGER:
         base=subprocess.check_output(['git','show','5116b62c284de2f9e27440f77982964e876c7402:app/controllers/ReminderController.php'],cwd=ROOT).decode('utf8')
@@ -47,7 +48,6 @@ public function obtener(){return ['ok'=>true,'total'=>1,'recordatorios'=>[['id'=
 public function obtener(...$args){return array_map(static fn($id)=>['id'=>$id,'tipo'=>'ALIADO_CONVOCATORIA_PENDIENTE','etiqueta'=>'Configurar programas','estado'=>'normal','prioridad'=>1],range(100,129));}}
 ''',encoding='utf8')
     shutil.copyfile(ROOT/'tests/fixtures/agenda_comentarios_db.php',work/'adapter.php')
-    (work/'config').mkdir()
     (work/'config/db_connection.php').write_text('''<?php
 date_default_timezone_set('America/Mexico_City');
 require_once __DIR__.'/../adapter.php';
@@ -190,6 +190,9 @@ if(!in_array($action,['listar','crear','eliminar','leer','leerVisto'],true)){htt
                 print('OK: privados HTTP: calendario/campana/IDs directos, lector/admin ajenos excluidos y autor con hora opcional.')
             if DESTINATARIOS:
                 login(a,5);login(b,7,rol=6);login(admin,15,rol=1)
+                destinatarios=request(a,'listar',query='&desde=2026-10-01&hasta=2026-11-01')[1]['destinatarios']
+                assert 15 not in [usuario['id'] for usuario in destinatarios]
+                assert request(a,'crear',dict(fecha='2026-10-28',comentario='Envío restringido',destinatario_id=15))[0]==422
                 third=client();login(third,8)
                 code,result=request(a,'crear',dict(fecha='2026-10-28',comentario='Sólo para destinatario HTTP',destinatario_id=7))
                 assert code==200 and result['comentario']['destinatario_id']==7

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__ . '/../../config/private_config.php';
 
 /** Almacenamiento independiente; no modifica reuniones ni seguimientos. */
 class AgendaComentarioRepository
@@ -10,10 +11,12 @@ class AgendaComentarioRepository
     private $avisosVistosDisponibles;
     private $privacidadDisponible;
     private $destinatariosDisponibles;
+    private $directorAutorizadoId;
 
-    public function __construct($db = null)
+    public function __construct($db = null, ?int $directorAutorizadoId = null)
     {
         $this->db = $db ?: (new Database())->connect();
+        $this->directorAutorizadoId = $directorAutorizadoId;
     }
 
     public function disponible(): bool
@@ -83,9 +86,20 @@ class AgendaComentarioRepository
         }
     }
 
-    public function destinatarios(): array
+    public function destinatarios(int $autor = 0): array
     {
-        return $this->db->query("SELECT u.id,TRIM(CONCAT(COALESCE(u.nombre,''),' ',COALESCE(u.apellidos,''))) AS nombre,r.nombre AS rol
+        return $this->consultarDestinatarios($autor);
+    }
+
+    private function consultarDestinatarios(int $autor, ?int $destinatario = null): array
+    {
+        $this->directorAutorizadoId ??= filter_var(
+            impeLeerConfigPrivada('agenda.local.php')['director_autorizado_id'] ?? null,
+            FILTER_VALIDATE_INT,
+            ['options' => ['min_range' => 1]]
+        ) ?: 0;
+
+        $sql = "SELECT u.id,TRIM(CONCAT(COALESCE(u.nombre,''),' ',COALESCE(u.apellidos,''))) AS nombre,r.nombre AS rol
             FROM usuarios u INNER JOIN roles r ON r.id=u.rol_id AND r.estado=1
             WHERE u.estado=1 AND (
                 EXISTS (
@@ -95,14 +109,27 @@ class AgendaComentarioRepository
                     SELECT COUNT(DISTINCT p.codigo) FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
                     WHERE rp.rol_id=r.id AND p.estado=1 AND p.codigo IN ('agenda.ver','agenda.comentarios.ver')
                 )
-            )
-            ORDER BY u.nombre,u.apellidos,u.id")->fetch_all(MYSQLI_ASSOC);
+            ) AND (r.id <> 1 OR EXISTS (
+                SELECT 1 FROM usuarios a INNER JOIN roles ra ON ra.id=a.rol_id AND ra.estado=1
+                WHERE a.id=? AND a.estado=1 AND (
+                    LOWER(TRIM(ra.nombre)) IN ('rh','recursos humanos','cuenta clave')
+                    OR (a.id=? AND LOWER(TRIM(ra.nombre))='director de operaciones')
+                )
+            ))";
+        $stmt = $this->db->prepare($sql . ($destinatario === null
+            ? ' ORDER BY u.nombre,u.apellidos,u.id' : ' AND u.id=?'));
+        if ($destinatario === null) {
+            $stmt->bind_param('ii', $autor, $this->directorAutorizadoId);
+        } else {
+            $stmt->bind_param('iii', $autor, $this->directorAutorizadoId, $destinatario);
+        }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function destinatarioHabilitado(int $id): bool
+    public function destinatarioHabilitado(int $id, int $autor): bool
     {
-        foreach ($this->destinatarios() as $usuario) if ((int)$usuario['id'] === $id) return true;
-        return false;
+        return $this->consultarDestinatarios($autor, $id) !== [];
     }
 
     public function crear(int $usuario, string $fecha, ?string $hora, string $texto, string $ahora, bool $privado = false, ?int $destinatario = null): int
@@ -110,7 +137,7 @@ class AgendaComentarioRepository
         $privacidad = $this->privacidadDisponible();
         if ($privado && !$privacidad) throw new RuntimeException('AGENDA_PRIVACIDAD_NO_DISPONIBLE');
         $dirigidos = $this->destinatariosDisponibles();
-        if ($destinatario !== null && (!$dirigidos || $privado || !$this->destinatarioHabilitado($destinatario))) throw new RuntimeException('AGENDA_DESTINATARIO_NO_DISPONIBLE');
+        if ($destinatario !== null && (!$dirigidos || $privado || !$this->destinatarioHabilitado($destinatario, $usuario))) throw new RuntimeException('AGENDA_DESTINATARIO_NO_DISPONIBLE');
         $stmt = $this->db->prepare("SELECT TRIM(CONCAT(COALESCE(nombre,''),' ',COALESCE(apellidos,''))) AS autor FROM usuarios WHERE id=?");
         $stmt->bind_param('i', $usuario);
         $stmt->execute();

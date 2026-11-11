@@ -2,6 +2,7 @@
 .env
 config/database.local.php
 config/app.local.php
+config/agenda.local.php
 config/api_keys.local.php
 config/mail_config.local.php
 config/password_reset_mail.local.php

@@ -35,7 +35,7 @@ $repo=new AgendaComentarioRepository($db);$now=new DateTimeImmutable('2026-10-29
 dsess(5);
 $list=$s->listar(5,'2026-10-01','2026-11-01');
 dcheck($list['destinatarios_disponibles']===true,'Anunciar instalación');
-$ids=array_column($list['destinatarios'],'id');sort($ids);dcheck($ids===[5,7,8,9,15],'Usuarios activos con rol activo, aunque no tengan Agenda');
+$ids=array_column($list['destinatarios'],'id');sort($ids);dcheck($ids===[5,7,8,9],'Usuarios activos con rol activo; Administrador excluido para Analista');
 $general=$s->crear(5,['fecha'=>'2026-10-29','comentario'=>'General','destinatario_id'=>''])['comentario']['id'];
 $direct=$s->crear(5,['fecha'=>'2026-10-29','comentario'=>'Para Cuenta Clave','hora'=>'11:00','destinatario_id'=>'7'])['comentario'];
 $id=$direct['id'];dcheck($direct['destinatario_id']===7&&$direct['destinatario_nombre']==='Cuenta Clave','Persistir ID y nombre real');
@@ -109,4 +109,29 @@ if (!$site) {
     try{$broken->listar('2026-10-01','2026-11-01',7);throw new RuntimeException('No debe listar sin filtro tras fallo');}
     catch(mysqli_sql_exception $e){dcheck($e->getCode()===1213,'Un fallo SQL no elimina el filtro de destinatario');}
 }
-echo "OK: destinatarios activos, Todos, privado, permisos, campana/toast, hora y lectura, visibilidad exclusiva de autor/destinatario, IDs directos y límites SQL.\n";
+dsql("INSERT INTO roles VALUES (2,'Director de Operaciones',1),(12,'RH',1),(13,'Marketing',1)");
+dsql("INSERT INTO usuarios(id,nombre,apellidos,rol_id,estado) VALUES
+    (20,'Directora','Autorizada',2,1),(21,'Otro','Director',2,1),
+    (22,'Usuario','RH',12,1),(23,'Usuario','Marketing',13,1),(24,'Otra','Cuenta Clave',6,1)");
+dsql('UPDATE usuarios SET estado=1 WHERE id=7');
+if ($site) {
+    file_put_contents($site . '/config/agenda.local.php', '<?php return ["director_autorizado_id" => 20];');
+}
+$conExcepcion = new AgendaComentarioService(new AgendaComentarioRepository($db, $site ? null : 20), $now);
+foreach ([5 => false, 7 => true, 15 => false, 20 => true, 21 => false, 22 => true, 23 => false, 24 => true] as $autor => $permitido) {
+    dsess($autor);
+    $lista = $conExcepcion->listar($autor, '2026-10-01', '2026-11-01')['destinatarios'];
+    dcheck(in_array(15, array_column($lista, 'id'), true) === $permitido, "Visibilidad de Administrador para $autor");
+    $resultado = $conExcepcion->crear($autor, [
+        'fecha' => '2026-10-29', 'comentario' => 'Mensaje directo', 'destinatario_id' => 15
+    ]);
+    dcheck($resultado['ok'] === $permitido, "Validación del envío directo para $autor");
+}
+dsql('UPDATE usuarios SET rol_id=13 WHERE id=20');
+dsess(20);
+dcheck(!$conExcepcion->crear(20, ['fecha'=>'2026-10-29','comentario'=>'Ya no es directora','destinatario_id'=>15])['ok'],
+    'La excepción personal requiere conservar el rol de Dirección');
+dsess(23);
+dcheck($conExcepcion->crear(23, ['fecha'=>'2026-10-29','comentario'=>'Aviso general'])['ok'],
+    'Marketing conserva el envío general');
+echo "OK: destinatarios activos, privacidad, avisos y restricción de destinatario Administrador por rol y cuenta.\n";

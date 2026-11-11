@@ -23,13 +23,12 @@ with tempfile.TemporaryDirectory(prefix='agenda-mariadb-',dir=ROOT/'tmp') as tmp
     env=dict(os.environ,AGENDA_TEST_PORT=str(port),AGENDA_TEST_VISTOS='1' if VISTOS else '',AGENDA_TEST_PRIVADOS='1' if PRIVADOS else '')
     subprocess.run([str(MYSQL/'bin/mysql_install_db.exe'),'--datadir='+str(data),'--silent'],check=True,capture_output=True,creationflags=FLAGS)
     for rel in ['app/models/RolModel.php','app/services/AgendaComentarioRepository.php','app/services/AgendaComentarioService.php',
-                'app/helpers/PermissionHelper.php','app/helpers/AdminRolePolicy.php',
+                'app/helpers/PermissionHelper.php','app/helpers/AdminRolePolicy.php','config/private_config.php',
                 'database/migrations/2026_10_28_agenda_comentarios.sql','tools/configurar_agenda_comentarios.php',
                 'database/migrations/2026_10_28_agenda_comentarios_vistos.sql','tools/configurar_avisos_vistos_agenda.php',
                 'database/migrations/2026_10_29_agenda_comentarios_privados.sql','tools/configurar_agenda_comentarios_privados.php',
                 'database/migrations/2026_10_29_agenda_comentarios_destinatario.sql','tools/configurar_destinatarios_agenda.php']:
         p=site/rel;p.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/rel,p)
-    (site/'config').mkdir()
     (site/'config/db_connection.php').write_text('''<?php
 date_default_timezone_set('America/Mexico_City');mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
 class Database {public function connect($persistente=false){
