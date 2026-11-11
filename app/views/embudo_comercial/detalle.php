@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
 require_once __DIR__.'/../../services/TelefoniaResultadoVentasService.php';
+require_once __DIR__.'/../../services/EmbudoComercialPoliticaPropuesta.php';
 $esc=static fn($x)=>htmlspecialchars((string)($x??''),ENT_QUOTES,'UTF-8');
 $def=static fn($x)=>trim((string)($x??''))!==''?(string)$x:'Sin indicar';
 $fecha=static fn($x)=>EmbudoComercialPresentacion::fechaUtc($x);
@@ -27,9 +28,11 @@ $presentarMotivo=static function($valor): array {
         'referencia_tecnica'=>$original
     ];
 };
-$volver=BASE_URL.'index.php?'.http_build_query([
-    'controller'=>'embudoComercial','action'=>'index','vista'=>$vista
-]);
+$volverParams=['controller'=>'embudoComercial','action'=>'index','vista'=>$vista];
+if(!empty($operativoV3) && !$supervisor && $vista==='embudo') {
+    $volverParams['operativo_v3']='1';
+}
+$volver=BASE_URL.'index.php?'.http_build_query($volverParams);
 ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/embudo_comercial.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial.css'),0,16) ?>">
 <style>
@@ -49,7 +52,9 @@ $volver=BASE_URL.'index.php?'.http_build_query([
     <header class="impe-embudo-hero">
         <div><span class="impe-embudo-kicker">FICHA COMERCIAL · SOLO LECTURA</span>
             <h2><?= $esc($prospecto['nombre_completo']) ?></h2>
-            <p>ID comercial #<?= (int)$prospecto['id'] ?> · <?= $esc(EmbudoComercialRepository::ETAPAS[$prospecto['etapa']]??'Etapa pendiente') ?></p>
+            <p>ID comercial #<?= (int)$prospecto['id'] ?> · <?= $esc(EmbudoComercialRepository::ETAPAS[$prospecto['etapa']]
+                    ??EmbudoComercialPoliticaPropuesta::ETAPAS_ACTIVAS[$prospecto['etapa']]
+                    ??'Etapa pendiente') ?></p>
         </div>
         <span class="impe-embudo-hero-icon"><i class="bi bi-person-vcard" aria-hidden="true"></i></span>
     </header>
