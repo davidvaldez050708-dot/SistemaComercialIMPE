@@ -10,6 +10,7 @@ on:
       - 'tests/embudo_comercial_planificador_v3_unit.php'
       - 'tests/embudo_intentos_pbx_db.php'
       - 'docs/ventas_planificador_v3_shadow_20261111.md'
+      - 'tools/ventas_v3_preflight_solo_lectura.php'
       - '.github/workflows/ventas-planificador-v3-lectura.yml'
 permissions:
   contents: read
@@ -28,6 +29,7 @@ jobs:
           php -l app/services/EmbudoComercialIntentosPbxRepository.php
           php -l tests/embudo_comercial_planificador_v3_unit.php
           php -l tests/embudo_intentos_pbx_db.php
+          php -l tools/ventas_v3_preflight_solo_lectura.php
           php tests/embudo_comercial_planificador_v3_unit.php
           php tests/embudo_comercial_politica_propuesta_unit.php
           php tests/embudo_comercial_fase1_unit.php
