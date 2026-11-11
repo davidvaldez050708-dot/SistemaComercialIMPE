@@ -62,23 +62,36 @@ final class EmbudoComercialController
         // No reconfigurar el Kanban normal ni exponerla a asesores.
         $previsualizacionV3=$vista==='embudo' && $supervisor &&
             ($_GET['previsualizacion_v3']??null)==='1';
+        // El acceso normal y los movimientos V1 no cambian. El asesor puede
+        // optar por la vista operativa institucional V3 desde URL explícita.
+        // Sólo consulta SUS asignaciones; no enciende el piloto del Bridge.
+        $operativoV3=$vista==='embudo' && !$supervisor &&
+            (int)($_SESSION['rol_id']??0)===3 &&
+            tienePermiso('ventas.embudo.ver') &&
+            ($_GET['operativo_v3']??null)==='1';
         $error='';
         $disponible=false;
         $opciones=['programas'=>[],'asesores'=>[]];
         $tablero=['columnas'=>[],'conteos'=>[],'total'=>0];
+        $paginasV3=[];
         $filtros=[
             'buscar'=>'','origen'=>'','programa'=>'','vencidos'=>false,
             'asesor'=>0,'paginas'=>[]
         ];
         try {
             $filtros=EmbudoComercialRepository::filtros($_GET,$supervisor);
+            if($operativoV3){
+                $paginasV3=EmbudoComercialRepository::paginasV3Operativo($_GET);
+            }
             $repo=new EmbudoComercialRepository((new Database())->connect(false));
             $disponible=$repo->disponible();
             if ($disponible) {
                 $opciones=$repo->opciones($usuarioId,$supervisor);
                 $tablero=$previsualizacionV3
                     ?$repo->listadoV3Preparacion($usuarioId,$supervisor,$filtros)
-                    :$repo->listado($usuarioId,$supervisor,$filtros,$vista);
+                    :($operativoV3
+                        ?$repo->listadoV3Operativo($usuarioId,$filtros,$paginasV3)
+                        :$repo->listado($usuarioId,$supervisor,$filtros,$vista));
             }
         } catch (DomainException $e) {
             http_response_code(400);
@@ -88,10 +101,11 @@ final class EmbudoComercialController
             error_log('[embudo_comercial_consulta] '.get_class($e).' codigo='.(int)$e->getCode());
             $error='No fue posible consultar el embudo comercial en este momento.';
         }
-        $archivo=$previsualizacionV3?'previsualizacion_v3':'index';
+        $archivo=$previsualizacionV3?'previsualizacion_v3'
+            :($operativoV3?'operativo_v3':'index');
         $this->presentar($archivo,$vista,compact(
             'vista','usuarioId','supervisor','error','disponible','opciones',
-            'tablero','filtros','previsualizacionV3'
+            'tablero','filtros','previsualizacionV3','operativoV3','paginasV3'
         ));
     }
 
@@ -106,6 +120,10 @@ final class EmbudoComercialController
         $id=filter_var($_GET['id']??null,FILTER_VALIDATE_INT,
             ['options'=>['min_range'=>1]]);
         $prospecto=null;
+        $operativoV3=$vista==='embudo' && !$supervisor &&
+            (int)($_SESSION['rol_id']??0)===3 &&
+            tienePermiso('ventas.embudo.ver') &&
+            ($_GET['operativo_v3']??null)==='1';
         $error='';
         if (!$id) {
             http_response_code(404);
@@ -114,7 +132,9 @@ final class EmbudoComercialController
             try {
                 $repo=new EmbudoComercialRepository((new Database())->connect(false));
                 if (!$repo->disponible()) throw new RuntimeException('Estructura no instalada.');
-                $prospecto=$repo->detalle($usuarioId,$supervisor,(int)$id,$vista);
+                $prospecto=$repo->detalle(
+                    $usuarioId,$supervisor,(int)$id,$vista,$operativoV3
+                );
                 if (!$prospecto) {
                     http_response_code(404);
                     $error='El prospecto no está disponible en esta vista.';
@@ -126,7 +146,7 @@ final class EmbudoComercialController
             }
         }
         $this->presentar('detalle',$vista,compact(
-            'vista','usuarioId','supervisor','prospecto','error'
+            'vista','usuarioId','supervisor','prospecto','error','operativoV3'
         ));
     }
     /** POST exclusivo de Asesor: cambio de etapa con control de concurrencia. */
