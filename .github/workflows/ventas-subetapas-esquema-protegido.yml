@@ -1,0 +1,85 @@
+name: Ventas - instalación segura de subetapas
+on:
+  push:
+    branches:
+      - feat/ventas-subetapas-esquema-protegido-20261111
+  pull_request:
+    paths:
+      - 'tools/ventas_instalar_subetapas_hostinger_v1.php'
+      - 'tests/ventas_instalar_subetapas_hostinger_v1_db.php'
+      - 'database/migrations/2026_11_11_ventas_subetapas_comerciales_propuesta.sql'
+      - 'docs/ventas_subetapas_hostinger_instalador_v1.md'
+      - '.github/workflows/ventas-subetapas-esquema-protegido.yml'
+permissions:
+  contents: read
+jobs:
+  php-y-matriz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: Sintaxis y regresión comercial
+        run: |
+          php -l tools/ventas_instalar_subetapas_hostinger_v1.php
+          php -l tests/ventas_instalar_subetapas_hostinger_v1_db.php
+          php tests/embudo_comercial_politica_propuesta_unit.php
+          php tests/embudo_comercial_planificador_v3_unit.php
+          php tests/embudo_comercial_fase1_unit.php
+          php tests/embudo_comercial_fase2_unit.php
+  mysql8-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - name: Verificar instalador en MySQL desechable
+        env:
+          IMPE_SUBETAPAS_TEST_DB: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/ventas_instalar_subetapas_hostinger_v1_db.php
+  mariadb-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - name: Verificar instalador en MariaDB desechable
+        env:
+          IMPE_SUBETAPAS_TEST_DB: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/ventas_instalar_subetapas_hostinger_v1_db.php
