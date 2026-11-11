@@ -82,7 +82,7 @@ foreach([
     'Gestión comercial · Vista operativa V3',
     'Nuevos','Contactados','Potenciales','Seguimiento',
     'Proceso Inscripción','Clasificación pendiente',
-    'Subetapa pendiente','Segundo intento sin contacto',
+    'Requiere conciliación comercial','Segundo intento sin contacto',
     'Contacto acordado','2/3','Mis llamadas',
     'Horario solicitado:','Volver al tablero anterior',
     'operativo_v3=1','public/css/embudo_v3_operativo.css',
