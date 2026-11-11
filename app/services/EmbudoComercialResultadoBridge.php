@@ -119,6 +119,19 @@ final class EmbudoComercialResultadoBridge
         } finally {
             $s->close();
         }
+        // Piloto V3 totalmente deshabilitado en instalaciones normales.
+        // Este acceso sólo es posible con token de servidor Y lista cerrada
+        // de asesores, nunca con parámetros POST/GET del formulario.
+        // Sin ambos requisitos, se ejecuta sin cambios la lógica vigente.
+        if (getenv('IMPE_VENTAS_V3_PILOTO')===
+            'AUTORIZADO_PILOTO_V3_TRES_INTENTOS_IMPE_20261111') {
+            require_once __DIR__.'/EmbudoComercialV3PilotoControlado.php';
+            if (EmbudoComercialV3PilotoControlado::habilitadoPara($usuarioId)) {
+                return (new EmbudoComercialV3PilotoControlado($this->db))
+                    ->aplicarDesdeBridge($usuarioId,$asignacionId,
+                        $ext,$pbx,(string)$row['etapa']);
+            }
+        }
         $etapaAnterior=EmbudoComercialEtapas::visual((string)$row['etapa']);
         $nueva=EmbudoComercialEtapas::sugerenciaPorResultado($resultado,$proximaAccion);
         if ($nueva===null || in_array($etapaAnterior,['PAGO_CONFIRMADO','DESCARTADO'],true)) {
