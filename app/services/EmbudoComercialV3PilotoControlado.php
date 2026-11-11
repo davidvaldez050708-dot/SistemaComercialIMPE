@@ -111,6 +111,58 @@ final class EmbudoComercialV3PilotoControlado
         $s->execute();$s->close();
     }
 
+    /**
+     * Impide declarar prospecto nunca contactado cuando existe una
+     * conversación previa V4 o legacy acreditada en la asignación.
+     *
+     * No deduce contacto de ANSWER PBX ni de un mensaje enviado.
+     * Una declaración explícita de resultado humano ya guardado sí exige
+     * revisión comercial antes de Recuperación.
+     */
+    private function huboContactoComercial(int $usuarioId,int $asignacionId): bool
+    {
+        $sql="SELECT 1 FROM prospecto_embudo_llamadas l
+            JOIN telefonia_ventas_resultados r
+                ON r.usuario_id=l.usuario_id
+                AND BINARY r.extension=BINARY l.extension
+                AND BINARY r.pbx_call_id=BINARY l.pbx_call_id
+                AND BINARY r.resultado=BINARY l.resultado
+            WHERE l.asignacion_id=? AND l.usuario_id=?
+              AND (
+                r.resultado IN (
+                    'CONVERSACION_PERSONA','PROSPECTO_POTENCIAL',
+                    'INTERESADO','SOLICITA_INFORMACION',
+                    'REQUIERE_SEGUIMIENTO','FUERA_PRESUPUESTO',
+                    'NO_INTERESADO','NO_CUMPLE_REQUISITOS',
+                    'NO_SOLICITO_INFORMACION','SIGUIENTE_APERTURA',
+                    'INSCRITO','COMUNICACION_INTERRUMPIDA_PERSONA'
+                )
+                OR EXISTS (
+                    SELECT 1 FROM telefonia_ventas_resultado_selecciones sel
+                    WHERE sel.resultado_id=r.id
+                      AND sel.codigo IN (
+                        'CONVERSACION_PERSONA','PROSPECTO_POTENCIAL',
+                        'REQUIERE_SEGUIMIENTO','FUERA_PRESUPUESTO',
+                        'NO_INTERESADO','NO_CUMPLE_REQUISITOS',
+                        'NO_SOLICITO_INFORMACION','SIGUIENTE_APERTURA',
+                        'INSCRITO'
+                      )
+                )
+                OR EXISTS (
+                    SELECT 1 FROM telefonia_ventas_resultado_detalles d
+                    WHERE d.resultado_id=r.id
+                      AND d.contacto_antes_corte='SI'
+                )
+              )
+            LIMIT 1";
+        $st=$this->db->prepare($sql);
+        $st->bind_param('ii',$asignacionId,$usuarioId);
+        $st->execute();
+        $found=$st->get_result()->fetch_assoc()!==null;
+        $st->close();
+        return $found;
+    }
+
     private function nuevaRevisionLocal(string $diaLocal): string
     {
         $tz=new DateTimeZone('America/Mexico_City');
@@ -180,17 +232,26 @@ final class EmbudoComercialV3PilotoControlado
         // integración. Potenciales y Proceso Inscripción requieren evidencia
         // de calificación y trámite que este servicio NO posee.
         if ($movida) {
-            $permitida=
-                ($etapaBloqueada==='NUEVO' &&
-                    $propuesta==='RECUPERACION' &&
-                    $sinContacto && $intentos>=3 &&
-                    tienePermiso('ventas.recuperacion.gestionar'))
+            $permiteRecuperacion=($etapaBloqueada==='NUEVO' &&
+                $propuesta==='RECUPERACION' && $sinContacto && $intentos>=3 &&
+                tienePermiso('ventas.recuperacion.gestionar'));
+            if ($permiteRecuperacion &&
+                $this->huboContactoComercial($usuarioId,$asignacionId)) {
+                return self::respuesta($etapaBloqueada,
+                    'CONTACTO_ANTERIOR_REQUIERE_REVISION',$intentos);
+            }
+            $permitida=$permiteRecuperacion
                 ||
                 (in_array($etapaBloqueada,['NUEVO','RECUPERACION'],true) &&
                     $propuesta==='CONTACTADO' &&
                     $resultado==='CONVERSACION_PERSONA' &&
                     ($etapaBloqueada!=='RECUPERACION' ||
-                        tienePermiso('ventas.recuperacion.gestionar')));
+                        tienePermiso('ventas.recuperacion.gestionar')))
+                ||
+                ($etapaBloqueada!=='PROCESO_INSCRIPCION' &&
+                    $propuesta==='DESCARTADO' &&
+                    $resultado==='NO_INTERESADO' &&
+                    tienePermiso('ventas.descartados.gestionar'));
             if (!$permitida) {
                 return self::respuesta($etapaBloqueada,
                     'TRANSICION_REQUIERE_VALIDACION', $intentos);
