@@ -143,6 +143,73 @@ final class TelefoniaEnrutamientoService
         return $res;
     }
 
+    public function destinosProspectoPorPrograma(array $destinos): array
+    {
+        $asesores = [];
+        $usuarios = [];
+        foreach ($destinos as $destino) {
+            $usuarioId = (int)$destino['usuario_id'];
+            $usuarios[$usuarioId] = true;
+            $clave = $usuarioId . ':' . $destino['extension'];
+            // Conservar un territorio autorizado para la validación de la transferencia.
+            $asesores[$clave] ??= $destino;
+        }
+        if (!$asesores) {
+            return [];
+        }
+
+        $programas = $this->programasDeAsesores(array_keys($usuarios));
+        foreach ($asesores as &$asesor) {
+            $asesor['programas'] = $programas[$asesor['usuario_id']] ?? [];
+        }
+        unset($asesor);
+
+        return array_values($asesores);
+    }
+
+    private function programasDeAsesores(array $usuarios): array
+    {
+        $ids = implode(',', $usuarios);
+        $consulta = static function (string $relacion, string $codigo) use ($ids): string {
+            return "SELECT c.usuario_id, p.codigo, p.nombre
+                    FROM prospecto_asesores_config c
+                    $relacion
+                    JOIN formulario_programas p ON p.codigo = $codigo AND p.activo = 1
+                    WHERE c.usuario_id IN ($ids)
+                    ORDER BY p.nombre, p.codigo";
+        };
+
+        try {
+            $filas = $this->db->query($consulta(
+                'LEFT JOIN prospecto_asesores_programas a ON a.usuario_id = c.usuario_id',
+                'COALESCE(a.programa_codigo, c.programa_codigo)'
+            ));
+        } catch (mysqli_sql_exception $error) {
+            if ((int)$error->getCode() !== 1146) {
+                error_log('[telefonia_programas_asesores] ' . $error->getCode());
+                return [];
+            }
+            // Compatibilidad con instalaciones que aún conservan un programa por asesor.
+            try {
+                $filas = $this->db->query($consulta('', 'c.programa_codigo'));
+            } catch (mysqli_sql_exception $error) {
+                if ((int)$error->getCode() !== 1146) {
+                    error_log('[telefonia_programas_asesores] ' . $error->getCode());
+                }
+                return [];
+            }
+        }
+
+        $programas = [];
+        foreach ($filas ?: [] as $fila) {
+            $programas[(int)$fila['usuario_id']][] = [
+                'codigo' => (string)$fila['codigo'],
+                'nombre' => (string)$fila['nombre'],
+            ];
+        }
+        return $programas;
+    }
+
     public function estados(): array
     {
         $r = $this->db->query(

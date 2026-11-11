@@ -620,6 +620,9 @@ class TelefoniaController
             $buscar = mb_substr(trim((string)($_GET['buscar'] ?? '')), 0, 80, 'UTF-8');
             $categoria = TelefoniaEnrutamientoService::categoriaRol($rol);
             $destinos = $servicio->destinos($usuarioId, $rol, $estadoId, $tipo, $buscar);
+            if ($categoria === 'RECEPCION' && $tipo === 'PROSPECTO') {
+                $destinos = $servicio->destinosProspectoPorPrograma($destinos);
+            }
             $instituciones = $categoria === 'RECEPCION' && $tipo === 'INSTITUCION'
                 ? $servicio->instituciones($usuarioId, $rol, $estadoId, $buscar) : [];
             $telefonoOrigen = trim((string)($_GET['telefono_origen'] ?? ''));

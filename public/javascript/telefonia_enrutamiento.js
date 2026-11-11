@@ -15,6 +15,7 @@
     const estado = $('[data-routing-state]');
     const buscar = $('[data-routing-search]');
     const destinos = $('[data-routing-destination]');
+    const etiquetaDestino = destinos?.labels?.[0];
     const coincidencias = $('[data-routing-matches]');
     const lista = $('[data-routing-matches-list]');
     const feedback = $('[data-routing-feedback]');
@@ -78,6 +79,7 @@
         ? 'ANALISTA'
         : cfg.canCapture ? 'VENTAS' : 'RECEPCION';
     let targetEntries = [];
+    const opcionesDestino = new Map();
     let selected = null;
     let timer = 0;
     let searchSequence = 0;
@@ -191,21 +193,50 @@
 
     const keyFor = item =>
         String(item.usuario_id)+':'+String(item.extension)+':'+String(item.estado_id);
-    const permitted = () => targetEntries;
+    const porPrograma = () => categoria === 'RECEPCION' && tipo?.value === 'PROSPECTO';
     const renderRecipients = (preferred = '') => {
         if (!destinos) return;
         const previous = preferred || destinos.value;
-        const visible = permitted();
-        destinos.replaceChildren(option('', 'Seleccionar estado y responsable'));
-        visible.forEach(item => {
-            const label = [item.estado_nombre, item.nombre, 'Ext. '+item.extension].filter(Boolean).join(' · ');
-            destinos.appendChild(option(keyFor(item), label));
-        });
-        const chosen = visible.find(item => keyFor(item) === previous) ||
-            (visible.length === 1 ? visible[0] : null);
-        destinos.value = chosen ? keyFor(chosen) : '';
-        selected = chosen;
-        if(estado)estado.value=chosen?String(chosen.estado_id):'';
+        const agrupado = porPrograma();
+        opcionesDestino.clear();
+        if (etiquetaDestino) etiquetaDestino.textContent = agrupado
+            ? 'Programa · Responsable correspondiente' : 'Estado · Responsable correspondiente';
+        destinos.replaceChildren(option('', agrupado
+            ? 'Seleccionar programa y responsable' : 'Seleccionar estado y responsable'));
+
+        if (agrupado) {
+            const grupos = new Map();
+            const responsables = [...targetEntries].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+            for (const item of responsables) {
+                const programas = item.programas?.length
+                    ? item.programas : [{codigo: '', nombre: 'Sin programa configurado'}];
+                for (const programa of programas) {
+                    if (!grupos.has(programa.codigo)) {
+                        const grupo = document.createElement('optgroup');
+                        grupo.label = programa.nombre;
+                        grupos.set(programa.codigo, grupo);
+                    }
+                    const key = keyFor(item) + ':' + programa.codigo;
+                    opcionesDestino.set(key, item);
+                    grupos.get(programa.codigo).appendChild(option(key, item.nombre + ' · Ext. ' + item.extension));
+                }
+            }
+            const ordenados = [...grupos.entries()].sort(([codigoA, a], [codigoB, b]) =>
+                Number(!codigoA) - Number(!codigoB) || a.label.localeCompare(b.label, 'es'));
+            destinos.append(...ordenados.map(([, grupo]) => grupo));
+        } else {
+            for (const item of targetEntries) {
+                const key = keyFor(item);
+                opcionesDestino.set(key, item);
+                const label = [item.estado_nombre, item.nombre, 'Ext. '+item.extension].filter(Boolean).join(' · ');
+                destinos.appendChild(option(key, label));
+            }
+        }
+
+        destinos.value = opcionesDestino.has(previous) ? previous
+            : targetEntries.length === 1 ? opcionesDestino.keys().next().value : '';
+        selected = opcionesDestino.get(destinos.value) || null;
+        if (estado) estado.value = selected ? String(selected.estado_id) : '';
     };
     const chooseInstitution = record => {
         const dest = targetEntries.find(item =>
@@ -391,7 +422,7 @@
         setFeedback('Consultando responsables autorizados…');
         try {
             // El nombre del prospecto no es un filtro de responsables.
-            // Los asesores autorizados se seleccionan por territorio.
+            // La agrupación por programa sólo cambia cómo se presenta el directorio.
             const directoryQuery = '';
             const [directory, matches] = await Promise.all([
                 fetch(endpoint('routingListUrl', {
@@ -422,7 +453,7 @@
             }
             renderRecipients();
             renderMatches(matches?.instituciones || []);
-            const count = permitted().length;
+            const count = targetEntries.length;
             if (recognized.length && !confirmedRecognition) {
                 setFeedback('Confirma la institución sugerida por el número entrante.');
             } else if (!count) {
@@ -503,6 +534,8 @@
         // no heredar la marca "ya consultado" de Prospecto.
         phoneCheckedForCall = '';
         if (identityBox) identityBox.hidden = true;
+        targetEntries = [];
+        renderRecipients();
         reload();
     });
     estado?.addEventListener('change', () => {
@@ -515,7 +548,7 @@
     });
     buscar?.addEventListener('input', reload);
     destinos?.addEventListener('change', () => {
-        selected = targetEntries.find(item => keyFor(item) === destinos.value) || null;
+        selected = opcionesDestino.get(destinos.value) || null;
         if(estado)estado.value=selected?String(selected.estado_id):'';
         if(tipo?.value==='INSTITUCION'){if(confirmedRecord&&buscar)buscar.value='';if(buscar)buscar.required=true;if(lookupWrap)lookupWrap.hidden=false;}
         // Una selección manual reemplaza la sugerencia sin identificar.
