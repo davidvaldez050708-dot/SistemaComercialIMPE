@@ -283,6 +283,7 @@ final class EmbudoComercialRepository
                     (SELECT GROUP_CONCAT(DISTINCT i.nombre_original SEPARATOR ' · ')
                      FROM prospecto_intereses i WHERE i.prospecto_id=p.id) programas,
                     COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
+                    ag.revision_fecha,
                     e.etapa etapa_original,
                     (SELECT st.subetapa FROM prospecto_embudo_subetapas st
                      WHERE st.asignacion_id=a.id LIMIT 1) subetapa
@@ -298,8 +299,31 @@ final class EmbudoComercialRepository
                 'truncado'=>count($registros)>20
             ];
         }
+        // Una sola consulta por lote para los 20 visibles de cada grupo;
+        // NO se hacen 120 consultas separadas ni se alteran filas PBX.
+        $idsVisibles=[];
+        foreach($columnas as $grupo) {
+            foreach($grupo['registros'] as $tarjeta) {
+                $id=(int)$tarjeta['asignacion_id'];
+                if($id>0)$idsVisibles[$id]=$id;
+            }
+        }
+        $diaLocal=(new DateTimeImmutable('today',
+            new DateTimeZone('America/Mexico_City')))->format('Y-m-d');
+        require_once __DIR__.'/EmbudoComercialV3IndicadoresVista.php';
+        $indicadores=(new EmbudoComercialV3IndicadoresVista($this->db))
+            ->intentosDelDia(array_values($idsVisibles),$diaLocal);
+        foreach($columnas as &$grupo) {
+            foreach($grupo['registros'] as &$tarjeta) {
+                $id=(int)$tarjeta['asignacion_id'];
+                $tarjeta['intentos_hoy']=$indicadores[$id]??null;
+            }
+            unset($tarjeta);
+        }
+        unset($grupo);
         $externos=($totales['RECUPERACION']??0)+($totales['DESCARTADO']??0);
         return [
+            'dia_indicadores'=>$diaLocal,
             'columnas'=>$columnas,
             'externos'=>[
                 'RECUPERACION'=>$totales['RECUPERACION']??0,
