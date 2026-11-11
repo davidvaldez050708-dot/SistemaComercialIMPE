@@ -116,6 +116,9 @@ def atomic_create(path, raw):
             h.write(raw)
             h.flush()
             os.fsync(h.fileno())
+        # El servidor debe poder servir el CSS estático incluso cuando el
+        # operador utiliza umask 077 para proteger sus respaldos privados.
+        os.chmod(str(path), 0o644)
     except Exception:
         if path.is_file() and blob(path.read_bytes()) == blob(raw):
             path.unlink()
