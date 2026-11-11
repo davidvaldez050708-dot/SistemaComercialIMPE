@@ -15,7 +15,7 @@ if (PHP_SAPI!=='cli') {
     exit("BLOQUEADO: solo CLI.\n");
 }
 mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
-const SQL_BLOB = 'fb8c3028003ddf0e243bb2515d00498728f04306';
+const SQL_BLOB = '4dd9d27810b1caa214d42e003f095a91ceeb401c';
 const CONFIRMAR = 'INSTALAR_SOLO_SUBETAPAS_IMPE_V1';
 const TABLAS = [
     'prospecto_embudo_subetapas',
