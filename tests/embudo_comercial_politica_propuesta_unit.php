@@ -199,26 +199,26 @@ $base=[
     'pbx_confirmada'=>true,'resultado_guardado'=>true,
     'asignacion_verificada'=>true,'extension'=>'150','resultado'=>'SIN_RESPUESTA'
 ];
-$a=$base+['pbx_call_id'=>'out_123456'];
-$b=$base+['pbx_call_id'=>'out_654321','resultado'=>'BUZON_VOZ'];
-$c=$base+['pbx_call_id'=>'out_555555','resultado'=>'OCUPADO'];
+$a=array_replace($base,['pbx_call_id'=>'out_123456']);
+$b=array_replace($base,['pbx_call_id'=>'out_654321','resultado'=>'BUZON_VOZ']);
+$c=array_replace($base,['pbx_call_id'=>'out_555555','resultado'=>'OCUPADO']);
 igual($p::contarIntentosJornada([$a,$a,$b,$c],'2026-11-11'),3,
     'mismo ID PBX no duplica intentos');
 igual($p::contarIntentosJornada([$a,$b,$c],'2026-11-12'),0,
     'intentos de ayer no cumplen automáticamente la jornada siguiente');
 igual($p::contarIntentosJornada([
     $a,$b,
-    $base+['pbx_call_id'=>'out_777777','direccion'=>'Entrante'],
-    $base+['pbx_call_id'=>'out_888888','pbx_confirmada'=>false],
-    $base+['pbx_call_id'=>'out_999999','resultado_guardado'=>false],
-    $base+['pbx_call_id'=>'out_212121','asignacion_verificada'=>false],
-    $base+['pbx_call_id'=>'out_313131','resultado'=>'CONVERSACION_PERSONA'],
+    array_replace($base,['pbx_call_id'=>'out_777777','direccion'=>'Entrante']),
+    array_replace($base,['pbx_call_id'=>'out_888888','pbx_confirmada'=>false]),
+    array_replace($base,['pbx_call_id'=>'out_999999','resultado_guardado'=>false]),
+    array_replace($base,['pbx_call_id'=>'out_212121','asignacion_verificada'=>false]),
+    array_replace($base,['pbx_call_id'=>'out_313131','resultado'=>'CONVERSACION_PERSONA']),
 ],'2026-11-11'),2,'excluir entrada, falta de evidencia y contacto efectivo');
 igual($p::contarIntentosJornada([
-    $base+['pbx_call_id'=>'out_444444','resultado'=>'COMUNICACION_INTERRUMPIDA',
-           'contacto_antes_corte'=>'NO'],
-    $base+['pbx_call_id'=>'out_454545','resultado'=>'COMUNICACION_INTERRUMPIDA',
-           'contacto_antes_corte'=>'SI']
+    array_replace($base,['pbx_call_id'=>'out_444444','resultado'=>'COMUNICACION_INTERRUMPIDA',
+           'contacto_antes_corte'=>'NO']),
+    array_replace($base,['pbx_call_id'=>'out_454545','resultado'=>'COMUNICACION_INTERRUMPIDA',
+           'contacto_antes_corte'=>'SI'])
 ],'2026-11-11'),1,'comunicación interrumpida sin persona sí cuenta');
 verifica(errorArgumento(function()use($p){$p::contarIntentosJornada([],'mañana');}),
     'rechazar jornada sin fecha normalizada');
