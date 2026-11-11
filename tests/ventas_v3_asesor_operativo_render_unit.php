@@ -126,4 +126,11 @@ isV3(strpos($controller,"$"."operativoV3?'operativo_v3':'index'")!==false,
     'ruta normal conserva tablero anterior');
 isV3(strpos($controller,'hash_equals($token,$received)')!==false,
     'validar token CSRF en backend, no solo en navegador');
+$oldUi=file_get_contents(__DIR__.'/../app/views/embudo_comercial/index.php');
+isV3(strpos($oldUi,'operativo_v3')!==false &&
+    strpos($oldUi,'Nuevo embudo V3')!==false &&
+    strpos($oldUi,'!$supervisor')!==false,
+    'enlace voluntario solo asesor en Kanban vigente');
+isV3(strpos($oldUi,'embudo_comercial_movimientos.js')!==false,
+    'se conserva JS de teléfono y movimientos V1 sin sustitución');
 echo "CHECK OK: vista institucional, cinco etapas, 2/3, teléfono V4 original, Mis llamadas, paginación, legacy compacto, CSRF, sin arrastre y sin datos reales.\n";
