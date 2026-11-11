@@ -237,8 +237,14 @@ final class EmbudoComercialV3PilotoControlado
                 tienePermiso('ventas.recuperacion.gestionar'));
             if ($permiteRecuperacion &&
                 $this->huboContactoComercial($usuarioId,$asignacionId)) {
+                $anterior=$this->subetapaActual($asignacionId);
+                $subRevision='REVISION_CONTACTO_PREVIO';
+                $this->guardarSubetapa($asignacionId,$usuarioId,
+                    $etapaBloqueada,$anterior,$subRevision,
+                    'CONTACTO_ANTERIOR_REQUIERE_REVISION');
                 return self::respuesta($etapaBloqueada,
-                    'CONTACTO_ANTERIOR_REQUIERE_REVISION',$intentos);
+                    'CONTACTO_ANTERIOR_REQUIERE_REVISION',
+                    $intentos,$subRevision);
             }
             $permitida=$permiteRecuperacion
                 ||
