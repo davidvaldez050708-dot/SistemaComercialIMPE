@@ -3,6 +3,7 @@ require_once __DIR__.'/ProspectoMetaArchivo.php';
 require_once __DIR__.'/ProspectoCentralRepository.php';
 require_once __DIR__.'/ProspectoMetaFormularioService.php';
 require_once __DIR__.'/ProspectoDistribucionMotor.php';
+require_once __DIR__.'/ProspectoMetaImportacionesHistorial.php';
 
 /**
  * Carga manual de leads Meta: validación, vista previa y lotes transaccionales.
@@ -254,12 +255,20 @@ final class ProspectoMetaImportador
     private static function finalizar(array $data,mysqli $db): array
     {
         $meta=$_SESSION[self::SESSION];
-        // Sólo un archivo CONFIRMADO íntegramente entra a la cola de reparto.
-        // Un CSV/XLSX Bachillerato y otro Titulación generan dos lotes
-        // independientes; no se reparte un lote parcialmente importado.
-        (new ProspectoDistribucionMotor($db))->confirmarLoteMeta(
-            (string)$meta['token'],(int)$meta['usuario_id'],(int)$meta['nuevos']
-        );
+        // La bitácora y la confirmación para reparto son una sola unidad
+        // transaccional. Un reintento idéntico no crea otra importación.
+        // Nunca registrar lotes parciales como terminados.
+        $db->begin_transaction();
+        try {
+            (new ProspectoMetaImportacionesHistorial($db))->registrarCompletada($meta,$data);
+            (new ProspectoDistribucionMotor($db))->confirmarLoteMeta(
+                (string)$meta['token'],(int)$meta['usuario_id'],(int)$meta['nuevos']
+            );
+            $db->commit();
+        } catch (Throwable $e) {
+            $db->rollback();
+            throw $e;
+        }
         $out=[
             'ok'=>true,'terminado'=>true,'avance'=>$meta['avance'],
             'total'=>$data['validas'],'nuevos'=>$meta['nuevos'],'repetidos'=>$meta['repetidos'],

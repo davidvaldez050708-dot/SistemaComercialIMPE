@@ -3,6 +3,7 @@ require_once __DIR__ . '/../models/ProspectoModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
 require_once __DIR__ . '/../services/ProspectoCentralRepository.php';
 require_once __DIR__ . '/../services/ProspectoMetaImportador.php';
+require_once __DIR__ . '/../services/ProspectoMetaImportacionesHistorial.php';
 require_once __DIR__ . '/../services/ProspectoAsesorConfiguracionService.php';
 
 class ProspectoController
@@ -35,6 +36,24 @@ class ProspectoController
         $mensajeError='';$centralDisponible=false;$indicadores=$this->indicadores();
         $metaPuedeImportar=$seccionProspectos==='meta' && ProspectoMetaImportador::puedeImportar();
         $metaPuedeConfigurar=$seccionProspectos==='meta'&&ProspectoMetaFormularioService::autorizado();
+        // Consultar el historial es una operación de SOLO LECTURA:
+        // no necesita prospectos.importar_meta, que el Administrador
+        // tiene restringido por la política de separación operativa.
+        $metaPuedeConsultarHistorial=$seccionProspectos==='meta'
+            && ProspectoMetaImportacionesHistorial::puedeConsultar();
+        $historialSolicitado=($_GET['historial_importaciones']??'')==='1'
+            && ($_GET['configurar_formularios']??'')!=='1';
+        if ($seccionProspectos==='meta' && $historialSolicitado
+            && !$metaPuedeConsultarHistorial) {
+            http_response_code(403);
+            exit('Sin permiso para consultar el historial de importaciones.');
+        }
+        $metaHistorialVisible=$metaPuedeConsultarHistorial && $historialSolicitado;
+        $metaHistorialDisponible=false;
+        $metaHistorialListado=['registros'=>[],'total'=>0,'pagina'=>1,
+            'paginas'=>1,'limite'=>15,'indicadores'=>[
+                'filas'=>0,'nuevos'=>0,'repetidos'=>0,'rechazados'=>0
+            ]];
         $metaCsrf=$metaPuedeImportar||$metaPuedeConfigurar?ProspectoMetaImportador::csrf():'';
         $formulariosConfiguracion=[];$formulariosHistorial=[];$formulariosDisponible=false;
         $formularioAviso=(string)($_SESSION['prospectos_formulario_aviso']??'');unset($_SESSION['prospectos_formulario_aviso']);
@@ -59,7 +78,19 @@ class ProspectoController
                         $asesoresConfigurados=$svc->asesores($configuracionDisponible);
                     }
                 }
-                else {$f=$_GET;if ($seccionProspectos==='meta') $f['origen']='META_ADS';$listado=$repo->listar($f);}
+                else {
+                    if ($metaHistorialVisible) {
+                        $historial=new ProspectoMetaImportacionesHistorial($db);
+                        $metaHistorialDisponible=$historial->disponible();
+                        if ($metaHistorialDisponible) {
+                            $metaHistorialListado=$historial->listar($_GET);
+                        }
+                    } else {
+                        $f=$_GET;
+                        if ($seccionProspectos==='meta') $f['origen']='META_ADS';
+                        $listado=$repo->listar($f);
+                    }
+                }
                 if ($metaPuedeImportar||$metaPuedeConfigurar) $metaProgramas=ProspectoMetaImportador::programas($db);
                 if ($metaPuedeImportar) $metaResumen=ProspectoMetaImportador::resumenCargar(null,$db);
                 if ($metaPuedeConfigurar) {
