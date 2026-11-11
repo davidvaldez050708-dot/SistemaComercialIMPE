@@ -84,6 +84,20 @@ final class EmbudoComercialMovimientoService
             !isset(EmbudoComercialEtapas::todas()[$esperada])) {
             throw new DomainException('Etapa no válida.');
         }
+        // Mientras un asesor participa en el piloto, el antiguo arrastre
+        // no puede eludir el contador PBX o escribir códigos legacy.
+        // Nunca se ejecuta en la operación normal (bandera OFF).
+        if (getenv('IMPE_VENTAS_V3_PILOTO')===
+            'AUTORIZADO_PILOTO_V3_TRES_INTENTOS_IMPE_20261111') {
+            require_once __DIR__.'/EmbudoComercialV3PilotoControlado.php';
+            if (EmbudoComercialV3PilotoControlado::habilitadoPara($usuarioId)) {
+                throw new DomainException(
+                    'Los movimientos manuales están suspendidos únicamente '.
+                    'para la cuenta piloto mientras se verifica la nueva política. '.
+                    'El teléfono y registro de llamadas siguen disponibles.'
+                );
+            }
+        }
         $motivo=trim($motivo);
         $this->db->begin_transaction();
         try {

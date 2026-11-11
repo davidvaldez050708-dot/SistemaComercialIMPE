@@ -1,0 +1,90 @@
+name: Ventas V3 - piloto cerrado sin impacto a asesores
+on:
+  push:
+    branches:
+      - feat/ventas-v3-piloto-controlado-sin-impacto-20261111
+  pull_request:
+    paths:
+      - 'app/services/EmbudoComercialV3PilotoControlado.php'
+      - 'app/services/EmbudoComercialPoliticaPropuesta.php'
+      - 'app/services/EmbudoComercialResultadoBridge.php'
+      - 'app/services/EmbudoComercialMovimientoService.php'
+      - 'tests/ventas_v3_piloto_controlado_db.php'
+      - 'docs/ventas_v3_piloto_controlado_sin_activar_20261111.md'
+      - '.github/workflows/ventas-v3-piloto-controlado-sin-impacto.yml'
+permissions:
+  contents: read
+jobs:
+  lint-regresion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: Lint y regresiones comerciales anteriores
+        run: |
+          php -l app/services/EmbudoComercialV3PilotoControlado.php
+          php -l app/services/EmbudoComercialResultadoBridge.php
+          php -l app/services/EmbudoComercialMovimientoService.php
+          php -l app/services/EmbudoComercialPoliticaPropuesta.php
+          php -l tests/ventas_v3_piloto_controlado_db.php
+          php tests/embudo_comercial_fase1_unit.php
+          php tests/embudo_comercial_fase2_unit.php
+          php tests/embudo_comercial_politica_propuesta_unit.php
+          php tests/embudo_comercial_planificador_v3_unit.php
+  mysql8-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: Piloto OFF, aislamiento de asesores y 1/3 a 3/3 en MySQL
+        env:
+          IMPE_V3_PILOTO_TEST_DB: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/ventas_v3_piloto_controlado_db.php
+  mariadb-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring,mysqli
+      - name: Piloto OFF, aislamiento de asesores y 1/3 a 3/3 en MariaDB
+        env:
+          IMPE_V3_PILOTO_TEST_DB: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/ventas_v3_piloto_controlado_db.php
