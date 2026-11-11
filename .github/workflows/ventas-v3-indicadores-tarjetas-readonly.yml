@@ -11,6 +11,8 @@ on:
       - 'public/css/embudo_v3_indicadores.css'
       - 'tests/embudo_comercial_v3_previsualizacion_db.php'
       - 'tests/ventas_v3_tarjetas_render_solo_lectura_unit.php'
+      - 'tests/ventas_v3_preflight_integridad_archivos_unit.php'
+      - 'tools/ventas_v3_preflight_integridad_archivos.php'
       - 'docs/ventas_v3_tarjetas_pbxs_readonly_20261111.md'
       - '.github/workflows/ventas-v3-indicadores-tarjetas-readonly.yml'
 permissions:
@@ -31,7 +33,10 @@ jobs:
           php -l app/views/embudo_comercial/previsualizacion_v3.php
           php -l tests/embudo_comercial_v3_previsualizacion_db.php
           php -l tests/ventas_v3_tarjetas_render_solo_lectura_unit.php
+          php -l tools/ventas_v3_preflight_integridad_archivos.php
+          php -l tests/ventas_v3_preflight_integridad_archivos_unit.php
           php tests/ventas_v3_tarjetas_render_solo_lectura_unit.php
+          php tests/ventas_v3_preflight_integridad_archivos_unit.php
           php tests/embudo_comercial_fase1_unit.php
           php tests/embudo_comercial_fase2_unit.php
           php tests/embudo_comercial_politica_propuesta_unit.php
