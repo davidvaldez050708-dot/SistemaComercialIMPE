@@ -1,0 +1,105 @@
+name: Ventas V3 - tarjetas con PBX sin afectar asesores
+on:
+  push:
+    branches:
+      - feat/ventas-v3-indicadores-tarjetas-solo-lectura-20261111
+  pull_request:
+    paths:
+      - 'app/services/EmbudoComercialV3IndicadoresVista.php'
+      - 'app/services/EmbudoComercialRepository.php'
+      - 'app/views/embudo_comercial/previsualizacion_v3.php'
+      - 'public/css/embudo_v3_indicadores.css'
+      - 'tests/embudo_comercial_v3_previsualizacion_db.php'
+      - 'tests/ventas_v3_tarjetas_render_solo_lectura_unit.php'
+      - 'tests/ventas_v3_preflight_integridad_archivos_unit.php'
+      - 'tools/ventas_v3_preflight_integridad_archivos.php'
+      - 'tools/publicar_ventas_v3_previsualizacion_hostinger.py'
+      - 'tests/ventas_v3_publicador_preview_unit.py'
+      - 'docs/ventas_v3_tarjetas_pbxs_readonly_20261111.md'
+      - 'docs/ventas_v3_publicacion_preview_20261111.md'
+      - '.github/workflows/ventas-v3-indicadores-tarjetas-readonly.yml'
+permissions:
+  contents: read
+jobs:
+  lint-y-regresiones:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: PHP lint y regresiones del embudo vigente, política y piloto
+        run: |
+          php -l app/services/EmbudoComercialV3IndicadoresVista.php
+          php -l app/services/EmbudoComercialRepository.php
+          php -l app/views/embudo_comercial/previsualizacion_v3.php
+          php -l tests/embudo_comercial_v3_previsualizacion_db.php
+          php -l tests/ventas_v3_tarjetas_render_solo_lectura_unit.php
+          php -l tools/ventas_v3_preflight_integridad_archivos.php
+          php -l tests/ventas_v3_preflight_integridad_archivos_unit.php
+          php tests/ventas_v3_tarjetas_render_solo_lectura_unit.php
+          php tests/ventas_v3_preflight_integridad_archivos_unit.php
+          python3 -m py_compile tools/publicar_ventas_v3_previsualizacion_hostinger.py
+          python3 -m py_compile tests/ventas_v3_publicador_preview_unit.py
+          python3 tests/ventas_v3_publicador_preview_unit.py
+          php tests/embudo_comercial_fase1_unit.php
+          php tests/embudo_comercial_fase2_unit.php
+          php tests/embudo_comercial_politica_propuesta_unit.php
+          php tests/embudo_comercial_planificador_v3_unit.php
+  mysql-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Cinco columnas, intentos PBX, aislamiento y sólo lectura
+        env:
+          IMPE_V3_PREVIA_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/embudo_comercial_v3_previsualizacion_db.php
+  mariadb-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Cinco columnas, intentos PBX y filtros en MariaDB temporal
+        env:
+          IMPE_V3_PREVIA_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/embudo_comercial_v3_previsualizacion_db.php

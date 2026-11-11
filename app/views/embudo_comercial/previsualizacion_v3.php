@@ -4,6 +4,7 @@
  * No contiene telefonía, formulario de resultado ni movimiento de tarjetas.
  */
 require_once __DIR__.'/../../services/EmbudoComercialPoliticaPropuesta.php';
+require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
 $esc=static fn($v)=>htmlspecialchars((string)($v??''),ENT_QUOTES,'UTF-8');
 $subetapas=EmbudoComercialPoliticaPropuesta::SUBETAPAS;
 $base=BASE_URL.'index.php?';
@@ -17,7 +18,8 @@ if($filtros['asesor']>0)$fParams['asesor']=(string)$filtros['asesor'];
 ?>
 <link rel="stylesheet" href="<?= $esc(BASE_URL) ?>public/css/embudo_comercial.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= $esc(BASE_URL) ?>public/css/embudo_comercial_compacto_v1.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial_compacto_v1.css'),0,16) ?>">
-<div class="impe-embudo impe-embudo--compact">
+<link rel="stylesheet" href="<?= $esc(BASE_URL) ?>public/css/embudo_v3_indicadores.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_v3_indicadores.css'),0,16) ?>">
+<div class="impe-embudo impe-embudo--compact impe-embudo--v3-preview">
     <div class="impe-embudo-alert" role="status">
         <i class="bi bi-shield-check" aria-hidden="true"></i>
         <strong>Vista previa de las cinco etapas · Solo lectura.</strong>
@@ -77,7 +79,7 @@ if($filtros['asesor']>0)$fParams['asesor']=(string)$filtros['asesor'];
         <span><i class="bi bi-people" aria-hidden="true"></i>
             <?= number_format((int)$tablero['total_activos']) ?> asignaciones del embudo o pendientes de clasificación
         </span>
-        <small>Vista de diagnóstico · hasta 20 tarjetas por grupo · sin botones operativos</small>
+        <small>Vista diagnóstica · <?= $esc(EmbudoComercialPresentacion::fechaLocal($tablero['dia_indicadores']??'')) ?> · hasta 20 tarjetas por grupo</small>
     </div>
     <div class="impe-embudo-board" role="region" tabindex="0"
          aria-label="Previsualización de las cinco etapas principales">
@@ -109,14 +111,48 @@ if($filtros['asesor']>0)$fParams['asesor']=(string)$filtros['asesor'];
                         <i class="bi bi-mortarboard" aria-hidden="true"></i>
                         <?= $esc(trim((string)($p['programas']??''))?:'Programa pendiente') ?>
                     </p>
-                    <p class="impe-embudo-next">
+                    <p class="impe-v3-subetapa">
                         <i class="bi bi-bookmark-check" aria-hidden="true"></i>
-                        <?= $esc($subLabel) ?>
+                        <span><?= $esc($subLabel) ?></span>
                     </p>
+                    <?php $conteo=$p['intentos_hoy']??null;
+                          $n=$conteo!==null?(int)$conteo['intentos']:null;
+                          $mostrados=$n===null?0:min(3,max(0,$n)); ?>
+                    <?php if($etapa==='NUEVO'): ?>
+                    <div class="impe-v3-intentos" aria-label="Intentos sin contacto verificados de la jornada">
+                        <div class="impe-v3-intentos-linea">
+                            <span>Sin contacto hoy</span>
+                            <span class="impe-v3-intentos-valor"><?= $n===null?'No disponible':$esc((string)$n.'/3') ?></span>
+                        </div>
+                        <?php if($n!==null): ?>
+                        <div class="impe-v3-intentos-barra" role="progressbar"
+                             aria-label="Intentos sin contacto"
+                             aria-valuemin="0" aria-valuemax="3"
+                             aria-valuenow="<?= $mostrados ?>">
+                            <span class="impe-v3-intentos-avance" style="width:<?= (int)round($mostrados/3*100) ?>%"></span>
+                        </div>
+                        <span class="impe-v3-intentos-ayuda">Solo llamadas salientes PBX confirmadas y con resultado registrado.</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php elseif($n!==null && $n>0): ?>
+                    <div class="impe-v3-intentos">
+                        <div class="impe-v3-intentos-linea">
+                            <span>Intentos sin conversación hoy</span>
+                            <span class="impe-v3-intentos-valor"><?= (int)$n ?></span>
+                        </div>
+                        <span class="impe-v3-intentos-ayuda">Este indicador no modifica ni reduce la etapa comercial.</span>
+                    </div>
+                    <?php endif; ?>
                     <?php if(!empty($p['proxima_accion_at'])): ?>
-                    <p class="impe-embudo-next">
+                    <p class="impe-v3-fecha">
                         <i class="bi bi-calendar-event" aria-hidden="true"></i>
-                        Próxima acción registrada
+                        <span>Próxima acción: <?= $esc(EmbudoComercialPresentacion::fechaUtc($p['proxima_accion_at'])) ?></span>
+                    </p>
+                    <?php endif; ?>
+                    <?php if(!empty($p['revision_fecha'])): ?>
+                    <p class="impe-v3-fecha">
+                        <i class="bi bi-calendar2-check" aria-hidden="true"></i>
+                        <span>Revisión: <?= $esc(EmbudoComercialPresentacion::fechaLocal($p['revision_fecha'])) ?></span>
                     </p>
                     <?php endif; ?>
                 </article>
