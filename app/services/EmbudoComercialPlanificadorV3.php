@@ -130,7 +130,7 @@ final class EmbudoComercialPlanificadorV3
         }
         $rows=$this->filas(
             "SELECT l.asignacion_id,l.usuario_id,l.extension,l.pbx_call_id,
-                    l.resultado,c.direccion,c.fecha,
+                    l.resultado,c.id llamada_id,c.direccion,c.fecha,
                     r.id resultado_id,r.proxima_accion_at,
                     COALESCE(e.etapa,'NUEVO') etapa,
                     d.catalogo_version,d.contacto_antes_corte
@@ -191,7 +191,8 @@ final class EmbudoComercialPlanificadorV3
         }
         $dia=substr((string)$r['fecha'],0,10);
         $intentos=(new EmbudoComercialIntentosPbxRepository($this->db))
-            ->resumenJornada($usuarioId,$asignacionId,$dia);
+            ->resumenJornada($usuarioId,$asignacionId,$dia,
+                (string)$r['fecha'],(int)$r['llamada_id']);
 
         // Los siguientes flags requieren evidencias comerciales adicionales
         // aún inexistentes; jamás inventar intención, presupuesto o pago.
