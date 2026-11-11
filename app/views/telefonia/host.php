@@ -18,6 +18,17 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
     !empty($asignacionTelefonica['permite_entrantes']) &&
     tienePermiso('telefonia.recibir') &&
     tienePermiso('seguimientos_vinculacion.operar_propios');
+// Ventas también recibe transferencias salientes por PUSH/SIP sin INTERNAL.
+// Reutilizar el observador del Analista, con la asignación y permisos propios.
+$asesorHostSdk = $motorTelefonicoEmbebido && $extensionHost !== '' &&
+    in_array(strtoupper(trim((string)($_SESSION['rol'] ?? ''))), ['ASESOR','ASESOR DE VENTAS'], true) &&
+    !empty($asignacionTelefonica['permite_entrantes']) &&
+    tienePermiso('telefonia.usar') && tienePermiso('telefonia.recibir');
+$receptorHostSdk = $analistaHostSdk || $asesorHostSdk;
+require_once __DIR__ . '/../../helpers/TelefoniaAudioDispositivosPilot.php';
+$audioDispositivosPilot = tienePermiso('telefonia.usar') &&
+    (!empty($asignacionTelefonica['permite_salientes']) || !empty($asignacionTelefonica['permite_entrantes'])) &&
+    telefoniaAudioDispositivosPilot($_SESSION, $extensionHost);
 
 ?>
 <!DOCTYPE html>
@@ -78,6 +89,9 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
         window.IMPE_TELEPHONY_HOST = <?= json_encode([
             'userId' => (int)($_SESSION['usuario_id'] ?? 0),
             'extension' => $extensionHost,
+            'ivrKeypad' => $extensionHost !== '' && tienePermiso('telefonia.usar') &&
+                in_array((int)($_SESSION['rol_id'] ?? 0), [3, 4], true),
+            'ivrSeguimiento' => (int)($_SESSION['rol_id'] ?? 0) === 4,
             'webrtcUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_webrtc.php',
             'validarTransferenciaUrl' => BASE_URL . 'index.php?controller=telefonia&action=validarOrdenTransferencia',
             'transferenciaCsrf' => (string)$_SESSION['csrf_token'],
@@ -86,9 +100,11 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
             'operacionUrl' => BASE_URL . 'prueba_telefonia/api/transferencia_operacion.php',
             'permiteSalientes' => !empty($asignacionTelefonica['permite_salientes']),
             'permiteEntrantes' => !empty($asignacionTelefonica['permite_entrantes']),
-            // Sólo para el Analista con sesión autorizada y motor embebido.
+            // Analista y Ventas autorizados comparten el observador embebido.
             // Marketing continúa usando exclusivamente eventos PBX.
-            'analystSdkIncoming' => $analistaHostSdk,
+            'analystSdkIncoming' => $receptorHostSdk,
+            // Identificar únicamente el flujo de Ventas, sin cambiar Analista.
+            'salesSdkIncoming' => $asesorHostSdk,
             'permiteTransferir' =>
                 !empty($asignacionTelefonica['permite_transferir']) &&
                 tienePermiso('telefonia.transferir')
@@ -97,7 +113,7 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_entrantes_bridge.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_entrantes_bridge.js') ?>">
     </script>
-    <?php if ($analistaHostSdk): ?>
+    <?php if ($receptorHostSdk): ?>
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_sdk_entrantes_observador.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_sdk_entrantes_observador.js') ?>">
     </script>
@@ -107,6 +123,19 @@ $analistaHostSdk = $motorTelefonicoEmbebido &&
     </script>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_audio.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_audio.js') ?>"></script>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_transferencia_runtime.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_transferencia_runtime.js') ?>"></script>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_numeros.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/telefonia_numeros.js') ?>"></script>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_conexion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_conexion.js') ?>"></script>
+    <?php if ($audioDispositivosPilot): ?>
+    <script>
+        window.IMPE_AUDIO_DEVICES_CONFIG = <?= json_encode([
+            'enabled' => true,
+            'userId' => (int)$_SESSION['usuario_id'],
+            'extension' => $extensionHost,
+            'cssUrl' => BASE_URL . 'public/css/telefonia_audio_dispositivos.css?v=' . filemtime(ROOT_PATH . '/public/css/telefonia_audio_dispositivos.css')
+        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    </script>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_audio_dispositivos.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_audio_dispositivos.js') ?>"></script>
+    <?php endif; ?>
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_host.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_host.js') ?>">
     </script>

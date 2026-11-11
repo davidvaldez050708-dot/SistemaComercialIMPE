@@ -132,10 +132,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
 <body>
     <noscript>
       <p style="margin:20px;font:600 14px system-ui">
-        Activa JavaScript para usar telefonía integrada o
-        <a href="<?= htmlspecialchars(BASE_URL . 'index.php?controller=home&action=index', ENT_QUOTES, 'UTF-8') ?>">
-            entra al CRM clásico
-        </a>.
+        Activa JavaScript en tu navegador para utilizar el CRM y su teléfono integrado.
       </p>
     </noscript>
     <main class="impe-phone-shell" aria-label="Sistema comercial">
@@ -160,9 +157,6 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     <aside class="impe-phone-status" data-shell-status role="status" aria-live="polite" hidden>
         <span data-shell-status-text></span>
         <button type="button" data-shell-retry hidden>Conectar teléfono</button>
-        <a class="impe-phone-classic-link"
-           href="<?= htmlspecialchars(BASE_URL . 'index.php?controller=home&action=index', ENT_QUOTES, 'UTF-8') ?>"
-           title="Volver al CRM sin navegación persistente">Modo clásico</a>
     </aside>
     <aside class="impe-phone-call" data-shell-call hidden aria-label="Teléfono institucional">
         <div class="impe-phone-call-header">
@@ -243,6 +237,8 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                     data-incoming-retry-save hidden>
                     <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Reintentar registro
                 </button>
+                <?php endif; ?>
+                <?php if ($analistaEntrantesShell || $esAsesorShell): ?>
                 <button type="button" class="persistent-phone-action is-primary"
                     data-incoming-register-finished hidden>
                     <i class="bi bi-journal-check" aria-hidden="true"></i> Registrar resultado
@@ -309,47 +305,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
                 </p>
             </div>
             <?php endif; ?>
-            <?php if ($puedeCapturarShell): ?>
-            <div class="impe-routing-panel impe-call-capture" id="impeCapturePanel"
-                data-shell-capture-panel hidden>
-                <div class="impe-routing-heading">
-                    <strong>Datos durante la llamada</strong>
-                    <span>Captura durante la conversación. El borrador se guarda automáticamente; revisa el resultado al finalizar.</span>
-                </div>
-                <form data-routing-capture-form autocomplete="off">
-                    <div class="impe-routing-field">
-                        <label for="impeCaptureName">Institución o prospecto</label>
-                        <input id="impeCaptureName" maxlength="180" name="nombre" type="text">
-                    </div>
-                    <div class="impe-routing-two">
-                        <div class="impe-routing-field">
-                            <label for="impeCapturePerson">Persona que atiende</label>
-                            <input id="impeCapturePerson" maxlength="140" name="persona" type="text">
-                        </div>
-                        <div class="impe-routing-field">
-                            <label for="impeCapturePhone">Teléfono</label>
-                            <input id="impeCapturePhone" maxlength="40" name="telefono" type="tel">
-                        </div>
-                    </div>
-                    <div class="impe-routing-field">
-                        <label for="impeCaptureEmail">Correo electrónico</label>
-                        <input id="impeCaptureEmail" maxlength="160" name="correo" type="email">
-                    </div>
-                    <div class="impe-routing-two">
-                        <div class="impe-routing-field"><label for="impeCaptureContact">Contacto institucional o referido</label>
-                            <input id="impeCaptureContact" maxlength="140" name="contacto_nombre" type="text"></div>
-                        <div class="impe-routing-field"><label for="impeCaptureRole">Cargo o área</label>
-                            <input id="impeCaptureRole" maxlength="150" name="contacto_cargo" type="text"></div>
-                    </div>
-                    <div class="impe-routing-field">
-                        <label for="impeCaptureNotes">Notas de atención</label>
-                        <textarea id="impeCaptureNotes" maxlength="1000" rows="2" name="notas"></textarea>
-                    </div>
-                    <button type="submit" class="impe-routing-save">Guardar borrador</button>
-                    <p data-routing-capture-message role="status" aria-live="polite"></p>
-                </form>
-            </div>
-            <?php endif; ?>
+            <?php if ($puedeCapturarShell || $esAsesorShell) require __DIR__.'/captura_panel.php'; ?>
             <p class="impe-incoming-notice" data-incoming-notice role="status" hidden></p>
         </div>
         <div class="persistent-phone-compact-actions">
@@ -425,13 +381,17 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
         window.IMPE_PHONE_SHELL_CONFIG = <?= json_encode([
             'userId' => $usuarioShell,
             'extension' => $extensionShell,
-            'autoReception' => $puedeRecibirShell,
+            'ivrKeypad' => $extensionShell !== '' && tienePermiso('telefonia.usar') &&
+                in_array((int)($_SESSION['rol_id'] ?? 0), [3, 4], true),
+            'autoReception' => $puedeRecibirShell ||
+                (!empty($asignacionTelefonica['permite_salientes']) && tienePermiso('telefonia.salientes')),
             'canReceive' => $puedeRecibirShell,
             'alwaysReceive' => $puedeRecibirShell,
             'analystIncomingResults' => $analistaEntrantesShell,
             'salesResults' => $esAsesorShell,
             'salesDetailUrl' => BASE_URL . 'index.php?controller=telefonia&action=detalleVenta',
             'salesHistoryUrl' => BASE_URL . 'index.php?controller=telefonia&action=misLlamadas',
+            'salesProspectUrl' => BASE_URL . 'index.php?controller=telefonia&action=datosProspectoVenta',
             'receptionResults' => $marketingShell,
             'callNoticesUrl' => ($marketingShell || $analistaEntrantesShell) ? BASE_URL . 'prueba_telefonia/api/avisos_llamadas.php' : '',
             'receptionResultUrl' => BASE_URL . 'prueba_telefonia/api/resultado_recepcion_marketing.php',
@@ -466,6 +426,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
          autenticada, sin depender de otra petición HTTP para su carga. -->
     <script id="impeShellRuntime">
     <?php
+    echo file_get_contents(ROOT_PATH . '/public/javascript/telefonia_numeros.js');
     $shellJsPath = ROOT_PATH . '/public/javascript/telefonia_shell.js';
     $shellJsContent = is_readable($shellJsPath)
         ? file_get_contents($shellJsPath)
@@ -488,7 +449,8 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     <script src="<?= BASE_URL ?>public/javascript/telefonia_analista_historial_pasivo.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_analista_historial_pasivo.js') ?>"></script>
     <?php endif; ?>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_disponibilidad.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_disponibilidad.js') ?>"></script>
-    <?php if ($puedeTransferirShell || $puedeCapturarShell): ?>
+    <?php if($esAsesorShell): ?><script src="<?= BASE_URL ?>public/javascript/telefonia_ventas_prospecto.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/telefonia_ventas_prospecto.js') ?>"></script><?php endif; ?>
+    <?php if ($puedeTransferirShell || $puedeCapturarShell || $esAsesorShell): ?>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_atencion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_atencion.js') ?>"></script>
     <style id="impeRoutingStyles">
     <?php
@@ -496,6 +458,8 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     if (is_readable($routingCss)) echo (string)file_get_contents($routingCss);
     ?>
     </style>
+    <?php endif; ?>
+    <?php if ($puedeTransferirShell || $puedeCapturarShell || $esAsesorShell): ?>
     <script id="impeRoutingRuntime">
     <?php
     $routingJs = ROOT_PATH . '/public/javascript/telefonia_enrutamiento.js';

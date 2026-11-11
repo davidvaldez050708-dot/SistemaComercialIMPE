@@ -1934,8 +1934,8 @@
     let llamadaTecladoAnalista = '';
 
     function tokenTecladoAnalista() {
-        return Number(window.IMPE_CURRENT_ROLE_ID) === 4 &&
-            String(state?.extension || '').trim() === '102' &&
+        return [3, 4].includes(Number(window.IMPE_CURRENT_ROLE_ID)) &&
+            String(state?.extension || '').trim() !== '' &&
             state.active && state.phase === 'in-progress' ? String(state.callToken || '') : '';
     }
 

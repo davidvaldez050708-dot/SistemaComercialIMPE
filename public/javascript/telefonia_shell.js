@@ -672,7 +672,7 @@
     document.addEventListener('pointerdown', event => {
         if (keypad.open && !keypad.contains(event.target)) keypad.open = false;
     });
-    const keypadPilot = ['157', '102'].includes(String(cfg.extension || '').trim());
+    const keypadPilot = cfg.ivrKeypad === true;
     if (keypadPilot) muteButton?.closest('.persistent-phone-actions')?.after(keypad);
     let keypadCall = '';
 
