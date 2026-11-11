@@ -5,6 +5,7 @@ if (getenv('IMPE_EMBUDO_PBX_TEST_DB')!=='YES') {
 }
 mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
 require_once __DIR__.'/../app/services/EmbudoComercialIntentosPbxRepository.php';
+require_once __DIR__.'/../app/services/EmbudoComercialPlanificadorV3.php';
 function checkPbx($ok,$message){if(!$ok)throw new RuntimeException('FALLO PBX: '.$message);}
 $db=new mysqli(getenv('MYSQL_HOST')?:'127.0.0.1',
     getenv('MYSQL_USER')?:'root',getenv('MYSQL_PASSWORD')?:'',
@@ -19,8 +20,10 @@ try {
        'CREATE TABLE prospecto_asignaciones(id BIGINT UNSIGNED PRIMARY KEY, asesor_id INT NOT NULL, vigente TINYINT NOT NULL) ENGINE=InnoDB',
        'CREATE TABLE prospecto_embudo_llamadas(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,asignacion_id BIGINT UNSIGNED NOT NULL,usuario_id INT NOT NULL,extension VARCHAR(20) NOT NULL,pbx_call_id VARCHAR(100) NOT NULL,resultado VARCHAR(36) NOT NULL,creado_at DATETIME NOT NULL,UNIQUE KEY uq_embudo_ref(extension,pbx_call_id),FOREIGN KEY(asignacion_id) REFERENCES prospecto_asignaciones(id)) ENGINE=InnoDB',
        'CREATE TABLE telefonia_ventas_llamadas(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,usuario_id INT NOT NULL,extension VARCHAR(12) NOT NULL,pbx_call_id VARCHAR(100) NOT NULL,direccion VARCHAR(10) NOT NULL,numero VARCHAR(40) NOT NULL,fecha DATETIME NOT NULL,UNIQUE KEY uq_call(pbx_call_id,extension)) ENGINE=InnoDB',
-       'CREATE TABLE telefonia_ventas_resultados(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,usuario_id INT NOT NULL,extension VARCHAR(20) NOT NULL,pbx_call_id VARCHAR(100) NOT NULL,resultado VARCHAR(36) NOT NULL,UNIQUE KEY uq_result(pbx_call_id,extension)) ENGINE=InnoDB',
-       'CREATE TABLE telefonia_ventas_resultado_detalles(resultado_id BIGINT UNSIGNED PRIMARY KEY,catalogo_version VARCHAR(10) NOT NULL,contacto_antes_corte VARCHAR(2) NOT NULL DEFAULT \'\',FOREIGN KEY(resultado_id) REFERENCES telefonia_ventas_resultados(id)) ENGINE=InnoDB'
+       'CREATE TABLE telefonia_ventas_resultados(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,usuario_id INT NOT NULL,extension VARCHAR(20) NOT NULL,pbx_call_id VARCHAR(100) NOT NULL,resultado VARCHAR(36) NOT NULL,proxima_accion_at DATETIME NULL,UNIQUE KEY uq_result(pbx_call_id,extension)) ENGINE=InnoDB',
+       'CREATE TABLE telefonia_ventas_resultado_detalles(resultado_id BIGINT UNSIGNED PRIMARY KEY,catalogo_version VARCHAR(10) NOT NULL,contacto_antes_corte VARCHAR(2) NOT NULL DEFAULT \'\',FOREIGN KEY(resultado_id) REFERENCES telefonia_ventas_resultados(id)) ENGINE=InnoDB',
+       'CREATE TABLE telefonia_ventas_resultado_selecciones(resultado_id BIGINT UNSIGNED NOT NULL,codigo VARCHAR(36) NOT NULL,posicion TINYINT UNSIGNED NOT NULL,PRIMARY KEY(resultado_id,codigo),UNIQUE KEY uq_pos(resultado_id,posicion),FOREIGN KEY(resultado_id) REFERENCES telefonia_ventas_resultados(id)) ENGINE=InnoDB',
+       'CREATE TABLE prospecto_embudo_etapas(asignacion_id BIGINT UNSIGNED PRIMARY KEY,etapa VARCHAR(30) NOT NULL, FOREIGN KEY(asignacion_id) REFERENCES prospecto_asignaciones(id)) ENGINE=InnoDB'
     ] as $sql)$db->query($sql);
     $db->query('INSERT INTO prospecto_asignaciones VALUES(101,8,1),(102,9,1),(103,8,1),(104,8,0)');
     $read=new EmbudoComercialIntentosPbxRepository($db);
@@ -98,7 +101,95 @@ try {
     foreach(['prospecto_embudo_subetapas','prospecto_embudo_subetapas_historial'] as $table)
         checkPbx($db->query("SHOW TABLES LIKE '".$table."'")->num_rows===1,'tabla aditiva '.$table);
     checkPbx($summary(8,101,'2026-11-11')['total']===3,'migración conserva PBX');
-    echo "CHECK OK: MySQL temporal, 0/3 a 3/3, fecha México, llamadas vinculadas, propietario, duplicados, cortes, mensajes V4, lectura pura y subetapas aditivas.\n";
+    // Reconstrucción cronológica. La primera llamada debe mostrar 1/3,
+    // aunque más tarde hayan quedado guardados los tres intentos del día.
+    $planner=new EmbudoComercialPlanificadorV3($db);
+    $plan=function($ref,$asig=101,$user=8,$ext='150')use($planner){
+        return $planner->planificar($user,$asig,$ext,$ref);
+    };
+    $first=$plan('out_1011111');
+    checkPbx($first['intentos']['total']===1 &&
+             $first['subetapa_propuesta']==='INTENTO_1' &&
+             $first['etapa_propuesta']==='NUEVO',
+             'la primera llamada histórica conserva 1/3');
+    $second=$plan('out_1022222');
+    checkPbx($second['intentos']['total']===2 &&
+             $second['subetapa_propuesta']==='INTENTO_2',
+             'segunda llamada histórica conserva 2/3');
+    $third=$plan('out_1033333');
+    checkPbx($third['intentos']['total']===3 &&
+             $third['etapa_propuesta']==='RECUPERACION' &&
+             $third['aplicable']===false,
+             'tercera llamada produce sólo plan de Recuperación, sin escribirlo');
+    checkPbx($plan('out_5044444')['etapa_propuesta']==='CONTACTADO',
+        'conversación real posterior no se confunde con buzón anterior');
+    $firstCallId=(int)$db->query(
+        "SELECT id FROM telefonia_ventas_llamadas WHERE pbx_call_id='out_1011111'"
+    )->fetch_assoc()['id'];
+    $cutoff=$read->resumenJornada(8,101,'2026-11-11',
+        '2026-11-11 09:00:00',$firstCallId);
+    checkPbx($cutoff['total']===1,'contador con límite PBX exacto');
+    try{
+        $read->resumenJornada(8,101,'2026-11-11','2026-11-11 09:00:00',null);
+        throw new RuntimeException('Se aceptó límite sin identidad PBX');
+    }catch(InvalidArgumentException $ok){}
+
+    // Datos asociados pero pertenecientes a otro asesor, o sin el vínculo
+    // comercial, jamás proporcionan plan válido.
+    try{$plan('out_5011111');throw new RuntimeException('Se aceptó PBX sin vínculo');}
+    catch(DomainException $ok){}
+    try{$plan('out_2011111',102,8,'151');throw new RuntimeException('Se aceptó asesor ajeno');}
+    catch(DomainException $ok){}
+    try{$plan('out_1011111',101,8,'999');throw new RuntimeException('Se aceptó extensión ajena');}
+    catch(DomainException $ok){}
+
+    // Selecciones dobles V4: el resultado guardado como REQUIERE_SEGUIMIENTO
+    // NO debe ocultar PROSPECTO_POTENCIAL ni registrar calificación ficticia.
+    $add(101,8,'out_8011111','REQUIERE_SEGUIMIENTO',
+        '2026-11-12 13:00:00','Saliente',true,true,'4');
+    $result=(int)$db->query(
+        "SELECT id FROM telefonia_ventas_resultados WHERE pbx_call_id='out_8011111'"
+    )->fetch_assoc()['id'];
+    $db->query("UPDATE telefonia_ventas_resultados SET
+        proxima_accion_at='2026-11-13 17:00:00' WHERE id=".$result);
+    $db->query("INSERT INTO telefonia_ventas_resultado_selecciones VALUES
+        (".$result.",'PROSPECTO_POTENCIAL',0),
+        (".$result.",'REQUIERE_SEGUIMIENTO',1)");
+    $mixed=$plan('out_8011111');
+    checkPbx($mixed['resultado_interpretado']==='PROSPECTO_POTENCIAL'
+        && $mixed['seguimiento_solicitado']===true
+        && $mixed['etapa_propuesta']==='CONTACTADO'
+        && $mixed['requiere_revision']===true,
+        'V4 calificación no se infiere; seguimiento queda como tarea');
+
+    // El código clásico INTERESADO o PAGO_CONFIRMADO no se reetiqueta
+    // sin conciliar los datos antiguos y la evidencia de pago/trámite.
+    $db->query("INSERT INTO prospecto_embudo_etapas VALUES (101,'INTERESADO')");
+    $legacy=$plan('out_8011111');
+    checkPbx($legacy['motivo']==='ETAPA_LEGACY_REQUIERE_CONCILIACION'
+        && $legacy['etapa_propuesta']===null && !$legacy['aplicable'],
+        'etapa legada no se migra por inferencia');
+    $db->query("UPDATE prospecto_embudo_etapas SET etapa='PAGO_CONFIRMADO' WHERE asignacion_id=101");
+    checkPbx($plan('out_8011111')['motivo']==='ETAPA_LEGACY_REQUIERE_CONCILIACION',
+        'pago legado no implica Proceso Inscripción');
+    $db->query("UPDATE prospecto_embudo_etapas SET etapa='POTENCIAL' WHERE asignacion_id=101");
+    $potencial=$plan('out_1033333');
+    checkPbx($potencial['etapa_propuesta']==='POTENCIAL'
+        && !$potencial['mover'],
+        'tres llamadas fallidas nunca degradan Potenciales');
+
+    // Sólo se consulta: ninguna llamada, etapa o subetapa cambia al
+    // planificar por segunda vez el mismo PBX.
+    $snapA=(int)$db->query(
+        'SELECT COUNT(*) n FROM prospecto_embudo_llamadas'
+    )->fetch_assoc()['n'];
+    $plan('out_1033333');
+    $plan('out_1033333');
+    checkPbx($snapA===(int)$db->query(
+        'SELECT COUNT(*) n FROM prospecto_embudo_llamadas'
+    )->fetch_assoc()['n'],'el planificador nunca inserta o elimina llamadas');
+
+    echo "CHECK OK: MySQL temporal, 0/3 a 3/3, reconstrucción por PBX, legados, selección V4 y subetapas aditivas. Sin producción.\n";
 } finally {
     if($created)$db->query('DROP DATABASE '.$name);
     $db->close();
