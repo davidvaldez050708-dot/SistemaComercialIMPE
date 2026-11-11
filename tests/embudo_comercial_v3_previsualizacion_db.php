@@ -90,6 +90,12 @@ try{
             resultado_id BIGINT UNSIGNED PRIMARY KEY,
             catalogo_version VARCHAR(10) NOT NULL,
             contacto_antes_corte VARCHAR(2) NOT NULL DEFAULT \'\'
+        ) ENGINE=InnoDB',
+        'CREATE TABLE telefonia_ventas_resultado_selecciones(
+            resultado_id BIGINT UNSIGNED NOT NULL,
+            codigo VARCHAR(36) NOT NULL,
+            posicion TINYINT UNSIGNED NOT NULL,
+            PRIMARY KEY(resultado_id,codigo)
         ) ENGINE=InnoDB'
     ] as $sql)$db->query($sql);
     $etapas=[
