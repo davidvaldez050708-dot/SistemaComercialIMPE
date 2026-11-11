@@ -1,0 +1,43 @@
+/* Sólo la vista previa de supervisión V3. No cambia el Kanban productivo. */
+.impe-embudo--v3-preview .impe-v3-intentos{
+  padding:8px;border:1px solid #dbe7f5;border-radius:8px;
+  background:#f7faff;display:grid;gap:6px;
+}
+.impe-embudo--v3-preview .impe-v3-intentos-linea{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:8px;color:#506b8d;font:700 10px/1.4 Manrope,sans-serif;
+}
+.impe-embudo--v3-preview .impe-v3-intentos-valor{
+  flex:none;color:#1f4f91;font-size:11px;
+}
+.impe-embudo--v3-preview .impe-v3-intentos-barra{
+  position:relative;height:5px;background:#dfe8f5;border-radius:99px;
+  overflow:hidden;
+}
+.impe-embudo--v3-preview .impe-v3-intentos-avance{
+  display:block;height:100%;background:#3278bf;border-radius:99px;
+  min-width:0;
+}
+.impe-embudo--v3-preview .impe-v3-intentos-ayuda{
+  color:#6982a0;font:500 9px/1.45 Manrope,sans-serif;
+}
+.impe-embudo--v3-preview .impe-v3-subetapa{
+  display:flex;align-items:flex-start;gap:6px;padding:5px 7px;
+  background:#f3f6fc;color:#315f96;border:1px solid #e1e9f4;
+  border-radius:6px;font:700 10px/1.4 Manrope,sans-serif;
+  overflow-wrap:anywhere;
+}
+.impe-embudo--v3-preview .impe-v3-subetapa i{flex:none}
+.impe-embudo--v3-preview .impe-v3-fecha{
+  display:flex;align-items:flex-start;gap:6px;
+  color:#5e728e;font:600 10px/1.5 Manrope,sans-serif;
+  overflow-wrap:anywhere;
+}
+.impe-embudo--v3-preview .impe-v3-fecha i{flex:none}
+.impe-embudo--v3-preview .impe-embudo-card{cursor:default}
+.impe-embudo--v3-preview .impe-embudo-card:focus-within{
+  outline:2px solid #9dbdf3;outline-offset:2px;
+}
+@media(max-width:600px){
+  .impe-embudo--v3-preview .impe-v3-intentos{padding:7px}
+}
