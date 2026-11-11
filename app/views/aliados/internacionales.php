@@ -22,6 +22,8 @@ $esc = static fn($value) => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
     <a class="btn btn-system-light" href="<?= $esc($enlaceInscripcion) ?>" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> Formulario de inscripción</a>
     <button type="button" class="btn btn-system-light" data-copy-ally-url="<?= $esc($enlaceRegistro) ?>">Copiar registro</button>
     <button type="button" class="btn btn-system-light" data-copy-ally-url="<?= $esc($enlaceInscripcion) ?>">Copiar inscripción</button>
+    <button type="button" class="btn btn-system-light" data-external-ally-qr="<?= $esc($enlaceRegistro) ?>" data-external-ally-title="<?= $esc($aliado['nombre'].' · Registro') ?>"><i class="bi bi-qr-code"></i> QR registro</button>
+    <button type="button" class="btn btn-system-light" data-external-ally-qr="<?= $esc($enlaceInscripcion) ?>" data-external-ally-title="<?= $esc($aliado['nombre'].' · Inscripción') ?>"><i class="bi bi-qr-code"></i> QR inscripción</button>
    <?php else: ?><span class="text-muted">Enlaces desactivados.</span><?php endif; ?>
    </div>
   </div></article></div>
@@ -43,4 +45,36 @@ $esc = static fn($value) => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'
  <?php if (!$respuestas): ?><tr><td colspan="7" class="text-muted text-center py-4">Todavía no hay respuestas recibidas por enlaces de aliados externos.</td></tr><?php endif; ?>
  </tbody></table></div>
 </section>
+<div class="modal fade" id="modalQrAliadoExterno" tabindex="-1" aria-labelledby="modalQrAliadoTitulo" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="modalQrAliadoTitulo">Código QR</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+  <div class="modal-body text-center">
+   <p class="text-muted">El QR abre el enlace exclusivo del aliado.</p>
+   <img data-aliado-qr-image alt="Código QR para abrir formulario del aliado" width="280" height="280" style="max-width:100%;height:auto" hidden>
+   <p data-aliado-qr-status role="status">Selecciona una liga para generar su QR.</p>
+   <a data-aliado-qr-link href="#" target="_blank" rel="noopener noreferrer" class="small d-block text-break mt-2"></a>
+  </div>
+  <div class="modal-footer"><button type="button" class="btn btn-system-light" data-bs-dismiss="modal">Cerrar</button><a class="btn btn-system-save" data-aliado-qr-download href="#" download="aliado-qr.png">Guardar QR</a></div>
+ </div></div>
+</div>
+<script>
+(function(){
+const modal=document.getElementById('modalQrAliadoExterno');
+const img=modal?.querySelector('[data-aliado-qr-image]');
+const status=modal?.querySelector('[data-aliado-qr-status]');
+const link=modal?.querySelector('[data-aliado-qr-link]');
+const download=modal?.querySelector('[data-aliado-qr-download]');
+document.querySelectorAll('[data-external-ally-qr]').forEach(button=>button.addEventListener('click',()=>{
+ const url=button.dataset.externalAllyQr||'';
+ if(!url.startsWith(window.location.origin+'/') || !window.bootstrap?.Modal) return;
+ const qr='https://quickchart.io/qr?'+new URLSearchParams({text:url,size:'360',margin:'3',ecLevel:'M'}).toString();
+ modal.querySelector('#modalQrAliadoTitulo').textContent=button.dataset.externalAllyTitle||'Código QR';
+ img.hidden=true;status.textContent='Generando código QR…';link.href=url;link.textContent=url;download.href=qr;
+ img.onload=()=>{img.hidden=false;status.textContent='Código QR listo.';};
+ img.onerror=()=>{status.textContent='No fue posible generar el QR. Puedes copiar el enlace directamente.';};
+ img.src=qr;
+ window.bootstrap.Modal.getOrCreateInstance(modal).show();
+}));
+})();
+</script>
 <script>document.querySelectorAll('[data-copy-ally-url]').forEach(function(button){button.addEventListener('click',async function(){try{await navigator.clipboard.writeText(button.dataset.copyAllyUrl);const previous=button.textContent;button.textContent='¡Enlace copiado!';setTimeout(()=>button.textContent=previous,1800);}catch(e){window.prompt('Copia el enlace:',button.dataset.copyAllyUrl);}});});</script>
