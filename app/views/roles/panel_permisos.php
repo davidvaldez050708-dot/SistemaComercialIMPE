@@ -178,7 +178,9 @@ $permisosHabilitados = count(array_filter(
                             $permisoBloqueado =
                                 !$grupoEditable ||
                                 ($permisoSoloAdministrador &&
-                                    !$rolEsAdministrador);
+                                    !$rolEsAdministrador) ||
+                                ($permiso['codigo'] === 'agenda.comentarios.enviar_administrador' &&
+                                    !$puedeEditarAgendaAdministrador);
                             $checkboxId =
                                 'permiso_' .
                                 (int)$rolSeleccionado['id'] .

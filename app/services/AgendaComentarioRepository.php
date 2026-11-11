@@ -102,9 +102,10 @@ class AgendaComentarioRepository
                 )
             ) AND (r.id <> 1 OR EXISTS (
                 SELECT 1 FROM usuarios a INNER JOIN roles ra ON ra.id=a.rol_id AND ra.estado=1
-                WHERE a.id=? AND a.estado=1 AND (
-                    LOWER(TRIM(ra.nombre)) IN ('rh','recursos humanos','cuenta clave','director de operaciones')
-                )
+                INNER JOIN rol_permisos ap ON ap.rol_id=ra.id
+                INNER JOIN permisos p ON p.id=ap.permiso_id
+                WHERE a.id=? AND a.estado=1
+                    AND p.estado=1 AND p.codigo='agenda.comentarios.enviar_administrador'
             ))";
         $stmt = $this->db->prepare($sql . ($destinatario === null
             ? ' ORDER BY u.nombre,u.apellidos,u.id' : ' AND u.id=?'));

@@ -19,7 +19,7 @@ $db->query('CREATE TABLE permisos (id INT AUTO_INCREMENT PRIMARY KEY, modulo VAR
     codigo VARCHAR(100) UNIQUE, nombre VARCHAR(120), descripcion VARCHAR(255), estado TINYINT)');
 $db->query('CREATE TABLE rol_permisos (rol_id INT, permiso_id INT, PRIMARY KEY (rol_id, permiso_id))');
 $db->query("INSERT INTO roles VALUES (1,'Administrador',1),(2,'Director de Operaciones',1),
-    (4,'Analista de Datos',1),(6,'Cuenta Clave',1),(9,'Marketing',1),(10,'Rol adicional',1)");
+    (4,'Analista de Datos',1),(6,'Cuenta Clave',1),(9,'Marketing',1),(10,'Rol adicional',1),(12,'RH',1)");
 $db->query("INSERT INTO permisos (modulo,codigo,nombre,estado) VALUES ('Reuniones','reuniones.ver','Ver reuniones',1)");
 $db->query('INSERT INTO rol_permisos SELECT 6,id FROM permisos');
 
@@ -31,6 +31,27 @@ foreach ([1, 2, 4, 6, 9, 10] as $rol) {
 }
 comprobarPermisosAgenda(in_array('agenda.comentarios.crear', $permisosDe(6), true), 'Cuenta Clave conserva la creación');
 comprobarPermisosAgenda(!in_array('agenda.comentarios.ver', $permisosDe(10), true), 'Un rol nuevo en Agenda empieza con calendario');
+
+$enviarAdministrador = 'agenda.comentarios.enviar_administrador';
+foreach ([1=>false, 2=>true, 6=>true, 9=>false, 12=>true] as $rol => $esperado) {
+    comprobarPermisosAgenda(in_array($enviarAdministrador, $permisosDe($rol), true) === $esperado,
+        "Asignación inicial de envío al Administrador para el rol $rol");
+}
+$envioId = array_flip($modelo->obtenerPermisosPorRol(6))[$enviarAdministrador];
+$marketing = array_keys($modelo->obtenerPermisosPorRol(9));
+$_SESSION = ['rol_id' => 2];
+comprobarPermisosAgenda($modelo->actualizarPermisosRol(9, array_merge($marketing, [$envioId])),
+    'Un gestor delegado puede guardar otros permisos de Marketing');
+comprobarPermisosAgenda(!in_array($enviarAdministrador, $permisosDe(9), true), 'Un gestor delegado no puede conceder este permiso');
+$_SESSION['rol_id'] = 1;
+comprobarPermisosAgenda($modelo->actualizarPermisosRol(9, array_merge($marketing, [$envioId])),
+    'El Administrador puede activar el permiso en otro rol');
+$_SESSION['rol_id'] = 2;
+comprobarPermisosAgenda($modelo->actualizarPermisosRol(9, $marketing) &&
+    in_array($enviarAdministrador, $permisosDe(9), true), 'El guardado delegado conserva el permiso');
+$_SESSION['rol_id'] = 1;
+comprobarPermisosAgenda($modelo->actualizarPermisosRol(9, $marketing) &&
+    !in_array($enviarAdministrador, $permisosDe(9), true), 'El Administrador puede desactivar el permiso');
 
 $ids = array_flip($modelo->obtenerPermisosPorRol(1));
 $adminAntes = $permisosDe(1);
@@ -45,6 +66,7 @@ $sinAgenda = static fn (array $permisos) => array_values(array_filter($permisos,
 comprobarPermisosAgenda($sinAgenda($adminAntes) === $sinAgenda($adminDespues), 'Conserva la política ajena a Agenda');
 comprobarPermisosAgenda(!in_array('agenda.ver', $adminDespues, true), 'La sincronización respeta revocación del Administrador');
 comprobarPermisosAgenda(!in_array('agenda.ver', $permisosDe(6), true), 'La sincronización respeta revocación de Cuenta Clave');
+comprobarPermisosAgenda(!in_array($enviarAdministrador, $permisosDe(6), true), 'El catálogo no repone el permiso revocado de Cuenta Clave');
 comprobarPermisosAgenda(in_array('reuniones.ver', $permisosDe(6), true), 'Reuniones conserva su propio permiso');
 
 require dirname(__DIR__) . '/app/helpers/PermissionHelper.php';
@@ -66,4 +88,17 @@ comprobarPermisosAgenda(
     preg_match('/data-permission-code="roles\.asignar_permisos"[^>]*disabled/', $html) === 1,
     'Los permisos generales del Administrador siguen protegidos en el panel'
 );
+$rolSeleccionado = ['id' => 9, 'nombre' => 'Marketing', 'estado' => 1];
+$permisosRol = $modelo->obtenerPermisosPorRol(9);
+foreach ([1 => false, 2 => true] as $rolActor => $bloqueada) {
+    $_SESSION['rol_id'] = $rolActor;
+    ob_start();
+    require dirname(__DIR__) . '/app/views/roles/panel_permisos.php';
+    $html = ob_get_clean();
+    comprobarPermisosAgenda(
+        preg_match('/data-permission-code="agenda\.comentarios\.enviar_administrador"[^>]*>/', $html, $casilla) &&
+            str_contains($casilla[0], 'disabled') === $bloqueada,
+        "Edición de la casilla de envío para el rol gestor $rolActor"
+    );
+}
 echo "OK: Agenda por rol, administración protegida y revocaciones persistentes en MariaDB.\n";

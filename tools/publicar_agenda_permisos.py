@@ -18,10 +18,11 @@ ARCHIVOS_SELECTOR = (
     "public/css/agenda_comentarios.css",
     "public/javascript/agenda_comentarios.js",
 )
-BASE_RESTRICCION = "2e2fad91f77ce8cc864ca6594de69d9602277dbd"
+BASE_RESTRICCION = "bf1e236ff22723df879a22896ad5ddbb2a09d007"
 ARCHIVOS_RESTRICCION = (
+    "app/models/RolModel.php",
     "app/services/AgendaComentarioRepository.php",
-    "app/services/AgendaComentarioService.php",
+    "app/views/roles/panel_permisos.php",
 )
 REPO = Path(__file__).resolve().parents[1]
 

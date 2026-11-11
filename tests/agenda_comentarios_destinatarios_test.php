@@ -110,6 +110,8 @@ if (!$site) {
     catch(mysqli_sql_exception $e){dcheck($e->getCode()===1213,'Un fallo SQL no elimina el filtro de destinatario');}
 }
 dsql("INSERT INTO roles VALUES (2,'Director de Operaciones',1),(12,'RH',1),(13,'Marketing',1)");
+dsql("INSERT INTO permisos VALUES (28,'agenda.comentarios.enviar_administrador',1)");
+dsql('INSERT INTO rol_permisos VALUES (2,28),(6,28),(12,28)');
 dsql("INSERT INTO usuarios(id,nombre,apellidos,rol_id,estado) VALUES
     (20,'Directora','Autorizada',2,1),(21,'Otro','Director',2,1),
     (22,'Usuario','RH',12,1),(23,'Usuario','Marketing',13,1),(24,'Otra','Cuenta Clave',6,1)");
@@ -130,4 +132,12 @@ dcheck(!$s->crear(20, ['fecha'=>'2026-10-29','comentario'=>'Ya no es directora',
 dsess(23);
 dcheck($s->crear(23, ['fecha'=>'2026-10-29','comentario'=>'Aviso general'])['ok'],
     'Marketing conserva el envío general');
+dsql('INSERT INTO rol_permisos VALUES (13,28)');
+dcheck(in_array(15, array_column($s->listar(23, '2026-10-01', '2026-11-01')['destinatarios'], 'id'), true),
+    'Habilitar el permiso muestra al Administrador en Marketing');
+dcheck($s->crear(23, ['fecha'=>'2026-10-29','comentario'=>'Permiso habilitado','destinatario_id'=>15])['ok'],
+    'Un rol adicional puede escribirle al Administrador si tiene el permiso');
+dsql('DELETE FROM rol_permisos WHERE rol_id=13 AND permiso_id=28');
+dcheck($s->crear(23, ['fecha'=>'2026-10-29','comentario'=>'Permiso revocado','destinatario_id'=>15])['codigo_http'] === 422,
+    'Revocar el permiso bloquea incluso un intento desde una lista ya abierta');
 echo "OK: destinatarios activos, privacidad, avisos y restricción de destinatario Administrador por rol.\n";

@@ -131,7 +131,8 @@ class RolModel
             ['agenda.comentarios.ver', 'Ver comentarios', 'Consultar los comentarios visibles para el usuario y recibir sus avisos. Requiere Ver agenda.'],
             ['agenda.comentarios.crear', 'Agregar comentarios', 'Crear comentarios compartidos, dirigidos o privados. Requiere Ver comentarios.'],
             ['agenda.comentarios.eliminar', 'Eliminar comentarios propios', 'Eliminar los comentarios que escribió el usuario. Requiere Ver comentarios.'],
-            ['agenda.comentarios.recibir_dirigidos', 'Recibir avisos dirigidos sin acceso a comentarios', 'Recibir avisos de comentarios asignados al usuario aunque su rol no pueda consultar los comentarios en la Agenda.']
+            ['agenda.comentarios.recibir_dirigidos', 'Recibir avisos dirigidos sin acceso a comentarios', 'Recibir avisos de comentarios asignados al usuario aunque su rol no pueda consultar los comentarios en la Agenda.'],
+            ['agenda.comentarios.enviar_administrador', 'Enviar comentarios al Administrador', 'Elegir al Administrador como destinatario directo. Requiere permiso para agregar comentarios.']
         ];
 
         $registrados = $this->connection->query(
@@ -153,10 +154,16 @@ class RolModel
                 "INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
                  SELECT r.id, ?
                  FROM roles r
-                 WHERE ? = 1 OR EXISTS (
-                     SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
-                     WHERE rp.rol_id = r.id AND p.codigo = 'reuniones.ver' AND p.estado = 1
-                 )"
+                 WHERE CASE ?
+                     WHEN 'agenda.comentarios.enviar_administrador' THEN
+                         LOWER(TRIM(r.nombre)) IN ('rh','recursos humanos','cuenta clave','director de operaciones')
+                     WHEN 'agenda.ver' THEN 1
+                     WHEN 'agenda.comentarios.recibir_dirigidos' THEN 1
+                     ELSE EXISTS (
+                         SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
+                         WHERE rp.rol_id = r.id AND p.codigo = 'reuniones.ver' AND p.estado = 1
+                     )
+                 END"
             );
 
             foreach ($catalogo as [$codigo, $nombre, $descripcion]) {
@@ -166,8 +173,7 @@ class RolModel
                     continue;
                 }
                 $permisoId = (int)$registrar->insert_id;
-                $todos = (int)in_array($codigo, ['agenda.ver', 'agenda.comentarios.recibir_dirigidos'], true);
-                $asignar->bind_param('ii', $permisoId, $todos);
+                $asignar->bind_param('is', $permisoId, $codigo);
                 $asignar->execute();
             }
             $this->connection->commit();
@@ -380,9 +386,11 @@ class RolModel
     {
         $permisosIds = array_values(array_unique(array_map('intval', $permisosIds)));
         $esAdministrador = (int)$rolId === 1;
+        $actorEsAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
         $permisosAgenda = [];
+        $permisoProtegido = 0;
         if ($esAdministrador) {
-            if ((int)($_SESSION['rol_id'] ?? 0) !== 1) {
+            if (!$actorEsAdministrador) {
                 return false;
             }
             $resultado = $this->connection->query(
@@ -393,6 +401,13 @@ class RolModel
         } else {
             $permisosIds = $this->normalizarDependenciasPermisos($permisosIds);
             $permisosIds = $this->retirarPermisosSoloAdministrador((int)$rolId, $permisosIds);
+            if (!$actorEsAdministrador) {
+                $permiso = $this->connection->query(
+                    "SELECT id FROM permisos WHERE codigo = 'agenda.comentarios.enviar_administrador'"
+                )->fetch_assoc();
+                $permisoProtegido = (int)($permiso['id'] ?? 0);
+                $permisosIds = array_values(array_diff($permisosIds, [$permisoProtegido]));
+            }
         }
 
         if (!$this->validarPermisosExistentes($permisosIds)) {
@@ -407,9 +422,13 @@ class RolModel
             $sqlEliminar = $esAdministrador
                 ? "DELETE rp FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
                    WHERE rp.rol_id = ? AND p.codigo LIKE 'agenda.%'"
-                : "DELETE FROM rol_permisos WHERE rol_id = ?";
+                : "DELETE FROM rol_permisos WHERE rol_id = ? AND permiso_id <> ?";
             $stmtEliminar = $this->connection->prepare($sqlEliminar);
-            $stmtEliminar->bind_param("i", $rolId);
+            if ($esAdministrador) {
+                $stmtEliminar->bind_param("i", $rolId);
+            } else {
+                $stmtEliminar->bind_param("ii", $rolId, $permisoProtegido);
+            }
 
             if (!$stmtEliminar->execute()) {
                 throw new RuntimeException('No fue posible limpiar los permisos anteriores.');
@@ -437,7 +456,7 @@ class RolModel
                 $permisosAnteriores,
                 $esAdministrador
                     ? array_merge(array_diff($permisosAnteriores, $permisosAgenda), $permisosIds)
-                    : $permisosIds
+                    : array_merge($permisosIds, array_intersect($permisosAnteriores, [$permisoProtegido]))
             );
 
             $this->connection->commit();
