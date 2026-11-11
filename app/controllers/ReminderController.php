@@ -45,18 +45,30 @@ class ReminderController
             exit;
         }
 
-        $conexion = Database::compartida();
-
         if ($esAdministrador) {
-            $resultado = (new AdminNotificationService($conexion))->obtener();
-
-            echo json_encode(
-                $resultado,
-                JSON_UNESCAPED_UNICODE |
-                JSON_INVALID_UTF8_SUBSTITUTE
-            );
+            try {
+                $conexion = Database::compartida();
+                $resultado = (new AdminNotificationService($conexion))->obtener();
+                if (empty($resultado['ok'])) {
+                    http_response_code(500);
+                }
+                echo json_encode(
+                    $resultado,
+                    JSON_UNESCAPED_UNICODE |
+                    JSON_INVALID_UTF8_SUBSTITUTE
+                );
+            } catch (Throwable $error) {
+                error_log('[campana_administrador] ' . get_class($error));
+                http_response_code(Database::esFalloTemporal($error) ? 503 : 500);
+                echo json_encode([
+                    'ok' => false,
+                    'mensaje' => 'No fue posible consultar las notificaciones.'
+                ], JSON_UNESCAPED_UNICODE);
+            }
             exit;
         }
+
+        $conexion = Database::compartida();
 
         $recordatoriosAgenda = [];
         $avisosAgenda = [];

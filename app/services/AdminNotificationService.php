@@ -29,10 +29,8 @@ class AdminNotificationService
             try {
                 (new ConvocatoriaModel())->sincronizarConvocatoriasPorFecha();
             } catch (Throwable $error) {
-                error_log(
-                    'No fue posible sincronizar convocatorias para el centro administrativo: ' .
-                    $error->getMessage()
-                );
+                // No representar un fallo SQL como ausencia de convocatorias.
+                throw $error;
             }
 
             $reuniones = $this->resumenReuniones();
@@ -152,11 +150,10 @@ class AdminNotificationService
                 'total' => $total
             ];
         } catch (Throwable $error) {
-            error_log(
-                'No fue posible cargar notificaciones administrativas: ' .
-                $error->getMessage()
-            );
-
+            error_log('[campana_administrador] ' . get_class($error));
+            if (Database::esFalloTemporal($error)) {
+                throw $error;
+            }
             return [
                 'ok' => false,
                 'requiere_migracion' => false,

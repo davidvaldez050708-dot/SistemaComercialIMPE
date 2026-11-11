@@ -34,6 +34,12 @@ try {
     $db->query('DELETE FROM telefonia_disponibilidad WHERE id=2');
     if ((int)$svc->sondear(1,true,0,false)['entrante']['id'] !== 1) throw new RuntimeException('La solicitud pendiente debe aparecer.');
 
+    $inserciones = $counter('Com_insert');
+    $svc->sondear(1,true,0,false,null,false);
+    if ($counter('Com_insert') !== $inserciones) {
+        throw new RuntimeException('El sondeo sin heartbeat escribió presencia.');
+    }
+
     $ddl = $counter('Com_create_table');
     new TelefoniaNotificacionService($db);
     if ($counter('Com_create_table') !== $ddl) throw new RuntimeException('La campana ejecutó DDL.');

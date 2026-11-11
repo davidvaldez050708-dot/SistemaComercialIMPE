@@ -40,11 +40,14 @@ final class TelefoniaDisponibilidadService
         bool $disponible,
         int $id,
         bool $contarDevoluciones,
-        ?Closure $buscarSolicitudSinId = null
+        ?Closure $buscarSolicitudSinId = null,
+        bool $actualizarPresencia = true
     ): array {
         $this->extensionesSondeo = [];
         try {
-            $this->presencia($usuario, $disponible);
+            if ($actualizarPresencia) {
+                $this->presencia($usuario, $disponible);
+            }
             return [
                 'solicitud' => $id > 0 ? $this->obtener($usuario, $id) : $buscarSolicitudSinId?->__invoke(),
                 'entrante' => $this->entrante($usuario),
