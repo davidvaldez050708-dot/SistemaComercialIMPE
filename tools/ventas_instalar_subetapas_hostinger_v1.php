@@ -79,6 +79,10 @@ function tablasExistentes(mysqli $db): array {
     }
     return $result;
 }
+function normalizarTipo(string $tipo): string {
+    // MariaDB conserva la longitud visual de INT/BIGINT; MySQL 8 la omite.
+    return preg_replace('/\\b(bigint|int)\\([0-9]+\\)/i','$1',strtolower($tipo));
+}
 function verificarColumnas(mysqli $db,string $tabla,array $esperadas): void {
     // Solo nombres y tipos de datos; ningún dato personal.
     $s=$db->prepare("SELECT COLUMN_NAME, COLUMN_TYPE
@@ -88,7 +92,7 @@ function verificarColumnas(mysqli $db,string $tabla,array $esperadas): void {
     $s->bind_param('s',$tabla);$s->execute();
     $campos=[];
     foreach($s->get_result()->fetch_all(MYSQLI_ASSOC) as $fila) {
-        $campos[(string)$fila['COLUMN_NAME']]=strtolower((string)$fila['COLUMN_TYPE']);
+        $campos[(string)$fila['COLUMN_NAME']]=normalizarTipo((string)$fila['COLUMN_TYPE']);
     }
     $s->close();
     if (array_keys($campos)!==array_keys($esperadas)) {
@@ -192,7 +196,7 @@ function verificarColumnasBase(mysqli $db): void {
     $s=$db->query("SELECT COLUMN_NAME,COLUMN_TYPE FROM information_schema.COLUMNS
       WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='prospecto_asignaciones'
         AND COLUMN_NAME='id' LIMIT 1")->fetch_assoc();
-    if(!$s || strtolower((string)$s['COLUMN_TYPE'])!=='bigint unsigned')
+    if(!$s || normalizarTipo((string)$s['COLUMN_TYPE'])!=='bigint unsigned')
         bloquear('La PK de asignaciones no es BIGINT UNSIGNED.');
 }
 function carpetaRespaldo(string $root,string $siteRoot): string {
