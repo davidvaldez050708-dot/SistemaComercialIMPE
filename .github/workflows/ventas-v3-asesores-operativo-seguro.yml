@@ -9,6 +9,7 @@ on:
       - 'app/services/EmbudoComercialRepository.php'
       - 'app/services/EmbudoComercialV3MovimientosPermitidos.php'
       - 'app/views/embudo_comercial/operativo_v3.php'
+      - 'app/views/embudo_comercial/index.php'
       - 'app/views/embudo_comercial/detalle.php'
       - 'public/css/embudo_v3_operativo.css'
       - 'public/javascript/embudo_comercial_v3_operativo.js'
@@ -32,6 +33,7 @@ jobs:
           php -l app/services/EmbudoComercialRepository.php
           php -l app/services/EmbudoComercialV3MovimientosPermitidos.php
           php -l app/views/embudo_comercial/operativo_v3.php
+          php -l app/views/embudo_comercial/index.php
           php -l app/views/embudo_comercial/detalle.php
           php -l tests/ventas_v3_asesor_operativo_render_unit.php
           php -l tests/embudo_comercial_v3_previsualizacion_db.php
