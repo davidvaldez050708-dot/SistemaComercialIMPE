@@ -16,17 +16,10 @@ class TelefoniaController
 
     public function __construct()
     {
-        $modeloRol = new RolModel();
-        $modeloRol->inicializarPermisosSistema();
-
-        if (isset($_SESSION['rol_id'])) {
-            $_SESSION['permisos'] =
-                $modeloRol->obtenerCodigosPermisosPorRol(
-                    (int)$_SESSION['rol_id']
-                );
-        }
-
-        $this->service = new TelefoniaExtensionService();
+        // index.php ya revalidó el usuario y cargó los permisos actuales
+        // antes de instanciar el controlador. No reaprovisionar el catálogo
+        // (81 UPSERTs más consultas) en cada sondeo de telefonía.
+        $this->service = new TelefoniaExtensionService(Database::compartida());
     }
 
     /**
