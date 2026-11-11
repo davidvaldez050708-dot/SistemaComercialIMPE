@@ -25,10 +25,16 @@
         <textarea id="agendaComentarioTexto" name="comentario" rows="4" maxlength="500" placeholder="Escribe un comentario…" aria-describedby="agendaComentarioContador" required></textarea>
         <p id="agendaComentarioContador" class="agenda-comment-counter" data-agenda-comment-counter>0 / 250</p>
         <div class="agenda-comment-recipient">
-            <label for="agendaComentarioDestinatario" class="agenda-comment-hour-label">Destinatario</label>
-            <select id="agendaComentarioDestinatario" name="destinatario_id" class="form-select system-form-control" disabled aria-describedby="agendaComentarioDestinatarioAyuda">
-                <option value="">Todos los usuarios con Agenda</option>
-            </select>
+            <label for="agendaComentarioDestinatarioBoton" id="agendaComentarioDestinatarioEtiqueta" class="agenda-comment-hour-label">Destinatario</label>
+            <input type="hidden" name="destinatario_id" value="">
+            <button type="button" id="agendaComentarioDestinatarioBoton" class="form-select system-form-control"
+                aria-labelledby="agendaComentarioDestinatarioEtiqueta agendaComentarioDestinatarioValor"
+                aria-describedby="agendaComentarioDestinatarioAyuda"
+                aria-controls="agendaComentarioDestinatarios" aria-expanded="false" disabled>
+                <span id="agendaComentarioDestinatarioValor">Todos los usuarios con Agenda</span>
+            </button>
+            <div id="agendaComentarioDestinatarios" class="agenda-comment-recipient-options" role="group"
+                aria-label="Destinatarios disponibles" hidden></div>
             <p class="agenda-comments-hint" id="agendaComentarioDestinatarioAyuda">Todos lo verán en Agenda. Si eliges una persona, sólo ella y tú podrán verlo; los avisos serán sólo para ella.</p>
         </div>
         <label for="agendaComentarioHora" class="agenda-comment-hour-label">Hora <span>(opcional)</span></label>

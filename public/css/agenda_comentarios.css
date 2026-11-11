@@ -50,8 +50,16 @@
 .agenda-comment-hour-label { display:block;font-size:12px;font-weight:650;margin-bottom:8px; }
 .agenda-comment-hour-label > span { color:#76849b;font-weight:400; }
 .agenda-comment-recipient { margin-bottom:16px; }
-.agenda-comment-recipient select { width:100%;min-height:40px;font:inherit;font-size:13px;border:1px solid #d5e0ef;border-radius:7px;color:#304b6c; }
-.agenda-comment-recipient select:focus-visible { outline:3px solid #d5e6ff;border-color:#5595f6; }
+.agenda-comment-recipient > button { width:100%;min-height:40px;text-align:left; }
+.agenda-comment-recipient > button:enabled { background-color:#fff;cursor:pointer; }
+.agenda-comment-recipient > button:disabled { cursor:not-allowed; }
+.agenda-comment-recipient-options { max-height:10rem;overflow:auto;margin-top:4px;padding:4px;border:1px solid #d5e0ef;border-radius:7px;background:#fff; }
+.agenda-comment-recipient-options[hidden] { display:none; }
+.agenda-comment-recipient-options button { display:block;width:100%;padding:7px 9px;border:0;border-radius:5px;background:transparent;color:#304b6c;text-align:left; }
+.agenda-comment-recipient-options button:not(:disabled):hover,
+.agenda-comment-recipient-options button[aria-pressed="true"] { background:#edf3ff;color:var(--color-primary); }
+.agenda-comment-recipient-options button:focus-visible { outline:2px solid #5595f6;outline-offset:-2px; }
+.agenda-comment-recipient-options button:disabled { opacity:.55; }
 .agenda-comment-hour-row { display:flex;align-items:center;gap:16px; }
 .agenda-comment-hour-row > input[type=time] { flex:1;min-width:0;min-height:40px;font-size:13px;padding:8px 10px;border-color:#d5e0ef;border-radius:7px; }
 .agenda-comment-hour-row > input[type=time]:disabled { background-color:#f5f7fa;color:#76849b; }

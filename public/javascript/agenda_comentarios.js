@@ -18,17 +18,39 @@
         const noHour = form.elements.sin_hora;
         const privateComment = form.elements.privado;
         const recipient = form.elements.destinatario_id;
+        const recipientToggle = form.querySelector('#agendaComentarioDestinatarioBoton');
+        const recipientValue = form.querySelector('#agendaComentarioDestinatarioValor');
+        const recipientChoices = form.querySelector('#agendaComentarioDestinatarios');
         let privacyAvailable = false;
         let recipientsAvailable = false, recipients = [];
+        let renderedChoices = '';
+
+        function showRecipientChoices(open) {
+            recipientChoices.hidden = !open;
+            recipientToggle.setAttribute('aria-expanded', String(open));
+        }
+
         function updateRecipients() {
-            if (!recipient) return;
-            const current=recipient.value;
-            const options=[new Option('Todos los usuarios con Agenda','')];
-            recipients.forEach(user=>options.push(new Option((user.nombre||'Usuario')+' · '+user.rol,String(user.id))));
+            const current = recipient.value;
+            const options = [{id:'', text:'Todos los usuarios con Agenda'}];
+            recipients.forEach(user => options.push({id:String(user.id), text:(user.nombre || 'Usuario') + ' · ' + user.rol}));
             // Un cambio de permisos no convierte una selección dirigida en
             // un envío general de forma silenciosa mientras se escribe.
-            if(current && !recipients.some(u=>String(u.id)===current)) options.push(new Option('Destinatario no disponible',current));
-            recipient.replaceChildren(...options);recipient.value=current;
+            if (current && !options.some(option => option.id === current)) {
+                options.push({id:current, text:'Destinatario no disponible', disabled:true});
+            }
+            recipientValue.textContent = options.find(option => option.id === current).text;
+            const key = JSON.stringify([current, options]);
+            if (key === renderedChoices) return;
+            renderedChoices = key;
+            recipientChoices.replaceChildren(...options.map(option => {
+                const button = node('button', '', option.text);
+                button.type = 'button';
+                button.dataset.recipientId = option.id;
+                button.disabled = Boolean(option.disabled);
+                button.setAttribute('aria-pressed', String(option.id === current));
+                return button;
+            }));
         }
         function updateOptions() {
             hour.disabled = noHour.checked;
@@ -38,15 +60,14 @@
                 ? 'Los comentarios privados no están disponibles por el momento.' : privateComment.checked
                 ? 'Sólo tú podrás verlo. Sus avisos y recordatorios serán únicamente para ti.'
                 : recipient?.value ? 'Sólo tú y el destinatario podrán verlo.' : 'Compartido con los usuarios que tienen acceso a Agenda.';
-            if (recipient) {
-                recipient.disabled=privateComment.checked || !recipientsAvailable;
-                const help=form.querySelector('#agendaComentarioDestinatarioAyuda');
-                if(help) help.textContent=privateComment.checked
-                    ? 'Comentario privado: sólo tú recibirás sus avisos y recordatorios.'
-                    : !recipientsAvailable ? 'Por ahora se mantienen los avisos generales. Falta completar la instalación de destinatarios.'
-                    : recipient.value ? 'Sólo tú y la persona seleccionada podrán verlo. Únicamente ella recibirá el aviso y el recordatorio.'
-                    : 'Todos los usuarios con Agenda podrán verlo y recibir sus avisos.';
-            }
+            recipientToggle.disabled = privateComment.checked || !recipientsAvailable;
+            if (recipientToggle.disabled) showRecipientChoices(false);
+            form.querySelector('#agendaComentarioDestinatarioAyuda').textContent = privateComment.checked
+                ? 'Comentario privado: sólo tú recibirás sus avisos y recordatorios.'
+                : !recipientsAvailable ? 'Por ahora se mantienen los avisos generales. Falta completar la instalación de destinatarios.'
+                : recipient.value ? 'Sólo tú y la persona seleccionada podrán verlo. Únicamente ella recibirá el aviso y el recordatorio.'
+                : recipients.length === 0 ? 'En este momento no hay usuarios disponibles para seleccionar individualmente.'
+                : 'Todos los usuarios con Agenda podrán verlo y recibir sus avisos.';
         }
         const status = root.querySelector('[data-agenda-comments-status]');
         layout.before(status);
@@ -328,7 +349,11 @@
         function openEditor(date, origin) {
             if (newComment.disabled || !available || editor.open) return;
             tab='comentarios';openDay(date);
-            form.reset();counter();error.hidden=true;updateOptions();
+            form.reset();
+            recipient.value = '';
+            showRecipientChoices(false);
+            updateRecipients();
+            counter();error.hidden=true;updateOptions();
             editorOrigin=origin;
             editor.querySelector('[data-agenda-comment-date]').textContent=label(date);
             editor.style.left='';editor.style.top='';editor.classList.remove('is-anchored');
@@ -375,7 +400,29 @@
             if(noHour.checked) hour.value='';else hour.focus();
         });
         privateComment.addEventListener('change',updateOptions);
-        recipient?.addEventListener('change',updateOptions);
+        recipientToggle.addEventListener('click', () => {
+            const open = recipientChoices.hidden;
+            showRecipientChoices(open);
+            if (open) {
+                const selected = recipientChoices.querySelector('[aria-pressed="true"]:enabled');
+                (selected || recipientChoices.querySelector('button:enabled'))?.focus();
+            }
+        });
+        recipientChoices.addEventListener('click', event => {
+            const option = event.target.closest('button[data-recipient-id]');
+            if (!option || option.disabled || recipientToggle.disabled) return;
+            recipient.value = option.dataset.recipientId;
+            showRecipientChoices(false);
+            updateRecipients();
+            updateOptions();
+            recipientToggle.focus();
+        });
+        editor.addEventListener('keydown', event => {
+            if (event.key !== 'Escape' || recipientChoices.hidden) return;
+            event.preventDefault();
+            showRecipientChoices(false);
+            recipientToggle.focus();
+        });
         form.addEventListener('submit',async event=>{
             event.preventDefault();if(saving)return;
             const content=text.value.trim();
