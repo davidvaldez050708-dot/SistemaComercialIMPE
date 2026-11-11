@@ -1,0 +1,87 @@
+name: Ventas V3 - previa de cinco etapas sin escrituras
+on:
+  push:
+    branches:
+      - feat/ventas-v3-vista-previa-cinco-etapas-20261111
+  pull_request:
+    paths:
+      - 'app/services/EmbudoComercialRepository.php'
+      - 'app/controllers/EmbudoComercialController.php'
+      - 'app/views/embudo_comercial/previsualizacion_v3.php'
+      - 'tests/embudo_comercial_v3_previsualizacion_db.php'
+      - '.github/workflows/ventas-v3-previsualizacion-cinco-etapas.yml'
+permissions:
+  contents: read
+jobs:
+  php-y-regresiones:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: PHP lint y regresión embudo, PBX y política V3
+        run: |
+          php -l app/services/EmbudoComercialRepository.php
+          php -l app/controllers/EmbudoComercialController.php
+          php -l app/views/embudo_comercial/previsualizacion_v3.php
+          php -l tests/embudo_comercial_v3_previsualizacion_db.php
+          php tests/embudo_comercial_fase1_unit.php
+          php tests/embudo_comercial_fase2_unit.php
+          php tests/embudo_comercial_politica_propuesta_unit.php
+          php tests/embudo_comercial_planificador_v3_unit.php
+  mysql-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Compatibilidad y permisos sobre MySQL nueva
+        env:
+          IMPE_V3_PREVIA_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/embudo_comercial_v3_previsualizacion_db.php
+  mariadb-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Compatibilidad y permisos sobre MariaDB nueva
+        env:
+          IMPE_V3_PREVIA_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/embudo_comercial_v3_previsualizacion_db.php
