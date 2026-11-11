@@ -226,6 +226,92 @@ final class EmbudoComercialRepository
         return ['columnas'=>$datos,'conteos'=>$conteos,'total'=>array_sum($conteos)];
     }
 
+    /**
+     * Fase V3: vista de preparación de SOLO LECTURA y con permisos existentes.
+     *
+     * No modifica el catálogo operativo, filtros del asesor, PBX, movimientos,
+     * etapas ni la agenda. Las etapas antiguas INTERESADO y PAGO_CONFIRMADO
+     * permanecen como pendientes, nunca se reetiquetan a POTENCIAL.
+     *
+     * Muestra hasta 20 registros por grupo, con totales completos y truncado
+     * explícito. Ninguna tarjeta V3 es arrastrable.
+     */
+    public static function clasificacionV3Sql(): string
+    {
+        return "CASE
+           WHEN e.etapa IS NULL THEN 'NUEVO'
+           WHEN e.etapa IN ('NUEVO','CONTACTADO','POTENCIAL',
+                            'SEGUIMIENTO','PROCESO_INSCRIPCION')
+                THEN e.etapa
+           WHEN e.etapa IN ('RECUPERACION','EN_CONTACTO') THEN 'RECUPERACION'
+           WHEN e.etapa='DESCARTADO' THEN 'DESCARTADO'
+           ELSE 'REVISION_LEGACY'
+         END";
+    }
+
+    public function listadoV3Preparacion(int $usuarioId,bool $supervisor,array $f): array
+    {
+        $grupos=[
+            'NUEVO'=>'Nuevos',
+            'CONTACTADO'=>'Contactados',
+            'POTENCIAL'=>'Potenciales',
+            'SEGUIMIENTO'=>'Seguimiento',
+            'PROCESO_INSCRIPCION'=>'Proceso Inscripción',
+            'REVISION_LEGACY'=>'Clasificación pendiente'
+        ];
+        $required=['prospecto_embudo_subetapas','prospecto_embudo_subetapas_historial'];
+        foreach ($required as $tabla) {
+            $found=$this->rows("SELECT ENGINE FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?",[$tabla]);
+            if (!$found || strtoupper((string)$found[0]['ENGINE'])!=='INNODB') {
+                throw new DomainException('Faltan estructuras V3 de subetapas.');
+            }
+        }
+        [$from,$args]=$this->condiciones($usuarioId,$supervisor,$f);
+        $expr=self::clasificacionV3Sql();
+        $totales=[];
+        foreach($this->rows("SELECT $expr grupo,COUNT(*) total
+              $from GROUP BY $expr",$args) as $fila) {
+            $clave=(string)$fila['grupo'];
+            $totales[$clave]=(int)$fila['total'];
+        }
+        $columnas=[];
+        foreach ($grupos as $etapa=>$etiqueta) {
+            $registros=$this->rows(
+                "SELECT a.id asignacion_id,a.prospecto_id,a.asesor_id,
+                    p.nombre_completo,
+                    (SELECT GROUP_CONCAT(DISTINCT i.nombre_original SEPARATOR ' · ')
+                     FROM prospecto_intereses i WHERE i.prospecto_id=p.id) programas,
+                    COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
+                    e.etapa etapa_original,
+                    (SELECT st.subetapa FROM prospecto_embudo_subetapas st
+                     WHERE st.asignacion_id=a.id LIMIT 1) subetapa
+                $from AND $expr=?
+                ORDER BY COALESCE(ag.proxima_accion_at,a.proxima_accion_at,
+                            a.asignado_at),a.id
+                LIMIT 21",array_merge($args,[$etapa])
+            );
+            $columnas[$etapa]=[
+                'etiqueta'=>$etiqueta,
+                'total'=>$totales[$etapa]??0,
+                'registros'=>array_slice($registros,0,20),
+                'truncado'=>count($registros)>20
+            ];
+        }
+        $externos=($totales['RECUPERACION']??0)+($totales['DESCARTADO']??0);
+        return [
+            'columnas'=>$columnas,
+            'externos'=>[
+                'RECUPERACION'=>$totales['RECUPERACION']??0,
+                'DESCARTADO'=>$totales['DESCARTADO']??0
+            ],
+            'total'=>array_sum($totales),
+            'total_activos'=>array_sum($totales)-$externos,
+            'registros_sin_clasificar'=>$totales['REVISION_LEGACY']??0,
+            'modo'=>'PREVISUALIZACION_SIN_ESCRITURAS'
+        ];
+    }
+
     public function detalle(int $usuarioId,bool $supervisor,int $prospectoId,string $vista): ?array
     {
         if ($prospectoId<1) return null;
