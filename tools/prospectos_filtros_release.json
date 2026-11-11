@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "path": "app/views/prospectos/partials/filtros_exportacion.php",
+      "variants": [
+        {
+          "before": "0f9d5af91d3f93ce862e3d52c0374c70b2ba9abd8eefc4dcee2ff5325fde4999",
+          "after": "591ef3b880e5ed8b01ceb2dfcab0e6004d13e7c71e19970696fc9ef5b846890e",
+          "target": "H4sIAAAAAAACCq1W23LbNhB911egihpQM6Iu8U2lbvVMleahdztPHk8GJEEJNQiwAChLdfzvXYCgLdmylUzjB9Fc7GLPnj1YcKzNhtNpo5tQYRThYca4oUqjKeoWSuqCJkbqMKPJkuhOY9vGmTavuqO7BoK/hWJpmEhe5iJCA9RD4WDkFlKmC042Eco4XVcmwtlChMzQXEfIQqKqWrAu4a0iRYTsb2Vc2Ndh4WNzJsJblpplhPqjxn1jD6BtU0EVk6n0IL8Gy5O0RC2YcDntKxQqVYTeHJ+eDM+OPHgpTIRO+33UHZ6dKJqjX4lQsqAdpInQoQYo2VdA1pSDoXPIXRGxkIiJojS+Sk8PKY185GxJ2WIJ+I4eSipImjKxAMjFGg36tTmWKqVQ2wCsWnKWojfpCe1ng+1lyJqyEhj74SGMJDcLJUuRAi3ZMCNZskvV4OxoeHryDaiqNcyZuHnaVybASsMvaO/fpTYs24BkwWbRPOv96bbkDtE3+Kb0vctOD9N3dog+F14qbeMLyaryDnMaLeWKKnS3i4kOaZbFI3RQvnRdSGWI3aA6NKFvigaj8bLcv40ucwjZQKSbOm5oRUhIQV8PiKLwlsY3zIQpNYRxHYL1xtXwoIxXdnl+ml6cFnsH1I7GqEhfnh9hzGVyUzPhFr8QEScx5dv12Hk7qpIcwz5bA8rJI9TsX+CuOxy8swJ5oXJP1xVIR1zD7q68mGgGhQz6/e9HqFaz3eDHnKaMoCAn63oEHw9hbrQ9X/9TGH2b474x7vnLajwrlkWj5XZ6DxeQkmiCwNewBGUi0EbB8UOthOSFbEfIv0+maGlybpMywiFU6YDpT9Vq0Pr08/zyqoq5ns1EyXl7tmOMMO7Mf7v89OfH3y/nFx388fJ9OMTtUaPlGnGeGLayQGhemI3fD/uRja/b6O1bFGxjDnBKdUpx+7vJBGP0+TPaXQWWDPGrkGUGdadshRJOtJ40nzHanDqqx5Uennt5JM3pH9U/zttFVNcJEiSnEFG7Paw7H8s4yEdRkixRcIXxZIovZQqNhESoQoA7eCk3duUDPDqYbKiyb+f2eY3Ar7UiMLMm05aQeawo9Ga2m8flkoVhUiDwLQHQeDbxceDcRPb1GbmzGVA0mUwqvxmuKqIphp5B1NTtUeWE13GvyrCvRDikvsrRNjaQntvSc9xzJPsXf1S2nOtp5ZuwPUKb0zGr7TFDMQsTwiEpUUdNRBQj4ZKlKRWTplElBe8em7qad0Q2Q/gvd/hJwVlCgAIU1aaU1u1wpXosW+j2i8ht/7TrVZk/WZmicfUhYTYFNCUlhja9YpyKmzvt2qdy273pDnNP0nywen85jTsOr6Txx2V/mnEPqq6bt9OwcVwaA2qrEuoyzplp7u/cuSNbeXrHvSrytW0q5PV4ewC/5nq9NwfaMxSfKwa+uWlIibJXGbgllL8snXk9WufW7xGzJ2SsE8UKkHUQtO2AvPNfFkIbuOSVIjDPUpmUOYDswheDgueFC4H5TVdMlnrOqV29YDFUsKi/WSC0+09J1ebCnRupzjkPsOvtlePItvYat7tw2uZw2gI3Yx8hOBjW1IWPqfkKEvwCFz8VVAUY2BcLijvIY96XLvAz4Mq1wA8Km8+1AKrCGC6VdgXXPu/bAfzCefGE/AeVxrylGQ0AAA=="
+        }
+      ]
+    }
+  ],
+  "dependencies": {}
+}

@@ -1,2 +1,4 @@
 /tools/publicar_prospectos_exportacion.py text eol=lf
 /tools/prospectos_exportacion_release.json text eol=lf
+/tools/publicar_prospectos_filtros.py text eol=lf
+/tools/prospectos_filtros_release.json text eol=lf
