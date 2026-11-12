@@ -138,6 +138,54 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
             <?php endif; ?>
             <?php endif; ?>
         </section>
+        <?php if(!empty($prospecto['historial_subetapas'])):
+            $catalogoSub=EmbudoComercialPoliticaPropuesta::SUBETAPAS; ?>
+        <section class="impe-embudo-detalles-wide impe-embudo-historial"
+                 aria-labelledby="impe-historial-gestiones-titulo">
+            <div class="impe-embudo-historial-head">
+                <div>
+                    <h3 id="impe-historial-gestiones-titulo">Historial de gestiones y subetapas</h3>
+                    <p>Atenciones registradas sin alterar necesariamente la etapa del embudo.</p>
+                </div>
+                <span class="impe-embudo-historial-total">
+                    <?= count($prospecto['historial_subetapas']) ?> registros<?= !empty($prospecto['historial_subetapas_truncado'])?' recientes':'' ?>
+                </span>
+            </div>
+            <ol class="impe-embudo-timeline">
+                <?php foreach($prospecto['historial_subetapas'] as $evento):
+                    $etapaEvento=(string)$evento['etapa_en_evento'];
+                    $etapaPresentada=$etapaEvento==='INTERESADO'?'POTENCIAL':$etapaEvento;
+                    $anterior=(string)($evento['subetapa_anterior']??'');
+                    $nueva=(string)($evento['subetapa_nueva']??'');
+                    $nombreAnterior=$catalogoSub[$etapaPresentada][$anterior]??str_replace('_',' ',$anterior);
+                    $nombreNueva=$catalogoSub[$etapaPresentada][$nueva]??str_replace('_',' ',$nueva);
+                    $autorEvento=trim((string)($evento['autor']??''));
+                    if($autorEvento==='')$autorEvento='Usuario #'.(int)$evento['usuario_id'];
+                ?>
+                <li class="impe-embudo-timeline-item">
+                    <div class="impe-embudo-timeline-main">
+                        <strong>
+                            <?= $esc($nombreAnterior!==''?$nombreAnterior:'Situación inicial') ?>
+                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                            <?= $esc($nombreNueva!==''?$nombreNueva:'Actualización') ?>
+                        </strong>
+                        <time datetime="<?= $esc(str_replace(' ','T',(string)$evento['creado_at']).'Z') ?>">
+                            <?= $esc($fecha($evento['creado_at'])) ?>
+                        </time>
+                    </div>
+                    <p class="impe-embudo-timeline-motivo"><?= $esc($evento['motivo']) ?></p>
+                    <span class="impe-embudo-timeline-autor">
+                        <i class="bi bi-person" aria-hidden="true"></i>
+                        <?= $esc($autorEvento) ?>
+                    </span>
+                </li>
+                <?php endforeach; ?>
+            </ol>
+            <?php if(!empty($prospecto['historial_subetapas_truncado'])): ?>
+            <p class="impe-embudo-historial-aviso">Se muestran los 50 registros más recientes. El historial completo se conserva.</p>
+            <?php endif; ?>
+        </section>
+        <?php endif; ?>
     </div>
     <p class="impe-embudo-note"><i class="bi bi-info-circle"></i>
         Los resultados y grabaciones se conservan en Telefonía. La relación con el embudo requiere una llamada PBX finalizada, un resultado registrado por el asesor y la asignación explícita al prospecto; no se infiere ninguna conversación.
