@@ -28,11 +28,15 @@ final class EmbudoComercialV3AccesoControlado
             !preg_match('/^[1-9][0-9]*(,[1-9][0-9]*){0,19}$/D',$ids)) {
             return false;
         }
+        $autorizados=[];
         foreach(explode(',',$ids) as $txt) {
             $validado=filter_var($txt,FILTER_VALIDATE_INT,
                 ['options'=>['min_range'=>1,'max_range'=>PHP_INT_MAX]]);
-            if($validado===$usuarioId) return true;
+            // La lista completa es inválida si UNO de sus elementos
+            // rebasa PHP_INT_MAX; no aceptar la coincidencia previa.
+            if($validado===false) return false;
+            $autorizados[$validado]=true;
         }
-        return false;
+        return isset($autorizados[$usuarioId]);
     }
 }
