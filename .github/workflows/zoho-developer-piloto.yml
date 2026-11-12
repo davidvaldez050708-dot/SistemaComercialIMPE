@@ -11,6 +11,8 @@ on:
       - 'tools/zoho_dev_cola_instalar.php'
       - 'tools/zoho_dev_servicios_publicar.py'
       - 'tests/zoho_dev_servicios_publicar_smoke.py'
+      - 'tools/zoho_dev_modelo_publicar.py'
+      - 'tests/zoho_dev_modelo_publicar_smoke.py'
       - 'tools/zoho_conciliar_formulario_hostinger.py'
       - 'tests/zoho_hostinger_parche_smoke.py'
       - 'database/zoho_dev_registros_pendientes.sql'
@@ -71,5 +73,9 @@ jobs:
         run: |
           python3 -m py_compile tools/zoho_dev_servicios_publicar.py tests/zoho_dev_servicios_publicar_smoke.py
           python3 tests/zoho_dev_servicios_publicar_smoke.py
+      - name: Conciliación reversible del modelo Hostinger en copia sintética
+        run: |
+          python3 -m py_compile tools/zoho_dev_modelo_publicar.py tests/zoho_dev_modelo_publicar_smoke.py
+          python3 tests/zoho_dev_modelo_publicar_smoke.py
       - name: Integración real MySQL temporal, API Zoho simulada
         run: php tests/zoho_developer_registro_integracion_mysql.php
