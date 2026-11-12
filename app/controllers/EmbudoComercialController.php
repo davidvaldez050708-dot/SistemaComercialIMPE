@@ -156,6 +156,69 @@ final class EmbudoComercialController
      *
      * No activa el piloto PBX, ni altera la telefonía ni otros endpoints.
      */
+    /**
+     * POST: gestión transversal de un Potencial, sin cambiar su etapa.
+     * INTERESADO histórico queda INTERESADO hasta conciliación institucional.
+     */
+    public function gestionarPotencialV3(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store, max-age=0');
+        $reply=static function(bool $ok,string $message,int $status,array $extra=[]): void {
+            http_response_code($status);
+            echo json_encode(array_merge(['ok'=>$ok,'mensaje'=>$message],$extra),
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        };
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST') {
+            $reply(false,'Método no permitido.',405);
+            return;
+        }
+        $uid=(int)($_SESSION['usuario_id']??0);
+        if ($uid<1 || !EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($uid) ||
+            !tienePermiso('ventas.embudo.mover')) {
+            $reply(false,'Acceso comercial no autorizado.',403);
+            return;
+        }
+        $token=(string)($_SESSION['csrf_token']??'');
+        $received=(string)($_SERVER['HTTP_X_CSRF_TOKEN']??'');
+        if ($token==='' || $received==='' || !hash_equals($token,$received)) {
+            $reply(false,'Sesión de seguridad vencida. Recarga la página.',403);
+            return;
+        }
+        foreach (['asignacion_id','etapa_actual','subetapa_anterior',
+                  'subetapa_nueva','motivo','proxima_accion'] as $key) {
+            if (isset($_POST[$key]) && !is_string($_POST[$key])) {
+                $reply(false,'Datos de gestión inválidos.',422);
+                return;
+            }
+        }
+        $asig=filter_var($_POST['asignacion_id']??null,FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>1]]);
+        $motivo=trim((string)($_POST['motivo']??''));
+        if (!$asig || mb_strlen($motivo)<8 || mb_strlen($motivo)>190) {
+            $reply(false,'Identifica el prospecto e indica un motivo válido.',422);
+            return;
+        }
+        try {
+            require_once __DIR__.'/../services/EmbudoComercialV3GestionPotencialService.php';
+            $db=(new Database())->connect(false);
+            $resultado=(new EmbudoComercialV3GestionPotencialService($db))->registrar(
+                $uid,(int)$asig,(string)($_POST['etapa_actual']??''),
+                (string)($_POST['subetapa_anterior']??''),
+                (string)($_POST['subetapa_nueva']??''),
+                $motivo,(string)($_POST['proxima_accion']??'')
+            );
+            $reply(true,'Gestión registrada sin modificar la etapa comercial.',200,
+                ['gestion'=>$resultado]);
+        } catch (DomainException $e) {
+            $reply(false,$e->getMessage(),409);
+        } catch (Throwable $e) {
+            error_log('[ventas_v3_potencial_gestion] '.get_class($e).
+                ' codigo='.(int)$e->getCode());
+            $reply(false,'No pudo confirmarse la gestión. No se guardó.',503);
+        }
+    }
+
     public function moverEtapaV3(): void
     {
         header('Content-Type: application/json; charset=utf-8');
