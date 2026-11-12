@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Publicador del embudo institucional V3 optativo para asesores: 4 archivos existentes y 4 nuevos.
+Publicador del embudo institucional V3: 4 archivos existentes y 5 nuevos. UI apagada por defecto.
 Python 3.6+; sin red ni SQL. Protege V4, Bridge, WebRTC y JS del tablero actual.
 Utilizar con un paquete ya descargado del commit fijado y SHA Git verificados.
 """
@@ -18,13 +18,15 @@ import sys
 import tempfile
 import uuid
 
-REPO_REV = "bdbe444726cdcf0009488de67f127199541a6219"
+REPO_REV = "84e9e5dc2fd27bb72b194e30af64c2e443b8c27a"
 CONFIRMACION = "PUBLICAR_SOLO_EMBUDO_ASESOR_V3_IMPE"
 # (blob antes, blob nuevo); null = archivo NUEVO, prohibido sobrescribir otro.
 ARCHIVOS = {
-    # Cuatro componentes V3 NUEVOS (no sobrescribir si ya existen).
+    # Cinco componentes V3 NUEVOS (no sobrescribir si ya existen).
     "app/services/EmbudoComercialV3MovimientosPermitidos.php":
         (None, "92950fe72f02c938050c8598cd0ed96cd1552c6e"),
+    "app/services/EmbudoComercialV3AccesoControlado.php":
+        (None, "9fdc836930fd3f346651b03323ce7b0124a2bfcb"),
     "app/views/embudo_comercial/operativo_v3.php":
         (None, "ed44384ebaf967c5161ad5eb5f2734554ea587ce"),
     "public/css/embudo_v3_operativo.css":
@@ -40,11 +42,11 @@ ARCHIVOS = {
          "715c3a36c890965f0343e33c89067f997aa4ba5a"),
     "app/controllers/EmbudoComercialController.php":
         ("a4342e88288321567487b20f0fa80c79564ad465",
-         "699d3ee7b49c4b27d1ef34cb519d745cda577ad0"),
+         "b04fd2625a0e143949f83e98be5c0e3f2cc3f5b4"),
     # Habilitar el ENLACE opcional al final (no cambiar ruta predeterminada).
     "app/views/embudo_comercial/index.php":
         ("825b4c6af25450d4be21b47f8666955ada847eed",
-         "26c1e92497e44b4f5867d6fc0924f8b823382631")
+         "0c5551ff346049e6136f310ff59e8784b9bdbc6a")
 }
 COMPROBAR_INTANGIBLES = {
     # IMPRESCINDIBLE: el piloto del Bridge y el arrastre actual continúan
@@ -307,7 +309,7 @@ def publicar(site, stage, backups):
             raise Bloqueo("Post-check V3 no coincide.")
         data["estado"] = "PUBLICADO"
         guardar_manifest(backup_dir, data)
-        print("PUBLICACION OK: solo ocho archivos; el teléfono, "
+        print("PUBLICACION OK: solo nueve archivos; el teléfono, "
               "el puente PBX, el arrastre y el V4 siguen intactos.")
         print("PARA REVERTIR: --rollback --backup-dir '"+backup_dir+"'")
     except Exception:
