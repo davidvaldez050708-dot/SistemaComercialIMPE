@@ -14,7 +14,8 @@ final class EmbudoComercialV3BandejasService
     private mysqli $db;
     public const DESCARTES_HABILITADOS = [
         'NO_INTERESADO'=>'El prospecto manifestó no estar interesado',
-        'NUMERO_INVALIDO'=>'Número inexistente acreditado por PBX'
+        'NUMERO_INVALIDO'=>'Número inexistente acreditado por PBX',
+        'NO_CONTACTAR'=>'El prospecto solicitó expresamente no volver a ser contactado'
     ];
 
     public function __construct(mysqli $db) { $this->db=$db; }
@@ -93,6 +94,17 @@ final class EmbudoComercialV3BandejasService
 
     private function verificarDescarte(int $usuario,int $asignacion,string $subetapa): void
     {
+        if ($subetapa==='NO_CONTACTAR') {
+            // Requiere una conversación humana atribuida exactamente a la
+            // asignación y confirmación expresa, no "No interesado" genérico.
+            if (!EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
+                $this->db,$usuario,$asignacion
+            )) {
+                throw new DomainException(
+                    'Para registrar No contactar se requiere una conversación PBX acreditada de esta asignación.');
+            }
+            return;
+        }
         $evidencia=[
             'NO_INTERESADO'=>['NO_INTERESADO'],
             'NUMERO_INVALIDO'=>['NUMERO_INEXISTENTE'],
@@ -274,11 +286,13 @@ final class EmbudoComercialV3BandejasService
     }
 
     public function descartar(int $usuario,int $asignacion,string $etapa,
-        string $subetapa,string $motivo,bool $confirmacion): array
+        string $subetapa,string $motivo,bool $confirmacion,
+        bool $solicitudExpresaNoContactar=false): array
     {
         self::autorizado($usuario,$asignacion,'ventas.descartados.gestionar');
         $motivo=self::motivo($motivo);
         if (!$confirmacion || !isset(self::DESCARTES_HABILITADOS[$subetapa]) ||
+            ($subetapa==='NO_CONTACTAR' && !$solicitudExpresaNoContactar) ||
             !in_array($etapa,['NUEVO','CONTACTADO','SEGUIMIENTO',
                 'POTENCIAL','RECUPERACION'],true)) {
             throw new DomainException('El descarte requiere un motivo acreditado y confirmación expresa.');
@@ -290,7 +304,10 @@ final class EmbudoComercialV3BandejasService
             }
             $this->exigirContactoPermitido($asignacion);
             $this->verificarDescarte($usuario,$asignacion,$subetapa);
-            $razon=mb_substr('Descarte verificado ('.$subetapa.'): '.$motivo,0,190);
+            $razon=mb_substr(
+                ($subetapa==='NO_CONTACTAR'
+                    ?'Solicitud expresa No contactar, asesor confirma evidencia PBX: '
+                    :'Descarte verificado ('.$subetapa.'): ').$motivo,0,190);
             $id=$this->registrarEtapa($usuario,$asignacion,
                 $etapa,'DESCARTADO',$subetapa,$razon);
             // Conservar la agenda y las actividades V3 históricas: el
