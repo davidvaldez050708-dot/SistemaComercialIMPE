@@ -143,6 +143,7 @@ async function probar(browser, modo) {
     assert.ok(dimensiones.visible<=252 && dimensiones.total>dimensiones.visible,
       'El historial debe mantener el scroll interno dentro de 252 px');
     await page.locator('[data-actividad-mas]').click();
+    await entrada.nth(24).waitFor();
     assert.equal(await entrada.count(),25);
     assert.equal(await page.locator('[data-actividad-mas]').isVisible(),false);
     const dialogo=await page.locator('#impe-v3o-actividad-dialog').evaluate(el=>({
