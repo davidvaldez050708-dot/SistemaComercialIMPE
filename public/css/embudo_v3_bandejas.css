@@ -84,3 +84,30 @@
   .impe-v3b-dialog .impe-v3b-form-cuerpo{padding:0 13px 13px}
   .impe-v3b-dialog .impe-embudo-dialog-footer{padding:11px 13px 13px}
 }
+
+/* Formulario institucional de inscripción: únicamente acompaña al modal V3. */
+.impe-v3i-dialog .impe-v3i-link{
+  margin:0;font-size:12px;font-weight:750;line-height:1.5;
+}
+.impe-v3i-dialog .impe-v3i-link a{
+  display:inline-flex;align-items:center;gap:7px;
+  color:#25578d;text-decoration:underline;text-underline-offset:3px;
+}
+.impe-v3i-dialog .impe-v3i-verificar{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px 13px;border-radius:9px;background:#edf4ff;
+  color:#204c7e;border:1px solid #cbdcf2;cursor:pointer;
+  font-size:12px;font-weight:800;
+}
+.impe-v3i-dialog .impe-v3i-verificar:hover{background:#e3efff}
+.impe-v3i-dialog .impe-v3i-estado{
+  margin:0;padding:10px 12px;border-radius:9px;
+  border:1px solid #d9e4f2;background:#f8fbff;
+  color:#4d6688;font-size:11px;line-height:1.55;
+}
+.impe-v3i-dialog [data-v3i-confirmar]{display:grid;gap:11px}
+.impe-v3i-dialog button:focus-visible,
+.impe-v3i-dialog a:focus-visible{
+  outline:2px solid #2c66ab;outline-offset:2px;
+}
+.impe-v3i-dialog [hidden]{display:none!important}
