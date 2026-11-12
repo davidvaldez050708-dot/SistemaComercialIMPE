@@ -29,6 +29,8 @@ on:
       - 'public/javascript/embudo_comercial_v3_bandejas.js'
       - 'tests/ventas_v3_bandejas_db.php'
       - 'tests/ventas_v3_bandejas_browser.cjs'
+      - 'tools/publicar_ventas_v3_bandejas_hostinger.py'
+      - 'tests/ventas_v3_bandejas_publicador_unit.py'
       - 'tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py'
       - 'tests/ventas_v3_recuperacion_guardia_publicador_unit.py'
       - 'tools/publicar_ventas_v3_asesores_hostinger.py'
@@ -82,6 +84,9 @@ jobs:
           php -l tests/ventas_v3_bandejas_db.php
           node --check public/javascript/embudo_comercial_v3_bandejas.js
           node --check tests/ventas_v3_bandejas_browser.cjs
+          python3 -m py_compile tools/publicar_ventas_v3_bandejas_hostinger.py
+          python3 -m py_compile tests/ventas_v3_bandejas_publicador_unit.py
+          python3 tests/ventas_v3_bandejas_publicador_unit.py
           python3 -m py_compile tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py tests/ventas_v3_recuperacion_guardia_publicador_unit.py
           python3 tests/ventas_v3_recuperacion_guardia_publicador_unit.py
       - name: Avisos y calificación en Chromium
