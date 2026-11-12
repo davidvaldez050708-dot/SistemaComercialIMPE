@@ -237,4 +237,96 @@
       error.hidden=false;
     }finally{enviar.disabled=false;}
   });
+
+  // Gestión transversal de Potenciales: se conserva la etapa original,
+  // incluso INTERESADO histórico; no se envían resultados PBX ni pagos.
+  const potencialDialog=root.querySelector('#impe-v3o-potencial-dialog');
+  const potencialForm=root.querySelector('#impe-v3o-potencial-form');
+  if(potencialDialog && potencialForm){
+    const subetapa=potencialForm.querySelector('#impe-v3o-potencial-subetapa');
+    const fechaPot=potencialForm.querySelector('#impe-v3o-potencial-fecha');
+    const motivoPot=potencialForm.querySelector('#impe-v3o-potencial-motivo');
+    const datosPot=potencialForm.querySelector('#impe-v3o-potencial-datos');
+    const errorPot=potencialForm.querySelector('#impe-v3o-potencial-error');
+    const enviarPot=potencialForm.querySelector('#impe-v3o-potencial-guardar');
+    let gestionCard=null;
+
+    root.querySelectorAll('[data-v3-gestionar]').forEach(button=>{
+      button.addEventListener('click',()=>{
+        const card=button.closest('.impe-v3o-card');
+        const etapa=String(card?.dataset.etapa||'');
+        if(!card || telefonoActivo() || potencialDialog.open ||
+           !['INTERESADO','POTENCIAL'].includes(etapa))return;
+        gestionCard=card;
+        const prev=String(card.dataset.v3Subetapa||'');
+        subetapa.value=Array.from(subetapa.options).some(o=>o.value===prev)
+          ?prev:'';
+        fechaPot.value='';
+        motivoPot.value='';
+        datosPot.textContent=String(card.dataset.nombre||'Prospecto');
+        errorPot.hidden=true;
+        if(typeof potencialDialog.showModal==='function')potencialDialog.showModal();
+      });
+    });
+    potencialForm.querySelectorAll('[data-v3-gestionar-cerrar]').forEach(button=>{
+      button.addEventListener('click',()=>potencialDialog.close());
+    });
+    potencialDialog.addEventListener('close',()=>{gestionCard=null;});
+
+    potencialForm.addEventListener('submit',async event=>{
+      event.preventDefault();
+      if(!gestionCard || telefonoActivo()){
+        errorPot.textContent='Termina la llamada antes de actualizar la gestión.';
+        errorPot.hidden=false;
+        return;
+      }
+      const token=String(window.IMPE_CSRF_TOKEN||'');
+      if(!token){
+        errorPot.textContent='Tu sesión cambió. Actualiza la página.';
+        errorPot.hidden=false;
+        return;
+      }
+      const motivo=String(motivoPot.value||'').trim();
+      const etapa=String(gestionCard.dataset.etapa||'');
+      const elegido=String(subetapa.value||'');
+      if(!['INTERESADO','POTENCIAL'].includes(etapa) || !elegido ||
+         motivo.length<8 || motivo.length>190){
+        errorPot.textContent='Selecciona una situación y describe el motivo (8 a 190 caracteres).';
+        errorPot.hidden=false;
+        return;
+      }
+      const body=new URLSearchParams({
+        asignacion_id:String(gestionCard.dataset.asignacionId||''),
+        etapa_actual:etapa,
+        subetapa_anterior:String(gestionCard.dataset.v3Subetapa||''),
+        subetapa_nueva:elegido,
+        motivo,
+        proxima_accion:String(fechaPot.value||'')
+      });
+      enviarPot.disabled=true;
+      errorPot.hidden=true;
+      try{
+        const response=await fetch(
+          'index.php?controller=embudoComercial&action=gestionarPotencialV3',{
+            method:'POST',credentials:'same-origin',
+            headers:{
+              'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8',
+              'Accept':'application/json',
+              'X-CSRF-Token':token
+            },
+            body:body.toString()
+          });
+        const result=await response.json();
+        if(!response.ok || !result.ok)throw new Error(
+          result.mensaje||'No pudo registrarse la gestión.');
+        potencialDialog.close();
+        if(!telefonoActivo())window.location.reload();
+      }catch(err){
+        errorPot.textContent=err?.message||'No se pudo registrar la gestión.';
+        errorPot.hidden=false;
+      }finally{
+        enviarPot.disabled=false;
+      }
+    });
+  }
 })();
