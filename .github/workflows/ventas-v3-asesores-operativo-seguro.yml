@@ -22,6 +22,12 @@ on:
       - 'tests/ventas_v3_recuperacion_auditoria_unit.php'
       - 'app/services/EmbudoComercialResultadoBridge.php'
       - 'tests/ventas_v3_recuperacion_bridge_proteccion_unit.php'
+      - 'app/services/EmbudoComercialV3BandejasService.php'
+      - 'app/views/embudo_comercial/bandejas_v3.php'
+      - 'app/views/embudo_comercial/bandejas_v3_modal.php'
+      - 'public/css/embudo_v3_bandejas.css'
+      - 'public/javascript/embudo_comercial_v3_bandejas.js'
+      - 'tests/ventas_v3_bandejas_db.php'
       - 'tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py'
       - 'tests/ventas_v3_recuperacion_guardia_publicador_unit.py'
       - 'tools/publicar_ventas_v3_asesores_hostinger.py'
@@ -69,6 +75,11 @@ jobs:
           php -l app/services/EmbudoComercialResultadoBridge.php
           php -l tests/ventas_v3_recuperacion_bridge_proteccion_unit.php
           php tests/ventas_v3_recuperacion_bridge_proteccion_unit.php
+          php -l app/services/EmbudoComercialV3BandejasService.php
+          php -l app/views/embudo_comercial/bandejas_v3.php
+          php -l app/views/embudo_comercial/bandejas_v3_modal.php
+          php -l tests/ventas_v3_bandejas_db.php
+          node --check public/javascript/embudo_comercial_v3_bandejas.js
           python3 -m py_compile tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py tests/ventas_v3_recuperacion_guardia_publicador_unit.py
           python3 tests/ventas_v3_recuperacion_guardia_publicador_unit.py
       - name: Avisos y calificación en Chromium
@@ -108,6 +119,7 @@ jobs:
         run: |
           php tests/embudo_comercial_v3_previsualizacion_db.php
           IMPE_EMBUDO_PBX_TEST_DB=YES php tests/embudo_intentos_pbx_db.php
+          IMPE_V3_BANDEJAS_TEST_DB=YES php tests/ventas_v3_bandejas_db.php
   mariadb-temporal:
     runs-on: ubuntu-latest
     services:
@@ -137,3 +149,4 @@ jobs:
         run: |
           php tests/embudo_comercial_v3_previsualizacion_db.php
           IMPE_EMBUDO_PBX_TEST_DB=YES php tests/embudo_intentos_pbx_db.php
+          IMPE_V3_BANDEJAS_TEST_DB=YES php tests/ventas_v3_bandejas_db.php
