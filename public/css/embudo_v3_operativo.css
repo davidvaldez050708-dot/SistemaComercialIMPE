@@ -270,3 +270,18 @@
 .impe-embudo--v3-operativo .impe-v3o-columna.is-drop-target .impe-embudo-lane-list{
   background:rgba(215,231,255,.34);
 }
+
+/* Registro de gestiones V3: coherente con el modal institucional vigente. */
+.impe-embudo--v3-operativo .impe-embudo-dialog .impe-v3o-ayuda{
+  margin:0;
+  color:#637b9c;
+  font-size:10px;
+  font-weight:600;
+  line-height:1.45;
+}
+.impe-embudo--v3-operativo .impe-v3o-card [data-v3-gestionar]{
+  background:#f8fbff;
+}
+.impe-embudo--v3-operativo .impe-v3o-card [data-v3-gestionar]:hover{
+  background:#eaf2ff;
+}
