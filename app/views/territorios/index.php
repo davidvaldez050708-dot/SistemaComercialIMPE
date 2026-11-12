@@ -303,7 +303,7 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
         aria-labelledby="modalEquipoTerritorialTitulo"
         aria-hidden="true">
 
-        <div class="modal-dialog modal-dialog-centered system-form-dialog territory-team-dialog">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable system-form-dialog territory-team-dialog">
             <div class="modal-content system-form-modal">
                 <div class="modal-header system-form-modal-header">
                     <div>
