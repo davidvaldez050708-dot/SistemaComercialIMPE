@@ -13,6 +13,7 @@ import tempfile
 ROOT=os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SCRIPT=os.path.join(ROOT,"tools/publicar_ventas_v3_asesores_hostinger.py")
 BASE_SHA="96dca1549c9753a44f45b5505f47e76472a27bfd"
+RELEASE_SHA="84e9e5dc2fd27bb72b194e30af64c2e443b8c27a"
 FILES={
  "app/services/EmbudoComercialV3MovimientosPermitidos.php":None,
  "app/services/EmbudoComercialV3AccesoControlado.php":None,
@@ -79,7 +80,8 @@ with tempfile.TemporaryDirectory(prefix="impe-v3-publish-test-") as temp:
         check(gh_blob(data)==expected,"baseline Git not matching expected "+p)
         write(os.path.join(site,p),data)
     for p in FILES:
-        write(os.path.join(stage,p),read(os.path.join(ROOT,p)))
+        write(os.path.join(stage,p),subprocess.check_output(
+            ["git","show",RELEASE_SHA+":"+p],cwd=ROOT))
     sentinel=os.path.join(site,"unmodified-sentinel.txt")
     write(sentinel,b"Advisor's normal work is unchanged.")
     base=["--site",site,"--stage",stage]

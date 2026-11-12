@@ -408,7 +408,50 @@ try{
     $rechazar(fn()=>$calificaciones->registrar(8,13,$motivo,true),
         'sin permiso operativo');
     $_SESSION['permisos'][]='ventas.embudo.mover';
-    $calificaciones->registrar(8,13,$motivo,true);
+    $codigo=<<<'PHP'
+    mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
+    require $argv[1];
+    if (!preg_match('/^impe_v3_preview_[a-f0-9]{10}$/D',$argv[2])) exit(2);
+    $db=new mysqli(getenv('MYSQL_HOST')?:'127.0.0.1',
+        getenv('MYSQL_USER')?:'root',getenv('MYSQL_PASSWORD')?:'',
+        $argv[2],(int)(getenv('MYSQL_PORT')?:3306));
+    $db->set_charset('utf8mb4');
+    $_SESSION=['usuario_id'=>8,'rol_id'=>3,'permisos'=>['ventas.embudo.ver','ventas.embudo.mover']];
+    echo "LISTO\n";flush();
+    try {
+        (new EmbudoComercialV3CalificacionService($db))->registrar(8,13,$argv[3],true);
+        echo 'GUARDADO';
+    } catch (DomainException $error) {
+        echo 'CONFLICTO';
+    }
+    PHP;
+    $procesos=[];
+    // Ambos intentos encuentran la misma fila bloqueada hasta liberar el fixture.
+    $db->begin_transaction();
+    $db->query('SELECT id FROM prospecto_asignaciones WHERE id=13 FOR UPDATE');
+    try {
+        for ($i=0;$i<2;$i++) {
+            $proceso=proc_open([PHP_BINARY,'-r',$codigo,'--',
+                realpath(__DIR__.'/../app/services/EmbudoComercialV3CalificacionService.php'),
+                $name,$motivo],[1=>['pipe','w'],2=>['pipe','w']],$canales);
+            okV3p(is_resource($proceso),'iniciar intento concurrente');
+            $procesos[]=[$proceso,$canales];
+        }
+        foreach ($procesos as [, $canales]) {
+            okV3p(trim((string)fgets($canales[1]))==='LISTO','preparar ambos intentos');
+        }
+    } finally {
+        $db->commit();
+    }
+    $resultados=[];
+    foreach ($procesos as [$proceso,$canales]) {
+        $resultados[]=trim(stream_get_contents($canales[1]));
+        $diagnostico=stream_get_contents($canales[2]);
+        fclose($canales[1]);fclose($canales[2]);
+        okV3p(proc_close($proceso)===0,'ejecución concurrente '.$diagnostico);
+    }
+    sort($resultados);
+    okV3p($resultados===['CONFLICTO','GUARDADO'],'sólo una calificación concurrente se confirma');
     $rechazar(fn()=>$calificaciones->registrar(8,13,$motivo,true),
         'reintento con etapa anterior obsoleta');
     $calificado=$db->query("SELECT e.etapa,s.subetapa,s.version,a.proxima_accion_at,a.revision_fecha
