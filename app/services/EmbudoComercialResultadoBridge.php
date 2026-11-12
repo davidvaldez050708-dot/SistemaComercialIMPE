@@ -134,11 +134,24 @@ final class EmbudoComercialResultadoBridge
         }
         $etapaAnterior=EmbudoComercialEtapas::visual((string)$row['etapa']);
         $nueva=EmbudoComercialEtapas::sugerenciaPorResultado($resultado,$proximaAccion);
-        if ($nueva===null || in_array($etapaAnterior,['PAGO_CONFIRMADO','DESCARTADO'],true)) {
+        // Proteger etapas avanzadas e históricos de la matriz V1: una
+        // llamada no degrada Potenciales a INTERESADO, ni Seguimiento a una
+        // gestión menos avanzada; una inscripción nunca se confirma aquí.
+        // La llamada sigue vinculada y su resultado permanece intacto.
+        if ($nueva===null || in_array($etapaAnterior,[
+            'POTENCIAL','INTERESADO','PROCESO_INSCRIPCION',
+            'PAGO_CONFIRMADO','DESCARTADO'
+        ],true)) {
             return ['vinculada'=>true,'movida'=>false,'etapa'=>$etapaAnterior];
         }
         // Una conversación sin manifestar interés NO disminuye una etapa avanzada.
         if ($nueva==='CONTACTADO' && !in_array($etapaAnterior,['NUEVO','RECUPERACION'],true)) {
+            return ['vinculada'=>true,'movida'=>false,'etapa'=>$etapaAnterior];
+        }
+        // En SEGUIMIENTO una conversación calificada no debe promoverse
+        // automáticamente a un código INTERESADO legado. La V3 requerirá
+        // evidencia comercial confirmada antes de avanzar a Potenciales.
+        if ($etapaAnterior==='SEGUIMIENTO' && $nueva==='INTERESADO') {
             return ['vinculada'=>true,'movida'=>false,'etapa'=>$etapaAnterior];
         }
         if ($nueva===$etapaAnterior) {
