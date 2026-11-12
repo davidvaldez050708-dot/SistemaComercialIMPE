@@ -21,6 +21,18 @@ final class EmbudoComercialResultadoBridge
 
     public function __construct(mysqli $db) { $this->db=$db; }
 
+    /**
+     * La pantalla V3 no habilita movimientos PBX automáticos hacia Recuperación.
+     * La política de tres intentos solo propone candidatos a revisión: todavía
+     * no está autorizada como una escritura automática.
+     * Los asesores sin V3 mantienen la ruta telefónica anterior.
+     */
+    public static function bloquearRecuperacionAutomaticaV3(
+        string $etapaPropuesta, bool $asesorV3): bool
+    {
+        return $asesorV3 && $etapaPropuesta==='RECUPERACION';
+    }
+
     public static function numeroCanonico(string $num): string
     {
         // Rechazar extensiones y números demasiado breves; nunca usar últimos 10.
@@ -121,6 +133,19 @@ final class EmbudoComercialResultadoBridge
         }
         $etapaAnterior=EmbudoComercialEtapas::visual((string)$row['etapa']);
         $nueva=EmbudoComercialEtapas::sugerenciaPorResultado($resultado,$proximaAccion);
+        // Compatibilidad: el puente V1 puede sugerir Recuperación desde la
+        // primera llamada sin contacto. En asesores V3, conservar la etapa
+        // hasta contar con revisión explícita de la política de tres intentos.
+        // El vínculo PBX y el resultado telefónico ya se guardaron; no cambiar.
+        if ($nueva==='RECUPERACION') {
+            require_once __DIR__.'/EmbudoComercialV3AccesoControlado.php';
+            if (self::bloquearRecuperacionAutomaticaV3(
+                $nueva,
+                EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId)
+            )) {
+                return ['vinculada'=>true,'movida'=>false,'etapa'=>$etapaAnterior];
+            }
+        }
         // Proteger etapas avanzadas e históricos de la matriz V1: una
         // llamada no degrada Potenciales a INTERESADO, ni Seguimiento a una
         // gestión menos avanzada; una inscripción nunca se confirma aquí.
