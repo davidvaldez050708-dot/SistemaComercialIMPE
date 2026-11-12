@@ -108,11 +108,21 @@ desde CLI con la configuración de MySQL del sitio. Modos:
 - Si la cola ya existe, la valida y NO realiza DDL adicional; si el
   esquema es incompatible, aborta en lugar de alterarlo.
 
-Para comprobar sin escribir desde la copia privada del piloto:
+Para comprobar sin escribir desde la copia privada del piloto, pasando
+la ubicación exacta del sitio operativo **solo para leer su configuración de
+conexión** (no copiar credenciales ni archivos privados):
 
 ~~~bash
-php "$HOME/crm-zoho-developer-piloto/tools/zoho_dev_cola_instalar.php" --check
+php "$HOME/crm-zoho-developer-piloto/tools/zoho_dev_cola_instalar.php" \
+  --check \
+  --site "$HOME/domains/fundacionrededumex.org/public_html"
 ~~~
+
+Sin `--site`, el script utiliza la configuración de la copia en que se
+encuentra (correcto para CI, pero esa copia privada no tiene las credenciales
+de la instalación Hostinger). La ruta `--site` está restringida al dominio
+operativo concreto. Ni `--check` ni esta opción requieren modificar archivos
+del sitio ni consultar prospectos.
 
 La prueba en GitHub Actions ejecuta tanto la instalación como la
 reinstalación simulada contra una BD MySQL efímera. **No ejecutar la
