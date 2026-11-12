@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
 require_once __DIR__.'/../../helpers/EmbudoComercialAcceso.php';
+require_once __DIR__.'/../../services/EmbudoComercialV3AccesoControlado.php';
 $esc=static fn($x)=>htmlspecialchars((string)($x??''),ENT_QUOTES,'UTF-8');
 $def=static fn($x,$f='Sin indicar')=>trim((string)($x??''))!==''?(string)$x:$f;
 $urlBase=BASE_URL.'index.php?';
@@ -62,8 +63,10 @@ $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
         <?php // Acceso voluntario: el tablero vigente sigue siendo el predeterminado.
             // Esta liga sólo se muestra a asesores con permiso de embudo.
             if ($vista==='embudo' && !$supervisor &&
-                (int)($_SESSION['rol_id']??0)===3 &&
-                EmbudoComercialAcceso::puede('embudo')): ?>
+                EmbudoComercialAcceso::puede('embudo') &&
+                EmbudoComercialV3AccesoControlado::habilitadoParaAsesor(
+                    (int)($_SESSION['usuario_id']??0)
+                )): ?>
         <a href="<?= $esc($urlBase.http_build_query([
             'controller'=>'embudoComercial','action'=>'index',
             'vista'=>'embudo','operativo_v3'=>'1'
