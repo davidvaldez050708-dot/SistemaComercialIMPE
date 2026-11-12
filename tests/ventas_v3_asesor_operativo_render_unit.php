@@ -4,6 +4,10 @@
  * Verifica HTML institucional, marcador persistente, Mis llamadas y fichas.
  */
 define('BASE_URL','/');
+ // Los fixtures habilitan EXCLUSIVAMENTE la UI ficticia para asesor 8.
+ // No activan PBX ni el Bridge V3.
+putenv('IMPE_VENTAS_V3_UI=PERMITIR_SOLO_PANTALLA_V3_ASESORES_IMPE_20261111');
+putenv('IMPE_VENTAS_V3_UI_ASESORES=8');
 require_once __DIR__.'/../app/helpers/EmbudoComercialAcceso.php';
 require_once __DIR__.'/../app/services/EmbudoComercialRepository.php';
 $_SESSION=[
