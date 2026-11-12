@@ -12,6 +12,8 @@ config/zadarma_config.php
 config/ecard_reunion_config.php
 impe-private/
 config/whatsapp.local.php
+config/zoho_sync.local.php
+
 
 # Archivos del sistema operativo
 .DS_Store
