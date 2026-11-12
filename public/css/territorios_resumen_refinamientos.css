@@ -450,6 +450,15 @@
     margin-left: auto;
 }
 
+#modalEquipoTerritorial:has(.territory-team-section:first-child > .territory-team-list > .territory-team-card:only-child) .territory-team-dialog {
+    width: min(740px, calc(100vw - 32px));
+    max-width: min(740px, calc(100vw - 32px));
+}
+
+#modalEquipoTerritorial .territory-team-section:first-child > .territory-team-list:has(> .territory-team-card:only-child) {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 #modalEquipoTerritorial .system-form-modal {
     border-radius: 20px;
 }
