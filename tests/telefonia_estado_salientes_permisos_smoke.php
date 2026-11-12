@@ -4,6 +4,7 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 $s = (string)file_get_contents($root.'/prueba_telefonia/api/zadarma_estado_llamada.php');
 $host = (string)file_get_contents($root.'/public/javascript/telefonia_host.js');
+$sesion = (string)file_get_contents($root.'/app/services/TelefoniaSesionService.php');
 $tests = [
  'Sin bloqueo por nombre del rol' =>
      !str_contains($s,"['Analista de Datos', 'Asesor de Ventas']") &&
@@ -12,7 +13,9 @@ $tests = [
      str_contains($s, 'if ($usuarioId <= 0)') &&
      str_contains($s,"tienePermiso('telefonia.usar')") &&
      str_contains($s,"tienePermiso('telefonia.salientes')") &&
-     str_contains($s,'obtenerCodigosPermisosPorRol('),
+     str_contains($s,'TelefoniaSesionService::actualizarPermisos(') &&
+     str_contains($sesion,'WHERE u.id = ? AND u.estado = 1') &&
+     str_contains($sesion,'r.estado = 1'),
  'Extensión propia activa para marcar' =>
      str_contains($s,'->resolverParaUsuario($usuarioId)') &&
      str_contains($s,"empty(\$asignacionTelefonica['permite_salientes'])"),
