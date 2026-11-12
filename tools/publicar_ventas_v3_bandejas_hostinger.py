@@ -13,7 +13,7 @@ p.ARCHIVOS = [
     # Instalación de archivos nuevos antes de las vistas/controladores existentes.
     # Así no se expone un require de un archivo todavía ausente.
     ("app/services/EmbudoComercialV3BandejasService.php",None,
-     "d823252afc1d36ee4254b253ba6c65fd92cdf8fa"),
+     "295c8510e63aa7f2ca4ba1f802d18ae5ebb85393"),
     ("app/views/embudo_comercial/bandejas_v3_modal.php",None,
      "f085408107f37d83a7df29bd2dd4d1e0138afdd6"),
     ("app/views/embudo_comercial/bandejas_v3.php",None,
