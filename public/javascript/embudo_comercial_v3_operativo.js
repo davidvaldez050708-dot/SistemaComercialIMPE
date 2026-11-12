@@ -81,6 +81,10 @@
   const enviar=form.querySelector('#impe-v3o-enviar');
   const titulo=form.querySelector('#impe-v3o-dialog-datos');
   let tarjeta=null;
+  let arrastre=null;
+  const destinosDe=card=>String(card?.dataset.v3Destinos||'')
+    .split(',').filter(Boolean);
+  const destinoValido=(card,etapa)=>destinosDe(card).includes(etapa);
 
   const actualizar=()=>{
     const requiere=destino.value==='SEGUIMIENTO';
@@ -89,11 +93,11 @@
     if(!requiere)fecha.value='';
     error.hidden=true;
   };
-  const abrir=(card)=>{
-    if(!(card instanceof HTMLElement) || telefonoActivo())return;
+  const abrir=(card,destinoSolicitado='')=>{
+    if(!(card instanceof HTMLElement) || telefonoActivo() || dialog.open)return;
     const actual=String(card.dataset.etapa||'');
-    const autorizados=String(card.dataset.v3Destinos||'')
-      .split(',').filter(Boolean);
+    const autorizados=destinosDe(card);
+    if(destinoSolicitado && !autorizados.includes(destinoSolicitado))return;
     // El navegador oculta lo innecesario pero el servidor valida de nuevo
     // cada par origen/destino, propietario y evidencia PBX real.
     let primero='';
@@ -104,6 +108,12 @@
       if(permitido && !primero)primero=o.value;
     });
     if(!primero)return;
+    if(destinoSolicitado){
+      const sugerida=Array.from(destino.options).find(o=>
+        o.value===destinoSolicitado && !o.disabled);
+      if(!sugerida)return;
+      primero=destinoSolicitado;
+    }
     tarjeta=card;
     destino.value=primero;
     titulo.textContent=String(card.dataset.nombre||'Prospecto')+
@@ -119,6 +129,57 @@
   });
   destino.addEventListener('change',actualizar);
   dialog.addEventListener('close',()=>{tarjeta=null;});
+
+  // Soltar NO escribe nada: reutiliza el formulario y la autorización
+  // del endpoint moverEtapaV3. Sólo se destacan destinos permitidos.
+  const limpiarArrastre=()=>{
+    if(arrastre)arrastre.classList.remove('is-dragging');
+    root.querySelectorAll('.impe-v3o-columna').forEach(lane=>
+      lane.classList.remove('is-drop-target','is-drop-allowed'));
+    arrastre=null;
+  };
+  root.querySelectorAll('.impe-v3o-card[draggable="true"]').forEach(card=>{
+    card.addEventListener('dragstart',event=>{
+      const origen=event.target;
+      if(telefonoActivo() || dialog.open || !card.dataset.asignacionId ||
+         !destinosDe(card).length ||
+         (origen instanceof Element &&
+          origen.closest('a,button,input,select,textarea,[contenteditable="true"]')) ||
+         !event.dataTransfer){
+        event.preventDefault();
+        return;
+      }
+      arrastre=card;
+      event.dataTransfer.effectAllowed='move';
+      event.dataTransfer.setData('text/plain',card.dataset.asignacionId);
+      card.classList.add('is-dragging');
+      root.querySelectorAll('.impe-v3o-columna[data-etapa]').forEach(lane=>{
+        if(destinoValido(card,String(lane.dataset.etapa||'')))
+          lane.classList.add('is-drop-allowed');
+      });
+    });
+    card.addEventListener('dragend',limpiarArrastre);
+  });
+  root.querySelectorAll('.impe-v3o-columna[data-etapa]').forEach(lane=>{
+    const etapa=String(lane.dataset.etapa||'');
+    lane.addEventListener('dragover',event=>{
+      if(!arrastre || telefonoActivo() || !destinoValido(arrastre,etapa))return;
+      event.preventDefault();
+      if(event.dataTransfer)event.dataTransfer.dropEffect='move';
+      lane.classList.add('is-drop-target');
+    });
+    lane.addEventListener('dragleave',event=>{
+      if(!lane.contains(event.relatedTarget))
+        lane.classList.remove('is-drop-target');
+    });
+    lane.addEventListener('drop',event=>{
+      if(!arrastre || telefonoActivo() || !destinoValido(arrastre,etapa))return;
+      event.preventDefault();
+      const seleccionada=arrastre;
+      limpiarArrastre();
+      abrir(seleccionada,etapa);
+    });
+  });
 
   form.addEventListener('submit',async(event)=>{
     event.preventDefault();
