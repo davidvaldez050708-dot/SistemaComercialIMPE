@@ -1,6 +1,6 @@
 # Gestión Comercial V3 · Cierre operativo integrado
 
-**Estado:** candidato integrado en PR #266 (**BORRADOR, NO PUBLICAR**). No se modifica Hostinger ni se ejecuta SQL en producción desde el PR.
+**Estado al 12/11/2026:** candidato integrado en PR #266 (**BORRADOR, NO PUBLICAR**). El CHECK de la entrega privada pasó los 20 archivos y cuatro dependencias, pero terminó en `CHECK_INTEGRAL_ESQUEMA_PENDIENTE`. No se modificó `public_html` ni se ejecutó SQL de escritura.
 
 **Conciliación de Zadarma (12/11):** la versión productiva aprobada del
 checkpoint usa `Database::compartida()` y `Database::responderFalloTemporal`.
@@ -27,29 +27,27 @@ corrección no cambia el endpoint ni toca `public_html`.
 - Migración aditiva independiente: `tools/gestion_comercial_v3_inscripcion_schema_hostinger.php` + `database/migrations/2026_11_12_ventas_inscripcion_v3_evidencia.sql`. CHECK no escribe; APPLY exige confirmación y crea solo **una nueva tabla vacía**, sin editar datos existentes. Nunca ejecutar la migración sin respaldar previamente el esquema. Un rollback del código **no borra la nueva tabla**, para evitar pérdida de evidencia.
 - Auditoría de operación: `tools/gestion_comercial_v3_auditar_distribucion_hostinger.php`; transacción READ ONLY, resultados agregados de Meta/aliados, jornada, cupo de 80 y pendientes. No imprime personas ni teléfonos.
 - Los archivos anteriores de Potenciales/Seguimiento/Historial no se sustituyen si fueron personalizados; quedan protegidas dependencias fuera de alcance.
-- **No ejecutar la publicación si CI está pendiente, no hay respaldo, falta la tabla de evidencia, el CHECK detecta cambios o la telefonía real no ha pasado smoke tests.**
-- El stage privado ya preparado debe actualizar **sólo** los dos scripts
-  `tools/publicar_gestion_comercial_v3_integral_hostinger.py` y
-  `tools/preparar_gestion_comercial_v3_conciliada_hostinger.py` desde el mismo
-  commit revisado de este PR. Ejecutar nuevamente el preparador para obtener
-  una carpeta de entrega nueva; nunca editar hashes a mano ni reutilizar una
-  carpeta que tenga `CHECK` bloqueado.
+- **No ejecutar APPLY si falta el respaldo, la tabla de evidencia, un CHECK limpio o la autorización expresa de producción.** El CHECK de archivos no instala el esquema.
+- El stage privado `/home/u170338188/.gestion-v3-conciliada-a4vfjw25` fue actualizado con `tools/actualizar_check_gestion_v3_conciliada_hostinger.py`. El helper verificó los 20 archivos y cuatro dependencias con SHA exacto y actualizó solo el publicador del stage, sin cambiar `public_html`. El nuevo CHECK confirmó `BASE_OK` para los 16 archivos existentes y `AUSENTE_NUEVO` para los cuatro archivos nuevos. No repetir el preparador ni editar hashes manualmente.
+- La migración se comprueba por separado con `php tools/gestion_comercial_v3_inscripcion_schema_hostinger.php --site "$SITIO" --stage "$ENTREGA" --check`. Una futura ejecución `--apply` de esa herramienta y la publicación de código necesitan autorización expresa y respaldo verificado. El rollback de código conserva la tabla nueva para no perder evidencia.
 
 ## Pruebas que debe cubrir el cierre
 
-| Área | Comprobación | Resultado aún requerido |
+| Área | Comprobación | Estado |
 |---|---|---|
-| Navegador | Marcador autorizado, prohibición 409, falla de red, resultado y ficha | GitHub Actions verde |
-| Navegador | Formulario real, ambiguo, inexistente, vinculación, llamada activa | GitHub Actions verde |
-| MySQL/MariaDB | Inscripción: identidad, permisos, concurrencia, rollback | GitHub Actions verde |
-| MySQL/MariaDB | No contactar: variantes 52/521, histórica, terceros | GitHub Actions verde |
-| MySQL/MariaDB | Recuperación/descarte/reactivación y agenda | GitHub Actions verde |
-| Publicador | 20 hashes, personalización bloqueada, backup y rollback | GitHub Actions verde |
-| Hostinger | CHECK de integridad + metadata + versión exacta | Pendiente |
+| Navegador | Marcador autorizado, prohibición 409, falla de red, resultado y ficha | CI V3 aprobado |
+| Navegador | Formulario real, ambiguo, inexistente, vinculación, llamada activa | CI V3 aprobado |
+| MySQL/MariaDB | Inscripción: identidad, permisos, concurrencia, rollback | CI V3 aprobado |
+| MySQL/MariaDB | No contactar: variantes 52/521, histórica, terceros | CI V3 aprobado |
+| MySQL/MariaDB | Recuperación/descarte/reactivación y agenda | CI V3 aprobado |
+| Publicador | 20 hashes, personalización bloqueada, backup y rollback | CI V3 aprobado; CHECK real de archivos aprobado |
+| Hostinger | CHECK de integridad + metadata + versión exacta | Aprobado para archivos; esquema pendiente |
 | Hostinger | Distribución real de Meta/Aliados y cron nocturno | Pendiente, solo lectura |
 | Hostinger | Prueba funcional de interfaz y llamadas controladas | Pendiente |
 
-**Importante:** la existencia de código y la salida del publicador no demuestran funcionamiento productivo completo. El estado es candidato en verificación, no “todo operativo” hasta concluir estas filas. Si GitHub Actions está en cola, no suponer éxito.
+**CI al commit `67ad482`:** siete workflows propios o directamente relacionados con V3, PBX, transferencias y Mis llamadas pasaron. Siete workflows heredados fallaron. Cinco de ellos también fallaron en la rama base: Marketing Recepción, Marcador integrado, cierre API V4, Entrantes Analistas y WebRTC persistente. Los fallos de Aliados y Registro exclusivo y Prospectos almacén central usan archivos y pruebas que este PR no modifica; su estado de base requiere atención independiente. No se cambiaron módulos operativos ajenos a V3 ni se ocultaron esas verificaciones.
+
+**Importante:** la existencia de código y la salida del publicador no demuestran funcionamiento productivo completo. La auditoría real de distribución, el smoke test de telefonía e interfaz y el respaldo de producción siguen pendientes. No afirmar que el PR tiene todo el CI verde.
 
 ## Limitaciones intencionadas
 
