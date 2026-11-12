@@ -35,6 +35,8 @@ on:
       - 'app/services/EmbudoComercialV3InscripcionService.php'
       - 'app/views/embudo_comercial/inscripcion_v3_modal.php'
       - 'public/javascript/embudo_comercial_v3_inscripcion.js'
+      - 'public/javascript/telefonia_marcador.js'
+      - 'tests/gestion_comercial_v3_dialer_guard_browser.cjs'
       - 'tests/gestion_comercial_v3_inscripcion_db.php'
       - 'tests/gestion_comercial_v3_inscripcion_browser.cjs'
       - 'app/services/ProspectoNoContactarV3.php'
@@ -106,6 +108,8 @@ jobs:
           php -l tests/gestion_comercial_v3_inscripcion_db.php
           node --check public/javascript/embudo_comercial_v3_inscripcion.js
           node --check tests/gestion_comercial_v3_inscripcion_browser.cjs
+          node --check public/javascript/telefonia_marcador.js
+          node --check tests/gestion_comercial_v3_dialer_guard_browser.cjs
           node --check public/javascript/embudo_comercial_v3_bandejas.js
           node --check tests/ventas_v3_bandejas_browser.cjs
           python3 -m py_compile tools/publicar_ventas_v3_bandejas_hostinger.py
@@ -123,6 +127,7 @@ jobs:
           node tests/ventas_v3_toast_browser.cjs
           node tests/ventas_v3_bandejas_browser.cjs
           node tests/gestion_comercial_v3_inscripcion_browser.cjs
+          node tests/gestion_comercial_v3_dialer_guard_browser.cjs
   mysql-temporal:
     runs-on: ubuntu-latest
     services:
