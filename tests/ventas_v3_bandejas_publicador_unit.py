@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(prefix='impe_bandejas_test_') as tmp:
     back=os.path.join(tmp,'backups')
     os.makedirs(os.path.join(site,'config'))
     with open(os.path.join(site,'config/db_connection.php'),'wb') as f:
-        f.write(b'<?php // fixture sin conexión\n')
+        f.write(b'<?php // isolated test fixture\n')
     for ruta,old,new in p.p.ARCHIVOS:
         dest=os.path.join(stage,ruta)
         os.makedirs(os.path.dirname(dest),exist_ok=True)
