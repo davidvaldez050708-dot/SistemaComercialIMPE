@@ -219,6 +219,46 @@ el guardado operativo ejecuta antes la incorporación comercial.
 La demostración extremo a extremo de un formulario ficticio debe
 realizarse en un entorno que no asigne prospectos reales a asesores.
 
+## Sonda de Zoho Developer real sin tocar datos comerciales
+
+Después del despliegue controlado del modelo (SHA256
+`74699f0b75430ea6...`) y de los tres servicios, el estado de producción
+se comprobó con **cola vacía y configuración DESACTIVADA**.
+
+`tools/zoho_developer_api_sonda.php` puede ejecutarse **solo desde la
+copia privada Git**; usa OAuth ya guardado en el HOME privado y NO se
+publica en el directorio del sitio. No se conecta a MySQL, no crea
+registros locales, no toca formularios ni asigna prospectos.
+
+Primera fase, sin escrituras ni nuevos Leads:
+
+~~~bash
+php "$HOME/crm-zoho-developer-piloto/tools/zoho_developer_api_sonda.php" --check
+~~~
+
+Comprueba OAuth y **el ID exacto de organización Developer**
+`4608581000000025312`, usando el endpoint
+`https://developer.zohoapis.com`.
+
+Segunda fase, requiere decisión separada del operador:
+
+~~~bash
+php "$HOME/crm-zoho-developer-piloto/tools/zoho_developer_api_sonda.php" \
+  --send --confirm-one-fake-lead
+~~~
+
+La segunda fase sí crea o actualiza **un Lead ficticio en Zoho Developer**,
+con `impe.sonda.zoho@example.com` e ID de prueba artificial
+`900000000000001` (fuera del rango de ID de formulario INT UNSIGNED).
+Verifica su lectura mediante GET y no toca MySQL del CRM. Al repetirse
+utiliza la misma clave única, sin producir duplicados; deja el Lead de
+prueba en Developer para comprobarlo. Se requiere haber creado el campo
+único `IMPE_Registro_ID` en la instancia Developer.
+
+**Importante:** esta sonda no prueba por sí misma el guardado web del
+formulario. Para eso se requiere staging sin asignaciones comerciales,
+pues el formulario de producción crea primero el prospecto central.
+
 ## Antes de habilitar: requisitos
 
 1. Trabajar en una **copia/staging** de la base de datos y del sitio,
