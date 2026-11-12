@@ -131,7 +131,7 @@ async function probar(browser, modo) {
     await page.locator('[data-v3-actividad]').click();
     await page.locator('details summary').click();
     const entrada = page.locator('[data-actividad-historial] li');
-    await entrada.waitFor();
+    await entrada.first().waitFor();
     assert.ok((await entrada.textContent()).includes('<b>Primera gestión</b>'));
     assert.equal(await entrada.locator('b').count(), 0);
     assert.equal(await entrada.first().locator('.impe-v3o-actividad-item-tipo').textContent(), 'Programación');
