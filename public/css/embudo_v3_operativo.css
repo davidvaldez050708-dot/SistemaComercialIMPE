@@ -174,7 +174,7 @@
 .impe-embudo--v3-operativo .impe-embudo-tabs{margin:0}
 .impe-embudo--v3-operativo .impe-embudo-filtros{padding:8px 11px;gap:7px}
 .impe-embudo--v3-operativo .impe-embudo-board-info{font-size:10px}
-.impe-embudo--v3-operativo .impe-v3o-columna{min-height:280px}
+.impe-embudo--v3-operativo .impe-embudo-lane.impe-v3o-columna{min-height:280px}
 .impe-embudo--v3-operativo .impe-v3o-columna .impe-embudo-lane-head{
   min-height:52px;padding:8px 9px;gap:5px
 }
