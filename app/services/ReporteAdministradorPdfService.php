@@ -199,12 +199,6 @@ class ReporteAdministradorPdfService
         $fechaGeneracion = trim((string)($datosReporte['fecha_generacion'] ?? ''));
         $elementos = [];
 
-        $elementos[] = $this->crearParrafo(
-            $documento,
-            'Usuarios y carga de seguimiento',
-            ['tamano' => 14, 'color' => self::COLOR_SECUNDARIO, 'fondo' => self::COLOR_FONDO,
-                'antes' => 30, 'despues' => 95, 'borde_izquierdo' => true, 'mantener_siguiente' => true]
-        );
         $elementos[] = $this->crearTituloSeccion($documento, 'Resumen ejecutivo');
         $elementos[] = $this->crearTarjetasIndicadores(
             $documento,
@@ -319,8 +313,6 @@ class ReporteAdministradorPdfService
         $anchoTotal = max(7200, (int)$anchoUtil);
         $anchoLogo = (int)round($anchoTotal * 0.34);
         $anchoTexto = max(1, $anchoTotal - $anchoLogo);
-        $anchoImagen = 1760000;
-        $altoImagen = 1610547;
 
         $contenidoLogo = $zip->getFromName('word/media/image1.png');
 
@@ -337,10 +329,10 @@ class ReporteAdministradorPdfService
         $logoXml = '<w:p/>';
         if (is_string($contenidoLogo) && $contenidoLogo !== '') {
             $logoXml =
-                '<w:p><w:pPr><w:spacing w:before="0" w:after="0"/><w:jc w:val="left"/></w:pPr>' .
+                '<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>' .
                 '<w:r><w:drawing>' .
-                '<wp:inline distB="0" distT="0" distL="0" distR="0">' .
-                '<wp:extent cx="' . $anchoImagen . '" cy="' . $altoImagen . '"/>' .
+                '<wp:inline distB="114300" distT="114300" distL="114300" distR="114300">' .
+                '<wp:extent cx="1243013" cy="1137428"/>' .
                 '<wp:effectExtent b="0" l="0" r="0" t="0"/>' .
                 '<wp:docPr id="1" name="image1.png"/>' .
                 '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' .
@@ -349,17 +341,20 @@ class ReporteAdministradorPdfService
                 '<pic:blipFill><a:blip r:embed="rId1"/><a:srcRect b="0" l="0" r="0" t="0"/>' .
                 '<a:stretch><a:fillRect/></a:stretch></pic:blipFill>' .
                 '<pic:spPr><a:xfrm><a:off x="0" y="0"/>' .
-                '<a:ext cx="' . $anchoImagen . '" cy="' . $altoImagen . '"/></a:xfrm>' .
+                '<a:ext cx="1243013" cy="1137428"/></a:xfrm>' .
                 '<a:prstGeom prst="rect"/><a:ln><a:noFill/></a:ln></pic:spPr></pic:pic>' .
                 '</a:graphicData></a:graphic>' .
                 '</wp:inline></w:drawing></w:r></w:p>';
         }
 
-        $meta = $this->metadatosHeaderXml([
-            'Generado por' => $generadoPor,
-            'Rol' => $rol,
-            'Fecha' => $fecha
-        ], $anchoTexto);
+        $meta = '';
+        if ($generadoPor !== '') {
+            $meta .= $this->parrafoHeaderXml('Generado por: ' . $generadoPor, 12, self::COLOR_SECUNDARIO, false);
+        }
+        if ($rol !== '') {
+            $meta .= $this->parrafoHeaderXml('Rol: ' . $rol, 12, self::COLOR_SECUNDARIO, false);
+        }
+        $meta .= $this->parrafoHeaderXml('Fecha: ' . $fecha, 12, self::COLOR_SECUNDARIO, false);
 
         $header =
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
@@ -369,61 +364,34 @@ class ReporteAdministradorPdfService
             'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' .
             'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' .
             '<w:tbl><w:tblPr><w:tblW w:w="' . $anchoTotal . '" w:type="dxa"/>' .
-            '<w:tblLayout w:type="fixed"/><w:tblCellMar>' .
-            '<w:left w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/>' .
-            '</w:tblCellMar></w:tblPr>' .
+            '<w:tblLayout w:type="fixed"/></w:tblPr>' .
             '<w:tblGrid><w:gridCol w:w="' . $anchoLogo . '"/><w:gridCol w:w="' . $anchoTexto . '"/></w:tblGrid>' .
             '<w:tr><w:trPr><w:cantSplit/></w:trPr>' .
             '<w:tc><w:tcPr><w:tcW w:w="' . $anchoLogo . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
             $logoXml . '</w:tc>' .
             '<w:tc><w:tcPr><w:tcW w:w="' . $anchoTexto . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
             $this->parrafoHeaderXml('Sistema de Gestión Comercial', 13, self::COLOR_PRIMARIO, true) .
-            $this->parrafoHeaderXml('Reporte Administrativo de Usuarios', 23, self::COLOR_TEXTO, true, 65) .
+            $this->parrafoHeaderXml('Reporte Administrativo de Usuarios', 21, self::COLOR_TEXTO, true) .
+            $this->parrafoHeaderXml('Usuarios y carga de seguimiento', 14, self::COLOR_SECUNDARIO, false) .
             $meta .
             '</w:tc></w:tr></w:tbl>' .
             '<w:p><w:pPr>' .
+            '<w:spacing w:before="60" w:after="90"/>' .
             '<w:pBdr><w:bottom w:val="single" w:sz="16" w:space="0" w:color="' . self::COLOR_PRIMARIO . '"/></w:pBdr>' .
-            '<w:spacing w:before="45" w:after="65" w:line="30" w:lineRule="exact"/>' .
             '</w:pPr><w:r><w:t></w:t></w:r></w:p>' .
             '</w:hdr>';
 
         $zip->addFromString('word/header1.xml', $header);
     }
 
-    private function metadatosHeaderXml(array $datos, int $ancho): string
+    private function parrafoHeaderXml($texto, $tamano, $color, $negrita)
     {
-        $posicionValor = $ancho - 30;
-        $posicionEtiqueta = $posicionValor - 1580;
-        $xml = '';
-        foreach ($datos as $nombre => $texto) {
-            if ($texto === '') {
-                continue;
-            }
-            $xml .= '<w:p><w:pPr><w:tabs>' .
-                '<w:tab w:val="right" w:pos="' . $posicionEtiqueta . '"/>' .
-                '<w:tab w:val="right" w:pos="' . $posicionValor . '"/>' .
-                '</w:tabs><w:spacing w:before="0" w:after="0" w:line="170" w:lineRule="exact"/>' .
-                '<w:jc w:val="left"/></w:pPr>' .
-                '<w:r><w:tab/></w:r>' . $this->textoHeaderXml($nombre, 12, self::COLOR_SECUNDARIO, false) .
-                '<w:r><w:tab/></w:r>' . $this->textoHeaderXml($texto, 12, self::COLOR_TEXTO, true) . '</w:p>';
-        }
-        return $xml;
-    }
-
-    private function parrafoHeaderXml($texto, $tamano, $color, $negrita, int $despues = 25)
-    {
-        return '<w:p><w:pPr><w:spacing w:before="0" w:after="' . $despues . '"/>' .
-            '<w:jc w:val="right"/></w:pPr>' .
-            $this->textoHeaderXml($texto, $tamano, $color, $negrita) . '</w:p>';
-    }
-
-    private function textoHeaderXml($texto, $tamano, $color, $negrita): string
-    {
-        return '<w:r><w:rPr>' .
+        return '<w:p><w:pPr><w:jc w:val="right"/>' .
+            '<w:spacing w:before="0" w:after="25"/></w:pPr><w:r><w:rPr>' .
             ($negrita ? '<w:b/>' : '') .
             '<w:color w:val="' . $color . '"/>' .
             '<w:sz w:val="' . (int)$tamano . '"/><w:szCs w:val="' . (int)$tamano . '"/>' .
-            '</w:rPr><w:t xml:space="preserve">' . $this->xmlTexto($texto) . '</w:t></w:r>';
+            '</w:rPr><w:t xml:space="preserve">' . $this->xmlTexto($texto) . '</w:t></w:r></w:p>';
     }
 
     private function aplicarPieInstitucional(ZipArchive $zip, $anchoUtil)
@@ -759,7 +727,6 @@ class ReporteAdministradorPdfService
     {
         $tabla = $this->crearTablaBase($documento, array_sum($anchos), $anchos);
         $filaCabecera = $this->crearFila($documento, true);
-        $columnaEstado = array_search('Estado', $encabezados, true);
 
         foreach ($encabezados as $indice => $encabezado) {
             $filaCabecera->appendChild($this->crearCelda(
@@ -782,10 +749,6 @@ class ReporteAdministradorPdfService
 
             foreach ($anchos as $indice => $ancho) {
                 $texto = (string)($valores[$indice] ?? '');
-                if ($indice === $columnaEstado && in_array($texto, ['Activo', 'Inactivo'], true)) {
-                    $fila->appendChild($this->crearCeldaEstado($documento, $texto, $ancho, $rellenoFila));
-                    continue;
-                }
                 $fila->appendChild($this->crearCelda(
                     $documento,
                     $texto,
@@ -802,34 +765,6 @@ class ReporteAdministradorPdfService
         }
 
         return $tabla;
-    }
-
-    private function crearCeldaEstado(DOMDocument $documento, string $estado, int $ancho, string $rellenoFila): DOMElement
-    {
-        $celda = $this->crearCelda($documento, '', $ancho, [
-            'relleno' => $rellenoFila, 'tamano' => 4, 'antes' => 0, 'despues' => 0
-        ]);
-        $anchoPuntos = min(700, $ancho - 220) / 20;
-        $activo = $estado === 'Activo';
-        $relleno = $activo ? 'EAF7F4' : 'FFF3F1';
-        $borde = $activo ? 'B9E2DA' : 'EFCFC9';
-        $etiqueta = $this->crearParrafo($documento, $estado, [
-            'tamano' => 12,
-            'negrita' => true,
-            'alineacion' => 'center',
-            'color' => $activo ? '087966' : 'A33B2B'
-        ]);
-        $dibujo = $documento->createDocumentFragment();
-        $dibujo->appendXML(
-            '<w:pict xmlns:w="' . self::W_NS . '" xmlns:v="urn:schemas-microsoft-com:vml">' .
-            '<v:roundrect arcsize="100%" style="width:' . $anchoPuntos . 'pt;height:13pt;v-text-anchor:top" ' .
-            'fillcolor="#' . $relleno . '" strokecolor="#' . $borde . '" strokeweight="0.5pt">' .
-            '<v:textbox inset="0,-1.5pt,0,-1pt"><w:txbxContent>' . $documento->saveXML($etiqueta) .
-            '</w:txbxContent></v:textbox></v:roundrect></w:pict>'
-        );
-        $celda->lastChild->lastChild->appendChild($dibujo);
-
-        return $celda;
     }
 
     private function crearTablaBase(DOMDocument $documento, $anchoTotal, array $anchos, $bordes = true, int $separacion = 0)
