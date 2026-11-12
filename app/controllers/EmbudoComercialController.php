@@ -487,7 +487,8 @@ final class EmbudoComercialController
                     (string)($_POST['dia']??''),$motivo,$confirmada);
             } elseif ($accion==='DESCARTAR') {
                 $mov=$service->descartar($uid,(int)$asig,$etapa,
-                    (string)($_POST['subetapa']??''),$motivo,$confirmada);
+                    (string)($_POST['subetapa']??''),$motivo,$confirmada,
+                    ($_POST['confirmacion_no_contactar']??'')==='1');
             } else {
                 $mov=$service->reactivar($uid,(int)$asig,$etapa,
                     $motivo,$confirmada);
