@@ -260,12 +260,11 @@ class ReporteAdministradorPdfService
         $elementos[] = $this->crearTituloSeccion($documento, 'Hallazgos administrativos');
 
         foreach ($hallazgos as $hallazgo) {
-            $elementos[] = $this->crearParrafo(
+            $elementos[] = $this->crearRecuadroHallazgo(
                 $documento,
                 $hallazgo['texto'],
-                ['tamano' => 14, 'color' => self::COLOR_SECUNDARIO, 'fondo' => self::COLOR_FONDO,
-                    'antes' => 45, 'despues' => 65, 'borde_izquierdo' => true,
-                    'mantener_siguiente' => !empty($hallazgo['filas'])]
+                $anchoUtil,
+                !empty($hallazgo['filas'])
             );
             if (!empty($hallazgo['filas'])) {
                 $elementos[] = $this->crearTablaDetalle(
@@ -279,6 +278,30 @@ class ReporteAdministradorPdfService
         }
 
         return $elementos;
+    }
+
+    private function crearRecuadroHallazgo(
+        DOMDocument $documento,
+        string $texto,
+        int $ancho,
+        bool $tieneDetalle
+    ): DOMElement {
+        $tabla = $this->crearTablaBase($documento, $ancho, [$ancho], false);
+        $fila = $this->crearFila($documento, false);
+        $fila->appendChild($this->crearCelda($documento, $texto, $ancho, [
+            'tamano' => 14,
+            'color' => self::COLOR_SECUNDARIO,
+            'relleno' => 'F4F7FA',
+            'bordes' => ['left'],
+            'color_borde' => self::COLOR_BORDE_TARJETA,
+            'grosor_borde' => 18,
+            'antes' => 110,
+            'despues' => 110,
+            'mantener_siguiente' => $tieneDetalle
+        ]));
+        $tabla->appendChild($fila);
+
+        return $tabla;
     }
 
 
@@ -530,15 +553,12 @@ class ReporteAdministradorPdfService
         $this->attr($anchoNodo, 'w', 'w', 'type', 'dxa');
         $propiedades->appendChild($anchoNodo);
 
-        $bordes = $this->w($documento, 'tcBorders');
-        foreach (['top', 'left', 'bottom', 'right'] as $lado) {
-            $borde = $this->w($documento, $lado);
-            $this->attr($borde, 'w', 'w', 'val', 'single');
-            $this->attr($borde, 'w', 'w', 'sz', '6');
-            $this->attr($borde, 'w', 'w', 'color', $estilo['borde'] ?? self::COLOR_BORDE_TARJETA);
-            $bordes->appendChild($borde);
-        }
-        $propiedades->appendChild($bordes);
+        $propiedades->appendChild($this->crearBordesCelda(
+            $documento,
+            ['top', 'left', 'bottom', 'right'],
+            $estilo['borde'] ?? self::COLOR_BORDE_TARJETA,
+            6
+        ));
 
         $relleno = $this->w($documento, 'shd');
         $this->attr($relleno, 'w', 'w', 'val', 'clear');
@@ -733,6 +753,7 @@ class ReporteAdministradorPdfService
     {
         $tabla = $this->crearTablaBase($documento, array_sum($anchos), $anchos);
         $filaCabecera = $this->crearFila($documento, true);
+        $columnaEstado = array_search('Estado', $encabezados, true);
 
         foreach ($encabezados as $indice => $encabezado) {
             $filaCabecera->appendChild($this->crearCelda(
@@ -754,9 +775,14 @@ class ReporteAdministradorPdfService
             $rellenoFila = $indiceFila % 2 === 0 ? 'FFFFFF' : self::COLOR_FONDO;
 
             foreach ($anchos as $indice => $ancho) {
+                $texto = (string)($valores[$indice] ?? '');
+                if ($indice === $columnaEstado && in_array($texto, ['Activo', 'Inactivo'], true)) {
+                    $fila->appendChild($this->crearCeldaEstado($documento, $texto, $ancho, $rellenoFila));
+                    continue;
+                }
                 $fila->appendChild($this->crearCelda(
                     $documento,
-                    (string)($valores[$indice] ?? ''),
+                    $texto,
                     $ancho,
                     [
                         'tamano' => 13,
@@ -770,6 +796,33 @@ class ReporteAdministradorPdfService
         }
 
         return $tabla;
+    }
+
+    private function crearCeldaEstado(DOMDocument $documento, string $estado, int $ancho, string $rellenoFila): DOMElement
+    {
+        $celda = $this->crearCelda($documento, '', $ancho, [
+            'relleno' => $rellenoFila, 'tamano' => 4, 'antes' => 0, 'despues' => 0,
+            'linea_exacta' => 20
+        ]);
+        $anchoDistintivo = min(950, $ancho - 220);
+        $activo = $estado === 'Activo';
+        $distintivo = $this->crearTablaBase($documento, $anchoDistintivo, [$anchoDistintivo], false);
+        $fila = $this->crearFila($documento, false);
+        $fila->appendChild($this->crearCelda($documento, $estado, $anchoDistintivo, [
+            'tamano' => 13,
+            'negrita' => true,
+            'alineacion' => 'center',
+            'color' => $activo ? '087966' : 'A33B2B',
+            'relleno' => $activo ? 'EAF7F4' : 'FFF3F1',
+            'bordes' => ['top', 'left', 'bottom', 'right'],
+            'color_borde' => $activo ? 'B9E2DA' : 'EFCFC9',
+            'antes' => 55,
+            'despues' => 55
+        ]));
+        $distintivo->appendChild($fila);
+        $celda->insertBefore($distintivo, $celda->lastChild);
+
+        return $celda;
     }
 
     private function crearTablaBase(DOMDocument $documento, $anchoTotal, array $anchos, $bordes = true, int $separacion = 0)
@@ -831,6 +884,19 @@ class ReporteAdministradorPdfService
         return $fila;
     }
 
+    private function crearBordesCelda(DOMDocument $documento, array $lados, string $color, int $grosor): DOMElement
+    {
+        $bordes = $this->w($documento, 'tcBorders');
+        foreach ($lados as $lado) {
+            $borde = $this->w($documento, $lado);
+            $this->attr($borde, 'w', 'w', 'val', 'single');
+            $this->attr($borde, 'w', 'w', 'sz', (string)$grosor);
+            $this->attr($borde, 'w', 'w', 'color', $color);
+            $bordes->appendChild($borde);
+        }
+        return $bordes;
+    }
+
     private function crearCelda(DOMDocument $documento, $texto, $ancho, array $opciones = [])
     {
         $celda = $this->w($documento, 'tc');
@@ -839,6 +905,15 @@ class ReporteAdministradorPdfService
         $this->attr($anchoNodo, 'w', 'w', 'w', (string)$ancho);
         $this->attr($anchoNodo, 'w', 'w', 'type', 'dxa');
         $propiedades->appendChild($anchoNodo);
+
+        if (!empty($opciones['bordes'])) {
+            $propiedades->appendChild($this->crearBordesCelda(
+                $documento,
+                $opciones['bordes'],
+                $opciones['color_borde'] ?? self::COLOR_BORDE_TARJETA,
+                $opciones['grosor_borde'] ?? 6
+            ));
+        }
 
         if (!empty($opciones['relleno'])) {
             $relleno = $this->w($documento, 'shd');
@@ -860,8 +935,10 @@ class ReporteAdministradorPdfService
                 'negrita' => $opciones['negrita'] ?? false,
                 'color' => $opciones['color'] ?? self::COLOR_TEXTO,
                 'alineacion' => $opciones['alineacion'] ?? 'left',
-                'antes' => 25,
-                'despues' => 25
+                'antes' => $opciones['antes'] ?? 25,
+                'despues' => $opciones['despues'] ?? 25,
+                'linea_exacta' => $opciones['linea_exacta'] ?? null,
+                'mantener_siguiente' => $opciones['mantener_siguiente'] ?? false
             ]
         ));
 
