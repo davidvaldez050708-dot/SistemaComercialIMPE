@@ -83,7 +83,7 @@ p.NO_MODIFICAR = {
     "app/services/TelefoniaResultadoVentasService.php":
         "1d4472ba73e7de4097ef2f592104160b254d7f8f",
     "app/services/EmbudoComercialV3MovimientosPermitidos.php":
-        "92950fe72f02c938050c8598cd0ed96cd1552c6e",
+        "2bbc296fff1c310963637ed3f95402b9254635a3",
 }
 p.CONFIRMAR = "PUBLICAR_GESTION_COMERCIAL_V3_INTEGRAL_IMPE"
 p.REVERTIR = "REVERTIR_GESTION_COMERCIAL_V3_INTEGRAL_IMPE"
