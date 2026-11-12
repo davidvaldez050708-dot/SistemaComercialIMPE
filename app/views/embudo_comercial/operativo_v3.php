@@ -61,7 +61,8 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     $label=$st!==''&&isset($sub[$etapa][$st])
         ?$sub[$etapa][$st]:'';
     // Etapas históricas: presentar etiquetas sin modificar la BD.
-    if($real==='INTERESADO')$label='Interesado · registro anterior';
+    if($real==='INTERESADO')$label=$st!=='' && isset($sub['POTENCIAL'][$st])
+        ?$sub['POTENCIAL'][$st]:'Interesado · registro anterior';
     if($real==='PAGO_CONFIRMADO')$label='Pago histórico · verificar';
     $n=(int)($p['intentos_hoy']['intentos']??0);
     $n=max(0,$n);
@@ -71,6 +72,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     <article class="impe-embudo-card impe-v3o-card"
              data-asignacion-id="<?= (int)$p['asignacion_id'] ?>"
              data-etapa="<?= $esc($real) ?>"
+             data-v3-subetapa="<?= $esc($st) ?>"
              data-nombre="<?= $esc($p['nombre_completo']) ?>"
              data-v3-destinos="<?= $esc($destinos) ?>"
              <?= $propuestas?'draggable="true"':'' ?>>
@@ -129,6 +131,12 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                title="Ver ficha e historial" aria-label="Ver ficha e historial">
                 <i class="bi bi-person-vcard" aria-hidden="true"></i>
             </a>
+            <?php if($puedeMover && $etapa==='POTENCIAL'): ?>
+            <button type="button" class="impe-v3o-accion" data-v3-gestionar
+                title="Gestionar subetapa y próxima acción" aria-label="Gestionar potencial">
+                <i class="bi bi-calendar2-plus" aria-hidden="true"></i>
+            </button>
+            <?php endif; ?>
             <?php if($propuestas): ?>
             <button type="button" class="impe-v3o-accion"
                 data-v3-mover title="Cambiar etapa con motivo" aria-label="Cambiar etapa con motivo">
@@ -296,6 +304,40 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <div class="impe-embudo-dialog-footer">
                 <button type="button" data-v3-cerrar>Cancelar</button>
                 <button type="submit" id="impe-v3o-enviar">Confirmar</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog class="impe-embudo-dialog" id="impe-v3o-potencial-dialog"
+            aria-labelledby="impe-v3o-potencial-titulo">
+        <form id="impe-v3o-potencial-form" method="dialog">
+            <header>
+                <h3 id="impe-v3o-potencial-titulo">Gestionar potencial</h3>
+                <button type="button" data-v3-gestionar-cerrar aria-label="Cerrar">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            </header>
+            <p id="impe-v3o-potencial-datos"></p>
+            <label>Situación comercial
+                <select id="impe-v3o-potencial-subetapa" required>
+                    <option value="">Seleccionar subetapa</option>
+                    <?php foreach($sub['POTENCIAL'] as $codigo=>$etiqueta): ?>
+                    <option value="<?= $esc($codigo) ?>"><?= $esc($etiqueta) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>Próxima acción (opcional)
+                <input type="datetime-local" id="impe-v3o-potencial-fecha">
+            </label>
+            <p class="impe-v3o-ayuda">Una próxima acción no cambia al prospecto de Potenciales a Seguimiento.</p>
+            <label>Motivo de gestión
+                <textarea id="impe-v3o-potencial-motivo" required minlength="8"
+                    maxlength="190" rows="3"
+                    placeholder="Describe el avance, pendiente o próximo paso"></textarea>
+            </label>
+            <p id="impe-v3o-potencial-error" role="alert" hidden></p>
+            <div class="impe-embudo-dialog-footer">
+                <button type="button" data-v3-gestionar-cerrar>Cancelar</button>
+                <button type="submit" id="impe-v3o-potencial-guardar">Guardar gestión</button>
             </div>
         </form>
     </dialog>
