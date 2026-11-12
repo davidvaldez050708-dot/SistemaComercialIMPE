@@ -13,6 +13,9 @@ sys.path.insert(0,os.path.join(ROOT,'tools'))
 import publicar_gestion_comercial_v3_integral_hostinger as release
 
 BASE="79f8ccda4f6f525318c7abbbb67324077c175c3c"
+RELEASE_ORIGINAL="8ff713383f11a61e7e37d827e2da43ee225ea7a8"
+# Simula el paquete original inmutable, NO las fusiones privadas Hostinger.
+# Las fusiones se verifican con preparador aparte y CHECK en Hostinger.
 
 def revisar(condition,text):
     if not condition:raise AssertionError('PUBLICADOR_INTEGRAL_V3: '+text)
@@ -26,11 +29,13 @@ with tempfile.TemporaryDirectory(prefix="impe_integral_reversible_") as temp:
     with open(os.path.join(site,'config/db_connection.php'),'wb') as f:
         f.write(b'<?php // No DB connection, synthetic fixture.\n')
     for path,old,new in p.ARCHIVOS:
-        actual=os.path.join(ROOT,path)
-        revisar(p.blob(actual)==new,'hash nuevo '+path)
+        original=subprocess.check_output(
+            ['git','show',RELEASE_ORIGINAL+':'+path],cwd=ROOT)
+        revisar(p.blob_bytes(original)==new,
+                'hash del release inmutable '+path)
         dest=os.path.join(stage,path)
         os.makedirs(os.path.dirname(dest),exist_ok=True)
-        shutil.copy2(actual,dest)
+        with open(dest,'wb') as fd:fd.write(original)
         if old is not None:
             previous=subprocess.check_output(
                 ['git','show',BASE+':'+path],cwd=ROOT)
