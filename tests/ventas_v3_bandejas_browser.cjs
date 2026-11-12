@@ -13,10 +13,10 @@ const html=`<!doctype html><html><head><meta charset="utf-8">
 <article class="impe-v3o-card" data-asignacion-id="101" data-etapa="NUEVO"
  data-nombre="Prospecto de prueba">
 <button data-v3b-accion="RECUPERACION">Revisar Recuperación</button>
-<button data-v3b-llamar="+527771234567">Llamar recuperación</button>
 <button data-v3b-accion="DESCARTAR">Descartar</button></article>
 <article class="impe-v3o-card" data-asignacion-id="102" data-etapa="RECUPERACION"
  data-nombre="Prospecto en Recuperación">
+<button data-v3b-llamar="+527771234567">Llamar recuperación</button>
 <button data-v3b-accion="REACTIVAR">Reactivar</button></article>
 <article data-asignacion-id="103" data-etapa="RECUPERACION"
  data-no-contactar="1"><button data-v3b-llamar="+527771234599">
@@ -95,7 +95,7 @@ async function run(mode) {
         [{number:'+527771234567'}]);
       const contexto=await page.evaluate(()=>JSON.parse(
         sessionStorage.getItem('impe:embudo:llamada-pendiente')||'null'));
-      assert.equal(contexto.asignacionId,'101');
+      assert.equal(contexto.asignacionId,'102');
       assert.equal(contexto.usuarioId,8);
       assert.equal(contexto.numero,'+527771234567');
       await page.getByRole('button',{name:'Llamada bloqueada'}).click();
