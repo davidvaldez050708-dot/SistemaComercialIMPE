@@ -12,6 +12,12 @@ class WhatsAppModel
         $this->connection = $database->connect();
     }
 
+    /** Compartir la conexión activa con el control de salida, sin abrir otra. */
+    public function conexionParaAutorizacion(): mysqli
+    {
+        return $this->connection;
+    }
+
     public function estructuraDisponible()
     {
         foreach (
