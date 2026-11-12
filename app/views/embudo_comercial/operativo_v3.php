@@ -38,7 +38,7 @@ $contenedorStage=[
     'CONTACTADO'=>['bi-telephone-inbound','Primer contacto y calificación'],
     'POTENCIAL'=>['bi-star','Interés y requisitos por acreditar'],
     'SEGUIMIENTO'=>['bi-calendar-check','Próximas gestiones programadas'],
-    'PROCESO_INSCRIPCION'=>['bi-file-earmark-check','Trámite institucional acreditado']
+    'PROCESO_INSCRIPCION'=>['bi-file-earmark-check','Trámite y validación institucional']
 ];
 $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     $esc,$base,$sub,$buscarTel,$puedeTelefono,$puedeLlamar,$puedeMover
