@@ -20,9 +20,11 @@ import uuid
 # Base conocida en Hostinger -> nueva versión de gestión segura.
 # La creación de un único servicio PHP adicional es explícita.
 ARCHIVOS = [
+    # Personalizacion conservada: Hostinger retiro el piloto de 13 lineas.
+    # La version de destino NO lo restaura bajo ninguna condicion.
     ("app/services/EmbudoComercialResultadoBridge.php",
-     "cab8890f6773f2acb69f5b8e6ead312b321325a1",
-     "0aca359fc0fef1e462dab6802fe428e9f62c23e7"),
+     "6d990a8b12d4856c83e61dc67ad87b34e7767748",
+     "f03f8da725dfe3645db9ce9e1a76e11c38c81427"),
     ("app/services/EmbudoComercialV3GestionPotencialService.php",
      None, "4c9bb4ef399001759a2ad469f3fb0d8e570d45b8"),
     ("app/services/EmbudoComercialRepository.php",
@@ -118,6 +120,13 @@ def validacion_contratos(stage):
        (b"prospecto_embudo_subetapas_historial" in servicio, "auditoria"),
        (b"prospecto_embudo_agenda" in servicio, "agenda"),
        (b"INTERESADO" in bridge and b"PROCESO_INSCRIPCION" in bridge, "regresiones PBX"),
+       (b"EmbudoComercialV3PilotoControlado" not in bridge and
+        b"IMPE_VENTAS_V3_PILOTO" not in bridge,
+        "sin reactivar piloto retirado de Hostinger"),
+       (b"if ($etapaAnterior==='SEGUIMIENTO' && $nueva==='INTERESADO')" in bridge,
+        "resguardo de Seguimiento"),
+       (b"'POTENCIAL','INTERESADO','PROCESO_INSCRIPCION'" in bridge,
+        "etapas avanzadas protegidas"),
        (b"gestionarPotencialV3()" in ctrl, "endpoint V3 protegido"),
        (b"hash_equals" in ctrl, "CSRF"),
        (b"historial_subetapas" in repo, "historial propietario"),
@@ -133,7 +142,7 @@ def validacion_contratos(stage):
     for ok,reason in clauses:
         if not ok:
             raise Bloqueo("contrato no verificado: "+reason)
-    print("CONTRATOS_GESTION_OK: propietario, etapa, subetapa, agenda, PBX, CSRF e historial.")
+    print("CONTRATOS_GESTION_OK: propietario, etapa, agenda, PBX, CSRF, historial y piloto ausente.")
 
 def lint_js(path):
     # Se usa Node si está disponible. El JavaScript no se ejecuta en check.
