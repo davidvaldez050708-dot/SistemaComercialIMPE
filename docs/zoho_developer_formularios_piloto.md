@@ -84,6 +84,47 @@ comprueba el único bloque añadido, conserva los componentes de producción,
 valida PHP y verifica que el parche falle de forma segura si el archivo
 cambió o ya estaba adaptado.
 
+## Preparación de una única tabla auxiliar en la BD existente
+
+La inspección de Hostinger de 2026-11-12 confirmó que
+`formulario_registros` y `formulario_inscripciones` son InnoDB y que
+`formulario_registros.id` es `INT UNSIGNED`. La tabla adicional
+`zoho_dev_registros_pendientes` todavía no existe. La definición
+`database/zoho_dev_registros_pendientes.sql` utiliza `BIGINT UNSIGNED`
+en `registro_id` (compatible para almacenar esos IDs) y NO agrega
+claves foráneas, columnas a formularios, ni cambia datos existentes.
+
+Un instalador estricto en `tools/zoho_dev_cola_instalar.php` funciona
+desde CLI con la configuración de MySQL del sitio. Modos:
+
+- `--check`: consulta exclusivamente INFORMATION_SCHEMA, informa
+  compatibilidad y existencia de la cola; NO realiza escrituras.
+- `--install --confirm-new-table`: requiere confirmación explícita,
+  comprueba las tablas existentes y ejecuta un único
+  `CREATE TABLE IF NOT EXISTS zoho_dev_registros_pendientes` si falta;
+  después comprueba estructura e índice único. No sincroniza ni activa
+  cron y no sustituye el modelo. Requiere respaldo vigente y autorización
+  separada para cualquier DDL en la BD operativa.
+- Si la cola ya existe, la valida y NO realiza DDL adicional; si el
+  esquema es incompatible, aborta en lugar de alterarlo.
+
+Para comprobar sin escribir desde la copia privada del piloto:
+
+~~~bash
+php "$HOME/crm-zoho-developer-piloto/tools/zoho_dev_cola_instalar.php" --check
+~~~
+
+La prueba en GitHub Actions ejecuta tanto la instalación como la
+reinstalación simulada contra una BD MySQL efímera. **No ejecutar la
+instalación en el servidor hasta que esa prueba termine correctamente y
+el respaldo de producción haya sido verificado.**
+
+Nótese que el piloto solo exporta correos de prueba `@example.com`
+autorizados explícitamente; no se debe registrar un prospecto ficticio
+mediante el formulario productivo, porque allí se ejecuta primero la
+incorporación al embudo comercial. La prueba funcional de envío de
+formulario debe realizarse en un entorno de prueba separado.
+
 ## Antes de habilitar: requisitos
 
 1. Trabajar en una **copia/staging** de la base de datos y del sitio,
