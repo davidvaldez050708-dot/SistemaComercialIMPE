@@ -52,7 +52,12 @@ def rafaga(puerto, usuarios, cookies, observar):
         for nombre, estado, ms in tarea.result()[0]:
             rutas.setdefault(nombre, Counter())[str(estado)] += 1
             latencias.setdefault(nombre, []).append(round(ms, 1))
-    return {"rutas": rutas, "latencias_ms": latencias, "muestras_mysql": muestras}
+    return {
+        "rutas": rutas, "latencias_ms": latencias, "muestras_mysql": muestras,
+        "pico_simultaneas_observado": max(m[2] for m in muestras),
+        "pico_activas_observado": max(m[2] - m[3] for m in muestras),
+        "pico_sleep_observado": max(m[3] for m in muestras),
+    }
 
 
 def main():
@@ -72,7 +77,7 @@ def main():
     args.php_cgi = args.max_persistentes = None
     args.mysqlnd = "activas"
 
-    observador = iniciar(args.php, args.port, "observer")
+    observador = iniciar(args.php, args.port, "observer-lsapi")
     try:
         muestra(observador)  # Rechaza datadir ajeno al laboratorio antes de ejecutar DDL.
         sql = preparar_base(args)
@@ -117,7 +122,8 @@ def main():
                 resultado.update({
                     "perfil": args.perfil, "usuarios": args.usuarios, "sonda": sonda,
                     "inicio_rafaga_s": inicio_rafaga,
-                    "pico_aperturas_s": limite.ventana.pico_intentos,
+                    "pico_intentos_apertura_s": limite.ventana.pico_intentos,
+                    "pico_aperturas_admitidas_s": limite.ventana.pico_admitidas,
                     "rechazos_apertura": sum(f["rechazadas"] for f in limite.ventana.por_segundo.values()),
                     "aperturas_por_segundo": limite.ventana.por_segundo,
                 })

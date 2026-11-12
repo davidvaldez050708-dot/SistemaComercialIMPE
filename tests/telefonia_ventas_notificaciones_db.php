@@ -21,7 +21,18 @@ try {
  $db->query('CREATE TABLE rol_permisos(rol_id INT,permiso_id INT)');$db->query('INSERT INTO rol_permisos VALUES (3,1),(3,2),(3,3)');
  (new TelefoniaExtensionService($db))->asegurarEstructura();
  $db->query("INSERT INTO telefonia_extensiones(usuario_id,extension,created_at,updated_at) VALUES (8,'150',DATE_SUB(NOW(),INTERVAL 20 DAY),DATE_SUB(NOW(),INTERVAL 20 DAY)),(7,'100',DATE_SUB(NOW(),INTERVAL 20 DAY),DATE_SUB(NOW(),INTERVAL 20 DAY))");
- new TelefoniaDisponibilidadService($db);
+ $db->query("CREATE TABLE telefonia_disponibilidad (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, origen_usuario INT NOT NULL,
+     origen_extension VARCHAR(12) NOT NULL, destino_usuario INT NOT NULL,
+     destino_extension VARCHAR(12) NOT NULL, referencia VARCHAR(100) NOT NULL,
+     numero VARCHAR(40) NOT NULL, ruta_json TEXT, estado VARCHAR(24) NOT NULL,
+     expires_at DATETIME NOT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL,
+     contacto VARCHAR(100) NOT NULL DEFAULT '', telefono VARCHAR(40) NOT NULL DEFAULT '',
+     nota TEXT, devolucion VARCHAR(24) NOT NULL DEFAULT '', version INT NOT NULL DEFAULT 1
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+ $migration=file_get_contents(dirname(__DIR__).'/database/migrations/2026_10_18_transferencia_operaciones_notificaciones.sql');
+ $db->multi_query($migration);
+ do {if ($res=$db->store_result()) $res->free();} while ($db->more_results() && $db->next_result());
  $db->query('CREATE TABLE telefonia_contactos_personales(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,usuario_id INT,nombre VARCHAR(90),telefono VARCHAR(18),UNIQUE KEY own_phone(usuario_id,telefono))');
  $db->query("INSERT INTO telefonia_contactos_personales VALUES (1,8,'Ana','+525551110000'),(2,9,'Ajena','+525559998877')");
  require_once dirname(__DIR__).'/app/services/TelefoniaMarcacionesVentasService.php';new TelefoniaMarcacionesVentasService($db);
@@ -35,7 +46,7 @@ try {
  $contactCollation=$db->query("SELECT COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='telefonia_contactos_personales' AND COLUMN_NAME='nombre'")->fetch_assoc()['COLLATION_NAME'];
  $resultCollation=$db->query("SELECT COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='telefonia_ventas_resultados' AND COLUMN_NAME='prospecto_nombre'")->fetch_assoc()['COLLATION_NAME'];
  vcheck($contactCollation==='utf8mb4_unicode_ci'&&$resultCollation==='utf8mb4_general_ci','Fixture con dos collations distintas para detectar UNION incompatible');
- $events=new ZadarmaWebhookEventStoreService($db);$results=new TelefoniaResultadoVentasService($db);$base=time()-300;
+ $events=new ZadarmaWebhookEventStoreService($db);$events->asegurarEstructura();$results=new TelefoniaResultadoVentasService($db);$base=time()-300;
  $event=function(string $ref,string $type,string $ext='150',int $seconds=0,array $extra=[])use($events,$base){static $offset=0;$at=date('Y-m-d H:i:s',$base);$events->registrar($extra+['event'=>$type,'pbx_call_id'=>$ref,'internal'=>$ext,'caller_id'=>'+525551112233','destination'=>'+525551112233','received_at'=>$at,'call_start'=>$at,'duration'=>$seconds]);};
 
 

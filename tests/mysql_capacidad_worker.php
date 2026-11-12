@@ -4,7 +4,7 @@ declare(strict_types=1);
 // Protocolo de laboratorio. Nunca utiliza las credenciales del CRM.
 $port = filter_var($argv[1] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1024, 'max_range' => 65535]]);
 $mode = $argv[2] ?? '';
-if (PHP_SAPI !== 'cli' || !$port || !in_array($mode, ['observer', 'worker'], true)) {
+if (PHP_SAPI !== 'cli' || !$port || !in_array($mode, ['observer', 'observer-lsapi', 'worker'], true)) {
     exit(2);
 }
 
@@ -17,17 +17,22 @@ function abrir(int $port, bool $observador, bool $persistente = false): mysqli
     return $db;
 }
 
-if ($mode === 'observer') {
+if ($mode !== 'worker') {
     $db = abrir($port, true);
     $dataDir = str_replace('\\', '/', $db->query('SELECT @@datadir')->fetch_row()[0]);
     if (!preg_match('~/mysql-capacidad-[a-f0-9]+/data/?$~D', $dataDir)) {
         exit(3);
     }
     while (fgets(STDIN) !== false) {
-        $sesiones = $db->query("SELECT COUNT(*) total, COALESCE(SUM(COMMAND='Sleep'),0) ociosas
-            FROM information_schema.PROCESSLIST WHERE USER='impe_capacity'")->fetch_assoc();
+        $sesiones = $db->query("SELECT ID, HOST, COMMAND FROM information_schema.PROCESSLIST
+            WHERE USER='impe_capacity' ORDER BY ID")->fetch_all(MYSQLI_ASSOC);
+        $ociosas = count(array_filter($sesiones, static fn(array $fila): bool => $fila['COMMAND'] === 'Sleep'));
         $intentos = $db->query("SHOW GLOBAL STATUS LIKE 'Connections'")->fetch_row()[1];
-        echo json_encode([microtime(true), (int)$intentos, (int)$sesiones['total'], (int)$sesiones['ociosas']]), "\n";
+        $muestra = [microtime(true), (int)$intentos, count($sesiones), $ociosas];
+        if ($mode === 'observer-lsapi') {
+            $muestra[] = $sesiones;
+        }
+        echo json_encode($muestra), "\n";
         fflush(STDOUT);
     }
     exit(0);
