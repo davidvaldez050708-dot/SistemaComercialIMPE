@@ -192,6 +192,10 @@ final class EmbudoComercialV3InscripcionService
             ];
         } catch (Throwable $e) {
             $this->db->rollback();
+            if ($e instanceof mysqli_sql_exception && (int)$e->getCode()===1062) {
+                throw new DomainException(
+                    'Esta solicitud ya quedó vinculada a otro expediente. Solicita revisión institucional.',0,$e);
+            }
             throw $e;
         }
     }
