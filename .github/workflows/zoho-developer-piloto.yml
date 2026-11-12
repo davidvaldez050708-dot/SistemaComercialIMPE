@@ -6,6 +6,7 @@ on:
       - 'app/services/ZohoDeveloperRegistroSync.php'
       - 'app/services/ZohoDeveloperRegistroWorker.php'
       - 'tools/zoho_developer_registros_worker.php'
+      - 'tools/zoho_developer_api_sonda.php'
       - 'tests/zoho_developer_registro_smoke.php'
       - 'tests/zoho_developer_registro_integracion_mysql.php'
       - 'tools/zoho_dev_cola_instalar.php'
@@ -54,6 +55,7 @@ jobs:
           php -l app/services/ZohoDeveloperRegistroSync.php
           php -l app/services/ZohoDeveloperRegistroWorker.php
           php -l tools/zoho_developer_registros_worker.php
+          php -l tools/zoho_developer_api_sonda.php
           php -l tools/zoho_dev_cola_instalar.php
           php -l tests/zoho_developer_registro_smoke.php
           php -l tests/zoho_developer_registro_integracion_mysql.php
