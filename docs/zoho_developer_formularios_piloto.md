@@ -219,6 +219,41 @@ el guardado operativo ejecuta antes la incorporación comercial.
 La demostración extremo a extremo de un formulario ficticio debe
 realizarse en un entorno que no asigne prospectos reales a asesores.
 
+## Prueba del gancho comercial de Hostinger sin otra BD permanente
+
+GitHub Actions ejecuta un segundo ensayo con **otro esquema MySQL
+efímero del mismo contenedor de CI**, `impe_zoho_puente_ci`.
+
+- `tests/zoho_hostinger_puente_ci_fixture.py` genera un **modelo
+  sintético** que conserva el contrato conocido del método `guardar()` de
+  Hostinger y le aplica el **mismo parche conciliador real** de 18 líneas.
+- El servicio `ProspectoCentralIncorporacionService` se reemplaza por
+  un doble inerte que **no tiene tablas de asesores, prospectos ni
+  asignaciones**, y verifica que la llamada comercial ocurra ANTES
+  del encolado.
+- `tests/zoho_hostinger_puente_mysql_ci.php` valida el guardado sin
+  configuración, guardado autorizado, exclusión de correo real y
+  formulario de inscripción, excepciones del servicio comercial y
+  fallo de tabla de cola sin perder registros.
+- El **worker real** se ejecuta con OAuth/upsert simulados, comprobando
+  estado enviado, dos Leads sintéticos y la idempotencia de reintentos.
+- Controles estrictos impiden ejecutar el ensayo con base, carpeta,
+  `HOME` o credenciales de producción; el esquema y archivos efímeros
+  se eliminan junto con el runner CI.
+
+**Límite esencial:** el archivo original personalizado de Hostinger
+**no está dentro de GitHub**, y no se transmite ni publica como
+fixture. Por lo tanto, el ensayo usa un doble sintético del modelo y
+verifica la integración del parche real con el servicio real y MySQL,
+**no equivale** a ejecutar íntegramente el modelo productivo sobre
+una réplica. La identidad del modelo desplegado, verificada en
+Hostinger con SHA256 `74699f0b75430ea6...`, se sigue comprobando
+mediante el publicador `--check` en solo lectura.
+
+No es necesario crear otra base de datos en Hostinger para estas
+pruebas. Se conservan sin cambios la BD productiva, las asignaciones
+comerciales, la configuración Zoho desactivada y cron.
+
 ## Ensayo real del formulario HTTP en un entorno aislado de GitHub Actions
 
 Además de la integración CLI existente, se añadió
