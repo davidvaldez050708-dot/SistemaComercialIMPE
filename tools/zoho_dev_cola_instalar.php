@@ -5,17 +5,41 @@
  * No envía registros a Zoho, no activa cron, no cambia tablas existentes.
  */
 if (PHP_SAPI !== 'cli' || !in_array($argv[1] ?? '', ['--check', '--install'], true)) {
-    fwrite(STDERR, "Uso: php tools/zoho_dev_cola_instalar.php --check|--install --confirm-new-table\n");
+    fwrite(STDERR, "Uso: php tools/zoho_dev_cola_instalar.php --check [--site RUTA] | --install --confirm-new-table [--site RUTA]\n");
     exit(2);
 }
 $modo = $argv[1];
-if (($modo === '--check' && count($argv) !== 2) ||
-    ($modo === '--install' && (count($argv) !== 3 || $argv[2] !== '--confirm-new-table'))) {
+
+// La copia Git no posee los ajustes privados de MySQL de Hostinger.
+// --site permite leer exclusivamente la configuración REAL, sin copiarla.
+// Para pruebas CI sin --site se conserva la configuración local de contenedor.
+$rutaSitio = null;
+if ($modo === '--check' && count($argv) === 4 && ($argv[2] ?? '') === '--site') {
+    $rutaSitio = $argv[3];
+} elseif ($modo === '--install' && count($argv) === 5 &&
+          ($argv[2] ?? '') === '--confirm-new-table' && ($argv[3] ?? '') === '--site') {
+    $rutaSitio = $argv[4];
+} elseif (!(($modo === '--check' && count($argv) === 2) ||
+            ($modo === '--install' && count($argv) === 3 &&
+             $argv[2] === '--confirm-new-table'))) {
     fwrite(STDERR, "ERROR: argumentos no autorizados.\n");
     exit(2);
 }
 
-require_once __DIR__ . '/../config/db_connection.php';
+if ($rutaSitio !== null) {
+    $home = realpath((string)(getenv('HOME') ?: ''));
+    $esperado = $home === false ? false :
+        realpath($home . '/domains/fundacionrededumex.org/public_html');
+    $ruta = realpath($rutaSitio);
+    if ($home === false || $esperado === false || $ruta === false ||
+        $ruta !== $esperado || !is_file($ruta . '/config/db_connection.php')) {
+        fwrite(STDERR, "BLOQUEADO: RUTA_SITIO_NO_AUTORIZADA\n");
+        exit(2);
+    }
+    require_once $ruta . '/config/db_connection.php';
+} else {
+    require_once __DIR__ . '/../config/db_connection.php';
+}
 
 function zohoTablaMetadata(mysqli $db, string $name): ?array
 {
