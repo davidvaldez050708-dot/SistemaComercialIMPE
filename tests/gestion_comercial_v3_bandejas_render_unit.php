@@ -72,8 +72,9 @@ verificarBandejas(strpos($html,'No contactar')!==false,
     'etiqueta institucional de restricción');
 verificarBandejas(strpos($html,'id="impe-v3b-dialog"')!==false,
     'modal de recuperación está disponible con permiso');
-verificarBandejas(strpos($html,'value="NO_CONTACTAR"')===false,
-    'no habilitar estado sin consentimiento omnicanal');
+verificarBandejas(strpos($html,'value="NO_CONTACTAR"')!==false &&
+    strpos($html,'name="confirmacion_no_contactar"')!==false,
+    'No contactar exige solicitud expresa y confirmación separada');
 $vista='descartados';
 ob_start();
 require __DIR__.'/../app/views/embudo_comercial/bandejas_v3.php';
