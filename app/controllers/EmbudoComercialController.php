@@ -62,23 +62,36 @@ final class EmbudoComercialController
         // No reconfigurar el Kanban normal ni exponerla a asesores.
         $previsualizacionV3=$vista==='embudo' && $supervisor &&
             ($_GET['previsualizacion_v3']??null)==='1';
+        // El acceso normal y los movimientos V1 no cambian. El asesor puede
+        // optar por la vista operativa institucional V3 desde URL explícita.
+        // Sólo consulta SUS asignaciones; no enciende el piloto del Bridge.
+        $operativoV3=$vista==='embudo' && !$supervisor &&
+            (int)($_SESSION['rol_id']??0)===3 &&
+            tienePermiso('ventas.embudo.ver') &&
+            ($_GET['operativo_v3']??null)==='1';
         $error='';
         $disponible=false;
         $opciones=['programas'=>[],'asesores'=>[]];
         $tablero=['columnas'=>[],'conteos'=>[],'total'=>0];
+        $paginasV3=[];
         $filtros=[
             'buscar'=>'','origen'=>'','programa'=>'','vencidos'=>false,
             'asesor'=>0,'paginas'=>[]
         ];
         try {
             $filtros=EmbudoComercialRepository::filtros($_GET,$supervisor);
+            if($operativoV3){
+                $paginasV3=EmbudoComercialRepository::paginasV3Operativo($_GET);
+            }
             $repo=new EmbudoComercialRepository((new Database())->connect(false));
             $disponible=$repo->disponible();
             if ($disponible) {
                 $opciones=$repo->opciones($usuarioId,$supervisor);
                 $tablero=$previsualizacionV3
                     ?$repo->listadoV3Preparacion($usuarioId,$supervisor,$filtros)
-                    :$repo->listado($usuarioId,$supervisor,$filtros,$vista);
+                    :($operativoV3
+                        ?$repo->listadoV3Operativo($usuarioId,$filtros,$paginasV3)
+                        :$repo->listado($usuarioId,$supervisor,$filtros,$vista));
             }
         } catch (DomainException $e) {
             http_response_code(400);
@@ -88,10 +101,11 @@ final class EmbudoComercialController
             error_log('[embudo_comercial_consulta] '.get_class($e).' codigo='.(int)$e->getCode());
             $error='No fue posible consultar el embudo comercial en este momento.';
         }
-        $archivo=$previsualizacionV3?'previsualizacion_v3':'index';
+        $archivo=$previsualizacionV3?'previsualizacion_v3'
+            :($operativoV3?'operativo_v3':'index');
         $this->presentar($archivo,$vista,compact(
             'vista','usuarioId','supervisor','error','disponible','opciones',
-            'tablero','filtros','previsualizacionV3'
+            'tablero','filtros','previsualizacionV3','operativoV3','paginasV3'
         ));
     }
 
@@ -106,6 +120,10 @@ final class EmbudoComercialController
         $id=filter_var($_GET['id']??null,FILTER_VALIDATE_INT,
             ['options'=>['min_range'=>1]]);
         $prospecto=null;
+        $operativoV3=$vista==='embudo' && !$supervisor &&
+            (int)($_SESSION['rol_id']??0)===3 &&
+            tienePermiso('ventas.embudo.ver') &&
+            ($_GET['operativo_v3']??null)==='1';
         $error='';
         if (!$id) {
             http_response_code(404);
@@ -114,7 +132,9 @@ final class EmbudoComercialController
             try {
                 $repo=new EmbudoComercialRepository((new Database())->connect(false));
                 if (!$repo->disponible()) throw new RuntimeException('Estructura no instalada.');
-                $prospecto=$repo->detalle($usuarioId,$supervisor,(int)$id,$vista);
+                $prospecto=$repo->detalle(
+                    $usuarioId,$supervisor,(int)$id,$vista,$operativoV3
+                );
                 if (!$prospecto) {
                     http_response_code(404);
                     $error='El prospecto no está disponible en esta vista.';
@@ -126,9 +146,95 @@ final class EmbudoComercialController
             }
         }
         $this->presentar('detalle',$vista,compact(
-            'vista','usuarioId','supervisor','prospecto','error'
+            'vista','usuarioId','supervisor','prospecto','error','operativoV3'
         ));
     }
+    /**
+     * POST exclusivo de la V3 operativa para asesores.
+     * Reutiliza el movimiento V1 verificado y su transacción/auditoría,
+     * con lista blanca ADICIONAL que impide mover sin evidencia a Potencial,
+     * Recuperación o Proceso Inscripción mientras esa política no se active.
+     *
+     * No activa el piloto PBX, ni altera la telefonía ni otros endpoints.
+     */
+    public function moverEtapaV3(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store, max-age=0');
+        $reply=static function(bool $ok,string $message,int $status,array $extra=[]): void {
+            http_response_code($status);
+            echo json_encode(array_merge(['ok'=>$ok,'mensaje'=>$message],$extra),
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        };
+        if(($_SERVER['REQUEST_METHOD']??'')!=='POST'){
+            $reply(false,'Método no permitido.',405);
+            return;
+        }
+        $uid=(int)($_SESSION['usuario_id']??0);
+        if($uid<1 || (int)($_SESSION['rol_id']??0)!==3 ||
+            !tienePermiso('ventas.embudo.ver') ||
+            !tienePermiso('ventas.embudo.mover')) {
+            $reply(false,'Esta operación no está autorizada.',403);
+            return;
+        }
+        // El dashboard_head ya entrega el token de sesión a los formularios
+        // del CRM. Se comprueba aquí de forma efectiva (no solo en JS).
+        $token=(string)($_SESSION['csrf_token']??'');
+        $received=(string)($_SERVER['HTTP_X_CSRF_TOKEN']??'');
+        if($token==='' || $received==='' ||
+            !hash_equals($token,$received)){
+            $reply(false,'Sesión de seguridad vencida. Recarga la página.',403);
+            return;
+        }
+        foreach(['asignacion_id','etapa_anterior','etapa_nueva',
+                 'motivo','proxima_accion'] as $key) {
+            if(isset($_POST[$key]) && !is_string($_POST[$key])) {
+                $reply(false,'Datos de movimiento inválidos.',422);
+                return;
+            }
+        }
+        $asig=filter_var($_POST['asignacion_id']??null,
+            FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if(!$asig){
+            $reply(false,'La asignación no es válida.',422);
+            return;
+        }
+        $anterior=(string)($_POST['etapa_anterior']??'');
+        $nueva=(string)($_POST['etapa_nueva']??'');
+        $motivo=trim((string)($_POST['motivo']??''));
+        $fecha=(string)($_POST['proxima_accion']??'');
+        if(mb_strlen($motivo)>190 || mb_strlen($motivo)<8) {
+            $reply(false,'Describe brevemente la gestión (8 a 190 caracteres).',422);
+            return;
+        }
+        try{
+            require_once __DIR__.'/../services/EmbudoComercialV3MovimientosPermitidos.php';
+            EmbudoComercialV3MovimientosPermitidos::validar($anterior,$nueva);
+            $db=(new Database())->connect(false);
+            if(EmbudoComercialV3MovimientosPermitidos::requiereConversacion(
+                $anterior,$nueva
+            ) && !EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
+                $db,$uid,(int)$asig
+            )) {
+                throw new DomainException(
+                    'El primer contacto requiere conversación humana '.
+                    'acreditada en el resultado PBX de esta asignación.'
+                );
+            }
+            require_once __DIR__.'/../services/EmbudoComercialMovimientoService.php';
+            $mov=(new EmbudoComercialMovimientoService($db))->moverManual(
+                $uid,(int)$asig,$anterior,$nueva,$motivo,$fecha
+            );
+            $reply(true,'Movimiento registrado y auditado.',200,['movimiento'=>$mov]);
+        }catch(DomainException $e){
+            $reply(false,$e->getMessage(),409);
+        }catch(Throwable $e){
+            error_log('[ventas_v3_movimiento] '.get_class($e).
+                ' codigo='.(int)$e->getCode());
+            $reply(false,'No se pudo confirmar el movimiento. No se guardó.',503);
+        }
+    }
+
     /** POST exclusivo de Asesor: cambio de etapa con control de concurrencia. */
     public function moverEtapa(): void
     {

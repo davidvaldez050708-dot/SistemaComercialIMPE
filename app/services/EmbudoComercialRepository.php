@@ -336,7 +336,145 @@ final class EmbudoComercialRepository
         ];
     }
 
-    public function detalle(int $usuarioId,bool $supervisor,int $prospectoId,string $vista): ?array
+    /**
+     * V3 operativo para asesor, DESACTIVADO en el acceso habitual.
+     *
+     * Mantiene intactas las etapas y los resultados vigentes: es una vista
+     * operativa de llamadas, historial y movimientos seguros compatibles
+     * con el backend V1. No crea nuevos códigos ni confirma una inscripción.
+     *
+     * Las consultas pasan por condiciones() para limitar estrictamente la
+     * propiedad a las asignaciones vigentes del asesor autenticado.
+     */
+    public static function paginasV3Operativo(array $get): array
+    {
+        $grupos=['NUEVO','CONTACTADO','POTENCIAL',
+            'SEGUIMIENTO','PROCESO_INSCRIPCION','REVISION_LEGACY'];
+        $p=[];
+        foreach ($grupos as $grupo) {
+            $key='p3_'.strtolower($grupo);
+            $value=$get[$key]??'1';
+            if (!is_string($value) && !is_int($value)) {
+                throw new DomainException('Página de embudo V3 no válida.');
+            }
+            $value=(string)$value;
+            if (!preg_match('/^[1-9][0-9]{0,4}$/D',$value) ||
+                (int)$value>10000) {
+                throw new DomainException('Página de embudo V3 no válida.');
+            }
+            $p[$grupo]=(int)$value;
+        }
+        return $p;
+    }
+
+    public function listadoV3Operativo(int $usuarioId,array $f,array $paginas): array
+    {
+        if($usuarioId<1 || (int)($_SESSION['usuario_id']??0)!==$usuarioId ||
+            (int)($_SESSION['rol_id']??0)!==3 ||
+            !tienePermiso('ventas.embudo.ver')) {
+            throw new DomainException('El embudo operativo pertenece al asesor autenticado.');
+        }
+        $grupoLabels=[
+            'NUEVO'=>'Nuevos',
+            'CONTACTADO'=>'Contactados',
+            'POTENCIAL'=>'Potenciales',
+            'SEGUIMIENTO'=>'Seguimiento',
+            'PROCESO_INSCRIPCION'=>'Proceso Inscripción',
+            'REVISION_LEGACY'=>'Clasificación pendiente'
+        ];
+        foreach (['prospecto_embudo_subetapas',
+                  'prospecto_embudo_subetapas_historial'] as $tabla) {
+            $meta=$this->rows("SELECT ENGINE FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?",[$tabla]);
+            if(!$meta || strtoupper((string)$meta[0]['ENGINE'])!=='INNODB') {
+                throw new DomainException('La estructura de subetapas V3 no está instalada.');
+            }
+        }
+        [$from,$args]=$this->condiciones($usuarioId,false,$f);
+        $expr=self::clasificacionV3Sql();
+        $totales=[];
+        foreach($this->rows("SELECT $expr grupo, COUNT(*) total
+                $from GROUP BY $expr",$args) as $fila) {
+            $totales[(string)$fila['grupo']]=(int)$fila['total'];
+        }
+        $cols=[];
+        foreach($grupoLabels as $key=>$label){
+            $total=$totales[$key]??0;
+            $max=max(1,(int)ceil($total/self::POR_COLUMNA));
+            $actual=min($max,(int)($paginas[$key]??1));
+            $offset=($actual-1)*self::POR_COLUMNA;
+            $data=$this->rows(
+                "SELECT a.id asignacion_id,a.prospecto_id,a.asesor_id,
+                    a.asignado_at,a.fecha_trabajo,
+                    p.nombre_completo,p.telefono_original,
+                    COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
+                    ag.revision_fecha,e.etapa etapa_original,
+                    (SELECT st.subetapa FROM prospecto_embudo_subetapas st
+                     WHERE st.asignacion_id=a.id LIMIT 1) subetapa,
+                    (SELECT GROUP_CONCAT(DISTINCT i.nombre_original SEPARATOR ' · ')
+                     FROM prospecto_intereses i WHERE i.prospecto_id=p.id) programas,
+                    (SELECT o.tipo_origen FROM prospecto_origenes o
+                     WHERE o.prospecto_id=p.id AND o.origen_padre_id IS NULL
+                     ORDER BY o.id DESC LIMIT 1) tipo_origen,
+                    (SELECT pref.valor_original FROM prospecto_preferencias_contacto pref
+                     JOIN prospecto_origenes o ON o.id=pref.origen_id
+                     WHERE o.prospecto_id=p.id ORDER BY o.id DESC LIMIT 1)
+                     horario_contacto
+                 $from AND $expr=?
+                 ORDER BY CASE
+                   WHEN COALESCE(ag.proxima_accion_at,a.proxima_accion_at)
+                         <UTC_TIMESTAMP() THEN 0
+                   WHEN ag.revision_fecha IS NOT NULL
+                         AND ag.revision_fecha<? THEN 0
+                   ELSE 1 END,
+                   COALESCE(ag.proxima_accion_at,a.proxima_accion_at,
+                      CONCAT(ag.revision_fecha,' 12:00:00'),
+                      CONCAT(a.fecha_trabajo,' 12:00:00'),a.asignado_at),
+                   a.id
+                 LIMIT ? OFFSET ?",
+                array_merge($args,[$key,
+                    (new DateTimeImmutable('today',
+                     new DateTimeZone('America/Mexico_City')))->format('Y-m-d'),
+                    self::POR_COLUMNA,$offset])
+            );
+            $cols[$key]=[
+                'etiqueta'=>$label,'total'=>$total,'pagina'=>$actual,
+                'paginas'=>$max,'registros'=>$data
+            ];
+        }
+        $ids=[];
+        foreach($cols as $col)foreach($col['registros'] as $item){
+            $id=(int)$item['asignacion_id'];
+            if($id>0)$ids[$id]=$id;
+        }
+        require_once __DIR__.'/EmbudoComercialV3IndicadoresVista.php';
+        $dia=(new DateTimeImmutable('today',
+            new DateTimeZone('America/Mexico_City')))->format('Y-m-d');
+        $indicadores=(new EmbudoComercialV3IndicadoresVista($this->db))
+            ->intentosDelDia(array_values($ids),$dia);
+        foreach($cols as &$col){
+            foreach($col['registros'] as &$item) {
+                $item['intentos_hoy']=$indicadores[(int)$item['asignacion_id']]??null;
+            }
+            unset($item);
+        }
+        unset($col);
+        $fuera=($totales['RECUPERACION']??0)+($totales['DESCARTADO']??0);
+        return [
+            'columnas'=>$cols,
+            'total_activos'=>array_sum($totales)-$fuera,
+            'total'=>array_sum($totales),
+            'externos'=>[
+                'RECUPERACION'=>$totales['RECUPERACION']??0,
+                'DESCARTADO'=>$totales['DESCARTADO']??0
+            ],
+            'dia_indicadores'=>$dia,
+            'modo'=>'V3_OPERATIVO_ASESOR_COMPATIBLE_V1'
+        ];
+    }
+
+    public function detalle(int $usuarioId,bool $supervisor,int $prospectoId,string $vista,
+        bool $operativoV3=false): ?array
     {
         if ($prospectoId<1) return null;
         $params=[$prospectoId];
@@ -355,6 +493,9 @@ final class EmbudoComercialRepository
         if (!$supervisor) {$sql.=' AND a.asesor_id=?';$params[]=$usuarioId;}
         if ($vista==='recuperacion') $sql.=" AND e.etapa IN ('RECUPERACION','EN_CONTACTO')";
         elseif ($vista==='descartados') $sql.=" AND COALESCE(e.etapa,'NUEVO')='DESCARTADO'";
+        elseif($operativoV3) $sql.=" AND COALESCE(e.etapa,'NUEVO') IN (
+            'NUEVO','CONTACTADO','POTENCIAL','SEGUIMIENTO',
+            'PROCESO_INSCRIPCION','INTERESADO','PAGO_CONFIRMADO')"; 
         else $sql.=" AND COALESCE(e.etapa,'NUEVO') IN (
             'NUEVO','CONTACTADO','INTERESADO','SEGUIMIENTO','PAGO_CONFIRMADO')";
         $sql.=' LIMIT 1';
