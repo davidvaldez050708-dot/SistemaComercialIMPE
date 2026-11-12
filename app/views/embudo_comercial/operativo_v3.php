@@ -1,6 +1,6 @@
 <?php
 /**
- * Gestión comercial V3: pantalla de TRABAJO del asesor, acceso voluntario.
+ * Gestión comercial V3: pantalla principal del asesor autorizado.
  * Conserva el teléfono del shell, Mis llamadas y movimientos V1 seguros.
  * Nunca confirma Potenciales/pagos/Inscritos ni modifica resultados PBX.
  */
@@ -12,7 +12,6 @@ $sub=EmbudoComercialPoliticaPropuesta::SUBETAPAS;
 $base=BASE_URL.'index.php?';
 $params=[
     'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo',
-    'operativo_v3'=>'1',
     'origen'=>$filtros['origen'],'programa'=>$filtros['programa'],
     'buscar'=>$filtros['buscar'],'vencidos'=>$filtros['vencidos']?'1':'0'
 ];
@@ -51,7 +50,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     $destinos=implode(',',$propuestas);
     $detalle=$base.http_build_query([
         'controller'=>'embudoComercial','action'=>'detalle',
-        'vista'=>'embudo','operativo_v3'=>'1','id'=>(int)$p['prospecto_id']
+        'vista'=>'embudo','id'=>(int)$p['prospecto_id']
     ]);
     $historial=$base.http_build_query([
         'controller'=>'telefonia','action'=>'misLlamadas',
@@ -60,7 +59,10 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     ]);
     $st=(string)($p['subetapa']??'');
     $label=$st!==''&&isset($sub[$etapa][$st])
-        ?$sub[$etapa][$st]:'Subetapa pendiente';
+        ?$sub[$etapa][$st]:'';
+    // Etapas históricas: presentar etiquetas sin modificar la BD.
+    if($real==='INTERESADO')$label='Interesado · registro anterior';
+    if($real==='PAGO_CONFIRMADO')$label='Pago histórico · verificar';
     $n=(int)($p['intentos_hoy']['intentos']??0);
     $n=max(0,$n);
     $avance=min(3,$n);
@@ -82,22 +84,17 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <i class="bi bi-mortarboard" aria-hidden="true"></i>
             <?= $esc(trim((string)($p['programas']??''))?:'Programa pendiente') ?>
         </p>
-        <div class="impe-v3o-sub">
+        <?php if($label!=='' || $legacy): ?>
+        <div class="impe-v3o-sub" title="<?= $esc($legacy?'Registro pendiente de revisar':$label) ?>">
             <i class="bi bi-bookmark-check" aria-hidden="true"></i>
-            <span><?= $esc($legacy?'Requiere conciliación comercial':$label) ?></span>
+            <span><?= $esc($legacy?'Revisar registro anterior':$label) ?></span>
         </div>
+        <?php endif; ?>
         <?php if($etapa==='NUEVO' && !$legacy): ?>
-        <div class="impe-v3o-metrica">
-            <div class="impe-v3o-metrica-titulo"><span>Intentos sin contacto hoy</span><strong><?= $n ?>/3</strong></div>
-            <div class="impe-v3o-barra" role="progressbar" aria-label="Intentos PBX verificados"
-                 aria-valuemin="0" aria-valuemax="3" aria-valuenow="<?= $avance ?>">
-                <span style="width:<?= (int)round($avance*100/3) ?>%"></span>
-            </div>
-            <small>Indicador PBX, no activa cambios de etapa</small>
-        </div>
-        <?php elseif($n>0): ?>
-        <p class="impe-v3o-metrica-breve"><i class="bi bi-telephone-x" aria-hidden="true"></i>
-            <?= $n ?> intento<?= $n===1?'':'s' ?> sin conversación hoy</p>
+        <span class="impe-v3o-intentos" title="Intentos sin contacto hoy; no generan cambios automáticos"
+              aria-label="<?= $n ?> de 3 intentos sin conversación hoy">
+            <i class="bi bi-telephone-x" aria-hidden="true"></i><?= $avance ?>/3
+        </span>
         <?php endif; ?>
         <?php if(!empty($p['horario_contacto'])): ?>
         <p class="impe-v3o-meta"><i class="bi bi-clock" aria-hidden="true"></i>
@@ -113,27 +110,28 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         <p class="impe-v3o-meta"><i class="bi bi-calendar3" aria-hidden="true"></i>
             Jornada: <?= $esc(EmbudoComercialPresentacion::fechaLocal($p['fecha_trabajo']??'')) ?></p>
         <?php endif; ?>
-        <div class="impe-v3o-acciones">
+        <div class="impe-v3o-acciones" aria-label="Acciones comerciales">
             <?php if($puedeLlamar && trim((string)($p['telefono_original']??''))!==''): ?>
             <button type="button" class="impe-v3o-accion impe-v3o-accion--llamar"
                     data-embudo-marcar="<?= $esc($p['telefono_original']) ?>"
-                    title="Abrir teléfono persistente para este prospecto">
-                <i class="bi bi-telephone" aria-hidden="true"></i><span>Llamar</span>
+                    title="Llamar al prospecto" aria-label="Llamar al prospecto">
+                <i class="bi bi-telephone" aria-hidden="true"></i>
             </button>
             <?php endif; ?>
             <?php if($puedeTelefono): ?>
             <a class="impe-v3o-accion" href="<?= $esc($historial) ?>"
-               title="Consultar llamadas y registrar resultados">
-                <i class="bi bi-journal-check" aria-hidden="true"></i><span>Mis llamadas</span>
+               title="Mis llamadas y resultados" aria-label="Mis llamadas y resultados">
+                <i class="bi bi-journal-check" aria-hidden="true"></i>
             </a>
             <?php endif; ?>
-            <a class="impe-v3o-accion" href="<?= $esc($detalle) ?>" title="Ver ficha e historial">
-                <i class="bi bi-person-vcard" aria-hidden="true"></i><span>Ficha</span>
+            <a class="impe-v3o-accion" href="<?= $esc($detalle) ?>"
+               title="Ver ficha e historial" aria-label="Ver ficha e historial">
+                <i class="bi bi-person-vcard" aria-hidden="true"></i>
             </a>
             <?php if($propuestas): ?>
             <button type="button" class="impe-v3o-accion"
-                data-v3-mover title="Cambiar etapa con registro de motivo">
-                <i class="bi bi-arrow-left-right" aria-hidden="true"></i><span>Mover</span>
+                data-v3-mover title="Cambiar etapa con motivo" aria-label="Cambiar etapa con motivo">
+                <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
             </button>
             <?php endif; ?>
         </div>
@@ -147,7 +145,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
 <div class="impe-embudo impe-embudo--compact impe-embudo--v3-operativo">
     <nav class="impe-embudo-tabs" aria-label="Vistas comerciales">
         <a aria-current="page" href="<?= $esc($base.http_build_query([
-            'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo','operativo_v3'=>'1'
+            'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo'
         ])) ?>"><i class="bi bi-kanban" aria-hidden="true"></i> Embudo de ventas</a>
         <?php if(EmbudoComercialAcceso::puede('recuperacion')): ?>
         <a href="<?= $esc($base.http_build_query([
@@ -160,18 +158,6 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         ])) ?>"><i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
         <?php endif; ?>
     </nav>
-    <div class="impe-v3o-encabezado" role="status">
-        <div>
-            <span class="impe-v3o-etiqueta"><i class="bi bi-shield-check" aria-hidden="true"></i>
-                Gestión comercial · Vista operativa V3</span>
-            <p>Trabaja tus prospectos asignados con el teléfono y registro actuales.
-               Las etapas que requieren validación institucional permanecen protegidas.</p>
-        </div>
-        <a href="<?= $esc($base.http_build_query([
-            'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo'
-        ])) ?>" class="impe-v3o-volver"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
-           Volver al tablero anterior</a>
-    </div>
     <?php if($error!==''): ?>
     <p class="impe-embudo-alert impe-embudo-alert--error" role="alert"><?= $esc($error) ?></p>
     <?php elseif(!$disponible): ?>
@@ -181,7 +167,6 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         <input type="hidden" name="controller" value="embudoComercial">
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="vista" value="embudo">
-        <input type="hidden" name="operativo_v3" value="1">
         <label>Origen
             <select name="origen">
                 <?php foreach([''=>'Todos','META_ADS'=>'Meta','ALIADO'=>'Aliados'] as $v=>$name): ?>
@@ -206,13 +191,13 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         </label>
         <button type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Filtrar</button>
         <a class="impe-embudo-reset" href="<?= $esc($base.http_build_query([
-            'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo','operativo_v3'=>'1'
+            'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo'
         ])) ?>">Limpiar</a>
     </form>
     <div class="impe-embudo-board-info">
         <span><i class="bi bi-people" aria-hidden="true"></i>
             <?= (int)$tablero['total_activos'] ?> asignaciones vigentes bajo tu responsabilidad</span>
-        <small>Hasta 20 tarjetas por columna · Usa Mis llamadas para registrar el resultado V4</small>
+        <small>20 por columna · paginación independiente</small>
     </div>
     <div class="impe-embudo-board" role="region" tabindex="0"
          aria-label="Cinco etapas del embudo de ventas">
