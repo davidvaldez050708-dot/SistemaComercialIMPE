@@ -26,7 +26,7 @@ ARCHIVOS = {
     "app/services/EmbudoComercialV3MovimientosPermitidos.php":
         (None, "92950fe72f02c938050c8598cd0ed96cd1552c6e"),
     "app/services/EmbudoComercialV3AccesoControlado.php":
-        (None, "9fdc836930fd3f346651b03323ce7b0124a2bfcb"),
+        (None, "1f5530335054bfb77a8cbe28669b45edef581ba4"),
     "app/views/embudo_comercial/operativo_v3.php":
         (None, "ed44384ebaf967c5161ad5eb5f2734554ea587ce"),
     "public/css/embudo_v3_operativo.css":
