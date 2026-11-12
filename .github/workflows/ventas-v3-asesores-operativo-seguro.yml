@@ -29,6 +29,7 @@ on:
       - 'public/javascript/embudo_comercial_v3_bandejas.js'
       - 'tests/ventas_v3_bandejas_db.php'
       - 'tests/ventas_v3_bandejas_browser.cjs'
+      - 'tests/gestion_comercial_v3_bandejas_render_unit.php'
       - 'tools/publicar_ventas_v3_bandejas_hostinger.py'
       - 'tests/ventas_v3_bandejas_publicador_unit.py'
       - 'tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py'
@@ -82,6 +83,8 @@ jobs:
           php -l app/views/embudo_comercial/bandejas_v3.php
           php -l app/views/embudo_comercial/bandejas_v3_modal.php
           php -l tests/ventas_v3_bandejas_db.php
+          php -l tests/gestion_comercial_v3_bandejas_render_unit.php
+          php tests/gestion_comercial_v3_bandejas_render_unit.php
           node --check public/javascript/embudo_comercial_v3_bandejas.js
           node --check tests/ventas_v3_bandejas_browser.cjs
           python3 -m py_compile tools/publicar_ventas_v3_bandejas_hostinger.py
