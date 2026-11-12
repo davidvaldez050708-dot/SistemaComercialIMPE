@@ -16,7 +16,6 @@ class ReporteAdministradorPdfService
 
     private $rootPath;
     private $templatePath;
-    private int $idDistintivo = 1000;
 
     public function __construct()
     {
@@ -360,7 +359,7 @@ class ReporteAdministradorPdfService
             'Generado por' => $generadoPor,
             'Rol' => $rol,
             'Fecha' => $fecha
-        ], min($anchoTexto, 2650));
+        ], $anchoTexto);
 
         $header =
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
@@ -379,8 +378,8 @@ class ReporteAdministradorPdfService
             $logoXml . '</w:tc>' .
             '<w:tc><w:tcPr><w:tcW w:w="' . $anchoTexto . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
             $this->parrafoHeaderXml('Sistema de Gestión Comercial', 13, self::COLOR_PRIMARIO, true) .
-            $this->parrafoHeaderXml('Reporte Administrativo de Usuarios', 23, self::COLOR_TEXTO, true, 90) .
-            $meta . '<w:p><w:pPr><w:spacing w:line="20" w:lineRule="exact"/></w:pPr></w:p>' .
+            $this->parrafoHeaderXml('Reporte Administrativo de Usuarios', 23, self::COLOR_TEXTO, true, 65) .
+            $meta .
             '</w:tc></w:tr></w:tbl>' .
             '<w:p><w:pPr>' .
             '<w:pBdr><w:bottom w:val="single" w:sz="16" w:space="0" w:color="' . self::COLOR_PRIMARIO . '"/></w:pBdr>' .
@@ -393,36 +392,38 @@ class ReporteAdministradorPdfService
 
     private function metadatosHeaderXml(array $datos, int $ancho): string
     {
-        $etiqueta = 1020;
-        $valor = $ancho - $etiqueta;
-        $xml = '<w:tbl><w:tblPr><w:tblW w:w="' . $ancho . '" w:type="dxa"/><w:jc w:val="right"/>' .
-            '<w:tblLayout w:type="fixed"/><w:tblCellMar>' .
-            '<w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/>' .
-            '<w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/>' .
-            '</w:tblCellMar></w:tblPr><w:tblGrid>' .
-            '<w:gridCol w:w="' . $etiqueta . '"/><w:gridCol w:w="' . $valor . '"/></w:tblGrid>';
+        $posicionValor = $ancho - 30;
+        $posicionEtiqueta = $posicionValor - 1580;
+        $xml = '';
         foreach ($datos as $nombre => $texto) {
             if ($texto === '') {
                 continue;
             }
-            $xml .= '<w:tr><w:tc><w:tcPr><w:tcW w:w="' . $etiqueta . '" w:type="dxa"/>' .
-                '<w:tcMar><w:right w:w="110" w:type="dxa"/></w:tcMar></w:tcPr>' .
-                $this->parrafoHeaderXml($nombre, 12, self::COLOR_SECUNDARIO, false, 0, 180) .
-                '</w:tc><w:tc><w:tcPr><w:tcW w:w="' . $valor . '" w:type="dxa"/></w:tcPr>' .
-                $this->parrafoHeaderXml($texto, 12, self::COLOR_TEXTO, true, 0, 180) . '</w:tc></w:tr>';
+            $xml .= '<w:p><w:pPr><w:tabs>' .
+                '<w:tab w:val="right" w:pos="' . $posicionEtiqueta . '"/>' .
+                '<w:tab w:val="right" w:pos="' . $posicionValor . '"/>' .
+                '</w:tabs><w:spacing w:before="0" w:after="0" w:line="170" w:lineRule="exact"/>' .
+                '<w:jc w:val="left"/></w:pPr>' .
+                '<w:r><w:tab/></w:r>' . $this->textoHeaderXml($nombre, 12, self::COLOR_SECUNDARIO, false) .
+                '<w:r><w:tab/></w:r>' . $this->textoHeaderXml($texto, 12, self::COLOR_TEXTO, true) . '</w:p>';
         }
-        return $xml . '</w:tbl>';
+        return $xml;
     }
 
-    private function parrafoHeaderXml($texto, $tamano, $color, $negrita, int $despues = 25, ?int $lineaExacta = null)
+    private function parrafoHeaderXml($texto, $tamano, $color, $negrita, int $despues = 25)
     {
-        $linea = $lineaExacta === null ? '' : ' w:line="' . $lineaExacta . '" w:lineRule="exact"';
-        return '<w:p><w:pPr><w:spacing w:before="0" w:after="' . $despues . '"' . $linea . '/>' .
-            '<w:jc w:val="right"/></w:pPr><w:r><w:rPr>' .
+        return '<w:p><w:pPr><w:spacing w:before="0" w:after="' . $despues . '"/>' .
+            '<w:jc w:val="right"/></w:pPr>' .
+            $this->textoHeaderXml($texto, $tamano, $color, $negrita) . '</w:p>';
+    }
+
+    private function textoHeaderXml($texto, $tamano, $color, $negrita): string
+    {
+        return '<w:r><w:rPr>' .
             ($negrita ? '<w:b/>' : '') .
             '<w:color w:val="' . $color . '"/>' .
             '<w:sz w:val="' . (int)$tamano . '"/><w:szCs w:val="' . (int)$tamano . '"/>' .
-            '</w:rPr><w:t xml:space="preserve">' . $this->xmlTexto($texto) . '</w:t></w:r></w:p>';
+            '</w:rPr><w:t xml:space="preserve">' . $this->xmlTexto($texto) . '</w:t></w:r>';
     }
 
     private function aplicarPieInstitucional(ZipArchive $zip, $anchoUtil)
@@ -808,8 +809,7 @@ class ReporteAdministradorPdfService
         $celda = $this->crearCelda($documento, '', $ancho, [
             'relleno' => $rellenoFila, 'tamano' => 4, 'antes' => 0, 'despues' => 0
         ]);
-        $anchoEmu = min(700, $ancho - 220) * 635;
-        $altoEmu = 140000;
+        $anchoPuntos = min(700, $ancho - 220) / 20;
         $activo = $estado === 'Activo';
         $relleno = $activo ? 'EAF7F4' : 'FFF3F1';
         $borde = $activo ? 'B9E2DA' : 'EFCFC9';
@@ -817,26 +817,15 @@ class ReporteAdministradorPdfService
             'tamano' => 12,
             'negrita' => true,
             'alineacion' => 'center',
-            'color' => $activo ? '087966' : 'A33B2B',
-            'linea_exacta' => 140
+            'color' => $activo ? '087966' : 'A33B2B'
         ]);
-        $forma = 'http://schemas.microsoft.com/office/word/2010/wordprocessingShape';
-        $dimensiones = ' cx="' . $anchoEmu . '" cy="' . $altoEmu . '"';
         $dibujo = $documento->createDocumentFragment();
         $dibujo->appendXML(
-            '<w:drawing xmlns:w="' . self::W_NS . '" ' .
-            'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" ' .
-            'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:wps="' . $forma . '">' .
-            '<wp:inline><wp:extent' . $dimensiones . '/>' .
-            '<wp:docPr id="' . $this->idDistintivo++ . '" name="Estado de usuario"/>' .
-            '<a:graphic><a:graphicData uri="' . $forma . '"><wps:wsp><wps:cNvSpPr txBox="1"/>' .
-            '<wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext' . $dimensiones . '/></a:xfrm>' .
-            '<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 50000"/></a:avLst></a:prstGeom>' .
-            '<a:solidFill><a:srgbClr val="' . $relleno . '"/></a:solidFill>' .
-            '<a:ln w="6350"><a:solidFill><a:srgbClr val="' . $borde . '"/></a:solidFill></a:ln></wps:spPr>' .
-            '<wps:txbx><w:txbxContent>' . $documento->saveXML($etiqueta) . '</w:txbxContent></wps:txbx>' .
-            '<wps:bodyPr lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr" wrap="none"><a:noAutofit/></wps:bodyPr>' .
-            '</wps:wsp></a:graphicData></a:graphic></wp:inline></w:drawing>'
+            '<w:pict xmlns:w="' . self::W_NS . '" xmlns:v="urn:schemas-microsoft-com:vml">' .
+            '<v:roundrect arcsize="100%" style="width:' . $anchoPuntos . 'pt;height:13pt;v-text-anchor:top" ' .
+            'fillcolor="#' . $relleno . '" strokecolor="#' . $borde . '" strokeweight="0.5pt">' .
+            '<v:textbox inset="0,-1.5pt,0,-1pt"><w:txbxContent>' . $documento->saveXML($etiqueta) .
+            '</w:txbxContent></v:textbox></v:roundrect></w:pict>'
         );
         $celda->lastChild->lastChild->appendChild($dibujo);
 
