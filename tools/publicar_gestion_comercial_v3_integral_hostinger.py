@@ -107,7 +107,6 @@ CONTRATOS = {
     ],
     "prueba_telefonia/api/zadarma_estado_llamada.php": [
         b"if ($solicitarCheckpoint)",b"ProspectoNoContactarV3::exigirPermitido",
-        b"new TelefoniaExtensionService($conexionTelefonia)"
     ],
     "public/javascript/telefonia_marcador.js": [
         b"await registrar;",b"await api.startCall("
@@ -116,6 +115,26 @@ CONTRATOS = {
         b"data-v3i-iniciar",b"inscripcion_v3_modal.php"
     ],
 }
+
+CHECKPOINT = "prueba_telefonia/api/zadarma_estado_llamada.php"
+CHECKPOINT_HOSTINGER_SHA = "88956a12e6bfed364cb007e1555ed0644d8b8cb0"
+
+def validar_checkpoint(stage):
+    source=p.confiable(stage,CHECKPOINT)
+    data=p.leer(source)
+    # La variante productiva revisada conserva el pool y la respuesta 503
+    # temporal. Su hash completo se fija en el manifiesto conciliado.
+    if p.blob(source)==CHECKPOINT_HOSTINGER_SHA:
+        required=(
+            b"new TelefoniaExtensionService(Database::compartida())",
+            b"new ZadarmaWebhookEventStoreService(Database::compartida())",
+            b"Database::responderFalloTemporal",
+        )
+        if any(marker not in data for marker in required) or (
+            b"(new Database())->connect()" in data):
+            raise p.Bloqueo("checkpoint conciliado perdió conexión compartida")
+    elif b"new TelefoniaExtensionService($conexionTelefonia)" not in data:
+        raise p.Bloqueo("contrato de extensión telefónica faltante")
 
 def paquete(stage):
     for path,old,new in p.ARCHIVOS:
@@ -139,6 +158,7 @@ def paquete(stage):
         data=p.leer(p.confiable(stage,path))
         for marca in marcas:
             if marca not in data:raise p.Bloqueo("contrato faltante en "+path)
+    validar_checkpoint(stage)
     print("PAQUETE_INTEGRAL_OK: 20 archivos PHP/JS/CSS y migración SQL íntegros.")
 
 def preflight_esquema(site):

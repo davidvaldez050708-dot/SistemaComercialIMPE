@@ -2,6 +2,16 @@
 
 **Estado:** candidato integrado en PR #266 (**BORRADOR, NO PUBLICAR**). No se modifica Hostinger ni se ejecuta SQL en producción desde el PR.
 
+**Conciliación de Zadarma (12/11):** la versión productiva aprobada del
+checkpoint usa `Database::compartida()` y `Database::responderFalloTemporal`.
+El CHECK original la rechazaba por exigir literalmente el constructor con
+`$conexionTelefonia` de GitHub. El contrato del publicador acepta ahora la
+variante conciliada **únicamente** con SHA Git
+`88956a12e6bfed364cb007e1555ed0644d8b8cb0`, exige conexión compartida
+para extensión y eventos, y bloquea una variante distinta. El preparador
+privado comprueba las cuatro fusiones y conserva sus SHA productivos. Esta
+corrección no cambia el endpoint ni toca `public_html`.
+
 ## Qué hace ahora el candidato
 
 1. **Ingreso y distribución:** conserva el importador Meta, la confirmación de lotes, el cursor diario y la asignación por horario de Aliados. No reconfigura los interruptores ni CRON existentes.
@@ -18,6 +28,12 @@
 - Auditoría de operación: `tools/gestion_comercial_v3_auditar_distribucion_hostinger.php`; transacción READ ONLY, resultados agregados de Meta/aliados, jornada, cupo de 80 y pendientes. No imprime personas ni teléfonos.
 - Los archivos anteriores de Potenciales/Seguimiento/Historial no se sustituyen si fueron personalizados; quedan protegidas dependencias fuera de alcance.
 - **No ejecutar la publicación si CI está pendiente, no hay respaldo, falta la tabla de evidencia, el CHECK detecta cambios o la telefonía real no ha pasado smoke tests.**
+- El stage privado ya preparado debe actualizar **sólo** los dos scripts
+  `tools/publicar_gestion_comercial_v3_integral_hostinger.py` y
+  `tools/preparar_gestion_comercial_v3_conciliada_hostinger.py` desde el mismo
+  commit revisado de este PR. Ejecutar nuevamente el preparador para obtener
+  una carpeta de entrega nueva; nunca editar hashes a mano ni reutilizar una
+  carpeta que tenga `CHECK` bloqueado.
 
 ## Pruebas que debe cubrir el cierre
 

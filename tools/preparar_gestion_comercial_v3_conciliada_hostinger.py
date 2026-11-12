@@ -152,7 +152,7 @@ def main():
         file_data(site,rel,hashbase)
     supported_tools={
         "tools/publicar_gestion_comercial_v3_integral_hostinger.py":
-            "648d18870964ca05fcad089b6ba3e2464c4af1a1",
+            "0416abfe86d7662b5992fbba287de1ea7237a9ba",
         "tools/publicar_ventas_v3_gestion_potenciales_hostinger.py":
             "8e563d3a3b270c85bda3b59586b06f5cdd7dd8fa",
         "tools/gestion_comercial_v3_inscripcion_schema_hostinger.php":

@@ -3,7 +3,6 @@
 """Fixture CHECK/APPLY/ROLLBACK de la entrega integral sin BD ni producción."""
 from __future__ import print_function
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -44,17 +43,48 @@ with tempfile.TemporaryDirectory(prefix="impe_integral_reversible_") as temp:
             os.makedirs(os.path.dirname(target),exist_ok=True)
             with open(target,'wb') as fd:fd.write(previous)
     for path,old in p.NO_MODIFICAR.items():
-        actual=os.path.join(ROOT,path)
-        revisar(p.blob(actual)==old,'dependencia protegida '+path)
+        # git show conserva los bytes publicados incluso en Windows, donde
+        # core.autocrlf puede reescribir el archivo del worktree a CRLF.
+        original=subprocess.check_output(
+            ['git','show','HEAD:'+path],cwd=ROOT)
+        revisar(p.blob_bytes(original)==old,'dependencia protegida '+path)
         target=os.path.join(site,path)
         os.makedirs(os.path.dirname(target),exist_ok=True)
-        shutil.copy2(actual,target)
-    src=os.path.join(ROOT,release.MIGRACION)
-    revisar(p.blob(src)==release.MIGRACION_HASH,'migracion exacta')
+        with open(target,'wb') as fd:fd.write(original)
+    migration=subprocess.check_output(
+        ['git','show','HEAD:'+release.MIGRACION],cwd=ROOT)
+    revisar(p.blob_bytes(migration)==release.MIGRACION_HASH,'migracion exacta')
     dest=os.path.join(stage,release.MIGRACION)
     os.makedirs(os.path.dirname(dest),exist_ok=True)
-    shutil.copy2(src,dest)
+    with open(dest,'wb') as fd:fd.write(migration)
     release.paquete(stage)
+    release.validar_checkpoint(stage)
+    # Variante de Zadarma conciliada con el pool productivo. El CHECK debe
+    # aceptarla únicamente con su hash completo, sin cambiar el endpoint.
+    checkpoint=os.path.join(stage,release.CHECKPOINT)
+    checkpoint_original=open(checkpoint,'rb').read()
+    checkpoint_hostinger=subprocess.check_output(
+        ['git','show','469b6c288567c14ae97f4319e433934cb4573ff2:'+
+         release.CHECKPOINT],cwd=ROOT)
+    revisar(p.blob_bytes(checkpoint_hostinger)==release.CHECKPOINT_HOSTINGER_SHA,
+            'hash de Zadarma conciliado')
+    with open(checkpoint,'wb') as fd:fd.write(checkpoint_hostinger)
+    release.validar_checkpoint(stage)
+    original_archivos=p.ARCHIVOS
+    p.ARCHIVOS=[(path,old,
+        release.CHECKPOINT_HOSTINGER_SHA if path==release.CHECKPOINT else new)
+        for path,old,new in original_archivos]
+    try:
+        release.paquete(stage)
+    finally:
+        p.ARCHIVOS=original_archivos
+    with open(checkpoint,'ab') as fd:fd.write(b'\n// variante desconocida\n')
+    try:
+        release.validar_checkpoint(stage)
+        raise AssertionError('Se aceptó una variante desconocida de Zadarma.')
+    except p.Bloqueo:
+        pass
+    with open(checkpoint,'wb') as fd:fd.write(checkpoint_original)
     revisar(p.estado(site)=='BASE','solo acepta base inmutable')
     release.publicar(site,stage,backups)
     revisar(p.estado(site)=='READY','aplicacion de 20 archivos')
