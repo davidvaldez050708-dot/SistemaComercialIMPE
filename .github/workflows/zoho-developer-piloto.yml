@@ -9,6 +9,7 @@ on:
       - 'tools/zoho_developer_api_sonda.php'
       - 'tests/zoho_developer_registro_smoke.php'
       - 'tests/zoho_developer_registro_integracion_mysql.php'
+      - 'tests/zoho_developer_http_staging.php'
       - 'tools/zoho_dev_cola_instalar.php'
       - 'tools/zoho_dev_servicios_publicar.py'
       - 'tests/zoho_dev_servicios_publicar_smoke.py'
@@ -59,6 +60,7 @@ jobs:
           php -l tools/zoho_dev_cola_instalar.php
           php -l tests/zoho_developer_registro_smoke.php
           php -l tests/zoho_developer_registro_integracion_mysql.php
+          php -l tests/zoho_developer_http_staging.php
       - name: Unitarias sin red, BD ni OAuth
         run: php tests/zoho_developer_registro_smoke.php
       - name: Worker inactivo sin configuración privada
@@ -81,3 +83,22 @@ jobs:
           python3 tests/zoho_dev_modelo_publicar_smoke.py
       - name: Integración real MySQL temporal, API Zoho simulada
         run: php tests/zoho_developer_registro_integracion_mysql.php
+      - name: HTTP real de formulario, MySQL aislado, cola y worker (API simulada)
+        run: |
+          set -euo pipefail
+          export IMPE_DB_NAME=impe_zoho_http_ci
+          export IMPE_BASE_URL=http://127.0.0.1:8098/
+          export IMPE_PRIVATE_CONFIG_DIR="$(mktemp -d /tmp/zoho-http-ci-XXXXXXXX)"
+          export HOME="$IMPE_PRIVATE_CONFIG_DIR/home"
+          mkdir -m 700 "$HOME"
+          php tests/zoho_developer_http_staging.php --setup
+          php -S 127.0.0.1:8098 -t . >"$IMPE_PRIVATE_CONFIG_DIR/php-http.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true; wait "$server" 2>/dev/null || true; rm -rf "$IMPE_PRIVATE_CONFIG_DIR"' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS 'http://127.0.0.1:8098/index.php?controller=formularioPublico&action=gracias' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 0.2
+          done
+          php tests/zoho_developer_http_staging.php --verify
