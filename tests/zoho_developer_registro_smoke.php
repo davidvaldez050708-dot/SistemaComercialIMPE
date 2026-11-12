@@ -12,7 +12,7 @@ verificar(
     'la integración no debe autorizar correos sin configuración'
 );
 $cfg = [
-    'external_field' => 'IMPE_Registro_ID',
+    'unique_field' => 'IMPE_Registro_ID',
     'test_emails' => ['demo.zoho.impe@example.com'],
 ];
 verificar(
