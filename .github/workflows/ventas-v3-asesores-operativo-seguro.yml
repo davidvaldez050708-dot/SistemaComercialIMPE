@@ -37,6 +37,9 @@ on:
       - 'public/javascript/embudo_comercial_v3_inscripcion.js'
       - 'public/javascript/telefonia_marcador.js'
       - 'prueba_telefonia/api/zadarma_estado_llamada.php'
+      - 'tools/publicar_gestion_comercial_v3_integral_hostinger.py'
+      - 'tools/gestion_comercial_v3_inscripcion_schema_hostinger.php'
+      - 'tests/gestion_comercial_v3_integral_publicador_unit.py'
       - 'tests/gestion_comercial_v3_dialer_guard_browser.cjs'
       - 'tests/gestion_comercial_v3_inscripcion_db.php'
       - 'tests/gestion_comercial_v3_inscripcion_browser.cjs'
@@ -108,6 +111,9 @@ jobs:
           php -l app/controllers/WhatsAppController.php
           php -l app/controllers/TelefoniaController.php
           php -l prueba_telefonia/api/zadarma_estado_llamada.php
+          php -l tools/gestion_comercial_v3_inscripcion_schema_hostinger.php
+          python3 -m py_compile tools/publicar_gestion_comercial_v3_integral_hostinger.py
+          python3 tests/gestion_comercial_v3_integral_publicador_unit.py
           php -l tests/gestion_comercial_no_contactar_db.php
           php -l app/services/EmbudoComercialV3InscripcionService.php
           php -l app/views/embudo_comercial/inscripcion_v3_modal.php
