@@ -110,7 +110,7 @@ def validar(a):
         obj["audiencia"] != AUDIENCIA):
         raise RuntimeError("configuración privada inesperada.")
     # Verificación contra BD únicamente SELECT: no nombres ni datos sensibles.
-    salida = subprocess.check_output(["php", "-r", PHP_AUDIT, sitio],
+    salida = subprocess.check_output(["php", "-r", PHP_AUDIT, "--", sitio],
                                      stderr=subprocess.STDOUT)
     print(salida.decode("utf-8", "replace").strip())
     print("CODIGO_V3_OK | CONFIG_PRIVADA_OK | SIN_CAMBIOS_SQL")
