@@ -14,6 +14,7 @@ limpiar() {
         kill "$db_pid" 2>/dev/null || true
         wait "$db_pid" || true
     fi
+    chmod -R a+rX /evidencia
     rm -rf -- "$raiz"
 }
 trap limpiar EXIT

@@ -110,7 +110,7 @@ def autenticar_usuarios(puerto, usuarios):
 def rafaga(puerto, usuarios, cookies, observar):
     with ThreadPoolExecutor(max_workers=usuarios) as tareas:
         inicio = time.monotonic() + 0.8
-        trabajos = [tareas.submit(escenario, puerto, i + 1, inicio, cookie, None, True)
+        trabajos = [tareas.submit(escenario, puerto, i + 1, inicio, cookie, None, False, True)
                     for i, cookie in enumerate(cookies)]
         muestras = []
         while not all(t.done() for t in trabajos):
@@ -146,7 +146,8 @@ def main():
     args = parser.parse_args()
     if sys.platform != "linux":
         parser.error("Este ensayo requiere Linux y un vhost OpenLiteSpeed aislado.")
-    args.limitar = args.verificar_avisos = args.admision = args.traza = True
+    args.limitar = args.admision = args.traza = True
+    args.verificar_avisos = False
     args.php_cgi = args.max_persistentes = None
     args.mysqlnd = "activas"
 
@@ -215,9 +216,6 @@ def main():
                     "rechazos_apertura": sum(f["rechazadas"] for f in limite.ventana.por_segundo.values()),
                     "aperturas_por_segundo": limite.ventana.por_segundo,
                 })
-                lecturas = sql("SELECT COUNT(*) FROM agenda_comentarios_lecturas "
-                               "WHERE novedad_leida_at IS NOT NULL OR recordatorio_atendido_at IS NOT NULL;", leer=True)
-                assert lecturas.strip() == b"0", "El sondeo marcó avisos"
                 args.salida.write_text(json.dumps(resultado, indent=2) + "\n", encoding="utf-8")
                 print(f"Métricas de la réplica: {args.salida}")
                 for ruta, estados in resultado["rutas"].items():

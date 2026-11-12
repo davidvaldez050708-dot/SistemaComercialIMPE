@@ -240,7 +240,8 @@ def autenticar(puerto, usuario):
     return ("login", "login_rechazado" if estado == 302 and not valido else estado, ms), cookie if valido else None
 
 
-def escenario(puerto, usuario, inicio, cookie=None, registrar=None, verificar_avisos=False):
+def escenario(puerto, usuario, inicio, cookie=None, registrar=None, verificar_avisos=False,
+              respetar_roles=False):
     time.sleep(max(0, inicio - time.monotonic()))
     datos = []
 
@@ -255,6 +256,8 @@ def escenario(puerto, usuario, inicio, cookie=None, registrar=None, verificar_av
         if cookie is None:
             return datos, None
     for nombre, ruta in (("inicio", INICIO), ("campana", CAMPANA), ("campana_recarga", CAMPANA)):
+        if respetar_roles and ruta == CAMPANA and list(ROLES)[(usuario - 1) % len(ROLES)] not in (1, 3, 4, 6, 7):
+            continue
         e, _, body, ms = peticion(puerto, ruta, cookie)
         http = e
         if nombre.startswith("campana") and e == 200:
