@@ -8,6 +8,17 @@ require_once __DIR__ . '/../../config/private_config.php';
 
 final class ZohoDeveloperRegistroSync
 {
+    /** Transporte reemplazable solo por pruebas CLI, nunca en producción. */
+    private static $transporteSimulado = null;
+
+    public static function establecerTransporteDePruebas(?callable $transporte): void
+    {
+        if (PHP_SAPI !== 'cli' || getenv('APP_ENV') !== 'testing') {
+            throw new LogicException('TRANSPORTE_SIMULADO_SOLO_CI');
+        }
+        self::$transporteSimulado = $transporte;
+    }
+
     public static function configuracion(): array
     {
         $cfg = impeLeerConfigPrivada('zoho_sync.local.php');
@@ -94,6 +105,14 @@ final class ZohoDeveloperRegistroSync
         ?array $post = null,
         ?string $token = null
     ): array {
+        if (self::$transporteSimulado !== null) {
+            $respuesta = call_user_func(self::$transporteSimulado, $url, $post, $token);
+            if (!is_array($respuesta) || count($respuesta) !== 2 ||
+                !is_int($respuesta[0] ?? null) || !is_array($respuesta[1] ?? null)) {
+                throw new RuntimeException('RESPUESTA_SIMULADA_INVALIDA');
+            }
+            return $respuesta;
+        }
         if (!function_exists('curl_init')) {
             throw new RuntimeException('CURL_NO_DISPONIBLE');
         }
