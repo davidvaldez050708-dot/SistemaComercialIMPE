@@ -103,20 +103,33 @@ class ReporteAdministradorDataService
 
         $totalSeguimientos = 0;
         $usuariosPorRol = [];
-        $usuariosSinAcceso = 0;
+        $usuariosSinAcceso = [];
         $mayorCarga = 0;
+        $usuarioMayorCarga = null;
 
         foreach ($usuarios as $usuario) {
             $totalUsuario = (int)($usuario['total_seguimientos'] ?? 0);
             $totalSeguimientos += $totalUsuario;
-            $mayorCarga = max($mayorCarga, $totalUsuario);
-
             $rol = trim((string)($usuario['rol'] ?? ''));
             $rol = $rol !== '' ? $rol : 'Sin rol';
             $usuariosPorRol[$rol] = ($usuariosPorRol[$rol] ?? 0) + 1;
+            $nombre = trim((string)($usuario['nombre'] ?? '') . ' ' . (string)($usuario['apellidos'] ?? ''));
+            $nombre = $nombre !== '' ? $nombre : (string)($usuario['usuario'] ?? '—');
+
+            if ($totalUsuario > $mayorCarga) {
+                $mayorCarga = $totalUsuario;
+                $usuarioMayorCarga = [$nombre, $rol];
+            }
 
             if (trim((string)($usuario['ultimo_acceso'] ?? '')) === '') {
-                $usuariosSinAcceso++;
+                $fechaRegistro = substr((string)($usuario['fecha_registro'] ?? ''), 0, 10);
+                $fecha = DateTimeImmutable::createFromFormat('!Y-m-d', $fechaRegistro);
+                $usuariosSinAcceso[] = [
+                    $nombre,
+                    $rol,
+                    (int)($usuario['estado'] ?? 0) === 1 ? 'Activo' : 'Inactivo',
+                    $fecha && $fecha->format('Y-m-d') === $fechaRegistro ? $fecha->format('d/m/Y') : '—'
+                ];
             }
         }
 
@@ -138,13 +151,35 @@ class ReporteAdministradorDataService
             'total_seguimientos' => $totalSeguimientos
         ];
 
+        $cantidadSinAcceso = count($usuariosSinAcceso);
+        $textoSinAcceso = 'Todos los usuarios incluidos tienen acceso registrado.';
+        if ($cantidadSinAcceso > 0) {
+            $textoSinAcceso = ($cantidadSinAcceso === 1
+                ? 'Se identificó 1 usuario sin inicio de sesión registrado.'
+                : 'Se identificaron ' . number_format($cantidadSinAcceso) . ' usuarios sin inicio de sesión registrado.') .
+                ' Se presenta el detalle de las cuentas, incluyendo nombre, rol, estado y fecha de registro, para facilitar su revisión administrativa.';
+        }
+
+        $cargaFormateada = number_format($mayorCarga);
         $hallazgos = [
-            $usuariosSinAcceso > 0
-                ? $usuariosSinAcceso . ' usuarios no tienen acceso registrado.'
-                : 'Todos los usuarios incluidos tienen acceso registrado.',
-            $mayorCarga > 0
-                ? 'La mayor carga registrada por un usuario es de ' . $mayorCarga . ' seguimientos.'
-                : 'No se registran seguimientos asignados a usuarios.'
+            [
+                'texto' => $textoSinAcceso,
+                'columnas' => ['Nombre', 'Rol', 'Estado', 'Fecha de registro'],
+                'filas' => $usuariosSinAcceso
+            ],
+            [
+                'texto' => $usuarioMayorCarga !== null
+                    ? 'Se identificó al usuario con mayor número de seguimientos registrados, con un total de ' .
+                        $cargaFormateada . '. Se presenta su nombre, rol y participación respecto al total de seguimientos para facilitar el análisis de la distribución de actividades.'
+                    : 'No se registran seguimientos asignados a usuarios.',
+                'columnas' => ['Nombre', 'Rol', 'Seguimientos', 'Participación del total'],
+                'filas' => $usuarioMayorCarga !== null
+                    ? [array_merge($usuarioMayorCarga, [
+                        $cargaFormateada,
+                        number_format(($mayorCarga / $totalSeguimientos) * 100, 2) . '%'
+                    ])]
+                    : []
+            ]
         ];
 
         return [

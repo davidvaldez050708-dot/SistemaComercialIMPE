@@ -253,9 +253,18 @@ class ReporteAdministradorPdfService
         foreach ($hallazgos as $hallazgo) {
             $elementos[] = $this->crearParrafo(
                 $documento,
-                '• ' . $hallazgo,
+                '• ' . $hallazgo['texto'],
                 ['tamano' => 15, 'color' => self::COLOR_TEXTO, 'despues' => 35]
             );
+            if (!empty($hallazgo['filas'])) {
+                $elementos[] = $this->crearTablaDetalle(
+                    $documento,
+                    $hallazgo['columnas'],
+                    $hallazgo['filas'],
+                    $this->anchos($anchoUtil, [32, 25, 17, 26])
+                );
+                $elementos[] = $this->crearEspaciador($documento, 100);
+            }
         }
 
         return $elementos;

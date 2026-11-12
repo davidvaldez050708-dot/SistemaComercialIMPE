@@ -365,7 +365,31 @@ foreach ($estadoUsuarios as $datoEstado) {
             <?php foreach ($hallazgos as $hallazgo): ?>
                 <div class="report-insight-item">
                     <i class="bi bi-check2-circle" aria-hidden="true"></i>
-                    <p><?= $texto($hallazgo) ?></p>
+                    <div>
+                        <p><?= $texto($hallazgo['texto']) ?></p>
+                        <?php if (!empty($hallazgo['filas'])): ?>
+                            <div class="table-responsive mt-2">
+                                <table class="table users-table data-table align-middle report-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <?php foreach ($hallazgo['columnas'] as $columna): ?>
+                                                <th scope="col"><?= $texto($columna) ?></th>
+                                            <?php endforeach; ?>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($hallazgo['filas'] as $fila): ?>
+                                            <tr>
+                                                <?php foreach ($fila as $valor): ?>
+                                                    <td><?= $texto($valor) ?></td>
+                                                <?php endforeach; ?>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endforeach; ?>
         </div>

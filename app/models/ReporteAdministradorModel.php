@@ -31,6 +31,7 @@ class ReporteAdministradorModel
                     usuarios.correo,
                     usuarios.estado,
                     usuarios.ultimo_acceso,
+                    usuarios.created_at AS fecha_registro,
                     roles.nombre AS rol,
                     COUNT(DISTINCT seguimientos.id) AS total_seguimientos,
                     COALESCE(SUM(
@@ -77,6 +78,7 @@ class ReporteAdministradorModel
                     usuarios.correo,
                     usuarios.estado,
                     usuarios.ultimo_acceso,
+                    usuarios.created_at,
                     roles.id,
                     roles.nombre
                 ORDER BY roles.id ASC, usuarios.nombre ASC, usuarios.apellidos ASC";
