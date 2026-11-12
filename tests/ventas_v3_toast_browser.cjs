@@ -5,10 +5,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright')
 const bootstrap = path.join(process.env.BOOTSTRAP_MODULE_PATH || require.resolve('bootstrap/package.json').replace(/package\.json$/, ''),
   'dist/js/bootstrap.bundle.min.js');
 const tablero = path.join(__dirname, '../public/javascript/embudo_comercial_v3_operativo.js');
+const css = path.join(__dirname, '../public/css/embudo_v3_operativo.css');
 const origen = 'http://embudo.test';
 const guardar = '#impe-v3o-potencial-guardar';
 const aviso = '.system-toast.show';
-const fixture = `<!doctype html><meta charset="utf-8"><main class="impe-embudo--v3-operativo">
+const fixture = `<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/tablero.css"><main class="impe-embudo--v3-operativo">
   <article class="impe-v3o-card" data-asignacion-id="1" data-etapa="INTERESADO" data-v3-subetapa="CALIFICADO">
     <button data-v3-gestionar>Gestionar</button>
     <button data-v3-actividad data-version="7" data-pendiente="1">Actividad</button>
@@ -31,17 +32,24 @@ const fixture = `<!doctype html><meta charset="utf-8"><main class="impe-embudo--
     <input id="impe-v3o-potencial-fecha"><input id="impe-v3o-potencial-motivo">
     <p id="impe-v3o-potencial-error" hidden></p><button id="impe-v3o-potencial-guardar">Guardar</button>
   </form></dialog>
-  <dialog id="impe-v3o-actividad-dialog"><form>
-    <p data-actividad-prospecto></p>
-    <select name="operacion"><option>REGISTRAR</option><option>PROGRAMAR</option><option>REPROGRAMAR</option><option>COMPLETAR</option></select>
-    <label data-actividad-fecha><input name="fecha" type="datetime-local"></label>
-    <label data-actividad-subetapa><select name="subetapa"><option value=""></option></select></label>
-    <input name="motivo" required>
-    <details><summary>Historial</summary><p data-actividad-historial-estado></p>
-      <ul data-actividad-historial></ul><button type="button" data-actividad-mas hidden>Ver anteriores</button>
-    </details>
-    <p data-actividad-error hidden></p>
-    <button type="submit">Guardar actividad</button>
+  <dialog class="impe-embudo-dialog" id="impe-v3o-actividad-dialog"><form>
+    <header><h3>Actividad comercial</h3></header>
+    <div class="impe-v3o-actividad-cuerpo">
+      <p data-actividad-prospecto></p>
+      <select name="operacion"><option>REGISTRAR</option><option>PROGRAMAR</option><option>REPROGRAMAR</option><option>COMPLETAR</option></select>
+      <label data-actividad-fecha><input name="fecha" type="datetime-local"></label>
+      <label data-actividad-subetapa><select name="subetapa"><option value=""></option></select></label>
+      <input name="motivo" required>
+      <details class="impe-v3o-actividad-historial"><summary>Historial de actividades</summary>
+        <div class="impe-v3o-actividad-historial-panel">
+          <p class="impe-v3o-actividad-historial-estado" data-actividad-historial-estado></p>
+          <div class="impe-v3o-actividad-historial-scroll"><ol data-actividad-historial></ol></div>
+          <button type="button" data-actividad-mas hidden>Ver anteriores</button>
+        </div>
+      </details>
+      <p data-actividad-error hidden></p>
+    </div>
+    <div class="impe-embudo-dialog-footer"><button type="submit">Guardar actividad</button></div>
   </form></dialog>
   </main><script src="/bootstrap.js"></script><script src="/tablero.js"></script>`;
 
@@ -66,15 +74,20 @@ async function probar(browser, modo) {
     const url = new URL(route.request().url());
     if (url.pathname === '/bootstrap.js') return route.fulfill({ path: bootstrap });
     if (url.pathname === '/tablero.js') return route.fulfill({ path: tablero });
+    if (url.pathname === '/tablero.css') return route.fulfill({ path: css });
     if (url.pathname === '/index.php') {
       if (modo === 'actividad') {
         assert.equal(url.searchParams.get('action'), 'seguimientoOperativoV3');
         if (route.request().method() === 'GET') {
           assert.equal(url.searchParams.get('asignacion_id'), '1');
-          return route.fulfill({ json: { ok: true, historial: [{
-            id: 7, creado_at: '2026-11-11 20:00:00', accion: 'PROGRAMAR', usuario_id: 42,
-            motivo: '<b>Primera gestión</b>', fecha_pendiente: '2099-01-01 16:00:00'
-          }] } });
+          const antes=Number(url.searchParams.get('antes')||0);
+          const ids=antes===0?Array.from({length:20},(_,i)=>40-i):
+            antes===21?Array.from({length:5},(_,i)=>20-i):[];
+          return route.fulfill({ json: { ok: true, historial: ids.map(id=>({
+            id, creado_at: '2026-11-11 20:00:00', accion: 'PROGRAMAR', usuario_id: 42,
+            motivo: id===40?'<b>Primera gestión</b>':'Gestión comercial número '+id,
+            fecha_pendiente: '2099-01-01 16:00:00'
+          })) } });
         }
         const datos = new URLSearchParams(route.request().postData());
         assert.equal(datos.get('version'), '7');
@@ -121,6 +134,21 @@ async function probar(browser, modo) {
     await entrada.waitFor();
     assert.ok((await entrada.textContent()).includes('<b>Primera gestión</b>'));
     assert.equal(await entrada.locator('b').count(), 0);
+    assert.equal(await entrada.first().locator('.impe-v3o-actividad-item-tipo').textContent(), 'Programación');
+    assert.equal(await entrada.count(), 20);
+    assert.equal(await page.locator('[data-actividad-mas]').isVisible(), true);
+    const dimensiones=await page.locator('.impe-v3o-actividad-historial-scroll').evaluate(el=>({
+      visible:el.clientHeight,total:el.scrollHeight
+    }));
+    assert.ok(dimensiones.visible<=252 && dimensiones.total>dimensiones.visible,
+      'El historial debe mantener el scroll interno dentro de 252 px');
+    await page.locator('[data-actividad-mas]').click();
+    assert.equal(await entrada.count(),25);
+    assert.equal(await page.locator('[data-actividad-mas]').isVisible(),false);
+    const dialogo=await page.locator('#impe-v3o-actividad-dialog').evaluate(el=>({
+      visible:el.getBoundingClientRect().height,limite:window.innerHeight
+    }));
+    assert.ok(dialogo.visible<dialogo.limite,'El modal debe mantenerse dentro de la pantalla');
     await page.selectOption('[name=operacion]', 'REPROGRAMAR');
     await page.fill('[name=fecha]', '2099-01-02T10:00');
     await page.fill('[name=motivo]', 'Cambio de horario acordado');
