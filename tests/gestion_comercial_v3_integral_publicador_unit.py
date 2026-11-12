@@ -10,6 +10,7 @@ import tempfile
 ROOT=os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0,os.path.join(ROOT,'tools'))
 import publicar_gestion_comercial_v3_integral_hostinger as release
+import actualizar_check_gestion_v3_conciliada_hostinger as actualizador
 
 BASE="79f8ccda4f6f525318c7abbbb67324077c175c3c"
 RELEASE_ORIGINAL="8ff713383f11a61e7e37d827e2da43ee225ea7a8"
@@ -20,6 +21,22 @@ def revisar(condition,text):
     if not condition:raise AssertionError('PUBLICADOR_INTEGRAL_V3: '+text)
 
 p=release.p
+anterior=subprocess.check_output(
+    ['git','show','4ac0d5506d031f3b8639bd1a400dd3b2ac7dfae8:'+actualizador.REL],cwd=ROOT)
+corregido=subprocess.check_output(['git','show','HEAD:'+actualizador.REL],cwd=ROOT)
+revisar(actualizador.blob(anterior)==actualizador.OLD_BLOB,'publicador previo exacto')
+revisar(actualizador.blob(corregido)==actualizador.NEW_BLOB,'publicador corregido exacto')
+revisar(actualizador.blob(actualizador.substitute(anterior))==
+        '02fc8b6ab5a0befe097ff6a49965031d95f7ed7c',
+        'entrega conciliada previa exacta')
+revisar(actualizador.blob(actualizador.substitute(corregido))==
+        '82f5f040afec692d2c9cd487ea8e2651628c3f2c',
+        'entrega conciliada corregida exacta')
+try:
+    actualizador.substitute(corregido.replace(b'54faf612322f68935899857305b11413cf1bbc0c',b'0'*40))
+    raise AssertionError('Se aceptó un manifiesto alterado.')
+except ValueError:
+    pass
 with tempfile.TemporaryDirectory(prefix="impe_integral_reversible_") as temp:
     stage=os.path.join(temp,'stage')
     site=os.path.join(temp,'public_html')
