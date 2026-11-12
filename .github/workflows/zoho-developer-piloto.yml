@@ -1,19 +1,40 @@
-name: Zoho Developer - piloto de formularios (sin red)
+name: Zoho Developer - piloto aislado MySQL y API simulada
 on:
   pull_request:
     paths:
       - 'app/models/FormularioRegistroModel.php'
       - 'app/services/ZohoDeveloperRegistroSync.php'
+      - 'app/services/ZohoDeveloperRegistroWorker.php'
       - 'tools/zoho_developer_registros_worker.php'
       - 'tests/zoho_developer_registro_smoke.php'
+      - 'tests/zoho_developer_registro_integracion_mysql.php'
       - 'database/zoho_dev_registros_pendientes.sql'
       - '.github/workflows/zoho-developer-piloto.yml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  sin_datos_reales:
+  integracion_aislada:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports:
+          - 33308:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      APP_ENV: testing
+      IMPE_DB_HOST: 127.0.0.1:33308
+      IMPE_DB_USER: root
+      IMPE_DB_PASSWORD: ''
+      IMPE_DB_NAME: impe_zoho_piloto_ci
+      IMPE_BASE_URL: http://127.0.0.1:8097/
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -24,13 +45,17 @@ jobs:
         run: |
           php -l app/models/FormularioRegistroModel.php
           php -l app/services/ZohoDeveloperRegistroSync.php
+          php -l app/services/ZohoDeveloperRegistroWorker.php
           php -l tools/zoho_developer_registros_worker.php
           php -l tests/zoho_developer_registro_smoke.php
-      - name: Prueba unitaria con datos ficticios, sin OAuth, BD ni escrituras
+          php -l tests/zoho_developer_registro_integracion_mysql.php
+      - name: Unitarias sin red, BD ni OAuth
         run: php tests/zoho_developer_registro_smoke.php
-      - name: Worker debe fallar cerrado si no existe configuración privada
+      - name: Worker inactivo sin configuración privada
         run: |
           if php tools/zoho_developer_registros_worker.php --run; then
-            echo "ERROR: el worker estuvo activo sin habilitación privada" >&2
+            echo "ERROR: worker activo sin habilitación privada" >&2
             exit 1
           fi
+      - name: Integración real MySQL temporal, API Zoho simulada
+        run: php tests/zoho_developer_registro_integracion_mysql.php
