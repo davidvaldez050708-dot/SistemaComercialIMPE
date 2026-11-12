@@ -30,6 +30,24 @@
     error.hidden=true;
     error.textContent='';
   };
+  const mostrarAviso=mensaje=>{
+    const container=document.createElement('div');
+    container.className='toast-container position-fixed top-0 end-0 p-3';
+    container.style.zIndex='2000';
+    const toast=document.createElement('div');
+    toast.className='toast system-toast border-0 show';
+    toast.setAttribute('role','status');toast.setAttribute('aria-live','polite');
+    const body=document.createElement('div');body.className='toast-body';
+    const icon=document.createElement('i');icon.className='bi bi-check-circle-fill';
+    icon.setAttribute('aria-hidden','true');
+    const text=document.createElement('span');text.textContent=mensaje;
+    const close=document.createElement('button');
+    close.type='button';close.className='btn-close ms-auto';
+    close.setAttribute('aria-label','Cerrar aviso');
+    close.addEventListener('click',()=>container.remove());
+    body.append(icon,text,close);toast.appendChild(body);
+    container.appendChild(toast);document.body.appendChild(container);
+  };
   const telefonoActivo=()=>{
     try{
       if(window.IMPE_TELEPHONY_PERSISTENT?.getState?.()?.active)return true;
@@ -120,8 +138,12 @@
       dialog.close();
       if(telefonoActivo()){
         // Nunca recargar la pantalla mientras persiste una llamada.
-        window.alert('Solicitud institucional vinculada. Actualiza Gestión Comercial al finalizar la llamada.');
+        mostrarAviso('Solicitud institucional vinculada. Actualiza Gestión Comercial al finalizar la llamada.');
       }else {
+        try {
+          sessionStorage.setItem('impe:embudo:v3:aviso:'+currentUser,
+            JSON.stringify({tipo:'movimiento',creado:Date.now()}));
+        }catch(_){}
         window.location.reload();
       }
     }catch(ex){
