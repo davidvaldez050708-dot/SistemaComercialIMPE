@@ -66,9 +66,65 @@ foreach ($estadoUsuarios as $datoEstado) {
     font-size: 13px;
     line-height: 1.2;
 }
+
+.report-users .analyst-portfolio-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.report-users-charts {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    align-items: start;
+    gap: 1rem;
+}
+
+.report-users-summary .report-export-action {
+    margin-inline-start: auto;
+}
+
+.report-users .analyst-portfolio-table {
+    table-layout: auto;
+    min-width: 36rem;
+}
+
+.report-users .analyst-portfolio-table :is(th, td) {
+    width: auto;
+}
+
+.report-users .report-users-status-active {
+    color: #087966;
+    background: rgba(10, 143, 122, .07);
+    border-color: rgba(10, 143, 122, .18);
+}
+
+.report-users .report-users-finding + .report-users-finding {
+    border-top: 1px solid var(--color-border);
+}
+
+.report-users .report-users-finding .report-insight-item {
+    padding: 13px 18px;
+}
+
+@media (max-width: 1199.98px) {
+    .report-users-charts {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 991.98px) {
+    .report-users .analyst-portfolio-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575.98px) {
+    .report-users .analyst-portfolio-kpis {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 
-<section class="report-module report-territorial-module">
+<section class="report-module report-territorial-module report-users">
     <a
         class="linkage-back-link territorial-back-link"
         href="<?= BASE_URL ?>index.php?controller=reporte&action=index">
@@ -186,7 +242,11 @@ foreach ($estadoUsuarios as $datoEstado) {
             <p>La información administrativa aparecerá aquí antes de que decidas exportarla a PDF.</p>
         </section>
     <?php else: ?>
-    <div class="d-flex justify-content-end mb-4">
+    <div class="report-users-summary d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+        <div>
+            <h2 class="report-eyebrow mb-1">Resumen ejecutivo</h2>
+            <p class="page-subtitle mb-0">Indicadores administrativos calculados con el mismo alcance utilizado por el reporte PDF.</p>
+        </div>
         <a
             class="btn btn-system-save report-export-action"
             href="<?= $texto($urlExportarPdf) ?>">
@@ -195,55 +255,47 @@ foreach ($estadoUsuarios as $datoEstado) {
         </a>
     </div>
 
-    <div class="territorial-section-title">
-        <h2>RESUMEN EJECUTIVO</h2>
-        <p>Indicadores administrativos calculados con el mismo alcance utilizado por el reporte PDF.</p>
-    </div>
-
-    <section class="metric-grid report-summary-grid mb-4" aria-label="Resumen ejecutivo administrativo">
-        <article class="metric-card">
-            <div class="metric-icon"><i class="bi bi-people"></i></div>
+    <section class="analyst-portfolio-kpis mb-3" aria-label="Resumen ejecutivo administrativo">
+        <article class="analyst-portfolio-kpi">
+            <span class="analyst-portfolio-kpi-icon" aria-hidden="true"><i class="bi bi-people"></i></span>
             <div>
-                <p class="metric-value"><?= (int)($resumen['usuarios_registrados'] ?? 0) ?></p>
-                <p class="metric-label">Usuarios</p>
+                <strong><?= (int)($resumen['usuarios_registrados'] ?? 0) ?></strong>
+                <span>Usuarios</span>
             </div>
         </article>
 
-        <article class="metric-card">
-            <div class="metric-icon metric-icon-success"><i class="bi bi-person-check"></i></div>
+        <article class="analyst-portfolio-kpi analyst-portfolio-kpi--success">
+            <span class="analyst-portfolio-kpi-icon" aria-hidden="true"><i class="bi bi-person-check"></i></span>
             <div>
-                <p class="metric-value"><?= (int)($resumen['usuarios_activos'] ?? 0) ?></p>
-                <p class="metric-label">Activos</p>
+                <strong><?= (int)($resumen['usuarios_activos'] ?? 0) ?></strong>
+                <span>Activos</span>
             </div>
         </article>
 
-        <article class="metric-card">
-            <div class="metric-icon metric-icon-muted"><i class="bi bi-person-dash"></i></div>
+        <article class="analyst-portfolio-kpi analyst-portfolio-kpi--muted">
+            <span class="analyst-portfolio-kpi-icon" aria-hidden="true"><i class="bi bi-person-dash"></i></span>
             <div>
-                <p class="metric-value"><?= (int)($resumen['usuarios_inactivos'] ?? 0) ?></p>
-                <p class="metric-label">Inactivos</p>
+                <strong><?= (int)($resumen['usuarios_inactivos'] ?? 0) ?></strong>
+                <span>Inactivos</span>
             </div>
         </article>
 
-        <article class="metric-card">
-            <div class="metric-icon"><i class="bi bi-shield-check"></i></div>
+        <article class="analyst-portfolio-kpi">
+            <span class="analyst-portfolio-kpi-icon" aria-hidden="true"><i class="bi bi-shield-check"></i></span>
             <div>
-                <p class="metric-value"><?= (int)($resumen['roles_registrados'] ?? 0) ?></p>
-                <p class="metric-label">Roles</p>
+                <strong><?= (int)($resumen['roles_registrados'] ?? 0) ?></strong>
+                <span>Roles</span>
             </div>
         </article>
     </section>
 
-    <div class="territorial-section-title">
-        <h2>PERSONAS Y ACCESO</h2>
-        <p>Distribución y detalle de los usuarios incluidos en el alcance seleccionado.</p>
-    </div>
-
-    <section class="report-two-column mb-4">
-        <article class="dashboard-panel report-section">
-            <div class="report-section-heading">
+    <section class="report-users-charts mb-3" aria-label="Personas y acceso">
+        <article class="dashboard-panel analyst-portfolio-stage">
+            <div class="analyst-portfolio-section-heading">
                 <div>
-                    <h3>Usuarios por rol</h3>
+                    <span class="report-eyebrow">PERSONAS Y ACCESO</span>
+                    <h3 class="panel-title mb-1">Usuarios por rol</h3>
+                    <p class="page-subtitle mb-0">Distribución de los usuarios incluidos en el alcance seleccionado.</p>
                 </div>
             </div>
 
@@ -252,7 +304,7 @@ foreach ($estadoUsuarios as $datoEstado) {
                     No se encontraron usuarios para los roles seleccionados.
                 </p>
             <?php else: ?>
-                <div class="territorial-bar-chart" aria-label="Usuarios por rol">
+                <div class="analyst-portfolio-stage-list">
                     <?php foreach ($usuariosPorRol as $datoRol): ?>
                         <?php
                         $valorRol = (int)($datoRol['valor'] ?? 0);
@@ -260,28 +312,30 @@ foreach ($estadoUsuarios as $datoEstado) {
                             ? max(3, ($valorRol / $maxUsuariosRol) * 100)
                             : 0;
                         ?>
-                        <div class="territorial-bar-row">
-                            <div class="territorial-bar-label">
-                                <span><?= $texto($datoRol['etiqueta'] ?? 'Sin rol') ?></span>
-                                <strong><?= $valorRol ?></strong>
+                        <div class="analyst-portfolio-stage-item">
+                            <div>
+                                <strong><?= $texto($datoRol['etiqueta'] ?? 'Sin rol') ?></strong>
                             </div>
-                            <div class="territorial-bar-track">
+                            <div class="analyst-portfolio-stage-progress" aria-hidden="true">
                                 <span style="width: <?= number_format($anchoRol, 2, '.', '') ?>%"></span>
                             </div>
+                            <b><?= $valorRol ?></b>
                         </div>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
         </article>
 
-        <article class="dashboard-panel report-section">
-            <div class="report-section-heading">
+        <article class="dashboard-panel analyst-portfolio-territory">
+            <div class="analyst-portfolio-section-heading">
                 <div>
-                    <h3>Estado de usuarios</h3>
+                    <span class="report-eyebrow">CUENTAS DEL SISTEMA</span>
+                    <h3 class="panel-title mb-1">Estado de usuarios</h3>
+                    <p class="page-subtitle mb-0">Usuarios activos e inactivos de los roles seleccionados.</p>
                 </div>
             </div>
 
-            <div class="territorial-bar-chart" aria-label="Estado de usuarios">
+            <div class="analyst-portfolio-territory-list">
                 <?php foreach ($estadoUsuarios as $datoEstado): ?>
                     <?php
                     $valorEstado = (int)($datoEstado['valor'] ?? 0);
@@ -289,12 +343,12 @@ foreach ($estadoUsuarios as $datoEstado) {
                         ? max(3, ($valorEstado / $maxEstadoUsuarios) * 100)
                         : 0;
                     ?>
-                    <div class="territorial-bar-row">
-                        <div class="territorial-bar-label">
-                            <span><?= $texto($datoEstado['etiqueta'] ?? '') ?></span>
-                            <strong><?= $valorEstado ?></strong>
+                    <div>
+                        <div class="analyst-portfolio-territory-copy">
+                            <strong><?= $texto($datoEstado['etiqueta'] ?? '') ?></strong>
+                            <span><?= $valorEstado ?></span>
                         </div>
-                        <div class="territorial-bar-track">
+                        <div class="analyst-portfolio-territory-progress" aria-hidden="true">
                             <span style="width: <?= number_format($anchoEstado, 2, '.', '') ?>%"></span>
                         </div>
                     </div>
@@ -303,20 +357,22 @@ foreach ($estadoUsuarios as $datoEstado) {
         </article>
     </section>
 
-    <section class="dashboard-panel report-section mb-4">
-        <div class="report-section-heading">
+    <section class="dashboard-panel p-0 overflow-hidden analyst-portfolio-detail mb-3">
+        <div class="table-panel-header">
             <div>
-                <h3>Usuarios del sistema</h3>
+                <span class="report-eyebrow">DETALLE DE USUARIOS</span>
+                <h3 class="panel-title mb-0">Usuarios del sistema</h3>
             </div>
+            <span class="analyst-portfolio-detail-count"><?= count($usuarios) ?> usuarios</span>
         </div>
 
         <?php if (empty($usuarios)): ?>
-            <p class="data-empty-text mb-0">
+            <p class="data-empty-text px-3 pb-3 mb-0">
                 No se encontraron usuarios para los roles seleccionados.
             </p>
         <?php else: ?>
             <div class="table-responsive">
-                <table class="table users-table data-table align-middle report-table">
+                <table class="table users-table align-middle mb-0 analyst-portfolio-table">
                     <thead>
                         <tr>
                             <th>Usuario</th>
@@ -337,7 +393,11 @@ foreach ($estadoUsuarios as $datoEstado) {
                                     )) ?>
                                 </td>
                                 <td><?= $texto($usuario['rol'] ?? '—') ?></td>
-                                <td><?= (int)($usuario['estado'] ?? 0) === 1 ? 'Activo' : 'Inactivo' ?></td>
+                                <td>
+                                    <span class="analyst-portfolio-stage-pill<?= (int)($usuario['estado'] ?? 0) === 1 ? ' report-users-status-active' : '' ?>">
+                                        <?= (int)($usuario['estado'] ?? 0) === 1 ? 'Activo' : 'Inactivo' ?>
+                                    </span>
+                                </td>
                                 <td><?= $texto($fechaHora($usuario['ultimo_acceso'] ?? null, 'Sin acceso registrado')) ?></td>
                             </tr>
                         <?php endforeach; ?>
@@ -347,44 +407,44 @@ foreach ($estadoUsuarios as $datoEstado) {
         <?php endif; ?>
     </section>
 
-    <div class="territorial-section-title">
-        <h2>HALLAZGOS ADMINISTRATIVOS</h2>
-        <p>Lecturas dinámicas construidas con los mismos resultados utilizados en el PDF.</p>
-    </div>
-
-    <section class="dashboard-panel report-section mb-4">
-        <div class="report-insight-list">
-            <?php foreach ($hallazgos as $hallazgo): ?>
+    <section class="dashboard-panel p-0 overflow-hidden analyst-portfolio-detail mb-4">
+        <div class="table-panel-header">
+            <div>
+                <span class="report-eyebrow">REVISIÓN ADMINISTRATIVA</span>
+                <h3 class="panel-title mb-0">Hallazgos administrativos</h3>
+                <p class="page-subtitle mb-0 mt-1">Lecturas dinámicas construidas con los mismos resultados utilizados en el PDF.</p>
+            </div>
+        </div>
+        <?php foreach ($hallazgos as $hallazgo): ?>
+            <div class="report-users-finding">
                 <div class="report-insight-item">
                     <i class="bi bi-check2-circle" aria-hidden="true"></i>
-                    <div>
-                        <p><?= $texto($hallazgo['texto']) ?></p>
-                        <?php if (!empty($hallazgo['filas'])): ?>
-                            <div class="table-responsive mt-2">
-                                <table class="table users-table data-table align-middle report-table mb-0">
-                                    <thead>
-                                        <tr>
-                                            <?php foreach ($hallazgo['columnas'] as $columna): ?>
-                                                <th scope="col"><?= $texto($columna) ?></th>
-                                            <?php endforeach; ?>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($hallazgo['filas'] as $fila): ?>
-                                            <tr>
-                                                <?php foreach ($fila as $valor): ?>
-                                                    <td><?= $texto($valor) ?></td>
-                                                <?php endforeach; ?>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        <?php endif; ?>
-                    </div>
+                    <p><?= $texto($hallazgo['texto']) ?></p>
                 </div>
-            <?php endforeach; ?>
-        </div>
+                <?php if (!empty($hallazgo['filas'])): ?>
+                    <div class="table-responsive">
+                        <table class="table users-table align-middle mb-0 analyst-portfolio-table">
+                            <thead>
+                                <tr>
+                                    <?php foreach ($hallazgo['columnas'] as $columna): ?>
+                                        <th scope="col"><?= $texto($columna) ?></th>
+                                    <?php endforeach; ?>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($hallazgo['filas'] as $fila): ?>
+                                    <tr>
+                                        <?php foreach ($fila as $valor): ?>
+                                            <td><?= $texto($valor) ?></td>
+                                        <?php endforeach; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
     </section>
 
     <?php endif; ?>
