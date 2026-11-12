@@ -1,11 +1,15 @@
 <?php
+require_once __DIR__.'/../../config/db_connection.php';
+require_once __DIR__.'/ProspectoNoContactarV3.php';
 
 class WhatsAppCloudApiService
 {
     private $config;
+    private ?mysqli $conexionAutorizacion;
 
-    public function __construct()
+    public function __construct(?mysqli $conexionAutorizacion=null)
     {
+        $this->conexionAutorizacion=$conexionAutorizacion;
         $this->config = $this->cargarConfiguracion();
     }
 
@@ -365,6 +369,27 @@ class WhatsAppCloudApiService
             return [
                 'ok' => false,
                 'mensaje' => 'La extensión cURL de PHP no está disponible.'
+            ];
+        }
+
+        // Último control de salida: cubre texto, plantillas e imágenes.
+        // Si no se puede comprobar restricción, no enviar al proveedor.
+        try {
+            // Reutilizar la conexión del modelo WhatsApp cuando exista.
+            // En integraciones aisladas usar el pool persistente de PHP-FPM.
+            $propia=$this->conexionAutorizacion===null;
+            $db=$propia?(new Database())->connect():$this->conexionAutorizacion;
+            try {
+                ProspectoNoContactarV3::exigirPermitido(
+                    $db,(string)($payload['to']??''));
+            } finally { if ($propia) $db->close(); }
+        } catch (DomainException $e) {
+            return ['ok'=>false,'mensaje'=>$e->getMessage()];
+        } catch (Throwable $e) {
+            error_log('[whatsapp_no_contactar] '.get_class($e));
+            return [
+                'ok'=>false,
+                'mensaje'=>'No se pudo verificar la autorización de contacto; no se envió el mensaje.'
             ];
         }
 

@@ -24,6 +24,11 @@ try {
  new TelefoniaDisponibilidadService($db);
  $db->query('CREATE TABLE telefonia_contactos_personales(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,usuario_id INT,nombre VARCHAR(90),telefono VARCHAR(18),UNIQUE KEY own_phone(usuario_id,telefono))');
  $db->query("INSERT INTO telefonia_contactos_personales VALUES (1,8,'Ana','+525551110000'),(2,9,'Ajena','+525559998877')");
+ // Inicio de Ventas consulta la exclusión global de No contactar antes de
+ // registrar un intento. El fixture reproduce sólo las columnas necesarias.
+ $db->query('CREATE TABLE prospectos_comerciales(id BIGINT UNSIGNED PRIMARY KEY,telefono_normalizado VARCHAR(24) NOT NULL)');
+ $db->query('CREATE TABLE prospecto_asignaciones(id BIGINT UNSIGNED PRIMARY KEY,prospecto_id BIGINT UNSIGNED NOT NULL)');
+ $db->query('CREATE TABLE prospecto_embudo_subetapas(asignacion_id BIGINT UNSIGNED PRIMARY KEY,subetapa VARCHAR(40) NOT NULL)');
  require_once dirname(__DIR__).'/app/services/TelefoniaMarcacionesVentasService.php';new TelefoniaMarcacionesVentasService($db);
  $svc=new TelefoniaVentasLlamadasService($db);vcheck(!$svc->disponible(),'No crea tablas al consultar');
  $pending=TelefoniaVentasSchema::pendientes($db);vcheck(count($pending)>0&&!$svc->disponible(),'Check de migración es de lectura');
@@ -96,6 +101,14 @@ try {
  $results->guardar(8,'pbx-transfer-noanswer','INTERESADO');vcheck($notices->pendientes(8,false)===[],'Resultado de respuesta tardía cierra sólo devolución automática correspondiente');
  // Conciliación uno a uno: dos llamadas o dos intenciones no se eligen por orden.
  $marker=new TelefoniaMarcacionesVentasService($db,false);vreject(fn()=>$marker->iniciar(9,'5556667788',str_repeat('9',32)),'Sin extensión asignada no prepara llamadas salientes');$token=str_repeat('a',32);$marker->iniciar(8,'5556667788',$token);
+ $db->query("INSERT INTO prospectos_comerciales VALUES (1,'+525559991234')");
+ $db->query('INSERT INTO prospecto_asignaciones VALUES (1,1)');
+ $db->query("INSERT INTO prospecto_embudo_subetapas VALUES (1,'NO_CONTACTAR')");
+ $antes=(int)$db->query('SELECT COUNT(*) n FROM telefonia_ventas_marcaciones')->fetch_assoc()['n'];
+ vreject(fn()=>$marker->iniciar(8,'5559991234',str_repeat('0',32)),
+     'No contactar bloquea Inicio antes de crear intento PBX');
+ vcheck((int)$db->query('SELECT COUNT(*) n FROM telefonia_ventas_marcaciones')->fetch_assoc()['n']===$antes,
+     'No contactar no crea marcación ni duplica intentos');
  $out='out_'.str_repeat('c',32);$event($out,'NOTIFY_OUT_START','150',0,['destination'=>'+525556667788','received_at'=>date('Y-m-d H:i:s'),'call_start'=>date('Y-m-d H:i:s')]);$svc->sincronizar(8);
  vcheck($marker->pertenece(8,'150',$out),'Conciliación única restaura referencia exacta');
  $marker->iniciar(8,'5557778899',str_repeat('b',32));$marker->iniciar(8,'5557778899',str_repeat('d',32));

@@ -16,8 +16,14 @@ def check(cond,msg):
     if not cond:raise AssertionError("PUBLICADOR_BANDEJAS_V3: "+msg)
 
 ref="b5dfe589061e900ca9da2ab5303ccd7f93db80b7"
+published_ref="79f8ccda4f6f525318c7abbbb67324077c175c3c"
+# La versión publicada se valida contra el commit original, no HEAD.
+original_release={}
 for ruta,old,new in p.p.ARCHIVOS:
-    check(p.p.blob(os.path.join(BASE,ruta))==new,"nuevo exacto "+ruta)
+    original_release[ruta]=subprocess.check_output(
+        ['git','show',published_ref+':'+ruta],cwd=BASE)
+    check(p.p.blob_bytes(original_release[ruta])==new,
+          "SHA histórico publicado "+ruta)
     if old is not None:
         base=subprocess.check_output(['git','show',ref+':'+ruta],cwd=BASE)
         check(p.p.blob_bytes(base)==old,"base exacta "+ruta)
@@ -34,7 +40,8 @@ with tempfile.TemporaryDirectory(prefix='impe_bandejas_test_') as tmp:
     for ruta,old,new in p.p.ARCHIVOS:
         dest=os.path.join(stage,ruta)
         os.makedirs(os.path.dirname(dest),exist_ok=True)
-        shutil.copy2(os.path.join(BASE,ruta),dest)
+        with open(dest,'wb') as file:
+            file.write(original_release[ruta])
         if old is not None:
             original=os.path.join(site,ruta)
             os.makedirs(os.path.dirname(original),exist_ok=True)

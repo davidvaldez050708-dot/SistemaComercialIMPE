@@ -169,7 +169,8 @@ final class EmbudoComercialRepository
         return ['programas'=>$programas,'asesores'=>$asesores];
     }
 
-    public function listado(int $usuarioId,bool $supervisor,array $f,string $vista): array
+    public function listado(int $usuarioId,bool $supervisor,array $f,string $vista,
+        bool $bandejaV3=false): array
     {
         [$from,$args]=$this->condiciones($usuarioId,$supervisor,$f);
         $agregado=$this->rows(
@@ -193,7 +194,12 @@ final class EmbudoComercialRepository
             $paginas=max(1,(int)ceil($total/self::POR_COLUMNA));
             $pagina=min($paginas,$f['paginas'][$etapa]);
             $offset=($pagina-1)*self::POR_COLUMNA;
+            $campoSubetapa=$bandejaV3
+                ?"(SELECT st.subetapa FROM prospecto_embudo_subetapas st
+                    WHERE st.asignacion_id=a.id LIMIT 1) subetapa,"
+                :"";
             $campos="SELECT a.id asignacion_id,a.prospecto_id,a.asesor_id,
+                $campoSubetapa
                 COALESCE(e.etapa,'NUEVO') etapa_original,
                 a.asignado_at,a.fecha_trabajo,
                 COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
@@ -549,6 +555,27 @@ final class EmbudoComercialRepository
         $rows=$this->rows($sql,$params);
         if (!$rows) return null;
         $p=$rows[0];
+        $p['solicitud_inscripcion']=null;
+        if ($operativoV3 && !$supervisor &&
+            $p['etapa']==='PROCESO_INSCRIPCION') {
+            // Solo se consulta tras confirmar asignación vigente y propietaria.
+            // Si la migración aún no está instalada, mostrar la ficha anterior
+            // en lugar de declarar evidencia institucional inexistente.
+            $existe=$this->db->query(
+                "SHOW TABLES LIKE 'prospecto_embudo_inscripciones_v3'")->num_rows>0;
+            if ($existe) {
+                $link=$this->rows(
+                    "SELECT v.formulario_inscripcion_id,v.verificado_at,
+                            v.vinculado_por,f.created_at fecha_formulario
+                     FROM prospecto_embudo_inscripciones_v3 v
+                     JOIN formulario_inscripciones f
+                       ON f.id=v.formulario_inscripcion_id
+                     WHERE v.asignacion_id=? LIMIT 1",
+                    [(int)$p['asignacion_id']]
+                );
+                $p['solicitud_inscripcion']=$link[0]??null;
+            }
+        }
         $p['programas']=$this->rows(
             'SELECT nombre_original FROM prospecto_intereses WHERE prospecto_id=? ORDER BY id DESC LIMIT 20',
             [$prospectoId]

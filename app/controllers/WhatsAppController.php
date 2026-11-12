@@ -18,7 +18,7 @@ class WhatsAppController
             tienePermiso('whatsapp.gestionar_cuentas');
 
         $modelo = new WhatsAppModel();
-        $servicio = new WhatsAppCloudApiService();
+        $servicio = new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
 
         $estructuraWhatsappDisponible = $modelo->estructuraDisponible();
         $estadoConfiguracionWhatsapp = $servicio->obtenerEstadoConfiguracion();
@@ -225,7 +225,7 @@ class WhatsAppController
             ], 409);
         }
 
-        $servicio = new WhatsAppCloudApiService();
+        $servicio = new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
         $resultado = $servicio->enviarTexto(
             (string)$cuenta['phone_number_id'],
             (string)$conversacion['telefono_contacto'],
@@ -299,7 +299,7 @@ class WhatsAppController
             ], 409);
         }
 
-        $servicio = new WhatsAppCloudApiService();
+        $servicio = new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
         $estadoConfig = $servicio->obtenerEstadoConfiguracion();
         $resultado = $servicio->enviarPlantillaPrueba(
             (string)$cuenta['phone_number_id'],
@@ -556,7 +556,7 @@ class WhatsAppController
             ], 404);
         }
 
-        $servicio = new WhatsAppCloudApiService();
+        $servicio = new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
         $resultado = $servicio->probarConexion(
             (string)($cuenta['phone_number_id'] ?? '')
         );

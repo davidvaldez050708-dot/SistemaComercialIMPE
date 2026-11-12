@@ -94,7 +94,7 @@ final class EmbudoComercialController
                     ?$repo->listadoV3Preparacion($usuarioId,$supervisor,$filtros)
                     :($operativoV3
                         ?$repo->listadoV3Operativo($usuarioId,$filtros,$paginasV3)
-                        :$repo->listado($usuarioId,$supervisor,$filtros,$vista));
+                        :$repo->listado($usuarioId,$supervisor,$filtros,$vista,$bandejasV3));
             }
         } catch (DomainException $e) {
             http_response_code(400);
@@ -276,6 +276,73 @@ final class EmbudoComercialController
         }
     }
 
+    /**
+     * Solicitud institucional: verificar identidad y confirmar con formulario
+     * real. La búsqueda no crea etapa, pago, inscripción ni registros.
+     */
+    public function inscripcionOperativaV3(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store, max-age=0');
+        $reply=static function(int $status,string $mensaje,array $extra=[]): void {
+            http_response_code($status);
+            echo json_encode(array_merge(['ok'=>$status===200,'mensaje'=>$mensaje],$extra),
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        };
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST') {
+            $reply(405,'Método no permitido.');return;
+        }
+        $usuario=(int)($_SESSION['usuario_id']??0);
+        if ($usuario<1 ||
+            !EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuario) ||
+            !tienePermiso('ventas.embudo.ver') ||
+            !tienePermiso('ventas.embudo.mover')) {
+            $reply(403,'No tienes acceso al proceso de inscripción V3.');return;
+        }
+        $token=(string)($_SESSION['csrf_token']??'');
+        if ($token==='' || !hash_equals($token,
+            (string)($_SERVER['HTTP_X_CSRF_TOKEN']??''))) {
+            $reply(403,'Sesión de seguridad vencida. Recarga la página.');return;
+        }
+        foreach (['operacion','asignacion_id','formulario_id','motivo','confirmacion'] as $campo) {
+            if (isset($_POST[$campo]) && !is_string($_POST[$campo])) {
+                $reply(422,'Datos de trámite inválidos.');return;
+            }
+        }
+        $asignacion=filter_var($_POST['asignacion_id']??null,FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>1]]);
+        $operacion=(string)($_POST['operacion']??'');
+        if (!$asignacion || !in_array($operacion,['BUSCAR','VINCULAR'],true)) {
+            $reply(422,'La solicitud no es válida.');return;
+        }
+        try {
+            require_once __DIR__.'/../services/EmbudoComercialV3InscripcionService.php';
+            $db=(new Database())->connect(false);
+            $svc=new EmbudoComercialV3InscripcionService($db);
+            if ($operacion==='BUSCAR') {
+                $candidato=$svc->candidato($usuario,(int)$asignacion);
+                $reply(200,'Consulta institucional completada.',
+                    ['consulta'=>$candidato]);return;
+            }
+            $formId=filter_var($_POST['formulario_id']??null,FILTER_VALIDATE_INT,
+                ['options'=>['min_range'=>1]]);
+            if (!$formId) {
+                $reply(422,'Primero verifica el formulario de inscripción.');return;
+            }
+            $res=$svc->vincular($usuario,(int)$asignacion,(int)$formId,
+                (string)($_POST['motivo']??''),
+                ($_POST['confirmacion']??'')==='1');
+            $reply(200,'Solicitud de inscripción vinculada y auditada.',
+                ['movimiento'=>$res]);
+        } catch (DomainException $e) {
+            $reply(409,$e->getMessage());
+        } catch (Throwable $e) {
+            error_log('[ventas_v3_inscripcion] '.get_class($e).
+                ' codigo='.(int)$e->getCode());
+            $reply(503,'No se pudo verificar o vincular la solicitud. No se guardó.');
+        }
+    }
+
     public function moverEtapaV3(): void
     {
         header('Content-Type: application/json; charset=utf-8');
@@ -420,7 +487,8 @@ final class EmbudoComercialController
                     (string)($_POST['dia']??''),$motivo,$confirmada);
             } elseif ($accion==='DESCARTAR') {
                 $mov=$service->descartar($uid,(int)$asig,$etapa,
-                    (string)($_POST['subetapa']??''),$motivo,$confirmada);
+                    (string)($_POST['subetapa']??''),$motivo,$confirmada,
+                    ($_POST['confirmacion_no_contactar']??'')==='1');
             } else {
                 $mov=$service->reactivar($uid,(int)$asig,$etapa,
                     $motivo,$confirmada);

@@ -16,7 +16,11 @@ const html=`<!doctype html><html><head><meta charset="utf-8">
 <button data-v3b-accion="DESCARTAR">Descartar</button></article>
 <article class="impe-v3o-card" data-asignacion-id="102" data-etapa="RECUPERACION"
  data-nombre="Prospecto en Recuperación">
+<button data-v3b-llamar="+527771234567">Llamar recuperación</button>
 <button data-v3b-accion="REACTIVAR">Reactivar</button></article>
+<article data-asignacion-id="103" data-etapa="RECUPERACION"
+ data-no-contactar="1"><button data-v3b-llamar="+527771234599">
+ Llamada bloqueada</button></article>
 <dialog class="impe-embudo-dialog impe-v3b-dialog" id="impe-v3b-dialog">
 <form method="dialog" id="impe-v3b-form">
 <header><h3 id="impe-v3b-titulo">Revisión</h3><button type="button" data-v3b-cerrar>Cerrar</button></header>
@@ -25,7 +29,11 @@ const html=`<!doctype html><html><head><meta charset="utf-8">
 <label data-v3b-dia hidden>Jornada<input name="dia" type="date" max="2026-11-12"></label>
 <label data-v3b-subetapa hidden>Motivo<select name="subetapa">
 <option value="">Seleccionar</option><option value="NO_INTERESADO">No interesado</option>
-<option value="NUMERO_INVALIDO">Número inválido</option></select></label>
+<option value="NUMERO_INVALIDO">Número inválido</option>
+<option value="NO_CONTACTAR">No contactar expresamente</option></select></label>
+<label data-v3b-no-contactar hidden>
+<input type="checkbox" name="confirmacion_no_contactar" value="1">
+Confirmo solicitud expresa de no contactar</label>
 <textarea name="motivo" minlength="8" maxlength="125" required></textarea>
 <label><input name="confirmacion" type="checkbox" value="1" required>Confirmar</label>
 <p data-v3b-error role="alert" hidden></p>
@@ -43,8 +51,10 @@ async function run(mode) {
   await page.addInitScript(()=>{
     window.IMPE_CURRENT_USER_ID=8;
     window.IMPE_CSRF_TOKEN='csrf-para-test';
+    window.__dialed=[];
     window.IMPE_TELEPHONY_PERSISTENT={
-      getState:()=>({active:Boolean(window.pruebaLlamadaActiva)})
+      getState:()=>({active:Boolean(window.pruebaLlamadaActiva)}),
+      openDialer:options=>window.__dialed.push(options)
     };
   });
   await page.route(origin+'/**',async route=>{
@@ -76,6 +86,11 @@ async function run(mode) {
         assert.equal(body.get('operacion'),'REACTIVAR');
         assert.equal(body.get('asignacion_id'),'102');
       }
+      if(mode==='no_contactar'){
+        assert.equal(body.get('operacion'),'DESCARTAR');
+        assert.equal(body.get('subetapa'),'NO_CONTACTAR');
+        assert.equal(body.get('confirmacion_no_contactar'),'1');
+      }
       return route.fulfill({json:{ok:true,mensaje:'Decisión comercial registrada y auditada.'}});
     }
     navigations++;
@@ -83,15 +98,39 @@ async function run(mode) {
   });
   try{
     await page.goto(origin);
+    if(mode==='marcacion'){
+      await page.getByRole('button',{name:'Llamar recuperación'}).click();
+      assert.deepEqual(await page.evaluate(()=>window.__dialed),
+        [{number:'+527771234567'}]);
+      const contexto=await page.evaluate(()=>JSON.parse(
+        sessionStorage.getItem('impe:embudo:llamada-pendiente')||'null'));
+      assert.equal(contexto.asignacionId,'102');
+      assert.equal(contexto.usuarioId,8);
+      assert.equal(contexto.numero,'+527771234567');
+      await page.getByRole('button',{name:'Llamada bloqueada'}).click();
+      assert.equal((await page.evaluate(()=>window.__dialed)).length,1,
+        'No contactar nunca abre el dialer en Gestión Comercial');
+      assert.equal(writes,0,'abrir el dialer no crea resultados');
+      assert.equal(navigations,1,'no se pierde contexto por navegar');
+      console.log('Bandeja V3: marcación y No contactar OK');
+      return;
+    }
     if(mode==='recuperacion'){
       await page.getByRole('button',{name:'Revisar Recuperación'}).click();
       assert.equal(await page.locator('[name=dia]').inputValue(),'2026-11-12');
       assert.equal(await page.locator('[data-v3b-subetapa]').isVisible(),false);
-    } else if(mode==='descarte'){
+    } else if(mode==='descarte'||mode==='no_contactar'){
       await page.getByRole('button',{name:'Descartar'}).click();
       assert.equal(await page.locator('[data-v3b-subetapa]').isVisible(),true);
-      assert.equal(await page.locator('option[value=NO_CONTACTAR]').count(),0);
-      await page.selectOption('[name=subetapa]','NO_INTERESADO');
+      assert.equal(await page.locator('option[value=NO_CONTACTAR]').count(),1);
+      await page.selectOption('[name=subetapa]',
+        mode==='no_contactar'?'NO_CONTACTAR':'NO_INTERESADO');
+      assert.equal(await page.locator('[data-v3b-no-contactar]').isVisible(),
+        mode==='no_contactar');
+      if(mode==='no_contactar'){
+        await page.locator('[name=confirmacion_no_contactar]').check();
+        await page.evaluate(()=>window.pruebaLlamadaActiva=true);
+      }
     } else {
       await page.evaluate(()=>window.pruebaLlamadaActiva=true);
       await page.getByRole('button',{name:'Reactivar'}).click();
@@ -104,7 +143,7 @@ async function run(mode) {
       assert.match(await page.locator('[data-v3b-error]').textContent(),/PBX acreditado/);
       assert.equal(await page.locator('#impe-v3b-dialog[open]').count(),1);
       assert.equal(navigations,1);
-    } else if(mode==='reactivacion'){
+    } else if(mode==='reactivacion'||mode==='no_contactar'){
       await page.locator('.system-toast.show').waitFor();
       assert.equal(navigations,1,'no recargar durante llamada activa');
     } else {
@@ -116,5 +155,5 @@ async function run(mode) {
     console.log('Bandeja V3:',mode,'OK');
   }finally{await browser.close();}
 }
-(async()=>{for(const mode of ['recuperacion','descarte','reactivacion'])await run(mode);})()
+(async()=>{for(const mode of ['marcacion','recuperacion','descarte','no_contactar','reactivacion'])await run(mode);})()
   .catch(err=>{console.error(err);process.exitCode=1;});

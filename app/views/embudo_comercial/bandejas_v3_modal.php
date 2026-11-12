@@ -21,7 +21,14 @@ $escBandeja=static fn($value)=>htmlspecialchars((string)($value??''),ENT_QUOTES,
                     <option value="">Selecciona un motivo</option>
                     <option value="NO_INTERESADO">Declaró que no está interesado</option>
                     <option value="NUMERO_INVALIDO">Número inexistente acreditado por PBX</option>
+                    <option value="NO_CONTACTAR">Solicitud expresa de no volver a contactar</option>
                 </select>
+            </label>
+            <label data-v3b-no-contactar hidden class="impe-v3b-confirmacion">
+                <input type="checkbox" name="confirmacion_no_contactar" value="1">
+                <span>Confirmo que la persona solicitó explícitamente que no volvamos
+                    a contactarla y que revisé la conversación PBX correspondiente.
+                    Se bloquearán nuevas llamadas comerciales y envíos de WhatsApp.</span>
             </label>
             <label>Justificación de la revisión
                 <textarea name="motivo" minlength="8" maxlength="125" rows="3"

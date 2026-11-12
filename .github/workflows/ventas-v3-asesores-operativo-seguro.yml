@@ -29,6 +29,30 @@ on:
       - 'public/javascript/embudo_comercial_v3_bandejas.js'
       - 'tests/ventas_v3_bandejas_db.php'
       - 'tests/ventas_v3_bandejas_browser.cjs'
+      - 'tests/gestion_comercial_v3_bandejas_render_unit.php'
+      - 'tests/gestion_comercial_no_contactar_db.php'
+      - 'database/migrations/2026_11_12_ventas_inscripcion_v3_evidencia.sql'
+      - 'app/services/EmbudoComercialV3InscripcionService.php'
+      - 'app/views/embudo_comercial/inscripcion_v3_modal.php'
+      - 'public/javascript/embudo_comercial_v3_inscripcion.js'
+      - 'public/javascript/telefonia_marcador.js'
+      - 'prueba_telefonia/api/zadarma_estado_llamada.php'
+      - 'tools/publicar_gestion_comercial_v3_integral_hostinger.py'
+      - 'tools/gestion_comercial_v3_inscripcion_schema_hostinger.php'
+      - 'tools/gestion_comercial_v3_auditar_distribucion_hostinger.php'
+      - 'tests/gestion_comercial_v3_integral_publicador_unit.py'
+      - 'tests/gestion_comercial_hostinger_telefonia_conciliada_unit.php'
+      - 'tools/gestion_comercial_v3_validar_conciliacion_privada_hostinger.py'
+      - 'tools/preparar_gestion_comercial_v3_conciliada_hostinger.py'
+      - 'tests/gestion_comercial_v3_dialer_guard_browser.cjs'
+      - 'tests/gestion_comercial_v3_inscripcion_db.php'
+      - 'tests/gestion_comercial_v3_inscripcion_browser.cjs'
+      - 'app/services/ProspectoNoContactarV3.php'
+      - 'app/services/TelefoniaMarcacionesVentasService.php'
+      - 'app/services/WhatsAppCloudApiService.php'
+      - 'app/models/WhatsAppModel.php'
+      - 'app/controllers/WhatsAppController.php'
+      - 'app/controllers/TelefoniaController.php'
       - 'tools/publicar_ventas_v3_bandejas_hostinger.py'
       - 'tests/ventas_v3_bandejas_publicador_unit.py'
       - 'tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py'
@@ -82,6 +106,29 @@ jobs:
           php -l app/views/embudo_comercial/bandejas_v3.php
           php -l app/views/embudo_comercial/bandejas_v3_modal.php
           php -l tests/ventas_v3_bandejas_db.php
+          php -l tests/gestion_comercial_v3_bandejas_render_unit.php
+          php tests/gestion_comercial_v3_bandejas_render_unit.php
+          php -l app/services/ProspectoNoContactarV3.php
+          php -l app/services/TelefoniaMarcacionesVentasService.php
+          php -l app/services/WhatsAppCloudApiService.php
+          php -l app/models/WhatsAppModel.php
+          php -l app/controllers/WhatsAppController.php
+          php -l app/controllers/TelefoniaController.php
+          php -l prueba_telefonia/api/zadarma_estado_llamada.php
+          php tests/gestion_comercial_hostinger_telefonia_conciliada_unit.php
+          php -l tools/gestion_comercial_v3_inscripcion_schema_hostinger.php
+          php -l tools/gestion_comercial_v3_auditar_distribucion_hostinger.php
+          python3 -m py_compile tools/publicar_gestion_comercial_v3_integral_hostinger.py
+          python3 -m py_compile tools/preparar_gestion_comercial_v3_conciliada_hostinger.py
+          python3 tests/gestion_comercial_v3_integral_publicador_unit.py
+          php -l tests/gestion_comercial_no_contactar_db.php
+          php -l app/services/EmbudoComercialV3InscripcionService.php
+          php -l app/views/embudo_comercial/inscripcion_v3_modal.php
+          php -l tests/gestion_comercial_v3_inscripcion_db.php
+          node --check public/javascript/embudo_comercial_v3_inscripcion.js
+          node --check tests/gestion_comercial_v3_inscripcion_browser.cjs
+          node --check public/javascript/telefonia_marcador.js
+          node --check tests/gestion_comercial_v3_dialer_guard_browser.cjs
           node --check public/javascript/embudo_comercial_v3_bandejas.js
           node --check tests/ventas_v3_bandejas_browser.cjs
           python3 -m py_compile tools/publicar_ventas_v3_bandejas_hostinger.py
@@ -98,6 +145,8 @@ jobs:
           /tmp/impe-ventas-v3/node_modules/.bin/playwright install --with-deps chromium
           node tests/ventas_v3_toast_browser.cjs
           node tests/ventas_v3_bandejas_browser.cjs
+          node tests/gestion_comercial_v3_inscripcion_browser.cjs
+          node tests/gestion_comercial_v3_dialer_guard_browser.cjs
   mysql-temporal:
     runs-on: ubuntu-latest
     services:
@@ -128,6 +177,8 @@ jobs:
           php tests/embudo_comercial_v3_previsualizacion_db.php
           IMPE_EMBUDO_PBX_TEST_DB=YES php tests/embudo_intentos_pbx_db.php
           IMPE_V3_BANDEJAS_TEST_DB=YES php tests/ventas_v3_bandejas_db.php
+          IMPE_NO_CONTACTAR_TEST_DB=YES php tests/gestion_comercial_no_contactar_db.php
+          IMPE_V3_INSCRIPCION_TEST_DB=YES php tests/gestion_comercial_v3_inscripcion_db.php
   mariadb-temporal:
     runs-on: ubuntu-latest
     services:
@@ -158,3 +209,5 @@ jobs:
           php tests/embudo_comercial_v3_previsualizacion_db.php
           IMPE_EMBUDO_PBX_TEST_DB=YES php tests/embudo_intentos_pbx_db.php
           IMPE_V3_BANDEJAS_TEST_DB=YES php tests/ventas_v3_bandejas_db.php
+          IMPE_NO_CONTACTAR_TEST_DB=YES php tests/gestion_comercial_no_contactar_db.php
+          IMPE_V3_INSCRIPCION_TEST_DB=YES php tests/gestion_comercial_v3_inscripcion_db.php

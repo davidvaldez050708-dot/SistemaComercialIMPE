@@ -9,6 +9,8 @@ $recuperacion=$vista==='recuperacion';
 $col=$tablero['columnas'][$recuperacion?'RECUPERACION':'DESCARTADO'];
 $puedeReactivar=$recuperacion && tienePermiso('ventas.embudo.mover') &&
     tienePermiso('ventas.recuperacion.gestionar');
+$puedeTelefono=tienePermiso('telefonia.usar');
+$puedeLlamar=$recuperacion && $puedeTelefono && tienePermiso('telefonia.salientes');
 $base=BASE_URL.'index.php?';
 $params=['controller'=>'embudoComercial','action'=>'index','vista'=>$vista,
     'origen'=>$filtros['origen'],'programa'=>$filtros['programa'],
@@ -108,6 +110,15 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
                 <?php endif; ?>
                 <?php foreach($col['registros'] as $p):
                     $legacy=(string)($p['etapa_original']??'')==='EN_CONTACTO';
+                    $noContactar=(string)($p['subetapa']??'')==='NO_CONTACTAR';
+                    $telefono=trim((string)($p['telefono_original']??''));
+                    $numero=preg_replace('/\\D+/','',$telefono)??'';
+                    $numeroValido=(bool)preg_match('/^[0-9]{10,15}$/D',$numero);
+                    $misLlamadas=$base.http_build_query([
+                        'controller'=>'telefonia','action'=>'misLlamadas',
+                        'prospecto_asignacion_id'=>(int)$p['asignacion_id'],
+                        'q'=>$telefono
+                    ]);
                     $detalle=$base.http_build_query([
                         'controller'=>'embudoComercial','action'=>'detalle',
                         'vista'=>$vista,'id'=>(int)$p['prospecto_id']]);
@@ -115,16 +126,26 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
                 <article class="impe-embudo-card impe-v3b-card"
                     data-asignacion-id="<?= (int)$p['asignacion_id'] ?>"
                     data-etapa="<?= $esc((string)($p['etapa_original']??($recuperacion?'RECUPERACION':'DESCARTADO'))) ?>"
-                    data-nombre="<?= $esc($p['nombre_completo']) ?>">
+                    data-nombre="<?= $esc($p['nombre_completo']) ?>"
+                    data-no-contactar="<?= $noContactar?'1':'0' ?>">
                     <div class="impe-embudo-card-line">
                         <a class="impe-embudo-persona" href="<?= $esc($detalle) ?>">
                             <?= $esc($p['nombre_completo']) ?></a>
                         <?php if($legacy): ?>
                             <span class="impe-v3b-badge">Registro histórico · revisión</span>
                         <?php endif; ?>
+                        <?php if($noContactar): ?>
+                            <span class="impe-v3b-badge impe-v3b-badge--stop">
+                                <i class="bi bi-shield-lock" aria-hidden="true"></i> No contactar
+                            </span>
+                        <?php endif; ?>
                     </div>
                     <p class="impe-embudo-programa"><i class="bi bi-mortarboard" aria-hidden="true"></i>
                         <?= $esc(trim((string)($p['programas']??''))?:'Programa pendiente') ?></p>
+                    <?php if($recuperacion && !empty($p['horario_contacto'])): ?>
+                    <p class="impe-v3b-horario"><i class="bi bi-clock" aria-hidden="true"></i>
+                        Horario solicitado: <?= $esc($p['horario_contacto']) ?></p>
+                    <?php endif; ?>
                     <div class="impe-embudo-card-bottom">
                         <span class="impe-embudo-next">
                             <i class="bi bi-calendar3" aria-hidden="true"></i>
@@ -134,11 +155,25 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
                                 Fecha de asignación: <?= $esc(substr((string)($p['fecha_trabajo']??''),0,10)) ?>
                             <?php endif; ?>
                         </span>
-                        <div class="impe-embudo-card-actions">
+                        <div class="impe-embudo-card-actions impe-v3b-acciones">
+                            <?php if($puedeLlamar && !$legacy && !$noContactar && $numeroValido): ?>
+                                <button type="button" data-v3b-llamar="<?= $esc($telefono) ?>"
+                                    title="Abrir teléfono persistente para contactar"
+                                    aria-label="Llamar al prospecto de Recuperación">
+                                    <i class="bi bi-telephone" aria-hidden="true"></i>
+                                </button>
+                            <?php endif; ?>
+                            <?php if($puedeTelefono): ?>
+                                <a href="<?= $esc($misLlamadas) ?>"
+                                    title="Mis llamadas y resultados de esta asignación"
+                                    aria-label="Mis llamadas y resultados">
+                                    <i class="bi bi-journal-check" aria-hidden="true"></i>
+                                </a>
+                            <?php endif; ?>
                             <a href="<?= $esc($detalle) ?>" title="Ficha e historial"
                                aria-label="Ver ficha e historial">
                                 <i class="bi bi-person-vcard" aria-hidden="true"></i></a>
-                            <?php if($puedeReactivar && !$legacy): ?>
+                            <?php if($puedeReactivar && !$legacy && !$noContactar): ?>
                                 <button type="button" data-v3b-accion="REACTIVAR"
                                     title="Reactivar con conversación acreditada"
                                     aria-label="Revisar reactivación">

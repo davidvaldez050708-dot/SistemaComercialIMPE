@@ -78,6 +78,31 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                 <div><dt>Próxima acción</dt><dd><?= $esc($fecha($prospecto['proxima_accion_at'])) ?></dd></div>
             </dl>
         </section>
+        <?php if($prospecto['etapa']==='PROCESO_INSCRIPCION'): ?>
+        <section class="impe-embudo-detalles-wide">
+            <h3><i class="bi bi-file-earmark-check" aria-hidden="true"></i>
+                Evidencia de solicitud institucional</h3>
+            <?php if(!empty($prospecto['solicitud_inscripcion'])):
+                $solicitud=$prospecto['solicitud_inscripcion']; ?>
+            <dl>
+                <div><dt>Formulario recibido</dt>
+                    <dd>#<?= (int)$solicitud['formulario_inscripcion_id'] ?></dd></div>
+                <div><dt>Fecha del formulario</dt>
+                    <dd><?= $esc($fecha($solicitud['fecha_formulario'])) ?></dd></div>
+                <div><dt>Verificación comercial</dt>
+                    <dd><?= $esc($fecha($solicitud['verificado_at'])) ?></dd></div>
+                <div><dt>Vinculado por</dt>
+                    <dd>Usuario #<?= (int)$solicitud['vinculado_por'] ?></dd></div>
+            </dl>
+            <p class="impe-embudo-muted">Solicitud iniciada y vinculada;
+                no constituye pago verificado ni matrícula confirmada.</p>
+            <?php else: ?>
+            <p class="impe-embudo-muted">Registro previo sin formulario
+                institucional vinculado. Requiere conciliación antes de
+                confirmar pago o inscripción.</p>
+            <?php endif; ?>
+        </section>
+        <?php endif; ?>
         <section>
             <h3>Programas de interés</h3>
             <?php if (!$prospecto['programas']): ?><p class="impe-embudo-muted">Sin programa clasificado.</p><?php else: ?>

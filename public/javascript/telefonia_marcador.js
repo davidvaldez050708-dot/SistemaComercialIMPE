@@ -187,7 +187,7 @@
 
         root.querySelector('[data-telephony-dialer-form]').addEventListener(
             'submit',
-            function (event) {
+            async function (event) {
                 event.preventDefault();
                 if (dialing || !ready || !api) return;
 
@@ -209,33 +209,31 @@
 
                 dialing = true;
                 renderCall();
-                // Enviar el registro al servidor desde el mismo clic,
-                // SIN esperar el POST antes de abrir el host WebRTC.
-                const registrar = postContact(root.dataset.callStartUrl, {
-                    destino: destination,
-                    token: token
-                });
-                registrosInicio.set(token, registrar);
-                void registrar.catch(function (error) {
-                    say(
-                        'La llamada puede continuar, pero no pudo registrarse su origen en Ventas: ' +
-                            error.message,
-                        true
-                    );
-                });
-
-                void api.startCall({
-                    destination: destination,
-                    institution: '',
-                    context: {type: 'DIALER', venta_intento: token}
-                }).then(function () {
+                // Conservar la activación de audio del clic del usuario.
+                try {window.parent?.IMPE_TELEPHONY_SHELL?.unlockAudio?.();}catch(_){}
+                // IMPORTANTE: NO activar WebRTC hasta confirmar la aceptación
+                // de la marcación en el servidor. Su 409 protege NO_CONTACTAR
+                // y la ausencia de permiso. Si falla el POST, NO se llama.
+                try {
+                    const registrar=postContact(root.dataset.callStartUrl,{
+                        destino:destination,
+                        token:token
+                    });
+                    registrosInicio.set(token,registrar);
+                    await registrar;
+                    await api.startCall({
+                        destination: destination,
+                        institution: '',
+                        context: {type: 'DIALER', venta_intento: token}
+                    });
                     say('Solicitud de llamada enviada. Esperando a Zadarma…');
-                }).catch(function (error) {
-                    say(error.message || 'No fue posible iniciar la llamada.', true);
-                }).finally(function () {
-                    dialing = false;
+                } catch (error) {
+                    registrosInicio.delete(token);
+                    say(error?.message || 'No fue posible autorizar la llamada.', true);
+                } finally {
+                    dialing=false;
                     renderCall();
-                });
+                }
             }
         );
 
