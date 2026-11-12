@@ -22,6 +22,25 @@
 - Las inscripciones de formulario_inscripciones y todos los correos no
   autorizados quedan fuera, incluso cuando el worker lee una fila.
 
+## Validación automática sin crear otra base en Hostinger
+
+El workflow `.github/workflows/zoho-developer-piloto.yml` inicia un contenedor
+**MySQL 8 temporal**, crea las tablas sintéticas de formularios, y recorre:
+guardado local real -> cola -> worker -> OAuth simulado -> organización
+simulada -> Upsert simulado -> estado e ID de sincronización.
+
+Prueba: fallo HTTP 503 seguido de reintento, no duplicación en Zoho simulado,
+bloqueo ante organización incorrecta, exclusión de inscripciones y
+correos reales, y persistencia de los registros locales.
+
+**No se usan tokens, credenciales ni peticiones a Zoho reales** dentro del
+workflow. La base MySQL temporal desaparece al concluir GitHub Actions;
+no es necesario crear ninguna base de pruebas en Hostinger.
+
+Esta prueba de integración simulada no sustituye una prueba final de API
+Developer real ni las verificaciones de compatibilidad/privacidad del
+sitio operativo.
+
 ## Antes de habilitar: requisitos
 
 1. Trabajar en una **copia/staging** de la base de datos y del sitio,
