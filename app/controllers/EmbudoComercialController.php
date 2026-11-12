@@ -219,6 +219,60 @@ final class EmbudoComercialController
         }
     }
 
+    public function seguimientoOperativoV3(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store');
+        $reply=static function(int $status,array $datos): void {
+            http_response_code($status);
+            echo json_encode(['ok'=>$status===200]+$datos,JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        };
+        $metodo=$_SERVER['REQUEST_METHOD']??'';
+        if (!in_array($metodo,['GET','POST'],true)) {
+            $reply(405,['mensaje'=>'Método no permitido.']);return;
+        }
+        $uid=(int)($_SESSION['usuario_id']??0);
+        if ($uid<1 || !EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($uid) ||
+            !tienePermiso('ventas.embudo.mover')) {
+            $reply(403,['mensaje'=>'Acceso comercial no autorizado.']);return;
+        }
+        $token=(string)($_SESSION['csrf_token']??'');
+        if ($metodo==='POST' && ($token==='' || !hash_equals($token,(string)($_SERVER['HTTP_X_CSRF_TOKEN']??'')))) {
+            $reply(403,['mensaje'=>'Sesión de seguridad vencida. Recarga la página.']);return;
+        }
+        $entrada=$metodo==='POST'?$_POST:$_GET;
+        foreach (['asignacion_id','antes','etapa_actual','version','operacion','motivo','fecha','subetapa'] as $campo) {
+            if (isset($entrada[$campo]) && !is_string($entrada[$campo])) {
+                $reply(422,['mensaje'=>'Datos de actividad inválidos.']);return;
+            }
+        }
+        $id=filter_var($entrada['asignacion_id']??'',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        $version=filter_var($entrada['version']??'0',FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]);
+        $antes=filter_var($entrada['antes']??'0',FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]);
+        if (!$id || $version===false || $antes===false || ($metodo==='POST' && !isset($entrada['version']))) {
+            $reply(422,['mensaje'=>'La asignación o versión no es válida.']);return;
+        }
+        try {
+            require_once __DIR__.'/../services/EmbudoComercialV3SeguimientoService.php';
+            $db=(new Database())->connect(false);
+            if (!EmbudoComercialV3SeguimientoService::instalada($db)) {
+                $reply(503,['mensaje'=>'El seguimiento V3 aún no está disponible.']);return;
+            }
+            $servicio=new EmbudoComercialV3SeguimientoService($db);
+            if ($metodo==='GET') {
+                $reply(200,['historial'=>$servicio->historial($uid,$id,$antes)]);return;
+            }
+            $evento=$servicio->registrar($uid,$id,$entrada['etapa_actual']??'',$version,
+                $entrada['operacion']??'',$entrada['motivo']??'',$entrada['fecha']??'',$entrada['subetapa']??'');
+            $reply(200,['evento_id'=>$evento]);
+        } catch (DomainException $error) {
+            $reply(409,['mensaje'=>$error->getMessage()]);
+        } catch (Throwable $error) {
+            error_log('[ventas_v3_seguimiento] '.get_class($error).' codigo='.(int)$error->getCode());
+            $reply(503,['mensaje'=>'No se pudo confirmar la actividad.']);
+        }
+    }
+
     public function moverEtapaV3(): void
     {
         header('Content-Type: application/json; charset=utf-8');
@@ -280,6 +334,12 @@ final class EmbudoComercialController
                 $confirmada=($_POST['calificacion_confirmada']??'')==='1';
                 $mov=(new EmbudoComercialV3CalificacionService($db))->registrar($uid,(int)$asig,$motivo,$confirmada);
                 $reply(true,'Calificación registrada y auditada.',200,['movimiento'=>$mov]);
+                return;
+            }
+            require_once __DIR__.'/../services/EmbudoComercialV3SeguimientoService.php';
+            if (EmbudoComercialV3SeguimientoService::instalada($db)) {
+                $mov=(new EmbudoComercialV3SeguimientoService($db))->mover($uid,(int)$asig,$anterior,$nueva,$motivo,$fecha);
+                $reply(true,'Movimiento registrado y auditado.',200,['movimiento'=>$mov]);
                 return;
             }
             if(EmbudoComercialV3MovimientosPermitidos::requiereConversacion(

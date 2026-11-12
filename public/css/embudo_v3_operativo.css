@@ -159,6 +159,13 @@
 .impe-embudo--v3-operativo .impe-embudo-dialog textarea{
   resize:vertical;
 }
+.impe-embudo--v3-operativo [data-actividad-historial]{
+  max-height:10rem;overflow:auto;padding-inline-start:1.2rem;
+  font-size:.8125rem;line-height:1.5;
+}
+.impe-embudo--v3-operativo [data-actividad-historial] li{
+  padding-block:.25rem;overflow-wrap:anywhere;
+}
 .impe-embudo--v3-operativo .impe-v3o-accion:focus-visible,
 .impe-embudo--v3-operativo .impe-v3o-volver:focus-visible,
 .impe-embudo--v3-operativo .impe-v3o-paginacion a:focus-visible{
