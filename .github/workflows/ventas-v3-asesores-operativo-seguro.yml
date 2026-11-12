@@ -30,6 +30,11 @@ on:
       - 'tests/ventas_v3_bandejas_db.php'
       - 'tests/ventas_v3_bandejas_browser.cjs'
       - 'tests/gestion_comercial_v3_bandejas_render_unit.php'
+      - 'tests/gestion_comercial_no_contactar_db.php'
+      - 'app/services/ProspectoNoContactarV3.php'
+      - 'app/services/TelefoniaMarcacionesVentasService.php'
+      - 'app/services/WhatsAppCloudApiService.php'
+      - 'app/controllers/TelefoniaController.php'
       - 'tools/publicar_ventas_v3_bandejas_hostinger.py'
       - 'tests/ventas_v3_bandejas_publicador_unit.py'
       - 'tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py'
@@ -85,6 +90,11 @@ jobs:
           php -l tests/ventas_v3_bandejas_db.php
           php -l tests/gestion_comercial_v3_bandejas_render_unit.php
           php tests/gestion_comercial_v3_bandejas_render_unit.php
+          php -l app/services/ProspectoNoContactarV3.php
+          php -l app/services/TelefoniaMarcacionesVentasService.php
+          php -l app/services/WhatsAppCloudApiService.php
+          php -l app/controllers/TelefoniaController.php
+          php -l tests/gestion_comercial_no_contactar_db.php
           node --check public/javascript/embudo_comercial_v3_bandejas.js
           node --check tests/ventas_v3_bandejas_browser.cjs
           python3 -m py_compile tools/publicar_ventas_v3_bandejas_hostinger.py
@@ -131,6 +141,7 @@ jobs:
           php tests/embudo_comercial_v3_previsualizacion_db.php
           IMPE_EMBUDO_PBX_TEST_DB=YES php tests/embudo_intentos_pbx_db.php
           IMPE_V3_BANDEJAS_TEST_DB=YES php tests/ventas_v3_bandejas_db.php
+          IMPE_NO_CONTACTAR_TEST_DB=YES php tests/gestion_comercial_no_contactar_db.php
   mariadb-temporal:
     runs-on: ubuntu-latest
     services:
@@ -161,3 +172,4 @@ jobs:
           php tests/embudo_comercial_v3_previsualizacion_db.php
           IMPE_EMBUDO_PBX_TEST_DB=YES php tests/embudo_intentos_pbx_db.php
           IMPE_V3_BANDEJAS_TEST_DB=YES php tests/ventas_v3_bandejas_db.php
+          IMPE_NO_CONTACTAR_TEST_DB=YES php tests/gestion_comercial_no_contactar_db.php
