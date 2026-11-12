@@ -44,19 +44,17 @@
     }
 
     function mostrarToastExportacion(mensaje, esError = false) {
-        const Toast = window.bootstrap?.Toast;
-        if (!Toast) return;
-
-        let contenedor = document.querySelector('.toast-container:not([data-reminder-toast-container])');
+        let contenedor = document.querySelector('[data-inscritos-toasts]');
         if (!contenedor) {
             contenedor = document.createElement('div');
+            contenedor.setAttribute('data-inscritos-toasts', '');
             contenedor.className = 'toast-container position-fixed top-0 end-0 p-3';
-            contenedor.style.zIndex = '1095';
+            contenedor.style.zIndex = '1106';
             document.body.appendChild(contenedor);
         }
 
         const toast = document.createElement('div');
-        toast.className = 'toast system-toast' + (esError ? ' system-toast-error' : '');
+        toast.className = 'toast show system-toast' + (esError ? ' system-toast-error' : '');
         toast.setAttribute('role', esError ? 'alert' : 'status');
         toast.setAttribute('aria-atomic', 'true');
         const contenido = document.createElement('div');
@@ -70,12 +68,7 @@
         toast.appendChild(contenido);
         contenedor.appendChild(toast);
 
-        const instancia = Toast.getOrCreateInstance(toast, { autohide: true, delay: 3200 });
-        toast.addEventListener('hidden.bs.toast', () => {
-            instancia.dispose();
-            toast.remove();
-        }, { once: true });
-        instancia.show();
+        setTimeout(() => toast.remove(), 3200);
     }
 
     async function exportarExcel() {
