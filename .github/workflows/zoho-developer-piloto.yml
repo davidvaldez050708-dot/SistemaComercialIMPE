@@ -10,6 +10,8 @@ on:
       - 'tests/zoho_developer_registro_smoke.php'
       - 'tests/zoho_developer_registro_integracion_mysql.php'
       - 'tests/zoho_developer_http_staging.php'
+      - 'tests/zoho_hostinger_puente_ci_fixture.py'
+      - 'tests/zoho_hostinger_puente_mysql_ci.php'
       - 'tools/zoho_dev_cola_instalar.php'
       - 'tools/zoho_dev_servicios_publicar.py'
       - 'tests/zoho_dev_servicios_publicar_smoke.py'
@@ -61,6 +63,7 @@ jobs:
           php -l tests/zoho_developer_registro_smoke.php
           php -l tests/zoho_developer_registro_integracion_mysql.php
           php -l tests/zoho_developer_http_staging.php
+          php -l tests/zoho_hostinger_puente_mysql_ci.php
       - name: Unitarias sin red, BD ni OAuth
         run: php tests/zoho_developer_registro_smoke.php
       - name: Worker inactivo sin configuración privada
@@ -102,3 +105,15 @@ jobs:
             sleep 0.2
           done
           php tests/zoho_developer_http_staging.php --verify
+      - name: Puente sintético Hostinger, lógica comercial inerte, worker real (MySQL efímero)
+        run: |
+          set -euo pipefail
+          export IMPE_DB_NAME=impe_zoho_puente_ci
+          export ZOHO_PUENTE_ROOT="$(mktemp -d /tmp/zoho-puente-ci-XXXXXXXX)"
+          export IMPE_PRIVATE_CONFIG_DIR="$ZOHO_PUENTE_ROOT/private"
+          export HOME="$ZOHO_PUENTE_ROOT/home"
+          trap 'rm -rf -- "$ZOHO_PUENTE_ROOT"' EXIT
+          python3 -m py_compile tests/zoho_hostinger_puente_ci_fixture.py
+          python3 tests/zoho_hostinger_puente_ci_fixture.py
+          php -l "$ZOHO_PUENTE_ROOT/app/models/FormularioRegistroModel.php"
+          php tests/zoho_hostinger_puente_mysql_ci.php --run
