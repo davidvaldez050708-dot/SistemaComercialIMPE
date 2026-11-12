@@ -64,6 +64,7 @@ class ReporteConvocatoriaDompdfService
             $css = '@page{margin:145pt ' . $right . 'pt 55pt ' . $left . 'pt}' .
                 'body{font-family:Arial,"DejaVu Sans",sans-serif;font-size:8pt;color:#16223B;line-height:1.15}' .
                 'table.datos{width:100%;table-layout:fixed;border-collapse:collapse;margin:0}' .
+                'table.datos.indicadores{border-collapse:separate}' .
                 'table.datos td{vertical-align:middle;word-wrap:break-word}thead{display:table-header-group}' .
                 'thead tr{page-break-after:avoid}tbody tr:first-child{page-break-before:avoid}' .
                 'tr{page-break-inside:avoid}p{margin:0;word-wrap:break-word}.bloque{page-break-inside:avoid}';
@@ -130,7 +131,7 @@ class ReporteConvocatoriaDompdfService
                 $style .= 'page-break-after:avoid;';
             }
             if ($this->xpath->query('./w:pPr/w:pBdr/w:left', $node)->length) {
-                $style .= 'border-left:2.25pt solid #273A8A;padding-left:8pt;';
+                $style .= 'border-left:2.25pt solid #273A8A;padding:2pt 0 2pt 7pt;';
             }
             $text = '';
             foreach ($this->xpath->query('./w:r', $node) as $run) {
@@ -153,19 +154,31 @@ class ReporteConvocatoriaDompdfService
             throw new RuntimeException('Elemento no admitido en el reporte de convocatorias.');
         }
         $bordered = $this->xpath->query('./w:tblPr/w:tblBorders', $node)->length > 0;
+        $spacing = (int)$this->valor($node, './w:tblPr/w:tblCellSpacing', 'w') / 20;
         $rows = $this->xpath->query('./w:tr', $node);
         $header = '';
         $body = '';
         $total = max(1, (int)$this->valor($node, './w:tblPr/w:tblW', 'w'));
         foreach ($rows as $row) {
             $rowHeight = (float)$this->valor($row, './w:trPr/w:trHeight') / 20;
+            $isHeader = $this->xpath->query('./w:trPr/w:tblHeader', $row)->length > 0;
             $cells = '';
             foreach ($this->xpath->query('./w:tc', $row) as $cell) {
                 $span = max(1, (int)$this->valor($cell, './w:tcPr/w:gridSpan'));
                 $width = (int)$this->valor($cell, './w:tcPr/w:tcW', 'w') / $total * 100;
                 $color = $this->valor($cell, './w:tcPr/w:shd', 'fill');
-                $style = 'width:' . $width . '%;border:' . ($bordered ? '.25pt solid #E5E9EF' : '0') . ';';
-                $style .= $rowHeight > 0 ? 'padding:0;height:' . $rowHeight . 'pt;line-height:1pt;font-size:1pt;' : 'padding:3pt 4pt;';
+                $style = 'width:' . $width . '%;';
+                if ($spacing > 0) {
+                    $borderColor = ['F0FAF8' => 'B9E2DA', 'FFF8F5' => 'ECD6CD', 'FFF9ED' => 'EAD8B7'][$color] ?? 'D7DFEA';
+                    $style .= 'padding:7pt 8pt;border:.65pt solid #' . $borderColor . ';';
+                } elseif ($rowHeight > 0) {
+                    $style .= 'padding:0;height:' . $rowHeight . 'pt;line-height:1pt;font-size:1pt;';
+                } else {
+                    $style .= 'padding:4pt 5pt;';
+                    if ($bordered && !$isHeader) {
+                        $style .= 'border-bottom:.5pt solid #E5E9EF;';
+                    }
+                }
                 if (preg_match('/^[a-f0-9]{6}$/i', $color)) {
                     $style .= 'background-color:#' . $color . ';';
                 }
@@ -179,13 +192,21 @@ class ReporteConvocatoriaDompdfService
                 $cells .= '<td colspan="' . $span . '" style="' . $style . '">' . $contents . '</td>';
             }
             $html = '<tr>' . $cells . '</tr>';
-            if ($this->xpath->query('./w:trPr/w:tblHeader', $row)->length) {
+            if ($isHeader) {
                 $header .= $html;
             } else {
                 $body .= $html;
             }
         }
-        return '<table class="datos' . ($header === '' ? ' bloque' : '') . '">' . ($header !== '' ? '<thead>' . $header . '</thead>' : '') . '<tbody>' . $body . '</tbody></table>';
+        $class = 'datos' . ($header === '' ? ' bloque' : '');
+        $style = '';
+        if ($spacing > 0) {
+            $class .= ' indicadores';
+            $style = ' style="border-spacing:' . $spacing . 'pt"';
+        }
+        return '<table class="' . $class . '"' . $style . '>' .
+            ($header !== '' ? '<thead>' . $header . '</thead>' : '') .
+            '<tbody>' . $body . '</tbody></table>';
     }
 
     private function e(string $value): string

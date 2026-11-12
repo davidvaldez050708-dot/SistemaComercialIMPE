@@ -189,17 +189,17 @@ class ReporteConvocatoriaPdfService
 
         $elementos = [];
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'RESUMEN EJECUTIVO');
+        $elementos[] = $this->crearTituloSeccion($documento, 'Resumen ejecutivo');
         $elementos[] = $this->crearTarjetasIndicadores(
             $documento,
             [
                 ['etiqueta' => 'Registradas', 'valor' => (int)($resumen['total'] ?? 0)],
-                ['etiqueta' => 'Activas', 'valor' => (int)($resumen['activas'] ?? 0)],
+                ['etiqueta' => 'Activas', 'valor' => (int)($resumen['activas'] ?? 0), 'relleno' => 'F0FAF8'],
                 ['etiqueta' => 'Inactivas', 'valor' => (int)($resumen['inactivas'] ?? 0)],
                 ['etiqueta' => 'Publicadas este mes', 'valor' => (int)($resumen['publicaciones_mes_actual'] ?? 0)],
                 ['etiqueta' => 'Publicadas hoy', 'valor' => (int)($resumen['publicaciones_hoy'] ?? 0)],
-                ['etiqueta' => 'Vencen hoy', 'valor' => (int)($resumen['vencen_hoy'] ?? 0)],
-                ['etiqueta' => 'Vencen en 1–2 días', 'valor' => (int)($resumen['vencen_2_dias'] ?? 0)],
+                ['etiqueta' => 'Vencen hoy', 'valor' => (int)($resumen['vencen_hoy'] ?? 0), 'relleno' => 'FFF8F5'],
+                ['etiqueta' => 'Vencen en 1–2 días', 'valor' => (int)($resumen['vencen_2_dias'] ?? 0), 'relleno' => 'FFF9ED'],
                 ['etiqueta' => 'Cobertura territorial', 'valor' => (int)($resumen['porcentaje_cobertura'] ?? 0) . '%']
             ],
             $anchoUtil,
@@ -214,7 +214,7 @@ class ReporteConvocatoriaPdfService
 
         $elementos[] = $this->crearTituloSeccion(
             $documento,
-            'PUBLICACIONES POR USUARIO'
+            'Publicaciones por usuario'
         );
         $filasUsuarios = [];
 
@@ -268,11 +268,11 @@ class ReporteConvocatoriaPdfService
                 'Última publicación'
             ],
             $filasUsuarios,
-            $this->anchos($anchoUtil, [26, 16, 14, 12, 12, 20])
+            $this->anchos($anchoUtil, [25, 15, 17, 11, 12, 20])
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'PUBLICACIONES POR TIPO');
+        $elementos[] = $this->crearTituloSeccion($documento, 'Publicaciones por tipo');
         $elementos[] = $this->crearSubtitulo(
             $documento,
             'Tendencia mensual · Bachillerato vs. Titulación'
@@ -309,7 +309,7 @@ class ReporteConvocatoriaPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'LECTURA EJECUTIVA');
+        $elementos[] = $this->crearTituloSeccion($documento, 'Lectura ejecutiva');
         $filasHallazgos = [];
         foreach ($hallazgos as $indice => $hallazgo) {
             $filasHallazgos[] = [
@@ -328,7 +328,7 @@ class ReporteConvocatoriaPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'ALERTAS DE VENCIMIENTO');
+        $elementos[] = $this->crearTituloSeccion($documento, 'Alertas de vencimiento');
         $filasAlertas = [];
         foreach ($alertas as $alerta) {
             $dias = (int)($alerta['dias_restantes'] ?? 0);
@@ -361,7 +361,7 @@ class ReporteConvocatoriaPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'COBERTURA TERRITORIAL');
+        $elementos[] = $this->crearTituloSeccion($documento, 'Cobertura territorial');
         $filasCobertura = [];
         foreach ($territorios as $territorio) {
             $filasCobertura[] = [
@@ -380,7 +380,7 @@ class ReporteConvocatoriaPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'DETALLE DE CONVOCATORIAS');
+        $elementos[] = $this->crearTituloSeccion($documento, 'Detalle de convocatorias');
         $filasDetalle = [];
         foreach ($detalle as $fila) {
             $periodo =
@@ -639,11 +639,11 @@ class ReporteConvocatoriaPdfService
             $documento,
             (string)$texto,
             [
-                'tamano' => 19,
+                'tamano' => 21,
                 'negrita' => true,
                 'color' => self::COLOR_TEXTO,
                 'antes' => 80,
-                'despues' => 70,
+                'despues' => 100,
                 'mantener_siguiente' => true,
                 'borde_izquierdo' => true
             ]
@@ -685,7 +685,7 @@ class ReporteConvocatoriaPdfService
         $anchoBase = (int)floor($anchoUtil / $columnas);
         $anchos = array_fill(0, $columnas, $anchoBase);
         $anchos[$columnas - 1] += $anchoUtil - array_sum($anchos);
-        $tabla = $this->crearTablaBase($documento, $anchoUtil, $anchos, true);
+        $tabla = $this->crearTablaBase($documento, $anchoUtil, $anchos, true, 60);
 
         foreach (array_chunk($indicadores, $columnas) as $grupo) {
             $fila = $this->crearFila($documento, false);
@@ -695,7 +695,8 @@ class ReporteConvocatoriaPdfService
                     $documento,
                     (string)($indicador['valor'] ?? ''),
                     (string)($indicador['etiqueta'] ?? ''),
-                    $ancho
+                    $ancho,
+                    $indicador['relleno'] ?? self::COLOR_FONDO
                 ));
             }
             $tabla->appendChild($fila);
@@ -704,7 +705,7 @@ class ReporteConvocatoriaPdfService
         return $tabla;
     }
 
-    private function crearCeldaIndicador(DOMDocument $documento, $valor, $etiqueta, $ancho)
+    private function crearCeldaIndicador(DOMDocument $documento, $valor, $etiqueta, $ancho, string $fondo)
     {
         $celda = $this->w($documento, 'tc');
         $propiedades = $this->w($documento, 'tcPr');
@@ -715,7 +716,7 @@ class ReporteConvocatoriaPdfService
 
         $relleno = $this->w($documento, 'shd');
         $this->attr($relleno, 'w', 'w', 'val', 'clear');
-        $this->attr($relleno, 'w', 'w', 'fill', self::COLOR_FONDO);
+        $this->attr($relleno, 'w', 'w', 'fill', $fondo);
         $propiedades->appendChild($relleno);
 
         $vertical = $this->w($documento, 'vAlign');
@@ -725,25 +726,20 @@ class ReporteConvocatoriaPdfService
 
         $celda->appendChild($this->crearParrafo(
             $documento,
-            (string)$valor,
+            (string)$etiqueta,
             [
-                'tamano' => 22,
-                'negrita' => true,
-                'color' => self::COLOR_TEXTO,
-                'alineacion' => 'center',
-                'antes' => 45,
-                'despues' => 20
+                'tamano' => 12,
+                'color' => self::COLOR_SECUNDARIO,
+                'despues' => 45
             ]
         ));
         $celda->appendChild($this->crearParrafo(
             $documento,
-            (string)$etiqueta,
+            (string)$valor,
             [
-                'tamano' => 13,
-                'color' => self::COLOR_SECUNDARIO,
-                'alineacion' => 'center',
-                'antes' => 0,
-                'despues' => 45
+                'tamano' => 19,
+                'negrita' => true,
+                'color' => $fondo === 'F0FAF8' ? '087966' : self::COLOR_TEXTO
             ]
         ));
 
@@ -1120,8 +1116,7 @@ class ReporteConvocatoriaPdfService
                     'tamano' => 14,
                     'negrita' => true,
                     'color' => 'FFFFFF',
-                    'relleno' => self::COLOR_PRIMARIO,
-                    'alineacion' => 'center'
+                    'relleno' => self::COLOR_PRIMARIO
                 ]
             ));
         }
@@ -1149,7 +1144,7 @@ class ReporteConvocatoriaPdfService
         return $tabla;
     }
 
-    private function crearTablaBase(DOMDocument $documento, $anchoTotal, array $anchos, $bordes = true)
+    private function crearTablaBase(DOMDocument $documento, $anchoTotal, array $anchos, $bordes = true, int $separacion = 0)
     {
         $tabla = $this->w($documento, 'tbl');
         $propiedades = $this->w($documento, 'tblPr');
@@ -1157,6 +1152,13 @@ class ReporteConvocatoriaPdfService
         $this->attr($ancho, 'w', 'w', 'type', 'dxa');
         $this->attr($ancho, 'w', 'w', 'w', (string)$anchoTotal);
         $propiedades->appendChild($ancho);
+
+        if ($separacion > 0) {
+            $espacio = $this->w($documento, 'tblCellSpacing');
+            $this->attr($espacio, 'w', 'w', 'w', (string)$separacion);
+            $this->attr($espacio, 'w', 'w', 'type', 'dxa');
+            $propiedades->appendChild($espacio);
+        }
 
         $layout = $this->w($documento, 'tblLayout');
         $this->attr($layout, 'w', 'w', 'type', 'fixed');

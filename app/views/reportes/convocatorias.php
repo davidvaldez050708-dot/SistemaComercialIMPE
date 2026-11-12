@@ -202,7 +202,7 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         <?php endif; ?>
     </div>
 
-    <section class="dashboard-panel report-intro-panel mb-4">
+    <section class="dashboard-panel report-intro-panel">
         <div>
             <span class="report-eyebrow">REPORTE DE CONVOCATORIAS</span>
             <h2 class="panel-title mb-1">Resumen ejecutivo</h2>
@@ -217,7 +217,7 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         </span>
     </section>
 
-    <section class="dashboard-panel convocatoria-report-filter-panel mb-4">
+    <section class="dashboard-panel convocatoria-report-filter-panel">
         <div class="convocatoria-report-filter-heading">
             <div>
                 <span class="report-card-kicker">FILTROS DEL REPORTE</span>
@@ -290,12 +290,12 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         </form>
     </section>
 
-    <div class="territorial-section-title">
-        <h2>RESUMEN EJECUTIVO</h2>
+    <header class="convocatoria-report-heading">
+        <h2>Resumen ejecutivo</h2>
         <p>Indicadores calculados con el mismo alcance utilizado por el archivo PDF.</p>
-    </div>
+    </header>
 
-    <section class="metric-grid report-summary-grid mb-4">
+    <section class="metric-grid report-summary-grid convocatoria-report-metrics" aria-label="Indicadores de convocatorias">
         <article class="metric-card">
             <div class="metric-icon">
                 <i class="bi bi-files"></i>
@@ -306,7 +306,7 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
             </div>
         </article>
 
-        <article class="metric-card">
+        <article class="metric-card is-success">
             <div class="metric-icon metric-icon-success">
                 <i class="bi bi-check-circle"></i>
             </div>
@@ -316,7 +316,7 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
             </div>
         </article>
 
-        <article class="metric-card">
+        <article class="metric-card is-muted">
             <div class="metric-icon metric-icon-muted">
                 <i class="bi bi-pause-circle"></i>
             </div>
@@ -346,7 +346,7 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
             </div>
         </article>
 
-        <article class="metric-card">
+        <article class="metric-card is-danger">
             <div class="metric-icon convocatoria-report-icon-danger">
                 <i class="bi bi-exclamation-octagon"></i>
             </div>
@@ -356,7 +356,7 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
             </div>
         </article>
 
-        <article class="metric-card">
+        <article class="metric-card is-warning">
             <div class="metric-icon convocatoria-report-icon-warning">
                 <i class="bi bi-clock-history"></i>
             </div>
@@ -377,12 +377,11 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         </article>
     </section>
 
-    <div class="territorial-section-title">
-        <h2>PUBLICACIONES POR USUARIO</h2>
-        <p>Conteo de convocatorias registradas por cada usuario que ha realizado publicaciones.</p>
-    </div>
-
-    <section class="dashboard-panel convocatoria-report-table-panel mb-4">
+    <section class="dashboard-panel convocatoria-report-table-panel">
+        <header class="convocatoria-report-heading">
+            <h2>Publicaciones por usuario</h2>
+            <p>Conteo de convocatorias registradas por cada usuario que ha realizado publicaciones.</p>
+        </header>
         <div class="table-responsive">
             <table class="table users-table align-middle mb-0">
                 <thead>
@@ -460,12 +459,11 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         </div>
     </section>
 
-    <div class="territorial-section-title">
-        <h2>PUBLICACIONES POR TIPO</h2>
-        <p>Total de publicaciones por tipo de convocatoria y comportamiento de los últimos 4 meses.</p>
-    </div>
-
-    <section class="dashboard-panel convocatoria-report-analysis-card mb-4">
+    <section class="dashboard-panel convocatoria-report-analysis-card">
+        <header class="convocatoria-report-heading">
+            <h2>Publicaciones por tipo</h2>
+            <p>Total de publicaciones por tipo de convocatoria y comportamiento de los últimos 4 meses.</p>
+        </header>
         <div class="convocatoria-report-chart-heading">
             <div>
                 <span class="report-card-kicker">TENDENCIA MENSUAL</span>
@@ -516,7 +514,7 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         </div>
     </section>
 
-    <section class="dashboard-panel convocatoria-report-analysis-card mb-4">
+    <section class="dashboard-panel convocatoria-report-analysis-card">
         <div class="convocatoria-report-section-heading">
             <div>
                 <span class="report-card-kicker">HALLAZGOS</span>
@@ -535,12 +533,11 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         </ul>
     </section>
 
-    <div class="territorial-section-title">
-        <h2>ALERTAS DE VENCIMIENTO</h2>
-        <p>Convocatorias activas que vencen hoy o dentro de los próximos 2 días.</p>
-    </div>
-
-    <section class="dashboard-panel convocatoria-report-table-panel mb-4">
+    <section class="dashboard-panel convocatoria-report-table-panel">
+        <header class="convocatoria-report-heading">
+            <h2>Alertas de vencimiento</h2>
+            <p>Convocatorias activas que vencen hoy o dentro de los próximos 2 días.</p>
+        </header>
         <div class="table-responsive">
             <table class="table users-table align-middle mb-0">
                 <thead>
@@ -594,12 +591,11 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         </div>
     </section>
 
-    <div class="territorial-section-title">
-        <h2>COBERTURA TERRITORIAL</h2>
-        <p>Estados con convocatorias activas al momento de generar el reporte.</p>
-    </div>
-
-    <section class="dashboard-panel convocatoria-report-table-panel mb-4">
+    <section class="dashboard-panel convocatoria-report-table-panel">
+        <header class="convocatoria-report-heading">
+            <h2>Cobertura territorial</h2>
+            <p>Estados con convocatorias activas al momento de generar el reporte.</p>
+        </header>
         <div class="table-responsive">
             <table class="table users-table align-middle mb-0">
                 <thead>
@@ -632,12 +628,11 @@ for ($indiceMes = 0; $indiceMes < max(count($mesesBachillerato), count($mesesTit
         </div>
     </section>
 
-    <div class="territorial-section-title">
-        <h2>DETALLE DE CONVOCATORIAS</h2>
-        <p>Listado completo utilizado para construir el resumen y el PDF.</p>
-    </div>
-
     <section class="dashboard-panel convocatoria-report-table-panel">
+        <header class="convocatoria-report-heading">
+            <h2>Detalle de convocatorias</h2>
+            <p>Listado completo utilizado para construir el resumen y el PDF.</p>
+        </header>
         <div class="table-responsive">
             <table class="table users-table align-middle mb-0">
                 <thead>

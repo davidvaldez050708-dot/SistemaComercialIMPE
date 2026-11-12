@@ -429,6 +429,107 @@
     overflow-wrap: anywhere;
 }
 
+.convocatoria-report-preview {
+    gap: 14px;
+}
+
+.convocatoria-report-preview > .report-intro-panel {
+    margin-bottom: 0;
+}
+
+.convocatoria-report-preview .convocatoria-report-heading {
+    margin: 0;
+}
+
+.convocatoria-report-preview .convocatoria-report-analysis-card .convocatoria-report-heading {
+    margin-bottom: 12px;
+}
+
+.convocatoria-report-preview .convocatoria-report-heading h2 {
+    margin: 0;
+    color: var(--color-navy);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.convocatoria-report-preview .convocatoria-report-heading p {
+    margin: 4px 0 0;
+    color: var(--color-text-soft);
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.convocatoria-report-preview .convocatoria-report-metrics {
+    gap: 9px;
+}
+
+.convocatoria-report-preview .convocatoria-report-metrics .metric-card {
+    gap: 10px;
+    min-height: 88px;
+    padding: 12px 13px;
+    border-radius: 12px;
+    box-shadow: 0 5px 16px rgba(22, 34, 59, .035);
+}
+
+.convocatoria-report-preview .convocatoria-report-metrics .metric-icon {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    border-radius: 10px;
+    font-size: 15px;
+}
+
+.convocatoria-report-preview .convocatoria-report-metrics .metric-value {
+    font-size: 21px;
+    line-height: 1;
+}
+
+.convocatoria-report-preview .convocatoria-report-metrics .metric-label {
+    margin: 3px 0 0;
+    color: var(--color-navy);
+    font-size: 11px;
+    line-height: 1.25;
+}
+
+.convocatoria-report-metrics .metric-card.is-success {
+    border-color: rgba(10, 143, 122, .2);
+    background: rgba(10, 143, 122, .025);
+}
+
+.convocatoria-report-metrics .metric-card.is-muted {
+    background: var(--color-bg);
+}
+
+.convocatoria-report-metrics .metric-card.is-danger {
+    border-color: rgba(186, 62, 47, .16);
+    background: rgba(186, 62, 47, .025);
+}
+
+.convocatoria-report-metrics .metric-card.is-warning {
+    border-color: #ead8b7;
+    background: #fffbf5;
+}
+
+.convocatoria-report-preview .convocatoria-report-table-panel .convocatoria-report-heading {
+    margin: 0;
+    padding: 13px 18px 10px;
+}
+
+.convocatoria-report-preview .convocatoria-report-table-panel .users-table th,
+.convocatoria-report-preview .convocatoria-report-table-panel .users-table td {
+    padding: 10px 14px;
+}
+
+.convocatoria-report-preview .convocatoria-report-table-panel .users-table th {
+    font-size: 11px;
+}
+
+.convocatoria-report-preview .convocatoria-report-table-panel .users-table td {
+    font-size: 11.5px;
+    line-height: 1.35;
+}
+
 .report-section {
     padding: 20px 22px;
 }
