@@ -159,12 +159,129 @@
 .impe-embudo--v3-operativo .impe-embudo-dialog textarea{
   resize:vertical;
 }
+/* Actividades V3: un solo modal con encabezado y acciones siempre visibles.
+   El cuerpo y el historial disponen de desplazamiento independiente. */
+.impe-embudo--v3-operativo #impe-v3o-actividad-dialog{
+  width:min(600px,calc(100vw - 24px));
+  max-height:calc(100vh - 24px);
+  max-height:calc(100dvh - 24px);
+  overflow:hidden;
+}
+.impe-embudo--v3-operativo #impe-v3o-actividad-dialog form{
+  display:flex;flex-direction:column;gap:0;padding:0;
+  max-height:min(88vh,720px);
+  max-height:min(88dvh,720px);
+  min-height:0;overflow:hidden;
+}
+.impe-embudo--v3-operativo #impe-v3o-actividad-dialog header{
+  flex:none;padding:19px 22px 14px;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-cuerpo{
+  display:grid;gap:14px;min-height:0;
+  padding:0 22px 18px;overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-cuerpo [data-actividad-prospecto]{
+  color:#6d83a2;font-weight:650;overflow-wrap:anywhere;
+}
+.impe-embudo--v3-operativo #impe-v3o-actividad-dialog .impe-embudo-dialog-footer{
+  flex:none;padding:13px 22px 16px;
+  border-top:1px solid #e3eaf5;background:#fff;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial{
+  border:1px solid #d9e5f5;border-radius:10px;
+  background:#f7faff;min-width:0;overflow:hidden;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial summary{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:11px 13px;cursor:pointer;list-style:none;
+  color:#254f88;font-size:12px;font-weight:800;line-height:1.4;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial summary::-webkit-details-marker{display:none}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial summary span{
+  display:inline-flex;align-items:center;gap:8px;min-width:0;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial summary .bi-chevron-down{
+  color:#52749e;font-size:11px;transition:transform .15s ease;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial[open] summary .bi-chevron-down{
+  transform:rotate(180deg);
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial summary:hover{
+  background:#edf4ff;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial summary:focus-visible,
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial-scroll:focus-visible,
+.impe-embudo--v3-operativo .impe-v3o-actividad-mas:focus-visible{
+  outline:2px solid #245eae;outline-offset:-2px;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial-panel{
+  display:grid;gap:9px;padding:11px 12px 12px;
+  border-top:1px solid #dce7f6;background:#fff;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial-estado{
+  color:#6c829f;font-size:11px;line-height:1.5;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial-estado:empty{display:none}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial-estado[data-error="true"]{
+  color:#a72d35;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-historial-scroll{
+  max-height:min(32vh,252px);max-height:min(32dvh,252px);
+  overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-gutter:stable;min-height:0;
+}
 .impe-embudo--v3-operativo [data-actividad-historial]{
-  max-height:10rem;overflow:auto;padding-inline-start:1.2rem;
-  font-size:.8125rem;line-height:1.5;
+  list-style:none;margin:0;padding:0;
+  display:grid;gap:8px;min-width:0;
 }
 .impe-embudo--v3-operativo [data-actividad-historial] li{
-  padding-block:.25rem;overflow-wrap:anywhere;
+  min-width:0;padding:10px 11px;
+  border:1px solid #dfe8f5;border-left:3px solid #8cb2e1;
+  border-radius:8px;background:#f9fbff;
+  overflow-wrap:anywhere;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-item-top{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:5px 9px;margin-bottom:5px;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-item-tipo{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 7px;border-radius:6px;
+  background:#eaf1fb;color:#285b9b;
+  font-size:10px;font-weight:800;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-item-fecha{
+  color:#6e829d;font-size:10px;font-weight:650;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-item-motivo{
+  color:#26486f;font-size:11px;line-height:1.5;font-weight:650;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-item-meta{
+  display:flex;align-items:flex-start;flex-wrap:wrap;gap:3px 10px;
+  margin-top:6px;color:#687f9f;font-size:10px;line-height:1.5;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-item-meta span{
+  overflow-wrap:anywhere;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-mas{
+  display:inline-flex;justify-self:center;align-items:center;gap:7px;
+  padding:7px 11px;border:1px solid #cbdcf2;border-radius:8px;
+  color:#285796;background:#fff;font:800 11px Manrope,sans-serif;
+  cursor:pointer;
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-mas:hover{background:#eff5fe}
+.impe-embudo--v3-operativo .impe-v3o-actividad-mas:disabled{opacity:.6;cursor:wait}
+@media(max-width:600px){
+  .impe-embudo--v3-operativo #impe-v3o-actividad-dialog header{
+    padding:15px 14px 11px;
+  }
+  .impe-embudo--v3-operativo .impe-v3o-actividad-cuerpo{
+    padding:0 14px 12px;gap:11px;
+  }
+  .impe-embudo--v3-operativo #impe-v3o-actividad-dialog .impe-embudo-dialog-footer{
+    padding:11px 14px 13px;
+  }
 }
 .impe-embudo--v3-operativo .impe-v3o-accion:focus-visible,
 .impe-embudo--v3-operativo .impe-v3o-volver:focus-visible,

@@ -378,36 +378,51 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                 <h3 id="impe-v3o-actividad-titulo">Actividad comercial</h3>
                 <button type="button" data-actividad-cerrar aria-label="Cerrar"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
             </header>
-            <p data-actividad-prospecto></p>
-            <label>Acción
-                <select name="operacion" required>
-                    <option value="REGISTRAR">Registrar gestión</option>
-                    <option value="PROGRAMAR">Programar actividad</option>
-                    <option value="REPROGRAMAR">Reprogramar actividad</option>
-                    <option value="COMPLETAR">Marcar como completada</option>
-                </select>
-            </label>
-            <label data-actividad-subetapa hidden>Subetapa de Seguimiento
-                <select name="subetapa">
-                    <option value="">Conservar subetapa</option>
-                    <?php foreach($sub['SEGUIMIENTO'] as $codigo=>$etiqueta): ?>
-                        <option value="<?= $esc($codigo) ?>"><?= $esc($etiqueta) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <label data-actividad-fecha hidden>Fecha y hora de México
-                <input name="fecha" type="datetime-local">
-            </label>
-            <label>Motivo
-                <textarea name="motivo" minlength="8" maxlength="190" required rows="2"></textarea>
-            </label>
-            <details>
-                <summary>Historial de actividades</summary>
-                <p data-actividad-historial-estado role="status"></p>
-                <ul data-actividad-historial></ul>
-                <button type="button" data-actividad-mas hidden>Ver anteriores</button>
-            </details>
-            <p data-actividad-error role="alert" hidden></p>
+            <div class="impe-v3o-actividad-cuerpo">
+                <p data-actividad-prospecto></p>
+                <label>Acción
+                    <select name="operacion" required>
+                        <option value="REGISTRAR">Registrar gestión</option>
+                        <option value="PROGRAMAR">Programar actividad</option>
+                        <option value="REPROGRAMAR">Reprogramar actividad</option>
+                        <option value="COMPLETAR">Marcar como completada</option>
+                    </select>
+                </label>
+                <label data-actividad-subetapa hidden>Subetapa de Seguimiento
+                    <select name="subetapa">
+                        <option value="">Conservar subetapa</option>
+                        <?php foreach($sub['SEGUIMIENTO'] as $codigo=>$etiqueta): ?>
+                            <option value="<?= $esc($codigo) ?>"><?= $esc($etiqueta) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label data-actividad-fecha hidden>Fecha y hora de México
+                    <input name="fecha" type="datetime-local">
+                </label>
+                <label>Motivo
+                    <textarea name="motivo" minlength="8" maxlength="190" required rows="2"></textarea>
+                </label>
+                <details class="impe-v3o-actividad-historial">
+                    <summary>
+                        <span><i class="bi bi-clock-history" aria-hidden="true"></i> Historial de actividades</span>
+                        <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                    </summary>
+                    <div class="impe-v3o-actividad-historial-panel">
+                        <p class="impe-v3o-actividad-historial-estado" data-actividad-historial-estado
+                           role="status" aria-live="polite"></p>
+                        <div class="impe-v3o-actividad-historial-scroll" role="region"
+                             aria-label="Registros anteriores" tabindex="0">
+                            <ol data-actividad-historial aria-label="Actividades registradas"></ol>
+                        </div>
+                        <button class="impe-v3o-actividad-mas" type="button"
+                                data-actividad-mas hidden>
+                            <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
+                            Ver anteriores
+                        </button>
+                    </div>
+                </details>
+                <p data-actividad-error role="alert" hidden></p>
+            </div>
             <div class="impe-embudo-dialog-footer">
                 <button type="button" data-actividad-cerrar>Cancelar</button>
                 <button type="submit">Guardar actividad</button>
