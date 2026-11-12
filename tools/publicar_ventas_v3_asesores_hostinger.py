@@ -18,7 +18,7 @@ import sys
 import tempfile
 import uuid
 
-REPO_REV = "84e9e5dc2fd27bb72b194e30af64c2e443b8c27a"
+REPO_REV = "b1329ecfb15237a29c2794c77e7e82ad4a0f6c77"
 CONFIRMACION = "PUBLICAR_SOLO_EMBUDO_ASESOR_V3_IMPE"
 # (blob antes, blob nuevo); null = archivo NUEVO, prohibido sobrescribir otro.
 ARCHIVOS = {
@@ -26,7 +26,7 @@ ARCHIVOS = {
     "app/services/EmbudoComercialV3MovimientosPermitidos.php":
         (None, "92950fe72f02c938050c8598cd0ed96cd1552c6e"),
     "app/services/EmbudoComercialV3AccesoControlado.php":
-        (None, "1f5530335054bfb77a8cbe28669b45edef581ba4"),
+        (None, "b6d88f2651739c7ff62a3d3be390330552160ddb"),
     "app/views/embudo_comercial/operativo_v3.php":
         (None, "ed44384ebaf967c5161ad5eb5f2734554ea587ce"),
     "public/css/embudo_v3_operativo.css":
