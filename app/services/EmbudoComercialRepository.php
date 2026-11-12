@@ -169,7 +169,8 @@ final class EmbudoComercialRepository
         return ['programas'=>$programas,'asesores'=>$asesores];
     }
 
-    public function listado(int $usuarioId,bool $supervisor,array $f,string $vista): array
+    public function listado(int $usuarioId,bool $supervisor,array $f,string $vista,
+        bool $bandejaV3=false): array
     {
         [$from,$args]=$this->condiciones($usuarioId,$supervisor,$f);
         $agregado=$this->rows(
@@ -193,7 +194,12 @@ final class EmbudoComercialRepository
             $paginas=max(1,(int)ceil($total/self::POR_COLUMNA));
             $pagina=min($paginas,$f['paginas'][$etapa]);
             $offset=($pagina-1)*self::POR_COLUMNA;
+            $campoSubetapa=$bandejaV3
+                ?"(SELECT st.subetapa FROM prospecto_embudo_subetapas st
+                    WHERE st.asignacion_id=a.id LIMIT 1) subetapa,"
+                :"";
             $campos="SELECT a.id asignacion_id,a.prospecto_id,a.asesor_id,
+                $campoSubetapa
                 COALESCE(e.etapa,'NUEVO') etapa_original,
                 a.asignado_at,a.fecha_trabajo,
                 COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
