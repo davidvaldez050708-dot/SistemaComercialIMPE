@@ -5,6 +5,32 @@
   'use strict';
   const root=document.querySelector('.impe-embudo--v3-operativo, .impe-embudo--v3-bandejas');
   if(!root)return;
+  // Recuperación usa exactamente el mismo teléfono persistente y contexto
+  // de asignación del embudo principal. No realiza marcación directa.
+  // Los descartados, los legados y los registros NO_CONTACTAR no ofrecen este control.
+  root.querySelectorAll('[data-v3b-llamar]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      const tarjeta=b.closest('[data-asignacion-id][data-etapa]');
+      if(!tarjeta || tarjeta.dataset.etapa!=='RECUPERACION' ||
+         tarjeta.dataset.noContactar==='1')return;
+      const numero=String(b.dataset.v3bLlamar||'').trim();
+      const digits=numero.replace(/\\D/g,'');
+      const asignacionId=String(tarjeta.dataset.asignacionId||'');
+      const usuarioId=Number(window.IMPE_CURRENT_USER_ID||0);
+      if(!/^[1-9][0-9]*$/.test(asignacionId) ||
+         digits.length<10 || digits.length>15 || usuarioId<1)return;
+      const dial=window.IMPE_TELEPHONY_PERSISTENT;
+      if(!dial || typeof dial.openDialer!=='function'){
+        window.alert('El teléfono persistente no está disponible en esta sesión.');
+        return;
+      }
+      try{
+        sessionStorage.setItem('impe:embudo:llamada-pendiente',
+          JSON.stringify({asignacionId,numero,usuarioId,creada:Date.now()}));
+      }catch(_){}
+      dial.openDialer({number:numero});
+    });
+  });
   const dialog=root.querySelector('#impe-v3b-dialog');
   const form=root.querySelector('#impe-v3b-form');
   if(!dialog || !form)return;
