@@ -70,7 +70,7 @@ jobs:
         with:
           php-version: '8.2'
           extensions: mysqli,mbstring
-      - name: Datos ficticios: permisos, tarjetas, PBX y movimientos
+      - name: 'Datos ficticios: permisos, tarjetas, PBX y movimientos'
         env:
           IMPE_V3_PREVIA_DB_TEST: YES
           MYSQL_HOST: 127.0.0.1
