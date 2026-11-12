@@ -52,13 +52,13 @@ try{
     verificarAcceso(substr_count($controller,
         'EmbudoComercialV3AccesoControlado::habilitadoParaAsesor(')>=3,
         'ruta index, ficha y POST todos comprueban el servidor');
-    $kanban=file_get_contents(__DIR__.'/../app/views/embudo_comercial/index.php');
-    verificarAcceso(strpos($kanban,
-        'EmbudoComercialV3AccesoControlado::habilitadoParaAsesor(')!==false,
-        'enlace del V1 solo visible a asesor autorizado');
+    verificarAcceso(strpos($controller,
+        "EmbudoComercialV3AccesoControlado::habilitadoParaAsesor(\$usuarioId) &&")!==false &&
+        strpos($controller,"(\$_GET['tablero_anterior']??null)!=='1'")!==false,
+        'entrada V3 sólo para el asesor autorizado y retorno explícito a V1');
     verificarAcceso(strpos($controller,'hash_equals($token,$received)')!==false,
         'POST exige además CSRF, permisos y control de sesión');
-    echo "CHECK OK: vista V3 OFF, doble llave independiente del PBX, lista cerrada, sesión y permiso; GET, ficha, POST y enlace protegidos.\n";
+    echo "CHECK OK: vista V3 OFF, doble llave independiente del PBX, lista cerrada, sesión y permiso; GET, ficha y POST protegidos.\n";
 }finally{
     if($oldFlag===false) putenv('IMPE_VENTAS_V3_UI');
     else putenv('IMPE_VENTAS_V3_UI='.$oldFlag);
