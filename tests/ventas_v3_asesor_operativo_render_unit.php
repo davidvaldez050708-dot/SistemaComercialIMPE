@@ -141,8 +141,9 @@ isV3(strpos($controller,'operativo_v3')!==false &&
     strpos($controller,'listadoV3Operativo')!==false &&
     strpos($controller,"\$_GET['tablero_anterior']")!==false,
     'V3 es la vista principal del asesor y el tablero anterior conserva su ruta');
-isV3(strpos($controller,"$"."operativoV3?'operativo_v3':'index'")!==false,
-    'ruta normal conserva tablero anterior');
+isV3(strpos($controller,"$"."operativoV3?'operativo_v3'")!==false &&
+    strpos($controller,"$"."bandejasV3?'bandejas_v3':'index'")!==false,
+    'V3 conserva el tablero anterior y separa las bandejas autorizadas');
 isV3(strpos($controller,'hash_equals($token,$received)')!==false,
     'validar token CSRF en backend, no solo en navegador');
 $oldUi=file_get_contents(__DIR__.'/../app/views/embudo_comercial/index.php');

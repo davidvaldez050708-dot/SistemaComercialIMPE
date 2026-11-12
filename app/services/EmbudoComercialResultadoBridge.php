@@ -28,9 +28,11 @@ final class EmbudoComercialResultadoBridge
      * Los asesores sin V3 mantienen la ruta telefónica anterior.
      */
     public static function bloquearRecuperacionAutomaticaV3(
-        string $etapaPropuesta, bool $asesorV3): bool
+        string $etapaPropuesta, bool $asesorV3, string $etapaActual=''): bool
     {
-        return $asesorV3 && $etapaPropuesta==='RECUPERACION';
+        return $asesorV3 &&
+            ($etapaPropuesta==='RECUPERACION' ||
+             ($etapaActual==='RECUPERACION' && $etapaPropuesta==='CONTACTADO'));
     }
 
     public static function numeroCanonico(string $num): string
@@ -133,15 +135,17 @@ final class EmbudoComercialResultadoBridge
         }
         $etapaAnterior=EmbudoComercialEtapas::visual((string)$row['etapa']);
         $nueva=EmbudoComercialEtapas::sugerenciaPorResultado($resultado,$proximaAccion);
-        // Compatibilidad: el puente V1 puede sugerir Recuperación desde la
-        // primera llamada sin contacto. En asesores V3, conservar la etapa
-        // hasta contar con revisión explícita de la política de tres intentos.
-        // El vínculo PBX y el resultado telefónico ya se guardaron; no cambiar.
-        if ($nueva==='RECUPERACION') {
+        // El Bridge V1 puede sugerir Recuperación desde la primera llamada
+        // sin contacto o reactivar al registrar conversación. La V3 exige
+        // revisión manual para AMBAS transiciones excepcionales; conservar
+        // vínculo, resultado telefónico y etapa hasta confirmación explícita.
+        if ($nueva==='RECUPERACION' ||
+            ($nueva==='CONTACTADO' && $etapaAnterior==='RECUPERACION')) {
             require_once __DIR__.'/EmbudoComercialV3AccesoControlado.php';
             if (self::bloquearRecuperacionAutomaticaV3(
                 $nueva,
-                EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId)
+                EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId),
+                $etapaAnterior
             )) {
                 return ['vinculada'=>true,'movida'=>false,'etapa'=>$etapaAnterior];
             }

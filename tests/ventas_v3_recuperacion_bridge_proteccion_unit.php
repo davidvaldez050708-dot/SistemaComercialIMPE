@@ -20,6 +20,14 @@ foreach ([
         $bridge::bloquearRecuperacionAutomaticaV3($caso[0],$caso[1])===$caso[2],
         'aislar bloqueo: '.implode('|',array_map('strval',$caso)));
 }
+// Ninguna conversación telefónica reactiva automáticamente RECUPERACION en V3.
+comprobarRecuperacionBridge(
+    $bridge::bloquearRecuperacionAutomaticaV3('CONTACTADO',true,'RECUPERACION'),
+    'reactivación desde Recuperación requiere gestión manual V3');
+comprobarRecuperacionBridge(
+    !$bridge::bloquearRecuperacionAutomaticaV3('CONTACTADO',false,'RECUPERACION') &&
+    !$bridge::bloquearRecuperacionAutomaticaV3('CONTACTADO',true,'NUEVO'),
+    'no alterar conversaciones nuevas ni asesores legacy');
 $puente=file_get_contents(__DIR__.'/../app/services/EmbudoComercialResultadoBridge.php');
 $idxLlamada=strpos($puente,'INSERT INTO prospecto_embudo_llamadas');
 $idxGuarda=strpos($puente,'EmbudoComercialV3AccesoControlado::habilitadoParaAsesor');

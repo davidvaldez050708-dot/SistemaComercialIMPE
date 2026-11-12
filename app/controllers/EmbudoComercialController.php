@@ -66,9 +66,12 @@ final class EmbudoComercialController
         // V3 es la entrada principal de Gestión Comercial del asesor autorizado.
         // ?tablero_anterior=1 mantiene un rescate explícito temporal (sin botón).
         // Este cambio no enciende movimientos automáticos ni pilotos PBX.
-        $operativoV3=$vista==='embudo' && !$supervisor &&
+        $v3Asesor=!$supervisor &&
             EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId) &&
             ($_GET['tablero_anterior']??null)!=='1';
+        $operativoV3=$vista==='embudo' && $v3Asesor;
+        $bandejasV3=$v3Asesor &&
+            in_array($vista,['recuperacion','descartados'],true);
         $error='';
         $disponible=false;
         $opciones=['programas'=>[],'asesores'=>[]];
@@ -102,10 +105,10 @@ final class EmbudoComercialController
             $error='No fue posible consultar el embudo comercial en este momento.';
         }
         $archivo=$previsualizacionV3?'previsualizacion_v3'
-            :($operativoV3?'operativo_v3':'index');
+            :($operativoV3?'operativo_v3':($bandejasV3?'bandejas_v3':'index'));
         $this->presentar($archivo,$vista,compact(
             'vista','usuarioId','supervisor','error','disponible','opciones',
-            'tablero','filtros','previsualizacionV3','operativoV3','paginasV3'
+            'tablero','filtros','previsualizacionV3','operativoV3','bandejasV3','paginasV3'
         ));
     }
 
@@ -366,6 +369,72 @@ final class EmbudoComercialController
         }
     }
 
+    /**
+     * POST independiente: Recuperación, descartes acreditados y reactivación.
+     * No usa el endpoint V1 ni recibe contadores PBX desde el navegador.
+     */
+    public function bandejasOperativasV3(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store, max-age=0');
+        $reply=static function(int $status,string $mensaje,array $extra=[]): void {
+            http_response_code($status);
+            echo json_encode(array_merge(['ok'=>$status===200,'mensaje'=>$mensaje],$extra),
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        };
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST') {
+            $reply(405,'Método no permitido.');return;
+        }
+        $uid=(int)($_SESSION['usuario_id']??0);
+        if ($uid<1 ||
+            !EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($uid) ||
+            !tienePermiso('ventas.embudo.mover')) {
+            $reply(403,'Esta operación no está autorizada para tu cuenta.');return;
+        }
+        $csrf=(string)($_SESSION['csrf_token']??'');
+        if ($csrf==='' || !hash_equals($csrf,(string)($_SERVER['HTTP_X_CSRF_TOKEN']??''))) {
+            $reply(403,'Sesión de seguridad vencida. Recarga la página.');return;
+        }
+        foreach (['asignacion_id','etapa_actual','operacion','subetapa',
+                  'motivo','dia','confirmacion'] as $campo) {
+            if (isset($_POST[$campo]) && !is_string($_POST[$campo])) {
+                $reply(422,'Datos de gestión inválidos.');return;
+            }
+        }
+        $asig=filter_var($_POST['asignacion_id']??null,FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>1]]);
+        if (!$asig) {$reply(422,'La asignación no es válida.');return;}
+        $etapa=(string)($_POST['etapa_actual']??'');
+        $accion=(string)($_POST['operacion']??'');
+        $motivo=(string)($_POST['motivo']??'');
+        $confirmada=($_POST['confirmacion']??'')==='1';
+        if (!in_array($accion,['RECUPERACION','DESCARTAR','REACTIVAR'],true)) {
+            $reply(422,'Operación no disponible.');return;
+        }
+        try {
+            require_once __DIR__.'/../services/EmbudoComercialV3BandejasService.php';
+            $db=(new Database())->connect(false);
+            $service=new EmbudoComercialV3BandejasService($db);
+            if ($accion==='RECUPERACION') {
+                $mov=$service->ingresarRecuperacion($uid,(int)$asig,$etapa,
+                    (string)($_POST['dia']??''),$motivo,$confirmada);
+            } elseif ($accion==='DESCARTAR') {
+                $mov=$service->descartar($uid,(int)$asig,$etapa,
+                    (string)($_POST['subetapa']??''),$motivo,$confirmada);
+            } else {
+                $mov=$service->reactivar($uid,(int)$asig,$etapa,
+                    $motivo,$confirmada);
+            }
+            $reply(200,'Decisión comercial registrada y auditada.',['movimiento'=>$mov]);
+        } catch (DomainException $e) {
+            $reply(409,$e->getMessage());
+        } catch (Throwable $e) {
+            error_log('[ventas_v3_bandejas] '.get_class($e).
+                ' codigo='.(int)$e->getCode());
+            $reply(503,'No se pudo confirmar la decisión. No se guardó.');
+        }
+    }
+
     /** POST exclusivo de Asesor: cambio de etapa con control de concurrencia. */
     public function moverEtapa(): void
     {
@@ -397,6 +466,13 @@ final class EmbudoComercialController
             ['options'=>['min_range'=>1]]);
         if (!$id) {
             $respond(false,'La tarjeta no es válida.',422);
+            return;
+        }
+        // No permitir que V1 eluda requisitos PBX o de descarte a asesores V3.
+        if (EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuario) &&
+            (in_array((string)($_POST['etapa_anterior']??''),['RECUPERACION','EN_CONTACTO','DESCARTADO'],true) ||
+             in_array((string)($_POST['etapa_nueva']??''),['RECUPERACION','DESCARTADO'],true))) {
+            $respond(false,'Utiliza las acciones verificadas de las bandejas V3.',403);
             return;
         }
         try {

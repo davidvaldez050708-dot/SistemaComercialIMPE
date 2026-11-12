@@ -194,6 +194,7 @@ final class EmbudoComercialRepository
             $pagina=min($paginas,$f['paginas'][$etapa]);
             $offset=($pagina-1)*self::POR_COLUMNA;
             $campos="SELECT a.id asignacion_id,a.prospecto_id,a.asesor_id,
+                COALESCE(e.etapa,'NUEVO') etapa_original,
                 a.asignado_at,a.fecha_trabajo,
                 COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
                 ag.revision_fecha,
