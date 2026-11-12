@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import signal
 import subprocess
 import sys
 import tempfile
@@ -45,7 +46,6 @@ def iniciar_lsapi(sitio, puerto, entorno, php_lsapi, evidencia):
     for carpeta in (sitio / "sesiones-prueba", sitio.parent / "admision-mysql", sitio / "storage", sockets):
         for ruta in (carpeta, *carpeta.rglob("*")):
             os.chown(ruta, cuenta.pw_uid, cuenta.pw_gid)
-    configuracion = "\n".join("  env " + nombre + "=" + valor for nombre, valor in entorno.items())
     (servidor_ols / "conf/httpd_config.conf").write_text(f"""
 serverName impe-lab
 httpdWorkers 1
@@ -78,16 +78,10 @@ extprocessor php-lab {{
   type lsapi
   address uds://{sockets / 'php.sock'}
   maxConns 30
-  env PHP_LSAPI_CHILDREN=30
-  env LSAPI_MAX_REQS=100000
-  env PHP_INI_SCAN_DIR=:{sitio.parent / 'php-conf'}
-{configuracion}
   initTimeout 30
   retryTimeout 0
   persistConn 1
-  autoStart 1
-  path {php_lsapi}
-  instances 1
+  autoStart 0
 }}
 scripthandler {{
   add lsapi:php-lab php
@@ -103,7 +97,33 @@ scripthandler {{
     )
     binario = servidor_ols / "bin/openlitespeed"
     subprocess.run([str(binario), "-t"], check=True)
-    return subprocess.Popen([str(binario), "-n"])
+    env_php = {**entorno, "PATH": os.defpath, "PHP_LSAPI_CHILDREN": "30",
+               "LSAPI_MAX_REQS": "100000", "PHP_INI_SCAN_DIR": f":{ini}"}
+    with (evidencia / "lsphp.log").open("wb") as log:
+        php = subprocess.Popen([str(php_lsapi), "-b", str(sockets / "php.sock")],
+                               env=env_php, user=cuenta.pw_uid, group=cuenta.pw_gid,
+                               stdout=log, stderr=log, start_new_session=True)
+    try:
+        for _ in range(50):
+            if php.poll() is not None:
+                raise RuntimeError(f"LSPHP terminó al arrancar: {php.returncode}. Revisa lsphp.log.")
+            if (sockets / "php.sock").exists():
+                break
+            time.sleep(.1)
+        else:
+            raise RuntimeError("LSPHP no creó el socket de laboratorio.")
+        return subprocess.Popen([str(binario), "-n"]), php
+    except BaseException:
+        detener_lsphp(php)
+        raise
+
+
+def detener_lsphp(php):
+    try:
+        os.killpg(php.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    php.wait(timeout=15)
 
 
 def autenticar_usuarios(puerto, usuarios):
@@ -113,10 +133,11 @@ def autenticar_usuarios(puerto, usuarios):
     return cookies
 
 
-def rafaga(puerto, usuarios, cookies, observar):
+def rafaga(puerto, usuarios, cookies, observar, verificar_avisos=False):
     with ThreadPoolExecutor(max_workers=usuarios) as tareas:
         inicio = time.monotonic() + 0.8
-        trabajos = [tareas.submit(escenario, puerto, i + 1, inicio, cookie, None, False, True)
+        trabajos = [tareas.submit(escenario, puerto, i + 1, inicio, cookie, None,
+                                  verificar_avisos, not verificar_avisos)
                     for i, cookie in enumerate(cookies)]
         muestras = []
         while not all(t.done() for t in trabajos):
@@ -153,7 +174,7 @@ def main():
     if sys.platform != "linux":
         parser.error("Este ensayo requiere Linux y un vhost OpenLiteSpeed aislado.")
     args.limitar = args.admision = args.traza = True
-    args.verificar_avisos = False
+    args.verificar_avisos = args.php_lsapi is None
     args.php_cgi = args.max_persistentes = None
     args.mysqlnd = "activas"
 
@@ -186,12 +207,12 @@ def main():
             }
             evidencia = args.salida.resolve().parent
             evidencia.mkdir(parents=True, exist_ok=True)
-            proceso = None
+            proceso = php = None
             try:
                 if args.php_lsapi:
                     if args.perfil.startswith("reciclaje"):
                         raise RuntimeError("El reciclaje automático todavía no está disponible.")
-                    proceso = iniciar_lsapi(sitio, args.puerto_lsapi, entorno, args.php_lsapi, evidencia)
+                    proceso, php = iniciar_lsapi(sitio, args.puerto_lsapi, entorno, args.php_lsapi, evidencia)
                     for _ in range(30):
                         if proceso.poll() is not None:
                             raise RuntimeError(f"OpenLiteSpeed terminó al arrancar: {proceso.returncode}. Revisa ols-error.log.")
@@ -208,14 +229,14 @@ def main():
                 cookies = [None] * args.usuarios
                 if args.perfil != "frio":
                     cookies = autenticar_usuarios(puerto, args.usuarios)
-                    rafaga(puerto, args.usuarios, cookies, observador)
+                    rafaga(puerto, args.usuarios, cookies, observador, args.verificar_avisos)
                 if args.perfil.startswith("reciclaje"):
                     input("Reemplaza diez hijos del grupo LSAPI de prueba, conserva el directorio de sesiones y pulsa Enter. ")
                     exigir_sonda(puerto, nonce)
                     if args.perfil == "reciclaje-login":
                         cookies = [None] * args.usuarios
                 inicio_rafaga = time.monotonic() - limite.ventana.origen + .8
-                resultado = rafaga(puerto, args.usuarios, cookies, observador)
+                resultado = rafaga(puerto, args.usuarios, cookies, observador, args.verificar_avisos)
                 resultado.update({
                     "perfil": args.perfil, "usuarios": args.usuarios, "sonda": sonda,
                     "inicio_rafaga_s": inicio_rafaga,
@@ -226,6 +247,12 @@ def main():
                 })
                 args.salida.write_text(json.dumps(resultado, indent=2) + "\n", encoding="utf-8")
                 print(f"Métricas de la réplica: {args.salida}")
+                if args.verificar_avisos:
+                    lecturas = sql("SELECT COUNT(*) FROM agenda_comentarios_lecturas "
+                                   "WHERE novedad_leida_at IS NOT NULL OR recordatorio_atendido_at IS NOT NULL;",
+                                   leer=True)
+                    if lecturas.strip() != b"0":
+                        raise RuntimeError("El sondeo marcó avisos.")
                 for ruta, estados in resultado["rutas"].items():
                     esperados = {"302"} if ruta == "login" else {"200"}
                     if set(estados) - esperados:
@@ -234,8 +261,11 @@ def main():
                     raise RuntimeError("Se rechazaron aperturas MySQL.")
             finally:
                 if proceso is not None:
-                    proceso.terminate()
-                    proceso.wait(timeout=15)
+                    try:
+                        proceso.terminate()
+                        proceso.wait(timeout=15)
+                    finally:
+                        detener_lsphp(php)
                 elif not args.php_lsapi:
                     input("Detén el vhost de prueba antes de pulsar Enter para eliminar la copia desechable. ")
     finally:
