@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Publicador de SOLO la embudo V3 optativo para asesores, con 2 PHP existentes y 4 archivos nuevos.
-Python 3.6+; no red, no SQL, no cambios a Telefonía, bridge, movimientos o JS.
+Publicador del embudo institucional V3 optativo para asesores: 4 archivos existentes y 4 nuevos.
+Python 3.6+; sin red ni SQL. Protege V4, Bridge, WebRTC y JS del tablero actual.
 Utilizar con un paquete ya descargado del commit fijado y SHA Git verificados.
 """
 from __future__ import print_function
