@@ -10,6 +10,31 @@
   margin:4px 0 0;color:#667b99;font-size:11px;line-height:1.5;
 }
 .impe-embudo--v3-bandejas .impe-v3b-card{min-width:0}
+.impe-embudo--v3-bandejas .impe-v3b-horario{
+  display:flex;align-items:center;gap:6px;
+  margin:8px 0 6px;color:#5d7495;font-size:11px;line-height:1.45;
+}
+.impe-embudo--v3-bandejas .impe-v3b-badge--stop{
+  background:#fff0f0;color:#962d3b;
+}
+.impe-embudo--v3-bandejas .impe-v3b-acciones{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+}
+.impe-embudo--v3-bandejas .impe-v3b-acciones button,
+.impe-embudo--v3-bandejas .impe-v3b-acciones a{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:31px;min-height:31px;
+  border:1px solid #d2dfef;border-radius:9px;
+  background:#fff;color:#2e598d;text-decoration:none;cursor:pointer;
+}
+.impe-embudo--v3-bandejas .impe-v3b-acciones button:hover,
+.impe-embudo--v3-bandejas .impe-v3b-acciones a:hover{
+  background:#eaf2fd;
+}
+.impe-embudo--v3-bandejas .impe-v3b-acciones button:focus-visible,
+.impe-embudo--v3-bandejas .impe-v3b-acciones a:focus-visible{
+  outline:2px solid #245eae;outline-offset:2px;
+}
 .impe-embudo--v3-bandejas .impe-v3b-badge{
   padding:3px 7px;border-radius:7px;background:#fff5e1;
   color:#8a5918;font-size:10px;font-weight:800;
