@@ -41,6 +41,49 @@ Esta prueba de integración simulada no sustituye una prueba final de API
 Developer real ni las verificaciones de compatibilidad/privacidad del
 sitio operativo.
 
+## Conciliación aditiva con Hostinger (solo lectura por defecto)
+
+El modelo operativo de Hostinger **no coincide** con el modelo antiguo de esta
+rama. Conserva funcionalidades que no pueden reemplazarse: campos de
+`horario_contacto`, ubicación internacional, convocatorias de aliados,
+`guardarOriginal()`, `insertar()` e incorporación comercial central.
+
+**NO copiar `app/models/FormularioRegistroModel.php` del PR al sitio real.**
+La entrega segura consiste en los nuevos servicios Zoho y un parche de
+**un solo bloque** dentro del `guardar()` existente. El bloque se ejecuta
+después de `ProspectoCentralIncorporacionService::despuesDeGuardar()`;
+solo encola registros autorizados, no inscripciones, no lanza HTTP y
+captura cualquier excepción sin alterar el guardado ya realizado.
+
+El script `tools/zoho_conciliar_formulario_hostinger.py` realiza lo siguiente:
+
+1. Comprueba que la ruta sea el sitio productivo conocido y que el SHA256
+   de `FormularioRegistroModel.php` comience por
+   `5089e339748fa7cd` (diagnóstico de Hostinger 2026-11-12).
+2. Requiere que permanezcan intactas todas las anclas del flujo actual,
+   incluido `horario_contacto`, y rechaza la instalación si cambiaron.
+3. Solo agrega el bloque dentro de `guardar()`; confirma que no elimina
+   ni altera una sola línea del archivo original.
+4. En modo `--check` no escribe. En modo `--prepare` produce una
+   copia privada **fuera de `public_html`**, que no se despliega sola.
+   Nunca escribe directamente dentro del sitio, ni hace SQL.
+
+Revisión de solo lectura:
+
+~~~bash
+python3 "$HOME/crm-zoho-developer-piloto/tools/zoho_conciliar_formulario_hostinger.py" \
+  --site "$HOME/domains/fundacionrededumex.org/public_html" --check
+~~~
+
+**No ejecutar el modo de preparación ni publicar archivos** sin haber
+corroborado este chequeo y la revisión independiente de migración, BD,
+configuración y comportamiento del proceso comercial.
+
+La prueba automatizada `tests/zoho_hostinger_parche_smoke.py`
+comprueba el único bloque añadido, conserva los componentes de producción,
+valida PHP y verifica que el parche falle de forma segura si el archivo
+cambió o ya estaba adaptado.
+
 ## Antes de habilitar: requisitos
 
 1. Trabajar en una **copia/staging** de la base de datos y del sitio,
