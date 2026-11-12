@@ -219,6 +219,47 @@ el guardado operativo ejecuta antes la incorporación comercial.
 La demostración extremo a extremo de un formulario ficticio debe
 realizarse en un entorno que no asigne prospectos reales a asesores.
 
+## Ensayo real del formulario HTTP en un entorno aislado de GitHub Actions
+
+Además de la integración CLI existente, se añadió
+`tests/zoho_developer_http_staging.php`, que ejecuta la ruta
+`index.php?controller=formularioPublico&action=guardarRegistro` con
+PHP integrado y una **base MySQL 8 efímera independiente**
+(`127.0.0.1:33308 / impe_zoho_http_ci`).
+
+Se ejercita el recorrido real del repositorio:
+
+1. POST HTTP del formulario general con `impe.http.staging@example.com`
+   (se utilizan datos sintéticos).
+2. Validación del controlador, guardado del modelo y escritura de una fila
+   `pendiente` en la cola.
+3. Segundo registro de correo fuera de la lista: **no** se encola.
+4. Inscripción con correo autorizado: **no** se encola.
+5. Ejecución del worker con OAuth, organización y upsert **simulados**,
+   guardando el estado `enviado` y el ID sintético.
+6. Conteo final: exactamente dos registros, una inscripción y una
+   operación de exportación simulada. La BD no contiene tablas de
+   asesores, prospectos comerciales ni campañas.
+
+**Límites intencionales:** esta prueba usa el modelo que está en el
+repositorio, que es distinto del modelo conciliado de Hostinger. Tampoco
+contacta a Zoho real: se controla el transporte solo bajo `APP_ENV=testing`.
+La API real se verificó por separado mediante la sonda CLI y el mismo
+Lead ID en dos envíos. Ninguna de estas pruebas crea registros desde el
+formulario público de producción.
+
+La prueba HTTP solo permite nombres de base, host, HOME privado y
+directorio temporal de CI **exactamente prefijados**, y se niega a
+ejecutarse con cualquier otra configuración. La BD y el servidor HTTP
+se destruyen al concluir el workflow; no se requieren credenciales
+de Hostinger ni una nueva base de datos de producción.
+
+Para validar completamente el modelo personalizado desplegado en
+Hostinger contra API Developer real en un único recorrido, se necesitará
+un sitio staging separado con BD y usuario propios, sin reglas de
+asignación, cron ni correos salientes. **No usar la BD operativa como
+staging ni generar registros ficticios en ella.**
+
 ## Sonda de Zoho Developer real sin tocar datos comerciales
 
 Después del despliegue controlado del modelo (SHA256
