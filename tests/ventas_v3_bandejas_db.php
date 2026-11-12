@@ -70,7 +70,8 @@ try {
     $_SESSION=['usuario_id'=>8,'rol_id'=>3,
         'permisos'=>[
             'ventas.embudo.ver','ventas.embudo.mover',
-            'ventas.recuperacion.gestionar','ventas.descartados.gestionar'
+            'ventas.recuperacion.ver','ventas.recuperacion.gestionar',
+            'ventas.descartados.ver','ventas.descartados.gestionar'
         ]];
     $db->query("INSERT INTO prospecto_asignaciones VALUES
         (101,8,1),(102,8,1),(103,8,1),(104,9,1),(105,8,0),(106,8,1)");
@@ -181,7 +182,9 @@ try {
         $svc->ingresarRecuperacion(8,102,'NUEVO',$ayer,
             'Permiso retirado de Recuperación',true);
     },'permisos reales');
+    $_SESSION['permisos'][]='ventas.recuperacion.ver';
     $_SESSION['permisos'][]='ventas.recuperacion.gestionar';
+    $_SESSION['permisos'][]='ventas.descartados.ver';
     $_SESSION['permisos'][]='ventas.descartados.gestionar';
 
     // Reactivación: una conversación guardada ANTES de ingresar a
