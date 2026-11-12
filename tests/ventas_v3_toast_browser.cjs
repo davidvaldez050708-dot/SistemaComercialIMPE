@@ -12,15 +12,17 @@ const fixture = `<!doctype html><meta charset="utf-8"><main class="impe-embudo--
   <article class="impe-v3o-card" data-asignacion-id="1" data-etapa="INTERESADO" data-v3-subetapa="CALIFICADO">
     <button data-v3-gestionar>Gestionar</button>
   </article>
-  <article class="impe-v3o-card" data-asignacion-id="2" data-etapa="CONTACTADO" data-v3-destinos="SEGUIMIENTO">
+  <article class="impe-v3o-card" data-asignacion-id="2" data-etapa="CONTACTADO" data-v3-destinos="SEGUIMIENTO,POTENCIAL">
     <button data-v3-mover>Mover</button>
   </article>
   <dialog id="impe-v3o-dialog"><form id="impe-v3o-mover-form">
     <span id="impe-v3o-dialog-datos"></span>
-    <select id="impe-v3o-destino"><option>SEGUIMIENTO</option></select>
+    <select id="impe-v3o-destino"><option>SEGUIMIENTO</option><option>POTENCIAL</option></select>
     <input id="impe-v3o-motivo"><label id="impe-v3o-fecha-label">
     <input id="impe-v3o-fecha" type="datetime-local"></label>
-    <p id="impe-v3o-dialog-error" hidden></p><button id="impe-v3o-enviar">Confirmar</button>
+    <label id="impe-v3o-calificacion-label" hidden>
+      <input id="impe-v3o-calificacion" type="checkbox">Intención confirmada
+    </label><p id="impe-v3o-dialog-error" hidden></p><button id="impe-v3o-enviar">Confirmar</button>
   </form></dialog>
   <dialog id="impe-v3o-potencial-dialog"><form id="impe-v3o-potencial-form">
     <span id="impe-v3o-potencial-datos"></span>
@@ -54,6 +56,14 @@ async function probar(browser, modo) {
     if (url.pathname === '/index.php') {
       guardados++;
       assert.equal(route.request().headers()['x-csrf-token'], 'fixture');
+      if (modo === 'calificacion') {
+        assert.equal(url.searchParams.get('action'), 'moverEtapaV3');
+        const datos = new URLSearchParams(route.request().postData());
+        assert.equal(datos.get('etapa_anterior'), 'CONTACTADO');
+        assert.equal(datos.get('etapa_nueva'), 'POTENCIAL');
+        assert.equal(datos.get('calificacion_confirmada'), '1');
+        assert.equal(datos.get('proxima_accion'), '');
+      }
       if (modo === 'conflicto') return route.fulfill({ status: 409, json: { ok: false, mensaje: 'La tarjeta cambió.' } });
       if (modo === 'html') return route.fulfill({ status: 503, body: '<html>Servicio temporal</html>' });
       if (modo === 'llamada') await page.evaluate(() => { window.llamadaActiva = true; });
@@ -63,10 +73,18 @@ async function probar(browser, modo) {
     return route.fulfill({ contentType: 'text/html', body: fixture });
   });
   await page.goto(origen);
-  if (modo === 'movimiento') {
+  if (modo === 'movimiento' || modo === 'calificacion') {
     await page.locator('[data-v3-mover]').click();
     await page.fill('#impe-v3o-motivo', 'Agendó llamada de seguimiento');
-    await page.fill('#impe-v3o-fecha', '2099-01-01T10:00');
+    if (modo === 'calificacion') {
+      await page.selectOption('#impe-v3o-destino', 'POTENCIAL');
+      await page.click('#impe-v3o-enviar');
+      assert.equal(guardados, 0);
+      assert.equal(await page.locator('#impe-v3o-calificacion').evaluate(el => el.validity.valueMissing), true);
+      await page.check('#impe-v3o-calificacion');
+    } else {
+      await page.fill('#impe-v3o-fecha', '2099-01-01T10:00');
+    }
     await page.click('#impe-v3o-enviar');
   } else {
     await gestionar(page);
@@ -84,7 +102,8 @@ async function probar(browser, modo) {
     await toast.waitFor({ state: 'visible' });
     assert.equal(await toast.getAttribute('role'), 'status');
     assert.equal(await toast.getAttribute('aria-live'), 'polite');
-    assert.match(await toast.textContent(), modo === 'movimiento' ? /Movimiento registrado/ : /Gestión comercial registrada/);
+    assert.match(await toast.textContent(), ['movimiento', 'calificacion'].includes(modo)
+      ? /Movimiento registrado/ : /Gestión comercial registrada/);
     assert.equal(await toast.count(), 1);
     assert.equal(navegaciones, ['llamada', 'sin-storage'].includes(modo) ? 1 : 2);
     if (modo === 'sin-storage') {
@@ -109,7 +128,7 @@ async function probar(browser, modo) {
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined });
   try {
-    for (const modo of ['gestion', 'movimiento', 'conflicto', 'html', 'llamada', 'sin-storage']) {
+    for (const modo of ['gestion', 'movimiento', 'calificacion', 'conflicto', 'html', 'llamada', 'sin-storage']) {
       await probar(browser, modo);
       console.log('Toast V3:', modo, 'OK');
     }

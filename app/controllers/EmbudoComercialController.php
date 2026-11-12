@@ -248,7 +248,7 @@ final class EmbudoComercialController
             return;
         }
         foreach(['asignacion_id','etapa_anterior','etapa_nueva',
-                 'motivo','proxima_accion'] as $key) {
+                 'motivo','proxima_accion','calificacion_confirmada'] as $key) {
             if(isset($_POST[$key]) && !is_string($_POST[$key])) {
                 $reply(false,'Datos de movimiento inválidos.',422);
                 return;
@@ -272,6 +272,16 @@ final class EmbudoComercialController
             require_once __DIR__.'/../services/EmbudoComercialV3MovimientosPermitidos.php';
             EmbudoComercialV3MovimientosPermitidos::validar($anterior,$nueva);
             $db=(new Database())->connect(false);
+            if ($nueva==='POTENCIAL') {
+                if ($fecha!=='') {
+                    throw new DomainException('La calificación conserva la próxima acción. Puedes cambiarla en Potenciales.');
+                }
+                require_once __DIR__.'/../services/EmbudoComercialV3CalificacionService.php';
+                $confirmada=($_POST['calificacion_confirmada']??'')==='1';
+                $mov=(new EmbudoComercialV3CalificacionService($db))->registrar($uid,(int)$asig,$motivo,$confirmada);
+                $reply(true,'Calificación registrada y auditada.',200,['movimiento'=>$mov]);
+                return;
+            }
             if(EmbudoComercialV3MovimientosPermitidos::requiereConversacion(
                 $anterior,$nueva
             ) && !EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(

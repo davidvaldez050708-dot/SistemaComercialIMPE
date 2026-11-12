@@ -150,6 +150,12 @@
 .impe-embudo--v3-operativo .impe-embudo-dialog label{
   color:#294f83;font-weight:700;
 }
+.impe-embudo--v3-operativo .impe-embudo-dialog .impe-v3o-calificacion{
+  display:flex;align-items:center;gap:8px;
+}
+.impe-embudo--v3-operativo .impe-embudo-dialog .impe-v3o-calificacion input{
+  width:auto;flex:none;accent-color:#263582;
+}
 .impe-embudo--v3-operativo .impe-embudo-dialog textarea{
   resize:vertical;
 }

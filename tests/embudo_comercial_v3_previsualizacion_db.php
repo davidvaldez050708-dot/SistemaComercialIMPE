@@ -295,10 +295,10 @@ try{
         $ops['columnas']['NUEVO']['paginas']===2 &&
         count($ops['columnas']['NUEVO']['registros'])===20,
         'vista operativa V3 muestra 20/23 con navegación completa');
-    okV3p($ops['columnas']['REVISION_LEGACY']['total']===1 &&
-        $ops['columnas']['REVISION_LEGACY']['registros'][0]['etapa_original']==='INTERESADO',
-        'asesor ve su legacy sin convertirlo en Potencial');
-    okV3p($ops['columnas']['POTENCIAL']['total']===0 &&
+    okV3p($ops['columnas']['REVISION_LEGACY']['total']===0 &&
+        $ops['columnas']['POTENCIAL']['registros'][0]['etapa_original']==='INTERESADO',
+        'asesor ve el histórico en Potenciales sin cambiar su código');
+    okV3p($ops['columnas']['POTENCIAL']['total']===1 &&
         $ops['columnas']['PROCESO_INSCRIPCION']['total']===0 &&
         $ops['columnas']['SEGUIMIENTO']['total']===1,
         'no reinterpreta legados y conserva Seguimiento');
@@ -322,7 +322,7 @@ try{
     }
     $foreign=$r->listadoV3Operativo(8,
         EmbudoComercialRepository::filtros(['asesor'=>'9'],false),$pg);
-    okV3p($foreign['columnas']['POTENCIAL']['total']===0 &&
+    okV3p($foreign['columnas']['POTENCIAL']['total']===1 &&
         $foreign['columnas']['PROCESO_INSCRIPCION']['total']===0,
         'filtro manipulado no deja ver asignaciones del asesor 9');
     okV3p(EmbudoComercialV3MovimientosPermitidos::destinos('NUEVO')===['CONTACTADO'] &&
@@ -361,6 +361,77 @@ try{
     }catch(DomainException $ok){}
     $_SESSION=['usuario_id'=>8,'rol_id'=>3,
         'permisos'=>['ventas.embudo.ver','ventas.embudo.mover']];
+
+    // Completa las tablas de escritura exclusivamente dentro del esquema temporal.
+    $db->query("ALTER TABLE prospecto_embudo_etapas ADD cambiado_por INT, ADD actualizado_at DATETIME");
+    $db->query("ALTER TABLE prospecto_embudo_subetapas_historial
+        ADD subetapa_anterior VARCHAR(40), ADD subetapa_nueva VARCHAR(40),
+        ADD motivo VARCHAR(190), ADD origen VARCHAR(40), ADD usuario_id INT, ADD creado_at DATETIME");
+    $db->query("CREATE TABLE prospecto_embudo_movimientos (
+        id INT AUTO_INCREMENT PRIMARY KEY, asignacion_id BIGINT UNSIGNED,
+        etapa_anterior VARCHAR(30), etapa_nueva VARCHAR(30), motivo VARCHAR(190),
+        usuario_id INT, creado_at DATETIME
+    ) ENGINE=InnoDB");
+    $db->query("UPDATE prospecto_embudo_etapas SET etapa='CONTACTADO' WHERE asignacion_id IN (12,13)");
+    $db->query("DELETE FROM prospecto_embudo_subetapas WHERE asignacion_id=12");
+    $db->query("INSERT INTO prospecto_embudo_agenda VALUES (13,'2099-01-01 16:00:00','2099-01-01')");
+    $db->query("INSERT INTO prospecto_embudo_subetapas VALUES(13,'PENDIENTE_CALIFICACION',UTC_TIMESTAMP(),8,1)");
+    $visibles=array_column($r->listadoV3Operativo(8,$f,$pg)['columnas']['CONTACTADO']['registros'],
+        'puede_calificar','asignacion_id');
+    okV3p($visibles[13]===true && $visibles[12]===false &&
+        EmbudoComercialV3MovimientosPermitidos::destinos('CONTACTADO',true)===['SEGUIMIENTO','POTENCIAL'],
+        'la opción de Potenciales sólo se anuncia con conversación acreditada');
+
+    require_once __DIR__.'/../app/services/EmbudoComercialV3CalificacionService.php';
+    require_once __DIR__.'/../app/services/EmbudoComercialV3GestionPotencialService.php';
+    $calificaciones=new EmbudoComercialV3CalificacionService($db);
+    $motivo='Confirmó su intención de inscripción durante la llamada.';
+    $rechazar=static function(callable $operacion,string $caso): void {
+        try {
+            $operacion();
+        } catch(DomainException $esperado) {
+            return;
+        }
+        throw new RuntimeException('No se bloqueó: '.$caso);
+    };
+    $rechazar(fn()=>$calificaciones->registrar(8,13,$motivo,false),
+        'sin confirmación expresa');
+    $rechazar(fn()=>$calificaciones->registrar(8,12,$motivo,true),
+        'sin conversación');
+    $rechazar(fn()=>$calificaciones->registrar(8,14,$motivo,true),
+        'asignación ajena');
+    $db->query("UPDATE prospecto_asignaciones SET vigente=0 WHERE id=13");
+    $rechazar(fn()=>$calificaciones->registrar(8,13,$motivo,true),
+        'asignación revocada');
+    $db->query("UPDATE prospecto_asignaciones SET vigente=1 WHERE id=13");
+    $_SESSION['permisos']=['ventas.embudo.ver'];
+    $rechazar(fn()=>$calificaciones->registrar(8,13,$motivo,true),
+        'sin permiso operativo');
+    $_SESSION['permisos'][]='ventas.embudo.mover';
+    $calificaciones->registrar(8,13,$motivo,true);
+    $rechazar(fn()=>$calificaciones->registrar(8,13,$motivo,true),
+        'reintento con etapa anterior obsoleta');
+    $calificado=$db->query("SELECT e.etapa,s.subetapa,s.version,a.proxima_accion_at,a.revision_fecha
+        FROM prospecto_embudo_etapas e
+        JOIN prospecto_embudo_subetapas s USING (asignacion_id)
+        JOIN prospecto_embudo_agenda a USING (asignacion_id) WHERE e.asignacion_id=13")->fetch_assoc();
+    okV3p($calificado['etapa']==='POTENCIAL' && $calificado['subetapa']==='CALIFICADO' &&
+        (int)$calificado['version']===2 && $calificado['proxima_accion_at']==='2099-01-01 16:00:00' &&
+        $calificado['revision_fecha']==='2099-01-01',
+        'califica con subetapa y conserva próxima acción y fecha de revisión');
+    okV3p((int)$db->query("SELECT COUNT(*) FROM prospecto_embudo_movimientos
+        WHERE asignacion_id=13 AND etapa_anterior='CONTACTADO' AND etapa_nueva='POTENCIAL'")->fetch_row()[0]===1 &&
+        (int)$db->query("SELECT COUNT(*) FROM prospecto_embudo_subetapas_historial
+        WHERE asignacion_id=13 AND subetapa_anterior='PENDIENTE_CALIFICACION'
+        AND subetapa_nueva='CALIFICADO'")->fetch_row()[0]===1,
+        'un solo evento de etapa y de subetapa');
+    $db->query("ALTER TABLE prospecto_embudo_agenda ADD actualizado_at DATETIME, ADD actualizado_por INT");
+    $gestion=(new EmbudoComercialV3GestionPotencialService($db))->registrar(
+        8,11,'INTERESADO','','REUNIENDO_DOCUMENTOS','Reunirá la documentación necesaria.','2099-01-02T10:00'
+    );
+    okV3p($gestion['etapa_conservada']==='INTERESADO' && $gestion['proxima_accion_at']==='2099-01-02 16:00:00' &&
+        $db->query("SELECT etapa FROM prospecto_embudo_etapas WHERE asignacion_id=11")->fetch_row()[0]==='INTERESADO',
+        'gestión y próxima acción del histórico sin cambiar su etapa');
 
     $source=file_get_contents(__DIR__.'/../app/services/EmbudoComercialRepository.php');
     foreach(['UPDATE prospecto_embudo','INSERT INTO prospecto_embudo',

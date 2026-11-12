@@ -162,6 +162,8 @@
   const motivo=form.querySelector('#impe-v3o-motivo');
   const fecha=form.querySelector('#impe-v3o-fecha');
   const fechaLabel=form.querySelector('#impe-v3o-fecha-label');
+  const calificacion=form.querySelector('#impe-v3o-calificacion');
+  const calificacionLabel=form.querySelector('#impe-v3o-calificacion-label');
   const error=form.querySelector('#impe-v3o-dialog-error');
   const enviar=form.querySelector('#impe-v3o-enviar');
   const titulo=form.querySelector('#impe-v3o-dialog-datos');
@@ -176,6 +178,11 @@
     fechaLabel.hidden=!requiere;
     fecha.required=requiere;
     if(!requiere)fecha.value='';
+    if(calificacion && calificacionLabel){
+      calificacionLabel.hidden=destino.value!=='POTENCIAL';
+      calificacion.required=!calificacionLabel.hidden;
+      calificacion.checked=false;
+    }
     error.hidden=true;
   };
   const abrir=(card,destinoSolicitado='')=>{
@@ -298,6 +305,7 @@
       motivo:reason,
       proxima_accion:next==='SEGUIMIENTO'?fecha.value:''
     });
+    if(next==='POTENCIAL' && calificacion?.checked)body.set('calificacion_confirmada','1');
     enviar.disabled=true;error.hidden=true;
     try{
       const response=await fetch(
