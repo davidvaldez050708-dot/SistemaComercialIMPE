@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Gestión Comercial V3 · bandejas seguras. Ocho archivos, CHECK/APPLY/ROLLBACK.
+"""Gestión Comercial V3 · bandejas seguras. Nueve archivos, CHECK/APPLY/ROLLBACK.
 Sin DDL/DML, sin modificar Zadarma ni programas automáticos.
 """
 import argparse
@@ -10,29 +10,33 @@ import sys
 import publicar_ventas_v3_gestion_potenciales_hostinger as p
 
 p.ARCHIVOS = [
+    # Instalación de archivos nuevos antes de las vistas/controladores existentes.
+    # Así no se expone un require de un archivo todavía ausente.
     ("app/services/EmbudoComercialV3BandejasService.php",None,
      "d823252afc1d36ee4254b253ba6c65fd92cdf8fa"),
-    ("app/controllers/EmbudoComercialController.php",
-     "7f3ae6e1410d3e05389327cb6339b26ee57202bb",
-     "be6249a96ff26fb46cc9616da1a9767e036b826f"),
-    ("app/services/EmbudoComercialRepository.php",
-     "150269b1a6687dd8011e1a968b6162fa2f9ff656",
-     "e89800e97c819e331ed29e51d9d211a1d8d4e5b5"),
-    ("app/views/embudo_comercial/operativo_v3.php",
-     "3eaaa4d66489e31406613e67edee166f105f4619",
-     "bddf4fa6a69e248ef71770c61346145392542f58"),
-    ("app/views/embudo_comercial/bandejas_v3.php",None,
-     "cab2a1c4c293aafa798148f4382425ae692e2a5b"),
     ("app/views/embudo_comercial/bandejas_v3_modal.php",None,
      "f085408107f37d83a7df29bd2dd4d1e0138afdd6"),
+    ("app/views/embudo_comercial/bandejas_v3.php",None,
+     "cab2a1c4c293aafa798148f4382425ae692e2a5b"),
     ("public/css/embudo_v3_bandejas.css",None,
      "9792c5b366458ec3a228c47400961a6608fc7ae9"),
     ("public/javascript/embudo_comercial_v3_bandejas.js",None,
-     "ea4093008c1e9dd6aaa869867b141e3d81b6c1d3")
+     "ea4093008c1e9dd6aaa869867b141e3d81b6c1d3"),
+    # Regla PBX aislada para asesores V3, sin reintroducir el piloto.
+    ("app/services/EmbudoComercialResultadoBridge.php",
+     "4388551ad7aa46bf6b027716d7455edd4751431c",
+     "e4f6b23d989ff99539088153df58d4ec2404f79d"),
+    ("app/services/EmbudoComercialRepository.php",
+     "150269b1a6687dd8011e1a968b6162fa2f9ff656",
+     "e89800e97c819e331ed29e51d9d211a1d8d4e5b5"),
+    ("app/controllers/EmbudoComercialController.php",
+     "7f3ae6e1410d3e05389327cb6339b26ee57202bb",
+     "be6249a96ff26fb46cc9616da1a9767e036b826f"),
+    ("app/views/embudo_comercial/operativo_v3.php",
+     "3eaaa4d66489e31406613e67edee166f105f4619",
+     "bddf4fa6a69e248ef71770c61346145392542f58"),
 ]
 p.NO_MODIFICAR = {
-    "app/services/EmbudoComercialResultadoBridge.php":
-        "4388551ad7aa46bf6b027716d7455edd4751431c",
     "app/services/EmbudoComercialV3AccesoControlado.php":
         "480ce33e3622eb44116c3aed578c0a753378eaa9",
     "app/services/EmbudoComercialV3SeguimientoService.php":
@@ -62,6 +66,10 @@ def paquete(stage):
         if ruta.endswith(".php"):p.lint_php(archivo)
         if ruta.endswith(".js"):p.lint_js(archivo)
     requisitos={
+        "app/services/EmbudoComercialResultadoBridge.php":[
+            b'bloquearRecuperacionAutomaticaV3',
+            b"($nueva==='CONTACTADO' && $etapaAnterior==='RECUPERACION')",
+            b'EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId)'],
         "app/services/EmbudoComercialV3BandejasService.php":[
             b'resumenJornada(',b'conversacionPosteriorARecuperacion',
             b"DESCARTES_HABILITADOS",b"begin_transaction",b"rollback",
@@ -91,7 +99,7 @@ def paquete(stage):
     bridge=p.leer(p.confiable(stage,"app/services/EmbudoComercialV3BandejasService.php"))
     if b"IMPE_VENTAS_V3_PILOTO" in bridge or b"enviarWhatsApp" in bridge:
         raise p.Bloqueo("No activar pilotos ni mensajería en bandejas V3.")
-    print("PAQUETE_BANDEJAS_V3_OK: 8 archivos exactos, sin DDL ni automatización.")
+    print("PAQUETE_BANDEJAS_V3_OK: 9 archivos exactos, sin DDL ni automatización.")
 
 
 def chequear_bd(site):
