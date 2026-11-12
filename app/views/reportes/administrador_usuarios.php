@@ -232,14 +232,6 @@ foreach ($estadoUsuarios as $datoEstado) {
                 <p class="metric-label">Roles</p>
             </div>
         </article>
-
-        <article class="metric-card">
-            <div class="metric-icon"><i class="bi bi-list-check"></i></div>
-            <div>
-                <p class="metric-value"><?= (int)($resumen['total_seguimientos'] ?? 0) ?></p>
-                <p class="metric-label">Seguimientos</p>
-            </div>
-        </article>
     </section>
 
     <div class="territorial-section-title">
