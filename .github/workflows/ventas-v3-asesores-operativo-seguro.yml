@@ -43,6 +43,8 @@ on:
       - 'app/services/ProspectoNoContactarV3.php'
       - 'app/services/TelefoniaMarcacionesVentasService.php'
       - 'app/services/WhatsAppCloudApiService.php'
+      - 'app/models/WhatsAppModel.php'
+      - 'app/controllers/WhatsAppController.php'
       - 'app/controllers/TelefoniaController.php'
       - 'tools/publicar_ventas_v3_bandejas_hostinger.py'
       - 'tests/ventas_v3_bandejas_publicador_unit.py'
@@ -102,6 +104,8 @@ jobs:
           php -l app/services/ProspectoNoContactarV3.php
           php -l app/services/TelefoniaMarcacionesVentasService.php
           php -l app/services/WhatsAppCloudApiService.php
+          php -l app/models/WhatsAppModel.php
+          php -l app/controllers/WhatsAppController.php
           php -l app/controllers/TelefoniaController.php
           php -l prueba_telefonia/api/zadarma_estado_llamada.php
           php -l tests/gestion_comercial_no_contactar_db.php
