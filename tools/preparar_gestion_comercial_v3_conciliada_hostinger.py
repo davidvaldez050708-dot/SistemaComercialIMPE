@@ -119,6 +119,9 @@ def main():
         fail("stage original ausente")
     if os.path.commonpath([stage,site])==site:
         fail("stage privado dentro de producción")
+    # Stage del release original debe seguir íntegro antes de reemplazar
+    # únicamente las cuatro personalizaciones conocidas.
+    release.paquete(stage)
     preview=os.path.join(stage,"_conciliacion_telefonia_privada")
     if not os.path.isdir(preview) or os.path.islink(preview):
         fail("no está la previsualización privada de telefonía")
@@ -147,20 +150,19 @@ def main():
             sources[rel]=file_data(stage,rel,new)
     for rel,hashbase in release.p.NO_MODIFICAR.items():
         file_data(site,rel,hashbase)
-    for rel in [
-        "tools/publicar_gestion_comercial_v3_integral_hostinger.py",
-        "tools/publicar_ventas_v3_gestion_potenciales_hostinger.py",
-        "tools/gestion_comercial_v3_inscripcion_schema_hostinger.php",
-        "tools/gestion_comercial_v3_auditar_distribucion_hostinger.php",
-        release.MIGRACION,
-    ]:
-        if rel==release.MIGRACION:
-            expected=release.MIGRACION_HASH
-            sources[rel]=file_data(stage,rel,expected)
-        elif rel=="tools/publicar_gestion_comercial_v3_integral_hostinger.py":
-            sources[rel]=open(os.path.join(stage,rel),"rb").read()
-        else:
-            sources[rel]=open(os.path.join(stage,rel),"rb").read()
+    supported_tools={
+        "tools/publicar_gestion_comercial_v3_integral_hostinger.py":
+            "648d18870964ca05fcad089b6ba3e2464c4af1a1",
+        "tools/publicar_ventas_v3_gestion_potenciales_hostinger.py":
+            "8e563d3a3b270c85bda3b59586b06f5cdd7dd8fa",
+        "tools/gestion_comercial_v3_inscripcion_schema_hostinger.php":
+            "7418ac08eaac70a92ba4bfc2ca74c7b24f609c50",
+        "tools/gestion_comercial_v3_auditar_distribucion_hostinger.php":
+            "5002be6405afdde52d11f333975a3b2ed76aaded",
+        release.MIGRACION:release.MIGRACION_HASH,
+    }
+    for rel,hash_esperado in supported_tools.items():
+        sources[rel]=file_data(stage,rel,hash_esperado)
     code=sources["tools/publicar_gestion_comercial_v3_integral_hostinger.py"]
     for rel,old,new in release.p.ARCHIVOS:
         if rel not in COMBINE:continue
