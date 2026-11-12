@@ -147,13 +147,11 @@ $rootPath = dirname(__DIR__, 2);
 $logPath = $rootPath . '/storage/zadarma_webhooks.log';
 
 try {
-    // Reutilizar una única conexión para extensión y autorización PBX.
-    // Evita aperturas extra al pool MySQL de Hostinger en cada marcación.
-    $conexionTelefonia = (new Database())->connect();
     $asignacionTelefonica =
-        (new TelefoniaExtensionService($conexionTelefonia))
+        (new TelefoniaExtensionService(Database::compartida()))
             ->resolverParaUsuario($usuarioId);
 } catch (Throwable $e) {
+    if (Database::responderFalloTemporal($e)) exit;
     responderJson([
         'ok' => false,
         'mensaje' => 'No fue posible consultar la extensión telefónica del usuario.'
@@ -190,15 +188,15 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
  * antes de enviar la orden de marcado al SDK de Zadarma.
  */
 if ($solicitarCheckpoint) {
-    // Punto de control común a Marketing, Analistas y Asesores.
-    // El SDK no puede marcar sin el OK de este checkpoint. Consultar antes
-    // de emitir la orden WebRTC, sin alterar las llamadas ya iniciadas.
+    // El checkpoint previo al marcado protege a Recepción, Analistas y Asesores.
+    // Reutilizar la conexión compartida de telefonía de Hostinger.
     try {
-        // Misma conexión del control de extensión; no abrir otra sesión.
-        ProspectoNoContactarV3::exigirPermitido($conexionTelefonia,$destino);
+        ProspectoNoContactarV3::exigirPermitido(
+            Database::compartida(),$destino);
     } catch (DomainException $e) {
         responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);
     } catch (Throwable $e) {
+        if (Database::responderFalloTemporal($e)) exit;
         error_log('[zadarma_no_contactar] '.get_class($e));
         responderJson([
             'ok'=>false,
@@ -206,7 +204,7 @@ if ($solicitarCheckpoint) {
         ],503);
     }
     try {
-        $ultimoId = (new ZadarmaWebhookEventStoreService())
+        $ultimoId = (new ZadarmaWebhookEventStoreService(Database::compartida()))
             ->ultimoInicioSalienteId($extension);
         responderJson(['ok' => true, 'after_id' => $ultimoId]);
     } catch (Throwable $error) {
@@ -230,7 +228,7 @@ $inicioSeleccionado = null;
 $eventStore = null;
 
 try {
-    $eventStore = new ZadarmaWebhookEventStoreService();
+    $eventStore = new ZadarmaWebhookEventStoreService(Database::compartida());
     $inicioPersistido = $eventStore->buscarInicioSalienteReciente(
         $extension,
         $destino,
@@ -247,6 +245,7 @@ try {
         }
     }
 } catch (Throwable $errorStore) {
+    if ($conMarcaDeAgua && Database::responderFalloTemporal($errorStore)) exit;
     error_log('[zadarma_estado_store] ' . $errorStore->getMessage());
 }
 
