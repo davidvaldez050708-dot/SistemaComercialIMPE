@@ -12,6 +12,7 @@ class ReporteAdministradorPdfService
     private const COLOR_BORDE = 'E5E9EF';
     private const COLOR_FONDO = 'F8FAFC';
     private const COLOR_FONDO_PRIMARIO = 'EDF2FA';
+    private const COLOR_BORDE_TARJETA = 'D7DFEA';
 
     private $rootPath;
     private $templatePath;
@@ -198,22 +199,30 @@ class ReporteAdministradorPdfService
         $fechaGeneracion = trim((string)($datosReporte['fecha_generacion'] ?? ''));
         $elementos = [];
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'RESUMEN EJECUTIVO');
+        $elementos[] = $this->crearParrafo(
+            $documento,
+            'Usuarios y carga de seguimiento',
+            ['tamano' => 14, 'color' => self::COLOR_SECUNDARIO, 'fondo' => self::COLOR_FONDO,
+                'antes' => 30, 'despues' => 95, 'borde_izquierdo' => true, 'mantener_siguiente' => true]
+        );
+        $elementos[] = $this->crearTituloSeccion($documento, 'Resumen ejecutivo');
         $elementos[] = $this->crearTarjetasIndicadores(
             $documento,
             [
                 ['etiqueta' => 'Usuarios', 'valor' => (int)($resumen['usuarios_registrados'] ?? 0)],
-                ['etiqueta' => 'Activos', 'valor' => (int)($resumen['usuarios_activos'] ?? 0)],
-                ['etiqueta' => 'Inactivos', 'valor' => (int)($resumen['usuarios_inactivos'] ?? 0)],
+                ['etiqueta' => 'Activos', 'valor' => (int)($resumen['usuarios_activos'] ?? 0),
+                    'relleno' => 'F0FAF8', 'borde' => 'B9E2DA', 'color' => '087966'],
+                ['etiqueta' => 'Inactivos', 'valor' => (int)($resumen['usuarios_inactivos'] ?? 0),
+                    'relleno' => 'F3F5F8'],
                 ['etiqueta' => 'Roles', 'valor' => (int)($resumen['roles_registrados'] ?? 0)],
                 ['etiqueta' => 'Seguimientos', 'valor' => (int)($resumen['total_seguimientos'] ?? 0)]
             ],
             $anchoUtil,
-            4
+            5
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'PERSONAS Y ACCESO');
+        $elementos[] = $this->crearTituloSeccion($documento, 'Personas y acceso');
         $elementos[] = $this->crearSubtitulo($documento, 'Usuarios por rol');
         $elementos[] = $this->crearGraficaBarras($documento, $datosRoles, $anchoUtil);
         $elementos[] = $this->crearEspaciador($documento, 80);
@@ -248,13 +257,15 @@ class ReporteAdministradorPdfService
         );
         $elementos[] = $this->crearEspaciador($documento, 120);
 
-        $elementos[] = $this->crearTituloSeccion($documento, 'HALLAZGOS ADMINISTRATIVOS');
+        $elementos[] = $this->crearTituloSeccion($documento, 'Hallazgos administrativos');
 
         foreach ($hallazgos as $hallazgo) {
             $elementos[] = $this->crearParrafo(
                 $documento,
-                '• ' . $hallazgo['texto'],
-                ['tamano' => 15, 'color' => self::COLOR_TEXTO, 'despues' => 35]
+                $hallazgo['texto'],
+                ['tamano' => 14, 'color' => self::COLOR_SECUNDARIO, 'fondo' => self::COLOR_FONDO,
+                    'antes' => 45, 'despues' => 65, 'borde_izquierdo' => true,
+                    'mantener_siguiente' => !empty($hallazgo['filas'])]
             );
             if (!empty($hallazgo['filas'])) {
                 $elementos[] = $this->crearTablaDetalle(
@@ -285,6 +296,8 @@ class ReporteAdministradorPdfService
         $anchoTotal = max(7200, (int)$anchoUtil);
         $anchoLogo = (int)round($anchoTotal * 0.34);
         $anchoTexto = max(1, $anchoTotal - $anchoLogo);
+        $anchoImagen = 1760000;
+        $altoImagen = 1610547;
 
         $contenidoLogo = $zip->getFromName('word/media/image1.png');
 
@@ -298,13 +311,13 @@ class ReporteAdministradorPdfService
             $zip->addFromString('word/_rels/header1.xml.rels', $rels);
         }
 
-        $logoXml = '';
+        $logoXml = '<w:p/>';
         if (is_string($contenidoLogo) && $contenidoLogo !== '') {
             $logoXml =
-                '<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>' .
+                '<w:p><w:pPr><w:spacing w:before="0" w:after="0"/><w:jc w:val="left"/></w:pPr>' .
                 '<w:r><w:drawing>' .
-                '<wp:inline distB="114300" distT="114300" distL="114300" distR="114300">' .
-                '<wp:extent cx="1243013" cy="1137428"/>' .
+                '<wp:inline distB="0" distT="0" distL="0" distR="0">' .
+                '<wp:extent cx="' . $anchoImagen . '" cy="' . $altoImagen . '"/>' .
                 '<wp:effectExtent b="0" l="0" r="0" t="0"/>' .
                 '<wp:docPr id="1" name="image1.png"/>' .
                 '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' .
@@ -313,20 +326,17 @@ class ReporteAdministradorPdfService
                 '<pic:blipFill><a:blip r:embed="rId1"/><a:srcRect b="0" l="0" r="0" t="0"/>' .
                 '<a:stretch><a:fillRect/></a:stretch></pic:blipFill>' .
                 '<pic:spPr><a:xfrm><a:off x="0" y="0"/>' .
-                '<a:ext cx="1243013" cy="1137428"/></a:xfrm>' .
+                '<a:ext cx="' . $anchoImagen . '" cy="' . $altoImagen . '"/></a:xfrm>' .
                 '<a:prstGeom prst="rect"/><a:ln><a:noFill/></a:ln></pic:spPr></pic:pic>' .
                 '</a:graphicData></a:graphic>' .
                 '</wp:inline></w:drawing></w:r></w:p>';
         }
 
-        $meta = '';
-        if ($generadoPor !== '') {
-            $meta .= $this->parrafoHeaderXml('Generado por: ' . $generadoPor, 12, self::COLOR_SECUNDARIO, false);
-        }
-        if ($rol !== '') {
-            $meta .= $this->parrafoHeaderXml('Rol: ' . $rol, 12, self::COLOR_SECUNDARIO, false);
-        }
-        $meta .= $this->parrafoHeaderXml('Fecha: ' . $fecha, 12, self::COLOR_SECUNDARIO, false);
+        $meta = $this->metadatosHeaderXml([
+            'Generado por' => $generadoPor,
+            'Rol' => $rol,
+            'Fecha' => $fecha
+        ], min($anchoTexto, 3450));
 
         $header =
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
@@ -336,30 +346,51 @@ class ReporteAdministradorPdfService
             'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' .
             'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' .
             '<w:tbl><w:tblPr><w:tblW w:w="' . $anchoTotal . '" w:type="dxa"/>' .
-            '<w:tblLayout w:type="fixed"/></w:tblPr>' .
+            '<w:tblLayout w:type="fixed"/><w:tblCellMar>' .
+            '<w:left w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/>' .
+            '</w:tblCellMar></w:tblPr>' .
             '<w:tblGrid><w:gridCol w:w="' . $anchoLogo . '"/><w:gridCol w:w="' . $anchoTexto . '"/></w:tblGrid>' .
             '<w:tr><w:trPr><w:cantSplit/></w:trPr>' .
             '<w:tc><w:tcPr><w:tcW w:w="' . $anchoLogo . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
             $logoXml . '</w:tc>' .
             '<w:tc><w:tcPr><w:tcW w:w="' . $anchoTexto . '" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>' .
             $this->parrafoHeaderXml('Sistema de Gestión Comercial', 13, self::COLOR_PRIMARIO, true) .
-            $this->parrafoHeaderXml('Reporte Administrativo de Usuarios', 21, self::COLOR_TEXTO, true) .
-            $this->parrafoHeaderXml('Usuarios y carga de seguimiento', 14, self::COLOR_SECUNDARIO, false) .
-            $meta .
+            $this->parrafoHeaderXml('Reporte Administrativo de Usuarios', 23, self::COLOR_TEXTO, true, 90) .
+            $meta . '<w:p><w:pPr><w:spacing w:line="20" w:lineRule="exact"/></w:pPr></w:p>' .
             '</w:tc></w:tr></w:tbl>' .
             '<w:p><w:pPr>' .
-            '<w:spacing w:before="60" w:after="90"/>' .
             '<w:pBdr><w:bottom w:val="single" w:sz="16" w:space="0" w:color="' . self::COLOR_PRIMARIO . '"/></w:pBdr>' .
+            '<w:spacing w:before="45" w:after="65" w:line="30" w:lineRule="exact"/>' .
             '</w:pPr><w:r><w:t></w:t></w:r></w:p>' .
             '</w:hdr>';
 
         $zip->addFromString('word/header1.xml', $header);
     }
 
-    private function parrafoHeaderXml($texto, $tamano, $color, $negrita)
+    private function metadatosHeaderXml(array $datos, int $ancho): string
     {
-        return '<w:p><w:pPr><w:jc w:val="right"/>' .
-            '<w:spacing w:before="0" w:after="25"/></w:pPr><w:r><w:rPr>' .
+        $etiqueta = (int)round($ancho * .35);
+        $valor = $ancho - $etiqueta;
+        $xml = '<w:tbl><w:tblPr><w:tblW w:w="' . $ancho . '" w:type="dxa"/><w:jc w:val="right"/>' .
+            '<w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>' .
+            '<w:gridCol w:w="' . $etiqueta . '"/><w:gridCol w:w="' . $valor . '"/></w:tblGrid>';
+        foreach ($datos as $nombre => $texto) {
+            if ($texto === '') {
+                continue;
+            }
+            $xml .= '<w:tr><w:tc><w:tcPr><w:tcW w:w="' . $etiqueta . '" w:type="dxa"/></w:tcPr>' .
+                $this->parrafoHeaderXml($nombre, 12, self::COLOR_SECUNDARIO, false, 15, 150) .
+                '</w:tc><w:tc><w:tcPr><w:tcW w:w="' . $valor . '" w:type="dxa"/></w:tcPr>' .
+                $this->parrafoHeaderXml($texto, 12, self::COLOR_TEXTO, true, 15, 150) . '</w:tc></w:tr>';
+        }
+        return $xml . '</w:tbl>';
+    }
+
+    private function parrafoHeaderXml($texto, $tamano, $color, $negrita, int $despues = 25, ?int $lineaExacta = null)
+    {
+        $linea = $lineaExacta === null ? '' : ' w:line="' . $lineaExacta . '" w:lineRule="exact"';
+        return '<w:p><w:pPr><w:spacing w:before="0" w:after="' . $despues . '"' . $linea . '/>' .
+            '<w:jc w:val="right"/></w:pPr><w:r><w:rPr>' .
             ($negrita ? '<w:b/>' : '') .
             '<w:color w:val="' . $color . '"/>' .
             '<w:sz w:val="' . (int)$tamano . '"/><w:szCs w:val="' . (int)$tamano . '"/>' .
@@ -471,7 +502,7 @@ class ReporteAdministradorPdfService
         $anchoBase = (int)floor($anchoUtil / $columnas);
         $anchos = array_fill(0, $columnas, $anchoBase);
         $anchos[$columnas - 1] += $anchoUtil - array_sum($anchos);
-        $tabla = $this->crearTablaBase($documento, $anchoUtil, $anchos, true);
+        $tabla = $this->crearTablaBase($documento, $anchoUtil, $anchos, false, 65);
 
         foreach (array_chunk($indicadores, $columnas) as $grupo) {
             $fila = $this->crearFila($documento, false);
@@ -480,7 +511,8 @@ class ReporteAdministradorPdfService
                     $documento,
                     (string)($indicador['valor'] ?? ''),
                     (string)($indicador['etiqueta'] ?? ''),
-                    $anchos[$indice]
+                    $anchos[$indice],
+                    $indicador
                 ));
             }
             $tabla->appendChild($fila);
@@ -489,7 +521,7 @@ class ReporteAdministradorPdfService
         return $tabla;
     }
 
-    private function crearCeldaIndicador(DOMDocument $documento, $valor, $etiqueta, $ancho)
+    private function crearCeldaIndicador(DOMDocument $documento, $valor, $etiqueta, $ancho, array $estilo)
     {
         $celda = $this->w($documento, 'tc');
         $propiedades = $this->w($documento, 'tcPr');
@@ -498,9 +530,19 @@ class ReporteAdministradorPdfService
         $this->attr($anchoNodo, 'w', 'w', 'type', 'dxa');
         $propiedades->appendChild($anchoNodo);
 
+        $bordes = $this->w($documento, 'tcBorders');
+        foreach (['top', 'left', 'bottom', 'right'] as $lado) {
+            $borde = $this->w($documento, $lado);
+            $this->attr($borde, 'w', 'w', 'val', 'single');
+            $this->attr($borde, 'w', 'w', 'sz', '6');
+            $this->attr($borde, 'w', 'w', 'color', $estilo['borde'] ?? self::COLOR_BORDE_TARJETA);
+            $bordes->appendChild($borde);
+        }
+        $propiedades->appendChild($bordes);
+
         $relleno = $this->w($documento, 'shd');
         $this->attr($relleno, 'w', 'w', 'val', 'clear');
-        $this->attr($relleno, 'w', 'w', 'fill', self::COLOR_FONDO);
+        $this->attr($relleno, 'w', 'w', 'fill', $estilo['relleno'] ?? self::COLOR_FONDO);
         $propiedades->appendChild($relleno);
 
         $vertical = $this->w($documento, 'vAlign');
@@ -510,25 +552,22 @@ class ReporteAdministradorPdfService
 
         $celda->appendChild($this->crearParrafo(
             $documento,
-            (string)$valor,
-            [
-                'tamano' => 22,
-                'negrita' => true,
-                'color' => self::COLOR_TEXTO,
-                'alineacion' => 'center',
-                'antes' => 45,
-                'despues' => 20
-            ]
-        ));
-        $celda->appendChild($this->crearParrafo(
-            $documento,
             (string)$etiqueta,
             [
                 'tamano' => 13,
                 'color' => self::COLOR_SECUNDARIO,
-                'alineacion' => 'center',
-                'antes' => 0,
-                'despues' => 45
+                'antes' => 125,
+                'despues' => 55
+            ]
+        ));
+        $celda->appendChild($this->crearParrafo(
+            $documento,
+            (string)$valor,
+            [
+                'tamano' => 20,
+                'negrita' => true,
+                'color' => $estilo['color'] ?? self::COLOR_TEXTO,
+                'despues' => 115
             ]
         ));
 
@@ -619,7 +658,7 @@ class ReporteAdministradorPdfService
             $celdaBarra->appendChild($this->crearParrafo(
                 $documento,
                 '',
-                ['tamano' => 4, 'despues' => 0]
+                ['tamano' => 4, 'linea_exacta' => 24]
             ));
             $fila->appendChild($celdaBarra);
             $fila->appendChild($this->crearCelda(
@@ -656,7 +695,7 @@ class ReporteAdministradorPdfService
         $celda->appendChild($this->crearParrafo(
             $documento,
             ' ',
-            ['tamano' => 4, 'antes' => 0, 'despues' => 0]
+            ['tamano' => 4, 'linea_exacta' => 80]
         ));
 
         return $celda;
@@ -704,8 +743,7 @@ class ReporteAdministradorPdfService
                     'tamano' => 14,
                     'negrita' => true,
                     'color' => 'FFFFFF',
-                    'relleno' => self::COLOR_PRIMARIO,
-                    'alineacion' => 'center'
+                    'relleno' => self::COLOR_PRIMARIO
                 ]
             ));
         }
@@ -722,6 +760,7 @@ class ReporteAdministradorPdfService
                     $ancho,
                     [
                         'tamano' => 13,
+                        'negrita' => $indice === 0,
                         'color' => self::COLOR_TEXTO,
                         'relleno' => $rellenoFila
                     ]
@@ -733,7 +772,7 @@ class ReporteAdministradorPdfService
         return $tabla;
     }
 
-    private function crearTablaBase(DOMDocument $documento, $anchoTotal, array $anchos, $bordes = true)
+    private function crearTablaBase(DOMDocument $documento, $anchoTotal, array $anchos, $bordes = true, int $separacion = 0)
     {
         $tabla = $this->w($documento, 'tbl');
         $propiedades = $this->w($documento, 'tblPr');
@@ -742,9 +781,12 @@ class ReporteAdministradorPdfService
         $this->attr($ancho, 'w', 'w', 'w', (string)$anchoTotal);
         $propiedades->appendChild($ancho);
 
-        $layout = $this->w($documento, 'tblLayout');
-        $this->attr($layout, 'w', 'w', 'type', 'fixed');
-        $propiedades->appendChild($layout);
+        if ($separacion > 0) {
+            $espacio = $this->w($documento, 'tblCellSpacing');
+            $this->attr($espacio, 'w', 'w', 'w', (string)$separacion);
+            $this->attr($espacio, 'w', 'w', 'type', 'dxa');
+            $propiedades->appendChild($espacio);
+        }
 
         if ($bordes) {
             $bordesNodo = $this->w($documento, 'tblBorders');
@@ -757,6 +799,9 @@ class ReporteAdministradorPdfService
             }
             $propiedades->appendChild($bordesNodo);
         }
+        $layout = $this->w($documento, 'tblLayout');
+        $this->attr($layout, 'w', 'w', 'type', 'fixed');
+        $propiedades->appendChild($layout);
         $tabla->appendChild($propiedades);
 
         $grid = $this->w($documento, 'tblGrid');
@@ -830,9 +875,11 @@ class ReporteAdministradorPdfService
         $espaciado = $this->w($documento, 'spacing');
         $this->attr($espaciado, 'w', 'w', 'before', (string)($opciones['antes'] ?? 0));
         $this->attr($espaciado, 'w', 'w', 'after', (string)($opciones['despues'] ?? 0));
-        $this->attr($espaciado, 'w', 'w', 'line', '240');
-        $this->attr($espaciado, 'w', 'w', 'lineRule', 'auto');
-        $propiedades->appendChild($espaciado);
+        $this->attr($espaciado, 'w', 'w', 'line', (string)($opciones['linea_exacta'] ?? 240));
+        $this->attr($espaciado, 'w', 'w', 'lineRule', isset($opciones['linea_exacta']) ? 'exact' : 'auto');
+        if (!empty($opciones['mantener_siguiente'])) {
+            $propiedades->appendChild($this->w($documento, 'keepNext'));
+        }
 
         if (!empty($opciones['borde_izquierdo'])) {
             $bordes = $this->w($documento, 'pBdr');
@@ -845,14 +892,18 @@ class ReporteAdministradorPdfService
             $propiedades->appendChild($bordes);
         }
 
+        if (!empty($opciones['fondo'])) {
+            $fondo = $this->w($documento, 'shd');
+            $this->attr($fondo, 'w', 'w', 'val', 'clear');
+            $this->attr($fondo, 'w', 'w', 'fill', $opciones['fondo']);
+            $propiedades->appendChild($fondo);
+        }
+        $propiedades->appendChild($espaciado);
+
         if (!empty($opciones['alineacion'])) {
             $alineacion = $this->w($documento, 'jc');
             $this->attr($alineacion, 'w', 'w', 'val', (string)$opciones['alineacion']);
             $propiedades->appendChild($alineacion);
-        }
-
-        if (!empty($opciones['mantener_siguiente'])) {
-            $propiedades->appendChild($this->w($documento, 'keepNext'));
         }
 
         $parrafo->appendChild($propiedades);
