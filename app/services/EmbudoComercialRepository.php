@@ -550,6 +550,25 @@ final class EmbudoComercialRepository
         );
         $p['historial_truncado']=count($historial)>50;
         $p['historial_movimientos']=array_slice($historial,0,50);
+        $p['historial_subetapas']=[];
+        $p['historial_subetapas_truncado']=false;
+        if($operativoV3 && !$supervisor){
+            // La asignación vigente y su propietario ya se verificaron arriba.
+            // La bitácora V3 es independiente de los movimientos de etapa.
+            $eventos=$this->rows(
+                "SELECT h.id,h.etapa_en_evento,h.subetapa_anterior,
+                        h.subetapa_nueva,h.motivo,h.origen,h.creado_at,
+                        h.usuario_id,
+                        TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) autor
+                   FROM prospecto_embudo_subetapas_historial h
+                   LEFT JOIN usuarios u ON u.id=h.usuario_id
+                  WHERE h.asignacion_id=?
+                  ORDER BY h.creado_at DESC,h.id DESC LIMIT 51",
+                [(int)$p['asignacion_id']]
+            );
+            $p['historial_subetapas_truncado']=count($eventos)>50;
+            $p['historial_subetapas']=array_slice($eventos,0,50);
+        }
         return $p;
     }
 }
