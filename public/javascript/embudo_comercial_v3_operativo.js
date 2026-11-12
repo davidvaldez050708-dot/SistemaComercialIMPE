@@ -9,6 +9,11 @@
   if (!root) return;
   const usuarioId=Number(window.IMPE_CURRENT_USER_ID||0);
   const cambioKey='impe:embudo:resultado-guardado:'+usuarioId;
+  const avisoKey='impe:embudo:v3:aviso:'+usuarioId;
+  const mensajes=new Map([
+    ['gestion','Gestión comercial registrada correctamente.'],
+    ['movimiento','Movimiento registrado correctamente.']
+  ]);
   const vistaCargada=Date.now();
   let refresh=false;
 
@@ -19,6 +24,86 @@
           window.parent.IMPE_TELEPHONY_SHELL?.getPhoneStatus?.()?.active) return true;
       return false;
     }catch(_){return true;}
+  };
+  const mostrarAviso=(mensaje,alCerrar=()=>{})=>{
+    let contenedor=document.getElementById('impe-v3o-avisos');
+    if(!contenedor){
+      contenedor=document.createElement('div');
+      contenedor.id='impe-v3o-avisos';
+      contenedor.className='toast-container position-fixed top-0 end-0 p-3';
+      contenedor.style.zIndex='2000';
+      document.body.appendChild(contenedor);
+    }
+    const toast=document.createElement('div');
+    toast.className='toast system-toast border-0';
+    toast.setAttribute('role','status');
+    toast.setAttribute('aria-live','polite');
+    toast.setAttribute('aria-atomic','true');
+    const cuerpo=document.createElement('div');
+    cuerpo.className='toast-body';
+    const icono=document.createElement('i');
+    icono.className='bi bi-check-circle-fill';
+    icono.setAttribute('aria-hidden','true');
+    const texto=document.createElement('span');
+    texto.textContent=mensaje;
+    const cerrar=document.createElement('button');
+    cerrar.type='button';
+    cerrar.className='btn-close ms-auto';
+    cerrar.setAttribute('aria-label','Cerrar aviso');
+    cuerpo.append(icono,texto,cerrar);
+    toast.appendChild(cuerpo);
+    contenedor.appendChild(toast);
+    const finalizar=()=>{
+      toast.remove();
+      alCerrar();
+    };
+    const BootstrapToast=window.bootstrap?.Toast;
+    if(BootstrapToast){
+      const instancia=BootstrapToast.getOrCreateInstance(toast,{delay:4600});
+      toast.addEventListener('hidden.bs.toast',()=>{
+        instancia.dispose();
+        finalizar();
+      },{once:true});
+      cerrar.addEventListener('click',()=>instancia.hide());
+      instancia.show();
+    }else{
+      toast.classList.add('show');
+      cerrar.addEventListener('click',finalizar,{once:true});
+    }
+  };
+  try{
+    const guardado=sessionStorage.getItem(avisoKey);
+    if(guardado!==null){
+      sessionStorage.removeItem(avisoKey);
+      const aviso=JSON.parse(guardado);
+      const edad=Date.now()-aviso.creado;
+      if(mensajes.has(aviso.tipo) && edad>=0 && edad<=60000){
+        mostrarAviso(mensajes.get(aviso.tipo));
+      }
+    }
+  }catch(_){}
+  const confirmarGuardado=tipo=>{
+    const mensaje=mensajes.get(tipo);
+    if(telefonoActivo()){
+      mostrarAviso(mensaje+' Actualiza el tablero cuando termine la llamada.');
+      return;
+    }
+    try{
+      sessionStorage.setItem(avisoKey,JSON.stringify({tipo,creado:Date.now()}));
+    }catch(_){
+      mostrarAviso(mensaje,()=>{
+        if(!telefonoActivo())window.location.reload();
+      });
+      return;
+    }
+    window.location.reload();
+  };
+  const comprobarRespuesta=async(response,mensaje)=>{
+    const result=await response.json().catch(()=>null);
+    if(!response.ok || result?.ok!==true){
+      throw new Error(typeof result?.mensaje==='string' && result.mensaje.trim()
+        ?result.mensaje:mensaje);
+    }
   };
   const refrescarTrasLlamada=()=>{
     if(refresh || usuarioId<1 || document.hidden || telefonoActivo())return;
@@ -77,6 +162,8 @@
   const motivo=form.querySelector('#impe-v3o-motivo');
   const fecha=form.querySelector('#impe-v3o-fecha');
   const fechaLabel=form.querySelector('#impe-v3o-fecha-label');
+  const calificacion=form.querySelector('#impe-v3o-calificacion');
+  const calificacionLabel=form.querySelector('#impe-v3o-calificacion-label');
   const error=form.querySelector('#impe-v3o-dialog-error');
   const enviar=form.querySelector('#impe-v3o-enviar');
   const titulo=form.querySelector('#impe-v3o-dialog-datos');
@@ -91,6 +178,11 @@
     fechaLabel.hidden=!requiere;
     fecha.required=requiere;
     if(!requiere)fecha.value='';
+    if(calificacion && calificacionLabel){
+      calificacionLabel.hidden=destino.value!=='POTENCIAL';
+      calificacion.required=!calificacionLabel.hidden;
+      calificacion.checked=false;
+    }
     error.hidden=true;
   };
   const abrir=(card,destinoSolicitado='')=>{
@@ -183,6 +275,7 @@
 
   form.addEventListener('submit',async(event)=>{
     event.preventDefault();
+    if(enviar.disabled)return;
     if(!tarjeta || telefonoActivo()) {
       error.textContent='Termina la llamada antes de cambiar etapas.';
       error.hidden=false;
@@ -212,6 +305,7 @@
       motivo:reason,
       proxima_accion:next==='SEGUIMIENTO'?fecha.value:''
     });
+    if(next==='POTENCIAL' && calificacion?.checked)body.set('calificacion_confirmada','1');
     enviar.disabled=true;error.hidden=true;
     try{
       const response=await fetch(
@@ -222,16 +316,9 @@
             'Accept':'application/json','X-CSRF-Token':token
           },body:body.toString()
         });
-      const result=await response.json();
-      if(!response.ok || !result.ok){
-        throw new Error(result.mensaje||'No se pudo registrar el movimiento.');
-      }
+      await comprobarRespuesta(response,'No se pudo registrar el movimiento.');
       dialog.close();
-      if(!telefonoActivo()){
-        window.location.reload();
-      }else{
-        window.alert('Movimiento guardado. Actualiza el tablero cuando termine la llamada.');
-      }
+      confirmarGuardado('movimiento');
     }catch(err){
       error.textContent=err?.message||'No se pudo completar el movimiento.';
       error.hidden=false;
@@ -275,6 +362,7 @@
 
     potencialForm.addEventListener('submit',async event=>{
       event.preventDefault();
+      if(enviarPot.disabled)return;
       if(!gestionCard || telefonoActivo()){
         errorPot.textContent='Termina la llamada antes de actualizar la gestión.';
         errorPot.hidden=false;
@@ -316,11 +404,9 @@
             },
             body:body.toString()
           });
-        const result=await response.json();
-        if(!response.ok || !result.ok)throw new Error(
-          result.mensaje||'No pudo registrarse la gestión.');
+        await comprobarRespuesta(response,'No se pudo registrar la gestión.');
         potencialDialog.close();
-        if(!telefonoActivo())window.location.reload();
+        confirmarGuardado('gestion');
       }catch(err){
         errorPot.textContent=err?.message||'No se pudo registrar la gestión.';
         errorPot.hidden=false;

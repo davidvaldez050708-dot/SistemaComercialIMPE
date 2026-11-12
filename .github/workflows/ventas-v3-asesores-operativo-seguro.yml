@@ -7,6 +7,7 @@ on:
     paths:
       - 'app/controllers/EmbudoComercialController.php'
       - 'app/services/EmbudoComercialRepository.php'
+      - 'app/services/EmbudoComercialV3CalificacionService.php'
       - 'app/services/EmbudoComercialV3MovimientosPermitidos.php'
       - 'app/views/embudo_comercial/operativo_v3.php'
       - 'app/views/embudo_comercial/index.php'
@@ -15,6 +16,7 @@ on:
       - 'public/javascript/embudo_comercial_v3_operativo.js'
       - 'tests/embudo_comercial_v3_previsualizacion_db.php'
       - 'tests/ventas_v3_asesor_operativo_render_unit.php'
+      - 'tests/ventas_v3_toast_browser.cjs'
       - 'tools/publicar_ventas_v3_asesores_hostinger.py'
       - 'tests/ventas_v3_publicador_asesores_unit.py'
       - 'docs/ventas_v3_asesores_operativo_20261111.md'
@@ -36,6 +38,7 @@ jobs:
         run: |
           php -l app/controllers/EmbudoComercialController.php
           php -l app/services/EmbudoComercialRepository.php
+          php -l app/services/EmbudoComercialV3CalificacionService.php
           php -l app/services/EmbudoComercialV3MovimientosPermitidos.php
           php -l app/views/embudo_comercial/operativo_v3.php
           php -l app/views/embudo_comercial/index.php
@@ -52,6 +55,14 @@ jobs:
           php tests/embudo_comercial_fase2_unit.php
           php tests/embudo_comercial_politica_propuesta_unit.php
           php tests/embudo_comercial_planificador_v3_unit.php
+      - name: Avisos y calificación en Chromium
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/impe-ventas-v3/node_modules/playwright
+          BOOTSTRAP_MODULE_PATH: /tmp/impe-ventas-v3/node_modules/bootstrap
+        run: |
+          npm install --prefix /tmp/impe-ventas-v3 playwright@1.56.1 bootstrap@5.3.8
+          /tmp/impe-ventas-v3/node_modules/.bin/playwright install --with-deps chromium
+          node tests/ventas_v3_toast_browser.cjs
   mysql-temporal:
     runs-on: ubuntu-latest
     services:

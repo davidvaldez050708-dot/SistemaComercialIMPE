@@ -64,15 +64,27 @@ $columnas['SEGUIMIENTO']['registros']=[array_merge($contacto,[
     'proxima_accion_at'=>'2026-11-12 23:00:00',
     'intentos_hoy'=>['intentos'=>0,'pendientes'=>3,'fecha'=>'2026-11-11']
 ])];
-$columnas['REVISION_LEGACY']['total']=1;
-$columnas['REVISION_LEGACY']['registros']=[array_merge($contacto,[
+$columnas['POTENCIAL']['total']=1;
+$columnas['POTENCIAL']['registros']=[array_merge($contacto,[
     'asignacion_id'=>11,'prospecto_id'=>11,
     'nombre_completo'=>'Antiguo Interesado',
     'etapa_original'=>'INTERESADO',
     'subetapa'=>null
 ])];
+$columnas['REVISION_LEGACY']['total']=1;
+$columnas['REVISION_LEGACY']['registros']=[array_merge($contacto,[
+    'asignacion_id'=>21,'prospecto_id'=>21,'etapa_original'=>'LEGACY_PENDIENTE',
+    'subetapa'=>null
+])];
 $columnas['CONTACTADO']['total']=31;
 $columnas['CONTACTADO']['paginas']=2;
+$columnas['CONTACTADO']['registros']=[array_merge($contacto,[
+    'asignacion_id'=>22,'prospecto_id'=>22,'etapa_original'=>'CONTACTADO',
+    'subetapa'=>'PENDIENTE_CALIFICACION','puede_calificar'=>true
+]),array_merge($contacto,[
+    'asignacion_id'=>23,'prospecto_id'=>23,'etapa_original'=>'CONTACTADO',
+    'subetapa'=>null,'puede_calificar'=>false
+])];
 $tablero=[
     'columnas'=>$columnas,'total'=>34,'total_activos'=>34,
     'externos'=>['RECUPERACION'=>0,'DESCARTADO'=>0],
@@ -83,13 +95,13 @@ ob_start();
 require __DIR__.'/../app/views/embudo_comercial/operativo_v3.php';
 $html=(string)ob_get_clean();
 foreach([
-    'Gestión comercial · Vista operativa V3',
+    'Embudo de ventas',
     'Nuevos','Contactados','Potenciales','Seguimiento',
     'Proceso Inscripción','Clasificación pendiente',
-    'Requiere conciliación comercial','Segundo intento sin contacto',
+    'Revisar registro anterior','Segundo intento sin contacto',
     'Contacto acordado','2/3','Mis llamadas',
-    'Horario solicitado:','Volver al tablero anterior',
-    'operativo_v3=1','public/css/embudo_v3_operativo.css',
+    'Horario solicitado:','Interesado · registro anterior',
+    'public/css/embudo_v3_operativo.css',
     'public/javascript/embudo_comercial_v3_operativo.js',
     'action=detalle','p3_contactado=2',
     'data-v3-mover','moverEtapaV3'
@@ -104,15 +116,17 @@ isV3(strpos($html,'prospecto_asignacion_id=13')!==false,
 isV3(strpos($html,'data-v3-destinos="CONTACTADO"')!==false,
     'NUEVO solo permite manual CONTACTADO con PBX');
 isV3(strpos($html,'data-v3-destinos="CONTACTADO"')!==false &&
-    strpos($html,'data-v3-destinos="SEGUIMIENTO"')===false,
-    'seguimiento permite CONTACTADO y contacto permite SEGUIMIENTO según estado');
+    strpos($html,'data-v3-destinos="SEGUIMIENTO"')!==false &&
+    strpos($html,'data-v3-destinos="SEGUIMIENTO,POTENCIAL"')!==false,
+    'sólo Contactados con evidencia ofrece Potenciales');
 isV3(strpos($html,'&lt;script&gt;')!==false &&
     strpos($html,'<script>alert("XSS")</script>')===false,
     'nombres escapados contra XSS');
-isV3(strpos($html,'draggable="true"')===false,
-    'sin arrastre inseguro a nuevas etapas');
-isV3(strpos($html,'data-etapa="POTENCIAL"')===false,
-    'no inventa Potenciales si hay datos legacy');
+isV3(strpos($html,'draggable="true"')!==false &&
+    strpos($html,'id="impe-v3o-calificacion"')!==false,
+    'el arrastre usa destinos permitidos y la calificación tiene confirmación');
+isV3(preg_match('/data-asignacion-id="11"\s+data-etapa="INTERESADO"/',$html)===1,
+    'las tarjetas históricas conservan su etapa original');
 $js=file_get_contents(__DIR__.'/../public/javascript/embudo_comercial_v3_operativo.js');
 isV3(strpos($js,'IMPE_TELEPHONY_PERSISTENT')!==false &&
     strpos($js,"impe:embudo:llamada-pendiente")!==false,
@@ -124,17 +138,14 @@ isV3(strpos($js,"fetch('https://")===false,
     'no hace llamadas a otros dominios');
 $controller=file_get_contents(__DIR__.'/../app/controllers/EmbudoComercialController.php');
 isV3(strpos($controller,'operativo_v3')!==false &&
-    strpos($controller,'listadoV3Operativo')!==false,
-    'modo requiere parámetro explícito');
+    strpos($controller,'listadoV3Operativo')!==false &&
+    strpos($controller,"\$_GET['tablero_anterior']")!==false,
+    'V3 es la vista principal del asesor y el tablero anterior conserva su ruta');
 isV3(strpos($controller,"$"."operativoV3?'operativo_v3':'index'")!==false,
     'ruta normal conserva tablero anterior');
 isV3(strpos($controller,'hash_equals($token,$received)')!==false,
     'validar token CSRF en backend, no solo en navegador');
 $oldUi=file_get_contents(__DIR__.'/../app/views/embudo_comercial/index.php');
-isV3(strpos($oldUi,'operativo_v3')!==false &&
-    strpos($oldUi,'Nuevo embudo V3')!==false &&
-    strpos($oldUi,'!$supervisor')!==false,
-    'enlace voluntario solo asesor en Kanban vigente');
 isV3(strpos($oldUi,'embudo_comercial_movimientos.js')!==false,
     'se conserva JS de teléfono y movimientos V1 sin sustitución');
-echo "CHECK OK: vista institucional, cinco etapas, 2/3, teléfono V4 original, Mis llamadas, paginación, legacy compacto, CSRF, sin arrastre y sin datos reales.\n";
+echo "CHECK OK: vista institucional, cinco etapas, teléfono V4, paginación, históricos, CSRF y destinos condicionados a evidencia.\n";

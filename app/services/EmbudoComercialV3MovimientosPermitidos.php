@@ -3,23 +3,22 @@
  * Contrato operativo V3 de transición MANUAL gradual, compatible con V1.
  *
  * No permite crear etapas nuevas que los otros módulos aún no reconocen.
- * No permite decidir Potencial, Proceso Inscripción, Recuperación o Descartados
- * sin el flujo integral respaldado. El asesor sí conserva las llamadas V4
- * y las tareas/etapas manuales seguras que ya reconoce el backend antiguo.
+ * La calificación de Contactados requiere conversación y confirmación expresa.
+ * Inscripción, Recuperación y Descartados conservan sus propias restricciones.
  */
 final class EmbudoComercialV3MovimientosPermitidos
 {
-    public static function destinos(string $actual): array
+    public static function destinos(string $actual, bool $puedeCalificar = false): array
     {
         if($actual==='NUEVO') return ['CONTACTADO'];
-        if($actual==='CONTACTADO') return ['SEGUIMIENTO'];
+        if($actual==='CONTACTADO') return $puedeCalificar ? ['SEGUIMIENTO','POTENCIAL'] : ['SEGUIMIENTO'];
         if($actual==='SEGUIMIENTO') return ['CONTACTADO'];
         return [];
     }
 
     public static function validar(string $actual,string $destino): void
     {
-        if(!in_array($destino,self::destinos($actual),true)) {
+        if(!in_array($destino,self::destinos($actual, true),true)) {
             throw new DomainException(
                 'Movimiento no disponible en este embudo. '.
                 'Potenciales, Recuperación e Inscripción requieren evidencia '.
@@ -41,7 +40,14 @@ final class EmbudoComercialV3MovimientosPermitidos
     public static function conversacionAcreditada(
         mysqli $db,int $usuarioId,int $asignacionId
     ): bool {
-        $sql="SELECT 1 FROM prospecto_embudo_llamadas l
+        return isset(self::conversacionesAcreditadas($db, $usuarioId, [$asignacionId])[$asignacionId]);
+    }
+
+    public static function conversacionesAcreditadas(mysqli $db, int $usuarioId, array $ids): array
+    {
+        if (!$ids) return [];
+        $marcas = implode(',', array_fill(0, count($ids), '?'));
+        $sql="SELECT DISTINCT l.asignacion_id FROM prospecto_embudo_llamadas l
             JOIN prospecto_asignaciones a ON a.id=l.asignacion_id
                 AND a.asesor_id=l.usuario_id AND a.vigente=1
             JOIN telefonia_ventas_llamadas c ON c.usuario_id=l.usuario_id
@@ -52,7 +58,7 @@ final class EmbudoComercialV3MovimientosPermitidos
                 AND BINARY r.extension=BINARY l.extension
                 AND BINARY r.pbx_call_id=BINARY l.pbx_call_id
                 AND BINARY r.resultado=BINARY l.resultado
-            WHERE l.usuario_id=? AND l.asignacion_id=?
+            WHERE l.usuario_id=? AND l.asignacion_id IN ($marcas)
               AND (r.resultado IN (
                   'CONVERSACION_PERSONA','PROSPECTO_POTENCIAL',
                   'INTERESADO','SOLICITA_INFORMACION'
@@ -60,13 +66,12 @@ final class EmbudoComercialV3MovimientosPermitidos
                   SELECT 1 FROM telefonia_ventas_resultado_selecciones s
                   WHERE s.resultado_id=r.id
                     AND s.codigo IN ('CONVERSACION_PERSONA','PROSPECTO_POTENCIAL')
-                ))
-            LIMIT 1";
+                ))";
         $st=$db->prepare($sql);
-        $st->bind_param('ii',$usuarioId,$asignacionId);
+        $st->bind_param(str_repeat('i', count($ids)+1),$usuarioId,...$ids);
         try{
             $st->execute();
-            return $st->get_result()->fetch_assoc()!==null;
+            return array_fill_keys(array_column($st->get_result()->fetch_all(MYSQLI_ASSOC),'asignacion_id'), true);
         }finally{$st->close();}
     }
 }

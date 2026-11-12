@@ -2,7 +2,7 @@
 /**
  * Gestión comercial V3: pantalla principal del asesor autorizado.
  * Conserva el teléfono del shell, Mis llamadas y movimientos V1 seguros.
- * Nunca confirma Potenciales/pagos/Inscritos ni modifica resultados PBX.
+ * Califica el interés comercial con evidencia, sin confirmar pagos ni inscripciones.
  */
 require_once __DIR__.'/../../services/EmbudoComercialPoliticaPropuesta.php';
 require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
@@ -45,7 +45,9 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
 ){
     $real=(string)($p['etapa_original']??'NUEVO');
     if($real==='')$real='NUEVO';
-    $propuestas=$legacy?[]:EmbudoComercialV3MovimientosPermitidos::destinos($real);
+    $propuestas=$legacy?[]:EmbudoComercialV3MovimientosPermitidos::destinos(
+        $real,!empty($p['puede_calificar'])
+    );
     if(!$puedeMover)$propuestas=[];
     $destinos=implode(',',$propuestas);
     $detalle=$base.http_build_query([
@@ -290,6 +292,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                 <select name="etapa_nueva" id="impe-v3o-destino" required>
                     <option value="">Seleccionar</option>
                     <option value="CONTACTADO">Contactados</option>
+                    <option value="POTENCIAL">Potenciales</option>
                     <option value="SEGUIMIENTO">Seguimiento</option>
                 </select>
             </label>
@@ -299,6 +302,10 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             </label>
             <label id="impe-v3o-fecha-label" hidden>Próxima acción
                 <input type="datetime-local" id="impe-v3o-fecha" name="proxima_accion">
+            </label>
+            <label id="impe-v3o-calificacion-label" class="impe-v3o-calificacion" hidden>
+                <input type="checkbox" id="impe-v3o-calificacion" value="1">
+                <span>El prospecto confirmó su intención de inscribirse.</span>
             </label>
             <p id="impe-v3o-dialog-error" role="alert" hidden></p>
             <div class="impe-embudo-dialog-footer">
