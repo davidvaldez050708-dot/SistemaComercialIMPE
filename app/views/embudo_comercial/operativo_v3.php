@@ -34,6 +34,10 @@ $buscarTel=static function($tel){
 $puedeTelefono=tienePermiso('telefonia.usar');
 $puedeLlamar=$puedeTelefono&&tienePermiso('telefonia.salientes');
 $puedeMover=tienePermiso('ventas.embudo.mover');
+$puedeRecuperar=$puedeMover && tienePermiso('ventas.recuperacion.gestionar') &&
+    EmbudoComercialAcceso::puede('recuperacion');
+$puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
+    EmbudoComercialAcceso::puede('descartados');
 $actividadV3=!empty($tablero['actividad_v3']);
 $ahoraUtc=gmdate('Y-m-d H:i:s');
 $contenedorStage=[
@@ -44,7 +48,7 @@ $contenedorStage=[
     'PROCESO_INSCRIPCION'=>['bi-file-earmark-check','Trámite y validación institucional']
 ];
 $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
-    $esc,$base,$sub,$buscarTel,$puedeTelefono,$puedeLlamar,$puedeMover,$actividadV3,$ahoraUtc
+    $esc,$base,$sub,$buscarTel,$puedeTelefono,$puedeLlamar,$puedeMover,$puedeRecuperar,$puedeDescartar,$actividadV3,$ahoraUtc
 ){
     $real=(string)($p['etapa_original']??'NUEVO');
     if($real==='')$real='NUEVO';
@@ -162,6 +166,21 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                 <i class="bi bi-list-check" aria-hidden="true"></i>
             </button>
             <?php endif; ?>
+            <?php if(!$legacy && $real==='NUEVO' && $puedeRecuperar && $n>=3): ?>
+            <button type="button" class="impe-v3o-accion" data-v3b-accion="RECUPERACION"
+                title="Revisar tres intentos PBX antes de Recuperación"
+                aria-label="Revisar ingreso a Recuperación">
+                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+            </button>
+            <?php endif; ?>
+            <?php if(!$legacy && $puedeDescartar &&
+                in_array($real,['NUEVO','CONTACTADO','POTENCIAL','SEGUIMIENTO'],true)): ?>
+            <button type="button" class="impe-v3o-accion" data-v3b-accion="DESCARTAR"
+                title="Revisar motivo de descarte con evidencia"
+                aria-label="Revisar descarte acreditado">
+                <i class="bi bi-person-x" aria-hidden="true"></i>
+            </button>
+            <?php endif; ?>
             <?php if($propuestas): ?>
             <button type="button" class="impe-v3o-accion"
                 data-v3-mover title="Cambiar etapa con motivo" aria-label="Cambiar etapa con motivo">
@@ -176,7 +195,9 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
 <link rel="stylesheet" href="<?= $esc(BASE_URL) ?>public/css/embudo_comercial.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= $esc(BASE_URL) ?>public/css/embudo_comercial_compacto_v1.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial_compacto_v1.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= $esc(BASE_URL) ?>public/css/embudo_v3_operativo.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_v3_operativo.css'),0,16) ?>">
-<div class="impe-embudo impe-embudo--compact impe-embudo--v3-operativo">
+<link rel="stylesheet" href="<?= $esc(BASE_URL) ?>public/css/embudo_v3_bandejas.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_v3_bandejas.css'),0,16) ?>">
+<div class="impe-embudo impe-embudo--compact impe-embudo--v3-operativo"
+    data-v3-bandejas data-dia="<?= $esc($tablero['dia_indicadores']??'') ?>">
     <nav class="impe-embudo-tabs" aria-label="Vistas comerciales">
         <a aria-current="page" href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo'
@@ -299,8 +320,8 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         <i class="bi bi-shield-check" aria-hidden="true"></i>
         Recuperación: <?= (int)$tablero['externos']['RECUPERACION'] ?> ·
         Descartados: <?= (int)$tablero['externos']['DESCARTADO'] ?>.
-        El contador de PBX es informativo; la regla de recuperación al tercer intento
-        aún no está activa. Los resultados se guardan en Telefonía como siempre.
+        Tres intentos PBX permiten solicitar revisión manual; nunca trasladan
+        automáticamente al prospecto. Descartes requieren evidencia acreditada.
     </p>
     <?php if($puedeMover): ?>
     <dialog class="impe-embudo-dialog" id="impe-v3o-dialog"
@@ -430,9 +451,15 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         </form>
     </dialog>
     <?php endif; ?>
+    <?php if($puedeRecuperar || $puedeDescartar): ?>
+        <?php require __DIR__.'/bandejas_v3_modal.php'; ?>
+    <?php endif; ?>
     <?php endif; ?>
     <?php if($puedeTelefono || $puedeMover): ?>
     <script src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_operativo.js?v=<?= filemtime(__DIR__.'/../../../public/javascript/embudo_comercial_v3_operativo.js') ?>" defer></script>
+    <?php if($puedeRecuperar || $puedeDescartar): ?>
+    <script defer src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_bandejas.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/embudo_comercial_v3_bandejas.js'),0,16) ?>"></script>
+    <?php endif; ?>
     <?php endif; ?>
     <?php endif; ?>
 </div>
