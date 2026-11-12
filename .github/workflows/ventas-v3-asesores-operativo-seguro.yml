@@ -17,6 +17,9 @@ on:
       - 'tests/embudo_comercial_v3_previsualizacion_db.php'
       - 'tests/ventas_v3_asesor_operativo_render_unit.php'
       - 'tests/ventas_v3_toast_browser.cjs'
+      - 'app/services/EmbudoComercialV3RecuperacionAuditoria.php'
+      - 'tools/ventas_v3_recuperacion_auditoria_hostinger.php'
+      - 'tests/ventas_v3_recuperacion_auditoria_unit.php'
       - 'tools/publicar_ventas_v3_asesores_hostinger.py'
       - 'tests/ventas_v3_publicador_asesores_unit.py'
       - 'docs/ventas_v3_asesores_operativo_20261111.md'
@@ -55,6 +58,10 @@ jobs:
           php tests/embudo_comercial_fase2_unit.php
           php tests/embudo_comercial_politica_propuesta_unit.php
           php tests/embudo_comercial_planificador_v3_unit.php
+          php -l app/services/EmbudoComercialV3RecuperacionAuditoria.php
+          php -l tools/ventas_v3_recuperacion_auditoria_hostinger.php
+          php -l tests/ventas_v3_recuperacion_auditoria_unit.php
+          php tests/ventas_v3_recuperacion_auditoria_unit.php
       - name: Avisos y calificación en Chromium
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/impe-ventas-v3/node_modules/playwright
@@ -89,7 +96,9 @@ jobs:
           MYSQL_HOST: 127.0.0.1
           MYSQL_USER: root
           MYSQL_PASSWORD: test_password
-        run: php tests/embudo_comercial_v3_previsualizacion_db.php
+        run: |
+          php tests/embudo_comercial_v3_previsualizacion_db.php
+          IMPE_EMBUDO_PBX_TEST_DB=YES php tests/embudo_intentos_pbx_db.php
   mariadb-temporal:
     runs-on: ubuntu-latest
     services:
@@ -116,4 +125,6 @@ jobs:
           MYSQL_HOST: 127.0.0.1
           MYSQL_USER: root
           MYSQL_PASSWORD: test_password
-        run: php tests/embudo_comercial_v3_previsualizacion_db.php
+        run: |
+          php tests/embudo_comercial_v3_previsualizacion_db.php
+          IMPE_EMBUDO_PBX_TEST_DB=YES php tests/embudo_intentos_pbx_db.php
