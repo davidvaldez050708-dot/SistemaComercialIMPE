@@ -167,3 +167,74 @@
     grid-template-columns:minmax(0,1fr);
   }
 }
+
+/* --- Densidad operativa institucional: trabajo diario de muchos prospectos.
+   CSS aislado de telefonía V4 y de la vista histórica. --- */
+.impe-embudo.impe-embudo--v3-operativo{gap:8px;padding-bottom:12px}
+.impe-embudo--v3-operativo .impe-embudo-tabs{margin:0}
+.impe-embudo--v3-operativo .impe-embudo-filtros{padding:8px 11px;gap:7px}
+.impe-embudo--v3-operativo .impe-embudo-board-info{font-size:10px}
+.impe-embudo--v3-operativo .impe-v3o-columna{min-height:280px}
+.impe-embudo--v3-operativo .impe-v3o-columna .impe-embudo-lane-head{
+  min-height:52px;padding:8px 9px;gap:5px
+}
+.impe-embudo--v3-operativo .impe-v3o-columna .impe-embudo-lane-head h3{
+  font-size:11px;margin:0 0 2px
+}
+.impe-embudo--v3-operativo .impe-v3o-columna .impe-embudo-lane-head small{font-size:9px}
+.impe-embudo--v3-operativo .impe-v3o-columna .impe-embudo-lane-list{
+  padding:5px;gap:4px;min-height:175px;max-height:min(72vh,760px)
+}
+.impe-embudo--v3-operativo .impe-v3o-card{
+  display:grid;gap:4px;min-height:0;padding:7px 8px;border-radius:8px;
+  box-shadow:none
+}
+.impe-embudo--v3-operativo .impe-v3o-card .impe-embudo-card-line{
+  gap:4px;align-items:start
+}
+.impe-embudo--v3-operativo .impe-v3o-card .impe-embudo-persona{
+  font-size:10px;line-height:1.25;max-height:2.5em;overflow-wrap:anywhere
+}
+.impe-embudo--v3-operativo .impe-v3o-card .impe-embudo-source{
+  font-size:8px;padding:2px 4px;border-radius:4px
+}
+.impe-embudo--v3-operativo .impe-v3o-card .impe-embudo-programa{
+  font-size:9px;line-height:1.3;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;min-width:0
+}
+.impe-embudo--v3-operativo .impe-v3o-sub{
+  padding:3px 5px;margin:0;gap:4px;font-size:9px;
+  align-items:center;min-width:0
+}
+.impe-embudo--v3-operativo .impe-v3o-sub span{
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0
+}
+.impe-embudo--v3-operativo .impe-v3o-intentos{
+  display:inline-flex;align-items:center;gap:4px;width:fit-content;
+  color:#385b8d;font-size:9px;font-weight:750
+}
+.impe-embudo--v3-operativo .impe-v3o-meta{
+  font-size:9px;line-height:1.3;margin:0;gap:5px;
+  min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.impe-embudo--v3-operativo .impe-v3o-meta i{font-size:10px}
+.impe-embudo--v3-operativo .impe-v3o-acciones{
+  display:flex;flex-wrap:nowrap;justify-content:flex-end;gap:5px;
+  margin-top:2px;padding-top:5px;border-top:1px solid #edf1f7
+}
+.impe-embudo--v3-operativo .impe-v3o-accion{
+  width:28px;height:28px;min-height:28px;min-width:28px;
+  flex:0 0 28px;padding:0;border-radius:6px;gap:0
+}
+.impe-embudo--v3-operativo .impe-v3o-accion i{font-size:13px}
+.impe-embudo--v3-operativo .impe-v3o-legado{
+  padding:8px 10px;margin:6px 0
+}
+.impe-embudo--v3-operativo .impe-v3o-legado-tarjetas{
+  grid-template-columns:repeat(auto-fill,minmax(180px,230px));gap:7px
+}
+@media(max-width:600px){
+  .impe-embudo--v3-operativo .impe-v3o-accion{
+    width:32px;height:32px;min-height:32px;flex-basis:32px
+  }
+}
