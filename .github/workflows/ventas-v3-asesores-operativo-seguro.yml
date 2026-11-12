@@ -39,6 +39,7 @@ on:
       - 'prueba_telefonia/api/zadarma_estado_llamada.php'
       - 'tools/publicar_gestion_comercial_v3_integral_hostinger.py'
       - 'tools/gestion_comercial_v3_inscripcion_schema_hostinger.php'
+      - 'tools/gestion_comercial_v3_auditar_distribucion_hostinger.php'
       - 'tests/gestion_comercial_v3_integral_publicador_unit.py'
       - 'tests/gestion_comercial_v3_dialer_guard_browser.cjs'
       - 'tests/gestion_comercial_v3_inscripcion_db.php'
@@ -112,6 +113,7 @@ jobs:
           php -l app/controllers/TelefoniaController.php
           php -l prueba_telefonia/api/zadarma_estado_llamada.php
           php -l tools/gestion_comercial_v3_inscripcion_schema_hostinger.php
+          php -l tools/gestion_comercial_v3_auditar_distribucion_hostinger.php
           python3 -m py_compile tools/publicar_gestion_comercial_v3_integral_hostinger.py
           python3 tests/gestion_comercial_v3_integral_publicador_unit.py
           php -l tests/gestion_comercial_no_contactar_db.php
