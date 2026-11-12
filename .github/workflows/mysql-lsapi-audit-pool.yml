@@ -1,0 +1,48 @@
+name: Auditoría aislada de pools MySQL LSAPI
+on:
+  push:
+    branches: [audit/mysql-resistencia-pool-20261111]
+    paths:
+      - .github/workflows/mysql-lsapi-audit-pool.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  humo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        usuarios: [10, 30]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Construir réplica sintética
+        run: docker build -t impe-lsapi -f tests/mysql_lsapi.Dockerfile .
+      - name: Comprobar contrato y sintaxis PHP de los archivos modificados
+        run: |
+          set -euo pipefail
+          docker run --rm --network none -v "$PWD:/codigo:ro" impe-lsapi bash -ec '
+            cd /codigo
+            /usr/local/lsws/lsphp82/bin/php -l app/controllers/HomeController.php
+            /usr/local/lsws/lsphp82/bin/php -l prueba_telefonia/api/transferencia_operacion.php
+            /usr/local/lsws/lsphp82/bin/php tests/mysql_pool_sondeos_conexiones_smoke.php
+          '
+      - name: Humo LSAPI 10/30 (sin red externa ni base real)
+        env:
+          USUARIOS: ${{ matrix.usuarios }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidencia
+          docker run --rm --network none \
+            -v "$PWD:/codigo:ro" -v "$PWD/evidencia:/evidencia" \
+            impe-lsapi bash /codigo/tests/mysql_lsapi_ci.sh "$USUARIOS" 2>&1 | tee evidencia/ejecucion.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: auditoria-pool-humo-${{ matrix.usuarios }}
+          path: evidencia/
