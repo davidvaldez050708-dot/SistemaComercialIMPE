@@ -7,6 +7,7 @@
 require_once __DIR__.'/../../services/EmbudoComercialPoliticaPropuesta.php';
 require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
 require_once __DIR__.'/../../services/EmbudoComercialV3MovimientosPermitidos.php';
+require_once __DIR__.'/../../services/EmbudoComercialV3SeguimientoService.php';
 $esc=static fn($v)=>htmlspecialchars((string)($v??''),ENT_QUOTES,'UTF-8');
 $sub=EmbudoComercialPoliticaPropuesta::SUBETAPAS;
 $base=BASE_URL.'index.php?';
@@ -33,6 +34,8 @@ $buscarTel=static function($tel){
 $puedeTelefono=tienePermiso('telefonia.usar');
 $puedeLlamar=$puedeTelefono&&tienePermiso('telefonia.salientes');
 $puedeMover=tienePermiso('ventas.embudo.mover');
+$actividadV3=!empty($tablero['actividad_v3']);
+$ahoraUtc=gmdate('Y-m-d H:i:s');
 $contenedorStage=[
     'NUEVO'=>['bi-person-plus','Sin primera conversación acreditada'],
     'CONTACTADO'=>['bi-telephone-inbound','Primer contacto y calificación'],
@@ -41,7 +44,7 @@ $contenedorStage=[
     'PROCESO_INSCRIPCION'=>['bi-file-earmark-check','Trámite y validación institucional']
 ];
 $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
-    $esc,$base,$sub,$buscarTel,$puedeTelefono,$puedeLlamar,$puedeMover
+    $esc,$base,$sub,$buscarTel,$puedeTelefono,$puedeLlamar,$puedeMover,$actividadV3,$ahoraUtc
 ){
     $real=(string)($p['etapa_original']??'NUEVO');
     if($real==='')$real='NUEVO';
@@ -49,6 +52,9 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         $real,!empty($p['puede_calificar'])
     );
     if(!$puedeMover)$propuestas=[];
+    $pendiente=$p['actividad_pendiente']??null;
+    $completada=$p['actividad_completada']??null;
+    if($pendiente)$propuestas=array_diff($propuestas,['SEGUIMIENTO']);
     $destinos=implode(',',$propuestas);
     $detalle=$base.http_build_query([
         'controller'=>'embudoComercial','action'=>'detalle',
@@ -105,9 +111,17 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         <p class="impe-v3o-meta"><i class="bi bi-clock" aria-hidden="true"></i>
             Horario solicitado: <?= $esc($p['horario_contacto']) ?></p>
         <?php endif; ?>
+        <?php if($pendiente || $completada): ?>
+        <p class="impe-v3o-meta">
+            <i class="bi <?= $pendiente?'bi-calendar-event':'bi-check-circle' ?>" aria-hidden="true"></i>
+            <?= $pendiente?($pendiente<$ahoraUtc?'Actividad vencida:':'Actividad programada:'):'Última actividad completada:' ?>
+            <?= $esc(EmbudoComercialPresentacion::fechaUtc($pendiente?:$completada)) ?>
+        </p>
+        <?php endif; ?>
         <?php if(!empty($p['proxima_accion_at'])): ?>
         <p class="impe-v3o-meta"><i class="bi bi-calendar-event" aria-hidden="true"></i>
-            Próxima acción: <?= $esc(EmbudoComercialPresentacion::fechaUtc($p['proxima_accion_at'])) ?></p>
+            <?= $actividadV3?'Agenda anterior:':'Próxima acción:' ?>
+            <?= $esc(EmbudoComercialPresentacion::fechaUtc($p['proxima_accion_at'])) ?></p>
         <?php elseif(!empty($p['revision_fecha'])): ?>
         <p class="impe-v3o-meta"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>
             Revisar: <?= $esc(EmbudoComercialPresentacion::fechaLocal($p['revision_fecha'])) ?></p>
@@ -137,6 +151,15 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <button type="button" class="impe-v3o-accion" data-v3-gestionar
                 title="Gestionar subetapa y próxima acción" aria-label="Gestionar potencial">
                 <i class="bi bi-calendar2-plus" aria-hidden="true"></i>
+            </button>
+            <?php endif; ?>
+            <?php if($actividadV3 && $puedeMover && !$legacy &&
+                in_array($real,EmbudoComercialV3SeguimientoService::ETAPAS,true)): ?>
+            <button type="button" class="impe-v3o-accion" data-v3-actividad
+                data-version="<?= (int)($p['actividad_version']??0) ?>"
+                data-pendiente="<?= $pendiente?'1':'0' ?>"
+                title="Actividades comerciales" aria-label="Actividades comerciales">
+                <i class="bi bi-list-check" aria-hidden="true"></i>
             </button>
             <?php endif; ?>
             <?php if($propuestas): ?>
@@ -348,6 +371,50 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             </div>
         </form>
     </dialog>
+    <?php if($actividadV3): ?>
+    <dialog class="impe-embudo-dialog" id="impe-v3o-actividad-dialog" aria-labelledby="impe-v3o-actividad-titulo">
+        <form method="dialog">
+            <header>
+                <h3 id="impe-v3o-actividad-titulo">Actividad comercial</h3>
+                <button type="button" data-actividad-cerrar aria-label="Cerrar"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </header>
+            <p data-actividad-prospecto></p>
+            <label>Acción
+                <select name="operacion" required>
+                    <option value="REGISTRAR">Registrar gestión</option>
+                    <option value="PROGRAMAR">Programar actividad</option>
+                    <option value="REPROGRAMAR">Reprogramar actividad</option>
+                    <option value="COMPLETAR">Marcar como completada</option>
+                </select>
+            </label>
+            <label data-actividad-subetapa hidden>Subetapa de Seguimiento
+                <select name="subetapa">
+                    <option value="">Conservar subetapa</option>
+                    <?php foreach($sub['SEGUIMIENTO'] as $codigo=>$etiqueta): ?>
+                        <option value="<?= $esc($codigo) ?>"><?= $esc($etiqueta) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label data-actividad-fecha hidden>Fecha y hora de México
+                <input name="fecha" type="datetime-local">
+            </label>
+            <label>Motivo
+                <textarea name="motivo" minlength="8" maxlength="190" required rows="2"></textarea>
+            </label>
+            <details>
+                <summary>Historial de actividades</summary>
+                <p data-actividad-historial-estado role="status"></p>
+                <ul data-actividad-historial></ul>
+                <button type="button" data-actividad-mas hidden>Ver anteriores</button>
+            </details>
+            <p data-actividad-error role="alert" hidden></p>
+            <div class="impe-embudo-dialog-footer">
+                <button type="button" data-actividad-cerrar>Cancelar</button>
+                <button type="submit">Guardar actividad</button>
+            </div>
+        </form>
+    </dialog>
+    <?php endif; ?>
     <?php endif; ?>
     <?php if($puedeTelefono || $puedeMover): ?>
     <script src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_operativo.js?v=<?= filemtime(__DIR__.'/../../../public/javascript/embudo_comercial_v3_operativo.js') ?>" defer></script>

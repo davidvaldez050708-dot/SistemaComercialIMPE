@@ -91,13 +91,18 @@ final class EmbudoComercialRepository
         return $rows;
     }
 
-    private function condiciones(int $usuarioId,bool $supervisor,array $f): array
+    private function condiciones(int $usuarioId,bool $supervisor,array $f,bool $actividadV3=false): array
     {
         $sql=" FROM prospecto_asignaciones a
             JOIN prospectos_comerciales p ON p.id=a.prospecto_id
             LEFT JOIN prospecto_embudo_etapas e ON e.asignacion_id=a.id
-            LEFT JOIN prospecto_embudo_agenda ag ON ag.asignacion_id=a.id
-            WHERE a.vigente=1";
+            LEFT JOIN prospecto_embudo_agenda ag ON ag.asignacion_id=a.id";
+        if ($actividadV3) {
+            $sql.=" LEFT JOIN prospecto_embudo_actividad_v3 av ON av.id=(
+                SELECT MAX(evento.id) FROM prospecto_embudo_actividad_v3 evento
+                WHERE evento.asignacion_id=a.id)";
+        }
+        $sql.=" WHERE a.vigente=1";
         $args=[];
         if (!$supervisor) {
             $sql.=' AND a.asesor_id=?'; $args[]=$usuarioId;
@@ -126,8 +131,9 @@ final class EmbudoComercialRepository
             array_push($args,$pat,$pat,$pat);
         }
         if ($f['vencidos']) {
+            $vencida=$actividadV3?'av.fecha_pendiente<UTC_TIMESTAMP() OR ':'';
             $sql.=" AND (
-                COALESCE(ag.proxima_accion_at,a.proxima_accion_at)<UTC_TIMESTAMP()
+                {$vencida}COALESCE(ag.proxima_accion_at,a.proxima_accion_at)<UTC_TIMESTAMP()
                 OR ag.revision_fecha<=?
                 OR (ag.revision_fecha IS NULL
                     AND COALESCE(ag.proxima_accion_at,a.proxima_accion_at) IS NULL
@@ -406,7 +412,12 @@ final class EmbudoComercialRepository
                 throw new DomainException('La estructura de subetapas V3 no está instalada.');
             }
         }
-        [$from,$args]=$this->condiciones($usuarioId,false,$f);
+        require_once __DIR__.'/EmbudoComercialV3SeguimientoService.php';
+        $actividadV3=EmbudoComercialV3SeguimientoService::instalada($this->db);
+        [$from,$args]=$this->condiciones($usuarioId,false,$f,$actividadV3);
+        $camposActividad=$actividadV3
+            ?'av.id actividad_version,av.fecha_pendiente actividad_pendiente,av.completada_at actividad_completada,':'';
+        $ordenActividad=$actividadV3?'WHEN av.fecha_pendiente<UTC_TIMESTAMP() THEN 0':'';
         $expr=self::clasificacionV3OperativoSql();
         $totales=[];
         foreach($this->rows("SELECT $expr grupo, COUNT(*) total
@@ -421,6 +432,7 @@ final class EmbudoComercialRepository
             $offset=($actual-1)*self::POR_COLUMNA;
             $data=$this->rows(
                 "SELECT a.id asignacion_id,a.prospecto_id,a.asesor_id,
+                    $camposActividad
                     a.asignado_at,a.fecha_trabajo,
                     p.nombre_completo,p.telefono_original,
                     COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
@@ -438,6 +450,7 @@ final class EmbudoComercialRepository
                      horario_contacto
                  $from AND $expr=?
                  ORDER BY CASE
+                   $ordenActividad
                    WHEN COALESCE(ag.proxima_accion_at,a.proxima_accion_at)
                          <UTC_TIMESTAMP() THEN 0
                    WHEN ag.revision_fecha IS NOT NULL
@@ -494,6 +507,7 @@ final class EmbudoComercialRepository
         $fuera=($totales['RECUPERACION']??0)+($totales['DESCARTADO']??0);
         return [
             'columnas'=>$cols,
+            'actividad_v3'=>$actividadV3,
             'total_activos'=>array_sum($totales)-$fuera,
             'total'=>array_sum($totales),
             'externos'=>[

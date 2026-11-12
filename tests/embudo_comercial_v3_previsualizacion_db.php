@@ -476,6 +476,37 @@ try{
         $db->query("SELECT etapa FROM prospecto_embudo_etapas WHERE asignacion_id=11")->fetch_row()[0]==='INTERESADO',
         'gestión y próxima acción del histórico sin cambiar su etapa');
 
+    require_once __DIR__.'/../app/services/EmbudoComercialV3SeguimientoService.php';
+    $db->query(file_get_contents(__DIR__.'/../database/migrations/2026_11_12_ventas_seguimiento_operativo_v3.sql'));
+    okV3p(EmbudoComercialV3SeguimientoService::instalada($db),'esquema de actividades disponible');
+    $actividades=new EmbudoComercialV3SeguimientoService($db);
+    $evento=$actividades->registrar(8,13,'POTENCIAL',0,'PROGRAMAR','Llamar al prospecto.','2099-01-03T11:00','');
+    $rechazar(fn()=>$actividades->registrar(8,13,'POTENCIAL',0,'REPROGRAMAR','Cambio de horario.','2099-01-04T11:00',''),'versi?n obsoleta');
+    $rechazar(fn()=>$actividades->registrar(8,13,'SEGUIMIENTO',$evento,'REGISTRAR','Registro de prueba.','',''),'etapa obsoleta');
+    $rechazar(fn()=>$actividades->historial(9,13),'aislamiento de usuario');
+    $evento=$actividades->registrar(8,13,'POTENCIAL',$evento,'REPROGRAMAR','Cambio de horario.','2099-01-04T11:00','');
+    $historial=$actividades->historial(8,13);
+    okV3p($historial[0]['fecha_anterior']==='2099-01-03 17:00:00' &&
+        $historial[0]['fecha_pendiente']==='2099-01-04 17:00:00' &&
+        count($actividades->historial(8,13,$evento))===1,'historial y cursor de reprogramaci?n');
+    $db->query("UPDATE prospecto_embudo_actividad_v3 SET fecha_pendiente='2020-01-01 12:00:00' WHERE id=$evento");
+    $actividades->registrar(8,13,'POTENCIAL',$evento,'COMPLETAR','Se atendi? la gesti?n.','','');
+    $historial=$actividades->historial(8,13);
+    okV3p($historial[0]['fecha_pendiente']===null && $historial[0]['completada_at'] &&
+        (int)$historial[0]['usuario_id']===8 && $historial[0]['etapa']==='POTENCIAL',
+        'completar gesti?n vencida conserva etapa y autor');
+    okV3p($db->query("SELECT proxima_accion_at FROM prospecto_embudo_agenda WHERE asignacion_id=13")->fetch_row()[0]
+        ==='2099-01-01 16:00:00','conservar agenda anterior al completar');
+    $db->query("UPDATE prospecto_embudo_etapas SET etapa='SEGUIMIENTO' WHERE asignacion_id=13");
+    $evento=$actividades->registrar(8,13,'SEGUIMIENTO',(int)$historial[0]['id'],'PROGRAMAR',
+        'El prospecto evaluar? la oferta.','2099-01-05T11:00','PENDIENTE_DECISION');
+    $actividades->mover(8,13,'SEGUIMIENTO','CONTACTADO','Conversaci?n acreditada.','');
+    $historial=$actividades->historial(8,13);
+    okV3p((int)$historial[0]['id']===$evento && $historial[0]['fecha_pendiente']==='2099-01-05 17:00:00' &&
+        $db->query("SELECT proxima_accion_at FROM prospecto_embudo_agenda WHERE asignacion_id=13")->fetch_row()[0]
+            ==='2099-01-01 16:00:00','movimiento V3 conserva ambas agendas');
+
+
     $source=file_get_contents(__DIR__.'/../app/services/EmbudoComercialRepository.php');
     foreach(['UPDATE prospecto_embudo','INSERT INTO prospecto_embudo',
         '->begin_transaction(', '->commit('] as $forbidden) {

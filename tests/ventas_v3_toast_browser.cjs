@@ -11,6 +11,7 @@ const aviso = '.system-toast.show';
 const fixture = `<!doctype html><meta charset="utf-8"><main class="impe-embudo--v3-operativo">
   <article class="impe-v3o-card" data-asignacion-id="1" data-etapa="INTERESADO" data-v3-subetapa="CALIFICADO">
     <button data-v3-gestionar>Gestionar</button>
+    <button data-v3-actividad data-version="7" data-pendiente="1">Actividad</button>
   </article>
   <article class="impe-v3o-card" data-asignacion-id="2" data-etapa="CONTACTADO" data-v3-destinos="SEGUIMIENTO,POTENCIAL">
     <button data-v3-mover>Mover</button>
@@ -29,6 +30,18 @@ const fixture = `<!doctype html><meta charset="utf-8"><main class="impe-embudo--
     <select id="impe-v3o-potencial-subetapa"><option>CALIFICADO</option><option>REUNIENDO_DOCUMENTOS</option></select>
     <input id="impe-v3o-potencial-fecha"><input id="impe-v3o-potencial-motivo">
     <p id="impe-v3o-potencial-error" hidden></p><button id="impe-v3o-potencial-guardar">Guardar</button>
+  </form></dialog>
+  <dialog id="impe-v3o-actividad-dialog"><form>
+    <p data-actividad-prospecto></p>
+    <select name="operacion"><option>REGISTRAR</option><option>PROGRAMAR</option><option>REPROGRAMAR</option><option>COMPLETAR</option></select>
+    <label data-actividad-fecha><input name="fecha" type="datetime-local"></label>
+    <label data-actividad-subetapa><select name="subetapa"><option value=""></option></select></label>
+    <input name="motivo" required>
+    <details><summary>Historial</summary><p data-actividad-historial-estado></p>
+      <ul data-actividad-historial></ul><button type="button" data-actividad-mas hidden>Ver anteriores</button>
+    </details>
+    <p data-actividad-error hidden></p>
+    <button type="submit">Guardar actividad</button>
   </form></dialog>
   </main><script src="/bootstrap.js"></script><script src="/tablero.js"></script>`;
 
@@ -54,6 +67,21 @@ async function probar(browser, modo) {
     if (url.pathname === '/bootstrap.js') return route.fulfill({ path: bootstrap });
     if (url.pathname === '/tablero.js') return route.fulfill({ path: tablero });
     if (url.pathname === '/index.php') {
+      if (modo === 'actividad') {
+        assert.equal(url.searchParams.get('action'), 'seguimientoOperativoV3');
+        if (route.request().method() === 'GET') {
+          assert.equal(url.searchParams.get('asignacion_id'), '1');
+          return route.fulfill({ json: { ok: true, historial: [{
+            id: 7, creado_at: '2026-11-11 20:00:00', accion: 'PROGRAMAR', usuario_id: 42,
+            motivo: '<b>Primera gestión</b>', fecha_pendiente: '2099-01-01 16:00:00'
+          }] } });
+        }
+        const datos = new URLSearchParams(route.request().postData());
+        assert.equal(datos.get('version'), '7');
+        assert.equal(datos.get('etapa_actual'), 'INTERESADO');
+        assert.equal(datos.get('operacion'), 'REPROGRAMAR');
+        assert.equal(datos.get('fecha'), '2099-01-02T10:00');
+      }
       guardados++;
       assert.equal(route.request().headers()['x-csrf-token'], 'fixture');
       if (modo === 'calificacion') {
@@ -86,6 +114,17 @@ async function probar(browser, modo) {
       await page.fill('#impe-v3o-fecha', '2099-01-01T10:00');
     }
     await page.click('#impe-v3o-enviar');
+  } else if (modo === 'actividad') {
+    await page.locator('[data-v3-actividad]').click();
+    await page.locator('details summary').click();
+    const entrada = page.locator('[data-actividad-historial] li');
+    await entrada.waitFor();
+    assert.ok((await entrada.textContent()).includes('<b>Primera gestión</b>'));
+    assert.equal(await entrada.locator('b').count(), 0);
+    await page.selectOption('[name=operacion]', 'REPROGRAMAR');
+    await page.fill('[name=fecha]', '2099-01-02T10:00');
+    await page.fill('[name=motivo]', 'Cambio de horario acordado');
+    await page.getByRole('button', { name: 'Guardar actividad' }).click();
   } else {
     await gestionar(page);
   }
@@ -103,7 +142,7 @@ async function probar(browser, modo) {
     assert.equal(await toast.getAttribute('role'), 'status');
     assert.equal(await toast.getAttribute('aria-live'), 'polite');
     assert.match(await toast.textContent(), ['movimiento', 'calificacion'].includes(modo)
-      ? /Movimiento registrado/ : /Gestión comercial registrada/);
+      ? /Movimiento registrado/ : modo === 'actividad' ? /Actividad comercial registrada/ : /Gestión comercial registrada/);
     assert.equal(await toast.count(), 1);
     assert.equal(navegaciones, ['llamada', 'sin-storage'].includes(modo) ? 1 : 2);
     if (modo === 'sin-storage') {
@@ -128,7 +167,7 @@ async function probar(browser, modo) {
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined });
   try {
-    for (const modo of ['gestion', 'movimiento', 'calificacion', 'conflicto', 'html', 'llamada', 'sin-storage']) {
+    for (const modo of ['gestion', 'movimiento', 'calificacion', 'actividad', 'conflicto', 'html', 'llamada', 'sin-storage']) {
       await probar(browser, modo);
       console.log('Toast V3:', modo, 'OK');
     }

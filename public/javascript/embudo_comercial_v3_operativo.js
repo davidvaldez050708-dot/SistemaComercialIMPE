@@ -12,7 +12,8 @@
   const avisoKey='impe:embudo:v3:aviso:'+usuarioId;
   const mensajes=new Map([
     ['gestion','Gestión comercial registrada correctamente.'],
-    ['movimiento','Movimiento registrado correctamente.']
+    ['movimiento','Movimiento registrado correctamente.'],
+    ['actividad','Actividad comercial registrada correctamente.']
   ]);
   const vistaCargada=Date.now();
   let refresh=false;
@@ -104,6 +105,7 @@
       throw new Error(typeof result?.mensaje==='string' && result.mensaje.trim()
         ?result.mensaje:mensaje);
     }
+    return result;
   };
   const refrescarTrasLlamada=()=>{
     if(refresh || usuarioId<1 || document.hidden || telefonoActivo())return;
@@ -324,6 +326,117 @@
       error.hidden=false;
     }finally{enviar.disabled=false;}
   });
+
+  const actividadDialog=root.querySelector('#impe-v3o-actividad-dialog');
+  if(actividadDialog){
+    const actividadForm=actividadDialog.querySelector('form');
+    const {operacion,fecha,subetapa,motivo}=actividadForm.elements;
+    const errorActividad=actividadForm.querySelector('[data-actividad-error]');
+    const historial=actividadForm.querySelector('[data-actividad-historial]');
+    const estadoHistorial=actividadForm.querySelector('[data-actividad-historial-estado]');
+    const mas=actividadForm.querySelector('[data-actividad-mas]');
+    const detalles=actividadForm.querySelector('details');
+    const enviarActividad=actividadForm.querySelector('[type=submit]');
+    const url='index.php?controller=embudoComercial&action=seguimientoOperativoV3';
+    const formato=new Intl.DateTimeFormat('es-MX',{
+      timeZone:'America/Mexico_City',dateStyle:'short',timeStyle:'short'
+    });
+    const formatear=valor=>formato.format(new Date(valor.replace(' ','T')+'Z'));
+    const acciones={REGISTRAR:'Gestión',PROGRAMAR:'Programación',REPROGRAMAR:'Reprogramación',COMPLETAR:'Completada'};
+    let seleccion=null;
+    let antes=0;
+    let consultado=false;
+    const camposActividad=()=>{
+      const requiereFecha=['PROGRAMAR','REPROGRAMAR'].includes(operacion.value);
+      fecha.required=requiereFecha;
+      actividadForm.querySelector('[data-actividad-fecha]').hidden=!requiereFecha;
+      if(!requiereFecha)fecha.value='';
+    };
+    const cargarHistorial=async()=>{
+      if(!seleccion || mas.disabled)return;
+      const vigente=seleccion;
+      mas.disabled=true;
+      estadoHistorial.textContent='Cargando…';
+      try{
+        const params=new URLSearchParams({asignacion_id:vigente.id,antes:String(antes)});
+        const resultado=await comprobarRespuesta(await fetch(url+'&'+params.toString(),{
+          credentials:'same-origin',headers:{Accept:'application/json'}
+        }),'No se pudo consultar el historial.');
+        if(seleccion!==vigente)return;
+        resultado.historial.forEach(item=>{
+          const li=document.createElement('li');
+          const fechas=[item.fecha_anterior,item.fecha_pendiente].filter(Boolean).map(formatear);
+          const cambios=item.subetapa_nueva && item.subetapa_nueva!==item.subetapa_anterior
+            ? ' · '+(Array.from(subetapa.options).find(o=>o.value===item.subetapa_nueva)?.textContent||item.subetapa_nueva)
+            : '';
+          li.textContent=formatear(item.creado_at)+' · '+acciones[item.accion]+' · Usuario '+item.usuario_id+
+            ' · '+item.motivo+(fechas.length?' · '+fechas.join(' → '):'')+cambios;
+          historial.appendChild(li);
+        });
+        if(resultado.historial.length)antes=resultado.historial.at(-1).id;
+        mas.hidden=resultado.historial.length<20;
+        consultado=true;
+        estadoHistorial.textContent=historial.childElementCount?'':'Aún no hay actividades.';
+      }catch(err){
+        if(seleccion===vigente)estadoHistorial.textContent=err.message;
+      }finally{
+        if(seleccion===vigente)mas.disabled=false;
+      }
+    };
+    root.querySelectorAll('[data-v3-actividad]').forEach(b=>b.addEventListener('click',()=>{
+      const card=b.closest('.impe-v3o-card');
+      if(!card || actividadDialog.open || telefonoActivo())return;
+      seleccion={id:card.dataset.asignacionId,etapa:card.dataset.etapa,version:b.dataset.version};
+      actividadForm.reset();
+      historial.replaceChildren();
+      detalles.open=false;
+      antes=0;consultado=false;mas.hidden=true;mas.disabled=false;
+      estadoHistorial.textContent='';
+      errorActividad.hidden=true;
+      actividadForm.querySelector('[data-actividad-prospecto]').textContent=card.dataset.nombre||'Prospecto';
+      actividadForm.querySelector('[data-actividad-subetapa]').hidden=seleccion.etapa!=='SEGUIMIENTO';
+      Array.from(operacion.options).forEach(o=>{
+        o.disabled=o.value!=='REGISTRAR' && (o.value==='PROGRAMAR')===(b.dataset.pendiente==='1');
+        o.hidden=o.disabled;
+      });
+      camposActividad();
+      actividadDialog.showModal();
+    }));
+    actividadDialog.addEventListener('close',()=>{seleccion=null;});
+    actividadForm.querySelectorAll('[data-actividad-cerrar]').forEach(b=>
+      b.addEventListener('click',()=>{if(!enviarActividad.disabled)actividadDialog.close();}));
+    actividadDialog.addEventListener('cancel',event=>{if(enviarActividad.disabled)event.preventDefault();});
+    operacion.addEventListener('change',camposActividad);
+    detalles.addEventListener('toggle',()=>{if(detalles.open && !consultado)cargarHistorial();});
+    mas.addEventListener('click',cargarHistorial);
+    actividadForm.addEventListener('submit',async event=>{
+      event.preventDefault();
+      if(!seleccion || enviarActividad.disabled)return;
+      errorActividad.hidden=true;
+      if(telefonoActivo()){
+        errorActividad.textContent='Termina la llamada antes de guardar la actividad.';
+        errorActividad.hidden=false;return;
+      }
+      enviarActividad.disabled=true;
+      try{
+        const body=new URLSearchParams({
+          asignacion_id:seleccion.id,etapa_actual:seleccion.etapa,version:seleccion.version,
+          operacion:operacion.value,motivo:motivo.value.trim(),fecha:fecha.value,subetapa:subetapa.value
+        });
+        await comprobarRespuesta(await fetch(url,{
+          method:'POST',credentials:'same-origin',headers:{
+            'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8',
+            'Accept':'application/json','X-CSRF-Token':String(window.IMPE_CSRF_TOKEN||'')
+          },body:body.toString()
+        }),'No se pudo guardar la actividad.');
+        actividadDialog.close();
+        confirmarGuardado('actividad');
+      }catch(err){
+        errorActividad.textContent=err.message;
+        errorActividad.hidden=false;
+      }finally{enviarActividad.disabled=false;}
+    });
+  }
 
   // Gestión transversal de Potenciales: se conserva la etapa original,
   // incluso INTERESADO histórico; no se envían resultados PBX ni pagos.
