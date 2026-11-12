@@ -47,7 +47,16 @@ def write(path,data):
     if not os.path.isdir(parent):os.makedirs(parent)
     with open(path,"wb") as f:f.write(data)
 def orig(path):
-    return subprocess.check_output(["git","show",BASE_SHA+":"+path],cwd=ROOT)
+    expected=FILES.get(path) or UNCHANGED.get(path)
+    for ref in (BASE_SHA,"ffc44eb23ad7089422d00d21611734f8fe1e6934"):
+        try:
+            data=subprocess.check_output(["git","show",ref+":"+path],
+                cwd=ROOT,stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError:
+            continue
+        if gh_blob(data)==expected:
+            return data
+    raise RuntimeError("No original version matched for "+path)
 def call(args):
     proc=subprocess.Popen([sys.executable,SCRIPT]+args,
         stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
