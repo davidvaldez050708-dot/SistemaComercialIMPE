@@ -7,7 +7,6 @@ import json
 import os
 from pathlib import Path
 import secrets
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -21,7 +20,7 @@ from mysql_limite_aperturas import LimitadorMySQL
 def exigir_sonda(puerto, nonce):
     estado, _, cuerpo, _ = peticion(puerto, "/mysql_snapshot_web.php")
     if estado != 200:
-        raise RuntimeError("El vhost no entregó la sonda aislada.")
+        raise RuntimeError(f"El vhost devolvió HTTP {estado} al solicitar la sonda aislada.")
     sonda = json.loads(cuerpo)
     if sonda.get("sapi") != "litespeed" or sonda.get("laboratorio") != nonce:
         raise RuntimeError("El vhost no corresponde al laboratorio LSAPI de esta ejecución.")
@@ -41,7 +40,9 @@ def iniciar_lsapi(sitio, puerto, entorno, php_lsapi, evidencia):
     servidor_ols = Path("/usr/local/lsws")
     cuenta = pwd.getpwnam("nobody")
     sitio.parent.chmod(0o755)
-    for carpeta in (sitio / "sesiones-prueba", sitio.parent / "admision-mysql", sitio / "storage"):
+    sockets = sitio.parent / "sockets"
+    sockets.mkdir(mode=0o700)
+    for carpeta in (sitio / "sesiones-prueba", sitio.parent / "admision-mysql", sitio / "storage", sockets):
         for ruta in (carpeta, *carpeta.rglob("*")):
             os.chown(ruta, cuenta.pw_uid, cuenta.pw_gid)
     configuracion = "\n".join("  env " + nombre + "=" + valor for nombre, valor in entorno.items())
@@ -53,6 +54,9 @@ group {grp.getgrgid(cuenta.pw_gid).gr_name}
 mime conf/mime.properties
 errorlog {evidencia / 'ols-error.log'} {{
   logLevel INFO
+}}
+accesslog {evidencia / 'ols-access.log'} {{
+  rollingSize 100M
 }}
 listener loopback {{
   address 127.0.0.1:{puerto}
@@ -72,11 +76,11 @@ docRoot {sitio}
 indexFiles index.php
 extprocessor php-lab {{
   type lsapi
-  address uds://{sitio.parent / 'php.sock'}
+  address uds://{sockets / 'php.sock'}
   maxConns 30
   env PHP_LSAPI_CHILDREN=30
   env LSAPI_MAX_REQS=100000
-  env PHP_INI_SCAN_DIR={sitio.parent / 'php-conf'}
+  env PHP_INI_SCAN_DIR=:{sitio.parent / 'php-conf'}
 {configuracion}
   initTimeout 30
   retryTimeout 0
@@ -91,9 +95,7 @@ scripthandler {{
 """, encoding="utf-8")
     ini = sitio.parent / "php-conf"
     ini.mkdir()
-    # Retain the image's extension ini files, overriding only lab settings.
-    for archivo in php_lsapi.parent.parent.glob("etc/php/8.2/*/conf.d/*.ini"):
-        shutil.copyfile(archivo, ini / archivo.name)
+    # The empty scan path component preserves the image's extension ini files.
     (ini / "99-lab.ini").write_text(
         f"session.save_path={sitio / 'sesiones-prueba'}\n"
         "mysqlnd.collect_statistics=1\ndisplay_errors=0\nlog_errors=1\n",
