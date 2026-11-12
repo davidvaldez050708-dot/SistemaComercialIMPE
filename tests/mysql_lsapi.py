@@ -1,11 +1,14 @@
 """Prepara y prueba un vhost LSAPI aislado ya administrado por el operador."""
 
 import argparse
+import base64
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
+import hmac
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import signal
 import subprocess
@@ -14,7 +17,7 @@ import tempfile
 import time
 
 from mysql_capacidad import iniciar, muestra
-from mysql_capacidad_http import (autenticar, comprobar_evento_activo, escenario, peticion,
+from mysql_capacidad_http import (CAMPANA, INICIO, autenticar, comprobar_evento_activo, escenario, peticion,
                                  preparar_base, preparar_sitio, servidor)
 from mysql_limite_aperturas import LimitadorMySQL
 
@@ -132,6 +135,71 @@ def autenticar_usuarios(puerto, usuarios):
     if not all(cookies):
         raise RuntimeError("No se pudieron preparar todas las sesiones de prueba.")
     return cookies
+
+
+def comprobar_resultado_ventas(args, puerto, cookie, sql):
+    def json_ok(ruta, datos=None):
+        estado, _, cuerpo, _ = peticion(puerto, ruta, cookie, datos)
+        if estado != 200:
+            raise RuntimeError(f"HTTP {estado} en {ruta}: {cuerpo[:300]!r}")
+        respuesta = json.loads(cuerpo)
+        if respuesta.get("ok") is not True:
+            raise RuntimeError(f"Respuesta sin éxito en {ruta}: {respuesta!r}")
+        return respuesta
+
+    estado, _, inicio, _ = peticion(puerto, INICIO, cookie)
+    token = re.search(rb'data-phone-notification-csrf="([a-f0-9]{64})"', inicio)
+    if estado != 200 or token is None:
+        raise RuntimeError("Inicio del asesor no expuso un token de la sesión autenticada.")
+    csrf = token[1].decode("ascii")
+    controlador = "/index.php?controller=telefonia&action="
+    poll = json_ok(controlador + "disponibilidad", {
+        "accion": "POLL", "disponible": "1", "csrf_token": csrf,
+    })
+    if not {"solicitud", "entrante", "devoluciones"} <= poll.keys():
+        raise RuntimeError("El sondeo devolvió un contrato incompleto.")
+    if sql("SELECT COUNT(*) FROM telefonia_presencia WHERE usuario_id=2 AND ocupado=0;",
+           leer=True).strip() != b"1":
+        raise RuntimeError("El sondeo no persistió la disponibilidad sintética.")
+
+    instante = subprocess.check_output([
+        args.php, "-r",
+        "date_default_timezone_set('America/Mexico_City'); echo date('Y-m-d H:i:s');",
+    ]).decode()
+    ref = "lab-activa-102"
+    destino = "525500000001"
+    grabacion = "lab-record-102"
+    for tipo, campos, cadena in (
+        ("NOTIFY_OUT_END", {"destination": destino, "call_start": instante,
+                           "duration": "15", "disposition": "answered"}, "102" + destino + instante),
+        ("NOTIFY_RECORD", {"call_id_with_rec": grabacion}, ref + grabacion),
+    ):
+        firma = base64.b64encode(hmac.new(b"fixture", cadena.encode(), "sha1").hexdigest().encode()).decode()
+        codigo, _, cuerpo, _ = peticion(puerto, "/prueba_telefonia/api/zadarma_webhook.php",
+                                        datos={"event": tipo, "internal": "102", "pbx_call_id": ref, **campos},
+                                        cabeceras={"Signature": firma})
+        if codigo != 200 or json.loads(cuerpo).get("status") != "success":
+            raise RuntimeError(f"Webhook {tipo} falló con HTTP {codigo}.")
+
+    def aviso_de_llamada():
+        return [aviso for aviso in json_ok(CAMPANA)["recordatorios"]
+                if f"pbx_call_id={ref}" in aviso.get("url", "")]
+
+    avisos = aviso_de_llamada()
+    if len(avisos) != 1 or avisos[0]["titulo"] != "Resultado pendiente":
+        raise RuntimeError("La campana omitió o duplicó el aviso de la llamada sintética.")
+    if [aviso["telefonia_id"] for aviso in aviso_de_llamada()] != [avisos[0]["telefonia_id"]]:
+        raise RuntimeError("Un segundo sondeo cambió la identidad del aviso.")
+    json_ok(controlador + "guardarResultadoVenta", {
+        "pbx_call_id": ref, "extension": "102", "resultado": "BUZON_VOZ", "csrf_token": csrf,
+    })
+    detalle = json_ok(controlador + f"detalleVenta&pbx_call_id={ref}&extension=102")["llamada"]
+    if detalle["registro"]["resultado"] != "BUZON_VOZ" or grabacion not in detalle["segmentos"]:
+        raise RuntimeError("El detalle no conservó el resultado y la referencia de grabación simulada.")
+    if aviso_de_llamada():
+        raise RuntimeError("El aviso quedó pendiente después de guardar el resultado.")
+    return {"presencia": True, "aviso_una_vez": True, "resultado": True,
+            "referencia_grabacion": True}
 
 
 def rafaga(puerto, usuarios, cookies, observar, verificar_avisos=False):
@@ -266,6 +334,8 @@ def main():
                     if not cookie:
                         raise RuntimeError(f"No se autenticó el asesor sintético: {login}")
                     resultado["webhook"] = comprobar_evento_activo(args, (puerto, puerto), cookie, sql)
+                    args.salida.write_text(json.dumps(resultado, indent=2) + "\n", encoding="utf-8")
+                    resultado["ventas"] = comprobar_resultado_ventas(args, puerto, cookie, sql)
                     args.salida.write_text(json.dumps(resultado, indent=2) + "\n", encoding="utf-8")
             finally:
                 if proceso is not None:
