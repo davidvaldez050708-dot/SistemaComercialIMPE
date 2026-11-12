@@ -28,6 +28,11 @@ $paths=[
     'app/services/TelefoniaResultadoVentasService.php',
     'app/services/TelefoniaResultadoVentasCatalogo.php'
 ];
+// La prueba certifica un manifiesto histórico FIJO de PR #255.
+ // No debe copiar el HEAD actual, porque PR posteriores cambian los archivos
+ // de asesor intencionalmente. Usa el commit original, verificable en Git.
+$manifestRev='d7038a903465e1126b3532af5d4d9e2e48aab465';
+$fuentesV3=[];
 $tmp=sys_get_temp_dir().'/impe_preflight_v3_'.bin2hex(random_bytes(5));
 $site=$tmp.'/site';
 asV3(mkdir($tmp,0700),'carpeta temporal');
@@ -37,11 +42,24 @@ try{
     file_put_contents($site.'/config/db_connection.php','<?php /* datos falsos */');
     foreach($paths as $p){
         $source=$root.'/'.$p;
-        asV3(is_file($source),'archivo de PR existente '.$p);
+        asV3(is_file($source),'archivo de repo existente '.$p);
+        $pipes=[];
+        $proc=proc_open(['git','-C',$root,'show',$manifestRev.':'.$p],
+            [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+        asV3(is_resource($proc),'git show fuente original '.$p);
+        fclose($pipes[0]);
+        $bytes=(string)stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        $error=(string)stream_get_contents($pipes[2]);
+        fclose($pipes[2]);
+        asV3(proc_close($proc)===0,
+            'requiere fetch-depth 0 y commit original: '.$p.' '.$error);
+        $fuentesV3[$p]=$bytes;
         $destination=$site.'/'.$p;
         $dir=dirname($destination);
         if(!is_dir($dir))asV3(mkdir($dir,0700,true),'carpeta '.$dir);
-        asV3(copy($source,$destination),'copia temporal de '.$p);
+        asV3(file_put_contents($destination,$bytes)!==false,
+            'copia temporal original del PR #255 '.$p);
     }
     $run=static function(array $args)use($script){
         $cmd=implode(' ',array_map('escapeshellarg',
@@ -60,7 +78,7 @@ try{
     asV3($complete[0]===0,
         '18 SHA exactos reconocidos: '.substr($complete[1].$complete[2],0,1400));
     asV3(strpos($complete[1],'V3_PREPARADO: 18')!==false,
-        'todos los archivos del HEAD actual reconocidos');
+        'todos los archivos históricos originales reconocidos, no el HEAD actual');
     asV3(strpos($complete[1],'NO PUBLICADO')!==false,
         'comprobación nunca publica');
 
@@ -73,7 +91,9 @@ try{
     asV3($withoutNew[0]===0 &&
         strpos($withoutNew[1],'AUSENTE_NUEVO | public/css/embudo_v3_indicadores.css')!==false,
         'nuevo archivo todavía no desplegado se reconoce correctamente');
-    copy($root.'/public/css/embudo_v3_indicadores.css',$new);
+    asV3(file_put_contents($new,
+        $fuentesV3['public/css/embudo_v3_indicadores.css'])!==false,
+        'restauración del blob V3 original');
 
     $existing=$site.'/app/services/TelefoniaResultadoVentasService.php';
     $original=file_get_contents($existing);

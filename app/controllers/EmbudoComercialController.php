@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/../helpers/EmbudoComercialAcceso.php';
 require_once __DIR__.'/../services/EmbudoComercialRepository.php';
+require_once __DIR__.'/../services/EmbudoComercialV3AccesoControlado.php';
 require_once __DIR__.'/../../config/db_connection.php';
 
 /**
@@ -66,8 +67,7 @@ final class EmbudoComercialController
         // optar por la vista operativa institucional V3 desde URL explícita.
         // Sólo consulta SUS asignaciones; no enciende el piloto del Bridge.
         $operativoV3=$vista==='embudo' && !$supervisor &&
-            (int)($_SESSION['rol_id']??0)===3 &&
-            tienePermiso('ventas.embudo.ver') &&
+            EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId) &&
             ($_GET['operativo_v3']??null)==='1';
         $error='';
         $disponible=false;
@@ -121,8 +121,7 @@ final class EmbudoComercialController
             ['options'=>['min_range'=>1]]);
         $prospecto=null;
         $operativoV3=$vista==='embudo' && !$supervisor &&
-            (int)($_SESSION['rol_id']??0)===3 &&
-            tienePermiso('ventas.embudo.ver') &&
+            EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId) &&
             ($_GET['operativo_v3']??null)==='1';
         $error='';
         if (!$id) {
@@ -171,8 +170,7 @@ final class EmbudoComercialController
             return;
         }
         $uid=(int)($_SESSION['usuario_id']??0);
-        if($uid<1 || (int)($_SESSION['rol_id']??0)!==3 ||
-            !tienePermiso('ventas.embudo.ver') ||
+        if($uid<1 || !EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($uid) ||
             !tienePermiso('ventas.embudo.mover')) {
             $reply(false,'Esta operación no está autorizada.',403);
             return;

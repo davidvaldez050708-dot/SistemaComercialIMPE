@@ -1,0 +1,106 @@
+name: Ventas V3 - control de acceso y compatibilidad
+on:
+  push:
+    branches:
+      - fix/ventas-v3-acceso-asesor-gate-compat-20261111
+  pull_request:
+    paths:
+      - 'app/services/EmbudoComercialV3AccesoControlado.php'
+      - 'app/controllers/EmbudoComercialController.php'
+      - 'app/views/embudo_comercial/index.php'
+      - 'tests/ventas_v3_acceso_controlado_unit.php'
+      - 'tests/ventas_v3_post_bloqueado_default_unit.php'
+      - 'tests/ventas_v3_preflight_integridad_archivos_unit.php'
+      - 'tools/publicar_ventas_v3_asesores_hostinger.py'
+      - 'tests/ventas_v3_publicador_asesores_unit.py'
+      - '.github/workflows/ventas-v3-asesores-gate-y-compat.yml'
+permissions:
+  contents: read
+jobs:
+  pruebas-y-publicacion-simulada:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Validar PHP, JS, permisos y regresiones
+        run: |
+          php -l app/services/EmbudoComercialV3AccesoControlado.php
+          php -l app/controllers/EmbudoComercialController.php
+          php -l app/views/embudo_comercial/index.php
+          php -l tests/ventas_v3_acceso_controlado_unit.php
+          php -l tests/ventas_v3_post_bloqueado_default_unit.php
+          php -l tests/ventas_v3_preflight_integridad_archivos_unit.php
+          node --check public/javascript/embudo_comercial_v3_operativo.js
+          php tests/ventas_v3_acceso_controlado_unit.php
+          php tests/ventas_v3_post_bloqueado_default_unit.php
+          php tests/ventas_v3_asesor_operativo_render_unit.php
+          php tests/ventas_v3_tarjetas_render_solo_lectura_unit.php
+          php tests/ventas_v3_preflight_integridad_archivos_unit.php
+          php tests/embudo_comercial_fase1_unit.php
+          php tests/embudo_comercial_fase2_unit.php
+          php tests/embudo_comercial_politica_propuesta_unit.php
+          php tests/embudo_comercial_planificador_v3_unit.php
+      - name: Publicación simulada y reversión, sólo archivos
+        run: |
+          python3 -m py_compile tools/publicar_ventas_v3_asesores_hostinger.py
+          python3 -m py_compile tests/ventas_v3_publicador_asesores_unit.py
+          python3 tests/ventas_v3_publicador_asesores_unit.py
+  mysql-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: 'Datos ficticios: permisos, tarjetas, PBX y movimientos'
+        env:
+          IMPE_V3_PREVIA_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/embudo_comercial_v3_previsualizacion_db.php
+  mariadb-temporal:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli,mbstring
+      - name: Datos ficticios en MariaDB, sin tocar producción
+        env:
+          IMPE_V3_PREVIA_DB_TEST: YES
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USER: root
+          MYSQL_PASSWORD: test_password
+        run: php tests/embudo_comercial_v3_previsualizacion_db.php

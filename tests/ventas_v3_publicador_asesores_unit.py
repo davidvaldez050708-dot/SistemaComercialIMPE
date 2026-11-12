@@ -15,6 +15,7 @@ SCRIPT=os.path.join(ROOT,"tools/publicar_ventas_v3_asesores_hostinger.py")
 BASE_SHA="96dca1549c9753a44f45b5505f47e76472a27bfd"
 FILES={
  "app/services/EmbudoComercialV3MovimientosPermitidos.php":None,
+ "app/services/EmbudoComercialV3AccesoControlado.php":None,
  "app/views/embudo_comercial/operativo_v3.php":None,
  "public/css/embudo_v3_operativo.css":None,
  "public/javascript/embudo_comercial_v3_operativo.js":None,
@@ -108,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix="impe-v3-publish-test-") as temp:
                    "--confirm","PUBLICAR_SOLO_EMBUDO_ASESOR_V3_IMPE"]
     code,out,err=call(publish)
     check(code==0,"publish failed "+out+err)
-    check(out.count("PUBLICADO: ")==8,"exactly eight files, got "+out)
+    check(out.count("PUBLICADO: ")==9,"exactly nine files, got "+out)
     check("PUBLICACION OK" in out,"postcheck printed")
     for p in FILES:
         check(read(os.path.join(site,p))==read(os.path.join(stage,p)),
@@ -161,4 +162,4 @@ with tempfile.TemporaryDirectory(prefix="impe-v3-publish-test-") as temp:
     for p in UNCHANGED:
         check(read(os.path.join(site,p))==orig(p),"PBX file remains intact")
     check(call(check_args)[0]==0,"back to clean baseline")
-    print("CHECK OK: preflight, tamper blocking, backup, publish EIGHT files, ten protected dependencies, idempotency, rollback without overwriting third-party work. Fake-site only.")
+    print("CHECK OK: preflight, tamper blocking, backup, publish NINE files, ten protected dependencies, idempotency, rollback without overwriting third-party work. Fake-site only.")
