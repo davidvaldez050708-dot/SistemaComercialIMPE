@@ -149,11 +149,17 @@ checkZoho(
     'registro no autorizado permanece solo en CRM local'
 );
 
+$totalAntesInscripcion = (int)$db->query(
+    'SELECT COUNT(*) AS n FROM zoho_dev_registros_pendientes'
+)->fetch_assoc()['n'];
 $idInscripcion = $modelo->guardar(
     datosPrueba('demo.zoho.impe@example.com', 'PUBLICO_INSCRIPCION')
 );
+$totalDespuesInscripcion = (int)$db->query(
+    'SELECT COUNT(*) AS n FROM zoho_dev_registros_pendientes'
+)->fetch_assoc()['n'];
 checkZoho(
-    estadoCola($db, $idInscripcion) === null,
+    $idInscripcion > 0 && $totalAntesInscripcion === $totalDespuesInscripcion,
     'inscripción excluida de sincronización'
 );
 
