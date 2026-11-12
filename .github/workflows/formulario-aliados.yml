@@ -34,7 +34,11 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mysqli, mbstring
+          extensions: mysqli, mbstring, dom, xml, zip, gd, curl
+      # Los controladores cargan vendor/autoload.php durante la prueba HTTP.
+      # El checkout no incluye vendor/ (está ignorado en Git).
+      - name: Instalar dependencias PHP bloqueadas por Composer
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts --no-plugins
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
