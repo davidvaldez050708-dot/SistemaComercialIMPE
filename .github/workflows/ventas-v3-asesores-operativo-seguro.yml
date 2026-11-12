@@ -15,6 +15,9 @@ on:
       - 'public/javascript/embudo_comercial_v3_operativo.js'
       - 'tests/embudo_comercial_v3_previsualizacion_db.php'
       - 'tests/ventas_v3_asesor_operativo_render_unit.php'
+      - 'tools/publicar_ventas_v3_asesores_hostinger.py'
+      - 'tests/ventas_v3_publicador_asesores_unit.py'
+      - 'docs/ventas_v3_asesores_operativo_20261111.md'
       - '.github/workflows/ventas-v3-asesores-operativo-seguro.yml'
 permissions:
   contents: read
@@ -23,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -39,6 +44,9 @@ jobs:
           php -l tests/embudo_comercial_v3_previsualizacion_db.php
           node --check public/javascript/embudo_comercial_v3_operativo.js
           php tests/ventas_v3_asesor_operativo_render_unit.php
+          python3 -m py_compile tools/publicar_ventas_v3_asesores_hostinger.py
+          python3 -m py_compile tests/ventas_v3_publicador_asesores_unit.py
+          python3 tests/ventas_v3_publicador_asesores_unit.py
           php tests/ventas_v3_tarjetas_render_solo_lectura_unit.php
           php tests/embudo_comercial_fase1_unit.php
           php tests/embudo_comercial_fase2_unit.php
