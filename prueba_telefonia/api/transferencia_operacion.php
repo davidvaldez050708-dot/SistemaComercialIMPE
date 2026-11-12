@@ -14,7 +14,11 @@ if(!in_array($metodo,['GET','POST'],true))trResponder(['ok'=>false],405);
 if($metodo==='POST' && (empty($_SESSION['csrf_token']) ||
     !hash_equals((string)$_SESSION['csrf_token'],(string)($_POST['csrf_token']??''))))trResponder(['ok'=>false],403);
 try{
-    $svc=new TelefoniaTransferenciaOperacionService();
+    // Las consultas de sondeo comparten un único handle de esta petición.
+    // Conservar conexión independiente en POST por precaución transaccional.
+    $svc=new TelefoniaTransferenciaOperacionService(
+        $metodo==='GET' ? Database::compartida() : null
+    );
     if($metodo==='GET'){
         $id=(int)($_GET['id']??0);
         $op=$id?$svc->obtener($user,$id):$svc->paraDestino($user,trim((string)($_GET['origen']??'')),trim((string)($_GET['sdk']??'')));

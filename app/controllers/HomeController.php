@@ -157,7 +157,9 @@ class HomeController
 
                     $subtituloPagina = 'Gestión de convocatorias y publicaciones';
 
-                    $modeloConvocatoria = new ConvocatoriaModel();
+                    // El router ya dispone de una conexión de esta petición.
+                    // Evitar crear otra sesión persistente para el panel de Marketing.
+                    $modeloConvocatoria = new ConvocatoriaModel(Database::compartida());
                     $modeloConvocatoria->desactivarConvocatoriasVencidas();
                     $resumenMarketing = $modeloConvocatoria->obtenerResumenDashboard();
                     $proximasFinalizarMarketing = $modeloConvocatoria
