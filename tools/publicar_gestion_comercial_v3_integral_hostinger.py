@@ -45,7 +45,7 @@ p.ARCHIVOS = [
      "e4c838179ee920d8a3b0eb0e5fbb32117daab550",
      "19af3ebdc78936fddde32ee436f55699f1f34e24"),
     ("app/controllers/WhatsAppController.php",
-     "pending-legacy", # Placeholder intentionally blocks until reconciled.
+     "1f4dfc8e8521333e6007dcc6669250a3808d343f",
      "527c2861d90ba04bd885c15ddf6c8f49f674d31f"),
     ("prueba_telefonia/api/zadarma_estado_llamada.php",
      "54faf612322f68935899857305b11413cf1bbc0c",
