@@ -147,8 +147,11 @@ $rootPath = dirname(__DIR__, 2);
 $logPath = $rootPath . '/storage/zadarma_webhooks.log';
 
 try {
+    // Reutilizar una única conexión para extensión y autorización PBX.
+    // Evita aperturas extra al pool MySQL de Hostinger en cada marcación.
+    $conexionTelefonia = (new Database())->connect();
     $asignacionTelefonica =
-        (new TelefoniaExtensionService())
+        (new TelefoniaExtensionService($conexionTelefonia))
             ->resolverParaUsuario($usuarioId);
 } catch (Throwable $e) {
     responderJson([
@@ -191,10 +194,8 @@ if ($solicitarCheckpoint) {
     // El SDK no puede marcar sin el OK de este checkpoint. Consultar antes
     // de emitir la orden WebRTC, sin alterar las llamadas ya iniciadas.
     try {
-        $db=(new Database())->connect(false);
-        try {
-            ProspectoNoContactarV3::exigirPermitido($db,$destino);
-        } finally { $db->close(); }
+        // Misma conexión del control de extensión; no abrir otra sesión.
+        ProspectoNoContactarV3::exigirPermitido($conexionTelefonia,$destino);
     } catch (DomainException $e) {
         responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);
     } catch (Throwable $e) {
