@@ -26,7 +26,9 @@ final class EmbudoComercialV3BandejasService
             (int)($_SESSION['rol_id']??0)!==3 ||
             !tienePermiso('ventas.embudo.ver') ||
             !tienePermiso('ventas.embudo.mover') ||
-            !tienePermiso($permiso)) {
+            !tienePermiso($permiso) ||
+            !tienePermiso($permiso==='ventas.recuperacion.gestionar'
+                ?'ventas.recuperacion.ver':'ventas.descartados.ver')) {
             throw new DomainException('No tienes permiso para gestionar esta bandeja.');
         }
     }
