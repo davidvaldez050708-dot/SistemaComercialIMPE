@@ -201,6 +201,16 @@ try {
         new DateTimeZone('America/Mexico_City')))->modify('+3 minutes')
         ->format('Y-m-d H:i:s');
     $add(102,8,'out_test102new','CONVERSACION_PERSONA',$futura);
+    // Aunque la llamada sea posterior, una subetapa NO_CONTACTAR
+    // impide reactivar desde el propio servicio, no solo desde el botón.
+    $db->query("INSERT INTO prospecto_embudo_subetapas
+        (asignacion_id,subetapa,actualizado_por,actualizado_at,version)
+        VALUES (102,'NO_CONTACTAR',8,UTC_TIMESTAMP(),1)");
+    rechazarBandeja(static function()use($svc){
+        $svc->reactivar(8,102,'RECUPERACION',
+            'Prueba de bloqueo con conversación posterior',true);
+    },'No contactar prevalece aun con evidencia PBX');
+    $db->query("DELETE FROM prospecto_embudo_subetapas WHERE asignacion_id=102");
     $reabierto=$svc->reactivar(8,102,'RECUPERACION',
         'Conversación acreditada después de Recuperación',true);
     revisarBandeja($reabierto['etapa']==='CONTACTADO','reactivación acreditada');
