@@ -20,6 +20,10 @@ on:
       - 'app/services/EmbudoComercialV3RecuperacionAuditoria.php'
       - 'tools/ventas_v3_recuperacion_auditoria_hostinger.php'
       - 'tests/ventas_v3_recuperacion_auditoria_unit.php'
+      - 'app/services/EmbudoComercialResultadoBridge.php'
+      - 'tests/ventas_v3_recuperacion_bridge_proteccion_unit.php'
+      - 'tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py'
+      - 'tests/ventas_v3_recuperacion_guardia_publicador_unit.py'
       - 'tools/publicar_ventas_v3_asesores_hostinger.py'
       - 'tests/ventas_v3_publicador_asesores_unit.py'
       - 'docs/ventas_v3_asesores_operativo_20261111.md'
@@ -62,6 +66,11 @@ jobs:
           php -l tools/ventas_v3_recuperacion_auditoria_hostinger.php
           php -l tests/ventas_v3_recuperacion_auditoria_unit.php
           php tests/ventas_v3_recuperacion_auditoria_unit.php
+          php -l app/services/EmbudoComercialResultadoBridge.php
+          php -l tests/ventas_v3_recuperacion_bridge_proteccion_unit.php
+          php tests/ventas_v3_recuperacion_bridge_proteccion_unit.php
+          python3 -m py_compile tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py tests/ventas_v3_recuperacion_guardia_publicador_unit.py
+          python3 tests/ventas_v3_recuperacion_guardia_publicador_unit.py
       - name: Avisos y calificación en Chromium
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/impe-ventas-v3/node_modules/playwright
