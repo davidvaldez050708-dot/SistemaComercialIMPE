@@ -278,7 +278,16 @@ def escenario(puerto, usuario, inicio, cookie=None, registrar=None, verificar_av
     if list(ROLES)[(usuario-1)%len(ROLES)] in (3,4,7):
         for nombre, ruta in (("webrtc", WEBRTC), ("entrada", ENTRADA), ("estado", ESTADO),
                              ("estado_activo", ESTADO_ACTIVO), ("transferencia", TRANSFERENCIA)):
-            e, _, _, ms = peticion(puerto,ruta,cookie)
+            e, _, cuerpo, ms = peticion(puerto,ruta,cookie)
+            if respetar_roles and e == 200:
+                try:
+                    respuesta = json.loads(cuerpo)
+                    if respuesta.get("ok") is not True:
+                        e = "200_sin_exito"
+                    elif nombre == "webrtc" and respuesta.get("webrtc_key") != "fixture-webrtc":
+                        e = "200_sin_llave_sintetica"
+                except (AttributeError, ValueError):
+                    e = "200_json_invalido"
             agregar((nombre, e, ms))
     return datos, cookie
 
@@ -426,7 +435,7 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
             p.wait(timeout=10)
 
 
-def probar_evento_activo(args, sitio, puerto, cookie, sql, log):
+def comprobar_evento_activo(args, puertos, cookie, sql):
     instante = subprocess.check_output([
         args.php, "-r", "date_default_timezone_set('America/Mexico_City'); echo date('Y-m-d H:i:s');",
     ]).decode()
@@ -434,23 +443,28 @@ def probar_evento_activo(args, sitio, puerto, cookie, sql, log):
               "internal": "102", "destination": "525500000001", "call_start": instante}
     cadena = (evento["internal"] + evento["destination"] + instante).encode()
     firma = base64.b64encode(hmac.new(b"fixture", cadena, "sha1").hexdigest().encode()).decode()
+    with ThreadPoolExecutor(max_workers=2) as tareas:
+        entregas = list(tareas.map(
+            lambda p: peticion(p, "/prueba_telefonia/api/zadarma_webhook.php",
+                               datos=evento, cabeceras={"Signature": firma}), puertos))
+        for estado, _, cuerpo, _ in entregas:
+            assert estado == 200 and json.loads(cuerpo)["status"] == "success", ("Webhook simulado", estado)
+        respuestas = list(tareas.map(lambda p: peticion(p, ESTADO_ACTIVO, cookie), puertos))
+    for estado, _, cuerpo, _ in respuestas:
+        assert estado == 200, ("Estado activo en dos pestañas", estado)
+        assert json.loads(cuerpo)["call"]["pbx_call_id"] == "lab-activa-102"
+    cantidad = sql("SELECT COUNT(*) FROM telefonia_zadarma_eventos "
+                   "WHERE pbx_call_id='lab-activa-102';", leer=True)
+    assert cantidad.strip() == b"1", "Entregar el mismo webhook y consultar la llamada no duplica su evento"
+    return {"entregas": len(entregas), "pestanas": len(respuestas), "eventos_persistidos": int(cantidad)}
+
+
+def probar_evento_activo(args, sitio, puerto, cookie, sql, log):
     puerto2, segundo = servidor(args, sitio, log)
     try:
         time.sleep(0.5)
-        with ThreadPoolExecutor(max_workers=2) as tareas:
-            entregas = list(tareas.map(
-                lambda p: peticion(p, "/prueba_telefonia/api/zadarma_webhook.php",
-                                   datos=evento, cabeceras={"Signature": firma}), (puerto, puerto2)))
-            for estado, _, cuerpo, _ in entregas:
-                assert estado == 200 and json.loads(cuerpo)["status"] == "success", ("Webhook simulado", estado)
-            respuestas = list(tareas.map(lambda p: peticion(p, ESTADO_ACTIVO, cookie), (puerto, puerto2)))
-        for estado, _, cuerpo, _ in respuestas:
-            assert estado == 200, ("Estado activo en dos pestañas", estado)
-            assert json.loads(cuerpo)["call"]["pbx_call_id"] == "lab-activa-102"
-        cantidad = sql("SELECT COUNT(*) FROM telefonia_zadarma_eventos "
-                       "WHERE pbx_call_id='lab-activa-102';", leer=True)
-        assert cantidad.strip() == b"1", "Entregar el mismo webhook y consultar la llamada no duplica su evento"
-        print("Webhook simulado: dos entregas firmadas, mismo identificador en dos workers y un solo evento persistido.", flush=True)
+        comprobar_evento_activo(args, (puerto, puerto2), cookie, sql)
+        print("Webhook simulado: dos entregas firmadas, mismo identificador en dos pestañas y un solo evento persistido.", flush=True)
     finally:
         segundo.terminate()
         segundo.wait(timeout=10)

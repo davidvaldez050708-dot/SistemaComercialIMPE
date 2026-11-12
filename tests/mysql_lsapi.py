@@ -14,7 +14,8 @@ import tempfile
 import time
 
 from mysql_capacidad import iniciar, muestra
-from mysql_capacidad_http import autenticar, escenario, peticion, preparar_base, preparar_sitio, servidor
+from mysql_capacidad_http import (autenticar, comprobar_evento_activo, escenario, peticion,
+                                 preparar_base, preparar_sitio, servidor)
 from mysql_limite_aperturas import LimitadorMySQL
 
 
@@ -259,6 +260,13 @@ def main():
                         raise RuntimeError(f"{ruta}: respuestas fuera del contrato: {estados}")
                 if resultado["rechazos_apertura"]:
                     raise RuntimeError("Se rechazaron aperturas MySQL.")
+                if args.php_lsapi:
+                    time.sleep(1)  # Ventana separada de la ráfaga fría.
+                    login, cookie = autenticar(puerto, 2)
+                    if not cookie:
+                        raise RuntimeError(f"No se autenticó el asesor sintético: {login}")
+                    resultado["webhook"] = comprobar_evento_activo(args, (puerto, puerto), cookie, sql)
+                    args.salida.write_text(json.dumps(resultado, indent=2) + "\n", encoding="utf-8")
             finally:
                 if proceso is not None:
                     try:
