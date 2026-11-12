@@ -6,10 +6,11 @@ const bootstrap = path.join(process.env.BOOTSTRAP_MODULE_PATH || require.resolve
   'dist/js/bootstrap.bundle.min.js');
 const tablero = path.join(__dirname, '../public/javascript/embudo_comercial_v3_operativo.js');
 const css = path.join(__dirname, '../public/css/embudo_v3_operativo.css');
+const cssBase = path.join(__dirname, '../public/css/embudo_comercial.css');
 const origen = 'http://embudo.test';
 const guardar = '#impe-v3o-potencial-guardar';
 const aviso = '.system-toast.show';
-const fixture = `<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/tablero.css"><main class="impe-embudo--v3-operativo">
+const fixture = `<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/embudo.css"><link rel="stylesheet" href="/tablero.css"><main class="impe-embudo--v3-operativo">
   <article class="impe-v3o-card" data-asignacion-id="1" data-etapa="INTERESADO" data-v3-subetapa="CALIFICADO">
     <button data-v3-gestionar>Gestionar</button>
     <button data-v3-actividad data-version="7" data-pendiente="1">Actividad</button>
@@ -75,6 +76,7 @@ async function probar(browser, modo) {
     if (url.pathname === '/bootstrap.js') return route.fulfill({ path: bootstrap });
     if (url.pathname === '/tablero.js') return route.fulfill({ path: tablero });
     if (url.pathname === '/tablero.css') return route.fulfill({ path: css });
+    if (url.pathname === '/embudo.css') return route.fulfill({ path: cssBase });
     if (url.pathname === '/index.php') {
       if (modo === 'actividad') {
         assert.equal(url.searchParams.get('action'), 'seguimientoOperativoV3');
