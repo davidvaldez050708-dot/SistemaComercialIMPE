@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/TelefoniaResultadoVentasService.php';
+require_once __DIR__ . '/ProspectoNoContactarV3.php';
 
 /**
  * Identidad de las llamadas que nacen en Inicio del Asesor de Ventas.
@@ -52,6 +53,9 @@ class TelefoniaMarcacionesVentasService
         }
         $extension = $this->extension($usuarioId);
         $destino = TelefoniaContactosService::normalizarTelefono($telefono);
+        // Bloquear antes de guardar el intento o iniciar Zadarma. No basta
+        // con esconder botones en Gestión Comercial: Inicio también marca.
+        ProspectoNoContactarV3::exigirPermitido($this->db,$destino);
         $stmt = $this->db->prepare(
             "INSERT INTO telefonia_ventas_marcaciones (usuario_id, extension, destino, token)
              VALUES (?, ?, ?, ?)"
