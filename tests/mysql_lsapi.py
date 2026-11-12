@@ -4,8 +4,11 @@ import argparse
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 import json
+import os
 from pathlib import Path
 import secrets
+import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -27,6 +30,74 @@ def exigir_sonda(puerto, nonce):
     if not sonda.get("connection_reused_disponible") or str(sonda.get("estadisticas", "")).lower() not in ("1", "on", "yes", "true"):
         raise RuntimeError("El vhost no expone el contador activo de mysqlnd.")
     return sonda
+
+
+def iniciar_lsapi(sitio, puerto, entorno, php_lsapi, evidencia):
+    import grp
+    import pwd
+
+    servidor_ols = Path("/usr/local/lsws")
+    cuenta = pwd.getpwnam("nobody")
+    sitio.parent.chmod(0o755)
+    for carpeta in (sitio / "sesiones-prueba", sitio.parent / "admision-mysql", sitio / "storage"):
+        for ruta in (carpeta, *carpeta.rglob("*")):
+            os.chown(ruta, cuenta.pw_uid, cuenta.pw_gid)
+    configuracion = "\n".join("  env " + nombre + "=" + valor for nombre, valor in entorno.items())
+    (servidor_ols / "conf/httpd_config.conf").write_text(f"""
+serverName impe-lab
+user nobody
+group {grp.getgrgid(cuenta.pw_gid).gr_name}
+errorlog {evidencia / 'ols-error.log'} {{
+  logLevel INFO
+}}
+listener loopback {{
+  address 127.0.0.1:{puerto}
+  secure 0
+  map laboratorio *
+}}
+virtualhost laboratorio {{
+  vhRoot {sitio}
+  configFile {sitio.parent / 'vhost.conf'}
+  allowSymbolLink 0
+  enableScript 1
+  restrained 1
+}}
+""", encoding="utf-8")
+    (sitio.parent / "vhost.conf").write_text(f"""
+docRoot {sitio}
+indexFiles index.php
+extprocessor php-lab {{
+  type lsapi
+  address uds://{sitio.parent / 'php.sock'}
+  maxConns 30
+  env PHP_LSAPI_CHILDREN=30
+  env LSAPI_MAX_REQS=100000
+  env PHP_INI_SCAN_DIR={sitio.parent / 'php-conf'}
+{configuracion}
+  initTimeout 30
+  retryTimeout 0
+  persistConn 1
+  autoStart 1
+  path {php_lsapi}
+  instances 1
+}}
+scripthandler {{
+  add lsapi:php-lab php
+}}
+""", encoding="utf-8")
+    ini = sitio.parent / "php-conf"
+    ini.mkdir()
+    # Retain the image's extension ini files, overriding only lab settings.
+    for archivo in php_lsapi.parent.parent.glob("etc/php/8.2/*/conf.d/*.ini"):
+        shutil.copyfile(archivo, ini / archivo.name)
+    (ini / "99-lab.ini").write_text(
+        f"session.save_path={sitio / 'sesiones-prueba'}\n"
+        "mysqlnd.collect_statistics=1\ndisplay_errors=0\nlog_errors=1\n",
+        encoding="utf-8",
+    )
+    binario = servidor_ols / "bin/openlitespeed"
+    subprocess.run([str(binario), "-t"], check=True)
+    return subprocess.Popen([str(binario), "-n"])
 
 
 def autenticar_usuarios(puerto, usuarios):
@@ -64,8 +135,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for opcion in ("php", "mysql"):
         parser.add_argument("--" + opcion, required=True)
-    for opcion in ("base", "cambios", "esquema", "salida"):
+    for opcion in ("base", "salida"):
         parser.add_argument("--" + opcion, required=True, type=Path)
+    for opcion in ("cambios", "esquema", "php-lsapi"):
+        parser.add_argument("--" + opcion, type=Path)
     parser.add_argument("--port", type=int, required=True, help="MariaDB desechable en loopback")
     parser.add_argument("--puerto-lsapi", type=int, default=18082)
     parser.add_argument("--usuarios", type=int, choices=(10, 30), required=True)
@@ -94,7 +167,7 @@ def main():
                     primer.terminate()
                     primer.wait(timeout=10)
             nonce = secrets.token_hex(16)
-            print(json.dumps({
+            entorno = {
                 "docroot": str(sitio), "session.save_path": str(sitio / "sesiones-prueba"),
                 "IMPE_LAB_SNAPSHOT": "1", "IMPE_LAB_NONCE": nonce,
                 "IMPE_PRIVATE_CONFIG_DIR": str(sitio / "config"),
@@ -103,9 +176,24 @@ def main():
                 "IMPE_DB_NAME": "impe_test_capacidad", "IMPE_DB_USER": "impe_capacity",
                 "IMPE_DB_PASSWORD": "", "IMPE_DB_PERSISTENT": "1", "IMPE_DB_INDEPENDENT_PERSISTENT": "1",
                 "IMPE_BASE_URL": f"http://127.0.0.1:{args.puerto_lsapi}/", "APP_ENV": "development",
-            }, indent=2), flush=True)
+            }
+            evidencia = args.salida.resolve().parent
+            evidencia.mkdir(parents=True, exist_ok=True)
+            proceso = None
             try:
-                input("Arranca el vhost LSAPI aislado con estos parámetros y confirma con Enter. ")
+                if args.php_lsapi:
+                    if args.perfil.startswith("reciclaje"):
+                        raise RuntimeError("El reciclaje automático todavía no está disponible.")
+                    proceso = iniciar_lsapi(sitio, args.puerto_lsapi, entorno, args.php_lsapi, evidencia)
+                    for _ in range(30):
+                        try:
+                            exigir_sonda(args.puerto_lsapi, nonce)
+                            break
+                        except OSError:
+                            time.sleep(1)
+                else:
+                    print(json.dumps(entorno, indent=2), flush=True)
+                    input("Arranca el vhost LSAPI aislado con estos parámetros y confirma con Enter. ")
                 puerto = args.puerto_lsapi
                 sonda = exigir_sonda(puerto, nonce)
                 cookies = [None] * args.usuarios
@@ -132,8 +220,18 @@ def main():
                 assert lecturas.strip() == b"0", "El sondeo marcó avisos"
                 args.salida.write_text(json.dumps(resultado, indent=2) + "\n", encoding="utf-8")
                 print(f"Métricas de la réplica: {args.salida}")
+                for ruta, estados in resultado["rutas"].items():
+                    esperados = {"302"} if ruta == "login" else {"200"}
+                    if set(estados) - esperados:
+                        raise RuntimeError(f"{ruta}: respuestas fuera del contrato: {estados}")
+                if resultado["rechazos_apertura"]:
+                    raise RuntimeError("Se rechazaron aperturas MySQL.")
             finally:
-                input("Detén el vhost de prueba antes de pulsar Enter para eliminar la copia desechable. ")
+                if proceso is not None:
+                    proceso.terminate()
+                    proceso.wait(timeout=15)
+                elif not args.php_lsapi:
+                    input("Detén el vhost de prueba antes de pulsar Enter para eliminar la copia desechable. ")
     finally:
         observador.stdin.close()
         observador.wait(timeout=10)

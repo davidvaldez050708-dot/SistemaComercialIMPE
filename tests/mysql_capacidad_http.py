@@ -160,14 +160,14 @@ def preparar_sitio(destino, base, cambios):
     shutil.copyfile(REPO / "logout.php", destino / "logout.php")
     shutil.copyfile(REPO / "tests/mysql_snapshot_web.php", destino / "mysql_snapshot_web.php")
     vendor = destino / "vendor"
-    vendor.mkdir()
+    vendor.mkdir(exist_ok=True)
     (vendor / "autoload.php").write_text(PROVEEDOR, encoding="utf-8")
     (destino / "config/mail_config.php").write_text("<?php return [];", encoding="utf-8")
     (destino / "config/zadarma_config.php").write_text(
         "<?php return ['api_key'=>'fixture','api_secret'=>'fixture'];", encoding="utf-8")
-    (destino / "storage").mkdir()
+    (destino / "storage").mkdir(exist_ok=True)
     # El archivo de revisión trae PHP y JS. Los estilos son irrelevantes para HTTP.
-    (destino / "public/css").mkdir()
+    (destino / "public/css").mkdir(exist_ok=True)
     for estilo in ("global.css", "dashboard.css", "recordatorios.css"):
         (destino / "public/css" / estilo).touch()
     (destino / "sesiones-prueba").mkdir()

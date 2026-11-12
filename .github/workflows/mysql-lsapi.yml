@@ -1,0 +1,43 @@
+name: Laboratorio MySQL OpenLiteSpeed
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/mysql-auditoria-capacidad]
+    paths:
+      - .github/workflows/mysql-lsapi.yml
+      - tests/mysql_lsapi.py
+      - tests/mysql_lsapi_ci.sh
+      - tests/mysql_lsapi.Dockerfile
+      - tests/mysql_capacidad_http.py
+
+permissions:
+  contents: read
+
+jobs:
+  humo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        usuarios: [10, 30]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Construir réplica
+        run: docker build -t impe-lsapi -f tests/mysql_lsapi.Dockerfile .
+      - name: Ejecutar sin acceso a red externa
+        env:
+          USUARIOS: ${{ matrix.usuarios }}
+        run: |
+          mkdir -p evidencia
+          set -o pipefail
+          docker run --rm --network none \
+            -v "$PWD:/codigo:ro" -v "$PWD/evidencia:/evidencia" \
+            impe-lsapi bash /codigo/tests/mysql_lsapi_ci.sh "$USUARIOS" 2>&1 | tee evidencia/ejecucion.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mysql-lsapi-humo-${{ matrix.usuarios }}
+          path: evidencia/
