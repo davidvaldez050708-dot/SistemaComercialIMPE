@@ -33,16 +33,16 @@ $nombreAsesor = trim(($asesor['nombre'] ?? '') . ' ' . ($asesor['apellidos'] ?? 
         </button>
     </div>
     <?php if ($tieneCuentasClave): ?>
-        <button type="button" class="btn btn-territory-expand"
-            data-team-toggle
-            data-target="formAsesorCuenta<?= (int)$asesor['id'] ?>"
-            aria-controls="formAsesorCuenta<?= (int)$asesor['id'] ?>"
-            aria-expanded="false">
-            <i class="bi bi-people me-2" aria-hidden="true"></i>
-            <?= !empty($asesor['cuenta_clave_asignacion_id'])
-                ? 'Cambiar Cuenta Clave del Asesor'
-                : 'Vincular Cuenta Clave al Asesor' ?>
-        </button>
+        <?php if (empty($asesor['cuenta_clave_asignacion_id'])): ?>
+            <button type="button" class="btn btn-territory-expand"
+                data-team-toggle
+                data-target="formAsesorCuenta<?= (int)$asesor['id'] ?>"
+                aria-controls="formAsesorCuenta<?= (int)$asesor['id'] ?>"
+                aria-expanded="false">
+                <i class="bi bi-people me-2" aria-hidden="true"></i>
+                Vincular Cuenta Clave al Asesor
+            </button>
+        <?php endif; ?>
         <div class="territory-expandable-form"
             id="formAsesorCuenta<?= (int)$asesor['id'] ?>" hidden>
             <form class="territory-inline-form" data-team-form
