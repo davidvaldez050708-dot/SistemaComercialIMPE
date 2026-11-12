@@ -183,7 +183,28 @@ class FormularioRegistroModel
             );
         }
 
-        return (int)$this->connection->insert_id;
+        $registroId = (int)$this->connection->insert_id;
+
+        /*
+         * Piloto OPT-IN: únicamente registros con email ficticio autorizado.
+         * Inscripciones y registros reales nunca se exportan. La cola se
+         * escribe en la misma conexión (y transacción del aliado si existe).
+         * Una falla externa jamás invalida el registro del formulario.
+         */
+        if (!$esInscripcion) {
+            try {
+                require_once __DIR__ . '/../services/ZohoDeveloperRegistroSync.php';
+                ZohoDeveloperRegistroSync::encolarSiAutorizado(
+                    $this->connection,
+                    $registroId,
+                    (string)($datos['correo'] ?? '')
+                );
+            } catch (Throwable $error) {
+                error_log('[zoho_dev_piloto] no se pudo agregar trabajo a la cola.');
+            }
+        }
+
+        return $registroId;
     }
 
     private function convertirResultadoEnArreglo($resultado)
