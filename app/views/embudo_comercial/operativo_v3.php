@@ -72,7 +72,8 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
              data-asignacion-id="<?= (int)$p['asignacion_id'] ?>"
              data-etapa="<?= $esc($real) ?>"
              data-nombre="<?= $esc($p['nombre_completo']) ?>"
-             data-v3-destinos="<?= $esc($destinos) ?>">
+             data-v3-destinos="<?= $esc($destinos) ?>"
+             <?= $propuestas?'draggable="true"':'' ?>>
         <div class="impe-embudo-card-line">
             <a href="<?= $esc($detalle) ?>" class="impe-embudo-persona"
                title="Ver ficha comercial"><?= $esc($p['nombre_completo']) ?></a>
@@ -203,7 +204,9 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
          aria-label="Cinco etapas del embudo de ventas">
         <?php foreach($contenedorStage as $clave=>$conf):
             $col=$tablero['columnas'][$clave]; ?>
-        <section class="impe-embudo-lane impe-v3o-columna" aria-label="<?= $esc($col['etiqueta']) ?>">
+        <section class="impe-embudo-lane impe-v3o-columna"
+                 data-etapa="<?= $esc($clave) ?>"
+                 aria-label="<?= $esc($col['etiqueta']) ?>">
             <div class="impe-embudo-lane-head">
                 <div>
                     <h3><i class="bi <?= $esc($conf[0]) ?>" aria-hidden="true"></i>
