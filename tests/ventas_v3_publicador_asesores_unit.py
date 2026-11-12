@@ -33,7 +33,7 @@ UNCHANGED={
  "app/services/EmbudoComercialPoliticaPropuesta.php":"e5ec54f6fac872d09bf534a06debf7e38ee410c1",
  "app/services/EmbudoComercialV3IndicadoresVista.php":"c7419b2521392c48a0eebefb54bc9c7fd1cfda1c",
  "app/views/embudo_comercial/previsualizacion_v3.php":"04f1180034ea0f94ca78fb9eba87a36b96c45fe7",
- "public/css/embudo_v3_operativo.css":"57ef9790d4868837e16807a0e56faf214c49219d",
+ "public/css/embudo_v3_indicadores.css":"57ef9790d4868837e16807a0e56faf214c49219d",
 }
 def check(ok,why):
     if not ok:
@@ -86,7 +86,7 @@ with tempfile.TemporaryDirectory(prefix="impe-v3-publish-test-") as temp:
     check(not os.path.exists(backups),"no backup or publication before authorization")
 
     # Tampering any one of the 6 downloaded files is rejected.
-    altered=os.path.join(stage,"public/css/embudo_v3_indicadores.css")
+    altered=os.path.join(stage,"public/css/embudo_v3_operativo.css")
     valid=read(altered)
     write(altered,valid+b"\n/* bad edit */\n")
     code,out,err=call(check_args)
