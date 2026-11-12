@@ -24,6 +24,7 @@
     let revision = 0;
     let loading = null;
     let timer = null;
+    let exportando = false;
     let drawerRevision = 0;
     let anteriorFoco = null;
 
@@ -41,6 +42,90 @@
         if (includePage) values.set('pagina', String(pagina));
         return values;
     }
+
+    function mostrarToastExportacion(mensaje, esError = false) {
+        const Toast = window.bootstrap?.Toast;
+        if (!Toast) return;
+
+        let contenedor = document.querySelector('.toast-container:not([data-reminder-toast-container])');
+        if (!contenedor) {
+            contenedor = document.createElement('div');
+            contenedor.className = 'toast-container position-fixed top-0 end-0 p-3';
+            contenedor.style.zIndex = '1095';
+            document.body.appendChild(contenedor);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'toast system-toast' + (esError ? ' system-toast-error' : '');
+        toast.setAttribute('role', esError ? 'alert' : 'status');
+        toast.setAttribute('aria-atomic', 'true');
+        const contenido = document.createElement('div');
+        contenido.className = 'toast-body';
+        const icono = document.createElement('i');
+        icono.className = esError ? 'bi bi-exclamation-circle' : 'bi bi-check2-circle';
+        icono.setAttribute('aria-hidden', 'true');
+        const texto = document.createElement('span');
+        texto.textContent = mensaje;
+        contenido.append(icono, texto);
+        toast.appendChild(contenido);
+        contenedor.appendChild(toast);
+
+        const instancia = Toast.getOrCreateInstance(toast, { autohide: true, delay: 3200 });
+        toast.addEventListener('hidden.bs.toast', () => {
+            instancia.dispose();
+            toast.remove();
+        }, { once: true });
+        instancia.show();
+    }
+
+    async function exportarExcel() {
+        if (exportando || exportButton.disabled || total < 1 || total > 10000) return;
+
+        exportando = true;
+        exportButton.setAttribute('aria-busy', 'true');
+        const errorDescarga = 'No se pudo descargar el Excel. Intenta de nuevo.';
+        const tipoExcel = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+        try {
+            const url = app.dataset.exportUrl + '&' + params(false).toString();
+            const respuesta = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+            const tipo = respuesta.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase();
+            if (!respuesta.ok) {
+                const detalle = respuesta.status === 422 && tipo === 'text/plain'
+                    ? (await respuesta.text()).trim()
+                    : '';
+                mostrarToastExportacion(detalle || errorDescarga, true);
+                return;
+            }
+
+            const adjunto = respuesta.headers.get('Content-Disposition') || '';
+            if (tipo !== tipoExcel || !/^attachment\b/i.test(adjunto)) {
+                throw new Error(errorDescarga);
+            }
+
+            const archivo = await respuesta.blob();
+            if (!archivo.size) throw new Error(errorDescarga);
+
+            const enlace = document.createElement('a');
+            const urlTemporal = URL.createObjectURL(archivo);
+            enlace.href = urlTemporal;
+            enlace.download = adjunto.match(/filename="([^"]+\.xlsx)"/i)?.[1] || 'inscritos.xlsx';
+            document.body.appendChild(enlace);
+            try {
+                enlace.click();
+            } finally {
+                enlace.remove();
+                setTimeout(() => URL.revokeObjectURL(urlTemporal), 30000);
+            }
+            mostrarToastExportacion('Se inició la descarga del archivo Excel.');
+        } catch {
+            mostrarToastExportacion(errorDescarga, true);
+        } finally {
+            exportando = false;
+            exportButton.removeAttribute('aria-busy');
+        }
+    }
+
     function localDate(value) {
         if (!value) return '—';
         const d = new Date(value.replace(' ', 'T') + 'Z');
@@ -202,10 +287,7 @@
         if(destino>=1&&destino<=paginas&&destino!==pagina){pagina=destino;cargar();}
     });
     exportButton?.addEventListener('click',()=>{
-        if (total<1||total>10000) return;
-        // Mismos parámetros que el listado, excluyendo solo la paginación.
-        const url=app.dataset.exportUrl+'&'+params(false).toString();
-        window.location.assign(url);
+        return exportarExcel();
     });
 
     function agregarSeccion(titulo, icon, items) {
