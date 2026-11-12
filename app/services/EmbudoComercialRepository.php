@@ -249,6 +249,22 @@ final class EmbudoComercialRepository
          END";
     }
 
+    /**
+     * Agrupación SOLO VISUAL para el trabajo del asesor, sin migración SQL.
+     * INTERESADO aparece como Potencial (denominación nueva). PAGO_CONFIRMADO
+     * aparece en Proceso Inscripción como registro histórico por VALIDAR,
+     * sin interpretar que inscripción ni pago fueron acreditados.
+     * Las etapas originales y las restricciones de movimiento se conservan.
+     */
+    public static function clasificacionV3OperativoSql(): string
+    {
+        return "CASE
+           WHEN e.etapa='INTERESADO' THEN 'POTENCIAL'
+           WHEN e.etapa='PAGO_CONFIRMADO' THEN 'PROCESO_INSCRIPCION'
+           ELSE ".self::clasificacionV3Sql()."
+        END";
+    }
+
     public function listadoV3Preparacion(int $usuarioId,bool $supervisor,array $f): array
     {
         $grupos=[
@@ -391,7 +407,7 @@ final class EmbudoComercialRepository
             }
         }
         [$from,$args]=$this->condiciones($usuarioId,false,$f);
-        $expr=self::clasificacionV3Sql();
+        $expr=self::clasificacionV3OperativoSql();
         $totales=[];
         foreach($this->rows("SELECT $expr grupo, COUNT(*) total
                 $from GROUP BY $expr",$args) as $fila) {
