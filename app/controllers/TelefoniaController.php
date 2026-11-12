@@ -274,6 +274,8 @@ class TelefoniaController
             $this->responderJson(['ok' => true, 'token' => $token]);
         } catch (InvalidArgumentException $e) {
             $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (DomainException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 409);
         } catch (Throwable $e) {
             error_log('[telefonia_ventas_inicio] ' . $e->getMessage());
             $this->responderJson([
