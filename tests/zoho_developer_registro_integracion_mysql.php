@@ -123,10 +123,25 @@ $tabla = "(
 
 $db->query('CREATE TABLE formulario_registros ' . $tabla);
 $db->query('CREATE TABLE formulario_inscripciones ' . $tabla);
-$sql = trim((string)file_get_contents(
-    __DIR__ . '/../database/zoho_dev_registros_pendientes.sql'
-));
-$db->query($sql);
+// El instalador crea únicamente la cola, comprobando primero los formularios.
+$instalador = escapeshellarg(PHP_BINARY) . ' ' .
+    escapeshellarg(__DIR__ . '/../tools/zoho_dev_cola_instalar.php');
+exec($instalador . ' --check 2>&1', $lecturaAntes, $codigoLectura);
+checkZoho($codigoLectura === 0 && strpos(
+    implode("\n", $lecturaAntes), 'COLA: AUSENTE'
+) !== false, 'instalador detecta cola ausente sin escribir');
+exec($instalador . ' --install --confirm-new-table 2>&1', $instalacion, $codigoInstall);
+checkZoho($codigoInstall === 0 && strpos(
+    implode("\n", $instalacion), 'INSTALACION_OK'
+) !== false, 'instalador crea exclusivamente cola en MySQL temporal');
+exec($instalador . ' --check 2>&1', $lecturaDespues, $codigoDespues);
+checkZoho($codigoDespues === 0 && strpos(
+    implode("\n", $lecturaDespues), 'COLA: INNODB_COMPATIBLE'
+) !== false, 'cola creada es compatible');
+exec($instalador . ' --install --confirm-new-table 2>&1', $repeticion, $codigoRepeticion);
+checkZoho($codigoRepeticion === 0 && strpos(
+    implode("\n", $repeticion), 'YA_INSTALADA'
+) !== false, 'instalación repetida no altera la cola');
 checkZoho(true, 'tablas aisladas creadas en MySQL temporal');
 
 $real = ZohoDeveloperRegistroSync::configuracion();
