@@ -68,7 +68,7 @@ $fecha = function ($valorFecha) use ($texto) {
 
 ?>
 
-<div class="territory-team-content">
+<div class="territory-team-content<?= $tieneCuentasClave ? ' territory-team-has-accounts' : '' ?>">
     <section class="territory-team-section">
         <h4 class="territory-team-section-title">Equipo actual</h4>
 
@@ -129,7 +129,12 @@ $fecha = function ($valorFecha) use ($texto) {
                             <button type="button" data-team-filter="asesores" aria-pressed="false" aria-label="Mostrar asesores de <?= $texto($nombreCuenta) ?>">
                                 <i class="bi bi-people" aria-hidden="true"></i> <?= count($asesoresCuenta) ?> <?= count($asesoresCuenta) === 1 ? 'asesor' : 'asesores' ?>
                             </button>
+                            <button type="button" class="btn btn-territory-expand territory-team-shared-button"
+                                data-team-shared-action="formCuentaClave" aria-controls="formCuentaClave" aria-expanded="false">
+                                <i class="bi bi-plus-circle me-2" aria-hidden="true"></i>Agregar otra Cuenta Clave
+                            </button>
                         </div>
+                        <div data-team-shared-slot="formCuentaClave"></div>
 
                         <div class="territory-team-pane" data-team-pane="analistas">
                         <div class="territory-analyst-list">
@@ -293,6 +298,11 @@ $fecha = function ($valorFecha) use ($texto) {
                                     <p class="territory-empty-text">Sin asesores asignados.</p>
                                 <?php endif; ?>
                             </div>
+                            <button type="button" class="btn btn-territory-expand"
+                                data-team-shared-action="formAsesor" aria-controls="formAsesor" aria-expanded="false">
+                                <i class="bi bi-plus-circle me-2" aria-hidden="true"></i>Agregar asesor
+                            </button>
+                            <div data-team-shared-slot="formAsesor"></div>
                         </div>
                     </article>
 
@@ -475,7 +485,7 @@ $fecha = function ($valorFecha) use ($texto) {
 
     <?php endif; ?>
 
-    <section class="territory-team-section">
+    <section class="territory-team-section territory-team-global-advisors<?= $asesoresSinCuenta ? '' : ' territory-team-global-advisors-empty' ?>">
         <h4 class="territory-team-section-title"><?= $asesoresSinCuenta ? 'Asesores sin Cuenta Clave' : 'Agregar asesor' ?></h4>
 
         <article class="territory-team-card">

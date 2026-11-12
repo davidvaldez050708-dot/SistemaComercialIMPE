@@ -571,6 +571,45 @@
     outline-offset: 2px;
 }
 
+#modalEquipoTerritorial .territory-team-summary > .territory-team-shared-button {
+    min-height: 34px;
+    margin: 0 0 0 auto;
+    padding: 6px 11px;
+    border: 1px solid #cbd8ee;
+    border-radius: 8px;
+    background: #fff;
+    color: #273a8a;
+    font-size: 10.5px;
+    white-space: normal;
+}
+
+#modalEquipoTerritorial .territory-team-summary > .territory-team-shared-button:hover {
+    border-color: #273a8a;
+    background: #edf3fb;
+    color: #273a8a;
+}
+
+#modalEquipoTerritorial .territory-team-summary > .territory-team-shared-button[hidden],
+#modalEquipoTerritorial .territory-team-pane > .btn-territory-expand[hidden] {
+    display: none;
+}
+
+#modalEquipoTerritorial .territory-team-has-accounts > .territory-team-add,
+#modalEquipoTerritorial .territory-team-has-accounts > .territory-team-global-advisors-empty,
+#modalEquipoTerritorial .territory-team-has-accounts > .territory-team-global-advisors > .territory-team-card > [data-target="formAsesor"] {
+    display: none;
+}
+
+#modalEquipoTerritorial [data-team-shared-slot] .territory-inline-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#modalEquipoTerritorial [data-team-shared-slot] .territory-inline-actions {
+    grid-column: 1 / -1;
+    padding-top: 0;
+    white-space: normal;
+}
+
 #modalEquipoTerritorial .territory-team-pane[hidden] {
     display: none;
 }
@@ -636,6 +675,10 @@
 
     #modalEquipoTerritorial .territory-team-section:first-child > .territory-team-list > .territory-team-card {
         padding: 14px;
+    }
+
+    #modalEquipoTerritorial [data-team-shared-slot] .territory-inline-form {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 

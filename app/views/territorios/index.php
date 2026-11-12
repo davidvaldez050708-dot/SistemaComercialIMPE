@@ -1173,10 +1173,37 @@ document.addEventListener('DOMContentLoaded', function () {
         const fila = event.target.closest('[data-territory-row]');
         const botonEquipo = event.target.closest('[data-open-team-manager]');
         const botonFiltroEquipo = event.target.closest('[data-team-filter]');
+        const botonAccionCompartida = event.target.closest('[data-team-shared-action]');
         const botonExpandir = event.target.closest('[data-team-toggle]');
         const botonCancelarEquipo = event.target.closest('[data-team-cancel]');
         const botonFinalizar = event.target.closest('[data-finalize-assignment]');
         const botonEditar = event.target.closest('[data-edit-territory]');
+
+        if (botonAccionCompartida && modalEquipo && modalEquipo.contains(botonAccionCompartida)) {
+            const tarjeta = botonAccionCompartida.closest('.territory-team-card');
+            const destino = botonAccionCompartida.dataset.teamSharedAction;
+            const contenedor = equipoContenido.querySelector('#' + destino);
+            const espacio = tarjeta && tarjeta.querySelector('[data-team-shared-slot="' + destino + '"]');
+            if (contenedor && espacio) {
+                const tarjetaAnterior = contenedor.closest('.territory-team-card');
+                const botonAnterior = tarjetaAnterior && tarjetaAnterior.querySelector(
+                    '[data-team-shared-action="' + destino + '"]'
+                );
+                if (botonAnterior) {
+                    botonAnterior.hidden = false;
+                    botonAnterior.setAttribute('aria-expanded', 'false');
+                }
+                espacio.appendChild(contenedor);
+                contenedor.hidden = false;
+                botonAccionCompartida.hidden = true;
+                botonAccionCompartida.setAttribute('aria-expanded', 'true');
+                const primerCampo = contenedor.querySelector('select, input');
+                if (primerCampo && !primerCampo.disabled) {
+                    primerCampo.focus();
+                }
+            }
+            return;
+        }
 
         if (botonFiltroEquipo && modalEquipo && modalEquipo.contains(botonFiltroEquipo)) {
             const tarjeta = botonFiltroEquipo.closest('.territory-team-card');
@@ -1241,7 +1268,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (contenedor) {
                 contenedor.hidden = true;
 
-                const botonToggle = document.querySelector(
+                const tarjetaFormulario = contenedor.closest('.territory-team-card');
+                const botonToggle = (tarjetaFormulario && tarjetaFormulario.querySelector(
+                    '[data-team-shared-action="' + contenedor.id + '"]'
+                )) || document.querySelector(
                     '[data-team-toggle][data-target="' + contenedor.id + '"]'
                 );
 
