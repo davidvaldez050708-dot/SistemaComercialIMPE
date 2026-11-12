@@ -442,6 +442,180 @@
     }
 }
 
+/* Modal de equipo: tarjetas por Cuenta Clave sin alterar formularios ni acciones. */
+#modalEquipoTerritorial .territory-team-dialog {
+    width: min(1180px, calc(100vw - 32px));
+    max-width: min(1180px, calc(100vw - 32px));
+    margin-right: auto;
+    margin-left: auto;
+}
+
+#modalEquipoTerritorial .system-form-modal {
+    border-radius: 20px;
+}
+
+#modalEquipoTerritorial .system-form-modal-header {
+    padding: 22px 28px;
+}
+
+#modalEquipoTerritorial .system-form-modal-title {
+    font-size: 22px;
+    letter-spacing: -0.02em;
+}
+
+#modalEquipoTerritorial .system-form-modal-subtitle {
+    font-size: 12px;
+}
+
+#modalEquipoTerritorial .territory-team-modal-body {
+    padding: 28px;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+}
+
+#modalEquipoTerritorial .territory-team-content {
+    gap: 22px;
+}
+
+#modalEquipoTerritorial .territory-team-section:first-child > .territory-team-section-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+#modalEquipoTerritorial .territory-team-section:first-child > .territory-team-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 18px;
+}
+
+#modalEquipoTerritorial .territory-team-section:first-child > .territory-team-list > .territory-team-card {
+    min-width: 0;
+    padding: 20px;
+    border-color: #d7e2f4;
+    border-radius: 15px;
+}
+
+#modalEquipoTerritorial .territory-team-card-header {
+    align-items: center;
+}
+
+#modalEquipoTerritorial .territory-team-card-header > .territory-team-person .system-avatar {
+    width: 58px;
+    min-width: 58px;
+    height: 58px;
+}
+
+#modalEquipoTerritorial .territory-team-label {
+    display: inline-block;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #eaf0ff;
+    color: #283d9c;
+    font-size: 10px;
+}
+
+#modalEquipoTerritorial .territory-team-card-header strong {
+    margin-top: 7px;
+    font-size: 15px;
+}
+
+#modalEquipoTerritorial .territory-team-card-header small {
+    margin-top: 4px;
+}
+
+#modalEquipoTerritorial .territory-team-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin-top: 16px;
+    padding: 13px 0;
+    border-top: 1px solid #e5ebf5;
+    border-bottom: 1px solid #e5ebf5;
+}
+
+#modalEquipoTerritorial .territory-team-summary > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #f1f5fc;
+    color: #253d85;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+#modalEquipoTerritorial .territory-team-summary > .territory-team-active {
+    background: #e1f5eb;
+    color: #087946;
+}
+
+#modalEquipoTerritorial .territory-team-active .bi {
+    font-size: 7px;
+}
+
+#modalEquipoTerritorial .territory-team-card .territory-analyst-list {
+    margin-top: 15px;
+    padding-top: 0;
+    border-top: 0;
+}
+
+#modalEquipoTerritorial .territory-team-card .territory-analyst-row {
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid #e4ebf6;
+    border-radius: 11px;
+}
+
+#modalEquipoTerritorial .territory-team-card .territory-analyst-label {
+    font-size: 10.5px;
+}
+
+#modalEquipoTerritorial .territory-team-advisor-item + .territory-team-advisor-item {
+    margin-top: 8px;
+}
+
+#modalEquipoTerritorial .territory-team-advisor-item > .btn-territory-expand {
+    margin-top: 6px;
+}
+
+#modalEquipoTerritorial .territory-team-card > .btn-territory-expand {
+    margin-top: 14px;
+}
+
+@media (max-width: 980px) {
+    #modalEquipoTerritorial .territory-team-section:first-child > .territory-team-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 575.98px) {
+    #modalEquipoTerritorial .territory-team-dialog {
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+    }
+
+    #modalEquipoTerritorial .system-form-modal-header,
+    #modalEquipoTerritorial .territory-team-modal-body {
+        padding: 16px;
+    }
+
+    #modalEquipoTerritorial .system-form-modal-title {
+        font-size: 18px;
+    }
+
+    #modalEquipoTerritorial .territory-team-section:first-child > .territory-team-list > .territory-team-card {
+        padding: 14px;
+    }
+}
+
 
 /* =========================================================
    DETALLE TERRITORIAL · RESTAURACIÓN VISUAL
