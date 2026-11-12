@@ -13,10 +13,14 @@ const html=`<!doctype html><html><head><meta charset="utf-8">
 <article class="impe-v3o-card" data-asignacion-id="101" data-etapa="NUEVO"
  data-nombre="Prospecto de prueba">
 <button data-v3b-accion="RECUPERACION">Revisar Recuperación</button>
+<button data-v3b-llamar="+527771234567">Llamar recuperación</button>
 <button data-v3b-accion="DESCARTAR">Descartar</button></article>
 <article class="impe-v3o-card" data-asignacion-id="102" data-etapa="RECUPERACION"
  data-nombre="Prospecto en Recuperación">
 <button data-v3b-accion="REACTIVAR">Reactivar</button></article>
+<article data-asignacion-id="103" data-etapa="RECUPERACION"
+ data-no-contactar="1"><button data-v3b-llamar="+527771234599">
+ Llamada bloqueada</button></article>
 <dialog class="impe-embudo-dialog impe-v3b-dialog" id="impe-v3b-dialog">
 <form method="dialog" id="impe-v3b-form">
 <header><h3 id="impe-v3b-titulo">Revisión</h3><button type="button" data-v3b-cerrar>Cerrar</button></header>
@@ -43,8 +47,10 @@ async function run(mode) {
   await page.addInitScript(()=>{
     window.IMPE_CURRENT_USER_ID=8;
     window.IMPE_CSRF_TOKEN='csrf-para-test';
+    window.__dialed=[];
     window.IMPE_TELEPHONY_PERSISTENT={
-      getState:()=>({active:Boolean(window.pruebaLlamadaActiva)})
+      getState:()=>({active:Boolean(window.pruebaLlamadaActiva)}),
+      openDialer:options=>window.__dialed.push(options)
     };
   });
   await page.route(origin+'/**',async route=>{
@@ -83,6 +89,23 @@ async function run(mode) {
   });
   try{
     await page.goto(origin);
+    if(mode==='marcacion'){
+      await page.getByRole('button',{name:'Llamar recuperación'}).click();
+      assert.deepEqual(await page.evaluate(()=>window.__dialed),
+        [{number:'+527771234567'}]);
+      const contexto=await page.evaluate(()=>JSON.parse(
+        sessionStorage.getItem('impe:embudo:llamada-pendiente')||'null'));
+      assert.equal(contexto.asignacionId,'101');
+      assert.equal(contexto.usuarioId,8);
+      assert.equal(contexto.numero,'+527771234567');
+      await page.getByRole('button',{name:'Llamada bloqueada'}).click();
+      assert.equal((await page.evaluate(()=>window.__dialed)).length,1,
+        'No contactar nunca abre el dialer en Gestión Comercial');
+      assert.equal(writes,0,'abrir el dialer no crea resultados');
+      assert.equal(navigations,1,'no se pierde contexto por navegar');
+      console.log('Bandeja V3: marcación y No contactar OK');
+      return;
+    }
     if(mode==='recuperacion'){
       await page.getByRole('button',{name:'Revisar Recuperación'}).click();
       assert.equal(await page.locator('[name=dia]').inputValue(),'2026-11-12');
@@ -116,5 +139,5 @@ async function run(mode) {
     console.log('Bandeja V3:',mode,'OK');
   }finally{await browser.close();}
 }
-(async()=>{for(const mode of ['recuperacion','descarte','reactivacion'])await run(mode);})()
+(async()=>{for(const mode of ['marcacion','recuperacion','descarte','reactivacion'])await run(mode);})()
   .catch(err=>{console.error(err);process.exitCode=1;});
