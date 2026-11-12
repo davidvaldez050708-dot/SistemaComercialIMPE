@@ -33,10 +33,13 @@
    ~/.config/sistema_comercial_impe/zoho_oauth.json (permisos 600).
    Su campo api_domain puede decir www.zohoapis.com: la API del worker
    usa deliberadamente developer.zohoapis.com.
-4. En **Posibles clientes** de Zoho Developer, crear un campo de texto
-   externo **único**, con API name IMPE_Registro_ID (o ajustar el nombre
-   exacto en la configuración). Verificar el API name en Developer Hub.
-   **No habilitar --run si no existe y no es único.**
+4. En **Posibles clientes** de Zoho Developer, crear un campo
+   personalizado **Texto de una línea**, por ejemplo "IMPE Registro ID".
+   Activar **No permitir valores duplicados**. Verificar el API name real
+   en Developer Hub (por ejemplo IMPE_Registro_ID) y usarlo en la
+   configuración. La modalidad "External ID" no es necesaria: Zoho la
+   limita a ediciones Enterprise/Ultimate.
+   **No ejecutar --run si el campo no existe o no es único.**
 5. Comprobar que los alcances OAuth permiten crear Leads y leer org.
 6. Revisar acceso a datos, avisos de privacidad y retención antes de
    extender este piloto más allá de datos ficticios.
