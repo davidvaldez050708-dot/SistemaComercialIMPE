@@ -8,7 +8,8 @@ require_once __DIR__.'/../helpers/PermissionHelper.php';
  * activar esta pantalla NO habilita los tres intentos ni mueve llamadas.
  * No admite activación por GET, POST, cookie o JavaScript.
  *
- * Sin ambas variables exactas de entorno, permanece desactivado.
+ * Sin configuración privada válida ni las dos variables antiguas,
+ * permanece desactivado.
  */
 final class EmbudoComercialV3AccesoControlado
 {
