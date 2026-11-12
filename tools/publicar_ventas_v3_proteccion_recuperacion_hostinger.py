@@ -4,6 +4,7 @@
 CHECK/APPLY/ROLLBACK por hash exacto, sin SQL y sin modificar Telefonía.
 """
 import argparse
+import os
 import sys
 import publicar_ventas_v3_gestion_potenciales_hostinger as p
 
@@ -63,7 +64,7 @@ def main():
     modo.add_argument("--rollback", action="store_true")
     a = ap.parse_args()
     site = p.raiz(a.site)
-    if not p.dentro(p.confiable(site,"config/db_connection.php"),site):
+    if not os.path.isfile(p.confiable(site,"config/db_connection.php")):
         raise p.Bloqueo("Raíz del CRM no reconocida.")
     if a.rollback:
         if a.confirm != p.REVERTIR or not a.backup_dir:
