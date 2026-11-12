@@ -28,6 +28,7 @@ on:
       - 'public/css/embudo_v3_bandejas.css'
       - 'public/javascript/embudo_comercial_v3_bandejas.js'
       - 'tests/ventas_v3_bandejas_db.php'
+      - 'tests/ventas_v3_bandejas_browser.cjs'
       - 'tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py'
       - 'tests/ventas_v3_recuperacion_guardia_publicador_unit.py'
       - 'tools/publicar_ventas_v3_asesores_hostinger.py'
@@ -80,6 +81,7 @@ jobs:
           php -l app/views/embudo_comercial/bandejas_v3_modal.php
           php -l tests/ventas_v3_bandejas_db.php
           node --check public/javascript/embudo_comercial_v3_bandejas.js
+          node --check tests/ventas_v3_bandejas_browser.cjs
           python3 -m py_compile tools/publicar_ventas_v3_proteccion_recuperacion_hostinger.py tests/ventas_v3_recuperacion_guardia_publicador_unit.py
           python3 tests/ventas_v3_recuperacion_guardia_publicador_unit.py
       - name: Avisos y calificación en Chromium
@@ -90,6 +92,7 @@ jobs:
           npm install --prefix /tmp/impe-ventas-v3 playwright@1.56.1 bootstrap@5.3.8
           /tmp/impe-ventas-v3/node_modules/.bin/playwright install --with-deps chromium
           node tests/ventas_v3_toast_browser.cjs
+          node tests/ventas_v3_bandejas_browser.cjs
   mysql-temporal:
     runs-on: ubuntu-latest
     services:
