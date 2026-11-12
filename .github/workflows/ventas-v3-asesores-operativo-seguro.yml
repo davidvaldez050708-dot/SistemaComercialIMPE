@@ -36,6 +36,7 @@ on:
       - 'app/views/embudo_comercial/inscripcion_v3_modal.php'
       - 'public/javascript/embudo_comercial_v3_inscripcion.js'
       - 'public/javascript/telefonia_marcador.js'
+      - 'prueba_telefonia/api/zadarma_estado_llamada.php'
       - 'tests/gestion_comercial_v3_dialer_guard_browser.cjs'
       - 'tests/gestion_comercial_v3_inscripcion_db.php'
       - 'tests/gestion_comercial_v3_inscripcion_browser.cjs'
@@ -102,6 +103,7 @@ jobs:
           php -l app/services/TelefoniaMarcacionesVentasService.php
           php -l app/services/WhatsAppCloudApiService.php
           php -l app/controllers/TelefoniaController.php
+          php -l prueba_telefonia/api/zadarma_estado_llamada.php
           php -l tests/gestion_comercial_no_contactar_db.php
           php -l app/services/EmbudoComercialV3InscripcionService.php
           php -l app/views/embudo_comercial/inscripcion_v3_modal.php
