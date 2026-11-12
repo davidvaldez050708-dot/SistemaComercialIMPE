@@ -22,6 +22,12 @@ trap limpiar EXIT
 export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/codigo
 mkdir "$raiz/codigo"
 git archive HEAD | tar -x -C "$raiz/codigo"
+base="$raiz/codigo"
+if [[ "${3:-candidato}" == base ]]; then
+    base="$raiz/base"
+    mkdir "$base"
+    git archive aea878f | tar -x -C "$base"
+fi
 cd "$raiz/codigo"
 php=/usr/local/lsws/lsphp82/bin/php
 lsphp=/usr/local/lsws/lsphp82/bin/lsphp
@@ -40,4 +46,5 @@ CREATE USER 'impe_capacity'@'127.0.0.1' WITH MAX_USER_CONNECTIONS 75;
 GRANT ALL ON impe_test_capacidad.* TO 'impe_capacity'@'127.0.0.1';
 SQL
 python3 -B tests/mysql_lsapi.py --php "$php" --php-lsapi "$lsphp" --mysql mariadb \
-    --base "$raiz/codigo" --port 13306 --usuarios "$1" --perfil frio --salida /evidencia/humo.json
+    --base "$base" --port 13306 --usuarios "$1" --perfil frio --duracion "${2:-0}" \
+    --salida /evidencia/metricas.json

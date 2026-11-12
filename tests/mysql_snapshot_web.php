@@ -7,6 +7,10 @@ if (getenv('IMPE_LAB_SNAPSHOT') !== '1') {
     exit;
 }
 
+if (($_GET['reciclaje'] ?? '') === '1' && getenv('IMPE_LAB_NONCE')) {
+    usleep(750000);
+}
+
 $contadores = function_exists('mysqli_get_client_stats') ? mysqli_get_client_stats() : [];
 $enlaces = function_exists('mysqli_get_links_stats') ? mysqli_get_links_stats() : [];
 header('Content-Type: application/json');

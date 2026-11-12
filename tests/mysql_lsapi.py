@@ -22,8 +22,9 @@ from mysql_capacidad_http import (CAMPANA, INICIO, autenticar, comprobar_evento_
 from mysql_limite_aperturas import LimitadorMySQL
 
 
-def exigir_sonda(puerto, nonce):
-    estado, _, cuerpo, _ = peticion(puerto, "/mysql_snapshot_web.php")
+def exigir_sonda(puerto, nonce, reciclaje=False):
+    ruta = "/mysql_snapshot_web.php"
+    estado, _, cuerpo, _ = peticion(puerto, ruta + ("?reciclaje=1" if reciclaje else ""))
     if estado != 200:
         raise RuntimeError(f"El vhost devolvió HTTP {estado} al solicitar la sonda aislada.")
     sonda = json.loads(cuerpo)
@@ -130,6 +131,33 @@ def detener_lsphp(php):
     php.wait(timeout=15)
 
 
+def reciclar_workers(puerto, nonce, php):
+    def hijos():
+        archivo = Path(f"/proc/{php.pid}/task/{php.pid}/children")
+        return set(map(int, archivo.read_text().split()))
+
+    def activar():
+        with ThreadPoolExecutor(max_workers=30) as tareas:
+            return set(tareas.map(lambda _: exigir_sonda(puerto, nonce, True)["pid"], range(30)))
+
+    anteriores = activar()
+    objetivo = sorted(anteriores & hijos())[:10]
+    if len(objetivo) != 10:
+        raise RuntimeError(f"Se necesitan diez hijos LSPHP identificados: {sorted(anteriores)}.")
+    for pid in objetivo:
+        os.kill(pid, signal.SIGTERM)
+    for _ in range(50):
+        if not (set(objetivo) & hijos()):
+            break
+        time.sleep(.1)
+    else:
+        raise RuntimeError("Diez workers antiguos no se retiraron dentro del plazo.")
+    reemplazos = sorted((activar() & hijos()) - anteriores)
+    if len(reemplazos) < 10:
+        raise RuntimeError(f"No se observaron diez workers de reemplazo: {reemplazos}.")
+    return {"retirados": objetivo, "reemplazos": reemplazos}
+
+
 def autenticar_usuarios(puerto, usuarios):
     cookies = [autenticar(puerto, i)[1] for i in range(1, usuarios + 1)]
     if not all(cookies):
@@ -137,9 +165,9 @@ def autenticar_usuarios(puerto, usuarios):
     return cookies
 
 
-def comprobar_resultado_ventas(args, puerto, cookie, sql):
-    def json_ok(ruta, datos=None):
-        estado, _, cuerpo, _ = peticion(puerto, ruta, cookie, datos)
+def comprobar_resultado_ventas(args, puerto, cookie, sql, ref="lab-activa-102"):
+    def json_ok(ruta, datos=None, sesion=cookie):
+        estado, _, cuerpo, _ = peticion(puerto, ruta, sesion, datos)
         if estado != 200:
             raise RuntimeError(f"HTTP {estado} en {ruta}: {cuerpo[:300]!r}")
         respuesta = json.loads(cuerpo)
@@ -147,11 +175,23 @@ def comprobar_resultado_ventas(args, puerto, cookie, sql):
             raise RuntimeError(f"Respuesta sin éxito en {ruta}: {respuesta!r}")
         return respuesta
 
-    estado, _, inicio, _ = peticion(puerto, INICIO, cookie)
-    token = re.search(rb'data-phone-notification-csrf="([a-f0-9]{64})"', inicio)
-    if estado != 200 or token is None:
-        raise RuntimeError("Inicio del asesor no expuso un token de la sesión autenticada.")
-    csrf = token[1].decode("ascii")
+    def token_de(sesion):
+        estado, _, inicio, _ = peticion(puerto, INICIO, sesion)
+        token = re.search(rb'data-phone-notification-csrf="([a-f0-9]{64})"', inicio)
+        if estado != 200 or token is None:
+            raise RuntimeError("Inicio no expuso un token de la sesión autenticada.")
+        return token[1].decode("ascii")
+
+    def webhook(tipo, campos, cadena, referencia, extension):
+        firma = base64.b64encode(hmac.new(b"fixture", cadena.encode(), "sha1").hexdigest().encode()).decode()
+        codigo, _, cuerpo, _ = peticion(puerto, "/prueba_telefonia/api/zadarma_webhook.php",
+                                        datos={"event": tipo, "internal": extension,
+                                               "pbx_call_id": referencia, **campos},
+                                        cabeceras={"Signature": firma})
+        if codigo != 200 or json.loads(cuerpo).get("status") != "success":
+            raise RuntimeError(f"Webhook {tipo} falló con HTTP {codigo}.")
+
+    csrf = token_de(cookie)
     controlador = "/index.php?controller=telefonia&action="
     poll = json_ok(controlador + "disponibilidad", {
         "accion": "POLL", "disponible": "1", "csrf_token": csrf,
@@ -166,20 +206,16 @@ def comprobar_resultado_ventas(args, puerto, cookie, sql):
         args.php, "-r",
         "date_default_timezone_set('America/Mexico_City'); echo date('Y-m-d H:i:s');",
     ]).decode()
-    ref = "lab-activa-102"
+    if not re.fullmatch(r"lab-activa-102(?:-[0-9]+)?", ref):
+        raise ValueError("Referencia sintética no autorizada.")
     destino = "525500000001"
-    grabacion = "lab-record-102"
+    grabacion = ref.replace("activa", "record")
     for tipo, campos, cadena in (
         ("NOTIFY_OUT_END", {"destination": destino, "call_start": instante,
                            "duration": "15", "disposition": "answered"}, "102" + destino + instante),
         ("NOTIFY_RECORD", {"call_id_with_rec": grabacion}, ref + grabacion),
     ):
-        firma = base64.b64encode(hmac.new(b"fixture", cadena.encode(), "sha1").hexdigest().encode()).decode()
-        codigo, _, cuerpo, _ = peticion(puerto, "/prueba_telefonia/api/zadarma_webhook.php",
-                                        datos={"event": tipo, "internal": "102", "pbx_call_id": ref, **campos},
-                                        cabeceras={"Signature": firma})
-        if codigo != 200 or json.loads(cuerpo).get("status") != "success":
-            raise RuntimeError(f"Webhook {tipo} falló con HTTP {codigo}.")
+        webhook(tipo, campos, cadena, ref, "102")
 
     def aviso_de_llamada():
         return [aviso for aviso in json_ok(CAMPANA)["recordatorios"]
@@ -188,9 +224,9 @@ def comprobar_resultado_ventas(args, puerto, cookie, sql):
     avisos = aviso_de_llamada()
     if len(avisos) != 1 or avisos[0]["titulo"] != "Resultado pendiente":
         eventos = sql("SELECT evento, internal FROM telefonia_zadarma_eventos "
-                      "WHERE pbx_call_id='lab-activa-102' ORDER BY id;", leer=True).decode().splitlines()
+                      f"WHERE pbx_call_id='{ref}' ORDER BY id;", leer=True).decode().splitlines()
         llamadas = sql("SELECT COUNT(*) FROM telefonia_ventas_llamadas "
-                       "WHERE pbx_call_id='lab-activa-102' AND usuario_id=2;", leer=True).strip()
+                       f"WHERE pbx_call_id='{ref}' AND usuario_id=2;", leer=True).strip()
         raise RuntimeError(f"Aviso de llamada fuera de contrato: {len(avisos)} avisos, "
                            f"{int(llamadas)} llamadas atribuidas, eventos={eventos}.")
     if [aviso["telefonia_id"] for aviso in aviso_de_llamada()] != [avisos[0]["telefonia_id"]]:
@@ -203,14 +239,42 @@ def comprobar_resultado_ventas(args, puerto, cookie, sql):
         raise RuntimeError("El detalle no conservó el resultado y la referencia de grabación simulada.")
     if aviso_de_llamada():
         raise RuntimeError("El aviso quedó pendiente después de guardar el resultado.")
+
+    entrada = ref.replace("activa", "entrada")
+    _, analista = autenticar(puerto, 3)
+    if not analista:
+        raise RuntimeError("No inició sesión el analista sintético.")
+    csrf_analista = token_de(analista)
+    id_transferencia = int(sql(
+        "INSERT INTO telefonia_transferencia_operaciones "
+        "(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,"
+        "modo,estado,created_at,updated_at) VALUES "
+        f"(2,'102',3,'103','{entrada}','{destino}','CONSULTADA','SOLICITADA',UTC_TIMESTAMP(),UTC_TIMESTAMP());"
+        "SELECT LAST_INSERT_ID();", leer=True))
+    webhook("NOTIFY_INTERNAL", {"caller_id": destino, "call_start": instante}, destino + instante,
+            entrada, "103")
+    activa = json_ok(f"/prueba_telefonia/api/zadarma_entrada_activa.php?pbx_call_id={entrada}",
+                     sesion=analista)["call"]
+    if not activa or activa["pbx_call_id"] != entrada:
+        raise RuntimeError("El analista no recibió el tramo de la llamada sintética.")
+    for accion, fase, token, sesion in (
+        ("ATENDIDA", "CONSULTANDO", csrf_analista, analista),
+        ("COMPLETAR", "ENTREGANDO", csrf, cookie),
+        ("LIBERADA", "ENTREGADA", csrf, cookie),
+    ):
+        operacion = json_ok("/prueba_telefonia/api/transferencia_operacion.php", {
+            "id": id_transferencia, "accion": accion, "csrf_token": token,
+        }, sesion)["operacion"]
+        if not operacion or operacion["estado"] != fase:
+            raise RuntimeError(f"La transferencia sintética no avanzó a {fase}.")
     return {"presencia": True, "aviso_una_vez": True, "resultado": True,
-            "referencia_grabacion": True}
+            "referencia_grabacion": True, "entrada": True, "transferencia_entregada": True}
 
 
-def rafaga(puerto, usuarios, cookies, observar, verificar_avisos=False):
+def rafaga(puerto, usuarios, cookies, observar, verificar_avisos=False, desplazamiento=0):
     with ThreadPoolExecutor(max_workers=usuarios) as tareas:
         inicio = time.monotonic() + 0.8
-        trabajos = [tareas.submit(escenario, puerto, i + 1, inicio, cookie, None,
+        trabajos = [tareas.submit(escenario, puerto, i + 1 + desplazamiento, inicio, cookie, None,
                                   verificar_avisos, not verificar_avisos)
                     for i, cookie in enumerate(cookies)]
         muestras = []
@@ -220,8 +284,11 @@ def rafaga(puerto, usuarios, cookies, observar, verificar_avisos=False):
         muestras.append(muestra(observar))
     rutas = {}
     latencias = {}
+    sesiones = []
     for tarea in trabajos:
-        for nombre, estado, ms in tarea.result()[0]:
+        respuestas, cookie = tarea.result()
+        sesiones.append(cookie)
+        for nombre, estado, ms in respuestas:
             rutas.setdefault(nombre, Counter())[str(estado)] += 1
             latencias.setdefault(nombre, []).append(round(ms, 1))
     return {
@@ -229,7 +296,57 @@ def rafaga(puerto, usuarios, cookies, observar, verificar_avisos=False):
         "pico_simultaneas_observado": max(m[2] for m in muestras),
         "pico_activas_observado": max(m[2] - m[3] for m in muestras),
         "pico_sleep_observado": max(m[3] for m in muestras),
-    }
+    }, sesiones
+
+
+def exigir_rutas(resultado):
+    for ruta, estados in resultado["rutas"].items():
+        esperados = {"302"} if ruta == "login" else {"200"}
+        if set(estados) - esperados:
+            raise RuntimeError(f"{ruta}: respuestas fuera del contrato: {estados}")
+
+
+def resistencia(args, puerto, nonce, php, observar, limite, sql, evidencia):
+    inicio = time.monotonic()
+    ciclo = 0
+    rotaciones = 0
+    desplazamiento = 0
+    cookies = [None] * args.usuarios
+    with (evidencia / "rondas.jsonl").open("w", encoding="utf-8", buffering=1) as rondas:
+        while time.monotonic() - inicio < args.duracion or rotaciones < 10:
+            transcurrido = time.monotonic() - inicio
+            registro = {"ronda": ciclo, "segundo": transcurrido}
+            rotar = rotaciones < 10 and transcurrido >= (rotaciones + 1) * args.duracion / 11
+            if rotar:
+                rotaciones += 1
+                desplazamiento = 30 if rotaciones % 2 else 0
+                cookies = [None] * args.usuarios
+                registro["rotacion"] = rotaciones
+                if rotaciones == 5:
+                    registro["reciclaje"] = reciclar_workers(puerto, nonce, php)
+            resultado, cookies = rafaga(puerto, args.usuarios, cookies, observar,
+                                        desplazamiento=desplazamiento)
+            registro.update(resultado)
+            rondas.write(json.dumps(registro) + "\n")
+            exigir_rutas(resultado)
+            if limite.ventana.pico_intentos > 20 or resultado["pico_simultaneas_observado"] >= 75:
+                raise RuntimeError("Se alcanzó el límite simulado durante la resistencia.")
+            if rotar:
+                login, asesor = autenticar(puerto, 2)
+                if not asesor:
+                    raise RuntimeError(f"Falló el login de la prueba telefónica: {login}")
+                ref = f"lab-activa-102-{rotaciones}"
+                evento = comprobar_evento_activo(args, (puerto, puerto), asesor, sql, ref)
+                ventas = comprobar_resultado_ventas(args, puerto, asesor, sql, ref)
+                rondas.write(json.dumps({"rotacion": rotaciones, "webhook": evento, "ventas": ventas}) + "\n")
+            ciclo += 1
+            time.sleep(max(0, 3 - (time.monotonic() - inicio - transcurrido)))
+    if limite.ventana.pico_intentos > 20:
+        raise RuntimeError("Se excedió el límite de aperturas durante la prueba telefónica.")
+    return {"segundos": time.monotonic() - inicio, "rotaciones": rotaciones, "rondas": ciclo,
+            "pico_intentos_apertura_s": limite.ventana.pico_intentos,
+            "pico_aperturas_admitidas_s": limite.ventana.pico_admitidas,
+            "aperturas_por_segundo": limite.ventana.por_segundo}
 
 
 def main():
@@ -244,6 +361,7 @@ def main():
     parser.add_argument("--puerto-lsapi", type=int, default=18082)
     parser.add_argument("--usuarios", type=int, choices=(10, 30), required=True)
     parser.add_argument("--perfil", choices=("frio", "caliente", "reciclaje", "reciclaje-login"), required=True)
+    parser.add_argument("--duracion", type=int, choices=(0, 3600), default=0)
     args = parser.parse_args()
     if sys.platform != "linux":
         parser.error("Este ensayo requiere Linux y un vhost OpenLiteSpeed aislado.")
@@ -251,6 +369,9 @@ def main():
     args.verificar_avisos = args.php_lsapi is None
     args.php_cgi = args.max_persistentes = None
     args.mysqlnd = "activas"
+    args.usuarios_fixture = 60 if args.duracion else 30
+    if args.duracion and (args.usuarios != 30 or not args.php_lsapi):
+        parser.error("La resistencia requiere 30 usuarios y un contenedor LSAPI automático.")
 
     observador = iniciar(args.php, args.port, "observer-lsapi")
     try:
@@ -281,11 +402,9 @@ def main():
             }
             evidencia = args.salida.resolve().parent
             evidencia.mkdir(parents=True, exist_ok=True)
-            proceso = php = None
+            proceso = php = reciclaje = None
             try:
                 if args.php_lsapi:
-                    if args.perfil.startswith("reciclaje"):
-                        raise RuntimeError("El reciclaje automático todavía no está disponible.")
                     proceso, php = iniciar_lsapi(sitio, args.puerto_lsapi, entorno, args.php_lsapi, evidencia)
                     for _ in range(30):
                         if proceso.poll() is not None:
@@ -305,14 +424,17 @@ def main():
                     cookies = autenticar_usuarios(puerto, args.usuarios)
                     rafaga(puerto, args.usuarios, cookies, observador, args.verificar_avisos)
                 if args.perfil.startswith("reciclaje"):
-                    input("Reemplaza diez hijos del grupo LSAPI de prueba, conserva el directorio de sesiones y pulsa Enter. ")
+                    if php:
+                        reciclaje = reciclar_workers(puerto, nonce, php)
+                    else:
+                        input("Reemplaza diez hijos del grupo LSAPI de prueba, conserva el directorio de sesiones y pulsa Enter. ")
                     exigir_sonda(puerto, nonce)
                     if args.perfil == "reciclaje-login":
                         cookies = [None] * args.usuarios
                 inicio_rafaga = time.monotonic() - limite.ventana.origen + .8
-                resultado = rafaga(puerto, args.usuarios, cookies, observador, args.verificar_avisos)
+                resultado, _ = rafaga(puerto, args.usuarios, cookies, observador, args.verificar_avisos)
                 resultado.update({
-                    "perfil": args.perfil, "usuarios": args.usuarios, "sonda": sonda,
+                    "perfil": args.perfil, "usuarios": args.usuarios, "sonda": sonda, "reciclaje": reciclaje,
                     "inicio_rafaga_s": inicio_rafaga,
                     "pico_intentos_apertura_s": limite.ventana.pico_intentos,
                     "pico_aperturas_admitidas_s": limite.ventana.pico_admitidas,
@@ -327,10 +449,7 @@ def main():
                                    leer=True)
                     if lecturas.strip() != b"0":
                         raise RuntimeError("El sondeo marcó avisos.")
-                for ruta, estados in resultado["rutas"].items():
-                    esperados = {"302"} if ruta == "login" else {"200"}
-                    if set(estados) - esperados:
-                        raise RuntimeError(f"{ruta}: respuestas fuera del contrato: {estados}")
+                exigir_rutas(resultado)
                 if resultado["rechazos_apertura"]:
                     raise RuntimeError("Se rechazaron aperturas MySQL.")
                 if args.php_lsapi:
@@ -342,6 +461,10 @@ def main():
                     args.salida.write_text(json.dumps(resultado, indent=2) + "\n", encoding="utf-8")
                     resultado["ventas"] = comprobar_resultado_ventas(args, puerto, cookie, sql)
                     args.salida.write_text(json.dumps(resultado, indent=2) + "\n", encoding="utf-8")
+                    if args.duracion:
+                        resultado["resistencia"] = resistencia(args, puerto, nonce, php, observador,
+                                                              limite, sql, evidencia)
+                        args.salida.write_text(json.dumps(resultado, indent=2) + "\n", encoding="utf-8")
             finally:
                 if proceso is not None:
                     try:

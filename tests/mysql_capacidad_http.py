@@ -128,7 +128,7 @@ def preparar_base(args):
     for rol, codigos in PERMISOS.items():
         for codigo in codigos:
             filas.append("INSERT INTO rol_permisos (rol_id,permiso_id) SELECT {},id FROM permisos WHERE codigo='{}';".format(rol,codigo))
-    for usuario in range(1, 31):
+    for usuario in range(1, getattr(args, "usuarios_fixture", 30) + 1):
         rol = list(ROLES)[(usuario - 1) % len(ROLES)]
         filas.append("INSERT INTO usuarios (id,nombre,apellidos,correo,usuario,password,rol_id) "
                      "VALUES ({0},'Prueba','{0}','prueba{0}@invalid.test','prueba{0}','{1}',{2});".format(usuario,hash_pw,rol))
@@ -256,11 +256,14 @@ def escenario(puerto, usuario, inicio, cookie=None, registrar=None, verificar_av
         agregar(login, 302 if login[1] == "login_rechazado" else login[1])
         if cookie is None:
             return datos, None
+    token = None
     for nombre, ruta in (("inicio", INICIO), ("campana", CAMPANA), ("campana_recarga", CAMPANA)):
         if respetar_roles and ruta == CAMPANA and list(ROLES)[(usuario - 1) % len(ROLES)] not in (1, 3, 4, 6, 7):
             continue
         e, _, body, ms = peticion(puerto, ruta, cookie)
         http = e
+        if respetar_roles and ruta == INICIO and e == 200:
+            token = re.search(rb'data-phone-notification-csrf="([a-f0-9]{64})"', body)
         if nombre.startswith("campana") and e == 200:
             try:
                 r = json.loads(body)
@@ -277,6 +280,22 @@ def escenario(puerto, usuario, inicio, cookie=None, registrar=None, verificar_av
                 e = "json_invalido"
         agregar((nombre, e, ms), http)
     if list(ROLES)[(usuario-1)%len(ROLES)] in (3,4,7):
+        if respetar_roles:
+            if token is None:
+                agregar(("disponibilidad", "token_ausente", 0))
+            else:
+                e, _, cuerpo, ms = peticion(
+                    puerto, "/index.php?controller=telefonia&action=disponibilidad", cookie,
+                    {"accion": "POLL", "disponible": "1", "csrf_token": token[1].decode("ascii")},
+                )
+                if e == 200:
+                    try:
+                        respuesta = json.loads(cuerpo)
+                        if respuesta.get("ok") is not True or not {"solicitud", "entrante", "devoluciones"} <= respuesta.keys():
+                            e = "200_sin_datos_validos"
+                    except (AttributeError, ValueError):
+                        e = "200_json_invalido"
+                agregar(("disponibilidad", e, ms))
         for nombre, ruta in (("webrtc", WEBRTC), ("entrada", ENTRADA), ("estado", ESTADO),
                              ("estado_activo", ESTADO_ACTIVO), ("transferencia", TRANSFERENCIA)):
             e, _, cuerpo, ms = peticion(puerto,ruta,cookie)
@@ -436,11 +455,13 @@ def carga(args, sitio, observador, cantidad, intervalo, log, limitador=None):
             p.wait(timeout=10)
 
 
-def comprobar_evento_activo(args, puertos, cookie, sql):
+def comprobar_evento_activo(args, puertos, cookie, sql, referencia="lab-activa-102"):
     instante = subprocess.check_output([
         args.php, "-r", "date_default_timezone_set('America/Mexico_City'); echo date('Y-m-d H:i:s');",
     ]).decode()
-    evento = {"event": "NOTIFY_OUT_START", "pbx_call_id": "lab-activa-102",
+    if not re.fullmatch(r"lab-activa-102(?:-[0-9]+)?", referencia):
+        raise ValueError("Referencia sintética no autorizada.")
+    evento = {"event": "NOTIFY_OUT_START", "pbx_call_id": referencia,
               "internal": "102", "destination": "525500000001", "call_start": instante}
     cadena = (evento["internal"] + evento["destination"] + instante).encode()
     firma = base64.b64encode(hmac.new(b"fixture", cadena, "sha1").hexdigest().encode()).decode()
@@ -453,9 +474,9 @@ def comprobar_evento_activo(args, puertos, cookie, sql):
         respuestas = list(tareas.map(lambda p: peticion(p, ESTADO_ACTIVO, cookie), puertos))
     for estado, _, cuerpo, _ in respuestas:
         assert estado == 200, ("Estado activo en dos pestañas", estado)
-        assert json.loads(cuerpo)["call"]["pbx_call_id"] == "lab-activa-102"
+        assert json.loads(cuerpo)["call"]["pbx_call_id"] == referencia
     cantidad = sql("SELECT COUNT(*) FROM telefonia_zadarma_eventos "
-                   "WHERE pbx_call_id='lab-activa-102';", leer=True)
+                   f"WHERE pbx_call_id='{referencia}';", leer=True)
     assert cantidad.strip() == b"1", "Entregar el mismo webhook y consultar la llamada no duplica su evento"
     return {"entregas": len(entregas), "pestanas": len(respuestas), "eventos_persistidos": int(cantidad)}
 

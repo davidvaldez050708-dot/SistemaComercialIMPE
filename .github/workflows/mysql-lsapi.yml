@@ -9,6 +9,7 @@ on:
       - tests/mysql_lsapi_ci.sh
       - tests/mysql_lsapi.Dockerfile
       - tests/mysql_capacidad_http.py
+      - tests/mysql_snapshot_web.php
 
 permissions:
   contents: read
@@ -40,4 +41,33 @@ jobs:
         if: always()
         with:
           name: mysql-lsapi-humo-${{ matrix.usuarios }}
+          path: evidencia/
+  resistencia:
+    needs: humo
+    runs-on: ubuntu-latest
+    timeout-minutes: 85
+    strategy:
+      fail-fast: false
+      matrix:
+        revision: [base, candidato]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Construir réplica
+        run: docker build -t impe-lsapi -f tests/mysql_lsapi.Dockerfile .
+      - name: Resistencia aislada de una hora
+        env:
+          REVISION: ${{ matrix.revision }}
+        run: |
+          mkdir -p evidencia
+          set -o pipefail
+          docker run --rm --network none \
+            -v "$PWD:/codigo:ro" -v "$PWD/evidencia:/evidencia" \
+            impe-lsapi bash /codigo/tests/mysql_lsapi_ci.sh 30 3600 "$REVISION" 2>&1 | tee evidencia/ejecucion.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mysql-lsapi-resistencia-${{ matrix.revision }}
           path: evidencia/
