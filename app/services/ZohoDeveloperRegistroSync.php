@@ -14,7 +14,7 @@ final class ZohoDeveloperRegistroSync
         if (($cfg['enabled'] ?? false) !== true ||
             ($cfg['environment'] ?? '') !== 'developer' ||
             !preg_match('/^[0-9]{10,25}$/D', (string)($cfg['expected_org_id'] ?? '')) ||
-            !preg_match('/^[A-Za-z][A-Za-z0-9_]{2,79}$/D', (string)($cfg['external_field'] ?? '')) ||
+            !preg_match('/^[A-Za-z][A-Za-z0-9_]{2,79}$/D', (string)($cfg['unique_field'] ?? '')) ||
             !is_array($cfg['test_emails'] ?? null) ||
             count($cfg['test_emails']) === 0) {
             return [];
@@ -80,7 +80,7 @@ final class ZohoDeveloperRegistroSync
             'Last_Name' => $apellido,
             'Company' => 'SistemaComercialIMPE - Pruebas',
             'Email' => $email,
-            $cfg['external_field'] => self::claveExterna($registroId),
+            $cfg['unique_field'] => self::claveExterna($registroId),
         ];
         $movil = trim((string)($registro['movil'] ?? ''));
         if (preg_match('/^[0-9]{10}$/D', $movil)) {
@@ -192,7 +192,7 @@ final class ZohoDeveloperRegistroSync
             'https://developer.zohoapis.com/crm/v8/Leads/upsert',
             [
                 'data' => [$lead],
-                'duplicate_check_fields' => [$cfg['external_field']],
+                'duplicate_check_fields' => [$cfg['unique_field']],
                 'trigger' => [],
             ],
             $accessToken
