@@ -22,8 +22,12 @@ bridge="app/services/EmbudoComercialResultadoBridge.php"
 base_ref="49646e45226c57ace2f7c31035723495ce8a374d"
 base=subprocess.check_output(["git","show",base_ref+":"+bridge],cwd=ROOT)
 check(g.p.blob_bytes(base)==g.p.ARCHIVOS[0][1],"base conciliada exacta")
-new_path=os.path.join(ROOT,bridge)
-check(g.p.blob(new_path)==g.p.ARCHIVOS[0][2],"destino exacto")
+# Esta prueba valida el publicador anterior (PR #262). El Bridge del
+# árbol actual avanzó en la fase de bandejas; recuperar el artefacto
+# INMUTABLE publicado para no comparar dos releases diferentes.
+published_ref="b5dfe589061e900ca9da2ab5303ccd7f93db80b7"
+published=subprocess.check_output(["git","show",published_ref+":"+bridge],cwd=ROOT)
+check(g.p.blob_bytes(published)==g.p.ARCHIVOS[0][2],"destino publicado exacto")
 
 with tempfile.TemporaryDirectory(prefix="impe_guardia_v3_test_") as tmp:
     site=os.path.join(tmp,"public_html")
@@ -36,7 +40,8 @@ with tempfile.TemporaryDirectory(prefix="impe_guardia_v3_test_") as tmp:
         os.makedirs(os.path.join(folder,os.path.dirname(bridge)),exist_ok=True)
     with open(os.path.join(site,bridge),"wb") as f:
         f.write(base)
-    shutil.copy2(new_path,os.path.join(stage,bridge))
+    with open(os.path.join(stage,bridge),"wb") as f:
+        f.write(published)
     for rel,hash_expected in g.p.NO_MODIFICAR.items():
         src=os.path.join(ROOT,rel)
         check(g.p.blob(src)==hash_expected,"dependencia protegida "+rel)
