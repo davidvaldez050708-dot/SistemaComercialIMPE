@@ -94,7 +94,7 @@ final class EmbudoComercialController
                     ?$repo->listadoV3Preparacion($usuarioId,$supervisor,$filtros)
                     :($operativoV3
                         ?$repo->listadoV3Operativo($usuarioId,$filtros,$paginasV3)
-                        :$repo->listado($usuarioId,$supervisor,$filtros,$vista));
+                        :$repo->listado($usuarioId,$supervisor,$filtros,$vista,$bandejasV3));
             }
         } catch (DomainException $e) {
             http_response_code(400);
