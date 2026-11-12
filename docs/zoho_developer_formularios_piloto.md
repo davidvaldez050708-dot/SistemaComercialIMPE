@@ -135,6 +135,48 @@ mediante el formulario productivo, porque allí se ejecuta primero la
 incorporación al embudo comercial. La prueba funcional de envío de
 formulario debe realizarse en un entorno de prueba separado.
 
+## Entrega selectiva de los tres archivos nuevos (sin activar)
+
+La tabla auxiliar `zoho_dev_registros_pendientes` ya fue creada y comprobada
+en Hostinger. El diagnóstico posterior confirmó **cero trabajos en cola**,
+ninguna configuración de sincronización habilitada y ausencia de los tres
+archivos del piloto en producción.
+
+El script `tools/zoho_dev_servicios_publicar.py` incluye SHA de contenido
+inamovible para publicar exclusivamente estos archivos nuevos:
+
+- `app/services/ZohoDeveloperRegistroSync.php`
+- `app/services/ZohoDeveloperRegistroWorker.php`
+- `tools/zoho_developer_registros_worker.php`
+
+No copia el modelo antiguo de formularios ni el candidato conciliado, no
+ejecuta SQL, no crea configuración privada ni cron. Verifica que el modelo
+productivo aún coincida con la versión autorizada (prefijo SHA256
+`5089e339748fa7cd`), que los tres archivos de destino no existan y que
+no exista configuración Zoho privada. Si encuentra alguna personalización
+distinta, **se detiene sin sobrescribir**.
+
+Comprobar antes de publicar:
+
+~~~bash
+python3 "$HOME/crm-zoho-developer-piloto/tools/zoho_dev_servicios_publicar.py" --check
+~~~
+
+Después de aprobar las pruebas CI del commit correspondiente y contar con
+autorización explícita, el modo `--publish --confirm-new-files` creará
+solamente esos tres archivos utilizando protección contra sobrescritura;
+si una creación falla intenta retirar solo los archivos recién creados
+por esa misma ejecución. **No ejecutar todavía** en el paso de diagnóstico.
+
+El modo `--rollback --confirm-only-matching` está limitado a esos tres
+archivos cuando su contenido es exactamente el del paquete, y nunca
+toca otros archivos del sitio. El modo rollback también requiere revisar
+que no haya configuración Zoho activa.
+
+`tests/zoho_dev_servicios_publicar_smoke.py` comprueba publicación,
+rechazo de modificaciones y rollback en una carpeta temporal CI.
+No sustituye las comprobaciones manuales de producción.
+
 ## Antes de habilitar: requisitos
 
 1. Trabajar en una **copia/staging** de la base de datos y del sitio,
