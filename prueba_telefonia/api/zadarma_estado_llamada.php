@@ -10,6 +10,8 @@ require_once dirname(__DIR__, 2) .
     '/app/models/RolModel.php';
 require_once dirname(__DIR__, 2) .
     '/app/helpers/PermissionHelper.php';
+require_once dirname(__DIR__, 2) .
+    '/app/services/ProspectoNoContactarV3.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -185,6 +187,23 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
  * antes de enviar la orden de marcado al SDK de Zadarma.
  */
 if ($solicitarCheckpoint) {
+    // Punto de control común a Marketing, Analistas y Asesores.
+    // El SDK no puede marcar sin el OK de este checkpoint. Consultar antes
+    // de emitir la orden WebRTC, sin alterar las llamadas ya iniciadas.
+    try {
+        $db=(new Database())->connect(false);
+        try {
+            ProspectoNoContactarV3::exigirPermitido($db,$destino);
+        } finally { $db->close(); }
+    } catch (DomainException $e) {
+        responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);
+    } catch (Throwable $e) {
+        error_log('[zadarma_no_contactar] '.get_class($e));
+        responderJson([
+            'ok'=>false,
+            'mensaje'=>'No se pudo comprobar la autorización de contacto. No se inició la llamada.'
+        ],503);
+    }
     try {
         $ultimoId = (new ZadarmaWebhookEventStoreService())
             ->ultimoInicioSalienteId($extension);
