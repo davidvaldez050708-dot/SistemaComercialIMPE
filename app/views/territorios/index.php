@@ -1172,10 +1172,25 @@ document.addEventListener('DOMContentLoaded', function () {
         const botonDetalle = event.target.closest('[data-territory-detail]');
         const fila = event.target.closest('[data-territory-row]');
         const botonEquipo = event.target.closest('[data-open-team-manager]');
+        const botonFiltroEquipo = event.target.closest('[data-team-filter]');
         const botonExpandir = event.target.closest('[data-team-toggle]');
         const botonCancelarEquipo = event.target.closest('[data-team-cancel]');
         const botonFinalizar = event.target.closest('[data-finalize-assignment]');
         const botonEditar = event.target.closest('[data-edit-territory]');
+
+        if (botonFiltroEquipo && modalEquipo && modalEquipo.contains(botonFiltroEquipo)) {
+            const tarjeta = botonFiltroEquipo.closest('.territory-team-card');
+            if (tarjeta) {
+                const filtro = botonFiltroEquipo.dataset.teamFilter;
+                tarjeta.querySelectorAll('[data-team-filter]').forEach(function (boton) {
+                    boton.setAttribute('aria-pressed', String(boton === botonFiltroEquipo));
+                });
+                tarjeta.querySelectorAll('[data-team-pane]').forEach(function (panel) {
+                    panel.hidden = panel.dataset.teamPane !== filtro;
+                });
+            }
+            return;
+        }
 
         if (botonDetalle) {
             cargarDetalle(botonDetalle.dataset.id);

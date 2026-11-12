@@ -539,7 +539,8 @@
     border-bottom: 1px solid #e5ebf5;
 }
 
-#modalEquipoTerritorial .territory-team-summary > span {
+#modalEquipoTerritorial .territory-team-summary > span,
+#modalEquipoTerritorial .territory-team-summary > button {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -550,6 +551,28 @@
     font-size: 11px;
     font-weight: 700;
     white-space: nowrap;
+}
+
+#modalEquipoTerritorial .territory-team-summary > button {
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+#modalEquipoTerritorial .territory-team-summary > button:hover,
+#modalEquipoTerritorial .territory-team-summary > button[aria-pressed="true"] {
+    border-color: #a9bafa;
+    background: #e8edff;
+    color: #263fa4;
+}
+
+#modalEquipoTerritorial .territory-team-summary > button:focus-visible {
+    outline: 2px solid #263fa4;
+    outline-offset: 2px;
+}
+
+#modalEquipoTerritorial .territory-team-pane[hidden] {
+    display: none;
 }
 
 #modalEquipoTerritorial .territory-team-summary > .territory-team-active {
@@ -586,7 +609,7 @@
     margin-top: 6px;
 }
 
-#modalEquipoTerritorial .territory-team-card > .btn-territory-expand {
+#modalEquipoTerritorial .territory-team-pane > .btn-territory-expand {
     margin-top: 14px;
 }
 

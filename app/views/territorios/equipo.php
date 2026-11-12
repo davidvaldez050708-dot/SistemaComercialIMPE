@@ -123,10 +123,15 @@ $fecha = function ($valorFecha) use ($texto) {
 
                         <div class="territory-team-summary" aria-label="Resumen de asignaciones">
                             <span class="territory-team-active"><i class="bi bi-circle-fill" aria-hidden="true"></i> Activa</span>
-                            <span><i class="bi bi-people" aria-hidden="true"></i> <?= count($analistas) ?> <?= count($analistas) === 1 ? 'analista' : 'analistas' ?></span>
-                            <span><i class="bi bi-people" aria-hidden="true"></i> <?= count($asesoresCuenta) ?> <?= count($asesoresCuenta) === 1 ? 'asesor' : 'asesores' ?></span>
+                            <button type="button" data-team-filter="analistas" aria-pressed="false" aria-label="Mostrar analistas de <?= $texto($nombreCuenta) ?>">
+                                <i class="bi bi-people" aria-hidden="true"></i> <?= count($analistas) ?> <?= count($analistas) === 1 ? 'analista' : 'analistas' ?>
+                            </button>
+                            <button type="button" data-team-filter="asesores" aria-pressed="false" aria-label="Mostrar asesores de <?= $texto($nombreCuenta) ?>">
+                                <i class="bi bi-people" aria-hidden="true"></i> <?= count($asesoresCuenta) ?> <?= count($asesoresCuenta) === 1 ? 'asesor' : 'asesores' ?>
+                            </button>
                         </div>
 
+                        <div class="territory-team-pane" data-team-pane="analistas">
                         <div class="territory-analyst-list">
                             <div class="territory-analyst-label">
                                 <span></span>
@@ -276,18 +281,19 @@ $fecha = function ($valorFecha) use ($texto) {
                                 </div>
                             </form>
                         </div>
+                        </div>
 
-                        <?php if ($asesoresCuenta): ?>
+                        <div class="territory-team-pane" data-team-pane="asesores">
                             <div class="territory-analyst-list territory-team-advisors">
-                                <div class="territory-analyst-label">
-                                    <span></span>
-                                    Asesores asignados (<?= count($asesoresCuenta) ?>)
-                                </div>
+                                <div class="territory-analyst-label"><span></span>Asesores asignados (<?= count($asesoresCuenta) ?>)</div>
                                 <?php foreach ($asesoresCuenta as $asesor): ?>
                                     <?php require __DIR__ . '/_asesor_asignado.php'; ?>
                                 <?php endforeach; ?>
+                                <?php if (!$asesoresCuenta): ?>
+                                    <p class="territory-empty-text">Sin asesores asignados.</p>
+                                <?php endif; ?>
                             </div>
-                        <?php endif; ?>
+                        </div>
                     </article>
 
                 <?php endforeach; ?>
