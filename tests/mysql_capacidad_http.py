@@ -132,8 +132,9 @@ def preparar_base(args):
         rol = list(ROLES)[(usuario - 1) % len(ROLES)]
         filas.append("INSERT INTO usuarios (id,nombre,apellidos,correo,usuario,password,rol_id) "
                      "VALUES ({0},'Prueba','{0}','prueba{0}@invalid.test','prueba{0}','{1}',{2});".format(usuario,hash_pw,rol))
-        filas.append("INSERT INTO telefonia_extensiones (usuario_id,proveedor,extension,activo,permite_salientes,permite_entrantes) "
-                     "VALUES ({},'ZADARMA','{}',1,1,1);".format(usuario,100+usuario))
+        filas.append("INSERT INTO telefonia_extensiones (usuario_id,proveedor,extension,activo,permite_salientes,permite_entrantes,created_at,updated_at) "
+                     "VALUES ({},'ZADARMA','{}',1,1,1,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY),"
+                     "DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY));".format(usuario,100+usuario))
     if args.verificar_avisos:
         ahora, horario = subprocess.check_output([
             args.php, "-r",

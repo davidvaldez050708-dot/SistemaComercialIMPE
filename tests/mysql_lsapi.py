@@ -187,7 +187,12 @@ def comprobar_resultado_ventas(args, puerto, cookie, sql):
 
     avisos = aviso_de_llamada()
     if len(avisos) != 1 or avisos[0]["titulo"] != "Resultado pendiente":
-        raise RuntimeError("La campana omitió o duplicó el aviso de la llamada sintética.")
+        eventos = sql("SELECT evento, internal FROM telefonia_zadarma_eventos "
+                      "WHERE pbx_call_id='lab-activa-102' ORDER BY id;", leer=True).decode().splitlines()
+        llamadas = sql("SELECT COUNT(*) FROM telefonia_ventas_llamadas "
+                       "WHERE pbx_call_id='lab-activa-102' AND usuario_id=2;", leer=True).strip()
+        raise RuntimeError(f"Aviso de llamada fuera de contrato: {len(avisos)} avisos, "
+                           f"{int(llamadas)} llamadas atribuidas, eventos={eventos}.")
     if [aviso["telefonia_id"] for aviso in aviso_de_llamada()] != [avisos[0]["telefonia_id"]]:
         raise RuntimeError("Un segundo sondeo cambió la identidad del aviso.")
     json_ok(controlador + "guardarResultadoVenta", {
