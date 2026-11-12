@@ -74,7 +74,7 @@ try {
             'ventas.descartados.ver','ventas.descartados.gestionar'
         ]];
     $db->query("INSERT INTO prospecto_asignaciones VALUES
-        (101,8,1),(102,8,1),(103,8,1),(104,9,1),(105,8,0),(106,8,1)");
+        (101,8,1),(102,8,1),(103,8,1),(104,9,1),(105,8,0),(106,8,1),(107,8,1)");
     $db->query("INSERT INTO prospecto_embudo_etapas
         (asignacion_id,etapa,cambiado_por,actualizado_at) VALUES
         (102,'RECUPERACION',8,UTC_TIMESTAMP()),
@@ -148,7 +148,7 @@ try {
     rechazarBandeja(static function()use($svc){
         $svc->descartar(8,101,'RECUPERACION','NO_CONTACTAR',
             'No se contactará a este prospecto',true);
-    },'NO_CONTACTAR no disponible sin bloqueo omnicanal');
+    },'NO_CONTACTAR exige declaración expresa adicional');
     rechazarBandeja(static function()use($svc){
         $svc->descartar(8,101,'RECUPERACION','NO_INTERESADO',
             'Sin prueba telefónica suficiente',true);
@@ -186,6 +186,29 @@ try {
     $_SESSION['permisos'][]='ventas.recuperacion.gestionar';
     $_SESSION['permisos'][]='ventas.descartados.ver';
     $_SESSION['permisos'][]='ventas.descartados.gestionar';
+
+    // Registro de restricción absoluta exige conversación real y dos
+    // confirmaciones independientes; no deriva de NO_INTERESADO.
+    $add(107,8,'out_test107_no_contactar','CONVERSACION_PERSONA',$dia.' 14:10:00');
+    rechazarBandeja(static function()use($svc){
+        $svc->descartar(8,107,'NUEVO','NO_CONTACTAR',
+            'La persona pidió expresamente no volver a llamar',true);
+    },'no permitir la exclusión sin constancia expresa adicional');
+    $noContacto=$svc->descartar(8,107,'NUEVO','NO_CONTACTAR',
+        'La persona pidió expresamente no volver a llamar',true,true);
+    revisarBandeja($noContacto['etapa']==='DESCARTADO' &&
+        $noContacto['subetapa']==='NO_CONTACTAR',
+        'la restricción queda registrada y auditable');
+    $estadoNo=$db->query("SELECT e.etapa,s.subetapa FROM prospecto_embudo_etapas e
+        JOIN prospecto_embudo_subetapas s ON s.asignacion_id=e.asignacion_id
+        WHERE e.asignacion_id=107")->fetch_assoc();
+    revisarBandeja($estadoNo['etapa']==='DESCARTADO' &&
+        $estadoNo['subetapa']==='NO_CONTACTAR',
+        'ambas escrituras comerciales son atómicas');
+    rechazarBandeja(static function()use($svc){
+        $svc->reactivar(8,107,'DESCARTADO',
+            'Intento de revertir prohibición expresa',true);
+    },'no reactivar una prohibición mediante el asesor');
 
     // Reactivación: una conversación guardada ANTES de ingresar a
     // Recuperación no autoriza salir de esa bandeja.
