@@ -1,0 +1,61 @@
+/* Bandejas comerciales V3 · estilos propios sin alterar el tablero ni teléfono. */
+.impe-embudo--v3-bandejas .impe-v3b-intro{
+  display:flex;align-items:flex-start;gap:12px;margin:12px 0 16px;
+  padding:12px 15px;border:1px solid #d7e5f5;border-radius:12px;
+  background:#f5f9ff;color:#25476d;
+}
+.impe-embudo--v3-bandejas .impe-v3b-intro>i{font-size:19px;color:#2b5da0}
+.impe-embudo--v3-bandejas .impe-v3b-intro strong{font-size:12px;font-weight:850}
+.impe-embudo--v3-bandejas .impe-v3b-intro p{
+  margin:4px 0 0;color:#667b99;font-size:11px;line-height:1.5;
+}
+.impe-embudo--v3-bandejas .impe-v3b-card{min-width:0}
+.impe-embudo--v3-bandejas .impe-v3b-badge{
+  padding:3px 7px;border-radius:7px;background:#fff5e1;
+  color:#8a5918;font-size:10px;font-weight:800;
+}
+.impe-embudo--v3-bandejas .impe-v3b-paginacion{
+  display:flex;justify-content:center;align-items:center;gap:11px;
+  margin:12px auto;font-size:11px;font-weight:800;color:#36577e;
+}
+.impe-embudo--v3-bandejas .impe-v3b-paginacion a{
+  border:1px solid #cddcf0;border-radius:8px;
+  padding:6px 11px;color:#285a99;background:#fff;text-decoration:none;
+}
+.impe-v3b-dialog{width:min(540px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:hidden}
+.impe-v3b-dialog form{
+  display:flex!important;flex-direction:column;gap:0!important;padding:0!important;
+  max-height:min(88dvh,690px);overflow:hidden;
+}
+.impe-v3b-dialog header{flex:none;padding:18px 20px 13px}
+.impe-v3b-dialog .impe-v3b-form-cuerpo{
+  display:grid;gap:13px;padding:0 20px 18px;min-height:0;overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.impe-v3b-dialog .impe-v3b-datos{
+  margin:0;font-weight:800;color:#1d426d;font-size:12px;overflow-wrap:anywhere;
+}
+.impe-v3b-dialog .impe-v3b-ayuda{
+  margin:0;border:1px solid #d7e5f5;background:#f4f8ff;border-radius:9px;
+  color:#51709b;font-size:11px;line-height:1.5;padding:10px 12px;
+}
+.impe-v3b-dialog .impe-v3b-confirmacion{
+  display:flex;align-items:flex-start;gap:9px;font-size:11px;font-weight:650;
+  padding:10px;border:1px solid #dce7f4;border-radius:9px;
+}
+.impe-v3b-dialog .impe-v3b-confirmacion input{
+  width:15px;min-width:15px;height:15px;margin:1px 0 0;padding:0;
+}
+.impe-v3b-dialog .impe-v3b-error{
+  margin:0;border:1px solid #efc9c9;background:#fff2f2;color:#982c34;
+  padding:9px;border-radius:8px;font-size:11px;
+}
+.impe-v3b-dialog .impe-embudo-dialog-footer{
+  flex:none;border-top:1px solid #e1e9f4;padding:12px 20px 15px;background:#fff;
+}
+.impe-v3b-dialog [hidden]{display:none!important}
+@media(max-width:600px){
+  .impe-v3b-dialog header{padding:14px 13px 10px}
+  .impe-v3b-dialog .impe-v3b-form-cuerpo{padding:0 13px 13px}
+  .impe-v3b-dialog .impe-embudo-dialog-footer{padding:11px 13px 13px}
+}
