@@ -63,12 +63,12 @@ final class EmbudoComercialController
         // No reconfigurar el Kanban normal ni exponerla a asesores.
         $previsualizacionV3=$vista==='embudo' && $supervisor &&
             ($_GET['previsualizacion_v3']??null)==='1';
-        // El acceso normal y los movimientos V1 no cambian. El asesor puede
-        // optar por la vista operativa institucional V3 desde URL explícita.
-        // Sólo consulta SUS asignaciones; no enciende el piloto del Bridge.
+        // V3 es la entrada principal de Gestión Comercial del asesor autorizado.
+        // ?tablero_anterior=1 mantiene un rescate explícito temporal (sin botón).
+        // Este cambio no enciende movimientos automáticos ni pilotos PBX.
         $operativoV3=$vista==='embudo' && !$supervisor &&
             EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId) &&
-            ($_GET['operativo_v3']??null)==='1';
+            ($_GET['tablero_anterior']??null)!=='1';
         $error='';
         $disponible=false;
         $opciones=['programas'=>[],'asesores'=>[]];
@@ -122,7 +122,7 @@ final class EmbudoComercialController
         $prospecto=null;
         $operativoV3=$vista==='embudo' && !$supervisor &&
             EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId) &&
-            ($_GET['operativo_v3']??null)==='1';
+            ($_GET['tablero_anterior']??null)!=='1';
         $error='';
         if (!$id) {
             http_response_code(404);
