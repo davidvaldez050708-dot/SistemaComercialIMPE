@@ -83,7 +83,15 @@ try {
     checarContacto($guard!==false&&$call!==false&&$call>$guard,
         'WhatsApp: guardia debe preceder al envío hacia Meta');
 
-    echo "CHECK_OK: bloqueo por número sin colisiones, histórico, teléfono y WhatsApp antes de enviar.\n";
+    $checkpoint=file_get_contents(
+        __DIR__.'/../prueba_telefonia/api/zadarma_estado_llamada.php');
+    $start=strpos($checkpoint,'if ($solicitarCheckpoint)');
+    $rule=strpos($checkpoint,'ProspectoNoContactarV3::exigirPermitido');
+    $lastId=strpos($checkpoint,'ultimoInicioSalienteId(');
+    checarContacto($start!==false && $rule>$start && $lastId>$rule,
+        'el checkpoint común protege la salida WebRTC de todos los roles');
+
+    echo "CHECK_OK: teléfono, checkpoint Zadarma y WhatsApp bloquean No contactar.\n";
 } finally {
     if ($created) $db->query('DROP DATABASE '.$name);
     $db->close();
