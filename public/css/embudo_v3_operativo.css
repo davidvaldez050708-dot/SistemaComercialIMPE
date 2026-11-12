@@ -238,3 +238,35 @@
     width:32px;height:32px;min-height:32px;flex-basis:32px
   }
 }
+
+/* Etapa operativa V3 · movimientos seguros mediante arrastrar y soltar.
+   No aplica a tarjetas históricas, sin permiso o sin transición válida.
+   Compactación ligera sin reducir tipografía ni áreas táctiles. */
+.impe-embudo--v3-operativo .impe-v3o-card{
+  padding:6px 7px;
+  gap:3px;
+}
+.impe-embudo--v3-operativo .impe-v3o-card .impe-v3o-acciones{
+  padding-top:4px;
+  margin-top:1px;
+}
+.impe-embudo--v3-operativo .impe-v3o-card[draggable="true"]{
+  cursor:grab;
+  touch-action:pan-y;
+}
+.impe-embudo--v3-operativo .impe-v3o-card.is-dragging{
+  opacity:.48;
+  cursor:grabbing;
+  box-shadow:none;
+}
+.impe-embudo--v3-operativo .impe-v3o-columna.is-drop-allowed{
+  border-color:#a9c6ed;
+}
+.impe-embudo--v3-operativo .impe-v3o-columna.is-drop-target{
+  outline:2px dashed #2d68b4;
+  outline-offset:-3px;
+  background:#eaf3ff;
+}
+.impe-embudo--v3-operativo .impe-v3o-columna.is-drop-target .impe-embudo-lane-list{
+  background:rgba(215,231,255,.34);
+}
