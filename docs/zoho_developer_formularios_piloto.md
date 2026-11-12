@@ -15,7 +15,7 @@
 - Un worker PHP **CLI** ejecutado por cron lee la cola, comprueba que el
   token corresponde a la organización **Developer esperada**, y envía
   First_Name, Last_Name, Email, Mobile y Company a Zoho Leads.
-- Utiliza /crm/v8/Leads/upsert con un campo externo único y clave local
+- Utiliza /crm/v8/Leads/upsert con un campo personalizado único y clave local
   estable IMPE_REGISTRO_<ID>. Esto permite reintentos sin nuevas filas en Zoho.
 - Los IDs de Zoho, estados, intentos y códigos de error se guardan en la cola;
   **no** guarda tokens ni copia datos personales en la cola.
@@ -53,7 +53,7 @@ return [
     'enabled' => true,
     'environment' => 'developer',
     'expected_org_id' => '4608581000000025312',
-    'external_field' => 'IMPE_Registro_ID',
+    'unique_field' => 'IMPE_Registro_ID',
     'test_emails' => ['demo.zoho.impe@example.com'],
 ];
 ~~~
@@ -92,7 +92,7 @@ habilitación debe realizarse solo en la copia de staging.
 - Fallos definitivos o superado el límite: estado revision y revisión manual;
   no reintentar masivamente sin analizar el motivo.
 - Si se detiene el proceso tras recibir respuesta de Zoho pero antes de
-  guardar la confirmación, el campo externo único permite un upsert idempotente.
+  guardar la confirmación, el campo único de Zoho permite un upsert idempotente.
 - Si falta la migración, el formulario conserva su guardado normal; el
   sistema registra un aviso técnico genérico sin revelar datos.
 - No hay SQL de eliminación ni cambios en formulario_inscripciones.
@@ -105,6 +105,6 @@ habilitación debe realizarse solo en la copia de staging.
 
 - Comprobar el estado real de Hostinger y diferencias con la rama principal.
 - Validar en staging con MySQL y API Developer reales.
-- Verificar que el campo externo está marcado único en la cuenta Zoho.
+- Verificar que el campo de sincronización está marcado único en la cuenta Zoho.
 - Revisar el origen de formularios en otras ramas, en particular los
   cambios posteriores en horario_contacto, antes de integrar a main.
