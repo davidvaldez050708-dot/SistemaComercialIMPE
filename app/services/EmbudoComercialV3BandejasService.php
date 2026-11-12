@@ -61,6 +61,24 @@ final class EmbudoComercialV3BandejasService
         return (string)$r['etapa'];
     }
 
+    /**
+     * Defensa de la propia bandeja. NO sustituye el bloqueo general de
+     * consentimiento en Zadarma, WhatsApp, SMS ni las importaciones.
+     */
+    private function exigirContactoPermitido(int $asignacion): void
+    {
+        $s=$this->db->prepare(
+            'SELECT subetapa FROM prospecto_embudo_subetapas WHERE asignacion_id=? FOR UPDATE');
+        try {
+            $s->bind_param('i',$asignacion);
+            $s->execute();
+            $sub=(string)($s->get_result()->fetch_assoc()['subetapa']??'');
+        } finally {$s->close();}
+        if ($sub==='NO_CONTACTAR') {
+            throw new DomainException('Esta asignación tiene restricción No contactar; requiere revisión autorizada.');
+        }
+    }
+
     public static function validarJornada(string $dia): string
     {
         $tz=new DateTimeZone('America/Mexico_City');
@@ -231,6 +249,7 @@ final class EmbudoComercialV3BandejasService
             if ($this->etapaBloqueada($usuario,$asignacion)!=='NUEVO') {
                 throw new DomainException('La etapa cambió. Actualiza el tablero.');
             }
+            $this->exigirContactoPermitido($asignacion);
             $intentos=(new EmbudoComercialIntentosPbxRepository($this->db))
                 ->resumenJornada($usuario,$asignacion,$dia);
             if ((int)$intentos['total']<3) {
@@ -269,6 +288,7 @@ final class EmbudoComercialV3BandejasService
             if ($this->etapaBloqueada($usuario,$asignacion)!==$etapa) {
                 throw new DomainException('La etapa cambió. Actualiza el tablero.');
             }
+            $this->exigirContactoPermitido($asignacion);
             $this->verificarDescarte($usuario,$asignacion,$subetapa);
             $razon=mb_substr('Descarte verificado ('.$subetapa.'): '.$motivo,0,190);
             $id=$this->registrarEtapa($usuario,$asignacion,
@@ -293,6 +313,7 @@ final class EmbudoComercialV3BandejasService
             if ($this->etapaBloqueada($usuario,$asignacion)!=='RECUPERACION') {
                 throw new DomainException('La etapa cambió. Actualiza el tablero.');
             }
+            $this->exigirContactoPermitido($asignacion);
             if (!$this->conversacionPosteriorARecuperacion($usuario,$asignacion)) {
                 throw new DomainException('Para reactivar, se requiere una conversación PBX posterior al ingreso en Recuperación.');
             }
