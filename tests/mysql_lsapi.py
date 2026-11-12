@@ -36,6 +36,8 @@ def iniciar_lsapi(sitio, puerto, entorno, php_lsapi, evidencia):
     import grp
     import pwd
 
+    if not Path("/.dockerenv").is_file() or {p.name for p in Path("/sys/class/net").iterdir()} != {"lo"}:
+        raise RuntimeError("El inicio automático requiere un contenedor Docker sólo con loopback.")
     servidor_ols = Path("/usr/local/lsws")
     cuenta = pwd.getpwnam("nobody")
     sitio.parent.chmod(0o755)
@@ -45,8 +47,10 @@ def iniciar_lsapi(sitio, puerto, entorno, php_lsapi, evidencia):
     configuracion = "\n".join("  env " + nombre + "=" + valor for nombre, valor in entorno.items())
     (servidor_ols / "conf/httpd_config.conf").write_text(f"""
 serverName impe-lab
+httpdWorkers 1
 user nobody
 group {grp.getgrgid(cuenta.pw_gid).gr_name}
+mime conf/mime.properties
 errorlog {evidencia / 'ols-error.log'} {{
   logLevel INFO
 }}
@@ -187,6 +191,8 @@ def main():
                         raise RuntimeError("El reciclaje automático todavía no está disponible.")
                     proceso = iniciar_lsapi(sitio, args.puerto_lsapi, entorno, args.php_lsapi, evidencia)
                     for _ in range(30):
+                        if proceso.poll() is not None:
+                            raise RuntimeError(f"OpenLiteSpeed terminó al arrancar: {proceso.returncode}. Revisa ols-error.log.")
                         try:
                             exigir_sonda(args.puerto_lsapi, nonce)
                             break
