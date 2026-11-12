@@ -41,6 +41,17 @@
   const subetapa=form.querySelector('[name=subetapa]');
   const confirmar=form.querySelector('[name=confirmacion]');
   const subContainer=form.querySelector('[data-v3b-subetapa]');
+  const noContactar=form.querySelector('[data-v3b-no-contactar]');
+  const noContactarCheck=form.querySelector('[name=confirmacion_no_contactar]');
+  const actualizarNoContactar=()=>{
+    const activar=subetapa.value==='NO_CONTACTAR' && !subContainer.hidden;
+    if(noContactar)noContactar.hidden=!activar;
+    if(noContactarCheck){
+      noContactarCheck.required=activar;
+      if(!activar)noContactarCheck.checked=false;
+    }
+  };
+  subetapa.addEventListener('change',actualizarNoContactar);
   const diaContainer=form.querySelector('[data-v3b-dia]');
   const info=form.querySelector('#impe-v3b-ayuda');
   const data=form.querySelector('#impe-v3b-datos');
@@ -57,7 +68,7 @@
     },
     DESCARTAR:{
       titulo:'Registrar descarte acreditado',
-      ayuda:'Solo se admiten rechazo explícito o número inexistente respaldados por el resultado telefónico de esta asignación. «No contactar» todavía no está habilitado.',
+      ayuda:'Solo se admiten decisiones con evidencia PBX. «No contactar» exige conversación humana acreditada y confirmación expresa; no equivale a «No interesado».',
       boton:'Confirmar descarte'
     },
     REACTIVAR:{
@@ -90,6 +101,7 @@
     subContainer.hidden=accion!=='DESCARTAR';
     fecha.required=accion==='RECUPERACION';
     subetapa.required=accion==='DESCARTAR';
+    actualizarNoContactar();
     const dia=String(root.dataset.dia||fecha.max||'');
     if(accion==='RECUPERACION')fecha.value=dia;
     dialog.showModal();
@@ -128,7 +140,9 @@
   };
   form.addEventListener('submit',async event=>{
     event.preventDefault();
-    if(!seleccionado || guardar.disabled || !confirmar.checked)return;
+    if(!seleccionado || guardar.disabled || !confirmar.checked ||
+       (seleccionado.accion==='DESCARTAR' &&
+        subetapa.value==='NO_CONTACTAR' && !noContactarCheck?.checked))return;
     error.hidden=true;
     guardar.disabled=true;
     const {accion,id,etapa}=seleccionado;
@@ -136,7 +150,9 @@
       asignacion_id:id,etapa_actual:etapa,operacion:accion,
       subetapa:accion==='DESCARTAR'?subetapa.value:'',
       dia:accion==='RECUPERACION'?fecha.value:'',
-      motivo:motivo.value.trim(),confirmacion:'1'
+      motivo:motivo.value.trim(),confirmacion:'1',
+      confirmacion_no_contactar:subetapa.value==='NO_CONTACTAR' &&
+        noContactarCheck?.checked?'1':'0'
     });
     try{
       const url='index.php?controller=embudoComercial&action=bandejasOperativasV3';
