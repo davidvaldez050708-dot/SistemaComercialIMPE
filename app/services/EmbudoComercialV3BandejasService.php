@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/EmbudoComercialIntentosPbxRepository.php';
+require_once __DIR__.'/../helpers/PermissionHelper.php';
 require_once __DIR__.'/EmbudoComercialV3MovimientosPermitidos.php';
 require_once __DIR__.'/EmbudoComercialPoliticaPropuesta.php';
 
@@ -104,6 +105,55 @@ final class EmbudoComercialV3BandejasService
         if (!$acreditada) {
             throw new DomainException('No existe resultado PBX acreditado para ese motivo de descarte.');
         }
+    }
+
+    /**
+     * La reactivación exige una conversación PBX cuyo evento ocurrió DESPUÉS
+     * del último ingreso auditado en Recuperación, no una llamada histórica.
+     * telefonia_ventas_llamadas.fecha es hora local de Ciudad de México;
+     * el movimiento auditado está en UTC.
+     */
+    private function conversacionPosteriorARecuperacion(int $usuario,int $asignacion): bool
+    {
+        $s=$this->db->prepare(
+            "SELECT creado_at FROM prospecto_embudo_movimientos
+             WHERE asignacion_id=? AND etapa_nueva='RECUPERACION'
+             ORDER BY creado_at DESC,id DESC LIMIT 1");
+        try {
+            $s->bind_param('i',$asignacion);
+            $s->execute();
+            $entrada=$s->get_result()->fetch_assoc()['creado_at']??null;
+        } finally {$s->close();}
+        if (!$entrada) return false; // Reingresos legacy no acreditados: revisión externa.
+        $utc=new DateTimeZone('UTC');
+        $mexico=new DateTimeZone('America/Mexico_City');
+        $fecha=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$entrada,$utc);
+        if (!$fecha) return false;
+        $limite=$fecha->setTimezone($mexico)->format('Y-m-d H:i:s');
+        $s=$this->db->prepare(
+            "SELECT 1 FROM prospecto_embudo_llamadas l
+             JOIN telefonia_ventas_llamadas c ON c.usuario_id=l.usuario_id
+               AND BINARY c.extension=BINARY l.extension
+               AND BINARY c.pbx_call_id=BINARY l.pbx_call_id
+               AND c.direccion='Saliente'
+             JOIN telefonia_ventas_resultados r ON r.usuario_id=l.usuario_id
+               AND BINARY r.extension=BINARY l.extension
+               AND BINARY r.pbx_call_id=BINARY l.pbx_call_id
+               AND BINARY r.resultado=BINARY l.resultado
+             WHERE l.usuario_id=? AND l.asignacion_id=? AND c.fecha>?
+               AND (r.resultado IN
+                 ('CONVERSACION_PERSONA','PROSPECTO_POTENCIAL','INTERESADO','SOLICITA_INFORMACION')
+                 OR EXISTS (
+                   SELECT 1 FROM telefonia_ventas_resultado_selecciones x
+                   WHERE x.resultado_id=r.id
+                     AND x.codigo IN ('CONVERSACION_PERSONA','PROSPECTO_POTENCIAL')
+                 ))
+             LIMIT 1");
+        try {
+            $s->bind_param('iis',$usuario,$asignacion,$limite);
+            $s->execute();
+            return (bool)$s->get_result()->fetch_assoc();
+        } finally {$s->close();}
     }
 
     private function registrarEtapa(int $usuario,int $asignacion,string $anterior,
@@ -241,10 +291,8 @@ final class EmbudoComercialV3BandejasService
             if ($this->etapaBloqueada($usuario,$asignacion)!=='RECUPERACION') {
                 throw new DomainException('La etapa cambió. Actualiza el tablero.');
             }
-            if (!EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
-                $this->db,$usuario,$asignacion
-            )) {
-                throw new DomainException('No se acreditó conversación PBX para reactivar esta asignación.');
+            if (!$this->conversacionPosteriorARecuperacion($usuario,$asignacion)) {
+                throw new DomainException('Para reactivar, se requiere una conversación PBX posterior al ingreso en Recuperación.');
             }
             $id=$this->registrarEtapa($usuario,$asignacion,
                 'RECUPERACION','CONTACTADO','PRIMER_CONTACTO',$motivo);
