@@ -490,6 +490,9 @@ try{
         $historial[0]['fecha_pendiente']==='2099-01-04 17:00:00' &&
         count($actividades->historial(8,13,$evento))===1,'historial y cursor de reprogramaci?n');
     $db->query("UPDATE prospecto_embudo_actividad_v3 SET fecha_pendiente='2020-01-01 12:00:00' WHERE id=$evento");
+    $vencidos=$r->listadoV3Operativo(8,array_replace($f,['vencidos'=>true]),$pg);
+    $idsVencidos=array_map('intval',array_column($vencidos['columnas']['POTENCIAL']['registros'],'asignacion_id'));
+    okV3p(in_array(13,$idsVencidos,true),'el tablero detecta un pendiente V3 vencido con agenda anterior futura');
     $actividades->registrar(8,13,'POTENCIAL',$evento,'COMPLETAR','Se atendi? la gesti?n.','','');
     $historial=$actividades->historial(8,13);
     okV3p($historial[0]['fecha_pendiente']===null && $historial[0]['completada_at'] &&
@@ -505,6 +508,51 @@ try{
     okV3p((int)$historial[0]['id']===$evento && $historial[0]['fecha_pendiente']==='2099-01-05 17:00:00' &&
         $db->query("SELECT proxima_accion_at FROM prospecto_embudo_agenda WHERE asignacion_id=13")->fetch_row()[0]
             ==='2099-01-01 16:00:00','movimiento V3 conserva ambas agendas');
+
+
+    $codigoActividad=<<<'PHP'
+    mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
+    require_once dirname($argv[1]).'/../helpers/PermissionHelper.php';
+    require_once $argv[1];
+    $db=new mysqli(getenv('MYSQL_HOST')?:'127.0.0.1',getenv('MYSQL_USER')?:'root',
+        getenv('MYSQL_PASSWORD')?:'',$argv[2],(int)(getenv('MYSQL_PORT')?:3306));
+    $_SESSION=['usuario_id'=>8,'rol_id'=>3,'permisos'=>['ventas.embudo.ver','ventas.embudo.mover']];
+    echo "LISTO\n";flush();
+    try {
+        (new EmbudoComercialV3SeguimientoService($db))->registrar(8,13,'CONTACTADO',
+            (int)$argv[3],'REPROGRAMAR','Cambio de horario acordado.',$argv[4],'');
+        echo 'GUARDADO';
+    } catch (DomainException $error) {
+        if (strpos($error->getMessage(),'La actividad cambió.')!==0) throw $error;
+        echo 'CONFLICTO';
+    }
+    PHP;
+    $procesos=[];
+    $db->begin_transaction();
+    $db->query('SELECT id FROM prospecto_asignaciones WHERE id=13 FOR UPDATE');
+    try {
+        foreach (['2099-01-06T11:00','2099-01-07T11:00'] as $fechaConcurrente) {
+            $proceso=proc_open([PHP_BINARY,'-r',$codigoActividad,'--',
+                realpath(__DIR__.'/../app/services/EmbudoComercialV3SeguimientoService.php'),
+                $name,(string)$evento,$fechaConcurrente],[1=>['pipe','w'],2=>['pipe','w']],$canales);
+            okV3p(is_resource($proceso),'iniciar reprogramación concurrente');
+            $procesos[]=[$proceso,$canales];
+        }
+        foreach ($procesos as [, $canales]) {
+            okV3p(trim((string)fgets($canales[1]))==='LISTO','reprogramaciones listas');
+        }
+    } finally {
+        $db->commit();
+    }
+    $resultados=[];
+    foreach ($procesos as [$proceso,$canales]) {
+        $resultados[]=trim(stream_get_contents($canales[1]));
+        $diagnostico=stream_get_contents($canales[2]);
+        fclose($canales[1]);fclose($canales[2]);
+        okV3p(proc_close($proceso)===0,'reprogramación concurrente '.$diagnostico);
+    }
+    sort($resultados);
+    okV3p($resultados===['CONFLICTO','GUARDADO'],'una sola reprogramación concurrente se confirma');
 
 
     $source=file_get_contents(__DIR__.'/../app/services/EmbudoComercialRepository.php');
