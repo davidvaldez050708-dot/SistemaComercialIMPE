@@ -319,7 +319,7 @@ def publicar(site,stage,root):
         print("APPLY_OK: gestión de Potenciales V3 con auditoría.")
         print("No se modificó SQL, PBX, V4, resultados, asignaciones ni permisos.")
         print("ROLLBACK_BACKUP: "+directory)
-    except Exception:
+    except BaseException:
         try:
             restaurar(site,directory,data,permit_old=True)
             print("REVERSION_AUTOMATICA_OK")
@@ -331,10 +331,10 @@ def revertir(site,directory):
     directory=raiz(directory)
     with open(os.path.join(directory,"manifest.json"),"r") as f:
         data=json.load(f)
-    if (data.get("site")!=site or data.get("estado")!="PUBLICADO" or
+    if (data.get("site")!=site or data.get("estado") not in ("RESPALDADO","PUBLICADO") or
         set(data.get("modes",{}))!=set(rel for rel,_,_ in ARCHIVOS)):
         raise Bloqueo("manifest no pertenece a esta publicación.")
-    restaurar(site,directory,data)
+    restaurar(site,directory,data,permit_old=(data["estado"]=="RESPALDADO"))
     print("ROLLBACK_OK: tablero V3 anterior restaurado; sin tocar registros.")
 
 def check_db_lectura(site):
