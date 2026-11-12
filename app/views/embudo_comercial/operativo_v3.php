@@ -134,7 +134,8 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             Jornada: <?= $esc(EmbudoComercialPresentacion::fechaLocal($p['fecha_trabajo']??'')) ?></p>
         <?php endif; ?>
         <div class="impe-v3o-acciones" aria-label="Acciones comerciales">
-            <?php if($puedeLlamar && trim((string)($p['telefono_original']??''))!==''): ?>
+            <?php if($puedeLlamar && $st!=='NO_CONTACTAR' &&
+                trim((string)($p['telefono_original']??''))!==''): ?>
             <button type="button" class="impe-v3o-accion impe-v3o-accion--llamar"
                     data-embudo-marcar="<?= $esc($p['telefono_original']) ?>"
                     title="Llamar al prospecto" aria-label="Llamar al prospecto">
@@ -151,6 +152,13 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                title="Ver ficha e historial" aria-label="Ver ficha e historial">
                 <i class="bi bi-person-vcard" aria-hidden="true"></i>
             </a>
+            <?php if($puedeMover && $etapa==='POTENCIAL' && $st!=='NO_CONTACTAR'): ?>
+            <button type="button" class="impe-v3o-accion" data-v3i-iniciar
+                title="Vincular solicitud real de inscripción"
+                aria-label="Verificar solicitud institucional de inscripción">
+                <i class="bi bi-file-earmark-check" aria-hidden="true"></i>
+            </button>
+            <?php endif; ?>
             <?php if($puedeMover && $etapa==='POTENCIAL'): ?>
             <button type="button" class="impe-v3o-accion" data-v3-gestionar
                 title="Gestionar subetapa y próxima acción" aria-label="Gestionar potencial">
@@ -454,9 +462,15 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     <?php if($puedeRecuperar || $puedeDescartar): ?>
         <?php require __DIR__.'/bandejas_v3_modal.php'; ?>
     <?php endif; ?>
+    <?php if($puedeMover): ?>
+        <?php require __DIR__.'/inscripcion_v3_modal.php'; ?>
+    <?php endif; ?>
     <?php endif; ?>
     <?php if($puedeTelefono || $puedeMover): ?>
     <script src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_operativo.js?v=<?= filemtime(__DIR__.'/../../../public/javascript/embudo_comercial_v3_operativo.js') ?>" defer></script>
+    <?php if($puedeMover): ?>
+    <script defer src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_inscripcion.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/embudo_comercial_v3_inscripcion.js'),0,16) ?>"></script>
+    <?php endif; ?>
     <?php if($puedeRecuperar || $puedeDescartar): ?>
     <script defer src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_bandejas.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/embudo_comercial_v3_bandejas.js'),0,16) ?>"></script>
     <?php endif; ?>
