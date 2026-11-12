@@ -123,7 +123,7 @@ $fecha = function ($valorFecha) use ($texto) {
 
                         <div class="territory-team-summary" aria-label="Resumen de asignaciones">
                             <span class="territory-team-active"><i class="bi bi-circle-fill" aria-hidden="true"></i> Activa</span>
-                            <button type="button" data-team-filter="analistas" aria-pressed="false" aria-label="Mostrar analistas de <?= $texto($nombreCuenta) ?>">
+                            <button type="button" data-team-filter="analistas" aria-pressed="true" aria-label="Mostrar analistas de <?= $texto($nombreCuenta) ?>">
                                 <i class="bi bi-people" aria-hidden="true"></i> <?= count($analistas) ?> <?= count($analistas) === 1 ? 'analista' : 'analistas' ?>
                             </button>
                             <button type="button" data-team-filter="asesores" aria-pressed="false" aria-label="Mostrar asesores de <?= $texto($nombreCuenta) ?>">
@@ -283,7 +283,7 @@ $fecha = function ($valorFecha) use ($texto) {
                         </div>
                         </div>
 
-                        <div class="territory-team-pane" data-team-pane="asesores">
+                        <div class="territory-team-pane" data-team-pane="asesores" hidden>
                             <div class="territory-analyst-list territory-team-advisors">
                                 <div class="territory-analyst-label"><span></span>Asesores asignados (<?= count($asesoresCuenta) ?>)</div>
                                 <?php foreach ($asesoresCuenta as $asesor): ?>

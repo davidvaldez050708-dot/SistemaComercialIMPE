@@ -75,7 +75,7 @@ $nombreAsesor = trim(($asesor['nombre'] ?? '') . ' ' . ($asesor['apellidos'] ?? 
                         Cancelar
                     </button>
                     <button type="submit" class="btn btn-territory-analyst">
-                        Guardar Cuenta Clave
+                        Guardar
                     </button>
                 </div>
             </form>
