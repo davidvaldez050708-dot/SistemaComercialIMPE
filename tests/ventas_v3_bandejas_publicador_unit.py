@@ -62,7 +62,7 @@ with tempfile.TemporaryDirectory(prefix='impe_bandejas_test_') as tmp:
         else:check(p.p.blob(dest)==old,'restaura original '+ruta)
     # Un solo archivo inesperado debe impedir el CHECK, sin tocar otros.
     modified=os.path.join(site,'app/controllers/EmbudoComercialController.php')
-    with open(modified,'ab') as f:f.write(b'\n// Personalización inesperada')
+    with open(modified,'ab') as f:f.write(b'\n// Unexpected custom modification')
     try:
         p.p.estado(site)
         raise AssertionError('No bloqueó personalización del controlador.')
