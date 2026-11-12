@@ -177,6 +177,48 @@ que no haya configuración Zoho activa.
 rechazo de modificaciones y rollback en una carpeta temporal CI.
 No sustituye las comprobaciones manuales de producción.
 
+## Publicación del modelo conciliado (configuración Zoho aún desactivada)
+
+Tras publicar los tres servicios sin sobrescribir archivos de Hostinger, el
+modelo operativo sigue con el SHA256 `5089e339748fa7cd...`. El modelo
+conciliado se generó en la carpeta privada
+`$HOME/.zoho-conciliacion.ePY369/FormularioRegistroModel.php` y validó
+18 líneas agregadas, cero eliminadas, SHA256 `74699f0b75430ea6...`.
+
+`tools/zoho_dev_modelo_publicar.py` verifica los hashes de los tres
+servicios ya publicados, el SHA del modelo original, la identidad exacta
+del candidato frente a un parche recalculado desde el original y la
+ausencia de configuración Zoho habilitada. Rechaza cambios concurrentes,
+archivos inesperados y segunda publicación. Al publicar crea primero
+un **respaldo privado exclusivo** bajo `$HOME/.zoho-modelo-respaldo-*`
+y reemplaza de manera atómica **solamente**
+`app/models/FormularioRegistroModel.php`, conservando permisos;
+no modifica controladores, SQL, cron, tablas ni datos.
+
+Comprobación sin escribir:
+
+~~~bash
+python3 "$HOME/crm-zoho-developer-piloto/tools/zoho_dev_modelo_publicar.py" \
+  --check \
+  --candidate "$HOME/.zoho-conciliacion.ePY369/FormularioRegistroModel.php"
+~~~
+
+El modo `--publish --confirm-model` requiere autorización y pruebas
+aprobadas del commit. Después, el modelo sigue sin enviar a Zoho porque
+`zoho_sync.local.php` todavía no existe. La reversión
+`--rollback --backup RUTA_PRIVADA --confirm-rollback` comprueba que el
+modelo siga exactamente con el parche antes de restaurar la copia
+original, sin afectar otros archivos.
+
+La prueba `tests/zoho_dev_modelo_publicar_smoke.py` prueba en CI
+el preflight, sustitución atómica, backup, detección de cambios y rollback
+sobre un sitio sintético, **sin datos ni servicios reales**.
+
+**No activar exportaciones ni registrar pruebas en el formulario real**:
+el guardado operativo ejecuta antes la incorporación comercial.
+La demostración extremo a extremo de un formulario ficticio debe
+realizarse en un entorno que no asigne prospectos reales a asesores.
+
 ## Antes de habilitar: requisitos
 
 1. Trabajar en una **copia/staging** de la base de datos y del sitio,
