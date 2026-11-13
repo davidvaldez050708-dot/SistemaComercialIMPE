@@ -51,6 +51,8 @@ async function run(mode){
         consultas++;
         const consulta=mode==='ambigua'
           ?{estado:'REVISION_INSTITUCIONAL',mensaje:'Revisión institucional requerida.'}
+          :mode==='incompleta'
+          ?{estado:'SOLICITUD_INCOMPLETA',mensaje:'Falta el detalle para aparecer en Inscritos.'}
           :mode==='ausente'
           ?{estado:'SIN_SOLICITUD',mensaje:'No se encontró inscripción.'}
           :{estado:'CANDIDATA',formulario_id:501,fecha:'2026-11-12 13:00:00'};
@@ -84,9 +86,10 @@ async function run(mode){
     await page.getByRole('button',{name:'Buscar solicitud recibida'}).click();
     await page.waitForFunction(()=>document.querySelector('[data-v3i-buscar]').disabled===false);
     assert.equal(consultas,1);
-    if(mode==='ausente'||mode==='ambigua'){
+    if(['ausente','ambigua','incompleta'].includes(mode)){
       assert.equal(await page.locator('[data-v3i-confirmar]').isVisible(),false);
       assert.equal(await page.locator('[data-v3i-guardar]').isEnabled(),false);
+      if(mode==='incompleta') assert.match(await page.locator('[data-v3i-estado]').textContent(),/Inscritos/);
     }else{
       assert.equal(await page.locator('[data-v3i-confirmar]').isVisible(),true);
       await page.locator('[name=motivo]').fill('Solicitud institucional recibida');
@@ -102,9 +105,9 @@ async function run(mode){
         assert.equal(navegaciones,1,'no recargar durante llamada');
       }
     }
-    assert.equal(vinculos,mode==='ausente'||mode==='ambigua'?0:1);
+    assert.equal(vinculos,['ausente','ambigua','incompleta'].includes(mode)?0:1);
     console.log('CHECK_OK: inscripción V3 Chromium',mode);
   }finally{await browser.close();}
 }
-(async()=>{for(const m of ['ausente','ambigua','conflicto','valida'])await run(m);})()
+(async()=>{for(const m of ['ausente','ambigua','incompleta','conflicto','valida'])await run(m);})()
   .catch(e=>{console.error(e);process.exitCode=1;});
