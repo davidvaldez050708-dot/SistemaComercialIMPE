@@ -10,16 +10,19 @@ class ConexionTerritorialFalsa
     public $asignaciones = 0;
     public $movimientos = 0;
     public $cuentas = [];
+    public $cuentasUsuarios = [];
     private $anterior;
 
     public function begin_transaction()
     {
-        $this->anterior = [$this->asignaciones, $this->movimientos, $this->cuentas];
+        $this->anterior = [$this->asignaciones, $this->movimientos,
+            $this->cuentas, $this->cuentasUsuarios];
     }
     public function commit() { $this->commitCount++; $this->anterior = null; }
     public function rollback()
     {
-        list($this->asignaciones, $this->movimientos, $this->cuentas) = $this->anterior;
+        list($this->asignaciones, $this->movimientos, $this->cuentas,
+            $this->cuentasUsuarios) = $this->anterior;
         $this->rollbackCount++;
         $this->anterior = null;
     }
@@ -46,6 +49,8 @@ class ConsultaTerritorialFalsa
             $this->conexion->insert_id++;
             if ($this->valores[2] === 'CUENTA_CLAVE') {
                 $this->conexion->cuentas[$this->valores[0]][] = $this->conexion->insert_id;
+                $this->conexion->cuentasUsuarios[$this->valores[0]][$this->valores[1]] =
+                    $this->conexion->insert_id;
             }
         } elseif (strpos($this->sql, 'INSERT INTO bitacora_movimientos_territoriales') !== false) {
             $this->conexion->movimientos++;
@@ -54,10 +59,14 @@ class ConsultaTerritorialFalsa
     }
     public function get_result()
     {
-        $filas = strpos($this->sql, 'FROM asignaciones_territorio') !== false
-            ? array_map(function ($id) { return ['id' => $id]; },
-                array_slice($this->conexion->cuentas[$this->valores[0]] ?? [], 0, 2))
-            : [['id' => 1]];
+        if (strpos($this->sql, 'FROM asignaciones_territorio') !== false) {
+            $ids = strpos($this->sql, 'usuario_id = ?') !== false
+                ? array_filter([$this->conexion->cuentasUsuarios[$this->valores[0]][$this->valores[1]] ?? null])
+                : array_slice($this->conexion->cuentas[$this->valores[0]] ?? [], 0, 2);
+            $filas = array_map(function ($id) { return ['id' => $id]; }, $ids);
+        } else {
+            $filas = [['id' => 1]];
+        }
         return new class($filas) {
             private $filas;
             public function __construct($filas) { $this->filas = $filas; }
@@ -222,6 +231,9 @@ $conexionTodos = new ConexionTerritorialFalsa();
 $asignacionesTodos = [];
 foreach (range(1, 32) as $estadoId) {
     $conexionTodos->cuentas[$estadoId] = [1000 + $estadoId];
+    if ($estadoId > 1) {
+        $conexionTodos->cuentasUsuarios[$estadoId][7] = 1000 + $estadoId;
+    }
     foreach ([['CUENTA_CLAVE', 7], ['ANALISTA_DATOS', 8], ['ASESOR', 9]] as $persona) {
         $asignacionesTodos[] = [
             'estado_id' => $estadoId, 'usuario_id' => $persona[1],
@@ -244,7 +256,7 @@ $totalTodos = $modelo->crearAsignacionesMasivas($asignacionesTodos, 3,
         return [];
     });
 if ($totalTodos !== 96 || $vinculosTodos !== 64 ||
-    $conexionTodos->commitCount !== 1 || $conexionTodos->asignaciones !== 96) {
+    $conexionTodos->commitCount !== 1 || $conexionTodos->asignaciones !== 65) {
     throw new RuntimeException('No se vinculó todo el equipo en los 32 estados.');
 }
 echo "Vinculación automática en 32 estados con Cuentas Clave previas verificada.\n";

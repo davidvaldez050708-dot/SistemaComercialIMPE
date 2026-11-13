@@ -502,6 +502,24 @@ class TerritorioModel
             $cuentasUnicas = [];
             foreach ($asignaciones as $datos) {
                 $tipo = $datos['tipo_asignacion'];
+                $cuentaExistenteId = 0;
+                if ($tipo === 'CUENTA_CLAVE') {
+                    $existente = $this->connection->prepare(
+                        "SELECT id FROM asignaciones_territorio
+                         WHERE estado_id = ? AND usuario_id = ?
+                           AND tipo_asignacion = 'CUENTA_CLAVE' AND activo = 1
+                           AND (fecha_inicio IS NULL OR fecha_inicio <= CURDATE())
+                           AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())
+                         ORDER BY id LIMIT 1"
+                    );
+                    $existente->bind_param('ii', $datos['estado_id'], $datos['usuario_id']);
+                    $existente->execute();
+                    $filaExistente = $existente->get_result()->fetch_assoc();
+                    if ($filaExistente) {
+                        $cuentaExistenteId = (int)$filaExistente['id'];
+                        $datos['reutilizar_cuenta_vigente'] = true;
+                    }
+                }
                 if ($tipo !== 'CUENTA_CLAVE') {
                     $referencia = (string)($datos['cuenta_clave_referencia'] ?? '');
                     if (strpos($referencia, 'nuevo:') === 0) {
@@ -551,6 +569,11 @@ class TerritorioModel
                 $errores = $validar($datos);
                 if ($errores) {
                     throw new InvalidArgumentException(reset($errores));
+                }
+                if ($cuentaExistenteId) {
+                    $nuevasCuentas[$datos['estado_id']][$datos['usuario_id']] = $cuentaExistenteId;
+                    unset($cuentasUnicas[(int)$datos['estado_id']]);
+                    continue;
                 }
 
                 $cuentaId = $tipo === 'CUENTA_CLAVE' ||

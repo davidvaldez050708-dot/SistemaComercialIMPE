@@ -852,6 +852,7 @@ class TerritorioController
         if (
             empty($errores) &&
             $datos['tipo_asignacion'] === 'CUENTA_CLAVE' &&
+            empty($datos['reutilizar_cuenta_vigente']) &&
             $modeloTerritorio->existeCuentaClaveActiva(
                 (int)$datos['estado_id'],
                 (int)$datos['usuario_id']

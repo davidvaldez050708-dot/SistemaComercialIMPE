@@ -14,6 +14,7 @@ import tempfile
 
 BASE = '1a7bd437'
 ARCHIVOS = (
+    Path('app/controllers/TerritorioController.php'),
     Path('app/models/TerritorioModel.php'),
     Path('app/views/territorios/index.php'),
 )
@@ -49,11 +50,15 @@ def integrar(instalado, anterior, nuevo, temporal):
 
 def validar(ruta, datos):
     texto = datos.decode('utf-8')
-    if ruta.name == 'index.php':
+    if ruta.name == 'TerritorioController.php':
+        if 'empty($datos[\'reutilizar_cuenta_vigente\'])' not in texto:
+            raise RuntimeError('No quedó integrada la reutilización segura de Cuenta Clave.')
+    elif ruta.name == 'index.php':
         if texto.count('if (nuevasCuentas.length === 1)') != 1 or \
                 'vinculación automática de ' not in texto:
             raise RuntimeError('No quedó integrado el mensaje único del modal.')
-    elif texto.count('if (count($nuevasDelEstado) === 1)') != 1:
+    elif texto.count('if (count($nuevasDelEstado) === 1)') != 1 or \
+            'reutilizar_cuenta_vigente' not in texto:
         raise RuntimeError('No quedó integrada la vinculación automática.')
     with tempfile.TemporaryDirectory(prefix='impe-modal-php-') as carpeta:
         archivo = Path(carpeta) / ruta.name
