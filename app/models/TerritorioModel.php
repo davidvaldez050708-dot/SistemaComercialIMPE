@@ -513,30 +513,38 @@ class TerritorioModel
                         }
                     } elseif ($referencia === '') {
                         $estadoId = (int)$datos['estado_id'];
-                        if (!array_key_exists($estadoId, $cuentasUnicas)) {
-                            $consulta = $this->connection->prepare(
-                                "SELECT id FROM asignaciones_territorio
-                                 WHERE estado_id = ? AND tipo_asignacion = 'CUENTA_CLAVE'
-                                   AND activo = 1
-                                   AND (fecha_inicio IS NULL OR fecha_inicio <= CURDATE())
-                                   AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())
-                                 ORDER BY id LIMIT 2"
-                            );
-                            $consulta->bind_param('i', $estadoId);
-                            $consulta->execute();
-                            $resultado = $consulta->get_result();
-                            $primera = $resultado->fetch_assoc();
-                            $segunda = $resultado->fetch_assoc();
-                            $cuentasUnicas[$estadoId] = [
-                                'id' => $primera && !$segunda ? (int)$primera['id'] : 0,
-                                'multiples' => (bool)$segunda
-                            ];
-                        }
-                        $datos['cuenta_clave_asignacion_id'] = $cuentasUnicas[$estadoId]['id'];
-                        if (!$datos['cuenta_clave_asignacion_id'] &&
-                            ($tipo === 'ANALISTA_DATOS' || $cuentasUnicas[$estadoId]['multiples'])) {
+                        $nuevasDelEstado = $nuevasCuentas[$estadoId] ?? [];
+                        if (count($nuevasDelEstado) === 1) {
+                            $datos['cuenta_clave_asignacion_id'] = (int)reset($nuevasDelEstado);
+                        } elseif (count($nuevasDelEstado) > 1) {
                             throw new InvalidArgumentException(
                                 'Selecciona una Cuenta Clave para cada estado.');
+                        } else {
+                            if (!array_key_exists($estadoId, $cuentasUnicas)) {
+                                $consulta = $this->connection->prepare(
+                                    "SELECT id FROM asignaciones_territorio
+                                     WHERE estado_id = ? AND tipo_asignacion = 'CUENTA_CLAVE'
+                                       AND activo = 1
+                                       AND (fecha_inicio IS NULL OR fecha_inicio <= CURDATE())
+                                       AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())
+                                     ORDER BY id LIMIT 2"
+                                );
+                                $consulta->bind_param('i', $estadoId);
+                                $consulta->execute();
+                                $resultado = $consulta->get_result();
+                                $primera = $resultado->fetch_assoc();
+                                $segunda = $resultado->fetch_assoc();
+                                $cuentasUnicas[$estadoId] = [
+                                    'id' => $primera && !$segunda ? (int)$primera['id'] : 0,
+                                    'multiples' => (bool)$segunda
+                                ];
+                            }
+                            $datos['cuenta_clave_asignacion_id'] = $cuentasUnicas[$estadoId]['id'];
+                            if (!$datos['cuenta_clave_asignacion_id'] &&
+                                ($tipo === 'ANALISTA_DATOS' || $cuentasUnicas[$estadoId]['multiples'])) {
+                                throw new InvalidArgumentException(
+                                    'Selecciona una Cuenta Clave para cada estado.');
+                            }
                         }
                     }
                 }

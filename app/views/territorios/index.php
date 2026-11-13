@@ -1119,6 +1119,20 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             cuentas.classList.toggle('d-none', !activos.length);
             if (!activos.length || !opciones) return;
+            const nuevasCuentas = usuariosElegidos('CUENTA_CLAVE');
+            if (nuevasCuentas.length === 1) {
+                const aviso = document.createElement('p');
+                aviso.className = 'territory-bulk-parent-auto';
+                const perfiles = activos.map(function (item) {
+                    return item[0] === 'ASESOR' ? 'asesores' : 'analistas';
+                }).join(' y ');
+                const total = elegidos().length;
+                aviso.textContent = nuevasCuentas[0].nombre + ' · ' +
+                    'vinculación automática de ' + perfiles + ' en ' + total +
+                    (total === 1 ? ' estado seleccionado.' : ' estados seleccionados.');
+                cuentas.appendChild(aviso);
+                return;
+            }
             activos.forEach(function (item) {
                 const tipo = item[0];
                 const grupo = document.createElement('details');

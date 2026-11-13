@@ -217,3 +217,34 @@ if ($vinculado !== 42) {
     throw new RuntimeException('El Asesor no quedó vinculado a la Cuenta Clave existente elegida.');
 }
 echo "Vinculación con Cuentas Clave existentes verificada.\n";
+
+$conexionTodos = new ConexionTerritorialFalsa();
+$asignacionesTodos = [];
+foreach (range(1, 32) as $estadoId) {
+    $conexionTodos->cuentas[$estadoId] = [1000 + $estadoId];
+    foreach ([['CUENTA_CLAVE', 7], ['ANALISTA_DATOS', 8], ['ASESOR', 9]] as $persona) {
+        $asignacionesTodos[] = [
+            'estado_id' => $estadoId, 'usuario_id' => $persona[1],
+            'tipo_asignacion' => $persona[0], 'cuenta_clave_referencia' => '',
+            'fecha_inicio' => '2026-11-13', 'observaciones' => ''
+        ];
+    }
+}
+$propiedad->setValue($modelo, $conexionTodos);
+$vinculosTodos = 0;
+$totalTodos = $modelo->crearAsignacionesMasivas($asignacionesTodos, 3,
+    function ($datos) use ($conexionTodos, &$vinculosTodos) {
+        if ($datos['tipo_asignacion'] !== 'CUENTA_CLAVE') {
+            $cuentas = $conexionTodos->cuentas[$datos['estado_id']];
+            if ($datos['cuenta_clave_asignacion_id'] !== end($cuentas)) {
+                return ['cuenta' => 'No se eligió la nueva Cuenta Clave.'];
+            }
+            $vinculosTodos++;
+        }
+        return [];
+    });
+if ($totalTodos !== 96 || $vinculosTodos !== 64 ||
+    $conexionTodos->commitCount !== 1 || $conexionTodos->asignaciones !== 96) {
+    throw new RuntimeException('No se vinculó todo el equipo en los 32 estados.');
+}
+echo "Vinculación automática en 32 estados con Cuentas Clave previas verificada.\n";
