@@ -1085,6 +1085,7 @@ document.addEventListener('DOMContentLoaded', function () {
             todos.textContent = total && total === cantidad
                 ? 'Quitar selección' : 'Seleccionar todos';
             chips.replaceChildren();
+            if (total > 0 && total === cantidad) return;
             seleccionados.forEach(function (entrada) {
                 const etiqueta = document.createElement('button');
                 etiqueta.type = 'button';
@@ -1338,6 +1339,8 @@ document.addEventListener('DOMContentLoaded', function () {
             entradas.forEach(function (entrada) { entrada.checked = seleccionar; });
             actualizarResumenEstados();
             actualizarCuentas();
+            listaEstados.hidden = true;
+            abrirEstados.setAttribute('aria-expanded', 'false');
         });
         formMasiva.addEventListener('submit', async function (evento) {
             evento.preventDefault();
