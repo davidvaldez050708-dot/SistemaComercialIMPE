@@ -39,13 +39,15 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
             <?= !$recuperacion?'aria-current="page"':'' ?>>
             <i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
         <?php endif; ?>
+        <a href="<?= $esc($base.'controller=embudoComercial&action=expedientes') ?>">
+            <i class="bi bi-folder2-open" aria-hidden="true"></i> Expedientes cerrados</a>
     </nav>
     <?php if($error!==''): ?>
         <p class="impe-embudo-alert impe-embudo-alert--error" role="alert"><?= $esc($error) ?></p>
     <?php elseif(!$disponible): ?>
         <p class="impe-embudo-alert" role="status">La estructura comercial no está disponible.</p>
     <?php else: ?>
-    <form class="impe-embudo-filtros" action="<?= $esc(BASE_URL.'index.php') ?>" method="get" role="search">
+    <form class="impe-embudo-filtros" action="<?= $esc(BASE_URL.'index.php') ?>" method="get" role="search" data-embudo-v3-auto-filter>
         <input type="hidden" name="controller" value="embudoComercial">
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="vista" value="<?= $esc($vista) ?>">
@@ -58,7 +60,7 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
         </label>
         <label>Programa educativo
             <select name="programa">
-                <option value="">Todos</option>
+                <option value="">Todos los programas</option>
                 <?php foreach($opciones['programas'] as $o): ?>
                     <option value="<?= $esc($o['codigo']) ?>" <?= $filtros['programa']===$o['codigo']?'selected':'' ?>>
                         <?= $esc($o['nombre']) ?></option>
@@ -73,10 +75,14 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
             <input type="checkbox" name="vencidos" value="1"
                    <?= $filtros['vencidos']?'checked':'' ?>> Solo vencidos
         </label>
-        <button type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Filtrar</button>
+        <noscript><button type="submit">Filtrar</button></noscript>
+        <?php if ($filtros['origen']!=='' || $filtros['programa']!=='' ||
+            $filtros['buscar']!=='' || $filtros['vencidos']): ?>
         <a class="impe-embudo-reset" href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>$vista])) ?>">Limpiar</a>
+        <?php endif; ?>
     </form>
+    <script defer src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_filtros.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/embudo_comercial_v3_filtros.js'),0,16) ?>"></script>
     <div class="impe-embudo-board-info">
         <span><i class="bi bi-people" aria-hidden="true"></i>
             <?= (int)$col['total'] ?> prospectos asignados</span>
