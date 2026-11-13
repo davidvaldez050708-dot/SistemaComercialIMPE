@@ -89,7 +89,12 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
              data-v3-actividad-pendiente="<?= $pendiente ? '1' : '0' ?>"
              <?= $propuestas?'draggable="true"':'' ?>>
         <div class="impe-embudo-card-line">
-            <a href="<?= $esc($detalle) ?>" class="impe-embudo-persona"
+            <?php if($propuestas): ?>
+            <span class="impe-v3o-agarre" title="Arrastra la tarjeta a una etapa disponible" aria-hidden="true">
+                <i class="bi bi-grip-vertical"></i>
+            </span>
+            <?php endif; ?>
+            <a draggable="false" href="<?= $esc($detalle) ?>" class="impe-embudo-persona"
                title="Ver ficha comercial"><?= $esc($p['nombre_completo']) ?></a>
             <span class="impe-embudo-source <?= $origen==='META_ADS'?'is-meta':($origen==='ALIADO'?'is-aliado':'') ?>">
                 <?= $origen==='META_ADS'?'Meta':($origen==='ALIADO'?'Aliado':'Registro') ?>

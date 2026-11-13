@@ -238,7 +238,7 @@
       if(telefonoActivo() || dialog.open || !card.dataset.asignacionId ||
          !destinosDe(card).length ||
          (origen instanceof Element &&
-          origen.closest('a,button,input,select,textarea,[contenteditable="true"]')) ||
+          origen.closest('a,button,summary,input,select,textarea,[contenteditable="true"]')) ||
          !event.dataTransfer){
         event.preventDefault();
         return;

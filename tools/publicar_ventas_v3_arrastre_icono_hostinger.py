@@ -20,8 +20,9 @@ def main():
         ('app/services/EmbudoComercialRepository.php', 'b89744e35c369ac24bbd2c30403a7db5a3e00a5a', '1cd8c3b8cb6bd4c3d5c3c8c2dae2d7de86221079'),
         ('app/services/EmbudoComercialV3CalificacionService.php', '04d321ac7d8e9850824e3e3291e4848036ba174f', 'a600fc95a844a9d261c7500b0dabaa6cc52b1aaa'),
         ('app/services/EmbudoComercialV3MovimientosPermitidos.php', 'd3f4248699d5034722bcde36eb84740c58509bd2', '542567e9b615c6631e647830a44e29d81c2658be'),
-        ('app/views/embudo_comercial/operativo_v3.php', '5d5b297a986bcf92ab2ca224ef3d9ba30f9ae078', 'a71c541015649ecad570a5f38893af5f4e42bf79'),
-        ('public/css/embudo_v3_operativo.css', 'bf0234e15b6f87bf2f7edf1d9b1c13aec5398654', '4b3e7d6b059818ca80bd9744a53be444d269ea18'),
+        ('app/views/embudo_comercial/operativo_v3.php', '5d5b297a986bcf92ab2ca224ef3d9ba30f9ae078', '2a040f772b5a93b9f31dcfd29632c939cb0b2e6a'),
+        ('public/css/embudo_v3_operativo.css', 'bf0234e15b6f87bf2f7edf1d9b1c13aec5398654', 'e2ef2ecc08755d53ef74c18d405f360acd18d453'),
+        ('public/javascript/embudo_comercial_v3_operativo.js', '2adf7d3952a6f5e3c8400ecaf7355b861ecbca38', '903abf05c5d7ca9b060afdd3a4d780fe778e42be'),
     ]
     publicador.NO_MODIFICAR = {}
     sitio = publicador.raiz(args.site)

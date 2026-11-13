@@ -444,3 +444,11 @@
 }
 
 .impe-v3o-gestion > summary::-webkit-details-marker { display: none; }
+
+.impe-v3o-agarre {
+    flex: 0 0 auto;
+    cursor: grab;
+    color: #526b8a;
+    padding: 2px 4px;
+}
+.is-dragging .impe-v3o-agarre { cursor: grabbing; }
