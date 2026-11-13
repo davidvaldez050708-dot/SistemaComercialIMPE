@@ -72,9 +72,25 @@ $metaEnConfiguracion=$seccionProspectos==='meta' && !empty($metaPuedeConfigurar)
 $metaEnHistorial=$seccionProspectos==='meta' && !empty($metaHistorialVisible);
 ?>
 <?php if ($seccionProspectos==='meta' && !$metaEnHistorial && !$metaEnConfiguracion && !empty($metaResultado)): ?>
-<div class="meta-import-result" role="status"><strong>Última importación terminada</strong>
-<?= (int)$metaResultado['nuevos'] ?> prospectos nuevos · <?= (int)$metaResultado['repetidos'] ?> ya existentes · <?= (int)$metaResultado['rechazados'] ?> filas no válidas · <?= (int)$metaResultado['repetidos_archivo'] ?> repetidos dentro del archivo.
-</div><?php endif; ?>
+<?php unset($_SESSION['prospectos_meta_resultado']); ?>
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="prospectos-importacion-toast" class="toast system-toast" role="status"
+         aria-live="polite" aria-atomic="true" data-bs-delay="6500">
+        <div class="toast-body">
+            <i class="bi bi-check2-circle" aria-hidden="true"></i>
+            <div><strong>Importación terminada</strong><br>
+                <?= (int)$metaResultado['nuevos'] ?> prospectos nuevos · <?= (int)$metaResultado['repetidos'] ?> ya existentes · <?= (int)$metaResultado['rechazados'] ?> filas no válidas · <?= (int)$metaResultado['repetidos_archivo'] ?> repetidos dentro del archivo.
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const aviso = document.getElementById('prospectos-importacion-toast');
+    if (aviso && window.bootstrap?.Toast) bootstrap.Toast.getOrCreateInstance(aviso).show();
+});
+</script>
+<?php endif; ?>
 <?php if ($seccionProspectos==='meta' && !empty($metaAviso)): ?><p class="central-alert" role="alert"><?= $esc($metaAviso) ?></p><?php endif; ?>
 <section class="central-panel">
 <div class="central-section-head <?= $seccionProspectos==='meta'?'meta-import-toolbar':'' ?>">
