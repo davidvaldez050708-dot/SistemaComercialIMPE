@@ -11,7 +11,10 @@
     const menu=document.getElementById(boton.getAttribute('popovertarget'));
     if(!menu)return;
     menu.addEventListener('toggle',evento=>{
-      if(evento.newState!=='open')return;
+      if(evento.newState!=='open'){
+        delete menu.dataset.posicionado;
+        return;
+      }
       const ancla=boton.getBoundingClientRect();
       const ancho=menu.offsetWidth;
       const alto=menu.offsetHeight;
@@ -21,6 +24,7 @@
       menu.style.left=izquierda+'px';
       menu.style.top=Math.max(8,abajo+alto<=window.innerHeight-8
         ?abajo:Math.min(arriba,window.innerHeight-alto-8))+'px';
+      menu.dataset.posicionado='1';
     });
     menu.addEventListener('click',evento=>{
       if(evento.target.closest('button,a') && menu.matches(':popover-open'))menu.hidePopover();
@@ -129,8 +133,9 @@
     }
     return result;
   };
+  let reintentoRefresco=0;
   const refrescarTrasLlamada=()=>{
-    if(refresh || usuarioId<1 || document.hidden || telefonoActivo())return;
+    if(refresh || usuarioId<1 || document.hidden)return;
     let info=null;
     try{info=JSON.parse(localStorage.getItem(cambioKey)||'null');}
     catch(_){return;}
@@ -139,11 +144,22 @@
        !Number.isFinite(Number(info.creada)) ||
        Number(info.creada)<=vistaCargada ||
        Date.now()-Number(info.creada)>60000) return;
+    if(telefonoActivo() || root.querySelector('dialog[open], :popover-open')){
+      if(!reintentoRefresco) reintentoRefresco=window.setTimeout(()=>{
+        reintentoRefresco=0;
+        refrescarTrasLlamada();
+      },750);
+      return;
+    }
     refresh=true;
     window.location.reload();
   };
   window.addEventListener('storage',event=>{
     if(event.key===cambioKey)refrescarTrasLlamada();
+  });
+  window.addEventListener('message',event=>{
+    if(event.origin===location.origin && event.source===window.parent &&
+       event.data?.type==='IMPE_PHONE_CALL_CHANGED')refrescarTrasLlamada();
   });
   window.addEventListener('focus',refrescarTrasLlamada);
   document.addEventListener('visibilitychange',refrescarTrasLlamada);

@@ -89,11 +89,6 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
              data-v3-actividad-pendiente="<?= $pendiente ? '1' : '0' ?>"
              <?= $propuestas?'draggable="true"':'' ?>>
         <div class="impe-embudo-card-line">
-            <?php if($propuestas): ?>
-            <span class="impe-v3o-agarre" title="Arrastra la tarjeta a una etapa disponible" aria-hidden="true">
-                <i class="bi bi-grip-vertical"></i>
-            </span>
-            <?php endif; ?>
             <a draggable="false" href="<?= $esc($detalle) ?>" class="impe-embudo-persona"
                title="Ver ficha comercial"><?= $esc($p['nombre_completo']) ?></a>
             <span class="impe-embudo-source <?= $origen==='META_ADS'?'is-meta':($origen==='ALIADO'?'is-aliado':'') ?>">
@@ -421,8 +416,8 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                 <p data-actividad-prospecto></p>
                 <label>Acción
                     <select name="operacion" required>
-                        <option value="REGISTRAR">Registrar gestión</option>
-                        <option value="PROGRAMAR">Programar actividad</option>
+                        <option value="REGISTRAR">Registrar una gestión realizada</option>
+                        <option value="PROGRAMAR">Programar una próxima gestión</option>
                         <option value="REPROGRAMAR">Reprogramar actividad</option>
                         <option value="COMPLETAR">Marcar como completada</option>
                     </select>
@@ -435,6 +430,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                         <?php endforeach; ?>
                     </select>
                 </label>
+                <p class="small text-muted">En el motivo, indica qué hiciste o qué harás: llamar, enviar información o confirmar documentos. Programar guarda la fecha en el expediente.</p>
                 <label data-actividad-fecha hidden>Fecha y hora de México
                     <input name="fecha" type="datetime-local">
                 </label>

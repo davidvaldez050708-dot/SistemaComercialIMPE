@@ -448,10 +448,8 @@
     background: #edf4fd;
 }
 
-.impe-v3o-agarre {
-    flex: 0 0 auto;
-    cursor: grab;
-    color: #526b8a;
-    padding: 2px 4px;
+.impe-v3o-gestion-opciones:popover-open:not([data-posicionado]) {
+    visibility: hidden;
 }
-.is-dragging .impe-v3o-agarre { cursor: grabbing; }
+.impe-v3o-card[draggable="true"] { cursor: grab; }
+.impe-v3o-card.is-dragging { cursor: grabbing; }
