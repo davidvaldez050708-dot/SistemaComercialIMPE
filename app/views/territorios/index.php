@@ -1181,12 +1181,27 @@ document.addEventListener('DOMContentLoaded', function () {
                         fila.className = 'territory-bulk-parent-row';
                         const etiqueta = document.createElement('label');
                         etiqueta.className = 'territory-bulk-parent-person';
-                        const iconoPersona = document.createElement('span');
-                        iconoPersona.className = 'territory-bulk-parent-person-icon';
-                        iconoPersona.innerHTML = '<i class="bi bi-person" aria-hidden="true"></i>';
+                        const avatar = document.createElement('span');
+                        avatar.className = 'territory-bulk-avatar';
+                        const usuario = opciones.usuarios[tipo].find(function (item) {
+                            return String(item.id) === persona.id;
+                        });
+                        const iniciales = document.createElement('span');
+                        iniciales.textContent = usuario
+                            ? ((usuario.nombre || '').charAt(0) +
+                                (usuario.apellidos || '').charAt(0)).toUpperCase()
+                            : persona.nombre.charAt(0).toUpperCase();
+                        if (usuario?.foto_url) {
+                            const imagen = document.createElement('img');
+                            imagen.src = usuario.foto_url;
+                            imagen.alt = '';
+                            imagen.addEventListener('error', function () { imagen.remove(); });
+                            avatar.appendChild(imagen);
+                        }
+                        avatar.appendChild(iniciales);
                         const nombrePersona = document.createElement('span');
                         nombrePersona.textContent = persona.nombre;
-                        etiqueta.append(iconoPersona, nombrePersona);
+                        etiqueta.append(avatar, nombrePersona);
                         fila.appendChild(etiqueta);
                         if (disponibles.length === 1 ||
                             (!disponibles.length && tipo === 'ASESOR')) {
