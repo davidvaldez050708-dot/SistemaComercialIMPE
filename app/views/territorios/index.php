@@ -304,46 +304,49 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
 
     <div class="modal fade" id="modalAsignacionMasiva" tabindex="-1"
         aria-labelledby="modalAsignacionMasivaTitulo" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable system-form-dialog">
-            <div class="modal-content system-form-modal">
-                <form id="formAsignacionMasiva" class="d-flex flex-column overflow-hidden"
-                    style="max-height: calc(100vh - 3.5rem)"
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable system-form-dialog territory-bulk-dialog">
+            <div class="modal-content system-form-modal territory-bulk-content">
+                <form id="formAsignacionMasiva" class="territory-bulk-form"
                     action="<?= BASE_URL ?>index.php?controller=territorio&amp;action=guardarAsignacionMasiva" method="post">
-                    <div class="modal-header system-form-modal-header">
+                    <div class="modal-header system-form-modal-header territory-bulk-header">
                         <div>
                             <h5 class="system-form-modal-title" id="modalAsignacionMasivaTitulo">Asignar a varios estados</h5>
                             <p class="system-form-modal-subtitle">Elige los estados y agrega solo las personas necesarias.</p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
-                    <div class="modal-body overflow-auto">
+                    <div class="modal-body territory-bulk-body">
                         <input type="hidden" name="csrf_token" value="<?= $texto($_SESSION['csrf_token'] ?? '') ?>">
-                        <div class="mb-3">
-                            <label class="form-label" for="masivaAbrirEstados">Estados</label>
-                            <button type="button" class="form-select text-start" id="masivaAbrirEstados"
-                                aria-expanded="false" aria-controls="masivaListaEstados">Seleccionar estados</button>
-                            <div id="masivaListaEstados" class="border rounded p-2 mt-1" hidden>
-                                <button type="button" class="btn btn-link btn-sm" id="masivaSeleccionarTodos">Seleccionar todos</button>
-                                <div id="masivaEstados" class="overflow-auto" style="max-height: 220px;">
-                                    <span class="text-muted">Cargando estados...</span>
+                        <div class="territory-bulk-states">
+                            <div class="territory-bulk-states-copy">
+                                <h6>Estados</h6>
+                                <p>Selecciona uno o varios estados para esta asignación.</p>
+                            </div>
+                            <div class="territory-bulk-states-picker">
+                                <button type="button" class="form-select text-start" id="masivaAbrirEstados"
+                                    aria-expanded="false" aria-controls="masivaListaEstados">Seleccionar estados</button>
+                                <div id="masivaListaEstados" class="territory-bulk-options" hidden>
+                                    <button type="button" class="btn btn-link btn-sm" id="masivaSeleccionarTodos">Seleccionar todos</button>
+                                    <div id="masivaEstados" class="territory-bulk-options-list">
+                                        <span class="text-muted">Cargando estados...</span>
+                                    </div>
                                 </div>
+                                <div id="masivaEstadosElegidos" class="territory-bulk-chips" aria-live="polite"></div>
                             </div>
                         </div>
                         <?php foreach (['CUENTA_CLAVE' => 'Cuenta Clave', 'ANALISTA_DATOS' => 'Analista', 'ASESOR' => 'Asesor'] as $tipoMasivo => $nombreMasivo): ?>
-                            <section class="border rounded p-3 mb-3" data-masiva-seccion="<?= $tipoMasivo ?>">
-                                <h6 class="mb-2"><?= $nombreMasivo ?></h6>
+                            <section class="territory-bulk-section" data-masiva-seccion="<?= $tipoMasivo ?>">
+                                <h6 class="territory-bulk-section-title"><?= $tipoMasivo === 'CUENTA_CLAVE' ? 'Cuenta clave' : ($tipoMasivo === 'ANALISTA_DATOS' ? 'Analistas' : 'Asesores') ?></h6>
                                 <div data-masiva-personas></div>
                                 <button type="button" class="btn btn-territory-expand" data-masiva-agregar>
                                     <i class="bi bi-plus-circle me-2"></i>Agregar <?= $nombreMasivo ?>
                                 </button>
                             </section>
                         <?php endforeach; ?>
-                        <div id="masivaCuentas" class="mt-3 d-none">
-                            <h6 class="mb-2">Cuenta Clave correspondiente a los Analistas</h6>
-                        </div>
+                        <section id="masivaCuentas" class="territory-bulk-section d-none"></section>
                         <div id="masivaError" class="text-danger small mt-2" role="alert"></div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer territory-bulk-footer">
                         <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-system-save">Guardar asignación</button>
                     </div>
@@ -1045,6 +1048,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const abrirEstados = document.getElementById('masivaAbrirEstados');
         const listaEstados = document.getElementById('masivaListaEstados');
         const estados = document.getElementById('masivaEstados');
+        const chips = document.getElementById('masivaEstadosElegidos');
         const cuentas = document.getElementById('masivaCuentas');
         const error = document.getElementById('masivaError');
         const todos = document.getElementById('masivaSeleccionarTodos');
@@ -1071,13 +1075,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
         };
         const actualizarResumenEstados = function () {
-            const total = elegidos().length;
+            const seleccionados = elegidos();
+            const total = seleccionados.length;
             abrirEstados.textContent = total
                 ? total + (total === 1 ? ' estado seleccionado' : ' estados seleccionados')
                 : 'Seleccionar estados';
             const cantidad = estados.querySelectorAll('input[name="estados[]"]').length;
             todos.textContent = total && total === cantidad
                 ? 'Quitar selección' : 'Seleccionar todos';
+            chips.replaceChildren();
+            seleccionados.forEach(function (entrada) {
+                const etiqueta = document.createElement('button');
+                etiqueta.type = 'button';
+                etiqueta.className = 'territory-bulk-chip';
+                etiqueta.setAttribute('aria-label', 'Quitar ' + entrada.dataset.nombre);
+                etiqueta.append(document.createTextNode(entrada.dataset.nombre));
+                const icono = document.createElement('i');
+                icono.className = 'bi bi-x-lg';
+                icono.setAttribute('aria-hidden', 'true');
+                etiqueta.appendChild(icono);
+                etiqueta.addEventListener('click', function () {
+                    entrada.checked = false;
+                    actualizarResumenEstados();
+                    actualizarCuentas();
+                });
+                chips.appendChild(etiqueta);
+            });
         };
         const actualizarCuentas = function () {
             const anteriores = {};
@@ -1089,12 +1112,12 @@ document.addEventListener('DOMContentLoaded', function () {
             cuentas.classList.toggle('d-none', !analistas.length);
             if (!analistas.length || !opciones) return;
             const titulo = document.createElement('h6');
-            titulo.className = 'mb-2';
+            titulo.className = 'territory-bulk-section-title';
             titulo.textContent = 'Cuenta Clave correspondiente a los Analistas';
             cuentas.appendChild(titulo);
             elegidos().forEach(function (entrada) {
                 const fila = document.createElement('div');
-                fila.className = 'mb-2';
+                fila.className = 'territory-bulk-parent-row';
                 const etiqueta = document.createElement('label');
                 etiqueta.className = 'form-label small mb-1';
                 etiqueta.textContent = entrada.dataset.nombre;
@@ -1125,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!opciones) return;
             const tipo = seccion.dataset.masivaSeccion;
             const fila = document.createElement('div');
-            fila.className = 'd-flex gap-2 mb-2';
+            fila.className = 'territory-bulk-person-row';
             const selector = document.createElement('select');
             selector.className = 'form-select';
             selector.name = 'usuarios[' + tipo + '][]';
@@ -1135,9 +1158,43 @@ document.addEventListener('DOMContentLoaded', function () {
                 selector.appendChild(opcion(persona.id,
                     (persona.nombre + ' ' + persona.apellidos).trim()));
             });
+            if (tipo !== 'CUENTA_CLAVE') {
+                const identidad = document.createElement('div');
+                identidad.className = 'territory-bulk-person-identity';
+                const avatar = document.createElement('span');
+                avatar.className = 'territory-bulk-avatar';
+                const nombre = document.createElement('strong');
+                const actualizarIdentidad = function () {
+                    const persona = opciones.usuarios[tipo].find(function (item) {
+                        return String(item.id) === selector.value;
+                    });
+                    avatar.replaceChildren();
+                    nombre.textContent = persona
+                        ? (persona.nombre + ' ' + persona.apellidos).trim()
+                        : 'Seleccionar ' + (tipo === 'ASESOR' ? 'asesor' : 'analista');
+                    const iniciales = document.createElement('span');
+                    iniciales.textContent = persona
+                        ? ((persona.nombre || '').charAt(0) + (persona.apellidos || '').charAt(0)).toUpperCase()
+                        : '?';
+                    const ruta = String(persona?.foto_perfil || '').replaceAll('\\', '/');
+                    if (/^public\/uploads\/usuarios\/[a-zA-Z0-9_./-]+\.(jpg|jpeg|png|webp)$/i.test(ruta) &&
+                        !ruta.includes('..')) {
+                        const imagen = document.createElement('img');
+                        imagen.src = baseUrl + ruta;
+                        imagen.alt = '';
+                        imagen.addEventListener('error', function () { imagen.remove(); });
+                        avatar.appendChild(imagen);
+                    }
+                    avatar.appendChild(iniciales);
+                };
+                selector.addEventListener('change', actualizarIdentidad);
+                actualizarIdentidad();
+                identidad.append(avatar, nombre);
+                fila.appendChild(identidad);
+            }
             const quitar = document.createElement('button');
             quitar.type = 'button';
-            quitar.className = 'btn btn-system-cancel';
+            quitar.className = 'btn btn-system-cancel territory-bulk-remove';
             quitar.setAttribute('aria-label', 'Quitar persona');
             quitar.innerHTML = '<i class="bi bi-x-lg"></i>';
             quitar.addEventListener('click', function () {
