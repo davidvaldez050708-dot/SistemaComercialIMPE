@@ -236,7 +236,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     <?php elseif(!$disponible): ?>
     <p class="impe-embudo-alert" role="status">La estructura V3 no está disponible; utiliza el tablero anterior.</p>
     <?php else: ?>
-    <form class="impe-embudo-filtros" action="<?= $esc(BASE_URL.'index.php') ?>" method="get" role="search" data-sales-auto-filter>
+    <form class="impe-embudo-filtros" action="<?= $esc(BASE_URL.'index.php') ?>" method="get" role="search" data-embudo-v3-auto-filter>
         <input type="hidden" name="controller" value="embudoComercial">
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="vista" value="embudo">
@@ -270,7 +270,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
          ])) ?>">Limpiar</a>
         <?php endif; ?>
     </form>
-    <script defer src="<?= $esc(BASE_URL) ?>public/javascript/telefonia_ventas_auto_filtros.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/telefonia_ventas_auto_filtros.js'),0,16) ?>"></script>
+    <script defer src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_filtros.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/embudo_comercial_v3_filtros.js'),0,16) ?>"></script>
     <div class="impe-embudo-board-info">
         <span><i class="bi bi-people" aria-hidden="true"></i>
             <?= (int)$tablero['total_activos'] ?> asignaciones vigentes bajo tu responsabilidad</span>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publicación selectiva de trámite de inscripción V3."""
+"""Publicación selectiva de filtros automáticos del embudo V3."""
 
 import argparse
 import sys
@@ -15,8 +15,8 @@ def main():
     for opcion in ("check", "apply", "rollback"):
         modo.add_argument("--" + opcion, action="store_true")
     args = parser.parse_args()
-    publicador.ARCHIVOS = [('app/views/embudo_comercial/operativo_v3.php', '595f9779a5b5a97172ede95d0b563e42ee41ae23', '25d6c7e1107da9837375dbcea274b97d2154282e')]
-    publicador.NO_MODIFICAR = {'public/javascript/telefonia_ventas_auto_filtros.js': '02de332ac14928066ca26aba463bdc555ced956e'}
+    publicador.ARCHIVOS = [('public/javascript/embudo_comercial_v3_filtros.js', None, 'a5cc508a92ec08ddf2d63f845a2aeb7aa12edcf6'), ('app/views/embudo_comercial/operativo_v3.php', '595f9779a5b5a97172ede95d0b563e42ee41ae23', '23adb6cee88d9c0fc9416f0ff4b01eda9ba8dab4')]
+    publicador.NO_MODIFICAR = {}
     sitio = publicador.raiz(args.site)
 
     if args.rollback:
