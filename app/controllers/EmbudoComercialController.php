@@ -142,6 +142,12 @@ final class EmbudoComercialController
         [$usuarioId,$supervisor]=$this->autorizar($vista);
         $id=filter_var($_GET['id']??null,FILTER_VALIDATE_INT,
             ['options'=>['min_range'=>1]]);
+        $panel=$_GET['panel']??'resumen';
+        if (!in_array($panel,['resumen','actividad','llamadas'],true)) $panel='resumen';
+        $paginas=[];
+        foreach (['movimientos','gestiones','llamadas'] as $clave) {
+            $paginas[$clave]=filter_var($_GET[$clave]??1,FILTER_VALIDATE_INT)?:1;
+        }
         $prospecto=null;
         $operativoV3=$vista==='embudo' && !$supervisor &&
             EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId) &&
@@ -155,7 +161,7 @@ final class EmbudoComercialController
                 $repo=new EmbudoComercialRepository((new Database())->connect(false));
                 if (!$repo->disponible()) throw new RuntimeException('Estructura no instalada.');
                 $prospecto=$repo->detalle(
-                    $usuarioId,$supervisor,(int)$id,$vista,$operativoV3
+                    $usuarioId,$supervisor,(int)$id,$vista,$operativoV3,$panel,$paginas
                 );
                 if (!$prospecto) {
                     http_response_code(404);
@@ -168,7 +174,7 @@ final class EmbudoComercialController
             }
         }
         $this->presentar('detalle',$vista,compact(
-            'vista','usuarioId','supervisor','prospecto','error','operativoV3'
+            'vista','usuarioId','supervisor','prospecto','error','operativoV3','panel','paginas'
         ));
     }
     /**

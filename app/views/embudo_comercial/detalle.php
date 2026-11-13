@@ -37,6 +37,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/embudo_comercial.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_grabaciones.css') ?>">
 <style>
+.impe-embudo .impe-embudo-timeline-item.linkage-call-recording-card{display:block}
 .impe-embudo .impe-embudo-timeline-tecnico{margin:0 0 8px;color:#7187a5;font:600 10px/1.5 Manrope,sans-serif}
 .impe-embudo .impe-embudo-timeline-tecnico summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:#607b9d;list-style:none;width:fit-content}
 .impe-embudo .impe-embudo-timeline-tecnico summary::-webkit-details-marker{display:none}
@@ -59,12 +60,34 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
         </div>
         <span class="impe-embudo-hero-icon"><i class="bi bi-person-vcard" aria-hidden="true"></i></span>
     </header>
+    <?php
+    $paginas=$paginas??[];
+    $panel=$panel??'resumen';
+    $paramsFicha=$volverParams+['id'=>(int)$prospecto['id']];
+    $paramsFicha['action']='detalle';
+    $urlFicha=static fn(array $cambios)=>BASE_URL.'index.php?'.http_build_query(array_replace($paramsFicha,$cambios));
+    $paginar=static function(string $clave) use ($prospecto,$paginas,$panel,$urlFicha,$esc): void {
+        $datos=$prospecto['paginacion'][$clave]??null;
+        if (!$datos || $datos['paginas']<=1) return;
+        $actual=$datos['actual'];$total=$datos['paginas'];
+        $numeros=array_unique(array_merge([1],range(max(1,$actual-2),min($total,$actual+2)),[$total]));
+        ?>
+        <nav class="impe-embudo-tabs mt-3" aria-label="Páginas de <?= $esc($clave) ?>">
+            <?php foreach ($numeros as $numero): ?>
+            <a <?= $numero===$actual?'aria-current="page"':'' ?>
+               href="<?= $esc($urlFicha(array_replace($paginas??[],['panel'=>$panel,$clave=>$numero]))) ?>"><?= $numero ?></a>
+            <?php endforeach; ?>
+        </nav>
+        <?php
+    };
+    ?>
     <nav class="impe-embudo-tabs" aria-label="Expediente comercial">
-        <a href="#expediente-resumen">Resumen</a>
-        <a href="#impe-embudo-historial-titulo">Actividad</a>
-        <a href="#expediente-llamadas">Llamadas</a>
+        <?php foreach (['resumen'=>'Resumen','actividad'=>'Actividad','llamadas'=>'Llamadas'] as $clave=>$titulo): ?>
+        <a <?= $panel===$clave?'aria-current="page"':'' ?> href="<?= $esc($urlFicha(['panel'=>$clave])) ?>"><?= $esc($titulo) ?></a>
+        <?php endforeach; ?>
     </nav>
-    <div class="impe-embudo-detalles" id="expediente-resumen">
+    <div class="impe-embudo-detalles">
+        <?php if ($panel==='resumen'): ?>
         <section>
             <h3>Datos de contacto</h3>
             <dl>
@@ -127,6 +150,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
             <ul><?php foreach ($prospecto['preferencias'] as $p): ?><li><?= $esc($def($p['valor_original'])) ?> · <?= $esc($def($p['zona_horaria'])) ?></li><?php endforeach; ?></ul>
             <?php endif; ?>
         </section>
+        <?php elseif ($panel==='actividad'): ?>
         <section class="impe-embudo-detalles-wide impe-embudo-historial" aria-labelledby="impe-embudo-historial-titulo">
             <div class="impe-embudo-historial-head">
                 <div>
@@ -148,7 +172,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                     $autor=trim((string)($mov['autor']??''));
                     if ($autor==='') $autor='Usuario #'.(int)$mov['usuario_id'];
                 ?>
-                <li class="impe-embudo-timeline-item">
+                <li class="impe-embudo-timeline-item linkage-call-recording-card">
                     <div class="impe-embudo-timeline-main">
                         <strong><?= $esc($etapaAnterior) ?> <i class="bi bi-arrow-right" aria-hidden="true"></i> <?= $esc($etapaNueva) ?></strong>
                         <time datetime="<?= $esc(str_replace(' ','T',(string)$mov['creado_at']).'Z') ?>"><?= $esc($fecha($mov['creado_at'])) ?></time>
@@ -164,9 +188,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                 </li>
                 <?php endforeach; ?>
             </ol>
-            <?php if (!empty($prospecto['historial_truncado'])): ?>
-            <p class="impe-embudo-historial-aviso">Se muestran los últimos 50 movimientos. Los anteriores permanecen registrados en la base de datos.</p>
-            <?php endif; ?>
+            <?php $paginar('movimientos'); ?>
             <?php endif; ?>
         </section>
         <?php if(!empty($prospecto['historial_subetapas'])):
@@ -193,7 +215,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                     $autorEvento=trim((string)($evento['autor']??''));
                     if($autorEvento==='')$autorEvento='Usuario #'.(int)$evento['usuario_id'];
                 ?>
-                <li class="impe-embudo-timeline-item">
+                <li class="impe-embudo-timeline-item linkage-call-recording-card">
                     <div class="impe-embudo-timeline-main">
                         <strong>
                             <?= $esc($nombreAnterior!==''?$nombreAnterior:'Situación inicial') ?>
@@ -212,12 +234,12 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                 </li>
                 <?php endforeach; ?>
             </ol>
-            <?php if(!empty($prospecto['historial_subetapas_truncado'])): ?>
-            <p class="impe-embudo-historial-aviso">Se muestran los 50 registros más recientes. El historial completo se conserva.</p>
-            <?php endif; ?>
+            <?php $paginar('gestiones'); ?>
         </section>
         <?php endif; ?>
+        <?php endif; ?>
     </div>
+    <?php if ($panel==='llamadas'): ?>
     <?php $llamadas=$prospecto['llamadas_expediente']??[]; ?>
     <div class="impe-embudo-detalles">
     <section id="expediente-llamadas" class="impe-embudo-detalles-wide">
@@ -227,7 +249,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                 <span class="linkage-call-recordings-icon"><i class="bi bi-telephone" aria-hidden="true"></i></span>
                 <div><strong>Historial de llamadas</strong><p>Intentos y conversaciones vinculados al prospecto.</p></div>
             </div>
-            <span class="linkage-call-recordings-count"><?= count($llamadas)>50?'50+':count($llamadas) ?></span>
+            <span class="linkage-call-recordings-count"><?= (int)($prospecto['paginacion']['llamadas']['total']??count($llamadas)) ?></span>
         </div>
         <div class="linkage-call-recordings-list">
         <?php if (!$llamadas): ?><p class="linkage-call-recordings-empty">No hay llamadas vinculadas disponibles para tu cuenta.</p><?php endif; ?>
@@ -237,11 +259,14 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
             <div class="linkage-call-recording-body">
                 <div class="linkage-call-recording-top">
                     <div><strong>Llamada</strong>
-                        <span><?= $esc(TelefoniaResultadoVentasService::opciones()[$llamada['resultado']]??$llamada['resultado']) ?>
-                            · Ext. <?= $esc($llamada['extension']) ?></span>
+                        <span>Ext. <?= $esc($llamada['extension']) ?></span>
                     </div>
                     <time class="linkage-call-recording-duration"><?= $esc($fecha($llamada['creado_at'])) ?></time>
                 </div>
+                <div><span class="linkage-call-recordings-count"><?= $esc(TelefoniaResultadoVentasService::opciones()[$llamada['resultado']]??$llamada['resultado']) ?></span></div>
+                <?php if (trim((string)($llamada['observacion']??''))!==''): ?>
+                <p class="mb-0 small"><strong>Observaciones</strong> <?= nl2br($esc($llamada['observacion'])) ?></p>
+                <?php endif; ?>
                 <?php if (TelefoniaResultadoVentasService::esConversacion($llamada['resultado'])): ?>
                 <details data-expediente-grabacion="<?= $esc(BASE_URL.'prueba_telefonia/api/grabacion_ventas.php?'.http_build_query([
                     'pbx_call_id'=>$llamada['pbx_call_id'],'extension'=>$llamada['extension'],'verificar'=>1
@@ -254,7 +279,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
         </article>
         <?php endforeach; ?>
         </div>
-        <?php if(count($llamadas)>50): ?><p>Se muestran las 50 llamadas más recientes.</p><?php endif; ?>
+        <?php $paginar('llamadas'); ?>
     </section>
     </div>
     <script defer src="<?= $esc(BASE_URL.'public/javascript/telefonia_segmentos_player.js') ?>"></script>
@@ -269,5 +294,6 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
            ])) ?>">Consultar llamadas del prospecto</a>.
         <?php endif; ?>
     </p>
+    <?php endif; ?>
     <?php endif; ?>
 </div>

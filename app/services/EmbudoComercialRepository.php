@@ -541,7 +541,7 @@ final class EmbudoComercialRepository
     }
 
     public function detalle(int $usuarioId,bool $supervisor,int $prospectoId,string $vista,
-        bool $operativoV3=false): ?array
+        bool $operativoV3=false,string $panel="resumen",array $paginas=[]): ?array
     {
         if ($prospectoId<1) return null;
         $params=[$prospectoId];
@@ -612,48 +612,60 @@ final class EmbudoComercialRepository
         );
         // La autorización de propietario/supervisor quedó confirmada ARRIBA
         // al obtener esta asignación vigente: jamás consultar por ID sin ella.
-        // Mostrar como máximo 50 movimientos, más uno para señalar truncamiento.
         // No crear, actualizar ni suprimir eventos de la bitácora.
-        $historial=$this->rows(
-            "SELECT m.id,m.etapa_anterior,m.etapa_nueva,m.motivo,
-                    m.usuario_id,m.creado_at,
-                    TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) autor
-             FROM prospecto_embudo_movimientos m
-             LEFT JOIN usuarios u ON u.id=m.usuario_id
-             WHERE m.asignacion_id=?
-             ORDER BY m.creado_at DESC,m.id DESC
-             LIMIT 51",
-            [(int)$p['asignacion_id']]
-        );
-        $p['historial_truncado']=count($historial)>50;
-        $p['historial_movimientos']=array_slice($historial,0,50);
-        $p['historial_subetapas']=[];
-        $p['historial_subetapas_truncado']=false;
-        if($operativoV3 && !$supervisor){
-            // La asignación vigente y su propietario ya se verificaron arriba.
-            // La bitácora V3 es independiente de los movimientos de etapa.
-            $eventos=$this->rows(
-                "SELECT h.id,h.etapa_en_evento,h.subetapa_anterior,
-                        h.subetapa_nueva,h.motivo,h.origen,h.creado_at,
-                        h.usuario_id,
+        $pagina=function(string $clave,string $tabla,string $condicion,array $args) use (&$p,$paginas): int {
+            $total=(int)$this->rows("SELECT COUNT(*) total FROM $tabla WHERE $condicion",$args)[0]['total'];
+            $paginasTotal=max(1,(int)ceil($total/15));
+            $actual=max(1,min($paginasTotal,(int)($paginas[$clave]??1)));
+            $p['paginacion'][$clave]=['actual'=>$actual,'paginas'=>$paginasTotal,'total'=>$total];
+            return ($actual-1)*15;
+        };
+        $asignacion=(int)$p['asignacion_id'];
+        if ($panel==='actividad') {
+            $offset=$pagina('movimientos','prospecto_embudo_movimientos','asignacion_id=?',[$asignacion]);
+            $historial=$this->rows(
+                "SELECT m.id,m.etapa_anterior,m.etapa_nueva,m.motivo,
+                        m.usuario_id,m.creado_at,
                         TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) autor
-                   FROM prospecto_embudo_subetapas_historial h
-                   LEFT JOIN usuarios u ON u.id=h.usuario_id
-                  WHERE h.asignacion_id=?
-                  ORDER BY h.creado_at DESC,h.id DESC LIMIT 51",
-                [(int)$p['asignacion_id']]
+                 FROM prospecto_embudo_movimientos m
+                 LEFT JOIN usuarios u ON u.id=m.usuario_id
+                 WHERE m.asignacion_id=?
+                 ORDER BY m.creado_at DESC,m.id DESC
+                 LIMIT 15 OFFSET ?",
+                [$asignacion,$offset]
             );
-            $p['historial_subetapas_truncado']=count($eventos)>50;
-            $p['historial_subetapas']=array_slice($eventos,0,50);
+            $p['historial_movimientos']=$historial;
+            $p['historial_subetapas']=[];
+            if($operativoV3 && !$supervisor){
+                // La asignación vigente y su propietario ya se verificaron arriba.
+                // La bitácora V3 es independiente de los movimientos de etapa.
+                $offset=$pagina('gestiones','prospecto_embudo_subetapas_historial','asignacion_id=?',[$asignacion]);
+                $eventos=$this->rows(
+                    "SELECT h.id,h.etapa_en_evento,h.subetapa_anterior,
+                            h.subetapa_nueva,h.motivo,h.origen,h.creado_at,
+                            h.usuario_id,
+                            TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) autor
+                       FROM prospecto_embudo_subetapas_historial h
+                       LEFT JOIN usuarios u ON u.id=h.usuario_id
+                      WHERE h.asignacion_id=?
+                      ORDER BY h.creado_at DESC,h.id DESC LIMIT 15 OFFSET ?",
+                    [$asignacion,$offset]
+                );
+                $p['historial_subetapas']=$eventos;
+            }
         }
         $p['llamadas_expediente']=[];
-        if (!$supervisor && tienePermiso('telefonia.usar')) {
+        if ($panel==='llamadas' && !$supervisor && tienePermiso('telefonia.usar')) {
+            $offset=$pagina('llamadas','prospecto_embudo_llamadas','asignacion_id=? AND usuario_id=?',[$asignacion,$usuarioId]);
             $p['llamadas_expediente']=$this->rows(
-                "SELECT l.pbx_call_id,l.extension,l.resultado,l.creado_at
+                "SELECT l.pbx_call_id,l.extension,l.resultado,l.creado_at,r.observacion
                    FROM prospecto_embudo_llamadas l
+                   LEFT JOIN telefonia_ventas_resultados r ON r.usuario_id=l.usuario_id
+                       AND BINARY r.extension=BINARY l.extension
+                       AND BINARY r.pbx_call_id=BINARY l.pbx_call_id
                   WHERE l.asignacion_id=? AND l.usuario_id=?
-                  ORDER BY l.creado_at DESC,l.id DESC LIMIT 51",
-                [(int)$p['asignacion_id'],$usuarioId]
+                  ORDER BY l.creado_at DESC,l.id DESC LIMIT 15 OFFSET ?",
+                [$asignacion,$usuarioId,$offset]
             );
         }
         return $p;
