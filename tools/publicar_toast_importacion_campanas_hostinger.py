@@ -17,7 +17,7 @@ def main():
     args = parser.parse_args()
     publicador.ARCHIVOS = [
         ('app/views/prospectos/central.php',
-         '7479e15af787b4b8cfd986438e2d0a5b3357fab8',
+         'c62be0a2d07144eb120230dd00f02683c9c9b675',
          '7479e15af787b4b8cfd986438e2d0a5b3357fab8'),
     ]
     publicador.NO_MODIFICAR = {}
