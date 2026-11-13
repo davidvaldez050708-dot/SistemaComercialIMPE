@@ -417,17 +417,7 @@
 }
 
 .impe-v3o-gestion-boton {
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-    width: 34px;
-    height: 34px;
-    border: 1px solid #d5e2f2;
-    border-radius: 8px;
-    background: #f5f8fd;
-    list-style: none;
-    color: var(--bs-primary, #153b71);
-    font-weight: 600;
+    flex-shrink: 0;
 }
 .impe-v3o-gestion-opciones {
     position: fixed;

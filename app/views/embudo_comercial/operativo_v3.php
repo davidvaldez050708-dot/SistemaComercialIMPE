@@ -150,7 +150,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <?php if($puedeTelefono): ?>
             <?php endif; ?>
             <?php $menuId='impe-v3o-gestion-'.(int)$p['asignacion_id']; ?>
-            <button type="button" class="impe-v3o-gestion-boton" title="Gestionar"
+            <button type="button" class="impe-v3o-accion impe-v3o-gestion-boton" title="Gestionar"
                 aria-label="Gestionar" popovertarget="<?= $esc($menuId) ?>">
                 <i class="bi bi-three-dots" aria-hidden="true"></i>
             </button>
