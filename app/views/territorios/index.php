@@ -254,9 +254,9 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
 
         <div class="d-flex align-items-center gap-3 flex-wrap">
             <?php if ($puedeAsignarTerritorio): ?>
-                <button type="button" class="btn btn-system-save" data-bs-toggle="modal"
+                <button type="button" class="btn btn-system-save territory-bulk-launch" data-bs-toggle="modal"
                     data-bs-target="#modalAsignacionMasiva">
-                    <i class="bi bi-person-plus me-2"></i>Asignar a varios estados
+                    <i class="bi bi-person-plus me-2"></i>Asignar
                 </button>
             <?php endif; ?>
             <span class="territory-count"><?= count($estados) ?> resultados</span>
