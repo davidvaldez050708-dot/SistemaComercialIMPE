@@ -1,12 +1,25 @@
 <?php
 require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
+require_once __DIR__.'/../../helpers/EmbudoComercialAcceso.php';
 $esc=static fn($valor)=>htmlspecialchars((string)$valor,ENT_QUOTES,'UTF-8');
 $url=BASE_URL.'index.php?controller=embudoComercial';
 ?>
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/embudo_comercial.css') ?>">
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_grabaciones.css') ?>">
+<link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/embudo_comercial_compacto_v1.css') ?>">
 <div class="impe-embudo">
-    <a class="impe-embudo-back" href="<?= $esc($url.'&action=index') ?>"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al embudo</a>
+    <div class="impe-embudo--compact">
+    <nav class="impe-embudo-tabs" aria-label="Vistas comerciales">
+        <a href="<?= $esc($url.'&action=index&vista=embudo') ?>"><i class="bi bi-kanban" aria-hidden="true"></i> Embudo de ventas</a>
+        <?php if (EmbudoComercialAcceso::puede('recuperacion')): ?>
+        <a href="<?= $esc($url.'&action=index&vista=recuperacion') ?>"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación</a>
+        <?php endif; ?>
+        <?php if (EmbudoComercialAcceso::puede('descartados')): ?>
+        <a href="<?= $esc($url.'&action=index&vista=descartados') ?>"><i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
+        <?php endif; ?>
+        <a href="<?= $esc($url.'&action=expedientes') ?>" aria-current="page"><i class="bi bi-folder2-open" aria-hidden="true"></i> Expedientes cerrados</a>
+    </nav>
+    </div>
     <header class="impe-embudo-hero">
         <div><h2>Expedientes cerrados</h2><p>Consulta el historial comercial y las llamadas de prospectos con una inscripción vinculada.</p></div>
         <span class="impe-embudo-hero-icon"><i class="bi bi-folder2-open" aria-hidden="true"></i></span>
