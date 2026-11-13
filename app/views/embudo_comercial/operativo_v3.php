@@ -85,6 +85,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
              data-etapa="<?= $esc($real) ?>"
              data-v3-subetapa="<?= $esc($st) ?>"
              data-nombre="<?= $esc($p['nombre_completo']) ?>"
+             data-correo="<?= $esc($p['correo']??'') ?>"
              data-v3-destinos="<?= $esc($destinos) ?>"
              data-v3-actividad-pendiente="<?= $pendiente ? '1' : '0' ?>"
              <?= $propuestas?'draggable="true"':'' ?>>

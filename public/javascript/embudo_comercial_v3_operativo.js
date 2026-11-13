@@ -186,7 +186,8 @@
         try{
           sessionStorage.setItem('impe:embudo:llamada-pendiente',
             JSON.stringify({
-              asignacionId,numero,usuarioId,creada:Date.now()
+              asignacionId,numero,usuarioId,creada:Date.now(),
+              origen:'embudo-v3',nombre:card.dataset.nombre||'',correo:card.dataset.correo||''
             })
           );
         }catch(_){}

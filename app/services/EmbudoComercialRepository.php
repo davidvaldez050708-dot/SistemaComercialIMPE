@@ -441,7 +441,7 @@ final class EmbudoComercialRepository
                 "SELECT a.id asignacion_id,a.prospecto_id,a.asesor_id,
                     $camposActividad
                     a.asignado_at,a.fecha_trabajo,
-                    p.nombre_completo,p.telefono_original,
+                    p.nombre_completo,p.telefono_original,p.correo,
                     COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
                     ag.revision_fecha,e.etapa etapa_original,
                     (SELECT st.subetapa FROM prospecto_embudo_subetapas st

@@ -197,8 +197,18 @@
    const summary=form.querySelector('[data-sales-capture-summary]');
    if(summary){summary.hidden=!capture;summary.textContent=capture?['Datos informados durante la atención',capture.programa,capture.notas].filter(Boolean).join(' · '):'';}
    const nombre=form.elements.namedItem('prospecto_nombre'),correo=form.elements.namedItem('correo');
-   if(nombre&&!nombre.value)nombre.value=call.registro?.prospecto_nombre||capture?.nombre||call.nombre||'';
-   if(correo&&!correo.value)correo.value=call.registro?.correo||capture?.correo||'';
+   const contextoFicha=contextoEmbudo();
+   const ficha=contextoFicha?.origen==='embudo-v3' &&
+    (openContext.prepared || root.dataset.autoCall===callRef ||
+     String(root.dataset.salesAssignmentId||'')===String(contextoFicha.asignacionId))
+    ? contextoFicha : null;
+   if(ficha && summary){
+    summary.hidden=false;
+    summary.textContent=['Resultado de llamada · Gestión Comercial',ficha.nombre,
+      capture?.programa,capture?.notas].filter(Boolean).join(' · ');
+   }
+   if(nombre&&!nombre.value)nombre.value=call.registro?.prospecto_nombre||capture?.nombre||ficha?.nombre||call.nombre||'';
+   if(correo&&!correo.value)correo.value=call.registro?.correo||capture?.correo||ficha?.correo||'';
    const notes=form.elements.namedItem('observacion'),captured=String(capture?.notas||'').trim();
    if(!call.registro&&notes&&captured&&captured!==importedCaptureNote){
     const existing=notes.value.trim(),combined=!existing?captured:(existing.includes(captured)?notes.value:captured+'\n\n'+notes.value);
@@ -338,20 +348,20 @@
    (x.length===12&&x.startsWith('52')&&x.slice(2)===y&&y.length===10) ||
    (y.length===12&&y.startsWith('52')&&y.slice(2)===x&&x.length===10);
  };
- const asignacionAutomatica=()=>{
+ const contextoEmbudo=()=>{
   if(!call||call.registro||call.pbx_call_id!==callRef||
-     String(call.direccion||'').toLowerCase()!=='saliente')return '';
+     String(call.direccion||'').toLowerCase()!=='saliente')return null;
   try{
    const user=Number(window.IMPE_CURRENT_USER_ID||0);
-   if(user<1)return '';
+   if(user<1)return null;
    const data=JSON.parse(sessionStorage.getItem('impe:embudo:llamada-pendiente')||'null');
    const age=Date.now()-Number(data?.creada||0);
    if(!data || (Number(data.usuarioId||0)>0&&Number(data.usuarioId)!==user) ||
       !Number.isFinite(age)||age<0||age>30*60*1000||
       !/^[1-9][0-9]*$/.test(String(data.asignacionId||''))||
-      !numeroComparable(data.numero,call.numero))return '';
-   return String(data.asignacionId);
-  }catch(_){return '';}
+      !numeroComparable(data.numero,call.numero))return null;
+   return data;
+  }catch(_){return null;}
  };
  form.addEventListener('submit',async e=>{
   e.preventDefault();
@@ -362,7 +372,7 @@
   // El formulario iniciado por el cierre automático puede estar en un iframe
   // con URL sin asignación. No heredar asignaciones de vistas anteriores.
   const automatico=Boolean(openContext.prepared||(root.dataset.autoCall&&root.dataset.autoCall===callRef));
-  const vinculo=automatico?asignacionAutomatica():String(root.dataset.salesAssignmentId||'');
+  const vinculo=automatico?String(contextoEmbudo()?.asignacionId||''):String(root.dataset.salesAssignmentId||'');
   const campo=form.elements.namedItem('prospecto_asignacion_id');
   if(campo)campo.value=/^[1-9][0-9]*$/.test(vinculo)?vinculo:'';
   const savedContext={...openContext},savedRef=callRef,savedExt=call.extension,savedDrafts=[draftKey(callRef),...draftAliases];
