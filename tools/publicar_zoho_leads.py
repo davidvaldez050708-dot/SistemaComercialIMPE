@@ -12,6 +12,7 @@ from pathlib import Path
 ARCHIVOS = (
     'app/services/ZohoLeadsProspectosBridge.php',
     'tools/importar_zoho_leads.php',
+    'tools/cron_zoho_leads.php',
 )
 VERSIONES_ANTERIORES = {
     'tools/importar_zoho_leads.php': {
