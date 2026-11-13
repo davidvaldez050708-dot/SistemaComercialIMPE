@@ -15,7 +15,7 @@ def main():
     for opcion in ("check", "apply", "rollback"):
         modo.add_argument("--" + opcion, action="store_true")
     args = parser.parse_args()
-    publicador.ARCHIVOS = [('app/views/embudo_comercial/detalle.php', '8bf5a168c9bbe8e6f9db2151f289434214bc5354', 'a17416d9f4dba4f44fae74c3b84bfe101f65941d'), ('app/views/telefonia/ventas_llamadas.php', '063667e63580e875c76b377a48e7b366576d456a', '713eb1fca11265fd41a957d681b572389d0b39a0')]
+    publicador.ARCHIVOS = [('app/views/embudo_comercial/detalle.php', '8bf5a168c9bbe8e6f9db2151f289434214bc5354', 'a17416d9f4dba4f44fae74c3b84bfe101f65941d'), ('app/views/telefonia/ventas_llamadas.php', 'bf00d2be3314e48aabf185c90cc5195cf0d0d513', 'a9e6dd3a2f36f00b43cc69b2bf4ad75791ce1115')]
     publicador.NO_MODIFICAR = {}
     sitio = publicador.raiz(args.site)
 
