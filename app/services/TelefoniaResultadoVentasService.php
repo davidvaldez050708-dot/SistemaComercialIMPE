@@ -246,8 +246,19 @@ class TelefoniaResultadoVentasService
         try{$s->bind_param('isssssis',$usuarioId,$extension,$pbxCallId,$resultado,$note,$name,$contact,$next);$s->execute();}
         catch(mysqli_sql_exception $e){if($e->getCode()===1062)throw new DomainException('El resultado de esta llamada ya se guardó y es definitivo.');throw $e;}
         finally{$s->close();}
+        $resultadoId=(int)$this->db->insert_id;
+        $idComercial = $datos['prospecto_asignacion_id'] ?? '';
+        if (in_array('embudo_asignacion_id',$cols,true) && is_string($idComercial) &&
+            filter_var($idComercial,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])) {
+            $idResultado=$resultadoId;
+            $idAsignacion=(int)$idComercial;
+            $s=$this->db->prepare('UPDATE telefonia_ventas_resultados
+                SET embudo_asignacion_id=? WHERE id=?');
+            $s->bind_param('ii',$idAsignacion,$idResultado);
+            $s->execute();$s->close();
+        }
         if($detalle!==null){
-            $resultadoId=(int)$this->db->insert_id;$version=$datos['catalogo_version'];
+            $version=$datos['catalogo_version'];
             $s=$this->db->prepare('INSERT INTO telefonia_ventas_resultado_detalles
                 (resultado_id,resultado_principal,envio_informacion,motivo_sin_whatsapp,contacto_antes_corte,catalogo_version,created_at)
                 VALUES(?,?,?,?,?,?,UTC_TIMESTAMP())');

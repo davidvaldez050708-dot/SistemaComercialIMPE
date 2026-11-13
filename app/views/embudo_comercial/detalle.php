@@ -58,6 +58,13 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
         </div>
         <span class="impe-embudo-hero-icon"><i class="bi bi-person-vcard" aria-hidden="true"></i></span>
     </header>
+    <?php if (!empty($operativoV3) && tienePermiso('ventas.embudo.mover') && !empty($prospecto['asignacion_id'])): ?>
+        <form method="post" action="<?= $esc(BASE_URL.'index.php?controller=embudoComercial&action=reintentarVinculoTelefonicoV3') ?>">
+            <input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']??'') ?>">
+            <input type="hidden" name="asignacion_id" value="<?= (int)$prospecto['asignacion_id'] ?>">
+            <button type="submit" class="btn btn-outline-primary btn-sm">Reintentar vínculos telefónicos</button>
+        </form>
+    <?php endif; ?>
     <div class="impe-embudo-detalles">
         <section>
             <h3>Datos de contacto</h3>

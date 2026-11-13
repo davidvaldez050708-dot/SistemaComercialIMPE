@@ -159,6 +159,34 @@ final class EmbudoComercialController
      *
      * No activa el piloto PBX, ni altera la telefonía ni otros endpoints.
      */
+    public function reintentarVinculoTelefonicoV3(): void
+    {
+        $uid=(int)($_SESSION['usuario_id']??0);
+        $token=(string)($_SESSION['csrf_token']??'');
+        $received=$_POST['csrf_token']??null;
+        $id=filter_var($_POST['asignacion_id']??null,FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>1]]);
+        if (($_SERVER['REQUEST_METHOD']??'')!=='POST' || !$id || $token==='' ||
+            !is_string($received) || !hash_equals($token,$received) ||
+            !EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($uid) ||
+            !tienePermiso('ventas.embudo.mover')) {
+            http_response_code(403);
+            exit('Operación no autorizada.');
+        }
+        require_once __DIR__.'/../services/EmbudoComercialV3VinculosPendientes.php';
+        try {
+            $service=new EmbudoComercialV3VinculosPendientes((new Database())->connect(false));
+            $resultado=$service->reintentar($uid,(int)$id);
+            $mensaje='Llamadas vinculadas: '.$resultado['vinculadas'].
+                '. Pendientes en este lote: '.$resultado['pendientes'].'.';
+        } catch (Throwable $e) {
+            error_log('[embudo_v3_reintento] '.get_class($e).' codigo='.(int)$e->getCode());
+            $mensaje='No fue posible revisar los vínculos pendientes.';
+        }
+        header('Content-Type: text/plain; charset=utf-8');
+        echo $mensaje;
+    }
+
     /**
      * POST: gestión transversal de un Potencial, sin cambiar su etapa.
      * INTERESADO histórico queda INTERESADO hasta conciliación institucional.
