@@ -7,6 +7,28 @@
   'use strict';
   const root=document.querySelector('.impe-embudo--v3-operativo');
   if (!root) return;
+  root.querySelectorAll('.impe-v3o-gestion-boton').forEach(boton=>{
+    const menu=document.getElementById(boton.getAttribute('popovertarget'));
+    if(!menu)return;
+    menu.addEventListener('toggle',evento=>{
+      if(evento.newState!=='open')return;
+      const ancla=boton.getBoundingClientRect();
+      const ancho=menu.offsetWidth;
+      const alto=menu.offsetHeight;
+      const izquierda=Math.max(8,Math.min(ancla.right-ancho,window.innerWidth-ancho-8));
+      const abajo=ancla.bottom+6;
+      const arriba=ancla.top-alto-6;
+      menu.style.left=izquierda+'px';
+      menu.style.top=Math.max(8,abajo+alto<=window.innerHeight-8
+        ?abajo:Math.min(arriba,window.innerHeight-alto-8))+'px';
+    });
+    menu.addEventListener('click',evento=>{
+      if(evento.target.closest('button,a') && menu.matches(':popover-open'))menu.hidePopover();
+    });
+    window.addEventListener('resize',()=>{
+      if(menu.matches(':popover-open'))menu.hidePopover();
+    });
+  });
   const usuarioId=Number(window.IMPE_CURRENT_USER_ID||0);
   const cambioKey='impe:embudo:resultado-guardado:'+usuarioId;
   const avisoKey='impe:embudo:v3:aviso:'+usuarioId;

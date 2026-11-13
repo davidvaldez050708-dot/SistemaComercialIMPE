@@ -416,8 +416,7 @@
   background:#eaf2ff;
 }
 
-.impe-v3o-gestion { min-width: 0; }
-.impe-v3o-gestion > summary {
+.impe-v3o-gestion-boton {
     cursor: pointer;
     display: grid;
     place-items: center;
@@ -431,19 +430,33 @@
     font-weight: 600;
 }
 .impe-v3o-gestion-opciones {
-    display: grid;
-    gap: .25rem;
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: min(230px, calc(100vw - 16px));
+    max-height: calc(100vh - 16px);
+    overflow: auto;
+    padding: 5px;
+    border: 1px solid #d5e2f2;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(21, 59, 113, .16);
 }
+.impe-v3o-gestion-opciones:popover-open { display: grid; gap: 2px; }
 .impe-v3o-gestion-opciones > .impe-v3o-accion {
     width: auto;
     height: auto;
     justify-content: flex-start;
-    gap: .4rem;
-    padding: .3rem .5rem;
+    gap: .5rem;
+    padding: .45rem .55rem;
+    border-color: transparent;
+    background: transparent;
     text-align: left;
 }
-
-.impe-v3o-gestion > summary::-webkit-details-marker { display: none; }
+.impe-v3o-gestion-opciones > .impe-v3o-accion:hover,
+.impe-v3o-gestion-opciones > .impe-v3o-accion:focus-visible {
+    background: #edf4fd;
+}
 
 .impe-v3o-agarre {
     flex: 0 0 auto;

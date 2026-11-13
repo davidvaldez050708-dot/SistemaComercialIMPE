@@ -149,11 +149,12 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <?php endif; ?>
             <?php if($puedeTelefono): ?>
             <?php endif; ?>
-            <details class="impe-v3o-gestion">
-                <summary class="impe-v3o-gestion-boton" title="Gestionar" aria-label="Gestionar">
-                    <i class="bi bi-three-dots" aria-hidden="true"></i>
-                </summary>
-                <div class="impe-v3o-gestion-opciones">
+            <?php $menuId='impe-v3o-gestion-'.(int)$p['asignacion_id']; ?>
+            <button type="button" class="impe-v3o-gestion-boton" title="Gestionar"
+                aria-label="Gestionar" popovertarget="<?= $esc($menuId) ?>">
+                <i class="bi bi-three-dots" aria-hidden="true"></i>
+            </button>
+            <div id="<?= $esc($menuId) ?>" class="impe-v3o-gestion-opciones" popover="auto">
                     <?php if($puedeTelefono): ?>
                     <a class="impe-v3o-accion" href="<?= $esc($historial) ?>"
                        title="Mis llamadas y resultados" aria-label="Mis llamadas y resultados">
@@ -203,8 +204,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                         <i class="bi bi-arrow-left-right" aria-hidden="true"></i> <span>Cambiar etapa</span>
                     </button>
                     <?php endif; ?>
-                </div>
-            </details>
+            </div>
         </div>
     </article>
     <?php
