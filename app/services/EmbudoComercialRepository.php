@@ -528,6 +528,18 @@ final class EmbudoComercialRepository
         ];
     }
 
+    public function expedientesCerrados(int $usuario,int $pagina): array
+    {
+        return $this->rows("SELECT p.id,p.nombre_completo,a.finalizado_at,
+                   v.formulario_inscripcion_id
+              FROM prospecto_embudo_inscripciones_v3 v
+              JOIN prospecto_asignaciones a ON a.id=v.asignacion_id
+              JOIN prospectos_comerciales p ON p.id=a.prospecto_id
+              WHERE a.asesor_id=? AND a.vigente IS NULL AND a.finalizado_at IS NOT NULL
+              ORDER BY a.finalizado_at DESC,a.id DESC LIMIT 26 OFFSET ?",
+              [$usuario,(max(1,min($pagina,10000))-1)*25]);
+    }
+
     public function detalle(int $usuarioId,bool $supervisor,int $prospectoId,string $vista,
         bool $operativoV3=false): ?array
     {
@@ -535,7 +547,7 @@ final class EmbudoComercialRepository
         $params=[$prospectoId];
         $sql="SELECT p.id,p.nombre_completo,p.telefono_original,p.correo,
                      p.pais_nombre,p.estado_provincia,p.ciudad,
-                     a.id asignacion_id,a.asesor_id,a.asignado_at,a.fecha_trabajo,
+                     a.id asignacion_id,a.asesor_id,a.asignado_at,a.fecha_trabajo,a.finalizado_at,
                      COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
                      ag.revision_fecha,
                      CASE WHEN e.etapa='EN_CONTACTO' THEN 'RECUPERACION'
@@ -544,7 +556,12 @@ final class EmbudoComercialRepository
               JOIN prospectos_comerciales p ON p.id=a.prospecto_id
               LEFT JOIN prospecto_embudo_etapas e ON e.asignacion_id=a.id
               LEFT JOIN prospecto_embudo_agenda ag ON ag.asignacion_id=a.id
-              WHERE p.id=? AND a.vigente=1";
+              WHERE p.id=?";
+        $sql.=$operativoV3 && !$supervisor && $vista==='embudo'
+            ? " AND (a.vigente=1 OR (a.vigente IS NULL AND a.finalizado_at IS NOT NULL
+                AND EXISTS (SELECT 1 FROM prospecto_embudo_inscripciones_v3 v
+                            WHERE v.asignacion_id=a.id)))"
+            : " AND a.vigente=1";
         if (!$supervisor) {$sql.=' AND a.asesor_id=?';$params[]=$usuarioId;}
         if ($vista==='recuperacion') $sql.=" AND e.etapa IN ('RECUPERACION','EN_CONTACTO')";
         elseif ($vista==='descartados') $sql.=" AND COALESCE(e.etapa,'NUEVO')='DESCARTADO'";
@@ -553,7 +570,7 @@ final class EmbudoComercialRepository
             'PROCESO_INSCRIPCION','INTERESADO','PAGO_CONFIRMADO')"; 
         else $sql.=" AND COALESCE(e.etapa,'NUEVO') IN (
             'NUEVO','CONTACTADO','INTERESADO','SEGUIMIENTO','PAGO_CONFIRMADO')";
-        $sql.=' LIMIT 1';
+        $sql.=' ORDER BY (a.vigente=1) DESC,a.id DESC LIMIT 1';
         $rows=$this->rows($sql,$params);
         if (!$rows) return null;
         $p=$rows[0];
@@ -628,6 +645,16 @@ final class EmbudoComercialRepository
             );
             $p['historial_subetapas_truncado']=count($eventos)>50;
             $p['historial_subetapas']=array_slice($eventos,0,50);
+        }
+        $p['llamadas_expediente']=[];
+        if (!$supervisor && tienePermiso('telefonia.usar')) {
+            $p['llamadas_expediente']=$this->rows(
+                "SELECT l.pbx_call_id,l.extension,l.resultado,l.creado_at
+                   FROM prospecto_embudo_llamadas l
+                  WHERE l.asignacion_id=? AND l.usuario_id=?
+                  ORDER BY l.creado_at DESC,l.id DESC LIMIT 51",
+                [(int)$p['asignacion_id'],$usuarioId]
+            );
         }
         return $p;
     }

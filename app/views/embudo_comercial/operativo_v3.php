@@ -227,6 +227,9 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             'controller'=>'embudoComercial','action'=>'index','vista'=>'descartados'
         ])) ?>"><i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
         <?php endif; ?>
+        <a href="<?= $esc($base.'controller=embudoComercial&action=expedientes') ?>">
+            <i class="bi bi-folder2-open" aria-hidden="true"></i> Expedientes cerrados
+        </a>
     </nav>
     <?php if($error!==''): ?>
     <p class="impe-embudo-alert impe-embudo-alert--error" role="alert"><?= $esc($error) ?></p>

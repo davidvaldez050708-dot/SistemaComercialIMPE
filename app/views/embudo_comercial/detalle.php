@@ -58,14 +58,12 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
         </div>
         <span class="impe-embudo-hero-icon"><i class="bi bi-person-vcard" aria-hidden="true"></i></span>
     </header>
-    <?php if (!empty($operativoV3) && tienePermiso('ventas.embudo.mover') && !empty($prospecto['asignacion_id'])): ?>
-        <form method="post" action="<?= $esc(BASE_URL.'index.php?controller=embudoComercial&action=reintentarVinculoTelefonicoV3') ?>">
-            <input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']??'') ?>">
-            <input type="hidden" name="asignacion_id" value="<?= (int)$prospecto['asignacion_id'] ?>">
-            <button type="submit" class="btn btn-outline-primary btn-sm">Reintentar vínculos telefónicos</button>
-        </form>
-    <?php endif; ?>
-    <div class="impe-embudo-detalles">
+    <nav class="impe-embudo-tabs" aria-label="Expediente comercial">
+        <a href="#expediente-resumen">Resumen</a>
+        <a href="#impe-embudo-historial-titulo">Actividad</a>
+        <a href="#expediente-llamadas">Llamadas</a>
+    </nav>
+    <div class="impe-embudo-detalles" id="expediente-resumen">
         <section>
             <h3>Datos de contacto</h3>
             <dl>
@@ -219,6 +217,28 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
         </section>
         <?php endif; ?>
     </div>
+    <?php $llamadas=$prospecto['llamadas_expediente']??[]; ?>
+    <section id="expediente-llamadas" class="impe-embudo-historial">
+        <h3>Llamadas vinculadas</h3>
+        <?php if (!$llamadas): ?><p>No hay llamadas vinculadas disponibles para tu cuenta.</p><?php endif; ?>
+        <?php foreach(array_slice($llamadas,0,50) as $llamada): ?>
+        <article class="impe-embudo-timeline-item">
+            <strong><?= $esc(TelefoniaResultadoVentasService::opciones()[$llamada['resultado']]??$llamada['resultado']) ?></strong>
+            <time><?= $esc($fecha($llamada['creado_at'])) ?></time>
+            <?php if (TelefoniaResultadoVentasService::esConversacion($llamada['resultado'])): ?>
+            <details data-expediente-grabacion="<?= $esc(BASE_URL.'prueba_telefonia/api/grabacion_ventas.php?'.http_build_query([
+                'pbx_call_id'=>$llamada['pbx_call_id'],'extension'=>$llamada['extension'],'verificar'=>1
+            ])) ?>">
+                <summary>Consultar grabación</summary>
+                <div role="status"></div>
+            </details>
+            <?php endif; ?>
+        </article>
+        <?php endforeach; ?>
+        <?php if(count($llamadas)>50): ?><p>Se muestran las 50 llamadas más recientes.</p><?php endif; ?>
+    </section>
+    <script defer src="<?= $esc(BASE_URL.'public/javascript/telefonia_segmentos_player.js') ?>"></script>
+    <script defer src="<?= $esc(BASE_URL.'public/javascript/embudo_expediente_audio.js') ?>"></script>
     <p class="impe-embudo-note"><i class="bi bi-info-circle"></i>
         Los resultados y grabaciones se conservan en Telefonía. La relación con el embudo requiere una llamada PBX finalizada, un resultado registrado por el asesor y la asignación explícita al prospecto; no se infiere ninguna conversación.
         <?php if (!$supervisor && tienePermiso('telefonia.usar')): ?>

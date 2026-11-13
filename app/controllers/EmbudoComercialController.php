@@ -112,6 +112,26 @@ final class EmbudoComercialController
         ));
     }
 
+    public function expedientes(): void
+    {
+        [$usuarioId,$supervisor]=$this->autorizar('embudo');
+        if ($supervisor || !EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId)) {
+            http_response_code(403);
+            exit('No tienes permiso para consultar estos expedientes.');
+        }
+        $pagina=max(1,min(10000,(int)($_GET['pagina']??1)));
+        $expedientes=[];$error='';
+        try {
+            $repo=new EmbudoComercialRepository((new Database())->connect(false));
+            $expedientes=$repo->expedientesCerrados($usuarioId,$pagina);
+        } catch (Throwable $e) {
+            http_response_code(503);
+            $error='No se pudieron consultar los expedientes cerrados.';
+            error_log('[embudo_expedientes] '.get_class($e));
+        }
+        $this->presentar('expedientes','embudo',compact('expedientes','pagina','error'));
+    }
+
     public function detalle(): void
     {
         $vista=$_GET['vista']??'embudo';
