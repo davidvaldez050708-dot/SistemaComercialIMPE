@@ -36,7 +36,16 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
 ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/embudo_comercial.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial.css'),0,16) ?>">
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_grabaciones.css') ?>">
+<link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_expediente.css') ?>">
+<link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_llamadas_expediente.css') ?>">
 <style>
+.impe-embudo .linkage-expediente-section-nav > a { flex: 0 0 auto; text-decoration: none; }
+.impe-embudo .linkage-expediente-section-nav > a:focus-visible > span { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.impe-embudo #expediente-llamadas .linkage-call-detail-row { grid-template-columns: 82px minmax(0,1fr); }
+@media (max-width: 600px) {
+    .impe-embudo #expediente-llamadas .linkage-call-detail-row { grid-template-columns: 1fr; }
+}
+
 .impe-embudo .impe-embudo-timeline-item.linkage-call-recording-card{display:block}
 .impe-embudo .impe-embudo-timeline-tecnico{margin:0 0 8px;color:#7187a5;font:600 10px/1.5 Manrope,sans-serif}
 .impe-embudo .impe-embudo-timeline-tecnico summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:#607b9d;list-style:none;width:fit-content}
@@ -81,9 +90,9 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
         <?php
     };
     ?>
-    <nav class="impe-embudo-tabs" aria-label="Expediente comercial">
+    <nav class="linkage-expediente-section-nav" aria-label="Expediente comercial">
         <?php foreach (['resumen'=>'Resumen','actividad'=>'Actividad','llamadas'=>'Llamadas'] as $clave=>$titulo): ?>
-        <a <?= $panel===$clave?'aria-current="page"':'' ?> href="<?= $esc($urlFicha(['panel'=>$clave])) ?>"><?= $esc($titulo) ?></a>
+        <a <?= $panel===$clave?'aria-current="page"':'' ?> href="<?= $esc($urlFicha(['panel'=>$clave])) ?>"><span<?= $panel===$clave?' class="active"':'' ?>><?= $esc($titulo) ?></span></a>
         <?php endforeach; ?>
     </nav>
     <div class="impe-embudo-detalles">
@@ -265,7 +274,12 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                 </div>
                 <div><span class="linkage-call-recordings-count"><?= $esc(TelefoniaResultadoVentasService::opciones()[$llamada['resultado']]??$llamada['resultado']) ?></span></div>
                 <?php if (trim((string)($llamada['observacion']??''))!==''): ?>
-                <p class="mb-0 small"><strong>Observaciones</strong> <?= nl2br($esc($llamada['observacion'])) ?></p>
+                <div class="linkage-call-detail">
+                    <div class="linkage-call-detail-row">
+                        <span class="linkage-call-detail-label">Observaciones</span>
+                        <span class="linkage-call-detail-value"><?= $esc($llamada['observacion']) ?></span>
+                    </div>
+                </div>
                 <?php endif; ?>
                 <?php if (TelefoniaResultadoVentasService::esConversacion($llamada['resultado'])): ?>
                 <details data-expediente-grabacion="<?= $esc(BASE_URL.'prueba_telefonia/api/grabacion_ventas.php?'.http_build_query([
