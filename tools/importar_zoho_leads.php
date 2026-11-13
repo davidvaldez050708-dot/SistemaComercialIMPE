@@ -12,9 +12,11 @@ try {
     if ($home === '' || !is_dir($home) || str_contains($home, 'public_html')) {
         throw new RuntimeException('Directorio privado no disponible.');
     }
-    $lock = fopen(rtrim($home, '/\\').'/.impe_zoho_leads.lock', 'c');
-    if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
-        throw new RuntimeException('Ya hay una importación Zoho en curso.');
+    if ($argv[1] === '--apply') {
+        $lock = fopen(rtrim($home, '/\\').'/.impe_zoho_leads.lock', 'c');
+        if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+            throw new RuntimeException('Ya hay una importación Zoho en curso.');
+        }
     }
     $db = (new Database())->connect();
     $bridge = new ZohoLeadsProspectosBridge($db, ZohoLeadsProspectosBridge::configuracion());

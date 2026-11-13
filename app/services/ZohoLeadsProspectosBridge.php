@@ -24,7 +24,14 @@ final class ZohoLeadsProspectosBridge
 
     public static function configuracion(): array
     {
-        return impeLeerConfigPrivada('zoho_leads.local.php');
+        $cfg = impeLeerConfigPrivada('zoho_leads.local.php');
+        if ($cfg !== []) return $cfg;
+        // El piloto existente ya fija la organización Developer esperada.
+        // La lectura se ejecuta solo cuando el operador invoca este CLI.
+        $piloto = impeLeerConfigPrivada('zoho_sync.local.php');
+        return isset($piloto['expected_org_id'])
+            ? ['enabled'=>true,'expected_org_id'=>$piloto['expected_org_id']]
+            : [];
     }
 
     private function solicitar(string $url, ?array $form = null, ?string $token = null): array
