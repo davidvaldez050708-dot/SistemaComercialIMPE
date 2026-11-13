@@ -17,7 +17,7 @@
 
 /* Asignación a varios estados: presentación del modal. */
 #modalAsignacionMasiva .territory-bulk-dialog {
-    width: min(1400px, calc(100vw - 32px));
+    width: min(980px, calc(100vw - 32px));
     max-width: none;
 }
 
@@ -30,15 +30,15 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    max-height: calc(100vh - 32px);
+    max-height: min(700px, calc(100vh - 64px));
 }
 
 #modalAsignacionMasiva .territory-bulk-header {
-    padding: 22px 32px 18px;
+    padding: 18px 26px 14px;
 }
 
 #modalAsignacionMasiva .territory-bulk-header .system-form-modal-title {
-    font-size: clamp(21px, 2.2vw, 28px);
+    font-size: clamp(20px, 2vw, 24px);
     line-height: 1.2;
 }
 
@@ -47,17 +47,17 @@
 }
 
 #modalAsignacionMasiva .territory-bulk-body {
-    padding: 14px 30px 24px;
+    padding: 12px 24px 20px;
     min-height: 0;
     overflow-y: auto;
 }
 
 .territory-bulk-states {
     display: grid;
-    grid-template-columns: minmax(190px, 300px) minmax(0, 1fr);
-    gap: 24px;
+    grid-template-columns: minmax(170px, 230px) minmax(0, 1fr);
+    gap: 18px;
     align-items: start;
-    padding: 18px 24px;
+    padding: 14px 18px;
     border: 1px solid #d9e2f1;
     border-radius: 14px;
     background: #fff;
@@ -156,7 +156,7 @@
 }
 
 .territory-bulk-section {
-    margin: 18px 30px 0;
+    margin: 16px 20px 0;
 }
 
 .territory-bulk-section-title {
@@ -181,14 +181,10 @@
 
 .territory-bulk-person-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 46px;
+    grid-template-columns: minmax(150px, 36%) minmax(0, 1fr) 46px;
     gap: 12px;
     align-items: center;
     margin-bottom: 8px;
-}
-
-.territory-bulk-section:not([data-masiva-seccion="CUENTA_CLAVE"]) .territory-bulk-person-row {
-    grid-template-columns: minmax(170px, 40%) minmax(0, 1fr) 46px;
 }
 
 .territory-bulk-person-row .form-select,
@@ -248,7 +244,7 @@
 }
 
 #modalAsignacionMasiva .territory-bulk-footer {
-    padding: 16px 30px;
+    padding: 14px 24px;
 }
 
 @media (max-width: 767.98px) {
@@ -281,7 +277,7 @@
         margin-left: 0;
     }
 
-    .territory-bulk-section:not([data-masiva-seccion="CUENTA_CLAVE"]) .territory-bulk-person-row {
+    .territory-bulk-person-row {
         grid-template-columns: minmax(0, 1fr) 46px;
     }
 

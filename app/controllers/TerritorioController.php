@@ -203,8 +203,17 @@ class TerritorioController
     public function opcionesAsignacionMasiva()
     {
         $this->validarPermiso('territorios.asignar');
+        require_once __DIR__ . '/../helpers/AvatarHelper.php';
         $modelo = new TerritorioModel();
-        $this->responderJson(['ok' => true, 'opciones' => $modelo->opcionesAsignacionMasiva()]);
+        $opciones = $modelo->opcionesAsignacionMasiva();
+        foreach ($opciones['usuarios'] as &$usuarios) {
+            foreach ($usuarios as &$usuario) {
+                $usuario['foto_url'] = obtenerUrlFotoPerfil($usuario['foto_perfil'] ?? '');
+            }
+            unset($usuario);
+        }
+        unset($usuarios);
+        $this->responderJson(['ok' => true, 'opciones' => $opciones]);
     }
 
     public function guardarAsignacionMasiva()

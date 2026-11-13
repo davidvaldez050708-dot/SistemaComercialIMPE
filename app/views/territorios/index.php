@@ -1158,40 +1158,37 @@ document.addEventListener('DOMContentLoaded', function () {
                 selector.appendChild(opcion(persona.id,
                     (persona.nombre + ' ' + persona.apellidos).trim()));
             });
-            if (tipo !== 'CUENTA_CLAVE') {
-                const identidad = document.createElement('div');
-                identidad.className = 'territory-bulk-person-identity';
-                const avatar = document.createElement('span');
-                avatar.className = 'territory-bulk-avatar';
-                const nombre = document.createElement('strong');
-                const actualizarIdentidad = function () {
-                    const persona = opciones.usuarios[tipo].find(function (item) {
-                        return String(item.id) === selector.value;
-                    });
-                    avatar.replaceChildren();
-                    nombre.textContent = persona
-                        ? (persona.nombre + ' ' + persona.apellidos).trim()
-                        : 'Seleccionar ' + (tipo === 'ASESOR' ? 'asesor' : 'analista');
-                    const iniciales = document.createElement('span');
-                    iniciales.textContent = persona
-                        ? ((persona.nombre || '').charAt(0) + (persona.apellidos || '').charAt(0)).toUpperCase()
-                        : '?';
-                    const ruta = String(persona?.foto_perfil || '').replaceAll('\\', '/');
-                    if (/^public\/uploads\/usuarios\/[a-zA-Z0-9_./-]+\.(jpg|jpeg|png|webp)$/i.test(ruta) &&
-                        !ruta.includes('..')) {
-                        const imagen = document.createElement('img');
-                        imagen.src = baseUrl + ruta;
-                        imagen.alt = '';
-                        imagen.addEventListener('error', function () { imagen.remove(); });
-                        avatar.appendChild(imagen);
-                    }
-                    avatar.appendChild(iniciales);
-                };
-                selector.addEventListener('change', actualizarIdentidad);
-                actualizarIdentidad();
-                identidad.append(avatar, nombre);
-                fila.appendChild(identidad);
-            }
+            const identidad = document.createElement('div');
+            identidad.className = 'territory-bulk-person-identity';
+            const avatar = document.createElement('span');
+            avatar.className = 'territory-bulk-avatar';
+            const nombre = document.createElement('strong');
+            const actualizarIdentidad = function () {
+                const persona = opciones.usuarios[tipo].find(function (item) {
+                    return String(item.id) === selector.value;
+                });
+                avatar.replaceChildren();
+                nombre.textContent = persona
+                    ? (persona.nombre + ' ' + persona.apellidos).trim()
+                    : 'Seleccionar ' + (tipo === 'CUENTA_CLAVE'
+                        ? 'Cuenta Clave' : (tipo === 'ASESOR' ? 'asesor' : 'analista'));
+                const iniciales = document.createElement('span');
+                iniciales.textContent = persona
+                    ? ((persona.nombre || '').charAt(0) + (persona.apellidos || '').charAt(0)).toUpperCase()
+                    : '?';
+                if (persona?.foto_url) {
+                    const imagen = document.createElement('img');
+                    imagen.src = persona.foto_url;
+                    imagen.alt = '';
+                    imagen.addEventListener('error', function () { imagen.remove(); });
+                    avatar.appendChild(imagen);
+                }
+                avatar.appendChild(iniciales);
+            };
+            selector.addEventListener('change', actualizarIdentidad);
+            actualizarIdentidad();
+            identidad.append(avatar, nombre);
+            fila.appendChild(identidad);
             const quitar = document.createElement('button');
             quitar.type = 'button';
             quitar.className = 'btn btn-system-cancel territory-bulk-remove';
