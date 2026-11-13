@@ -12,7 +12,7 @@ final class EmbudoComercialV3CalificacionService
         $this->db=$db;
     }
 
-    public function registrar(int $usuarioId,int $asignacionId,string $motivo,bool $confirmada): array
+    public function registrar(int $usuarioId,int $asignacionId,string $motivo,bool $confirmada,string $origen='CONTACTADO'): array
     {
         if ($usuarioId<1 || $asignacionId<1 ||
             (int)($_SESSION['usuario_id']??0)!==$usuarioId ||
@@ -36,7 +36,7 @@ final class EmbudoComercialV3CalificacionService
             $fila=$s->get_result()->fetch_assoc();
             $s->close();
             if (!$fila || (int)$fila['asesor_id']!==$usuarioId ||
-                (int)$fila['vigente']!==1 || $fila['etapa']!=='CONTACTADO') {
+                (int)$fila['vigente']!==1 || $fila['etapa']!==$origen || !in_array($origen,['CONTACTADO','SEGUIMIENTO'],true)) {
                 throw new DomainException('El prospecto cambió de etapa o ya no está asignado a tu cuenta.');
             }
             if (!EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada($this->db,$usuarioId,$asignacionId)) {
@@ -49,7 +49,7 @@ final class EmbudoComercialV3CalificacionService
             $s->execute();
             $previa=$s->get_result()->fetch_assoc()['subetapa']??null;
             $s->close();
-            if ($previa!==null && $previa!=='PENDIENTE_CALIFICACION') {
+            if ($origen==='CONTACTADO' && $previa!==null && $previa!=='PENDIENTE_CALIFICACION') {
                 throw new DomainException('La subetapa existente requiere revisión antes de calificar el prospecto.');
             }
             $s=$this->db->prepare("UPDATE prospecto_embudo_etapas SET etapa='POTENCIAL',
@@ -70,11 +70,11 @@ final class EmbudoComercialV3CalificacionService
             $s->execute();$s->close();
             $s=$this->db->prepare("INSERT INTO prospecto_embudo_movimientos
                     (asignacion_id,etapa_anterior,etapa_nueva,motivo,usuario_id,creado_at)
-                VALUES (?,'CONTACTADO','POTENCIAL',?,?,UTC_TIMESTAMP())");
-            $s->bind_param('isi',$asignacionId,$motivo,$usuarioId);
+                VALUES (?,?,'POTENCIAL',?,?,UTC_TIMESTAMP())");
+            $s->bind_param('issi',$asignacionId,$origen,$motivo,$usuarioId);
             $s->execute();$id=(int)$this->db->insert_id;$s->close();
             $this->db->commit();
-            return ['movimiento_id'=>$id,'anterior'=>'CONTACTADO','etapa'=>'POTENCIAL','subetapa'=>'CALIFICADO'];
+            return ['movimiento_id'=>$id,'anterior'=>$origen,'etapa'=>'POTENCIAL','subetapa'=>'CALIFICADO'];
         } catch (Throwable $error) {
             $this->db->rollback();
             throw $error;

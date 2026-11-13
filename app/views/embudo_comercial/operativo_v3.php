@@ -145,7 +145,9 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <?php if($puedeTelefono): ?>
             <?php endif; ?>
             <details class="impe-v3o-gestion">
-                <summary>Gestionar</summary>
+                <summary class="impe-v3o-gestion-boton" title="Gestionar" aria-label="Gestionar">
+                    <i class="bi bi-three-dots" aria-hidden="true"></i>
+                </summary>
                 <div class="impe-v3o-gestion-opciones">
                     <?php if($puedeTelefono): ?>
                     <a class="impe-v3o-accion" href="<?= $esc($historial) ?>"

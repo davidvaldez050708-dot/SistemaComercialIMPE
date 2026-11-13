@@ -488,21 +488,23 @@ final class EmbudoComercialRepository
             new DateTimeZone('America/Mexico_City')))->format('Y-m-d');
         $indicadores=(new EmbudoComercialV3IndicadoresVista($this->db))
             ->intentosDelDia(array_values($ids),$dia);
-        if (tienePermiso('ventas.embudo.mover') && $cols['CONTACTADO']['registros']) {
+        if (tienePermiso('ventas.embudo.mover')) {
             require_once __DIR__.'/EmbudoComercialV3MovimientosPermitidos.php';
             $candidatos = [];
-            foreach ($cols['CONTACTADO']['registros'] as $item) {
-                if (in_array((string)($item['subetapa']??''), ['', 'PENDIENTE_CALIFICACION'], true)) {
+            foreach (array_merge($cols['CONTACTADO']['registros'], $cols['SEGUIMIENTO']['registros']) as $item) {
+                if (($item['etapa_original']??'')==='SEGUIMIENTO' || in_array((string)($item['subetapa']??''), ['', 'PENDIENTE_CALIFICACION'], true)) {
                     $candidatos[] = (int)$item['asignacion_id'];
                 }
             }
             $acreditadas = EmbudoComercialV3MovimientosPermitidos::conversacionesAcreditadas(
                 $this->db, $usuarioId, $candidatos
             );
-            foreach ($cols['CONTACTADO']['registros'] as &$item) {
-                $item['puede_calificar'] = isset($acreditadas[(int)$item['asignacion_id']]);
+            foreach (['CONTACTADO','SEGUIMIENTO'] as $etapaCalificable) {
+                foreach ($cols[$etapaCalificable]['registros'] as &$item) {
+                    $item['puede_calificar'] = isset($acreditadas[(int)$item['asignacion_id']]);
+                }
+                unset($item);
             }
-            unset($item);
         }
         foreach($cols as &$col){
             foreach($col['registros'] as &$item) {

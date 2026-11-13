@@ -402,7 +402,7 @@ final class EmbudoComercialController
                 }
                 require_once __DIR__.'/../services/EmbudoComercialV3CalificacionService.php';
                 $confirmada=($_POST['calificacion_confirmada']??'')==='1';
-                $mov=(new EmbudoComercialV3CalificacionService($db))->registrar($uid,(int)$asig,$motivo,$confirmada);
+                $mov=(new EmbudoComercialV3CalificacionService($db))->registrar($uid,(int)$asig,$motivo,$confirmada,$anterior);
                 $reply(true,'Calificación registrada y auditada.',200,['movimiento'=>$mov]);
                 return;
             }
