@@ -111,3 +111,14 @@
   outline:2px solid #2c66ab;outline-offset:2px;
 }
 .impe-v3i-dialog [hidden]{display:none!important}
+
+.impe-v3i-dialog .impe-embudo-dialog-footer [data-v3i-arrancar] {
+    color: #fff;
+    background: #2556a5;
+    border-color: #2556a5;
+}
+.impe-v3i-dialog [data-v3i-preparar],
+.impe-v3i-dialog [data-v3i-ligas] {
+    display: grid;
+    gap: 10px;
+}

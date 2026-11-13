@@ -17,14 +17,22 @@
                 El prospecto adjuntará su comprobante en el formulario.
             </p>
             <section data-v3i-preparar hidden>
-                <label><input type="checkbox" name="documentos" value="1"> Documentos listos</label>
-                <label><input type="checkbox" name="comprobante" value="1"> Comprobante recibido</label>
-                <button type="button" data-v3i-arrancar>Iniciar inscripción</button>
+                <label class="impe-v3b-confirmacion"><input type="checkbox" name="documentos" value="1"><span>Documentos listos</span></label>
+                <label class="impe-v3b-confirmacion"><input type="checkbox" name="comprobante" value="1"><span>Comprobante recibido</span></label>
             </section>
-            <p class="impe-v3i-link" data-v3i-ligas hidden>
-                <a href="<?= $esc(BASE_URL.'index.php?controller=formulario&action=inscripcion') ?>"
-                   target="_blank" rel="noopener noreferrer">Abrir Formularios para copiar la liga del programa</a>
-            </p>
+            <div class="impe-v3i-link" data-v3i-ligas hidden>
+                <label for="impe-v3i-programa">Elige el programa del prospecto</label>
+                <select id="impe-v3i-programa" data-v3i-programa>
+                    <option value="">Selecciona un programa</option>
+                    <option value="bachillerato-en-2-anos">Bachillerato en 2 años</option>
+                    <option value="bachillerato-286">Bachillerato General</option>
+                    <option value="ingles">Inglés</option>
+                    <option value="titulacion-ejecutivas">Titulación - Ejecutivas</option>
+                    <option value="titulacion-experiencia-laboral">Titulación por experiencia laboral</option>
+                </select>
+                <a data-v3i-enlace data-base="<?= $esc(BASE_URL.'ya-estas-inscrito/') ?>"
+                   hidden target="_blank" rel="noopener noreferrer">Abrir formulario de inscripción</a>
+            </div>
             <button type="button" class="impe-v3i-verificar" data-v3i-buscar>
                 <i class="bi bi-shield-check" aria-hidden="true"></i>
                 Buscar solicitud recibida
@@ -48,7 +56,8 @@
         </div>
         <div class="impe-embudo-dialog-footer">
             <button type="button" data-v3i-cerrar>Cancelar</button>
-            <button type="submit" data-v3i-guardar disabled>Vincular solicitud</button>
+            <button type="button" data-v3i-arrancar hidden>Iniciar inscripción</button>
+            <button type="submit" data-v3i-guardar hidden disabled>Vincular solicitud</button>
         </div>
     </form>
 </dialog>

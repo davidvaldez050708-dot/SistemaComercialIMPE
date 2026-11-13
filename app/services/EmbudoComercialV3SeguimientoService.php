@@ -153,6 +153,10 @@ final class EmbudoComercialV3SeguimientoService
                 !EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada($this->db,$usuario,$id)) {
                 throw new DomainException('El movimiento requiere conversación acreditada de esta asignación.');
             }
+            if ($origen==='PROCESO_INSCRIPCION' &&
+                $this->consultar('SELECT asignacion_id FROM prospecto_embudo_inscripciones_v3 WHERE asignacion_id=? FOR UPDATE',$id)) {
+                throw new DomainException('La solicitud ya está vinculada. Requiere revisión institucional.');
+            }
             $actual=$destino==='SEGUIMIENTO'?$this->ultimo($id):null;
             $pendiente=$actual['fecha_pendiente']??null;
             if ($destino==='SEGUIMIENTO' && $pendiente!==null && $fecha!=='') {

@@ -74,6 +74,18 @@
   const ligas=form.querySelector('[data-v3i-ligas]');
   const arrancar=form.querySelector('[data-v3i-arrancar]');
   if(!preparar||!ligas||!arrancar)return;
+  const programa=form.querySelector('[data-v3i-programa]');
+  const enlace=form.querySelector('[data-v3i-enlace]');
+  const actualizarEnlace=()=>{
+    if(!enlace||!programa)return;
+    enlace.hidden=!programa.value;
+    if(!programa.value)return;
+    const url=new URL(enlace.dataset.base,location.href);
+    url.searchParams.set('programa',programa.value);
+    enlace.href=url.href;
+  };
+  programa?.addEventListener('change',actualizarEnlace);
+  let tramiteIniciado=false;
   arrancar.addEventListener('click',async()=>{
     if(!seleccion||busy)return;
     limpiar();
@@ -86,6 +98,8 @@
     try{
       await post({operacion:'INICIAR',asignacion_id:seleccion.asignacion,
         documentos:'1',comprobante:'1'});
+      tramiteIniciado=true;
+      arrancar.hidden=true;
       preparar.hidden=true;
       ligas.hidden=false;
       buscar.hidden=false;
@@ -103,6 +117,9 @@
        card.dataset.v3Subetapa==='NO_CONTACTAR' ||
        !/^[1-9][0-9]*$/.test(asignacion) ||currentUser<1)return;
     form.reset();
+    actualizarEnlace();
+    tramiteIniciado=false;
+    guardar.hidden=true;
     limpiar();
     confirmar.hidden=true;
     guardar.disabled=true;
@@ -111,6 +128,7 @@
     datos.textContent=String(card.dataset.nombre||'Prospecto');
     const iniciar=card.dataset.etapa==='POTENCIAL';
     preparar.hidden=!iniciar;
+    arrancar.hidden=!iniciar;
     ligas.hidden=iniciar;
     buscar.hidden=iniciar;
     estado.textContent=iniciar?'Confirma los requisitos antes de compartir la liga.':
@@ -121,11 +139,15 @@
   form.querySelectorAll('[data-v3i-cerrar]').forEach(btn=>{
     btn.addEventListener('click',()=>{if(!busy)dialog.close();});
   });
-  dialog.addEventListener('close',()=>{seleccion=null;limpiar();});
+  dialog.addEventListener('close',()=>{
+    seleccion=null;
+    limpiar();
+    if(tramiteIniciado&&!telefonoActivo())window.location.reload();
+  });
   buscar.addEventListener('click',async()=>{
     if(!seleccion||busy)return;
     busy=true;buscar.disabled=true;guardar.disabled=true;
-    confirmar.hidden=true;limpiar();
+    confirmar.hidden=true;guardar.hidden=true;limpiar();
     estado.textContent='Verificando identidad y solicitudes recibidas…';
     try{
       const data=await post({
@@ -140,6 +162,7 @@
         estado.textContent='Solicitud #'+result.formulario_id+
           ' recibida el '+String(result.fecha||'')+
           '. Confirma únicamente después de revisar la ficha.';
+        guardar.hidden=false;
         guardar.disabled=false;
       }else {
         seleccion.formulario=0;

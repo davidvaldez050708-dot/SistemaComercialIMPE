@@ -13,7 +13,7 @@ final class EmbudoComercialV3MovimientosPermitidos
         if($actual==='NUEVO') return ['CONTACTADO'];
         if($actual==='CONTACTADO') return $puedeCalificar ? ['SEGUIMIENTO','POTENCIAL'] : ['SEGUIMIENTO'];
         if($actual==='SEGUIMIENTO') return $puedeCalificar ? ['POTENCIAL'] : [];
-        if($actual==='POTENCIAL') return ['SEGUIMIENTO'];
+        if(in_array($actual,['POTENCIAL','PROCESO_INSCRIPCION'],true)) return ['SEGUIMIENTO'];
         return [];
     }
 
