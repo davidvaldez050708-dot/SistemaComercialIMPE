@@ -1158,34 +1158,45 @@ document.addEventListener('DOMContentLoaded', function () {
                         return {id: 'nuevo:' + persona.id,
                             nombre: persona.nombre + ' (se asignará ahora)'};
                     }));
-                    if (disponibles.length === 1) {
+                    const tarjeta = document.createElement('div');
+                    tarjeta.className = 'territory-bulk-parent-card';
+                    const cabecera = document.createElement('div');
+                    cabecera.className = 'territory-bulk-parent-card-title';
+                    const iconoEstado = document.createElement('i');
+                    iconoEstado.className = 'bi bi-geo-alt';
+                    iconoEstado.setAttribute('aria-hidden', 'true');
+                    const nombreEstado = document.createElement('strong');
+                    nombreEstado.textContent = entrada.dataset.nombre;
+                    cabecera.append(iconoEstado, nombreEstado);
+                    const columnas = document.createElement('div');
+                    columnas.className = 'territory-bulk-parent-columns';
+                    const columnaPersona = document.createElement('span');
+                    columnaPersona.textContent = tipo === 'ASESOR' ? 'Asesor' : 'Analista';
+                    const columnaCuenta = document.createElement('span');
+                    columnaCuenta.textContent = 'Cuenta Clave correspondiente';
+                    columnas.append(columnaPersona, columnaCuenta);
+                    tarjeta.append(cabecera, columnas);
+                    usuariosElegidos(tipo).forEach(function (persona) {
                         const fila = document.createElement('div');
                         fila.className = 'territory-bulk-parent-row';
-                        const aviso = document.createElement('span');
-                        aviso.className = 'territory-bulk-parent-auto';
-                        aviso.textContent = entrada.dataset.nombre + ' · ' +
-                            disponibles[0].nombre + ' · asignación automática';
-                        fila.appendChild(aviso);
-                        grupo.appendChild(fila);
-                    } else if (!disponibles.length && tipo === 'ASESOR') {
-                        const fila = document.createElement('div');
-                        fila.className = 'territory-bulk-parent-row';
-                        const aviso = document.createElement('span');
-                        aviso.className = 'territory-bulk-parent-auto';
-                        aviso.textContent = entrada.dataset.nombre + ' · Sin Cuenta Clave disponible';
-                        fila.appendChild(aviso);
-                        grupo.appendChild(fila);
-                    } else {
-                        const estadoTitulo = document.createElement('strong');
-                        estadoTitulo.className = 'territory-bulk-parent-state';
-                        estadoTitulo.textContent = entrada.dataset.nombre;
-                        grupo.appendChild(estadoTitulo);
-                        usuariosElegidos(tipo).forEach(function (persona) {
-                            const fila = document.createElement('div');
-                            fila.className = 'territory-bulk-parent-row';
-                            const etiqueta = document.createElement('label');
-                            etiqueta.className = 'form-label small mb-1';
-                            etiqueta.textContent = persona.nombre;
+                        const etiqueta = document.createElement('label');
+                        etiqueta.className = 'territory-bulk-parent-person';
+                        const iconoPersona = document.createElement('span');
+                        iconoPersona.className = 'territory-bulk-parent-person-icon';
+                        iconoPersona.innerHTML = '<i class="bi bi-person" aria-hidden="true"></i>';
+                        const nombrePersona = document.createElement('span');
+                        nombrePersona.textContent = persona.nombre;
+                        etiqueta.append(iconoPersona, nombrePersona);
+                        fila.appendChild(etiqueta);
+                        if (disponibles.length === 1 ||
+                            (!disponibles.length && tipo === 'ASESOR')) {
+                            const aviso = document.createElement('span');
+                            aviso.className = 'territory-bulk-parent-auto';
+                            aviso.textContent = disponibles.length
+                                ? disponibles[0].nombre + ' · asignación automática'
+                                : 'Sin Cuenta Clave disponible';
+                            fila.appendChild(aviso);
+                        } else {
                             const selector = document.createElement('select');
                             selector.className = 'form-select form-select-sm';
                             selector.id = 'masiva-cuenta-' + tipo + '-' + entrada.value + '-' + persona.id;
@@ -1199,10 +1210,11 @@ document.addEventListener('DOMContentLoaded', function () {
                                 selector.appendChild(opcion(cuenta.id, cuenta.nombre));
                             });
                             selector.value = anteriores[selector.name] || '';
-                            fila.append(etiqueta, selector);
-                            grupo.appendChild(fila);
-                        });
-                    }
+                            fila.appendChild(selector);
+                        }
+                        tarjeta.appendChild(fila);
+                    });
+                    grupo.appendChild(tarjeta);
                 });
                 cuentas.appendChild(grupo);
             });
