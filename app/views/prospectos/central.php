@@ -27,10 +27,25 @@ $urlPagina=static fn($p)=>BASE_URL.'index.php?'.http_build_query(['controller'=>
 <?php endforeach; ?>
 </nav>
 <?php if (is_array($mensajeConfiguracion) && !empty($mensajeConfiguracion['texto'])): ?>
-<div class="asesores-alert <?= ($mensajeConfiguracion['tipo']??'')==='exito'?'asesores-alert--success':'' ?>" role="<?= ($mensajeConfiguracion['tipo']??'')==='exito'?'status':'alert' ?>">
-<i class="bi <?= ($mensajeConfiguracion['tipo']??'')==='exito'?'bi-check-circle':'bi-exclamation-circle' ?>" aria-hidden="true"></i>
-<?= $esc($mensajeConfiguracion['texto']) ?>
+<?php $configuracionGuardada=($mensajeConfiguracion['tipo']??'')==='exito'; ?>
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="prospectos-configuracion-toast"
+         class="toast system-toast<?= $configuracionGuardada?'':' system-toast-error' ?>"
+         role="<?= $configuracionGuardada?'status':'alert' ?>"
+         aria-live="<?= $configuracionGuardada?'polite':'assertive' ?>" aria-atomic="true"
+         data-bs-delay="<?= $configuracionGuardada?3200:4200 ?>">
+        <div class="toast-body">
+            <i class="bi <?= $configuracionGuardada?'bi-check2-circle':'bi-exclamation-circle' ?>" aria-hidden="true"></i>
+            <span><?= $esc($mensajeConfiguracion['texto']) ?></span>
+        </div>
+    </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const aviso = document.getElementById('prospectos-configuracion-toast');
+    if (aviso && window.bootstrap?.Toast) bootstrap.Toast.getOrCreateInstance(aviso).show();
+});
+</script>
 <?php endif; ?>
 <?php if ($subAsignaciones==='asesores'): ?>
 <?php require __DIR__.'/partials/configuracion_asesores.php'; ?>
