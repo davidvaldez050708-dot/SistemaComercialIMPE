@@ -176,7 +176,7 @@
   const destinoValido=(card,etapa)=>destinosDe(card).includes(etapa);
 
   const actualizar=()=>{
-    const requiere=destino.value==='SEGUIMIENTO';
+    const requiere=destino.value==='SEGUIMIENTO' && tarjeta?.dataset.v3ActividadPendiente!=='1';
     fechaLabel.hidden=!requiere;
     fecha.required=requiere;
     if(!requiere)fecha.value='';
@@ -296,7 +296,7 @@
       error.hidden=false;return;
     }
     const reason=motivo.value.trim();
-    if(reason.length<8 || reason.length>190 || (next==='SEGUIMIENTO'&&!fecha.value)){
+    if(reason.length<8 || reason.length>190 || (fecha.required&&!fecha.value)){
       error.textContent='Indica un motivo válido y la próxima fecha cuando corresponda.';
       error.hidden=false;return;
     }

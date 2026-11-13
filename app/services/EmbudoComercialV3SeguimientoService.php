@@ -5,7 +5,7 @@ require_once __DIR__.'/EmbudoComercialV3MovimientosPermitidos.php';
 
 final class EmbudoComercialV3SeguimientoService
 {
-    public const ETAPAS = ['CONTACTADO','SEGUIMIENTO','INTERESADO','POTENCIAL','PROCESO_INSCRIPCION'];
+    public const ETAPAS = ['NUEVO','CONTACTADO','SEGUIMIENTO','INTERESADO','POTENCIAL','PROCESO_INSCRIPCION'];
     private mysqli $db;
 
     public function __construct(mysqli $db) { $this->db=$db; }
@@ -146,7 +146,6 @@ final class EmbudoComercialV3SeguimientoService
         EmbudoComercialV3MovimientosPermitidos::validar($origen,$destino);
         if ($destino==='POTENCIAL') throw new DomainException('Usa la calificación comercial.');
         $motivo=$this->motivoValido($motivo);
-        EmbudoComercialMovimientoService::validarPropuesta($origen,$destino,$motivo,$fecha);
         $this->db->begin_transaction();
         try {
             if ($this->asignacion($usuario,$id,true)!==$origen) throw new DomainException('La etapa cambió. Actualiza el tablero.');
@@ -154,13 +153,20 @@ final class EmbudoComercialV3SeguimientoService
                 !EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada($this->db,$usuario,$id)) {
                 throw new DomainException('El movimiento requiere conversación acreditada de esta asignación.');
             }
+            $actual=$destino==='SEGUIMIENTO'?$this->ultimo($id):null;
+            $pendiente=$actual['fecha_pendiente']??null;
+            if ($destino==='SEGUIMIENTO' && $pendiente!==null && $fecha!=='') {
+                throw new DomainException('Ya hay una actividad pendiente. Reprográmala desde Actividades comerciales.');
+            }
+            if ($destino==='SEGUIMIENTO' && $pendiente===null && $fecha==='') {
+                throw new DomainException('Selecciona la fecha y hora del seguimiento.');
+            }
+            if ($destino!=='SEGUIMIENTO') {
+                EmbudoComercialMovimientoService::validarPropuesta($origen,$destino,$motivo,$fecha);
+            }
             $subNueva=$destino==='SEGUIMIENTO'?'CONTACTO_ACORDADO':'PENDIENTE_CALIFICACION';
             $subAnterior=$this->cambiarSubetapa($id,$usuario,$destino,$subNueva,$motivo);
-            if ($destino==='SEGUIMIENTO') {
-                $actual=$this->ultimo($id);
-                if (!empty($actual['fecha_pendiente'])) {
-                    throw new DomainException('Ya hay una actividad V3 pendiente. Gestiónala antes de programar otra.');
-                }
+            if ($destino==='SEGUIMIENTO' && $pendiente===null) {
                 $this->guardar($id,$usuario,$destino,'PROGRAMAR',$motivo,null,
                     EmbudoComercialMovimientoService::fechaSeguimientoUtc($fecha),$actual['completada_at']??null,$subAnterior,$subNueva);
             }

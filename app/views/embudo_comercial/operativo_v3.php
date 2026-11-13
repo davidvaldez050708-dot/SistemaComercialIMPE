@@ -58,7 +58,6 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     if(!$puedeMover)$propuestas=[];
     $pendiente=$p['actividad_pendiente']??null;
     $completada=$p['actividad_completada']??null;
-    if($pendiente)$propuestas=array_diff($propuestas,['SEGUIMIENTO']);
     $destinos=implode(',',$propuestas);
     $detalle=$base.http_build_query([
         'controller'=>'embudoComercial','action'=>'detalle',
@@ -87,6 +86,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
              data-v3-subetapa="<?= $esc($st) ?>"
              data-nombre="<?= $esc($p['nombre_completo']) ?>"
              data-v3-destinos="<?= $esc($destinos) ?>"
+             data-v3-actividad-pendiente="<?= $pendiente ? '1' : '0' ?>"
              <?= $propuestas?'draggable="true"':'' ?>>
         <div class="impe-embudo-card-line">
             <a href="<?= $esc($detalle) ?>" class="impe-embudo-persona"
@@ -143,58 +143,61 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             </button>
             <?php endif; ?>
             <?php if($puedeTelefono): ?>
-            <a class="impe-v3o-accion" href="<?= $esc($historial) ?>"
-               title="Mis llamadas y resultados" aria-label="Mis llamadas y resultados">
-                <i class="bi bi-journal-check" aria-hidden="true"></i>
-            </a>
             <?php endif; ?>
-            <a class="impe-v3o-accion" href="<?= $esc($detalle) ?>"
-               title="Ver ficha e historial" aria-label="Ver ficha e historial">
-                <i class="bi bi-person-vcard" aria-hidden="true"></i>
-            </a>
-            <?php if($puedeMover && $etapa==='POTENCIAL' && $st!=='NO_CONTACTAR'): ?>
-            <button type="button" class="impe-v3o-accion" data-v3i-iniciar
-                title="Vincular solicitud real de inscripción"
-                aria-label="Verificar solicitud institucional de inscripción">
-                <i class="bi bi-file-earmark-check" aria-hidden="true"></i>
-            </button>
-            <?php endif; ?>
-            <?php if($puedeMover && $etapa==='POTENCIAL'): ?>
-            <button type="button" class="impe-v3o-accion" data-v3-gestionar
-                title="Gestionar subetapa y próxima acción" aria-label="Gestionar potencial">
-                <i class="bi bi-calendar2-plus" aria-hidden="true"></i>
-            </button>
-            <?php endif; ?>
-            <?php if($actividadV3 && $puedeMover && !$legacy &&
-                in_array($real,EmbudoComercialV3SeguimientoService::ETAPAS,true)): ?>
-            <button type="button" class="impe-v3o-accion" data-v3-actividad
-                data-version="<?= (int)($p['actividad_version']??0) ?>"
-                data-pendiente="<?= $pendiente?'1':'0' ?>"
-                title="Actividades comerciales" aria-label="Actividades comerciales">
-                <i class="bi bi-list-check" aria-hidden="true"></i>
-            </button>
-            <?php endif; ?>
-            <?php if(!$legacy && $real==='NUEVO' && $puedeRecuperar && $n>=3): ?>
-            <button type="button" class="impe-v3o-accion" data-v3b-accion="RECUPERACION"
-                title="Revisar tres intentos PBX antes de Recuperación"
-                aria-label="Revisar ingreso a Recuperación">
-                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
-            </button>
-            <?php endif; ?>
-            <?php if(!$legacy && $puedeDescartar &&
-                in_array($real,['NUEVO','CONTACTADO','POTENCIAL','SEGUIMIENTO'],true)): ?>
-            <button type="button" class="impe-v3o-accion" data-v3b-accion="DESCARTAR"
-                title="Revisar motivo de descarte con evidencia"
-                aria-label="Revisar descarte acreditado">
-                <i class="bi bi-person-x" aria-hidden="true"></i>
-            </button>
-            <?php endif; ?>
-            <?php if($propuestas): ?>
-            <button type="button" class="impe-v3o-accion"
-                data-v3-mover title="Cambiar etapa con motivo" aria-label="Cambiar etapa con motivo">
-                <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
-            </button>
-            <?php endif; ?>
+            <details class="impe-v3o-gestion">
+                <summary>Gestionar</summary>
+                <div class="impe-v3o-gestion-opciones">
+                    <?php if($puedeTelefono): ?>
+                    <a class="impe-v3o-accion" href="<?= $esc($historial) ?>"
+                       title="Mis llamadas y resultados" aria-label="Mis llamadas y resultados">
+                        <i class="bi bi-journal-check" aria-hidden="true"></i> <span>Mis llamadas</span>
+                    </a>
+                    <?php endif; ?>
+                    <?php if($puedeMover && $etapa==='POTENCIAL' && $st!=='NO_CONTACTAR'): ?>
+                    <button type="button" class="impe-v3o-accion" data-v3i-iniciar
+                        title="Vincular solicitud real de inscripción"
+                        aria-label="Verificar solicitud institucional de inscripción">
+                        <i class="bi bi-file-earmark-check" aria-hidden="true"></i> <span>Vincular inscripción</span>
+                    </button>
+                    <?php endif; ?>
+                    <?php if($puedeMover && $etapa==='POTENCIAL'): ?>
+                    <button type="button" class="impe-v3o-accion" data-v3-gestionar
+                        title="Gestionar subetapa y próxima acción" aria-label="Gestionar potencial">
+                        <i class="bi bi-calendar2-plus" aria-hidden="true"></i> <span>Gestionar potencial</span>
+                    </button>
+                    <?php endif; ?>
+                    <?php if($actividadV3 && $puedeMover && !$legacy &&
+                        in_array($real,EmbudoComercialV3SeguimientoService::ETAPAS,true)): ?>
+                    <button type="button" class="impe-v3o-accion" data-v3-actividad
+                        data-version="<?= (int)($p['actividad_version']??0) ?>"
+                        data-pendiente="<?= $pendiente?'1':'0' ?>"
+                        title="Actividades comerciales" aria-label="Actividades comerciales">
+                        <i class="bi bi-list-check" aria-hidden="true"></i> <span>Actividades comerciales</span>
+                    </button>
+                    <?php endif; ?>
+                    <?php if(!$legacy && $real==='NUEVO' && $puedeRecuperar && $n>=3): ?>
+                    <button type="button" class="impe-v3o-accion" data-v3b-accion="RECUPERACION"
+                        title="Revisar tres intentos PBX antes de Recuperación"
+                        aria-label="Revisar ingreso a Recuperación">
+                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i> <span>Recuperación</span>
+                    </button>
+                    <?php endif; ?>
+                    <?php if(!$legacy && $puedeDescartar &&
+                        in_array($real,['NUEVO','CONTACTADO','POTENCIAL','SEGUIMIENTO'],true)): ?>
+                    <button type="button" class="impe-v3o-accion" data-v3b-accion="DESCARTAR"
+                        title="Revisar motivo de descarte con evidencia"
+                        aria-label="Revisar descarte acreditado">
+                        <i class="bi bi-person-x" aria-hidden="true"></i> <span>Descartar</span>
+                    </button>
+                    <?php endif; ?>
+                    <?php if($propuestas): ?>
+                    <button type="button" class="impe-v3o-accion"
+                        data-v3-mover title="Cambiar etapa con motivo" aria-label="Cambiar etapa con motivo">
+                        <i class="bi bi-arrow-left-right" aria-hidden="true"></i> <span>Cambiar etapa</span>
+                    </button>
+                    <?php endif; ?>
+                </div>
+            </details>
         </div>
     </article>
     <?php
