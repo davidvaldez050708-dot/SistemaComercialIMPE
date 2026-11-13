@@ -16,13 +16,13 @@ def main():
         modo.add_argument("--" + opcion, action="store_true")
     args = parser.parse_args()
     publicador.ARCHIVOS = [
+        ('app/services/EmbudoComercialIntentosPbxRepository.php', None, '1c9ab67afaff7ed0d3f24e5ca1f3677ad02284d4'),
         ('app/services/EmbudoComercialV3BandejasService.php', '118eb819b21fbfb7d49bcaa1877e899b5667cb50', '7a5c329f316d9e74dd514b60fb27aed1c8bd17cf'),
         ('app/services/EmbudoComercialResultadoBridge.php', '3e30a05cfdb00a2718080bfc5b6d59666a0418ea', '7374d9ce5cf0bc31ec60867268e9d4684970db93'),
-        ('app/services/TelefoniaResultadoVentasService.php', '52ba1ab67c9fed06c60fa12822203334fb06822f', '47ca42f2d6a0aaf5ca7b4765ea7e0650d37a18bf'),
+        ('app/services/TelefoniaResultadoVentasService.php', '1d4472ba73e7de4097ef2f592104160b254d7f8f', '6cc48fc8f5fc07efcd5ea9def76963e1720be9dc'),
         ('public/javascript/telefonia_ventas_resultados.js', '44375f479ffc037363d78dada4cc76c5eb913b82', 'c3cf96511de93462b2cdb02a3d0a96d7d36c5d40'),
         ('app/views/embudo_comercial/operativo_v3.php', 'e1b92a296876a1be3ecba1bfd5e7bf35c6949bf3', '639f6dc6b0fdf96d45f3b69e338a71fe737f9193'),
         ('public/javascript/embudo_comercial_v3_operativo.js', '75da8954c8bcd41fc1ae9ffccb3609814eacfa70', 'd74f1d70ce5ca5007a1b9fa4255463f4dcb1343a'),
-        ('app/services/EmbudoComercialIntentosPbxRepository.php', '072f5e829f8377fd486b8b7c83341d5df2ecd132', '1c9ab67afaff7ed0d3f24e5ca1f3677ad02284d4'),
     ]
     publicador.NO_MODIFICAR = {}
     sitio = publicador.raiz(args.site)
