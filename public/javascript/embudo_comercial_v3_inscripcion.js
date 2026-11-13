@@ -76,9 +76,26 @@
   if(!preparar||!ligas||!arrancar)return;
   const programa=form.querySelector('[data-v3i-programa]');
   const enlace=form.querySelector('[data-v3i-enlace]');
+  const copiar=form.querySelector('[data-v3i-copiar]');
+  const campoUrl=form.querySelector('[data-v3i-url]');
+  copiar?.addEventListener('click',async()=>{
+    if(!enlace || enlace.hidden)return;
+    try{
+      await navigator.clipboard.writeText(enlace.href);
+      estado.textContent='Enlace copiado. Compártelo con el prospecto.';
+    }catch(_){
+      campoUrl.hidden=false;
+      campoUrl.value=enlace.href;
+      campoUrl.focus();
+      campoUrl.select();
+      estado.textContent='Copia el enlace seleccionado y compártelo con el prospecto.';
+    }
+  });
   const actualizarEnlace=()=>{
     if(!enlace||!programa)return;
     enlace.hidden=!programa.value;
+    if(copiar)copiar.hidden=enlace.hidden;
+    if(campoUrl)campoUrl.hidden=true;
     if(!programa.value)return;
     const url=new URL(enlace.dataset.base,location.href);
     url.searchParams.set('programa',programa.value);
@@ -117,6 +134,14 @@
        card.dataset.v3Subetapa==='NO_CONTACTAR' ||
        !/^[1-9][0-9]*$/.test(asignacion) ||currentUser<1)return;
     form.reset();
+    if(programa){
+      const normalizar=texto=>texto.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+      const intereses=String(card.dataset.programas||'').split(' · ').map(normalizar);
+      const opciones=Array.from(programa.options).filter(opcion=>opcion.value &&
+        intereses.includes(normalizar(opcion.textContent)));
+      programa.value=opciones.length===1?opciones[0].value:'';
+    }
     actualizarEnlace();
     tramiteIniciado=false;
     guardar.hidden=true;

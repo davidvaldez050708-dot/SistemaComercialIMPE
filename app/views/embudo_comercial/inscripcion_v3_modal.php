@@ -30,8 +30,10 @@
                     <option value="titulacion-ejecutivas">Titulación - Ejecutivas</option>
                     <option value="titulacion-experiencia-laboral">Titulación por experiencia laboral</option>
                 </select>
+                <button type="button" class="impe-v3i-verificar" data-v3i-copiar hidden>Copiar enlace de inscripción</button>
+                <input type="url" data-v3i-url readonly hidden aria-label="Enlace de inscripción">
                 <a data-v3i-enlace data-base="<?= $esc(BASE_URL.'ya-estas-inscrito/') ?>"
-                   hidden target="_blank" rel="noopener noreferrer">Abrir formulario de inscripción</a>
+                   hidden target="_blank" rel="noopener noreferrer">Vista previa del formulario</a>
             </div>
             <button type="button" class="impe-v3i-verificar" data-v3i-buscar>
                 <i class="bi bi-shield-check" aria-hidden="true"></i>
