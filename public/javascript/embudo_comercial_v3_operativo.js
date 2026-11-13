@@ -144,7 +144,8 @@
        !Number.isFinite(Number(info.creada)) ||
        Number(info.creada)<=vistaCargada ||
        Date.now()-Number(info.creada)>60000) return;
-    if(telefonoActivo() || root.querySelector('dialog[open], :popover-open')){
+    if(telefonoActivo() || root.querySelector('dialog[open], :popover-open') ||
+       document.querySelector('#modalResultadoVenta.show')){
       if(!reintentoRefresco) reintentoRefresco=window.setTimeout(()=>{
         reintentoRefresco=0;
         refrescarTrasLlamada();
@@ -161,6 +162,11 @@
     if(event.origin===location.origin && event.source===window.parent &&
        event.data?.type==='IMPE_PHONE_CALL_CHANGED')refrescarTrasLlamada();
   });
+  document.getElementById('modalResultadoVenta')
+    ?.addEventListener('hidden.bs.modal',refrescarTrasLlamada);
+  // El evento storage no se emite en la ventana que escribe el resultado.
+  // Este respaldo sólo lee el marcador local; no consulta el servidor.
+  window.setInterval(refrescarTrasLlamada,1000);
   window.addEventListener('focus',refrescarTrasLlamada);
   document.addEventListener('visibilitychange',refrescarTrasLlamada);
   window.addEventListener('pageshow',event=>{
