@@ -39,6 +39,13 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_expediente.css') ?>">
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_llamadas_expediente.css') ?>">
 <style>
+#expediente-llamadas [data-expediente-grabacion] > [role="status"] {
+    margin-top: 8px;
+    color: var(--color-text-secondary, #526b8a);
+    font: 650 .75rem/1.5 Manrope, sans-serif;
+}
+#expediente-llamadas [data-expediente-grabacion] > [role="status"]:empty { display: none; }
+
 #expediente-llamadas [data-expediente-grabacion] > summary {
     display: flex;
     width: fit-content;

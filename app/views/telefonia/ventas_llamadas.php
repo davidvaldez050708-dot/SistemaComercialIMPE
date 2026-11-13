@@ -5,7 +5,15 @@ $referenciaEmbudo=$_GET['prospecto_asignacion_id']??'';
 $referenciaEmbudo=is_string($referenciaEmbudo) &&
     preg_match('/^[1-9][0-9]*$/D',$referenciaEmbudo) ? $referenciaEmbudo : '';
 ?>
-<style><?php foreach(['seguimiento_llamadas_expediente.css','seguimiento_llamadas_player.css','seguimiento_entrantes_analista.css','telefonia_devoluciones.css','telefonia_ventas_ui.css'] as $css)echo file_get_contents(ROOT_PATH.'/public/css/'.$css); ?></style>
+<style><?php foreach(['seguimiento_llamadas_expediente.css','seguimiento_llamadas_player.css','seguimiento_entrantes_analista.css','telefonia_devoluciones.css','telefonia_ventas_ui.css'] as $css)echo file_get_contents(ROOT_PATH.'/public/css/'.$css); ?>
+.sales-calls-page .linkage-call-recording-body .sales-audio-loading { display: none; }
+.sales-calls-page .linkage-call-recording-body:has([data-sales-audio]:disabled) .sales-audio-loading {
+    display: block;
+    margin-top: 4px;
+    color: var(--color-text-secondary, #526b8a);
+    font: 650 .75rem/1.5 Manrope, sans-serif;
+}
+</style>
 <section class="dashboard-panel linkage-incoming-page impe-callbacks sales-calls-page" data-sales-history data-auto-call="<?= $esc($_GET['pbx_call_id']??'') ?>" data-auto-extension="<?= $esc($_GET['extension']??'') ?>"
  data-sales-assignment-id="<?= $esc($referenciaEmbudo) ?>" data-save-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=guardarResultadoVenta" data-detail-url="<?= BASE_URL ?>index.php?controller=telefonia&amp;action=detalleVenta">
  <header class="linkage-incoming-heading"><div class="linkage-incoming-heading-copy"><span class="linkage-incoming-eyebrow"><i class="bi bi-headset"></i> VENTAS · TELEFONÍA</span><h2>Mis llamadas comerciales</h2><p>Historial y resultados de tus llamadas. La conexión la confirma la centralita; el resultado lo registras tú.</p></div><a class="btn btn-system-light linkage-incoming-back" href="<?= BASE_URL ?>index.php?controller=home&amp;action=index"><i class="bi bi-arrow-left"></i> Mi teléfono y agenda</a></header>
@@ -35,6 +43,7 @@ $referenciaEmbudo=is_string($referenciaEmbudo) &&
       <button type="button" class="linkage-call-audio-state is-available linkage-call-recording-toggle" data-sales-audio="<?= $esc($ref) ?>" data-extension="<?= $esc($call['extension']) ?>" data-segments="<?= count($call['segmentos']) ?>" aria-expanded="false"><i class="bi bi-record-circle"></i> Consultar grabación</button>
      <?php else: ?><small class="text-muted"><?= $code!==''&&!TelefoniaResultadoVentasService::esConversacion($code)?'Sin reproducción de audio':($ref===''?'Sin referencia PBX: no hay audio verificable':($call['segmentos']?'Audio sujeto al resultado':'Audio sin confirmar para tu extensión')) ?></small><?php endif; ?>
     </div><span class="linkage-call-recording-duration"><i class="bi bi-clock"></i> <?= $call['segundos']===null?($ref===''?'Sin duración PBX':'Duración sin confirmar'):sprintf('%02d:%02d',intdiv($call['segundos'],60),$call['segundos']%60) ?></span></div>
+    <div class="sales-audio-loading" role="status">Consultando grabación…</div>
     <div data-sales-audio-slot hidden></div>
    </div>
   </article>
