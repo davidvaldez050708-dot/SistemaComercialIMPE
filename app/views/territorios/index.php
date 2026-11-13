@@ -1144,6 +1144,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 cuentas.appendChild(fila);
             });
         };
+        const actualizarUsuariosDisponibles = function (seccion) {
+            if (!opciones) return;
+            const tipo = seccion.dataset.masivaSeccion;
+            const selectores = Array.from(seccion.querySelectorAll('[data-masiva-personas] select'));
+            const elegidos = new Set(selectores.map(function (selector) {
+                return selector.value;
+            }).filter(Boolean));
+            selectores.forEach(function (selector) {
+                const actual = selector.value;
+                selector.replaceChildren(opcion('', 'Seleccionar usuario'));
+                opciones.usuarios[tipo].forEach(function (persona) {
+                    if (String(persona.id) !== actual && elegidos.has(String(persona.id))) return;
+                    selector.appendChild(opcion(persona.id,
+                        (persona.nombre + ' ' + persona.apellidos).trim()));
+                });
+                selector.value = actual;
+            });
+            seccion.querySelector('[data-masiva-agregar]').disabled =
+                elegidos.size >= opciones.usuarios[tipo].length;
+        };
         const agregarPersona = function (seccion) {
             if (!opciones) return;
             const tipo = seccion.dataset.masivaSeccion;
@@ -1185,7 +1205,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 avatar.appendChild(iniciales);
             };
-            selector.addEventListener('change', actualizarIdentidad);
+            selector.addEventListener('change', function () {
+                actualizarIdentidad();
+                actualizarUsuariosDisponibles(seccion);
+            });
             actualizarIdentidad();
             identidad.append(avatar, nombre);
             fila.appendChild(identidad);
@@ -1196,10 +1219,12 @@ document.addEventListener('DOMContentLoaded', function () {
             quitar.innerHTML = '<i class="bi bi-x-lg"></i>';
             quitar.addEventListener('click', function () {
                 fila.remove();
+                actualizarUsuariosDisponibles(seccion);
                 actualizarCuentas();
             });
             fila.append(selector, quitar);
             seccion.querySelector('[data-masiva-personas]').appendChild(fila);
+            actualizarUsuariosDisponibles(seccion);
             selector.focus();
         };
 
@@ -1222,6 +1247,7 @@ document.addEventListener('DOMContentLoaded', function () {
             formMasiva.reset();
             secciones.forEach(function (seccion) {
                 seccion.querySelector('[data-masiva-personas]').replaceChildren();
+                seccion.querySelector('[data-masiva-agregar]').disabled = false;
             });
             listaEstados.hidden = true;
             abrirEstados.setAttribute('aria-expanded', 'false');
