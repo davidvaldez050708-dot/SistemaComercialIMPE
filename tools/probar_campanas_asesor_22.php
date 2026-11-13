@@ -130,6 +130,10 @@ try {
                     WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE')")->fetch_all(MYSQLI_ASSOC);
             foreach ($columns as $col) {
                 if (in_array($col['t'],$allowed,true)) continue;
+                // Esta columna identifica asignaciones_territorio.id, no asignaciones comerciales.
+                if ($col['t']==='bitacora_movimientos_territoriales' && $col['c']==='asignacion_id') {
+                    continue;
+                }
                 $key = ['prospecto_id'=>'prospecto_id','origen_id'=>'id'][$col['c']]??null;
                 $values = $key ? array_column($rows,$key) :
                     array_values(array_filter(array_map(static fn($e)=>$e['assign'][0]['id']??null,$backup)));
