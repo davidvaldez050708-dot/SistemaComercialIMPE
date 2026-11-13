@@ -267,17 +267,6 @@ try {
     require_once $site.'/app/helpers/ProspectoCentralDatos.php';
     require_once $site.'/app/services/TelefoniaContactosService.php';
     $phone=pbxNumeroAutorizado($number);
-    // Evitar ambigüedad con cualquier prospecto comercial ya existente.
-    // Una ficha duplicada podría causar atribución confusa de llamadas.
-    $existingPhone=pbxRows($db,
-        'SELECT COUNT(*) total FROM prospectos_comerciales
-         WHERE telefono_normalizado=?',
-        [$phone]);
-    if (!$existing && (int)$existingPhone[0]['total']!==0) {
-        throw new RuntimeException(
-            'Ese número ya figura en el almacén comercial: no crear duplicado'
-        );
-    }
     if ($existing) {
         if (!hash_equals((string)$existing[0]['telefono_normalizado'],$phone)) {
             throw new RuntimeException('La ficha anterior corresponde a otro número');
@@ -306,7 +295,16 @@ try {
         $already=pbxRows($db,
             'SELECT id FROM prospectos_comerciales
              WHERE telefono_normalizado=? FOR UPDATE',[$phone]);
-        if ($already) throw new RuntimeException('Número existente: ficha cancelada');
+        $ids=array_map('intval',array_column($already,'id'));
+        sort($ids);
+        if ($ids && $ids!==[9,13]) {
+            throw new RuntimeException('Las coincidencias del número cambiaron; alta cancelada.');
+        }
+        if ($ids && pbxRows($db,
+            'SELECT id FROM prospecto_asignaciones
+             WHERE prospecto_id IN (9,13) AND vigente=1 FOR UPDATE')) {
+            throw new RuntimeException('Una de las fichas coincidentes tiene asignación vigente.');
+        }
         $pid=$repo->crearPersona([
             'nombre_completo'=>'PRUEBA RECORRIDO COMERCIAL - ASESOR 22',
             'telefono_original'=>$phone,
