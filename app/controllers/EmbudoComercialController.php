@@ -86,9 +86,18 @@ final class EmbudoComercialController
             if($operativoV3){
                 $paginasV3=EmbudoComercialRepository::paginasV3Operativo($_GET);
             }
-            $repo=new EmbudoComercialRepository((new Database())->connect(false));
+            $db=(new Database())->connect(false);
+            $repo=new EmbudoComercialRepository($db);
             $disponible=$repo->disponible();
             if ($disponible) {
+                if ($v3Asesor && in_array($vista,['embudo','recuperacion'],true)) {
+                    require_once __DIR__.'/../services/EmbudoComercialV3BandejasService.php';
+                    try {
+                        (new EmbudoComercialV3BandejasService($db))->devolverRecuperacionesVencidas($usuarioId);
+                    } catch (Throwable $e) {
+                        error_log('[embudo_recuperacion_vencida] '.get_class($e).' codigo='.(int)$e->getCode());
+                    }
+                }
                 $opciones=$repo->opciones($usuarioId,$supervisor);
                 $tablero=$previsualizacionV3
                     ?$repo->listadoV3Preparacion($usuarioId,$supervisor,$filtros)

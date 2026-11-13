@@ -144,49 +144,6 @@ final class EmbudoComercialV3BandejasService
      * telefonia_ventas_llamadas.fecha es hora local de Ciudad de México;
      * el movimiento auditado está en UTC.
      */
-    private function conversacionPosteriorARecuperacion(int $usuario,int $asignacion): bool
-    {
-        $s=$this->db->prepare(
-            "SELECT creado_at FROM prospecto_embudo_movimientos
-             WHERE asignacion_id=? AND etapa_nueva='RECUPERACION'
-             ORDER BY creado_at DESC,id DESC LIMIT 1");
-        try {
-            $s->bind_param('i',$asignacion);
-            $s->execute();
-            $entrada=$s->get_result()->fetch_assoc()['creado_at']??null;
-        } finally {$s->close();}
-        if (!$entrada) return false; // Reingresos legacy no acreditados: revisión externa.
-        $utc=new DateTimeZone('UTC');
-        $mexico=new DateTimeZone('America/Mexico_City');
-        $fecha=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$entrada,$utc);
-        if (!$fecha) return false;
-        $limite=$fecha->setTimezone($mexico)->format('Y-m-d H:i:s');
-        $s=$this->db->prepare(
-            "SELECT 1 FROM prospecto_embudo_llamadas l
-             JOIN telefonia_ventas_llamadas c ON c.usuario_id=l.usuario_id
-               AND BINARY c.extension=BINARY l.extension
-               AND BINARY c.pbx_call_id=BINARY l.pbx_call_id
-               AND c.direccion='Saliente'
-             JOIN telefonia_ventas_resultados r ON r.usuario_id=l.usuario_id
-               AND BINARY r.extension=BINARY l.extension
-               AND BINARY r.pbx_call_id=BINARY l.pbx_call_id
-               AND BINARY r.resultado=BINARY l.resultado
-             WHERE l.usuario_id=? AND l.asignacion_id=? AND c.fecha>?
-               AND (r.resultado IN
-                 ('CONVERSACION_PERSONA','PROSPECTO_POTENCIAL','INTERESADO','SOLICITA_INFORMACION')
-                 OR EXISTS (
-                   SELECT 1 FROM telefonia_ventas_resultado_selecciones x
-                   WHERE x.resultado_id=r.id
-                     AND x.codigo IN ('CONVERSACION_PERSONA','PROSPECTO_POTENCIAL')
-                 ))
-             LIMIT 1");
-        try {
-            $s->bind_param('iis',$usuario,$asignacion,$limite);
-            $s->execute();
-            return (bool)$s->get_result()->fetch_assoc();
-        } finally {$s->close();}
-    }
-
     private function registrarEtapa(int $usuario,int $asignacion,string $anterior,
         string $nueva,string $subNueva,string $razon): int
     {
@@ -342,28 +299,58 @@ final class EmbudoComercialV3BandejasService
         } catch (Throwable $e) {$this->db->rollback();throw $e;}
     }
 
+    public function devolverRecuperacionesVencidas(int $usuario): void
+    {
+        if (!tienePermiso('ventas.embudo.mover') || !tienePermiso('ventas.recuperacion.ver') ||
+            !tienePermiso('ventas.recuperacion.gestionar')) return;
+        self::autorizado($usuario,1,'ventas.recuperacion.gestionar');
+        $hoy=(new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))->format('Y-m-d');
+        $sql="SELECT a.id FROM prospecto_asignaciones a
+            JOIN prospecto_embudo_etapas e ON e.asignacion_id=a.id AND e.etapa='RECUPERACION'
+            JOIN prospecto_embudo_agenda ag ON ag.asignacion_id=a.id AND ag.revision_fecha<=?
+            JOIN prospecto_embudo_subetapas st ON st.asignacion_id=a.id AND st.subetapa='PENDIENTE_REVISION'
+            WHERE a.asesor_id=? AND a.vigente=1
+            AND EXISTS (SELECT 1 FROM prospecto_embudo_subetapas_historial h
+                WHERE h.asignacion_id=a.id AND h.etapa_en_evento='RECUPERACION'
+                  AND h.subetapa_nueva='PENDIENTE_REVISION' AND h.origen='ASESOR_V3')
+            ORDER BY a.id";
+        $s=$this->db->prepare($sql);
+        $s->bind_param('si',$hoy,$usuario);
+        $s->execute();
+        $ids=array_column($s->get_result()->fetch_all(MYSQLI_ASSOC),'id');
+        $s->close();
+        foreach ($ids as $id) {
+            $id=(int)$id;
+            $this->db->begin_transaction();
+            try {
+                if ($this->etapaBloqueada($usuario,$id)==='RECUPERACION') {
+                    // Revalidar fecha y subetapa sólo para la ficha bloqueada.
+                    $s=$this->db->prepare("SELECT ag.revision_fecha,st.subetapa FROM prospecto_embudo_agenda ag
+                        JOIN prospecto_embudo_subetapas st ON st.asignacion_id=ag.asignacion_id
+                        WHERE ag.asignacion_id=? FOR UPDATE");
+                    $s->bind_param('i',$id);
+                    $s->execute();
+                    $fila=$s->get_result()->fetch_assoc();
+                    $s->close();
+                    if (($fila['subetapa']??'')==='PENDIENTE_REVISION' &&
+                        !empty($fila['revision_fecha']) && $fila['revision_fecha']<=$hoy) {
+                        $this->registrarEtapa($usuario,$id,'RECUPERACION','NUEVO','SIN_GESTION',
+                            'Regreso automático a Nuevos al llegar la fecha de revisión.');
+                        $this->revision($usuario,$id,null);
+                    }
+                }
+                $this->db->commit();
+            } catch (Throwable $e) {
+                $this->db->rollback();
+                throw $e;
+            }
+        }
+    }
+
     public function reactivar(int $usuario,int $asignacion,string $etapa,
         string $motivo,bool $confirmacion): array
     {
         self::autorizado($usuario,$asignacion,'ventas.recuperacion.gestionar');
-        $motivo=self::motivo($motivo);
-        if (!$confirmacion || $etapa!=='RECUPERACION') {
-            throw new DomainException('La reactivación requiere una revisión manual desde Recuperación.');
-        }
-        $this->db->begin_transaction();
-        try {
-            if ($this->etapaBloqueada($usuario,$asignacion)!=='RECUPERACION') {
-                throw new DomainException('La etapa cambió. Actualiza el tablero.');
-            }
-            $this->exigirContactoPermitido($asignacion);
-            if (!$this->conversacionPosteriorARecuperacion($usuario,$asignacion)) {
-                throw new DomainException('Para reactivar, se requiere una conversación PBX posterior al ingreso en Recuperación.');
-            }
-            $id=$this->registrarEtapa($usuario,$asignacion,
-                'RECUPERACION','CONTACTADO','PRIMER_CONTACTO',$motivo);
-            $this->revision($usuario,$asignacion,null);
-            $this->db->commit();
-            return ['movimiento_id'=>$id,'etapa'=>'CONTACTADO'];
-        } catch (Throwable $e) {$this->db->rollback();throw $e;}
+        throw new DomainException('La ficha volverá a Nuevos al llegar su fecha de revisión.');
     }
 }

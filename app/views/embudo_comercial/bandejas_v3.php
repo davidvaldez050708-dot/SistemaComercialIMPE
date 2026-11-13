@@ -7,10 +7,7 @@ require_once __DIR__.'/../../helpers/EmbudoComercialAcceso.php';
 $esc=static fn($v)=>htmlspecialchars((string)($v??''),ENT_QUOTES,'UTF-8');
 $recuperacion=$vista==='recuperacion';
 $col=$tablero['columnas'][$recuperacion?'RECUPERACION':'DESCARTADO'];
-$puedeReactivar=$recuperacion && tienePermiso('ventas.embudo.mover') &&
-    tienePermiso('ventas.recuperacion.gestionar');
 $puedeTelefono=tienePermiso('telefonia.usar');
-$puedeLlamar=$recuperacion && $puedeTelefono && tienePermiso('telefonia.salientes');
 $base=BASE_URL.'index.php?';
 $params=['controller'=>'embudoComercial','action'=>'index','vista'=>$vista,
     'origen'=>$filtros['origen'],'programa'=>$filtros['programa'],
@@ -112,8 +109,6 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
                     $legacy=(string)($p['etapa_original']??'')==='EN_CONTACTO';
                     $noContactar=(string)($p['subetapa']??'')==='NO_CONTACTAR';
                     $telefono=trim((string)($p['telefono_original']??''));
-                    $numero=preg_replace('/\\D+/','',$telefono)??'';
-                    $numeroValido=(bool)preg_match('/^[0-9]{10,15}$/D',$numero);
                     $misLlamadas=$base.http_build_query([
                         'controller'=>'telefonia','action'=>'misLlamadas',
                         'prospecto_asignacion_id'=>(int)$p['asignacion_id'],
@@ -156,13 +151,6 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
                             <?php endif; ?>
                         </span>
                         <div class="impe-embudo-card-actions impe-v3b-acciones">
-                            <?php if($puedeLlamar && !$legacy && !$noContactar && $numeroValido): ?>
-                                <button type="button" data-v3b-llamar="<?= $esc($telefono) ?>"
-                                    title="Abrir teléfono persistente para contactar"
-                                    aria-label="Llamar al prospecto de Recuperación">
-                                    <i class="bi bi-telephone" aria-hidden="true"></i>
-                                </button>
-                            <?php endif; ?>
                             <?php if($puedeTelefono): ?>
                                 <a href="<?= $esc($misLlamadas) ?>"
                                     title="Mis llamadas y resultados de esta asignación"
@@ -173,13 +161,6 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
                             <a href="<?= $esc($detalle) ?>" title="Ficha e historial"
                                aria-label="Ver ficha e historial">
                                 <i class="bi bi-person-vcard" aria-hidden="true"></i></a>
-                            <?php if($puedeReactivar && !$legacy && !$noContactar): ?>
-                                <button type="button" data-v3b-accion="REACTIVAR"
-                                    title="Reactivar con conversación acreditada"
-                                    aria-label="Revisar reactivación">
-                                    <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
-                                </button>
-                            <?php endif; ?>
                         </div>
                     </div>
                 </article>
@@ -198,9 +179,6 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
             <?php endif; ?>
         </section>
     </div>
-    <?php if($puedeReactivar): ?>
-        <?php require __DIR__.'/bandejas_v3_modal.php'; ?>
-    <?php endif; ?>
     <?php endif; ?>
 </div>
 <script defer src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_bandejas.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/embudo_comercial_v3_bandejas.js'),0,16) ?>"></script>
