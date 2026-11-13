@@ -18,8 +18,13 @@ try {
             throw new RuntimeException('Ya hay una importación Zoho en curso.');
         }
     }
+    $config = ZohoLeadsProspectosBridge::configuracion();
+    if (($config['enabled'] ?? false) !== true ||
+        !preg_match('/^[0-9]{10,25}$/D', (string)($config['expected_org_id'] ?? ''))) {
+        throw new RuntimeException('CONFIG_ZOHO_LEADS_AUSENTE');
+    }
     $db = (new Database())->connect();
-    $bridge = new ZohoLeadsProspectosBridge($db, ZohoLeadsProspectosBridge::configuracion());
+    $bridge = new ZohoLeadsProspectosBridge($db, $config);
     $resumen = $bridge->ejecutar($argv[1] === '--apply');
     printf("Leads consultados: %d; nuevos: %d; existentes: %d; sin nombre: %d; modo: %s\n",
         $resumen['consultados'], $resumen['nuevos'], $resumen['existentes'],
@@ -27,7 +32,18 @@ try {
 } catch (Throwable $e) {
     // Los mensajes de mysqli/cURL pueden contener datos de conexión.
     error_log('[zoho_leads_importacion] '.get_class($e));
-    fwrite(STDERR, "Importación detenida. Revisa la configuración y el registro privado.\n");
+    $seguros = [
+        'CONFIG_ZOHO_LEADS_AUSENTE',
+        'Autorización Zoho no disponible.',
+        'Autorización Zoho inválida.',
+        'Autorización Zoho incompleta.',
+        'No se pudo renovar el acceso de lectura a Zoho.',
+        'La organización Zoho no coincide.',
+        'No se pudieron leer los posibles clientes de Zoho.',
+        'Almacén central de prospectos no disponible.',
+    ];
+    $detalle = in_array($e->getMessage(), $seguros, true) ? $e->getMessage() : 'Consulta el registro privado.';
+    fwrite(STDERR, "Importación detenida: ".$detalle."\n");
     exit(1);
 } finally {
     if (is_resource($lock)) {flock($lock, LOCK_UN);fclose($lock);}

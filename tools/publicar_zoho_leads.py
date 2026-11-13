@@ -13,6 +13,11 @@ ARCHIVOS = (
     'app/services/ZohoLeadsProspectosBridge.php',
     'tools/importar_zoho_leads.php',
 )
+VERSIONES_ANTERIORES = {
+    'tools/importar_zoho_leads.php': {
+        'b4d5051f2ddb9571931a823ee25c6207fa6f1b64d53fe80287d04a63f0880baa',
+    },
+}
 
 
 def huella(ruta):
@@ -47,11 +52,13 @@ def main():
         destino = sitio / nombre
         if not origen.is_file() or destino.is_symlink() or not destino.parent.is_dir():
             raise RuntimeError('Ruta no válida: ' + nombre)
-        if destino.exists() and huella(destino) != huella(origen):
+        anterior = huella(destino) if destino.exists() else None
+        nuevo = huella(origen)
+        if anterior is not None and anterior != nuevo and anterior not in VERSIONES_ANTERIORES.get(nombre, set()):
             raise RuntimeError('Archivo personalizado en conflicto: ' + nombre)
-        if not destino.exists():
+        if anterior != nuevo:
             pendientes.append((origen, destino))
-        print(('nuevo' if not destino.exists() else 'coincide') + ' | ' + nombre)
+        print(('nuevo' if anterior is None else 'coincide' if anterior == nuevo else 'actualizable') + ' | ' + nombre)
     for nombre in ARCHIVOS:
         resultado = subprocess.run(['php', '-l', str(fuente / nombre)],
                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -63,15 +70,22 @@ def main():
     respaldo.mkdir(parents=True, exist_ok=True)
     carpeta = Path(tempfile.mkdtemp(prefix='zoho-leads-', dir=str(respaldo)))
     creados = []
+    anteriores = []
     try:
         for origen, destino in pendientes:
+            if destino.exists():
+                copia = carpeta / str(destino.relative_to(sitio))
+                copia.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(destino), str(copia))
+                anteriores.append((destino, copia))
             descriptor, temporal = tempfile.mkstemp(prefix='.zoho-', dir=str(destino.parent))
             try:
                 with os.fdopen(descriptor, 'wb') as salida, origen.open('rb') as entrada:
                     shutil.copyfileobj(entrada, salida)
                 os.chmod(temporal, 0o644)
                 os.replace(temporal, str(destino))
-                creados.append(destino)
+                if not any(destino == anterior[0] for anterior in anteriores):
+                    creados.append(destino)
             finally:
                 if os.path.exists(temporal):
                     os.unlink(temporal)
@@ -81,6 +95,8 @@ def main():
     except Exception:
         for destino in creados:
             destino.unlink()
+        for destino, copia in anteriores:
+            shutil.copy2(str(copia), str(destino))
         raise
     (carpeta / 'archivos-creados.txt').write_text(
         ''.join(str(d.relative_to(sitio)) + '\n' for d in creados), encoding='utf-8')
