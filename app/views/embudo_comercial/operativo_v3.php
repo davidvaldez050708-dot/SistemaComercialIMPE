@@ -236,7 +236,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     <?php elseif(!$disponible): ?>
     <p class="impe-embudo-alert" role="status">La estructura V3 no está disponible; utiliza el tablero anterior.</p>
     <?php else: ?>
-    <form class="impe-embudo-filtros" action="<?= $esc(BASE_URL.'index.php') ?>" method="get" role="search">
+    <form class="impe-embudo-filtros" action="<?= $esc(BASE_URL.'index.php') ?>" method="get" role="search" data-sales-auto-filter>
         <input type="hidden" name="controller" value="embudoComercial">
         <input type="hidden" name="action" value="index">
         <input type="hidden" name="vista" value="embudo">
@@ -262,11 +262,15 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         <label class="impe-embudo-check">
             <input type="checkbox" name="vencidos" value="1" <?= $filtros['vencidos']?'checked':'' ?>> Solo vencidos
         </label>
-        <button type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Filtrar</button>
+        <noscript><button type="submit">Filtrar</button></noscript>
+        <?php if ($filtros['origen']!=='' || $filtros['programa']!=='' ||
+            $filtros['buscar']!=='' || $filtros['vencidos']): ?>
         <a class="impe-embudo-reset" href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo'
-        ])) ?>">Limpiar</a>
+         ])) ?>">Limpiar</a>
+        <?php endif; ?>
     </form>
+    <script defer src="<?= $esc(BASE_URL) ?>public/javascript/telefonia_ventas_auto_filtros.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/telefonia_ventas_auto_filtros.js'),0,16) ?>"></script>
     <div class="impe-embudo-board-info">
         <span><i class="bi bi-people" aria-hidden="true"></i>
             <?= (int)$tablero['total_activos'] ?> asignaciones vigentes bajo tu responsabilidad</span>
