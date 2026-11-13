@@ -52,7 +52,7 @@
       return false;
     }catch(_){return true;}
   };
-  const mostrarAviso=(mensaje,alCerrar=()=>{})=>{
+  const mostrarAviso=(mensaje,alCerrar=()=>{},error=false)=>{
     let contenedor=document.getElementById('impe-v3o-avisos');
     if(!contenedor){
       contenedor=document.createElement('div');
@@ -62,14 +62,14 @@
       document.body.appendChild(contenedor);
     }
     const toast=document.createElement('div');
-    toast.className='toast system-toast border-0';
+    toast.className='toast system-toast border-0'+(error?' system-toast-error':'');
     toast.setAttribute('role','status');
     toast.setAttribute('aria-live','polite');
     toast.setAttribute('aria-atomic','true');
     const cuerpo=document.createElement('div');
     cuerpo.className='toast-body';
     const icono=document.createElement('i');
-    icono.className='bi bi-check-circle-fill';
+    icono.className=error?'bi bi-exclamation-circle':'bi bi-check-circle-fill';
     icono.setAttribute('aria-hidden','true');
     const texto=document.createElement('span');
     texto.textContent=mensaje;
@@ -134,7 +134,8 @@
     return result;
   };
   let reintentoRefresco=0;
-  const refrescarTrasLlamada=()=>{
+  let ultimoResultadoVerificado=0;
+  const refrescarTrasLlamada=async()=>{
     if(refresh || usuarioId<1 || document.hidden)return;
     let info=null;
     try{info=JSON.parse(localStorage.getItem(cambioKey)||'null');}
@@ -142,7 +143,7 @@
     if(!info || Number(info.usuarioId)!==usuarioId ||
        !/^[1-9][0-9]*$/.test(String(info.asignacionId||'')) ||
        !Number.isFinite(Number(info.creada)) ||
-       Number(info.creada)<=vistaCargada ||
+       Number(info.creada)<=Math.max(vistaCargada,ultimoResultadoVerificado) ||
        Date.now()-Number(info.creada)>60000) return;
     if(telefonoActivo() || root.querySelector('dialog[open], :popover-open') ||
        document.querySelector('#modalResultadoVenta.show')){
@@ -153,7 +154,33 @@
       return;
     }
     refresh=true;
-    window.location.reload();
+    const resultado=Number(info.creada);
+    try{
+      for(const espera of [0,500,1500]){
+        if(espera)await new Promise(resolve=>window.setTimeout(resolve,espera));
+        if(document.hidden || telefonoActivo() ||
+           root.querySelector('dialog[open], :popover-open') ||
+           document.querySelector('#modalResultadoVenta.show'))return;
+        try{
+          const respuesta=await fetch(location.href,{
+            credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(5000)
+          });
+          if(!respuesta.ok)continue;
+          const pagina=new DOMParser().parseFromString(await respuesta.text(),'text/html');
+          if(!pagina.querySelector('.impe-embudo--v3-operativo .impe-embudo-board'))continue;
+          if(document.hidden || telefonoActivo() ||
+             root.querySelector('dialog[open], :popover-open') ||
+             document.querySelector('#modalResultadoVenta.show'))return;
+          ultimoResultadoVerificado=resultado;
+          window.location.reload();
+          return;
+        }catch(_){/* El tablero visible se conserva durante los reintentos. */}
+      }
+      ultimoResultadoVerificado=resultado;
+      mostrarAviso('No se pudo actualizar el tablero. Puedes recargar para consultar los cambios.',undefined,true);
+    }finally{
+      refresh=false;
+    }
   };
   window.addEventListener('storage',event=>{
     if(event.key===cambioKey)refrescarTrasLlamada();
