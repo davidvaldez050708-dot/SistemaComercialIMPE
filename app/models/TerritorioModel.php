@@ -499,21 +499,55 @@ class TerritorioModel
             }
 
             $nuevasCuentas = [];
+            $cuentasUnicas = [];
             foreach ($asignaciones as $datos) {
                 $tipo = $datos['tipo_asignacion'];
-                if ($tipo === 'ANALISTA_DATOS' &&
-                    strpos($datos['cuenta_clave_referencia'], 'nuevo:') === 0) {
-                    $cuentaUsuarioId = (int)substr($datos['cuenta_clave_referencia'], 6);
-                    $datos['cuenta_clave_asignacion_id'] =
-                        $nuevasCuentas[$datos['estado_id']][$cuentaUsuarioId] ?? 0;
+                if ($tipo !== 'CUENTA_CLAVE') {
+                    $referencia = (string)($datos['cuenta_clave_referencia'] ?? '');
+                    if (strpos($referencia, 'nuevo:') === 0) {
+                        $cuentaUsuarioId = (int)substr($referencia, 6);
+                        $datos['cuenta_clave_asignacion_id'] =
+                            $nuevasCuentas[$datos['estado_id']][$cuentaUsuarioId] ?? 0;
+                        if (!$datos['cuenta_clave_asignacion_id']) {
+                            throw new InvalidArgumentException('La Cuenta Clave seleccionada ya no está disponible.');
+                        }
+                    } elseif ($referencia === '') {
+                        $estadoId = (int)$datos['estado_id'];
+                        if (!array_key_exists($estadoId, $cuentasUnicas)) {
+                            $consulta = $this->connection->prepare(
+                                "SELECT id FROM asignaciones_territorio
+                                 WHERE estado_id = ? AND tipo_asignacion = 'CUENTA_CLAVE'
+                                   AND activo = 1
+                                   AND (fecha_inicio IS NULL OR fecha_inicio <= CURDATE())
+                                   AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())
+                                 ORDER BY id LIMIT 2"
+                            );
+                            $consulta->bind_param('i', $estadoId);
+                            $consulta->execute();
+                            $resultado = $consulta->get_result();
+                            $primera = $resultado->fetch_assoc();
+                            $segunda = $resultado->fetch_assoc();
+                            $cuentasUnicas[$estadoId] = [
+                                'id' => $primera && !$segunda ? (int)$primera['id'] : 0,
+                                'multiples' => (bool)$segunda
+                            ];
+                        }
+                        $datos['cuenta_clave_asignacion_id'] = $cuentasUnicas[$estadoId]['id'];
+                        if (!$datos['cuenta_clave_asignacion_id'] &&
+                            ($tipo === 'ANALISTA_DATOS' || $cuentasUnicas[$estadoId]['multiples'])) {
+                            throw new InvalidArgumentException(
+                                'Selecciona una Cuenta Clave para cada estado.');
+                        }
+                    }
                 }
                 $errores = $validar($datos);
                 if ($errores) {
                     throw new InvalidArgumentException(reset($errores));
                 }
 
-                $cuentaId = $tipo === 'ANALISTA_DATOS'
-                    ? (int)$datos['cuenta_clave_asignacion_id'] : null;
+                $cuentaId = $tipo === 'CUENTA_CLAVE' ||
+                    empty($datos['cuenta_clave_asignacion_id'])
+                    ? null : (int)$datos['cuenta_clave_asignacion_id'];
                 $sql = 'INSERT INTO asignaciones_territorio
                     (estado_id, usuario_id, tipo_asignacion, cuenta_clave_asignacion_id,
                      es_principal, fecha_inicio, fecha_fin, activo, observaciones)
@@ -528,12 +562,14 @@ class TerritorioModel
                 $asignacionId = (int)$this->connection->insert_id;
                 if ($tipo === 'CUENTA_CLAVE') {
                     $nuevasCuentas[$datos['estado_id']][$datos['usuario_id']] = $asignacionId;
+                    unset($cuentasUnicas[(int)$datos['estado_id']]);
                 }
                 $detalle = $tipo === 'CUENTA_CLAVE'
                     ? 'Cuenta Clave asignada al territorio.'
                     : ($tipo === 'ANALISTA_DATOS'
                         ? 'Analista asignado al territorio y vinculado a una Cuenta Clave.'
-                        : 'Asesor asignado al territorio.');
+                        : ($cuentaId === null ? 'Asesor asignado al territorio.'
+                            : 'Asesor asignado al territorio y vinculado a una Cuenta Clave.'));
                 $this->registrarMovimientoTerritorial((int)$datos['estado_id'],
                     $asignacionId, (int)$datos['usuario_id'],
                     $tipo, 'ASIGNACION', null, $cuentaId,

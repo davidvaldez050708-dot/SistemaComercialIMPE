@@ -9,10 +9,20 @@ class ConexionTerritorialFalsa
     public $rollbackCount = 0;
     public $asignaciones = 0;
     public $movimientos = 0;
+    public $cuentas = [];
+    private $anterior;
 
-    public function begin_transaction() {}
-    public function commit() { $this->commitCount++; }
-    public function rollback() { $this->rollbackCount++; }
+    public function begin_transaction()
+    {
+        $this->anterior = [$this->asignaciones, $this->movimientos, $this->cuentas];
+    }
+    public function commit() { $this->commitCount++; $this->anterior = null; }
+    public function rollback()
+    {
+        list($this->asignaciones, $this->movimientos, $this->cuentas) = $this->anterior;
+        $this->rollbackCount++;
+        $this->anterior = null;
+    }
     public function prepare($sql) { return new ConsultaTerritorialFalsa($this, $sql); }
 }
 
@@ -20,6 +30,7 @@ class ConsultaTerritorialFalsa
 {
     private $conexion;
     private $sql;
+    private $valores = [];
 
     public function __construct($conexion, $sql)
     {
@@ -27,12 +38,15 @@ class ConsultaTerritorialFalsa
         $this->sql = $sql;
     }
 
-    public function bind_param($tipos, &...$valores) {}
+    public function bind_param($tipos, &...$valores) { $this->valores = $valores; }
     public function execute()
     {
         if (strpos($this->sql, 'INSERT INTO asignaciones_territorio') !== false) {
             $this->conexion->asignaciones++;
             $this->conexion->insert_id++;
+            if ($this->valores[2] === 'CUENTA_CLAVE') {
+                $this->conexion->cuentas[$this->valores[0]][] = $this->conexion->insert_id;
+            }
         } elseif (strpos($this->sql, 'INSERT INTO bitacora_movimientos_territoriales') !== false) {
             $this->conexion->movimientos++;
         }
@@ -40,8 +54,14 @@ class ConsultaTerritorialFalsa
     }
     public function get_result()
     {
-        return new class {
-            public function fetch_assoc() { return ['id' => 1]; }
+        $filas = strpos($this->sql, 'FROM asignaciones_territorio') !== false
+            ? array_map(function ($id) { return ['id' => $id]; },
+                array_slice($this->conexion->cuentas[$this->valores[0]] ?? [], 0, 2))
+            : [['id' => 1]];
+        return new class($filas) {
+            private $filas;
+            public function __construct($filas) { $this->filas = $filas; }
+            public function fetch_assoc() { return array_shift($this->filas); }
         };
     }
 }
@@ -100,15 +120,100 @@ $equipo = [
         'fecha_inicio' => '2026-11-13', 'observaciones' => ''
     ]
 ];
-$analistaVinculado = false;
-$modelo->crearAsignacionesMasivas($equipo, 3, function ($datos) use (&$analistaVinculado) {
+$vinculados = [];
+$modelo->crearAsignacionesMasivas($equipo, 3, function ($datos) use (&$vinculados) {
     if ($datos['tipo_asignacion'] === 'ANALISTA_DATOS') {
-        $analistaVinculado = $datos['cuenta_clave_asignacion_id'] === 1;
+        $vinculados[] = $datos['cuenta_clave_asignacion_id'];
     }
     return [];
 });
-if (!$analistaVinculado || $conexionNueva->asignaciones !== 2 ||
+if ($vinculados !== [1] || $conexionNueva->asignaciones !== 2 ||
     $conexionNueva->movimientos !== 2 || $conexionNueva->commitCount !== 1) {
     throw new RuntimeException('El Analista no quedó vinculado a la nueva Cuenta Clave.');
 }
 echo "Vinculación de Analista con Cuenta Clave nueva verificada.\n";
+
+$conexionEquipo = new ConexionTerritorialFalsa();
+$propiedad->setValue($modelo, $conexionEquipo);
+$equipo = [
+    ['estado_id' => 1, 'usuario_id' => 7, 'tipo_asignacion' => 'CUENTA_CLAVE',
+        'fecha_inicio' => '2026-11-13', 'observaciones' => ''],
+    ['estado_id' => 1, 'usuario_id' => 8, 'tipo_asignacion' => 'ANALISTA_DATOS',
+        'cuenta_clave_referencia' => '', 'fecha_inicio' => '2026-11-13', 'observaciones' => ''],
+    ['estado_id' => 1, 'usuario_id' => 9, 'tipo_asignacion' => 'ASESOR',
+        'cuenta_clave_referencia' => '', 'fecha_inicio' => '2026-11-13', 'observaciones' => '']
+];
+$vinculados = [];
+$modelo->crearAsignacionesMasivas($equipo, 3, function ($datos) use (&$vinculados) {
+    if ($datos['tipo_asignacion'] !== 'CUENTA_CLAVE') {
+        $vinculados[$datos['tipo_asignacion']] = $datos['cuenta_clave_asignacion_id'];
+    }
+    return [];
+});
+if ($vinculados !== ['ANALISTA_DATOS' => 1, 'ASESOR' => 1] ||
+    $conexionEquipo->commitCount !== 1 || $conexionEquipo->asignaciones !== 3) {
+    throw new RuntimeException('El equipo con una Cuenta Clave no se vinculó automáticamente.');
+}
+
+$conexionVarias = new ConexionTerritorialFalsa();
+$propiedad->setValue($modelo, $conexionVarias);
+$dosCuentas = [
+    ['estado_id' => 1, 'usuario_id' => 7, 'tipo_asignacion' => 'CUENTA_CLAVE',
+        'fecha_inicio' => '2026-11-13', 'observaciones' => ''],
+    ['estado_id' => 1, 'usuario_id' => 10, 'tipo_asignacion' => 'CUENTA_CLAVE',
+        'fecha_inicio' => '2026-11-13', 'observaciones' => ''],
+    ['estado_id' => 1, 'usuario_id' => 9, 'tipo_asignacion' => 'ASESOR',
+        'cuenta_clave_referencia' => '', 'fecha_inicio' => '2026-11-13', 'observaciones' => '']
+];
+try {
+    $modelo->crearAsignacionesMasivas($dosCuentas, 3, function () { return []; });
+    throw new RuntimeException('Faltó exigir una Cuenta Clave para el Asesor.');
+} catch (InvalidArgumentException $error) {
+    if ($conexionVarias->rollbackCount !== 1) throw $error;
+}
+$dosCuentas[2]['cuenta_clave_referencia'] = 'nuevo:10';
+$vinculado = 0;
+$modelo->crearAsignacionesMasivas($dosCuentas, 3, function ($datos) use (&$vinculado) {
+    if ($datos['tipo_asignacion'] === 'ASESOR') {
+        $vinculado = $datos['cuenta_clave_asignacion_id'];
+    }
+    return [];
+});
+if ($vinculado !== 4 || $conexionVarias->commitCount !== 1) {
+    throw new RuntimeException('El Asesor no quedó vinculado a la Cuenta Clave elegida.');
+}
+echo "Vinculación automática y elección con varias Cuentas Clave verificadas.\n";
+
+$conexionExistente = new ConexionTerritorialFalsa();
+$conexionExistente->cuentas[2] = [41];
+$propiedad->setValue($modelo, $conexionExistente);
+$asesor = [[
+    'estado_id' => 2, 'usuario_id' => 9, 'tipo_asignacion' => 'ASESOR',
+    'cuenta_clave_referencia' => '', 'fecha_inicio' => '2026-11-13',
+    'observaciones' => ''
+]];
+$vinculado = 0;
+$modelo->crearAsignacionesMasivas($asesor, 3, function ($datos) use (&$vinculado) {
+    $vinculado = $datos['cuenta_clave_asignacion_id'];
+    return [];
+});
+if ($vinculado !== 41) {
+    throw new RuntimeException('El Asesor no se vinculó a la única Cuenta Clave existente.');
+}
+$conexionExistente->cuentas[2][] = 42;
+try {
+    $modelo->crearAsignacionesMasivas($asesor, 3, function () { return []; });
+    throw new RuntimeException('Faltó exigir elección entre Cuentas Clave existentes.');
+} catch (InvalidArgumentException $error) {
+    if ($conexionExistente->rollbackCount !== 1) throw $error;
+}
+$asesor[0]['cuenta_clave_referencia'] = '42';
+$asesor[0]['cuenta_clave_asignacion_id'] = 42;
+$modelo->crearAsignacionesMasivas($asesor, 3, function ($datos) use (&$vinculado) {
+    $vinculado = $datos['cuenta_clave_asignacion_id'];
+    return [];
+});
+if ($vinculado !== 42) {
+    throw new RuntimeException('El Asesor no quedó vinculado a la Cuenta Clave existente elegida.');
+}
+echo "Vinculación con Cuentas Clave existentes verificada.\n";

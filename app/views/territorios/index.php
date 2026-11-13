@@ -326,7 +326,7 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
                                 <button type="button" class="form-select text-start" id="masivaAbrirEstados"
                                     aria-expanded="false" aria-controls="masivaListaEstados">Seleccionar estados</button>
                                 <div id="masivaListaEstados" class="territory-bulk-options" hidden>
-                                    <button type="button" class="btn btn-link btn-sm" id="masivaSeleccionarTodos">Seleccionar todos</button>
+                                    <button type="button" class="btn btn-territory-expand territory-bulk-select-all" id="masivaSeleccionarTodos">Seleccionar todos</button>
                                     <div id="masivaEstados" class="territory-bulk-options-list">
                                         <span class="text-muted">Cargando estados...</span>
                                     </div>
@@ -1054,6 +1054,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const todos = document.getElementById('masivaSeleccionarTodos');
         const secciones = Array.from(formMasiva.querySelectorAll('[data-masiva-seccion]'));
         let opciones = null;
+        const cuentasAbiertas = {ANALISTA_DATOS: true, ASESOR: true};
 
         const opcion = function (valor, etiqueta) {
             const elemento = document.createElement('option');
@@ -1108,40 +1109,72 @@ document.addEventListener('DOMContentLoaded', function () {
                 anteriores[selector.name] = selector.value;
             });
             cuentas.replaceChildren();
-            const analistas = usuariosElegidos('ANALISTA_DATOS');
-            cuentas.classList.toggle('d-none', !analistas.length);
-            if (!analistas.length || !opciones) return;
-            const titulo = document.createElement('h6');
-            titulo.className = 'territory-bulk-section-title';
-            titulo.textContent = 'Cuenta Clave correspondiente a los Analistas';
-            cuentas.appendChild(titulo);
-            elegidos().forEach(function (entrada) {
-                const fila = document.createElement('div');
-                fila.className = 'territory-bulk-parent-row';
-                const etiqueta = document.createElement('label');
-                etiqueta.className = 'form-label small mb-1';
-                etiqueta.textContent = entrada.dataset.nombre;
-                const selector = document.createElement('select');
-                selector.className = 'form-select form-select-sm';
-                selector.name = 'cuentas_por_estado[' + entrada.value + ']';
-                selector.required = true;
-                selector.appendChild(opcion('', 'Seleccionar Cuenta Clave'));
-                opciones.cuentas.filter(function (cuenta) {
-                    return String(cuenta.estado_id) === entrada.value;
-                }).forEach(function (cuenta) {
-                    selector.appendChild(opcion(cuenta.id,
-                        (cuenta.nombre + ' ' + cuenta.apellidos).trim()));
+            const tipos = [
+                ['ANALISTA_DATOS', 'Cuenta Clave correspondiente a los Analistas'],
+                ['ASESOR', 'Cuenta Clave correspondiente a los Asesores']
+            ];
+            const activos = tipos.filter(function (item) {
+                return usuariosElegidos(item[0]).length > 0;
+            });
+            cuentas.classList.toggle('d-none', !activos.length);
+            if (!activos.length || !opciones) return;
+            activos.forEach(function (item) {
+                const tipo = item[0];
+                const grupo = document.createElement('details');
+                grupo.className = 'territory-bulk-parent-group';
+                grupo.open = cuentasAbiertas[tipo];
+                grupo.addEventListener('toggle', function () {
+                    cuentasAbiertas[tipo] = grupo.open;
                 });
-                usuariosElegidos('CUENTA_CLAVE').forEach(function (persona) {
-                    selector.appendChild(opcion('nuevo:' + persona.id,
-                        persona.nombre + ' (se asignará ahora)'));
+                const titulo = document.createElement('summary');
+                titulo.className = 'territory-bulk-section-title';
+                titulo.append(document.createTextNode(item[1]));
+                const flecha = document.createElement('i');
+                flecha.className = 'bi bi-chevron-down territory-bulk-parent-chevron';
+                flecha.setAttribute('aria-hidden', 'true');
+                titulo.appendChild(flecha);
+                grupo.appendChild(titulo);
+                elegidos().forEach(function (entrada) {
+                    const disponibles = opciones.cuentas.filter(function (cuenta) {
+                        return String(cuenta.estado_id) === entrada.value;
+                    }).map(function (cuenta) {
+                        return {id: String(cuenta.id), nombre: (cuenta.nombre + ' ' + cuenta.apellidos).trim()};
+                    }).concat(usuariosElegidos('CUENTA_CLAVE').map(function (persona) {
+                        return {id: 'nuevo:' + persona.id,
+                            nombre: persona.nombre + ' (se asignará ahora)'};
+                    }));
+                    const fila = document.createElement('div');
+                    fila.className = 'territory-bulk-parent-row';
+                    const etiqueta = document.createElement('label');
+                    etiqueta.className = 'form-label small mb-1';
+                    etiqueta.textContent = entrada.dataset.nombre;
+                    fila.appendChild(etiqueta);
+                    if (disponibles.length === 1) {
+                        const aviso = document.createElement('span');
+                        aviso.className = 'territory-bulk-parent-auto';
+                        aviso.textContent = disponibles[0].nombre + ' · asignación automática';
+                        fila.appendChild(aviso);
+                    } else if (!disponibles.length && tipo === 'ASESOR') {
+                        const aviso = document.createElement('span');
+                        aviso.className = 'territory-bulk-parent-auto';
+                        aviso.textContent = 'Sin Cuenta Clave disponible en este estado';
+                        fila.appendChild(aviso);
+                    } else {
+                        const selector = document.createElement('select');
+                        selector.className = 'form-select form-select-sm';
+                        selector.name = 'cuentas_por_estado[' + tipo + '][' + entrada.value + ']';
+                        selector.required = true;
+                        selector.appendChild(opcion('', disponibles.length
+                            ? 'Seleccionar Cuenta Clave' : 'Sin Cuenta Clave vigente'));
+                        disponibles.forEach(function (cuenta) {
+                            selector.appendChild(opcion(cuenta.id, cuenta.nombre));
+                        });
+                        selector.value = anteriores[selector.name] || '';
+                        fila.appendChild(selector);
+                    }
+                    grupo.appendChild(fila);
                 });
-                if (selector.options.length === 1) {
-                    selector.options[0].textContent = 'Sin Cuenta Clave vigente';
-                }
-                selector.value = anteriores[selector.name] || '';
-                fila.append(etiqueta, selector);
-                cuentas.appendChild(fila);
+                cuentas.appendChild(grupo);
             });
         };
         const actualizarUsuariosDisponibles = function (seccion) {
@@ -1232,6 +1265,16 @@ document.addEventListener('DOMContentLoaded', function () {
             listaEstados.hidden = !listaEstados.hidden;
             abrirEstados.setAttribute('aria-expanded', String(!listaEstados.hidden));
         });
+        modalMasiva.addEventListener('click', function (evento) {
+            if (!evento.target.closest('.territory-bulk-states-picker')) {
+                listaEstados.hidden = true;
+                abrirEstados.setAttribute('aria-expanded', 'false');
+            }
+        });
+        formMasiva.addEventListener('invalid', function (evento) {
+            const grupo = evento.target.closest('.territory-bulk-parent-group');
+            if (grupo) grupo.open = true;
+        }, true);
         secciones.forEach(function (seccion) {
             seccion.querySelector('[data-masiva-agregar]').addEventListener('click', function () {
                 agregarPersona(seccion);
@@ -1245,6 +1288,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         modalMasiva.addEventListener('show.bs.modal', async function () {
             formMasiva.reset();
+            cuentasAbiertas.ANALISTA_DATOS = true;
+            cuentasAbiertas.ASESOR = true;
             secciones.forEach(function (seccion) {
                 seccion.querySelector('[data-masiva-personas]').replaceChildren();
                 seccion.querySelector('[data-masiva-agregar]').disabled = false;

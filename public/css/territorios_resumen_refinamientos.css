@@ -120,6 +120,13 @@
     display: none;
 }
 
+.territory-bulk-select-all {
+    margin: 2px 6px 8px;
+    min-height: 32px;
+    padding: 4px 12px;
+    font-size: 11px;
+}
+
 .territory-bulk-options-list {
     max-height: 240px;
     overflow-y: auto;
@@ -181,6 +188,30 @@
     flex: 1;
     height: 1px;
     background: #d9e2f1;
+}
+
+.territory-bulk-parent-group > summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.territory-bulk-parent-group > summary::-webkit-details-marker {
+    display: none;
+}
+
+.territory-bulk-parent-chevron {
+    order: 2;
+    transition: transform .2s ease;
+}
+
+.territory-bulk-parent-group:not([open]) .territory-bulk-parent-chevron {
+    transform: rotate(-90deg);
+}
+
+.territory-bulk-parent-auto {
+    display: block;
+    color: #54657f;
+    font-size: 12px;
 }
 
 .territory-bulk-section [data-masiva-personas],

@@ -277,12 +277,20 @@ class TerritorioController
         foreach ($ids as $estadoId) {
             foreach ($this->tiposAsignacion as $tipo) {
                 foreach ($seleccionados[$tipo] as $usuarioId) {
-                    $cuenta = $tipo === 'ANALISTA_DATOS'
-                        ? ($cuentasPorEstado[$estadoId] ?? '') : '';
-                    if ($tipo === 'ANALISTA_DATOS' &&
-                        (!is_scalar($cuenta) || !preg_match('/^(?:[1-9][0-9]*|nuevo:[1-9][0-9]*)$/', (string)$cuenta))) {
+                    $cuenta = '';
+                    if ($tipo !== 'CUENTA_CLAVE') {
+                        $porTipo = $cuentasPorEstado[$tipo] ?? [];
+                        if (!is_array($porTipo)) {
+                            $this->responderJson(['ok' => false,
+                                'mensaje' => 'Revisa las Cuentas Clave seleccionadas.'], 422);
+                        }
+                        $cuenta = $porTipo[$estadoId] ?? ($tipo === 'ANALISTA_DATOS'
+                            ? ($cuentasPorEstado[$estadoId] ?? '') : '');
+                    }
+                    if (!is_scalar($cuenta) || ((string)$cuenta !== '' &&
+                        !preg_match('/^(?:[1-9][0-9]*|nuevo:[1-9][0-9]*)$/', (string)$cuenta))) {
                         $this->responderJson(['ok' => false,
-                            'mensaje' => 'Selecciona una Cuenta Clave para cada estado.'], 422);
+                            'mensaje' => 'Revisa la Cuenta Clave seleccionada para cada estado.'], 422);
                     }
                     $asignaciones[] = $this->limpiarDatosAsignacion([
                         'estado_id' => $estadoId,
@@ -817,7 +825,9 @@ class TerritorioController
                 'La fecha de inicio no puede ser futura.';
         }
 
-        if ($datos['tipo_asignacion'] === 'ANALISTA_DATOS') {
+        if ($datos['tipo_asignacion'] === 'ANALISTA_DATOS' ||
+            ($datos['tipo_asignacion'] === 'ASESOR' &&
+             (int)$datos['cuenta_clave_asignacion_id'] > 0)) {
             $cuentaClave = $modeloTerritorio->buscarAsignacionPorId(
                 (int)$datos['cuenta_clave_asignacion_id']
             );
