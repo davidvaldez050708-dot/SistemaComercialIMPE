@@ -91,7 +91,14 @@ try {
                 $dist['lote_ref']!==$lote || $dist['fecha_jornada']!==$day)) $fail('Se detectó una asignación ajena o gestionada.');
             if ($pending && ($i<80 || (int)$pending['origen_id']!==$oid ||
                 $pending['tipo_origen']!=='META' || $pending['motivo']!=='SIN_ASESOR_O_CUPO')) $fail('Se detectó un pendiente ajeno.');
-            $backup[] = compact('person','row','interests','assign','dist','pending');
+            $integrations = $q('SELECT * FROM prospecto_integraciones WHERE prospecto_id=? FOR UPDATE',
+                [$pid])->fetch_all(MYSQLI_ASSOC);
+            foreach ($integrations as $integration) {
+                if ($integration['sistema']!=='ZOHO' || $integration['estado']!=='NO_CONFIGURADO' ||
+                    $integration['externo_id']!==null || $integration['ultimo_intento_at']!==null ||
+                    $integration['sincronizado_at']!==null) $fail('Se detectó actividad de integración.');
+            }
+            $backup[] = compact('person','row','interests','assign','dist','pending','integrations');
         }
         if ($mode === 'apply') {
             if ((int)$q("SELECT COUNT(*) n FROM prospecto_distribucion_registros
@@ -116,7 +123,7 @@ try {
             }
         } else {
             $allowed = ['prospectos_comerciales','prospecto_origenes','prospecto_intereses',
-                'prospecto_asignaciones','prospecto_distribucion_registros','prospecto_distribucion_pendientes'];
+                'prospecto_asignaciones','prospecto_distribucion_registros','prospecto_distribucion_pendientes','prospecto_integraciones'];
             $columns = $q("SELECT TABLE_NAME t,COLUMN_NAME c FROM information_schema.COLUMNS
                 WHERE TABLE_SCHEMA=DATABASE() AND COLUMN_NAME IN ('prospecto_id','asignacion_id','origen_id')
                 AND TABLE_NAME IN (SELECT TABLE_NAME FROM information_schema.TABLES
@@ -144,6 +151,7 @@ try {
                 if ($entry['assign']) $write('DELETE FROM prospecto_asignaciones WHERE id=?',[(int)$entry['assign'][0]['id']]);
                 $write('DELETE FROM prospecto_intereses WHERE origen_id=?',[$oid]);
                 $write('DELETE FROM prospecto_origenes WHERE id=?',[$oid]);
+                $write('DELETE FROM prospecto_integraciones WHERE prospecto_id=?',[$pid]);
                 $write('DELETE FROM prospectos_comerciales WHERE id=?',[$pid]);
             }
             $write('DELETE FROM prospecto_meta_importaciones_historial WHERE lote_ref=?',[$lote]);
