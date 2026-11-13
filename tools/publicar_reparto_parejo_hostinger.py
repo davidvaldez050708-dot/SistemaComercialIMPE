@@ -17,7 +17,7 @@ def main():
     args = parser.parse_args()
     publicador.ARCHIVOS = [
         ('app/services/ProspectoDistribucionReglas.php', '7952f3798d968d9b97b90e55a4a14847b63133b6', 'ad16103f0b1ccb5bd7adb04df7ae820cd7f15135'),
-        ('app/services/ProspectoDistribucionMotor.php', '6fdc37ef79c23865aa891d8699e90edb28e4f276', '1e0e9902b643e56f114992a88df7ce117131b4b0'),
+        ('app/services/ProspectoDistribucionMotor.php', '12a202b21d31bcb8019fe293930b8ba9cca9d3c2', '7c749fdde4f0a3b9083bfed6d2f432840a8d499f'),
         ('app/views/embudo_comercial/operativo_v3.php', '23adb6cee88d9c0fc9416f0ff4b01eda9ba8dab4', 'e6172ad143106c4b48bd43ef5bb902ebf724ba42'),
         ('app/views/prospectos/partials/configuracion_asesores.php', '7fb28b89342ba6f1fe7f1c99aa4edce5ba476614', 'caf24ab3fa6785fe9f33a4f8afe21f275be6a03b'),
     ]
