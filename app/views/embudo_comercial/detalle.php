@@ -35,6 +35,7 @@ if(!empty($operativoV3) && !$supervisor && $vista==='embudo') {
 $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
 ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/embudo_comercial.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial.css'),0,16) ?>">
+<link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_grabaciones.css') ?>">
 <style>
 .impe-embudo .impe-embudo-timeline-tecnico{margin:0 0 8px;color:#7187a5;font:600 10px/1.5 Manrope,sans-serif}
 .impe-embudo .impe-embudo-timeline-tecnico summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:#607b9d;list-style:none;width:fit-content}
@@ -218,25 +219,44 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
         <?php endif; ?>
     </div>
     <?php $llamadas=$prospecto['llamadas_expediente']??[]; ?>
-    <section id="expediente-llamadas" class="impe-embudo-historial">
-        <h3>Llamadas vinculadas</h3>
-        <?php if (!$llamadas): ?><p>No hay llamadas vinculadas disponibles para tu cuenta.</p><?php endif; ?>
+    <div class="impe-embudo-detalles">
+    <section id="expediente-llamadas" class="impe-embudo-detalles-wide">
+        <h3>Registro telefónico</h3>
+        <div class="linkage-call-recordings-heading">
+            <div class="linkage-call-recordings-title">
+                <span class="linkage-call-recordings-icon"><i class="bi bi-telephone" aria-hidden="true"></i></span>
+                <div><strong>Historial de llamadas</strong><p>Intentos y conversaciones vinculados al prospecto.</p></div>
+            </div>
+            <span class="linkage-call-recordings-count"><?= count($llamadas)>50?'50+':count($llamadas) ?></span>
+        </div>
+        <div class="linkage-call-recordings-list">
+        <?php if (!$llamadas): ?><p class="linkage-call-recordings-empty">No hay llamadas vinculadas disponibles para tu cuenta.</p><?php endif; ?>
         <?php foreach(array_slice($llamadas,0,50) as $llamada): ?>
-        <article class="impe-embudo-timeline-item">
-            <strong><?= $esc(TelefoniaResultadoVentasService::opciones()[$llamada['resultado']]??$llamada['resultado']) ?></strong>
-            <time><?= $esc($fecha($llamada['creado_at'])) ?></time>
-            <?php if (TelefoniaResultadoVentasService::esConversacion($llamada['resultado'])): ?>
-            <details data-expediente-grabacion="<?= $esc(BASE_URL.'prueba_telefonia/api/grabacion_ventas.php?'.http_build_query([
-                'pbx_call_id'=>$llamada['pbx_call_id'],'extension'=>$llamada['extension'],'verificar'=>1
-            ])) ?>">
-                <summary>Consultar grabación</summary>
-                <div role="status"></div>
-            </details>
-            <?php endif; ?>
+        <article class="linkage-call-recording-card">
+            <span class="linkage-call-recording-card-icon"><i class="bi bi-telephone" aria-hidden="true"></i></span>
+            <div class="linkage-call-recording-body">
+                <div class="linkage-call-recording-top">
+                    <div><strong>Llamada</strong>
+                        <span><?= $esc(TelefoniaResultadoVentasService::opciones()[$llamada['resultado']]??$llamada['resultado']) ?>
+                            · Ext. <?= $esc($llamada['extension']) ?></span>
+                    </div>
+                    <time class="linkage-call-recording-duration"><?= $esc($fecha($llamada['creado_at'])) ?></time>
+                </div>
+                <?php if (TelefoniaResultadoVentasService::esConversacion($llamada['resultado'])): ?>
+                <details data-expediente-grabacion="<?= $esc(BASE_URL.'prueba_telefonia/api/grabacion_ventas.php?'.http_build_query([
+                    'pbx_call_id'=>$llamada['pbx_call_id'],'extension'=>$llamada['extension'],'verificar'=>1
+                ])) ?>">
+                    <summary class="linkage-call-audio-state is-available"><i class="bi bi-record-circle" aria-hidden="true"></i> Consultar grabación</summary>
+                    <div role="status"></div>
+                </details>
+                <?php endif; ?>
+            </div>
         </article>
         <?php endforeach; ?>
+        </div>
         <?php if(count($llamadas)>50): ?><p>Se muestran las 50 llamadas más recientes.</p><?php endif; ?>
     </section>
+    </div>
     <script defer src="<?= $esc(BASE_URL.'public/javascript/telefonia_segmentos_player.js') ?>"></script>
     <script defer src="<?= $esc(BASE_URL.'public/javascript/embudo_expediente_audio.js') ?>"></script>
     <p class="impe-embudo-note"><i class="bi bi-info-circle"></i>
