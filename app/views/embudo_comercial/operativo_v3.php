@@ -456,25 +456,6 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                 <label>Motivo
                     <textarea name="motivo" minlength="8" maxlength="190" required rows="2"></textarea>
                 </label>
-                <details class="impe-v3o-actividad-historial">
-                    <summary>
-                        <span><i class="bi bi-clock-history" aria-hidden="true"></i> Historial de actividades</span>
-                        <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                    </summary>
-                    <div class="impe-v3o-actividad-historial-panel">
-                        <p class="impe-v3o-actividad-historial-estado" data-actividad-historial-estado
-                           role="status" aria-live="polite"></p>
-                        <div class="impe-v3o-actividad-historial-scroll" role="region"
-                             aria-label="Registros anteriores" tabindex="0">
-                            <ol data-actividad-historial aria-label="Actividades registradas"></ol>
-                        </div>
-                        <button class="impe-v3o-actividad-mas" type="button"
-                                data-actividad-mas hidden>
-                            <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
-                            Ver anteriores
-                        </button>
-                    </div>
-                </details>
                 <p data-actividad-error role="alert" hidden></p>
             </div>
             <div class="impe-embudo-dialog-footer">
