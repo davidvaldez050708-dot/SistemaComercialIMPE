@@ -68,7 +68,7 @@
     },
     DESCARTAR:{
       titulo:'Registrar descarte acreditado',
-      ayuda:'Solo se admiten decisiones con evidencia PBX. «No contactar» exige conversación humana acreditada y confirmación expresa; no equivale a «No interesado».',
+      ayuda:'Para WhatsApp, confirma que el prospecto respondió «No interesado» e escribe en el motivo la fecha AAAA-MM-DD seguida de una referencia del mensaje. Los otros motivos requieren evidencia PBX. «No contactar» exige conversación humana acreditada y confirmación expresa; no equivale a «No interesado».',
       boton:'Confirmar descarte'
     },
     REACTIVAR:{

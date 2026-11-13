@@ -19,6 +19,7 @@ $escBandeja=static fn($value)=>htmlspecialchars((string)($value??''),ENT_QUOTES,
             <label data-v3b-subetapa hidden>Motivo acreditado
                 <select name="subetapa">
                     <option value="">Selecciona un motivo</option>
+                    <option value="NO_INTERESADO_WHATSAPP">Respuesta recibida por WhatsApp · No interesado</option>
                     <option value="NO_INTERESADO">Declaró que no está interesado</option>
                     <option value="NUMERO_INVALIDO">Número inexistente acreditado por PBX</option>
                     <option value="NO_CONTACTAR">Solicitud expresa de no volver a contactar</option>

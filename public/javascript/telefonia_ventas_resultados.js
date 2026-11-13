@@ -399,6 +399,11 @@
     try{localStorage.setItem('impe:embudo:resultado-guardado:'+usuarioGuardado,
      JSON.stringify({usuarioId:usuarioGuardado,asignacionId:asignacionGuardada,creada:Date.now()}));}catch(_){}
    }
+   const descarte=j.registro?.descarte;
+   if(usuarioGuardado>0 && descarte?.movimiento_id){
+    try{localStorage.setItem('impe:embudo:descarte:'+usuarioGuardado,
+     JSON.stringify({...descarte,creada:Date.now()}));}catch(_){}
+   }
    const recuperacion=j.registro?.recuperacion;
    if(usuarioGuardado>0 && recuperacion?.movimiento_id && recuperacion?.revision_fecha){
     try{localStorage.setItem('impe:embudo:recuperacion:'+usuarioGuardado,

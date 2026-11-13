@@ -267,12 +267,36 @@ final class EmbudoComercialV3BandejasService
         } catch (Throwable $e) {$this->db->rollback();throw $e;}
     }
 
+    /** El puente ya vinculó la llamada y mantiene bloqueada la asignación. */
+    public function descartarTrasLlamada(int $usuario,int $asignacion,string $etapa): ?array
+    {
+        if (!in_array($etapa,['NUEVO','CONTACTADO','SEGUIMIENTO','POTENCIAL','RECUPERACION'],true)) return null;
+        try {
+            self::autorizado($usuario,$asignacion,'ventas.descartados.gestionar');
+            $this->exigirContactoPermitido($asignacion);
+            $this->verificarDescarte($usuario,$asignacion,'NO_INTERESADO');
+        } catch (DomainException $e) {
+            return null;
+        }
+        return ['movimiento_id'=>$this->registrarEtapa($usuario,$asignacion,$etapa,
+            'DESCARTADO','NO_INTERESADO','Descarte automático: No interesado en llamada PBX vinculada.')];
+    }
+
     public function descartar(int $usuario,int $asignacion,string $etapa,
         string $subetapa,string $motivo,bool $confirmacion,
         bool $solicitudExpresaNoContactar=false): array
     {
         self::autorizado($usuario,$asignacion,'ventas.descartados.gestionar');
         $motivo=self::motivo($motivo);
+        $whatsapp=$subetapa==='NO_INTERESADO_WHATSAPP';
+        if ($whatsapp) {
+            if (!preg_match('/^(20[0-9]{2})-([0-9]{2})-([0-9]{2}) +[^\s].{5,}$/uD',$motivo,$fecha) ||
+                !checkdate((int)$fecha[2],(int)$fecha[3],(int)$fecha[1]) ||
+                substr($motivo,0,10)>(new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))->format('Y-m-d')) {
+                throw new DomainException('Indica la fecha del mensaje (AAAA-MM-DD), seguida de una referencia verificable.');
+            }
+            $subetapa='NO_INTERESADO';
+        }
         if (!$confirmacion || !isset(self::DESCARTES_HABILITADOS[$subetapa]) ||
             ($subetapa==='NO_CONTACTAR' && !$solicitudExpresaNoContactar) ||
             !in_array($etapa,['NUEVO','CONTACTADO','SEGUIMIENTO',
@@ -285,11 +309,12 @@ final class EmbudoComercialV3BandejasService
                 throw new DomainException('La etapa cambió. Actualiza el tablero.');
             }
             $this->exigirContactoPermitido($asignacion);
-            $this->verificarDescarte($usuario,$asignacion,$subetapa);
+            if (!$whatsapp) $this->verificarDescarte($usuario,$asignacion,$subetapa);
             $razon=mb_substr(
                 ($subetapa==='NO_CONTACTAR'
                     ?'Solicitud expresa No contactar, asesor confirma evidencia PBX: '
-                    :'Descarte verificado ('.$subetapa.'): ').$motivo,0,190);
+                    :($whatsapp?'Respuesta recibida por WhatsApp, declarada por el asesor: '
+                        :'Descarte verificado ('.$subetapa.'): ')).$motivo,0,190);
             $id=$this->registrarEtapa($usuario,$asignacion,
                 $etapa,'DESCARTADO',$subetapa,$razon);
             // Conservar la agenda y las actividades V3 históricas: el

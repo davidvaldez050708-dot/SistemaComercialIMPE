@@ -138,6 +138,14 @@ final class EmbudoComercialResultadoBridge
         require_once __DIR__.'/EmbudoComercialV3AccesoControlado.php';
         $v3=EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId);
         if ($v3) {
+            if ($resultado==='NO_INTERESADO' && ($call['direccion']??'')==='Saliente' && !empty($call['conectada'])) {
+                require_once __DIR__.'/EmbudoComercialV3BandejasService.php';
+                $descarte=(new EmbudoComercialV3BandejasService($this->db))->descartarTrasLlamada(
+                    $usuarioId,$asignacionId,$etapaAnterior
+                );
+                if ($descarte!==null) return ['vinculada'=>true,'movida'=>true,
+                    'etapa'=>'DESCARTADO','descarte'=>$descarte];
+            }
             require_once __DIR__.'/EmbudoComercialV3MovimientosPermitidos.php';
             $nueva=EmbudoComercialV3MovimientosPermitidos::destinoPorConversacion(
                 $etapaAnterior,$resultado

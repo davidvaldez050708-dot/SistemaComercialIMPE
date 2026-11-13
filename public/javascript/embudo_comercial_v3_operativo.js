@@ -141,6 +141,15 @@
     if(!modal || document.hidden || telefonoActivo() ||
        document.querySelector('#modalResultadoVenta.show, dialog[open]'))return;
     try{
+      const descarteKey='impe:embudo:descarte:'+usuarioId;
+      const descarte=JSON.parse(localStorage.getItem(descarteKey)||'null');
+      const modalDescarte=document.getElementById('impe-v3o-descarte-aviso');
+      if(modalDescarte && descarte?.movimiento_id && Date.now()-descarte.creada<=60000){
+        modalDescarte.showModal();
+        recuperacionPorActualizar=true;
+        localStorage.removeItem(descarteKey);
+        return;
+      }
       const aviso=JSON.parse(localStorage.getItem(recuperacionKey)||'null');
       if(!aviso || Date.now()-aviso.creada>60000 ||
          !/^\d{4}-\d{2}-\d{2}$/.test(aviso.revision_fecha))return;
@@ -214,6 +223,8 @@
   // Este respaldo sólo lee el marcador local; no consulta el servidor.
   window.setInterval(refrescarTrasLlamada,1000);
   document.getElementById('impe-v3o-recuperacion-aviso')
+    ?.addEventListener('close',refrescarTrasLlamada);
+  document.getElementById('impe-v3o-descarte-aviso')
     ?.addEventListener('close',refrescarTrasLlamada);
   window.addEventListener('focus',refrescarTrasLlamada);
   document.addEventListener('visibilitychange',refrescarTrasLlamada);

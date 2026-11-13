@@ -365,6 +365,13 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             </footer>
         </form>
     </dialog>
+    <dialog class="impe-embudo-dialog" id="impe-v3o-descarte-aviso" aria-labelledby="impe-v3o-descarte-titulo">
+        <form method="dialog">
+            <header><h3 id="impe-v3o-descarte-titulo">Prospecto enviado a Descartados</h3></header>
+            <p>El resultado «No interesado» quedó registrado en el expediente.</p>
+            <footer class="impe-embudo-dialog-footer"><button type="submit">Entendido</button></footer>
+        </form>
+    </dialog>
     <?php if($puedeMover): ?>
     <dialog class="impe-embudo-dialog" id="impe-v3o-dialog"
             aria-labelledby="impe-v3o-dialog-titulo">
