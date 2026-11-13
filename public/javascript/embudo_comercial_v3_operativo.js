@@ -396,6 +396,9 @@
       fecha.required=requiereFecha;
       actividadForm.querySelector('[data-actividad-fecha]').hidden=!requiereFecha;
       if(!requiereFecha)fecha.value='';
+      else if(operacion.value==='REPROGRAMAR' && !fecha.value){
+        fecha.value=seleccion?.fechaPendiente||'';
+      }
     };
     const cargarHistorial=async()=>{
       if(!seleccion || mas.disabled)return;
@@ -461,7 +464,7 @@
     root.querySelectorAll('[data-v3-actividad]').forEach(b=>b.addEventListener('click',()=>{
       const card=b.closest('.impe-v3o-card');
       if(!card || actividadDialog.open || telefonoActivo())return;
-      seleccion={id:card.dataset.asignacionId,etapa:card.dataset.etapa,version:b.dataset.version};
+      seleccion={id:card.dataset.asignacionId,etapa:card.dataset.etapa,version:b.dataset.version,fechaPendiente:card.dataset.v3FechaPendiente};
       actividadForm.reset();
       historial.replaceChildren();
       detalles.open=false;

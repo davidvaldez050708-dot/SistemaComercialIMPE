@@ -145,7 +145,7 @@ final class EmbudoComercialController
         $panel=$_GET['panel']??'resumen';
         if (!in_array($panel,['resumen','actividad','llamadas'],true)) $panel='resumen';
         $paginas=[];
-        foreach (['movimientos','gestiones','llamadas'] as $clave) {
+        foreach (['movimientos','gestiones','actividades','llamadas'] as $clave) {
             $paginas[$clave]=filter_var($_GET[$clave]??1,FILTER_VALIDATE_INT)?:1;
         }
         $prospecto=null;

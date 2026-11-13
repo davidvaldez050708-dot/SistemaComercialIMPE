@@ -57,6 +57,10 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     );
     if(!$puedeMover)$propuestas=[];
     $pendiente=$p['actividad_pendiente']??null;
+    $fechaPendienteLocal=$pendiente
+        ?(new DateTimeImmutable($pendiente,new DateTimeZone('UTC')))
+            ->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d\TH:i')
+        :'';
     $completada=$p['actividad_completada']??null;
     $destinos=implode(',',$propuestas);
     $detalle=$base.http_build_query([
@@ -88,6 +92,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
              data-programas="<?= $esc($p['programas']??'') ?>"
              data-correo="<?= $esc($p['correo']??'') ?>"
              data-v3-destinos="<?= $esc($destinos) ?>"
+             data-v3-fecha-pendiente="<?= $esc($fechaPendienteLocal) ?>"
              data-v3-actividad-pendiente="<?= $pendiente ? '1' : '0' ?>"
              <?= $propuestas?'draggable="true"':'' ?>>
         <div class="impe-embudo-card-line">
@@ -444,7 +449,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <p class="small text-muted">En el motivo, indica qué hiciste o qué harás: llamar, enviar información o confirmar documentos. Programar guarda la fecha en el expediente.</p>
+                <p class="small text-muted">Describe la tarea o gestión en el motivo. Para acreditar una conversación y avanzar a Contactados, llama desde la tarjeta y guarda el resultado de la llamada.</p>
                 <label data-actividad-fecha hidden>Fecha y hora de México
                     <input name="fecha" type="datetime-local">
                 </label>

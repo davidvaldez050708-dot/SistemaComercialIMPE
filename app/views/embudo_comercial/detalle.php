@@ -219,6 +219,33 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
             <?php $paginar('movimientos'); ?>
             <?php endif; ?>
         </section>
+        <?php if(!empty($prospecto['historial_actividades'])):
+            $accionesActividad=['REGISTRAR'=>'Gestión registrada','PROGRAMAR'=>'Actividad programada',
+                'REPROGRAMAR'=>'Actividad reprogramada','COMPLETAR'=>'Actividad completada']; ?>
+        <section class="impe-embudo-detalles-wide impe-embudo-historial" aria-labelledby="impe-actividades-titulo">
+            <div class="impe-embudo-historial-head"><div><h3 id="impe-actividades-titulo">Actividades comerciales</h3></div></div>
+            <ol class="impe-embudo-timeline">
+                <?php foreach($prospecto['historial_actividades'] as $evento): ?>
+                <li class="impe-embudo-timeline-item linkage-call-recording-card">
+                    <div class="impe-embudo-timeline-main">
+                        <strong><?= $esc($accionesActividad[$evento['accion']]??'Actividad comercial') ?></strong>
+                        <time><?= $esc($fecha($evento['creado_at'])) ?></time>
+                    </div>
+                    <p class="impe-embudo-timeline-motivo"><?= $esc($evento['motivo']) ?></p>
+                    <?php foreach(['fecha_anterior'=>'Fecha anterior','fecha_pendiente'=>'Fecha programada',
+                        'completada_at'=>'Completada'] as $campo=>$etiqueta):
+                        if(empty($evento[$campo]) || ($campo==='completada_at' && $evento['accion']!=='COMPLETAR')) continue; ?>
+                        <p class="impe-embudo-timeline-autor"><?= $esc($etiqueta) ?> · <?= $esc($fecha($evento[$campo])) ?></p>
+                    <?php endforeach; ?>
+                    <span class="impe-embudo-timeline-autor"><i class="bi bi-person" aria-hidden="true"></i>
+                        <?= $esc($evento['autor']?:'Usuario #'.(int)$evento['usuario_id']) ?>
+                    </span>
+                </li>
+                <?php endforeach; ?>
+            </ol>
+            <?php $paginar('actividades'); ?>
+        </section>
+        <?php endif; ?>
         <?php if(!empty($prospecto['historial_subetapas'])):
             $catalogoSub=EmbudoComercialPoliticaPropuesta::SUBETAPAS; ?>
         <section class="impe-embudo-detalles-wide impe-embudo-historial"

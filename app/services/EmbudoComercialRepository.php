@@ -636,6 +636,19 @@ final class EmbudoComercialRepository
             );
             $p['historial_movimientos']=$historial;
             $p['historial_subetapas']=[];
+            if ($operativoV3 && !$supervisor) {
+                require_once __DIR__.'/EmbudoComercialV3SeguimientoService.php';
+                if (EmbudoComercialV3SeguimientoService::instalada($this->db)) {
+                    $offset=$pagina('actividades','prospecto_embudo_actividad_v3','asignacion_id=?',[$asignacion]);
+                    $p['historial_actividades']=$this->rows(
+                        "SELECT a.accion,a.motivo,a.fecha_anterior,a.fecha_pendiente,a.completada_at,
+                                a.creado_at,a.usuario_id,TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) autor
+                         FROM prospecto_embudo_actividad_v3 a LEFT JOIN usuarios u ON u.id=a.usuario_id
+                         WHERE a.asignacion_id=? ORDER BY a.id DESC LIMIT 15 OFFSET ?",
+                        [$asignacion,$offset]
+                    );
+                }
+            }
             if($operativoV3 && !$supervisor){
                 // La asignación vigente y su propietario ya se verificaron arriba.
                 // La bitácora V3 es independiente de los movimientos de etapa.
