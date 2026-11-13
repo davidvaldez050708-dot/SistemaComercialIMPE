@@ -16,6 +16,18 @@ final class EmbudoComercialV3MovimientosPermitidos
         return [];
     }
 
+    private const RESULTADOS_CONVERSACION = [
+        'CONVERSACION_PERSONA','PROSPECTO_POTENCIAL',
+        'INTERESADO','SOLICITA_INFORMACION',
+    ];
+
+    public static function destinoPorConversacion(string $actual,string $resultado): ?string
+    {
+        return self::requiereConversacion($actual,'CONTACTADO') &&
+            in_array($resultado,self::RESULTADOS_CONVERSACION,true)
+            ? 'CONTACTADO' : null;
+    }
+
     public static function validar(string $actual,string $destino): void
     {
         if(!in_array($destino,self::destinos($actual, true),true)) {
@@ -47,6 +59,7 @@ final class EmbudoComercialV3MovimientosPermitidos
     {
         if (!$ids) return [];
         $marcas = implode(',', array_fill(0, count($ids), '?'));
+        $resultados = "'".implode("','",self::RESULTADOS_CONVERSACION)."'";
         $sql="SELECT DISTINCT l.asignacion_id FROM prospecto_embudo_llamadas l
             JOIN prospecto_asignaciones a ON a.id=l.asignacion_id
                 AND a.asesor_id=l.usuario_id AND a.vigente=1
@@ -59,10 +72,7 @@ final class EmbudoComercialV3MovimientosPermitidos
                 AND BINARY r.pbx_call_id=BINARY l.pbx_call_id
                 AND BINARY r.resultado=BINARY l.resultado
             WHERE l.usuario_id=? AND l.asignacion_id IN ($marcas)
-              AND (r.resultado IN (
-                  'CONVERSACION_PERSONA','PROSPECTO_POTENCIAL',
-                  'INTERESADO','SOLICITA_INFORMACION'
-                ) OR EXISTS (
+              AND (r.resultado IN ($resultados) OR EXISTS (
                   SELECT 1 FROM telefonia_ventas_resultado_selecciones s
                   WHERE s.resultado_id=r.id
                     AND s.codigo IN ('CONVERSACION_PERSONA','PROSPECTO_POTENCIAL')

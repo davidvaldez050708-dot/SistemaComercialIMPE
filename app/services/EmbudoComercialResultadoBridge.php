@@ -135,20 +135,13 @@ final class EmbudoComercialResultadoBridge
         }
         $etapaAnterior=EmbudoComercialEtapas::visual((string)$row['etapa']);
         $nueva=EmbudoComercialEtapas::sugerenciaPorResultado($resultado,$proximaAccion);
-        // El Bridge V1 puede sugerir Recuperación desde la primera llamada
-        // sin contacto o reactivar al registrar conversación. La V3 exige
-        // revisión manual para AMBAS transiciones excepcionales; conservar
-        // vínculo, resultado telefónico y etapa hasta confirmación explícita.
-        if ($nueva==='RECUPERACION' ||
-            ($nueva==='CONTACTADO' && $etapaAnterior==='RECUPERACION')) {
-            require_once __DIR__.'/EmbudoComercialV3AccesoControlado.php';
-            if (self::bloquearRecuperacionAutomaticaV3(
-                $nueva,
-                EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId),
-                $etapaAnterior
-            )) {
-                return ['vinculada'=>true,'movida'=>false,'etapa'=>$etapaAnterior];
-            }
+        require_once __DIR__.'/EmbudoComercialV3AccesoControlado.php';
+        $v3=EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId);
+        if ($v3) {
+            require_once __DIR__.'/EmbudoComercialV3MovimientosPermitidos.php';
+            $nueva=EmbudoComercialV3MovimientosPermitidos::destinoPorConversacion(
+                $etapaAnterior,$resultado
+            );
         }
         // Proteger etapas avanzadas e históricos de la matriz V1: una
         // llamada no degrada Potenciales a INTERESADO, ni Seguimiento a una
@@ -205,17 +198,19 @@ final class EmbudoComercialResultadoBridge
         );
         $s->bind_param('isi',$asignacionId,$nueva,$usuarioId);
         $s->execute();$s->close();
-        $s=$this->db->prepare(
-            'INSERT INTO prospecto_embudo_agenda
-                (asignacion_id,proxima_accion_at,revision_fecha,actualizado_at,actualizado_por)
-             VALUES (?,?,?,UTC_TIMESTAMP(),?)
-             ON DUPLICATE KEY UPDATE proxima_accion_at=VALUES(proxima_accion_at),
-                revision_fecha=VALUES(revision_fecha),
-                actualizado_at=VALUES(actualizado_at),
-                actualizado_por=VALUES(actualizado_por)'
-        );
-        $s->bind_param('issi',$asignacionId,$utc,$revision,$usuarioId);
-        $s->execute();$s->close();
+        if (!$v3) {
+            $s=$this->db->prepare(
+                'INSERT INTO prospecto_embudo_agenda
+                    (asignacion_id,proxima_accion_at,revision_fecha,actualizado_at,actualizado_por)
+                 VALUES (?,?,?,UTC_TIMESTAMP(),?)
+                 ON DUPLICATE KEY UPDATE proxima_accion_at=VALUES(proxima_accion_at),
+                    revision_fecha=VALUES(revision_fecha),
+                    actualizado_at=VALUES(actualizado_at),
+                    actualizado_por=VALUES(actualizado_por)'
+            );
+            $s->bind_param('issi',$asignacionId,$utc,$revision,$usuarioId);
+            $s->execute();$s->close();
+        }
         $razon='Resultado PBX verificado: '.$resultado.' · ref '.$pbx;
         $razon=mb_substr($razon,0,190);
         $s=$this->db->prepare(

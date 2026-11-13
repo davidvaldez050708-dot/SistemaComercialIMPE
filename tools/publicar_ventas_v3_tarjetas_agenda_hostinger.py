@@ -15,7 +15,14 @@ def main():
     for opcion in ("check", "apply", "rollback"):
         modo.add_argument("--" + opcion, action="store_true")
     args = parser.parse_args()
-    publicador.ARCHIVOS = [('app/services/EmbudoComercialV3MovimientosPermitidos.php', '2bbc296fff1c310963637ed3f95402b9254635a3', '50734f6bc88c5c3c3751e440ac4ce8242fffeaa9'), ('app/services/EmbudoComercialV3SeguimientoService.php', 'fe3d2caa879f441fa101fe66d15ba8a54ea6d817', '41c376b36861f81302435ea54d8d6df7beb399f7'), ('app/views/embudo_comercial/operativo_v3.php', '23571f88687958519b902da855b914e665313d48', '5d5b297a986bcf92ab2ca224ef3d9ba30f9ae078'), ('public/css/embudo_v3_operativo.css', '3bc6931cdc2d84b229b1604c77b59cdc9c004fa9', 'bf0234e15b6f87bf2f7edf1d9b1c13aec5398654'), ('public/javascript/embudo_comercial_v3_operativo.js', '243a20ef4fcd37fe4eb01c377fd3912e4d30ba50', '2adf7d3952a6f5e3c8400ecaf7355b861ecbca38')]
+    publicador.ARCHIVOS = [
+        ('app/services/EmbudoComercialV3MovimientosPermitidos.php', '2bbc296fff1c310963637ed3f95402b9254635a3', 'd3f4248699d5034722bcde36eb84740c58509bd2'),
+        ('app/services/EmbudoComercialV3SeguimientoService.php', 'fe3d2caa879f441fa101fe66d15ba8a54ea6d817', '41c376b36861f81302435ea54d8d6df7beb399f7'),
+        ('app/views/embudo_comercial/operativo_v3.php', '23571f88687958519b902da855b914e665313d48', '5d5b297a986bcf92ab2ca224ef3d9ba30f9ae078'),
+        ('public/css/embudo_v3_operativo.css', '3bc6931cdc2d84b229b1604c77b59cdc9c004fa9', 'bf0234e15b6f87bf2f7edf1d9b1c13aec5398654'),
+        ('public/javascript/embudo_comercial_v3_operativo.js', '243a20ef4fcd37fe4eb01c377fd3912e4d30ba50', '2adf7d3952a6f5e3c8400ecaf7355b861ecbca38'),
+        ('app/services/EmbudoComercialResultadoBridge.php', 'e4f6b23d989ff99539088153df58d4ec2404f79d', '3e30a05cfdb00a2718080bfc5b6d59666a0418ea'),
+    ]
     publicador.NO_MODIFICAR = {}
     sitio = publicador.raiz(args.site)
 
