@@ -214,6 +214,13 @@
     font-size: 12px;
 }
 
+.territory-bulk-parent-state {
+    display: block;
+    margin: 12px 0 6px 108px;
+    color: #172344;
+    font-size: 12px;
+}
+
 .territory-bulk-section [data-masiva-personas],
 .territory-bulk-section > .btn-territory-expand,
 .territory-bulk-parent-row {
@@ -326,6 +333,7 @@
 
     .territory-bulk-section [data-masiva-personas],
     .territory-bulk-section > .btn-territory-expand,
+    .territory-bulk-parent-state,
     .territory-bulk-parent-row {
         margin-left: 0;
     }

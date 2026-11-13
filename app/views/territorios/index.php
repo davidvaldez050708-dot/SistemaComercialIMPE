@@ -1158,36 +1158,51 @@ document.addEventListener('DOMContentLoaded', function () {
                         return {id: 'nuevo:' + persona.id,
                             nombre: persona.nombre + ' (se asignará ahora)'};
                     }));
-                    const fila = document.createElement('div');
-                    fila.className = 'territory-bulk-parent-row';
-                    const etiqueta = document.createElement('label');
-                    etiqueta.className = 'form-label small mb-1';
-                    etiqueta.textContent = entrada.dataset.nombre;
-                    fila.appendChild(etiqueta);
                     if (disponibles.length === 1) {
+                        const fila = document.createElement('div');
+                        fila.className = 'territory-bulk-parent-row';
                         const aviso = document.createElement('span');
                         aviso.className = 'territory-bulk-parent-auto';
-                        aviso.textContent = disponibles[0].nombre + ' · asignación automática';
+                        aviso.textContent = entrada.dataset.nombre + ' · ' +
+                            disponibles[0].nombre + ' · asignación automática';
                         fila.appendChild(aviso);
+                        grupo.appendChild(fila);
                     } else if (!disponibles.length && tipo === 'ASESOR') {
+                        const fila = document.createElement('div');
+                        fila.className = 'territory-bulk-parent-row';
                         const aviso = document.createElement('span');
                         aviso.className = 'territory-bulk-parent-auto';
-                        aviso.textContent = 'Sin Cuenta Clave disponible en este estado';
+                        aviso.textContent = entrada.dataset.nombre + ' · Sin Cuenta Clave disponible';
                         fila.appendChild(aviso);
+                        grupo.appendChild(fila);
                     } else {
-                        const selector = document.createElement('select');
-                        selector.className = 'form-select form-select-sm';
-                        selector.name = 'cuentas_por_estado[' + tipo + '][' + entrada.value + ']';
-                        selector.required = true;
-                        selector.appendChild(opcion('', disponibles.length
-                            ? 'Seleccionar Cuenta Clave' : 'Sin Cuenta Clave vigente'));
-                        disponibles.forEach(function (cuenta) {
-                            selector.appendChild(opcion(cuenta.id, cuenta.nombre));
+                        const estadoTitulo = document.createElement('strong');
+                        estadoTitulo.className = 'territory-bulk-parent-state';
+                        estadoTitulo.textContent = entrada.dataset.nombre;
+                        grupo.appendChild(estadoTitulo);
+                        usuariosElegidos(tipo).forEach(function (persona) {
+                            const fila = document.createElement('div');
+                            fila.className = 'territory-bulk-parent-row';
+                            const etiqueta = document.createElement('label');
+                            etiqueta.className = 'form-label small mb-1';
+                            etiqueta.textContent = persona.nombre;
+                            const selector = document.createElement('select');
+                            selector.className = 'form-select form-select-sm';
+                            selector.id = 'masiva-cuenta-' + tipo + '-' + entrada.value + '-' + persona.id;
+                            etiqueta.htmlFor = selector.id;
+                            selector.name = 'cuentas_por_estado[' + tipo + '][' +
+                                entrada.value + '][' + persona.id + ']';
+                            selector.required = true;
+                            selector.appendChild(opcion('', disponibles.length
+                                ? 'Seleccionar Cuenta Clave' : 'Sin Cuenta Clave vigente'));
+                            disponibles.forEach(function (cuenta) {
+                                selector.appendChild(opcion(cuenta.id, cuenta.nombre));
+                            });
+                            selector.value = anteriores[selector.name] || '';
+                            fila.append(etiqueta, selector);
+                            grupo.appendChild(fila);
                         });
-                        selector.value = anteriores[selector.name] || '';
-                        fila.appendChild(selector);
                     }
-                    grupo.appendChild(fila);
                 });
                 cuentas.appendChild(grupo);
             });

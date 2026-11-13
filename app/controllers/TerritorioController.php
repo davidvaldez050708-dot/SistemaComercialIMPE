@@ -284,8 +284,10 @@ class TerritorioController
                             $this->responderJson(['ok' => false,
                                 'mensaje' => 'Revisa las Cuentas Clave seleccionadas.'], 422);
                         }
-                        $cuenta = $porTipo[$estadoId] ?? ($tipo === 'ANALISTA_DATOS'
+                        $porEstado = $porTipo[$estadoId] ?? ($tipo === 'ANALISTA_DATOS'
                             ? ($cuentasPorEstado[$estadoId] ?? '') : '');
+                        $cuenta = is_array($porEstado)
+                            ? ($porEstado[$usuarioId] ?? '') : $porEstado;
                     }
                     if (!is_scalar($cuenta) || ((string)$cuenta !== '' &&
                         !preg_match('/^(?:[1-9][0-9]*|nuevo:[1-9][0-9]*)$/', (string)$cuenta))) {

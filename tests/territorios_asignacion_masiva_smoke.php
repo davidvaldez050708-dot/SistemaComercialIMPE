@@ -227,6 +227,39 @@ if ($vinculado !== 42) {
 }
 echo "Vinculación con Cuentas Clave existentes verificada.\n";
 
+$conexionPorPersona = new ConexionTerritorialFalsa();
+$propiedad->setValue($modelo, $conexionPorPersona);
+$equipoDistribuido = [
+    ['estado_id' => 1, 'usuario_id' => 7, 'tipo_asignacion' => 'CUENTA_CLAVE'],
+    ['estado_id' => 1, 'usuario_id' => 10, 'tipo_asignacion' => 'CUENTA_CLAVE'],
+    ['estado_id' => 1, 'usuario_id' => 8, 'tipo_asignacion' => 'ANALISTA_DATOS',
+        'cuenta_clave_referencia' => 'nuevo:7'],
+    ['estado_id' => 1, 'usuario_id' => 11, 'tipo_asignacion' => 'ANALISTA_DATOS',
+        'cuenta_clave_referencia' => 'nuevo:10'],
+    ['estado_id' => 1, 'usuario_id' => 9, 'tipo_asignacion' => 'ASESOR',
+        'cuenta_clave_referencia' => 'nuevo:7'],
+    ['estado_id' => 1, 'usuario_id' => 12, 'tipo_asignacion' => 'ASESOR',
+        'cuenta_clave_referencia' => 'nuevo:10']
+];
+foreach ($equipoDistribuido as &$persona) {
+    $persona['fecha_inicio'] = '2026-11-13';
+    $persona['observaciones'] = '';
+}
+unset($persona);
+$cuentasAsignadas = [];
+$modelo->crearAsignacionesMasivas($equipoDistribuido, 3,
+    function ($datos) use (&$cuentasAsignadas) {
+        if ($datos['tipo_asignacion'] !== 'CUENTA_CLAVE') {
+            $cuentasAsignadas[$datos['usuario_id']] = $datos['cuenta_clave_asignacion_id'];
+        }
+        return [];
+    });
+if ($cuentasAsignadas !== [8 => 1, 11 => 2, 9 => 1, 12 => 2] ||
+    $conexionPorPersona->commitCount !== 1) {
+    throw new RuntimeException('No se respetó la Cuenta Clave elegida por persona.');
+}
+echo "Vinculación individual de Analistas y Asesores verificada.\n";
+
 $conexionTodos = new ConexionTerritorialFalsa();
 $asignacionesTodos = [];
 foreach (range(1, 32) as $estadoId) {
