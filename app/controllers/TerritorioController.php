@@ -221,28 +221,68 @@ class TerritorioController
         if (!is_array($ids) || !$ids || count($ids) > 32) {
             $this->responderJson(['ok' => false, 'mensaje' => 'Selecciona entre uno y 32 estados.'], 422);
         }
+        foreach ($ids as $id) {
+            if (!is_scalar($id) || !ctype_digit((string)$id) || (int)$id < 1) {
+                $this->responderJson(['ok' => false, 'mensaje' => 'Revisa los estados seleccionados.'], 422);
+            }
+        }
         $ids = array_map('intval', $ids);
-        if (in_array(0, $ids, true) || count($ids) !== count(array_unique($ids))) {
+        if (count($ids) !== count(array_unique($ids))) {
             $this->responderJson(['ok' => false, 'mensaje' => 'Revisa los estados seleccionados.'], 422);
         }
         sort($ids, SORT_NUMERIC);
 
+        $origenUsuarios = $_POST['usuarios'] ?? [];
+        if (!is_array($origenUsuarios) ||
+            array_diff(array_keys($origenUsuarios), $this->tiposAsignacion)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Revisa los tipos de asignación.'], 422);
+        }
+        $seleccionados = [];
+        foreach ($this->tiposAsignacion as $tipo) {
+            $valores = $origenUsuarios[$tipo] ?? [];
+            if (!is_array($valores)) {
+                $this->responderJson(['ok' => false, 'mensaje' => 'Revisa los usuarios seleccionados.'], 422);
+            }
+            foreach ($valores as $valor) {
+                if (!is_scalar($valor) || !ctype_digit((string)$valor) || (int)$valor < 1) {
+                    $this->responderJson(['ok' => false, 'mensaje' => 'Selecciona usuarios válidos.'], 422);
+                }
+            }
+            $seleccionados[$tipo] = array_map('intval', $valores);
+            if (count($seleccionados[$tipo]) !== count(array_unique($seleccionados[$tipo]))) {
+                $this->responderJson(['ok' => false, 'mensaje' => 'No repitas usuarios en una misma sección.'], 422);
+            }
+        }
+        $totalUsuarios = array_sum(array_map('count', $seleccionados));
+        if ($totalUsuarios < 1 || $totalUsuarios * count($ids) > 320) {
+            $this->responderJson(['ok' => false,
+                'mensaje' => 'Selecciona al menos una persona y hasta 320 asignaciones por operación.'], 422);
+        }
+
         $modelo = new TerritorioModel();
         $asignaciones = [];
         $cuentasPorEstado = $_POST['cuentas_por_estado'] ?? [];
+        if (!is_array($cuentasPorEstado)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Revisa las Cuentas Clave seleccionadas.'], 422);
+        }
         foreach ($ids as $estadoId) {
-            $datos = $this->limpiarDatosAsignacion([
-                'estado_id' => $estadoId,
-                'usuario_id' => $_POST['usuario_id'] ?? 0,
-                'tipo_asignacion' => $_POST['tipo_asignacion'] ?? '',
-                'cuenta_clave_asignacion_id' => is_array($cuentasPorEstado)
-                    ? ($cuentasPorEstado[$estadoId] ?? 0) : 0
-            ]);
-            $errores = $this->validarDatosAsignacion($modelo, $datos);
-            if ($errores) {
-                $this->responderJson(['ok' => false, 'mensaje' => reset($errores), 'estado_id' => $estadoId], 422);
+            foreach ($this->tiposAsignacion as $tipo) {
+                foreach ($seleccionados[$tipo] as $usuarioId) {
+                    $cuenta = $tipo === 'ANALISTA_DATOS'
+                        ? ($cuentasPorEstado[$estadoId] ?? '') : '';
+                    if ($tipo === 'ANALISTA_DATOS' &&
+                        (!is_scalar($cuenta) || !preg_match('/^(?:[1-9][0-9]*|nuevo:[1-9][0-9]*)$/', (string)$cuenta))) {
+                        $this->responderJson(['ok' => false,
+                            'mensaje' => 'Selecciona una Cuenta Clave para cada estado.'], 422);
+                    }
+                    $asignaciones[] = $this->limpiarDatosAsignacion([
+                        'estado_id' => $estadoId,
+                        'usuario_id' => $usuarioId,
+                        'tipo_asignacion' => $tipo,
+                        'cuenta_clave_asignacion_id' => ctype_digit((string)$cuenta) ? $cuenta : 0
+                    ]) + ['cuenta_clave_referencia' => (string)$cuenta];
+                }
             }
-            $asignaciones[] = $datos;
         }
 
         try {

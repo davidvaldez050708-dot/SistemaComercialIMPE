@@ -84,3 +84,31 @@ try {
 }
 
 echo "Asignación masiva: confirmación y reversión verificadas.\n";
+
+$conexionNueva = new ConexionTerritorialFalsa();
+$propiedad->setValue($modelo, $conexionNueva);
+$equipo = [
+    [
+        'estado_id' => 1, 'usuario_id' => 7,
+        'tipo_asignacion' => 'CUENTA_CLAVE',
+        'fecha_inicio' => '2026-11-13', 'observaciones' => ''
+    ],
+    [
+        'estado_id' => 1, 'usuario_id' => 8,
+        'tipo_asignacion' => 'ANALISTA_DATOS',
+        'cuenta_clave_referencia' => 'nuevo:7',
+        'fecha_inicio' => '2026-11-13', 'observaciones' => ''
+    ]
+];
+$analistaVinculado = false;
+$modelo->crearAsignacionesMasivas($equipo, 3, function ($datos) use (&$analistaVinculado) {
+    if ($datos['tipo_asignacion'] === 'ANALISTA_DATOS') {
+        $analistaVinculado = $datos['cuenta_clave_asignacion_id'] === 1;
+    }
+    return [];
+});
+if (!$analistaVinculado || $conexionNueva->asignaciones !== 2 ||
+    $conexionNueva->movimientos !== 2 || $conexionNueva->commitCount !== 1) {
+    throw new RuntimeException('El Analista no quedó vinculado a la nueva Cuenta Clave.');
+}
+echo "Vinculación de Analista con Cuenta Clave nueva verificada.\n";

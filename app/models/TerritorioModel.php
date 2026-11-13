@@ -488,21 +488,30 @@ class TerritorioModel
         $this->connection->begin_transaction();
         try {
             $bloquear = $this->connection->prepare('SELECT id FROM estados WHERE id = ? AND estado = 1 FOR UPDATE');
-            foreach ($asignaciones as $datos) {
-                $bloquear->bind_param('i', $datos['estado_id']);
+            $estados = array_unique(array_column($asignaciones, 'estado_id'));
+            sort($estados, SORT_NUMERIC);
+            foreach ($estados as $estadoId) {
+                $bloquear->bind_param('i', $estadoId);
                 $bloquear->execute();
                 if (!$bloquear->get_result()->fetch_assoc()) {
                     throw new InvalidArgumentException('Uno de los estados seleccionados ya no está disponible.');
                 }
             }
 
+            $nuevasCuentas = [];
             foreach ($asignaciones as $datos) {
+                $tipo = $datos['tipo_asignacion'];
+                if ($tipo === 'ANALISTA_DATOS' &&
+                    strpos($datos['cuenta_clave_referencia'], 'nuevo:') === 0) {
+                    $cuentaUsuarioId = (int)substr($datos['cuenta_clave_referencia'], 6);
+                    $datos['cuenta_clave_asignacion_id'] =
+                        $nuevasCuentas[$datos['estado_id']][$cuentaUsuarioId] ?? 0;
+                }
                 $errores = $validar($datos);
                 if ($errores) {
                     throw new InvalidArgumentException(reset($errores));
                 }
 
-                $tipo = $datos['tipo_asignacion'];
                 $cuentaId = $tipo === 'ANALISTA_DATOS'
                     ? (int)$datos['cuenta_clave_asignacion_id'] : null;
                 $sql = 'INSERT INTO asignaciones_territorio
@@ -516,13 +525,17 @@ class TerritorioModel
                     throw new RuntimeException('No fue posible guardar todas las asignaciones.');
                 }
 
+                $asignacionId = (int)$this->connection->insert_id;
+                if ($tipo === 'CUENTA_CLAVE') {
+                    $nuevasCuentas[$datos['estado_id']][$datos['usuario_id']] = $asignacionId;
+                }
                 $detalle = $tipo === 'CUENTA_CLAVE'
                     ? 'Cuenta Clave asignada al territorio.'
                     : ($tipo === 'ANALISTA_DATOS'
                         ? 'Analista asignado al territorio y vinculado a una Cuenta Clave.'
                         : 'Asesor asignado al territorio.');
                 $this->registrarMovimientoTerritorial((int)$datos['estado_id'],
-                    (int)$this->connection->insert_id, (int)$datos['usuario_id'],
+                    $asignacionId, (int)$datos['usuario_id'],
                     $tipo, 'ASIGNACION', null, $cuentaId,
                     $datos['fecha_inicio'], $usuarioAccionId, $detalle);
             }

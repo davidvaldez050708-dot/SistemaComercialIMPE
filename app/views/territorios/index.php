@@ -306,39 +306,41 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
         aria-labelledby="modalAsignacionMasivaTitulo" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable system-form-dialog">
             <div class="modal-content system-form-modal">
-                <form id="formAsignacionMasiva" action="<?= BASE_URL ?>index.php?controller=territorio&amp;action=guardarAsignacionMasiva" method="post">
+                <form id="formAsignacionMasiva" class="d-flex flex-column overflow-hidden"
+                    style="max-height: calc(100vh - 3.5rem)"
+                    action="<?= BASE_URL ?>index.php?controller=territorio&amp;action=guardarAsignacionMasiva" method="post">
                     <div class="modal-header system-form-modal-header">
                         <div>
                             <h5 class="system-form-modal-title" id="modalAsignacionMasivaTitulo">Asignar a varios estados</h5>
-                            <p class="system-form-modal-subtitle">Selecciona una persona y los estados que atenderá.</p>
+                            <p class="system-form-modal-subtitle">Elige los estados y agrega solo las personas necesarias.</p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body overflow-auto">
                         <input type="hidden" name="csrf_token" value="<?= $texto($_SESSION['csrf_token'] ?? '') ?>">
                         <div class="mb-3">
-                            <label class="form-label" for="masivaTipo">Tipo de asignación</label>
-                            <select class="form-select" id="masivaTipo" name="tipo_asignacion" required>
-                                <option value="">Seleccionar tipo</option>
-                                <option value="CUENTA_CLAVE">Cuenta Clave</option>
-                                <option value="ANALISTA_DATOS">Analista de Datos</option>
-                                <option value="ASESOR">Asesor</option>
-                            </select>
+                            <label class="form-label" for="masivaAbrirEstados">Estados</label>
+                            <button type="button" class="form-select text-start" id="masivaAbrirEstados"
+                                aria-expanded="false" aria-controls="masivaListaEstados">Seleccionar estados</button>
+                            <div id="masivaListaEstados" class="border rounded p-2 mt-1" hidden>
+                                <button type="button" class="btn btn-link btn-sm" id="masivaSeleccionarTodos">Seleccionar todos</button>
+                                <div id="masivaEstados" class="overflow-auto" style="max-height: 220px;">
+                                    <span class="text-muted">Cargando estados...</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label" for="masivaUsuario">Usuario</label>
-                            <select class="form-select" id="masivaUsuario" name="usuario_id" required disabled>
-                                <option value="">Selecciona primero el tipo</option>
-                            </select>
+                        <?php foreach (['CUENTA_CLAVE' => 'Cuenta Clave', 'ANALISTA_DATOS' => 'Analista', 'ASESOR' => 'Asesor'] as $tipoMasivo => $nombreMasivo): ?>
+                            <section class="border rounded p-3 mb-3" data-masiva-seccion="<?= $tipoMasivo ?>">
+                                <h6 class="mb-2"><?= $nombreMasivo ?></h6>
+                                <div data-masiva-personas></div>
+                                <button type="button" class="btn btn-territory-expand" data-masiva-agregar>
+                                    <i class="bi bi-plus-circle me-2"></i>Agregar <?= $nombreMasivo ?>
+                                </button>
+                            </section>
+                        <?php endforeach; ?>
+                        <div id="masivaCuentas" class="mt-3 d-none">
+                            <h6 class="mb-2">Cuenta Clave correspondiente a los Analistas</h6>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="form-label mb-0">Estados</span>
-                            <button type="button" class="btn btn-link btn-sm" id="masivaSeleccionarTodos">Seleccionar todos</button>
-                        </div>
-                        <div id="masivaEstados" class="border rounded p-2 overflow-auto" style="max-height: 250px;">
-                            <span class="text-muted">Cargando estados...</span>
-                        </div>
-                        <div id="masivaCuentas" class="mt-3 d-none"></div>
                         <div id="masivaError" class="text-danger small mt-2" role="alert"></div>
                     </div>
                     <div class="modal-footer">
@@ -1040,12 +1042,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalMasiva = document.getElementById('modalAsignacionMasiva');
     const formMasiva = document.getElementById('formAsignacionMasiva');
     if (modalMasiva && formMasiva) {
-        const tipo = document.getElementById('masivaTipo');
-        const usuario = document.getElementById('masivaUsuario');
+        const abrirEstados = document.getElementById('masivaAbrirEstados');
+        const listaEstados = document.getElementById('masivaListaEstados');
         const estados = document.getElementById('masivaEstados');
         const cuentas = document.getElementById('masivaCuentas');
         const error = document.getElementById('masivaError');
         const todos = document.getElementById('masivaSeleccionarTodos');
+        const secciones = Array.from(formMasiva.querySelectorAll('[data-masiva-seccion]'));
         let opciones = null;
 
         const opcion = function (valor, etiqueta) {
@@ -1057,16 +1060,44 @@ document.addEventListener('DOMContentLoaded', function () {
         const elegidos = function () {
             return Array.from(estados.querySelectorAll('input[name="estados[]"]:checked'));
         };
+        const usuariosElegidos = function (tipo) {
+            const seccion = secciones.find(function (item) {
+                return item.dataset.masivaSeccion === tipo;
+            });
+            return Array.from(seccion.querySelectorAll('[data-masiva-personas] select'))
+                .filter(function (select) { return select.value !== ''; })
+                .map(function (select) {
+                    return {id: select.value, nombre: select.selectedOptions[0].textContent};
+                });
+        };
+        const actualizarResumenEstados = function () {
+            const total = elegidos().length;
+            abrirEstados.textContent = total
+                ? total + (total === 1 ? ' estado seleccionado' : ' estados seleccionados')
+                : 'Seleccionar estados';
+            const cantidad = estados.querySelectorAll('input[name="estados[]"]').length;
+            todos.textContent = total && total === cantidad
+                ? 'Quitar selección' : 'Seleccionar todos';
+        };
         const actualizarCuentas = function () {
+            const anteriores = {};
+            cuentas.querySelectorAll('select').forEach(function (selector) {
+                anteriores[selector.name] = selector.value;
+            });
             cuentas.replaceChildren();
-            cuentas.classList.toggle('d-none', tipo.value !== 'ANALISTA_DATOS');
-            if (tipo.value !== 'ANALISTA_DATOS' || !opciones) return;
+            const analistas = usuariosElegidos('ANALISTA_DATOS');
+            cuentas.classList.toggle('d-none', !analistas.length);
+            if (!analistas.length || !opciones) return;
+            const titulo = document.createElement('h6');
+            titulo.className = 'mb-2';
+            titulo.textContent = 'Cuenta Clave correspondiente a los Analistas';
+            cuentas.appendChild(titulo);
             elegidos().forEach(function (entrada) {
                 const fila = document.createElement('div');
                 fila.className = 'mb-2';
                 const etiqueta = document.createElement('label');
                 etiqueta.className = 'form-label small mb-1';
-                etiqueta.textContent = 'Cuenta Clave en ' + entrada.dataset.nombre;
+                etiqueta.textContent = entrada.dataset.nombre;
                 const selector = document.createElement('select');
                 selector.className = 'form-select form-select-sm';
                 selector.name = 'cuentas_por_estado[' + entrada.value + ']';
@@ -1078,30 +1109,74 @@ document.addEventListener('DOMContentLoaded', function () {
                     selector.appendChild(opcion(cuenta.id,
                         (cuenta.nombre + ' ' + cuenta.apellidos).trim()));
                 });
+                usuariosElegidos('CUENTA_CLAVE').forEach(function (persona) {
+                    selector.appendChild(opcion('nuevo:' + persona.id,
+                        persona.nombre + ' (se asignará ahora)'));
+                });
                 if (selector.options.length === 1) {
                     selector.options[0].textContent = 'Sin Cuenta Clave vigente';
                 }
+                selector.value = anteriores[selector.name] || '';
                 fila.append(etiqueta, selector);
                 cuentas.appendChild(fila);
             });
         };
-        const actualizarUsuarios = function () {
-            usuario.replaceChildren(opcion('', 'Seleccionar usuario'));
-            (opciones?.usuarios?.[tipo.value] || []).forEach(function (persona) {
-                usuario.appendChild(opcion(persona.id,
+        const agregarPersona = function (seccion) {
+            if (!opciones) return;
+            const tipo = seccion.dataset.masivaSeccion;
+            const fila = document.createElement('div');
+            fila.className = 'd-flex gap-2 mb-2';
+            const selector = document.createElement('select');
+            selector.className = 'form-select';
+            selector.name = 'usuarios[' + tipo + '][]';
+            selector.required = true;
+            selector.appendChild(opcion('', 'Seleccionar usuario'));
+            opciones.usuarios[tipo].forEach(function (persona) {
+                selector.appendChild(opcion(persona.id,
                     (persona.nombre + ' ' + persona.apellidos).trim()));
             });
-            usuario.disabled = !tipo.value || !opciones;
-            actualizarCuentas();
+            const quitar = document.createElement('button');
+            quitar.type = 'button';
+            quitar.className = 'btn btn-system-cancel';
+            quitar.setAttribute('aria-label', 'Quitar persona');
+            quitar.innerHTML = '<i class="bi bi-x-lg"></i>';
+            quitar.addEventListener('click', function () {
+                fila.remove();
+                actualizarCuentas();
+            });
+            fila.append(selector, quitar);
+            seccion.querySelector('[data-masiva-personas]').appendChild(fila);
+            selector.focus();
         };
+
+        abrirEstados.addEventListener('click', function () {
+            listaEstados.hidden = !listaEstados.hidden;
+            abrirEstados.setAttribute('aria-expanded', String(!listaEstados.hidden));
+        });
+        secciones.forEach(function (seccion) {
+            seccion.querySelector('[data-masiva-agregar]').addEventListener('click', function () {
+                agregarPersona(seccion);
+            });
+        });
+        formMasiva.addEventListener('change', function (evento) {
+            if (evento.target.name && evento.target.name.startsWith('usuarios[')) {
+                actualizarCuentas();
+            }
+        });
 
         modalMasiva.addEventListener('show.bs.modal', async function () {
             formMasiva.reset();
+            secciones.forEach(function (seccion) {
+                seccion.querySelector('[data-masiva-personas]').replaceChildren();
+            });
+            listaEstados.hidden = true;
+            abrirEstados.setAttribute('aria-expanded', 'false');
+            abrirEstados.textContent = 'Seleccionar estados';
             error.textContent = '';
             todos.textContent = 'Seleccionar todos';
             estados.textContent = 'Cargando estados...';
             opciones = null;
-            actualizarUsuarios();
+            actualizarCuentas();
             try {
                 const respuesta = await fetch(baseUrl + '?controller=territorio&action=opcionesAsignacionMasiva',
                     {headers: {'X-Requested-With': 'fetch'}, cache: 'no-store'});
@@ -1121,19 +1196,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     fila.append(entrada, document.createTextNode(estado.nombre));
                     estados.appendChild(fila);
                 });
-                actualizarUsuarios();
+                actualizarResumenEstados();
             } catch (fallo) {
                 estados.textContent = 'No fue posible cargar los estados.';
                 error.textContent = fallo.message;
             }
         });
-        tipo.addEventListener('change', actualizarUsuarios);
-        estados.addEventListener('change', actualizarCuentas);
+        estados.addEventListener('change', function () {
+            actualizarResumenEstados();
+            actualizarCuentas();
+        });
         todos.addEventListener('click', function () {
             const entradas = estados.querySelectorAll('input[name="estados[]"]');
+            if (!entradas.length) return;
             const seleccionar = elegidos().length !== entradas.length;
             entradas.forEach(function (entrada) { entrada.checked = seleccionar; });
-            todos.textContent = seleccionar ? 'Quitar selección' : 'Seleccionar todos';
+            actualizarResumenEstados();
             actualizarCuentas();
         });
         formMasiva.addEventListener('submit', async function (evento) {
@@ -1141,6 +1219,12 @@ document.addEventListener('DOMContentLoaded', function () {
             error.textContent = '';
             if (!elegidos().length) {
                 error.textContent = 'Selecciona al menos un estado.';
+                return;
+            }
+            if (!secciones.some(function (seccion) {
+                return seccion.querySelector('[data-masiva-personas] select');
+            })) {
+                error.textContent = 'Agrega al menos una persona.';
                 return;
             }
             const boton = formMasiva.querySelector('[type="submit"]');
