@@ -24,11 +24,11 @@ final class EmbudoComercialV3InscripcionService
         }
     }
 
-    private function asignacion(int $usuario,int $asignacion,bool $bloquear): array
+    private function asignacion(int $usuario,int $asignacion,bool $bloquear,string $etapa='PROCESO_INSCRIPCION'): array
     {
         if ($asignacion<1) throw new DomainException('Asignación comercial inválida.');
         $sql="SELECT a.id,a.prospecto_id,a.asesor_id,a.vigente,a.asignado_at,
-                 p.correo,p.telefono_normalizado,
+                 p.correo,p.telefono_normalizado,e.actualizado_at inicio_tramite,
                  COALESCE(e.etapa,'NUEVO') etapa,
                  s.subetapa
               FROM prospecto_asignaciones a
@@ -44,13 +44,55 @@ final class EmbudoComercialV3InscripcionService
         } finally {$st->close();}
         if (!$row || (int)$row['asesor_id']!==$usuario ||
             (int)$row['vigente']!==1 ||
-            (string)$row['etapa']!=='POTENCIAL') {
-            throw new DomainException('Solo puedes revisar solicitudes de tus Potenciales vigentes.');
+            (string)$row['etapa']!==$etapa) {
+            throw new DomainException('La asignación debe estar vigente, pertenecer a tu cuenta y estar en la etapa correspondiente.');
         }
         if ((string)($row['subetapa']??'')==='NO_CONTACTAR') {
             throw new DomainException('La solicitud requiere revisión institucional por restricción No contactar.');
         }
         return $row;
+    }
+
+    public function iniciar(int $usuario,int $asignacion,bool $documentos,bool $comprobante): void
+    {
+        self::autorizado($usuario);
+        if (!$documentos || !$comprobante) {
+            throw new DomainException('Confirma que tienes los documentos listos y que recibiste el comprobante.');
+        }
+        $this->db->begin_transaction();
+        try {
+            $a=$this->asignacion($usuario,$asignacion,true,'POTENCIAL');
+            self::identidad($a);
+            $s=$this->db->prepare("UPDATE prospecto_embudo_etapas
+                SET etapa='PROCESO_INSCRIPCION',cambiado_por=?,actualizado_at=UTC_TIMESTAMP()
+                WHERE asignacion_id=?");
+            $s->bind_param('ii',$usuario,$asignacion);
+            $s->execute();$s->close();
+            $s=$this->db->prepare("INSERT INTO prospecto_embudo_subetapas
+                (asignacion_id,subetapa,actualizado_por,actualizado_at,version)
+                VALUES (?,'SOLICITUD_INICIADA',?,UTC_TIMESTAMP(),1)
+                ON DUPLICATE KEY UPDATE subetapa=VALUES(subetapa),actualizado_por=VALUES(actualizado_por),
+                actualizado_at=VALUES(actualizado_at),version=version+1");
+            $s->bind_param('ii',$asignacion,$usuario);
+            $s->execute();$s->close();
+            $s=$this->db->prepare("INSERT INTO prospecto_embudo_movimientos
+                (asignacion_id,etapa_anterior,etapa_nueva,motivo,usuario_id,creado_at)
+                VALUES (?,'POTENCIAL','PROCESO_INSCRIPCION',
+                'Documentos listos y comprobante recibido por el asesor.',?,UTC_TIMESTAMP())");
+            $s->bind_param('ii',$asignacion,$usuario);
+            $s->execute();$s->close();
+            $previa=$a['subetapa'];
+            $s=$this->db->prepare("INSERT INTO prospecto_embudo_subetapas_historial
+                (asignacion_id,etapa_en_evento,subetapa_anterior,subetapa_nueva,motivo,origen,usuario_id,creado_at)
+                VALUES (?,'PROCESO_INSCRIPCION',?,'SOLICITUD_INICIADA',
+                'Documentos listos y comprobante recibido.','ASESOR_V3',?,UTC_TIMESTAMP())");
+            $s->bind_param('isi',$asignacion,$previa,$usuario);
+            $s->execute();$s->close();
+            $this->db->commit();
+        } catch (Throwable $e) {
+            $this->db->rollback();
+            throw $e;
+        }
     }
 
     /** El formulario público histórico solo admite móvil mexicano de 10 dígitos. */
@@ -75,8 +117,7 @@ final class EmbudoComercialV3InscripcionService
     private function candidatas(array $a): array
     {
         [$movil,$correo]=self::identidad($a);
-        // Se descarta cualquier solicitud anterior a la asignación actual,
-        // dejando un margen de seis horas por diferencias de zona horaria.
+        // Solo se vinculan solicitudes recibidas desde que inició el trámite.
         $sql="SELECT f.id,f.created_at,EXISTS (
                   SELECT 1 FROM formulario_inscripciones_completas c
                   WHERE c.inscripcion_id=f.id
@@ -84,12 +125,12 @@ final class EmbudoComercialV3InscripcionService
               FROM formulario_inscripciones f
               WHERE BINARY f.movil=BINARY ?
                 AND LOWER(TRIM(f.correo))=?
-                AND f.created_at>=DATE_SUB(?,INTERVAL 6 HOUR)
+                AND f.created_at>=?
               ORDER BY f.created_at DESC,f.id DESC
               LIMIT 2";
         $st=$this->db->prepare($sql);
         try {
-            $fecha=(string)$a['asignado_at'];
+            $fecha=(string)$a['inicio_tramite'];
             $st->bind_param('sss',$movil,$correo,$fecha);
             $st->execute();
             return $st->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -157,49 +198,19 @@ final class EmbudoComercialV3InscripcionService
             $st->execute();$st->close();
 
             $nuevo='PROCESO_INSCRIPCION';
-            $previo='POTENCIAL';
-            $razon=mb_substr('Solicitud institucional #'.$formularioId.
-                ' verificada: '.$motivo,0,190);
-
-            $st=$this->db->prepare(
-                "INSERT INTO prospecto_embudo_etapas
-                    (asignacion_id,etapa,cambiado_por,actualizado_at)
-                 VALUES (?,?,?,UTC_TIMESTAMP())
-                 ON DUPLICATE KEY UPDATE etapa=VALUES(etapa),
-                   cambiado_por=VALUES(cambiado_por),
-                   actualizado_at=VALUES(actualizado_at)");
-            $st->bind_param('isi',$asignacion,$nuevo,$usuario);
-            $st->execute();$st->close();
-
-            $subAnterior=$a['subetapa'];
-            $subNueva='SOLICITUD_INICIADA';
-            $st=$this->db->prepare(
-                "INSERT INTO prospecto_embudo_subetapas
-                    (asignacion_id,subetapa,actualizado_por,actualizado_at,version)
-                 VALUES (?,?,?,UTC_TIMESTAMP(),1)
-                 ON DUPLICATE KEY UPDATE subetapa=VALUES(subetapa),
-                    actualizado_por=VALUES(actualizado_por),
-                    actualizado_at=VALUES(actualizado_at),version=version+1");
-            $st->bind_param('isi',$asignacion,$subNueva,$usuario);
-            $st->execute();$st->close();
-
-            $st=$this->db->prepare(
-                "INSERT INTO prospecto_embudo_subetapas_historial
-                    (asignacion_id,etapa_en_evento,subetapa_anterior,subetapa_nueva,
-                     motivo,origen,usuario_id,creado_at)
-                 VALUES (?,?,?,?,?,'ASESOR_V3',?,UTC_TIMESTAMP())");
-            $st->bind_param('issssi',$asignacion,$nuevo,$subAnterior,$subNueva,$razon,$usuario);
-            $st->execute();$st->close();
-
-            $st=$this->db->prepare(
-                "INSERT INTO prospecto_embudo_movimientos
-                    (asignacion_id,etapa_anterior,etapa_nueva,motivo,usuario_id,creado_at)
-                 VALUES (?,?,?,?,?,UTC_TIMESTAMP())");
-            $st->bind_param('isssi',$asignacion,$previo,$nuevo,$razon,$usuario);
+            $razon=mb_substr('Formulario completo #'.$formularioId.' recibido: '.$motivo,0,190);
+            $st=$this->db->prepare("INSERT INTO prospecto_embudo_movimientos
+                (asignacion_id,etapa_anterior,etapa_nueva,motivo,usuario_id,creado_at)
+                VALUES (?,'PROCESO_INSCRIPCION','PROCESO_INSCRIPCION',?,?,UTC_TIMESTAMP())");
+            $st->bind_param('isi',$asignacion,$razon,$usuario);
             $st->execute();$mov=(int)$this->db->insert_id;$st->close();
+            $st=$this->db->prepare("UPDATE prospecto_asignaciones
+                SET vigente=NULL,finalizado_at=UTC_TIMESTAMP() WHERE id=? AND vigente=1");
+            $st->bind_param('i',$asignacion);
+            $st->execute();$st->close();
             $this->db->commit();
             return [
-                'etapa'=>$nuevo,'subetapa'=>$subNueva,
+                'etapa'=>$nuevo,'finalizada'=>true,
                 'movimiento_id'=>$mov,'formulario_inscripcion_id'=>$formularioId
             ];
         } catch (Throwable $e) {

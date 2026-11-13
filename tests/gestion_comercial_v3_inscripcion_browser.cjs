@@ -6,7 +6,7 @@ const app='http://inscripciones-v3.test';
 const js=path.join(__dirname,'../public/javascript/embudo_comercial_v3_inscripcion.js');
 const html=`<!doctype html><html><head><meta charset="utf-8"></head><body>
 <main class="impe-embudo--v3-operativo">
-  <article data-asignacion-id="101" data-etapa="POTENCIAL" data-v3-subetapa="CALIFICADO"
+  <article data-asignacion-id="101" data-etapa="PROCESO_INSCRIPCION" data-v3-subetapa="SOLICITUD_INICIADA"
      data-nombre="Prospecto sintético"><button data-v3i-iniciar>Verificar inscripción</button></article>
   <article data-asignacion-id="102" data-etapa="POTENCIAL" data-v3-subetapa="NO_CONTACTAR">
      <button data-v3i-iniciar>Inscripción bloqueada</button></article>
@@ -17,6 +17,11 @@ const html=`<!doctype html><html><head><meta charset="utf-8"></head><body>
       <header><h3>Inscripción institucional</h3>
        <button type="button" data-v3i-cerrar>Cerrar</button></header>
       <p id="impe-v3i-datos"></p>
+      <section data-v3i-preparar hidden>
+        <input type="checkbox" name="documentos"><input type="checkbox" name="comprobante">
+        <button type="button" data-v3i-arrancar>Iniciar inscripción</button>
+      </section>
+      <p data-v3i-ligas hidden></p>
       <button type="button" data-v3i-buscar>Buscar solicitud recibida</button>
       <p data-v3i-estado role="status"></p>
       <section data-v3i-confirmar hidden>

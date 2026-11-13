@@ -70,12 +70,36 @@
     }
     return data;
   };
+  const preparar=form.querySelector('[data-v3i-preparar]');
+  const ligas=form.querySelector('[data-v3i-ligas]');
+  const arrancar=form.querySelector('[data-v3i-arrancar]');
+  if(!preparar||!ligas||!arrancar)return;
+  arrancar.addEventListener('click',async()=>{
+    if(!seleccion||busy)return;
+    limpiar();
+    if(!form.elements.documentos.checked||!form.elements.comprobante.checked){
+      mostrarError('Confirma los documentos y el comprobante recibido.');
+      return;
+    }
+    busy=true;
+    arrancar.disabled=true;
+    try{
+      await post({operacion:'INICIAR',asignacion_id:seleccion.asignacion,
+        documentos:'1',comprobante:'1'});
+      preparar.hidden=true;
+      ligas.hidden=false;
+      buscar.hidden=false;
+      estado.textContent='Proceso iniciado. Comparte la liga del programa y busca la solicitud cuando se reciba.';
+    }catch(ex){
+      mostrarError(ex.message);
+    }finally{busy=false;arrancar.disabled=false;}
+  });
   root.addEventListener('click',e=>{
     const btn=e.target.closest('[data-v3i-iniciar]');
     if(!btn || !root.contains(btn) || busy)return;
     const card=btn.closest('[data-asignacion-id][data-etapa]');
     const asignacion=String(card?.dataset.asignacionId||'');
-    if(!card || card.dataset.etapa!=='POTENCIAL' ||
+    if(!card || !['POTENCIAL','PROCESO_INSCRIPCION'].includes(card.dataset.etapa) ||
        card.dataset.v3Subetapa==='NO_CONTACTAR' ||
        !/^[1-9][0-9]*$/.test(asignacion) ||currentUser<1)return;
     form.reset();
@@ -85,9 +109,14 @@
     buscar.disabled=false;
     seleccion={asignacion,formulario:0};
     datos.textContent=String(card.dataset.nombre||'Prospecto');
-    estado.textContent='Verifica si existe una solicitud recibida. No se crearán formularios ni pagos.';
+    const iniciar=card.dataset.etapa==='POTENCIAL';
+    preparar.hidden=!iniciar;
+    ligas.hidden=iniciar;
+    buscar.hidden=iniciar;
+    estado.textContent=iniciar?'Confirma los requisitos antes de compartir la liga.':
+      'Comparte la liga del programa. Busca la solicitud cuando el prospecto confirme que la envió.';
     dialog.showModal();
-    buscar.focus();
+    (iniciar?arrancar:buscar).focus();
   });
   form.querySelectorAll('[data-v3i-cerrar]').forEach(btn=>{
     btn.addEventListener('click',()=>{if(!busy)dialog.close();});

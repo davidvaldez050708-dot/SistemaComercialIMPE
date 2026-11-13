@@ -157,11 +157,11 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                         <i class="bi bi-journal-check" aria-hidden="true"></i> <span>Mis llamadas</span>
                     </a>
                     <?php endif; ?>
-                    <?php if($puedeMover && $etapa==='POTENCIAL' && $st!=='NO_CONTACTAR'): ?>
+                    <?php if($puedeMover && in_array($etapa,['POTENCIAL','PROCESO_INSCRIPCION'],true) && $st!=='NO_CONTACTAR'): ?>
                     <button type="button" class="impe-v3o-accion" data-v3i-iniciar
                         title="Vincular solicitud real de inscripción"
                         aria-label="Verificar solicitud institucional de inscripción">
-                        <i class="bi bi-file-earmark-check" aria-hidden="true"></i> <span>Vincular inscripción</span>
+                        <i class="bi bi-file-earmark-check" aria-hidden="true"></i> <span><?= $etapa==='POTENCIAL'?'Iniciar inscripción':'Gestionar inscripción' ?></span>
                     </button>
                     <?php endif; ?>
                     <?php if($puedeMover && $etapa==='POTENCIAL'): ?>

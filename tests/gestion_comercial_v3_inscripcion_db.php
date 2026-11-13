@@ -38,8 +38,8 @@ try {
         telefono_normalizado VARCHAR(24) NULL) ENGINE=InnoDB",
       "CREATE TABLE prospecto_asignaciones(
         id BIGINT UNSIGNED PRIMARY KEY, prospecto_id BIGINT UNSIGNED NOT NULL,
-        asesor_id INT NOT NULL,vigente TINYINT NOT NULL,
-        asignado_at DATETIME NOT NULL) ENGINE=InnoDB",
+        asesor_id INT NOT NULL,vigente TINYINT NULL,
+        asignado_at DATETIME NOT NULL, finalizado_at DATETIME NULL) ENGINE=InnoDB",
       "CREATE TABLE formulario_inscripciones(
         id INT UNSIGNED PRIMARY KEY, movil VARCHAR(10) NOT NULL,
         correo VARCHAR(190) NOT NULL, created_at DATETIME NOT NULL) ENGINE=InnoDB",
@@ -70,7 +70,7 @@ try {
         (5,'sin.formulario@impe.test','+527771114444'),
         (6,'ambiguo@impe.test','+527771117777'),
         (7,'fase.nueva@impe.test','+527771118888')");
-    $db->query("INSERT INTO prospecto_asignaciones VALUES
+    $db->query("INSERT INTO prospecto_asignaciones (id,prospecto_id,asesor_id,vigente,asignado_at) VALUES
       (101,1,8,1,UTC_TIMESTAMP()-INTERVAL 1 DAY),
       (102,2,8,1,UTC_TIMESTAMP()-INTERVAL 1 DAY),
       (103,3,9,1,UTC_TIMESTAMP()-INTERVAL 1 DAY),
@@ -88,6 +88,13 @@ try {
       (107,'NUEVO',8,UTC_TIMESTAMP())");
     $db->query("INSERT INTO prospecto_embudo_subetapas VALUES
       (102,'NO_CONTACTAR',8,UTC_TIMESTAMP(),1)");
+    $svc=new EmbudoComercialV3InscripcionService($db);
+    rechazarInscripcion(static function()use($svc){
+        $svc->iniciar(8,101,true,false);
+    },'el asesor debe confirmar recepción del comprobante');
+    foreach ([101,104,106] as $id) $svc->iniciar(8,$id,true,true);
+    probarInscripcion($svc->candidato(8,101)['estado']==='SIN_SOLICITUD',
+        'el trámite inicia antes de recibir el formulario');
     $db->query("INSERT INTO formulario_inscripciones VALUES
       (501,'7771234567','asesor@impe.test',UTC_TIMESTAMP()),
       (502,'7771115555','bloqueado@impe.test',UTC_TIMESTAMP()),
@@ -108,8 +115,8 @@ try {
         $candidate['formulario_id']===501,'evidencia exacta de teléfono y correo');
     probarInscripcion($svc->candidato(8,106)['estado']==='REVISION_INSTITUCIONAL',
         'solicitudes ambiguas requieren conciliación');
-    probarInscripcion($svc->candidato(8,105)['estado']==='SIN_SOLICITUD',
-        'correo distinto no vincula por teléfono');
+    probarInscripcion($svc->candidato(8,104)['estado']==='CANDIDATA',
+        'la coincidencia se comprueba por identidad');
 
     rechazarInscripcion(static function()use($svc){
         $svc->candidato(8,103);
@@ -130,9 +137,11 @@ try {
     $result=$svc->vincular(8,101,501,
         'Solicitud institucional recibida y verificada',true);
     probarInscripcion($result['etapa']==='PROCESO_INSCRIPCION' &&
-        $result['subetapa']==='SOLICITUD_INICIADA' &&
+        $result['finalizada']===true &&
         $result['formulario_inscripcion_id']===501,
         'transición acreditada con ID institucional');
+    probarInscripcion($db->query('SELECT vigente,finalizado_at FROM prospecto_asignaciones WHERE id=101')
+        ->fetch_assoc()['vigente']===null,'la ficha sale de las asignaciones activas');
     $estado=$db->query("SELECT e.etapa,s.subetapa
        FROM prospecto_embudo_etapas e
        JOIN prospecto_embudo_subetapas s ON s.asignacion_id=e.asignacion_id
@@ -149,7 +158,7 @@ try {
         WHERE asignacion_id=101")->fetch_assoc()['total'];
     $h=(int)$db->query("SELECT COUNT(*) total FROM prospecto_embudo_subetapas_historial
         WHERE asignacion_id=101")->fetch_assoc()['total'];
-    probarInscripcion($n===1&&$h===1,'movimiento y subetapa auditados una vez');
+    probarInscripcion($n===2&&$h===1,'movimiento y subetapa auditados una vez');
     rechazarInscripcion(static function()use($svc){
         $svc->vincular(8,101,501,'Doble envío de la misma inscripción',true);
     },'no duplicar por repetir confirmación');
@@ -157,7 +166,7 @@ try {
         $svc->vincular(8,104,501,'Intento con otra asignación idéntica',true);
     },'un formulario no puede vincularse a dos prospectos');
     probarInscripcion($db->query("SELECT etapa FROM prospecto_embudo_etapas
-         WHERE asignacion_id=104")->fetch_assoc()['etapa']==='POTENCIAL',
+         WHERE asignacion_id=104")->fetch_assoc()['etapa']==='PROCESO_INSCRIPCION',
         'un conflicto hace rollback completo');
 
     echo "CHECK_OK: solicitud institucional real, identidad, permisos, No contactar, auditoría, unicidad y rollback.\n";
