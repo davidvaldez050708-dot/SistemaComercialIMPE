@@ -252,9 +252,15 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
             Estados registrados
         </h2>
 
-        <span class="territory-count">
-            <?= count($estados) ?> resultados
-        </span>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <?php if ($puedeAsignarTerritorio): ?>
+                <button type="button" class="btn btn-system-save" data-bs-toggle="modal"
+                    data-bs-target="#modalAsignacionMasiva">
+                    <i class="bi bi-person-plus me-2"></i>Asignar a varios estados
+                </button>
+            <?php endif; ?>
+            <span class="territory-count"><?= count($estados) ?> resultados</span>
+        </div>
     </div>
 
     <div id="territoriosTablaContenido">
@@ -295,6 +301,54 @@ $valorForm = function ($campo) use ($datosFormulario, $texto) {
 </div>
 
 <?php if ($puedeAsignarTerritorio): ?>
+
+    <div class="modal fade" id="modalAsignacionMasiva" tabindex="-1"
+        aria-labelledby="modalAsignacionMasivaTitulo" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable system-form-dialog">
+            <div class="modal-content system-form-modal">
+                <form id="formAsignacionMasiva" action="<?= BASE_URL ?>index.php?controller=territorio&amp;action=guardarAsignacionMasiva" method="post">
+                    <div class="modal-header system-form-modal-header">
+                        <div>
+                            <h5 class="system-form-modal-title" id="modalAsignacionMasivaTitulo">Asignar a varios estados</h5>
+                            <p class="system-form-modal-subtitle">Selecciona una persona y los estados que atenderá.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="<?= $texto($_SESSION['csrf_token'] ?? '') ?>">
+                        <div class="mb-3">
+                            <label class="form-label" for="masivaTipo">Tipo de asignación</label>
+                            <select class="form-select" id="masivaTipo" name="tipo_asignacion" required>
+                                <option value="">Seleccionar tipo</option>
+                                <option value="CUENTA_CLAVE">Cuenta Clave</option>
+                                <option value="ANALISTA_DATOS">Analista de Datos</option>
+                                <option value="ASESOR">Asesor</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="masivaUsuario">Usuario</label>
+                            <select class="form-select" id="masivaUsuario" name="usuario_id" required disabled>
+                                <option value="">Selecciona primero el tipo</option>
+                            </select>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="form-label mb-0">Estados</span>
+                            <button type="button" class="btn btn-link btn-sm" id="masivaSeleccionarTodos">Seleccionar todos</button>
+                        </div>
+                        <div id="masivaEstados" class="border rounded p-2 overflow-auto" style="max-height: 250px;">
+                            <span class="text-muted">Cargando estados...</span>
+                        </div>
+                        <div id="masivaCuentas" class="mt-3 d-none"></div>
+                        <div id="masivaError" class="text-danger small mt-2" role="alert"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-system-cancel" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-system-save">Guardar asignación</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <div
         class="modal fade"
@@ -982,6 +1036,139 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         instancia.show();
     };
+
+    const modalMasiva = document.getElementById('modalAsignacionMasiva');
+    const formMasiva = document.getElementById('formAsignacionMasiva');
+    if (modalMasiva && formMasiva) {
+        const tipo = document.getElementById('masivaTipo');
+        const usuario = document.getElementById('masivaUsuario');
+        const estados = document.getElementById('masivaEstados');
+        const cuentas = document.getElementById('masivaCuentas');
+        const error = document.getElementById('masivaError');
+        const todos = document.getElementById('masivaSeleccionarTodos');
+        let opciones = null;
+
+        const opcion = function (valor, etiqueta) {
+            const elemento = document.createElement('option');
+            elemento.value = valor;
+            elemento.textContent = etiqueta;
+            return elemento;
+        };
+        const elegidos = function () {
+            return Array.from(estados.querySelectorAll('input[name="estados[]"]:checked'));
+        };
+        const actualizarCuentas = function () {
+            cuentas.replaceChildren();
+            cuentas.classList.toggle('d-none', tipo.value !== 'ANALISTA_DATOS');
+            if (tipo.value !== 'ANALISTA_DATOS' || !opciones) return;
+            elegidos().forEach(function (entrada) {
+                const fila = document.createElement('div');
+                fila.className = 'mb-2';
+                const etiqueta = document.createElement('label');
+                etiqueta.className = 'form-label small mb-1';
+                etiqueta.textContent = 'Cuenta Clave en ' + entrada.dataset.nombre;
+                const selector = document.createElement('select');
+                selector.className = 'form-select form-select-sm';
+                selector.name = 'cuentas_por_estado[' + entrada.value + ']';
+                selector.required = true;
+                selector.appendChild(opcion('', 'Seleccionar Cuenta Clave'));
+                opciones.cuentas.filter(function (cuenta) {
+                    return String(cuenta.estado_id) === entrada.value;
+                }).forEach(function (cuenta) {
+                    selector.appendChild(opcion(cuenta.id,
+                        (cuenta.nombre + ' ' + cuenta.apellidos).trim()));
+                });
+                if (selector.options.length === 1) {
+                    selector.options[0].textContent = 'Sin Cuenta Clave vigente';
+                }
+                fila.append(etiqueta, selector);
+                cuentas.appendChild(fila);
+            });
+        };
+        const actualizarUsuarios = function () {
+            usuario.replaceChildren(opcion('', 'Seleccionar usuario'));
+            (opciones?.usuarios?.[tipo.value] || []).forEach(function (persona) {
+                usuario.appendChild(opcion(persona.id,
+                    (persona.nombre + ' ' + persona.apellidos).trim()));
+            });
+            usuario.disabled = !tipo.value || !opciones;
+            actualizarCuentas();
+        };
+
+        modalMasiva.addEventListener('show.bs.modal', async function () {
+            formMasiva.reset();
+            error.textContent = '';
+            todos.textContent = 'Seleccionar todos';
+            estados.textContent = 'Cargando estados...';
+            opciones = null;
+            actualizarUsuarios();
+            try {
+                const respuesta = await fetch(baseUrl + '?controller=territorio&action=opcionesAsignacionMasiva',
+                    {headers: {'X-Requested-With': 'fetch'}, cache: 'no-store'});
+                const datos = await respuesta.json();
+                if (!respuesta.ok || !datos.ok) throw new Error('No fue posible consultar las opciones.');
+                opciones = datos.opciones;
+                estados.replaceChildren();
+                opciones.estados.forEach(function (estado) {
+                    const fila = document.createElement('label');
+                    fila.className = 'd-flex align-items-center gap-2 px-2 py-1';
+                    const entrada = document.createElement('input');
+                    entrada.type = 'checkbox';
+                    entrada.name = 'estados[]';
+                    entrada.value = estado.id;
+                    entrada.dataset.nombre = estado.nombre;
+                    entrada.className = 'form-check-input mt-0';
+                    fila.append(entrada, document.createTextNode(estado.nombre));
+                    estados.appendChild(fila);
+                });
+                actualizarUsuarios();
+            } catch (fallo) {
+                estados.textContent = 'No fue posible cargar los estados.';
+                error.textContent = fallo.message;
+            }
+        });
+        tipo.addEventListener('change', actualizarUsuarios);
+        estados.addEventListener('change', actualizarCuentas);
+        todos.addEventListener('click', function () {
+            const entradas = estados.querySelectorAll('input[name="estados[]"]');
+            const seleccionar = elegidos().length !== entradas.length;
+            entradas.forEach(function (entrada) { entrada.checked = seleccionar; });
+            todos.textContent = seleccionar ? 'Quitar selección' : 'Seleccionar todos';
+            actualizarCuentas();
+        });
+        formMasiva.addEventListener('submit', async function (evento) {
+            evento.preventDefault();
+            error.textContent = '';
+            if (!elegidos().length) {
+                error.textContent = 'Selecciona al menos un estado.';
+                return;
+            }
+            const boton = formMasiva.querySelector('[type="submit"]');
+            boton.disabled = true;
+            try {
+                const respuesta = await fetch(formMasiva.action, {
+                    method: 'POST',
+                    headers: {'X-Requested-With': 'fetch'},
+                    body: new FormData(formMasiva)
+                });
+                const datos = await respuesta.json();
+                if (!respuesta.ok || !datos.ok) {
+                    error.textContent = datos.mensaje || 'No fue posible guardar la asignación.';
+                    mostrarToast(error.textContent, true);
+                    return;
+                }
+                bootstrap.Modal.getInstance(modalMasiva).hide();
+                mostrarToast(datos.mensaje, false);
+                await cargarResumen();
+                await cargarTabla();
+            } catch (fallo) {
+                error.textContent = 'No fue posible comunicar con el servidor.';
+                mostrarToast(error.textContent, true);
+            } finally {
+                boton.disabled = false;
+            }
+        });
+    }
 
     const limpiarErroresFormulario = function (formulario) {
         formulario.querySelectorAll('.is-invalid').forEach(function (campo) {

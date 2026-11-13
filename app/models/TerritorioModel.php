@@ -169,6 +169,31 @@ class TerritorioModel
         return $this->buscarEstados($filtros);
     }
 
+    public function opcionesAsignacionMasiva()
+    {
+        $estados = $this->convertirResultadoEnArreglo($this->connection->query(
+            'SELECT id, nombre FROM estados WHERE estado = 1 ORDER BY nombre'
+        ));
+        $cuentas = $this->convertirResultadoEnArreglo($this->connection->query(
+            "SELECT a.id, a.estado_id, u.nombre, u.apellidos
+             FROM asignaciones_territorio a
+             INNER JOIN usuarios u ON u.id = a.usuario_id
+             WHERE a.tipo_asignacion = 'CUENTA_CLAVE' AND a.activo = 1
+               AND (a.fecha_inicio IS NULL OR a.fecha_inicio <= CURDATE())
+               AND (a.fecha_fin IS NULL OR a.fecha_fin >= CURDATE())
+             ORDER BY u.nombre, u.apellidos"
+        ));
+        return [
+            'estados' => $estados,
+            'cuentas' => $cuentas,
+            'usuarios' => [
+                'CUENTA_CLAVE' => $this->obtenerUsuariosCuentaClave(),
+                'ANALISTA_DATOS' => $this->obtenerUsuariosAnalistas(),
+                'ASESOR' => $this->obtenerUsuariosAsesores()
+            ]
+        ];
+    }
+
     public function obtenerEstadosAsignadosUsuario($usuarioId, $tipoAsignacion)
     {
         $usuarioId = (int)$usuarioId;
@@ -451,6 +476,62 @@ class TerritorioModel
             $this->connection->rollback();
             error_log($error->getMessage());
             return false;
+        }
+    }
+
+    public function crearAsignacionesMasivas($asignaciones, $usuarioAccionId, $validar)
+    {
+        if (!$this->asegurarBitacoraTerritorial()) {
+            throw new RuntimeException('No fue posible preparar la bitácora territorial.');
+        }
+
+        $this->connection->begin_transaction();
+        try {
+            $bloquear = $this->connection->prepare('SELECT id FROM estados WHERE id = ? AND estado = 1 FOR UPDATE');
+            foreach ($asignaciones as $datos) {
+                $bloquear->bind_param('i', $datos['estado_id']);
+                $bloquear->execute();
+                if (!$bloquear->get_result()->fetch_assoc()) {
+                    throw new InvalidArgumentException('Uno de los estados seleccionados ya no está disponible.');
+                }
+            }
+
+            foreach ($asignaciones as $datos) {
+                $errores = $validar($datos);
+                if ($errores) {
+                    throw new InvalidArgumentException(reset($errores));
+                }
+
+                $tipo = $datos['tipo_asignacion'];
+                $cuentaId = $tipo === 'ANALISTA_DATOS'
+                    ? (int)$datos['cuenta_clave_asignacion_id'] : null;
+                $sql = 'INSERT INTO asignaciones_territorio
+                    (estado_id, usuario_id, tipo_asignacion, cuenta_clave_asignacion_id,
+                     es_principal, fecha_inicio, fecha_fin, activo, observaciones)
+                    VALUES (?, ?, ?, ?, 0, ?, NULL, 1, ?)';
+                $stmt = $this->connection->prepare($sql);
+                $stmt->bind_param('iisiss', $datos['estado_id'], $datos['usuario_id'],
+                    $tipo, $cuentaId, $datos['fecha_inicio'], $datos['observaciones']);
+                if (!$stmt->execute()) {
+                    throw new RuntimeException('No fue posible guardar todas las asignaciones.');
+                }
+
+                $detalle = $tipo === 'CUENTA_CLAVE'
+                    ? 'Cuenta Clave asignada al territorio.'
+                    : ($tipo === 'ANALISTA_DATOS'
+                        ? 'Analista asignado al territorio y vinculado a una Cuenta Clave.'
+                        : 'Asesor asignado al territorio.');
+                $this->registrarMovimientoTerritorial((int)$datos['estado_id'],
+                    (int)$this->connection->insert_id, (int)$datos['usuario_id'],
+                    $tipo, 'ASIGNACION', null, $cuentaId,
+                    $datos['fecha_inicio'], $usuarioAccionId, $detalle);
+            }
+
+            $this->connection->commit();
+            return count($asignaciones);
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            throw $error;
         }
     }
 

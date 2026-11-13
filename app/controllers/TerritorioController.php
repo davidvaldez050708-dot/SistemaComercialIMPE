@@ -200,6 +200,68 @@ class TerritorioController
         $this->redirigirATerritorios();
     }
 
+    public function opcionesAsignacionMasiva()
+    {
+        $this->validarPermiso('territorios.asignar');
+        $modelo = new TerritorioModel();
+        $this->responderJson(['ok' => true, 'opciones' => $modelo->opcionesAsignacionMasiva()]);
+    }
+
+    public function guardarAsignacionMasiva()
+    {
+        $this->validarPermiso('territorios.asignar');
+        $this->validarMetodoPost();
+        $token = (string)($_POST['csrf_token'] ?? '');
+        if ($token === '' || empty($_SESSION['csrf_token']) ||
+            !hash_equals((string)$_SESSION['csrf_token'], $token)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'La sesión de seguridad cambió. Recarga la página.'], 419);
+        }
+
+        $ids = $_POST['estados'] ?? [];
+        if (!is_array($ids) || !$ids || count($ids) > 32) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Selecciona entre uno y 32 estados.'], 422);
+        }
+        $ids = array_map('intval', $ids);
+        if (in_array(0, $ids, true) || count($ids) !== count(array_unique($ids))) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Revisa los estados seleccionados.'], 422);
+        }
+        sort($ids, SORT_NUMERIC);
+
+        $modelo = new TerritorioModel();
+        $asignaciones = [];
+        $cuentasPorEstado = $_POST['cuentas_por_estado'] ?? [];
+        foreach ($ids as $estadoId) {
+            $datos = $this->limpiarDatosAsignacion([
+                'estado_id' => $estadoId,
+                'usuario_id' => $_POST['usuario_id'] ?? 0,
+                'tipo_asignacion' => $_POST['tipo_asignacion'] ?? '',
+                'cuenta_clave_asignacion_id' => is_array($cuentasPorEstado)
+                    ? ($cuentasPorEstado[$estadoId] ?? 0) : 0
+            ]);
+            $errores = $this->validarDatosAsignacion($modelo, $datos);
+            if ($errores) {
+                $this->responderJson(['ok' => false, 'mensaje' => reset($errores), 'estado_id' => $estadoId], 422);
+            }
+            $asignaciones[] = $datos;
+        }
+
+        try {
+            $total = $modelo->crearAsignacionesMasivas($asignaciones,
+                (int)($_SESSION['usuario_id'] ?? 0),
+                function ($datos) use ($modelo) {
+                    return $this->validarDatosAsignacion($modelo, $datos);
+                });
+            $this->responderJson(['ok' => true,
+                'mensaje' => 'Asignación guardada en ' . $total . ' estados.']);
+        } catch (InvalidArgumentException $error) {
+            $this->responderJson(['ok' => false, 'mensaje' => $error->getMessage()], 422);
+        } catch (Throwable $error) {
+            error_log('[territorios_asignacion_masiva] ' . get_class($error));
+            $this->responderJson(['ok' => false,
+                'mensaje' => 'No fue posible guardar las asignaciones. No se aplicó ningún cambio.'], 500);
+        }
+    }
+
     public function reasociarAnalistaCuentaClave()
     {
         $this->validarPermiso('territorios.asignar');
