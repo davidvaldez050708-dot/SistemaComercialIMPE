@@ -135,6 +135,7 @@
     return result;
   };
   let reintentoRefresco=0;
+  let recuperacionPorActualizar=false;
   const avisarRecuperacion=()=>{
     const modal=document.getElementById('impe-v3o-recuperacion-aviso');
     if(!modal || document.hidden || telefonoActivo() ||
@@ -145,6 +146,7 @@
          !/^\d{4}-\d{2}-\d{2}$/.test(aviso.revision_fecha))return;
       modal.querySelector('[data-recuperacion-fecha]').textContent=aviso.revision_fecha.split('-').reverse().join('/');
       modal.showModal();
+      recuperacionPorActualizar=true;
       localStorage.removeItem(recuperacionKey);
     }catch(_){}
   };
@@ -154,12 +156,12 @@
     if(refresh || usuarioId<1 || document.hidden)return;
     let info=null;
     try{info=JSON.parse(localStorage.getItem(cambioKey)||'null');}
-    catch(_){return;}
-    if(!info || Number(info.usuarioId)!==usuarioId ||
+    catch(_){}
+    if(!recuperacionPorActualizar && (!info || Number(info.usuarioId)!==usuarioId ||
        !/^[1-9][0-9]*$/.test(String(info.asignacionId||'')) ||
        !Number.isFinite(Number(info.creada)) ||
        Number(info.creada)<=Math.max(vistaCargada,ultimoResultadoVerificado) ||
-       Date.now()-Number(info.creada)>60000) return;
+       Date.now()-Number(info.creada)>60000)) return;
     if(telefonoActivo() || root.querySelector('dialog[open], :popover-open') ||
        document.querySelector('#modalResultadoVenta.show')){
       if(!reintentoRefresco) reintentoRefresco=window.setTimeout(()=>{
@@ -169,7 +171,7 @@
       return;
     }
     refresh=true;
-    const resultado=Number(info.creada);
+    const resultado=Number(info?.creada)||0;
     try{
       for(const espera of [0,500,1500]){
         if(espera)await new Promise(resolve=>window.setTimeout(resolve,espera));
@@ -186,11 +188,13 @@
           if(document.hidden || telefonoActivo() ||
              root.querySelector('dialog[open], :popover-open') ||
              document.querySelector('#modalResultadoVenta.show'))return;
+          recuperacionPorActualizar=false;
           ultimoResultadoVerificado=resultado;
           window.location.reload();
           return;
         }catch(_){/* El tablero visible se conserva durante los reintentos. */}
       }
+      recuperacionPorActualizar=false;
       ultimoResultadoVerificado=resultado;
       mostrarAviso('No se pudo actualizar el tablero. Puedes recargar para consultar los cambios.',undefined,true);
     }finally{

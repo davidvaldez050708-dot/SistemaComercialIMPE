@@ -80,15 +80,15 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
         <a class="impe-embudo-reset" href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>$vista])) ?>">Limpiar</a>
     </form>
+    <?php if (!$recuperacion): ?>
     <div class="impe-v3b-intro">
-        <i class="bi <?= $recuperacion?'bi-shield-check':'bi-shield-lock' ?>" aria-hidden="true"></i>
+        <i class="bi bi-shield-lock" aria-hidden="true"></i>
         <div>
-            <strong><?= $recuperacion?'Revisión de Recuperación':'Descartes y protección de contacto' ?></strong>
-            <p><?= $recuperacion
-                ?'Solo se reactiva con conversación PBX acreditada y confirmación manual. Los registros históricos no se reactivan automáticamente.'
-                :'Los descartados son de consulta y auditoría. «No contactar» requiere protección integral en todos los canales y no se reactiva aquí.' ?></p>
+            <strong>Descartes y protección de contacto</strong>
+            <p>Los descartados son de consulta y auditoría. «No contactar» requiere protección integral en todos los canales y no se reactiva aquí.</p>
         </div>
     </div>
+    <?php endif; ?>
     <div class="impe-embudo-board-info">
         <span><i class="bi bi-people" aria-hidden="true"></i>
             <?= (int)$col['total'] ?> prospectos asignados</span>
