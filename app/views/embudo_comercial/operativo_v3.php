@@ -352,9 +352,17 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         <i class="bi bi-shield-check" aria-hidden="true"></i>
         Recuperación: <?= (int)$tablero['externos']['RECUPERACION'] ?> ·
         Descartados: <?= (int)$tablero['externos']['DESCARTADO'] ?>.
-        Tres intentos PBX permiten solicitar revisión manual; nunca trasladan
-        automáticamente al prospecto. Descartes requieren evidencia acreditada.
+        Tres intentos PBX acreditados sin contacto pueden enviar al prospecto a Recuperación para el día siguiente. Descartes requieren evidencia acreditada.
     </p>
+    <dialog class="impe-embudo-dialog" id="impe-v3o-recuperacion-aviso"
+            aria-labelledby="impe-v3o-recuperacion-aviso-titulo">
+        <form method="dialog">
+            <header><h3 id="impe-v3o-recuperacion-aviso-titulo">Prospecto enviado a Recuperación</h3></header>
+            <p>Se confirmaron tres llamadas salientes distintas sin contacto.</p>
+            <p>Atender nuevamente el <strong data-recuperacion-fecha></strong>.</p>
+            <footer><button type="submit" class="is-primary">Entendido</button></footer>
+        </form>
+    </dialog>
     <?php if($puedeMover): ?>
     <dialog class="impe-embudo-dialog" id="impe-v3o-dialog"
             aria-labelledby="impe-v3o-dialog-titulo">

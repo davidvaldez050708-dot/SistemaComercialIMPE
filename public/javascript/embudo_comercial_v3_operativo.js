@@ -35,6 +35,7 @@
   });
   const usuarioId=Number(window.IMPE_CURRENT_USER_ID||0);
   const cambioKey='impe:embudo:resultado-guardado:'+usuarioId;
+  const recuperacionKey='impe:embudo:recuperacion:'+usuarioId;
   const avisoKey='impe:embudo:v3:aviso:'+usuarioId;
   const mensajes=new Map([
     ['gestion','Gestión comercial registrada correctamente.'],
@@ -134,8 +135,22 @@
     return result;
   };
   let reintentoRefresco=0;
+  const avisarRecuperacion=()=>{
+    const modal=document.getElementById('impe-v3o-recuperacion-aviso');
+    if(!modal || document.hidden || telefonoActivo() ||
+       document.querySelector('#modalResultadoVenta.show, dialog[open]'))return;
+    try{
+      const aviso=JSON.parse(localStorage.getItem(recuperacionKey)||'null');
+      if(!aviso || Date.now()-aviso.creada>60000 ||
+         !/^\d{4}-\d{2}-\d{2}$/.test(aviso.revision_fecha))return;
+      modal.querySelector('[data-recuperacion-fecha]').textContent=aviso.revision_fecha.split('-').reverse().join('/');
+      modal.showModal();
+      localStorage.removeItem(recuperacionKey);
+    }catch(_){}
+  };
   let ultimoResultadoVerificado=0;
   const refrescarTrasLlamada=async()=>{
+    avisarRecuperacion();
     if(refresh || usuarioId<1 || document.hidden)return;
     let info=null;
     try{info=JSON.parse(localStorage.getItem(cambioKey)||'null');}
@@ -194,6 +209,8 @@
   // El evento storage no se emite en la ventana que escribe el resultado.
   // Este respaldo sólo lee el marcador local; no consulta el servidor.
   window.setInterval(refrescarTrasLlamada,1000);
+  document.getElementById('impe-v3o-recuperacion-aviso')
+    ?.addEventListener('close',refrescarTrasLlamada);
   window.addEventListener('focus',refrescarTrasLlamada);
   document.addEventListener('visibilitychange',refrescarTrasLlamada);
   window.addEventListener('pageshow',event=>{

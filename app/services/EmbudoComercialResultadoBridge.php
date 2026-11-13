@@ -142,6 +142,14 @@ final class EmbudoComercialResultadoBridge
             $nueva=EmbudoComercialV3MovimientosPermitidos::destinoPorConversacion(
                 $etapaAnterior,$resultado
             );
+            if ($nueva===null && $etapaAnterior==='NUEVO' && ($call['direccion']??'')==='Saliente') {
+                require_once __DIR__.'/EmbudoComercialV3BandejasService.php';
+                $recuperacion=(new EmbudoComercialV3BandejasService($this->db))->recuperarTrasLlamada(
+                    $usuarioId,$asignacionId,substr((string)($call['fecha']??''),0,10),$ext.'|'.$pbx
+                );
+                if ($recuperacion!==null) return ['vinculada'=>true,'movida'=>true,
+                    'etapa'=>'RECUPERACION','recuperacion'=>$recuperacion];
+            }
         }
         // Proteger etapas avanzadas e históricos de la matriz V1: una
         // llamada no degrada Potenciales a INTERESADO, ni Seguimiento a una

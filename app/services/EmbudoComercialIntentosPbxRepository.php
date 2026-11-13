@@ -23,7 +23,7 @@ final class EmbudoComercialIntentosPbxRepository
      * Una eventual integración debe exigir sesión del asesor y permisos.
      */
     public function resumenJornada(int $usuarioId, int $asignacionId, string $diaLocal,
-        ?string $fechaLimiteLocal=null, ?int $llamadaIdLimite=null): array
+        ?string $fechaLimiteLocal=null, ?int $llamadaIdLimite=null, ?string $tramoActual=null): array
     {
         if ($usuarioId<1 || $asignacionId<1) {
             throw new InvalidArgumentException('Usuario o asignación no válida.');
@@ -123,7 +123,7 @@ final class EmbudoComercialIntentosPbxRepository
             'fecha'=>$diaLocal,
             'total'=>$total,
             'pendientes'=>max(0,3-$total),
-            'completo'=>$total>=3
+            'completo'=>$total>=3 && ($tramoActual===null || isset($unicos[$tramoActual]))
         ];
     }
 }

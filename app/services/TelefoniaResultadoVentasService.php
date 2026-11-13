@@ -276,6 +276,7 @@ class TelefoniaResultadoVentasService
         if($callbacks)$callbacks->aplicarResultado($usuarioId,$call,$resultado);
         $this->db->commit();
         }catch(Throwable $e){$this->db->rollback();throw $e;}
+        $recuperacion = null;
         // IMPE_EMBUDO_PBX_POSTCOMMIT_V1
         // Telefonía ya registró el resultado definitivo. Si la vinculación
         // comercial falla, no se revierte ni se altera ese registro PBX.
@@ -285,11 +286,12 @@ class TelefoniaResultadoVentasService
             try {
                 require_once __DIR__.'/EmbudoComercialResultadoBridge.php';
                 $this->db->begin_transaction();
-                (new EmbudoComercialResultadoBridge($this->db))->aplicar(
+                $cambioComercial=(new EmbudoComercialResultadoBridge($this->db))->aplicar(
                     $usuarioId, (int)$idComercial, $call, $resultado, $next ?? null,
                     (bool)$cierreApiVerificado
                 );
                 $this->db->commit();
+                $recuperacion=$cambioComercial['recuperacion']??null;
             } catch (Throwable $e) {
                 $this->db->rollback();
                 error_log('[embudo_resultado_pbx] '.get_class($e).' codigo='.(int)$e->getCode());
@@ -298,7 +300,8 @@ class TelefoniaResultadoVentasService
 
         return array_merge($detalle??[],['pbx_call_id'=>$pbxCallId,'extension'=>$extension,'resultado'=>$resultado,
             'etiqueta'=>self::opciones()[$resultado],'contacto_real'=>self::esConversacion($resultado),
-            'pbx_pendiente'=>$pbxPendiente,'cierre_api_verificado'=>$cierreApiVerificado]);
+            'pbx_pendiente'=>$pbxPendiente,'cierre_api_verificado'=>$cierreApiVerificado,
+            'recuperacion'=>$recuperacion]);
     }
 
     /**

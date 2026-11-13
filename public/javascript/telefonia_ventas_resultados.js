@@ -399,6 +399,11 @@
     try{localStorage.setItem('impe:embudo:resultado-guardado:'+usuarioGuardado,
      JSON.stringify({usuarioId:usuarioGuardado,asignacionId:asignacionGuardada,creada:Date.now()}));}catch(_){}
    }
+   const recuperacion=j.registro?.recuperacion;
+   if(usuarioGuardado>0 && recuperacion?.movimiento_id && recuperacion?.revision_fecha){
+    try{localStorage.setItem('impe:embudo:recuperacion:'+usuarioGuardado,
+     JSON.stringify({...recuperacion,creada:Date.now()}));}catch(_){}
+   }
    window.parent?.postMessage({type:'IMPE_SALES_RESULT_SAVED',ref:savedRef,extension:savedExt},location.origin);
    if(!sameForm()||disposed)return;
    queued=false;closeReason='saved';

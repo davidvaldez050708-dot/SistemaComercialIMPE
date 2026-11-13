@@ -5,8 +5,7 @@ require_once __DIR__.'/EmbudoComercialV3MovimientosPermitidos.php';
 require_once __DIR__.'/EmbudoComercialPoliticaPropuesta.php';
 
 /**
- * Bandejas excepcionales V3: solo decisiones manuales acreditadas.
- * Ningún resultado PBX provoca movimiento por sí solo.
+ * Bandejas V3 con decisiones acreditadas y recuperación tras tres intentos PBX.
  * No crear ni desactivar contacto, envío de campañas, tareas o pago.
  */
 final class EmbudoComercialV3BandejasService
@@ -245,6 +244,32 @@ final class EmbudoComercialV3BandejasService
                actualizado_por=VALUES(actualizado_por)");
         $s->bind_param('isi',$asignacion,$fecha,$usuario);
         $s->execute();$s->close();
+    }
+
+    /** Se ejecuta dentro de la transacción del puente, con la asignación bloqueada. */
+    public function recuperarTrasLlamada(int $usuario,int $asignacion,string $dia,string $tramo): ?array
+    {
+        if (!tienePermiso('ventas.embudo.ver') || !tienePermiso('ventas.embudo.mover') ||
+            !tienePermiso('ventas.recuperacion.ver') || !tienePermiso('ventas.recuperacion.gestionar')) return null;
+        $zona=new DateTimeZone('America/Mexico_City');
+        $hoy=new DateTimeImmutable('today',$zona);
+        if ($dia!==$hoy->format('Y-m-d')) return null;
+        $intentos=(new EmbudoComercialIntentosPbxRepository($this->db))
+            ->resumenJornada($usuario,$asignacion,$dia,null,null,$tramo);
+        if (!$intentos['completo'] || EmbudoComercialV3MovimientosPermitidos::conversacionAcreditada(
+            $this->db,$usuario,$asignacion
+        )) return null;
+        if ($this->etapaBloqueada($usuario,$asignacion)!=='NUEVO') return null;
+        try {
+            $this->exigirContactoPermitido($asignacion);
+        } catch (DomainException $restriccion) {
+            return null;
+        }
+        $id=$this->registrarEtapa($usuario,$asignacion,'NUEVO','RECUPERACION',
+            'PENDIENTE_REVISION','Ingreso automático: tres llamadas PBX distintas sin contacto ('.$dia.').');
+        $revision=$hoy->modify('+1 day')->format('Y-m-d');
+        $this->revision($usuario,$asignacion,$revision);
+        return ['movimiento_id'=>$id,'revision_fecha'=>$revision];
     }
 
     public function ingresarRecuperacion(int $usuario,int $asignacion,string $etapa,
