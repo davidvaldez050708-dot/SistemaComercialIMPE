@@ -360,7 +360,9 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <header><h3 id="impe-v3o-recuperacion-aviso-titulo">Prospecto enviado a Recuperación</h3></header>
             <p>Se confirmaron tres llamadas salientes distintas sin contacto.</p>
             <p>Atender nuevamente el <strong data-recuperacion-fecha></strong>.</p>
-            <footer><button type="submit" class="is-primary">Entendido</button></footer>
+            <footer class="impe-embudo-dialog-footer">
+                <button type="submit">Entendido</button>
+            </footer>
         </form>
     </dialog>
     <?php if($puedeMover): ?>
