@@ -6,7 +6,6 @@
  */
 final class ProspectoDistribucionReglas
 {
-    public const META_POR_ASESOR_DIA = 80;
     public const ZONA_ASESORES = 'America/Mexico_City';
 
     public static function fechaSiguiente(DateTimeImmutable $ahora): string

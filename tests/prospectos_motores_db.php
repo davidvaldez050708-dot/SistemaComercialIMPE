@@ -138,25 +138,25 @@ try {
     )->fetch_assoc()['n']===2,'se confirman dos formularios/archivos');
     $result=$motor->distribuirMeta('2026-11-07',200,true);
     $check($result['inspeccionados']===90,'dos cargas sumadas');
-    $check($result['asignados']===88 && $result['pendientes']===2,
-        '80 titulación + 8 bachillerato; dos excedentes');
+    $check($result['asignados']===90 && $result['pendientes']===0,
+        '82 titulación + 8 bachillerato');
     $check((int)$db->query(
         "SELECT COUNT(*) n FROM prospecto_distribucion_registros
          WHERE tipo_origen='META' AND asesor_id=10"
-    )->fetch_assoc()['n']===80,'asesor titulación exactamente 80');
+    )->fetch_assoc()['n']===82,'asesor titulación exactamente 82');
     $check((int)$db->query(
         "SELECT COUNT(*) n FROM prospecto_distribucion_registros
          WHERE tipo_origen='META' AND asesor_id=20"
     )->fetch_assoc()['n']===8,'asesor bachillerato sólo su programa');
     $check((int)$db->query(
         "SELECT COUNT(*) n FROM prospecto_distribucion_pendientes
-         WHERE motivo='SIN_ASESOR_O_CUPO'"
-    )->fetch_assoc()['n']===2,'sobrantes permanecen pendientes');
+         WHERE motivo='SIN_ASESOR_COMPATIBLE'"
+    )->fetch_assoc()['n']===0,'sin sobrantes cuando hay asesor');
     $second=$motor->distribuirMeta('2026-11-07',200,true);
-    $check($second['asignados']===0,'reintento mismo día no duplica ni excede cupo');
+    $check($second['asignados']===0,'reintento mismo día no duplica');
     $check((int)$db->query(
         'SELECT COUNT(*) n FROM prospecto_asignaciones'
-    )->fetch_assoc()['n']===88,'sin duplicados en motor Meta');
+    )->fetch_assoc()['n']===90,'sin duplicados en motor Meta');
 
     // Un registro de Aliado: franja solicitada 17-19, asesor 16-21.
     $agregaAliado=static function($id,$programa,$estado,$preferencia)use($db) {
@@ -223,10 +223,10 @@ try {
     $check($retry['asignados']===2,'reintento asigna tras resolver zona y activar asesor');
     $check((int)$db->query(
         'SELECT COUNT(*) n FROM prospecto_asignaciones'
-    )->fetch_assoc()['n']===92,'cupo Meta no se consume con Aliados');
+    )->fetch_assoc()['n']===94,'Aliados mantiene sus asignaciones aparte de Meta');
     $check((int)$db->query(
         "SELECT COUNT(*) n FROM prospecto_distribucion_registros WHERE tipo_origen='META' AND asesor_id=10"
-    )->fetch_assoc()['n']===80,'Aliado no aumenta cupo Meta');
+    )->fetch_assoc()['n']===82,'Aliado no aumenta el conteo Meta');
     $check($motor->asignarAliado(1,false,$time)['estado']==='IGNORADO_NO_ALIADO',
         'leads Meta jamás se tratan como Aliados');
     $check((int)$db->query(
@@ -291,7 +291,7 @@ try {
     $nuevoDia=$motor->distribuirMeta('2026-11-08',25,false);
     $check($nuevoDia['inspeccionados']===25 && !$nuevoDia['terminado'],
         'siguiente jornada vuelve a revisar pendientes, sin perderlos');
-    echo "OK: $checks pruebas SQL en BD temporal; 30 archivos Meta, reparto de 80, colas paginadas, horarios y duplicados.\n";
+    echo "OK: $checks pruebas SQL en BD temporal; 30 archivos Meta, reparto sin tope, colas paginadas, horarios y duplicados.\n";
 } finally {
     $db->select_db('information_schema');
     $db->query("DROP DATABASE IF EXISTS `$name`");

@@ -8,7 +8,16 @@ $assert=static function($condition,$message)use(&$checks) {
 $tz=new DateTimeZone('America/Mexico_City');
 $ahora=new DateTimeImmutable('2026-11-06 12:00:00',$tz); // viernes
 $assert(ProspectoDistribucionReglas::fechaSiguiente($ahora)==='2026-11-07','Meta jornada siguiente');
-$assert(ProspectoDistribucionReglas::META_POR_ASESOR_DIA===80,'Cupo Meta fijo');
+$cargas = array_fill(1,5,0);
+for ($id=1;$id<=500;$id++) {
+    $opciones=[];
+    foreach ($cargas as $asesor=>$cantidad) {
+        $opciones[]=['usuario_id'=>$asesor,'meta_dia'=>$cantidad,'total_activos'=>$cantidad];
+    }
+    $elegido=ProspectoDistribucionReglas::elegir($opciones,$id,'META');
+    $cargas[$elegido['usuario_id']]++;
+}
+$assert($cargas===array_fill(1,5,100),'500 prospectos entre cinco asesores sin sobrantes');
 $assert(ProspectoDistribucionReglas::zonaContacto('México','Puebla',null)==='America/Mexico_City','zona Puebla');
 $assert(ProspectoDistribucionReglas::zonaContacto('México','Morelos',null)==='America/Mexico_City','zona Morelos');
 $assert(ProspectoDistribucionReglas::zonaContacto('México','Baja California',null)===null,'Baja California pendiente');

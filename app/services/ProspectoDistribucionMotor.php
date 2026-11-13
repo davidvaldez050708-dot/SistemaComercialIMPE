@@ -308,10 +308,7 @@ final class ProspectoDistribucionMotor
                             $op['total_activos']=(int)$op['total_activos']+$delta;
                         }
                         unset($op);
-                        $opciones=array_values(array_filter($opciones,
-                            static fn($a)=>(int)$a['meta_dia']<
-                            ProspectoDistribucionReglas::META_POR_ASESOR_DIA));
-                        if (!$opciones) $motivo='SIN_ASESOR_O_CUPO';
+                        if (!$opciones) $motivo='SIN_ASESOR_COMPATIBLE';
                         else $elegido=ProspectoDistribucionReglas::elegir($opciones,$id,'META');
                     }
                     if ($motivo===null && $elegido) {

@@ -113,6 +113,11 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <i class="bi bi-telephone-x" aria-hidden="true"></i><?= $avance ?>/3
         </span>
         <?php endif; ?>
+        <?php if ($etapa==='NUEVO' && !$legacy && !empty($p['fecha_trabajo']) &&
+            $p['fecha_trabajo'] < (new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))->format('Y-m-d')): ?>
+        <p class="impe-v3o-meta"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+            Retomar contacto · Nuevo de una jornada anterior</p>
+        <?php endif; ?>
         <?php if(!empty($p['horario_contacto'])): ?>
         <p class="impe-v3o-meta"><i class="bi bi-clock" aria-hidden="true"></i>
             Horario solicitado: <?= $esc($p['horario_contacto']) ?></p>

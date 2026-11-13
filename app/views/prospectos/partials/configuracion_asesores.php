@@ -23,7 +23,7 @@ $nombresProgramas=array_column($programasAsesores,'nombre','codigo');
             <h3>Configuración de asesores</h3>
             <p>Selecciona todos los programas que puede atender cada asesor y define sus horarios. Las asignaciones actuales se conservan.</p>
         </div>
-        <span class="central-badge"><i class="bi bi-megaphone" aria-hidden="true"></i> 80 nuevos de Meta por asesor y día</span>
+        <span class="central-badge"><i class="bi bi-megaphone" aria-hidden="true"></i> Reparto Meta equilibrado por jornada</span>
     </div>
     <?php if (!$configuracionDisponible): ?>
         <div class="asesores-notice" role="status">
