@@ -39,6 +39,18 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_expediente.css') ?>">
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_llamadas_expediente.css') ?>">
 <style>
+#expediente-llamadas [data-expediente-grabacion] > summary {
+    display: flex;
+    width: fit-content;
+    margin-inline-start: auto;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+    cursor: pointer;
+}
+#expediente-llamadas [data-expediente-grabacion] > summary::-webkit-details-marker { display: none; }
+#expediente-llamadas [data-expediente-grabacion][open] > summary .bi-chevron-down { transform: rotate(180deg); }
+
 .impe-embudo .linkage-expediente-section-nav > a { flex: 0 0 auto; text-decoration: none; }
 .impe-embudo .linkage-expediente-section-nav > a:focus-visible > span { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .impe-embudo #expediente-llamadas .linkage-call-detail-row { grid-template-columns: 82px minmax(0,1fr); }
@@ -285,7 +297,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                 <details data-expediente-grabacion="<?= $esc(BASE_URL.'prueba_telefonia/api/grabacion_ventas.php?'.http_build_query([
                     'pbx_call_id'=>$llamada['pbx_call_id'],'extension'=>$llamada['extension'],'verificar'=>1
                 ])) ?>">
-                    <summary class="linkage-call-audio-state is-available"><i class="bi bi-record-circle" aria-hidden="true"></i> Consultar grabación</summary>
+                    <summary class="linkage-call-audio-state is-available"><i class="bi bi-record-circle" aria-hidden="true"></i> Consultar grabación <i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
                     <div role="status"></div>
                 </details>
                 <?php endif; ?>
