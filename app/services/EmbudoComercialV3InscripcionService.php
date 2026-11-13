@@ -77,7 +77,10 @@ final class EmbudoComercialV3InscripcionService
         [$movil,$correo]=self::identidad($a);
         // Se descarta cualquier solicitud anterior a la asignación actual,
         // dejando un margen de seis horas por diferencias de zona horaria.
-        $sql="SELECT f.id,f.created_at
+        $sql="SELECT f.id,f.created_at,EXISTS (
+                  SELECT 1 FROM formulario_inscripciones_completas c
+                  WHERE c.inscripcion_id=f.id
+              ) completa
               FROM formulario_inscripciones f
               WHERE BINARY f.movil=BINARY ?
                 AND LOWER(TRIM(f.correo))=?
@@ -110,6 +113,12 @@ final class EmbudoComercialV3InscripcionService
                 'mensaje'=>'Todavía no se encontró un formulario de inscripción que coincida con el móvil y correo de este prospecto.'
             ];
         }
+        if ((int)$rows[0]['completa']!==1) {
+            return [
+                'estado'=>'SOLICITUD_INCOMPLETA',
+                'mensaje'=>'Se encontró una solicitud, pero aún no tiene el detalle completo para aparecer en Inscritos.'
+            ];
+        }
         return [
             'estado'=>'CANDIDATA',
             'formulario_id'=>(int)$rows[0]['id'],
@@ -132,6 +141,9 @@ final class EmbudoComercialV3InscripcionService
             $rows=$this->candidatas($a);
             if (count($rows)!==1 || (int)$rows[0]['id']!==$formularioId) {
                 throw new DomainException('La solicitud no coincide o requiere conciliación institucional.');
+            }
+            if ((int)$rows[0]['completa']!==1) {
+                throw new DomainException('La solicitud debe estar completa antes de vincularla.');
             }
             // Única vinculación de la solicitud, incluso bajo operaciones
             // concurrentes desde distintos asesores o distintas asignaciones.

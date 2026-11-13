@@ -43,6 +43,8 @@ try {
       "CREATE TABLE formulario_inscripciones(
         id INT UNSIGNED PRIMARY KEY, movil VARCHAR(10) NOT NULL,
         correo VARCHAR(190) NOT NULL, created_at DATETIME NOT NULL) ENGINE=InnoDB",
+      "CREATE TABLE formulario_inscripciones_completas(
+        inscripcion_id INT UNSIGNED PRIMARY KEY) ENGINE=InnoDB",
       "CREATE TABLE prospecto_embudo_etapas(
         asignacion_id BIGINT UNSIGNED PRIMARY KEY,etapa VARCHAR(30) NOT NULL,
         cambiado_por INT NOT NULL,actualizado_at DATETIME NOT NULL) ENGINE=InnoDB",
@@ -95,6 +97,12 @@ try {
       (506,'7771114444','wrong@impe.test',UTC_TIMESTAMP()),
       (507,'7771118888','fase.nueva@impe.test',UTC_TIMESTAMP())");
     $svc=new EmbudoComercialV3InscripcionService($db);
+    probarInscripcion($svc->candidato(8,101)['estado']==='SOLICITUD_INCOMPLETA',
+        'la solicitud sin detalle no aparece en Inscritos');
+    rechazarInscripcion(static function()use($svc){
+        $svc->vincular(8,101,501,'Solicitud de prueba',true);
+    },'una solicitud incompleta no se puede vincular por POST');
+    $db->query("INSERT INTO formulario_inscripciones_completas VALUES (501),(502),(503)");
     $candidate=$svc->candidato(8,101);
     probarInscripcion($candidate['estado']==='CANDIDATA' &&
         $candidate['formulario_id']===501,'evidencia exacta de teléfono y correo');
