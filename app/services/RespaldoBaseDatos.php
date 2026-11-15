@@ -5,10 +5,18 @@ require_once __DIR__ . '/../../config/config.php';
 final class RespaldoBaseDatos
 {
     private ?string $directorio;
+    private array $ajustes = [];
 
     public function __construct()
     {
-        $config = getenv('IMPE_BACKUP_DIR');
+        $privada = dirname(ROOT_PATH) . '/impe-private/respaldo.local.php';
+        if (basename(ROOT_PATH) === 'public_html' && realpath($privada) === $privada
+            && is_file($privada) && is_readable($privada)
+            && (fileperms($privada) & 0077) === 0) {
+            $ajustes = require $privada;
+            $this->ajustes = is_array($ajustes) ? $ajustes : [];
+        }
+        $config = $this->ajuste('IMPE_BACKUP_DIR', 'directorio');
         $real = $config ? realpath($config) : false;
         $this->directorio = $real && is_dir($real) ? $real : null;
         if ($this->directorio !== null) {
@@ -22,9 +30,19 @@ final class RespaldoBaseDatos
         }
     }
 
+    private function ajuste(string $variable, string $campo): string
+    {
+        $valor = getenv($variable);
+        if (is_string($valor) && $valor !== '') {
+            return $valor;
+        }
+
+        return is_string($this->ajustes[$campo] ?? null) ? $this->ajustes[$campo] : '';
+    }
+
     private function clave(): string
     {
-        $clave = (string)getenv('IMPE_BACKUP_HMAC_KEY');
+        $clave = $this->ajuste('IMPE_BACKUP_HMAC_KEY', 'clave_hmac');
         if (!preg_match('/\A[a-f0-9]{64}\z/i', $clave)) {
             throw new DomainException('Falta configurar la clave privada de integridad de respaldos.');
         }
@@ -229,8 +247,8 @@ final class RespaldoBaseDatos
 
     private function ejecutable(array $nombres): string
     {
-        $configurado = getenv('IMPE_MYSQL_BIN_DIR');
-        $directorios = $configurado !== false && $configurado !== ''
+        $configurado = $this->ajuste('IMPE_MYSQL_BIN_DIR', 'directorio_herramientas');
+        $directorios = $configurado !== ''
             ? [$configurado]
             : explode(PATH_SEPARATOR, (string)getenv('PATH'));
         if (!$configurado && PHP_OS_FAMILY === 'Windows') {

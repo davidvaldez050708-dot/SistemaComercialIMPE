@@ -36,3 +36,7 @@ php tests/respaldo_r16_db.php /ruta/a/copia-aislada-del-proyecto
 ```
 
 La prueba en MariaDB 10.4.32 conserva una copia previa generada y verificada. Inyecta un SQL autenticado de prueba que crea una tabla y falla en la siguiente sentencia. Comprueba que la fuente queda intacta y recupera el estado previo en un esquema limpio distinto. MySQL y MariaDB pueden confirmar DDL de forma implícita. Para habilitar la restauración web falta validar el aislamiento operativo, el cambio controlado de destino y su reversión en infraestructura equivalente a la del alojamiento.
+
+### Configuración privada en Hostinger
+
+El servicio busca `impe-private/respaldo.local.php` junto a `public_html`, con permisos 0600 y una ruta canónica. El archivo devuelve un arreglo con `directorio` (ruta absoluta privada, permisos 0700), `clave_hmac` (32 bytes aleatorios en hexadecimal) y `directorio_herramientas` (en el servidor inspeccionado, `/usr/bin`). Las variables de entorno explícitas tienen prioridad. Proteger también el directorio de configuración y conservar la misma clave para verificar los respaldos ya firmados. Las herramientas, los permisos y el acceso en PHP web se deben comprobar antes de habilitar el flujo en producción.
