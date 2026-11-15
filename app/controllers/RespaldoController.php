@@ -18,6 +18,15 @@ final class RespaldoController
         $servicio = new RespaldoBaseDatos();
         $urlRespaldo = BASE_URL . self::RUTA;
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (($_POST['operacion'] ?? '') === 'descargar') {
+                if (!$this->csrfValido()) {
+                    http_response_code(403);
+                    echo 'No se pudo validar la solicitud de descarga.';
+                    return;
+                }
+                $this->descargar($servicio, is_string($_POST['nombre'] ?? null) ? $_POST['nombre'] : '');
+                return;
+            }
             $this->procesar($servicio);
             header('Location: ' . $urlRespaldo, true, 303);
             return;
@@ -27,11 +36,6 @@ final class RespaldoController
             header('Allow: GET, POST');
             return;
         }
-        if (isset($_GET['descargar'])) {
-            $this->descargar($servicio, is_string($_GET['descargar']) ? $_GET['descargar'] : '');
-            return;
-        }
-
         $historial = $servicio->historial();
         $aviso = $_SESSION['aviso_respaldo'] ?? [];
         unset($_SESSION['aviso_respaldo']);
@@ -46,13 +50,19 @@ final class RespaldoController
         require __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
-    private function procesar(RespaldoBaseDatos $servicio): void
+    private function csrfValido(): bool
     {
         $token = $_POST['csrf_token'] ?? null;
-        if (!is_string($token) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
+        $sesion = $_SESSION['csrf_token'] ?? null;
+        return is_string($token) && is_string($sesion) && $sesion !== '' && hash_equals($sesion, $token);
+    }
+
+    private function procesar(RespaldoBaseDatos $servicio): void
+    {
+        if (!$this->csrfValido()) {
             $_SESSION['aviso_respaldo'] = [
                 'error' => true,
-                'mensaje' => 'No se pudo validar la solicitud. Si el archivo es grande, verifica el límite de carga del servidor.',
+                'mensaje' => 'No se pudo validar la solicitud. Recarga la página e inténtalo de nuevo.',
             ];
             return;
         }
@@ -64,18 +74,12 @@ final class RespaldoController
                     $descarga = $servicio->generar();
                     $mensaje = 'El respaldo se generó correctamente.';
                     break;
-                case 'eliminar':
-                    $servicio->eliminar($nombre);
-                    $mensaje = 'El respaldo se eliminó del historial.';
-                    break;
                 case 'restaurar':
+                    if (!esAdministradorSistema() || ($_POST['confirmacion'] ?? '') !== 'RESTAURAR') {
+                        throw new DomainException('La restauración requiere autorización del Administrador y confirmación.');
+                    }
                     $servicio->restaurar($nombre);
-                    $mensaje = 'Se restauró la base de datos. La copia previa quedó en el historial.';
-                    break;
-                case 'subir':
-                    $servicio->restaurar($this->archivoSubido(), true);
-                    $mensaje = 'Se restauró la base de datos desde el archivo cargado. La copia previa quedó en el historial.';
-                    break;
+                    throw new LogicException('Restauración sin verificación.');
                 default:
                     throw new DomainException('Selecciona una operación válida.');
             }
@@ -83,26 +87,12 @@ final class RespaldoController
         } catch (DomainException $e) {
             $_SESSION['aviso_respaldo'] = ['error' => true, 'mensaje' => $e->getMessage()];
         } catch (Throwable $e) {
-            error_log('[impe_respaldo] ' . $e->getMessage());
+            error_log('[impe_respaldo] ' . get_class($e));
             $_SESSION['aviso_respaldo'] = [
                 'error' => true,
                 'mensaje' => 'No se pudo completar la operación. Revisa la configuración y los permisos de la base de datos en el servidor.',
             ];
         }
-    }
-
-    private function archivoSubido(): string
-    {
-        $archivo = $_FILES['archivo_sql'] ?? [];
-        if (($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            throw new DomainException('Selecciona un archivo SQL dentro del límite de carga del servidor.');
-        }
-        if (!is_string($archivo['name']) || !is_string($archivo['tmp_name'])
-            || strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION)) !== 'sql'
-            || !is_uploaded_file($archivo['tmp_name']) || $archivo['size'] <= 0) {
-            throw new DomainException('El archivo debe tener extensión .sql y contener un respaldo válido.');
-        }
-        return $archivo['tmp_name'];
     }
 
     private function descargar(RespaldoBaseDatos $servicio, string $nombre): void
@@ -119,6 +109,7 @@ final class RespaldoController
         }
 
         session_write_close();
+        header('Cache-Control: private, no-store');
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: attachment; filename="' . $nombre . '"');
         header('Content-Length: ' . fstat($archivo)['size']);
