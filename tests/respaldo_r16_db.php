@@ -38,7 +38,9 @@ foreach (['alterado'=>($original[0]==='x'?'y':'x').substr($original,1),'truncado
     comprobar($db->query('SHOW FULL TABLES FROM impe_r16_lab_prueba')->num_rows===0,$caso.' rechazado antes del SQL');
 }
 file_put_contents($ruta,$original);clearstatcache(true,$ruta);
+putenv('IMPE_BACKUP_LAB');
 rechazar(fn()=>$s->restaurar($nombre));
+putenv('IMPE_BACKUP_LAB=YES');
 $s->validarEnLaboratorio($nombre,'impe_r16_lab_prueba');
 $db->select_db('impe_r16_lab_prueba');
 comprobar($db->query('SELECT nombre FROM consulta WHERE id=1')->fetch_assoc()['nombre']==='sintetico','restauración y vista');
@@ -86,3 +88,59 @@ try {
     file_put_contents($ruta, $original);
     file_put_contents($metaPath, $metaOriginal);
 }
+
+$puntero = dirname($ruta) . '/restauracion-activa';
+$s->restaurar($nombre);
+$primera = trim(file_get_contents($puntero));
+comprobar($primera !== DB_NAME && $db->query("SELECT COUNT(*) n FROM `$primera`.datos")
+    ->fetch_assoc()['n'] == 1, 'restauración real desde la operación del módulo');
+$s->restaurar($previo);
+$segunda = trim(file_get_contents($puntero));
+comprobar($primera !== $segunda && $db->query("SELECT COUNT(*) n FROM `$segunda`.datos")
+    ->fetch_assoc()['n'] == 2, 'publicación de la nueva versión con la anterior conservada');
+$copias = glob(dirname($ruta) . '/copia-previa-*.sql');
+comprobar(count($copias) === 2 && hash_file('sha256', $copias[0]) ===
+    json_decode(file_get_contents($copias[0] . '.json'), true)['sha256'], 'copia previa y huella conservadas');
+
+try {
+    file_put_contents($ruta, $malSql);
+    file_put_contents($metaPath, json_encode([
+        'datos' => $datos,
+        'firma' => hash_hmac('sha256', $datos, hex2bin(getenv('IMPE_BACKUP_HMAC_KEY'))),
+    ], JSON_THROW_ON_ERROR));
+    clearstatcache(true, $ruta);
+    rechazar(fn() => $s->restaurar($nombre));
+    comprobar(trim(file_get_contents($puntero)) === $segunda &&
+        $db->query("SELECT COUNT(*) n FROM `$segunda`.datos")->fetch_assoc()['n'] == 2,
+        'fallo parcial conserva la versión activa y sus datos');
+    comprobar($db->query("SHOW DATABASES LIKE 'impe_r16_lab_version_%'")->num_rows === 2,
+        'no se conserva ni activa el destino incompleto');
+} finally {
+    file_put_contents($ruta, $original);
+    file_put_contents($metaPath, $metaOriginal);
+}
+
+require $argv[1] . '/app/controllers/RespaldoController.php';
+$procesar = new ReflectionMethod(RespaldoController::class, 'procesar');
+$controlador = new RespaldoController();
+$_SESSION = ['usuario_id' => 22, 'rol_id' => 2, 'rol' => 'Director de Operaciones', 'csrf_token' => 'prueba'];
+$_POST = ['operacion' => 'restaurar', 'nombre' => $nombre, 'csrf_token' => 'prueba', 'confirmacion' => 'RESTAURAR'];
+$procesar->invoke($controlador, $s);
+comprobar($_SESSION['aviso_respaldo']['error'] && trim(file_get_contents($puntero)) === $segunda,
+    'el Director no puede ejecutar la restauración');
+$_SESSION['rol_id'] = 1;
+$_POST['csrf_token'] = 'incorrecto';
+$procesar->invoke($controlador, $s);
+comprobar($_SESSION['aviso_respaldo']['error'] && trim(file_get_contents($puntero)) === $segunda,
+    'el Administrador con CSRF incorrecto no puede restaurar');
+$_POST['csrf_token'] = 'prueba';
+$_POST['confirmacion'] = '';
+$procesar->invoke($controlador, $s);
+comprobar($_SESSION['aviso_respaldo']['error'] && trim(file_get_contents($puntero)) === $segunda,
+    'el Administrador debe confirmar explícitamente');
+$_POST['confirmacion'] = 'RESTAURAR';
+$procesar->invoke($controlador, $s);
+$tercera = trim(file_get_contents($puntero));
+comprobar(empty($_SESSION['aviso_respaldo']['error']) && $tercera !== $segunda &&
+    $db->query("SELECT COUNT(*) n FROM `$tercera`.datos")->fetch_assoc()['n'] == 1,
+    'el Administrador autorizado recibe éxito únicamente después de restaurar');

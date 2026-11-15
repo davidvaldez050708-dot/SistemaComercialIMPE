@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const cancelar = ventana.querySelector('[data-bs-dismiss="modal"]');
     const restaurar = {
         titulo: '¿Restaurar la base de datos?',
-        texto: 'Se comprobará la integridad del archivo. La restauración requiere un entorno aislado habilitado.',
+        texto: 'Se verificará el respaldo y se guardará una copia previa. La restauración se realizará únicamente en el entorno aislado autorizado.',
         icono: 'bi-arrow-counterclockwise',
         aceptar: 'Sí, restaurar'
     };

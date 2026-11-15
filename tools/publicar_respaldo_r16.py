@@ -11,7 +11,7 @@ import tempfile
 from comprobar_respaldo_r16 import BASE
 
 
-ENTREGA = {'app/controllers/RespaldoController.php': '5b3b5bd24d2fb811f3ee0a11f6d6482d49b337541fdaeb4cfc4753c92619afa2', 'app/services/RespaldoBaseDatos.php': '1ef8fc4452278f399c07cd3cc8e3068a1373f8c1829dbf5c8c51fc67e32007c3', 'app/views/respaldo/index.php': '15056632b4175627e2a7fa3ea7372c1cd03170ac0476aab5c243e63e72ba1e8f'}
+ENTREGA = {'app/controllers/RespaldoController.php': '36e59a1ac5412d0a9075053966ee8dab45505dadcfd26461108791fb0a1d66de', 'app/services/RespaldoBaseDatos.php': '4e6d02590a384cfc0f61d895da47f0d5d65afbd2065613882069338eccdad2ef', 'app/views/respaldo/index.php': 'b1b1986aa58fbe3bde619f05ad9225654e6d20b72f9625b1d51a3453c583cc9b'}
 
 
 def huella(path):

@@ -79,7 +79,8 @@ final class RespaldoController
                         throw new DomainException('La restauración requiere autorización del Administrador y confirmación.');
                     }
                     $servicio->restaurar($nombre);
-                    throw new LogicException('Restauración sin verificación.');
+                    $mensaje = 'El respaldo se restauró y verificó en el entorno aislado.';
+                    break;
                 default:
                     throw new DomainException('Selecciona una operación válida.');
             }
