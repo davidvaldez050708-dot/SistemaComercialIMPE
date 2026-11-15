@@ -1,7 +1,6 @@
 <?php
 
 $escapar = static fn ($valor): string => htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
-$descargaUrl = static fn (string $nombre): string => $urlRespaldo . '&descargar=' . rawurlencode($nombre);
 $csrf = $escapar($_SESSION['csrf_token']);
 $avisoError = !empty($aviso['error']);
 $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-center';
@@ -78,7 +77,7 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
                     <span>
                         <?= $escapar($aviso['mensaje']) ?>
                         <?php if (!empty($aviso['descarga'])): ?>
-                            <a href="<?= $escapar($descargaUrl($aviso['descarga'])) ?>">Descargar archivo</a>
+                            <button type="submit" form="respaldo-descarga-nueva" class="btn btn-link p-0">Descargar archivo</button>
                         <?php endif; ?>
                     </span>
                 </div>
@@ -92,7 +91,13 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
     <?php endif; ?>
 
     <?php if (!empty($aviso['descarga'])): ?>
-        <iframe hidden title="Descarga del nuevo respaldo" src="<?= $escapar($descargaUrl($aviso['descarga'])) ?>"></iframe>
+        <iframe hidden name="respaldo-descarga-destino" title="Descarga del nuevo respaldo"></iframe>
+        <form id="respaldo-descarga-nueva" hidden action="<?= $escapar($urlRespaldo) ?>" method="post" target="respaldo-descarga-destino">
+            <input type="hidden" name="operacion" value="descargar">
+            <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+            <input type="hidden" name="nombre" value="<?= $escapar($aviso['descarga']) ?>">
+        </form>
+        <script>document.getElementById('respaldo-descarga-nueva').requestSubmit();</script>
     <?php endif; ?>
 
     <div class="dashboard-panel p-3 p-md-4 mb-3">
@@ -116,7 +121,7 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
     <div class="dashboard-panel p-3 p-md-4 mb-3">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <h2 class="panel-title mb-0"><i class="bi bi-clock-history me-2" aria-hidden="true"></i>Historial de respaldos</h2>
-            <small class="page-subtitle mb-0">Se conservan los últimos <?= RespaldoBaseDatos::LIMITE_HISTORIAL ?> respaldos.</small>
+            <small class="page-subtitle mb-0">Los respaldos se conservan en el historial.</small>
         </div>
         <div class="table-responsive">
             <table class="table users-table align-middle mb-0">
@@ -131,14 +136,19 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
                 <tbody>
                     <?php foreach ($historial as $respaldo): ?>
                         <tr>
-                            <td><?= $escapar($respaldo['nombre']) ?></td>
+                            <td><?= $escapar($respaldo['nombre']) ?><br><small><?= $escapar($respaldo['estado']) ?></small></td>
                             <td class="text-nowrap"><?= date('d/m/Y H:i:s', $respaldo['fecha']) ?></td>
                             <td class="text-nowrap"><?= number_format($respaldo['bytes'] / 1024, 2) ?> KB</td>
                             <td>
                                 <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <a class="btn btn-sm respaldo-btn-descargar <?= $clasesBoton ?>" href="<?= $escapar($descargaUrl($respaldo['nombre'])) ?>">
-                                        <i class="bi bi-download me-1" aria-hidden="true"></i> Descargar
-                                    </a>
+                                    <form method="post" action="<?= $escapar($urlRespaldo) ?>">
+                                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                                        <input type="hidden" name="nombre" value="<?= $escapar($respaldo['nombre']) ?>">
+                                        <button type="submit" class="btn btn-sm respaldo-btn-descargar <?= $clasesBoton ?>" name="operacion" value="descargar">
+                                            <i class="bi bi-download me-1" aria-hidden="true"></i> Descargar
+                                        </button>
+                                    </form>
+                                    <?php if (esAdministradorSistema()): ?>
                                     <form class="d-flex flex-wrap align-items-center gap-2" method="post"
                                         action="<?= $escapar($urlRespaldo) ?>" data-respaldo-confirmar>
                                         <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
@@ -146,10 +156,9 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
                                         <button type="submit" class="btn btn-sm respaldo-btn-restaurar <?= $clasesBoton ?>" name="operacion" value="restaurar">
                                             <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Restaurar
                                         </button>
-                                        <button type="submit" class="btn btn-sm btn-system-danger <?= $clasesBoton ?>" name="operacion" value="eliminar">
-                                            <i class="bi bi-trash me-1" aria-hidden="true"></i> Eliminar
-                                        </button>
+                                        <input type="hidden" name="confirmacion" value="">
                                     </form>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -162,23 +171,6 @@ $clasesBoton = 'd-inline-flex align-items-center justify-content-center text-cen
         </div>
     </div>
 
-    <div class="dashboard-panel p-3 p-md-4">
-        <h2 class="panel-title mb-2"><i class="bi bi-cloud-arrow-up me-2" aria-hidden="true"></i>Restaurar desde un archivo</h2>
-        <p class="page-subtitle mb-3" id="respaldo-ayuda">Selecciona un archivo SQL de confianza para restaurar la información del sistema.</p>
-        <form method="post" action="<?= $escapar($urlRespaldo) ?>" enctype="multipart/form-data"
-            class="d-flex flex-wrap justify-content-center align-items-end gap-3"
-            data-respaldo-confirmar>
-            <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-            <div class="mw-100">
-                <label class="form-label login-label" for="respaldo-archivo">Archivo de respaldo (.sql)</label>
-                <input class="form-control system-form-control" type="file" id="respaldo-archivo"
-                    name="archivo_sql" accept=".sql" aria-describedby="respaldo-ayuda" required>
-            </div>
-            <button type="submit" class="btn btn-system-save respaldo-btn-subir <?= $clasesBoton ?>" name="operacion" value="subir">
-                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i> Restaurar archivo
-            </button>
-        </form>
-    </div>
 </section>
 
 <div class="modal fade" id="modalConfirmarRespaldo" tabindex="-1"
@@ -211,15 +203,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const cancelar = ventana.querySelector('[data-bs-dismiss="modal"]');
     const restaurar = {
         titulo: '¿Restaurar la base de datos?',
-        texto: 'La restauración puede sobrescribir los datos actuales. Se guardará una copia previa.',
+        texto: 'Se verificará el respaldo y se guardará una copia previa. La restauración se realizará únicamente en el entorno aislado autorizado.',
         icono: 'bi-arrow-counterclockwise',
         aceptar: 'Sí, restaurar'
-    };
-    const eliminar = {
-        titulo: '¿Eliminar respaldo?',
-        texto: '¿Estás seguro de que deseas eliminar este respaldo del historial?',
-        icono: 'bi-trash',
-        aceptar: 'Sí, eliminar'
     };
     let botonPendiente;
     let confirmado = false;
@@ -231,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             evento.preventDefault();
             botonPendiente = evento.submitter || formulario.querySelector('button[name="operacion"]');
-            const accion = botonPendiente.value === 'eliminar' ? eliminar : restaurar;
+            const accion = restaurar;
             titulo.textContent = accion.titulo;
             texto.textContent = accion.texto;
             icono.className = 'bi ' + accion.icono;
@@ -257,6 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
         aceptar.disabled = true;
         confirmado = true;
         try {
+            botonPendiente.form.elements.confirmacion.value = 'RESTAURAR';
             botonPendiente.form.requestSubmit(botonPendiente);
         } finally {
             confirmado = false;
