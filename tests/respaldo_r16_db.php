@@ -47,3 +47,42 @@ comprobar($db->query('SHOW TRIGGERS')->num_rows===1 &&
     (int)$db->query('SELECT r16_funcion() n')->fetch_assoc()['n']===7,'trigger, evento y función restaurados');
 rechazar(fn()=>$s->validarEnLaboratorio($nombre,'impe_r16_lab_prueba'));
 comprobar(true,'se rechaza esquema ocupado');
+
+/* Simula una importación que MySQL confirma parcialmente por ejecutar DDL. */
+$db->select_db(DB_NAME);
+$db->query("INSERT INTO datos VALUES(2,'estado previo')");
+$previo = $s->generar();
+$db->query('CREATE DATABASE impe_r16_lab_fallido');
+$db->query('CREATE DATABASE impe_r16_lab_recuperado');
+
+$malSql = "CREATE TABLE parcial (id INT);\nINSERT INTO tabla_inexistente VALUES (1);\n";
+$metaPath = $ruta . '.json';
+$metaOriginal = file_get_contents($metaPath);
+$meta = json_decode(json_decode($metaOriginal, true)['datos'], true);
+$meta['bytes'] = strlen($malSql);
+$meta['sha256'] = hash('sha256', $malSql);
+$datos = json_encode($meta, JSON_THROW_ON_ERROR);
+try {
+    file_put_contents($ruta, $malSql);
+    file_put_contents($metaPath, json_encode([
+        'datos' => $datos,
+        'firma' => hash_hmac('sha256', $datos, hex2bin(getenv('IMPE_BACKUP_HMAC_KEY'))),
+    ], JSON_THROW_ON_ERROR));
+    clearstatcache(true, $ruta);
+    try {
+        $s->validarEnLaboratorio($nombre, 'impe_r16_lab_fallido');
+        $fallo = false;
+    } catch (RuntimeException $e) {
+        $fallo = true;
+    }
+    comprobar($fallo && $db->query('SHOW FULL TABLES FROM impe_r16_lab_fallido')->num_rows === 1,
+        'SQL autenticado pero incompatible produce fallo parcial solo en laboratorio');
+    comprobar($db->query('SELECT COUNT(*) n FROM datos')->fetch_assoc()['n'] == 2,
+        'la fuente conserva su estado tras fallo');
+    $s->validarEnLaboratorio($previo, 'impe_r16_lab_recuperado');
+    comprobar($db->query('SELECT nombre FROM impe_r16_lab_recuperado.datos WHERE id=2')
+        ->fetch_assoc()['nombre'] === 'ESTADO PREVIO', 'copia previa verificada recupera el estado esperado');
+} finally {
+    file_put_contents($ruta, $original);
+    file_put_contents($metaPath, $metaOriginal);
+}

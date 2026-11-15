@@ -17,7 +17,15 @@ python3 comprobar_respaldo_r16.py --site "$HOME/domains/fundacionrededumex.org/p
 
 Cotejar también las rutas del módulo, el permiso del menú y la protección HTTP de los archivos históricos. El CHECK compara los tres archivos de este cambio con el origen revisado. Una diferencia exige conciliar la versión instalada. Antes de aplicar, confirmar el soporte de proc_open, las herramientas dump y cliente, los privilegios de exportación de todos los objetos, el espacio y los límites del proceso web. Configurar IMPE_BACKUP_DIR fuera de public_html con permisos 0700 y una clave aleatoria de 32 bytes representada en hexadecimal en IMPE_BACKUP_HMAC_KEY. Mantenerla fuera del directorio de respaldos.
 
-Publicación y reversión de código pendientes de la conciliación real. Antes de reemplazar los tres archivos, guardar sus bytes y permisos en un directorio privado y verificar sus hashes. La reversión repone de ese respaldo únicamente los tres archivos tras verificar que corresponden a esta entrega. El código no requiere una migración.
+Desde una copia privada de la entrega, el publicador verifica las huellas exactas de los originales y del paquete, y ejecuta el lint PHP. Realiza primero el CHECK y concilia cualquier diferencia. La aplicación y la reversión deben ejecutarse en una ventana de mantenimiento para evitar que peticiones simultáneas lean versiones mezcladas de los archivos. El directorio de respaldo debe ser nuevo para APPLY y conservarse para ROLLBACK. El código no requiere una migración.
+
+```sh
+python3 -B "$ENTREGA/tools/publicar_respaldo_r16.py" --site "$SITIO" --stage "$ENTREGA" --check
+python3 -B "$ENTREGA/tools/publicar_respaldo_r16.py" --site "$SITIO" --stage "$ENTREGA" --backup "$COPIA" --apply
+python3 -B "$ENTREGA/tools/publicar_respaldo_r16.py" --site "$SITIO" --stage "$ENTREGA" --backup "$COPIA" --rollback
+```
+
+APPLY y ROLLBACK se probaron fuera de Hostinger sobre los bytes originales de Git. También se comprobó que una personalización bloquea CHECK y APPLY.
 
 ## Prueba aislada
 
@@ -27,4 +35,4 @@ Usar una instancia MariaDB desechable en loopback con credenciales sintéticas, 
 php tests/respaldo_r16_db.php /ruta/a/copia-aislada-del-proyecto
 ```
 
-Si la importación en laboratorio falla, conservar el SQL autenticado y descartar el esquema parcial antes de probar en otro vacío. MySQL y MariaDB pueden confirmar DDL de forma implícita. Falta diseñar y probar la copia previa, el aislamiento temporal y la recuperación del destino operativo antes de habilitar una restauración desde la interfaz.
+La prueba en MariaDB 10.4.32 conserva una copia previa generada y verificada. Inyecta un SQL autenticado de prueba que crea una tabla y falla en la siguiente sentencia. Comprueba que la fuente queda intacta y recupera el estado previo en un esquema limpio distinto. MySQL y MariaDB pueden confirmar DDL de forma implícita. Para habilitar la restauración web falta validar el aislamiento operativo, el cambio controlado de destino y su reversión en infraestructura equivalente a la del alojamiento.
