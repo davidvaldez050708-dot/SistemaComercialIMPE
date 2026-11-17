@@ -7,31 +7,35 @@
   'use strict';
   const root=document.querySelector('.impe-embudo--v3-operativo');
   if (!root) return;
-  root.querySelectorAll('.impe-v3o-gestion-boton').forEach(boton=>{
-    const menu=document.getElementById(boton.getAttribute('popovertarget'));
-    if(!menu)return;
-    menu.addEventListener('toggle',evento=>{
-      if(evento.newState!=='open'){
-        delete menu.dataset.posicionado;
-        return;
-      }
-      const ancla=boton.getBoundingClientRect();
-      const ancho=menu.offsetWidth;
-      const alto=menu.offsetHeight;
-      const izquierda=Math.max(8,Math.min(ancla.right-ancho,window.innerWidth-ancho-8));
-      const abajo=ancla.bottom+6;
-      const arriba=ancla.top-alto-6;
-      menu.style.left=izquierda+'px';
-      menu.style.top=Math.max(8,abajo+alto<=window.innerHeight-8
-        ?abajo:Math.min(arriba,window.innerHeight-alto-8))+'px';
-      menu.dataset.posicionado='1';
+  const enlazadores=[];
+  const enlazarTarjetas=fn=>{enlazadores.push(fn);fn();};
+  enlazarTarjetas(()=>{
+    root.querySelectorAll('.impe-v3o-gestion-boton').forEach(boton=>{
+      const menu=document.getElementById(boton.getAttribute('popovertarget'));
+      if(!menu)return;
+      menu.addEventListener('toggle',evento=>{
+        if(evento.newState!=='open'){
+          delete menu.dataset.posicionado;
+          return;
+        }
+        const ancla=boton.getBoundingClientRect();
+        const ancho=menu.offsetWidth;
+        const alto=menu.offsetHeight;
+        const izquierda=Math.max(8,Math.min(ancla.right-ancho,window.innerWidth-ancho-8));
+        const abajo=ancla.bottom+6;
+        const arriba=ancla.top-alto-6;
+        menu.style.left=izquierda+'px';
+        menu.style.top=Math.max(8,abajo+alto<=window.innerHeight-8
+          ?abajo:Math.min(arriba,window.innerHeight-alto-8))+'px';
+        menu.dataset.posicionado='1';
+      });
+      menu.addEventListener('click',evento=>{
+        if(evento.target.closest('button,a') && menu.matches(':popover-open'))menu.hidePopover();
+      });
     });
-    menu.addEventListener('click',evento=>{
-      if(evento.target.closest('button,a') && menu.matches(':popover-open'))menu.hidePopover();
-    });
-    window.addEventListener('resize',()=>{
-      if(menu.matches(':popover-open'))menu.hidePopover();
-    });
+  });
+  window.addEventListener('resize',()=>{
+    root.querySelectorAll('.impe-v3o-gestion-opciones:popover-open').forEach(menu=>menu.hidePopover());
   });
   const usuarioId=Number(window.IMPE_CURRENT_USER_ID||0);
   const cambioKey='impe:embudo:resultado-guardado:'+usuarioId;
@@ -124,22 +128,110 @@
       }
     }
   }catch(_){}
-  const confirmarGuardado=tipo=>{
-    const mensaje=mensajes.get(tipo);
-    if(telefonoActivo()){
-      mostrarAviso(mensaje+' Actualiza el tablero cuando termine la llamada.');
-      return;
-    }
+  const puedeActualizar=()=>!document.hidden && !telefonoActivo() &&
+    !document.querySelector('#modalResultadoVenta.show, dialog[open]') &&
+    !root.querySelector(':popover-open, .is-dragging');
+  let secuencia=0,controlador=null,pendienteGuardado=null;
+  const actualizarTablero=async(url=location.href,cambiarUrl=false)=>{
+    if(!puedeActualizar())return false;
+    const destino=new URL(url,location.href);
+    if(destino.origin!==location.origin || destino.pathname!==location.pathname)
+      throw new Error('La actualización solicitada no corresponde a este tablero.');
+    const filtro=root.querySelector('[data-embudo-v3-auto-filter]');
+    const firmaFiltro=()=>filtro?new URLSearchParams(new FormData(filtro)).toString():'';
+    const firmaInicial=firmaFiltro();
+    const turno=++secuencia;
+    controlador?.abort();
+    controlador=new AbortController();
+    const actual=controlador;
+    const timeout=window.setTimeout(()=>actual.abort(),8000);
+    root.setAttribute('aria-busy','true');
     try{
-      sessionStorage.setItem(avisoKey,JSON.stringify({tipo,creado:Date.now()}));
-    }catch(_){
-      mostrarAviso(mensaje,()=>{
-        if(!telefonoActivo())window.location.reload();
+      const respuesta=await fetch(destino.href,{
+        credentials:'same-origin',cache:'no-store',signal:actual.signal,
+        headers:{'X-Requested-With':'fetch'}
       });
-      return;
+      if(!respuesta.ok || respuesta.redirected)throw new Error('Respuesta no disponible.');
+      const pagina=new DOMParser().parseFromString(await respuesta.text(),'text/html');
+      const fresca=pagina.querySelector('.impe-embudo--v3-operativo');
+      const board=fresca?.querySelector('.impe-embudo-board');
+      if(!board || !root.querySelector('.impe-embudo-board'))throw new Error('Tablero no disponible.');
+      if(turno!==secuencia || !puedeActualizar() || firmaFiltro()!==firmaInicial)return false;
+      const x=window.scrollX,y=window.scrollY;
+      const scroll=new Map(Array.from(root.querySelectorAll('.impe-v3o-columna[data-etapa]'))
+        .map(lane=>[lane.dataset.etapa,lane.querySelector('.impe-embudo-lane-list')?.scrollTop||0]));
+      const boardScroll=root.querySelector('.impe-embudo-board').scrollLeft;
+      // All replacements happen synchronously, with the previous board visible
+      // until a complete valid response exists. Dialogs and phone are untouched.
+      for(const selector of ['.impe-embudo-board-info','.impe-embudo-board','.impe-v3o-legado','.impe-embudo-note']){
+        const antes=root.querySelector(selector),despues=fresca.querySelector(selector);
+        if(despues){
+          despues.querySelectorAll('script').forEach(script=>script.remove());
+          if(antes)antes.replaceWith(despues);
+          else root.querySelector('.impe-embudo-board').after(despues);
+        }else if(antes && selector!=='.impe-embudo-board')antes.remove();
+      }
+      const nuevosFiltros=fresca.querySelector('[data-embudo-v3-auto-filter]');
+      if(filtro && nuevosFiltros)Array.from(filtro.elements).forEach(control=>{
+        const nuevo=nuevosFiltros.elements.namedItem(control.name);
+        if(!nuevo || !control.name)return;
+        if(control.type==='checkbox')control.checked=nuevo.checked;
+        else control.value=nuevo.value;
+      });
+      enlazadores.forEach(fn=>fn());
+      root.querySelector('.impe-embudo-board').scrollLeft=boardScroll;
+      root.querySelectorAll('.impe-v3o-columna[data-etapa]').forEach(lane=>{
+        const list=lane.querySelector('.impe-embudo-lane-list');
+        if(list)list.scrollTop=scroll.get(lane.dataset.etapa)||0;
+      });
+      if(cambiarUrl && destino.href!==location.href)history.pushState(null,'',destino.href);
+      window.scrollTo(x,y);
+      root.dispatchEvent(new CustomEvent('impe:embudo:v3:actualizado'));
+      return true;
+    }catch(error){
+      if(turno!==secuencia)return false;
+      throw error;
+    }finally{
+      window.clearTimeout(timeout);
+      if(turno===secuencia)root.removeAttribute('aria-busy');
     }
-    window.location.reload();
   };
+  const actualizarGuardado=async()=>{
+    const guardado=pendienteGuardado;
+    if(!guardado || guardado.enCurso || Date.now()<guardado.reintentar || !puedeActualizar())return;
+    guardado.enCurso=true;
+    try{
+      if(await actualizarTablero()){
+        if(pendienteGuardado===guardado)pendienteGuardado=null;
+        if(!guardado.confirmado)mostrarAviso(mensajes.get(guardado.tipo));
+      }
+    }catch(_){
+      guardado.reintentar=Date.now()+5000;
+      if(!guardado.avisado){
+        guardado.avisado=true;
+        mostrarAviso('El cambio se guardó. No se pudo actualizar la vista; se reintentará sin recargar.',undefined,true);
+      }
+    }finally{guardado.enCurso=false;}
+  };
+  const confirmarGuardado=tipo=>{
+    pendienteGuardado={tipo,enCurso:false,reintentar:0,avisado:false,confirmado:false};
+    if(telefonoActivo()){
+      pendienteGuardado.confirmado=true;
+      mostrarAviso(mensajes.get(tipo)+' El tablero se actualizará al terminar la llamada.');
+    }
+    actualizarGuardado();
+  };
+  window.IMPE_EMBUDO_V3={actualizar:actualizarTablero,confirmar:confirmarGuardado,avisar:mostrarAviso};
+  root.addEventListener('click',event=>{
+    const enlace=event.target.closest('.impe-v3o-paginacion a, a.impe-embudo-reset');
+    if(!enlace || event.button!==0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return;
+    event.preventDefault();
+    actualizarTablero(enlace.href,true).catch(()=>
+      mostrarAviso('No se pudo actualizar el tablero. La vista anterior se conserva.',undefined,true));
+  });
+  window.addEventListener('popstate',()=>{
+    actualizarTablero().catch(()=>mostrarAviso('No se pudo actualizar el tablero. La vista anterior se conserva.',undefined,true));
+  });
   const comprobarRespuesta=async(response,mensaje)=>{
     const result=await response.json().catch(()=>null);
     if(!response.ok || result?.ok!==true){
@@ -176,6 +268,7 @@
   let ultimoResultadoVerificado=0;
   const refrescarTrasLlamada=async()=>{
     avisarRecuperacion();
+    if(pendienteGuardado){await actualizarGuardado();return;}
     if(refresh || usuarioId<1 || document.hidden)return;
     let info=null;
     try{info=JSON.parse(localStorage.getItem(cambioKey)||'null');}
@@ -202,27 +295,10 @@
            root.querySelector('dialog[open], :popover-open') ||
            document.querySelector('#modalResultadoVenta.show'))return;
         try{
-          const respuesta=await fetch(location.href,{
-            credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(5000)
-          });
-          if(!respuesta.ok)continue;
-          const pagina=new DOMParser().parseFromString(await respuesta.text(),'text/html');
-          if(!pagina.querySelector('.impe-embudo--v3-operativo .impe-embudo-board'))continue;
-          if(document.hidden || telefonoActivo() ||
-             root.querySelector('dialog[open], :popover-open') ||
-             document.querySelector('#modalResultadoVenta.show'))return;
+          if(!await actualizarTablero())return;
           recuperacionPorActualizar=false;
           ultimoResultadoVerificado=resultado;
-          // La recarga inmediata conserva el aviso en la página actualizada.
-          if (resultado) {
-            try {
-              sessionStorage.setItem(avisoKey,JSON.stringify({tipo:'resultado',creado:Date.now()}));
-            } catch (_) {
-              mostrarAviso(mensajes.get('resultado'),()=>window.location.reload());
-              return;
-            }
-          }
-          window.location.reload();
+          if(resultado)mostrarAviso(mensajes.get('resultado'));
           return;
         }catch(_){/* El tablero visible se conserva durante los reintentos. */}
       }
@@ -257,33 +333,35 @@
 
   // Dialer usado también por Gestión comercial V1. No iniciar una llamada
   // directamente ni falsificar un resultado: lo valida y guarda Telefonía.
-  root.querySelectorAll('[data-embudo-marcar]').forEach(b=>{
-    b.addEventListener('click',()=>{
-      const numero=String(b.dataset.embudoMarcar||'').trim();
-      if(!numero)return;
-      const dial=window.IMPE_TELEPHONY_PERSISTENT;
-      if(!dial || typeof dial.openDialer!=='function'){
-        window.alert('El teléfono persistente no está disponible en esta sesión.');
-        return;
-      }
-      const card=b.closest('.impe-v3o-card');
-      const asignacionId=String(card?.dataset.asignacionId||'');
-      const digitos=numero.replace(/\D/g,'');
-      if(/^[1-9][0-9]*$/.test(asignacionId) &&
-         digitos.length>=10 && digitos.length<=15 && usuarioId>0){
-        try{
-          sessionStorage.setItem('impe:embudo:llamada-pendiente',
-            JSON.stringify({
-              asignacionId,numero,usuarioId,creada:Date.now(),
-              origen:'embudo-v3',nombre:card.dataset.nombre||'',correo:card.dataset.correo||''
-            })
-          );
-        }catch(_){}
-      }
-      dial.openDialer({number:numero});
+  enlazarTarjetas(()=>{
+    root.querySelectorAll('[data-embudo-marcar]').forEach(b=>{
+      b.addEventListener('click',()=>{
+        const numero=String(b.dataset.embudoMarcar||'').trim();
+        if(!numero)return;
+        const dial=window.IMPE_TELEPHONY_PERSISTENT;
+        if(!dial || typeof dial.openDialer!=='function'){
+          window.alert('El teléfono persistente no está disponible en esta sesión.');
+          return;
+        }
+        const card=b.closest('.impe-v3o-card');
+        const asignacionId=String(card?.dataset.asignacionId||'');
+        const digitos=numero.replace(/\D/g,'');
+        if(/^[1-9][0-9]*$/.test(asignacionId) &&
+           digitos.length>=10 && digitos.length<=15 && usuarioId>0){
+          try{
+            sessionStorage.setItem('impe:embudo:llamada-pendiente',
+              JSON.stringify({
+                asignacionId,numero,usuarioId,creada:Date.now(),
+                origen:'embudo-v3',nombre:card.dataset.nombre||'',correo:card.dataset.correo||''
+              })
+            );
+          }catch(_){}
+        }
+        dial.openDialer({number:numero});
+      });
     });
-  });
 
+  });
   const dialog=root.querySelector('#impe-v3o-dialog');
   const form=root.querySelector('#impe-v3o-mover-form');
   if(!dialog || !form)return;
@@ -342,8 +420,10 @@
     motivo.value='';fecha.value='';error.hidden=true;actualizar();
     if(typeof dialog.showModal==='function')dialog.showModal();
   };
-  root.querySelectorAll('[data-v3-mover]').forEach(b=>{
-    b.addEventListener('click',()=>abrir(b.closest('.impe-v3o-card')));
+  enlazarTarjetas(()=>{
+    root.querySelectorAll('[data-v3-mover]').forEach(b=>{
+      b.addEventListener('click',()=>abrir(b.closest('.impe-v3o-card')));
+    });
   });
   form.querySelectorAll('[data-v3-cerrar]').forEach(b=>{
     b.addEventListener('click',()=>dialog.close());
@@ -359,49 +439,51 @@
       lane.classList.remove('is-drop-target','is-drop-allowed'));
     arrastre=null;
   };
-  root.querySelectorAll('.impe-v3o-card[draggable="true"]').forEach(card=>{
-    card.addEventListener('dragstart',event=>{
-      const origen=event.target;
-      if(telefonoActivo() || dialog.open || !card.dataset.asignacionId ||
-         !destinosDe(card).length ||
-         (origen instanceof Element &&
-          origen.closest('a,button,summary,input,select,textarea,[contenteditable="true"]')) ||
-         !event.dataTransfer){
+  enlazarTarjetas(()=>{
+    root.querySelectorAll('.impe-v3o-card[draggable="true"]').forEach(card=>{
+      card.addEventListener('dragstart',event=>{
+        const origen=event.target;
+        if(telefonoActivo() || dialog.open || !card.dataset.asignacionId ||
+           !destinosDe(card).length ||
+           (origen instanceof Element &&
+            origen.closest('a,button,summary,input,select,textarea,[contenteditable="true"]')) ||
+           !event.dataTransfer){
+          event.preventDefault();
+          return;
+        }
+        arrastre=card;
+        event.dataTransfer.effectAllowed='move';
+        event.dataTransfer.setData('text/plain',card.dataset.asignacionId);
+        card.classList.add('is-dragging');
+        root.querySelectorAll('.impe-v3o-columna[data-etapa]').forEach(lane=>{
+          if(destinoValido(card,String(lane.dataset.etapa||'')))
+            lane.classList.add('is-drop-allowed');
+        });
+      });
+      card.addEventListener('dragend',limpiarArrastre);
+    });
+    root.querySelectorAll('.impe-v3o-columna[data-etapa]').forEach(lane=>{
+      const etapa=String(lane.dataset.etapa||'');
+      lane.addEventListener('dragover',event=>{
+        if(!arrastre || telefonoActivo() || !destinoValido(arrastre,etapa))return;
         event.preventDefault();
-        return;
-      }
-      arrastre=card;
-      event.dataTransfer.effectAllowed='move';
-      event.dataTransfer.setData('text/plain',card.dataset.asignacionId);
-      card.classList.add('is-dragging');
-      root.querySelectorAll('.impe-v3o-columna[data-etapa]').forEach(lane=>{
-        if(destinoValido(card,String(lane.dataset.etapa||'')))
-          lane.classList.add('is-drop-allowed');
+        if(event.dataTransfer)event.dataTransfer.dropEffect='move';
+        lane.classList.add('is-drop-target');
+      });
+      lane.addEventListener('dragleave',event=>{
+        if(!lane.contains(event.relatedTarget))
+          lane.classList.remove('is-drop-target');
+      });
+      lane.addEventListener('drop',event=>{
+        if(!arrastre || telefonoActivo() || !destinoValido(arrastre,etapa))return;
+        event.preventDefault();
+        const seleccionada=arrastre;
+        limpiarArrastre();
+        abrir(seleccionada,etapa);
       });
     });
-    card.addEventListener('dragend',limpiarArrastre);
-  });
-  root.querySelectorAll('.impe-v3o-columna[data-etapa]').forEach(lane=>{
-    const etapa=String(lane.dataset.etapa||'');
-    lane.addEventListener('dragover',event=>{
-      if(!arrastre || telefonoActivo() || !destinoValido(arrastre,etapa))return;
-      event.preventDefault();
-      if(event.dataTransfer)event.dataTransfer.dropEffect='move';
-      lane.classList.add('is-drop-target');
-    });
-    lane.addEventListener('dragleave',event=>{
-      if(!lane.contains(event.relatedTarget))
-        lane.classList.remove('is-drop-target');
-    });
-    lane.addEventListener('drop',event=>{
-      if(!arrastre || telefonoActivo() || !destinoValido(arrastre,etapa))return;
-      event.preventDefault();
-      const seleccionada=arrastre;
-      limpiarArrastre();
-      abrir(seleccionada,etapa);
-    });
-  });
 
+  });
   form.addEventListener('submit',async(event)=>{
     event.preventDefault();
     if(enviar.disabled)return;
@@ -477,21 +559,23 @@
         fecha.value=seleccion?.fechaPendiente||'';
       }
     };
-    root.querySelectorAll('[data-v3-actividad]').forEach(b=>b.addEventListener('click',()=>{
-      const card=b.closest('.impe-v3o-card');
-      if(!card || actividadDialog.open || telefonoActivo())return;
-      seleccion={id:card.dataset.asignacionId,etapa:card.dataset.etapa,version:b.dataset.version,fechaPendiente:card.dataset.v3FechaPendiente};
-      actividadForm.reset();
-      errorActividad.hidden=true;
-      actividadForm.querySelector('[data-actividad-prospecto]').textContent=card.dataset.nombre||'Prospecto';
-      actividadForm.querySelector('[data-actividad-subetapa]').hidden=seleccion.etapa!=='SEGUIMIENTO';
-      Array.from(operacion.options).forEach(o=>{
-        o.disabled=o.value!=='REGISTRAR' && (o.value==='PROGRAMAR')===(b.dataset.pendiente==='1');
-        o.hidden=o.disabled;
-      });
-      camposActividad();
-      actividadDialog.showModal();
-    }));
+    enlazarTarjetas(()=>{
+      root.querySelectorAll('[data-v3-actividad]').forEach(b=>b.addEventListener('click',()=>{
+        const card=b.closest('.impe-v3o-card');
+        if(!card || actividadDialog.open || telefonoActivo())return;
+        seleccion={id:card.dataset.asignacionId,etapa:card.dataset.etapa,version:b.dataset.version,fechaPendiente:card.dataset.v3FechaPendiente};
+        actividadForm.reset();
+        errorActividad.hidden=true;
+        actividadForm.querySelector('[data-actividad-prospecto]').textContent=card.dataset.nombre||'Prospecto';
+        actividadForm.querySelector('[data-actividad-subetapa]').hidden=seleccion.etapa!=='SEGUIMIENTO';
+        Array.from(operacion.options).forEach(o=>{
+          o.disabled=o.value!=='REGISTRAR' && (o.value==='PROGRAMAR')===(b.dataset.pendiente==='1');
+          o.hidden=o.disabled;
+        });
+        camposActividad();
+        actividadDialog.showModal();
+      }));
+    });
     actividadDialog.addEventListener('close',()=>{seleccion=null;});
     actividadForm.querySelectorAll('[data-actividad-cerrar]').forEach(b=>
       b.addEventListener('click',()=>{if(!enviarActividad.disabled)actividadDialog.close();}));
@@ -544,21 +628,23 @@
     const enviarPot=potencialForm.querySelector('#impe-v3o-potencial-guardar');
     let gestionCard=null;
 
-    root.querySelectorAll('[data-v3-gestionar]').forEach(button=>{
-      button.addEventListener('click',()=>{
-        const card=button.closest('.impe-v3o-card');
-        const etapa=String(card?.dataset.etapa||'');
-        if(!card || telefonoActivo() || potencialDialog.open ||
-           !['INTERESADO','POTENCIAL'].includes(etapa))return;
-        gestionCard=card;
-        const prev=String(card.dataset.v3Subetapa||'');
-        subetapa.value=Array.from(subetapa.options).some(o=>o.value===prev)
-          ?prev:'';
-        fechaPot.value='';
-        motivoPot.value='';
-        datosPot.textContent=String(card.dataset.nombre||'Prospecto');
-        errorPot.hidden=true;
-        if(typeof potencialDialog.showModal==='function')potencialDialog.showModal();
+    enlazarTarjetas(()=>{
+      root.querySelectorAll('[data-v3-gestionar]').forEach(button=>{
+        button.addEventListener('click',()=>{
+          const card=button.closest('.impe-v3o-card');
+          const etapa=String(card?.dataset.etapa||'');
+          if(!card || telefonoActivo() || potencialDialog.open ||
+             !['INTERESADO','POTENCIAL'].includes(etapa))return;
+          gestionCard=card;
+          const prev=String(card.dataset.v3Subetapa||'');
+          subetapa.value=Array.from(subetapa.options).some(o=>o.value===prev)
+            ?prev:'';
+          fechaPot.value='';
+          motivoPot.value='';
+          datosPot.textContent=String(card.dataset.nombre||'Prospecto');
+          errorPot.hidden=true;
+          if(typeof potencialDialog.showModal==='function')potencialDialog.showModal();
+        });
       });
     });
     potencialForm.querySelectorAll('[data-v3-gestionar-cerrar]').forEach(button=>{

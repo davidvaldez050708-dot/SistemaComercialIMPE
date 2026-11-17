@@ -167,7 +167,11 @@
   dialog.addEventListener('close',()=>{
     seleccion=null;
     limpiar();
-    if(tramiteIniciado&&!telefonoActivo())window.location.reload();
+    if(tramiteIniciado&&!telefonoActivo()){
+      tramiteIniciado=false;
+      if(window.IMPE_EMBUDO_V3?.confirmar)window.IMPE_EMBUDO_V3.confirmar('movimiento');
+      else window.location.reload();
+    }
   });
   buscar.addEventListener('click',async()=>{
     if(!seleccion||busy)return;
@@ -212,8 +216,11 @@
         formulario_id:String(seleccion.formulario),
         motivo:razon,confirmacion:'1'
       });
+      tramiteIniciado=false;
       dialog.close();
-      if(telefonoActivo()){
+      if(window.IMPE_EMBUDO_V3?.confirmar){
+        window.IMPE_EMBUDO_V3.confirmar('movimiento');
+      }else if(telefonoActivo()){
         // Nunca recargar la pantalla mientras persiste una llamada.
         mostrarAviso('Solicitud institucional vinculada. Actualiza Gestión Comercial al finalizar la llamada.');
       }else {

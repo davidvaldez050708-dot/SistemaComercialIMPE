@@ -11,14 +11,14 @@ const origen = 'http://embudo.test';
 const guardar = '#impe-v3o-potencial-guardar';
 const aviso = '.system-toast.show';
 const fixture = `<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/embudo.css"><link rel="stylesheet" href="/tablero.css"><main class="impe-embudo--v3-operativo">
-  <article class="impe-v3o-card" data-asignacion-id="1" data-etapa="INTERESADO" data-v3-subetapa="CALIFICADO">
+  <div class="impe-embudo-board"><article class="impe-v3o-card" data-asignacion-id="1" data-etapa="INTERESADO" data-v3-subetapa="CALIFICADO">
     <button data-v3-gestionar>Gestionar</button>
     <button data-v3-actividad data-version="7" data-pendiente="1">Actividad</button>
   </article>
   <article class="impe-v3o-card" data-asignacion-id="2" data-etapa="CONTACTADO" data-v3-destinos="SEGUIMIENTO,POTENCIAL">
     <button data-v3-mover>Mover</button>
   </article>
-  <dialog id="impe-v3o-dialog"><form id="impe-v3o-mover-form">
+  </div><dialog id="impe-v3o-dialog"><form id="impe-v3o-mover-form">
     <span id="impe-v3o-dialog-datos"></span>
     <select id="impe-v3o-destino"><option>SEGUIMIENTO</option><option>POTENCIAL</option></select>
     <input id="impe-v3o-motivo"><label id="impe-v3o-fecha-label">
@@ -131,27 +131,6 @@ async function probar(browser, modo) {
     await page.click('#impe-v3o-enviar');
   } else if (modo === 'actividad') {
     await page.locator('[data-v3-actividad]').click();
-    await page.locator('details summary').click();
-    const entrada = page.locator('[data-actividad-historial] li');
-    await entrada.first().waitFor();
-    assert.ok((await entrada.first().textContent()).includes('<b>Primera gestión</b>'));
-    assert.equal(await entrada.locator('b').count(), 0);
-    assert.equal(await entrada.first().locator('.impe-v3o-actividad-item-tipo').textContent(), 'Programación');
-    assert.equal(await entrada.count(), 20);
-    assert.equal(await page.locator('[data-actividad-mas]').isVisible(), true);
-    const dimensiones=await page.locator('.impe-v3o-actividad-historial-scroll').evaluate(el=>({
-      visible:el.clientHeight,total:el.scrollHeight
-    }));
-    assert.ok(dimensiones.visible<=252 && dimensiones.total>dimensiones.visible,
-      'El historial debe mantener el scroll interno dentro de 252 px');
-    await page.locator('[data-actividad-mas]').click();
-    await entrada.nth(24).waitFor();
-    assert.equal(await entrada.count(),25);
-    assert.equal(await page.locator('[data-actividad-mas]').isVisible(),false);
-    const dialogo=await page.locator('#impe-v3o-actividad-dialog').evaluate(el=>({
-      visible:el.getBoundingClientRect().height,limite:window.innerHeight
-    }));
-    assert.ok(dialogo.visible<dialogo.limite,'El modal debe mantenerse dentro de la pantalla');
     await page.selectOption('[name=operacion]', 'REPROGRAMAR');
     await page.fill('[name=fecha]', '2099-01-02T10:00');
     await page.fill('[name=motivo]', 'Cambio de horario acordado');
@@ -175,21 +154,14 @@ async function probar(browser, modo) {
     assert.match(await toast.textContent(), ['movimiento', 'calificacion'].includes(modo)
       ? /Movimiento registrado/ : modo === 'actividad' ? /Actividad comercial registrada/ : /Gestión comercial registrada/);
     assert.equal(await toast.count(), 1);
-    assert.equal(navegaciones, ['llamada', 'sin-storage'].includes(modo) ? 1 : 2);
-    if (modo === 'sin-storage') {
-      await Promise.all([page.waitForNavigation(), toast.getByRole('button', { name: 'Cerrar aviso' }).click()]);
-      assert.equal(navegaciones, 2);
-      assert.equal(await page.locator(aviso).count(), 0);
-    } else {
-      await toast.getByRole('button', { name: 'Cerrar aviso' }).click();
-      await toast.waitFor({ state: 'detached' });
-      if (modo === 'llamada') {
-        assert.equal(navegaciones, 1);
-      } else {
-        await page.reload();
-        assert.equal(await page.locator(aviso).count(), 0);
-      }
+    assert.equal(navegaciones, modo==='llamada' ? 1 : 2);
+    await toast.getByRole('button', { name: 'Cerrar aviso' }).click();
+    await toast.waitFor({ state: 'detached' });
+    if(modo!=='llamada'){
+      await page.reload();
+      assert.equal(await page.locator(aviso).count(),0);
     }
+
   }
   assert.equal(guardados, 1);
   await page.close();

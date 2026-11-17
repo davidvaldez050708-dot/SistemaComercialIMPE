@@ -168,7 +168,9 @@
           ?body.mensaje:'No pudo confirmarse la decisión.');
       }
       close();
-      if(telefonoActivo()){
+      if(window.IMPE_EMBUDO_V3?.confirmar){
+        window.IMPE_EMBUDO_V3.confirmar('movimiento');
+      }else if(telefonoActivo()){
         mostrarAviso('Decisión registrada. Actualiza el tablero al finalizar la llamada.');
       }else {
         const key='impe:v3b:confirmacion:'+String(window.IMPE_CURRENT_USER_ID||0);

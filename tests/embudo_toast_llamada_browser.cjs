@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict');
 const path=require('node:path');
-const {chromium}=require('playwright');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
 (async()=>{
  const browser=await chromium.launch({channel:'msedge'});
  try {
@@ -27,13 +27,13 @@ const {chromium}=require('playwright');
   const toast=page.locator('#impe-v3o-avisos .system-toast.show');
   await toast.waitFor();
   assert.match(await toast.innerText(),/Resultado comercial guardado/);
-  assert.ok(loads>=3,'incluye comprobación y recarga');
+  assert.equal(loads,2,'una carga inicial y una actualización parcial');
   await page.waitForTimeout(2000);
   assert.equal(await toast.count(),1,'se alcanza a leer después de recargar');
   await toast.waitFor({state:'detached'});
   await page.reload();
   assert.equal(await page.locator('.system-toast').count(),0,'se consume una sola vez');
   assert.deepEqual(errors,[]);
-  console.log('OK toast visible tras refrescar, duración y consumo único');
+  console.log('OK actualización parcial, toast estable, duración y consumo único');
  } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
