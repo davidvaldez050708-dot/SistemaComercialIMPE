@@ -24,6 +24,12 @@ final class EmbudoComercialV3MovimientosPermitidos
 
     public static function destinoPorConversacion(string $actual,string $resultado): ?string
     {
+        // El resultado explícito califica a un prospecto ya contactado.
+        // La conversación inicial conserva su transición a Contactados.
+        if ($actual === 'CONTACTADO' && $resultado === 'PROSPECTO_POTENCIAL') {
+            return 'POTENCIAL';
+        }
+
         return self::requiereConversacion($actual,'CONTACTADO') &&
             in_array($resultado,self::RESULTADOS_CONVERSACION,true)
             ? 'CONTACTADO' : null;
