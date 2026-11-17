@@ -67,9 +67,8 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     $destinos=implode(',',$propuestas);
     $detalle=$base.http_build_query([
         'controller'=>'embudoComercial','action'=>'detalle',
-        'vista'=>'embudo','id'=>(int)$p['prospecto_id'],
-        'asesor'=>$supervisor?$filtros['asesor']:0
-    ]);
+        'vista'=>'embudo','id'=>(int)$p['prospecto_id']
+    ]+($supervisor && $filtros['asesor']>0?['asesor'=>$filtros['asesor']]:[]));
     $historial=$base.http_build_query([
         'controller'=>'telefonia','action'=>'misLlamadas',
         'prospecto_asignacion_id'=>(int)$p['asignacion_id'],
@@ -235,18 +234,18 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     <nav class="impe-embudo-tabs" aria-label="Vistas comerciales">
         <a aria-current="page" href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo'
-        ]+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>"><i class="bi bi-kanban" aria-hidden="true"></i> Embudo de ventas</a>
+        ]+($supervisor && $filtros['asesor']>0?['asesor'=>$filtros['asesor']]:[]))) ?>"><i class="bi bi-kanban" aria-hidden="true"></i> Embudo de ventas</a>
         <?php if(EmbudoComercialAcceso::puede('recuperacion')): ?>
         <a href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>'recuperacion'
-        ]+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación</a>
+        ]+($supervisor && $filtros['asesor']>0?['asesor'=>$filtros['asesor']]:[]))) ?>"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación</a>
         <?php endif; ?>
         <?php if(EmbudoComercialAcceso::puede('descartados')): ?>
         <a href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>'descartados'
-        ]+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>"><i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
+        ]+($supervisor && $filtros['asesor']>0?['asesor'=>$filtros['asesor']]:[]))) ?>"><i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
         <?php endif; ?>
-        <a href="<?= $esc($base.'controller=embudoComercial&action=expedientes'.($supervisor?'&asesor='.(int)$filtros['asesor']:'')) ?>">
+        <a href="<?= $esc($base.'controller=embudoComercial&action=expedientes'.($supervisor && $filtros['asesor']>0?'&asesor='.(int)$filtros['asesor']:'')) ?>">
             <i class="bi bi-folder2-open" aria-hidden="true"></i> Expedientes cerrados
         </a>
     </nav>

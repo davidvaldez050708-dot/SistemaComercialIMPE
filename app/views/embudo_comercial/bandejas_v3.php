@@ -27,21 +27,21 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
 <div class="impe-embudo impe-embudo--compact impe-embudo--v3-bandejas" data-v3-bandejas>
     <nav class="impe-embudo-tabs" aria-label="Vistas comerciales">
         <a href="<?= $esc($base.http_build_query(['controller'=>'embudoComercial',
-            'action'=>'index','vista'=>'embudo']+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>">
+            'action'=>'index','vista'=>'embudo']+($supervisor && $filtros['asesor']>0?['asesor'=>$filtros['asesor']]:[]))) ?>">
             <i class="bi bi-kanban" aria-hidden="true"></i> Embudo de ventas</a>
         <?php if(EmbudoComercialAcceso::puede('recuperacion')): ?>
         <a href="<?= $esc($base.http_build_query(['controller'=>'embudoComercial',
-            'action'=>'index','vista'=>'recuperacion']+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>"
+            'action'=>'index','vista'=>'recuperacion']+($supervisor && $filtros['asesor']>0?['asesor'=>$filtros['asesor']]:[]))) ?>"
             <?= $recuperacion?'aria-current="page"':'' ?>>
             <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación</a>
         <?php endif; ?>
         <?php if(EmbudoComercialAcceso::puede('descartados')): ?>
         <a href="<?= $esc($base.http_build_query(['controller'=>'embudoComercial',
-            'action'=>'index','vista'=>'descartados']+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>"
+            'action'=>'index','vista'=>'descartados']+($supervisor && $filtros['asesor']>0?['asesor'=>$filtros['asesor']]:[]))) ?>"
             <?= !$recuperacion?'aria-current="page"':'' ?>>
             <i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
         <?php endif; ?>
-        <a href="<?= $esc($base.'controller=embudoComercial&action=expedientes'.($supervisor?'&asesor='.(int)$filtros['asesor']:'')) ?>">
+        <a href="<?= $esc($base.'controller=embudoComercial&action=expedientes'.($supervisor && $filtros['asesor']>0?'&asesor='.(int)$filtros['asesor']:'')) ?>">
             <i class="bi bi-folder2-open" aria-hidden="true"></i> Expedientes cerrados</a>
     </nav>
     <?php if($error!==''): ?>

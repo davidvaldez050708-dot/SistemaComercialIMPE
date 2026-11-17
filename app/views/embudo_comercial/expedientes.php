@@ -5,7 +5,7 @@ $esc=static fn($valor)=>htmlspecialchars((string)$valor,ENT_QUOTES,'UTF-8');
 $supervisor=!empty($supervisor);
 $asesorSeleccionado=$supervisor?(int)($filtros['asesor']??0):0;
 $url=BASE_URL.'index.php?controller=embudoComercial';
-$navUrl=$url.($supervisor?'&asesor='.$asesorSeleccionado:'');
+$navUrl=$url.($supervisor && $asesorSeleccionado>0?'&asesor='.$asesorSeleccionado:'');
 ?>
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/embudo_comercial.css') ?>">
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_grabaciones.css') ?>">
@@ -67,8 +67,8 @@ $navUrl=$url.($supervisor?'&asesor='.$asesorSeleccionado:'');
             </div>
             <?php if($pagina>1 || count($expedientes)>25): ?>
             <nav class="impe-embudo-tabs mt-3" aria-label="Páginas de expedientes">
-                <?php if($pagina>1): ?><a href="<?= $esc($url.'&action=expedientes&asesor='.$asesorSeleccionado.'&pagina='.($pagina-1)) ?>">Anterior</a><?php endif; ?>
-                <?php if(count($expedientes)>25 && $pagina<10000): ?><a href="<?= $esc($url.'&action=expedientes&asesor='.$asesorSeleccionado.'&pagina='.($pagina+1)) ?>">Siguiente</a><?php endif; ?>
+                <?php if($pagina>1): ?><a href="<?= $esc($navUrl.'&action=expedientes&pagina='.($pagina-1)) ?>">Anterior</a><?php endif; ?>
+                <?php if(count($expedientes)>25 && $pagina<10000): ?><a href="<?= $esc($navUrl.'&action=expedientes&pagina='.($pagina+1)) ?>">Siguiente</a><?php endif; ?>
             </nav>
             <?php endif; ?>
         </section>

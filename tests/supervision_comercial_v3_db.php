@@ -91,6 +91,7 @@ try{
  foreach(['Potenciales','Proceso Inscripción','Expedientes cerrados','Expediente comercial','Esperando documentos','name="asesor"','Asesor &lt;b&gt;22&lt;/b&gt;'] as $texto)comprobarSupervision(str_contains($admin,$texto),'render supervisor: '.$texto);
  foreach(['data-embudo-marcar=','data-v3-mover ',"data-v3-actividad\n",'data-v3i-iniciar','draggable="true"'] as $prohibido)comprobarSupervision(!str_contains($admin,$prohibido),'supervisor no opera: '.$prohibido);
  $fixtures=['admin.html'=>$admin];
+ $fixtures['todos.html']=renderSupervision('operativo_v3',array_replace($vars,['filtros'=>$f,'tablero'=>$todos]));
  $f23=EmbudoComercialRepository::filtros(['asesor'=>'23'],true);
  $fixtures['admin23.html']=renderSupervision('operativo_v3',array_replace($vars,['filtros'=>$f23,'tablero'=>$repo->listadoV3Operativo(1,$f23,$pag,true)]));
  $pag2=EmbudoComercialRepository::paginasV3Operativo(['p3_nuevo'=>'2']);
@@ -100,6 +101,9 @@ try{
   $html=renderSupervision('bandejas_v3',array_replace($vars,['vista'=>$vista,'filtros'=>$filtro,'tablero'=>$cols]));
   comprobarSupervision(str_contains($html,'Expedientes cerrados') && str_contains($html,'name="asesor"') && !str_contains($html,'data-v3b-llamar='),'bandeja comparte consulta y navegación');
   $fixtures[$vista.'.html']=$html;
+  $fixtures[$vista.'-todos.html']=renderSupervision('bandejas_v3',array_replace($vars,[
+      'vista'=>$vista,'filtros'=>$f,'tablero'=>$repo->listado(1,true,$f,$vista,true)
+  ]));
  }
  $fixtures['cerrados.html']=renderSupervision('expedientes',array_replace($vars,['filtros'=>$f,'expedientes'=>$repo->expedientesCerrados(1,1,true),'pagina'=>1]));
  $fixtures['cerrados22.html']=renderSupervision('expedientes',$vars+['expedientes'=>$repo->expedientesCerrados(1,1,true,22),'pagina'=>1]);
@@ -117,6 +121,18 @@ try{
  rechazarSupervision(fn()=>$repo->expedientesCerrados(22,1,true));
  comprobarSupervision(count($repo->expedientesCerrados(22,1))===1,'cierres propios');
  $fixtures['asesor.html']=renderSupervision('operativo_v3',array_replace($vars,['supervisor'=>false,'usuarioId'=>22,'tablero'=>$propios]));
+ // Validate generated links through the real parser, with and without an advisor.
+ foreach($fixtures as $archivo=>$html){
+  preg_match_all('/href="([^"]+)"/',$html,$links);
+  foreach($links[1] as $href){
+   $query=parse_url(html_entity_decode($href,ENT_QUOTES,'UTF-8'),PHP_URL_QUERY);
+   if(!is_string($query))continue;
+   parse_str($query,$get);
+   if(($get['controller']??'')!=='embudoComercial')continue;
+   comprobarSupervision(!isset($get['asesor']) || $get['asesor']!=='0','enlace sin asesor cero: '.$archivo);
+   EmbudoComercialRepository::filtros($get,true);
+  }
+ }
  $_SESSION=['usuario_id'=>1,'rol_id'=>1,'permisos'=>[]];rechazarSupervision(fn()=>$repo->listadoV3Operativo(1,$f,$pag,true));
  $sitio=sys_get_temp_dir().'/impe_supervision_site_'.bin2hex(random_bytes(5));
  mkdir($sitio,0700);mkdir($sitio.'/config',0700);

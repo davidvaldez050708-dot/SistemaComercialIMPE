@@ -21,11 +21,12 @@ const index=app+'/index.php?controller=embudoComercial&action=index&asesor=22';
     const file=path.resolve(raiz,'.'+u.pathname);
     assert.ok(file.startsWith(raiz+path.sep));return route.fulfill({path:file});
    }
-   let file='admin.html';
+   let file=u.searchParams.get('asesor')==='22'?'admin.html':'todos.html';
    if(u.searchParams.get('perfil')==='asesor')file='asesor.html';
    else if(u.searchParams.get('action')==='detalle')file=(u.searchParams.get('panel')||'resumen')+'.html';
    else if(u.searchParams.get('action')==='expedientes')file=u.searchParams.get('asesor')==='22'?'cerrados22.html':'cerrados.html';
-   else if(['recuperacion','descartados'].includes(u.searchParams.get('vista')))file=u.searchParams.get('vista')+'.html';
+   else if(['recuperacion','descartados'].includes(u.searchParams.get('vista')))file=u.searchParams.get('vista')+
+       (u.searchParams.get('asesor')?'.html':'-todos.html');
    else if(u.searchParams.get('asesor')==='23')file=u.searchParams.get('p3_nuevo')==='2'?'admin23pagina2.html':'admin23.html';
    return route.fulfill({body:fs.readFileSync(path.join(dir,file),'utf8'),contentType:'text/html'});
   });
@@ -56,6 +57,20 @@ const index=app+'/index.php?controller=embudoComercial&action=index&asesor=22';
   assert.equal(await page.locator('.linkage-call-recording-card').count(),1);
   assert.match(await page.locator('.linkage-call-recording-card').innerText(),/157/);
   assert.equal(await page.locator('[data-expediente-grabacion]').count(),0);
+  // Default "Todos" must survive tabs, a full reload, and the record's return link.
+  await page.goto(index.replace('&asesor=22',''));
+  for(const nombre of ['Expedientes cerrados','Descartados','Recuperación','Embudo de ventas']){
+   await page.getByRole('link',{name:nombre,exact:true}).click();
+   assert.equal(new URL(page.url()).searchParams.has('asesor'),false,'Todos no debe emitir asesor=0');
+   await page.reload();
+   assert.equal(await page.locator('[name=asesor]').inputValue(),'');
+   assert.equal(await page.locator('.impe-embudo-alert--error').count(),0);
+  }
+  await page.locator('[data-asignacion-id="4"] .impe-v3o-gestion-boton').click();
+  await page.locator('#impe-v3o-gestion-4').getByRole('link',{name:'Ver expediente comercial'}).click();
+  assert.equal(new URL(page.url()).searchParams.has('asesor'),false);
+  await page.getByRole('link',{name:'Volver a Embudo',exact:true}).click();
+  assert.equal(new URL(page.url()).searchParams.has('asesor'),false);
   await page.goto(index);
   const antes=documentos;
   await page.locator('[name=asesor]').selectOption('23');

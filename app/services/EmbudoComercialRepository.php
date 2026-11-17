@@ -50,6 +50,8 @@ final class EmbudoComercialRepository
         $programa=$get['programa']??'';
         $vencidos=$get['vencidos']??'0';
         $asesor=$get['asesor']??'';
+        // Compatibilidad con enlaces anteriores: 0 representa Todos los asesores.
+        if($asesor==='0')$asesor='';
         if (!is_string($buscar)||mb_strlen($buscar)>120 ||
             !is_string($origen)||!in_array($origen,['','META_ADS','ALIADO'],true) ||
             !is_string($programa)||mb_strlen($programa)>80 ||
