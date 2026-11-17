@@ -130,6 +130,9 @@ final class EmbudoComercialV3SeguimientoService
             }
             $pendiente=$programar?EmbudoComercialMovimientoService::fechaSeguimientoUtc($fecha):
                 ($accion==='COMPLETAR'?null:$anterior);
+            if ($accion==='REPROGRAMAR' && substr($pendiente,0,16)===substr($anterior,0,16)) {
+                throw new DomainException('La fecha y hora son las mismas. Selecciona una fecha u hora diferente para reprogramar.');
+            }
             $completada=$accion==='COMPLETAR'?gmdate('Y-m-d H:i:s'):($programar?null:($actual['completada_at']??null));
             $movimiento=$programar
                 ?EmbudoComercialV3ProximaAccion::promover($this->db,$usuario,$id,$etapa,

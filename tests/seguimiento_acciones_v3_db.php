@@ -49,6 +49,17 @@ try {
         $evento=$svc->registrar(22,$id,$etapa,$evento,'PROGRAMAR','Próxima acción acordada.','2099-01-02T10:00','');
         $esperada=in_array($etapa,['CONTACTADO','POTENCIAL','INTERESADO'],true)?'SEGUIMIENTO':$etapa;
         verificarAccion($etapaDe($id)===$esperada,'programar '.$etapa);
+        $antes=$svc->historial(22,$id);
+        $subAntes=$db->query("SELECT * FROM prospecto_embudo_subetapas WHERE asignacion_id=$id")->fetch_all(MYSQLI_ASSOC);
+        $movAntes=$db->query("SELECT COUNT(*) FROM prospecto_embudo_movimientos WHERE asignacion_id=$id")->fetch_row()[0];
+        $subHistAntes=$db->query("SELECT COUNT(*) FROM prospecto_embudo_subetapas_historial WHERE asignacion_id=$id")->fetch_row()[0];
+        rechazarAccion(fn()=>$svc->registrar(22,$id,$esperada,$evento,'REPROGRAMAR','Sin cambio real de cita.','2099-01-02T10:00',
+            $esperada==='SEGUIMIENTO'?'ESPERANDO_RESPUESTA':''));
+        verificarAccion($svc->historial(22,$id)===$antes && $etapaDe($id)===$esperada &&
+            $db->query("SELECT * FROM prospecto_embudo_subetapas WHERE asignacion_id=$id")->fetch_all(MYSQLI_ASSOC)===$subAntes &&
+            $db->query("SELECT COUNT(*) FROM prospecto_embudo_movimientos WHERE asignacion_id=$id")->fetch_row()[0]===$movAntes &&
+            $db->query("SELECT COUNT(*) FROM prospecto_embudo_subetapas_historial WHERE asignacion_id=$id")->fetch_row()[0]===$subHistAntes,
+            'misma fecha no registra actividad, etapa ni subetapa');
         rechazarAccion(fn()=>$svc->registrar(22,$id,$esperada,$evento-1,'REPROGRAMAR','Conflicto de prueba.','2099-01-03T10:00',''));
         $evento=$svc->registrar(22,$id,$esperada,$evento,'REPROGRAMAR','Reprogramación acordada.','2099-01-03T10:00','');
         $svc->registrar(22,$id,$esperada,$evento,'COMPLETAR','Actividad atendida.','','');

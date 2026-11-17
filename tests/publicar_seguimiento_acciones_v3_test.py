@@ -3,13 +3,14 @@ from pathlib import Path
 import contextlib
 import importlib
 import io
+import os
 import subprocess
 import sys
 import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
-paquete=importlib.import_module('publicar_seguimiento_acciones_v3_hostinger')
+paquete=importlib.import_module(os.environ.get('IMPE_PUBLICADOR_MODULO','publicar_seguimiento_acciones_v3_hostinger'))
 pub=paquete.publicador
 pub.ARCHIVOS=paquete.ARCHIVOS
 pub.NO_MODIFICAR=paquete.DEPENDENCIAS
@@ -78,12 +79,14 @@ with tempfile.TemporaryDirectory(prefix='impe-seguimiento-deploy-') as tmp:
         pub.revertir(str(site),str(backup))
         assert pub.estado(str(site))=='BASE'
         assert telefono.read_bytes()==variante,'personalización intacta tras apply y rollback'
-        assert not (site/paquete.ARCHIVOS[0][0]).exists()
+        for rel,old,_ in paquete.ARCHIVOS:
+            if old is None:assert not (site/rel).exists()
+            else:assert pub.blob(str(site/rel))==old
         # Failure during publication returns the complete previous version.
         real=pub.atomico;calls=[0]
         def fail_once(dest,source,mode):
             calls[0]+=1
-            if calls[0]==3:raise OSError('fallo sintético')
+            if calls[0]==2:raise OSError('fallo sintético')
             return real(dest,source,mode)
         pub.atomico=fail_once
         try:

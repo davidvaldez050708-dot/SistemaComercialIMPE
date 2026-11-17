@@ -505,6 +505,12 @@
         errorActividad.textContent='Termina la llamada antes de guardar la actividad.';
         errorActividad.hidden=false;return;
       }
+      if(operacion.value==='REPROGRAMAR' && fecha.value===seleccion.fechaPendiente){
+        errorActividad.textContent='La fecha y hora son las mismas. Selecciona una fecha u hora diferente para reprogramar.';
+        errorActividad.hidden=false;
+        fecha.focus();
+        return;
+      }
       enviarActividad.disabled=true;
       try{
         const body=new URLSearchParams({
