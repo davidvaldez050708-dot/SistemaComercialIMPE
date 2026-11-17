@@ -121,6 +121,32 @@ try{
  rechazarSupervision(fn()=>$repo->expedientesCerrados(22,1,true));
  comprobarSupervision(count($repo->expedientesCerrados(22,1))===1,'cierres propios');
  $fixtures['asesor.html']=renderSupervision('operativo_v3',array_replace($vars,['supervisor'=>false,'usuarioId'=>22,'tablero'=>$propios]));
+ $doc=new DOMDocument();@$doc->loadHTML($fixtures['asesor.html'],LIBXML_NONET);$xp=new DOMXPath($doc);
+ foreach([1=>[false,false],2=>[false,false],3=>[true,true],4=>[false,true],5=>[false,true]] as $id=>[$avance,$inscripcion]){
+  $base="//article[@data-asignacion-id='$id']/div[@class='impe-v3o-acciones']";
+  comprobarSupervision($xp->query($base.'/button[@data-v3-actividad]')->length===1,'actividad directa en etapa '.$id);
+  comprobarSupervision($xp->query($base.'/button[@data-v3-gestionar]')->length===($avance?1:0),'avance contextual '.$id);
+  comprobarSupervision($xp->query($base.'/button[@data-v3i-iniciar]')->length===($inscripcion?1:0),'inscripción contextual '.$id);
+  comprobarSupervision($xp->query($base.'/button[@data-v3-whatsapp-reservado and @disabled]')->length===1,'WhatsApp reservado sin acción '.$id);
+  comprobarSupervision($xp->query($base.'/div/button[@data-v3-actividad or @data-v3-gestionar or @data-v3i-iniciar]')->length===0,'sin acciones frecuentes duplicadas en Más');
+ }
+ comprobarSupervision($xp->query("//a[@aria-label='Ver expediente comercial']")->length===0,'asesor conserva expediente solo desde el nombre');
+ $sinContacto=$propios;
+ foreach($sinContacto['columnas']['SEGUIMIENTO']['registros'] as &$item)$item['subetapa']='NO_CONTACTAR';unset($item);
+ $fixtures['asesor-no-contactar.html']=renderSupervision('operativo_v3',array_replace($vars,['supervisor'=>false,'usuarioId'=>22,'tablero'=>$sinContacto]));
+ @$doc->loadHTML($fixtures['asesor-no-contactar.html'],LIBXML_NONET);$xp=new DOMXPath($doc);
+ comprobarSupervision($xp->query("//article[@data-asignacion-id='4']//button[@data-embudo-marcar or @data-v3-whatsapp-reservado or @data-v3-actividad or @data-v3i-iniciar]")->length===0,'No contactar sin accesos operativos');
+ $_SESSION['permisos']=array_values(array_diff($_SESSION['permisos'],['ventas.embudo.mover']));
+ $fixtures['asesor-consulta.html']=renderSupervision('operativo_v3',array_replace($vars,['supervisor'=>false,'usuarioId'=>22,'tablero'=>$propios]));
+ @$doc->loadHTML($fixtures['asesor-consulta.html'],LIBXML_NONET);$xp=new DOMXPath($doc);
+ comprobarSupervision($xp->query('//button[@data-v3-actividad or @data-v3-gestionar or @data-v3i-iniciar]')->length===0,'sin permisos no aparecen operaciones');
+ sesionSupervision(false);$_SESSION['usuario_id']=23;
+ $asesor23=$repo->listadoV3Operativo(23,$f,$pag);
+ $fixtures['asesor23.html']=renderSupervision('operativo_v3',array_replace($vars,['supervisor'=>false,'usuarioId'=>23,'tablero'=>$asesor23]));
+ @$doc->loadHTML($fixtures['asesor23.html'],LIBXML_NONET);$xp=new DOMXPath($doc);
+ comprobarSupervision($xp->query("//article[@data-asignacion-id='6']/div[@class='impe-v3o-acciones']/button[@data-v3-gestionar or @data-v3i-iniciar]")->length===2,'INTERESADO mantiene acciones de Potenciales');
+ comprobarSupervision($xp->query("//article[@data-asignacion-id='13']//button[@data-v3-gestionar or @data-v3-actividad or @data-v3i-iniciar or @data-v3-whatsapp-reservado]")->length===0,'históricos sin operaciones V3 adicionales');
+ sesionSupervision(false);
  // Validate generated links through the real parser, with and without an advisor.
  foreach($fixtures as $archivo=>$html){
   preg_match_all('/href="([^"]+)"/',$html,$links);
@@ -148,7 +174,10 @@ try{
  comprobarSupervision($antes===$escrituras(),'todas las consultas son de solo lectura');
  if($dir=getenv('IMPE_SUPERVISION_RENDER_DIR')){
   if(!is_dir($dir))mkdir($dir,0700,true);
-  foreach($fixtures as $file=>$html)file_put_contents($dir.'/'.$file,'<!doctype html><meta charset="utf-8"><script>window.IMPE_CURRENT_USER_ID=1;</script>'.$html);
+  foreach($fixtures as $file=>$html){
+   $idFixture=str_starts_with($file,'asesor23')?23:(str_starts_with($file,'asesor')?22:1);
+   file_put_contents($dir.'/'.$file,'<!doctype html><meta charset="utf-8"><script>window.IMPE_CURRENT_USER_ID='.$idFixture.';</script>'.$html);
+  }
  }
  echo "CHECK_OK supervisión: mismas etapas, tarjetas, agenda V3, asesor, cierres, historial, permisos, aislamiento y cero escrituras.\n";
 }finally{$db->query("DROP DATABASE $nombre");$db->close();}

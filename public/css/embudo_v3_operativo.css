@@ -454,3 +454,21 @@
 }
 .impe-v3o-card[draggable="true"] { cursor: grab; }
 .impe-v3o-card.is-dragging { cursor: grabbing; }
+
+/* Acciones frecuentes visibles; Más conserva las decisiones secundarias. */
+.impe-embudo--v3-operativo .impe-v3o-card .impe-v3o-acciones {
+  justify-content:flex-start;
+  flex-wrap:wrap;
+  gap:3px;
+}
+.impe-embudo--v3-operativo .impe-v3o-acciones > .impe-v3o-gestion-boton {
+  margin-left:auto;
+}
+.impe-embudo--v3-operativo .impe-v3o-acciones > [data-v3-whatsapp-reservado],
+.impe-embudo--v3-operativo .impe-v3o-acciones > [data-v3-whatsapp-reservado]:hover {
+  background:#f5f7fa;
+  border-color:#e1e7ef;
+  color:#8190a3;
+  cursor:default;
+  opacity:.7;
+}

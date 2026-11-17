@@ -151,52 +151,73 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         <p class="impe-v3o-meta"><i class="bi bi-calendar3" aria-hidden="true"></i>
             Jornada: <?= $esc(EmbudoComercialPresentacion::fechaLocal($p['fecha_trabajo']??'')) ?></p>
         <?php endif; ?>
+        <?php
+            $mostrarLlamada=$puedeLlamar && $st!=='NO_CONTACTAR' && trim((string)($p['telefono_original']??''))!=='';
+            $mostrarActividad=$actividadV3 && $puedeMover && !$legacy && $st!=='NO_CONTACTAR' &&
+                in_array($real,EmbudoComercialV3SeguimientoService::ETAPAS,true);
+            $mostrarAvance=$puedeMover && !$legacy && $etapa==='POTENCIAL' && $st!=='NO_CONTACTAR';
+            $mostrarInscripcion=$puedeMover && !$legacy && $st!=='NO_CONTACTAR' &&
+                in_array($real,['POTENCIAL','INTERESADO','SEGUIMIENTO','PROCESO_INSCRIPCION'],true) &&
+                in_array($etapa,['POTENCIAL','SEGUIMIENTO','PROCESO_INSCRIPCION'],true);
+            $reservarWhatsapp=!$supervisor && !$legacy && $st!=='NO_CONTACTAR' && ($puedeTelefono || $puedeMover) &&
+                in_array($real,EmbudoComercialV3SeguimientoService::ETAPAS,true);
+            $mostrarMas=$supervisor || $puedeTelefono || $propuestas ||
+                (!$legacy && $real==='NUEVO' && $puedeRecuperar && $n>=3) ||
+                (!$legacy && $puedeDescartar && in_array($real,['NUEVO','CONTACTADO','POTENCIAL','SEGUIMIENTO'],true));
+        ?>
+        <?php if($mostrarLlamada || $mostrarActividad || $mostrarAvance || $mostrarInscripcion || $reservarWhatsapp || $mostrarMas): ?>
         <div class="impe-v3o-acciones" aria-label="Acciones comerciales">
-            <?php if($puedeLlamar && $st!=='NO_CONTACTAR' &&
-                trim((string)($p['telefono_original']??''))!==''): ?>
+            <?php if($mostrarLlamada): ?>
             <button type="button" class="impe-v3o-accion impe-v3o-accion--llamar"
                     data-embudo-marcar="<?= $esc($p['telefono_original']) ?>"
                     title="Llamar al prospecto" aria-label="Llamar al prospecto">
                 <i class="bi bi-telephone" aria-hidden="true"></i>
             </button>
             <?php endif; ?>
-            <?php if($puedeTelefono): ?>
+            <?php if($reservarWhatsapp): ?>
+            <button type="button" class="impe-v3o-accion" data-v3-whatsapp-reservado disabled
+                    title="WhatsApp · Próximamente" aria-label="WhatsApp · Próximamente">
+                <i class="bi bi-whatsapp" aria-hidden="true"></i>
+            </button>
             <?php endif; ?>
+            <?php if($mostrarActividad): ?>
+            <button type="button" class="impe-v3o-accion" data-v3-actividad
+                    data-version="<?= (int)($p['actividad_version']??0) ?>" data-pendiente="<?= $pendiente?'1':'0' ?>"
+                    title="<?= $pendiente?'Gestionar actividad pendiente':'Registrar o programar actividad' ?>"
+                    aria-label="Actividades comerciales">
+                <i class="bi <?= $pendiente?'bi-calendar-check':'bi-calendar-plus' ?>" aria-hidden="true"></i>
+            </button>
+            <?php endif; ?>
+            <?php if($mostrarAvance): ?>
+            <button type="button" class="impe-v3o-accion" data-v3-gestionar
+                    title="Gestionar avance comercial" aria-label="Gestionar avance">
+                <i class="bi bi-clipboard-check" aria-hidden="true"></i>
+            </button>
+            <?php endif; ?>
+            <?php if($mostrarInscripcion): ?>
+            <button type="button" class="impe-v3o-accion" data-v3i-iniciar
+                    title="<?= $etapa==='PROCESO_INSCRIPCION'?'Gestionar inscripción':'Iniciar inscripción' ?>"
+                    aria-label="<?= $etapa==='PROCESO_INSCRIPCION'?'Gestionar inscripción':'Iniciar inscripción' ?>">
+                <i class="bi <?= $etapa==='PROCESO_INSCRIPCION'?'bi-file-earmark-check':'bi-file-earmark-plus' ?>" aria-hidden="true"></i>
+            </button>
+            <?php endif; ?>
+            <?php if($mostrarMas): ?>
             <?php $menuId='impe-v3o-gestion-'.(int)$p['asignacion_id']; ?>
-            <button type="button" class="impe-v3o-accion impe-v3o-gestion-boton" title="<?= $supervisor?'Consultar':'Gestionar' ?>"
-                aria-label="<?= $supervisor?'Consultar expediente':'Gestionar' ?>" popovertarget="<?= $esc($menuId) ?>">
+            <button type="button" class="impe-v3o-accion impe-v3o-gestion-boton"
+                    title="<?= $supervisor?'Consultar':'Más acciones' ?>" aria-label="<?= $supervisor?'Consultar expediente':'Más acciones' ?>"
+                    popovertarget="<?= $esc($menuId) ?>">
                 <i class="bi bi-three-dots" aria-hidden="true"></i>
             </button>
             <div id="<?= $esc($menuId) ?>" class="impe-v3o-gestion-opciones" popover="auto">
+                    <?php if($supervisor): ?>
                     <a class="impe-v3o-accion" href="<?= $esc($detalle) ?>" aria-label="Ver expediente comercial">
                         <i class="bi bi-person-vcard" aria-hidden="true"></i> <span>Expediente comercial</span></a>
+                    <?php endif; ?>
                     <?php if($puedeTelefono): ?>
                     <a class="impe-v3o-accion" href="<?= $esc($historial) ?>"
                        title="Mis llamadas y resultados" aria-label="Mis llamadas y resultados">
                         <i class="bi bi-journal-check" aria-hidden="true"></i> <span>Mis llamadas</span>
                     </a>
-                    <?php endif; ?>
-                    <?php if($puedeMover && in_array($etapa,['POTENCIAL','SEGUIMIENTO','PROCESO_INSCRIPCION'],true) && $st!=='NO_CONTACTAR'): ?>
-                    <button type="button" class="impe-v3o-accion" data-v3i-iniciar
-                        title="Vincular solicitud real de inscripción"
-                        aria-label="Verificar solicitud institucional de inscripción">
-                        <i class="bi bi-file-earmark-check" aria-hidden="true"></i> <span><?= $etapa==='PROCESO_INSCRIPCION'?'Gestionar inscripción':'Iniciar inscripción' ?></span>
-                    </button>
-                    <?php endif; ?>
-                    <?php if($puedeMover && $etapa==='POTENCIAL'): ?>
-                    <button type="button" class="impe-v3o-accion" data-v3-gestionar
-                        title="Gestionar subetapa y próxima acción" aria-label="Gestionar potencial">
-                        <i class="bi bi-calendar2-plus" aria-hidden="true"></i> <span>Gestionar potencial</span>
-                    </button>
-                    <?php endif; ?>
-                    <?php if($actividadV3 && $puedeMover && !$legacy &&
-                        in_array($real,EmbudoComercialV3SeguimientoService::ETAPAS,true)): ?>
-                    <button type="button" class="impe-v3o-accion" data-v3-actividad
-                        data-version="<?= (int)($p['actividad_version']??0) ?>"
-                        data-pendiente="<?= $pendiente?'1':'0' ?>"
-                        title="Actividades comerciales" aria-label="Actividades comerciales">
-                        <i class="bi bi-list-check" aria-hidden="true"></i> <span>Actividades comerciales</span>
-                    </button>
                     <?php endif; ?>
                     <?php if(!$legacy && $real==='NUEVO' && $puedeRecuperar && $n>=3): ?>
                     <button type="button" class="impe-v3o-accion" data-v3b-accion="RECUPERACION"
@@ -220,7 +241,9 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                     </button>
                     <?php endif; ?>
             </div>
+            <?php endif; ?>
         </div>
+        <?php endif; ?>
     </article>
     <?php
 };
@@ -429,7 +452,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             aria-labelledby="impe-v3o-potencial-titulo">
         <form id="impe-v3o-potencial-form" method="dialog">
             <header>
-                <h3 id="impe-v3o-potencial-titulo">Gestionar potencial</h3>
+                <h3 id="impe-v3o-potencial-titulo">Gestionar avance comercial</h3>
                 <button type="button" data-v3-gestionar-cerrar aria-label="Cerrar">
                     <i class="bi bi-x-lg" aria-hidden="true"></i>
                 </button>
@@ -446,7 +469,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <label>Próxima acción (opcional)
                 <input type="datetime-local" id="impe-v3o-potencial-fecha">
             </label>
-            <p class="impe-v3o-ayuda">Una próxima acción no cambia al prospecto de Potenciales a Seguimiento.</p>
+            <p class="impe-v3o-ayuda">Programar una próxima acción mueve al prospecto a Seguimiento y conserva el avance en el historial.</p>
             <label>Motivo de gestión
                 <textarea id="impe-v3o-potencial-motivo" required minlength="8"
                     maxlength="190" rows="3"
