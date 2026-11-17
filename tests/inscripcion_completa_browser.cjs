@@ -80,11 +80,13 @@ const file={name:'pago.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-
   const pending=page.waitForResponse(r=>r.url().includes('accion=guardar'));
   await page.locator('button[type=submit]').click();
   await page.locator('.formulario-revision-confirmar').click();
-  const response=await pending;const saved={status:response.status(),data:await response.json()};
-  assert.equal(saved.status,200,JSON.stringify(saved));assert.equal(saved.data.ok,true);
-  await page.locator('[data-inscripcion-estado]').filter({hasText:'Inscripción guardada correctamente'}).waitFor();
-  assert.match(await page.locator('.system-toast').last().textContent(),/Inscripción registrada correctamente/);
-  const retry=await post();assert.equal(retry.data.registro_id,saved.data.registro_id);assert.equal(Number(JSON.parse(run('conteo')).total),1);
+  const response=await pending;
+  assert.equal(response.status(),200);
+  await page.waitForURL('**/index.php?controller=formularioPublico&action=graciasInscripcion');
+  assert.equal(await page.locator('h1').textContent(),'¡Gracias por enviar tu solicitud de inscripción!');
+  assert.match(await page.locator('.formulario-publico-thanks-card').innerText(),/comprobante de pago/);
+  assert.equal(await page.locator('[data-inscripcion-completa]').count(),0);
+  const retry=await post();assert.equal(retry.data.ok,true);assert.ok(retry.data.registro_id>0);assert.equal(retry.data.redirect_url,page.url());assert.equal(Number(JSON.parse(run('conteo')).total),1);
   await page.goto(url);tokens.solicitud_token=await page.locator('[name=solicitud_token]').inputValue();
   assert.equal((await post()).status,409,'duplicate CURP/program protected with new token');
 

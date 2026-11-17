@@ -93,7 +93,11 @@ final class FormularioInscripcionPantalla
             require_once __DIR__ . '/FormularioInscripcionRepository.php';
             $repo = new FormularioInscripcionRepository($db, dirname(ROOT_PATH).'/impe-inscripciones-private');
             $id = $repo->guardar($datos,$archivo,$evidencia,FormularioInscripcionValidacion::legales($permiso['programa']),$token,$publico ? null : (int)$_SESSION['usuario_id']);
-            echo json_encode(['ok'=>true,'registro_id'=>$id,'mensaje'=>'Inscripción guardada correctamente.'],JSON_UNESCAPED_UNICODE);
+            $respuesta = ['ok'=>true,'registro_id'=>$id,'mensaje'=>'Inscripción guardada correctamente.'];
+            if ($publico) {
+                $respuesta['redirect_url'] = BASE_URL . 'index.php?controller=formularioPublico&action=graciasInscripcion';
+            }
+            echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
         } catch (DomainException $e) {
             http_response_code($e->getCode()>=400 && $e->getCode()<600 ? $e->getCode() : 422);
             echo json_encode(['ok'=>false,'mensaje'=>$e->getMessage()],JSON_UNESCAPED_UNICODE);

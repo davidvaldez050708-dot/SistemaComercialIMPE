@@ -104,6 +104,16 @@ var inscripcionRevisionLista = (function () {
                 Object.entries(data.errores || {}).forEach(([name,text]) => errorFor(name,text));
                 throw new Error(data.mensaje || 'No se pudo guardar la inscripción.');
             }
+            const destino = typeof data.redirect_url === 'string' ? data.redirect_url : '';
+            if (destino) {
+                const url = new URL(destino, location.href);
+                if (url.origin === location.origin) {
+                    state.textContent = 'Inscripción recibida.';
+                    form.querySelectorAll('input,select,button').forEach(input => { input.disabled = true; });
+                    window.location.replace(url.href);
+                    return;
+                }
+            }
             state.textContent = 'Inscripción guardada correctamente. El comprobante queda pendiente de revisión.';
             toast('Inscripción registrada correctamente.', false);
             // Mantener el mismo token para reintentos; no producir otra inscripción con doble clic.

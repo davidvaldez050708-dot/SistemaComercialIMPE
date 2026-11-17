@@ -38,11 +38,11 @@
                 <i class="bi bi-check2-circle"></i>
             </span>
 
-            <h1>¡Muchas gracias por completar tu inscripción!</h1>
+            <h1>¡Gracias por enviar tu solicitud de inscripción!</h1>
 
             <p>
-                Un asesor se pondrá en contacto contigo en breve
-                para dar seguimiento y continuar con tu proceso.
+                Recibimos tu solicitud y tu comprobante de pago.
+                Tu asesor te indicará los siguientes pasos una vez revisada la información.
             </p>
         </section>
     </main>
