@@ -12,6 +12,8 @@ const html=`<!doctype html><html><head><meta charset="utf-8"></head><body>
      <button data-v3i-iniciar>Inscripción bloqueada</button></article>
   <article data-asignacion-id="103" data-etapa="NUEVO">
      <button data-v3i-iniciar>Ingreso no autorizado</button></article>
+  <article data-asignacion-id="104" data-etapa="SEGUIMIENTO" data-nombre="Seguimiento sintético">
+     <button data-v3i-iniciar>Iniciar desde seguimiento</button></article>
   <dialog id="impe-v3i-dialog" class="impe-v3b-dialog">
     <form id="impe-v3i-form" method="dialog">
       <header><h3>Inscripción institucional</h3>
@@ -37,7 +39,7 @@ const html=`<!doctype html><html><head><meta charset="utf-8"></head><body>
 async function run(mode){
   const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||undefined});
   const page=await browser.newPage();
-  let consultas=0,vinculos=0,navegaciones=0;
+  let consultas=0,vinculos=0,navegaciones=0,inicios=0;
   await page.addInitScript(()=>{
     window.IMPE_CURRENT_USER_ID=8;
     window.IMPE_CSRF_TOKEN='csrf-sintetico';
@@ -51,6 +53,13 @@ async function run(mode){
       assert.equal(req.headers()['x-csrf-token'],'csrf-sintetico');
       assert.equal(url.searchParams.get('action'),'inscripcionOperativaV3');
       const b=new URLSearchParams(req.postData());
+      if(b.get('operacion')==='INICIAR'){
+        assert.equal(b.get('asignacion_id'),'104');
+        assert.equal(b.get('documentos'),'1');
+        assert.equal(b.get('comprobante'),'1');
+        inicios++;
+        return route.fulfill({json:{ok:true,movimiento:{etapa:'PROCESO_INSCRIPCION'}}});
+      }
       assert.equal(b.get('asignacion_id'),'101');
       if(b.get('operacion')==='BUSCAR'){
         consultas++;
@@ -85,6 +94,16 @@ async function run(mode){
     await page.getByRole('button',{name:'Ingreso no autorizado'}).click();
     assert.equal(await page.locator('#impe-v3i-dialog[open]').count(),0,
        'Nuevos no permite iniciar trámites');
+    await page.getByRole('button',{name:'Iniciar desde seguimiento'}).click();
+    assert.equal(await page.locator('[data-v3i-preparar]').isVisible(),true);
+    await page.locator('[data-v3i-arrancar]').click();
+    assert.equal(inicios,0,'no iniciar sin requisitos');
+    await page.locator('[name=documentos]').check();
+    await page.locator('[name=comprobante]').check();
+    await page.locator('[data-v3i-arrancar]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-v3i-ligas]').hidden);
+    assert.equal(inicios,1);
+    await page.locator('[data-v3i-cerrar]').click();
     await page.getByRole('button',{name:'Verificar inscripción'}).click();
     assert.equal(await page.locator('#impe-v3i-dialog[open]').count(),1);
     assert.equal(await page.locator('[data-v3i-guardar]').isEnabled(),false);

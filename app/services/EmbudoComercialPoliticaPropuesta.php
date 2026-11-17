@@ -47,7 +47,9 @@ final class EmbudoComercialPoliticaPropuesta
             'POR_PRESUPUESTO' => 'Alternativa de presupuesto',
             'SIGUIENTE_APERTURA' => 'Próxima apertura',
             'CONTACTO_ACORDADO' => 'Contacto acordado',
-            'ESPERANDO_RESPUESTA' => 'Esperando respuesta'
+            'ESPERANDO_RESPUESTA' => 'Esperando respuesta',
+            'ESPERANDO_DOCUMENTOS' => 'Esperando documentos',
+            'ESPERANDO_COMPROBANTE' => 'Esperando comprobante'
         ],
         'PROCESO_INSCRIPCION' => [
             'SOLICITUD_INICIADA' => 'Solicitud iniciada',

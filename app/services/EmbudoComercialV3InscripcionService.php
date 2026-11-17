@@ -24,7 +24,7 @@ final class EmbudoComercialV3InscripcionService
         }
     }
 
-    private function asignacion(int $usuario,int $asignacion,bool $bloquear,string $etapa='PROCESO_INSCRIPCION'): array
+    private function asignacion(int $usuario,int $asignacion,bool $bloquear,array $etapas=['PROCESO_INSCRIPCION']): array
     {
         if ($asignacion<1) throw new DomainException('Asignación comercial inválida.');
         $sql="SELECT a.id,a.prospecto_id,a.asesor_id,a.vigente,a.asignado_at,
@@ -44,7 +44,7 @@ final class EmbudoComercialV3InscripcionService
         } finally {$st->close();}
         if (!$row || (int)$row['asesor_id']!==$usuario ||
             (int)$row['vigente']!==1 ||
-            (string)$row['etapa']!==$etapa) {
+            !in_array((string)$row['etapa'],$etapas,true)) {
             throw new DomainException('La asignación debe estar vigente, pertenecer a tu cuenta y estar en la etapa correspondiente.');
         }
         if ((string)($row['subetapa']??'')==='NO_CONTACTAR') {
@@ -61,7 +61,7 @@ final class EmbudoComercialV3InscripcionService
         }
         $this->db->begin_transaction();
         try {
-            $a=$this->asignacion($usuario,$asignacion,true,'POTENCIAL');
+            $a=$this->asignacion($usuario,$asignacion,true,['POTENCIAL','INTERESADO','SEGUIMIENTO']);
             self::identidad($a);
             $s=$this->db->prepare("UPDATE prospecto_embudo_etapas
                 SET etapa='PROCESO_INSCRIPCION',cambiado_por=?,actualizado_at=UTC_TIMESTAMP()
@@ -77,9 +77,10 @@ final class EmbudoComercialV3InscripcionService
             $s->execute();$s->close();
             $s=$this->db->prepare("INSERT INTO prospecto_embudo_movimientos
                 (asignacion_id,etapa_anterior,etapa_nueva,motivo,usuario_id,creado_at)
-                VALUES (?,'POTENCIAL','PROCESO_INSCRIPCION',
+                VALUES (?,?,'PROCESO_INSCRIPCION',
                 'Documentos listos y comprobante recibido por el asesor.',?,UTC_TIMESTAMP())");
-            $s->bind_param('ii',$asignacion,$usuario);
+            $anterior=(string)$a['etapa'];
+            $s->bind_param('isi',$asignacion,$anterior,$usuario);
             $s->execute();$s->close();
             $previa=$a['subetapa'];
             $s=$this->db->prepare("INSERT INTO prospecto_embudo_subetapas_historial

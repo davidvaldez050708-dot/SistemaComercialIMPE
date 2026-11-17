@@ -159,6 +159,30 @@ final class EmbudoComercialResultadoBridge
                     'etapa'=>'RECUPERACION','recuperacion'=>$recuperacion];
             }
         }
+        $fechaV3=null;
+        if ($v3 && $proximaAccion!==null) {
+            $fecha=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$proximaAccion,
+                new DateTimeZone('America/Mexico_City'));
+            if (!$fecha || $fecha->format('Y-m-d H:i:s')!==$proximaAccion ||
+                $fecha->getTimestamp()<=time()) {
+                throw new DomainException('La próxima acción debe tener una fecha futura válida.');
+            }
+            $fechaV3=$fecha->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+        }
+        if ($v3 && $proximaAccion!==null &&
+            (in_array($etapaAnterior,['CONTACTADO','POTENCIAL','INTERESADO','SEGUIMIENTO','PROCESO_INSCRIPCION'],true) ||
+                ($etapaAnterior==='NUEVO' && $nueva===null)) &&
+            tienePermiso('ventas.embudo.mover') && tienePermiso('ventas.embudo.ver')) {
+            require_once __DIR__.'/EmbudoComercialMovimientoService.php';
+            require_once __DIR__.'/EmbudoComercialV3ProximaAccion.php';
+            $fechaUtc=$fechaV3;
+            $motivo=mb_substr('Próxima acción registrada en llamada PBX: '.$resultado.' · ref '.$pbx,0,190);
+            $programada=EmbudoComercialV3ProximaAccion::programar(
+                $this->db,$usuarioId,$asignacionId,$etapaAnterior,$fechaUtc,$motivo
+            );
+            return ['vinculada'=>true,'movida'=>$programada['etapa']!==$etapaAnterior,
+                'etapa'=>$programada['etapa'],'proxima_accion_at'=>$fechaUtc];
+        }
         // Proteger etapas avanzadas e históricos de la matriz V1: una
         // llamada no degrada Potenciales a INTERESADO, ni Seguimiento a una
         // gestión menos avanzada; una inscripción nunca se confirma aquí.
@@ -237,6 +261,16 @@ final class EmbudoComercialResultadoBridge
         $anteriorReal=(string)$row['etapa'];
         $s->bind_param('isssi',$asignacionId,$anteriorReal,$nueva,$razon,$usuarioId);
         $s->execute();$s->close();
+        if ($v3 && $proximaAccion!==null && $nueva==='CONTACTADO') {
+            require_once __DIR__.'/EmbudoComercialMovimientoService.php';
+            require_once __DIR__.'/EmbudoComercialV3ProximaAccion.php';
+            $utc=$fechaV3;
+            $programada=EmbudoComercialV3ProximaAccion::programar(
+                $this->db,$usuarioId,$asignacionId,$nueva,$utc,
+                mb_substr('Próxima acción registrada en llamada PBX: '.$resultado.' · ref '.$pbx,0,190)
+            );
+            $nueva=$programada['etapa'];
+        }
         return [
             'vinculada'=>true,
             'movida'=>true,

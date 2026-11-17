@@ -4,11 +4,11 @@ require_once __DIR__.'/EmbudoComercialMovimientoService.php';
 require_once __DIR__.'/../helpers/PermissionHelper.php';
 
 /**
- * Gestión V3 de un Potencial sin falsificar un cambio de etapa.
+ * Gestión V3 de Potenciales y programación de su próximo seguimiento.
  *
  * Un INTERESADO histórico se presenta en Potenciales, pero su etapa SQL
- * permanece intacta hasta una conciliación explícita. Programar una tarea
- * es transversal: no significa "degradar" a Seguimiento.
+ * se conserva al registrar una gestión. Una nueva fecha mueve a Seguimiento
+ * y conserva la situación anterior en el historial.
  *
  * No crea resultados PBX, pagos, inscritos, reasignaciones ni contactos.
  */
@@ -104,22 +104,6 @@ final class EmbudoComercialV3GestionPotencialService
                 $s->execute();$s->close();
             }
 
-            if ($fechaUtc!==null) {
-                // Una nueva cita no borra revisión/agenda histórica si el
-                // asesor solamente edita la subetapa.
-                $s=$this->db->prepare(
-                    "INSERT INTO prospecto_embudo_agenda
-                       (asignacion_id,proxima_accion_at,revision_fecha,actualizado_at,actualizado_por)
-                     VALUES (?,?,NULL,UTC_TIMESTAMP(),?)
-                     ON DUPLICATE KEY UPDATE
-                       proxima_accion_at=VALUES(proxima_accion_at),
-                       actualizado_at=VALUES(actualizado_at),
-                       actualizado_por=VALUES(actualizado_por)"
-                );
-                $s->bind_param('isi',$asignacionId,$fechaUtc,$usuarioId);
-                $s->execute();$s->close();
-            }
-
             $origen='ASESOR_V3';
             $preSub=$previa!==''?$previa:null;
             $s=$this->db->prepare(
@@ -132,11 +116,21 @@ final class EmbudoComercialV3GestionPotencialService
                 $preSub,$subetapaNueva,$motivo,$origen,$usuarioId);
             $s->execute();$id=(int)$this->db->insert_id;$s->close();
 
+            $etapaFinal=$etapaEsperada;
+            $subetapaFinal=$subetapaNueva;
+            if ($fechaUtc!==null) {
+                require_once __DIR__.'/EmbudoComercialV3ProximaAccion.php';
+                $programada=EmbudoComercialV3ProximaAccion::programar($this->db,$usuarioId,$asignacionId,
+                    $etapaEsperada,$fechaUtc,$motivo,$subetapaNueva);
+                $etapaFinal=$programada['etapa'];
+                $subetapaFinal=$programada['subetapa']??$subetapaNueva;
+            }
             $this->db->commit();
             return [
                 'evento_id'=>$id,
-                'etapa_conservada'=>$etapaEsperada,
-                'subetapa'=>$subetapaNueva,
+                'etapa_conservada'=>$etapaFinal,
+                'etapa'=>$etapaFinal,
+                'subetapa'=>$subetapaFinal,
                 'proxima_accion_at'=>$fechaUtc
             ];
         } catch (Throwable $e) {

@@ -130,7 +130,7 @@
     if(!btn || !root.contains(btn) || busy)return;
     const card=btn.closest('[data-asignacion-id][data-etapa]');
     const asignacion=String(card?.dataset.asignacionId||'');
-    if(!card || !['POTENCIAL','PROCESO_INSCRIPCION'].includes(card.dataset.etapa) ||
+    if(!card || !['POTENCIAL','INTERESADO','SEGUIMIENTO','PROCESO_INSCRIPCION'].includes(card.dataset.etapa) ||
        card.dataset.v3Subetapa==='NO_CONTACTAR' ||
        !/^[1-9][0-9]*$/.test(asignacion) ||currentUser<1)return;
     form.reset();
@@ -151,7 +151,7 @@
     buscar.disabled=false;
     seleccion={asignacion,formulario:0};
     datos.textContent=String(card.dataset.nombre||'Prospecto');
-    const iniciar=card.dataset.etapa==='POTENCIAL';
+    const iniciar=card.dataset.etapa!=='PROCESO_INSCRIPCION';
     preparar.hidden=!iniciar;
     arrancar.hidden=!iniciar;
     ligas.hidden=iniciar;

@@ -168,11 +168,11 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                         <i class="bi bi-journal-check" aria-hidden="true"></i> <span>Mis llamadas</span>
                     </a>
                     <?php endif; ?>
-                    <?php if($puedeMover && in_array($etapa,['POTENCIAL','PROCESO_INSCRIPCION'],true) && $st!=='NO_CONTACTAR'): ?>
+                    <?php if($puedeMover && in_array($etapa,['POTENCIAL','SEGUIMIENTO','PROCESO_INSCRIPCION'],true) && $st!=='NO_CONTACTAR'): ?>
                     <button type="button" class="impe-v3o-accion" data-v3i-iniciar
                         title="Vincular solicitud real de inscripción"
                         aria-label="Verificar solicitud institucional de inscripción">
-                        <i class="bi bi-file-earmark-check" aria-hidden="true"></i> <span><?= $etapa==='POTENCIAL'?'Iniciar inscripción':'Gestionar inscripción' ?></span>
+                        <i class="bi bi-file-earmark-check" aria-hidden="true"></i> <span><?= $etapa==='PROCESO_INSCRIPCION'?'Gestionar inscripción':'Iniciar inscripción' ?></span>
                     </button>
                     <?php endif; ?>
                     <?php if($puedeMover && $etapa==='POTENCIAL'): ?>
@@ -466,7 +466,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <p class="small text-muted">Describe la tarea o gestión en el motivo. Para acreditar una conversación y avanzar a Contactados, llama desde la tarjeta y guarda el resultado de la llamada.</p>
+                <p class="small text-muted">Programar una próxima acción desde Contactados o Potenciales mueve al prospecto a Seguimiento. Registrar una gestión no cambia su etapa. Los prospectos sin primera conversación y los trámites de inscripción conservan su etapa.</p>
                 <label data-actividad-fecha hidden>Fecha y hora de México
                     <input name="fecha" type="datetime-local">
                 </label>

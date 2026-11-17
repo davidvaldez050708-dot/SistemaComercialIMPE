@@ -465,6 +465,12 @@
     const camposActividad=()=>{
       const requiereFecha=['PROGRAMAR','REPROGRAMAR'].includes(operacion.value);
       fecha.required=requiereFecha;
+      const permiteSituacion=seleccion && (seleccion.etapa==='SEGUIMIENTO' ||
+        requiereFecha && ['CONTACTADO','POTENCIAL','INTERESADO'].includes(seleccion.etapa));
+      actividadForm.querySelector('[data-actividad-subetapa]').hidden=!permiteSituacion;
+      subetapa.options[0].textContent=seleccion?.etapa==='SEGUIMIENTO'
+        ?'Conservar subetapa':'Contacto acordado';
+      if(!permiteSituacion)subetapa.value='';
       actividadForm.querySelector('[data-actividad-fecha]').hidden=!requiereFecha;
       if(!requiereFecha)fecha.value='';
       else if(operacion.value==='REPROGRAMAR' && !fecha.value){
@@ -520,8 +526,7 @@
     });
   }
 
-  // Gestión transversal de Potenciales: se conserva la etapa original,
-  // incluso INTERESADO histórico; no se envían resultados PBX ni pagos.
+  // Una fecha nueva desde Potenciales inicia Seguimiento con historial.
   const potencialDialog=root.querySelector('#impe-v3o-potencial-dialog');
   const potencialForm=root.querySelector('#impe-v3o-potencial-form');
   if(potencialDialog && potencialForm){

@@ -2,6 +2,7 @@
 require_once __DIR__.'/EmbudoComercialPoliticaPropuesta.php';
 require_once __DIR__.'/EmbudoComercialMovimientoService.php';
 require_once __DIR__.'/EmbudoComercialV3MovimientosPermitidos.php';
+require_once __DIR__.'/EmbudoComercialV3ProximaAccion.php';
 
 final class EmbudoComercialV3SeguimientoService
 {
@@ -111,8 +112,8 @@ final class EmbudoComercialV3SeguimientoService
             !in_array($accion,['REGISTRAR','PROGRAMAR','REPROGRAMAR','COMPLETAR'],true)) {
             throw new DomainException('Actividad comercial no válida.');
         }
-        if ($subetapa!=='' && ($etapa!=='SEGUIMIENTO' ||
-            !EmbudoComercialPoliticaPropuesta::subetapaValida($etapa,$subetapa))) {
+        if ($subetapa!=='' && (!in_array($etapa,['CONTACTADO','POTENCIAL','INTERESADO','SEGUIMIENTO'],true) ||
+            !EmbudoComercialPoliticaPropuesta::subetapaValida('SEGUIMIENTO',$subetapa))) {
             throw new DomainException('Selecciona una subetapa válida de Seguimiento.');
         }
         $programar=in_array($accion,['PROGRAMAR','REPROGRAMAR'],true);
@@ -129,8 +130,21 @@ final class EmbudoComercialV3SeguimientoService
             }
             $pendiente=$programar?EmbudoComercialMovimientoService::fechaSeguimientoUtc($fecha):
                 ($accion==='COMPLETAR'?null:$anterior);
-            $completada=$accion==='COMPLETAR'?gmdate('Y-m-d H:i:s'):($actual['completada_at']??null);
-            $previa=$subetapa!==''?$this->cambiarSubetapa($id,$usuario,$etapa,$subetapa,$motivo):null;
+            $completada=$accion==='COMPLETAR'?gmdate('Y-m-d H:i:s'):($programar?null:($actual['completada_at']??null));
+            $movimiento=$programar
+                ?EmbudoComercialV3ProximaAccion::promover($this->db,$usuario,$id,$etapa,
+                    $subetapa!==''?$subetapa:'CONTACTO_ACORDADO',$motivo)
+                :['etapa'=>$etapa,'anterior'=>null,'subetapa'=>null];
+            $previa=$movimiento['anterior'];
+            if ($movimiento['subetapa']!==null) {
+                $etapa=$movimiento['etapa'];
+                $subetapa=$movimiento['subetapa'];
+            } elseif ($subetapa!=='') {
+                if ($etapa!=='SEGUIMIENTO') {
+                    throw new DomainException('La subetapa de Seguimiento requiere programar una próxima gestión.');
+                }
+                $previa=$this->cambiarSubetapa($id,$usuario,$etapa,$subetapa,$motivo);
+            }
             $evento=$this->guardar($id,$usuario,$etapa,$accion,$motivo,$anterior,$pendiente,
                 $completada,$previa,$subetapa!==''?$subetapa:null);
             $this->db->commit();
@@ -181,7 +195,7 @@ final class EmbudoComercialV3SeguimientoService
             $subAnterior=$this->cambiarSubetapa($id,$usuario,$destino,$subNueva,$motivo);
             if ($destino==='SEGUIMIENTO' && $pendiente===null) {
                 $this->guardar($id,$usuario,$destino,'PROGRAMAR',$motivo,null,
-                    EmbudoComercialMovimientoService::fechaSeguimientoUtc($fecha),$actual['completada_at']??null,$subAnterior,$subNueva);
+                    EmbudoComercialMovimientoService::fechaSeguimientoUtc($fecha),null,$subAnterior,$subNueva);
             }
             $s=$this->db->prepare("INSERT INTO prospecto_embudo_etapas
                 (asignacion_id,etapa,cambiado_por,actualizado_at) VALUES (?,?,?,UTC_TIMESTAMP())
