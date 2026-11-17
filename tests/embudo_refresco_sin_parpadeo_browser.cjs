@@ -139,5 +139,3 @@ const fuente=path.join(__dirname,'../public/javascript');
   console.log('CHECK_OK refresco parcial: actividades, llamadas, controles, scroll, teléfono, filtros, navegación, errores y concurrencia sin pantalla blanca.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
-
-
