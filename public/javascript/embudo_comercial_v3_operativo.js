@@ -40,7 +40,8 @@
   const mensajes=new Map([
     ['gestion','Gestión comercial registrada correctamente.'],
     ['movimiento','Movimiento registrado correctamente.'],
-    ['actividad','Actividad comercial registrada correctamente.']
+    ['actividad','Actividad comercial registrada correctamente.'],
+    ['resultado','Resultado comercial guardado.']
   ]);
   const vistaCargada=Date.now();
   let refresh=false;
@@ -199,6 +200,15 @@
              document.querySelector('#modalResultadoVenta.show'))return;
           recuperacionPorActualizar=false;
           ultimoResultadoVerificado=resultado;
+          // La recarga inmediata conserva el aviso en la página actualizada.
+          if (resultado) {
+            try {
+              sessionStorage.setItem(avisoKey,JSON.stringify({tipo:'resultado',creado:Date.now()}));
+            } catch (_) {
+              mostrarAviso(mensajes.get('resultado'),()=>window.location.reload());
+              return;
+            }
+          }
           window.location.reload();
           return;
         }catch(_){/* El tablero visible se conserva durante los reintentos. */}
