@@ -15,7 +15,7 @@ def main():
     for opcion in ("check", "apply", "rollback"):
         modo.add_argument("--" + opcion, action="store_true")
     args = parser.parse_args()
-    publicador.ARCHIVOS = [('public/javascript/embudo_comercial_v3_operativo.js', '139ef42b910b23d3accca4cdda2f4e8f3d296986', '20eb92c5cd7e91164557038aac84fedd2229ae07')]
+    publicador.ARCHIVOS = [('public/javascript/embudo_comercial_v3_operativo.js', '20eb92c5cd7e91164557038aac84fedd2229ae07', 'c25955e92bd78af3c60a916ce316081c6c421434'), ('public/javascript/telefonia_ventas_resultados.js', '7c49c5d9634124f938f92b5ed183f6179b1600c9', '9a147e373eb4de8899692f1f1a6c424439f0d1af')]
     publicador.NO_MODIFICAR = {}
     sitio = publicador.raiz(args.site)
 

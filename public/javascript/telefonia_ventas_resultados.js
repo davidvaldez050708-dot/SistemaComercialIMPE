@@ -412,7 +412,12 @@
    window.parent?.postMessage({type:'IMPE_SALES_RESULT_SAVED',ref:savedRef,extension:savedExt},location.origin);
    if(!sameForm()||disposed)return;
    queued=false;closeReason='saved';
-   bootstrap.Modal.getInstance(modal)?.hide();notify(j.registro?.pbx_pendiente?'Resultado guardado. La confirmación de la llamada y la grabación continúan pendientes.':'Resultado comercial guardado.');
+   bootstrap.Modal.getInstance(modal)?.hide();
+   const confirmacion=new CustomEvent('impe:embudo:confirmacion-resultado',{
+    cancelable:true,detail:{usuarioId:usuarioGuardado,asignacionId:asignacionGuardada}
+   });
+   const mostrarConfirmacion=j.registro?.pbx_pendiente || window.dispatchEvent(confirmacion);
+   if(mostrarConfirmacion)notify(j.registro?.pbx_pendiente?'Resultado guardado. La confirmación de la llamada y la grabación continúan pendientes.':'Resultado comercial guardado.');
    if(!openContext.prepared&&root.dataset.salesGlobalResult!=='1'){const url=new URL(location.href);for(const key of ['pbx_call_id','extension','detalle','esperando_pbx'])url.searchParams.delete(key);location.replace(url.href);}
   }catch(error){if(sameForm()&&!disposed){queued=false;storeDraft();feedback.textContent=error.message;notify(error.message,true);}}
   finally{if(sameForm()&&!disposed){submit.disabled=false;submit.innerHTML=saveLabel;}}

@@ -43,6 +43,19 @@
     ['actividad','Actividad comercial registrada correctamente.'],
     ['resultado','Resultado comercial guardado.']
   ]);
+  window.addEventListener('impe:embudo:confirmacion-resultado',event=>{
+    const info=event.detail;
+    if(Number(info?.usuarioId)!==usuarioId || usuarioId<1 ||
+       !/^[1-9][0-9]*$/.test(String(info?.asignacionId||'')))return;
+    try{
+      const guardado=JSON.parse(localStorage.getItem(cambioKey)||'null');
+      if(Number(guardado?.usuarioId)===usuarioId &&
+         String(guardado?.asignacionId)===String(info.asignacionId) &&
+         Date.now()-Number(guardado?.creada)<=60000){
+        event.preventDefault();
+      }
+    }catch(_){}
+  });
   const vistaCargada=Date.now();
   let refresh=false;
 

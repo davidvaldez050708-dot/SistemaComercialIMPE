@@ -18,6 +18,12 @@ const {chromium}=require('playwright');
   });
   await page.goto('http://embudo.test/');
   await page.evaluate(()=>localStorage.setItem('impe:embudo:resultado-guardado:22',JSON.stringify({usuarioId:22,asignacionId:1,creada:Date.now()+1})));
+  assert.equal(await page.evaluate(()=>window.dispatchEvent(new CustomEvent('impe:embudo:confirmacion-resultado',{
+   cancelable:true,detail:{usuarioId:22,asignacionId:1}
+  }))),false,'el tablero se hace cargo del único aviso');
+  assert.equal(await page.evaluate(()=>window.dispatchEvent(new CustomEvent('impe:embudo:confirmacion-resultado',{
+   cancelable:true,detail:{usuarioId:23,asignacionId:1}
+  }))),true,'otro usuario no silencia el aviso');
   const toast=page.locator('#impe-v3o-avisos .system-toast.show');
   await toast.waitFor();
   assert.match(await toast.innerText(),/Resultado comercial guardado/);
