@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/EmbudoComercialEtapas.php';
+require_once __DIR__.'/../helpers/EmbudoComercialAcceso.php';
 /**
  * Fase 2 del kanban: consultas limitadas y exclusivas de las asignaciones vigentes.
  * La etapa no se deduce de telefonía ni del estado administrativo de asignación.
@@ -145,14 +146,16 @@ final class EmbudoComercialRepository
         return [$sql,$args];
     }
 
-    public function opciones(int $usuarioId,bool $supervisor): array
+    public function opciones(int $usuarioId,bool $supervisor,bool $incluirCerrados=false): array
     {
+        $vigentes=$incluirCerrados
+            ?"(a.vigente=1 OR (a.vigente IS NULL AND a.finalizado_at IS NOT NULL AND EXISTS (SELECT 1 FROM prospecto_embudo_inscripciones_v3 v WHERE v.asignacion_id=a.id)))":'a.vigente=1';
         $where=$supervisor?'':" AND a.asesor_id=?";
         $args=$supervisor?[]:[$usuarioId];
         $programas=$this->rows(
             "SELECT i.programa_codigo codigo, MIN(i.nombre_original) nombre
              FROM prospecto_intereses i
-             JOIN prospecto_asignaciones a ON a.prospecto_id=i.prospecto_id AND a.vigente=1
+             JOIN prospecto_asignaciones a ON a.prospecto_id=i.prospecto_id AND $vigentes
              WHERE i.programa_codigo IS NOT NULL AND i.programa_codigo<>'' $where
              GROUP BY i.programa_codigo ORDER BY nombre,codigo LIMIT 100",
             $args
@@ -162,7 +165,7 @@ final class EmbudoComercialRepository
             $asesores=$this->rows(
                 "SELECT DISTINCT u.id,CONCAT_WS(' ',u.nombre,u.apellidos) nombre
                  FROM usuarios u
-                 JOIN prospecto_asignaciones a ON a.asesor_id=u.id AND a.vigente=1
+                 JOIN prospecto_asignaciones a ON a.asesor_id=u.id AND $vigentes
                  ORDER BY nombre LIMIT 150"
             );
         }
@@ -198,8 +201,10 @@ final class EmbudoComercialRepository
                 ?"(SELECT st.subetapa FROM prospecto_embudo_subetapas st
                     WHERE st.asignacion_id=a.id LIMIT 1) subetapa,"
                 :"";
+            $campoAsesor=$supervisor
+                ?"(SELECT TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) FROM usuarios u WHERE u.id=a.asesor_id) asesor_nombre,":'';
             $campos="SELECT a.id asignacion_id,a.prospecto_id,a.asesor_id,
-                $campoSubetapa
+                $campoSubetapa $campoAsesor
                 COALESCE(e.etapa,'NUEVO') etapa_original,
                 a.asignado_at,a.fecha_trabajo,
                 COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
@@ -366,14 +371,14 @@ final class EmbudoComercialRepository
     }
 
     /**
-     * V3 operativo para asesor, DESACTIVADO en el acceso habitual.
+     * Consulta V3 compartida por el asesor y la supervisión autorizada.
      *
      * Mantiene intactas las etapas y los resultados vigentes: es una vista
      * operativa de llamadas, historial y movimientos seguros compatibles
      * con el backend V1. No crea nuevos códigos ni confirma una inscripción.
      *
-     * Las consultas pasan por condiciones() para limitar estrictamente la
-     * propiedad a las asignaciones vigentes del asesor autenticado.
+     * condiciones() conserva la propiedad para asesores y el filtro por
+     * asesor para supervisión. Este repositorio no realiza movimientos.
      */
     public static function paginasV3Operativo(array $get): array
     {
@@ -396,12 +401,12 @@ final class EmbudoComercialRepository
         return $p;
     }
 
-    public function listadoV3Operativo(int $usuarioId,array $f,array $paginas): array
+    public function listadoV3Operativo(int $usuarioId,array $f,array $paginas,bool $supervisor=false): array
     {
         if($usuarioId<1 || (int)($_SESSION['usuario_id']??0)!==$usuarioId ||
-            (int)($_SESSION['rol_id']??0)!==3 ||
-            !tienePermiso('ventas.embudo.ver')) {
-            throw new DomainException('El embudo operativo pertenece al asesor autenticado.');
+            ($supervisor?!EmbudoComercialAcceso::esSupervisor():
+                ((int)($_SESSION['rol_id']??0)!==3 || !tienePermiso('ventas.embudo.ver')))) {
+            throw new DomainException('No tienes autorización para consultar este embudo.');
         }
         $grupoLabels=[
             'NUEVO'=>'Nuevos',
@@ -421,9 +426,11 @@ final class EmbudoComercialRepository
         }
         require_once __DIR__.'/EmbudoComercialV3SeguimientoService.php';
         $actividadV3=EmbudoComercialV3SeguimientoService::instalada($this->db);
-        [$from,$args]=$this->condiciones($usuarioId,false,$f,$actividadV3);
+        [$from,$args]=$this->condiciones($usuarioId,$supervisor,$f,$actividadV3);
         $camposActividad=$actividadV3
             ?'av.id actividad_version,av.fecha_pendiente actividad_pendiente,av.completada_at actividad_completada,':'';
+        $campoAsesor=$supervisor
+            ?"(SELECT TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) FROM usuarios u WHERE u.id=a.asesor_id) asesor_nombre,":'';
         $ordenActividad=$actividadV3?'WHEN av.fecha_pendiente<UTC_TIMESTAMP() THEN 0':'';
         $expr=self::clasificacionV3OperativoSql();
         $totales=[];
@@ -439,7 +446,7 @@ final class EmbudoComercialRepository
             $offset=($actual-1)*self::POR_COLUMNA;
             $data=$this->rows(
                 "SELECT a.id asignacion_id,a.prospecto_id,a.asesor_id,
-                    $camposActividad
+                    $camposActividad $campoAsesor
                     a.asignado_at,a.fecha_trabajo,
                     p.nombre_completo,p.telefono_original,p.correo,
                     COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
@@ -488,7 +495,7 @@ final class EmbudoComercialRepository
             new DateTimeZone('America/Mexico_City')))->format('Y-m-d');
         $indicadores=(new EmbudoComercialV3IndicadoresVista($this->db))
             ->intentosDelDia(array_values($ids),$dia);
-        if (tienePermiso('ventas.embudo.mover')) {
+        if (!$supervisor && tienePermiso('ventas.embudo.mover')) {
             require_once __DIR__.'/EmbudoComercialV3MovimientosPermitidos.php';
             $candidatos = [];
             foreach (array_merge($cols['CONTACTADO']['registros'], $cols['SEGUIMIENTO']['registros']) as $item) {
@@ -524,30 +531,42 @@ final class EmbudoComercialRepository
                 'DESCARTADO'=>$totales['DESCARTADO']??0
             ],
             'dia_indicadores'=>$dia,
-            'modo'=>'V3_OPERATIVO_ASESOR_COMPATIBLE_V1'
+            'modo'=>$supervisor?'V3_SUPERVISION_SOLO_LECTURA':'V3_OPERATIVO_ASESOR_COMPATIBLE_V1'
         ];
     }
 
-    public function expedientesCerrados(int $usuario,int $pagina): array
+    public function expedientesCerrados(int $usuario,int $pagina,bool $supervisor=false,int $asesor=0): array
     {
-        return $this->rows("SELECT p.id,p.nombre_completo,a.finalizado_at,
+        if ($usuario<1 || (int)($_SESSION['usuario_id']??0)!==$usuario ||
+            ($supervisor?!EmbudoComercialAcceso::esSupervisor():
+                ((int)($_SESSION['rol_id']??0)!==3 || !tienePermiso('ventas.embudo.ver')))) {
+            throw new DomainException('No tienes autorización para consultar estos expedientes.');
+        }
+        $filtro=(!$supervisor || $asesor>0)?' AND a.asesor_id=?':'';
+        $args=(!$supervisor || $asesor>0)?[$supervisor?$asesor:$usuario]:[];
+        $args[]=(max(1,min($pagina,10000))-1)*25;
+        return $this->rows("SELECT p.id,p.nombre_completo,a.finalizado_at,a.asesor_id,
+                   (SELECT TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) FROM usuarios u WHERE u.id=a.asesor_id) asesor_nombre,
                    v.formulario_inscripcion_id
               FROM prospecto_embudo_inscripciones_v3 v
               JOIN prospecto_asignaciones a ON a.id=v.asignacion_id
               JOIN prospectos_comerciales p ON p.id=a.prospecto_id
-              WHERE a.asesor_id=? AND a.vigente IS NULL AND a.finalizado_at IS NOT NULL
-              ORDER BY a.finalizado_at DESC,a.id DESC LIMIT 26 OFFSET ?",
-              [$usuario,(max(1,min($pagina,10000))-1)*25]);
+              WHERE a.vigente IS NULL AND a.finalizado_at IS NOT NULL $filtro
+              ORDER BY a.finalizado_at DESC,a.id DESC LIMIT 26 OFFSET ?",$args);
     }
 
     public function detalle(int $usuarioId,bool $supervisor,int $prospectoId,string $vista,
         bool $operativoV3=false,string $panel="resumen",array $paginas=[]): ?array
     {
+        if ($supervisor && ((int)($_SESSION['usuario_id']??0)!==$usuarioId || !EmbudoComercialAcceso::esSupervisor())) {
+            throw new DomainException('No tienes autorización de supervisión comercial.');
+        }
         if ($prospectoId<1) return null;
         $params=[$prospectoId];
         $sql="SELECT p.id,p.nombre_completo,p.telefono_original,p.correo,
                      p.pais_nombre,p.estado_provincia,p.ciudad,
                      a.id asignacion_id,a.asesor_id,a.asignado_at,a.fecha_trabajo,a.finalizado_at,
+                     (SELECT TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) FROM usuarios u WHERE u.id=a.asesor_id) asesor_nombre,
                      COALESCE(ag.proxima_accion_at,a.proxima_accion_at) proxima_accion_at,
                      ag.revision_fecha,
                      CASE WHEN e.etapa='EN_CONTACTO' THEN 'RECUPERACION'
@@ -557,7 +576,7 @@ final class EmbudoComercialRepository
               LEFT JOIN prospecto_embudo_etapas e ON e.asignacion_id=a.id
               LEFT JOIN prospecto_embudo_agenda ag ON ag.asignacion_id=a.id
               WHERE p.id=?";
-        $sql.=$operativoV3 && !$supervisor && $vista==='embudo'
+        $sql.=$operativoV3 && $vista==='embudo'
             ? " AND (a.vigente=1 OR (a.vigente IS NULL AND a.finalizado_at IS NOT NULL
                 AND EXISTS (SELECT 1 FROM prospecto_embudo_inscripciones_v3 v
                             WHERE v.asignacion_id=a.id)))"
@@ -574,8 +593,15 @@ final class EmbudoComercialRepository
         $rows=$this->rows($sql,$params);
         if (!$rows) return null;
         $p=$rows[0];
+        if($operativoV3){
+            require_once __DIR__.'/EmbudoComercialV3SeguimientoService.php';
+            if(EmbudoComercialV3SeguimientoService::instalada($this->db)){
+                $actual=$this->rows('SELECT fecha_pendiente,completada_at FROM prospecto_embudo_actividad_v3 WHERE asignacion_id=? ORDER BY id DESC LIMIT 1',[(int)$p['asignacion_id']]);
+                if($actual)$p['proxima_accion_at']=$actual[0]['fecha_pendiente'];
+            }
+        }
         $p['solicitud_inscripcion']=null;
-        if ($operativoV3 && !$supervisor &&
+        if ($operativoV3 &&
             $p['etapa']==='PROCESO_INSCRIPCION') {
             // Solo se consulta tras confirmar asignación vigente y propietaria.
             // Si la migración aún no está instalada, mostrar la ficha anterior
@@ -636,7 +662,7 @@ final class EmbudoComercialRepository
             );
             $p['historial_movimientos']=$historial;
             $p['historial_subetapas']=[];
-            if ($operativoV3 && !$supervisor) {
+            if ($operativoV3) {
                 require_once __DIR__.'/EmbudoComercialV3SeguimientoService.php';
                 if (EmbudoComercialV3SeguimientoService::instalada($this->db)) {
                     $offset=$pagina('actividades','prospecto_embudo_actividad_v3','asignacion_id=?',[$asignacion]);
@@ -649,7 +675,7 @@ final class EmbudoComercialRepository
                     );
                 }
             }
-            if($operativoV3 && !$supervisor){
+            if($operativoV3){
                 // La asignación vigente y su propietario ya se verificaron arriba.
                 // La bitácora V3 es independiente de los movimientos de etapa.
                 $offset=$pagina('gestiones','prospecto_embudo_subetapas_historial','asignacion_id=?',[$asignacion]);
@@ -668,8 +694,9 @@ final class EmbudoComercialRepository
             }
         }
         $p['llamadas_expediente']=[];
-        if ($panel==='llamadas' && !$supervisor && tienePermiso('telefonia.usar')) {
-            $offset=$pagina('llamadas','prospecto_embudo_llamadas','asignacion_id=? AND usuario_id=?',[$asignacion,$usuarioId]);
+        if ($panel==='llamadas' && ($supervisor || tienePermiso('telefonia.usar'))) {
+            $usuarioLlamadas=$supervisor?(int)$p['asesor_id']:$usuarioId;
+            $offset=$pagina('llamadas','prospecto_embudo_llamadas','asignacion_id=? AND usuario_id=?',[$asignacion,$usuarioLlamadas]);
             $p['llamadas_expediente']=$this->rows(
                 "SELECT l.pbx_call_id,l.extension,l.resultado,l.creado_at,r.observacion
                    FROM prospecto_embudo_llamadas l
@@ -678,7 +705,7 @@ final class EmbudoComercialRepository
                        AND BINARY r.pbx_call_id=BINARY l.pbx_call_id
                   WHERE l.asignacion_id=? AND l.usuario_id=?
                   ORDER BY l.creado_at DESC,l.id DESC LIMIT 15 OFFSET ?",
-                [$asignacion,$usuarioId,$offset]
+                [$asignacion,$usuarioLlamadas,$offset]
             );
         }
         return $p;

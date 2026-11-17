@@ -32,6 +32,7 @@ $volverParams=['controller'=>'embudoComercial','action'=>'index','vista'=>$vista
 if(!empty($operativoV3) && !$supervisor && $vista==='embudo') {
     $volverParams['operativo_v3']='1';
 }
+if($supervisor && (int)($_GET['asesor']??0)>0)$volverParams['asesor']=(int)$_GET['asesor'];
 $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
 ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/embudo_comercial.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/embudo_comercial.css'),0,16) ?>">
@@ -82,9 +83,10 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
     <header class="impe-embudo-hero">
         <div><span class="impe-embudo-kicker">FICHA COMERCIAL · SOLO LECTURA</span>
             <h2><?= $esc($prospecto['nombre_completo']) ?></h2>
-            <p>ID comercial #<?= (int)$prospecto['id'] ?> · <?= $esc(EmbudoComercialRepository::ETAPAS[$prospecto['etapa']]
-                    ??EmbudoComercialPoliticaPropuesta::ETAPAS_ACTIVAS[$prospecto['etapa']]
-                    ??'Etapa pendiente') ?></p>
+            <p>ID comercial #<?= (int)$prospecto['id'] ?> · <?= $esc(!empty($operativoV3)
+                    ?(EmbudoComercialPoliticaPropuesta::ETAPAS_ACTIVAS[$prospecto['etapa']==='INTERESADO'?'POTENCIAL':$prospecto['etapa']]
+                        ??EmbudoComercialRepository::ETAPAS[$prospecto['etapa']]??'Etapa pendiente')
+                    :(EmbudoComercialRepository::ETAPAS[$prospecto['etapa']]??'Etapa pendiente')) ?></p>
         </div>
         <span class="impe-embudo-hero-icon"><i class="bi bi-person-vcard" aria-hidden="true"></i></span>
     </header>
@@ -129,7 +131,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
         <section>
             <h3>Asignación y próxima atención</h3>
             <dl>
-                <div><dt>Asesor asignado</dt><dd>ID #<?= (int)$prospecto['asesor_id'] ?></dd></div>
+                <div><dt>Asesor asignado</dt><dd><?= $esc(trim((string)($prospecto['asesor_nombre']??''))?:'ID #'.(int)$prospecto['asesor_id']) ?></dd></div>
                 <div><dt>Fecha de asignación</dt><dd><?= $esc($fecha($prospecto['asignado_at'])) ?></dd></div>
                 <div><dt>Jornada de trabajo</dt><dd><?= $esc($dia($prospecto['fecha_trabajo'])) ?></dd></div>
                 <div><dt>Próxima acción</dt><dd><?= $esc($fecha($prospecto['proxima_accion_at'])) ?></dd></div>
@@ -327,7 +329,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                     </div>
                 </div>
                 <?php endif; ?>
-                <?php if (TelefoniaResultadoVentasService::esConversacion($llamada['resultado'])): ?>
+                <?php if (!$supervisor && tienePermiso('telefonia.usar') && TelefoniaResultadoVentasService::esConversacion($llamada['resultado'])): ?>
                 <details data-expediente-grabacion="<?= $esc(BASE_URL.'prueba_telefonia/api/grabacion_ventas.php?'.http_build_query([
                     'pbx_call_id'=>$llamada['pbx_call_id'],'extension'=>$llamada['extension'],'verificar'=>1
                 ])) ?>">

@@ -69,8 +69,9 @@ final class EmbudoComercialController
         $v3Asesor=!$supervisor &&
             EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId) &&
             ($_GET['tablero_anterior']??null)!=='1';
-        $operativoV3=$vista==='embudo' && $v3Asesor;
-        $bandejasV3=$v3Asesor &&
+        $supervisionV3=$supervisor && !$previsualizacionV3 && ($_GET['tablero_anterior']??null)!=='1';
+        $operativoV3=$vista==='embudo' && ($v3Asesor || $supervisionV3);
+        $bandejasV3=($v3Asesor || $supervisionV3) &&
             in_array($vista,['recuperacion','descartados'],true);
         $error='';
         $disponible=false;
@@ -102,7 +103,7 @@ final class EmbudoComercialController
                 $tablero=$previsualizacionV3
                     ?$repo->listadoV3Preparacion($usuarioId,$supervisor,$filtros)
                     :($operativoV3
-                        ?$repo->listadoV3Operativo($usuarioId,$filtros,$paginasV3)
+                        ?$repo->listadoV3Operativo($usuarioId,$filtros,$paginasV3,$supervisor)
                         :$repo->listado($usuarioId,$supervisor,$filtros,$vista,$bandejasV3));
             }
         } catch (DomainException $e) {
@@ -124,21 +125,24 @@ final class EmbudoComercialController
     public function expedientes(): void
     {
         [$usuarioId,$supervisor]=$this->autorizar('embudo');
-        if ($supervisor || !EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId)) {
+        if (!$supervisor && !EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId)) {
             http_response_code(403);
             exit('No tienes permiso para consultar estos expedientes.');
         }
         $pagina=max(1,min(10000,(int)($_GET['pagina']??1)));
-        $expedientes=[];$error='';
+        $filtros=['asesor'=>0];
+        $expedientes=[];$error='';$opciones=['programas'=>[],'asesores'=>[]];
         try {
+            $filtros=EmbudoComercialRepository::filtros($_GET,$supervisor);
             $repo=new EmbudoComercialRepository((new Database())->connect(false));
-            $expedientes=$repo->expedientesCerrados($usuarioId,$pagina);
+            $opciones=$repo->opciones($usuarioId,$supervisor,true);
+            $expedientes=$repo->expedientesCerrados($usuarioId,$pagina,$supervisor,$filtros['asesor']);
         } catch (Throwable $e) {
             http_response_code(503);
             $error='No se pudieron consultar los expedientes cerrados.';
             error_log('[embudo_expedientes] '.get_class($e));
         }
-        $this->presentar('expedientes','embudo',compact('expedientes','pagina','error'));
+        $this->presentar('expedientes','embudo',compact('expedientes','pagina','error','supervisor','usuarioId','filtros','opciones'));
     }
 
     public function detalle(): void
@@ -158,8 +162,8 @@ final class EmbudoComercialController
             $paginas[$clave]=filter_var($_GET[$clave]??1,FILTER_VALIDATE_INT)?:1;
         }
         $prospecto=null;
-        $operativoV3=$vista==='embudo' && !$supervisor &&
-            EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId) &&
+        $operativoV3=($supervisor ||
+            EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuarioId)) &&
             ($_GET['tablero_anterior']??null)!=='1';
         $error='';
         if (!$id) {

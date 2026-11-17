@@ -2,7 +2,10 @@
 require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
 require_once __DIR__.'/../../helpers/EmbudoComercialAcceso.php';
 $esc=static fn($valor)=>htmlspecialchars((string)$valor,ENT_QUOTES,'UTF-8');
+$supervisor=!empty($supervisor);
+$asesorSeleccionado=$supervisor?(int)($filtros['asesor']??0):0;
 $url=BASE_URL.'index.php?controller=embudoComercial';
+$navUrl=$url.($supervisor?'&asesor='.$asesorSeleccionado:'');
 ?>
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/embudo_comercial.css') ?>">
 <link rel="stylesheet" href="<?= $esc(BASE_URL.'public/css/seguimiento_grabaciones.css') ?>">
@@ -10,20 +13,33 @@ $url=BASE_URL.'index.php?controller=embudoComercial';
 <div class="impe-embudo">
     <div class="impe-embudo--compact">
     <nav class="impe-embudo-tabs" aria-label="Vistas comerciales">
-        <a href="<?= $esc($url.'&action=index&vista=embudo') ?>"><i class="bi bi-kanban" aria-hidden="true"></i> Embudo de ventas</a>
+        <a href="<?= $esc($navUrl.'&action=index&vista=embudo') ?>"><i class="bi bi-kanban" aria-hidden="true"></i> Embudo de ventas</a>
         <?php if (EmbudoComercialAcceso::puede('recuperacion')): ?>
-        <a href="<?= $esc($url.'&action=index&vista=recuperacion') ?>"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación</a>
+        <a href="<?= $esc($navUrl.'&action=index&vista=recuperacion') ?>"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación</a>
         <?php endif; ?>
         <?php if (EmbudoComercialAcceso::puede('descartados')): ?>
-        <a href="<?= $esc($url.'&action=index&vista=descartados') ?>"><i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
+        <a href="<?= $esc($navUrl.'&action=index&vista=descartados') ?>"><i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
         <?php endif; ?>
-        <a href="<?= $esc($url.'&action=expedientes') ?>" aria-current="page"><i class="bi bi-folder2-open" aria-hidden="true"></i> Expedientes cerrados</a>
+        <a href="<?= $esc($navUrl.'&action=expedientes') ?>" aria-current="page"><i class="bi bi-folder2-open" aria-hidden="true"></i> Expedientes cerrados</a>
     </nav>
     </div>
     <header class="impe-embudo-hero">
         <div><h2>Expedientes cerrados</h2><p>Consulta el historial comercial y las llamadas de prospectos con una inscripción vinculada.</p></div>
         <span class="impe-embudo-hero-icon"><i class="bi bi-folder2-open" aria-hidden="true"></i></span>
     </header>
+    <?php if($supervisor): ?>
+    <form class="impe-embudo-filtros" action="<?= $esc(BASE_URL.'index.php') ?>" method="get" data-embudo-v3-auto-filter>
+        <input type="hidden" name="controller" value="embudoComercial">
+        <input type="hidden" name="action" value="expedientes">
+        <label>Asesor<select name="asesor"><option value="">Todos los asesores</option>
+            <?php foreach($opciones['asesores'] as $u): ?>
+            <option value="<?= (int)$u['id'] ?>" <?= $asesorSeleccionado===(int)$u['id']?'selected':'' ?>><?= $esc($u['nombre']) ?></option>
+            <?php endforeach; ?>
+        </select></label>
+        <noscript><button type="submit">Filtrar</button></noscript>
+    </form>
+    <script defer src="<?= $esc(BASE_URL.'public/javascript/embudo_comercial_v3_filtros.js') ?>"></script>
+    <?php endif; ?>
     <div class="impe-embudo-detalles">
         <section class="impe-embudo-detalles-wide">
             <h3>Inscripciones vinculadas</h3>
@@ -40,6 +56,7 @@ $url=BASE_URL.'index.php?controller=embudoComercial';
                         <div class="linkage-call-recording-top">
                             <div><strong><?= $esc($fila['nombre_completo']) ?></strong>
                                 <span>Solicitud #<?= (int)$fila['formulario_inscripcion_id'] ?></span>
+                                <?php if($supervisor): ?><span>Asesor: <?= $esc($fila['asesor_nombre']??'') ?></span><?php endif; ?>
                             </div>
                             <time class="linkage-call-recording-duration"><?= $esc(EmbudoComercialPresentacion::fechaUtc($fila['finalizado_at'])) ?></time>
                         </div>
@@ -50,8 +67,8 @@ $url=BASE_URL.'index.php?controller=embudoComercial';
             </div>
             <?php if($pagina>1 || count($expedientes)>25): ?>
             <nav class="impe-embudo-tabs mt-3" aria-label="Páginas de expedientes">
-                <?php if($pagina>1): ?><a href="<?= $esc($url.'&action=expedientes&pagina='.($pagina-1)) ?>">Anterior</a><?php endif; ?>
-                <?php if(count($expedientes)>25 && $pagina<10000): ?><a href="<?= $esc($url.'&action=expedientes&pagina='.($pagina+1)) ?>">Siguiente</a><?php endif; ?>
+                <?php if($pagina>1): ?><a href="<?= $esc($url.'&action=expedientes&asesor='.$asesorSeleccionado.'&pagina='.($pagina-1)) ?>">Anterior</a><?php endif; ?>
+                <?php if(count($expedientes)>25 && $pagina<10000): ?><a href="<?= $esc($url.'&action=expedientes&asesor='.$asesorSeleccionado.'&pagina='.($pagina+1)) ?>">Siguiente</a><?php endif; ?>
             </nav>
             <?php endif; ?>
         </section>

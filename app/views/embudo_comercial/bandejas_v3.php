@@ -5,13 +5,15 @@
  */
 require_once __DIR__.'/../../helpers/EmbudoComercialAcceso.php';
 $esc=static fn($v)=>htmlspecialchars((string)($v??''),ENT_QUOTES,'UTF-8');
+$supervisor=!empty($supervisor);
 $recuperacion=$vista==='recuperacion';
 $col=$tablero['columnas'][$recuperacion?'RECUPERACION':'DESCARTADO'];
-$puedeTelefono=tienePermiso('telefonia.usar');
+$puedeTelefono=!$supervisor && tienePermiso('telefonia.usar');
 $base=BASE_URL.'index.php?';
 $params=['controller'=>'embudoComercial','action'=>'index','vista'=>$vista,
     'origen'=>$filtros['origen'],'programa'=>$filtros['programa'],
     'buscar'=>$filtros['buscar'],'vencidos'=>$filtros['vencidos']?'1':'0'];
+if($supervisor && $filtros['asesor']>0)$params['asesor']=$filtros['asesor'];
 $paginar=static function(int $pagina)use($base,$params,$recuperacion){
     $p=$params;
     $campo=$recuperacion?'p_recuperacion':'p_descartado';
@@ -25,21 +27,21 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
 <div class="impe-embudo impe-embudo--compact impe-embudo--v3-bandejas" data-v3-bandejas>
     <nav class="impe-embudo-tabs" aria-label="Vistas comerciales">
         <a href="<?= $esc($base.http_build_query(['controller'=>'embudoComercial',
-            'action'=>'index','vista'=>'embudo'])) ?>">
+            'action'=>'index','vista'=>'embudo']+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>">
             <i class="bi bi-kanban" aria-hidden="true"></i> Embudo de ventas</a>
         <?php if(EmbudoComercialAcceso::puede('recuperacion')): ?>
         <a href="<?= $esc($base.http_build_query(['controller'=>'embudoComercial',
-            'action'=>'index','vista'=>'recuperacion'])) ?>"
+            'action'=>'index','vista'=>'recuperacion']+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>"
             <?= $recuperacion?'aria-current="page"':'' ?>>
             <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación</a>
         <?php endif; ?>
         <?php if(EmbudoComercialAcceso::puede('descartados')): ?>
         <a href="<?= $esc($base.http_build_query(['controller'=>'embudoComercial',
-            'action'=>'index','vista'=>'descartados'])) ?>"
+            'action'=>'index','vista'=>'descartados']+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>"
             <?= !$recuperacion?'aria-current="page"':'' ?>>
             <i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
         <?php endif; ?>
-        <a href="<?= $esc($base.'controller=embudoComercial&action=expedientes') ?>">
+        <a href="<?= $esc($base.'controller=embudoComercial&action=expedientes'.($supervisor?'&asesor='.(int)$filtros['asesor']:'')) ?>">
             <i class="bi bi-folder2-open" aria-hidden="true"></i> Expedientes cerrados</a>
     </nav>
     <?php if($error!==''): ?>
@@ -67,6 +69,16 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
                 <?php endforeach; ?>
             </select>
         </label>
+        <?php if ($supervisor): ?>
+        <label>Asesor
+            <select name="asesor">
+                <option value="">Todos los asesores</option>
+                <?php foreach ($opciones['asesores'] as $u): ?>
+                <option value="<?= (int)$u['id'] ?>" <?= $filtros['asesor']===(int)$u['id']?'selected':'' ?>><?= $esc($u['nombre']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <?php endif; ?>
         <label>Buscar prospecto
             <input type="search" name="buscar" maxlength="120"
                    value="<?= $esc($filtros['buscar']) ?>" placeholder="Nombre, teléfono o correo">
@@ -77,7 +89,7 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
         </label>
         <noscript><button type="submit">Filtrar</button></noscript>
         <?php if ($filtros['origen']!=='' || $filtros['programa']!=='' ||
-            $filtros['buscar']!=='' || $filtros['vencidos']): ?>
+            $filtros['buscar']!=='' || $filtros['vencidos'] || ($supervisor && $filtros['asesor']>0)): ?>
         <a class="impe-embudo-reset" href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>$vista])) ?>">Limpiar</a>
         <?php endif; ?>
@@ -85,7 +97,7 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
     <script defer src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_filtros.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/embudo_comercial_v3_filtros.js'),0,16) ?>"></script>
     <div class="impe-embudo-board-info">
         <span><i class="bi bi-people" aria-hidden="true"></i>
-            <?= (int)$col['total'] ?> prospectos asignados</span>
+            <?= (int)$col['total'] ?> prospectos <?= $supervisor?'bajo supervisión':'asignados' ?></span>
         <small>20 por página · sin llamadas ni mensajes automáticos</small>
     </div>
     <div class="impe-embudo-board impe-embudo-board--single">
@@ -137,6 +149,10 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
                     <?php if($recuperacion && !empty($p['horario_contacto'])): ?>
                     <p class="impe-v3b-horario"><i class="bi bi-clock" aria-hidden="true"></i>
                         Horario solicitado: <?= $esc($p['horario_contacto']) ?></p>
+                    <?php endif; ?>
+                    <?php if($supervisor): ?>
+                    <p class="impe-embudo-programa"><i class="bi bi-person-badge" aria-hidden="true"></i>
+                        <?= $esc(trim((string)($p['asesor_nombre']??''))?:'Asesor #'.(int)$p['asesor_id']) ?></p>
                     <?php endif; ?>
                     <div class="impe-embudo-card-bottom">
                         <span class="impe-embudo-next">

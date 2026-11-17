@@ -9,6 +9,7 @@ require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
 require_once __DIR__.'/../../services/EmbudoComercialV3MovimientosPermitidos.php';
 require_once __DIR__.'/../../services/EmbudoComercialV3SeguimientoService.php';
 $esc=static fn($v)=>htmlspecialchars((string)($v??''),ENT_QUOTES,'UTF-8');
+$supervisor=!empty($supervisor);
 $sub=EmbudoComercialPoliticaPropuesta::SUBETAPAS;
 $base=BASE_URL.'index.php?';
 $params=[
@@ -16,6 +17,7 @@ $params=[
     'origen'=>$filtros['origen'],'programa'=>$filtros['programa'],
     'buscar'=>$filtros['buscar'],'vencidos'=>$filtros['vencidos']?'1':'0'
 ];
+if($supervisor && $filtros['asesor']>0)$params['asesor']=$filtros['asesor'];
 foreach($paginasV3 as $clave=>$n){
     if($n>1)$params['p3_'.strtolower($clave)]=$n;
 }
@@ -31,9 +33,9 @@ $buscarTel=static function($tel){
     return strlen($digits)===12 && substr($digits,0,2)==='52'
         ? substr($digits,2):$v;
 };
-$puedeTelefono=tienePermiso('telefonia.usar');
+$puedeTelefono=!$supervisor && tienePermiso('telefonia.usar');
 $puedeLlamar=$puedeTelefono&&tienePermiso('telefonia.salientes');
-$puedeMover=tienePermiso('ventas.embudo.mover');
+$puedeMover=!$supervisor && tienePermiso('ventas.embudo.mover');
 $puedeRecuperar=$puedeMover && tienePermiso('ventas.recuperacion.gestionar') &&
     EmbudoComercialAcceso::puede('recuperacion');
 $puedeDescartar=$puedeMover && tienePermiso('ventas.descartados.gestionar') &&
@@ -48,7 +50,7 @@ $contenedorStage=[
     'PROCESO_INSCRIPCION'=>['bi-file-earmark-check','Trámite y validación institucional']
 ];
 $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
-    $esc,$base,$sub,$buscarTel,$puedeTelefono,$puedeLlamar,$puedeMover,$puedeRecuperar,$puedeDescartar,$actividadV3,$ahoraUtc
+    $esc,$base,$sub,$buscarTel,$puedeTelefono,$puedeLlamar,$puedeMover,$puedeRecuperar,$puedeDescartar,$actividadV3,$ahoraUtc,$supervisor,$filtros
 ){
     $real=(string)($p['etapa_original']??'NUEVO');
     if($real==='')$real='NUEVO';
@@ -65,7 +67,8 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     $destinos=implode(',',$propuestas);
     $detalle=$base.http_build_query([
         'controller'=>'embudoComercial','action'=>'detalle',
-        'vista'=>'embudo','id'=>(int)$p['prospecto_id']
+        'vista'=>'embudo','id'=>(int)$p['prospecto_id'],
+        'asesor'=>$supervisor?$filtros['asesor']:0
     ]);
     $historial=$base.http_build_query([
         'controller'=>'telefonia','action'=>'misLlamadas',
@@ -106,6 +109,10 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <i class="bi bi-mortarboard" aria-hidden="true"></i>
             <?= $esc(trim((string)($p['programas']??''))?:'Programa pendiente') ?>
         </p>
+        <?php if($supervisor): ?>
+        <p class="impe-v3o-meta"><i class="bi bi-person-badge" aria-hidden="true"></i>
+            <?= $esc(trim((string)($p['asesor_nombre']??''))?:'Asesor #'.(int)$p['asesor_id']) ?></p>
+        <?php endif; ?>
         <?php if($label!=='' || $legacy): ?>
         <div class="impe-v3o-sub" title="<?= $esc($legacy?'Registro pendiente de revisar':$label) ?>">
             <i class="bi bi-bookmark-check" aria-hidden="true"></i>
@@ -157,11 +164,13 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <?php if($puedeTelefono): ?>
             <?php endif; ?>
             <?php $menuId='impe-v3o-gestion-'.(int)$p['asignacion_id']; ?>
-            <button type="button" class="impe-v3o-accion impe-v3o-gestion-boton" title="Gestionar"
-                aria-label="Gestionar" popovertarget="<?= $esc($menuId) ?>">
+            <button type="button" class="impe-v3o-accion impe-v3o-gestion-boton" title="<?= $supervisor?'Consultar':'Gestionar' ?>"
+                aria-label="<?= $supervisor?'Consultar expediente':'Gestionar' ?>" popovertarget="<?= $esc($menuId) ?>">
                 <i class="bi bi-three-dots" aria-hidden="true"></i>
             </button>
             <div id="<?= $esc($menuId) ?>" class="impe-v3o-gestion-opciones" popover="auto">
+                    <a class="impe-v3o-accion" href="<?= $esc($detalle) ?>" aria-label="Ver expediente comercial">
+                        <i class="bi bi-person-vcard" aria-hidden="true"></i> <span>Expediente comercial</span></a>
                     <?php if($puedeTelefono): ?>
                     <a class="impe-v3o-accion" href="<?= $esc($historial) ?>"
                        title="Mis llamadas y resultados" aria-label="Mis llamadas y resultados">
@@ -226,18 +235,18 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     <nav class="impe-embudo-tabs" aria-label="Vistas comerciales">
         <a aria-current="page" href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo'
-        ])) ?>"><i class="bi bi-kanban" aria-hidden="true"></i> Embudo de ventas</a>
+        ]+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>"><i class="bi bi-kanban" aria-hidden="true"></i> Embudo de ventas</a>
         <?php if(EmbudoComercialAcceso::puede('recuperacion')): ?>
         <a href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>'recuperacion'
-        ])) ?>"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación</a>
+        ]+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Recuperación</a>
         <?php endif; ?>
         <?php if(EmbudoComercialAcceso::puede('descartados')): ?>
         <a href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>'descartados'
-        ])) ?>"><i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
+        ]+($supervisor?['asesor'=>$filtros['asesor']]:[]))) ?>"><i class="bi bi-archive" aria-hidden="true"></i> Descartados</a>
         <?php endif; ?>
-        <a href="<?= $esc($base.'controller=embudoComercial&action=expedientes') ?>">
+        <a href="<?= $esc($base.'controller=embudoComercial&action=expedientes'.($supervisor?'&asesor='.(int)$filtros['asesor']:'')) ?>">
             <i class="bi bi-folder2-open" aria-hidden="true"></i> Expedientes cerrados
         </a>
     </nav>
@@ -265,6 +274,16 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                 <?php endforeach; ?>
             </select>
         </label>
+        <?php if ($supervisor): ?>
+        <label>Asesor
+            <select name="asesor">
+                <option value="">Todos los asesores</option>
+                <?php foreach ($opciones['asesores'] as $u): ?>
+                <option value="<?= (int)$u['id'] ?>" <?= $filtros['asesor']===(int)$u['id']?'selected':'' ?>><?= $esc($u['nombre']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <?php endif; ?>
         <label>Buscar prospecto
             <input type="search" name="buscar" maxlength="120"
                    value="<?= $esc($filtros['buscar']) ?>" placeholder="Nombre, teléfono o correo">
@@ -274,7 +293,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         </label>
         <noscript><button type="submit">Filtrar</button></noscript>
         <?php if ($filtros['origen']!=='' || $filtros['programa']!=='' ||
-            $filtros['buscar']!=='' || $filtros['vencidos']): ?>
+            $filtros['buscar']!=='' || $filtros['vencidos'] || ($supervisor && $filtros['asesor']>0)): ?>
         <a class="impe-embudo-reset" href="<?= $esc($base.http_build_query([
             'controller'=>'embudoComercial','action'=>'index','vista'=>'embudo'
          ])) ?>">Limpiar</a>
@@ -283,7 +302,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     <script defer src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_filtros.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/embudo_comercial_v3_filtros.js'),0,16) ?>"></script>
     <div class="impe-embudo-board-info">
         <span><i class="bi bi-people" aria-hidden="true"></i>
-            <?= (int)$tablero['total_activos'] ?> asignaciones vigentes bajo tu responsabilidad</span>
+            <?= (int)$tablero['total_activos'] ?> asignaciones <?= $supervisor?'bajo supervisión':'vigentes bajo tu responsabilidad' ?></span>
         <small>20 por columna · paginación independiente</small>
     </div>
     <div class="impe-embudo-board" role="region" tabindex="0"
@@ -489,7 +508,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
         <?php require __DIR__.'/inscripcion_v3_modal.php'; ?>
     <?php endif; ?>
     <?php endif; ?>
-    <?php if($puedeTelefono || $puedeMover): ?>
+    <?php if($supervisor || $puedeTelefono || $puedeMover): ?>
     <script src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_operativo.js?v=<?= filemtime(__DIR__.'/../../../public/javascript/embudo_comercial_v3_operativo.js') ?>" defer></script>
     <?php if($puedeMover): ?>
     <script defer src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_inscripcion.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/embudo_comercial_v3_inscripcion.js'),0,16) ?>"></script>
