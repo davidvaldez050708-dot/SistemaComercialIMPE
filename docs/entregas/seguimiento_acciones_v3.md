@@ -69,3 +69,9 @@ Bloquea si alguien personalizó archivos después de publicar. Revierte código;
 ## Prueba funcional después de publicar
 
 Con asesor 22 y prospectos sintéticos: programar una acción en Contactados, verificar movimiento inmediato a Seguimiento y auditoría; repetir desde Potenciales. Comprobar que programar en Nuevos conserva Nuevos. Reprogramar y completar en Seguimiento: cambia la cita sin duplicar prospectos ni regresar de etapa. Iniciar inscripción desde Seguimiento con requisitos completos y verificar Proceso de Inscripción. Una nota sin fecha y una cita de un trámite iniciado conservan su etapa.
+
+## Compatibilidad con telefonía personalizada de Hostinger
+
+Se revisó la variante que omite escribir `embudo_asignacion_id` en `telefonia_ventas_resultados` y obtiene `resultadoId` únicamente cuando hay detalle. Su SHA-256 exacto es `a264542c8bfbd2ec362586f8ecdda561b029501d1a165d730e2e2c58778a55d3` (blob Git `d0cc4cfd94de94363343906d2ce3df2cad135211`). El puente posterior al commit conserva la asignación explícita y los mismos parámetros; la programación V3 usa `prospecto_embudo_llamadas` y actividades, sin depender de esa columna opcional.
+
+El comprobador admite únicamente la base original y esta variante exacta, verificadas antes de CHECK/APPLY/ROLLBACK. El servicio de telefonía permanece fuera de los archivos publicados. Las pruebas reproducen el diff y verifican que la variante permanece byte por byte tras aplicar, revertir y simular un fallo parcial; cualquier otro cambio sigue bloqueado.
