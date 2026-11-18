@@ -27,6 +27,14 @@ final class EmbudoComercialPresentacion
             ' '.$d->format('Y');
     }
 
+    /** Fecha breve de tarjeta; conserva el año cuando no es el actual en México. */
+    public static function fechaUtcCorta(?string $fecha): string
+    {
+        $texto=self::fechaUtc($fecha);
+        $anio=(new DateTimeImmutable('now',new DateTimeZone('America/Mexico_City')))->format('Y');
+        return str_replace(' '.$anio.',',',',$texto);
+    }
+
     public static function fechaUtc(?string $fecha): string
     {
         if (!$fecha) return 'Sin programar';

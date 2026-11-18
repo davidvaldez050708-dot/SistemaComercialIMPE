@@ -472,3 +472,9 @@
   cursor:default;
   opacity:.7;
 }
+
+/* Mantener visible la hora: sólo el nombre de la tarea puede abreviarse. */
+.impe-embudo--v3-operativo .impe-v3o-actividad-breve span{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.impe-embudo--v3-operativo .impe-v3o-actividad-breve time{flex:none;white-space:nowrap}

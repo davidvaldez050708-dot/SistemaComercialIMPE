@@ -121,44 +121,43 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <span><?= $esc($legacy?'Revisar registro anterior':$label) ?></span>
         </div>
         <?php endif; ?>
-        <?php if($etapa==='NUEVO' && !$legacy): ?>
-        <span class="impe-v3o-intentos" title="Intentos sin contacto hoy; no generan cambios automáticos"
-              aria-label="<?= $n ?> de 3 intentos sin conversación hoy">
-            <i class="bi bi-telephone-x" aria-hidden="true"></i><?= $avance ?>/3
+        <?php if($etapa==='NUEVO' && !$legacy):
+            $retomar=!empty($p['fecha_trabajo']) && $p['fecha_trabajo'] <
+                (new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))->format('Y-m-d'); ?>
+        <span class="impe-v3o-intentos" title="Intentos sin contacto de la jornada actual"
+              aria-label="<?= $n ?> de 3 intentos sin conversación hoy<?= $retomar?' · Retomar contacto':'' ?>">
+            <i class="bi bi-telephone-x" aria-hidden="true"></i><?= $avance ?>/3<?= $retomar?' · Retomar contacto':'' ?>
         </span>
-        <?php endif; ?>
-        <?php if ($etapa==='NUEVO' && !$legacy && !empty($p['fecha_trabajo']) &&
-            $p['fecha_trabajo'] < (new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))->format('Y-m-d')): ?>
-        <p class="impe-v3o-meta"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>
-            Retomar contacto · Nuevo de una jornada anterior</p>
         <?php endif; ?>
         <?php if(!empty($p['horario_contacto'])): ?>
         <p class="impe-v3o-meta"><i class="bi bi-clock" aria-hidden="true"></i>
             Horario solicitado: <?= $esc($p['horario_contacto']) ?></p>
         <?php endif; ?>
-        <?php if($pendiente || $completada): ?>
-        <p class="impe-v3o-meta">
-            <i class="bi <?= $pendiente?'bi-calendar-event':'bi-check-circle' ?>" aria-hidden="true"></i>
-            <?= $pendiente?($pendiente<$ahoraUtc?'Actividad vencida:':'Actividad programada:'):'Última actividad completada:' ?>
-            <?= $esc(EmbudoComercialPresentacion::fechaUtc($pendiente?:$completada)) ?>
+        <?php
+            $tiposBreves=['LLAMADA'=>'Llamar','MENSAJE'=>'Enviar mensaje','DOCUMENTOS'=>'Revisar documentos',
+                'COMPROBANTE'=>'Revisar comprobante','INSCRIPCION'=>'Revisar inscripción','OTRA'=>'Otra gestión'];
+            if($pendiente):
+                $tarea=$tiposBreves[$p['actividad_tipo']??'']??'Gestión';
+                $vencida=$pendiente<$ahoraUtc;
+                $textoActividad=($vencida?'Vencida · ':'').$tarea.' · '.EmbudoComercialPresentacion::fechaUtcCorta($pendiente);
+                $detalleActividad=EmbudoComercialV3TipoActividad::etiqueta($p['actividad_tipo']??null).' · '.
+                    EmbudoComercialPresentacion::fechaUtc($pendiente).
+                    (!empty($p['actividad_detalle'])?' · '.$p['actividad_detalle']:'');
+        ?>
+        <p class="impe-v3o-meta impe-v3o-actividad-breve" title="<?= $esc($detalleActividad) ?>" aria-label="<?= $esc($textoActividad) ?>">
+            <i class="bi <?= $vencida?'bi-calendar-exclamation':'bi-calendar-event' ?>" aria-hidden="true"></i>
+            <span><?= $esc(($vencida?'Vencida · ':'').$tarea) ?></span>
+            <time datetime="<?= $esc(str_replace(' ','T',$pendiente).'Z') ?>">· <?= $esc(EmbudoComercialPresentacion::fechaUtcCorta($pendiente)) ?></time>
         </p>
-        <?php endif; ?>
-        <?php if(($pendiente || $completada) && isset(EmbudoComercialV3TipoActividad::TIPOS[$p['actividad_tipo']??''])): ?>
-        <p class="impe-v3o-meta" title="<?= $esc($p['actividad_detalle']??'') ?>">
-            <i class="bi bi-list-task" aria-hidden="true"></i>
-            <?= $esc(EmbudoComercialV3TipoActividad::etiqueta($p['actividad_tipo'])) ?>
+        <?php elseif(empty($p['actividad_version']) && !empty($p['proxima_accion_at'])):
+            $fechaAgenda=$p['proxima_accion_at']; ?>
+        <p class="impe-v3o-meta" title="<?= $esc(EmbudoComercialPresentacion::fechaUtc($fechaAgenda)) ?>">
+            <i class="bi bi-calendar-event" aria-hidden="true"></i>
+            <?= $fechaAgenda<$ahoraUtc?'Vencida · ':'' ?>Gestión · <?= $esc(EmbudoComercialPresentacion::fechaUtcCorta($fechaAgenda)) ?>
         </p>
-        <?php endif; ?>
-        <?php if(!empty($p['proxima_accion_at'])): ?>
-        <p class="impe-v3o-meta"><i class="bi bi-calendar-event" aria-hidden="true"></i>
-            <?= $actividadV3?'Agenda anterior:':'Próxima acción:' ?>
-            <?= $esc(EmbudoComercialPresentacion::fechaUtc($p['proxima_accion_at'])) ?></p>
-        <?php elseif(!empty($p['revision_fecha'])): ?>
+        <?php elseif(empty($p['actividad_version']) && !empty($p['revision_fecha'])): ?>
         <p class="impe-v3o-meta"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>
             Revisar: <?= $esc(EmbudoComercialPresentacion::fechaLocal($p['revision_fecha'])) ?></p>
-        <?php else: ?>
-        <p class="impe-v3o-meta"><i class="bi bi-calendar3" aria-hidden="true"></i>
-            Jornada: <?= $esc(EmbudoComercialPresentacion::fechaLocal($p['fecha_trabajo']??'')) ?></p>
         <?php endif; ?>
         <?php
             $mostrarLlamada=$puedeLlamar && $st!=='NO_CONTACTAR' && trim((string)($p['telefono_original']??''))!=='';
