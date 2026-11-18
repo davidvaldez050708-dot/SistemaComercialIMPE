@@ -40,6 +40,7 @@ if (!function_exists('permisosOperativosRestringidosAdministrador')) {
             'aliados.preparar_whatsapp',
             'aliados.seguimiento_convocatorias',
             'whatsapp.enviar',
+            'whatsapp.responder_todas',
             'telefonia.usar',
             'telefonia.salientes',
             'telefonia.recibir',

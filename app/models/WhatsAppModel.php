@@ -311,7 +311,8 @@ class WhatsAppModel
         }
 
         $sql = $this->consultaConversacionesBase() . "
-                WHERE c.activo = 1";
+                WHERE c.activo = 1
+                  AND EXISTS (SELECT 1 FROM whatsapp_mensajes visible WHERE visible.conversacion_id=conv.id)";
 
         $tipos = '';
         $parametros = [];

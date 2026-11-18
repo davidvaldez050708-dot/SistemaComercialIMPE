@@ -500,6 +500,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'whatsapp.enviar': 'whatsapp.ver',
             'whatsapp.gestionar_conversaciones': 'whatsapp.ver',
             'whatsapp.gestionar_cuentas': 'whatsapp.ver',
+            'whatsapp.responder_todas': 'whatsapp.gestionar_conversaciones',
             'telefonia.salientes': 'telefonia.usar',
             'telefonia.recibir': 'telefonia.usar',
             'telefonia.transferir': 'telefonia.recibir',
@@ -511,6 +512,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'reportes.usuarios': 'reportes.ver'
         };
         const dependenciasAdicionales = {
+            'whatsapp.responder_todas': ['whatsapp.ver', 'whatsapp.enviar'],
             'reportes.seguimiento.cartera': [
                 'seguimientos_vinculacion.ver'
             ],

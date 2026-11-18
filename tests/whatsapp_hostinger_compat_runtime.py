@@ -36,10 +36,11 @@ with tempfile.TemporaryDirectory(prefix='impe-wa-host-runtime-') as temp:
         (project/rel).write_bytes(bases[rel])
     for rel in ['app/views/embudo_comercial/operativo_v3.php','app/views/aliados/estado.php']:
         (project/rel).write_bytes((adapted/rel).read_bytes())
-    for rel in ['tests/whatsapp_contextual_db.php','tests/whatsapp_contextual_http.py']:
+    (project/'app/helpers/AdminRolePolicy.php').write_bytes((ROOT/'tools/whatsapp_permisos_hostinger/after/app/helpers/AdminRolePolicy.php').read_bytes())
+    for rel in ['app/models/WhatsAppModel.php','app/services/WhatsAppContextoService.php','tests/whatsapp_contextual_db.php','tests/whatsapp_contextual_http.py','app/views/whatsapp/panel.php','app/views/whatsapp/chat.php','public/javascript/whatsapp_contextual.js','public/css/whatsapp_contextual.css','tests/whatsapp_contextual_browser.cjs']:
         (project/rel).write_bytes((ROOT/rel).read_bytes())
     env=os.environ.copy()
-    for key in ['IMPE_WHATSAPP_PUBLICACION_TEST','IMPE_WA_HOST_COMPAT_TEST','IMPE_WA_PERMISSION_FIXTURE']:
+    for key in ['IMPE_WHATSAPP_PUBLICACION_TEST','IMPE_WA_HOST_COMPAT_TEST','IMPE_WA_PERMISSION_FIXTURE','IMPE_WA_PERMISOS_TEST']:
         env.pop(key,None)
     env.update(IMPE_WHATSAPP_CONTEXT_TEST='YES',IMPE_WHATSAPP_HTTP_TEST='YES',IMPE_WA_RENDER_DIR=str(project/'.render/wa'),IMPE_SUPERVISION_TEST='YES',IMPE_SUPERVISION_RENDER_DIR=str(project/'.render/supervision'))
     for command in [

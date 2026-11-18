@@ -22,14 +22,14 @@ final class WhatsAppContextoService
 
     public static function lecturaGlobal(): bool
     {
-        // El permiso histórico está descrito como supervisión/consulta.
-        return tienePermiso('whatsapp.ver_todas') || tienePermiso('whatsapp.gestionar_conversaciones');
+        // Una sola identidad para la consulta global. El código conserva su ID histórico.
+        return tienePermiso('whatsapp.gestionar_conversaciones');
     }
 
     public static function alcance(mysqli $db,int $usuario,bool $global): string
     {
         if ($usuario<1 || (int)($_SESSION['usuario_id']??0)!==$usuario || !tienePermiso('whatsapp.ver')) return '0=1';
-        if ($global && (self::lecturaGlobal() || tienePermiso('whatsapp.responder_todas'))) return '1=1';
+        if ($global && self::lecturaGlobal()) return '1=1';
         $propio="conv.responsable_usuario_id=$usuario";
         if (self::tabla($db,'whatsapp_conversacion_prospectos')) {
             $propio="CASE WHEN EXISTS(SELECT 1 FROM whatsapp_conversacion_prospectos enlace WHERE enlace.conversacion_id=conv.id)

@@ -45,6 +45,8 @@ try{
  $account=$model->guardarCuenta(['nombre'=>'Institucional','phone_number_id'=>'000000001','numero_mostrado'=>'+527770099999','es_predeterminada'=>true,'tipo'=>'PRUEBA'],1);
  $cid=WhatsAppContextoService::abrir($model,'prospecto',1,22);
  waCheck($cid===WhatsAppContextoService::abrir($model,'prospecto',1,22),'mismo chat desde el mismo contexto');
+ waCheck($model->obtenerConversaciones(22,false)===[],'abrir un chat vacío no llena la bandeja');
+ waCheck((bool)$model->obtenerConversacion($cid,22,false),'el chat vacío sigue accesible por contexto');
  waCheck((int)$db->query('SELECT COUNT(*) n FROM whatsapp_mensajes')->fetch_assoc()['n']===0,'abrir no envía mensajes');
  waDeny(fn()=>WhatsAppContextoService::abrir($model,'prospecto',2,22));
  $other=$model->crearORecuperarConversacion($account,'527770000002','Otro',23);
@@ -56,6 +58,14 @@ try{
  $db->query('UPDATE prospecto_asignaciones SET asesor_id=23 WHERE id=1');
  waCheck((bool)$model->obtenerConversacion($cid,23,false),'nuevo asesor consulta la conversación');
  waSession(22);waCheck(!$model->obtenerConversacion($cid,22,false),'el anterior pierde acceso');
+ waSession(22,3,['whatsapp.ver_todas']);
+ waCheck(!WhatsAppContextoService::lecturaGlobal() && !$model->obtenerConversacion($cid,22,true),'el permiso duplicado retirado no concede acceso');
+ waSession(22,3,['whatsapp.responder_todas']);
+ waCheck(!$model->obtenerConversacion($cid,22,true),'responder equipo sin consulta global no concede acceso ajeno');
+ waSession(22,3,['whatsapp.gestionar_conversaciones']);
+ waCheck((bool)$model->obtenerConversacion($cid,22,true) && !$model->obtenerConversacion($cid,22,false),'consulta global no implica respuesta ajena');
+ waSession(22,3,['whatsapp.gestionar_conversaciones','whatsapp.responder_todas']);
+ waCheck((bool)$model->obtenerConversacion($cid,22,true),'consulta y respuesta globales explícitas');
  waSession(1,1,['whatsapp.gestionar_conversaciones']);
  waCheck((bool)$model->obtenerConversacion($cid,1,WhatsAppContextoService::lecturaGlobal()),'supervisión consulta');
  waCheck(!tienePermiso('whatsapp.enviar'),'administrador conserva restricción operativa');
@@ -71,6 +81,9 @@ try{
  waSession(23);
  $incoming=$model->registrarMensajeEntrada($account,'527770000001','Prospecto','wamid_prueba','TEXT','Mensaje de prueba',time());
  waCheck($incoming===$cid && (bool)$model->obtenerConversacion($incoming,23,false),'entrada se vincula al mismo prospecto');
+ waCheck(in_array($cid,array_map('intval',array_column($model->obtenerConversaciones(23,false),'id')),true),'mensaje recibido incorpora el chat a la bandeja');
+ $model->registrarMensajeSalida($other,23,'Intento de prueba',['ok'=>false,'mensaje'=>'Error sintético de envío']);
+ waCheck(in_array($other,array_map('intval',array_column($model->obtenerConversaciones(23,false),'id')),true),'los intentos fallidos siguen visibles para revisión');
  $model->registrarMensajeEntrada($account,'527770000001','Prospecto','wamid_prueba','TEXT','Mensaje de prueba',time());
  waCheck((int)$db->query("SELECT no_leidos FROM whatsapp_conversaciones WHERE id=$cid")->fetch_assoc()['no_leidos']===1,'webhook repetido no duplica no leídos');
  $unknown=$model->registrarMensajeEntrada($account,'527770000099','Desconocido','wamid_sin_asignar','TEXT','Hola',time());
@@ -100,6 +113,11 @@ try{
   $p=proc_open(['py',__DIR__.'/publicar_whatsapp_hostinger_compat_test.py',$schema],[1=>['pipe','w'],2=>['pipe','w']],$pipes);
   $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
   waCheck(proc_close($p)===0,'compatibilidad Hostinger: '.$out.$err);echo $out;
+ }
+ if(getenv('IMPE_WA_PERMISOS_TEST')==='YES') {
+  $p=proc_open(['py',__DIR__.'/publicar_whatsapp_permisos_test.py',$schema],[1=>['pipe','w'],2=>['pipe','w']],$pipes);
+  $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+  waCheck(proc_close($p)===0,'permisos y bandeja: '.$out.$err);echo $out;
  }
  if($dir=getenv('IMPE_WA_RENDER_DIR')){
   if(!is_dir($dir))mkdir($dir,0700,true);

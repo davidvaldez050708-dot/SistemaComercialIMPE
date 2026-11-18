@@ -1095,6 +1095,7 @@ class RolModel
             'whatsapp.enviar' => 'whatsapp.ver',
             'whatsapp.gestionar_conversaciones' => 'whatsapp.ver',
             'whatsapp.gestionar_cuentas' => 'whatsapp.ver',
+            'whatsapp.responder_todas' => 'whatsapp.gestionar_conversaciones',
             'telefonia.salientes' => 'telefonia.usar',
             'telefonia.recibir' => 'telefonia.usar',
             'telefonia.transferir' => 'telefonia.recibir',
@@ -1107,6 +1108,7 @@ class RolModel
             'reportes.usuarios' => 'reportes.ver'
         ];
         $dependenciasAdicionales = [
+            'whatsapp.responder_todas' => ['whatsapp.ver','whatsapp.enviar'],
             'reportes.seguimiento.cartera' => [
                 'seguimientos_vinculacion.ver'
             ],
@@ -1410,7 +1412,8 @@ class RolModel
             ['modulo' => 'Aliados', 'codigo' => 'aliados.compartir_correo', 'nombre' => 'Compartir convocatorias por correo', 'descripcion' => 'Enviar convocatorias vigentes por correo a aliados autorizados.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.ver', 'nombre' => 'Ver conversaciones de WhatsApp', 'descripcion' => 'Consultar conversaciones de WhatsApp autorizadas.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.enviar', 'nombre' => 'Enviar mensajes por WhatsApp', 'descripcion' => 'Enviar mensajes mediante cuentas de WhatsApp Business autorizadas.'],
-            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_conversaciones', 'nombre' => 'Supervisar conversaciones de WhatsApp', 'descripcion' => 'Consultar las conversaciones del equipo dentro del alcance autorizado.'],
+            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_conversaciones', 'nombre' => 'Consultar todas las conversaciones', 'descripcion' => 'Consultar las conversaciones del equipo. No permite responder ni configurar canales.'],
+            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.responder_todas', 'nombre' => 'Responder conversaciones del equipo', 'descripcion' => 'Requiere consultar todas las conversaciones y permiso para enviar mensajes.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_cuentas', 'nombre' => 'Gestionar cuentas de WhatsApp', 'descripcion' => 'Configurar números empresariales y asignarlos a usuarios. Exclusivo del Administrador.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.usar', 'nombre' => 'Usar telefonía', 'descripcion' => 'Acceder al motor WebRTC y a la extensión PBX asignada.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.salientes', 'nombre' => 'Realizar llamadas salientes', 'descripcion' => 'Originar llamadas desde el CRM mediante la extensión PBX asignada.'],

@@ -37,7 +37,7 @@ class FixtureWhatsAppController extends WhatsAppController {
  protected function servicioWhatsApp(WhatsAppModel $m): WhatsAppCloudApiService {return new FixtureWhatsAppApi($m->conexionParaAutorizacion());}
 }
 $action=$_GET['action']??'';
-if(!in_array($action,['contexto','panel','mensajes','enviar','crearConversacion','enviarPlantillaPrueba'],true)){http_response_code(404);exit;}
+if(!in_array($action,['contexto','panel','conversaciones','mensajes','enviar','crearConversacion','enviarPlantillaPrueba'],true)){http_response_code(404);exit;}
 (new FixtureWhatsAppController())->$action();
 """,encoding='utf-8')
     server=subprocess.Popen(['php','-d','mysqli.default_port='+env['MYSQL_PORT'],'-S',f'127.0.0.1:{port}',str(router)],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -56,6 +56,13 @@ if(!in_array($action,['contexto','panel','mensajes','enviar','crearConversacion'
             with r:return r.code,r.read().decode('utf-8')
         status,body=call('contexto',data={'tipo':'prospecto','id':1})
         assert status==200 and json.loads(body)['conversacion_id']==int(cid)
+        status,body=call('conversaciones')
+        mine=json.loads(body)['conversaciones']
+        assert status==200 and int(cid) in [int(c['id']) for c in mine]
+        assert all(c['ultimo_mensaje_at'] is not None for c in mine),'la bandeja no incluye chats sin mensajes'
+        status,body=call('conversaciones',22)
+        all_chats=json.loads(body)['conversaciones']
+        assert status==200 and len(all_chats)>len(mine),'consulta global explícita conserva su alcance'
         assert call('contexto',data={'tipo':'prospecto','id':1},csrf=False)[0]==403
         assert call('contexto',data={'tipo':'prospecto','id[]':1})[0]==422
         assert call('contexto',22,data={'tipo':'prospecto','id':1})[0]==409
