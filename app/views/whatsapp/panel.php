@@ -12,12 +12,12 @@ foreach($mensajesIniciales as $m)$ultimaIdMensaje=max($ultimaIdMensaje,(int)$m['
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/global.css">
 <link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/whatsapp.css">
-<link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/whatsapp_contextual.css?v=1">
+<link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/whatsapp_contextual.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/whatsapp_contextual.css'),0,12) ?>">
 </head><body class="wa-panel-body">
 <main class="whatsapp-module" data-whatsapp-module data-base-url="<?= $texto(BASE_URL) ?>"
  data-conversation-id="<?= (int)$conversacionSeleccionada['id'] ?>" data-last-message-id="<?= $ultimaIdMensaje ?>">
 <?php if(!$estadoConfiguracionWhatsapp['lista']): ?>
-<p class="alert alert-warning m-2" role="status">WhatsApp está pendiente de configuración. Puedes consultar el historial; el envío aún no está disponible.</p>
+<p class="alert alert-warning wa-config-warning" role="status">WhatsApp está pendiente de configuración. El envío aún no está disponible.</p>
 <?php endif; ?>
 <div class="whatsapp-chat-column"><?php require __DIR__.'/chat.php'; ?></div>
 </main>

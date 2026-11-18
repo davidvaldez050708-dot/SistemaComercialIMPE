@@ -2,7 +2,7 @@
 
 ## Resultado
 
-El botón de WhatsApp del embudo abre un panel lateral sobre el tablero. El expediente de Seguimiento del analista y «Abrir conversación» de Aliados utilizan el mismo panel. Las conversaciones conservan la clave única cuenta/teléfono del módulo existente. No se abre WhatsApp Web ni se cambia de pantalla; abrir un chat no envía mensajes, no modifica etapas y no completa actividades comerciales.
+El botón de WhatsApp del embudo abre una ventana flotante sobre el tablero. El expediente de Seguimiento del analista y «Abrir conversación» de Aliados utilizan el mismo panel. Las conversaciones conservan la clave única cuenta/teléfono del módulo existente. No se abre WhatsApp Web ni se cambia de pantalla; abrir un chat no envía mensajes, no modifica etapas y no completa actividades comerciales.
 
 El panel reutiliza el chat y los endpoints de mensajes existentes mediante una vista de sólo esa conversación. La bandeja central usa la misma autorización. No carga el teléfono, la navegación completa ni el encabezado global dentro del panel. Se conserva el borrador en memoria por contexto al cerrar/reabrir, sin guardarlo en localStorage. Al cerrar se destruye el iframe y se detiene su consulta periódica. Una respuesta de apertura atrasada no vuelve a abrir el panel cerrado.
 
@@ -58,5 +58,13 @@ Incluye dos vistas adaptadas, con hashes propios: el tablero parte de la versió
 Pruebas realizadas con MariaDB local desechable y datos sintéticos: reutilización de chat, asignaciones/territorio, consentimiento, permisos globales separados, entradas desconocidas y ambiguas, eventos repetidos, bloqueo de salida, CSRF, HTTP real e idempotencia. El transporte Meta de los tests HTTP se sustituye expresamente por un fixture: no se enviaron mensajes reales. Se comprobaron publicación, metadatos, respaldo, idempotencia, reversión y fallo parcial, conservando el contenido de mensajes/asignaciones/enlaces y la configuración local. Regresión de tarjetas y supervisión comercial aprobada.
 
 El navegador real comprobó panel en escritorio y móvil, borrador, doble clic, fallo visible, retirada de acceso y configuración pendiente, usando el HTML renderizado por PHP y el cliente real. Los tests no acreditan una conexión de producción con Meta.
+
+### Ventana flotante compacta
+
+`tools/publicar_whatsapp_chat_compacto_hostinger.py` publica únicamente CSS, cliente contextual y las dos vistas que cargan sus recursos. No consulta SQL ni modifica permisos, controladores, mensajes o configuración de Meta. Mantiene bases exactas, respaldo, APPLY idempotente, ROLLBACK y reversión automática ante fallo parcial. Las confirmaciones son `PUBLICAR_WHATSAPP_CHAT_COMPACTO_IMPE` y `REVERTIR_WHATSAPP_CHAT_COMPACTO_IMPE`.
+
+La ventana mide 460 × 680 px en escritorio, con límites según el viewport y separación de sus bordes. Usa encabezado azul/teal, historial de fondo suave y mensajes de 14 px, en lugar de heredar los 9.5 px del módulo completo. No oscurece ni bloquea el tablero. El marco exterior y el documento del iframe no desbordan: sólo el historial tiene desplazamiento vertical. El editor conserva el desplazamiento propio necesario para borradores largos. Escape funciona también dentro del iframe y conserva el borrador.
+
+Los recursos incorporan su hash en la URL para evitar caché antigua. La advertencia de configuración ocupa una franja discreta y no repite avisos redundantes en el pie. Las pruebas de navegador verifican dimensiones, legibilidad, uso del tablero, un solo scroll con 45 mensajes, pantalla móvil de poca altura, Escape, borrador y los controles existentes. Se revisaron capturas de escritorio y móvil. `tests/publicar_whatsapp_chat_compacto_test.py` prueba publicación y recuperación con una conexión SQL que falla si se intenta utilizar, y verifica que controladores y configuración no cambian.
 
 Todavía es necesario configurar Access Token, Verify Token y App Secret de forma privada, registrar el canal y comprobar el webhook con el número de prueba. La migración del número institucional se hará después de verificar envío y recepción reales. No se implementa aquí un bot, campañas, transferencia de conversaciones, nuevas notificaciones de WhatsApp en la campana ni cambios automáticos de etapa a partir del contenido del chat.
