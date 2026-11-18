@@ -2,6 +2,11 @@
 
 Base instalada: `a04beeb6d9b81f8e868ea8fdf5b40e77825c41b5`.
 
+Para la instalación de Hostinger auditada posteriormente, usar la
+[entrega compatible](recordatorios_comerciales_v3_hostinger_compatible.md).
+Su versión real conserva horarios adicionales de Agenda y avisos de ocho segundos;
+los tiempos y archivos descritos a continuación corresponden a la rama base.
+
 Esta fase conecta las actividades comerciales vigentes con la campana existente.
 No incorpora aún avisos nuevos de reparto de prospectos ni notificaciones generales
 de cada cambio de etapa. No envía llamadas, mensajes, WhatsApp o correos.

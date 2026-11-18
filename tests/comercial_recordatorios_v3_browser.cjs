@@ -5,7 +5,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH||'playwright');
 const root=path.resolve(__dirname,'..');
 const bootstrap=process.env.BOOTSTRAP_MODULE_PATH||path.resolve(root,'../browser-legacy-deps/node_modules/bootstrap');
 const css=fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'),'utf8')+'\n'+fs.readFileSync(path.join(root,'public/css/recordatorios.css'),'utf8');
-const source=fs.readFileSync(path.join(root,'public/javascript/recordatorios.js'),'utf8');
+const source=fs.readFileSync(process.env.IMPE_REMINDER_TEST_SOURCE||path.join(root,'public/javascript/recordatorios.js'),'utf8');
+const duration=Number(process.env.IMPE_REMINDER_TEST_DURATION||7000);
 const base=Date.parse('2026-11-18T18:00:00Z'),period=480000;
 const item=(ventana='3H',ciclo=10)=>({id:1,comercial_id:1,actividad_ciclo:ciclo,
  usuario_id:22,nombre_entidad:'Prospecto <prueba>',accion:'Revisar documentos',detalle:'Revisar certificado <script>sin ejecutar</script>.',
@@ -58,10 +59,10 @@ const toast=p=>p.locator('.reminder-toast');
    await p.clock.runFor(period+1);
    await toast(p).waitFor({state:'visible',timeout:3000});
    assert.match(await toast(p).innerText(),/Prospecto <prueba>.*Revisar documentos/);
-   await p.clock.runFor(6999);assert.equal(await toast(p).count(),1);
+   await p.clock.runFor(duration-1);assert.equal(await toast(p).count(),1);
    await p.clock.runFor(1);assert.equal(await toast(p).count(),0);
    assert.equal(await p.locator('.topbar-reminder-item').count(),1,'caducar toast no completa la tarea');
-   await p.clock.runFor(period-7000);
+   await p.clock.runFor(period-duration);
    assert.equal(await toast(p).count(),ventana==='VENCIDA'?1:0,'anticipación única, vencida mantiene cadencia');
    assert.equal(f.state.posts,0);assert.deepEqual(f.errors,[]);await f.context.close();casos++;
   }
@@ -106,7 +107,7 @@ const toast=p=>p.locator('.reminder-toast');
    const cargadas=await p.evaluate(()=>window.IMPE_REMINDER_STATUS().loadedCount);
    await p.evaluate(()=>{window.oculto=false;document.dispatchEvent(new Event('visibilitychange'));});
    await p.waitForFunction(n=>window.IMPE_REMINDER_STATUS().loadedCount>n,cargadas);
-   await p.clock.runFor(1);await toast(p).waitFor();await p.clock.runFor(7000);
+   await p.clock.runFor(1);await toast(p).waitFor();await p.clock.runFor(duration);
    await p.clock.runFor(period);assert.equal(await toast(p).count(),0);
    assert.deepEqual(f.errors,[]);await f.context.close();casos++;
   }
@@ -127,6 +128,6 @@ const toast=p=>p.locator('.reminder-toast');
    assert.equal(await p.locator('[data-reminder-badge]').innerText(),'9+');
    assert.deepEqual(f.errors,[]);await f.context.close();casos++;
   }
-  console.log('CHECK_OK navegador comercial: '+casos+' escenarios; tiempos heredados, siete segundos, ciclo estable, sin avisos obsoletos, errores, pestañas, storage y 85 tareas.');
+  console.log('CHECK_OK navegador comercial: '+casos+' escenarios; tiempos heredados, duración institucional, ciclo estable, sin avisos obsoletos, errores, pestañas, storage y 85 tareas.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

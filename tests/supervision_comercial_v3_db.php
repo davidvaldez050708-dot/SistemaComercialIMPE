@@ -193,5 +193,12 @@ try{
   $salida=stream_get_contents($pipes[1]);$error=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
   comprobarSupervision(proc_close($proceso)===0,'entrega aislada: '.$salida.$error);echo $salida;
  }
+ if(getenv('IMPE_RECORDATORIOS_HOST_COMPAT_TEST')==='YES'){
+  $proceso=proc_open(['py',__DIR__.'/publicar_recordatorios_hostinger_compat_test.py',$nombre],
+   [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+  comprobarSupervision(is_resource($proceso),'iniciar compatibilidad Hostinger con esquema aislado');fclose($pipes[0]);
+  $salida=stream_get_contents($pipes[1]);$error=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+  comprobarSupervision(proc_close($proceso)===0,'compatibilidad Hostinger: '.$salida.$error);echo $salida;
+ }
  echo "CHECK_OK supervisión: mismas etapas, tarjetas, agenda V3, asesor, cierres, historial, permisos, aislamiento y cero escrituras.\n";
 }finally{$db->query("DROP DATABASE $nombre");$db->close();}

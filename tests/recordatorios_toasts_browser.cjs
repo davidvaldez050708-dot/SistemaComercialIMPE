@@ -6,7 +6,7 @@ const bootstrap=process.env.BOOTSTRAP_MODULE_PATH||path.dirname(require.resolve(
 const read=name=>fs.readFileSync(path.join(repo,'public/javascript',name),'utf8');
 const source=process.env.IMPE_REMINDER_TEST_SOURCE?fs.readFileSync(process.env.IMPE_REMINDER_TEST_SOURCE,'utf8'):read('recordatorios.js');
 const css=fs.readFileSync(path.join(bootstrap,'dist/css/bootstrap.min.css'),'utf8')+'\n'+fs.readFileSync(path.join(repo,'public/css/recordatorios.css'),'utf8');
-const minute=60000, period=8*minute;
+const minute=60000, period=8*minute, duration=Number(process.env.IMPE_REMINDER_TEST_DURATION||7000);
 const notices=[
  {id:-71,telefonia_id:71,fecha:'2026-10-18 12:30:00',leida:0,nombre_entidad:'Transferencia sin confirmación',titulo:'Transferencia sin confirmación',accion:'Revisa el historial',mensaje:'Revisa el historial',estado:'informativa',url:'/destino?aviso=71'},
  {id:-72,telefonia_id:72,fecha:'2026-10-18 12:31:00',leida:0,nombre_entidad:'Llamada por devolver',titulo:'Llamada por devolver',accion:'Recepción dejó datos',mensaje:'Recepción dejó datos',estado:'informativa',url:'/destino?aviso=72'}
@@ -62,10 +62,10 @@ const refresh=async page=>{
    await p.clock.runFor(1);const toast=p.locator('.reminder-toast[data-telefonia-id="71"]');await toast.waitFor({state:'visible'});
    assert.equal(await count(p),1);assert.equal((await status(p)).lastShownAt,start+period);
    const box=await toast.boundingBox();assert.ok(box.x>900&&box.y<180,'toast del CRM en la esquina superior derecha');
-   await p.clock.runFor(6999);assert.equal(await count(p),1);await p.clock.runFor(1);assert.equal(await count(p),0);
+   await p.clock.runFor(duration-1);assert.equal(await count(p),1);await p.clock.runFor(1);assert.equal(await count(p),0);
    assert.equal(f.reads.length,0);assert.equal(await p.locator('.topbar-reminder-item').count(),2);
    await p.getByRole('link',{name:'Mis llamadas',exact:true}).click();await p.locator('.topbar-reminder-item').first().waitFor();
-   await p.clock.runFor(period-7000);const next=p.locator('.reminder-toast[data-telefonia-id="72"]');await next.waitFor({state:'visible'});
+   await p.clock.runFor(period-duration);const next=p.locator('.reminder-toast[data-telefonia-id="72"]');await next.waitFor({state:'visible'});
    assert.equal(await count(p),1);await next.click();await p.waitForURL('**/destino?aviso=72');
    assert.equal(f.reads.length,1);assert.match(f.reads[0],/id=72/);assert.match(f.reads[0],/csrf_token=csrf-8/);
    assert.deepEqual(f.errors,[]);await p.close();cases++;
@@ -79,7 +79,7 @@ const refresh=async page=>{
     await p.locator('.reminder-toast').waitFor({state:'visible'});assert.equal(await count(p),1);
     assert.equal(await p.locator('.reminder-toast').getAttribute('data-telefonia-id')||'',id);
     if(!id)assert.match(await p.locator('.reminder-toast').textContent(),/Acción vencida.*Institución Uno/);
-    await p.clock.runFor(7000);
+    await p.clock.runFor(duration);
    }
    assert.equal(f.reads.length,0);assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
@@ -149,10 +149,10 @@ const refresh=async page=>{
    const f=await fixture(browser,{avisos:[...notices],partial}),p=f.page;
    assert.equal(await count(p),0);await p.clock.runFor(period+1);
    await p.locator('.reminder-toast[data-telefonia-id="71"]').waitFor({state:'visible'});
-   assert.equal(await count(p),1);await p.clock.runFor(7000);
+   assert.equal(await count(p),1);await p.clock.runFor(duration);
    assert.equal(await p.locator('.topbar-reminder-item').count(),2);assert.equal(f.reads.length,0);
    assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
-  console.log(`Toasts CRM: ${cases} escenarios de navegador aprobados; Bootstrap opcional, 4+4 minutos, siete segundos, rotación, cola, lectura y sesión.`);
+  console.log(`Toasts CRM: ${cases} escenarios de navegador aprobados; Bootstrap opcional, 4+4 minutos, ${duration/1000} segundos, rotación, cola, lectura y sesión.`);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
