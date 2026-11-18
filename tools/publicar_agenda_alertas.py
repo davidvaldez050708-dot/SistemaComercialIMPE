@@ -13,6 +13,10 @@ BASE = '714ce7d1'
 BASES_INSTALADAS = {
     'public/javascript/recordatorios.js': 'tests/fixtures/recordatorios_hostinger_20261118.js'
 }
+BASES_REVISION = {
+    'public/javascript/agenda_alertas.js': '7b53aa46',
+    'app/views/seguimiento_vinculacion/agenda.php': '7b53aa46',
+}
 RUTAS = (
     'app/controllers/ReminderController.php',
     'app/helpers/ReminderHelper.php',
@@ -96,6 +100,8 @@ def main():
         for name in RUTAS:
             target = destino(site, name)
             old, new = git(repo, BASE, name), git(repo, a.revision, name)
+            if name in BASES_REVISION:
+                old = git(repo, BASES_REVISION[name], name)
             if name in BASES_INSTALADAS:
                 old = git(repo, a.revision, BASES_INSTALADAS[name])
                 if old is None:
@@ -106,6 +112,9 @@ def main():
             if current == new:
                 continue
             merged = new
+            if current != old:
+                if current is None and name == 'public/javascript/agenda_alertas.js':
+                    old = None
             if current != old:
                 if current is None or old is None or name.endswith('.mp3'):
                     raise ValueError('Conflicto de integridad: ' + name)

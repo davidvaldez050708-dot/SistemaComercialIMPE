@@ -67,33 +67,6 @@ $pendientesAgenda = array_values(array_filter(
         </div>
     <?php endif; ?>
 
-    <details class="card mb-3" data-agenda-alertas>
-        <summary class="p-3 fw-semibold">Notificaciones de la Agenda</summary>
-        <div class="p-3 pt-0 row g-3">
-            <div class="col-md-4 form-check form-switch ms-3">
-                <input class="form-check-input" type="checkbox" id="agendaSonido" name="agenda_sonido">
-                <label class="form-check-label" for="agendaSonido">Sonidos de notificación</label>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="agendaAnticipacion">Anticipación</label>
-                <select class="form-select" id="agendaAnticipacion" name="agenda_anticipacion">
-                    <?php foreach ([5, 10, 15, 30] as $minutosAlerta): ?>
-                    <option value="<?= $minutosAlerta ?>"><?= $minutosAlerta ?> minutos antes</option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-12 form-check form-switch ms-3">
-                <input class="form-check-input" type="checkbox" id="agendaNavegador" name="agenda_navegador">
-                <label class="form-check-label" for="agendaNavegador">Mostrar notificaciones del navegador</label>
-            </div>
-            <div class="col-12">
-                <button type="button" class="btn btn-system-cancel" data-agenda-probar-sonido>Probar sonido</button>
-                <p class="small text-muted mt-2 mb-0">Las alertas funcionan mientras el sistema esté abierto. Las preferencias se guardan por usuario en este navegador.</p>
-                <p class="small mb-0" role="status" data-agenda-alertas-status></p>
-            </div>
-        </div>
-    </details>
-
     <div class="agenda-toolbar">
         <div>
             <p class="agenda-eyebrow">

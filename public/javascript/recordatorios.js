@@ -400,6 +400,7 @@
                 toast.querySelector('.reminder-toast-body').appendChild(cerrar);
             }
             toastActivo = toast;
+            alertasAgenda('onToastShown', aviso);
             window.setTimeout(function () {
                 toast.remove();
                 if (toastActivo === toast) toastActivo = null;

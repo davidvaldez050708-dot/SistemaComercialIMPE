@@ -15,14 +15,13 @@
         try { localStorage.setItem(prefix + key, JSON.stringify(value)); } catch (_) { /* memoria de esta pestaña */ }
     }
     function preferences() {
-        const p = read('preferencias', {});
-        return {sound: p.sound !== false, browser: p.browser === true,
-            lead: [5, 10, 15, 30].includes(Number(p.lead)) ? Number(p.lead) : 10};
+        // Política del sistema: los ajustes antiguos no desactivan los avisos.
+        return {sound: true, browser: supported() && Notification.permission === 'granted'};
     }
     const audio = new Audio(new URL('audio/agenda-aviso.mp3', base).href);
     audio.volume = 0.7;
     audio.preload = 'none';
-    let playing = false, unlocked = false, lastSound = 0;
+    let playing = false, unlocked = true, lastSound = 0;
     const soundQueue = new Map();
     let drainingSound = false;
     let schedules = [], offset = 0, presenter = null, lastUpdate = 0, zone = 'America/Mexico_City';
@@ -40,7 +39,10 @@
             })]);
             lastSound = Date.now();
             return true;
-        } catch (_) { audio.pause(); playing = false; return false; }
+        } catch (error) {
+            if (error?.name === 'NotAllowedError') unlocked = false;
+            audio.pause(); playing = false; return false;
+        }
         finally { clearTimeout(timeout); }
     }
     audio.addEventListener('ended', () => { playing = false; });
@@ -76,8 +78,6 @@
     }
     function deliver(item, key, title, message, visual) {
         if (visual && !visualQueue.has(key)) visualQueue.set(key, {item, title, message});
-        if (preferences().sound && !soundQueue.has(key)) soundQueue.set(key, Date.now());
-        void drainSound();
         void claim('browser:' + key, () => {
             if (preferences().browser && supported() && Notification.permission === 'granted') {
                 try {
@@ -113,7 +113,8 @@
         draining = true;
         try {
             for (const [key, entry] of visualQueue) {
-                const shown = await claim('visual:' + key, () => presenter({...entry.item, titulo:entry.title, mensaje:entry.message}));
+                const shown = await claim('visual:' + key, () => presenter({...entry.item,
+                    agenda_alerta_clave:key, titulo:entry.title, mensaje:entry.message}));
                 if (!shown) break;
                 visualQueue.delete(key);
             }
@@ -122,17 +123,17 @@
     function tick() {
         // No seguir entregando datos antiguos si la sesión expira o falla el servidor.
         if (Date.now() - lastUpdate > 90000) return;
-        const now = Date.now() + offset, lead = preferences().lead;
+        const now = Date.now() + offset;
         for (const item of schedules) {
             const at = Number(item.agenda_horario_at || item.alerta_at) * 1000;
             if (!(at > 0)) continue;
             const delta = at - now;
             const id = item.agenda_comentario_id ? 'c:' + item.agenda_comentario_id :
                 (item.reunion_id ? 'r:' + item.reunion_id : 's:' + item.id);
-            const phase = delta > 0 && delta <= lead * 60000 ? 'previo:' + lead :
+            const minutes = Math.max(0, Math.ceil(delta / 60000));
+            const phase = delta > 0 && [30, 10, 5, 1].includes(minutes) ? 'previo:' + minutes :
                 (delta <= 0 && delta >= -90000 ? 'hora' : null);
             if (!phase) continue;
-            const minutes = Math.max(0, Math.ceil(delta / 60000));
             const description = item.agenda_horario_mensaje || item.nombre_entidad || item.accion || 'Actividad programada';
             const hora = new Date(at).toLocaleTimeString('es-MX', {timeZone: zone, hour:'2-digit', minute:'2-digit'});
             deliver(item, id + ':' + at + ':' + phase, minutes
@@ -151,6 +152,13 @@
     }
     window.IMPEAgendaAlerts = {
         preferences,
+        onToastShown(item) {
+            const key = item.agenda_alerta_clave || (item.agenda_comentario_id && !item.agenda_comentario_visto_por
+                ? 'comentario:' + item.agenda_comentario_id + ':' + (item.agenda_comentario_evento || 'nuevo') : null);
+            if (!key) return;
+            if (!soundQueue.has(key)) soundQueue.set(key, Date.now());
+            void drainSound();
+        },
         canAnnounceComment(item) { return Boolean(item.agenda_comentario_visto_por) || freshComment(item); },
         hasScheduleSource() { return presenter !== null && lastUpdate > 0 && Date.now() - lastUpdate <= 90000; },
         suspend() { schedules = []; visualQueue.clear(); soundQueue.clear(); lastUpdate = 0; },
@@ -182,34 +190,4 @@
         }
     };
     setInterval(tick, 1000);
-    function setup() {
-        const panel = document.querySelector('[data-agenda-alertas]');
-        if (!panel) return;
-        const sound = panel.querySelector('[name="agenda_sonido"]');
-        const browser = panel.querySelector('[name="agenda_navegador"]');
-        const lead = panel.querySelector('[name="agenda_anticipacion"]');
-        const status = panel.querySelector('[data-agenda-alertas-status]');
-        function render() { const p = preferences(); sound.checked = p.sound; browser.checked = p.browser; lead.value = p.lead; }
-        render();
-        function save() { write('preferencias', {sound:sound.checked, browser:browser.checked, lead:Number(lead.value)}); status.textContent = 'Preferencias guardadas en este navegador.'; tick(); }
-        sound.addEventListener('change', save);
-        lead.addEventListener('change', save);
-        browser.addEventListener('change', async () => {
-            if (browser.checked) {
-                if (!supported()) { browser.checked = false; save(); status.textContent = 'Este navegador necesita HTTPS y soporte de notificaciones.'; return; }
-                let permission = 'denied';
-                try { permission = await Notification.requestPermission(); } catch (_) { /* notificaciones internas disponibles */ }
-                if (permission !== 'granted') { browser.checked = false; save(); status.textContent = 'Permiso no concedido. Las alertas internas siguen disponibles.'; return; }
-            }
-            save();
-        });
-        panel.querySelector('[data-agenda-probar-sonido]').addEventListener('click', async () => {
-            unlocked = true;
-            const played = await play();
-            status.textContent = played ? 'Sonido reproducido. Volumen: 70%.' :
-                'No se pudo iniciar el sonido. Comprueba el permiso de audio, el archivo MP3 o espera a que termine el aviso actual.';
-        });
-        window.addEventListener('storage', event => { if (event.key === prefix + 'preferencias') render(); });
-    }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup, {once:true}); else setup();
 })();

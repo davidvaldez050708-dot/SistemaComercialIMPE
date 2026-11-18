@@ -46,6 +46,21 @@ with tempfile.TemporaryDirectory(prefix='impe-agenda-publicador-') as tmp:
                for n, item in manifest['archivos'].items())
     run('--restore', str(backup))
     assert before == {n: module.lectura(site/n) for n in module.RUTAS}
+    # Instalación que ya tiene el panel y las alertas de la entrega anterior.
+    for name in module.RUTAS:
+        data = module.git(repo, '7b53aa46', name)
+        if data is not None:
+            target = site/name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+    prior = {n: module.lectura(site/n) for n in module.RUTAS}
+    run('--check')
+    assert prior == {n: module.lectura(site/n) for n in module.RUTAS}
+    run('--apply', '--backup-root', str(root/'respaldos'))
+    assert b'data-agenda-alertas' not in (site/'app/views/seguimiento_vinculacion/agenda.php').read_bytes()
+    upgraded = next(d for d in (root/'respaldos').iterdir() if d != backup)
+    run('--restore', str(upgraded))
+    assert prior == {n: module.lectura(site/n) for n in module.RUTAS}
     (site/'public/javascript/agenda_alertas.js').write_text('// personalizacion en conflicto')
     run('--check', ok=False)
 print('Publicador: check, integración personalizada, integridad, restauración y rechazo de conflicto verificados.')
