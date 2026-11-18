@@ -27,12 +27,12 @@ try {
         "prospecto_embudo_agenda(asignacion_id BIGINT UNSIGNED PRIMARY KEY,proxima_accion_at DATETIME,revision_fecha DATE,actualizado_at DATETIME,actualizado_por INT)",
         "prospecto_embudo_llamadas(asignacion_id BIGINT UNSIGNED,usuario_id INT,extension VARCHAR(10),pbx_call_id VARCHAR(100) PRIMARY KEY,resultado VARCHAR(40),creado_at DATETIME)",
     ] as $tabla) $db->query("CREATE TABLE $tabla ENGINE=InnoDB");
-    foreach (['2026_11_11_ventas_subetapas_comerciales_propuesta.sql','2026_11_12_ventas_seguimiento_operativo_v3.sql'] as $file) {
+    foreach (['2026_11_11_ventas_subetapas_comerciales_propuesta.sql','2026_11_12_ventas_seguimiento_operativo_v3.sql','2026_11_18_ventas_tipo_actividad_v3.sql'] as $file) {
         $sql=preg_replace('/^\s*--.*$/m','',file_get_contents(__DIR__.'/../database/migrations/'.$file));
         foreach (explode(';',$sql) as $part) if(trim($part)!=='')$db->query($part);
     }
     $etapas=['NUEVO','CONTACTADO','POTENCIAL','INTERESADO','SEGUIMIENTO','PROCESO_INSCRIPCION'];
-    for($id=1;$id<=18;$id++){
+    for($id=1;$id<=20;$id++){
         $etapa=$etapas[($id-1)%6];
         $db->query("INSERT INTO prospecto_asignaciones VALUES($id,$id,22,1,UTC_TIMESTAMP())");
         $db->query("INSERT INTO prospectos_comerciales VALUES($id,'fixture$id@example.test','+525500000001','Mexico')");
@@ -67,8 +67,32 @@ try {
         $h=$svc->historial(22,$id);
         verificarAccion($h[0]['fecha_pendiente']===null && $h[0]['completada_at']!==null && count($h)===4,'agenda y auditoría');
     }
+    // Typed tasks survive notes, rescheduling and completion without rewriting the task.
+    foreach(array_keys(EmbudoComercialV3TipoActividad::TIPOS) as $i=>$tipo){
+        $id=$i+1;$etapa=$etapaDe($id);$version=(int)$svc->historial(22,$id)[0]['id'];
+        $antes=$svc->historial(22,$id);
+        foreach(['','INVENTADO','GESTION'] as $invalido){
+            rechazarAccion(fn()=>$svc->registrar(22,$id,$etapa,$version,'PROGRAMAR','Revisar el certificado.','2099-02-01T10:00','',$invalido));
+            verificarAccion($svc->historial(22,$id)===$antes,'tipo inválido no deja escrituras');
+        }
+        $version=$svc->registrar(22,$id,$etapa,$version,'PROGRAMAR','Revisar el certificado.','2099-02-01T10:00','',$tipo);
+        $etapa=$etapaDe($id);
+        $version=$svc->registrar(22,$id,$etapa,$version,'REGISTRAR','Nota independiente de tarea.','','','');
+        $h=$svc->historial(22,$id)[0];
+        verificarAccion($h['tipo_actividad']===$tipo && $h['detalle_actividad']==='Revisar el certificado.','nota conserva tarea');
+        rechazarAccion(fn()=>$svc->registrar(22,$id,$etapa,$version,'REPROGRAMAR','Cambiar fecha de tarea.','2099-02-02T10:00','','OTRA'));
+        $version=$svc->registrar(22,$id,$etapa,$version,'REPROGRAMAR','Cambiar fecha de tarea.','2099-02-02T10:00','','');
+        $svc->registrar(22,$id,$etapa,$version,'COMPLETAR','Certificado cotejado.','','','');
+        $h=$svc->historial(22,$id)[0];
+        verificarAccion($h['tipo_actividad']===$tipo && $h['detalle_actividad']==='Revisar el certificado.' && $h['fecha_pendiente']===null,'completar conserva tipo y detalle sin pendiente');
+    }
+    rechazarAccion(fn()=>$svc->mover(22,20,'CONTACTADO','SEGUIMIENTO','Revisar trámite institucional.','2099-02-01T11:00',''));
+    verificarAccion($etapaDe(20)==='CONTACTADO' && !$svc->historial(22,20),'movimiento sin tipo no deja escrituras');
+    $svc->mover(22,20,'CONTACTADO','SEGUIMIENTO','Revisar trámite institucional.','2099-02-01T11:00','INSCRIPCION');
+    verificarAccion($svc->historial(22,20)[0]['tipo_actividad']==='INSCRIPCION','movimiento manual conserva tipo');
     $potencial=new EmbudoComercialV3GestionPotencialService($db);
-    $potencial->registrar(22,9,'POTENCIAL','','REUNIENDO_DOCUMENTOS','Documentos para mañana.','2099-01-02T10:00');
+    $potencial->registrar(22,9,'POTENCIAL','','REUNIENDO_DOCUMENTOS','Documentos para mañana.','2099-01-02T10:00','DOCUMENTOS');
+    verificarAccion($svc->historial(22,9)[0]['tipo_actividad']==='DOCUMENTOS','tipo desde avance comercial');
     verificarAccion($etapaDe(9)==='SEGUIMIENTO','Gestionar potencial con fecha mueve');
     verificarAccion($db->query("SELECT subetapa FROM prospecto_embudo_subetapas WHERE asignacion_id=9")->fetch_row()[0]==='ESPERANDO_DOCUMENTOS','subetapa documentos');
     rechazarAccion(fn()=>$potencial->registrar(22,9,'POTENCIAL','','CALIFICADO','Reintento de prueba.','2099-01-02T10:00'));
@@ -83,6 +107,7 @@ try {
         $db->begin_transaction();
         $result=$bridge->aplicar(22,$id,$call,'CONVERSACION_PERSONA','2099-01-02 10:00:00');
         $db->commit();
+        verificarAccion($svc->historial(22,$id)[0]['tipo_actividad']==='LLAMADA','próxima llamada conserva tipo explícito');
         $esperada=$etapa==='PROCESO_INSCRIPCION'?$etapa:'SEGUIMIENTO';
         verificarAccion($result['etapa']===$esperada && $etapaDe($id)===$esperada,'llamada con próxima acción '.$etapa);
         verificarAccion($svc->historial(22,$id)[0]['fecha_pendiente']==='2099-01-02 16:00:00','fecha PBX y actividad');

@@ -33,7 +33,8 @@ final class EmbudoComercialV3GestionPotencialService
         string $subetapaEsperada,
         string $subetapaNueva,
         string $motivo,
-        string $fecha=''
+        string $fecha='',
+        ?string $tipo=null
     ): array {
         if ($usuarioId<1 || $asignacionId<1 ||
             (int)($_SESSION['usuario_id']??0)!==$usuarioId ||
@@ -52,6 +53,10 @@ final class EmbudoComercialV3GestionPotencialService
         }
         $fechaUtc=trim($fecha)!==''
             ?EmbudoComercialMovimientoService::fechaSeguimientoUtc($fecha):null;
+
+        if ($fechaUtc===null && $tipo!==null && $tipo!=='') {
+            throw new DomainException('El tipo de actividad requiere una fecha para la próxima gestión.');
+        }
 
         $this->db->begin_transaction();
         try {
@@ -121,7 +126,7 @@ final class EmbudoComercialV3GestionPotencialService
             if ($fechaUtc!==null) {
                 require_once __DIR__.'/EmbudoComercialV3ProximaAccion.php';
                 $programada=EmbudoComercialV3ProximaAccion::programar($this->db,$usuarioId,$asignacionId,
-                    $etapaEsperada,$fechaUtc,$motivo,$subetapaNueva);
+                    $etapaEsperada,$fechaUtc,$motivo,$subetapaNueva,$tipo);
                 $etapaFinal=$programada['etapa'];
                 $subetapaFinal=$programada['subetapa']??$subetapaNueva;
             }

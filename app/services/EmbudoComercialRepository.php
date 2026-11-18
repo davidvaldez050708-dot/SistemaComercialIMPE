@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/EmbudoComercialEtapas.php';
+require_once __DIR__.'/EmbudoComercialV3TipoActividad.php';
 require_once __DIR__.'/../helpers/EmbudoComercialAcceso.php';
 /**
  * Fase 2 del kanban: consultas limitadas y exclusivas de las asignaciones vigentes.
@@ -430,7 +431,7 @@ final class EmbudoComercialRepository
         $actividadV3=EmbudoComercialV3SeguimientoService::instalada($this->db);
         [$from,$args]=$this->condiciones($usuarioId,$supervisor,$f,$actividadV3);
         $camposActividad=$actividadV3
-            ?'av.id actividad_version,av.fecha_pendiente actividad_pendiente,av.completada_at actividad_completada,':'';
+            ?'av.tipo_actividad actividad_tipo,av.detalle_actividad actividad_detalle,av.id actividad_version,av.fecha_pendiente actividad_pendiente,av.completada_at actividad_completada,':'';
         $campoAsesor=$supervisor
             ?"(SELECT TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) FROM usuarios u WHERE u.id=a.asesor_id) asesor_nombre,":'';
         $ordenActividad=$actividadV3?'WHEN av.fecha_pendiente<UTC_TIMESTAMP() THEN 0':'';
@@ -598,8 +599,12 @@ final class EmbudoComercialRepository
         if($operativoV3){
             require_once __DIR__.'/EmbudoComercialV3SeguimientoService.php';
             if(EmbudoComercialV3SeguimientoService::instalada($this->db)){
-                $actual=$this->rows('SELECT fecha_pendiente,completada_at FROM prospecto_embudo_actividad_v3 WHERE asignacion_id=? ORDER BY id DESC LIMIT 1',[(int)$p['asignacion_id']]);
-                if($actual)$p['proxima_accion_at']=$actual[0]['fecha_pendiente'];
+                $actual=$this->rows('SELECT tipo_actividad,detalle_actividad,fecha_pendiente,completada_at FROM prospecto_embudo_actividad_v3 WHERE asignacion_id=? ORDER BY id DESC LIMIT 1',[(int)$p['asignacion_id']]);
+                if($actual){
+                    $p['proxima_accion_at']=$actual[0]['fecha_pendiente'];
+                    $p['actividad_tipo']=$actual[0]['tipo_actividad'];
+                    $p['actividad_detalle']=$actual[0]['detalle_actividad'];
+                }
             }
         }
         $p['solicitud_inscripcion']=null;
@@ -669,7 +674,7 @@ final class EmbudoComercialRepository
                 if (EmbudoComercialV3SeguimientoService::instalada($this->db)) {
                     $offset=$pagina('actividades','prospecto_embudo_actividad_v3','asignacion_id=?',[$asignacion]);
                     $p['historial_actividades']=$this->rows(
-                        "SELECT a.accion,a.motivo,a.fecha_anterior,a.fecha_pendiente,a.completada_at,
+                        "SELECT a.accion,a.tipo_actividad,a.detalle_actividad,a.motivo,a.fecha_anterior,a.fecha_pendiente,a.completada_at,
                                 a.creado_at,a.usuario_id,TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) autor
                          FROM prospecto_embudo_actividad_v3 a LEFT JOIN usuarios u ON u.id=a.usuario_id
                          WHERE a.asignacion_id=? ORDER BY a.id DESC LIMIT 15 OFFSET ?",

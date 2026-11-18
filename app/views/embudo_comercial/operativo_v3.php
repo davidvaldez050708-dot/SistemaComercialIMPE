@@ -95,6 +95,9 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
              data-correo="<?= $esc($p['correo']??'') ?>"
              data-v3-destinos="<?= $esc($destinos) ?>"
              data-v3-fecha-pendiente="<?= $esc($fechaPendienteLocal) ?>"
+             data-v3-tipo-actividad="<?= $esc($p['actividad_tipo']??'GESTION') ?>"
+             data-v3-actividad-etiqueta="<?= $esc(EmbudoComercialV3TipoActividad::etiqueta($p['actividad_tipo']??null)) ?>"
+             data-v3-detalle-actividad="<?= $esc($p['actividad_detalle']??'') ?>"
              data-v3-actividad-pendiente="<?= $pendiente ? '1' : '0' ?>"
              <?= $propuestas?'draggable="true"':'' ?>>
         <div class="impe-embudo-card-line">
@@ -138,6 +141,12 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             <i class="bi <?= $pendiente?'bi-calendar-event':'bi-check-circle' ?>" aria-hidden="true"></i>
             <?= $pendiente?($pendiente<$ahoraUtc?'Actividad vencida:':'Actividad programada:'):'Última actividad completada:' ?>
             <?= $esc(EmbudoComercialPresentacion::fechaUtc($pendiente?:$completada)) ?>
+        </p>
+        <?php endif; ?>
+        <?php if(($pendiente || $completada) && isset(EmbudoComercialV3TipoActividad::TIPOS[$p['actividad_tipo']??''])): ?>
+        <p class="impe-v3o-meta" title="<?= $esc($p['actividad_detalle']??'') ?>">
+            <i class="bi bi-list-task" aria-hidden="true"></i>
+            <?= $esc(EmbudoComercialV3TipoActividad::etiqueta($p['actividad_tipo'])) ?>
         </p>
         <?php endif; ?>
         <?php if(!empty($p['proxima_accion_at'])): ?>
@@ -434,7 +443,13 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                 <textarea id="impe-v3o-motivo" name="motivo" required minlength="8"
                     maxlength="190" rows="3" placeholder="Qué ocurrió y por qué se mueve"></textarea>
             </label>
-            <label id="impe-v3o-fecha-label" hidden>Próxima acción
+            <label id="impe-v3o-tipo-label" hidden>¿Qué vas a hacer?
+                <select id="impe-v3o-tipo"><option value="">Selecciona una actividad</option>
+                        <?php foreach(EmbudoComercialV3TipoActividad::TIPOS as $codigo=>$etiqueta): ?>
+                        <option value="<?= $esc($codigo) ?>"><?= $esc($etiqueta) ?></option>
+                        <?php endforeach; ?></select>
+            </label>
+            <label id="impe-v3o-fecha-label" hidden>Fecha y hora de la próxima actividad
                 <input type="datetime-local" id="impe-v3o-fecha" name="proxima_accion">
             </label>
             <label id="impe-v3o-calificacion-label" class="impe-v3o-calificacion" hidden>
@@ -466,7 +481,13 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                     <?php endforeach; ?>
                 </select>
             </label>
-            <label>Próxima acción (opcional)
+            <label data-potencial-tipo hidden>¿Qué vas a hacer?
+                <select id="impe-v3o-potencial-tipo"><option value="">Selecciona una actividad</option>
+                        <?php foreach(EmbudoComercialV3TipoActividad::TIPOS as $codigo=>$etiqueta): ?>
+                        <option value="<?= $esc($codigo) ?>"><?= $esc($etiqueta) ?></option>
+                        <?php endforeach; ?></select>
+            </label>
+            <label>Fecha y hora de la próxima actividad (opcional)
                 <input type="datetime-local" id="impe-v3o-potencial-fecha">
             </label>
             <p class="impe-v3o-ayuda">Programar una próxima acción mueve al prospecto a Seguimiento y conserva el avance en el historial.</p>
@@ -499,6 +520,13 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                         <option value="COMPLETAR">Marcar como completada</option>
                     </select>
                 </label>
+                <label data-actividad-tipo hidden>¿Qué vas a hacer?
+                    <select name="tipo_actividad"><option value="">Selecciona una actividad</option>
+                        <?php foreach(EmbudoComercialV3TipoActividad::TIPOS as $codigo=>$etiqueta): ?>
+                        <option value="<?= $esc($codigo) ?>"><?= $esc($etiqueta) ?></option>
+                        <?php endforeach; ?></select>
+                </label>
+                <p data-actividad-pendiente hidden></p>
                 <label data-actividad-subetapa hidden>Subetapa de Seguimiento
                     <select name="subetapa">
                         <option value="">Conservar subetapa</option>
@@ -511,7 +539,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
                 <label data-actividad-fecha hidden>Fecha y hora de México
                     <input name="fecha" type="datetime-local">
                 </label>
-                <label>Motivo
+                <label><span data-actividad-detalle-label>Detalle de la gestión realizada</span>
                     <textarea name="motivo" minlength="8" maxlength="190" required rows="2"></textarea>
                 </label>
                 <p data-actividad-error role="alert" hidden></p>

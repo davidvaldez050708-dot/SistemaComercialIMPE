@@ -178,7 +178,7 @@ final class EmbudoComercialResultadoBridge
             $fechaUtc=$fechaV3;
             $motivo=mb_substr('Próxima acción registrada en llamada PBX: '.$resultado.' · ref '.$pbx,0,190);
             $programada=EmbudoComercialV3ProximaAccion::programar(
-                $this->db,$usuarioId,$asignacionId,$etapaAnterior,$fechaUtc,$motivo
+                $this->db,$usuarioId,$asignacionId,$etapaAnterior,$fechaUtc,$motivo,'','LLAMADA'
             );
             return ['vinculada'=>true,'movida'=>$programada['etapa']!==$etapaAnterior,
                 'etapa'=>$programada['etapa'],'proxima_accion_at'=>$fechaUtc];
@@ -267,7 +267,7 @@ final class EmbudoComercialResultadoBridge
             $utc=$fechaV3;
             $programada=EmbudoComercialV3ProximaAccion::programar(
                 $this->db,$usuarioId,$asignacionId,$nueva,$utc,
-                mb_substr('Próxima acción registrada en llamada PBX: '.$resultado.' · ref '.$pbx,0,190)
+                mb_substr('Próxima acción registrada en llamada PBX: '.$resultado.' · ref '.$pbx,0,190),'','LLAMADA'
             );
             $nueva=$programada['etapa'];
         }

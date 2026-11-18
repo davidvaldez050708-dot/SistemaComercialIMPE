@@ -228,7 +228,7 @@ final class EmbudoComercialController
             return;
         }
         foreach (['asignacion_id','etapa_actual','subetapa_anterior',
-                  'subetapa_nueva','motivo','proxima_accion'] as $key) {
+                  'subetapa_nueva','motivo','proxima_accion','tipo_actividad'] as $key) {
             if (isset($_POST[$key]) && !is_string($_POST[$key])) {
                 $reply(false,'Datos de gestión inválidos.',422);
                 return;
@@ -248,9 +248,11 @@ final class EmbudoComercialController
                 $uid,(int)$asig,(string)($_POST['etapa_actual']??''),
                 (string)($_POST['subetapa_anterior']??''),
                 (string)($_POST['subetapa_nueva']??''),
-                $motivo,(string)($_POST['proxima_accion']??'')
+                $motivo,(string)($_POST['proxima_accion']??''),
+                (string)($_POST['tipo_actividad']??'')
             );
-            $reply(true,'Gestión registrada sin modificar la etapa comercial.',200,
+            $reply(true,$resultado['etapa']!==($_POST['etapa_actual']??'')
+                ?'Actividad programada. El prospecto pasó a Seguimiento.':'Gestión comercial registrada correctamente.',200,
                 ['gestion'=>$resultado]);
         } catch (DomainException $e) {
             $reply(false,$e->getMessage(),409);
@@ -283,7 +285,7 @@ final class EmbudoComercialController
             $reply(403,['mensaje'=>'Sesión de seguridad vencida. Recarga la página.']);return;
         }
         $entrada=$metodo==='POST'?$_POST:$_GET;
-        foreach (['asignacion_id','antes','etapa_actual','version','operacion','motivo','fecha','subetapa'] as $campo) {
+        foreach (['asignacion_id','antes','etapa_actual','version','operacion','motivo','fecha','subetapa','tipo_actividad'] as $campo) {
             if (isset($entrada[$campo]) && !is_string($entrada[$campo])) {
                 $reply(422,['mensaje'=>'Datos de actividad inválidos.']);return;
             }
@@ -305,7 +307,8 @@ final class EmbudoComercialController
                 $reply(200,['historial'=>$servicio->historial($uid,$id,$antes)]);return;
             }
             $evento=$servicio->registrar($uid,$id,$entrada['etapa_actual']??'',$version,
-                $entrada['operacion']??'',$entrada['motivo']??'',$entrada['fecha']??'',$entrada['subetapa']??'');
+                $entrada['operacion']??'',$entrada['motivo']??'',$entrada['fecha']??'',$entrada['subetapa']??'',
+                $entrada['tipo_actividad']??'');
             $reply(200,['evento_id'=>$evento]);
         } catch (DomainException $error) {
             $reply(409,['mensaje'=>$error->getMessage()]);
@@ -416,7 +419,7 @@ final class EmbudoComercialController
             return;
         }
         foreach(['asignacion_id','etapa_anterior','etapa_nueva',
-                 'motivo','proxima_accion','calificacion_confirmada'] as $key) {
+                 'motivo','proxima_accion','calificacion_confirmada','tipo_actividad'] as $key) {
             if(isset($_POST[$key]) && !is_string($_POST[$key])) {
                 $reply(false,'Datos de movimiento inválidos.',422);
                 return;
@@ -452,7 +455,7 @@ final class EmbudoComercialController
             }
             require_once __DIR__.'/../services/EmbudoComercialV3SeguimientoService.php';
             if (EmbudoComercialV3SeguimientoService::instalada($db)) {
-                $mov=(new EmbudoComercialV3SeguimientoService($db))->mover($uid,(int)$asig,$anterior,$nueva,$motivo,$fecha);
+                $mov=(new EmbudoComercialV3SeguimientoService($db))->mover($uid,(int)$asig,$anterior,$nueva,$motivo,$fecha,(string)($_POST['tipo_actividad']??''));
                 $reply(true,'Movimiento registrado y auditado.',200,['movimiento'=>$mov]);
                 return;
             }

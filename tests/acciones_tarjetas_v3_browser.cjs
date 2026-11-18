@@ -122,6 +122,53 @@ const bootstrap=process.env.BOOTSTRAP_MODULE_PATH||path.resolve(root,'../browser
   await page.goto(inicio+'&caso=admin');
   assert.equal(await page.locator('[data-v3-whatsapp-reservado],[data-embudo-marcar],[data-v3-actividad],[data-v3-gestionar],[data-v3i-iniciar]').count(),0);
   assert.equal(posts.length,3);assert.deepEqual(errors,[]);
+  await page.goto(inicio);
+  const modal=page.locator('#impe-v3o-actividad-dialog');
+  // A new appointment requires a classified task. Browsers block incomplete forms.
+  await card(1).locator('[data-v3-actividad]').click();
+  await modal.locator('[name=operacion]').selectOption('PROGRAMAR');
+  assert.equal(await modal.locator('[name=tipo_actividad]').isVisible(),true);
+  assert.equal(await modal.locator('[name=tipo_actividad]').getAttribute('required'),'');
+  await modal.locator('[name=fecha]').fill('2099-02-01T10:00');
+  await modal.locator('[name=motivo]').fill('Revisar el certificado y su legibilidad.');
+  await modal.locator('[type=submit]').click();assert.equal(posts.length,3);
+  assert.equal(await modal.isVisible(),true);
+  await modal.locator('[name=tipo_actividad]').selectOption('DOCUMENTOS');
+  await modal.locator('[type=submit]').click();await page.locator('.system-toast.show').waitFor();
+  assert.equal(posts.length,4);assert.equal(posts[3].body.get('tipo_actividad'),'DOCUMENTOS');
+  await page.locator('.system-toast .btn-close').click();
+  await card(4).locator('[data-v3-actividad]').click();
+  assert.match(await modal.locator('[data-actividad-pendiente]').innerText(),/Revisar documentos.*Revisar certificado <prueba>/);
+  await modal.locator('[name=operacion]').selectOption('REPROGRAMAR');
+  assert.equal(await modal.locator('[name=tipo_actividad]').isVisible(),false);
+  assert.equal(await modal.locator('[name=fecha]').inputValue(),'2099-01-01T10:00');
+  await modal.locator('[name=fecha]').fill('2099-01-02T10:00');
+  await modal.locator('[name=motivo]').fill('Se acordó atenderlo un día después.');
+  await modal.locator('[type=submit]').click();await page.locator('.system-toast.show').waitFor();
+  assert.equal(posts.length,5);assert.equal(posts[4].body.get('tipo_actividad'),'');
+  await page.locator('.system-toast .btn-close').click();
+  await card(3).locator('[data-v3-gestionar]').click();
+  await page.locator('#impe-v3o-potencial-subetapa').selectOption('REUNIENDO_DOCUMENTOS');
+  await page.locator('#impe-v3o-potencial-motivo').fill('Verificar documentos con el interesado.');
+  await page.locator('#impe-v3o-potencial-fecha').fill('2099-02-01T11:00');
+  assert.equal(await page.locator('#impe-v3o-potencial-tipo').isVisible(),true);
+  await page.locator('#impe-v3o-potencial-guardar').click();assert.equal(posts.length,5);
+  await page.locator('#impe-v3o-potencial-tipo').selectOption('DOCUMENTOS');
+  await page.locator('#impe-v3o-potencial-guardar').click();await page.locator('.system-toast.show').waitFor();
+  assert.equal(posts.length,6);assert.equal(posts[5].body.get('tipo_actividad'),'DOCUMENTOS');
+  await page.locator('.system-toast .btn-close').click();
+  // The existing institutional modal must scroll to its footer on narrow screens.
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('.workspace').evaluate(el=>el.style.marginLeft='0');
+  await card(1).locator('[data-v3-actividad]').click();
+  await modal.locator('[name=operacion]').selectOption('PROGRAMAR');
+  await modal.locator('[name=tipo_actividad]').selectOption('MENSAJE');
+  await modal.locator('[type=submit]').scrollIntoViewIfNeeded();
+  assert.equal(await modal.locator('[type=submit]').isVisible(),true);
+  await page.screenshot({path:path.join(dir,'actividad-tipo-390.png')});
+  await modal.locator('[data-actividad-cerrar]').first().click();
+  assert.deepEqual(errors,[]);
+
   console.log('CHECK_OK acciones directas: cinco etapas, cita pendiente, avance, inscripción, WhatsApp reservado, refresco, permisos y diseño responsive.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

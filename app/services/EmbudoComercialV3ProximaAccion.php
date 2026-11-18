@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/EmbudoComercialPoliticaPropuesta.php';
+require_once __DIR__.'/EmbudoComercialV3TipoActividad.php';
 
 /**
  * Operaciones internas dentro de la transacción del llamador.
@@ -59,21 +60,24 @@ final class EmbudoComercialV3ProximaAccion
     }
 
     public static function programar(mysqli $db, int $usuario, int $id, string $etapa,
-        string $fechaUtc, string $motivo, string $situacion=''): array
+        string $fechaUtc, string $motivo, string $situacion='', ?string $tipo=null): array
     {
-        $q=$db->prepare("SELECT fecha_pendiente FROM prospecto_embudo_actividad_v3
+        $q=$db->prepare("SELECT fecha_pendiente,tipo_actividad FROM prospecto_embudo_actividad_v3
             WHERE asignacion_id=? ORDER BY id DESC LIMIT 1 FOR UPDATE");
         $q->bind_param('i',$id);$q->execute();
-        $anterior=$q->get_result()->fetch_assoc()['fecha_pendiente']??null;
+        $actual=$q->get_result()->fetch_assoc();
+        $anterior=$actual['fecha_pendiente']??null;
+        $tipo=$tipo===null?($anterior!==null?($actual['tipo_actividad']??'GESTION'):'GESTION')
+            :EmbudoComercialV3TipoActividad::validar($tipo);
         $q->close();
         $movimiento=self::promover($db,$usuario,$id,$etapa,self::subetapa($situacion),$motivo);
         $accion=$anterior===null?'PROGRAMAR':'REPROGRAMAR';
         $q=$db->prepare("INSERT INTO prospecto_embudo_actividad_v3
-            (asignacion_id,usuario_id,etapa,accion,motivo,fecha_anterior,fecha_pendiente,
+            (asignacion_id,usuario_id,etapa,accion,motivo,fecha_anterior,fecha_pendiente,tipo_actividad,detalle_actividad,
                 completada_at,subetapa_anterior,subetapa_nueva,creado_at)
-            VALUES (?,?,?,?,?,?,?,NULL,?,?,UTC_TIMESTAMP())");
-        $q->bind_param('iisssssss',$id,$usuario,$movimiento['etapa'],$accion,$motivo,$anterior,
-            $fechaUtc,$movimiento['anterior'],$movimiento['subetapa']);
+            VALUES (?,?,?,?,?,?,?,?,?,NULL,?,?,UTC_TIMESTAMP())");
+        $q->bind_param('iisssssssss',$id,$usuario,$movimiento['etapa'],$accion,$motivo,$anterior,
+            $fechaUtc,$tipo,$motivo,$movimiento['anterior'],$movimiento['subetapa']);
         $q->execute();$q->close();
         return $movimiento;
     }

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/../../services/EmbudoComercialPresentacion.php';
+require_once __DIR__.'/../../services/EmbudoComercialV3TipoActividad.php';
 require_once __DIR__.'/../../services/TelefoniaResultadoVentasService.php';
 require_once __DIR__.'/../../services/EmbudoComercialPoliticaPropuesta.php';
 $esc=static fn($x)=>htmlspecialchars((string)($x??''),ENT_QUOTES,'UTF-8');
@@ -134,7 +135,7 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                 <div><dt>Asesor asignado</dt><dd><?= $esc(trim((string)($prospecto['asesor_nombre']??''))?:'ID #'.(int)$prospecto['asesor_id']) ?></dd></div>
                 <div><dt>Fecha de asignación</dt><dd><?= $esc($fecha($prospecto['asignado_at'])) ?></dd></div>
                 <div><dt>Jornada de trabajo</dt><dd><?= $esc($dia($prospecto['fecha_trabajo'])) ?></dd></div>
-                <div><dt>Próxima acción</dt><dd><?= $esc($fecha($prospecto['proxima_accion_at'])) ?></dd></div>
+                <div><dt>Próxima acción</dt><dd><?= $esc($fecha($prospecto['proxima_accion_at'])) ?><?php if(!empty($prospecto['proxima_accion_at'])): ?> · <?= $esc(EmbudoComercialV3TipoActividad::etiqueta($prospecto['actividad_tipo']??null)) ?><?php endif; ?></dd></div>
             </dl>
         </section>
         <?php if($prospecto['etapa']==='PROCESO_INSCRIPCION'): ?>
@@ -233,6 +234,12 @@ $volver=BASE_URL.'index.php?'.http_build_query($volverParams);
                         <strong><?= $esc($accionesActividad[$evento['accion']]??'Actividad comercial') ?></strong>
                         <time><?= $esc($fecha($evento['creado_at'])) ?></time>
                     </div>
+                    <?php if($evento['accion']!=='REGISTRAR' || !empty($evento['detalle_actividad'])): ?>
+                    <p class="impe-embudo-timeline-autor"><?= $esc(EmbudoComercialV3TipoActividad::etiqueta($evento['tipo_actividad']??null)) ?></p>
+                    <?php endif; ?>
+                    <?php if(!empty($evento['detalle_actividad']) && $evento['detalle_actividad']!==$evento['motivo']): ?>
+                    <p class="impe-embudo-timeline-motivo">Actividad: <?= $esc($evento['detalle_actividad']) ?></p>
+                    <?php endif; ?>
                     <p class="impe-embudo-timeline-motivo"><?= $esc($evento['motivo']) ?></p>
                     <?php foreach(['fecha_anterior'=>'Fecha anterior','fecha_pendiente'=>'Fecha programada',
                         'completada_at'=>'Completada'] as $campo=>$etiqueta):

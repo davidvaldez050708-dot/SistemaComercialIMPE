@@ -3,6 +3,7 @@ require_once __DIR__.'/EmbudoComercialPoliticaPropuesta.php';
 require_once __DIR__.'/EmbudoComercialMovimientoService.php';
 require_once __DIR__.'/EmbudoComercialV3MovimientosPermitidos.php';
 require_once __DIR__.'/EmbudoComercialV3ProximaAccion.php';
+require_once __DIR__.'/EmbudoComercialV3TipoActividad.php';
 
 final class EmbudoComercialV3SeguimientoService
 {
@@ -48,7 +49,7 @@ final class EmbudoComercialV3SeguimientoService
     {
         $this->asignacion($usuario,$id);
         $limite=max(0,$antes);
-        return $this->consultar("SELECT id,usuario_id,etapa,accion,motivo,fecha_anterior,
+        return $this->consultar("SELECT id,usuario_id,etapa,accion,tipo_actividad,detalle_actividad,motivo,fecha_anterior,
             fecha_pendiente,completada_at,subetapa_anterior,subetapa_nueva,creado_at
             FROM prospecto_embudo_actividad_v3 WHERE asignacion_id=?".
             ($limite?' AND id<'.$limite:'')." ORDER BY id DESC LIMIT 20",$id);
@@ -65,19 +66,20 @@ final class EmbudoComercialV3SeguimientoService
 
     private function ultimo(int $id): array
     {
-        return $this->consultar("SELECT id,fecha_pendiente,completada_at
+        return $this->consultar("SELECT id,tipo_actividad,detalle_actividad,fecha_pendiente,completada_at
             FROM prospecto_embudo_actividad_v3 WHERE asignacion_id=? ORDER BY id DESC LIMIT 1 FOR UPDATE",$id)[0]??[];
     }
 
     private function guardar(int $id,int $usuario,string $etapa,string $accion,string $motivo,
-        ?string $anterior,?string $pendiente,?string $completada,?string $subAnterior,?string $subNueva): int
+        ?string $anterior,?string $pendiente,?string $completada,?string $subAnterior,?string $subNueva,
+        string $tipo='GESTION',?string $detalle=null): int
     {
         $s=$this->db->prepare("INSERT INTO prospecto_embudo_actividad_v3
-            (asignacion_id,usuario_id,etapa,accion,motivo,fecha_anterior,fecha_pendiente,
+            (asignacion_id,usuario_id,etapa,accion,motivo,fecha_anterior,fecha_pendiente,tipo_actividad,detalle_actividad,
              completada_at,subetapa_anterior,subetapa_nueva,creado_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())");
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())");
         try {
-            $s->bind_param('iissssssss',$id,$usuario,$etapa,$accion,$motivo,$anterior,$pendiente,
+            $s->bind_param('iissssssssss',$id,$usuario,$etapa,$accion,$motivo,$anterior,$pendiente,$tipo,$detalle,
                 $completada,$subAnterior,$subNueva);
             $s->execute();
             return (int)$this->db->insert_id;
@@ -105,7 +107,7 @@ final class EmbudoComercialV3SeguimientoService
     }
 
     public function registrar(int $usuario,int $id,string $etapa,int $version,string $accion,
-        string $motivo,string $fecha,string $subetapa): int
+        string $motivo,string $fecha,string $subetapa,?string $tipo=null): int
     {
         $motivo=$this->motivoValido($motivo);
         if (!in_array($etapa,self::ETAPAS,true) ||
@@ -124,6 +126,13 @@ final class EmbudoComercialV3SeguimientoService
             $actual=$this->ultimo($id);
             if ((int)($actual['id']??0)!==$version) throw new DomainException('La actividad cambió. Actualiza el tablero.');
             $anterior=$actual['fecha_pendiente']??null;
+            $tipoActual=$actual['tipo_actividad']??'GESTION';
+            $detalle=$actual['detalle_actividad']??null;
+            if ($accion==='PROGRAMAR') {
+                $tipoActual=EmbudoComercialV3TipoActividad::validar($tipo);
+                $detalle=$motivo;
+            }
+            elseif ($tipo!==null && $tipo!=='') throw new DomainException('El tipo de la actividad pendiente se conserva al registrar, reprogramar o completar.');
             if (($accion==='PROGRAMAR' && $anterior!==null) ||
                 (in_array($accion,['REPROGRAMAR','COMPLETAR'],true) && $anterior===null)) {
                 throw new DomainException('La actividad pendiente no coincide con la operación.');
@@ -149,7 +158,7 @@ final class EmbudoComercialV3SeguimientoService
                 $previa=$this->cambiarSubetapa($id,$usuario,$etapa,$subetapa,$motivo);
             }
             $evento=$this->guardar($id,$usuario,$etapa,$accion,$motivo,$anterior,$pendiente,
-                $completada,$previa,$subetapa!==''?$subetapa:null);
+                $completada,$previa,$subetapa!==''?$subetapa:null,$tipoActual,$detalle);
             $this->db->commit();
             return $evento;
         } catch (Throwable $error) {
@@ -158,7 +167,7 @@ final class EmbudoComercialV3SeguimientoService
         }
     }
 
-    public function mover(int $usuario,int $id,string $origen,string $destino,string $motivo,string $fecha): array
+    public function mover(int $usuario,int $id,string $origen,string $destino,string $motivo,string $fecha,?string $tipo=null): array
     {
         EmbudoComercialV3MovimientosPermitidos::validar($origen,$destino);
         if ($destino==='POTENCIAL') throw new DomainException('Usa la calificación comercial.');
@@ -198,7 +207,8 @@ final class EmbudoComercialV3SeguimientoService
             $subAnterior=$this->cambiarSubetapa($id,$usuario,$destino,$subNueva,$motivo);
             if ($destino==='SEGUIMIENTO' && $pendiente===null) {
                 $this->guardar($id,$usuario,$destino,'PROGRAMAR',$motivo,null,
-                    EmbudoComercialMovimientoService::fechaSeguimientoUtc($fecha),null,$subAnterior,$subNueva);
+                    EmbudoComercialMovimientoService::fechaSeguimientoUtc($fecha),null,$subAnterior,$subNueva,
+                    EmbudoComercialV3TipoActividad::validar($tipo),$motivo);
             }
             $s=$this->db->prepare("INSERT INTO prospecto_embudo_etapas
                 (asignacion_id,etapa,cambiado_por,actualizado_at) VALUES (?,?,?,UTC_TIMESTAMP())

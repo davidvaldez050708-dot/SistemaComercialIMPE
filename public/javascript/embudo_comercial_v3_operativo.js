@@ -369,6 +369,8 @@
   const motivo=form.querySelector('#impe-v3o-motivo');
   const fecha=form.querySelector('#impe-v3o-fecha');
   const fechaLabel=form.querySelector('#impe-v3o-fecha-label');
+  const tipoMovimiento=form.querySelector('#impe-v3o-tipo');
+  const tipoMovimientoLabel=form.querySelector('#impe-v3o-tipo-label');
   const calificacion=form.querySelector('#impe-v3o-calificacion');
   const calificacionLabel=form.querySelector('#impe-v3o-calificacion-label');
   const error=form.querySelector('#impe-v3o-dialog-error');
@@ -384,6 +386,8 @@
     const requiere=destino.value==='SEGUIMIENTO' && tarjeta?.dataset.v3ActividadPendiente!=='1';
     fechaLabel.hidden=!requiere;
     fecha.required=requiere;
+    tipoMovimientoLabel.hidden=!requiere;tipoMovimiento.required=requiere;
+    if(!requiere)tipoMovimiento.value='';
     if(!requiere)fecha.value='';
     if(calificacion && calificacionLabel){
       calificacionLabel.hidden=destino.value!=='POTENCIAL';
@@ -417,7 +421,7 @@
     destino.value=primero;
     titulo.textContent=String(card.dataset.nombre||'Prospecto')+
       ' · '+actual.replace(/_/g,' ').toLowerCase();
-    motivo.value='';fecha.value='';error.hidden=true;actualizar();
+    motivo.value='';fecha.value='';tipoMovimiento.value='';error.hidden=true;actualizar();
     if(typeof dialog.showModal==='function')dialog.showModal();
   };
   enlazarTarjetas(()=>{
@@ -514,7 +518,8 @@
       etapa_anterior:actual,
       etapa_nueva:next,
       motivo:reason,
-      proxima_accion:next==='SEGUIMIENTO'?fecha.value:''
+      proxima_accion:next==='SEGUIMIENTO'?fecha.value:'',
+      tipo_actividad:fecha.required?tipoMovimiento.value:''
     });
     if(next==='POTENCIAL' && calificacion?.checked)body.set('calificacion_confirmada','1');
     enviar.disabled=true;error.hidden=true;
@@ -539,7 +544,7 @@
   const actividadDialog=root.querySelector('#impe-v3o-actividad-dialog');
   if(actividadDialog){
     const actividadForm=actividadDialog.querySelector('form');
-    const {operacion,fecha,subetapa,motivo}=actividadForm.elements;
+    const {operacion,fecha,subetapa,motivo,tipo_actividad:tipo}=actividadForm.elements;
     const errorActividad=actividadForm.querySelector('[data-actividad-error]');
     const enviarActividad=actividadForm.querySelector('[type=submit]');
     const url='index.php?controller=embudoComercial&action=seguimientoOperativoV3';
@@ -547,6 +552,16 @@
     const camposActividad=()=>{
       const requiereFecha=['PROGRAMAR','REPROGRAMAR'].includes(operacion.value);
       fecha.required=requiereFecha;
+      const nueva=operacion.value==='PROGRAMAR';
+      tipo.required=nueva;tipo.disabled=!nueva;
+      actividadForm.querySelector('[data-actividad-tipo]').hidden=!nueva;
+      const resumen=actividadForm.querySelector('[data-actividad-pendiente]');
+      resumen.hidden=!seleccion?.fechaPendiente;
+      resumen.textContent=seleccion?.fechaPendiente
+        ?'Actividad pendiente: '+seleccion.tipoEtiqueta+(seleccion.detalle?' · '+seleccion.detalle:''):'';
+      actividadForm.querySelector('[data-actividad-detalle-label]').textContent=nueva
+        ?'Detalle de la actividad':operacion.value==='REPROGRAMAR'?'Motivo de la reprogramación'
+        :operacion.value==='COMPLETAR'?'Resultado de la actividad':'Detalle de la gestión realizada';
       const permiteSituacion=seleccion && (seleccion.etapa==='SEGUIMIENTO' ||
         requiereFecha && ['CONTACTADO','POTENCIAL','INTERESADO'].includes(seleccion.etapa));
       actividadForm.querySelector('[data-actividad-subetapa]').hidden=!permiteSituacion;
@@ -563,7 +578,7 @@
       root.querySelectorAll('[data-v3-actividad]').forEach(b=>b.addEventListener('click',()=>{
         const card=b.closest('.impe-v3o-card');
         if(!card || actividadDialog.open || telefonoActivo())return;
-        seleccion={id:card.dataset.asignacionId,etapa:card.dataset.etapa,version:b.dataset.version,fechaPendiente:card.dataset.v3FechaPendiente};
+        seleccion={id:card.dataset.asignacionId,etapa:card.dataset.etapa,version:b.dataset.version,fechaPendiente:card.dataset.v3FechaPendiente,tipoEtiqueta:card.dataset.v3ActividadEtiqueta,detalle:card.dataset.v3DetalleActividad};
         actividadForm.reset();
         errorActividad.hidden=true;
         actividadForm.querySelector('[data-actividad-prospecto]').textContent=card.dataset.nombre||'Prospecto';
@@ -599,7 +614,8 @@
       try{
         const body=new URLSearchParams({
           asignacion_id:seleccion.id,etapa_actual:seleccion.etapa,version:seleccion.version,
-          operacion:operacion.value,motivo:motivo.value.trim(),fecha:fecha.value,subetapa:subetapa.value
+          operacion:operacion.value,motivo:motivo.value.trim(),fecha:fecha.value,subetapa:subetapa.value,
+          tipo_actividad:operacion.value==='PROGRAMAR'?tipo.value:''
         });
         await comprobarRespuesta(await fetch(url,{
           method:'POST',credentials:'same-origin',headers:{
@@ -622,6 +638,15 @@
   if(potencialDialog && potencialForm){
     const subetapa=potencialForm.querySelector('#impe-v3o-potencial-subetapa');
     const fechaPot=potencialForm.querySelector('#impe-v3o-potencial-fecha');
+    const tipoPot=potencialForm.querySelector('#impe-v3o-potencial-tipo');
+    const actualizarTipoPot=()=>{
+      const programada=Boolean(fechaPot.value);
+      potencialForm.querySelector('[data-potencial-tipo]').hidden=!programada;
+      tipoPot.required=programada;
+      if(!programada)tipoPot.value='';
+    };
+    fechaPot.addEventListener('input',actualizarTipoPot);
+    fechaPot.addEventListener('change',actualizarTipoPot);
     const motivoPot=potencialForm.querySelector('#impe-v3o-potencial-motivo');
     const datosPot=potencialForm.querySelector('#impe-v3o-potencial-datos');
     const errorPot=potencialForm.querySelector('#impe-v3o-potencial-error');
@@ -643,6 +668,7 @@
           motivoPot.value='';
           datosPot.textContent=String(card.dataset.nombre||'Prospecto');
           errorPot.hidden=true;
+          actualizarTipoPot();
           if(typeof potencialDialog.showModal==='function')potencialDialog.showModal();
         });
       });
@@ -681,7 +707,8 @@
         subetapa_anterior:String(gestionCard.dataset.v3Subetapa||''),
         subetapa_nueva:elegido,
         motivo,
-        proxima_accion:String(fechaPot.value||'')
+        proxima_accion:String(fechaPot.value||''),
+        tipo_actividad:fechaPot.value?tipoPot.value:''
       });
       enviarPot.disabled=true;
       errorPot.hidden=true;

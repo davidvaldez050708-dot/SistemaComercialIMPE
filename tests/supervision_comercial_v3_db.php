@@ -40,7 +40,7 @@ try{
   'prospecto_embudo_inscripciones_v3(asignacion_id BIGINT UNSIGNED PRIMARY KEY,formulario_inscripcion_id BIGINT UNSIGNED,verificado_at DATETIME,vinculado_por INT)',
   'formulario_inscripciones(id BIGINT UNSIGNED PRIMARY KEY,created_at DATETIME)'
  ] as $tabla)$db->query("CREATE TABLE $tabla ENGINE=InnoDB");
- foreach(['2026_11_11_ventas_subetapas_comerciales_propuesta.sql','2026_11_12_ventas_seguimiento_operativo_v3.sql'] as $archivo){
+ foreach(['2026_11_11_ventas_subetapas_comerciales_propuesta.sql','2026_11_12_ventas_seguimiento_operativo_v3.sql','2026_11_18_ventas_tipo_actividad_v3.sql'] as $archivo){
   $sql=preg_replace('/^\s*--.*$/m','',file_get_contents(__DIR__.'/../database/migrations/'.$archivo));
   foreach(explode(';',$sql) as $parte)if(trim($parte)!=='')$db->query($parte);
  }
@@ -60,6 +60,7 @@ try{
  $db->query("INSERT INTO prospecto_embudo_subetapas_historial(asignacion_id,etapa_en_evento,subetapa_nueva,motivo,origen,usuario_id,creado_at) VALUES(4,'SEGUIMIENTO','ESPERANDO_DOCUMENTOS','Prueba de subetapa.','ASESOR_V3',22,UTC_TIMESTAMP())");
  $db->query("INSERT INTO prospecto_embudo_movimientos(asignacion_id,etapa_anterior,etapa_nueva,motivo,usuario_id,creado_at) VALUES(4,'POTENCIAL','SEGUIMIENTO','Prueba de movimiento.',22,UTC_TIMESTAMP())");
  $db->query("INSERT INTO prospecto_embudo_actividad_v3(asignacion_id,usuario_id,etapa,accion,motivo,fecha_pendiente,creado_at) VALUES(4,22,'SEGUIMIENTO','PROGRAMAR','Prueba de actividad.','2099-01-01 16:00:00',UTC_TIMESTAMP())");
+ $db->query("UPDATE prospecto_embudo_actividad_v3 SET tipo_actividad='DOCUMENTOS',detalle_actividad='Revisar certificado <prueba>.' WHERE asignacion_id=4");
  $db->query("INSERT INTO prospecto_embudo_llamadas(asignacion_id,usuario_id,extension,pbx_call_id,resultado,creado_at) VALUES(4,22,'157','out_supervision_1','CONVERSACION_PERSONA',UTC_TIMESTAMP()),(4,23,'158','out_ajena_1','SIN_RESPUESTA',UTC_TIMESTAMP())");
  $db->query("INSERT INTO telefonia_ventas_resultados(usuario_id,extension,pbx_call_id,resultado,observacion) VALUES(22,'157','out_supervision_1','CONVERSACION_PERSONA','Prueba de llamada.')");
  foreach([10,11] as $id){
@@ -178,6 +179,13 @@ try{
    $idFixture=str_starts_with($file,'asesor23')?23:(str_starts_with($file,'asesor')?22:1);
    file_put_contents($dir.'/'.$file,'<!doctype html><meta charset="utf-8"><script>window.IMPE_CURRENT_USER_ID='.$idFixture.';</script>'.$html);
   }
+ }
+ if(getenv('IMPE_TIPOS_PUBLICACION_TEST')==='YES'){
+  $proceso=proc_open(['py',__DIR__.'/tipos_actividad_publicacion_db.py',$nombre],
+   [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+  comprobarSupervision(is_resource($proceso),'iniciar prueba de entrega con base aislada');fclose($pipes[0]);
+  $salida=stream_get_contents($pipes[1]);$error=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+  comprobarSupervision(proc_close($proceso)===0,'entrega aislada: '.$salida.$error);echo $salida;
  }
  echo "CHECK_OK supervisión: mismas etapas, tarjetas, agenda V3, asesor, cierres, historial, permisos, aislamiento y cero escrituras.\n";
 }finally{$db->query("DROP DATABASE $nombre");$db->close();}

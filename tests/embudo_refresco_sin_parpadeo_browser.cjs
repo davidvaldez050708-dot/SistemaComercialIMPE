@@ -59,6 +59,7 @@ const fuente=path.join(__dirname,'../public/javascript');
   });
   await page.locator('[data-v3-actividad]').click();
   await page.locator('[name=operacion]').selectOption('PROGRAMAR');
+  await page.locator('[name=tipo_actividad]').selectOption('LLAMADA');
   await page.locator('[name=fecha]').fill('2099-01-02T10:00');
   await page.locator('[name=motivo]').fill('Prueba de próxima acción.');
   await page.locator('#impe-v3o-actividad-dialog [type=submit]').click();

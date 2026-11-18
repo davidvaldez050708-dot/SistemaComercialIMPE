@@ -36,6 +36,7 @@ const fixture=require('./fixtures/seguimiento_acciones_v3_html.cjs');
    const sub=page.locator('[data-actividad-subetapa]');
    assert.equal(await sub.isVisible(),etapa==='SEGUIMIENTO');
    await page.locator('[name=operacion]').selectOption(modo);
+   if(modo==='PROGRAMAR')await page.locator('[name=tipo_actividad]').selectOption('LLAMADA');
    if(modo==='REPROGRAMAR'){
     assert.equal(await page.locator('[name=fecha]').inputValue(),'2099-01-01T10:00');
     await page.locator('[name=motivo]').fill('Sin cambio real de cita.');

@@ -9,6 +9,7 @@ module.exports=(etapa,modo)=>`<!doctype html><meta charset="utf-8"><link rel="st
   </div><dialog id="impe-v3o-dialog"><form id="impe-v3o-mover-form">
     <span id="impe-v3o-dialog-datos"></span>
     <select id="impe-v3o-destino"><option>SEGUIMIENTO</option><option>POTENCIAL</option></select>
+    <label id="impe-v3o-tipo-label"><select id="impe-v3o-tipo"><option value=""></option><option>LLAMADA</option></select></label>
     <input id="impe-v3o-motivo"><label id="impe-v3o-fecha-label">
     <input id="impe-v3o-fecha" type="datetime-local"></label>
     <label id="impe-v3o-calificacion-label" hidden>
@@ -18,6 +19,7 @@ module.exports=(etapa,modo)=>`<!doctype html><meta charset="utf-8"><link rel="st
   <dialog id="impe-v3o-potencial-dialog"><form id="impe-v3o-potencial-form">
     <span id="impe-v3o-potencial-datos"></span>
     <select id="impe-v3o-potencial-subetapa"><option>CALIFICADO</option><option>REUNIENDO_DOCUMENTOS</option></select>
+    <label data-potencial-tipo><select id="impe-v3o-potencial-tipo"><option value=""></option><option>DOCUMENTOS</option></select></label>
     <input id="impe-v3o-potencial-fecha"><input id="impe-v3o-potencial-motivo">
     <p id="impe-v3o-potencial-error" hidden></p><button id="impe-v3o-potencial-guardar">Guardar</button>
   </form></dialog>
@@ -26,6 +28,8 @@ module.exports=(etapa,modo)=>`<!doctype html><meta charset="utf-8"><link rel="st
     <div class="impe-v3o-actividad-cuerpo">
       <p data-actividad-prospecto></p>
       <select name="operacion"><option>REGISTRAR</option><option>PROGRAMAR</option><option>REPROGRAMAR</option><option>COMPLETAR</option></select>
+      <label data-actividad-tipo><select name="tipo_actividad"><option value=""></option><option>LLAMADA</option></select></label>
+      <p data-actividad-pendiente hidden></p><span data-actividad-detalle-label></span>
       <label data-actividad-fecha><input name="fecha" type="datetime-local"></label>
       <label data-actividad-subetapa><select name="subetapa"><option value=""></option></select></label>
       <input name="motivo" required>
