@@ -67,6 +67,9 @@ try{
   $db->query("INSERT INTO formulario_inscripciones VALUES($id,UTC_TIMESTAMP())");
   $db->query("INSERT INTO prospecto_embudo_inscripciones_v3 VALUES($id,$id,UTC_TIMESTAMP(),22)");
  }
+ // Una actividad completada o futura no hereda el vencimiento de la agenda anterior.
+ $db->query("INSERT INTO prospecto_embudo_actividad_v3(asignacion_id,usuario_id,etapa,accion,motivo,completada_at,creado_at) VALUES(3,22,'POTENCIAL','COMPLETAR','Actividad completada de prueba.',UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+ $db->query("UPDATE prospecto_embudo_agenda SET proxima_accion_at='2000-01-01 16:00:00' WHERE asignacion_id IN (1,3,4)");
  $escrituras=static function()use($db){$rows=$db->query("SHOW SESSION STATUS WHERE Variable_name IN ('Com_insert','Com_update','Com_delete','Com_create_table','Com_alter_table')")->fetch_all(MYSQLI_ASSOC);return array_column($rows,'Value','Variable_name');};
  $antes=$escrituras();$repo=new EmbudoComercialRepository($db);sesionSupervision();
  $f=EmbudoComercialRepository::filtros([],true);$pag=EmbudoComercialRepository::paginasV3Operativo([]);
@@ -116,6 +119,9 @@ try{
  rechazarSupervision(fn()=>(new EmbudoComercialV3SeguimientoService($db))->registrar(1,4,'SEGUIMIENTO',1,'REGISTRAR','Intento de operación.','',''));
  sesionSupervision(false);$propios=$repo->listadoV3Operativo(22,$f,$pag);
  comprobarSupervision($propios['total_activos']===5,'asesor mantiene propiedad');
+ $fVencidos=$f;$fVencidos['vencidos']=true;$soloVencidos=$repo->listadoV3Operativo(22,$fVencidos,$pag);
+ $idsVencidos=[];foreach($soloVencidos['columnas'] as $columna)foreach($columna['registros'] as $r)$idsVencidos[]=(int)$r['asignacion_id'];
+ comprobarSupervision(in_array(1,$idsVencidos,true) && !in_array(3,$idsVencidos,true) && !in_array(4,$idsVencidos,true),'vencidos respeta actividad completada o futura y conserva agenda sin ciclo V3');
  comprobarSupervision($repo->detalle(22,false,6,'embudo',true)===null,'asesor no accede a expediente ajeno');
  rechazarSupervision(fn()=>$repo->listadoV3Operativo(22,$f,$pag,true));
  rechazarSupervision(fn()=>$repo->detalle(22,true,6,'embudo',true));

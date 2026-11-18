@@ -39,6 +39,7 @@ class ReminderController
     public function pendientes()
     {
         header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store');
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
@@ -49,6 +50,7 @@ class ReminderController
             ($esSupervisor || $esAnalista);
         $puedeSeguimientoAliados =
             tienePermiso('aliados.seguimiento_convocatorias');
+        $puedeComercial=(int)($_SESSION['rol_id']??0)===3 && tienePermiso('ventas.embudo.ver');
         $puedeTelefonia=tienePermiso('telefonia.usar')&&(tienePermiso('telefonia.recibir')||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')));
 
         if (
@@ -56,7 +58,7 @@ class ReminderController
             (
                 !$esAdministrador &&
                 !$puedeCentroReuniones &&
-                !$puedeSeguimientoAliados && !$puedeTelefonia
+                !$puedeSeguimientoAliados && !$puedeTelefonia && !$puedeComercial
             )
         ) {
             http_response_code(403);
@@ -318,17 +320,26 @@ class ReminderController
                 $recordatorios=array_merge($phone,$recordatorios);$telefoniaOk=true;
             }catch(Throwable $e){error_log('[campana_telefonia] '.get_class($e));}
         }
+        $comercialOk=false;
+        if($puedeComercial){
+            try {
+                require_once __DIR__.'/../services/EmbudoComercialV3RecordatoriosService.php';
+                $comercial=(new EmbudoComercialV3RecordatoriosService())->obtener($usuarioId);
+                $recordatorios=array_merge($comercial['recordatorios'],$recordatorios);
+                $avisos=array_merge($comercial['avisos'],$avisos);$comercialOk=true;
+            } catch(Throwable $e){error_log('[campana_comercial] '.get_class($e));}
+        }
         // La campana debe priorizar obligaciones vencidas y acciones que requieren
         // intervención, sin depender del orden en que cada servicio fue consultado.
-        $recordatorios = array_slice(
-            $this->ordenarRecordatorios($recordatorios),
-            0,
-            12
-        );
+        $recordatorios=$this->ordenarRecordatorios($recordatorios);
+        // Asesor: no ocultar actividades por la paginación de veinte tarjetas del tablero.
+        // Los demás roles conservan el límite y la cadencia existentes.
+        if(!$puedeComercial)$recordatorios=array_slice($recordatorios,0,12);
 
         echo json_encode([
-            'ok' => $ok||$telefoniaOk,
-            'parcial' => !$ok,
+            'ok' => $ok||$telefoniaOk||$comercialOk,
+            'parcial' => !$ok || ($puedeComercial&&!$comercialOk),
+            'comercial_ok' => !$puedeComercial||$comercialOk,
             'requiere_migracion' => $requiereMigracion,
             'avisos' => array_values($avisos),
             'recordatorios' => $recordatorios,

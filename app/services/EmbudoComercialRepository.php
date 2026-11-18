@@ -135,13 +135,16 @@ final class EmbudoComercialRepository
             array_push($args,$pat,$pat,$pat);
         }
         if ($f['vencidos']) {
-            $vencida=$actividadV3?'av.fecha_pendiente<UTC_TIMESTAMP() OR ':'';
+            $pendiente=$actividadV3
+                ?'CASE WHEN av.id IS NOT NULL THEN av.fecha_pendiente ELSE COALESCE(ag.proxima_accion_at,a.proxima_accion_at) END'
+                :'COALESCE(ag.proxima_accion_at,a.proxima_accion_at)';
+            $sinActividad=$actividadV3?'av.id IS NULL AND ':'';
             $sql.=" AND (
-                {$vencida}COALESCE(ag.proxima_accion_at,a.proxima_accion_at)<UTC_TIMESTAMP()
-                OR ag.revision_fecha<=?
-                OR (ag.revision_fecha IS NULL
-                    AND COALESCE(ag.proxima_accion_at,a.proxima_accion_at) IS NULL
-                    AND a.fecha_trabajo<?))";
+                {$pendiente}<UTC_TIMESTAMP()
+                OR ({$sinActividad}(ag.revision_fecha<=?
+                    OR (ag.revision_fecha IS NULL
+                        AND COALESCE(ag.proxima_accion_at,a.proxima_accion_at) IS NULL
+                        AND a.fecha_trabajo<?))))";
             $hoy=(new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))
                 ->format('Y-m-d');
             array_push($args,$hoy,$hoy);

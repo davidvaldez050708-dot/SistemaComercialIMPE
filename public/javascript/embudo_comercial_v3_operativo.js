@@ -214,6 +214,15 @@
     }finally{guardado.enCurso=false;}
   };
   const confirmarGuardado=tipo=>{
+    const aviso={usuarioId,creada:Date.now()};
+    window.dispatchEvent(new CustomEvent('impe:comercial-actividad-refresh',{detail:aviso}));
+    try {
+      localStorage.setItem('impe:comercial:actividad:'+usuarioId,JSON.stringify(aviso));
+    } catch(_){}
+    try {
+      if(window.parent!==window)window.parent.dispatchEvent(new CustomEvent('impe:comercial-actividad-refresh',{detail:aviso}));
+    } catch(_){}
+
     pendienteGuardado={tipo,enCurso:false,reintentar:0,avisado:false,confirmado:false};
     if(telefonoActivo()){
       pendienteGuardado.confirmado=true;

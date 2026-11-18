@@ -20,6 +20,7 @@ $mostrarCentroAvisos =
         ($puedeSolicitarReuniones || $puedeGestionarReuniones)
     ) ||
     tienePermiso('aliados.seguimiento_convocatorias');
+$mostrarCentroAvisos=$mostrarCentroAvisos || ((int)($_SESSION['rol_id']??0)===3 && tienePermiso('ventas.embudo.ver'));
 $agendaDisponible = is_file(ROOT_PATH . '/app/controllers/AgendaReunionController.php');
 $mostrarAgendaReuniones =
     tienePermiso('reuniones.ver') &&
