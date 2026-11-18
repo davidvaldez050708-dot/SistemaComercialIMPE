@@ -58,10 +58,9 @@ const bootstrap=process.env.BOOTSTRAP_MODULE_PATH||path.resolve(root,'../browser
    const barra=card(id).locator('.impe-v3o-acciones');
    assert.equal(await barra.locator(':scope > button').count(),numero);
    assert.equal(await card(id).locator('[data-v3-actividad]').count(),1);
-   const wa=card(id).locator('[data-v3-whatsapp-reservado]');
-   assert.equal(await wa.isDisabled(),true);assert.match(await wa.getAttribute('title'),/Próximamente/);
-   await wa.evaluate(el=>el.click());
-   assert.equal(posts.length,0);assert.equal(page.context().pages().length,1);
+   const wa=card(id).locator('[data-whatsapp-contexto]');
+   assert.equal(await wa.isEnabled(),true);assert.match(await wa.getAttribute('title'),/WhatsApp/);
+   assert.equal(await wa.getAttribute('data-whatsapp-id'),String(id));
    await card(id).locator('[data-v3-actividad]').click();
    const modal=page.locator('#impe-v3o-actividad-dialog');assert.equal(await modal.isVisible(),true);
    const disponibles=await modal.locator('[name=operacion]').evaluate(el=>Array.from(el.options).filter(o=>!o.disabled).map(o=>o.value));
@@ -115,12 +114,12 @@ const bootstrap=process.env.BOOTSTRAP_MODULE_PATH||path.resolve(root,'../browser
   }
   for(const [caso,id] of [['asesor-no-contactar',4],['asesor23',13]]){
    await page.goto(inicio+'&caso='+caso);
-   assert.equal(await card(id).locator('[data-v3-whatsapp-reservado],[data-v3-actividad],[data-v3-gestionar],[data-v3i-iniciar]').count(),0);
+   assert.equal(await card(id).locator('[data-whatsapp-contexto],[data-v3-actividad],[data-v3-gestionar],[data-v3i-iniciar]').count(),0);
   }
   await page.goto(inicio+'&caso=asesor-consulta');
   assert.equal(await page.locator('[data-v3-actividad],[data-v3-gestionar],[data-v3i-iniciar]').count(),0);
   await page.goto(inicio+'&caso=admin');
-  assert.equal(await page.locator('[data-v3-whatsapp-reservado],[data-embudo-marcar],[data-v3-actividad],[data-v3-gestionar],[data-v3i-iniciar]').count(),0);
+  assert.equal(await page.locator('[data-whatsapp-contexto],[data-embudo-marcar],[data-v3-actividad],[data-v3-gestionar],[data-v3i-iniciar]').count(),0);
   assert.equal(posts.length,3);assert.deepEqual(errors,[]);
   await page.goto(inicio);
   const modal=page.locator('#impe-v3o-actividad-dialog');
@@ -169,6 +168,6 @@ const bootstrap=process.env.BOOTSTRAP_MODULE_PATH||path.resolve(root,'../browser
   await modal.locator('[data-actividad-cerrar]').first().click();
   assert.deepEqual(errors,[]);
 
-  console.log('CHECK_OK acciones directas: cinco etapas, cita pendiente, avance, inscripción, WhatsApp reservado, refresco, permisos y diseño responsive.');
+  console.log('CHECK_OK acciones directas: cinco etapas, cita pendiente, avance, inscripción, WhatsApp contextual, refresco, permisos y diseño responsive.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

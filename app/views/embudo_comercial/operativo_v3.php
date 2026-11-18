@@ -167,7 +167,7 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             $mostrarInscripcion=$puedeMover && !$legacy && $st!=='NO_CONTACTAR' &&
                 in_array($real,['POTENCIAL','INTERESADO','SEGUIMIENTO','PROCESO_INSCRIPCION'],true) &&
                 in_array($etapa,['POTENCIAL','SEGUIMIENTO','PROCESO_INSCRIPCION'],true);
-            $reservarWhatsapp=!$supervisor && !$legacy && $st!=='NO_CONTACTAR' && ($puedeTelefono || $puedeMover) &&
+            $reservarWhatsapp=tienePermiso('whatsapp.ver') && !$supervisor && !$legacy && $st!=='NO_CONTACTAR' &&
                 in_array($real,EmbudoComercialV3SeguimientoService::ETAPAS,true);
             $mostrarMas=$supervisor || $puedeTelefono || $propuestas ||
                 (!$legacy && $real==='NUEVO' && $puedeRecuperar && $n>=3) ||
@@ -183,8 +183,8 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
             </button>
             <?php endif; ?>
             <?php if($reservarWhatsapp): ?>
-            <button type="button" class="impe-v3o-accion" data-v3-whatsapp-reservado disabled
-                    title="WhatsApp · Próximamente" aria-label="WhatsApp · Próximamente">
+            <button type="button" class="impe-v3o-accion" data-whatsapp-contexto="prospecto" data-whatsapp-id="<?= (int)$p['asignacion_id'] ?>"
+                    title="Abrir conversación de WhatsApp" aria-label="Abrir conversación de WhatsApp">
                 <i class="bi bi-whatsapp" aria-hidden="true"></i>
             </button>
             <?php endif; ?>
@@ -570,3 +570,5 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
 </div>
 
 <?php require __DIR__.'/notificacion_destino.php'; ?>
+
+<?php require __DIR__.'/../whatsapp/acceso_contextual.php'; ?>

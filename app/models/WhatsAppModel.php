@@ -1,13 +1,15 @@
 <?php
 
 require_once __DIR__ . '/../../config/db_connection.php';
+require_once __DIR__.'/../services/WhatsAppContextoService.php';
 
 class WhatsAppModel
 {
     private $connection;
 
-    public function __construct()
+    public function __construct(?mysqli $conexion=null)
     {
+        if($conexion!==null){$this->connection=$conexion;return;}
         $database = new Database();
         $this->connection = $database->connect();
     }
@@ -314,14 +316,7 @@ class WhatsAppModel
         $tipos = '';
         $parametros = [];
 
-        if (!$gestionarTodas) {
-            $sql .= " AND (
-                        conv.responsable_usuario_id = ?
-                        OR c.usuario_id = ?
-                    )";
-            $tipos = 'ii';
-            $parametros = [(int)$usuarioId, (int)$usuarioId];
-        }
+        $sql.=' AND ('.WhatsAppContextoService::alcance($this->connection,(int)$usuarioId,(bool)$gestionarTodas).')';
 
         $sql .= " ORDER BY
                     conv.ultimo_mensaje_at IS NULL ASC,
@@ -344,14 +339,7 @@ class WhatsAppModel
         $tipos = 'i';
         $parametros = [(int)$conversacionId];
 
-        if (!$gestionarTodas) {
-            $sql .= " AND (
-                        conv.responsable_usuario_id = ?
-                        OR c.usuario_id = ?
-                    )";
-            $tipos .= 'ii';
-            array_push($parametros, (int)$usuarioId, (int)$usuarioId);
-        }
+        $sql.=' AND ('.WhatsAppContextoService::alcance($this->connection,(int)$usuarioId,(bool)$gestionarTodas).')';
 
         $sql .= " LIMIT 1";
 
@@ -524,6 +512,23 @@ class WhatsAppModel
         return (int)($fila['id'] ?? 0);
     }
 
+    public function vincularEntradaProspecto(int $conversacion,string $telefono): void
+    {
+        if(!WhatsAppContextoService::tabla($this->connection,'whatsapp_conversacion_prospectos'))return;
+        $formatos=ProspectoNoContactarV3::formatos($telefono);
+        if(!$formatos)return;
+        $marks=implode(',',array_fill(0,count($formatos),'?'));
+        $s=$this->connection->prepare("SELECT DISTINCT p.id FROM prospectos_comerciales p
+            JOIN prospecto_asignaciones a ON a.prospecto_id=p.id AND a.vigente=1
+            WHERE p.telefono_normalizado IN ($marks) LIMIT 2");
+        try{$s->bind_param(str_repeat('s',count($formatos)),...$formatos);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);}finally{$s->close();}
+        if(count($rows)!==1)return;
+        // No fusionar un chat de aliado ni reemplazar un enlace previo.
+        $s=$this->connection->prepare('INSERT IGNORE INTO whatsapp_conversacion_prospectos(conversacion_id,prospecto_id) SELECT id,? FROM whatsapp_conversaciones WHERE id=? AND aliado_seguimiento_id IS NULL');
+        $p=(int)$rows[0]['id'];
+        try{$s->bind_param('ii',$p,$conversacion);$s->execute();}finally{$s->close();}
+    }
+
     public function registrarMensajeSalida(
         $conversacionId,
         $usuarioId,
@@ -617,7 +622,7 @@ class WhatsAppModel
             return 0;
         }
 
-        $responsable = (int)($cuenta['usuario_id'] ?? 0);
+        $responsable = 0; // El propietario técnico del canal no recibe la cartera completa.
         $conversacionId = $this->crearORecuperarConversacion(
             (int)$cuentaId,
             $telefono,
@@ -629,6 +634,8 @@ class WhatsAppModel
         if ($conversacionId <= 0) {
             return 0;
         }
+
+        $this->vincularEntradaProspecto($conversacionId,$telefono);
 
         $fecha = $this->fechaDesdeTimestamp($timestamp);
         $ventanaHasta = (clone $fecha)->modify('+24 hours');
@@ -832,6 +839,12 @@ class WhatsAppModel
 
     private function consultaConversacionesBase()
     {
+        $responsable='conv.responsable_usuario_id';
+        if(WhatsAppContextoService::tabla($this->connection,'whatsapp_conversacion_prospectos')) {
+            $responsable="COALESCE((SELECT MIN(pa.asesor_id) FROM whatsapp_conversacion_prospectos enlace
+                JOIN prospecto_asignaciones pa ON pa.prospecto_id=enlace.prospecto_id AND pa.vigente=1
+                WHERE enlace.conversacion_id=conv.id),conv.responsable_usuario_id)";
+        }
         return "SELECT
                     conv.id,
                     conv.cuenta_id,
@@ -839,7 +852,7 @@ class WhatsAppModel
                     conv.telefono_normalizado,
                     conv.nombre_contacto,
                     conv.aliado_seguimiento_id,
-                    conv.responsable_usuario_id,
+                    $responsable responsable_usuario_id,
                     conv.estado,
                     conv.ventana_servicio_hasta,
                     conv.no_leidos,
@@ -859,7 +872,7 @@ class WhatsAppModel
                 INNER JOIN whatsapp_cuentas c
                     ON c.id = conv.cuenta_id
                 LEFT JOIN usuarios responsable
-                    ON responsable.id = conv.responsable_usuario_id
+                    ON responsable.id = $responsable
                 LEFT JOIN seguimientos_vinculacion aliado
                     ON aliado.id = conv.aliado_seguimiento_id
                 LEFT JOIN estados e

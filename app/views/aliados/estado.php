@@ -657,7 +657,8 @@ $seguimientoVista = static function ($estado) {
                                                                     <li>
                                                                         <a
                                                                             class="dropdown-item"
-                                                                            href="<?= BASE_URL ?>index.php?controller=whatsapp&action=abrirAliado&seguimiento_id=<?= (int)$aliado['seguimiento_id'] ?>">
+                                                                            href="<?= BASE_URL ?>index.php?controller=whatsapp&action=abrirAliado&seguimiento_id=<?= (int)$aliado['seguimiento_id'] ?>"
+                                                                            data-whatsapp-contexto="aliado" data-whatsapp-id="<?= (int)$aliado['seguimiento_id'] ?>">
                                                                             <i class="bi bi-whatsapp"></i>
                                                                             <span>Abrir conversación</span>
                                                                         </a>
@@ -1235,3 +1236,5 @@ $seguimientoVista = static function ($estado) {
 </div>
 
 <?php require __DIR__ . '/partials/registro_gestion.php'; ?>
+
+<?php require __DIR__.'/../whatsapp/acceso_contextual.php'; ?>

@@ -10,7 +10,7 @@ function comprobarSupervision(bool $ok,string $why): void {if(!$ok)throw new Run
 function rechazarSupervision(callable $fn): void {try{$fn();}catch(DomainException $e){return;}throw new RuntimeException('Acceso indebido aceptado');}
 function sesionSupervision(bool $supervisor=true): void {
     $_SESSION=['usuario_id'=>$supervisor?1:22,'rol_id'=>$supervisor?1:3,'permisos'=>[
-        'ventas.embudo.ver','ventas.embudo.mover','ventas.recuperacion.ver','ventas.descartados.ver',
+        'whatsapp.ver','ventas.embudo.ver','ventas.embudo.mover','ventas.recuperacion.ver','ventas.descartados.ver',
         'ventas.recuperacion.gestionar','ventas.descartados.gestionar','telefonia.usar','telefonia.salientes',
         ...($supervisor?['ventas.embudo.supervisar']:[])
     ]];
@@ -140,7 +140,7 @@ try{
   comprobarSupervision($xp->query($base.'/button[@data-v3-actividad]')->length===1,'actividad directa en etapa '.$id);
   comprobarSupervision($xp->query($base.'/button[@data-v3-gestionar]')->length===($avance?1:0),'avance contextual '.$id);
   comprobarSupervision($xp->query($base.'/button[@data-v3i-iniciar]')->length===($inscripcion?1:0),'inscripción contextual '.$id);
-  comprobarSupervision($xp->query($base.'/button[@data-v3-whatsapp-reservado and @disabled]')->length===1,'WhatsApp reservado sin acción '.$id);
+  comprobarSupervision($xp->query($base.'/button[@data-whatsapp-contexto and not(@disabled)]')->length===1,'WhatsApp contextual autorizado '.$id);
   comprobarSupervision($xp->query($base.'/div/button[@data-v3-actividad or @data-v3-gestionar or @data-v3i-iniciar]')->length===0,'sin acciones frecuentes duplicadas en Más');
  }
  comprobarSupervision($xp->query("//a[@aria-label='Ver expediente comercial']")->length===0,'asesor conserva expediente solo desde el nombre');
@@ -148,7 +148,7 @@ try{
  foreach($sinContacto['columnas']['SEGUIMIENTO']['registros'] as &$item)$item['subetapa']='NO_CONTACTAR';unset($item);
  $fixtures['asesor-no-contactar.html']=renderSupervision('operativo_v3',array_replace($vars,['supervisor'=>false,'usuarioId'=>22,'tablero'=>$sinContacto]));
  @$doc->loadHTML($fixtures['asesor-no-contactar.html'],LIBXML_NONET);$xp=new DOMXPath($doc);
- comprobarSupervision($xp->query("//article[@data-asignacion-id='4']//button[@data-embudo-marcar or @data-v3-whatsapp-reservado or @data-v3-actividad or @data-v3i-iniciar]")->length===0,'No contactar sin accesos operativos');
+ comprobarSupervision($xp->query("//article[@data-asignacion-id='4']//button[@data-embudo-marcar or @data-whatsapp-contexto or @data-v3-actividad or @data-v3i-iniciar]")->length===0,'No contactar sin accesos operativos');
  $_SESSION['permisos']=array_values(array_diff($_SESSION['permisos'],['ventas.embudo.mover']));
  $fixtures['asesor-consulta.html']=renderSupervision('operativo_v3',array_replace($vars,['supervisor'=>false,'usuarioId'=>22,'tablero'=>$propios]));
  @$doc->loadHTML($fixtures['asesor-consulta.html'],LIBXML_NONET);$xp=new DOMXPath($doc);
@@ -158,7 +158,7 @@ try{
  $fixtures['asesor23.html']=renderSupervision('operativo_v3',array_replace($vars,['supervisor'=>false,'usuarioId'=>23,'tablero'=>$asesor23]));
  @$doc->loadHTML($fixtures['asesor23.html'],LIBXML_NONET);$xp=new DOMXPath($doc);
  comprobarSupervision($xp->query("//article[@data-asignacion-id='6']/div[@class='impe-v3o-acciones']/button[@data-v3-gestionar or @data-v3i-iniciar]")->length===2,'INTERESADO mantiene acciones de Potenciales');
- comprobarSupervision($xp->query("//article[@data-asignacion-id='13']//button[@data-v3-gestionar or @data-v3-actividad or @data-v3i-iniciar or @data-v3-whatsapp-reservado]")->length===0,'históricos sin operaciones V3 adicionales');
+ comprobarSupervision($xp->query("//article[@data-asignacion-id='13']//button[@data-v3-gestionar or @data-v3-actividad or @data-v3i-iniciar or @data-whatsapp-contexto]")->length===0,'históricos sin operaciones V3 adicionales');
  sesionSupervision(false);
  // Validate generated links through the real parser, with and without an advisor.
  foreach($fixtures as $archivo=>$html){

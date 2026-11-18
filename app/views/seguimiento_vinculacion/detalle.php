@@ -298,6 +298,12 @@ usort($actividadExpediente, function ($eventoA, $eventoB) {
             <h2><?= $valor($seguimiento['nombre_entidad'] ?? '') ?></h2>
             <p><?= $texto($tipoEntidad) ?> · <?= $texto($municipioEntidad) ?></p>
         </div>
+        <?php if(tienePermiso('whatsapp.ver')): ?>
+        <button type="button" class="btn btn-outline-primary" data-whatsapp-contexto="seguimiento"
+            data-whatsapp-id="<?= (int)($seguimiento['id']??$seguimiento['seguimiento_id']??0) ?>">
+            <i class="bi bi-whatsapp" aria-hidden="true"></i> Conversación
+        </button>
+        <?php endif; ?>
         <div class="linkage-state-pill">
             <?= $texto($etapaActual) ?>
         </div>
@@ -716,3 +722,4 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+<?php require __DIR__.'/../whatsapp/acceso_contextual.php'; ?>

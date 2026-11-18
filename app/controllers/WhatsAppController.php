@@ -7,13 +7,72 @@ require_once __DIR__ . '/../helpers/PermissionHelper.php';
 
 class WhatsAppController
 {
+    private ?string $envioId=null;
+
+    private function prepararEnvioIdempotente(string $tipo): void
+    {
+        $id=$_POST['request_id']??'';
+        if($id==='')return; // Clientes anteriores no se convierten en reintentos implícitos.
+        if(!is_string($id) || !preg_match('/^[A-Za-z0-9-]{16,80}$/D',$id))$this->responder(['ok'=>false,'mensaje'=>'Identificador de envío inválido.'],422);
+        $firma=hash('sha256',$tipo.'|'.(string)($_POST['conversacion_id']??'').'|'.(string)($_POST['mensaje']??''));
+        foreach($_SESSION['whatsapp_envios']??[] as $k=>$v)if(($v['at']??0)<time()-900)unset($_SESSION['whatsapp_envios'][$k]);
+        $anterior=$_SESSION['whatsapp_envios'][$id]??null;
+        if($anterior) {
+            if(!hash_equals($anterior['firma'],$firma))$this->responder(['ok'=>false,'mensaje'=>'El intento de envío cambió. Revisa el mensaje.'],409);
+            if(isset($anterior['respuesta']))$this->responder($anterior['respuesta'],$anterior['http']);
+            $this->responder(['ok'=>false,'mensaje'=>'El envío está pendiente de confirmación. Revisa el historial antes de volver a enviarlo.'],409);
+        }
+        if(count($_SESSION['whatsapp_envios']??[])>=100)$this->responder(['ok'=>false,'mensaje'=>'Hay demasiados intentos recientes. Espera antes de reintentar.'],429);
+        $_SESSION['whatsapp_envios'][$id]=['at'=>time(),'firma'=>$firma];$this->envioId=$id;
+    }
+
+    protected function servicioWhatsApp(WhatsAppModel $modelo): WhatsAppCloudApiService
+    {
+        return new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
+    }
+
+    public function contexto(): void
+    {
+        $this->validarPermiso('whatsapp.ver');
+        $this->validarMetodoPost();
+        $tipo=$_POST['tipo']??'';
+        $id=filter_var($_POST['id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if(!is_string($tipo) || !$id)$this->responder(['ok'=>false,'mensaje'=>'Origen de conversación no válido.'],422);
+        $modelo=new WhatsAppModel();$this->validarEstructura($modelo);
+        try{$conv=WhatsAppContextoService::abrir($modelo,$tipo,(int)$id,(int)$_SESSION['usuario_id']);}
+        catch(DomainException $e){$this->responder(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[whatsapp_contexto] '.get_class($e));$this->responder(['ok'=>false,'mensaje'=>'No fue posible abrir la conversación. Intenta de nuevo.'],503);}
+        $this->responder(['ok'=>true,'conversacion_id'=>$conv,'url'=>BASE_URL.'index.php?controller=whatsapp&action=panel&conversacion_id='.$conv]);
+    }
+
+    public function panel(): void
+    {
+        $this->validarPermiso('whatsapp.ver');
+        header('Cache-Control: private, no-store, max-age=0');
+        header('X-Frame-Options: SAMEORIGIN');
+        $id=filter_var($_GET['conversacion_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        $modelo=new WhatsAppModel();$this->validarEstructura($modelo);
+        $uid=(int)$_SESSION['usuario_id'];
+        $conversacionSeleccionada=$id?$modelo->obtenerConversacion((int)$id,$uid,WhatsAppContextoService::lecturaGlobal()):null;
+        if(!$conversacionSeleccionada){http_response_code(403);exit('No tienes acceso a esta conversación.');}
+        $servicio=new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
+        $estadoConfiguracionWhatsapp=$servicio->obtenerEstadoConfiguracion();
+        $puedeEnviarWhatsapp=$estadoConfiguracionWhatsapp['lista'] && tienePermiso('whatsapp.enviar') &&
+            (bool)$modelo->obtenerConversacion((int)$id,$uid,tienePermiso('whatsapp.responder_todas'));
+        $cuenta=$modelo->obtenerCuentaPorPhoneNumberId((string)$conversacionSeleccionada['phone_number_id']);
+        $puedePlantillaPrueba=$puedeEnviarWhatsapp && ($cuenta['tipo']??'')==='PRUEBA';
+        $ventanaServicioAbierta=$modelo->ventanaServicioAbierta($conversacionSeleccionada);
+        $mensajesIniciales=$modelo->obtenerMensajes((int)$id,$uid,WhatsAppContextoService::lecturaGlobal());
+        require __DIR__.'/../views/whatsapp/panel.php';
+    }
+
     public function index()
     {
         $this->validarPermiso('whatsapp.ver');
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         $puedeGestionarConversaciones =
-            tienePermiso('whatsapp.gestionar_conversaciones');
+            WhatsAppContextoService::lecturaGlobal();
         $puedeGestionarCuentas =
             tienePermiso('whatsapp.gestionar_cuentas');
 
@@ -47,11 +106,14 @@ class WhatsAppController
                     $usuarioId,
                     $puedeGestionarConversaciones
                 );
-                $modelo->marcarConversacionLeida($conversacionId);
+                if($modelo->obtenerConversacion($conversacionId,$usuarioId,false))$modelo->marcarConversacionLeida($conversacionId);
                 $conversacionSeleccionada['no_leidos'] = 0;
             }
         }
 
+        if ($conversacionId>0 && !$conversacionSeleccionada) {
+            http_response_code(403);exit('No tienes acceso a esta conversación.');
+        }
         if (!$conversacionSeleccionada && !empty($conversaciones)) {
             $conversacionSeleccionada = $conversaciones[0];
             $conversacionId = (int)$conversacionSeleccionada['id'];
@@ -60,7 +122,7 @@ class WhatsAppController
                 $usuarioId,
                 $puedeGestionarConversaciones
             );
-            $modelo->marcarConversacionLeida($conversacionId);
+            if($modelo->obtenerConversacion($conversacionId,$usuarioId,false))$modelo->marcarConversacionLeida($conversacionId);
             $conversacionSeleccionada['no_leidos'] = 0;
         }
 
@@ -82,11 +144,14 @@ class WhatsAppController
                 ? $modelo->obtenerUsuariosActivos()
                 : [];
 
-        $puedeEnviarWhatsapp = tienePermiso('whatsapp.enviar');
+        $puedeEnviarWhatsapp = $estadoConfiguracionWhatsapp['lista'] && tienePermiso('whatsapp.enviar') && (!$conversacionSeleccionada ||
+            (bool)$modelo->obtenerConversacion((int)$conversacionSeleccionada['id'],$usuarioId,tienePermiso('whatsapp.responder_todas')));
         $ventanaServicioAbierta = $conversacionSeleccionada
             ? $modelo->ventanaServicioAbierta($conversacionSeleccionada)
             : false;
 
+        $cuentaChat=$conversacionSeleccionada?$modelo->obtenerCuentaPorPhoneNumberId((string)$conversacionSeleccionada['phone_number_id']):null;
+        $puedePlantillaPrueba=$puedeEnviarWhatsapp && ($cuentaChat['tipo']??'')==='PRUEBA';
         $mensajeWhatsapp = $_SESSION['mensaje_whatsapp'] ?? '';
         $errorWhatsapp = $_SESSION['error_whatsapp'] ?? '';
         unset($_SESSION['mensaje_whatsapp'], $_SESSION['error_whatsapp']);
@@ -110,7 +175,7 @@ class WhatsAppController
         $this->validarEstructura($modelo);
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $gestionar = tienePermiso('whatsapp.gestionar_conversaciones');
+        $gestionar = WhatsAppContextoService::lecturaGlobal();
 
         $this->responder([
             'ok' => true,
@@ -129,7 +194,7 @@ class WhatsAppController
         $this->validarEstructura($modelo);
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $gestionar = tienePermiso('whatsapp.gestionar_conversaciones');
+        $gestionar = WhatsAppContextoService::lecturaGlobal();
         $conversacionId = (int)($_GET['conversacion_id'] ?? 0);
         $despuesDeId = (int)($_GET['despues_de_id'] ?? 0);
 
@@ -158,7 +223,7 @@ class WhatsAppController
             $gestionar
         );
 
-        $modelo->marcarConversacionLeida($conversacionId);
+        if($modelo->obtenerConversacion($conversacionId,$usuarioId,false))$modelo->marcarConversacionLeida($conversacionId);
 
         $this->responder([
             'ok' => true,
@@ -172,6 +237,7 @@ class WhatsAppController
 
     public function enviar()
     {
+        $this->validarPermiso('whatsapp.ver');
         $this->validarPermiso('whatsapp.enviar');
         $this->validarMetodoPost();
 
@@ -179,7 +245,7 @@ class WhatsAppController
         $this->validarEstructura($modelo);
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $gestionar = tienePermiso('whatsapp.gestionar_conversaciones');
+        $gestionar = tienePermiso('whatsapp.responder_todas');
         $conversacionId = (int)($_POST['conversacion_id'] ?? 0);
         $texto = trim((string)($_POST['mensaje'] ?? ''));
 
@@ -225,7 +291,11 @@ class WhatsAppController
             ], 409);
         }
 
-        $servicio = new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
+        try { WhatsAppContextoService::exigirSalida($modelo->conexionParaAutorizacion(),$conversacion); }
+        catch(DomainException $e){$this->responder(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+
+        $this->prepararEnvioIdempotente('enviar');
+        $servicio = $this->servicioWhatsApp($modelo);
         $resultado = $servicio->enviarTexto(
             (string)$cuenta['phone_number_id'],
             (string)$conversacion['telefono_contacto'],
@@ -241,7 +311,8 @@ class WhatsAppController
                 'TEXT'
             );
         } catch (Throwable $error) {
-            error_log('WhatsApp historial salida: ' . $error->getMessage());
+            error_log('[whatsapp_historial_salida] '.get_class($error));
+            if(!empty($resultado['ok']))$this->responder(['ok'=>false,'aceptado_por_meta'=>true,'mensaje'=>'Meta aceptó el mensaje, pero no se pudo guardar el historial. No vuelvas a enviarlo; solicita revisión.','wamid'=>(string)($resultado['wamid']??'')],202);
         }
 
         if (empty($resultado['ok'])) {
@@ -263,6 +334,7 @@ class WhatsAppController
 
     public function enviarPlantillaPrueba()
     {
+        $this->validarPermiso('whatsapp.ver');
         $this->validarPermiso('whatsapp.enviar');
         $this->validarMetodoPost();
 
@@ -270,7 +342,7 @@ class WhatsAppController
         $this->validarEstructura($modelo);
 
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $gestionar = tienePermiso('whatsapp.gestionar_conversaciones');
+        $gestionar = tienePermiso('whatsapp.responder_todas');
         $conversacionId = (int)($_POST['conversacion_id'] ?? 0);
 
         $conversacion = $modelo->obtenerConversacion(
@@ -299,7 +371,13 @@ class WhatsAppController
             ], 409);
         }
 
-        $servicio = new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
+        if(($cuenta['tipo']??'')!=='PRUEBA')$this->responder(['ok'=>false,'mensaje'=>'La plantilla de prueba sólo está disponible en un canal de prueba.'],409);
+
+        try { WhatsAppContextoService::exigirSalida($modelo->conexionParaAutorizacion(),$conversacion); }
+        catch(DomainException $e){$this->responder(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+
+        $this->prepararEnvioIdempotente('enviarPlantillaPrueba');
+        $servicio = $this->servicioWhatsApp($modelo);
         $estadoConfig = $servicio->obtenerEstadoConfiguracion();
         $resultado = $servicio->enviarPlantillaPrueba(
             (string)$cuenta['phone_number_id'],
@@ -318,7 +396,8 @@ class WhatsAppController
                 'TEMPLATE'
             );
         } catch (Throwable $error) {
-            error_log('WhatsApp plantilla prueba: ' . $error->getMessage());
+            error_log('[whatsapp_historial_plantilla] '.get_class($error));
+            if(!empty($resultado['ok']))$this->responder(['ok'=>false,'aceptado_por_meta'=>true,'mensaje'=>'Meta aceptó la plantilla, pero no se pudo guardar el historial. No vuelvas a enviarla; solicita revisión.'],202);
         }
 
         if (empty($resultado['ok'])) {
@@ -340,105 +419,13 @@ class WhatsAppController
     public function abrirAliado()
     {
         $this->validarPermiso('whatsapp.ver');
-
-        $seguimientoId = (int)($_GET['seguimiento_id'] ?? 0);
-        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
-
-        $modeloAliado = new AliadoModel();
-        $aliado = $modeloAliado->obtenerAliado(
-            $seguimientoId,
-            $usuarioId,
-            $esAdministrador
-        );
-
-        if (!$aliado) {
-            $_SESSION['error_whatsapp'] =
-                'No tienes acceso al aliado seleccionado.';
-            $this->redirigirIndex();
-        }
-
-        if (!$modeloAliado->consentimientoWhatsappDisponible()) {
-            $_SESSION['error_whatsapp'] =
-                'Falta aplicar la migración de consentimiento de WhatsApp para usar Aliados con este canal.';
-            $this->redirigirIndex();
-        }
-
-        $numero = '';
-        $contactos = $modeloAliado->obtenerContactosDifusion($aliado);
-
-        foreach ($contactos as $contacto) {
-            if (
-                !empty($contacto['confirmado_whatsapp']) &&
-                !empty($contacto['autorizado_whatsapp']) &&
-                !empty($contacto['preferido_difusion'])
-            ) {
-                $numero = (string)$contacto['numero'];
-                break;
-            }
-        }
-
-        if ($numero === '') {
-            foreach ($contactos as $contacto) {
-                if (
-                    !empty($contacto['confirmado_whatsapp']) &&
-                    !empty($contacto['autorizado_whatsapp'])
-                ) {
-                    $numero = (string)$contacto['numero'];
-                    break;
-                }
-            }
-        }
-
-        if ($numero === '') {
-            $_SESSION['error_whatsapp'] =
-                'El aliado no tiene un número con WhatsApp confirmado y autorización para recibir comunicaciones. Registra la autorización en Contactos de difusión.';
-            $this->redirigirIndex();
-        }
-
-        $modelo = new WhatsAppModel();
-
-        if (!$modelo->estructuraDisponible()) {
-            $_SESSION['error_whatsapp'] =
-                'Falta aplicar la migración de WhatsApp.';
-            $this->redirigirIndex();
-        }
-
-        $cuenta = $modelo->resolverCuentaUsuario($usuarioId);
-
-        if (!$cuenta) {
-            $_SESSION['error_whatsapp'] =
-                'No tienes un canal de WhatsApp asignado y no existe un canal predeterminado.';
-            $this->redirigirIndex();
-        }
-
-        try {
-            $conversacionId = $modelo->crearORecuperarConversacion(
-                (int)$cuenta['id'],
-                $numero,
-                (string)(
-                    $aliado['contacto_nombre'] ??
-                    $aliado['nombre_entidad'] ??
-                    'Aliado'
-                ),
-                $usuarioId,
-                $seguimientoId
-            );
-        } catch (Throwable $error) {
-            $_SESSION['error_whatsapp'] = $error->getMessage();
-            $this->redirigirIndex();
-        }
-
-        header(
-            'Location: ' . BASE_URL .
-            'index.php?controller=whatsapp&action=index&conversacion_id=' .
-            $conversacionId
-        );
-        exit;
+        http_response_code(400);
+        exit('Abre la conversación desde el botón de WhatsApp de Aliados.');
     }
 
     public function crearConversacion()
     {
+        $this->validarPermiso('whatsapp.ver');
         $this->validarPermiso('whatsapp.enviar');
         $this->validarMetodoPost();
 
@@ -491,6 +478,10 @@ class WhatsAppController
             ], 403);
         }
 
+        $existente=$modelo->obtenerConversacionPorCuentaTelefono((int)$cuenta['id'],$telefono);
+        if($existente && !$modelo->obtenerConversacion((int)$existente['id'],$usuarioId,tienePermiso('whatsapp.responder_todas'))) {
+            $this->responder(['ok'=>false,'mensaje'=>'El contacto requiere revisión de asignación.'],403);
+        }
         try {
             $conversacionId = $modelo->crearORecuperarConversacion(
                 (int)$cuenta['id'],
@@ -681,6 +672,11 @@ class WhatsAppController
 
     private function validarMetodoPost()
     {
+        $token=$_POST['csrf_token']??($_SERVER['HTTP_X_CSRF_TOKEN']??'');
+        if (!is_string($token) || !is_string($_SESSION['csrf_token']??null) ||
+            $token==='' || !hash_equals($_SESSION['csrf_token'],$token)) {
+            $this->responder(['ok'=>false,'mensaje'=>'La sesión de seguridad cambió. Recarga la página.'],403);
+        }
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
             $this->responder([
                 'ok' => false,
@@ -711,6 +707,10 @@ class WhatsAppController
 
     private function responder($datos, $codigoHttp = 200)
     {
+        if($this->envioId!==null) {
+            $_SESSION['whatsapp_envios'][$this->envioId]['respuesta']=$datos;
+            $_SESSION['whatsapp_envios'][$this->envioId]['http']=(int)$codigoHttp;
+        }
         http_response_code((int)$codigoHttp);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(

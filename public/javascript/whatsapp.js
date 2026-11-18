@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let conversationId = Number(root.dataset.conversationId || 0);
     let lastMessageId = Number(root.dataset.lastMessageId || 0);
     let pollTimer = null;
+    let consultando=false,enviando=false;
+    let intentoEnvio=null;
 
     const messagesContainer = root.querySelector('[data-whatsapp-messages]');
     const emptyChat = root.querySelector('[data-whatsapp-chat-empty]');
@@ -60,7 +62,11 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const requestJson = async function (url, options) {
-        const response = await fetch(url, options || {});
+        const opts={credentials:'same-origin',...(options||{})};
+        opts.headers={...(opts.headers||{}),'X-CSRF-Token':String(window.IMPE_CSRF_TOKEN||''),'X-Requested-With':'fetch'};
+        let response;
+        try {response=await fetch(url,opts);}
+        catch {return {ok:false,mensaje:'No se pudo confirmar la operación. Revisa la conversación antes de reintentar.'};}
         let data = null;
 
         try {
@@ -72,6 +78,14 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         }
 
+        if(response.status===401 || response.status===403){
+            if(messagesContainer)messagesContainer.replaceChildren();
+            if(messageInput)messageInput.disabled=true;
+            if(sendButton)sendButton.disabled=true;
+            if(templateButton)templateButton.disabled=true;
+            if(pollTimer)window.clearInterval(pollTimer);
+            setComposerFeedback(data?.mensaje||'Tu acceso cambió. Recarga para continuar.',true);
+        }
         if (!response.ok && data && typeof data === 'object') {
             data.codigo_http = response.status;
         }
@@ -314,10 +328,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const pollMessages = async function () {
-        if (conversationId <= 0) {
-            return;
-        }
-
+        if (conversationId <= 0 || consultando || document.hidden) return;
+        consultando=true;
         const data = await requestJson(
             endpoint('mensajes', {
                 conversacion_id: conversationId,
@@ -325,9 +337,8 @@ document.addEventListener('DOMContentLoaded', function () {
             })
         );
 
-        if (!data.ok) {
-            return;
-        }
+        consultando=false;
+        if (!data.ok) return;
 
         appendMessages(data.mensajes || []);
         updateOutgoingStatuses(data.estados_salida || []);
@@ -361,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function () {
     sendForm?.addEventListener('submit', async function (event) {
         event.preventDefault();
 
-        if (conversationId <= 0 || !messageInput || !sendButton) {
+        if (conversationId <= 0 || !messageInput || !sendButton || enviando || messageInput.disabled) {
             return;
         }
 
@@ -375,6 +386,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData();
         formData.set('conversacion_id', String(conversationId));
         formData.set('mensaje', text);
+        if(!intentoEnvio || intentoEnvio.text!==text)intentoEnvio={text,id:crypto.randomUUID()};
+        formData.set('request_id',intentoEnvio.id);
+        enviando=true;
 
         sendButton.disabled = true;
 
@@ -386,6 +400,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         );
 
+        enviando=false;
+        if(data.ok || data.codigo_http)intentoEnvio=null;
         if (!data.ok) {
             setComposerFeedback(
                 data.mensaje || 'No fue posible enviar el mensaje.',
@@ -394,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (data.requiere_plantilla) {
                 updateWindowState(false);
-            } else {
+            } else if(!data.aceptado_por_meta && data.codigo_http!==401 && data.codigo_http!==403) {
                 sendButton.disabled = false;
             }
 
@@ -415,9 +431,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     templateButton?.addEventListener('click', async function () {
-        if (conversationId <= 0) {
-            return;
-        }
+        if (conversationId <= 0 || templateButton.disabled) return;
 
         templateButton.disabled = true;
         const original = templateButton.innerHTML;
