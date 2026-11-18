@@ -2,6 +2,7 @@
 if(PHP_SAPI!=='cli' || getenv('IMPE_WHATSAPP_CONTEXT_TEST')!=='YES')exit(2);
 mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
 putenv('IMPE_BASE_URL=https://wa.test/');
+if($helper=getenv('IMPE_WA_PERMISSION_FIXTURE'))require_once $helper;
 require_once __DIR__.'/../app/models/WhatsAppModel.php';
 function waCheck(bool $v,string $why): void {if(!$v)throw new RuntimeException($why);}
 function waDeny(callable $fn): void {try{$fn();}catch(DomainException $e){return;}throw new RuntimeException('Se aceptó un acceso indebido.');}
@@ -94,6 +95,11 @@ try{
   $p=proc_open(['py',__DIR__.'/publicar_whatsapp_contextual_test.py',$schema],[1=>['pipe','w'],2=>['pipe','w']],$pipes);
   $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
   waCheck(proc_close($p)===0,'publicación: '.$out.$err);waCheck($antes===$digest(),'publicación conserva datos');echo $out;
+ }
+ if(getenv('IMPE_WA_HOST_COMPAT_TEST')==='YES') {
+  $p=proc_open(['py',__DIR__.'/publicar_whatsapp_hostinger_compat_test.py',$schema],[1=>['pipe','w'],2=>['pipe','w']],$pipes);
+  $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+  waCheck(proc_close($p)===0,'compatibilidad Hostinger: '.$out.$err);echo $out;
  }
  if($dir=getenv('IMPE_WA_RENDER_DIR')){
   if(!is_dir($dir))mkdir($dir,0700,true);

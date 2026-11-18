@@ -45,6 +45,14 @@ Opciones:
 
 Conservar la entrega privada y la ruta `ROLLBACK_BACKUP`. Si CHECK bloquea una personalización, revisar esa variante antes de publicar: no ampliar la lista de hashes sin revisar el archivo.
 
+### Variante de Hostinger auditada
+
+Para las bases compartidas el 18 de noviembre, usar `tools/publicar_whatsapp_contextual_compatible_hostinger.py` con las mismas opciones y confirmaciones. Reconoce las versiones exactas de PermissionHelper, AdminRolePolicy, SupervisionRolePolicy e index.php y las conserva byte por byte. No modifica los permisos de Respaldo, la conexión compartida, el manejador de fallos temporales, las rutas de Agenda/Inscritos ni la protección CSRF de Correo Marketing.
+
+Incluye dos vistas adaptadas, con hashes propios: el tablero parte de la versión de tarjetas realmente instalada, sin exigir el cambio anterior de ubicación de notificaciones; Aliados conserva sus iconos, avance y respuestas de difusión, historial desplazable y parcial de avance. Las únicas modificaciones de esas vistas son el acceso contextual de WhatsApp y la carga de su cliente. La prueba de reversión textual recupera exactamente las vistas originales auditadas.
+
+`tests/fixtures/whatsapp_hostinger_20261118.py` reconstruye las trece bases y compara cada SHA-256 con la auditoría. `tests/publicar_whatsapp_hostinger_compat_test.py` comprueba la publicación, rechazo de variantes desconocidas y reversión contra esas bases con MariaDB sintética. `tests/whatsapp_hostinger_compat_runtime.py` prepara una copia desechable con las políticas y vistas adaptadas, y ejecuta las pruebas de chat/HTTP, permisos, navegador y cinco etapas del embudo. No utiliza credenciales ni datos de producción.
+
 ## Verificación y límites
 
 Pruebas realizadas con MariaDB local desechable y datos sintéticos: reutilización de chat, asignaciones/territorio, consentimiento, permisos globales separados, entradas desconocidas y ambiguas, eventos repetidos, bloqueo de salida, CSRF, HTTP real e idempotencia. El transporte Meta de los tests HTTP se sustituye expresamente por un fixture: no se enviaron mensajes reales. Se comprobaron publicación, metadatos, respaldo, idempotencia, reversión y fallo parcial, conservando el contenido de mensajes/asignaciones/enlaces y la configuración local. Regresión de tarjetas y supervisión comercial aprobada.

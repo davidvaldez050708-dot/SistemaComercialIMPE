@@ -28,6 +28,7 @@ $_SESSION['usuario_id']=$uid;$_SESSION['rol_id']=$rol;
 $_SESSION['permisos']=['whatsapp.ver','whatsapp.enviar','ventas.embudo.ver',...($uid===22||$uid===1?['whatsapp.gestionar_conversaciones']:[])];
 $_SESSION['csrf_token']="""+phpstr(token)+""";
 require """+phpstr(root/'config/config.php')+""";
+if($helper=getenv('IMPE_WA_PERMISSION_FIXTURE'))require_once $helper;
 require """+phpstr(root/'app/controllers/WhatsAppController.php')+""";
 class FixtureWhatsAppApi extends WhatsAppCloudApiService {
  public function enviarTexto($phone,$to,$text){$f="""+phpstr(counter)+""";$n=1+(int)file_get_contents($f);file_put_contents($f,(string)$n);return ['ok'=>true,'wamid'=>'fixture_wa_'.$n,'respuesta'=>[]];}
