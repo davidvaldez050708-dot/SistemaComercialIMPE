@@ -19,9 +19,10 @@
         return {sound: true, browser: supported() && Notification.permission === 'granted'};
     }
     const audio = new Audio(new URL('audio/agenda-aviso.mp3', base).href);
-    audio.volume = 0.7;
+    audio.volume = 1;
     audio.preload = 'none';
     let playing = false, unlocked = true, lastSound = 0;
+    let remainingPlays = 0;
     const soundQueue = new Map();
     let drainingSound = false;
     let schedules = [], offset = 0, presenter = null, lastUpdate = 0, zone = 'America/Mexico_City';
@@ -30,6 +31,7 @@
     async function play() {
         if (!preferences().sound || !unlocked || playing || Date.now() - lastSound < 3000) return false;
         playing = true;
+        remainingPlays = 2;
         let timeout;
         try {
             audio.muted = false;
@@ -41,12 +43,19 @@
             return true;
         } catch (error) {
             if (error?.name === 'NotAllowedError') unlocked = false;
-            audio.pause(); playing = false; return false;
+            audio.pause(); playing = false; remainingPlays = 0; return false;
         }
         finally { clearTimeout(timeout); }
     }
-    audio.addEventListener('ended', () => { playing = false; });
-    audio.addEventListener('error', () => { playing = false; });
+    audio.addEventListener('ended', async () => {
+        if (!playing) return;
+        remainingPlays -= 1;
+        if (remainingPlays > 0) {
+            try { audio.currentTime = 0; await audio.play(); }
+            catch (_) { playing = false; remainingPlays = 0; }
+        } else { playing = false; }
+    });
+    audio.addEventListener('error', () => { playing = false; remainingPlays = 0; });
     function unlock() {
         unlocked = true;
         // No iniciar una reproducción muda que pueda pausar la prueba del usuario.
@@ -55,6 +64,17 @@
     document.addEventListener('pointerdown', unlock);
     document.addEventListener('keydown', unlock);
     const supported = () => window.isSecureContext && 'Notification' in window;
+    document.addEventListener('click', async () => {
+        if (!document.querySelector('[data-agenda-root]') || !supported() ||
+            Notification.permission !== 'default' || read('permiso-escritorio-solicitado', false)) return;
+        write('permiso-escritorio-solicitado', true);
+        try { await Notification.requestPermission(); }
+        catch (_) { /* El rechazo no interrumpe la campana ni el sonido interno. */ }
+    });
+    function queueSound(key) {
+        if (!soundQueue.has(key)) soundQueue.set(key, Date.now());
+        void drainSound();
+    }
     function safeUrl(value) {
         try { const u = new URL(value || '', location.href); return u.origin === location.origin ? u.href : null; }
         catch (_) { return null; }
@@ -82,7 +102,13 @@
             if (preferences().browser && supported() && Notification.permission === 'granted') {
                 try {
                     const notification = new Notification(title, {body: message,
-                        icon: new URL('favicon.ico', base).href, tag: prefix + key, silent: true});
+                        icon: new URL('favicon.ico', base).href, tag: prefix + key,
+                        silent: true, requireInteraction: true});
+                    const duration = Number(item.agenda_comentario_id) > 0 ? 6600 : 12000;
+                    setTimeout(() => notification.close(), duration);
+                    // En segundo plano no se muestra un toast del DOM: el aviso de
+                    // escritorio es la entrega visible que dispara el mismo audio.
+                    if (document.hidden) queueSound(key);
                     notification.onclick = () => {
                         const target = item.url || (item.id
                             ? 'index.php?controller=seguimientoVinculacion&action=detalle&id=' + Number(item.id)
@@ -156,8 +182,7 @@
             const key = item.agenda_alerta_clave || (item.agenda_comentario_id && !item.agenda_comentario_visto_por
                 ? 'comentario:' + item.agenda_comentario_id + ':' + (item.agenda_comentario_evento || 'nuevo') : null);
             if (!key) return;
-            if (!soundQueue.has(key)) soundQueue.set(key, Date.now());
-            void drainSound();
+            queueSound(key);
         },
         canAnnounceComment(item) { return Boolean(item.agenda_comentario_visto_por) || freshComment(item); },
         hasScheduleSource() { return presenter !== null && lastUpdate > 0 && Date.now() - lastUpdate <= 90000; },

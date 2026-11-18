@@ -1,5 +1,9 @@
 # Alertas automáticas de Agenda
 
+Actualización vigente de sonido y duración: [Doble sonido y avisos de escritorio](agenda_doble_sonido_escritorio.md).
+El nuevo cambio aumenta el audio al 100%, lo reproduce dos veces y amplía los
+avisos de Agenda cuatro segundos; el detalle anterior describe la base.
+
 Rama: `codex/agenda-alertas-sonoras`.
 
 ## Comportamiento vigente

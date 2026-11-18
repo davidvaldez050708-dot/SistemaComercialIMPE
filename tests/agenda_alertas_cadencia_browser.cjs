@@ -20,7 +20,7 @@ const source=fs.readFileSync(path.join(root,'public/javascript/agenda_alertas.js
     window.IMPE_CURRENT_USER_ID=user;window.plays=0;window.visuals=[];window.permissionRequests=0;window.busy=false;
     window.allowAudio=false;document.addEventListener('pointerdown',()=>{window.allowAudio=true;});
     localStorage.setItem('impe:agenda-alertas:'+user+':preferencias',JSON.stringify({sound:false,lead:5,browser:false}));
-    if(real){const Native=window.Audio;window.Audio=function(src){const a=new Native(src);window.audioReal=a;return a;};}
+    if(real){const Native=window.Audio;window.Audio=function(src){const a=new Native(src);a.addEventListener('playing',()=>{window.audioStarts=(window.audioStarts||0)+1;});window.audioReal=a;return a;};}
     else window.Audio=class extends EventTarget{play(){if(!window.allowAudio)return Promise.reject(new DOMException('Primer gesto requerido','NotAllowedError'));if(window.blockAudio)return Promise.reject(Error('bloqueado'));window.plays++;setTimeout(()=>this.dispatchEvent(new Event('ended')),300);return Promise.resolve();}pause(){}};
     window.Notification=class {static permission='denied';static requestPermission(){window.permissionRequests++;return Promise.resolve('denied');}};
    },{user,real});
@@ -41,11 +41,11 @@ const source=fs.readFileSync(path.join(root,'public/javascript/agenda_alertas.js
    for(let i=0;i<phases.length;i++){
     if(i)await p.clock.fastForward((phases[i-1]-phases[i])*60000);
     await ingest(p,item);await p.waitForFunction(n=>window.visuals.length===n,i+1);
-    await p.waitForFunction(n=>window.plays===n,i+1);
+    await p.waitForFunction(n=>window.plays===n,(i+1)*2);
     assert.match(await p.evaluate(()=>window.visuals.at(-1).mensaje),phases[i]?new RegExp('En '+phases[i]+' minuto'):/Comienza ahora/);
     for(let q=0;q<3;q++)await ingest(p,item);
     assert.equal(await p.evaluate(()=>window.visuals.length),i+1,'No repetir fase al consultar');
-    assert.equal(await p.evaluate(()=>window.plays),i+1,'Un sonido por fase');
+    assert.equal(await p.evaluate(()=>window.plays),(i+1)*2,'Dos sonidos por fase');
    }
    assert.equal(await p.evaluate(()=>window.permissionRequests),0,'No solicitar activación');
    assert.equal(await p.evaluate(()=>window.IMPEAgendaAlerts.preferences().sound),true,'Ignorar ajuste antiguo desactivado');
@@ -57,22 +57,23 @@ const source=fs.readFileSync(path.join(root,'public/javascript/agenda_alertas.js
   const p=await fixture(7);const item={reunion_id:7,agenda_horario_at:await p.evaluate(()=>Date.now()/1000+600)};
   await ingest(p,item);await p.waitForFunction(()=>window.visuals.length===1);
   assert.equal(await p.evaluate(()=>window.plays),0);
-  await p.click('#agenda');await p.waitForFunction(()=>window.plays===1);
+  await p.click('#agenda');await p.waitForFunction(()=>window.plays===2);
   const busy=await fixture(8);await busy.click('#agenda');await busy.evaluate(()=>window.busy=true);
   await ingest(busy,{reunion_id:8,agenda_horario_at:await busy.evaluate(()=>Date.now()/1000+600)});
   await busy.waitForTimeout(50);assert.equal(await busy.evaluate(()=>window.plays),0,'Sin sonido antes del toast');
-  await busy.evaluate(()=>window.busy=false);await busy.clock.runFor(1000);await busy.waitForFunction(()=>window.plays===1);
+  await busy.evaluate(()=>window.busy=false);await busy.clock.runFor(1000);await busy.waitForFunction(()=>window.plays===2);
   const real=await fixture(9,true);await real.click('#agenda');
   await ingest(real,{reunion_id:9,agenda_horario_at:await real.evaluate(()=>Date.now()/1000+600)});
   await real.waitForFunction(()=>window.audioReal.currentTime>0&&!window.audioReal.muted);
-  assert.equal(await real.evaluate(()=>window.audioReal.volume),0.7);
+  await real.waitForFunction(()=>window.audioStarts===2);
+  assert.equal(await real.evaluate(()=>window.audioReal.volume),1);
   const integration=await fixture(10);await integration.click('#agenda');
   await integration.route('http://localhost/pendientes',route=>route.fulfill({json:{ok:true,total:1,recordatorios:[{
    agenda_comentario_id:88,agenda_comentario_evento:'88|nuevo',nombre_entidad:'Comentario de prueba',accion:'Revisar agenda',estado:'normal'
   }]}}));
   await integration.evaluate(()=>document.body.insertAdjacentHTML('beforeend','<div data-reminder-root data-reminder-endpoint="/pendientes"><span data-reminder-badge></span><div data-reminder-content></div></div>'));
   await integration.addScriptTag({url:'http://localhost/public/javascript/recordatorios.js'});
-  await integration.locator('.agenda-comment-toast').waitFor();await integration.waitForFunction(()=>window.plays===1);
+  await integration.locator('.agenda-comment-toast').waitFor();await integration.waitForFunction(()=>window.plays===2);
   assert.match(await integration.locator('[data-reminder-content]').innerText(),/Comentario de prueba/);
   assert.ok(!fs.readFileSync(path.join(root,'app/views/seguimiento_vinculacion/agenda.php'),'utf8').includes('data-agenda-alertas'),'Sin panel de activación');
   console.log('OK: reuniones y comentarios a 30/10/5/1 minutos, vencimiento, sonido automático al aparecer toast, primer gesto, audio real, deduplicación y campana.');

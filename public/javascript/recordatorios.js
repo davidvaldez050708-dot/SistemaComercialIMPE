@@ -405,7 +405,8 @@
                 toast.remove();
                 if (toastActivo === toast) toastActivo = null;
                 mostrarSiguienteComentarioNuevo();
-            }, comentario ? DURACION_COMENTARIO : DURACION_TOAST);
+            }, (comentario ? DURACION_COMENTARIO : DURACION_TOAST) +
+                (comentario || Number(aviso.reunion_id) > 0 || aviso.agenda_alerta_clave ? 4000 : 0));
             return true;
         };
 

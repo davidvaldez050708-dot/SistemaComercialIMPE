@@ -66,7 +66,7 @@ async function popup(p,timed=false){if(timed)await p.clock.runFor(period+1);awai
    assert.match(await p.locator('.agenda-comment-toast').textContent(),/Nuevo comentario.*Susana Molina/s);
    assert.equal(f.reads.length,0,'Mostrar toast no marca leído');
    assert.equal(await p.evaluate(()=>window.IMPE_REMINDER_STATUS().lastShownAt),0,'Novedad no consume el turno de otras fuentes');
-   await p.clock.runFor(2599);assert.equal(await p.locator('.agenda-comment-toast').count(),1);
+   await p.clock.runFor(6599);assert.equal(await p.locator('.agenda-comment-toast').count(),1);
    await p.clock.runFor(1);assert.equal(await p.locator('.agenda-comment-toast').count(),0);
    await p.clock.runFor(period+1);assert.equal(await p.locator('.agenda-comment-toast').count(),0,'Sin hora se muestra una vez');
    await p.reload();await p.locator('.topbar-reminder-item[data-agenda-comentario-id="41"]').waitFor();
@@ -97,12 +97,12 @@ async function popup(p,timed=false){if(timed)await p.clock.runFor(period+1);awai
    await p.waitForURL('**/*comentario_id=41*');assert.equal(f.reads.length,2);assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
   {
-   const f=await fixture(browser,{timed:true}),p=f.page;await popup(p,true);await p.clock.runFor(2600);
+   const f=await fixture(browser,{timed:true}),p=f.page;await popup(p,true);await p.clock.runFor(6600);
    const left=await p.evaluate(period=>window.IMPE_REMINDER_STATUS().lastShownAt+period-Date.now(),period);
    await p.clock.runFor(left+1);await p.locator('.agenda-comment-toast').waitFor({state:'visible'});
    assert.match(await p.locator('.agenda-comment-toast').textContent(),/Recordatorio de agenda/);
    assert.equal(f.reads.length,0);assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
-  console.log('OK: '+cases+' escenarios; comentario al detectar, 2600 ms, lectura CSRF y confirmación al navegar, no repetición, otros turnos intactos y recurrencia con hora.');
+  console.log('OK: '+cases+' escenarios; comentario al detectar, 6600 ms, lectura CSRF y confirmación al navegar, no repetición, otros turnos intactos y recurrencia con hora.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
