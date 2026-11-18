@@ -23,25 +23,32 @@
     audio.volume = 0.7;
     audio.preload = 'none';
     let playing = false, unlocked = false, lastSound = 0;
+    const soundQueue = new Map();
+    let drainingSound = false;
     let schedules = [], offset = 0, presenter = null, lastUpdate = 0, zone = 'America/Mexico_City';
     const visualQueue = new Map();
     let draining = false;
-    function play() {
-        if (!preferences().sound || !unlocked || playing || Date.now() - lastSound < 3000) return;
+    async function play() {
+        if (!preferences().sound || !unlocked || playing || Date.now() - lastSound < 3000) return false;
         playing = true;
-        lastSound = Date.now();
-        audio.currentTime = 0;
-        Promise.resolve(audio.play()).catch(() => { playing = false; });
+        let timeout;
+        try {
+            audio.muted = false;
+            audio.currentTime = 0;
+            await Promise.race([audio.play(), new Promise((_, reject) => {
+                timeout = setTimeout(() => reject(Error('Audio no disponible')), 3000);
+            })]);
+            lastSound = Date.now();
+            return true;
+        } catch (_) { audio.pause(); playing = false; return false; }
+        finally { clearTimeout(timeout); }
     }
     audio.addEventListener('ended', () => { playing = false; });
     audio.addEventListener('error', () => { playing = false; });
     function unlock() {
-        if (unlocked) return;
-        // La llamada ocurre dentro del gesto del usuario; no reproducir avisos antiguos al desbloquear.
-        audio.muted = true;
-        Promise.resolve(audio.play()).then(() => {
-            audio.pause(); audio.currentTime = 0; audio.muted = false; unlocked = true;
-        }).catch(() => { audio.muted = false; });
+        unlocked = true;
+        // No iniciar una reproducción muda que pueda pausar la prueba del usuario.
+        void drainSound();
     }
     document.addEventListener('pointerdown', unlock);
     document.addEventListener('keydown', unlock);
@@ -51,23 +58,27 @@
         catch (_) { return null; }
     }
     async function claim(key, action) {
-        const deliver = () => {
+        const deliver = async () => {
             const now = Date.now(), ledger = read('entregas', {});
             if (ledger[key]) return true;
-            if (action() === false) return false;
+            if (await action() === false) return false;
             ledger[key] = now;
             write('entregas', Object.fromEntries(Object.entries(ledger)
                 .filter(([, at]) => now - at < 7 * 86400000).slice(-1000)));
             return true;
         };
         // Web Locks serializa la entrega entre pestañas del mismo usuario, sin retener workers PHP.
-        if (navigator.locks) return navigator.locks.request(prefix + 'entrega', deliver);
+        if (navigator.locks?.request) {
+            try { return await navigator.locks.request(prefix + 'entrega', deliver); }
+            catch (error) { console.warn('No fue posible coordinar la alerta entre pestañas.', error); return false; }
+        }
         return deliver();
     }
     function deliver(item, key, title, message, visual) {
         if (visual && !visualQueue.has(key)) visualQueue.set(key, {item, title, message});
-        void claim(key, () => {
-            play();
+        if (preferences().sound && !soundQueue.has(key)) soundQueue.set(key, Date.now());
+        void drainSound();
+        void claim('browser:' + key, () => {
             if (preferences().browser && supported() && Notification.permission === 'granted') {
                 try {
                     const notification = new Notification(title, {body: message,
@@ -79,9 +90,23 @@
                         const url = safeUrl(target);
                         window.focus(); if (url) location.href = url; notification.close();
                     };
+                    return true;
                 } catch (_) { /* La campana sigue disponible, incluso sin soporte del SO. */ }
             }
+            return false;
         });
+    }
+    async function drainSound() {
+        if (drainingSound || !unlocked || !preferences().sound) return;
+        drainingSound = true;
+        try {
+            for (const [key, received] of soundQueue) {
+                if (Date.now() - received > 90000) { soundQueue.delete(key); continue; }
+                const played = await claim('audio:' + key, play);
+                if (!played) break;
+                soundQueue.delete(key);
+            }
+        } finally { drainingSound = false; }
     }
     async function drainVisual() {
         if (draining || document.hidden || !presenter) return;
@@ -115,6 +140,7 @@
                 description + ' · ' + hora + ' · ' + (minutes ? 'En ' + minutes + (minutes === 1 ? ' minuto' : ' minutos') : 'Comienza ahora') + ' · Ver en Agenda', true);
         }
         void drainVisual();
+        void drainSound();
     }
     function freshComment(item) {
         const baseline = read('inicio', null);
@@ -126,7 +152,8 @@
     window.IMPEAgendaAlerts = {
         preferences,
         canAnnounceComment(item) { return Boolean(item.agenda_comentario_visto_por) || freshComment(item); },
-        suspend() { schedules = []; visualQueue.clear(); lastUpdate = 0; },
+        hasScheduleSource() { return presenter !== null && lastUpdate > 0 && Date.now() - lastUpdate <= 90000; },
+        suspend() { schedules = []; visualQueue.clear(); soundQueue.clear(); lastUpdate = 0; },
         setPresenter(fn) { presenter = fn; },
         ingest(data) {
             if (data.usuario_id && Number(data.usuario_id) !== user) {
@@ -176,8 +203,11 @@
             }
             save();
         });
-        panel.querySelector('[data-agenda-probar-sonido]').addEventListener('click', () => {
-            unlocked = true; play(); status.textContent = 'Prueba de sonido solicitada. Si no se escucha, revisa el audio del navegador.';
+        panel.querySelector('[data-agenda-probar-sonido]').addEventListener('click', async () => {
+            unlocked = true;
+            const played = await play();
+            status.textContent = played ? 'Sonido reproducido. Volumen: 70%.' :
+                'No se pudo iniciar el sonido. Comprueba el permiso de audio, el archivo MP3 o espera a que termine el aviso actual.';
         });
         window.addEventListener('storage', event => { if (event.key === prefix + 'preferencias') render(); });
     }

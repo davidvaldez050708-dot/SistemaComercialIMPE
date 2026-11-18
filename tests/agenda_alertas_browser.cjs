@@ -86,6 +86,10 @@ const html = `<!doctype html><html><body><div data-agenda-alertas>
   await blocked.evaluate(()=>window.IMPEAgendaAlerts.ingest({horarios:[{reunion_id:66,agenda_horario_at:Date.now()/1000}]}));
   await blocked.waitForFunction(()=>window.notices.length===1&&window.visuals.length===1);
   assert.equal(await blocked.evaluate(()=>window.plays),0,'Autoplay rechazado no rompe avisos');
+  await blocked.evaluate(()=>{window.blockPlay=false;document.dispatchEvent(new PointerEvent('pointerdown'));});
+  await blocked.waitForFunction(()=>window.plays===1);
+  await blocked.evaluate(()=>window.IMPEAgendaAlerts.ingest({horarios:[{reunion_id:66,agenda_horario_at:Date.now()/1000}]}));
+  assert.equal(await blocked.evaluate(()=>window.plays),1,'Reintentar audio bloqueado sin duplicar notificación');
   const unsupported=await pageFor(15);
   await unsupported.evaluate(()=>delete window.Notification);
   await unsupported.click('[name=agenda_navegador]');
@@ -97,6 +101,18 @@ const html = `<!doctype html><html><body><div data-agenda-alertas>
   const decode=await context.newPage();await decode.goto('http://localhost/audio');
   const duration=await decode.evaluate(()=>new Promise((resolve,reject)=>{const a=document.createElement('audio');a.onloadedmetadata=()=>resolve(a.duration);a.onerror=()=>reject(Error('MP3 inválido'));a.src='/public/audio/agenda-aviso.mp3';}));
   assert.ok(duration>0&&duration<2);
+  const realAudio = await context.newPage();
+  await realAudio.goto('http://localhost/audio-real');
+  await realAudio.evaluate(()=>{
+   window.IMPE_CURRENT_USER_ID=18;
+   const NativeAudio=window.Audio;
+   window.Audio=function(src){const a=new NativeAudio(src);window.realAgendaAudio=a;return a;};
+  });
+  await realAudio.addScriptTag({url:'http://localhost/public/javascript/agenda_alertas.js'});
+  await realAudio.click('[data-agenda-probar-sonido]');
+  await realAudio.waitForFunction(()=>document.querySelector('[data-agenda-alertas-status]').textContent.includes('Sonido reproducido'));
+  assert.equal(await realAudio.evaluate(()=>window.realAgendaAudio.muted),false,'Prueba real sin reproducción muda concurrente');
+  assert.equal(await realAudio.evaluate(()=>window.realAgendaAudio.volume),0.7);
   const integration = await pageFor(11);
   await integration.route('http://localhost/pendientes', route=>route.fulfill({json:{ok:true,total:2,servidor_at:Date.now()/1000,
    recordatorios:[{id:28,nombre_entidad:'Seguimiento conservado',accion:'Volver a llamar',estado:'normal'},
@@ -111,6 +127,39 @@ const html = `<!doctype html><html><body><div data-agenda-alertas>
   assert.match(await integration.locator('[data-reminder-content]').innerText(),/Seguimiento conservado/);
   assert.match(await integration.locator('[data-reminder-content]').innerText(),/Comentario antiguo conservado/);
   assert.equal(await integration.locator('.agenda-comment-toast').count(),0,'Historial visible sin anunciarlo como nuevo');
+  for(const mode of ['ausente','fallo']) {
+   const fallback=await pageFor(mode==='ausente'?21:22);
+   const errors=[];fallback.on('pageerror',e=>errors.push(e.message));
+   await fallback.evaluate(mode=>{window.IMPEAgendaAlerts=mode==='ausente'?undefined:{
+    ingest(){throw Error('Fallo opcional simulado');},setPresenter(){},suspend(){},preferences(){return {};}
+   };},mode);
+   await fallback.route('http://localhost/pendientes',route=>route.fulfill({json:{ok:true,total:1,
+    recordatorios:[{agenda_comentario_id:99,agenda_comentario_evento:'99|nuevo',nombre_entidad:'Aviso conservado',accion:'Comentario',estado:'normal'}]}}));
+   await fallback.evaluate(()=>document.body.insertAdjacentHTML('beforeend','<div data-reminder-root data-reminder-endpoint="/pendientes"><span data-reminder-badge></span><div data-reminder-content></div></div>'));
+   await fallback.addScriptTag({url:'http://localhost/public/javascript/recordatorios.js'});
+   await fallback.locator('.agenda-comment-toast').waitFor();
+   assert.match(await fallback.locator('[data-reminder-content]').innerText(),/Aviso conservado/);
+   assert.deepEqual(errors,[],'Un fallo opcional no bloquea la campana');
+  }
+  const commercial=await pageFor(23);
+  let queries=0,release;
+  await commercial.route('http://localhost/comercial', async route=>{
+   queries++;
+   const sequence=queries;
+   if(sequence===1)await new Promise(resolve=>{release=resolve;});
+   return route.fulfill({json:{ok:true,comercial_ok:true,total:1,recordatorios:[{
+    comercial_id:sequence,actividad_ciclo:1,fecha:'2026-11-18 12:00:00',estado:'normal',
+    nombre_entidad:sequence===1?'Resultado obsoleto':'Resultado comercial actualizado',accion:'Seguimiento comercial'
+   }]}});
+  });
+  await commercial.evaluate(()=>document.body.insertAdjacentHTML('beforeend','<div data-reminder-root data-reminder-endpoint="/comercial"><span data-reminder-badge></span><div data-reminder-content></div></div>'));
+  await commercial.addScriptTag({url:'http://localhost/public/javascript/recordatorios.js'});
+  while(!release)await commercial.waitForTimeout(10);
+  await commercial.evaluate(()=>window.dispatchEvent(new CustomEvent('impe:comercial-actividad-refresh')));
+  release();
+  await commercial.getByText('Resultado comercial actualizado',{exact:false}).waitFor();
+  assert.doesNotMatch(await commercial.locator('[data-reminder-content]').innerText(),/Resultado obsoleto/);
+  assert.equal(queries,2,'Conservar refresco comercial pendiente sin perder solicitudes');
   console.log('Agenda: preferencias, anticipación, vencimiento, sonido, comentarios, autor, historial, pestañas, permisos y MP3 verificados.');
  } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exit(1);});

@@ -8,7 +8,8 @@ La consulta autenticada existente de `ReminderController::pendientes` sigue
 siendo la fuente de permisos y notificaciones. No se crean tablas, cron, servicios
 externos, Web Push ni un segundo sondeo HTTP. Se conserva el intervalo de consulta
 existente de 60 segundos; un reloj local comprueba los horarios cada segundo.
-Web Locks evita consultas de campana superpuestas entre pestañas compatibles.
+Se conserva el control de consultas en curso y de refrescos comerciales de la
+versión instalada. Web Locks coordina la entrega multimedia entre pestañas.
 
 La configuración está en Agenda → **Notificaciones de la Agenda**. Permite
 sonidos, anticipación de 5/10/15/30 minutos (10 por defecto), notificaciones del
@@ -49,7 +50,12 @@ tonos de 660/880 Hz; el codificador temporal no se instala en el CRM.
 Se usa `HTMLAudioElement`, sin sonidos superpuestos y con un margen de tres
 segundos entre reproducciones. El navegador puede exigir un gesto previo. El
 botón **Probar sonido** permite comprobarlo. No se reproducen después sonidos
-antiguos bloqueados por autoplay.
+antiguos bloqueados por autoplay. Una alerta pendiente conserva su intento de
+audio hasta 90 segundos si el navegador bloqueó la reproducción; sólo se registra
+como reproducida después de que `play()` tenga éxito. Un gesto permite reintentar.
+La prueba del botón indica si realmente se inició el audio y no utiliza una
+reproducción muda concurrente. Una carga de audio que no responde se corta a los
+tres segundos para liberar la coordinación entre pestañas.
 
 Notifications API solo solicita permiso al activar el interruptor. Requiere
 HTTPS/localhost y soporte del navegador. Un rechazo o error conserva los avisos
@@ -97,6 +103,25 @@ del sitio público, comprueba huellas antes y después y revierte ante error.
 Para restaurar, usar el mismo publicador con `--site RUTA --restore RESPALDO`.
 La restauración valida las huellas instaladas y las copias, y se detiene si hubo
 cambios posteriores. No ejecuta SQL ni modifica configuración privada.
+
+## Conciliación con Hostinger, 18 de noviembre de 2026
+
+La copia proporcionada por el usuario de `recordatorios.js` coincide exactamente
+con SHA256 `d96c236c6a39918b08a2e04390a30575e49358015412069ee6329ac31eaab99b`.
+Se conserva como base de conciliación en
+`tests/fixtures/recordatorios_hostinger_20261118.js`. Incluye avisos comerciales,
+reconsulta tras guardar resultados, conservación durante respuestas en curso,
+coordinación comercial entre pestañas y toasts de ocho segundos. La integración
+mantiene esos bloques. El publicador usa esta base sólo para ese archivo y se
+detiene si otra personalización entra en conflicto.
+
+El diagnóstico de SSH mostró que faltaban `agenda_alertas.js` y el MP3: las
+comprobaciones previas no los habían instalado. Eso explica la ausencia del nuevo
+sonido, pero no demuestra la causa de un fallo de notificaciones en el servidor.
+Las pruebas locales verifican campana y toasts con el componente opcional ausente,
+con una excepción simulada y con metadatos de comentarios de una versión anterior.
+También verifican el refresco comercial simultáneo, audio real en Chromium y la
+recuperación de un intento bloqueado, sin consumirlo como si se hubiera escuchado.
 
 Archivos de aplicación modificados: `ReminderController.php`, `ReminderHelper.php`,
 `AgendaComentarioService.php`, `AgendaReunionService.php`, `dashboard_footer.php`,

@@ -10,6 +10,9 @@ import subprocess
 import tempfile
 
 BASE = '714ce7d1'
+BASES_INSTALADAS = {
+    'public/javascript/recordatorios.js': 'tests/fixtures/recordatorios_hostinger_20261118.js'
+}
 RUTAS = (
     'app/controllers/ReminderController.php',
     'app/helpers/ReminderHelper.php',
@@ -93,6 +96,10 @@ def main():
         for name in RUTAS:
             target = destino(site, name)
             old, new = git(repo, BASE, name), git(repo, a.revision, name)
+            if name in BASES_INSTALADAS:
+                old = git(repo, a.revision, BASES_INSTALADAS[name])
+                if old is None:
+                    raise ValueError('Falta la base personalizada para conciliar: ' + name)
             current = lectura(target)
             if new is None:
                 raise ValueError('Falta archivo en la entrega: ' + name)

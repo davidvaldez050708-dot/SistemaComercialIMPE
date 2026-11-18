@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory(prefix='impe-agenda-publicador-') as tmp:
     site.mkdir()
     (site/'index.php').write_text('<?php // replica aislada')
     for name in module.RUTAS:
-        data = module.git(repo, module.BASE, name)
+        data = module.git(repo, 'HEAD', module.BASES_INSTALADAS[name]) if name in module.BASES_INSTALADAS else module.git(repo, module.BASE, name)
         if data is not None:
             target = site/name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -36,6 +36,10 @@ with tempfile.TemporaryDirectory(prefix='impe-agenda-publicador-') as tmp:
     assert before == {n: module.lectura(site/n) for n in module.RUTAS}
     run('--apply', '--backup-root', str(root/'respaldos'))
     assert b'Personalizacion conservada' in controller.read_bytes()
+    installed_js = (site/'public/javascript/recordatorios.js').read_bytes()
+    for token in (b'versionComercial', b'avisosDuranteRefresco',
+                  b'impe:embudo:confirmacion-resultado', b'const DURACION_TOAST = 8000'):
+        assert token in installed_js, 'Se perdió una personalización comercial'
     backup = next((root/'respaldos').iterdir())
     manifest = json.loads((backup/'manifiesto.json').read_text())
     assert all(module.sha(module.lectura(site/n)) == item['despues']
