@@ -165,11 +165,13 @@ class AgendaComentarioService
                 'nombre_entidad'=>!empty($fila['privado'])?'Comentario privado · Sólo tú':'Comentario de '.$fila['autor_nombre'],
                 'accion'=>$vencido?'Recordatorio de agenda: '.$fila['comentario']:'Añadió un comentario a la agenda: '.$fila['comentario'],
                 'fecha'=>$vencido?$fila['recordatorio_at']:$fila['creado_at'],
+                'agenda_autor_id'=>(int)$fila['creado_por'],
+                'agenda_creado_at'=>strtotime($fila['creado_at']),
                 'estado'=>$vencido?'vencida':'normal', 'etiqueta'=>$vencido?'Hora programada':(empty($fila['recordatorio_at'])?'Sin hora':'Comentario nuevo'),
                 'icono'=>'bi-chat-left-text','prioridad'=>$vencido?0:4,
                 'agenda_solo_aviso'=>$soloDirigidos,
                 'url'=>'index.php?controller=agendaReunion&action=index&mes='.substr($fila['fecha'],0,7).'&comentario_id='.(int)$fila['id'].'&dia='.$fila['fecha']];
-            if (!$vencido && empty($fila['recordatorio_atendido_at']) && !empty($fila['recordatorio_at'])) {
+            if (empty($fila['recordatorio_atendido_at']) && !empty($fila['recordatorio_at'])) {
                 $item['agenda_horario_at'] = strtotime($fila['recordatorio_at']);
                 $item['agenda_horario_mensaje'] = $fila['comentario'];
                 $salida['horarios'][] = $item;

@@ -176,6 +176,7 @@ $jsDashboardFooter = [
     'cambiar_password.js',
     'mi_perfil.js',
     'sidebar_scroll_state.js',
+    'agenda_alertas.js',
     'recordatorios.js'
 ];
 

@@ -351,6 +351,7 @@
         const mostrarSiguienteComentarioNuevo = function () {
             if (mostrarSiguienteAvisoHorario()) return true;
             const item = recordatoriosActuales.find(r=>Number(r.agenda_comentario_id)>0 &&
+                (!window.IMPEAgendaAlerts || window.IMPEAgendaAlerts.canAnnounceComment(r)) &&
                 !esRecordatorioVencidoRecurrente(r) && !comentariosMostrados[claveRecordatorio(r)] && Number(r.leida||0)===0);
             if (!item) return false;
             const queued = colaAvisos.find(q=>q.clave===claveRecordatorio(item));
@@ -362,6 +363,7 @@
         };
 
         const mostrarSiguienteAvisoHorario = function () {
+            if (window.IMPEAgendaAlerts) return false;
             let vistos;
             try { vistos = JSON.parse(leerSesion(CLAVE_HORARIOS_MOSTRADOS) || '{}') || {}; }
             catch (_) { vistos = {}; }
@@ -645,8 +647,14 @@
             if (Number.isSafeInteger(ownId) && ownId>0) registrarComentarioMostrado({agenda_comentario_id:ownId,agenda_comentario_evento:ownId+'|nuevo'});
             void consultarRecordatorios();
         });
-        const consultarRecordatorios = async function () {
-            if (consultaEnCurso || document.hidden) {
+        const consultarRecordatorios = async function (conBloqueo) {
+            if (conBloqueo !== true && navigator.locks) {
+                return navigator.locks.request('impe:campana-consulta:' + claveUsuario,
+                    {ifAvailable:true}, function (lock) {
+                        if (lock) return consultarRecordatorios(true);
+                    });
+            }
+            if (consultaEnCurso || (document.hidden && !window.IMPEAgendaAlerts?.preferences().browser)) {
                 return;
             }
 
@@ -684,6 +692,7 @@
                 actualizarColaAvisos(datos.avisos || []);
                 horariosActuales = Array.isArray(datos.horarios) ? datos.horarios : [];
                 desfaseServidor = Number(datos.servidor_at) > 0 ? Number(datos.servidor_at) * 1000 - Date.now() : 0;
+                window.IMPEAgendaAlerts?.ingest(datos);
                 mostrarSiguienteComentarioNuevo();
                 programarSiguienteToastVencido();
                 if (datos.requiere_migracion) {
@@ -697,6 +706,7 @@
                 }
 
             } catch (error) {
+                window.IMPEAgendaAlerts?.suspend();
                 fallosDeCarga += 1;
                 mostrarFalloCarga();
                 console.error('No fue posible actualizar las notificaciones.', error);
@@ -706,6 +716,7 @@
             }
         };
 
+        window.IMPEAgendaAlerts?.setPresenter(mostrarToast);
         consultarRecordatorios();
         window.setInterval(consultarRecordatorios, 60000);
         programarSiguienteToastVencido();

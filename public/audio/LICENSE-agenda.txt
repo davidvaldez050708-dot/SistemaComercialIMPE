@@ -1,0 +1,9 @@
+agenda-aviso.mp3
+
+Sonido original sintetizado para el Sistema Comercial IMPE: mezcla de tonos
+de 660 Hz y 880 Hz con envolvente exponencial, duración aproximada 0.6 segundos.
+No contiene muestras, música ni grabaciones de terceros.
+
+CC0 1.0 Universal: se permite usar, copiar, modificar y distribuir este recurso
+sin atribución ni pagos. El codificador utilizado para crear el archivo no es
+una dependencia de ejecución del sistema.

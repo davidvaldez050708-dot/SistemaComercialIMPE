@@ -714,7 +714,7 @@ class AgendaReunionService
             return [];
         }
         $ahora = new DateTimeImmutable();
-        $filas = $this->repo->horariosProximos($usuario, $ahora->format('Y-m-d H:i:s'),
+        $filas = $this->repo->horariosProximos($usuario, $ahora->modify('-90 seconds')->format('Y-m-d H:i:s'),
             $ahora->modify('+30 minutes')->format('Y-m-d H:i:s'));
         return array_map(static function (array $fila): array {
             return [

@@ -76,6 +76,8 @@ class ReminderController
             // también cuando su campana utiliza el resumen administrativo.
             $resultado['horarios'] = $horarios;
             $resultado['servidor_at'] = time();
+            $resultado['zona_horaria'] = date_default_timezone_get();
+            $resultado['usuario_id'] = $usuarioId;
             try {
                 $comentariosAgenda = new AgendaComentarioService();
                 $novedades = $comentariosAgenda->notificaciones($usuarioId);
@@ -373,6 +375,8 @@ class ReminderController
             'avisos' => array_values($avisos),
             'horarios' => $horarios,
             'servidor_at' => time(),
+            'zona_horaria' => date_default_timezone_get(),
+            'usuario_id' => $usuarioId,
             'recordatorios' => $recordatorios,
             'total' => count($recordatorios)
         ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);

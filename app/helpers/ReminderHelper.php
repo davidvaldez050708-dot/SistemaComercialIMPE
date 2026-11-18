@@ -347,6 +347,8 @@ if (!function_exists('serializarRecordatoriosSeguimiento')) {
                 'nombre_entidad' => (string)($recordatorio['nombre_entidad'] ?? 'Seguimiento'),
                 'accion' => $accion,
                 'fecha' => (string)($recordatorio['proxima_accion_at'] ?? ''),
+                'alerta_at' => !empty($recordatorio['proxima_accion_at'])
+                    ? strtotime($recordatorio['proxima_accion_at']) : null,
                 'etiqueta' => (string)($recordatorio['recordatorio']['etiqueta'] ?? ''),
                 'estado' => (string)($recordatorio['recordatorio']['estado'] ?? 'normal'),
                 'icono' => iconoAccionRecordatorioSeguimiento($accion)
