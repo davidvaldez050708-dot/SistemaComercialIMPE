@@ -50,7 +50,7 @@ $navUrl=$url.($supervisor && $asesorSeleccionado>0?'&asesor='.$asesorSeleccionad
             <?php endif; ?>
             <div class="linkage-call-recordings-list">
             <?php foreach(array_slice($expedientes,0,25) as $fila): ?>
-                <article class="linkage-call-recording-card">
+                <article class="linkage-call-recording-card" data-asignacion-id="<?= (int)$fila['asignacion_id'] ?>">
                     <span class="linkage-call-recording-card-icon"><i class="bi bi-person-vcard" aria-hidden="true"></i></span>
                     <div class="linkage-call-recording-body">
                         <div class="linkage-call-recording-top">
@@ -74,3 +74,5 @@ $navUrl=$url.($supervisor && $asesorSeleccionado>0?'&asesor='.$asesorSeleccionad
         </section>
     </div>
 </div>
+
+<?php require __DIR__.'/notificacion_destino.php'; ?>

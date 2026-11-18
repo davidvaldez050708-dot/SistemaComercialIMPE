@@ -198,6 +198,7 @@ final class EmbudoComercialRepository
             ?self::ACTIVAS
             :[$vista==='recuperacion'?'RECUPERACION':'DESCARTADO'];
         $datos=[];
+        $ordenTarjetas=self::ordenTarjetas(false);
         foreach ($etapas as $etapa) {
             $total=$conteos[$etapa]??0;
             $paginas=max(1,(int)ceil($total/self::POR_COLUMNA));
@@ -227,16 +228,7 @@ final class EmbudoComercialRepository
             $items=$this->rows(
                 "$campos $from AND CASE WHEN e.etapa='EN_CONTACTO' THEN 'RECUPERACION'
                       ELSE COALESCE(e.etapa,'NUEVO') END=?
-                 ORDER BY
-                  CASE WHEN COALESCE(ag.proxima_accion_at,a.proxima_accion_at) IS NOT NULL
-                           AND COALESCE(ag.proxima_accion_at,a.proxima_accion_at)<UTC_TIMESTAMP()
-                          THEN 0
-                       WHEN ag.revision_fecha IS NOT NULL AND ag.revision_fecha<? THEN 0
-                       ELSE 1 END,
-                  COALESCE(ag.proxima_accion_at,a.proxima_accion_at,
-                           CONCAT(ag.revision_fecha,' 12:00:00'),
-                           CONCAT(a.fecha_trabajo,' 12:00:00'),a.asignado_at),
-                  a.id
+                 ORDER BY $ordenTarjetas
                  LIMIT ? OFFSET ?",
                 [...$args,$etapa,
                 (new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))->format('Y-m-d'),
@@ -407,6 +399,22 @@ final class EmbudoComercialRepository
         return $p;
     }
 
+    private static function ordenTarjetas(bool $actividadV3): string
+    {
+        $ordenActividad=$actividadV3?'WHEN av.fecha_pendiente<UTC_TIMESTAMP() THEN 0':'';
+        return "CASE
+                   {$ordenActividad}
+                   WHEN COALESCE(ag.proxima_accion_at,a.proxima_accion_at)
+                         <UTC_TIMESTAMP() THEN 0
+                   WHEN ag.revision_fecha IS NOT NULL
+                         AND ag.revision_fecha<? THEN 0
+                   ELSE 1 END,
+                   COALESCE(ag.proxima_accion_at,a.proxima_accion_at,
+                      CONCAT(ag.revision_fecha,' 12:00:00'),
+                      CONCAT(a.fecha_trabajo,' 12:00:00'),a.asignado_at),
+                   a.id";
+    }
+
     public function listadoV3Operativo(int $usuarioId,array $f,array $paginas,bool $supervisor=false): array
     {
         if($usuarioId<1 || (int)($_SESSION['usuario_id']??0)!==$usuarioId ||
@@ -437,7 +445,7 @@ final class EmbudoComercialRepository
             ?'av.tipo_actividad actividad_tipo,av.detalle_actividad actividad_detalle,av.id actividad_version,av.fecha_pendiente actividad_pendiente,av.completada_at actividad_completada,':'';
         $campoAsesor=$supervisor
             ?"(SELECT TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) FROM usuarios u WHERE u.id=a.asesor_id) asesor_nombre,":'';
-        $ordenActividad=$actividadV3?'WHEN av.fecha_pendiente<UTC_TIMESTAMP() THEN 0':'';
+        $ordenTarjetas=self::ordenTarjetas($actividadV3);
         $expr=self::clasificacionV3OperativoSql();
         $totales=[];
         foreach($this->rows("SELECT $expr grupo, COUNT(*) total
@@ -469,17 +477,7 @@ final class EmbudoComercialRepository
                      WHERE o.prospecto_id=p.id ORDER BY o.id DESC LIMIT 1)
                      horario_contacto
                  $from AND $expr=?
-                 ORDER BY CASE
-                   $ordenActividad
-                   WHEN COALESCE(ag.proxima_accion_at,a.proxima_accion_at)
-                         <UTC_TIMESTAMP() THEN 0
-                   WHEN ag.revision_fecha IS NOT NULL
-                         AND ag.revision_fecha<? THEN 0
-                   ELSE 1 END,
-                   COALESCE(ag.proxima_accion_at,a.proxima_accion_at,
-                      CONCAT(ag.revision_fecha,' 12:00:00'),
-                      CONCAT(a.fecha_trabajo,' 12:00:00'),a.asignado_at),
-                   a.id
+                 ORDER BY $ordenTarjetas
                  LIMIT ? OFFSET ?",
                 array_merge($args,[$key,
                     (new DateTimeImmutable('today',
@@ -541,6 +539,64 @@ final class EmbudoComercialRepository
         ];
     }
 
+    /** Localiza la asignación exacta sin cambiar datos, filtros guardados ni tareas. */
+    public function localizarNotificacion(int $usuario,bool $supervisor,int $asignacion,int $ciclo): ?array
+    {
+        if ($usuario<1 || (int)($_SESSION['usuario_id']??0)!==$usuario ||
+            ($supervisor?!EmbudoComercialAcceso::esSupervisor():
+                ((int)($_SESSION['rol_id']??0)!==3 || !tienePermiso('ventas.embudo.ver')))) {
+            throw new DomainException('No tienes autorización para consultar este embudo.');
+        }
+        $scope=$supervisor?'':' AND a.asesor_id=?';
+        $args=$supervisor?[$asignacion]:[$asignacion,$usuario];
+        $filas=$this->rows("SELECT a.vigente,a.finalizado_at,
+                ".self::clasificacionV3OperativoSql()." grupo
+            FROM prospecto_asignaciones a
+            LEFT JOIN prospecto_embudo_etapas e ON e.asignacion_id=a.id
+            WHERE a.id=? $scope",$args);
+        if (!$filas) return null;
+        $fila=$filas[0];
+        $f=self::filtros([], $supervisor);
+        $dia=(new DateTimeImmutable('today',new DateTimeZone('America/Mexico_City')))->format('Y-m-d');
+        if ($fila['vigente']===null && $fila['finalizado_at']!==null) {
+            $where=$supervisor?'':' AND a.asesor_id=?';
+            $scopeArgs=$supervisor?[]:[$usuario];
+            $r=$this->rows("SELECT posicion FROM (
+                SELECT a.id,ROW_NUMBER() OVER (ORDER BY a.finalizado_at DESC,a.id DESC) posicion
+                FROM prospecto_embudo_inscripciones_v3 v
+                JOIN prospecto_asignaciones a ON a.id=v.asignacion_id
+                WHERE a.vigente IS NULL AND a.finalizado_at IS NOT NULL $where
+                ) ubicaciones WHERE id=?",[...$scopeArgs,$asignacion]);
+            if (!$r) return null;
+            $params=['action'=>'expedientes','pagina'=>(int)ceil((int)$r[0]['posicion']/25)];
+        } elseif ((int)$fila['vigente']===1) {
+            $grupo=(string)$fila['grupo'];
+            $bandeja=in_array($grupo,['RECUPERACION','DESCARTADO'],true);
+            $vista=$bandeja?($grupo==='RECUPERACION'?'recuperacion':'descartados'):'embudo';
+            if (!EmbudoComercialAcceso::puede($vista)) return null;
+            require_once __DIR__.'/EmbudoComercialV3SeguimientoService.php';
+            $actividad=!$bandeja && EmbudoComercialV3SeguimientoService::instalada($this->db);
+            [$from,$args]=$this->condiciones($usuario,$supervisor,$f,$actividad);
+            $expr=$bandeja?"CASE WHEN e.etapa='EN_CONTACTO' THEN 'RECUPERACION' ELSE COALESCE(e.etapa,'NUEVO') END":self::clasificacionV3OperativoSql();
+            $orden=self::ordenTarjetas($actividad);
+            $r=$this->rows("SELECT posicion FROM (
+                SELECT a.id,ROW_NUMBER() OVER (ORDER BY $orden) posicion
+                $from AND $expr=?) ubicaciones WHERE id=?",[$dia,...$args,$grupo,$asignacion]);
+            if (!$r) return null;
+            $params=['action'=>'index','vista'=>$vista,
+                ($bandeja?'p_':'p3_').strtolower($grupo)=>(int)ceil((int)$r[0]['posicion']/self::POR_COLUMNA)];
+        } else return null;
+        $estado='pendiente';
+        $actual=$this->rows("SELECT av.fecha_pendiente,
+                (SELECT MAX(c.id) FROM prospecto_embudo_actividad_v3 c
+                 WHERE c.asignacion_id=av.asignacion_id AND c.accion IN ('PROGRAMAR','REPROGRAMAR')) ciclo
+            FROM prospecto_embudo_actividad_v3 av WHERE av.asignacion_id=? ORDER BY av.id DESC LIMIT 1",[$asignacion]);
+        if (!$actual || $actual[0]['fecha_pendiente']===null) $estado='sin_pendiente';
+        elseif ((int)$actual[0]['ciclo']!==$ciclo) $estado='actualizada';
+        if (($params['action']??'')==='expedientes' || in_array($params['vista']??'', ['recuperacion','descartados'],true)) $estado='otra_seccion';
+        return $params+['controller'=>'embudoComercial','destacar'=>$asignacion,'aviso_actividad'=>$estado];
+    }
+
     public function expedientesCerrados(int $usuario,int $pagina,bool $supervisor=false,int $asesor=0): array
     {
         if ($usuario<1 || (int)($_SESSION['usuario_id']??0)!==$usuario ||
@@ -551,7 +607,7 @@ final class EmbudoComercialRepository
         $filtro=(!$supervisor || $asesor>0)?' AND a.asesor_id=?':'';
         $args=(!$supervisor || $asesor>0)?[$supervisor?$asesor:$usuario]:[];
         $args[]=(max(1,min($pagina,10000))-1)*25;
-        return $this->rows("SELECT p.id,p.nombre_completo,a.finalizado_at,a.asesor_id,
+        return $this->rows("SELECT p.id,a.id asignacion_id,p.nombre_completo,a.finalizado_at,a.asesor_id,
                    (SELECT TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) FROM usuarios u WHERE u.id=a.asesor_id) asesor_nombre,
                    v.formulario_inscripcion_id
               FROM prospecto_embudo_inscripciones_v3 v

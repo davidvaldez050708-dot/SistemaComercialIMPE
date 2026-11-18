@@ -195,3 +195,5 @@ $paginar=static function(int $pagina)use($base,$params,$recuperacion){
     <?php endif; ?>
 </div>
 <script defer src="<?= $esc(BASE_URL) ?>public/javascript/embudo_comercial_v3_bandejas.js?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/javascript/embudo_comercial_v3_bandejas.js'),0,16) ?>"></script>
+
+<?php require __DIR__.'/notificacion_destino.php'; ?>

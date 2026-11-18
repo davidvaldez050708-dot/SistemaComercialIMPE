@@ -67,7 +67,7 @@ final class EmbudoComercialV3RecordatoriosService
                     'INSCRIPCION'=>'bi-file-earmark-person',default=>'bi-calendar-event'
                 },
                 'url'=>'index.php?'.http_build_query(['controller'=>'embudoComercial',
-                    'action'=>'detalle','id'=>(int)$r['prospecto_id'],'panel'=>'actividad']),
+                    'action'=>'ubicar','asignacion'=>(int)$r['asignacion_id'],'ciclo'=>(int)$r['ciclo']]),
                 'ventana'=>$ventana,
             ];
             $recordatorios[]=$item;

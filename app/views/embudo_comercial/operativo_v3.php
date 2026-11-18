@@ -568,3 +568,5 @@ $tarjeta=function(array $p,string $etapa,bool $legacy=false)use(
     <?php endif; ?>
     <?php endif; ?>
 </div>
+
+<?php require __DIR__.'/notificacion_destino.php'; ?>

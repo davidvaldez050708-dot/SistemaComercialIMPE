@@ -51,6 +51,9 @@ try {
  $gestion=new EmbudoComercialV3SeguimientoService($db);
  $version=(int)$db->query('SELECT MAX(id) FROM prospecto_embudo_actividad_v3 WHERE asignacion_id=1')->fetch_row()[0];
  $ciclo=$porId[1]['actividad_ciclo'];
+ parse_str(parse_url($porId[1]['url'],PHP_URL_QUERY),$destino);
+ comprobarAviso($destino['action']==='ubicar' && (int)$destino['asignacion']===1 && (int)$destino['ciclo']===$ciclo,'campana apunta a ubicación por asignación y ciclo');
+
  $version=$gestion->registrar(22,1,'NUEVO',$version,'REGISTRAR','Nota independiente de tarea.','','','');
  $nuevo=array_column($svc->obtener(22)['recordatorios'],null,'comercial_id');
  comprobarAviso($nuevo[1]['actividad_ciclo']===$ciclo && $nuevo[1]['detalle']===$porId[1]['detalle'],'nota no reinicia anticipaciones ni sustituye tarea');

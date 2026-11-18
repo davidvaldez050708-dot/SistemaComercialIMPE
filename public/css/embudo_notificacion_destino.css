@@ -1,0 +1,10 @@
+.impe-notificacion-destacada {
+  outline: 3px solid #2856a6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(40,86,166,.12);
+  background-color: #edf4ff !important;
+  scroll-margin: 110px;
+}
+[data-notificacion-destino] {
+  margin: 12px 28px;
+}

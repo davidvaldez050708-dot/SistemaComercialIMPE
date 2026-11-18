@@ -72,6 +72,12 @@ try{
  $db->query("UPDATE prospecto_embudo_agenda SET proxima_accion_at='2000-01-01 16:00:00' WHERE asignacion_id IN (1,3,4)");
  $escrituras=static function()use($db){$rows=$db->query("SHOW SESSION STATUS WHERE Variable_name IN ('Com_insert','Com_update','Com_delete','Com_create_table','Com_alter_table')")->fetch_all(MYSQLI_ASSOC);return array_column($rows,'Value','Variable_name');};
  $antes=$escrituras();$repo=new EmbudoComercialRepository($db);sesionSupervision();
+ require __DIR__.'/notificacion_destino_db.php';
+ $proc=proc_open(['py',__DIR__.'/notificacion_destino_http.py',$nombre],[1=>['pipe','w'],2=>['pipe','w']],$pipes);
+ comprobarSupervision(is_resource($proc),'iniciar HTTP de localización');
+ $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+ comprobarSupervision(proc_close($proc)===0,'HTTP de destino: '.$out.$err);echo $out;
+
  $f=EmbudoComercialRepository::filtros([],true);$pag=EmbudoComercialRepository::paginasV3Operativo([]);
  $todos=$repo->listadoV3Operativo(1,$f,$pag,true);
  comprobarSupervision($todos['columnas']['POTENCIAL']['total']===2 && $todos['columnas']['NUEVO']['total']===23,'mismas etapas y totales multi asesor');
@@ -199,6 +205,12 @@ try{
   comprobarSupervision(is_resource($proceso),'iniciar compatibilidad Hostinger con esquema aislado');fclose($pipes[0]);
   $salida=stream_get_contents($pipes[1]);$error=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
   comprobarSupervision(proc_close($proceso)===0,'compatibilidad Hostinger: '.$salida.$error);echo $salida;
+ }
+ if(getenv('IMPE_DESTINO_PUBLICACION_TEST')==='YES'){
+  $proc=proc_open(['py',__DIR__.'/publicar_notificacion_destino_test.py',$nombre],[1=>['pipe','w'],2=>['pipe','w']],$pipes);
+  comprobarSupervision(is_resource($proc),'iniciar entrega de localización');
+  $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+  comprobarSupervision(proc_close($proc)===0,'entrega de destino: '.$out.$err);echo $out;
  }
  echo "CHECK_OK supervisión: mismas etapas, tarjetas, agenda V3, asesor, cierres, historial, permisos, aislamiento y cero escrituras.\n";
 }finally{$db->query("DROP DATABASE $nombre");$db->close();}

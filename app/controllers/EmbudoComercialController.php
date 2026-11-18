@@ -122,6 +122,31 @@ final class EmbudoComercialController
         ));
     }
 
+    public function ubicar(): void
+    {
+        [$usuario,$supervisor]=$this->autorizar('embudo');
+        $id=filter_var($_GET['asignacion']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        $ciclo=filter_var($_GET['ciclo']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        $params=null;
+        try {
+            if ($id && $ciclo && ($supervisor || EmbudoComercialV3AccesoControlado::habilitadoParaAsesor($usuario))) {
+                $repo=new EmbudoComercialRepository((new Database())->connect(false));
+                $params=$repo->localizarNotificacion($usuario,$supervisor,(int)$id,(int)$ciclo);
+            }
+        } catch (Throwable $e) {
+            error_log('[embudo_ubicar_notificacion] '.get_class($e));
+            http_response_code(503);
+            $this->presentar('operativo_v3','embudo',[
+                'supervisor'=>$supervisor,'usuarioId'=>$usuario,'error'=>'No fue posible localizar la actividad. Intenta abrir de nuevo la notificación.',
+                'disponible'=>false,'filtros'=>EmbudoComercialRepository::filtros([],$supervisor),
+                'paginasV3'=>[],'tablero'=>[],'opciones'=>['programas'=>[],'asesores'=>[]]
+            ]);
+            return;
+        }
+        $params=$params??['controller'=>'embudoComercial','action'=>'index','aviso_actividad'=>'no_disponible'];
+        header('Location: '.BASE_URL.'index.php?'.http_build_query($params),true,303);
+    }
+
     public function expedientes(): void
     {
         [$usuarioId,$supervisor]=$this->autorizar('embudo');
