@@ -19,10 +19,10 @@ final class SeguimientoExcelPlantillaService
     {
         return '<row r="'.$number.'" ht="'.$height.'" customHeight="1">'.implode('',$cells).'</row>';
     }
-    private static function sheet(string $rows,string $validations='',bool $freeze=false,string $merges=''): string
+    private static function sheet(string $rows,string $validations='',bool $freeze=false,string $merges='',array $widths=[]): string
     {
         $cols='<cols>';
-        $widths=[22,36,20,23,24,27,32,18,18,27,24,26,23,36,22,39,33,23,42];
+        if(!$widths)$widths=[22,36,20,23,24,27,32,18,18,27,24,26,23,36,22,39,33,23,42];
         foreach($widths as $i=>$w){$n=$i+1;$cols.='<col min="'.$n.'" max="'.$n.'" width="'.$w.'" customWidth="1"/>';}
         $cols.='</cols>';
         $views=$freeze
@@ -54,8 +54,8 @@ final class SeguimientoExcelPlantillaService
                 '<formula1>TiposEntidad</formula1></dataValidation>'.
                 '<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="D2:D251">'.
                 '<formula1>EstadosTerritoriales</formula1></dataValidation>'.
-                '<dataValidation type="list" allowBlank="0" showInputMessage="1" showErrorMessage="1" errorStyle="stop" promptTitle="Municipio" prompt="Selecciona primero el estado de esta fila." errorTitle="Municipio no válido" error="Selecciona un municipio del estado indicado." sqref="E2:E251">'.
-                '<formula1>INDIRECT(IFERROR(INDEX(ClavesMunicipales,MATCH($D2,EstadosTerritoriales,0)),"MunicipiosVacios"))</formula1></dataValidation>'.
+                '<dataValidation type="list" allowBlank="0" showInputMessage="1" showErrorMessage="1" errorStyle="stop" promptTitle="Municipio" prompt="Elige un municipio del estado indicado. Consulta la hoja Municipios." errorTitle="Municipio no válido" error="Selecciona un municipio del catálogo autorizado." sqref="E2:E251">'.
+                '<formula1>MunicipiosDisponibles</formula1></dataValidation>'.
                 '<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="N2:N251">'.
                 '<formula1>PasosHistoricos</formula1></dataValidation></dataValidations>';
             $sheet1=self::sheet($rows,$validation,true);
@@ -63,9 +63,9 @@ final class SeguimientoExcelPlantillaService
                 'PLANTILLA DE IMPORTACIÓN DE INSTITUCIONES V3',
                 'Captura una institución por fila, sin cambiar el orden ni el nombre de las 19 columnas.',
                 'Obligatorios: B–E (4): nombre, tipo de entidad, estado y municipio. Opcionales: A y F–S.',
-                'Selecciona tipo, estado y municipio desde los desplegables. El municipio depende del estado de cada fila.',
+                'Selecciona tipo, estado, municipio y paso desde los desplegables. Los pasos disponibles van del 00 al 13.',
                 'Puedes incluir varios estados. Cada fila se importará en su estado, dentro de tus territorios y los del analista responsable.',
-                'Si cambias el estado, vuelve a elegir el municipio. El CRM comprobará que corresponda y esté activo.',
+                'Lista municipal compatible con Excel y Google Sheets. Consulta Municipios para ver cada estado. El CRM valida que correspondan y estén activos.',
                 'Teléfono, WhatsApp, correo, sitio web, dirección, giro y datos de contacto pueden quedar vacíos si no se conocen.',
                 'Paso histórico vacío o 00: sin historial verificable. No se generan verificaciones ni llamadas ficticias.',
                 'Los pasos 01–13 son antecedentes reportados, no operaciones realizadas por el CRM.',
@@ -92,17 +92,25 @@ final class SeguimientoExcelPlantillaService
             for($i=0;$i<max(count($types),count($states),count($steps));$i++){
                 $cells=[];
                 if(isset($types[$i]))$cells[]=self::cell('A'.($i+2),$types[$i]);
-                if(isset($states[$i])){$cells[]=self::cell('B'.($i+2),$states[$i]['nombre']);$cells[]=self::cell('D'.($i+2),'Municipios_'.$states[$i]['id']);}
+                if(isset($states[$i]))$cells[]=self::cell('B'.($i+2),$states[$i]['nombre']);
                 if(isset($steps[$i]))$cells[]=self::cell('C'.($i+2),$steps[$i]);
+                if(isset($states[$i]))$cells[]=self::cell('D'.($i+2),'Municipios_'.$states[$i]['id']);
                 $catalogRows.=self::row($i+2,$cells);
             }
-            $municipalRows=[];$municipalNames='';
+            $municipalRows=[];$municipalNames='';$available=[];
             foreach($states as $i=>$state){$col=self::column($i+1);$names=array_values($byState[$state['id']]??[]);sort($names,SORT_NATURAL|SORT_FLAG_CASE);
                 $municipalRows[1][]=self::cell($col.'1',$state['nombre'],1);
-                foreach($names as $n=>$name)$municipalRows[$n+2][]=self::cell($col.($n+2),$name);
+                foreach($names as $n=>$name){$municipalRows[$n+2][]=self::cell($col.($n+2),$name);$available[$name]=$name;}
                 $last=max(2,count($names)+1);
                 $municipalNames.='<definedName name="Municipios_'.$state['id'].'">Municipios!$'.$col.'$2:$'.$col.'$'.$last.'</definedName>';
             }
+            // Una referencia fija se conserva al importar el XLSX en Google Sheets.
+            // Sólo reúne municipios de los estados autorizados, sin cambiar su texto.
+            $available=array_values($available);sort($available,SORT_NATURAL|SORT_FLAG_CASE);
+            $municipalColumn=self::column(count($states)+1);
+            $municipalRows[1][]=self::cell($municipalColumn.'1','Municipios disponibles',1);
+            foreach($available as $n=>$name)$municipalRows[$n+2][]=self::cell($municipalColumn.($n+2),$name);
+            $municipalNames.='<definedName name="MunicipiosDisponibles">Municipios!$'.$municipalColumn.'$2:$'.$municipalColumn.'$'.max(2,count($available)+1).'</definedName>';
             ksort($municipalRows);$municipalXml='';foreach($municipalRows as $n=>$cells)$municipalXml.=self::row($n,$cells);
             $z=[
                 '[Content_Types].xml'=>'<?xml version="1.0" encoding="UTF-8"?>'.
@@ -133,13 +141,13 @@ final class SeguimientoExcelPlantillaService
                     'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'.
                     '<sheets><sheet name="Instituciones" sheetId="1" r:id="rId1"/>'.
                     '<sheet name="Guía de llenado" sheetId="2" r:id="rId2"/>'.
-                    '<sheet name="Catalogos" sheetId="3" r:id="rId3"/><sheet name="Municipios" sheetId="4" state="hidden" r:id="rId5"/></sheets>'.
+                    '<sheet name="Catalogos" sheetId="3" r:id="rId3"/><sheet name="Municipios" sheetId="4" r:id="rId5"/></sheets>'.
                     '<definedNames>'.
                     '<definedName name="TiposEntidad">Catalogos!$A$2:$A$7</definedName>'.
                     '<definedName name="EstadosTerritoriales">Catalogos!$B$2:$B$'.(count($states)+1).'</definedName>'.
                     '<definedName name="PasosHistoricos">Catalogos!$C$2:$C$15</definedName>'.
                     '<definedName name="ClavesMunicipales">Catalogos!$D$2:$D$'.(count($states)+1).'</definedName>'.
-                    '<definedName name="MunicipiosVacios">Municipios!$A$1048576</definedName>'.$municipalNames.
+                    $municipalNames.
                     '</definedNames></workbook>',
                 'xl/styles.xml'=>'<?xml version="1.0" encoding="UTF-8"?>'.
                     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'.
@@ -160,8 +168,8 @@ final class SeguimientoExcelPlantillaService
                     '</styleSheet>',
                 'xl/worksheets/sheet1.xml'=>$sheet1,
                 'xl/worksheets/sheet2.xml'=>self::sheet($guideRows,'',false,'<mergeCells count="1"><mergeCell ref="A1:H1"/></mergeCells>'),
-                'xl/worksheets/sheet3.xml'=>self::sheet($catalogRows),
-                'xl/worksheets/sheet4.xml'=>self::sheet($municipalXml)
+                'xl/worksheets/sheet3.xml'=>self::sheet($catalogRows,'',false,'',[22,28,45,22]),
+                'xl/worksheets/sheet4.xml'=>self::sheet($municipalXml,'',true,'',array_fill(0,count($states)+1,45))
             ];
             foreach($z as $name=>$body) {
                 if(!$zip->addFromString($name,$body))throw new RuntimeException('No se pudo crear la hoja '.$name);

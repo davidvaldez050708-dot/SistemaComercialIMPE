@@ -8,7 +8,7 @@ foreach(['app/models/SeguimientoVinculacionModel.php','app/services/SeguimientoE
 }
 function check($v,$m){if(!$v)throw new RuntimeException($m);}
 $port=(int)getenv('IMPE_TEST_MYSQL_PORT');if(!$port||$port===3306)throw new RuntimeException('Puerto de pruebas aislado obligatorio.');
-$db=new mysqli('127.0.0.1','root','',null,$port);$name='impe_test_excel_'.getmypid();
+$db=new mysqli('127.0.0.1','root',getenv('IMPE_TEST_MYSQL_PASSWORD')?:'',null,$port);$name='impe_test_excel_'.getmypid();
 $db->query("CREATE DATABASE `$name` CHARACTER SET utf8mb4");$db->select_db($name);$db->set_charset('utf8mb4');
 try{
     $db->query('CREATE TABLE municipios(id INT PRIMARY KEY,estado_id INT,nombre VARCHAR(80),estado INT)');
@@ -57,5 +57,20 @@ try{
     check($service->previsualizar([$minimal],$scope,501,501)['resumen']['existentes']===1,'Reimportación sin contactos detecta la misma clave');
     $phoneOnly=$minimal;$phoneOnly['celdas'][1]='Institución sólo teléfono';$phoneOnly['celdas'][7]='5551234567';$p=$service->previsualizar([$phoneOnly],$scope,501,501);$saved=$service->confirmar($p['filas'],$scope,501,501);
     $last=$db->query('SELECT telefono_fuente,whatsapp_verificado FROM seguimientos_vinculacion WHERE id='.(int)$saved['ids'][0])->fetch_assoc();check($last['telefono_fuente']==='5551234567'&&$last['whatsapp_verificado']===null,'No se supone WhatsApp a partir de teléfono');
-    echo "PASS: BD aislada, tres estados, cuatro obligatorios, 15 opcionales vacíos o inválidos, municipios dependientes e inactivos, vacíos no duplican contactos, municipios, permisos revocados/rollback, persistencia real y duplicados.\n";
+    if($input=getenv('IMPE_TEST_EXCEL_ROWS')){
+        $historicos=json_decode(file_get_contents($input),true,512,JSON_THROW_ON_ERROR);
+        check(count($historicos)===14,'Se leen los catorce pasos del XLSX real');
+        $p=$service->previsualizar($historicos,$scope,501,501);
+        check($p['resumen']['nuevas']===14,'Los pasos 00–13 se previsualizan sin errores');
+        check(array_column(array_column($p['filas'],'registro'),'paso')===range(0,13),'Paso leído de cada fila');
+        $s=$service->confirmar($p['filas'],$scope,501,501);check($s['insertadas']===14,'Importación real de todos los pasos');
+        foreach($s['ids'] as $step=>$id){
+            $r=$db->query('SELECT * FROM seguimientos_vinculacion WHERE id='.(int)$id)->fetch_assoc();
+            check(str_contains($r['observaciones'],'IMPE_ETAPA_REPORTADA_EXCEL_V1='.sprintf('%02d',$step)),'Historial exacto paso '.$step);
+            check($r['estado_seguimiento']==='NUEVO'&&(int)$r['datos_verificados']===0,'El antecedente no fabrica verificaciones ni avances');
+        }
+        check($service->previsualizar($historicos,$scope,501,501)['resumen']['existentes']===14,'Reimportar el XLSX no duplica');
+        echo "PASS: XLSX generado → carga HTTP → lectura real → previsualización → confirmación SQL de 00–13 → historial exacto y reimportación sin duplicados.\n";
+    }
+    echo "PASS: BD aislada, tres estados, cuatro obligatorios, 15 opcionales vacíos o inválidos, municipios activos por estado, vacíos no duplican contactos, permisos revocados/rollback, persistencia real y duplicados.\n";
 }finally{$db->query("DROP DATABASE `$name`");}

@@ -22,6 +22,7 @@ class ExcelCatalogStatement {
 }
 foreach(['app/services/SeguimientoExcelImportService.php','app/services/SeguimientoExcelPlantillaService.php','app/controllers/SeguimientoVinculacionController.php'] as $file){
     $source=file_get_contents(dirname(__DIR__,2).'/'.$file);
+    $source=str_replace("\r\n","\n",$source);
     eval('?>'.preg_replace('/^\h*require_once[^\r\n]+;\h*$/m','',$source));
 }
 register_shutdown_function(function(){if(($GLOBALS['argv'][1]??'')!=='denegado'&&($GLOBALS['queries']??0)!==1)throw new RuntimeException('Debe consultar el catálogo en un solo lote');});
