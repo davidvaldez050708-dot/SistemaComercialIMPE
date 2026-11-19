@@ -98,6 +98,18 @@
                 else input.value = value;
             }
             target.querySelector('[name="resultado"]')?.dispatchEvent(new Event('change', {bubbles:true}));
+            // La sugerencia se calcula primero; después prevalece la elección guardada.
+            const values = pending.values || {};
+            const action = target.querySelector('[name="proxima_accion"]');
+            if (action && !action.disabled && Object.prototype.hasOwnProperty.call(values, 'proxima_accion') &&
+                Array.from(action.options).some(option => !option.disabled && !option.hidden && option.value === values.proxima_accion)) {
+                action.value = values.proxima_accion;
+                action.dispatchEvent(new Event('change', {bubbles:true}));
+                const date = target.querySelector('[name="proxima_accion_at"]');
+                if (date && !date.disabled && Object.prototype.hasOwnProperty.call(values, 'proxima_accion_at')) {
+                    date.value = values.proxima_accion_at;
+                }
+            }
             restoring = false;
         };
         const showForm = () => {

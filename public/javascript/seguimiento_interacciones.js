@@ -32,6 +32,7 @@
         let esperandoDecisionNoInteres = false;
         let toastInteraccionDiferido = false;
         let proximaAccionEditadaManualmente = false;
+        let ultimoResultado = String(selectorResultado?.value || '');
 
         if (
             !selectorResultado ||
@@ -821,7 +822,10 @@
         };
 
         selectorResultado.addEventListener('change', function () {
-            proximaAccionEditadaManualmente = false;
+            const resultadoActual = String(selectorResultado.value || '');
+            // Recuperar el mismo resultado no debe borrar la decisión del usuario.
+            if (resultadoActual !== ultimoResultado) proximaAccionEditadaManualmente = false;
+            ultimoResultado = resultadoActual;
             actualizarContactoReferido();
             actualizarEvidenciaVerificacion();
             aplicarResultadoInteraccion();
@@ -840,6 +844,7 @@
         formulario.addEventListener('reset', function () {
             proximaAccionEditadaManualmente = false;
             window.setTimeout(function () {
+                ultimoResultado = String(selectorResultado.value || '');
                 aplicarModoRuta();
                 actualizarContactoReferido();
                 actualizarEvidenciaVerificacion();
@@ -875,10 +880,8 @@
                 return;
             }
 
-            const accion = String(selectorProximaAccion.value || '');
-
             if (
-                accionesConHorarioObligatorio.includes(accion) &&
+                campoFechaProximaAccion.required &&
                 String(campoFechaProximaAccion.value || '').trim() === ''
             ) {
                 event.preventDefault();
