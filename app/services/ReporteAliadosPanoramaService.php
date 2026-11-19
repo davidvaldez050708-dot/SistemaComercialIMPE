@@ -40,7 +40,9 @@ class ReporteAliadosPanoramaService
             $esAdministrador,
             [
                 'estado_id' => $estadoId,
-                'municipio_id' => $municipioId
+                'municipio_id' => $municipioId,
+                // Alcance calculado por el controlador, nunca desde par�metros HTTP.
+                'estado_ids_autorizados' => $filtros['estado_ids_autorizados'] ?? []
             ]
         );
 
@@ -99,6 +101,7 @@ class ReporteAliadosPanoramaService
 
         foreach ($aliados as $aliado) {
             $seguimientoId = (int)($aliado['seguimiento_id'] ?? 0);
+            $claveAliado = $this->claveAliado($aliado);
             $estadoTerritorioId = (int)($aliado['estado_id'] ?? 0);
             $estadoTerritorioNombre = trim(
                 (string)($aliado['estado_nombre'] ?? '')
@@ -110,13 +113,13 @@ class ReporteAliadosPanoramaService
             $claveMunicipio =
                 $estadoTerritorioId . ':' . $municipioActualId;
 
-            $aliadosPorId[$seguimientoId] = [
+            $aliadosPorId[$claveAliado] = [
                 'estado_id' => $estadoTerritorioId,
                 'municipio_id' => $municipioActualId,
                 'clave_municipio' => $claveMunicipio,
                 'institucion' => (string)($aliado['nombre_entidad'] ?? '')
             ];
-            $actividadPorAliado[$seguimientoId] = [];
+            $actividadPorAliado[$claveAliado] = [];
             $estadoSeguimiento = strtoupper(trim(
                 (string)($aliado['seguimiento_convocatoria_estado'] ?? '')
             ));
@@ -273,6 +276,8 @@ class ReporteAliadosPanoramaService
             }
 
             $detalle[] = [
+                'origen_tipo' => ($aliado['origen_tipo'] ?? 'institucional'),
+                'origen_id' => (int)($aliado['origen_id'] ?? $seguimientoId),
                 'seguimiento_id' => $seguimientoId,
                 'institucion' => (string)($aliado['nombre_entidad'] ?? ''),
                 'estado' => $estadoTerritorioNombre,
@@ -357,31 +362,41 @@ class ReporteAliadosPanoramaService
             }
         }
 
-        $seguimientoIds = array_keys($aliadosPorId);
+        // Solo IDs institucionales llegan a las tablas de difusi�n/seguimiento.
+        $seguimientoIds = [];
+        foreach ($aliados as $aliado) {
+            $id = (int)($aliado['seguimiento_id'] ?? 0);
+            if (($aliado['origen_tipo'] ?? 'institucional') !== 'manual' && $id > 0) {
+                $seguimientoIds[$id] = $id;
+            }
+        }
+        $seguimientoIds = array_values($seguimientoIds);
 
         foreach ($aliados as $aliado) {
             $seguimientoId = (int)($aliado['seguimiento_id'] ?? 0);
+            $claveAliado = $this->claveAliado($aliado);
             $formalizadoAt = trim(
                 (string)($aliado['convenio_formalizado_at'] ?? '')
             );
 
             if (
+                ($aliado['origen_tipo'] ?? 'institucional') === 'manual' ||
                 $seguimientoId <= 0 ||
                 !$this->fechaDentroPeriodo($formalizadoAt, $periodo)
             ) {
                 continue;
             }
 
-            $meta = $aliadosPorId[$seguimientoId] ?? [];
+            $meta = $aliadosPorId[$claveAliado] ?? [];
             $estadoTerritorioId = (int)($meta['estado_id'] ?? 0);
             $claveMunicipio = (string)(
                 $meta['clave_municipio'] ?? ''
             );
 
             $actividadPeriodo['nuevos_aliados']++;
-            $trabajados[$seguimientoId] = true;
-            $trabajadosEstado[$estadoTerritorioId][$seguimientoId] = true;
-            $trabajadosMunicipio[$claveMunicipio][$seguimientoId] = true;
+            $trabajados[$claveAliado] = true;
+            $trabajadosEstado[$estadoTerritorioId][$claveAliado] = true;
+            $trabajadosMunicipio[$claveMunicipio][$claveAliado] = true;
 
             if (isset($porEstado[$estadoTerritorioId])) {
                 $porEstado[$estadoTerritorioId]['nuevos_periodo']++;
@@ -394,7 +409,7 @@ class ReporteAliadosPanoramaService
                 $porMunicipio[$claveMunicipio]['nuevos_periodo']++;
             }
 
-            $actividadPorAliado[$seguimientoId][] = [
+            $actividadPorAliado[$claveAliado][] = [
                 'tipo' => 'ALTA',
                 'titulo' => 'Aliado incorporado a la red',
                 'detalle' => 'Convenio formalizado',
@@ -411,11 +426,12 @@ class ReporteAliadosPanoramaService
 
         foreach ($difusionesPeriodo as $difusion) {
             $seguimientoId = (int)($difusion['seguimiento_id'] ?? 0);
-            if (!isset($aliadosPorId[$seguimientoId])) {
+            $claveAliado = 'institucional:' . $seguimientoId;
+            if (!isset($aliadosPorId[$claveAliado])) {
                 continue;
             }
 
-            $meta = $aliadosPorId[$seguimientoId];
+            $meta = $aliadosPorId[$claveAliado];
             $estadoTerritorioId = (int)($meta['estado_id'] ?? 0);
             $claveMunicipio = (string)(
                 $meta['clave_municipio'] ?? ''
@@ -423,9 +439,9 @@ class ReporteAliadosPanoramaService
 
             $actividadPeriodo['difusiones']++;
             $actividadPeriodo['interacciones']++;
-            $trabajados[$seguimientoId] = true;
-            $trabajadosEstado[$estadoTerritorioId][$seguimientoId] = true;
-            $trabajadosMunicipio[$claveMunicipio][$seguimientoId] = true;
+            $trabajados[$claveAliado] = true;
+            $trabajadosEstado[$estadoTerritorioId][$claveAliado] = true;
+            $trabajadosMunicipio[$claveMunicipio][$claveAliado] = true;
 
             if (isset($porEstado[$estadoTerritorioId])) {
                 $porEstado[$estadoTerritorioId]['difusiones_periodo']++;
@@ -445,7 +461,7 @@ class ReporteAliadosPanoramaService
                 (string)($difusion['canal'] ?? '')
             );
 
-            $actividadPorAliado[$seguimientoId][] = [
+            $actividadPorAliado[$claveAliado][] = [
                 'tipo' => 'DIFUSION',
                 'titulo' => 'Convocatoria compartida',
                 'detalle' =>
@@ -474,11 +490,12 @@ class ReporteAliadosPanoramaService
             }
 
             $seguimientoId = (int)($evento['seguimiento_id'] ?? 0);
-            if (!isset($aliadosPorId[$seguimientoId])) {
+            $claveAliado = 'institucional:' . $seguimientoId;
+            if (!isset($aliadosPorId[$claveAliado])) {
                 continue;
             }
 
-            $meta = $aliadosPorId[$seguimientoId];
+            $meta = $aliadosPorId[$claveAliado];
             $estadoTerritorioId = (int)($meta['estado_id'] ?? 0);
             $claveMunicipio = (string)(
                 $meta['clave_municipio'] ?? ''
@@ -489,9 +506,9 @@ class ReporteAliadosPanoramaService
 
             $actividadPeriodo['seguimientos']++;
             $actividadPeriodo['interacciones']++;
-            $trabajados[$seguimientoId] = true;
-            $trabajadosEstado[$estadoTerritorioId][$seguimientoId] = true;
-            $trabajadosMunicipio[$claveMunicipio][$seguimientoId] = true;
+            $trabajados[$claveAliado] = true;
+            $trabajadosEstado[$estadoTerritorioId][$claveAliado] = true;
+            $trabajadosMunicipio[$claveMunicipio][$claveAliado] = true;
 
             $estadoAnterior = strtoupper(trim(
                 (string)($evento['estado_anterior'] ?? '')
@@ -547,7 +564,7 @@ class ReporteAliadosPanoramaService
                 }
             }
 
-            $actividadPorAliado[$seguimientoId][] = [
+            $actividadPorAliado[$claveAliado][] = [
                 'tipo' => 'SEGUIMIENTO',
                 'titulo' => $this->tituloEventoSeguimiento($evento),
                 'detalle' => $this->detalleEventoSeguimiento($evento),
@@ -577,8 +594,8 @@ class ReporteAliadosPanoramaService
         unset($filaMunicipioActividad);
 
         foreach ($detalle as &$filaDetalle) {
-            $seguimientoId = (int)($filaDetalle['seguimiento_id'] ?? 0);
-            $actividades = $actividadPorAliado[$seguimientoId] ?? [];
+            $claveAliado = $this->claveAliado($filaDetalle);
+            $actividades = $actividadPorAliado[$claveAliado] ?? [];
 
             usort($actividades, static function ($a, $b) {
                 return strcmp(
@@ -789,6 +806,16 @@ class ReporteAliadosPanoramaService
         return in_array($situacion, $permitidas, true)
             ? $situacion
             : 'todos';
+    }
+
+    private function claveAliado(array $aliado): string
+    {
+        $tipo = ($aliado['origen_tipo'] ?? 'institucional') === 'manual'
+            ? 'manual' : 'institucional';
+        $id = $tipo === 'manual'
+            ? (int)($aliado['origen_id'] ?? $aliado['id'] ?? 0)
+            : (int)($aliado['seguimiento_id'] ?? 0);
+        return $tipo . ':' . $id;
     }
 
     private function coincideSituacion($aliado, $situacion)
