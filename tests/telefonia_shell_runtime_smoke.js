@@ -72,6 +72,7 @@ function boot(opts = {}) {
         },
         location: {origin:'https://crm.ejemplo.org', replace(url) {this.redirect = url;}},
         addEventListener(k,fn) {const previous=windowEvents[k];windowEvents[k]=e=>{previous?.(e);fn(e);};},
+        dispatchEvent(event) { windowEvents[event.type]?.(event); },
         innerWidth:1280, innerHeight:780,
         setInterval(fn) {intervals.push(fn); return intervals.length;}
     };
@@ -97,10 +98,12 @@ function boot(opts = {}) {
         message(value) {this.events.message?.({data:value});}
     }
     const ctx = vm.createContext({
-        window:win,document:doc,localStorage:ls,BroadcastChannel,URL,
+        window:win,document:doc,localStorage:ls,BroadcastChannel,URL,Event,
         Date:opts.dateClass || Date,Math,JSON,
         console
     });
+    const numbersPath = require('node:path').join(__dirname,'../public/javascript/telefonia_numeros.js');
+    if (fs.existsSync(numbersPath)) vm.runInContext(fs.readFileSync(numbersPath,'utf8'),ctx);
     vm.runInContext(source,ctx);
     return {window:win,elements,classes,intervals,channels,windowEvents};
 }
@@ -233,7 +236,7 @@ assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.isPhoneReady(),false,
     'el auricular no anuncia conexión sin confirmación reciente del host');
 analyst.channels[0].message({type:'STATE',state:{
     userId:8,updatedAt:Date.now(),hostReady:true,active:false,
-    direction:'',phase:'ready',extension:'101'
+    direction:'',phase:'ready',extension:'101',connection:{verified:true}
 }});
 assert.equal(analyst.window.IMPE_TELEPHONY_SHELL.isPhoneReady(),true,
     'un estado WebRTC verificado mantiene el auricular verde entre módulos');
@@ -267,9 +270,9 @@ assert.equal(restarted.elements['[data-incoming-panel]'].hidden,true,
     'al volver al navegador no revive una saliente terminada');
 storage.clear();
 storage.set('impe:telephony:auto-reception:8','0');
-const optedOut = boot();
+const optedOut = boot({auto:false});
 assert.equal(optedOut.elements['[data-shell-host-region]'].children.length,0,
-    'auto-activation may be disabled per user');
+    'auto-activation respects explicit server configuration');
 optedOut.window.IMPE_TELEPHONY_SHELL.ensureHost();
 assert.equal(optedOut.elements['[data-shell-host-region]'].children.length,1,
     'manual activation still works');

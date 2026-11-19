@@ -1,0 +1,39 @@
+name: Estabilidad 403 503 v2
+on:
+  pull_request:
+    paths:
+      - 'config/db_connection.php'
+      - 'app/controllers/TelefoniaController.php'
+      - 'public/javascript/convocatoria_notificaciones.js'
+      - 'tests/estabilidad_403_503_http_test.py'
+      - 'tests/fixtures/estabilidad_403_503_http.php'
+      - 'tests/notificaciones_403_503_test.cjs'
+      - 'tests/telefonia_shell_runtime_smoke.js'
+      - 'tools/estabilidad_403_503/**'
+      - '.github/workflows/estabilidad-403-503.yml'
+permissions:
+  contents: read
+jobs:
+  contratos-locales:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Sintaxis y contratos sin servicios externos
+        run: |
+          php -l config/db_connection.php
+          php -l app/controllers/TelefoniaController.php
+          php -l tools/estabilidad_403_503/publicar_conciliada.php
+          php -l tools/estabilidad_403_503/preflight_hostinger.php
+          node --check public/javascript/convocatoria_notificaciones.js
+          python3 tests/estabilidad_403_503_http_test.py
+          node tests/notificaciones_403_503_test.cjs
+          node tests/telefonia_shell_runtime_smoke.js
+          node tests/telefonia_shell_navegacion_smoke.js
+          bash -n tools/estabilidad_403_503/hostinger_v2.sh

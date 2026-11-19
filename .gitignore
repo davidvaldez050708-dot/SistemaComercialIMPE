@@ -48,3 +48,11 @@ prueba_correo.php
 prueba_bd.php
 generar_password.php
 prueba_denue.php
+
+# Material privado de conciliación: nunca publicar copias de producción.
+/tools/estabilidad_403_503/production_*/
+/tools/estabilidad_403_503/dependency_snapshot_*/
+/tools/estabilidad_403_503/reconciled/
+/tools/estabilidad_403_503/comparison/
+/tools/estabilidad_403_503/__pycache__/
+/tools/estabilidad_403_503/*validation*.json
