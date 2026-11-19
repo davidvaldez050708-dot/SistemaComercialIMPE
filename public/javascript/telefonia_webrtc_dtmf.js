@@ -9,6 +9,8 @@
         const peers = new Set();
         let installed = false;
         let lastError = '';
+        let manualSender = null;
+        let manualQueue = '';
 
         function install() {
             if (installed) return true;
@@ -84,6 +86,8 @@
             try {
                 // Zadarma requiere RFC2833/telephone-event: los tonos los
                 // transmite el navegador al peer SIP existente.
+                manualSender = null;
+                manualQueue = '';
                 sender.insertDTMF(tones, 180, 100);
                 return true; // Aceptado por WebRTC, NO confirmación de PBX.
             } catch (_) {
@@ -93,7 +97,7 @@
         }
         function sendDigit(digit) {
             lastError = '';
-            if (typeof digit !== 'string' || !/^[0-9]$/.test(digit)) return false;
+            if (typeof digit !== 'string' || !/^[0-9*#]$/.test(digit)) return false;
             if (!installed && !install()) return false;
             const sender = senderActivo();
             if (!sender) {
@@ -102,12 +106,15 @@
             }
             const queued = sender.toneBuffer || '';
             // Nunca combinar teclas manuales con comandos de transferencia.
-            if (!/^[0-9]{0,12}$/.test(queued)) {
+            if (!/^[0-9*#]{0,12}$/.test(queued) ||
+                (queued && (manualSender !== sender || !manualQueue.endsWith(queued)))) {
                 lastError = 'Espera a que termine el envío de tonos.';
                 return false;
             }
             try {
                 sender.insertDTMF(queued + digit, 180, 100);
+                manualSender = sender;
+                manualQueue = queued + digit;
                 return true;
             } catch (_) {
                 lastError = 'No se pudo enviar el tono.';

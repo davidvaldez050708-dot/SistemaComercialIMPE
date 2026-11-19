@@ -2209,7 +2209,7 @@
             if (config.ivrKeypad !== true || !state.active || state.phase !== 'in-progress' || !state.callToken ||
                 payload.callToken !== state.callToken || transferFlow?.sourcePending() ||
                 transferFlow?.holdsIncoming() || typeof payload.digit !== 'string' ||
-                !/^[0-9]$/.test(payload.digit)) return;
+                !/^[0-9*#]$/.test(payload.digit)) return;
             const dtmf = window.IMPE_ZADARMA_WEBRTC_DTMF;
             if (!dtmf?.sendDigit?.(payload.digit)) {
                 publish({message:dtmf?.error() || 'El teclado de extensión no está disponible en esta llamada.'});

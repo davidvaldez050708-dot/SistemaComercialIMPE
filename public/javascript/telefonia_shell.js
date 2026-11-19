@@ -647,11 +647,12 @@
     keypadPanel.appendChild(keypadReadout);
     const keypadButtons = document.createElement('div');
     keypadButtons.className = 'impe-ivr-keys';
-    for (const digit of '1234567890') {
+    for (const digit of '123456789*0#') {
         const key = document.createElement('button');
         key.type = 'button';
         key.className = 'persistent-phone-action';
         key.textContent = digit;
+        key.setAttribute('aria-label', digit === '*' ? 'Asterisco' : digit === '#' ? 'Numeral' : digit);
         key.addEventListener('click', () => {
             if (!freshState(currentState) || !currentState.active ||
                 currentState.phase !== 'in-progress' || !currentState.callToken) return;
@@ -668,10 +669,10 @@
     });
     keypad.addEventListener('keydown', event => {
         if (keypad.open && !event.repeat && !event.isComposing &&
-            !event.ctrlKey && !event.altKey && !event.metaKey && /^[0-9]$/.test(event.key)) {
+            !event.ctrlKey && !event.altKey && !event.metaKey && /^[0-9*#]$/.test(event.key)) {
             event.preventDefault();
             event.stopPropagation();
-            const index = (Number(event.key) + 9) % 10;
+            const index = '123456789*0#'.indexOf(event.key);
             keypadButtons.children[index].click();
             return;
         }
