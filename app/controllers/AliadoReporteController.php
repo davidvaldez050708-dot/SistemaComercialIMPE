@@ -40,7 +40,8 @@ class AliadoReporteController
 
         $aliadosParaMunicipios = $modeloAliado->obtenerListado(
             $usuarioId,
-            $esAdministrador
+            $esAdministrador,
+            ['estado_ids_autorizados' => array_keys($idsTerritorios)]
         );
 
         $municipios = [];
@@ -123,6 +124,7 @@ class AliadoReporteController
             'estado_id' => $estadoId,
             'municipio_id' => $municipioId,
             'situacion' => $situacion,
+            'estado_ids_autorizados' => array_keys($idsTerritorios),
             'periodo' => $filtroPeriodo['periodo'],
             'fecha_desde' => $filtroPeriodo['fecha_desde'],
             'fecha_hasta' => $filtroPeriodo['fecha_hasta']
@@ -273,7 +275,10 @@ class AliadoReporteController
             $aliadosMunicipio = $modeloAliado->obtenerListado(
                 $usuarioId,
                 $esAdministrador,
-                ['municipio_id' => $municipioId]
+                [
+                    'municipio_id' => $municipioId,
+                    'estado_ids_autorizados' => array_keys($idsTerritorios)
+                ]
             );
 
             $municipioValido = false;
@@ -329,6 +334,7 @@ class AliadoReporteController
             'estado_id' => $estadoId,
             'municipio_id' => $municipioId,
             'situacion' => $situacion,
+            'estado_ids_autorizados' => array_keys($idsTerritorios),
             'periodo' => $filtroPeriodo['periodo'],
             'fecha_desde' => $filtroPeriodo['fecha_desde'],
             'fecha_hasta' => $filtroPeriodo['fecha_hasta']

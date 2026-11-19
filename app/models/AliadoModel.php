@@ -142,7 +142,16 @@ class AliadoModel
         $this->vincularParametros($stmt, $tipos, $parametros);
         $stmt->execute();
 
-        return $this->convertirResultadoEnArreglo($stmt->get_result());
+        $filas = $this->convertirResultadoEnArreglo($stmt->get_result());
+        $estadosReporte = (array)($filtros['estado_ids_autorizados'] ?? []);
+        if ($estadosReporte) {
+            require_once __DIR__ . '/../services/ReporteAliadosManualService.php';
+            $manuales = (new ReporteAliadosManualService($this->connection))->obtener(
+                $estadosReporte, $estadoId, $municipioId
+            );
+            array_push($filas, ...$manuales);
+        }
+        return $filas;
     }
 
     public function obtenerAliado($seguimientoId, $usuarioId, $esAdministrador = false)
