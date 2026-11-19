@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const content = root.querySelector('[data-convocatoria-notification-content]');
     const badge = root.querySelector('[data-convocatoria-notification-badge]');
     const markAll = root.querySelector('[data-convocatoria-notification-read-all]');
+    const csrfToken = root.dataset.csrfToken || window.IMPE_CSRF_TOKEN || '';
 
     const escapeHtml = function (value) {
         return String(value ?? '')
@@ -94,6 +95,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const body = new URLSearchParams();
         body.set('id', String(Number(id || 0)));
+        body.set('csrf_token', csrfToken);
 
         try {
             await fetch(readEndpoint, {
@@ -271,14 +273,20 @@ document.addEventListener('DOMContentLoaded', function () {
             '</div>';
     };
 
-    const load = async function () {
+    let activeLoad = null;
+    const load = function ({ fresh = false } = {}) {
+        if (activeLoad) return fresh ? activeLoad.then(() => load({ fresh: true })) : activeLoad;
+        activeLoad = Promise.resolve().then(loadOnce).finally(() => { activeLoad = null; });
+        return activeLoad;
+    };
+    const loadOnce = async function () {
         if (!endpoint || !content) {
             return;
         }
 
         try {
             const response = await fetch(endpoint, {
-                headers: { 'Accept': 'application/json' }
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'fetch' }
             });
             const data = await response.json();
 
@@ -320,14 +328,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            if (markAll.disabled) return;
+            markAll.disabled = true;
             try {
-                await fetch(readAllEndpoint, {
+                const response = await fetch(readAllEndpoint, {
                     method: 'POST',
-                    headers: { 'X-Requested-With': 'fetch' }
+                    headers: { 'X-Requested-With': 'fetch' },
+                    body: new URLSearchParams({ csrf_token: csrfToken })
                 });
-                await load();
+                const data = await response.json();
+                if (!response.ok || !data.ok) throw new Error('No fue posible confirmar la lectura.');
+                await load({ fresh: true });
             } catch (error) {
                 // Mantener la campana operativa aunque el marcado falle.
+            } finally {
+                markAll.disabled = false;
             }
         });
     }

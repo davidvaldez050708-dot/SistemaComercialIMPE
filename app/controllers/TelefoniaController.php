@@ -16,8 +16,14 @@ class TelefoniaController
 
     public function __construct()
     {
+        $esSondeo = ($_GET['action'] ?? '') === 'disponibilidad'
+            && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+            && ($_POST['accion'] ?? '') === 'POLL';
+        // RolModel de GitHub mantiene su conexión independiente.
         $modeloRol = new RolModel();
-        $modeloRol->inicializarPermisosSistema();
+        if (!$esSondeo) {
+            $modeloRol->inicializarPermisosSistema();
+        }
 
         if (isset($_SESSION['rol_id'])) {
             $_SESSION['permisos'] =
@@ -26,7 +32,9 @@ class TelefoniaController
                 );
         }
 
-        $this->service = new TelefoniaExtensionService();
+        if (!$esSondeo) {
+            $this->service = new TelefoniaExtensionService();
+        }
     }
 
     /**
@@ -738,7 +746,9 @@ class TelefoniaController
         if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);
         require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
         try{
-            $user=(int)$_SESSION['usuario_id'];$svc=new TelefoniaDisponibilidadService();
+            $user=(int)$_SESSION['usuario_id'];
+            $sondeo = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['accion'] ?? '') === 'POLL';
+            $svc=new TelefoniaDisponibilidadService($sondeo ? Database::compartida() : null);
             if(($_SERVER['REQUEST_METHOD']??'')==='GET'){
                 $id=(int)($_GET['id']??0);
                 $this->responderJson(['ok'=>true,'solicitud'=>$id?$svc->obtener($user,$id):$svc->entrante($user),'devoluciones'=>$id?null:count($svc->devoluciones($user))]);
@@ -756,7 +766,7 @@ class TelefoniaController
             if(($_POST['accion']??'')==='ATENDIDA')$this->responderJson(['ok'=>false,'mensaje'=>'Registra el resultado desde Llamadas por devolver.'],409);
             $this->responderJson(['ok'=>true,'solicitud'=>$svc->accion($user,(int)($_POST['id']??0),(int)($_POST['version']??0),(string)($_POST['accion']??''),$_POST)]);
         }catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
-        catch(Throwable $e){error_log('[telefonia_disponibilidad] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la solicitud. Intenta de nuevo.'],500);}
+        catch(Throwable $e){if(Database::responderFalloTemporal($e))exit;error_log('[telefonia_disponibilidad] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la solicitud. Intenta de nuevo.'],500);}
     }
 
     public function completarProgramacionVenta(): void {
