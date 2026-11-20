@@ -14,3 +14,5 @@ tools/formularios_navegacion_compacta_v1.css text eol=lf
 tools/publicar_formularios_logo.py text eol=lf
 tools/formularios_logos_equilibrados.css text eol=lf
 tools/publicar_formularios_logos_equilibrados.py text eol=lf
+tools/formularios_fundacion_presencia.css text eol=lf
+tools/publicar_formularios_fundacion_presencia.py text eol=lf

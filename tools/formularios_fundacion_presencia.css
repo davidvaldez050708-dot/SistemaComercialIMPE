@@ -1,0 +1,6 @@
+
+
+/* FORMULARIOS_FUNDACION_PRESENCIA_V1: 25 % sobre el ajuste anterior. */
+.formulario-publico-body .formulario-publico-hero-logo-principal img {
+    height: calc(var(--altura-marca-sep) * .85);
+}

@@ -16,6 +16,9 @@ DELTA = (ROOT/'tools/formularios_logos_equilibrados.css').read_bytes()
 class PublicacionTest(unittest.TestCase):
     def test_canonical_and_production_preserve_background_restore_and_block_edits(self):
         current = (ROOT/M.CSS).read_bytes().replace(b'\r\n', b'\n')
+        followup = ROOT/'tools/formularios_fundacion_presencia.css'
+        if followup.exists() and current.endswith(followup.read_bytes()):
+            current = current[:-len(followup.read_bytes())]
         self.assertTrue(current.endswith(DELTA))
         canonical = current[:-len(DELTA)]
         production = canonical.replace(
