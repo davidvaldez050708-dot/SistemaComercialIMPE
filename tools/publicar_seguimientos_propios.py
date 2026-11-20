@@ -69,7 +69,9 @@ def lint(data, label):
     with tempfile.TemporaryDirectory(prefix='impe-propios-lint-') as directory:
         name = Path(directory) / 'validar.php'
         name.write_bytes(data)
-        checked = subprocess.run([php, '-l', str(name)], capture_output=True)
+        # Hostinger puede ejecutar Python 3.6: capture_output aparece en 3.7.
+        checked = subprocess.run([php, '-l', str(name)],
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if checked.returncode:
             raise RuntimeError('No se publicará PHP con errores: ' + label)
 

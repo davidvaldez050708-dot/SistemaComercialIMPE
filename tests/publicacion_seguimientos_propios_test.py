@@ -1,15 +1,30 @@
 """Prueba el paquete contra un sitio ficticio; jamás conecta a producción."""
 import hashlib
+import ast
+import importlib.util
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = json.loads((ROOT/'tools/seguimientos_propios_release.json').read_text(encoding='utf-8'))
 BASE = '1c0db311'
+
+# Comprobar sintaxis y el contrato de subprocess disponible en Python 3.6.
+publisher_path=ROOT/'tools/publicar_seguimientos_propios.py'
+ast.parse(publisher_path.read_text(encoding='utf-8'),feature_version=(3,6))
+module_spec=importlib.util.spec_from_file_location('publisher',str(publisher_path))
+publisher=importlib.util.module_from_spec(module_spec)
+module_spec.loader.exec_module(publisher)
+real_run=subprocess.run
+def run_python36(args, stdout=None, stderr=None):
+    return real_run(args,stdout=stdout,stderr=stderr)
+with patch.object(publisher.subprocess,'run',run_python36):
+    publisher.lint(b'<?php // prueba de compatibilidad','prueba.php')
 
 for crlf in [False, True]:
     with tempfile.TemporaryDirectory(prefix='propios-deploy-') as directory:
@@ -37,7 +52,7 @@ for crlf in [False, True]:
                    '--site',str(site),'--backup-root',str(private/'backups')]
 
         def run(*args, ok=True):
-            result = subprocess.run(command+list(args),capture_output=True,text=True,encoding='utf-8',env=dict(os.environ,PYTHONIOENCODING='utf-8'))
+            result = subprocess.run(command+list(args),stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,encoding='utf-8',env=dict(os.environ,PYTHONIOENCODING='utf-8'))
             assert (result.returncode==0)==ok,result.stdout+result.stderr
             return result.stdout+result.stderr
 
@@ -56,7 +71,7 @@ for crlf in [False, True]:
         changed.write_bytes(original['app/helpers/SeguimientoTerritorialScope.php'])
         output=run('--apply')
         assert 'PUBLICACION_OK' in output
-        backup=next(line.removeprefix('RESPALDO: ') for line in output.splitlines() if line.startswith('RESPALDO: '))
+        backup=next(line[len('RESPALDO: '):] for line in output.splitlines() if line.startswith('RESPALDO: '))
         matches(expected)
         assert 'SIN_CAMBIOS' in run('--apply')
         # Restauración de un respaldo conocido, conservando personalizaciones.
