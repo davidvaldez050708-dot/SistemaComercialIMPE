@@ -3,7 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/../../config/db_connection.php';
 require_once __DIR__.'/SupervisionRolePolicy.php';
 
-/** La cartera se trabaja por territorio vigente; la autoría no se reescribe. */
+/** Consulta territorial compartida; operación exclusiva del analista responsable. */
 final class SeguimientoTerritorialScope
 {
     private static function alias(string $alias): string
@@ -15,6 +15,18 @@ final class SeguimientoTerritorialScope
     }
 
     public static function analista(string $alias): string
+    {
+        $alias = self::alias($alias);
+        // Conserva un único parámetro: el usuario de la asignación debe ser el
+        // responsable del expediente, además de tener el territorio vigente.
+        return str_replace(
+            "cartera_asignacion.estado_id=$alias.estado_id",
+            "cartera_asignacion.estado_id=$alias.estado_id AND $alias.analista_id=cartera_asignacion.usuario_id",
+            self::territorio($alias)
+        );
+    }
+
+    public static function territorio(string $alias): string
     {
         $alias = self::alias($alias);
         return "EXISTS (SELECT 1 FROM asignaciones_territorio cartera_asignacion
@@ -48,10 +60,10 @@ final class SeguimientoTerritorialScope
               AND (cartera_analista.fecha_fin IS NULL OR cartera_analista.fecha_fin>=CURDATE()))";
     }
 
-    /** Sólo para consultas de ruta; las escrituras siempre usan analista(). */
+    /** Sólo para consulta; las escrituras siempre usan analista(). */
     public static function lectura(string $alias): string
     {
-        $scope = self::analista($alias);
+        $scope = self::territorio($alias);
         $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
         if ($usuarioId <= 0 || !function_exists('tienePermiso')
             || !tienePermiso('seguimientos_vinculacion.ver')) {
@@ -60,7 +72,7 @@ final class SeguimientoTerritorialScope
         if (function_exists('esRolSupervisionNacional') && esRolSupervisionNacional()) {
             return "($scope OR 1=1)";
         }
-        $vigente = str_replace('?', (string)$usuarioId, self::analista($alias));
+        $vigente = str_replace('?', (string)$usuarioId, self::territorio($alias));
         $equipo = str_replace('?', (string)$usuarioId, self::supervisor($alias));
         return "($scope OR $vigente OR $equipo)";
     }
@@ -101,7 +113,7 @@ final class SeguimientoTerritorialScope
     {
         $db = $db ?? (new Database())->connect();
         $sql = 'SELECT cartera_territorio.estado_id FROM (SELECT id AS estado_id FROM estados) cartera_territorio WHERE '
-            . self::analista('cartera_territorio');
+            . self::territorio('cartera_territorio');
         $stmt = $db->prepare($sql);
         try {
             $stmt->bind_param('i', $usuarioId);
@@ -117,7 +129,7 @@ final class SeguimientoTerritorialScope
         $db = $db ?? (new Database())->connect();
         $sql = "SELECT DISTINCT u.id, TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) AS nombre
                 FROM usuarios u JOIN asignaciones_territorio a ON a.usuario_id=u.id
-                WHERE " . str_replace('?', 'u.id', self::analista('a')) . ($estadoId > 0 ? ' AND a.estado_id=' . $estadoId : '') . ' ORDER BY nombre,u.id';
+                WHERE " . str_replace('?', 'u.id', self::territorio('a')) . ($estadoId > 0 ? ' AND a.estado_id=' . $estadoId : '') . ' ORDER BY nombre,u.id';
         return $db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
@@ -126,17 +138,23 @@ final class SeguimientoTerritorialScope
         return self::permitido($seguimiento, $uid, false, $db);
     }
 
+    public static function puedeConsultar(array $seguimiento, int $uid, ?mysqli $db = null): bool
+    {
+        return self::permitido($seguimiento, $uid, false, $db, true);
+    }
+
     public static function puedeSupervisar(array $seguimiento, int $uid, ?mysqli $db = null): bool
     {
         return self::permitido($seguimiento, $uid, true, $db);
     }
 
-    private static function permitido(array $seguimiento, int $uid, bool $supervisor, ?mysqli $db): bool
+    private static function permitido(array $seguimiento, int $uid, bool $supervisor, ?mysqli $db, bool $consulta = false): bool
     {
         $id = (int)($seguimiento['id'] ?? $seguimiento['seguimiento_id'] ?? 0);
         if ($id <= 0 || $uid <= 0) return false;
         $db = $db ?? (new Database())->connect();
-        $scope = $supervisor ? self::supervisor('cartera_seguimiento') : self::analista('cartera_seguimiento');
+        $scope = $supervisor ? self::supervisor('cartera_seguimiento')
+            : ($consulta ? self::territorio('cartera_seguimiento') : self::analista('cartera_seguimiento'));
         $stmt = $db->prepare('SELECT cartera_seguimiento.id FROM seguimientos_vinculacion cartera_seguimiento
             WHERE cartera_seguimiento.id=? AND cartera_seguimiento.activo=1 AND '.$scope);
         try {

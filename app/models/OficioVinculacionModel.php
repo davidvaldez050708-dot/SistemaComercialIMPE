@@ -39,7 +39,7 @@ class OficioVinculacionModel
         } else {
             $sql .= '
                 WHERE seguimientos.id = ?
-                    AND ' . SeguimientoTerritorialScope::analista('seguimientos') . '
+                    AND ' . SeguimientoTerritorialScope::territorio('seguimientos') . '
                     AND seguimientos.activo = 1
                 LIMIT 1';
             $stmt = $this->connection->prepare($sql);

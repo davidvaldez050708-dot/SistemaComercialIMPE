@@ -1629,7 +1629,7 @@ class SeguimientoVinculacionController
             ], 422);
         }
 
-        if (!$modelo->descartarSeguimientoTrabajo($seguimientoId, $motivoDescarte)) {
+        if (!$modelo->descartarSeguimientoTrabajo($seguimientoId, $motivoDescarte, $usuarioId)) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'No fue posible descartar el seguimiento.'
@@ -2737,7 +2737,7 @@ class SeguimientoVinculacionController
             $this->responderJson([
                 'ok' => false,
                 'duplicado' => true,
-                'mensaje' => 'Ya existe un seguimiento manual con el mismo nombre, tipo y Analista.',
+                'mensaje' => 'Ya existe un seguimiento de esta institución en el territorio. Consulta el expediente existente y su Analista responsable.',
                 'url' => (int)$duplicado['activo'] === 1
                     ? BASE_URL . 'index.php?controller=seguimientoVinculacion&action=detalle&id=' . (int)$duplicado['id']
                     : ''

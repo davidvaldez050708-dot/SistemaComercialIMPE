@@ -90,7 +90,7 @@ class SeguimientoExpedienteService
         if (esRolSupervisionNacional((int)$rolId)) {
             return true;
         }
-        return SeguimientoTerritorialScope::puedeTrabajar($seguimiento, $usuarioId, $this->connection)
+        return SeguimientoTerritorialScope::puedeConsultar($seguimiento, $usuarioId, $this->connection)
             || SeguimientoTerritorialScope::puedeSupervisar($seguimiento, $usuarioId, $this->connection);
     }
 

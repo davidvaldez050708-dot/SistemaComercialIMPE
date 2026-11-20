@@ -548,9 +548,7 @@ if (!empty($seguimientosSinMunicipio)) {
                             <tr>
                                 <th>Institución</th>
                                 <th>Tipo</th>
-                                <?php if ($mostrarColumnaAnalista): ?>
-                                    <th>Analista</th>
-                                <?php endif; ?>
+                                <th>Analista</th>
                                 <th>Última actividad</th>
                                 <th>Etapa</th>
                                 <th>Próxima acción</th>
@@ -612,9 +610,7 @@ if (!empty($seguimientosSinMunicipio)) {
                                 <?= $texto($etiquetaTipo($seguimiento['tipo_entidad'] ?? '')) ?>
                             </span>
                         </td>
-                        <?php if ($mostrarColumnaAnalista): ?>
-                            <td><?= $nombreAnalista($seguimiento) ?></td>
-                        <?php endif; ?>
+                        <td><?= $nombreAnalista($seguimiento) ?></td>
                         <td>
                             <span class="linkage-activity-date" data-row-last-activity>
                                 <?= $texto(
@@ -656,15 +652,15 @@ if (!empty($seguimientosSinMunicipio)) {
                                 <button
                                     type="button"
                                     class="btn btn-system-light linkage-manage-button <?= $esAliado ? 'is-ally' : '' ?>"
-                                    title="<?= $puedeOperarVista
+                                    title="<?= $puedeOperarVista && (int)($seguimiento['analista_id'] ?? 0) === (int)($_SESSION['usuario_id'] ?? 0)
                                         ? ($esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento')
                                         : ($esSupervisorVista ? 'Supervisar seguimiento' : 'Ver seguimiento') ?>"
-                                    aria-label="<?= $puedeOperarVista
+                                    aria-label="<?= $puedeOperarVista && (int)($seguimiento['analista_id'] ?? 0) === (int)($_SESSION['usuario_id'] ?? 0)
                                         ? ($esAliado ? 'Trabajar con aliado' : 'Trabajar seguimiento')
                                         : ($esSupervisorVista ? 'Supervisar seguimiento' : 'Ver seguimiento') ?>"
                                     data-work-follow
                                     data-work-follow-id="<?= (int)$seguimiento['id'] ?>">
-                                    <i class="bi <?= $puedeOperarVista ? 'bi-kanban' : 'bi-eye' ?>"></i>
+                                    <i class="bi <?= $puedeOperarVista && (int)($seguimiento['analista_id'] ?? 0) === (int)($_SESSION['usuario_id'] ?? 0) ? 'bi-kanban' : 'bi-eye' ?>"></i>
                                 </button>
                                 <a
                                     href="<?= BASE_URL ?>index.php?controller=seguimientoVinculacion&action=detalle&id=<?= (int)$seguimiento['id'] ?>"
@@ -1045,7 +1041,7 @@ if (!empty($seguimientosSinMunicipio)) {
     aria-labelledby="offcanvasSeguimientoTrabajoTitulo">
     <div class="offcanvas-header linkage-work-header">
         <div>
-            <span><?= $puedeOperarVista
+            <span data-work-access-label><?= $puedeOperarVista
                 ? 'Panel de trabajo'
                 : ($esSupervisorVista ? 'Supervisión de seguimiento' : 'Vista de seguimiento') ?></span>
             <h5 id="offcanvasSeguimientoTrabajoTitulo" data-work-title>Seguimiento</h5>
@@ -1862,6 +1858,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const renderizarResumenTrabajo = function (seguimiento, puedeOperar = true) {
         seguimientoTrabajoActual = seguimiento;
+        asignarTextoTrabajo('[data-work-access-label]', puedeOperar
+            ? 'Panel de trabajo'
+            : 'Solo consulta');
 
         const idObservacionSupervision = document.querySelector(
             '[data-work-supervision-follow-id]'

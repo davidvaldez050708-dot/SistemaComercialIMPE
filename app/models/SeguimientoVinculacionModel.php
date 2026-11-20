@@ -119,7 +119,7 @@ class SeguimientoVinculacionModel
                     ON estados.id = asignaciones_territorio.estado_id
                 LEFT JOIN seguimientos_vinculacion
                     ON seguimientos_vinculacion.estado_id = estados.id
-                    AND " . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . "
+                    AND " . SeguimientoTerritorialScope::territorio('seguimientos_vinculacion') . "
                     AND seguimientos_vinculacion.activo = 1
                 WHERE asignaciones_territorio.usuario_id = ?
                     AND asignaciones_territorio.tipo_asignacion = 'ANALISTA_DATOS'
@@ -842,7 +842,7 @@ class SeguimientoVinculacionModel
         $sql = 'SELECT id, activo
                 FROM seguimientos_vinculacion
                 WHERE estado_id = ?
-                    AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
+                    AND ' . SeguimientoTerritorialScope::territorio('seguimientos_vinculacion') . '
                     AND origen = \'MANUAL\'
                     AND tipo_entidad = ?
                     AND LOWER(TRIM(nombre_entidad)) = LOWER(TRIM(?))
@@ -940,7 +940,7 @@ class SeguimientoVinculacionModel
                     COALESCE(SUM(seguimientos.estado_seguimiento = \'DATOS_VERIFICADOS\'), 0) AS datos_verificados,
                     COALESCE(SUM(seguimientos.estado_seguimiento = \'ESPERANDO_RESPUESTA\'), 0) AS esperando_respuesta
                 FROM seguimientos_vinculacion seguimientos
-                WHERE ' . SeguimientoTerritorialScope::analista('seguimientos') . '
+                WHERE ' . SeguimientoTerritorialScope::territorio('seguimientos') . '
                     AND seguimientos.estado_id = ?
                     AND seguimientos.activo = 1';
 
@@ -991,7 +991,7 @@ class SeguimientoVinculacionModel
     public function obtenerSeguimientosAnalistaEstado($usuarioId, $estadoId, $filtros = [])
     {
         $sql = $this->consultaSeguimientosBase() . '
-                WHERE ' . SeguimientoTerritorialScope::analista('seguimientos') . '
+                WHERE ' . SeguimientoTerritorialScope::territorio('seguimientos') . '
                     AND seguimientos.estado_id = ?
                     AND seguimientos.activo = 1';
 
@@ -1048,7 +1048,7 @@ class SeguimientoVinculacionModel
     {
         $sql = $this->consultaDetalleSeguimientoBase() . '
                 WHERE seguimientos.id = ?
-                    AND ' . SeguimientoTerritorialScope::analista('seguimientos') . '
+                    AND ' . SeguimientoTerritorialScope::territorio('seguimientos') . '
                     AND seguimientos.activo = 1
                 LIMIT 1';
 
@@ -1217,6 +1217,7 @@ class SeguimientoVinculacionModel
 
     public function actualizarContactoSeguimiento($seguimientoId, $usuarioId, $datos, $marcarVerificado)
     {
+        if (!SeguimientoTerritorialScope::puedeTrabajar(['id' => (int)$seguimientoId], (int)$usuarioId, $this->connection)) return false;
         $sql = "UPDATE seguimientos_vinculacion
                 SET telefono_verificado = ?,
                     whatsapp_verificado = ?,
@@ -1258,6 +1259,7 @@ class SeguimientoVinculacionModel
 
     public function marcarDatosVerificadosSeguimiento($seguimientoId, $usuarioId)
     {
+        if (!SeguimientoTerritorialScope::puedeTrabajar(['id' => (int)$seguimientoId], (int)$usuarioId, $this->connection)) return false;
         $sql = "UPDATE seguimientos_vinculacion
                 SET datos_verificados = 1,
                     datos_verificados_at = NOW(),
@@ -1506,8 +1508,9 @@ class SeguimientoVinculacionModel
         return trim((string)$this->ultimoErrorInteraccion);
     }
 
-    public function descartarSeguimientoTrabajo($seguimientoId, $motivoDescarte)
+    public function descartarSeguimientoTrabajo($seguimientoId, $motivoDescarte, $usuarioId)
     {
+        if (!SeguimientoTerritorialScope::puedeTrabajar(['id' => (int)$seguimientoId], (int)$usuarioId, $this->connection)) return false;
         $sql = "UPDATE seguimientos_vinculacion
                 SET estado_seguimiento = 'DESCARTADO',
                     motivo_descarte = ?,
@@ -1530,6 +1533,7 @@ class SeguimientoVinculacionModel
         $motivoReactivacion,
         $observacion = ''
     ) {
+        if (!SeguimientoTerritorialScope::puedeTrabajar(['id' => (int)$seguimientoId], (int)$usuarioId, $this->connection)) return false;
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
         $motivoReactivacion = trim((string)$motivoReactivacion);
@@ -1843,16 +1847,14 @@ class SeguimientoVinculacionModel
 
     public function crearObservacion($seguimientoId, $autorId, $destinatarioId, $observacion)
     {
-        // El destinatario original se conserva en observaciones antiguas.
-        // Una nueva observación se dirige a la cartera vigente del estado.
-        $estadoStmt = $this->connection->prepare('SELECT estado_id FROM seguimientos_vinculacion WHERE id=? AND activo=1');
+        // La observación se dirige al responsable, no al primer analista del estado.
+        $estadoStmt = $this->connection->prepare('SELECT estado_id, analista_id FROM seguimientos_vinculacion WHERE id=? AND activo=1');
         $estadoStmt->bind_param('i', $seguimientoId);
         $estadoStmt->execute();
         $estado = $estadoStmt->get_result()->fetch_assoc();
         $estadoStmt->close();
-        $equipo = $estado ? SeguimientoTerritorialScope::analistasVigentes($this->connection, (int)$estado['estado_id']) : [];
-        if (!$equipo) return false;
-        $destinatarioId = (int)$equipo[0]['id'];
+        $destinatarioId = (int)($estado['analista_id'] ?? 0);
+        if ($destinatarioId <= 0) return false;
         $sql = "INSERT INTO observaciones_seguimiento (
                     seguimiento_id,
                     autor_id,
