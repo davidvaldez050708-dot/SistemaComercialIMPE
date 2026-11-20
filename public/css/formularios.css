@@ -1947,3 +1947,126 @@
     outline: 2px solid #223a84;
     outline-offset: 3px;
 }
+
+
+/* FORMULARIOS_NAVEGACION_COMPACTA_V1
+   Sólo selección de tipo y catálogo de programas; conserva las capturas. */
+.formularios-page > .formularios-hero {
+    min-height: 100px;
+    padding: 22px 24px;
+    background: #fff;
+}
+.formularios-page > .formularios-hero::after,
+.formularios-hero .formularios-hero-visual,
+.formularios-options .formularios-card-decoration,
+.formularios-options .formularios-card-features,
+.formularios-options .formularios-option-label,
+.formularios-options .formularios-option-arrow,
+.formularios-options .formularios-option-card::before,
+.formularios-options .formularios-option-card::after {
+    display: none;
+}
+.formularios-page > .formularios-hero h2 { font-size: 18px; line-height: 1.4; }
+.formularios-page > .formularios-hero p { font-size: 12px; line-height: 1.6; font-weight: 500; }
+.formularios-hero .formularios-hero-icon { width: 44px; height: 44px; flex-basis: 44px; font-size: 21px; border-radius: 12px; }
+.formularios-page > .formularios-options {
+    max-width: none;
+    gap: 16px;
+    justify-self: stretch;
+}
+.formularios-options > .formularios-option-card {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    grid-template-areas: "icon copy" ". action";
+    min-height: 0;
+    padding: 24px;
+    gap: 16px;
+    align-items: start;
+    border-radius: 14px;
+    box-shadow: 0 3px 12px rgba(27, 50, 82, .035);
+}
+.formularios-options .formularios-option-top { grid-area: icon; }
+.formularios-options .formularios-option-icon { width: 48px; height: 48px; border-radius: 12px; font-size: 23px; }
+.formularios-options .is-inscripcion .formularios-option-icon { background: #eaf7f2; color: #087d68; }
+.formularios-options .formularios-option-copy { grid-area: copy; min-width: 0; }
+.formularios-options .formularios-option-copy h3 { margin: 1px 0 7px; font-size: 18px; line-height: 1.35; }
+.formularios-options .formularios-option-copy p { font-size: 12px; font-weight: 500; line-height: 1.6; }
+.formularios-options .formularios-option-action {
+    grid-area: action;
+    justify-self: start;
+    width: auto;
+    min-height: 38px;
+    padding: 9px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.formularios-options > .formularios-option-card:focus-visible {
+    outline: 3px solid #91a8ed;
+    outline-offset: 3px;
+}
+.formularios-inscripcion-catalogo { gap: 14px; }
+.formularios-inscripcion-catalogo-heading { justify-content: flex-end; margin: 0; }
+.formularios-inscripcion-catalogo-heading > div { display: none; }
+.formularios-inscripcion-total { padding: 6px 10px; font-size: 11px; border-radius: 9px; }
+.formularios-inscripcion-catalogo-grid { gap: 16px; align-items: stretch; }
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "icon copy" "actions actions";
+    align-items: start;
+    min-height: 0;
+    padding: 20px;
+    gap: 18px 14px;
+    border-radius: 14px;
+    box-shadow: 0 3px 12px rgba(27, 50, 82, .035);
+}
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa-head { grid-area: icon; }
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa-icon {
+    width: 44px; height: 44px; border-radius: 12px; font-size: 21px;
+}
+.formularios-inscripcion-catalogo .formularios-inscripcion-pendiente,
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa-copy > .formularios-kicker,
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa-copy > p { display: none; }
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa-copy { grid-area: copy; min-width: 0; align-self: center; }
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa-copy h4 { margin: 0; font-size: 16px; line-height: 1.45; }
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa-action {
+    grid-area: actions;
+    display: flex;
+    flex-wrap: wrap;
+    align-self: end;
+    align-items: center;
+    gap: 10px 12px;
+}
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa-action > .btn {
+    width: auto;
+    min-height: 40px;
+    padding: 9px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    gap: 8px;
+}
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa-action > .btn-system-cancel {
+    color: #405578;
+    background: #fff;
+    border: 1px solid #d8e2f0;
+}
+.formularios-inscripcion-catalogo .formularios-inscripcion-programa-action > .btn:focus-visible {
+    outline: 3px solid #91a8ed;
+    outline-offset: 3px;
+}
+@media (max-width: 767.98px) {
+    .formularios-page > .formularios-options { grid-template-columns: minmax(0, 1fr); }
+    .formularios-options > .formularios-option-card { padding: 20px; }
+}
+@media (max-width: 575px) {
+    .formularios-page > .formularios-hero { padding: 18px; }
+    .formularios-page > .formularios-hero h2 { font-size: 16px; }
+    .formularios-options > .formularios-option-card { padding: 18px; gap: 14px 12px; }
+    .formularios-options .formularios-option-action { min-height: 44px; }
+    .formularios-inscripcion-catalogo .formularios-inscripcion-programa { padding: 18px; gap: 16px 12px; }
+    .formularios-inscripcion-catalogo .formularios-inscripcion-programa-action > .btn { min-height: 44px; }
+}
