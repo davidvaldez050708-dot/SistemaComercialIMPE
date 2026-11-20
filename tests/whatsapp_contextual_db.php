@@ -29,15 +29,18 @@ try{
  ] as $sql)$db->query("CREATE TABLE $sql ENGINE=InnoDB");
  $db->query("INSERT INTO roles VALUES(1,'Administrador',1),(3,'Asesor de Ventas',1),(4,'Analista',1),(6,'Cuenta Clave',1)");
  $db->query("INSERT INTO usuarios VALUES(1,'Admin','',1,1),(22,'Asesor','22',3,1),(23,'Asesor','23',3,1),(44,'Analista','44',4,1),(45,'Analista','45',4,1),(66,'Cuenta','Clave',6,1)");
+ $db->query("INSERT INTO permisos(codigo,estado) VALUES('whatsapp.ver',1),('whatsapp.enviar',1)");
+ $db->query('INSERT INTO rol_permisos SELECT 3,id FROM permisos');
  $db->query("INSERT INTO estados VALUES(1,'Morelos',1),(2,'Otro',1)");
  $db->query("INSERT INTO seguimientos_vinculacion VALUES(10,1,NULL,45,'Institución prueba','Contacto','+527770000010',1),(11,2,NULL,44,'Otra institución','Otro','+527770000011',1)");
+ $db->query("ALTER TABLE seguimientos_vinculacion ADD telefono_fuente VARCHAR(80) DEFAULT '',ADD telefono_verificado VARCHAR(80) DEFAULT ''");
  $db->query("INSERT INTO asignaciones_territorio VALUES(1,1,44,'ANALISTA_DATOS',1,NULL,NULL),(2,2,45,'ANALISTA_DATOS',1,NULL,NULL)");
  $db->query("INSERT INTO aliados_asignaciones VALUES(10,66,1)");
  $db->query("INSERT INTO aliados_contactos VALUES(1,10,'+527770000010',1,1,1,1)");
  $db->query("INSERT INTO prospectos_comerciales VALUES(1,'Prospecto uno','+527770000001'),(2,'Prospecto dos','+527770000002'),(3,'Compartido A','+527770000003'),(4,'Compartido B','+527770000003')");
  $db->query("INSERT INTO prospecto_asignaciones VALUES(1,1,22,1),(2,2,23,1),(3,3,22,1),(4,4,23,1)");
  $db->query("INSERT INTO prospecto_embudo_etapas VALUES(1,'NUEVO'),(2,'SEGUIMIENTO'),(3,'NUEVO'),(4,'NUEVO')");
- foreach(['2026_10_02_c_whatsapp_conversaciones.sql','2026_11_18_whatsapp_contexto_comercial.sql'] as $file){
+ foreach(['2026_10_02_c_whatsapp_conversaciones.sql','2026_11_18_whatsapp_contexto_comercial.sql','2026_11_20_whatsapp_asignaciones_historial.sql'] as $file){
   $sql=preg_replace('/^\s*--.*$/m','',file_get_contents(__DIR__.'/../database/migrations/'.$file));
   foreach(explode(';',$sql) as $piece)if(trim($piece)!=='')$db->query($piece);
  }
@@ -73,9 +76,12 @@ try{
  $analyst=WhatsAppContextoService::abrir($model,'seguimiento',10,44);
  waDeny(fn()=>WhatsAppContextoService::abrir($model,'seguimiento',11,44));
  waCheck((bool)$model->obtenerConversacion($analyst,44,false),'alcance territorial vigente');
+ waCheck(!WhatsAppContextoService::permiteResponderSeguimiento($db,$model->obtenerConversacion($analyst,44,false),44),'compartir territorio habilita responder por otro analista');
+ waDeny(fn()=>WhatsAppContextoService::exigirSalida($db,$model->obtenerConversacion($analyst,44,false)));
  $db->query('UPDATE asignaciones_territorio SET usuario_id=45 WHERE id=1');
  waCheck(!$model->obtenerConversacion($analyst,44,false),'autoría histórica no concede acceso');
  waSession(45,4,['seguimientos_vinculacion.ver']);waCheck((bool)$model->obtenerConversacion($analyst,45,false),'nuevo analista por territorio');
+ waCheck(WhatsAppContextoService::permiteResponderSeguimiento($db,$model->obtenerConversacion($analyst,45,false),45),'el responsable no puede responder');
  waSession(66,6,['aliados.ver']);waCheck($analyst===WhatsAppContextoService::abrir($model,'aliado',10,66),'aliado y analista comparten el chat');
  $db->query('UPDATE aliados_contactos SET autorizado_whatsapp=0 WHERE id=1');waDeny(fn()=>WhatsAppContextoService::abrir($model,'aliado',10,66));
  waSession(23);
@@ -89,6 +95,16 @@ try{
  $unknown=$model->registrarMensajeEntrada($account,'527770000099','Desconocido','wamid_sin_asignar','TEXT','Hola',time());
  waCheck(!$model->obtenerConversacion($unknown,23,false),'entrada desconocida queda sin asignar');
  $ambiguous=$model->registrarMensajeEntrada($account,'527770000003','Compartido','wamid_ambiguo','TEXT','Hola',time());
+ $newAccount=$model->guardarCuenta(['nombre'=>'Segundo canal','phone_number_id'=>'000000002','numero_mostrado'=>'+527770099998','tipo'=>'EMPRESARIAL'],1);
+ $auto=$model->registrarMensajeEntrada($newAccount,'527770000001','Reconocido','wamid_auto_nuevo','TEXT','Mensaje reconocido',time());
+ waCheck((int)$db->query('SELECT responsable_usuario_id FROM whatsapp_conversaciones WHERE id='.$auto)->fetch_row()[0]===23,'el webhook no asigna el responsable reconocido');
+ waCheck((int)$db->query('SELECT prospecto_id FROM whatsapp_conversacion_prospectos WHERE conversacion_id='.$auto)->fetch_row()[0]===1,'el webhook no vincula el expediente reconocido');
+ $db->query('RENAME TABLE whatsapp_asignaciones_historial TO historial_temporal');
+ $logAntes=ini_get('error_log');$logPrueba=tempnam(sys_get_temp_dir(),'wa-routing-error-');ini_set('error_log',$logPrueba);
+ try {$fallback=$model->registrarMensajeEntrada($newAccount,'527770000002','Pendiente','wamid_fallo_ruta','TEXT','No perder este mensaje',time());}
+ finally {ini_set('error_log',$logAntes);unlink($logPrueba);$db->query('RENAME TABLE historial_temporal TO whatsapp_asignaciones_historial');}
+ waCheck((int)$db->query('SELECT COUNT(*) FROM whatsapp_mensajes WHERE conversacion_id='.$fallback)->fetch_row()[0]===1,'un fallo de enrutamiento perdió el mensaje entrante');
+ waCheck($db->query('SELECT responsable_usuario_id FROM whatsapp_conversaciones WHERE id='.$fallback)->fetch_row()[0]===null,'falló la reversión del enrutamiento');
  waCheck(!$model->obtenerConversacion($ambiguous,23,false),'número ambiguo no concede acceso');
  $db->query("UPDATE prospecto_embudo_etapas SET etapa='RECUPERACION' WHERE asignacion_id=1");
  waDeny(fn()=>WhatsAppContextoService::exigirSalida($db,['id'=>$cid]));

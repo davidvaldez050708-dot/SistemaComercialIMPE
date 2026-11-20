@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__.'/../services/WhatsAppContextoService.php';
+require_once __DIR__.'/../services/WhatsAppAsignacionService.php';
 
 class WhatsAppModel
 {
@@ -515,19 +516,11 @@ class WhatsAppModel
 
     public function vincularEntradaProspecto(int $conversacion,string $telefono): void
     {
-        if(!WhatsAppContextoService::tabla($this->connection,'whatsapp_conversacion_prospectos'))return;
-        $formatos=ProspectoNoContactarV3::formatos($telefono);
-        if(!$formatos)return;
-        $marks=implode(',',array_fill(0,count($formatos),'?'));
-        $s=$this->connection->prepare("SELECT DISTINCT p.id FROM prospectos_comerciales p
-            JOIN prospecto_asignaciones a ON a.prospecto_id=p.id AND a.vigente=1
-            WHERE p.telefono_normalizado IN ($marks) LIMIT 2");
-        try{$s->bind_param(str_repeat('s',count($formatos)),...$formatos);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);}finally{$s->close();}
-        if(count($rows)!==1)return;
-        // No fusionar un chat de aliado ni reemplazar un enlace previo.
-        $s=$this->connection->prepare('INSERT IGNORE INTO whatsapp_conversacion_prospectos(conversacion_id,prospecto_id) SELECT id,? FROM whatsapp_conversaciones WHERE id=? AND aliado_seguimiento_id IS NULL');
-        $p=(int)$rows[0]['id'];
-        try{$s->bind_param('ii',$p,$conversacion);$s->execute();}finally{$s->close();}
+        try {(new WhatsAppAsignacionService($this->connection))->enrutarEntrada($conversacion,$telefono);}
+        catch(Throwable $e){
+            // Un fallo de enrutamiento no debe perder el mensaje entrante.
+            error_log('[whatsapp_asignacion_entrada] '.get_class($e));
+        }
     }
 
     public function registrarMensajeSalida(

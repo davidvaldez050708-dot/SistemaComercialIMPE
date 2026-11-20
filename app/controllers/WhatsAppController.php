@@ -9,6 +9,44 @@ class WhatsAppController
 {
     private ?string $envioId=null;
 
+    public function asignaciones(): void
+    {
+        $this->validarPermiso('whatsapp.ver');
+        if(!WhatsAppAsignacionService::puedeAdministrar()){http_response_code(403);exit('No tienes permiso para asignar conversaciones.');}
+        $modelo=new WhatsAppModel();$this->validarEstructura($modelo);
+        $asignacion=new WhatsAppAsignacionService($modelo->conexionParaAutorizacion());
+        $pagina=max(1,(int)($_GET['pagina']??1));
+        $busqueda=mb_substr(trim(is_string($_GET['buscar']??'')?$_GET['buscar']:''),0,100);
+        try {
+            $pendientes=$asignacion->pendientes($pagina,$busqueda);
+            $candidatos=$asignacion->candidatos();
+        } catch(DomainException $e){http_response_code(403);exit('No tienes permiso para asignar conversaciones.');}
+        catch(Throwable $e){error_log('[whatsapp_bandeja_asignacion] '.get_class($e));http_response_code(503);exit('No se pudo cargar la bandeja. Intenta nuevamente.');}
+        $tituloPagina='Conversaciones sin asignar';
+        $subtituloPagina='Asigna un responsable a los contactos pendientes de atención.';
+        $opcionActiva='whatsapp';
+        require __DIR__.'/../views/layout/dashboard_head.php';
+        require __DIR__.'/../views/layout/sidebar.php';
+        require __DIR__.'/../views/layout/topbar.php';
+        require __DIR__.'/../views/whatsapp/asignaciones.php';
+        require __DIR__.'/../views/layout/dashboard_footer.php';
+    }
+
+    public function asignarResponsable(): void
+    {
+        $this->validarPermiso('whatsapp.ver');$this->validarMetodoPost();
+        if(!WhatsAppAsignacionService::puedeAdministrar())$this->responder(['ok'=>false,'mensaje'=>'No tienes permiso para asignar conversaciones.'],403);
+        $id=filter_var($_POST['conversacion_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        $uid=filter_var($_POST['responsable_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if(!$id || !$uid)$this->responder(['ok'=>false,'mensaje'=>'Selecciona conversación y responsable válidos.'],422);
+        $modelo=new WhatsAppModel();$this->validarEstructura($modelo);
+        try {
+            $result=(new WhatsAppAsignacionService($modelo->conexionParaAutorizacion()))->asignar((int)$id,(int)$uid);
+            $this->responder(['ok'=>true,'mensaje'=>'Conversación asignada. El responsable ya puede atenderla.','asignacion'=>$result]);
+        } catch(DomainException $e){$this->responder(['ok'=>false,'mensaje'=>$e->getMessage()],in_array($e->getCode(),[403,404,409,422],true)?$e->getCode():409);}
+        catch(Throwable $e){error_log('[whatsapp_asignacion_manual] '.get_class($e));$this->responder(['ok'=>false,'mensaje'=>'No se pudo confirmar la asignación. Actualiza la bandeja antes de reintentar.'],503);}
+    }
+
     private function prepararEnvioIdempotente(string $tipo): void
     {
         $id=$_POST['request_id']??'';
@@ -58,7 +96,8 @@ class WhatsAppController
         $servicio=new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
         $estadoConfiguracionWhatsapp=$servicio->obtenerEstadoConfiguracion();
         $puedeEnviarWhatsapp=$estadoConfiguracionWhatsapp['lista'] && tienePermiso('whatsapp.enviar') &&
-            (bool)$modelo->obtenerConversacion((int)$id,$uid,tienePermiso('whatsapp.responder_todas'));
+            (bool)$modelo->obtenerConversacion((int)$id,$uid,tienePermiso('whatsapp.responder_todas')) &&
+            WhatsAppContextoService::permiteResponderSeguimiento($modelo->conexionParaAutorizacion(),$conversacionSeleccionada,$uid);
         $cuenta=$modelo->obtenerCuentaPorPhoneNumberId((string)$conversacionSeleccionada['phone_number_id']);
         $puedePlantillaPrueba=$puedeEnviarWhatsapp && ($cuenta['tipo']??'')==='PRUEBA';
         $ventanaServicioAbierta=$modelo->ventanaServicioAbierta($conversacionSeleccionada);
@@ -145,7 +184,8 @@ class WhatsAppController
                 : [];
 
         $puedeEnviarWhatsapp = $estadoConfiguracionWhatsapp['lista'] && tienePermiso('whatsapp.enviar') && (!$conversacionSeleccionada ||
-            (bool)$modelo->obtenerConversacion((int)$conversacionSeleccionada['id'],$usuarioId,tienePermiso('whatsapp.responder_todas')));
+            ((bool)$modelo->obtenerConversacion((int)$conversacionSeleccionada['id'],$usuarioId,tienePermiso('whatsapp.responder_todas')) &&
+             WhatsAppContextoService::permiteResponderSeguimiento($modelo->conexionParaAutorizacion(),$conversacionSeleccionada,$usuarioId)));
         $ventanaServicioAbierta = $conversacionSeleccionada
             ? $modelo->ventanaServicioAbierta($conversacionSeleccionada)
             : false;

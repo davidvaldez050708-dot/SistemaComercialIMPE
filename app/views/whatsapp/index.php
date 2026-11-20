@@ -161,6 +161,11 @@ foreach ($mensajesIniciales as $mensaje) {
             <?php endif; ?>
 
             <?php if ($puedeGestionarCuentas): ?>
+                <?php if (WhatsAppAsignacionService::puedeAdministrar()): ?>
+                    <a class="btn whatsapp-secondary-button" href="<?= BASE_URL ?>index.php?controller=whatsapp&amp;action=asignaciones">
+                        <i class="bi bi-person-plus"></i> Sin asignar
+                    </a>
+                <?php endif; ?>
                 <button
                     type="button"
                     class="btn whatsapp-secondary-button"

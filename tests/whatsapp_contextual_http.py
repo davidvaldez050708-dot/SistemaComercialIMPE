@@ -26,6 +26,7 @@ session_start();
 $uid=(int)($_GET['fixture_actor']??23);$rol=$uid===1?1:3;
 $_SESSION['usuario_id']=$uid;$_SESSION['rol_id']=$rol;
 $_SESSION['permisos']=['whatsapp.ver','whatsapp.enviar','ventas.embudo.ver',...($uid===22||$uid===1?['whatsapp.gestionar_conversaciones']:[])];
+if($uid===1)$_SESSION['permisos'][]='whatsapp.gestionar_cuentas';
 $_SESSION['csrf_token']="""+phpstr(token)+""";
 require """+phpstr(root/'config/config.php')+""";
 if($helper=getenv('IMPE_WA_PERMISSION_FIXTURE'))require_once $helper;
@@ -37,7 +38,7 @@ class FixtureWhatsAppController extends WhatsAppController {
  protected function servicioWhatsApp(WhatsAppModel $m): WhatsAppCloudApiService {return new FixtureWhatsAppApi($m->conexionParaAutorizacion());}
 }
 $action=$_GET['action']??'';
-if(!in_array($action,['contexto','panel','conversaciones','mensajes','enviar','crearConversacion','enviarPlantillaPrueba'],true)){http_response_code(404);exit;}
+if(!in_array($action,['contexto','panel','conversaciones','mensajes','enviar','crearConversacion','enviarPlantillaPrueba','asignarResponsable'],true)){http_response_code(404);exit;}
 (new FixtureWhatsAppController())->$action();
 """,encoding='utf-8')
     server=subprocess.Popen(['php','-d','mysqli.default_port='+env['MYSQL_PORT'],'-S',f'127.0.0.1:{port}',str(router)],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -81,5 +82,17 @@ if(!in_array($action,['contexto','panel','conversaciones','mensajes','enviar','c
         assert call('enviar',data={**payload,'mensaje':'Otro texto'})[0]==409
         status,body=call('mensajes',params={'conversacion_id':cid})
         assert status==200 and len([m for m in json.loads(body)['mensajes'] if m.get('wamid')=='fixture_wa_1'])==1
+        unknown=next(c for c in all_chats if c['nombre_contacto']=='Desconocido')
+        assign={'conversacion_id':unknown['id'],'responsable_id':23}
+        assert call('asignarResponsable',22,data=assign)[0]==403
+        assert call('asignarResponsable',1,data=assign,csrf=False)[0]==403
+        assert call('asignarResponsable',1)[0]==405
+        assert call('asignarResponsable',1,data={'conversacion_id[]':'1','responsable_id':23})[0]==422
+        assert call('asignarResponsable',1,data={**assign,'responsable_id':1})[0]==422
+        status,body=call('asignarResponsable',1,data=assign)
+        assert status==200 and json.loads(body)['ok'],body
+        assert call('asignarResponsable',1,data=assign)[0]==200
+        assert call('asignarResponsable',1,data={**assign,'responsable_id':22})[0]==409
+        assert counter.read_text()==first,'Asignar un chat no envía mensajes'
         print('CHECK_OK HTTP WhatsApp: CSRF, método, contexto, permisos globales separados, panel sin configuración, transporte Meta de fixture y envío idempotente sin mensajes reales.')
     finally:server.terminate();server.wait(timeout=15)

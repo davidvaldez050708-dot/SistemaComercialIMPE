@@ -86,6 +86,9 @@ final class WhatsAppContextoService
 
     public static function exigirSalida(mysqli $db,array $conv): void
     {
+        if(!self::permiteResponderSeguimiento($db,$conv,(int)($_SESSION['usuario_id']??0))) {
+            throw new DomainException('Sólo el Analista responsable puede responder por este seguimiento.');
+        }
         if (!self::tabla($db,'whatsapp_conversacion_prospectos')) return;
         $s=$db->prepare("SELECT 1 FROM whatsapp_conversacion_prospectos w
             JOIN prospecto_asignaciones a ON a.prospecto_id=w.prospecto_id AND a.vigente=1
@@ -94,6 +97,17 @@ final class WhatsAppContextoService
         $id=(int)$conv['id'];
         try{$s->bind_param('i',$id);$s->execute();$bloqueado=(bool)$s->get_result()->fetch_row();}finally{$s->close();}
         if($bloqueado)throw new DomainException('El prospecto está en Recuperación o Descartados. No está habilitado el contacto saliente.');
+    }
+
+    public static function permiteResponderSeguimiento(mysqli $db,array $conv,int $usuario): bool
+    {
+        if($usuario<1 || (int)($_SESSION['usuario_id']??0)!==$usuario)return false;
+        if((int)($_SESSION['rol_id']??0)!==4 || empty($conv['aliado_seguimiento_id']))return true;
+        $scope=self::scopeSeguimiento($usuario);
+        $s=$db->prepare("SELECT ws.id FROM seguimientos_vinculacion ws WHERE ws.id=? AND ws.activo=1 AND ws.analista_id=? AND ($scope)");
+        $id=(int)$conv['aliado_seguimiento_id'];
+        try {$s->bind_param('ii',$id,$usuario);$s->execute();return (bool)$s->get_result()->fetch_row();}
+        finally {$s->close();}
     }
 
     public static function abrir(WhatsAppModel $modelo,string $tipo,int $id,int $usuario): int
