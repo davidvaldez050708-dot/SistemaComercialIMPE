@@ -69,6 +69,19 @@ class PublicacionTest(unittest.TestCase):
         self.assertEqual(self.css.read_bytes(), custom)
         self.assertFalse(self.backups.exists())
 
+    def test_replaces_previous_design_and_can_restore_it(self):
+        previous = (ROOT / 'tools/formularios_navegacion_compacta_v1.css').read_bytes()
+        installed = self.original + previous
+        self.css.write_bytes(installed)
+        self.invoke('--check')
+        self.invoke('--apply')
+        self.assertEqual(self.css.read_bytes(), self.original + PAYLOAD)
+        self.assertNotIn(b'FORMULARIOS_NAVEGACION_COMPACTA_V1', self.css.read_bytes())
+        backup = next(self.backups.glob('formularios-*'))
+        self.assertEqual((backup / 'formularios.css').read_bytes(), installed)
+        self.invoke('--restore', str(backup))
+        self.assertEqual(self.css.read_bytes(), installed)
+
     def test_protected_view_blocked(self):
         view = self.site / next(iter(MODULE.VIEWS))
         view.write_bytes(view.read_bytes() + b'<!-- cambio -->')

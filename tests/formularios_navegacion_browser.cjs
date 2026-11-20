@@ -28,10 +28,14 @@ function render(view,share){
    await page.setViewportSize({width,height:1000});await page.goto('https://formularios.test/?vista=inicio');
    await page.evaluate(()=>document.fonts.ready);
    assert.equal(await page.locator('.formularios-option-card').count(),2);
-   assert.equal(await page.locator('.formularios-hero-visual').isVisible(),false);
+   assert.equal(await page.locator('.formularios-hero-visual').isVisible(),width>767);
+   const originalHome=await page.locator('.formularios-hero,.formularios-option-card,.formularios-option-copy,.formularios-option-action').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {w:r.width,h:r.height,font:s.fontSize,display:s.display,padding:s.padding};}));
+   compact=false;await page.reload();await page.evaluate(()=>document.fonts.ready);
+   assert.deepEqual(await page.locator('.formularios-hero,.formularios-option-card,.formularios-option-copy,.formularios-option-action').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {w:r.width,h:r.height,font:s.fontSize,display:s.display,padding:s.padding};})),originalHome,'entrada conserva exactamente el diseño original');
+   compact=true;await page.reload();await page.evaluate(()=>document.fonts.ready);
    for(const card of await page.locator('.formularios-option-card').all()){
-    const rect=await card.boundingBox();assert(rect.height<230,JSON.stringify({width,rect}));
-    assert.equal(await card.locator('.formularios-card-features').isVisible(),false);
+    const rect=await card.boundingBox();assert(rect.height>200,JSON.stringify({width,rect}));
+    assert.equal(await card.locator('.formularios-card-features').isVisible(),true);
     assert.equal(await card.locator('.formularios-option-action').isVisible(),true);
    }
    assert.equal(await page.locator('body').evaluate(e=>e.scrollWidth<=innerWidth+1),true,'inicio sin desbordamiento');
@@ -42,18 +46,19 @@ function render(view,share){
    await page.evaluate(()=>document.fonts.ready);
    const cards=page.locator('.formularios-inscripcion-programa');assert.equal(await cards.count(),5);
    for(const card of await cards.all()){
-    assert((await card.boundingBox()).height<235,'tarjeta de programa compacta');
+    assert.equal(await card.locator('.formularios-inscripcion-programa-copy > p').isVisible(),true,'descripción original conservada');
+    assert.equal(await card.locator('.formularios-inscripcion-pendiente').isVisible(),true,'encabezado original conservado');
     const buttons=card.locator('.formularios-inscripcion-programa-action > a');assert.equal(await buttons.count(),2);
     const first=await buttons.nth(0).boundingBox(),second=await buttons.nth(1).boundingBox();
     assert(first.height<=48&&second.height<=48);
-    assert(second.x>=first.x+first.width+9||second.y>=first.y+first.height+9,'acciones con separación real');
+    assert(second.x>=first.x+first.width+5||second.y>=first.y+first.height+5,'acciones con separaciÃ³n real');
     assert((await buttons.nth(0).getAttribute('href')).includes('action=inscripcion'));
     assert((await buttons.nth(1).getAttribute('href')).includes('ya-estas-inscrito/?programa='));
     assert.equal(await buttons.nth(1).getAttribute('target'),'_blank');assert.equal(await buttons.nth(1).getAttribute('rel'),'noopener');
    }
-   assert.equal(await page.locator('body').evaluate(e=>e.scrollWidth<=innerWidth+1),true,'catálogo sin desbordamiento');
+   assert.equal(await page.locator('body').evaluate(e=>e.scrollWidth<=innerWidth+1),true,'catÃ¡logo sin desbordamiento');
    if(width===1440||width===390)await page.screenshot({path:path.join(output,'programas-'+width+'.png'),fullPage:true});
-   await page.goto('https://formularios.test/?vista=programas&compartir=0');assert.equal(await page.locator('a[href*="ya-estas-inscrito"]').count(),0,'compartir continúa sujeto al permiso real');
+   await page.goto('https://formularios.test/?vista=programas&compartir=0');assert.equal(await page.locator('a[href*="ya-estas-inscrito"]').count(),0,'compartir continÃºa sujeto al permiso real');
   }
   // La captura interna mantiene exactamente sus estilos y controles.
   await page.setViewportSize({width:1440,height:1000});
@@ -62,6 +67,6 @@ function render(view,share){
   }));
   compact=false;await page.goto('https://formularios.test/?vista=registro');const before=await properties();
   compact=true;await page.goto('https://formularios.test/?vista=registro');assert.deepEqual(await properties(),before,'captura interna sin alteraciones');
-  assert.deepEqual(errors,[]);console.log('CHECK_OK visual y funcional: cinco anchos, tarjetas compactas, botones separados, rutas, permisos de compartir y captura interna intactos.');
+  assert.deepEqual(errors,[]);console.log('CHECK_OK visual y funcional: cinco anchos, tarjetas originales conservadas, botones compactos con separación de 6 px, rutas, permisos de compartir y captura interna intactos.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
