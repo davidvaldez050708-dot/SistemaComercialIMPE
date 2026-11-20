@@ -39,7 +39,7 @@ const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
   await frame.locator('[data-whatsapp-message-input]').fill('Borrador conservado');
   assert.equal(state.sends,0,'abrir sólo prepara el contexto');
   assert.equal(await page.locator('dialog').count(),1);
-  const position=await page.locator('dialog').boundingBox();assert.equal(position.width,460);assert(position.height<=680 && position.y>=20);
+  const position=await page.locator('dialog').boundingBox();assert.equal(position.width,392);assert(position.height<=560 && position.y>=20);
   assert.equal(await page.locator('dialog').evaluate(el=>el.matches(':modal')),false);
   await page.click('#board');assert.equal(await page.evaluate(()=>window.boardClicks),1,'tablero accesible mientras se consulta el chat');
   await frame.locator('.whatsapp-messages').evaluate(el=>{

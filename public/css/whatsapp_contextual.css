@@ -1,6 +1,6 @@
 .wa-contextual-dialog {
   box-sizing:border-box;position:fixed;z-index:1045;inset:auto 24px 20px auto;margin:0;
-  width:460px;max-width:calc(100vw - 32px);height:min(680px,calc(100dvh - 40px));
+  width:392px;max-width:calc(100vw - 32px);height:min(560px,calc(100dvh - 40px));
   max-height:calc(100dvh - 40px);padding:0;overflow:hidden;
   border:1px solid #cfdded;border-radius:16px;background:#fff;color:#19385f;
   font-family:Manrope,Arial,sans-serif;box-shadow:0 12px 44px #17355b38;
@@ -9,11 +9,11 @@
 .wa-contextual-dialog:not([open]) {display:none;}
 .wa-contextual-header {
   box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;
-  min-height:54px;padding:10px 14px;color:white;
-  background:linear-gradient(115deg,#183e68,#167779);border-bottom:1px solid #ffffff24;
+  min-height:44px;padding:8px 12px;color:white;
+  background:#16223b;border-bottom:3px solid #0a8f7a;
 }
-.wa-contextual-header h2 {display:flex;align-items:center;gap:9px;font-size:16px;font-weight:700;line-height:1.4;margin:0;color:inherit;}
-.wa-contextual-header button {flex-shrink:0;border:1px solid #ffffff50;background:#ffffff12;border-radius:9px;width:34px;height:34px;color:white;font-size:23px;line-height:1;}
+.wa-contextual-header h2 {display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;line-height:1.4;margin:0;color:inherit;}
+.wa-contextual-header button {flex-shrink:0;border:1px solid #ffffff38;background:#ffffff10;border-radius:8px;width:29px;height:29px;color:white;font-size:20px;line-height:1;}
 .wa-contextual-header button:hover {background:#ffffff28;}
 .wa-contextual-header button:focus-visible {outline:2px solid white;outline-offset:2px;}
 .wa-contextual-dialog iframe {display:block;flex:1;min-height:0;height:0;border:0;width:100%;background:#f0f6f5;}
@@ -23,21 +23,21 @@ html:has(body.wa-panel-body) {height:100%;overflow:hidden;}
 .wa-panel-body {height:100%;overflow:hidden;margin:0;background:#eef5f3;font-family:Manrope,Arial,sans-serif;}
 .wa-panel-body .whatsapp-module {gap:0;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
 .wa-panel-body .whatsapp-chat-column {flex:1;height:auto;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
-.wa-panel-body .whatsapp-chat-header {flex-direction:row;flex-wrap:nowrap;align-items:center;gap:8px;min-height:0;padding:12px 14px;background:#f7fbfc;flex-shrink:0;}
+.wa-panel-body .whatsapp-chat-header {flex-direction:row;flex-wrap:nowrap;align-items:center;gap:8px;min-height:0;padding:10px 12px;background:#fff;flex-shrink:0;}
 .wa-panel-body .whatsapp-chat-contact {min-width:0;flex:1 1 auto;}
-.wa-panel-body .whatsapp-chat-contact strong {font-size:14px;line-height:1.4;overflow-wrap:anywhere;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-.wa-panel-body .whatsapp-chat-contact span {font-size:12px;line-height:1.4;}
-.wa-panel-body .whatsapp-avatar {width:38px;height:38px;flex-shrink:0;background:#e4f2ef;color:#126c64;}
+.wa-panel-body .whatsapp-chat-contact strong {font-size:13px;line-height:1.4;overflow-wrap:anywhere;white-space:nowrap;display:block;overflow:hidden;text-overflow:ellipsis;}
+.wa-panel-body .whatsapp-chat-contact span {font-size:11px;line-height:1.4;}
+.wa-panel-body .whatsapp-avatar {width:34px;height:34px;flex-shrink:0;background:#edf2fa;color:#273a8a;}
 .wa-panel-body .whatsapp-avatar.is-large {font-size:15px;}
-.wa-panel-body .whatsapp-window-status {font-size:11px;line-height:1.4;padding:4px 8px;max-width:120px;}
+.wa-panel-body .whatsapp-window-status {font-size:10px;line-height:1.4;padding:4px 6px;max-width:110px;}
 .wa-panel-body .whatsapp-messages {
   flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
   padding:16px 14px;gap:10px;
-  background:radial-gradient(#578c7b12 .8px,transparent .8px) 0 0/18px 18px,#edf5f1;
+  background:radial-gradient(#887b6810 .8px,transparent .8px) 0 0/20px 20px,#efeae2;
 }
 .wa-panel-body .whatsapp-message {flex-shrink:0;}
-.wa-panel-body .whatsapp-message-bubble {max-width:86%;padding:9px 12px 7px;border-radius:14px;border-color:#dce7e2;box-shadow:0 1px 3px #183e6810;}
-.wa-panel-body .whatsapp-message.is-outgoing .whatsapp-message-bubble {background:#d4eee4;border-color:#beded1;}
+.wa-panel-body .whatsapp-message-bubble {max-width:86%;padding:8px 10px 6px;border-radius:4px 11px 11px;border-color:#e3e0da;box-shadow:0 1px 2px #182b3914;}
+.wa-panel-body .whatsapp-message.is-outgoing .whatsapp-message-bubble {background:#d9fdd3;border-color:#d1edcb;border-radius:11px 4px 11px 11px;}
 .wa-panel-body .whatsapp-message-bubble p {font-size:14px;line-height:1.5;color:#183c39;}
 .wa-panel-body .whatsapp-message-meta {font-size:11px;color:#5a746c;}
 .wa-panel-body .whatsapp-message-type,.wa-panel-body .whatsapp-message-error {font-size:11px;}
@@ -47,7 +47,7 @@ html:has(body.wa-panel-body) {height:100%;overflow:hidden;}
 .wa-panel-body .whatsapp-chat-empty span {font-size:13px;line-height:1.5;}
 .wa-panel-body .whatsapp-composer {flex-shrink:0;background:#f7fbfc;}
 .wa-panel-body .whatsapp-composer textarea {font-size:14px;line-height:1.5;border-radius:14px;}
-.wa-panel-body .whatsapp-send-button {border-radius:12px;background:#176b69;color:#fff;font-size:17px;}
+.wa-panel-body .whatsapp-send-button {border-radius:50%;background:#0a8f7a;border-color:#0a8f7a;color:#fff;font-size:16px;width:38px;height:38px;}
 .wa-panel-body .whatsapp-window-notice {grid-template-columns:auto minmax(0,1fr);gap:7px;}
 .wa-panel-body .whatsapp-window-notice strong {font-size:12px;}
 .wa-panel-body .whatsapp-window-notice span {font-size:11px;line-height:1.4;}
@@ -57,5 +57,5 @@ html:has(body.wa-panel-body) {height:100%;overflow:hidden;}
 .wa-panel-body:has(.wa-config-warning) .whatsapp-window-notice,
 .wa-panel-body:has(.wa-config-warning) .whatsapp-readonly-note {display:none;}
 @media(max-width:520px){
-  .wa-contextual-dialog {inset:auto 8px 8px auto;width:calc(100vw - 16px);max-width:calc(100vw - 16px);height:min(680px,calc(100dvh - 16px));max-height:calc(100dvh - 16px);}
+  .wa-contextual-dialog {inset:auto 8px 8px auto;width:min(392px,calc(100vw - 16px));max-width:calc(100vw - 16px);height:min(560px,calc(100dvh - 16px));max-height:calc(100dvh - 16px);}
 }

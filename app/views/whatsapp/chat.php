@@ -99,11 +99,14 @@
                 <footer class="whatsapp-composer">
                     <div class="whatsapp-window-notice <?= $ventanaServicioAbierta ? 'd-none' : '' ?>" data-whatsapp-window-notice>
                         <i class="bi bi-info-circle"></i>
-                        <div>
-                            <strong>La ventana de atención está cerrada.</strong>
+                        <div class="whatsapp-window-details">
+                            <strong>Ventana de atención cerrada</strong>
                             <span>
                                 Para iniciar el contacto se requiere una plantilla aprobada. Cuando responda, se habilitará texto libre durante 24 horas.
                             </span>
+                            <?php if (WhatsAppContextoService::esVentas() && $puedeEnviarWhatsapp): ?>
+                                <?php require __DIR__.'/ventas_inicio.php'; ?>
+                            <?php endif; ?>
                         </div>
 
                         <?php if (!empty($puedePlantillaPrueba)): ?>
@@ -114,9 +117,6 @@
                                 <i class="bi bi-send-check"></i>
                                 Enviar plantilla de prueba
                             </button>
-                        <?php endif; ?>
-                        <?php if (WhatsAppContextoService::esVentas() && $puedeEnviarWhatsapp): ?>
-                            <?php require __DIR__.'/ventas_inicio.php'; ?>
                         <?php endif; ?>
                     </div>
 

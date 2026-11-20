@@ -8,11 +8,13 @@ foreach($mensajesIniciales as $m)$ultimaIdMensaje=max($ultimaIdMensaje,(int)$m['
 <!doctype html><html lang="es"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Conversación de WhatsApp</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/global.css">
 <link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/whatsapp.css">
 <link rel="stylesheet" href="<?= $texto(BASE_URL) ?>public/css/whatsapp_contextual.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/whatsapp_contextual.css'),0,12) ?>">
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/whatsapp_institucional.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/whatsapp_institucional.css'),0,12) ?>">
 </head><body class="wa-panel-body">
 <main class="whatsapp-module" data-whatsapp-module data-base-url="<?= $texto(BASE_URL) ?>"
  data-conversation-id="<?= (int)$conversacionSeleccionada['id'] ?>" data-last-message-id="<?= $ultimaIdMensaje ?>">

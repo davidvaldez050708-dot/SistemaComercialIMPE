@@ -79,6 +79,7 @@ foreach ($mensajesIniciales as $mensaje) {
 }
 
 ?>
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/whatsapp_institucional.css?v=<?= substr(hash_file('sha256',__DIR__.'/../../../public/css/whatsapp_institucional.css'),0,12) ?>">
 
 <section
     class="whatsapp-module"

@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded',function(){
         event.preventDefault();if(form.dataset.pending==='1'||!form.reportValidity())return;
         form.dataset.pending='1';const button=form.querySelector('button');button.disabled=true;
         const feedback=form.querySelector('[data-wa-ventas-feedback]');feedback.textContent='Validando con Meta…';
-        try{const data=await request(form.action,new FormData(form));feedback.textContent=data.mensaje;form.querySelector('[data-wa-ventas-preview]').textContent=data.plantilla.cuerpo;}
+        try{const data=await request(form.action,new FormData(form));feedback.textContent=data.mensaje;form.querySelector('[data-wa-ventas-preview]').textContent=data.plantilla.cuerpo;const state=form.closest('article')?.querySelector('[data-wa-template-state]');if(state){state.textContent='Plantilla configurada';state.classList.remove('is-pending');}}
         catch(error){feedback.textContent=error.message||'No se pudo validar con Meta.';}
         finally{form.dataset.pending='0';button.disabled=false;}
     }));
