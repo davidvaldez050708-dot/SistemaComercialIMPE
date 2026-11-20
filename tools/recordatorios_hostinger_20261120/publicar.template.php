@@ -50,7 +50,7 @@ try {
         $restore = json_decode(file_get_contents($backup . '/respaldo.json'), true, 512, JSON_THROW_ON_ERROR);
         if (($restore['version'] ?? '') !== 'proximas-acciones-20261120' || $restore['root'] !== $root) fail('El respaldo corresponde a otra instalación');
     }
-    foreach ($patches as $relative => $hunks) {
+    foreach ($patches as $relative => $profiles) {
         $path = checkedPath($root, $relative);
         $originals[$relative] = file_get_contents($path);
         $current = str_replace("\r\n", "\n", $originals[$relative]);
@@ -60,14 +60,20 @@ try {
             $next = file_get_contents($backup . '/files/' . $relative);
             if (hash('sha256', $next) !== $record['before']) fail('Respaldo alterado: ' . $relative);
         } else {
-            $next = $current;
-            foreach ($hunks as $hunk) {
-                if (substr_count($next, $hunk['before']) === 1) {
-                    $next = str_replace($hunk['before'], $hunk['after'], $next);
-                } elseif (substr_count($next, $hunk['after']) !== 1) {
-                    fail('Variante no reconocida en ' . $relative . '. No se modifica ningún archivo; requiere conciliar este archivo.');
+            $matches = [];
+            foreach ($profiles as $hunks) {
+                $trial = $current;
+                foreach ($hunks as $hunk) {
+                    if (substr_count($trial, $hunk['before']) === 1) {
+                        $trial = str_replace($hunk['before'], $hunk['after'], $trial);
+                    } elseif (substr_count($trial, $hunk['after']) !== 1) {
+                        continue 2;
+                    }
                 }
+                $matches[hash('sha256', $trial)] = $trial;
             }
+            if (count($matches) !== 1) fail('Variante no reconocida o ambigua en ' . $relative . '. No se modifica ningún archivo; requiere conciliar este archivo.');
+            $next = array_values($matches)[0];
             if ($next === $current) $next = $originals[$relative];
         }
         lint($relative, $next);

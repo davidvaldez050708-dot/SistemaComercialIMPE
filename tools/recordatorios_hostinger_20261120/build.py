@@ -5,6 +5,7 @@ import hashlib
 import json
 import subprocess
 import zipfile
+from conciliar_hostinger import extend
 
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = '1cc319a0c24c54733835e95b9a84624468ea2fd2'
@@ -40,6 +41,17 @@ def build():
         context = 12 if file == 'app/models/AliadoModel.php' else 3
         for group in difflib.SequenceMatcher(None, a, b, autojunk=False).get_grouped_opcodes(context):
             changes[file].append({'before': ''.join(a[group[0][1]:group[-1][2]]), 'after': ''.join(b[group[0][3]:group[-1][4]])})
+    changes = {file: [hunks] for file, hunks in changes.items()}
+    if (ROOT / 'tools/estabilidad_403_503/dependency_snapshot_20261110').is_dir():
+        extend(ROOT, changes)
+    else:
+        # Una clonación pública conserva los deltas de Hostinger ya conciliados;
+        # no necesita ni distribuye las copias privadas usadas para validarlos.
+        previous = Path(__file__).with_name('cambios.json')
+        if previous.exists():
+            for file, profiles in json.loads(previous.read_text(encoding='utf-8')).items():
+                for profile in profiles[1:]:
+                    if profile not in changes[file]: changes[file].append(profile)
     payload = json.dumps(changes, ensure_ascii=False, indent=2).encode('utf-8')
     (OUT / 'cambios.json').write_bytes(payload)
     script = Path(__file__).with_name('publicar.template.php').read_text(encoding='utf-8').replace('__PAYLOAD_SHA256__', hashlib.sha256(payload).hexdigest())

@@ -3,7 +3,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright');
-const source = fs.readFileSync(path.join(__dirname, '../public/javascript/recordatorios.js'), 'utf8');
+const source = fs.readFileSync(process.env.IMPE_REMINDER_TEST_SOURCE || path.join(__dirname, '../public/javascript/recordatorios.js'), 'utf8');
+const duration = Number(process.env.IMPE_REMINDER_TEST_DURATION || 7000);
 const css = fs.readFileSync(path.join(__dirname, '../public/css/recordatorios.css'), 'utf8');
 const minute = 60000;
 const pending = { id: 9, accion: 'Volver a llamar', nombre_entidad: 'Institución de prueba',
@@ -51,7 +52,7 @@ async function refresh(page) {
         assert.equal(await page.locator('.topbar-reminder-item').count(), 1);
         const start = await page.evaluate(() => IMPE_REMINDER_STATUS().startedAt);
         assert.ok(await page.evaluate(s => Date.now() - s < 8 * 60000, start), 'Se muestra antes del turno de ocho minutos');
-        await page.clock.runFor(7000);
+        await page.clock.runFor(duration);
         await refresh(page);
         assert.equal(await page.locator('.reminder-toast').count(), 0, 'El polling no repite el mismo anticipo');
         for (const [tipo, advance, expected] of [['1H', 120 * minute, 6], ['10M', 50 * minute, 9]]) {
@@ -61,7 +62,7 @@ async function refresh(page) {
             await page.locator('.reminder-toast').waitFor({ state: 'visible' });
             assert.equal(await page.evaluate(() => audioStarts), expected, tipo + ': toast con sonido antes de vencer');
             assert.ok(await page.evaluate(() => Date.now() < new Date('2026-11-20T13:00:00').getTime()));
-            await page.clock.runFor(7000);
+            await page.clock.runFor(duration);
         }
         await page.reload();
         await page.waitForFunction(() => IMPE_REMINDER_STATUS().loadedCount > 0);
@@ -71,7 +72,7 @@ async function refresh(page) {
         items = [{ ...pending, id: 10, tipo_anticipo: '10M' }, { ...pending, id: 11, tipo_anticipo: '10M' }];
         await refresh(page);
         assert.equal(await page.evaluate(() => audioStarts), 3);
-        await page.clock.runFor(7000);
+        await page.clock.runFor(duration);
         assert.equal(await page.evaluate(() => audioStarts), 6);
         assert.equal(await page.locator('.reminder-toast').count(), 1, 'Sin superponer toasts');
         items = [{ ...pending, estado: 'vencida', tipo_anticipo: 'VENCIDA' }];

@@ -51,9 +51,21 @@ class ConexionAvisos {
     }
 }
 class Database { static $db; function connect() { return self::$db; } }
+class SeguimientoTerritorialScope {
+    static function analista($alias) { return $alias . '.analista_id = ?'; }
+    static function reunionAnalista($alias) { return $alias . '.analista_id = ?'; }
+}
+class AgendaReunionService { function avisosHorario($uid) { return []; } }
+class AgendaComentarioService {
+    function notificaciones($uid) { return ['recordatorios' => [], 'avisos' => []]; }
+    function registrarEntregados(...$args) {}
+}
+class ReminderReunionFollowupService { function obtener(...$args) { return ['recordatorios' => [], 'avisos' => []]; } }
+class ReminderObservacionService { function obtener(...$args) { return ['recordatorios' => [], 'avisos' => []]; } }
+class ReminderDirectLinkService { function aplicar($items, $uid) { return $items; } }
 function tienePermiso($p) { return in_array($p, $_SESSION['permisos'] ?? [], true); }
 function cargarCodigo($relative) {
-    $text = file_get_contents(dirname(__DIR__) . '/' . $relative);
+    $text = file_get_contents((getenv('IMPE_REMINDER_TEST_SOURCE_ROOT') ?: dirname(__DIR__)) . '/' . $relative);
     $text = preg_replace('/^require_once .*;\R/m', '', $text);
     eval('?>' . $text);
 }
