@@ -2,17 +2,19 @@
 // Flujo real consulta -> filtros -> controlador, sobre SQLite en memoria.
 // No carga configuración ni conecta con ninguna BD del CRM.
 if (($argv[1] ?? '') !== '--fixture') {
-    foreach ([5, 6] as $uid) {
-        $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__FILE__) . ' --fixture ' . $uid;
+    foreach ([[5, false], [6, false], [5, true]] as [$uid, $atendida]) {
+        $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__FILE__) . ' --fixture ' . $uid . ($atendida ? ' atendida' : '');
         exec($cmd, $salida, $code);
         $datos = json_decode(implode("\n", $salida), true, 512, JSON_THROW_ON_ERROR);
         $salida = [];
         if ($code || empty($datos['ok']) || empty($datos['recordatorios'])) throw new RuntimeException('No entrega para operador sin permisos de reuniones');
         $futuros = array_values(array_filter($datos['recordatorios'], static fn($r) => ($r['tipo_anticipo'] ?? '') === '10M'));
-        if (count($futuros) !== 1 || $futuros[0]['id'] !== $uid || $futuros[0]['accion'] !== 'Volver a llamar') {
+        if (!$atendida && (count($futuros) !== 1 || $futuros[0]['id'] !== $uid || $futuros[0]['accion'] !== 'Volver a llamar')) {
             throw new RuntimeException('No conserva próxima acción propia entre atrasos y agenda histórica');
         }
         if (count($datos['recordatorios']) <= 12) throw new RuntimeException('El límite todavía oculta el anticipo');
+        $pendientes = array_column($datos['acciones_pendientes'] ?? [], 'id');
+        if (in_array($uid, $pendientes, true) === $atendida) throw new RuntimeException('La campana no refleja la atención de la próxima acción');
     }
     echo "OK: operadores sin permisos de reuniones reciben su acción vigente, con reunión histórica y más de cien vencidas, aislados por usuario.\n";
     exit;
@@ -88,6 +90,7 @@ foreach ([5, 6] as $uid) {
     $db->pdo->exec("INSERT INTO interacciones_vinculacion VALUES($uid,$uid,'Próxima acción: Volver a llamar','2026-01-02'); INSERT INTO reuniones_vinculacion VALUES($uid,$uid,'REALIZADA')");
 }
 $uid = (int)$argv[2];
+if (($argv[3] ?? '') === 'atendida') $db->pdo->exec('UPDATE seguimientos_vinculacion SET proxima_accion_at=NULL WHERE id=' . $uid);
 $_SESSION = ['usuario_id' => $uid, 'rol_id' => 4, 'permisos' => ['seguimientos_vinculacion.operar_propios']];
 $controller = (new ReflectionClass(ReminderController::class))->newInstanceWithoutConstructor();
 $empty = new class { function obtener(...$args) { return ['recordatorios' => [], 'avisos' => []]; } };

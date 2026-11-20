@@ -22,14 +22,14 @@ async function refresh(page) {
         page.on('pageerror', e => errors.push(e.message));
         await page.clock.install({ time: new Date('2026-11-20T16:00:00Z') });
         await page.clock.pauseAt(new Date('2026-11-20T16:00:01Z'));
-        let items = [];
+        let items = [], avisos = [], pendingActions = [];
         await page.route('http://anticipos.test/**', route => {
             if (route.request().method() !== 'GET') { posts.push(route.request().url()); return route.abort(); }
             if (new URL(route.request().url()).pathname === '/pendientes') {
                 // Simula un aviso ya marcado como enviado en BD: nunca devuelve avisos.
-                return route.fulfill({ json: { ok: true, total: items.length, recordatorios: items, avisos: [] } });
+                return route.fulfill({ json: { ok: true, total: items.length, recordatorios: items, avisos, acciones_pendientes: pendingActions } });
             }
-            return route.fulfill({ contentType: 'text/html', body: `<!doctype html><style>${css}</style>
+            return route.fulfill({ contentType: 'text/html; charset=utf-8', body: `<!doctype html><meta charset="utf-8"><style>${css}</style>
                 <h1>Agenda del Analista</h1>
                 <div data-reminder-root data-reminder-endpoint="/pendientes">
                     <span data-reminder-badge></span><div data-reminder-content></div>
@@ -80,6 +80,29 @@ async function refresh(page) {
         await refresh(page);
         assert.equal(await page.evaluate(() => audioStarts), 6, 'Los vencidos no suenan');
         assert.equal(await page.locator('.topbar-reminder-item').count(), 1, 'El vencido conserva su campana');
+        await page.clock.runFor(duration);
+        const at31 = await page.evaluate(() => Math.floor(Date.now() / 1000) + 31 * 60);
+        const action31 = { ...pending, id: 31, fecha: new Date(at31 * 1000).toISOString(), alerta_at: at31, tipo_anticipo: '1H' };
+        items = [action31];
+        avisos = [{ ...action31, tipo: '1H', titulo: 'En aproximadamente 1 hora' }];
+        await refresh(page);
+        await page.locator('.reminder-toast').waitFor({ state: 'visible' });
+        assert.equal(await page.locator('.reminder-toast strong').textContent(), 'Volver a llamar \u00b7 En 31 minutos');
+        avisos = [];
+        await page.clock.runFor(duration);
+        await refresh(page);
+        assert.equal(await page.locator('.topbar-reminder-item').count(), 1, 'Mostrar el toast no retira la acción de la campana');
+        // La fuente de pendientes conserva el aviso aunque el resumen general lo omita.
+        pendingActions = [action31]; items = [];
+        await refresh(page);
+        assert.equal(await page.locator('.topbar-reminder-item').count(), 1);
+        await page.reload();
+        await page.waitForFunction(() => IMPE_REMINDER_STATUS().loadedCount > 0);
+        assert.equal(await page.locator('.topbar-reminder-item').count(), 1, 'Recargar conserva la campana mientras siga pendiente');
+        assert.equal(await page.locator('.reminder-toast').count(), 0, 'La campana no vuelve a disparar el toast mostrado');
+        pendingActions = [];
+        await refresh(page);
+        assert.equal(await page.locator('.topbar-reminder-item').count(), 0, 'Atender la acción la retira de la campana');
         assert.deepEqual(errors, []);
         assert.deepEqual(posts, []);
         console.log('OK navegador: 3H/1H/10M con toast+audio+campana, recuperación sin avisos, deduplicación al navegar, cola de siete segundos y vencidas silenciosas.');

@@ -50,12 +50,21 @@ def extend(root, changes):
                 if '$recordatoriosObservaciones,' in h['before']:
                     after = replace_once(after, h['before'], h['after'])
             after = replace_once(after, 'array_slice($otros, 0, 12)', '$this->seleccionarRecordatoriosCampana($otros)')
+            after = replace_once(after, '        $ordenados = $this->ordenarRecordatorios($recordatorios);',
+                "        $accionesPendientes = array_values(array_filter($recordatorios,\n            static fn($item) => array_key_exists('tipo_anticipo', $item)));\n        $ordenados = $this->ordenarRecordatorios($recordatorios);")
+            after = replace_once(after, "            'recordatorios' => $recordatorios,", "            'acciones_pendientes' => $accionesPendientes,\n            'recordatorios' => $recordatorios,")
             method = local[local.index('    private function seleccionarRecordatoriosCampana('):local.index('    private function ordenarRecordatorios(')]
             after = replace_once(after, '    private function ordenarRecordatorios(', method + '    private function ordenarRecordatorios(')
         elif file == jsfile:
             local = (root / jsfile).read_text(encoding='utf-8')
+            after = replace_once(after, '        const fechaRecordatorio = function (recordatorio) {\n',
+                '        const fechaRecordatorio = function (recordatorio) {\n            const timestamp = Number(recordatorio.alerta_at || 0);\n            if (Number.isFinite(timestamp) && timestamp > 0) return new Date(timestamp * 1000);\n')
             audio = local[local.index('        let audioAcciones ='):local.index('        const estadoVisibleRecordatorio =')]
             after = replace_once(after, '        const estadoVisibleRecordatorio =', audio + '        const estadoVisibleRecordatorio =')
+            combine = local[local.index('        const unirAccionesPendientes ='):local.index('        const fechaRecordatorio =')]
+            after = replace_once(after, '        const fechaRecordatorio =', combine + '        const fechaRecordatorio =')
+            after = replace_once(after, 'const recibidos=Array.isArray(datos.recordatorios)?datos.recordatorios:[];',
+                'const recibidos=unirAccionesPendientes(datos.recordatorios,datos.acciones_pendientes);')
             upcoming = local[local.index('        const mostrarProximaAccion ='):local.index('        const mostrarSiguienteToastVencido =')]
             after = replace_once(after, '        const mostrarSiguienteToastVencido =', upcoming + '        const mostrarSiguienteToastVencido =')
             after = replace_once(after, '        const mostrarSiguienteComentarioNuevo = function () {\n',

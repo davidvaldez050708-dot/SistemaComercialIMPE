@@ -145,7 +145,20 @@
             );
         };
 
+        const unirAccionesPendientes = function (recordatorios, acciones) {
+            const lista = Array.isArray(recordatorios) ? recordatorios.slice() : [];
+            const claves = new Set(lista.map(claveRecordatorio));
+            for (const accion of Array.isArray(acciones) ? acciones : []) {
+                if (!accion || !Object.prototype.hasOwnProperty.call(accion, 'tipo_anticipo')) continue;
+                const clave = claveRecordatorio(accion);
+                if (!claves.has(clave)) { lista.push(accion); claves.add(clave); }
+            }
+            return lista;
+        };
+
         const fechaRecordatorio = function (recordatorio) {
+            const timestamp = Number(recordatorio.alerta_at || 0);
+            if (Number.isFinite(timestamp) && timestamp > 0) return new Date(timestamp * 1000);
             const fechaTexto = String(recordatorio.fecha || '').trim();
             if (fechaTexto === '') {
                 return null;
@@ -157,6 +170,18 @@
 
         let audioAcciones = null;
         const esTipoAnticipo = tipo => /^[1-9]\d*[HM]$/.test(String(tipo || ''));
+        const tituloProximaAccion = function (recordatorio) {
+            const fecha = fechaRecordatorio(recordatorio);
+            const desfase = typeof desfaseServidor === 'number' ? desfaseServidor : 0;
+            const minutos = Math.max(1, Math.ceil((fecha.getTime() - Date.now() - desfase) / 60000));
+            const horas = Math.floor(minutos / 60);
+            const resto = minutos % 60;
+            const tiempo = horas > 0
+                ? horas + (horas === 1 ? ' hora' : ' horas') +
+                    (resto ? ' y ' + resto + (resto === 1 ? ' minuto' : ' minutos') : '')
+                : minutos + (minutos === 1 ? ' minuto' : ' minutos');
+            return String(recordatorio.accion || 'Próxima acción') + ' · En ' + tiempo;
+        };
         const habilitarAudioAcciones = function (evento) {
             if (!evento.isTrusted) return;
             try {
@@ -390,7 +415,7 @@
                     ...recordatorio,
                     ...(enCola?.aviso.tipo === tipo ? enCola.aviso : {}),
                     tipo,
-                    titulo: enCola?.aviso.tipo === tipo ? enCola.aviso.titulo : 'Próxima acción',
+                    titulo: tituloProximaAccion(recordatorio),
                     mensaje: String(recordatorio.accion || 'Revisar pendiente') + ' · ' +
                         String(recordatorio.nombre_entidad || 'Seguimiento') +
                         (etiquetaVisibleRecordatorio(recordatorio) ? ' · ' + etiquetaVisibleRecordatorio(recordatorio) : '')
@@ -604,7 +629,7 @@
                 }
 
                 renderizarRecordatorios(
-                    datos.recordatorios || [],
+                    unirAccionesPendientes(datos.recordatorios, datos.acciones_pendientes),
                     datos.total || 0
                 );
                 cargaInicialCompletada = true;

@@ -62,4 +62,15 @@ with tempfile.TemporaryDirectory(prefix='hostinger-anticipos-', dir=ROOT / 'tmp'
     print(run('node', ROOT / 'tests/recordatorios_anticipados_browser.cjs', env=env).strip())
     run('php', out / 'publicar.php', '--restore', live, backup)
     assert original == {f: (live / f).read_bytes() for f in FILES}
+    # Repetir sobre la versión 3d63ebb5 que el usuario ya instaló.
+    prior = Path(temp) / 'instalador-previo'
+    prior.mkdir()
+    for name in ['publicar.php', 'cambios.json']:
+        data = subprocess.check_output(['git', 'show', f'3d63ebb598c016b8865607e07b37a120c177130a:tools/recordatorios_hostinger_20261120/{name}'], cwd=ROOT)
+        (prior / name).write_bytes(data)
+    run('php', prior / 'publicar.php', '--apply', live)
+    assert 'CHECK OK' in run('php', out / 'publicar.php', '--check', live)
+    run('php', out / 'publicar.php', '--apply', live)
+    for file, expected_content in candidates.items():
+        assert (live / file).read_text(encoding='utf-8') == expected_content, file
 print('OK Hostinger: 7 SHA exactos, topbar sin cambios, instalación/restauración, SQL territorial, permisos y toast/audio/campana con el presentador real de producción.')

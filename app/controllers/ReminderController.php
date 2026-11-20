@@ -331,6 +331,8 @@ class ReminderController
         }
         // La campana debe priorizar obligaciones vencidas y acciones que requieren
         // intervención, sin depender del orden en que cada servicio fue consultado.
+        $accionesPendientes = array_values(array_filter($recordatorios,
+            static fn($item) => array_key_exists('tipo_anticipo', $item)));
         $recordatorios = $this->seleccionarRecordatoriosCampana($recordatorios);
         if (isset($servicioNuevosAliados)) {
             $servicioNuevosAliados->registrarEntregados($usuarioId, $recordatorios);
@@ -341,6 +343,7 @@ class ReminderController
             'parcial' => !$ok,
             'requiere_migracion' => $requiereMigracion,
             'avisos' => array_values($avisos),
+            'acciones_pendientes' => $accionesPendientes,
             'recordatorios' => $recordatorios,
             'total' => count($recordatorios)
         ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
@@ -350,13 +353,10 @@ class ReminderController
     private function seleccionarRecordatoriosCampana($items)
     {
         $ordenados = $this->ordenarRecordatorios($items);
-        // Conservar los doce avisos prioritarios y las acciones vigentes que
-        // quedarían fuera. El atraso acumulado no debe ocultar los anticipos.
+        // Conservar los doce avisos prioritarios y todas las próximas acciones
+        // pendientes, incluso si vencen. Mostrar el toast no las da por atendidas.
         return array_values(array_filter($ordenados, static function ($item, $indice) {
-            return $indice < 12 || (
-                preg_match('/^[1-9][0-9]*[HM]$/', (string)($item['tipo_anticipo'] ?? '')) &&
-                (strtotime((string)($item['fecha'] ?? '')) ?: 0) > time()
-            );
+            return $indice < 12 || array_key_exists('tipo_anticipo', $item);
         }, ARRAY_FILTER_USE_BOTH));
     }
 

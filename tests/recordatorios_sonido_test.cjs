@@ -25,8 +25,12 @@ const context = {
     document: { hidden: false, addEventListener(name, fn) { listeners[name] = fn; } }
 };
 vm.createContext(context);
-vm.runInContext(source.slice(start, end) + '\nthis.play = sonarProximaAccion;', context);
+vm.runInContext(source.slice(start, end) + '\nthis.play = sonarProximaAccion; this.title = tituloProximaAccion;', context);
 const pending = { fecha: '2026-11-20 11:00:00', estado: 'proxima' };
+for (const [minutes, expected] of [[31, '31 minutos'], [1, '1 minuto'], [60, '1 hora'], [61, '1 hora y 1 minuto'], [180, '3 horas']]) {
+    const title = context.title({ accion: 'Volver a llamar', alerta_at: (now + minutes * 60000) / 1000 });
+    assert.equal(title, 'Volver a llamar · En ' + expected);
+}
 context.play({ tipo: '1H' }, pending);
 assert.equal(starts.length, 0, 'No reproduce antes de un gesto');
 listeners.pointerdown({ isTrusted: false });

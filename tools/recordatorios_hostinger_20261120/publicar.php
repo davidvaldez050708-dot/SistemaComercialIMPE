@@ -37,7 +37,7 @@ try {
         count($argv) !== ($mode === '--restore' ? 4 : 3)) fail('Uso: php publicar.php --check|--apply RAIZ_CRM | --restore RAIZ_CRM RESPALDO');
     $root = str_replace('\\', '/', $root);
     $json = file_get_contents(__DIR__ . '/cambios.json');
-    if (hash('sha256', $json) !== '2e7a86fd7e8984e8101153e3aefeffa80401005b540e42689f832c2ec5a86851') fail('El paquete está incompleto o alterado');
+    if (hash('sha256', $json) !== '47a93914b979febcce3776de81adf9646b5cefd5e2d2da7c907c2fe2e8b9c3d2') fail('El paquete está incompleto o alterado');
     $patches = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
     $lock = dirname($root) . '/.impe-anticipos-deploy.lock';
     if ($mode !== '--check') {

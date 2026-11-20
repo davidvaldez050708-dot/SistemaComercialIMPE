@@ -5,7 +5,7 @@ import hashlib
 import json
 import subprocess
 import zipfile
-from conciliar_hostinger import extend
+from conciliar_hostinger import extend, hunks
 
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = '1cc319a0c24c54733835e95b9a84624468ea2fd2'
@@ -43,7 +43,7 @@ def build():
             changes[file].append({'before': ''.join(a[group[0][1]:group[-1][2]]), 'after': ''.join(b[group[0][3]:group[-1][4]])})
     changes = {file: [hunks] for file, hunks in changes.items()}
     if (ROOT / 'tools/estabilidad_403_503/dependency_snapshot_20261110').is_dir():
-        extend(ROOT, changes)
+        sources, _ = extend(ROOT, changes)
     else:
         # Una clonación pública conserva los deltas de Hostinger ya conciliados;
         # no necesita ni distribuye las copias privadas usadas para validarlos.
@@ -52,6 +52,28 @@ def build():
             for file, profiles in json.loads(previous.read_text(encoding='utf-8')).items():
                 for profile in profiles[1:]:
                     if profile not in changes[file]: changes[file].append(profile)
+        sources = {}
+    # Actualización desde la entrega ya instalada: los bloques anteriores pueden
+    # contener la primera versión del código añadido por este mismo instalador.
+    previous = json.loads(subprocess.check_output(['git', 'show', '3d63ebb598c016b8865607e07b37a120c177130a:tools/recordatorios_hostinger_20261120/cambios.json'], cwd=ROOT).decode('utf-8'))
+    def apply_profiles(text, profiles):
+        matches = set()
+        for profile in profiles:
+            trial = text
+            for h in profile:
+                if trial.count(h['before']) == 1: trial = trial.replace(h['before'], h['after'], 1)
+                elif trial.count(h['after']) != 1: break
+            else: matches.add(trial)
+        assert len(matches) == 1
+        return matches.pop()
+    for file in FILES:
+        base = subprocess.check_output(['git', 'show', f'{BASELINE}:{file}'], cwd=ROOT).decode('utf-8').replace('\r\n', '\n')
+        for original in {base, sources.get(file, base)}:
+            installed = apply_profiles(original, previous[file])
+            target = apply_profiles(original, changes[file])
+            if installed != target:
+                delta = hunks(installed, target)
+                if delta not in changes[file]: changes[file].append(delta)
     payload = json.dumps(changes, ensure_ascii=False, indent=2).encode('utf-8')
     (OUT / 'cambios.json').write_bytes(payload)
     script = Path(__file__).with_name('publicar.template.php').read_text(encoding='utf-8').replace('__PAYLOAD_SHA256__', hashlib.sha256(payload).hexdigest())
