@@ -156,7 +156,8 @@
                 }
                 tell('');
                 const params = new URLSearchParams(new FormData(filters));
-                const url = new URL(filters.action, window.location.href);
+                // El campo del router name="action" oculta la propiedad form.action.
+                const url = new URL(filters.getAttribute('action') || window.location.href, window.location.href);
                 url.search = params.toString();
                 // Mantener métricas, tendencia, ranking e historial sincronizados:
                 // todos se vuelven a consultar en el servidor.
