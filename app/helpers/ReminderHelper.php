@@ -43,7 +43,7 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
                         AND seguimientos.proxima_accion_at <= DATE_ADD(NOW(), INTERVAL 24 HOUR)
                     ORDER BY
                         CASE
-                            WHEN seguimientos.proxima_accion_at < NOW() THEN 0
+                            WHEN seguimientos.proxima_accion_at >= NOW() THEN 0
                             ELSE 1
                         END ASC,
                         CASE
@@ -347,6 +347,10 @@ if (!function_exists('serializarRecordatoriosSeguimiento')) {
                 'nombre_entidad' => (string)($recordatorio['nombre_entidad'] ?? 'Seguimiento'),
                 'accion' => $accion,
                 'fecha' => (string)($recordatorio['proxima_accion_at'] ?? ''),
+                // El cliente puede recuperar el anticipo aunque el aviso de BD ya se emitió.
+                'tipo_anticipo' => resolverTipoAvisoRecordatorio(
+                    (strtotime((string)($recordatorio['proxima_accion_at'] ?? '')) ?: 0) - time()
+                ),
                 'etiqueta' => (string)($recordatorio['recordatorio']['etiqueta'] ?? ''),
                 'estado' => (string)($recordatorio['recordatorio']['estado'] ?? 'normal'),
                 'icono' => iconoAccionRecordatorioSeguimiento($accion)

@@ -155,6 +155,54 @@
             return Number.isNaN(momento.getTime()) ? null : momento;
         };
 
+        let audioAcciones = null;
+        const esTipoAnticipo = tipo => /^[1-9]\d*[HM]$/.test(String(tipo || ''));
+        const habilitarAudioAcciones = function (evento) {
+            if (!evento.isTrusted) return;
+            try {
+                const Contexto = window.AudioContext || window.webkitAudioContext;
+                if (!Contexto) return;
+                if (!audioAcciones) audioAcciones = new Contexto();
+                if (audioAcciones.state === 'suspended') {
+                    void audioAcciones.resume().catch(function () {});
+                }
+            } catch (_) { /* La notificación visual conserva su funcionamiento. */ }
+        };
+        document.addEventListener('pointerdown', habilitarAudioAcciones, { capture: true });
+        document.addEventListener('keydown', habilitarAudioAcciones, { capture: true });
+
+        const sonarProximaAccion = function (aviso, recordatorio) {
+            // Revisar el pendiente actual al mostrarlo: pudo vencer dentro de la cola.
+            // No guardar sonidos para después de un gesto o del regreso a la pestaña.
+            const fecha = fechaRecordatorio(recordatorio);
+            // El servidor decide los intervalos y los destinatarios por permisos.
+            // Aceptar todos sus anticipos en horas/minutos, sin fijar otra agenda aquí.
+            const esAnticipo = esTipoAnticipo(aviso.tipo);
+            if (!esAnticipo ||
+                !fecha || fecha.getTime() <= Date.now() ||
+                String(recordatorio.estado || '').trim().toLowerCase() === 'vencida' ||
+                Number(recordatorio.leida || 0) !== 0 ||
+                document.hidden || !audioAcciones || audioAcciones.state !== 'running') return;
+            try {
+                // Mismo aviso musical breve usado por las notificaciones de disponibilidad.
+                for (const [frecuencia, desfase] of [[740, 0], [880, .29], [988, .58]]) {
+                    const tono = audioAcciones.createOscillator();
+                    const volumen = audioAcciones.createGain();
+                    const inicio = audioAcciones.currentTime + desfase;
+                    tono.type = 'sine';
+                    tono.frequency.value = frecuencia;
+                    volumen.gain.setValueAtTime(0, inicio);
+                    volumen.gain.linearRampToValueAtTime(.17, inicio + .035);
+                    volumen.gain.linearRampToValueAtTime(0, inicio + .26);
+                    tono.connect(volumen);
+                    volumen.connect(audioAcciones.destination);
+                    tono.onended = function () { tono.disconnect(); volumen.disconnect(); };
+                    tono.start(inicio);
+                    tono.stop(inicio + .27);
+                }
+            } catch (_) { /* Un bloqueo de audio no altera el turno ni la cola. */ }
+        };
+
         const estadoVisibleRecordatorio = function (recordatorio) {
             const estado = String(recordatorio.estado || 'normal').trim().toLowerCase();
             const momento = fechaRecordatorio(recordatorio);
@@ -298,6 +346,7 @@
             window.setTimeout(function () {
                 toast.remove();
                 if (toastActivo === toast) toastActivo = null;
+                mostrarProximaAccion();
             }, DURACION_TOAST);
             return true;
         };
@@ -322,6 +371,42 @@
             guardarSesion(CLAVE_COLA_AVISOS, JSON.stringify(colaAvisos));
         };
 
+        const mostrarProximaAccion = function () {
+            if (document.hidden || toastActivo?.isConnected) return false;
+            for (const recordatorio of recordatoriosActuales) {
+                const clave = claveRecordatorio(recordatorio);
+                const enCola = colaAvisos.find(item => item.clave === clave);
+                // La fuente operativa conserva el intervalo aunque el aviso de BD
+                // se haya consumido en una consulta anterior o al navegar.
+                const tipo = recordatorio.tipo_anticipo ?? enCola?.aviso.tipo;
+                const fecha = fechaRecordatorio(recordatorio);
+                if (!esTipoAnticipo(tipo) || !fecha || fecha.getTime() <= Date.now() ||
+                    Number(recordatorio.leida || 0) !== 0 ||
+                    String(recordatorio.estado || '').toLowerCase() === 'vencida') continue;
+                const claveEntrega = 'recordatorios:anticipo-mostrado-v1' + claveUsuario +
+                    ':' + clave + ':' + tipo;
+                if (leerSesion(claveEntrega) === '1') continue;
+                const aviso = {
+                    ...recordatorio,
+                    ...(enCola?.aviso.tipo === tipo ? enCola.aviso : {}),
+                    tipo,
+                    titulo: enCola?.aviso.tipo === tipo ? enCola.aviso.titulo : 'Próxima acción',
+                    mensaje: String(recordatorio.accion || 'Revisar pendiente') + ' · ' +
+                        String(recordatorio.nombre_entidad || 'Seguimiento') +
+                        (etiquetaVisibleRecordatorio(recordatorio) ? ' · ' + etiquetaVisibleRecordatorio(recordatorio) : '')
+                };
+                if (!mostrarToast(aviso)) return false;
+                sonarProximaAccion(aviso, recordatorio);
+                // Sólo el toast visible confirma la entrega, por usuario/acción/fecha/intervalo.
+                guardarSesion(claveEntrega, '1');
+                registrarToastVencido(recordatorio);
+                colaAvisos = colaAvisos.filter(item => item.clave !== clave);
+                guardarSesion(CLAVE_COLA_AVISOS, JSON.stringify(colaAvisos));
+                return true;
+            }
+            return false;
+        };
+
         const mostrarSiguienteToastVencido = function () {
             const claves = new Set();
             const disponibles = recordatoriosActuales.filter(function (r) {
@@ -329,7 +414,7 @@
                 if (claves.has(clave) || Number(r.leida || 0) !== 0) return false;
                 const disponible = esRecordatorioVencidoRecurrente(r) ||
                     Number(r.telefonia_id || 0) > 0 ||
-                    colaAvisos.some(item => item.clave === clave);
+                    colaAvisos.some(item => item.clave === clave && !esTipoAnticipo(item.aviso.tipo));
                 if (disponible) claves.add(clave);
                 return disponible;
             });
@@ -338,7 +423,7 @@
             const anterior = disponibles.findIndex(r => claveRecordatorio(r) === ultimaClave);
             const recordatorio = disponibles[(anterior + 1) % disponibles.length];
             const clave = claveRecordatorio(recordatorio);
-            const enCola = colaAvisos.find(item => item.clave === clave);
+            const enCola = colaAvisos.find(item => item.clave === clave && !esTipoAnticipo(item.aviso.tipo));
             const telefono = Number(recordatorio.telefonia_id || 0) > 0;
             const aviso = enCola?.aviso || {
                 ...recordatorio,
@@ -350,6 +435,7 @@
                     (etiquetaVisibleRecordatorio(recordatorio) ? ' · ' + etiquetaVisibleRecordatorio(recordatorio) : '')
             };
             if (!mostrarToast(aviso)) return false;
+            sonarProximaAccion(aviso, recordatorio);
             // Sólo un aviso realmente visible consume turno y posición de rotación.
             registrarToastVencido(recordatorio);
             colaAvisos = colaAvisos.filter(item => item.clave !== clave);
@@ -529,6 +615,7 @@
                     temporizadorReintentoCarga = null;
                 }
                 actualizarColaAvisos(datos.avisos || []);
+                mostrarProximaAccion();
                 programarSiguienteToastVencido();
                 if (datos.requiere_migracion) {
                     if (!avisoMigracionMostrado) {

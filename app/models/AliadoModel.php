@@ -988,7 +988,7 @@ class AliadoModel
                   )
                 ORDER BY
                     CASE
-                        WHEN seguimiento.proximo_seguimiento_at < NOW()
+                        WHEN seguimiento.proximo_seguimiento_at >= NOW()
                         THEN 0
                         ELSE 1
                     END ASC,

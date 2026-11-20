@@ -102,14 +102,15 @@ const refresh=async page=>{
    await p.evaluate(()=>{window.testHidden=false;document.dispatchEvent(new Event('visibilitychange'));});await p.clock.runFor(1);
    await p.locator('.reminder-toast').waitFor({state:'visible'});assert.deepEqual(f.errors,[]);await p.close();cases++;
   }
-  // Avisos futuros de Seguimiento se encolan; navegar conserva el aviso y el reloj.
+  // Los anticipos de Seguimiento se muestran antes de la rotación de ocho minutos.
   {
-   const upcoming={...following,estado:'proxima',fecha:'2026-10-18 12:10:00'};
+   const upcoming={...following,estado:'proxima',fecha:'2026-10-18T18:10:00Z',tipo_anticipo:'10M'};
    const aviso={...upcoming,tipo:'10M',titulo:'En aproximadamente 10 minutos',mensaje:'Volver a llamar · Institución Uno'};
    const f=await fixture(browser,{items:[upcoming],avisos:[aviso]}),p=f.page;
-   assert.equal(await count(p),0);f.setAvisos([]);await p.clock.runFor(4*minute);await p.goto('http://toasts.test/mis-llamadas');
-   await p.locator('.topbar-reminder-item').waitFor();await p.clock.runFor(4*minute+1);
    await p.locator('.reminder-toast').waitFor({state:'visible'});assert.match(await p.locator('.reminder-toast').textContent(),/10 minutos/);
+   f.setAvisos([]);await p.clock.runFor(4*minute);await p.goto('http://toasts.test/mis-llamadas');
+   await p.locator('.topbar-reminder-item').waitFor();await p.clock.runFor(4*minute+1);
+   assert.equal(await count(p),0,'navegar no duplica un anticipo mostrado');
    await p.clock.runFor(period+1);assert.equal(await count(p),0,'aviso próximo no se repite sin nueva condición del backend');
    assert.deepEqual(f.errors,[]);await p.close();cases++;
   }

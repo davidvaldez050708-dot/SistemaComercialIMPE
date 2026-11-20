@@ -34,6 +34,13 @@ class ReminderAgendaFilterService
         return array_values(array_filter(
             $items,
             static function ($item) use ($idsBloqueados, $esAviso) {
+                // Una llamada o WhatsApp capturado como próxima acción no es un
+                // paso sustituido por la agenda, aunque exista una reunión histórica.
+                $accion = trim((string)($item['accion'] ?? ''));
+                $accion = function_exists('mb_strtolower') ? mb_strtolower($accion, 'UTF-8') : strtolower($accion);
+                if (in_array($accion, ['volver a llamar', 'enviar whatsapp'], true)) {
+                    return true;
+                }
                 $seguimientoId = $esAviso
                     ? (int)($item['seguimiento_id'] ?? $item['id'] ?? 0)
                     : (int)($item['id'] ?? $item['seguimiento_id'] ?? 0);

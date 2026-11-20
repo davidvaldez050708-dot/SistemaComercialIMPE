@@ -98,6 +98,8 @@ class AliadoSeguimientoReminderService
                 '&seguimiento_convocatoria_id=' .
                 $seguimientoConvocatoriaId;
 
+            $segundosRestantes = $momento->getTimestamp() - $ahora->getTimestamp();
+            $tipoAviso = resolverTipoAvisoRecordatorio($segundosRestantes);
             $recordatorio = [
                 'id' => $seguimientoId,
                 'seguimiento_id' => $seguimientoId,
@@ -107,6 +109,7 @@ class AliadoSeguimientoReminderService
                     (string)($fila['nombre_entidad'] ?? 'Aliado'),
                 'accion' => $accion,
                 'fecha' => $momento->format('Y-m-d H:i:s'),
+                'tipo_anticipo' => $tipoAviso,
                 'estado' => (string)($descripcion['estado'] ?? 'normal'),
                 'etiqueta' => (string)($descripcion['etiqueta'] ?? ''),
                 'icono' => 'bi-whatsapp',
@@ -131,12 +134,6 @@ class AliadoSeguimientoReminderService
                 $usuarioId,
                 $claveCiclo,
                 $momento->format('Y-m-d H:i:s')
-            );
-
-            $segundosRestantes =
-                $momento->getTimestamp() - $ahora->getTimestamp();
-            $tipoAviso = resolverTipoAvisoRecordatorio(
-                $segundosRestantes
             );
 
             if ($tipoAviso === '') {

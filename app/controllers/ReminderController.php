@@ -45,6 +45,7 @@ class ReminderController
         $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
         $esSupervisor = tienePermiso('reuniones.gestionar');
         $esAnalista = tienePermiso('reuniones.solicitar');
+        $puedeOperarSeguimientos = tienePermiso('seguimientos_vinculacion.operar_propios');
         $puedeCentroReuniones =
             tienePermiso('reuniones.ver') &&
             ($esSupervisor || $esAnalista);
@@ -57,6 +58,7 @@ class ReminderController
             $usuarioId <= 0 ||
             (
                 !$esAdministrador &&
+                !$puedeOperarSeguimientos &&
                 !$puedeCentroReuniones &&
                 !$puedeSeguimientoAliados && !$puedeNovedadesAliados && !$puedeTelefonia
             )
@@ -183,7 +185,7 @@ class ReminderController
             ));
         }
 
-        if ($puedeCentroReuniones && $esAnalista) {
+        if ($puedeOperarSeguimientos || ($puedeCentroReuniones && $esAnalista)) {
             $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId);
             $recordatoriosSeguimiento = serializarRecordatoriosSeguimiento(
                 $resultado['recordatorios'] ?? []
@@ -274,17 +276,15 @@ class ReminderController
 
             $recordatorios = array_merge(
                 $recordatoriosObservaciones,
-                $recordatoriosConfirmacion,
-                $recordatoriosAgenda,
                 $recordatoriosAcuerdos,
-                $recordatoriosSeguimiento
+                $recordatoriosSeguimiento,
+                $recordatorios
             );
             $avisos = array_values(array_merge(
                 $avisosObservaciones,
-                $avisosConfirmacion,
-                $avisosAgenda,
                 $avisosAcuerdos,
-                $avisosSeguimiento
+                $avisosSeguimiento,
+                $avisos
             ));
             $requiereMigracion = (bool)($resultado['requiere_migracion'] ?? false);
             $ok = (bool)($resultado['ok'] ?? true);
@@ -331,11 +331,7 @@ class ReminderController
         }
         // La campana debe priorizar obligaciones vencidas y acciones que requieren
         // intervención, sin depender del orden en que cada servicio fue consultado.
-        $recordatorios = array_slice(
-            $this->ordenarRecordatorios($recordatorios),
-            0,
-            12
-        );
+        $recordatorios = $this->seleccionarRecordatoriosCampana($recordatorios);
         if (isset($servicioNuevosAliados)) {
             $servicioNuevosAliados->registrarEntregados($usuarioId, $recordatorios);
         }
@@ -349,6 +345,19 @@ class ReminderController
             'total' => count($recordatorios)
         ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         exit;
+    }
+
+    private function seleccionarRecordatoriosCampana($items)
+    {
+        $ordenados = $this->ordenarRecordatorios($items);
+        // Conservar los doce avisos prioritarios y las acciones vigentes que
+        // quedarían fuera. El atraso acumulado no debe ocultar los anticipos.
+        return array_values(array_filter($ordenados, static function ($item, $indice) {
+            return $indice < 12 || (
+                preg_match('/^[1-9][0-9]*[HM]$/', (string)($item['tipo_anticipo'] ?? '')) &&
+                (strtotime((string)($item['fecha'] ?? '')) ?: 0) > time()
+            );
+        }, ARRAY_FILTER_USE_BOTH));
     }
 
     private function ordenarRecordatorios($items)

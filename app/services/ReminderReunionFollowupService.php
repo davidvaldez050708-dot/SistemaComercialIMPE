@@ -37,7 +37,8 @@ class ReminderReunionFollowupService
                       AND p.convenio_formalizado_at IS NULL
                       AND s.proxima_accion_at IS NOT NULL
                       AND s.proxima_accion_at <= DATE_ADD(NOW(), INTERVAL 24 HOUR)
-                    ORDER BY s.proxima_accion_at ASC
+                    ORDER BY CASE WHEN s.proxima_accion_at >= NOW() THEN 0 ELSE 1 END,
+                        s.proxima_accion_at ASC
                     LIMIT ?";
 
             $stmt = $this->connection->prepare($sql);
@@ -67,6 +68,9 @@ class ReminderReunionFollowupService
                 $accion = 'Dar seguimiento a acuerdos';
                 $descripcion = $this->describirFecha($momento, $ahora);
                 $url = 'index.php?controller=seguimientoVinculacion&action=detalle&id=' . $seguimientoId;
+                $tipo = $this->resolverTipoAviso(
+                    $momento->getTimestamp() - $ahora->getTimestamp()
+                );
 
                 $recordatorios[] = [
                     'id' => $seguimientoId,
@@ -74,15 +78,12 @@ class ReminderReunionFollowupService
                     'nombre_entidad' => $institucion,
                     'accion' => $accion,
                     'fecha' => $fecha,
+                    'tipo_anticipo' => $tipo,
                     'etiqueta' => $descripcion['etiqueta'],
                     'estado' => $descripcion['estado'],
                     'icono' => 'bi-clipboard-check',
                     'url' => $url
                 ];
-
-                $tipo = $this->resolverTipoAviso(
-                    $momento->getTimestamp() - $ahora->getTimestamp()
-                );
 
                 if ($tipo === '' || !$this->tablaRecordatoriosDisponible()) {
                     continue;
