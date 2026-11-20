@@ -73,6 +73,38 @@ try {
  $db->query('INSERT INTO rol_permisos VALUES(3,2)');
  deniedChat(fn()=>waAsignarChatPrueba($db,true,$site,$site));
  verifyChat(count(glob($backup.'/*.json'))===1,'los bloqueos no generan cambios ni nuevos respaldos');
+ // Aceptación de la línea empresarial: se conserva el canal compartido y su
+ // conversación previa; sólo se asigna el nuevo chat identificado por mensaje.
+ $db->query("INSERT INTO whatsapp_cuentas VALUES(4,'1471856739340789',NULL,'EMPRESARIAL',1)");
+ $db->query("INSERT INTO whatsapp_conversaciones VALUES(4,4,'527770000001',NULL,NULL)");
+ $db->query("INSERT INTO whatsapp_mensajes VALUES(4,4,'ENTRANTE','TEXT','Prueba recepción CRM empresarial')");
+ $enterpriseBefore=$digest();
+ $otherBefore=$db->query('SELECT * FROM whatsapp_conversaciones WHERE id<>4 ORDER BY id')->fetch_all(MYSQLI_ASSOC);
+ $checkEnterprise=waAsignarChatPrueba($db,false,$site,'',true);
+ verifyChat($checkEnterprise['conversacion_id']===4 && $checkEnterprise['asesor_id']===22,'CHECK empresarial no identifica el chat');
+ verifyChat(count(glob($backup.'/*.json'))===1 && $enterpriseBefore===$digest(),'CHECK empresarial escribió datos');
+ $enterprise=waAsignarChatPrueba($db,true,$site,$backup,true);
+ verifyChat($enterprise['canal_phone_number_id']==='1471856739340789','Canal empresarial incorrecto');
+ $enterpriseRecord=json_decode(file_get_contents($enterprise['respaldo']),true);
+ verifyChat($enterpriseRecord['cuenta_id']===4 && $enterpriseRecord['responsable_anterior']===null && $enterpriseRecord['responsable_nuevo']===22,'Respaldo empresarial incorrecto');
+ verifyChat($enterpriseBefore===$digest(),'La aceptación empresarial modificó canales, mensajes, cartera o permisos');
+ verifyChat($otherBefore===$db->query('SELECT * FROM whatsapp_conversaciones WHERE id<>4 ORDER BY id')->fetch_all(MYSQLI_ASSOC),'Se alteraron otros chats');
+ verifyChat(waAsignarChatPrueba($db,true,$site,$backup,true)['ya_asignada'],'APPLY empresarial no es idempotente');
+ foreach([22=>true,23=>false] as $uid=>$allowed){
+  $_SESSION=['usuario_id'=>$uid,'rol_id'=>3,'permisos'=>['whatsapp.ver','whatsapp.enviar']];
+  $scope=WhatsAppContextoService::alcance($db,$uid,false);
+  $count=(int)$db->query('SELECT COUNT(*) FROM whatsapp_conversaciones conv WHERE conv.id=4 AND ('.$scope.')')->fetch_row()[0];
+  verifyChat(($count===1)===$allowed,'Autorización empresarial no distingue asesores');
+ }
+ $db->query('UPDATE whatsapp_conversaciones SET responsable_usuario_id=23 WHERE id=4');
+ deniedChat(fn()=>waAsignarChatPrueba($db,true,$site,$backup,true));
+ $db->query('UPDATE whatsapp_conversaciones SET responsable_usuario_id=NULL WHERE id=4');
+ $db->query('INSERT INTO whatsapp_conversacion_prospectos VALUES(4,13)');
+ deniedChat(fn()=>waAsignarChatPrueba($db,true,$site,$backup,true));
+ $db->query('DELETE FROM whatsapp_conversacion_prospectos');
+ $db->query('UPDATE whatsapp_cuentas SET usuario_id=22 WHERE id=4');
+ deniedChat(fn()=>waAsignarChatPrueba($db,true,$site,$backup,true));
+ verifyChat(count(glob($backup.'/*.json'))===2,'Los bloqueos empresariales generaron respaldos adicionales');
  echo "CHECK_OK: MariaDB real, respaldo, idempotencia, conservación de datos y autorización de dos asesores; bloqueos de cartera, ambigüedad, usuario inactivo y permisos.\n";
 }finally{
  $db->query('DROP DATABASE '.$schema);$db->close();
