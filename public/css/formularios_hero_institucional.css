@@ -118,3 +118,54 @@
     .formulario-publico-body .formulario-publico-hero-logo-hlc img{max-height:50px}
     .formulario-publico-body .formulario-publico-hero-acuerdo{font-size:10px}
 }
+
+
+/* FORMULARIOS_LOGOS_EQUILIBRADOS_V1: altura visible y espacio junto al separador. */
+.formulario-publico-body .formulario-publico-hero-logos {
+    --altura-marca-sep: clamp(58px, 4vw, 76px);
+    gap: clamp(12px, 1vw, 18px) !important;
+    max-width: 100% !important;
+}
+.formulario-publico-body .formulario-publico-hero-logo-principal,
+.formulario-publico-body .formulario-publico-hero-logo-sep {
+    flex: 0 1 auto !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+.formulario-publico-body .formulario-publico-hero-logo-principal img {
+    display: block;
+    width: auto !important;
+    height: calc(var(--altura-marca-sep) * .68);
+    max-height: none !important;
+    max-width: 100% !important;
+    object-fit: contain;
+}
+.formulario-publico-body .formulario-publico-hero-logo-sep img {
+    display: block;
+    width: auto !important;
+    height: var(--altura-marca-sep);
+    max-height: none !important;
+    max-width: 100% !important;
+    object-fit: contain;
+}
+.formulario-publico-body .formulario-publico-hero-logo-sep {
+    margin-left: calc(var(--altura-marca-sep) * -.16) !important;
+}
+.formulario-publico-body .formulario-publico-hero-logo-separator {
+    align-self: center;
+    min-height: 0;
+    height: calc(var(--altura-marca-sep) * 1.1);
+}
+@media (max-width: 600px) {
+    .formulario-publico-body .formulario-publico-hero-logos {
+        --altura-marca-sep: clamp(34px, 9vw, 44px);
+        gap: 10px !important;
+    }
+}
