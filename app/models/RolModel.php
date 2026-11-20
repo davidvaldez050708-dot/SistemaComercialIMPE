@@ -929,8 +929,10 @@ class RolModel
         $asignaciones = [
             'Cuenta Clave' => [
                 'whatsapp.ver',
-                'whatsapp.enviar'
+                'whatsapp.enviar',
+                'whatsapp.gestionar_conversaciones'
             ],
+            'Director de Operaciones' => ['whatsapp.ver','whatsapp.gestionar_conversaciones'],
             'Asesor de Ventas' => [
                 'whatsapp.ver',
                 'whatsapp.enviar'

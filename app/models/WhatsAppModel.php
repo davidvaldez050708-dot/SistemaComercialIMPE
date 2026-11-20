@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__.'/../services/WhatsAppContextoService.php';
+require_once __DIR__.'/../services/WhatsAppVentasService.php';
 
 class WhatsAppModel
 {
@@ -170,6 +171,14 @@ class WhatsAppModel
 
     public function resolverCuentaUsuario($usuarioId)
     {
+        if(WhatsAppContextoService::esVentas()) {
+            $s=$this->connection->prepare("SELECT * FROM whatsapp_cuentas WHERE activo=1 AND tipo='EMPRESARIAL'
+                AND (usuario_id=? OR (usuario_id IS NULL AND es_predeterminada=1))
+                ORDER BY es_predeterminada DESC,(usuario_id=?) DESC,id ASC LIMIT 1");
+            $uid=(int)$usuarioId;
+            try {$s->bind_param('ii',$uid,$uid);$s->execute();return $s->get_result()->fetch_assoc()?:null;}
+            finally {$s->close();}
+        }
         $sql = "SELECT *
                 FROM whatsapp_cuentas
                 WHERE activo = 1
@@ -515,19 +524,8 @@ class WhatsAppModel
 
     public function vincularEntradaProspecto(int $conversacion,string $telefono): void
     {
-        if(!WhatsAppContextoService::tabla($this->connection,'whatsapp_conversacion_prospectos'))return;
-        $formatos=ProspectoNoContactarV3::formatos($telefono);
-        if(!$formatos)return;
-        $marks=implode(',',array_fill(0,count($formatos),'?'));
-        $s=$this->connection->prepare("SELECT DISTINCT p.id FROM prospectos_comerciales p
-            JOIN prospecto_asignaciones a ON a.prospecto_id=p.id AND a.vigente=1
-            WHERE p.telefono_normalizado IN ($marks) LIMIT 2");
-        try{$s->bind_param(str_repeat('s',count($formatos)),...$formatos);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);}finally{$s->close();}
-        if(count($rows)!==1)return;
-        // No fusionar un chat de aliado ni reemplazar un enlace previo.
-        $s=$this->connection->prepare('INSERT IGNORE INTO whatsapp_conversacion_prospectos(conversacion_id,prospecto_id) SELECT id,? FROM whatsapp_conversaciones WHERE id=? AND aliado_seguimiento_id IS NULL');
-        $p=(int)$rows[0]['id'];
-        try{$s->bind_param('ii',$p,$conversacion);$s->execute();}finally{$s->close();}
+        try {(new WhatsAppVentasService($this->connection))->vincularEntrada($conversacion,$telefono);}
+        catch(Throwable $e){error_log('[whatsapp_ventas_entrada] '.get_class($e));}
     }
 
     public function registrarMensajeSalida(
@@ -842,12 +840,14 @@ class WhatsAppModel
     {
         $responsable='conv.responsable_usuario_id';
         if(WhatsAppContextoService::tabla($this->connection,'whatsapp_conversacion_prospectos')) {
-            $responsable="COALESCE((SELECT MIN(pa.asesor_id) FROM whatsapp_conversacion_prospectos enlace
+            $responsable="CASE WHEN EXISTS(SELECT 1 FROM whatsapp_conversacion_prospectos w WHERE w.conversacion_id=conv.id) THEN (SELECT CASE WHEN COUNT(*)=1 THEN MIN(pa.asesor_id) ELSE NULL END FROM whatsapp_conversacion_prospectos enlace
                 JOIN prospecto_asignaciones pa ON pa.prospecto_id=enlace.prospecto_id AND pa.vigente=1
-                WHERE enlace.conversacion_id=conv.id),conv.responsable_usuario_id)";
+                WHERE enlace.conversacion_id=conv.id) ELSE conv.responsable_usuario_id END";
         }
         return "SELECT
                     conv.id,
+                    (SELECT w.prospecto_id FROM whatsapp_conversacion_prospectos w WHERE w.conversacion_id=conv.id LIMIT 1) AS prospecto_id,
+                    (SELECT p.nombre_completo FROM whatsapp_conversacion_prospectos w JOIN prospectos_comerciales p ON p.id=w.prospecto_id WHERE w.conversacion_id=conv.id LIMIT 1) AS prospecto_nombre,
                     conv.cuenta_id,
                     conv.telefono_contacto,
                     conv.telefono_normalizado,
@@ -860,6 +860,7 @@ class WhatsAppModel
                     conv.ultimo_mensaje_at,
                     conv.ultimo_mensaje_preview,
                     c.nombre AS cuenta_nombre,
+                    c.tipo AS cuenta_tipo,
                     c.numero_mostrado AS cuenta_numero,
                     c.phone_number_id,
                     c.usuario_id AS cuenta_usuario_id,

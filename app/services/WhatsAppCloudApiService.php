@@ -111,6 +111,47 @@ class WhatsAppCloudApiService
         );
     }
 
+    public function consultarPlantillaComercial(string $messaging,string $nombre,string $idioma): array
+    {
+        if(!preg_match('/^[0-9]{5,80}$/D',$messaging) || !preg_match('/^[a-z0-9_]{1,512}$/D',$nombre) || !preg_match('/^[a-z]{2,3}(?:_[A-Z]{2})?$/D',$idioma))return ['ok'=>false,'mensaje'=>'Datos de plantilla no válidos.'];
+        $result=$this->listarPlantillasMeta($messaging,$nombre);
+        if(empty($result['ok']))return $result;
+        foreach($result['filas']??[] as $row) {
+            if(($row['name']??'')!==$nombre || ($row['language']??'')!==$idioma || ($row['status']??'')!=='APPROVED')continue;
+            if(!in_array($row['category']??'',['MARKETING','UTILITY'],true))return ['ok'=>false,'mensaje'=>'La plantilla de inicio debe ser comercial o informativa, no de autenticación.'];
+            $body='';$bodyCount=0;
+            foreach($row['components']??[] as $component) {
+                $type=$component['type']??'';
+                if($type!=='BODY' || str_contains((string)($component['text']??''),'{{'))return ['ok'=>false,'mensaje'=>'Para este inicio utiliza sólo cuerpo de texto, sin variables, encabezado, pie, botones ni archivos.'];
+                if($type==='BODY'){$body=(string)($component['text']??'');$bodyCount++;}
+            }
+            if($bodyCount!==1 || trim($body)==='')return ['ok'=>false,'mensaje'=>'La plantilla no tiene un cuerpo de texto válido.'];
+            return ['ok'=>true,'cuerpo'=>$body,'categoria'=>$row['category']];
+        }
+        return ['ok'=>false,'mensaje'=>'Meta no devuelve esa plantilla como APROBADA para el nombre e idioma indicados.'];
+    }
+
+    protected function listarPlantillasMeta(string $messaging,string $nombre): array
+    {
+        $token=(string)($this->config['access_token']??'');$version=(string)($this->config['graph_version']??'');
+        if($token==='' || !preg_match('/^v[0-9]+\.0$/D',$version) || !function_exists('curl_init'))return ['ok'=>false,'mensaje'=>'Revisa la configuración de conexión con Meta.'];
+        $query=['name'=>$nombre,'fields'=>'name,language,status,category,components','limit'=>100];
+        $secret=(string)($this->config['app_secret']??'');
+        if($secret!=='')$query['appsecret_proof']=hash_hmac('sha256',$token,$secret);
+        $curl=curl_init('https://graph.facebook.com/'.$version.'/'.$messaging.'/message_templates?'.http_build_query($query));
+        curl_setopt_array($curl,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>20,CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$token,'Accept: application/json']]);
+        $raw=curl_exec($curl);$status=(int)curl_getinfo($curl,CURLINFO_HTTP_CODE);curl_close($curl);
+        if($raw===false)return ['ok'=>false,'mensaje'=>'No se pudo consultar Meta. No se guardó la plantilla.'];
+        $data=json_decode((string)$raw,true);
+        if($status!==200 || !is_array($data['data']??null))return ['ok'=>false,'mensaje'=>'Meta rechazó la consulta de plantillas. Código '.(int)($data['error']['code']??$status).'.'];
+        return ['ok'=>true,'filas'=>$data['data']];
+    }
+
+    public function enviarPlantillaComercial(string $phone,string $destino,string $nombre,string $idioma): array
+    {
+        return $this->enviar($phone,['messaging_product'=>'whatsapp','to'=>$this->normalizarNumero($destino),'type'=>'template','template'=>['name'=>$nombre,'language'=>['code'=>$idioma]]]);
+    }
+
     public function probarConexion($phoneNumberId)
     {
         $token = trim((string)($this->config['access_token'] ?? ''));

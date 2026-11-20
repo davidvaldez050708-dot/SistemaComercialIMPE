@@ -15,6 +15,12 @@ class WhatsAppController
         if($id==='')return; // Clientes anteriores no se convierten en reintentos implícitos.
         if(!is_string($id) || !preg_match('/^[A-Za-z0-9-]{16,80}$/D',$id))$this->responder(['ok'=>false,'mensaje'=>'Identificador de envío inválido.'],422);
         $firma=hash('sha256',$tipo.'|'.(string)($_POST['conversacion_id']??'').'|'.(string)($_POST['mensaje']??''));
+        if($tipo==='iniciarVentas')foreach($_SESSION['whatsapp_envios']??[] as $key=>$prev) {
+            if($key!==$id && ($prev['at']??0)>time()-60 && hash_equals((string)($prev['firma']??''),$firma)
+                && (!isset($prev['respuesta']) || !empty($prev['respuesta']['ok']) || !empty($prev['respuesta']['aceptado_por_meta']))) {
+                $this->responder(['ok'=>false,'mensaje'=>'Ya hay una presentación reciente o pendiente para este prospecto. Revisa el historial antes de repetirla.'],409);
+            }
+        }
         foreach($_SESSION['whatsapp_envios']??[] as $k=>$v)if(($v['at']??0)<time()-900)unset($_SESSION['whatsapp_envios'][$k]);
         $anterior=$_SESSION['whatsapp_envios'][$id]??null;
         if($anterior) {
@@ -29,6 +35,60 @@ class WhatsAppController
     protected function servicioWhatsApp(WhatsAppModel $modelo): WhatsAppCloudApiService
     {
         return new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
+    }
+
+    public function configuracionVentas(): void
+    {
+        $this->validarPermiso('whatsapp.gestionar_cuentas');
+        if((int)($_SESSION['rol_id']??0)!==1){http_response_code(403);exit('Acceso reservado al Administrador.');}
+        $modelo=new WhatsAppModel();$this->validarEstructura($modelo);
+        $ventas=new WhatsAppVentasService($modelo->conexionParaAutorizacion());
+        $cuentasVentas=array_values(array_filter($modelo->obtenerCuentas((int)$_SESSION['usuario_id'],true,true),static fn($c)=>$c['tipo']==='EMPRESARIAL'));
+        $configVentas=[];foreach($cuentasVentas as $c)$configVentas[(int)$c['id']]=$ventas->configuracion((int)$c['id']);
+        $tituloPagina='WhatsApp · Inicio comercial';$subtituloPagina='Plantilla institucional para iniciar conversaciones de ventas.';$opcionActiva='whatsapp';
+        require __DIR__.'/../views/layout/dashboard_head.php';require __DIR__.'/../views/layout/sidebar.php';require __DIR__.'/../views/layout/topbar.php';
+        require __DIR__.'/../views/whatsapp/ventas_config.php';require __DIR__.'/../views/layout/dashboard_footer.php';
+    }
+
+    public function guardarPlantillaVentas(): void
+    {
+        $this->validarPermiso('whatsapp.gestionar_cuentas');$this->validarMetodoPost();
+        if((int)($_SESSION['rol_id']??0)!==1)$this->responder(['ok'=>false,'mensaje'=>'Acceso reservado al Administrador.'],403);
+        $cuenta=filter_var($_POST['cuenta_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        foreach(['messaging_account_id','plantilla_nombre','plantilla_idioma'] as $key)if(!is_string($_POST[$key]??null))$this->responder(['ok'=>false,'mensaje'=>'Completa los datos de la plantilla.'],422);
+        if(!$cuenta)$this->responder(['ok'=>false,'mensaje'=>'Selecciona un canal válido.'],422);
+        $modelo=new WhatsAppModel();$this->validarEstructura($modelo);
+        try {$r=(new WhatsAppVentasService($modelo->conexionParaAutorizacion()))->guardarPlantilla((int)$cuenta,trim($_POST['messaging_account_id']),trim($_POST['plantilla_nombre']),trim($_POST['plantilla_idioma']),$this->servicioWhatsApp($modelo));$this->responder(['ok'=>true,'mensaje'=>'Plantilla aprobada verificada con Meta. Ya puede utilizarse para iniciar el contacto.','plantilla'=>$r]);}
+        catch(DomainException $e){$this->responder(['ok'=>false,'mensaje'=>$e->getMessage()],in_array($e->getCode(),[403,409,422],true)?$e->getCode():409);}
+        catch(Throwable $e){error_log('[whatsapp_ventas_config] '.get_class($e));$this->responder(['ok'=>false,'mensaje'=>'No se pudo guardar la configuración de inicio.'],503);}
+    }
+
+    public function iniciarVentas(): void
+    {
+        $this->validarPermiso('whatsapp.enviar');$this->validarMetodoPost();
+        if(empty($_POST['request_id']) || !is_string($_POST['request_id']))$this->responder(['ok'=>false,'mensaje'=>'Falta identificar el intento de envío. Actualiza el panel e intenta de nuevo.'],422);
+        if(!WhatsAppContextoService::esVentas())$this->responder(['ok'=>false,'mensaje'=>'El primer contacto corresponde al asesor del prospecto.'],403);
+        $id=filter_var($_POST['conversacion_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if(!$id)$this->responder(['ok'=>false,'mensaje'=>'Selecciona una conversación válida.'],422);
+        $modelo=new WhatsAppModel();$this->validarEstructura($modelo);$uid=(int)$_SESSION['usuario_id'];
+        $conv=$modelo->obtenerConversacion((int)$id,$uid,false);
+        if(!$conv)$this->responder(['ok'=>false,'mensaje'=>'El prospecto ya no está asignado a tu cuenta.'],403);
+        if($modelo->ventanaServicioAbierta($conv))$this->responder(['ok'=>false,'mensaje'=>'La ventana ya está abierta. Puedes responder con texto libre.'],409);
+        $cfg=(new WhatsAppVentasService($modelo->conexionParaAutorizacion()))->configuracion((int)$conv['cuenta_id']);
+        if(!$cfg)$this->responder(['ok'=>false,'mensaje'=>'El Administrador debe configurar una plantilla aprobada para este canal.'],409);
+        try {WhatsAppContextoService::exigirSalida($modelo->conexionParaAutorizacion(),$conv);}
+        catch(DomainException $e){$this->responder(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        $this->prepararEnvioIdempotente('iniciarVentas');$api=$this->servicioWhatsApp($modelo);
+        $check=$api->consultarPlantillaComercial($cfg['messaging_account_id'],$cfg['plantilla_nombre'],$cfg['plantilla_idioma']);
+        if(empty($check['ok']))$this->responder(['ok'=>false,'mensaje'=>$check['mensaje']??'La plantilla no está disponible.'],409);
+        if($check['cuerpo']!==$cfg['plantilla_cuerpo'] || $check['categoria']!==$cfg['plantilla_categoria'])$this->responder(['ok'=>false,'mensaje'=>'La plantilla cambió en Meta. Pide al Administrador que vuelva a validarla.'],409);
+        if(!$modelo->obtenerConversacion((int)$id,$uid,false))$this->responder(['ok'=>false,'mensaje'=>'La asignación del prospecto cambió. Actualiza la conversación.'],403);
+        try {WhatsAppContextoService::exigirSalida($modelo->conexionParaAutorizacion(),$conv);ProspectoNoContactarV3::exigirPermitido($modelo->conexionParaAutorizacion(),(string)$conv['telefono_contacto']);}
+        catch(DomainException $e){$this->responder(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        $r=$api->enviarPlantillaComercial((string)$conv['phone_number_id'],(string)$conv['telefono_contacto'],$cfg['plantilla_nombre'],$cfg['plantilla_idioma']);
+        try {$modelo->registrarMensajeSalida((int)$id,$uid,$check['cuerpo'],$r,'TEMPLATE');}
+        catch(Throwable $e){error_log('[whatsapp_ventas_historial] '.get_class($e));$this->responder(['ok'=>false,'aceptado_por_meta'=>!empty($r['ok']),'mensaje'=>'No se pudo confirmar el historial. Revisa la conversación antes de volver a enviar.'],202);}
+        $this->responder(['ok'=>!empty($r['ok']),'mensaje'=>!empty($r['ok'])?'Presentación enviada. Cuando el prospecto responda podrás continuar con texto libre.':($r['mensaje']??'Meta rechazó el mensaje.')],!empty($r['ok'])?200:409);
     }
 
     public function contexto(): void
@@ -55,10 +115,11 @@ class WhatsAppController
         $uid=(int)$_SESSION['usuario_id'];
         $conversacionSeleccionada=$id?$modelo->obtenerConversacion((int)$id,$uid,WhatsAppContextoService::lecturaGlobal()):null;
         if(!$conversacionSeleccionada){http_response_code(403);exit('No tienes acceso a esta conversación.');}
-        $servicio=new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
+        $servicio=$this->servicioWhatsApp($modelo);
         $estadoConfiguracionWhatsapp=$servicio->obtenerEstadoConfiguracion();
         $puedeEnviarWhatsapp=$estadoConfiguracionWhatsapp['lista'] && tienePermiso('whatsapp.enviar') &&
             (bool)$modelo->obtenerConversacion((int)$id,$uid,tienePermiso('whatsapp.responder_todas'));
+        $plantillaVentas=WhatsAppContextoService::esVentas()?(new WhatsAppVentasService($modelo->conexionParaAutorizacion()))->configuracion((int)$conversacionSeleccionada['cuenta_id']):null;
         $cuenta=$modelo->obtenerCuentaPorPhoneNumberId((string)$conversacionSeleccionada['phone_number_id']);
         $puedePlantillaPrueba=$puedeEnviarWhatsapp && ($cuenta['tipo']??'')==='PRUEBA';
         $ventanaServicioAbierta=$modelo->ventanaServicioAbierta($conversacionSeleccionada);
@@ -77,7 +138,7 @@ class WhatsAppController
             tienePermiso('whatsapp.gestionar_cuentas');
 
         $modelo = new WhatsAppModel();
-        $servicio = new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
+        $servicio = $this->servicioWhatsApp($modelo);
 
         $estructuraWhatsappDisponible = $modelo->estructuraDisponible();
         $estadoConfiguracionWhatsapp = $servicio->obtenerEstadoConfiguracion();
@@ -146,6 +207,7 @@ class WhatsAppController
 
         $puedeEnviarWhatsapp = $estadoConfiguracionWhatsapp['lista'] && tienePermiso('whatsapp.enviar') && (!$conversacionSeleccionada ||
             (bool)$modelo->obtenerConversacion((int)$conversacionSeleccionada['id'],$usuarioId,tienePermiso('whatsapp.responder_todas')));
+        $plantillaVentas=WhatsAppContextoService::esVentas() && $conversacionSeleccionada?(new WhatsAppVentasService($modelo->conexionParaAutorizacion()))->configuracion((int)$conversacionSeleccionada['cuenta_id']):null;
         $ventanaServicioAbierta = $conversacionSeleccionada
             ? $modelo->ventanaServicioAbierta($conversacionSeleccionada)
             : false;
@@ -425,6 +487,7 @@ class WhatsAppController
 
     public function crearConversacion()
     {
+        if(WhatsAppContextoService::esVentas())$this->responder(['ok'=>false,'mensaje'=>'Inicia la conversación desde un prospecto asignado en el embudo comercial.'],403);
         $this->validarPermiso('whatsapp.ver');
         $this->validarPermiso('whatsapp.enviar');
         $this->validarMetodoPost();
@@ -547,7 +610,7 @@ class WhatsAppController
             ], 404);
         }
 
-        $servicio = new WhatsAppCloudApiService($modelo->conexionParaAutorizacion());
+        $servicio = $this->servicioWhatsApp($modelo);
         $resultado = $servicio->probarConexion(
             (string)($cuenta['phone_number_id'] ?? '')
         );

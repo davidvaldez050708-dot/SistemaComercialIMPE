@@ -145,7 +145,10 @@ foreach ($mensajesIniciales as $mensaje) {
                 <?= !empty($estadoConfiguracionWhatsapp['lista']) ? 'Cloud API lista' : 'Configuración pendiente' ?>
             </span>
 
-            <?php if ($puedeEnviarWhatsapp): ?>
+            <?php if (WhatsAppContextoService::esVentas()): ?>
+                <a class="btn whatsapp-primary-button" href="<?= BASE_URL ?>index.php?controller=embudoComercial&amp;action=index">Mis prospectos</a>
+            <?php endif; ?>
+            <?php if ($puedeEnviarWhatsapp && !WhatsAppContextoService::esVentas()): ?>
                 <button
                     type="button"
                     class="btn whatsapp-primary-button"
@@ -161,6 +164,7 @@ foreach ($mensajesIniciales as $mensaje) {
             <?php endif; ?>
 
             <?php if ($puedeGestionarCuentas): ?>
+                <a class="btn whatsapp-secondary-button" href="<?= BASE_URL ?>index.php?controller=whatsapp&amp;action=configuracionVentas">Inicio comercial</a>
                 <button
                     type="button"
                     class="btn whatsapp-secondary-button"
@@ -198,7 +202,7 @@ foreach ($mensajesIniciales as $mensaje) {
                         <i class="bi bi-chat-square-dots"></i>
                         <strong>Sin conversaciones</strong>
                         <span>
-                            Abre WhatsApp desde un Aliado o recibe un mensaje en un canal configurado.
+                            <?= WhatsAppContextoService::esVentas()?'Abre WhatsApp desde tus prospectos asignados en el embudo. Los chats aparecerán aquí cuando tengan mensajes.':'Abre una conversación autorizada o recibe un mensaje en el canal institucional.' ?>
                         </span>
                     </div>
                 <?php else: ?>
@@ -206,6 +210,7 @@ foreach ($mensajesIniciales as $mensaje) {
                         <?php
                         $nombreConversacion = trim(
                             (string)(
+                                $conversacion['prospecto_nombre'] ??
                                 $conversacion['aliado_nombre'] ??
                                 $conversacion['nombre_contacto'] ??
                                 ''
@@ -229,6 +234,7 @@ foreach ($mensajesIniciales as $mensaje) {
                             data-search="<?= $texto(
                                 $nombreConversacion . ' ' .
                                 ($conversacion['nombre_contacto'] ?? '') . ' ' .
+                                ($conversacion['responsable_nombre'] ?? '') . ' ' .
                                 ($conversacion['telefono_contacto'] ?? '') . ' ' .
                                 ($conversacion['aliado_estado'] ?? '') . ' ' .
                                 ($conversacion['aliado_municipio'] ?? '')
@@ -242,6 +248,8 @@ foreach ($mensajesIniciales as $mensaje) {
                                     <strong><?= $texto($nombreConversacion) ?></strong>
                                     <time><?= $texto($hora($conversacion['ultimo_mensaje_at'] ?? '')) ?></time>
                                 </div>
+
+                                <?php $chatEtiqueta=$conversacion;require __DIR__.'/ventas_etiqueta.php'; ?>
 
                                 <div class="whatsapp-conversation-bottom">
                                     <span>
@@ -356,7 +364,7 @@ foreach ($mensajesIniciales as $mensaje) {
     </section>
 </section>
 
-<?php if ($puedeEnviarWhatsapp): ?>
+    <?php if ($puedeEnviarWhatsapp && !WhatsAppContextoService::esVentas()): ?>
     <div
         class="modal fade"
         id="modalWhatsAppNuevaConversacion"

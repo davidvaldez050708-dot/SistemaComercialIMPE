@@ -23,12 +23,23 @@ final class WhatsAppContextoService
     public static function lecturaGlobal(): bool
     {
         // Una sola identidad para la consulta global. El código conserva su ID histórico.
-        return tienePermiso('whatsapp.gestionar_conversaciones');
+        return !self::esVentas() && tienePermiso('whatsapp.gestionar_conversaciones');
+    }
+
+    public static function esVentas(): bool
+    {
+        return (int)($_SESSION['rol_id']??0)===3;
     }
 
     public static function alcance(mysqli $db,int $usuario,bool $global): string
     {
         if ($usuario<1 || (int)($_SESSION['usuario_id']??0)!==$usuario || !tienePermiso('whatsapp.ver')) return '0=1';
+        if(self::esVentas()) {
+            return "(conv.aliado_seguimiento_id IS NULL
+                AND EXISTS(SELECT 1 FROM whatsapp_cuentas canal_ventas WHERE canal_ventas.id=conv.cuenta_id AND canal_ventas.tipo='EMPRESARIAL' AND canal_ventas.activo=1)
+                AND (SELECT COUNT(*) FROM whatsapp_conversacion_prospectos w JOIN prospecto_asignaciones pa ON pa.prospecto_id=w.prospecto_id AND pa.vigente=1 WHERE w.conversacion_id=conv.id)=1
+                AND EXISTS(SELECT 1 FROM whatsapp_conversacion_prospectos w JOIN prospecto_asignaciones pa ON pa.prospecto_id=w.prospecto_id AND pa.vigente=1 WHERE w.conversacion_id=conv.id AND pa.asesor_id=$usuario))";
+        }
         if ($global && self::lecturaGlobal()) return '1=1';
         $propio="conv.responsable_usuario_id=$usuario";
         if (self::tabla($db,'whatsapp_conversacion_prospectos')) {
@@ -128,6 +139,10 @@ final class WhatsAppContextoService
                 $s=$db->prepare('SELECT id FROM whatsapp_conversaciones WHERE id=? FOR UPDATE');
                 try{$s->bind_param('i',$conv);$s->execute();$s->get_result();}finally{$s->close();}
                 if((int)($existente['aliado_seguimiento_id']??0)!==$seguimiento)throw new DomainException('El teléfono pertenece a otro contexto. Solicita revisión de la conversación.');
+                if($prospecto>0) {
+                    if(empty($existente['prospecto_id']) && (int)($existente['responsable_usuario_id']??0)>0 && (int)$existente['responsable_usuario_id']!==$usuario)throw new DomainException('La conversación requiere revisión de su responsable.');
+                    self::enlazar($db,$conv,$prospecto);
+                }
                 if(!$modelo->obtenerConversacion($conv,$usuario,self::lecturaGlobal())) {
                     // Un prospecto ya enlazado se autoriza por su asignación vigente.
                     throw new DomainException('La conversación requiere revisión de su responsable.');
@@ -135,10 +150,10 @@ final class WhatsAppContextoService
             } else {
                 if(!tienePermiso('whatsapp.enviar'))throw new DomainException('Aún no existe una conversación disponible para consulta.');
                 $conv=$modelo->crearORecuperarConversacion((int)$cuenta['id'],$numero,$nombre,$usuario,$seguimiento);
+                if($prospecto>0)self::enlazar($db,$conv,$prospecto);
                 // La clave única cuenta/teléfono resuelve aperturas simultáneas.
                 if(!$modelo->obtenerConversacion($conv,$usuario,false))throw new DomainException('La conversación fue asignada a otra cuenta.');
             }
-            if($prospecto>0)self::enlazar($db,$conv,$prospecto);
             $db->commit();return $conv;
         } catch(Throwable $e){$db->rollback();throw $e;}
     }

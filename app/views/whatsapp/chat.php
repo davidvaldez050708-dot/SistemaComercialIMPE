@@ -3,6 +3,7 @@
                         <span class="whatsapp-avatar is-large">
                             <?= $texto(strtoupper(substr(
                                 trim((string)(
+                                    $conversacionSeleccionada['prospecto_nombre'] ??
                                     $conversacionSeleccionada['aliado_nombre'] ??
                                     $conversacionSeleccionada['nombre_contacto'] ??
                                     'W'
@@ -15,11 +16,13 @@
                         <div>
                             <strong data-whatsapp-chat-name>
                                 <?= $texto(
+                                    $conversacionSeleccionada['prospecto_nombre'] ??
                                     $conversacionSeleccionada['aliado_nombre'] ??
                                     $conversacionSeleccionada['nombre_contacto'] ??
                                     $conversacionSeleccionada['telefono_contacto']
                                 ) ?>
                             </strong>
+                            <?php $chatEtiqueta=$conversacionSeleccionada;require __DIR__.'/ventas_etiqueta.php'; ?>
                             <span data-whatsapp-chat-phone>
                                 <?= $texto($conversacionSeleccionada['telefono_contacto'] ?? '') ?>
                                 · <?= $texto($conversacionSeleccionada['cuenta_nombre'] ?? 'WhatsApp') ?>
@@ -111,6 +114,9 @@
                                 <i class="bi bi-send-check"></i>
                                 Enviar plantilla de prueba
                             </button>
+                        <?php endif; ?>
+                        <?php if (WhatsAppContextoService::esVentas() && $puedeEnviarWhatsapp): ?>
+                            <?php require __DIR__.'/ventas_inicio.php'; ?>
                         <?php endif; ?>
                     </div>
 
