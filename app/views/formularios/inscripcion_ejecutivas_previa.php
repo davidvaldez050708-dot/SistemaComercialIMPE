@@ -98,8 +98,8 @@ $secciones = [
             </div>
             <div class="formulario-publico-hero-logos">
                 <div class="formulario-publico-hero-logo formulario-publico-hero-logo-principal">
-                    <img src="<?= BASE_URL ?>public/img/brand/Logotipos-blanco.png"
-                         alt="Fundación Red Educativa México y Universidad MPE" loading="eager">
+                    <img src="<?= BASE_URL ?>public/img/brand/fundacion-red-educativa-mexico-blanco.png"
+                         alt="Fundación Red Educativa México" loading="eager">
                 </div>
                 <span class="formulario-publico-hero-logo-separator" aria-hidden="true"></span>
                 <div class="formulario-publico-hero-logo-sep">

@@ -60,8 +60,8 @@ $fechaMaximaNacimiento = date('Y-m-d');
             <div class="formulario-publico-hero-logos">
                 <div class="formulario-publico-hero-logo formulario-publico-hero-logo-principal">
                     <img
-                        src="<?= BASE_URL ?>public/img/brand/Logotipos-blanco.png"
-                        alt="Fundación Red Educativa México y Universidad MPE"
+                        src="<?= BASE_URL ?>public/img/brand/fundacion-red-educativa-mexico-blanco.png"
+                        alt="Fundación Red Educativa México"
                         loading="eager">
                 </div>
                 <span class="formulario-publico-hero-logo-separator" aria-hidden="true"></span>
