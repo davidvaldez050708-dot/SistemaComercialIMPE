@@ -1,5 +1,5 @@
 {
-  "release": "rendimiento-inicio-v1",
+  "release": "rendimiento-inicio-v2",
   "files": [
     {
       "path": "app/models/RolModel.php",
@@ -26,20 +26,26 @@
       "after_sha": "80bcb7eca50c69bc9578978373c9acbe22cbedb0dd8a3412e353460ee4e3930c",
       "hunks": [
         {
-          "before": "    private $usuarioModel;\n    private $rolModel;\n\n    public function __construct()\n    {\n        $this->usuarioModel = new UsuarioModel();\n        $this->rolModel = new RolModel();\n    }\n\n    public function mostrarLogin()\n",
-          "after": "    private $usuarioModel;\n    private $rolModel;\n\n    private function prepararModelos()\n    {\n        $this->usuarioModel = $this->usuarioModel ?? new UsuarioModel();\n        $this->rolModel = $this->rolModel ?? new RolModel();\n    }\n\n    public function mostrarLogin()\n"
+          "before": "    public function __construct()\n    {\n        $this->usuarioModel = new UsuarioModel();\n        $this->rolModel = new RolModel();\n    }\n\n",
+          "after": "    private function prepararModelos()\n    {\n        $this->usuarioModel = $this->usuarioModel ?? new UsuarioModel();\n        $this->rolModel = $this->rolModel ?? new RolModel();\n    }\n\n",
+          "variants": [
+            {
+              "before": "    public function __construct()\n    {\n        $conexion = Database::compartida();\n        $this->usuarioModel = new UsuarioModel($conexion);\n        $this->rolModel = new RolModel($conexion);\n    }\n\n",
+              "after": "    private function prepararModelos()\n    {\n        if (isset($this->usuarioModel, $this->rolModel)) return;\n        $conexion = Database::compartida();\n        $this->usuarioModel = $this->usuarioModel ?? new UsuarioModel($conexion);\n        $this->rolModel = $this->rolModel ?? new RolModel($conexion);\n    }\n\n"
+            }
+          ]
         },
         {
-          "before": "\n    public function iniciarSesion()\n    {\n        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {\n\n            header(\n",
-          "after": "\n    public function iniciarSesion()\n    {\n        $this->prepararModelos();\n        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {\n\n            header(\n"
+          "before": "    public function iniciarSesion()\n    {\n",
+          "after": "    public function iniciarSesion()\n    {\n        $this->prepararModelos();\n"
         },
         {
-          "before": "\n    public function procesarRecuperacion()\n    {\n        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {\n\n            header(\n",
-          "after": "\n    public function procesarRecuperacion()\n    {\n        $this->prepararModelos();\n        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {\n\n            header(\n"
+          "before": "    public function procesarRecuperacion()\n    {\n",
+          "after": "    public function procesarRecuperacion()\n    {\n        $this->prepararModelos();\n"
         },
         {
-          "before": "\n    public function cambiarPassword()\n    {\n\n        if (\n            $_SERVER['REQUEST_METHOD'] !== 'POST' ||\n",
-          "after": "\n    public function cambiarPassword()\n    {\n        $this->prepararModelos();\n\n        if (\n            $_SERVER['REQUEST_METHOD'] !== 'POST' ||\n"
+          "before": "    public function cambiarPassword()\n    {\n",
+          "after": "    public function cambiarPassword()\n    {\n        $this->prepararModelos();\n"
         }
       ]
     },
@@ -54,18 +60,13 @@
         },
         {
           "before": "        if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);\n        require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';\n        try{\n            $user=(int)$_SESSION['usuario_id'];$svc=new TelefoniaDisponibilidadService();\n            if(($_SERVER['REQUEST_METHOD']??'')==='GET'){\n                $id=(int)($_GET['id']??0);\n                $this->responderJson(['ok'=>true,'solicitud'=>$id?$svc->obtener($user,$id):$svc->entrante($user),'devoluciones'=>$id?null:count($svc->devoluciones($user))]);\n            }\n            if(($_SERVER['REQUEST_METHOD']??'')!=='POST')$this->responderJson(['ok'=>false],405);\n            $csrf=(string)($_SESSION['csrf_token']??'');\n            if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);\n            if(in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)){\n                $svc->presencia($user,($_POST['disponible']??'')==='1');\n                if(($_POST['accion']??'')==='POLL')$this->responderJson(['ok'=>true,\n",
-          "after": "        if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);\n        require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';\n        try{\n            $user=(int)$_SESSION['usuario_id'];\n            $metodoDisponibilidad=$_SERVER['REQUEST_METHOD']??'';\n            if(!in_array($metodoDisponibilidad,['GET','POST'],true))$this->responderJson(['ok'=>false],405);\n            if($metodoDisponibilidad==='POST'){\n                $csrf=(string)($_SESSION['csrf_token']??'');\n                if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);\n            }\n            // Los sondeos sólo leen la sesión; PRESENCIA/POLL actualizan la\n            // base de datos sin cambiar credenciales ni datos de la sesión.\n            if(($metodoDisponibilidad==='GET'||in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)) && session_status()===PHP_SESSION_ACTIVE)session_write_close();\n            $svc=new TelefoniaDisponibilidadService();\n            if($metodoDisponibilidad==='GET'){\n                $id=(int)($_GET['id']??0);\n                $this->responderJson(['ok'=>true,'solicitud'=>$id?$svc->obtener($user,$id):$svc->entrante($user),'devoluciones'=>$id?null:count($svc->devoluciones($user))]);\n            }\n            if(in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)){\n                $svc->presencia($user,($_POST['disponible']??'')==='1');\n                if(($_POST['accion']??'')==='POLL')$this->responderJson(['ok'=>true,\n"
-        }
-      ]
-    },
-    {
-      "path": "app/services/TelefoniaDisponibilidadService.php",
-      "new_file": false,
-      "after_sha": "71decef562d97848e87ae9a5ebf5cfcb5dbd70a4610f9cba82243b239d31c042",
-      "hunks": [
-        {
-          "before": "    private mysqli $db;\n    public function __construct(?mysqli $db=null){\n        $this->db=$db??(new Database())->connect();\n        new TelefoniaTransferenciaOperacionService($this->db);\n        $this->db->query(\"CREATE TABLE IF NOT EXISTS telefonia_presencia (\n            usuario_id INT PRIMARY KEY,extension VARCHAR(12) NOT NULL,ocupado TINYINT NOT NULL,\n",
-          "after": "    private mysqli $db;\n    public function __construct(?mysqli $db=null){\n        $this->db=$db??(new Database())->connect();\n        // Las consultas automáticas no deben repetir DDL en cada sondeo.\n        // Si falta una tabla se conserva la preparación original completa.\n        $tablasListas=$this->db->query(\"SELECT COUNT(*) FROM information_schema.TABLES\n            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN\n            ('telefonia_presencia','telefonia_disponibilidad','telefonia_transferencia_operaciones')\")->fetch_row();\n        if ((int)$tablasListas[0] === 3) return;\n        new TelefoniaTransferenciaOperacionService($this->db);\n        $this->db->query(\"CREATE TABLE IF NOT EXISTS telefonia_presencia (\n            usuario_id INT PRIMARY KEY,extension VARCHAR(12) NOT NULL,ocupado TINYINT NOT NULL,\n"
+          "after": "        if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);\n        require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';\n        try{\n            $user=(int)$_SESSION['usuario_id'];\n            $metodoDisponibilidad=$_SERVER['REQUEST_METHOD']??'';\n            if(!in_array($metodoDisponibilidad,['GET','POST'],true))$this->responderJson(['ok'=>false],405);\n            if($metodoDisponibilidad==='POST'){\n                $csrf=(string)($_SESSION['csrf_token']??'');\n                if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);\n            }\n            // Los sondeos sólo leen la sesión; PRESENCIA/POLL actualizan la\n            // base de datos sin cambiar credenciales ni datos de la sesión.\n            if(($metodoDisponibilidad==='GET'||in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)) && session_status()===PHP_SESSION_ACTIVE)session_write_close();\n            $svc=new TelefoniaDisponibilidadService();\n            if($metodoDisponibilidad==='GET'){\n                $id=(int)($_GET['id']??0);\n                $this->responderJson(['ok'=>true,'solicitud'=>$id?$svc->obtener($user,$id):$svc->entrante($user),'devoluciones'=>$id?null:count($svc->devoluciones($user))]);\n            }\n            if(in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)){\n                $svc->presencia($user,($_POST['disponible']??'')==='1');\n                if(($_POST['accion']??'')==='POLL')$this->responderJson(['ok'=>true,\n",
+          "variants": [
+            {
+              "before": "        if ($metodo === 'POST' && (empty($_SESSION['csrf_token']) ||\n            !hash_equals((string)$_SESSION['csrf_token'], (string)($_POST['csrf_token'] ?? '')))) {\n            $this->responderJson(['ok'=>false],403);\n        }\n        try{\n            $user=(int)$_SESSION['usuario_id'];\n",
+              "after": "        if ($metodo === 'POST' && (empty($_SESSION['csrf_token']) ||\n            !hash_equals((string)$_SESSION['csrf_token'], (string)($_POST['csrf_token'] ?? '')))) {\n            $this->responderJson(['ok'=>false],403);\n        }\n        // El sondeo no modifica datos de la sesión; guardar permisos y liberar navegación.\n        if (($metodo === 'GET' || in_array(($_POST['accion'] ?? ''), ['PRESENCIA','POLL'], true)) && session_status() === PHP_SESSION_ACTIVE) session_write_close();\n        try{\n            $user=(int)$_SESSION['usuario_id'];\n"
+            }
+          ]
         }
       ]
     }

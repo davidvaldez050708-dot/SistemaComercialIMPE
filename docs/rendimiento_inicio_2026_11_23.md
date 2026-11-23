@@ -9,7 +9,7 @@ Diagnóstico recibido del servidor: configuración/conexión MySQL en 3 ms, cons
 - RolModel envía el catálogo en una sola sentencia preparada, en vez de ejecutar una sentencia por permiso. Conserva los catálogos personalizados que el servidor agregue a `$permisos`, las asignaciones iniciales, las políticas y las revocaciones. No se cachean los permisos del usuario.
 - LoginController crea sus modelos cuando realmente autentica, procesa recuperación o cambia contraseña. Mostrar la pantalla de acceso o recuperación ya no abre conexiones innecesarias. Las validaciones de identidad y contraseña se conservan.
 - Las consultas de estado y los sondeos de disponibilidad guardan y cierran la sesión PHP después de verificar permisos y CSRF cuando corresponde. GET y POST de PRESENCIA/POLL no cambian los datos de la sesión; pueden actualizar la base de datos sin retener su bloqueo. Las acciones de modificación, como aceptar o rechazar, mantienen el comportamiento de sesión anterior.
-- TelefoniaDisponibilidadService comprueba si sus tres tablas existen. Si ya están preparadas, el sondeo no repite los tres CREATE TABLE. Si falta alguna, ejecuta la preparación original.
+- El servicio de disponibilidad instalado ya no crea tablas en su constructor. El paquete v2 conserva ese servicio sin modificarlo; la protección contra DDL repetido del candidato inicial no se publica sobre esta versión.
 
 ## Pruebas
 
@@ -19,8 +19,16 @@ Disponibilidad: cero CREATE TABLE en una segunda construcción y restauración d
 
 ## Publicación y medición posterior
 
-El publicador aplica bloques exactos sobre cuatro archivos instalados; no reemplaza el RolModel completo ni catálogos personalizados. Requiere Python 3.6 o superior y PHP CLI. Primero ejecuta `--check`, luego `--apply`, guardando el respaldo fuera de public_html. Ante un bloque incompatible se detiene antes de escribir. Admite `--restore RUTA_RESPALDO`, protegiendo cambios posteriores.
+El publicador v2 aplica bloques exactos sobre tres archivos instalados; no reemplaza el RolModel completo ni catálogos personalizados. Requiere Python 3.6 o superior y PHP CLI. Primero ejecuta `--check`, luego `--apply`, guardando el respaldo fuera de public_html. Ante un bloque incompatible se detiene antes de escribir. Admite `--restore RUTA_RESPALDO`, protegiendo cambios posteriores.
 
 Después de aplicar, iniciar una sesión de prueba y medir de nuevo el POST de acceso, telefonía y home en Network; repetir un cambio de módulo con los sondeos activos. Comparar en la misma conexión y un horario similar. Si persiste una demora alta, abrir Timing de la petición lenta para distinguir Queueing/Stalled, conexión, Waiting/TTFB y descarga, y revisar los límites/colas de PHP del alojamiento. Aún hace falta esa medición en producción.
 
 No se enviaron mensajes, correos ni llamadas durante las pruebas; no se modificaron secretos ni datos del servidor de producción.
+
+## Paquete v2 compatible con producción
+
+La primera comprobación se detuvo en LoginController sin escribir archivos. Los fragmentos recibidos del servidor mostraron cambios posteriores: conexión mediante Database::compartida(), recuperación delegada en CorreoRecuperacionService y disponibilidad con sondear(), callback de origen y manejo de fallos temporales. El constructor instalado de TelefoniaDisponibilidadService ya no ejecuta DDL.
+
+El paquete v2 actualiza sólo RolModel, LoginController y TelefoniaController. Conserva la conexión compartida al diferir la creación de modelos; agrega la preparación al comienzo de las acciones sin reemplazar sus cuerpos. En la disponibilidad instalada sólo inserta el cierre de sesión después de validar método/permisos/CSRF y antes de entrar al servicio. No cambia sondear(), su callback, los manejadores de error ni la recuperación de contraseña. TelefoniaDisponibilidadService queda fuera del paquete, pues el servidor ya tiene esa mejora.
+
+Las variantes se reconocen por bloques exactos, sin coincidencias aproximadas. Se prueban la versión anterior y los fragmentos instalados recibidos del usuario, con LF/CRLF, repetición, sintaxis y sesiones concurrentes. La prueba específica confirma que los modelos continúan recibiendo la misma conexión compartida y que la recuperación sigue delegándose al servicio instalado.

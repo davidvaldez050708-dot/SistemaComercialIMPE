@@ -14,13 +14,17 @@ $_SERVER['REQUEST_METHOD']=in_array($mode,['post','poll','csrf'],true)?'POST':'G
 require $root.'/app/helpers/PermissionHelper.php';
 define('ROOT_PATH',$root);define('BASE_URL','https://fixture.test/');
 $GLOBALS['created']=['usuarios'=>0,'roles'=>0];
+class Database {
+ public static function compartida(){static $db=null;return $db??=new stdClass();}
+ public static function responderFalloTemporal($e){return false;}
+}
 class UsuarioModel {
- public function __construct(){$GLOBALS['created']['usuarios']++;}
+ public function __construct($db=null){$GLOBALS['created']['usuarios']++;$GLOBALS['usuario_shared']=$db===Database::compartida();}
  public function buscarPorUsuarioOCorreo($dato){if($dato==='desconocido')return null;return ['id'=>9,'nombre'=>'Prueba','apellidos'=>'Local','usuario'=>'fixture','foto_perfil'=>'','estado'=>1,'rol_estado'=>1,'rol_id'=>4,'rol'=>'Analista de Datos','requiere_cambio_password'=>0,'password'=>password_hash('fixture-password-only',PASSWORD_DEFAULT)];}
  public function actualizarUltimoAcceso($id){return true;}
 }
 class RolModel {
- public function __construct(){$GLOBALS['created']['roles']++;}
+ public function __construct($db=null){$GLOBALS['created']['roles']++;$GLOBALS['rol_shared']=$db===Database::compartida();}
  public function inicializarPermisosSistema(){}
  public function obtenerCodigosPermisosPorRol($id){return str_starts_with($GLOBALS['mode'],'login')||$GLOBALS['mode']==='denied'?[]:['telefonia.usar','telefonia.recibir'];}
 }
@@ -35,14 +39,21 @@ class TelefoniaDisponibilidadService {
  public function devoluciones($u){return [];}
  public function presencia($u,$available){}
  public function accion(...$args){return null;}
+ public function sondear($u,$available,$id,$returns,$origin){$origin();return ['solicitud'=>null];}
+ public function delOrigen($u,$reference){return null;}
+}
+class CorreoRecuperacionService {
+ public function __construct($model){}
+ public function solicitar($dato,$ip){$_SESSION['mensaje_recuperacion']=true;}
 }
 $GLOBALS['mode']=$mode;$GLOBALS['dir']=$dir;
-function loadFixture($file){$src=file_get_contents($file);$src=preg_replace('/require_once\\s+[^;]+;/','',$src);eval(substr($src,strpos($src,'<?php')+5));}
+function loadFixture($file){if(basename($file)==='LoginController.php' && getenv('IMPE_PERF_LOGIN_SOURCE'))$file=getenv('IMPE_PERF_LOGIN_SOURCE');if(basename($file)==='TelefoniaController.php' && getenv('IMPE_PERF_PHONE_SOURCE'))$file=getenv('IMPE_PERF_PHONE_SOURCE');$src=file_get_contents($file);$src=preg_replace('/require_once\\s+[^;]+;/','',$src);eval(substr($src,strpos($src,'<?php')+5));}
 if(str_starts_with($mode,'login')){
  $_SESSION=[];loadFixture($root.'/app/controllers/LoginController.php');$c=new LoginController();
  if($mode==='login-models'){
   if($GLOBALS['created']!==['usuarios'=>0,'roles'=>0])exit(3);
   $method=new ReflectionMethod(LoginController::class,'prepararModelos');$method->invoke($c);$method->invoke($c);
+  if(getenv('IMPE_PERF_EXPECT_SHARED')==='1' && (empty($GLOBALS['usuario_shared'])||empty($GLOBALS['rol_shared'])))exit(4);
   echo json_encode($GLOBALS['created']);exit;
  }
  register_shutdown_function(function()use($dir){file_put_contents($dir.'/login-state',json_encode(['autenticado'=>!empty($_SESSION['usuario_id']),'error'=>!empty($_SESSION['error_login']),'recuperacion'=>!empty($_SESSION['mensaje_recuperacion']),'created'=>$GLOBALS['created']]));});

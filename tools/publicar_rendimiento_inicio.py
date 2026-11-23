@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import tempfile
 
-FILES=('app/models/RolModel.php', 'app/controllers/LoginController.php', 'app/controllers/TelefoniaController.php', 'app/services/TelefoniaDisponibilidadService.php')
+FILES=('app/models/RolModel.php', 'app/controllers/LoginController.php', 'app/controllers/TelefoniaController.php')
 
 def sha(data): return hashlib.sha256(data).hexdigest()
 
@@ -28,11 +28,13 @@ def candidate(old,row):
     if old is None:raise RuntimeError('Falta archivo instalado: '+row['path'])
     text=old.replace(b'\r\n',b'\n').decode('utf-8')
     for hunk in row['hunks']:
-        before,after=hunk['before'],hunk['after']
-        if text.count(after)==1:continue
-        matches=[v for v in [before]+hunk.get('alternates',[]) if text.count(v)==1]
+        choices=[hunk]+hunk.get('variants',[])
+        applied={c['after'] for c in choices if text.count(c['after'])==1}
+        if len(applied)==1:continue
+        if len(applied)>1:raise RuntimeError('Variantes ambiguas: '+row['path'])
+        matches=[c for c in choices if text.count(c['before'])==1]
         if len(matches)!=1:raise RuntimeError('Bloque diferente: '+row['path']+'. Comparar antes de publicar; sitio intacto.')
-        text=text.replace(matches[0],after,1)
+        text=text.replace(matches[0]['before'],matches[0]['after'],1)
     data=text.encode('utf-8')
     return data.replace(b'\n',b'\r\n') if b'\r\n' in old else data
 
