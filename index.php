@@ -1,6 +1,9 @@
 <?php
 
+require_once __DIR__ . '/app/helpers/PerfilPeticion.php';
+$impePerfilPeticion = ImpePerfilPeticion::iniciar(__DIR__);
 session_start();
+$impePerfilPeticion?->marca('sesion');
 
 if (isset($_SESSION['usuario_id'])) {
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -76,6 +79,7 @@ if (isset($_SESSION['usuario_id'], $_SESSION['ultima_actividad'])) {
 
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/app/helpers/PermissionHelper.php';
+$impePerfilPeticion?->marca('config');
 
 
 $controller = $controllerSolicitado;
@@ -277,6 +281,7 @@ if (
 
 
 
+$impePerfilPeticion?->marca('autorizacion');
 switch ($controller) {
 
     case 'login':
@@ -716,10 +721,12 @@ switch ($controller) {
 }
 
 
+$impePerfilPeticion?->marca('controlador');
 if (!method_exists($controllerInstance, $action)) {
 
     die('Acción no válida.');
 }
 
 
+$impePerfilPeticion?->marca('despacho');
 $controllerInstance->$action();
