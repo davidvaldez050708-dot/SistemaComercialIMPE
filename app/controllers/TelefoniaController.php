@@ -467,6 +467,9 @@ class TelefoniaController
     public function estadoUsuario()
     {
         $this->validarUsuarioTelefoniaJson();
+        // La autorización ya se refrescó en el constructor. La consulta no
+        // modifica la sesión; dejar pasar otras navegaciones del usuario.
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 
         try {
             $asignacion = $this->service->resolverParaUsuario(
@@ -740,14 +743,21 @@ class TelefoniaController
         if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);
         require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
         try{
-            $user=(int)$_SESSION['usuario_id'];$svc=new TelefoniaDisponibilidadService();
-            if(($_SERVER['REQUEST_METHOD']??'')==='GET'){
+            $user=(int)$_SESSION['usuario_id'];
+            $metodoDisponibilidad=$_SERVER['REQUEST_METHOD']??'';
+            if(!in_array($metodoDisponibilidad,['GET','POST'],true))$this->responderJson(['ok'=>false],405);
+            if($metodoDisponibilidad==='POST'){
+                $csrf=(string)($_SESSION['csrf_token']??'');
+                if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);
+            }
+            // Los sondeos sólo leen la sesión; PRESENCIA/POLL actualizan la
+            // base de datos sin cambiar credenciales ni datos de la sesión.
+            if(($metodoDisponibilidad==='GET'||in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)) && session_status()===PHP_SESSION_ACTIVE)session_write_close();
+            $svc=new TelefoniaDisponibilidadService();
+            if($metodoDisponibilidad==='GET'){
                 $id=(int)($_GET['id']??0);
                 $this->responderJson(['ok'=>true,'solicitud'=>$id?$svc->obtener($user,$id):$svc->entrante($user),'devoluciones'=>$id?null:count($svc->devoluciones($user))]);
             }
-            if(($_SERVER['REQUEST_METHOD']??'')!=='POST')$this->responderJson(['ok'=>false],405);
-            $csrf=(string)($_SESSION['csrf_token']??'');
-            if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);
             if(in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)){
                 $svc->presencia($user,($_POST['disponible']??'')==='1');
                 if(($_POST['accion']??'')==='POLL')$this->responderJson(['ok'=>true,

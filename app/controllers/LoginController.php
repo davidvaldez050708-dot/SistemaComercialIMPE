@@ -9,10 +9,10 @@ class LoginController
     private $usuarioModel;
     private $rolModel;
 
-    public function __construct()
+    private function prepararModelos()
     {
-        $this->usuarioModel = new UsuarioModel();
-        $this->rolModel = new RolModel();
+        $this->usuarioModel = $this->usuarioModel ?? new UsuarioModel();
+        $this->rolModel = $this->rolModel ?? new RolModel();
     }
 
     public function mostrarLogin()
@@ -27,6 +27,7 @@ class LoginController
 
     public function iniciarSesion()
     {
+        $this->prepararModelos();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
             header(
@@ -267,6 +268,7 @@ class LoginController
 
     public function procesarRecuperacion()
     {
+        $this->prepararModelos();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
             header(
@@ -459,6 +461,7 @@ class LoginController
 
     public function cambiarPassword()
     {
+        $this->prepararModelos();
 
         if (
             $_SERVER['REQUEST_METHOD'] !== 'POST' ||

@@ -51,13 +51,24 @@ class RolModel
             !$this->existePermisoPorCodigo('telefonia.recibir') ||
             !$this->existePermisoPorCodigo('telefonia.transferir');
 
+        // El catálogo es común a todas las peticiones. Un solo envío evita
+        // viajes repetidos a MySQL al abrir módulos o consultar telefonía.
+        $filasCatalogo = [];
+        $valoresCatalogo = [];
+        foreach ($permisos as $permiso) {
+            $filasCatalogo[] = '(?, ?, ?, ?, 1)';
+            foreach (['modulo', 'codigo', 'nombre', 'descripcion'] as $campo) {
+                $valoresCatalogo[] = $permiso[$campo];
+            }
+        }
+
         $sql = "INSERT INTO permisos (
                     modulo,
                     codigo,
                     nombre,
                     descripcion,
                     estado
-                ) VALUES (?, ?, ?, ?, 1)
+                ) VALUES " . implode(', ', $filasCatalogo) . "
                 ON DUPLICATE KEY UPDATE
                     modulo = VALUES(modulo),
                     nombre = VALUES(nombre),
@@ -66,17 +77,10 @@ class RolModel
 
         $stmt = $this->connection->prepare($sql);
 
-        foreach ($permisos as $permiso) {
-            $stmt->bind_param(
-                "ssss",
-                $permiso['modulo'],
-                $permiso['codigo'],
-                $permiso['nombre'],
-                $permiso['descripcion']
-            );
-
-            $stmt->execute();
-        }
+        $tiposCatalogo = str_repeat('s', count($valoresCatalogo));
+        $stmt->bind_param($tiposCatalogo, ...$valoresCatalogo);
+        $stmt->execute();
+        $stmt->close();
 
         $sinPermisosActivosSistema =
             !$this->existenRelacionesPermisosActivas();

@@ -9,6 +9,12 @@ final class TelefoniaDisponibilidadService
     private mysqli $db;
     public function __construct(?mysqli $db=null){
         $this->db=$db??(new Database())->connect();
+        // Las consultas automáticas no deben repetir DDL en cada sondeo.
+        // Si falta una tabla se conserva la preparación original completa.
+        $tablasListas=$this->db->query("SELECT COUNT(*) FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN
+            ('telefonia_presencia','telefonia_disponibilidad','telefonia_transferencia_operaciones')")->fetch_row();
+        if ((int)$tablasListas[0] === 3) return;
         new TelefoniaTransferenciaOperacionService($this->db);
         $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_presencia (
             usuario_id INT PRIMARY KEY,extension VARCHAR(12) NOT NULL,ocupado TINYINT NOT NULL,
