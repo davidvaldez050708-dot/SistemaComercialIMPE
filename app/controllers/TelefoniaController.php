@@ -411,6 +411,8 @@ class TelefoniaController
     public function detalleVenta()
     {
         $this->validarAtencionVentaJson(false);
+        // La identidad queda validada; la lectura PBX no necesita bloquear la navegación.
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
         require_once __DIR__.'/../services/TelefoniaVentasLlamadasService.php';
         try {
             $svc=new TelefoniaVentasLlamadasService();$uid=(int)$_SESSION['usuario_id'];

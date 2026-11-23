@@ -1,0 +1,45 @@
+{
+  "release": "consultas-repetidas-v1",
+  "files": [
+    {
+      "path": "app/services/TelefoniaVentasLlamadasService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        $metadata=$this->rows(\"SELECT c.id,MIN(d.id) solicitud_id FROM telefonia_ventas_llamadas c JOIN telefonia_disponibilidad d\n             ON d.destino_usuario=c.usuario_id AND d.destino_extension=BINARY c.extension AND d.referencia=BINARY c.pbx_call_id\n            WHERE c.usuario_id=? AND c.direccion='Entrante' AND c.solicitud_id IS NULL\n             AND d.estado IN('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA') GROUP BY c.id HAVING COUNT(*)=1\",[$uid]);\n        foreach($metadata as $m){$d=$this->rows('SELECT * FROM telefonia_disponibilidad WHERE id=?',[$m['solicitud_id']])[0];$route=json_decode($d['ruta_json'],true)?:[];\n",
+          "after": "        $metadata=$this->rows(\"SELECT candidatas.id,d.id solicitud_id,d.ruta_json,d.destino_extension,d.referencia,d.origen_extension,d.numero\n            FROM (SELECT c.id,MIN(d.id) solicitud_id FROM telefonia_ventas_llamadas c JOIN telefonia_disponibilidad d\n             ON d.destino_usuario=c.usuario_id AND d.destino_extension=BINARY c.extension AND d.referencia=BINARY c.pbx_call_id\n            WHERE c.usuario_id=? AND c.direccion='Entrante' AND c.solicitud_id IS NULL\n             AND d.estado IN('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA') GROUP BY c.id HAVING COUNT(*)=1) candidatas\n            JOIN telefonia_disponibilidad d ON d.id=candidatas.solicitud_id\",[$uid]);\n        foreach($metadata as $m){$d=$m;$d['id']=$m['solicitud_id'];$route=json_decode($d['ruta_json'],true)?:[];\n"
+        }
+      ]
+    },
+    {
+      "path": "app/controllers/TelefoniaController.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    public function detalleVenta()\n    {\n        $this->validarAtencionVentaJson(false);\n",
+          "after": "    public function detalleVenta()\n    {\n        $this->validarAtencionVentaJson(false);\n        // La identidad queda validada; la lectura PBX no necesita bloquear la navegación.\n        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();\n"
+        }
+      ]
+    },
+    {
+      "path": "app/controllers/ReminderController.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "            exit;\n        }\n\n        if ($esAdministrador) {\n            $resultado = (new AdminNotificationService())->obtener();",
+          "after": "            exit;\n        }\n\n        // Observaciones conserva su deduplicación en sesión antes de liberarla.\n        $requiereSesionObservaciones = !$esAdministrador &&\n            (!empty($puedeOperarSeguimientos) || ($puedeCentroReuniones && $esAnalista));\n        if (!$requiereSesionObservaciones && session_status() === PHP_SESSION_ACTIVE) session_write_close();\n\n        if ($esAdministrador) {\n            $resultado = (new AdminNotificationService())->obtener();",
+          "variants": [
+            {
+              "before": "        // Conservar el orden y las conexiones independientes de los servicios usados.\n",
+              "after": "        // Observaciones conserva su deduplicación en sesión antes de liberarla.\n        $requiereSesionObservaciones = !$esAdministrador &&\n            (!empty($puedeOperarSeguimientos) || ($puedeCentroReuniones && $esAnalista));\n        if (!$requiereSesionObservaciones && session_status() === PHP_SESSION_ACTIVE) session_write_close();\n\n        // Conservar el orden y las conexiones independientes de los servicios usados.\n"
+            }
+          ]
+        },
+        {
+          "before": "            $observaciones = $this->reminderObservacionService->obtener(\n                $usuarioId,\n                10\n            );\n",
+          "after": "            $observaciones = $this->reminderObservacionService->obtener(\n                $usuarioId,\n                10\n            );\n            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();\n"
+        }
+      ]
+    }
+  ]
+}

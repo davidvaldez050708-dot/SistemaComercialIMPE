@@ -124,11 +124,13 @@ final class TelefoniaVentasLlamadasService
             GROUP BY m.usuario_id,m.extension,m.pbx_call_id,m.destino";
         $st=$this->db->prepare($sql);$st->bind_param('i',$uid);$st->execute();$st->close();
         // Enriquecer sólo la referencia exacta, con una única solicitud consumida.
-        $metadata=$this->rows("SELECT c.id,MIN(d.id) solicitud_id FROM telefonia_ventas_llamadas c JOIN telefonia_disponibilidad d
+        $metadata=$this->rows("SELECT candidatas.id,d.id solicitud_id,d.ruta_json,d.destino_extension,d.referencia,d.origen_extension,d.numero
+            FROM (SELECT c.id,MIN(d.id) solicitud_id FROM telefonia_ventas_llamadas c JOIN telefonia_disponibilidad d
              ON d.destino_usuario=c.usuario_id AND d.destino_extension=BINARY c.extension AND d.referencia=BINARY c.pbx_call_id
             WHERE c.usuario_id=? AND c.direccion='Entrante' AND c.solicitud_id IS NULL
-             AND d.estado IN('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA') GROUP BY c.id HAVING COUNT(*)=1",[$uid]);
-        foreach($metadata as $m){$d=$this->rows('SELECT * FROM telefonia_disponibilidad WHERE id=?',[$m['solicitud_id']])[0];$route=json_decode($d['ruta_json'],true)?:[];
+             AND d.estado IN('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA') GROUP BY c.id HAVING COUNT(*)=1) candidatas
+            JOIN telefonia_disponibilidad d ON d.id=candidatas.solicitud_id",[$uid]);
+        foreach($metadata as $m){$d=$m;$d['id']=$m['solicitud_id'];$route=json_decode($d['ruta_json'],true)?:[];
             if(($route['tipo']??'')!=='PROSPECTO'||(int)($route['responsable_id']??0)!==$uid||(string)($route['extension']??'')!==$d['destino_extension']||(string)($route['referencia_llamada']??'')!==$d['referencia'])continue;
             $name=mb_substr(trim((string)($route['institucion_nombre']??'')),0,150);$state=(int)($route['estado_id']??0);
             $st=$this->db->prepare('UPDATE telefonia_ventas_llamadas SET solicitud_id=?,nombre=?,origen_extension=?,estado_id=?,numero=? WHERE id=? AND usuario_id=? AND solicitud_id IS NULL');

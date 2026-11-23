@@ -69,6 +69,11 @@ class ReminderController
             exit;
         }
 
+        // Observaciones conserva su deduplicación en sesión antes de liberarla.
+        $requiereSesionObservaciones = !$esAdministrador &&
+            (!empty($puedeOperarSeguimientos) || ($puedeCentroReuniones && $esAnalista));
+        if (!$requiereSesionObservaciones && session_status() === PHP_SESSION_ACTIVE) session_write_close();
+
         if ($esAdministrador) {
             $resultado = (new AdminNotificationService())->obtener();
 
@@ -215,6 +220,7 @@ class ReminderController
                 $usuarioId,
                 10
             );
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
             $recordatoriosObservaciones = array_values(
                 $observaciones['recordatorios'] ?? []
             );
