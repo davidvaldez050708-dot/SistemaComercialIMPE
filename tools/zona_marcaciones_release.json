@@ -1,0 +1,23 @@
+{
+  "release": "zona-marcaciones-v1",
+  "files": [
+    {
+      "path": "app/services/TelefoniaMarcacionesVentasService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    }\n\n    private function horaEventoDesdeMarcacion(string $mysqlDate): DateTimeImmutable\n    {\n        $source=$this->zonaMySQL();\n        $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$mysqlDate,$source);\n        if(!$date||$date->format('Y-m-d H:i:s')!==$mysqlDate)\n",
+          "after": "    }\n\n    private function horaEventoDesdeMarcacion(string $mysqlDate, ?DateTimeZone $source=null): DateTimeImmutable\n    {\n        $source=$source??$this->zonaMySQL();\n        $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$mysqlDate,$source);\n        if(!$date||$date->format('Y-m-d H:i:s')!==$mysqlDate)\n"
+        },
+        {
+          "before": "        if(!$pendientes)return;\n        // La ventana del webhook usa reloj de México; MySQL puede usar UTC.\n        $instantes=[];foreach($pendientes as $i)$instantes[]=$this->horaEventoDesdeMarcacion((string)$i['created_at'])->getTimestamp();\n        $from=(new DateTimeImmutable('@'.(min($instantes)-5)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');\n        $until=(new DateTimeImmutable('@'.(max($instantes)+30)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');\n",
+          "after": "        if(!$pendientes)return;\n        // La ventana del webhook usa reloj de México; MySQL puede usar UTC.\n        $zonaMarcaciones=$this->zonaMySQL();\n        $instantes=[];foreach($pendientes as $index=>$i)$instantes[$index]=$this->horaEventoDesdeMarcacion((string)$i['created_at'],$zonaMarcaciones)->getTimestamp();\n        $from=(new DateTimeImmutable('@'.(min($instantes)-5)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');\n        $until=(new DateTimeImmutable('@'.(max($instantes)+30)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');\n"
+        },
+        {
+          "before": "        while($ev=$rs->fetch_assoc()){try{$number=TelefoniaContactosService::normalizarTelefono((string)$ev['destination']);$byNumber[$number][]=$ev;}catch(InvalidArgumentException $ignored){}}\n        $eventos->close();$forward=[];$reverse=[];\n        foreach($pendientes as $intent){\n            try{$number=TelefoniaContactosService::normalizarTelefono($intent['destino']);}catch(InvalidArgumentException $ignored){continue;}\n            $at=$this->horaEventoDesdeMarcacion((string)$intent['created_at'])->getTimestamp();\n            foreach($byNumber[$number]??[] as $ev){$when=(new DateTimeImmutable((string)$ev['fecha'],new DateTimeZone('America/Mexico_City')))->getTimestamp();if($when<$at-5||$when>$at+30)continue;\n                $ref=(string)$ev['pbx_call_id'];$forward[$intent['token']][$ref]=true;$reverse[$ref][$intent['token']]=true;\n",
+          "after": "        while($ev=$rs->fetch_assoc()){try{$number=TelefoniaContactosService::normalizarTelefono((string)$ev['destination']);$byNumber[$number][]=$ev;}catch(InvalidArgumentException $ignored){}}\n        $eventos->close();$forward=[];$reverse=[];\n        foreach($pendientes as $index=>$intent){\n            try{$number=TelefoniaContactosService::normalizarTelefono($intent['destino']);}catch(InvalidArgumentException $ignored){continue;}\n            $at=$instantes[$index];\n            foreach($byNumber[$number]??[] as $ev){$when=(new DateTimeImmutable((string)$ev['fecha'],new DateTimeZone('America/Mexico_City')))->getTimestamp();if($when<$at-5||$when>$at+30)continue;\n                $ref=(string)$ev['pbx_call_id'];$forward[$intent['token']][$ref]=true;$reverse[$ref][$intent['token']]=true;\n"
+        }
+      ]
+    }
+  ]
+}

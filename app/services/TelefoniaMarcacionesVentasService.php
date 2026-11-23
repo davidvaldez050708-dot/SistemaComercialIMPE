@@ -101,9 +101,9 @@ class TelefoniaMarcacionesVentasService
         return new DateTimeZone(sprintf('%s%02d:%02d',$sign,intdiv($abs,3600),intdiv($abs%3600,60)));
     }
 
-    private function horaEventoDesdeMarcacion(string $mysqlDate): DateTimeImmutable
+    private function horaEventoDesdeMarcacion(string $mysqlDate, ?DateTimeZone $source=null): DateTimeImmutable
     {
-        $source=$this->zonaMySQL();
+        $source=$source??$this->zonaMySQL();
         $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$mysqlDate,$source);
         if(!$date||$date->format('Y-m-d H:i:s')!==$mysqlDate)
             throw new DomainException('Fecha de marcación no válida.');
@@ -264,16 +264,17 @@ class TelefoniaMarcacionesVentasService
 
         if(!$pendientes)return;
         // La ventana del webhook usa reloj de México; MySQL puede usar UTC.
-        $instantes=[];foreach($pendientes as $i)$instantes[]=$this->horaEventoDesdeMarcacion((string)$i['created_at'])->getTimestamp();
+        $zonaMarcaciones=$this->zonaMySQL();
+        $instantes=[];foreach($pendientes as $index=>$i)$instantes[$index]=$this->horaEventoDesdeMarcacion((string)$i['created_at'],$zonaMarcaciones)->getTimestamp();
         $from=(new DateTimeImmutable('@'.(min($instantes)-5)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
         $until=(new DateTimeImmutable('@'.(max($instantes)+30)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
         $eventos=$this->db->prepare("SELECT pbx_call_id,destination,MIN(received_at) fecha FROM telefonia_zadarma_eventos WHERE internal=? AND evento='NOTIFY_OUT_START' AND received_at BETWEEN ? AND ? GROUP BY pbx_call_id,destination");
         $eventos->bind_param('sss',$extension,$from,$until);$eventos->execute();$rs=$eventos->get_result();$byNumber=[];
         while($ev=$rs->fetch_assoc()){try{$number=TelefoniaContactosService::normalizarTelefono((string)$ev['destination']);$byNumber[$number][]=$ev;}catch(InvalidArgumentException $ignored){}}
         $eventos->close();$forward=[];$reverse=[];
-        foreach($pendientes as $intent){
+        foreach($pendientes as $index=>$intent){
             try{$number=TelefoniaContactosService::normalizarTelefono($intent['destino']);}catch(InvalidArgumentException $ignored){continue;}
-            $at=$this->horaEventoDesdeMarcacion((string)$intent['created_at'])->getTimestamp();
+            $at=$instantes[$index];
             foreach($byNumber[$number]??[] as $ev){$when=(new DateTimeImmutable((string)$ev['fecha'],new DateTimeZone('America/Mexico_City')))->getTimestamp();if($when<$at-5||$when>$at+30)continue;
                 $ref=(string)$ev['pbx_call_id'];$forward[$intent['token']][$ref]=true;$reverse[$ref][$intent['token']]=true;
             }
