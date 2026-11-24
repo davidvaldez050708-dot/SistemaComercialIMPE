@@ -26,6 +26,15 @@ def fixture(kind):
  write(live,'public/javascript/agenda_alertas.js',(HERE/'base/agenda_alertas.js').read_bytes())
  write(live,'public/audio/agenda-aviso.mp3',b'fixture de audio')
  if kind=='partial':write(live,FILES[1],(ROOT/'output/agenda_marketing_20261124/live'/FILES[1]).read_bytes())
+ if kind=='v1':
+  old=json.loads(subprocess.check_output(['git','show','b3643b4c:tools/agenda_marketing_20261124/cambios.json'],cwd=ROOT))
+  for name in FILES[1:]:
+   text=(live/name).read_text(encoding='utf-8')
+   for change in old['patches'][name]:text=text.replace(change['before'],change['after'])
+   if old['append']['path']==name:text+='\n'+old['append']['text']
+   write(live,name,text.encode())
+  helper=subprocess.check_output(['git','show','b3643b4c:tools/agenda_marketing_20261124/files/'+FILES[0]],cwd=ROOT)
+  write(live,FILES[0],helper)
  if kind=='conflict':
   p=live/FILES[1];p.write_text(p.read_text().replace('notifyUnseen(data.notificaciones || []);','notifyUnseen(miListaPersonalizada);'),encoding='utf-8')
  if kind=='missing':(live/'public/javascript/agenda_alertas.js').unlink()
@@ -35,7 +44,7 @@ def run(env,mode,ok=True):
  p=subprocess.run([BASH,str(HERE/'publicar.sh'),mode],env=env,capture_output=True,text=True,encoding='utf-8',errors='replace')
  check((p.returncode==0)==ok,p.stdout+p.stderr)
  return p
-for kind in ['base','custom','crlf','partial']:
+for kind in ['base','v1','custom','crlf','partial']:
  live,env=fixture(kind);before=snapshot(live)
  run(env,'--check');check(snapshot(live)==before,'CHECK no cambia el sitio')
  run(env,'--apply');check((live/FILES[0]).exists(),'Servicio instalado')
@@ -51,4 +60,4 @@ live,env=fixture('rollback');before=snapshot(live)
 shim=live.parent/'shim';shim.mkdir();(shim/'mv').write_text('#!/usr/bin/env bash\n/usr/bin/mv "$@"\nexit 1\n',encoding='utf-8',newline='\n');(shim/'mv').chmod(0o755)
 (shim/'env.sh').write_text('export PATH="'+posix(shim)+':$PATH"\n',encoding='utf-8',newline='\n');env['BASH_ENV']=posix(shim/'env.sh')
 run(env,'--apply',False);check(before==snapshot(live),'Restauración después de fallo de reemplazo')
-print(json.dumps({'ok':True,'checks':checks,'escenarios':['base','personalizado','crlf','parcial','conflicto','dependencia','rollback']}))
+print(json.dumps({'ok':True,'checks':checks,'escenarios':['base','v1','personalizado','crlf','parcial','conflicto','dependencia','rollback']}))

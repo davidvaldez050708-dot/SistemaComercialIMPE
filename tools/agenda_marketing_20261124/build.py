@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import hashlib
+import subprocess
 
 HERE=Path(__file__).resolve().parent
 controller='app/controllers/ConvocatoriaNotificacionController.php'
@@ -19,8 +20,9 @@ change(script,"        } catch (error) {\n            content.innerHTML =", "   
 anchor="    window.addEventListener('impe:phone-notices-refresh',()=>void load());"
 change(script,anchor,anchor+"\n    window.addEventListener('impe:agenda-comments-refresh',()=>void load({fresh:true}));\n    window.addEventListener('impe:marketing-agenda-toast-closed',()=>notifyUnseen(currentItems));")
 helper='app/services/AgendaMarketingNotificationService.php'
-data={'version':'marketing-agenda-v1','patches':replacements,
-      'append':{'path':script,'marker':'/* IMPE_AGENDA_MARKETING_V1 */','text':(HERE/'agenda_marketing.js').read_text(encoding='utf-8')},
+previous=subprocess.check_output(['git','show','b3643b4c:tools/agenda_marketing_20261124/agenda_marketing.js'],cwd=HERE).decode('utf-8').replace('\r\n','\n')
+data={'version':'marketing-agenda-v2','patches':replacements,
+      'append':{'path':script,'marker':'/* IMPE_AGENDA_MARKETING_V1 */','previous':[previous],'text':(HERE/'agenda_marketing.js').read_text(encoding='utf-8')},
       'new_files':{helper:{'sha256':hashlib.sha256((HERE/'files'/helper).read_text(encoding='utf-8').encode()).hexdigest()}}}
 (HERE/'cambios.json').write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8',newline='\n')
 print('Cambios acotados: campana de Marketing, conexión de Agenda y servicio adaptador.')

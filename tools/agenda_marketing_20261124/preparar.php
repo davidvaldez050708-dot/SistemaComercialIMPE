@@ -59,7 +59,15 @@ try {
                 if ($changes['append']['path']===$name) {
                     $append=normalizar($changes['append']['text']);
                     if (str_contains($target,$changes['append']['marker'])) {
-                        if (substr_count($target,$append)!==1) throw new RuntimeException('Conexión de Agenda personalizada: '.$name);
+                        if (substr_count($target,$append)!==1) {
+                            $updated=false;
+                            foreach ($changes['append']['previous']??[] as $previous) {
+                                if (substr_count($target,$previous)===1) {
+                                    $target=str_replace($previous,$append,$target);$updated=true;break;
+                                }
+                            }
+                            if (!$updated) throw new RuntimeException('Conexión de Agenda personalizada: '.$name);
+                        }
                     } else $target.="\n".$append;
                 }
             }
@@ -90,7 +98,7 @@ try {
     }
     if ($action==='despues') {
         $script=leerArchivo($live.'/public/javascript/convocatoria_notificaciones.js');
-        if (!str_contains($script,'/* IMPE_AGENDA_MARKETING_V1 */') || !str_contains($script,"call('ingest',data)")) throw new RuntimeException('No se instaló la conexión de sonido de Marketing.');
+        if (!str_contains($script,'/* IMPE_AGENDA_MARKETING_V1 */') || !str_contains($script,"call('ingest',lastData)") || !str_contains($script,'function ensureEngine()')) throw new RuntimeException('No se instaló la conexión de sonido de Marketing.');
         echo 'OK: campana de Marketing conectada a comentarios, recordatorios y sonido existente de Agenda.'.PHP_EOL;
     }
 } catch (Throwable $e) {

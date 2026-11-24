@@ -11,8 +11,14 @@ con agenda_alertas.js y el mismo audio public/audio/agenda-aviso.mp3.
 No cambia ese motor, el audio, los permisos ni las reglas de destinatarios.
 No crea tablas ni ejecuta SQL durante la instalación.
 
-La primera consulta no anuncia el historial como si fuera nuevo. Después de
-instalar, recargar Marketing y enviarle un comentario NUEVO desde otra cuenta.
+La versión v2 anuncia comentarios recientes no leídos de otra cuenta, incluso
+si ya vienen en la primera consulta. No depende del filtro de primera conexión
+del motor de sonido para mostrar el toast. El historial de más de cinco minutos
+y los comentarios propios no se anuncian como nuevos. Si el motor no se cargó
+en Marketing, se carga el mismo agenda_alertas.js existente, sin crear otro tono.
+Un root genérico oculto o sin inicializar no bloquea la campana de Marketing.
+La entrega visual se registra sólo cuando el toast es realmente visible.
+Después de instalar, recargar Marketing y enviarle un comentario NUEVO desde otra cuenta.
 Si el navegador bloquea la reproducción automática, la interacción del usuario
 desbloquea el mismo motor de audio existente. Cerrar un aviso no marca leído.
 Leer requiere POST con CSRF; una lectura fallida conserva el pendiente.
@@ -43,3 +49,5 @@ Pruebas de navegador con el motor real diagnosticado y Audio.play instrumentado:
 comentario nuevo, historial, comentario propio, recuperación tras bloqueo del
 navegador, horario, lectura con CSRF, fallo de lectura, convivencia con avisos
 de convocatorias, varias pestañas y ausencia de cambios en otros perfiles.
+Regresiones v2: comentario reciente en la primera respuesta, motor de sonido
+ausente al inicio, root genérico oculto e identificador de usuario publicado tarde.

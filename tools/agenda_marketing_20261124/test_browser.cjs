@@ -24,7 +24,9 @@ async function fixture(browser,options={}) {
  },Boolean(options.blocked));
  page.on('pageerror',e=>errors.push(e.message));
  const bell=options.noMarketing?'':`<div data-convocatoria-notification-root data-endpoint="/index.php?controller=convocatoriaNotificacion&action=pendientes" data-read-endpoint="/leer" data-csrf-token="token-prueba"><button id="campana">Campana</button><span data-convocatoria-notification-badge></span><div data-convocatoria-notification-content></div></div>`;
- const html=`<!doctype html><meta charset="utf-8"><style>${css}</style><script>window.IMPE_CURRENT_USER_ID=7;window.IMPE_CSRF_TOKEN='token-prueba';</script><script src="/public/javascript/agenda_alertas.js"></script><script src="/public/javascript/convocatoria_notificaciones.js"></script><h1>Marketing</h1>${bell}`;
+ const shared=options.noEngine?'':'<script src="/public/javascript/agenda_alertas.js"></script>';
+ const extraRoot=options.passiveRoot?'<div data-reminder-root data-reminder-initialized="1" style="visibility:hidden">Root genérico oculto</div>':'';
+ const html=`<!doctype html><meta charset="utf-8"><style>${css}</style><script>window.IMPE_CURRENT_USER_ID=${options.missingUser?0:7};window.IMPE_CSRF_TOKEN='token-prueba';</script>${shared}<script src="/public/javascript/convocatoria_notificaciones.js"></script><h1>Marketing</h1>${bell}${extraRoot}`;
  await page.route('https://marketing.test/**',async route=>{
   const request=route.request(),url=new URL(request.url());
   if(url.pathname.endsWith('/agenda_alertas.js'))return route.fulfill({contentType:'text/javascript',body:engine});
@@ -59,7 +61,7 @@ async function fixture(browser,options={}) {
  await f.page.screenshot({path:path.join(out,'marketing-comentario.png')});
  await f.close();checks++;
 
- f=await fixture(browser,{data:withComment({...comment,agenda_creado_at:Math.floor(now/1000)-60})});
+ f=await fixture(browser,{data:withComment({...comment,agenda_creado_at:Math.floor(now/1000)-6*60})});
  await f.advance(3000);assert.equal(await f.page.locator('[data-agenda-marketing-toast]').count(),0,'No reanunciar historial inicial');assert.equal(await f.page.evaluate(()=>__plays),0);await f.close();checks++;
 
  f=await fixture(browser);await f.advance(3000);f.set(withComment({...comment,agenda_autor_id:7}));await f.refresh();await f.audio();assert.equal(await f.page.evaluate(()=>__plays),0,'Sin sonido para comentarios propios');await f.close();checks++;
@@ -94,5 +96,16 @@ async function fixture(browser,options={}) {
  assert.equal((await a.page.evaluate(()=>__plays))+(await b.page.evaluate(()=>__plays)),2,'Sin duplicar audio entre pestañas');await a.close();await b.close();await context.close();checks++;
 
  f=await fixture(browser,{noMarketing:true});await f.advance(3000);assert.equal(await f.page.evaluate(()=>__plays),0,'No altera otros perfiles');await f.close();checks++;
+
+ for(const options of [{},{noEngine:true},{passiveRoot:true},{missingUser:true}]) {
+  f=await fixture(browser,{...options,data:withComment({...comment,agenda_creado_at:Math.floor(now/1000)-60})});
+  await f.page.waitForSelector('[data-agenda-marketing-toast]');
+  await f.page.waitForFunction(()=>typeof window.IMPEAgendaAlerts?.onToastShown==='function');
+  await f.audio();
+  assert.equal(await f.page.evaluate(()=>__plays),2,'Primer sondeo reciente produce toast y audio, aun sin motor inicial o con root inactivo');
+  assert.ok(Number(await f.page.locator('[data-agenda-marketing-toast]').evaluate(el=>getComputedStyle(el).opacity))>0.9,'Toast visible durante su transición');
+  await f.advance(9000);await f.refresh();await f.audio();assert.equal(await f.page.evaluate(()=>__plays),2,'Sin duplicar primera entrega al actualizar');
+  await f.close();checks++;
+ }
  console.log('OK: '+checks+' escenarios de Marketing con el motor real de Agenda, audio instrumentado, campana, horarios, permisos, lecturas y deduplicación.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});
