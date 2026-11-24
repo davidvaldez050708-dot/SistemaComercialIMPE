@@ -1,0 +1,41 @@
+{
+  "release": "contencion-mysql-temporal-v1",
+  "files": [
+    {
+      "path": "app/helpers/PausaConsultasAutomaticas.php",
+      "new_file": true,
+      "content": "PD9waHAKLyoqIENvbnRlbmNpw7NuIHJldmVyc2libGUgQU5URVMgZGUgc2VzacOzbiwgcGVybWlzb3MsIG1vZGVsb3MgeSBjb25leGnDs24gTXlTUUwuICovCmZpbmFsIGNsYXNzIEltcGVQYXVzYUNvbnN1bHRhc0F1dG9tYXRpY2FzCnsKICAgIHB1YmxpYyBzdGF0aWMgZnVuY3Rpb24gb2JqZXRpdm8oc3RyaW5nICRzY3JpcHQsIGFycmF5ICRnZXQsIGFycmF5ICRwb3N0LCBzdHJpbmcgJG1ldGhvZCk6IGJvb2wKICAgIHsKICAgICAgICAkc2NyaXB0ID0gYmFzZW5hbWUoc3RyX3JlcGxhY2UoJ1xcJywnLycsJHNjcmlwdCkpOwogICAgICAgIGlmICgkc2NyaXB0ID09PSAnY3Jvbl96b2hvX2xlYWRzLnBocCcpIHJldHVybiBQSFBfU0FQSSA9PT0gJ2NsaSc7CiAgICAgICAgaWYgKCRzY3JpcHQgPT09ICdhdmlzb3NfbGxhbWFkYXMucGhwJykgcmV0dXJuICRtZXRob2QgPT09ICdHRVQnOwogICAgICAgIGlmICgkc2NyaXB0ICE9PSAnaW5kZXgucGhwJykgcmV0dXJuIGZhbHNlOwogICAgICAgICRjb250cm9sbGVyID0gKHN0cmluZykoJGdldFsnY29udHJvbGxlciddID8/ICcnKTsKICAgICAgICAkYWN0aW9uID0gKHN0cmluZykoJGdldFsnYWN0aW9uJ10gPz8gJycpOwogICAgICAgIGlmICgkY29udHJvbGxlciA9PT0gJ3RlbGVmb25pYScgJiYgJGFjdGlvbiA9PT0gJ2Rpc3BvbmliaWxpZGFkJykgewogICAgICAgICAgICAvLyBVbmEgdHJhbnNmZXJlbmNpYSB5YSBzb2xpY2l0YWRhIHNpZ3VlIGNvbnN1bHRhbmRvIHN1IElEIGNvbmNyZXRvLgogICAgICAgICAgICByZXR1cm4gJG1ldGhvZCA9PT0gJ1BPU1QnICYmICgkcG9zdFsnYWNjaW9uJ10gPz8gJycpID09PSAnUE9MTCcgJiYgKGludCkoJHBvc3RbJ2lkJ10gPz8gMCkgPD0gMDsKICAgICAgICB9CiAgICAgICAgaWYgKCRtZXRob2QgIT09ICdHRVQnKSByZXR1cm4gZmFsc2U7CiAgICAgICAgcmV0dXJuIGluX2FycmF5KCRjb250cm9sbGVyLicuJy4kYWN0aW9uLCBbCiAgICAgICAgICAgICdyZW1pbmRlci5wZW5kaWVudGVzJywgJ2NvbnZvY2F0b3JpYU5vdGlmaWNhY2lvbi5wZW5kaWVudGVzJywKICAgICAgICAgICAgJ3NlZ3VpbWllbnRvVmluY3VsYWNpb24ucmVzdW1lblZlcmlmaWNhY2lvblRlbGVmb25pY2FIb3knLCAnd2hhdHNhcHAubWVuc2FqZXMnCiAgICAgICAgXSwgdHJ1ZSk7CiAgICB9CgogICAgcHVibGljIHN0YXRpYyBmdW5jdGlvbiBpbnRlcmNlcHRhcihzdHJpbmcgJHNpdGUpOiB2b2lkCiAgICB7CiAgICAgICAgJGZsYWcgPSBkaXJuYW1lKCRzaXRlKS4nL2ltcGUtcHJpdmF0ZS9wYXVzYS1jb25zdWx0YXMtYXV0b21hdGljYXMuanNvbic7CiAgICAgICAgaWYgKCFpc19maWxlKCRmbGFnKSkgcmV0dXJuOwogICAgICAgICRkYXRhID0ganNvbl9kZWNvZGUoKHN0cmluZylAZmlsZV9nZXRfY29udGVudHMoJGZsYWcpLHRydWUpOwogICAgICAgIGlmICghaXNfYXJyYXkoJGRhdGEpIHx8IChpbnQpKCRkYXRhWydoYXN0YSddID8/IDApIDw9IHRpbWUoKSkgcmV0dXJuOwogICAgICAgICRzY3JpcHQgPSAoc3RyaW5nKSgkX1NFUlZFUlsnU0NSSVBUX0ZJTEVOQU1FJ10gPz8gJycpOwogICAgICAgIGlmICghc2VsZjo6b2JqZXRpdm8oJHNjcmlwdCwgJF9HRVQsICRfUE9TVCwgc3RydG91cHBlcigoc3RyaW5nKSgkX1NFUlZFUlsnUkVRVUVTVF9NRVRIT0QnXSA/PyAnR0VUJykpKSkgcmV0dXJuOwogICAgICAgIGlmIChiYXNlbmFtZSgkc2NyaXB0KSA9PT0gJ2Nyb25fem9ob19sZWFkcy5waHAnICYmIFBIUF9TQVBJID09PSAnY2xpJykgewogICAgICAgICAgICBlY2hvICJQQVVTQV9URU1QT1JBTDogaW1wb3J0YWNpw7NuIGF1dG9tw6F0aWNhIGRpZmVyaWRhOyBzaW4gY29uc3VsdGFzIE15U1FMLlxuIjsKICAgICAgICAgICAgZXhpdCgwKTsKICAgICAgICB9CiAgICAgICAgaHR0cF9yZXNwb25zZV9jb2RlKDUwMyk7CiAgICAgICAgaGVhZGVyKCdDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL2pzb247IGNoYXJzZXQ9dXRmLTgnKTsKICAgICAgICBoZWFkZXIoJ0NhY2hlLUNvbnRyb2w6IG5vLXN0b3JlJyk7CiAgICAgICAgaGVhZGVyKCdSZXRyeS1BZnRlcjogMTIwJyk7CiAgICAgICAgZWNobyBqc29uX2VuY29kZShbJ29rJz0+ZmFsc2UsJ3BhdXNhX2F1dG9tYXRpY2EnPT50cnVlLCdyZWludGVudGFyX2VuJz0+MTIwLAogICAgICAgICAgICAnbWVuc2FqZSc9PidMYXMgY29uc3VsdGFzIGF1dG9tw6F0aWNhcyBlc3TDoW4gcGF1c2FkYXMgdGVtcG9yYWxtZW50ZSBwYXJhIHJlY3VwZXJhciBlbCBzZXJ2aWNpby4nXSwgSlNPTl9VTkVTQ0FQRURfVU5JQ09ERSk7CiAgICAgICAgZXhpdDsKICAgIH0KfQpJbXBlUGF1c2FDb25zdWx0YXNBdXRvbWF0aWNhczo6aW50ZXJjZXB0YXIoZGlybmFtZShfX0RJUl9fLDIpKTsK",
+      "after_sha": "f58c9c15cc8afe3a07dbb1a9ba668eb6fbb64e4476fad781dac8bfd447b02f88"
+    },
+    {
+      "path": "index.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "<?php\n",
+          "after": "<?php\nrequire_once __DIR__.'/app/helpers/PausaConsultasAutomaticas.php';\n"
+        }
+      ]
+    },
+    {
+      "path": "prueba_telefonia/api/avisos_llamadas.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "<?php\ndeclare(strict_types=1);\n",
+          "after": "<?php\ndeclare(strict_types=1);\nrequire_once dirname(__DIR__,2).'/app/helpers/PausaConsultasAutomaticas.php';\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/cron_zoho_leads.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "<?php\n",
+          "after": "<?php\nrequire_once dirname(__DIR__).'/app/helpers/PausaConsultasAutomaticas.php';\n"
+        }
+      ]
+    }
+  ]
+}

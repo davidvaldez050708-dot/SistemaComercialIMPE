@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/app/helpers/PausaConsultasAutomaticas.php';
 
 require_once __DIR__ . '/app/helpers/PerfilPeticion.php';
 $impePerfilPeticion = ImpePerfilPeticion::iniciar(__DIR__);

@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once dirname(__DIR__,2).'/app/helpers/PausaConsultasAutomaticas.php';
 session_start();
 date_default_timezone_set('America/Mexico_City');
 header('Content-Type: application/json; charset=utf-8');
