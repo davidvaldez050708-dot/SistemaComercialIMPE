@@ -1,3 +1,12 @@
+.agenda-comment-editor[open] {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    transform: none;
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+}
 .agenda-comment-recipients {
     border: 0;
     background: transparent;

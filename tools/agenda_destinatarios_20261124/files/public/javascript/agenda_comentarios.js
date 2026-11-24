@@ -399,18 +399,8 @@
             editorOrigin=origin;
             editor.querySelector('[data-agenda-comment-date]').textContent=label(date);
             editor.style.left='';editor.style.top='';editor.classList.remove('is-anchored');
+            editor.style.removeProperty('--agenda-comment-top');
             editor.showModal();
-            const rect=origin?.getBoundingClientRect();
-            if (rect && window.innerWidth>760) {
-                editor.classList.add('is-anchored');
-                const width=editor.getBoundingClientRect().width;
-                let left=rect.right+12;
-                if (left+width>window.innerWidth-16) left=rect.left-width-12;
-                left=Math.max(16,Math.min(left,window.innerWidth-width-16));
-                const top=Math.max(16,Math.min(rect.top-130,window.innerHeight-editor.getBoundingClientRect().height-16));
-                editor.style.left=left+'px';editor.style.top=top+'px';
-                editor.style.setProperty('--agenda-comment-top',top+'px');
-            } else { editor.style.left='';editor.style.top=''; }
             text.focus();
         }
         root.querySelectorAll('[data-agenda-comment-add]').forEach(button=>{

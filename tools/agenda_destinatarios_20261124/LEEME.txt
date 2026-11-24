@@ -17,6 +17,8 @@ conservado en versiones_hostinger/permisos_por_accion. La edición conserva esa
 validación y las comprobaciones de método HTTP y CSRF.
 
 Alcance
+- El modal de agregar y editar se abre centrado en la pantalla. En pantallas
+  pequeñas conserva desplazamiento interno para acceder a todos los campos.
 - Versión multi6: el selector de destinatarios queda bloqueado visualmente y
   por ratón/teclado al activar Privado. Al desactivarlo recupera la selección.
   Editar aparece sólo para el autor con permiso de crear comentarios. Abre el
