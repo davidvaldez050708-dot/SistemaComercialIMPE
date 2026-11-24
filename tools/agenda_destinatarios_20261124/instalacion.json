@@ -1,6 +1,6 @@
 {
   "app/services/AgendaComentarioRepository.php": {
-    "sha256": "3a493aa431ca1433028fd0e5bbc7be90f571974f253359145c16c19db967a06f",
+    "sha256": "ea306a4ec06644efbdf28da33e7f19376354c80afdcdaf0d59fad1198a263659",
     "permitidos": [
       "1e9b0373d4dab3387ca0779fff031f883355f252092698764f541ea66c4f1830",
       "3a493aa431ca1433028fd0e5bbc7be90f571974f253359145c16c19db967a06f",
@@ -9,7 +9,7 @@
     "nuevo": false
   },
   "app/services/AgendaComentarioService.php": {
-    "sha256": "9981ec7507eda9195423a56676c72baf3560784d4ef7c9397df1f0ce5614f2a0",
+    "sha256": "f7a10a72402f4ad81161f3975604ef0262209daf740ceae8b9bba4b9dca58232",
     "permitidos": [
       "3a4f37eaaf79f54529ffae34dea974d16c1c328049bf0b3040aef3286212e4dd",
       "539a865f59b94e96618acf7c5f636e6c8859fce28c3cbf9055481b162d30bf22",
@@ -18,9 +18,10 @@
     "nuevo": false
   },
   "app/views/seguimiento_vinculacion/partials/agenda_comentarios.php": {
-    "sha256": "86db597bd9eeeadf6f4ca89f3ba0ddf14c60d115a72c0c47514ad5c7114905a4",
+    "sha256": "68394a374659f72824dbd0237a9ff2624596f73f4f79f8de6b1813811fead603",
     "permitidos": [
       "1941505758d00a88c3934e9687fc2b8d9786f46df0868281d91db10eec45dfd4",
+      "86db597bd9eeeadf6f4ca89f3ba0ddf14c60d115a72c0c47514ad5c7114905a4",
       "9b37912a6eca0052089e54a58d3a743140535c8e560272aa04f6a6c0f058344b",
       "a7e87131364978a6f430a9a1a11d4d320304b900fe40fb8a38baf06cd6a2d211",
       "ab9fffe2b63adc7f4491e42deb03a6cd5a3a154ef29bfa56a2f56c8f17de0b53"
@@ -37,14 +38,16 @@
   "public/css/agenda_destinatarios.css": {
     "sha256": "c5f296c8671630dda7d06ef11d318c8f9942143d993a754405445e8ed2561a63",
     "permitidos": [
+      "c5f296c8671630dda7d06ef11d318c8f9942143d993a754405445e8ed2561a63",
       "d520c2c623b07d1d6817e302978d84d9f044a42532f605019fc37725fc24710b"
     ],
     "nuevo": true
   },
   "public/javascript/agenda_comentarios.js": {
-    "sha256": "5e974067d0daa23fce4744076a4bbd546f4b924e633168b5b54468f9d6864120",
+    "sha256": "81eebe07c0504e3052e72c3decf0987f7b15b391ba938c30979041bf4c6b2d02",
     "permitidos": [
       "05e8ceac838969e6e931406037d99851fb94bdffa3e3dd021356b3543b968e91",
+      "5e974067d0daa23fce4744076a4bbd546f4b924e633168b5b54468f9d6864120",
       "9221cfdffdc0e7b64faab087f393f41a876f31ec70212d96a0880c2e0531e43a",
       "98daa6642840c351faec9ded3c2440d5d246a0bb9ff8bd9637cc5b3c40cfb6fb",
       "ca965505e0d15a61836b24c55de23d125436f5e2fca6341f73cc700e9641f9fd"

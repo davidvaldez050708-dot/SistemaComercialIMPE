@@ -20,6 +20,7 @@
         const recipient = form.querySelector('[data-agenda-recipients]');
         let selectedRecipients = [];
         let multipleRecipientsAvailable = false;
+        let allIncludesAdmin = false;
         let privacyAvailable = false;
         let recipientsAvailable = false, recipients = [];
         function updateRecipients() {
@@ -66,7 +67,9 @@
             form.querySelector('#agendaComentarioPrivadoAyuda').textContent = !privacyAvailable
                 ? 'Los comentarios privados no están disponibles por el momento.' : privateComment.checked
                 ? 'Sólo tú podrás verlo. Sus avisos y recordatorios serán únicamente para ti.'
-                : selectedRecipients.length ? 'Sólo tú y los usuarios seleccionados podrán verlo.' : 'Compartido con los usuarios que tienen acceso a Agenda.';
+                : selectedRecipients.length ? 'Sólo tú y los usuarios seleccionados podrán verlo.'
+                : allIncludesAdmin ? 'Compartido con los usuarios que tienen acceso a Agenda.'
+                : 'Compartido con los usuarios que tienen acceso a Agenda, excepto el administrador.';
             if (recipient) {
                 recipient.querySelectorAll('input').forEach(input => input.disabled=privateComment.checked || !recipientsAvailable);
                 if (privateComment.checked || !recipientsAvailable) recipient.open=false;
@@ -75,7 +78,8 @@
                     ? 'Comentario privado: sólo tú recibirás sus avisos y recordatorios.'
                     : !recipientsAvailable ? 'Por ahora se mantienen los avisos generales. Falta completar la instalación de destinatarios.'
                     : selectedRecipients.length ? 'Sólo tú y los usuarios seleccionados podrán verlo. Únicamente ellos recibirán los avisos y recordatorios.'
-                    : 'Todos los usuarios con Agenda podrán verlo y recibir sus avisos.';
+                    : allIncludesAdmin ? 'Todos los usuarios con Agenda podrán verlo y recibir sus avisos.'
+                    : 'Todos los usuarios con Agenda, excepto el administrador, podrán verlo y recibir sus avisos.';
             }
         }
         const status = root.querySelector('[data-agenda-comments-status]');
@@ -315,6 +319,7 @@
                 comments=result.comentarios;
                 privacyAvailable=result.privados_disponibles===true;
                 multipleRecipientsAvailable=result.multiples_destinatarios_disponibles===true;
+                allIncludesAdmin=result.todos_incluye_administrador===true;
                 recipientsAvailable=result.destinatarios_disponibles===true && Array.isArray(result.destinatarios);
                 recipients=recipientsAvailable?result.destinatarios.filter(u=>u&&Number(u.id)>0&&typeof u.nombre==='string'&&typeof u.rol==='string'):[];
                 updateRecipients();

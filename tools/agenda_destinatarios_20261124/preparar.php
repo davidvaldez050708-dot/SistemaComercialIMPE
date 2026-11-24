@@ -77,8 +77,8 @@ try {
     }
     if ($action==='despues') {
         $view=leerArchivo($live.'/app/views/seguimiento_vinculacion/partials/agenda_comentarios.php');
-        if (!str_contains($view,'data-agenda-recipients-version="multi4"') || !str_contains($view,'?v=multi4-')) throw new RuntimeException('No está instalado el selector de varios usuarios.');
-        echo 'OK: selector de varios usuarios con diseño original multi4, JavaScript, estilos y servicios instalados y verificados.'.PHP_EOL;
+        if (!str_contains($view,'data-agenda-recipients-version="multi5"') || !str_contains($view,'?v=multi5-')) throw new RuntimeException('No está instalado el selector de varios usuarios.');
+        echo 'OK: selector de varios usuarios con diseño original multi5, JavaScript, estilos y servicios instalados y verificados.'.PHP_EOL;
     }
 } catch (Throwable $e) {
     fwrite(STDERR,'ERROR: '.$e->getMessage().PHP_EOL);

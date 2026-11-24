@@ -21,6 +21,13 @@ Alcance
 - Conserva los permisos actuales de crear, eliminar, recibir comentarios y
   enviar al administrador, así como los metadatos y horarios de los avisos.
 - Si falta la migración, se rechazan varios destinatarios sin enviar a Todos.
+- Versión multi5: Todos excluye al administrador cuando el autor no tiene el
+  permiso agenda.comentarios.enviar_administrador. Quien sí lo tiene conserva
+  el envío general al administrador y el envío dirigido. Se aplica al listar,
+  consultar, leer, generar avisos y recordatorios y consultar avisos de lectura,
+  incluso para comentarios existentes, según los permisos vigentes del autor.
+  El autor conserva acceso a sus propios comentarios. No modifica registros ni
+  requiere una migración adicional. La ayuda del selector informa la exclusión.
 - Versión multi4: conserva el diseño original del desplegable: etiqueta
   "Destinatario", flecha a la derecha y lista separada con filas azules al
   seleccionarlas. Permite marcar varias filas sin mostrar casillas cuadradas.
@@ -37,19 +44,19 @@ Instalación en la versión de producción que ya tiene comentarios
    diagnosticada, las entregas anteriores y combinaciones parciales de ellas;
    cualquier versión ajena se conserva y detiene la instalación.
    El instalador no depende de Git en public_html y verifica por SHA-256 todos
-   los archivos después de instalarlos, incluido el selector multi4.
+   los archivos después de instalarlos, incluido el selector multi5.
 4. Recargar Agenda y crear un comentario dirigido a dos usuarios. Comprobar
    con un tercer usuario que no lo ve. El autor conserva acceso para gestionarlo.
 
 Pruebas ejecutadas
-- PHP: 52 comprobaciones con MariaDB 10.4 en una BD aislada, sin datos del CRM:
+- PHP: 95 comprobaciones con MariaDB 10.4 en una BD aislada, sin datos del CRM:
   visibilidad, lectura directa, avisos, recordatorio por usuario, vistos,
   validación de usuarios, comentarios antiguos, eliminación, compatibilidad
   sin migración y rollback si falla la inserción de un destinatario.
 - Navegador Chrome: escritorio y móvil, selección/envío múltiple, modo privado,
   Sin hora, restablecimiento del formulario y pérdida de permisos de un destino.
 - El parche se comprueba contra los cuatro archivos exactos del diagnóstico.
-- Publicador multi4: instalación desde la base, versión anterior, multi3, instalación
+- Publicador multi5: instalación desde la base, versión anterior, multi3, multi4, instalación
   parcial y CRLF; check sin cambios, archivos instalados, respaldo, idempotencia,
   rechazo de código desconocido y fallos simulados de BD y reemplazo de archivos.
 - Sintaxis PHP y JavaScript.

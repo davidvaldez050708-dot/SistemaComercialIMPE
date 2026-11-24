@@ -12,11 +12,12 @@ const css=fs.readFileSync(path.join(base,'public/css/agenda_destinatarios.css'),
    const page=await browser.newPage({viewport:{width,height:900}});
    page.on('pageerror',e=>errors.push(e.message));
    let recipients=[{id:2,nombre:'Ana',rol:'Analista'},{id:3,nombre:'Bea',rol:'Cuenta Clave'}];
+   const includesAdmin=width===1366;
    const html=`<!doctype html><html lang="es"><meta charset="utf-8"><style>body{font-family:Arial} dialog{width: min(485px,calc(100vw - 48px));box-sizing:border-box;border:1px solid #dbe4f3;border-radius:12px;padding:18px}dialog::backdrop{background:#eef1f666}form textarea{box-sizing:border-box;width:100%;padding:12px} .agenda-comments-heading{display:flex;justify-content:space-between}.agenda-comments-heading h3{margin:6px 0}.agenda-comments-hint{font-size:13px;color:#7684a0;line-height:1.5}.agenda-comment-hour-label{display:block;margin:14px 0 8px}footer{display:flex;gap:8px;justify-content:flex-end}button{padding:10px}.agenda-comment-privacy{margin:16px 0} ${css}</style><section data-agenda-root><div class="agenda-layout"><aside class="agenda-side-card"></aside><div class="agenda-calendar-grid"><div data-agenda-date="2026-11-24"><div class="agenda-day-events"></div><button data-agenda-comment-add="2026-11-24">Agregar</button></div></div></div>${partial}</section><script>${source}</script></html>`;
    await page.route('http://agenda.test/**',async route=>{
     const url=new URL(route.request().url());
     const action=url.searchParams.get('action');
-    if(action==='listar') return route.fulfill({json:{ok:true,comentarios:[],privados_disponibles:true,destinatarios_disponibles:true,multiples_destinatarios_disponibles:true,destinatarios:recipients}});
+    if(action==='listar') return route.fulfill({json:{ok:true,comentarios:[],privados_disponibles:true,destinatarios_disponibles:true,multiples_destinatarios_disponibles:true,todos_incluye_administrador:includesAdmin,destinatarios:recipients}});
     if(action==='crear') { posts.push(new URLSearchParams(route.request().postData()));return route.fulfill({json:{ok:true,comentario:{id:21}}}); }
     return route.fulfill({contentType:'text/html',body:html});
    });
@@ -25,7 +26,8 @@ const css=fs.readFileSync(path.join(base,'public/css/agenda_destinatarios.css'),
    const details=page.locator('[data-agenda-recipients]');
    const openChoices=async()=>{if(!await details.evaluate(d=>d.open))await details.locator('summary').click();};
    assert.equal(await details.evaluate(d=>d.open),false,'Desplegable cerrado como en el diseño anterior');
-   assert.equal(await details.getAttribute('data-agenda-recipients-version'),'multi4');
+   assert.equal(await details.getAttribute('data-agenda-recipients-version'),'multi5');
+   assert.equal((await page.locator('#agendaComentarioDestinatarioAyuda').textContent()).includes('excepto el administrador'),!includesAdmin,'Todos informa la audiencia según el permiso del autor');
    await openChoices();
    const boxes=details.locator('input');
    await boxes.nth(1).focus();await page.keyboard.press('Space');

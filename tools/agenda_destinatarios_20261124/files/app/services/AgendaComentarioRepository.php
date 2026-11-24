@@ -35,7 +35,7 @@ class AgendaComentarioRepository
         $stmt = $this->preparar('SELECT c.*,l.novedad_leida_at,l.recordatorio_atendido_at'.($destinatarios?",TRIM(CONCAT(COALESCE(d.nombre,''),' ',COALESCE(d.apellidos,''))) AS destinatario_nombre":'').' FROM agenda_comentarios c
             LEFT JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id AND l.usuario_id=?
             '.($destinatarios?'LEFT JOIN usuarios d ON d.id=c.destinatario_id':'').'
-            WHERE c.eliminado_at IS NULL AND c.fecha >= ? AND c.fecha < ?'.$visibilidad.$dirigido.' ORDER BY c.fecha,c.creado_at,c.id LIMIT 501');
+            WHERE c.eliminado_at IS NULL AND c.fecha >= ? AND c.fecha < ?'.$visibilidad.$dirigido.$this->filtroTodos((string)$usuario).' ORDER BY c.fecha,c.creado_at,c.id LIMIT 501');
         $types='iss';$params=[$usuario,$desde,$hasta];
         if ($visibilidad) {$types.='i';$params[]=$usuario;}
         if ($dirigido) {$types.='ii';$params[]=$usuario;$params[]=$usuario;}
@@ -49,7 +49,7 @@ class AgendaComentarioRepository
         $filtrar = $usuario !== null && $this->privacidadDisponible();
         $destinatarios = $this->destinatariosDisponibles();
         $dirigido = $usuario !== null && $destinatarios;
-        $stmt = $this->db->prepare('SELECT c.*'.($destinatarios?",TRIM(CONCAT(COALESCE(d.nombre,''),' ',COALESCE(d.apellidos,''))) AS destinatario_nombre":'').' FROM agenda_comentarios c '.($destinatarios?'LEFT JOIN usuarios d ON d.id=c.destinatario_id':'').' WHERE c.id=? AND c.eliminado_at IS NULL'.($filtrar?' AND (c.privado=0 OR c.creado_por=?)':'').($dirigido?' AND (c.destinatario_id IS NULL OR ? IN (SELECT c.destinatario_id'.($this->multiplesDisponibles()?' UNION SELECT usuario_id FROM agenda_comentarios_destinatarios WHERE comentario_id=c.id':'').') OR c.creado_por=?)':''));
+        $stmt = $this->db->prepare('SELECT c.*'.($destinatarios?",TRIM(CONCAT(COALESCE(d.nombre,''),' ',COALESCE(d.apellidos,''))) AS destinatario_nombre":'').' FROM agenda_comentarios c '.($destinatarios?'LEFT JOIN usuarios d ON d.id=c.destinatario_id':'').' WHERE c.id=? AND c.eliminado_at IS NULL'.($filtrar?' AND (c.privado=0 OR c.creado_por=?)':'').($dirigido?' AND (c.destinatario_id IS NULL OR ? IN (SELECT c.destinatario_id'.($this->multiplesDisponibles()?' UNION SELECT usuario_id FROM agenda_comentarios_destinatarios WHERE comentario_id=c.id':'').') OR c.creado_por=?)':'').($usuario===null?'':$this->filtroTodos((string)$usuario)));
         $types='i';$params=[$id];
         if ($filtrar) {$types.='i';$params[]=$usuario;}
         if ($dirigido) {$types.='ii';$params[]=$usuario;$params[]=$usuario;}
@@ -178,6 +178,37 @@ class AgendaComentarioRepository
         return $this->consultarDestinatarios($autor, $id) !== [];
     }
 
+    private function permisoAdministradorSql(string $autor): string
+    {
+        return "EXISTS (
+            SELECT 1 FROM usuarios autor_agenda
+            INNER JOIN roles rol_autor ON rol_autor.id=autor_agenda.rol_id AND rol_autor.estado=1
+            INNER JOIN rol_permisos permiso_rol ON permiso_rol.rol_id=rol_autor.id
+            INNER JOIN permisos permiso_agenda ON permiso_agenda.id=permiso_rol.permiso_id
+            WHERE autor_agenda.id=".$autor." AND autor_agenda.estado=1
+              AND permiso_agenda.estado=1 AND permiso_agenda.codigo='agenda.comentarios.enviar_administrador'
+        )";
+    }
+
+    public function puedeEnviarAdministrador(int $autor): bool
+    {
+        $stmt=$this->db->prepare('SELECT '.$this->permisoAdministradorSql('?').' AS permitido');
+        $stmt->bind_param('i',$autor);
+        $stmt->execute();
+        return !empty($stmt->get_result()->fetch_assoc()['permitido']);
+    }
+
+    // El lector y el alias son expresiones SQL internas, nunca datos de la petición.
+    // Aplicar también a comentarios existentes evita que "Todos" salte el permiso.
+    private function filtroTodos(string $lector, string $alias = 'c'): string
+    {
+        $col=$alias.'.';
+        $dirigido=$this->destinatariosDisponibles() ? $col.'destinatario_id IS NOT NULL OR ' : '';
+        return ' AND ('.$dirigido.$col.'creado_por=('.$lector.') OR NOT EXISTS (
+            SELECT 1 FROM usuarios lector_agenda WHERE lector_agenda.id=('.$lector.') AND lector_agenda.rol_id=1
+        ) OR '.$this->permisoAdministradorSql($col.'creado_por').')';
+    }
+
     public function crear(int $usuario, string $fecha, ?string $hora, string $texto, string $ahora, bool $privado = false, ?int $destinatario = null, array $destinatarios = []): int
     {
         $privacidad = $this->privacidadDisponible();
@@ -234,7 +265,7 @@ class AgendaComentarioRepository
         $stmt = $this->db->prepare('INSERT INTO agenda_comentarios_lecturas
             (comentario_id,usuario_id,novedad_leida_at,recordatorio_atendido_at)
             SELECT id,?,?,IF(recordatorio_at IS NOT NULL AND recordatorio_at<=?,?,NULL)
-            FROM agenda_comentarios WHERE id=? AND eliminado_at IS NULL'.$visibilidad.$dirigido.'
+            FROM agenda_comentarios WHERE id=? AND eliminado_at IS NULL'.$visibilidad.$dirigido.$this->filtroTodos((string)$usuario,'agenda_comentarios').'
             ON DUPLICATE KEY UPDATE novedad_leida_at=VALUES(novedad_leida_at),
               recordatorio_atendido_at=COALESCE(VALUES(recordatorio_atendido_at),recordatorio_atendido_at)');
         $types='isssi';$params=[$usuario,$ahora,$ahora,$ahora,$id];
@@ -255,7 +286,7 @@ class AgendaComentarioRepository
         $stmt = $this->preparar('SELECT c.*,l.novedad_leida_at,l.recordatorio_atendido_at
             FROM agenda_comentarios c LEFT JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id AND l.usuario_id=?
             WHERE c.eliminado_at IS NULL AND (l.novedad_leida_at IS NULL OR
-              (c.recordatorio_at IS NOT NULL AND c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL))'.$visibilidad.$destinatario.'
+              (c.recordatorio_at IS NOT NULL AND c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL))'.$visibilidad.$destinatario.$this->filtroTodos((string)$usuario).'
             ORDER BY CASE WHEN c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL THEN 0
                           WHEN c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL THEN 1 ELSE 2 END,
               c.recordatorio_at ASC,c.creado_at DESC,c.id DESC LIMIT 20');
@@ -288,7 +319,7 @@ class AgendaComentarioRepository
             INNER JOIN usuarios u ON u.id=l.usuario_id
             LEFT JOIN agenda_comentarios_vistos_avisos a ON a.comentario_id=c.id AND a.lector_id=l.usuario_id
             WHERE c.creado_por=? AND l.usuario_id<>c.creado_por AND c.eliminado_at IS NULL
-              AND l.novedad_leida_at IS NOT NULL AND a.comentario_id IS NULL".$visibilidad.$dirigido."
+              AND l.novedad_leida_at IS NOT NULL AND a.comentario_id IS NULL".$visibilidad.$dirigido.$this->filtroTodos('l.usuario_id')."
             ORDER BY l.novedad_leida_at DESC,l.usuario_id,c.id LIMIT 20");
         $stmt->bind_param('i',$autor);$stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -302,14 +333,14 @@ class AgendaComentarioRepository
             SELECT c.id,l.usuario_id,? FROM agenda_comentarios c
             INNER JOIN agenda_comentarios_lecturas l ON l.comentario_id=c.id
             WHERE c.id=? AND c.creado_por=? AND l.usuario_id=? AND l.usuario_id<>c.creado_por
-              AND c.eliminado_at IS NULL AND l.novedad_leida_at IS NOT NULL'.$visibilidad.$dirigido.'
+              AND c.eliminado_at IS NULL AND l.novedad_leida_at IS NOT NULL'.$visibilidad.$dirigido.$this->filtroTodos('l.usuario_id').'
             ON DUPLICATE KEY UPDATE leido_at=VALUES(leido_at)');
         $stmt->bind_param('siii',$ahora,$comentario,$autor,$lector);$stmt->execute();
         // Una lectura idempotente puede devolver 0 filas afectadas. Comprobar
         // siempre el destinatario y la pareja real de comentario/lector.
         $check=$this->preparar('SELECT a.comentario_id FROM agenda_comentarios_vistos_avisos a
             INNER JOIN agenda_comentarios c ON c.id=a.comentario_id
-            WHERE a.comentario_id=? AND a.lector_id=? AND c.creado_por=? AND c.eliminado_at IS NULL'.($dirigido?' AND (c.destinatario_id IS NULL OR c.destinatario_id=a.lector_id)':''));
+            WHERE a.comentario_id=? AND a.lector_id=? AND c.creado_por=? AND c.eliminado_at IS NULL'.($dirigido?' AND (c.destinatario_id IS NULL OR c.destinatario_id=a.lector_id)':'').$this->filtroTodos('a.lector_id'));
         $check->bind_param('iii',$comentario,$lector,$autor);$check->execute();
         return (bool)$check->get_result()->fetch_assoc();
     }

@@ -1,6 +1,6 @@
 <?php // Integración independiente de las acciones de reunión. ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_comentarios.css?v=<?= filemtime(ROOT_PATH . '/public/css/agenda_comentarios.css') ?>">
-<link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_destinatarios.css?v=multi4-<?= filemtime(ROOT_PATH . '/public/css/agenda_destinatarios.css') ?>">
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_destinatarios.css?v=multi5-<?= filemtime(ROOT_PATH . '/public/css/agenda_destinatarios.css') ?>">
 <p class="agenda-comments-status" data-agenda-comments-status role="status" hidden></p>
 <aside class="agenda-side-card agenda-comments-panel" data-agenda-comments-panel hidden aria-label="Detalle del día">
     <header class="agenda-comments-heading">
@@ -27,7 +27,7 @@
         <p id="agendaComentarioContador" class="agenda-comment-counter" data-agenda-comment-counter>0 / 250</p>
         <div class="agenda-comment-recipient">
             <span id="agendaComentarioDestinatarioEtiqueta" class="agenda-comment-hour-label">Destinatario</span>
-            <details class="agenda-comment-recipients" data-agenda-recipients data-agenda-recipients-version="multi4">
+            <details class="agenda-comment-recipients" data-agenda-recipients data-agenda-recipients-version="multi5">
                 <summary aria-describedby="agendaComentarioDestinatarioAyuda">Todos los usuarios con Agenda</summary>
                 <div class="agenda-comment-recipients-list" data-agenda-recipients-list role="group" aria-labelledby="agendaComentarioDestinatarioEtiqueta"></div>
             </details>
@@ -53,4 +53,4 @@
     <p class="agenda-comment-error" data-agenda-comment-delete-error role="alert" hidden></p>
     <footer><button type="button" class="btn btn-system-cancel" data-agenda-comment-delete-cancel>Cancelar</button><button type="button" class="btn btn-system-save" data-agenda-comment-delete-confirm>Eliminar</button></footer>
 </dialog>
-<script src="<?= BASE_URL ?>public/javascript/agenda_comentarios.js?v=multi4-<?= filemtime(ROOT_PATH . '/public/javascript/agenda_comentarios.js') ?>" defer></script>
+<script src="<?= BASE_URL ?>public/javascript/agenda_comentarios.js?v=multi5-<?= filemtime(ROOT_PATH . '/public/javascript/agenda_comentarios.js') ?>" defer></script>

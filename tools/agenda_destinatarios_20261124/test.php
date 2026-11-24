@@ -91,10 +91,68 @@ check($db->query('SELECT COUNT(*) n FROM agenda_comentarios')->fetch_assoc()['n'
 user(1);check($svc->eliminar(1,$id)['ok'],'Eliminar múltiple');
 check($repo->obtener($id,2)===null,'Eliminado invisible');
 check(!array_filter($repo->pendientes(2,'2026-11-24 11:00:00'),fn($f)=>(int)$f['id']===$id),'Eliminado no avisa');
+
+// "Todos" debe respetar el mismo permiso de envío al administrador.
+function contieneComentario(array $items, int $id, string $key='id'): bool {
+    return (bool)array_filter($items,static fn($item)=>(int)($item[$key]??0)===$id);
+}
+$db->query("INSERT INTO usuarios VALUES (10,'Segundo administrador','',1,1)");
+user(8);
+$limited=$svc->crear(8,['fecha'=>'2026-11-24','hora'=>'11:00','comentario'=>'Todos sin administrador','todos_incluye_administrador'=>true]);
+check($limited['ok'],'Crear Todos sin permiso para administrador');
+$limitedId=$limited['comentario']['id'];
+$limitedNoHour=$svc->crear(8,['fecha'=>'2026-11-24','comentario'=>'Todos sin hora y sin administrador']);
+$limitedNoHourId=$limitedNoHour['comentario']['id'];
+check(!$svc->listar(8,'2026-11-01','2026-12-01')['todos_incluye_administrador'],'API informa Todos excepto administrador');
+user(1);check($svc->listar(1,'2026-11-01','2026-12-01')['todos_incluye_administrador'],'API conserva Todos para autor con permiso');
+foreach ([2,4,8] as $reader) {
+    user($reader);
+    check($repo->obtener($limitedId,$reader)!==null,'Todos visible para los demás y su autor');
+    check(contieneComentario($svc->listar($reader,'2026-11-01','2026-12-01')['comentarios'],$limitedId),'Todos aparece en agenda de no administrador');
+    check(contieneComentario($svc->notificaciones($reader)['avisos'],$limitedNoHourId,'agenda_comentario_id'),'Otros reciben aviso sin hora');
+}
+foreach ([7,10] as $admin) {
+    user($admin);
+    check(!contieneComentario($svc->listar($admin,'2026-11-01','2026-12-01')['comentarios'],$limitedId),'Todos sin permiso no aparece para ningún administrador');
+    check($repo->obtener($limitedId,$admin)===null,'Consulta directa oculta Todos al administrador');
+    check($svc->leer($admin,$limitedId)['codigo_http']===404,'Lectura directa denegada al administrador');
+    $repo->marcarLeido($limitedId,$admin,'2026-11-24 11:01:00');
+    check((int)$db->query('SELECT COUNT(*) n FROM agenda_comentarios_lecturas WHERE comentario_id='.$limitedId.' AND usuario_id='.$admin)->fetch_assoc()['n']===0,'No registra una lectura no autorizada');
+    $items=$svc->notificaciones($admin);
+    check(!contieneComentario($items['avisos'],$limitedId,'agenda_comentario_id'),'No avisa al administrador');
+    check(!contieneComentario($items['recordatorios'],$limitedNoHourId,'agenda_comentario_id'),'No muestra aviso sin hora al administrador');
+    check(!contieneComentario($items['horarios']??[],$limitedId,'agenda_comentario_id'),'No programa sonido para administrador excluido');
+    check(!contieneComentario($vencidos->notificaciones($admin)['recordatorios'],$limitedId,'agenda_comentario_id'),'Tampoco genera recordatorio vencido para administrador');
+    check($repo->obtener($publicId,$admin)!==null,'Todos del autor con permiso sigue visible al administrador');
+    check(contieneComentario($items['avisos'],$publicId,'agenda_comentario_id'),'Todos autorizado conserva sus avisos al administrador');
+}
+$directAdmin=createComment(['destinatarios_ids'=>['7']]);
+user(7);check($repo->obtener($directAdmin['comentario']['id'],7)!==null,'Dirigido permitido al administrador conserva acceso');
+check(contieneComentario($svc->notificaciones(7)['recordatorios'],$directAdmin['comentario']['id'],'agenda_comentario_id'),'Dirigido permitido conserva recordatorio');
+check($repo->obtener($directAdmin['comentario']['id'],10)===null,'Dirigido a un administrador no llega al otro');
+
+// Lecturas históricas del administrador no deben reabrir el comentario excluido.
+$db->query("INSERT INTO agenda_comentarios_lecturas VALUES ($limitedId,7,'2026-11-24 09:00:00',NULL)");
+$db->query("INSERT INTO agenda_comentarios_vistos_avisos VALUES ($limitedId,7,'2026-11-24 09:01:00')");
+$repo->marcarLeido($limitedId,2,'2026-11-24 10:00:00');
+check(!contieneComentario(array_filter($repo->vistosPendientes(8),fn($f)=>(int)$f['lector_id']===7),$limitedId),'No entrega visto de administrador excluido');
+check(!$repo->leerAvisoVisto(8,$limitedId,7,'2026-11-24 10:01:00'),'No reabre una lectura histórica excluida');
+check($repo->leerAvisoVisto(8,$limitedId,2,'2026-11-24 10:01:00'),'Lectura de otros usuarios sigue funcionando');
+
+// Las reglas siguen el permiso vigente, incluso para comentarios ya existentes.
+$db->query('INSERT INTO rol_permisos VALUES (5,6)');
+check($repo->obtener($limitedId,7)!==null,'Con permiso concedido Todos incluye administrador');
+$db->query('DELETE FROM rol_permisos WHERE rol_id=5 AND permiso_id=6');
+check($repo->obtener($limitedId,7)===null,'Sin permiso vigente vuelve a excluir administrador');
+$ownAdmin=$repo->crear(7,'2026-11-24',null,'Comentario propio del administrador','2026-11-24 10:00:00');
+check($repo->obtener($ownAdmin,7)!==null,'Administrador conserva sus propios comentarios');
+check($repo->obtener($ownAdmin,10)===null,'Ser autor administrador no permite enviar a otros administradores sin permiso');
+
 // Compatibilidad antes de la migración: rechazar varios y conservar uno.
 $db->query('DROP TABLE agenda_comentarios_destinatarios');
 $repo=new AgendaComentarioRepository($db);$svc=new AgendaComentarioService($repo,$clock);
 check(!createComment(['destinatarios_ids'=>['2','3']])['ok'],'Sin migración no ampliar audiencia');
 check(createComment(['destinatario_id'=>'2'])['ok'],'Sin migración uno funciona');
 check($repo->listar('2026-11-01','2026-12-01',4)!==[],'Consulta anterior funciona');
+check($repo->obtener($limitedId,7)===null,'Exclusión también funciona sin tabla de destinatarios múltiples');
 echo json_encode(['ok'=>true,'checks'=>$checks],JSON_PRETTY_PRINT).PHP_EOL;

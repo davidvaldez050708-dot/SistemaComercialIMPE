@@ -91,6 +91,7 @@ class AgendaComentarioService
         return ['ok'=>true,'comentarios'=>array_map(fn($f)=>$this->presentar($f,$usuario),array_slice($filas,0,500)),
             'hay_mas'=>count($filas)>500,'privados_disponibles'=>$puedeCrear && $this->repo->privacidadDisponible(),
             'multiples_destinatarios_disponibles'=>$puedeCrear && $this->repo->multiplesDisponibles(),
+            'todos_incluye_administrador'=>$puedeCrear && $this->repo->puedeEnviarAdministrador($usuario),
             'destinatarios_disponibles'=>$destinatariosDisponibles,
             'destinatarios'=>$destinatariosDisponibles?array_map(static fn($u)=>[
                 'id'=>(int)$u['id'],'nombre'=>(string)$u['nombre'],'rol'=>(string)$u['rol']
