@@ -1,0 +1,38 @@
+.agenda-comment-recipients {
+    border: 1px solid #cfdbef;
+    border-radius: 9px;
+    background: #fff;
+}
+.agenda-comment-recipients summary {
+    padding: 12px 14px;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+.agenda-comment-recipients:focus-within {
+    outline: 2px solid #364aaa;
+    outline-offset: 2px;
+}
+.agenda-comment-recipients-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border-top: 1px solid #e1e8f4;
+    padding: 5px;
+}
+.agenda-comment-recipients-list label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.agenda-comment-recipients-list label:hover {
+    background: #eef3ff;
+}
+.agenda-comment-recipients-list input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: #2e3e91;
+}

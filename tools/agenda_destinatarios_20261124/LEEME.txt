@@ -1,0 +1,41 @@
+AGENDA: DESTINATARIOS MÚLTIPLES
+
+Estado: implementación preparada y probada. No publicada en Hostinger.
+
+La pantalla de comentarios no existe en el árbol local principal. Esta entrega
+parte de sus copias de producción existentes: servicios y vista de
+output/seguimiento_flujo_20261119/native-constructors/after y JavaScript de
+tools/estabilidad_403_503/dependency_snapshot_20261110.
+
+Alcance
+- Casillas para seleccionar uno o varios destinatarios.
+- Todos conserva los comentarios públicos; Privado conserva sólo al autor.
+- Un comentario dirigido se muestra sólo al autor y a los seleccionados.
+- Los seleccionados conservan avisos, recordatorios y lecturas independientes.
+- Continúa funcionando el parámetro anterior destinatario_id.
+- No cambia recordatorios.js, audio, intervalos, reuniones ni seguimientos.
+- Si falta la migración, se rechazan varios destinatarios sin enviar a Todos.
+
+Instalación en la versión de producción que ya tiene comentarios
+1. Respaldar los cuatro archivos existentes incluidos en el paquete y la BD.
+2. Ejecutar database/migrations/2026_11_24_agenda_comentarios_destinatarios.sql
+   sobre esa BD. Crea únicamente la tabla de destinatarios, sin alterar datos.
+3. Aplicar cambio.patch desde la raíz del proyecto, comprobándolo primero con
+   git apply --check /ruta/cambio.patch y luego git apply /ruta/cambio.patch.
+   El parche conserva cambios ajenos fuera de los bloques modificados. Si la
+   comprobación falla, conciliar con los archivos actuales antes de instalar.
+   También se incluyen los seis archivos completos, organizados por su ruta.
+4. Recargar Agenda y crear un comentario dirigido a dos usuarios. Comprobar
+   con un tercer usuario que no lo ve. El autor conserva acceso para gestionarlo.
+
+Pruebas ejecutadas
+- PHP: 40 comprobaciones con MariaDB 10.4 en una BD aislada, sin datos del CRM:
+  visibilidad, lectura directa, avisos, recordatorio por usuario, vistos,
+  validación de usuarios, comentarios antiguos, eliminación, compatibilidad
+  sin migración y rollback si falla la inserción de un destinatario.
+- Navegador Chrome: escritorio y móvil, selección/envío múltiple, modo privado,
+  Sin hora, restablecimiento del formulario y pérdida de permisos de un destino.
+- Sintaxis PHP y JavaScript.
+
+Fuentes y pruebas revisables: tools/agenda_destinatarios_20261124.
+Reconstruir ZIP: python tools/agenda_destinatarios_20261124/build.py.
