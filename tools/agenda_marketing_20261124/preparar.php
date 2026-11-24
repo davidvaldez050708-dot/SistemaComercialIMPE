@@ -1,0 +1,99 @@
+<?php
+// Publicador CLI: lista cerrada y versiones conocidas, sin sobrescribir código ajeno.
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+
+const ARCHIVOS_AGENDA = [
+    'app/services/AgendaMarketingNotificationService.php',
+    'public/javascript/convocatoria_notificaciones.js',
+    'app/controllers/ConvocatoriaNotificacionController.php',
+];
+
+function leerArchivo(string $path): string {
+    $text = file_get_contents($path);
+    if ($text === false) throw new RuntimeException('No se pudo leer: '.$path);
+    return $text;
+}
+function normalizar(string $text): string { return str_replace("\r\n", "\n", $text); }
+function guardarArchivo(string $path, string $text): void {
+    if (!is_dir(dirname($path)) && !mkdir(dirname($path),0700,true)) throw new RuntimeException('No se pudo preparar el directorio.');
+    if (file_put_contents($path,$text)!==strlen($text)) throw new RuntimeException('No se pudo preparar el archivo.');
+}
+function sinEnlaces(string $live, string $name): void {
+    $path=$live;
+    foreach (explode('/',$name) as $segment) {
+        $path.='/'.$segment;
+        if (is_link($path)) throw new RuntimeException('No se modifica un enlace simbólico: '.$name);
+    }
+}
+
+try {
+    $action=$argv[1]??'';
+    $source=__DIR__;
+    $live=realpath($argv[2]??'');
+    $tmp=realpath($argv[3]??'');
+    if (!$live || !$tmp || !is_file($live.'/index.php')) throw new RuntimeException('No se encontró la raíz del CRM o la preparación.');
+    if ($action==='preparar') {
+        $changes=json_decode(leerArchivo($source.'/cambios.json'),true,512,JSON_THROW_ON_ERROR);
+        foreach (['app/services/AgendaComentarioService.php','public/javascript/agenda_alertas.js','public/audio/agenda-aviso.mp3'] as $dependency) {
+            if (!is_file($live.'/'.$dependency) || filesize($live.'/'.$dependency)===0) throw new RuntimeException('Falta la dependencia de Agenda: '.$dependency);
+        }
+        $plan=[];
+        foreach (ARCHIVOS_AGENDA as $name) {
+            sinEnlaces($live,$name);
+            $path=$live.'/'.$name;
+            $exists=is_file($path);
+            $current=$exists?leerArchivo($path):null;
+            $hash=$exists?hash('sha256',normalizar($current)):null;
+            if (isset($changes['new_files'][$name])) {
+                $target=normalizar(leerArchivo($source.'/files/'.$name));
+                if (hash('sha256',$target)!==$changes['new_files'][$name]['sha256']) throw new RuntimeException('Paquete alterado: '.$name);
+                if ($exists && normalizar($current)!==$target) throw new RuntimeException('Se conserva el servicio personalizado: '.$name);
+            } else {
+                if (!$exists) throw new RuntimeException('Falta el archivo de Marketing: '.$name);
+                $target=normalizar($current);
+                foreach ($changes['patches'][$name] as $index=>$change) {
+                    if (substr_count($target,$change['after'])===1) continue;
+                    if (substr_count($target,$change['before'])!==1) throw new RuntimeException('Bloque incompatible '.($index+1).': '.$name.'. Sitio intacto.');
+                    $target=str_replace($change['before'],$change['after'],$target);
+                }
+                if ($changes['append']['path']===$name) {
+                    $append=normalizar($changes['append']['text']);
+                    if (str_contains($target,$changes['append']['marker'])) {
+                        if (substr_count($target,$append)!==1) throw new RuntimeException('Conexión de Agenda personalizada: '.$name);
+                    } else $target.="\n".$append;
+                }
+            }
+            $expected=hash('sha256',$target);
+            $changed=$hash!==$expected;
+            if ($exists && substr_count($current,"\r\n")>0 && substr_count($current,"\r\n")===substr_count($current,"\n")) $target=str_replace("\n","\r\n",$target);
+            if (!$changed) $target=$current;
+            guardarArchivo($tmp.'/stage/'.$name,$target);
+            if ($exists) guardarArchivo($tmp.'/original/'.$name,$current);
+            $plan[$name]=['antes'=>$exists?hash('sha256',$current):null,'despues'=>hash('sha256',$target),'cambio'=>$changed];
+        }
+        guardarArchivo($tmp.'/plan.json',json_encode($plan,JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR));
+        echo 'OK: '.count(array_filter($plan,fn($p)=>$p['cambio'])).' archivos por instalar; conexión de Marketing y permisos verificados.'.PHP_EOL;
+        exit;
+    }
+    $plan=json_decode(leerArchivo($tmp.'/plan.json'),true,512,JSON_THROW_ON_ERROR);
+    if (array_keys($plan)!==ARCHIVOS_AGENDA) throw new RuntimeException('Plan inválido.');
+    if ($action==='listar') {
+        foreach ($plan as $name=>$item) if ($item['cambio']) echo $name."\n";
+        exit;
+    }
+    if (!in_array($action,['antes','despues'],true)) throw new RuntimeException('Acción inválida.');
+    foreach ($plan as $name=>$item) {
+        sinEnlaces($live,$name);
+        $path=$live.'/'.$name;
+        $hash=is_file($path)?hash_file('sha256',$path):null;
+        if ($hash!==$item[$action]) throw new RuntimeException('La comprobación de archivos falló: '.$name);
+    }
+    if ($action==='despues') {
+        $script=leerArchivo($live.'/public/javascript/convocatoria_notificaciones.js');
+        if (!str_contains($script,'/* IMPE_AGENDA_MARKETING_V1 */') || !str_contains($script,"call('ingest',data)")) throw new RuntimeException('No se instaló la conexión de sonido de Marketing.');
+        echo 'OK: campana de Marketing conectada a comentarios, recordatorios y sonido existente de Agenda.'.PHP_EOL;
+    }
+} catch (Throwable $e) {
+    fwrite(STDERR,'ERROR: '.$e->getMessage().PHP_EOL);
+    exit(1);
+}
