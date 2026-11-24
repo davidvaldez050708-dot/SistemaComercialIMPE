@@ -363,7 +363,7 @@
         function openEditor(date, origin) {
             if (newComment.disabled || !available || editor.open) return;
             tab='comentarios';openDay(date);
-            form.reset();selectedRecipients=[];updateRecipients();if(recipient)recipient.open=recipientsAvailable;counter();error.hidden=true;updateOptions();
+            form.reset();selectedRecipients=[];updateRecipients();if(recipient)recipient.open=false;counter();error.hidden=true;updateOptions();
             editorOrigin=origin;
             editor.querySelector('[data-agenda-comment-date]').textContent=label(date);
             editor.style.left='';editor.style.top='';editor.classList.remove('is-anchored');

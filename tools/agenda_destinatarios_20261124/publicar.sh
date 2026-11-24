@@ -11,7 +11,7 @@ LIVE="${IMPE_AGENDA_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
 BACKUPS="${IMPE_AGENDA_BACKUPS:-$HOME/respaldos-crm}"
 [[ -f "$LIVE/index.php" ]] || { echo 'ERROR: no se encontró la raíz del CRM.' >&2; exit 1; }
 LIVE="$(cd "$LIVE" && pwd -P)"
-TMP="$(mktemp -d "${TMPDIR:-/tmp}/agenda-multi3.XXXXXX")"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/agenda-multi4.XXXXXX")"
 LOCK="$(dirname "$LIVE")/.agenda-destinatarios.lock"
 LOCKED=0
 WRITTEN=()
@@ -50,14 +50,14 @@ $db->query("SELECT id,destinatario_id,privado FROM agenda_comentarios LIMIT 0");
 $db->close();
 '
 if [[ "$MODE" == --check ]]; then
-  echo "OK: CHECK multi3 compatible con $LIVE. No se modificó el sitio ni la base de datos."
+  echo "OK: CHECK multi4 compatible con $LIVE. No se modificó el sitio ni la base de datos."
   exit 0
 fi
 
 php "$SOURCE/preparar.php" listar "$LIVE" "$TMP" > "$TMP/cambios.txt"
 mapfile -t CHANGED < "$TMP/cambios.txt"
 if [[ "${#CHANGED[@]}" != 0 ]]; then
-  BACKUP="$BACKUPS/agenda-multi3-$(date +%Y%m%d-%H%M%S)-$$"
+  BACKUP="$BACKUPS/agenda-multi4-$(date +%Y%m%d-%H%M%S)-$$"
   mkdir -p "$BACKUP"
   tar -czf "$BACKUP/archivos-anteriores.tar.gz" -C "$TMP/original" .
   cp "$TMP/plan.json" "$BACKUP/plan.json"
@@ -77,11 +77,11 @@ $db->close();
 php "$SOURCE/preparar.php" antes "$LIVE" "$TMP"
 for file in "${CHANGED[@]}"; do
   mkdir -p "$(dirname "$LIVE/$file")"
-  install="$LIVE/$file.agenda-multi3-$$"
+  install="$LIVE/$file.agenda-multi4-$$"
   cp "$TMP/stage/$file" "$install"
   if [[ -f "$LIVE/$file" ]]; then chmod --reference="$LIVE/$file" "$install"; else chmod 644 "$install"; fi
   WRITTEN+=("$file")
   mv -f -- "$install" "$LIVE/$file"
 done
 php "$SOURCE/preparar.php" despues "$LIVE" "$TMP"
-echo "OK: APPLY multi3 terminado en $LIVE. Casillas para seleccionar varios usuarios instaladas."
+echo "OK: APPLY multi4 terminado en $LIVE. Selector de varios usuarios con diseño original instalado."

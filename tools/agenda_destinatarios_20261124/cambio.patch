@@ -267,7 +267,7 @@
 @@ -1,5 +1,6 @@
  <?php // Integración independiente de las acciones de reunión. ?>
  <link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_comentarios.css?v=<?= filemtime(ROOT_PATH . '/public/css/agenda_comentarios.css') ?>">
-+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_destinatarios.css?v=multi3-<?= filemtime(ROOT_PATH . '/public/css/agenda_destinatarios.css') ?>">
++<link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_destinatarios.css?v=multi4-<?= filemtime(ROOT_PATH . '/public/css/agenda_destinatarios.css') ?>">
  <p class="agenda-comments-status" data-agenda-comments-status role="status" hidden></p>
  <aside class="agenda-side-card agenda-comments-panel" data-agenda-comments-panel hidden aria-label="Detalle del día">
      <header class="agenda-comments-heading">
@@ -295,8 +295,8 @@
 -            <div id="agendaComentarioDestinatarios" class="agenda-comment-recipient-options" role="group"
 -                aria-label="Destinatarios disponibles" hidden></div>
 -            <p class="agenda-comments-hint" id="agendaComentarioDestinatarioAyuda">Todos lo verán en Agenda. Si eliges una persona, sólo ella y tú podrán verlo; los avisos serán sólo para ella.</p>
-+            <span id="agendaComentarioDestinatarioEtiqueta" class="agenda-comment-hour-label">Destinatarios · puedes marcar varios</span>
-+            <details class="agenda-comment-recipients" data-agenda-recipients data-agenda-recipients-version="multi3" open>
++            <span id="agendaComentarioDestinatarioEtiqueta" class="agenda-comment-hour-label">Destinatario</span>
++            <details class="agenda-comment-recipients" data-agenda-recipients data-agenda-recipients-version="multi4">
 +                <summary aria-describedby="agendaComentarioDestinatarioAyuda">Todos los usuarios con Agenda</summary>
 +                <div class="agenda-comment-recipients-list" data-agenda-recipients-list role="group" aria-labelledby="agendaComentarioDestinatarioEtiqueta"></div>
 +            </details>
@@ -309,7 +309,7 @@
      <footer><button type="button" class="btn btn-system-cancel" data-agenda-comment-delete-cancel>Cancelar</button><button type="button" class="btn btn-system-save" data-agenda-comment-delete-confirm>Eliminar</button></footer>
  </dialog>
 -<script src="<?= BASE_URL ?>public/javascript/agenda_comentarios.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/agenda_comentarios.js') ?>" defer></script>
-+<script src="<?= BASE_URL ?>public/javascript/agenda_comentarios.js?v=multi3-<?= filemtime(ROOT_PATH . '/public/javascript/agenda_comentarios.js') ?>" defer></script>
++<script src="<?= BASE_URL ?>public/javascript/agenda_comentarios.js?v=multi4-<?= filemtime(ROOT_PATH . '/public/javascript/agenda_comentarios.js') ?>" defer></script>
 --- /dev/null
 +++ b/database/migrations/2026_11_24_agenda_comentarios_destinatarios.sql
 @@ -0,0 +1,7 @@
@@ -322,44 +322,91 @@
 +) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 --- /dev/null
 +++ b/public/css/agenda_destinatarios.css
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,85 @@
 +.agenda-comment-recipients {
-+    border: 1px solid #cfdbef;
-+    border-radius: 9px;
-+    background: #fff;
++    border: 0;
++    background: transparent;
 +}
 +.agenda-comment-recipients summary {
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    gap: 12px;
++    min-height: 50px;
++    box-sizing: border-box;
 +    padding: 12px 14px;
++    border: 1px solid #d5dff0;
++    border-radius: 9px;
++    background: #fff;
++    color: #303030;
++    font-size: 16px;
++    line-height: 24px;
++    list-style: none;
 +    cursor: pointer;
 +    overflow-wrap: anywhere;
 +}
++.agenda-comment-recipients summary::-webkit-details-marker {
++    display: none;
++}
++.agenda-comment-recipients summary::after {
++    content: '';
++    width: 8px;
++    height: 8px;
++    margin-right: 5px;
++    flex-shrink: 0;
++    border-right: 2px solid #303b46;
++    border-bottom: 2px solid #303b46;
++    transform: translateY(-2px) rotate(45deg);
++}
 +.agenda-comment-recipients:focus-within {
++    outline: none;
++}
++.agenda-comment-recipients summary:focus-visible {
 +    outline: 2px solid #364aaa;
 +    outline-offset: 2px;
 +}
 +.agenda-comment-recipients-list {
 +    max-height: 200px;
 +    overflow-y: auto;
-+    border-top: 1px solid #e1e8f4;
++    margin-top: 6px;
++    border: 1px solid #cfdbef;
++    border-radius: 8px;
++    background: #fff;
 +    padding: 5px;
 +}
 +.agenda-comment-recipients-list label {
-+    display: flex;
-+    align-items: center;
-+    gap: 10px;
-+    padding: 9px;
-+    border-radius: 5px;
++    position: relative;
++    display: block;
++    box-sizing: border-box;
++    min-height: 42px;
++    margin: 0;
++    padding: 10px 11px;
++    border-radius: 6px;
++    color: #486590;
++    font-size: 15px;
++    font-weight: 400;
++    line-height: 22px;
 +    cursor: pointer;
 +}
-+.agenda-comment-recipients-list label:hover {
++.agenda-comment-recipients-list label:hover,
++.agenda-comment-recipients-list label:has(input:checked) {
 +    background: #eef3ff;
++    color: #3045a6;
++}
++.agenda-comment-recipients-list label:has(input:focus-visible) {
++    outline: 2px solid #364aaa;
++    outline-offset: -2px;
 +}
 +.agenda-comment-recipients-list input[type="checkbox"] {
-+    width: 17px;
-+    height: 17px;
-+    margin: 0;
-+    flex-shrink: 0;
-+    accent-color: #2e3e91;
++    position: absolute;
++    width: 1px;
++    height: 1px;
++    margin: -1px;
++    padding: 0;
++    border: 0;
++    clip-path: inset(50%);
++    overflow: hidden;
++    white-space: nowrap;
 +}
 --- a/public/javascript/agenda_comentarios.js
 +++ b/public/javascript/agenda_comentarios.js
@@ -508,7 +555,7 @@
 -            showRecipientChoices(false);
 -            updateRecipients();
 -            counter();error.hidden=true;updateOptions();
-+            form.reset();selectedRecipients=[];updateRecipients();if(recipient)recipient.open=recipientsAvailable;counter();error.hidden=true;updateOptions();
++            form.reset();selectedRecipients=[];updateRecipients();if(recipient)recipient.open=false;counter();error.hidden=true;updateOptions();
              editorOrigin=origin;
              editor.querySelector('[data-agenda-comment-date]').textContent=label(date);
              editor.style.left='';editor.style.top='';editor.classList.remove('is-anchored');

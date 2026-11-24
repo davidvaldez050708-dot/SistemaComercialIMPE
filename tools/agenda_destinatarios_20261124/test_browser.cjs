@@ -24,12 +24,15 @@ const css=fs.readFileSync(path.join(base,'public/css/agenda_destinatarios.css'),
    const add=page.locator('[data-agenda-comment-add]');await add.waitFor();await add.click();
    const details=page.locator('[data-agenda-recipients]');
    const openChoices=async()=>{if(!await details.evaluate(d=>d.open))await details.locator('summary').click();};
-   assert.equal(await details.evaluate(d=>d.open),true,'Casillas visibles al abrir el editor');
-   assert.equal(await details.getAttribute('data-agenda-recipients-version'),'multi3');
+   assert.equal(await details.evaluate(d=>d.open),false,'Desplegable cerrado como en el diseño anterior');
+   assert.equal(await details.getAttribute('data-agenda-recipients-version'),'multi4');
+   await openChoices();
    const boxes=details.locator('input');
    await boxes.nth(1).focus();await page.keyboard.press('Space');
    assert.equal(await page.evaluate(()=>document.activeElement.value),'2','Selección por teclado conserva el foco');
-   await boxes.nth(2).check();
+   await boxes.nth(2).locator('..').click();
+   assert.equal(await boxes.nth(1).evaluate(e=>getComputedStyle(e).clipPath),'inset(50%)','Casillas ocultas conservando la selección accesible');
+   assert.equal(await details.locator('summary').evaluate(e=>getComputedStyle(e).listStyleType),'none','Sin triángulo del details nativo');
    assert.match(await details.locator('summary').textContent(),/Ana, Bea/);
    assert.equal(await boxes.nth(0).isChecked(),false);
    await page.locator('textarea').fill('Comentario para dos usuarios');
@@ -43,13 +46,13 @@ const css=fs.readFileSync(path.join(base,'public/css/agenda_destinatarios.css'),
    assert.deepEqual(posts.at(-1).getAll('destinatarios_ids[]'),['2','3']);
    assert.equal(posts.at(-1).get('hora'),'');
    await add.click();assert.equal(await details.locator('summary').textContent(),'Todos los usuarios con Agenda');
-   await openChoices();await boxes.nth(1).check();await boxes.nth(2).check();
+   await openChoices();await boxes.nth(1).locator('..').click();await boxes.nth(2).locator('..').click();
    await page.locator('textarea').fill('Comentario con hora para dos usuarios');
    await page.locator('input[name=sin_hora]').uncheck();await page.locator('input[name=hora]').fill('11:30');
    await page.locator('[data-agenda-comment-save]').click();await page.waitForFunction(()=>!document.querySelector('dialog').open);
    assert.equal(posts.at(-1).get('hora'),'11:30');
    assert.deepEqual(posts.at(-1).getAll('destinatarios_ids[]'),['2','3']);
-   await add.click();await openChoices();await boxes.nth(1).check();await boxes.nth(2).check();
+   await add.click();await openChoices();await boxes.nth(1).locator('..').click();await boxes.nth(2).locator('..').click();
    const previewDir=path.join(process.cwd(),'output/agenda_destinatarios_20261124');fs.mkdirSync(previewDir,{recursive:true});
    await page.screenshot({path:path.join(previewDir,`selector-multiple-${width}.png`)});
    // Refresh while editing must preserve a now-unavailable selection, then

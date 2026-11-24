@@ -18,8 +18,9 @@
     "nuevo": false
   },
   "app/views/seguimiento_vinculacion/partials/agenda_comentarios.php": {
-    "sha256": "1941505758d00a88c3934e9687fc2b8d9786f46df0868281d91db10eec45dfd4",
+    "sha256": "86db597bd9eeeadf6f4ca89f3ba0ddf14c60d115a72c0c47514ad5c7114905a4",
     "permitidos": [
+      "1941505758d00a88c3934e9687fc2b8d9786f46df0868281d91db10eec45dfd4",
       "9b37912a6eca0052089e54a58d3a743140535c8e560272aa04f6a6c0f058344b",
       "a7e87131364978a6f430a9a1a11d4d320304b900fe40fb8a38baf06cd6a2d211",
       "ab9fffe2b63adc7f4491e42deb03a6cd5a3a154ef29bfa56a2f56c8f17de0b53"
@@ -34,16 +35,17 @@
     "nuevo": true
   },
   "public/css/agenda_destinatarios.css": {
-    "sha256": "d520c2c623b07d1d6817e302978d84d9f044a42532f605019fc37725fc24710b",
+    "sha256": "c5f296c8671630dda7d06ef11d318c8f9942143d993a754405445e8ed2561a63",
     "permitidos": [
       "d520c2c623b07d1d6817e302978d84d9f044a42532f605019fc37725fc24710b"
     ],
     "nuevo": true
   },
   "public/javascript/agenda_comentarios.js": {
-    "sha256": "9221cfdffdc0e7b64faab087f393f41a876f31ec70212d96a0880c2e0531e43a",
+    "sha256": "5e974067d0daa23fce4744076a4bbd546f4b924e633168b5b54468f9d6864120",
     "permitidos": [
       "05e8ceac838969e6e931406037d99851fb94bdffa3e3dd021356b3543b968e91",
+      "9221cfdffdc0e7b64faab087f393f41a876f31ec70212d96a0880c2e0531e43a",
       "98daa6642840c351faec9ded3c2440d5d246a0bb9ff8bd9637cc5b3c40cfb6fb",
       "ca965505e0d15a61836b24c55de23d125436f5e2fca6341f73cc700e9641f9fd"
     ],

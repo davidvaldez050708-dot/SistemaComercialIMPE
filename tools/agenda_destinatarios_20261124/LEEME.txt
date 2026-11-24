@@ -21,9 +21,11 @@ Alcance
 - Conserva los permisos actuales de crear, eliminar, recibir comentarios y
   enviar al administrador, así como los metadatos y horarios de los avisos.
 - Si falta la migración, se rechazan varios destinatarios sin enviar a Todos.
-- Versión multi3: las casillas se muestran al abrir el editor y el formulario
-  dice "Destinatarios · puedes marcar varios". La selección conserva el foco
-  al marcar con teclado. Los recursos llevan una versión nueva en su URL.
+- Versión multi4: conserva el diseño original del desplegable: etiqueta
+  "Destinatario", flecha a la derecha y lista separada con filas azules al
+  seleccionarlas. Permite marcar varias filas sin mostrar casillas cuadradas.
+  La selección conserva el foco al marcar con teclado y no se cierra entre
+  selecciones. Los recursos llevan una versión nueva en su URL.
 
 Instalación en la versión de producción que ya tiene comentarios
 1. Actualizar la rama codex/agenda-destinatarios-multiples en el clon privado
@@ -35,7 +37,7 @@ Instalación en la versión de producción que ya tiene comentarios
    diagnosticada, las entregas anteriores y combinaciones parciales de ellas;
    cualquier versión ajena se conserva y detiene la instalación.
    El instalador no depende de Git en public_html y verifica por SHA-256 todos
-   los archivos después de instalarlos, incluido el selector visible multi3.
+   los archivos después de instalarlos, incluido el selector multi4.
 4. Recargar Agenda y crear un comentario dirigido a dos usuarios. Comprobar
    con un tercer usuario que no lo ve. El autor conserva acceso para gestionarlo.
 
@@ -47,7 +49,7 @@ Pruebas ejecutadas
 - Navegador Chrome: escritorio y móvil, selección/envío múltiple, modo privado,
   Sin hora, restablecimiento del formulario y pérdida de permisos de un destino.
 - El parche se comprueba contra los cuatro archivos exactos del diagnóstico.
-- Publicador multi3: instalación desde la base, versión anterior, instalación
+- Publicador multi4: instalación desde la base, versión anterior, multi3, instalación
   parcial y CRLF; check sin cambios, archivos instalados, respaldo, idempotencia,
   rechazo de código desconocido y fallos simulados de BD y reemplazo de archivos.
 - Sintaxis PHP y JavaScript.
