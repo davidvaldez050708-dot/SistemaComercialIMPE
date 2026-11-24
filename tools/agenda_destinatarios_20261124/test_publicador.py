@@ -8,7 +8,7 @@ import tempfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-OUT = ROOT / 'output/agenda_destinatarios_20261124/publicador-multi5'
+OUT = ROOT / 'output/agenda_destinatarios_20261124/publicador-multi6'
 OUT.mkdir(parents=True, exist_ok=True)
 BASH = os.environ.get('AGENDA_BASH', 'C:/Program Files/Git/bin/bash.exe' if os.name == 'nt' else 'bash')
 FILES = list(json.loads((HERE/'instalacion.json').read_text(encoding='utf-8')))
@@ -38,9 +38,14 @@ def fixture(kind='base', fail_db=False):
             revision={'anterior':'a2e67b1d','multi3':'85b0c915','multi4':'95f8d0a6'}[kind]
             proc=subprocess.run(['git','show',f'{revision}:tools/agenda_destinatarios_20261124/files/{name}'],cwd=ROOT,capture_output=True)
             if proc.returncode==0: put(live,name,proc.stdout)
+            elif base.exists(): put(live,name,base.read_bytes())
         elif base.exists():
             text=base.read_text(encoding='utf-8')
             put(live,name,text.replace('\n','\r\n').encode() if kind=='crlf' else text.encode())
+    if kind=='multi5':
+        for name in FILES:
+            proc=subprocess.run(['git','show',f'674da6a0:tools/agenda_destinatarios_20261124/files/{name}'],cwd=ROOT,capture_output=True)
+            if proc.returncode==0: put(live,name,proc.stdout)
     if kind=='mixto':
         for name in [FILES[0],FILES[1],FILES[-1]]:put(live,name,(HERE/'files'/name).read_bytes())
     if kind=='ajeno':
@@ -64,13 +69,13 @@ def run(live,env,mode,ok=True):
     check((p.returncode==0)==ok,p.stdout+p.stderr)
     return p
 
-for kind in ['base','anterior','multi3','multi4','mixto','crlf']:
+for kind in ['base','anterior','multi3','multi4','multi5','mixto','crlf']:
     live,env=fixture(kind);before=contents(live)
     run(live,env,'--check')
     check(contents(live)==before,'CHECK no modifica archivos '+kind)
     check('CREATE TABLE' not in (live/'config/consultas.log').read_text(),'CHECK no ejecuta migración')
     result=run(live,env,'--apply')
-    check('selector de varios usuarios con diseño original multi5' in result.stdout,'APPLY comprueba selector instalado')
+    check('selector de varios usuarios con diseño original multi6' in result.stdout,'APPLY comprueba selector instalado')
     for name in FILES:
         check((live/name).read_text(encoding='utf-8')==(HERE/'files'/name).read_text(encoding='utf-8'),'Archivo instalado '+kind+' '+name)
     after=contents(live)
@@ -96,4 +101,4 @@ env['BASH_ENV']=posix(shim/'env.sh')
 run(live,env,'--apply',False)
 check(contents(live)==before,'Restaura los archivos si falla el primer reemplazo')
 
-print(json.dumps({'ok':True,'checks':checks,'escenarios':['base','anterior','multi3','multi4','mixto','crlf','ajeno','fallo_bd','rollback']},ensure_ascii=False))
+print(json.dumps({'ok':True,'checks':checks,'escenarios':['base','anterior','multi3','multi4','multi5','mixto','crlf','ajeno','fallo_bd','rollback']},ensure_ascii=False))

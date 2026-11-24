@@ -10,8 +10,19 @@ en base_hostinger y coinciden con los identificadores Git del diagnóstico:
   Service:    2bc974ef6d563ed54ae9e6a5ccb08958e0024599
   Vista:      61479f685537e4f8acaf8110c05db5c580be59bf
   JavaScript: 172c2f01b8d37187192d970ca6bc3ef5809ab228
+La edición incluye además AgendaComentarioController, cuya base se conserva
+en base_hostinger/app/controllers y se valida por SHA-256 antes de instalar.
 
 Alcance
+- Versión multi6: el selector de destinatarios queda bloqueado visualmente y
+  por ratón/teclado al activar Privado. Al desactivarlo recupera la selección.
+  Editar aparece sólo para el autor con permiso de crear comentarios. Abre el
+  mismo modal con texto, privacidad, destinatarios y hora precargados.
+  La ruta POST editar conserva sesión y CSRF, valida los mismos campos que crear
+  y guarda sobre el mismo ID, autor y fecha de creación en una transacción.
+  Editar sólo texto mantiene lecturas y recordatorios atendidos; cambiar la hora
+  vuelve a dejar pendiente el recordatorio con el horario nuevo. Se retiran las
+  lecturas de quienes dejan de ser destinatarios al restringir la visibilidad.
 - Casillas para seleccionar uno o varios destinatarios.
 - Todos conserva los comentarios públicos; Privado conserva sólo al autor.
 - Un comentario dirigido se muestra sólo al autor y a los seleccionados.
@@ -42,26 +53,27 @@ Instalación en la versión de producción que ya tiene comentarios
 2. Ejecutar bash tools/agenda_destinatarios_20261124/publicar.sh --check desde
    ese clon. Sólo prepara temporales y comprueba conexión, versiones y sintaxis.
 3. Si muestra OK, ejecutar el mismo script con --apply. Respalda los originales,
-   crea la tabla adicional e instala los seis archivos. Se reconocen la base
+   crea la tabla adicional e instala los siete archivos. Se reconocen la base
    diagnosticada, las entregas anteriores y combinaciones parciales de ellas;
    cualquier versión ajena se conserva y detiene la instalación.
    El instalador no depende de Git en public_html y verifica por SHA-256 todos
-   los archivos después de instalarlos, incluido el selector multi5.
+   los archivos después de instalarlos, incluido el selector multi6.
 4. Recargar Agenda y crear un comentario dirigido a dos usuarios. Comprobar
    con un tercer usuario que no lo ve. El autor conserva acceso para gestionarlo.
 
 Pruebas ejecutadas
-- PHP: 95 comprobaciones con MariaDB 10.4 en una BD aislada, sin datos del CRM:
+- PHP: 133 comprobaciones con MariaDB 10.4 en una BD aislada, sin datos del CRM:
   visibilidad, lectura directa, avisos, recordatorio por usuario, vistos,
   validación de usuarios, comentarios antiguos, eliminación, compatibilidad
   sin migración y rollback si falla la inserción de un destinatario.
+- Ruta editar: método POST, sesión, CSRF y transmisión de campos sin usar la BD.
 - Navegador Chrome: escritorio y móvil, selección/envío múltiple, modo privado,
   Sin hora, restablecimiento del formulario y pérdida de permisos de un destino.
 - El parche se comprueba contra los cuatro archivos exactos del diagnóstico.
-- Publicador multi5: instalación desde la base, versión anterior, multi3, multi4, instalación
+- Publicador multi6: instalación desde la base, versión anterior, multi3, multi4, multi5, instalación
   parcial y CRLF; check sin cambios, archivos instalados, respaldo, idempotencia,
   rechazo de código desconocido y fallos simulados de BD y reemplazo de archivos.
 - Sintaxis PHP y JavaScript.
 
 Fuentes y pruebas revisables: tools/agenda_destinatarios_20261124.
-Reconstruir ZIP: python tools/agenda_destinatarios_20261124/build.py.
+Reconstruir manifiesto y parche: python tools/agenda_destinatarios_20261124/build.py.

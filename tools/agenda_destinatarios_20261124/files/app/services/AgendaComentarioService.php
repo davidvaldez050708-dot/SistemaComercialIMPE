@@ -24,6 +24,7 @@ class AgendaComentarioService
     {
         switch ($accion) {
             case 'crear':
+            case 'editar':
                 return self::puedeAcceder($usuario) && tienePermiso('agenda.comentarios.crear');
             case 'eliminar':
                 return self::puedeAcceder($usuario) && tienePermiso('agenda.comentarios.eliminar');
@@ -74,6 +75,7 @@ class AgendaComentarioService
             'comentario'=>(string)$fila['comentario'], 'autor'=>(string)$fila['autor_nombre'], 'privado'=>!empty($fila['privado']),
             'creado_at'=>(string)$fila['creado_at'],
             'puede_eliminar'=>(int)$fila['creado_por']===$usuario && self::puedeRealizar($usuario, 'eliminar'),
+            'puede_editar'=>(int)$fila['creado_por']===$usuario && self::puedeRealizar($usuario, 'editar'),
             'destinatarios_ids'=>$destinatarios, 'destinatario_id'=>$destinatario, 'destinatario_nombre'=>$destinatario===null?null:(trim((string)($fila['destinatario_nombre']??'')) ?: 'Usuario seleccionado'),
             'leido'=>!empty($fila['novedad_leida_at']), 'atendido'=>!empty($fila['recordatorio_atendido_at']),
             'recordatorio_pendiente'=>$notificaUsuario && !empty($fila['recordatorio_at']) && $fila['recordatorio_at']<=$this->ahora() && empty($fila['recordatorio_atendido_at'])];
@@ -100,10 +102,26 @@ class AgendaComentarioService
 
     public function crear(int $usuario, array $datos): array
     {
-        if (!self::puedeRealizar($usuario, 'crear')) {
-            return $this->error('No tienes permiso para agregar comentarios de la agenda.', 403);
+        return $this->guardar($usuario,$datos);
+    }
+
+    public function editar(int $usuario, int $id, array $datos): array
+    {
+        if ($id<=0) return $this->error('El comentario ya no está disponible.',404);
+        return $this->guardar($usuario,$datos,$id);
+    }
+
+    private function guardar(int $usuario, array $datos, ?int $id = null): array
+    {
+        if (!self::puedeRealizar($usuario, $id===null?'crear':'editar')) {
+            return $this->error($id===null?'No tienes permiso para agregar comentarios de la agenda.':'No tienes permiso para editar comentarios de la agenda.', 403);
         }
         if ($error = $this->acceso($usuario)) { return $error; }
+        if ($id!==null) {
+            $fila=$this->repo->obtener($id,$usuario);
+            if (!$fila) return $this->error('El comentario ya no está disponible.',404);
+            if ((int)$fila['creado_por']!==$usuario) return $this->error('Sólo quien escribió el comentario puede editarlo.',403);
+        }
         $fecha = $datos['fecha'] ?? '';
         $hora = $datos['hora'] ?? '';
         $texto = $datos['comentario'] ?? '';
@@ -135,8 +153,13 @@ class AgendaComentarioService
         if (!is_string($texto) || !mb_check_encoding($texto,'UTF-8')) { return $this->error('Escribe un comentario válido.'); }
         $texto = trim(str_replace(["\r\n","\r"],"\n",$texto));
         if ($texto === '' || mb_strlen($texto,'UTF-8')>250 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u',$texto)) { return $this->error('Escribe entre 1 y 250 caracteres.'); }
-        $id = $this->repo->crear($usuario,$fecha,$hora===''?null:$hora,$texto,$this->ahora(),$privado,$destinatario,$destinatarios);
-        return ['ok'=>true,'mensaje'=>'Comentario añadido a la agenda.','comentario'=>$this->presentar($this->repo->obtener($id,$usuario),$usuario)];
+        $editando=$id!==null;
+        if ($editando) {
+            if (!$this->repo->editar($id,$usuario,$fecha,$hora===''?null:$hora,$texto,$privado,$destinatario,$destinatarios)) return $this->error('El comentario ya no está disponible.',409);
+        } else {
+            $id = $this->repo->crear($usuario,$fecha,$hora===''?null:$hora,$texto,$this->ahora(),$privado,$destinatario,$destinatarios);
+        }
+        return ['ok'=>true,'mensaje'=>$editando?'Comentario actualizado.':'Comentario añadido a la agenda.','comentario'=>$this->presentar($this->repo->obtener($id,$usuario),$usuario)];
     }
 
     public function eliminar(int $usuario, int $id): array

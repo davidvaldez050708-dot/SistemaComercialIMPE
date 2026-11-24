@@ -1,3 +1,24 @@
+--- a/app/controllers/AgendaComentarioController.php
++++ b/app/controllers/AgendaComentarioController.php
+@@ -6,6 +6,7 @@
+ {
+     public function listar() { $this->ejecutar('GET','listar'); }
+     public function crear() { $this->ejecutar('POST','crear'); }
++    public function editar() { $this->ejecutar('POST','editar'); }
+     public function eliminar() { $this->ejecutar('POST','eliminar'); }
+     public function leer() { $this->ejecutar('POST','leer'); }
+     public function leerVisto() { $this->ejecutar('POST','leerVisto'); }
+@@ -40,7 +41,9 @@
+             elseif ($accion === 'crear') { $r=$servicio->crear($usuario,$_POST); }
+             else {
+                 $id = filter_var($_POST['id'] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]) ?: 0;
+-                if ($accion==='leerVisto') {
++                if ($accion==='editar') {
++                    $r=$servicio->editar($usuario,(int)$id,$_POST);
++                } elseif ($accion==='leerVisto') {
+                     $lector=filter_var($_POST['lector_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]) ?: 0;
+                     $r=$servicio->leerVisto($usuario,(int)$id,(int)$lector);
+                 } else $r=$servicio->$accion($usuario,(int)$id);
 --- a/app/services/AgendaComentarioRepository.php
 +++ b/app/services/AgendaComentarioRepository.php
 @@ -10,6 +10,7 @@
@@ -145,7 +166,7 @@
      {
          $privacidad = $this->privacidadDisponible();
          if ($privado && !$privacidad) throw new RuntimeException('AGENDA_PRIVACIDAD_NO_DISPONIBLE');
-@@ -142,8 +228,24 @@
+@@ -142,8 +228,73 @@
          elseif ($dirigidos) $stmt->bind_param('sssissi', $fecha, $recordatorio, $texto, $usuario, $autor, $ahora, $destinatario);
          elseif ($privacidad) $stmt->bind_param('sssissi', $fecha, $recordatorio, $texto, $usuario, $autor, $ahora, $visibilidad);
          else $stmt->bind_param('sssiss', $fecha, $recordatorio, $texto, $usuario, $autor, $ahora);
@@ -169,10 +190,59 @@
 +            $this->db->rollback();
 +            throw $e;
 +        }
++    }
++
++    public function editar(int $id, int $usuario, string $fecha, ?string $hora, string $texto, bool $privado = false, ?int $destinatario = null, array $destinatarios = []): bool
++    {
++        $privacidad=$this->privacidadDisponible();
++        $dirigidos=$this->destinatariosDisponibles();
++        $multiples=$this->multiplesDisponibles();
++        if ($privado && !$privacidad) throw new RuntimeException('AGENDA_PRIVACIDAD_NO_DISPONIBLE');
++        if ($privado && ($destinatario!==null || $destinatarios)) throw new RuntimeException('AGENDA_DESTINATARIO_NO_DISPONIBLE');
++        if (count($destinatarios)>1 && !$multiples) throw new RuntimeException('AGENDA_MULTIPLES_NO_DISPONIBLES');
++        foreach (array_unique(array_merge($destinatarios,$destinatario===null?[]:[$destinatario])) as $destino) {
++            if (!$dirigidos || !$this->destinatarioHabilitado((int)$destino,$usuario)) throw new RuntimeException('AGENDA_DESTINATARIO_NO_DISPONIBLE');
++        }
++        $recordatorio=$hora===null?null:$fecha.' '.$hora.':00';
++        $this->db->begin_transaction();
++        try {
++            $lock=$this->db->prepare('SELECT recordatorio_at FROM agenda_comentarios WHERE id=? AND creado_por=? AND eliminado_at IS NULL FOR UPDATE');
++            $lock->bind_param('ii',$id,$usuario);$lock->execute();
++            $anterior=$lock->get_result()->fetch_assoc();
++            if (!$anterior) {$this->db->rollback();return false;}
++            $sql='UPDATE agenda_comentarios SET fecha=?,recordatorio_at=?,comentario=?'.($privacidad?',privado=?':'').($dirigidos?',destinatario_id=?':'').' WHERE id=? AND creado_por=? AND eliminado_at IS NULL';
++            $params=[$fecha,$recordatorio,$texto];$types='sss';
++            if ($privacidad) {$params[]=(int)$privado;$types.='i';}
++            if ($dirigidos) {$params[]=$destinatario;$types.='i';}
++            $params[]=$id;$params[]=$usuario;$types.='ii';
++            $stmt=$this->db->prepare($sql);$stmt->bind_param($types,...$params);$stmt->execute();
++            if ($multiples) {
++                $stmt=$this->db->prepare('DELETE FROM agenda_comentarios_destinatarios WHERE comentario_id=?');
++                $stmt->bind_param('i',$id);$stmt->execute();
++                $insert=$this->db->prepare('INSERT INTO agenda_comentarios_destinatarios (comentario_id,usuario_id) VALUES (?,?)');
++                foreach ($destinatarios as $destino) {$insert->bind_param('ii',$id,$destino);$insert->execute();}
++            }
++            // Editar el texto conserva las lecturas y el recordatorio atendido.
++            // Sólo una hora distinta vuelve a dejar pendiente el recordatorio.
++            if ($anterior['recordatorio_at']!==$recordatorio) {
++                $stmt=$this->db->prepare('UPDATE agenda_comentarios_lecturas SET recordatorio_atendido_at=NULL WHERE comentario_id=?');
++                $stmt->bind_param('i',$id);$stmt->execute();
++            }
++            if ($privado || $destinatario!==null) {
++                $permitidos=array_values(array_unique(array_merge([$usuario],$privado?[]:($destinatarios?:[$destinatario]))));
++                foreach (['agenda_comentarios_lecturas'=>'usuario_id','agenda_comentarios_vistos_avisos'=>'lector_id'] as $tabla=>$columna) {
++                    if ($tabla==='agenda_comentarios_vistos_avisos' && !$this->avisosVistosDisponibles()) continue;
++                    $params=array_merge([$id],$permitidos);
++                    $stmt=$this->db->prepare('DELETE FROM '.$tabla.' WHERE comentario_id=? AND '.$columna.' NOT IN ('.implode(',',array_fill(0,count($permitidos),'?')).')');
++                    $stmt->bind_param(str_repeat('i',count($params)),...$params);$stmt->execute();
++                }
++            }
++            $this->db->commit();return true;
++        } catch (Throwable $e) {$this->db->rollback();throw $e;}
      }
  
      public function eliminar(int $id, int $usuario, string $ahora): bool
-@@ -157,13 +259,13 @@
+@@ -157,13 +308,13 @@
      public function marcarLeido(int $id, int $usuario, string $ahora): void
      {
          $visibilidad = $this->privacidadDisponible() ? ' AND (privado=0 OR creado_por=?)' : '';
@@ -188,7 +258,7 @@
              ON DUPLICATE KEY UPDATE novedad_leida_at=VALUES(novedad_leida_at),
                recordatorio_atendido_at=COALESCE(VALUES(recordatorio_atendido_at),recordatorio_atendido_at)');
          $types='isssi';$params=[$usuario,$ahora,$ahora,$ahora,$id];
-@@ -181,10 +283,10 @@
+@@ -181,10 +332,10 @@
          $destinatario = $soloDirigidos ? ' AND c.destinatario_id=?'
              : ($dirigidos ? ' AND (c.destinatario_id IS NULL OR c.destinatario_id=?)' : '');
          $hasta = (new DateTimeImmutable($ahora))->modify('+30 minutes')->format('Y-m-d H:i:s');
@@ -201,7 +271,7 @@
              ORDER BY CASE WHEN c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL THEN 0
                            WHEN c.recordatorio_at<=? AND l.recordatorio_atendido_at IS NULL THEN 1 ELSE 2 END,
                c.recordatorio_at ASC,c.creado_at DESC,c.id DESC LIMIT 20');
-@@ -211,13 +313,13 @@
+@@ -211,13 +362,13 @@
          if (!$this->avisosVistosDisponibles()) return [];
          $visibilidad = $this->privacidadDisponible() ? ' AND c.privado=0' : '';
          $dirigido = $this->destinatariosDisponibles() ? ' AND (c.destinatario_id IS NULL OR c.destinatario_id=l.usuario_id)' : '';
@@ -217,7 +287,7 @@
              ORDER BY l.novedad_leida_at DESC,l.usuario_id,c.id LIMIT 20");
          $stmt->bind_param('i',$autor);$stmt->execute();
          return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-@@ -227,18 +329,18 @@
+@@ -227,18 +378,18 @@
      {
          $visibilidad = $this->privacidadDisponible() ? ' AND c.privado=0' : '';
          $dirigido = $this->destinatariosDisponibles() ? ' AND (c.destinatario_id IS NULL OR c.destinatario_id=l.usuario_id)' : '';
@@ -242,7 +312,15 @@
      }
 --- a/app/services/AgendaComentarioService.php
 +++ b/app/services/AgendaComentarioService.php
-@@ -67,13 +67,14 @@
+@@ -24,6 +24,7 @@
+     {
+         switch ($accion) {
+             case 'crear':
++            case 'editar':
+                 return self::puedeAcceder($usuario) && tienePermiso('agenda.comentarios.crear');
+             case 'eliminar':
+                 return self::puedeAcceder($usuario) && tienePermiso('agenda.comentarios.eliminar');
+@@ -67,13 +68,15 @@
      private function presentar(array $fila, int $usuario): array
      {
          $destinatario = empty($fila['destinatario_id']) ? null : (int)$fila['destinatario_id'];
@@ -255,11 +333,12 @@
              'creado_at'=>(string)$fila['creado_at'],
              'puede_eliminar'=>(int)$fila['creado_por']===$usuario && self::puedeRealizar($usuario, 'eliminar'),
 -            'destinatario_id'=>$destinatario, 'destinatario_nombre'=>$destinatario===null?null:(trim((string)($fila['destinatario_nombre']??'')) ?: 'Usuario seleccionado'),
++            'puede_editar'=>(int)$fila['creado_por']===$usuario && self::puedeRealizar($usuario, 'editar'),
 +            'destinatarios_ids'=>$destinatarios, 'destinatario_id'=>$destinatario, 'destinatario_nombre'=>$destinatario===null?null:(trim((string)($fila['destinatario_nombre']??'')) ?: 'Usuario seleccionado'),
              'leido'=>!empty($fila['novedad_leida_at']), 'atendido'=>!empty($fila['recordatorio_atendido_at']),
              'recordatorio_pendiente'=>$notificaUsuario && !empty($fila['recordatorio_at']) && $fila['recordatorio_at']<=$this->ahora() && empty($fila['recordatorio_atendido_at'])];
      }
-@@ -89,6 +90,8 @@
+@@ -89,6 +92,8 @@
          $destinatariosDisponibles = $puedeCrear && $this->repo->destinatariosDisponibles();
          return ['ok'=>true,'comentarios'=>array_map(fn($f)=>$this->presentar($f,$usuario),array_slice($filas,0,500)),
              'hay_mas'=>count($filas)>500,'privados_disponibles'=>$puedeCrear && $this->repo->privacidadDisponible(),
@@ -268,7 +347,36 @@
              'destinatarios_disponibles'=>$destinatariosDisponibles,
              'destinatarios'=>$destinatariosDisponibles?array_map(static fn($u)=>[
                  'id'=>(int)$u['id'],'nombre'=>(string)$u['nombre'],'rol'=>(string)$u['rol']
-@@ -108,22 +111,31 @@
+@@ -97,10 +102,26 @@
+ 
+     public function crear(int $usuario, array $datos): array
+     {
+-        if (!self::puedeRealizar($usuario, 'crear')) {
+-            return $this->error('No tienes permiso para agregar comentarios de la agenda.', 403);
++        return $this->guardar($usuario,$datos);
++    }
++
++    public function editar(int $usuario, int $id, array $datos): array
++    {
++        if ($id<=0) return $this->error('El comentario ya no está disponible.',404);
++        return $this->guardar($usuario,$datos,$id);
++    }
++
++    private function guardar(int $usuario, array $datos, ?int $id = null): array
++    {
++        if (!self::puedeRealizar($usuario, $id===null?'crear':'editar')) {
++            return $this->error($id===null?'No tienes permiso para agregar comentarios de la agenda.':'No tienes permiso para editar comentarios de la agenda.', 403);
+         }
+         if ($error = $this->acceso($usuario)) { return $error; }
++        if ($id!==null) {
++            $fila=$this->repo->obtener($id,$usuario);
++            if (!$fila) return $this->error('El comentario ya no está disponible.',404);
++            if ((int)$fila['creado_por']!==$usuario) return $this->error('Sólo quien escribió el comentario puede editarlo.',403);
++        }
+         $fecha = $datos['fecha'] ?? '';
+         $hora = $datos['hora'] ?? '';
+         $texto = $datos['comentario'] ?? '';
+@@ -108,23 +129,37 @@
          if (!in_array($privado,[false,true,0,1,'0','1'],true)) return $this->error('Selecciona si el comentario es privado.');
          $privado = (bool)$privado;
          if ($privado && !$this->repo->privacidadDisponible()) return $this->error('Los comentarios privados aún no están disponibles. Solicita completar la instalación.',503);
@@ -306,11 +414,18 @@
          $texto = trim(str_replace(["\r\n","\r"],"\n",$texto));
          if ($texto === '' || mb_strlen($texto,'UTF-8')>250 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u',$texto)) { return $this->error('Escribe entre 1 y 250 caracteres.'); }
 -        $id = $this->repo->crear($usuario,$fecha,$hora===''?null:$hora,$texto,$this->ahora(),$privado,$destinatario);
-+        $id = $this->repo->crear($usuario,$fecha,$hora===''?null:$hora,$texto,$this->ahora(),$privado,$destinatario,$destinatarios);
-         return ['ok'=>true,'mensaje'=>'Comentario añadido a la agenda.','comentario'=>$this->presentar($this->repo->obtener($id,$usuario),$usuario)];
+-        return ['ok'=>true,'mensaje'=>'Comentario añadido a la agenda.','comentario'=>$this->presentar($this->repo->obtener($id,$usuario),$usuario)];
++        $editando=$id!==null;
++        if ($editando) {
++            if (!$this->repo->editar($id,$usuario,$fecha,$hora===''?null:$hora,$texto,$privado,$destinatario,$destinatarios)) return $this->error('El comentario ya no está disponible.',409);
++        } else {
++            $id = $this->repo->crear($usuario,$fecha,$hora===''?null:$hora,$texto,$this->ahora(),$privado,$destinatario,$destinatarios);
++        }
++        return ['ok'=>true,'mensaje'=>$editando?'Comentario actualizado.':'Comentario añadido a la agenda.','comentario'=>$this->presentar($this->repo->obtener($id,$usuario),$usuario)];
      }
  
-@@ -145,7 +157,7 @@
+     public function eliminar(int $usuario, int $id): array
+@@ -145,7 +180,7 @@
          if (!self::puedeRealizar($usuario, 'leer')) return $this->error('No tienes acceso a los comentarios de la agenda.',403);
          if (!$this->repo->disponible()) return $this->error('Los comentarios de la agenda aún no están disponibles.',503);
          $fila = $id > 0 ? $this->repo->obtener($id, $usuario) : null;
@@ -324,7 +439,7 @@
 @@ -1,5 +1,6 @@
  <?php // Integración independiente de las acciones de reunión. ?>
  <link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_comentarios.css?v=<?= filemtime(ROOT_PATH . '/public/css/agenda_comentarios.css') ?>">
-+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_destinatarios.css?v=multi5-font1-<?= filemtime(ROOT_PATH . '/public/css/agenda_destinatarios.css') ?>">
++<link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_destinatarios.css?v=multi6-font1-<?= filemtime(ROOT_PATH . '/public/css/agenda_destinatarios.css') ?>">
  <p class="agenda-comments-status" data-agenda-comments-status role="status" hidden></p>
  <aside class="agenda-side-card agenda-comments-panel" data-agenda-comments-panel hidden aria-label="Detalle del día">
      <header class="agenda-comments-heading">
@@ -353,7 +468,7 @@
 -                aria-label="Destinatarios disponibles" hidden></div>
 -            <p class="agenda-comments-hint" id="agendaComentarioDestinatarioAyuda">Todos lo verán en Agenda. Si eliges una persona, sólo ella y tú podrán verlo; los avisos serán sólo para ella.</p>
 +            <span id="agendaComentarioDestinatarioEtiqueta" class="agenda-comment-hour-label">Destinatario</span>
-+            <details class="agenda-comment-recipients" data-agenda-recipients data-agenda-recipients-version="multi5">
++            <details class="agenda-comment-recipients" data-agenda-recipients data-agenda-recipients-version="multi6">
 +                <summary aria-describedby="agendaComentarioDestinatarioAyuda">Todos los usuarios con Agenda</summary>
 +                <div class="agenda-comment-recipients-list" data-agenda-recipients-list role="group" aria-labelledby="agendaComentarioDestinatarioEtiqueta"></div>
 +            </details>
@@ -366,7 +481,7 @@
      <footer><button type="button" class="btn btn-system-cancel" data-agenda-comment-delete-cancel>Cancelar</button><button type="button" class="btn btn-system-save" data-agenda-comment-delete-confirm>Eliminar</button></footer>
  </dialog>
 -<script src="<?= BASE_URL ?>public/javascript/agenda_comentarios.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/agenda_comentarios.js') ?>" defer></script>
-+<script src="<?= BASE_URL ?>public/javascript/agenda_comentarios.js?v=multi5-<?= filemtime(ROOT_PATH . '/public/javascript/agenda_comentarios.js') ?>" defer></script>
++<script src="<?= BASE_URL ?>public/javascript/agenda_comentarios.js?v=multi6-<?= filemtime(ROOT_PATH . '/public/javascript/agenda_comentarios.js') ?>" defer></script>
 --- /dev/null
 +++ b/database/migrations/2026_11_24_agenda_comentarios_destinatarios.sql
 @@ -0,0 +1,7 @@
@@ -379,7 +494,7 @@
 +) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 --- /dev/null
 +++ b/public/css/agenda_destinatarios.css
-@@ -0,0 +1,88 @@
+@@ -0,0 +1,96 @@
 +.agenda-comment-recipients {
 +    border: 0;
 +    background: transparent;
@@ -406,6 +521,14 @@
 +}
 +.agenda-comment-recipients summary::-webkit-details-marker {
 +    display: none;
++}
++.agenda-comment-editor .agenda-comment-recipients[aria-disabled="true"] summary {
++    background: #f4f6fa;
++    color: #7b879b;
++    cursor: not-allowed;
++}
++.agenda-comment-recipients[aria-disabled="true"] summary::after {
++    opacity: .45;
 +}
 +.agenda-comment-recipients summary::after {
 +    content: '';
@@ -470,7 +593,7 @@
 +}
 --- a/public/javascript/agenda_comentarios.js
 +++ b/public/javascript/agenda_comentarios.js
-@@ -17,40 +17,48 @@
+@@ -17,40 +17,58 @@
          const hour = form.elements.hora;
          const noHour = form.elements.sin_hora;
          const privateComment = form.elements.privado;
@@ -491,6 +614,16 @@
 -            recipientToggle.setAttribute('aria-expanded', String(open));
 -        }
 -
++        const recipientSummary = recipient?.querySelector('summary');
++        recipientSummary?.addEventListener('click',event=>{
++            if (privateComment.checked || !recipientsAvailable) event.preventDefault();
++        });
++        recipientSummary?.addEventListener('keydown',event=>{
++            if ((event.key==='Enter' || event.key===' ') && (privateComment.checked || !recipientsAvailable)) event.preventDefault();
++        });
++        recipient?.addEventListener('toggle',()=>{
++            if ((privateComment.checked || !recipientsAvailable) && recipient.open) recipient.open=false;
++        });
          function updateRecipients() {
 -            const current = recipient.value;
 -            const options = [{id:'', text:'Todos los usuarios con Agenda'}];
@@ -550,7 +683,7 @@
          }
          function updateOptions() {
              hour.disabled = noHour.checked;
-@@ -59,15 +67,20 @@
+@@ -59,21 +77,30 @@
              form.querySelector('#agendaComentarioPrivadoAyuda').textContent = !privacyAvailable
                  ? 'Los comentarios privados no están disponibles por el momento.' : privateComment.checked
                  ? 'Sólo tú podrás verlo. Sus avisos y recordatorios serán únicamente para ti.'
@@ -567,6 +700,10 @@
 +                : allIncludesAdmin ? 'Compartido con los usuarios que tienen acceso a Agenda.'
 +                : 'Compartido con los usuarios que tienen acceso a Agenda, excepto el administrador.';
 +            if (recipient) {
++                const disabled=privateComment.checked || !recipientsAvailable;
++                recipient.setAttribute('aria-disabled',String(disabled));
++                recipientSummary.setAttribute('aria-disabled',String(disabled));
++                recipientSummary.tabIndex=disabled?-1:0;
 +                recipient.querySelectorAll('input').forEach(input => input.disabled=privateComment.checked || !recipientsAvailable);
 +                if (privateComment.checked || !recipientsAvailable) recipient.open=false;
 +                const help=form.querySelector('#agendaComentarioDestinatarioAyuda');
@@ -580,7 +717,14 @@
          }
          const status = root.querySelector('[data-agenda-comments-status]');
          layout.before(status);
-@@ -130,7 +143,11 @@
+         const error = form.querySelector('[data-agenda-comment-error]');
+         const days = Array.from(root.querySelectorAll('[data-agenda-date]'));
+-        let comments = [], selected = '', tab = 'reuniones', deleting = null;
++        let comments = [], selected = '', tab = 'reuniones', deleting = null, editing = null, editorDate = '';
+         let saving = false, removing = false, loading = false, available = false, refreshAgain = false;
+         let changeVersion = 0;
+         let editorOrigin = null, deleteOrigin = null, initialDone = false;
+@@ -130,7 +157,11 @@
              if (data) {
                  options.method = 'POST';
                  options.headers['X-CSRF-Token'] = String(window.IMPE_CSRF_TOKEN || '');
@@ -593,7 +737,7 @@
              } else {
                  const start = days[0]?.dataset.agendaDate;
                  const last = days[days.length-1]?.dataset.agendaDate;
-@@ -233,7 +250,7 @@
+@@ -233,7 +264,7 @@
                  const content = node('div','agenda-comment-copy');
                  content.append(node('strong','',c.autor));
                  if (c.privado) content.append(node('span','agenda-comment-private-badge','Privado · Sólo tú'));
@@ -602,7 +746,19 @@
                  const date = new Date(c.creado_at.replace(' ','T'));
                  const created = Number.isNaN(date.getTime()) ? c.creado_at : new Intl.DateTimeFormat('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(date);
                  content.append(node('small','',created));
-@@ -301,6 +318,8 @@
+@@ -246,6 +277,11 @@
+                 const readButton = node('button','',isDue(c)?'Marcar atendido':(c.leido?'Leído':'Marcar leído'));
+                 readButton.type = 'button'; readButton.disabled = c.leido && !isDue(c);
+                 readButton.addEventListener('click',()=>void read(c)); actions.append(readButton);
++                if (c.puede_editar) {
++                    const button=node('button','','Editar');button.type='button';
++                    button.addEventListener('click',()=>openEditor(c.fecha,button,c));
++                    actions.append(button);
++                }
+                 if (c.puede_eliminar) {
+                     const button = node('button','is-danger','Eliminar'); button.type='button';
+                     button.addEventListener('click',()=>{
+@@ -301,6 +337,8 @@
                  if(loadStatus)inform('');
                  comments=result.comentarios;
                  privacyAvailable=result.privados_disponibles===true;
@@ -611,20 +767,44 @@
                  recipientsAvailable=result.destinatarios_disponibles===true && Array.isArray(result.destinatarios);
                  recipients=recipientsAvailable?result.destinatarios.filter(u=>u&&Number(u.id)>0&&typeof u.nombre==='string'&&typeof u.rol==='string'):[];
                  updateRecipients();
-@@ -349,11 +368,7 @@
-         function openEditor(date, origin) {
-             if (newComment.disabled || !available || editor.open) return;
+@@ -346,14 +384,18 @@
+             form.querySelector('[data-agenda-comment-counter]').textContent=length+' / 250';
+             text.setAttribute('aria-invalid',String(length>250));
+         }
+-        function openEditor(date, origin) {
+-            if (newComment.disabled || !available || editor.open) return;
++        function openEditor(date, origin, comment = null) {
++            if (newComment.disabled || !available || editor.open || (comment && !comment.puede_editar)) return;
              tab='comentarios';openDay(date);
 -            form.reset();
 -            recipient.value = '';
 -            showRecipientChoices(false);
 -            updateRecipients();
 -            counter();error.hidden=true;updateOptions();
-+            form.reset();selectedRecipients=[];updateRecipients();if(recipient)recipient.open=false;counter();error.hidden=true;updateOptions();
++            form.reset();editing=comment;editorDate=date;
++            selectedRecipients=comment?(comment.destinatarios_ids || (comment.destinatario_id?[comment.destinatario_id]:[])).map(String):[];
++            if (comment) {
++                text.value=comment.comentario;hour.value=comment.hora||'';
++                noHour.checked=!comment.hora;privateComment.checked=Boolean(comment.privado);
++            }
++            editor.querySelector('#agendaComentarioTitulo').textContent=comment?'Editar comentario':'Agregar comentario';
++            form.querySelector('[data-agenda-comment-save]').textContent=comment?'Guardar cambios':'Guardar';
++            updateRecipients();if(recipient)recipient.open=false;counter();error.hidden=true;updateOptions();
              editorOrigin=origin;
              editor.querySelector('[data-agenda-comment-date]').textContent=label(date);
              editor.style.left='';editor.style.top='';editor.classList.remove('is-anchored');
-@@ -400,38 +415,19 @@
+@@ -393,45 +435,29 @@
+         });
+         form.querySelectorAll('[data-agenda-comment-cancel]').forEach(b=>b.addEventListener('click',()=>{if(!saving)editor.close();}));
+         editor.addEventListener('cancel',event=>{if(saving)event.preventDefault();});
+-        editor.addEventListener('close',()=>editorOrigin?.focus());
++        editor.addEventListener('close',()=>{
++            editing=null;
++            if(editorOrigin?.isConnected)editorOrigin.focus();else newComment.focus();
++        });
+         text.addEventListener('input',counter);
+         noHour.addEventListener('change',()=>{
+             updateOptions();
              if(noHour.checked) hour.value='';else hour.focus();
          });
          privateComment.addEventListener('change',updateOptions);
@@ -670,12 +850,16 @@
              }
              if (!content||Array.from(content).length>250||(!noHour.checked&&(!hour.value||!hour.validity.valid))) {
                  error.textContent=!content||Array.from(content).length>250?'Escribe entre 1 y 250 caracteres.':'Selecciona una hora o activa «Sin hora».';error.hidden=false;return;
-@@ -439,7 +435,7 @@
+@@ -439,9 +465,10 @@
              saving=true;error.hidden=true;
              form.querySelector('[data-agenda-comment-save]').disabled=true;
              try {
 -                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value,privado:privateComment.checked?'1':'0',destinatario_id:recipientId});
-+                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value,privado:privateComment.checked?'1':'0',destinatarios_ids:recipientIds});
++                const editId=editing?.id;
++                const saved=await request(editId?'editar':'crear',{...(editId?{id:editId}:{}),fecha:editorDate,comentario:content,hora:noHour.checked?'':hour.value,privado:privateComment.checked?'1':'0',destinatarios_ids:recipientIds});
                  changeVersion++;
-                 editor.close();mostrarConfirmacionComentario('Comentario añadido a la agenda.');
+-                editor.close();mostrarConfirmacionComentario('Comentario añadido a la agenda.');
++                editor.close();mostrarConfirmacionComentario(editId?'Comentario actualizado.':'Comentario añadido a la agenda.');
                  refreshBell(saved.comentario?.id);await load();
+             } catch(e) {error.textContent=e.message;error.hidden=false;}
+             finally {saving=false;form.querySelector('[data-agenda-comment-save]').disabled=false;}

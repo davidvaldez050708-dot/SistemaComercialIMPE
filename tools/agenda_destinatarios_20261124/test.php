@@ -148,6 +148,54 @@ $ownAdmin=$repo->crear(7,'2026-11-24',null,'Comentario propio del administrador'
 check($repo->obtener($ownAdmin,7)!==null,'Administrador conserva sus propios comentarios');
 check($repo->obtener($ownAdmin,10)===null,'Ser autor administrador no permite enviar a otros administradores sin permiso');
 
+// Edición del mismo comentario: autor, privacidad y recordatorio conservados.
+$editable=createComment(['destinatarios_ids'=>['2','3']]);$editId=$editable['comentario']['id'];
+check($editable['comentario']['puede_editar'],'Autor puede editar con permiso de crear');
+user(2);check(!$svc->listar(2,'2026-11-01','2026-12-01')['comentarios'][0]['puede_editar'],'Destinatario no puede editar comentarios ajenos');
+$editData=['fecha'=>'2026-11-24','hora'=>'11:00','comentario'=>'Texto editado','destinatarios_ids'=>['2','3']];
+check($svc->editar(2,$editId,$editData)['codigo_http']===403,'Rechaza edición de otro autor');
+user(4);check($svc->editar(4,$editId,$editData)['codigo_http']===404,'Ajeno no obtiene comentario para editar');
+user(1);$_SESSION['permisos']=array_diff($_SESSION['permisos'],['agenda.comentarios.crear']);
+check($svc->editar(1,$editId,$editData)['codigo_http']===403,'Edición requiere permiso de crear');
+user(1);check($svc->editar(1,0,$editData)['codigo_http']===404,'Id inválido');
+check($svc->editar(1,999999,$editData)['codigo_http']===404,'Id inexistente');
+$repo->marcarLeido($editId,2,'2026-11-24 11:00:00');
+$beforeEdit=$repo->obtener($editId,1);
+$edited=$svc->editar(1,$editId,$editData);
+check($edited['ok'] && $edited['comentario']['id']===$editId,'Actualiza mismo id');
+check($edited['comentario']['comentario']==='Texto editado','Devuelve texto nuevo');
+check($edited['comentario']['creado_at']===$beforeEdit['creado_at'],'Conserva fecha de creación');
+$read=$db->query('SELECT * FROM agenda_comentarios_lecturas WHERE comentario_id='.$editId.' AND usuario_id=2')->fetch_assoc();
+check(!empty($read['novedad_leida_at']) && !empty($read['recordatorio_atendido_at']),'Editar texto conserva lectura y recordatorio atendido');
+check($svc->editar(1,$editId,$editData)['ok'],'Guardar sin cambios es válido');
+$badEdits=[['comentario'=>''],['comentario'=>str_repeat('x',251)],['hora'=>'25:00'],['fecha'=>'2026-02-30'],['privado'=>'1'],['destinatarios_ids'=>['5']]];
+foreach ($badEdits as $bad) check(!$svc->editar(1,$editId,array_merge($editData,$bad))['ok'],'Valida la edición como la creación');
+check($repo->obtener($editId,1)['comentario']==='Texto editado','Ediciones inválidas no alteran comentario');
+$editData['hora']='12:00';check($svc->editar(1,$editId,$editData)['ok'],'Permite cambiar hora');
+$read=$db->query('SELECT * FROM agenda_comentarios_lecturas WHERE comentario_id='.$editId.' AND usuario_id=2')->fetch_assoc();
+check($repo->obtener($editId,2)['recordatorio_at']==='2026-11-24 12:00:00' && $read['recordatorio_atendido_at']===null && !empty($read['novedad_leida_at']),'Reprograma sin convertir lectura en comentario nuevo');
+check(count(array_filter($repo->pendientes(2,'2026-11-24 12:00:00'),fn($c)=>(int)$c['id']===$editId))===1,'Nueva hora vuelve a estar pendiente');
+$editData['destinatarios_ids']=['3'];check($svc->editar(1,$editId,$editData)['ok'],'Cambia destinatarios');
+check($repo->obtener($editId,2)===null && $repo->obtener($editId,3)!==null,'Retira visibilidad al destinatario eliminado');
+check($db->query('SELECT COUNT(*) n FROM agenda_comentarios_lecturas WHERE comentario_id='.$editId.' AND usuario_id=2')->fetch_assoc()['n']==0,'Retira lectura del destinatario eliminado');
+$editData['destinatarios_ids']=[];$editData['privado']='1';
+check($svc->editar(1,$editId,$editData)['ok'],'Convierte a privado');
+check($repo->obtener($editId,3)===null && $repo->obtener($editId,1)!==null,'Privado sólo visible para autor');
+check($db->query('SELECT COUNT(*) n FROM agenda_comentarios_destinatarios WHERE comentario_id='.$editId)->fetch_assoc()['n']==0,'Privado sin destinatarios almacenados');
+$editData['privado']='0';$editData['hora']='';
+check($svc->editar(1,$editId,$editData)['ok'],'Convierte a Todos sin hora');
+check($repo->obtener($editId,4)!==null && $repo->obtener($editId,1)['recordatorio_at']===null,'Todos visible sin recordatorio');
+$beforeRollback=$repo->obtener($editId,1);
+try {$svc->editar(1,$editId,array_merge($editData,['destinatarios_ids'=>['2','9'],'comentario'=>'No guardar']));check(false,'Debe fallar actualización de destinatarios');} catch (mysqli_sql_exception $e) {}
+check($repo->obtener($editId,1)===$beforeRollback,'Rollback restaura texto, privacidad y destinatarios');
+check(!$repo->editar($editId,2,'2026-11-24',null,'Ajeno'),'SQL protege autor de edición');
+check($svc->eliminar(1,$editId)['ok'],'Eliminar comentario editado');
+check($svc->editar(1,$editId,$editData)['codigo_http']===404,'No restaura comentario eliminado al editar');
+user(8);$limitedEditData=['fecha'=>'2026-11-24','comentario'=>'Todos editado','destinatarios_ids'=>[]];
+check($svc->editar(8,$limitedId,$limitedEditData)['ok'],'Autor limitado puede editar su comentario');
+check($repo->obtener($limitedId,7)===null,'Editar Todos conserva exclusión de administrador');
+check(!$svc->editar(8,$limitedId,array_merge($limitedEditData,['destinatarios_ids'=>['7']]))['ok'],'Editar no permite saltar permiso para administrador');
+
 // Compatibilidad antes de la migración: rechazar varios y conservar uno.
 $db->query('DROP TABLE agenda_comentarios_destinatarios');
 $repo=new AgendaComentarioRepository($db);$svc=new AgendaComentarioService($repo,$clock);
@@ -155,4 +203,5 @@ check(!createComment(['destinatarios_ids'=>['2','3']])['ok'],'Sin migración no 
 check(createComment(['destinatario_id'=>'2'])['ok'],'Sin migración uno funciona');
 check($repo->listar('2026-11-01','2026-12-01',4)!==[],'Consulta anterior funciona');
 check($repo->obtener($limitedId,7)===null,'Exclusión también funciona sin tabla de destinatarios múltiples');
+user(1);check($svc->editar(1,$single['comentario']['id'],['fecha'=>'2026-11-24','comentario'=>'Uno editado','destinatario_id'=>'2'])['ok'],'Editar un destinatario antes de migración conserva compatibilidad');
 echo json_encode(['ok'=>true,'checks'=>$checks],JSON_PRETTY_PRINT).PHP_EOL;

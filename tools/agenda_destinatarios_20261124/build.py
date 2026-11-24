@@ -4,7 +4,6 @@ import difflib
 import hashlib
 import json
 import subprocess
-import zipfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -23,7 +22,7 @@ for path in sorted((HERE / 'files').rglob('*')):
     allowed = []
     if original.exists():
         allowed.append(hashlib.sha256(before.encode()).hexdigest())
-    for revision in ['023cfc3f', 'a2e67b1d', '85b0c915', '95f8d0a6', '250cf2ec']:
+    for revision in ['023cfc3f', 'a2e67b1d', '85b0c915', '95f8d0a6', '250cf2ec', '674da6a0']:
         result = subprocess.run(['git','show',f'{revision}:tools/agenda_destinatarios_20261124/files/{name}'],cwd=ROOT,capture_output=True)
         if result.returncode == 0:
             allowed.append(hashlib.sha256(result.stdout.decode('utf-8').replace('\r\n','\n').encode()).hexdigest())
@@ -37,10 +36,4 @@ for path in sorted((HERE / 'files').rglob('*')):
 (HERE / 'cambio.patch').write_text(''.join(patch),encoding='utf-8',newline='\n')
 (HERE / 'instalacion.json').write_text(json.dumps(instalacion,indent=2),encoding='utf-8',newline='\n')
 (OUT / 'manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
-with zipfile.ZipFile(OUT / 'agenda_destinatarios_multiples.zip','w',zipfile.ZIP_DEFLATED) as archive:
-    for path in sorted((HERE / 'files').rglob('*')):
-        if path.is_file(): archive.write(path,path.relative_to(HERE / 'files').as_posix())
-    archive.write(HERE / 'LEEME.txt','LEEME.txt')
-    archive.write(OUT / 'cambio.patch','cambio.patch')
-    archive.write(OUT / 'manifest.json','manifest.json')
-print(OUT / 'agenda_destinatarios_multiples.zip')
+print(HERE / 'instalacion.json')

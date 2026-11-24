@@ -1,6 +1,13 @@
 {
+  "app/controllers/AgendaComentarioController.php": {
+    "sha256": "74b56eb5ecf91671ea7ece167ebb60230cfed103369b88ed878d77cdf7e324c0",
+    "permitidos": [
+      "e2c2d0fcb2900ce869373042a86ccc3248da7e75912b549fc8ad2d0524a66205"
+    ],
+    "nuevo": false
+  },
   "app/services/AgendaComentarioRepository.php": {
-    "sha256": "ea306a4ec06644efbdf28da33e7f19376354c80afdcdaf0d59fad1198a263659",
+    "sha256": "1e5f6ea4194ea37db7f9c8fd7f9dd974f7acf0ebda37bb3733e947dc19ceeed8",
     "permitidos": [
       "1e9b0373d4dab3387ca0779fff031f883355f252092698764f541ea66c4f1830",
       "3a493aa431ca1433028fd0e5bbc7be90f571974f253359145c16c19db967a06f",
@@ -10,7 +17,7 @@
     "nuevo": false
   },
   "app/services/AgendaComentarioService.php": {
-    "sha256": "f7a10a72402f4ad81161f3975604ef0262209daf740ceae8b9bba4b9dca58232",
+    "sha256": "ab8650078615fe27758f007cfc36683992b8652283361bb85d7c441a19afd640",
     "permitidos": [
       "3a4f37eaaf79f54529ffae34dea974d16c1c328049bf0b3040aef3286212e4dd",
       "539a865f59b94e96618acf7c5f636e6c8859fce28c3cbf9055481b162d30bf22",
@@ -20,9 +27,10 @@
     "nuevo": false
   },
   "app/views/seguimiento_vinculacion/partials/agenda_comentarios.php": {
-    "sha256": "21a4b4f7580582fc05182503c88ba8a758f2979f8291c1b5d39c48f585bada64",
+    "sha256": "d647187d0f0d755c8ec879f2292040dd421a332673d3ad57affa5ce8c8765164",
     "permitidos": [
       "1941505758d00a88c3934e9687fc2b8d9786f46df0868281d91db10eec45dfd4",
+      "21a4b4f7580582fc05182503c88ba8a758f2979f8291c1b5d39c48f585bada64",
       "68394a374659f72824dbd0237a9ff2624596f73f4f79f8de6b1813811fead603",
       "86db597bd9eeeadf6f4ca89f3ba0ddf14c60d115a72c0c47514ad5c7114905a4",
       "9b37912a6eca0052089e54a58d3a743140535c8e560272aa04f6a6c0f058344b",
@@ -39,15 +47,16 @@
     "nuevo": true
   },
   "public/css/agenda_destinatarios.css": {
-    "sha256": "d6abe39c332c01ab69e7563f6266d45ee017b768942ffd1733b4aa824a970d04",
+    "sha256": "c03125c5e3798bf3313d3f3d2f1dfd229a05ee884dfb3937de6625b15114e892",
     "permitidos": [
       "c5f296c8671630dda7d06ef11d318c8f9942143d993a754405445e8ed2561a63",
-      "d520c2c623b07d1d6817e302978d84d9f044a42532f605019fc37725fc24710b"
+      "d520c2c623b07d1d6817e302978d84d9f044a42532f605019fc37725fc24710b",
+      "d6abe39c332c01ab69e7563f6266d45ee017b768942ffd1733b4aa824a970d04"
     ],
     "nuevo": true
   },
   "public/javascript/agenda_comentarios.js": {
-    "sha256": "81eebe07c0504e3052e72c3decf0987f7b15b391ba938c30979041bf4c6b2d02",
+    "sha256": "e488c2af3c5f53c4c89daa0b44687ff9578197da3e0fd4b02d5342ab64b13d32",
     "permitidos": [
       "05e8ceac838969e6e931406037d99851fb94bdffa3e3dd021356b3543b968e91",
       "5e974067d0daa23fce4744076a4bbd546f4b924e633168b5b54468f9d6864120",

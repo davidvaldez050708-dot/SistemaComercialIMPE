@@ -248,6 +248,55 @@ class AgendaComentarioRepository
         }
     }
 
+    public function editar(int $id, int $usuario, string $fecha, ?string $hora, string $texto, bool $privado = false, ?int $destinatario = null, array $destinatarios = []): bool
+    {
+        $privacidad=$this->privacidadDisponible();
+        $dirigidos=$this->destinatariosDisponibles();
+        $multiples=$this->multiplesDisponibles();
+        if ($privado && !$privacidad) throw new RuntimeException('AGENDA_PRIVACIDAD_NO_DISPONIBLE');
+        if ($privado && ($destinatario!==null || $destinatarios)) throw new RuntimeException('AGENDA_DESTINATARIO_NO_DISPONIBLE');
+        if (count($destinatarios)>1 && !$multiples) throw new RuntimeException('AGENDA_MULTIPLES_NO_DISPONIBLES');
+        foreach (array_unique(array_merge($destinatarios,$destinatario===null?[]:[$destinatario])) as $destino) {
+            if (!$dirigidos || !$this->destinatarioHabilitado((int)$destino,$usuario)) throw new RuntimeException('AGENDA_DESTINATARIO_NO_DISPONIBLE');
+        }
+        $recordatorio=$hora===null?null:$fecha.' '.$hora.':00';
+        $this->db->begin_transaction();
+        try {
+            $lock=$this->db->prepare('SELECT recordatorio_at FROM agenda_comentarios WHERE id=? AND creado_por=? AND eliminado_at IS NULL FOR UPDATE');
+            $lock->bind_param('ii',$id,$usuario);$lock->execute();
+            $anterior=$lock->get_result()->fetch_assoc();
+            if (!$anterior) {$this->db->rollback();return false;}
+            $sql='UPDATE agenda_comentarios SET fecha=?,recordatorio_at=?,comentario=?'.($privacidad?',privado=?':'').($dirigidos?',destinatario_id=?':'').' WHERE id=? AND creado_por=? AND eliminado_at IS NULL';
+            $params=[$fecha,$recordatorio,$texto];$types='sss';
+            if ($privacidad) {$params[]=(int)$privado;$types.='i';}
+            if ($dirigidos) {$params[]=$destinatario;$types.='i';}
+            $params[]=$id;$params[]=$usuario;$types.='ii';
+            $stmt=$this->db->prepare($sql);$stmt->bind_param($types,...$params);$stmt->execute();
+            if ($multiples) {
+                $stmt=$this->db->prepare('DELETE FROM agenda_comentarios_destinatarios WHERE comentario_id=?');
+                $stmt->bind_param('i',$id);$stmt->execute();
+                $insert=$this->db->prepare('INSERT INTO agenda_comentarios_destinatarios (comentario_id,usuario_id) VALUES (?,?)');
+                foreach ($destinatarios as $destino) {$insert->bind_param('ii',$id,$destino);$insert->execute();}
+            }
+            // Editar el texto conserva las lecturas y el recordatorio atendido.
+            // Sólo una hora distinta vuelve a dejar pendiente el recordatorio.
+            if ($anterior['recordatorio_at']!==$recordatorio) {
+                $stmt=$this->db->prepare('UPDATE agenda_comentarios_lecturas SET recordatorio_atendido_at=NULL WHERE comentario_id=?');
+                $stmt->bind_param('i',$id);$stmt->execute();
+            }
+            if ($privado || $destinatario!==null) {
+                $permitidos=array_values(array_unique(array_merge([$usuario],$privado?[]:($destinatarios?:[$destinatario]))));
+                foreach (['agenda_comentarios_lecturas'=>'usuario_id','agenda_comentarios_vistos_avisos'=>'lector_id'] as $tabla=>$columna) {
+                    if ($tabla==='agenda_comentarios_vistos_avisos' && !$this->avisosVistosDisponibles()) continue;
+                    $params=array_merge([$id],$permitidos);
+                    $stmt=$this->db->prepare('DELETE FROM '.$tabla.' WHERE comentario_id=? AND '.$columna.' NOT IN ('.implode(',',array_fill(0,count($permitidos),'?')).')');
+                    $stmt->bind_param(str_repeat('i',count($params)),...$params);$stmt->execute();
+                }
+            }
+            $this->db->commit();return true;
+        } catch (Throwable $e) {$this->db->rollback();throw $e;}
+    }
+
     public function eliminar(int $id, int $usuario, string $ahora): bool
     {
         $stmt = $this->db->prepare('UPDATE agenda_comentarios SET eliminado_at=?,eliminado_por=? WHERE id=? AND creado_por=? AND eliminado_at IS NULL');

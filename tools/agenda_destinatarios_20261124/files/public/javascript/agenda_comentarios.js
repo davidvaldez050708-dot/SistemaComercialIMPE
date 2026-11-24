@@ -23,6 +23,16 @@
         let allIncludesAdmin = false;
         let privacyAvailable = false;
         let recipientsAvailable = false, recipients = [];
+        const recipientSummary = recipient?.querySelector('summary');
+        recipientSummary?.addEventListener('click',event=>{
+            if (privateComment.checked || !recipientsAvailable) event.preventDefault();
+        });
+        recipientSummary?.addEventListener('keydown',event=>{
+            if ((event.key==='Enter' || event.key===' ') && (privateComment.checked || !recipientsAvailable)) event.preventDefault();
+        });
+        recipient?.addEventListener('toggle',()=>{
+            if ((privateComment.checked || !recipientsAvailable) && recipient.open) recipient.open=false;
+        });
         function updateRecipients() {
             if (!recipient) return;
             const focusedValue = recipient.contains(document.activeElement) && document.activeElement.matches('input[type="checkbox"]')
@@ -71,6 +81,10 @@
                 : allIncludesAdmin ? 'Compartido con los usuarios que tienen acceso a Agenda.'
                 : 'Compartido con los usuarios que tienen acceso a Agenda, excepto el administrador.';
             if (recipient) {
+                const disabled=privateComment.checked || !recipientsAvailable;
+                recipient.setAttribute('aria-disabled',String(disabled));
+                recipientSummary.setAttribute('aria-disabled',String(disabled));
+                recipientSummary.tabIndex=disabled?-1:0;
                 recipient.querySelectorAll('input').forEach(input => input.disabled=privateComment.checked || !recipientsAvailable);
                 if (privateComment.checked || !recipientsAvailable) recipient.open=false;
                 const help=form.querySelector('#agendaComentarioDestinatarioAyuda');
@@ -86,7 +100,7 @@
         layout.before(status);
         const error = form.querySelector('[data-agenda-comment-error]');
         const days = Array.from(root.querySelectorAll('[data-agenda-date]'));
-        let comments = [], selected = '', tab = 'reuniones', deleting = null;
+        let comments = [], selected = '', tab = 'reuniones', deleting = null, editing = null, editorDate = '';
         let saving = false, removing = false, loading = false, available = false, refreshAgain = false;
         let changeVersion = 0;
         let editorOrigin = null, deleteOrigin = null, initialDone = false;
@@ -263,6 +277,11 @@
                 const readButton = node('button','',isDue(c)?'Marcar atendido':(c.leido?'Leído':'Marcar leído'));
                 readButton.type = 'button'; readButton.disabled = c.leido && !isDue(c);
                 readButton.addEventListener('click',()=>void read(c)); actions.append(readButton);
+                if (c.puede_editar) {
+                    const button=node('button','','Editar');button.type='button';
+                    button.addEventListener('click',()=>openEditor(c.fecha,button,c));
+                    actions.append(button);
+                }
                 if (c.puede_eliminar) {
                     const button = node('button','is-danger','Eliminar'); button.type='button';
                     button.addEventListener('click',()=>{
@@ -365,10 +384,18 @@
             form.querySelector('[data-agenda-comment-counter]').textContent=length+' / 250';
             text.setAttribute('aria-invalid',String(length>250));
         }
-        function openEditor(date, origin) {
-            if (newComment.disabled || !available || editor.open) return;
+        function openEditor(date, origin, comment = null) {
+            if (newComment.disabled || !available || editor.open || (comment && !comment.puede_editar)) return;
             tab='comentarios';openDay(date);
-            form.reset();selectedRecipients=[];updateRecipients();if(recipient)recipient.open=false;counter();error.hidden=true;updateOptions();
+            form.reset();editing=comment;editorDate=date;
+            selectedRecipients=comment?(comment.destinatarios_ids || (comment.destinatario_id?[comment.destinatario_id]:[])).map(String):[];
+            if (comment) {
+                text.value=comment.comentario;hour.value=comment.hora||'';
+                noHour.checked=!comment.hora;privateComment.checked=Boolean(comment.privado);
+            }
+            editor.querySelector('#agendaComentarioTitulo').textContent=comment?'Editar comentario':'Agregar comentario';
+            form.querySelector('[data-agenda-comment-save]').textContent=comment?'Guardar cambios':'Guardar';
+            updateRecipients();if(recipient)recipient.open=false;counter();error.hidden=true;updateOptions();
             editorOrigin=origin;
             editor.querySelector('[data-agenda-comment-date]').textContent=label(date);
             editor.style.left='';editor.style.top='';editor.classList.remove('is-anchored');
@@ -408,7 +435,10 @@
         });
         form.querySelectorAll('[data-agenda-comment-cancel]').forEach(b=>b.addEventListener('click',()=>{if(!saving)editor.close();}));
         editor.addEventListener('cancel',event=>{if(saving)event.preventDefault();});
-        editor.addEventListener('close',()=>editorOrigin?.focus());
+        editor.addEventListener('close',()=>{
+            editing=null;
+            if(editorOrigin?.isConnected)editorOrigin.focus();else newComment.focus();
+        });
         text.addEventListener('input',counter);
         noHour.addEventListener('change',()=>{
             updateOptions();
@@ -435,9 +465,10 @@
             saving=true;error.hidden=true;
             form.querySelector('[data-agenda-comment-save]').disabled=true;
             try {
-                const saved=await request('crear',{fecha:selected,comentario:content,hora:noHour.checked?'':hour.value,privado:privateComment.checked?'1':'0',destinatarios_ids:recipientIds});
+                const editId=editing?.id;
+                const saved=await request(editId?'editar':'crear',{...(editId?{id:editId}:{}),fecha:editorDate,comentario:content,hora:noHour.checked?'':hour.value,privado:privateComment.checked?'1':'0',destinatarios_ids:recipientIds});
                 changeVersion++;
-                editor.close();mostrarConfirmacionComentario('Comentario añadido a la agenda.');
+                editor.close();mostrarConfirmacionComentario(editId?'Comentario actualizado.':'Comentario añadido a la agenda.');
                 refreshBell(saved.comentario?.id);await load();
             } catch(e) {error.textContent=e.message;error.hidden=false;}
             finally {saving=false;form.querySelector('[data-agenda-comment-save]').disabled=false;}

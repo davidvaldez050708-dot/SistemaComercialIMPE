@@ -25,6 +25,14 @@
 .agenda-comment-recipients summary::-webkit-details-marker {
     display: none;
 }
+.agenda-comment-editor .agenda-comment-recipients[aria-disabled="true"] summary {
+    background: #f4f6fa;
+    color: #7b879b;
+    cursor: not-allowed;
+}
+.agenda-comment-recipients[aria-disabled="true"] summary::after {
+    opacity: .45;
+}
 .agenda-comment-recipients summary::after {
     content: '';
     width: 8px;
